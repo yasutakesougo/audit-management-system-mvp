@@ -21,10 +21,8 @@ import type { DashboardLayoutMode } from '@/features/dashboard/hooks/useDashboar
 import { BentoGridLayout } from '@/features/dashboard/layouts/BentoGridLayout';
 import type { DashboardTab } from '@/features/dashboard/layouts/ZeroScrollLayout';
 import { ZeroScrollLayout } from '@/features/dashboard/layouts/ZeroScrollLayout';
-import type { BriefingAlert } from '@/features/dashboard/sections/types';
-import type { DashboardSection, DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
-import { HandoffLiveFeed } from '@/features/handoff/components/HandoffLiveFeed';
-import type { HandoffDayScope, HandoffRecord, HandoffStatus } from '@/features/handoff/handoffTypes';
+import type { BriefingAlert, DashboardSection, DashboardSectionKey } from '@/features/dashboard/sections/types';
+import type { HandoffCategory, HandoffDayScope, HandoffStatus } from '@/features/handoff/handoffTypes';
 import Stack from '@mui/material/Stack';
 
 // ── Props ──
@@ -56,13 +54,11 @@ export interface DashboardLayoutRendererProps {
   attendanceRatio?: { present: number; total: number };
   dailyRecordRatio?: { done: number; total: number };
 
-  // 📡 Handoff Live Feed data
-  handoffTimelineItems?: HandoffRecord[];
-  handoffTimelineLoading?: boolean;
-  handoffTimelineError?: string | null;
-  handoffTimelineUpdateStatus?: (id: number, newStatus: HandoffStatus, carryOverDate?: string) => Promise<void>;
-  handoffTimelineReload?: () => void;
+  // 📊 Handoff Summary Card data
+  handoffTotal?: number;
+  handoffByStatus?: Record<string, number>;
   onOpenTimeline?: (scope: HandoffDayScope) => void;
+  handoffByCategory?: Record<HandoffCategory, number>;
 }
 
 export const DashboardLayoutRenderer: React.FC<DashboardLayoutRendererProps> = ({
@@ -82,12 +78,10 @@ export const DashboardLayoutRenderer: React.FC<DashboardLayoutRendererProps> = (
   handoffCritical = 0,
   attendanceRatio,
   dailyRecordRatio,
-  handoffTimelineItems = [],
-  handoffTimelineLoading = false,
-  handoffTimelineError = null,
-  handoffTimelineUpdateStatus,
-  handoffTimelineReload,
+  handoffTotal = 0,
+  handoffByStatus = {},
   onOpenTimeline,
+  handoffByCategory,
 }) => {
   // ── 🍱 Bento Grid ──
   if (layoutMode === 'bentoGrid') {
@@ -107,12 +101,10 @@ export const DashboardLayoutRenderer: React.FC<DashboardLayoutRendererProps> = (
         scrollToSection={scrollToSection}
         dateLabel={dateLabel}
         todayChanges={todayChanges}
-        handoffTimelineItems={handoffTimelineItems}
-        handoffTimelineLoading={handoffTimelineLoading}
-        handoffTimelineError={handoffTimelineError}
-        handoffTimelineUpdateStatus={handoffTimelineUpdateStatus}
-        handoffTimelineReload={handoffTimelineReload}
+        handoffTotal={handoffTotal}
+        handoffByStatus={handoffByStatus as Record<HandoffStatus, number>}
         onOpenTimeline={onOpenTimeline}
+        handoffByCategory={handoffByCategory}
       />
     );
   }
@@ -127,16 +119,6 @@ export const DashboardLayoutRenderer: React.FC<DashboardLayoutRendererProps> = (
         ) : (
           <Typography color="text.secondary">申し送り情報がありません</Typography>
         )}
-        <HandoffLiveFeed
-          items={handoffTimelineItems}
-          loading={handoffTimelineLoading}
-          error={handoffTimelineError}
-          updateHandoffStatus={handoffTimelineUpdateStatus}
-          onReload={handoffTimelineReload}
-          onOpenTimeline={onOpenTimeline}
-          compact
-          maxItems={6}
-        />
       </Stack>
     );
 

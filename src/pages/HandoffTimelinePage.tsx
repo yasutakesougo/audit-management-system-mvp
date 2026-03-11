@@ -1,110 +1,317 @@
 import { PageHeader } from '@/components/PageHeader';
 import { TESTIDS, tid } from '@/testids';
-import { AccessTime as AccessTimeIcon, EditNote as EditNoteIcon, Nightlight as EveningIcon, Groups as MeetingIcon, WbSunny as MorningIcon } from '@mui/icons-material';
-import { Box, Button, Chip, Container, Divider, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
-import { useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import {
+  AccessTime as AccessTimeIcon,
+  ArrowBack as ArrowBackIcon,
+  CalendarMonth as CalendarIcon,
+  CalendarViewMonth as MonthIcon,
+  CalendarViewWeek as WeekIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  EditNote as EditNoteIcon,
+  Nightlight as EveningIcon,
+  Groups as MeetingIcon,
+  Person as PersonIcon,
+  Today as TodayIcon,
+  ViewDay as DayIcon,
+  ViewList as ViewListIcon,
+  WbSunny as MorningIcon,
+} from '@mui/icons-material';
+import {
+  Box,
+  Button,
+  Chip,
+  Container,
+  Divider,
+  IconButton,
+  Popover,
+  Stack,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Tooltip,
+  Typography,
+} from '@mui/material';
+import { useCallback, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import HandoffCategorySummaryCard from '../features/handoff/HandoffCategorySummaryCard';
-import type { HandoffDayScope, HandoffTimeFilter } from '../features/handoff/handoffTypes';
-import { HANDOFF_DAY_SCOPE_LABELS, HANDOFF_TIME_FILTER_LABELS } from '../features/handoff/handoffTypes';
+import { HandoffMonthView } from '../features/handoff/components/HandoffMonthView';
+import { HandoffUserGroupedView } from '../features/handoff/components/HandoffUserGroupedView';
+import { HandoffWeekView } from '../features/handoff/components/HandoffWeekView';
+import { HANDOFF_TIME_FILTER_LABELS } from '../features/handoff/handoffTypes';
+import { addDays, formatDateLocal, useHandoffDateNav } from '../features/handoff/hooks/useHandoffDateNav';
+import type { DateRange } from '../features/handoff/hooks/useHandoffDateNav';
+import { useHandoffMonthViewModel } from '../features/handoff/hooks/useHandoffMonthViewModel';
+import { useHandoffWeekViewModel } from '../features/handoff/hooks/useHandoffWeekViewModel';
 import { TodayHandoffTimelineList } from '../features/handoff/TodayHandoffTimelineList';
 import { useHandoffTimeline } from '../features/handoff/useHandoffTimeline';
 import { useHandoffTimelineViewModel } from '../features/handoff/useHandoffTimelineViewModel';
 
+/** 表示モード: 時系列フラット or 利用者グループ */
+type HandoffDisplayMode = 'timeline' | 'grouped';
+
 /**
  * 申し送りタイムラインページ
  *
- * 機能概要：
- * - 今すぐ申し送りボタン → FooterQuickActions の Dialog を開く（UI統一）
- * - 今日の申し送りタイムライン表示と状態管理
- * - 時間帯別の申し送り整理（Step 7B: 朝会・夕会連携）
- * - 日付スコープ対応（Step 7C: MeetingGuideDrawer連携）
- *
- * 現場の都合に寄り添った設計：
- * - ワンクリック申し送り作成（全ページ共通の Dialog UI）
- * - カテゴリー・重要度チップ選択
- * - 楽観的更新でストレスフリー
- * - 時間帯フィルタ（朝会は朝のことをちゃんと振り返る会）
- * - 朝会→昨日、夕会→今日の自然な導線
+ * P0: date ベースの日付ナビゲーション
+ * - URL: ?range=day&date=YYYY-MM-DD
+ * - 前日/翌日ボタンで移動
+ * - DatePicker で任意日を選択
+ * - 旧 dayScope (today/yesterday) の互換性を維持
  */
 export default function HandoffTimelinePage() {
-  // Step 7C: navigation state からの初期値取得
-  const location = useLocation();
-  const navState = location.state as
-    | { dayScope?: HandoffDayScope; timeFilter?: HandoffTimeFilter }
-    | undefined;
+  const navigate = useNavigate();
 
-  // v3: VM → データ hook → useRef late-binding DI
-  //
-  // 1) VM: dayScope / timeFilter / meetingMode を管理
-  //    - workflowActions は内部 useRef で DI を late-binding
-  //    - 初回は updateHandoffStatus=undefined だが console.warn fallback
-  // 2) data hook: VM の dayScope/timeFilter でデータ取得
-  //    → updateHandoffStatus / todayHandoffs が返される
-  // 3) VM の useRef が毎レンダー同期されるため、
-  //    ボタンクリック時には常に最新の updateHandoffStatus が使われる
+  // ── 日付ナビゲーション (新: URL ?date= ベース) ──
+  const dateNav = useHandoffDateNav();
 
-  // データ hook を先に呼び（navState でデフォルト値を設定済み）、
-  // VM に DI 注入する。VM は dayScope/timeFilter を内部管理するが、
-  // data hook はそれを引数で受け取るため「VM → data hook」の順が必要。
-  // → useRef late-binding で解決: VM を先に呼んでも DI は毎レンダー同期される。
+  // 表示モード — /today からの遷移時はグループ表示をデフォルト
+  const [displayMode, setDisplayMode] = useState<HandoffDisplayMode>(
+    dateNav.fromToday ? 'grouped' : 'timeline',
+  );
 
+  // VM: timeFilter / meetingMode を管理 (dayScope は dateNav から注入)
   const {
-    dayScope,
     timeFilter,
     handoffStats,
     setHandoffStats,
-    handleDayScopeChange,
     handleTimeFilterChange,
     meetingMode,
-    handleMeetingModeChange,
+    handleMeetingModeChange: vmHandleMeetingModeChange,
     workflowActions,
     injectDI,
-  } = useHandoffTimelineViewModel({ navState });
+  } = useHandoffTimelineViewModel({
+    navState: {
+      dayScope: dateNav.dayScope,
+      timeFilter: undefined,
+    },
+  });
 
-  // データ hook: VM が管理する dayScope/timeFilter でデータ取得
+  // 会議モード切替時に dateNav の日付も連動移動
+  const handleMeetingModeChange = useCallback(
+    (event: React.MouseEvent<HTMLElement>, newMode: string) => {
+      vmHandleMeetingModeChange(event, newMode as 'normal' | 'evening' | 'morning');
+      if (newMode === 'morning') {
+        // 朝会 → 昨日に移動
+        dateNav.goToDate(addDays(formatDateLocal(), -1));
+      } else if (newMode === 'evening') {
+        // 夕会 → 今日に移動
+        dateNav.goToToday();
+      }
+    },
+    [vmHandleMeetingModeChange, dateNav],
+  );
+
+  // データ hook: dateNav.dayScope + timeFilter でデータ取得 (day ビュー用)
   const {
     todayHandoffs,
     loading: timelineLoading,
     error: timelineError,
     updateHandoffStatus,
-  } = useHandoffTimeline(timeFilter, dayScope);
+  } = useHandoffTimeline(timeFilter, dateNav.dayScope);
 
-  // v3: DI 注入 — data hook の関数を VM の workflowActions に接続
-  // useRef 経由の late-binding なので同期的に呼んでOK
+  // 週ビュー ViewModel
+  const weekVM = useHandoffWeekViewModel(dateNav.date);
+
+  // 月ビュー ViewModel
+  const monthVM = useHandoffMonthViewModel(dateNav.date);
+
+  // 日カードクリック → day ビューへ遷移 (週/月共通)
+  const handleDayClick = useCallback(
+    (clickedDate: string) => {
+      dateNav.goToDate(clickedDate);
+    },
+    [dateNav],
+  );
+
+  // range 切替ハンドラ
+  const handleRangeChange = useCallback(
+    (_: React.MouseEvent<HTMLElement>, newRange: string | null) => {
+      if (newRange) {
+        dateNav.setRange(newRange as DateRange);
+      }
+    },
+    [dateNav],
+  );
+
+  // DI 注入
   injectDI({ updateHandoffStatus, currentRecords: todayHandoffs });
 
   // Dialog は FooterQuickActions が唯一のオーナー。
-  // ページ内ボタンからはグローバルイベントで Dialog を開く。
   const openQuickNoteDialog = useCallback(() => {
     window.dispatchEvent(new CustomEvent('handoff-open-quicknote-dialog'));
   }, []);
+
+  // ── DatePicker popover state ──
+  const [datePickerAnchor, setDatePickerAnchor] = useState<HTMLElement | null>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDatePickerOpen = useCallback((event: React.MouseEvent<HTMLElement>) => {
+    setDatePickerAnchor(event.currentTarget);
+  }, []);
+
+  const handleDatePickerClose = useCallback(() => {
+    setDatePickerAnchor(null);
+  }, []);
+
+  const handleDatePickerChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const newDate = event.target.value;
+      if (newDate) {
+        dateNav.goToDate(newDate);
+        handleDatePickerClose();
+      }
+    },
+    [dateNav, handleDatePickerClose],
+  );
 
   return (
     <Container maxWidth="lg" sx={{ py: 3 }} {...tid(TESTIDS['agenda-page-root'])}>
       {/* ページヘッダー */}
       <Box sx={{ mb: 3 }}>
+        {/* /today からの遷移時: 戻り導線 */}
+        {dateNav.fromToday && (
+          <Chip
+            icon={<ArrowBackIcon />}
+            label="今日の業務へ戻る"
+            onClick={() => navigate('/today')}
+            variant="outlined"
+            color="primary"
+            size="small"
+            clickable
+            data-testid="handoff-back-to-today"
+            sx={{ mb: 1.5 }}
+          />
+        )}
         <PageHeader
           title="申し送りタイムライン"
-          subtitle={
-            dayScope === 'yesterday'
-              ? '前日からの申し送り事項を確認できます（朝会での引き継ぎ確認用）'
-              : 'いつでも簡単に申し送りを記録・確認できます'
-          }
+          subtitle="申し送りの記録・確認・会議進行ができます"
           icon={<AccessTimeIcon />}
-          actions={
-            (dayScope === 'yesterday' || navState?.dayScope) ? (
-              <Chip
-                label={HANDOFF_DAY_SCOPE_LABELS[dayScope]}
-                color={dayScope === 'yesterday' ? 'secondary' : 'primary'}
-                variant="filled"
-                sx={{ fontSize: '0.875rem' }}
-              />
-            ) : undefined
-          }
         />
 
-        {/* Step 7B: 時間帯フィルタ + Step 7C: 日付スコープ切り替え */}
+        {/* ── 日付ナビゲーション ─────────────────────────── */}
+        <Box
+          sx={{
+            mt: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            flexWrap: 'wrap',
+          }}
+        >
+          {/* 前へ (day / week / month) */}
+          <Tooltip title={dateNav.range === 'month' ? '前月' : dateNav.range === 'week' ? '前週' : '前日'}>
+            <IconButton
+              onClick={
+                dateNav.range === 'month'
+                  ? dateNav.goToPreviousMonth
+                  : dateNav.range === 'week'
+                    ? dateNav.goToPreviousWeek
+                    : dateNav.goToPreviousDay
+              }
+              size="small"
+              data-testid="handoff-date-prev"
+            >
+              <ChevronLeftIcon />
+            </IconButton>
+          </Tooltip>
+
+          <Chip
+            icon={<CalendarIcon />}
+            label={dateNav.dateLabel}
+            onClick={handleDatePickerOpen}
+            variant="outlined"
+            color="primary"
+            clickable
+            data-testid="handoff-date-label"
+            sx={{
+              fontSize: '0.95rem',
+              fontWeight: 600,
+              px: 1,
+            }}
+          />
+
+          {/* 次へ (day / week / month) */}
+          <Tooltip title={dateNav.range === 'month' ? '翌月' : dateNav.range === 'week' ? '翌週' : '翌日'}>
+            <span>
+              <IconButton
+                onClick={
+                  dateNav.range === 'month'
+                    ? dateNav.goToNextMonth
+                    : dateNav.range === 'week'
+                      ? dateNav.goToNextWeek
+                      : dateNav.goToNextDay
+                }
+                size="small"
+                disabled={dateNav.isToday}
+                data-testid="handoff-date-next"
+              >
+                <ChevronRightIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+
+          {!dateNav.isToday && (
+            <Chip
+              icon={<TodayIcon />}
+              label="今日"
+              onClick={dateNav.goToToday}
+              variant="filled"
+              color="secondary"
+              size="small"
+              clickable
+              data-testid="handoff-date-today"
+            />
+          )}
+
+          {/* range 切替: 日 / 週 / 月 */}
+          <ToggleButtonGroup
+            value={dateNav.range}
+            exclusive
+            onChange={handleRangeChange}
+            size="small"
+            color="primary"
+            sx={{ ml: 1 }}
+          >
+            <ToggleButton value="day" data-testid="handoff-range-day">
+              <DayIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              日
+            </ToggleButton>
+            <ToggleButton value="week" data-testid="handoff-range-week">
+              <WeekIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              週
+            </ToggleButton>
+            <ToggleButton value="month" data-testid="handoff-range-month">
+              <MonthIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              月
+            </ToggleButton>
+          </ToggleButtonGroup>
+
+          {/* DatePicker Popover */}
+          <Popover
+            open={Boolean(datePickerAnchor)}
+            anchorEl={datePickerAnchor}
+            onClose={handleDatePickerClose}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          >
+            <Box sx={{ p: 2 }}>
+              <TextField
+                ref={dateInputRef}
+                type="date"
+                value={dateNav.date}
+                onChange={handleDatePickerChange}
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                inputProps={{
+                  max: new Date().toISOString().split('T')[0],
+                  'data-testid': 'handoff-date-picker-input',
+                }}
+              />
+            </Box>
+          </Popover>
+        </Box>
+
+        {/* ── フィルタ群 ──────────────────────────────────── */}
         <Box
           sx={{
             mt: 2,
@@ -115,7 +322,7 @@ export default function HandoffTimelinePage() {
             rowGap: 1.5,
           }}
         >
-          {/* v3: 会議モード切替 (🌅朝会 / 🌆夕会 / 通常) */}
+          {/* 会議モード切替 */}
           <ToggleButtonGroup
             value={meetingMode}
             exclusive
@@ -134,22 +341,6 @@ export default function HandoffTimelinePage() {
             <ToggleButton value="morning">
               <MorningIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
               🌅 朝会
-            </ToggleButton>
-          </ToggleButtonGroup>
-
-          {/* 日付スコープ切り替え（昨日←→今日）*/}
-          <ToggleButtonGroup
-            value={dayScope}
-            exclusive
-            onChange={handleDayScopeChange}
-            size="small"
-            color="secondary"
-          >
-            <ToggleButton value="yesterday">
-              📅 昨日
-            </ToggleButton>
-            <ToggleButton value="today">
-              📅 今日
             </ToggleButton>
           </ToggleButtonGroup>
 
@@ -173,6 +364,24 @@ export default function HandoffTimelinePage() {
               午後〜夕方
             </ToggleButton>
           </ToggleButtonGroup>
+
+          {/* 表示モード切替: 時系列 / 利用者別 */}
+          <ToggleButtonGroup
+            value={displayMode}
+            exclusive
+            onChange={(_, v) => { if (v) setDisplayMode(v as HandoffDisplayMode); }}
+            size="small"
+            color="primary"
+          >
+            <ToggleButton value="timeline" data-testid="handoff-mode-timeline">
+              <ViewListIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              時系列
+            </ToggleButton>
+            <ToggleButton value="grouped" data-testid="handoff-mode-grouped">
+              <PersonIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              利用者別
+            </ToggleButton>
+          </ToggleButtonGroup>
         </Box>
 
         {handoffStats && (
@@ -192,7 +401,7 @@ export default function HandoffTimelinePage() {
             }}
           >
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              📊 {HANDOFF_DAY_SCOPE_LABELS[dayScope]}の申し送り状況
+              📊 {dateNav.dateLabel}の申し送り状況
             </Typography>
             <Typography variant="body2">全{handoffStats.total}件</Typography>
             {handoffStats.pending > 0 && (
@@ -208,7 +417,7 @@ export default function HandoffTimelinePage() {
         )}
       </Box>
 
-      {/* 申し送り入力ボタン → FooterQuickActions の Dialog を開く */}
+      {/* 申し送り入力ボタン */}
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-start' }}>
         <Button
           variant="outlined"
@@ -222,49 +431,89 @@ export default function HandoffTimelinePage() {
 
       <Divider sx={{ my: 2 }} />
 
-      {/* メインコンテンツ: 2カラムレイアウト */}
-      <Stack
-        direction={{ xs: 'column', md: 'row' }}
-        spacing={3}
-        alignItems="flex-start"
-      >
-        {/* 左カラム: 今日のタイムライン */}
-        <Box flex={{ xs: 'none', md: 2 }} width="100%">
+      {/* ── メインコンテンツ ── */}
+      {dateNav.range === 'month' ? (
+        /* ── 月ビュー ── */
+        <Box>
           <Typography variant="h5" component="h2" sx={{ mb: 2, fontWeight: 600 }}>
-            {HANDOFF_DAY_SCOPE_LABELS[dayScope]}の申し送り
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              component="span"
-              sx={{ ml: 1 }}
-            >
-              ({HANDOFF_TIME_FILTER_LABELS[timeFilter]})
-            </Typography>
+            {dateNav.dateLabel}の申し送り
           </Typography>
-          <TodayHandoffTimelineList
-            items={todayHandoffs}
-            loading={timelineLoading}
-            error={timelineError}
-            updateHandoffStatus={updateHandoffStatus}
-            dayScope={dayScope}
-            onStatsChange={setHandoffStats}
-            meetingMode={meetingMode}
-            workflowActions={workflowActions}
+          <HandoffMonthView
+            summary={monthVM.summary}
+            loading={monthVM.loading}
+            error={monthVM.error}
+            onDayClick={handleDayClick}
           />
         </Box>
-
-        {/* 右カラム: カテゴリ別サマリー */}
-        <Box
-          flex={{ xs: 'none', md: 1 }}
-          width="100%"
-          sx={{ position: { xs: 'static', md: 'sticky' }, top: { xs: 'auto', md: 96 } }}
-        >
-          <Typography variant="h6" component="h3" sx={{ mb: 2, fontWeight: 600 }}>
-            {HANDOFF_DAY_SCOPE_LABELS[dayScope]}の傾向
+      ) : dateNav.range === 'week' ? (
+        /* ── 週ビュー ── */
+        <Box>
+          <Typography variant="h5" component="h2" sx={{ mb: 2, fontWeight: 600 }}>
+            {dateNav.dateLabel}の申し送り
           </Typography>
-          <HandoffCategorySummaryCard dayScope={dayScope} />
+          <HandoffWeekView
+            summary={weekVM.summary}
+            loading={weekVM.loading}
+            error={weekVM.error}
+            onDayClick={handleDayClick}
+          />
         </Box>
-      </Stack>
+      ) : (
+        /* ── 日ビュー (既存) ── */
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          spacing={3}
+          alignItems="flex-start"
+        >
+          {/* 左カラム: タイムライン */}
+          <Box flex={{ xs: 'none', md: 2 }} width="100%">
+            <Typography variant="h5" component="h2" sx={{ mb: 2, fontWeight: 600 }}>
+              {dateNav.dateLabel}の申し送り
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                component="span"
+                sx={{ ml: 1 }}
+              >
+                ({HANDOFF_TIME_FILTER_LABELS[timeFilter]})
+              </Typography>
+            </Typography>
+            {displayMode === 'timeline' ? (
+              <TodayHandoffTimelineList
+                items={todayHandoffs}
+                loading={timelineLoading}
+                error={timelineError}
+                updateHandoffStatus={updateHandoffStatus}
+                dayScope={dateNav.dayScope}
+                onStatsChange={setHandoffStats}
+                meetingMode={meetingMode}
+                workflowActions={workflowActions}
+              />
+            ) : (
+              <HandoffUserGroupedView
+                items={todayHandoffs}
+                loading={timelineLoading}
+                error={timelineError}
+                updateHandoffStatus={updateHandoffStatus}
+                meetingMode={meetingMode}
+                workflowActions={workflowActions}
+              />
+            )}
+          </Box>
+
+          {/* 右カラム: カテゴリ別サマリー */}
+          <Box
+            flex={{ xs: 'none', md: 1 }}
+            width="100%"
+            sx={{ position: { xs: 'static', md: 'sticky' }, top: { xs: 'auto', md: 96 } }}
+          >
+            <Typography variant="h6" component="h3" sx={{ mb: 2, fontWeight: 600 }}>
+              {dateNav.dateLabel}の傾向
+            </Typography>
+            <HandoffCategorySummaryCard dayScope={dateNav.dayScope} />
+          </Box>
+        </Stack>
+      )}
     </Container>
   );
 }

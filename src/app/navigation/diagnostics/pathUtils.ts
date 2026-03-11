@@ -72,7 +72,6 @@ export const ORPHAN_ALLOWLIST_DETAILS: AllowlistRoute[] = [
   { path: '/auth/callback', category: 'Auth', reason: '認証完了後のリダイレクト先' },
   { path: '/', category: 'Redirect', reason: 'ダッシュボード等への自動リダイレクト' },
   { path: '/admin/dashboard', category: 'Redirect', reason: 'ダッシュボードへのリダイレクト' },
-  { path: '/dashboard/briefing', category: 'Drilldown', reason: 'ダッシュボード内の詳細タブ' },
   { path: '/today', category: 'Drilldown', reason: 'トップレベル概念ページ' },
   { path: '/room-management', category: 'Settings', reason: '設定・管理用の別導線' },
   { path: '/meeting-minutes/:id', category: 'Detail', reason: '特定の議事録詳細画面' },

@@ -125,6 +125,14 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'daily' as NavGroupKey,
     },
     {
+      label: '朝会・夕会情報',
+      to: '/dashboard/briefing',
+      isActive: (pathname) => pathname.startsWith('/dashboard/briefing'),
+      icon: undefined,
+      audience: NAV_AUDIENCE.all,
+      group: 'daily' as NavGroupKey,
+    },
+    {
       label: '朝会（作成）',
       to: '/meeting-minutes/new?category=朝会',
       isActive: (pathname, search = '') =>

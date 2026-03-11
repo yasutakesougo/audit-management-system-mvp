@@ -35,39 +35,33 @@ interface DashboardPageProps {
 const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => {
   // A) ページ全体の State + ViewModel
   const page = useDashboardPage(audience);
+  const { nav, ui, vm, summary, handoff } = page;
 
   // C) セクション描画
   const { renderSection } = useSectionRenderer({
-    role: page.vm.role,
-    attendanceSummary: page.attendanceSummary,
-    dailyRecordStatus: page.dailyRecordStatus,
-    stats: page.stats,
-    scheduleLanesToday: page.scheduleLanesToday,
-    scheduleLanesTomorrow: page.scheduleLanesTomorrow,
-    prioritizedUsers: page.prioritizedUsers,
-    intensiveSupportUsers: page.intensiveSupportUsers,
-    usageMap: page.usageMap,
-    showAttendanceNames: page.showAttendanceNames,
-    setShowAttendanceNames: page.setShowAttendanceNames,
-    tabValue: page.tabValue,
-    handleTabChange: page.handleTabChange,
-    dailyStatusCards: page.dailyStatusCards,
-    schedulesEnabled: page.schedulesEnabled,
-    handoffTotal: page.handoffTotal,
-    handoffCritical: page.handoffCritical,
-    handoffStatus: page.handoffStatus,
-    openTimeline: page.openTimeline,
-    isMorningTime: page.isMorningTime,
-    isEveningTime: page.isEveningTime,
-    users: page.users,
-    visits: page.visits,
+    role: vm.role,
+    summary,
+    showAttendanceNames: ui.showAttendanceNames,
+    setShowAttendanceNames: ui.setShowAttendanceNames,
+    tabValue: ui.tabValue,
+    handleTabChange: ui.handleTabChange,
+    dailyStatusCards: ui.dailyStatusCards,
+    schedulesEnabled: nav.schedulesEnabled,
+    handoffTotal: handoff.total,
+    handoffCritical: handoff.critical,
+    handoffStatus: handoff.status,
+    openTimeline: nav.openTimeline,
+    isMorningTime: ui.isMorningTime,
+    isEveningTime: ui.isEveningTime,
+    users: ui.users,
+    visits: ui.visits,
   });
 
   // D) Zero-Scroll タブ
   const zeroScrollTabs = useZeroScrollTabs({
-    attendanceSummary: page.attendanceSummary,
-    staffAvailability: page.staffAvailability,
-    scheduleLanesToday: page.scheduleLanesToday,
+    attendanceSummary: summary.attendanceSummary,
+    staffAvailability: summary.staffAvailability,
+    scheduleLanesToday: summary.scheduleLanesToday,
   });
 
   return (
@@ -79,10 +73,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
           icon={<DashboardIcon />}
           actions={
             <DashboardHeaderActions
-              onOpenBriefing={page.openBriefing}
-              onNavigateToSchedule={() => page.navigate('/schedules/month')}
-              schedulesEnabled={page.schedulesEnabled}
-              onNavigateToRoomManagement={() => page.navigate('/room-management')}
+              onOpenBriefing={nav.openBriefing}
+              onNavigateToSchedule={() => nav.navigate('/schedules/month')}
+              schedulesEnabled={nav.schedulesEnabled}
+              onNavigateToRoomManagement={() => nav.navigate('/room-management')}
             />
           }
         />
@@ -90,40 +84,38 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
         {/* E) レイアウト別描画 */}
         <Stack spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: { xs: 2, sm: 3 } }}>
           <DashboardLayoutRenderer
-            layoutMode={page.layoutMode}
-            orderedSections={page.vm.orderedSections}
+            layoutMode={nav.layoutMode}
+            orderedSections={vm.orderedSections}
             renderSection={renderSection}
-            sectionIdByKey={page.sectionIdByKey}
-            highlightSection={page.highlightSection}
-            briefingAlerts={page.vm.briefingAlerts}
-            isBriefingTime={page.vm.contextInfo.isBriefingTime}
-            briefingType={page.vm.contextInfo.briefingType}
-            scrollToSection={page.scrollToSection}
-            dateLabel={page.dateLabel}
-            todayChanges={page.todayChanges}
+            sectionIdByKey={ui.sectionIdByKey}
+            highlightSection={ui.highlightSection}
+            briefingAlerts={vm.briefingAlerts}
+            isBriefingTime={vm.contextInfo.isBriefingTime}
+            briefingType={vm.contextInfo.briefingType}
+            scrollToSection={ui.scrollToSection}
+            dateLabel={ui.dateLabel}
+            todayChanges={ui.todayChanges}
             zeroScrollTabs={zeroScrollTabs}
             // 🍱 Bento Grid KPI data
-            handoffPending={page.handoffStatus['未対応'] ?? 0}
-            handoffCritical={page.handoffCritical}
+            handoffPending={handoff.status['未対応'] ?? 0}
+            handoffCritical={handoff.critical}
             attendanceRatio={
-              page.attendanceSummary
+              summary.attendanceSummary
                 ? {
-                    present: page.attendanceSummary.facilityAttendees ?? 0,
-                    total: page.attendanceSummary.onDutyStaff ?? 0,
+                    present: summary.attendanceSummary.facilityAttendees ?? 0,
+                    total: summary.attendanceSummary.onDutyStaff ?? 0,
                   }
                 : undefined
             }
             dailyRecordRatio={{
-              done: page.dailyRecordStatus.completed,
-              total: page.dailyRecordStatus.total,
+              done: summary.dailyRecordStatus.completed,
+              total: summary.dailyRecordStatus.total,
             }}
-            // 📡 Handoff Live Feed data
-            handoffTimelineItems={page.handoffTimelineItems}
-            handoffTimelineLoading={page.handoffTimelineLoading}
-            handoffTimelineError={page.handoffTimelineError}
-            handoffTimelineUpdateStatus={page.handoffTimelineUpdateStatus}
-            handoffTimelineReload={page.handoffTimelineReload}
-            onOpenTimeline={page.openTimeline}
+            // 📊 Handoff Summary Card data
+            handoffTotal={handoff.total}
+            handoffByStatus={handoff.status}
+            onOpenTimeline={nav.openTimeline}
+            handoffByCategory={handoff.byCategory}
           />
         </Stack>
       </Box>

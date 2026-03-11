@@ -11,6 +11,7 @@
  */
 
 import type { MealAmount, PersonDaily } from '@/features/daily';
+import { buildHandoffTimelineUrl } from '@/app/links/navigationLinks';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import GavelIcon from '@mui/icons-material/Gavel';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -182,11 +183,12 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
                       size="small"
                       variant="text"
                       startIcon={<OpenInNewIcon />}
-                      onClick={() =>
-                        s.navigate('/handoff-timeline', {
+                      onClick={() => {
+                        const dateOpt = s.dayScope === 'yesterday' ? 'yesterday' : undefined;
+                        s.navigate(buildHandoffTimelineUrl({ date: dateOpt }), {
                           state: { dayScope: s.dayScope, timeFilter: 'all' },
-                        })
-                      }
+                        });
+                      }}
                       sx={{ mt: 1 }}
                       data-testid="daily-open-handoff-timeline"
                     >

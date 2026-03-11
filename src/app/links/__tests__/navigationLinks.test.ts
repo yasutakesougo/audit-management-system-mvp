@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
     buildDailyHubFromTodayUrl,
+    buildHandoffFromTodayState,
     buildTodayReturnUrl,
     parseNavQuery,
+    sceneToTimeBand,
 } from '../navigationLinks';
 
 // ---------------------------------------------------------------------------
@@ -70,5 +72,68 @@ describe('parseNavQuery', () => {
       from: undefined,
       date: '2026-02-28',
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sceneToTimeBand — Scene → 時間帯フィルタ マッピング
+// ---------------------------------------------------------------------------
+
+describe('sceneToTimeBand', () => {
+  it.each([
+    ['morning-briefing', 'morning'],
+    ['arrival-intake', 'morning'],
+    ['before-am-activity', 'morning'],
+    ['am-activity', 'morning'],
+  ] as const)('%s → morning', (scene, expected) => {
+    expect(sceneToTimeBand(scene)).toBe(expected);
+  });
+
+  it.each([
+    ['post-activity', 'evening'],
+    ['before-departure', 'evening'],
+    ['day-closing', 'evening'],
+  ] as const)('%s → evening', (scene, expected) => {
+    expect(sceneToTimeBand(scene)).toBe(expected);
+  });
+
+  it.each([
+    'lunch-transition',
+    'before-pm-activity',
+    'pm-activity',
+  ] as const)('%s → undefined (全件表示)', (scene) => {
+    expect(sceneToTimeBand(scene)).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildHandoffFromTodayState — /today → /handoff-timeline 遷移 state
+// ---------------------------------------------------------------------------
+
+describe('buildHandoffFromTodayState', () => {
+  it('デフォルトで dayScope=today, timeFilter=all, from=today', () => {
+    expect(buildHandoffFromTodayState()).toEqual({
+      dayScope: 'today',
+      timeFilter: 'all',
+      focusUserId: undefined,
+      from: 'today',
+    });
+  });
+
+  it('timeFilter を指定できる', () => {
+    const state = buildHandoffFromTodayState({ timeFilter: 'morning' });
+    expect(state.timeFilter).toBe('morning');
+    expect(state.from).toBe('today');
+  });
+
+  it('focusUserId を指定できる', () => {
+    const state = buildHandoffFromTodayState({ focusUserId: 'U001' });
+    expect(state.focusUserId).toBe('U001');
+    expect(state.dayScope).toBe('today');
+  });
+
+  it('timeFilter=undefined の場合は all にフォールバック', () => {
+    const state = buildHandoffFromTodayState({ timeFilter: undefined });
+    expect(state.timeFilter).toBe('all');
   });
 });

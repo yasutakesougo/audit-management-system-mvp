@@ -27,6 +27,8 @@ export type NextActionCardProps = {
   onSceneAction?: (target: string, userId?: string) => void;
   /** 空状態CTAクリック時の導線（スケジュール確認等） */
   onEmptyAction?: () => void;
+  /** 記録メニュー補助導線（empty state の utility CTA） */
+  onMenuAction?: () => void;
   /** 予定表詳細への deep link（/schedules/week?date=...&tab=day&cat=...）*/
   scheduleDetailHref?: string;
 };

@@ -40,4 +40,10 @@ export type HandoffTimelineNavState = {
    * フォーカスする利用者ID（将来の Phase で使用予定）
    */
   focusUserId?: string;
+
+  /**
+   * 遷移元の識別子
+   * 'today' の場合、戻るリンクが表示される
+   */
+  from?: 'today';
 };

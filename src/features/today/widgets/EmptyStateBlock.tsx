@@ -26,6 +26,8 @@ export type EmptyStateBlockProps = {
   description?: string;
   /** CTA（弱い導線でもOK） */
   primaryAction?: EmptyStateAction;
+  /** 補助導線（utility CTA — text button で控えめに表示） */
+  secondaryAction?: EmptyStateAction;
   /** data-testid（today-empty-* 接頭辞ルール） */
   testId?: string;
   /** compact=inline表示 / hero=大きめ表示 */
@@ -37,6 +39,7 @@ export const EmptyStateBlock: React.FC<EmptyStateBlockProps> = ({
   title,
   description,
   primaryAction,
+  secondaryAction,
   testId,
   variant = 'compact',
 }) => {
@@ -98,6 +101,19 @@ export const EmptyStateBlock: React.FC<EmptyStateBlockProps> = ({
           sx={{ mt: 1, minHeight: 44 }}
         >
           {primaryAction.label}
+        </Button>
+      ) : null}
+
+      {/* Utility CTA（補助導線） */}
+      {secondaryAction ? (
+        <Button
+          data-testid={secondaryAction.testId}
+          variant="text"
+          size="small"
+          onClick={secondaryAction.onClick}
+          sx={{ mt: primaryAction ? 0.5 : 1, color: 'text.secondary', fontSize: '0.8rem' }}
+        >
+          {secondaryAction.label}
         </Button>
       ) : null}
     </Box>

@@ -76,3 +76,99 @@ export function parseNavQuery(params: URLSearchParams): {
 
   return { from, date };
 }
+
+// ─── Handoff Timeline Navigation ───────────────────────────────────────
+
+import type { HandoffTimelineNavState } from '@/features/cross-module/navigationState';
+import type { TodayScene } from '@/features/today/domain/todayScene';
+
+/**
+ * 場面から申し送りの時間帯フィルタを推定する。
+ *
+ * 午前帯の場面 → 'morning' フィルタ
+ * 午後帯の場面 → 'evening' フィルタ
+ * それ以外 → undefined (全件表示)
+ */
+export function sceneToTimeBand(scene: TodayScene): 'morning' | 'evening' | undefined {
+  const morningScenes: TodayScene[] = [
+    'morning-briefing',
+    'arrival-intake',
+    'before-am-activity',
+    'am-activity',
+  ];
+  const eveningScenes: TodayScene[] = [
+    'post-activity',
+    'before-departure',
+    'day-closing',
+  ];
+
+  if (morningScenes.includes(scene)) return 'morning';
+  if (eveningScenes.includes(scene)) return 'evening';
+  return undefined;
+}
+
+// ─── Date helpers (inline to avoid circular dependency) ─────────────────
+function todayDateStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function yesterdayDateStr(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * /handoff-timeline?range=day&date=YYYY-MM-DD の URL を生成する。
+ *
+ * P0 日付ナビゲーション対応: 遷移元はこの関数で URL を組み立て、
+ * navigate(url, { state }) で呼ぶ。state は互換用 fallback。
+ *
+ * @example
+ *   // 今日
+ *   navigate(buildHandoffTimelineUrl());
+ *   // 昨日
+ *   navigate(buildHandoffTimelineUrl({ date: 'yesterday' }));
+ *   // 任意日
+ *   navigate(buildHandoffTimelineUrl({ date: '2026-03-09' }));
+ */
+export function buildHandoffTimelineUrl(opts?: {
+  date?: string;
+  range?: 'day' | 'week' | 'month';
+}): string {
+  const range = opts?.range ?? 'day';
+  let date: string;
+
+  if (!opts?.date || opts.date === 'today') {
+    date = todayDateStr();
+  } else if (opts.date === 'yesterday') {
+    date = yesterdayDateStr();
+  } else {
+    date = opts.date;
+  }
+
+  const search = new URLSearchParams();
+  search.set('range', range);
+  search.set('date', date);
+  return `/handoff-timeline?${search.toString()}`;
+}
+
+/**
+ * /today → /handoff-timeline への意味付きナビゲーション state を生成。
+ *
+ * @deprecated URL ベースの buildHandoffTimelineUrl を優先してください。
+ * state は互換用 fallback として残しています。
+ */
+export function buildHandoffFromTodayState(opts?: {
+  timeFilter?: 'morning' | 'evening';
+  focusUserId?: string;
+}): HandoffTimelineNavState {
+  return {
+    dayScope: 'today',
+    timeFilter: opts?.timeFilter ?? 'all',
+    focusUserId: opts?.focusUserId,
+    from: 'today',
+  };
+}
+

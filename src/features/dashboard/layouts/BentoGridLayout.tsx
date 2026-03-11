@@ -8,8 +8,8 @@
  * │ COMMAND BAR                                      │
  * ├──────────────────────────┬──────────────────────┤
  * │ MAIN ANCHOR              │ ACTION RAIL          │
- * │ 申し送り + スケジュール    │ Quick Input          │
- * │ ─ scrollable ─           │ Briefing HUD         │
+ * │ 申し送り + スケジュール    │ Briefing HUD         │
+ * │ ─ scrollable ─           │ 申し送りサマリー       │
  * │                          │ Today Changes        │
  * └──────────────────────────┴──────────────────────┘
  *
@@ -17,7 +17,7 @@
  * ┌──────────────────────────┐
  * │ COMMAND BAR (横スクロール)  │
  * ├──────────────────────────┤
- * │ ✍️ CompactNewHandoffInput │  ← 即入力を最優先
+ * │ 申し送りサマリー            │
  * ├──────────────────────────┤
  * │ Briefing HUD             │
  * ├──────────────────────────┤
@@ -28,7 +28,7 @@
  * └──────────────────────────┘
  *
  * ━━━ Narrow（< 600px）: スマートフォン ━━━
- * シンプルなスタック（CommandBar → 各セクション）
+ * シンプルなスタック（CommandBar → サマリー → 各セクション）
  */
 
 import Box from '@mui/material/Box';
@@ -44,11 +44,9 @@ import { CommandBar } from '@/features/dashboard/components/CommandBar';
 import type { TodayChanges } from '@/features/dashboard/components/TodayChangesCard';
 import { TodayChangesCard } from '@/features/dashboard/components/TodayChangesCard';
 import DashboardBriefingHUD from '@/features/dashboard/DashboardBriefingHUD';
-import type { BriefingAlert } from '@/features/dashboard/sections/types';
-import type { DashboardSection, DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
-import { CompactNewHandoffInput } from '@/features/handoff/components/CompactNewHandoffInput';
-import { HandoffLiveFeed } from '@/features/handoff/components/HandoffLiveFeed';
-import type { HandoffDayScope, HandoffRecord, HandoffStatus } from '@/features/handoff/handoffTypes';
+import type { BriefingAlert, DashboardSection, DashboardSectionKey } from '@/features/dashboard/sections/types';
+import { HandoffSummaryCard } from '@/features/dashboard/components/HandoffSummaryCard';
+import type { HandoffCategory, HandoffDayScope, HandoffStatus } from '@/features/handoff/handoffTypes';
 
 // ── Props ──
 export interface BentoGridLayoutProps {
@@ -74,12 +72,10 @@ export interface BentoGridLayoutProps {
   dateLabel: string;
   todayChanges: TodayChanges;
 
-  // Handoff Live Feed data
-  handoffTimelineItems: HandoffRecord[];
-  handoffTimelineLoading: boolean;
-  handoffTimelineError: string | null;
-  handoffTimelineUpdateStatus?: (id: number, newStatus: HandoffStatus, carryOverDate?: string) => Promise<void>;
-  handoffTimelineReload?: () => void;
+  // Handoff Summary Card data
+  handoffTotal: number;
+  handoffByStatus: Record<HandoffStatus, number>;
+  handoffByCategory?: Record<HandoffCategory, number>;
   onOpenTimeline?: (scope: HandoffDayScope) => void;
 }
 
@@ -98,11 +94,9 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
   scrollToSection,
   dateLabel,
   todayChanges,
-  handoffTimelineItems,
-  handoffTimelineLoading,
-  handoffTimelineError,
-  handoffTimelineUpdateStatus,
-  handoffTimelineReload,
+  handoffTotal,
+  handoffByStatus,
+  handoffByCategory,
   onOpenTimeline,
 }) => {
   const theme = useTheme();
@@ -178,28 +172,19 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
     <TodayChangesCard dateLabel={dateLabel} changes={todayChanges} />
   );
 
-  const liveFeed = (
-    <HandoffLiveFeed
-      items={handoffTimelineItems}
-      loading={handoffTimelineLoading}
-      error={handoffTimelineError}
-      updateHandoffStatus={handoffTimelineUpdateStatus}
-      onReload={handoffTimelineReload}
-      onOpenTimeline={onOpenTimeline}
-      compact={false}
-    />
-  );
+  // 申し送りサマリーカード（CompactNewHandoffInput + HandoffLiveFeed の置換）
+  const defaultByCategory: Record<HandoffCategory, number> = {
+    '体調': 0, '行動面': 0, '家族連絡': 0, '支援の工夫': 0,
+    '良かったこと': 0, '事故・ヒヤリ': 0, 'その他': 0,
+  };
 
-  const liveFeedCompact = (
-    <HandoffLiveFeed
-      items={handoffTimelineItems}
-      loading={handoffTimelineLoading}
-      error={handoffTimelineError}
-      updateHandoffStatus={handoffTimelineUpdateStatus}
-      onReload={handoffTimelineReload}
+  const summaryCard = (
+    <HandoffSummaryCard
+      total={handoffTotal}
+      byStatus={handoffByStatus}
+      criticalCount={handoffCritical}
+      byCategory={handoffByCategory ?? defaultByCategory}
       onOpenTimeline={onOpenTimeline}
-      compact
-      maxItems={5}
     />
   );
 
@@ -233,8 +218,7 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
     return (
       <Stack spacing={2} data-testid="bento-grid-narrow">
         {commandBar}
-        <CompactNewHandoffInput />
-        {liveFeedCompact}
+        <BentoCard variant="accent" noHover>{summaryCard}</BentoCard>
         {briefingHUD}
         {mainSections}
         {todayChangesCard}
@@ -271,11 +255,10 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
           {commandBar}
         </Box>
 
-        {/* ── Quick Input + Briefing (flex-shrink: 0) ── */}
+        {/* ── サマリー + Briefing (flex-shrink: 0) ── */}
         <Box sx={{ flexShrink: 0, px: 0.5, pb: 1 }}>
           <Stack spacing={1.5}>
-            <CompactNewHandoffInput />
-            {liveFeedCompact}
+            <BentoCard variant="accent" noHover>{summaryCard}</BentoCard>
             {briefingHUD}
           </Stack>
         </Box>
@@ -353,8 +336,7 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
       >
         <Stack spacing={2}>
           <BentoCard variant="subtle" noHover>{briefingHUD}</BentoCard>
-          <BentoCard variant="accent" noHover><CompactNewHandoffInput /></BentoCard>
-          <BentoCard variant="subtle" noHover>{liveFeed}</BentoCard>
+          <BentoCard variant="accent" noHover>{summaryCard}</BentoCard>
           <BentoCard variant="subtle" noHover>{todayChangesCard}</BentoCard>
         </Stack>
       </Box>

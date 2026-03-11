@@ -92,7 +92,7 @@ describe('buildSceneNextAction', () => {
     expect(result.priority).toBe('low');
     expect(result.ctaTarget).toBe('user');
     expect(result.reasons).toHaveLength(0);
-    expect(result.title).toBe('次の場面への準備ができています');
+    expect(result.title).toBe('すべての対応が完了しています');
   });
 
   // ── Scene propagation ──

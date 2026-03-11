@@ -13,7 +13,8 @@
  *
  * @see docs/adr/ADR-002-today-execution-layer-guardrails.md
  */
-import { buildDailyHubFromTodayUrl } from '@/app/links/navigationLinks';
+import { buildDailyHubFromTodayUrl, buildHandoffFromTodayState, buildHandoffTimelineUrl, sceneToTimeBand } from '@/app/links/navigationLinks';
+import { CTA_EVENTS, recordCtaClick } from '@/features/today/telemetry/recordCtaClick';
 import { useAuthStore } from '@/features/auth/store';
 import { useTodaySummary } from '@/features/today/domain';
 import { useApprovalFlow } from '@/features/today/hooks/useApprovalFlow';
@@ -30,6 +31,7 @@ import { useTransportStatus } from '@/features/today/transport';
 import { ApprovalDialog } from '@/features/today/widgets/ApprovalDialog';
 import { isE2E } from '@/lib/env';
 import { toLocalDateISO } from '@/utils/getNow';
+
 import { Alert, Snackbar } from '@mui/material';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -112,9 +114,17 @@ export const TodayOpsPage: React.FC = () => {
   const layoutProps = useMemo(() => {
     const isE2EEnv = isE2E() || (typeof window !== 'undefined' && (window as unknown as { __E2E_TODAY_OPS_MOCK__?: boolean }).__E2E_TODAY_OPS_MOCK__);
 
-    // Hero: 未記録件数
-    const realUnfilledCount = Math.max(0, summary?.dailyRecordStatus?.pending ?? 0);
-    const unfilledCount = isE2EEnv ? 3 : realUnfilledCount;
+    // Progress: 進捗サマリー（ProgressStatusBar 用）
+    const realPendingCount = Math.max(0, summary?.dailyRecordStatus?.pending ?? 0);
+    const pendingRecordCount = isE2EEnv ? 3 : realPendingCount;
+    const totalRecordCount = summary.users?.length ?? 0;
+
+    const facilityAttendees = summary?.attendanceSummary?.facilityAttendees ?? 0;
+    const pendingAttendanceCount = isE2EEnv ? 2 : Math.max(0, totalRecordCount - facilityAttendees);
+
+    const pendingBriefingCount = isE2EEnv ? 1 : (summary?.briefingAlerts ?? []).filter(
+      (a) => a.severity === 'error' || a.severity === 'warning',
+    ).length;
 
     // 利用者一覧: recordFilled はページで計算（widget は表示だけ）
     const pendingUserIds = new Set(summary?.dailyRecordStatus?.pendingUserIds ?? []);
@@ -139,19 +149,12 @@ export const TodayOpsPage: React.FC = () => {
     });
 
     return {
-      hero: {
-        unfilledCount,
-        approvalPendingCount: isE2EEnv ? 1 : Math.max(0, summary?.dailyRecordStatus?.inProgress ?? 0),
-        onOpenUnfilled: () => {
-          const firstUnfilledUserId = summary?.dailyRecordStatus?.pendingUserIds?.[0];
-          quickRecord.openUnfilled(firstUnfilledUserId);
-        },
-        onOpenApproval: () => {
-          approvalFlow.open();
-        },
-        onOpenMenu: () => {
-          const today = toLocalDateISO();
-          navigate(buildDailyHubFromTodayUrl(today));
+      progress: {
+        summary: {
+          pendingRecordCount,
+          totalRecordCount,
+          pendingAttendanceCount,
+          pendingBriefingCount,
         },
       },
       attendance: {
@@ -169,10 +172,25 @@ export const TodayOpsPage: React.FC = () => {
       nextAction,
       sceneAction,
       onSceneAction: (target: string, userId?: string) => {
+        // ── CTA Telemetry ────────────────────────────────────
+        recordCtaClick({
+          ctaId: CTA_EVENTS.NEXT_ACTION_PRIMARY,
+          sourceComponent: 'NextActionCard',
+          stateType: 'scene-action',
+          scene: sceneAction?.sceneLabel,
+          priority: sceneAction?.priority,
+          targetUrl: target,
+          userRole: role,
+        });
+        // ────────────────────────────────────────────────────
         switch (target) {
           case 'briefing':
-            // 申し送り確認 — ブリーフィングセクションへスクロール
-            document.getElementById('bento-briefing')?.scrollIntoView({ behavior: 'smooth' });
+            // 申し送り確認 — Handoff Timeline へ URL ベースナビゲーション
+            navigate(buildHandoffTimelineUrl(), {
+              state: buildHandoffFromTodayState({
+                timeFilter: sceneAction ? sceneToTimeBand(sceneAction.scene) : undefined,
+              }),
+            });
             break;
           case 'attendance':
             navigate('/daily/attendance');
@@ -226,7 +244,28 @@ export const TodayOpsPage: React.FC = () => {
         onOpenISP: (userId: string) => navigate(`/isp-editor/${userId}`),
         onEmptyAction: () => navigate('/schedules'),
       },
-      nextActionEmptyAction: () => navigate('/schedules'),
+      nextActionEmptyAction: () => {
+        recordCtaClick({
+          ctaId: CTA_EVENTS.NEXT_ACTION_EMPTY,
+          sourceComponent: 'NextActionCard',
+          stateType: 'empty-state',
+          targetUrl: '/schedules',
+          userRole: role,
+        });
+        navigate('/schedules');
+      },
+      nextActionMenuAction: () => {
+        const today = new Date().toISOString().split('T')[0];
+        const url = buildDailyHubFromTodayUrl(today);
+        recordCtaClick({
+          ctaId: CTA_EVENTS.NEXT_ACTION_UTILITY,
+          sourceComponent: 'NextActionCard',
+          stateType: 'empty-state',
+          targetUrl: url,
+          userRole: role,
+        });
+        navigate(url);
+      },
       scheduleDetailHref,
 
     };

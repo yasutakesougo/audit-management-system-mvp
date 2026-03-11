@@ -42,6 +42,18 @@ export type DashboardSectionDef = {
   audience: 'both' | 'admin' | 'staff';
 };
 
+// ── Dashboard 共通型 ────────────────────────────────
+// これらは useDashboardViewModel でも re-export される。
+// 型の正本は常にこのファイル。
+
+export type DashboardRole = 'admin' | 'staff';
+
+export type DashboardSection = {
+  key: DashboardSectionKey;
+  title?: string;
+  enabled?: boolean;
+};
+
 /**
  * 朝会・ブリーフィング用アラート定義
  *
