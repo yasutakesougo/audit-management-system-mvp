@@ -25,8 +25,8 @@ const makeTodayAlert = (overrides: Partial<BriefingAlert> = {}): BriefingAlert =
   section: 'today',
   tags: ['重要'],
   items: [
-    { userId: 'U001', userName: '田中 太郎' },
-    { userId: 'U002', userName: '山田 花子' },
+    { userId: 'U001', userName: '田中 太郎', morningContacted: false, eveningChecked: false },
+    { userId: 'U002', userName: '山田 花子', morningContacted: true, eveningChecked: false },
   ],
   ...overrides,
 });
@@ -175,5 +175,67 @@ describe('BriefingActionList — アクションボタン動作', () => {
     const row = screen.getByTestId('alert-action-row-U001');
     const handoffBtn = within(row).getByText('📝 申し送り作成');
     expect(handoffBtn).not.toBeDisabled();
+  });
+});
+
+describe('BriefingActionList — 欠席2ステップワークフロー', () => {
+  it('欠席行には「朝連絡」「夕方確認」のステップ表示がある', () => {
+    renderWithRouter(<BriefingActionList alerts={[makeTodayAlert()]} />);
+
+    // U001: morningContacted=false, eveningChecked=false
+    const steps1 = screen.getByTestId('absence-steps-U001');
+    expect(within(steps1).getByText('朝連絡 未')).toBeInTheDocument();
+    expect(within(steps1).getByText('夕方確認 未')).toBeInTheDocument();
+
+    // U002: morningContacted=true, eveningChecked=false
+    const steps2 = screen.getByTestId('absence-steps-U002');
+    expect(within(steps2).getByText('朝連絡 済')).toBeInTheDocument();
+    expect(within(steps2).getByText('夕方確認 未')).toBeInTheDocument();
+  });
+
+  it('朝連絡済みユーザーは📞ボタンが無効になる', () => {
+    renderWithRouter(<BriefingActionList alerts={[makeTodayAlert()]} />);
+
+    // U002 has morningContacted=true → contact-confirm should be disabled
+    const row = screen.getByTestId('alert-action-row-U002');
+    const confirmBtn = within(row).getByText('📞 連絡確認');
+    expect(confirmBtn).toBeDisabled();
+
+    // U001 has morningContacted=false → button should be enabled
+    const row1 = screen.getByTestId('alert-action-row-U001');
+    const confirmBtn1 = within(row1).getByText('📞 連絡確認');
+    expect(confirmBtn1).not.toBeDisabled();
+  });
+
+  it('月4回加算の注意メッセージが表示される', () => {
+    renderWithRouter(<BriefingActionList alerts={[makeTodayAlert()]} />);
+
+    expect(screen.getByTestId('absence-workflow-subtitle')).toHaveTextContent(
+      '月4回まで加算対象',
+    );
+  });
+
+  it('🌆 夕方確認を押すと出欠ページに遷移する（evening section）', () => {
+    renderWithRouter(<BriefingActionList alerts={[makeTodayAlert()]} />);
+
+    const row = screen.getByTestId('alert-action-row-U001');
+    const eveningBtn = within(row).getByText('🌆 夕方確認');
+    fireEvent.click(eveningBtn);
+
+    // Navigation happens — no snackbar
+    expect(screen.queryByText(/夕方確認済み/)).not.toBeInTheDocument();
+  });
+
+  it('両方完了済みユーザーは行がストライクスルーになる', () => {
+    const alert = makeTodayAlert({
+      items: [
+        { userId: 'U099', userName: '完了 太郎', morningContacted: true, eveningChecked: true },
+      ],
+    });
+    renderWithRouter(<BriefingActionList alerts={[alert]} />);
+
+    const row = screen.getByTestId('alert-action-row-U099');
+    const nameEl = within(row).getByText('完了 太郎');
+    expect(nameEl).toHaveStyle({ textDecoration: 'line-through' });
   });
 });

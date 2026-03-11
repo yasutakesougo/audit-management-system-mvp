@@ -11,6 +11,8 @@ export interface AttendanceVisitSnapshot {
   isEarlyLeave?: boolean;
   /** 検温値 (℃) — 37.5以上で発熱アラート */
   temperature?: number;
+  /** 欠席者の朝連絡受け入れ完了フラグ */
+  morningContacted?: boolean;
   /** 欠席者の夕方フォロー完了フラグ */
   eveningChecked?: boolean;
 }
@@ -79,10 +81,14 @@ export function useAttendanceAnalytics(
     const sameDayAbsenceItems = sameDayAbsenceVisits.map((v) => ({
       userId: v.userCode,
       userName: userCodeMap.get(v.userCode) ?? v.userCode,
+      morningContacted: v.morningContacted ?? false,
+      eveningChecked: v.eveningChecked ?? false,
     }));
     const priorAbsenceItems = priorAbsenceVisits.map((v) => ({
       userId: v.userCode,
       userName: userCodeMap.get(v.userCode) ?? v.userCode,
+      morningContacted: v.morningContacted ?? false,
+      eveningChecked: v.eveningChecked ?? false,
     }));
 
     const onDutyStaff = attendanceCounts.onDuty;
@@ -96,6 +102,8 @@ export function useAttendanceAnalytics(
     const absenceItems = absenceVisits.map((v) => ({
       userId: v.userCode,
       userName: userCodeMap.get(v.userCode) ?? v.userCode,
+      morningContacted: v.morningContacted ?? false,
+      eveningChecked: v.eveningChecked ?? false,
     }));
     const lateOrEarlyItems = lateOrEarlyVisits.map((v) => ({
       userId: v.userCode,

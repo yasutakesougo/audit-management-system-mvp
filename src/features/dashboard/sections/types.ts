@@ -65,7 +65,14 @@ export type BriefingAlert = {
   targetAnchorId: string;  // クリック時のジャンプ先（sec-attendance など）
   description?: string;  // 追加説明（「田中、山田」など）
   /** Per-user items for actionable alerts (Today Execution Layer) */
-  items?: { userId: string; userName: string }[];
+  items?: {
+    userId: string;
+    userName: string;
+    /** 朝連絡受け入れ完了（欠席行のみ使用） */
+    morningContacted?: boolean;
+    /** 夕方容態確認完了（欠席行のみ使用） */
+    eveningChecked?: boolean;
+  }[];
   /** Section classification for Today two-layer display */
   section?: 'today' | 'ongoing';
   /** Visual tags for context (新規, 重要, 継続, etc.) */

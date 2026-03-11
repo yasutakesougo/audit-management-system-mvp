@@ -1,11 +1,40 @@
 /**
- * useNextAction — スケジュールから「次のアクション」を算出 + 進捗状態を合成
+ * useNextAction — Scene-Based NextAction (#852)
  *
- * P0: scheduleLanesToday から次予定を導出
- * P1-A: Start/Done 状態を合成、actions を提供
+ * 「いま何時か」ではなく「いまどの業務場面にいるか」で NextAction を決定。
+ *
+ * 時計ベース (旧):
+ *   nowMinutes() - itemTime > 0 → skip → 遅延タスクが消える
+ *
+ * 場面ベース (新):
+ *   active > overdue > pending の優先度で NextAction を選択。
+ *   遅延タスクは消えずに残り、urgency=high で強調表示。
+ *   Done → 次のステップに自動進行。
+ *
+ * @see #852
  */
-import type { ScheduleItem } from '@/features/dashboard/selectors/useScheduleLanes';
 import { OPS_FLOW_ORDER } from '@/features/dashboard/selectors/useScheduleLanes';
+import {
+    deriveSceneState,
+    nowMinutes,
+    parseTimeToMinutes,
+    selectNextScene,
+    type SceneEntryWithState,
+    type SceneState,
+} from '../domain/deriveCurrentScene';
+
+/**
+ * Structural lane item type — accepted by useNextAction.
+ * Both dashboard ScheduleItem and TodayScheduleLane satisfy this shape.
+ */
+type ScheduleItem = {
+  id: string;
+  time: string;
+  title: string;
+  location?: string;
+  owner?: string;
+  opsStep?: string;
+};
 import { useMemo } from 'react';
 import { toLocalDateISO } from '@/utils/getNow';
 import {
@@ -34,12 +63,23 @@ export function deriveUrgency(minutesUntil: number): Urgency {
   return 'low';
 }
 
+/**
+ * Scene-based urgency: overdue items are always high urgency,
+ * active items use time-based urgency, pending items use time-based.
+ */
+function deriveSceneUrgency(sceneState: SceneState, minutesUntil: number): Urgency {
+  if (sceneState === 'overdue') return 'high';
+  return deriveUrgency(minutesUntil);
+}
+
 export type NextActionWithProgress = {
   item: NextActionItem | null;
   progress: NextActionProgress | null;
   progressKey: string | null;
   status: 'idle' | 'started' | 'done';
   urgency: Urgency;
+  /** Scene state from scene-based logic (#852) */
+  sceneState: SceneState | null;
   elapsedMinutes: number | null;  // minutes since start (null if not started)
   actions: {
     start: () => void;
@@ -47,22 +87,6 @@ export type NextActionWithProgress = {
     reset: () => void;
   };
 };
-
-/**
- * Parse "HH:MM" into minutes since midnight
- */
-function parseTimeToMinutes(time: string): number {
-  const [h, m] = time.split(':').map(Number);
-  return (h || 0) * 60 + (m || 0);
-}
-
-/**
- * Get current time in minutes since midnight
- */
-function nowMinutes(): number {
-  const now = new Date();
-  return now.getHours() * 60 + now.getMinutes();
-}
 
 /**
  * Calculate elapsed minutes from ISO timestamp to now
@@ -86,6 +110,7 @@ type NextActionViewModelActive = {
   minutesUntilLabel: string;
   status: 'idle' | 'started' | 'done';
   urgency: Urgency;
+  sceneState: SceneState;
   elapsedLabel: string | null;
   onStart: () => void;
   onDone: () => void;
@@ -94,11 +119,13 @@ type NextActionViewModelActive = {
 export type NextActionViewModel = NextActionViewModelEmpty | NextActionViewModelActive;
 
 function formatMinutes(m: number): string {
-  const hours = Math.floor(m / 60);
-  const mins = m % 60;
-  if (hours > 0 && mins > 0) return `${hours}時間${mins}分`;
-  if (hours > 0) return `${hours}時間`;
-  return `${mins}分`;
+  const abs = Math.abs(m);
+  const hours = Math.floor(abs / 60);
+  const mins = abs % 60;
+  const prefix = m < 0 ? '' : '';
+  if (hours > 0 && mins > 0) return `${prefix}${hours}時間${mins}分`;
+  if (hours > 0) return `${prefix}${hours}時間`;
+  return `${prefix}${mins}分`;
 }
 
 export function buildNextActionViewModel(
@@ -111,14 +138,20 @@ export function buildNextActionViewModel(
       ? `${formatMinutes(input.elapsedMinutes)}経過`
       : null;
 
+  // Scene-based label: overdue items show soft wording, others show "あと X分"
+  const minutesUntilLabel = input.sceneState === 'overdue'
+    ? `予定時刻を${formatMinutes(Math.abs(input.item.minutesUntil))}過ぎています`
+    : `あと ${formatMinutes(input.item.minutesUntil)}`;
+
   return {
     kind: 'active',
     time: input.item.time,
     title: input.item.title,
     owner: input.item.owner ?? null,
-    minutesUntilLabel: `あと ${formatMinutes(input.item.minutesUntil)}`,
+    minutesUntilLabel,
     status: input.status,
     urgency: input.urgency,
+    sceneState: input.sceneState ?? 'pending',
     elapsedLabel,
     onStart: input.actions.start,
     onDone: input.actions.done,
@@ -137,9 +170,8 @@ export function useNextAction(
 
   const effectiveDateKey = dateKey ?? toLocalDateISO();
 
-  // Select next item, skipping any that are already 'done' in the progress store.
-  // This ensures Done → 次予定 auto-advance works correctly.
-  const nextItem = useMemo<NextActionItem | null>(() => {
+  // Build scene entries and select via scene-based logic (#852)
+  const sceneResult = useMemo<{ selected: SceneEntryWithState | null; minutesUntil: number }>(() => {
     const current = nowMinutes();
 
     const allItems = [
@@ -148,38 +180,48 @@ export function useNextAction(
       ...lanes.organizationLane,
     ];
 
-    const upcoming = allItems
-      .map(item => {
-        const eventId = buildStableEventId(item.id, item.time, item.title);
-        const key = buildProgressKey(effectiveDateKey, eventId);
-        return {
-          ...item,
-          minutesUntil: parseTimeToMinutes(item.time) - current,
-          _progressKey: key,
-        };
-      })
-      .filter(item => item.minutesUntil > 0)
-      // Skip done items — this is the key P1-A fix
-      .filter(item => {
-        const p = progressStore.getProgress(item._progressKey);
-        return !p?.doneAt;
-      })
-      .sort((a, b) => {
-        const timeDiff = a.minutesUntil - b.minutesUntil;
-        if (timeDiff !== 0) return timeDiff;
-        // Tie-break: opsStep items by flow order, non-opsStep to end
-        const orderA = a.opsStep != null ? (OPS_FLOW_ORDER[a.opsStep as keyof typeof OPS_FLOW_ORDER] ?? 99) : 99;
-        const orderB = b.opsStep != null ? (OPS_FLOW_ORDER[b.opsStep as keyof typeof OPS_FLOW_ORDER] ?? 99) : 99;
-        return orderA - orderB;
-      });
+    // Build scene entries with state for each item
+    const entries: SceneEntryWithState[] = allItems.map(item => {
+      const eventId = buildStableEventId(item.id, item.time, item.title);
+      const key = buildProgressKey(effectiveDateKey, eventId);
+      const scheduledMinutes = parseTimeToMinutes(item.time);
+      const progress = progressStore.getProgress(key);
 
-    if (upcoming.length === 0) return null;
+      return {
+        item,
+        progressKey: key,
+        progress,
+        scheduledMinutes,
+        sceneState: deriveSceneState(progress, scheduledMinutes, current),
+      };
+    });
 
-    // Strip internal field
-    const { _progressKey, ...selected } = upcoming[0];
-    void _progressKey; // suppress unused lint
-    return selected;
+    // Tie-break within same scheduledMinutes: opsStep items by flow order
+    const sortedEntries = entries.sort((a, b) => {
+      const timeDiff = a.scheduledMinutes - b.scheduledMinutes;
+      if (timeDiff !== 0) return timeDiff;
+      const orderA = a.item.opsStep != null ? (OPS_FLOW_ORDER[a.item.opsStep as keyof typeof OPS_FLOW_ORDER] ?? 99) : 99;
+      const orderB = b.item.opsStep != null ? (OPS_FLOW_ORDER[b.item.opsStep as keyof typeof OPS_FLOW_ORDER] ?? 99) : 99;
+      return orderA - orderB;
+    });
+
+    const selected = selectNextScene(sortedEntries);
+    const minutesUntil = selected
+      ? selected.scheduledMinutes - current
+      : 0;
+
+    return { selected, minutesUntil };
   }, [lanes, effectiveDateKey, progressStore]);
+
+  // Extract the selected item
+  const nextItem = useMemo<NextActionItem | null>(() => {
+    if (!sceneResult.selected) return null;
+    const { item } = sceneResult.selected;
+    return {
+      ...item,
+      minutesUntil: sceneResult.minutesUntil,
+    };
+  }, [sceneResult]);
 
   // Build stable key for the selected item
   const progressKey = useMemo(() => {
@@ -190,7 +232,7 @@ export function useNextAction(
 
   const progress = progressKey ? progressStore.getProgress(progressKey) : null;
 
-  // Derive status
+  // Derive status (from progress store, not scene — keeps backward compat)
   const status: 'idle' | 'started' | 'done' = progress?.doneAt
     ? 'done'
     : progress?.startedAt
@@ -200,6 +242,9 @@ export function useNextAction(
   const elapsedMinutes = progress?.startedAt
     ? calcElapsedMinutes(progress.startedAt)
     : null;
+
+  // Scene state for the selected item
+  const sceneState = sceneResult.selected?.sceneState ?? null;
 
   // Bound actions
   const actions = useMemo(() => ({
@@ -222,8 +267,10 @@ export function useNextAction(
     },
   }), [progressKey, progressStore]);
 
-  // Urgency: derived from minutesUntil (B層 pure logic)
-  const urgency: Urgency = nextItem ? deriveUrgency(nextItem.minutesUntil) : 'low';
+  // Scene-based urgency (#852): overdue items are always high priority
+  const urgency: Urgency = nextItem && sceneState
+    ? deriveSceneUrgency(sceneState, nextItem.minutesUntil)
+    : 'low';
 
   return {
     item: nextItem,
@@ -231,6 +278,7 @@ export function useNextAction(
     progressKey,
     status,
     urgency,
+    sceneState,
     elapsedMinutes,
     actions,
   };

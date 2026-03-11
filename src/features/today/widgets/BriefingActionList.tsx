@@ -153,6 +153,18 @@ function AlertSection({
                 </Typography>
               </Alert>
 
+              {/* Absent workflow subtitle — shows required steps and monthly limit */}
+              {alert.type === 'absent' && items.length > 0 && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  data-testid="absence-workflow-subtitle"
+                  sx={{ pl: 2, display: 'block', mb: 0.25 }}
+                >
+                  ※ 条件：① 朝連絡受け入れ → ② 夕方 容態・通所予定の確認（月4回まで加算対象）
+                </Typography>
+              )}
+
               {/* Per-user Action Rows */}
               {items.length > 0 && (
                 <Stack spacing={0.5} sx={{ pl: 2 }}>
@@ -160,6 +172,8 @@ function AlertSection({
                     const key = buildAlertKey(alert.type, item.userId, ymd);
                     const status = getState(key);
                     const chipConfig = STATUS_CHIP[status];
+                    const isAbsentType = alert.type === 'absent';
+                    const bothDone = isAbsentType && item.morningContacted && item.eveningChecked;
 
                     return (
                       <Box
@@ -169,50 +183,90 @@ function AlertSection({
                           display: 'flex',
                           alignItems: 'center',
                           gap: 0.75,
-                          py: 0.25,
+                          py: 0.5,
                           px: 1,
                           borderRadius: 1,
-                          bgcolor: status === 'done' ? 'action.hover' : 'transparent',
-                          opacity: status === 'done' ? 0.7 : 1,
+                          bgcolor: (bothDone || status === 'done') ? 'action.hover' : 'transparent',
+                          opacity: (bothDone || status === 'done') ? 0.7 : 1,
                           transition: motionTokens.transition.hoverAll,
+                          flexWrap: 'wrap',
                         }}
                       >
                         <Typography
                           variant="body2"
                           sx={{
-                            flex: 1,
-                            textDecoration: status === 'done' ? 'line-through' : 'none',
+                            minWidth: 80,
+                            textDecoration: (bothDone || status === 'done') ? 'line-through' : 'none',
                           }}
                         >
                           {item.userName}
                         </Typography>
 
-                        <Chip
-                          size="small"
-                          label={chipConfig.label}
-                          color={chipConfig.color}
-                          variant="filled"
-                          sx={{ minWidth: 48 }}
-                        />
-
-                        {actionDefs.map((action) => (
-                          <Button
-                            key={action.id}
-                            size="small"
-                            variant={action.primary ? 'contained' : 'text'}
-                            disabled={action.id !== 'handover-create' && status === 'done'}
-                            onClick={() => onAction(action.id, key, item.userName)}
+                        {/* Absent 2-step status chips (朝連絡 + 夕方確認) */}
+                        {isAbsentType ? (
+                          <Box
+                            data-testid={`absence-steps-${item.userId}`}
                             sx={{
-                              textTransform: 'none',
-                              fontSize: '0.7rem',
-                              minWidth: 'auto',
-                              minHeight: 32,
-                              px: 0.5,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 0.5,
                             }}
                           >
-                            {action.label}
-                          </Button>
-                        ))}
+                            <Chip
+                              size="small"
+                              label={item.morningContacted ? '朝連絡 済' : '朝連絡 未'}
+                              color={item.morningContacted ? 'success' : 'warning'}
+                              variant={item.morningContacted ? 'filled' : 'outlined'}
+                              sx={{ fontSize: '0.65rem', height: 22 }}
+                            />
+                            <Chip
+                              size="small"
+                              label={item.eveningChecked ? '夕方確認 済' : '夕方確認 未'}
+                              color={item.eveningChecked ? 'success' : 'default'}
+                              variant={item.eveningChecked ? 'filled' : 'outlined'}
+                              sx={{ fontSize: '0.65rem', height: 22 }}
+                            />
+                          </Box>
+                        ) : (
+                          <Chip
+                            size="small"
+                            label={chipConfig.label}
+                            color={chipConfig.color}
+                            variant="filled"
+                            sx={{ minWidth: 48 }}
+                          />
+                        )}
+
+                        {actionDefs.map((action) => {
+                          // Absent-specific disable logic:
+                          // - contact-confirm disabled if morningContacted is true
+                          // - evening-confirm disabled if eveningChecked is true
+                          // - handover-create always enabled
+                          let isDisabled = action.id !== 'handover-create' && status === 'done';
+                          if (isAbsentType) {
+                            if (action.id === 'contact-confirm') isDisabled = item.morningContacted === true;
+                            if (action.id === 'evening-confirm') isDisabled = item.eveningChecked === true;
+                          }
+
+                          return (
+                            <Button
+                              key={action.id}
+                              size="small"
+                              variant={action.primary ? 'contained' : 'text'}
+                              disabled={isDisabled}
+                              onClick={() => onAction(action.id, key, item.userName)}
+                              sx={{
+                                textTransform: 'none',
+                                fontSize: '0.7rem',
+                                minWidth: 'auto',
+                                minHeight: 32,
+                                px: 0.5,
+                              }}
+                            >
+                              {action.label}
+                            </Button>
+                          );
+                        })}
                       </Box>
                     );
                   })}
@@ -251,6 +305,10 @@ export const BriefingActionList: React.FC<BriefingActionListProps> = ({ alerts }
       // alertKey = "absent:USER_CODE:YYYY-MM-DD"
       const userCode = alertKey.split(':')[1];
       navigate(`/daily/attendance?absence=${userCode}`);
+    } else if (actionId === 'evening-confirm') {
+      // 夕方容態確認: 出欠ページに遷移して欠席ダイアログ（夕方セクション）を起動
+      const userCode = alertKey.split(':')[1];
+      navigate(`/daily/attendance?absence=${userCode}&section=evening`);
     } else {
       // その他の確認系アクション: ステータス更新 + フィードバック
       setState(alertKey, 'done');
