@@ -13,7 +13,7 @@ import type { DailyStatusCard } from '@/features/dashboard/hooks/useDashboardPag
 import { getSectionComponent, type SectionProps } from '@/features/dashboard/sections/registry';
 import type { AttendanceVisitSnapshot } from '@/features/dashboard/selectors/useAttendanceAnalytics';
 import type { useDashboardSummary } from '@/features/dashboard/useDashboardSummary';
-import type { DashboardRole, DashboardSection, DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
+import type { DashboardRole, DashboardSection, DashboardSectionKey } from '@/features/dashboard/sections/types';
 import type { HandoffDayScope } from '@/features/handoff/handoffTypes';
 import type { IUserMaster } from '@/sharepoint/fields';
 import React, { useCallback } from 'react';

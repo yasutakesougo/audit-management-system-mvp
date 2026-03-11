@@ -5,7 +5,7 @@ import {
     useTheme,
 } from '@mui/material';
 import React from 'react';
-import { type DashboardSection, type DashboardSectionKey } from '../useDashboardViewModel';
+import { type DashboardSection, type DashboardSectionKey } from '../sections/types';
 
 import { TodayChangesCard, type TodayChanges } from '../components/TodayChangesCard';
 

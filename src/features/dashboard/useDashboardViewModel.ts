@@ -2,11 +2,17 @@ import { canAccessDashboardAudience, isDashboardAudience } from '@/features/auth
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
 import { useEffect, useMemo } from 'react';
 
-// NOTE:
-// - DashboardPage.tsx の「ロール判定・セクション構成・サマリー生成」を段階的にここへ移します。
-// - まずは"既存の値を受けて整形して返す"だけの最小版。次パッチで中身を移植します。
-
-export type DashboardRole = 'admin' | 'staff';
+// ── 型の正本は sections/types.ts。ここでは re-export のみ ──
+export type {
+  DashboardRole,
+  DashboardSection,
+  DashboardSectionKey,
+} from '@/features/dashboard/sections/types';
+import type {
+  DashboardRole,
+  DashboardSection,
+  DashboardSectionKey,
+} from '@/features/dashboard/sections/types';
 
 /**
  * 現在の時間帯を示すコンテキスト
@@ -25,26 +31,6 @@ export type DashboardContextInfo = {
   timeContext: DashboardTimeContext;
   isBriefingTime: boolean;
   briefingType?: 'morning' | 'evening';
-};
-
-// IMPORTANT:
-// Dashboard のセクションはここでキーを固定する。
-// 追加したら DashboardPage の renderSection switch も更新され、漏れは TS が検出する。
-export type DashboardSectionKey =
-  | 'safety'
-  | 'attendance'
-  | 'daily'
-  | 'schedule'
-  | 'handover'
-  | 'stats'
-  | 'adminOnly'
-  | 'staffOnly';
-
-export type DashboardSection = {
-  key: DashboardSectionKey;
-  // 任意：見出しや表示条件など、Page側に散っているものをここに集約していく
-  title?: string;
-  enabled?: boolean;
 };
 
 export type DashboardBriefingChip = {

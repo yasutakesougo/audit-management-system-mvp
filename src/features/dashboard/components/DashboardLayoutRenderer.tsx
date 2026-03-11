@@ -21,8 +21,7 @@ import type { DashboardLayoutMode } from '@/features/dashboard/hooks/useDashboar
 import { BentoGridLayout } from '@/features/dashboard/layouts/BentoGridLayout';
 import type { DashboardTab } from '@/features/dashboard/layouts/ZeroScrollLayout';
 import { ZeroScrollLayout } from '@/features/dashboard/layouts/ZeroScrollLayout';
-import type { BriefingAlert } from '@/features/dashboard/sections/types';
-import type { DashboardSection, DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
+import type { BriefingAlert, DashboardSection, DashboardSectionKey } from '@/features/dashboard/sections/types';
 import { HandoffLiveFeed } from '@/features/handoff/components/HandoffLiveFeed';
 import type { HandoffDayScope, HandoffRecord, HandoffStatus } from '@/features/handoff/handoffTypes';
 import Stack from '@mui/material/Stack';

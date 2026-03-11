@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { canAccessDashboardAudience, type DashboardAudience } from '@/features/auth/store';
 import type { TodayChanges } from '@/features/dashboard/components/TodayChangesCard';
 import { getDashboardAnchorIdByKey } from '@/features/dashboard/sections/buildSections';
-import type { DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
+import type { DashboardSectionKey } from '@/features/dashboard/sections/types';
 import type { useAttendanceStore } from '@/features/attendance/store';
 import type { IUserMaster } from '@/features/users/types';
 

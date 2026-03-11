@@ -4,7 +4,7 @@
  */
 
 import { motionTokens } from '@/app/theme';
-import type { DashboardSection, DashboardSectionKey } from '@/features/dashboard/useDashboardViewModel';
+import type { DashboardSection, DashboardSectionKey } from '@/features/dashboard/sections/types';
 import { TESTIDS, tid } from '@/testids';
 import { useTheme } from '@mui/material';
 import Box from '@mui/material/Box';
