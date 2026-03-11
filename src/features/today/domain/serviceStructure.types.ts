@@ -2,7 +2,7 @@
  * ServiceStructure — 今日の業務体制データ型
  *
  * 「担当表」ではなく「業務体制」を表現する。
- * 生活介護 / 生活支援 / 判断窓口 の3区分で現場の配置を可視化。
+ * 生活介護 / 生活支援 / 判断窓口 / 運営サポート の4区分で現場の配置を可視化。
  *
  * @see Issue 3: TodayServiceStructureCard
  */
@@ -26,7 +26,7 @@ export type LifeSupportStructure = {
   notes: string[];
 };
 
-/** 判断窓口: 所長・サビ管・ナースの在席 */
+/** 判断窓口: 所長・サビ管・ナースの在席（管理者・専門職） */
 export type DecisionSupportStructure = {
   directorPresent: boolean;
   serviceManagerPresent: boolean;
@@ -36,9 +36,20 @@ export type DecisionSupportStructure = {
   nurseNames: string[];
 };
 
+/** 運営サポート: 会計・給食・送迎・ボランティア・来客の配置 */
+export type OperationalSupportStructure = {
+  accountantPresent: boolean;
+  accountantNames: string[];
+  mealStaff: string[];
+  transportStaff: string[];
+  volunteerStaff: string[];
+  visitorNames: string[];
+};
+
 /** 業務体制の全体構造 */
 export type ServiceStructure = {
   dayCare: DayCareStructure;
   lifeSupport: LifeSupportStructure;
   decisionSupport: DecisionSupportStructure;
+  operationalSupport: OperationalSupportStructure;
 };
