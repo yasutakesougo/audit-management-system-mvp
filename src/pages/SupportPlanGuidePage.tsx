@@ -126,6 +126,10 @@ export default function SupportPlanGuidePage() {
     handleAppendPhrase,
     handleCopyMarkdown,
     handleDownloadMarkdown,
+    handleMasterUserChange,
+
+    // Derived
+    userOptions,
 
     // Goal Actions (Phase 3)
     handleGoalChange,
@@ -133,6 +137,16 @@ export default function SupportPlanGuidePage() {
     handleAddGoal,
     handleDeleteGoal,
   } = hook;
+
+  // ── selectUser: Autocomplete → SelectChangeEvent adapter ──
+  const selectUser = React.useCallback(
+    (userId: string) => {
+      // handleMasterUserChange expects a SelectChangeEvent<string>
+      const syntheticEvent = { target: { value: userId } } as import('@mui/material/Select').SelectChangeEvent<string>;
+      handleMasterUserChange(syntheticEvent);
+    },
+    [handleMasterUserChange],
+  );
 
   // ── guardAdmin (UI-only helper) ──
   const guardAdmin = <T,>(fn: (...args: unknown[]) => T) => (...args: unknown[]): T | undefined => {
@@ -175,6 +189,11 @@ export default function SupportPlanGuidePage() {
     onToggleDomain: handleToggleDomain,
     onAddGoal: handleAddGoal,
     onDeleteGoal: handleDeleteGoal,
+    // User Link (利用者マスタ紐付け)
+    userOptions,
+    linkedUserId: activeDraft?.userId,
+    linkedUserCode: activeDraft?.userCode,
+    onSelectUser: selectUser,
   };
 
   // ── Draft progress chip (render helper) ──
