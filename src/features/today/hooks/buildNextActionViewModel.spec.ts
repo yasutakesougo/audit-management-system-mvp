@@ -22,6 +22,7 @@ function makeBase(overrides: Partial<BaseInput> = {}): BaseInput {
     progressKey: 'test-key',
     status: 'idle',
     urgency: 'medium',
+    sceneState: 'pending',
     elapsedMinutes: null,
     actions: { start: noop, done: noop, reset: noop },
     ...overrides,
@@ -128,5 +129,33 @@ describe('buildNextActionViewModel', () => {
     );
     if (vm.kind !== 'active') throw new Error('unreachable');
     expect(vm.owner).toBeNull();
+  });
+
+  // ─── Scene-Based: overdue label (#852) ──────────────
+
+  it('returns overdue minutesUntilLabel for overdue items', () => {
+    const vm = buildNextActionViewModel(
+      makeBase({
+        sceneState: 'overdue',
+        urgency: 'high',
+        item: { id: 'ops-1', time: '09:15', title: '通所受け入れ', minutesUntil: -15 },
+      }),
+    );
+    if (vm.kind !== 'active') throw new Error('unreachable');
+    expect(vm.minutesUntilLabel).toBe('予定時刻を15分過ぎています');
+    expect(vm.sceneState).toBe('overdue');
+  });
+
+  it('returns active sceneState for started items', () => {
+    const vm = buildNextActionViewModel(
+      makeBase({
+        sceneState: 'active',
+        status: 'started',
+        elapsedMinutes: 5,
+        progress: { startedAt: new Date().toISOString(), doneAt: null },
+      }),
+    );
+    if (vm.kind !== 'active') throw new Error('unreachable');
+    expect(vm.sceneState).toBe('active');
   });
 });

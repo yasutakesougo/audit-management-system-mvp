@@ -5,11 +5,13 @@
  * P1-A: Start/Done ボタン + 経過時間 + 完了状態
  * PR-3: sticky 化 + urgency に応じた左ボーダー/背景色
  * Scene: 場面ベースの次アクション表示（オプション）
+ * #852: overdue 表示 — 未着手タスクを柔らかく強調（A案）
  */
 import { motionTokens } from '@/app/theme';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { Box, Button, Chip, Paper, Typography } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import React from 'react';
@@ -28,10 +30,19 @@ export type NextActionCardProps = {
 };
 
 function formatMinutesUntil(minutes: number): string {
-  if (minutes < 60) return `あと ${minutes}分`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
+  const abs = Math.abs(minutes);
+  if (abs < 60) return `あと ${abs}分`;
+  const h = Math.floor(abs / 60);
+  const m = abs % 60;
   return m > 0 ? `あと ${h}時間${m}分` : `あと ${h}時間`;
+}
+
+function formatOverdueTime(minutes: number): string {
+  const abs = Math.abs(minutes);
+  if (abs < 60) return `${abs}分`;
+  const h = Math.floor(abs / 60);
+  const m = abs % 60;
+  return m > 0 ? `${h}時間${m}分` : `${h}時間`;
 }
 
 function formatElapsed(minutes: number): string {
@@ -66,8 +77,9 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({
   onSceneAction,
   onEmptyAction,
 }) => {
-  const { item, status, urgency, elapsedMinutes, actions } = nextAction;
+  const { item, status, urgency, sceneState, elapsedMinutes, actions } = nextAction;
   const theme = useTheme();
+  const isOverdue = sceneState === 'overdue';
 
   // Determine effective urgency (scene can override border color when critical)
   const effectiveUrgency: Urgency =
@@ -215,6 +227,19 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({
         )}
       </Box>
 
+      {/* Overdue badge (#852 — A案: 中立表現) */}
+      {isOverdue && status === 'idle' && (
+        <Chip
+          data-testid="next-action-overdue-chip"
+          icon={<WarningAmberIcon />}
+          label="未着手"
+          color="warning"
+          size="small"
+          variant="filled"
+          sx={{ mb: 1 }}
+        />
+      )}
+
       {/* Scene-based guidance (when scene has higher priority) */}
       {sceneAction && sceneAction.priority !== 'low' && (
         <Box
@@ -263,7 +288,7 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({
       {/* Time + Title (schedule-based) */}
       {item && (
         <>
-          <Typography variant="h5" fontWeight="bold" color="primary.main">
+          <Typography variant="h5" fontWeight="bold" color={isOverdue ? 'warning.main' : 'primary.main'}>
             {item.time}
           </Typography>
           <Typography variant="body1" sx={{ mt: 0.5 }}>
@@ -284,17 +309,20 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({
                   color={URGENCY_COLOR[urgency]}
                   sx={{ fontStyle: 'italic', flex: 1, fontWeight: urgency !== 'low' ? 'bold' : undefined }}
                 >
-                  {formatMinutesUntil(item.minutesUntil)}
+                  {isOverdue
+                    ? `予定時刻を${formatOverdueTime(item.minutesUntil)}過ぎています`
+                    : formatMinutesUntil(item.minutesUntil)}
                 </Typography>
                 <Button
                   data-testid="next-action-start"
                   variant="contained"
                   size="small"
+                  color={isOverdue ? 'warning' : 'primary'}
                   startIcon={<PlayArrowIcon />}
                   onClick={actions.start}
                   sx={{ minHeight: 44 }}
                 >
-                  開始
+                  {isOverdue ? 'いま開始' : '開始'}
                 </Button>
               </>
             )}

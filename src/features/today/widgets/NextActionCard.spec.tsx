@@ -19,6 +19,7 @@ function makeProps(overrides: Partial<NextActionWithProgress> = {}): NextActionW
     progressKey: 'test-key',
     status: 'idle',
     urgency: 'medium',
+    sceneState: 'pending',
     elapsedMinutes: null,
     actions: { start: noop, done: noop, reset: noop },
     ...overrides,
@@ -49,6 +50,7 @@ describe('NextActionCard', () => {
       <NextActionCard
         nextAction={makeProps({
           status: 'started',
+          sceneState: 'active',
           elapsedMinutes: 15,
           progress: { startedAt: new Date().toISOString(), doneAt: null },
         })}
@@ -66,6 +68,7 @@ describe('NextActionCard', () => {
       <NextActionCard
         nextAction={makeProps({
           status: 'started',
+          sceneState: 'active',
           elapsedMinutes: 5,
           progress: { startedAt: new Date().toISOString(), doneAt: null },
           actions,
@@ -82,6 +85,7 @@ describe('NextActionCard', () => {
       <NextActionCard
         nextAction={makeProps({
           status: 'done',
+          sceneState: 'done',
           progress: {
             startedAt: new Date().toISOString(),
             doneAt: new Date().toISOString(),
@@ -126,5 +130,111 @@ describe('NextActionCard', () => {
   it('has data-testid', () => {
     render(<NextActionCard nextAction={makeProps()} />);
     expect(screen.getByTestId('today-next-action-card')).toBeInTheDocument();
+  });
+});
+
+// ─── Scene-Based: Overdue display tests (#852) ──────────────
+
+describe('NextActionCard — overdue 表示 (#852)', () => {
+  it('shows overdue chip when sceneState is overdue and idle', () => {
+    render(
+      <NextActionCard
+        nextAction={makeProps({
+          sceneState: 'overdue',
+          urgency: 'high',
+          item: {
+            id: 'ops-1',
+            time: '09:15',
+            title: '通所受け入れ',
+            minutesUntil: -15,
+          },
+        })}
+      />
+    );
+
+    expect(screen.getByTestId('next-action-overdue-chip')).toBeInTheDocument();
+    expect(screen.getByText('未着手')).toBeInTheDocument();
+  });
+
+  it('shows "⚠️ X分超過" instead of "あと X分" for overdue items', () => {
+    render(
+      <NextActionCard
+        nextAction={makeProps({
+          sceneState: 'overdue',
+          urgency: 'high',
+          item: {
+            id: 'ops-1',
+            time: '09:15',
+            title: '通所受け入れ',
+            minutesUntil: -15,
+          },
+        })}
+      />
+    );
+
+    expect(screen.getByText(/予定時刻を15分過ぎています/)).toBeInTheDocument();
+    expect(screen.queryByText(/あと/)).not.toBeInTheDocument();
+  });
+
+  it('shows "いま開始" button for overdue idle items', () => {
+    render(
+      <NextActionCard
+        nextAction={makeProps({
+          sceneState: 'overdue',
+          urgency: 'high',
+          item: {
+            id: 'ops-1',
+            time: '09:15',
+            title: '通所受け入れ',
+            minutesUntil: -15,
+          },
+        })}
+      />
+    );
+
+    const startBtn = screen.getByTestId('next-action-start');
+    expect(startBtn).toHaveTextContent('いま開始');
+  });
+
+  it('does NOT show overdue chip when started (active)', () => {
+    render(
+      <NextActionCard
+        nextAction={makeProps({
+          sceneState: 'active',
+          status: 'started',
+          urgency: 'high',
+          elapsedMinutes: 5,
+          progress: { startedAt: new Date().toISOString(), doneAt: null },
+          item: {
+            id: 'ops-1',
+            time: '09:15',
+            title: '通所受け入れ',
+            minutesUntil: -20,
+          },
+        })}
+      />
+    );
+
+    expect(screen.queryByTestId('next-action-overdue-chip')).not.toBeInTheDocument();
+  });
+
+  it('does NOT show overdue chip for pending items', () => {
+    render(
+      <NextActionCard
+        nextAction={makeProps({
+          sceneState: 'pending',
+          urgency: 'medium',
+          item: {
+            id: 'ops-2',
+            time: '09:30',
+            title: '検温確認',
+            minutesUntil: 15,
+          },
+        })}
+      />
+    );
+
+    expect(screen.queryByTestId('next-action-overdue-chip')).not.toBeInTheDocument();
+    expect(screen.getByText(/あと 15分/)).toBeInTheDocument();
   });
 });
