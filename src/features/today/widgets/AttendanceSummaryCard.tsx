@@ -5,7 +5,7 @@
  * 当日欠席は欠席加算に直結するため「記録重要」ラベルで強調する。
  */
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { Box, Chip, Paper, Typography } from '@mui/material';
+import { Box, Button, Chip, Paper, Typography } from '@mui/material';
 import React from 'react';
 import { EmptyStateBlock } from './EmptyStateBlock';
 
@@ -18,6 +18,8 @@ export type AttendanceSummaryCardProps = {
   priorAbsenceNames: string[];
   lateOrEarlyLeave: number;
   lateOrEarlyNames: string[];
+  /** CTA: 「出欠を入力」クリック時のハンドラ（後方互換: optional） */
+  onAction?: () => void;
 };
 
 export const AttendanceSummaryCard: React.FC<AttendanceSummaryCardProps> = ({
@@ -29,6 +31,7 @@ export const AttendanceSummaryCard: React.FC<AttendanceSummaryCardProps> = ({
   priorAbsenceNames,
   lateOrEarlyLeave,
   lateOrEarlyNames,
+  onAction,
 }) => {
   const totalAbsence = sameDayAbsenceCount + priorAbsenceCount;
   const hasAnyData = facilityAttendees > 0 || totalAbsence > 0 || lateOrEarlyLeave > 0;
@@ -136,6 +139,21 @@ export const AttendanceSummaryCard: React.FC<AttendanceSummaryCardProps> = ({
         <Typography variant="caption" color="text.secondary">
           遅刻・早退: {lateOrEarlyNames.join('、')}
         </Typography>
+      )}
+
+      {/* CTA: 出欠を入力 */}
+      {onAction && (
+        <Box sx={{ mt: 1.5, textAlign: 'right' }}>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={onAction}
+            data-testid="attendance-action-cta"
+            sx={{ textTransform: 'none', fontWeight: 600, fontSize: '0.75rem' }}
+          >
+            出欠を入力
+          </Button>
+        </Box>
       )}
     </Paper>
   );
