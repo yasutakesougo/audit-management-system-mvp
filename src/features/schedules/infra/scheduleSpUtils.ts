@@ -29,15 +29,30 @@ export function monthKeyInTz(date: Date, timeZone: string = SCHEDULES_TZ): strin
  * Used for 412 Precondition Failed detection.
  */
 export const getHttpStatus = (e: unknown): number | undefined => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const anyErr = e as any;
-  return (
-    anyErr?.status ??
-    anyErr?.response?.status ??
-    anyErr?.response?.statusCode ??
-    anyErr?.cause?.status ??
-    anyErr?.cause?.response?.status
-  );
+  if (!e || typeof e !== 'object') return undefined;
+  const obj = e as Record<string, unknown>;
+
+  // Direct status
+  if (typeof obj.status === 'number') return obj.status;
+
+  // Nested response.status / response.statusCode
+  if (obj.response && typeof obj.response === 'object') {
+    const resp = obj.response as Record<string, unknown>;
+    if (typeof resp.status === 'number') return resp.status;
+    if (typeof resp.statusCode === 'number') return resp.statusCode;
+  }
+
+  // Nested cause.status / cause.response.status
+  if (obj.cause && typeof obj.cause === 'object') {
+    const cause = obj.cause as Record<string, unknown>;
+    if (typeof cause.status === 'number') return cause.status;
+    if (cause.response && typeof cause.response === 'object') {
+      const causeResp = cause.response as Record<string, unknown>;
+      if (typeof causeResp.status === 'number') return causeResp.status;
+    }
+  }
+
+  return undefined;
 };
 
 export const isMissingFieldError = (error: unknown): boolean => {

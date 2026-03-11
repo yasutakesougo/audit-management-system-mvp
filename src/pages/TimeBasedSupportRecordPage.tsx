@@ -1,6 +1,6 @@
 ﻿import { useInterventionStore } from '@/features/analysis/stores/interventionStore';
 import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
-
+import { MonitoringCountdown } from '@/features/daily/components/MonitoringCountdown';
 import { ProcedureEditor } from '@/features/daily/components/procedure/ProcedureEditor';
 import { RecentRecordsDialog } from '@/features/daily/components/split-stream/RecentRecordsDialog';
 import { PlanSelectionStep } from '@/features/daily/components/wizard/PlanSelectionStep';
@@ -242,7 +242,12 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       title="支援手順兼記録"
       backTo="/dashboard"
       testId="daily-support-page"
-
+      headerActions={
+        <MonitoringCountdown
+          userName={selectedUser?.FullName}
+          lastAssessmentDate={selectedUser?.LastAssessmentDate}
+        />
+      }
     >
       <Container
         maxWidth="xl"

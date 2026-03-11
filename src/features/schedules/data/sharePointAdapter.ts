@@ -108,27 +108,22 @@ export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOpt
 
           personType: input.category as 'User' | 'Staff' | 'Org',
           personId: input.userId || '',
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          personName: (input as any).userName,
+          personName: input.userName,
 
           assignedStaffId: input.assignedStaffId,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          targetUserId: (input as any).targetUserId,
+          targetUserId: input.targetUserId,
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          rowKey: generateRowKey((input as any).rowKey),
+          rowKey: generateRowKey(input.rowKey),
           dayKey,
           monthKey,
           fiscalYear,
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          orgAudience: (input as any).orgAudience,
+          orgAudience: input.orgAudience,
           notes: input.notes,
         };
 
         const created = await createSchedule(client, createPayload);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const item = mapRepoScheduleToSchedItem(created as any);
+        const item = mapRepoScheduleToSchedItem(created);
 
         if (!item) {
           return result.err({ kind: 'unknown', message: 'Failed to map created schedule' });
@@ -158,8 +153,7 @@ export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOpt
           });
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const etag = (input as any)?.etag;
+        const etag = input.etag;
         if (!etag) {
           return result.validation('Missing etag for update', { field: 'etag' });
         }
@@ -177,25 +171,21 @@ export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOpt
 
           personType: input.category as 'User' | 'Staff' | 'Org',
           personId: input.userId,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          personName: (input as any).userName,
+          personName: input.userName,
 
           assignedStaffId: input.assignedStaffId,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          targetUserId: (input as any).targetUserId,
+          targetUserId: input.targetUserId,
 
           dayKey,
           monthKey,
           fiscalYear: String(startDate.getFullYear()),
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          orgAudience: (input as any).orgAudience,
+          orgAudience: input.orgAudience,
           notes: input.notes,
         };
 
         const updated = await updateSchedule(client, idNum, etag, updatePayload);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const item = mapRepoScheduleToSchedItem(updated as any);
+        const item = mapRepoScheduleToSchedItem(updated);
 
         if (!item) {
           return result.err({ kind: 'unknown', message: 'Failed to map updated schedule' });
