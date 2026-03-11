@@ -154,6 +154,142 @@ describe('translateZodIssue', () => {
     expect(msg).toContain('「氏名」');
     expect(msg).toContain('問題があります');
   });
+  // ===========================================================================
+  // Zod v3 compat: invalid_string (simulated)
+  // ===========================================================================
+  it('translates v3 invalid_string with url validation', () => {
+    const fakeIssue = {
+      code: 'invalid_string',
+      path: ['VITE_SP_RESOURCE'],
+      message: 'Invalid url',
+      validation: 'url',
+    } as unknown as z.ZodIssue;
+
+    const msg = translateZodIssue(fakeIssue);
+    expect(msg).toContain('「SharePointリソースURL」');
+    expect(msg).toContain('URL形式');
+  });
+
+  it('translates v3 invalid_string with email validation', () => {
+    const fakeIssue = {
+      code: 'invalid_string',
+      path: ['Email'],
+      message: 'Invalid email',
+      validation: 'email',
+    } as unknown as z.ZodIssue;
+
+    const msg = translateZodIssue(fakeIssue);
+    expect(msg).toContain('「メールアドレス」');
+    expect(msg).toContain('メールアドレス形式');
+  });
+
+  it('translates v3 invalid_string with regex validation', () => {
+    const fakeIssue = {
+      code: 'invalid_string',
+      path: ['Title'],
+      message: 'Invalid',
+      validation: { includes: 'regex' },
+    } as unknown as z.ZodIssue;
+
+    const msg = translateZodIssue(fakeIssue);
+    expect(msg).toContain('「氏名」');
+    expect(msg).toContain('形式が正しくありません');
+  });
+
+  it('translates v3 invalid_string without known validation as generic', () => {
+    const fakeIssue = {
+      code: 'invalid_string',
+      path: ['Title'],
+      message: 'Bad',
+    } as unknown as z.ZodIssue;
+
+    const msg = translateZodIssue(fakeIssue);
+    expect(msg).toContain('入力形式が正しくありません');
+  });
+
+  // ===========================================================================
+  // Zod v3 compat: invalid_enum_value (simulated)
+  // ===========================================================================
+  it('translates v3 invalid_enum_value with options', () => {
+    const fakeIssue = {
+      code: 'invalid_enum_value',
+      path: ['channel'],
+      message: 'Invalid enum value',
+      options: ['system', 'user', 'auto'],
+      received: 'bad',
+      expected: 'string',
+    } as unknown as z.ZodIssue;
+
+    const msg = translateZodIssue(fakeIssue);
+    expect(msg).toContain('「チャネル」');
+    expect(msg).toContain('許可されていない値「bad」');
+    expect(msg).toContain('system, user, auto');
+  });
+
+  it('translates v3 invalid_enum_value without options', () => {
+    const fakeIssue = {
+      code: 'invalid_enum_value',
+      path: ['Role'],
+      message: 'Invalid enum value',
+    } as unknown as z.ZodIssue;
+
+    const msg = translateZodIssue(fakeIssue);
+    expect(msg).toContain('「権限」');
+    expect(msg).toContain('許可されていない値が入っています');
+  });
+
+  // ===========================================================================
+  // getReceivedType fallback paths (via translateZodIssue)
+  // ===========================================================================
+  it('derives received via v3 received field', () => {
+    const fakeIssue = {
+      code: 'invalid_type',
+      path: ['Title'],
+      message: 'Expected string',
+      expected: 'string',
+      received: 'number',
+    } as unknown as z.ZodIssue;
+
+    const msg = translateZodIssue(fakeIssue);
+    expect(msg).toContain('実際: number');
+  });
+
+  it('derives received via input field (v4 path)', () => {
+    const fakeIssue = {
+      code: 'invalid_type',
+      path: ['Title'],
+      message: 'Expected string',
+      expected: 'string',
+      input: 42,
+    } as unknown as z.ZodIssue;
+
+    const msg = translateZodIssue(fakeIssue);
+    expect(msg).toContain('実際: number');
+  });
+
+  it('derives received from message string (v4 fallback)', () => {
+    const fakeIssue = {
+      code: 'invalid_type',
+      path: ['Title'],
+      message: 'Invalid input: expected string, received undefined',
+      expected: 'string',
+    } as unknown as z.ZodIssue;
+
+    const msg = translateZodIssue(fakeIssue);
+    expect(msg).toContain('実際: undefined');
+  });
+
+  it('falls back to unknown when no received info available', () => {
+    const fakeIssue = {
+      code: 'invalid_type',
+      path: ['Title'],
+      message: 'Bad value',
+      expected: 'string',
+    } as unknown as z.ZodIssue;
+
+    const msg = translateZodIssue(fakeIssue);
+    expect(msg).toContain('実際: unknown');
+  });
 });
 
 // ===========================================================================
