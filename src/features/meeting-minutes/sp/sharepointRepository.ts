@@ -1,6 +1,6 @@
-import type { MeetingMinutes, MeetingCategory } from '../types';
-import type { MeetingMinutesRepository, MinutesSearchParams, MeetingMinutesUpdateDto } from './repository';
-import { MEETING_MINUTES_LIST_TITLE, MeetingMinutesFields as F } from './sharepoint';
+import type { MeetingCategory, MeetingMinutes } from '../types';
+import type { MeetingMinutesRepository, MeetingMinutesUpdateDto, MinutesSearchParams } from './repository';
+import { MeetingMinutesFields as F, MEETING_MINUTES_LIST_TITLE } from './sharepoint';
 
 function normalizeApiBaseUrl(input: string): string {
   const trimmed = input.trim();
@@ -40,6 +40,14 @@ function mapItemToMinutes(item: SpItem): MeetingMinutes {
   const id = Number(item[F.id] ?? 0);
   const meetingDate = asString(item[F.meetingDate]);
   const category = asString(item[F.category]);
+  // Attendees: SP の 複数行テキスト に JSON 配列として保存
+  const rawAttendees = asString(item[F.attendees]);
+  let attendees: string[] = [];
+  if (rawAttendees) {
+    try { attendees = JSON.parse(rawAttendees) as string[]; } catch { attendees = []; }
+  } else {
+    attendees = asStringArray(item[F.attendees]) ?? [];
+  }
   return {
     id: Number.isFinite(id) ? id : 0,
     title: asString(item[F.title]) ?? '',
@@ -53,7 +61,9 @@ function mapItemToMinutes(item: SpItem): MeetingMinutes {
     isPublished: asBoolean(item[F.isPublished]) ?? true,
     chair: asString(item[F.chair]) ?? '',
     scribe: asString(item[F.scribe]) ?? '',
-    attendees: asStringArray(item[F.attendees]) ?? [],
+    attendees,
+    staffAttendance: asString(item[F.staffAttendance]) ?? '',
+    userHealthNotes: asString(item[F.userHealthNotes]) ?? '',
     created: asString(item[F.created]),
     modified: asString(item[F.modified]),
   };
@@ -97,6 +107,11 @@ const buildPatchBody = (patch: MeetingMinutesUpdateDto): Record<string, unknown>
   set(F.isPublished, patch.isPublished);
   set(F.chair, patch.chair);
   set(F.scribe, patch.scribe);
+  set(F.staffAttendance, patch.staffAttendance);
+  set(F.userHealthNotes, patch.userHealthNotes);
+  if (patch.attendees !== undefined) {
+    body[F.attendees] = JSON.stringify(patch.attendees);
+  }
   return body;
 };
 
@@ -122,6 +137,8 @@ export function createSharePointMeetingMinutesRepository(siteOrApiBaseUrl: strin
         F.chair,
         F.scribe,
         F.attendees,
+        F.staffAttendance,
+        F.userHealthNotes,
       ].join(',');
 
       const filter = buildFilter(params);
@@ -170,6 +187,8 @@ export function createSharePointMeetingMinutesRepository(siteOrApiBaseUrl: strin
         F.chair,
         F.scribe,
         F.attendees,
+        F.staffAttendance,
+        F.userHealthNotes,
       ].join(',');
       const url = `${listApiBase}(${id})?$select=${encodeURIComponent(select)}`;
       const item = await spJson<SpItem>(url);
@@ -190,7 +209,9 @@ export function createSharePointMeetingMinutesRepository(siteOrApiBaseUrl: strin
         [F.isPublished]: draft.isPublished ?? true,
         [F.chair]: draft.chair ?? '',
         [F.scribe]: draft.scribe ?? '',
-        // Attendees: Person multi を使う場合は ID 配列を送る必要あり（MVPは省略）。
+        [F.attendees]: JSON.stringify(draft.attendees ?? []),
+        [F.staffAttendance]: draft.staffAttendance ?? '',
+        [F.userHealthNotes]: draft.userHealthNotes ?? '',
       };
       const created = await spJson<SpItem>(url, { method: 'POST', body: JSON.stringify(body) });
       return Number(created.Id ?? created[F.id] ?? 0);

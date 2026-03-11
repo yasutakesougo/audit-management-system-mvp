@@ -192,6 +192,19 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
               </Box>
             </Stack>
 
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 0.5 }}>参加者</Typography>
+              {(minutes.attendees ?? []).length > 0 ? (
+                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                  {(minutes.attendees ?? []).map((name) => (
+                    <Chip key={name} label={name} size="small" color="primary" variant="outlined" />
+                  ))}
+                </Stack>
+              ) : (
+                <Typography variant="body2" color="text.secondary">記録なし</Typography>
+              )}
+            </Box>
+
             {isDailyMeeting && (minutes.staffAttendance || minutes.userHealthNotes) && (
               <>
                 <Divider />

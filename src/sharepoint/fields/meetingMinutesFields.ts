@@ -18,6 +18,8 @@ export const MEETING_MINUTES_FIELDS = {
   chair: 'Chair',
   scribe: 'Scribe',
   attendees: 'Attendees',
+  staffAttendance: 'StaffAttendance',
+  userHealthNotes: 'UserHealthNotes',
   created: 'Created',
   modified: 'Modified',
 } as const;
@@ -36,6 +38,8 @@ export const MEETING_MINUTES_SELECT_FIELDS = [
   MEETING_MINUTES_FIELDS.chair,
   MEETING_MINUTES_FIELDS.scribe,
   MEETING_MINUTES_FIELDS.attendees,
+  MEETING_MINUTES_FIELDS.staffAttendance,
+  MEETING_MINUTES_FIELDS.userHealthNotes,
   MEETING_MINUTES_FIELDS.created,
   MEETING_MINUTES_FIELDS.modified,
 ] as const;

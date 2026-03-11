@@ -1,4 +1,6 @@
-import { Box, Button, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import { Box, Button, Chip, IconButton, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import * as React from 'react';
 
 import type { MeetingCategory, MeetingMinutes } from '../types';
 import { DailyMeetingExtension } from './DailyMeetingExtension';
@@ -35,6 +37,76 @@ export function createDefaultDraft(): MeetingMinutesDraft {
     staffAttendance: '',
     userHealthNotes: '',
   };
+}
+
+/** 参加者をチップ形式で追加・削除できる入力コンポーネント */
+function AttendeesInput(props: { value: string[]; onChange: (next: string[]) => void }) {
+  const { value, onChange } = props;
+  const [input, setInput] = React.useState('');
+
+  const addName = () => {
+    const name = input.trim();
+    if (!name) return;
+    if (!value.includes(name)) {
+      onChange([...value, name]);
+    }
+    setInput('');
+  };
+
+  const removeName = (name: string) => {
+    onChange(value.filter((n) => n !== name));
+  };
+
+  return (
+    <Box>
+      <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+        参加者
+      </Typography>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+        <TextField
+          size="small"
+          placeholder="名前を入力して Enter"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addName();
+            }
+          }}
+          sx={{ minWidth: 200 }}
+        />
+        <IconButton
+          size="small"
+          color="primary"
+          onClick={addName}
+          disabled={!input.trim()}
+          aria-label="参加者を追加"
+        >
+          <AddCircleOutlineIcon />
+        </IconButton>
+      </Stack>
+      {value.length > 0 && (
+        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+          {value.map((name) => (
+            <Chip
+              key={name}
+              label={name}
+              size="small"
+              onDelete={() => removeName(name)}
+              color="primary"
+              variant="outlined"
+            />
+          ))}
+        </Stack>
+      )}
+      {value.length === 0 && (
+        <Typography variant="caption" color="text.secondary">
+          参加者が未登録です。名前を入力して追加してください。
+        </Typography>
+      )}
+    </Box>
+  );
 }
 
 export function MeetingMinutesForm(props: {
@@ -106,6 +178,12 @@ export function MeetingMinutesForm(props: {
             fullWidth
           />
         </Stack>
+
+        {/* ── 参加者 ── */}
+        <AttendeesInput
+          value={value.attendees ?? []}
+          onChange={(next) => set('attendees', next)}
+        />
 
         {/* ── 朝会・夕会専用セクション ── */}
         {isDailyMeeting && (
