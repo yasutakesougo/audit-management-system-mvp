@@ -1,14 +1,11 @@
+import { LoadingState } from '@/components/ui/LoadingState';
 import { TESTIDS, tidWithSuffix } from '@/testids';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
-import EditRoundedIcon from '@mui/icons-material/EditRounded';
-import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
-import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import Alert from '@mui/material/Alert';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
-import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
 import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
@@ -19,7 +16,6 @@ import Typography from '@mui/material/Typography';
 import React, { Suspense, useCallback, useMemo, useRef, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import type { IUserMaster } from '../types';
-import { USAGE_STATUS_VALUES } from '../typesExtended';
 import { formatDateLabel, renderHighlights, resolveUserIdentifier } from './helpers';
 import {
     DEFAULT_TAB_KEY,
@@ -30,6 +26,7 @@ import {
     TAB_SECTIONS,
 } from './menuSections';
 import type { MenuSection } from './types';
+import { UserDetailHeader } from './UserDetailHeader';
 
 const ISPSummarySectionLazy = React.lazy(() =>
   import('./ISPSummarySection').then((m) => ({ default: m.ISPSummarySection })),
@@ -208,145 +205,14 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
   <Stack spacing={isEmbedded ? 1.5 : 3} data-testid={TESTIDS['user-detail-sections']}>
       {backControl}
 
-      <Paper variant="outlined" sx={{ p: isEmbedded ? 2 : { xs: 2.5, md: 3 }, borderRadius: isEmbedded ? 2 : 3 }}>
-        <Stack spacing={isEmbedded ? 1 : 2}>
-          <Stack
-            direction="row"
-            spacing={isEmbedded ? 1.5 : 2}
-            alignItems="center"
-          >
-            <Avatar sx={{ bgcolor: 'primary.main', color: '#fff', width: isEmbedded ? 40 : 56, height: isEmbedded ? 40 : 56 }}>
-              <PeopleAltRoundedIcon fontSize={isEmbedded ? 'small' : 'medium'} />
-            </Avatar>
-            <Box>
-              {!isEmbedded && (
-                <Typography variant="overline" color="text.secondary">
-                  利用者プロフィール
-                </Typography>
-              )}
-              <Typography variant={isEmbedded ? 'h6' : 'h4'} component="h1" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
-                {user.FullName || '氏名未登録'}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {resolveUserIdentifier(user)}
-              </Typography>
-            </Box>
-          </Stack>
-
-          <Stack direction="row" spacing={0.5} flexWrap="wrap" alignItems="center" sx={{ rowGap: 0.5 }}>
-            {isEmbedded && (
-              <Chip
-                label={
-                  user.UsageStatus === USAGE_STATUS_VALUES.TERMINATED ? '終了'
-                  : user.UsageStatus === USAGE_STATUS_VALUES.SUSPENDED || user.IsActive === false ? '休止'
-                  : '利用中'
-                }
-                color={
-                  user.UsageStatus === USAGE_STATUS_VALUES.TERMINATED || user.UsageStatus === USAGE_STATUS_VALUES.SUSPENDED || user.IsActive === false
-                    ? 'default' : 'success'
-                }
-                size="small"
-              />
-            )}
-            {!isEmbedded && (
-              <Chip label={`利用者コード: ${resolveUserIdentifier(user)}`} size="small" />
-            )}
-            <Chip label={supportLabel} color={user.IsHighIntensitySupportTarget ? 'warning' : 'default'} size="small" />
-            {user.IsSupportProcedureTarget && (
-              <Chip label="支援手順対象" color="secondary" size="small" />
-            )}
-            {!isEmbedded && (
-              <Chip label={isActive ? '在籍' : '退所'} color={isActive ? 'success' : 'default'} size="small" />
-            )}
-            {!isEmbedded && (
-              <>
-                <Chip label={`契約日: ${formatDateLabel(user.ContractDate)}`} size="small" variant="outlined" />
-                <Chip label={`利用開始日: ${formatDateLabel(user.ServiceStartDate)}`} size="small" variant="outlined" />
-                {user.ServiceEndDate && (
-                  <Chip label={`利用終了日: ${formatDateLabel(user.ServiceEndDate)}`} size="small" variant="outlined" />
-                )}
-              </>
-            )}
-          </Stack>
-
-          {!isEmbedded && (
-            <>
-              <Divider />
-              <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                <Box flex={1}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    通所予定日
-                  </Typography>
-                  <Typography variant="body1">{attendanceLabel}</Typography>
-                </Box>
-                <Box flex={1}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    メモ
-                  </Typography>
-                  <Typography variant="body1" color="text.secondary">
-                    利用者関連の主要帳票へアクセスするためのメニューです。表示されている「利用者コード」はシステム用で、職員が覚える必要はありません。
-                  </Typography>
-                </Box>
-              </Stack>
-            </>
-          )}
-
-          {isEmbedded && (
-            <>
-              <Divider />
-              <Box component="dl" sx={{ m: 0, display: 'grid', gridTemplateColumns: '100px 1fr', columnGap: 1.5, rowGap: 0.75, fontSize: '0.85rem' }}>
-                <Typography component="dt" variant="caption" color="text.secondary">契約日</Typography>
-                <Typography component="dd" variant="body2" sx={{ m: 0 }}>{formatDateLabel(user.ContractDate)}</Typography>
-                <Typography component="dt" variant="caption" color="text.secondary">利用開始日</Typography>
-                <Typography component="dd" variant="body2" sx={{ m: 0 }}>{formatDateLabel(user.ServiceStartDate)}</Typography>
-                {user.ServiceEndDate && (
-                  <>
-                    <Typography component="dt" variant="caption" color="text.secondary">利用終了日</Typography>
-                    <Typography component="dd" variant="body2" sx={{ m: 0 }}>{formatDateLabel(user.ServiceEndDate)}</Typography>
-                  </>
-                )}
-                <Typography component="dt" variant="caption" color="text.secondary">通所予定日</Typography>
-                <Typography component="dd" variant="body2" sx={{ m: 0 }}>{attendanceLabel}</Typography>
-                {user.RecipientCertNumber && (
-                  <>
-                    <Typography component="dt" variant="caption" color="text.secondary">受給者証</Typography>
-                    <Typography component="dd" variant="body2" sx={{ m: 0 }}>****{user.RecipientCertNumber.slice(-4)}</Typography>
-                  </>
-                )}
-              </Box>
-            </>
-          )}
-
-          {isEmbedded && (
-            <>
-              <Divider />
-              <Stack direction="row" spacing={1}>
-                {onEdit && (
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<EditRoundedIcon />}
-                    onClick={() => onEdit(user)}
-                    sx={{ textTransform: 'none', flex: 1 }}
-                  >
-                    編集
-                  </Button>
-                )}
-                <Button
-                  variant="contained"
-                  size="small"
-                  startIcon={<OpenInNewRoundedIcon />}
-                  component={RouterLink as unknown as React.ElementType}
-                  to={`/users/${encodeURIComponent(user.UserID || String(user.Id))}`}
-                  sx={{ textTransform: 'none', flex: 1 }}
-                >
-                  詳細を開く
-                </Button>
-              </Stack>
-            </>
-          )}
-        </Stack>
-      </Paper>
+      <UserDetailHeader
+        user={user}
+        variant={variant}
+        onEdit={onEdit}
+        attendanceLabel={attendanceLabel}
+        supportLabel={supportLabel}
+        isActive={isActive}
+      />
 
       {!isEmbedded && (
       <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 3 }}>
@@ -523,12 +389,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
                     <Divider />
                     {section.key === 'support-plan' ? (
                       <Suspense
-                        fallback={
-                          <Stack direction="row" spacing={1} alignItems="center" sx={{ p: 2 }}>
-                            <CircularProgress size={20} />
-                            <span>個別支援計画書を準備中…</span>
-                          </Stack>
-                        }
+                        fallback={<LoadingState message="個別支援計画書を準備中…" inline />}
                       >
                         <ISPSummarySectionLazy userId={user.UserID} />
                       </Suspense>

@@ -1,14 +1,14 @@
-import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { describe, expect, it } from 'vitest';
 
 /**
  * WeekView Density Guardrails
- * 
+ *
  * WeekView uses inline style values (not tokens) for density configuration.
  * These tests prevent regressions where the carefully tuned spacing values
  * get accidentally reverted to wider defaults.
- * 
+ *
  * Protected values:
  * - Lane grid: minWidth (240/260), gridAutoColumns (minmax 240/260), gap (12)
  * - Lane section: padding (8), header marginBottom (8)
@@ -19,9 +19,15 @@ describe('WeekView density guardrails', () => {
   let src: string;
 
   beforeAll(() => {
-    // Read WeekView.tsx from repo root (vitest cwd = repo root)
-    const filePath = path.resolve(process.cwd(), 'src/features/schedules/routes/WeekView.tsx');
-    src = fs.readFileSync(filePath, 'utf8');
+    // NR17: WeekTimeGrid was extracted from WeekView.tsx.
+    // Style values now live in both files — read both and concatenate.
+    const weekViewPath = path.resolve(process.cwd(), 'src/features/schedules/routes/WeekView.tsx');
+    const weekTimeGridPath = path.resolve(process.cwd(), 'src/features/schedules/routes/WeekTimeGrid.tsx');
+    const weekViewSrc = fs.readFileSync(weekViewPath, 'utf8');
+    const weekTimeGridSrc = fs.existsSync(weekTimeGridPath)
+      ? fs.readFileSync(weekTimeGridPath, 'utf8')
+      : '';
+    src = weekViewSrc + '\n' + weekTimeGridSrc;
   });
 
   describe.skip('lane grid density', () => {
