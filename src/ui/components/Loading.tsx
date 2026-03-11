@@ -36,7 +36,7 @@ const LoadingState: React.FC<LoadingStateProps> = ({
       spacing={spacing}
       sx={{ minHeight, py: variant === 'inline' ? 0 : 4 }}
     >
-      <CircularProgress size={size} />
+      <CircularProgress size={size} aria-label={message ?? '読み込み中'} />
       {message && (
         <Typography
           variant={variant === 'page' ? 'body1' : 'body2'}
