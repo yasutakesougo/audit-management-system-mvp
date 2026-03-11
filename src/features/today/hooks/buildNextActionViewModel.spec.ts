@@ -24,6 +24,7 @@ function makeBase(overrides: Partial<BaseInput> = {}): BaseInput {
     urgency: 'medium',
     sceneState: 'pending',
     elapsedMinutes: null,
+    sourceLane: null,
     actions: { start: noop, done: noop, reset: noop },
     ...overrides,
   };

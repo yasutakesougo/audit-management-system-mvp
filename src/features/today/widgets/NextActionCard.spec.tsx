@@ -21,6 +21,7 @@ function makeProps(overrides: Partial<NextActionWithProgress> = {}): NextActionW
     urgency: 'medium',
     sceneState: 'pending',
     elapsedMinutes: null,
+    sourceLane: null,
     actions: { start: noop, done: noop, reset: noop },
     ...overrides,
   };

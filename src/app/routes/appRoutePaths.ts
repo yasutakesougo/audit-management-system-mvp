@@ -7,6 +7,7 @@ export const APP_ROUTE_PATHS = [
   'auth/callback',
   'dashboard',
   'admin/dashboard',
+  'admin',
   'dashboard/briefing',
   'today',
   'room-management',
