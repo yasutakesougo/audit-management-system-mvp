@@ -19,6 +19,7 @@ export type ActionDef = {
 export const ALERT_ACTION_DEFS: Record<string, ActionDef[]> = {
   absent: [
     { id: 'contact-confirm', label: '📞 連絡確認', primary: true },
+    { id: 'evening-confirm', label: '🌆 夕方確認' },
     { id: 'handover-create', label: '📝 申し送り作成' },
   ],
   late: [

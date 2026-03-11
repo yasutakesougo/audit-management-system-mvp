@@ -9,6 +9,8 @@ type AttendanceVisitSnapshot = {
   isEarlyLeave?: boolean;
   /** 検温値 (℃) — 37.5以上で発熱アラート */
   temperature?: number;
+  /** 欠席者の朝連絡受け入れ完了フラグ */
+  morningContacted?: boolean;
   /** 欠席者の夕方フォロー完了フラグ */
   eveningChecked?: boolean;
 };
@@ -42,6 +44,8 @@ const buildDemoVisits = (users: IUserMaster[]): Record<string, AttendanceVisitSn
       status,
       isEarlyLeave,
       temperature: demoTemperature(index),
+      // 欠席者: 朝連絡は大半が完了済み（index%3!==0 で未完了のケースも生成）
+      morningContacted: isAbsent ? index % 3 !== 0 : undefined,
       // 欠席者: 偶数indexは夕方フォロー完了、奇数は未完了
       eveningChecked: isAbsent ? index % 2 === 0 : undefined,
     };

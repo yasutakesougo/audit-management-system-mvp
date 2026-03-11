@@ -141,6 +141,8 @@ const AttendancePanel = (): JSX.Element => {
   const [absenceDialog, setAbsenceDialog] = useState<AbsenceDialogState>({
     open: false, userCode: '', userName: '',
   });
+  /** Track which section to focus when dialog opens from URL deep-link */
+  const [absenceFocusSection, setAbsenceFocusSection] = useState<'morning' | 'evening' | undefined>();
 
   const handleAbsenceClick = useCallback((userCode: string) => {
     const row = rows.find((r) => r.userCode === userCode);
@@ -155,6 +157,7 @@ const AttendancePanel = (): JSX.Element => {
 
   const closeAbsenceDialog = useCallback(() => {
     setAbsenceDialog((prev) => ({ ...prev, open: false }));
+    setAbsenceFocusSection(undefined);
   }, []);
 
   const handleAbsenceSubmit = useCallback((log: AbsentSupportLog) => {
@@ -187,6 +190,7 @@ const AttendancePanel = (): JSX.Element => {
     const absenceUserCode = searchParams.get('absence');
     if (!absenceUserCode || rows.length === 0) return;
 
+    const sectionParam = searchParams.get('section');
     const row = rows.find((r) => r.userCode === absenceUserCode);
     const userName = row?.FullName ?? absenceUserCode;
     setAbsenceDialog({
@@ -195,11 +199,16 @@ const AttendancePanel = (): JSX.Element => {
       userName,
       editData: row?.absentSupport,
     });
+    // Set focus section for auto-scroll (evening deep-link from briefing)
+    if (sectionParam === 'evening') {
+      setAbsenceFocusSection('evening');
+    }
 
-    // Clear the param so it doesn't re-trigger
+    // Clear the params so it doesn't re-trigger
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.delete('absence');
+      next.delete('section');
       return next;
     }, { replace: true });
   }, [searchParams, rows, setSearchParams]);
@@ -296,6 +305,7 @@ const AttendancePanel = (): JSX.Element => {
         open={absenceDialog.open}
         userName={absenceDialog.userName}
         initialData={absenceDialog.editData}
+        focusSection={absenceFocusSection}
         onSubmit={handleAbsenceSubmit}
         onSkip={handleAbsenceSkip}
         onCancel={handleAbsenceCancel}

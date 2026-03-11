@@ -19,6 +19,7 @@ import { useTodaySummary } from '@/features/today/domain';
 import { useApprovalFlow } from '@/features/today/hooks/useApprovalFlow';
 import { useNextAction } from '@/features/today/hooks/useNextAction';
 import { useSceneNextAction } from '@/features/today/hooks/useSceneNextAction';
+import { useTodayScheduleLanes } from '@/features/today/hooks/useTodayScheduleLanes';
 import { TodayBentoLayout } from '@/features/today/layouts/TodayBentoLayout';
 import { recordAutoNextComplete, recordAutoNextSave } from '@/features/today/records/autoNextCounters';
 import { QuickRecordDrawer } from '@/features/today/records/QuickRecordDrawer';
@@ -58,8 +59,21 @@ export const TodayOpsPage: React.FC = () => {
   // 1. Data via Facade (Execution Layer はドメイン集約を持たない)
   const summary = useTodaySummary();
 
-  // 2. Derived: Next Action (hook で算出 — ページが太らない)
-  const nextAction = useNextAction(summary.scheduleLanesToday);
+  // 2. Real-data schedule lanes (P0: truth-source alignment)
+  //    /today now derives NextAction from the same ScheduleRepository as /schedules.
+  //    Falls back to mock lanes from useTodaySummary when real data is loading/empty.
+  const realSchedule = useTodayScheduleLanes();
+  const hasRealLanes =
+    realSchedule.lanes.staffLane.length > 0 ||
+    realSchedule.lanes.userLane.length > 0 ||
+    realSchedule.lanes.organizationLane.length > 0;
+  const effectiveLanes =
+    !realSchedule.isLoading && hasRealLanes
+      ? realSchedule.lanes
+      : summary.scheduleLanesToday;
+
+  // 3. Derived: Next Action (hook で算出 — ページが太らない)
+  const nextAction = useNextAction(effectiveLanes);
 
   // 2b. Scene-based Next Action (場面ベースの次アクション)
   const sceneAction = useSceneNextAction({

@@ -3,4 +3,5 @@ export { inferTodayScene } from './inferTodayScene';
 export type { DayCareStructure, DecisionSupportStructure, LifeSupportStructure, ServiceStructure } from './serviceStructure.types';
 export { sceneLabelMap } from './todayScene';
 export type { TodayScene } from './todayScene';
+export type { TodayScheduleLane, TodayScheduleLanes } from './todayScheduleLane';
 export { useTodaySummary, type TodaySummary } from './useTodaySummary';

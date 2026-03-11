@@ -30,7 +30,7 @@ import {
     TextField,
     Typography,
 } from '@mui/material';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
     EMPTY_ABSENT_LOG,
@@ -64,6 +64,8 @@ export type AbsenceDetailDialogProps = {
   userName: string;
   /** 既存データ（編集時に渡す） */
   initialData?: AbsentSupportLog;
+  /** セクションフォーカス: 'evening' の場合、②夕方連絡セクションに自動スクロール */
+  focusSection?: 'morning' | 'evening';
   onSubmit: (log: AbsentSupportLog) => void;
   onSkip: () => void;
   onCancel: () => void;
@@ -159,11 +161,13 @@ export function AbsenceDetailDialog({
   open,
   userName,
   initialData,
+  focusSection,
   onSubmit,
   onSkip,
   onCancel,
 }: AbsenceDetailDialogProps): JSX.Element {
   const [form, setForm] = useState<FormState>(() => initFormState());
+  const eveningSectionRef = useRef<HTMLDivElement>(null);
 
   // ダイアログが開かれるたびにフォームをリセット
   useEffect(() => {
@@ -171,6 +175,17 @@ export function AbsenceDetailDialog({
       setForm(initFormState(initialData));
     }
   }, [open, initialData]);
+
+  // Auto-scroll to evening section when focusSection='evening'
+  useEffect(() => {
+    if (open && focusSection === 'evening' && eveningSectionRef.current) {
+      // Delay to allow dialog content to render
+      const timer = setTimeout(() => {
+        eveningSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [open, focusSection]);
 
   const setField = useCallback(
     <K extends keyof FormState>(key: K, value: FormState[K]) => {
@@ -282,6 +297,7 @@ export function AbsenceDetailDialog({
 
           {/* ── ② 夕方連絡（様子伺い） ───────────────── */}
           <Paper
+            ref={eveningSectionRef}
             variant="outlined"
             sx={{ p: 2, borderRadius: 2, bgcolor: 'background.default' }}
           >
