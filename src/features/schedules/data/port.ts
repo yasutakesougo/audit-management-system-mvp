@@ -27,6 +27,10 @@ export type CreateScheduleEventInput = {
   ownerUserId?: string;
   visibility?: ScheduleVisibility;
   currentOwnerUserId?: string;
+  // SP adapter fields — needed for SharePoint list item creation/update
+  targetUserId?: string;
+  orgAudience?: string;
+  rowKey?: string;
 };
 
 export type UpdateScheduleEventInput = CreateScheduleEventInput & {

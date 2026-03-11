@@ -110,6 +110,10 @@ export const CreateScheduleInputSchema = z.object({
   ownerUserId: z.string().optional(),
   visibility: ScheduleVisibilitySchema.optional(),
   currentOwnerUserId: z.string().optional(),
+  // SP adapter fields — needed for SharePoint list item creation/update
+  targetUserId: z.string().optional(),
+  orgAudience: z.string().optional(),
+  rowKey: z.string().optional(),
 });
 
 export const UpdateScheduleInputSchema = CreateScheduleInputSchema.extend({

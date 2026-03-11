@@ -1,5 +1,72 @@
 import { ZodError, ZodIssue } from 'zod';
 
+// ===========================================================================
+// 設計方針 (Design Decisions)
+// ===========================================================================
+// 1. `as any` を全廃し、Zod v4 の ZodIssue discriminated union を
+//    `switch (issue.code)` で直接ナローイングする。
+//    → Extract<> 型エイリアスも不要。issue 種別の増減に自動追従。
+//
+// 2. Zod v3 にしか存在しないコード (invalid_string, invalid_enum_value) は
+//    v4 の union リテラル型に含まれないため switch の case に書けない。
+//    → string 変数への代入 + if 文字列比較で switch **前** に処理する。
+//
+// 3. ライブラリ境界で完全な型が取れない箇所 (v3 の options / received 等) は
+//    `as unknown as Record<string, unknown>` で **境界だけを丁寧に緩める**。
+//    `as any` のように型情報を全て捨てるのではなく、Record に限定することで
+//    アクセス先で Array.isArray 等のランタイムガードが効く。
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Zod v3 互換: ZodIssue に `expected` / `received` / `validation` 等が
+// 存在するかどうかを in ガードで安全に判定するための型
+// ---------------------------------------------------------------------------
+interface ZodV3InvalidTypeShape {
+  expected: string;
+  received: string;
+}
+interface ZodV3TooSmallShape {
+  type: string;
+  minimum: number | bigint;
+}
+interface ZodV3TooBigShape {
+  type: string;
+  maximum: number | bigint;
+}
+interface ZodV3InvalidStringShape {
+  validation: string | { includes?: string };
+}
+// Type-safe in-guard helpers
+const hasExpectedReceived = (issue: ZodIssue): issue is ZodIssue & ZodV3InvalidTypeShape =>
+  'expected' in issue && 'received' in issue;
+
+const hasValidation = (issue: ZodIssue): issue is ZodIssue & ZodV3InvalidStringShape =>
+  'validation' in issue;
+
+/**
+ * Derive the "received" type string for invalid_type issues.
+ * - Zod v3: `received` field exists directly
+ * - Zod v4: no `received`, but `input` may be available; derive via typeof
+ * - Fallback: extract from Zod's message string ("received TYPE")
+ */
+const getReceivedType = (issue: ZodIssue): string => {
+  // v3 path: received is a direct field
+  if (hasExpectedReceived(issue)) return issue.received;
+  // v4 path: derive from input (when present)
+  if ('input' in issue) {
+    const input = (issue as ZodIssue & { input: unknown }).input;
+    if (input === null) return 'null';
+    if (input === undefined) return 'undefined';
+    if (Array.isArray(input)) return 'array';
+    return typeof input;
+  }
+  // v4 fallback: extract from message ("Invalid input: expected X, received Y")
+  const match = issue.message.match(/received\s+(\w+)/);
+  if (match) return match[1];
+  return 'unknown';
+};
+
+
 export interface ActionableErrorInfo {
   path: string;
   message: string;
@@ -19,7 +86,6 @@ export const isZodError = (err: unknown): err is ZodError => {
  * Formats a ZodError into a list of actionable error info.
  * Translates Zod hierarchy into human-readable field names where possible.
  */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export const formatZodError = (error: ZodError): ActionableErrorInfo[] => {
   return error.issues.map((issue: ZodIssue) => {
     const path = issue.path.join('.') || '(Root)';
@@ -27,17 +93,20 @@ export const formatZodError = (error: ZodError): ActionableErrorInfo[] => {
 
     // Handle specific Zod issue types for better readability
     if (issue.code === 'invalid_type') {
-      const typeIssue = issue as any;
-      message = `${path}: Expected ${typeIssue.expected}, received ${typeIssue.received}`;
+      // Zod v4: only `expected` exists. Zod v3: both `expected` and `received`.
+      const received = getReceivedType(issue);
+      message = `${path}: Expected ${issue.expected}, received ${received}`;
     } else if (issue.code === 'too_small') {
-      const smallIssue = issue as any;
-      message = `${path}: Value is too small (Minimum ${smallIssue.minimum})`;
+      message = `${path}: Value is too small (Minimum ${issue.minimum})`;
     } else if (issue.code === 'too_big') {
-      const bigIssue = issue as any;
-      message = `${path}: Value is too big (Maximum ${bigIssue.maximum})`;
-    } else if ((issue as any).code === 'invalid_string') {
-      const stringIssue = issue as any;
-      if (typeof stringIssue.validation === 'string' && stringIssue.validation === 'url') {
+      message = `${path}: Value is too big (Maximum ${issue.maximum})`;
+    } else if (issue.code === 'invalid_format') {
+      if (issue.format === 'url') {
+        message = `${path}: Invalid URL format`;
+      }
+    } else if (hasValidation(issue)) {
+      // Zod v3 `invalid_string` compat
+      if (issue.validation === 'url') {
         message = `${path}: Invalid URL format`;
       }
     }
@@ -45,14 +114,15 @@ export const formatZodError = (error: ZodError): ActionableErrorInfo[] => {
     const info: ActionableErrorInfo = {
       path,
       message,
-      code: issue.code,
+      code: issue.code ?? 'unknown',
     };
 
-    if ('expected' in issue) {
-      info.expected = String((issue as any).expected);
-    }
-    if ('received' in issue) {
-      info.received = String((issue as any).received);
+    if (hasExpectedReceived(issue)) {
+      info.expected = String(issue.expected);
+      info.received = String(issue.received);
+    } else if (issue.code === 'invalid_type') {
+      info.expected = String(issue.expected);
+      info.received = getReceivedType(issue);
     }
 
     return info;
@@ -179,67 +249,113 @@ export const translatePath = (segments: (string | number)[]): string => {
 /**
  * 1 件の ZodIssue を職員向け日本語メッセージに変換する。
  *
+ * Zod v3 / v4 両方のフィールド名に対応:
+ * - v3: `type` / `validation` / `options` / `received`
+ * - v4: `origin` / `format` / `values`
+ *
  * @example
  * translateZodIssue(issue)
  * // → '「氏名」に想定外の値が入っています（期待: string, 実際: undefined）'
  */
 export const translateZodIssue = (issue: ZodIssue): string => {
   const path = translatePath(issue.path as (string | number)[]);
-  const iss = issue as any;
-  const code = String(issue.code);
+  // Store code as string to avoid discriminated union narrowing issues
+  // when checking Zod v3-only codes that don't exist in v4's union
+  const code: string = issue.code ?? '';
 
-  switch (code) {
-    case 'invalid_type':
-      return `${path} に想定外の値が入っています（期待: ${iss.expected}, 実際: ${iss.received}）`;
+  // -----------------------------------------------------------------------
+  // Zod v3 compat: codes that don't exist in v4's discriminated union.
+  // TypeScript の switch case は union リテラル型を厳密に検査するため、
+  // v4 に存在しない 'invalid_string' / 'invalid_enum_value' は case に
+  // 書くと TS2678 になる。string 型の code 変数と if で先処理する。
+  // -----------------------------------------------------------------------
+  if (code === 'invalid_string') {
+    if (hasValidation(issue)) {
+      const validation = issue.validation;
+      if (validation === 'datetime') {
+        return `${path} の日付形式が正しくありません（例: 2026-02-27T10:00:00）`;
+      }
+      if (validation === 'url') {
+        return `${path} のURL形式が正しくありません（例: https://...）`;
+      }
+      if (validation === 'email') {
+        return `${path} のメールアドレス形式が正しくありません`;
+      }
+      if (typeof validation === 'object' && validation?.includes === 'regex') {
+        return `${path} の形式が正しくありません`;
+      }
+    }
+    return `${path} の入力形式が正しくありません`;
+  }
+
+  if (code === 'invalid_enum_value') {
+    // v3 の invalid_enum_value は options/received を持つが v4 の型定義には
+    // ないため、unknown → Record<string, unknown> で境界を緩めてから
+    // Array.isArray で安全に検査する。
+    const raw = issue as unknown as Record<string, unknown>;
+    const options = Array.isArray(raw.options) ? (raw.options as string[]) : [];
+    const received = hasExpectedReceived(issue) ? issue.received : '';
+    return options.length > 0
+      ? `${path} に許可されていない値「${received}」が入っています。選択肢: ${options.join(', ')}`
+      : `${path} に許可されていない値が入っています`;
+  }
+
+  // -----------------------------------------------------------------------
+  // Zod v4 codes: proper discriminated union narrowing via switch
+  // -----------------------------------------------------------------------
+  switch (issue.code) {
+    case 'invalid_type': {
+      const received = getReceivedType(issue);
+      return `${path} に想定外の値が入っています（期待: ${issue.expected}, 実際: ${received}）`;
+    }
 
     case 'too_small': {
-      // Zod v3: iss.type, Zod v4: iss.origin
-      const origin = iss.type ?? iss.origin;
+      // Zod v3: issue.type, Zod v4: issue.origin
+      const origin: string =
+        issue.origin ?? ('type' in issue ? String((issue as ZodIssue & ZodV3TooSmallShape).type) : '');
       if (origin === 'string') {
-        return iss.minimum === 1
+        return issue.minimum === 1
           ? `${path} は必須項目です`
-          : `${path} の入力が短すぎます（最低${iss.minimum}文字）`;
+          : `${path} の入力が短すぎます（最低${issue.minimum}文字）`;
       }
       if (origin === 'array') {
-        return `${path} には最低${iss.minimum}件のデータが必要です`;
+        return `${path} には最低${issue.minimum}件のデータが必要です`;
       }
-      return `${path} の値が小さすぎます（最小: ${iss.minimum}）`;
+      return `${path} の値が小さすぎます（最小: ${issue.minimum}）`;
     }
 
     case 'too_big': {
-      const origin = iss.type ?? iss.origin;
+      const origin: string =
+        issue.origin ?? ('type' in issue ? String((issue as ZodIssue & ZodV3TooBigShape).type) : '');
       if (origin === 'string') {
-        return `${path} の入力が長すぎます（最大${iss.maximum}文字）`;
+        return `${path} の入力が長すぎます（最大${issue.maximum}文字）`;
       }
       if (origin === 'array') {
-        return `${path} のデータが多すぎます（最大${iss.maximum}件）`;
+        return `${path} のデータが多すぎます（最大${issue.maximum}件）`;
       }
-      return `${path} の値が大きすぎます（最大: ${iss.maximum}）`;
+      return `${path} の値が大きすぎます（最大: ${issue.maximum}）`;
     }
 
-    case 'invalid_string':
-    case 'invalid_format':
-      if (iss.validation === 'datetime' || iss.format === 'datetime') {
+    case 'invalid_format': {
+      if (issue.format === 'datetime') {
         return `${path} の日付形式が正しくありません（例: 2026-02-27T10:00:00）`;
       }
-      if (iss.validation === 'url' || iss.format === 'url') {
+      if (issue.format === 'url') {
         return `${path} のURL形式が正しくありません（例: https://...）`;
       }
-      if (iss.validation === 'email' || iss.format === 'email') {
+      if (issue.format === 'email') {
         return `${path} のメールアドレス形式が正しくありません`;
       }
-      if (typeof iss.validation === 'object' && iss.validation?.includes === 'regex') {
+      if (issue.format === 'regex') {
         return `${path} の形式が正しくありません`;
       }
       return `${path} の入力形式が正しくありません`;
+    }
 
-    // Zod v3: invalid_enum_value, Zod v4: invalid_value
-    case 'invalid_enum_value':
     case 'invalid_value': {
-      const options = (iss.options as string[])?.join(', ') ?? '';
-      const received = iss.received ?? '';
-      return options
-        ? `${path} に許可されていない値「${received}」が入っています。選択肢: ${options}`
+      const values = issue.values?.map(String).join(', ') ?? '';
+      return values
+        ? `${path} に許可されていない値が入っています。選択肢: ${values}`
         : `${path} に許可されていない値が入っています`;
     }
 
