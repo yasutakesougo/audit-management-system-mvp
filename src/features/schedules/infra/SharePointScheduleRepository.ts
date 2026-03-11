@@ -4,6 +4,7 @@ import {
     removeSchedule,
     updateSchedule,
     type CreateScheduleInput as RepoCreateInput,
+    type RepoSchedule,
     type UpdateScheduleInput as RepoUpdateInput,
 } from '@/infra/sharepoint/repos/schedulesRepo';
 import { AuthRequiredError, toSafeError } from '@/lib/errors';
@@ -36,22 +37,7 @@ export { dayKeyInTz, monthKeyInTz } from './scheduleSpUtils';
 /**
  * Helper: Map repo schedule to domain ScheduleItem
  */
-const mapRepoScheduleToScheduleItem = (repo: {
-  id: number;
-  etag?: string;
-  title: string;
-  eventDate: string;
-  endDate: string;
-  status?: string;
-  serviceType?: string;
-  personType: string;
-  personId: string;
-  personName?: string;
-  assignedStaffId?: string;
-  note?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}): ScheduleItem | null => {
+const mapRepoScheduleToScheduleItem = (repo: RepoSchedule): ScheduleItem | null => {
   try {
     return {
       id: String(repo.id),
@@ -80,32 +66,6 @@ export type SharePointScheduleRepositoryOptions = {
   acquireToken?: () => Promise<string | null>;
   listTitle?: string;
   currentOwnerUserId?: string; // For visibility filtering
-};
-
-// ─── Local types to avoid `as any` casts ────────────────────────────────────
-
-/** Extended input that may optionally carry SP-specific fields */
-type ScheduleInputExtended = {
-  targetUserId?: string;
-  orgAudience?: string;
-};
-
-/** Minimal shape returned by createSchedule / updateSchedule */
-type ScheduleRepoResult = {
-  id: number;
-  etag?: string;
-  title: string;
-  eventDate: string;
-  endDate: string;
-  status?: string;
-  serviceType?: string;
-  personType: string;
-  personId: string;
-  personName?: string;
-  assignedStaffId?: string;
-  note?: string;
-  createdAt?: string;
-  updatedAt?: string;
 };
 
 /**
@@ -370,19 +330,17 @@ export class SharePointScheduleRepository implements ScheduleRepository {
         personId: input.userId || '',
         personName: input.userName,
         assignedStaffId: input.assignedStaffId,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        targetUserId: (input as unknown as ScheduleInputExtended).targetUserId,
+        targetUserId: input.targetUserId,
         rowKey: generateRowKey(),
         dayKey,
         monthKey,
         fiscalYear,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        orgAudience: (input as unknown as ScheduleInputExtended).orgAudience,
+        orgAudience: input.orgAudience,
         notes: input.notes,
       };
 
       const created = await createSchedule(client, createPayload);
-      const item = mapRepoScheduleToScheduleItem(created as unknown as ScheduleRepoResult);
+      const item = mapRepoScheduleToScheduleItem(created);
 
       if (!item) {
         throw new Error('Failed to map created schedule');
@@ -461,18 +419,16 @@ export class SharePointScheduleRepository implements ScheduleRepository {
         personId: input.userId,
         personName: input.userName,
         assignedStaffId: input.assignedStaffId,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        targetUserId: (input as unknown as ScheduleInputExtended).targetUserId,
+        targetUserId: input.targetUserId,
         dayKey,
         monthKey,
         fiscalYear: String(startDate.getFullYear()),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        orgAudience: (input as unknown as ScheduleInputExtended).orgAudience,
+        orgAudience: input.orgAudience,
         notes: input.notes,
       };
 
       const updated = await updateSchedule(client, idNum, etag, updatePayload);
-      const item = mapRepoScheduleToScheduleItem(updated as unknown as ScheduleRepoResult);
+      const item = mapRepoScheduleToScheduleItem(updated);
 
       if (!item) {
         throw new Error('Failed to map updated schedule');

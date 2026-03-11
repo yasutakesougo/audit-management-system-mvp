@@ -2,11 +2,12 @@
  * TodayServiceStructureCard — 今日の業務体制
  *
  * 「担当表」ではなく「業務体制」を可視化する。
- * 3セクション: 生活介護 / 生活支援 / 判断窓口
+ * 4セクション: 生活介護 / 生活支援 / 判断窓口 / 運営サポート
  *
  * - 生活介護: 集団対応の配置・役割
  * - 生活支援: ショートステイ・一時ケア受け入れ体制
- * - 判断窓口: 所長・サビ管・ナースの在席
+ * - 判断窓口: 所長・サビ管・ナースの在席（管理者・専門職）
+ * - 運営サポート: 会計・給食・送迎・ボランティア・来客の配置
  *
  * @see Issue 3: /today に TodayServiceStructureCard を追加
  */
@@ -16,10 +17,8 @@ import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import {
     Box,
     Chip,
-    Divider,
-    Paper,
     Stack,
-    Typography,
+    Typography
 } from '@mui/material';
 import React from 'react';
 import type { ServiceStructure } from '../domain/serviceStructure.types';
@@ -36,14 +35,14 @@ export type TodayServiceStructureCardProps = {
 function RoleRow({ label, names }: { label: string; names: string[] }) {
   if (names.length === 0) return null;
   return (
-    <Box sx={{ display: 'flex', gap: 1, alignItems: 'baseline', py: 0.25 }}>
+    <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'baseline', py: 0.125 }}>
       <Typography
         variant="caption"
-        sx={{ color: 'text.secondary', minWidth: 90, flexShrink: 0, fontSize: '0.7rem' }}
+        sx={{ color: 'text.secondary', minWidth: 72, flexShrink: 0, fontSize: '0.68rem' }}
       >
         {label}
       </Typography>
-      <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
+      <Typography variant="body2" sx={{ fontSize: '0.78rem' }}>
         {names.join('、')}
       </Typography>
     </Box>
@@ -52,13 +51,13 @@ function RoleRow({ label, names }: { label: string; names: string[] }) {
 
 function PresenceIndicator({ label, present, names }: { label: string; present: boolean; names: string[] }) {
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.25 }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, py: 0.125 }}>
       {present ? (
-        <CheckCircleIcon sx={{ fontSize: 16, color: 'success.main' }} />
+        <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
       ) : (
-        <RemoveCircleOutlineIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
+        <RemoveCircleOutlineIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
       )}
-      <Typography variant="body2" sx={{ fontSize: '0.8rem', minWidth: 48 }}>
+      <Typography variant="body2" sx={{ fontSize: '0.76rem', minWidth: 40 }}>
         {label}
       </Typography>
       <Chip
@@ -66,10 +65,10 @@ function PresenceIndicator({ label, present, names }: { label: string; present: 
         label={present ? '在席' : '不在'}
         color={present ? 'success' : 'default'}
         variant={present ? 'filled' : 'outlined'}
-        sx={{ fontSize: '0.65rem', height: 20, '& .MuiChip-label': { px: 0.75 } }}
+        sx={{ fontSize: '0.6rem', height: 18, '& .MuiChip-label': { px: 0.5 } }}
       />
       {present && names.length > 0 && (
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem' }}>
           {names.join('、')}
         </Typography>
       )}
@@ -80,7 +79,7 @@ function PresenceIndicator({ label, present, names }: { label: string; present: 
 function SectionHeader({ emoji, title }: { emoji: string; title: string }) {
   return (
     <Typography
-      variant="subtitle2"
+      variant="caption"
       sx={{
         display: 'flex',
         alignItems: 'center',
@@ -88,8 +87,8 @@ function SectionHeader({ emoji, title }: { emoji: string; title: string }) {
         fontWeight: 700,
         letterSpacing: '0.04em',
         color: 'text.secondary',
-        fontSize: '0.75rem',
-        mb: 0.75,
+        fontSize: '0.7rem',
+        mb: 0.25,
       }}
     >
       {emoji} {title}
@@ -102,7 +101,7 @@ function SectionHeader({ emoji, title }: { emoji: string; title: string }) {
 export const TodayServiceStructureCard: React.FC<TodayServiceStructureCardProps> = ({
   serviceStructure,
 }) => {
-  const { dayCare, lifeSupport, decisionSupport } = serviceStructure;
+  const { dayCare, lifeSupport, decisionSupport, operationalSupport } = serviceStructure;
 
   const hasDayCareStaff =
     dayCare.floorWatchStaff.length > 0 ||
@@ -114,16 +113,16 @@ export const TodayServiceStructureCard: React.FC<TodayServiceStructureCardProps>
   const hasLifeSupport = lifeSupport.shortStayCount > 0 || lifeSupport.temporaryCareCount > 0;
 
   return (
-    <Paper
-      data-testid="today-service-structure-card"
-      sx={{ p: 2.5, mb: 3 }}
-    >
-      <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1.5 }}>
-        🏢 今日の業務体制
-      </Typography>
-
-      <Stack spacing={1.5}>
-        {/* ── A. 生活介護 ── */}
+    <Box data-testid="today-service-structure-card">
+      {/* ── 2x2 grid: 生活介護 / 生活支援 / 判断窓口 / 運営サポート ── */}
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+          gap: { xs: 1, sm: 1.5 },
+        }}
+      >
+        {/* A. 生活介護 */}
         <Box>
           <SectionHeader emoji="🟢" title="生活介護" />
           {hasDayCareStaff ? (
@@ -137,48 +136,48 @@ export const TodayServiceStructureCard: React.FC<TodayServiceStructureCardProps>
           ) : (
             <EmptyStateBlock
               icon={<BusinessCenterIcon />}
-              title="配置情報はありません"
-              description="スケジュール登録後に表示されます。"
+              title="配置情報なし"
+              description="スケジュール登録後に表示"
               testId="empty-daycare"
             />
           )}
         </Box>
 
-        <Divider sx={{ my: 0.5 }} />
-
-        {/* ── B. 生活支援（ショートステイ・一時ケア） ── */}
+        {/* B. 生活支援 */}
         <Box>
-          <SectionHeader emoji="🔵" title="生活支援（ショートステイ・一時ケア）" />
+          <SectionHeader emoji="🔵" title="生活支援" />
           {hasLifeSupport ? (
             <Box data-testid="section-life-support">
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 0.5 }}>
+              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 0.25 }}>
                 {lifeSupport.shortStayCount > 0 && (
                   <Chip
                     size="small"
-                    label={`ショートステイ ${lifeSupport.shortStayCount}件`}
+                    label={`SS ${lifeSupport.shortStayCount}件`}
                     color="primary"
                     variant="outlined"
+                    sx={{ height: 20, fontSize: '0.65rem' }}
                   />
                 )}
                 {lifeSupport.temporaryCareCount > 0 && (
                   <Chip
                     size="small"
-                    label={`一時ケア ${lifeSupport.temporaryCareCount}件`}
+                    label={`一時 ${lifeSupport.temporaryCareCount}件`}
                     color="secondary"
                     variant="outlined"
+                    sx={{ height: 20, fontSize: '0.65rem' }}
                   />
                 )}
-              </Box>
-              <RoleRow label="受け入れ窓口" names={lifeSupport.intakeDeskStaff} />
-              <RoleRow label="対応職員" names={lifeSupport.supportStaff} />
-              <RoleRow label="調整確認" names={lifeSupport.coordinatorStaff} />
+              </Stack>
+              <RoleRow label="窓口" names={lifeSupport.intakeDeskStaff} />
+              <RoleRow label="対応" names={lifeSupport.supportStaff} />
+              <RoleRow label="調整" names={lifeSupport.coordinatorStaff} />
               {lifeSupport.notes.length > 0 && (
-                <Box sx={{ mt: 0.5 }}>
+                <Box sx={{ mt: 0.25 }}>
                   {lifeSupport.notes.map((note, i) => (
                     <Typography
                       key={i}
                       variant="caption"
-                      sx={{ display: 'block', color: 'warning.main', fontSize: '0.7rem' }}
+                      sx={{ display: 'block', color: 'warning.main', fontSize: '0.65rem' }}
                     >
                       ⚠ {note}
                     </Typography>
@@ -190,24 +189,32 @@ export const TodayServiceStructureCard: React.FC<TodayServiceStructureCardProps>
             <Typography
               variant="caption"
               color="text.secondary"
-              sx={{ fontStyle: 'italic', py: 0.5, display: 'block' }}
+              sx={{ fontStyle: 'italic', display: 'block', fontSize: '0.68rem' }}
               data-testid="empty-life-support"
             >
-              本日の生活支援受け入れ予定はありません
+              受け入れ予定なし
             </Typography>
           )}
         </Box>
 
-        <Divider sx={{ my: 0.5 }} />
-
-        {/* ── C. 判断窓口 ── */}
+        {/* C. 判断窓口（管理者・専門職） */}
         <Box data-testid="section-decision-support">
           <SectionHeader emoji="🟡" title="判断窓口" />
           <PresenceIndicator label="所長" present={decisionSupport.directorPresent} names={decisionSupport.directorNames} />
           <PresenceIndicator label="サビ管" present={decisionSupport.serviceManagerPresent} names={decisionSupport.serviceManagerNames} />
           <PresenceIndicator label="ナース" present={decisionSupport.nursePresent} names={decisionSupport.nurseNames} />
         </Box>
-      </Stack>
-    </Paper>
+
+        {/* D. 運営サポート（会計・給食・送迎） */}
+        <Box data-testid="section-operational-support">
+          <SectionHeader emoji="🟠" title="運営サポート" />
+          <PresenceIndicator label="会計" present={operationalSupport.accountantPresent} names={operationalSupport.accountantNames} />
+          <RoleRow label="給食" names={operationalSupport.mealStaff} />
+          <RoleRow label="送迎" names={operationalSupport.transportStaff} />
+          <RoleRow label="日中ボランティア" names={operationalSupport.volunteerStaff} />
+          <RoleRow label="日中来客" names={operationalSupport.visitorNames} />
+        </Box>
+      </Box>
+    </Box>
   );
 };

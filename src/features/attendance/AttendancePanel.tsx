@@ -11,7 +11,7 @@ import {
     ToggleButtonGroup
 } from '@mui/material';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import type { AbsentSupportLog } from '@/features/service-provision/domain/absentSupportLog';
 
@@ -36,6 +36,7 @@ const TEMP_DIALOG_CLOSED: TempDialogState = { open: false, userCode: '', userNam
 const AttendancePanel = (): JSX.Element => {
   const { status, rows, filters, inputMode, savingUsers, savedTempsByUser, notification, dismissNotification, actions } = useAttendance();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // ── Temperature draft state ──
   const [tempDraftByUser, setTempDraftByUser] = useState<Record<string, number>>({});
@@ -180,6 +181,28 @@ const AttendancePanel = (): JSX.Element => {
       editData: detailRow.absentSupport,
     });
   }, [detailRow]);
+
+  // ── Auto-open absence dialog from URL param (briefing → attendance flow) ──
+  useEffect(() => {
+    const absenceUserCode = searchParams.get('absence');
+    if (!absenceUserCode || rows.length === 0) return;
+
+    const row = rows.find((r) => r.userCode === absenceUserCode);
+    const userName = row?.FullName ?? absenceUserCode;
+    setAbsenceDialog({
+      open: true,
+      userCode: absenceUserCode,
+      userName,
+      editData: row?.absentSupport,
+    });
+
+    // Clear the param so it doesn't re-trigger
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('absence');
+      return next;
+    }, { replace: true });
+  }, [searchParams, rows, setSearchParams]);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, minHeight: 0 }}>

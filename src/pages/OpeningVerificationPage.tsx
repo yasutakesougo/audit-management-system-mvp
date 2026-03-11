@@ -7,57 +7,37 @@
  * Step4: CRUD テスト           → Read / Create / Update
  *
  * /admin/debug/opening-verification でアクセス
- *
- * ─ 構造 ─
- * This page orchestrates the 4 verification steps.
- * Extracted sub-modules:
- *   openingVerification/types.ts          — local interfaces
- *   openingVerification/constants.ts      — constants, style helpers, icon fns
- *   openingVerification/exportMarkdown.ts — markdown report builder (pure)
- *   openingVerification/OvpStep1ListTable.tsx
- *   openingVerification/OvpStep2FieldTable.tsx
- *   openingVerification/OvpStep3SelectTable.tsx
- *   openingVerification/OvpStep4CrudTable.tsx
- *   openingVerification/OvpLogConsole.tsx
  */
 import { WriteDisabledBanner } from '@/components/WriteDisabledBanner';
 import { isWriteEnabled } from '@/env';
 import { getAppConfig } from '@/lib/env';
-import { checkAllLists, type HealthCheckSummary } from '@/sharepoint/spListHealthCheck';
+import { checkAllLists, type HealthCheckSummary, type ListCheckResult } from '@/sharepoint/spListHealthCheck';
 import { SP_LIST_REGISTRY } from '@/sharepoint/spListRegistry';
 import { useMsal } from '@azure/msal-react';
 import { useCallback, useState } from 'react';
 
 import {
-    buildCrudTargets,
     DAY0_REQUIRED_KEYS,
     FIELD_MAPS,
     FIELD_TYPE_HINTS,
     SELECT_TARGETS,
     TYPE_EXPECTATIONS,
-} from './openingVerification/constants';
-import { buildVerificationMarkdown } from './openingVerification/exportMarkdown';
-import { OvpLogConsole } from './openingVerification/OvpLogConsole';
-import { OvpStep1ListTable } from './openingVerification/OvpStep1ListTable';
-import { OvpStep2FieldTable } from './openingVerification/OvpStep2FieldTable';
-import { OvpStep3SelectTable } from './openingVerification/OvpStep3SelectTable';
-import { OvpStep4CrudTable } from './openingVerification/OvpStep4CrudTable';
-import type { CrudResult, FieldCheckResult, SelectCheckResult } from './openingVerification/types';
-
-// ---------------------------------------------------------------------------
-// Button style helper
-// ---------------------------------------------------------------------------
-const btnStyle = (color: string, running: boolean): React.CSSProperties => ({
-  padding: '10px 20px',
-  fontSize: '14px',
-  fontWeight: 'bold',
-  background: running ? '#ccc' : color,
-  color: 'white',
-  border: 'none',
-  borderRadius: '6px',
-  cursor: running ? 'not-allowed' : 'pointer',
-  marginRight: '8px',
-});
+} from './opening-verification/constants';
+import {
+    btnStyle,
+    crudIcon,
+    exportMarkdown,
+    sectionStyle,
+    statusIcon,
+    tdStyle,
+    thStyle,
+} from './opening-verification/helpers';
+import type {
+    CrudResult,
+    Fetcher,
+    FieldCheckResult,
+    SelectCheckResult,
+} from './opening-verification/types';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -87,7 +67,7 @@ export default function OpeningVerificationPage() {
   const log = useCallback((msg: string) => setLogs(prev => [...prev, `[${new Date().toLocaleTimeString('ja-JP')}] ${msg}`]), []);
 
   // ── Helper: get authenticated fetcher ──
-  const getFetcher = async () => {
+  const getFetcher = async (): Promise<Fetcher> => {
     if (accounts.length === 0) throw new Error('No MSAL account. Please login first.');
     const env = getAppConfig();
     const account = accounts[0];
@@ -120,7 +100,7 @@ export default function OpeningVerificationPage() {
     log('📋 Step1: リスト存在確認開始...');
     try {
       const fetcher = await getFetcher();
-      const day0Entries = SP_LIST_REGISTRY.filter(e => DAY0_REQUIRED_KEYS.includes(e.key as typeof DAY0_REQUIRED_KEYS[number]));
+      const day0Entries = SP_LIST_REGISTRY.filter(e => DAY0_REQUIRED_KEYS.includes(e.key));
       const result = await checkAllLists(fetcher, day0Entries);
       setHealthResult(result);
       log(`📋 Step1完了: ${result.ok}/${result.total} OK, ${result.notFound} 未発見, ${result.forbidden} 権限不足`);
@@ -172,8 +152,8 @@ export default function OpeningVerificationPage() {
             continue;
           }
 
-          const data = await response.json() as { value: Array<{ InternalName: string; TypeAsString: string; Required: boolean }> };
-          const tenantFields = data.value ?? [];
+          const data = await response.json();
+          const tenantFields: Array<{ InternalName: string; TypeAsString: string; Required: boolean }> = data.value || [];
           const tenantFieldMap = new Map(tenantFields.map(f => [f.InternalName, f]));
 
           for (const [logicalName, spFieldName] of Object.entries(fieldMap)) {
@@ -229,7 +209,6 @@ export default function OpeningVerificationPage() {
               log(`  ❌ ${listName}.${spFieldName} (${logicalName}) が見つかりません`);
             }
           }
-
           const mappedInternalNames = new Set(Object.values(fieldMap));
           const unmappedRequired = tenantFields.filter(
             f => f.Required && !mappedInternalNames.has(f.InternalName) && !['ContentType', 'ContentTypeId'].includes(f.InternalName)
@@ -249,10 +228,14 @@ export default function OpeningVerificationPage() {
             log(`  ⚠️ ${listName}: Required列 "${f.InternalName}" がFIELD_MAPに未定義 — Create時に400エラーの原因になります`);
           }
 
-          const lookupFields = tenantFields.filter(f => f.TypeAsString === 'Lookup' && mappedInternalNames.has(f.InternalName));
+          const lookupFields = tenantFields.filter(
+            f => f.TypeAsString === 'Lookup' && mappedInternalNames.has(f.InternalName)
+          );
           for (const f of lookupFields) {
             const existing = results.find(r => r.listKey === listKey && r.fieldTenant === f.InternalName);
-            if (existing) existing.isLookup = true;
+            if (existing) {
+              existing.isLookup = true;
+            }
             log(`  🔗 ${listName}.${f.InternalName}: Lookup型 — REST APIにはnumber(ID)で送信が必要です`);
           }
 
@@ -312,9 +295,9 @@ export default function OpeningVerificationPage() {
           result.httpStatus = response.status;
 
           if (response.ok) {
-            const data = await response.json() as { value: unknown[] };
+            const data = await response.json();
             result.status = 'ok';
-            result.sampleCount = (data.value ?? []).length;
+            result.sampleCount = (data.value || []).length;
             log(`    ✅ SELECT成功: ${target.selectFields.length}列, ${result.sampleCount}件取得`);
           } else {
             const errText = await response.text().catch(() => '');
@@ -356,7 +339,58 @@ export default function OpeningVerificationPage() {
     setCrudResults([]);
     log('🧪 Step4: CRUD確認開始...');
 
-    const targets = buildCrudTargets();
+    const targets: Array<{
+      entity: string;
+      listKey: string;
+      selectFields: string;
+      createPayload?: Record<string, unknown>;
+      updateField?: string;
+      updateValue?: unknown;
+    }> = [
+      {
+        entity: 'Users',
+        listKey: 'users_master',
+        selectFields: 'Id,Title,UserID,FullName',
+      },
+      {
+        entity: 'Daily',
+        listKey: 'daily_activity_records',
+        selectFields: 'Id,UserCode,RecordDate,TimeSlot,Observation',
+        createPayload: {
+          UserCode: '__SMOKE_TEST__',
+          RecordDate: new Date().toISOString().slice(0, 10),
+          TimeSlot: '09:00-10:00',
+          Observation: 'A班開通テスト - 自動作成レコード',
+        },
+        updateField: 'Observation',
+        updateValue: 'A班開通テスト - 更新済み',
+      },
+      {
+        entity: 'Attendance',
+        listKey: 'attendance_daily',
+        selectFields: 'Id,UserCode,RecordDate,Status',
+      },
+      {
+        entity: 'Handoff',
+        listKey: 'handoff',
+        selectFields: 'Id,Title,Message,Status,Created',
+        createPayload: {
+          Title: `A班開通テスト_${Date.now()}`,
+          Message: 'A班開通テスト - 自動作成引継ぎ',
+          Status: '未対応',
+          Category: 'テスト',
+          Severity: '通常',
+        },
+        updateField: 'Status',
+        updateValue: '対応済み',
+      },
+      {
+        entity: 'Staff Attendance',
+        listKey: 'staff_attendance',
+        selectFields: 'Id,StaffId,RecordDate,Status',
+      },
+    ];
+
     const results: CrudResult[] = [];
 
     try {
@@ -381,9 +415,9 @@ export default function OpeningVerificationPage() {
         try {
           const readResp = await fetcher(`${listPath}/items?$top=5&$select=${target.selectFields}`);
           if (readResp.ok) {
-            const data = await readResp.json() as { value: unknown[] };
+            const data = await readResp.json();
             result.read = 'ok';
-            result.readCount = (data.value ?? []).length;
+            result.readCount = (data.value || []).length;
             log(`    ✅ Read: ${result.readCount} items`);
           } else {
             result.read = 'fail';
@@ -400,7 +434,7 @@ export default function OpeningVerificationPage() {
         if (target.createPayload && isWriteEnabled) {
           try {
             const listInfoResp = await fetcher(`${listPath}?$select=ListItemEntityTypeFullName`);
-            const listInfo = await listInfoResp.json() as { ListItemEntityTypeFullName?: string };
+            const listInfo = await listInfoResp.json();
             const entityType = listInfo.ListItemEntityTypeFullName;
 
             const createResp = await fetcher(`${listPath}/items`, {
@@ -415,7 +449,7 @@ export default function OpeningVerificationPage() {
               }),
             });
             if (createResp.ok || createResp.status === 201) {
-              const created = await createResp.json() as { Id?: number };
+              const created = await createResp.json();
               result.create = 'ok';
               result.createdId = created.Id;
               log(`    ✅ Create: Id=${created.Id}`);
@@ -447,7 +481,9 @@ export default function OpeningVerificationPage() {
                 'X-HTTP-Method': 'MERGE',
                 'If-Match': '*',
               },
-              body: JSON.stringify({ [target.updateField]: target.updateValue }),
+              body: JSON.stringify({
+                [target.updateField]: target.updateValue,
+              }),
             });
             if (updateResp.ok || updateResp.status === 204) {
               result.update = 'ok';
@@ -481,22 +517,10 @@ export default function OpeningVerificationPage() {
     setCrudRunning(false);
   };
 
-  // ── Export all results as markdown ──
-  const exportMarkdown = () => {
-    const md = buildVerificationMarkdown(healthResult, fieldResults, selectResults, crudResults);
-    const blob = new Blob([md], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `opening-verification-${new Date().toISOString().slice(0, 10)}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
-    log('📥 マークダウンレポートをダウンロードしました');
-  };
-
   // ═══════════════════════════════════════════════════════════════
   // JSX
   // ═══════════════════════════════════════════════════════════════
+
   return (
     <div style={{ padding: '2rem', maxWidth: '1100px', margin: '0 auto', fontFamily: 'system-ui, sans-serif' }}>
       <WriteDisabledBanner />
@@ -522,25 +546,167 @@ export default function OpeningVerificationPage() {
         <button style={btnStyle('#28a745', crudRunning)} onClick={runStep4} disabled={crudRunning}>
           {crudRunning ? 'テスト中...' : '🧪 Step4: CRUD確認'}
         </button>
-        <button style={btnStyle('#dc3545', false)} onClick={exportMarkdown}>
+        <button style={btnStyle('#dc3545', false)} onClick={() => exportMarkdown(healthResult, fieldResults, selectResults, crudResults, log)}>
           📥 レポート出力
         </button>
       </div>
 
-      {/* ── Step 1 Results ── */}
-      {healthResult && <OvpStep1ListTable healthResult={healthResult} />}
+      {/* ── Step1 Results ── */}
+      {healthResult && (
+        <div style={sectionStyle}>
+          <h2 style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>
+            📋 Step1: リスト存在確認 ({healthResult.ok}/{healthResult.total} OK)
+          </h2>
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', fontSize: '13px' }}>
+            <span>✅ OK: {healthResult.ok}</span>
+            <span>❌ Not Found: {healthResult.notFound}</span>
+            <span>🔒 Forbidden: {healthResult.forbidden}</span>
+            <span>⚠️ Error: {healthResult.errors}</span>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Status</th>
+                <th style={thStyle}>名前</th>
+                <th style={thStyle}>SPリスト名</th>
+                <th style={thStyle}>HTTP</th>
+                <th style={thStyle}>詳細</th>
+              </tr>
+            </thead>
+            <tbody>
+              {healthResult.results.map((r: ListCheckResult) => (
+                <tr key={r.key} style={{ background: r.status === 'ok' ? '#f9fff9' : '#fff5f5' }}>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>{statusIcon(r.status)}</td>
+                  <td style={tdStyle}>{r.displayName}</td>
+                  <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: '12px' }}>{r.listName}</td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>{r.httpStatus ?? '—'}</td>
+                  <td style={{ ...tdStyle, color: '#c00', fontSize: '11px' }}>{r.error ?? ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {/* ── Step 2 Results ── */}
-      {fieldResults.length > 0 && <OvpStep2FieldTable fieldResults={fieldResults} />}
+      {/* ── Step2 Results ── */}
+      {fieldResults.length > 0 && (
+        <div style={sectionStyle}>
+          <h2 style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>
+            🔍 Step2: フィールド照合 ({fieldResults.filter(r => r.status === 'ok').length}/{fieldResults.length} OK)
+          </h2>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Status</th>
+                <th style={thStyle}>List</th>
+                <th style={thStyle}>App Field</th>
+                <th style={thStyle}>Tenant</th>
+                <th style={thStyle}>Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fieldResults.map((r, i) => (
+                <tr key={`${r.listKey}-${r.fieldApp}-${i}`} style={{ background: r.status === 'ok' ? '#f9fff9' : '#fff5f5' }}>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>
+                    {r.status === 'ok' ? '✅' : r.status === 'missing' ? '❌' : '⚠️'}
+                  </td>
+                  <td style={tdStyle}>{r.listKey}</td>
+                  <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: '12px' }}>{r.fieldApp}</td>
+                  <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: '12px' }}>{r.fieldTenant}</td>
+                  <td style={{ ...tdStyle, fontSize: '12px' }}>{r.tenantType ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {/* ── Step 3 SELECT Results ── */}
-      {selectResults.length > 0 && <OvpStep3SelectTable selectResults={selectResults} />}
+      {/* ── Step3 SELECT Results ── */}
+      {selectResults.length > 0 && (
+        <div style={sectionStyle}>
+          <h2 style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>
+            📊 Step3: SELECTクエリ検証 ({selectResults.filter(r => r.status === 'ok').length}/{selectResults.length} 成功)
+          </h2>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Status</th>
+                <th style={thStyle}>List</th>
+                <th style={thStyle}>列数</th>
+                <th style={thStyle}>HTTP</th>
+                <th style={thStyle}>エラー詳細</th>
+              </tr>
+            </thead>
+            <tbody>
+              {selectResults.map(r => (
+                <tr key={r.listKey} style={{ background: r.status === 'ok' ? '#f9fff9' : '#fff5f5' }}>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>{r.status === 'ok' ? '✅' : '❌'}</td>
+                  <td style={tdStyle}>{r.listKey}</td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>{r.fieldCount}</td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>{r.httpStatus ?? '—'}</td>
+                  <td style={{ ...tdStyle, color: '#c00', fontSize: '11px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {r.error ?? ''}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {/* ── Step 4 CRUD Results ── */}
-      {crudResults.length > 0 && <OvpStep4CrudTable crudResults={crudResults} />}
+      {/* ── Step4 CRUD Results ── */}
+      {crudResults.length > 0 && (
+        <div style={sectionStyle}>
+          <h2 style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>
+            🧪 Step4: CRUD確認
+          </h2>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Entity</th>
+                <th style={thStyle}>List</th>
+                <th style={thStyle}>Read</th>
+                <th style={thStyle}>Create</th>
+                <th style={thStyle}>Update</th>
+                <th style={thStyle}>詳細</th>
+              </tr>
+            </thead>
+            <tbody>
+              {crudResults.map(r => (
+                <tr key={r.entity}>
+                  <td style={{ ...tdStyle, fontWeight: 600 }}>{r.entity}</td>
+                  <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: '12px' }}>{r.listName}</td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>{crudIcon(r.read)} {r.readCount !== undefined ? `(${r.readCount})` : ''}</td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>{crudIcon(r.create)} {r.createdId ? `(#${r.createdId})` : ''}</td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>{crudIcon(r.update)}</td>
+                  <td style={{ ...tdStyle, color: '#c00', fontSize: '11px' }}>
+                    {[r.readError, r.createError, r.updateError].filter(Boolean).join('; ')}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* ── Log Console ── */}
-      <OvpLogConsole logs={logs} />
+      <div style={{
+        background: '#1e1e1e',
+        color: '#d4d4d4',
+        padding: '1rem',
+        borderRadius: '8px',
+        maxHeight: '300px',
+        overflowY: 'auto',
+        whiteSpace: 'pre-wrap',
+        fontSize: '12px',
+        lineHeight: '1.6',
+        fontFamily: 'monospace',
+      }}>
+        {logs.length === 0
+          ? <span style={{ color: '#666' }}>Ready. 上のボタンをクリックして開始してください。</span>
+          : logs.map((l, i) => <div key={i}>{l}</div>)
+        }
+      </div>
     </div>
   );
 }

@@ -29,6 +29,14 @@ const fullStructure: ServiceStructure = {
     serviceManagerNames: ['佐藤'],
     nurseNames: ['鈴木'],
   },
+  operationalSupport: {
+    accountantPresent: true,
+    accountantNames: ['高橋'],
+    mealStaff: ['渡辺', '小林'],
+    transportStaff: ['加藤', '吉田'],
+    volunteerStaff: ['山口'],
+    visitorNames: ['外部監査員・佐藤'],
+  },
 };
 
 const emptyLifeSupport: ServiceStructure = {
@@ -74,9 +82,9 @@ describe('TodayServiceStructureCard — 生活支援', () => {
     render(<TodayServiceStructureCard serviceStructure={fullStructure} />);
 
     expect(screen.getByTestId('section-life-support')).toBeInTheDocument();
-    expect(screen.getByText('ショートステイ 1件')).toBeInTheDocument();
-    expect(screen.getByText('一時ケア 2件')).toBeInTheDocument();
-    expect(screen.getByText('受け入れ窓口')).toBeInTheDocument();
+    expect(screen.getByText('SS 1件')).toBeInTheDocument();
+    expect(screen.getByText('一時 2件')).toBeInTheDocument();
+    expect(screen.getByText('窓口')).toBeInTheDocument();
     expect(screen.getByText('高橋、伊藤')).toBeInTheDocument();
   });
 
@@ -90,33 +98,65 @@ describe('TodayServiceStructureCard — 生活支援', () => {
     render(<TodayServiceStructureCard serviceStructure={emptyLifeSupport} />);
 
     expect(screen.getByTestId('empty-life-support')).toBeInTheDocument();
-    expect(screen.getByText('本日の生活支援受け入れ予定はありません')).toBeInTheDocument();
+    expect(screen.getByText('受け入れ予定なし')).toBeInTheDocument();
   });
 });
 
 describe('TodayServiceStructureCard — 判断窓口', () => {
-  it('所長・サビ管・ナース在席が表示される', () => {
+  it('所長・サビ管・ナース在席が表示される（管理者・専門職のみ）', () => {
     render(<TodayServiceStructureCard serviceStructure={fullStructure} />);
 
-    expect(screen.getByTestId('section-decision-support')).toBeInTheDocument();
-    expect(screen.getByText('所長')).toBeInTheDocument();
-    expect(screen.getByText('サビ管')).toBeInTheDocument();
-    expect(screen.getByText('ナース')).toBeInTheDocument();
-    // All present
-    const chips = screen.getAllByText('在席');
+    const section = within(screen.getByTestId('section-decision-support'));
+    expect(section.getByText('所長')).toBeInTheDocument();
+    expect(section.getByText('サビ管')).toBeInTheDocument();
+    expect(section.getByText('ナース')).toBeInTheDocument();
+    // 3 roles, all present
+    const chips = section.getAllByText('在席');
     expect(chips.length).toBe(3);
   });
 
   it('一部不在でも表示が壊れない', () => {
     render(<TodayServiceStructureCard serviceStructure={partialPresence} />);
 
-    expect(screen.getByText('所長')).toBeInTheDocument();
-    expect(screen.getByText('サビ管')).toBeInTheDocument();
+    const section = within(screen.getByTestId('section-decision-support'));
+    expect(section.getByText('所長')).toBeInTheDocument();
+    expect(section.getByText('サビ管')).toBeInTheDocument();
     // serviceManager is absent
-    expect(screen.getByText('不在')).toBeInTheDocument();
+    expect(section.getByText('不在')).toBeInTheDocument();
     // director and nurse are present
-    const presentChips = screen.getAllByText('在席');
+    const presentChips = section.getAllByText('在席');
     expect(presentChips.length).toBe(2);
+  });
+});
+
+describe('TodayServiceStructureCard — 運営サポート', () => {
+  it('会計・給食・送迎が表示される', () => {
+    render(<TodayServiceStructureCard serviceStructure={fullStructure} />);
+
+    const section = within(screen.getByTestId('section-operational-support'));
+    expect(section.getByText('会計')).toBeInTheDocument();
+    expect(section.getByText('給食')).toBeInTheDocument();
+    expect(section.getByText('渡辺、小林')).toBeInTheDocument();
+    expect(section.getByText('送迎')).toBeInTheDocument();
+    expect(section.getByText('加藤、吉田')).toBeInTheDocument();
+  });
+
+  it('会計の在席チップが表示される', () => {
+    render(<TodayServiceStructureCard serviceStructure={fullStructure} />);
+
+    const section = within(screen.getByTestId('section-operational-support'));
+    expect(section.getByText('在席')).toBeInTheDocument();
+    expect(section.getByText('高橋')).toBeInTheDocument();
+  });
+
+  it('日中ボランティア・日中来客が表示される', () => {
+    render(<TodayServiceStructureCard serviceStructure={fullStructure} />);
+
+    const section = within(screen.getByTestId('section-operational-support'));
+    expect(section.getByText('日中ボランティア')).toBeInTheDocument();
+    expect(section.getByText('山口')).toBeInTheDocument();
+    expect(section.getByText('日中来客')).toBeInTheDocument();
+    expect(section.getByText('外部監査員・佐藤')).toBeInTheDocument();
   });
 });
 
@@ -127,9 +167,12 @@ describe('TodayServiceStructureCard — 全体', () => {
     expect(screen.getByTestId('today-service-structure-card')).toBeInTheDocument();
   });
 
-  it('タイトルが表示される', () => {
+  it('4セクションヘッダーが表示される', () => {
     render(<TodayServiceStructureCard serviceStructure={fullStructure} />);
 
-    expect(screen.getByText(/今日の業務体制/)).toBeInTheDocument();
+    expect(screen.getByText(/生活介護/)).toBeInTheDocument();
+    expect(screen.getByText(/生活支援/)).toBeInTheDocument();
+    expect(screen.getByText(/判断窓口/)).toBeInTheDocument();
+    expect(screen.getByText(/運営サポート/)).toBeInTheDocument();
   });
 });

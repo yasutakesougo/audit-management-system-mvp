@@ -393,7 +393,7 @@ const DailyRecordMenuPage: React.FC = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <AssignmentIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                     <Typography variant="body2" color="text.secondary">
-                      対象：強度行動障害者（{intensiveSupportUsers}名）
+                      対象：強度行動障害支援対象者（{intensiveSupportUsers}名）
                     </Typography>
                     <Chip
                       label="⚑ 特別支援"
