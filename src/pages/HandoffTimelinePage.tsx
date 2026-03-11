@@ -1,15 +1,19 @@
 import { PageHeader } from '@/components/PageHeader';
 import { TESTIDS, tid } from '@/testids';
-import { AccessTime as AccessTimeIcon, EditNote as EditNoteIcon, Nightlight as EveningIcon, Groups as MeetingIcon, WbSunny as MorningIcon } from '@mui/icons-material';
+import { AccessTime as AccessTimeIcon, ArrowBack as ArrowBackIcon, EditNote as EditNoteIcon, Nightlight as EveningIcon, Groups as MeetingIcon, Person as PersonIcon, ViewList as ViewListIcon, WbSunny as MorningIcon } from '@mui/icons-material';
 import { Box, Button, Chip, Container, Divider, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
-import { useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useCallback, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import HandoffCategorySummaryCard from '../features/handoff/HandoffCategorySummaryCard';
+import { HandoffUserGroupedView } from '../features/handoff/components/HandoffUserGroupedView';
 import type { HandoffDayScope, HandoffTimeFilter } from '../features/handoff/handoffTypes';
 import { HANDOFF_DAY_SCOPE_LABELS, HANDOFF_TIME_FILTER_LABELS } from '../features/handoff/handoffTypes';
 import { TodayHandoffTimelineList } from '../features/handoff/TodayHandoffTimelineList';
 import { useHandoffTimeline } from '../features/handoff/useHandoffTimeline';
 import { useHandoffTimelineViewModel } from '../features/handoff/useHandoffTimelineViewModel';
+
+/** 表示モード: 時系列フラット or 利用者グループ */
+type HandoffDisplayMode = 'timeline' | 'grouped';
 
 /**
  * 申し送りタイムラインページ
@@ -30,9 +34,16 @@ import { useHandoffTimelineViewModel } from '../features/handoff/useHandoffTimel
 export default function HandoffTimelinePage() {
   // Step 7C: navigation state からの初期値取得
   const location = useLocation();
+  const navigate = useNavigate();
   const navState = location.state as
-    | { dayScope?: HandoffDayScope; timeFilter?: HandoffTimeFilter }
+    | { dayScope?: HandoffDayScope; timeFilter?: HandoffTimeFilter; from?: 'today' }
     | undefined;
+  const fromToday = navState?.from === 'today';
+
+  // Step 5/6: 表示モード — /today からの遷移時はグループ表示をデフォルト
+  const [displayMode, setDisplayMode] = useState<HandoffDisplayMode>(
+    fromToday ? 'grouped' : 'timeline',
+  );
 
   // v3: VM → データ hook → useRef late-binding DI
   //
@@ -84,6 +95,20 @@ export default function HandoffTimelinePage() {
     <Container maxWidth="lg" sx={{ py: 3 }} {...tid(TESTIDS['agenda-page-root'])}>
       {/* ページヘッダー */}
       <Box sx={{ mb: 3 }}>
+        {/* /today からの遷移時: 戻り導線 */}
+        {fromToday && (
+          <Chip
+            icon={<ArrowBackIcon />}
+            label="今日の業務へ戻る"
+            onClick={() => navigate('/today')}
+            variant="outlined"
+            color="primary"
+            size="small"
+            clickable
+            data-testid="handoff-back-to-today"
+            sx={{ mb: 1.5 }}
+          />
+        )}
         <PageHeader
           title="申し送りタイムライン"
           subtitle={
@@ -173,6 +198,24 @@ export default function HandoffTimelinePage() {
               午後〜夕方
             </ToggleButton>
           </ToggleButtonGroup>
+
+          {/* 表示モード切替: 時系列 / 利用者別 */}
+          <ToggleButtonGroup
+            value={displayMode}
+            exclusive
+            onChange={(_, v) => { if (v) setDisplayMode(v as HandoffDisplayMode); }}
+            size="small"
+            color="primary"
+          >
+            <ToggleButton value="timeline" data-testid="handoff-mode-timeline">
+              <ViewListIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              時系列
+            </ToggleButton>
+            <ToggleButton value="grouped" data-testid="handoff-mode-grouped">
+              <PersonIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              利用者別
+            </ToggleButton>
+          </ToggleButtonGroup>
         </Box>
 
         {handoffStats && (
@@ -241,16 +284,27 @@ export default function HandoffTimelinePage() {
               ({HANDOFF_TIME_FILTER_LABELS[timeFilter]})
             </Typography>
           </Typography>
-          <TodayHandoffTimelineList
-            items={todayHandoffs}
-            loading={timelineLoading}
-            error={timelineError}
-            updateHandoffStatus={updateHandoffStatus}
-            dayScope={dayScope}
-            onStatsChange={setHandoffStats}
-            meetingMode={meetingMode}
-            workflowActions={workflowActions}
-          />
+          {displayMode === 'timeline' ? (
+            <TodayHandoffTimelineList
+              items={todayHandoffs}
+              loading={timelineLoading}
+              error={timelineError}
+              updateHandoffStatus={updateHandoffStatus}
+              dayScope={dayScope}
+              onStatsChange={setHandoffStats}
+              meetingMode={meetingMode}
+              workflowActions={workflowActions}
+            />
+          ) : (
+            <HandoffUserGroupedView
+              items={todayHandoffs}
+              loading={timelineLoading}
+              error={timelineError}
+              updateHandoffStatus={updateHandoffStatus}
+              meetingMode={meetingMode}
+              workflowActions={workflowActions}
+            />
+          )}
         </Box>
 
         {/* 右カラム: カテゴリ別サマリー */}

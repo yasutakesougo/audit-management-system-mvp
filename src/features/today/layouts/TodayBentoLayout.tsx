@@ -1,25 +1,28 @@
 /**
  * TodayBentoLayout — Bento Grid 版「今日の業務」画面レイアウト
  *
- * Action Surface Layout (UX改善後):
+ * NextAction-First Layout (UX昇格):
  *
  * Grid 配置 (md 4-column):
  * ┌──────────────────────────────────────┐
- * │    Hero (full-width, primary CTA)     │
- * ├──────────┬───────────────────────────┤
- * │Attendance│      NextAction (3col)     │
- * │  (1col)  │      ← 昇格: 即アクション  │
- * ├──────────┴───────────────────────────┤
- * │  Briefing (full 4col) ← 対応必要 強調  │
- * ├───────────────────────┬──────────────┤
- * │     ServiceStructure (full 4col)      │
- * ├───────────────────────┴──────────────┤
- * │   Users (full 4col) ← 記録操作導線    │
+ * │  NextAction (full 4col, accent)       │  ← PRIMARY: 今すぐやること
+ * ├──────────────────┬───────────────────┤
+ * │  Progress (3col)  │ Attendance (1col) │  ← STATUS: 進捗要約
+ * ├──────────────────┴───────────────────┤
+ * │  Briefing (full 4col) ← 対応が必要    │
  * ├──────────────────────────────────────┤
- * │        Transport (full 4col)          │
+ * │  ServiceStructure (full 4col)         │
+ * ├──────────────────────────────────────┤
+ * │  Users (full 4col) ← 記録操作導線     │
+ * ├──────────────────────────────────────┤
+ * │  Transport (full 4col)                │
  * └──────────────────────────────────────┘
  *
- * Mobile (1-column): すべて縦並び
+ * Mobile (1-column): NextAction → Progress → Attendance → ...
+ *
+ * Design Principle:
+ *   NextAction = 認知の入口（「今何をすべきか？」に即答）
+ *   Progress/Attendance = 補足証拠（NextAction を裏付ける情報）
  *
  * Layout state は view-only。データ集約・副作用は追加しない。
  *
@@ -40,7 +43,7 @@ import { TransportStatusCard, type TransportStatusCardProps } from '../transport
 import type { AttendanceSummaryCardProps } from '../widgets/AttendanceSummaryCard';
 import { AttendanceSummaryCard } from '../widgets/AttendanceSummaryCard';
 import { BriefingActionList } from '../widgets/BriefingActionList';
-import { HeroUnfinishedBanner } from '../widgets/HeroUnfinishedBanner';
+import { ProgressStatusBar, type TodayProgressSummary } from '../widgets/ProgressStatusBar';
 import type { NextActionCardProps } from '../widgets/NextActionCard';
 import { NextActionCard } from '../widgets/NextActionCard';
 import { TodayServiceStructureCard } from '../widgets/TodayServiceStructureCard';
@@ -48,18 +51,14 @@ import { UserCompactList, type UserRow } from '../widgets/UserCompactList';
 
 // ─── Types ───────────────────────────────────────────────────
 
-type HeroProps = {
-  unfilledCount: number;
-  approvalPendingCount: number;
-  onOpenUnfilled: () => void;
-  onOpenApproval: () => void;
-  onOpenMenu?: () => void;
+type ProgressSummaryProps = {
+  summary: TodayProgressSummary;
 };
 
 type TransportUser = { userId: string; name: string };
 
 export type TodayBentoProps = {
-  hero: HeroProps;
+  progress: ProgressSummaryProps;
   attendance: AttendanceSummaryCardProps;
   briefingAlerts: BriefingAlert[];
   serviceStructure?: ServiceStructure;
@@ -67,6 +66,7 @@ export type TodayBentoProps = {
   sceneAction?: SceneNextActionViewModel;
   onSceneAction?: (target: string, userId?: string) => void;
   nextActionEmptyAction?: NextActionCardProps['onEmptyAction'];
+  nextActionMenuAction?: NextActionCardProps['onMenuAction'];
   transport: { pending: TransportUser[]; inProgress: TransportUser[]; onArrived: (id: string) => void };
   transportCard?: TransportStatusCardProps;
   users: { items: UserRow[]; onOpenQuickRecord: (id: string) => void; onOpenISP?: (id: string) => void; onEmptyAction?: () => void };
@@ -97,7 +97,7 @@ function SectionLabel({ emoji, text }: { emoji: string; text: string }) {
 // ─── Layout ──────────────────────────────────────────────────
 
 export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
-  hero,
+  progress,
   attendance,
   briefingAlerts,
   serviceStructure,
@@ -105,6 +105,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   sceneAction,
   onSceneAction,
   nextActionEmptyAction,
+  nextActionMenuAction,
   transportCard,
   users,
 }) => {
@@ -116,38 +117,41 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
         pb: 8,
       }}
     >
-      {/* ── Row 0: Hero Banner (full bleed, primary action surface) ── */}
-      <HeroUnfinishedBanner
-        unfilledCount={hero.unfilledCount}
-        approvalPendingCount={hero.approvalPendingCount}
-        onClickPrimary={hero.onOpenUnfilled}
-        onClickSecondary={hero.onOpenMenu}
-        sticky={true}
-      />
-
       {/* ── Bento Grid ── */}
-      <BentoContainer sx={{ mt: 3 }}>
-        {/* ── Row 1: Attendance (1) + NextAction (3) — 即アクション導線 ── */}
+      <BentoContainer sx={{ mt: 2 }}>
+        {/* ── Row 0: NextAction (full-width) — PRIMARY ENTRY POINT ── */}
+        <BentoCard
+          colSpan={{ xs: 1, sm: 2, md: 4 }}
+          variant="accent"
+          testId="bento-next-action"
+          sx={{ py: { xs: 2.5, sm: 3 } }}
+        >
+          <NextActionCard
+            nextAction={nextAction}
+            sceneAction={sceneAction}
+            onSceneAction={onSceneAction}
+            onEmptyAction={nextActionEmptyAction}
+            onMenuAction={nextActionMenuAction}
+          />
+        </BentoCard>
+
+        {/* ── Row 1: Progress (3col) + Attendance (1col) — 進捗要約 ── */}
+        <BentoCard
+          colSpan={{ xs: 1, sm: 2, md: 3 }}
+          variant="default"
+          noHover
+          testId="bento-progress"
+          sx={{ p: 0, overflow: 'hidden' }}
+        >
+          <ProgressStatusBar summary={progress.summary} />
+        </BentoCard>
+
         <BentoCard
           colSpan={{ xs: 1, sm: 1, md: 1 }}
           testId="bento-attendance"
         >
           <SectionLabel emoji="📊" text="出席状況" />
           <AttendanceSummaryCard {...attendance} />
-        </BentoCard>
-
-        <BentoCard
-          colSpan={{ xs: 1, sm: 2, md: 3 }}
-          variant="accent"
-          testId="bento-next-action"
-        >
-          <SectionLabel emoji="▶️" text="次にやること" />
-          <NextActionCard
-            nextAction={nextAction}
-            sceneAction={sceneAction}
-            onSceneAction={onSceneAction}
-            onEmptyAction={nextActionEmptyAction}
-          />
         </BentoCard>
 
         {/* ── Row 2: Briefing (full-width) — 対応が必要な申し送り ── */}

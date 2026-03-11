@@ -1,10 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { NextActionWithProgress } from '../hooks/useNextAction';
+import type { SceneNextActionViewModel } from '../hooks/useSceneNextAction';
 import { NextActionCard } from './NextActionCard';
 
 const noop = () => {};
-const baseActions = { start: vi.fn(), done: vi.fn(), reset: vi.fn() };
 
 function makeProps(overrides: Partial<NextActionWithProgress> = {}): NextActionWithProgress {
   return {
@@ -26,77 +26,40 @@ function makeProps(overrides: Partial<NextActionWithProgress> = {}): NextActionW
   };
 }
 
-describe('NextActionCard', () => {
-  it('displays next action with Start button in idle state', () => {
+const baseSceneAction: SceneNextActionViewModel = {
+  scene: 'arrival-intake',
+  sceneLabel: '通所受け入れ',
+  title: '出欠を確認してください',
+  description: '未入力の利用者がいます',
+  reasons: ['未入力 2名'],
+  priority: 'high',
+  ctaLabel: '出欠を入力',
+  ctaTarget: 'attendance',
+};
+
+// ─── Core behavior ──────────────────────────────────────────
+
+describe('NextActionCard — 行動ナビゲーター', () => {
+  it('has data-testid', () => {
+    render(<NextActionCard nextAction={makeProps()} />);
+    expect(screen.getByTestId('today-next-action-card')).toBeInTheDocument();
+  });
+
+  it('shows schedule item as context (time, title, owner)', () => {
     render(<NextActionCard nextAction={makeProps()} />);
 
     expect(screen.getByText('09:00')).toBeInTheDocument();
     expect(screen.getByText('職員朝会')).toBeInTheDocument();
     expect(screen.getByText('生活支援課')).toBeInTheDocument();
     expect(screen.getByText(/あと 30分/)).toBeInTheDocument();
-    expect(screen.getByTestId('next-action-start')).toBeInTheDocument();
   });
 
-  it('calls start action when Start button is clicked', () => {
-    const actions = { ...baseActions };
-    render(<NextActionCard nextAction={makeProps({ actions })} />);
+  it('does NOT show Start or Done buttons (タスク管理ではない)', () => {
+    render(<NextActionCard nextAction={makeProps()} />);
 
-    fireEvent.click(screen.getByTestId('next-action-start'));
-    expect(actions.start).toHaveBeenCalledTimes(1);
-  });
-
-  it('shows Done button and elapsed time in started state', () => {
-    render(
-      <NextActionCard
-        nextAction={makeProps({
-          status: 'started',
-          sceneState: 'active',
-          elapsedMinutes: 15,
-          progress: { startedAt: new Date().toISOString(), doneAt: null },
-        })}
-      />
-    );
-
-    expect(screen.getByText(/15分経過/)).toBeInTheDocument();
-    expect(screen.getByTestId('next-action-done')).toBeInTheDocument();
-    expect(screen.queryByTestId('next-action-start')).not.toBeInTheDocument();
-  });
-
-  it('calls done action when Done button is clicked', () => {
-    const actions = { ...baseActions };
-    render(
-      <NextActionCard
-        nextAction={makeProps({
-          status: 'started',
-          sceneState: 'active',
-          elapsedMinutes: 5,
-          progress: { startedAt: new Date().toISOString(), doneAt: null },
-          actions,
-        })}
-      />
-    );
-
-    fireEvent.click(screen.getByTestId('next-action-done'));
-    expect(actions.done).toHaveBeenCalledTimes(1);
-  });
-
-  it('shows completed chip in done state', () => {
-    render(
-      <NextActionCard
-        nextAction={makeProps({
-          status: 'done',
-          sceneState: 'done',
-          progress: {
-            startedAt: new Date().toISOString(),
-            doneAt: new Date().toISOString(),
-          },
-        })}
-      />
-    );
-
-    expect(screen.getByTestId('next-action-done-chip')).toBeInTheDocument();
     expect(screen.queryByTestId('next-action-start')).not.toBeInTheDocument();
     expect(screen.queryByTestId('next-action-done')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('next-action-done-chip')).not.toBeInTheDocument();
   });
 
   it('formats hours correctly', () => {
@@ -123,20 +86,84 @@ describe('NextActionCard', () => {
       />
     );
 
-    expect(screen.getByText(/次の予定はありません/)).toBeInTheDocument();
+    expect(screen.getByText(/今すぐ優先する対応はありません/)).toBeInTheDocument();
     expect(screen.getByTestId('today-empty-next-action')).toBeInTheDocument();
-  });
-
-  it('has data-testid', () => {
-    render(<NextActionCard nextAction={makeProps()} />);
-    expect(screen.getByTestId('today-next-action-card')).toBeInTheDocument();
   });
 });
 
-// ─── Scene-Based: Overdue display tests (#852) ──────────────
+// ─── Scene CTA (業務アクション導線) ─────────────────────────
+
+describe('NextActionCard — Scene CTA', () => {
+  it('shows scene CTA when sceneAction has priority', () => {
+    render(
+      <NextActionCard
+        nextAction={makeProps()}
+        sceneAction={baseSceneAction}
+        onSceneAction={noop}
+      />
+    );
+
+    expect(screen.getByTestId('scene-action-cta')).toBeInTheDocument();
+    expect(screen.getByText('出欠を入力')).toBeInTheDocument();
+    expect(screen.getByText('出欠を確認してください')).toBeInTheDocument();
+  });
+
+  it('shows scene reasons as chips', () => {
+    render(
+      <NextActionCard
+        nextAction={makeProps()}
+        sceneAction={baseSceneAction}
+        onSceneAction={noop}
+      />
+    );
+
+    expect(screen.getByTestId('scene-reasons')).toBeInTheDocument();
+    expect(screen.getByTestId('scene-reason-0')).toBeInTheDocument();
+    expect(screen.getByText('未入力 2名')).toBeInTheDocument();
+  });
+
+  it('calls onSceneAction when CTA is clicked', () => {
+    const handleSceneAction = vi.fn();
+    render(
+      <NextActionCard
+        nextAction={makeProps()}
+        sceneAction={baseSceneAction}
+        onSceneAction={handleSceneAction}
+      />
+    );
+
+    screen.getByTestId('scene-action-cta').click();
+    expect(handleSceneAction).toHaveBeenCalledWith('attendance', undefined);
+  });
+
+  it('shows scene label chip', () => {
+    render(
+      <NextActionCard
+        nextAction={makeProps()}
+        sceneAction={baseSceneAction}
+      />
+    );
+
+    expect(screen.getByTestId('scene-label-chip')).toBeInTheDocument();
+    expect(screen.getByText(/通所受け入れ/)).toBeInTheDocument();
+  });
+
+  it('does NOT show scene CTA when priority is low', () => {
+    render(
+      <NextActionCard
+        nextAction={makeProps()}
+        sceneAction={{ ...baseSceneAction, priority: 'low' }}
+      />
+    );
+
+    expect(screen.queryByTestId('scene-action-cta')).not.toBeInTheDocument();
+  });
+});
+
+// ─── Overdue 表示 (#852) ────────────────────────────────────
 
 describe('NextActionCard — overdue 表示 (#852)', () => {
-  it('shows overdue chip when sceneState is overdue and idle', () => {
+  it('shows overdue chip when sceneState is overdue', () => {
     render(
       <NextActionCard
         nextAction={makeProps({
@@ -156,7 +183,7 @@ describe('NextActionCard — overdue 表示 (#852)', () => {
     expect(screen.getByText('未着手')).toBeInTheDocument();
   });
 
-  it('shows "⚠️ X分超過" instead of "あと X分" for overdue items', () => {
+  it('shows overdue time instead of time remaining for overdue items', () => {
     render(
       <NextActionCard
         nextAction={makeProps({
@@ -174,48 +201,6 @@ describe('NextActionCard — overdue 表示 (#852)', () => {
 
     expect(screen.getByText(/予定時刻を15分過ぎています/)).toBeInTheDocument();
     expect(screen.queryByText(/あと/)).not.toBeInTheDocument();
-  });
-
-  it('shows "いま開始" button for overdue idle items', () => {
-    render(
-      <NextActionCard
-        nextAction={makeProps({
-          sceneState: 'overdue',
-          urgency: 'high',
-          item: {
-            id: 'ops-1',
-            time: '09:15',
-            title: '通所受け入れ',
-            minutesUntil: -15,
-          },
-        })}
-      />
-    );
-
-    const startBtn = screen.getByTestId('next-action-start');
-    expect(startBtn).toHaveTextContent('いま開始');
-  });
-
-  it('does NOT show overdue chip when started (active)', () => {
-    render(
-      <NextActionCard
-        nextAction={makeProps({
-          sceneState: 'active',
-          status: 'started',
-          urgency: 'high',
-          elapsedMinutes: 5,
-          progress: { startedAt: new Date().toISOString(), doneAt: null },
-          item: {
-            id: 'ops-1',
-            time: '09:15',
-            title: '通所受け入れ',
-            minutesUntil: -20,
-          },
-        })}
-      />
-    );
-
-    expect(screen.queryByTestId('next-action-overdue-chip')).not.toBeInTheDocument();
   });
 
   it('does NOT show overdue chip for pending items', () => {

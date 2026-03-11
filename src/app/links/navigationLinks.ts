@@ -76,3 +76,54 @@ export function parseNavQuery(params: URLSearchParams): {
 
   return { from, date };
 }
+
+// ─── Handoff Timeline Navigation ───────────────────────────────────────
+
+import type { HandoffTimelineNavState } from '@/features/cross-module/navigationState';
+import type { TodayScene } from '@/features/today/domain/todayScene';
+
+/**
+ * 場面から申し送りの時間帯フィルタを推定する。
+ *
+ * 午前帯の場面 → 'morning' フィルタ
+ * 午後帯の場面 → 'evening' フィルタ
+ * それ以外 → undefined (全件表示)
+ */
+export function sceneToTimeBand(scene: TodayScene): 'morning' | 'evening' | undefined {
+  const morningScenes: TodayScene[] = [
+    'morning-briefing',
+    'arrival-intake',
+    'before-am-activity',
+    'am-activity',
+  ];
+  const eveningScenes: TodayScene[] = [
+    'post-activity',
+    'before-departure',
+    'day-closing',
+  ];
+
+  if (morningScenes.includes(scene)) return 'morning';
+  if (eveningScenes.includes(scene)) return 'evening';
+  return undefined;
+}
+
+/**
+ * /today → /handoff-timeline への意味付きナビゲーション state を生成。
+ *
+ * 使い方:
+ *   navigate('/handoff-timeline', {
+ *     state: buildHandoffFromTodayState({ timeFilter: sceneToTimeBand(scene) }),
+ *   });
+ */
+export function buildHandoffFromTodayState(opts?: {
+  timeFilter?: 'morning' | 'evening';
+  focusUserId?: string;
+}): HandoffTimelineNavState {
+  return {
+    dayScope: 'today',
+    timeFilter: opts?.timeFilter ?? 'all',
+    focusUserId: opts?.focusUserId,
+    from: 'today',
+  };
+}
+
