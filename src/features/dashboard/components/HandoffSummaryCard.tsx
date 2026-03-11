@@ -59,8 +59,10 @@ function topCategories(
 }
 
 /** 事故・ヒヤリの有無チェック */
+const INCIDENT_KEY = '事故・ヒヤリ';
 function hasIncidentCategory(byCategory: Record<string, number>): boolean {
-  return (byCategory['事故・ヒヤリ'] ?? 0) > 0;
+  const count = byCategory[INCIDENT_KEY];
+  return (count || 0) > 0;
 }
 
 // ── Component ──
@@ -182,7 +184,7 @@ export const HandoffSummaryCard: React.FC<HandoffSummaryCardProps> = ({
               lineHeight: 1.3,
             }}
           >
-            事故・ヒヤリ {byCategory['事故・ヒヤリ']}件
+            事故・ヒヤリ {byCategory[INCIDENT_KEY]}件
           </Typography>
         </Box>
       )}
