@@ -1,7 +1,7 @@
 # TodayOps 試運用チェックリスト（1週間）
 
 > 期間: 2026-03-10 〜 2026-03-17
-> 判定: **Conditional Go**（Firestore telemetry 権限のみ未解決）
+> 判定: **Go**（Firestore telemetry 権限は #834 で解決済み）
 > デプロイ: Cloudflare Worker `346cedd7` / Feature Flag `VITE_FEATURE_TODAY_OPS=true`
 
 ---
@@ -23,7 +23,7 @@
 | Issue | 内容 | 優先度 | 対応タイミング |
 |-------|------|--------|--------------|
 | #833 | schedule-day.aria.smoke 調査 | Low | 試運用後 |
-| #834 | Firestore telemetry 権限 | Medium | 試運用中でも可 |
+| #834 | Firestore telemetry 権限 | ~~Medium~~ Done | rules 修正済み |
 
 ---
 
@@ -50,6 +50,25 @@
 - `BriefingActionList.spec.tsx` — テスト更新
 
 **テスト:** 全14テスト通過（BriefingActionList） / 全126テスト通過（Attendance）
+
+### 2026-03-11（Day2）: Firestore telemetry 権限修正 (#834)
+
+**変更内容:**
+- `firestore.rules` に `telemetry` コレクションの `create` ルールを追加
+- payload 検証（`type` 必須 / キー数上限20）で最低限の悪用防止
+
+**理由:**
+`telemetry` コレクションに対応する rules が存在せず、全書き込みが Firestore のデフォルト deny で棄却されていた。
+本アプリは MSAL (Azure AD) 認証であり Firebase Auth を使用しないため、`request.auth` は常に null。
+よって認証なしで `create` のみ許可し、payload shape で制約をかける方式とした。
+
+**分類:** 設定修正（Firestore Security Rules）
+
+**影響範囲:**
+- `firestore.rules` — telemetry コレクション create ルール追加
+- コード変更なし（既存 telemetry 実装はそのまま動作する）
+
+**テスト:** typecheck 通過 / telemetry 関連テスト 11件 全通過
 
 ---
 
