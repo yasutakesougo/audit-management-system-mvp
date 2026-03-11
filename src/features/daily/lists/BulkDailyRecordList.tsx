@@ -32,12 +32,14 @@ interface BulkDailyRecordListProps {
   selectedDate?: string;
   onSave?: (records: BulkDailyRow[]) => Promise<void>;
   onSaveRow?: (row: BulkDailyRow) => Promise<void>;
+  /** @see UseBulkDailyRecordStateOptions.mockSaveDelay */
+  mockSaveDelay?: number;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-export default function BulkDailyRecordList({ selectedDate, onSave, onSaveRow }: BulkDailyRecordListProps) {
-  const state = useBulkDailyRecordState({ onSave, onSaveRow });
+export default function BulkDailyRecordList({ selectedDate, onSave, onSaveRow, mockSaveDelay }: BulkDailyRecordListProps) {
+  const state = useBulkDailyRecordState({ onSave, onSaveRow, mockSaveDelay });
 
   const saveButtonRef = (index: number, element: HTMLButtonElement | null) => {
     state.rowRefs.current[index] = element;

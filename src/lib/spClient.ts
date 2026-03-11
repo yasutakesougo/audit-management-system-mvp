@@ -1,5 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
-/**
+﻿/**
  * SharePoint Client — Orchestrator
  *
  * Thin factory that assembles spFetch, postBatch, listOps, and batch
@@ -59,7 +58,11 @@ export function createSpClient(
   options: SpClientOptions = {}
 ) {
   const config = getAppConfig();
-  const spSiteLegacy = readEnv('VITE_SP_SITE', '', config as unknown as EnvRecord);
+  // Derive a typed EnvRecord from AppConfig without unsafe double-cast.
+  // AppConfig values are all Primitive (string | number | boolean | null | undefined),
+  // so spreading them satisfies the EnvRecord constraint.
+  const envRecord: EnvRecord = { ...config } as EnvRecord;
+  const spSiteLegacy = readEnv('VITE_SP_SITE', '', envRecord);
   const retrySettings = {
     maxAttempts: Number(config.VITE_SP_RETRY_MAX) || 4,
     baseDelay: Number(config.VITE_SP_RETRY_BASE_MS) || 400,
@@ -68,12 +71,12 @@ export function createSpClient(
   const debugEnabled = !!config.VITE_AUDIT_DEBUG;
 
   // ── Path normalizer ──
-  const normalizePath = createNormalizePath(config as any, spSiteLegacy, baseUrl);
+  const normalizePath = createNormalizePath(envRecord, spSiteLegacy, baseUrl);
 
   // ── Core fetch (with retry + mock + auth) ──
   const rawSpFetch = createSpFetch({
     acquireToken, baseUrl,
-    config: config as any,
+    config: envRecord,
     retrySettings, debugEnabled, spSiteLegacy,
     onRetry: options.onRetry,
   });
@@ -98,7 +101,7 @@ export function createSpClient(
   // ── Batch ($batch POST + payload assemble) ──
   const postBatch = createPostBatch({
     acquireToken, baseUrl,
-    config: config as any,
+    config: envRecord,
     retrySettings, debugEnabled,
   });
 

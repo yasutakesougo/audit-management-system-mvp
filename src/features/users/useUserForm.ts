@@ -3,263 +3,50 @@
  *
  * UserForm のフォームロジックを集約するカスタムフック。
  * UI（JSX）と完全に分離されており、テスト・再利用が容易。
+ *
+ * 型定義    → useUserFormTypes.ts
+ * 定数      → useUserFormConstants.ts
+ * ヘルパー  → useUserFormHelpers.ts
  */
 import { ChangeEvent, createRef, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { IUserMaster, IUserMasterCreateDto } from '../../sharepoint/fields';
-import { TRANSPORT_METHOD_LABEL, TRANSPORT_METHODS } from '../attendance/transportMethod';
+import type { IUserMaster } from '../../sharepoint/fields';
 import { useUsersStore } from './store';
+import { CLEARED_VALUES } from './useUserFormConstants';
+import { parseTransportSchedule, toCreateDto } from './useUserFormHelpers';
+import type {
+    FormErrors,
+    FormValues,
+    MessageState,
+    UseUserFormOptions,
+    UseUserFormReturn,
+} from './useUserFormTypes';
 
 // ---------------------------------------------------------------------------
-// 型定義
+// Re-exports — preserve import compatibility for existing callers
 // ---------------------------------------------------------------------------
 
-export type FormValues = {
-  FullName: string;
-  Furigana: string;
-  FullNameKana: string;
-  ContractDate: string;
-  ServiceStartDate: string;
-  ServiceEndDate: string;
-  IsHighIntensitySupportTarget: boolean;
-  IsSupportProcedureTarget: boolean;
-  IsActive: boolean;
-  TransportSchedule: Record<string, { to: string; from: string }>;
-  RecipientCertNumber: string;
-  RecipientCertExpiry: string;
-  UsageStatus: string;
-  GrantMunicipality: string;
-  GrantPeriodStart: string;
-  GrantPeriodEnd: string;
-  DisabilitySupportLevel: string;
-  GrantedDaysPerMonth: string;
-  UserCopayLimit: string;
-  TransportAdditionType: string;
-  MealAddition: string;
-  CopayPaymentMethod: string;
-};
+export type {
+    DayField,
+    DayTransport,
+    FormErrors,
+    FormValues,
+    MessageState,
+    UseUserFormOptions,
+    UseUserFormReturn
+} from './useUserFormTypes';
 
-export type FormErrors = Partial<
-  Record<'fullName' | 'furigana' | 'certNumber' | 'dates' | 'grantPeriod' | 'transportAddition', string>
->;
+export {
+    CLEARED_VALUES,
+    COPAY_METHOD_OPTIONS,
+    DISABILITY_SUPPORT_LEVEL_OPTIONS,
+    MEAL_ADDITION_OPTIONS,
+    TRANSPORT_ADDITION_OPTIONS,
+    TRANSPORT_METHOD_OPTIONS,
+    USAGE_STATUS_OPTIONS,
+    WEEKDAYS
+} from './useUserFormConstants';
 
-export type MessageState = { type: 'success' | 'error'; text: string } | null;
-
-export type DayTransport = { to: string; from: string };
-
-export type DayField = 'TransportToDays' | 'TransportFromDays' | 'AttendanceDays';
-
-// ---------------------------------------------------------------------------
-// 定数
-// ---------------------------------------------------------------------------
-
-export const WEEKDAYS = [
-  { value: '月', label: '月' },
-  { value: '火', label: '火' },
-  { value: '水', label: '水' },
-  { value: '木', label: '木' },
-  { value: '金', label: '金' },
-] as const;
-
-export const USAGE_STATUS_OPTIONS = [
-  { value: '', label: '（未選択）' },
-  { value: '利用中', label: '利用中' },
-  { value: '契約済・利用開始待ち', label: '契約済・利用開始待ち' },
-  { value: '利用休止中', label: '利用休止中' },
-  { value: '契約終了', label: '契約終了' },
-] as const;
-
-export const DISABILITY_SUPPORT_LEVEL_OPTIONS = [
-  { value: '', label: '（未選択）' },
-  { value: 'none', label: '非該当' },
-  { value: '1', label: '区分1' },
-  { value: '2', label: '区分2' },
-  { value: '3', label: '区分3' },
-  { value: '4', label: '区分4' },
-  { value: '5', label: '区分5' },
-  { value: '6', label: '区分6' },
-] as const;
-
-export const TRANSPORT_ADDITION_OPTIONS = [
-  { value: '', label: '（未選択）' },
-  { value: 'both', label: '往復利用' },
-  { value: 'oneway-to', label: '片道（往）のみ' },
-  { value: 'oneway-from', label: '片道（復）のみ' },
-  { value: 'none', label: '利用なし' },
-] as const;
-
-export const MEAL_ADDITION_OPTIONS = [
-  { value: '', label: '（未選択）' },
-  { value: 'use', label: '利用する' },
-  { value: 'not-use', label: '利用しない' },
-] as const;
-
-export const COPAY_METHOD_OPTIONS = [
-  { value: '', label: '（未選択）' },
-  { value: 'bank', label: '口座振替' },
-  { value: 'cash-office', label: '現金（事業所）' },
-  { value: 'cash-transport', label: '現金（送迎時）' },
-] as const;
-
-export const TRANSPORT_METHOD_OPTIONS = [
-  { value: '', label: '—' },
-  ...TRANSPORT_METHODS.map((m) => ({ value: m, label: TRANSPORT_METHOD_LABEL[m] })),
-] as const;
-
-// ---------------------------------------------------------------------------
-// Transport Schedule helpers
-// ---------------------------------------------------------------------------
-
-const EMPTY_SCHEDULE: Record<string, DayTransport> = {};
-
-export function parseTransportSchedule(json: string | null | undefined): Record<string, DayTransport> {
-  if (!json) return { ...EMPTY_SCHEDULE };
-  try {
-    const parsed = JSON.parse(json) as Record<string, DayTransport>;
-    if (typeof parsed !== 'object' || parsed === null) return { ...EMPTY_SCHEDULE };
-    return parsed;
-  } catch {
-    return { ...EMPTY_SCHEDULE };
-  }
-}
-
-function serializeTransportSchedule(schedule: Record<string, DayTransport>): string | null {
-  // Remove empty entries
-  const cleaned: Record<string, DayTransport> = {};
-  for (const [day, val] of Object.entries(schedule)) {
-    if (val.to || val.from) {
-      cleaned[day] = val;
-    }
-  }
-  return Object.keys(cleaned).length ? JSON.stringify(cleaned) : null;
-}
-
-function deriveTransportDays(
-  schedule: Record<string, DayTransport>,
-): { attendanceDays: string[]; transportToDays: string[]; transportFromDays: string[] } {
-  const weekdayOrder = WEEKDAYS.map((d) => d.value);
-  const attendanceDays: string[] = [];
-  const transportToDays: string[] = [];
-  const transportFromDays: string[] = [];
-
-  for (const day of weekdayOrder) {
-    const entry = schedule[day];
-    if (!entry) continue;
-    if (entry.to || entry.from) {
-      attendanceDays.push(day);
-    }
-    if (entry.to === 'office_shuttle') {
-      transportToDays.push(day);
-    }
-    if (entry.from === 'office_shuttle') {
-      transportFromDays.push(day);
-    }
-  }
-
-  return { attendanceDays, transportToDays, transportFromDays };
-}
-
-// ---------------------------------------------------------------------------
-// ユーティリティ
-// ---------------------------------------------------------------------------
-
-const sanitize = (value: string): string | undefined => {
-  const trimmed = value.trim();
-  return trimmed.length ? trimmed : undefined;
-};
-
-export const toCreateDto = (values: FormValues): IUserMasterCreateDto => ({
-  FullName: values.FullName.trim(),
-  Furigana: sanitize(values.Furigana) || null,
-  FullNameKana: sanitize(values.FullNameKana) || null,
-  ContractDate: sanitize(values.ContractDate) || null,
-  ServiceStartDate: sanitize(values.ServiceStartDate) || null,
-  ServiceEndDate: sanitize(values.ServiceEndDate) || null,
-  IsHighIntensitySupportTarget: values.IsHighIntensitySupportTarget,
-  IsSupportProcedureTarget: values.IsSupportProcedureTarget,
-  severeFlag: false,
-  IsActive: values.IsActive,
-  ...(() => {
-    const derived = deriveTransportDays(values.TransportSchedule);
-    return {
-      TransportToDays: derived.transportToDays.length ? derived.transportToDays : null,
-      TransportFromDays: derived.transportFromDays.length ? derived.transportFromDays : null,
-      AttendanceDays: derived.attendanceDays.length ? derived.attendanceDays : null,
-    };
-  })(),
-  TransportSchedule: serializeTransportSchedule(values.TransportSchedule),
-  RecipientCertNumber: sanitize(values.RecipientCertNumber) || null,
-  RecipientCertExpiry: sanitize(values.RecipientCertExpiry) || null,
-  UsageStatus: sanitize(values.UsageStatus) || null,
-  GrantMunicipality: sanitize(values.GrantMunicipality) || null,
-  GrantPeriodStart: sanitize(values.GrantPeriodStart) || null,
-  GrantPeriodEnd: sanitize(values.GrantPeriodEnd) || null,
-  DisabilitySupportLevel: sanitize(values.DisabilitySupportLevel) || null,
-  GrantedDaysPerMonth: sanitize(values.GrantedDaysPerMonth) || null,
-  UserCopayLimit: sanitize(values.UserCopayLimit) || null,
-  TransportAdditionType: sanitize(values.TransportAdditionType) || null,
-  MealAddition: sanitize(values.MealAddition) || null,
-  CopayPaymentMethod: sanitize(values.CopayPaymentMethod) || null,
-});
-
-const CLEARED_VALUES: FormValues = {
-  FullName: '',
-  Furigana: '',
-  FullNameKana: '',
-  ContractDate: '',
-  ServiceStartDate: '',
-  ServiceEndDate: '',
-  IsHighIntensitySupportTarget: false,
-  IsSupportProcedureTarget: false,
-  IsActive: true,
-  TransportSchedule: {},
-  RecipientCertNumber: '',
-  RecipientCertExpiry: '',
-  UsageStatus: '',
-  GrantMunicipality: '',
-  GrantPeriodStart: '',
-  GrantPeriodEnd: '',
-  DisabilitySupportLevel: '',
-  GrantedDaysPerMonth: '',
-  UserCopayLimit: '',
-  TransportAdditionType: '',
-  MealAddition: '',
-  CopayPaymentMethod: '',
-};
-
-// ---------------------------------------------------------------------------
-// フックのパラメータ・返り値型
-// ---------------------------------------------------------------------------
-
-export type UseUserFormOptions = {
-  onSuccess?: (user: IUserMaster) => void;
-  onDone?: (user: IUserMaster) => void;
-  onClose?: () => void;
-};
-
-export type UseUserFormReturn = {
-  // State
-  values: FormValues;
-  errors: FormErrors;
-  isSaving: boolean;
-  message: MessageState;
-  showConfirmDialog: boolean;
-  isDirty: boolean;
-  // Refs
-  formRef: React.RefObject<HTMLFormElement | null>;
-  errRefs: {
-    fullName: React.RefObject<HTMLInputElement | null>;
-    furigana: React.RefObject<HTMLInputElement | null>;
-    certNumber: React.RefObject<HTMLInputElement | null>;
-  };
-  // Handlers
-  setField: <K extends keyof FormValues>(key: K, value: FormValues[K]) => void;
-  setScheduleDay: (day: string, direction: 'to' | 'from', method: string) => void;
-  handleSupportTargetToggle: (event: ChangeEvent<HTMLInputElement>) => void;
-  handleClose: () => void;
-  handleSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
-  setMessage: (msg: MessageState) => void;
-  setShowConfirmDialog: (v: boolean) => void;
-};
+export { parseTransportSchedule, toCreateDto } from './useUserFormHelpers';
 
 // ---------------------------------------------------------------------------
 // メインフック
@@ -387,7 +174,7 @@ export function useUserForm(
   }, []);
 
   // --------------------------------
-  // ディレクタイム管理
+  // タイマー管理
   // --------------------------------
   useEffect(() => {
     return () => {
@@ -433,7 +220,6 @@ export function useUserForm(
   // handleClose
   // --------------------------------
   const handleClose = useCallback(() => {
-
     blurActiveElement();
     if (isDirty) {
       if (confirmDialogTimer.current !== null) {
@@ -443,7 +229,6 @@ export function useUserForm(
         setShowConfirmDialog(true);
       }, 0);
     } else {
-
       onClose?.();
     }
   }, [blurActiveElement, isDirty, onClose]);

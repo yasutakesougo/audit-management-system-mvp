@@ -1,0 +1,878 @@
+﻿{
+  "over400": [
+    {
+      "path": "src/features/staff/StaffForm.tsx",
+      "lines": 597
+    },
+    {
+      "path": "src/features/meeting/meetingSharePointSchema.ts",
+      "lines": 596
+    },
+    {
+      "path": "src/features/users/UserDetailSections/index.tsx",
+      "lines": 596
+    },
+    {
+      "path": "src/features/users/useUserForm.ts",
+      "lines": 583
+    },
+    {
+      "path": "src/features/schedules/routes/DayView.tsx",
+      "lines": 579
+    },
+    {
+      "path": "src/pages/AnalysisDashboardPage.tsx",
+      "lines": 578
+    },
+    {
+      "path": "src/features/handoff/handoffApi.ts",
+      "lines": 576
+    },
+    {
+      "path": "src/features/nurse/medication/MedicationRound.tsx",
+      "lines": 570
+    },
+    {
+      "path": "src/components/DailyForm.tsx",
+      "lines": 558
+    },
+    {
+      "path": "src/features/ibd/procedures/templates/HighRiskIncidentDialog.tsx",
+      "lines": 558
+    },
+    {
+      "path": "src/lib/env.ts",
+      "lines": 551
+    },
+    {
+      "path": "src/features/operation-hub/useOperationHubData.ts",
+      "lines": 546
+    },
+    {
+      "path": "src/features/resources/useIntegratedResourceCalendar.ts",
+      "lines": 546
+    },
+    {
+      "path": "src/features/schedules/routes/WeekView.tsx",
+      "lines": 544
+    },
+    {
+      "path": "src/features/nurse/observation/BulkObservationList.tsx",
+      "lines": 542
+    },
+    {
+      "path": "src/pages/TokuseiSurveyResultsPage.tsx",
+      "lines": 532
+    },
+    {
+      "path": "src/features/ibd/procedures/templates/TimeBasedSupportRecordForm.tsx",
+      "lines": 526
+    },
+    {
+      "path": "src/features/handoff/components/HandoffItem.tsx",
+      "lines": 522
+    },
+    {
+      "path": "src/features/nurse/observation/HealthObservationForm.tsx",
+      "lines": 518
+    },
+    {
+      "path": "src/features/schedules/routes/MonthPage.tsx",
+      "lines": 516
+    },
+    {
+      "path": "src/features/schedules/infra/SharePointScheduleRepository.ts",
+      "lines": 515
+    },
+    {
+      "path": "src/features/users/UsersPanel/UsersList.tsx",
+      "lines": 515
+    },
+    {
+      "path": "src/features/schedules/routes/ScheduleCreateDialog.tsx",
+      "lines": 514
+    },
+    {
+      "path": "src/debug/HydrationHud.tsx",
+      "lines": 510
+    },
+    {
+      "path": "src/pages/MonthlyRecordPage.tsx",
+      "lines": 505
+    },
+    {
+      "path": "src/features/schedules/hooks/useScheduleCreateForm.ts",
+      "lines": 500
+    },
+    {
+      "path": "src/lib/mappers/schedule.ts",
+      "lines": 499
+    },
+    {
+      "path": "src/hydration/RouteHydrationListener.tsx",
+      "lines": 493
+    },
+    {
+      "path": "src/features/daily/components/split-stream/RecordPanel.tsx",
+      "lines": 492
+    },
+    {
+      "path": "src/features/diagnostics/health/checks.ts",
+      "lines": 487
+    },
+    {
+      "path": "src/features/ibd/procedures/templates/SupportStepTemplateForm.tsx",
+      "lines": 484
+    },
+    {
+      "path": "src/debug/SpDevPanel.tsx",
+      "lines": 482
+    },
+    {
+      "path": "src/infra/sharepoint/repos/schedulesRepo.ts",
+      "lines": 481
+    },
+    {
+      "path": "src/pages/IBDDemoSections.tsx",
+      "lines": 481
+    },
+    {
+      "path": "src/features/daily/lists/DailyRecordList.tsx",
+      "lines": 479
+    },
+    {
+      "path": "src/features/diagnostics/health/HealthDiagnosisPage.tsx",
+      "lines": 476
+    },
+    {
+      "path": "src/pages/DailyRecordMenuPage.tsx",
+      "lines": 475
+    },
+    {
+      "path": "src/features/daily/infra/SharePointDailyRecordRepository.ts",
+      "lines": 473
+    },
+    {
+      "path": "src/features/meeting/meetingDataTypes.ts",
+      "lines": 472
+    },
+    {
+      "path": "src/features/daily/hooks/useTimeBasedSupportPage.ts",
+      "lines": 471
+    },
+    {
+      "path": "src/features/ibd/procedures/templates/TimeFlowSupportRecordList.tsx",
+      "lines": 469
+    },
+    {
+      "path": "src/pages/StaffAttendanceMonthlySummaryPage.tsx",
+      "lines": 465
+    },
+    {
+      "path": "src/features/nurse/home/NurseHomeDashboard.tsx",
+      "lines": 464
+    },
+    {
+      "path": "src/features/today/transport/TransportStatusCard.tsx",
+      "lines": 463
+    },
+    {
+      "path": "src/features/records/monthly/MonthlySummaryTable.tsx",
+      "lines": 461
+    },
+    {
+      "path": "src/testids.ts",
+      "lines": 458
+    },
+    {
+      "path": "src/features/ibd/core/ibdTypes.ts",
+      "lines": 456
+    },
+    {
+      "path": "src/features/daily/forms/BulkDailyRecordForm.tsx",
+      "lines": 453
+    },
+    {
+      "path": "src/app/config/navigationConfig.ts",
+      "lines": 442
+    },
+    {
+      "path": "src/features/attendance/useAttendance.ts",
+      "lines": 437
+    },
+    {
+      "path": "src/features/daily/components/time-flow/hooks/useTimeFlowState.ts",
+      "lines": 433
+    },
+    {
+      "path": "src/main.tsx",
+      "lines": 430
+    },
+    {
+      "path": "src/pages/ServiceProvisionFormPage.tsx",
+      "lines": 429
+    },
+    {
+      "path": "src/pages/IBDHubPage.tsx",
+      "lines": 427
+    },
+    {
+      "path": "src/features/ibd/procedures/templates/SupportActivityTemplateForm.tsx",
+      "lines": 426
+    },
+    {
+      "path": "src/features/schedules/infra/InMemoryScheduleRepository.ts",
+      "lines": 426
+    },
+    {
+      "path": "src/features/handoff/components/CompactNewHandoffInput.tsx",
+      "lines": 422
+    },
+    {
+      "path": "src/features/daily/components/time-flow/views/TimeFlowSupportRecordList.tsx",
+      "lines": 420
+    },
+    {
+      "path": "src/app/ProtectedRoute.tsx",
+      "lines": 410
+    },
+    {
+      "path": "src/features/daily/lists/DailyRecordWorkspace.tsx",
+      "lines": 403
+    },
+    {
+      "path": "src/pages/DashboardPageTabs.tsx",
+      "lines": 403
+    },
+    {
+      "path": "src/pages/admin/ModeSwitchPage.tsx",
+      "lines": 401
+    }
+  ],
+  "over600": [
+    {
+      "path": "src/pages/OpeningVerificationPage.tsx",
+      "lines": 994
+    }
+  ],
+  "todos": [
+    "src/features/daily/components/time-flow/timeFlowUtils.ts",
+    "src/features/daily/components/time-flow/views/SupportPlanQuickView.tsx",
+    "src/features/daily/components/time-flow/views/TimeFlowSupportRecordList.tsx",
+    "src/features/dashboard/dialogs/TodoDetailDialog.tsx",
+    "src/features/dashboard/generateTodos.ts",
+    "src/features/dashboard/hooks/useZeroScrollTabs.ts",
+    "src/features/dashboard/tabs/TodoTab.tsx",
+    "src/features/import/domain/mapCsvToSupportPlan.ts",
+    "src/features/kokuhoren-validation/catalog.ts",
+    "src/features/meeting-minutes/sp/sharepointRepository.ts",
+    "src/features/planDeployment/supportFlow.ts",
+    "src/features/reports/achievement/AchievementRecordPDF.tsx",
+    "src/features/today/actions/alertActions.storage.ts",
+    "src/features/today/actions/alertActions.types.ts",
+    "src/features/today/actions/useAlertActionState.ts",
+    "src/features/today/transport/useTransportStatus.ts",
+    "src/features/today/widgets/BriefingActionList.tsx",
+    "src/features/users/UsersPanel/UsersCreateForm.tsx",
+    "src/lib/uuid.ts",
+    "src/sharepoint/fields/index.ts",
+    "src/sharepoint/spListConfig.ts",
+    "src/sharepoint/spListHealthCheck.ts",
+    "src/sharepoint/spListRegistry.ts",
+    "src/testids.ts"
+  ],
+  "anys": [
+    {
+      "path": "src/features/schedules/data/sharePointAdapter.ts",
+      "count": 20
+    },
+    {
+      "path": "src/infra/sharepoint/repos/schedulesRepo.ts",
+      "count": 14
+    },
+    {
+      "path": "src/features/schedules/infra/SharePointScheduleRepository.ts",
+      "count": 12
+    },
+    {
+      "path": "src/features/schedules/repositoryFactory.ts",
+      "count": 11
+    },
+    {
+      "path": "src/lib/sp/spFetch.ts",
+      "count": 10
+    },
+    {
+      "path": "src/lib/zodErrorUtils.ts",
+      "count": 9
+    },
+    {
+      "path": "src/lib/sp/spPostBatch.ts",
+      "count": 7
+    },
+    {
+      "path": "src/hooks/usePersistedFilters.ts",
+      "count": 5
+    },
+    {
+      "path": "src/lib/env.schema.ts",
+      "count": 5
+    },
+    {
+      "path": "src/lib/sp/spListWrite.ts",
+      "count": 5
+    },
+    {
+      "path": "src/lib/spClient.ts",
+      "count": 5
+    },
+    {
+      "path": "src/pages/OpeningVerificationPage.tsx",
+      "count": 5
+    },
+    {
+      "path": "src/features/schedules/data/scheduleSpHelpers.ts",
+      "count": 4
+    },
+    {
+      "path": "src/auth/msalConfig.ts",
+      "count": 3
+    },
+    {
+      "path": "src/features/users/UsersPanel/UsersList.tsx",
+      "count": 3
+    },
+    {
+      "path": "src/lib/env.ts",
+      "count": 3
+    },
+    {
+      "path": "src/app/components/FooterQuickActions.tsx",
+      "count": 2
+    },
+    {
+      "path": "src/app/createSuspended.tsx",
+      "count": 2
+    },
+    {
+      "path": "src/auth/azureMsal.ts",
+      "count": 2
+    },
+    {
+      "path": "src/auth/MsalProvider.tsx",
+      "count": 2
+    },
+    {
+      "path": "src/features/audit/batchUtil.ts",
+      "count": 2
+    },
+    {
+      "path": "src/features/ibd/plans/isp-editor/data/ispRepo.ts",
+      "count": 2
+    },
+    {
+      "path": "src/features/schedules/infra/scheduleSpUtils.ts",
+      "count": 2
+    },
+    {
+      "path": "src/features/users/UserDetailSections/index.tsx",
+      "count": 2
+    },
+    {
+      "path": "src/hooks/useDaily.ts",
+      "count": 2
+    },
+    {
+      "path": "src/app/AppShellSidebar.tsx",
+      "count": 1
+    },
+    {
+      "path": "src/env.ts",
+      "count": 1
+    },
+    {
+      "path": "src/features/audit/types.ts",
+      "count": 1
+    },
+    {
+      "path": "src/features/audit/useAuditSync.ts",
+      "count": 1
+    },
+    {
+      "path": "src/features/auth/AuthProvider.tsx",
+      "count": 1
+    },
+    {
+      "path": "src/features/auth/diagnostics/collector.ts",
+      "count": 1
+    },
+    {
+      "path": "src/features/diagnostics/health/checks.ts",
+      "count": 1
+    },
+    {
+      "path": "src/features/handoff/handoffLoggerUtils.ts",
+      "count": 1
+    },
+    {
+      "path": "src/features/handoff/useCreateHandoffFromExternalSource.ts",
+      "count": 1
+    },
+    {
+      "path": "src/features/ibd/analysis/iceberg/SharePointIcebergRepository.ts",
+      "count": 1
+    },
+    {
+      "path": "src/features/nurse/sp/minuteWindow.ts",
+      "count": 1
+    },
+    {
+      "path": "src/features/schedules/data/graphAdapter.ts",
+      "count": 1
+    },
+    {
+      "path": "src/features/schedules/routes/WeekView.tsx",
+      "count": 1
+    },
+    {
+      "path": "src/features/staff/attendance/hooks/useStaffAttendanceAdmin.ts",
+      "count": 1
+    },
+    {
+      "path": "src/features/staff/attendance/hooks/useStaffAttendanceDay.ts",
+      "count": 1
+    },
+    {
+      "path": "src/features/today/hooks/useNextAction.ts",
+      "count": 1
+    },
+    {
+      "path": "src/features/users/UsersPanel/hooks/useUsersPanelExport.ts",
+      "count": 1
+    },
+    {
+      "path": "src/hooks/useDataIntegrityScan.ts",
+      "count": 1
+    },
+    {
+      "path": "src/infra/firestore/client.ts",
+      "count": 1
+    },
+    {
+      "path": "src/lib/debugLogger.ts",
+      "count": 1
+    },
+    {
+      "path": "src/lib/errors.ts",
+      "count": 1
+    },
+    {
+      "path": "src/lib/mappers.ts",
+      "count": 1
+    },
+    {
+      "path": "src/lib/runtime.ts",
+      "count": 1
+    },
+    {
+      "path": "src/lib/uuid.ts",
+      "count": 1
+    },
+    {
+      "path": "src/main.tsx",
+      "count": 1
+    },
+    {
+      "path": "src/pages/TodayOpsPage.tsx",
+      "count": 1
+    },
+    {
+      "path": "src/types/global-shims.d.ts",
+      "count": 1
+    },
+    {
+      "path": "src/types/global.d.ts",
+      "count": 1
+    },
+    {
+      "path": "src/ui/components/SignInButton.tsx",
+      "count": 1
+    },
+    {
+      "path": "src/worker.ts",
+      "count": 1
+    }
+  ],
+  "nonNullAsserts": [
+    {
+      "path": "src/app/config/navigationConfig.helpers.ts",
+      "count": 1
+    },
+    {
+      "path": "src/components/UserForm.tsx",
+      "count": 1
+    },
+    {
+      "path": "src/features/daily/components/split-stream/ProcedurePanel.tsx",
+      "count": 1
+    },
+    {
+      "path": "src/features/import/domain/autoLinkBipToProcedures.ts",
+      "count": 1
+    },
+    {
+      "path": "src/features/import/domain/parseCarePointsCsv.ts",
+      "count": 1
+    },
+    {
+      "path": "src/features/import/domain/parseSupportTemplateCsv.ts",
+      "count": 1
+    },
+    {
+      "path": "src/features/operation-hub/useOperationHubData.ts",
+      "count": 1
+    },
+    {
+      "path": "src/features/schedules/routes/WeekView.tsx",
+      "count": 1
+    }
+  ],
+  "mixedResponsibility": [
+    {
+      "path": "src/pages/OpeningVerificationPage.tsx",
+      "lines": 994
+    },
+    {
+      "path": "src/features/users/UserDetailSections/index.tsx",
+      "lines": 596
+    },
+    {
+      "path": "src/features/schedules/routes/DayView.tsx",
+      "lines": 579
+    },
+    {
+      "path": "src/features/nurse/medication/MedicationRound.tsx",
+      "lines": 570
+    },
+    {
+      "path": "src/components/DailyForm.tsx",
+      "lines": 558
+    },
+    {
+      "path": "src/features/ibd/procedures/templates/HighRiskIncidentDialog.tsx",
+      "lines": 558
+    },
+    {
+      "path": "src/features/schedules/routes/WeekView.tsx",
+      "lines": 544
+    },
+    {
+      "path": "src/features/nurse/observation/BulkObservationList.tsx",
+      "lines": 542
+    },
+    {
+      "path": "src/pages/TokuseiSurveyResultsPage.tsx",
+      "lines": 532
+    },
+    {
+      "path": "src/features/ibd/procedures/templates/TimeBasedSupportRecordForm.tsx",
+      "lines": 526
+    },
+    {
+      "path": "src/features/handoff/components/HandoffItem.tsx",
+      "lines": 522
+    },
+    {
+      "path": "src/features/nurse/observation/HealthObservationForm.tsx",
+      "lines": 518
+    },
+    {
+      "path": "src/features/users/UsersPanel/UsersList.tsx",
+      "lines": 515
+    },
+    {
+      "path": "src/debug/HydrationHud.tsx",
+      "lines": 510
+    },
+    {
+      "path": "src/pages/MonthlyRecordPage.tsx",
+      "lines": 505
+    },
+    {
+      "path": "src/hydration/RouteHydrationListener.tsx",
+      "lines": 493
+    },
+    {
+      "path": "src/features/daily/components/split-stream/RecordPanel.tsx",
+      "lines": 492
+    },
+    {
+      "path": "src/features/ibd/procedures/templates/SupportStepTemplateForm.tsx",
+      "lines": 484
+    },
+    {
+      "path": "src/debug/SpDevPanel.tsx",
+      "lines": 482
+    },
+    {
+      "path": "src/features/daily/lists/DailyRecordList.tsx",
+      "lines": 479
+    },
+    {
+      "path": "src/pages/DailyRecordMenuPage.tsx",
+      "lines": 475
+    },
+    {
+      "path": "src/features/ibd/procedures/templates/TimeFlowSupportRecordList.tsx",
+      "lines": 469
+    },
+    {
+      "path": "src/pages/StaffAttendanceMonthlySummaryPage.tsx",
+      "lines": 465
+    },
+    {
+      "path": "src/features/records/monthly/MonthlySummaryTable.tsx",
+      "lines": 461
+    },
+    {
+      "path": "src/pages/IBDHubPage.tsx",
+      "lines": 427
+    },
+    {
+      "path": "src/features/ibd/procedures/templates/SupportActivityTemplateForm.tsx",
+      "lines": 426
+    },
+    {
+      "path": "src/features/daily/components/time-flow/views/TimeFlowSupportRecordList.tsx",
+      "lines": 420
+    },
+    {
+      "path": "src/app/ProtectedRoute.tsx",
+      "lines": 410
+    },
+    {
+      "path": "src/features/daily/lists/DailyRecordWorkspace.tsx",
+      "lines": 403
+    },
+    {
+      "path": "src/pages/DashboardPageTabs.tsx",
+      "lines": 403
+    },
+    {
+      "path": "src/pages/admin/ModeSwitchPage.tsx",
+      "lines": 401
+    },
+    {
+      "path": "src/app/Home.tsx",
+      "lines": 389
+    },
+    {
+      "path": "src/pages/IntegratedResourceCalendarPage.tsx",
+      "lines": 388
+    },
+    {
+      "path": "src/features/attendance/components/AbsenceDetailDialog.tsx",
+      "lines": 381
+    },
+    {
+      "path": "src/pages/IndividualSupportManagementPage.tsx",
+      "lines": 370
+    },
+    {
+      "path": "src/pages/SupportPlanGuidePage.tsx",
+      "lines": 367
+    },
+    {
+      "path": "src/features/dashboard/layouts/BentoGridLayout.tsx",
+      "lines": 364
+    },
+    {
+      "path": "src/features/ibd/procedures/templates/UserSelectionList.tsx",
+      "lines": 363
+    },
+    {
+      "path": "src/features/dashboard/tabs/RoomManagementTabs.tsx",
+      "lines": 359
+    },
+    {
+      "path": "src/app/theme.tsx",
+      "lines": 357
+    },
+    {
+      "path": "src/features/schedules/components/SchedulesSpLane.tsx",
+      "lines": 357
+    },
+    {
+      "path": "src/features/ibd/analysis/pdca/IcebergPdcaPage.tsx",
+      "lines": 354
+    },
+    {
+      "path": "src/features/users/UserDetailSections/ISPSummarySection.tsx",
+      "lines": 352
+    },
+    {
+      "path": "src/pages/SmokeTestPage.tsx",
+      "lines": 345
+    },
+    {
+      "path": "src/features/attendance/components/AttendanceDetailDrawer.tsx",
+      "lines": 343
+    },
+    {
+      "path": "src/features/ibd/procedures/templates/TimeBasedSupportRecordList.tsx",
+      "lines": 338
+    },
+    {
+      "path": "src/features/schedules/components/NextActionCard.tsx",
+      "lines": 337
+    },
+    {
+      "path": "src/features/ibd/procedures/templates/SupportActivityTemplateList.tsx",
+      "lines": 335
+    },
+    {
+      "path": "src/features/daily/components/split-stream/ProcedurePanel.tsx",
+      "lines": 333
+    },
+    {
+      "path": "src/features/dashboard/tabs/TodoTab.tsx",
+      "lines": 333
+    },
+    {
+      "path": "src/features/nurse/components/VitalCard.stories.tsx",
+      "lines": 327
+    },
+    {
+      "path": "src/features/dashboard/tabs/StaffStatusTab.tsx",
+      "lines": 326
+    },
+    {
+      "path": "src/pages/IcebergAnalysisPage.tsx",
+      "lines": 323
+    },
+    {
+      "path": "src/features/handoff/components/HandoffFeedItem.tsx",
+      "lines": 319
+    },
+    {
+      "path": "src/pages/admin/DataIntegrityPage.tsx",
+      "lines": 319
+    },
+    {
+      "path": "src/features/users/components/MonthlyUsageDashboardCard.tsx",
+      "lines": 316
+    },
+    {
+      "path": "src/app/AuthNotices.tsx",
+      "lines": 313
+    },
+    {
+      "path": "src/features/users/UsersPanel/index.tsx",
+      "lines": 313
+    },
+    {
+      "path": "src/app/AppShellSidebar.tsx",
+      "lines": 307
+    },
+    {
+      "path": "src/features/nurse/components/VitalCard.tsx",
+      "lines": 305
+    },
+    {
+      "path": "src/pages/SupportStepMasterPage.tsx",
+      "lines": 303
+    },
+    {
+      "path": "src/features/audit/AuditPanel.tsx",
+      "lines": 299
+    },
+    {
+      "path": "src/pages/BusinessJournalPreviewPage.tsx",
+      "lines": 290
+    },
+    {
+      "path": "src/features/schedules/components/SchedulesHeader.tsx",
+      "lines": 287
+    },
+    {
+      "path": "src/features/meeting/MeetingGuideDrawer.tsx",
+      "lines": 285
+    },
+    {
+      "path": "src/features/dashboard/layouts/ZeroScrollLayout.tsx",
+      "lines": 279
+    },
+    {
+      "path": "src/features/users/UsageStatusDashboard.tsx",
+      "lines": 273
+    },
+    {
+      "path": "src/features/nurse/observation/HealthObservationWorkspace.tsx",
+      "lines": 257
+    },
+    {
+      "path": "src/features/dashboard/tabs/UserStatusTab.tsx",
+      "lines": 247
+    },
+    {
+      "path": "src/features/nurse/routes/NurseRoutes.tsx",
+      "lines": 246
+    },
+    {
+      "path": "src/features/dashboard/components/CommandBar.tsx",
+      "lines": 242
+    },
+    {
+      "path": "src/components/NavLinkPrefetch.tsx",
+      "lines": 240
+    },
+    {
+      "path": "src/pages/AssessmentDashboardPage.tsx",
+      "lines": 238
+    },
+    {
+      "path": "src/features/auth/diagnostics/AuthDiagnosticsPanel.tsx",
+      "lines": 234
+    },
+    {
+      "path": "src/features/schedules/routes/ScheduleViewDialog.tsx",
+      "lines": 229
+    },
+    {
+      "path": "src/auth/MsalProvider.tsx",
+      "lines": 226
+    },
+    {
+      "path": "src/features/daily/forms/TableDailyRecordForm.tsx",
+      "lines": 219
+    },
+    {
+      "path": "src/features/dashboard/sections/impl/AttendanceSection.tsx",
+      "lines": 219
+    },
+    {
+      "path": "src/app/components/FooterQuickActions.tsx",
+      "lines": 216
+    },
+    {
+      "path": "src/features/daily/components/procedure/ProcedureEditor.tsx",
+      "lines": 216
+    },
+    {
+      "path": "src/features/handoff/components/HandoffCommentList.tsx",
+      "lines": 213
+    },
+    {
+      "path": "src/features/ibd/procedures/daily-records/components/MonitoringRevisionDialog.tsx",
+      "lines": 211
+    },
+    {
+      "path": "src/features/nurse/records/NurseRecordsSection.tsx",
+      "lines": 210
+    },
+    {
+      "path": "src/features/dashboard/hooks/useSectionRenderer.tsx",
+      "lines": 201
+    }
+  ]
+}

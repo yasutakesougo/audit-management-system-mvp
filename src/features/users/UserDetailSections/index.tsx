@@ -1,22 +1,21 @@
-import { LoadingState } from '@/components/ui/LoadingState';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+
 import { TESTIDS, tidWithSuffix } from '@/testids';
+
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
-import Alert from '@mui/material/Alert';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
-import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
-import React, { Suspense, useCallback, useMemo, useRef, useState } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+
 import type { IUserMaster } from '../types';
-import { formatDateLabel, renderHighlights, resolveUserIdentifier } from './helpers';
 import {
     DEFAULT_TAB_KEY,
     menuSections,
@@ -25,12 +24,11 @@ import {
     TAB_SECTION_KEYS,
     TAB_SECTIONS,
 } from './menuSections';
+import { SectionDetailContent } from './SectionDetailContent';
+import { MenuCardGrid } from './sections/MenuCardGrid';
+import { TabPanelList } from './sections/TabPanelList';
 import type { MenuSection } from './types';
 import { UserDetailHeader } from './UserDetailHeader';
-
-const ISPSummarySectionLazy = React.lazy(() =>
-  import('./ISPSummarySection').then((m) => ({ default: m.ISPSummarySection })),
-);
 
 type BackLinkProps =
   | { label?: string; to: string }
@@ -44,81 +42,9 @@ type UserDetailSectionsProps = {
   onEdit?: (user: IUserMaster) => void;
 };
 
-const renderSectionDetails = (section: MenuSection, user: IUserMaster, attendanceLabel: string) => {
-  if (section.key === 'basic') {
-    const detailRows = [
-      { label: '氏名', value: user.FullName || '未設定' },
-      { label: 'ふりがな', value: user.Furigana || user.FullNameKana || '未登録' },
-      { label: '利用者コード', value: resolveUserIdentifier(user) },
-      { label: '契約日', value: formatDateLabel(user.ContractDate) },
-      { label: '利用開始日', value: formatDateLabel(user.ServiceStartDate) },
-      { label: '利用終了日', value: user.ServiceEndDate ? formatDateLabel(user.ServiceEndDate) : '継続利用中' },
-      { label: '在籍状況', value: user.IsActive === false ? '退所' : '在籍' },
-      { label: '支援区分', value: user.IsHighIntensitySupportTarget ? '強度行動障害支援対象者' : '通常支援' },
-      { label: '支援手順記録', value: user.IsSupportProcedureTarget ? '対象' : '対象外' },
-      { label: '通所予定日', value: attendanceLabel },
-      { label: '受給者証番号', value: user.RecipientCertNumber || '未登録' },
-      { label: '受給者証期限', value: formatDateLabel(user.RecipientCertExpiry) },
-    ];
-
-    return (
-      <Stack spacing={2}>
-        <Box
-          component="dl"
-          sx={{
-            m: 0,
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: '160px 1fr' },
-            columnGap: 3,
-            rowGap: 1.5,
-          }}
-        >
-          {detailRows.map(({ label, value }) => (
-            <React.Fragment key={label}>
-              <Typography component="dt" variant="subtitle2" color="text.secondary">
-                {label}
-              </Typography>
-              <Typography component="dd" variant="body1" sx={{ m: 0 }}>
-                {value}
-              </Typography>
-            </React.Fragment>
-          ))}
-        </Box>
-        <Divider />
-        <Typography variant="subtitle2" color="text.secondary">
-          このセクションでできること
-        </Typography>
-        {renderHighlights(section.highlights)}
-      </Stack>
-    );
-  }
-
-  // support-plan タブは ISPSummarySectionLazy で直接レンダリング（tabpanel 側参照）
-  if (section.key === 'support-plan') {
-    return null;
-  }
-
-  const supportProcedureWarning = section.key === 'support-procedure' && !user.IsSupportProcedureTarget;
-
-  return (
-    <Stack spacing={2}>
-      <Typography variant="subtitle2" color="text.secondary">
-        想定されるコンテンツ
-      </Typography>
-      {renderHighlights(section.highlights)}
-      {supportProcedureWarning && (
-        <Alert severity="warning">
-          この利用者は支援手順記録の対象に設定されていません。
-        </Alert>
-      )}
-      {section.status === 'coming-soon' && (
-        <Alert severity="info">
-          このセクションの詳細画面は今後の開発で提供予定です。
-        </Alert>
-      )}
-    </Stack>
-  );
-};
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink, variant = 'page', onEdit }) => {
   const [activeTab, setActiveTab] = useState<MenuSection['key']>(DEFAULT_TAB_KEY);
@@ -126,7 +52,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
   const navigate = useNavigate();
   const quickAccessSections = useMemo(
     () => menuSections.filter((section) => QUICK_ACCESS_KEYS.includes(section.key)),
-    []
+    [],
   );
 
   const attendanceLabel = user.AttendanceDays?.length ? user.AttendanceDays.join('・') : '—';
@@ -159,7 +85,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
         }
       }
     },
-    [navigate]
+    [navigate],
   );
 
   const backControl = useMemo(() => {
@@ -177,7 +103,6 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
         </Button>
       );
     }
-
     if ('onClick' in backLink) {
       return (
         <Button
@@ -190,19 +115,16 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
         </Button>
       );
     }
-
     return null;
   }, [backLink]);
 
   const instructionText =
-    variant === 'embedded'
-      ? '利用者一覧を確認するか、新規利用者登録・基本情報・個別支援計画書・支援手順兼記録・モニタリングシートを選択してください。'
-      : '利用者一覧を確認するか、新規利用者登録・基本情報・個別支援計画書・支援手順兼記録・モニタリングシートを選択してください。';
+    '利用者一覧を確認するか、新規利用者登録・基本情報・個別支援計画書・支援手順兼記録・モニタリングシートを選択してください。';
 
   const isEmbedded = variant === 'embedded';
 
   return (
-  <Stack spacing={isEmbedded ? 1.5 : 3} data-testid={TESTIDS['user-detail-sections']}>
+    <Stack spacing={isEmbedded ? 1.5 : 3} data-testid={TESTIDS['user-detail-sections']}>
       {backControl}
 
       <UserDetailHeader
@@ -215,196 +137,78 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
       />
 
       {!isEmbedded && (
-      <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 3 }}>
-        <Stack spacing={3}>
-          <Box>
-            <Typography variant="h6" component="h2" sx={{ fontWeight: 600 }}>
-              利用者メニュー
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {instructionText}
-            </Typography>
-          </Box>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap">
-            {quickAccessSections.map((section) => (
-              <Button
-                key={`quick-${section.key}`}
-                {...tidWithSuffix(TESTIDS['users-quick-prefix'], section.key)}
-                variant={section.key === 'create-user' ? 'contained' : 'outlined'}
-                color={section.key === 'create-user' ? 'primary' : 'inherit'}
-                size="small"
-                onClick={() => handleCardNavigate(section)}
-              >
-                {section.title}
-              </Button>
-            ))}
+        <Paper variant="outlined" sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 3 }}>
+          <Stack spacing={3}>
+            <Box>
+              <Typography variant="h6" component="h2" sx={{ fontWeight: 600 }}>
+                利用者メニュー
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {instructionText}
+              </Typography>
+            </Box>
+
+            {/* ── Quick Access Bar ── */}
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap">
+              {quickAccessSections.map((section) => (
+                <Button
+                  key={`quick-${section.key}`}
+                  {...tidWithSuffix(TESTIDS['users-quick-prefix'], section.key)}
+                  variant={section.key === 'create-user' ? 'contained' : 'outlined'}
+                  color={section.key === 'create-user' ? 'primary' : 'inherit'}
+                  size="small"
+                  onClick={() => handleCardNavigate(section)}
+                >
+                  {section.title}
+                </Button>
+              ))}
+            </Stack>
+
+            {/* ── Menu Card Grid ── */}
+            <MenuCardGrid
+              sections={menuSections}
+              user={user}
+              tabSectionKeys={TAB_SECTION_KEYS}
+              onNavigate={handleCardNavigate}
+            />
+
+            {/* ── Tab Bar ── */}
+            <Tabs
+              value={activeTab}
+              onChange={(_, value) => setActiveTab(value as MenuSection['key'])}
+              variant="scrollable"
+              scrollButtons="auto"
+              aria-label="利用者メニュータブ"
+            >
+              {TAB_SECTIONS.map((section) => {
+                const IconComponent = section.icon;
+                return (
+                  <Tab
+                    key={section.key}
+                    value={section.key}
+                    label={section.title}
+                    icon={<IconComponent fontSize="small" />}
+                    iconPosition="start"
+                    id={`user-menu-tab-${section.key}`}
+                    aria-controls={`user-menu-tabpanel-${section.key}`}
+                  />
+                );
+              })}
+            </Tabs>
+
+            {/* ── Tab Panels ── */}
+            <TabPanelList
+              sections={TAB_SECTIONS}
+              user={user}
+              attendanceLabel={attendanceLabel}
+              activeTab={activeTab}
+              tabPanelRef={tabPanelRef}
+            />
           </Stack>
-          <Grid container spacing={2.5}>
-            {menuSections.map((section) => {
-              const IconComponent = section.icon;
-              const cardIsTab = TAB_SECTION_KEYS.includes(section.key);
-              const cardActionLabel = section.actionLabel ?? (cardIsTab ? 'タブを開く' : '詳細へ');
-              const chipProps = (() => {
-                if (section.key === 'support-procedure') {
-                  return {
-                    label: user.IsSupportProcedureTarget ? '対象' : '対象外',
-                    color: user.IsSupportProcedureTarget ? 'secondary' : 'default',
-                    variant: user.IsSupportProcedureTarget ? 'filled' : 'outlined',
-                  } as const;
-                }
-                if (section.status === 'coming-soon') {
-                  return {
-                    label: '準備中',
-                    color: 'default',
-                    variant: 'outlined',
-                  } as const;
-                }
-                return {
-                  label: '利用可',
-                  color: 'success',
-                  variant: 'outlined',
-                } as const;
-              })();
-
-              return (
-                <Grid key={section.key} size={{ xs: 12, sm: 6, md: 4 }}>
-                  <Paper
-                    {...tidWithSuffix(TESTIDS['user-menu-card-prefix'], section.key)}
-                    variant="outlined"
-                    sx={{
-                      p: 2.5,
-                      height: '100%',
-                      borderRadius: 2,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 1.5,
-                    }}
-                  >
-                    <Stack direction="row" spacing={1.5} alignItems="center">
-                      <Avatar sx={{ bgcolor: section.avatarColor, color: '#fff', width: 44, height: 44 }}>
-                        <IconComponent fontSize="small" />
-                      </Avatar>
-                      <Box>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                          {section.title}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {section.description}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                    <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" mt="auto">
-                      <Chip size="small" {...chipProps} />
-                      <Button variant="contained" color="primary" size="small" onClick={() => handleCardNavigate(section)}>
-                        {cardActionLabel}
-                      </Button>
-                    </Stack>
-                  </Paper>
-                </Grid>
-              );
-            })}
-          </Grid>
-          <Tabs
-            value={activeTab}
-            onChange={(_, value) => setActiveTab(value as MenuSection['key'])}
-            variant="scrollable"
-            scrollButtons="auto"
-            aria-label="利用者メニュータブ"
-          >
-            {TAB_SECTIONS.map((section) => {
-              const IconComponent = section.icon;
-              return (
-                <Tab
-                  key={section.key}
-                  value={section.key}
-                  label={section.title}
-                  icon={<IconComponent fontSize="small" />}
-                  iconPosition="start"
-                  id={`user-menu-tab-${section.key}`}
-                  aria-controls={`user-menu-tabpanel-${section.key}`}
-                />
-              );
-            })}
-          </Tabs>
-
-          {TAB_SECTIONS.map((section) => {
-            const IconComponent = section.icon;
-            const chipProps = (() => {
-              if (section.key === 'support-procedure') {
-                return {
-                  label: user.IsSupportProcedureTarget ? '対象' : '対象外',
-                  color: user.IsSupportProcedureTarget ? 'secondary' : 'default',
-                  variant: user.IsSupportProcedureTarget ? 'filled' : 'outlined',
-                } as const;
-              }
-              if (section.status === 'coming-soon') {
-                return {
-                  label: '準備中',
-                  color: 'default',
-                  variant: 'outlined',
-                } as const;
-              }
-              return {
-                label: '利用可',
-                color: 'success',
-                variant: 'outlined',
-              } as const;
-            })();
-
-            const isTabActive = activeTab === section.key;
-
-            return (
-              <Box
-                key={section.key}
-                ref={isTabActive ? tabPanelRef : undefined}
-                role="tabpanel"
-                hidden={!isTabActive}
-                id={`user-menu-tabpanel-${section.key}`}
-                {...tidWithSuffix(TESTIDS['user-menu-tabpanel-prefix'], section.key)}
-                aria-labelledby={`user-menu-tab-${section.key}`}
-                sx={{ mt: 2 }}
-              >
-                {isTabActive && (
-                  <Stack spacing={2.5}>
-                    <Stack
-                      direction={{ xs: 'column', md: 'row' }}
-                      spacing={2}
-                      alignItems={{ xs: 'flex-start', md: 'center' }}
-                    >
-                      <Stack direction="row" spacing={2} alignItems="center" sx={{ flexGrow: 1 }}>
-                        <Avatar sx={{ bgcolor: section.avatarColor, color: '#fff', width: 48, height: 48 }}>
-                          <IconComponent fontSize="medium" />
-                        </Avatar>
-                        <Box>
-                          <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
-                            {section.title}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {section.description}
-                          </Typography>
-                        </Box>
-                      </Stack>
-                      <Chip size="small" {...chipProps} />
-                    </Stack>
-                    <Divider />
-                    {section.key === 'support-plan' ? (
-                      <Suspense
-                        fallback={<LoadingState message="個別支援計画書を準備中…" inline />}
-                      >
-                        <ISPSummarySectionLazy userId={user.UserID} />
-                      </Suspense>
-                    ) : (
-                      renderSectionDetails(section, user, attendanceLabel)
-                    )}
-                  </Stack>
-                )}
-              </Box>
-            );
-          })}
-        </Stack>
-      </Paper>
+        </Paper>
       )}
 
+      {/* ── Non-tabbed sections (scrollable anchors) ── */}
       {NON_TABBED_SECTIONS.map((section) => {
         const IconComponent = section.icon;
         return (
@@ -432,10 +236,16 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
                     {section.description}
                   </Typography>
                 </Box>
-                {section.status === 'coming-soon' && <Chip label="準備中" size="small" variant="outlined" />}
+                {section.status === 'coming-soon' && (
+                  <Chip label="準備中" size="small" variant="outlined" />
+                )}
               </Stack>
               <Divider />
-              {renderSectionDetails(section, user, attendanceLabel)}
+              <SectionDetailContent
+                section={section}
+                user={user}
+                attendanceLabel={attendanceLabel}
+              />
             </Stack>
           </Paper>
         );
