@@ -323,7 +323,7 @@ export const BriefingActionList: React.FC<BriefingActionListProps> = ({ alerts }
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Typography variant="subtitle2" fontWeight="bold">
-            📋 ブリーフィング
+            📋 対応が必要な申し送り
           </Typography>
           {pendingCount > 0 && (
             <Badge

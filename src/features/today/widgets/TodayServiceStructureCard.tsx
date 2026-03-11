@@ -2,11 +2,12 @@
  * TodayServiceStructureCard — 今日の業務体制
  *
  * 「担当表」ではなく「業務体制」を可視化する。
- * 3セクション: 生活介護 / 生活支援 / 判断窓口
+ * 4セクション: 生活介護 / 生活支援 / 判断窓口 / 運営サポート
  *
  * - 生活介護: 集団対応の配置・役割
  * - 生活支援: ショートステイ・一時ケア受け入れ体制
- * - 判断窓口: 所長・サビ管・ナースの在席
+ * - 判断窓口: 所長・サビ管・ナースの在席（管理者・専門職）
+ * - 運営サポート: 会計・給食・送迎・ボランティア・来客の配置
  *
  * @see Issue 3: /today に TodayServiceStructureCard を追加
  */
@@ -100,7 +101,7 @@ function SectionHeader({ emoji, title }: { emoji: string; title: string }) {
 export const TodayServiceStructureCard: React.FC<TodayServiceStructureCardProps> = ({
   serviceStructure,
 }) => {
-  const { dayCare, lifeSupport, decisionSupport } = serviceStructure;
+  const { dayCare, lifeSupport, decisionSupport, operationalSupport } = serviceStructure;
 
   const hasDayCareStaff =
     dayCare.floorWatchStaff.length > 0 ||
@@ -113,11 +114,11 @@ export const TodayServiceStructureCard: React.FC<TodayServiceStructureCardProps>
 
   return (
     <Box data-testid="today-service-structure-card">
-      {/* ── 3-column: 生活介護 / 生活支援 / 判断窓口 ── */}
+      {/* ── 2x2 grid: 生活介護 / 生活支援 / 判断窓口 / 運営サポート ── */}
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' },
+          gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
           gap: { xs: 1, sm: 1.5 },
         }}
       >
@@ -196,12 +197,22 @@ export const TodayServiceStructureCard: React.FC<TodayServiceStructureCardProps>
           )}
         </Box>
 
-        {/* C. 判断窓口 */}
+        {/* C. 判断窓口（管理者・専門職） */}
         <Box data-testid="section-decision-support">
           <SectionHeader emoji="🟡" title="判断窓口" />
           <PresenceIndicator label="所長" present={decisionSupport.directorPresent} names={decisionSupport.directorNames} />
           <PresenceIndicator label="サビ管" present={decisionSupport.serviceManagerPresent} names={decisionSupport.serviceManagerNames} />
           <PresenceIndicator label="ナース" present={decisionSupport.nursePresent} names={decisionSupport.nurseNames} />
+        </Box>
+
+        {/* D. 運営サポート（会計・給食・送迎） */}
+        <Box data-testid="section-operational-support">
+          <SectionHeader emoji="🟠" title="運営サポート" />
+          <PresenceIndicator label="会計" present={operationalSupport.accountantPresent} names={operationalSupport.accountantNames} />
+          <RoleRow label="給食" names={operationalSupport.mealStaff} />
+          <RoleRow label="送迎" names={operationalSupport.transportStaff} />
+          <RoleRow label="日中ボランティア" names={operationalSupport.volunteerStaff} />
+          <RoleRow label="日中来客" names={operationalSupport.visitorNames} />
         </Box>
       </Box>
     </Box>

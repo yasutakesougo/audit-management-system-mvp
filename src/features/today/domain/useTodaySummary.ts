@@ -48,6 +48,14 @@ function buildMockServiceStructure(staffNames: string[]): ServiceStructure {
       serviceManagerNames: [s(4)],
       nurseNames: [s(2)],
     },
+    operationalSupport: {
+      accountantPresent: true,
+      accountantNames: [s(3)],
+      mealStaff: [s(5), s(6 % staffNames.length)],
+      transportStaff: [s(1), s(7 % staffNames.length)],
+      volunteerStaff: [s(6 % staffNames.length)],
+      visitorNames: [s(7 % staffNames.length)],
+    },
   };
 }
 
