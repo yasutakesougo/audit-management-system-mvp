@@ -394,12 +394,21 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       audience: NAV_AUDIENCE.admin,
       group: 'admin' as NavGroupKey,
     });
+
+    items.push({
+      label: '管理ツール',
+      to: '/admin',
+      isActive: (pathname: string) => pathname === '/admin',
+      icon: undefined,
+      audience: NAV_AUDIENCE.admin,
+      group: 'admin' as NavGroupKey,
+    });
   }
 
   items.push({
     label: '支援活動マスタ',
     to: '/admin/templates',
-    isActive: (pathname: string) => pathname.startsWith('/admin'),
+    isActive: (pathname: string) => pathname.startsWith('/admin/templates'),
     icon: undefined,
     prefetchKey: PREFETCH_KEYS.adminTemplates,
     prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],

@@ -53,6 +53,9 @@ export interface IUserMaster {
 
   // 取得レベルマーカー（Repository から付与、UI 側で表示判定に使用可）
   __selectMode?: UserSelectMode;
+
+  // アセスメント会議実施日（モニタリング会議カウントダウンの起点）
+  LastAssessmentDate?: string | null;
 }
 
 export interface IUserMasterCreateDto {
@@ -89,6 +92,9 @@ export interface IUserMasterCreateDto {
   TransportAdditionType?: string | null;
   MealAddition?: string | null;
   CopayPaymentMethod?: string | null;
+
+  // アセスメント会議実施日
+  LastAssessmentDate?: string | null;
 }
 
 export const USERS_MASTER_FIELD_MAP = {
@@ -123,6 +129,7 @@ export const USERS_MASTER_FIELD_MAP = {
   transportAdditionType: 'TransportAdditionType',
   mealAddition: 'MealAddition',
   copayPaymentMethod: 'CopayPaymentMethod',
+  lastAssessmentDate: 'LastAssessmentDate',
 } as const;
 
 // ── CORE: 一覧表示用（軽量 / 20列） ──
@@ -147,6 +154,7 @@ export const USERS_SELECT_FIELDS_CORE = [
   USERS_MASTER_FIELD_MAP.recipientCertExpiry,
   USERS_MASTER_FIELD_MAP.modified,
   USERS_MASTER_FIELD_MAP.created,
+  USERS_MASTER_FIELD_MAP.lastAssessmentDate,
 ] as const;
 
 // ── DETAIL: 詳細画面用（CORE + 支給決定情報） ──

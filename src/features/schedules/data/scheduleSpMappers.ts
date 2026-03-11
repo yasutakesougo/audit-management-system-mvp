@@ -8,6 +8,7 @@
  */
 
 import type { ScheduleCategory, ScheduleStatus } from '@/features/schedules/domain/types';
+import type { RepoSchedule } from '@/infra/sharepoint/repos/schedulesRepo';
 
 import type { SchedItem, SchedulesPort } from './port';
 import { getSchedulesListTitle, SCHEDULES_FIELDS } from './spSchema';
@@ -112,22 +113,7 @@ export const buildSelectSets = () => {
  * Helper: Map RepoSchedule → SchedItem
  * Bridges repo layer (internal names) to port layer (domain types)
  */
-export const mapRepoScheduleToSchedItem = (repo: {
-  id: number;
-  etag?: string;
-  title: string;
-  eventDate: string;
-  endDate: string;
-  status?: string;
-  serviceType?: string;
-  personType: string;
-  personId: string;
-  personName?: string;
-  assignedStaffId?: string;
-  note?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}): SchedItem | null => {
+export const mapRepoScheduleToSchedItem = (repo: RepoSchedule): SchedItem | null => {
   try {
     return {
       id: String(repo.id),

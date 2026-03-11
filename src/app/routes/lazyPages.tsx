@@ -136,6 +136,8 @@ export const SuspendedNavigationDiagnosticsPage = createSuspended(NavigationDiag
 export const SuspendedDataIntegrityPage = createSuspended(DataIntegrityPage, 'データ整合性チェックを読み込んでいます…');
 export const SuspendedCsvImportPage = createSuspended(CsvImportPage, 'CSVインポートを読み込んでいます…');
 export const SuspendedModeSwitchPage = createSuspended(ModeSwitchPage, 'モード切替を読み込んでいます…');
+const AdminHubPage = React.lazy(() => import('@/pages/admin/AdminHubPage'));
+export const SuspendedAdminHubPage = createSuspended(AdminHubPage, '管理ツールを読み込んでいます…');
 export const SuspendedMeetingGuidePage = createSuspended(MeetingGuidePage, '会議ガイドを読み込んでいます…');
 export const SuspendedDashboardBriefingPage = createSuspended(DashboardBriefingPage, '最新の大切情報を読み込んでいます…');
 const RoomManagementPage = React.lazy(() => import('@/pages/RoomManagementPage').then((module) => ({ default: module.RoomManagementPage ?? module.default })));

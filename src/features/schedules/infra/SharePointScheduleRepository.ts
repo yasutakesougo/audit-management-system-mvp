@@ -4,6 +4,7 @@ import {
     removeSchedule,
     updateSchedule,
     type CreateScheduleInput as RepoCreateInput,
+    type RepoSchedule,
     type UpdateScheduleInput as RepoUpdateInput,
 } from '@/infra/sharepoint/repos/schedulesRepo';
 import { AuthRequiredError, toSafeError } from '@/lib/errors';
@@ -36,22 +37,7 @@ export { dayKeyInTz, monthKeyInTz } from './scheduleSpUtils';
 /**
  * Helper: Map repo schedule to domain ScheduleItem
  */
-const mapRepoScheduleToScheduleItem = (repo: {
-  id: number;
-  etag?: string;
-  title: string;
-  eventDate: string;
-  endDate: string;
-  status?: string;
-  serviceType?: string;
-  personType: string;
-  personId: string;
-  personName?: string;
-  assignedStaffId?: string;
-  note?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}): ScheduleItem | null => {
+const mapRepoScheduleToScheduleItem = (repo: RepoSchedule): ScheduleItem | null => {
   try {
     return {
       id: String(repo.id),
@@ -344,20 +330,17 @@ export class SharePointScheduleRepository implements ScheduleRepository {
         personId: input.userId || '',
         personName: input.userName,
         assignedStaffId: input.assignedStaffId,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        targetUserId: (input as any).targetUserId,
+        targetUserId: input.targetUserId,
         rowKey: generateRowKey(),
         dayKey,
         monthKey,
         fiscalYear,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        orgAudience: (input as any).orgAudience,
+        orgAudience: input.orgAudience,
         notes: input.notes,
       };
 
       const created = await createSchedule(client, createPayload);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const item = mapRepoScheduleToScheduleItem(created as any);
+      const item = mapRepoScheduleToScheduleItem(created);
 
       if (!item) {
         throw new Error('Failed to map created schedule');
@@ -436,19 +419,16 @@ export class SharePointScheduleRepository implements ScheduleRepository {
         personId: input.userId,
         personName: input.userName,
         assignedStaffId: input.assignedStaffId,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        targetUserId: (input as any).targetUserId,
+        targetUserId: input.targetUserId,
         dayKey,
         monthKey,
         fiscalYear: String(startDate.getFullYear()),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        orgAudience: (input as any).orgAudience,
+        orgAudience: input.orgAudience,
         notes: input.notes,
       };
 
       const updated = await updateSchedule(client, idNum, etag, updatePayload);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const item = mapRepoScheduleToScheduleItem(updated as any);
+      const item = mapRepoScheduleToScheduleItem(updated);
 
       if (!item) {
         throw new Error('Failed to map updated schedule');

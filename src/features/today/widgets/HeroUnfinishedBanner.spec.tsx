@@ -16,8 +16,8 @@ describe('HeroUnfinishedBanner', () => {
     expect(screen.getByText(/本日の記録は完了です/)).toBeInTheDocument();
     expect(screen.getByTestId('today-empty-hero')).toBeInTheDocument();
 
-    // 今すぐ入力 ボタンが表示されないこと
-    expect(screen.queryByRole('button', { name: /今すぐ入力/ })).not.toBeInTheDocument();
+    // 記録を入力する ボタンが表示されないこと
+    expect(screen.queryByRole('button', { name: /記録を入力する/ })).not.toBeInTheDocument();
   });
 
   it('renders unfilled state warning with 0 approvals', () => {
@@ -34,7 +34,7 @@ describe('HeroUnfinishedBanner', () => {
     expect(screen.queryByText(/承認待ち/)).not.toBeInTheDocument();
 
     // ボタンが表示されていること
-    expect(screen.getByRole('button', { name: /今すぐ入力/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /記録を入力する/ })).toBeInTheDocument();
   });
 
   it('renders unfilled state warning with approvals', () => {
@@ -60,11 +60,24 @@ describe('HeroUnfinishedBanner', () => {
       />
     );
 
-    const button = screen.getByRole('button', { name: /今すぐ入力/ });
+    const button = screen.getByRole('button', { name: /記録を入力する/ });
     fireEvent.click(button);
 
     // 関数が正しく呼び出されたか
     expect(handleClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('displays highestPriorityUserName when provided', () => {
+    render(
+      <HeroUnfinishedBanner
+        unfilledCount={3}
+        highestPriorityUserName="中村 裕樹"
+        onClickPrimary={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId('today-hero-priority-user')).toBeInTheDocument();
+    expect(screen.getByText(/中村 裕樹/)).toBeInTheDocument();
   });
 
   it('renders secondary button when onClickSecondary is provided', () => {

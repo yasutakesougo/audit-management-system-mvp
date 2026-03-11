@@ -1,9 +1,11 @@
 import { motionTokens } from '@/app/theme';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import EditNoteIcon from '@mui/icons-material/EditNote';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import GroupOffIcon from '@mui/icons-material/GroupOff';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { Box, Button, IconButton, Paper, Stack, Tooltip, Typography } from '@mui/material';
 import React, { useMemo, useState } from 'react';
 import { EmptyStateBlock } from './EmptyStateBlock';
@@ -32,6 +34,9 @@ const UserCompactRow = React.memo<{
   onOpenQuickRecord: (id: string) => void;
   onOpenISP?: (id: string) => void;
 }>(function UserCompactRow({ user, onOpenQuickRecord, onOpenISP }) {
+  const needsAttention = !user.recordFilled && user.status !== 'absent';
+  const isAbsent = user.status === 'absent';
+
   return (
     <Paper
       key={user.userId}
@@ -54,22 +59,41 @@ const UserCompactRow = React.memo<{
         transition: motionTokens.transition.bgColor,
         '&:hover, &:focus-visible': { bgcolor: 'action.hover' },
         outline: 'none',
-        ...(user.status === 'absent' && {
+        // 注意ハイライト: 未記録ユーザー
+        ...(needsAttention && {
+          borderLeft: 3,
+          borderColor: 'warning.main',
+          bgcolor: 'rgba(255, 152, 0, 0.04)',
+        }),
+        // 欠席ユーザー
+        ...(isAbsent && {
           opacity: 0.6,
+          borderLeft: 3,
+          borderColor: 'error.light',
         }),
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        {/* rendering-conditional-render: ternary over && */}
+        {/* ステータスアイコン: 記録済み / 未記録 / 欠席 */}
         {user.recordFilled ? (
           <CheckCircleIcon
             sx={{ fontSize: 18, color: 'success.main' }}
             aria-label="記録済み"
           />
-        ) : null}
+        ) : isAbsent ? (
+          <ErrorOutlineIcon
+            sx={{ fontSize: 18, color: 'error.main' }}
+            aria-label="欠席"
+          />
+        ) : (
+          <RadioButtonUncheckedIcon
+            sx={{ fontSize: 18, color: 'warning.main' }}
+            aria-label="未記録"
+          />
+        )}
         <Typography
           variant="body1"
-          fontWeight={500}
+          fontWeight={user.recordFilled ? 400 : 600}
           sx={user.recordFilled ? { color: 'text.secondary' } : undefined}
         >
           {user.name}
@@ -92,11 +116,12 @@ const UserCompactRow = React.memo<{
         ) : null}
         <Button
           size="small"
-          variant="outlined"
+          variant={user.recordFilled ? 'outlined' : 'contained'}
+          color={user.recordFilled ? 'inherit' : 'primary'}
           tabIndex={-1}
-          sx={{ minHeight: 44, pointerEvents: 'none' }}
+          sx={{ minHeight: 44, pointerEvents: 'none', fontWeight: user.recordFilled ? 400 : 700 }}
         >
-          記録
+          {user.recordFilled ? '記録済' : '記録する'}
         </Button>
       </Box>
     </Paper>
