@@ -49,6 +49,8 @@ describe('settingsModel', () => {
         fontSize: 'large',
         colorPreset: 'highContrast',
         layoutMode: 'normal',
+        hiddenNavGroups: [],
+        hiddenNavItems: [],
         lastModified: 1234567890,
       };
       localVault.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
@@ -95,6 +97,8 @@ describe('settingsModel', () => {
         fontSize: 'small',
         colorPreset: 'default',
         layoutMode: 'normal',
+        hiddenNavGroups: [],
+        hiddenNavItems: [],
         lastModified: 1234567890,
       };
 
