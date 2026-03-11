@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
+  addWeeks,
   dateToDayScope,
   dayScopeToDate,
   formatDateLabel,
   formatDateLocal,
+  formatWeekLabel,
+  getWeekRange,
   parseDateString,
   parseRange,
 } from '../hooks/useHandoffDateNav';
@@ -118,6 +121,72 @@ describe('useHandoffDateNav pure helpers', () => {
       expect(parseRange('day')).toBe('day');
       expect(parseRange('week')).toBe('week');
       expect(parseRange('month')).toBe('month');
+    });
+  });
+
+  // ── getWeekRange (月曜始まり) ──
+  describe('getWeekRange', () => {
+    it('月曜入力 → 自身が start', () => {
+      // 2026-03-09 is Monday
+      expect(getWeekRange('2026-03-09')).toEqual(['2026-03-09', '2026-03-15']);
+    });
+
+    it('水曜入力 → 月曜〜日曜', () => {
+      // 2026-03-11 is Wednesday
+      expect(getWeekRange('2026-03-11')).toEqual(['2026-03-09', '2026-03-15']);
+    });
+
+    it('日曜入力 → 前の月曜〜自身が end', () => {
+      // 2026-03-15 is Sunday
+      expect(getWeekRange('2026-03-15')).toEqual(['2026-03-09', '2026-03-15']);
+    });
+
+    it('土曜入力 → 月曜〜日曜', () => {
+      // 2026-03-14 is Saturday
+      expect(getWeekRange('2026-03-14')).toEqual(['2026-03-09', '2026-03-15']);
+    });
+
+    it('月跨ぎ対応', () => {
+      // 2026-03-02 is Monday, week ends 2026-03-08
+      expect(getWeekRange('2026-03-01')).toEqual(['2026-02-23', '2026-03-01']);
+    });
+
+    it('年跨ぎ対応', () => {
+      // 2026-01-01 is Thursday
+      expect(getWeekRange('2026-01-01')).toEqual(['2025-12-29', '2026-01-04']);
+    });
+  });
+
+  // ── addWeeks ──
+  describe('addWeeks', () => {
+    it('+1 week = +7 days', () => {
+      expect(addWeeks('2026-03-09', 1)).toBe('2026-03-16');
+    });
+
+    it('-1 week = -7 days', () => {
+      expect(addWeeks('2026-03-09', -1)).toBe('2026-03-02');
+    });
+
+    it('crosses month boundary', () => {
+      expect(addWeeks('2026-02-25', 1)).toBe('2026-03-04');
+    });
+  });
+
+  // ── formatWeekLabel ──
+  describe('formatWeekLabel', () => {
+    it('formats week range in Japanese', () => {
+      const label = formatWeekLabel('2026-03-09', '2026-03-15');
+      expect(label).toBe('3/9（月）〜 3/15（日）');
+    });
+
+    it('handles month-crossing label', () => {
+      const label = formatWeekLabel('2025-12-29', '2026-01-04');
+      expect(label).toBe('12/29（月）〜 1/4（日）');
+    });
+
+    it('falls back for invalid input', () => {
+      const label = formatWeekLabel('invalid', 'bad');
+      expect(label).toBe('invalid 〜 bad');
     });
   });
 });

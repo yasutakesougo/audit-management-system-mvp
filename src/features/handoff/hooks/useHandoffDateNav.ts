@@ -1,15 +1,15 @@
 /**
  * useHandoffDateNav — /handoff-timeline の日付ナビゲーション管理
  *
- * URL: ?range=day&date=YYYY-MM-DD
+ * URL: ?range=day|week&date=YYYY-MM-DD
  *
  * 解決ルール:
  *  1. URL の `date` パラメータがあればそれを使う
  *  2. なければ location.state.dayScope を date に変換
  *  3. 最終 fallback: 今日
  *
- * range は P0 では 'day' のみ実装。
- * P1 以降で 'week' | 'month' を追加予定。
+ * P0: day ビュー
+ * P1: week ビュー（月曜始まり）
  */
 
 import { useCallback, useMemo } from 'react';
@@ -25,12 +25,14 @@ export type DateRange = 'day' | 'week' | 'month';
 export interface HandoffDateNavState {
   /** 基準日 (YYYY-MM-DD, JST) */
   date: string;
-  /** 表示レンジ (P0 では 'day' のみ) */
+  /** 表示レンジ */
   range: DateRange;
   /** 旧互換: dayScope 相当 ('today' | 'yesterday' | 日付指定) */
   dayScope: HandoffDayScope;
   /** 遷移元が /today かどうか */
   fromToday: boolean;
+  /** range=week のとき: 週の月〜日 [start, end] */
+  weekRange: [string, string] | null;
 }
 
 export interface HandoffDateNavActions {
@@ -42,9 +44,17 @@ export interface HandoffDateNavActions {
   goToDate: (dateStr: string) => void;
   /** 今日に移動 */
   goToToday: () => void;
+  /** 前週に移動 */
+  goToPreviousWeek: () => void;
+  /** 翌週に移動 (未来は今週まで) */
+  goToNextWeek: () => void;
+  /** 指定日を含む週に移動 */
+  goToWeekOf: (dateStr: string) => void;
+  /** range を切り替え */
+  setRange: (range: DateRange) => void;
   /** 今日かどうか */
   isToday: boolean;
-  /** 表示用ラベル */
+  /** 表示用ラベル (day: '今日', week: '3/10〜3/16') */
   dateLabel: string;
 }
 
@@ -123,6 +133,45 @@ export function parseRange(raw: string | null): DateRange {
   return 'day';
 }
 
+// ── Week helpers (月曜始まり) ──────────────────────────────────
+
+/**
+ * 指定日を含む週の [月曜, 日曜] を返す。
+ * 月曜始まり: JS Date.getDay() で 0=日, 1=月, ..., 6=土
+ */
+export function getWeekRange(dateStr: string): [string, string] {
+  const d = parseDateString(dateStr);
+  if (!d) {
+    // fallback: 今日の週
+    return getWeekRange(formatDateLocal());
+  }
+  // JS getDay: 0=Sun → offset=6, 1=Mon → offset=0, ..., 6=Sat → offset=5
+  const jsDay = d.getDay();
+  const offset = jsDay === 0 ? 6 : jsDay - 1;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - offset);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return [formatDateLocal(monday), formatDateLocal(sunday)];
+}
+
+/** 基準日を +/- n 週移動 (7日単位) */
+export function addWeeks(dateStr: string, n: number): string {
+  return addDays(dateStr, n * 7);
+}
+
+/** 週ラベル: "3/10（月）〜 3/16（日）" */
+export function formatWeekLabel(startStr: string, endStr: string): string {
+  const s = parseDateString(startStr);
+  const e = parseDateString(endStr);
+  if (!s || !e) return `${startStr} 〜 ${endStr}`;
+
+  const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+  const sLabel = `${s.getMonth() + 1}/${s.getDate()}（${weekdays[s.getDay()]}）`;
+  const eLabel = `${e.getMonth() + 1}/${e.getDate()}（${weekdays[e.getDay()]}）`;
+  return `${sLabel}〜 ${eLabel}`;
+}
+
 // ────────────────────────────────────────────────────────────
 // Hook
 // ────────────────────────────────────────────────────────────
@@ -130,6 +179,9 @@ export function parseRange(raw: string | null): DateRange {
 /**
  * URL (?range, ?date) と location.state を統合して
  * 日付ナビゲーション状態 + アクションを返す。
+ *
+ * range=day: 基準日1日
+ * range=week: 基準日を含む月〜日の7日間
  */
 export function useHandoffDateNav(): HandoffDateNavState & HandoffDateNavActions {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -158,13 +210,19 @@ export function useHandoffDateNav(): HandoffDateNavState & HandoffDateNavActions
   const todayStr = formatDateLocal();
   const isToday = resolvedDate === todayStr;
 
-  // ── 日付移動アクション ────────────────────────────────────
-  const updateDate = useCallback(
-    (newDate: string) => {
+  // ── Week range ─────────────────────────────────────────────
+  const weekRange = useMemo<[string, string] | null>(() => {
+    if (range !== 'week') return null;
+    return getWeekRange(resolvedDate);
+  }, [range, resolvedDate]);
+
+  // ── URL 更新共通 ───────────────────────────────────────────
+  const updateParams = useCallback(
+    (newDate: string, newRange: DateRange) => {
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
-          next.set('range', 'day');
+          next.set('range', newRange);
           next.set('date', newDate);
           return next;
         },
@@ -174,32 +232,68 @@ export function useHandoffDateNav(): HandoffDateNavState & HandoffDateNavActions
     [setSearchParams],
   );
 
+  // ── Day アクション ─────────────────────────────────────────
   const goToPreviousDay = useCallback(() => {
-    updateDate(addDays(resolvedDate, -1));
-  }, [resolvedDate, updateDate]);
+    updateParams(addDays(resolvedDate, -1), 'day');
+  }, [resolvedDate, updateParams]);
 
   const goToNextDay = useCallback(() => {
-    // 未来は今日まで
     const next = addDays(resolvedDate, 1);
     if (next <= todayStr) {
-      updateDate(next);
+      updateParams(next, 'day');
     }
-  }, [resolvedDate, todayStr, updateDate]);
+  }, [resolvedDate, todayStr, updateParams]);
 
   const goToDate = useCallback(
     (dateStr: string) => {
       if (parseDateString(dateStr)) {
-        updateDate(dateStr);
+        updateParams(dateStr, 'day');
       }
     },
-    [updateDate],
+    [updateParams],
   );
 
   const goToToday = useCallback(() => {
-    updateDate(todayStr);
-  }, [todayStr, updateDate]);
+    updateParams(todayStr, range);
+  }, [todayStr, range, updateParams]);
 
-  const dateLabel = formatDateLabel(resolvedDate);
+  // ── Week アクション ────────────────────────────────────────
+  const goToPreviousWeek = useCallback(() => {
+    updateParams(addWeeks(resolvedDate, -1), 'week');
+  }, [resolvedDate, updateParams]);
+
+  const goToNextWeek = useCallback(() => {
+    const nextDate = addWeeks(resolvedDate, 1);
+    const [, nextSunday] = getWeekRange(nextDate);
+    // 翌週の日曜が今日以降なら今週止まり
+    if (nextSunday > todayStr) return;
+    updateParams(nextDate, 'week');
+  }, [resolvedDate, todayStr, updateParams]);
+
+  const goToWeekOf = useCallback(
+    (dateStr: string) => {
+      if (parseDateString(dateStr)) {
+        updateParams(dateStr, 'week');
+      }
+    },
+    [updateParams],
+  );
+
+  // ── Range 切り替え ─────────────────────────────────────────
+  const setRange = useCallback(
+    (newRange: DateRange) => {
+      updateParams(resolvedDate, newRange);
+    },
+    [resolvedDate, updateParams],
+  );
+
+  // ── Label ──────────────────────────────────────────────────
+  const dateLabel = useMemo(() => {
+    if (range === 'week' && weekRange) {
+      return formatWeekLabel(weekRange[0], weekRange[1]);
+    }
+    return formatDateLabel(resolvedDate);
+  }, [range, weekRange, resolvedDate]);
 
   return {
     date: resolvedDate,
@@ -207,10 +301,15 @@ export function useHandoffDateNav(): HandoffDateNavState & HandoffDateNavActions
     dayScope,
     fromToday,
     isToday,
+    weekRange,
     dateLabel,
     goToPreviousDay,
     goToNextDay,
     goToDate,
     goToToday,
+    goToPreviousWeek,
+    goToNextWeek,
+    goToWeekOf,
+    setRange,
   };
 }
