@@ -40,70 +40,54 @@ const ADMIN_TABS = [
   { label: '個別支援記録' },
 ] as const;
 
-// ── 戻り値の型 ──
-export interface UseDashboardPageReturn {
-  // Navigation
+// ── Handoff グループ型 ──
+export interface DashboardHandoffGroup {
+  total: number;
+  critical: number;
+  status: Record<string, number>;
+  timeline: {
+    items: HandoffRecord[];
+    loading: boolean;
+    error: string | null;
+    updateStatus: (id: number, newStatus: HandoffStatus, carryOverDate?: string) => Promise<void>;
+    reload: () => void;
+  };
+}
+
+// ── Navigation グループ型 ──
+export interface DashboardNavGroup {
   navigate: ReturnType<typeof useNavigate>;
   openTimeline: (scope?: HandoffDayScope) => void;
   openBriefing: () => void;
-
-  // Layout
   layoutMode: DashboardLayoutMode;
-
-  // Feature flags
   schedulesEnabled: boolean;
+}
 
-  // UI State
+// ── UI State グループ型 ──
+export interface DashboardUIGroup {
   tabValue: number;
   handleTabChange: (_: React.SyntheticEvent, newValue: number) => void;
   showAttendanceNames: boolean;
   setShowAttendanceNames: React.Dispatch<React.SetStateAction<boolean>>;
   highlightSection: DashboardSectionKey | null;
-
-  // Scroll & anchor
   scrollToSection: (sectionKeyOrAnchorId: DashboardSectionKey | string) => void;
   sectionIdByKey: Record<DashboardSectionKey, string>;
-
-  // View data
   dateLabel: string;
   todayChanges: TodayChanges;
-
-  // ViewModel
-  vm: DashboardViewModel<unknown>;
-
-  // Summary values (needed by section props / tabs)
-  attendanceSummary: ReturnType<typeof useDashboardSummary>['attendanceSummary'];
-  dailyRecordStatus: ReturnType<typeof useDashboardSummary>['dailyRecordStatus'];
-  stats: ReturnType<typeof useDashboardSummary>['stats'];
-  scheduleLanesToday: ReturnType<typeof useDashboardSummary>['scheduleLanesToday'];
-  scheduleLanesTomorrow: ReturnType<typeof useDashboardSummary>['scheduleLanesTomorrow'];
-  prioritizedUsers: ReturnType<typeof useDashboardSummary>['prioritizedUsers'];
-  intensiveSupportUsers: ReturnType<typeof useDashboardSummary>['intensiveSupportUsers'];
-  staffAvailability: ReturnType<typeof useDashboardSummary>['staffAvailability'];
-  usageMap: ReturnType<typeof useDashboardSummary>['usageMap'];
-
-  // Handoff
-  handoffTotal: number;
-  handoffCritical: number;
-  handoffStatus: Record<string, number>;
-
-  // Handoff Live Feed data
-  handoffTimelineItems: HandoffRecord[];
-  handoffTimelineLoading: boolean;
-  handoffTimelineError: string | null;
-  handoffTimelineUpdateStatus: (id: number, newStatus: HandoffStatus, carryOverDate?: string) => Promise<void>;
-  handoffTimelineReload: () => void;
-
-  // Timing
+  dailyStatusCards: DailyStatusCard[];
   isMorningTime: boolean;
   isEveningTime: boolean;
-
-  // Domain data
   users: ReturnType<typeof useUsersDemo>['data'];
   visits: ReturnType<typeof useAttendanceStore>['visits'];
+}
 
-  // Daily status cards
-  dailyStatusCards: DailyStatusCard[];
+// ── 戻り値の型 ──
+export interface UseDashboardPageReturn {
+  nav: DashboardNavGroup;
+  ui: DashboardUIGroup;
+  vm: DashboardViewModel<unknown>;
+  summary: ReturnType<typeof useDashboardSummary>;
+  handoff: DashboardHandoffGroup;
 }
 
 export interface DailyStatusCard {
@@ -216,17 +200,13 @@ export function useDashboardPage(audience: DashboardAudience = 'staff'): UseDash
     generateMockActivityRecords,
   });
 
+  // summary はグループごと返すので、ここでは VM 構築に必要なフィールドのみ展開
   const {
     usageMap,
     stats,
     attendanceSummary,
     dailyRecordStatus,
-    scheduleLanesToday,
-    scheduleLanesTomorrow,
-    prioritizedUsers,
-    intensiveSupportUsers,
     briefingAlerts,
-    staffAvailability,
   } = summary;
 
   // ── Dev logging ──
@@ -301,42 +281,42 @@ export function useDashboardPage(audience: DashboardAudience = 'staff'): UseDash
   }, []);
 
   return {
-    navigate,
-    openTimeline,
-    openBriefing,
-    layoutMode,
-    schedulesEnabled,
-    tabValue,
-    handleTabChange,
-    showAttendanceNames,
-    setShowAttendanceNames,
-    highlightSection,
-    scrollToSection,
-    sectionIdByKey,
-    dateLabel,
-    todayChanges,
+    nav: {
+      navigate,
+      openTimeline,
+      openBriefing,
+      layoutMode,
+      schedulesEnabled,
+    },
+    ui: {
+      tabValue,
+      handleTabChange,
+      showAttendanceNames,
+      setShowAttendanceNames,
+      highlightSection,
+      scrollToSection,
+      sectionIdByKey,
+      dateLabel,
+      todayChanges,
+      dailyStatusCards,
+      isMorningTime,
+      isEveningTime,
+      users,
+      visits,
+    },
     vm,
-    attendanceSummary,
-    dailyRecordStatus,
-    stats,
-    scheduleLanesToday,
-    scheduleLanesTomorrow,
-    prioritizedUsers,
-    intensiveSupportUsers,
-    staffAvailability,
-    usageMap,
-    handoffTotal,
-    handoffCritical,
-    handoffStatus,
-    handoffTimelineItems,
-    handoffTimelineLoading,
-    handoffTimelineError,
-    handoffTimelineUpdateStatus,
-    handoffTimelineReload,
-    isMorningTime,
-    isEveningTime,
-    users,
-    visits,
-    dailyStatusCards,
+    summary,
+    handoff: {
+      total: handoffTotal,
+      critical: handoffCritical,
+      status: handoffStatus,
+      timeline: {
+        items: handoffTimelineItems,
+        loading: handoffTimelineLoading,
+        error: handoffTimelineError,
+        updateStatus: handoffTimelineUpdateStatus,
+        reload: handoffTimelineReload,
+      },
+    },
   };
 }

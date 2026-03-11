@@ -22,15 +22,8 @@ import React, { useCallback } from 'react';
 export interface UseSectionRendererParams {
   role: DashboardRole;
 
-  // Summary values
-  attendanceSummary: ReturnType<typeof useDashboardSummary>['attendanceSummary'];
-  dailyRecordStatus: ReturnType<typeof useDashboardSummary>['dailyRecordStatus'];
-  stats: ReturnType<typeof useDashboardSummary>['stats'];
-  scheduleLanesToday: ReturnType<typeof useDashboardSummary>['scheduleLanesToday'];
-  scheduleLanesTomorrow: ReturnType<typeof useDashboardSummary>['scheduleLanesTomorrow'];
-  prioritizedUsers: ReturnType<typeof useDashboardSummary>['prioritizedUsers'];
-  intensiveSupportUsers: ReturnType<typeof useDashboardSummary>['intensiveSupportUsers'];
-  usageMap: ReturnType<typeof useDashboardSummary>['usageMap'];
+  // Summary (object ごと受け取り — バケツリレー解消)
+  summary: ReturnType<typeof useDashboardSummary>;
 
   // UI state
   showAttendanceNames: boolean;
@@ -66,14 +59,7 @@ export interface UseSectionRendererReturn {
 export function useSectionRenderer(params: UseSectionRendererParams): UseSectionRendererReturn {
   const {
     role,
-    attendanceSummary,
-    dailyRecordStatus,
-    stats,
-    scheduleLanesToday,
-    scheduleLanesTomorrow,
-    prioritizedUsers,
-    intensiveSupportUsers,
-    usageMap,
+    summary,
     showAttendanceNames,
     setShowAttendanceNames,
     tabValue,
@@ -89,6 +75,18 @@ export function useSectionRenderer(params: UseSectionRendererParams): UseSection
     users,
     visits,
   } = params;
+
+  // summary から描画に必要なフィールドを展開
+  const {
+    attendanceSummary,
+    dailyRecordStatus,
+    stats,
+    scheduleLanesToday,
+    scheduleLanesTomorrow,
+    prioritizedUsers,
+    intensiveSupportUsers,
+    usageMap,
+  } = summary;
 
   /**
    * セクションキーに基づいて、対応するコンポーネントに渡す props を生成する
@@ -154,27 +152,20 @@ export function useSectionRenderer(params: UseSectionRendererParams): UseSection
       }
     },
     [
-      attendanceSummary,
+      summary,
       showAttendanceNames,
       setShowAttendanceNames,
       dailyStatusCards,
-      dailyRecordStatus,
       schedulesEnabled,
-      scheduleLanesToday,
       handoffTotal,
       handoffCritical,
       handoffStatus,
       openTimeline,
-      stats,
-      intensiveSupportUsers,
       tabValue,
       handleTabChange,
       users,
-      usageMap,
       isMorningTime,
       isEveningTime,
-      prioritizedUsers,
-      scheduleLanesTomorrow,
       visits,
     ],
   );
