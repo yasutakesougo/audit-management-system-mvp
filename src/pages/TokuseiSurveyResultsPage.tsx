@@ -1,12 +1,22 @@
-﻿import { summarizeTokuseiResponses, type TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
-import FeatureChipList from '@/features/assessment/components/FeatureChipList';
+﻿/**
+ * TokuseiSurveyResultsPage.tsx — Orchestrator shell for the Tokusei survey results page.
+ *
+ * Refactored in NR21. Responsibilities have been extracted to:
+ * - tokuseiSurveyHelpers.ts             → formatDateTime, buildUserOptions, applyResponseFilters
+ * - useTokuseiSurveyFilter.ts           → all filter / selection state and effects
+ * - components/TokuseiEmptyState.tsx    → empty state panel
+ * - components/TokuseiResponseDetail.tsx → response detail panel
+ */
+import TokuseiEmptyState from '@/features/assessment/components/TokuseiEmptyState';
+import TokuseiResponseDetail from '@/features/assessment/components/TokuseiResponseDetail';
 import { useTokuseiSurveyResponses } from '@/features/assessment/hooks/useTokuseiSurveyResponses';
+import { formatDateTime } from '@/features/assessment/tokuseiSurveyHelpers';
+import { useTokuseiSurveyFilter } from '@/features/assessment/useTokuseiSurveyFilter';
 import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
 import { env } from '@/lib/env';
 import FilterAltOffRoundedIcon from '@mui/icons-material/FilterAltOffRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded';
-import { Card, CardContent, CardHeader } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -23,170 +33,33 @@ import MenuItem from '@mui/material/MenuItem';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
-import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import React, { useEffect, useMemo, useState } from 'react';
-
-const formatDateTime = (value: string): string => {
-  if (!value) return '未入力';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
-};
-
-const TokuseiDetailField: React.FC<{ label: string; value?: React.ReactNode }> = ({ label, value }) => (
-  <Box>
-    <Typography variant="subtitle2" component="span" color="text.secondary" gutterBottom>
-      {label}
-    </Typography>
-    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-      {value ?? '未入力'}
-    </Typography>
-  </Box>
-);
-
-const EmptyState: React.FC<{
-  variant: 'all' | 'filtered';
-  hasFormsUrl: boolean;
-  formsUrl?: string;
-  onResetFilters?: () => void;
-}> = ({ variant, hasFormsUrl, formsUrl, onResetFilters }) => {
-  const title = variant === 'all' ? '特性アンケートの回答がまだありません' : '条件に一致する回答がありません';
-  const description =
-    variant === 'all'
-      ? 'Microsoft Formsで回答が送信されると、ここに表示されます。'
-      : '検索や日付フィルタを緩めると表示される可能性があります。';
-
-  return (
-    <Paper variant="outlined" sx={{ p: 3 }}>
-      <Stack spacing={1.5}>
-        <Typography variant="h6">{title}</Typography>
-        <Typography variant="body2" color="text.secondary">
-          {description}
-        </Typography>
-
-        <Stack direction="row" spacing={1} sx={{ pt: 1 }}>
-          {variant === 'filtered' && onResetFilters && (
-            <Button variant="outlined" onClick={onResetFilters}>
-              フィルタをリセット
-            </Button>
-          )}
-
-          {hasFormsUrl ? (
-            <Button
-              variant="contained"
-              component="a"
-              href={formsUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Formsで回答を送る
-            </Button>
-          ) : (
-            <Button variant="contained" disabled title="VITE_TOKUSEI_FORMS_URL が未設定です">
-              Formsで回答を送る
-            </Button>
-          )}
-        </Stack>
-
-        {!hasFormsUrl && (
-          <Typography variant="caption" color="text.secondary">
-            管理者向け: .env に VITE_TOKUSEI_FORMS_URL を設定すると、ここにFormsへの導線が表示されます。
-          </Typography>
-        )}
-      </Stack>
-    </Paper>
-  );
-};
-
-const buildUserOptions = (responses: TokuseiSurveyResponse[]): string[] => {
-  const names = new Set<string>();
-  responses.forEach((response) => {
-    if (response.targetUserName) {
-      names.add(response.targetUserName);
-    }
-  });
-  return Array.from(names).sort((a, b) => a.localeCompare(b, 'ja'));
-};
+import React from 'react';
 
 const TokuseiSurveyResultsPage: React.FC = () => {
   const { data, status, error, refresh } = useTokuseiSurveyResponses();
-  const [selectedUser, setSelectedUser] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
-  const [activeResponseId, setActiveResponseId] = useState<number | null>(null);
   const formsUrl = env.VITE_TOKUSEI_FORMS_URL;
 
-  const sortedData = useMemo(
-    () =>
-      [...data].sort((a, b) => {
-        const aTime = a.fillDate ? new Date(a.fillDate).getTime() : 0;
-        const bTime = b.fillDate ? new Date(b.fillDate).getTime() : 0;
-        return bTime - aTime;
-      }),
-    [data],
-  );
-
-  const userOptions = useMemo(() => buildUserOptions(sortedData), [sortedData]);
-
-  useEffect(() => {
-    if (selectedUser === 'all') return;
-    if (!userOptions.includes(selectedUser)) {
-      setSelectedUser('all');
-    }
-  }, [selectedUser, userOptions]);
-
-  const filteredResponses = useMemo(() => {
-    const lower = searchQuery.trim().toLowerCase();
-    return sortedData.filter((response) => {
-      if (selectedUser !== 'all' && response.targetUserName !== selectedUser) return false;
-      if (lower) {
-        const haystack = [response.targetUserName, response.responderName, response.guardianName]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        if (!haystack.includes(lower)) return false;
-      }
-      if (fromDate) {
-        const t = new Date(response.fillDate).getTime();
-        const from = new Date(fromDate).setHours(0, 0, 0, 0);
-        if (Number.isFinite(t) && t < from) return false;
-      }
-      if (toDate) {
-        const t = new Date(response.fillDate).getTime();
-        const to = new Date(toDate).setHours(23, 59, 59, 999);
-        if (Number.isFinite(t) && t > to) return false;
-      }
-      return true;
-    });
-  }, [sortedData, selectedUser, searchQuery, fromDate, toDate]);
-
-  useEffect(() => {
-    if (!filteredResponses.length) {
-      setActiveResponseId(null);
-      return;
-    }
-    if (activeResponseId && filteredResponses.some((response) => response.id === activeResponseId)) {
-      return;
-    }
-    setActiveResponseId(filteredResponses[0].id);
-  }, [filteredResponses, activeResponseId]);
-
-  const activeResponse = useMemo(
-    () => filteredResponses.find((response) => response.id === activeResponseId) ?? null,
-    [filteredResponses, activeResponseId],
-  );
-
-  const summary = useMemo(() => summarizeTokuseiResponses(sortedData), [sortedData]);
+  const {
+    filteredResponses,
+    activeResponse,
+    activeResponseId,
+    setActiveResponseId,
+    summary,
+    userOptions,
+    selectedUser,
+    setSelectedUser,
+    searchQuery,
+    setSearchQuery,
+    fromDate,
+    setFromDate,
+    toDate,
+    setToDate,
+    resetFilters,
+    hasActiveFilters,
+  } = useTokuseiSurveyFilter(data);
 
   const showLoadingState = status === 'loading' && data.length === 0;
   const totalCount = data.length;
@@ -194,17 +67,9 @@ const TokuseiSurveyResultsPage: React.FC = () => {
   const isEmptyAll = status === 'success' && totalCount === 0;
   const isEmptyFiltered = status === 'success' && totalCount > 0 && filteredCount === 0;
 
-  const resetFilters = () => {
-    setSelectedUser('all');
-    setSearchQuery('');
-    setFromDate('');
-    setToDate('');
-  };
-
-  const hasActiveFilters = selectedUser !== 'all' || searchQuery || fromDate || toDate;
-
   return (
     <Stack spacing={3}>
+      {/* ── Page header ── */}
       <IBDPageHeader
         title="特性アンケート結果"
         subtitle="Microsoft Forms 由来の特性ヒアリング結果を SharePoint から自動同期"
@@ -223,13 +88,7 @@ const TokuseiSurveyResultsPage: React.FC = () => {
                   onClick={resetFilters}
                   disabled={!hasActiveFilters}
                   size="small"
-                  sx={{
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    borderRadius: 1,
-                    width: 32,
-                    height: 32,
-                  }}
+                  sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, width: 32, height: 32 }}
                 >
                   <FilterAltOffRoundedIcon fontSize="small" />
                 </IconButton>
@@ -242,13 +101,7 @@ const TokuseiSurveyResultsPage: React.FC = () => {
                   disabled={status === 'loading'}
                   color="primary"
                   size="small"
-                  sx={{
-                    border: '1px solid',
-                    borderColor: 'primary.main',
-                    borderRadius: 1,
-                    width: 32,
-                    height: 32,
-                  }}
+                  sx={{ border: '1px solid', borderColor: 'primary.main', borderRadius: 1, width: 32, height: 32 }}
                 >
                   <RefreshRoundedIcon fontSize="small" />
                 </IconButton>
@@ -273,25 +126,19 @@ const TokuseiSurveyResultsPage: React.FC = () => {
       />
 
       <Paper sx={{ p: 3 }}>
-        {/* フィルターバー（入力のみ、アクションはヘッダーに移動済み） */}
-        <Stack
-          direction="row"
-          useFlexGap
-          sx={{ flexWrap: 'wrap', gap: 2, mb: 2, alignItems: 'center' }}
-        >
+        {/* ── Filter bar ── */}
+        <Stack direction="row" useFlexGap sx={{ flexWrap: 'wrap', gap: 2, mb: 2, alignItems: 'center' }}>
           <FormControl size="small" sx={{ minWidth: 200, flexGrow: { xs: 1, sm: 0 } }}>
             <InputLabel id="tokusei-target-label">対象者フィルター</InputLabel>
             <Select
               labelId="tokusei-target-label"
               label="対象者フィルター"
               value={selectedUser}
-              onChange={(event) => setSelectedUser(event.target.value)}
+              onChange={(e) => setSelectedUser(e.target.value)}
             >
               <MenuItem value="all">すべて</MenuItem>
               {userOptions.map((name) => (
-                <MenuItem key={name} value={name}>
-                  {name}
-                </MenuItem>
+                <MenuItem key={name} value={name}>{name}</MenuItem>
               ))}
             </Select>
           </FormControl>
@@ -302,34 +149,23 @@ const TokuseiSurveyResultsPage: React.FC = () => {
               id="tokusei-search"
               label="検索（氏名・回答者）"
               value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="例: 佐藤 / 保護者"
             />
           </FormControl>
 
           <FormControl size="small" sx={{ minWidth: 160, flexGrow: { xs: 1, sm: 0 } }}>
             <InputLabel shrink>回答日(開始)</InputLabel>
-            <OutlinedInput
-              type="date"
-              notched
-              value={fromDate}
-              onChange={(event) => setFromDate(event.target.value)}
-              label="回答日(開始)"
-            />
+            <OutlinedInput type="date" notched value={fromDate} onChange={(e) => setFromDate(e.target.value)} label="回答日(開始)" />
           </FormControl>
 
           <FormControl size="small" sx={{ minWidth: 160, flexGrow: { xs: 1, sm: 0 } }}>
             <InputLabel shrink>回答日(終了)</InputLabel>
-            <OutlinedInput
-              type="date"
-              notched
-              value={toDate}
-              onChange={(event) => setToDate(event.target.value)}
-              label="回答日(終了)"
-            />
+            <OutlinedInput type="date" notched value={toDate} onChange={(e) => setToDate(e.target.value)} label="回答日(終了)" />
           </FormControl>
         </Stack>
 
+        {/* ── Loading ── */}
         {showLoadingState && (
           <Box display="flex" justifyContent="center" py={6}>
             <Stack spacing={2} alignItems="center">
@@ -341,31 +177,34 @@ const TokuseiSurveyResultsPage: React.FC = () => {
           </Box>
         )}
 
+        {/* ── Error ── */}
         {status === 'error' && error && (
-          <Alert severity="error" sx={{ mb: 2 }} action={<Button color="inherit" size="small" onClick={() => void refresh()}>再試行</Button>}>
+          <Alert
+            severity="error"
+            sx={{ mb: 2 }}
+            action={<Button color="inherit" size="small" onClick={() => void refresh()}>再試行</Button>}
+          >
             {error.message}
           </Alert>
         )}
 
+        {/* ── Empty: no data at all ── */}
         {isEmptyAll && (
-          <EmptyState variant="all" hasFormsUrl={Boolean(formsUrl)} formsUrl={formsUrl} />
+          <TokuseiEmptyState variant="all" hasFormsUrl={Boolean(formsUrl)} formsUrl={formsUrl} />
         )}
 
+        {/* ── Content: list + detail ── */}
         {!showLoadingState && !isEmptyAll && (
           isEmptyFiltered ? (
-            <EmptyState
+            <TokuseiEmptyState
               variant="filtered"
               hasFormsUrl={Boolean(formsUrl)}
               formsUrl={formsUrl}
               onResetFilters={resetFilters}
             />
           ) : (
-            <Box
-              mt={1}
-              display="grid"
-              gridTemplateColumns={{ xs: '1fr', md: '5fr 7fr' }}
-              gap={3}
-            >
+            <Box mt={1} display="grid" gridTemplateColumns={{ xs: '1fr', md: '5fr 7fr' }} gap={3}>
+              {/* Response list */}
               <Paper variant="outlined" sx={{ height: '100%' }}>
                 <List disablePadding>
                   {filteredResponses.map((response, index) => {
@@ -380,7 +219,9 @@ const TokuseiSurveyResultsPage: React.FC = () => {
                           <ListItemText
                             primary={
                               <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                <Typography fontWeight={600}>{response.targetUserName || '対象者未入力'}</Typography>
+                                <Typography fontWeight={600}>
+                                  {response.targetUserName || '対象者未入力'}
+                                </Typography>
                                 <Typography variant="caption" color="text.secondary">
                                   {formatDateTime(response.fillDate)}{index === 0 ? '（最新）' : ''}
                                 </Typography>
@@ -400,125 +241,12 @@ const TokuseiSurveyResultsPage: React.FC = () => {
                 </List>
               </Paper>
 
+              {/* Response detail */}
               <Paper variant="outlined" sx={{ p: 2.5, height: '100%' }}>
-                {status === 'loading' && !activeResponse && (
-                  <Skeleton variant="rectangular" height={300} />
-                )}
-
-                {activeResponse ? (
-                  <Stack spacing={2}>
-                    {/* 基本情報 */}
-                    <Card variant="outlined">
-                      <CardHeader
-                        title="基本情報"
-                        titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
-                        sx={{ pb: 0.5 }}
-                      />
-                      <CardContent sx={{ pt: 1.5 }}>
-                        <Stack spacing={1.2}>
-                          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                            <Chip
-                              label={activeResponse.targetUserName || '対象者未設定'}
-                              color="primary"
-                            />
-                            <Chip
-                              label={`回答者: ${activeResponse.responderName || '未設定'}`}
-                              variant="outlined"
-                            />
-                            <Chip
-                              label={`記入日時: ${formatDateTime(activeResponse.fillDate)}`}
-                              variant="outlined"
-                            />
-                            {activeResponse.guardianName && (
-                              <Chip
-                                label={`保護者: ${activeResponse.guardianName}${activeResponse.relation ? `（${activeResponse.relation}）` : ''}`}
-                                variant="outlined"
-                              />
-                            )}
-                            {(activeResponse.heightCm != null || activeResponse.weightKg != null) && (
-                              <Chip
-                                label={[
-                                  activeResponse.heightCm != null ? `${activeResponse.heightCm}cm` : null,
-                                  activeResponse.weightKg != null ? `${activeResponse.weightKg}kg` : null,
-                                ].filter(Boolean).join(' / ')}
-                                variant="outlined"
-                                size="small"
-                              />
-                            )}
-                          </Stack>
-
-                          {activeResponse.responderEmail && (
-                            <Typography variant="body2" color="text.secondary">
-                              {`メール: ${activeResponse.responderEmail}`}
-                            </Typography>
-                          )}
-                        </Stack>
-                      </CardContent>
-                    </Card>
-
-                    {/* 詳細（チップベース Bento Grid レイアウト） */}
-                    <Card variant="outlined">
-                      <CardHeader
-                        title="性格・対人関係"
-                        titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
-                        sx={{ pb: 0.5 }}
-                      />
-                      <CardContent sx={{ pt: 1.5 }}>
-                        <FeatureChipList value={activeResponse.personality} />
-                      </CardContent>
-                    </Card>
-
-                    <Card variant="outlined">
-                      <CardHeader
-                        title="感覚の特徴"
-                        titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
-                        sx={{ pb: 0.5 }}
-                      />
-                      <CardContent sx={{ pt: 1.5 }}>
-                        <FeatureChipList value={activeResponse.sensoryFeatures} />
-                      </CardContent>
-                    </Card>
-
-                    <Card variant="outlined">
-                      <CardHeader
-                        title="行動・コミュニケーション"
-                        titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
-                        sx={{ pb: 0.5 }}
-                      />
-                      <CardContent sx={{ pt: 1.5 }}>
-                        <FeatureChipList value={activeResponse.behaviorFeatures} />
-                      </CardContent>
-                    </Card>
-
-                    <Card variant="outlined">
-                      <CardHeader
-                        title="得意なこと・強み"
-                        titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
-                        sx={{ pb: 0.5 }}
-                      />
-                      <CardContent sx={{ pt: 1.5 }}>
-                        <TokuseiDetailField label="" value={activeResponse.strengths} />
-                      </CardContent>
-                    </Card>
-
-                    <Card variant="outlined">
-                      <CardHeader
-                        title="特記事項"
-                        titleTypographyProps={{ variant: 'subtitle1', fontWeight: 700 }}
-                        sx={{ pb: 0.5 }}
-                      />
-                      <CardContent sx={{ pt: 1.5 }}>
-                        <TokuseiDetailField label="" value={activeResponse.notes} />
-                      </CardContent>
-                    </Card>
-                  </Stack>
-                ) : (
-                  <Box textAlign="center" py={6}>
-                    <Typography variant="body1" color="text.secondary">
-                      表示する回答を選択してください
-                    </Typography>
-                  </Box>
-                )}
+                <TokuseiResponseDetail
+                  response={activeResponse}
+                  isLoading={status === 'loading'}
+                />
               </Paper>
             </Box>
           )
