@@ -1,7 +1,7 @@
 import { TESTIDS } from '@/testids';
 import Loading from '@/ui/components/Loading';
 import { useId, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import ScheduleEmptyHint from '../components/ScheduleEmptyHint';
 import { TimelineItem } from '../components/TimelineItem';
 import { SCHEDULE_TIMELINE_SPACING } from '../constants';
@@ -83,6 +83,7 @@ const DayViewContent = ({
   const headingId = useId();
   const listLabelId = useId();
   const navigate = useNavigate();
+  const location = useLocation();
   const isCompact = Boolean(compact);
 
   const dayIso = toLocalDateIso(range.from);
@@ -157,7 +158,11 @@ const DayViewContent = ({
         >
           <button
             type="button"
-            onClick={() => navigate('/schedules/week')}
+            onClick={() => {
+              const params = new URLSearchParams(location.search);
+              params.set('tab', 'week');
+              navigate(`/schedules/week?${params.toString()}`);
+            }}
             data-testid="schedules-link-week"
             style={{
               padding: isCompact ? '2px 8px' : '4px 10px',
@@ -173,7 +178,11 @@ const DayViewContent = ({
           </button>
           <button
             type="button"
-            onClick={() => navigate('/schedules/month')}
+            onClick={() => {
+              const params = new URLSearchParams(location.search);
+              params.set('tab', 'month');
+              navigate(`/schedules/week?${params.toString()}`);
+            }}
             data-testid="schedules-link-month"
             style={{
               padding: isCompact ? '2px 8px' : '4px 10px',
