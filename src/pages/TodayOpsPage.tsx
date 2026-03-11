@@ -18,6 +18,7 @@ import { useAuthStore } from '@/features/auth/store';
 import { useTodaySummary } from '@/features/today/domain';
 import { useApprovalFlow } from '@/features/today/hooks/useApprovalFlow';
 import { useNextAction } from '@/features/today/hooks/useNextAction';
+import { useSceneNextAction } from '@/features/today/hooks/useSceneNextAction';
 import { TodayBentoLayout } from '@/features/today/layouts/TodayBentoLayout';
 import { recordAutoNextComplete, recordAutoNextSave } from '@/features/today/records/autoNextCounters';
 import { QuickRecordDrawer } from '@/features/today/records/QuickRecordDrawer';
@@ -59,6 +60,15 @@ export const TodayOpsPage: React.FC = () => {
 
   // 2. Derived: Next Action (hook で算出 — ページが太らない)
   const nextAction = useNextAction(summary.scheduleLanesToday);
+
+  // 2b. Scene-based Next Action (場面ベースの次アクション)
+  const sceneAction = useSceneNextAction({
+    briefingAlerts: summary.briefingAlerts ?? [],
+    attendanceSummary: summary.attendanceSummary ?? {},
+    dailyRecordStatus: summary.dailyRecordStatus ?? {},
+    users: summary.users ?? [],
+    scheduledCount: summary.users?.length ?? 0,
+  });
 
   // 3. Transport Status (Composable Hook — #635)
   const transport = useTransportStatus();
@@ -131,6 +141,27 @@ export const TodayOpsPage: React.FC = () => {
       briefingAlerts: summary?.briefingAlerts ?? [],
       serviceStructure: summary?.serviceStructure,
       nextAction,
+      sceneAction,
+      onSceneAction: (target: string, userId?: string) => {
+        switch (target) {
+          case 'briefing':
+            // 申し送り確認 — ブリーフィングセクションへスクロール
+            document.getElementById('bento-briefing')?.scrollIntoView({ behavior: 'smooth' });
+            break;
+          case 'attendance':
+            navigate('/daily/attendance');
+            break;
+          case 'quick-record':
+            if (userId) quickRecord.openUser(userId);
+            else quickRecord.openUnfilled(summary?.dailyRecordStatus?.pendingUserIds?.[0]);
+            break;
+          case 'user':
+            document.getElementById('bento-users')?.scrollIntoView({ behavior: 'smooth' });
+            break;
+          default:
+            break;
+        }
+      },
       transport: {
         pending: transport.isReady
           ? transport.status.legs
@@ -170,8 +201,9 @@ export const TodayOpsPage: React.FC = () => {
         onEmptyAction: () => navigate('/schedules'),
       },
       nextActionEmptyAction: () => navigate('/schedules'),
+
     };
-  }, [summary, nextAction, quickRecord.openUnfilled, quickRecord.openUser, approvalFlow.open]);
+  }, [summary, nextAction, quickRecord.openUnfilled, quickRecord.openUser, approvalFlow.open, navigate]);
 
   const handleSaveSuccess = React.useCallback(() => {
     if (!quickRecord.autoNextEnabled) {
