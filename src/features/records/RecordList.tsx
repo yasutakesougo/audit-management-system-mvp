@@ -73,6 +73,7 @@ const RecordList: React.FC = () => {
       <form onSubmit={handleSubmit} style={{ marginBottom: '2rem' }}>
         <input
           type="text"
+          aria-label="タイトル"
           placeholder="タイトル"
           value={form.Title}
           onChange={(e) => setForm({ ...form, Title: e.target.value })}
@@ -87,6 +88,7 @@ const RecordList: React.FC = () => {
         />
         <input
           type="text"
+          aria-label="特記事項"
           placeholder="特記事項"
           value={form.cr013_specialnote || ''}
           onChange={(e) => setForm({ ...form, cr013_specialnote: e.target.value })}
