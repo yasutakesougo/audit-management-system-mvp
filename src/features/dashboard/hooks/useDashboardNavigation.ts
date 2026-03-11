@@ -8,6 +8,7 @@ import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useFeatureFlags } from '@/config/featureFlags';
+import { buildHandoffTimelineUrl } from '@/app/links/navigationLinks';
 import { useDashboardLayoutMode, type DashboardLayoutMode } from '@/features/dashboard/hooks/useDashboardLayoutMode';
 import type { HandoffDayScope } from '@/features/handoff/handoffTypes';
 
@@ -26,7 +27,8 @@ export function useDashboardNavigation(isMorningTime: boolean): DashboardNavGrou
 
   const openTimeline = useCallback(
     (scope: HandoffDayScope = 'today') => {
-      navigate('/handoff-timeline', {
+      const dateOpt = scope === 'yesterday' ? 'yesterday' : undefined;
+      navigate(buildHandoffTimelineUrl({ date: dateOpt }), {
         state: { dayScope: scope, timeFilter: 'all' },
       });
     },

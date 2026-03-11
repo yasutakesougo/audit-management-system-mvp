@@ -17,6 +17,7 @@ import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { buildHandoffTimelineUrl } from '@/app/links/navigationLinks';
 import { HandoffMiniSummaryForDrawer } from '../handoff/HandoffMiniSummaryForDrawer';
 import MeetingStepsChecklist from './MeetingStepsChecklist';
 import type { MeetingKind } from './meetingSteps';
@@ -109,7 +110,7 @@ const MeetingGuideDrawer: React.FC<MeetingGuideDrawerProps> = ({
   const handleOpenHandoffTimeline = () => {
     if (kind === 'morning') {
       // 朝会 → 昨日の申し送り（前日からの引き継ぎ確認）
-      navigate('/handoff-timeline', {
+      navigate(buildHandoffTimelineUrl({ date: 'yesterday' }), {
         state: {
           dayScope: 'yesterday',
           timeFilter: 'all',
@@ -117,7 +118,7 @@ const MeetingGuideDrawer: React.FC<MeetingGuideDrawerProps> = ({
       });
     } else {
       // 夕会 → 今日の申し送り（今日の振り返り）
-      navigate('/handoff-timeline', {
+      navigate(buildHandoffTimelineUrl(), {
         state: {
           dayScope: 'today',
           timeFilter: 'all',

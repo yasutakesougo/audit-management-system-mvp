@@ -147,7 +147,10 @@ describe('useBriefingPageState', () => {
         result.current.actions.openTimelineToday();
       });
 
-      expect(mockNavigate).toHaveBeenCalledWith('/handoff-timeline', {
+      // URL ベース: /handoff-timeline?range=day&date=YYYY-MM-DD
+      const url = mockNavigate.mock.calls[0][0] as string;
+      expect(url).toMatch(/^\/handoff-timeline\?range=day&date=\d{4}-\d{2}-\d{2}$/);
+      expect(mockNavigate.mock.calls[0][1]).toEqual({
         state: { dayScope: 'today', timeFilter: 'all' },
       });
     });
@@ -160,7 +163,10 @@ describe('useBriefingPageState', () => {
         result.current.actions.openTimelineYesterday();
       });
 
-      expect(mockNavigate).toHaveBeenCalledWith('/handoff-timeline', {
+      // URL ベース: yesterday の日付が含まれる
+      const url = mockNavigate.mock.calls[0][0] as string;
+      expect(url).toMatch(/^\/handoff-timeline\?range=day&date=\d{4}-\d{2}-\d{2}$/);
+      expect(mockNavigate.mock.calls[0][1]).toEqual({
         state: { dayScope: 'yesterday', timeFilter: 'all' },
       });
     });

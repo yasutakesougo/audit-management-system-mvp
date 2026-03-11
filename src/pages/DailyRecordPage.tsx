@@ -27,6 +27,7 @@ import Typography from '@mui/material/Typography';
 import { useEffect, useMemo, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { buildHandoffTimelineUrl } from '@/app/links/navigationLinks';
 import { LandscapeFab } from '../components/ui/LandscapeFab';
 import { FullScreenDailyDialogPage } from '../features/daily/components/FullScreenDailyDialogPage';
 import { DailyRecordForm } from '../features/daily/forms/DailyRecordForm';
@@ -209,7 +210,7 @@ export default function DailyRecordPage() {
                     size="medium"
                     startIcon={<AccessTimeIcon />}
                     onClick={() =>
-                      navigate('/handoff-timeline', {
+                      navigate(buildHandoffTimelineUrl(), {
                         state: { dayScope: 'today', timeFilter: 'all' },
                       })
                     }

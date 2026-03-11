@@ -13,7 +13,7 @@
  *
  * @see docs/adr/ADR-002-today-execution-layer-guardrails.md
  */
-import { buildDailyHubFromTodayUrl, buildHandoffFromTodayState, sceneToTimeBand } from '@/app/links/navigationLinks';
+import { buildDailyHubFromTodayUrl, buildHandoffFromTodayState, buildHandoffTimelineUrl, sceneToTimeBand } from '@/app/links/navigationLinks';
 import { CTA_EVENTS, recordCtaClick } from '@/features/today/telemetry/recordCtaClick';
 import { useAuthStore } from '@/features/auth/store';
 import { useTodaySummary } from '@/features/today/domain';
@@ -172,8 +172,8 @@ export const TodayOpsPage: React.FC = () => {
         // ────────────────────────────────────────────────────
         switch (target) {
           case 'briefing':
-            // 申し送り確認 — Handoff Timeline へ意味付きナビゲーション
-            navigate('/handoff-timeline', {
+            // 申し送り確認 — Handoff Timeline へ URL ベースナビゲーション
+            navigate(buildHandoffTimelineUrl(), {
               state: buildHandoffFromTodayState({
                 timeFilter: sceneAction ? sceneToTimeBand(sceneAction.scene) : undefined,
               }),

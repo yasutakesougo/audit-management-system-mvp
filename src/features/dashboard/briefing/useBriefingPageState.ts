@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { buildHandoffTimelineUrl } from '@/app/links/navigationLinks';
 import type { HandoffStats } from '@/features/handoff/TodayHandoffTimelineList';
 import { useHandoffSummary } from '@/features/handoff/useHandoffSummary';
 import { useHandoffTimeline } from '@/features/handoff/useHandoffTimeline';
@@ -115,11 +116,13 @@ export const useBriefingPageState = () => {
 
   // ── Navigation callbacks ────────────────────────────────
   const openTimelineToday = useCallback(() => {
-    navigate('/handoff-timeline', { state: { dayScope: 'today', timeFilter: 'all' } });
+    navigate(buildHandoffTimelineUrl(), { state: { dayScope: 'today', timeFilter: 'all' } });
   }, [navigate]);
 
   const openTimelineYesterday = useCallback(() => {
-    navigate('/handoff-timeline', { state: { dayScope: 'yesterday', timeFilter: 'all' } });
+    navigate(buildHandoffTimelineUrl({ date: 'yesterday' }), {
+      state: { dayScope: 'yesterday', timeFilter: 'all' },
+    });
   }, [navigate]);
 
   // ── Grouped return ──────────────────────────────────────

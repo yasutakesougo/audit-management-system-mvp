@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import { type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { buildHandoffTimelineUrl } from '@/app/links/navigationLinks';
 import type { HandoffDayScope } from './handoffTypes';
 import { useHandoffSummary } from './useHandoffSummary';
 
@@ -53,7 +54,10 @@ export default function HandoffSummaryForMeeting({
       onOpenTimeline();
       return;
     }
-    navigate('/handoff-timeline', { state: { dayScope, timeFilter: 'all' } });
+    const dateOpt = dayScope === 'yesterday' ? 'yesterday' : undefined;
+    navigate(buildHandoffTimelineUrl({ date: dateOpt }), {
+      state: { dayScope, timeFilter: 'all' },
+    });
   };
 
   return (
