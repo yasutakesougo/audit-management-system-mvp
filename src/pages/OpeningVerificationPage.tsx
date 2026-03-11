@@ -7,137 +7,57 @@
  * Step4: CRUD テスト           → Read / Create / Update
  *
  * /admin/debug/opening-verification でアクセス
+ *
+ * ─ 構造 ─
+ * This page orchestrates the 4 verification steps.
+ * Extracted sub-modules:
+ *   openingVerification/types.ts          — local interfaces
+ *   openingVerification/constants.ts      — constants, style helpers, icon fns
+ *   openingVerification/exportMarkdown.ts — markdown report builder (pure)
+ *   openingVerification/OvpStep1ListTable.tsx
+ *   openingVerification/OvpStep2FieldTable.tsx
+ *   openingVerification/OvpStep3SelectTable.tsx
+ *   openingVerification/OvpStep4CrudTable.tsx
+ *   openingVerification/OvpLogConsole.tsx
  */
 import { WriteDisabledBanner } from '@/components/WriteDisabledBanner';
 import { isWriteEnabled } from '@/env';
 import { getAppConfig } from '@/lib/env';
-import { ATTENDANCE_DAILY_SELECT_FIELDS, ATTENDANCE_USERS_SELECT_FIELDS, STAFF_ATTENDANCE_FIELDS, STAFF_ATTENDANCE_SELECT_FIELDS } from '@/sharepoint/fields/attendanceFields';
-import { DAILY_ACTIVITY_SELECT_FIELDS, FIELD_MAP_DAILY_ACTIVITY } from '@/sharepoint/fields/dailyFields';
-import { FIELD_MAP_HANDOFF, buildHandoffSelectFields } from '@/sharepoint/fields/handoffFields';
-import { ORG_MASTER_SELECT_FIELDS } from '@/sharepoint/fields/orgMasterFields';
-import { SCHEDULES_BASE_FIELDS } from '@/sharepoint/fields/scheduleFields';
-import { SERVICE_PROVISION_SELECT_FIELDS } from '@/sharepoint/fields/serviceProvisionFields';
-import { STAFF_MASTER_FIELD_MAP, STAFF_SELECT_FIELDS_CANONICAL } from '@/sharepoint/fields/staffFields';
-import { USERS_MASTER_FIELD_MAP, USERS_SELECT_FIELDS_CORE } from '@/sharepoint/fields/userFields';
-import { checkAllLists, type HealthCheckSummary, type ListCheckResult, type ListCheckStatus } from '@/sharepoint/spListHealthCheck';
+import { checkAllLists, type HealthCheckSummary } from '@/sharepoint/spListHealthCheck';
 import { SP_LIST_REGISTRY } from '@/sharepoint/spListRegistry';
 import { useMsal } from '@azure/msal-react';
 import { useCallback, useState } from 'react';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface FieldCheckResult {
-  listKey: string;
-  listName: string;
-  fieldApp: string;
-  fieldTenant: string;
-  exists: boolean;
-  typeMatch: boolean | null;
-  tenantType: string | null;
-  required: boolean;
-  isLookup: boolean;
-  status: 'ok' | 'missing' | 'type_mismatch' | 'unmapped_required' | 'lookup_warning';
-  expectedJsType?: string;
-}
-
-interface CrudResult {
-  entity: string;
-  listName: string;
-  read: 'ok' | 'fail' | 'skip' | 'pending';
-  create: 'ok' | 'fail' | 'skip' | 'pending';
-  update: 'ok' | 'fail' | 'skip' | 'pending';
-  readError?: string;
-  createError?: string;
-  updateError?: string;
-  readCount?: number;
-  createdId?: number;
-}
+import {
+    buildCrudTargets,
+    DAY0_REQUIRED_KEYS,
+    FIELD_MAPS,
+    FIELD_TYPE_HINTS,
+    SELECT_TARGETS,
+    TYPE_EXPECTATIONS,
+} from './openingVerification/constants';
+import { buildVerificationMarkdown } from './openingVerification/exportMarkdown';
+import { OvpLogConsole } from './openingVerification/OvpLogConsole';
+import { OvpStep1ListTable } from './openingVerification/OvpStep1ListTable';
+import { OvpStep2FieldTable } from './openingVerification/OvpStep2FieldTable';
+import { OvpStep3SelectTable } from './openingVerification/OvpStep3SelectTable';
+import { OvpStep4CrudTable } from './openingVerification/OvpStep4CrudTable';
+import type { CrudResult, FieldCheckResult, SelectCheckResult } from './openingVerification/types';
 
 // ---------------------------------------------------------------------------
-// Day-0 必須リスト キー一覧
+// Button style helper
 // ---------------------------------------------------------------------------
-const DAY0_REQUIRED_KEYS = [
-  'users_master', 'staff_master', 'org_master',
-  'support_record_daily', 'daily_activity_records', 'service_provision_records', 'activity_diary',
-  'daily_attendance', 'attendance_users', 'attendance_daily', 'staff_attendance',
-  'handoff',
-];
-
-// ---------------------------------------------------------------------------
-// フィールドマップ定義（リストキー → フィールドマップ）
-// ---------------------------------------------------------------------------
-const FIELD_MAPS: Record<string, Record<string, string>> = {
-  users_master: USERS_MASTER_FIELD_MAP as unknown as Record<string, string>,
-  staff_master: STAFF_MASTER_FIELD_MAP as unknown as Record<string, string>,
-  staff_attendance: STAFF_ATTENDANCE_FIELDS as unknown as Record<string, string>,
-  daily_activity_records: FIELD_MAP_DAILY_ACTIVITY as unknown as Record<string, string>,
-  handoff: FIELD_MAP_HANDOFF as unknown as Record<string, string>,
-};
-
-// ---------------------------------------------------------------------------
-// Step2 補助: 型チェック定義
-// ---------------------------------------------------------------------------
-
-/** JS想定型 → 許容される SharePoint TypeAsString 一覧 */
-const TYPE_EXPECTATIONS: Record<string, string[]> = {
-  number:  ['Number', 'Lookup', 'Counter', 'Currency'],
-  string:  ['Text', 'Note', 'Choice', 'MultiChoice', 'Computed'],
-  boolean: ['Boolean'],
-  date:    ['DateTime'],
-};
-
-/**
- * SharePoint InternalName → アプリが想定する JS 型
- * ここに登録しておくと Step2 で自動型チェックされる。
- * 発見次第追加していく運用想定。
- */
-const FIELD_TYPE_HINTS: Record<string, string> = {
-  // ── Numeric / Lookup IDs ──
-  'UserId': 'number',
-  'UserGroupId': 'number',
-  'StaffId': 'number',
-  'ServiceTypeId': 'number',
-  'FacilityId': 'number',
-  'OrgId': 'number',
-  // ── Dates ──
-  'RecordDate': 'date',
-  'StartDate': 'date',
-  'EndDate': 'date',
-  'EventDate': 'date',
-  'BirthDate': 'date',
-  // ── Booleans ──
-  'IsActive': 'boolean',
-  'IsDeleted': 'boolean',
-};
-
-// ---------------------------------------------------------------------------
-// Step3: SELECT検証ターゲット（FIELD_MAPから生成した$selectが実際に通るか）
-// ---------------------------------------------------------------------------
-interface SelectCheckResult {
-  listKey: string;
-  listName: string;
-  selectFields: string;
-  fieldCount: number;
-  status: 'ok' | 'fail' | 'pending';
-  httpStatus?: number;
-  error?: string;
-  sampleCount?: number;
-}
-
-const SELECT_TARGETS: Array<{ listKey: string; label: string; selectFields: readonly string[] }> = [
-  { listKey: 'users_master',           label: 'Users_Master',           selectFields: USERS_SELECT_FIELDS_CORE },
-  { listKey: 'staff_master',           label: 'Staff_Master',           selectFields: STAFF_SELECT_FIELDS_CANONICAL },
-  { listKey: 'staff_attendance',       label: 'Staff_Attendance',       selectFields: STAFF_ATTENDANCE_SELECT_FIELDS },
-  { listKey: 'daily_activity_records', label: 'DailyActivityRecords',   selectFields: DAILY_ACTIVITY_SELECT_FIELDS },
-  { listKey: 'handoff',                label: 'Handoff',                selectFields: buildHandoffSelectFields() },
-  { listKey: 'schedule_events',        label: 'Schedules',              selectFields: SCHEDULES_BASE_FIELDS },
-  { listKey: 'attendance_users',       label: 'Attendance_Users',       selectFields: ATTENDANCE_USERS_SELECT_FIELDS },
-  { listKey: 'attendance_daily',       label: 'Attendance_Daily',       selectFields: ATTENDANCE_DAILY_SELECT_FIELDS },
-  { listKey: 'service_provision_records', label: 'ServiceProvision',    selectFields: SERVICE_PROVISION_SELECT_FIELDS },
-  { listKey: 'org_master',             label: 'Org_Master',             selectFields: ORG_MASTER_SELECT_FIELDS },
-];
+const btnStyle = (color: string, running: boolean): React.CSSProperties => ({
+  padding: '10px 20px',
+  fontSize: '14px',
+  fontWeight: 'bold',
+  background: running ? '#ccc' : color,
+  color: 'white',
+  border: 'none',
+  borderRadius: '6px',
+  cursor: running ? 'not-allowed' : 'pointer',
+  marginRight: '8px',
+});
 
 // ---------------------------------------------------------------------------
 // Component
@@ -200,7 +120,7 @@ export default function OpeningVerificationPage() {
     log('📋 Step1: リスト存在確認開始...');
     try {
       const fetcher = await getFetcher();
-      const day0Entries = SP_LIST_REGISTRY.filter(e => DAY0_REQUIRED_KEYS.includes(e.key));
+      const day0Entries = SP_LIST_REGISTRY.filter(e => DAY0_REQUIRED_KEYS.includes(e.key as typeof DAY0_REQUIRED_KEYS[number]));
       const result = await checkAllLists(fetcher, day0Entries);
       setHealthResult(result);
       log(`📋 Step1完了: ${result.ok}/${result.total} OK, ${result.notFound} 未発見, ${result.forbidden} 権限不足`);
@@ -228,7 +148,6 @@ export default function OpeningVerificationPage() {
         const listName = entry.resolve();
         log(`  🔎 ${entry.displayName} (${listName}) のフィールド確認中...`);
 
-        // Get actual fields from tenant
         const listPath = listName.toLowerCase().startsWith('guid:')
           ? `/_api/web/lists(guid'${listName.slice(5).trim()}')/fields?$filter=Hidden eq false&$select=InternalName,TypeAsString,Required`
           : `/_api/web/lists/getbytitle('${encodeURIComponent(listName)}')/fields?$filter=Hidden eq false&$select=InternalName,TypeAsString,Required`;
@@ -237,7 +156,6 @@ export default function OpeningVerificationPage() {
           const response = await fetcher(listPath);
           if (!response.ok) {
             log(`  ⚠️ ${listName}: HTTP ${response.status}`);
-            // Mark all fields as unknown
             for (const [, spFieldName] of Object.entries(fieldMap)) {
               results.push({
                 listKey, listName,
@@ -254,12 +172,11 @@ export default function OpeningVerificationPage() {
             continue;
           }
 
-          const data = await response.json();
-          const tenantFields: Array<{ InternalName: string; TypeAsString: string; Required: boolean }> = data.value || [];
+          const data = await response.json() as { value: Array<{ InternalName: string; TypeAsString: string; Required: boolean }> };
+          const tenantFields = data.value ?? [];
           const tenantFieldMap = new Map(tenantFields.map(f => [f.InternalName, f]));
 
           for (const [logicalName, spFieldName] of Object.entries(fieldMap)) {
-            // Skip system fields that always exist
             if (['Id', 'Title', 'Created', 'Modified'].includes(spFieldName)) {
               results.push({
                 listKey, listName,
@@ -277,7 +194,6 @@ export default function OpeningVerificationPage() {
 
             const tenantField = tenantFieldMap.get(spFieldName);
             if (tenantField) {
-              // ── Type mismatch check ──
               const hint = FIELD_TYPE_HINTS[spFieldName];
               const allowed = hint ? (TYPE_EXPECTATIONS[hint] ?? []) : [];
               const isTypeMismatch = hint ? !allowed.includes(tenantField.TypeAsString) : false;
@@ -313,7 +229,7 @@ export default function OpeningVerificationPage() {
               log(`  ❌ ${listName}.${spFieldName} (${logicalName}) が見つかりません`);
             }
           }
-          // ── Required列チェック: テナント側でRequired=trueだがFIELD_MAPに含まれていない列を警告 ──
+
           const mappedInternalNames = new Set(Object.values(fieldMap));
           const unmappedRequired = tenantFields.filter(
             f => f.Required && !mappedInternalNames.has(f.InternalName) && !['ContentType', 'ContentTypeId'].includes(f.InternalName)
@@ -333,16 +249,10 @@ export default function OpeningVerificationPage() {
             log(`  ⚠️ ${listName}: Required列 "${f.InternalName}" がFIELD_MAPに未定義 — Create時に400エラーの原因になります`);
           }
 
-          // ── Lookup型チェック: Lookup列を検出して警告（number送信必須） ──
-          const lookupFields = tenantFields.filter(
-            f => f.TypeAsString === 'Lookup' && mappedInternalNames.has(f.InternalName)
-          );
+          const lookupFields = tenantFields.filter(f => f.TypeAsString === 'Lookup' && mappedInternalNames.has(f.InternalName));
           for (const f of lookupFields) {
-            // 既存のresultにisLookupフラグを立てる
             const existing = results.find(r => r.listKey === listKey && r.fieldTenant === f.InternalName);
-            if (existing) {
-              existing.isLookup = true;
-            }
+            if (existing) existing.isLookup = true;
             log(`  🔗 ${listName}.${f.InternalName}: Lookup型 — REST APIにはnumber(ID)で送信が必要です`);
           }
 
@@ -402,14 +312,13 @@ export default function OpeningVerificationPage() {
           result.httpStatus = response.status;
 
           if (response.ok) {
-            const data = await response.json();
+            const data = await response.json() as { value: unknown[] };
             result.status = 'ok';
-            result.sampleCount = (data.value || []).length;
+            result.sampleCount = (data.value ?? []).length;
             log(`    ✅ SELECT成功: ${target.selectFields.length}列, ${result.sampleCount}件取得`);
           } else {
             const errText = await response.text().catch(() => '');
             result.status = 'fail';
-            // エラーメッセージから不正フィールド名を抽出
             const fieldMatch = errText.match(/field or property '([^']+)'/i)
               ?? errText.match(/'([^']+)' does not exist/i);
             if (fieldMatch) {
@@ -447,67 +356,11 @@ export default function OpeningVerificationPage() {
     setCrudResults([]);
     log('🧪 Step4: CRUD確認開始...');
 
-    const targets: Array<{
-      entity: string;
-      listKey: string;
-      selectFields: string;
-      createPayload?: Record<string, unknown>;
-      updateField?: string;
-      updateValue?: unknown;
-    }> = [
-      {
-        entity: 'Users',
-        listKey: 'users_master',
-        selectFields: 'Id,Title,UserID,FullName',
-        // No create/update for master data
-      },
-      {
-        entity: 'Daily',
-        listKey: 'daily_activity_records',
-        selectFields: 'Id,UserCode,RecordDate,TimeSlot,Observation',
-        createPayload: {
-          UserCode: '__SMOKE_TEST__',
-          RecordDate: new Date().toISOString().slice(0, 10),
-          TimeSlot: '09:00-10:00',
-          Observation: 'A班開通テスト - 自動作成レコード',
-        },
-        updateField: 'Observation',
-        updateValue: 'A班開通テスト - 更新済み',
-      },
-      {
-        entity: 'Attendance',
-        listKey: 'attendance_daily',
-        selectFields: 'Id,UserCode,RecordDate,Status',
-        // Read-only check for attendance
-      },
-      {
-        entity: 'Handoff',
-        listKey: 'handoff',
-        selectFields: 'Id,Title,Message,Status,Created',
-        createPayload: {
-          Title: `A班開通テスト_${Date.now()}`,
-          Message: 'A班開通テスト - 自動作成引継ぎ',
-          Status: '未対応',
-          Category: 'テスト',
-          Severity: '通常',
-        },
-        updateField: 'Status',
-        updateValue: '対応済み',
-      },
-      {
-        entity: 'Staff Attendance',
-        listKey: 'staff_attendance',
-        selectFields: 'Id,StaffId,RecordDate,Status',
-        // Read-only check
-      },
-    ];
-
+    const targets = buildCrudTargets();
     const results: CrudResult[] = [];
 
     try {
       const fetcher = await getFetcher();
-      const env = getAppConfig();
-      const _siteBaseUrl = env.VITE_SP_RESOURCE + env.VITE_SP_SITE_RELATIVE;
 
       for (const target of targets) {
         const entry = SP_LIST_REGISTRY.find(e => e.key === target.listKey);
@@ -528,9 +381,9 @@ export default function OpeningVerificationPage() {
         try {
           const readResp = await fetcher(`${listPath}/items?$top=5&$select=${target.selectFields}`);
           if (readResp.ok) {
-            const data = await readResp.json();
+            const data = await readResp.json() as { value: unknown[] };
             result.read = 'ok';
-            result.readCount = (data.value || []).length;
+            result.readCount = (data.value ?? []).length;
             log(`    ✅ Read: ${result.readCount} items`);
           } else {
             result.read = 'fail';
@@ -546,9 +399,8 @@ export default function OpeningVerificationPage() {
         // ── CREATE ──
         if (target.createPayload && isWriteEnabled) {
           try {
-            // Get list entity type
             const listInfoResp = await fetcher(`${listPath}?$select=ListItemEntityTypeFullName`);
-            const listInfo = await listInfoResp.json();
+            const listInfo = await listInfoResp.json() as { ListItemEntityTypeFullName?: string };
             const entityType = listInfo.ListItemEntityTypeFullName;
 
             const createResp = await fetcher(`${listPath}/items`, {
@@ -563,7 +415,7 @@ export default function OpeningVerificationPage() {
               }),
             });
             if (createResp.ok || createResp.status === 201) {
-              const created = await createResp.json();
+              const created = await createResp.json() as { Id?: number };
               result.create = 'ok';
               result.createdId = created.Id;
               log(`    ✅ Create: Id=${created.Id}`);
@@ -595,9 +447,7 @@ export default function OpeningVerificationPage() {
                 'X-HTTP-Method': 'MERGE',
                 'If-Match': '*',
               },
-              body: JSON.stringify({
-                [target.updateField]: target.updateValue,
-              }),
+              body: JSON.stringify({ [target.updateField]: target.updateValue }),
             });
             if (updateResp.ok || updateResp.status === 204) {
               result.update = 'ok';
@@ -627,113 +477,13 @@ export default function OpeningVerificationPage() {
     const readOk = results.filter(r => r.read === 'ok').length;
     const createOk = results.filter(r => r.create === 'ok').length;
     const updateOk = results.filter(r => r.update === 'ok').length;
-    log(`🧪 Step4完了: Read ${readOk}/${results.length}, Create ${createOk}, Update ${updateOk}`); // Updated log message
+    log(`🧪 Step4完了: Read ${readOk}/${results.length}, Create ${createOk}, Update ${updateOk}`);
     setCrudRunning(false);
   };
 
   // ── Export all results as markdown ──
   const exportMarkdown = () => {
-    const lines: string[] = [
-      `# A班 Day-2 開通確認レポート`,
-      `**実行日時**: ${new Date().toLocaleString('ja-JP')}`,
-      `**WRITE_ENABLED**: ${isWriteEnabled ? '✅ ON' : '❌ OFF'}`,
-      '',
-    ];
-
-    // Section 1: List existence
-    if (healthResult) {
-      lines.push('## 1. リスト存在確認', '');
-      lines.push('| # | List | SP名 | Status | HTTP |');
-      lines.push('|---|------|------|--------|------|');
-      healthResult.results.forEach((r, i) => {
-        lines.push(`| ${i+1} | ${r.displayName} | \`${r.listName}\` | ${statusIcon(r.status)} ${r.status} | ${r.httpStatus ?? '—'} |`);
-      });
-      lines.push('');
-    }
-
-    // Section 2: Field check
-    if (fieldResults.length > 0) {
-      lines.push('## 2. フィールド差分表', '');
-      lines.push('| List | Field (App) | Tenant | Type | Status |');
-      lines.push('|------|-------------|--------|------|--------|');
-      fieldResults.forEach(r => {
-        if (r.status !== 'ok') {
-          const statusLabel = r.status === 'missing' ? '❌ missing'
-            : r.status === 'type_mismatch' ? `⚠️ type_mismatch (expected: ${r.expectedJsType})`
-            : r.status === 'unmapped_required' ? '⚠️ unmapped_required'
-            : '⚠️ ' + r.status;
-          lines.push(`| ${r.listKey} | \`${r.fieldApp}\` | ${r.fieldTenant} | ${r.tenantType ?? '—'} | ${statusLabel} |`);
-        }
-      });
-      const okCount = fieldResults.filter(r => r.status === 'ok').length;
-      lines.push('', `> ✅ ${okCount}/${fieldResults.length} フィールド OK`);
-      lines.push('');
-    }
-
-    // Section 3: SELECT verification
-    if (selectResults.length > 0) {
-      lines.push('## 3. SELECTクエリ検証', '');
-      lines.push('| List | 列数 | Status | HTTP | 取得件数 | エラー |');
-      lines.push('|------|------|--------|------|----------|--------|');
-      selectResults.forEach(r => {
-        lines.push(`| \`${r.listKey}\` | ${r.fieldCount} | ${r.status === 'ok' ? '✅' : '❌'} | ${r.httpStatus ?? '—'} | ${r.sampleCount ?? '—'} | ${r.error ?? ''} |`);
-      });
-      const selOk = selectResults.filter(r => r.status === 'ok').length;
-      lines.push('', `> ${selOk === selectResults.length ? '✅' : '⚠️'} ${selOk}/${selectResults.length} SELECT成功`);
-      // Append $select details for failed queries
-      const failedSelects = selectResults.filter(r => r.status === 'fail');
-      if (failedSelects.length > 0) {
-        lines.push('', '### 3-1. 失敗クエリの$selectフィールド', '');
-        failedSelects.forEach(r => {
-          lines.push(`**\`${r.listKey}\`** (${r.listName}):`);
-          lines.push('```');
-          lines.push(r.selectFields);
-          lines.push('```');
-          if (r.error) lines.push(`> ❌ ${r.error}`);
-          lines.push('');
-        });
-      }
-      lines.push('');
-    }
-
-    // Section 4: CRUD
-    if (crudResults.length > 0) {
-      lines.push('## 4. CRUD確認表', '');
-      lines.push('| Entity | List | Read | Create | Update |');
-      lines.push('|--------|------|------|--------|--------|');
-      crudResults.forEach(r => {
-        lines.push(`| ${r.entity} | \`${r.listName}\` | ${crudIcon(r.read)} | ${crudIcon(r.create)} | ${crudIcon(r.update)} |`);
-      });
-      lines.push('');
-    }
-
-    // Section 5: Issues
-    const issues: string[] = [];
-    if (healthResult) {
-      healthResult.results.filter(r => r.status !== 'ok').forEach(r => {
-        issues.push(`- **${r.displayName}** (\`${r.listName}\`): ${r.status} (HTTP ${r.httpStatus ?? '?'})`);
-      });
-    }
-    fieldResults.filter(r => r.status !== 'ok').forEach(r => {
-      issues.push(`- **${r.listKey}**.\`${r.fieldApp}\`: ${r.status}`);
-    });
-    selectResults.filter(r => r.status === 'fail').forEach(r => {
-      issues.push(`- **SELECT**: \`${r.listKey}\` ${r.error ?? 'failed'}`);
-    });
-    crudResults.forEach(r => {
-      if (r.readError) issues.push(`- **${r.entity}** Read: ${r.readError}`);
-      if (r.createError && r.createError !== 'WRITE_DISABLED') issues.push(`- **${r.entity}** Create: ${r.createError}`);
-      if (r.updateError) issues.push(`- **${r.entity}** Update: ${r.updateError}`);
-    });
-
-    if (issues.length > 0) {
-      lines.push('## 5. 未解決課題一覧', '');
-      issues.forEach(issue => lines.push(issue));
-    } else {
-      lines.push('## 5. 未解決課題一覧', '', '> 🎉 未解決課題なし');
-    }
-
-    const md = lines.join('\n');
+    const md = buildVerificationMarkdown(healthResult, fieldResults, selectResults, crudResults);
     const blob = new Blob([md], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -744,64 +494,9 @@ export default function OpeningVerificationPage() {
     log('📥 マークダウンレポートをダウンロードしました');
   };
 
-  // ── Render helpers ──
-  const statusIcon = (s: ListCheckStatus): string => {
-    switch (s) {
-      case 'ok': return '✅';
-      case 'not_found': return '❌';
-      case 'forbidden': return '🔒';
-      case 'error': return '⚠️';
-    }
-  };
-
-  const crudIcon = (s: string): string => {
-    switch (s) {
-      case 'ok': return '✅';
-      case 'fail': return '❌';
-      case 'skip': return '⏭';
-      case 'pending': return '⏳';
-      default: return '—';
-    }
-  };
-
   // ═══════════════════════════════════════════════════════════════
   // JSX
   // ═══════════════════════════════════════════════════════════════
-  const sectionStyle: React.CSSProperties = {
-    background: '#fff',
-    border: '1px solid #e0e0e0',
-    borderRadius: '8px',
-    padding: '1.5rem',
-    marginBottom: '1.5rem',
-  };
-
-  const btnStyle = (color: string, running: boolean): React.CSSProperties => ({
-    padding: '10px 20px',
-    fontSize: '14px',
-    fontWeight: 'bold',
-    background: running ? '#ccc' : color,
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: running ? 'not-allowed' : 'pointer',
-    marginRight: '8px',
-  });
-
-  const thStyle: React.CSSProperties = {
-    padding: '6px 10px',
-    border: '1px solid #ddd',
-    background: '#f5f5f5',
-    textAlign: 'left',
-    fontSize: '13px',
-    fontWeight: 600,
-  };
-
-  const tdStyle: React.CSSProperties = {
-    padding: '4px 10px',
-    border: '1px solid #ddd',
-    fontSize: '13px',
-  };
-
   return (
     <div style={{ padding: '2rem', maxWidth: '1100px', margin: '0 auto', fontFamily: 'system-ui, sans-serif' }}>
       <WriteDisabledBanner />
@@ -832,162 +527,20 @@ export default function OpeningVerificationPage() {
         </button>
       </div>
 
-      {/* ── Step1 Results ── */}
-      {healthResult && (
-        <div style={sectionStyle}>
-          <h2 style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>
-            📋 Step1: リスト存在確認 ({healthResult.ok}/{healthResult.total} OK)
-          </h2>
-          <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', fontSize: '13px' }}>
-            <span>✅ OK: {healthResult.ok}</span>
-            <span>❌ Not Found: {healthResult.notFound}</span>
-            <span>🔒 Forbidden: {healthResult.forbidden}</span>
-            <span>⚠️ Error: {healthResult.errors}</span>
-          </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>名前</th>
-                <th style={thStyle}>SPリスト名</th>
-                <th style={thStyle}>HTTP</th>
-                <th style={thStyle}>詳細</th>
-              </tr>
-            </thead>
-            <tbody>
-              {healthResult.results.map((r: ListCheckResult) => (
-                <tr key={r.key} style={{ background: r.status === 'ok' ? '#f9fff9' : '#fff5f5' }}>
-                  <td style={{ ...tdStyle, textAlign: 'center' }}>{statusIcon(r.status)}</td>
-                  <td style={tdStyle}>{r.displayName}</td>
-                  <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: '12px' }}>{r.listName}</td>
-                  <td style={{ ...tdStyle, textAlign: 'center' }}>{r.httpStatus ?? '—'}</td>
-                  <td style={{ ...tdStyle, color: '#c00', fontSize: '11px' }}>{r.error ?? ''}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/* ── Step 1 Results ── */}
+      {healthResult && <OvpStep1ListTable healthResult={healthResult} />}
 
-      {/* ── Step2 Results ── */}
-      {fieldResults.length > 0 && (
-        <div style={sectionStyle}>
-          <h2 style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>
-            🔍 Step2: フィールド照合 ({fieldResults.filter(r => r.status === 'ok').length}/{fieldResults.length} OK)
-          </h2>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>List</th>
-                <th style={thStyle}>App Field</th>
-                <th style={thStyle}>Tenant</th>
-                <th style={thStyle}>Type</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fieldResults.map((r, i) => (
-                <tr key={`${r.listKey}-${r.fieldApp}-${i}`} style={{ background: r.status === 'ok' ? '#f9fff9' : '#fff5f5' }}>
-                  <td style={{ ...tdStyle, textAlign: 'center' }}>
-                    {r.status === 'ok' ? '✅' : r.status === 'missing' ? '❌' : '⚠️'}
-                  </td>
-                  <td style={tdStyle}>{r.listKey}</td>
-                  <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: '12px' }}>{r.fieldApp}</td>
-                  <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: '12px' }}>{r.fieldTenant}</td>
-                  <td style={{ ...tdStyle, fontSize: '12px' }}>{r.tenantType ?? '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/* ── Step 2 Results ── */}
+      {fieldResults.length > 0 && <OvpStep2FieldTable fieldResults={fieldResults} />}
 
-      {/* ── Step3 SELECT Results ── */}
-      {selectResults.length > 0 && (
-        <div style={sectionStyle}>
-          <h2 style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>
-            📊 Step3: SELECTクエリ検証 ({selectResults.filter(r => r.status === 'ok').length}/{selectResults.length} 成功)
-          </h2>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>List</th>
-                <th style={thStyle}>列数</th>
-                <th style={thStyle}>HTTP</th>
-                <th style={thStyle}>エラー詳細</th>
-              </tr>
-            </thead>
-            <tbody>
-              {selectResults.map(r => (
-                <tr key={r.listKey} style={{ background: r.status === 'ok' ? '#f9fff9' : '#fff5f5' }}>
-                  <td style={{ ...tdStyle, textAlign: 'center' }}>{r.status === 'ok' ? '✅' : '❌'}</td>
-                  <td style={tdStyle}>{r.listKey}</td>
-                  <td style={{ ...tdStyle, textAlign: 'center' }}>{r.fieldCount}</td>
-                  <td style={{ ...tdStyle, textAlign: 'center' }}>{r.httpStatus ?? '—'}</td>
-                  <td style={{ ...tdStyle, color: '#c00', fontSize: '11px', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {r.error ?? ''}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/* ── Step 3 SELECT Results ── */}
+      {selectResults.length > 0 && <OvpStep3SelectTable selectResults={selectResults} />}
 
-      {/* ── Step4 CRUD Results ── */}
-      {crudResults.length > 0 && (
-        <div style={sectionStyle}>
-          <h2 style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>
-            🧪 Step4: CRUD確認
-          </h2>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Entity</th>
-                <th style={thStyle}>List</th>
-                <th style={thStyle}>Read</th>
-                <th style={thStyle}>Create</th>
-                <th style={thStyle}>Update</th>
-                <th style={thStyle}>詳細</th>
-              </tr>
-            </thead>
-            <tbody>
-              {crudResults.map(r => (
-                <tr key={r.entity}>
-                  <td style={{ ...tdStyle, fontWeight: 600 }}>{r.entity}</td>
-                  <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: '12px' }}>{r.listName}</td>
-                  <td style={{ ...tdStyle, textAlign: 'center' }}>{crudIcon(r.read)} {r.readCount !== undefined ? `(${r.readCount})` : ''}</td>
-                  <td style={{ ...tdStyle, textAlign: 'center' }}>{crudIcon(r.create)} {r.createdId ? `(#${r.createdId})` : ''}</td>
-                  <td style={{ ...tdStyle, textAlign: 'center' }}>{crudIcon(r.update)}</td>
-                  <td style={{ ...tdStyle, color: '#c00', fontSize: '11px' }}>
-                    {[r.readError, r.createError, r.updateError].filter(Boolean).join('; ')}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/* ── Step 4 CRUD Results ── */}
+      {crudResults.length > 0 && <OvpStep4CrudTable crudResults={crudResults} />}
 
       {/* ── Log Console ── */}
-      <div style={{
-        background: '#1e1e1e',
-        color: '#d4d4d4',
-        padding: '1rem',
-        borderRadius: '8px',
-        maxHeight: '300px',
-        overflowY: 'auto',
-        whiteSpace: 'pre-wrap',
-        fontSize: '12px',
-        lineHeight: '1.6',
-        fontFamily: 'monospace',
-      }}>
-        {logs.length === 0
-          ? <span style={{ color: '#666' }}>Ready. 上のボタンをクリックして開始してください。</span>
-          : logs.map((l, i) => <div key={i}>{l}</div>)
-        }
-      </div>
+      <OvpLogConsole logs={logs} />
     </div>
   );
 }

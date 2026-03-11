@@ -1,4 +1,6 @@
-﻿import { summarizeTokuseiResponses, type TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
+﻿import { ErrorState } from '@/components/ui/ErrorState';
+import { LoadingState } from '@/components/ui/LoadingState';
+import { summarizeTokuseiResponses, type TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
 import FeatureChipList from '@/features/assessment/components/FeatureChipList';
 import { useTokuseiSurveyResponses } from '@/features/assessment/hooks/useTokuseiSurveyResponses';
 import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
@@ -7,11 +9,9 @@ import FilterAltOffRoundedIcon from '@mui/icons-material/FilterAltOffRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded';
 import { Card, CardContent, CardHeader } from '@mui/material';
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
-import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
 import FormControl from '@mui/material/FormControl';
 import IconButton from '@mui/material/IconButton';
@@ -331,20 +331,15 @@ const TokuseiSurveyResultsPage: React.FC = () => {
         </Stack>
 
         {showLoadingState && (
-          <Box display="flex" justifyContent="center" py={6}>
-            <Stack spacing={2} alignItems="center">
-              <CircularProgress size={32} />
-              <Typography variant="body2" color="text.secondary">
-                SharePoint から回答を取得しています…
-              </Typography>
-            </Stack>
-          </Box>
+          <LoadingState message="SharePoint から回答を取得しています…" />
         )}
 
         {status === 'error' && error && (
-          <Alert severity="error" sx={{ mb: 2 }} action={<Button color="inherit" size="small" onClick={() => void refresh()}>再試行</Button>}>
-            {error.message}
-          </Alert>
+          <ErrorState
+            title="データ取得エラー"
+            message={error.message}
+            onRetry={() => void refresh()}
+          />
         )}
 
         {isEmptyAll && (
