@@ -1,9 +1,10 @@
 /**
- * NextActionCard — 次のアクション（Start/Done 実行可能）
+ * NextActionCard — 次のアクション（Start/Done 実行可能）+ 場面コンテキスト
  *
  * P0: 表示のみ
  * P1-A: Start/Done ボタン + 経過時間 + 完了状態
  * PR-3: sticky 化 + urgency に応じた左ボーダー/背景色
+ * Scene: 場面ベースの次アクション表示（オプション）
  */
 import { motionTokens } from '@/app/theme';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -13,10 +14,15 @@ import { Box, Button, Chip, Paper, Typography } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import React from 'react';
 import type { NextActionWithProgress, Urgency } from '../hooks/useNextAction';
+import type { SceneNextActionViewModel } from '../hooks/useSceneNextAction';
 import { EmptyStateBlock } from './EmptyStateBlock';
 
 export type NextActionCardProps = {
   nextAction: NextActionWithProgress;
+  /** 場面ベースのアクション（オプション） */
+  sceneAction?: SceneNextActionViewModel;
+  /** 場面CTA クリック時のハンドラ */
+  onSceneAction?: (target: string, userId?: string) => void;
   /** 空状態CTAクリック時の導線（スケジュール確認等） */
   onEmptyAction?: () => void;
 };
@@ -47,17 +53,44 @@ const URGENCY_BORDER_COLOR: Record<Urgency, string> = {
   high: 'error.main',
 };
 
-export const NextActionCard: React.FC<NextActionCardProps> = ({ nextAction, onEmptyAction }) => {
+const SCENE_PRIORITY_COLOR: Record<string, 'error' | 'warning' | 'info' | 'default'> = {
+  critical: 'error',
+  high: 'warning',
+  medium: 'info',
+  low: 'default',
+};
+
+export const NextActionCard: React.FC<NextActionCardProps> = ({
+  nextAction,
+  sceneAction,
+  onSceneAction,
+  onEmptyAction,
+}) => {
   const { item, status, urgency, elapsedMinutes, actions } = nextAction;
   const theme = useTheme();
 
+  // Determine effective urgency (scene can override border color when critical)
+  const effectiveUrgency: Urgency =
+    sceneAction?.priority === 'critical' ? 'high'
+      : sceneAction?.priority === 'high' ? 'medium'
+        : urgency;
+
   // Empty state: early return — no sticky Paper wrapper
-  if (!item) {
+  if (!item && (!sceneAction || sceneAction.priority === 'low')) {
     return (
       <Paper data-testid="today-next-action-card" sx={{ p: 2 }}>
         <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-          ⏭️ 次のアクション
+          ⏭️ 次にやること
         </Typography>
+        {sceneAction && (
+          <Chip
+            label={`📍 ${sceneAction.sceneLabel}`}
+            size="small"
+            variant="outlined"
+            sx={{ mb: 1 }}
+            data-testid="scene-label-chip"
+          />
+        )}
         <EmptyStateBlock
           icon={<EventAvailableIcon />}
           title="次の予定はありません"
@@ -73,11 +106,84 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({ nextAction, onEm
     );
   }
 
+  // Scene-only mode: no schedule item but scene has actionable items
+  if (!item && sceneAction && sceneAction.priority !== 'low') {
+    const sceneBg =
+      sceneAction.priority === 'critical'
+        ? alpha(theme.palette.error.main, 0.06)
+        : sceneAction.priority === 'high'
+          ? alpha(theme.palette.warning.main, 0.06)
+          : theme.palette.background.paper;
+
+    return (
+      <Paper
+        data-testid="today-next-action-card"
+        sx={{
+          p: 2,
+          position: 'sticky',
+          top: theme.spacing(1),
+          zIndex: 10,
+          borderLeft: 4,
+          borderColor: sceneAction.priority === 'critical' ? 'error.main' : 'warning.main',
+          bgcolor: sceneBg,
+          transition: `border-color ${motionTokens.duration.moderate} ${motionTokens.easing.standard}, background-color ${motionTokens.duration.moderate} ${motionTokens.easing.standard}`,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <Typography variant="subtitle2" fontWeight="bold">
+            ⏭️ 次にやること
+          </Typography>
+          <Chip
+            label={`📍 ${sceneAction.sceneLabel}`}
+            size="small"
+            variant="outlined"
+            data-testid="scene-label-chip"
+          />
+        </Box>
+
+        <Typography variant="h6" fontWeight="bold" gutterBottom>
+          {sceneAction.title}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          {sceneAction.description}
+        </Typography>
+
+        {sceneAction.reasons.length > 0 && (
+          <Box sx={{ mb: 1.5 }}>
+            {sceneAction.reasons.map((reason, i) => (
+              <Chip
+                key={i}
+                label={reason}
+                size="small"
+                color={SCENE_PRIORITY_COLOR[sceneAction.priority] || 'default'}
+                variant="outlined"
+                sx={{ mr: 0.5, mb: 0.5 }}
+                data-testid={`scene-reason-${i}`}
+              />
+            ))}
+          </Box>
+        )}
+
+        <Button
+          data-testid="scene-action-cta"
+          variant="contained"
+          size="small"
+          color={sceneAction.priority === 'critical' ? 'error' : 'primary'}
+          onClick={() => onSceneAction?.(sceneAction.ctaTarget, sceneAction.userId)}
+          sx={{ minHeight: 44 }}
+        >
+          {sceneAction.ctaLabel}
+        </Button>
+      </Paper>
+    );
+  }
+
+  // Combined mode: schedule item exists
   // urgency-based background using alpha() — theme-agnostic
   const urgencyBg =
-    urgency === 'high'
+    effectiveUrgency === 'high'
       ? alpha(theme.palette.error.main, 0.06)
-      : urgency === 'medium'
+      : effectiveUrgency === 'medium'
         ? alpha(theme.palette.warning.main, 0.06)
         : theme.palette.background.paper;
 
@@ -90,87 +196,146 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({ nextAction, onEm
         top: theme.spacing(1),
         zIndex: 10,
         borderLeft: 4,
-        borderColor: URGENCY_BORDER_COLOR[urgency],
+        borderColor: URGENCY_BORDER_COLOR[effectiveUrgency],
         bgcolor: urgencyBg,
         transition: `border-color ${motionTokens.duration.moderate} ${motionTokens.easing.standard}, background-color ${motionTokens.duration.moderate} ${motionTokens.easing.standard}`,
       }}
     >
-      <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-        ⏭️ 次のアクション
-      </Typography>
-
-      {/* Time + Title */}
-      <Typography variant="h5" fontWeight="bold" color="primary.main">
-        {item.time}
-      </Typography>
-      <Typography variant="body1" sx={{ mt: 0.5 }}>
-        {item.title}
-      </Typography>
-      {item.owner && (
-        <Typography variant="caption" color="text.secondary">
-          {item.owner}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+        <Typography variant="subtitle2" fontWeight="bold">
+          ⏭️ 次にやること
         </Typography>
-      )}
-
-      {/* Status line */}
-      <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-        {status === 'idle' && (
-          <>
-            <Typography
-              variant="caption"
-              color={URGENCY_COLOR[urgency]}
-              sx={{ fontStyle: 'italic', flex: 1, fontWeight: urgency !== 'low' ? 'bold' : undefined }}
-            >
-              {formatMinutesUntil(item.minutesUntil)}
-            </Typography>
-            <Button
-              data-testid="next-action-start"
-              variant="contained"
-              size="small"
-              startIcon={<PlayArrowIcon />}
-              onClick={actions.start}
-              sx={{ minHeight: 44 }}
-            >
-              開始
-            </Button>
-          </>
-        )}
-
-        {status === 'started' && (
-          <>
-            <Chip
-              label={elapsedMinutes !== null ? formatElapsed(elapsedMinutes) : '実行中'}
-              color="info"
-              size="small"
-              variant="outlined"
-              sx={{ flex: '0 0 auto' }}
-            />
-            <Box sx={{ flex: 1 }} />
-            <Button
-              data-testid="next-action-done"
-              variant="contained"
-              color="success"
-              size="small"
-              startIcon={<CheckCircleIcon />}
-              onClick={actions.done}
-              sx={{ minHeight: 44 }}
-            >
-              完了
-            </Button>
-          </>
-        )}
-
-        {status === 'done' && (
+        {sceneAction && (
           <Chip
-            data-testid="next-action-done-chip"
-            icon={<CheckCircleIcon />}
-            label="完了"
-            color="success"
+            label={`📍 ${sceneAction.sceneLabel}`}
             size="small"
-            variant="filled"
+            variant="outlined"
+            data-testid="scene-label-chip"
           />
         )}
       </Box>
+
+      {/* Scene-based guidance (when scene has higher priority) */}
+      {sceneAction && sceneAction.priority !== 'low' && (
+        <Box
+          sx={{
+            mb: 1.5,
+            p: 1,
+            borderRadius: 1,
+            bgcolor: alpha(
+              sceneAction.priority === 'critical'
+                ? theme.palette.error.main
+                : theme.palette.warning.main,
+              0.08,
+            ),
+          }}
+          data-testid="scene-guidance"
+        >
+          <Typography variant="body2" fontWeight="bold" sx={{ mb: 0.5 }}>
+            {sceneAction.title}
+          </Typography>
+          {sceneAction.reasons.map((reason, i) => (
+            <Chip
+              key={i}
+              label={reason}
+              size="small"
+              color={SCENE_PRIORITY_COLOR[sceneAction.priority] || 'default'}
+              variant="outlined"
+              sx={{ mr: 0.5, mb: 0.5 }}
+              data-testid={`scene-reason-${i}`}
+            />
+          ))}
+          <Box sx={{ mt: 0.5 }}>
+            <Button
+              data-testid="scene-action-cta"
+              variant="outlined"
+              size="small"
+              color={sceneAction.priority === 'critical' ? 'error' : 'warning'}
+              onClick={() => onSceneAction?.(sceneAction.ctaTarget, sceneAction.userId)}
+              sx={{ minHeight: 36 }}
+            >
+              {sceneAction.ctaLabel}
+            </Button>
+          </Box>
+        </Box>
+      )}
+
+      {/* Time + Title (schedule-based) */}
+      {item && (
+        <>
+          <Typography variant="h5" fontWeight="bold" color="primary.main">
+            {item.time}
+          </Typography>
+          <Typography variant="body1" sx={{ mt: 0.5 }}>
+            {item.title}
+          </Typography>
+          {item.owner && (
+            <Typography variant="caption" color="text.secondary">
+              {item.owner}
+            </Typography>
+          )}
+
+          {/* Status line */}
+          <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+            {status === 'idle' && (
+              <>
+                <Typography
+                  variant="caption"
+                  color={URGENCY_COLOR[urgency]}
+                  sx={{ fontStyle: 'italic', flex: 1, fontWeight: urgency !== 'low' ? 'bold' : undefined }}
+                >
+                  {formatMinutesUntil(item.minutesUntil)}
+                </Typography>
+                <Button
+                  data-testid="next-action-start"
+                  variant="contained"
+                  size="small"
+                  startIcon={<PlayArrowIcon />}
+                  onClick={actions.start}
+                  sx={{ minHeight: 44 }}
+                >
+                  開始
+                </Button>
+              </>
+            )}
+
+            {status === 'started' && (
+              <>
+                <Chip
+                  label={elapsedMinutes !== null ? formatElapsed(elapsedMinutes) : '実行中'}
+                  color="info"
+                  size="small"
+                  variant="outlined"
+                  sx={{ flex: '0 0 auto' }}
+                />
+                <Box sx={{ flex: 1 }} />
+                <Button
+                  data-testid="next-action-done"
+                  variant="contained"
+                  color="success"
+                  size="small"
+                  startIcon={<CheckCircleIcon />}
+                  onClick={actions.done}
+                  sx={{ minHeight: 44 }}
+                >
+                  完了
+                </Button>
+              </>
+            )}
+
+            {status === 'done' && (
+              <Chip
+                data-testid="next-action-done-chip"
+                icon={<CheckCircleIcon />}
+                label="完了"
+                color="success"
+                size="small"
+                variant="filled"
+              />
+            )}
+          </Box>
+        </>
+      )}
     </Paper>
   );
 };
