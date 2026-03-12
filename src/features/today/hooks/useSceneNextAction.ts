@@ -6,9 +6,14 @@
  *
  * ⚠ useTodaySummary は変更しない — 既存のデータ契約を再利用するのみ。
  *
+ * todayRecordCompletion が提供された場合、
+ * ExecutionStore 起点の記録完了状態を優先して使用する。
+ * これにより /daily/support の記録が /today の NextActionCard に正しく反映される。
+ *
  * @see ADR-002 guardrails
  */
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
+import type { SupportRecordCompletionSummary } from './useSupportRecordCompletion';
 import { useMemo } from 'react';
 import { buildSceneNextAction, type SceneNextAction } from '../domain/buildSceneNextAction';
 import { inferTodayScene } from '../domain/inferTodayScene';
@@ -22,11 +27,13 @@ type SceneNextActionInput = {
   attendanceSummary: {
     facilityAttendees?: number;
   };
-  /** Daily record status from useTodaySummary */
+  /** Daily record status from useTodaySummary (Dashboard 起点 — fallback) */
   dailyRecordStatus: {
     pending?: number;
     pendingUserIds?: string[];
   };
+  /** ExecutionStore 起点の記録完了状態 (Today-only — 優先) */
+  todayRecordCompletion?: SupportRecordCompletionSummary;
   /** Users list from useTodaySummary (for alert user resolution) */
   users: { UserID?: string; FullName?: string; Id?: number }[];
   /** Scheduled users count */
@@ -51,10 +58,19 @@ export function useSceneNextAction(input: SceneNextActionInput): SceneNextAction
     const facilityAttendees = input.attendanceSummary?.facilityAttendees ?? 0;
     const pendingAttendance = Math.max(0, input.scheduledCount - facilityAttendees);
 
-    const pendingDailyRecords = input.dailyRecordStatus?.pending ?? 0;
+    // ── 記録漏れ件数: todayRecordCompletion (ExecutionStore) 優先 ──
+    // todayRecordCompletion が提供されている場合、
+    // /daily/support で記録した時間別記録を反映した正確な値を使用。
+    // 未提供の場合は Dashboard 起点の dailyRecordStatus にフォールバック。
+    const completion = input.todayRecordCompletion;
+    const pendingDailyRecords = completion
+      ? completion.pending
+      : (input.dailyRecordStatus?.pending ?? 0);
 
     // Resolve alert users from pending user IDs
-    const pendingUserIds = input.dailyRecordStatus?.pendingUserIds ?? [];
+    const pendingUserIds = completion
+      ? completion.pendingUserIds
+      : (input.dailyRecordStatus?.pendingUserIds ?? []);
     const alertUsers = pendingUserIds.slice(0, 3).map((uid) => {
       const match = input.users.find((u) => {
         const id = (u.UserID ?? '').trim() || `U${String(u.Id ?? 0).padStart(3, '0')}`;
@@ -76,6 +92,7 @@ export function useSceneNextAction(input: SceneNextActionInput): SceneNextAction
     input.briefingAlerts,
     input.attendanceSummary,
     input.dailyRecordStatus,
+    input.todayRecordCompletion,
     input.users,
     input.scheduledCount,
   ]);

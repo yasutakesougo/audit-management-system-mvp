@@ -9,7 +9,10 @@
  * 場面ベース (新):
  *   active > overdue > pending の優先度で NextAction を選択。
  *   遅延タスクは消えずに残り、urgency=high で強調表示。
- *   Done → 次のステップに自動進行。
+ *
+ * ナビゲーション型 UI:
+ *   Start/Done ボタンを撤去し、opsStep に基づく遷移先へのリンクに特化。
+ *   完了判定は対象ページでの記録保存時にシステムが自動判定する。
  *
  * @see #852
  */
@@ -28,7 +31,6 @@ import {
     buildProgressKey,
     buildStableEventId,
     useNextActionProgress,
-    type NextActionProgress,
 } from './useNextActionProgress';
 
 /**
@@ -76,30 +78,12 @@ function deriveSceneUrgency(sceneState: SceneState, minutesUntil: number): Urgen
 
 export type NextActionWithProgress = {
   item: NextActionItem | null;
-  progress: NextActionProgress | null;
-  progressKey: string | null;
-  status: 'idle' | 'started' | 'done';
   urgency: Urgency;
   /** Scene state from scene-based logic (#852) */
   sceneState: SceneState | null;
-  elapsedMinutes: number | null;  // minutes since start (null if not started)
   /** Which lane the selected item came from (for deep-link to /schedules) */
   sourceLane: ScheduleLaneCategory | null;
-  actions: {
-    start: () => void;
-    done: () => void;
-    reset: () => void;
-  };
 };
-
-/**
- * Calculate elapsed minutes from ISO timestamp to now
- */
-function calcElapsedMinutes(isoString: string): number {
-  const started = new Date(isoString).getTime();
-  const now = Date.now();
-  return Math.max(0, Math.round((now - started) / 60000));
-}
 
 // ---------------------------------------------------------------------------
 // buildNextActionViewModel — pure view-model builder (tested independently)
@@ -112,12 +96,8 @@ type NextActionViewModelActive = {
   title: string;
   owner: string | null;
   minutesUntilLabel: string;
-  status: 'idle' | 'started' | 'done';
   urgency: Urgency;
   sceneState: SceneState;
-  elapsedLabel: string | null;
-  onStart: () => void;
-  onDone: () => void;
 };
 
 export type NextActionViewModel = NextActionViewModelEmpty | NextActionViewModelActive;
@@ -126,21 +106,15 @@ function formatMinutes(m: number): string {
   const abs = Math.abs(m);
   const hours = Math.floor(abs / 60);
   const mins = abs % 60;
-  const prefix = m < 0 ? '' : '';
-  if (hours > 0 && mins > 0) return `${prefix}${hours}時間${mins}分`;
-  if (hours > 0) return `${prefix}${hours}時間`;
-  return `${prefix}${mins}分`;
+  if (hours > 0 && mins > 0) return `${hours}時間${mins}分`;
+  if (hours > 0) return `${hours}時間`;
+  return `${mins}分`;
 }
 
 export function buildNextActionViewModel(
-  input: Omit<NextActionWithProgress, 'viewModel'>,
+  input: NextActionWithProgress,
 ): NextActionViewModel {
   if (!input.item) return { kind: 'empty' };
-
-  const elapsedLabel =
-    input.status === 'started' && input.elapsedMinutes != null
-      ? `${formatMinutes(input.elapsedMinutes)}経過`
-      : null;
 
   // Scene-based label: overdue items show soft wording, others show "あと X分"
   const minutesUntilLabel = input.sceneState === 'overdue'
@@ -153,12 +127,8 @@ export function buildNextActionViewModel(
     title: input.item.title,
     owner: input.item.owner ?? null,
     minutesUntilLabel,
-    status: input.status,
     urgency: input.urgency,
     sceneState: input.sceneState ?? 'pending',
-    elapsedLabel,
-    onStart: input.actions.start,
-    onDone: input.actions.done,
   };
 }
 
@@ -231,49 +201,8 @@ export function useNextAction(
     };
   }, [sceneResult]);
 
-  // Build stable key for the selected item
-  const progressKey = useMemo(() => {
-    if (!nextItem) return null;
-    const eventId = buildStableEventId(nextItem.id, nextItem.time, nextItem.title);
-    return buildProgressKey(effectiveDateKey, eventId);
-  }, [nextItem, effectiveDateKey]);
-
-  const progress = progressKey ? progressStore.getProgress(progressKey) : null;
-
-  // Derive status (from progress store, not scene — keeps backward compat)
-  const status: 'idle' | 'started' | 'done' = progress?.doneAt
-    ? 'done'
-    : progress?.startedAt
-      ? 'started'
-      : 'idle';
-
-  const elapsedMinutes = progress?.startedAt
-    ? calcElapsedMinutes(progress.startedAt)
-    : null;
-
   // Scene state for the selected item
   const sceneState = sceneResult.selected?.sceneState ?? null;
-
-  // Bound actions
-  const actions = useMemo(() => ({
-    start: () => {
-      if (progressKey) progressStore.start(progressKey);
-    },
-    done: () => {
-      if (progressKey) {
-        progressStore.done(progressKey);
-        // Emit event for auto-next integration (#631)
-        window.dispatchEvent(
-          new CustomEvent('todayops:nextaction:done', {
-            detail: { key: progressKey },
-          })
-        );
-      }
-    },
-    reset: () => {
-      if (progressKey) progressStore.reset(progressKey);
-    },
-  }), [progressKey, progressStore]);
 
   // Scene-based urgency (#852): overdue items are always high priority
   const urgency: Urgency = nextItem && sceneState
@@ -282,13 +211,8 @@ export function useNextAction(
 
   return {
     item: nextItem,
-    progress,
-    progressKey,
-    status,
     urgency,
     sceneState,
-    elapsedMinutes,
     sourceLane: sceneResult.sourceLane,
-    actions,
   };
 }

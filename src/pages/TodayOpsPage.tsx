@@ -82,6 +82,7 @@ export const TodayOpsPage: React.FC = () => {
     briefingAlerts: summary.briefingAlerts ?? [],
     attendanceSummary: summary.attendanceSummary ?? {},
     dailyRecordStatus: summary.dailyRecordStatus ?? {},
+    todayRecordCompletion: summary.todayRecordCompletion,
     users: summary.users ?? [],
     scheduledCount: summary.users?.length ?? 0,
   });
@@ -115,19 +116,30 @@ export const TodayOpsPage: React.FC = () => {
     const isE2EEnv = isE2E() || (typeof window !== 'undefined' && (window as unknown as { __E2E_TODAY_OPS_MOCK__?: boolean }).__E2E_TODAY_OPS_MOCK__);
 
     // Progress: 進捗サマリー（ProgressStatusBar 用）
-    const realPendingCount = Math.max(0, summary?.dailyRecordStatus?.pending ?? 0);
+    // ⚠ todayRecordCompletion を優先: 強度行動障害対象者のみの記録完了状態
+    const recordCompletion = summary?.todayRecordCompletion;
+    const realPendingCount = recordCompletion
+      ? recordCompletion.pending
+      : Math.max(0, summary?.dailyRecordStatus?.pending ?? 0);
     const pendingRecordCount = isE2EEnv ? 3 : realPendingCount;
-    const totalRecordCount = summary.users?.length ?? 0;
+    const totalRecordCount = recordCompletion
+      ? recordCompletion.total
+      : (summary.users?.length ?? 0);
 
     const facilityAttendees = summary?.attendanceSummary?.facilityAttendees ?? 0;
-    const pendingAttendanceCount = isE2EEnv ? 2 : Math.max(0, totalRecordCount - facilityAttendees);
+    const pendingAttendanceCount = isE2EEnv ? 2 : Math.max(0, (summary.users?.length ?? 0) - facilityAttendees);
 
     const pendingBriefingCount = isE2EEnv ? 1 : (summary?.briefingAlerts ?? []).filter(
       (a) => a.severity === 'error' || a.severity === 'warning',
     ).length;
 
     // 利用者一覧: recordFilled はページで計算（widget は表示だけ）
-    const pendingUserIds = new Set(summary?.dailyRecordStatus?.pendingUserIds ?? []);
+    // todayRecordCompletion の pendingUserIds を優先
+    const pendingUserIds = new Set(
+      recordCompletion
+        ? recordCompletion.pendingUserIds
+        : (summary?.dailyRecordStatus?.pendingUserIds ?? []),
+    );
 
     const userItems = (summary.users || []).map((u, i) => {
       const userId = (u.UserID ?? '').trim() || `U${String(u.Id ?? i + 1).padStart(3, '0')}`;
@@ -267,6 +279,16 @@ export const TodayOpsPage: React.FC = () => {
         navigate(url);
       },
       scheduleDetailHref,
+      onNextActionNavigate: (href: string) => {
+        recordCtaClick({
+          ctaId: CTA_EVENTS.NEXT_ACTION_PRIMARY,
+          sourceComponent: 'NextActionCard',
+          stateType: 'navigation',
+          targetUrl: href,
+          userRole: role,
+        });
+        navigate(href);
+      },
 
     };
   }, [summary, nextAction, quickRecord.openUnfilled, quickRecord.openUser, approvalFlow.open, navigate, scheduleDetailHref]);

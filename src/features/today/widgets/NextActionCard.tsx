@@ -1,16 +1,21 @@
 /**
- * NextActionCard — 次のアクション（Start/Done 実行可能）+ 場面コンテキスト
+ * NextActionCard — 次のアクション（ナビゲーション CTA）+ 場面コンテキスト
  *
- * P0: 表示のみ
- * P1-A: Start/Done ボタン + 経過時間 + 完了状態
- * PR-3: sticky 化 + urgency に応じた左ボーダー/背景色
+ * 「何をする」ではなく「どこへ行く」を1タップで実現するカード。
+ * 現場スタッフが利用者と一緒に動いている中で
+ * Start/Done を手動操作する余裕はないため、
+ * opsStep に基づく遷移先への直接ナビゲーションに特化。
+ *
  * Scene: 場面ベースの次アクション表示（オプション）
- * #852: overdue 表示 — 未着手タスクを柔らかく強調（A案）
+ * #852: overdue 表示 — 未着手タスクを柔らかく強調
  */
+import { resolveOpsNavTarget } from '@/app/links/navigationLinks';
 import { motionTokens } from '@/app/theme';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import AssignmentIcon from '@mui/icons-material/Assignment';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { Box, Button, Chip, Paper, Typography } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
@@ -31,6 +36,8 @@ export type NextActionCardProps = {
   onMenuAction?: () => void;
   /** 予定表詳細への deep link（/schedules/week?date=...&tab=day&cat=...）*/
   scheduleDetailHref?: string;
+  /** ナビゲーション CTA クリック時のハンドラ */
+  onNavigate?: (href: string) => void;
 };
 
 function formatMinutesUntil(minutes: number): string {
@@ -47,13 +54,6 @@ function formatOverdueTime(minutes: number): string {
   const h = Math.floor(abs / 60);
   const m = abs % 60;
   return m > 0 ? `${h}時間${m}分` : `${h}時間`;
-}
-
-function formatElapsed(minutes: number): string {
-  if (minutes < 60) return `${minutes}分経過`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m > 0 ? `${h}時間${m}分経過` : `${h}時間経過`;
 }
 
 const URGENCY_COLOR: Record<Urgency, string> = {
@@ -75,14 +75,26 @@ const SCENE_PRIORITY_COLOR: Record<string, 'error' | 'warning' | 'info' | 'defau
   low: 'default',
 };
 
+/** opsStep → アイコンのマッピング */
+function NavIcon({ icon }: { icon: string }) {
+  switch (icon) {
+    case 'attendance': return <HowToRegIcon />;
+    case 'record':     return <AssignmentIcon />;
+    case 'health':     return <FavoriteIcon />;
+    case 'schedule':   return <EventAvailableIcon />;
+    default:           return <NavigateNextIcon />;
+  }
+}
+
 export const NextActionCard: React.FC<NextActionCardProps> = ({
   nextAction,
   sceneAction,
   onSceneAction,
   onEmptyAction,
   scheduleDetailHref,
+  onNavigate,
 }) => {
-  const { item, status, urgency, sceneState, elapsedMinutes, actions } = nextAction;
+  const { item, urgency, sceneState } = nextAction;
   const theme = useTheme();
   const isOverdue = sceneState === 'overdue';
 
@@ -204,6 +216,9 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({
         ? alpha(theme.palette.warning.main, 0.06)
         : theme.palette.background.paper;
 
+  // Resolve navigation target from opsStep
+  const navTarget = item ? resolveOpsNavTarget(item.opsStep) : null;
+
   return (
     <Paper
       data-testid="today-next-action-card"
@@ -233,7 +248,7 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({
       </Box>
 
       {/* Overdue badge (#852 — A案: 中立表現) */}
-      {isOverdue && status === 'idle' && (
+      {isOverdue && (
         <Chip
           data-testid="next-action-overdue-chip"
           icon={<WarningAmberIcon />}
@@ -305,66 +320,30 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({
             </Typography>
           )}
 
-          {/* Status line */}
+          {/* Status line — ナビゲーション CTA */}
           <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-            {status === 'idle' && (
-              <>
-                <Typography
-                  variant="caption"
-                  color={URGENCY_COLOR[urgency]}
-                  sx={{ fontStyle: 'italic', flex: 1, fontWeight: urgency !== 'low' ? 'bold' : undefined }}
-                >
-                  {isOverdue
-                    ? `予定時刻を${formatOverdueTime(item.minutesUntil)}過ぎています`
-                    : formatMinutesUntil(item.minutesUntil)}
-                </Typography>
-                <Button
-                  data-testid="next-action-start"
-                  variant="contained"
-                  size="small"
-                  color={isOverdue ? 'warning' : 'primary'}
-                  startIcon={<PlayArrowIcon />}
-                  onClick={actions.start}
-                  sx={{ minHeight: 44 }}
-                >
-                  {isOverdue ? 'いま開始' : '開始'}
-                </Button>
-              </>
-            )}
-
-            {status === 'started' && (
-              <>
-                <Chip
-                  label={elapsedMinutes !== null ? formatElapsed(elapsedMinutes) : '実行中'}
-                  color="info"
-                  size="small"
-                  variant="outlined"
-                  sx={{ flex: '0 0 auto' }}
-                />
-                <Box sx={{ flex: 1 }} />
-                <Button
-                  data-testid="next-action-done"
-                  variant="contained"
-                  color="success"
-                  size="small"
-                  startIcon={<CheckCircleIcon />}
-                  onClick={actions.done}
-                  sx={{ minHeight: 44 }}
-                >
-                  完了
-                </Button>
-              </>
-            )}
-
-            {status === 'done' && (
-              <Chip
-                data-testid="next-action-done-chip"
-                icon={<CheckCircleIcon />}
-                label="完了"
-                color="success"
+            <Typography
+              variant="caption"
+              color={URGENCY_COLOR[urgency]}
+              sx={{ fontStyle: 'italic', flex: 1, fontWeight: urgency !== 'low' ? 'bold' : undefined }}
+            >
+              {isOverdue
+                ? `予定時刻を${formatOverdueTime(item.minutesUntil)}過ぎています`
+                : formatMinutesUntil(item.minutesUntil)}
+            </Typography>
+            {navTarget && (
+              <Button
+                data-testid="next-action-nav-cta"
+                variant="contained"
                 size="small"
-                variant="filled"
-              />
+                color={isOverdue ? 'warning' : 'primary'}
+                startIcon={<NavIcon icon={navTarget.icon} />}
+                endIcon={<NavigateNextIcon />}
+                onClick={() => onNavigate?.(navTarget.href)}
+                sx={{ minHeight: 44 }}
+              >
+                {navTarget.label}
+              </Button>
             )}
           </Box>
 
