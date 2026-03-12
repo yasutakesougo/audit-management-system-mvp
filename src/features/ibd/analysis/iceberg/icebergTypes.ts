@@ -29,6 +29,8 @@ export type HypothesisLink = {
 export type IcebergSession = {
   id: string;
   targetUserId: string;
+  /** 紐づく支援計画シートID（optional: 旧データ互換） */
+  planningSheetId?: string;
   title: string;
   createdAt: string;
   updatedAt: string;
@@ -75,6 +77,8 @@ export const icebergSnapshotSchema = z.object({
   schemaVersion: z.literal(1),
   sessionId: z.string().min(1, 'Session ID required'),
   userId: z.string().min(1, 'User ID required'),
+  /** 紐づく支援計画シートID（optional: 旧データ互換） */
+  planningSheetId: z.string().min(1).optional(),
   title: z.string().min(1, 'Title required'),
   updatedAt: z.string().datetime('Must be ISO datetime'),
   nodes: z.array(icebergNodeSchema),

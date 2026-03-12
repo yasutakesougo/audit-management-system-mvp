@@ -669,6 +669,10 @@ export interface SupportPlanBundle {
   isp: IndividualSupportPlan;
   planningSheets: SupportPlanningSheet[];
   recentProcedureRecords: SupportProcedureRecord[];
+  /** 支援計画シートごとの Iceberg 分析件数（planningSheetId → count） */
+  icebergCountBySheet?: Record<string, number>;
+  /** 直近のモニタリング結果 */
+  latestMonitoring?: { date: string; planChangeRequired: boolean } | null;
 }
 
 // ─────────────────────────────────────────────
