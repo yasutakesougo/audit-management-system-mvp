@@ -5,6 +5,7 @@ import {
   ListSpec,
 } from "./types";
 import { SpAdapter } from "./spAdapter";
+import { getRuntimeEnv } from "@/env";
 
 const statusRank: Record<HealthStatus, number> = { pass: 0, warn: 1, fail: 2 };
 const _worst = (a: HealthStatus, b: HealthStatus): HealthStatus =>
@@ -142,10 +143,10 @@ export async function runHealthChecks(
   }
 
   {
-    const runtimeEnv = typeof window !== "undefined"
-      ? (window as unknown as Record<string, unknown>).__ENV__ ?? null
+    const runtimeEnvObj = typeof window !== "undefined"
+      ? (() => { const env = getRuntimeEnv(); return Object.keys(env).length > 0 ? env : null; })()
       : null;
-    if (runtimeEnv) {
+    if (runtimeEnvObj) {
       results.push(
         pass({
           key: "config.runtimeEnv",
@@ -153,10 +154,7 @@ export async function runHealthChecks(
           category: "config",
           summary: "ランタイム環境変数が読み込まれています。",
           evidence: {
-            keys:
-              typeof runtimeEnv === "object" && runtimeEnv !== null
-                ? Object.keys(runtimeEnv as Record<string, unknown>).slice(0, 5)
-                : [],
+            keys: Object.keys(runtimeEnvObj).slice(0, 5),
           },
         })
       );

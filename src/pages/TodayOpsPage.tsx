@@ -31,6 +31,7 @@ import { recordLanding } from '@/features/today/telemetry/recordLanding';
 import { useTransportStatus } from '@/features/today/transport';
 import { ApprovalDialog } from '@/features/today/widgets/ApprovalDialog';
 import { isE2E } from '@/lib/env';
+import { getWindowFlag } from '@/env';
 import { toLocalDateISO } from '@/utils/getNow';
 
 import { Alert, Snackbar } from '@mui/material';
@@ -114,7 +115,7 @@ export const TodayOpsPage: React.FC = () => {
 
   // 4. Map to Layout Props (Defensive mapping)
   const layoutProps = useMemo(() => {
-    const isE2EEnv = isE2E() || (typeof window !== 'undefined' && (window as unknown as { __E2E_TODAY_OPS_MOCK__?: boolean }).__E2E_TODAY_OPS_MOCK__);
+    const isE2EEnv = isE2E() || getWindowFlag('__E2E_TODAY_OPS_MOCK__');
 
     // Progress: 進捗サマリー（ProgressStatusBar 用）
     // ⚠ todayRecordCompletion を優先: 強度行動障害対象者のみの記録完了状態
