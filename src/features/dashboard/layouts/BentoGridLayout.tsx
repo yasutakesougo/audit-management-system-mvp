@@ -41,7 +41,7 @@ import React from 'react';
 import { motionTokens } from '@/app/theme';
 import { BentoCard } from '@/components/ui/BentoGrid';
 import { CommandBar } from '@/features/dashboard/components/CommandBar';
-import type { TodayChanges } from '@/features/dashboard/components/TodayChangesCard';
+import type { LifeSupportSummary, TodayChanges } from '@/features/dashboard/components/TodayChangesCard';
 import { TodayChangesCard } from '@/features/dashboard/components/TodayChangesCard';
 import DashboardBriefingHUD from '@/features/dashboard/DashboardBriefingHUD';
 import type { BriefingAlert, DashboardSection, DashboardSectionKey } from '@/features/dashboard/sections/types';
@@ -71,6 +71,7 @@ export interface BentoGridLayoutProps {
   // Today changes
   dateLabel: string;
   todayChanges: TodayChanges;
+  lifeSupport: LifeSupportSummary;
 
   // Handoff Summary Card data
   handoffTotal: number;
@@ -94,6 +95,7 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
   scrollToSection,
   dateLabel,
   todayChanges,
+  lifeSupport,
   handoffTotal,
   handoffByStatus,
   handoffByCategory,
@@ -169,7 +171,7 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
   );
 
   const todayChangesCard = (
-    <TodayChangesCard dateLabel={dateLabel} changes={todayChanges} />
+    <TodayChangesCard dateLabel={dateLabel} changes={todayChanges} lifeSupport={lifeSupport} />
   );
 
   // 申し送りサマリーカード（CompactNewHandoffInput + HandoffLiveFeed の置換）

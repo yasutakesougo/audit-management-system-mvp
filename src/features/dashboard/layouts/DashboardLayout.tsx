@@ -7,10 +7,10 @@ import {
 import React from 'react';
 import { type DashboardSection, type DashboardSectionKey } from '../sections/types';
 
-import { TodayChangesCard, type TodayChanges } from '../components/TodayChangesCard';
+import { TodayChangesCard, type LifeSupportSummary, type TodayChanges } from '../components/TodayChangesCard';
 
 // Re-export types for backward compatibility
-export type { ChangeItem, TodayChanges } from '../components/TodayChangesCard';
+export type { ChangeItem, LifeSupportSummary, TodayChanges } from '../components/TodayChangesCard';
 
 // ⸻
 // Zone 1: 朝30秒判断ゾーン
@@ -22,12 +22,14 @@ interface Zone1_MorningDecisionProps {
   handoverNode: React.ReactNode;
   dateLabel: string;
   todayChanges: TodayChanges;
+  lifeSupport: LifeSupportSummary;
 }
 
 const Zone1_MorningDecision: React.FC<Zone1_MorningDecisionProps> = ({
   handoverNode,
   dateLabel,
   todayChanges,
+  lifeSupport,
 }) => {
   return (
     <Box
@@ -41,7 +43,7 @@ const Zone1_MorningDecision: React.FC<Zone1_MorningDecisionProps> = ({
     >
       <Box>{handoverNode}</Box>
       <Box>
-        <TodayChangesCard dateLabel={dateLabel} changes={todayChanges} />
+        <TodayChangesCard dateLabel={dateLabel} changes={todayChanges} lifeSupport={lifeSupport} />
       </Box>
     </Box>
   );
@@ -57,6 +59,7 @@ export interface DashboardLayoutProps {
   highlightSection?: DashboardSectionKey | null;
   dateLabel: string;
   todayChanges: TodayChanges;
+  lifeSupport: LifeSupportSummary;
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
@@ -66,6 +69,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   highlightSection,
   dateLabel,
   todayChanges,
+  lifeSupport,
 }) => {
   const theme = useTheme();
   const getSection = (key: DashboardSectionKey) => sections.find((s) => s.key === key);
@@ -108,6 +112,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             handoverNode={renderSectionIfEnabled('handover')}
             dateLabel={dateLabel}
             todayChanges={todayChanges}
+            lifeSupport={lifeSupport}
           />
         </Box>
       </Box>
