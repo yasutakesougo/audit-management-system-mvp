@@ -1,4 +1,4 @@
-﻿declare global {
+declare global {
   interface Window {
     __ORG_NAME__?: string;
     __ORG_ADDRESS__?: string;
@@ -7,8 +7,11 @@
     __AVAILABLE_ROUTES__?: string[];
   }
 }
+import { buildDailySupportUrl } from '@/app/links/buildDailySupportUrl';
 import { canAccess } from '@/auth/roles';
 import { useUserAuthz } from '@/auth/useUserAuthz';
+import { RegulatorySummaryBand } from '@/features/support-plan-guide/components/RegulatorySummaryBand';
+import { useRegulatorySummary } from '@/features/support-plan-guide/hooks/useRegulatorySummary';
 import { useSupportPlanForm } from '@/features/support-plan-guide/hooks/useSupportPlanForm';
 import type {
     SectionKey,
@@ -32,6 +35,7 @@ import CloudSyncRoundedIcon from '@mui/icons-material/CloudSyncRounded';
 import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Paper from '@mui/material/Paper';
@@ -39,8 +43,9 @@ import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Tooltip from '@mui/material/Tooltip';
+import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
 import React, { Suspense } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 // Lazy-loaded tab components (code-split to stay under 70 kB budget)
 const OverviewTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/OverviewTab'));
@@ -87,6 +92,7 @@ export default function SupportPlanGuidePage() {
   // ── Data sources ──
   const { data: userList = [] } = useUsersStore();
   const location = useLocation();
+  const navigate = useNavigate();
 
   // ── Core form logic (hook) ──
   const hook = useSupportPlanForm({
@@ -277,6 +283,9 @@ export default function SupportPlanGuidePage() {
   // RENDER
   // ════════════════════════════════════════════
 
+  // ── Regulatory Summary (Phase E) ──
+  const { bundle: regulatoryBundle, userId: linkedUserId, isAvailable: regulatoryAvailable } = useRegulatorySummary(activeDraft);
+
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, pb: 4 }}>
       <Stack spacing={3}>
@@ -285,6 +294,26 @@ export default function SupportPlanGuidePage() {
             このページは閲覧のみです。編集・保存は管理者（サビ管）権限が必要です。
           </Alert>
         )}
+
+        {/* ── 制度サマリー帯 (Phase E) ── */}
+        {regulatoryAvailable && (
+          <Stack spacing={1.5}>
+            <RegulatorySummaryBand bundle={regulatoryBundle} />
+            {linkedUserId && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<PlayArrowRoundedIcon />}
+                onClick={() => navigate(buildDailySupportUrl(linkedUserId))}
+                sx={{ alignSelf: 'flex-start' }}
+                data-testid="open-daily-support-btn"
+              >
+                この支援計画の時間割を開く
+              </Button>
+            )}
+          </Stack>
+        )}
+
         <Paper
           variant="outlined"
           sx={{ p: { xs: 2, md: 3 } }}
