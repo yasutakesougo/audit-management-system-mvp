@@ -27,8 +27,10 @@ import { buildIcebergEvidence } from '@/features/ibd/analysis/pdca/icebergEviden
 import { useIcebergPdcaList } from '@/features/ibd/analysis/pdca/queries';
 import { buildMonitoringEvidence } from '@/features/ibd/plans/support-plan/monitoringEvidenceAdapter';
 import { computeDeadlineInfo, formatDateJP } from '@/features/ibd/plans/support-plan/supportPlanDeadline';
+import { generateIcebergProposals } from '../../domain/proposalGenerator';
 import type { MonitoringEvidenceSectionProps, ToastState } from '../../types';
 import { findSection, minusDaysYmd, todayYmd } from '../../utils/helpers';
+import { ProposalReviewSection } from '../ProposalReviewSection';
 import FieldCard from './FieldCard';
 import type { SectionTabProps } from './tabProps';
 
@@ -154,6 +156,21 @@ const IcebergEvidenceSection: React.FC<{
   );
 };
 
+/** Iceberg PDCA の ACT アイテムから生成された改善提案リスト */
+const ProposalListFromIceberg: React.FC<{ userId: string }> = ({ userId }) => {
+  const { data: pdcaItems = [] } = useIcebergPdcaList({ userId });
+  const proposals = React.useMemo(
+    () => generateIcebergProposals({ userId, items: pdcaItems }),
+    [userId, pdcaItems],
+  );
+  if (proposals.length === 0) return null;
+  return (
+    <Box sx={{ mt: 1, mb: 2 }}>
+      <ProposalReviewSection proposals={proposals} />
+    </Box>
+  );
+};
+
 const MonitoringTab: React.FC<MonitoringTabProps> = ({ userId, setToast, ...sectionProps }) => {
   const navigate = useNavigate();
   const section = findSection('monitoring');
@@ -226,6 +243,10 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({ userId, setToast, ...sect
             setToast({ open: true, message: 'Iceberg分析結果を引用しました。内容を調整してください。', severity: 'success' });
           }}
         />
+      )}
+
+      {userId && (
+        <ProposalListFromIceberg userId={String(userId)} />
       )}
 
       {userId && (
