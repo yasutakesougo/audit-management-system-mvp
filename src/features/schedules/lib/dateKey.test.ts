@@ -1,7 +1,28 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { clearEnvCache } from '@/env';
 import { getSchedulesTz, toDateKey } from './dateKey';
 
 describe('dateKey', () => {
+  let originalWindowEnv: typeof window.__ENV__;
+  let originalProcessEnv: string | undefined;
+
+  beforeEach(() => {
+    originalWindowEnv = window.__ENV__;
+    originalProcessEnv = process.env.VITE_SCHEDULES_TZ;
+    // Clear env cache so each test starts fresh
+    clearEnvCache();
+  });
+
+  afterEach(() => {
+    window.__ENV__ = originalWindowEnv;
+    if (originalProcessEnv === undefined) {
+      delete process.env.VITE_SCHEDULES_TZ;
+    } else {
+      process.env.VITE_SCHEDULES_TZ = originalProcessEnv;
+    }
+    clearEnvCache();
+  });
+
   describe('toDateKey', () => {
     it('returns YYYY-MM-DD format', () => {
       const key = toDateKey(new Date('2026-02-18T00:00:00.000Z'));
@@ -9,51 +30,36 @@ describe('dateKey', () => {
     });
 
     it('respects VITE_SCHEDULES_TZ environment', () => {
-      const originalEnv = window.__ENV__;
       window.__ENV__ = { VITE_SCHEDULES_TZ: 'Asia/Tokyo' };
-      try {
-        const key = toDateKey(new Date('2026-02-18T00:00:00.000Z'));
-        expect(key).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-        // Verify it used a timezone-aware formatter (exact date depends on TZ)
-        expect(key).toBeDefined();
-      } finally {
-        window.__ENV__ = originalEnv;
-      }
+      clearEnvCache();
+      const key = toDateKey(new Date('2026-02-18T00:00:00.000Z'));
+      expect(key).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(key).toBeDefined();
     });
 
     it('falls back to Asia/Tokyo when env not set', () => {
-      const originalEnv = window.__ENV__;
       (window as unknown as Record<string, unknown>).__ENV__ = undefined;
-      try {
-        const key = toDateKey(new Date('2026-02-18T05:00:00.000Z'));
-        expect(key).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-        // 2026-02-18T05:00:00Z should be 2026-02-18 in Asia/Tokyo (UTC+9)
-        expect(key).toBe('2026-02-18');
-      } finally {
-        window.__ENV__ = originalEnv;
-      }
+      delete process.env.VITE_SCHEDULES_TZ;
+      clearEnvCache();
+      const key = toDateKey(new Date('2026-02-18T05:00:00.000Z'));
+      expect(key).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      // 2026-02-18T05:00:00Z should be 2026-02-18 in Asia/Tokyo (UTC+9)
+      expect(key).toBe('2026-02-18');
     });
   });
 
   describe('getSchedulesTz', () => {
     it('returns configured TZ from window.__ENV__', () => {
-      const originalEnv = window.__ENV__;
       window.__ENV__ = { VITE_SCHEDULES_TZ: 'America/New_York' };
-      try {
-        expect(getSchedulesTz()).toBe('America/New_York');
-      } finally {
-        window.__ENV__ = originalEnv;
-      }
+      clearEnvCache();
+      expect(getSchedulesTz()).toBe('America/New_York');
     });
 
     it('falls back to Asia/Tokyo by default', () => {
-      const originalEnv = window.__ENV__;
       (window as unknown as Record<string, unknown>).__ENV__ = undefined;
-      try {
-        expect(getSchedulesTz()).toBe('Asia/Tokyo');
-      } finally {
-        window.__ENV__ = originalEnv;
-      }
+      delete process.env.VITE_SCHEDULES_TZ;
+      clearEnvCache();
+      expect(getSchedulesTz()).toBe('Asia/Tokyo');
     });
   });
 });
