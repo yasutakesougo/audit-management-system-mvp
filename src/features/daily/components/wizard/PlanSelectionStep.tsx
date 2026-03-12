@@ -8,8 +8,11 @@ import type { BehaviorInterventionPlan } from '@/features/analysis/domain/interv
 import { ProcedurePanel, type ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import BubbleChartIcon from '@mui/icons-material/BubbleChart';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { memo, useCallback } from 'react';
 
@@ -36,6 +39,8 @@ export type PlanSelectionStepProps = {
   onSelectSlot: (stepId: string) => void;
   /** 戻るボタン → Step 1 */
   onBack: () => void;
+  /** 行動分析 (Iceberg PDCA) への導線 */
+  onIcebergAnalysis?: () => void;
 };
 
 export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
@@ -52,6 +57,7 @@ export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
   savedObservations,
   onSelectSlot,
   onBack,
+  onIcebergAnalysis,
 }) => {
   // Plan 項目タップ時に onSelectSlot を呼ぶ（→ wizard が Step 3 へ遷移）
   // NOTE: getScheduleKey を使ってキーを生成し、RecordPanel と一貫性を保つ
@@ -81,6 +87,19 @@ export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
         <Typography variant="h6" fontWeight={600} sx={{ flex: 1 }}>
           {userName} 様
         </Typography>
+        {onIcebergAnalysis && (
+          <Tooltip title="行動分析（Iceberg PDCA）">
+            <IconButton
+              size="small"
+              color="secondary"
+              onClick={onIcebergAnalysis}
+              data-testid="plan-step-iceberg-cta"
+              aria-label="行動分析"
+            >
+              <BubbleChartIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
         <Typography variant="caption" color="text.secondary">
           {totalCount - unfilledCount}/{totalCount} 件記録済み
         </Typography>
