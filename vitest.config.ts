@@ -15,7 +15,14 @@ export default defineConfig({
     // Note: For production, prefer CLI flags (e.g., vitest run --pool=forks)
     // Config-level CI detection can affect local devs with CI env var set
     pool: isCI ? 'forks' : undefined,
-    // forks pool: single worker for CI stability
+    // forks pool: single worker for CI stability; pass heap limit to worker
+    poolOptions: isCI ? {
+      forks: {
+        maxForks: 1,
+        minForks: 1,
+        execArgv: ['--max-old-space-size=4096'],
+      },
+    } : undefined,
     maxWorkers: isCI ? 1 : undefined,
     fileParallelism: isCI ? false : true,
     exclude: [
