@@ -10,7 +10,7 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { MuiRouterLink } from '@/lib/muiLink';
 import type { IUserMaster } from '../types';
 import { USAGE_STATUS_VALUES } from '../typesExtended';
 import { formatDateLabel, resolveUserIdentifier } from './helpers';
@@ -159,7 +159,7 @@ export const UserDetailHeader: React.FC<UserDetailHeaderProps> = ({
                 variant="contained"
                 size="small"
                 startIcon={<OpenInNewRoundedIcon />}
-                component={RouterLink as unknown as React.ElementType}
+                component={MuiRouterLink}
                 to={`/users/${encodeURIComponent(user.UserID || String(user.Id))}`}
                 sx={{ textTransform: 'none', flex: 1 }}
               >

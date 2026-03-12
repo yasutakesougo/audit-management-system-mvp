@@ -21,6 +21,7 @@ import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import React, { useCallback } from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { asMuiComponent } from '@/lib/muiLink';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -99,7 +100,7 @@ const NavItemRow: React.FC<{
   const button = (
     <ListItemButton
       key={label}
-      component={LinkComponent as unknown as React.ElementType}
+      component={asMuiComponent(LinkComponent)}
       to={to}
       {...commonProps}
       {...extraProps}

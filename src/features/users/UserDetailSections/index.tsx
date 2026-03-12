@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { MuiRouterLink } from '@/lib/muiLink';
 
 import { TESTIDS, tidWithSuffix } from '@/testids';
 
@@ -93,7 +94,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
     if ('to' in backLink) {
       return (
         <Button
-          component={RouterLink as unknown as React.ElementType}
+          component={MuiRouterLink}
           to={backLink.to}
           startIcon={<ArrowBackRoundedIcon />}
           variant="text"

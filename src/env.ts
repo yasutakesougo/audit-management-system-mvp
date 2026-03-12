@@ -186,3 +186,13 @@ export const isE2eForceSchedulesWrite =
 export function clearEnvCache(): void {
   cachedEnv = null;
 }
+
+/**
+ * Read a boolean flag directly from the `window` object (not `window.__ENV__`).
+ * Useful for E2E test shims like `window.__E2E_TODAY_OPS_MOCK__`.
+ * Returns false when `window` is undefined or the key is absent.
+ */
+export function getWindowFlag(key: string): boolean {
+  if (typeof window === 'undefined') return false;
+  return Boolean((window as typeof window & Record<string, unknown>)[key]);
+}

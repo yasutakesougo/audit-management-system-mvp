@@ -15,7 +15,44 @@ import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { toLocalDateISO } from '@/utils/getNow';
 import { useMemo } from 'react';
 import { useSupportRecordCompletion } from '../hooks/useSupportRecordCompletion';
+import type { SupportRecordCompletionSummary } from '../hooks/useSupportRecordCompletion';
 import type { ServiceStructure } from './serviceStructure.types';
+import type { BriefingAlert } from '@/features/dashboard/sections/types';
+import type { IUserMaster } from '@/sharepoint/fields';
+import type { AttendanceVisitSnapshot } from '@/features/dashboard/selectors/useAttendanceAnalytics';
+
+// ─── Explicit TodaySummary contract ─────────────────────────────────────
+// Defined explicitly (not via ReturnType) so IDE type servers always
+// resolve todayRecordCompletion without relying on deep inference caching.
+
+/** Pick of useAttendanceAnalytics().attendanceSummary */
+type AttendanceSummaryPick = ReturnType<typeof import('@/features/dashboard/selectors/useAttendanceAnalytics').useAttendanceAnalytics>['attendanceSummary'];
+
+/** Pick of useActivitySummary().dailyRecordStatus */
+type DailyRecordStatusPick = {
+  pending: number;
+  completed: number;
+  total: number;
+  pendingUserIds: string[];
+};
+
+type ScheduleLane = { id: string; title: string; time: string; category?: string };
+type ScheduleLanesPick = {
+  staffLane: ScheduleLane[];
+  userLane: ScheduleLane[];
+  organizationLane: ScheduleLane[];
+};
+
+export type TodaySummary = {
+  attendanceSummary: AttendanceSummaryPick;
+  dailyRecordStatus: DailyRecordStatusPick;
+  todayRecordCompletion: SupportRecordCompletionSummary;
+  briefingAlerts: BriefingAlert[];
+  scheduleLanesToday: ScheduleLanesPick;
+  serviceStructure: ServiceStructure;
+  users: IUserMaster[];
+  visits: Record<string, AttendanceVisitSnapshot>;
+};
 
 // ─── Internal: Dashboard-irrelevant defaults ────────────────────────────
 const generateMockActivityRecords = () => [];
@@ -68,7 +105,7 @@ function buildMockServiceStructure(staffNames: string[]): ServiceStructure {
  *
  * ✅ Pick list = Today のデータ契約。変更には意図的なレビューが必要。
  */
-export function useTodaySummary() {
+export function useTodaySummary(): TodaySummary {
   // ─── 1. Data Fetching (internalized from TodayOpsPage) ───
   const { data: users } = useUsersDemo();
   const { visits } = useAttendanceStore();
@@ -148,5 +185,3 @@ export function useTodaySummary() {
     ],
   );
 }
-
-export type TodaySummary = ReturnType<typeof useTodaySummary>;

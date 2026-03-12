@@ -1,8 +1,9 @@
 // TZ-aware date key helper for schedules
 // Ensures "today" label respects the configured timezone, not UTC
+import { get } from '@/env';
 
 export const getSchedulesTz = (): string =>
-  (window.__ENV__?.VITE_SCHEDULES_TZ as string) ?? 'Asia/Tokyo';
+  get('VITE_SCHEDULES_TZ', 'Asia/Tokyo');
 
 /** Date -> "YYYY-MM-DD" in schedules timezone */
 export const toDateKey = (date: Date): string => {

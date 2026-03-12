@@ -21,7 +21,8 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import { useTheme, type Theme } from '@mui/material/styles';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { MuiRouterLink } from '@/lib/muiLink';
 
 // ─── Dialog action registry ──────────────────────────────────────────
 // Maps onClickKey → state setter. Extend here when adding new dialog actions.
@@ -185,7 +186,7 @@ function renderAction(
       <Button
         key={key}
         {...commonProps}
-        component={RouterLink as unknown as React.ElementType}
+        component={MuiRouterLink}
         to={to}
         variant={isActive ? 'contained' : baseVariant}
         aria-current={isActive ? 'page' : undefined}

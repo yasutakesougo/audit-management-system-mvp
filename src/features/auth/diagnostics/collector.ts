@@ -192,15 +192,18 @@ export const getSafeRoute = (): string => {
  * 便利関数：console で即確認したい時用
  * 例: window.__authDiag?.recent(10)
  */
+/** Debug API exposed on window for console inspection */
+interface WindowWithAuthDiag extends Window {
+  __authDiag?: {
+    recent: (n?: number) => AuthDiagnosticEvent[];
+    stats: () => SnapshotStats;
+    clear: () => void;
+  };
+}
+
 export const exposeAuthDiagnosticsToWindow = (): void => {
   if (typeof window === 'undefined') return;
-  const w = window as unknown as {
-    __authDiag?: {
-      recent: (n?: number) => AuthDiagnosticEvent[];
-      stats: () => SnapshotStats;
-      clear: () => void;
-    };
-  };
+  const w = window as WindowWithAuthDiag;
   if (w.__authDiag) return;
 
   w.__authDiag = {
