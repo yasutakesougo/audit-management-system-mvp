@@ -190,16 +190,10 @@ export const BentoGridLayout: React.FC<BentoGridLayoutProps> = ({
     />
   );
 
+  // orderedSections の順序をそのまま尊重（時間帯ソート反映）
   const mainSections = (
     <>
-      {renderSectionIfEnabled('handover')}
-      {renderSectionIfEnabled('schedule')}
-      {renderSectionIfEnabled('safety')}
-      {renderSectionIfEnabled('attendance')}
-      {renderSectionIfEnabled('daily')}
-      {renderSectionIfEnabled('stats')}
-      {renderSectionIfEnabled('adminOnly')}
-      {renderSectionIfEnabled('staffOnly')}
+      {sections.map((section) => renderSectionIfEnabled(section.key))}
     </>
   );
 
