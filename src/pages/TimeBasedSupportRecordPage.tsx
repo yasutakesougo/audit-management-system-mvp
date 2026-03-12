@@ -43,6 +43,8 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     userId: initialSearchParams.get('userId') ?? initialSearchParams.get('user') ?? undefined,
     stepKey: initialSearchParams.get('step') ?? undefined,
     unfilledOnly: initialSearchParams.get('unfilled') === '1',
+    /** 支援計画シートから遷移した場合の planningSheetId（Phase E 導線） */
+    planningSheetId: initialSearchParams.get('planningSheetId') ?? undefined,
   }).current;
 
   const [isEditOpen, setIsEditOpen] = useState(false);
