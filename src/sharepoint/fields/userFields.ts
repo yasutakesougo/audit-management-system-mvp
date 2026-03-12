@@ -56,6 +56,12 @@ export interface IUserMaster {
 
   // アセスメント会議実施日（モニタリング会議カウントダウンの起点）
   LastAssessmentDate?: string | null;
+
+  // ── 制度判定属性 (Issue 4-3) ──
+  BehaviorScore?: number | null;
+  ChildBehaviorScore?: number | null;
+  ServiceTypesJson?: string | null;
+  EligibilityCheckedAt?: string | null;
 }
 
 export interface IUserMasterCreateDto {
@@ -95,6 +101,12 @@ export interface IUserMasterCreateDto {
 
   // アセスメント会議実施日
   LastAssessmentDate?: string | null;
+
+  // ── 制度判定属性 (Issue 4-3) ──
+  BehaviorScore?: number | null;
+  ChildBehaviorScore?: number | null;
+  ServiceTypesJson?: string | null;
+  EligibilityCheckedAt?: string | null;
 }
 
 export const USERS_MASTER_FIELD_MAP = {
@@ -130,6 +142,11 @@ export const USERS_MASTER_FIELD_MAP = {
   mealAddition: 'MealAddition',
   copayPaymentMethod: 'CopayPaymentMethod',
   lastAssessmentDate: 'LastAssessmentDate',
+  // ── 制度判定属性 (Issue 4-3) ──
+  behaviorScore: 'BehaviorScore',
+  childBehaviorScore: 'ChildBehaviorScore',
+  serviceTypesJson: 'ServiceTypesJson',
+  eligibilityCheckedAt: 'EligibilityCheckedAt',
 } as const;
 
 // ── CORE: 一覧表示用（軽量 / 20列） ──
@@ -175,6 +192,11 @@ export const USERS_SELECT_FIELDS_FULL = [
   USERS_MASTER_FIELD_MAP.transportAdditionType,
   USERS_MASTER_FIELD_MAP.mealAddition,
   USERS_MASTER_FIELD_MAP.copayPaymentMethod,
+  // 制度判定属性
+  USERS_MASTER_FIELD_MAP.behaviorScore,
+  USERS_MASTER_FIELD_MAP.childBehaviorScore,
+  USERS_MASTER_FIELD_MAP.serviceTypesJson,
+  USERS_MASTER_FIELD_MAP.eligibilityCheckedAt,
 ] as const;
 
 export function resolveUserSelectFields(mode: UserSelectMode = 'core'): readonly string[] {

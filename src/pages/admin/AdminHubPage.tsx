@@ -11,6 +11,7 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import CategoryIcon from '@mui/icons-material/Category';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
+import GavelIcon from '@mui/icons-material/Gavel';
 import SettingsIcon from '@mui/icons-material/Settings';
 import StorageIcon from '@mui/icons-material/Storage';
 import SyncIcon from '@mui/icons-material/Sync';
@@ -56,6 +57,13 @@ const ADMIN_TOOLS: AdminTool[] = [
     description: '操作履歴の確認',
     to: '/audit',
     icon: <VerifiedUserIcon />,
+    category: 'overview',
+  },
+  {
+    label: '制度遵守ダッシュボード',
+    description: '加算・監査リスク・見直し期限・資格要件の確認',
+    to: '/admin/regulatory-dashboard',
+    icon: <GavelIcon />,
     category: 'overview',
   },
   // Data
