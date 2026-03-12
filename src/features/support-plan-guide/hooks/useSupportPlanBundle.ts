@@ -187,6 +187,7 @@ export function useSupportPlanBundle(
       procedureRecordCountBySheet: recordCounts,
       planningSheetCount: sheets.length,
       lastProcedureRecordDate: deriveLastRecordDate(records),
+      planningSheetItems: sheets,
     };
   }, [isp, sheets, records]);
 

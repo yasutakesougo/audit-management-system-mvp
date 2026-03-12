@@ -10,6 +10,7 @@ declare global {
 import { buildDailySupportUrl } from '@/app/links/buildDailySupportUrl';
 import { canAccess } from '@/auth/roles';
 import { useUserAuthz } from '@/auth/useUserAuthz';
+import { PlanningSheetStatsGrid } from '@/features/support-plan-guide/components/PlanningSheetStatsGrid';
 import { RegulatorySummaryBand } from '@/features/support-plan-guide/components/RegulatorySummaryBand';
 import { useIspRepositories } from '@/features/support-plan-guide/hooks/useIspRepositories';
 import { useRegulatorySummary } from '@/features/support-plan-guide/hooks/useRegulatorySummary';
@@ -300,11 +301,16 @@ export default function SupportPlanGuidePage() {
           </Alert>
         )}
 
-        {/* ── 制度サマリー帯 (Phase E) ── */}
+        {/* ── 制度サマリー帯 + シート一覧カード ── */}
         {regulatoryAvailable && (
           <Stack spacing={1.5}>
             <RegulatorySummaryBand bundle={regulatoryBundle} />
-            {linkedUserId && (
+            <PlanningSheetStatsGrid
+              bundle={regulatoryBundle}
+              onNavigate={(url) => navigate(url)}
+            />
+            {/* シートカードが無い場合のみ単一ボタンを表示 */}
+            {linkedUserId && !(regulatoryBundle.planningSheetItems?.length) && (
               <Button
                 variant="outlined"
                 size="small"

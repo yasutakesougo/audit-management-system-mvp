@@ -679,6 +679,8 @@ export interface SupportPlanBundle {
   planningSheetCount?: number;
   /** 実施記録の直近日付 */
   lastProcedureRecordDate?: string | null;
+  /** 支援計画シート一覧（軽量版、カード表示用） */
+  planningSheetItems?: PlanningSheetListItem[];
 }
 
 // ─────────────────────────────────────────────
