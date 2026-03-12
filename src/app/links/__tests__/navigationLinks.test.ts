@@ -2,6 +2,7 @@ import {
     buildDailyHubFromTodayUrl,
     buildHandoffFromTodayState,
     buildIcebergPdcaUrl,
+    buildSupportPlanMonitoringUrl,
     buildTodayReturnUrl,
     parseNavQuery,
     sceneToTimeBand,
@@ -151,5 +152,23 @@ describe('buildIcebergPdcaUrl', () => {
     const url = buildIcebergPdcaUrl('user&id=1');
     expect(url).toContain('userId=user');
     expect(url).toMatch(/^\/analysis\/iceberg-pdca\?/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildSupportPlanMonitoringUrl — Iceberg → Monitoring 導線
+// ---------------------------------------------------------------------------
+
+describe('buildSupportPlanMonitoringUrl', () => {
+  it('userId と tab=monitoring を query param に含める', () => {
+    expect(buildSupportPlanMonitoringUrl('I022')).toBe(
+      '/support-plan-guide?userId=I022&tab=monitoring',
+    );
+  });
+
+  it('tab は必ず monitoring 固定', () => {
+    const url = buildSupportPlanMonitoringUrl('U999');
+    expect(url).toContain('tab=monitoring');
+    expect(url).toContain('userId=U999');
   });
 });
