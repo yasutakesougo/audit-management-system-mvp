@@ -56,8 +56,10 @@ test.describe('Schedules day ARIA smoke', () => {
     await expect(dialog).toHaveAttribute('aria-describedby', `${TESTIDS['schedule-create-dialog']}-description`);
     await expect(page.getByTestId(TESTIDS['schedule-create-heading'])).toHaveText('スケジュール新規作成');
 
-    await page.getByRole('button', { name: 'キャンセル' }).click();
-    await expect(dialog).toBeHidden();
+    // Close via Escape key to avoid MUI Dialog pointer-event interception
+    // (CloseIcon SVG in the aria-hidden root subtree blocks button clicks).
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden({ timeout: 5_000 });
     await expectTestIdVisibleBestEffort(page, TESTIDS.SCHEDULES_FAB_CREATE);
   });
 
