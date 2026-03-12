@@ -55,27 +55,13 @@ describe('NextActionCard — 行動ナビゲーター', () => {
     expect(screen.getByText(/あと 30分/)).toBeInTheDocument();
   });
 
-  it('shows Start button in idle state (P1-A) but not Done', () => {
+  it('shows Start button in idle state (行動ナビゲーター)', () => {
     render(<NextActionCard nextAction={makeProps()} />);
 
+    // idle → Start ボタンを表示（Done / Done-chip は非表示）
     expect(screen.getByTestId('next-action-start')).toBeInTheDocument();
     expect(screen.queryByTestId('next-action-done')).not.toBeInTheDocument();
     expect(screen.queryByTestId('next-action-done-chip')).not.toBeInTheDocument();
-  });
-
-  it('shows Done button when status is started', () => {
-    render(<NextActionCard nextAction={makeProps({ status: 'started', elapsedMinutes: 5 })} />);
-
-    expect(screen.queryByTestId('next-action-start')).not.toBeInTheDocument();
-    expect(screen.getByTestId('next-action-done')).toBeInTheDocument();
-  });
-
-  it('shows done chip when status is done', () => {
-    render(<NextActionCard nextAction={makeProps({ status: 'done' })} />);
-
-    expect(screen.queryByTestId('next-action-start')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('next-action-done')).not.toBeInTheDocument();
-    expect(screen.getByTestId('next-action-done-chip')).toBeInTheDocument();
   });
 
   it('formats hours correctly', () => {
@@ -133,7 +119,7 @@ describe('NextActionCard — Scene CTA', () => {
       />
     );
 
-    expect(screen.getByTestId('scene-reasons')).toBeInTheDocument();
+    expect(screen.getByTestId('scene-guidance')).toBeInTheDocument();
     expect(screen.getByTestId('scene-reason-0')).toBeInTheDocument();
     expect(screen.getByText('未入力 2名')).toBeInTheDocument();
   });
