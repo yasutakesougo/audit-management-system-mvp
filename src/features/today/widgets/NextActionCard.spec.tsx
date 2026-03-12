@@ -242,3 +242,36 @@ describe('NextActionCard — overdue 表示 (#852)', () => {
     expect(screen.getByText(/あと 15分/)).toBeInTheDocument();
   });
 });
+
+// ─── Today → Schedule 導線 ─────────────────────────────────
+
+describe('NextActionCard — Schedule deep link', () => {
+  it('calls onNavigate with scheduleDetailHref when 予定表で確認 is clicked', () => {
+    const handleNavigate = vi.fn();
+    const href = '/schedules/week?date=2026-03-12&tab=day&cat=User';
+    render(
+      <NextActionCard
+        nextAction={makeProps()}
+        scheduleDetailHref={href}
+        onNavigate={handleNavigate}
+      />,
+    );
+
+    const link = screen.getByTestId('next-action-schedule-link');
+    expect(link).toBeInTheDocument();
+    expect(link.tagName).toBe('BUTTON');
+    link.click();
+    expect(handleNavigate).toHaveBeenCalledWith(href);
+  });
+
+  it('does not render schedule link when onNavigate is not provided', () => {
+    render(
+      <NextActionCard
+        nextAction={makeProps()}
+        scheduleDetailHref="/schedules/week?date=2026-03-12"
+      />,
+    );
+
+    expect(screen.queryByTestId('next-action-schedule-link')).not.toBeInTheDocument();
+  });
+});
