@@ -106,6 +106,7 @@ export const ORPHAN_ALLOWLIST_DETAILS: AllowlistRoute[] = [
   { path: '/admin/debug/opening-verification', category: 'Dev', reason: '開発用テナント検証ツール' },
   { path: '/admin/debug/smoke-test', category: 'Dev', reason: '開発用スモークテスト画面' },
   { path: '/admin/data-integrity', category: 'Admin', reason: '管理者用データ整合性確認画面' },
+  { path: '/admin/regulatory-dashboard', category: 'Admin', reason: '制度適合ダッシュボード（AdminHubからリンク経由）' },
 ].map(item => ({ ...item, path: normalizeRouterPath(item.path) }));
 
 export const ORPHAN_ALLOWLIST = new Set(ORPHAN_ALLOWLIST_DETAILS.map(d => d.path));
