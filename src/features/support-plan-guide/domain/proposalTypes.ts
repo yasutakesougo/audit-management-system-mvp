@@ -9,21 +9,33 @@
 
 // ── Proposal Source ──
 
-/** 提案の生成元 — Phase 6 初期は 'iceberg' のみ */
-export type ProposalSource = 'iceberg';
-// 将来拡張: 'iceberg' | 'daily' | 'monitoring'
+/** 提案の生成元 */
+export type ProposalSource = 'iceberg' | 'daily';
 
 // ── Evidence Reference ──
 
-/** 元データへの参照 */
-export interface EvidenceRef {
-  /** 参照先の種別 */
+/** Iceberg PDCA 起点の参照 */
+export interface IcebergEvidenceRef {
   type: 'pdca-item';
   /** 参照先ID（IcebergPdcaItem.id） */
   itemId: string;
   /** PDCA フェーズ（常に 'ACT'） */
   phase: 'ACT';
 }
+
+/** Daily Record 起点の参照 */
+export interface DailyEvidenceRef {
+  type: 'daily-record';
+  /** 参照先ID（DailyRecordItem.id or date） */
+  itemId: string;
+  /** 対象利用者ID */
+  userId: string;
+  /** 記録日（YYYY-MM-DD） */
+  date: string;
+}
+
+/** 元データへの参照（union） */
+export type EvidenceRef = IcebergEvidenceRef | DailyEvidenceRef;
 
 // ── Proposal Status ──
 
