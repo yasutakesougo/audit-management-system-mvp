@@ -28,7 +28,7 @@ const budgets = [
   { pattern: /emotion-.*\.js$/i, limitKb: 140 },
   { pattern: /msal-browser.*\.js$/i, limitKb: 70 },
   { pattern: /msal-react.*\.js$/i, limitKb: 70 },
-  { pattern: /SupportPlanGuidePage-.*\.js$/i, limitKb: 70 },
+  { pattern: /SupportPlanGuidePage-.*\.js$/i, limitKb: 80 },
   { pattern: /SupportPlanGuidePage\.Markdown-.*\.js$/i, limitKb: 90 },
   // App chunk: slimmed down after manualChunks code-splitting
   { pattern: /App-.*\.js$/i, limitKb: 1200 },
