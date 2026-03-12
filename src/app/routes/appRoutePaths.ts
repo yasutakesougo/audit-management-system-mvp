@@ -67,6 +67,7 @@ export const APP_ROUTE_PATHS = [
   'admin/navigation-diagnostics',
   'admin/csv-import',
   'admin/mode-switch',
+  'admin/regulatory-dashboard',
   'schedule',
   'schedule/*',
   'schedules',

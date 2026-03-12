@@ -29,6 +29,12 @@ export const STAFF_MASTER_FIELD_MAP = {
   email: 'Email',
   phone: 'Phone',
   certifications: 'Certifications',
+  // ── 資格判定属性 (Issue 4-3) ──
+  hasPracticalTraining: 'HasPracticalTraining',
+  hasBasicTraining: 'HasBasicTraining',
+  hasBehaviorGuidanceTraining: 'HasBehaviorGuidanceTraining',
+  hasCorePersonTraining: 'HasCorePersonTraining',
+  certificationCheckedAt: 'CertificationCheckedAt',
 } as const;
 
 export const STAFF_SELECT_FIELDS_CANONICAL = [
@@ -54,6 +60,12 @@ export const STAFF_SELECT_FIELDS_CANONICAL = [
   STAFF_MASTER_FIELD_MAP.baseShiftStartTime,
   STAFF_MASTER_FIELD_MAP.baseShiftEndTime,
   STAFF_MASTER_FIELD_MAP.baseWorkingDays,
+  // 資格判定属性
+  STAFF_MASTER_FIELD_MAP.hasPracticalTraining,
+  STAFF_MASTER_FIELD_MAP.hasBasicTraining,
+  STAFF_MASTER_FIELD_MAP.hasBehaviorGuidanceTraining,
+  STAFF_MASTER_FIELD_MAP.hasCorePersonTraining,
+  STAFF_MASTER_FIELD_MAP.certificationCheckedAt,
 ] as const;
 
 export const STAFF_SELECT = joinSelect(STAFF_SELECT_FIELDS_CANONICAL as readonly string[]);

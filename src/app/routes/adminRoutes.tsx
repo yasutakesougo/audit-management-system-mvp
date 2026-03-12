@@ -28,6 +28,7 @@ import {
     SuspendedSupportStepMasterPage,
     SuspendedUserDetailPage,
     SuspendedUsersPanel,
+    SuspendedRegulatoryDashboardPage,
 } from './lazyPages';
 
 export const adminRoutes: RouteObject[] = [
@@ -177,6 +178,14 @@ export const adminRoutes: RouteObject[] = [
     element: (
       <RequireAudience requiredRole="admin">
         <SuspendedModeSwitchPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'admin/regulatory-dashboard',
+    element: (
+      <RequireAudience requiredRole="admin">
+        <SuspendedRegulatoryDashboardPage />
       </RequireAudience>
     ),
   },
