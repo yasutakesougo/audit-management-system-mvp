@@ -172,3 +172,39 @@ export function buildHandoffFromTodayState(opts?: {
   };
 }
 
+// ─── opsStep → Navigation Target ──────────────────────────────────────
+
+/**
+ * opsStep（業務フローステップ）→ ナビゲーション先の情報。
+ * NextActionCard で「どこへ行く」ボタンを表示するために使用。
+ */
+export type OpsNavTarget = {
+  /** ナビゲーション先の URL パス */
+  href: string;
+  /** ボタンラベル（例: 「出欠入力へ」） */
+  label: string;
+  /** ボタンアイコン種別 */
+  icon: 'attendance' | 'record' | 'health' | 'schedule';
+};
+
+const OPS_STEP_NAV: Record<string, OpsNavTarget> = {
+  intake:       { href: dailyPaths.attendance,   label: '出欠入力へ',     icon: 'attendance' },
+  temperature:  { href: dailyPaths.health,       label: 'バイタル記録へ', icon: 'health' },
+  amRecord:     { href: dailyPaths.support,      label: '支援記録へ',     icon: 'record' },
+  lunchCheck:   { href: dailyPaths.support,      label: '支援記録へ',     icon: 'record' },
+  pmRecord:     { href: dailyPaths.support,      label: '支援記録へ',     icon: 'record' },
+  discharge:    { href: dailyPaths.attendance,   label: '退所確認へ',     icon: 'attendance' },
+};
+
+/**
+ * opsStep から NextActionCard のナビゲーション先を解決する。
+ * 該当なしの場合は /schedules のデフォルトリンクを返す。
+ */
+export function resolveOpsNavTarget(opsStep?: string): OpsNavTarget {
+  if (opsStep && OPS_STEP_NAV[opsStep]) {
+    return OPS_STEP_NAV[opsStep];
+  }
+  // opsStep なし or マッピング外 → スケジュール詳細
+  return { href: '/schedules', label: '予定を確認', icon: 'schedule' };
+}
+
