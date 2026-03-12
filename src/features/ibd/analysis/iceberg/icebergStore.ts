@@ -170,6 +170,51 @@ const moveNode = (nodeId: string, position: NodePosition) => {
   });
 };
 
+const addManualNode = (label: string, type: IcebergNodeType, details?: string) => {
+  updateSession((session) => {
+    const node: IcebergNode = {
+      id: `node-manual-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      type,
+      label,
+      details,
+      position: { x: 100 + Math.random() * 200, y: 100 + Math.random() * 200 },
+    };
+    return { ...session, nodes: [...session.nodes, node] };
+  });
+};
+
+const editNode = (nodeId: string, patch: Partial<Pick<IcebergNode, 'label' | 'details' | 'type'>>) => {
+  updateSession((session) => {
+    let mutated = false;
+    const nodes = session.nodes.map((node) => {
+      if (node.id === nodeId) {
+        mutated = true;
+        return { ...node, ...patch };
+      }
+      return node;
+    });
+    return mutated ? { ...session, nodes } : session;
+  });
+};
+
+const removeNode = (nodeId: string) => {
+  updateSession((session) => {
+    const nodes = session.nodes.filter((node) => node.id !== nodeId);
+    // Also remove links that reference this node
+    const links = session.links.filter(
+      (link) => link.sourceNodeId !== nodeId && link.targetNodeId !== nodeId,
+    );
+    return { ...session, nodes, links };
+  });
+};
+
+const removeLink = (linkId: string) => {
+  updateSession((session) => {
+    const links = session.links.filter((link) => link.id !== linkId);
+    return { ...session, links };
+  });
+};
+
 const linkNodes = (sourceNodeId: string, targetNodeId: string, confidence: HypothesisLink['confidence'] = 'medium', note?: string) => {
   updateSession((session) => {
     const exists = session.links.some(
@@ -343,8 +388,18 @@ export function useIcebergStore(repository?: IcebergRepository) {
     initSession: init,
     addNode,
     addNodeFromData: addNode,
+    addManualNode: useCallback(
+      (label: string, type: IcebergNodeType, details?: string) => addManualNode(label, type, details),
+      [],
+    ),
+    updateNode: useCallback(
+      (nodeId: string, patch: Partial<Pick<IcebergNode, 'label' | 'details' | 'type'>>) => editNode(nodeId, patch),
+      [],
+    ),
+    removeNode: useCallback((nodeId: string) => removeNode(nodeId), []),
     moveNode: move,
     linkNodes: link,
+    removeLink: useCallback((linkId: string) => removeLink(linkId), []),
     loadSession: load,
     savePersistent,
     loadPersistent,

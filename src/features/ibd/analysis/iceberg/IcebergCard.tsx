@@ -1,8 +1,11 @@
 import type { IcebergNode } from '@/features/ibd/analysis/iceberg/icebergTypes';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import EditIcon from '@mui/icons-material/Edit';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
+import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
 import React from 'react';
@@ -12,9 +15,11 @@ type Props = {
   isSelected: boolean;
   onPointerDown: (event: React.PointerEvent, nodeId: string) => void;
   onSelect: (nodeId: string) => void;
+  onEdit?: (nodeId: string) => void;
+  onRemove?: (nodeId: string) => void;
 };
 
-export const IcebergCard: React.FC<Props> = ({ node, isSelected, onPointerDown, onSelect }) => {
+export const IcebergCard: React.FC<Props> = ({ node, isSelected, onPointerDown, onSelect, onEdit, onRemove }) => {
   const theme = useTheme();
 
   const colorMap = {
@@ -83,6 +88,32 @@ export const IcebergCard: React.FC<Props> = ({ node, isSelected, onPointerDown, 
         <Typography variant="caption" fontWeight="bold" color="text.secondary" sx={{ flexGrow: 1 }}>
           {typeLabel}
         </Typography>
+        {isSelected && (
+          <Box sx={{ display: 'flex', gap: 0 }}>
+            {onEdit && (
+              <IconButton
+                size="small"
+                onClick={(e) => { e.stopPropagation(); onEdit(node.id); }}
+                data-testid={`iceberg-card-edit-${node.id}`}
+                aria-label="ノード編集"
+                sx={{ p: 0.25 }}
+              >
+                <EditIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            )}
+            {onRemove && (
+              <IconButton
+                size="small"
+                onClick={(e) => { e.stopPropagation(); onRemove(node.id); }}
+                data-testid={`iceberg-card-remove-${node.id}`}
+                aria-label="ノード削除"
+                sx={{ p: 0.25, color: 'error.main' }}
+              >
+                <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            )}
+          </Box>
+        )}
       </Box>
 
       <CardContent sx={{ py: 0, pb: '12px !important', px: 1.5 }}>

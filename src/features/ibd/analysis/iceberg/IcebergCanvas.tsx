@@ -1,6 +1,14 @@
 import { IcebergCard } from '@/features/ibd/analysis/iceberg/IcebergCard';
-import type { HypothesisLink, IcebergNode, NodePosition } from '@/features/ibd/analysis/iceberg/icebergTypes';
+import type { HypothesisLink, IcebergNode, IcebergNodeType, NodePosition } from '@/features/ibd/analysis/iceberg/icebergTypes';
+import AddIcon from '@mui/icons-material/Add';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
+import MenuItem from '@mui/material/MenuItem';
+import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React, { useRef, useState } from 'react';
 
@@ -8,16 +16,38 @@ type Props = {
   nodes: IcebergNode[];
   links: HypothesisLink[];
   onMoveNode: (id: string, position: NodePosition) => void;
+  onAddNode?: (label: string, type: IcebergNodeType, details?: string) => void;
+  onEditNode?: (id: string, patch: Partial<Pick<IcebergNode, 'label' | 'details' | 'type'>>) => void;
+  onRemoveNode?: (id: string) => void;
 };
 
 const CARD_WIDTH = 220;
 const CARD_HEIGHT = 120;
 
-export const IcebergCanvas: React.FC<Props> = ({ nodes, links, onMoveNode }) => {
+const NODE_TYPE_OPTIONS: { value: IcebergNodeType; label: string }[] = [
+  { value: 'behavior', label: '行動 (結果)' },
+  { value: 'assessment', label: '特性 (要因)' },
+  { value: 'environment', label: '環境因子' },
+];
+
+type NodeFormState = {
+  label: string;
+  type: IcebergNodeType;
+  details: string;
+};
+
+const INITIAL_FORM: NodeFormState = { label: '', type: 'behavior', details: '' };
+
+export const IcebergCanvas: React.FC<Props> = ({ nodes, links, onMoveNode, onAddNode, onEditNode, onRemoveNode }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+
+  // Dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  const [form, setForm] = useState<NodeFormState>(INITIAL_FORM);
 
   const getRelativePosition = (event: React.PointerEvent) => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -59,6 +89,43 @@ export const IcebergCanvas: React.FC<Props> = ({ nodes, links, onMoveNode }) => 
     }
   };
 
+  // ── Dialog handlers ──
+
+  const handleOpenAdd = () => {
+    setEditingNodeId(null);
+    setForm(INITIAL_FORM);
+    setDialogOpen(true);
+  };
+
+  const handleOpenEdit = (nodeId: string) => {
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+    setEditingNodeId(nodeId);
+    setForm({ label: node.label, type: node.type, details: node.details ?? '' });
+    setDialogOpen(true);
+  };
+
+  const handleDialogSave = () => {
+    if (!form.label.trim()) return;
+    if (editingNodeId) {
+      onEditNode?.(editingNodeId, {
+        label: form.label.trim(),
+        type: form.type,
+        details: form.details.trim() || undefined,
+      });
+    } else {
+      onAddNode?.(form.label.trim(), form.type, form.details.trim() || undefined);
+    }
+    setDialogOpen(false);
+    setForm(INITIAL_FORM);
+    setEditingNodeId(null);
+  };
+
+  const handleRemove = (nodeId: string) => {
+    onRemoveNode?.(nodeId);
+    setSelectedId(null);
+  };
+
   const renderLinks = () =>
     links.map((link) => {
       const source = nodes.find((node) => node.id === link.sourceNodeId);
@@ -78,58 +145,132 @@ export const IcebergCanvas: React.FC<Props> = ({ nodes, links, onMoveNode }) => 
     });
 
   return (
-    <Box
-      ref={containerRef}
-      data-testid="iceberg-canvas"
-      sx={{
-        width: '100%',
-        height: '100%',
-        position: 'relative',
-        overflow: 'hidden',
-        bgcolor: '#fafafa',
-        border: '1px solid #ddd',
-        borderRadius: 2,
-        touchAction: 'none',
-      }}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onClick={() => setSelectedId(null)}
-    >
-      <Box
-        sx={{
-          position: 'absolute',
-          top: '40%',
-          left: 0,
-          right: 0,
-          borderBottom: '2px dashed #0288d1',
-          opacity: 0.5,
-          pointerEvents: 'none',
-        }}
-      >
-        <Typography
-          variant="caption"
-          sx={{ position: 'absolute', right: 16, bottom: 4, color: '#0288d1', fontWeight: 'bold' }}
-        >
-          Waterline (水面) - これより下は「要因・背景」
-        </Typography>
+    <>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+        {onAddNode && (
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<AddIcon />}
+            onClick={handleOpenAdd}
+            data-testid="iceberg-add-node-btn"
+          >
+            ノード追加
+          </Button>
+        )}
       </Box>
 
-      <svg
-        data-testid="iceberg-links"
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}
+      <Box
+        ref={containerRef}
+        data-testid="iceberg-canvas"
+        sx={{
+          width: '100%',
+          height: '100%',
+          position: 'relative',
+          overflow: 'hidden',
+          bgcolor: '#fafafa',
+          border: '1px solid #ddd',
+          borderRadius: 2,
+          touchAction: 'none',
+        }}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onClick={() => setSelectedId(null)}
       >
-        {renderLinks()}
-      </svg>
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '40%',
+            left: 0,
+            right: 0,
+            borderBottom: '2px dashed #0288d1',
+            opacity: 0.5,
+            pointerEvents: 'none',
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{ position: 'absolute', right: 16, bottom: 4, color: '#0288d1', fontWeight: 'bold' }}
+          >
+            Waterline (水面) - これより下は「要因・背景」
+          </Typography>
+        </Box>
 
-      {nodes.map((node) => (
-        <IcebergCard
-          key={node.id}
-          node={node}
-          isSelected={selectedId === node.id}
-          onPointerDown={handlePointerDown}
-          onSelect={setSelectedId}
-        />
-      ))}
-    </Box>
+        <svg
+          data-testid="iceberg-links"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}
+        >
+          {renderLinks()}
+        </svg>
+
+        {nodes.map((node) => (
+          <IcebergCard
+            key={node.id}
+            node={node}
+            isSelected={selectedId === node.id}
+            onPointerDown={handlePointerDown}
+            onSelect={setSelectedId}
+            onEdit={onEditNode ? handleOpenEdit : undefined}
+            onRemove={onRemoveNode ? handleRemove : undefined}
+          />
+        ))}
+      </Box>
+
+      {/* Add / Edit Dialog */}
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        data-testid="iceberg-node-dialog"
+      >
+        <DialogTitle>{editingNodeId ? 'ノード編集' : 'ノード追加'}</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '8px !important' }}>
+          <TextField
+            label="ラベル"
+            value={form.label}
+            onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+            size="small"
+            autoFocus
+            required
+            data-testid="iceberg-node-label-input"
+          />
+          <TextField
+            label="タイプ"
+            value={form.type}
+            onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as IcebergNodeType }))}
+            size="small"
+            select
+            data-testid="iceberg-node-type-select"
+          >
+            {NODE_TYPE_OPTIONS.map((opt) => (
+              <MenuItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            label="詳細メモ"
+            value={form.details}
+            onChange={(e) => setForm((f) => ({ ...f, details: e.target.value }))}
+            size="small"
+            multiline
+            rows={2}
+            data-testid="iceberg-node-details-input"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDialogOpen(false)}>キャンセル</Button>
+          <Button
+            variant="contained"
+            onClick={handleDialogSave}
+            disabled={!form.label.trim()}
+            data-testid="iceberg-node-save-btn"
+          >
+            {editingNodeId ? '更新' : '追加'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
