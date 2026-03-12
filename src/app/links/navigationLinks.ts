@@ -208,3 +208,27 @@ export function resolveOpsNavTarget(opsStep?: string): OpsNavTarget {
   return { href: '/schedules', label: '予定を確認', icon: 'schedule' };
 }
 
+// ─── Iceberg PDCA Navigation ──────────────────────────────────────────
+
+/**
+ * /analysis/iceberg-pdca?userId=xxx を生成する。
+ * Daily Support → Iceberg PDCA への導線で使用。
+ */
+export function buildIcebergPdcaUrl(userId: string): string {
+  const search = new URLSearchParams();
+  search.set('userId', userId);
+  return `/analysis/iceberg-pdca?${search.toString()}`;
+}
+
+// ─── Support Plan Monitoring Navigation ───────────────────────────────
+
+/**
+ * /support-plan-guide?userId=xxx&tab=monitoring を生成する。
+ * Iceberg PDCA → Monitoring への導線で使用。
+ */
+export function buildSupportPlanMonitoringUrl(userId: string): string {
+  const search = new URLSearchParams();
+  search.set('userId', userId);
+  search.set('tab', 'monitoring');
+  return `/support-plan-guide?${search.toString()}`;
+}

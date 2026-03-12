@@ -13,7 +13,7 @@
  *
  * @see docs/adr/ADR-002-today-execution-layer-guardrails.md
  */
-import { buildDailyHubFromTodayUrl, buildHandoffFromTodayState, buildHandoffTimelineUrl, sceneToTimeBand } from '@/app/links/navigationLinks';
+import { buildDailyHubFromTodayUrl, buildHandoffFromTodayState, buildHandoffTimelineUrl, buildIcebergPdcaUrl, sceneToTimeBand } from '@/app/links/navigationLinks';
 import { CTA_EVENTS, recordCtaClick } from '@/features/today/telemetry/recordCtaClick';
 import { useAuthStore } from '@/features/auth/store';
 import { useTodaySummary } from '@/features/today/domain';
@@ -254,6 +254,7 @@ export const TodayOpsPage: React.FC = () => {
           : sortedUserItems,
         onOpenQuickRecord: quickRecord.openUser,
         onOpenISP: (userId: string) => navigate(`/isp-editor/${userId}`),
+        onOpenIceberg: (userId: string) => navigate(buildIcebergPdcaUrl(userId)),
         onEmptyAction: () => navigate('/schedules'),
       },
       nextActionEmptyAction: () => {

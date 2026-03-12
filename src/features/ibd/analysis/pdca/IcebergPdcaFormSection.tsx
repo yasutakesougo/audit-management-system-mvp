@@ -25,8 +25,10 @@ import {
     Snackbar,
     Stack,
     TextField,
+    Tooltip,
     Typography,
 } from '@mui/material';
+import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import * as React from 'react';
 
 import type { IcebergPdcaItem, IcebergPdcaPhase } from './types';
@@ -61,6 +63,8 @@ export interface IcebergPdcaFormSectionProps {
   onCloseSnackbar: () => void;
   snapshotWarning: string | null;
   onCloseSnapshotWarning: () => void;
+  /** ACT フェーズのアイテムから支援計画モニタリングへの導線 */
+  onNavigateToMonitoring?: (userId: string) => void;
 }
 
 // ============================================================================
@@ -85,6 +89,7 @@ export function IcebergPdcaFormSection({
   onCloseSnackbar,
   snapshotWarning,
   onCloseSnapshotWarning,
+  onNavigateToMonitoring,
 }: IcebergPdcaFormSectionProps) {
   return (
     <Box>
@@ -186,6 +191,20 @@ export function IcebergPdcaFormSection({
                   >
                     削除
                   </Button>
+                  {item.phase === 'ACT' && onNavigateToMonitoring && item.userId && (
+                    <Tooltip title="この改善内容を支援計画のモニタリングに反映">
+                      <Button
+                        size="small"
+                        color="success"
+                        variant="outlined"
+                        startIcon={<AssignmentTurnedInIcon />}
+                        onClick={() => onNavigateToMonitoring(item.userId)}
+                        data-testid={`pdca-to-monitoring-${item.id}`}
+                      >
+                        支援計画に反映
+                      </Button>
+                    </Tooltip>
+                  )}
                 </Stack>
               )}
             </Stack>
