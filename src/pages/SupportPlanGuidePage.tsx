@@ -11,7 +11,9 @@ import { buildDailySupportUrl } from '@/app/links/buildDailySupportUrl';
 import { canAccess } from '@/auth/roles';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { RegulatorySummaryBand } from '@/features/support-plan-guide/components/RegulatorySummaryBand';
+import { useIspRepositories } from '@/features/support-plan-guide/hooks/useIspRepositories';
 import { useRegulatorySummary } from '@/features/support-plan-guide/hooks/useRegulatorySummary';
+import { useSupportPlanBundle } from '@/features/support-plan-guide/hooks/useSupportPlanBundle';
 import { useSupportPlanForm } from '@/features/support-plan-guide/hooks/useSupportPlanForm';
 import type {
     SectionKey,
@@ -283,8 +285,11 @@ export default function SupportPlanGuidePage() {
   // RENDER
   // ════════════════════════════════════════════
 
-  // ── Regulatory Summary (Phase E) ──
-  const { bundle: regulatoryBundle, userId: linkedUserId, isAvailable: regulatoryAvailable } = useRegulatorySummary(activeDraft);
+  // ── Regulatory Summary (Phase E → Repository 結線) ──
+  const ispRepos = useIspRepositories();
+  const regulatoryUserId = activeDraft?.userId != null ? String(activeDraft.userId) : null;
+  const { bundle: realBundle } = useSupportPlanBundle(regulatoryUserId, ispRepos);
+  const { bundle: regulatoryBundle, userId: linkedUserId, isAvailable: regulatoryAvailable } = useRegulatorySummary(activeDraft, realBundle);
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, pb: 4 }}>

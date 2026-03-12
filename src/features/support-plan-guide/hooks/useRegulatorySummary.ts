@@ -116,10 +116,26 @@ const EMPTY_ISP_STUB: IndividualSupportPlan = {
   version: 1,
 };
 
+/**
+ * @param activeDraft - 現在選択中のドラフト（フォールバック用）
+ * @param realBundle - 本番 Repository から取得した SupportPlanBundle（優先）
+ */
 export function useRegulatorySummary(
   activeDraft: SupportPlanDraft | undefined,
+  realBundle?: SupportPlanBundle | null,
 ): RegulatorySummaryData {
   return useMemo(() => {
+    // ── 本番データがあればそれを優先 ──
+    if (realBundle) {
+      const userId = realBundle.isp.userId || null;
+      return {
+        bundle: realBundle,
+        userId,
+        isAvailable: true,
+      };
+    }
+
+    // ── フォールバック: SupportPlanDraft から推定 ──
     if (!activeDraft) {
       return {
         bundle: {
@@ -153,5 +169,5 @@ export function useRegulatorySummary(
       userId,
       isAvailable: true,
     };
-  }, [activeDraft]);
+  }, [activeDraft, realBundle]);
 }
