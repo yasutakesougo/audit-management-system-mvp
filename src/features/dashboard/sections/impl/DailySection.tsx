@@ -35,7 +35,7 @@ export type DailySectionProps = {
 };
 
 export const DailySection: React.FC<DailySectionProps> = (props) => {
-  const { dailyStatusCards, dailyRecordStatus } = props;
+  const { dailyStatusCards, dailyRecordStatus: _dailyRecordStatus } = props;
 
   return (
     <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }} data-testid="dashboard-section-daily">
@@ -51,10 +51,10 @@ export const DailySection: React.FC<DailySectionProps> = (props) => {
       >
         <Stack spacing={0.5} sx={{ minWidth: 0 }}>
           <Typography variant="subtitle2" lineHeight={1.2} sx={{ fontWeight: 700 }}>
-            ケース記録：未入力があります
+            ケース記録の進捗
           </Typography>
           <Typography variant="caption" lineHeight={1.3} color="text.secondary">
-            未入力を優先して、入力と確認を進められます。
+            今日の入力完了状況を確認できます。
           </Typography>
         </Stack>
         <Stack
@@ -62,20 +62,9 @@ export const DailySection: React.FC<DailySectionProps> = (props) => {
           alignItems={{ xs: 'flex-start', md: 'flex-end' }}
           sx={{ width: { xs: '100%', md: 'auto' }, minWidth: 180 }}
         >
-          <Stack direction="row" spacing={1} flexWrap="nowrap" useFlexGap>
-            <Button
-              variant="contained"
-              size="small"
-              component={Link}
-              to="/daily/activity"
-              disabled={dailyRecordStatus.pending === 0}
-            >
-              未入力を入力する
-            </Button>
-            <Button variant="text" size="small" component={Link} to="/daily/table">
-              一覧を見る
-            </Button>
-          </Stack>
+          <Button variant="text" size="small" component={Link} to="/daily/table">
+            記録一覧を見る →
+          </Button>
         </Stack>
       </Stack>
       <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mt: 1 }}>

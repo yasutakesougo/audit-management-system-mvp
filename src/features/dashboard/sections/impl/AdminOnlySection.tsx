@@ -269,7 +269,7 @@ export function AdminOnlySection({
                   size="small"
                   onClick={() => window.open(`/daily/support?user=${user.UserID}`, '_blank')}
                 >
-                  詳細記録を確認
+                  支援記録を開く
                 </Button>
               </CardContent>
             </Card>
