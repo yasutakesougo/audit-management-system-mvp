@@ -109,4 +109,43 @@ describe('icebergStore — node CRUD actions', () => {
     // Node should be unchanged
     expect(result.current.currentSession!.nodes[0].label).toBe('既存ノード');
   });
+
+  it('linkNodes creates a hypothesis link between two nodes', () => {
+    const { result } = renderHook(() => useIcebergStore());
+    act(() => {
+      result.current.addManualNode('ノードA', 'behavior');
+    });
+    act(() => {
+      result.current.addManualNode('ノードB', 'assessment');
+    });
+    const nodeA = result.current.currentSession!.nodes[0].id;
+    const nodeB = result.current.currentSession!.nodes[1].id;
+    act(() => {
+      result.current.linkNodes(nodeA, nodeB);
+    });
+    const links = result.current.currentSession!.links;
+    expect(links).toHaveLength(1);
+    expect(links[0].sourceNodeId).toBe(nodeA);
+    expect(links[0].targetNodeId).toBe(nodeB);
+    expect(links[0].confidence).toBe('medium');
+  });
+
+  it('linkNodes prevents duplicate links', () => {
+    const { result } = renderHook(() => useIcebergStore());
+    act(() => {
+      result.current.addManualNode('ノードA', 'behavior');
+    });
+    act(() => {
+      result.current.addManualNode('ノードB', 'assessment');
+    });
+    const nodeA = result.current.currentSession!.nodes[0].id;
+    const nodeB = result.current.currentSession!.nodes[1].id;
+    act(() => {
+      result.current.linkNodes(nodeA, nodeB);
+    });
+    act(() => {
+      result.current.linkNodes(nodeA, nodeB); // duplicate
+    });
+    expect(result.current.currentSession!.links).toHaveLength(1);
+  });
 });

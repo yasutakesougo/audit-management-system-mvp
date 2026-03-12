@@ -1,14 +1,17 @@
 import { IcebergCard } from '@/features/ibd/analysis/iceberg/IcebergCard';
 import type { HypothesisLink, IcebergNode, IcebergNodeType, NodePosition } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import AddIcon from '@mui/icons-material/Add';
+import AddLinkIcon from '@mui/icons-material/AddLink';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useRef, useState } from 'react';
 
@@ -19,6 +22,8 @@ type Props = {
   onAddNode?: (label: string, type: IcebergNodeType, details?: string) => void;
   onEditNode?: (id: string, patch: Partial<Pick<IcebergNode, 'label' | 'details' | 'type'>>) => void;
   onRemoveNode?: (id: string) => void;
+  onLinkNodes?: (sourceId: string, targetId: string, confidence?: HypothesisLink['confidence']) => void;
+  onRemoveLink?: (linkId: string) => void;
 };
 
 const CARD_WIDTH = 220;
@@ -38,7 +43,9 @@ type NodeFormState = {
 
 const INITIAL_FORM: NodeFormState = { label: '', type: 'behavior', details: '' };
 
-export const IcebergCanvas: React.FC<Props> = ({ nodes, links, onMoveNode, onAddNode, onEditNode, onRemoveNode }) => {
+export const IcebergCanvas: React.FC<Props> = ({
+  nodes, links, onMoveNode, onAddNode, onEditNode, onRemoveNode, onLinkNodes, onRemoveLink,
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -48,6 +55,9 @@ export const IcebergCanvas: React.FC<Props> = ({ nodes, links, onMoveNode, onAdd
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [form, setForm] = useState<NodeFormState>(INITIAL_FORM);
+
+  // Link mode state
+  const [linkSourceId, setLinkSourceId] = useState<string | null>(null);
 
   const getRelativePosition = (event: React.PointerEvent) => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -89,6 +99,21 @@ export const IcebergCanvas: React.FC<Props> = ({ nodes, links, onMoveNode, onAdd
     }
   };
 
+  // ── Node select handler (also handles link mode) ──
+
+  const handleNodeSelect = (nodeId: string) => {
+    if (linkSourceId) {
+      // Link mode: second node clicked → create link
+      if (linkSourceId !== nodeId) {
+        onLinkNodes?.(linkSourceId, nodeId);
+      }
+      setLinkSourceId(null);
+      setSelectedId(null);
+      return;
+    }
+    setSelectedId(nodeId);
+  };
+
   // ── Dialog handlers ──
 
   const handleOpenAdd = () => {
@@ -126,6 +151,26 @@ export const IcebergCanvas: React.FC<Props> = ({ nodes, links, onMoveNode, onAdd
     setSelectedId(null);
   };
 
+  // ── Link mode handlers ──
+
+  const handleStartLinking = () => {
+    if (selectedId) {
+      setLinkSourceId(selectedId);
+    }
+  };
+
+  const handleCancelLinking = () => {
+    setLinkSourceId(null);
+  };
+
+  // ── Link click handler ──
+
+  const handleLinkClick = (linkId: string) => {
+    if (onRemoveLink && window.confirm('このリンクを削除しますか？')) {
+      onRemoveLink(linkId);
+    }
+  };
+
   const renderLinks = () =>
     links.map((link) => {
       const source = nodes.find((node) => node.id === link.sourceNodeId);
@@ -137,16 +182,32 @@ export const IcebergCanvas: React.FC<Props> = ({ nodes, links, onMoveNode, onAdd
       const x2 = target.position.x + CARD_WIDTH / 2;
       const y2 = target.position.y + CARD_HEIGHT / 2;
 
+      const isHighlighted = linkSourceId === link.sourceNodeId || linkSourceId === link.targetNodeId;
+
       return (
-        <g key={link.id}>
-          <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#90a4ae" strokeWidth={2} strokeDasharray="5 5" />
+        <g key={link.id} data-testid={`iceberg-link-${link.id}`}>
+          {/* Invisible wider line for easier clicking */}
+          <line
+            x1={x1} y1={y1} x2={x2} y2={y2}
+            stroke="transparent" strokeWidth={12}
+            style={{ pointerEvents: 'stroke', cursor: onRemoveLink ? 'pointer' : 'default' }}
+            onClick={() => handleLinkClick(link.id)}
+          />
+          {/* Visible dashed line */}
+          <line
+            x1={x1} y1={y1} x2={x2} y2={y2}
+            stroke={isHighlighted ? '#e91e63' : '#90a4ae'}
+            strokeWidth={2}
+            strokeDasharray="5 5"
+            style={{ pointerEvents: 'none' }}
+          />
         </g>
       );
     });
 
   return (
     <>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mb: 1 }}>
         {onAddNode && (
           <Button
             size="small"
@@ -158,6 +219,29 @@ export const IcebergCanvas: React.FC<Props> = ({ nodes, links, onMoveNode, onAdd
             ノード追加
           </Button>
         )}
+        {onLinkNodes && selectedId && !linkSourceId && (
+          <Tooltip title="選択中のノードからリンクを開始します">
+            <Button
+              size="small"
+              variant="outlined"
+              color="secondary"
+              startIcon={<AddLinkIcon />}
+              onClick={handleStartLinking}
+              data-testid="iceberg-start-link-btn"
+            >
+              リンク開始
+            </Button>
+          </Tooltip>
+        )}
+        {linkSourceId && (
+          <Chip
+            label={`リンク中: ${nodes.find((n) => n.id === linkSourceId)?.label ?? '...'} → 接続先を選択`}
+            color="secondary"
+            onDelete={handleCancelLinking}
+            data-testid="iceberg-linking-chip"
+            sx={{ fontWeight: 'bold' }}
+          />
+        )}
       </Box>
 
       <Box
@@ -168,14 +252,17 @@ export const IcebergCanvas: React.FC<Props> = ({ nodes, links, onMoveNode, onAdd
           height: '100%',
           position: 'relative',
           overflow: 'hidden',
-          bgcolor: '#fafafa',
-          border: '1px solid #ddd',
+          bgcolor: linkSourceId ? '#fce4ec' : '#fafafa',
+          border: linkSourceId ? '2px solid #e91e63' : '1px solid #ddd',
           borderRadius: 2,
           touchAction: 'none',
+          transition: 'background-color 0.2s, border-color 0.2s',
         }}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        onClick={() => setSelectedId(null)}
+        onClick={() => {
+          if (!linkSourceId) setSelectedId(null);
+        }}
       >
         <Box
           sx={{
@@ -198,7 +285,7 @@ export const IcebergCanvas: React.FC<Props> = ({ nodes, links, onMoveNode, onAdd
 
         <svg
           data-testid="iceberg-links"
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0 }}
         >
           {renderLinks()}
         </svg>
@@ -209,7 +296,7 @@ export const IcebergCanvas: React.FC<Props> = ({ nodes, links, onMoveNode, onAdd
             node={node}
             isSelected={selectedId === node.id}
             onPointerDown={handlePointerDown}
-            onSelect={setSelectedId}
+            onSelect={handleNodeSelect}
             onEdit={onEditNode ? handleOpenEdit : undefined}
             onRemove={onRemoveNode ? handleRemove : undefined}
           />

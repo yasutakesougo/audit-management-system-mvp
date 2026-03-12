@@ -105,7 +105,7 @@ const IcebergAnalysisPage: React.FC = () => {
     init();
   }, [spSiteUrl]);
 
-  const { currentSession, initSession, moveNode, addNodeFromData, addManualNode, updateNode, removeNode, linkNodes, saveState, lastSaveError, savePersistent } = useIcebergStore(repository ?? undefined);
+  const { currentSession, initSession, moveNode, addNodeFromData, addManualNode, updateNode, removeNode, linkNodes, removeLink, saveState, lastSaveError, savePersistent } = useIcebergStore(repository ?? undefined);
   const { getByUserId, seedDemoData } = useAssessmentStore();
   const { data: users } = useUsersDemo();
   const [targetUserId, setTargetUserId] = useState('');
@@ -297,7 +297,7 @@ const IcebergAnalysisPage: React.FC = () => {
         }}
       >
         {currentSession ? (
-          <IcebergCanvas nodes={currentSession.nodes} links={currentSession.links} onMoveNode={moveNode} onAddNode={addManualNode} onEditNode={updateNode} onRemoveNode={removeNode} />
+          <IcebergCanvas nodes={currentSession.nodes} links={currentSession.links} onMoveNode={moveNode} onAddNode={addManualNode} onEditNode={updateNode} onRemoveNode={removeNode} onLinkNodes={linkNodes} onRemoveLink={removeLink} />
         ) : (
           <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Typography color="text.secondary" variant="h6">
