@@ -153,6 +153,16 @@ describe('buildIcebergPdcaUrl', () => {
     expect(url).toContain('userId=user');
     expect(url).toMatch(/^\/analysis\/iceberg-pdca\?/);
   });
+
+  it('source オプションを指定すると URL に含まれる', () => {
+    expect(buildIcebergPdcaUrl('U001', { source: 'monitoring' })).toBe(
+      '/analysis/iceberg-pdca?userId=U001&source=monitoring',
+    );
+  });
+
+  it('source 未指定なら userId のみ（後方互換）', () => {
+    expect(buildIcebergPdcaUrl('U001')).toBe('/analysis/iceberg-pdca?userId=U001');
+  });
 });
 
 // ---------------------------------------------------------------------------

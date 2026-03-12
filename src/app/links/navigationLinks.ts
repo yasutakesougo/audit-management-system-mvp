@@ -212,11 +212,18 @@ export function resolveOpsNavTarget(opsStep?: string): OpsNavTarget {
 
 /**
  * /analysis/iceberg-pdca?userId=xxx を生成する。
- * Daily Support → Iceberg PDCA への導線で使用。
+ * Daily Support / Monitoring → Iceberg PDCA への導線で使用。
+ * source を指定すると流入元追跡に利用できる。
  */
-export function buildIcebergPdcaUrl(userId: string): string {
+export function buildIcebergPdcaUrl(
+  userId: string,
+  options?: { source?: string },
+): string {
   const search = new URLSearchParams();
   search.set('userId', userId);
+  if (options?.source) {
+    search.set('source', options.source);
+  }
   return `/analysis/iceberg-pdca?${search.toString()}`;
 }
 

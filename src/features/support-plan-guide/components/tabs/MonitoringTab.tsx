@@ -18,6 +18,9 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+
+import { buildIcebergPdcaUrl } from '@/app/links/navigationLinks';
 
 import { buildIcebergEvidence } from '@/features/ibd/analysis/pdca/icebergEvidenceAdapter';
 import { useIcebergPdcaList } from '@/features/ibd/analysis/pdca/queries';
@@ -150,6 +153,7 @@ const IcebergEvidenceSection: React.FC<{
 };
 
 const MonitoringTab: React.FC<MonitoringTabProps> = ({ userId, setToast, ...sectionProps }) => {
+  const navigate = useNavigate();
   const section = findSection('monitoring');
   if (!section) return null;
 
@@ -193,6 +197,21 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({ userId, setToast, ...sect
             setToast({ open: true, message: 'Iceberg分析結果を引用しました。内容を調整してください。', severity: 'success' });
           }}
         />
+      )}
+
+      {userId && (
+        <Box sx={{ mt: 1 }}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            size="small"
+            startIcon={<BubbleChartIcon />}
+            onClick={() => navigate(buildIcebergPdcaUrl(String(userId), { source: 'monitoring' }))}
+            data-testid="monitoring-reanalysis-link"
+          >
+            再分析する
+          </Button>
+        </Box>
       )}
 
       <Stack spacing={2}>
