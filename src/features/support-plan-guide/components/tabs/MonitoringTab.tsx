@@ -28,11 +28,13 @@ import { useIcebergPdcaList } from '@/features/ibd/analysis/pdca/queries';
 import { buildMonitoringEvidence } from '@/features/ibd/plans/support-plan/monitoringEvidenceAdapter';
 import { computeDeadlineInfo, formatDateJP } from '@/features/ibd/plans/support-plan/supportPlanDeadline';
 import { generateIcebergProposals } from '../../domain/proposalGenerator';
+import { buildReflectionTraces } from '../../domain/planReflectionTrace';
 import { transition } from '../../domain/proposalStateMachine';
 import type { ProposalStatus } from '../../domain/proposalTypes';
 import type { MonitoringEvidenceSectionProps, ToastState } from '../../types';
 import { findSection, minusDaysYmd, todayYmd } from '../../utils/helpers';
 import { ProposalReviewSection } from '../ProposalReviewSection';
+import { ReflectionTraceSection } from '../ReflectionTraceSection';
 import FieldCard from './FieldCard';
 import type { SectionTabProps } from './tabProps';
 
@@ -191,10 +193,16 @@ const ProposalListFromIceberg: React.FC<{ userId: string }> = ({ userId }) => {
     );
   }, []);
 
+  // Build reflection traces from accepted proposals
+  const traces = React.useMemo(() => buildReflectionTraces(proposals), [proposals]);
+
   if (proposals.length === 0) return null;
   return (
     <Box sx={{ mt: 1, mb: 2 }}>
-      <ProposalReviewSection proposals={proposals} onStatusChange={handleStatusChange} />
+      <Stack spacing={2}>
+        <ProposalReviewSection proposals={proposals} onStatusChange={handleStatusChange} />
+        <ReflectionTraceSection traces={traces} />
+      </Stack>
     </Box>
   );
 };

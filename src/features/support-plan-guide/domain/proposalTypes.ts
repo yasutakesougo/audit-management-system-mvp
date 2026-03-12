@@ -57,3 +57,31 @@ export interface SupportChangeProposal {
   /** レビューコメント（任意） */
   reviewNote?: string;
 }
+
+// ── Plan Reflection Trace ──
+
+/** 採用された提案が支援計画に反映された記録（監査証跡） */
+export interface PlanReflectionTrace {
+  /** 一意ID */
+  id: string;
+  /** 元の提案ID */
+  proposalId: string;
+  /** 対象利用者ID */
+  userId: string;
+  /** 提案タイトル（スナップショット） */
+  proposalTitle: string;
+  /** 反映先フィールド */
+  targetField: 'monitoringPlan';
+  // 将来拡張: 'monitoringPlan' | 'supportGoal' | 'serviceContent'
+  /** 反映日時 */
+  reflectedAt: string;
+  /** Evidence 追跡チェーン */
+  evidenceChain: {
+    /** 元の PDCA item ID */
+    pdcaItemId: string;
+    /** 提案の生成元 */
+    source: ProposalSource;
+    /** 採用日時 */
+    acceptedAt: string;
+  };
+}
