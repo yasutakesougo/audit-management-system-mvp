@@ -6,6 +6,7 @@
  */
 import React, { useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
@@ -14,6 +15,7 @@ import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
+import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -26,6 +28,8 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import GavelIcon from '@mui/icons-material/Gavel';
+import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
+import { useNavigate } from 'react-router-dom';
 
 import {
   type AuditFinding,
@@ -37,6 +41,7 @@ import {
   summarizeFindings,
   _resetFindingCounter,
 } from '@/domain/regulatory';
+import { buildFindingActions, type FindingAction } from '@/domain/regulatory/buildFindingActions';
 
 // ─────────────────────────────────────────────
 // デモデータ
@@ -163,9 +168,10 @@ interface FindingsTableProps {
   findings: AuditFinding[];
   filterType: AuditFindingType | 'all';
   filterSeverity: AuditFindingSeverity | 'all';
+  onNavigate: (url: string) => void;
 }
 
-const FindingsTable: React.FC<FindingsTableProps> = ({ findings, filterType, filterSeverity }) => {
+const FindingsTable: React.FC<FindingsTableProps> = ({ findings, filterType, filterSeverity, onNavigate }) => {
   const filtered = useMemo(() => {
     let result = [...findings];
     if (filterType !== 'all') result = result.filter(f => f.type === filterType);
@@ -200,6 +206,7 @@ const FindingsTable: React.FC<FindingsTableProps> = ({ findings, filterType, fil
             <TableCell sx={{ fontWeight: 700, width: 100 }}>利用者</TableCell>
             <TableCell sx={{ fontWeight: 700 }}>メッセージ</TableCell>
             <TableCell sx={{ fontWeight: 700, width: 120 }}>期限</TableCell>
+            <TableCell sx={{ fontWeight: 700, width: 160 }}>対応</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -237,6 +244,29 @@ const FindingsTable: React.FC<FindingsTableProps> = ({ findings, filterType, fil
                     {f.dueDate || '—'}
                   </Typography>
                 </TableCell>
+                <TableCell>
+                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                    {buildFindingActions(f).map((action: FindingAction, i: number) => (
+                      <Button
+                        key={i}
+                        size="small"
+                        variant={action.kind === 'execute' ? 'contained' : 'outlined'}
+                        color={action.kind === 'execute' ? 'primary' : 'inherit'}
+                        startIcon={<OpenInNewRoundedIcon sx={{ fontSize: 14 }} />}
+                        onClick={() => onNavigate(action.url)}
+                        sx={{
+                          fontSize: '0.7rem',
+                          textTransform: 'none',
+                          py: 0.25,
+                          px: 1,
+                          minWidth: 'auto',
+                        }}
+                      >
+                        {action.label}
+                      </Button>
+                    ))}
+                  </Stack>
+                </TableCell>
               </TableRow>
             );
           })}
@@ -251,6 +281,7 @@ const FindingsTable: React.FC<FindingsTableProps> = ({ findings, filterType, fil
 // ─────────────────────────────────────────────
 
 const RegulatoryDashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const [filterType, setFilterType] = useState<AuditFindingType | 'all'>('all');
   const [filterSeverity, setFilterSeverity] = useState<AuditFindingSeverity | 'all'>('all');
 
@@ -327,7 +358,7 @@ const RegulatoryDashboardPage: React.FC = () => {
       </Box>
 
       {/* findings テーブル */}
-      <FindingsTable findings={findings} filterType={filterType} filterSeverity={filterSeverity} />
+      <FindingsTable findings={findings} filterType={filterType} filterSeverity={filterSeverity} onNavigate={(url) => navigate(url)} />
     </Container>
   );
 };
