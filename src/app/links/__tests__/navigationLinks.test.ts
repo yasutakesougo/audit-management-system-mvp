@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
 import {
     buildDailyHubFromTodayUrl,
     buildHandoffFromTodayState,
+    buildIcebergPdcaUrl,
     buildTodayReturnUrl,
     parseNavQuery,
     sceneToTimeBand,
@@ -135,5 +135,21 @@ describe('buildHandoffFromTodayState', () => {
   it('timeFilter=undefined の場合は all にフォールバック', () => {
     const state = buildHandoffFromTodayState({ timeFilter: undefined });
     expect(state.timeFilter).toBe('all');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildIcebergPdcaUrl — Daily → Iceberg PDCA 導線
+// ---------------------------------------------------------------------------
+
+describe('buildIcebergPdcaUrl', () => {
+  it('userId を query param に含める', () => {
+    expect(buildIcebergPdcaUrl('I022')).toBe('/analysis/iceberg-pdca?userId=I022');
+  });
+
+  it('特殊文字を含む userId もエンコードされる', () => {
+    const url = buildIcebergPdcaUrl('user&id=1');
+    expect(url).toContain('userId=user');
+    expect(url).toMatch(/^\/analysis\/iceberg-pdca\?/);
   });
 });

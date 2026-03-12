@@ -1,4 +1,5 @@
 import { motionTokens } from '@/app/theme';
+import BubbleChartIcon from '@mui/icons-material/BubbleChart';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
@@ -24,6 +25,8 @@ export type UserCompactListProps = {
   items: UserRow[];
   onOpenQuickRecord: (id: string) => void;
   onOpenISP?: (id: string) => void;
+  /** Iceberg PDCA 行動分析への導線 */
+  onOpenIceberg?: (id: string) => void;
   /** zero-users 時の弱いCTA（スケジュール確認等） */
   onEmptyAction?: () => void;
 };
@@ -33,7 +36,8 @@ const UserCompactRow = React.memo<{
   user: UserRow;
   onOpenQuickRecord: (id: string) => void;
   onOpenISP?: (id: string) => void;
-}>(function UserCompactRow({ user, onOpenQuickRecord, onOpenISP }) {
+  onOpenIceberg?: (id: string) => void;
+}>(function UserCompactRow({ user, onOpenQuickRecord, onOpenISP, onOpenIceberg }) {
   const needsAttention = !user.recordFilled && user.status !== 'absent';
   const isAbsent = user.status === 'absent';
 
@@ -114,6 +118,21 @@ const UserCompactRow = React.memo<{
             </IconButton>
           </Tooltip>
         ) : null}
+        {onOpenIceberg ? (
+          <Tooltip title="行動分析（Iceberg PDCA）">
+            <IconButton
+              size="small"
+              color="secondary"
+              onClick={(e) => { e.stopPropagation(); onOpenIceberg(user.userId); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); }}
+              aria-label={`${user.name}の行動分析`}
+              data-testid={`iceberg-analysis-${user.userId}`}
+              sx={{ minHeight: 44, minWidth: 44, bgcolor: 'secondary.50', '&:hover': { bgcolor: 'secondary.100' } }}
+            >
+              <BubbleChartIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        ) : null}
         <Button
           size="small"
           variant={user.recordFilled ? 'outlined' : 'contained'}
@@ -128,7 +147,7 @@ const UserCompactRow = React.memo<{
   );
 });
 
-export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQuickRecord, onOpenISP, onEmptyAction }) => {
+export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQuickRecord, onOpenISP, onOpenIceberg, onEmptyAction }) => {
   const [expanded, setExpanded] = useState(false);
 
   // 未記録を先頭に並べる（元の順序を保ちつつ）
@@ -166,6 +185,7 @@ export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQ
           user={u}
           onOpenQuickRecord={onOpenQuickRecord}
           onOpenISP={onOpenISP}
+          onOpenIceberg={onOpenIceberg}
         />
       ))}
       {needsFold && (
