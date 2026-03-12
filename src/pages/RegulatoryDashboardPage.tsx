@@ -29,6 +29,7 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import GavelIcon from '@mui/icons-material/Gavel';
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
+import PsychologyRoundedIcon from '@mui/icons-material/PsychologyRounded';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -251,8 +252,16 @@ const FindingsTable: React.FC<FindingsTableProps> = ({ findings, filterType, fil
                         key={i}
                         size="small"
                         variant={action.kind === 'execute' ? 'contained' : 'outlined'}
-                        color={action.kind === 'execute' ? 'primary' : 'inherit'}
-                        startIcon={<OpenInNewRoundedIcon sx={{ fontSize: 14 }} />}
+                        color={
+                          action.kind === 'execute' ? 'primary'
+                            : action.kind === 'evidence' ? 'secondary'
+                            : 'inherit'
+                        }
+                        startIcon={
+                          action.kind === 'evidence'
+                            ? <PsychologyRoundedIcon sx={{ fontSize: 14 }} />
+                            : <OpenInNewRoundedIcon sx={{ fontSize: 14 }} />
+                        }
                         onClick={() => onNavigate(action.url)}
                         sx={{
                           fontSize: '0.7rem',
