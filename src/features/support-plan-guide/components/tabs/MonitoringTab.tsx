@@ -9,6 +9,7 @@
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import BubbleChartIcon from '@mui/icons-material/BubbleChart';
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import List from '@mui/material/List';
@@ -25,6 +26,7 @@ import { buildIcebergPdcaUrl } from '@/app/links/navigationLinks';
 import { buildIcebergEvidence } from '@/features/ibd/analysis/pdca/icebergEvidenceAdapter';
 import { useIcebergPdcaList } from '@/features/ibd/analysis/pdca/queries';
 import { buildMonitoringEvidence } from '@/features/ibd/plans/support-plan/monitoringEvidenceAdapter';
+import { computeDeadlineInfo, formatDateJP } from '@/features/ibd/plans/support-plan/supportPlanDeadline';
 import type { MonitoringEvidenceSectionProps, ToastState } from '../../types';
 import { findSection, minusDaysYmd, todayYmd } from '../../utils/helpers';
 import FieldCard from './FieldCard';
@@ -164,6 +166,33 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({ userId, setToast, ...sect
           {section.description}
         </Typography>
       ) : null}
+
+      {(() => {
+        const deadline = computeDeadlineInfo({
+          planPeriod: sectionProps.form.planPeriod ?? '',
+          lastMonitoringDate: sectionProps.form.lastMonitoringDate ?? '',
+        });
+        const m = deadline.monitoring;
+        if (m.daysLeft === undefined) return null;
+        const severity = m.color === 'error' ? 'error' as const
+          : m.color === 'warning' ? 'warning' as const
+          : 'info' as const;
+        const message = m.daysLeft < 0
+          ? `➡ 次回モニタリング期限を ${Math.abs(m.daysLeft)}日超過しています（${formatDateJP(m.date)}）`
+          : m.daysLeft <= 14
+            ? `⚠ 次回モニタリング期限まであと ${m.daysLeft}日です（${formatDateJP(m.date)}）`
+            : `✅ 次回モニタリング期限: ${formatDateJP(m.date)}（残り ${m.daysLeft}日）`;
+        return (
+          <Alert
+            severity={severity}
+            variant="outlined"
+            sx={{ mb: 1 }}
+            data-testid="monitoring-deadline-alert"
+          >
+            {message}
+          </Alert>
+        );
+      })()}
 
       {userId && (
         <MonitoringEvidenceSection
