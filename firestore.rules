@@ -26,5 +26,19 @@ service cloud.firestore {
 
       allow delete: if false;
     }
+
+    // ── Telemetry (Phase 1 Trial Observation) ──────────────────
+    // This app uses MSAL (Azure AD) for authentication, not Firebase Auth.
+    // request.auth is always null, so we cannot gate on signedIn().
+    // Instead we validate payload shape and limit document size.
+    // Write-only: no read/update/delete from client.
+    match /telemetry/{docId} {
+      allow create: if request.resource.data.type is string
+        && request.resource.data.type.size() > 0
+        && request.resource.data.type.size() < 100
+        && request.resource.data.keys().size() <= 20;
+
+      allow read, update, delete: if false;
+    }
   }
 }

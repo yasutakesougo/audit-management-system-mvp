@@ -166,7 +166,7 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({
         </Typography>
 
         {sceneAction.reasons.length > 0 && (
-          <Box sx={{ mb: 1.5 }}>
+          <Box sx={{ mb: 1.5 }} data-testid="scene-reasons">
             {sceneAction.reasons.map((reason, i) => (
               <Chip
                 key={i}
@@ -264,6 +264,7 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({
           <Typography variant="body2" fontWeight="bold" sx={{ mb: 0.5 }}>
             {sceneAction.title}
           </Typography>
+          <Box data-testid="scene-reasons">
           {sceneAction.reasons.map((reason, i) => (
             <Chip
               key={i}
@@ -275,6 +276,7 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({
               data-testid={`scene-reason-${i}`}
             />
           ))}
+          </Box>
           <Box sx={{ mt: 0.5 }}>
             <Button
               data-testid="scene-action-cta"
