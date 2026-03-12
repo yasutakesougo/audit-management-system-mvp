@@ -14,6 +14,14 @@ import { MAX_DRAFTS } from '../types';
 import { createDraft, createDraftForUser, sanitizeForm } from '../utils/helpers';
 import { loadFromLocalStorage, persistToLocalStorage } from './draftPersistence';
 
+/** tab query param が有効な SectionKey かを検証 */
+const VALID_TABS: ReadonlySet<SectionKey> = new Set<SectionKey>([
+  'overview', 'assessment', 'smart', 'supports',
+  'decision', 'monitoring', 'risk', 'excellence', 'preview',
+]);
+const parseTabParam = (value: string | null): SectionKey | undefined =>
+  value && VALID_TABS.has(value as SectionKey) ? (value as SectionKey) : undefined;
+
 export interface DraftBootstrapParams {
   repository: SupportPlanDraftRepository;
   locationSearch: string;
@@ -180,6 +188,7 @@ export function useDraftBootstrap({
     if (!initialised.current) return;
     const params = new URLSearchParams(locationSearch);
     const targetId = params.get('userId');
+    const targetTab = parseTabParam(params.get('tab'));
     if (!targetId) return;
     const option = userOptions.find((candidate) => candidate.id === targetId);
     if (!option) return;
@@ -188,7 +197,7 @@ export function useDraftBootstrap({
     );
     if (existing) {
       setActiveDraftId(existing.id);
-      setActiveTab('overview');
+      setActiveTab(targetTab ?? 'overview');
       return;
     }
     if (draftList.length >= MAX_DRAFTS) {
@@ -201,6 +210,6 @@ export function useDraftBootstrap({
       [newDraft.id]: newDraft,
     }));
     setActiveDraftId(newDraft.id);
-    setActiveTab('overview');
+    setActiveTab(targetTab ?? 'overview');
   }, [draftList, locationSearch, userOptions]);
 }

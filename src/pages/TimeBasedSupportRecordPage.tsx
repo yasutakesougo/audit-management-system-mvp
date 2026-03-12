@@ -1,4 +1,5 @@
-﻿import { useInterventionStore } from '@/features/analysis/stores/interventionStore';
+import { buildIcebergPdcaUrl } from '@/app/links/navigationLinks';
+import { useInterventionStore } from '@/features/analysis/stores/interventionStore';
 import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
 import { MonitoringCountdown } from '@/features/daily/components/MonitoringCountdown';
 import { ProcedureEditor } from '@/features/daily/components/procedure/ProcedureEditor';
@@ -26,10 +27,11 @@ import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import Stepper from '@mui/material/Stepper';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 const TimeBasedSupportRecordPage: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [, setSearchParams] = useSearchParams();
   const initialSearchParams = useRef(new URLSearchParams(location.search)).current;
   const initialDateParam = initialSearchParams.get('date');
@@ -322,6 +324,11 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               savedObservations={savedObservationsMap}
               onSelectSlot={handleWizardSelectSlot}
               onBack={handleWizardBackToUser}
+              onIcebergAnalysis={
+                (wizard.wizardUserId || targetUserId)
+                  ? () => navigate(buildIcebergPdcaUrl(wizard.wizardUserId || targetUserId))
+                  : undefined
+              }
             />
           )}
 

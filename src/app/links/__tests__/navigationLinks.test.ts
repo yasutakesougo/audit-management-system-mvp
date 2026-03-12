@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
 import {
     buildDailyHubFromTodayUrl,
     buildHandoffFromTodayState,
+    buildIcebergPdcaUrl,
+    buildSupportPlanMonitoringUrl,
     buildTodayReturnUrl,
     parseNavQuery,
     sceneToTimeBand,
@@ -135,5 +136,49 @@ describe('buildHandoffFromTodayState', () => {
   it('timeFilter=undefined の場合は all にフォールバック', () => {
     const state = buildHandoffFromTodayState({ timeFilter: undefined });
     expect(state.timeFilter).toBe('all');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildIcebergPdcaUrl — Daily → Iceberg PDCA 導線
+// ---------------------------------------------------------------------------
+
+describe('buildIcebergPdcaUrl', () => {
+  it('userId を query param に含める', () => {
+    expect(buildIcebergPdcaUrl('I022')).toBe('/analysis/iceberg-pdca?userId=I022');
+  });
+
+  it('特殊文字を含む userId もエンコードされる', () => {
+    const url = buildIcebergPdcaUrl('user&id=1');
+    expect(url).toContain('userId=user');
+    expect(url).toMatch(/^\/analysis\/iceberg-pdca\?/);
+  });
+
+  it('source オプションを指定すると URL に含まれる', () => {
+    expect(buildIcebergPdcaUrl('U001', { source: 'monitoring' })).toBe(
+      '/analysis/iceberg-pdca?userId=U001&source=monitoring',
+    );
+  });
+
+  it('source 未指定なら userId のみ（後方互換）', () => {
+    expect(buildIcebergPdcaUrl('U001')).toBe('/analysis/iceberg-pdca?userId=U001');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildSupportPlanMonitoringUrl — Iceberg → Monitoring 導線
+// ---------------------------------------------------------------------------
+
+describe('buildSupportPlanMonitoringUrl', () => {
+  it('userId と tab=monitoring を query param に含める', () => {
+    expect(buildSupportPlanMonitoringUrl('I022')).toBe(
+      '/support-plan-guide?userId=I022&tab=monitoring',
+    );
+  });
+
+  it('tab は必ず monitoring 固定', () => {
+    const url = buildSupportPlanMonitoringUrl('U999');
+    expect(url).toContain('tab=monitoring');
+    expect(url).toContain('userId=U999');
   });
 });

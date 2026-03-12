@@ -349,15 +349,20 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({
             )}
           </Box>
 
-          {/* 予定表への補助導線 */}
-          {scheduleDetailHref && (
+          {/* 予定表への補助導線 (SPA navigate — telemetry 経路統一) */}
+          {scheduleDetailHref && onNavigate && (
             <Box sx={{ mt: 1, textAlign: 'right' }}>
               <Typography
-                component="a"
-                href={scheduleDetailHref}
+                component="button"
+                type="button"
                 variant="caption"
                 data-testid="next-action-schedule-link"
+                onClick={() => onNavigate(scheduleDetailHref)}
                 sx={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  font: 'inherit',
                   color: 'text.secondary',
                   textDecoration: 'none',
                   '&:hover': { color: 'primary.main', textDecoration: 'underline' },

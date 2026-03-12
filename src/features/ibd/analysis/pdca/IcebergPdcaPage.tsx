@@ -6,7 +6,9 @@ import {
     Typography,
 } from '@mui/material';
 import * as React from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+
+import { buildSupportPlanMonitoringUrl } from '@/app/links/navigationLinks';
 
 import { useFeatureFlag } from '@/config/featureFlags';
 import { canAccessDashboardAudience, isDashboardAudience, useAuthStore } from '@/features/auth/store';
@@ -38,6 +40,7 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
   const role = useAuthStore((s) => s.currentUserRole);
   const icebergPdca = useFeatureFlag('icebergPdca');
   const { data: users = [], status: usersStatus } = useUsersStore();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const userFilterRef = React.useRef<HTMLInputElement | null>(null);
   const [trendPeriod, setTrendPeriod] = React.useState<'weekly' | 'monthly'>('weekly');
@@ -344,6 +347,7 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
           onCloseSnackbar={() => setSnackbar(null)}
           snapshotWarning={snapshotWarning}
           onCloseSnapshotWarning={() => setSnapshotWarning(null)}
+          onNavigateToMonitoring={(userId) => navigate(buildSupportPlanMonitoringUrl(userId))}
         />
       )}
     </Box>

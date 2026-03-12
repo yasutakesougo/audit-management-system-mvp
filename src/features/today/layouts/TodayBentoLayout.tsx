@@ -73,7 +73,7 @@ export type TodayBentoProps = {
   onNextActionNavigate?: (href: string) => void;
   transport: { pending: TransportUser[]; inProgress: TransportUser[]; onArrived: (id: string) => void };
   transportCard?: TransportStatusCardProps;
-  users: { items: UserRow[]; onOpenQuickRecord: (id: string) => void; onOpenISP?: (id: string) => void; onEmptyAction?: () => void };
+  users: { items: UserRow[]; onOpenQuickRecord: (id: string) => void; onOpenISP?: (id: string) => void; onOpenIceberg?: (id: string) => void; onEmptyAction?: () => void };
 };
 
 // ─── Compact Section Title ───────────────────────────────────
@@ -192,6 +192,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
             items={users.items}
             onOpenQuickRecord={users.onOpenQuickRecord}
             onOpenISP={users.onOpenISP}
+            onOpenIceberg={users.onOpenIceberg}
             onEmptyAction={users.onEmptyAction}
           />
         </BentoCard>
