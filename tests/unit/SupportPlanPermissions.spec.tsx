@@ -29,6 +29,8 @@ vi.mock('@/hydration/features', () => ({
 vi.mock('react-router-dom', () => ({
   useLocation: () => ({ pathname: '/support-plan-guide', search: '' }),
   useNavigate: () => vi.fn(),
+  // muiLink.ts imports `Link` — provide a stub to prevent unhandled import error
+  Link: vi.fn().mockImplementation(({ children, ..._props }: Record<string, unknown>) => children),
 }));
 
 // Mock MUI components or hooks that might cause issues in JSDOM
