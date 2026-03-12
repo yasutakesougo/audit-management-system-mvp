@@ -29,6 +29,16 @@ vi.mock('@/lib/env', async () => {
   };
 });
 
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>();
+  return {
+    ...actual,
+    isE2E: false,
+    isE2eMsalMock: false,
+    isE2eForceSchedulesWrite: false,
+  };
+});
+
 const renderHome = () =>
   renderWithAppProviders(
     <FeatureFlagsProvider value={{ ...featureFlagsState }}>

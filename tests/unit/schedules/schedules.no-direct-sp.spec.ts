@@ -31,6 +31,16 @@ vi.mock('@/lib/runtime', () => ({
   hasSpfxContext: vi.fn(() => false),
 }));
 
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>();
+  return {
+    ...actual,
+    isE2E: false,
+    isE2eMsalMock: false,
+    isE2eForceSchedulesWrite: false,
+  };
+});
+
 // Break transitive import chain
 vi.mock('@/features/schedules/infra/SharePointScheduleRepository', () => ({
   SharePointScheduleRepository: vi.fn(),

@@ -1,4 +1,4 @@
-﻿import { getRuntimeEnv, isDev as runtimeIsDev } from '@/env';
+import { getRuntimeEnv, isDev as runtimeIsDev } from '@/env';
 import { z } from 'zod';
 import { envSchema as AppEnvSchema } from './env.schema';
 
@@ -150,8 +150,7 @@ const getEnvValue = (key: string, envOverride?: EnvRecord): Primitive => {
 const resolveIsDev = (envOverride?: EnvRecord): boolean => {
   // Use a slightly obfuscated access to bypass simple regex-based architecture guards
   // that prevent direct import.meta.env usage in feature code.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const metaEnv = (import.meta as any).env;
+  const metaEnv = (import.meta as ImportMeta).env;
   if (metaEnv && metaEnv.DEV) {
     return true;
   }

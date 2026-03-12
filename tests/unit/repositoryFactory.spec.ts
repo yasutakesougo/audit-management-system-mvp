@@ -38,6 +38,16 @@ vi.mock('@/lib/runtime', () => ({
   hasSpfxContext: () => mockState.hasSpfxContext,
 }));
 
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>();
+  return {
+    ...actual,
+    isE2E: false,
+    isE2eMsalMock: false,
+    isE2eForceSchedulesWrite: false,
+  };
+});
+
 vi.mock('@/lib/audit', () => ({
   pushAudit: vi.fn(),
 }));
