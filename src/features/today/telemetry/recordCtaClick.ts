@@ -35,6 +35,7 @@ export type CtaStateType =
   | 'scene-action'       // Scene guidance 由来のアクション
   | 'schedule-context'   // スケジュールコンテキスト由来
   | 'empty-state'        // 空状態の primary / utility CTA
+  | 'navigation'         // opsStep 由来のナビゲーション CTA
   | 'widget-action';     // 下段ウィジェットの操作
 
 // ── イベントペイロード ──────────────────────────────────────
