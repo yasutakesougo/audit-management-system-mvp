@@ -97,14 +97,31 @@ This ensures all production deployments are traceable to a specific main commit 
 
 ## Key Features
 
+### Evidence-Driven Care Improvement OS
+
+This system has evolved from a simple record-keeping app into an **Evidence-Driven Care Improvement Operating System**. See [`docs/system_architecture.md`](docs/system_architecture.md) for the full architecture.
+
+**Backbone Navigation** — `Today → Schedules → Daily → Iceberg → Monitoring → 再分析`
+
+| Layer | Feature | Description |
+|-------|---------|-------------|
+| **Evidence** | Daily Records | 日々の支援記録・観察 |
+| **Evidence** | Schedules | 予定管理・表示 |
+| **Analysis** | Iceberg Canvas | 行動・環境・仮説の視覚的分析ツール（Node/Link CRUD） |
+| **Analysis** | PDCA Cycle | Plan → Do → Check → Act の改善サイクル |
+| **Decision** | Proposal Pipeline | ACT → `SupportChangeProposal` 自動生成 |
+| **Decision** | Review Actions | 採用 / 保留 / 却下（不可逆設計で監査証跡安定） |
+| **Trace** | Plan Reflection | Evidence → Proposal → Decision → Plan Update の監査追跡 |
+
+### Infrastructure
+
 - Azure AD (Entra ID) login and token acquisition
 - SharePoint list access via a custom hook (`useSP`)
 - Record listing & creation against a SharePoint list
 - Local audit trail with CSV export
 - Environment validation & helpful error messages for misconfiguration
-- Schema-driven provisioning supports Text/Choice/DateTime/Number/Note/User/Lookup (additive choice policy, safe type migration)
+- Schema-driven provisioning supports Text/Choice/DateTime/Number/Note/User/Lookup
 - Manual MSAL sign-in/out control surfaced in the app header
-- Users master smoke UI for create / rename / delete sanity checks
 
 ## Local Operation Mode
 
