@@ -220,3 +220,15 @@ export function buildIcebergPdcaUrl(userId: string): string {
   return `/analysis/iceberg-pdca?${search.toString()}`;
 }
 
+// ─── Support Plan Monitoring Navigation ───────────────────────────────
+
+/**
+ * /support-plan-guide?userId=xxx&tab=monitoring を生成する。
+ * Iceberg PDCA → Monitoring への導線で使用。
+ */
+export function buildSupportPlanMonitoringUrl(userId: string): string {
+  const search = new URLSearchParams();
+  search.set('userId', userId);
+  search.set('tab', 'monitoring');
+  return `/support-plan-guide?${search.toString()}`;
+}
