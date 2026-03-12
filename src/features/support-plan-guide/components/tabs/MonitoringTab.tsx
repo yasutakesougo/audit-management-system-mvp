@@ -28,6 +28,8 @@ import { useIcebergPdcaList } from '@/features/ibd/analysis/pdca/queries';
 import { buildMonitoringEvidence } from '@/features/ibd/plans/support-plan/monitoringEvidenceAdapter';
 import { computeDeadlineInfo, formatDateJP } from '@/features/ibd/plans/support-plan/supportPlanDeadline';
 import { generateIcebergProposals } from '../../domain/proposalGenerator';
+import { transition } from '../../domain/proposalStateMachine';
+import type { ProposalStatus } from '../../domain/proposalTypes';
 import type { MonitoringEvidenceSectionProps, ToastState } from '../../types';
 import { findSection, minusDaysYmd, todayYmd } from '../../utils/helpers';
 import { ProposalReviewSection } from '../ProposalReviewSection';
@@ -156,17 +158,43 @@ const IcebergEvidenceSection: React.FC<{
   );
 };
 
-/** Iceberg PDCA の ACT アイテムから生成された改善提案リスト */
+/** Iceberg PDCA の ACT アイテムから生成された改善提案リスト（状態管理付き） */
 const ProposalListFromIceberg: React.FC<{ userId: string }> = ({ userId }) => {
   const { data: pdcaItems = [] } = useIcebergPdcaList({ userId });
-  const proposals = React.useMemo(
+
+  // 初期 proposals を生成（PDCA データ変更時に再生成）
+  const initialProposals = React.useMemo(
     () => generateIcebergProposals({ userId, items: pdcaItems }),
     [userId, pdcaItems],
   );
+
+  // Local state で proposals の status を管理
+  const [proposals, setProposals] = React.useState(initialProposals);
+
+  // PDCA データが変わったら proposals を再同期
+  React.useEffect(() => {
+    setProposals(initialProposals);
+  }, [initialProposals]);
+
+  const handleStatusChange = React.useCallback((proposalId: string, newStatus: ProposalStatus) => {
+    setProposals((prev) =>
+      prev.map((p) => {
+        if (p.id !== proposalId) return p;
+        const result = transition(p.status, newStatus);
+        if (!result.ok) return p;
+        return {
+          ...p,
+          status: result.status,
+          reviewedAt: new Date().toISOString(),
+        };
+      }),
+    );
+  }, []);
+
   if (proposals.length === 0) return null;
   return (
     <Box sx={{ mt: 1, mb: 2 }}>
-      <ProposalReviewSection proposals={proposals} />
+      <ProposalReviewSection proposals={proposals} onStatusChange={handleStatusChange} />
     </Box>
   );
 };
