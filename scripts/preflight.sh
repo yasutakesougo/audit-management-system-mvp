@@ -14,11 +14,11 @@ npm run lint
 
 if [ "$MODE" = "unit" ]; then
   echo "▶ Unit (fast mode)"
-  npm test -- --run
+  npm run test:ci
   echo "✅ Preflight (unit) OK"
 elif [ "$MODE" = "e2e" ]; then
   echo "▶ Unit"
-  npm test -- --run
+  npm run test:ci
   
   echo "▶ Schedule unit suite"
   npx vitest run tests/unit/schedule --reporter=verbose
