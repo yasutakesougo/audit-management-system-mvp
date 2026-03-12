@@ -6,6 +6,13 @@
  * Mirrors `ScheduleItem` from `ProcedurePanel` but declared here
  * so the domain layer is self-contained without UI component imports.
  */
+
+/** データの由来を示す。移行期の混在を型で管理する */
+export type ProcedureSource =
+  | 'base_steps'       // ハードコードの BASE_STEPS
+  | 'csv_import'       // CSV インポート
+  | 'planning_sheet';  // 支援計画シート由来
+
 export type ProcedureStep = {
   id?: string;
   time: string;
@@ -14,6 +21,12 @@ export type ProcedureStep = {
   isKey: boolean;
   /** BIP IDs linked to this time-slot. */
   linkedInterventionIds?: string[];
+  /** 導出元の支援計画シートID（source === 'planning_sheet' のとき必須） */
+  planningSheetId?: string;
+  /** 導出元の procedureStep.order（元の設計手順への逆参照） */
+  sourceStepOrder?: number;
+  /** データの由来 */
+  source?: ProcedureSource;
 };
 
 /**
