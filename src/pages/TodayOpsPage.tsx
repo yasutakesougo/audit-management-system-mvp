@@ -14,6 +14,7 @@
  * @see docs/adr/ADR-002-today-execution-layer-guardrails.md
  */
 import { buildDailyHubFromTodayUrl, buildHandoffFromTodayState, buildHandoffTimelineUrl, buildIcebergPdcaUrl, sceneToTimeBand } from '@/app/links/navigationLinks';
+import type { ProgressChipKey } from '@/features/today/widgets/ProgressStatusBar';
 import { CTA_EVENTS, recordCtaClick } from '@/features/today/telemetry/recordCtaClick';
 import { useAuthStore } from '@/features/auth/store';
 import { useTodaySummary } from '@/features/today/domain';
@@ -168,6 +169,27 @@ export const TodayOpsPage: React.FC = () => {
           pendingAttendanceCount,
           pendingBriefingCount,
         },
+        onChipClick: (key: ProgressChipKey) => {
+          const chipRoutes: Record<ProgressChipKey, string> = {
+            record: '/daily/support',
+            attendance: '/daily/attendance',
+            briefing: buildHandoffTimelineUrl(),
+          };
+          const chipCtaEvents: Record<ProgressChipKey, typeof CTA_EVENTS[keyof typeof CTA_EVENTS]> = {
+            record: CTA_EVENTS.PROGRESS_CHIP_RECORD,
+            attendance: CTA_EVENTS.PROGRESS_CHIP_ATTENDANCE,
+            briefing: CTA_EVENTS.PROGRESS_CHIP_BRIEFING,
+          };
+          const targetUrl = chipRoutes[key];
+          recordCtaClick({
+            ctaId: chipCtaEvents[key],
+            sourceComponent: 'ProgressStatusBar',
+            stateType: 'navigation',
+            targetUrl,
+            userRole: role,
+          });
+          navigate(targetUrl);
+        },
       },
       attendance: {
         scheduledCount: summary.users?.length ?? 0,
@@ -178,6 +200,16 @@ export const TodayOpsPage: React.FC = () => {
         priorAbsenceNames: summary?.attendanceSummary?.priorAbsenceNames ?? [],
         lateOrEarlyLeave: summary?.attendanceSummary?.lateOrEarlyLeave ?? 0,
         lateOrEarlyNames: summary?.attendanceSummary?.lateOrEarlyNames ?? [],
+        onAction: () => {
+          recordCtaClick({
+            ctaId: CTA_EVENTS.NEXT_ACTION_PRIMARY,
+            sourceComponent: 'AttendanceSummaryCard',
+            stateType: 'navigation',
+            targetUrl: '/daily/attendance',
+            userRole: role,
+          });
+          navigate('/daily/attendance');
+        },
       },
       briefingAlerts: summary?.briefingAlerts ?? [],
       serviceStructure: summary?.serviceStructure,

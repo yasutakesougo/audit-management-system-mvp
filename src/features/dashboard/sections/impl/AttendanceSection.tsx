@@ -82,38 +82,15 @@ export const AttendanceSection: React.FC<AttendanceSectionProps> = (props) => {
             利用者と職員の通所・出勤の状況をまとめて確認できます。
           </Typography>
         </Stack>
-        <Stack
-          spacing={0.75}
-          alignItems={{ xs: 'flex-start', md: 'flex-end' }}
-          sx={{ width: { xs: '100%', md: 'auto' }, minWidth: 180 }}
+        <Button
+          variant="text"
+          size="small"
+          component={Link}
+          to="/handoff-timeline"
+          sx={{ whiteSpace: 'nowrap' }}
         >
-          <Stack direction="row" spacing={1} flexWrap="nowrap" useFlexGap>
-            <Button
-              variant="contained"
-              size="small"
-              component={Link}
-              to="/daily/attendance"
-            >
-              通所入力
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              component={Link}
-              to="/staff/attendance"
-            >
-              職員出勤
-            </Button>
-          </Stack>
-          <Stack direction="row" spacing={1} flexWrap="nowrap" useFlexGap>
-            <Button variant="text" size="small" component={Link} to="/daily/activity">
-              支援記録
-            </Button>
-            <Button variant="text" size="small" component={Link} to="/handoff-timeline">
-              申し送り
-            </Button>
-          </Stack>
-        </Stack>
+          タイムラインを見る →
+        </Button>
       </Stack>
       <Grid container spacing={{ xs: 2, sm: 2, md: 3 }} sx={{ mt: 2 }}>
         <Grid size={{ xs: 12, sm: 4, md: 2 }}>

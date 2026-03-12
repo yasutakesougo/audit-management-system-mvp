@@ -1,6 +1,7 @@
 import type { IUserMaster } from '@/features/users';
 import { useUsersDemo } from '@/features/users';
 import { useMemo } from 'react';
+import type { TransportMethod } from './transportMethod';
 
 type AttendanceVisitSnapshot = {
   userCode: string;
@@ -13,6 +14,10 @@ type AttendanceVisitSnapshot = {
   morningContacted?: boolean;
   /** 欠席者の夕方フォロー完了フラグ */
   eveningChecked?: boolean;
+  /** 行き送迎手段（SS / 一時ケア / その他） */
+  transportToMethod?: TransportMethod;
+  /** 帰り送迎手段 */
+  transportFromMethod?: TransportMethod;
 };
 
 type AttendanceStoreState = {
@@ -24,6 +29,13 @@ const demoTemperature = (index: number): number => {
   if (index % 11 === 0) return 38.2; // 発熱
   if (index % 13 === 0) return 37.8; // 発熱
   return 36.0 + (index % 10) * 0.1;  // 36.0〜36.9 正常
+};
+
+/** デモ用の送迎手段: 一部のユーザーに SS / 一時ケアを設定 */
+const demoTransport = (index: number): { to?: TransportMethod; from?: TransportMethod } => {
+  if (index % 17 === 0) return { to: 'short_stay', from: 'short_stay' };
+  if (index % 19 === 0) return { to: 'temporary_care' };
+  return {};
 };
 
 const buildDemoVisits = (users: IUserMaster[]): Record<string, AttendanceVisitSnapshot> => {
@@ -38,16 +50,17 @@ const buildDemoVisits = (users: IUserMaster[]): Record<string, AttendanceVisitSn
         : '通所中';
     const isEarlyLeave = status !== '当日欠席' && index % 7 === 0;
     const isAbsent = status === '当日欠席';
+    const transport = demoTransport(index);
 
     visits[userCode] = {
       userCode,
       status,
       isEarlyLeave,
       temperature: demoTemperature(index),
-      // 欠席者: 朝連絡は大半が完了済み（index%3!==0 で未完了のケースも生成）
       morningContacted: isAbsent ? index % 3 !== 0 : undefined,
-      // 欠席者: 偶数indexは夕方フォロー完了、奇数は未完了
       eveningChecked: isAbsent ? index % 2 === 0 : undefined,
+      transportToMethod: transport.to,
+      transportFromMethod: transport.from,
     };
   });
 

@@ -11,7 +11,7 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import React from 'react';
 
-import { TodayChangesCard, type TodayChanges } from './TodayChangesCard';
+import { TodayChangesCard, type LifeSupportSummary, type TodayChanges } from './TodayChangesCard';
 
 // ⸻
 // Zone 1: 朝30秒判断ゾーン（固定）
@@ -22,12 +22,14 @@ type Zone1_MorningDecisionProps = {
   handoverNode: React.ReactNode;
   dateLabel: string;
   todayChanges: TodayChanges;
+  lifeSupport: LifeSupportSummary;
 };
 
 const Zone1_MorningDecision: React.FC<Zone1_MorningDecisionProps> = ({
   handoverNode,
   dateLabel,
   todayChanges,
+  lifeSupport,
 }) => {
   return (
     <Box
@@ -46,7 +48,7 @@ const Zone1_MorningDecision: React.FC<Zone1_MorningDecisionProps> = ({
 
       {/* 中（25%）：本日の変更HUD */}
       <Box>
-        <TodayChangesCard dateLabel={dateLabel} changes={todayChanges} />
+        <TodayChangesCard dateLabel={dateLabel} changes={todayChanges} lifeSupport={lifeSupport} />
       </Box>
     </Box>
   );
@@ -64,6 +66,7 @@ type DashboardZoneLayoutProps = {
   highlightSection?: DashboardSectionKey | null;
   dateLabel: string;
   todayChanges: TodayChanges;
+  lifeSupport: LifeSupportSummary;
 };
 
 export const DashboardZoneLayout: React.FC<DashboardZoneLayoutProps> = ({
@@ -73,6 +76,7 @@ export const DashboardZoneLayout: React.FC<DashboardZoneLayoutProps> = ({
   highlightSection,
   dateLabel,
   todayChanges,
+  lifeSupport,
 }) => {
   const theme = useTheme();
   const getSection = (key: DashboardSectionKey) => sections.find((s) => s.key === key);
@@ -118,6 +122,7 @@ export const DashboardZoneLayout: React.FC<DashboardZoneLayoutProps> = ({
             handoverNode={renderSectionIfEnabled('handover')}
             dateLabel={dateLabel}
             todayChanges={todayChanges}
+            lifeSupport={lifeSupport}
           />
         </Box>
       </Box>

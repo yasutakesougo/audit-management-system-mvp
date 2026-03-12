@@ -1,10 +1,16 @@
 /**
  * TodayChanges Card & helpers
  * Extracted from DashboardPage.tsx to reduce file size.
+ *
+ * 責務:
+ * - 利用者・職員の当日変更をまとめて表示
+ * - 生活支援（SS / 一時ケア）の件数を俯瞰表示
+ * - 入力 UI なし（完全に Reflect）
  */
 
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -15,6 +21,12 @@ export type ChangeItem = {
   id: string;
   text: string;
   tone?: 'info' | 'warn';
+};
+
+/** 生活支援（SS / 一時ケア）のサマリー */
+export type LifeSupportSummary = {
+  shortStayCount: number;
+  temporaryCareCount: number;
 };
 
 export type TodayChanges = {
@@ -58,26 +70,12 @@ export function ChangeSection(props: { title: string; items: ChangeItem[] }) {
 export function TodayChangesCard(props: {
   dateLabel: string;
   changes: TodayChanges;
+  lifeSupport: LifeSupportSummary;
 }) {
-  const { dateLabel, changes } = props;
+  const { dateLabel, changes, lifeSupport } = props;
 
   const hasAny = changes.userChanges.length > 0 || changes.staffChanges.length > 0;
-
-  // ダミー生活支援情報（後で実データに）
-  const lifeSupportDummy = [
-    { type: '一時ケア', name: '山田', time: '10:00-11:00', transport: 'あり', staff: '佐藤' },
-    { type: 'SS', name: '鈴木', time: '15:00-16:00', transport: 'なし', staff: '高橋' },
-  ];
-
-  // 2件以下の場合は3件未満、3件以上の場合は多件
-  const lifeSupportVisible = lifeSupportDummy.slice(0, 2);
-  const lifeSupportHasMore = lifeSupportDummy.length > 2;
-
-  // 生活支援を2行テキストにまとめる（line-clamp用）
-  const lifeSupportLines = lifeSupportVisible.map((it) =>
-    `${it.type}：${it.name}(${it.time}) ${it.transport}`
-  );
-  const lifeSupportText = lifeSupportLines.join('\n');
+  const hasLifeSupport = lifeSupport.shortStayCount > 0 || lifeSupport.temporaryCareCount > 0;
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -123,7 +121,7 @@ export function TodayChangesCard(props: {
 
         <Divider sx={{ opacity: 0.3, flexShrink: 0 }} />
 
-        {/* 下段：生活支援情報（2行固定表示） */}
+        {/* 下段：生活支援情報（件数ベース） */}
         <Box
           sx={{
             flex: '1 0 auto',
@@ -135,31 +133,27 @@ export function TodayChangesCard(props: {
           <Typography variant="caption" fontWeight={700} sx={{ opacity: 0.75, display: 'block', mb: 0.5 }}>
             生活支援
           </Typography>
-          {lifeSupportDummy.length > 0 ? (
-            <>
-              <Typography
-                variant="body2"
-                sx={{
-                  display: '-webkit-box',
-                  WebkitBoxOrient: 'vertical',
-                  WebkitLineClamp: 2,
-                  lineHeight: '20px',
-                  maxHeight: '48px',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'pre-line',
-                  opacity: 0.8,
-                  pr: 0.5,
-                }}
-              >
-                {lifeSupportText}
-              </Typography>
-              {lifeSupportHasMore && (
-                <Typography variant="caption" sx={{ opacity: 0.6, mt: 0.25 }}>
-                  ほか +{lifeSupportDummy.length - 2}件
-                </Typography>
+          {hasLifeSupport ? (
+            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+              {lifeSupport.shortStayCount > 0 && (
+                <Chip
+                  size="small"
+                  label={`SS ${lifeSupport.shortStayCount}件`}
+                  color="info"
+                  variant="outlined"
+                  data-testid="life-support-ss"
+                />
               )}
-            </>
+              {lifeSupport.temporaryCareCount > 0 && (
+                <Chip
+                  size="small"
+                  label={`一時ケア ${lifeSupport.temporaryCareCount}件`}
+                  color="info"
+                  variant="outlined"
+                  data-testid="life-support-temp"
+                />
+              )}
+            </Stack>
           ) : (
             <Typography variant="body2" sx={{ opacity: 0.85 }}>
               対応なし（✓確認済み）

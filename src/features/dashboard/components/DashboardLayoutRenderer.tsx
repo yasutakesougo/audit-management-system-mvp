@@ -16,7 +16,7 @@ import React from 'react';
 
 import DashboardBriefingHUD from '@/features/dashboard/DashboardBriefingHUD';
 import { DashboardZoneLayout } from '@/features/dashboard/components/DashboardZoneLayout';
-import type { TodayChanges } from '@/features/dashboard/components/TodayChangesCard';
+import type { LifeSupportSummary, TodayChanges } from '@/features/dashboard/components/TodayChangesCard';
 import type { DashboardLayoutMode } from '@/features/dashboard/hooks/useDashboardLayoutMode';
 import { BentoGridLayout } from '@/features/dashboard/layouts/BentoGridLayout';
 import type { DashboardTab } from '@/features/dashboard/layouts/ZeroScrollLayout';
@@ -44,6 +44,7 @@ export interface DashboardLayoutRendererProps {
   // Today changes
   dateLabel: string;
   todayChanges: TodayChanges;
+  lifeSupport: LifeSupportSummary;
 
   // ZeroScroll tabs
   zeroScrollTabs: DashboardTab[];
@@ -73,6 +74,7 @@ export const DashboardLayoutRenderer: React.FC<DashboardLayoutRendererProps> = (
   scrollToSection,
   dateLabel,
   todayChanges,
+  lifeSupport,
   zeroScrollTabs,
   handoffPending = 0,
   handoffCritical = 0,
@@ -101,6 +103,7 @@ export const DashboardLayoutRenderer: React.FC<DashboardLayoutRendererProps> = (
         scrollToSection={scrollToSection}
         dateLabel={dateLabel}
         todayChanges={todayChanges}
+        lifeSupport={lifeSupport}
         handoffTotal={handoffTotal}
         handoffByStatus={handoffByStatus as Record<HandoffStatus, number>}
         onOpenTimeline={onOpenTimeline}
@@ -155,6 +158,7 @@ export const DashboardLayoutRenderer: React.FC<DashboardLayoutRendererProps> = (
           highlightSection={highlightSection}
           dateLabel={dateLabel}
           todayChanges={todayChanges}
+          lifeSupport={lifeSupport}
         />
       </>
     );

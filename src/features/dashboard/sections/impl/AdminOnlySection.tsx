@@ -3,6 +3,7 @@ import MedicalIcon from '@mui/icons-material/LocalHospital';
 import PersonIcon from '@mui/icons-material/Person';
 import BehaviorIcon from '@mui/icons-material/Psychology';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
+import InfoIcon from '@mui/icons-material/Info';
 import WarningIcon from '@mui/icons-material/Warning';
 import {
     Alert,
@@ -13,7 +14,6 @@ import {
     Chip,
     Divider,
     LinearProgress,
-    Paper,
     Stack,
     Tab,
     Tabs,
@@ -243,33 +243,16 @@ export function AdminOnlySection({
 
                 <Divider sx={{ my: 2 }} />
 
-                <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-                  <Paper sx={{ p: 1, textAlign: 'center', flex: 1 }}>
-                    <Typography variant="h6" color="primary">
-                      {Math.floor(Math.random() * 15) + 10}/19
-                    </Typography>
-                    <Typography variant="caption">支援手順実施</Typography>
-                  </Paper>
-                  <Paper sx={{ p: 1, textAlign: 'center', flex: 1 }}>
-                    <Typography variant="h6" color="success.main">
-                      {Math.floor(Math.random() * 3) + 8}
-                    </Typography>
-                    <Typography variant="caption">効果的手順</Typography>
-                  </Paper>
-                  <Paper sx={{ p: 1, textAlign: 'center', flex: 1 }}>
-                    <Typography variant="h6" color="warning.main">
-                      {Math.floor(Math.random() * 3) + 1}
-                    </Typography>
-                    <Typography variant="caption">要改善手順</Typography>
-                  </Paper>
-                </Stack>
+                <Alert severity="info" icon={<InfoIcon />} sx={{ mb: 2 }}>
+                  支援手順記録の自動集計は準備中です。個別の支援記録は下のボタンからご確認ください。
+                </Alert>
 
                 <Button
                   variant="outlined"
                   size="small"
                   onClick={() => window.open(`/daily/support?user=${user.UserID}`, '_blank')}
                 >
-                  詳細記録を確認
+                  支援記録を開く
                 </Button>
               </CardContent>
             </Card>

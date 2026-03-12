@@ -107,7 +107,7 @@ describe('CTA_EVENTS', () => {
     }
   });
 
-  it('has 6 defined events', () => {
-    expect(Object.keys(CTA_EVENTS)).toHaveLength(6);
+  it('has 9 defined events', () => {
+    expect(Object.keys(CTA_EVENTS)).toHaveLength(9);
   });
 });

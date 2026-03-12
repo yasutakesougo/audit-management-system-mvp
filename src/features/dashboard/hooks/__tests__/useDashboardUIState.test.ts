@@ -134,6 +134,41 @@ describe('useDashboardUIState', () => {
     });
   });
 
+  // ── 3b. lifeSupport ───────────────────────────────────
+  describe('lifeSupport', () => {
+    it('visits が空なら SS=0, 一時ケア=0', async () => {
+      vi.setSystemTime(new Date(2026, 2, 11, 10, 0, 0));
+      const useDashboardUIState = await importSUT();
+      const { result } = renderHook(() =>
+        useDashboardUIState('staff', defaultStatus, emptyUsers, emptyVisits),
+      );
+
+      expect(result.current.lifeSupport).toEqual({
+        shortStayCount: 0,
+        temporaryCareCount: 0,
+      });
+    });
+
+    it('visits に short_stay / temporary_care があれば件数をカウント', async () => {
+      vi.setSystemTime(new Date(2026, 2, 11, 10, 0, 0));
+      const visits = {
+        'u1': { userCode: 'u1', status: '通所中', transportToMethod: 'short_stay' },
+        'u2': { userCode: 'u2', status: '通所中', transportFromMethod: 'short_stay' },
+        'u3': { userCode: 'u3', status: '通所中', transportToMethod: 'temporary_care' },
+        'u4': { userCode: 'u4', status: '通所中' },
+      } as never;
+      const useDashboardUIState = await importSUT();
+      const { result } = renderHook(() =>
+        useDashboardUIState('staff', defaultStatus, emptyUsers, visits),
+      );
+
+      expect(result.current.lifeSupport).toEqual({
+        shortStayCount: 2,
+        temporaryCareCount: 1,
+      });
+    });
+  });
+
   // ── 4. isMorningTime / isEveningTime ────────────────
   describe('時間帯判定', () => {
     it('8:00 は isMorningTime=true', async () => {
@@ -254,6 +289,7 @@ describe('useDashboardUIState', () => {
       expect(result.current).toHaveProperty('sectionIdByKey');
       expect(result.current).toHaveProperty('dateLabel');
       expect(result.current).toHaveProperty('todayChanges');
+      expect(result.current).toHaveProperty('lifeSupport');
       expect(result.current).toHaveProperty('dailyStatusCards');
       expect(result.current).toHaveProperty('isMorningTime');
       expect(result.current).toHaveProperty('isEveningTime');

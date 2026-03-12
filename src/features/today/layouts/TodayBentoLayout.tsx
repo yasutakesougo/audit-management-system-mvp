@@ -43,7 +43,7 @@ import { TransportStatusCard, type TransportStatusCardProps } from '../transport
 import type { AttendanceSummaryCardProps } from '../widgets/AttendanceSummaryCard';
 import { AttendanceSummaryCard } from '../widgets/AttendanceSummaryCard';
 import { BriefingActionList } from '../widgets/BriefingActionList';
-import { ProgressStatusBar, type TodayProgressSummary } from '../widgets/ProgressStatusBar';
+import { ProgressStatusBar, type TodayProgressSummary, type ProgressChipKey } from '../widgets/ProgressStatusBar';
 import type { NextActionCardProps } from '../widgets/NextActionCard';
 import { NextActionCard } from '../widgets/NextActionCard';
 import { TodayServiceStructureCard } from '../widgets/TodayServiceStructureCard';
@@ -53,6 +53,7 @@ import { UserCompactList, type UserRow } from '../widgets/UserCompactList';
 
 type ProgressSummaryProps = {
   summary: TodayProgressSummary;
+  onChipClick?: (key: ProgressChipKey) => void;
 };
 
 type TransportUser = { userId: string; name: string };
@@ -150,7 +151,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           testId="bento-progress"
           sx={{ p: 0, overflow: 'hidden' }}
         >
-          <ProgressStatusBar summary={progress.summary} />
+          <ProgressStatusBar summary={progress.summary} onChipClick={progress.onChipClick} />
         </BentoCard>
 
         <BentoCard
@@ -167,7 +168,6 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           variant="subtle"
           testId="bento-briefing"
         >
-          <SectionLabel emoji="📋" text="対応が必要な申し送り" />
           <BriefingActionList alerts={briefingAlerts} />
         </BentoCard>
 
@@ -202,7 +202,6 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           colSpan={{ xs: 1, sm: 2, md: 4 }}
           testId="bento-transport"
         >
-          <SectionLabel emoji="🚌" text="送迎状況" />
           {transportCard ? (
             <TransportStatusCard {...transportCard} />
           ) : (

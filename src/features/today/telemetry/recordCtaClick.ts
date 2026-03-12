@@ -26,6 +26,12 @@ export const CTA_EVENTS = {
   ATTENDANCE_SUMMARY: 'today_attendance_summary_clicked',
   /** BriefingActionList のアイテムクリック */
   BRIEFING_ACTION: 'today_briefing_action_clicked',
+  /** ProgressStatusBar 未記録チップ */
+  PROGRESS_CHIP_RECORD: 'today_progress_chip_record_clicked',
+  /** ProgressStatusBar 出欠未確認チップ */
+  PROGRESS_CHIP_ATTENDANCE: 'today_progress_chip_attendance_clicked',
+  /** ProgressStatusBar 申し送りチップ */
+  PROGRESS_CHIP_BRIEFING: 'today_progress_chip_briefing_clicked',
 } as const;
 
 export type CtaEventName = (typeof CTA_EVENTS)[keyof typeof CTA_EVENTS];

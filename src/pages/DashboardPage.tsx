@@ -95,6 +95,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
             scrollToSection={ui.scrollToSection}
             dateLabel={ui.dateLabel}
             todayChanges={ui.todayChanges}
+            lifeSupport={ui.lifeSupport}
             zeroScrollTabs={zeroScrollTabs}
             // 🍱 Bento Grid KPI data
             handoffPending={handoff.status['未対応'] ?? 0}

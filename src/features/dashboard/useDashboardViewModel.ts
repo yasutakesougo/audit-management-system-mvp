@@ -199,35 +199,35 @@ export function useDashboardViewModel<TSummary = unknown>(
   const orderedSections = useMemo<DashboardSection[]>(() => {
     const priorityMap: Record<DashboardTimeContext, Record<DashboardSectionKey, number>> = {
       morning: {
-        // 朝は「欠席」「申し送り」「今日の予定」が最優先
-        attendance: 0,  // 👥 欠席・遅刻確認
-        handover: 1,    // 📢 申し送り
-        schedule: 2,    // 📅 今日の予定
+        // 朝は「誰が来ているか」「今日の予定」「注意事項」が最優先
+        attendance: 0,  // 👥 出欠・健康俯瞰
+        schedule: 1,    // 📅 今日の予定
+        safety: 2,      // ⚠️ 安全指標
         daily: 3,       // 📝 記録状況
-        safety: 4,      // ⚠️ 安全指標
+        handover: 4,    // 📢 申し送り
         stats: 5,
         adminOnly: 6,
         staffOnly: 7,
       },
       afternoon: {
-        // 昼は「現在の状況」と「記録の進捗」
-        daily: 0,
-        attendance: 1,
+        // 昼は「予定の進行」と「記録の進捗」
+        schedule: 0,
+        daily: 1,
         safety: 2,
-        handover: 3,
-        schedule: 4,
+        attendance: 3,
+        handover: 4,
         stats: 5,
         adminOnly: 6,
         staffOnly: 7,
       },
       evening: {
-        // 夕会は「1日のまとめ」と「問題行動集計」
-        daily: 0,
-        safety: 1,
-        stats: 2,
+        // 夕は「まとめ」— 昼と同じ流れで振り返り
+        schedule: 0,
+        daily: 1,
+        safety: 2,
         attendance: 3,
         handover: 4,
-        schedule: 5,
+        stats: 5,
         adminOnly: 6,
         staffOnly: 7,
       },

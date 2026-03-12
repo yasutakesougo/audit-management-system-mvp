@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { canAccessDashboardAudience, type DashboardAudience } from '@/features/auth/store';
-import type { TodayChanges } from '@/features/dashboard/components/TodayChangesCard';
+import type { LifeSupportSummary, TodayChanges } from '@/features/dashboard/components/TodayChangesCard';
 import { getDashboardAnchorIdByKey } from '@/features/dashboard/sections/buildSections';
 import type { DashboardSectionKey } from '@/features/dashboard/sections/types';
 import type { useAttendanceStore } from '@/features/attendance/store';
@@ -43,6 +43,7 @@ export interface DashboardUIGroup {
   sectionIdByKey: Record<DashboardSectionKey, string>;
   dateLabel: string;
   todayChanges: TodayChanges;
+  lifeSupport: LifeSupportSummary;
   dailyStatusCards: DailyStatusCard[];
   isMorningTime: boolean;
   isEveningTime: boolean;
@@ -110,6 +111,21 @@ export function useDashboardUIState(
     staffChanges: [],
   };
 
+  // ── Life Support: visits から SS / 一時ケアの件数を算出 ──
+  const lifeSupport: LifeSupportSummary = (() => {
+    let shortStayCount = 0;
+    let temporaryCareCount = 0;
+    for (const v of Object.values(visits)) {
+      if (v.transportToMethod === 'short_stay' || v.transportFromMethod === 'short_stay') {
+        shortStayCount++;
+      }
+      if (v.transportToMethod === 'temporary_care' || v.transportFromMethod === 'temporary_care') {
+        temporaryCareCount++;
+      }
+    }
+    return { shortStayCount, temporaryCareCount };
+  })();
+
   // ── Daily status cards ──
   const dailyStatusCards: DailyStatusCard[] = [
     {
@@ -166,6 +182,7 @@ export function useDashboardUIState(
     sectionIdByKey,
     dateLabel,
     todayChanges,
+    lifeSupport,
     dailyStatusCards,
     isMorningTime,
     isEveningTime,

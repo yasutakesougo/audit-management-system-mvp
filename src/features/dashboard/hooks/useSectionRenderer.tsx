@@ -86,6 +86,7 @@ export function useSectionRenderer(params: UseSectionRendererParams): UseSection
     prioritizedUsers,
     intensiveSupportUsers,
     usageMap,
+    monitoringHub,
   } = summary;
 
   /**
@@ -113,6 +114,7 @@ export function useSectionRenderer(params: UseSectionRendererParams): UseSection
             title: section.title,
             schedulesEnabled,
             scheduleLanesToday,
+            spLane: monitoringHub.spLane,
           };
         case 'handover':
           return {
