@@ -33,14 +33,19 @@ export type TodayProgressSummary = {
   pendingBriefingCount: number;
 };
 
+export type ProgressChipKey = 'record' | 'attendance' | 'briefing';
+
 export type ProgressStatusBarProps = {
   summary: TodayProgressSummary;
+  /** チップクリック時のコールバック。未指定なら従来通り表示のみ */
+  onChipClick?: (key: ProgressChipKey) => void;
 };
 
 // ─── Component ───────────────────────────────────────────────
 
 export const ProgressStatusBar: React.FC<ProgressStatusBarProps> = ({
   summary,
+  onChipClick,
 }) => {
   const { pendingRecordCount, totalRecordCount, pendingAttendanceCount, pendingBriefingCount } = summary;
 
@@ -149,12 +154,22 @@ export const ProgressStatusBar: React.FC<ProgressStatusBarProps> = ({
             label={c.label}
             size="small"
             variant="outlined"
+            clickable={!!onChipClick}
+            onClick={onChipClick ? () => onChipClick(c.key as ProgressChipKey) : undefined}
             sx={{
               fontWeight: 600,
               fontSize: '0.75rem',
               borderColor: 'divider',
               color: 'text.secondary',
               '& .MuiChip-icon': { color: 'text.secondary' },
+              ...(onChipClick && {
+                cursor: 'pointer',
+                '&:hover': {
+                  borderColor: 'primary.main',
+                  color: 'primary.main',
+                  '& .MuiChip-icon': { color: 'primary.main' },
+                },
+              }),
             }}
           />
         ))}
