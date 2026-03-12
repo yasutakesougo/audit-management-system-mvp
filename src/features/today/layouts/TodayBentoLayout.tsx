@@ -46,6 +46,7 @@ import { BriefingActionList } from '../widgets/BriefingActionList';
 import { ProgressStatusBar, type TodayProgressSummary, type ProgressChipKey } from '../widgets/ProgressStatusBar';
 import type { NextActionCardProps } from '../widgets/NextActionCard';
 import { NextActionCard } from '../widgets/NextActionCard';
+import { TodayTasksCard, type TodayTasksCardProps } from '../widgets/TodayTasksCard';
 import { TodayServiceStructureCard } from '../widgets/TodayServiceStructureCard';
 import { UserCompactList, type UserRow } from '../widgets/UserCompactList';
 
@@ -71,6 +72,8 @@ export type TodayBentoProps = {
   scheduleDetailHref?: string;
   /** ナビゲーション CTA クリック → ページ遷移 */
   onNextActionNavigate?: (href: string) => void;
+  /** TodayEngine output (optional: widget hidden when undefined) */
+  todayTasks?: TodayTasksCardProps;
   transport: { pending: TransportUser[]; inProgress: TransportUser[]; onArrived: (id: string) => void };
   transportCard?: TransportStatusCardProps;
   users: { items: UserRow[]; onOpenQuickRecord: (id: string) => void; onOpenISP?: (id: string) => void; onOpenIceberg?: (id: string) => void; onEmptyAction?: () => void };
@@ -112,6 +115,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   nextActionMenuAction,
   scheduleDetailHref,
   onNextActionNavigate,
+  todayTasks,
   transportCard,
   users,
 }) => {
@@ -142,6 +146,17 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
             onNavigate={onNextActionNavigate}
           />
         </BentoCard>
+
+        {/* ── Row 0.5: TodayTasks (engine-driven focus + summary) ── */}
+        {todayTasks && (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            variant="default"
+            testId="bento-today-tasks"
+          >
+            <TodayTasksCard {...todayTasks} />
+          </BentoCard>
+        )}
 
         {/* ── Row 1: Progress (3col) + Attendance (1col) — 進捗要約 ── */}
         <BentoCard
