@@ -98,6 +98,8 @@ jobs:
       - run: npm ci
       - name: Run unit tests
         id: vitest
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
         run: TZ=Asia/Tokyo npm run test:ci
       - name: Upload test coverage on failure
         if: failure()
