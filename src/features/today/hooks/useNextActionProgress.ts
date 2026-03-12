@@ -1,6 +1,16 @@
 /**
  * useNextActionProgress — NextAction の Start/Done 状態永続化
  *
+ * @deprecated LEGACY — UI 側の Start/Done ボタンは Navigation-First 移行で除去済み。
+ * 現在は deriveCurrentScene の SceneState 判定 (done/active/overdue/pending) で
+ * progress を参照する内部依存のみ残存。
+ *
+ * 除去ロードマップ:
+ * 1. deriveCurrentScene の progress 依存を別手段（サーバー状態等）に置き換え
+ * 2. useNextAction 内の progressStore 参照を削除
+ * 3. 本ファイルと useNextActionProgress.spec.ts を削除
+ * 4. localStorage キー 'today.nextAction.v1' のクリーンアップ
+ *
  * localStorage + React useState で「同一端末1日使い切り」パターンに対応。
  * QuickRecord の autoNextEnabled と同じ永続化方式。
  *

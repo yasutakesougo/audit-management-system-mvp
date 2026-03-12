@@ -1,13 +1,15 @@
 /**
  * buildNextActionViewModel — pure builder unit tests
+ *
+ * ナビゲーション型 UI 移行後のテスト。
+ * Start/Done/Reset アクション、status、elapsedMinutes は撤去されたため
+ * テスト対象は item, urgency, sceneState, minutesUntilLabel のみ。
  */
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { NextActionWithProgress } from './useNextAction';
 import { buildNextActionViewModel } from './useNextAction';
 
-const noop = () => {};
-
-type BaseInput = Omit<NextActionWithProgress, 'viewModel'>;
+type BaseInput = NextActionWithProgress;
 
 function makeBase(overrides: Partial<BaseInput> = {}): BaseInput {
   return {
@@ -18,14 +20,9 @@ function makeBase(overrides: Partial<BaseInput> = {}): BaseInput {
       owner: '生活支援課',
       minutesUntil: 30,
     },
-    progress: null,
-    progressKey: 'test-key',
-    status: 'idle',
     urgency: 'medium',
     sceneState: 'pending',
-    elapsedMinutes: null,
     sourceLane: null,
-    actions: { start: noop, done: noop, reset: noop },
     ...overrides,
   };
 }
@@ -44,7 +41,6 @@ describe('buildNextActionViewModel', () => {
     expect(vm.title).toBe('職員朝会');
     expect(vm.owner).toBe('生活支援課');
     expect(vm.minutesUntilLabel).toBe('あと 30分');
-    expect(vm.elapsedLabel).toBeNull();
   });
 
   it('formats minutesUntil with hours', () => {
@@ -65,61 +61,6 @@ describe('buildNextActionViewModel', () => {
     );
     if (vm.kind !== 'active') throw new Error('unreachable');
     expect(vm.minutesUntilLabel).toBe('あと 2時間');
-  });
-
-  it('formats elapsedLabel for started state', () => {
-    const vm = buildNextActionViewModel(
-      makeBase({
-        status: 'started',
-        elapsedMinutes: 15,
-        progress: { startedAt: new Date().toISOString(), doneAt: null },
-      }),
-    );
-    if (vm.kind !== 'active') throw new Error('unreachable');
-    expect(vm.elapsedLabel).toBe('15分経過');
-  });
-
-  it('formats elapsedLabel with hours', () => {
-    const vm = buildNextActionViewModel(
-      makeBase({
-        status: 'started',
-        elapsedMinutes: 90,
-        progress: { startedAt: new Date().toISOString(), doneAt: null },
-      }),
-    );
-    if (vm.kind !== 'active') throw new Error('unreachable');
-    expect(vm.elapsedLabel).toBe('1時間30分経過');
-  });
-
-  it('returns null elapsedLabel for done state (elapsed not displayed)', () => {
-    const vm = buildNextActionViewModel(
-      makeBase({
-        status: 'done',
-        elapsedMinutes: null,
-        progress: {
-          startedAt: new Date().toISOString(),
-          doneAt: new Date().toISOString(),
-        },
-      }),
-    );
-    if (vm.kind !== 'active') throw new Error('unreachable');
-    expect(vm.status).toBe('done');
-    expect(vm.elapsedLabel).toBeNull();
-  });
-
-  it('delegates onStart/onDone to actions.start/actions.done', () => {
-    const start = vi.fn();
-    const done = vi.fn();
-    const vm = buildNextActionViewModel(
-      makeBase({ actions: { start, done, reset: noop } }),
-    );
-    if (vm.kind !== 'active') throw new Error('unreachable');
-
-    vm.onStart();
-    expect(start).toHaveBeenCalledTimes(1);
-
-    vm.onDone();
-    expect(done).toHaveBeenCalledTimes(1);
   });
 
   it('sets owner to null when item has no owner', () => {
@@ -147,13 +88,10 @@ describe('buildNextActionViewModel', () => {
     expect(vm.sceneState).toBe('overdue');
   });
 
-  it('returns active sceneState for started items', () => {
+  it('returns active sceneState for active items', () => {
     const vm = buildNextActionViewModel(
       makeBase({
         sceneState: 'active',
-        status: 'started',
-        elapsedMinutes: 5,
-        progress: { startedAt: new Date().toISOString(), doneAt: null },
       }),
     );
     if (vm.kind !== 'active') throw new Error('unreachable');

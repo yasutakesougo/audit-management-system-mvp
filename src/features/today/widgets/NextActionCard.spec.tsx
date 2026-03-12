@@ -15,14 +15,9 @@ function makeProps(overrides: Partial<NextActionWithProgress> = {}): NextActionW
       owner: '生活支援課',
       minutesUntil: 30,
     },
-    progress: null,
-    progressKey: 'test-key',
-    status: 'idle',
     urgency: 'medium',
     sceneState: 'pending',
-    elapsedMinutes: null,
     sourceLane: null,
-    actions: { start: noop, done: noop, reset: noop },
     ...overrides,
   };
 }
@@ -40,7 +35,7 @@ const baseSceneAction: SceneNextActionViewModel = {
 
 // ─── Core behavior ──────────────────────────────────────────
 
-describe('NextActionCard — 行動ナビゲーター', () => {
+describe('NextActionCard — ナビゲーション CTA', () => {
   it('has data-testid', () => {
     render(<NextActionCard nextAction={makeProps()} />);
     expect(screen.getByTestId('today-next-action-card')).toBeInTheDocument();
@@ -55,13 +50,35 @@ describe('NextActionCard — 行動ナビゲーター', () => {
     expect(screen.getByText(/あと 30分/)).toBeInTheDocument();
   });
 
-  it('shows Start button in idle state (行動ナビゲーター)', () => {
-    render(<NextActionCard nextAction={makeProps()} />);
+  it('shows navigation CTA button instead of Start button', () => {
+    render(<NextActionCard nextAction={makeProps()} onNavigate={noop} />);
 
-    // idle → Start ボタンを表示（Done / Done-chip は非表示）
-    expect(screen.getByTestId('next-action-start')).toBeInTheDocument();
+    // ナビゲーション CTA が表示される
+    expect(screen.getByTestId('next-action-nav-cta')).toBeInTheDocument();
+    // 旧 Start/Done ボタンは存在しない
+    expect(screen.queryByTestId('next-action-start')).not.toBeInTheDocument();
     expect(screen.queryByTestId('next-action-done')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('next-action-done-chip')).not.toBeInTheDocument();
+  });
+
+  it('calls onNavigate with resolved href when navigation CTA is clicked', () => {
+    const handleNavigate = vi.fn();
+    render(
+      <NextActionCard
+        nextAction={makeProps({
+          item: {
+            id: 'ops-1',
+            time: '09:15',
+            title: '通所受け入れ',
+            opsStep: 'intake',
+            minutesUntil: 15,
+          },
+        })}
+        onNavigate={handleNavigate}
+      />
+    );
+
+    screen.getByTestId('next-action-nav-cta').click();
+    expect(handleNavigate).toHaveBeenCalledWith('/daily/attendance');
   });
 
   it('formats hours correctly', () => {

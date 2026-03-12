@@ -14,6 +14,7 @@ import { useStaffStore } from '@/features/staff';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { toLocalDateISO } from '@/utils/getNow';
 import { useMemo } from 'react';
+import { useSupportRecordCompletion } from '../hooks/useSupportRecordCompletion';
 import type { ServiceStructure } from './serviceStructure.types';
 
 // ─── Internal: Dashboard-irrelevant defaults ────────────────────────────
@@ -96,15 +97,34 @@ export function useTodaySummary() {
     [staff],
   );
 
+  // ─── 3b. Support Record Completion (Today-only) ───
+  // ExecutionStore × ProcedureStore から算出。
+  // Dashboard の dailyRecordStatus とは別系統。
+  // ⚠ /daily/support は強度行動障害支援対象者のみが記録対象。
+  //   全利用者ではなく IsHighIntensitySupportTarget === true のみを集計する。
+  const supportTargetUserIds = useMemo(
+    () => users
+      .filter((u) => u.IsHighIntensitySupportTarget === true)
+      .map((u) => {
+        const uid = (u.UserID ?? '').trim();
+        return uid || `U${String(u.Id ?? 0).padStart(3, '0')}`;
+      }),
+    [users],
+  );
+  const todayRecordCompletion = useSupportRecordCompletion(today, supportTargetUserIds);
+
   // ─── 4. Pick-only: Today のデータ契約 ───
   // ⚠ このリストを拡張する場合は ADR-002 を参照し、
   //   dashboard domain 側に追加してから pick すること。
+  // ⚠ todayRecordCompletion は ADR-002 例外: ExecutionStore 起点で /today のみ消費。
   return useMemo(
     () => ({
       // 出欠サマリー
       attendanceSummary: full.attendanceSummary,
-      // 日次記録ステータス（未記録件数・pendingUserIds）
+      // 日次記録ステータス（未記録件数・pendingUserIds — Dashboard 起点）
       dailyRecordStatus: full.dailyRecordStatus,
+      // 時間別記録完了ステータス（ExecutionStore 起点 — Today-only）
+      todayRecordCompletion,
       // ブリーフィングアラート
       briefingAlerts: full.briefingAlerts,
       // 当日スケジュールレーン（NextAction 導出に使用）
@@ -119,6 +139,7 @@ export function useTodaySummary() {
     [
       full.attendanceSummary,
       full.dailyRecordStatus,
+      todayRecordCompletion,
       full.briefingAlerts,
       full.scheduleLanesToday,
       serviceStructure,

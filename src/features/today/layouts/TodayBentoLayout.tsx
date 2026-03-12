@@ -68,6 +68,8 @@ export type TodayBentoProps = {
   nextActionEmptyAction?: NextActionCardProps['onEmptyAction'];
   nextActionMenuAction?: NextActionCardProps['onMenuAction'];
   scheduleDetailHref?: string;
+  /** ナビゲーション CTA クリック → ページ遷移 */
+  onNextActionNavigate?: (href: string) => void;
   transport: { pending: TransportUser[]; inProgress: TransportUser[]; onArrived: (id: string) => void };
   transportCard?: TransportStatusCardProps;
   users: { items: UserRow[]; onOpenQuickRecord: (id: string) => void; onOpenISP?: (id: string) => void; onEmptyAction?: () => void };
@@ -108,6 +110,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   nextActionEmptyAction,
   nextActionMenuAction,
   scheduleDetailHref,
+  onNextActionNavigate,
   transportCard,
   users,
 }) => {
@@ -135,6 +138,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
             onEmptyAction={nextActionEmptyAction}
             onMenuAction={nextActionMenuAction}
             scheduleDetailHref={scheduleDetailHref}
+            onNavigate={onNextActionNavigate}
           />
         </BentoCard>
 
