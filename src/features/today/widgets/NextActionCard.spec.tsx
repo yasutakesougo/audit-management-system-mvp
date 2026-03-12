@@ -55,12 +55,27 @@ describe('NextActionCard — 行動ナビゲーター', () => {
     expect(screen.getByText(/あと 30分/)).toBeInTheDocument();
   });
 
-  it('does NOT show Start or Done buttons (タスク管理ではない)', () => {
+  it('shows Start button in idle state (P1-A) but not Done', () => {
     render(<NextActionCard nextAction={makeProps()} />);
+
+    expect(screen.getByTestId('next-action-start')).toBeInTheDocument();
+    expect(screen.queryByTestId('next-action-done')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('next-action-done-chip')).not.toBeInTheDocument();
+  });
+
+  it('shows Done button when status is started', () => {
+    render(<NextActionCard nextAction={makeProps({ status: 'started', elapsedMinutes: 5 })} />);
+
+    expect(screen.queryByTestId('next-action-start')).not.toBeInTheDocument();
+    expect(screen.getByTestId('next-action-done')).toBeInTheDocument();
+  });
+
+  it('shows done chip when status is done', () => {
+    render(<NextActionCard nextAction={makeProps({ status: 'done' })} />);
 
     expect(screen.queryByTestId('next-action-start')).not.toBeInTheDocument();
     expect(screen.queryByTestId('next-action-done')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('next-action-done-chip')).not.toBeInTheDocument();
+    expect(screen.getByTestId('next-action-done-chip')).toBeInTheDocument();
   });
 
   it('formats hours correctly', () => {
@@ -87,7 +102,7 @@ describe('NextActionCard — 行動ナビゲーター', () => {
       />
     );
 
-    expect(screen.getByText(/今すぐ優先する対応はありません/)).toBeInTheDocument();
+    expect(screen.getByText(/次の予定はありません/)).toBeInTheDocument();
     expect(screen.getByTestId('today-empty-next-action')).toBeInTheDocument();
   });
 });
