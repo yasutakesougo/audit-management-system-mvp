@@ -144,6 +144,9 @@ export function useRegulatorySummary(
           recentProcedureRecords: [],
           icebergCountBySheet: {},
           latestMonitoring: null,
+          procedureRecordCountBySheet: {},
+          planningSheetCount: 0,
+          lastProcedureRecordDate: null,
         },
         userId: null,
         isAvailable: false,
@@ -162,6 +165,9 @@ export function useRegulatorySummary(
       latestMonitoring: form.lastMonitoringDate
         ? { date: form.lastMonitoringDate, planChangeRequired: false }
         : null,
+      procedureRecordCountBySheet: {},
+      planningSheetCount: 0,
+      lastProcedureRecordDate: null,
     };
 
     return {

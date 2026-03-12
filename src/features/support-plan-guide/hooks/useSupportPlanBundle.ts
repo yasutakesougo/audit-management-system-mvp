@@ -85,6 +85,21 @@ export function countRecordsBySheet(
   return counts;
 }
 
+/**
+ * 記録一覧から直近の recordDate を導出する。
+ */
+export function deriveLastRecordDate(
+  records: ProcedureRecordListItem[],
+): string | null {
+  let latest: string | null = null;
+  for (const rec of records) {
+    if (rec.recordDate && (!latest || rec.recordDate > latest)) {
+      latest = rec.recordDate;
+    }
+  }
+  return latest;
+}
+
 // ─────────────────────────────────────────────
 // Hook
 // ─────────────────────────────────────────────
@@ -161,14 +176,20 @@ export function useSupportPlanBundle(
   const bundle = useMemo<SupportPlanBundle | null>(() => {
     if (!isp) return null;
 
+    const recordCounts = countRecordsBySheet(records);
+
     return {
       isp,
       planningSheets: [], // Full sheets need getById; listItems returns ListItem
       recentProcedureRecords: [], // ListItem → Record 変換は将来対応
-      icebergCountBySheet: countRecordsBySheet(records),
+      icebergCountBySheet: recordCounts,
       latestMonitoring: deriveLatestMonitoring(sheets),
+      procedureRecordCountBySheet: recordCounts,
+      planningSheetCount: sheets.length,
+      lastProcedureRecordDate: deriveLastRecordDate(records),
     };
   }, [isp, sheets, records]);
 
   return { bundle, isLoading, error };
 }
+
