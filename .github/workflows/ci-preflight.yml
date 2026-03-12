@@ -51,6 +51,8 @@ jobs:
       - run: npm ci
 
       - name: Preflight (typecheck, lint, unit, build)
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
         run: |
           npm run preflight
           npx vitest run tests/unit/schedule --reporter=verbose
