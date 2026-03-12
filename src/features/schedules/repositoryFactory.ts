@@ -5,8 +5,14 @@ import {
     isTestMode,
     shouldSkipLogin,
 } from '@/lib/env';
+import { isE2E } from '@/env';
 import { hasSpfxContext } from '@/lib/runtime';
 import { useMemo } from 'react';
+
+/** Debug-only window extension for tracking repository changes in E2E */
+interface WindowWithDebug extends Window {
+  __LAST_REPO__?: unknown;
+}
 
 import { useAuth } from '@/auth/useAuth';
 import type { ScheduleRepository } from './domain/ScheduleRepository';
@@ -40,10 +46,9 @@ let overrideKind: ScheduleRepositoryKind | null = null;
 const shouldUseDemoRepository = (): boolean => {
   const { isDev } = getAppConfig();
   const spfxContextAvailable = hasSpfxContext();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const isE2E = (typeof window !== 'undefined' && (window as any).__ENV__?.VITE_E2E === '1');
+  const e2eActive = isE2E;
 
-  if (isE2E) return false;
+  if (e2eActive) return false;
 
   return (
     isDev ||
@@ -182,18 +187,14 @@ export const useScheduleRepository = (): ScheduleRepository => {
     return getScheduleRepository({ acquireToken });
   }, [acquireToken]);
 
-  // eslint-disable-next-line no-console
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (typeof window !== 'undefined' && (window as any).__ENV__?.VITE_E2E === '1') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).__LAST_REPO__ = (window as any).__LAST_REPO__ || null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const changed = (window as any).__LAST_REPO__ !== repo;
+  if (typeof window !== 'undefined' && isE2E) {
+    const w = window as WindowWithDebug;
+    w.__LAST_REPO__ = w.__LAST_REPO__ || null;
+    const changed = w.__LAST_REPO__ !== repo;
     if (changed) {
       // eslint-disable-next-line no-console
       console.log('[schedules] [useScheduleRepository] repository instance CHANGED');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (window as any).__LAST_REPO__ = repo;
+      w.__LAST_REPO__ = repo;
     }
   }
 

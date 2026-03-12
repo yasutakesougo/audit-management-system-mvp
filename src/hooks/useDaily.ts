@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useCallback } from 'react';
 import { useSP } from '@/lib/spClient';
 import type { DailyUpsert, SpDailyItem } from '@/types';
@@ -9,12 +9,9 @@ export type DailyWithEtag = {
   etag: string | null;
 };
 
-const sanitizeEnvValue = (value: unknown): string => {
-  if (typeof value !== 'string') return '';
-  return value.trim();
-};
+import { get as getEnv } from '@/env';
 
-const DEFAULT_DAILY_LIST_TITLE = sanitizeEnvValue((import.meta as any)?.env?.VITE_SP_LIST_DAILY) || 'SupportRecord_Daily';
+const DEFAULT_DAILY_LIST_TITLE = getEnv('VITE_SP_LIST_DAILY', 'SupportRecord_Daily').trim() || 'SupportRecord_Daily';
 
 export function useDaily() {
   const sp = useSP();

@@ -49,6 +49,16 @@ vi.mock('@/lib/runtime', () => ({
   hasSpfxContext: vi.fn(() => false),
 }));
 
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>();
+  return {
+    ...actual,
+    isE2E: false,
+    isE2eMsalMock: false,
+    isE2eForceSchedulesWrite: false,
+  };
+});
+
 // Break transitive import chain: SharePointScheduleRepository → fetchSp → msal
 vi.mock('@/features/schedules/infra/SharePointScheduleRepository', () => ({
   SharePointScheduleRepository: MockSPRepo,
@@ -71,6 +81,7 @@ import {
     resetScheduleRepository,
 } from '@/features/schedules/repositoryFactory';
 
+// eslint-disable-next-line no-restricted-imports -- test needs direct env mock access
 import * as envModule from '@/lib/env';
 import * as runtimeModule from '@/lib/runtime';
 

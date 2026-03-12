@@ -183,8 +183,7 @@ export async function querySchedules(
   args: QuerySchedulesArgs,
   client: ReturnType<typeof useSP>
 ): Promise<RepoSchedule[]> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const listIdentifier = ((FIELD_MAP as any).Schedules?.title ?? 'Schedules');
+  const listIdentifier = FIELD_MAP.Schedules.title;
 
   const select = [
     'Id',
@@ -255,9 +254,9 @@ export type UpdateScheduleInput = Partial<Omit<CreateScheduleInput, 'rowKey'>> &
   // rowKey は原則不変
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const pickEtag = (v: any): string | undefined => {
-  return v?.etag ?? v?.ETag ?? v?.__metadata?.etag ?? v?.headers?.etag ?? v?.headers?.ETag;
+const pickEtag = (v: SpScheduleRow | Record<string, unknown> | undefined | null): string | undefined => {
+  if (!v) return undefined;
+  return (v.etag ?? v.ETag ?? v.__metadata?.etag ?? v.headers?.etag ?? v.headers?.ETag) as string | undefined;
 };
 
 /**
@@ -360,8 +359,7 @@ export async function createSchedule(
   const payload = buildCreateBody(input);
 
   // Step 1: POST to create item (may return incomplete data)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const created: any = await client.addListItemByTitle(listId, payload);
+  const created = await client.addListItemByTitle(listId, payload) as SpScheduleRow | undefined;
   
   // Step 2: Extract ID from response
   const createdId = Number(created?.Id ?? created?.d?.Id ?? created?.data?.Id);
@@ -441,15 +439,13 @@ export async function updateSchedule(
   const listId = getSchedulesListTitle();
 
   // NOTE: spClient.updateItem(listId, id, body, { ifMatch }) 前提
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updated: any = await client.updateItem(listId, id, buildUpdateBody(input), { ifMatch: etag });
+  const updated = await client.updateItem(listId, id, buildUpdateBody(input), { ifMatch: etag }) as SpScheduleRow | undefined;
 
   const nextEtag = pickEtag(updated) ?? etag;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const row: any = updated?.data ?? updated;
+  const row = (updated?.data ?? updated) as SpScheduleRow | undefined;
 
   try {
-    return mapSpToRepoSchedule(row, nextEtag);
+    return mapSpToRepoSchedule(row!, nextEtag);
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     const errorStack = err instanceof Error ? err.stack : undefined;
