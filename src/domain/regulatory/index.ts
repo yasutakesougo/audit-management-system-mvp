@@ -11,9 +11,15 @@
  *   staffQualificationProfileSchema,
  *   resolveHighestQualification,
  *   meetsAuthoringRequirement,
+ *   checkUserEligibility,
+ *   evaluateSevereDisabilityAddOn,
+ *   createBasicTrainingRatioSnapshot,
  * } from '@/domain/regulatory';
  * ```
  */
 export * from './userRegulatoryProfile';
 export * from './staffQualificationProfile';
 export * from './auditChecks';
+export * from './severeDisabilityAddon';
+export * from './basicTrainingRatio';
+export * from './severeAddonFindings';
