@@ -7,33 +7,45 @@
  *   planning_sheet_missing     → /support-plan-guide (支援計画シート作成)
  *   author_qualification_missing → /support-plan-guide (作成者資格確認)
  *   review_overdue             → /support-plan-guide (見直し)
+ *                              → /analysis/iceberg-pdca (分析根拠)
  *   procedure_record_gap       → /daily/support (実施記録入力)
+ *                              → /support-plan-guide (支援計画確認)
+ *                              → /analysis/iceberg-pdca (分析根拠)
  *   delivery_missing           → /support-plan-guide (交付実施)
- *   add_on_candidate           → /admin/regulatory-dashboard (加算確認)
+ *   add_on_candidate           → /support-plan-guide (加算確認)
+ *                              → /analysis/iceberg-pdca (分析根拠)
  */
 import type { AuditFinding } from '@/domain/regulatory';
 import { buildDailySupportUrl } from '@/app/links/buildDailySupportUrl';
+import { buildIcebergPdcaUrl } from '@/app/links/navigationLinks';
+
+export type FindingActionKind = 'plan' | 'execute' | 'review' | 'evidence';
 
 export type FindingAction = {
   label: string;
   url: string;
   /** アクションの種類 */
-  kind: 'plan' | 'execute' | 'review';
+  kind: FindingActionKind;
 };
 
 /**
  * finding に対応するアクション導線を返す。
  * 単一の finding に対して複数のアクションを返すこともある。
+ *
+ * evidence 系アクションは「なぜこの課題か」「どの分析に基づくか」を
+ * 辿るための導線で、Iceberg PDCA ページへ遷移する。
  */
 export function buildFindingActions(finding: AuditFinding): FindingAction[] {
   const actions: FindingAction[] = [];
   const userId = finding.userId;
+  const supportPlanUrl = `/support-plan-guide?userId=${encodeURIComponent(userId)}`;
+  const icebergUrl = buildIcebergPdcaUrl(userId, { source: 'regulatory-dashboard' });
 
   switch (finding.type) {
     case 'planning_sheet_missing':
       actions.push({
         label: '支援計画を作成',
-        url: `/support-plan-guide?userId=${encodeURIComponent(userId)}`,
+        url: supportPlanUrl,
         kind: 'plan',
       });
       break;
@@ -42,7 +54,7 @@ export function buildFindingActions(finding: AuditFinding): FindingAction[] {
       if (finding.planningSheetId) {
         actions.push({
           label: '支援計画を確認',
-          url: `/support-plan-guide?userId=${encodeURIComponent(userId)}`,
+          url: supportPlanUrl,
           kind: 'review',
         });
       }
@@ -51,8 +63,14 @@ export function buildFindingActions(finding: AuditFinding): FindingAction[] {
     case 'review_overdue':
       actions.push({
         label: '見直しを開始',
-        url: `/support-plan-guide?userId=${encodeURIComponent(userId)}`,
+        url: supportPlanUrl,
         kind: 'review',
+      });
+      // 見直し判断の根拠として Iceberg 分析を参照
+      actions.push({
+        label: '分析を確認',
+        url: icebergUrl,
+        kind: 'evidence',
       });
       break;
 
@@ -64,15 +82,21 @@ export function buildFindingActions(finding: AuditFinding): FindingAction[] {
       });
       actions.push({
         label: '支援計画を確認',
-        url: `/support-plan-guide?userId=${encodeURIComponent(userId)}`,
+        url: supportPlanUrl,
         kind: 'plan',
+      });
+      // 記録空白の背景分析を確認
+      actions.push({
+        label: '分析を確認',
+        url: icebergUrl,
+        kind: 'evidence',
       });
       break;
 
     case 'delivery_missing':
       actions.push({
         label: '支援計画を確認',
-        url: `/support-plan-guide?userId=${encodeURIComponent(userId)}`,
+        url: supportPlanUrl,
         kind: 'review',
       });
       break;
@@ -80,8 +104,14 @@ export function buildFindingActions(finding: AuditFinding): FindingAction[] {
     case 'add_on_candidate':
       actions.push({
         label: '支援計画を確認',
-        url: `/support-plan-guide?userId=${encodeURIComponent(userId)}`,
+        url: supportPlanUrl,
         kind: 'review',
+      });
+      // 加算の根拠となる分析を確認
+      actions.push({
+        label: '分析を確認',
+        url: icebergUrl,
+        kind: 'evidence',
       });
       break;
   }
