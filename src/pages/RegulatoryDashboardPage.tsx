@@ -72,6 +72,9 @@ import {
 } from '@/domain/regulatory/buildSevereAddonFindingActions';
 import SafetyOperationsSummaryCard from '@/features/safety/components/SafetyOperationsSummaryCard';
 import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIcebergEvidence';
+import { useSevereAddonRealData } from '@/features/regulatory/hooks/useSevereAddonRealData';
+import { useUsers } from '@/features/users/useUsers';
+import { useStaff } from '@/stores/useStaff';
 
 // ─────────────────────────────────────────────
 // デモデータ
@@ -705,8 +708,22 @@ const RegulatoryDashboardPage: React.FC = () => {
   const findings = useMemo(() => generateDemoFindings(), []);
   const summary = useMemo(() => summarizeFindings(findings), [findings]);
 
-  // 加算系 findings（デモデータ）
-  const addonFindings = useMemo(() => generateDemoSevereAddonFindings(), []);
+  // 加算系 findings — 実データ / デモフォールバック
+  const { data: spUsers, status: usersStatus, error: usersError } = useUsers({ selectMode: 'full' });
+  const { staff: spStaff, isLoading: staffLoading, error: staffError } = useStaff();
+  const { input: realAddonInput, dataSourceLabel: addonDataSource } = useSevereAddonRealData(
+    spUsers,
+    spStaff,
+    usersStatus === 'loading' || staffLoading,
+    usersError ? (usersError instanceof Error ? usersError : new Error(String(usersError))) : staffError,
+  );
+  const addonFindings = useMemo(() => {
+    if (realAddonInput) {
+      _resetAddonFindingCounter();
+      return buildSevereAddonFindings(realAddonInput);
+    }
+    return generateDemoSevereAddonFindings();
+  }, [realAddonInput]);
   const addonSummary = useMemo(() => summarizeSevereAddonFindings(addonFindings), [addonFindings]);
 
   // 統合行データ
@@ -753,6 +770,13 @@ const RegulatoryDashboardPage: React.FC = () => {
           color={isLiveData ? 'success' : 'default'}
           variant={isLiveData ? 'filled' : 'outlined'}
           sx={{ ml: 'auto', fontWeight: 600, fontSize: '0.7rem' }}
+        />
+        <Chip
+          label={`加算: ${addonDataSource}`}
+          size="small"
+          color={addonDataSource === '実データ' ? 'success' : 'default'}
+          variant={addonDataSource === '実データ' ? 'filled' : 'outlined'}
+          sx={{ fontWeight: 600, fontSize: '0.7rem' }}
         />
       </Box>
 
