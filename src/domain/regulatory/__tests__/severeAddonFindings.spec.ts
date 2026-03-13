@@ -245,6 +245,49 @@ describe('buildSevereAddonFindings', () => {
     const ids = findings.map(f => f.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
+
+  // ── 作成者要件不備 ──
+
+  it('候補利用者で作成者要件不備 → finding あり (high)', () => {
+    const findings = buildSevereAddonFindings(makeBaseInput({
+      users: [{ userId: 'U020', supportLevel: '6', behaviorScore: 12, planningSheetIds: ['ps-20'] }],
+      usersWithoutAuthoringQualification: ['U020'],
+    }));
+    const authoring = findByType(findings, 'authoring_requirement_unmet');
+    expect(authoring).toHaveLength(1);
+    expect(authoring[0].severity).toBe('high');
+    expect(authoring[0].planningSheetId).toBe('ps-20');
+    expect(authoring[0].message).toContain('実践研修未修了');
+  });
+
+  it('非候補利用者は作成者要件チェックをスキップ', () => {
+    const findings = buildSevereAddonFindings(makeBaseInput({
+      users: [{ userId: 'U021', supportLevel: '3', behaviorScore: 5, planningSheetIds: ['ps-21'] }],
+      usersWithoutAuthoringQualification: ['U021'],
+    }));
+    expect(findByType(findings, 'authoring_requirement_unmet')).toHaveLength(0);
+  });
+
+  // ── 資格なし配置 ──
+
+  it('候補利用者で資格なし配置 → finding あり (medium)', () => {
+    const findings = buildSevereAddonFindings(makeBaseInput({
+      users: [{ userId: 'U022', supportLevel: '6', behaviorScore: 12, planningSheetIds: [] }],
+      usersWithoutAssignmentQualification: ['U022'],
+    }));
+    const assignment = findByType(findings, 'assignment_without_required_qualification');
+    expect(assignment).toHaveLength(1);
+    expect(assignment[0].severity).toBe('medium');
+    expect(assignment[0].message).toContain('必要資格のない職員');
+  });
+
+  it('非候補利用者は資格配置チェックをスキップ', () => {
+    const findings = buildSevereAddonFindings(makeBaseInput({
+      users: [{ userId: 'U023', supportLevel: '3', behaviorScore: 5, planningSheetIds: [] }],
+      usersWithoutAssignmentQualification: ['U023'],
+    }));
+    expect(findByType(findings, 'assignment_without_required_qualification')).toHaveLength(0);
+  });
 });
 
 // ─────────────────────────────────────────────
@@ -283,7 +326,25 @@ describe('summarizeSevereAddonFindings', () => {
     expect(summary.trainingRatioInsufficientCount).toBe(1);    // 事業所全体
     expect(summary.weeklyObservationShortageCount).toBe(1);    // U001
     expect(summary.reassessmentOverdueCount).toBe(3);          // U001, U002, U003（全員マップ未登録）
+    expect(summary.authoringRequirementUnmetCount).toBe(0);    // 未指定
+    expect(summary.assignmentWithoutQualificationCount).toBe(0); // 未指定
     expect(summary.totalFindings).toBeGreaterThan(0);
+  });
+
+  it('作成者要件不備・資格なし配置のカウンターが正しい', () => {
+    const findings = buildSevereAddonFindings(makeBaseInput({
+      users: [
+        { userId: 'U001', supportLevel: '6', behaviorScore: 12, planningSheetIds: ['ps-1'] },
+        { userId: 'U002', supportLevel: '6', behaviorScore: 14, planningSheetIds: ['ps-2'] },
+      ],
+      usersWithoutAuthoringQualification: ['U001'],
+      usersWithoutAssignmentQualification: ['U001', 'U002'],
+    }));
+
+    const summary = summarizeSevereAddonFindings(findings);
+    expect(summary.authoringRequirementUnmetCount).toBe(1);              // U001
+    expect(summary.assignmentWithoutQualificationCount).toBe(2);         // U001, U002
+    expect(summary.tier2CandidateCount).toBe(2);                          // both
   });
 });
 
@@ -299,6 +360,8 @@ describe('SEVERE_ADDON_FINDING_TYPE_LABELS', () => {
       'basic_training_ratio_insufficient',
       'planning_sheet_reassessment_overdue',
       'weekly_observation_shortage',
+      'authoring_requirement_unmet',
+      'assignment_without_required_qualification',
     ] as const;
 
     for (const type of types) {
