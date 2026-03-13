@@ -28,4 +28,13 @@ export const ISP_ROUTES: NavItem[] = [
     audience: NAV_AUDIENCE.all as NavAudience,
     group: 'isp' as NavGroupKey,
   },
+  {
+    label: '支援計画シート',
+    to: '/support-planning-sheet/new',
+    isActive: (pathname) => pathname.startsWith('/support-planning-sheet'),
+    icon: undefined,
+    testId: TESTIDS.nav.planningSheet,
+    audience: NAV_AUDIENCE.staff,
+    group: 'isp' as NavGroupKey,
+  },
 ];

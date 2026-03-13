@@ -16,6 +16,7 @@ export const APP_ROUTE_PATHS = [
   'support-plan-guide',
   'isp-editor',
   'isp-editor/:userId',
+  'support-planning-sheet/:planningSheetId',
   'handoff-timeline',
   'meeting-minutes',
   'meeting-minutes/new',
@@ -79,6 +80,8 @@ export const APP_ROUTE_PATHS = [
   'schedules/create',
   'dev/schedule-create-dialog',
   'ibd',
+  'support-planning-sheet/:planningSheetId',
+  'planning-sheet-list',
 ] as const;
 
 export type AppRoutePath = typeof APP_ROUTE_PATHS[number];

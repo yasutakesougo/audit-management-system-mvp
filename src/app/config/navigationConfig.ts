@@ -272,6 +272,15 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'isp' as NavGroupKey,
     },
     {
+      label: '支援計画シート',
+      to: '/support-planning-sheet/new',
+      isActive: (pathname) => pathname.startsWith('/support-planning-sheet'),
+      icon: undefined,
+      testId: TESTIDS.nav.planningSheet,
+      audience: NAV_AUDIENCE.staff,
+      group: 'isp' as NavGroupKey,
+    },
+    {
       label: '利用者',
       to: '/users',
       isActive: (pathname: string) => pathname.startsWith('/users'),
@@ -401,6 +410,16 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       audience: NAV_AUDIENCE.admin,
       group: 'admin' as NavGroupKey,
+    });
+
+    items.push({
+      label: '1日の流れ設定',
+      to: '/settings/operation-flow',
+      isActive: (pathname: string) => pathname.startsWith('/settings/operation-flow'),
+      icon: undefined,
+      testId: TESTIDS.nav.operationFlowSettings,
+      audience: NAV_AUDIENCE.admin,
+      group: 'settings' as NavGroupKey,
     });
 
     items.push({
