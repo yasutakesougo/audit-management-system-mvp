@@ -49,6 +49,7 @@ import { useDraftExportImport } from './useDraftExportImport';
 import { useDraftFieldHandlers } from './useDraftFieldHandlers';
 import { useDraftManagement } from './useDraftManagement';
 import { useGoalActions } from './useGoalActions';
+import { useComplianceForm, type UseComplianceFormReturn } from './useComplianceForm';
 
 // ────────────────────────────────────────────
 // Params & Return type
@@ -106,6 +107,9 @@ export type UseSupportPlanFormReturn = {
   handleToggleDomain: (goalId: string, domainId: string) => void;
   handleAddGoal: (type: 'long' | 'short' | 'support', defaultLabel: string) => void;
   handleDeleteGoal: (goalId: string) => void;
+
+  // ── Compliance (A-2) ──
+  complianceForm: UseComplianceFormReturn;
 };
 
 // ────────────────────────────────────────────
@@ -282,6 +286,14 @@ export function useSupportPlanForm({
     setDrafts,
   });
 
+  // ── Compliance form (A-2) ──
+  const complianceForm = useComplianceForm({
+    activeDraft,
+    activeDraftId,
+    isAdmin,
+    setDrafts,
+  });
+
   // ════════════════════════════════════════════
   // Return
   // ════════════════════════════════════════════
@@ -325,5 +337,6 @@ export function useSupportPlanForm({
     handleToggleDomain,
     handleAddGoal,
     handleDeleteGoal,
+    complianceForm,
   };
 }
