@@ -114,14 +114,17 @@ export function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
     return 'ibd';
   }
 
-  // 個別支援計画: ISP作成・更新
+  // 個別支援計画: ISP作成・更新・支援計画シート
   if (
     testId === TESTIDS.nav.supportPlanGuide ||
     testId === TESTIDS.nav.ispEditor ||
+    testId === TESTIDS.nav.planningSheet ||
     to.startsWith('/support-plan-guide') ||
     to.startsWith('/isp-editor') ||
+    to.startsWith('/support-planning-sheet') ||
     label.includes('ISP') ||
-    label.includes('個別支援計画書')
+    label.includes('個別支援計画書') ||
+    label.includes('支援計画シート')
   ) {
     return 'isp';
   }

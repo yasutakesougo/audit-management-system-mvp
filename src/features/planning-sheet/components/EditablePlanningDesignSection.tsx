@@ -1,0 +1,201 @@
+/**
+ * EditablePlanningDesignSection — 支援設計タブ（編集可能）
+ *
+ * 編集対象:
+ *  - 支援課題の優先順位 / 先行事象戦略 / 教授戦略 / 後続事象戦略
+ *  - 支援手順（ステップリスト）
+ *  - 見直し周期
+ */
+import type { PlanningDesign, ProcedureStep } from '@/domain/isp/schema';
+import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded';
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
+import IconButton from '@mui/material/IconButton';
+import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
+import Tooltip from '@mui/material/Tooltip';
+import Typography from '@mui/material/Typography';
+import type React from 'react';
+import { useCallback, useState } from 'react';
+import { ImportTemplateDialog } from './ImportTemplateDialog';
+
+interface Props {
+  planning: PlanningDesign;
+  onChange: (updated: PlanningDesign) => void;
+}
+
+// ── ChipInput（再利用） ──
+const ChipInput: React.FC<{
+  label: string;
+  items: string[];
+  onChange: (items: string[]) => void;
+  placeholder?: string;
+}> = ({ label, items, onChange: onChangeItems, placeholder }) => {
+  const handleAdd = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Enter') return;
+    const input = e.target as HTMLInputElement;
+    const val = input.value.trim();
+    if (val && !items.includes(val)) {
+      onChangeItems([...items, val]);
+      input.value = '';
+    }
+    e.preventDefault();
+  }, [items, onChangeItems]);
+
+  const handleDelete = useCallback((idx: number) => {
+    onChangeItems(items.filter((_, i) => i !== idx));
+  }, [items, onChangeItems]);
+
+  return (
+    <Stack spacing={0.5}>
+      <TextField
+        label={label}
+        size="small"
+        placeholder={placeholder ?? 'Enter で追加'}
+        onKeyDown={handleAdd}
+        fullWidth
+      />
+      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+        {items.map((item, i) => (
+          <Chip key={i} size="small" label={item} onDelete={() => handleDelete(i)} />
+        ))}
+      </Stack>
+    </Stack>
+  );
+};
+
+export const EditablePlanningDesignSection: React.FC<Props> = ({ planning, onChange }) => {
+  const [importOpen, setImportOpen] = useState(false);
+
+  // ── Procedure Steps ──
+  const addStep = () => {
+    const nextOrder = planning.procedureSteps.length + 1;
+    const newStep: ProcedureStep = { order: nextOrder, instruction: '', staff: '', timing: '' };
+    onChange({ ...planning, procedureSteps: [...planning.procedureSteps, newStep] });
+  };
+  const updateStep = (idx: number, patch: Partial<ProcedureStep>) => {
+    const updated = planning.procedureSteps.map((s, i) => (i === idx ? { ...s, ...patch } : s));
+    onChange({ ...planning, procedureSteps: updated });
+  };
+  const removeStep = (idx: number) => {
+    const updated = planning.procedureSteps
+      .filter((_, i) => i !== idx)
+      .map((s, i) => ({ ...s, order: i + 1 })); // re-number
+    onChange({ ...planning, procedureSteps: updated });
+  };
+  const handleImport = useCallback((steps: ProcedureStep[]) => {
+    onChange({ ...planning, procedureSteps: steps });
+  }, [planning, onChange]);
+
+  return (
+    <Stack spacing={3}>
+      <Typography variant="subtitle1" fontWeight={600}>支援設計</Typography>
+
+      {/* ── 戦略チップ群 ── */}
+      <ChipInput
+        label="支援課題の優先順位"
+        items={planning.supportPriorities}
+        onChange={(items) => onChange({ ...planning, supportPriorities: items })}
+        placeholder="優先課題を Enter で追加"
+      />
+      <ChipInput
+        label="先行事象戦略"
+        items={planning.antecedentStrategies}
+        onChange={(items) => onChange({ ...planning, antecedentStrategies: items })}
+        placeholder="例: スケジュール提示、環境構造化"
+      />
+      <ChipInput
+        label="教授戦略"
+        items={planning.teachingStrategies}
+        onChange={(items) => onChange({ ...planning, teachingStrategies: items })}
+        placeholder="例: モデリング、タスク分析"
+      />
+      <ChipInput
+        label="後続事象戦略"
+        items={planning.consequenceStrategies}
+        onChange={(items) => onChange({ ...planning, consequenceStrategies: items })}
+        placeholder="例: 正の強化、代替行動の強化"
+      />
+
+      <Divider />
+
+      {/* ── 支援手順 ── */}
+      <Box>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+          <Typography variant="subtitle2" fontWeight={500}>支援手順</Typography>
+          <Stack direction="row" spacing={1}>
+            <Button size="small" variant="outlined" onClick={() => setImportOpen(true)}>
+              テンプレートから取り込み
+            </Button>
+            <Button size="small" startIcon={<AddCircleOutlineRoundedIcon />} onClick={addStep}>
+              ステップ追加
+            </Button>
+          </Stack>
+        </Stack>
+        <Stack spacing={1.5}>
+          {planning.procedureSteps.map((step, i) => (
+            <Paper key={i} variant="outlined" sx={{ p: 1.5 }}>
+              <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                <Chip size="small" label={`${step.order}`} variant="outlined" sx={{ mt: 0.5, minWidth: 32 }} />
+                <Stack spacing={1} sx={{ flex: 1 }}>
+                  <TextField
+                    label="手順内容"
+                    value={step.instruction}
+                    onChange={(e) => updateStep(i, { instruction: e.target.value })}
+                    fullWidth size="small" required
+                  />
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                    <TextField
+                      label="担当者"
+                      value={step.staff}
+                      onChange={(e) => updateStep(i, { staff: e.target.value })}
+                      fullWidth size="small"
+                    />
+                    <TextField
+                      label="タイミング"
+                      value={step.timing}
+                      onChange={(e) => updateStep(i, { timing: e.target.value })}
+                      fullWidth size="small"
+                    />
+                  </Stack>
+                </Stack>
+                <Tooltip title="削除">
+                  <IconButton size="small" onClick={() => removeStep(i)} color="error" sx={{ mt: 0.5 }}>
+                    <DeleteOutlineRoundedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+            </Paper>
+          ))}
+          {planning.procedureSteps.length === 0 && (
+            <Typography variant="body2" color="text.disabled">手順がまだ登録されていません</Typography>
+          )}
+        </Stack>
+      </Box>
+
+      <Divider />
+
+      {/* ── 見直し周期 ── */}
+      <TextField
+        label="見直し周期（日）"
+        type="number"
+        value={planning.reviewCycleDays}
+        onChange={(e) => onChange({ ...planning, reviewCycleDays: parseInt(e.target.value, 10) || 180 })}
+        inputProps={{ min: 1 }}
+        size="small" sx={{ maxWidth: 200 }}
+      />
+
+      {/* インポートダイアログ */}
+      <ImportTemplateDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImport={handleImport}
+        existingStepCount={planning.procedureSteps.length}
+      />
+    </Stack>
+  );
+};

@@ -1,6 +1,10 @@
 # AI開発エージェント向け: ISP三層モデル設計プロトコル
 
-> **ADR-005 準拠** — [ADR-005](./adr/ADR-005-isp-three-layer-separation.md) で Accepted された設計原則
+> **ADR-005 + ADR-006 準拠**
+> - [ADR-005](./adr/ADR-005-isp-three-layer-separation.md) — 三層構造の採用判断
+> - [ADR-006](./adr/ADR-006-screen-responsibility-boundaries.md) — 画面責務・Iceberg 位置・AI 禁止事項の厳密定義
+> - **[圧縮ルール版](./architecture/isp-three-layer-rules.md)** — 迷ったらまずこの 1 ページ
+> - [実装構造マップ](./architecture/isp-three-layer-code-structure.md) — コード構造の完全対応図
 
 このドキュメントは、本プロジェクトの AI 開発エージェント（Copilot, Cursor, Gemini, Claude 等）が ISP 関連機能を提案・設計・実装する際に 必ず 従うべき設計プロトコルです。
 
@@ -131,12 +135,23 @@ ISP
 
 以下を提案してはいけない。
 
+### データモデル（ADR-005）
+
 - ❌ ISP だけで現場手順まで完結させる設計
 - ❌ 支援計画シートをメモ扱いする設計
 - ❌ 支援手順書兼記録を単なる日報扱いする設計
 - ❌ 同意、交付、モニタリング、見直しの証跡を持たない設計
 - ❌ 版管理や履歴を持たない設計
 - ❌ 監査時に説明不能な設計
+
+### 画面責務・Iceberg・Evidence（ADR-006）
+
+- ❌ 支援計画シートを ISP フォーム内に埋め込む（別画面・別 Repository・別ライフサイクル）
+- ❌ Daily 画面に支援計画シートの編集機能を追加する（Daily は実行と記録のみ）
+- ❌ Iceberg 分析を ISP に直接紐付ける（Iceberg は PlanningSheet に紐づく）
+- ❌ `IcebergPdcaItem.ispId` のようなフィールドを追加する
+- ❌ evidence source を画面ごとに分岐させる（`useIcebergEvidence` に統一）
+- ❌ ISP 画面で行動分析・仮説・支援課題を直接編集する
 
 ---
 
@@ -148,10 +163,32 @@ ISP
 
 ---
 
+## 画面責務の概要（ADR-006 抜粋）
+
+| 画面 | ルート | 責務 | 扱わないもの |
+|------|--------|------|-------------|
+| ISP | `/support-plan-guide` | ISP 作成・見直し、モニタリング管理 | 行動分析、支援手順、実施記録 |
+| 支援計画シート | `/support-planning-sheet/:id` | 支援設計、Iceberg 接続 | ISP 本文編集 |
+| Daily | `/daily/support` | 支援実行・記録 | ISP・支援計画シート編集 |
+| RegulatoryDashboard | `/admin/regulatory-dashboard` | 制度遵守チェック・根拠提示 | データ編集 |
+
+## Iceberg の紐付け先
+
+```
+PlanningSheet ←── IcebergPdcaItem.planningSheetId
+```
+
+Iceberg は **ISP ではなく PlanningSheet** に紐づく。
+これは Iceberg が行動分析・仮説に関する分析であり、支援計画シートの根拠だからである。
+
+---
+
 ## 参照
 
 - [ADR-005: ISP三層分離](./adr/ADR-005-isp-three-layer-separation.md)
+- [ADR-006: 画面責務・Iceberg 位置の厳密定義](./adr/ADR-006-screen-responsibility-boundaries.md)
 - [GitHub Issue](./generated-issues/feat-isp-three-layer-model.md)
 - [ibdTypes.ts](../src/features/ibd/core/ibdTypes.ts) — 既存の第2層・第3層型定義
 - [supportPlanFields.ts](../src/sharepoint/fields/supportPlanFields.ts) — SharePoint ISP フィールド
 - [ispGoalMapper.ts](../src/sharepoint/ispGoalMapper.ts) — ISP 目標管理ロジック
+- [useIcebergEvidence.ts](../src/features/ibd/analysis/pdca/queries/useIcebergEvidence.ts) — 統一 evidence source

@@ -49,6 +49,7 @@ import {
   type IcebergEvidenceBySheet,
 } from '@/domain/regulatory/findingEvidenceSummary';
 import SafetyOperationsSummaryCard from '@/features/safety/components/SafetyOperationsSummaryCard';
+import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIcebergEvidence';
 
 // ─────────────────────────────────────────────
 // デモデータ
@@ -340,7 +341,15 @@ const RegulatoryDashboardPage: React.FC = () => {
   // デモモード: サンプルデータで動作確認
   const findings = useMemo(() => generateDemoFindings(), []);
   const summary = useMemo(() => summarizeFindings(findings), [findings]);
-  const icebergEvidence = useMemo(() => generateDemoIcebergEvidence(), []);
+
+  // P2: Iceberg 実データ接続 — useIcebergEvidence + デモフォールバック
+  const demoUserId = findings[0]?.userId ?? null;
+  const { data: liveEvidence, isLoading: isEvidenceLoading } = useIcebergEvidence(demoUserId);
+  const isLiveData = liveEvidence !== null && !isEvidenceLoading;
+  const icebergEvidence = useMemo(
+    () => liveEvidence ?? generateDemoIcebergEvidence(),
+    [liveEvidence],
+  );
   const evidenceMap = useMemo(
     () => resolveAllFindingEvidence(findings, icebergEvidence),
     [findings, icebergEvidence],
@@ -359,6 +368,13 @@ const RegulatoryDashboardPage: React.FC = () => {
             支援計画シートの制度要件充足状況と監査リスクを一覧表示
           </Typography>
         </Box>
+        <Chip
+          label={isEvidenceLoading ? '根拠データ読込中…' : isLiveData ? 'Live データ' : 'デモデータ'}
+          size="small"
+          color={isLiveData ? 'success' : 'default'}
+          variant={isLiveData ? 'filled' : 'outlined'}
+          sx={{ ml: 'auto', fontWeight: 600, fontSize: '0.7rem' }}
+        />
       </Box>
 
       {/* 集計カード */}
