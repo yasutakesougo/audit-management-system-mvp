@@ -162,4 +162,5 @@ const RegulatoryDashboardPage = React.lazy(() => import('@/pages/RegulatoryDashb
 export const SuspendedRegulatoryDashboardPage = createSuspended(RegulatoryDashboardPage, '制度遵守ダッシュボードを読み込んでいます…');
 const ComplianceDashboardPage = React.lazy(() => import('@/pages/admin/ComplianceDashboardPage'));
 export const SuspendedComplianceDashboardPage = createSuspended(ComplianceDashboardPage, '適正化運用ダッシュボードを読み込んでいます…');
-
+const OperationFlowSettingsPage = React.lazy(() => import('@/features/settings/pages/OperationFlowSettingsPage'));
+export const SuspendedOperationFlowSettingsPage = createSuspended(OperationFlowSettingsPage, '1日の流れ設定を読み込んでいます…');
