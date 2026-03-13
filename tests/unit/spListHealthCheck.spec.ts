@@ -12,8 +12,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // ---------------------------------------------------------------------------
 
 describe('SP_LIST_REGISTRY', () => {
-  it('should contain exactly 25 list entries', () => {
-    expect(SP_LIST_REGISTRY).toHaveLength(25);
+  it('should contain exactly 26 list entries', () => {
+    expect(SP_LIST_REGISTRY).toHaveLength(26);
   });
 
   it('should have unique keys', () => {
