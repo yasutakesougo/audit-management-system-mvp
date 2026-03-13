@@ -11,6 +11,7 @@
  */
 import { TESTIDS, tid } from '@/testids';
 import {
+  FilterList as FilterListIcon,
   Nightlight as EveningIcon,
   Groups as MeetingIcon,
   Person as PersonIcon,
@@ -25,10 +26,17 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import HandoffCategorySummaryCard from '../HandoffCategorySummaryCard';
 import { TodayHandoffTimelineList } from '../TodayHandoffTimelineList';
 import { HandoffUserGroupedView } from '../components/HandoffUserGroupedView';
+// TODO: Step B — MeetingModeSuggestionBanner を #897 マージ後に統合
+import {
+  filterHandoffsByStatus,
+  getFilteredCountInfo,
+  STATUS_FILTER_LABELS,
+  type HandoffStatusFilter,
+} from '../domain/filterHandoffsByStatus';
 import { HANDOFF_TIME_FILTER_LABELS } from '../handoffTypes';
 import type { HandoffDayScope, MeetingMode } from '../handoffTypes';
 import { addDays, formatDateLocal } from '../hooks/useHandoffDateNav';
@@ -71,6 +79,9 @@ export function HandoffDayView({
     fromToday ? 'grouped' : 'timeline',
   );
 
+  // ── ステータスフィルタ（デフォルト: 要対応 = 未対応+対応中） ──
+  const [statusFilter, setStatusFilter] = useState<HandoffStatusFilter>('actionRequired');
+
   // VM: timeFilter / meetingMode / workflowActions
   const {
     timeFilter,
@@ -101,6 +112,8 @@ export function HandoffDayView({
     [vmHandleMeetingModeChange, goToDate, goToToday],
   );
 
+  // TODO: Step B — onAcceptSuggestion を #897 マージ後に追加
+
   // データ取得
   const {
     todayHandoffs,
@@ -109,11 +122,23 @@ export function HandoffDayView({
     updateHandoffStatus,
   } = useHandoffTimeline(timeFilter, dayScope);
 
+  // ── ステータスフィルタ適用 ──
+  const filteredHandoffs = useMemo(
+    () => filterHandoffsByStatus(todayHandoffs, statusFilter),
+    [todayHandoffs, statusFilter],
+  );
+  const filteredCountInfo = useMemo(
+    () => getFilteredCountInfo(todayHandoffs.length, filteredHandoffs.length, statusFilter),
+    [todayHandoffs.length, filteredHandoffs.length, statusFilter],
+  );
+
   // DI 注入
   injectDI({ updateHandoffStatus, currentRecords: todayHandoffs });
 
   return (
     <>
+      {/* TODO: Step B — MeetingModeSuggestionBanner を #897 マージ後に配置 */}
+
       {/* ── Day 固有フィルタ群 ── */}
       <Box
         sx={{
@@ -186,6 +211,27 @@ export function HandoffDayView({
             利用者別
           </ToggleButton>
         </ToggleButtonGroup>
+
+        {/* ステータスフィルタ */}
+        <ToggleButtonGroup
+          value={statusFilter}
+          exclusive
+          onChange={(_, v) => { if (v) setStatusFilter(v as HandoffStatusFilter); }}
+          size="small"
+          color="primary"
+          data-testid="handoff-status-filter"
+        >
+          <ToggleButton value="actionRequired" data-testid="handoff-filter-action">
+            <FilterListIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+            {STATUS_FILTER_LABELS.actionRequired}
+          </ToggleButton>
+          <ToggleButton value="pending" data-testid="handoff-filter-pending">
+            {STATUS_FILTER_LABELS.pending}
+          </ToggleButton>
+          <ToggleButton value="all" data-testid="handoff-filter-all">
+            {STATUS_FILTER_LABELS.all}
+          </ToggleButton>
+        </ToggleButtonGroup>
       </Box>
 
       {/* ── Stats サマリー ── */}
@@ -209,7 +255,7 @@ export function HandoffDayView({
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
             📊 {dateLabel}の申し送り状況
           </Typography>
-          <Typography variant="body2">全{handoffStats.total}件</Typography>
+          <Typography variant="body2">{filteredCountInfo.label}</Typography>
           {handoffStats.pending > 0 && (
             <Chip size="small" label={`未対応 ${handoffStats.pending}件`} />
           )}
@@ -218,6 +264,16 @@ export function HandoffDayView({
           )}
           {handoffStats.completed > 0 && (
             <Chip size="small" label={`対応済 ${handoffStats.completed}件`} color="success" />
+          )}
+          {filteredCountInfo.isFiltered && (
+            <Chip
+              size="small"
+              label="フィルタ中"
+              color="info"
+              variant="outlined"
+              onDelete={() => setStatusFilter('all')}
+              sx={{ height: 24 }}
+            />
           )}
         </Box>
       )}
@@ -244,7 +300,7 @@ export function HandoffDayView({
           </Typography>
           {displayMode === 'timeline' ? (
             <TodayHandoffTimelineList
-              items={todayHandoffs}
+              items={filteredHandoffs}
               loading={timelineLoading}
               error={timelineError}
               updateHandoffStatus={updateHandoffStatus}
@@ -255,7 +311,7 @@ export function HandoffDayView({
             />
           ) : (
             <HandoffUserGroupedView
-              items={todayHandoffs}
+              items={filteredHandoffs}
               loading={timelineLoading}
               error={timelineError}
               updateHandoffStatus={updateHandoffStatus}

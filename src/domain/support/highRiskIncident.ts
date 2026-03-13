@@ -146,11 +146,12 @@ export function deriveSuggestedFunction(
 /**
  * Save high-risk incident to storage.
  *
- * Repository パターンで永続化。デフォルトは LocalStorage アダプタを使用。
- * 将来 SharePoint アダプタに切り替え可能。
+ * Repository パターンで永続化。具体的なアダプタは呼び出し側から注入する。
+ * Domain 層は Infra 層に依存しない（Ports & Adapters 準拠）。
  */
 export async function saveHighRiskIncident(
   incident: HighRiskIncident,
+  repository: import('./incidentRepository').IncidentRepository,
   options?: {
     reportedBy?: string;
     incidentType?: import('./incidentRepository').IncidentType;
@@ -162,7 +163,6 @@ export async function saveHighRiskIncident(
   },
 ): Promise<HighRiskIncident> {
   const { createIncidentRecord } = await import('./incidentRepository');
-  const { localIncidentRepository } = await import('@/infra/localStorage/localIncidentRepository');
 
   const record = createIncidentRecord(incident, {
     reportedBy: options?.reportedBy ?? 'システム',
@@ -174,7 +174,7 @@ export async function saveHighRiskIncident(
     followUpNotes: options?.followUpNotes,
   });
 
-  const saved = await localIncidentRepository.save(record);
+  const saved = await repository.save(record);
   return saved;
 }
 

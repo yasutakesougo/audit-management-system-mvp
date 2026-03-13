@@ -22,6 +22,7 @@ const NAV_TESTIDS = {
   todayOps: 'nav-today-ops',
   roomManagement: 'nav-room-management',
   operationFlowSettings: 'nav-operation-flow-settings',
+  planningSheet: 'nav-planning-sheet',
 } as const;
 
 const FOOTER_TESTIDS = {
@@ -444,6 +445,11 @@ export const TESTIDS = {
 
   // Support Plan Guide HUD
   'support-plan-hud': 'support-plan-hud',
+
+  // Planning Sheet Page (L2)
+  'planning-sheet-page': 'planning-sheet-page',
+  'planning-sheet-header': 'planning-sheet-header',
+  'planning-sheet-tabs': 'planning-sheet-tabs',
 
   // Safety: Physical Restraint (P0-2)
   'safety-restraint-dialog': 'safety-restraint-dialog',

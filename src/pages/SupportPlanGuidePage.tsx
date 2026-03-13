@@ -9,10 +9,13 @@ declare global {
 }
 import { canAccess } from '@/auth/roles';
 import { useUserAuthz } from '@/auth/useUserAuthz';
+import { useCurrentPlanningSheet } from '@/features/planning-sheet/hooks/useCurrentPlanningSheet';
+import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { useIspRepositories } from '@/features/support-plan-guide/hooks/useIspRepositories';
 import { useRegulatorySummary } from '@/features/support-plan-guide/hooks/useRegulatorySummary';
 import { useSupportPlanBundle } from '@/features/support-plan-guide/hooks/useSupportPlanBundle';
 import { useSupportPlanForm } from '@/features/support-plan-guide/hooks/useSupportPlanForm';
+import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIcebergEvidence';
 import type {
     SectionKey,
     SupportPlanDraft
@@ -289,7 +292,26 @@ export default function SupportPlanGuidePage() {
   const ispRepos = useIspRepositories();
   const regulatoryUserId = activeDraft?.userId != null ? String(activeDraft.userId) : null;
   const { bundle: realBundle } = useSupportPlanBundle(regulatoryUserId, ispRepos);
-  const { bundle: regulatoryBundle, userId: linkedUserId, isAvailable: regulatoryAvailable } = useRegulatorySummary(activeDraft, realBundle);
+
+  // ── Phase D: Iceberg 実データ接続 — Dashboard と同じ evidence source を使用 ──
+  const { data: icebergEvidence } = useIcebergEvidence(regulatoryUserId);
+  const mergedBundle = React.useMemo(() => {
+    if (!realBundle) return null;
+    // Iceberg 分析の実データがあれば sessionCount で上書き
+    if (icebergEvidence) {
+      return {
+        ...realBundle,
+        icebergCountBySheet: icebergEvidence.sessionCount,
+      };
+    }
+    return realBundle;
+  }, [realBundle, icebergEvidence]);
+
+  const { bundle: regulatoryBundle, userId: linkedUserId, isAvailable: regulatoryAvailable } = useRegulatorySummary(activeDraft, mergedBundle);
+
+  // ── Planning Sheet 動的遷移 ──
+  const planningSheetRepo = usePlanningSheetRepositories();
+  const { currentSheet: _currentSheet, allCurrentSheets: _allCurrentSheets, isLoading: _isLoadingSheets } = useCurrentPlanningSheet(regulatoryUserId, planningSheetRepo);
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, pb: 4 }}>

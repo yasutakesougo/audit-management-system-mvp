@@ -143,6 +143,37 @@ describe('localIncidentRepository', () => {
       expect(await localIncidentRepository.getAll()).toHaveLength(0);
     });
   });
+
+  describe('FIFO', () => {
+    it('MAX_RECORDS(500)を超えると古いレコードが削除される', async () => {
+      // 502 件保存 → 500 件に切り詰められるはず
+      for (let i = 0; i < 502; i++) {
+        await localIncidentRepository.save(
+          baseRecord({ id: `fifo_${String(i).padStart(4, '0')}` } as Partial<IncidentRecord>),
+        );
+      }
+
+      const all = await localIncidentRepository.getAll();
+      expect(all).toHaveLength(500);
+
+      // 最新(fifo_0501)が先頭にある
+      expect(all[0].id).toBe('fifo_0501');
+      // 最古(fifo_0000, fifo_0001)は削除されている
+      expect(all.find((r) => r.id === 'fifo_0000')).toBeUndefined();
+      expect(all.find((r) => r.id === 'fifo_0001')).toBeUndefined();
+    });
+
+    it('ちょうど MAX_RECORDS の場合はすべて保持される', async () => {
+      for (let i = 0; i < 500; i++) {
+        await localIncidentRepository.save(
+          baseRecord({ id: `exact_${i}` } as Partial<IncidentRecord>),
+        );
+      }
+
+      const all = await localIncidentRepository.getAll();
+      expect(all).toHaveLength(500);
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
