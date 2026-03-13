@@ -61,6 +61,14 @@ import {
   riskLevelSchema,
   restraintPolicySchema,
   procedureStepSchema,
+  // === A-1: ISP コンプライアンスメタデータ ===
+  ispConsentDetailSchema,
+  ispDeliveryDetailSchema,
+  ispReviewControlSchema,
+  ispComplianceMetadataSchema,
+  isIspReviewOverdue,
+  computeIspReviewOverdueDays,
+  validateStandardServiceHours,
 } from '@/domain/isp';
 
 // ─────────────────────────────────────────────
@@ -1315,5 +1323,302 @@ describe('実務モデル: ドメインモデル統合', () => {
     expect(result.IntakeJson).toBeNull();
     expect(result.AssessmentJson).toBeNull();
     expect(result.PlanningJson).toBeNull();
+  });
+});
+
+// ─────────────────────────────────────────────
+// A-1: ISP コンプライアンスメタデータ
+// ─────────────────────────────────────────────
+
+describe('ISP コンプライアンスメタデータ (A-1)', () => {
+  // ── サブスキーマのデフォルト値 ──
+
+  describe('ispConsentDetailSchema', () => {
+    it('空オブジェクトからデフォルトが生成される', () => {
+      const result = ispConsentDetailSchema.parse(undefined);
+      expect(result).toEqual({
+        explainedAt: null,
+        explainedBy: '',
+        consentedAt: null,
+        consentedBy: '',
+        proxyName: '',
+        proxyRelation: '',
+        notes: '',
+      });
+    });
+
+    it('部分的な入力でもデフォルト補完される', () => {
+      const result = ispConsentDetailSchema.parse({
+        explainedAt: '2026-04-01T10:00:00Z',
+        consentedBy: '田中太郎',
+      });
+      expect(result.explainedAt).toBe('2026-04-01T10:00:00Z');
+      expect(result.consentedBy).toBe('田中太郎');
+      expect(result.proxyName).toBe('');
+    });
+  });
+
+  describe('ispDeliveryDetailSchema', () => {
+    it('空オブジェクトからデフォルトが生成される', () => {
+      const result = ispDeliveryDetailSchema.parse(undefined);
+      expect(result).toEqual({
+        deliveredAt: null,
+        deliveredToUser: false,
+        deliveredToConsultationSupport: false,
+        deliveryMethod: '',
+        notes: '',
+      });
+    });
+
+    it('交付情報を設定できる', () => {
+      const result = ispDeliveryDetailSchema.parse({
+        deliveredAt: '2026-04-05T10:00:00Z',
+        deliveredToUser: true,
+        deliveredToConsultationSupport: true,
+        deliveryMethod: '手渡し',
+      });
+      expect(result.deliveredToUser).toBe(true);
+      expect(result.deliveredToConsultationSupport).toBe(true);
+      expect(result.deliveryMethod).toBe('手渡し');
+    });
+  });
+
+  describe('ispReviewControlSchema', () => {
+    it('空オブジェクトからデフォルト（180日）が生成される', () => {
+      const result = ispReviewControlSchema.parse(undefined);
+      expect(result.reviewCycleDays).toBe(180);
+      expect(result.lastReviewedAt).toBeNull();
+      expect(result.nextReviewDueAt).toBeNull();
+      expect(result.reviewReason).toBe('');
+    });
+
+    it('見直し周期を変更できる', () => {
+      const result = ispReviewControlSchema.parse({
+        reviewCycleDays: 90,
+        lastReviewedAt: '2026-01-01',
+        nextReviewDueAt: '2026-04-01',
+        reviewReason: '行動上の課題が顕著',
+      });
+      expect(result.reviewCycleDays).toBe(90);
+      expect(result.reviewReason).toBe('行動上の課題が顕著');
+    });
+
+    it('reviewCycleDays が 0 以下の場合エラー', () => {
+      expect(() => ispReviewControlSchema.parse({ reviewCycleDays: 0 })).toThrow();
+    });
+  });
+
+  describe('ispComplianceMetadataSchema', () => {
+    it('undefinedからフルデフォルトが生成される', () => {
+      const result = ispComplianceMetadataSchema.parse(undefined);
+      expect(result.serviceType).toBe('other');
+      expect(result.standardServiceHours).toBeNull();
+      expect(result.consent.explainedAt).toBeNull();
+      expect(result.delivery.deliveredToUser).toBe(false);
+      expect(result.reviewControl.reviewCycleDays).toBe(180);
+    });
+
+    it('生活介護のフル入力を受け付ける', () => {
+      const full = {
+        serviceType: 'daily_life_care' as const,
+        standardServiceHours: 6.5,
+        consent: {
+          explainedAt: '2026-04-01T10:00:00Z',
+          explainedBy: '山田花子',
+          consentedAt: '2026-04-01T10:30:00Z',
+          consentedBy: '田中太郎',
+          proxyName: '田中次郎',
+          proxyRelation: '兄',
+          notes: '代理同意',
+        },
+        delivery: {
+          deliveredAt: '2026-04-05T00:00:00Z',
+          deliveredToUser: true,
+          deliveredToConsultationSupport: true,
+          deliveryMethod: '手渡し',
+          notes: '',
+        },
+        reviewControl: {
+          reviewCycleDays: 180,
+          lastReviewedAt: '2026-04-01',
+          nextReviewDueAt: '2026-10-01',
+          reviewReason: '',
+        },
+      };
+      const result = ispComplianceMetadataSchema.parse(full);
+      expect(result.serviceType).toBe('daily_life_care');
+      expect(result.standardServiceHours).toBe(6.5);
+      expect(result.consent.proxyRelation).toBe('兄');
+      expect(result.delivery.deliveredToConsultationSupport).toBe(true);
+    });
+
+    it('不正な serviceType はエラー', () => {
+      expect(() =>
+        ispComplianceMetadataSchema.parse({ serviceType: 'invalid' }),
+      ).toThrow();
+    });
+  });
+
+  // ── 後方互換: compliance 未指定の ISP ──
+
+  describe('後方互換性', () => {
+    it('ispFormSchema: compliance 無しでもパースできる', () => {
+      const input = makeIspFormInput();
+      // compliance を明示的に渡さない
+      expect(input).not.toHaveProperty('compliance');
+      const result = ispFormSchema.parse(input);
+      // compliance は undefined（optional）
+      expect(result.userId).toBe('U001');
+    });
+
+    it('individualSupportPlanSchema: compliance 無しでもパースできる', () => {
+      const input = {
+        ...baseAudit,
+        userId: 'U001',
+        title: 'テスト計画',
+        planStartDate: '2026-04-01',
+        planEndDate: '2027-03-31',
+        userIntent: '意向',
+        familyIntent: '',
+        overallSupportPolicy: '方針',
+        qolIssues: '',
+        longTermGoals: ['目標'],
+        shortTermGoals: ['短期'],
+        supportSummary: '',
+        precautions: '',
+        consentAt: null,
+        deliveredAt: null,
+        monitoringSummary: '',
+        lastMonitoringAt: null,
+        nextReviewAt: null,
+        status: 'assessment' as const,
+        isCurrent: true,
+        // compliance は渡さない
+      };
+      const result = individualSupportPlanSchema.parse(input);
+      // Zod の .default() が効くため、デフォルト値が入る
+      expect(result.compliance).toBeDefined();
+      expect(result.compliance?.serviceType).toBe('other');
+      expect(result.compliance?.reviewControl.reviewCycleDays).toBe(180);
+    });
+
+    it('ispFormSchema: compliance 付きでもパースできる', () => {
+      const input = makeIspFormInput({
+        compliance: {
+          serviceType: 'daily_life_care',
+          standardServiceHours: 6.0,
+          consent: { consentedBy: '田中太郎' },
+          delivery: { deliveredToUser: true },
+          reviewControl: { reviewCycleDays: 180 },
+        },
+      });
+      const result = ispFormSchema.parse(input);
+      expect(result.compliance?.serviceType).toBe('daily_life_care');
+      expect(result.compliance?.consent.consentedBy).toBe('田中太郎');
+    });
+  });
+
+  // ── SharePoint 行: ComplianceJson ──
+
+  describe('ispSpRowSchema ComplianceJson', () => {
+    it('ComplianceJson が null でも正常', () => {
+      const row = makeIspSpRow({ ComplianceJson: null });
+      const result = ispSpRowSchema.parse(row);
+      expect(result.ComplianceJson).toBeNull();
+    });
+
+    it('ComplianceJson に JSON 文字列を保存できる', () => {
+      const compliance = {
+        serviceType: 'daily_life_care',
+        standardServiceHours: 6.5,
+      };
+      const row = makeIspSpRow({ ComplianceJson: JSON.stringify(compliance) });
+      const result = ispSpRowSchema.parse(row);
+      expect(result.ComplianceJson).toBe(JSON.stringify(compliance));
+    });
+  });
+
+  // ── ユーティリティ関数 ──
+
+  describe('isIspReviewOverdue', () => {
+    it('compliance が undefined → false', () => {
+      expect(isIspReviewOverdue(undefined)).toBe(false);
+    });
+
+    it('nextReviewDueAt が null → false', () => {
+      const c = ispComplianceMetadataSchema.parse(undefined);
+      expect(isIspReviewOverdue(c)).toBe(false);
+    });
+
+    it('期限内 → false', () => {
+      const c = ispComplianceMetadataSchema.parse({
+        reviewControl: { nextReviewDueAt: '2026-10-01' },
+      });
+      expect(isIspReviewOverdue(c, '2026-09-30')).toBe(false);
+    });
+
+    it('当日 → false（当日は超過ではない）', () => {
+      const c = ispComplianceMetadataSchema.parse({
+        reviewControl: { nextReviewDueAt: '2026-10-01' },
+      });
+      expect(isIspReviewOverdue(c, '2026-10-01')).toBe(false);
+    });
+
+    it('翌日 → true（超過）', () => {
+      const c = ispComplianceMetadataSchema.parse({
+        reviewControl: { nextReviewDueAt: '2026-10-01' },
+      });
+      expect(isIspReviewOverdue(c, '2026-10-02')).toBe(true);
+    });
+  });
+
+  describe('computeIspReviewOverdueDays', () => {
+    it('compliance が undefined → null', () => {
+      expect(computeIspReviewOverdueDays(undefined)).toBeNull();
+    });
+
+    it('期限内 → 0', () => {
+      const c = ispComplianceMetadataSchema.parse({
+        reviewControl: { nextReviewDueAt: '2026-10-01' },
+      });
+      expect(computeIspReviewOverdueDays(c, '2026-09-15')).toBe(0);
+    });
+
+    it('3日超過 → 3', () => {
+      const c = ispComplianceMetadataSchema.parse({
+        reviewControl: { nextReviewDueAt: '2026-10-01' },
+      });
+      expect(computeIspReviewOverdueDays(c, '2026-10-04')).toBe(3);
+    });
+  });
+
+  describe('validateStandardServiceHours', () => {
+    it('null → null（未入力は許容）', () => {
+      expect(validateStandardServiceHours(null)).toBeNull();
+    });
+
+    it('undefined → null', () => {
+      expect(validateStandardServiceHours(undefined)).toBeNull();
+    });
+
+    it('正常値 → null', () => {
+      expect(validateStandardServiceHours(6.5)).toBeNull();
+    });
+
+    it('0 → null（0時間も有効）', () => {
+      expect(validateStandardServiceHours(0)).toBeNull();
+    });
+
+    it('負の値 → エラーメッセージ', () => {
+      expect(validateStandardServiceHours(-1)).toContain('0 以上');
+    });
+
+    it('24超 → エラーメッセージ', () => {
+      expect(validateStandardServiceHours(25)).toContain('24 時間以内');
+    });
+
+    it('24.0 → null（ちょうど24は許容）', () => {
+      expect(validateStandardServiceHours(24)).toBeNull();
+    });
   });
 });

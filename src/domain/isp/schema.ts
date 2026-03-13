@@ -82,6 +82,148 @@ export const ISP_TRANSITIONS: Record<IspStatus, readonly IspStatus[]> = {
   closed: [],
 } as const;
 
+// ─────────────────────────────────────────────
+// 対象サービス種別（ISP コンプライアンスで先行参照するため最上位定義）
+// ─────────────────────────────────────────────
+
+/** 対象サービス種別 */
+export const applicableServiceTypeValues = [
+  'daily_life_care',          // 生活介護
+  'residential_support',      // 施設入所支援
+  'short_stay',               // 短期入所
+  'group_home',               // 共同生活援助
+  'behavior_support',         // 行動援護
+  'home_care',                // 居宅介護
+  'other',
+] as const;
+
+export const applicableServiceTypeSchema = z.enum(applicableServiceTypeValues);
+export type ApplicableServiceType = z.infer<typeof applicableServiceTypeSchema>;
+
+export const SERVICE_TYPE_DISPLAY: Record<ApplicableServiceType, string> = {
+  daily_life_care: '生活介護',
+  residential_support: '施設入所支援',
+  short_stay: '短期入所',
+  group_home: '共同生活援助',
+  behavior_support: '行動援護',
+  home_care: '居宅介護',
+  other: 'その他',
+} as const;
+
+// ─────────────────────────────────────────────
+// ISP コンプライアンスメタデータ（生活介護対応）
+// ─────────────────────────────────────────────
+
+/** 同意記録の詳細（生活介護制度要件） */
+export const ispConsentDetailSchema = z.object({
+  /** 説明実施日（ISO 8601） */
+  explainedAt: z.string().nullable().default(null),
+  /** 説明実施者名 */
+  explainedBy: z.string().default(''),
+  /** 同意取得日（ISO 8601） */
+  consentedAt: z.string().nullable().default(null),
+  /** 同意者名 */
+  consentedBy: z.string().default(''),
+  /** 代理人名（家族等が同意した場合） */
+  proxyName: z.string().default(''),
+  /** 代理人続柄 */
+  proxyRelation: z.string().default(''),
+  /** 備考 */
+  notes: z.string().default(''),
+}).default({
+  explainedAt: null,
+  explainedBy: '',
+  consentedAt: null,
+  consentedBy: '',
+  proxyName: '',
+  proxyRelation: '',
+  notes: '',
+});
+
+export type IspConsentDetail = z.infer<typeof ispConsentDetailSchema>;
+
+/** 交付記録の詳細（生活介護制度要件） */
+export const ispDeliveryDetailSchema = z.object({
+  /** 交付日（ISO 8601） */
+  deliveredAt: z.string().nullable().default(null),
+  /** 本人へ交付済み */
+  deliveredToUser: z.boolean().default(false),
+  /** 相談支援専門員へ交付済み */
+  deliveredToConsultationSupport: z.boolean().default(false),
+  /** 交付方法 */
+  deliveryMethod: z.string().default(''),
+  /** 備考 */
+  notes: z.string().default(''),
+}).default({
+  deliveredAt: null,
+  deliveredToUser: false,
+  deliveredToConsultationSupport: false,
+  deliveryMethod: '',
+  notes: '',
+});
+
+export type IspDeliveryDetail = z.infer<typeof ispDeliveryDetailSchema>;
+
+/** 見直し制御（6か月ルール） */
+export const ispReviewControlSchema = z.object({
+  /** 見直し周期（日） — 生活介護は原則 180日（6か月） */
+  reviewCycleDays: z.number().int().min(1).default(180),
+  /** 前回見直し実施日（ISO 8601） */
+  lastReviewedAt: z.string().nullable().default(null),
+  /** 次回見直し期限（ISO 8601） */
+  nextReviewDueAt: z.string().nullable().default(null),
+  /** 見直し理由 */
+  reviewReason: z.string().default(''),
+}).default({
+  reviewCycleDays: 180,
+  lastReviewedAt: null,
+  nextReviewDueAt: null,
+  reviewReason: '',
+});
+
+export type IspReviewControl = z.infer<typeof ispReviewControlSchema>;
+
+/** ISP コンプライアンスメタデータ（生活介護 ISP の監査対応項目を集約） */
+export const ispComplianceMetadataSchema = z.object({
+  /** サービス種別 */
+  serviceType: applicableServiceTypeSchema.default('other'),
+  /** 標準的な支援提供時間（時間単位、例: 6.5） */
+  standardServiceHours: z.number().min(0).nullable().default(null),
+  /** 同意記録詳細 */
+  consent: ispConsentDetailSchema,
+  /** 交付記録詳細 */
+  delivery: ispDeliveryDetailSchema,
+  /** 見直し制御 */
+  reviewControl: ispReviewControlSchema,
+}).default({
+  serviceType: 'other',
+  standardServiceHours: null,
+  consent: {
+    explainedAt: null,
+    explainedBy: '',
+    consentedAt: null,
+    consentedBy: '',
+    proxyName: '',
+    proxyRelation: '',
+    notes: '',
+  },
+  delivery: {
+    deliveredAt: null,
+    deliveredToUser: false,
+    deliveredToConsultationSupport: false,
+    deliveryMethod: '',
+    notes: '',
+  },
+  reviewControl: {
+    reviewCycleDays: 180,
+    lastReviewedAt: null,
+    nextReviewDueAt: null,
+    reviewReason: '',
+  },
+});
+
+export type IspComplianceMetadata = z.infer<typeof ispComplianceMetadataSchema>;
+
 /** ISP のフォーム入力バリデーション */
 export const ispFormSchema = z.object({
   userId: z.string().min(1, '利用者は必須です'),
@@ -102,6 +244,9 @@ export const ispFormSchema = z.object({
   precautions: z.string().max(2000).default(''),
 
   status: ispStatusSchema.default('assessment'),
+
+  // ── 生活介護コンプライアンスメタデータ ──
+  compliance: ispComplianceMetadataSchema.optional(),
 });
 
 export type IspFormValues = z.infer<typeof ispFormSchema>;
@@ -134,6 +279,9 @@ export const individualSupportPlanSchema = baseAuditFieldsSchema.extend({
 
   status: ispStatusSchema,
   isCurrent: z.boolean().default(true),
+
+  // ── 生活介護コンプライアンスメタデータ（A-1 追加） ──
+  compliance: ispComplianceMetadataSchema.optional(),
 });
 
 export type IndividualSupportPlan = z.infer<typeof individualSupportPlanSchema>;
@@ -154,6 +302,8 @@ export const ispSpRowSchema = z.object({
   DeliveredAt: z.string().nullable().default(null),
   LastMonitoringAt: z.string().nullable().default(null),
   NextReviewAt: z.string().nullable().default(null),
+  // ── 生活介護コンプライアンス ──
+  ComplianceJson: z.string().nullable().default(null),
   Created: z.string().nullable().optional(),
   Modified: z.string().nullable().optional(),
 });
@@ -202,29 +352,8 @@ export const STAFF_QUALIFICATION_DISPLAY: Record<StaffQualification, string> = {
   unknown: '未確認',
 } as const;
 
-/** 対象サービス種別 */
-export const applicableServiceTypeValues = [
-  'daily_life_care',          // 生活介護
-  'residential_support',      // 施設入所支援
-  'short_stay',               // 短期入所
-  'group_home',               // 共同生活援助
-  'behavior_support',         // 行動援護
-  'home_care',                // 居宅介護
-  'other',
-] as const;
-
-export const applicableServiceTypeSchema = z.enum(applicableServiceTypeValues);
-export type ApplicableServiceType = z.infer<typeof applicableServiceTypeSchema>;
-
-export const SERVICE_TYPE_DISPLAY: Record<ApplicableServiceType, string> = {
-  daily_life_care: '生活介護',
-  residential_support: '施設入所支援',
-  short_stay: '短期入所',
-  group_home: '共同生活援助',
-  behavior_support: '行動援護',
-  home_care: '居宅介護',
-  other: 'その他',
-} as const;
+// NOTE: applicableServiceType は ISP コンプライアンスメタデータのため上方で定義済み
+// （applicableServiceTypeValues, applicableServiceTypeSchema, ApplicableServiceType, SERVICE_TYPE_DISPLAY）
 
 /** 対象加算種別 */
 export const applicableAddOnTypeValues = [
@@ -739,4 +868,60 @@ export function daysUntilIspReview(
   const dueUtc = Date.UTC(due.getFullYear(), due.getMonth(), due.getDate());
   const nowUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
   return Math.floor((dueUtc - nowUtc) / (1000 * 60 * 60 * 24));
+}
+
+// ─────────────────────────────────────────────
+// コンプライアンスユーティリティ（A-1 追加）
+// ─────────────────────────────────────────────
+
+/**
+ * ISP の見直し期限が超過しているかを判定する
+ *
+ * reviewControl.nextReviewDueAt を基準に判定。
+ * 未設定の場合は超過とみなさない（null → false）。
+ */
+export function isIspReviewOverdue(
+  compliance: IspComplianceMetadata | undefined,
+  today?: string,
+): boolean {
+  const dueAt = compliance?.reviewControl?.nextReviewDueAt;
+  if (!dueAt) return false;
+  const due = new Date(dueAt);
+  const now = today ? new Date(today) : new Date();
+  const dueUtc = Date.UTC(due.getFullYear(), due.getMonth(), due.getDate());
+  const nowUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return nowUtc > dueUtc;
+}
+
+/**
+ * ISP の見直し期限超過日数を算出する
+ *
+ * 超過していない場合は 0 を返す。未設定の場合は null。
+ */
+export function computeIspReviewOverdueDays(
+  compliance: IspComplianceMetadata | undefined,
+  today?: string,
+): number | null {
+  const dueAt = compliance?.reviewControl?.nextReviewDueAt;
+  if (!dueAt) return null;
+  const due = new Date(dueAt);
+  const now = today ? new Date(today) : new Date();
+  const dueUtc = Date.UTC(due.getFullYear(), due.getMonth(), due.getDate());
+  const nowUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const diff = Math.floor((nowUtc - dueUtc) / (1000 * 60 * 60 * 24));
+  return diff > 0 ? diff : 0;
+}
+
+/**
+ * 標準的な支援提供時間（totalHours）の妥当性を検証する
+ *
+ * @returns エラーメッセージ（問題なし → null）
+ */
+export function validateStandardServiceHours(
+  hours: number | null | undefined,
+): string | null {
+  if (hours == null) return null; // 未入力は許容
+  if (hours < 0) return '支援提供時間は 0 以上で入力してください';
+  if (hours > 24) return '支援提供時間は 24 時間以内で入力してください';
+  return null;
 }
