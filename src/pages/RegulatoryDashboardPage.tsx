@@ -11,6 +11,8 @@ import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
+import Divider from '@mui/material/Divider';
+import IconButton from '@mui/material/IconButton';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
@@ -31,6 +33,8 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import GavelIcon from '@mui/icons-material/Gavel';
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
 import PsychologyRoundedIcon from '@mui/icons-material/PsychologyRounded';
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
+import FilterListRoundedIcon from '@mui/icons-material/FilterListRounded';
 import AccessibilityNewRoundedIcon from '@mui/icons-material/AccessibilityNewRounded';
 import SchoolRoundedIcon from '@mui/icons-material/SchoolRounded';
 import EventRepeatRoundedIcon from '@mui/icons-material/EventRepeatRounded';
@@ -233,7 +237,20 @@ const TypeBreakdown: React.FC<TypeBreakdownProps> = ({ summary }) => (
 // 加算サマリーパネル
 // ─────────────────────────────────────────────
 
-const SevereAddonSummaryPanel: React.FC<{ addonSummary: ReturnType<typeof summarizeSevereAddonFindings> }> = ({ addonSummary }) => {
+/** 加算要件 → 遷移先マッピング */
+const ADDON_REQUIREMENT_LINKS: Record<string, { path: string; label: string }> = {
+  training:     { path: '/staff',               label: 'スタッフ管理を開く' },
+  reassessment: { path: '/planning-sheet-list',  label: '支援計画シート一覧を開く' },
+  observation:  { path: '/staff',               label: 'スタッフ管理を開く' },
+};
+
+interface SevereAddonSummaryPanelProps {
+  addonSummary: ReturnType<typeof summarizeSevereAddonFindings>;
+  onNavigate: (url: string) => void;
+  onFilterAddon: () => void;
+}
+
+const SevereAddonSummaryPanel: React.FC<SevereAddonSummaryPanelProps> = ({ addonSummary, onNavigate, onFilterAddon }) => {
   const hasIssues =
     addonSummary.trainingRatioInsufficientCount > 0 ||
     addonSummary.reassessmentOverdueCount > 0 ||
@@ -298,6 +315,10 @@ const SevereAddonSummaryPanel: React.FC<{ addonSummary: ReturnType<typeof summar
           count={addonSummary.trainingRatioInsufficientCount}
           okText="20%以上を充足"
           ngText={`${addonSummary.trainingRatioInsufficientCount}件の不足`}
+          onAction={addonSummary.trainingRatioInsufficientCount > 0
+            ? () => onNavigate(ADDON_REQUIREMENT_LINKS.training.path)
+            : undefined}
+          actionLabel={ADDON_REQUIREMENT_LINKS.training.label}
         />
         <AddonRequirementRow
           icon={<EventRepeatRoundedIcon sx={{ fontSize: 16 }} />}
@@ -305,6 +326,10 @@ const SevereAddonSummaryPanel: React.FC<{ addonSummary: ReturnType<typeof summar
           count={addonSummary.reassessmentOverdueCount}
           okText="全員期限内"
           ngText={`${addonSummary.reassessmentOverdueCount}件超過`}
+          onAction={addonSummary.reassessmentOverdueCount > 0
+            ? () => onNavigate(ADDON_REQUIREMENT_LINKS.reassessment.path)
+            : undefined}
+          actionLabel={ADDON_REQUIREMENT_LINKS.reassessment.label}
         />
         <AddonRequirementRow
           icon={<VisibilityRoundedIcon sx={{ fontSize: 16 }} />}
@@ -312,20 +337,42 @@ const SevereAddonSummaryPanel: React.FC<{ addonSummary: ReturnType<typeof summar
           count={addonSummary.weeklyObservationShortageCount}
           okText="全員実施済"
           ngText={`${addonSummary.weeklyObservationShortageCount}件不足`}
+          onAction={addonSummary.weeklyObservationShortageCount > 0
+            ? () => onNavigate(ADDON_REQUIREMENT_LINKS.observation.path)
+            : undefined}
+          actionLabel={ADDON_REQUIREMENT_LINKS.observation.label}
         />
       </Stack>
+
+      {/* 加算 finding 一覧へ導線 */}
+      <Divider sx={{ my: 1.5 }} />
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Button
+          size="small"
+          variant="text"
+          color="secondary"
+          startIcon={<FilterListRoundedIcon sx={{ fontSize: 14 }} />}
+          onClick={onFilterAddon}
+          data-testid="addon-filter-shortcut"
+          sx={{ fontSize: '0.7rem', textTransform: 'none', fontWeight: 600 }}
+        >
+          加算チェック結果を一覧で見る
+        </Button>
+      </Box>
     </Card>
   );
 };
 
-/** 加算要件の1行表示 */
+/** 加算要件の1行表示（導線ボタン付き） */
 const AddonRequirementRow: React.FC<{
   icon: React.ReactNode;
   label: string;
   count: number;
   okText: string;
   ngText: string;
-}> = ({ icon, label, count, okText, ngText }) => (
+  onAction?: () => void;
+  actionLabel?: string;
+}> = ({ icon, label, count, okText, ngText, onAction, actionLabel }) => (
   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
     {icon}
     <Typography variant="body2" sx={{ minWidth: 100 }} fontWeight={600}>
@@ -338,6 +385,18 @@ const AddonRequirementRow: React.FC<{
       variant={count > 0 ? 'filled' : 'outlined'}
       sx={{ fontWeight: 600, fontSize: '0.65rem' }}
     />
+    {onAction && (
+      <IconButton
+        size="small"
+        color="primary"
+        onClick={onAction}
+        title={actionLabel}
+        data-testid={`addon-action-${label}`}
+        sx={{ ml: 'auto', p: 0.5 }}
+      >
+        <ArrowForwardRoundedIcon sx={{ fontSize: 16 }} />
+      </IconButton>
+    )}
   </Box>
 );
 
@@ -658,7 +717,15 @@ const RegulatoryDashboardPage: React.FC = () => {
         }}
       >
         <TypeBreakdown summary={summary} />
-        <SevereAddonSummaryPanel addonSummary={addonSummary} />
+        <SevereAddonSummaryPanel
+          addonSummary={addonSummary}
+          onNavigate={(url) => navigate(url)}
+          onFilterAddon={() => {
+            setFilterSource('addon');
+            // findings テーブルへ自動スクロール
+            document.getElementById('findings-table-section')?.scrollIntoView({ behavior: 'smooth' });
+          }}
+        />
         <SafetyOperationsSummaryCard />
       </Box>
 
@@ -708,13 +775,15 @@ const RegulatoryDashboardPage: React.FC = () => {
       </Box>
 
       {/* 統合 findings テーブル */}
-      <FindingsTable
-        rows={unifiedRows}
-        filterSeverity={filterSeverity}
-        filterSource={filterSource}
-        onNavigate={(url) => navigate(url)}
-        evidenceMap={evidenceMap}
-      />
+      <Box id="findings-table-section">
+        <FindingsTable
+          rows={unifiedRows}
+          filterSeverity={filterSeverity}
+          filterSource={filterSource}
+          onNavigate={(url) => navigate(url)}
+          evidenceMap={evidenceMap}
+        />
+      </Box>
     </Container>
   );
 };

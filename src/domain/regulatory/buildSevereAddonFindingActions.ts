@@ -3,13 +3,13 @@
  *
  * ## 遷移マッピング
  *
- * | finding type                          | 遷移先                                       |
- * |---------------------------------------|----------------------------------------------|
- * | severe_addon_tier2_candidate          | /support-plan-guide (支援計画確認)             |
- * | severe_addon_tier3_candidate          | /support-plan-guide (支援計画確認)             |
- * | basic_training_ratio_insufficient     | /regulatory/staff (職員資格管理)               |
- * | planning_sheet_reassessment_overdue   | /support-plan-guide (再評価) + 分析確認        |
- * | weekly_observation_shortage           | /support-plan-guide (週次観察) + 分析確認      |
+ * | finding type                          | 遷移先                                        |
+ * |---------------------------------------|-------------------------------------------------|
+ * | severe_addon_tier2_candidate          | /planning-sheet-list (支援計画シート一覧)        |
+ * | severe_addon_tier3_candidate          | /planning-sheet-list (支援計画シート一覧)        |
+ * | basic_training_ratio_insufficient     | /staff (職員資格管理)                            |
+ * | planning_sheet_reassessment_overdue   | /planning-sheet-list + 分析確認                 |
+ * | weekly_observation_shortage           | /staff + 分析確認                               |
  */
 
 import type { SevereAddonFinding } from './severeAddonFindings';
@@ -33,9 +33,15 @@ export function buildSevereAddonFindingActions(finding: SevereAddonFinding): Add
   // 事業所全体の finding (__facility__) にはユーザー単位の遷移先はない
   const isFacilityLevel = userId === '__facility__';
 
-  const supportPlanUrl = isFacilityLevel
-    ? '/support-plan-guide'
-    : `/support-plan-guide?userId=${encodeURIComponent(userId)}`;
+  const planningSheetListUrl = '/planning-sheet-list';
+
+  const planningSheetUrl = isFacilityLevel
+    ? planningSheetListUrl
+    : finding.planningSheetId
+      ? `/support-planning-sheet/${encodeURIComponent(finding.planningSheetId)}`
+      : planningSheetListUrl;
+
+  const staffUrl = '/staff';
 
   const icebergUrl = isFacilityLevel
     ? undefined
@@ -45,8 +51,8 @@ export function buildSevereAddonFindingActions(finding: SevereAddonFinding): Add
     case 'severe_addon_tier2_candidate':
     case 'severe_addon_tier3_candidate':
       actions.push({
-        label: '支援計画を確認',
-        url: supportPlanUrl,
+        label: '支援計画シートを確認',
+        url: planningSheetUrl,
         kind: 'plan',
       });
       if (icebergUrl) {
@@ -61,7 +67,7 @@ export function buildSevereAddonFindingActions(finding: SevereAddonFinding): Add
     case 'basic_training_ratio_insufficient':
       actions.push({
         label: '職員資格を確認',
-        url: '/regulatory/staff',
+        url: staffUrl,
         kind: 'staff',
       });
       break;
@@ -69,7 +75,7 @@ export function buildSevereAddonFindingActions(finding: SevereAddonFinding): Add
     case 'planning_sheet_reassessment_overdue':
       actions.push({
         label: '再評価を開始',
-        url: `${supportPlanUrl}&tab=reassessment`,
+        url: planningSheetUrl,
         kind: 'review',
       });
       if (icebergUrl) {
@@ -84,7 +90,7 @@ export function buildSevereAddonFindingActions(finding: SevereAddonFinding): Add
     case 'weekly_observation_shortage':
       actions.push({
         label: '観察記録を入力',
-        url: `${supportPlanUrl}&tab=observation`,
+        url: staffUrl,
         kind: 'review',
       });
       if (icebergUrl) {

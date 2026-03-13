@@ -39,9 +39,17 @@ describe('buildSevereAddonFindingActions', () => {
     expect(actions).toHaveLength(2);
     expect(findByKind(actions, 'plan')).toHaveLength(1);
     expect(findByKind(actions, 'evidence')).toHaveLength(1);
-    expect(actions[0].url).toContain('/support-plan-guide');
-    expect(actions[0].url).toContain('userId=U001');
+    // planningSheetId なし → 一覧ページ
+    expect(actions[0].url).toBe('/planning-sheet-list');
     expect(actions[1].url).toContain('/analysis/iceberg-pdca');
+  });
+
+  it('tier2_candidate (with planningSheetId) → 個別シートページへ遷移', () => {
+    const actions = buildSevereAddonFindingActions(
+      makeFinding({ type: 'severe_addon_tier2_candidate', userId: 'U001', planningSheetId: 'PS-100' }),
+    );
+    expect(findByKind(actions, 'plan')).toHaveLength(1);
+    expect(actions[0].url).toBe('/support-planning-sheet/PS-100');
   });
 
   // ── Tier 3 候補 ──
@@ -66,7 +74,7 @@ describe('buildSevereAddonFindingActions', () => {
     );
     expect(actions).toHaveLength(1);
     expect(findByKind(actions, 'staff')).toHaveLength(1);
-    expect(actions[0].url).toBe('/regulatory/staff');
+    expect(actions[0].url).toBe('/staff');
   });
 
   // ── 再評価超過 ──
@@ -81,7 +89,8 @@ describe('buildSevereAddonFindingActions', () => {
     expect(actions).toHaveLength(2);
     expect(findByKind(actions, 'review')).toHaveLength(1);
     expect(findByKind(actions, 'evidence')).toHaveLength(1);
-    expect(actions[0].url).toContain('tab=reassessment');
+    // planningSheetId なし → 一覧ページ
+    expect(actions[0].url).toBe('/planning-sheet-list');
   });
 
   // ── 週次観察不足 ──
@@ -96,7 +105,7 @@ describe('buildSevereAddonFindingActions', () => {
     expect(actions).toHaveLength(2);
     expect(findByKind(actions, 'review')).toHaveLength(1);
     expect(findByKind(actions, 'evidence')).toHaveLength(1);
-    expect(actions[0].url).toContain('tab=observation');
+    expect(actions[0].url).toBe('/staff');
   });
 
   // ── source パラメータ ──
