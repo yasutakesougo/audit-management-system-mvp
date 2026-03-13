@@ -10,6 +10,14 @@
 - [Nurse E2E Playbook](./nurse-e2e.md)
 - [Dashboard / Agenda Smoke](#dashboard--agenda-smoke-tests)
 
+## Unit Test 境界ルール
+
+ユニットテストの依存境界（Factory Mock ルール）と OOM 防止ガイドラインです。
+新規テスト追加時は必ず参照してください。
+
+👉 **[Unit Test Boundary Guide](./unit-test-boundary-guide.md)**
+（repositoryFactory 境界ルール、判定フロー、モックパターン、コンプライアンス一覧）
+
 ## Schedule / Calendar E2E Tests
 
 Schedule（Day / Week / Month / Status / Quick Dialog）を扱う E2E テストのガイドラインと共通ヘルパーは以下に集約されています。
