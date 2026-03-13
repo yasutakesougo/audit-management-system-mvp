@@ -463,6 +463,9 @@ export const TESTIDS = {
   'compliance-committee-tab': 'compliance-committee-tab',
   'compliance-guideline-tab': 'compliance-guideline-tab',
   'compliance-training-tab': 'compliance-training-tab',
+
+  // Safety: Operations Summary Card (Step 4)
+  'safety-operations-summary-card': 'safety-operations-summary-card',
 } as const;
 
 type LeafValues<T> = T extends string

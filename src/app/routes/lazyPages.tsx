@@ -160,3 +160,6 @@ const IBDHubPage = React.lazy(() => import('@/pages/IBDHubPage'));
 export const SuspendedIBDHubPage = createSuspended(IBDHubPage, '強度行動障害支援を読み込んでいます…');
 const RegulatoryDashboardPage = React.lazy(() => import('@/pages/RegulatoryDashboardPage'));
 export const SuspendedRegulatoryDashboardPage = createSuspended(RegulatoryDashboardPage, '制度遵守ダッシュボードを読み込んでいます…');
+const ComplianceDashboardPage = React.lazy(() => import('@/pages/admin/ComplianceDashboardPage'));
+export const SuspendedComplianceDashboardPage = createSuspended(ComplianceDashboardPage, '適正化運用ダッシュボードを読み込んでいます…');
+
