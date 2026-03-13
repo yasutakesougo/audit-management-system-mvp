@@ -38,9 +38,10 @@ import TableRow from '@mui/material/TableRow';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import type { ChangeEvent } from 'react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import ImportHistoryPanel from '@/features/import/components/ImportHistoryPanel';
 import {
   useUnifiedCSVImport,
   type ImportTarget,
@@ -169,6 +170,13 @@ export default function CsvImportPage() {
     setSelectedFileName(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [reset]);
+
+
+  // 履歴パネルの更新トリガー
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  useEffect(() => {
+    if (isDone) setHistoryRefreshKey((k) => k + 1);
+  }, [isDone]);
 
   return (
     <Box sx={{ maxWidth: 900, mx: 'auto', py: 3, px: 2 }}>
@@ -630,6 +638,21 @@ export default function CsvImportPage() {
           </Card>
         </Fade>
       )}
+
+      {/* ── Import History Section ── */}
+      <Divider sx={{ my: 3 }} />
+
+      <Box sx={{ mb: 1 }}>
+        <Typography
+          variant="overline"
+          fontWeight="bold"
+          color="text.secondary"
+          sx={{ display: 'block', mb: 1.5 }}
+        >
+          📜 インポート履歴
+        </Typography>
+        <ImportHistoryPanel refreshKey={historyRefreshKey} />
+      </Box>
     </Box>
   );
 }

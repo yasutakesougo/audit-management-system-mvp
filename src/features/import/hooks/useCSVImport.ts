@@ -11,6 +11,7 @@ import { useInterventionStore } from '@/features/analysis/stores/interventionSto
 import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 import { useProcedureStore } from '@/features/daily/stores/procedureStore';
 import { autoLinkBipToProcedures } from '@/features/import/domain/autoLinkBipToProcedures';
+import { importHistoryStore } from '@/features/import/domain/importHistory';
 import { parseCarePointsCsv } from '@/features/import/domain/parseCarePointsCsv';
 import { parseSupportTemplateCsv } from '@/features/import/domain/parseSupportTemplateCsv';
 
@@ -155,8 +156,69 @@ export function useCSVImport() {
         interventionStore.save(userCode, plans);
       }
 
+      // ── インポート履歴を記録 ──
+      const supportFile = supportFileRef.current;
+      const careFile = careFileRef.current;
+      const summary = preview.summary;
+
+      // support ファイルの履歴
+      if (supportFile && summary.procedureCount > 0) {
+        importHistoryStore.addEntry({
+          importedAt: new Date().toISOString(),
+          target: 'support',
+          fileName: supportFile.name,
+          fileSize: supportFile.size,
+          totalRows: summary.procedureCount + summary.skippedRows,
+          importedRecords: summary.procedureCount,
+          skippedRows: summary.skippedRows,
+          errorCount: 0,
+          userCount: summary.userCount,
+          validationIssues: [],
+          status: 'success',
+        });
+      }
+
+      // care ファイルの履歴
+      if (careFile && summary.planCount > 0) {
+        importHistoryStore.addEntry({
+          importedAt: new Date().toISOString(),
+          target: 'care',
+          fileName: careFile.name,
+          fileSize: careFile.size,
+          totalRows: summary.planCount,
+          importedRecords: summary.planCount,
+          skippedRows: 0,
+          errorCount: 0,
+          userCount: summary.userCount,
+          validationIssues: [],
+          status: 'success',
+        });
+      }
+
       setStatus('done');
     } catch (e) {
+      // エラー時も履歴を記録（status: 'failed'）
+      const supportFile = supportFileRef.current;
+      const careFile = careFileRef.current;
+      const failedFile = supportFile ?? careFile;
+
+      if (failedFile) {
+        importHistoryStore.addEntry({
+          importedAt: new Date().toISOString(),
+          target: supportFile ? 'support' : 'care',
+          fileName: failedFile.name,
+          fileSize: failedFile.size,
+          totalRows: 0,
+          importedRecords: 0,
+          skippedRows: 0,
+          errorCount: 1,
+          userCount: 0,
+          validationIssues: [],
+          status: 'failed',
+          notes: e instanceof Error ? e.message : '保存中にエラーが発生しました。',
+        });
+      }
+
       setError(e instanceof Error ? e.message : '保存中にエラーが発生しました。');
       setStatus('error');
     }
