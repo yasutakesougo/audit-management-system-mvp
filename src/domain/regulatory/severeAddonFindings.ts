@@ -127,6 +127,10 @@ export interface SevereAddonBulkInput {
   usersWithoutWeeklyObservation: string[];
   /** 最終再評価日マップ（userId → lastReassessmentAt） */
   lastReassessmentMap: Map<string, string | null>;
+  /** 支援計画シート作成者が実践研修未修了の利用者 ID 一覧 */
+  usersWithoutAuthoringQualification?: string[];
+  /** 加算対象者に必要資格のない職員が配置されている利用者 ID 一覧 */
+  usersWithoutAssignmentQualification?: string[];
   /** 基準日 */
   today: string;
   /** 再評価周期（省略時は90日） */
@@ -158,6 +162,8 @@ export function buildSevereAddonFindings(input: SevereAddonBulkInput): SevereAdd
     basicTrainingCompletedCount,
     usersWithoutWeeklyObservation,
     lastReassessmentMap,
+    usersWithoutAuthoringQualification = [],
+    usersWithoutAssignmentQualification = [],
     today,
     reassessmentCycleDays = DEFAULT_REASSESSMENT_CYCLE_DAYS,
   } = input;
@@ -243,6 +249,33 @@ export function buildSevereAddonFindings(input: SevereAddonBulkInput): SevereAdd
         overdueDays: reassessmentResult.daysSince
           ? -(reassessmentResult.daysSince - reassessmentCycleDays)
           : undefined,
+        detectedAt: today,
+      });
+    }
+
+    // 5. 作成者要件不備
+    if (usersWithoutAuthoringQualification.includes(user.userId)) {
+      findings.push({
+        id: nextAddonFindingId(),
+        type: 'authoring_requirement_unmet',
+        severity: 'high',
+        userId: user.userId,
+        userName: user.userName,
+        message: `支援計画シート作成者が実践研修未修了です`,
+        detectedAt: today,
+        planningSheetId: user.planningSheetIds[0],
+      });
+    }
+
+    // 6. 資格なし配置
+    if (usersWithoutAssignmentQualification.includes(user.userId)) {
+      findings.push({
+        id: nextAddonFindingId(),
+        type: 'assignment_without_required_qualification',
+        severity: 'medium',
+        userId: user.userId,
+        userName: user.userName,
+        message: `加算対象者に必要資格のない職員が配置されています`,
         detectedAt: today,
       });
     }

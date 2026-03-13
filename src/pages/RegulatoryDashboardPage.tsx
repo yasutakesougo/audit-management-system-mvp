@@ -61,6 +61,7 @@ import {
 } from '@/domain/regulatory/findingEvidenceSummary';
 import {
   type SevereAddonFinding,
+  type SevereAddonSummary,
   SEVERE_ADDON_FINDING_TYPE_LABELS,
   buildSevereAddonFindings,
   summarizeSevereAddonFindings,
@@ -146,6 +147,8 @@ function generateDemoSevereAddonFindings(): SevereAddonFinding[] {
       ['U002', today],         // OK
       ['U003', null],          // 未実施 → 超過
     ]),
+    usersWithoutAuthoringQualification: ['U001'],  // 鈴木花子: 作成者が実践研修未修了
+    usersWithoutAssignmentQualification: ['U003'],  // 佐藤次郎: 資格なし職員が配置
     today,
   });
 }
@@ -213,9 +216,19 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ title, count, color, icon }) 
 
 interface TypeBreakdownProps {
   summary: AuditSummary;
+  addonSummary?: SevereAddonSummary;
 }
 
-const TypeBreakdown: React.FC<TypeBreakdownProps> = ({ summary }) => (
+/** 加算系の種別カウントエントリ */
+const ADDON_BREAKDOWN_ENTRIES: { key: keyof SevereAddonSummary; label: string }[] = [
+  { key: 'trainingRatioInsufficientCount', label: '基礎研修比率不足' },
+  { key: 'reassessmentOverdueCount', label: '再評価超過' },
+  { key: 'weeklyObservationShortageCount', label: '週次観察不足' },
+  { key: 'authoringRequirementUnmetCount', label: '作成者要件不備' },
+  { key: 'assignmentWithoutQualificationCount', label: '資格なし配置' },
+];
+
+const TypeBreakdown: React.FC<TypeBreakdownProps> = ({ summary, addonSummary }) => (
   <Card variant="outlined" sx={{ p: 2.5 }}>
     <Typography variant="subtitle2" fontWeight={700} gutterBottom>
       検出種別
@@ -232,6 +245,29 @@ const TypeBreakdown: React.FC<TypeBreakdownProps> = ({ summary }) => (
         />
       ))}
     </Box>
+    {addonSummary && (
+      <>
+        <Divider sx={{ my: 1.5 }} />
+        <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+          加算系
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          {ADDON_BREAKDOWN_ENTRIES.map(({ key, label }) => {
+            const count = addonSummary[key] as number;
+            return (
+              <Chip
+                key={String(key)}
+                label={`${label}: ${count}`}
+                size="small"
+                variant={count > 0 ? 'filled' : 'outlined'}
+                color={count > 0 ? 'error' : 'default'}
+                sx={{ fontWeight: count > 0 ? 700 : 400, fontSize: '0.65rem' }}
+              />
+            );
+          })}
+        </Box>
+      </>
+    )}
   </Card>
 );
 
@@ -744,7 +780,7 @@ const RegulatoryDashboardPage: React.FC = () => {
           gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 380px' },
         }}
       >
-        <TypeBreakdown summary={summary} />
+        <TypeBreakdown summary={summary} addonSummary={addonSummary} />
         <SevereAddonSummaryPanel
           addonSummary={addonSummary}
           onNavigate={(url) => navigate(url)}
