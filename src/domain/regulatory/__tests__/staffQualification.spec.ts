@@ -299,4 +299,31 @@ describe('computeStaffQualificationSummary', () => {
     expect(summary.missingCertificates).toBe(1);
     expect(summary.activeAssignments).toBe(1);
   });
+
+  it('unqualifiedAssignmentCount 省略時はデフォルト 0', () => {
+    const summary = computeStaffQualificationSummary({
+      certificates: 0,
+      missingCertificates: 0,
+      assignments: [],
+      observations: [],
+      corePersonAssignments: [],
+      today: '2026-03-10',
+    });
+
+    expect(summary.unqualifiedAssignments).toBe(0);
+  });
+
+  it('unqualifiedAssignmentCount を渡すとサマリに反映される', () => {
+    const summary = computeStaffQualificationSummary({
+      certificates: 2,
+      missingCertificates: 0,
+      assignments: [],
+      observations: [],
+      corePersonAssignments: [],
+      unqualifiedAssignmentCount: 3,
+      today: '2026-03-10',
+    });
+
+    expect(summary.unqualifiedAssignments).toBe(3);
+  });
 });
