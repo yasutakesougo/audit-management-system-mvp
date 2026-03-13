@@ -22,6 +22,7 @@ import {
 } from '@mui/material';
 import type { HandoffDayScope, HandoffRecord } from './handoffTypes';
 import { isTerminalStatus } from './handoffStateMachine';
+import { getRegulatoryResolutionStatus } from './regulatoryResolution';
 import { useHandoffData } from './hooks/useHandoffData';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -159,16 +160,21 @@ export default function RegulatoryFindingsForMeeting({
                   sx={{ fontSize: '0.65rem', fontWeight: 600, minWidth: 72 }}
                 />
                 <Stack spacing={0.5} sx={{ flex: 1 }}>
-                  {items.map((item) => (
-                    <Typography
-                      key={item.id}
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ lineHeight: 1.4 }}
-                    >
-                      {item.title}
-                    </Typography>
-                  ))}
+                  {items.map((item) => {
+                    const resStatus = getRegulatoryResolutionStatus(item);
+                    const statusIcon = resStatus === 'resolved' ? ' ✅'
+                      : resStatus === 'closed_no_trail' ? ' ⚠️' : '';
+                    return (
+                      <Typography
+                        key={item.id}
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ lineHeight: 1.4 }}
+                      >
+                        {item.title}{statusIcon}
+                      </Typography>
+                    );
+                  })}
                 </Stack>
               </Stack>
             );
