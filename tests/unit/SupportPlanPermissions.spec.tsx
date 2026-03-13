@@ -1,4 +1,5 @@
 import SupportPlanGuidePage from '@/pages/SupportPlanGuidePage';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -45,6 +46,15 @@ vi.mock('@/components/MarkdownPreview', () => ({
 
 import { useUserAuthz } from '@/auth/useUserAuthz';
 
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+};
+
 describe('SupportPlanGuidePage Permissions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -61,7 +71,7 @@ describe('SupportPlanGuidePage Permissions', () => {
   it('displays a read-only alert and disables inputs for viewer role', async () => {
     vi.mocked(useUserAuthz).mockReturnValue({ role: 'viewer', ready: true });
 
-    render(<SupportPlanGuidePage />);
+    render(<SupportPlanGuidePage />, { wrapper: createWrapper() });
 
     // Check for the informational alert
     expect(screen.getByText(/このページは閲覧のみです/)).toBeInTheDocument();
@@ -76,7 +86,7 @@ describe('SupportPlanGuidePage Permissions', () => {
   it('does not display alert and enables inputs for admin role', async () => {
     vi.mocked(useUserAuthz).mockReturnValue({ role: 'admin', ready: true });
 
-    render(<SupportPlanGuidePage />);
+    render(<SupportPlanGuidePage />, { wrapper: createWrapper() });
 
     // Check alert is NOT there
     expect(screen.queryByText(/このページは閲覧のみです/)).not.toBeInTheDocument();
@@ -92,7 +102,7 @@ describe('SupportPlanGuidePage Permissions', () => {
     const user = userEvent.setup();
     vi.mocked(useUserAuthz).mockReturnValue({ role: 'viewer', ready: true });
 
-    render(<SupportPlanGuidePage />);
+    render(<SupportPlanGuidePage />, { wrapper: createWrapper() });
 
     // Switch to Monitoring tab
     const monitoringTab = screen.getByRole('tab', { name: /モニタリング/ });
