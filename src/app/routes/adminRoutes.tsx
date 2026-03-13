@@ -20,6 +20,7 @@ import {
     SuspendedModeSwitchPage,
     SuspendedNavigationDiagnosticsPage,
     SuspendedOpeningVerificationPage,
+    SuspendedOperationFlowSettingsPage,
     SuspendedSmokeTestPage,
     SuspendedStaffAttendanceAdminPage,
     SuspendedStaffAttendanceInput,
@@ -186,6 +187,14 @@ export const adminRoutes: RouteObject[] = [
     element: (
       <RequireAudience requiredRole="admin">
         <SuspendedRegulatoryDashboardPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'settings/operation-flow',
+    element: (
+      <RequireAudience requiredRole="admin">
+        <SuspendedOperationFlowSettingsPage />
       </RequireAudience>
     ),
   },

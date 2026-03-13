@@ -21,6 +21,7 @@ const NAV_TESTIDS = {
   navigationDiagnostics: 'nav-navigation-diagnostics',
   todayOps: 'nav-today-ops',
   roomManagement: 'nav-room-management',
+  operationFlowSettings: 'nav-operation-flow-settings',
 } as const;
 
 const FOOTER_TESTIDS = {
