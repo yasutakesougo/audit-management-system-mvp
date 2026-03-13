@@ -43,6 +43,11 @@ import {
   _resetFindingCounter,
 } from '@/domain/regulatory';
 import { buildFindingActions, type FindingAction } from '@/domain/regulatory/buildFindingActions';
+import {
+  resolveAllFindingEvidence,
+  type FindingEvidenceSummary,
+  type IcebergEvidenceBySheet,
+} from '@/domain/regulatory/findingEvidenceSummary';
 
 // ─────────────────────────────────────────────
 // デモデータ
@@ -93,6 +98,21 @@ function generateDemoFindings(): AuditFinding[] {
     ],
     today: new Date().toISOString().slice(0, 10),
   });
+}
+
+/**
+ * デモ用: Iceberg 分析の根拠データ
+ * sheet-1 には分析あり、sheet-2 には分析なし
+ */
+function generateDemoIcebergEvidence(): IcebergEvidenceBySheet {
+  return {
+    sessionCount: {
+      'sheet-1': 3,
+    },
+    latestAnalysisDate: {
+      'sheet-1': '2026-03-08',
+    },
+  };
 }
 
 // ─────────────────────────────────────────────
@@ -170,9 +190,10 @@ interface FindingsTableProps {
   filterType: AuditFindingType | 'all';
   filterSeverity: AuditFindingSeverity | 'all';
   onNavigate: (url: string) => void;
+  evidenceMap?: Map<string, FindingEvidenceSummary>;
 }
 
-const FindingsTable: React.FC<FindingsTableProps> = ({ findings, filterType, filterSeverity, onNavigate }) => {
+const FindingsTable: React.FC<FindingsTableProps> = ({ findings, filterType, filterSeverity, onNavigate, evidenceMap }) => {
   const filtered = useMemo(() => {
     let result = [...findings];
     if (filterType !== 'all') result = result.filter(f => f.type === filterType);
@@ -239,6 +260,27 @@ const FindingsTable: React.FC<FindingsTableProps> = ({ findings, filterType, fil
                   <Typography variant="body2">
                     {f.message}
                   </Typography>
+                  {/* P2: 根拠サマリーインライン表示 */}
+                  {evidenceMap?.has(f.id) && (() => {
+                    const ev = evidenceMap.get(f.id)!;
+                    if (!ev.displayText) return null;
+                    return (
+                      <Typography
+                        variant="caption"
+                        data-testid={`evidence-summary-${f.id}`}
+                        sx={{
+                          display: 'block',
+                          mt: 0.5,
+                          color: ev.hasEvidence ? 'success.main' : 'warning.main',
+                          fontWeight: 600,
+                          fontSize: '0.65rem',
+                        }}
+                      >
+                        {ev.hasEvidence ? '📊 ' : '⚠ '}
+                        {ev.displayText}
+                      </Typography>
+                    );
+                  })()}
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2" color={f.overdueDays && f.overdueDays < 0 ? 'error.main' : 'text.secondary'}>
@@ -297,6 +339,11 @@ const RegulatoryDashboardPage: React.FC = () => {
   // デモモード: サンプルデータで動作確認
   const findings = useMemo(() => generateDemoFindings(), []);
   const summary = useMemo(() => summarizeFindings(findings), [findings]);
+  const icebergEvidence = useMemo(() => generateDemoIcebergEvidence(), []);
+  const evidenceMap = useMemo(
+    () => resolveAllFindingEvidence(findings, icebergEvidence),
+    [findings, icebergEvidence],
+  );
 
   return (
     <Container maxWidth="xl" sx={{ py: 3, minHeight: '100vh' }} data-testid="regulatory-dashboard-page">
@@ -367,7 +414,13 @@ const RegulatoryDashboardPage: React.FC = () => {
       </Box>
 
       {/* findings テーブル */}
-      <FindingsTable findings={findings} filterType={filterType} filterSeverity={filterSeverity} onNavigate={(url) => navigate(url)} />
+      <FindingsTable
+        findings={findings}
+        filterType={filterType}
+        filterSeverity={filterSeverity}
+        onNavigate={(url) => navigate(url)}
+        evidenceMap={evidenceMap}
+      />
     </Container>
   );
 };
