@@ -31,6 +31,8 @@ function debugLog(...args: unknown[]) {
 type BasicAccountInfo = {
   username?: string;
   homeAccountId?: string;
+  /** 表示名（MSAL AccountInfo.name に対応） */
+  name?: string;
 };
 
 const ensureActiveAccount = (instance: IPublicClientApplication) => {

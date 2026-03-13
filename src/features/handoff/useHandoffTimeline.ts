@@ -96,11 +96,13 @@ export function useHandoffTimeline(
         }));
 
         // 監査ログ記録（fire-and-forget）
-        const changedByAccount = account?.username ?? 'unknown';
+        // changedBy = 表示名（UI用）, changedByAccount = UPN（監査証跡用）
+        const displayName = account?.name ?? account?.username ?? 'unknown';
+        const accountId = account?.username ?? 'unknown';
         auditRepo.recordCreation(
           newRecord.id,
-          changedByAccount,
-          changedByAccount,
+          displayName,
+          accountId,
         ).catch(e => {
           logAuditPersistFailed({
             handoffId: newRecord.id,
@@ -114,7 +116,7 @@ export function useHandoffTimeline(
           id: newRecord.id,
           category: newRecord.category,
           severity: newRecord.severity,
-          changedByAccount: account?.username ?? 'unknown',
+          changedByAccount: accountId,
           source: 'useHandoffTimeline',
         });
       } catch {
@@ -151,13 +153,15 @@ export function useHandoffTimeline(
         await repo.updateStatus(id, newStatus, dayScope, carryOverDate);
 
         // 監査ログ記録（fire-and-forget）
-        const changedByAccount = account?.username ?? 'unknown';
+        // changedBy = 表示名（UI用）, changedByAccount = UPN（監査証跡用）
+        const displayName = account?.name ?? account?.username ?? 'unknown';
+        const accountId = account?.username ?? 'unknown';
         auditRepo.recordStatusChange(
           id,
           oldStatus ?? '不明',
           newStatus,
-          changedByAccount,
-          changedByAccount,
+          displayName,
+          accountId,
         ).catch(e => {
           logAuditPersistFailed({
             handoffId: id,
@@ -172,7 +176,7 @@ export function useHandoffTimeline(
           oldStatus: oldStatus ?? '不明',
           newStatus,
           meetingMode: 'unknown',
-          changedByAccount: account?.username ?? 'unknown',
+          changedByAccount: accountId,
           source: 'useHandoffTimeline',
         });
       } catch {
