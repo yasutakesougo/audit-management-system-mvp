@@ -44,13 +44,25 @@ import type { AbsentSupportLog } from '@/features/service-provision/domain/absen
 import { buildNoteWithAbsentLog, EMPTY_ABSENT_LOG } from '@/features/service-provision/domain/absentSupportLog';
 import {
     parseHHMM,
-    SERVICE_PROVISION_SAMPLE_RECORDS,
     STATUS_OPTIONS,
     todayISO
 } from '@/features/service-provision/serviceProvisionFormHelpers';
+import { useIsokatsuPreviewData } from '@/features/service-provision/useIsokatsuPreviewData';
 import { useSyncAttendance } from '@/features/service-provision/useSyncAttendance';
 import PrintIcon from '@mui/icons-material/Print';
 import SyncIcon from '@mui/icons-material/Sync';
+
+// ─── 印刷用 CSS ────────────────────────────────────────────
+// window.print() 時にプレビュー部分だけを出力する
+const PRINT_STYLE = `
+@media print {
+  body > *:not(#root) { display: none !important; }
+  #root > *:not(.MuiBox-root) { display: none !important; }
+  .isokatsu-preview-section { box-shadow: none !important; }
+  .isokatsu-preview-section > *:not(.isokatsu-print-area) { display: none !important; }
+  .isokatsu-print-area { margin: 0 !important; padding: 0 !important; }
+}
+`;
 
 // ─── コンポーネント ──────────────────────────────────────────
 
@@ -70,7 +82,16 @@ const ServiceProvisionFormPage: React.FC = () => {
 
   // フォーム状態
   const [selectedUser, setSelectedUser] = useState<DailyUserOption | null>(null);
+
+  // 月次プレビューデータ
+  const { previewProps, loading: previewLoading } = useIsokatsuPreviewData({
+    yearMonth: recordDate.slice(0, 7),
+    selectedUserCode: selectedUser?.id ?? null,
+    selectedUserName: selectedUser?.label ?? null,
+  });
+
   const [provisionStatus, setProvisionStatus] = useState<ServiceProvisionStatus>('提供');
+
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [hasTransportPickup, setHasTransportPickup] = useState(false);
@@ -163,6 +184,7 @@ const ServiceProvisionFormPage: React.FC = () => {
 
   return (
     <Box sx={{ maxWidth: 640, mx: 'auto', py: 3, px: 2 }}>
+      <style dangerouslySetInnerHTML={{ __html: PRINT_STYLE }} />
       <Toaster position="top-center" />
 
       {/* ── ヘッダー ─────────────────────────────────── */}
@@ -402,24 +424,52 @@ const ServiceProvisionFormPage: React.FC = () => {
       <ProvisionDailyTable records={records} loading={listLoading} recordDate={recordDate} />
 
       {/* ── いそかつ書式プレビュー ─────────────────────── */}
-      <Paper sx={{ p: 3, mt: 3, overflow: 'auto' }}>
-        <Typography
-          variant="h6"
-          sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}
-        >
-          <PrintIcon color="primary" />
-          帳票プレビュー（いそかつ書式）
-        </Typography>
-        <IsokatsuSheetPreview
-          yearMonth={recordDate.slice(0, 7)}
-          userName="吉田　卓"
-          recipientCertNumber="0009536301"
-          supportGrade={5}
-          contractDays={23}
-          facilityNumber="1410700510"
-          facilityName="磯子区障害者地域活動ホーム"
-          records={records.length > 0 ? records : SERVICE_PROVISION_SAMPLE_RECORDS}
-        />
+      <Paper sx={{ p: 3, mt: 3, overflow: 'auto' }} className="isokatsu-preview-section">
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+          <Typography
+            variant="h6"
+            sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+          >
+            <PrintIcon color="primary" />
+            帳票プレビュー（いそかつ書式）
+          </Typography>
+          {previewProps && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<PrintIcon />}
+              onClick={() => window.print()}
+              data-testid="btn-print"
+            >
+              印刷
+            </Button>
+          )}
+        </Stack>
+
+        {previewLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress size={32} />
+          </Box>
+        ) : previewProps ? (
+          <Box className="isokatsu-print-area">
+            <IsokatsuSheetPreview {...previewProps} />
+          </Box>
+        ) : (
+          <Box
+            sx={{
+              py: 6,
+              textAlign: 'center',
+              color: 'text.secondary',
+              bgcolor: 'action.hover',
+              borderRadius: 1,
+            }}
+          >
+            <PrintIcon sx={{ fontSize: 40, mb: 1, opacity: 0.4 }} />
+            <Typography variant="body2">
+              利用者を選択すると月次プレビューが表示されます
+            </Typography>
+          </Box>
+        )}
       </Paper>
     </Box>
   );
