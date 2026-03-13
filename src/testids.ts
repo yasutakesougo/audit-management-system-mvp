@@ -21,6 +21,7 @@ const NAV_TESTIDS = {
   navigationDiagnostics: 'nav-navigation-diagnostics',
   todayOps: 'nav-today-ops',
   roomManagement: 'nav-room-management',
+  operationFlowSettings: 'nav-operation-flow-settings',
 } as const;
 
 const FOOTER_TESTIDS = {
@@ -43,7 +44,7 @@ export const TESTIDS = {
   'meeting-guide': 'meeting-guide',
   'meeting-guide-page': 'meeting-guide-page',
   'dashboard-page': 'dashboard-page',
-  'dashboard-page-tabs': 'dashboard-page-tabs', // 🧪 黒ノート機能タブ専用（日次ダッシュボードと区別）
+  'dashboard-page-tabs': 'dashboard-page-tabs', // 🧪 運営状況タブ専用（日次ダッシュボードと区別）
   'dashboard-records': 'dashboard-records',
   'audit-heading': 'audit-heading',
   'iceberg-pdca-root': 'iceberg-pdca-root',
@@ -63,7 +64,7 @@ export const TESTIDS = {
   'pdca-weekly-leadtime-trend': 'pdca-weekly-leadtime-trend',
   'pdca-monthly-leadtime-trend': 'pdca-monthly-leadtime-trend',
 
-  // Dashboard Tabs (黒ノート機能個別タブ) 🌱 E2Eでタブ切替を細かく検査用
+  // Dashboard Tabs (運営状況機能個別タブ) 🌱 E2Eでタブ切替を細かく検査用
   'dashboard-tab-management': 'dashboard-tab-management',
   'dashboard-tab-timeline': 'dashboard-tab-timeline',
   'dashboard-tab-weekly': 'dashboard-tab-weekly',

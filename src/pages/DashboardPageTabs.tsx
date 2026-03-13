@@ -43,7 +43,7 @@ const DashboardPageTabs: React.FC = () => {
         <Tabs
           value={tab.value}
           onChange={(_, v: BriefingTabValue) => tab.set(v)}
-          aria-label="黒ノート機能タブ"
+          aria-label="運営状況タブ"
           variant="scrollable"
           scrollButtons="auto"
           sx={{ mb: 3 }}

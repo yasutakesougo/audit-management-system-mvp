@@ -69,7 +69,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ audience = 'staff' }) => 
       <Box sx={{ py: { xs: 1.5, sm: 2, md: 2.5 } }}>
         {/* B) ヘッダー */}
         <PageHeader
-          title="黒ノート"
+          title="運営状況"
+          subtitle="出席・体制・申し送りの状況を一覧します"
           icon={<DashboardIcon />}
           actions={
             <DashboardHeaderActions
