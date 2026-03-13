@@ -76,6 +76,10 @@ import { useSevereAddonRealData } from '@/features/regulatory/hooks/useSevereAdd
 import { useUsers } from '@/features/users/useUsers';
 import { useStaff } from '@/stores/useStaff';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
+import {
+  localWeeklyObservationRepository,
+  localQualificationAssignmentRepository,
+} from '@/infra/localStorage/localStaffQualificationRepository';
 
 // ─────────────────────────────────────────────
 // デモデータ
@@ -719,6 +723,8 @@ const RegulatoryDashboardPage: React.FC = () => {
     usersStatus === 'loading' || staffLoading,
     usersError ? (usersError instanceof Error ? usersError : new Error(String(usersError))) : staffError,
     planningSheetRepo,
+    localWeeklyObservationRepository,
+    localQualificationAssignmentRepository,
   );
   const addonFindings = useMemo(() => {
     if (realAddonInput) {

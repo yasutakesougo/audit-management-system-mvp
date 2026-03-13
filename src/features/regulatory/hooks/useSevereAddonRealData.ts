@@ -1,5 +1,5 @@
 /**
- * 重度障害者支援加算 — 実データ収集 hook (Phase A + B)
+ * 重度障害者支援加算 — 実データ収集 hook (Phase A + B + C)
  *
  * ## Phase A の範囲（既存 SP フィールドのみ）
  *
@@ -21,12 +21,20 @@
  *   - UserCode → 利用者紐付け
  *   → lastReassessmentMap（userId → 最終再評価日）を構築
  *
- * 🟡 Phase C（未実装 → 空配列）
- *   - 週次観察: usersWithoutWeeklyObservation → []
- *   - 配置チェック: usersWithoutAssignmentQualification → []
+ * ## Phase C の範囲（週次観察・配置資格チェック）
+ *
+ * ✅ WeeklyObservation (listByUser)
+ *   - observationDate → 利用者ごとの直近観察有無を判定
+ *   → usersWithoutWeeklyObservation
+ *
+ * ✅ QualificationAssignment (getAll)
+ *   - primary 配置の職員資格チェック
+ *   → usersWithoutAssignmentQualification
  *
  * @see severeAddonFindings.ts — SevereAddonBulkInput 型定義
  * @see planningSheetReassessment.ts — 再評価ドメインロジック
+ * @see weeklyObservationChecker.ts — 週次観察判定
+ * @see assignmentQualificationChecker.ts — 配置資格判定
  */
 
 import { useMemo, useEffect, useState, useCallback } from 'react';
@@ -36,10 +44,22 @@ import type { Staff } from '@/types';
 import type { SevereAddonBulkInput, SevereAddonCheckInput } from '@/domain/regulatory/severeAddonFindings';
 import type { PlanningSheetListItem } from '@/domain/isp/schema';
 import type { PlanningSheetRepository } from '@/domain/isp/port';
+import type {
+  WeeklyObservationRepository,
+  QualificationAssignmentRepository,
+} from '@/domain/regulatory/staffQualificationRepository';
 import {
   buildLastReassessmentMap,
   buildPlanningSheetIdsByUser,
 } from '@/domain/regulatory/reassessmentMapBuilder';
+import {
+  findUsersWithoutRecentObservation,
+  type ObservationRecordMinimal,
+} from '@/domain/regulatory/weeklyObservationChecker';
+import {
+  findUsersWithUnqualifiedAssignment,
+  type AssignmentMinimal,
+} from '@/domain/regulatory/assignmentQualificationChecker';
 
 // Re-export for backward compatibility (テストからの直接 import)
 export { buildLastReassessmentMap };
@@ -133,6 +153,8 @@ export interface SevereAddonRealDataResult {
  * @param isLoading - データ読み込み中かどうか
  * @param error - データ取得エラー
  * @param planningSheetRepo - PlanningSheetRepository（Phase B: 再評価日取得用）
+ * @param weeklyObsRepo - WeeklyObservationRepository（Phase C: 週次観察取得用）
+ * @param assignmentRepo - QualificationAssignmentRepository（Phase C: 配置資格取得用）
  */
 export function useSevereAddonRealData(
   users: IUserMaster[],
@@ -140,6 +162,8 @@ export function useSevereAddonRealData(
   isLoading: boolean,
   error: Error | null,
   planningSheetRepo?: PlanningSheetRepository | null,
+  weeklyObsRepo?: WeeklyObservationRepository | null,
+  assignmentRepo?: QualificationAssignmentRepository | null,
 ): SevereAddonRealDataResult {
 
   // ── Phase B: 支援計画シートの再評価日を非同期に取得 ──
@@ -195,9 +219,90 @@ export function useSevereAddonRealData(
     fetchPlanningSheets();
   }, [fetchPlanningSheets]);
 
+  // ── Phase C: 週次観察データを非同期に取得 ──
+  const [allObservations, setAllObservations] = useState<ObservationRecordMinimal[]>([]);
+  const [obsLoading, setObsLoading] = useState(false);
+  const [obsError, setObsError] = useState<Error | null>(null);
+
+  const fetchObservations = useCallback(async () => {
+    if (!weeklyObsRepo || activeUserIds.length === 0) {
+      setAllObservations([]);
+      return;
+    }
+
+    setObsLoading(true);
+    setObsError(null);
+
+    try {
+      const results: ObservationRecordMinimal[] = [];
+
+      const promises = activeUserIds.map(async (userId) => {
+        try {
+          const records = await weeklyObsRepo.listByUser(userId);
+          for (const r of records) {
+            results.push({ userId: r.userId, observationDate: r.observationDate });
+          }
+        } catch (err) {
+          console.warn(`[useSevereAddonRealData] Failed to fetch observations for ${userId}:`, err);
+        }
+      });
+
+      await Promise.all(promises);
+      setAllObservations(results);
+    } catch (err) {
+      const e = err instanceof Error ? err : new Error(String(err));
+      setObsError(e);
+      console.warn('[useSevereAddonRealData] Observation fetch failed:', e.message);
+    } finally {
+      setObsLoading(false);
+    }
+  }, [weeklyObsRepo, activeUserIds]);
+
+  useEffect(() => {
+    fetchObservations();
+  }, [fetchObservations]);
+
+  // ── Phase C: 配置データを非同期に取得 ──
+  const [allAssignments, setAllAssignments] = useState<AssignmentMinimal[]>([]);
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignError, setAssignError] = useState<Error | null>(null);
+
+  const fetchAssignments = useCallback(async () => {
+    if (!assignmentRepo || activeUserIds.length === 0) {
+      setAllAssignments([]);
+      return;
+    }
+
+    setAssignLoading(true);
+    setAssignError(null);
+
+    try {
+      const records = await assignmentRepo.getAll();
+      setAllAssignments(
+        records.map(r => ({
+          staffId: r.staffId,
+          userId: r.userId,
+          assignedFrom: r.assignedFrom,
+          assignedTo: r.assignedTo,
+          assignmentType: r.assignmentType,
+        })),
+      );
+    } catch (err) {
+      const e = err instanceof Error ? err : new Error(String(err));
+      setAssignError(e);
+      console.warn('[useSevereAddonRealData] Assignment fetch failed:', e.message);
+    } finally {
+      setAssignLoading(false);
+    }
+  }, [assignmentRepo, activeUserIds]);
+
+  useEffect(() => {
+    fetchAssignments();
+  }, [fetchAssignments]);
+
   // ── メイン BulkInput 構築 ──
-  const combinedLoading = isLoading || sheetsLoading;
-  const combinedError = error || sheetsError;
+  const combinedLoading = isLoading || sheetsLoading || obsLoading || assignLoading;
+  const combinedError = error || sheetsError || obsError || assignError;
 
   const input = useMemo<SevereAddonBulkInput | null>(() => {
     if (combinedLoading || combinedError) return null;
@@ -219,22 +324,44 @@ export function useSevereAddonRealData(
         return toAddonCheckInput(u, sheetIds);
       });
 
+    // 候補者のユーザーID
+    const candidateUserIds = addonUsers.map(u => u.userId);
+
     // 作成者要件: 実践研修修了者がいなければ全候補者が対象
     const usersWithoutAuthoringQualification: string[] = staffMetrics.hasPracticalTrainedStaff
       ? []
-      : addonUsers.map(u => u.userId);
+      : candidateUserIds;
+
+    // Phase C: 週次観察不足の利用者を判定
+    const usersWithoutWeeklyObservation = weeklyObsRepo
+      ? findUsersWithoutRecentObservation(candidateUserIds, allObservations, today)
+      : [];
+
+    // Phase C: 配置資格不足の利用者を判定
+    // staffCerts: staffId → certifications のマップ
+    const staffCerts = new Map<string, string[]>();
+    for (const s of staff) {
+      const id = s.staffId ?? s.id ?? '';
+      if (id) {
+        staffCerts.set(id, s.certifications ?? []);
+      }
+    }
+
+    const usersWithoutAssignmentQualification = assignmentRepo
+      ? findUsersWithUnqualifiedAssignment(candidateUserIds, allAssignments, staffCerts, today)
+      : [];
 
     return {
       users: addonUsers,
       totalLifeSupportStaff: staffMetrics.totalLifeSupportStaff,
       basicTrainingCompletedCount: staffMetrics.basicTrainingCompletedCount,
-      usersWithoutWeeklyObservation: [],  // Phase C で実装
+      usersWithoutWeeklyObservation,
       lastReassessmentMap,
       usersWithoutAuthoringQualification,
-      usersWithoutAssignmentQualification: [],  // Phase C で実装
+      usersWithoutAssignmentQualification,
       today,
     };
-  }, [users, staff, combinedLoading, combinedError, sheetsByUser]);
+  }, [users, staff, combinedLoading, combinedError, sheetsByUser, allObservations, allAssignments, weeklyObsRepo, assignmentRepo]);
 
   return {
     input,
