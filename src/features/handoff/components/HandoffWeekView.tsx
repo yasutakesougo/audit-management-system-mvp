@@ -117,6 +117,21 @@ export function HandoffWeekView({
             color="warning"
           />
         )}
+        {/* 過去日の取りこぼし警告 */}
+        {(() => {
+          const overdueDays = summary.days.filter(
+            (d) => !d.isToday && !d.isFuture && d.unhandledCount > 0,
+          ).length;
+          return overdueDays > 0 ? (
+            <Chip
+              size="small"
+              label={`⚠ ${overdueDays}日に残件あり`}
+              color="error"
+              variant="outlined"
+              sx={{ fontWeight: 600 }}
+            />
+          ) : null;
+        })()}
         {!summary.hasAnyItems && (
           <Typography variant="body2" color="text.secondary">
             この週の申し送りはありません
@@ -173,9 +188,15 @@ function DayCard({
   const theme = useTheme();
   const disabled = day.isFuture;
 
+  // 過去日で未対応が残っている = 取りこぼし
+  const isOverdue = !day.isToday && !day.isFuture && day.unhandledCount > 0;
+  // 過去日で申し送りがあり、全件対応済み
+  const isAllHandled = !day.isToday && !day.isFuture && day.count > 0 && day.unhandledCount === 0;
+
   // 背景色の決定
   const getBgColor = () => {
     if (day.isFuture) return alpha(theme.palette.action.disabledBackground, 0.3);
+    if (isOverdue) return alpha(theme.palette.warning.main, 0.08);
     if (day.isToday) return alpha(theme.palette.primary.main, 0.08);
     if (day.count === 0) return theme.palette.background.paper;
     return theme.palette.background.paper;
@@ -185,6 +206,7 @@ function DayCard({
   const getBorderColor = () => {
     if (day.isToday) return theme.palette.primary.main;
     if (day.criticalCount > 0) return theme.palette.error.light;
+    if (isOverdue) return theme.palette.warning.main;
     if (day.unhandledCount > 0) return theme.palette.warning.light;
     return theme.palette.divider;
   };
@@ -269,12 +291,23 @@ function DayCard({
             {day.unhandledCount > 0 && (
               <Chip
                 size="small"
-                label={`未対応${day.unhandledCount}`}
-                color="warning"
+                label={isOverdue ? `⚠ 未対応${day.unhandledCount}` : `未対応${day.unhandledCount}`}
+                color={isOverdue ? 'error' : 'warning'}
+                variant={isOverdue ? 'filled' : 'outlined'}
                 sx={{ height: 20, fontSize: '0.65rem', '& .MuiChip-label': { px: 0.75 } }}
               />
             )}
           </Stack>
+        )}
+
+        {/* 全件対応済みマーカー */}
+        {isAllHandled && (
+          <Typography
+            variant="caption"
+            sx={{ mt: 0.5, fontSize: '0.65rem', color: 'success.main', fontWeight: 600 }}
+          >
+            ✅ 対応済み
+          </Typography>
         )}
 
         {/* カテゴリチップ */}

@@ -247,10 +247,22 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       backTo="/dashboard"
       testId="daily-support-page"
       headerActions={
-        <MonitoringCountdown
-          userName={selectedUser?.FullName}
-          lastAssessmentDate={selectedUser?.LastAssessmentDate}
-        />
+        <React.Fragment>
+          <MonitoringCountdown
+            userName={selectedUser?.FullName}
+            lastAssessmentDate={selectedUser?.LastAssessmentDate}
+          />
+          {initialParams.planningSheetId && (
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => navigate(`/support-planning-sheet/${initialParams.planningSheetId}`)}
+              sx={{ ml: 1, whiteSpace: 'nowrap' }}
+            >
+              元シートへ
+            </Button>
+          )}
+        </React.Fragment>
       }
     >
       <Container
