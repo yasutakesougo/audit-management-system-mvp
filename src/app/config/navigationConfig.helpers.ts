@@ -84,7 +84,8 @@ export function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
     testId === TESTIDS.nav.schedules ||
     to.startsWith('/records') ||
     to.startsWith('/schedule') ||
-    label.includes('黒ノート') ||
+    label.includes('運営状況') ||
+    label.includes('記録一覧') ||
     label.includes('月次')
   ) {
     return 'record';

@@ -25,7 +25,7 @@
 |------|------|
 | **出席管理** (Attendance) | SP リスト `Daily_Attendance` 等が存在すれば動作 |
 | **日次記録** (Daily Records) | `/dailysupport` → 各記録画面。認証済みユーザーなら利用可能 |
-| **Dashboard（黒ノート）** | `/dashboard` — 管理者向け KPI 表示 |
+| **Dashboard（運営状況）** | `/dashboard` — 管理者向け KPI 表示 |
 | **TodayOps** | `/today` — `VITE_FEATURE_TODAY_OPS=1` 設定が必要 |
 | **ユーザー管理** (Users) | `/users` — admin ロール必要 |
 | **職員管理** (Staff) | `/staff` — admin ロール必要 |

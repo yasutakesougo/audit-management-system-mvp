@@ -9,9 +9,9 @@ test.describe('AppShell sidebar aria-current', () => {
     const usersLink = page.getByRole('link', { name: '利用者' });
     await expect(usersLink).toHaveAttribute('aria-current', 'page');
 
-    // 3) 別リンクは aria-current を持たない（例：黒ノート一覧）
-    const blackNoteLink = page.getByRole('link', { name: '黒ノート一覧' });
-    await expect(blackNoteLink).not.toHaveAttribute('aria-current', 'page');
+    // 3) 別リンクは aria-current を持たない（例：記録一覧）
+    const recordListLink = page.getByRole('link', { name: '記録一覧' });
+    await expect(recordListLink).not.toHaveAttribute('aria-current', 'page');
   });
 
   test('marks /dashboard with aria-current="page" and non-current links without it', async ({ page }) => {
@@ -22,7 +22,7 @@ test.describe('AppShell sidebar aria-current', () => {
     const dashboardLink = page.getByRole('navigation', { name: /主要ナビゲーション/i }).locator('a[href="/dashboard"]');
     await expect(dashboardLink).toHaveAttribute('aria-current', 'page');
 
-    // a[href="/records"]（黒ノート一覧）が aria-current を持たない
+    // a[href="/records"]（記録一覧）が aria-current を持たない
     const recordsLink = page.getByRole('navigation', { name: /主要ナビゲーション/i }).locator('a[href="/records"]');
     await expect(recordsLink).not.toHaveAttribute('aria-current', 'page');
   });
