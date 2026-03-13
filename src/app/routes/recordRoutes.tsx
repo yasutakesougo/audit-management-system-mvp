@@ -64,7 +64,14 @@ export const recordRoutes: RouteObject[] = [
       </RequireAudience>
     ),
   },
-  { path: 'handoff-timeline', element: <SuspendedHandoffTimelinePage /> },
+  {
+    path: 'handoff-timeline',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <SuspendedHandoffTimelinePage />
+      </RequireAudience>
+    ),
+  },
   { path: 'meeting-minutes', element: MeetingMinutesRoutes.List },
   { path: 'meeting-minutes/new', element: MeetingMinutesRoutes.New },
   { path: 'meeting-minutes/:id', element: MeetingMinutesRoutes.Detail },
