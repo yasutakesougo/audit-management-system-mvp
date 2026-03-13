@@ -49,6 +49,7 @@ import { NextActionCard } from '../widgets/NextActionCard';
 import { TodayTasksCard, type TodayTasksCardProps } from '../widgets/TodayTasksCard';
 import { TodayServiceStructureCard } from '../widgets/TodayServiceStructureCard';
 import { UserCompactList, type UserRow } from '../widgets/UserCompactList';
+import { TodayPhaseIndicator } from '../widgets/TodayPhaseIndicator';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -72,6 +73,8 @@ export type TodayBentoProps = {
   scheduleDetailHref?: string;
   /** ナビゲーション CTA クリック → ページ遷移 */
   onNextActionNavigate?: (href: string) => void;
+  /** フェーズサジェスト: 主役画面への遷移ハンドラ */
+  onPhaseNavigate?: (path: string) => void;
   /** TodayEngine output (optional: widget hidden when undefined) */
   todayTasks?: TodayTasksCardProps;
   transport: { pending: TransportUser[]; inProgress: TransportUser[]; onArrived: (id: string) => void };
@@ -115,6 +118,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   nextActionMenuAction,
   scheduleDetailHref,
   onNextActionNavigate,
+  onPhaseNavigate,
   todayTasks,
   transportCard,
   users,
@@ -127,6 +131,11 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
         pb: 8,
       }}
     >
+      {/* ── Phase Indicator (OperationalPhase 接続) ── */}
+      <Box sx={{ px: { xs: 2, sm: 3 }, pt: 2, pb: 0 }}>
+        <TodayPhaseIndicator onNavigate={onPhaseNavigate} />
+      </Box>
+
       {/* ── Bento Grid ── */}
       <BentoContainer sx={{ mt: 2 }}>
         {/* ── Row 0: NextAction (full-width) — PRIMARY ENTRY POINT ── */}
