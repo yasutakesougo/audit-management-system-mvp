@@ -74,7 +74,7 @@ describe('navigationConfig', () => {
 
     it('should classify records as record group', () => {
       const item: NavItem = {
-        label: '黒ノート一覧',
+        label: '記録一覧',
         to: '/records',
         isActive: () => false,
       };
@@ -193,7 +193,7 @@ describe('navigationConfig', () => {
       expect(items.length).toBeGreaterThan(0);
       expect(items.some((item) => item.label === '日次記録')).toBe(true);
       expect(items.some((item) => item.label === '健康記録')).toBe(true);
-      expect(items.some((item) => item.label === '黒ノート一覧')).toBe(true);
+      expect(items.some((item) => item.label === '記録一覧')).toBe(true);
       expect(items.some((item) => item.label === '利用者')).toBe(true);
     });
 
@@ -330,7 +330,7 @@ describe('navigationConfig', () => {
         isActive: () => false,
       },
       {
-        label: '黒ノート一覧',
+        label: '記録一覧',
         to: '/records',
         isActive: () => false,
       },
@@ -348,7 +348,7 @@ describe('navigationConfig', () => {
 
     it('should filter items by label (case-insensitive)', () => {
       const result = filterNavItems(sampleItems, '記録');
-      expect(result.length).toBe(2); // 日次記録, 健康記録
+      expect(result.length).toBe(3); // 日次記録, 健康記録, 記録一覧
       expect(result.every((item) => item.label.includes('記録'))).toBe(true);
     });
 
@@ -379,7 +379,7 @@ describe('navigationConfig', () => {
         testId: TESTIDS.nav.daily,
       },
       {
-        label: '黒ノート一覧',
+        label: '記録一覧',
         to: '/records',
         isActive: () => false,
       },
@@ -407,7 +407,7 @@ describe('navigationConfig', () => {
 
       expect(ORDER).toEqual(NAV_GROUP_ORDER);
       expect(map.get('daily')).toHaveLength(1);
-      expect(map.get('record')).toHaveLength(2); // 黒ノート + 自己点検 (non-admin default)
+      expect(map.get('record')).toHaveLength(2); // 記録一覧 + 自己点検 (non-admin default)
       expect(map.get('ibd')).toHaveLength(1);
       expect(map.get('master')).toHaveLength(1);
     });
@@ -416,7 +416,7 @@ describe('navigationConfig', () => {
       const { map } = groupNavItems(sampleItems, true);
 
       expect(map.get('admin')).toHaveLength(1); // 自己点検
-      expect(map.get('record')).toHaveLength(1); // 黒ノート only
+      expect(map.get('record')).toHaveLength(1); // 記録一覧 only
     });
 
     it('should maintain group order', () => {

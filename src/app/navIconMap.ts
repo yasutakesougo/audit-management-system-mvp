@@ -25,7 +25,7 @@ export const navIconMap: Record<string, React.ElementType> = {
   '朝会（作成）': AddCircleOutlineIcon,
   '夕会（作成）': AddCircleOutlineIcon,
   '議事録アーカイブ': EditNoteIcon,
-  '黒ノート一覧': AssignmentTurnedInRoundedIcon,
+  '記録一覧': AssignmentTurnedInRoundedIcon,
   '月次記録': AssessmentRoundedIcon,
   '分析': InsightsIcon,
   '氷山分析': WorkspacesIcon,

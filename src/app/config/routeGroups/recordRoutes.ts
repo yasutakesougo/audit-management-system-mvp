@@ -12,7 +12,7 @@ import { NAV_AUDIENCE } from '../navigationConfig.types';
 /** Unconditional record group items */
 export const RECORD_ROUTES_BASE: NavItem[] = [
   {
-    label: '黒ノート',
+    label: '運営状況',
     to: '/dashboard',
     isActive: (pathname) => pathname === '/dashboard',
     icon: undefined,
@@ -21,7 +21,7 @@ export const RECORD_ROUTES_BASE: NavItem[] = [
     group: 'record' as NavGroupKey,
   },
   {
-    label: '黒ノート一覧',
+    label: '記録一覧',
     to: '/records',
     isActive: (pathname) => pathname.startsWith('/records'),
     icon: undefined,
