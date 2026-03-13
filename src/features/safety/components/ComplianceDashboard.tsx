@@ -36,6 +36,9 @@ import SchoolIcon from '@mui/icons-material/School';
 import ShieldIcon from '@mui/icons-material/Shield';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import AddIcon from '@mui/icons-material/Add';
+import Fab from '@mui/material/Fab';
+import Tooltip from '@mui/material/Tooltip';
 
 import {
   type CommitteeMeetingRecord,
@@ -60,6 +63,9 @@ import {
   localTrainingRepository,
 } from '@/infra/localStorage/localComplianceRepository';
 import { TESTIDS } from '@/testids';
+import { CommitteeMeetingDialog } from './CommitteeMeetingDialog';
+import { GuidelineVersionDialog } from './GuidelineVersionDialog';
+import { TrainingRecordDialog } from './TrainingRecordDialog';
 
 // ---------------------------------------------------------------------------
 // Status Badge Helper
@@ -554,6 +560,9 @@ const ComplianceDashboard: React.FC = () => {
   const [guidelineVersions, setGuidelineVersions] = useState<GuidelineVersion[]>([]);
   const [trainingRecords, setTrainingRecords] = useState<TrainingRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [committeeDialogOpen, setCommitteeDialogOpen] = useState(false);
+  const [guidelineDialogOpen, setGuidelineDialogOpen] = useState(false);
+  const [trainingDialogOpen, setTrainingDialogOpen] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -695,32 +704,48 @@ const ComplianceDashboard: React.FC = () => {
 
       <Divider sx={{ mb: 2 }} />
 
-      {/* Tab Navigation */}
-      <Tabs
-        value={tab}
-        onChange={(_, v) => setTab(v)}
-        sx={{ mb: 2 }}
-        data-testid={TESTIDS['compliance-dashboard-tabs']}
-      >
-        <Tab
-          icon={<GroupsIcon />}
-          iconPosition="start"
-          label="委員会"
-          sx={{ fontWeight: 700 }}
-        />
-        <Tab
-          icon={<DescriptionIcon />}
-          iconPosition="start"
-          label="指針"
-          sx={{ fontWeight: 700 }}
-        />
-        <Tab
-          icon={<SchoolIcon />}
-          iconPosition="start"
-          label="研修"
-          sx={{ fontWeight: 700 }}
-        />
-      </Tabs>
+      {/* Tab Navigation + Add Button */}
+      <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
+        <Tabs
+          value={tab}
+          onChange={(_, v) => setTab(v)}
+          sx={{ flex: 1 }}
+          data-testid={TESTIDS['compliance-dashboard-tabs']}
+        >
+          <Tab
+            icon={<GroupsIcon />}
+            iconPosition="start"
+            label="委員会"
+            sx={{ fontWeight: 700 }}
+          />
+          <Tab
+            icon={<DescriptionIcon />}
+            iconPosition="start"
+            label="指針"
+            sx={{ fontWeight: 700 }}
+          />
+          <Tab
+            icon={<SchoolIcon />}
+            iconPosition="start"
+            label="研修"
+            sx={{ fontWeight: 700 }}
+          />
+        </Tabs>
+        <Tooltip title={tab === 0 ? '委員会記録を追加' : tab === 1 ? '指針版を追加' : '研修記録を追加'}>
+          <Fab
+            color="primary"
+            size="medium"
+            onClick={() => {
+              if (tab === 0) setCommitteeDialogOpen(true);
+              else if (tab === 1) setGuidelineDialogOpen(true);
+              else setTrainingDialogOpen(true);
+            }}
+            data-testid="compliance-add-button"
+          >
+            <AddIcon />
+          </Fab>
+        </Tooltip>
+      </Stack>
 
       {/* Tab Content */}
       {tab === 0 && (
@@ -732,6 +757,23 @@ const ComplianceDashboard: React.FC = () => {
       {tab === 2 && (
         <TrainingTab records={trainingRecords} summary={trainingSummary} />
       )}
+
+      {/* Dialogs */}
+      <CommitteeMeetingDialog
+        open={committeeDialogOpen}
+        onClose={() => setCommitteeDialogOpen(false)}
+        onSaved={() => void loadData()}
+      />
+      <GuidelineVersionDialog
+        open={guidelineDialogOpen}
+        onClose={() => setGuidelineDialogOpen(false)}
+        onSaved={() => void loadData()}
+      />
+      <TrainingRecordDialog
+        open={trainingDialogOpen}
+        onClose={() => setTrainingDialogOpen(false)}
+        onSaved={() => void loadData()}
+      />
     </Container>
   );
 };
