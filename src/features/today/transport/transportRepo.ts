@@ -23,7 +23,12 @@ import {
   TRANSPORT_LOG_FIELDS,
   TRANSPORT_LOG_SELECT_FIELDS,
 } from '@/sharepoint/fields/transportFields';
+import {
+  ATTENDANCE_DAILY_FIELDS,
+  ATTENDANCE_DAILY_LIST_TITLE,
+} from '@/sharepoint/fields/attendanceFields';
 import { LIST_CONFIG, ListKeys } from '@/sharepoint/fields/listRegistry';
+import { methodImpliesShuttle } from '@/features/attendance/transportMethod';
 import type { TransportLogEntry } from './transportStatusLogic';
 import type { TransportDirection, TransportLegStatus } from './transportTypes';
 import type { TransportMethod } from '@/features/attendance/transportMethod';
@@ -204,5 +209,88 @@ export async function saveTransportLog(
 
     console.error(`${LOG} Failed to save transport log (${titleKey}):`, err);
     throw err;
+  }
+}
+
+// ─── Sync to AttendanceDaily ────────────────────────────────────────────────
+
+/**
+ * Sync transport confirmation to AttendanceDaily.
+ *
+ * When a leg reaches 'arrived' status, we patch the corresponding
+ * AttendanceDaily record with:
+ *   - TransportTo/TransportFrom = true/false (derived from method)
+ *   - TransportToMethod/TransportFromMethod = the method enum value
+ *
+ * Design:
+ * - Key format: {UserCode}_{yyyy-MM-dd} (matches AttendanceDaily.Key)
+ * - Only syncs when status === 'arrived'
+ * - Graceful degradation: list/record not found → no-op
+ * - Write gate: requires VITE_WRITE_ENABLED=1
+ *
+ * Phase 3.5 of Issue #635.
+ */
+export type SyncToAttendanceDailyInput = {
+  userCode: string;
+  recordDate: string;     // yyyy-MM-dd
+  direction: TransportDirection;
+  status: TransportLegStatus;
+  method?: TransportMethod;
+};
+
+export async function syncToAttendanceDaily(
+  client: ReturnType<typeof useSP>,
+  input: SyncToAttendanceDailyInput,
+): Promise<void> {
+  // Only sync when arrived
+  if (input.status !== 'arrived') return;
+
+  assertWriteEnabled('syncToAttendanceDaily');
+
+  const listTitle = ATTENDANCE_DAILY_LIST_TITLE;
+  const dailyKey = `${input.userCode}_${input.recordDate}`;
+  const isShuttle = input.method ? methodImpliesShuttle(input.method) : false;
+
+  // Build partial patch payload (only transport fields for this direction)
+  const patch: Record<string, unknown> = {};
+  if (input.direction === 'to') {
+    patch[ATTENDANCE_DAILY_FIELDS.transportTo] = isShuttle;
+    if (input.method) patch[ATTENDANCE_DAILY_FIELDS.transportToMethod] = input.method;
+  } else {
+    patch[ATTENDANCE_DAILY_FIELDS.transportFrom] = isShuttle;
+    if (input.method) patch[ATTENDANCE_DAILY_FIELDS.transportFromMethod] = input.method;
+  }
+
+  try {
+    // Look up existing daily record by Key
+    const existing = await client.listItems<{ Id: number }>(listTitle, {
+      select: ['Id'],
+      filter: `${ATTENDANCE_DAILY_FIELDS.key} eq '${dailyKey}'`,
+      top: 1,
+    });
+
+    if (!existing || existing.length === 0) {
+      // No AttendanceDaily record yet — skip sync
+      // This is normal during early morning before check-in
+      console.debug(`${LOG} AttendanceDaily not found for key=${dailyKey}, skipping sync`);
+      return;
+    }
+
+    const recordId = Number(existing[0].Id);
+    if (!Number.isFinite(recordId)) return;
+
+    await client.updateItem(listTitle, recordId, patch);
+    console.debug(`${LOG} Synced transport ${input.direction} to AttendanceDaily: key=${dailyKey}`);
+  } catch (err: unknown) {
+    const status = (err as { status?: number })?.status;
+    const message = err instanceof Error ? err.message : String(err);
+
+    if (status === 404 || message.includes('does not exist')) {
+      console.warn(`${LOG} AttendanceDaily list not found, skipping sync.`);
+      return;
+    }
+
+    // Log but don't throw — this is a secondary sync, should not break the main flow
+    console.error(`${LOG} Failed to sync to AttendanceDaily (key=${dailyKey}):`, err);
   }
 }

@@ -8,8 +8,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { loadTransportLogs, saveTransportLog, type SaveTransportLogInput } from '../transportRepo';
+import { loadTransportLogs, saveTransportLog, syncToAttendanceDaily, type SaveTransportLogInput, type SyncToAttendanceDailyInput } from '../transportRepo';
 import { TRANSPORT_LOG_FIELDS } from '@/sharepoint/fields/transportFields';
+import { ATTENDANCE_DAILY_FIELDS } from '@/sharepoint/fields/attendanceFields';
 
 // ─── Mock spClient ──────────────────────────────────────────────────────────
 
@@ -232,6 +233,109 @@ describe('transportRepo', () => {
 
       // Restore
       Object.defineProperty(envModule, 'isWriteEnabled', { value: true, writable: true });
+    });
+  });
+
+  // ─── syncToAttendanceDaily ────────────────────────────────────────────────
+
+  describe('syncToAttendanceDaily', () => {
+    const baseSync: SyncToAttendanceDailyInput = {
+      userCode: 'U001',
+      recordDate: '2026-03-13',
+      direction: 'to',
+      status: 'arrived',
+      method: 'office_shuttle',
+    };
+
+    it('should patch TransportTo + TransportToMethod for direction=to', async () => {
+      (client.listItems as ReturnType<typeof vi.fn>).mockResolvedValueOnce([{ Id: 99 }]);
+
+      await syncToAttendanceDaily(client, baseSync);
+
+      expect(client.updateItem).toHaveBeenCalledWith(
+        'AttendanceDaily',
+        99,
+        expect.objectContaining({
+          [ATTENDANCE_DAILY_FIELDS.transportTo]: true, // office_shuttle → true
+          [ATTENDANCE_DAILY_FIELDS.transportToMethod]: 'office_shuttle',
+        }),
+      );
+    });
+
+    it('should patch TransportFrom + TransportFromMethod for direction=from', async () => {
+      (client.listItems as ReturnType<typeof vi.fn>).mockResolvedValueOnce([{ Id: 100 }]);
+
+      await syncToAttendanceDaily(client, { ...baseSync, direction: 'from' });
+
+      expect(client.updateItem).toHaveBeenCalledWith(
+        'AttendanceDaily',
+        100,
+        expect.objectContaining({
+          [ATTENDANCE_DAILY_FIELDS.transportFrom]: true,
+          [ATTENDANCE_DAILY_FIELDS.transportFromMethod]: 'office_shuttle',
+        }),
+      );
+    });
+
+    it('should set transport boolean to false for non-shuttle methods', async () => {
+      (client.listItems as ReturnType<typeof vi.fn>).mockResolvedValueOnce([{ Id: 101 }]);
+
+      await syncToAttendanceDaily(client, { ...baseSync, method: 'self' });
+
+      expect(client.updateItem).toHaveBeenCalledWith(
+        'AttendanceDaily',
+        101,
+        expect.objectContaining({
+          [ATTENDANCE_DAILY_FIELDS.transportTo]: false, // self → false
+          [ATTENDANCE_DAILY_FIELDS.transportToMethod]: 'self',
+        }),
+      );
+    });
+
+    it('should skip sync for non-arrived statuses', async () => {
+      await syncToAttendanceDaily(client, { ...baseSync, status: 'in-progress' });
+      await syncToAttendanceDaily(client, { ...baseSync, status: 'pending' });
+
+      expect(client.listItems).not.toHaveBeenCalled();
+      expect(client.updateItem).not.toHaveBeenCalled();
+    });
+
+    it('should skip when no AttendanceDaily record exists', async () => {
+      (client.listItems as ReturnType<typeof vi.fn>).mockResolvedValueOnce([]);
+
+      await syncToAttendanceDaily(client, baseSync);
+
+      expect(client.updateItem).not.toHaveBeenCalled();
+    });
+
+    it('should handle 404 when AttendanceDaily list does not exist', async () => {
+      const error404 = new Error('List does not exist');
+      Object.assign(error404, { status: 404 });
+      (client.listItems as ReturnType<typeof vi.fn>).mockRejectedValueOnce(error404);
+
+      await expect(syncToAttendanceDaily(client, baseSync)).resolves.toBeUndefined();
+    });
+
+    it('should not throw on non-404 errors (logs but swallows)', async () => {
+      const error500 = new Error('Server Error');
+      Object.assign(error500, { status: 500 });
+      (client.listItems as ReturnType<typeof vi.fn>).mockRejectedValueOnce(error500);
+
+      // syncToAttendanceDaily swallows non-404 errors (secondary sync)
+      await expect(syncToAttendanceDaily(client, baseSync)).resolves.toBeUndefined();
+    });
+
+    it('should use correct Key format: {UserCode}_{Date}', async () => {
+      (client.listItems as ReturnType<typeof vi.fn>).mockResolvedValueOnce([]);
+
+      await syncToAttendanceDaily(client, baseSync);
+
+      expect(client.listItems).toHaveBeenCalledWith(
+        'AttendanceDaily',
+        expect.objectContaining({
+          filter: expect.stringContaining("Key eq 'U001_2026-03-13'"),
+        }),
+      );
     });
   });
 });
