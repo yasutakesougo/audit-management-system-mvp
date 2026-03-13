@@ -173,6 +173,10 @@ export interface StaffQualificationSummary {
 
 /**
  * 職員資格サマリを算出する。
+ *
+ * @param params.unqualifiedAssignmentCount - 資格未充足配置件数。
+ *   `findUsersWithUnqualifiedAssignment()` の結果 `.length` を渡す。
+ *   省略時は 0（後方互換）。
  */
 export function computeStaffQualificationSummary(params: {
   certificates: number;
@@ -180,6 +184,8 @@ export function computeStaffQualificationSummary(params: {
   assignments: QualificationAssignment[];
   observations: WeeklyObservationRecord[];
   corePersonAssignments: QualificationAssignment[];
+  /** 資格未充足配置のカウント（外部で算出して渡す） */
+  unqualifiedAssignmentCount?: number;
   today?: string;
 }): StaffQualificationSummary {
   const {
@@ -188,6 +194,7 @@ export function computeStaffQualificationSummary(params: {
     assignments,
     observations,
     corePersonAssignments,
+    unqualifiedAssignmentCount = 0,
     today,
   } = params;
   const now = today ?? new Date().toISOString().slice(0, 10);
@@ -214,7 +221,7 @@ export function computeStaffQualificationSummary(params: {
     totalCertificates: certificates,
     missingCertificates,
     activeAssignments: active.length,
-    unqualifiedAssignments: 0, // auditChecks側で判定
+    unqualifiedAssignments: unqualifiedAssignmentCount,
     fulfilledObservations: fulfilledCount,
     shortageObservations: shortageCount,
     overdueCorePersonAdvice: overdueCount,
