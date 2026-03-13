@@ -673,6 +673,14 @@ export interface SupportPlanBundle {
   icebergCountBySheet?: Record<string, number>;
   /** 直近のモニタリング結果 */
   latestMonitoring?: { date: string; planChangeRequired: boolean } | null;
+  /** 支援計画シートごとの実施記録件数（planningSheetId → count） */
+  procedureRecordCountBySheet?: Record<string, number>;
+  /** 支援計画シート総数 */
+  planningSheetCount?: number;
+  /** 実施記録の直近日付 */
+  lastProcedureRecordDate?: string | null;
+  /** 支援計画シート一覧（軽量版、カード表示用） */
+  planningSheetItems?: PlanningSheetListItem[];
 }
 
 // ─────────────────────────────────────────────

@@ -7,10 +7,8 @@ declare global {
     __AVAILABLE_ROUTES__?: string[];
   }
 }
-import { buildDailySupportUrl } from '@/app/links/buildDailySupportUrl';
 import { canAccess } from '@/auth/roles';
 import { useUserAuthz } from '@/auth/useUserAuthz';
-import { RegulatorySummaryBand } from '@/features/support-plan-guide/components/RegulatorySummaryBand';
 import { useIspRepositories } from '@/features/support-plan-guide/hooks/useIspRepositories';
 import { useRegulatorySummary } from '@/features/support-plan-guide/hooks/useRegulatorySummary';
 import { useSupportPlanBundle } from '@/features/support-plan-guide/hooks/useSupportPlanBundle';
@@ -37,7 +35,6 @@ import CloudSyncRoundedIcon from '@mui/icons-material/CloudSyncRounded';
 import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Paper from '@mui/material/Paper';
@@ -45,7 +42,7 @@ import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Tooltip from '@mui/material/Tooltip';
-import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
+
 import React, { Suspense } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -59,6 +56,9 @@ const MonitoringTab = React.lazy(() => import('@/features/support-plan-guide/com
 const RiskTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/RiskTab'));
 const ExcellenceTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/ExcellenceTab'));
 const PreviewTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/PreviewTab'));
+
+// Lazy-loaded regulatory section (code-split to stay under 80 kB budget)
+const RegulatorySection = React.lazy(() => import('@/features/support-plan-guide/components/RegulatorySection'));
 
 const TabFallback = <CircularProgress size={20} sx={{ m: 2 }} />;
 
@@ -300,23 +300,15 @@ export default function SupportPlanGuidePage() {
           </Alert>
         )}
 
-        {/* ── 制度サマリー帯 (Phase E) ── */}
+        {/* ── 制度サマリー帯 + シート一覧カード (lazy-loaded) ── */}
         {regulatoryAvailable && (
-          <Stack spacing={1.5}>
-            <RegulatorySummaryBand bundle={regulatoryBundle} />
-            {linkedUserId && (
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<PlayArrowRoundedIcon />}
-                onClick={() => navigate(buildDailySupportUrl(linkedUserId))}
-                sx={{ alignSelf: 'flex-start' }}
-                data-testid="open-daily-support-btn"
-              >
-                この支援計画の時間割を開く
-              </Button>
-            )}
-          </Stack>
+          <Suspense fallback={TabFallback}>
+            <RegulatorySection
+              bundle={regulatoryBundle}
+              linkedUserId={linkedUserId}
+              onNavigate={(url) => navigate(url)}
+            />
+          </Suspense>
         )}
 
         <Paper
