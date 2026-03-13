@@ -114,15 +114,21 @@ export const computeNavigationDiagnostics = (params: DiagnosticParams): Diagnost
   // 4. Analysis: missing in router vs orphans
   const missingInRouter: string[] = [];
 
+  const matchesAnyRoute = (href: string): boolean => {
+    if (routerPathSet.has(href)) return true;
+    // Fallback: check if any dynamic router pattern matches the concrete nav href
+    return [...routerPathSet].some(rp => isDynamicPattern(rp) && matchDynamic(href, rp));
+  };
+
   for (const href of sideHrefs) {
     if (href.startsWith('/nurse')) continue; // nested slice out of scope
-    if (!routerPathSet.has(href)) {
+    if (!matchesAnyRoute(href)) {
       missingInRouter.push(href);
     }
   }
 
   for (const href of footerHrefs) {
-    if (!routerPathSet.has(href)) {
+    if (!matchesAnyRoute(href)) {
       missingInRouter.push(href);
     }
   }

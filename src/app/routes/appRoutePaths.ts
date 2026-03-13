@@ -58,7 +58,7 @@ export const APP_ROUTE_PATHS = [
   'survey/tokusei',
   'admin/templates',
   'admin/step-templates',
-  'admin/individual-support',
+  'admin/individual-support/:userCode?',
   'admin/staff-attendance',
   'admin/integrated-resource-calendar',
   'admin/data-integrity',
@@ -82,6 +82,7 @@ export const APP_ROUTE_PATHS = [
   'ibd',
   'support-planning-sheet/:planningSheetId',
   'planning-sheet-list',
+  'settings/operation-flow',
 ] as const;
 
 export type AppRoutePath = typeof APP_ROUTE_PATHS[number];
