@@ -262,6 +262,12 @@ export const SECTIONS: SectionConfig[] = [
     ],
   },
   {
+    key: 'compliance',
+    label: '同意・交付',
+    description: '計画の説明・同意取得・交付記録を管理します。生活介護の監査で必須となる証跡です。',
+    fields: [],
+  },
+  {
     key: 'monitoring',
     label: 'モニタリング',
     description: '進捗確認と見直しタイミング、評価指標を整理します。',
@@ -349,7 +355,7 @@ export const SECTIONS: SectionConfig[] = [
 
 export const findSection = (key: SectionKey) => SECTIONS.find((section) => section.key === key);
 
-export const TAB_ORDER: SectionKey[] = ['overview', 'assessment', 'smart', 'supports', 'decision', 'monitoring', 'risk', 'excellence', 'preview'];
+export const TAB_ORDER: SectionKey[] = ['overview', 'assessment', 'smart', 'supports', 'decision', 'compliance', 'monitoring', 'risk', 'excellence', 'preview'];
 
 export const TAB_SECTIONS = TAB_ORDER.map((key) => ({
   key,

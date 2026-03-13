@@ -38,6 +38,7 @@ export type SectionKey =
   | 'smart'
   | 'supports'
   | 'decision'
+  | 'compliance'
   | 'monitoring'
   | 'risk'
   | 'excellence'
