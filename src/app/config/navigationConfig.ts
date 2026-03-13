@@ -413,6 +413,16 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     });
 
     items.push({
+      label: '1日の流れ設定',
+      to: '/settings/operation-flow',
+      isActive: (pathname: string) => pathname.startsWith('/settings/operation-flow'),
+      icon: undefined,
+      testId: TESTIDS.nav.operationFlowSettings,
+      audience: NAV_AUDIENCE.admin,
+      group: 'settings' as NavGroupKey,
+    });
+
+    items.push({
       label: '管理ツール',
       to: '/admin',
       isActive: (pathname: string) => pathname === '/admin',
