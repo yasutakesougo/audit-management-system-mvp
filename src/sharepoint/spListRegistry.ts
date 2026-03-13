@@ -139,6 +139,13 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'attendance',
   },
+  {
+    key: 'transport_log',
+    displayName: '送迎ステータスログ',
+    resolve: () => envOr('VITE_SP_LIST_TRANSPORT_LOG', fromConfig(ListKeys.TransportLog)),
+    operations: ['R', 'W'],
+    category: 'attendance',
+  },
 
   // ── 4. スケジュール系 ──────────────────────────────────
   {
