@@ -453,6 +453,16 @@ export const TESTIDS = {
   'safety-restraint-duration': 'safety-restraint-duration',
   'safety-restraint-history': 'safety-restraint-history',
   'safety-restraint-approval-chip': 'safety-restraint-approval-chip',
+
+  // Safety: Compliance Operations Dashboard (P0-3)
+  'compliance-dashboard-page': 'compliance-dashboard-page',
+  'compliance-dashboard-tabs': 'compliance-dashboard-tabs',
+  'compliance-overview-committee': 'compliance-overview-committee',
+  'compliance-overview-guideline': 'compliance-overview-guideline',
+  'compliance-overview-training': 'compliance-overview-training',
+  'compliance-committee-tab': 'compliance-committee-tab',
+  'compliance-guideline-tab': 'compliance-guideline-tab',
+  'compliance-training-tab': 'compliance-training-tab',
 } as const;
 
 type LeafValues<T> = T extends string
