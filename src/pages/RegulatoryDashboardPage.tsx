@@ -75,6 +75,7 @@ import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIceb
 import { useSevereAddonRealData } from '@/features/regulatory/hooks/useSevereAddonRealData';
 import { useUsers } from '@/features/users/useUsers';
 import { useStaff } from '@/stores/useStaff';
+import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 
 // ─────────────────────────────────────────────
 // デモデータ
@@ -711,11 +712,13 @@ const RegulatoryDashboardPage: React.FC = () => {
   // 加算系 findings — 実データ / デモフォールバック
   const { data: spUsers, status: usersStatus, error: usersError } = useUsers({ selectMode: 'full' });
   const { staff: spStaff, isLoading: staffLoading, error: staffError } = useStaff();
+  const planningSheetRepo = usePlanningSheetRepositories();
   const { input: realAddonInput, dataSourceLabel: addonDataSource } = useSevereAddonRealData(
     spUsers,
     spStaff,
     usersStatus === 'loading' || staffLoading,
     usersError ? (usersError instanceof Error ? usersError : new Error(String(usersError))) : staffError,
+    planningSheetRepo,
   );
   const addonFindings = useMemo(() => {
     if (realAddonInput) {
