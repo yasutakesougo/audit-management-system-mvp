@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ScheduleRepositoryListParams } from '../../domain/ScheduleRepository';
 
 // vi.hoisted lets us define the spy BEFORE vi.mock hoisting
-const { mockList } = vi.hoisted(() => ({
-  mockList: vi.fn(async (_params: ScheduleRepositoryListParams) => [
+const { mockList, mockRepository } = vi.hoisted(() => {
+  const list = vi.fn(async (_params: ScheduleRepositoryListParams) => [
     {
       id: '1',
       title: '朝のミーティング',
@@ -15,9 +15,20 @@ const { mockList } = vi.hoisted(() => ({
       status: 'Planned',
       etag: '',
     },
-  ]),
-}));
+  ]);
+  return {
+    mockList: list,
+    // Stable reference — returned by useScheduleRepository on every call
+    mockRepository: {
+      list,
+      create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
+    },
+  };
+});
 
+// ── Lightweight mocks ────────────────────────────────────────────────
 // Mock env — must come before hook import
 vi.mock('@/lib/env', () => ({
   isSchedulesFeatureEnabled: vi.fn(() => true),
@@ -27,14 +38,6 @@ vi.mock('@/lib/env', () => ({
   isForceDemoEnabled: vi.fn(() => true),
   isTestMode: vi.fn(() => true),
   shouldSkipLogin: vi.fn(() => true),
-}));
-
-vi.mock('@/lib/runtime', () => ({
-  hasSpfxContext: vi.fn(() => false),
-}));
-
-vi.mock('@/auth/useAuth', () => ({
-  useAuth: vi.fn(() => ({ acquireToken: vi.fn(async () => null) })),
 }));
 
 vi.mock('@/hydration/features', () => ({
@@ -52,19 +55,20 @@ vi.mock('@/lib/tz', () => ({
   formatInTimeZone: vi.fn((_date: Date, _tz: string, _fmt: string) => '09:00'),
 }));
 
-// Break the transitive import chain: SharePointScheduleRepository → fetchSp → msal
-vi.mock('@/features/schedules/infra/SharePointScheduleRepository', () => ({
-  SharePointScheduleRepository: vi.fn(),
-}));
-
-// Spy on InMemoryScheduleRepository (used by factory in demo mode)
-vi.mock('@/features/schedules/infra/InMemoryScheduleRepository', () => ({
-  inMemoryScheduleRepository: {
-    list: mockList,
-    create: vi.fn(),
-    update: vi.fn(),
-    remove: vi.fn(),
-  },
+// ── KEY FIX: Mock repositoryFactory directly ─────────────────────────
+// Previously, individual infra modules (SharePointScheduleRepository,
+// InMemoryScheduleRepository) were mocked, but repositoryFactory itself
+// was NOT mocked, causing Vitest to resolve the full transitive import
+// chain: repositoryFactory → @/env → import.meta, and
+// repositoryFactory → SharePointScheduleRepository → fetchSp → spClient
+// → msal, which exhausted worker memory (OOM).
+//
+// By mocking the factory at the boundary, we cut off the entire heavy
+// dependency graph. This matches the pattern used by useAttendance.spec.ts
+// and useTableDailyRecordViewModel.spec.ts.
+vi.mock('../../repositoryFactory', () => ({
+  useScheduleRepository: vi.fn(() => mockRepository),
+  getCurrentScheduleRepositoryKind: vi.fn(() => 'demo'),
 }));
 
 import { useSchedulesToday } from '../useSchedulesToday';
