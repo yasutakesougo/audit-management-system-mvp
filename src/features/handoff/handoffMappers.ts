@@ -54,6 +54,10 @@ export function fromSpHandoffItem(sp: SpHandoffItem): HandoffRecord {
     createdByName: sp.CreatedByName,
     isDraft: sp.IsDraft,
     carryOverDate: sp.CarryOverDate,
+    // P6 Phase 3: 制度系対応証跡
+    resolvedBy: sp.ResolvedBy,
+    resolvedAt: sp.ResolvedAt,
+    resolutionNote: sp.ResolutionNote,
   };
 }
 
@@ -93,9 +97,9 @@ export function toSpHandoffCreatePayload(
 
 /** SharePoint 更新用ペイロード（部分更新対応） */
 export function toSpHandoffUpdatePayload(
-  updates: Partial<Pick<HandoffRecord, 'status' | 'severity' | 'category' | 'message' | 'title' | 'carryOverDate'>>
-): Partial<Pick<SpHandoffItem, 'Status' | 'Severity' | 'Category' | 'Message' | 'Title' | 'CarryOverDate'>> {
-  const payload: Partial<Pick<SpHandoffItem, 'Status' | 'Severity' | 'Category' | 'Message' | 'Title' | 'CarryOverDate'>> = {};
+  updates: Partial<Pick<HandoffRecord, 'status' | 'severity' | 'category' | 'message' | 'title' | 'carryOverDate' | 'resolvedBy' | 'resolvedAt' | 'resolutionNote'>>
+): Partial<Pick<SpHandoffItem, 'Status' | 'Severity' | 'Category' | 'Message' | 'Title' | 'CarryOverDate' | 'ResolvedBy' | 'ResolvedAt' | 'ResolutionNote'>> {
+  const payload: Partial<Pick<SpHandoffItem, 'Status' | 'Severity' | 'Category' | 'Message' | 'Title' | 'CarryOverDate' | 'ResolvedBy' | 'ResolvedAt' | 'ResolutionNote'>> = {};
 
   if (updates.status !== undefined) payload.Status = updates.status;
   if (updates.severity !== undefined) payload.Severity = updates.severity;
@@ -103,6 +107,10 @@ export function toSpHandoffUpdatePayload(
   if (updates.message !== undefined) payload.Message = updates.message;
   if (updates.title !== undefined) payload.Title = updates.title;
   if (updates.carryOverDate !== undefined) payload.CarryOverDate = updates.carryOverDate;
+  // P6 Phase 3: 制度系対応証跡
+  if (updates.resolvedBy !== undefined) payload.ResolvedBy = updates.resolvedBy;
+  if (updates.resolvedAt !== undefined) payload.ResolvedAt = updates.resolvedAt;
+  if (updates.resolutionNote !== undefined) payload.ResolutionNote = updates.resolutionNote;
 
   return payload;
 }

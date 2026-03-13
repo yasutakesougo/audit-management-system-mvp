@@ -5,6 +5,7 @@
  * 追加入力セクション。職員出欠・利用者体調・申し送り連携を提供。
  */
 import HandoffSummaryForMeeting from '@/features/handoff/HandoffSummaryForMeeting';
+import RegulatoryFindingsForMeeting from '@/features/handoff/RegulatoryFindingsForMeeting';
 import GroupIcon from '@mui/icons-material/Group';
 import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 import {
@@ -102,6 +103,9 @@ export const DailyMeetingExtension: React.FC<DailyMeetingExtensionProps> = ({
             }
           />
         </Box>
+
+        {/* P6 Phase 2: 制度系 finding 共有カード */}
+        <RegulatoryFindingsForMeeting dayScope={dayScope} />
 
         <Divider />
 
