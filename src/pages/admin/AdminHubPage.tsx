@@ -12,6 +12,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import GavelIcon from '@mui/icons-material/Gavel';
+import SecurityIcon from '@mui/icons-material/Security';
 import SettingsIcon from '@mui/icons-material/Settings';
 import StorageIcon from '@mui/icons-material/Storage';
 import SyncIcon from '@mui/icons-material/Sync';
@@ -64,6 +65,13 @@ const ADMIN_TOOLS: AdminTool[] = [
     description: '加算・監査リスク・見直し期限・資格要件の確認',
     to: '/admin/regulatory-dashboard',
     icon: <GavelIcon />,
+    category: 'overview',
+  },
+  {
+    label: '適正化運用ダッシュボード',
+    description: '委員会・指針・研修の適正化運用状況',
+    to: '/admin/compliance-dashboard',
+    icon: <SecurityIcon />,
     category: 'overview',
   },
   // Data

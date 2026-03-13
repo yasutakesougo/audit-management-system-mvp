@@ -48,6 +48,7 @@ import {
   type FindingEvidenceSummary,
   type IcebergEvidenceBySheet,
 } from '@/domain/regulatory/findingEvidenceSummary';
+import SafetyOperationsSummaryCard from '@/features/safety/components/SafetyOperationsSummaryCard';
 import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIcebergEvidence';
 
 // ─────────────────────────────────────────────
@@ -391,9 +392,17 @@ const RegulatoryDashboardPage: React.FC = () => {
         <SummaryCard title="低リスク / 算定候補" count={summary.low} color="#0288d1" icon={<InfoOutlinedIcon fontSize="large" />} />
       </Box>
 
-      {/* 種別内訳 */}
-      <Box sx={{ mb: 3 }}>
+      {/* 種別内訳 + 安全管理サマリ */}
+      <Box
+        sx={{
+          display: 'grid',
+          gap: 2,
+          mb: 3,
+          gridTemplateColumns: { xs: '1fr', md: '1fr 380px' },
+        }}
+      >
         <TypeBreakdown summary={summary} />
+        <SafetyOperationsSummaryCard />
       </Box>
 
       {/* フィルター */}

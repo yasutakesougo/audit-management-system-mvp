@@ -55,6 +55,7 @@ const AssessmentTab = React.lazy(() => import('@/features/support-plan-guide/com
 const SmartTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/SmartTab'));
 const SupportsTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/SupportsTab'));
 const DecisionTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/DecisionTab'));
+const ComplianceTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/ComplianceTab'));
 const MonitoringTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/MonitoringTab'));
 const RiskTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/RiskTab'));
 const ExcellenceTab = React.lazy(() => import('@/features/support-plan-guide/components/tabs/ExcellenceTab'));
@@ -147,6 +148,9 @@ export default function SupportPlanGuidePage() {
     handleToggleDomain,
     handleAddGoal,
     handleDeleteGoal,
+
+    // Compliance (A-2)
+    complianceForm,
   } = hook;
 
   // ── selectUser: Autocomplete → SelectChangeEvent adapter ──
@@ -252,6 +256,13 @@ export default function SupportPlanGuidePage() {
         return <SupportsTab {...sectionTabProps} />;
       case 'decision':
         return <DecisionTab {...sectionTabProps} />;
+      case 'compliance':
+        return (
+          <ComplianceTab
+            isAdmin={isAdmin}
+            complianceForm={complianceForm}
+          />
+        );
       case 'monitoring':
         return (
           <MonitoringTab
