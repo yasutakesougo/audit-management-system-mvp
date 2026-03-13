@@ -65,15 +65,15 @@ test.describe('Prefetch nav shell intents', () => {
 
     await expect.poll(async () => {
       const spans = await readPrefetchSpans(page);
-      return spans.some((span) => span.key === 'route:dashboard' && span.source === 'hover' && span.meta?.label === '黒ノート');
+      return spans.some((span) => span.key === 'route:dashboard' && span.source === 'hover' && span.meta?.label === '運営状況');
     }).toBe(true);
     await expect.poll(async () => {
       const spans = await readPrefetchSpans(page);
-      return spans.some((span) => span.key === 'mui:data' && span.source === 'hover' && span.meta?.label === '黒ノート');
+      return spans.some((span) => span.key === 'mui:data' && span.source === 'hover' && span.meta?.label === '運営状況');
     }).toBe(true);
     await expect.poll(async () => {
       const spans = await readPrefetchSpans(page);
-      return spans.some((span) => span.key === 'mui:feedback' && span.source === 'hover' && span.meta?.label === '黒ノート');
+      return spans.some((span) => span.key === 'mui:feedback' && span.source === 'hover' && span.meta?.label === '運営状況');
     }).toBe(true);
     await expect(hud).toContainText('mui:data');
     await expect(hud).toContainText('mui:feedback');

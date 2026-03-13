@@ -9,7 +9,7 @@ test.describe('Dashboard Phase II - Mini E2E Tests', () => {
 
   test('Dashboard表示 - 基本コンポーネント検証', async ({ page }) => {
     // ページタイトル確認 - 実際のタイトルに合わせて修正
-    await expect(page).toHaveTitle(/黒ノート/);
+    await expect(page).toHaveTitle(/運営状況/);
 
     // Dashboard ページの基本要素確認
     const dashboardPage = page.getByTestId('dashboard-page');
@@ -18,7 +18,7 @@ test.describe('Dashboard Phase II - Mini E2E Tests', () => {
     console.log('Dashboard page loaded successfully');
 
     // ページ内に重要なテキストが含まれていることを確認
-    await expect(page.getByRole('heading', { name: '黒ノート' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '運営状況' })).toBeVisible();
   });
 
   test('Safety HUD - アラート表示検証', async ({ page }) => {

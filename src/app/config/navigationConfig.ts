@@ -161,7 +161,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'daily' as NavGroupKey,
     },
     {
-      label: '黒ノート',
+      label: '運営状況',
       to: '/dashboard',
       isActive: (pathname) => pathname === '/dashboard',
       icon: undefined,
@@ -170,7 +170,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'record' as NavGroupKey,
     },
     {
-      label: '黒ノート一覧',
+      label: '記録一覧',
       to: '/records',
       isActive: (pathname) => pathname.startsWith('/records'),
       icon: undefined,

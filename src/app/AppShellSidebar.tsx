@@ -53,7 +53,7 @@ const NavItemRow: React.FC<{
 }> = React.memo(({ item, navCollapsed, currentPathname, currentSearch, onNavigate }) => {
   const { label, to, isActive, testId, icon: IconComponent, prefetchKey, prefetchKeys } = item;
   const active = isActive(currentPathname, currentSearch);
-  const isBlackNote = label.includes('黒ノート');
+  const isRecordSection = label.includes('運営状況') || label.includes('記録一覧');
   const showLabel = !navCollapsed;
 
   const handleClick = (e: React.MouseEvent) => {
@@ -69,7 +69,7 @@ const NavItemRow: React.FC<{
     'aria-current': active ? ('page' as const) : undefined,
     onClick: handleClick,
     sx: {
-      ...(isBlackNote && active ? {
+      ...(isRecordSection && active ? {
         borderLeft: 4,
         borderColor: 'primary.main',
         fontWeight: 700,

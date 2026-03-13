@@ -6,7 +6,7 @@ test.describe('Dashboard Phase II - Minimal E2E', () => {
     await page.waitForLoadState('networkidle');
 
     // 基本的なページロード確認
-    await expect(page).toHaveTitle(/黒ノート/);
+    await expect(page).toHaveTitle(/運営状況/);
 
     // Dashboard ページ要素の確認
     const dashboardPage = page.getByTestId('dashboard-page');
@@ -32,7 +32,7 @@ test.describe('Dashboard Phase II - Minimal E2E', () => {
 
     // 重要なキーワードが含まれていることを確認 - 実際のコンテンツに基づく
     const pageText = await page.textContent('body');
-    expect(pageText).toContain('黒ノート');
+    expect(pageText).toContain('運営状況');
 
     console.log('✅ Dashboard contains expected content');
   });
