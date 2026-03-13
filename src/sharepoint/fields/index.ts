@@ -115,6 +115,11 @@ export {
     SUPPORT_PLANS_FIELDS, SUPPORT_PLANS_LIST_TITLE, SUPPORT_PLANS_SELECT_FIELDS
 } from './supportPlanFields';
 
+// ── Transport_Log ──
+export {
+    buildTransportLogTitle, TRANSPORT_LOG_FIELDS, TRANSPORT_LOG_LIST_TITLE, TRANSPORT_LOG_SELECT_FIELDS
+} from './transportFields';
+
 // ──────────────────────────────────────────────────────────────
 // 統合 FIELD_MAP（後方互換用）
 //

@@ -23,6 +23,7 @@ export enum ListKeys {
   SupportTemplates = 'SupportTemplates',
   PlanGoals = 'PlanGoals',
   SupportPlans = 'SupportPlans',
+  TransportLog = 'Transport_Log',
 }
 
 export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
@@ -43,4 +44,5 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.SupportTemplates]: { title: 'SupportTemplates' },
   [ListKeys.PlanGoals]: { title: 'PlanGoals' },
   [ListKeys.SupportPlans]: { title: 'SupportPlans' },
+  [ListKeys.TransportLog]: { title: 'Transport_Log' },
 };
