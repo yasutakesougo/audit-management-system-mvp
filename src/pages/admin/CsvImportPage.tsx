@@ -21,9 +21,10 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import type { ChangeEvent } from 'react';
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import ImportHistoryPanel from '@/features/import/components/ImportHistoryPanel';
 import { useCSVImport } from '@/features/import/hooks/useCSVImport';
 
 export default function CsvImportPage() {
@@ -58,6 +59,12 @@ export default function CsvImportPage() {
   const summary = preview?.summary;
   const isDone = status === 'done';
   const isPreviewing = status === 'previewing';
+
+  // 履歴パネルの更新トリガー
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  useEffect(() => {
+    if (isDone) setHistoryRefreshKey((k) => k + 1);
+  }, [isDone]);
 
   return (
     <Box sx={{ maxWidth: 720, mx: 'auto', py: 3, px: 2 }}>
@@ -248,6 +255,21 @@ export default function CsvImportPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* ── Import History Section ── */}
+      <Divider sx={{ my: 3 }} />
+
+      <Box sx={{ mb: 1 }}>
+        <Typography
+          variant="overline"
+          fontWeight="bold"
+          color="text.secondary"
+          sx={{ display: 'block', mb: 1.5 }}
+        >
+          📜 インポート履歴
+        </Typography>
+        <ImportHistoryPanel refreshKey={historyRefreshKey} />
+      </Box>
     </Box>
   );
 }
