@@ -1,7 +1,7 @@
 /**
  * useTransportStatus — React Hook for today's transport tracking
  *
- * Phase 3 of Issue #635 — SharePoint Connected.
+ * Phase 3.5 of Issue #635 — IsTransportTarget filtering + syncToAttendanceDaily.
  *
  * Responsibilities:
  * 1. Derive TransportLeg[] from useTodaySummary (users + visits)
@@ -38,7 +38,8 @@ import {
     type TransportUserInfo,
     type TransportVisitInfo,
 } from './transportStatusLogic';
-import { loadTransportLogs, saveTransportLog } from './transportRepo';
+import { loadTransportLogs, saveTransportLog, syncToAttendanceDaily } from './transportRepo';
+import { getActiveUsers, type AttendanceUserItem } from '@/features/attendance/infra/attendanceUsersRepository';
 import type {
     TodayTransportStatus,
     TransportDirection,
@@ -198,18 +199,24 @@ export function useTransportStatus(): UseTransportStatusReturn {
     const todayKey = getTodayKey();
 
     async function initLegs() {
-      // Load existing logs from SharePoint (graceful: returns [] if list missing)
-      let existingLogs: TransportLogEntry[] = [];
-      try {
-        existingLogs = await loadTransportLogs(sp, todayKey);
-      } catch {
-        // Graceful: SP unavailable → start with empty logs
-        console.warn('[useTransportStatus] Failed to load SP logs, starting fresh');
-      }
+      // Load existing transport logs and attendance users in parallel
+      // Both are graceful: failures return empty arrays
+      const [existingLogs, attendanceUsers] = await Promise.all([
+        loadTransportLogs(sp, todayKey).catch((err) => {
+          console.warn('[useTransportStatus] Failed to load SP logs, starting fresh', err);
+          return [] as TransportLogEntry[];
+        }),
+        getActiveUsers(sp).catch((err) => {
+          console.warn('[useTransportStatus] Failed to load AttendanceUsers, showing all users', err);
+          return [] as AttendanceUserItem[];
+        }),
+      ]);
 
       if (cancelled) return;
 
-      const users = adaptUsers(summary.users); // AttendanceUsers filtering: Phase 3.5
+      // Phase 3.5: Pass real AttendanceUsers for IsTransportTarget filtering
+      // If attendanceUsers is empty (list missing or error), adaptUsers falls back to showing all
+      const users = adaptUsers(summary.users, attendanceUsers);
       const visits = adaptVisits(summary.visits);
 
       const toLegs = deriveTransportLegs(users, visits, existingLogs, 'to');
@@ -220,7 +227,7 @@ export function useTransportStatus(): UseTransportStatusReturn {
 
     void initLegs();
     return () => { cancelled = true; };
-  }, [summary.users, summary.visits]);
+  }, [summary.users, summary.visits, sp]);
 
   // ─── Actions ──────────────────────────────────────────────────────────────
 
@@ -253,6 +260,20 @@ export function useTransportStatus(): UseTransportStatusReturn {
           actualTime: updated.actualTime,
           driverName: updated.driverName,
           notes: updated.notes,
+        }).then(() => {
+          // Phase 3.5: Sync to AttendanceDaily when arrived
+          // Fire-and-forget — sync failures should not affect transport log
+          if (updated.status === 'arrived') {
+            syncToAttendanceDaily(spRef.current, {
+              userCode: updated.userId,
+              recordDate: todayKey,
+              direction: updated.direction,
+              status: updated.status,
+              method: updated.method,
+            }).catch((syncErr) => {
+              console.warn('[useTransportStatus] AttendanceDaily sync failed (non-blocking):', syncErr);
+            });
+          }
         }).catch((err) => {
           console.error('[useTransportStatus] SP save failed, rolling back:', err);
           // Rollback: restore the previous leg state
