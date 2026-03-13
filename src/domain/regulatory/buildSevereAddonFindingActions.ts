@@ -10,6 +10,8 @@
  * | basic_training_ratio_insufficient     | /staff (職員資格管理)                            |
  * | planning_sheet_reassessment_overdue   | /planning-sheet-list + 分析確認                 |
  * | weekly_observation_shortage           | /staff + 分析確認                               |
+ * | authoring_requirement_unmet           | /planning-sheet-list + /staff                 |
+ * | assignment_without_required_qualification | /staff                                     |
  */
 
 import type { SevereAddonFinding } from './severeAddonFindings';
@@ -100,6 +102,27 @@ export function buildSevereAddonFindingActions(finding: SevereAddonFinding): Add
           kind: 'evidence',
         });
       }
+      break;
+
+    case 'authoring_requirement_unmet':
+      actions.push({
+        label: '支援計画シートを確認',
+        url: planningSheetUrl,
+        kind: 'review',
+      });
+      actions.push({
+        label: '職員資格を確認',
+        url: staffUrl,
+        kind: 'staff',
+      });
+      break;
+
+    case 'assignment_without_required_qualification':
+      actions.push({
+        label: '職員資格を確認',
+        url: staffUrl,
+        kind: 'staff',
+      });
       break;
   }
 

@@ -13,6 +13,8 @@
  * | `basic_training_ratio_insufficient`   | medium | 基礎研修修了者比率 20% 未満                  |
  * | `planning_sheet_reassessment_overdue` | high   | 支援計画シートの3か月再評価超過              |
  * | `weekly_observation_shortage`         | medium | 週次観察が不足している                        |
+ * | `authoring_requirement_unmet`         | high   | 支援計画シート作成者が実践研修未修了          |
+ * | `assignment_without_required_qualification` | medium | 加算対象者に必要資格のない職員が配置     |
  *
  * @see severeDisabilityAddon.ts — 判定ロジック
  * @see planningSheetReassessment.ts — 再評価型
@@ -43,7 +45,9 @@ export type SevereAddonFindingType =
   | 'severe_addon_tier3_candidate'
   | 'basic_training_ratio_insufficient'
   | 'planning_sheet_reassessment_overdue'
-  | 'weekly_observation_shortage';
+  | 'weekly_observation_shortage'
+  | 'authoring_requirement_unmet'
+  | 'assignment_without_required_qualification';
 
 export const SEVERE_ADDON_FINDING_TYPE_LABELS: Record<SevereAddonFindingType, string> = {
   severe_addon_tier2_candidate: '加算（Ⅱ）候補',
@@ -51,6 +55,8 @@ export const SEVERE_ADDON_FINDING_TYPE_LABELS: Record<SevereAddonFindingType, st
   basic_training_ratio_insufficient: '基礎研修比率不足',
   planning_sheet_reassessment_overdue: '再評価超過',
   weekly_observation_shortage: '週次観察不足',
+  authoring_requirement_unmet: '作成者要件不備',
+  assignment_without_required_qualification: '資格なし配置',
 } as const;
 
 export type SevereAddonFindingSeverity = 'high' | 'medium' | 'low';
@@ -85,6 +91,10 @@ export interface SevereAddonSummary {
   weeklyObservationShortageCount: number;
   /** 3か月再評価超過件数 */
   reassessmentOverdueCount: number;
+  /** 作成者要件不備件数 */
+  authoringRequirementUnmetCount: number;
+  /** 資格なし配置件数 */
+  assignmentWithoutQualificationCount: number;
   /** 全 finding 数 */
   totalFindings: number;
 }
@@ -254,6 +264,8 @@ export function summarizeSevereAddonFindings(
   let trainingRatioInsufficientCount = 0;
   let weeklyObservationShortageCount = 0;
   let reassessmentOverdueCount = 0;
+  let authoringRequirementUnmetCount = 0;
+  let assignmentWithoutQualificationCount = 0;
 
   for (const f of findings) {
     switch (f.type) {
@@ -272,6 +284,12 @@ export function summarizeSevereAddonFindings(
       case 'weekly_observation_shortage':
         weeklyObservationShortageCount++;
         break;
+      case 'authoring_requirement_unmet':
+        authoringRequirementUnmetCount++;
+        break;
+      case 'assignment_without_required_qualification':
+        assignmentWithoutQualificationCount++;
+        break;
     }
   }
 
@@ -289,6 +307,8 @@ export function summarizeSevereAddonFindings(
     trainingRatioInsufficientCount,
     weeklyObservationShortageCount,
     reassessmentOverdueCount,
+    authoringRequirementUnmetCount,
+    assignmentWithoutQualificationCount,
     totalFindings: findings.length,
   };
 }

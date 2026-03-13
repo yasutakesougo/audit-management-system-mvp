@@ -39,6 +39,8 @@ import AccessibilityNewRoundedIcon from '@mui/icons-material/AccessibilityNewRou
 import SchoolRoundedIcon from '@mui/icons-material/SchoolRounded';
 import EventRepeatRoundedIcon from '@mui/icons-material/EventRepeatRounded';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
+import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
+import PersonOffRoundedIcon from '@mui/icons-material/PersonOffRounded';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -242,6 +244,8 @@ const ADDON_REQUIREMENT_LINKS: Record<string, { path: string; label: string }> =
   training:     { path: '/staff',               label: 'スタッフ管理を開く' },
   reassessment: { path: '/planning-sheet-list',  label: '支援計画シート一覧を開く' },
   observation:  { path: '/staff',               label: 'スタッフ管理を開く' },
+  authoring:    { path: '/planning-sheet-list',  label: '支援計画シート一覧を開く' },
+  assignment:   { path: '/staff',               label: 'スタッフ管理を開く' },
 };
 
 interface SevereAddonSummaryPanelProps {
@@ -254,7 +258,9 @@ const SevereAddonSummaryPanel: React.FC<SevereAddonSummaryPanelProps> = ({ addon
   const hasIssues =
     addonSummary.trainingRatioInsufficientCount > 0 ||
     addonSummary.reassessmentOverdueCount > 0 ||
-    addonSummary.weeklyObservationShortageCount > 0;
+    addonSummary.weeklyObservationShortageCount > 0 ||
+    addonSummary.authoringRequirementUnmetCount > 0 ||
+    addonSummary.assignmentWithoutQualificationCount > 0;
 
   return (
     <Card
@@ -341,6 +347,28 @@ const SevereAddonSummaryPanel: React.FC<SevereAddonSummaryPanelProps> = ({ addon
             ? () => onNavigate(ADDON_REQUIREMENT_LINKS.observation.path)
             : undefined}
           actionLabel={ADDON_REQUIREMENT_LINKS.observation.label}
+        />
+        <AddonRequirementRow
+          icon={<EditNoteRoundedIcon sx={{ fontSize: 16 }} />}
+          label="作成者要件"
+          count={addonSummary.authoringRequirementUnmetCount}
+          okText="全員実践研修修了"
+          ngText={`${addonSummary.authoringRequirementUnmetCount}件不備`}
+          onAction={addonSummary.authoringRequirementUnmetCount > 0
+            ? () => onNavigate(ADDON_REQUIREMENT_LINKS.authoring.path)
+            : undefined}
+          actionLabel={ADDON_REQUIREMENT_LINKS.authoring.label}
+        />
+        <AddonRequirementRow
+          icon={<PersonOffRoundedIcon sx={{ fontSize: 16 }} />}
+          label="配置資格"
+          count={addonSummary.assignmentWithoutQualificationCount}
+          okText="全員資格あり"
+          ngText={`${addonSummary.assignmentWithoutQualificationCount}件不備`}
+          onAction={addonSummary.assignmentWithoutQualificationCount > 0
+            ? () => onNavigate(ADDON_REQUIREMENT_LINKS.assignment.path)
+            : undefined}
+          actionLabel={ADDON_REQUIREMENT_LINKS.assignment.label}
         />
       </Stack>
 

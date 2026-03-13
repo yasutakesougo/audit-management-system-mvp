@@ -130,4 +130,34 @@ describe('buildSevereAddonFindingActions', () => {
     expect(findByKind(actions, 'evidence')).toHaveLength(0);
     expect(findByKind(actions, 'plan')).toHaveLength(0);
   });
+
+  // ── 作成者要件不備 ──
+
+  it('authoring_requirement_unmet → review + staff', () => {
+    const actions = buildSevereAddonFindingActions(
+      makeFinding({
+        type: 'authoring_requirement_unmet',
+        userId: 'U006',
+      }),
+    );
+    expect(actions).toHaveLength(2);
+    expect(findByKind(actions, 'review')).toHaveLength(1);
+    expect(findByKind(actions, 'staff')).toHaveLength(1);
+    expect(actions[0].url).toBe('/planning-sheet-list');
+    expect(actions[1].url).toBe('/staff');
+  });
+
+  // ── 資格なし配置 ──
+
+  it('assignment_without_required_qualification → staff only', () => {
+    const actions = buildSevereAddonFindingActions(
+      makeFinding({
+        type: 'assignment_without_required_qualification',
+        userId: 'U007',
+      }),
+    );
+    expect(actions).toHaveLength(1);
+    expect(findByKind(actions, 'staff')).toHaveLength(1);
+    expect(actions[0].url).toBe('/staff');
+  });
 });
