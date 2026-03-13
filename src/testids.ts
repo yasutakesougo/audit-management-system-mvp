@@ -444,6 +444,15 @@ export const TESTIDS = {
 
   // Support Plan Guide HUD
   'support-plan-hud': 'support-plan-hud',
+
+  // Safety: Physical Restraint (P0-2)
+  'safety-restraint-dialog': 'safety-restraint-dialog',
+  'safety-restraint-stepper': 'safety-restraint-stepper',
+  'safety-restraint-submit': 'safety-restraint-submit',
+  'safety-restraint-three-req': 'safety-restraint-three-req',
+  'safety-restraint-duration': 'safety-restraint-duration',
+  'safety-restraint-history': 'safety-restraint-history',
+  'safety-restraint-approval-chip': 'safety-restraint-approval-chip',
 } as const;
 
 type LeafValues<T> = T extends string
