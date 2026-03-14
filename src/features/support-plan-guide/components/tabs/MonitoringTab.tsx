@@ -61,7 +61,7 @@ const MonitoringEvidenceSection: React.FC<MonitoringEvidenceSectionProps> = ({ u
             <Stack direction="row" spacing={1} alignItems="center">
               <AutoStoriesIcon fontSize="small" color="primary" />
               <Typography variant="subtitle2" component="span" color="primary">
-                日次記録のエビデンス (過去60日: {evidence.count}件)
+                日次記録エビデンス（過去60日: {evidence.count}件）
               </Typography>
             </Stack>
             <Button
@@ -76,7 +76,7 @@ const MonitoringEvidenceSection: React.FC<MonitoringEvidenceSectionProps> = ({ u
             </Button>
           </Stack>
           <Typography variant="caption" color="text.secondary">
-            ※ 一覧入力テーブルから自動集計された実績です。アセスメントやモニタリングの根拠として活用できます。
+            一覧入力テーブルから自動集計された実績です。モニタリング評価文の根拠として引用できます。
           </Typography>
           <Box sx={{ maxHeight: 200, overflowY: 'auto', bgcolor: 'background.paper', borderRadius: 1, p: 1, border: '1px solid', borderColor: 'divider' }}>
             <List dense disablePadding>

@@ -78,7 +78,7 @@ const ActivityList: React.FC<{ label: string; items: ActivityRank[] }> = ({ labe
       <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
         {label}
       </Typography>
-      <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ mt: 0.5 }}>
+      <Stack direction="row" spacing={0.5} flexWrap="wrap" rowGap={0.5} sx={{ mt: 0.5 }}>
         {items.map((a) => (
           <Chip
             key={a.label}
@@ -105,16 +105,30 @@ export interface MonitoringDailyDashboardProps {
 const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
   summary,
   insightLines,
-  recordCount: _recordCount,
+  recordCount,
   onAppendInsight,
   isAdmin,
 }) => {
+  const [justAppended, setJustAppended] = React.useState(false);
+
+  const handleAppend = React.useCallback(
+    (text: string) => {
+      onAppendInsight(text);
+      setJustAppended(true);
+      setTimeout(() => setJustAppended(false), 3000);
+    },
+    [onAppendInsight],
+  );
+
   if (!summary) {
     return (
       <Box sx={{ mt: 1, mb: 2 }}>
         <Paper variant="outlined" sx={{ p: 2, bgcolor: 'action.hover', borderStyle: 'dashed', textAlign: 'center' }}>
           <Typography variant="body2" color="text.secondary">
-            日次記録がありません。一覧入力テーブルにデータを入力すると、モニタリング集計が表示されます。
+            この利用者の日次記録がまだありません。
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+            日次記録の一覧入力テーブルにデータを入力すると、ここにモニタリング集計・所見ドラフトが自動生成されます。
           </Typography>
         </Paper>
       </Box>
@@ -126,34 +140,39 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
       <Paper variant="outlined" sx={{ p: 2, bgcolor: 'action.hover', borderStyle: 'dashed' }}>
         <Stack spacing={2}>
           {/* ヘッダー */}
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" rowGap={1}>
             <Stack direction="row" spacing={1} alignItems="center">
               <AssessmentIcon fontSize="small" color="primary" />
               <Typography variant="subtitle2" component="span" color="primary">
-                モニタリング集計 ({summary.period.from} 〜 {summary.period.to})
+                日次記録ダッシュボード
               </Typography>
             </Stack>
             <Button
               size="small"
-              variant="contained"
-              color="primary"
+              variant={justAppended ? 'outlined' : 'contained'}
+              color={justAppended ? 'success' : 'primary'}
               startIcon={<ContentCopyRoundedIcon />}
-              onClick={() => onAppendInsight(insightLines.join('\n'))}
+              onClick={() => handleAppend(insightLines.join('\n'))}
               disabled={!isAdmin || insightLines.length === 0}
               data-testid="monitoring-insight-append"
             >
-              所見を引用
+              {justAppended ? '所見を引用しました ✓' : '所見を評価文へ引用'}
             </Button>
           </Stack>
+
+          {/* 対象期間 */}
+          <Typography variant="caption" color="text.secondary">
+            対象期間: {summary.period.from} 〜 {summary.period.to}（{recordCount}件の日次記録から集計）
+          </Typography>
 
           {/* 1. 記録状況 */}
           <Box>
             <SectionTitle>📊 記録状況</SectionTitle>
-            <Stack direction="row" spacing={2} alignItems="center">
+            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" rowGap={0.5}>
               <Typography variant="body2">
                 {summary.period.recordedDays}日 / {summary.period.totalDays}日中
               </Typography>
-              <Box sx={{ flexGrow: 1, maxWidth: 200 }}>
+              <Box sx={{ flexGrow: 1, maxWidth: 200, minWidth: 100 }}>
                 <LinearProgress
                   variant="determinate"
                   value={summary.period.recordRate}
@@ -164,6 +183,9 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
                 記録率 {summary.period.recordRate}%
               </Typography>
             </Stack>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+              対象期間中の全日数に対する記録入力済み日数の割合です
+            </Typography>
           </Box>
 
           <Divider />
@@ -211,7 +233,7 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
                     </Typography>
                   </Stack>
                 </Stack>
-                <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                <Stack direction="row" spacing={0.5} flexWrap="wrap" rowGap={0.5}>
                   {summary.behavior.byType.map((b) => (
                     <Chip
                       key={b.type}
@@ -238,11 +260,11 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
             </SectionTitle>
             {summary.lunch.totalWithData === 0 ? (
               <Typography variant="caption" color="text.secondary">
-                昼食記録なし
+                この期間の昼食記録はありません
               </Typography>
             ) : (
               <Stack spacing={1}>
-                <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                <Stack direction="row" spacing={0.5} flexWrap="wrap" rowGap={0.5}>
                   {Object.entries(summary.lunch.ratios)
                     .filter(([, r]) => (r ?? 0) > 0)
                     .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
@@ -258,7 +280,7 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
                 </Stack>
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Typography variant="caption" color="text.secondary">
-                    安定度
+                    摂食安定度
                   </Typography>
                   <Box sx={{ flexGrow: 1, maxWidth: 120 }}>
                     <LinearProgress
@@ -272,6 +294,9 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
                     {summary.lunch.stableScore}%
                   </Typography>
                 </Stack>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  昼食量の一貫性を示します（完食率が高いほどスコアが高くなります）
+                </Typography>
               </Stack>
             )}
           </Box>
@@ -281,9 +306,10 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
             <>
               <Divider />
               <Box>
-                <SectionTitle>📝 所見ドラフト（自動生成）</SectionTitle>
+                <SectionTitle>📝 所見ドラフト</SectionTitle>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                  ※ 下記は日次記録データから自動生成された下書きです。内容を確認・修正のうえご活用ください。
+                  日次記録から自動生成された下書きです。「所見を評価文へ引用」ボタンでモニタリング評価文に転記できます。
+                  内容は必要に応じて加筆・修正してください。
                 </Typography>
                 <Box
                   sx={{
