@@ -23,6 +23,7 @@ export * from './auditChecks';
 export * from './severeDisabilityAddon';
 export * from './basicTrainingRatio';
 export * from './severeAddonFindings';
+export * from './findingToHandoff';
 export * from './reassessmentMapBuilder';
 export * from './weeklyObservationChecker';
 export * from './assignmentQualificationChecker';

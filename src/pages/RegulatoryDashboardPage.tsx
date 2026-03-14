@@ -5,7 +5,8 @@
  * 重度障害者支援加算の判定結果も統合して表示。
  * デモモード（Repository 未接続）ではサンプルデータで動作確認可能。
  */
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -26,6 +27,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
+import Snackbar from '@mui/material/Snackbar';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
@@ -75,6 +77,13 @@ import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIceb
 import { useSevereAddonRealData } from '@/features/regulatory/hooks/useSevereAddonRealData';
 import { useRegulatoryFindingsRealData } from '@/features/regulatory/hooks/useRegulatoryFindingsRealData';
 import { useProcedureRecordRepository } from '@/features/regulatory/hooks/useProcedureRecordRepository';
+import {
+  buildHandoffFromRegularFinding,
+  buildHandoffFromAddonFinding,
+} from '@/domain/regulatory/findingToHandoff';
+import {
+  useCreateHandoffFromExternalSource,
+} from '@/features/handoff/useCreateHandoffFromExternalSource';
 import { useUsers } from '@/features/users/useUsers';
 import { useStaff } from '@/stores/useStaff';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
@@ -555,9 +564,11 @@ interface FindingsTableProps {
   filterSource: 'all' | 'regular' | 'addon';
   onNavigate: (url: string) => void;
   evidenceMap?: Map<string, FindingEvidenceSummary>;
+  onSendToHandoff?: (row: UnifiedFindingRow) => void;
+  sentFindingKeys?: Set<string>;
 }
 
-const FindingsTable: React.FC<FindingsTableProps> = ({ rows, filterSeverity, filterSource, onNavigate, evidenceMap }) => {
+const FindingsTable: React.FC<FindingsTableProps> = ({ rows, filterSeverity, filterSource, onNavigate, evidenceMap, onSendToHandoff, sentFindingKeys }) => {
   const filtered = useMemo(() => {
     let result = [...rows];
     if (filterSource !== 'all') result = result.filter(r => r.source === filterSource);
@@ -691,6 +702,32 @@ const FindingsTable: React.FC<FindingsTableProps> = ({ rows, filterSeverity, fil
                         {action.label}
                       </Button>
                     ))}
+                    {onSendToHandoff && (() => {
+                      const findingKey = row.source === 'addon'
+                        ? `severe-addon-finding:${row.id}`
+                        : `regulatory-finding:${row.id}`;
+                      const isSent = sentFindingKeys?.has(findingKey) ?? false;
+                      return (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="info"
+                          disabled={isSent}
+                          data-testid={`send-to-handoff-${row.id}`}
+                          startIcon={<ArrowForwardRoundedIcon sx={{ fontSize: 14 }} />}
+                          onClick={() => onSendToHandoff(row)}
+                          sx={{
+                            fontSize: '0.7rem',
+                            textTransform: 'none',
+                            py: 0.25,
+                            px: 1,
+                            minWidth: 'auto',
+                          }}
+                        >
+                          {isSent ? '送信済' : '申し送りへ'}
+                        </Button>
+                      );
+                    })()}
                   </Stack>
                 </TableCell>
               </TableRow>
@@ -710,6 +747,9 @@ const RegulatoryDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [filterSeverity, setFilterSeverity] = useState<AuditFindingSeverity | 'all'>('all');
   const [filterSource, setFilterSource] = useState<'all' | 'regular' | 'addon'>('all');
+  const [sentFindingKeys, setSentFindingKeys] = useState<Set<string>>(new Set());
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'info' }>({ open: false, message: '', severity: 'success' });
+  const createHandoff = useCreateHandoffFromExternalSource();
 
   // ── データ取得（共通） ──
   const { data: spUsers, status: usersStatus, error: usersError } = useUsers({ selectMode: 'full' });
@@ -781,6 +821,58 @@ const RegulatoryDashboardPage: React.FC = () => {
     () => resolveAllFindingEvidence(findings, icebergEvidence),
     [findings, icebergEvidence],
   );
+
+  // P6: finding → handoff 送信ハンドラ
+  const handleSendToHandoff = useCallback(async (row: UnifiedFindingRow) => {
+    try {
+      // finding 種別に応じて handoff 入力を生成
+      const handoffInput = row.source === 'regular' && row.originalRegular
+        ? buildHandoffFromRegularFinding(row.originalRegular)
+        : row.originalAddon
+          ? buildHandoffFromAddonFinding(row.originalAddon)
+          : null;
+
+      if (!handoffInput) return;
+
+      const source: import('@/features/handoff/useCreateHandoffFromExternalSource').HandoffExternalSource = {
+        sourceType: handoffInput.sourceType,
+        sourceId: 0,
+        sourceUrl: '/regulatory',
+        sourceKey: handoffInput.sourceKey,
+        sourceLabel: handoffInput.sourceLabel,
+      };
+
+      const result = await createHandoff({
+        title: handoffInput.title,
+        body: handoffInput.body,
+        source,
+        category: handoffInput.category,
+        severity: handoffInput.severity,
+      });
+
+      // sentKeys 更新
+      setSentFindingKeys(prev => {
+        const next = new Set(prev);
+        next.add(handoffInput.sourceKey);
+        return next;
+      });
+
+      setSnackbar({
+        open: true,
+        message: result.created
+          ? `申し送りを作成しました：${handoffInput.title}`
+          : `既存の申し送りがあります（ID: ${result.itemId}）`,
+        severity: result.created ? 'success' : 'info',
+      });
+    } catch (error) {
+      console.error('Failed to create handoff from finding:', error);
+      setSnackbar({
+        open: true,
+        message: '申し送りの作成に失敗しました',
+        severity: 'info',
+      });
+    }
+  }, [createHandoff]);
 
   return (
     <Container maxWidth="xl" sx={{ py: 3, minHeight: '100vh' }} data-testid="regulatory-dashboard-page">
@@ -908,8 +1000,27 @@ const RegulatoryDashboardPage: React.FC = () => {
           filterSource={filterSource}
           onNavigate={(url) => navigate(url)}
           evidenceMap={evidenceMap}
+          onSendToHandoff={handleSendToHandoff}
+          sentFindingKeys={sentFindingKeys}
         />
       </Box>
+
+      {/* P6: Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          variant="filled"
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };
