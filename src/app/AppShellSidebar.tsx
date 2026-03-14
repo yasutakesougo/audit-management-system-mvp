@@ -186,7 +186,7 @@ const GroupedNavList: React.FC<{
                 onNavigate={onNavigate}
               />
             ))}
-            {!navCollapsed && groupKey !== 'settings' && <Divider sx={{ mt: 1, mb: 0.5 }} />}
+            {!navCollapsed && groupKey !== 'admin' && <Divider sx={{ mt: 1, mb: 0.5 }} />}
           </Box>
         );
       })}

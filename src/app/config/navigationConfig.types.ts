@@ -29,7 +29,7 @@ export type NavItem = {
   group?: NavGroupKey;
 };
 
-export type NavGroupKey = 'daily' | 'record' | 'ibd' | 'isp' | 'master' | 'ops' | 'admin' | 'settings';
+export type NavGroupKey = 'daily' | 'record' | 'plan' | 'master' | 'admin';
 
 /**
  * Configuration for creating navigation items
@@ -66,12 +66,9 @@ export const NAV_AUDIENCE = {
 export const NAV_GROUP_I18N_KEYS = {
   daily: 'NAV_GROUP.DAILY',
   record: 'NAV_GROUP.RECORD',
-  ibd: 'NAV_GROUP.IBD',
-  isp: 'NAV_GROUP.ISP',
+  plan: 'NAV_GROUP.PLAN',
   master: 'NAV_GROUP.MASTER',
-  ops: 'NAV_GROUP.OPS',
   admin: 'NAV_GROUP.ADMIN',
-  settings: 'NAV_GROUP.SETTINGS',
 } as const;
 
 /**
@@ -86,15 +83,12 @@ export const NAV_GROUP_I18N_KEYS = {
 export const groupLabel: Record<NavGroupKey, string> = {
   daily: '📌 今日の業務',
   record: '📚 記録を参照',
-  ibd: '🧩 強度行動障害支援',
-  isp: '📋 個別支援計画',
+  plan: '🧩 支援計画・分析',
   master: '👥 利用者・職員',
-  ops: '🏢 運営管理',
-  admin: '🛡️ システム管理',
-  settings: '⚙️ 表示設定',
+  admin: '⚙️ 管理',
 };
 
 /**
  * Navigation groups display order
  */
-export const NAV_GROUP_ORDER: NavGroupKey[] = ['daily', 'record', 'isp', 'ibd', 'master', 'ops', 'admin', 'settings'];
+export const NAV_GROUP_ORDER: NavGroupKey[] = ['daily', 'record', 'plan', 'master', 'admin'];

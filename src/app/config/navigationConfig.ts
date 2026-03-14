@@ -215,7 +215,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname === '/ibd',
       icon: undefined,
       audience: NAV_AUDIENCE.staff,
-      group: 'ibd' as NavGroupKey,
+      group: 'plan' as NavGroupKey,
     },
     {
       label: '分析ワークスペース',
@@ -225,7 +225,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.analysisDashboard,
       testId: TESTIDS.nav.analysis,
       audience: NAV_AUDIENCE.staff,
-      group: 'ibd' as NavGroupKey,
+      group: 'plan' as NavGroupKey,
     },
     {
       label: '行動対応プラン',
@@ -233,7 +233,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/analysis/intervention'),
       icon: undefined,
       audience: NAV_AUDIENCE.staff,
-      group: 'ibd' as NavGroupKey,
+      group: 'plan' as NavGroupKey,
     },
     {
       label: 'アセスメント',
@@ -243,7 +243,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.assessmentDashboard,
       testId: TESTIDS.nav.assessment,
       audience: NAV_AUDIENCE.staff,
-      group: 'ibd' as NavGroupKey,
+      group: 'plan' as NavGroupKey,
     },
     {
       label: '特性アンケート',
@@ -251,7 +251,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/survey/tokusei'),
       icon: undefined,
       audience: NAV_AUDIENCE.staff,
-      group: 'ibd' as NavGroupKey,
+      group: 'plan' as NavGroupKey,
     },
     {
       label: 'ISP作成',
@@ -260,7 +260,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.supportPlanGuide,
       audience: NAV_AUDIENCE.staff,
-      group: 'isp' as NavGroupKey,
+      group: 'plan' as NavGroupKey,
     },
     {
       label: 'ISP更新（前回比較）',
@@ -269,7 +269,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.ispEditor,
       audience: NAV_AUDIENCE.all,
-      group: 'isp' as NavGroupKey,
+      group: 'plan' as NavGroupKey,
     },
     {
       label: '支援計画シート',
@@ -278,7 +278,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.planningSheet,
       audience: NAV_AUDIENCE.staff,
-      group: 'isp' as NavGroupKey,
+      group: 'plan' as NavGroupKey,
     },
     {
       label: '利用者',
@@ -305,7 +305,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.billing,
       audience: [NAV_AUDIENCE.reception, NAV_AUDIENCE.admin],
-      group: 'ops' as NavGroupKey,
+      group: 'admin' as NavGroupKey,
     },
   ];
 
@@ -320,7 +320,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.staff,
       testId: TESTIDS.nav.staffAttendance,
       audience: NAV_AUDIENCE.staff,
-      group: 'ops' as NavGroupKey,
+      group: 'admin' as NavGroupKey,
     });
   }
 
@@ -332,7 +332,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
         isActive: (pathname: string) => pathname.startsWith('/admin/step-templates'),
         icon: undefined,
         audience: NAV_AUDIENCE.admin,
-        group: 'ibd' as NavGroupKey,
+        group: 'plan' as NavGroupKey,
       },
       {
         label: '個別支援手順',
@@ -340,7 +340,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
         isActive: (pathname: string) => pathname.startsWith('/admin/individual-support'),
         icon: undefined,
         audience: NAV_AUDIENCE.admin,
-        group: 'ibd' as NavGroupKey,
+        group: 'plan' as NavGroupKey,
       },
       {
         label: '職員勤怠管理',
@@ -348,7 +348,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
         isActive: (pathname: string) => pathname.startsWith('/admin/staff-attendance'),
         icon: undefined,
         audience: NAV_AUDIENCE.admin,
-        group: 'ops' as NavGroupKey,
+        group: 'admin' as NavGroupKey,
       },
       {
         label: '自己点検',
@@ -379,7 +379,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
         icon: undefined,
         testId: TESTIDS.nav.integratedResourceCalendar,
         audience: NAV_AUDIENCE.admin,
-        group: 'ops' as NavGroupKey,
+        group: 'admin' as NavGroupKey,
       });
     }
 
@@ -400,7 +400,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.roomManagement,
       audience: NAV_AUDIENCE.admin,
-      group: 'ops' as NavGroupKey,
+      group: 'admin' as NavGroupKey,
     });
 
     items.push({
@@ -419,7 +419,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.operationFlowSettings,
       audience: NAV_AUDIENCE.admin,
-      group: 'settings' as NavGroupKey,
+      group: 'admin' as NavGroupKey,
     });
 
     items.push({
@@ -441,7 +441,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
     testId: TESTIDS.nav.admin,
     audience: NAV_AUDIENCE.admin,
-    group: 'ibd' as NavGroupKey,
+    group: 'plan' as NavGroupKey,
   });
 
   // Feature-flagged items
@@ -468,7 +468,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname: string) => pathname.startsWith('/compliance'),
       icon: undefined,
       audience: 'staff',
-      group: 'ops' as NavGroupKey,
+      group: 'admin' as NavGroupKey,
     });
   }
 

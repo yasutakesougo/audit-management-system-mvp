@@ -4,7 +4,7 @@
  * Allows users to toggle visibility of navigation groups AND individual items.
  * - Group toggle: hides/shows entire group
  * - Item toggle: hides/shows specific items within a group
- * - 'daily' and 'settings' groups are always visible (group-level)
+ * - 'daily' group is always visible (group-level)
  * - Individual items within always-visible groups can still be hidden
  */
 import {
@@ -34,7 +34,7 @@ interface NavGroupVisibilityControlProps {
 }
 
 /** Groups that cannot be hidden at group level (always visible) */
-const ALWAYS_VISIBLE_GROUPS: NavGroupKey[] = ['daily', 'settings'];
+const ALWAYS_VISIBLE_GROUPS: NavGroupKey[] = ['daily'];
 
 export const NavGroupVisibilityControl: React.FC<NavGroupVisibilityControlProps> = ({
   hiddenGroups,

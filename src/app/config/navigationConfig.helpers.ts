@@ -91,15 +91,21 @@ export function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
     return 'record';
   }
 
-  // 強度行動障害支援: analysis, iceberg, assessment, survey, 支援マスタ系
+  // 支援計画・分析: analysis, iceberg, assessment, survey, 支援マスタ系, ISP
   if (
     testId === TESTIDS.nav.analysis ||
     testId === TESTIDS.nav.iceberg ||
     testId === TESTIDS.nav.icebergPdca ||
     testId === TESTIDS.nav.assessment ||
+    testId === TESTIDS.nav.supportPlanGuide ||
+    testId === TESTIDS.nav.ispEditor ||
+    testId === TESTIDS.nav.planningSheet ||
     to.startsWith('/analysis') ||
     to.startsWith('/assessment') ||
     to.startsWith('/survey') ||
+    to.startsWith('/support-plan-guide') ||
+    to.startsWith('/isp-editor') ||
+    to.startsWith('/support-planning-sheet') ||
     to === '/admin/step-templates' ||
     to === '/admin/individual-support' ||
     to === '/admin/templates' ||
@@ -109,24 +115,12 @@ export function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
     label.includes('特性') ||
     label.includes('支援手順マスタ') ||
     label.includes('個別支援手順') ||
-    label.includes('支援活動マスタ')
-  ) {
-    return 'ibd';
-  }
-
-  // 個別支援計画: ISP作成・更新・支援計画シート
-  if (
-    testId === TESTIDS.nav.supportPlanGuide ||
-    testId === TESTIDS.nav.ispEditor ||
-    testId === TESTIDS.nav.planningSheet ||
-    to.startsWith('/support-plan-guide') ||
-    to.startsWith('/isp-editor') ||
-    to.startsWith('/support-planning-sheet') ||
+    label.includes('支援活動マスタ') ||
     label.includes('ISP') ||
     label.includes('個別支援計画書') ||
     label.includes('支援計画シート')
   ) {
-    return 'isp';
+    return 'plan';
   }
 
   // マスタ: users, staff
@@ -139,12 +133,11 @@ export function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
     return 'master';
   }
 
-  // 設定: label based
+  // 管理: settings, billing, attendance, room, compliance, checklist, audit, admin/*
   if (label.includes('設定')) {
-    return 'settings';
+    return 'admin';
   }
 
-  // 運営管理: billing, attendance, room, compliance
   if (
     testId === TESTIDS.nav.billing ||
     testId === TESTIDS.nav.staffAttendance ||
@@ -161,10 +154,9 @@ export function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
     label.includes('お部屋') ||
     label.includes('コンプラ')
   ) {
-    return 'ops';
+    return 'admin';
   }
 
-  // 管理: checklist, audit, admin/* (管理者のみ)
   if (
     isAdmin &&
     (testId === TESTIDS.nav.checklist ||
