@@ -10,6 +10,8 @@
  * @see docs/architecture/isp-three-layer-rules.md
  */
 import { EditableAssessmentSection } from '@/features/planning-sheet/components/EditableAssessmentSection';
+import ReassessmentTab from '@/features/planning-sheet/components/ReassessmentTab';
+import DailyExecutionSummaryPanel from '@/features/planning-sheet/components/DailyExecutionSummaryPanel';
 import { EditableIntakeSection } from '@/features/planning-sheet/components/EditableIntakeSection';
 import { EditableOverviewSection } from '@/features/planning-sheet/components/EditableOverviewSection';
 import { EditablePlanningDesignSection } from '@/features/planning-sheet/components/EditablePlanningDesignSection';
@@ -49,20 +51,108 @@ import {
 } from '@/domain/isp/schema';
 import Divider from '@mui/material/Divider';
 import { InfoRow } from '@/features/planning-sheet/components/ReadOnlySections';
+import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
+import { toDailyProcedureSteps } from '@/domain/isp/bridge/toDailyProcedureSteps';
+import { mergeDailySteps, formatMergeSummary } from '@/domain/isp/bridge/mergeDailySteps';
+import { useMonitoringEvidence } from '@/features/planning-sheet/hooks/useMonitoringEvidence';
+import { PhaseNextStepBanner } from '@/features/planning-sheet/components/PhaseNextStepBanner';
+import { computeMonitoringSchedule, formatMonitoringDeadline } from '@/domain/bridge/monitoringSchedule';
+import type { MonitoringUrgency } from '@/domain/bridge/monitoringSchedule';
+import { determineWorkflowPhase, type WorkflowPhase } from '@/domain/bridge/workflowPhase';
 
 // ─────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────
 
-type SheetTabKey = 'overview' | 'intake' | 'assessment' | 'planning' | 'regulatory';
+type SheetTabKey = 'overview' | 'intake' | 'assessment' | 'planning' | 'regulatory' | 'monitoring' | 'reassessment';
 
-const TAB_SECTIONS: { key: SheetTabKey; label: string }[] = [
+const TAB_SECTIONS: { key: SheetTabKey; label: string; newOnly?: boolean }[] = [
   { key: 'overview', label: '概要' },
   { key: 'intake', label: '情報収集' },
   { key: 'assessment', label: 'アセスメント' },
   { key: 'planning', label: '支援設計' },
   { key: 'regulatory', label: '制度項目' },
+  { key: 'monitoring', label: 'モニタリング' },
+  { key: 'reassessment', label: '再評価' },
 ];
+
+// ─────────────────────────────────────────────
+// Default empty sheet for new creation
+// ─────────────────────────────────────────────
+
+const now = () => new Date().toISOString();
+
+function createDefaultSheet(): SupportPlanningSheet {
+  const timestamp = now();
+  return {
+    id: '',
+    userId: '',
+    ispId: '',
+    title: '新規支援計画シート',
+    targetScene: '',
+    targetDomain: '',
+    observationFacts: '',
+    collectedInformation: '',
+    interpretationHypothesis: '',
+    supportIssues: '',
+    supportPolicy: '',
+    environmentalAdjustments: '',
+    concreteApproaches: '',
+    appliedFrom: null,
+    nextReviewAt: null,
+    authoredByStaffId: '',
+    authoredByQualification: 'practical_training',
+    authoredAt: timestamp,
+    applicableServiceType: 'daily_life_care',
+    applicableAddOnTypes: [],
+    deliveredToUserAt: null,
+    reviewedAt: null,
+    hasMedicalCoordination: false,
+    hasEducationCoordination: false,
+    regulatoryBasisSnapshot: {
+      supportLevel: null,
+      behaviorScore: null,
+      serviceType: null,
+      eligibilityCheckedAt: null,
+    },
+    status: 'draft',
+    isCurrent: false,
+    intake: {
+      presentingProblem: '',
+      targetBehaviorsDraft: [],
+      behaviorItemsTotal: null,
+      incidentSummaryLast30d: '',
+      communicationModes: [],
+      sensoryTriggers: [],
+      medicalFlags: [],
+      consentScope: [],
+      consentDate: null,
+    },
+    assessment: {
+      targetBehaviors: [],
+      abcEvents: [],
+      hypotheses: [],
+      riskLevel: 'low',
+      healthFactors: [],
+      teamConsensusNote: '',
+    },
+    planning: {
+      supportPriorities: [],
+      antecedentStrategies: [],
+      teachingStrategies: [],
+      consequenceStrategies: [],
+      procedureSteps: [],
+      crisisThresholds: null,
+      restraintPolicy: 'prohibited_except_emergency',
+      reviewCycleDays: 180,
+    },
+    createdAt: timestamp,
+    createdBy: '',
+    updatedAt: timestamp,
+    updatedBy: '',
+    version: 1,
+  };
+}
 
 // ─────────────────────────────────────────────
 // Status helpers
@@ -100,14 +190,57 @@ const TabPanel: React.FC<{
 );
 
 // ─────────────────────────────────────────────
+// Monitoring Tab Wrapper
+// ─────────────────────────────────────────────
+
+const MonitoringTabContent: React.FC<{
+  userId: string;
+  planningSheetId: string;
+}> = ({ userId, planningSheetId }) => {
+  // 直近30日間の集計
+  const today = new Date();
+  const thirtyDaysAgo = new Date(today);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const toStr = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const { summary, isAvailable } = useMonitoringEvidence({
+    userId,
+    from: toStr(thirtyDaysAgo),
+    to: toStr(today),
+    filterByPlanningSheetId: planningSheetId,
+  });
+
+  if (!isAvailable || !summary) {
+    return (
+      <Box sx={{ p: 3, textAlign: 'center' }}>
+        <Typography variant="body2" color="text.secondary">
+          この計画シート由来の Daily 記録がまだありません。
+          <br />
+          「支援設計」タブから日次スケジュールへ反映し、Daily 記録を開始してください。
+        </Typography>
+      </Box>
+    );
+  }
+
+  return <DailyExecutionSummaryPanel summary={summary} />;
+};
+
+// ─────────────────────────────────────────────
 // Page Component
 // ─────────────────────────────────────────────
 
 export default function SupportPlanningSheetPage() {
   const { planningSheetId } = useParams<{ planningSheetId: string }>();
   const navigate = useNavigate();
+  const isNewMode = planningSheetId === 'new';
   const [activeTab, setActiveTab] = React.useState<SheetTabKey>('overview');
-  const [isEditing, setIsEditing] = React.useState(false);
+  const [isEditing, setIsEditing] = React.useState(isNewMode);
   const [toast, setToast] = React.useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false, message: '', severity: 'success',
   });
@@ -115,20 +248,79 @@ export default function SupportPlanningSheetPage() {
   // ── Repository DI ──
   const planningSheetRepo = usePlanningSheetRepositories();
 
-  // ── データ取得（本番 Repository 接続） ──
-  const { data: sheet, isLoading, error, refetch } = usePlanningSheetData(planningSheetId, planningSheetRepo);
+  // ── データ取得（本番 Repository 接続、new モードではスキップ） ──
+  const { data: fetchedSheet, isLoading, error, refetch } = usePlanningSheetData(
+    isNewMode ? undefined : planningSheetId,
+    planningSheetRepo,
+  );
+
+  // ── 新規作成用のデフォルトシート ──
+  const defaultSheet = React.useMemo(() => isNewMode ? createDefaultSheet() : null, [isNewMode]);
+  const sheet = isNewMode ? defaultSheet : fetchedSheet;
 
   // ── フォーム管理 ──
   const form = usePlanningSheetForm(sheet, planningSheetRepo, (updated) => {
     setToast({ open: true, message: `「${updated.title}」を保存しました`, severity: 'success' });
     setIsEditing(false);
-    refetch();
+    if (isNewMode && updated.id) {
+      // 新規作成後、実際のIDのURLに遷移
+      navigate(`/support-planning-sheet/${updated.id}`, { replace: true });
+    } else {
+      refetch();
+    }
   });
 
   // ── Iceberg Evidence（ADR-006 準拠: useIcebergEvidence 経由） ──
   const { data: icebergEvidence } = useIcebergEvidence(sheet?.userId ?? null);
 
-  // ── Handlers ──
+  // ── 日次スケジュール連携 ──
+  const procedureRepo = useProcedureData();
+  const [syncResult, setSyncResult] = React.useState<{ synced: boolean; stepCount: number } | null>(null);
+
+  const handleSyncToDaily = React.useCallback(() => {
+    if (!sheet || !form.planning) return;
+    const incoming = toDailyProcedureSteps(form.planning, sheet.id);
+    if (incoming.length === 0) return;
+
+    // スマートマージ: 同一 planningSheetId の手順のみ置換、他は保持
+    const existing = procedureRepo.getByUser(sheet.userId);
+    const result = mergeDailySteps(existing, incoming, sheet.id);
+    procedureRepo.save(sheet.userId, result.merged);
+
+    setSyncResult({ synced: true, stepCount: incoming.length });
+    setToast({
+      open: true,
+      message: formatMergeSummary(result),
+      severity: 'success',
+    });
+  }, [sheet, form.planning, procedureRepo]);
+
+  const handleNavigateToWizard = React.useCallback(() => {
+    if (!sheet) return;
+    navigate(`/daily/support?wizard=plan&user=${sheet.userId}&userId=${sheet.userId}`);
+  }, [sheet, navigate]);
+
+  // ── モニタリング集計（ページレベル） ──
+  const monitoringDateRange = React.useMemo(() => {
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const toStr = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+    return { from: toStr(thirtyDaysAgo), to: toStr(today) };
+  }, []);
+
+  const { summary: monitoringSummary } = useMonitoringEvidence({
+    userId: sheet?.userId ?? null,
+    from: monitoringDateRange.from,
+    to: monitoringDateRange.to,
+    filterByPlanningSheetId: isNewMode ? undefined : planningSheetId,
+  });
+
   const handleSave = async () => {
     const result = await form.save();
     if (!result && form.saveError) {
@@ -138,11 +330,46 @@ export default function SupportPlanningSheetPage() {
 
   const handleReset = () => {
     form.reset();
-    setIsEditing(false);
+    if (isNewMode) {
+      navigate('/planning-sheet-list');
+    } else {
+      setIsEditing(false);
+    }
   };
 
+  // ── Workflow Phase (for NextStepBanner) ──
+  // Must be before early returns to satisfy React hooks ordering rules
+  const currentPhase: WorkflowPhase = React.useMemo(() => {
+    if (isNewMode || !sheet) return 'needs_assessment';
+    const result = determineWorkflowPhase({
+      userId: sheet.userId,
+      userName: '',
+      planningSheets: [{
+        id: sheet.id,
+        status: sheet.status,
+        appliedFrom: sheet.appliedFrom ?? null,
+        reviewedAt: sheet.reviewedAt ?? null,
+        reviewCycleDays: sheet.planning?.reviewCycleDays ?? 90,
+        procedureCount: sheet.planning?.procedureSteps?.length ?? 0,
+        isCurrent: sheet.isCurrent,
+      }],
+    });
+    return result.phase;
+  }, [isNewMode, sheet]);
+
+  const handleBannerNavigate = React.useCallback((href: string) => {
+    if (!sheet) return;
+    // tab= パラメータが含まれる場合はタブ切り替え
+    const tabMatch = href.match(/[?&]tab=(\w+)/);
+    if (tabMatch && href.includes(sheet.id)) {
+      setActiveTab(tabMatch[1] as SheetTabKey);
+    } else {
+      navigate(href);
+    }
+  }, [sheet, navigate]);
+
   // ── Loading / Error states ──
-  if (isLoading) {
+  if (!isNewMode && isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300 }}>
         <CircularProgress />
@@ -150,20 +377,22 @@ export default function SupportPlanningSheetPage() {
     );
   }
 
-  if (error || !sheet) {
+  if (!isNewMode && (error || !sheet)) {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">{error || '支援計画シートが見つかりません'}</Alert>
         <Button
           startIcon={<ArrowBackRoundedIcon />}
-          onClick={() => navigate('/support-plan-guide')}
+          onClick={() => navigate('/planning-sheet-list')}
           sx={{ mt: 2 }}
         >
-          ISP 画面に戻る
+          一覧に戻る
         </Button>
       </Box>
     );
   }
+
+  if (!sheet) return null;
 
   // ── Render ──
   return (
@@ -280,6 +509,41 @@ export default function SupportPlanningSheetPage() {
                 </Stack>
               </Paper>
             )}
+            {/* ── モニタリング期限バッジ ── */}
+            {!isNewMode && (() => {
+              const scheduleInfo = computeMonitoringSchedule({
+                appliedFrom: sheet.appliedFrom ?? sheet.createdAt.slice(0, 10),
+                reviewCycleDays: sheet.planning?.reviewCycleDays ?? 90,
+                reviewedAt: sheet.reviewedAt ?? null,
+              });
+              if (!scheduleInfo) return null;
+              const urgencyColors: Record<MonitoringUrgency, 'success' | 'warning' | 'error' | 'info'> = {
+                safe: 'success',
+                upcoming: 'warning',
+                due: 'error',
+                overdue: 'error',
+              };
+              return (
+                <Paper variant="outlined" sx={{ p: 1.5, bgcolor: scheduleInfo.urgency === 'overdue' ? 'error.50' : 'action.hover' }}>
+                  <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+                    <Chip
+                      size="small"
+                      label={formatMonitoringDeadline(scheduleInfo)}
+                      color={urgencyColors[scheduleInfo.urgency]}
+                      variant={scheduleInfo.urgency === 'overdue' ? 'filled' : 'outlined'}
+                    />
+                    <Typography variant="caption" color="text.secondary">
+                      起点: {scheduleInfo.startDate} / 周期: {scheduleInfo.cycleDays}日
+                    </Typography>
+                    {scheduleInfo.lastMonitoredAt && (
+                      <Typography variant="caption" color="text.secondary">
+                        最終実施: {scheduleInfo.lastMonitoredAt}
+                      </Typography>
+                    )}
+                  </Stack>
+                </Paper>
+              );
+            })()}
           </Stack>
         </Paper>
 
@@ -300,7 +564,9 @@ export default function SupportPlanningSheetPage() {
             aria-label="支援計画シートセクション切り替え"
             {...tid(TESTIDS['planning-sheet-tabs'])}
           >
-            {TAB_SECTIONS.map((tab) => (
+            {TAB_SECTIONS
+              .filter((tab) => !(tab.key === 'reassessment' && isNewMode))
+              .map((tab) => (
               <Tab
                 key={tab.key}
                 value={tab.key}
@@ -312,6 +578,15 @@ export default function SupportPlanningSheetPage() {
           </Tabs>
 
           <TabPanel current={activeTab} value="overview">
+            {!isNewMode && (
+              <PhaseNextStepBanner
+                phase={currentPhase}
+                context="overview"
+                userId={sheet.userId}
+                planningSheetId={sheet.id}
+                onNavigate={handleBannerNavigate}
+              />
+            )}
             {isEditing ? (
               <EditableOverviewSection
                 values={form.values}
@@ -347,6 +622,9 @@ export default function SupportPlanningSheetPage() {
               <EditablePlanningDesignSection
                 planning={form.planning}
                 onChange={form.setPlanning}
+                onSyncToDaily={!isNewMode ? handleSyncToDaily : undefined}
+                onNavigateToWizard={!isNewMode ? handleNavigateToWizard : undefined}
+                syncResult={syncResult}
               />
             ) : (
               <PlanningDesignSection sheet={sheet} />
@@ -363,6 +641,41 @@ export default function SupportPlanningSheetPage() {
               <ReadOnlyRegulatory sheet={sheet} />
             )}
           </TabPanel>
+          {!isNewMode && (
+            <TabPanel current={activeTab} value="monitoring">
+              <PhaseNextStepBanner
+                phase={currentPhase}
+                context="monitoring"
+                userId={sheet.userId}
+                planningSheetId={sheet.id}
+                hasMonitoringSignals={!!monitoringSummary}
+                onNavigate={handleBannerNavigate}
+              />
+              <MonitoringTabContent userId={sheet.userId} planningSheetId={sheet.id} />
+            </TabPanel>
+          )}
+          {!isNewMode && (
+            <TabPanel current={activeTab} value="reassessment">
+              <PhaseNextStepBanner
+                phase={currentPhase}
+                context="reassessment"
+                userId={sheet.userId}
+                planningSheetId={sheet.id}
+                hasUnappliedReassessment={currentPhase === 'needs_reassessment'}
+                onNavigate={handleBannerNavigate}
+              />
+              <ReassessmentTab
+                sheet={sheet}
+                observations={[]}
+                procedureRecords={[]}
+                monitoringSummary={monitoringSummary}
+                onSave={(_reassessment) => {
+                  // TODO: persist reassessment via repository
+                  setToast({ open: true, message: '再評価記録を保存しました', severity: 'success' });
+                }}
+              />
+            </TabPanel>
+          )}
         </Paper>
 
         {/* ── メタ情報フッター ── */}

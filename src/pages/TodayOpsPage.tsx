@@ -22,7 +22,9 @@ import { useApprovalFlow } from '@/features/today/hooks/useApprovalFlow';
 import { useNextAction } from '@/features/today/hooks/useNextAction';
 import { useSceneNextAction } from '@/features/today/hooks/useSceneNextAction';
 import { useTodayScheduleLanes } from '@/features/today/hooks/useTodayScheduleLanes';
+import { useWorkflowPhases } from '@/features/today/hooks/useWorkflowPhases';
 import { TodayBentoLayout } from '@/features/today/layouts/TodayBentoLayout';
+import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { recordAutoNextComplete, recordAutoNextSave } from '@/features/today/records/autoNextCounters';
 import { QuickRecordDrawer } from '@/features/today/records/QuickRecordDrawer';
 import { resolveNextUser } from '@/features/today/records/resolveNextUser';
@@ -97,6 +99,16 @@ export const TodayOpsPage: React.FC = () => {
 
   // 5. Approval Flow (#765)
   const approvalFlow = useApprovalFlow();
+
+  // 5b. Workflow Phases (Phase 2: 支援計画管理カード)
+  //     サービス管理責任者向けの「支援計画管理」カード。
+  //     利用者ごとの PDCA フェーズを判定し、アクション必要な利用者を表示する。
+  const isServiceManager = role === 'admin';
+  const planningSheetRepo = usePlanningSheetRepositories();
+  const workflowPhases = useWorkflowPhases(
+    summary.users ?? [],
+    isServiceManager ? planningSheetRepo : null,
+  );
 
   // 6. Schedule detail href (deep link from NextAction to /schedules)
   const scheduleDetailHref = useMemo(() => {
@@ -313,6 +325,25 @@ export const TodayOpsPage: React.FC = () => {
         navigate(url);
       },
       scheduleDetailHref,
+      // Workflow card (service manager only)
+      workflowCard: isServiceManager && workflowPhases.items.length > 0
+        ? {
+            items: workflowPhases.items,
+            counts: workflowPhases.counts,
+            topPriorityItem: workflowPhases.topPriorityItem,
+            isLoading: workflowPhases.isLoading,
+            onNavigate: (href: string) => {
+              recordCtaClick({
+                ctaId: CTA_EVENTS.NEXT_ACTION_PRIMARY,
+                sourceComponent: 'PlanningWorkflowCard',
+                stateType: 'navigation',
+                targetUrl: href,
+                userRole: role,
+              });
+              navigate(href);
+            },
+          }
+        : undefined,
       onNextActionNavigate: (href: string) => {
         recordCtaClick({
           ctaId: CTA_EVENTS.NEXT_ACTION_PRIMARY,
@@ -325,7 +356,7 @@ export const TodayOpsPage: React.FC = () => {
       },
 
     };
-  }, [summary, nextAction, quickRecord.openUnfilled, quickRecord.openUser, approvalFlow.open, navigate, scheduleDetailHref]);
+  }, [summary, nextAction, quickRecord.openUnfilled, quickRecord.openUser, approvalFlow.open, navigate, scheduleDetailHref, workflowPhases, isServiceManager]);
 
   const handleSaveSuccess = React.useCallback(() => {
     if (!quickRecord.autoNextEnabled) {
