@@ -32,6 +32,8 @@ export type UseTableDailyRecordRowHandlersReturn = {
   handleRowDataChange: (userId: string, field: string, value: string | boolean) => void;
   /** 問題行動チェックを変更する */
   handleProblemBehaviorChange: (userId: string, behaviorType: string, checked: boolean) => void;
+  /** 行動タグの toggle (追加/削除) */
+  handleBehaviorTagToggle: (userId: string, tagKey: string) => void;
   /** 行をクリアする */
   handleClearRow: (userId: string) => void;
   /** 表示対象の行リスト（未送信フィルタ適用済み） */
@@ -44,6 +46,10 @@ export type UseTableDailyRecordRowHandlersReturn = {
 
 const hasRowContent = (row: UserRowData): boolean => {
   if (row.amActivity.trim() || row.pmActivity.trim() || row.lunchAmount.trim() || row.specialNotes.trim()) {
+    return true;
+  }
+
+  if (row.behaviorTags && row.behaviorTags.length > 0) {
     return true;
   }
 
@@ -66,6 +72,7 @@ const createEmptyRow = (userId: string, userName: string): UserRowData => {
       other: false,
     },
     specialNotes: '',
+    behaviorTags: [],
   };
 };
 
@@ -195,6 +202,26 @@ export function useTableDailyRecordRowHandlers({
                   other: false,
                 },
                 specialNotes: '',
+                behaviorTags: [],
+              }
+            : row
+        ),
+      }));
+    },
+    [setFormData],
+  );
+
+  const handleBehaviorTagToggle = useCallback(
+    (userId: string, tagKey: string) => {
+      setFormData((prev) => ({
+        ...prev,
+        userRows: prev.userRows.map((row) =>
+          row.userId === userId
+            ? {
+                ...row,
+                behaviorTags: row.behaviorTags.includes(tagKey)
+                  ? row.behaviorTags.filter(t => t !== tagKey)
+                  : [...row.behaviorTags, tagKey],
               }
             : row
         ),
@@ -206,6 +233,7 @@ export function useTableDailyRecordRowHandlers({
   return {
     handleRowDataChange,
     handleProblemBehaviorChange,
+    handleBehaviorTagToggle,
     handleClearRow,
     visibleRows,
     unsentRowCount,
