@@ -19,6 +19,8 @@ import type {
   ProblemBehaviorType,
 } from '@/features/daily/infra/dailyTableRepository';
 
+import { BEHAVIOR_TAGS, type BehaviorTagKey, BEHAVIOR_TAG_CATEGORIES, type BehaviorTagCategory } from '@/features/daily/domain/behaviorTag';
+
 // ─── 型定義 ──────────────────────────────────────────────
 
 export interface PeriodSummary {
@@ -70,16 +72,46 @@ export interface BehaviorSummary {
   changeRate: number;
 }
 
+export interface BehaviorTagRank {
+  key: string;
+  label: string;
+  category: string;
+  categoryLabel: string;
+  count: number;
+}
+
+export interface BehaviorTagSummary {
+  /** 使用頻度 Top タグ（最大5件） */
+  topTags: BehaviorTagRank[];
+  /** 1記録あたりの平均タグ数（小数1桁） */
+  avgTagsPerRecord: number;
+  /** タグが1つ以上ある記録の割合（0–100 整数%） */
+  tagUsageRate: number;
+  /** カテゴリ別の出現回数 */
+  categoryDistribution: { category: string; label: string; count: number }[];
+  /** 計算対象の記録数 */
+  totalRecords: number;
+  /** タグが1つ以上ある記録数 */
+  taggedRecords: number;
+  /** 直近半分 vs 前半のタグ使用増減 */
+  usageTrend: 'up' | 'down' | 'flat';
+  /** 増減率（%） */
+  usageTrendRate: number;
+}
+
 export interface DailyMonitoringSummary {
   period: PeriodSummary;
   activity: ActivitySummary;
   lunch: LunchSummary;
   behavior: BehaviorSummary;
+  /** Phase 2: 行動タグ集計（タグ付き記録がない場合は null） */
+  behaviorTagSummary: BehaviorTagSummary | null;
 }
 
 // ─── 定数 ────────────────────────────────────────────────
 
 const MAX_TOP_ACTIVITIES = 5;
+const MAX_TOP_TAGS = 5;
 
 const LUNCH_LABELS: Record<LunchIntake, string> = {
   full: '完食',
@@ -265,6 +297,121 @@ function computeRecentChange(
   return { recentChange: 'flat', changeRate };
 }
 
+// ─── 行動タグ集計 ────────────────────────────────────────
+
+export function aggregateBehaviorTags(
+  records: DailyTableRecord[],
+): BehaviorTagSummary | null {
+  if (records.length === 0) return null;
+
+  // タグ付き記録数
+  const taggedRecords = records.filter(
+    (r) => (r.behaviorTags ?? []).length > 0,
+  ).length;
+  if (taggedRecords === 0) return null;
+
+  // 全タグをフラット化して頻度カウント
+  const freq = new Map<string, number>();
+  const categoryFreq = new Map<string, number>();
+  let totalTags = 0;
+
+  for (const r of records) {
+    for (const tag of r.behaviorTags ?? []) {
+      freq.set(tag, (freq.get(tag) ?? 0) + 1);
+      totalTags++;
+
+      const def = BEHAVIOR_TAGS[tag as BehaviorTagKey];
+      if (def) {
+        const cat = def.category;
+        categoryFreq.set(cat, (categoryFreq.get(cat) ?? 0) + 1);
+      }
+    }
+  }
+
+  // Top タグ（最大5件）
+  const topTags: BehaviorTagRank[] = [...freq.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, MAX_TOP_TAGS)
+    .map(([key, count]) => {
+      const def = BEHAVIOR_TAGS[key as BehaviorTagKey];
+      return {
+        key,
+        label: def?.label ?? key,
+        category: def?.category ?? 'unknown',
+        categoryLabel:
+          BEHAVIOR_TAG_CATEGORIES[def?.category as BehaviorTagCategory] ?? '不明',
+        count,
+      };
+    });
+
+  // カテゴリ分布
+  const categoryDistribution = [...categoryFreq.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([cat, count]) => ({
+      category: cat,
+      label: BEHAVIOR_TAG_CATEGORIES[cat as BehaviorTagCategory] ?? cat,
+      count,
+    }));
+
+  // 指標
+  const avgTagsPerRecord = Math.round((totalTags / records.length) * 10) / 10;
+  const tagUsageRate = Math.round((taggedRecords / records.length) * 100);
+
+  // 使用頻度の前半/後半比較
+  const { usageTrend, usageTrendRate } = computeTagUsageTrend(records);
+
+  return {
+    topTags,
+    avgTagsPerRecord,
+    tagUsageRate,
+    categoryDistribution,
+    totalRecords: records.length,
+    taggedRecords,
+    usageTrend,
+    usageTrendRate,
+  };
+}
+
+function computeTagUsageTrend(
+  records: DailyTableRecord[],
+): { usageTrend: 'up' | 'down' | 'flat'; usageTrendRate: number } {
+  if (records.length < 4) return { usageTrend: 'flat', usageTrendRate: 0 };
+
+  const sorted = [...records].sort((a, b) =>
+    a.recordDate.localeCompare(b.recordDate),
+  );
+  const mid = Math.floor(sorted.length / 2);
+  const firstHalf = sorted.slice(0, mid);
+  const secondHalf = sorted.slice(mid);
+
+  const firstTagged = firstHalf.filter(
+    (r) => (r.behaviorTags ?? []).length > 0,
+  ).length;
+  const secondTagged = secondHalf.filter(
+    (r) => (r.behaviorTags ?? []).length > 0,
+  ).length;
+
+  // 件数ベースで比較（割合ではなく密度）
+  const firstRate =
+    firstHalf.length > 0 ? firstTagged / firstHalf.length : 0;
+  const secondRate =
+    secondHalf.length > 0 ? secondTagged / secondHalf.length : 0;
+
+  if (firstRate === 0 && secondRate === 0)
+    return { usageTrend: 'flat', usageTrendRate: 0 };
+  if (firstRate === 0)
+    return { usageTrend: 'up', usageTrendRate: 100 };
+
+  const changeRate = Math.round(
+    ((secondRate - firstRate) / firstRate) * 100,
+  );
+
+  if (changeRate > 10) return { usageTrend: 'up', usageTrendRate: changeRate };
+  if (changeRate < -10)
+    return { usageTrend: 'down', usageTrendRate: changeRate };
+  return { usageTrend: 'flat', usageTrendRate: changeRate };
+}
+
 // ─── メイン集計 ──────────────────────────────────────────
 
 export function buildMonitoringDailySummary(
@@ -286,6 +433,7 @@ export function buildMonitoringDailySummary(
     activity: aggregateActivities(records),
     lunch: aggregateLunch(records),
     behavior: aggregateBehaviors(records),
+    behaviorTagSummary: aggregateBehaviorTags(records),
   };
 }
 
@@ -349,6 +497,27 @@ export function buildMonitoringInsightText(
     );
   } else {
     lines.push('【問題行動】期間中、問題行動の記録はなかった。');
+  }
+
+  // 行動タグ
+  if (summary.behaviorTagSummary) {
+    const ts = summary.behaviorTagSummary;
+    const topText = ts.topTags
+      .map((t) => `${t.label}(${t.count}回)`)
+      .join('・');
+    const catText = ts.categoryDistribution
+      .map((c) => `${c.label}${c.count}件`)
+      .join('・');
+    const trendLabel =
+      ts.usageTrend === 'up'
+        ? '活用が増加傾向にある'
+        : ts.usageTrend === 'down'
+          ? '活用が減少傾向にある'
+          : '一定の活用がみられる';
+    lines.push(
+      `【行動タグ】${ts.taggedRecords}件の記録にタグ付与あり（付与率 ${ts.tagUsageRate}%、平均 ${ts.avgTagsPerRecord}個/記録）。` +
+        `頻出タグ: ${topText}。カテゴリ別: ${catText}。${trendLabel}。`,
+    );
   }
 
   return lines;
