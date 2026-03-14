@@ -14,6 +14,7 @@ import {
   buildMonitoringInsightText,
   type DailyMonitoringSummary,
 } from '../domain/monitoringDailyAnalytics';
+import type { GoalLike } from '../domain/goalProgressTypes';
 
 const DEFAULT_LOOKBACK_DAYS = 60;
 
@@ -40,10 +41,12 @@ export interface UseMonitoringDailyAnalyticsResult {
  * モニタリング集計 Hook
  * @param userId 対象ユーザーID
  * @param lookbackDays 遡り日数 (default: 60)
+ * @param goals ISP 目標（省略時は goalProgress を算出しない）
  */
 export function useMonitoringDailyAnalytics(
   userId: string,
   lookbackDays = DEFAULT_LOOKBACK_DAYS,
+  goals?: GoalLike[],
 ): UseMonitoringDailyAnalyticsResult {
   return useMemo(() => {
     if (!userId) {
@@ -52,10 +55,10 @@ export function useMonitoringDailyAnalytics(
 
     const range = computeDateRange(lookbackDays);
     const records = getDailyTableRecords(userId, range);
-    const summary = buildMonitoringDailySummary(records);
+    const summary = buildMonitoringDailySummary(records, goals);
     const insightLines = summary ? buildMonitoringInsightText(summary) : [];
     const insightText = insightLines.join('\n');
 
     return { summary, insightLines, insightText, recordCount: records.length };
-  }, [userId, lookbackDays]);
+  }, [userId, lookbackDays, goals]);
 }
