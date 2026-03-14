@@ -5,8 +5,6 @@
 import { ConnectionStatus } from '@/app/components/ConnectionStatus';
 import { TESTIDS } from '@/testids';
 import SignInButton from '@/ui/components/SignInButton';
-import Brightness4Icon from '@mui/icons-material/Brightness4';
-import Brightness7Icon from '@mui/icons-material/Brightness7';
 import HistoryIcon from '@mui/icons-material/History';
 import MenuIcon from '@mui/icons-material/Menu';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
@@ -16,9 +14,7 @@ import IconButton from '@mui/material/IconButton';
 import Toolbar from '@mui/material/Toolbar';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import { useContext } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import { ColorModeContext } from './theme';
 
 type Props = {
   isDesktop: boolean;
@@ -37,7 +33,6 @@ export const AppShellHeader: React.FC<Props> = ({
   onDesktopNavToggle,
   onSettingsOpen,
 }) => {
-  const { mode, toggle } = useContext(ColorModeContext);
 
   return (
     <AppBar
@@ -126,7 +121,7 @@ export const AppShellHeader: React.FC<Props> = ({
               textDecoration: 'none',
             }}
           >
-            磯子区障害者地域活動ホーム
+            クロノート Link
           </Typography>
         </Box>
 
@@ -145,18 +140,7 @@ export const AppShellHeader: React.FC<Props> = ({
               <SettingsRoundedIcon />
             </IconButton>
           </Tooltip>
-          <Tooltip title={mode === 'dark' ? 'ライトテーマに切り替え' : 'ダークテーマに切り替え'}>
-            <IconButton
-              color="inherit"
-              onClick={toggle}
-              aria-label="テーマ切り替え"
-              aria-pressed={mode === 'dark' ? 'true' : 'false'}
-              size="small"
-              sx={{ p: 0.5 }}
-            >
-              {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
-            </IconButton>
-          </Tooltip>
+
           <IconButton
             component={RouterLink}
             to="/audit"

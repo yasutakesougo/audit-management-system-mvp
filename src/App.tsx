@@ -54,24 +54,24 @@ function App() {
     <MsalProvider>
       {/* 🔐 認証コンテキスト */}
       <QueryClientProvider client={queryClient}>
-        <ThemeRoot>
-          <CssBaseline />
-          <WriteDisabledBanner />
-          {/* 🎨 MUIテーマ + グローバルスタイル */}
-          <ToastProvider>
-            {/* 📢 グローバルトースト通知 */}
-            <SettingsProvider>
-              {/* ⚙️ ユーザー表示設定（theme density等） */}
+        <SettingsProvider>
+          {/* ⚙️ ユーザー表示設定 — ThemeRootより外側に配置し、density/fontSize をテーマに反映 */}
+          <ThemeRoot>
+            <CssBaseline />
+            <WriteDisabledBanner />
+            {/* 🎨 MUIテーマ + グローバルスタイル */}
+            <ToastProvider>
+              {/* 📢 グローバルトースト通知 */}
               {/* 📅 SchedulesProviderBridge removed: Port/Adapter layer was dead code.
                    All schedule hooks use useScheduleRepository() directly via repositoryFactory. */}
               <ToastNotifierBridge />
 
               <RouterProvider router={router} future={routerFutureFlags} />
-            </SettingsProvider>
-          </ToastProvider>
-          {/* 🔍 開発/検証用 HUD（本番では非表示可能） */}
-          {hydrationHudEnabled && <HydrationHud />}
-        </ThemeRoot>
+            </ToastProvider>
+            {/* 🔍 開発/検証用 HUD（本番では非表示可能） */}
+            {hydrationHudEnabled && <HydrationHud />}
+          </ThemeRoot>
+        </SettingsProvider>
       </QueryClientProvider>
     </MsalProvider>
   );
