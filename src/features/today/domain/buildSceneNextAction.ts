@@ -71,6 +71,20 @@ export function buildSceneNextAction(input: SceneNextActionInput): SceneNextActi
     };
   }
 
+  // ── P2.5: day-closing + 未記録 → 本日中に完了必須
+  if (input.scene === 'day-closing' && input.pendingDailyRecords > 0) {
+    return {
+      scene: input.scene,
+      title: '本日の記録を完了してください',
+      description: `終礼前に記録を完了しましょう。残り ${input.pendingDailyRecords}名`,
+      reasons: [`未記録 ${input.pendingDailyRecords}名`],
+      ctaLabel: `残り ${input.pendingDailyRecords}名を記録する`,
+      ctaTarget: 'quick-record',
+      userId: criticalUser?.id,
+      priority: 'critical',
+    };
+  }
+
   // ── P3: 未記録の利用者
   if (input.pendingDailyRecords > 0) {
     return {
@@ -82,6 +96,20 @@ export function buildSceneNextAction(input: SceneNextActionInput): SceneNextActi
       ctaTarget: 'quick-record',
       userId: criticalUser?.id,
       priority: 'high',
+    };
+  }
+
+  // ── P3.5: day-closing + 全完了 → 本日完了の祝福
+  if (input.scene === 'day-closing' && input.pendingDailyRecords === 0
+      && input.pendingAttendance === 0) {
+    return {
+      scene: input.scene,
+      title: '🎉 本日の業務を完了しました！',
+      description: 'すべての記録と申し送りが完了しています。お疲れさまでした。',
+      reasons: [],
+      ctaLabel: '利用者一覧を見る',
+      ctaTarget: 'user',
+      priority: 'low',
     };
   }
 

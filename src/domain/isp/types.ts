@@ -28,6 +28,10 @@ export interface AuditTrail {
   updatedAt: string;
   /** 版番号（例: "v1", "v2"） */
   version: string;
+  /** 承認者 UPN (email) — F-1 追加 */
+  approvedBy?: string;
+  /** 承認日時（ISO 8601） — F-1 追加 */
+  approvedAt?: string;
 }
 
 /** 版管理エントリ — 更新時のスナップショットを保持 */

@@ -371,4 +371,125 @@ describe('useComplianceForm', () => {
       expect(result.current.compliance.serviceType).toBe('other');
     });
   });
+
+  describe('approvalState', () => {
+    it('デフォルト状態では未承認', () => {
+      const draft = makeDraft();
+      const { setDrafts } = createSetDrafts();
+      const { result } = renderHook(() =>
+        useComplianceForm({
+          activeDraft: draft,
+          activeDraftId: draft.id,
+          isAdmin: true,
+          setDrafts,
+        }),
+      );
+
+      expect(result.current.approvalState.isApproved).toBe(false);
+      expect(result.current.approvalState.approvedBy).toBeNull();
+      expect(result.current.approvalState.approvedAt).toBeNull();
+      expect(result.current.approvalState.approvalStatus).toBe('draft');
+    });
+
+    it('承認済みのドラフトでは isApproved = true', () => {
+      const draft = makeDraft({
+        serviceType: 'other',
+        standardServiceHours: null,
+        consent: { explainedAt: null, explainedBy: '', consentedAt: null, consentedBy: '', proxyName: '', proxyRelation: '', notes: '' },
+        delivery: { deliveredAt: null, deliveredToUser: false, deliveredToConsultationSupport: false, deliveryMethod: '', notes: '' },
+        reviewControl: { reviewCycleDays: 180, lastReviewedAt: null, nextReviewDueAt: null, reviewReason: '' },
+        approval: {
+          approvedBy: 'admin@example.com',
+          approvedAt: '2025-04-01T09:30:00.000Z',
+          approvalStatus: 'approved',
+        },
+      });
+      const { setDrafts } = createSetDrafts();
+      const { result } = renderHook(() =>
+        useComplianceForm({
+          activeDraft: draft,
+          activeDraftId: draft.id,
+          isAdmin: true,
+          setDrafts,
+        }),
+      );
+
+      expect(result.current.approvalState.isApproved).toBe(true);
+      expect(result.current.approvalState.approvedBy).toBe('admin@example.com');
+      expect(result.current.approvalState.approvedAt).toBe('2025-04-01T09:30:00.000Z');
+    });
+  });
+
+  describe('performApproval', () => {
+    it('管理者が承認を実行するとドラフトに反映される', () => {
+      const draft = makeDraft();
+      const { setDrafts, getCurrent, init } = createSetDrafts();
+      init({ [draft.id]: draft });
+
+      const { result } = renderHook(() =>
+        useComplianceForm({
+          activeDraft: draft,
+          activeDraftId: draft.id,
+          isAdmin: true,
+          setDrafts,
+        }),
+      );
+
+      act(() => {
+        result.current.performApproval('admin@example.com');
+      });
+
+      const updated = getCurrent()[draft.id];
+      expect(updated).toBeDefined();
+      const updatedCompliance = getCompliance(updated)!;
+      expect(updatedCompliance.approval).toBeDefined();
+      expect(updatedCompliance.approval!.approvedBy).toBe('admin@example.com');
+      expect(updatedCompliance.approval!.approvalStatus).toBe('approved');
+      expect(updatedCompliance.approval!.approvedAt).toBeTruthy();
+    });
+
+    it('isAdmin が false の場合は承認されない', () => {
+      const draft = makeDraft();
+      const { setDrafts, getCurrent, init } = createSetDrafts();
+      init({ [draft.id]: draft });
+
+      const { result } = renderHook(() =>
+        useComplianceForm({
+          activeDraft: draft,
+          activeDraftId: draft.id,
+          isAdmin: false,
+          setDrafts,
+        }),
+      );
+
+      act(() => {
+        result.current.performApproval('admin@example.com');
+      });
+
+      // Should remain unchanged
+      expect(getCompliance(getCurrent()[draft.id])).toBeUndefined();
+    });
+
+    it('空の UPN では承認されない', () => {
+      const draft = makeDraft();
+      const { setDrafts, getCurrent, init } = createSetDrafts();
+      init({ [draft.id]: draft });
+
+      const { result } = renderHook(() =>
+        useComplianceForm({
+          activeDraft: draft,
+          activeDraftId: draft.id,
+          isAdmin: true,
+          setDrafts,
+        }),
+      );
+
+      act(() => {
+        result.current.performApproval('');
+      });
+
+      // Should remain unchanged
+      expect(getCompliance(getCurrent()[draft.id])).toBeUndefined();
+    });
+  });
 });

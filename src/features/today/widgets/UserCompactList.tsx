@@ -7,7 +7,7 @@ import GroupOffIcon from '@mui/icons-material/GroupOff';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
-import { Box, Button, IconButton, Paper, Stack, Tooltip, Typography } from '@mui/material';
+import { Box, Button, Chip, IconButton, Paper, Stack, Tooltip, Typography } from '@mui/material';
 import React, { useMemo, useState } from 'react';
 import { EmptyStateBlock } from './EmptyStateBlock';
 
@@ -177,8 +177,24 @@ export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQ
     );
   }
 
+  const unfilledCount = sorted.filter(u => !u.recordFilled).length;
+
   return (
     <Stack spacing={1}>
+      {/* 未記録サマリー: 未記録者がいるときだけ表示 */}
+      {unfilledCount > 0 && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1 }}>
+          <Chip
+            label={`✏️ 未記録 ${unfilledCount}名 / 全 ${sorted.length}名`}
+            color="warning"
+            size="small"
+            variant="filled"
+          />
+          <Typography variant="caption" color="text.secondary">
+            あと{unfilledCount}名で完了
+          </Typography>
+        </Box>
+      )}
       {visible.map((u) => (
         <UserCompactRow
           key={u.userId}
