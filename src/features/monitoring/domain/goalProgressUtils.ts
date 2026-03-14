@@ -53,6 +53,18 @@ export const DOMAIN_CATEGORY_MAP: Record<GoalDomainId, BehaviorTagCategory[]> = 
  */
 export function inferGoalTagLinks(goals: GoalLike[]): GoalTagLink[] {
   return goals.map((goal) => {
+    // Phase 4: manual override があればそちらを優先
+    if (goal.overrideCategories && goal.overrideCategories.length > 0) {
+      const manual = Array.from(new Set(goal.overrideCategories))
+        .sort() as BehaviorTagCategory[];
+      return {
+        goalId: goal.id,
+        inferredCategories: manual,
+        inferredTags: [],
+        source: 'manual' as const,
+      };
+    }
+
     const categories = Array.from(
       new Set(
         (goal.domains ?? []).flatMap(

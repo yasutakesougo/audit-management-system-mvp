@@ -22,6 +22,8 @@ export interface GoalItem {
   label: string;
   text: string;
   domains: string[];
+  /** Phase 4: 手動上書きカテゴリ（undefined = 自動推論を使用） */
+  overrideCategories?: string[];
 }
 
 export interface SmartCriterion {

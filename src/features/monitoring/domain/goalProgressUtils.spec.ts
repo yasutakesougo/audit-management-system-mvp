@@ -104,6 +104,60 @@ describe('inferGoalTagLinks', () => {
     expect(result).toHaveLength(3);
     expect(result.map((r) => r.goalId)).toEqual(['g1', 'g2', 'g3']);
   });
+
+  // ── Phase 4: manual override ──
+
+  it('overrideCategories があれば domain-inference を無視する', () => {
+    const result = inferGoalTagLinks([
+      { id: 'g1', domains: ['health'], overrideCategories: ['communication'] },
+    ]);
+    expect(result[0].inferredCategories).toEqual(['communication']);
+    expect(result[0].source).toBe('manual');
+  });
+
+  it('overrideCategories が空配列なら自動推論にフォールバック', () => {
+    const result = inferGoalTagLinks([
+      { id: 'g1', domains: ['health'], overrideCategories: [] },
+    ]);
+    expect(result[0].inferredCategories).toEqual(
+      expect.arrayContaining(['dailyLiving', 'positive']),
+    );
+    expect(result[0].source).toBe('domain-inference');
+  });
+
+  it('overrideCategories が undefined なら自動推論', () => {
+    const result = inferGoalTagLinks([
+      { id: 'g1', domains: ['social'] },
+    ]);
+    expect(result[0].source).toBe('domain-inference');
+  });
+
+  it('overrideCategories の重複はソート済みで除去される', () => {
+    const result = inferGoalTagLinks([
+      { id: 'g1', domains: [], overrideCategories: ['positive', 'behavior', 'positive'] },
+    ]);
+    expect(result[0].inferredCategories).toEqual(['behavior', 'positive']);
+    expect(result[0].source).toBe('manual');
+  });
+
+  it('overrideCategories は domains 定義に関わらず優先される', () => {
+    // domains=['cognitive'] だと behavior になるが、override で dailyLiving に上書き
+    const result = inferGoalTagLinks([
+      { id: 'g1', domains: ['cognitive'], overrideCategories: ['dailyLiving'] },
+    ]);
+    expect(result[0].inferredCategories).toEqual(['dailyLiving']);
+    expect(result[0].source).toBe('manual');
+  });
+
+  it('複数 goal で override と domain-inference が混在できる', () => {
+    const result = inferGoalTagLinks([
+      { id: 'g1', domains: ['health'] },
+      { id: 'g2', domains: ['cognitive'], overrideCategories: ['communication'] },
+    ]);
+    expect(result[0].source).toBe('domain-inference');
+    expect(result[1].source).toBe('manual');
+    expect(result[1].inferredCategories).toEqual(['communication']);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════

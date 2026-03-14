@@ -444,14 +444,17 @@ function computeGoalProgress(
   return links.map((link) => {
     const cats = new Set(link.inferredCategories);
     if (cats.size === 0) {
-      return assessGoalProgress({
-        goalId: link.goalId,
-        linkedCategories: [],
-        matchedRecordCount: 0,
-        matchedTagCount: 0,
-        totalRecordCount: records.length,
-        trend: 'stable',
-      });
+      return {
+        ...assessGoalProgress({
+          goalId: link.goalId,
+          linkedCategories: [],
+          matchedRecordCount: 0,
+          matchedTagCount: 0,
+          totalRecordCount: records.length,
+          trend: 'stable',
+        }),
+        source: link.source,
+      };
     }
 
     // 記録ごとに「この goal に関連するタグを持つか」を判定
@@ -501,14 +504,17 @@ function computeGoalProgress(
       }
     }
 
-    return assessGoalProgress({
-      goalId: link.goalId,
-      linkedCategories: link.inferredCategories,
-      matchedRecordCount,
-      matchedTagCount,
-      totalRecordCount: records.length,
-      trend,
-    });
+    return {
+      ...assessGoalProgress({
+        goalId: link.goalId,
+        linkedCategories: link.inferredCategories,
+        matchedRecordCount,
+        matchedTagCount,
+        totalRecordCount: records.length,
+        trend,
+      }),
+      source: link.source,
+    };
   });
 }
 
