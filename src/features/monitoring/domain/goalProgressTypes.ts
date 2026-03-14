@@ -32,6 +32,8 @@ export type GoalDomainId =
 export type GoalLike = {
   id: string;
   domains?: string[];
+  /** Phase 4: 手動上書きカテゴリ */
+  overrideCategories?: string[];
 };
 
 // ─── 推論結果 ───────────────────────────────────────────
@@ -80,6 +82,8 @@ export type GoalProgressSummary = {
   linkedCategories: BehaviorTagCategory[];
   /** 判定根拠テキスト（所見ドラフト用） */
   note?: string;
+  /** Phase 4: 判定の推論元（自動 or 手動） */
+  source?: 'domain-inference' | 'manual';
 };
 
 // ─── 判定レベルの表示定数 ────────────────────────────────
