@@ -8,6 +8,7 @@ import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import IconButton from '@mui/material/IconButton';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
@@ -18,6 +19,8 @@ import type { ReactNode } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 
+import type { ProcedureSource } from '@/features/daily/domain/ProcedureRepository';
+
 export type ScheduleItem = {
   id?: string;
   time: string;
@@ -26,6 +29,8 @@ export type ScheduleItem = {
   isKey: boolean;
   /** この時間帯に紐づく行動対応プラン（BIP）のIDリスト */
   linkedInterventionIds?: string[];
+  /** データの由来（'planning_sheet' の場合にバッジ表示） */
+  source?: ProcedureSource;
 };
 
 type GuidedProcedurePanelProps = {
@@ -284,6 +289,18 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
                   <Typography variant="caption" color="warning.dark" fontWeight="bold">
                     重要
                   </Typography>
+                )}
+                {item.source === 'planning_sheet' && (
+                  <Tooltip title="支援計画シートから取込された手順" arrow placement="top">
+                    <Chip
+                      icon={<DescriptionOutlinedIcon sx={{ fontSize: 12 }} />}
+                      label="計画"
+                      size="small"
+                      color="info"
+                      variant="outlined"
+                      sx={{ height: 20, fontSize: '0.65rem', '& .MuiChip-label': { px: 0.5 }, '& .MuiChip-icon': { ml: 0.5 } }}
+                    />
+                  </Tooltip>
                 )}
                 {filledStepIds && (() => {
                   const obsText = isFilled ? savedObservations?.get(stepId) : undefined;

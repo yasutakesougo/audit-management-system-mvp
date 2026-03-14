@@ -17,6 +17,7 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useMemo } from 'react';
+import { formatDateYmd } from '@/lib/dateFormat';
 
 /* ------------------------------------------------------------------ */
 /*  純粋ロジック（テスト可能）                                          */
@@ -102,8 +103,7 @@ function addMonths(date: Date, months: number): Date {
 /*  コンポーネント                                                      */
 /* ------------------------------------------------------------------ */
 
-const formatDate = (d: Date) =>
-  `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+/* removed: const formatDate wrapper — use formatDateYmd directly */
 
 export type MonitoringCountdownProps = {
   /** 選択中の利用者名 */
@@ -177,10 +177,10 @@ const MonitoringCountdownInner: React.FC<{ assessmentDateStr: string; now: Date 
             モニタリング会議（三ヶ月ごと）
           </Typography>
           <Typography variant="caption" component="div">
-            前回会議日：{formatDate(cycle.prevDate)}（{cycle.elapsed}日前）
+            前回会議日：{formatDateYmd(cycle.prevDate)}（{cycle.elapsed}日前）
           </Typography>
           <Typography variant="caption" component="div">
-            次回会議日：{formatDate(cycle.nextDate)}（あと{cycle.remaining}日）
+            次回会議日：{formatDateYmd(cycle.nextDate)}（あと{cycle.remaining}日）
           </Typography>
           <Typography variant="caption" component="div" sx={{ mt: 0.5 }}>
             サイクル進捗：{Math.round(cycle.progress)}%（{cycle.elapsed}/{cycle.totalDays}日）
