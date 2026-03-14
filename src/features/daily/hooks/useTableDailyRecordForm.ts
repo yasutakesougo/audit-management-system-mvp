@@ -27,6 +27,9 @@ export type UserRowData = {
     other: boolean;
   };
   specialNotes: string;
+  behaviorTags: string[];
+  /** 提案に対するアクション記録（Issue #9） */
+  acceptedSuggestions?: import('../domain/suggestionAction').SuggestionAction[];
 };
 
 export type TableDailyRecordData = {
@@ -71,6 +74,7 @@ export type UseTableDailyRecordFormResult = {
   handleClearAll: () => void;
   handleRowDataChange: (userId: string, field: string, value: string | boolean) => void;
   handleProblemBehaviorChange: (userId: string, behaviorType: string, checked: boolean) => void;
+  handleBehaviorTagToggle: (userId: string, tagKey: string) => void;
   handleClearRow: (userId: string) => void;
   showUnsentOnly: boolean;
   setShowUnsentOnly: Dispatch<SetStateAction<boolean>>;
@@ -185,6 +189,7 @@ export const useTableDailyRecordForm = ({
   const {
     handleRowDataChange,
     handleProblemBehaviorChange,
+    handleBehaviorTagToggle,
     handleClearRow,
     visibleRows,
     unsentRowCount,
@@ -320,6 +325,7 @@ export const useTableDailyRecordForm = ({
     handleClearAll,
     handleRowDataChange,
     handleProblemBehaviorChange,
+    handleBehaviorTagToggle,
     handleClearRow,
     showUnsentOnly,
     setShowUnsentOnly,

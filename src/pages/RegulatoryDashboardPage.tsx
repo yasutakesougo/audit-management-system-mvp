@@ -5,12 +5,15 @@
  * 重度障害者支援加算の判定結果も統合して表示。
  * デモモード（Repository 未接続）ではサンプルデータで動作確認可能。
  */
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import Chip from '@mui/material/Chip';
 import Container from '@mui/material/Container';
+import Divider from '@mui/material/Divider';
+import IconButton from '@mui/material/IconButton';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
@@ -24,6 +27,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
+import Snackbar from '@mui/material/Snackbar';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
@@ -31,10 +35,14 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import GavelIcon from '@mui/icons-material/Gavel';
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
 import PsychologyRoundedIcon from '@mui/icons-material/PsychologyRounded';
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
+import FilterListRoundedIcon from '@mui/icons-material/FilterListRounded';
 import AccessibilityNewRoundedIcon from '@mui/icons-material/AccessibilityNewRounded';
 import SchoolRoundedIcon from '@mui/icons-material/SchoolRounded';
 import EventRepeatRoundedIcon from '@mui/icons-material/EventRepeatRounded';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
+import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
+import PersonOffRoundedIcon from '@mui/icons-material/PersonOffRounded';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -55,6 +63,7 @@ import {
 } from '@/domain/regulatory/findingEvidenceSummary';
 import {
   type SevereAddonFinding,
+  type SevereAddonSummary,
   SEVERE_ADDON_FINDING_TYPE_LABELS,
   buildSevereAddonFindings,
   summarizeSevereAddonFindings,
@@ -65,6 +74,23 @@ import {
 } from '@/domain/regulatory/buildSevereAddonFindingActions';
 import SafetyOperationsSummaryCard from '@/features/safety/components/SafetyOperationsSummaryCard';
 import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIcebergEvidence';
+import { useSevereAddonRealData } from '@/features/regulatory/hooks/useSevereAddonRealData';
+import { useRegulatoryFindingsRealData } from '@/features/regulatory/hooks/useRegulatoryFindingsRealData';
+import { useProcedureRecordRepository } from '@/features/regulatory/hooks/useProcedureRecordRepository';
+import {
+  buildHandoffFromRegularFinding,
+  buildHandoffFromAddonFinding,
+} from '@/domain/regulatory/findingToHandoff';
+import {
+  useCreateHandoffFromExternalSource,
+} from '@/features/handoff/useCreateHandoffFromExternalSource';
+import { useUsers } from '@/features/users/useUsers';
+import { useStaff } from '@/stores/useStaff';
+import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
+import {
+  localWeeklyObservationRepository,
+  localQualificationAssignmentRepository,
+} from '@/infra/localStorage/localStaffQualificationRepository';
 
 // ─────────────────────────────────────────────
 // デモデータ
@@ -140,6 +166,8 @@ function generateDemoSevereAddonFindings(): SevereAddonFinding[] {
       ['U002', today],         // OK
       ['U003', null],          // 未実施 → 超過
     ]),
+    usersWithoutAuthoringQualification: ['U001'],  // 鈴木花子: 作成者が実践研修未修了
+    usersWithoutAssignmentQualification: ['U003'],  // 佐藤次郎: 資格なし職員が配置
     today,
   });
 }
@@ -207,9 +235,19 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ title, count, color, icon }) 
 
 interface TypeBreakdownProps {
   summary: AuditSummary;
+  addonSummary?: SevereAddonSummary;
 }
 
-const TypeBreakdown: React.FC<TypeBreakdownProps> = ({ summary }) => (
+/** 加算系の種別カウントエントリ */
+const ADDON_BREAKDOWN_ENTRIES: { key: keyof SevereAddonSummary; label: string }[] = [
+  { key: 'trainingRatioInsufficientCount', label: '基礎研修比率不足' },
+  { key: 'reassessmentOverdueCount', label: '再評価超過' },
+  { key: 'weeklyObservationShortageCount', label: '週次観察不足' },
+  { key: 'authoringRequirementUnmetCount', label: '作成者要件不備' },
+  { key: 'assignmentWithoutQualificationCount', label: '資格なし配置' },
+];
+
+const TypeBreakdown: React.FC<TypeBreakdownProps> = ({ summary, addonSummary }) => (
   <Card variant="outlined" sx={{ p: 2.5 }}>
     <Typography variant="subtitle2" fontWeight={700} gutterBottom>
       検出種別
@@ -226,6 +264,29 @@ const TypeBreakdown: React.FC<TypeBreakdownProps> = ({ summary }) => (
         />
       ))}
     </Box>
+    {addonSummary && (
+      <>
+        <Divider sx={{ my: 1.5 }} />
+        <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+          加算系
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          {ADDON_BREAKDOWN_ENTRIES.map(({ key, label }) => {
+            const count = addonSummary[key] as number;
+            return (
+              <Chip
+                key={String(key)}
+                label={`${label}: ${count}`}
+                size="small"
+                variant={count > 0 ? 'filled' : 'outlined'}
+                color={count > 0 ? 'error' : 'default'}
+                sx={{ fontWeight: count > 0 ? 700 : 400, fontSize: '0.65rem' }}
+              />
+            );
+          })}
+        </Box>
+      </>
+    )}
   </Card>
 );
 
@@ -233,11 +294,28 @@ const TypeBreakdown: React.FC<TypeBreakdownProps> = ({ summary }) => (
 // 加算サマリーパネル
 // ─────────────────────────────────────────────
 
-const SevereAddonSummaryPanel: React.FC<{ addonSummary: ReturnType<typeof summarizeSevereAddonFindings> }> = ({ addonSummary }) => {
+/** 加算要件 → 遷移先マッピング */
+const ADDON_REQUIREMENT_LINKS: Record<string, { path: string; label: string }> = {
+  training:     { path: '/staff',               label: 'スタッフ管理を開く' },
+  reassessment: { path: '/planning-sheet-list',  label: '支援計画シート一覧を開く' },
+  observation:  { path: '/staff',               label: 'スタッフ管理を開く' },
+  authoring:    { path: '/planning-sheet-list',  label: '支援計画シート一覧を開く' },
+  assignment:   { path: '/staff',               label: 'スタッフ管理を開く' },
+};
+
+interface SevereAddonSummaryPanelProps {
+  addonSummary: ReturnType<typeof summarizeSevereAddonFindings>;
+  onNavigate: (url: string) => void;
+  onFilterAddon: () => void;
+}
+
+const SevereAddonSummaryPanel: React.FC<SevereAddonSummaryPanelProps> = ({ addonSummary, onNavigate, onFilterAddon }) => {
   const hasIssues =
     addonSummary.trainingRatioInsufficientCount > 0 ||
     addonSummary.reassessmentOverdueCount > 0 ||
-    addonSummary.weeklyObservationShortageCount > 0;
+    addonSummary.weeklyObservationShortageCount > 0 ||
+    addonSummary.authoringRequirementUnmetCount > 0 ||
+    addonSummary.assignmentWithoutQualificationCount > 0;
 
   return (
     <Card
@@ -298,6 +376,10 @@ const SevereAddonSummaryPanel: React.FC<{ addonSummary: ReturnType<typeof summar
           count={addonSummary.trainingRatioInsufficientCount}
           okText="20%以上を充足"
           ngText={`${addonSummary.trainingRatioInsufficientCount}件の不足`}
+          onAction={addonSummary.trainingRatioInsufficientCount > 0
+            ? () => onNavigate(ADDON_REQUIREMENT_LINKS.training.path)
+            : undefined}
+          actionLabel={ADDON_REQUIREMENT_LINKS.training.label}
         />
         <AddonRequirementRow
           icon={<EventRepeatRoundedIcon sx={{ fontSize: 16 }} />}
@@ -305,6 +387,10 @@ const SevereAddonSummaryPanel: React.FC<{ addonSummary: ReturnType<typeof summar
           count={addonSummary.reassessmentOverdueCount}
           okText="全員期限内"
           ngText={`${addonSummary.reassessmentOverdueCount}件超過`}
+          onAction={addonSummary.reassessmentOverdueCount > 0
+            ? () => onNavigate(ADDON_REQUIREMENT_LINKS.reassessment.path)
+            : undefined}
+          actionLabel={ADDON_REQUIREMENT_LINKS.reassessment.label}
         />
         <AddonRequirementRow
           icon={<VisibilityRoundedIcon sx={{ fontSize: 16 }} />}
@@ -312,20 +398,64 @@ const SevereAddonSummaryPanel: React.FC<{ addonSummary: ReturnType<typeof summar
           count={addonSummary.weeklyObservationShortageCount}
           okText="全員実施済"
           ngText={`${addonSummary.weeklyObservationShortageCount}件不足`}
+          onAction={addonSummary.weeklyObservationShortageCount > 0
+            ? () => onNavigate(ADDON_REQUIREMENT_LINKS.observation.path)
+            : undefined}
+          actionLabel={ADDON_REQUIREMENT_LINKS.observation.label}
+        />
+        <AddonRequirementRow
+          icon={<EditNoteRoundedIcon sx={{ fontSize: 16 }} />}
+          label="作成者要件"
+          count={addonSummary.authoringRequirementUnmetCount}
+          okText="全員実践研修修了"
+          ngText={`${addonSummary.authoringRequirementUnmetCount}件不備`}
+          onAction={addonSummary.authoringRequirementUnmetCount > 0
+            ? () => onNavigate(ADDON_REQUIREMENT_LINKS.authoring.path)
+            : undefined}
+          actionLabel={ADDON_REQUIREMENT_LINKS.authoring.label}
+        />
+        <AddonRequirementRow
+          icon={<PersonOffRoundedIcon sx={{ fontSize: 16 }} />}
+          label="配置資格"
+          count={addonSummary.assignmentWithoutQualificationCount}
+          okText="全員資格あり"
+          ngText={`${addonSummary.assignmentWithoutQualificationCount}件不備`}
+          onAction={addonSummary.assignmentWithoutQualificationCount > 0
+            ? () => onNavigate(ADDON_REQUIREMENT_LINKS.assignment.path)
+            : undefined}
+          actionLabel={ADDON_REQUIREMENT_LINKS.assignment.label}
         />
       </Stack>
+
+      {/* 加算 finding 一覧へ導線 */}
+      <Divider sx={{ my: 1.5 }} />
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Button
+          size="small"
+          variant="text"
+          color="secondary"
+          startIcon={<FilterListRoundedIcon sx={{ fontSize: 14 }} />}
+          onClick={onFilterAddon}
+          data-testid="addon-filter-shortcut"
+          sx={{ fontSize: '0.7rem', textTransform: 'none', fontWeight: 600 }}
+        >
+          加算チェック結果を一覧で見る
+        </Button>
+      </Box>
     </Card>
   );
 };
 
-/** 加算要件の1行表示 */
+/** 加算要件の1行表示（導線ボタン付き） */
 const AddonRequirementRow: React.FC<{
   icon: React.ReactNode;
   label: string;
   count: number;
   okText: string;
   ngText: string;
-}> = ({ icon, label, count, okText, ngText }) => (
+  onAction?: () => void;
+  actionLabel?: string;
+}> = ({ icon, label, count, okText, ngText, onAction, actionLabel }) => (
   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
     {icon}
     <Typography variant="body2" sx={{ minWidth: 100 }} fontWeight={600}>
@@ -338,6 +468,18 @@ const AddonRequirementRow: React.FC<{
       variant={count > 0 ? 'filled' : 'outlined'}
       sx={{ fontWeight: 600, fontSize: '0.65rem' }}
     />
+    {onAction && (
+      <IconButton
+        size="small"
+        color="primary"
+        onClick={onAction}
+        title={actionLabel}
+        data-testid={`addon-action-${label}`}
+        sx={{ ml: 'auto', p: 0.5 }}
+      >
+        <ArrowForwardRoundedIcon sx={{ fontSize: 16 }} />
+      </IconButton>
+    )}
   </Box>
 );
 
@@ -422,9 +564,11 @@ interface FindingsTableProps {
   filterSource: 'all' | 'regular' | 'addon';
   onNavigate: (url: string) => void;
   evidenceMap?: Map<string, FindingEvidenceSummary>;
+  onSendToHandoff?: (row: UnifiedFindingRow) => void;
+  sentFindingKeys?: Set<string>;
 }
 
-const FindingsTable: React.FC<FindingsTableProps> = ({ rows, filterSeverity, filterSource, onNavigate, evidenceMap }) => {
+const FindingsTable: React.FC<FindingsTableProps> = ({ rows, filterSeverity, filterSource, onNavigate, evidenceMap, onSendToHandoff, sentFindingKeys }) => {
   const filtered = useMemo(() => {
     let result = [...rows];
     if (filterSource !== 'all') result = result.filter(r => r.source === filterSource);
@@ -558,6 +702,32 @@ const FindingsTable: React.FC<FindingsTableProps> = ({ rows, filterSeverity, fil
                         {action.label}
                       </Button>
                     ))}
+                    {onSendToHandoff && (() => {
+                      const findingKey = row.source === 'addon'
+                        ? `severe-addon-finding:${row.id}`
+                        : `regulatory-finding:${row.id}`;
+                      const isSent = sentFindingKeys?.has(findingKey) ?? false;
+                      return (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="info"
+                          disabled={isSent}
+                          data-testid={`send-to-handoff-${row.id}`}
+                          startIcon={<ArrowForwardRoundedIcon sx={{ fontSize: 14 }} />}
+                          onClick={() => onSendToHandoff(row)}
+                          sx={{
+                            fontSize: '0.7rem',
+                            textTransform: 'none',
+                            py: 0.25,
+                            px: 1,
+                            minWidth: 'auto',
+                          }}
+                        >
+                          {isSent ? '送信済' : '申し送りへ'}
+                        </Button>
+                      );
+                    })()}
                   </Stack>
                 </TableCell>
               </TableRow>
@@ -577,13 +747,54 @@ const RegulatoryDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [filterSeverity, setFilterSeverity] = useState<AuditFindingSeverity | 'all'>('all');
   const [filterSource, setFilterSource] = useState<'all' | 'regular' | 'addon'>('all');
+  const [sentFindingKeys, setSentFindingKeys] = useState<Set<string>>(new Set());
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'info' }>({ open: false, message: '', severity: 'success' });
+  const createHandoff = useCreateHandoffFromExternalSource();
 
-  // デモモード: サンプルデータで動作確認
-  const findings = useMemo(() => generateDemoFindings(), []);
+  // ── データ取得（共通） ──
+  const { data: spUsers, status: usersStatus, error: usersError } = useUsers({ selectMode: 'full' });
+  const { staff: spStaff, isLoading: staffLoading, error: staffError } = useStaff();
+  const planningSheetRepo = usePlanningSheetRepositories();
+  const procedureRecordRepo = useProcedureRecordRepository();
+  const dataLoading = usersStatus === 'loading' || staffLoading;
+  const dataError = usersError ? (usersError instanceof Error ? usersError : new Error(String(usersError))) : staffError;
+
+  // 通常 findings — 実データ / デモフォールバック
+  const {
+    findings: realFindings,
+    isLoading: findingsLoading,
+    dataSourceLabel: findingsDataSource,
+  } = useRegulatoryFindingsRealData(
+    spUsers,
+    spStaff,
+    dataLoading,
+    dataError,
+    planningSheetRepo,
+    procedureRecordRepo,
+  );
+  const findings = useMemo(
+    () => (realFindings.length > 0 ? realFindings : generateDemoFindings()),
+    [realFindings],
+  );
   const summary = useMemo(() => summarizeFindings(findings), [findings]);
 
-  // 加算系 findings（デモデータ）
-  const addonFindings = useMemo(() => generateDemoSevereAddonFindings(), []);
+  // 加算系 findings — 実データ / デモフォールバック
+  const { input: realAddonInput, dataSourceLabel: addonDataSource } = useSevereAddonRealData(
+    spUsers,
+    spStaff,
+    dataLoading,
+    dataError,
+    planningSheetRepo,
+    localWeeklyObservationRepository,
+    localQualificationAssignmentRepository,
+  );
+  const addonFindings = useMemo(() => {
+    if (realAddonInput) {
+      _resetAddonFindingCounter();
+      return buildSevereAddonFindings(realAddonInput);
+    }
+    return generateDemoSevereAddonFindings();
+  }, [realAddonInput]);
   const addonSummary = useMemo(() => summarizeSevereAddonFindings(addonFindings), [addonFindings]);
 
   // 統合行データ
@@ -611,6 +822,58 @@ const RegulatoryDashboardPage: React.FC = () => {
     [findings, icebergEvidence],
   );
 
+  // P6: finding → handoff 送信ハンドラ
+  const handleSendToHandoff = useCallback(async (row: UnifiedFindingRow) => {
+    try {
+      // finding 種別に応じて handoff 入力を生成
+      const handoffInput = row.source === 'regular' && row.originalRegular
+        ? buildHandoffFromRegularFinding(row.originalRegular)
+        : row.originalAddon
+          ? buildHandoffFromAddonFinding(row.originalAddon)
+          : null;
+
+      if (!handoffInput) return;
+
+      const source: import('@/features/handoff/useCreateHandoffFromExternalSource').HandoffExternalSource = {
+        sourceType: handoffInput.sourceType,
+        sourceId: 0,
+        sourceUrl: '/regulatory',
+        sourceKey: handoffInput.sourceKey,
+        sourceLabel: handoffInput.sourceLabel,
+      };
+
+      const result = await createHandoff({
+        title: handoffInput.title,
+        body: handoffInput.body,
+        source,
+        category: handoffInput.category,
+        severity: handoffInput.severity,
+      });
+
+      // sentKeys 更新
+      setSentFindingKeys(prev => {
+        const next = new Set(prev);
+        next.add(handoffInput.sourceKey);
+        return next;
+      });
+
+      setSnackbar({
+        open: true,
+        message: result.created
+          ? `申し送りを作成しました：${handoffInput.title}`
+          : `既存の申し送りがあります（ID: ${result.itemId}）`,
+        severity: result.created ? 'success' : 'info',
+      });
+    } catch (error) {
+      console.error('Failed to create handoff from finding:', error);
+      setSnackbar({
+        open: true,
+        message: '申し送りの作成に失敗しました',
+        severity: 'info',
+      });
+    }
+  }, [createHandoff]);
+
   return (
     <Container maxWidth="xl" sx={{ py: 3, minHeight: '100vh' }} data-testid="regulatory-dashboard-page">
       {/* ヘッダー */}
@@ -630,6 +893,20 @@ const RegulatoryDashboardPage: React.FC = () => {
           color={isLiveData ? 'success' : 'default'}
           variant={isLiveData ? 'filled' : 'outlined'}
           sx={{ ml: 'auto', fontWeight: 600, fontSize: '0.7rem' }}
+        />
+        <Chip
+          label={findingsLoading ? '通常判定読込中…' : `通常: ${findingsDataSource}`}
+          size="small"
+          color={findingsDataSource === '実データ' ? 'success' : 'default'}
+          variant={findingsDataSource === '実データ' ? 'filled' : 'outlined'}
+          sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+        />
+        <Chip
+          label={`加算: ${addonDataSource}`}
+          size="small"
+          color={addonDataSource === '実データ' ? 'success' : 'default'}
+          variant={addonDataSource === '実データ' ? 'filled' : 'outlined'}
+          sx={{ fontWeight: 600, fontSize: '0.7rem' }}
         />
       </Box>
 
@@ -657,8 +934,16 @@ const RegulatoryDashboardPage: React.FC = () => {
           gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 380px' },
         }}
       >
-        <TypeBreakdown summary={summary} />
-        <SevereAddonSummaryPanel addonSummary={addonSummary} />
+        <TypeBreakdown summary={summary} addonSummary={addonSummary} />
+        <SevereAddonSummaryPanel
+          addonSummary={addonSummary}
+          onNavigate={(url) => navigate(url)}
+          onFilterAddon={() => {
+            setFilterSource('addon');
+            // findings テーブルへ自動スクロール
+            document.getElementById('findings-table-section')?.scrollIntoView({ behavior: 'smooth' });
+          }}
+        />
         <SafetyOperationsSummaryCard />
       </Box>
 
@@ -708,13 +993,34 @@ const RegulatoryDashboardPage: React.FC = () => {
       </Box>
 
       {/* 統合 findings テーブル */}
-      <FindingsTable
-        rows={unifiedRows}
-        filterSeverity={filterSeverity}
-        filterSource={filterSource}
-        onNavigate={(url) => navigate(url)}
-        evidenceMap={evidenceMap}
-      />
+      <Box id="findings-table-section">
+        <FindingsTable
+          rows={unifiedRows}
+          filterSeverity={filterSeverity}
+          filterSource={filterSource}
+          onNavigate={(url) => navigate(url)}
+          evidenceMap={evidenceMap}
+          onSendToHandoff={handleSendToHandoff}
+          sentFindingKeys={sentFindingKeys}
+        />
+      </Box>
+
+      {/* P6: Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          variant="filled"
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

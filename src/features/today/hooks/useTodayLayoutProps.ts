@@ -1,0 +1,308 @@
+/**
+ * useTodayLayoutProps — TodayOpsPage の Layout Props Mapping を分離
+ *
+ * 責務:
+ * - summary / nextAction / sceneAction / transport / quickRecord から
+ *   TodayBentoLayout が受け取る props を組み立てる
+ * - navigate と recordCtaClick を使うハンドラを生成する
+ * - ソートやフィルタなどの表示用 derivation
+ *
+ * 含めないこと:
+ * - データ取得 (useTodaySummary 等)
+ * - save success の副作用
+ * - landing telemetry
+ * - JSX
+ *
+ * @see TodayOpsPage.tsx — オーケストレーター
+ * @see TodayBentoLayout.tsx — プレゼンテーション
+ */
+import { useMemo } from 'react';
+import type { NavigateFunction } from 'react-router-dom';
+
+import {
+  buildDailyHubFromTodayUrl,
+  buildHandoffFromTodayState,
+  buildHandoffTimelineUrl,
+  buildIcebergPdcaUrl,
+  sceneToTimeBand,
+} from '@/app/links/navigationLinks';
+import { isE2E } from '@/lib/env';
+import { getWindowFlag } from '@/env';
+import { CTA_EVENTS, recordCtaClick } from '@/features/today/telemetry/recordCtaClick';
+
+import type { TodayBentoProps } from '../layouts/TodayBentoLayout';
+import type { ProgressChipKey } from '../widgets/ProgressStatusBar';
+import type { NextActionWithProgress } from './useNextAction';
+import type { SceneNextActionViewModel } from './useSceneNextAction';
+import type { UseTransportStatusReturn } from '../transport';
+
+// ── Input Types ──
+
+export type TodayLayoutPropsInput = {
+  summary: {
+    users?: Array<{ Id?: number; UserID?: string; FullName?: string }>;
+    visits: Record<string, { status?: string }>;
+    scheduleLanesToday: unknown;
+    attendanceSummary?: {
+      facilityAttendees?: number;
+      sameDayAbsenceCount?: number;
+      sameDayAbsenceNames?: string[];
+      priorAbsenceCount?: number;
+      priorAbsenceNames?: string[];
+      lateOrEarlyLeave?: number;
+      lateOrEarlyNames?: string[];
+    };
+    briefingAlerts?: Array<{ severity: string; [key: string]: unknown }>;
+    dailyRecordStatus?: {
+      pending?: number;
+      pendingUserIds?: string[];
+    };
+    todayRecordCompletion?: {
+      total: number;
+      completed: number;
+      pending: number;
+      pendingUserIds: string[];
+    };
+    serviceStructure?: TodayBentoProps['serviceStructure'];
+  };
+  nextAction: NextActionWithProgress;
+  sceneAction?: SceneNextActionViewModel;
+  transport: UseTransportStatusReturn;
+  quickRecord: {
+    openUser: (id: string) => void;
+    openUnfilled: (id?: string) => void;
+  };
+  navigate: NavigateFunction;
+  role: string;
+  scheduleDetailHref: string;
+};
+
+// ── Return Type ──
+
+export type TodayLayoutPropsResult = Omit<TodayBentoProps, 'todayTasks' | 'onPhaseNavigate'>;
+
+// ── Hook ──
+
+export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPropsResult {
+  const {
+    summary,
+    nextAction,
+    sceneAction,
+    transport,
+    quickRecord,
+    navigate,
+    role,
+    scheduleDetailHref,
+  } = input;
+
+  return useMemo(() => {
+    const isE2EEnv = isE2E() || getWindowFlag('__E2E_TODAY_OPS_MOCK__');
+
+    // ── Progress ──
+    const recordCompletion = summary?.todayRecordCompletion;
+    const realPendingCount = recordCompletion
+      ? recordCompletion.pending
+      : Math.max(0, summary?.dailyRecordStatus?.pending ?? 0);
+    const pendingRecordCount = isE2EEnv ? 3 : realPendingCount;
+    const totalRecordCount = recordCompletion
+      ? recordCompletion.total
+      : (summary.users?.length ?? 0);
+
+    const facilityAttendees = summary?.attendanceSummary?.facilityAttendees ?? 0;
+    const pendingAttendanceCount = isE2EEnv
+      ? 2
+      : Math.max(0, (summary.users?.length ?? 0) - facilityAttendees);
+
+    const pendingBriefingCount = isE2EEnv
+      ? 1
+      : (summary?.briefingAlerts ?? []).filter(
+          (a) => a.severity === 'error' || a.severity === 'warning',
+        ).length;
+
+    // ── User List ──
+    const pendingUserIds = new Set(
+      recordCompletion
+        ? recordCompletion.pendingUserIds
+        : (summary?.dailyRecordStatus?.pendingUserIds ?? []),
+    );
+
+    const userItems = (summary.users || []).map((u, i) => {
+      const userId = (u.UserID ?? '').trim() || `U${String(u.Id ?? i + 1).padStart(3, '0')}`;
+      const name = u.FullName ?? `利用者${i + 1}`;
+      const visit = summary.visits[userId];
+      let status: 'present' | 'absent' | 'unknown' = 'unknown';
+      if (visit) {
+        if (visit.status === '通所中' || visit.status === '退所済') status = 'present';
+        else if (visit.status === '当日欠席' || visit.status === '事前欠席') status = 'absent';
+      }
+      const recordFilled = !pendingUserIds.has(userId);
+      return { userId, name, status, recordFilled };
+    });
+
+    const sortedUserItems = [...userItems].sort((a, b) => {
+      if (a.recordFilled === b.recordFilled) return 0;
+      return a.recordFilled ? 1 : -1;
+    });
+
+    // ── Assemble Props ──
+    return {
+      progress: {
+        summary: {
+          pendingRecordCount,
+          totalRecordCount,
+          pendingAttendanceCount,
+          pendingBriefingCount,
+        },
+        onChipClick: (key: ProgressChipKey) => {
+          const chipRoutes: Record<ProgressChipKey, string> = {
+            record: '/daily/support',
+            attendance: '/daily/attendance',
+            briefing: buildHandoffTimelineUrl(),
+          };
+          const chipCtaEvents: Record<ProgressChipKey, typeof CTA_EVENTS[keyof typeof CTA_EVENTS]> = {
+            record: CTA_EVENTS.PROGRESS_CHIP_RECORD,
+            attendance: CTA_EVENTS.PROGRESS_CHIP_ATTENDANCE,
+            briefing: CTA_EVENTS.PROGRESS_CHIP_BRIEFING,
+          };
+          const targetUrl = chipRoutes[key];
+          recordCtaClick({
+            ctaId: chipCtaEvents[key],
+            sourceComponent: 'ProgressStatusBar',
+            stateType: 'navigation',
+            targetUrl,
+            userRole: role,
+          });
+          navigate(targetUrl);
+        },
+        scene: sceneAction?.scene,
+      },
+      attendance: {
+        scheduledCount: summary.users?.length ?? 0,
+        facilityAttendees: summary?.attendanceSummary?.facilityAttendees ?? 0,
+        sameDayAbsenceCount: summary?.attendanceSummary?.sameDayAbsenceCount ?? 0,
+        sameDayAbsenceNames: summary?.attendanceSummary?.sameDayAbsenceNames ?? [],
+        priorAbsenceCount: summary?.attendanceSummary?.priorAbsenceCount ?? 0,
+        priorAbsenceNames: summary?.attendanceSummary?.priorAbsenceNames ?? [],
+        lateOrEarlyLeave: summary?.attendanceSummary?.lateOrEarlyLeave ?? 0,
+        lateOrEarlyNames: summary?.attendanceSummary?.lateOrEarlyNames ?? [],
+        onAction: () => {
+          recordCtaClick({
+            ctaId: CTA_EVENTS.NEXT_ACTION_PRIMARY,
+            sourceComponent: 'AttendanceSummaryCard',
+            stateType: 'navigation',
+            targetUrl: '/daily/attendance',
+            userRole: role,
+          });
+          navigate('/daily/attendance');
+        },
+      },
+      briefingAlerts: (summary?.briefingAlerts ?? []) as TodayBentoProps['briefingAlerts'],
+      serviceStructure: summary?.serviceStructure,
+      nextAction,
+      sceneAction,
+      onSceneAction: (target: string, userId?: string) => {
+        recordCtaClick({
+          ctaId: CTA_EVENTS.NEXT_ACTION_PRIMARY,
+          sourceComponent: 'NextActionCard',
+          stateType: 'scene-action',
+          scene: sceneAction?.sceneLabel,
+          priority: sceneAction?.priority,
+          targetUrl: target,
+          userRole: role,
+        });
+        switch (target) {
+          case 'briefing':
+            navigate(buildHandoffTimelineUrl(), {
+              state: buildHandoffFromTodayState({
+                timeFilter: sceneAction ? sceneToTimeBand(sceneAction.scene) : undefined,
+              }),
+            });
+            break;
+          case 'attendance':
+            navigate('/daily/attendance');
+            break;
+          case 'quick-record':
+            if (userId) quickRecord.openUser(userId);
+            else quickRecord.openUnfilled(summary?.dailyRecordStatus?.pendingUserIds?.[0]);
+            break;
+          case 'user':
+            document.getElementById('bento-users')?.scrollIntoView({ behavior: 'smooth' });
+            break;
+          default:
+            break;
+        }
+      },
+      transport: {
+        pending: transport.isReady
+          ? transport.status.legs
+              .filter((l) => l.direction === transport.activeDirection && (l.status === 'pending' || l.status === 'in-progress'))
+              .map((l) => ({ userId: l.userId, name: l.userName }))
+          : [],
+        inProgress: transport.isReady
+          ? transport.status.legs
+              .filter((l) => l.direction === transport.activeDirection && l.status === 'arrived')
+              .map((l) => ({ userId: l.userId, name: l.userName }))
+          : [],
+        onArrived: (userId: string) => {
+          transport.markArrived(userId, transport.activeDirection);
+        },
+      },
+      transportCard: transport.isReady
+        ? {
+            legs: transport.status.legs,
+            toSummary: transport.status.to,
+            fromSummary: transport.status.from,
+            activeDirection: transport.activeDirection,
+            onDirectionChange: transport.setActiveDirection,
+            onTransition: transport.transition,
+            currentTime: transport.currentTime,
+          }
+        : undefined,
+      users: {
+        items: isE2EEnv
+          ? [
+              { userId: 'I022', name: '中村 裕樹', status: 'present' as const, recordFilled: false },
+              { userId: 'I105', name: '山田 花子', status: 'present' as const, recordFilled: true },
+            ]
+          : sortedUserItems,
+        onOpenQuickRecord: quickRecord.openUser,
+        onOpenISP: (userId: string) => navigate(`/isp-editor/${userId}`),
+        onOpenIceberg: (userId: string) => navigate(buildIcebergPdcaUrl(userId)),
+        onEmptyAction: () => navigate('/schedules'),
+      },
+      nextActionEmptyAction: () => {
+        recordCtaClick({
+          ctaId: CTA_EVENTS.NEXT_ACTION_EMPTY,
+          sourceComponent: 'NextActionCard',
+          stateType: 'empty-state',
+          targetUrl: '/schedules',
+          userRole: role,
+        });
+        navigate('/schedules');
+      },
+      nextActionMenuAction: () => {
+        const today = new Date().toISOString().split('T')[0];
+        const url = buildDailyHubFromTodayUrl(today);
+        recordCtaClick({
+          ctaId: CTA_EVENTS.NEXT_ACTION_UTILITY,
+          sourceComponent: 'NextActionCard',
+          stateType: 'empty-state',
+          targetUrl: url,
+          userRole: role,
+        });
+        navigate(url);
+      },
+      scheduleDetailHref,
+      onNextActionNavigate: (href: string) => {
+        recordCtaClick({
+          ctaId: CTA_EVENTS.NEXT_ACTION_PRIMARY,
+          sourceComponent: 'NextActionCard',
+          stateType: 'navigation',
+          targetUrl: href,
+          userRole: role,
+        });
+        navigate(href);
+      },
+    };
+  }, [summary, nextAction, sceneAction, transport, quickRecord.openUnfilled, quickRecord.openUser, navigate, role, scheduleDetailHref]);
+}

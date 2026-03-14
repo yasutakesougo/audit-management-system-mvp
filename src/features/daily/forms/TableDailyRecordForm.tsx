@@ -11,9 +11,20 @@ import {
     Stack,
     Typography
 } from '@mui/material';
+import { useCallback, useMemo } from 'react';
 import { Toaster } from 'react-hot-toast';
+import { BehaviorPatternSuggestionPanel } from '../components/BehaviorPatternSuggestionPanel';
+import { BehaviorTagCrossInsightPanel } from '../components/BehaviorTagCrossInsightPanel';
+import { BehaviorTagInsightBar } from '../components/BehaviorTagInsightBar';
+import { QuickTagArea } from '../components/QuickTagArea';
 import { TableDailyRecordTable } from '../components/TableDailyRecordTable';
 import { TableDailyRecordUserPicker } from '../components/TableDailyRecordUserPicker';
+import { computeBehaviorTagCrossInsights, type CrossInsightInput } from '../domain/behaviorTagCrossInsights';
+import {
+  appendSuggestionMemo,
+  createSuggestionAction,
+} from '../domain/suggestionAction';
+import type { PatternSuggestion } from '../domain/behaviorPatternSuggestions';
 import {
     useTableDailyRecordForm,
     type TableDailyRecordData,
@@ -49,6 +60,7 @@ export function TableDailyRecordForm({
 
   const {
     formData,
+    setFormData,
     searchQuery,
     setSearchQuery,
     showTodayOnly,
@@ -60,6 +72,7 @@ export function TableDailyRecordForm({
     handleClearAll,
     handleRowDataChange,
     handleProblemBehaviorChange,
+    handleBehaviorTagToggle,
     handleClearRow,
     visibleRows,
     handleSaveDraft,
@@ -109,6 +122,35 @@ export function TableDailyRecordForm({
             </Alert>
           </Collapse>
 
+          {/* Quick Tag Area — QuickRecord 1名記録時のみ */}
+          {variant === 'content' && visibleRows.length === 1 && (
+            <QuickTagArea
+              rows={visibleRows}
+              selectedTags={visibleRows[0].behaviorTags ?? []}
+              onToggleTag={(tagKey) => handleBehaviorTagToggle(visibleRows[0].userId, tagKey)}
+            />
+          )}
+
+          {/* Behavior Tag Insight — テーブルの上 */}
+          {formData.userRows.length > 0 && (
+            <BehaviorTagInsightBar rows={visibleRows} />
+          )}
+
+          {/* Cross Insight — 折りたたみ式（3行以上で表示） */}
+          {formData.userRows.length > 0 && (
+            <BehaviorTagCrossInsightPanel rows={visibleRows} />
+          )}
+
+          {/* Pattern Suggestion — ルールベース示唆（Suggestion あれば展開表示） */}
+          {formData.userRows.length > 0 && (
+            <SuggestionPanelMemo
+              visibleRows={visibleRows}
+              date={formData.date}
+              setFormData={setFormData}
+              handleRowDataChange={handleRowDataChange}
+            />
+          )}
+
           {/* Table area — takes remaining space */}
           {formData.userRows.length > 0 && (
             <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -116,6 +158,7 @@ export function TableDailyRecordForm({
                 rows={visibleRows}
                 onRowDataChange={handleRowDataChange}
                 onProblemBehaviorChange={handleProblemBehaviorChange}
+                onBehaviorTagToggle={handleBehaviorTagToggle}
                 onClearRow={handleClearRow}
               />
             </Box>
@@ -215,4 +258,71 @@ function useTableDailyRecordFormConditional(
   };
   const result = useTableDailyRecordForm(effectiveParams);
   return params ? result : null;
+}
+
+/**
+ * Suggestion パネルのメモ化ラッパー。
+ * visibleRows から crossInsights を計算し BehaviorPatternSuggestionPanel に渡す。
+ * Issue #9: accept/dismiss ハンドラを結線。
+ */
+function SuggestionPanelMemo({
+  visibleRows,
+  date,
+  setFormData,
+  handleRowDataChange,
+}: {
+  visibleRows: CrossInsightInput[];
+  date: string;
+  setFormData: React.Dispatch<React.SetStateAction<import('../hooks/useTableDailyRecordForm').TableDailyRecordData>>;
+  handleRowDataChange: (userId: string, field: string, value: string | boolean) => void;
+}) {
+  const crossInsights = useMemo(
+    () => computeBehaviorTagCrossInsights(visibleRows),
+    [visibleRows],
+  );
+
+  // 最初の visibleRow の acceptedSuggestions を取得（1名 QuickRecord 時に主に使用）
+  const firstRow = visibleRows[0] as import('../hooks/useTableDailyRecordForm').UserRowData | undefined;
+  const acceptedSuggestions = firstRow?.acceptedSuggestions;
+
+  const handleAccept = useCallback((suggestion: PatternSuggestion) => {
+    if (!firstRow) return;
+    const userId = firstRow.userId;
+    // specialNotes に転記
+    const newNotes = appendSuggestionMemo(firstRow.specialNotes, suggestion, date);
+    handleRowDataChange(userId, 'specialNotes', newNotes);
+    // acceptedSuggestions に記録
+    const action = createSuggestionAction(suggestion, 'accept', userId);
+    setFormData(prev => ({
+      ...prev,
+      userRows: prev.userRows.map(r =>
+        r.userId === userId
+          ? { ...r, acceptedSuggestions: [...(r.acceptedSuggestions ?? []), action] }
+          : r,
+      ),
+    }));
+  }, [firstRow, date, handleRowDataChange, setFormData]);
+
+  const handleDismiss = useCallback((suggestion: PatternSuggestion) => {
+    if (!firstRow) return;
+    const userId = firstRow.userId;
+    const action = createSuggestionAction(suggestion, 'dismiss', userId);
+    setFormData(prev => ({
+      ...prev,
+      userRows: prev.userRows.map(r =>
+        r.userId === userId
+          ? { ...r, acceptedSuggestions: [...(r.acceptedSuggestions ?? []), action] }
+          : r,
+      ),
+    }));
+  }, [firstRow, setFormData]);
+
+  return (
+    <BehaviorPatternSuggestionPanel
+      insights={crossInsights}
+      acceptedSuggestions={acceptedSuggestions}
+      onAcceptSuggestion={handleAccept}
+      onDismissSuggestion={handleDismiss}
+    />
+  );
 }

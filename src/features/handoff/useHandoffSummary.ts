@@ -20,6 +20,13 @@ type HandoffSummaryResult = {
   byStatus: Record<HandoffStatus, number>;
   criticalCount: number;
   byCategory: Record<HandoffCategory, number>;
+  /** P6: sourceType 別の集計（finding 由来の件数を把握） */
+  bySourceType: {
+    regulatoryFinding: number;
+    severeAddonFinding: number;
+    meetingMinutes: number;
+    manual: number;
+  };
 };
 
 // ── 初期値ファクトリ ──
@@ -44,6 +51,12 @@ function createEmptySummary(): HandoffSummaryResult {
       '良かったこと': 0,
       '事故・ヒヤリ': 0,
       'その他': 0,
+    },
+    bySourceType: {
+      regulatoryFinding: 0,
+      severeAddonFinding: 0,
+      meetingMinutes: 0,
+      manual: 0,
     },
   };
 }
@@ -73,6 +86,22 @@ export function computeHandoffSummary(items: HandoffRecord[]): HandoffSummaryRes
     // カテゴリ別カウント
     if (item.category in result.byCategory) {
       result.byCategory[item.category as HandoffCategory]++;
+    }
+
+    // P6: sourceType 別カウント
+    switch (item.sourceType) {
+      case 'regulatory-finding':
+        result.bySourceType.regulatoryFinding++;
+        break;
+      case 'severe-addon-finding':
+        result.bySourceType.severeAddonFinding++;
+        break;
+      case 'meeting-minutes':
+        result.bySourceType.meetingMinutes++;
+        break;
+      default:
+        result.bySourceType.manual++;
+        break;
     }
   }
 

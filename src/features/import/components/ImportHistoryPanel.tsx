@@ -30,6 +30,7 @@ import {
   type ImportHistoryStatus,
   type ImportTarget,
 } from '@/features/import/domain/importHistory';
+import { formatRelativeTime as _formatRelativeTime } from '@/lib/dateFormat';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -80,21 +81,10 @@ const FILTER_OPTIONS: { id: ImportTarget | 'all'; label: string }[] = [
 // Helpers
 // ---------------------------------------------------------------------------
 
+// formatRelativeTime — delegates to shared API with date-only fallback
+const IMPORT_DATE_FALLBACK: Intl.DateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit' };
 function formatRelativeTime(isoDate: string): string {
-  const now = Date.now();
-  const then = new Date(isoDate).getTime();
-  const diffMs = now - then;
-
-  if (diffMs < 60_000) return 'たった今';
-  if (diffMs < 3_600_000) return `${Math.floor(diffMs / 60_000)}分前`;
-  if (diffMs < 86_400_000) return `${Math.floor(diffMs / 3_600_000)}時間前`;
-  if (diffMs < 604_800_000) return `${Math.floor(diffMs / 86_400_000)}日前`;
-
-  return new Date(isoDate).toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
+  return _formatRelativeTime(isoDate, IMPORT_DATE_FALLBACK);
 }
 
 function formatFileSize(bytes: number): string {

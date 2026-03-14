@@ -6,6 +6,7 @@
 import { useMemo, useState } from 'react';
 import type { Reservation } from '../roomStatusConstants';
 import { getDateString } from '../roomStatusConstants';
+import { safeFormatDate } from '@/lib/dateFormat';
 
 export function useRoomReservations() {
   const today = new Date();
@@ -84,11 +85,9 @@ export function useRoomReservations() {
     }
   };
 
-  const formatDateDisplay = (date: string) => {
-    const d = new Date(date);
-    const days = ['日', '月', '火', '水', '木', '金', '土'];
-    return `${d.getMonth() + 1}/${d.getDate()}(${days[d.getDay()]})`;
-  };
+  const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
+  const formatDateDisplay = (date: string): string =>
+    safeFormatDate(date, (d) => `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAY_LABELS[d.getDay()]})`, date);
 
   const calendarDays = useMemo(() => {
     const year = currentMonthDate.getFullYear();
