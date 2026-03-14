@@ -74,6 +74,7 @@ import SafetyOperationsSummaryCard from '@/features/safety/components/SafetyOper
 import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIcebergEvidence';
 import { useSevereAddonRealData } from '@/features/regulatory/hooks/useSevereAddonRealData';
 import { useRegulatoryFindingsRealData } from '@/features/regulatory/hooks/useRegulatoryFindingsRealData';
+import { useProcedureRecordRepository } from '@/features/regulatory/hooks/useProcedureRecordRepository';
 import { useUsers } from '@/features/users/useUsers';
 import { useStaff } from '@/stores/useStaff';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
@@ -714,6 +715,7 @@ const RegulatoryDashboardPage: React.FC = () => {
   const { data: spUsers, status: usersStatus, error: usersError } = useUsers({ selectMode: 'full' });
   const { staff: spStaff, isLoading: staffLoading, error: staffError } = useStaff();
   const planningSheetRepo = usePlanningSheetRepositories();
+  const procedureRecordRepo = useProcedureRecordRepository();
   const dataLoading = usersStatus === 'loading' || staffLoading;
   const dataError = usersError ? (usersError instanceof Error ? usersError : new Error(String(usersError))) : staffError;
 
@@ -728,6 +730,7 @@ const RegulatoryDashboardPage: React.FC = () => {
     dataLoading,
     dataError,
     planningSheetRepo,
+    procedureRecordRepo,
   );
   const findings = useMemo(
     () => (realFindings.length > 0 ? realFindings : generateDemoFindings()),

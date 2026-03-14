@@ -7,9 +7,10 @@
  * アーキテクチャは `useSevereAddonRealData` と同一パターン:
  *   1. useUsers() / useStaff() で利用者・職員を取得
  *   2. PlanningSheetRepository で現行シートを取得
- *   3. 純粋関数 (auditCheckInputBuilder) で入力を組み立て
- *   4. buildRegulatoryFindings で finding を生成
- *   5. 取得不能時はデモデータにフォールバック
+ *   3. ProcedureRecordRepository で手順記録を取得
+ *   4. 純粋関数 (auditCheckInputBuilder) で入力を組み立て
+ *   5. buildRegulatoryFindings で finding を生成
+ *   6. 取得不能時はデモデータにフォールバック
  *
  * @see auditCheckInputBuilder.ts — 変換純粋関数群
  * @see auditChecks.ts — buildRegulatoryFindings
@@ -20,8 +21,8 @@ import { useMemo, useEffect, useState, useCallback } from 'react';
 import type { IUserMaster } from '@/sharepoint/fields';
 import type { Staff } from '@/types';
 import type { AuditFinding, AuditCheckInput } from '@/domain/regulatory/auditChecks';
-import type { PlanningSheetListItem } from '@/domain/isp/schema';
-import type { PlanningSheetRepository } from '@/domain/isp/port';
+import type { PlanningSheetListItem, ProcedureRecordListItem } from '@/domain/isp/schema';
+import type { PlanningSheetRepository, ProcedureRecordRepository } from '@/domain/isp/port';
 import {
   buildRegulatoryFindings,
   _resetFindingCounter,
@@ -60,6 +61,7 @@ export interface RegulatoryFindingsRealDataResult {
  * @param isLoading - データ読み込み中かどうか
  * @param error - データ取得エラー
  * @param planningSheetRepo - PlanningSheetRepository
+ * @param procedureRecordRepo - ProcedureRecordRepository（手順記録取得用）
  */
 export function useRegulatoryFindingsRealData(
   users: IUserMaster[],
@@ -67,12 +69,17 @@ export function useRegulatoryFindingsRealData(
   isLoading: boolean,
   error: Error | null,
   planningSheetRepo?: PlanningSheetRepository | null,
+  procedureRecordRepo?: ProcedureRecordRepository | null,
 ): RegulatoryFindingsRealDataResult {
 
   // ── PlanningSheet を非同期に取得 ──
   const [sheetsByUser, setSheetsByUser] = useState<Map<string, PlanningSheetListItem[]>>(new Map());
   const [sheetsLoading, setSheetsLoading] = useState(false);
   const [sheetsError, setSheetsError] = useState<Error | null>(null);
+
+  // ── ProcedureRecord を非同期に取得 ──
+  const [recordsBySheet, setRecordsBySheet] = useState<Map<string, RecordMinimal[]>>(new Map());
+  const [recordsLoading, setRecordsLoading] = useState(false);
 
   // 有効な利用者IDリスト（安定参照）
   const activeUserIds = useMemo(() => {
@@ -82,6 +89,7 @@ export function useRegulatoryFindingsRealData(
       .map(u => u.UserID ?? `user-${u.Id}`);
   }, [users, isLoading, error]);
 
+  // ── Phase 1: PlanningSheet 取得 ──
   const fetchPlanningSheets = useCallback(async () => {
     if (!planningSheetRepo || activeUserIds.length === 0) {
       setSheetsByUser(new Map());
@@ -119,8 +127,63 @@ export function useRegulatoryFindingsRealData(
     fetchPlanningSheets();
   }, [fetchPlanningSheets]);
 
+  // ── Phase 2: ProcedureRecord 取得（PlanningSheet 確定後） ──
+  const fetchProcedureRecords = useCallback(async () => {
+    if (!procedureRecordRepo || sheetsByUser.size === 0 || sheetsLoading) {
+      setRecordsBySheet(new Map());
+      return;
+    }
+
+    // 全シート ID を収集
+    const allSheetIds: string[] = [];
+    for (const sheets of sheetsByUser.values()) {
+      for (const sheet of sheets) {
+        if (sheet.isCurrent && sheet.status !== 'archived') {
+          allSheetIds.push(sheet.id);
+        }
+      }
+    }
+
+    if (allSheetIds.length === 0) {
+      setRecordsBySheet(new Map());
+      return;
+    }
+
+    setRecordsLoading(true);
+    try {
+      const results = new Map<string, RecordMinimal[]>();
+
+      const promises = allSheetIds.map(async (sheetId) => {
+        try {
+          const records: ProcedureRecordListItem[] =
+            await procedureRecordRepo.listByPlanningSheet(sheetId);
+          results.set(
+            sheetId,
+            records.map(r => ({
+              id: r.id,
+              planningSheetId: r.planningSheetId,
+              recordDate: r.recordDate,
+            })),
+          );
+        } catch (err) {
+          console.warn(`[useRegulatoryFindingsRealData] Failed to fetch records for sheet ${sheetId}:`, err);
+          results.set(sheetId, []);
+        }
+      });
+
+      await Promise.all(promises);
+      setRecordsBySheet(results);
+    } finally {
+      setRecordsLoading(false);
+    }
+  }, [procedureRecordRepo, sheetsByUser, sheetsLoading]);
+
+  useEffect(() => {
+    fetchProcedureRecords();
+  }, [fetchProcedureRecords]);
+
   // ── 統合状態 ──
-  const combinedLoading = isLoading || sheetsLoading;
+  const combinedLoading = isLoading || sheetsLoading || recordsLoading;
   const combinedError = error || sheetsError;
 
   // ── findings 構築 ──
@@ -129,11 +192,6 @@ export function useRegulatoryFindingsRealData(
     if (users.length === 0) return { findings: [], inputs: [] };
 
     const today = new Date().toISOString().slice(0, 10);
-
-    // NOTE: 手順記録（RecordAuditInfo）の取得は追加 API 呼び出しが必要で、
-    //   初回リリースでは空で渡す（= procedure_record_gap の検出を省略）。
-    //   将来的に ProcedureRecordRepository.listByPlanningSheet を追加して接続。
-    const recordsBySheet = new Map<string, RecordMinimal[]>();
 
     const inputs = buildAllAuditCheckInputs(
       { users, staff, sheetsByUser, recordsBySheet },
