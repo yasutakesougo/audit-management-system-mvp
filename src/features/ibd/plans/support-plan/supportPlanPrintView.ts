@@ -3,7 +3,7 @@
  * Extracted from SupportPlanGuidePage.tsx for single-responsibility.
  */
 
-import { formatDateJP } from './supportPlanDeadline';
+import { formatDateYmd } from '@/lib/dateFormat';
 
 // ── Types (same shape as page-level form) ──
 export type SupportPlanFormForPrint = {
@@ -140,7 +140,7 @@ export function openPrintView(data: SupportPlanFormForPrint, title: string): voi
       <div class="meta">${esc(org.address)}<br/>${esc(org.tel)} ／ ${esc(org.fax)}</div>
     </div>
   </header>
-  <div class="meta">対象: ${esc(title)} ／ 作成日: ${formatDateJP(new Date())}</div>
+  <div class="meta">対象: ${esc(title)} ／ 作成日: ${formatDateYmd(new Date())}</div>
   ${table}
   <h2>署名・職印欄</h2>
   <div class="signatures">

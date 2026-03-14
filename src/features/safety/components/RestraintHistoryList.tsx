@@ -34,6 +34,7 @@ import {
 } from '@/domain/safety/physicalRestraint';
 import { localRestraintRepository } from '@/infra/localStorage/localRestraintRepository';
 import { TESTIDS, tid } from '@/testids';
+import { formatRelativeTime } from '@/lib/dateFormat';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -55,21 +56,8 @@ const STATUS_CONFIG: Record<
 // Helpers
 // ---------------------------------------------------------------------------
 
-function relativeTime(iso: string): string {
-  const now = Date.now();
-  const then = new Date(iso).getTime();
-  const diffMs = now - then;
-
-  if (diffMs < 60_000) return 'たった今';
-  if (diffMs < 3_600_000) return `${Math.floor(diffMs / 60_000)}分前`;
-  if (diffMs < 86_400_000) return `${Math.floor(diffMs / 3_600_000)}時間前`;
-  if (diffMs < 604_800_000) return `${Math.floor(diffMs / 86_400_000)}日前`;
-
-  return new Date(iso).toLocaleDateString('ja-JP', {
-    month: 'short',
-    day: 'numeric',
-  });
-}
+// relativeTime — replaced by formatRelativeTime from @/lib/dateFormat
+const relativeTime = (iso: string): string => formatRelativeTime(iso);
 
 function formatDuration(minutes: number): string {
   if (minutes <= 0) return '—';

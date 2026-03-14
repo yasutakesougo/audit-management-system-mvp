@@ -20,6 +20,7 @@ import { type BehaviorIntensity, BehaviorMood, type BehaviorObservation } from '
 import AbcRecordSection from './AbcRecordSection';
 import PlanSlotSelector from './PlanSlotSelector';
 import type { ScheduleItem } from './ProcedurePanel';
+import { formatDateYmd } from '@/lib/dateFormat';
 
 export type RecordPanelLockState = 'unlocked' | 'no-user' | 'unconfirmed';
 
@@ -139,7 +140,7 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
   const effectiveSelectedSlotKey = isControlledSlot ? controlledSlotKey : selectedSlotKey;
   const resolvedRecordDate = useMemo(() => recordDate ?? new Date(), [recordDate]);
   const recordDateLabel = useMemo(
-    () => resolvedRecordDate.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+    () => formatDateYmd(resolvedRecordDate),
     [resolvedRecordDate]
   );
 

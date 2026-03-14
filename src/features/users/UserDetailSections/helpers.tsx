@@ -3,13 +3,12 @@ import Typography from '@mui/material/Typography';
 import type { ReactNode } from 'react';
 import type { IUserMaster } from '../types';
 
+import { formatDateJapanese } from '@/lib/dateFormat';
+
 const formatDateLabel = (value?: string | null): string => {
   if (!value) return '未設定';
-  const [year, month, day] = value.split('T')[0]?.split('-') ?? [];
-  if (year && month && day) {
-    return `${Number(year)}年${Number(month)}月${Number(day)}日`;
-  }
-  return value;
+  const formatted = formatDateJapanese(value, '');
+  return formatted || value; // parse失敗時は元の値を返す
 };
 
 const resolveUserIdentifier = (user: IUserMaster): string => user.UserID || String(user.Id);
