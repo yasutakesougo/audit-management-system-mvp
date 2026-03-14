@@ -255,6 +255,7 @@ export function mapPlanningSheetRowToListItem(row: SpPlanningSheetRow): Planning
       ? parseJsonArray(row.ApplicableAddOnTypesJson) as string[]
       : ['none'],
     authoredByQualification: row.AuthoredByQualification ?? 'unknown',
+    reviewedAt: row.ReviewedAt ?? null,
   });
 }
 
