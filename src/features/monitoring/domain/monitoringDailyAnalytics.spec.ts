@@ -303,6 +303,41 @@ describe('aggregateBehaviorTags', () => {
     expect(cats).toContain('communication');
   });
 
+  it('categoryDistribution に percentage が含まれる', () => {
+    const records = [
+      mkRecord({ recordDate: '2024-01-01', behaviorTags: ['cooperation', 'cooperation', 'panic'] }),
+      mkRecord({ recordDate: '2024-01-02', behaviorTags: ['selfRegulation'] }),
+    ];
+    const result = aggregateBehaviorTags(records);
+    expect(result).not.toBeNull();
+    // 全タグ: cooperation(2) + cooperation(overlap counted once per tag instance) + panic(1) + selfRegulation(1) = 4
+    // このテストでは behaviorTags は flat なので cooperation=2, panic=1, selfRegulation=1 = total 4
+    // positive(cooperation=2, selfRegulation=1) = 3/4 = 75%
+    // behavior(panic=1) = 1/4 = 25%
+    for (const cat of result!.categoryDistribution) {
+      expect(cat).toHaveProperty('percentage');
+      expect(cat.percentage).toBeGreaterThanOrEqual(0);
+      expect(cat.percentage).toBeLessThanOrEqual(100);
+    }
+    const total = result!.categoryDistribution.reduce((s, c) => s + c.percentage, 0);
+    expect(total).toBeGreaterThanOrEqual(90); // 丸め誤差許容
+    expect(total).toBeLessThanOrEqual(110);
+  });
+
+  it('同率タグは key の辞書順で安定ソートされる', () => {
+    const records = [
+      mkRecord({ recordDate: '2024-01-01', behaviorTags: ['panic', 'cooperation'] }),
+      mkRecord({ recordDate: '2024-01-02', behaviorTags: ['verbalRequest'] }),
+    ];
+    const result = aggregateBehaviorTags(records);
+    expect(result).not.toBeNull();
+    // panic=1, cooperation=1, verbalRequest=1 — 全て同率
+    // 辞書順: cooperation < panic < verbalRequest
+    expect(result!.topTags[0].key).toBe('cooperation');
+    expect(result!.topTags[1].key).toBe('panic');
+    expect(result!.topTags[2].key).toBe('verbalRequest');
+  });
+
   it('付与率と平均タグ数の算出', () => {
     const records = [
       mkRecord({ recordDate: '2024-01-01', behaviorTags: ['cooperation', 'panic'] }),
@@ -391,6 +426,8 @@ describe('buildMonitoringInsightText — behaviorTag section', () => {
     expect(tagLine).toContain('協力行動');
     expect(tagLine).toContain('付与率');
     expect(tagLine).toContain('カテゴリ別');
+    // Phase 2.5: percentage が含まれる
+    expect(tagLine).toMatch(/%/);
   });
 
   it('タグなしの場合、【行動タグ】セクションが含まれない', () => {
