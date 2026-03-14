@@ -9,6 +9,7 @@ import type { IUserMaster } from '@/features/users/types';
 import type { DeadlineInfo, SectionConfig, SectionKey, SupportPlanDraft, SupportPlanForm } from '../types';
 import { defaultFormState, FIELD_KEYS, FIELD_LIMITS, NAME_LIMIT, REQUIRED_FIELDS } from '../types';
 import { toLocalDateISO } from '@/utils/getNow';
+import { formatDateYmd } from '@/lib/dateFormat';
 
 // ────────────────────────────────────────────
 // 日付ヘルパー
@@ -38,8 +39,6 @@ export const addMonths = (date: Date, months: number) => {
   return d;
 };
 
-export const formatDateJP = (d?: Date) =>
-  d ? `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}` : '';
 
 export const daysDiff = (a: Date, b: Date) => Math.round((a.getTime() - b.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -87,14 +86,14 @@ export const computeDeadlineInfo = (form: SupportPlanForm): { creation: Deadline
       date: creationDate,
       daysLeft: creationDaysLeft,
       color: creationColor,
-      tooltip: creationDate ? `期限: ${formatDateJP(creationDate)} / 残り: ${creationDaysLeft}日` : '計画期間(開始日)が未入力',
+      tooltip: creationDate ? `期限: ${formatDateYmd(creationDate)} / 残り: ${creationDaysLeft}日` : '計画期間(開始日)が未入力',
     },
     monitoring: {
       label: '次回モニタ期限(6か月)',
       date: monitoringDate,
       daysLeft: monitoringDaysLeft,
       color: monitoringColor,
-      tooltip: monitoringDate ? `期限: ${formatDateJP(monitoringDate)} / 残り: ${monitoringDaysLeft}日` : '計画期間(開始日)が未入力',
+      tooltip: monitoringDate ? `期限: ${formatDateYmd(monitoringDate)} / 残り: ${monitoringDaysLeft}日` : '計画期間(開始日)が未入力',
     },
   };
 };

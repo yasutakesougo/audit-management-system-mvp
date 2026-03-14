@@ -1,4 +1,5 @@
 import { motionTokens } from '@/app/theme';
+import { formatDateTimeIntl } from '@/lib/dateFormat';
 import { RoomStatusTab } from '@/features/dashboard/tabs/RoomStatusTab';
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '@mui/icons-material';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
@@ -92,7 +93,7 @@ export const RoomManagementTabs: React.FC = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   };
 
-  const currentMonthStr = currentMonth.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' });
+  const currentMonthStr = formatDateTimeIntl(currentMonth, { year: 'numeric', month: 'long' });
 
   return (
     <Box sx={{ width: '100%' }}>

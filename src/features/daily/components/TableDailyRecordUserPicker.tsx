@@ -21,6 +21,8 @@ import {
     Typography,
 } from '@mui/material';
 import React, { useState } from 'react';
+import { formatDateTimeIntl } from '@/lib/dateFormat';
+
 
 type TableDailyRecordUserPickerProps = {
   formDate: string;
@@ -49,7 +51,7 @@ export const TableDailyRecordUserPicker: React.FC<TableDailyRecordUserPickerProp
 }) => {
   const [expanded, setExpanded] = useState(false);
 
-  const dateLabel = new Date(formDate).toLocaleDateString('ja-JP', {
+  const dateLabel = formatDateTimeIntl(new Date(formDate), {
     month: 'short',
     day: 'numeric',
     weekday: 'short',

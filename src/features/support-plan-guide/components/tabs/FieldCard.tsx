@@ -14,7 +14,7 @@ import React from 'react';
 
 import type { FieldConfig, SupportPlanForm, SupportPlanStringFieldKey } from '../../types';
 import { FIELD_LIMITS } from '../../types';
-import { formatDateJP } from '../../utils/helpers';
+import { formatDateYmd } from '@/lib/dateFormat';
 
 export type FieldCardProps = {
   field: FieldConfig;
@@ -93,7 +93,7 @@ const FieldCard: React.FC<FieldCardProps> = ({
             <Button
               size="small"
               variant="outlined"
-              onClick={guardAdmin(() => onFieldChange('lastMonitoringDate', formatDateJP(new Date())))}
+              onClick={guardAdmin(() => onFieldChange('lastMonitoringDate', formatDateYmd(new Date())))}
               disabled={!isAdmin}
             >
               本日を記録
