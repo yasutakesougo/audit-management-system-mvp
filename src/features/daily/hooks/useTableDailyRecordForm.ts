@@ -27,6 +27,7 @@ export type UserRowData = {
     other: boolean;
   };
   specialNotes: string;
+  behaviorTags: string[];
 };
 
 export type TableDailyRecordData = {
@@ -71,6 +72,7 @@ export type UseTableDailyRecordFormResult = {
   handleClearAll: () => void;
   handleRowDataChange: (userId: string, field: string, value: string | boolean) => void;
   handleProblemBehaviorChange: (userId: string, behaviorType: string, checked: boolean) => void;
+  handleBehaviorTagToggle: (userId: string, tagKey: string) => void;
   handleClearRow: (userId: string) => void;
   showUnsentOnly: boolean;
   setShowUnsentOnly: Dispatch<SetStateAction<boolean>>;
@@ -185,6 +187,7 @@ export const useTableDailyRecordForm = ({
   const {
     handleRowDataChange,
     handleProblemBehaviorChange,
+    handleBehaviorTagToggle,
     handleClearRow,
     visibleRows,
     unsentRowCount,
@@ -320,6 +323,7 @@ export const useTableDailyRecordForm = ({
     handleClearAll,
     handleRowDataChange,
     handleProblemBehaviorChange,
+    handleBehaviorTagToggle,
     handleClearRow,
     showUnsentOnly,
     setShowUnsentOnly,

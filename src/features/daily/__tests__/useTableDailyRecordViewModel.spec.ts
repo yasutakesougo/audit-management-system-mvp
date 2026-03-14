@@ -67,6 +67,7 @@ describe('useTableDailyRecordViewModel', () => {
             other: false,
           },
           specialNotes: '特になし',
+          behaviorTags: [],
         },
       ],
     };

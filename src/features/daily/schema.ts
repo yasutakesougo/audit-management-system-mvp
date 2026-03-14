@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { BEHAVIOR_TAG_KEYS } from './domain/behaviorTag';
 
 /**
  * Schema for an individual user row within a daily record.
@@ -24,6 +25,9 @@ export const DailyRecordUserRowSchema = z.object({
   }),
   specialNotes: z.string().default(''),
   submittedAt: z.string().optional(),
+  behaviorTags: z.array(
+    z.enum(BEHAVIOR_TAG_KEYS as unknown as [string, ...string[]])
+  ).default([]),
 });
 
 /**
