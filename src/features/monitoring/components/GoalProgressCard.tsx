@@ -9,6 +9,7 @@
  * - 条件付き表示: goalProgress がない場合は何も描画しない
  */
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -16,6 +17,7 @@ import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 
@@ -24,10 +26,10 @@ import { PROGRESS_LEVEL_LABELS, PROGRESS_LEVEL_COLORS } from '../domain/goalProg
 
 // ─── 定数 ────────────────────────────────────────────────
 
-const TREND_CONFIG: Record<ProgressTrend, { label: string; icon: typeof TrendingUpIcon; color: string }> = {
-  improving: { label: '改善', icon: TrendingUpIcon, color: '#10b981' },
-  stable:    { label: '横ばい', icon: TrendingFlatIcon, color: '#6b7280' },
-  declining: { label: '低下', icon: TrendingDownIcon, color: '#ef4444' },
+const TREND_CONFIG: Record<ProgressTrend, { label: string; icon: typeof TrendingUpIcon; color: string; description: string }> = {
+  improving: { label: '改善', icon: TrendingUpIcon, color: '#10b981', description: '前半と比較して後半に関連タグの出現が増加' },
+  stable:    { label: '横ばい', icon: TrendingFlatIcon, color: '#6b7280', description: '期間を通じて関連タグの出現頻度に大きな変動なし' },
+  declining: { label: '低下', icon: TrendingDownIcon, color: '#ef4444', description: '前半と比較して後半に関連タグの出現が減少' },
 };
 
 const LEVEL_CHIP_COLOR: Record<ProgressLevel, 'success' | 'info' | 'warning' | 'error' | 'default'> = {
@@ -36,6 +38,15 @@ const LEVEL_CHIP_COLOR: Record<ProgressLevel, 'success' | 'info' | 'warning' | '
   stagnant:    'warning',
   regressing:  'error',
   noData:      'default',
+};
+
+/** 各レベルの補助説明（Tooltip 用） */
+const LEVEL_DESCRIPTIONS: Record<ProgressLevel, string> = {
+  achieved:    '関連する行動タグが十分に出現し、目標に沿った行動が定着しています',
+  progressing: '関連する行動タグが一定以上出現しており、改善傾向があります',
+  stagnant:    '関連する行動タグの出現が少なく、目立った進展が見られません',
+  regressing:  '関連する行動タグの出現が減少しており、注意が必要です',
+  noData:      '判定に必要な記録データが不足しています',
 };
 
 // ─── 単一目標カード ──────────────────────────────────────
@@ -74,31 +85,39 @@ const GoalProgressItem: React.FC<GoalProgressItemProps> = ({ progress, goalName 
         >
           {displayName}
         </Typography>
-        <Chip
-          label={PROGRESS_LEVEL_LABELS[progress.level]}
-          size="small"
-          color={LEVEL_CHIP_COLOR[progress.level]}
-          sx={{
-            fontWeight: 600,
-            flexShrink: 0,
-            minWidth: 64,
-            justifyContent: 'center',
-          }}
-        />
+        <Tooltip title={LEVEL_DESCRIPTIONS[progress.level]} arrow placement="top">
+          <Chip
+            label={PROGRESS_LEVEL_LABELS[progress.level]}
+            size="small"
+            color={LEVEL_CHIP_COLOR[progress.level]}
+            sx={{
+              fontWeight: 600,
+              flexShrink: 0,
+              minWidth: 64,
+              justifyContent: 'center',
+            }}
+          />
+        </Tooltip>
       </Stack>
 
-      {/* noData 時は根拠なしメッセージ */}
+      {/* noData 時は根拠不足メッセージ */}
       {progress.level === 'noData' ? (
         <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-          関連データなし — 評価保留
+          現時点では判定根拠が不足しています — 記録の蓄積により判定可能になります
         </Typography>
       ) : (
         <Box sx={{ mt: 1 }}>
           {/* 達成率バー */}
           <Stack direction="row" alignItems="center" spacing={1}>
-            <Typography variant="caption" color="text.secondary" sx={{ minWidth: 50 }}>
-              達成率
-            </Typography>
+            <Tooltip
+              title="行動タグの出現率から算出（関連タグが記録された日数 ÷ 全記録日数）"
+              arrow
+              placement="left"
+            >
+              <Typography variant="caption" color="text.secondary" sx={{ minWidth: 50, cursor: 'help' }}>
+                達成率
+              </Typography>
+            </Tooltip>
             <LinearProgress
               variant="determinate"
               value={Math.min(ratePercent, 100)}
@@ -123,15 +142,23 @@ const GoalProgressItem: React.FC<GoalProgressItemProps> = ({ progress, goalName 
             alignItems="center"
             sx={{ mt: 0.5 }}
           >
-            <Typography variant="caption" color="text.secondary">
-              根拠記録 {progress.matchedRecordCount}件 / 関連タグ {progress.matchedTagCount}件
-            </Typography>
-            <Stack direction="row" alignItems="center" spacing={0.3}>
-              <TrendIcon sx={{ fontSize: 14, color: trendCfg.color }} />
-              <Typography variant="caption" sx={{ color: trendCfg.color, fontWeight: 500 }}>
-                {trendCfg.label}
+            <Tooltip
+              title="根拠記録: 関連する行動タグが付与された記録の件数。関連タグ: 目標に紐づく行動タグの出現回数。"
+              arrow
+              placement="bottom-start"
+            >
+              <Typography variant="caption" color="text.secondary" sx={{ cursor: 'help' }}>
+                根拠記録 {progress.matchedRecordCount}件 / 関連タグ {progress.matchedTagCount}件
               </Typography>
-            </Stack>
+            </Tooltip>
+            <Tooltip title={trendCfg.description} arrow placement="bottom-end">
+              <Stack direction="row" alignItems="center" spacing={0.3} sx={{ cursor: 'help' }}>
+                <TrendIcon sx={{ fontSize: 14, color: trendCfg.color }} />
+                <Typography variant="caption" sx={{ color: trendCfg.color, fontWeight: 500 }}>
+                  {trendCfg.label}
+                </Typography>
+              </Stack>
+            </Tooltip>
           </Stack>
         </Box>
       )}
@@ -159,14 +186,23 @@ const GoalProgressCard: React.FC<GoalProgressCardProps> = ({
 
   return (
     <Box>
-      <Typography
-        variant="subtitle2"
-        color="text.secondary"
-        sx={{ fontWeight: 600, mb: 0.5 }}
-      >
-        <EmojiEventsIcon sx={{ fontSize: 16, mr: 0.5, verticalAlign: 'text-bottom' }} />
-        目標進捗
-      </Typography>
+      <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 0.5 }}>
+        <Typography
+          variant="subtitle2"
+          color="text.secondary"
+          sx={{ fontWeight: 600 }}
+        >
+          <EmojiEventsIcon sx={{ fontSize: 16, mr: 0.5, verticalAlign: 'text-bottom' }} />
+          目標進捗
+        </Typography>
+        <Tooltip
+          title="ISP目標の5領域（健康・運動・認知・言語・社会性）と、日次記録に付与された行動タグを自動照合して進捗を判定しています。判定は記録データに基づく参考情報です。"
+          arrow
+          placement="right"
+        >
+          <HelpOutlineIcon sx={{ fontSize: 14, color: 'text.disabled', cursor: 'help' }} />
+        </Tooltip>
+      </Stack>
       <Typography
         variant="caption"
         color="text.secondary"
@@ -174,7 +210,7 @@ const GoalProgressCard: React.FC<GoalProgressCardProps> = ({
       >
         ※ ISP目標と日次記録の行動タグを自動照合した進捗判定です
       </Typography>
-      <Stack spacing={1}>
+      <Stack spacing={1} sx={{ maxHeight: 400, overflowY: 'auto' }}>
         {goalProgress.map((gp) => (
           <GoalProgressItem
             key={gp.goalId}
