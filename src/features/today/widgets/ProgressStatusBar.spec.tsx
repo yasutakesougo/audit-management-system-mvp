@@ -76,4 +76,38 @@ describe('ProgressStatusBar', () => {
     expect(screen.queryByText(/出欠未確認/)).not.toBeInTheDocument();
     expect(screen.queryByText(/申し送り/)).not.toBeInTheDocument();
   });
+
+  // ── day-closing scene tests ──
+
+  it('uses error color during day-closing with pending items', () => {
+    const { container } = render(
+      <ProgressStatusBar
+        summary={{
+          ...baseSummary,
+          pendingRecordCount: 3,
+        }}
+        scene="day-closing"
+      />
+    );
+
+    // MuiLinearProgress-colorError class indicates error color
+    const progressBar = container.querySelector('.MuiLinearProgress-root');
+    expect(progressBar).toHaveClass('MuiLinearProgress-colorError');
+  });
+
+  it('uses default color logic when scene is not provided (backward compat)', () => {
+    const { container } = render(
+      <ProgressStatusBar
+        summary={{
+          ...baseSummary,
+          pendingRecordCount: 1,
+          totalRecordCount: 10,
+        }}
+      />
+    );
+
+    // No scene → should NOT be error (completionRate = 90% → success)
+    const progressBar = container.querySelector('.MuiLinearProgress-root');
+    expect(progressBar).not.toHaveClass('MuiLinearProgress-colorError');
+  });
 });

@@ -95,6 +95,62 @@ describe('buildSceneNextAction', () => {
     expect(result.title).toBe('すべての対応が完了しています');
   });
 
+  // ── P2.5: day-closing + 未記録 ──
+
+  it('returns critical quick-record action during day-closing with pending records', () => {
+    const result = buildSceneNextAction(
+      makeInput({
+        scene: 'day-closing',
+        pendingDailyRecords: 3,
+        alertUsers: [{ id: 'U001', name: '山田太郎' }],
+      }),
+    );
+    expect(result.priority).toBe('critical');
+    expect(result.ctaTarget).toBe('quick-record');
+    expect(result.userId).toBe('U001');
+    expect(result.title).toBe('本日の記録を完了してください');
+    expect(result.ctaLabel).toContain('3名を記録する');
+  });
+
+  it('returns critical quick-record without userId when alertUsers is empty during day-closing', () => {
+    const result = buildSceneNextAction(
+      makeInput({
+        scene: 'day-closing',
+        pendingDailyRecords: 2,
+        alertUsers: [],
+      }),
+    );
+    expect(result.priority).toBe('critical');
+    expect(result.ctaTarget).toBe('quick-record');
+    expect(result.userId).toBeUndefined();
+  });
+
+  // ── P3.5: day-closing + 全完了 ──
+
+  it('returns celebration message during day-closing when all complete', () => {
+    const result = buildSceneNextAction(
+      makeInput({ scene: 'day-closing' }),
+    );
+    expect(result.priority).toBe('low');
+    expect(result.title).toContain('🎉');
+    expect(result.title).toContain('完了しました');
+    expect(result.ctaTarget).toBe('user');
+  });
+
+  // ── P1 still overrides day-closing ──
+
+  it('briefing priority overrides day-closing specific checks', () => {
+    const result = buildSceneNextAction(
+      makeInput({
+        scene: 'day-closing',
+        pendingBriefings: 1,
+        pendingDailyRecords: 5,
+      }),
+    );
+    expect(result.ctaTarget).toBe('briefing');
+    expect(result.priority).toBe('critical');
+  });
+
   // ── Scene propagation ──
 
   it('propagates scene to output', () => {
