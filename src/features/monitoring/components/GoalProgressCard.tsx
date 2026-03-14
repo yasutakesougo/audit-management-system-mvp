@@ -23,6 +23,9 @@ import React from 'react';
 
 import type { GoalProgressSummary, ProgressLevel, ProgressTrend } from '../domain/goalProgressTypes';
 import { PROGRESS_LEVEL_LABELS, PROGRESS_LEVEL_COLORS } from '../domain/goalProgressTypes';
+import type { BehaviorTagCategory } from '../../daily/domain/behaviorTag';
+import { BEHAVIOR_TAG_CATEGORIES } from '../../daily/domain/behaviorTag';
+import GoalCategoryOverridePopover from './GoalCategoryOverridePopover';
 
 // ─── 定数 ────────────────────────────────────────────────
 
@@ -54,9 +57,11 @@ const LEVEL_DESCRIPTIONS: Record<ProgressLevel, string> = {
 interface GoalProgressItemProps {
   progress: GoalProgressSummary;
   goalName?: string;
+  /** Phase 4-B: カテゴリ上書きコールバック（undefined なら調整UI非表示） */
+  onCategoryOverride?: (goalId: string, categories: BehaviorTagCategory[] | null) => void;
 }
 
-const GoalProgressItem: React.FC<GoalProgressItemProps> = ({ progress, goalName }) => {
+const GoalProgressItem: React.FC<GoalProgressItemProps> = ({ progress, goalName, onCategoryOverride }) => {
   const trendCfg = TREND_CONFIG[progress.trend];
   const TrendIcon = trendCfg.icon;
   const displayName = goalName ?? `目標(${progress.goalId})`;
@@ -162,6 +167,28 @@ const GoalProgressItem: React.FC<GoalProgressItemProps> = ({ progress, goalName 
           </Stack>
         </Box>
       )}
+
+      {/* Phase 4-B: 関連カテゴリ + 調整リンク */}
+      <Stack
+        direction="row"
+        alignItems="center"
+        spacing={0.5}
+        sx={{ mt: 0.5, flexWrap: 'wrap', rowGap: 0.3 }}
+      >
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+          関連: {progress.linkedCategories.length > 0
+            ? progress.linkedCategories.map((c) => BEHAVIOR_TAG_CATEGORIES[c] ?? c).join('・')
+            : 'なし'}
+        </Typography>
+        {onCategoryOverride && (
+          <GoalCategoryOverridePopover
+            goalId={progress.goalId}
+            currentCategories={progress.linkedCategories}
+            source={progress.source ?? 'domain-inference'}
+            onSave={onCategoryOverride}
+          />
+        )}
+      </Stack>
     </Box>
   );
 };
@@ -176,11 +203,14 @@ export interface GoalProgressCardProps {
    * 提供されない場合は goalId をそのまま使う。
    */
   goalNames?: Record<string, string>;
+  /** Phase 4-B: カテゴリ上書きコールバック */
+  onCategoryOverride?: (goalId: string, categories: BehaviorTagCategory[] | null) => void;
 }
 
 const GoalProgressCard: React.FC<GoalProgressCardProps> = ({
   goalProgress,
   goalNames,
+  onCategoryOverride,
 }) => {
   if (!goalProgress || goalProgress.length === 0) return null;
 
@@ -216,6 +246,7 @@ const GoalProgressCard: React.FC<GoalProgressCardProps> = ({
             key={gp.goalId}
             progress={gp}
             goalName={goalNames?.[gp.goalId]}
+            onCategoryOverride={onCategoryOverride}
           />
         ))}
       </Stack>
