@@ -89,7 +89,7 @@ export function computeBehaviorTagCrossInsights(
 ): BehaviorTagCrossInsights | null {
   if (rows.length === 0) return null;
 
-  const taggedRows = rows.filter(r => r.behaviorTags.length > 0).length;
+  const taggedRows = rows.filter(r => (r.behaviorTags ?? []).length > 0).length;
   if (taggedRows === 0) return null;
 
   // ── A. タグ別 問題行動併発率 ──
@@ -99,7 +99,7 @@ export function computeBehaviorTagCrossInsights(
 
   for (const row of rows) {
     const hasPB = hasProblemBehavior(row.problemBehavior);
-    for (const tag of row.behaviorTags) {
+    for (const tag of (row.behaviorTags ?? [])) {
       tagTotal.set(tag, (tagTotal.get(tag) ?? 0) + 1);
       if (hasPB) {
         tagWithProblem.set(tag, (tagWithProblem.get(tag) ?? 0) + 1);
@@ -137,7 +137,7 @@ export function computeBehaviorTagCrossInsights(
 
     const freq = new Map<string, number>();
     for (const row of slotRows) {
-      for (const tag of row.behaviorTags) {
+      for (const tag of (row.behaviorTags ?? [])) {
         freq.set(tag, (freq.get(tag) ?? 0) + 1);
       }
     }
@@ -163,10 +163,10 @@ export function computeBehaviorTagCrossInsights(
 
   for (const row of rows) {
     if (hasProblemBehavior(row.problemBehavior)) {
-      pbYesTagSum += row.behaviorTags.length;
+      pbYesTagSum += (row.behaviorTags ?? []).length;
       pbYesCount++;
     } else {
-      pbNoTagSum += row.behaviorTags.length;
+      pbNoTagSum += (row.behaviorTags ?? []).length;
       pbNoCount++;
     }
   }

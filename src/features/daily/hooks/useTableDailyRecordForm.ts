@@ -28,6 +28,8 @@ export type UserRowData = {
   };
   specialNotes: string;
   behaviorTags: string[];
+  /** 提案に対するアクション記録（Issue #9） */
+  acceptedSuggestions?: import('../domain/suggestionAction').SuggestionAction[];
 };
 
 export type TableDailyRecordData = {

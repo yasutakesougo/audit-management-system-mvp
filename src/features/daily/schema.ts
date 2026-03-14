@@ -28,6 +28,15 @@ export const DailyRecordUserRowSchema = z.object({
   behaviorTags: z.array(
     z.enum(BEHAVIOR_TAG_KEYS as unknown as [string, ...string[]])
   ).default([]),
+  acceptedSuggestions: z.array(z.object({
+    action: z.enum(['accept', 'dismiss']),
+    ruleId: z.string(),
+    category: z.string(),
+    message: z.string(),
+    evidence: z.string(),
+    timestamp: z.string(),
+    userId: z.string(),
+  })).optional(),
 });
 
 /**

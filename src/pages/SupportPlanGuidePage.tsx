@@ -278,7 +278,13 @@ export default function SupportPlanGuidePage() {
       case 'risk':
         return <RiskTab {...sectionTabProps} />;
       case 'excellence':
-        return <ExcellenceTab {...sectionTabProps} />;
+        return (
+          <ExcellenceTab
+            {...sectionTabProps}
+            userId={activeDraft?.userId}
+            setToast={setToast}
+          />
+        );
       case 'preview':
         return (
           <PreviewTab

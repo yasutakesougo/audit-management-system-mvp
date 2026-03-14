@@ -46,7 +46,7 @@ export function computeBehaviorTagInsights(
   if (rows.length === 0) return null;
 
   // --- タグ付き行数を数える ---
-  const taggedRows = rows.filter(r => r.behaviorTags.length > 0).length;
+  const taggedRows = rows.filter(r => (r.behaviorTags ?? []).length > 0).length;
   if (taggedRows === 0) return null;
 
   // --- 全タグをフラットにして頻度を数える ---
@@ -54,7 +54,7 @@ export function computeBehaviorTagInsights(
   let totalTags = 0;
 
   for (const row of rows) {
-    for (const tag of row.behaviorTags) {
+    for (const tag of (row.behaviorTags ?? [])) {
       freq.set(tag, (freq.get(tag) ?? 0) + 1);
       totalTags++;
     }

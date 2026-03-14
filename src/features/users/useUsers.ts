@@ -52,6 +52,12 @@ export function useUsers(params?: UsersHookParams): UsersHookReturn {
   const [error, setError] = useState<unknown>(null);
   const lastSnapshot = useRef<string>('');
 
+  // params を安定化: インラインオブジェクト ({ selectMode: 'full' }) が毎レンダー
+  // 新しい参照を生成しても、内容が同じなら fetchList の identity を変えない。
+  const paramsKey = JSON.stringify(params ?? null);
+  const stableParams = useRef(params);
+  stableParams.current = params;
+
   const setDataIfChanged = useCallback((rows: IUserMaster[]) => {
     const snapshot = snapshotRows(rows);
     if (snapshot !== lastSnapshot.current) {
@@ -72,8 +78,9 @@ export function useUsers(params?: UsersHookParams): UsersHookReturn {
     setStatus('loading');
     setError(null);
     try {
-      const listParams: UserRepositoryListParams = params
-        ? { ...params, signal }
+      const currentParams = stableParams.current;
+      const listParams: UserRepositoryListParams = currentParams
+        ? { ...currentParams, signal }
         : { signal };
       const rows = await repository.getAll(listParams);
       if (signal?.aborted) {
@@ -88,7 +95,7 @@ export function useUsers(params?: UsersHookParams): UsersHookReturn {
       setError(err);
       setStatus('error');
     }
-  }, [params, repository, setDataIfChanged]);
+  }, [paramsKey, repository, setDataIfChanged]);
 
   useEffect(() => {
     const controller = new AbortController();
