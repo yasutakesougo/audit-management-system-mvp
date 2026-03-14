@@ -14,6 +14,7 @@
  * - domain 層は UI に依存しない pure function
  */
 
+// contract:allow-interface — domain-specific candidate types co-located with logic
 import type { SuggestionAction } from './suggestionAction';
 import type { SuggestionCategory } from './behaviorPatternSuggestions';
 

@@ -12,6 +12,7 @@
  * - domain 層は UI に依存しない pure function
  */
 
+// contract:allow-interface — domain-specific action types co-located with logic
 import type { PatternSuggestion, SuggestionCategory } from './behaviorPatternSuggestions';
 
 // ─── 型定義 ──────────────────────────────────────────────
