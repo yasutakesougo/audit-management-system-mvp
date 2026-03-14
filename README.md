@@ -106,6 +106,17 @@ This ensures all production deployments are traceable to a specific main commit 
 - Manual MSAL sign-in/out control surfaced in the app header
 - Users master smoke UI for create / rename / delete sanity checks
 
+### Bridge: アセスメント → 支援計画 → 手順書 接続
+
+アセスメント（ICF 分類・特性アンケート）の情報を、支援計画シートと手順書兼記録へ安全に取り込み、その根拠・出典・履歴まで追跡できるブリッジ機能です。
+
+- **自動取込（冪等）** — 追記マージで既存データを壊さず、再取込で重複しない
+- **根拠表示（provenance）** — なぜこの値が入ったかを変換理由・出典ラベルで記録
+- **インライン表示** — 入力欄のそばにバッジ、手順行に `[📋 計画]` マーク
+- **取込履歴** — いつ・誰が・何を取り込んだかを時系列で追跡
+
+> 📖 詳細: [概要図](docs/guides/bridge-overview.md) ｜ [デモシナリオ](docs/guides/bridge-demo-scenario.md) ｜ [運用ガイド](docs/guides/bridge-operations-guide.md)
+
 ## Local Operation Mode
 
 > ローカル運用モードは将来の拡張として検討中です。現在運用ドキュメントはありません。
