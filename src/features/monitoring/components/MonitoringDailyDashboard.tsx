@@ -13,6 +13,7 @@
  */
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
@@ -30,6 +31,7 @@ import React from 'react';
 
 import type {
   ActivityRank,
+  BehaviorTagSummary,
   DailyMonitoringSummary,
 } from '../domain/monitoringDailyAnalytics';
 
@@ -63,6 +65,13 @@ const TREND_LABEL: Record<string, string> = {
   flat: '横ばい',
 };
 
+const TAG_CATEGORY_COLORS: Record<string, 'primary' | 'secondary' | 'success' | 'info'> = {
+  behavior: 'secondary',
+  communication: 'info',
+  dailyLiving: 'primary',
+  positive: 'success',
+};
+
 // ─── サブコンポーネント ──────────────────────────────────
 
 const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -87,6 +96,91 @@ const ActivityList: React.FC<{ label: string; items: ActivityRank[] }> = ({ labe
             variant="outlined"
           />
         ))}
+      </Stack>
+    </Box>
+  );
+};
+
+const BehaviorTagSection: React.FC<{ tagSummary: BehaviorTagSummary }> = ({ tagSummary }) => {
+  const TrendIcon =
+    tagSummary.usageTrend === 'up'
+      ? TrendingUpIcon
+      : tagSummary.usageTrend === 'down'
+        ? TrendingDownIcon
+        : TrendingFlatIcon;
+
+  return (
+    <Box>
+      <SectionTitle>
+        <LocalOfferIcon sx={{ fontSize: 16, mr: 0.5, verticalAlign: 'text-bottom' }} />
+        行動タグ分析
+      </SectionTitle>
+
+      {/* Top タグ */}
+      <Stack direction="row" spacing={0.5} flexWrap="wrap" rowGap={0.5} sx={{ mt: 0.5 }}>
+        {tagSummary.topTags.map((t) => (
+          <Chip
+            key={t.key}
+            label={`${t.label} (${t.count}回)`}
+            size="small"
+            color={TAG_CATEGORY_COLORS[t.category ?? ''] ?? 'default'}
+            variant="outlined"
+          />
+        ))}
+      </Stack>
+
+      {/* 付与率 */}
+      <Box sx={{ mt: 1 }}>
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Typography variant="caption" color="text.secondary" sx={{ minWidth: 80 }}>
+            タグ付与率
+          </Typography>
+          <LinearProgress
+            variant="determinate"
+            value={tagSummary.tagUsageRate}
+            sx={{ flex: 1 }}
+          />
+          <Typography variant="caption" sx={{ fontWeight: 600, minWidth: 45 }}>
+            {tagSummary.tagUsageRate}%
+          </Typography>
+        </Stack>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.3, display: 'block' }}>
+          {tagSummary.taggedRecords}件 / 平均{tagSummary.avgTagsPerRecord}タグ/日
+        </Typography>
+      </Box>
+
+      {/* カテゴリ分布 */}
+      {tagSummary.categoryDistribution.length > 0 && (
+        <Box sx={{ mt: 1 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+            カテゴリ別
+          </Typography>
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" rowGap={0.5} sx={{ mt: 0.3 }}>
+            {tagSummary.categoryDistribution.map((c) => {
+              const pct = tagSummary.totalRecords > 0
+                ? Math.round((c.count / tagSummary.totalRecords) * 100)
+                : 0;
+              return (
+                <Chip
+                  key={c.category}
+                  label={`${c.label} ${pct}%`}
+                  size="small"
+                  color={TAG_CATEGORY_COLORS[c.category] ?? 'default'}
+                  variant="filled"
+                  sx={{ fontSize: '0.7rem' }}
+                />
+              );
+            })}
+          </Stack>
+        </Box>
+      )}
+
+      {/* トレンド */}
+      <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 0.5 }}>
+        <TrendIcon fontSize="small" color={tagSummary.usageTrend === 'up' ? 'success' : 'inherit'} />
+        <Typography variant="caption" color="text.secondary">
+          {TREND_LABEL[tagSummary.usageTrend] || '横ばい'}
+        </Typography>
       </Stack>
     </Box>
   );
@@ -249,6 +343,14 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
           </Box>
 
           <Divider />
+
+          {/* 3.5. 行動タグ分析 */}
+          {summary.behaviorTagSummary && (
+            <>
+              <BehaviorTagSection tagSummary={summary.behaviorTagSummary} />
+              <Divider />
+            </>
+          )}
 
           {/* 4. 昼食傾向 */}
           <Box>

@@ -3,6 +3,7 @@ import {
   aggregateActivities,
   aggregateLunch,
   aggregateBehaviors,
+  aggregateBehaviorTags,
   buildMonitoringDailySummary,
   buildMonitoringInsightText,
 } from './monitoringDailyAnalytics';
@@ -256,5 +257,152 @@ describe('buildMonitoringInsightText', () => {
     const summary = buildMonitoringDailySummary(records)!;
     const lines = buildMonitoringInsightText(summary);
     expect(lines.some((l) => l.includes('記録はなかった'))).toBe(true);
+  });
+});
+
+// ─── aggregateBehaviorTags ───────────────────────────────
+
+describe('aggregateBehaviorTags', () => {
+  it('空配列 → null', () => {
+    expect(aggregateBehaviorTags([])).toBeNull();
+  });
+
+  it('タグなしのレコードのみ → null', () => {
+    const records = [
+      mkRecord({ recordDate: '2024-01-01' }),
+      mkRecord({ recordDate: '2024-01-02', behaviorTags: [] }),
+    ];
+    expect(aggregateBehaviorTags(records)).toBeNull();
+  });
+
+  it('Top タグが降順ソートされる', () => {
+    const records = [
+      mkRecord({ recordDate: '2024-01-01', behaviorTags: ['cooperation', 'panic'] }),
+      mkRecord({ recordDate: '2024-01-02', behaviorTags: ['cooperation', 'sensory'] }),
+      mkRecord({ recordDate: '2024-01-03', behaviorTags: ['cooperation'] }),
+      mkRecord({ recordDate: '2024-01-04', behaviorTags: ['panic'] }),
+    ];
+    const result = aggregateBehaviorTags(records);
+    expect(result).not.toBeNull();
+    expect(result!.topTags[0].key).toBe('cooperation');
+    expect(result!.topTags[0].count).toBe(3);
+    expect(result!.topTags[1].key).toBe('panic');
+    expect(result!.topTags[1].count).toBe(2);
+  });
+
+  it('カテゴリ分布が正しい', () => {
+    const records = [
+      mkRecord({ recordDate: '2024-01-01', behaviorTags: ['cooperation', 'panic'] }),
+      mkRecord({ recordDate: '2024-01-02', behaviorTags: ['selfRegulation', 'verbalRequest'] }),
+    ];
+    const result = aggregateBehaviorTags(records);
+    expect(result).not.toBeNull();
+    const cats = result!.categoryDistribution.map((c) => c.category);
+    expect(cats).toContain('positive');
+    expect(cats).toContain('behavior');
+    expect(cats).toContain('communication');
+  });
+
+  it('付与率と平均タグ数の算出', () => {
+    const records = [
+      mkRecord({ recordDate: '2024-01-01', behaviorTags: ['cooperation', 'panic'] }),
+      mkRecord({ recordDate: '2024-01-02', behaviorTags: [] }),
+      mkRecord({ recordDate: '2024-01-03', behaviorTags: ['cooperation'] }),
+      mkRecord({ recordDate: '2024-01-04' }),
+    ];
+    const result = aggregateBehaviorTags(records);
+    expect(result).not.toBeNull();
+    // タグ付き2件 / 全4件 = 50%
+    expect(result!.tagUsageRate).toBe(50);
+    expect(result!.taggedRecords).toBe(2);
+    // 合計3タグ / 全4件 = 0.8
+    expect(result!.avgTagsPerRecord).toBe(0.8);
+  });
+
+  it('トレンド: 後半増加 → up', () => {
+    const records = [
+      mkRecord({ recordDate: '2024-01-01' }),
+      mkRecord({ recordDate: '2024-01-02' }),
+      mkRecord({ recordDate: '2024-01-03', behaviorTags: ['cooperation'] }),
+      mkRecord({ recordDate: '2024-01-04', behaviorTags: ['cooperation'] }),
+      mkRecord({ recordDate: '2024-01-05', behaviorTags: ['panic'] }),
+      mkRecord({ recordDate: '2024-01-06', behaviorTags: ['cooperation'] }),
+    ];
+    const result = aggregateBehaviorTags(records);
+    expect(result).not.toBeNull();
+    expect(result!.usageTrend).toBe('up');
+  });
+
+  it('トレンド: 4件未満 → flat', () => {
+    const records = [
+      mkRecord({ recordDate: '2024-01-01', behaviorTags: ['cooperation'] }),
+      mkRecord({ recordDate: '2024-01-02', behaviorTags: ['panic'] }),
+    ];
+    const result = aggregateBehaviorTags(records);
+    expect(result).not.toBeNull();
+    expect(result!.usageTrend).toBe('flat');
+  });
+});
+
+// ─── buildMonitoringDailySummary — behaviorTagSummary ────
+
+describe('buildMonitoringDailySummary — behaviorTag integration', () => {
+  it('タグなし → behaviorTagSummary が null', () => {
+    const records = [mkRecord({ recordDate: '2024-01-01' })];
+    const result = buildMonitoringDailySummary(records);
+    expect(result).not.toBeNull();
+    expect(result!.behaviorTagSummary).toBeNull();
+  });
+
+  it('タグあり → behaviorTagSummary が有効', () => {
+    const records = [
+      mkRecord({ recordDate: '2024-01-01', behaviorTags: ['cooperation', 'panic'] }),
+      mkRecord({ recordDate: '2024-01-02', behaviorTags: ['cooperation'] }),
+    ];
+    const result = buildMonitoringDailySummary(records);
+    expect(result).not.toBeNull();
+    expect(result!.behaviorTagSummary).not.toBeNull();
+    expect(result!.behaviorTagSummary!.topTags[0].key).toBe('cooperation');
+  });
+});
+
+// ─── buildMonitoringInsightText — 行動タグ ───────────────
+
+describe('buildMonitoringInsightText — behaviorTag section', () => {
+  it('タグありの場合、所見に【行動タグ】セクションが含まれる', () => {
+    const records = [
+      mkRecord({
+        recordDate: '2024-01-01',
+        activities: { am: '散歩' },
+        lunchIntake: 'full',
+        behaviorTags: ['cooperation', 'panic'],
+      }),
+      mkRecord({
+        recordDate: '2024-01-02',
+        activities: { am: '体操' },
+        lunchIntake: '80',
+        behaviorTags: ['cooperation'],
+      }),
+    ];
+    const summary = buildMonitoringDailySummary(records)!;
+    const lines = buildMonitoringInsightText(summary);
+    const tagLine = lines.find((l) => l.includes('【行動タグ】'));
+    expect(tagLine).toBeDefined();
+    expect(tagLine).toContain('協力行動');
+    expect(tagLine).toContain('付与率');
+    expect(tagLine).toContain('カテゴリ別');
+  });
+
+  it('タグなしの場合、【行動タグ】セクションが含まれない', () => {
+    const records = [
+      mkRecord({
+        recordDate: '2024-01-01',
+        activities: { am: '散歩' },
+        lunchIntake: 'full',
+      }),
+    ];
+    const summary = buildMonitoringDailySummary(records)!;
+    const lines = buildMonitoringInsightText(summary);
+    expect(lines.some((l) => l.includes('【行動タグ】'))).toBe(false);
   });
 });

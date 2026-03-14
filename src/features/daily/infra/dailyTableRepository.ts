@@ -7,6 +7,7 @@ export interface DailyTableRecord {
   activities: { am?: string; pm?: string };
   lunchIntake?: LunchIntake;
   problemBehaviors?: ProblemBehaviorType[]; // 種別配列
+  behaviorTags?: string[];                  // 行動タグキー配列（BehaviorTagKey）
   notes?: string;
   submittedAt: string;         // ISO
   authorName?: string;
