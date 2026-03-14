@@ -9,6 +9,7 @@ import Typography from '@mui/material/Typography';
 import React from 'react';
 
 import { TESTIDS, tid } from '../../testids';
+import { formatDateTimeIntl } from '@/lib/dateFormat';
 
 export type BriefingMode = 'morning' | 'evening' | 'normal';
 
@@ -77,7 +78,7 @@ export const BriefingPanel: React.FC<BriefingPanelProps> = ({
   handoffSummary,
   greetingMessage,
 }) => {
-  const dateLabel = now.toLocaleDateString('ja-JP', {
+  const dateLabel = formatDateTimeIntl(now, {
     year: 'numeric',
     month: 'numeric',
     day: 'numeric',

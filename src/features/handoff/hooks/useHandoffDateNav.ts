@@ -16,6 +16,7 @@
 import { useCallback, useMemo } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import type { HandoffDayScope } from '../handoffTypes';
+import { formatDateIso } from '@/lib/dateFormat';
 
 // ────────────────────────────────────────────────────────────
 // Types
@@ -71,12 +72,11 @@ export interface HandoffDateNavActions {
 // Pure helpers
 // ────────────────────────────────────────────────────────────
 
-/** YYYY-MM-DD を JST で生成 (timezone-safe) */
+/** YYYY-MM-DD を JST で生成 (timezone-safe)
+ * @deprecated 内部実装は formatDateIso に委譲。デフォルト引数の維持のため wrapper を残す。
+ */
 export function formatDateLocal(d: Date = new Date()): string {
-  const y = d.getFullYear();
-  const m = `${d.getMonth() + 1}`.padStart(2, '0');
-  const day = `${d.getDate()}`.padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return formatDateIso(d);
 }
 
 /** YYYY-MM-DD 文字列 → Date */

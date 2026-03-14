@@ -27,6 +27,8 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 import { TESTIDS } from '../../../testids';
+import { formatDateTimeIntl } from '@/lib/dateFormat';
+
 import { getCurrentYearMonth } from './map';
 import type { MonthlyRecordSort, MonthlyRecordSortKey, MonthlySummary, YearMonth } from './types';
 
@@ -164,7 +166,7 @@ export const MonthlySummaryTable: React.FC<MonthlySummaryTableProps> = ({
   };
 
   const formatDate = (isoString: string) => {
-    return new Date(isoString).toLocaleDateString('ja-JP', {
+    return formatDateTimeIntl(isoString, {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
