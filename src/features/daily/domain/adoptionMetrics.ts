@@ -16,6 +16,7 @@
  * - ISP 反映判定は既存のメタ印照合を再利用
  */
 
+// contract:allow-interface — domain-specific aggregate types co-located with logic
 import type { SuggestionAction } from './suggestionAction';
 import { isAlreadyInImprovementIdeas } from './ispCandidateMapper';
 
