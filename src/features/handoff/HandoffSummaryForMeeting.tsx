@@ -12,9 +12,11 @@ import {
     CardActions,
     CardContent,
     Chip,
+    Divider,
     Stack,
     Typography,
 } from '@mui/material';
+import { GavelOutlined as GavelIcon } from '@mui/icons-material';
 import { type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { buildHandoffTimelineUrl } from '@/app/links/navigationLinks';
@@ -45,7 +47,7 @@ export default function HandoffSummaryForMeeting({
   onOpenTimeline,
 }: HandoffSummaryForMeetingProps = {}) {
   const navigate = useNavigate();
-  const { total, byStatus, criticalCount } = useHandoffSummary({ dayScope });
+  const { total, byStatus, criticalCount, bySourceType } = useHandoffSummary({ dayScope });
 
   const hasData = total > 0;
 
@@ -118,6 +120,38 @@ export default function HandoffSummaryForMeeting({
               まだ今日の申し送りはありません。気づいたことがあれば、簡単なメモからでも残してみてください。
             </Typography>
           )}
+
+          {/* P6: 制度系 finding 由来のハンドオフサマリー */}
+          {(bySourceType.regulatoryFinding > 0 || bySourceType.severeAddonFinding > 0) && (
+            <>
+              <Divider sx={{ my: 0.5 }} />
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <GavelIcon sx={{ fontSize: 16, color: 'warning.main' }} />
+                <Typography variant="caption" fontWeight={700} color="warning.dark">
+                  制度チェック由来
+                </Typography>
+                {bySourceType.regulatoryFinding > 0 && (
+                  <Chip
+                    size="small"
+                    variant="filled"
+                    color="warning"
+                    label={`監査 ${bySourceType.regulatoryFinding}件`}
+                    sx={{ fontSize: '0.65rem', fontWeight: 600 }}
+                  />
+                )}
+                {bySourceType.severeAddonFinding > 0 && (
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    color="secondary"
+                    label={`加算 ${bySourceType.severeAddonFinding}件`}
+                    sx={{ fontSize: '0.65rem', fontWeight: 600 }}
+                  />
+                )}
+              </Stack>
+            </>
+          )}
+
         </Stack>
       </CardContent>
       <CardActions sx={{ pt: 0, justifyContent: 'flex-end' }}>

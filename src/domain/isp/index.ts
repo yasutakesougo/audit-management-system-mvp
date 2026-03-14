@@ -64,3 +64,8 @@ export {
   isValidISPTransition,
   isValidSupportPlanSheetTransition,
 } from './types';
+
+// ─────────────────────────────────────────────
+// 支援計画シート再評価（ISP MonitoringRecord とは別管理）
+// ─────────────────────────────────────────────
+export * from './planningSheetReassessment';

@@ -52,10 +52,18 @@ describe('Navigation and Router integration', () => {
 
         const exists = configuredPaths.has(toPath) ||
           [...configuredPaths].some(rp => {
-            // Match nav href "/admin/individual-support" against router path "/admin/individual-support/:userCode?"
-            const segments = rp.split('/');
-            const staticPrefix = segments.filter(s => !s.startsWith(':')).join('/');
-            return staticPrefix === toPath && segments.some(s => s.startsWith(':'));
+            // Match nav href against router path with dynamic/optional segments
+            const rpParts = rp.split('/').filter(Boolean);
+            const toParts = toPath.split('/').filter(Boolean);
+            // Count required (non-optional) segments
+            const requiredParts = rpParts.filter(s => !s.endsWith('?'));
+            if (toParts.length < requiredParts.length || toParts.length > rpParts.length) return false;
+            for (let i = 0; i < toParts.length; i++) {
+              const seg = rpParts[i];
+              if (seg.startsWith(':')) continue; // dynamic segment matches anything
+              if (seg !== toParts[i]) return false;
+            }
+            return true;
           });
         expect(exists, `Route for nav item "${item.label}" (${item.to}) is missing in router`).toBe(true);
       }

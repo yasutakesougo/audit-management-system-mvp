@@ -17,7 +17,7 @@ import type { HandoffRecord, NewHandoffInput } from './handoffTypes';
 
 
 export type HandoffExternalSource = {
-  sourceType: 'meeting-minutes';
+  sourceType: 'meeting-minutes' | 'regulatory-finding' | 'severe-addon-finding';
   sourceId: number;
   sourceUrl: string;
   sourceKey: string;
@@ -29,6 +29,10 @@ export type CreateHandoffFromExternalSourceInput = {
   body: string;
   source: HandoffExternalSource;
   timeBand?: NewHandoffInput['timeBand'];
+  /** finding 由来などで category を指定 (default: 'その他') */
+  category?: NewHandoffInput['category'];
+  /** finding 由来などで severity を指定 (default: '通常') */
+  severity?: NewHandoffInput['severity'];
 };
 
 export type CreateHandoffFromExternalSourceResult = {
@@ -46,7 +50,7 @@ export const useCreateHandoffFromExternalSource = () => {
 
   return useCallback(
     async (input: CreateHandoffFromExternalSourceInput): Promise<CreateHandoffFromExternalSourceResult> => {
-      const { title, body, source, timeBand } = input;
+      const { title, body, source, timeBand, category: inputCategory, severity: inputSeverity } = input;
 
       if (handoffConfig.storage !== 'sharepoint') {
         const data = loadStorage();
@@ -65,8 +69,8 @@ export const useCreateHandoffFromExternalSource = () => {
           message: body,
           userCode: account?.username ?? 'system',
           userDisplayName: account?.username ?? 'システム',
-          category: 'その他',
-          severity: '通常',
+          category: inputCategory ?? 'その他',
+          severity: inputSeverity ?? '通常',
           status: '未対応',
           timeBand: timeBand ?? '午前',
           createdAt: nowIso,
@@ -112,8 +116,8 @@ export const useCreateHandoffFromExternalSource = () => {
       const payload = toSpHandoffCreatePayload({
         userCode: account?.username ?? 'system',
         userDisplayName: account?.username ?? 'システム',
-        category: 'その他',
-        severity: '通常',
+        category: inputCategory ?? 'その他',
+        severity: inputSeverity ?? '通常',
         timeBand: timeBand ?? '午前',
         message: body,
         title,

@@ -112,4 +112,46 @@ describe('computeHandoffSummary', () => {
 
     expect(result.total).toBe(15);
   });
+
+  // ── P6: sourceType 別集計 ──
+
+  it('sourceType 別に正しくカウントする', () => {
+    const items = [
+      createRecord({ id: 1, sourceType: 'regulatory-finding' }),
+      createRecord({ id: 2, sourceType: 'regulatory-finding' }),
+      createRecord({ id: 3, sourceType: 'severe-addon-finding' }),
+      createRecord({ id: 4, sourceType: 'meeting-minutes' }),
+      createRecord({ id: 5, sourceType: 'meeting-minutes' }),
+      createRecord({ id: 6, sourceType: 'meeting-minutes' }),
+      createRecord({ id: 7 }), // sourceType なし → manual
+    ];
+
+    const result = computeHandoffSummary(items);
+
+    expect(result.bySourceType.regulatoryFinding).toBe(2);
+    expect(result.bySourceType.severeAddonFinding).toBe(1);
+    expect(result.bySourceType.meetingMinutes).toBe(3);
+    expect(result.bySourceType.manual).toBe(1);
+  });
+
+  it('sourceType が undefined のとき manual にカウントする', () => {
+    const items = [
+      createRecord({ id: 1 }),
+      createRecord({ id: 2 }),
+    ];
+
+    const result = computeHandoffSummary(items);
+
+    expect(result.bySourceType.manual).toBe(2);
+    expect(result.bySourceType.regulatoryFinding).toBe(0);
+  });
+
+  it('空配列のとき bySourceType もすべてゼロ', () => {
+    const result = computeHandoffSummary([]);
+
+    expect(result.bySourceType.regulatoryFinding).toBe(0);
+    expect(result.bySourceType.severeAddonFinding).toBe(0);
+    expect(result.bySourceType.meetingMinutes).toBe(0);
+    expect(result.bySourceType.manual).toBe(0);
+  });
 });

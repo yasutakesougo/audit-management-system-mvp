@@ -87,6 +87,10 @@ export interface HandoffRecord {
   createdByName: string;
   isDraft: boolean;
   carryOverDate?: string; // v3: 明日へ持越にした日付 (ISO date, e.g. '2026-02-28')
+  // P6 Phase 3: 制度系対応証跡
+  resolvedBy?: string;      // 対応完了者（UPN / 表示名）
+  resolvedAt?: string;      // 対応完了日時 (ISO datetime)
+  resolutionNote?: string;  // 対応メモ（何をしたか）
 }
 
 /**
@@ -153,6 +157,10 @@ export type SpHandoffItem = {
   CreatedByName: string;
   IsDraft: boolean;
   CarryOverDate?: string; // v3: 明日へ持越日付
+  // P6 Phase 3: 制度系対応証跡
+  ResolvedBy?: string;
+  ResolvedAt?: string;
+  ResolutionNote?: string;
   Created?: string;
   Modified?: string;
   AuthorId?: number;

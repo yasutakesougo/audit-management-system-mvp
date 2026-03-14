@@ -28,16 +28,20 @@ export const isDynamicPattern = (pattern: string): boolean => {
 /**
  * Extremely basic matching for dynamic segments.
  * example: pattern "/users/:id" matches path "/users/123"
+ * Handles optional params: pattern "/admin/foo/:bar?" matches path "/admin/foo"
  */
 export const matchDynamic = (path: string, pattern: string): boolean => {
   const pathParts = path.split('/').filter(Boolean);
   const patternParts = pattern.split('/').filter(Boolean);
 
-  if (pathParts.length !== patternParts.length && !pattern.endsWith('/*')) {
+  // Count required (non-optional, non-wildcard) segments
+  const requiredParts = patternParts.filter(s => !s.endsWith('?') && s !== '*');
+
+  if (!pattern.endsWith('/*') && (pathParts.length < requiredParts.length || pathParts.length > patternParts.length)) {
     return false;
   }
 
-  for (let i = 0; i < patternParts.length; i++) {
+  for (let i = 0; i < Math.min(pathParts.length, patternParts.length); i++) {
     const pPart = patternParts[i];
 
     if (pPart === '*') {
@@ -107,6 +111,7 @@ export const ORPHAN_ALLOWLIST_DETAILS: AllowlistRoute[] = [
   { path: '/admin/debug/smoke-test', category: 'Dev', reason: '開発用スモークテスト画面' },
   { path: '/admin/data-integrity', category: 'Admin', reason: '管理者用データ整合性確認画面' },
   { path: '/admin/regulatory-dashboard', category: 'Admin', reason: '制度適合ダッシュボード（AdminHubからリンク経由）' },
+  { path: '/planning-sheet-list', category: 'Drilldown', reason: '計画書一覧ページ（ISPエディタ・支援計画ガイドからリンク経由）' },
 ].map(item => ({ ...item, path: normalizeRouterPath(item.path) }));
 
 export const ORPHAN_ALLOWLIST = new Set(ORPHAN_ALLOWLIST_DETAILS.map(d => d.path));
