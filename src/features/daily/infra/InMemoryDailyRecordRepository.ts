@@ -71,6 +71,7 @@ const createDefaultRecords = (): DailyRecordItem[] => {
           other: false,
         },
         specialNotes: i === 0 ? '午後から少し疲れている様子' : '',
+        behaviorTags: [],
       },
       {
         userId: 'user-002',
@@ -86,6 +87,7 @@ const createDefaultRecords = (): DailyRecordItem[] => {
           other: false,
         },
         specialNotes: '',
+        behaviorTags: [],
       },
       {
         userId: 'user-003',
@@ -101,6 +103,7 @@ const createDefaultRecords = (): DailyRecordItem[] => {
           other: i === 2, // Problem on day -2
         },
         specialNotes: i === 2 ? '食欲が少ないため様子観察' : '',
+        behaviorTags: [],
       },
     ];
 
@@ -120,6 +123,7 @@ const createDefaultRecords = (): DailyRecordItem[] => {
           other: false,
         },
         specialNotes: '',
+        behaviorTags: [],
       });
     }
 

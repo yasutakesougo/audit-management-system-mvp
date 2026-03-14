@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import React from 'react';
 import type { UserRowData } from '../hooks/useTableDailyRecordForm';
+import { BehaviorTagChips } from './BehaviorTagChips';
 
 const LUNCH_OPTIONS = ['完食', '8割', '半分', '少量', 'なし'];
 
@@ -34,6 +35,7 @@ type TableDailyRecordTableProps = {
   rows: UserRowData[];
   onRowDataChange: (userId: string, field: string, value: string | boolean) => void;
   onProblemBehaviorChange: (userId: string, behaviorType: string, checked: boolean) => void;
+  onBehaviorTagToggle: (userId: string, tagKey: string) => void;
   onClearRow: (userId: string) => void;
 };
 
@@ -41,6 +43,7 @@ export const TableDailyRecordTable: React.FC<TableDailyRecordTableProps> = ({
   rows,
   onRowDataChange,
   onProblemBehaviorChange,
+  onBehaviorTagToggle,
   onClearRow,
 }) => {
   return (
@@ -135,6 +138,10 @@ export const TableDailyRecordTable: React.FC<TableDailyRecordTableProps> = ({
                       />
                     ))}
                   </Box>
+                  <BehaviorTagChips
+                    selectedTags={row.behaviorTags ?? []}
+                    onToggleTag={(tagKey) => onBehaviorTagToggle(row.userId, tagKey)}
+                  />
                 </TableCell>
 
                 <TableCell sx={{ py: 0.5 }}>
