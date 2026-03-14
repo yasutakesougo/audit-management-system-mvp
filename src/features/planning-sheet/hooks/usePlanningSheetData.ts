@@ -47,9 +47,10 @@ export function usePlanningSheetData(
   const [fetchKey, setFetchKey] = useState(0);
 
   useEffect(() => {
-    if (!planningSheetId || !repo) {
+    // 'new' は新規作成ルート — fetch しない
+    if (!planningSheetId || planningSheetId === 'new' || !repo) {
       setData(null);
-      setError(planningSheetId ? null : 'planningSheetId が必要です');
+      setError(null);
       return;
     }
 
