@@ -75,6 +75,8 @@ import {
 import SafetyOperationsSummaryCard from '@/features/safety/components/SafetyOperationsSummaryCard';
 import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIcebergEvidence';
 import { useSevereAddonRealData } from '@/features/regulatory/hooks/useSevereAddonRealData';
+import { useRegulatoryFindingsRealData } from '@/features/regulatory/hooks/useRegulatoryFindingsRealData';
+import { useProcedureRecordRepository } from '@/features/regulatory/hooks/useProcedureRecordRepository';
 import {
   buildHandoffFromRegularFinding,
   buildHandoffFromAddonFinding,
@@ -749,19 +751,39 @@ const RegulatoryDashboardPage: React.FC = () => {
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'info' }>({ open: false, message: '', severity: 'success' });
   const createHandoff = useCreateHandoffFromExternalSource();
 
-  // デモモード: サンプルデータで動作確認
-  const findings = useMemo(() => generateDemoFindings(), []);
-  const summary = useMemo(() => summarizeFindings(findings), [findings]);
-
-  // 加算系 findings — 実データ / デモフォールバック
+  // ── データ取得（共通） ──
   const { data: spUsers, status: usersStatus, error: usersError } = useUsers({ selectMode: 'full' });
   const { staff: spStaff, isLoading: staffLoading, error: staffError } = useStaff();
   const planningSheetRepo = usePlanningSheetRepositories();
+  const procedureRecordRepo = useProcedureRecordRepository();
+  const dataLoading = usersStatus === 'loading' || staffLoading;
+  const dataError = usersError ? (usersError instanceof Error ? usersError : new Error(String(usersError))) : staffError;
+
+  // 通常 findings — 実データ / デモフォールバック
+  const {
+    findings: realFindings,
+    isLoading: findingsLoading,
+    dataSourceLabel: findingsDataSource,
+  } = useRegulatoryFindingsRealData(
+    spUsers,
+    spStaff,
+    dataLoading,
+    dataError,
+    planningSheetRepo,
+    procedureRecordRepo,
+  );
+  const findings = useMemo(
+    () => (realFindings.length > 0 ? realFindings : generateDemoFindings()),
+    [realFindings],
+  );
+  const summary = useMemo(() => summarizeFindings(findings), [findings]);
+
+  // 加算系 findings — 実データ / デモフォールバック
   const { input: realAddonInput, dataSourceLabel: addonDataSource } = useSevereAddonRealData(
     spUsers,
     spStaff,
-    usersStatus === 'loading' || staffLoading,
-    usersError ? (usersError instanceof Error ? usersError : new Error(String(usersError))) : staffError,
+    dataLoading,
+    dataError,
     planningSheetRepo,
     localWeeklyObservationRepository,
     localQualificationAssignmentRepository,
@@ -812,16 +834,18 @@ const RegulatoryDashboardPage: React.FC = () => {
 
       if (!handoffInput) return;
 
+      const source: import('@/features/handoff/useCreateHandoffFromExternalSource').HandoffExternalSource = {
+        sourceType: handoffInput.sourceType,
+        sourceId: 0,
+        sourceUrl: '/regulatory',
+        sourceKey: handoffInput.sourceKey,
+        sourceLabel: handoffInput.sourceLabel,
+      };
+
       const result = await createHandoff({
         title: handoffInput.title,
         body: handoffInput.body,
-        source: {
-          sourceType: handoffInput.sourceType,
-          sourceId: 0,
-          sourceUrl: '/regulatory',
-          sourceKey: handoffInput.sourceKey,
-          sourceLabel: handoffInput.sourceLabel,
-        },
+        source,
         category: handoffInput.category,
         severity: handoffInput.severity,
       });
@@ -869,6 +893,13 @@ const RegulatoryDashboardPage: React.FC = () => {
           color={isLiveData ? 'success' : 'default'}
           variant={isLiveData ? 'filled' : 'outlined'}
           sx={{ ml: 'auto', fontWeight: 600, fontSize: '0.7rem' }}
+        />
+        <Chip
+          label={findingsLoading ? '通常判定読込中…' : `通常: ${findingsDataSource}`}
+          size="small"
+          color={findingsDataSource === '実データ' ? 'success' : 'default'}
+          variant={findingsDataSource === '実データ' ? 'filled' : 'outlined'}
+          sx={{ fontWeight: 600, fontSize: '0.7rem' }}
         />
         <Chip
           label={`加算: ${addonDataSource}`}
