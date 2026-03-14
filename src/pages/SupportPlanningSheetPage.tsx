@@ -63,6 +63,8 @@ import {
 import Divider from '@mui/material/Divider';
 import { InfoRow } from '@/features/planning-sheet/components/ReadOnlySections';
 import { formatDateTimeIntl } from '@/lib/dateFormat';
+import { PhaseNextStepBanner } from '@/features/planning-sheet/components/PhaseNextStepBanner';
+import { determineWorkflowPhase, type WorkflowPhase } from '@/domain/bridge/workflowPhase';
 
 // ─────────────────────────────────────────────
 // Types
@@ -306,6 +308,34 @@ export default function SupportPlanningSheetPage() {
     form.reset();
     setIsEditing(false);
   };
+
+  // ── Workflow Phase (Navigation Engine) ──
+  const currentPhase = React.useMemo((): WorkflowPhase | null => {
+    if (!sheet) return null;
+    const result = determineWorkflowPhase({
+      userId: sheet.userId,
+      userName: (sheet as unknown as { userName?: string }).userName ?? sheet.userId,
+      planningSheets: [{
+        id: sheet.id,
+        status: (sheet as unknown as { status?: string }).status ?? 'active',
+        appliedFrom: (sheet as unknown as { supportStartDate?: string }).supportStartDate ?? null,
+        reviewedAt: (sheet as unknown as { reviewedAt?: string }).reviewedAt ?? null,
+        reviewCycleDays: (sheet as unknown as { monitoringCycleDays?: number }).monitoringCycleDays ?? 90,
+        procedureCount: sheet.planning?.procedureSteps?.length ?? 0,
+        isCurrent: true,
+      }],
+    });
+    return result.phase;
+  }, [sheet]);
+
+  const handleBannerNavigate = React.useCallback((href: string) => {
+    if (href.startsWith('#tab:')) {
+      const tabKey = href.replace('#tab:', '') as SheetTabKey;
+      setActiveTab(tabKey);
+    } else {
+      navigate(href);
+    }
+  }, [navigate, setActiveTab]);
 
   // ── Loading / Error states ──
   if (isLoading) {
@@ -584,6 +614,13 @@ export default function SupportPlanningSheetPage() {
           </Tabs>
 
           <TabPanel current={activeTab} value="overview">
+            {currentPhase && (
+              <PhaseNextStepBanner
+                phase={currentPhase}
+                context="overview"
+                onNavigate={handleBannerNavigate}
+              />
+            )}
             {isEditing ? (
               <EditableOverviewSection
                 values={form.values}
