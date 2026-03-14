@@ -30,12 +30,14 @@ describe('TableDailyRecordTable Support Hints', () => {
         pica: false,
         other: false
       },
-      specialNotes: ''
+      specialNotes: '',
+      behaviorTags: [],
     }
   ];
 
   const onRowDataChange = vi.fn();
   const onProblemBehaviorChange = vi.fn();
+  const onBehaviorTagToggle = vi.fn();
   const onClearRow = vi.fn();
 
   beforeEach(() => {
@@ -55,6 +57,7 @@ describe('TableDailyRecordTable Support Hints', () => {
         rows={mockRows}
         onRowDataChange={onRowDataChange}
         onProblemBehaviorChange={onProblemBehaviorChange}
+        onBehaviorTagToggle={onBehaviorTagToggle}
         onClearRow={onClearRow}
       />
     );
@@ -76,6 +79,7 @@ describe('TableDailyRecordTable Support Hints', () => {
         rows={mockRows}
         onRowDataChange={onRowDataChange}
         onProblemBehaviorChange={onProblemBehaviorChange}
+        onBehaviorTagToggle={onBehaviorTagToggle}
         onClearRow={onClearRow}
       />
     );
@@ -93,6 +97,7 @@ describe('TableDailyRecordTable Support Hints', () => {
         rows={mockRows}
         onRowDataChange={onRowDataChange}
         onProblemBehaviorChange={onProblemBehaviorChange}
+        onBehaviorTagToggle={onBehaviorTagToggle}
         onClearRow={onClearRow}
       />
     );
@@ -107,6 +112,7 @@ describe('TableDailyRecordTable Support Hints', () => {
         rows={mockRows}
         onRowDataChange={onRowDataChange}
         onProblemBehaviorChange={onProblemBehaviorChange}
+        onBehaviorTagToggle={onBehaviorTagToggle}
         onClearRow={onClearRow}
       />
     );

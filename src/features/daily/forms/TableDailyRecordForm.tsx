@@ -11,9 +11,15 @@ import {
     Stack,
     Typography
 } from '@mui/material';
+import { useMemo } from 'react';
 import { Toaster } from 'react-hot-toast';
+import { BehaviorPatternSuggestionPanel } from '../components/BehaviorPatternSuggestionPanel';
+import { BehaviorTagCrossInsightPanel } from '../components/BehaviorTagCrossInsightPanel';
+import { BehaviorTagInsightBar } from '../components/BehaviorTagInsightBar';
+import { QuickTagArea } from '../components/QuickTagArea';
 import { TableDailyRecordTable } from '../components/TableDailyRecordTable';
 import { TableDailyRecordUserPicker } from '../components/TableDailyRecordUserPicker';
+import { computeBehaviorTagCrossInsights, type CrossInsightInput } from '../domain/behaviorTagCrossInsights';
 import {
     useTableDailyRecordForm,
     type TableDailyRecordData,
@@ -60,6 +66,7 @@ export function TableDailyRecordForm({
     handleClearAll,
     handleRowDataChange,
     handleProblemBehaviorChange,
+    handleBehaviorTagToggle,
     handleClearRow,
     visibleRows,
     handleSaveDraft,
@@ -109,6 +116,30 @@ export function TableDailyRecordForm({
             </Alert>
           </Collapse>
 
+          {/* Quick Tag Area — QuickRecord 1名記録時のみ */}
+          {variant === 'content' && visibleRows.length === 1 && (
+            <QuickTagArea
+              rows={visibleRows}
+              selectedTags={visibleRows[0].behaviorTags ?? []}
+              onToggleTag={(tagKey) => handleBehaviorTagToggle(visibleRows[0].userId, tagKey)}
+            />
+          )}
+
+          {/* Behavior Tag Insight — テーブルの上 */}
+          {formData.userRows.length > 0 && (
+            <BehaviorTagInsightBar rows={visibleRows} />
+          )}
+
+          {/* Cross Insight — 折りたたみ式（3行以上で表示） */}
+          {formData.userRows.length > 0 && (
+            <BehaviorTagCrossInsightPanel rows={visibleRows} />
+          )}
+
+          {/* Pattern Suggestion — ルールベース示唆（Suggestion あれば展開表示） */}
+          {formData.userRows.length > 0 && (
+            <SuggestionPanelMemo visibleRows={visibleRows} />
+          )}
+
           {/* Table area — takes remaining space */}
           {formData.userRows.length > 0 && (
             <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -116,6 +147,7 @@ export function TableDailyRecordForm({
                 rows={visibleRows}
                 onRowDataChange={handleRowDataChange}
                 onProblemBehaviorChange={handleProblemBehaviorChange}
+                onBehaviorTagToggle={handleBehaviorTagToggle}
                 onClearRow={handleClearRow}
               />
             </Box>
@@ -215,4 +247,16 @@ function useTableDailyRecordFormConditional(
   };
   const result = useTableDailyRecordForm(effectiveParams);
   return params ? result : null;
+}
+
+/**
+ * Suggestion パネルのメモ化ラッパー。
+ * visibleRows から crossInsights を計算し BehaviorPatternSuggestionPanel に渡す。
+ */
+function SuggestionPanelMemo({ visibleRows }: { visibleRows: CrossInsightInput[] }) {
+  const crossInsights = useMemo(
+    () => computeBehaviorTagCrossInsights(visibleRows),
+    [visibleRows],
+  );
+  return <BehaviorPatternSuggestionPanel insights={crossInsights} />;
 }
