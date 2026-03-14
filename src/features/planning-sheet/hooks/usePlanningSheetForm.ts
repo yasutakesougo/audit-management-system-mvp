@@ -88,6 +88,8 @@ function sheetToFormValues(sheet: SupportPlanningSheet): PlanningSheetFormValues
     reviewedAt: sheet.reviewedAt ?? undefined,
     hasMedicalCoordination: sheet.hasMedicalCoordination,
     hasEducationCoordination: sheet.hasEducationCoordination,
+    supportStartDate: sheet.supportStartDate ?? undefined,
+    monitoringCycleDays: sheet.monitoringCycleDays ?? 90,
     status: sheet.status,
   };
 }
@@ -175,6 +177,8 @@ export function usePlanningSheetForm(
         reviewedAt: undefined,
         hasMedicalCoordination: false,
         hasEducationCoordination: false,
+        supportStartDate: undefined,
+        monitoringCycleDays: 90,
         status: 'draft',
       } satisfies PlanningSheetFormValues;
     }

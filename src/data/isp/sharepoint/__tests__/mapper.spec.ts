@@ -310,6 +310,7 @@ describe('PlanningSheet mapper', () => {
         applicableAddOnTypes: ['severe_disability_support'],
         hasMedicalCoordination: false,
         hasEducationCoordination: false,
+        monitoringCycleDays: 90,
         status: 'draft',
       });
 

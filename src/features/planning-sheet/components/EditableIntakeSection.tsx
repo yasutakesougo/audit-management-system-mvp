@@ -9,6 +9,7 @@
  *  - コミュニケーション手段 / 感覚トリガー / 医療フラグ
  */
 import type { DraftBehavior, PlanningIntake } from '@/domain/isp/schema';
+import type { ProvenanceEntry } from '@/features/planning-sheet/assessmentBridge';
 import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import Chip from '@mui/material/Chip';
@@ -25,6 +26,8 @@ import Button from '@mui/material/Button';
 interface Props {
   intake: PlanningIntake;
   onChange: (updated: PlanningIntake) => void;
+  /** 出典追跡エントリ（将来 ProvenanceBadgeGroup で使用） */
+  provenanceEntries?: ProvenanceEntry[];
 }
 
 const EMPTY_DRAFT_BEHAVIOR: DraftBehavior = { name: '', description: '', frequency: '' };
