@@ -9,7 +9,32 @@ import type { GoalItem } from '@/features/shared/goal/goalTypes';
 import type { SupportPlanForm } from '../types';
 import { formatDateJP } from './helpers';
 
+// ── Types ──
+
+/** 印刷プレビューに渡す承認情報 */
+export type PrintApprovalInfo = {
+  approvedBy: string;
+  approvedAt: string;
+  approvalStatus: 'draft' | 'approved';
+};
+
 // ── Goal → HTML 変換ヘルパー ──
+
+/** ISO 8601 を印刷用日本語日付にフォーマット */
+function formatApprovalDateForPrint(isoString: string): string {
+  try {
+    const d = new Date(isoString);
+    return d.toLocaleString('ja-JP', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return isoString;
+  }
+}
 
 /** GoalItem[] を type でフィルタし、HTML <ul><li> を構築する */
 function goalsToHtml(
@@ -29,8 +54,12 @@ function goalsToHtml(
   return `<ul style="margin:2pt 0;padding-left:16pt;">${items}</ul>`;
 }
 
-// PDFプレビュー/印刷（表組み・ロゴ・ページ番号・押印枠 + 事業所情報 + セクション見出し）
-export function openPrintView(data: SupportPlanForm, title: string) {
+// PDFプレビュー/印刷（表組み・ロゴ・ページ番号・押印枠 + 事業所情報 + セクション見出し + 承認情報）
+export function openPrintView(
+  data: SupportPlanForm,
+  title: string,
+  approval?: PrintApprovalInfo | null,
+) {
   // SSR/テスト環境での安全性確保
   if (typeof window === 'undefined') return;
 
@@ -115,6 +144,20 @@ export function openPrintView(data: SupportPlanForm, title: string) {
     </table>
   `;
 
+  // ── 承認情報セクション ──
+  const approvalHtml = approval?.approvalStatus === 'approved'
+    ? `
+    <div class="approval-section">
+      <h2>サービス管理責任者 承認</h2>
+      <table class="kv">
+        <tr><th>承認状態</th><td><strong style="color: #2e7d32;">✓ 承認済み</strong></td></tr>
+        <tr><th>承認者</th><td>${esc(approval.approvedBy)}</td></tr>
+        <tr><th>承認日時</th><td>${esc(formatApprovalDateForPrint(approval.approvedAt))}</td></tr>
+      </table>
+    </div>
+    `
+    : '';
+
   // 完成HTML（ここで定義してから window へ書き込む）
   const html = `<!doctype html>
 <html>
@@ -161,6 +204,7 @@ export function openPrintView(data: SupportPlanForm, title: string) {
   </header>
   <div class="meta">対象: ${esc(title)} ／ 作成日: ${formatDateJP(new Date())}</div>
   ${table}
+  ${approvalHtml}
   <h2>署名・職印欄</h2>
   <div class="signatures">
     <div class="box"><h3>本人</h3></div>

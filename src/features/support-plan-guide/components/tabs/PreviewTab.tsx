@@ -22,7 +22,9 @@ import React from 'react';
 
 import type { startFeatureSpan } from '@/hydration/features';
 import type { SupportPlanForm } from '../../types';
+import type { ApprovalState } from '../../hooks/useComplianceForm';
 import { openPrintView } from '../../utils/pdfExport';
+import type { PrintApprovalInfo } from '../../utils/pdfExport';
 
 const MarkdownPreview = React.lazy(() => import('@/pages/SupportPlanGuidePage.Markdown'));
 
@@ -47,6 +49,8 @@ export type PreviewTabProps = {
   guardAdmin: <T>(fn: (...args: unknown[]) => T) => (...args: unknown[]) => T | undefined;
   /** Markdown feature span (for hydration telemetry) */
   markdownSpan?: ReturnType<typeof startFeatureSpan> | null;
+  /** 承認状態（印刷に反映） */
+  approvalState?: ApprovalState;
 };
 
 const PreviewTab: React.FC<PreviewTabProps> = ({
@@ -60,7 +64,17 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
   onDownloadMarkdown,
   guardAdmin,
   markdownSpan,
+  approvalState,
 }) => {
+  // 承認情報を印刷用に変換
+  const printApproval: PrintApprovalInfo | null = React.useMemo(() => {
+    if (!approvalState) return null;
+    return {
+      approvedBy: approvalState.approvedBy ?? '',
+      approvedAt: approvalState.approvedAt ?? '',
+      approvalStatus: approvalState.approvalStatus,
+    };
+  }, [approvalState]);
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
       <Stack spacing={2}>
@@ -112,7 +126,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
               variant="contained"
               size="small"
               startIcon={<ArticleRoundedIcon />}
-              onClick={() => openPrintView(form, form.serviceUserName || activeDraftName || 'support-plan')}
+              onClick={() => openPrintView(form, form.serviceUserName || activeDraftName || 'support-plan', printApproval)}
             >
               PDFプレビュー/印刷
             </Button>

@@ -32,6 +32,7 @@
 import { BentoCard, BentoContainer } from '@/components/ui/BentoGrid';
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
 import type { ServiceStructure } from '@/features/today/domain/serviceStructure.types';
+import type { TodayScene } from '@/features/today/domain/todayScene';
 import {
     Box,
     Typography,
@@ -56,6 +57,8 @@ import { TodayPhaseIndicator } from '../widgets/TodayPhaseIndicator';
 type ProgressSummaryProps = {
   summary: TodayProgressSummary;
   onChipClick?: (key: ProgressChipKey) => void;
+  /** 現在の運営場面。ProgressStatusBar に中継 */
+  scene?: TodayScene;
 };
 
 type TransportUser = { userId: string; name: string };
@@ -175,7 +178,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           testId="bento-progress"
           sx={{ p: 0, overflow: 'hidden' }}
         >
-          <ProgressStatusBar summary={progress.summary} onChipClick={progress.onChipClick} />
+          <ProgressStatusBar summary={progress.summary} onChipClick={progress.onChipClick} scene={progress.scene} />
         </BentoCard>
 
         <BentoCard
