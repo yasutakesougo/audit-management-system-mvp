@@ -5,6 +5,7 @@
  * プレゼンテーショナルコンポーネント（状態・副作用なし）。
  *
  * 他のセクションタブと異なり、MonitoringEvidenceSection を条件付きで描画する。
+ * Phase 1: MonitoringDailyDashboard を前段に配置し、客観指標を可視化する。
  */
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import BubbleChartIcon from '@mui/icons-material/BubbleChart';
@@ -25,6 +26,8 @@ import { buildIcebergPdcaUrl } from '@/app/links/navigationLinks';
 import { buildIcebergEvidence } from '@/features/ibd/analysis/pdca/icebergEvidenceAdapter';
 import { useIcebergPdcaList } from '@/features/ibd/analysis/pdca/queries';
 import { buildMonitoringEvidence } from '@/features/ibd/plans/support-plan/monitoringEvidenceAdapter';
+import MonitoringDailyDashboard from '@/features/monitoring/components/MonitoringDailyDashboard';
+import { useMonitoringDailyAnalytics } from '@/features/monitoring/hooks/useMonitoringDailyAnalytics';
 import type { MonitoringEvidenceSectionProps, ToastState } from '../../types';
 import { findSection, minusDaysYmd, todayYmd } from '../../utils/helpers';
 import FieldCard from './FieldCard';
@@ -155,6 +158,25 @@ const IcebergEvidenceSection: React.FC<{
 const MonitoringTab: React.FC<MonitoringTabProps> = ({ userId, setToast, ...sectionProps }) => {
   const navigate = useNavigate();
   const section = findSection('monitoring');
+
+  const userIdStr = userId ? String(userId) : '';
+  const { summary, insightLines, recordCount } = useMonitoringDailyAnalytics(userIdStr);
+
+  /** monitoringPlan フィールドへの追記共通ヘルパー */
+  const appendToMonitoringPlan = React.useCallback(
+    (text: string, duplicateMsg: string, successMsg: string) => {
+      const currentVal = sectionProps.form.monitoringPlan || '';
+      const headerLine = text.split('\n')[0];
+      if (currentVal.includes(headerLine)) {
+        setToast({ open: true, message: duplicateMsg, severity: 'info' });
+        return;
+      }
+      sectionProps.onFieldChange('monitoringPlan', (currentVal ? currentVal + '\n\n' : '') + text);
+      setToast({ open: true, message: successMsg, severity: 'success' });
+    },
+    [sectionProps, setToast],
+  );
+
   if (!section) return null;
 
   return (
@@ -165,37 +187,50 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({ userId, setToast, ...sect
         </Typography>
       ) : null}
 
+      {/* Phase 1: 集計ダッシュボード（新規） */}
+      {userIdStr && (
+        <MonitoringDailyDashboard
+          summary={summary}
+          insightLines={insightLines}
+          recordCount={recordCount}
+          isAdmin={sectionProps.isAdmin}
+          onAppendInsight={(text) =>
+            appendToMonitoringPlan(
+              text,
+              'この期間の所見は既に引用されています。',
+              '所見ドラフトを引用しました。内容を調整してください。',
+            )
+          }
+        />
+      )}
+
+      {/* 既存: 日次記録エビデンス（生データ引用） */}
       {userId && (
         <MonitoringEvidenceSection
           userId={String(userId)}
           isAdmin={sectionProps.isAdmin}
-          onAppend={(text) => {
-            const currentVal = sectionProps.form.monitoringPlan || '';
-            const headerLine = text.split('\n')[0];
-            if (currentVal.includes(headerLine)) {
-              setToast({ open: true, message: 'この期間のエビデンスは既に引用されています。', severity: 'info' });
-              return;
-            }
-            sectionProps.onFieldChange('monitoringPlan', (currentVal ? currentVal + '\n\n' : '') + text);
-            setToast({ open: true, message: 'エビデンスを引用しました。内容を調整してください。', severity: 'success' });
-          }}
+          onAppend={(text) =>
+            appendToMonitoringPlan(
+              text,
+              'この期間のエビデンスは既に引用されています。',
+              'エビデンスを引用しました。内容を調整してください。',
+            )
+          }
         />
       )}
 
+      {/* 既存: Iceberg PDCA 引用 */}
       {userId && (
         <IcebergEvidenceSection
           userId={String(userId)}
           isAdmin={sectionProps.isAdmin}
-          onAppend={(text) => {
-            const currentVal = sectionProps.form.monitoringPlan || '';
-            const headerLine = text.split('\n')[0];
-            if (currentVal.includes(headerLine)) {
-              setToast({ open: true, message: 'Iceberg分析結果は既に引用されています。', severity: 'info' });
-              return;
-            }
-            sectionProps.onFieldChange('monitoringPlan', (currentVal ? currentVal + '\n\n' : '') + text);
-            setToast({ open: true, message: 'Iceberg分析結果を引用しました。内容を調整してください。', severity: 'success' });
-          }}
+          onAppend={(text) =>
+            appendToMonitoringPlan(
+              text,
+              'Iceberg分析結果は既に引用されています。',
+              'Iceberg分析結果を引用しました。内容を調整してください。',
+            )
+          }
         />
       )}
 
