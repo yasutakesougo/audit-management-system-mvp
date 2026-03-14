@@ -7,7 +7,7 @@
  */
 import type { GoalItem } from '@/features/shared/goal/goalTypes';
 import type { SupportPlanForm } from '../types';
-import { formatDateJP } from './helpers';
+import { formatDateYmd } from '@/lib/dateFormat';
 
 // ── Goal → HTML 変換ヘルパー ──
 
@@ -159,7 +159,7 @@ export function openPrintView(data: SupportPlanForm, title: string) {
       <div class="meta">${esc(org.address)}<br/>${esc(org.tel)} ／ ${esc(org.fax)}</div>
     </div>
   </header>
-  <div class="meta">対象: ${esc(title)} ／ 作成日: ${formatDateJP(new Date())}</div>
+  <div class="meta">対象: ${esc(title)} ／ 作成日: ${formatDateYmd(new Date())}</div>
   ${table}
   <h2>署名・職印欄</h2>
   <div class="signatures">

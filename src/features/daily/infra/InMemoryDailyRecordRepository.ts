@@ -7,6 +7,7 @@ import type {
     SaveDailyRecordInput
 } from '../domain/DailyRecordRepository';
 import type { UserRowData } from '../hooks/useTableDailyRecordForm';
+import { formatDateIso } from '@/lib/dateFormat';
 
 /**
  * Seed data for InMemory repository
@@ -22,15 +23,6 @@ const isDateInRange = (date: string, startDate: string, endDate: string): boolea
   return date >= startDate && date <= endDate;
 };
 
-/**
- * Format date as YYYY-MM-DD in local timezone
- */
-const formatDateLocal = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
 
 /**
  * Subtract days from date
@@ -51,7 +43,7 @@ const createDefaultRecords = (): DailyRecordItem[] => {
 
   // Generate 5 days of sample data (today and 4 days back)
   for (let i = 0; i < 5; i++) {
-    const recordDate = formatDateLocal(subtractDays(today, i));
+    const recordDate = formatDateIso(subtractDays(today, i));
     const dayOfWeek = subtractDays(today, i).getDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 

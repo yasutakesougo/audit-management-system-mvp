@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import React, { useMemo } from 'react';
 import type { SchedItem } from '../data';
+import { formatDateJapanese } from '@/lib/dateFormat';
 
 interface DaySummaryDrawerProps {
   open: boolean;
@@ -21,18 +22,7 @@ interface DaySummaryDrawerProps {
   onItemClick?: (item: SchedItem) => void;
 }
 
-const parseDateIso = (iso: string): Date => {
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y, m - 1, d);
-};
 
-const formatDateDisplay = (iso: string): string => {
-  const date = parseDateIso(iso);
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  return `${year}年${month}月${day}日`;
-};
 
 export const DaySummaryDrawer: React.FC<DaySummaryDrawerProps> = ({
   open,
@@ -64,7 +54,7 @@ export const DaySummaryDrawer: React.FC<DaySummaryDrawerProps> = ({
     });
   }, [dayItems]);
 
-  const dateDisplay = selectedDateIso ? formatDateDisplay(selectedDateIso) : '';
+  const dateDisplay = selectedDateIso ? formatDateJapanese(selectedDateIso) : '';
 
   const drawerWidth = isTablet ? '100%' : 360;
   const drawerHeight = isTablet ? 'auto' : '100vh';

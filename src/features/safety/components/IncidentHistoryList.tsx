@@ -27,6 +27,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { RiskSeverity } from '@/domain/support/highRiskIncident';
 import type { IncidentRecord, IncidentType } from '@/domain/support/incidentRepository';
 import { localIncidentRepository } from '@/infra/localStorage/localIncidentRepository';
+import { formatRelativeTime } from '@/lib/dateFormat';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -60,21 +61,8 @@ const INCIDENT_TYPE_LABELS: Record<IncidentType, string> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function relativeTime(iso: string): string {
-  const now = Date.now();
-  const then = new Date(iso).getTime();
-  const diffMs = now - then;
-
-  if (diffMs < 60_000) return 'たった今';
-  if (diffMs < 3_600_000) return `${Math.floor(diffMs / 60_000)}分前`;
-  if (diffMs < 86_400_000) return `${Math.floor(diffMs / 3_600_000)}時間前`;
-  if (diffMs < 604_800_000) return `${Math.floor(diffMs / 86_400_000)}日前`;
-
-  return new Date(iso).toLocaleDateString('ja-JP', {
-    month: 'short',
-    day: 'numeric',
-  });
-}
+// relativeTime — replaced by formatRelativeTime from @/lib/dateFormat
+const relativeTime = (iso: string): string => formatRelativeTime(iso);
 
 // ---------------------------------------------------------------------------
 // Props
