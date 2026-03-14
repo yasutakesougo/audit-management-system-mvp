@@ -125,6 +125,7 @@ const BehaviorTagSection: React.FC<{ tagSummary: BehaviorTagSummary }> = ({ tagS
             size="small"
             color={TAG_CATEGORY_COLORS[t.category ?? ''] ?? 'default'}
             variant="outlined"
+            sx={{ maxWidth: 200 }}
           />
         ))}
       </Stack>
@@ -145,7 +146,10 @@ const BehaviorTagSection: React.FC<{ tagSummary: BehaviorTagSummary }> = ({ tagS
           </Typography>
         </Stack>
         <Typography variant="caption" color="text.secondary" sx={{ mt: 0.3, display: 'block' }}>
-          {tagSummary.taggedRecords}件 / 平均{tagSummary.avgTagsPerRecord}タグ/日
+          {tagSummary.taggedRecords}件の記録にタグ付与あり（全{tagSummary.totalRecords}件中）、平均{tagSummary.avgTagsPerRecord}タグ/日
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.65rem' }}>
+          ※ 日次記録で行動タグがどれだけ活用されているかの指標です
         </Typography>
       </Box>
 
@@ -153,25 +157,23 @@ const BehaviorTagSection: React.FC<{ tagSummary: BehaviorTagSummary }> = ({ tagS
       {tagSummary.categoryDistribution.length > 0 && (
         <Box sx={{ mt: 1 }}>
           <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-            カテゴリ別
+            カテゴリ別分布
           </Typography>
           <Stack direction="row" spacing={0.5} flexWrap="wrap" rowGap={0.5} sx={{ mt: 0.3 }}>
-            {tagSummary.categoryDistribution.map((c) => {
-              const pct = tagSummary.totalRecords > 0
-                ? Math.round((c.count / tagSummary.totalRecords) * 100)
-                : 0;
-              return (
-                <Chip
-                  key={c.category}
-                  label={`${c.label} ${pct}%`}
-                  size="small"
-                  color={TAG_CATEGORY_COLORS[c.category] ?? 'default'}
-                  variant="filled"
-                  sx={{ fontSize: '0.7rem' }}
-                />
-              );
-            })}
+            {tagSummary.categoryDistribution.map((c) => (
+              <Chip
+                key={c.category}
+                label={`${c.label} ${c.percentage}%`}
+                size="small"
+                color={TAG_CATEGORY_COLORS[c.category] ?? 'default'}
+                variant="filled"
+                sx={{ fontSize: '0.7rem', maxWidth: 180 }}
+              />
+            ))}
           </Stack>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.3, display: 'block', fontSize: '0.65rem' }}>
+            ※ 全タグ付与数に対する各カテゴリの割合
+          </Typography>
         </Box>
       )}
 
@@ -180,6 +182,10 @@ const BehaviorTagSection: React.FC<{ tagSummary: BehaviorTagSummary }> = ({ tagS
         <TrendIcon fontSize="small" color={tagSummary.usageTrend === 'up' ? 'success' : 'inherit'} />
         <Typography variant="caption" color="text.secondary">
           {TREND_LABEL[tagSummary.usageTrend] || '横ばい'}
+          {tagSummary.usageTrendRate !== 0 && ` (${tagSummary.usageTrendRate > 0 ? '+' : ''}${tagSummary.usageTrendRate}%)`}
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', ml: 0.5 }}>
+          ※ 前半/後半比較
         </Typography>
       </Stack>
     </Box>

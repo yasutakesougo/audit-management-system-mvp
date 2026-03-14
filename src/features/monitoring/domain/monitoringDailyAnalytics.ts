@@ -88,7 +88,7 @@ export interface BehaviorTagSummary {
   /** タグが1つ以上ある記録の割合（0–100 整数%） */
   tagUsageRate: number;
   /** カテゴリ別の出現回数 */
-  categoryDistribution: { category: string; label: string; count: number }[];
+  categoryDistribution: { category: string; label: string; count: number; percentage: number }[];
   /** 計算対象の記録数 */
   totalRecords: number;
   /** タグが1つ以上ある記録数 */
@@ -328,9 +328,9 @@ export function aggregateBehaviorTags(
     }
   }
 
-  // Top タグ（最大5件）
+  // Top タグ（最大5件）— 同率時は key の辞書順で安定ソート
   const topTags: BehaviorTagRank[] = [...freq.entries()]
-    .sort((a, b) => b[1] - a[1])
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, MAX_TOP_TAGS)
     .map(([key, count]) => {
       const def = BEHAVIOR_TAGS[key as BehaviorTagKey];
@@ -344,13 +344,14 @@ export function aggregateBehaviorTags(
       };
     });
 
-  // カテゴリ分布
+  // カテゴリ分布（割合付き）
   const categoryDistribution = [...categoryFreq.entries()]
-    .sort((a, b) => b[1] - a[1])
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .map(([cat, count]) => ({
       category: cat,
       label: BEHAVIOR_TAG_CATEGORIES[cat as BehaviorTagCategory] ?? cat,
       count,
+      percentage: totalTags > 0 ? Math.round((count / totalTags) * 100) : 0,
     }));
 
   // 指標
@@ -506,7 +507,7 @@ export function buildMonitoringInsightText(
       .map((t) => `${t.label}(${t.count}回)`)
       .join('・');
     const catText = ts.categoryDistribution
-      .map((c) => `${c.label}${c.count}件`)
+      .map((c) => `${c.label}${c.count}件(${c.percentage}%)`)
       .join('・');
     const trendLabel =
       ts.usageTrend === 'up'
