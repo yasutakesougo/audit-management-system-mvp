@@ -21,6 +21,10 @@ import type {
 
 import { BEHAVIOR_TAGS, type BehaviorTagKey, BEHAVIOR_TAG_CATEGORIES, type BehaviorTagCategory } from '@/features/daily/domain/behaviorTag';
 
+import type { GoalLike, GoalProgressSummary } from './goalProgressTypes';
+import { PROGRESS_LEVEL_LABELS } from './goalProgressTypes';
+import { inferGoalTagLinks, assessGoalProgress } from './goalProgressUtils';
+
 // ─── 型定義 ──────────────────────────────────────────────
 
 export interface PeriodSummary {
@@ -106,6 +110,8 @@ export interface DailyMonitoringSummary {
   behavior: BehaviorSummary;
   /** Phase 2: 行動タグ集計（タグ付き記録がない場合は null） */
   behaviorTagSummary: BehaviorTagSummary | null;
+  /** Phase 3: 目標ごとの進捗判定（goals 未指定時は undefined） */
+  goalProgress?: GoalProgressSummary[];
 }
 
 // ─── 定数 ────────────────────────────────────────────────
@@ -413,10 +419,108 @@ function computeTagUsageTrend(
   return { usageTrend: 'flat', usageTrendRate: changeRate };
 }
 
+// ─── 目標進捗の照合 ──────────────────────────────────────
+
+/**
+ * Goal の linkedCategories に該当する behaviorTags を持つ記録を照合し、
+ * GoalProgressSummary[] を返す。
+ *
+ * trend は既存の前半/後半比較ロジックを目標ごとに適用する。
+ */
+function computeGoalProgress(
+  records: DailyTableRecord[],
+  goals: GoalLike[],
+): GoalProgressSummary[] {
+  const links = inferGoalTagLinks(goals);
+
+  // 記録を日付順にソート（trend 計算用）
+  const sorted = [...records].sort((a, b) =>
+    a.recordDate.localeCompare(b.recordDate),
+  );
+  const mid = Math.floor(sorted.length / 2);
+  const firstHalf = sorted.slice(0, mid);
+  const secondHalf = sorted.slice(mid);
+
+  return links.map((link) => {
+    const cats = new Set(link.inferredCategories);
+    if (cats.size === 0) {
+      return assessGoalProgress({
+        goalId: link.goalId,
+        linkedCategories: [],
+        matchedRecordCount: 0,
+        matchedTagCount: 0,
+        totalRecordCount: records.length,
+        trend: 'stable',
+      });
+    }
+
+    // 記録ごとに「この goal に関連するタグを持つか」を判定
+    let matchedRecordCount = 0;
+    let matchedTagCount = 0;
+
+    for (const r of records) {
+      const tags = r.behaviorTags ?? [];
+      let recordMatched = false;
+      for (const tag of tags) {
+        const def = BEHAVIOR_TAGS[tag as BehaviorTagKey];
+        if (def && cats.has(def.category)) {
+          matchedTagCount++;
+          recordMatched = true;
+        }
+      }
+      if (recordMatched) matchedRecordCount++;
+    }
+
+    // trend: 前半/後半で matched 密度を比較
+    const countInHalf = (half: DailyTableRecord[]): number => {
+      let c = 0;
+      for (const r of half) {
+        for (const tag of r.behaviorTags ?? []) {
+          const def = BEHAVIOR_TAGS[tag as BehaviorTagKey];
+          if (def && cats.has(def.category)) {
+            c++;
+            break;
+          }
+        }
+      }
+      return c;
+    };
+
+    let trend: 'improving' | 'stable' | 'declining' = 'stable';
+    if (sorted.length >= 4) {
+      const firstRate =
+        firstHalf.length > 0 ? countInHalf(firstHalf) / firstHalf.length : 0;
+      const secondRate =
+        secondHalf.length > 0 ? countInHalf(secondHalf) / secondHalf.length : 0;
+      if (firstRate > 0) {
+        const changeRate = ((secondRate - firstRate) / firstRate) * 100;
+        if (changeRate > 10) trend = 'improving';
+        else if (changeRate < -10) trend = 'declining';
+      } else if (secondRate > 0) {
+        trend = 'improving';
+      }
+    }
+
+    return assessGoalProgress({
+      goalId: link.goalId,
+      linkedCategories: link.inferredCategories,
+      matchedRecordCount,
+      matchedTagCount,
+      totalRecordCount: records.length,
+      trend,
+    });
+  });
+}
+
 // ─── メイン集計 ──────────────────────────────────────────
 
+/**
+ * @param records 日次記録
+ * @param goals ISP 目標（省略時は goalProgress を算出しない）
+ */
 export function buildMonitoringDailySummary(
   records: DailyTableRecord[],
+  goals?: GoalLike[],
 ): DailyMonitoringSummary | null {
   if (records.length === 0) return null;
 
@@ -429,13 +533,20 @@ export function buildMonitoringDailySummary(
   const recordedDays = uniqueDates.size;
   const recordRate = totalDays > 0 ? Math.round((recordedDays / totalDays) * 100) : 0;
 
-  return {
+  const result: DailyMonitoringSummary = {
     period: { from, to, totalDays, recordedDays, recordRate },
     activity: aggregateActivities(records),
     lunch: aggregateLunch(records),
     behavior: aggregateBehaviors(records),
     behaviorTagSummary: aggregateBehaviorTags(records),
   };
+
+  // goals が渡されたときだけ goalProgress を算出
+  if (goals && goals.length > 0) {
+    result.goalProgress = computeGoalProgress(records, goals);
+  }
+
+  return result;
 }
 
 // ─── 所見ドラフト文生成 ──────────────────────────────────
@@ -519,6 +630,23 @@ export function buildMonitoringInsightText(
       `【行動タグ】${ts.taggedRecords}件の記録にタグ付与あり（付与率 ${ts.tagUsageRate}%、平均 ${ts.avgTagsPerRecord}個/記録）。` +
         `頻出タグ: ${topText}。カテゴリ別: ${catText}。${trendLabel}。`,
     );
+  }
+
+  // 目標進捗
+  if (summary.goalProgress && summary.goalProgress.length > 0) {
+    const progressTexts = summary.goalProgress.map((gp) => {
+      const levelLabel = PROGRESS_LEVEL_LABELS[gp.level];
+      const ratePercent = Math.round(gp.rate * 100);
+      if (gp.level === 'noData') {
+        return `目標(${gp.goalId}): 関連データなし、評価保留`;
+      }
+      return (
+        `目標(${gp.goalId}): ${levelLabel}` +
+        `（関連記録 ${gp.matchedRecordCount}件/${ratePercent}%、` +
+        `タグ ${gp.matchedTagCount}件）`
+      );
+    });
+    lines.push(`【目標進捗】${progressTexts.join('。')}。`);
   }
 
   return lines;

@@ -443,3 +443,251 @@ describe('buildMonitoringInsightText — behaviorTag section', () => {
     expect(lines.some((l) => l.includes('【行動タグ】'))).toBe(false);
   });
 });
+
+// ─── Phase 3-B: goalProgress 統合 ────────────────────────
+
+describe('buildMonitoringDailySummary — goalProgress integration', () => {
+  it('goals 未指定 → goalProgress は undefined', () => {
+    const records = [
+      mkRecord({ recordDate: '2024-01-01', behaviorTags: ['cooperation'] }),
+    ];
+    const result = buildMonitoringDailySummary(records);
+    expect(result).not.toBeNull();
+    expect(result!.goalProgress).toBeUndefined();
+  });
+
+  it('goals が空配列 → goalProgress は undefined', () => {
+    const records = [
+      mkRecord({ recordDate: '2024-01-01', behaviorTags: ['cooperation'] }),
+    ];
+    const result = buildMonitoringDailySummary(records, []);
+    expect(result).not.toBeNull();
+    expect(result!.goalProgress).toBeUndefined();
+  });
+
+  it('goals あり → goalProgress が計算される', () => {
+    const records = [
+      mkRecord({ recordDate: '2024-01-01', behaviorTags: ['cooperation'] }),
+      mkRecord({ recordDate: '2024-01-02', behaviorTags: ['panic'] }),
+    ];
+    const goals = [{ id: 'g1', domains: ['social'] }];
+    const result = buildMonitoringDailySummary(records, goals);
+    expect(result).not.toBeNull();
+    expect(result!.goalProgress).toBeDefined();
+    expect(result!.goalProgress).toHaveLength(1);
+    expect(result!.goalProgress![0].goalId).toBe('g1');
+  });
+
+  it('social 目標 → positive/communication カテゴリのタグと照合', () => {
+    // social → ['communication', 'positive']
+    // cooperation = positive, verbalRequest = communication
+    const records = [
+      mkRecord({ recordDate: '2024-01-01', behaviorTags: ['cooperation'] }),
+      mkRecord({ recordDate: '2024-01-02', behaviorTags: ['verbalRequest'] }),
+      mkRecord({ recordDate: '2024-01-03', behaviorTags: ['panic'] }),  // behavior → social に無関連
+      mkRecord({ recordDate: '2024-01-04', behaviorTags: ['cooperation', 'verbalRequest'] }),
+    ];
+    const goals = [{ id: 'g1', domains: ['social'] }];
+    const result = buildMonitoringDailySummary(records, goals)!;
+    const gp = result.goalProgress![0];
+
+    // 4件中3件が social に関連（record 1,2,4）
+    expect(gp.matchedRecordCount).toBe(3);
+    // cooperation x2 + verbalRequest x2 = 4
+    expect(gp.matchedTagCount).toBe(4);
+    // rate = 3/4 = 0.75
+    expect(gp.rate).toBe(0.75);
+  });
+
+  it('cognitive 目標 → behavior カテゴリのタグと照合', () => {
+    // cognitive → ['behavior']
+    // panic = behavior, sensory = behavior
+    const records = [
+      mkRecord({ recordDate: '2024-01-01', behaviorTags: ['panic', 'sensory'] }),
+      mkRecord({ recordDate: '2024-01-02', behaviorTags: ['cooperation'] }), // positive → cognitive に無関連
+      mkRecord({ recordDate: '2024-01-03', behaviorTags: ['panic'] }),
+    ];
+    const goals = [{ id: 'g1', domains: ['cognitive'] }];
+    const result = buildMonitoringDailySummary(records, goals)!;
+    const gp = result.goalProgress![0];
+
+    // 3件中2件が cognitive に関連（record 1,3）
+    expect(gp.matchedRecordCount).toBe(2);
+    // panic x2 + sensory x1 = 3
+    expect(gp.matchedTagCount).toBe(3);
+  });
+
+  it('domain なしの目標 → matchedRecordCount=0, noData にならず stagnant', () => {
+    const records = [
+      mkRecord({ recordDate: '2024-01-01', behaviorTags: ['cooperation'] }),
+    ];
+    const goals = [{ id: 'g1' }]; // domains 未設定
+    const result = buildMonitoringDailySummary(records, goals)!;
+    const gp = result.goalProgress![0];
+
+    expect(gp.matchedRecordCount).toBe(0);
+    expect(gp.matchedTagCount).toBe(0);
+    expect(gp.level).toBe('stagnant');
+  });
+
+  it('複数目標 → それぞれ個別に計算される', () => {
+    const records = [
+      mkRecord({ recordDate: '2024-01-01', behaviorTags: ['cooperation', 'panic'] }),
+      mkRecord({ recordDate: '2024-01-02', behaviorTags: ['verbalRequest'] }),
+    ];
+    const goals = [
+      { id: 'g1', domains: ['cognitive'] },  // behavior → panic のみ
+      { id: 'g2', domains: ['language'] },    // communication → verbalRequest のみ
+    ];
+    const result = buildMonitoringDailySummary(records, goals)!;
+    expect(result.goalProgress).toHaveLength(2);
+
+    const g1 = result.goalProgress!.find((g) => g.goalId === 'g1')!;
+    const g2 = result.goalProgress!.find((g) => g.goalId === 'g2')!;
+
+    // g1: record 1 のみ match → 1/2 = 0.5
+    expect(g1.matchedRecordCount).toBe(1);
+    expect(g1.rate).toBe(0.5);
+
+    // g2: record 2 のみ match → 1/2 = 0.5
+    expect(g2.matchedRecordCount).toBe(1);
+    expect(g2.rate).toBe(0.5);
+  });
+
+  it('タグなし記録のみ → rate=0', () => {
+    const records = [
+      mkRecord({ recordDate: '2024-01-01' }),
+      mkRecord({ recordDate: '2024-01-02' }),
+    ];
+    const goals = [{ id: 'g1', domains: ['social'] }];
+    const result = buildMonitoringDailySummary(records, goals)!;
+    const gp = result.goalProgress![0];
+
+    expect(gp.matchedRecordCount).toBe(0);
+    expect(gp.rate).toBe(0);
+    expect(gp.level).toBe('stagnant');
+  });
+
+  it('既存サマリーフィールドが goals 有無で変わらない', () => {
+    const records = [
+      mkRecord({
+        recordDate: '2024-01-01',
+        activities: { am: '散歩' },
+        lunchIntake: 'full',
+        behaviorTags: ['cooperation'],
+      }),
+    ];
+    const withoutGoals = buildMonitoringDailySummary(records)!;
+    const withGoals = buildMonitoringDailySummary(records, [{ id: 'g1', domains: ['social'] }])!;
+
+    expect(withGoals.period).toEqual(withoutGoals.period);
+    expect(withGoals.activity).toEqual(withoutGoals.activity);
+    expect(withGoals.lunch).toEqual(withoutGoals.lunch);
+    expect(withGoals.behavior).toEqual(withoutGoals.behavior);
+    expect(withGoals.behaviorTagSummary).toEqual(withoutGoals.behaviorTagSummary);
+  });
+});
+
+// ─── Phase 3-B: goalProgress の trend 計算 ───────────────
+
+describe('goalProgress trend', () => {
+  it('後半に関連タグが増加 → improving', () => {
+    const records = [
+      // 前半: 関連タグなし
+      mkRecord({ recordDate: '2024-01-01' }),
+      mkRecord({ recordDate: '2024-01-02' }),
+      // 後半: 関連タグあり
+      mkRecord({ recordDate: '2024-01-03', behaviorTags: ['cooperation'] }),
+      mkRecord({ recordDate: '2024-01-04', behaviorTags: ['cooperation'] }),
+    ];
+    const goals = [{ id: 'g1', domains: ['social'] }];
+    const result = buildMonitoringDailySummary(records, goals)!;
+    const gp = result.goalProgress![0];
+
+    expect(gp.trend).toBe('improving');
+  });
+
+  it('前半に関連タグ集中 → declining', () => {
+    const records = [
+      // 前半: 関連タグあり
+      mkRecord({ recordDate: '2024-01-01', behaviorTags: ['cooperation'] }),
+      mkRecord({ recordDate: '2024-01-02', behaviorTags: ['cooperation'] }),
+      // 後半: 関連タグなし
+      mkRecord({ recordDate: '2024-01-03' }),
+      mkRecord({ recordDate: '2024-01-04' }),
+    ];
+    const goals = [{ id: 'g1', domains: ['social'] }];
+    const result = buildMonitoringDailySummary(records, goals)!;
+    const gp = result.goalProgress![0];
+
+    expect(gp.trend).toBe('declining');
+  });
+
+  it('4件未満 → stable', () => {
+    const records = [
+      mkRecord({ recordDate: '2024-01-01', behaviorTags: ['cooperation'] }),
+      mkRecord({ recordDate: '2024-01-02' }),
+    ];
+    const goals = [{ id: 'g1', domains: ['social'] }];
+    const result = buildMonitoringDailySummary(records, goals)!;
+    const gp = result.goalProgress![0];
+
+    expect(gp.trend).toBe('stable');
+  });
+});
+
+// ─── Phase 3-B: buildMonitoringInsightText — goalProgress section ──
+
+describe('buildMonitoringInsightText — goalProgress section', () => {
+  it('goalProgress あり → 【目標進捗】セクションが含まれる', () => {
+    const records = [
+      mkRecord({
+        recordDate: '2024-01-01',
+        activities: { am: '散歩' },
+        lunchIntake: 'full',
+        behaviorTags: ['cooperation'],
+      }),
+      mkRecord({
+        recordDate: '2024-01-02',
+        activities: { am: '体操' },
+        lunchIntake: '80',
+        behaviorTags: ['verbalRequest'],
+      }),
+    ];
+    const goals = [{ id: 'g1', domains: ['social'] }];
+    const summary = buildMonitoringDailySummary(records, goals)!;
+    const lines = buildMonitoringInsightText(summary);
+    const goalLine = lines.find((l) => l.includes('【目標進捗】'));
+    expect(goalLine).toBeDefined();
+    expect(goalLine).toContain('g1');
+  });
+
+  it('goalProgress なし → 【目標進捗】セクションが含まれない', () => {
+    const records = [
+      mkRecord({
+        recordDate: '2024-01-01',
+        activities: { am: '散歩' },
+        lunchIntake: 'full',
+      }),
+    ];
+    const summary = buildMonitoringDailySummary(records)!;
+    const lines = buildMonitoringInsightText(summary);
+    expect(lines.some((l) => l.includes('【目標進捗】'))).toBe(false);
+  });
+
+  it('domain なし目標は「停滞」と表示される（記録はあるが関連タグなし）', () => {
+    const records = [
+      mkRecord({
+        recordDate: '2024-01-01',
+        activities: { am: '散歩' },
+        lunchIntake: 'full',
+      }),
+    ];
+    const goals = [{ id: 'g-nodomain' }]; // domain なし → matched 0, totalRecordCount > 0 → stagnant
+    const summary = buildMonitoringDailySummary(records, goals)!;
+    const lines = buildMonitoringInsightText(summary);
+    const goalLine = lines.find((l) => l.includes('【目標進捗】'));
+    expect(goalLine).toBeDefined();
+    expect(goalLine).toContain('停滞');
+  });
+});
