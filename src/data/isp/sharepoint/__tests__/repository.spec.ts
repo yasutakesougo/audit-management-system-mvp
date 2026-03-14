@@ -369,6 +369,7 @@ describe('SharePointPlanningSheetRepository', () => {
         authoredByStaffId: '', authoredByQualification: 'unknown',
         applicableServiceType: 'other', applicableAddOnTypes: ['none'],
         hasMedicalCoordination: false, hasEducationCoordination: false,
+        monitoringCycleDays: 90,
         status: 'draft',
       })).rejects.toThrow('disabled');
     });

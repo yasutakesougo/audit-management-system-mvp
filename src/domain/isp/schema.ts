@@ -566,6 +566,12 @@ export const planningSheetFormSchema = z.object({
   appliedFrom: isoDateString.optional(),
   nextReviewAt: isoDateString.optional(),
 
+  // ── L2 モニタリング起点 ──
+  /** 支援開始日（モニタリング起点） */
+  supportStartDate: isoDateString.optional(),
+  /** モニタリング周期（日数、デフォルト 90日 = 3ヶ月） */
+  monitoringCycleDays: z.number().int().min(1).max(365).default(90),
+
   // ── 制度項目 ──
   authoredByStaffId: z.string().max(100).default(''),
   authoredByQualification: staffQualificationSchema.default('unknown'),
@@ -602,6 +608,10 @@ export const supportPlanningSheetSchema = baseAuditFieldsSchema.extend({
 
   appliedFrom: z.string().nullable().default(null),
   nextReviewAt: z.string().nullable().default(null),
+
+  // ── L2 モニタリング起点 ──
+  supportStartDate: z.string().nullable().default(null),
+  monitoringCycleDays: z.number().int().default(90),
 
   // ── 制度項目 ──
   authoredByStaffId: z.string().default(''),

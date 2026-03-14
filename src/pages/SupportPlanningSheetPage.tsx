@@ -9,11 +9,22 @@
  * @see docs/adr/ADR-006-screen-responsibility-boundaries.md
  * @see docs/architecture/isp-three-layer-rules.md
  */
+import { useAssessmentStore } from '@/features/assessment/stores/assessmentStore';
 import { EditableAssessmentSection } from '@/features/planning-sheet/components/EditableAssessmentSection';
 import { EditableIntakeSection } from '@/features/planning-sheet/components/EditableIntakeSection';
 import { EditableOverviewSection } from '@/features/planning-sheet/components/EditableOverviewSection';
 import { EditablePlanningDesignSection } from '@/features/planning-sheet/components/EditablePlanningDesignSection';
 import { EditableRegulatorySection } from '@/features/planning-sheet/components/EditableRegulatorySection';
+import { ImportAssessmentDialog } from '@/features/planning-sheet/components/ImportAssessmentDialog';
+import { ImportMonitoringDialog } from '@/features/planning-sheet/components/ImportMonitoringDialog';
+import type { MonitoringToPlanningResult } from '@/features/planning-sheet/monitoringToPlanningBridge';
+import { calculateMonitoringSchedule, resolveSupportStartDate } from '@/features/planning-sheet/monitoringSchedule';
+import type { BehaviorMonitoringRecord } from '@/domain/isp/behaviorMonitoring';
+import { ImportHistoryTimeline } from '@/features/planning-sheet/components/ImportHistoryTimeline';
+import { ProvenancePanel } from '@/features/planning-sheet/components/ProvenanceBadge';
+import type { AssessmentBridgeResult, ProvenanceEntry } from '@/features/planning-sheet/assessmentBridge';
+import { useImportAuditStore } from '@/features/planning-sheet/stores/importAuditStore';
+import { useAuth } from '@/auth/useAuth';
 import {
   AssessmentSection,
   IntakeSection,
@@ -23,8 +34,10 @@ import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIceb
 import { usePlanningSheetData } from '@/features/planning-sheet/hooks/usePlanningSheetData';
 import { usePlanningSheetForm } from '@/features/planning-sheet/hooks/usePlanningSheetForm';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
+import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { TESTIDS, tid } from '@/testids';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
+import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
 import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
@@ -49,6 +62,7 @@ import {
 } from '@/domain/isp/schema';
 import Divider from '@mui/material/Divider';
 import { InfoRow } from '@/features/planning-sheet/components/ReadOnlySections';
+import { formatDateTimeIntl } from '@/lib/dateFormat';
 
 // ─────────────────────────────────────────────
 // Types
@@ -111,6 +125,9 @@ export default function SupportPlanningSheetPage() {
   const [toast, setToast] = React.useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false, message: '', severity: 'success',
   });
+  const [importDialogOpen, setImportDialogOpen] = React.useState(false);
+  const [monitoringDialogOpen, setMonitoringDialogOpen] = React.useState(false);
+  const [sessionProvenance, setSessionProvenance] = React.useState<ProvenanceEntry[]>([]);
 
   // ── Repository DI ──
   const planningSheetRepo = usePlanningSheetRepositories();
@@ -127,6 +144,155 @@ export default function SupportPlanningSheetPage() {
 
   // ── Iceberg Evidence（ADR-006 準拠: useIcebergEvidence 経由） ──
   const { data: icebergEvidence } = useIcebergEvidence(sheet?.userId ?? null);
+
+  // ── アセスメント取込 ──
+  const { getByUserId: getAssessment } = useAssessmentStore();
+  const { data: users } = useUsersDemo();
+  const { account } = useAuth();
+  const { saveAuditRecord, getAllProvenance, getBySheetId } = useImportAuditStore();
+  const targetUser = React.useMemo(
+    () => users.find((u) => u.UserID === sheet?.userId),
+    [users, sheet?.userId],
+  );
+  const currentAssessment = React.useMemo(
+    () => (sheet?.userId ? getAssessment(sheet.userId) : null),
+    [sheet?.userId, getAssessment],
+  );
+
+  // 永続化された過去の provenance + セッション中の provenance を統合
+  const persistedProvenance = React.useMemo(
+    () => (planningSheetId ? getAllProvenance(planningSheetId) : []),
+    [planningSheetId, getAllProvenance],
+  );
+  const allProvenanceEntries = React.useMemo(
+    () => [...persistedProvenance, ...sessionProvenance],
+    [persistedProvenance, sessionProvenance],
+  );
+
+  // ── 取込履歴レコード ──
+  const auditRecords = React.useMemo(
+    () => (planningSheetId ? getBySheetId(planningSheetId) : []),
+    [planningSheetId, getBySheetId],
+  );
+
+  const handleAssessmentImport = React.useCallback((result: AssessmentBridgeResult) => {
+    // フォームフィールドを更新
+    if (result.formPatches.observationFacts !== undefined) {
+      form.setFieldValue('observationFacts', result.formPatches.observationFacts);
+    }
+    if (result.formPatches.collectedInformation !== undefined) {
+      form.setFieldValue('collectedInformation', result.formPatches.collectedInformation);
+    }
+    // インテークフィールドを更新
+    if (result.intakePatches.sensoryTriggers || result.intakePatches.medicalFlags) {
+      form.setIntake({
+        ...form.intake,
+        ...(result.intakePatches.sensoryTriggers && { sensoryTriggers: result.intakePatches.sensoryTriggers }),
+        ...(result.intakePatches.medicalFlags && { medicalFlags: result.intakePatches.medicalFlags }),
+      });
+    }
+    const parts: string[] = [];
+    if (result.summary.sensoryTriggersAdded > 0) parts.push(`感覚トリガー${result.summary.sensoryTriggersAdded}件`);
+    if (result.summary.observationFactsAppended) parts.push('行動観察');
+    if (result.summary.collectedInfoAppended) parts.push('収集情報');
+    if (result.summary.medicalFlagsAdded > 0) parts.push(`医療フラグ${result.summary.medicalFlagsAdded}件`);
+    const summaryText = `アセスメントから取込完了: ${parts.join('、')}`;
+    setToast({ open: true, message: summaryText, severity: 'success' });
+    // provenance entries をセッションに蓄積
+    setSessionProvenance((prev) => [...prev, ...result.provenance]);
+
+    // 監査メモを永続化
+    if (planningSheetId && currentAssessment) {
+      const affectedFields = [...new Set(result.provenance.map((p) => p.field))];
+      saveAuditRecord({
+        planningSheetId,
+        importedAt: new Date().toISOString(),
+        importedBy: (account as { name?: string })?.name ?? '不明',
+        assessmentId: currentAssessment.id,
+        tokuseiResponseId: null, // ImportAssessmentDialog 内で選択された ID は result には含まれないが、mode で判別可能
+        mode: result.provenance.some((p) => p.source === 'tokusei_survey') ? 'with-tokusei' : 'assessment-only',
+        affectedFields,
+        provenance: result.provenance,
+        summaryText,
+      });
+    }
+  }, [form, planningSheetId, currentAssessment, account, saveAuditRecord]);
+
+  // ── 行動モニタリング取込 ──
+  // TODO: 将来 BehaviorMonitoringRecord を repository から取得する
+  // 現時点では暫定的なデモデータでダイアログ接続を検証
+  const demoMonitoringRecord: BehaviorMonitoringRecord | null = React.useMemo(() => {
+    if (!sheet?.userId) return null;
+    return {
+      id: 'bm-demo-1',
+      userId: sheet.userId,
+      planningSheetId: planningSheetId ?? '',
+      periodStart: '2026-01-01',
+      periodEnd: '2026-03-31',
+      supportEvaluations: [],
+      environmentFindings: [],
+      effectiveSupports: '',
+      difficultiesObserved: '',
+      newTriggers: [],
+      medicalSafetyNotes: '',
+      userFeedback: '',
+      familyFeedback: '',
+      recommendedChanges: [],
+      summary: '',
+      recordedBy: 'デモ記録者',
+      recordedAt: new Date().toISOString(),
+    };
+  }, [sheet?.userId, planningSheetId]);
+
+  const handleMonitoringImport = React.useCallback(
+    (result: MonitoringToPlanningResult, selectedCandidateIds: string[]) => {
+      // 自動追記の反映
+      for (const [field, value] of Object.entries(result.autoPatches)) {
+        if (value !== undefined) {
+          form.setFieldValue(field as keyof typeof form.values, value as string);
+        }
+      }
+      // 選択された候補の反映
+      const selectedCandidates = result.candidates.filter((c) =>
+        selectedCandidateIds.includes(c.id),
+      );
+      for (const candidate of selectedCandidates) {
+        const current = form.values[candidate.targetField] ?? '';
+        const currentStr = typeof current === 'string' ? current : String(current);
+        if (!currentStr.includes(candidate.text.slice(0, 30))) {
+          const updated = currentStr ? `${currentStr}\n\n${candidate.text}` : candidate.text;
+          form.setFieldValue(candidate.targetField, updated);
+        }
+      }
+
+      // provenance 蓄積
+      setSessionProvenance((prev) => [...prev, ...result.provenance]);
+
+      // toast
+      const parts: string[] = [];
+      if (result.summary.autoFieldCount > 0) parts.push(`自動追記${result.summary.autoFieldCount}件`);
+      if (selectedCandidates.length > 0) parts.push(`候補反映${selectedCandidates.length}件`);
+      const summaryText = `行動モニタリングから反映完了: ${parts.join('、') || '変更なし'}`;
+      setToast({ open: true, message: summaryText, severity: 'success' });
+
+      // 監査ログ
+      if (planningSheetId) {
+        const affectedFields = [...new Set(result.provenance.map((p) => p.field))];
+        saveAuditRecord({
+          planningSheetId,
+          importedAt: new Date().toISOString(),
+          importedBy: (account as { name?: string })?.name ?? '不明',
+          assessmentId: null,
+          tokuseiResponseId: null,
+          mode: 'behavior-monitoring',
+          affectedFields,
+          provenance: result.provenance,
+          summaryText,
+        });
+      }
+    },
+    [form, planningSheetId, account, saveAuditRecord],
+  );
 
   // ── Handlers ──
   const handleSave = async () => {
@@ -200,6 +366,26 @@ export default function SupportPlanningSheetPage() {
                     <Button
                       size="small"
                       variant="outlined"
+                      color="secondary"
+                      startIcon={<AssessmentRoundedIcon />}
+                      onClick={() => setImportDialogOpen(true)}
+                      disabled={!currentAssessment || form.isSaving}
+                    >
+                      アセスメントから取込
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="secondary"
+                      startIcon={<AssessmentRoundedIcon />}
+                      onClick={() => setMonitoringDialogOpen(true)}
+                      disabled={!demoMonitoringRecord || form.isSaving}
+                    >
+                      行動モニタリングから反映
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
                       startIcon={<UndoRoundedIcon />}
                       onClick={handleReset}
                       disabled={form.isSaving}
@@ -257,6 +443,64 @@ export default function SupportPlanningSheetPage() {
               </Typography>
             </Stack>
 
+            {/* ── L2 モニタリングスケジュール帯 ── */}
+            {(() => {
+              const startDate = resolveSupportStartDate(
+                (sheet as Record<string, unknown>).supportStartDate as string | null,
+                sheet.appliedFrom,
+              );
+              if (!startDate) return null;
+              const schedule = calculateMonitoringSchedule(
+                startDate,
+                ((sheet as Record<string, unknown>).monitoringCycleDays as number) ?? 90,
+              );
+              return (
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 1.5,
+                    bgcolor: schedule.isOverdue ? 'error.50' : 'action.hover',
+                    borderColor: schedule.isOverdue ? 'error.main' : 'divider',
+                  }}
+                >
+                  <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+                    <Typography variant="body2" fontWeight={500}>
+                      L2 モニタリング
+                    </Typography>
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      label={`起点: ${startDate}`}
+                    />
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      color={schedule.isOverdue ? 'error' : schedule.remainingDays <= 14 ? 'warning' : 'info'}
+                      label={`次回: ${schedule.nextMonitoringDate}`}
+                    />
+                    <Chip
+                      size="small"
+                      variant={schedule.isOverdue ? 'filled' : 'outlined'}
+                      color={schedule.isOverdue ? 'error' : schedule.remainingDays <= 14 ? 'warning' : 'default'}
+                      label={
+                        schedule.isOverdue
+                          ? `${schedule.overdueDays}日超過`
+                          : `残り${schedule.remainingDays}日`
+                      }
+                    />
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      label={`第${schedule.currentCycleNumber}期 (${schedule.progressPercent}%)`}
+                    />
+                    <Typography variant="caption" color="text.secondary">
+                      経過{schedule.elapsedDays}日 / 周期{schedule.cycleDays}日
+                    </Typography>
+                  </Stack>
+                </Paper>
+              );
+            })()}
+
             {/* ── Iceberg Evidence 帯 ── */}
             {icebergEvidence && (
               <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'action.hover' }}>
@@ -290,6 +534,16 @@ export default function SupportPlanningSheetPage() {
           </Alert>
         )}
 
+        {/* ── 取込出典パネル（provenance: 永続化 + セッション） ── */}
+        {isEditing && allProvenanceEntries.length > 0 && (
+          <ProvenancePanel entries={allProvenanceEntries} defaultExpanded={false} />
+        )}
+
+        {/* ── 取込履歴タイムライン ── */}
+        {auditRecords.length > 0 && (
+          <ImportHistoryTimeline records={auditRecords} compact />
+        )}
+
         {/* ── タブ ── */}
         <Paper variant="outlined" sx={{ p: { xs: 1, md: 2 } }}>
           <Tabs
@@ -317,6 +571,7 @@ export default function SupportPlanningSheetPage() {
                 values={form.values}
                 setFieldValue={form.setFieldValue}
                 errors={form.validationErrors}
+                provenanceEntries={allProvenanceEntries}
               />
             ) : (
               <ReadOnlyOverview sheet={sheet} />
@@ -327,6 +582,7 @@ export default function SupportPlanningSheetPage() {
               <EditableIntakeSection
                 intake={form.intake}
                 onChange={form.setIntake}
+                provenanceEntries={allProvenanceEntries}
               />
             ) : (
               <IntakeSection sheet={sheet} />
@@ -369,13 +625,13 @@ export default function SupportPlanningSheetPage() {
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Stack direction="row" spacing={3} flexWrap="wrap" useFlexGap>
             <Typography variant="caption" color="text.secondary">
-              作成日: {new Date(sheet.createdAt).toLocaleDateString('ja-JP')}
+              作成日: {formatDateTimeIntl(sheet.createdAt, { year: 'numeric', month: '2-digit', day: '2-digit' })}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               作成者: {sheet.createdBy}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              更新日: {new Date(sheet.updatedAt).toLocaleDateString('ja-JP')}
+              更新日: {formatDateTimeIntl(sheet.updatedAt, { year: 'numeric', month: '2-digit', day: '2-digit' })}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               更新者: {sheet.updatedBy}
@@ -402,6 +658,30 @@ export default function SupportPlanningSheetPage() {
           {toast.message}
         </Alert>
       </Snackbar>
+
+      {/* ── アセスメント取込ダイアログ ── */}
+      {currentAssessment && (
+        <ImportAssessmentDialog
+          open={importDialogOpen}
+          onClose={() => setImportDialogOpen(false)}
+          assessment={currentAssessment}
+          targetUserName={targetUser?.FullName}
+          currentForm={form.values}
+          currentIntake={form.intake}
+          onImport={handleAssessmentImport}
+        />
+      )}
+
+      {/* ── 行動モニタリング取込ダイアログ ── */}
+      {demoMonitoringRecord && (
+        <ImportMonitoringDialog
+          open={monitoringDialogOpen}
+          onClose={() => setMonitoringDialogOpen(false)}
+          monitoringRecord={demoMonitoringRecord}
+          currentForm={form.values}
+          onImport={handleMonitoringImport}
+        />
+      )}
     </Box>
   );
 }

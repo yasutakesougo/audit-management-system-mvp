@@ -53,6 +53,8 @@ function makeSheet(
     reviewedAt: null,
     hasMedicalCoordination: false,
     hasEducationCoordination: false,
+    supportStartDate: null,
+    monitoringCycleDays: 90,
     regulatoryBasisSnapshot: {
       supportLevel: 6,
       behaviorScore: 18,
