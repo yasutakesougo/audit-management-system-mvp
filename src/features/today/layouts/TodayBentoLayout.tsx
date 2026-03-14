@@ -47,6 +47,7 @@ import { BriefingActionList } from '../widgets/BriefingActionList';
 import { ProgressStatusBar, type TodayProgressSummary, type ProgressChipKey } from '../widgets/ProgressStatusBar';
 import type { NextActionCardProps } from '../widgets/NextActionCard';
 import { NextActionCard } from '../widgets/NextActionCard';
+import { PlanningWorkflowCard, type PlanningWorkflowCardProps } from '../widgets/PlanningWorkflowCard';
 import { TodayTasksCard, type TodayTasksCardProps } from '../widgets/TodayTasksCard';
 import { TodayServiceStructureCard } from '../widgets/TodayServiceStructureCard';
 import { UserCompactList, type UserRow } from '../widgets/UserCompactList';
@@ -80,6 +81,8 @@ export type TodayBentoProps = {
   onPhaseNavigate?: (path: string) => void;
   /** TodayEngine output (optional: widget hidden when undefined) */
   todayTasks?: TodayTasksCardProps;
+  /** 支援計画管理カード (optional: hidden when undefined) */
+  workflowCard?: PlanningWorkflowCardProps;
   transport: { pending: TransportUser[]; inProgress: TransportUser[]; onArrived: (id: string) => void };
   transportCard?: TransportStatusCardProps;
   users: { items: UserRow[]; onOpenQuickRecord: (id: string) => void; onOpenISP?: (id: string) => void; onOpenIceberg?: (id: string) => void; onEmptyAction?: () => void };
@@ -123,6 +126,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   onNextActionNavigate,
   onPhaseNavigate,
   todayTasks,
+  workflowCard,
   transportCard,
   users,
 }) => {
@@ -206,6 +210,17 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           >
             <SectionLabel emoji="🏢" text="業務体制" />
             <TodayServiceStructureCard serviceStructure={serviceStructure} />
+          </BentoCard>
+        )}
+
+        {/* ── Row 3.5: Planning Workflow (full-width) — 支援計画管理 ── */}
+        {workflowCard && (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            testId="bento-workflow"
+          >
+            <SectionLabel emoji="📋" text="支援計画管理" />
+            <PlanningWorkflowCard {...workflowCard} />
           </BentoCard>
         )}
 

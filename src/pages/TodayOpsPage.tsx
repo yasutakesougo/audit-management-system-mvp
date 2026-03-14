@@ -20,7 +20,9 @@ import { useApprovalFlow } from '@/features/today/hooks/useApprovalFlow';
 import { useNextAction } from '@/features/today/hooks/useNextAction';
 import { useSceneNextAction } from '@/features/today/hooks/useSceneNextAction';
 import { useTodayScheduleLanes } from '@/features/today/hooks/useTodayScheduleLanes';
+import { useWorkflowPhases } from '@/features/today/hooks/useWorkflowPhases';
 import { useTodayLayoutProps } from '@/features/today/hooks/useTodayLayoutProps';
+import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { TodayBentoLayout } from '@/features/today/layouts/TodayBentoLayout';
 import { recordAutoNextComplete, recordAutoNextSave } from '@/features/today/records/autoNextCounters';
 import { QuickRecordDrawer } from '@/features/today/records/QuickRecordDrawer';
@@ -82,6 +84,14 @@ export const TodayOpsPage: React.FC = () => {
   const quickRecord = useQuickRecord();
   const approvalFlow = useApprovalFlow();
 
+  // ── Workflow Phases (Phase 2) ──
+  const isServiceManager = role === 'admin';
+  const planningSheetRepo = usePlanningSheetRepositories();
+  const workflowPhases = useWorkflowPhases(
+    summary.users ?? [],
+    isServiceManager ? planningSheetRepo : null,
+  );
+
   // ── Schedule Detail Deep Link ──
   const scheduleDetailHref = useMemo(() => {
     const dateIso = toLocalDateISO();
@@ -95,7 +105,7 @@ export const TodayOpsPage: React.FC = () => {
   }, [nextAction.sourceLane]);
 
   // ── Layout Props (extracted to dedicated hook) ──
-  const layoutProps = useTodayLayoutProps({
+  const baseLayoutProps = useTodayLayoutProps({
     summary,
     nextAction,
     sceneAction,
@@ -105,6 +115,19 @@ export const TodayOpsPage: React.FC = () => {
     role,
     scheduleDetailHref,
   });
+
+  const layoutProps = useMemo(() => ({
+    ...baseLayoutProps,
+    workflowCard: isServiceManager && workflowPhases.items.length > 0
+      ? {
+          items: workflowPhases.items,
+          counts: workflowPhases.counts,
+          topPriorityItem: workflowPhases.topPriorityItem,
+          isLoading: workflowPhases.isLoading,
+          onNavigate: (href: string) => navigate(href),
+        }
+      : undefined,
+  }), [baseLayoutProps, isServiceManager, workflowPhases, navigate]);
 
   // ── Save Success Handler (Quick Record auto-next) ──
   const [showCompletionToast, setShowCompletionToast] = React.useState(false);
