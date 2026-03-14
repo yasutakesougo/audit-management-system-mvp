@@ -557,6 +557,7 @@ export function buildMonitoringDailySummary(
  */
 export function buildMonitoringInsightText(
   summary: DailyMonitoringSummary,
+  options?: { goalNames?: Record<string, string> },
 ): string[] {
   const lines: string[] = [];
 
@@ -634,16 +635,18 @@ export function buildMonitoringInsightText(
 
   // 目標進捗
   if (summary.goalProgress && summary.goalProgress.length > 0) {
+    const goalNames = options?.goalNames;
     const progressTexts = summary.goalProgress.map((gp) => {
       const levelLabel = PROGRESS_LEVEL_LABELS[gp.level];
       const ratePercent = Math.round(gp.rate * 100);
+      const name = goalNames?.[gp.goalId] ?? `目標(${gp.goalId})`;
       if (gp.level === 'noData') {
-        return `目標(${gp.goalId}): 関連データなし、評価保留`;
+        return `${name}: 判定根拠不足（記録の蓄積により判定可能）`;
       }
       return (
-        `目標(${gp.goalId}): ${levelLabel}` +
-        `（関連記録 ${gp.matchedRecordCount}件/${ratePercent}%、` +
-        `タグ ${gp.matchedTagCount}件）`
+        `${name}: ${levelLabel}` +
+        `（根拠記録 ${gp.matchedRecordCount}件 / 達成率${ratePercent}%、` +
+        `関連タグ ${gp.matchedTagCount}件）`
       );
     });
     lines.push(`【目標進捗】${progressTexts.join('。')}。`);
