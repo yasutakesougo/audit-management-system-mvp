@@ -316,6 +316,24 @@ export default function SupportPlanningSheetPage() {
     );
   }
 
+  // ── 新規作成ルート ──
+  if (planningSheetId === 'new') {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="info">
+          支援計画シートの新規作成機能は現在準備中です。ISP 画面から利用者を選択して作成してください。
+        </Alert>
+        <Button
+          startIcon={<ArrowBackRoundedIcon />}
+          onClick={() => navigate('/support-plan-guide')}
+          sx={{ mt: 2 }}
+        >
+          ISP 画面に戻る
+        </Button>
+      </Box>
+    );
+  }
+
   if (error || !sheet) {
     return (
       <Box sx={{ p: 3 }}>
