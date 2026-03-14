@@ -5,6 +5,7 @@
  *
  * Issue #10 Phase 2: ISPCandidateImportSection を組み込み、
  * 行動パターンから生成された ISP 候補を improvementIdeas に取り込む。
+ * Issue #11: AdoptionMetricsPanel で提案採用状況を表示。
  * UX パターンは MonitoringTab のエビデンス引用と統一。
  */
 import Stack from '@mui/material/Stack';
@@ -13,6 +14,7 @@ import React from 'react';
 
 import type { ToastState } from '../../types';
 import { findSection } from '../../utils/helpers';
+import AdoptionMetricsPanel from './AdoptionMetricsPanel';
 import FieldCard from './FieldCard';
 import ISPCandidateImportSection from './ISPCandidateImportSection';
 import type { SectionTabProps } from './tabProps';
@@ -49,6 +51,14 @@ const ExcellenceTab: React.FC<ExcellenceTabProps> = ({
           onFieldChange={sectionProps.onFieldChange}
           isAdmin={sectionProps.isAdmin}
           setToast={setToast}
+        />
+      )}
+
+      {/* Issue #11: 提案採用状況パネル */}
+      {userId != null && (
+        <AdoptionMetricsPanel
+          userId={String(userId)}
+          improvementIdeas={sectionProps.form.improvementIdeas}
         />
       )}
 
