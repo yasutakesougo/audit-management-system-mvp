@@ -73,6 +73,7 @@ import {
 import SafetyOperationsSummaryCard from '@/features/safety/components/SafetyOperationsSummaryCard';
 import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIcebergEvidence';
 import { useSevereAddonRealData } from '@/features/regulatory/hooks/useSevereAddonRealData';
+import { useRegulatoryFindingsRealData } from '@/features/regulatory/hooks/useRegulatoryFindingsRealData';
 import { useUsers } from '@/features/users/useUsers';
 import { useStaff } from '@/stores/useStaff';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
@@ -709,19 +710,37 @@ const RegulatoryDashboardPage: React.FC = () => {
   const [filterSeverity, setFilterSeverity] = useState<AuditFindingSeverity | 'all'>('all');
   const [filterSource, setFilterSource] = useState<'all' | 'regular' | 'addon'>('all');
 
-  // デモモード: サンプルデータで動作確認
-  const findings = useMemo(() => generateDemoFindings(), []);
-  const summary = useMemo(() => summarizeFindings(findings), [findings]);
-
-  // 加算系 findings — 実データ / デモフォールバック
+  // ── データ取得（共通） ──
   const { data: spUsers, status: usersStatus, error: usersError } = useUsers({ selectMode: 'full' });
   const { staff: spStaff, isLoading: staffLoading, error: staffError } = useStaff();
   const planningSheetRepo = usePlanningSheetRepositories();
+  const dataLoading = usersStatus === 'loading' || staffLoading;
+  const dataError = usersError ? (usersError instanceof Error ? usersError : new Error(String(usersError))) : staffError;
+
+  // 通常 findings — 実データ / デモフォールバック
+  const {
+    findings: realFindings,
+    isLoading: findingsLoading,
+    dataSourceLabel: findingsDataSource,
+  } = useRegulatoryFindingsRealData(
+    spUsers,
+    spStaff,
+    dataLoading,
+    dataError,
+    planningSheetRepo,
+  );
+  const findings = useMemo(
+    () => (realFindings.length > 0 ? realFindings : generateDemoFindings()),
+    [realFindings],
+  );
+  const summary = useMemo(() => summarizeFindings(findings), [findings]);
+
+  // 加算系 findings — 実データ / デモフォールバック
   const { input: realAddonInput, dataSourceLabel: addonDataSource } = useSevereAddonRealData(
     spUsers,
     spStaff,
-    usersStatus === 'loading' || staffLoading,
-    usersError ? (usersError instanceof Error ? usersError : new Error(String(usersError))) : staffError,
+    dataLoading,
+    dataError,
     planningSheetRepo,
     localWeeklyObservationRepository,
     localQualificationAssignmentRepository,
@@ -779,6 +798,13 @@ const RegulatoryDashboardPage: React.FC = () => {
           color={isLiveData ? 'success' : 'default'}
           variant={isLiveData ? 'filled' : 'outlined'}
           sx={{ ml: 'auto', fontWeight: 600, fontSize: '0.7rem' }}
+        />
+        <Chip
+          label={findingsLoading ? '通常判定読込中…' : `通常: ${findingsDataSource}`}
+          size="small"
+          color={findingsDataSource === '実データ' ? 'success' : 'default'}
+          variant={findingsDataSource === '実データ' ? 'filled' : 'outlined'}
+          sx={{ fontWeight: 600, fontSize: '0.7rem' }}
         />
         <Chip
           label={`加算: ${addonDataSource}`}
