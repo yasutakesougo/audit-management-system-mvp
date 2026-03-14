@@ -34,6 +34,7 @@ import type {
   BehaviorTagSummary,
   DailyMonitoringSummary,
 } from '../domain/monitoringDailyAnalytics';
+import GoalProgressCard from './GoalProgressCard';
 
 // ─── 定数 ────────────────────────────────────────────────
 
@@ -200,6 +201,8 @@ export interface MonitoringDailyDashboardProps {
   recordCount: number;
   onAppendInsight: (text: string) => void;
   isAdmin: boolean;
+  /** goalId → 表示名のマップ（GoalProgressCard に渡す） */
+  goalNames?: Record<string, string>;
 }
 
 const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
@@ -208,6 +211,7 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
   recordCount,
   onAppendInsight,
   isAdmin,
+  goalNames,
 }) => {
   const [justAppended, setJustAppended] = React.useState(false);
 
@@ -354,6 +358,17 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
           {summary.behaviorTagSummary && (
             <>
               <BehaviorTagSection tagSummary={summary.behaviorTagSummary} />
+              <Divider />
+            </>
+          )}
+
+          {/* 3.7. 目標進捗 */}
+          {summary.goalProgress && summary.goalProgress.length > 0 && (
+            <>
+              <GoalProgressCard
+                goalProgress={summary.goalProgress}
+                goalNames={goalNames}
+              />
               <Divider />
             </>
           )}
