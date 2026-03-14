@@ -11,7 +11,7 @@ import {
     Stack,
     Typography
 } from '@mui/material';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { BehaviorPatternSuggestionPanel } from '../components/BehaviorPatternSuggestionPanel';
 import { BehaviorTagCrossInsightPanel } from '../components/BehaviorTagCrossInsightPanel';
@@ -20,6 +20,11 @@ import { QuickTagArea } from '../components/QuickTagArea';
 import { TableDailyRecordTable } from '../components/TableDailyRecordTable';
 import { TableDailyRecordUserPicker } from '../components/TableDailyRecordUserPicker';
 import { computeBehaviorTagCrossInsights, type CrossInsightInput } from '../domain/behaviorTagCrossInsights';
+import {
+  appendSuggestionMemo,
+  createSuggestionAction,
+} from '../domain/suggestionAction';
+import type { PatternSuggestion } from '../domain/behaviorPatternSuggestions';
 import {
     useTableDailyRecordForm,
     type TableDailyRecordData,
@@ -55,6 +60,7 @@ export function TableDailyRecordForm({
 
   const {
     formData,
+    setFormData,
     searchQuery,
     setSearchQuery,
     showTodayOnly,
@@ -137,7 +143,12 @@ export function TableDailyRecordForm({
 
           {/* Pattern Suggestion — ルールベース示唆（Suggestion あれば展開表示） */}
           {formData.userRows.length > 0 && (
-            <SuggestionPanelMemo visibleRows={visibleRows} />
+            <SuggestionPanelMemo
+              visibleRows={visibleRows}
+              date={formData.date}
+              setFormData={setFormData}
+              handleRowDataChange={handleRowDataChange}
+            />
           )}
 
           {/* Table area — takes remaining space */}
@@ -252,11 +263,66 @@ function useTableDailyRecordFormConditional(
 /**
  * Suggestion パネルのメモ化ラッパー。
  * visibleRows から crossInsights を計算し BehaviorPatternSuggestionPanel に渡す。
+ * Issue #9: accept/dismiss ハンドラを結線。
  */
-function SuggestionPanelMemo({ visibleRows }: { visibleRows: CrossInsightInput[] }) {
+function SuggestionPanelMemo({
+  visibleRows,
+  date,
+  setFormData,
+  handleRowDataChange,
+}: {
+  visibleRows: CrossInsightInput[];
+  date: string;
+  setFormData: React.Dispatch<React.SetStateAction<import('../hooks/useTableDailyRecordForm').TableDailyRecordData>>;
+  handleRowDataChange: (userId: string, field: string, value: string | boolean) => void;
+}) {
   const crossInsights = useMemo(
     () => computeBehaviorTagCrossInsights(visibleRows),
     [visibleRows],
   );
-  return <BehaviorPatternSuggestionPanel insights={crossInsights} />;
+
+  // 最初の visibleRow の acceptedSuggestions を取得（1名 QuickRecord 時に主に使用）
+  const firstRow = visibleRows[0] as import('../hooks/useTableDailyRecordForm').UserRowData | undefined;
+  const acceptedSuggestions = firstRow?.acceptedSuggestions;
+
+  const handleAccept = useCallback((suggestion: PatternSuggestion) => {
+    if (!firstRow) return;
+    const userId = firstRow.userId;
+    // specialNotes に転記
+    const newNotes = appendSuggestionMemo(firstRow.specialNotes, suggestion, date);
+    handleRowDataChange(userId, 'specialNotes', newNotes);
+    // acceptedSuggestions に記録
+    const action = createSuggestionAction(suggestion, 'accept', userId);
+    setFormData(prev => ({
+      ...prev,
+      userRows: prev.userRows.map(r =>
+        r.userId === userId
+          ? { ...r, acceptedSuggestions: [...(r.acceptedSuggestions ?? []), action] }
+          : r,
+      ),
+    }));
+  }, [firstRow, date, handleRowDataChange, setFormData]);
+
+  const handleDismiss = useCallback((suggestion: PatternSuggestion) => {
+    if (!firstRow) return;
+    const userId = firstRow.userId;
+    const action = createSuggestionAction(suggestion, 'dismiss', userId);
+    setFormData(prev => ({
+      ...prev,
+      userRows: prev.userRows.map(r =>
+        r.userId === userId
+          ? { ...r, acceptedSuggestions: [...(r.acceptedSuggestions ?? []), action] }
+          : r,
+      ),
+    }));
+  }, [firstRow, setFormData]);
+
+  return (
+    <BehaviorPatternSuggestionPanel
+      insights={crossInsights}
+      acceptedSuggestions={acceptedSuggestions}
+      onAcceptSuggestion={handleAccept}
+      onDismissSuggestion={handleDismiss}
+    />
+  );
 }

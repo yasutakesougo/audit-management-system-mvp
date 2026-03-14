@@ -26,9 +26,8 @@ import {
 /** テスト用のヘルパー: accepted SuggestionAction を生成 */
 function makeAcceptedAction(overrides: Partial<SuggestionAction> = {}): SuggestionAction {
   return {
-    suggestionId: 'sug-001',
     ruleId: 'rule-co-occurrence-01',
-    category: 'co-occurrence',
+    category: 'co-occurrence' as SuggestionAction['category'],
     message: '午前中に集中力が低下するパターンが見られます',
     evidence: '月曜 3 回でパニック発生',
     action: 'accept',
@@ -152,8 +151,8 @@ describe('ISPCandidateImportSection ロジック', () => {
   });
 
   describe('まとめて取り込みシミュレーション', () => {
-    let mockOnFieldChange: ReturnType<typeof vi.fn>;
-    let mockSetToast: ReturnType<typeof vi.fn>;
+    let mockOnFieldChange: (...args: unknown[]) => void;
+    let mockSetToast: (...args: unknown[]) => void;
 
     beforeEach(() => {
       mockOnFieldChange = vi.fn();
@@ -163,7 +162,7 @@ describe('ISPCandidateImportSection ロジック', () => {
     it('まとめて取り込みボタンのロジックが正しく動作する', () => {
       const actions: SuggestionAction[] = [
         makeAcceptedAction({ ruleId: 'rule-01', message: '候補A' }),
-        makeAcceptedAction({ ruleId: 'rule-02', category: 'slot-bias', message: '候補B' }),
+        makeAcceptedAction({ ruleId: 'rule-02', category: 'slot-bias' as SuggestionAction['category'], message: '候補B' }),
         makeAcceptedAction({ ruleId: 'rule-03', message: '候補C' }),
       ];
 
