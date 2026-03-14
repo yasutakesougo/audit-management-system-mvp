@@ -5,6 +5,9 @@
  * フォーム入力を提供する。
  */
 import type { PlanningSheetFormValues } from '@/domain/isp/schema';
+import type { ProvenanceEntry } from '@/features/planning-sheet/assessmentBridge';
+import { ProvenanceBadgeGroup } from '@/features/planning-sheet/components/ProvenanceBadge';
+import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
@@ -18,9 +21,11 @@ interface Props {
     value: PlanningSheetFormValues[K],
   ) => void;
   errors: Partial<Record<keyof PlanningSheetFormValues, string>>;
+  /** 出典追跡エントリ（省略可能 — 取込がない場合はバッジ非表示） */
+  provenanceEntries?: ProvenanceEntry[];
 }
 
-export const EditableOverviewSection: React.FC<Props> = ({ values, setFieldValue, errors }) => (
+export const EditableOverviewSection: React.FC<Props> = ({ values, setFieldValue, errors, provenanceEntries = [] }) => (
   <Stack spacing={2.5}>
     <Typography variant="subtitle1" fontWeight={600}>基本情報</Typography>
 
@@ -54,28 +59,34 @@ export const EditableOverviewSection: React.FC<Props> = ({ values, setFieldValue
 
     <Divider />
 
-    <TextField
-      label="行動観察"
-      value={values.observationFacts}
-      onChange={(e) => setFieldValue('observationFacts', e.target.value)}
-      error={!!errors.observationFacts}
-      helperText={errors.observationFacts}
-      fullWidth
-      required
-      multiline
-      minRows={2}
-      size="small"
-    />
+    <Box>
+      <TextField
+        label="行動観察"
+        value={values.observationFacts}
+        onChange={(e) => setFieldValue('observationFacts', e.target.value)}
+        error={!!errors.observationFacts}
+        helperText={errors.observationFacts}
+        fullWidth
+        required
+        multiline
+        minRows={2}
+        size="small"
+      />
+      <ProvenanceBadgeGroup field="observationFacts" entries={provenanceEntries} />
+    </Box>
 
-    <TextField
-      label="収集情報"
-      value={values.collectedInformation}
-      onChange={(e) => setFieldValue('collectedInformation', e.target.value)}
-      fullWidth
-      multiline
-      minRows={2}
-      size="small"
-    />
+    <Box>
+      <TextField
+        label="収集情報"
+        value={values.collectedInformation}
+        onChange={(e) => setFieldValue('collectedInformation', e.target.value)}
+        fullWidth
+        multiline
+        minRows={2}
+        size="small"
+      />
+      <ProvenanceBadgeGroup field="collectedInformation" entries={provenanceEntries} />
+    </Box>
 
     <TextField
       label="分析・仮説"
@@ -105,40 +116,49 @@ export const EditableOverviewSection: React.FC<Props> = ({ values, setFieldValue
 
     <Divider />
 
-    <TextField
-      label="対応方針"
-      value={values.supportPolicy}
-      onChange={(e) => setFieldValue('supportPolicy', e.target.value)}
-      error={!!errors.supportPolicy}
-      helperText={errors.supportPolicy}
-      fullWidth
-      required
-      multiline
-      minRows={2}
-      size="small"
-    />
+    <Box>
+      <TextField
+        label="対応方針"
+        value={values.supportPolicy}
+        onChange={(e) => setFieldValue('supportPolicy', e.target.value)}
+        error={!!errors.supportPolicy}
+        helperText={errors.supportPolicy}
+        fullWidth
+        required
+        multiline
+        minRows={2}
+        size="small"
+      />
+      <ProvenanceBadgeGroup field="supportPolicy" entries={provenanceEntries} />
+    </Box>
 
-    <TextField
-      label="環境調整"
-      value={values.environmentalAdjustments}
-      onChange={(e) => setFieldValue('environmentalAdjustments', e.target.value)}
-      fullWidth
-      multiline
-      minRows={2}
-      size="small"
-    />
+    <Box>
+      <TextField
+        label="環境調整"
+        value={values.environmentalAdjustments}
+        onChange={(e) => setFieldValue('environmentalAdjustments', e.target.value)}
+        fullWidth
+        multiline
+        minRows={2}
+        size="small"
+      />
+      <ProvenanceBadgeGroup field="environmentalAdjustments" entries={provenanceEntries} />
+    </Box>
 
-    <TextField
-      label="関わり方の具体策"
-      value={values.concreteApproaches}
-      onChange={(e) => setFieldValue('concreteApproaches', e.target.value)}
-      error={!!errors.concreteApproaches}
-      helperText={errors.concreteApproaches}
-      fullWidth
-      required
-      multiline
-      minRows={2}
-      size="small"
-    />
+    <Box>
+      <TextField
+        label="関わり方の具体策"
+        value={values.concreteApproaches}
+        onChange={(e) => setFieldValue('concreteApproaches', e.target.value)}
+        error={!!errors.concreteApproaches}
+        helperText={errors.concreteApproaches}
+        fullWidth
+        required
+        multiline
+        minRows={2}
+        size="small"
+      />
+      <ProvenanceBadgeGroup field="concreteApproaches" entries={provenanceEntries} />
+    </Box>
   </Stack>
 );

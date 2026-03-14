@@ -13,6 +13,7 @@
 import React from 'react';
 
 import type {
+  IspApproval,
   IspComplianceMetadata,
   IspConsentDetail,
   IspDeliveryDetail,
@@ -39,6 +40,18 @@ export type UseComplianceFormParams = {
   setDrafts: React.Dispatch<React.SetStateAction<Record<string, SupportPlanDraft>>>;
 };
 
+/** 承認状態の派生情報 */
+export type ApprovalState = {
+  /** 承認済みか */
+  isApproved: boolean;
+  /** 承認者 UPN */
+  approvedBy: string | null;
+  /** 承認日時 (ISO 8601) */
+  approvedAt: string | null;
+  /** 承認ステータス */
+  approvalStatus: IspApproval['approvalStatus'];
+};
+
 export type UseComplianceFormReturn = {
   /** 現在のコンプライアンスデータ */
   compliance: ComplianceFormState;
@@ -52,6 +65,10 @@ export type UseComplianceFormReturn = {
   missingFieldCount: number;
   /** 未入力フィールド一覧 */
   missingFields: string[];
+  /** 承認状態 */
+  approvalState: ApprovalState;
+  /** 承認を実行する（管理者のみ） */
+  performApproval: (approverUpn: string) => void;
 };
 
 // ────────────────────────────────────────────
@@ -179,6 +196,34 @@ export function useComplianceForm({
     [compliance],
   );
 
+  // ── Approval state ──
+  const approvalState: ApprovalState = React.useMemo(() => {
+    const approval = compliance.approval;
+    return {
+      isApproved: approval?.approvalStatus === 'approved',
+      approvedBy: approval?.approvedBy ?? null,
+      approvedAt: approval?.approvedAt ?? null,
+      approvalStatus: approval?.approvalStatus ?? 'draft',
+    };
+  }, [compliance.approval]);
+
+  // ── Perform approval ──
+  const performApproval = React.useCallback(
+    (approverUpn: string) => {
+      if (!isAdmin || !approverUpn) return;
+
+      updateCompliance((prev) => ({
+        ...prev,
+        approval: {
+          approvedBy: approverUpn,
+          approvedAt: new Date().toISOString(),
+          approvalStatus: 'approved' as const,
+        },
+      }));
+    },
+    [isAdmin, updateCompliance],
+  );
+
   return {
     compliance,
     updateConsent,
@@ -186,5 +231,7 @@ export function useComplianceForm({
     updateServiceHours,
     missingFieldCount: missingFields.length,
     missingFields,
+    approvalState,
+    performApproval,
   };
 }

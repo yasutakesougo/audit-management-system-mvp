@@ -8,6 +8,7 @@
  *
  * @see docs/design/hero-nextaction-responsibility.md
  */
+import type { TodayScene } from '../domain/todayScene';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import GroupsIcon from '@mui/icons-material/Groups';
@@ -39,6 +40,8 @@ export type ProgressStatusBarProps = {
   summary: TodayProgressSummary;
   /** チップクリック時のコールバック。未指定なら従来通り表示のみ */
   onChipClick?: (key: ProgressChipKey) => void;
+  /** 現在の運営場面。day-closing + 未完了で error 色を使用 */
+  scene?: TodayScene;
 };
 
 // ─── Component ───────────────────────────────────────────────
@@ -46,6 +49,7 @@ export type ProgressStatusBarProps = {
 export const ProgressStatusBar: React.FC<ProgressStatusBarProps> = ({
   summary,
   onChipClick,
+  scene,
 }) => {
   const { pendingRecordCount, totalRecordCount, pendingAttendanceCount, pendingBriefingCount } = summary;
 
@@ -55,14 +59,17 @@ export const ProgressStatusBar: React.FC<ProgressStatusBarProps> = ({
     : 100;
   const isAllComplete = pendingRecordCount === 0 && pendingAttendanceCount === 0 && pendingBriefingCount === 0;
 
-  // 進捗バーの色: 完了率に応じて変化（穏やかに）
+  // 進捗バーの色: day-closing + 未完了なら error、それ以外は完了率に応じて変化
+  const isDayClosingUrgent = scene === 'day-closing' && !isAllComplete;
   const progressColor = isAllComplete
     ? 'success'
-    : completionRate >= 70
-      ? 'success'
-      : completionRate >= 30
-        ? 'info'
-        : 'warning';
+    : isDayClosingUrgent
+      ? 'error'
+      : completionRate >= 70
+        ? 'success'
+        : completionRate >= 30
+          ? 'info'
+          : 'warning';
 
   if (isAllComplete) {
     return (

@@ -8,6 +8,7 @@ declare global {
   }
 }
 import { canAccess } from '@/auth/roles';
+import { useAuth } from '@/auth/useAuth';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { useCurrentPlanningSheet } from '@/features/planning-sheet/hooks/useCurrentPlanningSheet';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
@@ -93,7 +94,9 @@ const TabPanel: React.FC<{ current: SectionKey; value: SectionKey; children: Rea
 export default function SupportPlanGuidePage() {
   // ── Auth ──
   const { role } = useUserAuthz();
+  const { account } = useAuth();
   const isAdmin = canAccess(role, 'admin');
+  const approverUpn = account?.username ?? '';
 
   // ── Data sources ──
   const { data: userList = [] } = useUsersStore();
@@ -261,6 +264,7 @@ export default function SupportPlanGuidePage() {
           <ComplianceTab
             isAdmin={isAdmin}
             complianceForm={complianceForm}
+            approverUpn={approverUpn}
           />
         );
       case 'monitoring':
@@ -294,6 +298,7 @@ export default function SupportPlanGuidePage() {
             onDownloadMarkdown={handleDownloadMarkdown}
             guardAdmin={guardAdmin}
             markdownSpan={markdownSpanRef.current}
+            approvalState={complianceForm.approvalState}
           />
         );
       default:
