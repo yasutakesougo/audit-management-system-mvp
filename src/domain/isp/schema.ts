@@ -677,6 +677,8 @@ export const planningSheetListItemSchema = z.object({
   applicableServiceType: applicableServiceTypeSchema.default('other'),
   applicableAddOnTypes: z.array(applicableAddOnTypeSchema).default(['none']),
   authoredByQualification: staffQualificationSchema.default('unknown'),
+  /** 最終レビュー日（再評価日として加算判定に使用） */
+  reviewedAt: z.string().nullable().default(null),
 });
 
 export type PlanningSheetListItem = z.infer<typeof planningSheetListItemSchema>;

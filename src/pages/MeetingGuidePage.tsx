@@ -15,6 +15,7 @@ import {
 import React, { useCallback, useEffect, useState } from 'react';
 
 import HandoffSummaryForMeeting from '@/features/handoff/HandoffSummaryForMeeting';
+import RegulatoryFindingsForMeeting from '@/features/handoff/RegulatoryFindingsForMeeting';
 import MeetingStepsChecklist from '@/features/meeting/MeetingStepsChecklist';
 import { meetingLogger } from '@/features/meeting/logging/meetingLogger';
 import type { MeetingKind } from '@/features/meeting/meetingSteps';
@@ -179,6 +180,9 @@ const MeetingGuidePage: React.FC = () => {
 
       {/* 申し送り状況サマリー */}
       <HandoffSummaryForMeeting />
+
+      {/* P6 Phase 2: 制度系 finding 共有カード */}
+      <RegulatoryFindingsForMeeting />
 
       {/* メイン2カラム：左=重点フォロー / 右=進行ステップ */}
       <Stack
