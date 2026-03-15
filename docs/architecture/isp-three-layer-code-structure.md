@@ -77,7 +77,7 @@ graph TD
 | [`types.ts`](../../src/domain/isp/types.ts) | 詳細ドメインモデル（状態遷移、監査証跡、版管理、三層統合ビュー） | L1+L2+L3 |
 | [`port.ts`](../../src/domain/isp/port.ts) | Repository Port インターフェース 3 本 | L1+L2+L3 |
 
-### `src/domain/isp/bridge/` — 層間 Adapter
+### `src/domain/isp/bridge/` — 層間 Adapter（Daily 連携）
 
 | ファイル | 変換方向 | 入力 → 出力 |
 |---------|---------|------------|
@@ -85,20 +85,31 @@ graph TD
 | [`resolveProcedureSteps.ts`](../../src/domain/isp/bridge/resolveProcedureSteps.ts) | L2/CSV/Base → Daily | 手順の優先解決（planning_sheet > csv_import > base_steps） |
 | [`toProcedureRecord.ts`](../../src/domain/isp/bridge/toProcedureRecord.ts) | Daily → L3 | `ABCRecord + ProcedureStep` → `ProcedureRecordInput` |
 
-**Bridge の役割**:
+### `src/features/planning-sheet/` — 三層ブリッジ（PDCA 連携）
+
+| ファイル | ブリッジ | 変換方向 | 入力 → 出力 |
+|---------|---------|---------|------------|
+| [`assessmentBridge.ts`](../../src/features/planning-sheet/assessmentBridge.ts) | 第1ブリッジ | Assessment → L2 | アセスメント → formPatches + intakePatches + provenance |
+| [`planningToRecordBridge.ts`](../../src/features/planning-sheet/planningToRecordBridge.ts) | 第2ブリッジ | L2 → L3 | 方針/具体策/環境 → ProcedureStep[] + globalNotes |
+| [`monitoringToPlanningBridge.ts`](../../src/features/planning-sheet/monitoringToPlanningBridge.ts) | 第3ブリッジ | Monitoring → L2 | 行動モニタリング → 自動追記 + 候補提示 |
+| [`monitoringSchedule.ts`](../../src/features/planning-sheet/monitoringSchedule.ts) | L2 時間軸 | — | supportStartDate → 次回日・経過・超過・進捗 |
+
+**三層ブリッジの全体像**:
 
 ```
-        L2 (支援計画シート)
-              │
-    toDailyProcedureSteps()     ← 支援設計 → 時間割変換
-              │
-              ▼
-        Daily 画面
-              │
-    toProcedureRecord()         ← 行動記録 → 制度記録変換
-              │
-              ▼
-        L3 (SupportProcedureRecord)
+    Assessment                L2 (支援計画シート)           L3 (手順書兼記録)
+        │                          │                           │
+   assessmentBridge()    planningToRecordBridge()               │
+  [第1ブリッジ] ──────►          ──────────────────────►        │
+        │                          │                           │
+        │              monitoringToPlanningBridge()             │
+        │              [第3ブリッジ] ◄──── Monitoring ──────────┘
+        │                          │
+        │               monitoringSchedule()
+        │              [supportStartDate 起点]
+        │                          │
+        ▼                          ▼
+   provenance 追跡          PDCA 循環完成
 ```
 
 ### `src/domain/regulatory/` — 制度遵守チェックエンジン
@@ -382,10 +393,12 @@ ISP.id ←─────── PlanningSheet.ispId
 
 | 拡張 | 影響範囲 | 備考 |
 |------|---------|------|
-| 支援計画シート専用画面の新設 | `src/pages/SupportPlanningSheetPage.tsx` 新規 | ルート: `/support-planning-sheet/:id` |
+| ~~支援計画シート専用画面の新設~~ | ~~`SupportPlanningSheetPage.tsx`~~ | ✅ 実装済み |
 | PlanningSheet Repository の本番接続 | `src/data/isp/sharepoint/` の活用 | Port は定義済み |
 | Iceberg → PlanningSheet 紐付けの強化 | `IcebergPdcaItem.planningSheetId` の必須化 | 旧データは `null` 許容 |
 | 全ユーザー横断の RegulatoryDashboard | `useIcebergEvidence` を複数 userId で呼ぶ | 現在は単一 userId |
+| `supportStartDate` UI フォーム統合 | `SupportPlanningSheetPage` のフォーム | スキーマ追加済み、フォーム入力UI 未実装 |
+| `ImportMonitoringDialog` の活性化 | モニタリングデータ取得 hook の接続 | ダイアログ UI 実装済み |
 
 ---
 

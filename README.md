@@ -1,6 +1,75 @@
 # 磯子区障害者地域活動ホーム (React + SharePoint SPA)
 
-> 📌 クイックリンク: [プロビジョニング手順 / WhatIf レビュー](docs/provisioning.md#whatif-ドライラン-と-job-summary) ｜ [SharePoint スキーマ定義](provision/schema.xml) ｜ [プロジェクトボード自動連携](docs/project-auto-integration.md) ｜ **[UI Baseline (Phase 1)](docs/UI_BASELINE.md)** ｜ [UI Architecture](docs/ui-architecture.md) ｜ [Monitoring Hub Runbook](docs/ops/monitoring-hub-v1-runbook.md) ｜ [TodayOps Runbook](docs/runbook/today-ops-rollout.md) ｜ [Feature Catalog](docs/feature-catalog.md) ｜ [Env Reference](docs/env-reference.md)
+### Support Operations OS — 支援業務をPDCAサイクルとしてコード化した基盤システム
+
+<p align="center">
+  <img src="docs/images/architecture-overview.png" alt="Support Operations OS Architecture" width="720" />
+</p>
+
+> **This system is not just a support record app.**
+> **It is a Support Operations OS that codifies the PDCA cycle of welfare services.**
+
+---
+
+#### ✨ コアアーキテクチャ
+
+```mermaid
+graph LR
+    A["🔵 Assessment"] -->|Bridge 1| P["📋 Planning Sheet<br/>(L2)"]
+    P -->|Bridge 2| R["📝 Procedure Record<br/>(L3)"]
+    R -->|Daily 実施| M["🟠 Monitoring"]
+    M -->|Bridge 3| P
+    
+    style A fill:#1f6feb,color:#fff,stroke:none
+    style P fill:#238636,color:#fff,stroke:none
+    style R fill:#8b949e,color:#fff,stroke:none
+    style M fill:#d29922,color:#fff,stroke:none
+```
+
+| 層 | 役割 | アーキテクチャ |
+|---|---|---|
+| **L1 ISP** | なぜ支援するか (Why) | 三層モデル + Ports & Adapters |
+| **L2 支援計画シート** | どう支援するか (How) | 三ブリッジ + Provenance 追跡 |
+| **L3 手順書兼記録** | 実施と記録 (Do + Record) | モニタリングスケジュール (90日サイクル) |
+
+---
+
+#### 🚀 Quick Start
+
+```bash
+git clone https://github.com/yasutakesougo/audit-management-system-mvp.git
+cd audit-management-system-mvp
+npm install
+npm run dev
+```
+
+Open **http://localhost:5173** → デモモードで全機能を試せます。
+
+---
+
+#### 🔑 Key Features
+
+| Feature | Description |
+|---|---|
+| **🔵 Bridge 1: Assessment → Planning** | ICF分類・特性アンケートから支援計画シートへ自動マッピング。出典追跡付き |
+| **🟢 Bridge 2: Planning → Procedure** | 支援方針・具体的対応・環境調整を手順ステップに変換。重複排除 |
+| **🟠 Bridge 3: Monitoring → Planning** | 行動モニタリング結果を自動追記 + 候補提示で支援計画を更新 |
+| **📋 ISP 三層モデル** | L1 (ISP) / L2 (支援計画シート) / L3 (手順書兼記録) の明確な分離 |
+| **🔍 Provenance Tracking** | 全フィールドに出典情報を記録。いつ・どこから・なぜ転記されたか追跡可能 |
+| **📅 Monitoring Schedule** | `supportStartDate` 起点の 90 日サイクル。期限超過アラート付き |
+| **🛡️ Regulatory Dashboard** | 制度遵守チェック + 根拠サマリーの横断表示 |
+| **🔒 Safety Management** | 適正化委員会・指針版管理・研修記録・身体拘束記録の統合管理 |
+
+<details>
+<summary>📐 プレゼン用アーキテクチャ図（クリックで展開）</summary>
+
+<p align="center">
+  <img src="docs/images/architecture-complete.png" alt="Support Operations OS — Complete Architecture" width="900" />
+</p>
+
+</details>
+
+> 📌 クイックリンク: [プロビジョニング手順 / WhatIf レビュー](docs/provisioning.md#whatif-ドライラン-と-job-summary) ｜ [SharePoint スキーマ定義](provision/schema.xml) ｜ [プロジェクトボード自動連携](docs/project-auto-integration.md) ｜ **[UI Baseline (Phase 1)](docs/UI_BASELINE.md)** ｜ [UI Architecture](docs/ui-architecture.md) ｜ [Monitoring Hub Runbook](docs/ops/monitoring-hub-v1-runbook.md) ｜ [TodayOps Runbook](docs/runbook/today-ops-rollout.md) ｜ [Feature Catalog](docs/feature-catalog.md) ｜ [Env Reference](docs/env-reference.md) ｜ **[System Architecture](docs/architecture/system-architecture-complete.md)**
 
 <!-- Badges -->
 
@@ -24,7 +93,7 @@
 - Sentry: (GitHub 変数 `SENTRY_URL`)
 
 > 注記: これらの URL はリポジトリ変数 (`COVERAGE_URL`, `LIGHTHOUSE_URL`, `SENTRY_URL`) と同一です。
-> Actions の “Report Links” ワークフローは、PR コメントとジョブ Summary に同じリンクを自動掲示します。
+> Actions の "Report Links" ワークフローは、PR コメントとジョブ Summary に同じリンクを自動掲示します。
 
 本プロジェクトは、React, TypeScript, Vite, MUI を使用し、SharePoint Online をバックエンドとする SPA アプリケーションの MVP 実装です。
 
