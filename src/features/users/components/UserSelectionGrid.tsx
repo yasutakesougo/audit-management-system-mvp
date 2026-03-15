@@ -35,7 +35,7 @@ export interface UserSelectionGridProps {
   title?: string;
   /** グリッド上部のサブタイトル（省略時はデフォルト） */
   subtitle?: string;
-  /** IBD対象者を優先表示するか（デフォルト: true） */
+  /** 行動分析対象者を優先表示するか（デフォルト: true） */
   prioritizeIBD?: boolean;
 }
 
@@ -50,13 +50,13 @@ export const UserSelectionGrid: React.FC<UserSelectionGridProps> = ({
   subtitle,
   prioritizeIBD = true,
 }) => {
-  // IBD対象者を先頭に表示
+  // 行動分析対象者を先頭に表示
   const sortedUsers = React.useMemo(() => {
     if (!prioritizeIBD) return users;
     return [...users].sort((a, b) => {
       const aIBD = a.IsHighIntensitySupportTarget ? 1 : 0;
       const bIBD = b.IsHighIntensitySupportTarget ? 1 : 0;
-      return bIBD - aIBD; // IBD対象者が先
+      return bIBD - aIBD; // 行動分析対象者が先
     });
   }, [users, prioritizeIBD]);
 
@@ -114,7 +114,7 @@ export const UserSelectionGrid: React.FC<UserSelectionGridProps> = ({
                     {isIBD && (
                       <Chip
                         icon={<StarIcon />}
-                        label="IBD対象"
+                        label="行動分析対象"
                         size="small"
                         color="warning"
                         variant="filled"

@@ -56,7 +56,7 @@ const IndividualSupportManagementPage: React.FC = () => {
   const navigate = useNavigate();
   const { data: allUsers } = useUsersDemo();
 
-  // IBD対象利用者のみフィルタ
+  // 行動分析対象利用者のみフィルタ
   const ibdUsers = useMemo(
     () => allUsers.filter((u) => u.IsHighIntensitySupportTarget),
     [allUsers],
@@ -260,7 +260,7 @@ const IndividualSupportManagementPage: React.FC = () => {
             users={ibdUsers}
             onSelect={handleUserSelect}
             title="対象利用者を選択してください"
-            subtitle="強度行動障害支援の対象となる利用者の個別支援手順を管理します。IBD対象者は優先表示されています。"
+            subtitle="強度行動障害支援の対象となる利用者の個別支援手順を管理します。行動分析対象者は優先表示されています。"
           />
         </Paper>
       </Box>

@@ -59,7 +59,7 @@ const AnalysisDashboardPage: React.FC = () => {
   const [analysisDays, setAnalysisDays] = useState<number>(30);
   const autoSeededRef = useRef<Set<string>>(new Set());
 
-  // IBD 対象者のみに絞り込み
+  // 行動分析対象者のみに絞り込み
   const ibdUsers = useMemo(
     () => users.filter((u) => u.IsSupportProcedureTarget === true),
     [users],
@@ -195,12 +195,12 @@ const AnalysisDashboardPage: React.FC = () => {
         }
       />
 
-      {/* Attendance Summary — IBD対象者のみの出欠サマリー */}
+      {/* Attendance Summary — 行動分析対象者のみの出欠サマリー */}
       {vm.attendanceSummary && (
         <Box sx={{ mt: 2 }}>
           <AttendanceSummaryCard
             data={vm.attendanceSummary}
-            title="📋 IBD対象者の出欠・稼働サマリー"
+            title="📋 行動分析対象者の出欠・稼働サマリー"
           />
         </Box>
       )}
