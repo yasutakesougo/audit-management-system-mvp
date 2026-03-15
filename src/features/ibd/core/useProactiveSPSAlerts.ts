@@ -79,12 +79,12 @@ export function countRecentIncidents(
 // ---------------------------------------------------------------------------
 
 /**
- * IBD対象者の行動事象とSPS期限をクロスしてプロアクティブアラートを生成する。
+ * 行動分析対象者の行動事象とSPS期限をクロスしてプロアクティブアラートを生成する。
  *
  * ⚠️ MVP実装: behaviorRecords は呼び出し側から注入する設計。
  * 将来的に useBehaviorStore.fetchForAnalysis() を内部で呼ぶことも可能。
  *
- * @param ibdUsers IBD対象ユーザーリスト
+ * @param ibdUsers 行動分析対象ユーザーリスト
  * @param behaviorRecordsByUser ユーザーID → 行動記録配列のマップ
  * @param thresholds アラート閾値設定
  */

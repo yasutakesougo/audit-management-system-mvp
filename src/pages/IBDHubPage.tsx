@@ -67,7 +67,7 @@ interface StatusSection {
 // Hooks — テンプレート件数の集約
 // ---------------------------------------------------------------------------
 
-/** IBD対象者ごとのテンプレート件数を集計 */
+/** 行動分析対象者ごとのテンプレート件数を集計 */
 function useTemplateMetrics(ibdUsers: Array<{ UserID: string; FullName: string }>) {
   // 代表ユーザー（最初の1名）のテンプレートを取得してカウント
   const firstUserCode = ibdUsers[0]?.UserID ?? null;
@@ -112,7 +112,7 @@ function useHubStatus(
         description: '利用者の特性・感覚プロファイルを評価し支援の土台を作る',
         accentColor: theme.palette.success.dark,
         metrics: [
-          { label: 'IBD対象者', value: `${ibdUsers.length}名` },
+          { label: '行動分析対象者', value: `${ibdUsers.length}名` },
           { label: 'ドラフト', value: hasDraft ? '未完了あり' : 'なし' },
         ],
         links: [
@@ -150,7 +150,7 @@ function useHubStatus(
               ? '読込中…'
               : `${templateMetrics.totalTemplates}件`,
           },
-          { label: 'IBD対象者', value: `${templateMetrics.userCount}名` },
+          { label: '行動分析対象者', value: `${templateMetrics.userCount}名` },
         ],
         links: [
           { label: '支援活動マスタ', to: '/admin/templates', primary: true },
@@ -358,7 +358,7 @@ const IBDHubPage: React.FC = () => {
   const { data: allUsers } = useUsersDemo();
   const [drilldownOpen, setDrilldownOpen] = useState(false);
 
-  // IBD対象者のみ
+  // 行動分析対象者のみ
   const ibdUsers = useMemo(
     () => allUsers.filter((u) => u.IsHighIntensitySupportTarget),
     [allUsers],
