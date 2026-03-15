@@ -32,6 +32,7 @@ import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import * as React from 'react';
 
 import type { IcebergPdcaItem, IcebergPdcaPhase } from './types';
+import { PdcaReverseTraceSection } from './components/PdcaReverseTraceSection';
 
 // ============================================================================
 // Types
@@ -171,6 +172,8 @@ export function IcebergPdcaFormSection({
                     {item.summary}
                   </Typography>
                 ) : null}
+                {/* Phase 4-B2: Reverse Trace */}
+                <PdcaReverseTraceSection pdcaItemId={item.id} />
               </Box>
               {canWrite && (
                 <Stack direction="row" spacing={1}>
