@@ -29,12 +29,17 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 
+import type { DecisionStatus, IspRecommendationDecision } from '../domain/ispRecommendationDecisionTypes';
 import type {
   ActivityRank,
   BehaviorTagSummary,
   DailyMonitoringSummary,
 } from '../domain/monitoringDailyAnalytics';
 import GoalProgressCard from './GoalProgressCard';
+import IspDecisionHistorySection from './IspDecisionHistorySection';
+import IspDecisionSummaryCard from './IspDecisionSummaryCard';
+import IspRecommendationCard from './IspRecommendationCard';
+import type { DecisionInput } from './IspRecommendationCard';
 
 // ─── 定数 ────────────────────────────────────────────────
 
@@ -203,6 +208,14 @@ export interface MonitoringDailyDashboardProps {
   isAdmin: boolean;
   /** goalId → 表示名のマップ（GoalProgressCard に渡す） */
   goalNames?: Record<string, string>;
+  /** Phase 4-C: goalId → 判断ステータス */
+  decisionStatuses?: Map<string, DecisionStatus>;
+  /** Phase 4-C: goalId → 判断メモ */
+  decisionNotes?: Map<string, string>;
+  /** Phase 4-C: 判断操作コールバック */
+  onDecision?: (input: DecisionInput) => void;
+  /** Phase 4-D: 判断レコード配列（履歴表示用） */
+  decisions?: IspRecommendationDecision[];
 }
 
 const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
@@ -212,6 +225,10 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
   onAppendInsight,
   isAdmin,
   goalNames,
+  decisionStatuses,
+  decisionNotes,
+  onDecision,
+  decisions,
 }) => {
   const [justAppended, setJustAppended] = React.useState(false);
 
@@ -268,6 +285,14 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
           <Typography variant="caption" color="text.secondary">
             対象期間: {summary.period.from} 〜 {summary.period.to}（{recordCount}件の日次記録から集計）
           </Typography>
+
+          {/* 判断完了率カード（judgments がある場合のみ） */}
+          {decisions && decisions.length > 0 && summary.ispRecommendations && (
+            <IspDecisionSummaryCard
+              recommendations={summary.ispRecommendations}
+              decisions={decisions}
+            />
+          )}
 
           {/* 1. 記録状況 */}
           <Box>
@@ -367,6 +392,32 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
             <>
               <GoalProgressCard
                 goalProgress={summary.goalProgress}
+                goalNames={goalNames}
+              />
+              <Divider />
+            </>
+          )}
+
+          {/* 3.9. ISP 見直し提案 */}
+          {summary.ispRecommendations && summary.ispRecommendations.recommendations.length > 0 && (
+            <>
+              <IspRecommendationCard
+                ispRecommendations={summary.ispRecommendations}
+                goalNames={goalNames}
+                decisionStatuses={decisionStatuses}
+                decisionNotes={decisionNotes}
+                onDecision={onDecision}
+              />
+              <Divider />
+            </>
+          )}
+
+          {/* 4. 判断履歴 */}
+          {decisions && decisions.length > 0 && (
+            <>
+              <IspDecisionHistorySection
+                decisions={decisions}
+                recommendations={summary.ispRecommendations}
                 goalNames={goalNames}
               />
               <Divider />
