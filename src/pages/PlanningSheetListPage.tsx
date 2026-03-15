@@ -14,6 +14,8 @@ import {
   type PlanningSheetStatus,
 } from '@/domain/isp/schema';
 import type { PlanningSheetRepository } from '@/domain/isp/port';
+import { UserSelectionGrid } from '@/features/users/components/UserSelectionGrid';
+import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
 import Alert from '@mui/material/Alert';
@@ -86,18 +88,31 @@ export default function PlanningSheetListPage() {
   const userId = searchParams.get('userId');
   const repo = usePlanningSheetRepositories();
   const { sheets, isLoading, error } = usePlanningSheetList(userId, repo);
+  const { data: allUsers } = useUsersDemo();
 
+  // ---------- 利用者未選択 → グリッド表示 ----------
   if (!userId) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="warning">利用者IDが指定されていません（?userId=xxx）</Alert>
-        <Button
-          startIcon={<ArrowBackRoundedIcon />}
-          onClick={() => navigate('/support-plan-guide')}
-          sx={{ mt: 2 }}
-        >
-          ISP 画面へ
-        </Button>
+      <Box sx={{ p: { xs: 2, md: 3 }, pb: 4 }}>
+        <Stack spacing={3}>
+          <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <DescriptionRoundedIcon color="primary" />
+              <Typography variant="h5" fontWeight={700}>支援計画シート一覧</Typography>
+            </Stack>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              利用者を選択して、支援計画シートを表示します。
+            </Typography>
+          </Paper>
+          <Paper elevation={1}>
+            <UserSelectionGrid
+              users={allUsers}
+              onSelect={(code) => navigate(`/planning-sheet-list?userId=${code}`)}
+              title="対象利用者を選択してください"
+              subtitle="支援計画シートの一覧を表示する利用者を選択します。"
+            />
+          </Paper>
+        </Stack>
       </Box>
     );
   }
