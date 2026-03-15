@@ -104,7 +104,7 @@ export default function HandoffTimelinePage() {
       {/* ページヘッダー */}
       <Box sx={{ mb: 3 }}>
         {/* /today からの遷移時: 戻り導線 */}
-        {dateNav.fromToday && (
+        {dateNav.entryMode === 'from-today' && (
           <Chip
             icon={<ArrowBackIcon />}
             label="今日の業務へ戻る"
@@ -277,7 +277,7 @@ export default function HandoffTimelinePage() {
         <HandoffDayView
           dateLabel={dateNav.dateLabel}
           dayScope={dateNav.dayScope}
-          fromToday={dateNav.fromToday}
+          entryMode={dateNav.entryMode}
           goToDate={dateNav.goToDate}
           goToToday={dateNav.goToToday}
         />

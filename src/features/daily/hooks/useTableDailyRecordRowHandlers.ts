@@ -4,6 +4,10 @@
  * 行データの変更・問題行動チェック・クリアといった
  * userRows に対する変更操作ロジックを分離し、
  * useTableDailyRecordForm のオーケストレータ役割を明確にする。
+ *
+ * ビジネスルール（行初期化・同期・handoff 注入）は
+ * domain/rowInitialization.ts に委譲し、
+ * この hook は「effect → state 接続」のみを担う。
  */
 
 import type { User } from '@/types';
@@ -11,6 +15,11 @@ import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { getLastActivitiesForUser } from './useLastActivities';
 import type { TableDailyRecordData, UserRowData } from './useTableDailyRecordForm';
+import {
+  applyHandoffNotesToRows,
+  hasRowContent,
+  syncRowsWithSelectedUsers,
+} from '../domain/rowInitialization';
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -25,6 +34,8 @@ export type UseTableDailyRecordRowHandlersParams = {
   showUnsentOnly: boolean;
   /** 現在のフォームデータ（派生値の計算に使用） */
   formData: TableDailyRecordData;
+  /** 申し送りから自動生成された特記事項（userCode → テキスト） */
+  handoffNotesByUser?: Map<string, string>;
 };
 
 export type UseTableDailyRecordRowHandlersReturn = {
@@ -42,40 +53,6 @@ export type UseTableDailyRecordRowHandlersReturn = {
   unsentRowCount: number;
 };
 
-// ─── Helpers ────────────────────────────────────────────
-
-const hasRowContent = (row: UserRowData): boolean => {
-  if (row.amActivity.trim() || row.pmActivity.trim() || row.lunchAmount.trim() || row.specialNotes.trim()) {
-    return true;
-  }
-
-  if (row.behaviorTags && row.behaviorTags.length > 0) {
-    return true;
-  }
-
-  return Object.values(row.problemBehavior).some(Boolean);
-};
-
-const createEmptyRow = (userId: string, userName: string): UserRowData => {
-  const last = getLastActivitiesForUser(userId);
-  return {
-    userId,
-    userName,
-    amActivity: last?.amActivity ?? '',
-    pmActivity: last?.pmActivity ?? '',
-    lunchAmount: '',
-    problemBehavior: {
-      selfHarm: false,
-      otherInjury: false,
-      loudVoice: false,
-      pica: false,
-      other: false,
-    },
-    specialNotes: '',
-    behaviorTags: [],
-  };
-};
-
 // ─── Hook ───────────────────────────────────────────────
 
 /**
@@ -88,6 +65,9 @@ const createEmptyRow = (userId: string, userName: string): UserRowData => {
  * - 行のクリア（handleClearRow）
  * - 表示行リスト（未送信フィルタ適用済み）の算出
  * - 未送信行数の算出
+ *
+ * ビジネスルール（初期化・同期・handoff 注入）は
+ * domain/rowInitialization.ts の pure function に委譲。
  */
 export function useTableDailyRecordRowHandlers({
   setFormData,
@@ -95,39 +75,40 @@ export function useTableDailyRecordRowHandlers({
   selectedUserIds,
   showUnsentOnly,
   formData,
+  handoffNotesByUser,
 }: UseTableDailyRecordRowHandlersParams): UseTableDailyRecordRowHandlersReturn {
   // ── 行の同期: selectedUsers / selectedUserIds が変わったら userRows を更新 ──
   useEffect(() => {
     setFormData((prev) => {
-      const existingMap = new Map(prev.userRows.map((row) => [row.userId, row]));
-      const rowsFromResolvedUsers: UserRowData[] = selectedUsers.map((user) => {
-        const userId = user.userId || '';
-        const existing = existingMap.get(userId);
-        if (existing) {
-          return existing;
-        }
-        return createEmptyRow(userId, user.name || '');
-      });
-
-      const resolvedUserIds = new Set(rowsFromResolvedUsers.map((row) => row.userId));
-      const unresolvedButSelectedRows: UserRowData[] = selectedUserIds
-        .filter((userId) => !resolvedUserIds.has(userId))
-        .map((userId) => {
-          const existing = existingMap.get(userId);
-          if (existing) {
-            return existing;
-          }
-          return createEmptyRow(userId, userId);
-        });
-
-      const nextRows: UserRowData[] = [...rowsFromResolvedUsers, ...unresolvedButSelectedRows];
+      const nextRows = syncRowsWithSelectedUsers(
+        prev.userRows,
+        selectedUsers,
+        selectedUserIds,
+        handoffNotesByUser,
+        { getLastActivities: getLastActivitiesForUser },
+      );
 
       return {
         ...prev,
         userRows: nextRows,
       };
     });
-  }, [selectedUsers, selectedUserIds, setFormData]);
+  }, [selectedUsers, selectedUserIds, setFormData, handoffNotesByUser]);
+
+  // ── 申し送り特記の後追い反映 ───────────────────────
+  // 行が先に作成されてから handoffNotesByUser が到着した場合、
+  // まだ空の specialNotes にのみ申し送りテキストを注入する。
+  useEffect(() => {
+    if (!handoffNotesByUser || handoffNotesByUser.size === 0) return;
+
+    setFormData((prev) => {
+      const { rows: nextRows, changed } = applyHandoffNotesToRows(
+        prev.userRows,
+        handoffNotesByUser,
+      );
+      return changed ? { ...prev, userRows: nextRows } : prev;
+    });
+  }, [handoffNotesByUser, setFormData]);
 
   // ── 派生値 ─────────────────────────────────────────
 
