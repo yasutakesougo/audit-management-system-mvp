@@ -3,7 +3,7 @@
 ### Support Operations OS — 支援業務をPDCAサイクルとしてコード化した基盤システム
 
 <p align="center">
-  <img src="docs/images/architecture-overview.png" alt="Support Operations OS Architecture" width="720" />
+  <img src="docs/images/support-operations-os-final.png" alt="Support Operations OS — Final Architecture" width="800" />
 </p>
 
 > **This system is not just a support record app.**
@@ -60,6 +60,41 @@ Open **http://localhost:5173** → デモモードで全機能を試せます。
 | **🛡️ Regulatory Dashboard** | 制度遵守チェック + 根拠サマリーの横断表示 |
 | **🔒 Safety Management** | 適正化委員会・指針版管理・研修記録・身体拘束記録の統合管理 |
 
+---
+
+#### 🏗️ Architecture Overview — 支援 PDCA エンジン
+
+日次記録から ISP 計画書更新までを **1 本のパイプライン** として設計:
+
+```mermaid
+graph LR
+    A["📝 日次記録"] --> B["📊 分析エンジン"]
+    B --> C["💡 ISP 見直し提案"]
+    C --> D["🧑‍⚕️ 人の判断"]
+    D --> E["📋 ドラフト生成"]
+    E --> F["💾 SharePoint 保存"]
+    F --> G["✏️ ISP 計画書反映"]
+    G --> H["📂 履歴・再反映"]
+
+    style A fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    style B fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style C fill:#fff3e0,stroke:#ef6c00,color:#e65100
+    style D fill:#fce4ec,stroke:#c62828,color:#b71c1c
+    style E fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
+    style F fill:#e0f2f1,stroke:#00695c,color:#004d40
+    style G fill:#fff9c4,stroke:#f57f17,color:#f57f17
+    style H fill:#efebe9,stroke:#4e342e,color:#3e2723
+```
+
+| 設計原則 | 内容 |
+|---|---|
+| **DDD (ドメイン駆動設計)** | Domain 層は純粋関数のみ。副作用ゼロでテスト容易 |
+| **Snapshot 設計** | 判断時点のデータを凍結保存。監査で「あの時どうだったか」に答えられる |
+| **追記型イミュータブル** | 判断・ドラフトは上書きしない。完全な履歴を追跡可能 |
+| **段階的自動化** | AI が提案し、人が判断する。裁量は常に人にある |
+
+> 📖 詳細: **[1ページ概要](docs/architecture/support-pdca-engine-overview.md)** ｜ [完全アーキテクチャ図](docs/architecture/system-architecture-complete.md) ｜ [業務モデル・運用設計](docs/operations/operating-model.md)
+
 <details>
 <summary>📐 プレゼン用アーキテクチャ図（クリックで展開）</summary>
 
@@ -69,7 +104,7 @@ Open **http://localhost:5173** → デモモードで全機能を試せます。
 
 </details>
 
-> 📌 クイックリンク: [プロビジョニング手順 / WhatIf レビュー](docs/provisioning.md#whatif-ドライラン-と-job-summary) ｜ [SharePoint スキーマ定義](provision/schema.xml) ｜ [プロジェクトボード自動連携](docs/project-auto-integration.md) ｜ **[UI Baseline (Phase 1)](docs/UI_BASELINE.md)** ｜ [UI Architecture](docs/ui-architecture.md) ｜ [Monitoring Hub Runbook](docs/ops/monitoring-hub-v1-runbook.md) ｜ [TodayOps Runbook](docs/runbook/today-ops-rollout.md) ｜ [Feature Catalog](docs/feature-catalog.md) ｜ [Env Reference](docs/env-reference.md) ｜ **[System Architecture](docs/architecture/system-architecture-complete.md)**
+> 📌 クイックリンク: [プロビジョニング手順 / WhatIf レビュー](docs/provisioning.md#whatif-ドライラン-と-job-summary) ｜ [SharePoint スキーマ定義](provision/schema.xml) ｜ [プロジェクトボード自動連携](docs/project-auto-integration.md) ｜ **[UI Baseline (Phase 1)](docs/UI_BASELINE.md)** ｜ [UI Architecture](docs/ui-architecture.md) ｜ [Monitoring Hub Runbook](docs/ops/monitoring-hub-v1-runbook.md) ｜ [TodayOps Runbook](docs/runbook/today-ops-rollout.md) ｜ [Feature Catalog](docs/feature-catalog.md) ｜ [Env Reference](docs/env-reference.md) ｜ **[Model (概念文書)](docs/architecture/model.md)** ｜ **[System Architecture](docs/architecture/system-architecture-complete.md)** ｜ **[PDCA Engine Overview](docs/architecture/support-pdca-engine-overview.md)** ｜ [Architecture Guide](docs/architecture/architecture-explained.md) ｜ [Roadmap](docs/architecture/roadmap.md) ｜ [Operating Model](docs/operations/operating-model.md)
 
 <!-- Badges -->
 
