@@ -8,7 +8,7 @@
  *  - 各戦略セクションの根拠ABC/PDCA紐づけ
  */
 import type { PlanningDesign, ProcedureStep } from '@/domain/isp/schema';
-import type { EvidenceLinkMap, StrategyEvidenceKey, EvidenceLink } from '@/domain/isp/evidenceLink';
+import type { EvidenceLinkMap, StrategyEvidenceKey, EvidenceLink, EvidenceLinkType } from '@/domain/isp/evidenceLink';
 import type { AbcRecord } from '@/domain/abc/abcRecord';
 import type { IcebergPdcaItem } from '@/features/ibd/analysis/pdca/types';
 import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded';
@@ -39,6 +39,8 @@ interface Props {
   evidenceLinks?: EvidenceLinkMap;
   /** 根拠リンク変更時 */
   onEvidenceLinksChange?: (updated: EvidenceLinkMap) => void;
+  /** 根拠チップクリック時のコールバック（遷移導線用） */
+  onEvidenceClick?: (type: EvidenceLinkType, referenceId: string) => void;
 }
 
 // ── ChipInput（再利用） ──
@@ -88,6 +90,7 @@ export const EditablePlanningDesignSection: React.FC<Props> = ({
   pdcaItems = [],
   evidenceLinks,
   onEvidenceLinksChange,
+  onEvidenceClick,
 }) => {
   const hasEvidence = abcRecords.length > 0 || pdcaItems.length > 0;
 
@@ -142,6 +145,7 @@ export const EditablePlanningDesignSection: React.FC<Props> = ({
           onChange={(links) => handleEvidenceChange('antecedentStrategies', links)}
           abcRecords={abcRecords}
           pdcaItems={pdcaItems}
+          onEvidenceClick={onEvidenceClick}
         />
       )}
 
@@ -158,6 +162,7 @@ export const EditablePlanningDesignSection: React.FC<Props> = ({
           onChange={(links) => handleEvidenceChange('teachingStrategies', links)}
           abcRecords={abcRecords}
           pdcaItems={pdcaItems}
+          onEvidenceClick={onEvidenceClick}
         />
       )}
 
@@ -174,6 +179,7 @@ export const EditablePlanningDesignSection: React.FC<Props> = ({
           onChange={(links) => handleEvidenceChange('consequenceStrategies', links)}
           abcRecords={abcRecords}
           pdcaItems={pdcaItems}
+          onEvidenceClick={onEvidenceClick}
         />
       )}
 

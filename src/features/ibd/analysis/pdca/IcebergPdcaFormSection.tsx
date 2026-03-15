@@ -66,6 +66,10 @@ export interface IcebergPdcaFormSectionProps {
   onCloseSnapshotWarning: () => void;
   /** ACT フェーズのアイテムから支援計画モニタリングへの導線 */
   onNavigateToMonitoring?: (userId: string) => void;
+  /** ディープリンクでハイライトするPDCA ID */
+  highlightPdcaId?: string;
+  /** 遷移元のソース（例: 'support-planning'） */
+  source?: string;
 }
 
 // ============================================================================
@@ -91,7 +95,25 @@ export function IcebergPdcaFormSection({
   snapshotWarning,
   onCloseSnapshotWarning,
   onNavigateToMonitoring,
+  highlightPdcaId,
+  source,
 }: IcebergPdcaFormSectionProps) {
+  // ── Deep link highlight ──
+  const [showHighlight, setShowHighlight] = React.useState(!!highlightPdcaId);
+  const highlightRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (highlightPdcaId && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightPdcaId, items]);
+
+  React.useEffect(() => {
+    if (!highlightPdcaId) return;
+    setShowHighlight(true);
+    const timer = setTimeout(() => setShowHighlight(false), 4000);
+    return () => clearTimeout(timer);
+  }, [highlightPdcaId]);
   return (
     <Box>
       {canWrite && selectedUserId && (
@@ -157,8 +179,37 @@ export function IcebergPdcaFormSection({
       )}
 
       <Stack spacing={1.5}>
-        {items.map((item) => (
-          <Paper key={item.id} sx={{ p: 2 }} variant="outlined">
+        {items.map((item) => {
+          const isHighlighted = showHighlight && item.id === highlightPdcaId;
+          return (
+          <Paper
+            key={item.id}
+            ref={item.id === highlightPdcaId ? highlightRef : undefined}
+            sx={{
+              p: 2,
+              ...(isHighlighted && {
+                borderColor: 'primary.main',
+                borderWidth: 2,
+                bgcolor: 'primary.50',
+                animation: 'highlightPulse 2s ease-in-out',
+                '@keyframes highlightPulse': {
+                  '0%': { boxShadow: '0 0 0 0 rgba(25,118,210,0.4)' },
+                  '50%': { boxShadow: '0 0 0 6px rgba(25,118,210,0.0)' },
+                  '100%': { boxShadow: '0 0 0 0 rgba(25,118,210,0.0)' },
+                },
+              }),
+            }}
+            variant="outlined"
+          >
+            {isHighlighted && source === 'support-planning' && (
+              <Alert
+                severity="info"
+                variant="outlined"
+                sx={{ mb: 1.5, py: 0 }}
+              >
+                📍 支援計画シートから参照されたPDCA項目を表示中
+              </Alert>
+            )}
             <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
               <Box>
                 <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
@@ -212,7 +263,8 @@ export function IcebergPdcaFormSection({
               )}
             </Stack>
           </Paper>
-        ))}
+          );
+        })}
         {items.length === 0 && (
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             PDCA項目はまだありません。
