@@ -43,6 +43,10 @@ export async function tryGetListMetadata(
   const path = `/lists/getbytitle('${encoded}')?$select=Id,Title`;
   try {
     const res = await spFetch(path);
+    // 404 or other non-ok → list does not exist
+    if (!res.ok) {
+      return null;
+    }
     const json = (await res.json().catch(() => ({}))) as SharePointListMetadata;
     const nested = json.d ?? {};
     const rawId =
@@ -201,14 +205,27 @@ export async function addFieldToList(
   const schema = buildFieldSchema(field);
   const body = {
     parameters: {
+      __metadata: { type: 'SP.XmlSchemaFieldCreationInformation' },
       SchemaXml: schema,
-      AddToDefaultView: field.addToDefaultView ?? false,
+      Options: field.addToDefaultView ? 8 : 0,
     },
   };
-  await spFetch(`/lists/getbytitle('${encoded}')/fields/createfieldasxml`, {
+  const res = await spFetch(`/lists/getbytitle('${encoded}')/fields/createfieldasxml`, {
     method: 'POST',
+    headers: {
+      'Content-Type': 'application/json;odata=verbose',
+      Accept: 'application/json;odata=verbose',
+    },
     body: JSON.stringify(body),
   });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    console.warn(
+      `[addFieldToList] Failed to add "${field.internalName}" to "${listTitle}" (${res.status}): ${errText.slice(0, 300)}`,
+    );
+    // Do not throw — continue adding remaining fields
+    return;
+  }
 }
 
 // ── Ensure list ─────────────────────────────────────────────────────────────
@@ -232,7 +249,18 @@ export async function ensureListExists(
       BaseTemplate: baseTemplate,
       Title: listTitle,
     };
-    const res = await spFetch('/lists', { method: 'POST', body: JSON.stringify(createBody) });
+    const res = await spFetch('/lists', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json;odata=verbose',
+        Accept: 'application/json;odata=verbose',
+      },
+      body: JSON.stringify(createBody),
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      throw new Error(`Failed to create list "${listTitle}" (${res.status}): ${errText.slice(0, 300)}`);
+    }
     const json = (await res.json().catch(() => ({}))) as SharePointListMetadata;
     const nested = json.d ?? {};
     const rawId =
