@@ -35,9 +35,13 @@ import type {
   BehaviorTagSummary,
   DailyMonitoringSummary,
 } from '../domain/monitoringDailyAnalytics';
+import { buildDecisionSummary } from '../domain/ispRecommendationDecisionUtils';
+import { buildIspPlanDraft } from '../domain/ispPlanDraftUtils';
+import type { BuildIspPlanDraftInput } from '../domain/ispPlanDraftTypes';
 import GoalProgressCard from './GoalProgressCard';
 import IspDecisionHistorySection from './IspDecisionHistorySection';
 import IspDecisionSummaryCard from './IspDecisionSummaryCard';
+import IspPlanDraftPreview from './IspPlanDraftPreview';
 import IspRecommendationCard from './IspRecommendationCard';
 import type { DecisionInput } from './IspRecommendationCard';
 
@@ -424,7 +428,18 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
             </>
           )}
 
-          {/* 4. 昼食傾向 */}
+          {/* 4.5. ISP 計画書ドラフトプレビュー (Phase 5-B) */}
+          {summary.goalProgress && summary.goalProgress.length > 0 && (
+            <IspPlanDraftPreviewSection
+              summary={summary}
+              insightLines={insightLines}
+              decisions={decisions ?? []}
+              goalNames={goalNames}
+              onAppendInsight={handleAppend}
+            />
+          )}
+
+          {/* 5. 昼食傾向 */}
           <Box>
             <SectionTitle>
               <Stack direction="row" spacing={0.5} alignItems="center" component="span">
@@ -505,6 +520,55 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
         </Stack>
       </Paper>
     </Box>
+  );
+};
+
+// ─── Phase 5-B: ドラフトプレビューラッパー ─────────────────
+
+const IspPlanDraftPreviewSection: React.FC<{
+  summary: DailyMonitoringSummary;
+  insightLines: string[];
+  decisions: IspRecommendationDecision[];
+  goalNames?: Record<string, string>;
+  onAppendInsight: (text: string) => void;
+}> = ({ summary, insightLines, decisions, goalNames, onAppendInsight }) => {
+  const draft = React.useMemo(() => {
+    const recs = summary.ispRecommendations ?? {
+      recommendations: [],
+      overallLevel: 'pending' as const,
+      actionableCount: 0,
+      totalGoalCount: summary.goalProgress?.length ?? 0,
+      summaryText: '',
+    };
+    const decisionSummary = buildDecisionSummary(recs, decisions);
+
+    const input: BuildIspPlanDraftInput = {
+      periodSummary: {
+        from: summary.period.from,
+        to: summary.period.to,
+        recordedDays: summary.period.recordedDays,
+        totalDays: summary.period.totalDays,
+        recordRate: summary.period.recordRate,
+      },
+      monitoringFindings: insightLines.length > 0 ? insightLines : undefined,
+      goalProgress: summary.goalProgress,
+      ispRecommendations: summary.ispRecommendations ?? undefined,
+      decisions,
+      decisionSummary,
+      goalNames,
+    };
+
+    return buildIspPlanDraft(input);
+  }, [summary, insightLines, decisions, goalNames]);
+
+  return (
+    <>
+      <IspPlanDraftPreview
+        draft={draft}
+        onAppendToEvaluation={onAppendInsight}
+      />
+      <Divider />
+    </>
   );
 };
 
