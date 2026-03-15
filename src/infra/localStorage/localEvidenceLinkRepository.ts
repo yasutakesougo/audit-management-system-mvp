@@ -58,6 +58,13 @@ export const localEvidenceLinkRepository = {
   },
 
   /**
+   * 全シートの EvidenceLinkMap を一括取得
+   */
+  getAll(): Record<string, EvidenceLinkMap> {
+    return readAll();
+  },
+
+  /**
    * 全シートの保存済み根拠件数サマリーを取得
    */
   getSummary(): Record<string, { abc: number; pdca: number }> {
