@@ -34,9 +34,13 @@ import { buildIcebergEvidence } from '@/features/ibd/analysis/pdca/icebergEviden
 import { useIcebergPdcaList } from '@/features/ibd/analysis/pdca/queries';
 import { buildMonitoringEvidence } from '@/features/ibd/plans/support-plan/monitoringEvidenceAdapter';
 import MonitoringDailyDashboard from '@/features/monitoring/components/MonitoringDailyDashboard';
+import type { DraftBatch } from '@/features/monitoring/components/DraftHistoryPanel';
 import { useMonitoringDailyAnalytics } from '@/features/monitoring/hooks/useMonitoringDailyAnalytics';
 import { useIspRecommendationDecisions } from '@/features/monitoring/hooks/useIspRecommendationDecisions';
+import { useSupportPlanningSheet } from '@/features/monitoring/hooks/useSupportPlanningSheet';
 import type { GoalLike } from '@/features/monitoring/domain/goalProgressTypes';
+import type { SaveSupportPlanningSheetInput } from '@/features/monitoring/domain/supportPlanningSheetTypes';
+import type { SupportPlanStringFieldKey } from '../../types';
 import type { MonitoringEvidenceSectionProps, ToastState } from '../../types';
 import { findSection, minusDaysYmd, todayYmd } from '../../utils/helpers';
 import FieldCard from './FieldCard';
@@ -242,6 +246,60 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({ userId, setToast, ...sect
     account?.username ?? 'unknown',
   );
 
+  // ── Phase 5-C: ISP ドラフト保存 ─────────────────────────
+  const {
+    records: savedRecords,
+    saveDraft,
+    isSaving: isSavingDraft,
+    hasSaved: hasSavedDraft,
+    error: draftError,
+  } = useSupportPlanningSheet(userIdStr);
+
+  const handleSaveDraft = React.useCallback(async () => {
+    if (!decisions || decisions.length === 0) {
+      setSnackMsg('保存する判断レコードがありません');
+      setSnackSeverity('error');
+      setSnackOpen(true);
+      return;
+    }
+
+    const inputs: SaveSupportPlanningSheetInput[] = decisions.map(d => ({
+      userId: userIdStr,
+      goalId: d.goalId,
+      goalLabel: goalNames[d.goalId] ?? d.goalId,
+      decisionStatus: d.status,
+      decisionNote: d.note,
+      decisionBy: d.decidedBy,
+      decisionAt: d.decidedAt,
+      recommendationLevel: d.snapshot?.level ?? 'pending',
+      snapshot: d.snapshot ?? {
+        goalId: d.goalId,
+        level: 'pending',
+        reason: '',
+        suggestion: '',
+        capturedAt: d.decidedAt,
+      },
+    }));
+
+    let successCount = 0;
+    for (const input of inputs) {
+      const result = await saveDraft(input);
+      if (result) successCount++;
+    }
+
+    if (successCount === inputs.length) {
+      setSnackMsg(`${successCount}件のISP下書きを保存しました`);
+      setSnackSeverity('success');
+    } else if (draftError) {
+      setSnackMsg('ISP下書きの保存に失敗しました');
+      setSnackSeverity('error');
+    } else {
+      setSnackMsg(`${successCount}/${inputs.length}件を保存しました`);
+      setSnackSeverity('success');
+    }
+    setSnackOpen(true);
+  }, [decisions, userIdStr, goalNames, saveDraft, draftError]);
+
   // ── saving / error フィードバック ──────────────────────
   const [snackOpen, setSnackOpen] = React.useState(false);
   const [snackMsg, setSnackMsg] = React.useState('');
@@ -277,6 +335,58 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({ userId, setToast, ...sect
     [sectionProps, setToast],
   );
 
+  /** Phase 5-D: ドラフトセクションを ISP エディタのフィールドへ転記 */
+  const handleApplyToEditor = React.useCallback(
+    (fieldKey: SupportPlanStringFieldKey, text: string) => {
+      if (!sectionProps.isAdmin) return;
+      const currentVal = sectionProps.form[fieldKey] || '';
+      // 既に同じ内容がある場合は上書き確認代わりに置換する
+      const newVal = currentVal
+        ? `${currentVal}\n\n--- ドラフト反映 ---\n${text}`
+        : text;
+      sectionProps.onFieldChange(fieldKey, newVal);
+      setToast({
+        open: true,
+        message: `「${fieldKey}」フィールドへ反映しました`,
+        severity: 'success',
+      });
+    },
+    [sectionProps, setToast],
+  );
+
+  /** Phase 5-E: 過去バッチの判断内容を ISP エディタへ再反映 */
+  const handleReapplyBatch = React.useCallback(
+    (batch: DraftBatch) => {
+      if (!sectionProps.isAdmin) return;
+
+      // バッチ内の全レコードをまとめて conferenceNotes フィールドへ反映
+      const lines: string[] = [];
+      for (const r of batch.records) {
+        const statusLabel =
+          r.decisionStatus === 'accepted' ? '採用' :
+          r.decisionStatus === 'dismissed' ? '見送り' :
+          r.decisionStatus === 'deferred' ? '保留' : '未判断';
+        lines.push(`【${r.goalLabel}】 ${statusLabel}`);
+        if (r.decisionNote) lines.push(`  判断メモ: ${r.decisionNote}`);
+        if (r.snapshot.reason) lines.push(`  理由: ${r.snapshot.reason}`);
+      }
+      const text = lines.join('\n');
+
+      const currentVal = sectionProps.form.conferenceNotes || '';
+      const newVal = currentVal
+        ? `${currentVal}\n\n--- 過去ドラフト反映 ---\n${text}`
+        : text;
+      sectionProps.onFieldChange('conferenceNotes', newVal);
+
+      setToast({
+        open: true,
+        message: `${batch.records.length}件の判断レコードを「会議・同意の記録」へ反映しました`,
+        severity: 'success',
+      });
+    },
+    [sectionProps, setToast],
+  );
+
   if (!section) return null;
 
   return (
@@ -306,6 +416,12 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({ userId, setToast, ...sect
               '所見ドラフトを引用しました。内容を調整してください。',
             )
           }
+          onSaveDraft={handleSaveDraft}
+          isSavingDraft={isSavingDraft}
+          hasSavedDraft={hasSavedDraft}
+          onApplyToEditor={handleApplyToEditor}
+          savedRecords={savedRecords}
+          onReapplyBatch={handleReapplyBatch}
         />
       )}
 

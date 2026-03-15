@@ -35,9 +35,13 @@ import type {
   BehaviorTagSummary,
   DailyMonitoringSummary,
 } from '../domain/monitoringDailyAnalytics';
+import type { SupportPlanningSheetRecord } from '../domain/supportPlanningSheetTypes';
 import { buildDecisionSummary } from '../domain/ispRecommendationDecisionUtils';
 import { buildIspPlanDraft } from '../domain/ispPlanDraftUtils';
 import type { BuildIspPlanDraftInput } from '../domain/ispPlanDraftTypes';
+import type { SupportPlanStringFieldKey } from '@/features/support-plan-guide/types';
+import DraftHistoryPanel from './DraftHistoryPanel';
+import type { DraftBatch } from './DraftHistoryPanel';
 import GoalProgressCard from './GoalProgressCard';
 import IspDecisionHistorySection from './IspDecisionHistorySection';
 import IspDecisionSummaryCard from './IspDecisionSummaryCard';
@@ -220,6 +224,18 @@ export interface MonitoringDailyDashboardProps {
   onDecision?: (input: DecisionInput) => void;
   /** Phase 4-D: 判断レコード配列（履歴表示用） */
   decisions?: IspRecommendationDecision[];
+  /** Phase 5-C: ISP ドラフト保存コールバック */
+  onSaveDraft?: () => void;
+  /** Phase 5-C: ドラフト保存中フラグ */
+  isSavingDraft?: boolean;
+  /** Phase 5-C: ドラフト保存完了フラグ */
+  hasSavedDraft?: boolean;
+  /** Phase 5-D: ISP 計画書へのデータ転記コールバック */
+  onApplyToEditor?: (fieldKey: SupportPlanStringFieldKey, text: string) => void;
+  /** Phase 5-E: 保存済みドラフトレコード */
+  savedRecords?: SupportPlanningSheetRecord[];
+  /** Phase 5-E: 保存済みバッチを ISP 計画書へ再反映 */
+  onReapplyBatch?: (batch: DraftBatch) => void;
 }
 
 const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
@@ -233,6 +249,12 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
   decisionNotes,
   onDecision,
   decisions,
+  onSaveDraft,
+  isSavingDraft,
+  hasSavedDraft,
+  onApplyToEditor,
+  savedRecords,
+  onReapplyBatch,
 }) => {
   const [justAppended, setJustAppended] = React.useState(false);
 
@@ -436,7 +458,22 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
               decisions={decisions ?? []}
               goalNames={goalNames}
               onAppendInsight={handleAppend}
+              onSaveDraft={onSaveDraft}
+              isSavingDraft={isSavingDraft}
+              hasSavedDraft={hasSavedDraft}
+              onApplyToEditor={onApplyToEditor}
             />
+          )}
+
+          {/* 4.6. 保存済みドラフト履歴 (Phase 5-E) */}
+          {savedRecords && savedRecords.length > 0 && (
+            <>
+              <DraftHistoryPanel
+                records={savedRecords}
+                onReapply={onReapplyBatch}
+              />
+              <Divider />
+            </>
           )}
 
           {/* 5. 昼食傾向 */}
@@ -531,7 +568,11 @@ const IspPlanDraftPreviewSection: React.FC<{
   decisions: IspRecommendationDecision[];
   goalNames?: Record<string, string>;
   onAppendInsight: (text: string) => void;
-}> = ({ summary, insightLines, decisions, goalNames, onAppendInsight }) => {
+  onSaveDraft?: () => void;
+  isSavingDraft?: boolean;
+  hasSavedDraft?: boolean;
+  onApplyToEditor?: (fieldKey: SupportPlanStringFieldKey, text: string) => void;
+}> = ({ summary, insightLines, decisions, goalNames, onAppendInsight, onSaveDraft, isSavingDraft, hasSavedDraft, onApplyToEditor }) => {
   const draft = React.useMemo(() => {
     const recs = summary.ispRecommendations ?? {
       recommendations: [],
@@ -566,6 +607,10 @@ const IspPlanDraftPreviewSection: React.FC<{
       <IspPlanDraftPreview
         draft={draft}
         onAppendToEvaluation={onAppendInsight}
+        onSaveDraft={onSaveDraft}
+        isSavingDraft={isSavingDraft}
+        hasSavedDraft={hasSavedDraft}
+        onApplyToEditor={onApplyToEditor}
       />
       <Divider />
     </>
