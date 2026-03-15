@@ -111,6 +111,7 @@ export const ORPHAN_ALLOWLIST_DETAILS: AllowlistRoute[] = [
   { path: '/admin/debug/smoke-test', category: 'Dev', reason: '開発用スモークテスト画面' },
   { path: '/admin/data-integrity', category: 'Admin', reason: '管理者用データ整合性確認画面' },
   { path: '/admin/regulatory-dashboard', category: 'Admin', reason: '制度適合ダッシュボード（AdminHubからリンク経由）' },
+  { path: '/support-planning-sheet/:planningSheetId', category: 'Detail', reason: '支援計画シート詳細画面（計画書一覧・ISPエディタからリンク経由）' },
   { path: '/planning-sheet-list', category: 'Drilldown', reason: '計画書一覧ページ（ISPエディタ・支援計画ガイドからリンク経由）' },
   { path: '/abc-record', category: 'Drilldown', reason: 'ABC記録ページ（IcebergPDCA・計画シートからリンク経由）' },
 ].map(item => ({ ...item, path: normalizeRouterPath(item.path) }));
