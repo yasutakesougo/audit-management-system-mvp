@@ -33,6 +33,11 @@ import {
   STRATEGY_LABELS,
   type StrategyAdoptionCounts,
 } from '@/domain/isp/countStrategyAdoptions';
+import {
+  getTopReferencedAbcRecords,
+  getTopReferencedPdcaItems,
+  type TopReferencedItem,
+} from '@/domain/isp/getTopReferencedEvidence';
 import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
 import { localEvidenceLinkRepository } from '@/infra/localStorage/localEvidenceLinkRepository';
 
@@ -113,6 +118,8 @@ export const AbcEvidencePanel: React.FC<AbcEvidencePanelProps> = ({ userId }) =>
   const [records, setRecords] = React.useState<AbcRecord[]>([]);
   const [expanded, setExpanded] = React.useState(true);
   const [adoptionCounts, setAdoptionCounts] = React.useState<StrategyAdoptionCounts | null>(null);
+  const [topAbcRecords, setTopAbcRecords] = React.useState<TopReferencedItem[]>([]);
+  const [topPdcaItems, setTopPdcaItems] = React.useState<TopReferencedItem[]>([]);
 
   React.useEffect(() => {
     let disposed = false;
@@ -122,15 +129,19 @@ export const AbcEvidencePanel: React.FC<AbcEvidencePanelProps> = ({ userId }) =>
     return () => { disposed = true; };
   }, [userId]);
 
-  // 戦略別採用件数を取得
+  // 戦略別採用件数 + よく参照される根拠を取得
   React.useEffect(() => {
     if (records.length === 0) {
       setAdoptionCounts(null);
+      setTopAbcRecords([]);
+      setTopPdcaItems([]);
       return;
     }
     const userAbcIds = new Set(records.map(r => r.id));
     const allLinks = localEvidenceLinkRepository.getAll();
     setAdoptionCounts(countStrategyAdoptions(userAbcIds, allLinks));
+    setTopAbcRecords(getTopReferencedAbcRecords(userAbcIds, allLinks, records));
+    setTopPdcaItems(getTopReferencedPdcaItems(allLinks));
   }, [records]);
 
   const summary = React.useMemo(() => buildSummary(records), [records]);
@@ -289,6 +300,56 @@ export const AbcEvidencePanel: React.FC<AbcEvidencePanelProps> = ({ userId }) =>
                       </Stack>
                     );
                   })}
+                </Stack>
+              </Box>
+            )}
+
+            {/* ── Top Referenced ABC ── */}
+            {topAbcRecords.length > 0 && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+                  よく参照されるABC
+                </Typography>
+                <Stack spacing={0.25}>
+                  {topAbcRecords.map(item => (
+                    <Stack key={item.id} direction="row" alignItems="center" spacing={0.5}>
+                      <Typography variant="caption" sx={{ flex: 1 }} noWrap>
+                        {item.label}
+                      </Typography>
+                      <Chip
+                        label={`${item.count}回採用`}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                        sx={{ height: 18, fontSize: '0.6rem' }}
+                      />
+                    </Stack>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+
+            {/* ── Top Referenced PDCA ── */}
+            {topPdcaItems.length > 0 && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+                  よく参照されるPDCA
+                </Typography>
+                <Stack spacing={0.25}>
+                  {topPdcaItems.map(item => (
+                    <Stack key={item.id} direction="row" alignItems="center" spacing={0.5}>
+                      <Typography variant="caption" sx={{ flex: 1 }} noWrap>
+                        {item.label}
+                      </Typography>
+                      <Chip
+                        label={`${item.count}回採用`}
+                        size="small"
+                        color="info"
+                        variant="outlined"
+                        sx={{ height: 18, fontSize: '0.6rem' }}
+                      />
+                    </Stack>
+                  ))}
                 </Stack>
               </Box>
             )}
