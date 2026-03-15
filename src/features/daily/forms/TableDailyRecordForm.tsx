@@ -4,6 +4,7 @@ import {
     Alert,
     Box,
     Button,
+    Chip,
     Collapse,
     Dialog,
     DialogActions,
@@ -80,6 +81,9 @@ export function TableDailyRecordForm({
     saving,
     validationErrors,
     clearValidationErrors,
+    handoffAffectedUserCount,
+    handoffTotalCount,
+    handoffLoading,
   } = state;
 
   const hasValidationErrors = Object.keys(validationErrors).length > 0;
@@ -89,19 +93,32 @@ export function TableDailyRecordForm({
       {/* ── Main content ── */}
       <DialogContent dividers sx={{ py: 1, px: 2, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
         <Stack spacing={1} sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          {/* User picker (accordion) */}
-          <TableDailyRecordUserPicker
-            formDate={formData.date}
-            searchQuery={searchQuery}
-            onSearchQueryChange={setSearchQuery}
-            showTodayOnly={showTodayOnly}
-            onToggleShowToday={() => setShowTodayOnly(!showTodayOnly)}
-            onSelectAll={handleSelectAll}
-            onClearAll={handleClearAll}
-            filteredUsers={filteredUsers}
-            selectedUserIds={selectedUserIds}
-            onUserToggle={handleUserToggle}
-          />
+          {/* User picker (accordion) + Handoff indicator */}
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            <Box sx={{ flex: 1 }}>
+              <TableDailyRecordUserPicker
+                formDate={formData.date}
+                searchQuery={searchQuery}
+                onSearchQueryChange={setSearchQuery}
+                showTodayOnly={showTodayOnly}
+                onToggleShowToday={() => setShowTodayOnly(!showTodayOnly)}
+                onSelectAll={handleSelectAll}
+                onClearAll={handleClearAll}
+                filteredUsers={filteredUsers}
+                selectedUserIds={selectedUserIds}
+                onUserToggle={handleUserToggle}
+              />
+            </Box>
+            {!handoffLoading && handoffTotalCount > 0 && (
+              <Chip
+                size="small"
+                color="info"
+                variant="outlined"
+                label={`申送${handoffTotalCount}件→${handoffAffectedUserCount}名`}
+                sx={{ fontSize: '0.65rem', height: 22, flexShrink: 0 }}
+              />
+            )}
+          </Stack>
 
           {/* Validation errors */}
           <Collapse in={hasValidationErrors}>
@@ -131,18 +148,18 @@ export function TableDailyRecordForm({
             />
           )}
 
-          {/* Behavior Tag Insight — テーブルの上 */}
-          {formData.userRows.length > 0 && (
+          {/* Behavior Tag Insight — 3行以上で行動タグ使用時のみ */}
+          {visibleRows.length >= 3 && visibleRows.some(r => (r.behaviorTags ?? []).length > 0) && (
             <BehaviorTagInsightBar rows={visibleRows} />
           )}
 
-          {/* Cross Insight — 折りたたみ式（3行以上で表示） */}
-          {formData.userRows.length > 0 && (
+          {/* Cross Insight — 行動タグ使用が3行以上時 */}
+          {visibleRows.length >= 3 && visibleRows.some(r => (r.behaviorTags ?? []).length > 0) && (
             <BehaviorTagCrossInsightPanel rows={visibleRows} />
           )}
 
-          {/* Pattern Suggestion — ルールベース示唆（Suggestion あれば展開表示） */}
-          {formData.userRows.length > 0 && (
+          {/* Pattern Suggestion — 行動タグ使用時のみ */}
+          {visibleRows.length > 0 && visibleRows.some(r => (r.behaviorTags ?? []).length > 0) && (
             <SuggestionPanelMemo
               visibleRows={visibleRows}
               date={formData.date}
