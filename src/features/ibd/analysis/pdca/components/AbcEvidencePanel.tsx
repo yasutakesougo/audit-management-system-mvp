@@ -21,6 +21,9 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
+import AccountTreeRoundedIcon from '@mui/icons-material/AccountTreeRounded';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded';
@@ -147,6 +150,9 @@ export const AbcEvidencePanel: React.FC<AbcEvidencePanelProps> = ({ userId }) =>
   const summary = React.useMemo(() => buildSummary(records), [records]);
   const totalAdoptions = adoptionCounts ? getTotalAdoptions(adoptionCounts) : 0;
 
+  // ── ⑤ 空データ・データ不足の判定 ──
+  const hasInsufficientData = summary.total > 0 && summary.total < 3;
+
   if (summary.total === 0) {
     return (
       <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
@@ -167,9 +173,17 @@ export const AbcEvidencePanel: React.FC<AbcEvidencePanelProps> = ({ userId }) =>
             ABC記録を作成
           </Button>
         </Stack>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          この利用者のABC記録がまだありません。記録を作成して分析の根拠データを蓄積しましょう。
-        </Typography>
+        <Stack spacing={0.5} sx={{ mt: 1.5 }}>
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            <InfoOutlinedIcon sx={{ fontSize: 16, color: 'text.disabled' }} />
+            <Typography variant="body2" color="text.secondary">
+              まだ十分な分析データがありません
+            </Typography>
+          </Stack>
+          <Typography variant="caption" color="text.disabled" sx={{ pl: 2.5 }}>
+            ABC記録が増えると傾向が表示されます
+          </Typography>
+        </Stack>
       </Paper>
     );
   }
@@ -239,119 +253,206 @@ export const AbcEvidencePanel: React.FC<AbcEvidencePanelProps> = ({ userId }) =>
               ))}
             </Stack>
 
-            {/* ── Top Settings ── */}
-            {summary.topSettings.length > 0 && (
+            {/* ── ③ Pattern グループ ── */}
+            {(summary.topSettings.length > 0 || summary.topBehaviors.length > 0) && (
               <Box>
-                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>多い場面</Typography>
-                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                  {summary.topSettings.map(s => (
-                    <Chip key={s.name} label={`${s.name} (${s.count})`} size="small" variant="outlined" />
-                  ))}
+                <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 1 }}>
+                  <InsightsRoundedIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                  <Typography variant="subtitle2" color="text.secondary" fontSize="0.75rem">
+                    Pattern
+                  </Typography>
                 </Stack>
-              </Box>
-            )}
 
-            {/* ── Top Behaviors ── */}
-            {summary.topBehaviors.length > 0 && (
-              <Box>
-                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
-                  よく見られる行動
-                </Typography>
-                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                  {summary.topBehaviors.slice(0, 3).map(b => (
-                    <Chip key={b.name} label={`${b.name} (${b.count})`} size="small" variant="outlined" color="secondary" />
-                  ))}
-                </Stack>
-              </Box>
-            )}
-
-            {/* ── Strategy Adoption Counts ── */}
-            {adoptionCounts && totalAdoptions > 0 && (
-              <Box>
-                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
-                  支援計画での採用状況
-                </Typography>
-                <Stack spacing={0.5}>
-                  {STRATEGY_KEYS.map(key => {
-                    const count = adoptionCounts[key];
-                    const maxCount = Math.max(...STRATEGY_KEYS.map(k => adoptionCounts[k]), 1);
-                    const ratio = count / maxCount;
-                    return (
-                      <Stack key={key} direction="row" alignItems="center" spacing={1}>
-                        <Typography variant="caption" sx={{ minWidth: 90 }}>
-                          {STRATEGY_LABELS[key]}
-                        </Typography>
-                        <Box sx={{ flex: 1, height: 6, bgcolor: 'grey.200', borderRadius: 1, overflow: 'hidden' }}>
-                          <Box
-                            sx={{
-                              width: `${ratio * 100}%`,
-                              height: '100%',
-                              bgcolor: key === 'antecedentStrategies' ? 'info.main'
-                                : key === 'teachingStrategies' ? 'success.main'
-                                : 'warning.main',
-                              borderRadius: 1,
-                              transition: 'width 0.3s ease',
-                            }}
+                <Stack spacing={1.5} sx={{ pl: 0.5 }}>
+                  {/* ── Top Settings ── */}
+                  {summary.topSettings.length > 0 && (
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>多い場面</Typography>
+                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                        {/* ① 上位1件を強調 */}
+                        {summary.topSettings.map((s, index) => (
+                          <Chip
+                            key={s.name}
+                            label={`${s.name} (${s.count})`}
+                            size="small"
+                            variant={index === 0 ? 'filled' : 'outlined'}
+                            color={index === 0 ? 'primary' : 'default'}
+                            sx={index === 0 ? { fontWeight: 600 } : undefined}
                           />
-                        </Box>
-                        <Typography variant="caption" fontWeight={700} sx={{ minWidth: 24, textAlign: 'right' }}>
-                          {count}
-                        </Typography>
+                        ))}
                       </Stack>
-                    );
-                  })}
+                    </Box>
+                  )}
+
+                  {/* ── Top Behaviors ── */}
+                  {summary.topBehaviors.length > 0 && (
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+                        よく見られる行動
+                      </Typography>
+                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                        {/* ① 上位1件を強調 */}
+                        {summary.topBehaviors.slice(0, 3).map((b, index) => (
+                          <Chip
+                            key={b.name}
+                            label={`${b.name} (${b.count})`}
+                            size="small"
+                            variant={index === 0 ? 'filled' : 'outlined'}
+                            color={index === 0 ? 'secondary' : 'default'}
+                            sx={index === 0 ? { fontWeight: 600 } : undefined}
+                          />
+                        ))}
+                      </Stack>
+                    </Box>
+                  )}
                 </Stack>
               </Box>
             )}
 
-            {/* ── Top Referenced ABC ── */}
-            {topAbcRecords.length > 0 && (
+            {/* ── ③ Decision グループ ── */}
+            {(totalAdoptions > 0 || topAbcRecords.length > 0 || topPdcaItems.length > 0) && (
               <Box>
-                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
-                  よく参照されるABC
-                </Typography>
-                <Stack spacing={0.25}>
-                  {topAbcRecords.map(item => (
-                    <Stack key={item.id} direction="row" alignItems="center" spacing={0.5}>
-                      <Typography variant="caption" sx={{ flex: 1 }} noWrap>
-                        {item.label}
+                <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 1 }}>
+                  <AccountTreeRoundedIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                  <Typography variant="subtitle2" color="text.secondary" fontSize="0.75rem">
+                    Decision
+                  </Typography>
+                </Stack>
+
+                <Stack spacing={1.5} sx={{ pl: 0.5 }}>
+                  {/* ── Strategy Adoption Counts ── */}
+                  {adoptionCounts && totalAdoptions > 0 && (
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+                        支援計画での採用状況
                       </Typography>
-                      <Chip
-                        label={`${item.count}回採用`}
-                        size="small"
-                        color="primary"
-                        variant="outlined"
-                        sx={{ height: 18, fontSize: '0.6rem' }}
-                      />
-                    </Stack>
-                  ))}
+                      <Stack spacing={0.5}>
+                        {STRATEGY_KEYS.map(key => {
+                          const count = adoptionCounts[key];
+                          const maxCount = Math.max(...STRATEGY_KEYS.map(k => adoptionCounts[k]), 1);
+                          const ratio = count / maxCount;
+                          return (
+                            <Stack key={key} direction="row" alignItems="center" spacing={1}>
+                              <Typography variant="caption" sx={{ minWidth: 90 }}>
+                                {STRATEGY_LABELS[key]}
+                              </Typography>
+                              {/* ④ バー最小幅保証 — 0でなければ最低4%で視認性確保 */}
+                              <Box sx={{ flex: 1, height: 6, bgcolor: 'grey.200', borderRadius: 1, overflow: 'hidden' }}>
+                                <Box
+                                  sx={{
+                                    width: count > 0 ? `${Math.max(ratio * 100, 4)}%` : '0%',
+                                    height: '100%',
+                                    bgcolor: key === 'antecedentStrategies' ? 'info.main'
+                                      : key === 'teachingStrategies' ? 'success.main'
+                                      : 'warning.main',
+                                    borderRadius: 1,
+                                    transition: 'width 0.3s ease',
+                                  }}
+                                />
+                              </Box>
+                              <Typography variant="caption" fontWeight={700} sx={{ minWidth: 24, textAlign: 'right' }}>
+                                {count}
+                              </Typography>
+                            </Stack>
+                          );
+                        })}
+                      </Stack>
+                    </Box>
+                  )}
+
+                  {/* ── Top Referenced ABC ── */}
+                  {topAbcRecords.length > 0 && (
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+                        よく参照されるABC
+                      </Typography>
+                      <Stack spacing={0.25}>
+                        {topAbcRecords.map((item, index) => (
+                          <Stack key={item.id} direction="row" alignItems="center" spacing={0.5}>
+                            {/* ① 上位1件を強調 */}
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                flex: 1,
+                                fontWeight: index === 0 ? 600 : 400,
+                                color: index === 0 ? 'text.primary' : 'text.secondary',
+                              }}
+                              noWrap
+                            >
+                              {item.label}
+                            </Typography>
+                            {/* ② 採用チップ色分け */}
+                            <Chip
+                              label={`${item.count}回採用`}
+                              size="small"
+                              color={item.count > 2 ? 'primary' : 'default'}
+                              variant={item.count > 2 ? 'filled' : 'outlined'}
+                              sx={{ height: 18, fontSize: '0.6rem' }}
+                            />
+                          </Stack>
+                        ))}
+                      </Stack>
+                    </Box>
+                  )}
+
+                  {/* ── Top Referenced PDCA ── */}
+                  {topPdcaItems.length > 0 && (
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+                        よく参照されるPDCA
+                      </Typography>
+                      <Stack spacing={0.25}>
+                        {topPdcaItems.map((item, index) => (
+                          <Stack key={item.id} direction="row" alignItems="center" spacing={0.5}>
+                            {/* ① 上位1件を強調 */}
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                flex: 1,
+                                fontWeight: index === 0 ? 600 : 400,
+                                color: index === 0 ? 'text.primary' : 'text.secondary',
+                              }}
+                              noWrap
+                            >
+                              {item.label}
+                            </Typography>
+                            {/* ② 採用チップ色分け */}
+                            <Chip
+                              label={`${item.count}回採用`}
+                              size="small"
+                              color={item.count > 2 ? 'info' : 'default'}
+                              variant={item.count > 2 ? 'filled' : 'outlined'}
+                              sx={{ height: 18, fontSize: '0.6rem' }}
+                            />
+                          </Stack>
+                        ))}
+                      </Stack>
+                    </Box>
+                  )}
                 </Stack>
               </Box>
             )}
 
-            {/* ── Top Referenced PDCA ── */}
-            {topPdcaItems.length > 0 && (
-              <Box>
-                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
-                  よく参照されるPDCA
-                </Typography>
-                <Stack spacing={0.25}>
-                  {topPdcaItems.map(item => (
-                    <Stack key={item.id} direction="row" alignItems="center" spacing={0.5}>
-                      <Typography variant="caption" sx={{ flex: 1 }} noWrap>
-                        {item.label}
-                      </Typography>
-                      <Chip
-                        label={`${item.count}回採用`}
-                        size="small"
-                        color="info"
-                        variant="outlined"
-                        sx={{ height: 18, fontSize: '0.6rem' }}
-                      />
-                    </Stack>
-                  ))}
+            {/* ── ⑤ データ不足時のガイドメッセージ ── */}
+            {hasInsufficientData && (
+              <Paper
+                variant="outlined"
+                sx={{
+                  px: 2, py: 1.5,
+                  bgcolor: 'action.hover',
+                  borderStyle: 'dashed',
+                }}
+              >
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <InfoOutlinedIcon sx={{ fontSize: 16, color: 'info.main' }} />
+                  <Typography variant="caption" color="text.secondary">
+                    まだ十分な分析データがありません（現在 {summary.total} 件）
+                  </Typography>
                 </Stack>
-              </Box>
+                <Typography variant="caption" color="text.disabled" sx={{ pl: 2.5, display: 'block', mt: 0.25 }}>
+                  ABC記録が増えると傾向がより正確に表示されます
+                </Typography>
+              </Paper>
             )}
 
             {/* ── Recent Records ── */}
