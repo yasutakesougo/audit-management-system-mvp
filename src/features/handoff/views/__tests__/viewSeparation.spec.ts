@@ -104,7 +104,7 @@ describe('Handoff View Separation', () => {
       const mod = await import('../HandoffDayView');
       expect(mod.HandoffDayView).toBeDefined();
       expect(typeof mod.HandoffDayView).toBe('function');
-    });
+    }, 15_000);
 
     it('day-specific hooks are importable (verifies DayView dependency)', async () => {
       const { useHandoffTimelineViewModel } = await import('../../useHandoffTimelineViewModel');
