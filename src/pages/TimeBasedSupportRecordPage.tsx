@@ -343,6 +343,13 @@ const TimeBasedSupportRecordPage: React.FC = () => {
                   ? () => navigate(buildIcebergPdcaUrl(wizard.wizardUserId || targetUserId))
                   : undefined
               }
+              userId={wizard.wizardUserId || targetUserId}
+              lastAssessmentDate={selectedUser?.LastAssessmentDate}
+              onAbcRecord={
+                (wizard.wizardUserId || targetUserId)
+                  ? () => navigate(`/abc-record?userId=${encodeURIComponent(wizard.wizardUserId || targetUserId)}&source=daily-support`)
+                  : undefined
+              }
             />
           )}
 

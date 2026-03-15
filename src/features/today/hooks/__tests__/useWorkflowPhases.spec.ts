@@ -184,6 +184,7 @@ describe('toPlanningSheetSnapshot', () => {
       applicableServiceType: 'daily_life_care',
       applicableAddOnTypes: ['severe_disability_support'],
       authoredByQualification: 'practical_training',
+      reviewedAt: null,
     };
 
     const snapshot = toPlanningSheetSnapshot(item, 3);
@@ -208,6 +209,7 @@ describe('toPlanningSheetSnapshot', () => {
       applicableServiceType: 'other',
       applicableAddOnTypes: ['none'],
       authoredByQualification: 'unknown',
+      reviewedAt: null,
     };
 
     const snapshot = toPlanningSheetSnapshot(item);

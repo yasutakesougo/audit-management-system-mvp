@@ -22,6 +22,11 @@ let signInInFlight: Promise<SignInResult> | null = null;
 let lastSignInAttemptTime = 0;
 const SIGN_IN_COOLDOWN_MS = 30000; // 30 seconds between attempts
 
+// Stable references for skipLogin mode (avoids new function refs each render → infinite loop)
+const NOOP_SIGN_IN = () => Promise.resolve({ success: false } as SignInResult);
+const NOOP_SIGN_OUT = () => Promise.resolve();
+const NOOP_ACQUIRE_TOKEN = () => Promise.resolve(null as string | null);
+
 const authConfig = getAppConfig();
 const debugEnabled = authConfig.VITE_AUDIT_DEBUG === '1' || authConfig.VITE_AUDIT_DEBUG === 'true';
 function debugLog(...args: unknown[]) {
@@ -304,9 +309,9 @@ export const useAuth = () => {
     return {
       isAuthenticated: true,
       account: null,
-      signIn: () => Promise.resolve({ success: false }),
-      signOut: () => Promise.resolve(),
-      acquireToken: () => Promise.resolve(null),
+      signIn: NOOP_SIGN_IN,
+      signOut: NOOP_SIGN_OUT,
+      acquireToken: NOOP_ACQUIRE_TOKEN,
       loading: false,
       shouldSkipLogin: true,
       getListReadyState,

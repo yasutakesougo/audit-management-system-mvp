@@ -5,8 +5,12 @@
  *  - 支援課題の優先順位 / 先行事象戦略 / 教授戦略 / 後続事象戦略
  *  - 支援手順（ステップリスト）
  *  - 見直し周期
+ *  - 各戦略セクションの根拠ABC/PDCA紐づけ
  */
 import type { PlanningDesign, ProcedureStep } from '@/domain/isp/schema';
+import type { EvidenceLinkMap, StrategyEvidenceKey, EvidenceLink } from '@/domain/isp/evidenceLink';
+import type { AbcRecord } from '@/domain/abc/abcRecord';
+import type { IcebergPdcaItem } from '@/features/ibd/analysis/pdca/types';
 import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import Box from '@mui/material/Box';
@@ -22,10 +26,19 @@ import Typography from '@mui/material/Typography';
 import type React from 'react';
 import { useCallback, useState } from 'react';
 import { ImportTemplateDialog } from './ImportTemplateDialog';
+import { EvidenceLinkSelector } from './EvidenceLinkSelector';
 
 interface Props {
   planning: PlanningDesign;
   onChange: (updated: PlanningDesign) => void;
+  /** ABC根拠データ（対象利用者） */
+  abcRecords?: AbcRecord[];
+  /** PDCA根拠データ（対象利用者） */
+  pdcaItems?: IcebergPdcaItem[];
+  /** 根拠リンクマップ */
+  evidenceLinks?: EvidenceLinkMap;
+  /** 根拠リンク変更時 */
+  onEvidenceLinksChange?: (updated: EvidenceLinkMap) => void;
 }
 
 // ── ChipInput（再利用） ──
@@ -68,7 +81,20 @@ const ChipInput: React.FC<{
   );
 };
 
-export const EditablePlanningDesignSection: React.FC<Props> = ({ planning, onChange }) => {
+export const EditablePlanningDesignSection: React.FC<Props> = ({
+  planning,
+  onChange,
+  abcRecords = [],
+  pdcaItems = [],
+  evidenceLinks,
+  onEvidenceLinksChange,
+}) => {
+  const hasEvidence = abcRecords.length > 0 || pdcaItems.length > 0;
+
+  const handleEvidenceChange = useCallback((key: StrategyEvidenceKey, links: EvidenceLink[]) => {
+    if (!evidenceLinks || !onEvidenceLinksChange) return;
+    onEvidenceLinksChange({ ...evidenceLinks, [key]: links });
+  }, [evidenceLinks, onEvidenceLinksChange]);
   const [importOpen, setImportOpen] = useState(false);
 
   // ── Procedure Steps ──
@@ -95,31 +121,61 @@ export const EditablePlanningDesignSection: React.FC<Props> = ({ planning, onCha
     <Stack spacing={3}>
       <Typography variant="subtitle1" fontWeight={600}>支援設計</Typography>
 
-      {/* ── 戦略チップ群 ── */}
+      {/* ── 戦略チップ群 + 根拠紐づけ ── */}
       <ChipInput
         label="支援課題の優先順位"
         items={planning.supportPriorities}
         onChange={(items) => onChange({ ...planning, supportPriorities: items })}
         placeholder="優先課題を Enter で追加"
       />
+
       <ChipInput
-        label="先行事象戦略"
+        label="先行事象戦略（予防的支援）"
         items={planning.antecedentStrategies}
         onChange={(items) => onChange({ ...planning, antecedentStrategies: items })}
         placeholder="例: スケジュール提示、環境構造化"
       />
+      {hasEvidence && evidenceLinks && (
+        <EvidenceLinkSelector
+          sectionLabel="先行事象戦略"
+          links={evidenceLinks.antecedentStrategies}
+          onChange={(links) => handleEvidenceChange('antecedentStrategies', links)}
+          abcRecords={abcRecords}
+          pdcaItems={pdcaItems}
+        />
+      )}
+
       <ChipInput
-        label="教授戦略"
+        label="教授戦略（代替行動）"
         items={planning.teachingStrategies}
         onChange={(items) => onChange({ ...planning, teachingStrategies: items })}
         placeholder="例: モデリング、タスク分析"
       />
+      {hasEvidence && evidenceLinks && (
+        <EvidenceLinkSelector
+          sectionLabel="教授戦略"
+          links={evidenceLinks.teachingStrategies}
+          onChange={(links) => handleEvidenceChange('teachingStrategies', links)}
+          abcRecords={abcRecords}
+          pdcaItems={pdcaItems}
+        />
+      )}
+
       <ChipInput
-        label="後続事象戦略"
+        label="後続事象戦略（危機対応）"
         items={planning.consequenceStrategies}
         onChange={(items) => onChange({ ...planning, consequenceStrategies: items })}
         placeholder="例: 正の強化、代替行動の強化"
       />
+      {hasEvidence && evidenceLinks && (
+        <EvidenceLinkSelector
+          sectionLabel="後続事象戦略"
+          links={evidenceLinks.consequenceStrategies}
+          onChange={(links) => handleEvidenceChange('consequenceStrategies', links)}
+          abcRecords={abcRecords}
+          pdcaItems={pdcaItems}
+        />
+      )}
 
       <Divider />
 
