@@ -7,7 +7,7 @@
  * @see src/pages/SupportPlanningSheetPage.tsx
  */
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
-import type { EvidenceLinkMap } from '@/domain/isp/evidenceLink';
+import type { EvidenceLinkMap, EvidenceLinkType } from '@/domain/isp/evidenceLink';
 import { EvidenceLinksDisplay } from './EvidenceLinkSelector';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
@@ -133,7 +133,11 @@ export const AssessmentSection: React.FC<{ sheet: SupportPlanningSheet }> = ({ s
 // PlanningDesignSection (read-only)
 // ─────────────────────────────────────────────
 
-export const PlanningDesignSection: React.FC<{ sheet: SupportPlanningSheet; evidenceLinks?: EvidenceLinkMap }> = ({ sheet, evidenceLinks }) => {
+export const PlanningDesignSection: React.FC<{
+  sheet: SupportPlanningSheet;
+  evidenceLinks?: EvidenceLinkMap;
+  onEvidenceClick?: (type: EvidenceLinkType, referenceId: string) => void;
+}> = ({ sheet, evidenceLinks, onEvidenceClick }) => {
   const { planning } = sheet;
   return (
     <Stack spacing={2}>
@@ -142,11 +146,11 @@ export const PlanningDesignSection: React.FC<{ sheet: SupportPlanningSheet; evid
         <Stack spacing={1.5}>
           <ChipRow label="支援課題の優先順位" items={planning.supportPriorities} />
           <ChipRow label="先行事象戦略（予防的支援）" items={planning.antecedentStrategies} />
-          {evidenceLinks && <EvidenceLinksDisplay sectionLabel="先行事象戦略" links={evidenceLinks.antecedentStrategies} />}
+          {evidenceLinks && <EvidenceLinksDisplay sectionLabel="先行事象戦略" links={evidenceLinks.antecedentStrategies} onEvidenceClick={onEvidenceClick} />}
           <ChipRow label="教授戦略（代替行動）" items={planning.teachingStrategies} />
-          {evidenceLinks && <EvidenceLinksDisplay sectionLabel="教授戦略" links={evidenceLinks.teachingStrategies} />}
+          {evidenceLinks && <EvidenceLinksDisplay sectionLabel="教授戦略" links={evidenceLinks.teachingStrategies} onEvidenceClick={onEvidenceClick} />}
           <ChipRow label="後続事象戦略（危機対応）" items={planning.consequenceStrategies} />
-          {evidenceLinks && <EvidenceLinksDisplay sectionLabel="後続事象戦略" links={evidenceLinks.consequenceStrategies} />}
+          {evidenceLinks && <EvidenceLinksDisplay sectionLabel="後続事象戦略" links={evidenceLinks.consequenceStrategies} onEvidenceClick={onEvidenceClick} />}
         </Stack>
       </Paper>
       {planning.procedureSteps.length > 0 && (

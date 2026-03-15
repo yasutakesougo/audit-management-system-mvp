@@ -45,6 +45,8 @@ interface EvidenceLinkSelectorProps {
   pdcaItems: IcebergPdcaItem[];
   /** 読み取り専用モード */
   readOnly?: boolean;
+  /** 根拠チップクリック時のコールバック（遷移導線用） */
+  onEvidenceClick?: (type: EvidenceLinkType, referenceId: string) => void;
 }
 
 interface EvidenceOption {
@@ -104,6 +106,7 @@ export const EvidenceLinkSelector: React.FC<EvidenceLinkSelectorProps> = ({
   abcRecords,
   pdcaItems,
   readOnly = false,
+  onEvidenceClick,
 }) => {
   const [expanded, setExpanded] = React.useState(links.length > 0);
   const options = React.useMemo(() => buildOptions(abcRecords, pdcaItems), [abcRecords, pdcaItems]);
@@ -187,15 +190,30 @@ export const EvidenceLinkSelector: React.FC<EvidenceLinkSelectorProps> = ({
           {links.length > 0 && (
             <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
               {links.map(link => (
-                <Tooltip key={link.referenceId} title={`${link.type === 'abc' ? 'ABC記録' : 'PDCA項目'} — 紐づけ: ${new Date(link.linkedAt).toLocaleDateString('ja-JP')}`}>
+                <Tooltip
+                  key={link.referenceId}
+                  title={
+                    onEvidenceClick
+                      ? `クリックして${link.type === 'abc' ? 'ABC記録' : 'PDCA項目'}を開く`
+                      : `${link.type === 'abc' ? 'ABC記録' : 'PDCA項目'} — 紐づけ: ${new Date(link.linkedAt).toLocaleDateString('ja-JP')}`
+                  }
+                >
                   <Chip
                     size="small"
                     label={link.label}
                     color={getChipColor(link.type)}
                     variant="outlined"
                     icon={link.type === 'abc' ? <EditNoteRoundedIcon /> : <BubbleChartRoundedIcon />}
+                    onClick={onEvidenceClick ? () => onEvidenceClick(link.type, link.referenceId) : undefined}
                     onDelete={readOnly ? undefined : () => handleRemove(link.referenceId)}
-                    sx={{ maxWidth: 250 }}
+                    sx={{
+                      maxWidth: 250,
+                      ...(onEvidenceClick && {
+                        cursor: 'pointer',
+                        '&:hover': { borderWidth: 2, fontWeight: 600 },
+                        transition: 'all 0.15s ease-in-out',
+                      }),
+                    }}
                   />
                 </Tooltip>
               ))}
@@ -257,26 +275,51 @@ export const EvidenceLinkSelector: React.FC<EvidenceLinkSelectorProps> = ({
 interface EvidenceLinksDisplayProps {
   sectionLabel: string;
   links: EvidenceLink[];
+  /** 根拠チップクリック時のコールバック（遷移導線用） */
+  onEvidenceClick?: (type: EvidenceLinkType, referenceId: string) => void;
 }
 
-export const EvidenceLinksDisplay: React.FC<EvidenceLinksDisplayProps> = ({ sectionLabel, links }) => {
+export const EvidenceLinksDisplay: React.FC<EvidenceLinksDisplayProps> = ({ sectionLabel, links, onEvidenceClick }) => {
   if (links.length === 0) return null;
 
-  const abcCount = links.filter(l => l.type === 'abc').length;
-  const pdcaCount = links.filter(l => l.type === 'pdca').length;
-
   return (
-    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.5 }}>
-      <LinkRoundedIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-      <Typography variant="caption" color="text.secondary">
-        {sectionLabel}の根拠:
-      </Typography>
-      {abcCount > 0 && (
-        <Chip label={`ABC ${abcCount}件`} size="small" color="success" variant="outlined" sx={{ height: 18, fontSize: '0.6rem' }} />
-      )}
-      {pdcaCount > 0 && (
-        <Chip label={`PDCA ${pdcaCount}件`} size="small" color="info" variant="outlined" sx={{ height: 18, fontSize: '0.6rem' }} />
-      )}
+    <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+      <Stack direction="row" spacing={0.5} alignItems="center">
+        <LinkRoundedIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+        <Typography variant="caption" color="text.secondary">
+          {sectionLabel}の根拠:
+        </Typography>
+      </Stack>
+      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+        {links.map(link => (
+          <Tooltip
+            key={link.referenceId}
+            title={
+              onEvidenceClick
+                ? `クリックして${link.type === 'abc' ? 'ABC記録' : 'PDCA項目'}を開く`
+                : link.label
+            }
+          >
+            <Chip
+              size="small"
+              label={link.label}
+              color={link.type === 'abc' ? 'success' : 'info'}
+              variant="outlined"
+              icon={link.type === 'abc' ? <EditNoteRoundedIcon /> : <BubbleChartRoundedIcon />}
+              onClick={onEvidenceClick ? () => onEvidenceClick(link.type, link.referenceId) : undefined}
+              sx={{
+                height: 22,
+                fontSize: '0.65rem',
+                ...(onEvidenceClick && {
+                  cursor: 'pointer',
+                  '&:hover': { borderWidth: 2, fontWeight: 600 },
+                  transition: 'all 0.15s ease-in-out',
+                }),
+              }}
+            />
+          </Tooltip>
+        ))}
+      </Stack>
     </Stack>
   );
 };
