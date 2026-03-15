@@ -234,6 +234,7 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({ userId, setToast, ...sect
     handleDecision,
     isSaving,
     error: decisionError,
+    decisions,
   } = useIspRecommendationDecisions(
     userIdStr,
     userIdStr ? monitoringPeriod : undefined,
@@ -297,6 +298,7 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({ userId, setToast, ...sect
           decisionStatuses={decisionStatuses}
           decisionNotes={decisionNotes}
           onDecision={handleDecisionWithFeedback}
+          decisions={decisions}
           onAppendInsight={(text) =>
             appendToMonitoringPlan(
               text,

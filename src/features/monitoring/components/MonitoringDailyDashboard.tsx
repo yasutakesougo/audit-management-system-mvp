@@ -29,13 +29,14 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 
-import type { DecisionStatus } from '../domain/ispRecommendationDecisionTypes';
+import type { DecisionStatus, IspRecommendationDecision } from '../domain/ispRecommendationDecisionTypes';
 import type {
   ActivityRank,
   BehaviorTagSummary,
   DailyMonitoringSummary,
 } from '../domain/monitoringDailyAnalytics';
 import GoalProgressCard from './GoalProgressCard';
+import IspDecisionHistorySection from './IspDecisionHistorySection';
 import IspRecommendationCard from './IspRecommendationCard';
 import type { DecisionInput } from './IspRecommendationCard';
 
@@ -212,6 +213,8 @@ export interface MonitoringDailyDashboardProps {
   decisionNotes?: Map<string, string>;
   /** Phase 4-C: 判断操作コールバック */
   onDecision?: (input: DecisionInput) => void;
+  /** Phase 4-D: 判断レコード配列（履歴表示用） */
+  decisions?: IspRecommendationDecision[];
 }
 
 const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
@@ -224,6 +227,7 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
   decisionStatuses,
   decisionNotes,
   onDecision,
+  decisions,
 }) => {
   const [justAppended, setJustAppended] = React.useState(false);
 
@@ -394,6 +398,18 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
                 decisionStatuses={decisionStatuses}
                 decisionNotes={decisionNotes}
                 onDecision={onDecision}
+              />
+              <Divider />
+            </>
+          )}
+
+          {/* 4. 判断履歴 */}
+          {decisions && decisions.length > 0 && (
+            <>
+              <IspDecisionHistorySection
+                decisions={decisions}
+                recommendations={summary.ispRecommendations}
+                goalNames={goalNames}
               />
               <Divider />
             </>
