@@ -20,6 +20,24 @@ import type {
   PlanningIntake,
 } from '@/domain/isp/schema';
 import type { ProvenanceSource } from './assessmentBridge';
+import { TOKUSEI_FIELD_MAP } from './tokuseiFieldMap';
+import {
+  buildAssessmentPatches,
+  buildAudit,
+  buildCandidates,
+  buildFormPatches,
+  buildIntakePatches,
+  buildProvenance,
+  summarizeTokuseiBridge,
+} from './tokuseiBridgeBuilders';
+import type { ExtractedSignals } from './tokuseiBridgeBuilders';
+import {
+  extractBehaviorSignals,
+  extractChangeRigiditySignals,
+  extractCommunicationSignals,
+  extractMedicalSignals,
+  extractSensorySignals,
+} from './tokuseiSignalExtractors';
 
 // ---------------------------------------------------------------------------
 // Core Types
@@ -331,5 +349,86 @@ export function emptyBridgeResult(sourceResponseId = ''): TokuseiBridgeResult {
       skippedFields: [],
       warnings: [],
     },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Bridge Entry Point
+// ---------------------------------------------------------------------------
+
+/** ブリッジへの入力（raw / aggregated を自動判別） */
+export type TokuseiBridgeInput =
+  | { kind: 'raw'; row: SpTokuseiRawRow; responseId: string; updatedAt?: string }
+  | { kind: 'aggregated'; response: TokuseiSurveyResponse; responseId: string; updatedAt?: string };
+
+/**
+ * 特性アンケート → 支援計画シート データブリッジ エントリ関数。
+ *
+ * 1. 入力を正規化
+ * 2. signal extractors を実行
+ * 3. builder 群を実行
+ * 4. summary / provenance / audit を束ねて TokuseiBridgeResult を返す
+ *
+ * raw / aggregated の両経路をサポートする。
+ */
+export function tokuseiToPlanningBridge(input: TokuseiBridgeInput): TokuseiBridgeResult {
+  // 1. 正規化
+  const isAggregatedFallback = input.kind === 'aggregated';
+  const normalized = input.kind === 'raw'
+    ? normalizeTokuseiFromRaw(input.row)
+    : normalizeTokuseiFromAggregated(input.response);
+
+  // 全フィールド空チェック
+  const allEmpty = (Object.values(normalized) as string[]).every((v) => !v);
+  if (allEmpty) {
+    return emptyBridgeResult(input.responseId);
+  }
+
+  // 2. signal extractors 実行
+  const signals: ExtractedSignals = {
+    sensory: extractSensorySignals(normalized),
+    communication: extractCommunicationSignals(normalized),
+    behavior: extractBehaviorSignals(normalized),
+    changeRigidity: extractChangeRigiditySignals(normalized),
+    medical: extractMedicalSignals(normalized),
+  };
+
+  // 3. builder 群実行
+  const formPatches = buildFormPatches(normalized, signals);
+  const intakePatches = buildIntakePatches(normalized, signals);
+  const assessmentPatches = buildAssessmentPatches(normalized, signals);
+  const candidates = buildCandidates(normalized, signals);
+
+  // 4. 束ねる
+  const provenance = buildProvenance(
+    formPatches,
+    intakePatches,
+    assessmentPatches,
+    candidates,
+    input.responseId,
+    TOKUSEI_FIELD_MAP,
+  );
+
+  const summary = summarizeTokuseiBridge(formPatches, intakePatches, candidates);
+
+  const audit = buildAudit(
+    input.responseId,
+    input.updatedAt,
+    normalized,
+    formPatches,
+    intakePatches,
+    assessmentPatches,
+    candidates,
+    isAggregatedFallback,
+  );
+
+  return {
+    formPatches,
+    intakePatches,
+    assessmentPatches,
+    candidates,
+    provenance,
+    summary,
+    audit,
   };
 }
