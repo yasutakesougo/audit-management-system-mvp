@@ -444,7 +444,11 @@ const LogTab: React.FC<{
   records: AbcRecord[];
   users: UserOption[];
   onRefresh: () => void;
-}> = ({ records, users, onRefresh }) => {
+  /** ディープリンクで自動表示するrecord ID */
+  focusedRecordId?: string;
+  /** ディープリンクバナー表示 */
+  deepLinkBanner?: boolean;
+}> = ({ records, users, onRefresh, focusedRecordId, deepLinkBanner }) => {
   const navigate = useNavigate();
 
   // ── Filters ──
@@ -475,6 +479,18 @@ const LogTab: React.FC<{
       setReverseTrace(null);
     }
   }, [detailRecord, isEditing]);
+
+  // ── Deep link: focusedRecordId → 自動で詳細ダイアログを開く ──
+  const [deepLinkDone, setDeepLinkDone] = useState(false);
+  useEffect(() => {
+    if (!focusedRecordId || deepLinkDone || records.length === 0) return;
+    const target = records.find(r => r.id === focusedRecordId);
+    if (target) {
+      setDetailRecord(target);
+      setIsEditing(false);
+    }
+    setDeepLinkDone(true);
+  }, [focusedRecordId, records, deepLinkDone]);
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -678,6 +694,22 @@ const LogTab: React.FC<{
                 </Stack>
               ) : (
                 <Stack spacing={2}>
+                  {/* Deep link banner */}
+                  {deepLinkBanner && focusedRecordId === detailRecord.id && (
+                    <Alert
+                      severity="info"
+                      variant="outlined"
+                      sx={{
+                        animation: 'fadeIn 0.3s ease-in',
+                        '@keyframes fadeIn': {
+                          from: { opacity: 0, transform: 'translateY(-8px)' },
+                          to: { opacity: 1, transform: 'translateY(0)' },
+                        },
+                      }}
+                    >
+                      📍 支援計画シートから参照された根拠記録を表示中
+                    </Alert>
+                  )}
                   <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
                     <Chip label={detailRecord.userName} color="primary" />
                     <Chip label={new Date(detailRecord.occurredAt).toLocaleString('ja-JP')} variant="outlined" />
@@ -848,7 +880,10 @@ const AbcRecordPage: React.FC = () => {
 
   // URL パラメータ
   const urlUserId = searchParams.get('userId') ?? undefined;
+  const urlRecordId = searchParams.get('recordId') ?? undefined;
   const source = searchParams.get('source') ?? undefined;
+  const [deepLinkProcessed, setDeepLinkProcessed] = useState(false);
+  const [deepLinkBanner, setDeepLinkBanner] = useState(false);
 
   const recorderName = (account as { name?: string })?.name ?? '不明';
 
@@ -871,6 +906,29 @@ const AbcRecordPage: React.FC = () => {
 
   useEffect(() => { loadRecords(); }, [loadRecords]);
 
+  // ── Deep link: recordId → 自動で記録一覧タブ + 詳細ダイアログを開く ──
+  useEffect(() => {
+    if (!urlRecordId || deepLinkProcessed || records.length === 0) return;
+    const target = records.find(r => r.id === urlRecordId);
+    if (target) {
+      setTab(1); // 記録一覧タブへ切替
+      // LogTab内のdetailRecordはLogTabのlocal stateなので、
+      // 代わりにfocusedRecordIdを使ってLogTabに伝える
+      setFocusedRecordId(urlRecordId);
+      setDeepLinkBanner(true);
+      setDeepLinkProcessed(true);
+      // バナーを4秒後に消す
+      const timer = setTimeout(() => setDeepLinkBanner(false), 4000);
+      return () => clearTimeout(timer);
+    } else {
+      // 対象が見つからない場合
+      setDeepLinkProcessed(true);
+    }
+  }, [urlRecordId, records, deepLinkProcessed]);
+
+  // 追加state: LogTab に渡す focused record ID
+  const [focusedRecordId, setFocusedRecordId] = useState<string | undefined>(undefined);
+
   // 今日の記録（対象ユーザーに絞る）
   const todayRecords = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -880,7 +938,9 @@ const AbcRecordPage: React.FC = () => {
   }, [records, urlUserId]);
 
   const handleBack = useCallback(() => {
-    if (source === 'daily-support') {
+    if (source === 'support-planning') {
+      navigate(-1);
+    } else if (source === 'daily-support') {
       navigate(-1);
     } else {
       navigate('/daily/support');
@@ -901,7 +961,7 @@ const AbcRecordPage: React.FC = () => {
                 size="small"
                 sx={{ textTransform: 'none', mr: 0.5 }}
               >
-                支援手順へ戻る
+                {source === 'support-planning' ? '支援計画シートへ戻る' : '支援手順へ戻る'}
               </Button>
               <EditNoteRoundedIcon color="primary" fontSize="large" />
               <Box>
@@ -957,6 +1017,8 @@ const AbcRecordPage: React.FC = () => {
               records={records}
               users={userOptions}
               onRefresh={loadRecords}
+              focusedRecordId={focusedRecordId}
+              deepLinkBanner={deepLinkBanner}
             />
           )}
         </Paper>

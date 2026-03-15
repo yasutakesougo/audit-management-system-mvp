@@ -1,7 +1,9 @@
 import {
+    buildAbcRecordUrl,
     buildDailyHubFromTodayUrl,
     buildHandoffFromTodayState,
     buildIcebergPdcaUrl,
+    buildIcebergPdcaUrlWithHighlight,
     buildSupportPlanMonitoringUrl,
     buildTodayReturnUrl,
     parseNavQuery,
@@ -180,5 +182,61 @@ describe('buildSupportPlanMonitoringUrl', () => {
     const url = buildSupportPlanMonitoringUrl('U999');
     expect(url).toContain('tab=monitoring');
     expect(url).toContain('userId=U999');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildAbcRecordUrl — 支援計画シート → ABC 記録 導線 (Phase 4-C)
+// ---------------------------------------------------------------------------
+
+describe('buildAbcRecordUrl', () => {
+  it('userId のみ指定', () => {
+    expect(buildAbcRecordUrl('U001')).toBe('/abc-record?userId=U001');
+  });
+
+  it('recordId を指定すると URL に含まれる', () => {
+    expect(buildAbcRecordUrl('U001', { recordId: 'abc-123' })).toBe(
+      '/abc-record?userId=U001&recordId=abc-123',
+    );
+  });
+
+  it('source を指定すると URL に含まれる', () => {
+    expect(buildAbcRecordUrl('U001', { source: 'support-planning' })).toBe(
+      '/abc-record?userId=U001&source=support-planning',
+    );
+  });
+
+  it('recordId + source の両方を指定', () => {
+    const url = buildAbcRecordUrl('U001', { recordId: 'abc-123', source: 'support-planning' });
+    expect(url).toBe('/abc-record?userId=U001&recordId=abc-123&source=support-planning');
+  });
+
+  it('オプション未指定なら userId のみ', () => {
+    expect(buildAbcRecordUrl('U999')).toBe('/abc-record?userId=U999');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildIcebergPdcaUrlWithHighlight — 支援計画シート → PDCA ハイライト導線 (Phase 4-C)
+// ---------------------------------------------------------------------------
+
+describe('buildIcebergPdcaUrlWithHighlight', () => {
+  it('userId + pdcaId を query param に含める', () => {
+    expect(buildIcebergPdcaUrlWithHighlight('U001', 'pdca-456')).toBe(
+      '/analysis/iceberg-pdca?userId=U001&pdcaId=pdca-456',
+    );
+  });
+
+  it('source を指定すると URL に含まれる', () => {
+    expect(buildIcebergPdcaUrlWithHighlight('U001', 'pdca-456', { source: 'support-planning' })).toBe(
+      '/analysis/iceberg-pdca?userId=U001&pdcaId=pdca-456&source=support-planning',
+    );
+  });
+
+  it('source 未指定なら pdcaId と userId のみ', () => {
+    const url = buildIcebergPdcaUrlWithHighlight('U999', 'pdca-789');
+    expect(url).toContain('userId=U999');
+    expect(url).toContain('pdcaId=pdca-789');
+    expect(url).not.toContain('source=');
   });
 });
