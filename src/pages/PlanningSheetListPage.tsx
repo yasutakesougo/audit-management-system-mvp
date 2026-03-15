@@ -16,6 +16,7 @@ import {
 import type { PlanningSheetRepository } from '@/domain/isp/port';
 import { UserSelectionGrid } from '@/features/users/components/UserSelectionGrid';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
 import Alert from '@mui/material/Alert';
@@ -128,13 +129,23 @@ export default function PlanningSheetListPage() {
               <Typography variant="h5" fontWeight={700}>支援計画シート一覧</Typography>
               <Chip size="small" variant="outlined" label={`利用者: ${userId}`} />
             </Stack>
-            <Button
-              size="small"
-              startIcon={<ArrowBackRoundedIcon />}
-              onClick={() => navigate('/support-plan-guide')}
-            >
-              ISP 画面に戻る
-            </Button>
+            <Stack direction="row" spacing={1}>
+              <Button
+                size="small"
+                variant="contained"
+                startIcon={<AddRoundedIcon />}
+                onClick={() => navigate('/support-planning-sheet/new')}
+              >
+                新規作成
+              </Button>
+              <Button
+                size="small"
+                startIcon={<ArrowBackRoundedIcon />}
+                onClick={() => navigate('/support-plan-guide')}
+              >
+                ISP 画面に戻る
+              </Button>
+            </Stack>
           </Stack>
         </Paper>
 
@@ -148,10 +159,20 @@ export default function PlanningSheetListPage() {
         {error && <Alert severity="error">{error}</Alert>}
 
         {!isLoading && !error && sheets.length === 0 && (
-          <Paper variant="outlined" sx={{ p: 3, textAlign: 'center' }}>
-            <Typography color="text.secondary">
-              この利用者の支援計画シートはまだ作成されていません。
-            </Typography>
+          <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
+            <Stack spacing={2} alignItems="center">
+              <DescriptionRoundedIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
+              <Typography color="text.secondary">
+                この利用者の支援計画シートはまだ作成されていません。
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddRoundedIcon />}
+                onClick={() => navigate('/support-planning-sheet/new')}
+              >
+                新規作成
+              </Button>
+            </Stack>
           </Paper>
         )}
 
