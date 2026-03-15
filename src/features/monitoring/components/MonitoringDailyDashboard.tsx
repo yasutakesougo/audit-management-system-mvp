@@ -37,6 +37,7 @@ import type {
 } from '../domain/monitoringDailyAnalytics';
 import GoalProgressCard from './GoalProgressCard';
 import IspDecisionHistorySection from './IspDecisionHistorySection';
+import IspDecisionSummaryCard from './IspDecisionSummaryCard';
 import IspRecommendationCard from './IspRecommendationCard';
 import type { DecisionInput } from './IspRecommendationCard';
 
@@ -284,6 +285,14 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
           <Typography variant="caption" color="text.secondary">
             対象期間: {summary.period.from} 〜 {summary.period.to}（{recordCount}件の日次記録から集計）
           </Typography>
+
+          {/* 判断完了率カード（judgments がある場合のみ） */}
+          {decisions && decisions.length > 0 && summary.ispRecommendations && (
+            <IspDecisionSummaryCard
+              recommendations={summary.ispRecommendations}
+              decisions={decisions}
+            />
+          )}
 
           {/* 1. 記録状況 */}
           <Box>
