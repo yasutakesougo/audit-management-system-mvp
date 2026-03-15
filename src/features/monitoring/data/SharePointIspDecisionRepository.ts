@@ -93,7 +93,8 @@ type SpResponse<T> = { value?: T[] };
 
 const buildListPath = (baseUrl: string): string => {
   const title = getListTitle();
-  return `${baseUrl}/_api/web/lists/GetByTitle('${encodeURIComponent(title)}')`;
+  // NOTE: ensureConfig().baseUrl already ends with "/_api/web"
+  return `${baseUrl}/lists/GetByTitle('${encodeURIComponent(title)}')`;
 };
 
 const readSpErrorMessage = async (response: Response): Promise<string> => {
