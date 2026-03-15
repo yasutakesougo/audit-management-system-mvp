@@ -227,6 +227,48 @@ export function buildIcebergPdcaUrl(
   return `/analysis/iceberg-pdca?${search.toString()}`;
 }
 
+// ─── ABC Record Deep Link ─────────────────────────────────────────────
+
+/**
+ * /abc-record?userId=xxx&recordId=yyy&source=zzz を生成する。
+ * 支援計画シートの根拠ABCチップから ABcRecordPage への導線で使用。
+ */
+export function buildAbcRecordUrl(
+  userId: string,
+  options?: { recordId?: string; source?: string },
+): string {
+  const search = new URLSearchParams();
+  search.set('userId', userId);
+  if (options?.recordId) {
+    search.set('recordId', options.recordId);
+  }
+  if (options?.source) {
+    search.set('source', options.source);
+  }
+  return `/abc-record?${search.toString()}`;
+}
+
+// ─── Iceberg PDCA Deep Link ───────────────────────────────────────────
+
+/**
+ * /analysis/iceberg-pdca?userId=xxx&pdcaId=yyy&source=zzz を生成する。
+ * 支援計画シートの根拠PDCAチップから IcebergPdcaPage への導線で使用。
+ * 既存の buildIcebergPdcaUrl とは別に pdcaId パラメータをサポートする。
+ */
+export function buildIcebergPdcaUrlWithHighlight(
+  userId: string,
+  pdcaId: string,
+  options?: { source?: string },
+): string {
+  const search = new URLSearchParams();
+  search.set('userId', userId);
+  search.set('pdcaId', pdcaId);
+  if (options?.source) {
+    search.set('source', options.source);
+  }
+  return `/analysis/iceberg-pdca?${search.toString()}`;
+}
+
 // ─── Support Plan Monitoring Navigation ───────────────────────────────
 
 /**
