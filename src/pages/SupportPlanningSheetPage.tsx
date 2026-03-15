@@ -75,6 +75,7 @@ import type { AbcRecord } from '@/domain/abc/abcRecord';
 import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
 import { localEvidenceLinkRepository } from '@/infra/localStorage/localEvidenceLinkRepository';
 import type { IcebergPdcaItem } from '@/features/ibd/analysis/pdca/types';
+import { EvidencePatternSummaryCard } from '@/features/planning-sheet/components/EvidencePatternSummaryCard';
 
 // ─────────────────────────────────────────────
 // Types
@@ -708,18 +709,26 @@ export default function SupportPlanningSheetPage() {
             )}
           </TabPanel>
           <TabPanel current={activeTab} value="planning">
-            {isEditing ? (
-              <EditablePlanningDesignSection
-                planning={form.planning}
-                onChange={form.setPlanning}
-                abcRecords={abcRecords}
-                pdcaItems={pdcaItems}
-                evidenceLinks={evidenceLinks}
-                onEvidenceLinksChange={setEvidenceLinks}
-              />
-            ) : (
-              <PlanningDesignSection sheet={sheet} evidenceLinks={evidenceLinks} />
-            )}
+            {/* ── Evidence Pattern Analysis サマリー ── */}
+            <EvidencePatternSummaryCard
+              evidenceLinks={evidenceLinks}
+              abcRecords={abcRecords}
+              defaultExpanded={!isEditing}
+            />
+            <Box sx={{ mt: 2 }}>
+              {isEditing ? (
+                <EditablePlanningDesignSection
+                  planning={form.planning}
+                  onChange={form.setPlanning}
+                  abcRecords={abcRecords}
+                  pdcaItems={pdcaItems}
+                  evidenceLinks={evidenceLinks}
+                  onEvidenceLinksChange={setEvidenceLinks}
+                />
+              ) : (
+                <PlanningDesignSection sheet={sheet} evidenceLinks={evidenceLinks} />
+              )}
+            </Box>
           </TabPanel>
           <TabPanel current={activeTab} value="regulatory">
             {isEditing ? (
