@@ -5,6 +5,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { saveLastActivities } from './useLastActivities';
+import { useHandoffNotesForTable } from '../adapters/useHandoffNotesForTable';
 import { useTableDailyRecordFiltering } from './useTableDailyRecordFiltering';
 import type { DraftInput } from './useTableDailyRecordPersistence';
 import { useTableDailyRecordPersistence } from './useTableDailyRecordPersistence';
@@ -89,6 +90,12 @@ export type UseTableDailyRecordFormResult = {
   validationErrors: TableDailyRecordValidationErrors;
   /** バリデーションエラーをクリアする */
   clearValidationErrors: () => void;
+  /** 申し送り連携: 重要申し送りが反映された利用者数 */
+  handoffAffectedUserCount: number;
+  /** 申し送り連携: 重要申し送りの総件数 */
+  handoffTotalCount: number;
+  /** 申し送り連携: データ読み込み中 */
+  handoffLoading: boolean;
 };
 
 const createInitialFormData = (initialDate?: string | null): TableDailyRecordData => ({
@@ -185,6 +192,14 @@ export const useTableDailyRecordForm = ({
     loadedDraftSelectedUserIds: loadedDraft?.selectedUserIds,
   });
 
+  // ── Handoff notes 連携 ─────────────────────────────
+  const {
+    notesByUser: handoffNotesByUser,
+    affectedUserCount: handoffAffectedUserCount,
+    totalHandoffCount: handoffTotalCount,
+    loading: handoffLoading,
+  } = useHandoffNotesForTable(formData.date);
+
   // ── Row handlers (抽出済み) ───────────────────────
   const {
     handleRowDataChange,
@@ -199,6 +214,7 @@ export const useTableDailyRecordForm = ({
     selectedUserIds,
     showUnsentOnly,
     formData,
+    handoffNotesByUser,
   });
 
   // ── Side effects ──────────────────────────────────
@@ -338,5 +354,8 @@ export const useTableDailyRecordForm = ({
     saving,
     validationErrors,
     clearValidationErrors,
+    handoffAffectedUserCount,
+    handoffTotalCount,
+    handoffLoading,
   };
 };
