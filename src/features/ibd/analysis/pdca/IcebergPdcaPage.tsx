@@ -58,6 +58,8 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
   );
 
   const selectedUserId = searchParams.get('userId') ?? undefined;
+  const urlPdcaId = searchParams.get('pdcaId') ?? undefined;
+  const urlSource = searchParams.get('source') ?? undefined;
   const today = React.useMemo(() => toLocalDateISO(), []);
   const [dailySnapshotMetrics, setDailySnapshotMetrics] = React.useState<DailySnapshotMetrics | null>(null);
   const [snapshotWarning, setSnapshotWarning] = React.useState<string | null>(null);
@@ -351,6 +353,8 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
           snapshotWarning={snapshotWarning}
           onCloseSnapshotWarning={() => setSnapshotWarning(null)}
           onNavigateToMonitoring={(userId) => navigate(buildSupportPlanMonitoringUrl(userId))}
+          highlightPdcaId={urlPdcaId}
+          source={urlSource}
         />
       )}
     </Box>

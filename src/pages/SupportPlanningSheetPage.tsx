@@ -76,6 +76,8 @@ import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRep
 import { localEvidenceLinkRepository } from '@/infra/localStorage/localEvidenceLinkRepository';
 import type { IcebergPdcaItem } from '@/features/ibd/analysis/pdca/types';
 import { EvidencePatternSummaryCard } from '@/features/planning-sheet/components/EvidencePatternSummaryCard';
+import { buildAbcRecordUrl, buildIcebergPdcaUrlWithHighlight } from '@/app/links/navigationLinks';
+import type { EvidenceLinkType } from '@/domain/isp/evidenceLink';
 
 // ─────────────────────────────────────────────
 // Types
@@ -396,6 +398,16 @@ export default function SupportPlanningSheetPage() {
       navigate(href);
     }
   }, [navigate, setActiveTab]);
+
+  // ── Evidence Click Navigation (Phase 4-C) ──
+  const handleEvidenceClick = React.useCallback((type: EvidenceLinkType, referenceId: string) => {
+    if (!sheet?.userId) return;
+    if (type === 'abc') {
+      navigate(buildAbcRecordUrl(sheet.userId, { recordId: referenceId, source: 'support-planning' }));
+    } else {
+      navigate(buildIcebergPdcaUrlWithHighlight(sheet.userId, referenceId, { source: 'support-planning' }));
+    }
+  }, [navigate, sheet?.userId]);
 
   // ── Loading / Error states ──
   if (isLoading) {
@@ -724,9 +736,10 @@ export default function SupportPlanningSheetPage() {
                   pdcaItems={pdcaItems}
                   evidenceLinks={evidenceLinks}
                   onEvidenceLinksChange={setEvidenceLinks}
+                  onEvidenceClick={handleEvidenceClick}
                 />
               ) : (
-                <PlanningDesignSection sheet={sheet} evidenceLinks={evidenceLinks} />
+                <PlanningDesignSection sheet={sheet} evidenceLinks={evidenceLinks} onEvidenceClick={handleEvidenceClick} />
               )}
             </Box>
           </TabPanel>
