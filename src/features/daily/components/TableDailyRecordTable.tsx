@@ -61,61 +61,61 @@ export const TableDailyRecordTable: React.FC<TableDailyRecordTableProps> = ({
         <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>利用者</TableCell>
-              <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>午前活動</TableCell>
-              <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>午後活動</TableCell>
-              <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>昼食摂取</TableCell>
-              <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>問題行動</TableCell>
-              <TableCell sx={{ py: 0.5, fontSize: '0.75rem' }}>特記事項</TableCell>
-              <TableCell sx={{ py: 0.5, fontSize: '0.75rem', width: 40 }}></TableCell>
+              <TableCell sx={{ py: 0.25, fontSize: '0.72rem', fontWeight: 600 }}>利用者</TableCell>
+              <TableCell sx={{ py: 0.25, fontSize: '0.72rem', fontWeight: 600 }}>午前活動</TableCell>
+              <TableCell sx={{ py: 0.25, fontSize: '0.72rem', fontWeight: 600 }}>午後活動</TableCell>
+              <TableCell sx={{ py: 0.25, fontSize: '0.72rem', fontWeight: 600 }}>昼食</TableCell>
+              <TableCell sx={{ py: 0.25, fontSize: '0.72rem', fontWeight: 600 }}>問題行動</TableCell>
+              <TableCell sx={{ py: 0.25, fontSize: '0.72rem', fontWeight: 600 }}>特記事項</TableCell>
+              <TableCell sx={{ py: 0.25, fontSize: '0.72rem', width: 32 }}></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {rows.map((row) => (
-              <TableRow key={row.userId}>
-                <TableCell sx={{ py: 0.5, whiteSpace: 'nowrap' }}>
-                  <Typography variant="body2" sx={{ fontSize: '0.8rem', lineHeight: 1.3 }}>
+              <TableRow key={row.userId} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+                <TableCell sx={{ py: 0.25, whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                  <Typography variant="body2" sx={{ fontSize: '0.78rem', lineHeight: 1.2, fontWeight: 500 }}>
                     {row.userName}
-                    <Typography component="span" variant="caption" color="textSecondary" sx={{ ml: 0.5 }}>
-                      {row.userId}
-                    </Typography>
+                  </Typography>
+                  <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.65rem', lineHeight: 1 }}>
+                    {row.userId}
                   </Typography>
                 </TableCell>
 
-                <TableCell sx={{ py: 0.5 }}>
+                <TableCell sx={{ py: 0.25, verticalAlign: 'top' }}>
                   <TextField
                     size="small"
                     placeholder="午前"
                     value={row.amActivity}
                     onChange={(e) => onRowDataChange(row.userId, 'amActivity', e.target.value)}
-                    sx={{ minWidth: 110 }}
-                    inputProps={{ style: { fontSize: '0.8rem', padding: '6px 8px' } }}
+                    sx={{ minWidth: 100 }}
+                    inputProps={{ style: { fontSize: '0.78rem', padding: '3px 6px' } }}
                   />
                 </TableCell>
 
-                <TableCell sx={{ py: 0.5 }}>
+                <TableCell sx={{ py: 0.25, verticalAlign: 'top' }}>
                   <TextField
                     size="small"
                     placeholder="午後"
                     value={row.pmActivity}
                     onChange={(e) => onRowDataChange(row.userId, 'pmActivity', e.target.value)}
-                    sx={{ minWidth: 110 }}
-                    inputProps={{ style: { fontSize: '0.8rem', padding: '6px 8px' } }}
+                    sx={{ minWidth: 100 }}
+                    inputProps={{ style: { fontSize: '0.78rem', padding: '3px 6px' } }}
                   />
                 </TableCell>
 
-                <TableCell sx={{ py: 0.5 }}>
-                  <FormControl size="small" sx={{ minWidth: 75 }}>
+                <TableCell sx={{ py: 0.25, verticalAlign: 'top' }}>
+                  <FormControl size="small" sx={{ minWidth: 68 }}>
                     <Select
                       name={`lunchAmount-${row.userId}`}
                       value={row.lunchAmount}
                       onChange={(e) => onRowDataChange(row.userId, 'lunchAmount', e.target.value)}
                       displayEmpty
-                      sx={{ fontSize: '0.8rem' }}
+                      sx={{ fontSize: '0.75rem', '& .MuiSelect-select': { py: '3px', px: '6px' } }}
                     >
-                      <MenuItem value="" sx={{ fontSize: '0.8rem' }}>-</MenuItem>
+                      <MenuItem value="" sx={{ fontSize: '0.75rem' }}>-</MenuItem>
                       {LUNCH_OPTIONS.map((option) => (
-                        <MenuItem key={option} value={option} sx={{ fontSize: '0.8rem' }}>
+                        <MenuItem key={option} value={option} sx={{ fontSize: '0.75rem' }}>
                           {option}
                         </MenuItem>
                       ))}
@@ -123,8 +123,8 @@ export const TableDailyRecordTable: React.FC<TableDailyRecordTableProps> = ({
                   </FormControl>
                 </TableCell>
 
-                <TableCell sx={{ py: 0.5 }}>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.25, minWidth: 120 }}>
+                <TableCell sx={{ py: 0.25, verticalAlign: 'top', position: 'relative' }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'nowrap', gap: '2px', alignItems: 'center', minWidth: 0 }}>
                     {(Object.keys(PROBLEM_BEHAVIOR_LABELS) as Array<keyof UserRowData['problemBehavior']>).map((type) => (
                       <Chip
                         key={type}
@@ -134,33 +134,34 @@ export const TableDailyRecordTable: React.FC<TableDailyRecordTableProps> = ({
                         clickable
                         onClick={() => onProblemBehaviorChange(row.userId, type, !row.problemBehavior[type])}
                         color={row.problemBehavior[type] ? 'warning' : 'default'}
-                        sx={{ height: 22, fontSize: '0.7rem' }}
+                        sx={{ height: 20, fontSize: '0.65rem', '& .MuiChip-label': { px: 0.5 } }}
                       />
                     ))}
+                    <BehaviorTagChips
+                      selectedTags={row.behaviorTags ?? []}
+                      onToggleTag={(tagKey) => onBehaviorTagToggle(row.userId, tagKey)}
+                      inline
+                    />
                   </Box>
-                  <BehaviorTagChips
-                    selectedTags={row.behaviorTags ?? []}
-                    onToggleTag={(tagKey) => onBehaviorTagToggle(row.userId, tagKey)}
-                  />
                 </TableCell>
 
-                <TableCell sx={{ py: 0.5 }}>
+                <TableCell sx={{ py: 0.25, verticalAlign: 'top' }}>
                   <TextField
                     size="small"
                     placeholder="特記"
                     value={row.specialNotes}
                     onChange={(e) => onRowDataChange(row.userId, 'specialNotes', e.target.value)}
-                    sx={{ minWidth: 140 }}
+                    sx={{ minWidth: 120 }}
                     multiline
-                    maxRows={2}
-                    inputProps={{ style: { fontSize: '0.8rem', padding: '4px 8px' } }}
+                    maxRows={1}
+                    inputProps={{ style: { fontSize: '0.78rem', padding: '3px 6px' } }}
                   />
                 </TableCell>
 
-                <TableCell sx={{ py: 0.5, px: 0.5 }}>
+                <TableCell sx={{ py: 0.25, px: 0.25, verticalAlign: 'top' }}>
                   <Tooltip title="クリア">
-                    <IconButton size="small" aria-label="この行をクリア" onClick={() => onClearRow(row.userId)}>
-                      <ClearIcon fontSize="small" />
+                    <IconButton size="small" sx={{ p: 0.25 }} aria-label="この行をクリア" onClick={() => onClearRow(row.userId)}>
+                      <ClearIcon sx={{ fontSize: 16 }} />
                     </IconButton>
                   </Tooltip>
                 </TableCell>

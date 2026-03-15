@@ -9,10 +9,6 @@ import {
     Box,
     Button,
     Chip,
-    FormControl,
-    InputLabel,
-    MenuItem,
-    Select,
     Stack,
     TextField,
     Tooltip
@@ -24,7 +20,7 @@ import { TableDailyRecordForm } from '../forms/TableDailyRecordForm';
 import { useTableDailyRecordForm } from '../hooks/useTableDailyRecordForm';
 import { useTableDailyRecordViewModel } from './useTableDailyRecordViewModel';
 
-const ROLE_OPTIONS = ['生活支援員', '管理者', '看護師', '其他'];
+
 
 export const TableDailyRecordPage: React.FC = () => {
   const vm = useTableDailyRecordViewModel();
@@ -66,24 +62,7 @@ export const TableDailyRecordPage: React.FC = () => {
           '& .MuiInputBase-input': { py: 0.5, px: 1 },
         }}
       />
-      <FormControl size="small" sx={{ minWidth: 80 }}>
-        <InputLabel sx={{ fontSize: '0.7rem', top: -4 }}>役職</InputLabel>
-        <Select
-          value={formState.formData.reporter.role}
-          onChange={(e) => formState.setFormData((prev) => ({
-            ...prev,
-            reporter: { ...prev.reporter, role: e.target.value },
-          }))}
-          label="役職"
-          sx={{ height: 30, fontSize: '0.75rem', '& .MuiSelect-select': { py: 0.5 } }}
-        >
-          {ROLE_OPTIONS.map((option) => (
-            <MenuItem key={option} value={option} sx={{ fontSize: '0.8rem' }}>
-              {option}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+
 
       {/* ── Divider ── */}
       <Box sx={{ borderLeft: 2, borderColor: 'grey.300', height: 28, mx: 0.5 }} />
