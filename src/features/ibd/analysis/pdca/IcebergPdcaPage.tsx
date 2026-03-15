@@ -19,6 +19,7 @@ import { toLocalDateISO } from '@/utils/getNow';
 
 import { IcebergPdcaFormSection } from './IcebergPdcaFormSection';
 import { IcebergPdcaMetrics } from './IcebergPdcaMetrics';
+import { AbcEvidencePanel } from './components/AbcEvidencePanel';
 import { IcebergPdcaEmptyState } from './components/IcebergPdcaEmptyState';
 import type { IcebergPdcaEmptyContext } from './components/icebergPdcaEmptyCopy';
 import {
@@ -314,6 +315,8 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
         )}
         sx={{ mb: 2 }}
       />
+
+      {selectedUserId && <AbcEvidencePanel userId={selectedUserId} />}
 
       {context ? (
         <IcebergPdcaEmptyState

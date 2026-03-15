@@ -7,6 +7,8 @@
  * @see src/pages/SupportPlanningSheetPage.tsx
  */
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
+import type { EvidenceLinkMap } from '@/domain/isp/evidenceLink';
+import { EvidenceLinksDisplay } from './EvidenceLinkSelector';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
@@ -131,7 +133,7 @@ export const AssessmentSection: React.FC<{ sheet: SupportPlanningSheet }> = ({ s
 // PlanningDesignSection (read-only)
 // ─────────────────────────────────────────────
 
-export const PlanningDesignSection: React.FC<{ sheet: SupportPlanningSheet }> = ({ sheet }) => {
+export const PlanningDesignSection: React.FC<{ sheet: SupportPlanningSheet; evidenceLinks?: EvidenceLinkMap }> = ({ sheet, evidenceLinks }) => {
   const { planning } = sheet;
   return (
     <Stack spacing={2}>
@@ -139,9 +141,12 @@ export const PlanningDesignSection: React.FC<{ sheet: SupportPlanningSheet }> = 
       <Paper variant="outlined" sx={{ p: 2 }}>
         <Stack spacing={1.5}>
           <ChipRow label="支援課題の優先順位" items={planning.supportPriorities} />
-          <ChipRow label="先行事象戦略" items={planning.antecedentStrategies} />
-          <ChipRow label="教授戦略" items={planning.teachingStrategies} />
-          <ChipRow label="後続事象戦略" items={planning.consequenceStrategies} />
+          <ChipRow label="先行事象戦略（予防的支援）" items={planning.antecedentStrategies} />
+          {evidenceLinks && <EvidenceLinksDisplay sectionLabel="先行事象戦略" links={evidenceLinks.antecedentStrategies} />}
+          <ChipRow label="教授戦略（代替行動）" items={planning.teachingStrategies} />
+          {evidenceLinks && <EvidenceLinksDisplay sectionLabel="教授戦略" links={evidenceLinks.teachingStrategies} />}
+          <ChipRow label="後続事象戦略（危機対応）" items={planning.consequenceStrategies} />
+          {evidenceLinks && <EvidenceLinksDisplay sectionLabel="後続事象戦略" links={evidenceLinks.consequenceStrategies} />}
         </Stack>
       </Paper>
       {planning.procedureSteps.length > 0 && (
