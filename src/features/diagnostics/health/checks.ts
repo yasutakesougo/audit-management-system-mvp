@@ -7,9 +7,9 @@ import {
 import { SpAdapter } from "./spAdapter";
 import { getRuntimeEnv } from "@/env";
 
-const statusRank: Record<HealthStatus, number> = { pass: 0, warn: 1, fail: 2 };
-const _worst = (a: HealthStatus, b: HealthStatus): HealthStatus =>
-  statusRank[a] >= statusRank[b] ? a : b;
+// statusRank is retained for potential future worst-of aggregation.
+const _statusRank: Record<HealthStatus, number> = { pass: 0, warn: 1, fail: 2 };
+void _statusRank; // suppress unused warning — kept for schema reference
 
 function pass(
   base: Omit<HealthCheckResult, "status" | "nextActions"> & {

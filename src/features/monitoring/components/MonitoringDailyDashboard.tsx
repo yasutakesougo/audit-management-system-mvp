@@ -29,12 +29,15 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 
+import type { DecisionStatus } from '../domain/ispRecommendationDecisionTypes';
 import type {
   ActivityRank,
   BehaviorTagSummary,
   DailyMonitoringSummary,
 } from '../domain/monitoringDailyAnalytics';
 import GoalProgressCard from './GoalProgressCard';
+import IspRecommendationCard from './IspRecommendationCard';
+import type { DecisionInput } from './IspRecommendationCard';
 
 // ─── 定数 ────────────────────────────────────────────────
 
@@ -203,6 +206,12 @@ export interface MonitoringDailyDashboardProps {
   isAdmin: boolean;
   /** goalId → 表示名のマップ（GoalProgressCard に渡す） */
   goalNames?: Record<string, string>;
+  /** Phase 4-C: goalId → 判断ステータス */
+  decisionStatuses?: Map<string, DecisionStatus>;
+  /** Phase 4-C: goalId → 判断メモ */
+  decisionNotes?: Map<string, string>;
+  /** Phase 4-C: 判断操作コールバック */
+  onDecision?: (input: DecisionInput) => void;
 }
 
 const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
@@ -212,6 +221,9 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
   onAppendInsight,
   isAdmin,
   goalNames,
+  decisionStatuses,
+  decisionNotes,
+  onDecision,
 }) => {
   const [justAppended, setJustAppended] = React.useState(false);
 
@@ -368,6 +380,20 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
               <GoalProgressCard
                 goalProgress={summary.goalProgress}
                 goalNames={goalNames}
+              />
+              <Divider />
+            </>
+          )}
+
+          {/* 3.9. ISP 見直し提案 */}
+          {summary.ispRecommendations && summary.ispRecommendations.recommendations.length > 0 && (
+            <>
+              <IspRecommendationCard
+                ispRecommendations={summary.ispRecommendations}
+                goalNames={goalNames}
+                decisionStatuses={decisionStatuses}
+                decisionNotes={decisionNotes}
+                onDecision={onDecision}
               />
               <Divider />
             </>
