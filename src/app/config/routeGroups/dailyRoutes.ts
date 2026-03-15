@@ -50,38 +50,11 @@ export const DAILY_ROUTES_BASE: NavItem[] = [
     audience: NAV_AUDIENCE.all,
     group: 'daily' as NavGroupKey,
   },
+  // 会議系は「議事録」に統合。司会ガイド・朝会/夕会（作成）はページ内から到達可能。
   {
-    label: '司会ガイド',
-    to: '/meeting-guide',
-    isActive: (pathname) => pathname.startsWith('/meeting-guide'),
-    icon: undefined,
-    audience: NAV_AUDIENCE.all,
-    group: 'daily' as NavGroupKey,
-  },
-  {
-    label: '朝会（作成）',
-    to: '/meeting-minutes/new?category=朝会',
-    isActive: (pathname, search = '') =>
-      pathname.startsWith('/meeting-minutes/new') &&
-      new URLSearchParams(search).get('category') === '朝会',
-    icon: undefined,
-    audience: NAV_AUDIENCE.all,
-    group: 'daily' as NavGroupKey,
-  },
-  {
-    label: '夕会（作成）',
-    to: '/meeting-minutes/new?category=夕会',
-    isActive: (pathname, search = '') =>
-      pathname.startsWith('/meeting-minutes/new') &&
-      new URLSearchParams(search).get('category') === '夕会',
-    icon: undefined,
-    audience: NAV_AUDIENCE.all,
-    group: 'daily' as NavGroupKey,
-  },
-  {
-    label: '議事録アーカイブ',
+    label: '議事録',
     to: '/meeting-minutes',
-    isActive: (pathname) => pathname.startsWith('/meeting-minutes'),
+    isActive: (pathname) => pathname.startsWith('/meeting-minutes') || pathname.startsWith('/meeting-guide') || pathname.startsWith('/dashboard/briefing'),
     icon: undefined,
     audience: NAV_AUDIENCE.all,
     group: 'daily' as NavGroupKey,

@@ -4,16 +4,14 @@
  * 管理者向けツールへの導線を集約。
  * 今後の管理機能追加はここにカードを追加するだけで対応可能。
  */
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import BadgeIcon from '@mui/icons-material/Badge';
 import BuildIcon from '@mui/icons-material/Build';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import CategoryIcon from '@mui/icons-material/Category';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import GavelIcon from '@mui/icons-material/Gavel';
 import SecurityIcon from '@mui/icons-material/Security';
-import SettingsIcon from '@mui/icons-material/Settings';
+import ScheduleIcon from '@mui/icons-material/Schedule';
 import StorageIcon from '@mui/icons-material/Storage';
 import SyncIcon from '@mui/icons-material/Sync';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -104,27 +102,7 @@ const ADMIN_TOOLS: AdminTool[] = [
     icon: <SyncIcon />,
     category: 'system',
   },
-  {
-    label: '支援手順マスタ',
-    description: '支援手順テンプレートの管理',
-    to: '/admin/step-templates',
-    icon: <SettingsIcon />,
-    category: 'system',
-  },
-  {
-    label: '個別支援手順',
-    description: '利用者別の支援手順管理',
-    to: '/admin/individual-support',
-    icon: <AdminPanelSettingsIcon />,
-    category: 'system',
-  },
-  {
-    label: '支援活動マスタ',
-    description: '支援活動テンプレートの管理',
-    to: '/admin/templates',
-    icon: <CategoryIcon />,
-    category: 'system',
-  },
+
   {
     label: '職員勤怠管理',
     description: '職員の出勤・勤務管理',
@@ -137,6 +115,13 @@ const ADMIN_TOOLS: AdminTool[] = [
     description: 'リソースの統合スケジュール管理',
     to: '/admin/integrated-resource-calendar',
     icon: <CalendarMonthIcon />,
+    category: 'system',
+  },
+  {
+    label: '1日の流れ設定',
+    description: '日課・活動スケジュールの設定',
+    to: '/settings/operation-flow',
+    icon: <ScheduleIcon />,
     category: 'system',
   },
 ];

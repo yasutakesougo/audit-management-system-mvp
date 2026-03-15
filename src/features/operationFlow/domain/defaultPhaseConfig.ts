@@ -1,13 +1,14 @@
 /**
- * defaultPhaseConfig — 福祉事業所の標準的な9フェーズ時間割
+ * defaultPhaseConfig — 福祉事業所の標準的な業務フェーズ時間割
  *
  * 現場実態に基づく初期値:
  *   - 常勤出勤    08:30
  *   - 朝会        09:00–09:15
  *   - 通所受入    09:15–10:30 （送迎車到着〜バイタル確認）
  *   - 午前活動    10:30–12:00
- *   - 午後活動    12:00–15:30 （昼食→午後プログラム）
- *   - 退所対応    15:30–16:00 （帰り支度・送迎出発）
+ *   - 昼食休み    12:00–13:45 （昼食→休憩）
+ *   - PM活動     13:45–15:45 （午後プログラム）
+ *   - 退所対応    15:45–16:00 （帰り支度・送迎出発）
  *   - 記録仕上げ  16:00–17:00
  *   - 夕会        17:00–18:00
  *   - 振り返り    18:00–08:30 （日またぎ）
@@ -53,20 +54,28 @@ export const DEFAULT_PHASE_CONFIG: readonly OperationFlowPhaseConfig[] = [
     sortOrder: 3,
   },
   {
-    phaseKey: 'pm_activity',
-    label: '午後活動',
+    phaseKey: 'lunch_break',
+    label: '昼食休み',
     startTime: '12:00',
-    endTime: '15:30',
-    primaryScreen: '/daily',
+    endTime: '13:45',
+    primaryScreen: '/today',
     sortOrder: 4,
+  },
+  {
+    phaseKey: 'pm_activity',
+    label: 'PM活動',
+    startTime: '13:45',
+    endTime: '15:45',
+    primaryScreen: '/daily',
+    sortOrder: 5,
   },
   {
     phaseKey: 'departure_support',
     label: '退所対応',
-    startTime: '15:30',
+    startTime: '15:45',
     endTime: '16:00',
     primaryScreen: '/daily/attendance',
-    sortOrder: 5,
+    sortOrder: 6,
   },
   {
     phaseKey: 'record_wrapup',
@@ -74,7 +83,7 @@ export const DEFAULT_PHASE_CONFIG: readonly OperationFlowPhaseConfig[] = [
     startTime: '16:00',
     endTime: '17:00',
     primaryScreen: '/daily',
-    sortOrder: 6,
+    sortOrder: 7,
   },
   {
     phaseKey: 'evening_briefing',
@@ -82,7 +91,7 @@ export const DEFAULT_PHASE_CONFIG: readonly OperationFlowPhaseConfig[] = [
     startTime: '17:00',
     endTime: '18:00',
     primaryScreen: '/handoff-timeline',
-    sortOrder: 7,
+    sortOrder: 8,
   },
   {
     phaseKey: 'after_hours_review',
@@ -90,6 +99,6 @@ export const DEFAULT_PHASE_CONFIG: readonly OperationFlowPhaseConfig[] = [
     startTime: '18:00',
     endTime: '08:30',   // 日またぎ — endTime < startTime
     primaryScreen: '/dashboard',
-    sortOrder: 8,
+    sortOrder: 9,
   },
 ] as const;

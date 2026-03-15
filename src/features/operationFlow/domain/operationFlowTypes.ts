@@ -16,13 +16,13 @@
 // ────────────────────────────────────────
 
 /**
- * 9分割の業務フェーズキー
+ * 10分割の業務フェーズキー
  *
  * 旧6分割との対応:
  *   preparation     → staff_prep
  *   morning-meeting → morning_briefing
  *   am-operation    → arrival_intake + am_activity
- *   pm-operation    → pm_activity
+ *   pm-operation    → lunch_break + pm_activity
  *   evening-closing → departure_support
  *   record-review   → record_wrapup + evening_briefing + after_hours_review
  */
@@ -31,7 +31,8 @@ export type OperationFlowPhaseKey =
   | 'morning_briefing'    // 朝会
   | 'arrival_intake'      // 通所受入
   | 'am_activity'         // 午前活動
-  | 'pm_activity'         // 午後活動
+  | 'lunch_break'         // 昼食休み
+  | 'pm_activity'         // PM活動
   | 'departure_support'   // 退所対応
   | 'record_wrapup'       // 記録仕上げ
   | 'evening_briefing'    // 夕会
