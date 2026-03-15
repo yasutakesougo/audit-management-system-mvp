@@ -26,7 +26,15 @@ import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded';
 
 import type { AbcRecord, AbcIntensity } from '@/domain/abc/abcRecord';
+import {
+  countStrategyAdoptions,
+  getTotalAdoptions,
+  STRATEGY_KEYS,
+  STRATEGY_LABELS,
+  type StrategyAdoptionCounts,
+} from '@/domain/isp/countStrategyAdoptions';
 import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
+import { localEvidenceLinkRepository } from '@/infra/localStorage/localEvidenceLinkRepository';
 
 // ── Constants ──
 const ABC_INTENSITY_DISPLAY: Record<AbcIntensity, string> = {
@@ -104,6 +112,7 @@ export const AbcEvidencePanel: React.FC<AbcEvidencePanelProps> = ({ userId }) =>
   const navigate = useNavigate();
   const [records, setRecords] = React.useState<AbcRecord[]>([]);
   const [expanded, setExpanded] = React.useState(true);
+  const [adoptionCounts, setAdoptionCounts] = React.useState<StrategyAdoptionCounts | null>(null);
 
   React.useEffect(() => {
     let disposed = false;
@@ -113,7 +122,19 @@ export const AbcEvidencePanel: React.FC<AbcEvidencePanelProps> = ({ userId }) =>
     return () => { disposed = true; };
   }, [userId]);
 
+  // 戦略別採用件数を取得
+  React.useEffect(() => {
+    if (records.length === 0) {
+      setAdoptionCounts(null);
+      return;
+    }
+    const userAbcIds = new Set(records.map(r => r.id));
+    const allLinks = localEvidenceLinkRepository.getAll();
+    setAdoptionCounts(countStrategyAdoptions(userAbcIds, allLinks));
+  }, [records]);
+
   const summary = React.useMemo(() => buildSummary(records), [records]);
+  const totalAdoptions = adoptionCounts ? getTotalAdoptions(adoptionCounts) : 0;
 
   if (summary.total === 0) {
     return (
@@ -215,6 +236,59 @@ export const AbcEvidencePanel: React.FC<AbcEvidencePanelProps> = ({ userId }) =>
                   {summary.topSettings.map(s => (
                     <Chip key={s.name} label={`${s.name} (${s.count})`} size="small" variant="outlined" />
                   ))}
+                </Stack>
+              </Box>
+            )}
+
+            {/* ── Top Behaviors ── */}
+            {summary.topBehaviors.length > 0 && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+                  よく見られる行動
+                </Typography>
+                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                  {summary.topBehaviors.slice(0, 3).map(b => (
+                    <Chip key={b.name} label={`${b.name} (${b.count})`} size="small" variant="outlined" color="secondary" />
+                  ))}
+                </Stack>
+              </Box>
+            )}
+
+            {/* ── Strategy Adoption Counts ── */}
+            {adoptionCounts && totalAdoptions > 0 && (
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+                  支援計画での採用状況
+                </Typography>
+                <Stack spacing={0.5}>
+                  {STRATEGY_KEYS.map(key => {
+                    const count = adoptionCounts[key];
+                    const maxCount = Math.max(...STRATEGY_KEYS.map(k => adoptionCounts[k]), 1);
+                    const ratio = count / maxCount;
+                    return (
+                      <Stack key={key} direction="row" alignItems="center" spacing={1}>
+                        <Typography variant="caption" sx={{ minWidth: 90 }}>
+                          {STRATEGY_LABELS[key]}
+                        </Typography>
+                        <Box sx={{ flex: 1, height: 6, bgcolor: 'grey.200', borderRadius: 1, overflow: 'hidden' }}>
+                          <Box
+                            sx={{
+                              width: `${ratio * 100}%`,
+                              height: '100%',
+                              bgcolor: key === 'antecedentStrategies' ? 'info.main'
+                                : key === 'teachingStrategies' ? 'success.main'
+                                : 'warning.main',
+                              borderRadius: 1,
+                              transition: 'width 0.3s ease',
+                            }}
+                          />
+                        </Box>
+                        <Typography variant="caption" fontWeight={700} sx={{ minWidth: 24, textAlign: 'right' }}>
+                          {count}
+                        </Typography>
+                      </Stack>
+                    );
+                  })}
                 </Stack>
               </Box>
             )}

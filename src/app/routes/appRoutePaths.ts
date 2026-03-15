@@ -80,7 +80,6 @@ export const APP_ROUTE_PATHS = [
   'schedules/create',
   'dev/schedule-create-dialog',
   'ibd',
-  'support-planning-sheet/:planningSheetId',
   'planning-sheet-list',
   'abc-record',
   'settings/operation-flow',
