@@ -1,10 +1,11 @@
 /**
- * Support Plan domain routes: /support-plan-guide, /isp-editor, /support-planning-sheet
+ * Support Plan domain routes: /support-plan-guide, /isp-editor, /support-planning-sheet, /abc-record
  */
 import RequireAudience from '@/components/RequireAudience';
 import type { RouteObject } from 'react-router-dom';
 
 import {
+    SuspendedAbcRecordPage,
     SuspendedISPComparisonEditorPage,
     SuspendedPlanningSheetListPage,
     SuspendedSupportPlanGuidePage,
@@ -44,4 +45,13 @@ export const supportPlanRoutes: RouteObject[] = [
       </RequireAudience>
     ),
   },
+  {
+    path: 'abc-record',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <SuspendedAbcRecordPage />
+      </RequireAudience>
+    ),
+  },
 ];
+

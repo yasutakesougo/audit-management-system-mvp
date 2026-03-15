@@ -120,8 +120,15 @@ export function useSupportPlanBundle(
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Destructure individual repos for stable dependency references.
+  // The wrapper object `repos` may be re-created on each render even when
+  // the individual repo instances are referentially stable.
+  const ispRepo = repos?.ispRepo ?? null;
+  const planningSheetRepo = repos?.planningSheetRepo ?? null;
+  const procedureRecordRepo = repos?.procedureRecordRepo ?? null;
+
   useEffect(() => {
-    if (!userId || !repos) {
+    if (!userId || !ispRepo || !planningSheetRepo || !procedureRecordRepo) {
       setIsp(null);
       setSheets([]);
       setRecords([]);
@@ -136,8 +143,8 @@ export function useSupportPlanBundle(
       try {
         // 並行取得: ISP + シート一覧
         const [ispResult, sheetsResult] = await Promise.all([
-          repos.ispRepo.getCurrentByUser(userId),
-          repos.planningSheetRepo.listCurrentByUser(userId),
+          ispRepo.getCurrentByUser(userId),
+          planningSheetRepo.listCurrentByUser(userId),
         ]);
 
         if (cancelled) return;
@@ -149,7 +156,7 @@ export function useSupportPlanBundle(
         if (sheetsResult.length > 0) {
           const recordResults = await Promise.all(
             sheetsResult.map((sheet) =>
-              repos.procedureRecordRepo.listByPlanningSheet(sheet.id),
+              procedureRecordRepo.listByPlanningSheet(sheet.id),
             ),
           );
 
@@ -171,7 +178,7 @@ export function useSupportPlanBundle(
     return () => {
       cancelled = true;
     };
-  }, [userId, repos]);
+  }, [userId, ispRepo, planningSheetRepo, procedureRecordRepo]);
 
   const bundle = useMemo<SupportPlanBundle | null>(() => {
     if (!isp) return null;

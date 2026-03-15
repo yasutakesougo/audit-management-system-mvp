@@ -34,6 +34,9 @@ import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIceb
 import { usePlanningSheetData } from '@/features/planning-sheet/hooks/usePlanningSheetData';
 import { usePlanningSheetForm } from '@/features/planning-sheet/hooks/usePlanningSheetForm';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
+import { NewPlanningSheetForm } from '@/features/planning-sheet/components/NewPlanningSheetForm';
+import { createSharePointIspRepository } from '@/data/isp/sharepoint/SharePointIspRepository';
+import { useSP } from '@/lib/spClient';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { TESTIDS, tid } from '@/testids';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
@@ -65,6 +68,13 @@ import { InfoRow } from '@/features/planning-sheet/components/ReadOnlySections';
 import { formatDateTimeIntl } from '@/lib/dateFormat';
 import { PhaseNextStepBanner } from '@/features/planning-sheet/components/PhaseNextStepBanner';
 import { determineWorkflowPhase, type WorkflowPhase } from '@/domain/bridge/workflowPhase';
+import { AbcEvidencePanel } from '@/features/ibd/analysis/pdca/components/AbcEvidencePanel';
+import type { EvidenceLinkMap } from '@/domain/isp/evidenceLink';
+import { createEmptyEvidenceLinkMap } from '@/domain/isp/evidenceLink';
+import type { AbcRecord } from '@/domain/abc/abcRecord';
+import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
+import { localEvidenceLinkRepository } from '@/infra/localStorage/localEvidenceLinkRepository';
+import type { IcebergPdcaItem } from '@/features/ibd/analysis/pdca/types';
 
 // ─────────────────────────────────────────────
 // Types
@@ -131,8 +141,31 @@ export default function SupportPlanningSheetPage() {
   const [monitoringDialogOpen, setMonitoringDialogOpen] = React.useState(false);
   const [sessionProvenance, setSessionProvenance] = React.useState<ProvenanceEntry[]>([]);
 
+  // ── Evidence Links state (persisted to localStorage) ──
+  const [evidenceLinks, setEvidenceLinksRaw] = React.useState<EvidenceLinkMap>(createEmptyEvidenceLinkMap());
+  const [abcRecords, setAbcRecords] = React.useState<AbcRecord[]>([]);
+  const [pdcaItems, setPdcaItems] = React.useState<IcebergPdcaItem[]>([]);
+
+  // Restore evidence links from localStorage on mount
+  React.useEffect(() => {
+    if (planningSheetId && planningSheetId !== 'new') {
+      const stored = localEvidenceLinkRepository.get(planningSheetId);
+      setEvidenceLinksRaw(stored);
+    }
+  }, [planningSheetId]);
+
+  // Auto-save wrapper: updates state + persists to localStorage
+  const setEvidenceLinks = React.useCallback((updated: EvidenceLinkMap) => {
+    setEvidenceLinksRaw(updated);
+    if (planningSheetId && planningSheetId !== 'new') {
+      localEvidenceLinkRepository.save(planningSheetId, updated);
+    }
+  }, [planningSheetId]);
+
   // ── Repository DI ──
   const planningSheetRepo = usePlanningSheetRepositories();
+  const spClient = useSP();
+  const ispRepo = React.useMemo(() => createSharePointIspRepository(spClient), [spClient]);
 
   // ── データ取得（本番 Repository 接続） ──
   const { data: sheet, isLoading, error, refetch } = usePlanningSheetData(planningSheetId, planningSheetRepo);
@@ -146,6 +179,32 @@ export default function SupportPlanningSheetPage() {
 
   // ── Iceberg Evidence（ADR-006 準拠: useIcebergEvidence 経由） ──
   const { data: icebergEvidence } = useIcebergEvidence(sheet?.userId ?? null);
+
+  // ── ABC/PDCA データ取得（根拠選択用） ──
+  React.useEffect(() => {
+    let disposed = false;
+    const userId = sheet?.userId;
+    if (!userId) {
+      setAbcRecords([]);
+      setPdcaItems([]);
+      return;
+    }
+    // ABC記録取得
+    localAbcRecordRepository.getByUserId(userId).then(records => {
+      if (!disposed) setAbcRecords(records);
+    });
+    // PDCA取得（localStorage から直接）
+    try {
+      const raw = localStorage.getItem('iceberg-pdca-items');
+      if (raw) {
+        const all: IcebergPdcaItem[] = JSON.parse(raw);
+        if (!disposed) setPdcaItems(all.filter(p => p.userId === userId));
+      }
+    } catch {
+      // ignore parse errors
+    }
+    return () => { disposed = true; };
+  }, [sheet?.userId]);
 
   // ── アセスメント取込 ──
   const { getByUserId: getAssessment } = useAssessmentStore();
@@ -349,18 +408,10 @@ export default function SupportPlanningSheetPage() {
   // ── 新規作成ルート ──
   if (planningSheetId === 'new') {
     return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="info">
-          支援計画シートの新規作成機能は現在準備中です。ISP 画面から利用者を選択して作成してください。
-        </Alert>
-        <Button
-          startIcon={<ArrowBackRoundedIcon />}
-          onClick={() => navigate('/support-plan-guide')}
-          sx={{ mt: 2 }}
-        >
-          ISP 画面に戻る
-        </Button>
-      </Box>
+      <NewPlanningSheetForm
+        planningSheetRepo={planningSheetRepo}
+        ispRepo={ispRepo}
+      />
     );
   }
 
@@ -575,6 +626,9 @@ export default function SupportPlanningSheetPage() {
           </Stack>
         </Paper>
 
+        {/* ── ABC根拠データ ── */}
+        {sheet.userId && <AbcEvidencePanel userId={sheet.userId} />}
+
         {/* ── Validation エラーサマリー ── */}
         {isEditing && Object.keys(form.validationErrors).length > 0 && (
           <Alert severity="warning" variant="outlined">
@@ -658,9 +712,13 @@ export default function SupportPlanningSheetPage() {
               <EditablePlanningDesignSection
                 planning={form.planning}
                 onChange={form.setPlanning}
+                abcRecords={abcRecords}
+                pdcaItems={pdcaItems}
+                evidenceLinks={evidenceLinks}
+                onEvidenceLinksChange={setEvidenceLinks}
               />
             ) : (
-              <PlanningDesignSection sheet={sheet} />
+              <PlanningDesignSection sheet={sheet} evidenceLinks={evidenceLinks} />
             )}
           </TabPanel>
           <TabPanel current={activeTab} value="regulatory">
