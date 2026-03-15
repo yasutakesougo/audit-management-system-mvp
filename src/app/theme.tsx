@@ -1,6 +1,7 @@
 import CssBaseline from '@mui/material/CssBaseline';
 import { alpha, createTheme, ThemeProvider as MUIThemeProvider, type Theme, type ThemeOptions } from '@mui/material/styles';
 import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
+import { useSettingsContext } from '@/features/settings/SettingsContext';
 
 /**
  * Theme Configuration (Phase 1: Light mode baseline + Dark mode foundation)
@@ -191,6 +192,7 @@ const getInitialMode = (): 'light' | 'dark' => {
 
 export const ThemeRoot: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mode, setMode] = useState<'light' | 'dark'>(getInitialMode);
+  const { settings } = useSettingsContext();
 
   useEffect(() => {
     localStorage.setItem('app_color_mode', mode);
@@ -201,8 +203,21 @@ export const ThemeRoot: React.FC<{ children: React.ReactNode }> = ({ children })
     [],
   );
 
+  // Apply density CSS variables on density change
+  useEffect(() => {
+    applyDensityToDocument(settings.density as Density);
+  }, [settings.density]);
+
   const theme = useMemo(() => {
+    // Density-aware spacing
+    const densityBase = densitySpacingMap[settings.density as Density] ?? 8;
+
+    // Font size mapping
+    const fontSizeMap = { small: 12, medium: 14, large: 16 } as const;
+    const baseFontSize = fontSizeMap[settings.fontSize as keyof typeof fontSizeMap] ?? 14;
+
     const baseTheme = createTheme({
+      spacing: densityBase,
       palette:
         mode === 'dark'
           ? {
@@ -231,12 +246,16 @@ export const ThemeRoot: React.FC<{ children: React.ReactNode }> = ({ children })
               divider: 'rgba(0,0,0,0.08)',
             },
       ...base,
+      typography: {
+        ...base.typography,
+        fontSize: baseFontSize,
+      },
     });
 
     return createTheme(baseTheme, {
       serviceTypeColors: buildServiceTypeColors(baseTheme),
     });
-  }, [mode]);
+  }, [mode, settings.density, settings.fontSize]);
 
   const ctx = useMemo(
     () => ({ mode, toggle, sticky: false }),

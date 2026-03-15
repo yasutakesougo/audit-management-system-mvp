@@ -30,8 +30,8 @@ export const ISP_ROUTES: NavItem[] = [
   },
   {
     label: '支援計画シート',
-    to: '/support-planning-sheet/new',
-    isActive: (pathname) => pathname.startsWith('/support-planning-sheet'),
+    to: '/planning-sheet-list',
+    isActive: (pathname) => pathname.startsWith('/planning-sheet-list') || pathname.startsWith('/support-planning-sheet'),
     icon: undefined,
     testId: TESTIDS.nav.planningSheet,
     audience: NAV_AUDIENCE.staff,
