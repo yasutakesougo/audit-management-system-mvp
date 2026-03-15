@@ -16,6 +16,7 @@
 import { useCallback, useMemo } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import type { HandoffDayScope } from '../handoffTypes';
+import type { EntryMode } from './useHandoffDayViewState';
 import { formatDateIso } from '@/lib/dateFormat';
 
 // ────────────────────────────────────────────────────────────
@@ -31,8 +32,8 @@ export interface HandoffDateNavState {
   range: DateRange;
   /** 旧互換: dayScope 相当 ('today' | 'yesterday' | 日付指定) */
   dayScope: HandoffDayScope;
-  /** 遷移元が /today かどうか */
-  fromToday: boolean;
+  /** 遷移経路: /today 経由か直接アクセスか */
+  entryMode: EntryMode;
   /** range=week のとき: 週の月〜日 [start, end] */
   weekRange: [string, string] | null;
   /** range=month のとき: 月の [1日, 末日] */
@@ -251,7 +252,7 @@ export function useHandoffDateNav(): HandoffDateNavState & HandoffDateNavActions
 
   const range = parseRange(searchParams.get('range'));
   const dayScope = dateToDayScope(resolvedDate);
-  const fromToday = navState?.from === 'today';
+  const entryMode: EntryMode = navState?.from === 'today' ? 'from-today' : 'direct';
   const todayStr = formatDateLocal();
   const isToday = resolvedDate === todayStr;
 
@@ -374,7 +375,7 @@ export function useHandoffDateNav(): HandoffDateNavState & HandoffDateNavActions
     date: resolvedDate,
     range,
     dayScope,
-    fromToday,
+    entryMode,
     isToday,
     weekRange,
     monthRange,

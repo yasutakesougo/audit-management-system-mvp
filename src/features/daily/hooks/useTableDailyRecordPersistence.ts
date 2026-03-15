@@ -13,8 +13,27 @@ import type { TableDailyRecordData } from './useTableDailyRecordForm';
 const TABLE_DAILY_DRAFT_STORAGE_KEY = 'daily-table-record:draft:v1';
 
 /**
- * 下書きデータ構造
- * フォームデータ + UI状態（選択・フィルタ）を含む
+ * 下書き保存対象スキーマ
+ *
+ * ✅ 保存する（入力保護・状態復元に必須）:
+ *   - formData (date, reporter, userRows) — 全入力データ
+ *   - selectedUserIds — 選択済み利用者の復元に必要
+ *   - searchQuery — 検索状態の復元
+ *   - showTodayOnly — フィルタ状態の復元
+ *
+ * ❌ 保存しない（一時的 or 再取得可能）:
+ *   - validationErrors — 一時的な UI 状態。再バリデーション時に再生成
+ *   - handoff data — 常時 API から再取得。下書きの鮮度より最新データを優先
+ *   - saving flag — 一時的な処理状態
+ *   - showUnsentOnly — URL パラメータから復元（useTableDailyRecordRouting）
+ *   - visibleRows / unsentRowCount — formData.userRows からの派生値
+ *
+ * 🔄 保存時に自動付与:
+ *   - savedAt — ISO タイムスタンプ（復元時に下書き日時として表示）
+ *
+ * 📌 今後の追加候補:
+ *   - schemaVersion — 下書き互換性のためのバージョン番号
+ *   - acceptedSuggestions — 提案アクション履歴（UserRowData 内に含まれるため現状は間接的に保存済み）
  */
 export type TableDailyRecordDraft = {
   formData: TableDailyRecordData;
