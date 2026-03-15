@@ -37,6 +37,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
 // ── Icons ──
+import AccountTreeRoundedIcon from '@mui/icons-material/AccountTreeRounded';
 import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import BubbleChartRoundedIcon from '@mui/icons-material/BubbleChartRounded';
@@ -51,6 +52,9 @@ import type { AbcRecord, AbcRecordCreateInput } from '@/domain/abc/abcRecord';
 import { ABC_INTENSITY_VALUES, ABC_INTENSITY_DISPLAY } from '@/domain/abc/abcRecord';
 import type { AbcIntensity } from '@/domain/abc/abcRecord';
 import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
+import { localEvidenceLinkRepository } from '@/infra/localStorage/localEvidenceLinkRepository';
+import { getStrategyUsagesForAbcRecord } from '@/domain/isp/reverseTrace';
+import type { StrategyUsageSummary } from '@/domain/isp/reverseTrace';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { useAuth } from '@/auth/useAuth';
 
@@ -459,6 +463,19 @@ const LogTab: React.FC<{
   const [editForm, setEditForm] = useState<Partial<AbcRecord>>({});
   const [editSaving, setEditSaving] = useState(false);
 
+  // ── Reverse Trace (Phase 4) ──
+  const [reverseTrace, setReverseTrace] = useState<StrategyUsageSummary | null>(null);
+
+  useEffect(() => {
+    if (detailRecord && !isEditing) {
+      const allMaps = localEvidenceLinkRepository.getAll();
+      const summary = getStrategyUsagesForAbcRecord(detailRecord.id, allMaps);
+      setReverseTrace(summary);
+    } else {
+      setReverseTrace(null);
+    }
+  }, [detailRecord, isEditing]);
+
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
     records.forEach(r => r.tags.forEach(t => tagSet.add(t)));
@@ -692,6 +709,104 @@ const LogTab: React.FC<{
                       <Typography variant="subtitle2" color="text.secondary">メモ</Typography>
                       <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{detailRecord.notes}</Typography>
                     </Box>
+                  )}
+                  {/* ── Reverse Trace: このABCが使われている支援 ── */}
+                  {reverseTrace && reverseTrace.totalUsageCount > 0 && (
+                    <>
+                      <Divider />
+                      <Box>
+                        <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1 }}>
+                          <AccountTreeRoundedIcon fontSize="small" color="primary" />
+                          <Typography variant="subtitle2" fontWeight={700} color="primary.main">
+                            このABCが使われている支援
+                          </Typography>
+                          <Chip
+                            label={`${reverseTrace.totalUsageCount}件`}
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                            sx={{ height: 20, fontSize: '0.65rem' }}
+                          />
+                        </Stack>
+                        <Stack spacing={0.75}>
+                          {reverseTrace.usages.map((usage, idx) => (
+                            <Paper
+                              key={`${usage.planningSheetId}-${usage.strategy}-${idx}`}
+                              variant="outlined"
+                              sx={{
+                                px: 1.5, py: 0.75,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                borderLeftWidth: 3,
+                                borderLeftColor: usage.strategy === 'antecedentStrategies'
+                                  ? 'info.main'
+                                  : usage.strategy === 'teachingStrategies'
+                                    ? 'success.main'
+                                    : 'warning.main',
+                              }}
+                            >
+                              <Chip
+                                label={usage.strategyLabel}
+                                size="small"
+                                variant="filled"
+                                color={
+                                  usage.strategy === 'antecedentStrategies'
+                                    ? 'info'
+                                    : usage.strategy === 'teachingStrategies'
+                                      ? 'success'
+                                      : 'warning'
+                                }
+                                sx={{ height: 22, fontSize: '0.7rem', fontWeight: 600 }}
+                              />
+                              <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
+                                支援計画シート: {usage.planningSheetId.slice(0, 12)}…
+                              </Typography>
+                              {usage.count > 1 && (
+                                <Chip
+                                  label={`×${usage.count}`}
+                                  size="small"
+                                  variant="outlined"
+                                  sx={{ height: 18, fontSize: '0.6rem' }}
+                                />
+                              )}
+                            </Paper>
+                          ))}
+                        </Stack>
+                        <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                          {Object.entries(reverseTrace.byStrategy)
+                            .filter(([, count]) => count > 0)
+                            .map(([key, count]) => {
+                              const labels: Record<string, string> = {
+                                antecedentStrategies: '先行事象',
+                                teachingStrategies: '教授',
+                                consequenceStrategies: '後続事象',
+                              };
+                              return (
+                                <Typography key={key} variant="caption" color="text.secondary">
+                                  {labels[key]}（{count}件）
+                                </Typography>
+                              );
+                            })}
+                          <Typography variant="caption" color="text.secondary">
+                            関連支援計画: {reverseTrace.relatedSheetCount}件
+                          </Typography>
+                        </Stack>
+                      </Box>
+                    </>
+                  )}
+                  {reverseTrace && reverseTrace.totalUsageCount === 0 && (
+                    <>
+                      <Divider />
+                      <Box>
+                        <Stack direction="row" spacing={0.75} alignItems="center">
+                          <AccountTreeRoundedIcon fontSize="small" sx={{ color: 'text.disabled' }} />
+                          <Typography variant="body2" color="text.disabled">
+                            このABCはまだ支援計画に紐づけられていません
+                          </Typography>
+                        </Stack>
+                      </Box>
+                    </>
                   )}
                   <Typography variant="caption" color="text.secondary">
                     記録者: {detailRecord.recorderName} | 作成: {new Date(detailRecord.createdAt).toLocaleString('ja-JP')}
