@@ -1,21 +1,15 @@
 /**
  * CompactNewHandoffInput — ダッシュボード Action Rail 用 コンパクト申し送り入力
  *
+ * Phase 2 (B-2): フォーム状態管理を useNewHandoffForm Hook に分離。
+ * このコンポーネントは描画のみを担当。
+ *
  * 340px 幅のサイドレールに配置する省スペース版。
  * 最低限のフィールド（対象・カテゴリ・重要度・本文）のみ表示し、
  * 1タップ/Enter で即送信できる UX を提供。
- *
- * 特長:
- * - TimeBand は自動判定（手動不要）
- * - カテゴリ / 重要度は Chip Toggle で省スペース
- * - Enter 送信、Shift+Enter 改行
- * - 送信成功 → ✅ スナックバー風インラインフィードバック
- * - 送信失敗 → ⚠️ エラー表示
- * - 連続入力に最適化（カテゴリ・重要度はリセットしない）
  */
 
 import { motionTokens } from '@/app/theme';
-import type { IUserMaster } from '@/sharepoint/fields';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SendIcon from '@mui/icons-material/Send';
@@ -32,11 +26,10 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { alpha, useTheme } from '@mui/material/styles';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React from 'react';
 import { useUsersDemo } from '../../users/usersStoreDemo';
 import type { HandoffCategory, HandoffSeverity } from '../handoffTypes';
-import { getTimeBandPlaceholder, useCurrentTimeBand } from '../useCurrentTimeBand';
-import { useHandoffTimeline } from '../useHandoffTimeline';
+import { useNewHandoffForm } from '../hooks/useNewHandoffForm';
 
 // ── Constants ──
 
@@ -56,11 +49,6 @@ const SEVERITY_OPTIONS: { label: string; value: HandoffSeverity; color: 'default
   { label: '重要', value: '重要', color: 'error' },
 ];
 
-/** 送信成功フィードバック表示時間 (ms) */
-const SUCCESS_DISPLAY_MS = 2500;
-
-type TargetOption = 'ALL' | IUserMaster;
-
 // ── Props ──
 
 export interface CompactNewHandoffInputProps {
@@ -74,84 +62,9 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
   onSuccess,
 }) => {
   const theme = useTheme();
-  const timeBand = useCurrentTimeBand();
-  const { createHandoff } = useHandoffTimeline();
   const { data: users } = useUsersDemo();
 
-  // ── Form state ──
-  const [target, setTarget] = useState<TargetOption>('ALL');
-  const [category, setCategory] = useState<HandoffCategory>('体調');
-  const [severity, setSeverity] = useState<HandoffSeverity>('通常');
-  const [message, setMessage] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-
-  // ── Feedback state ──
-  const [feedback, setFeedback] = useState<'success' | 'error' | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
-
-  const showFeedback = useCallback((type: 'success' | 'error') => {
-    setFeedback(type);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setFeedback(null), SUCCESS_DISPLAY_MS);
-  }, []);
-
-  const placeholder = useMemo(() => getTimeBandPlaceholder(timeBand), [timeBand]);
-
-  // ── Handlers ──
-
-  const handleSubmit = useCallback(async () => {
-    const text = message.trim();
-    if (!text || submitting) return;
-
-    setSubmitting(true);
-    setFeedback(null);
-    try {
-      const userCode = target === 'ALL' ? 'ALL' : target.UserID.toString();
-      const userDisplayName = target === 'ALL' ? '全体' : target.FullName;
-
-      await createHandoff({
-        userCode,
-        userDisplayName,
-        category,
-        severity,
-        timeBand,
-        message: text,
-        title: `${userDisplayName} / ${category}`,
-      });
-
-      setMessage('');
-      showFeedback('success');
-      onSuccess?.();
-    } catch {
-      showFeedback('error');
-    } finally {
-      setSubmitting(false);
-    }
-  }, [message, submitting, target, category, severity, timeBand, createHandoff, showFeedback, onSuccess]);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        handleSubmit();
-      }
-    },
-    [handleSubmit],
-  );
-
-  const canSend = message.trim().length > 0 && !submitting;
-
-  // ── Auto-expand when user focuses on textarea ──
-  const handleFocus = useCallback(() => {
-    if (!expanded) setExpanded(true);
-  }, [expanded]);
+  const form = useNewHandoffForm(onSuccess);
 
   return (
     <Paper
@@ -183,7 +96,7 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
             bgcolor: alpha(theme.palette.primary.main, 0.04),
           },
         }}
-        onClick={() => setExpanded((prev) => !prev)}
+        onClick={() => form.setExpanded((prev) => !prev)}
       >
         <Stack direction="row" spacing={0.75} alignItems="center">
           <Typography
@@ -197,7 +110,7 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
             ✍️ 今すぐ申し送り
           </Typography>
           <Chip
-            label={`⏰ ${timeBand}`}
+            label={`⏰ ${form.timeBand}`}
             size="small"
             variant="outlined"
             color="primary"
@@ -208,25 +121,25 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
           sx={{
             fontSize: 18,
             color: 'text.secondary',
-            transform: expanded ? 'rotate(180deg)' : 'none',
+            transform: form.expanded ? 'rotate(180deg)' : 'none',
             transition: `transform ${motionTokens.duration.normal} ${motionTokens.easing.standard}`,
           }}
         />
       </Box>
 
       {/* ── Expandable Body ── */}
-      <Collapse in={expanded} timeout={250}>
+      <Collapse in={form.expanded} timeout={250}>
         <Divider />
         <Box sx={{ px: 2, py: 1.5 }}>
           <Stack spacing={1.5}>
 
             {/* ── 送信フィードバック ── */}
-            <Collapse in={feedback !== null}>
-              {feedback === 'success' && (
+            <Collapse in={form.feedback !== null}>
+              {form.feedback === 'success' && (
                 <Alert
                   severity="success"
                   icon={<CheckCircleOutlineIcon fontSize="inherit" />}
-                  onClose={() => setFeedback(null)}
+                  onClose={form.clearFeedback}
                   sx={{
                     py: 0.25,
                     fontSize: '0.75rem',
@@ -237,10 +150,10 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
                   ✅ 送信しました！
                 </Alert>
               )}
-              {feedback === 'error' && (
+              {form.feedback === 'error' && (
                 <Alert
                   severity="error"
-                  onClose={() => setFeedback(null)}
+                  onClose={form.clearFeedback}
                   sx={{
                     py: 0.25,
                     fontSize: '0.75rem',
@@ -258,14 +171,14 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
               select
               label="対象"
               size="small"
-              value={target === 'ALL' ? 'ALL' : target.UserID.toString()}
+              value={form.target === 'ALL' ? 'ALL' : form.target.UserID.toString()}
               onChange={(e) => {
                 const value = e.target.value;
                 if (value === 'ALL') {
-                  setTarget('ALL');
+                  form.setTarget('ALL');
                 } else {
                   const user = users.find((u) => u.UserID.toString() === value);
-                  if (user) setTarget(user);
+                  if (user) form.setTarget(user);
                 }
               }}
               fullWidth
@@ -304,9 +217,9 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
                     key={opt.value}
                     label={`${opt.emoji} ${opt.label}`}
                     size="small"
-                    variant={opt.value === category ? 'filled' : 'outlined'}
-                    color={opt.value === category ? 'primary' : 'default'}
-                    onClick={() => setCategory(opt.value)}
+                    variant={opt.value === form.category ? 'filled' : 'outlined'}
+                    color={opt.value === form.category ? 'primary' : 'default'}
+                    onClick={() => form.setCategory(opt.value)}
                     sx={{
                       cursor: 'pointer',
                       fontSize: '0.7rem',
@@ -334,9 +247,9 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
                     key={opt.value}
                     label={opt.label}
                     size="small"
-                    variant={opt.value === severity ? 'filled' : 'outlined'}
-                    color={opt.value === severity ? opt.color : 'default'}
-                    onClick={() => setSeverity(opt.value)}
+                    variant={opt.value === form.severity ? 'filled' : 'outlined'}
+                    color={opt.value === form.severity ? opt.color : 'default'}
+                    onClick={() => form.setSeverity(opt.value)}
                     sx={{
                       cursor: 'pointer',
                       fontSize: '0.7rem',
@@ -352,15 +265,15 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
             {/* ── 本文入力 + 送信ボタン ── */}
             <Stack direction="row" spacing={0.75} alignItems="flex-end">
               <TextField
-                placeholder={placeholder}
+                placeholder={form.placeholder}
                 multiline
                 minRows={2}
                 maxRows={5}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onFocus={handleFocus}
-                disabled={submitting}
+                value={form.message}
+                onChange={(e) => form.setMessage(e.target.value)}
+                onKeyDown={form.handleKeyDown}
+                onFocus={form.handleFocus}
+                disabled={form.submitting}
                 fullWidth
                 variant="outlined"
                 size="small"
@@ -376,15 +289,15 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
               />
               <IconButton
                 color="primary"
-                onClick={handleSubmit}
-                disabled={!canSend}
+                onClick={form.handleSubmit}
+                disabled={!form.canSend}
                 size="small"
                 sx={{
                   flexShrink: 0,
                   width: 36,
                   height: 36,
                   borderRadius: 2,
-                  bgcolor: canSend
+                  bgcolor: form.canSend
                     ? alpha(theme.palette.primary.main, 0.1)
                     : 'transparent',
                   transition: motionTokens.transition.hoverAll,
@@ -397,7 +310,7 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
                 data-testid="compact-handoff-send"
                 aria-label="申し送り送信"
               >
-                {submitting ? (
+                {form.submitting ? (
                   <CircularProgress size={18} color="inherit" />
                 ) : (
                   <SendIcon fontSize="small" />
