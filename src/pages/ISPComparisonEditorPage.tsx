@@ -41,7 +41,7 @@ export default function ISPComparisonEditorPage() {
             users={allUsers}
             onSelect={(code) => navigate(`/isp-editor/${code}`)}
             title="対象利用者を選択してください"
-            subtitle="個別支援計画書の比較・更新を行う利用者を選択します。IBD対象者は優先表示されています。"
+            subtitle="個別支援計画書の比較・更新を行う利用者を選択します。行動分析対象者は優先表示されています。"
           />
         </Paper>
       </Box>
