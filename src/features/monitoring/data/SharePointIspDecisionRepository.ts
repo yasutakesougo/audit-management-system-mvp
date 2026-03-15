@@ -205,8 +205,7 @@ export class SharePointIspDecisionRepository implements IspDecisionRepository {
       const response = await fetchSp(`${listPath}/items`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json;odata=verbose',
-          Accept: 'application/json;odata=verbose',
+          'Content-Type': 'application/json;odata=nometadata',
         },
         body: JSON.stringify(itemData),
       });
