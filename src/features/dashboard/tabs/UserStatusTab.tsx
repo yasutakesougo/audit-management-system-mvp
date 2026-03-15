@@ -1,12 +1,12 @@
 /**
  * User Status Tab (利用者タブ)
  *
- * 目的：利用者の登所・欠席・遅刻・早退を一覧表示
+ * 目的：利用者の通所・欠席・遅刻・早退を一覧表示
  *
  * 表示内容：
  * - 欠席者リスト（理由、緊急連絡先）
  * - 遅刻・早退者リスト
- * - 今日登所している利用者の人数
+ * - 今日通所している利用者の人数
  * - クリックで詳細モーダル表示（バイタル、特記事項など）
  */
 
@@ -30,7 +30,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export interface UserStatusTabProps {
-  /** 登所者数 */
+  /** 通所者数 */
   attendeeCount: number;
   /** 欠席者リスト */
   absentUsers: Array<{
@@ -113,12 +113,12 @@ export const UserStatusTab: React.FC<UserStatusTabProps> = ({
       <Box>
         <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
           <CheckCircleIcon color="success" />
-          本日の登所状況
+          本日の通所状況
         </Typography>
         <EmptyState
           icon={<PeopleIcon />}
-          title="利用者の登所情報がまだありません"
-          description="出欠を登録すると、登所者数・欠席者・遅刻早退の情報がここに自動表示されます。"
+          title="利用者の通所情報がまだありません"
+          description="出欠を登録すると、通所者数・欠席者・遅刻早退の情報がここに自動表示されます。"
           action={{
             label: '出欠を登録する',
             onClick: () => navigate('/attendance'),
@@ -140,10 +140,10 @@ export const UserStatusTab: React.FC<UserStatusTabProps> = ({
       <Box sx={{ mb: 3 }}>
         <Typography variant="h6" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
           <CheckCircleIcon color="success" />
-          本日の登所状況
+          本日の通所状況
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          登所者数: <strong>{attendeeCount}名</strong>
+          通所者数: <strong>{attendeeCount}名</strong>
         </Typography>
       </Box>
 

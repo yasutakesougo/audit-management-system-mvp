@@ -100,7 +100,7 @@ const STATUS_CONFIG: Record<UserStatus, {
 }> = {
   present: {
     color: 'success.main',
-    label: '登所中',
+    label: '通所中',
     icon: <PersonIcon />,
   },
   absent: {
@@ -251,7 +251,7 @@ export const UserDetailDialog: React.FC<UserDetailDialogProps> = ({
             </>
           )}
 
-          {/* バイタル情報（登所中のみ） */}
+          {/* バイタル情報（通所中のみ） */}
           {user.status === 'present' && (
             <>
               <Box>
