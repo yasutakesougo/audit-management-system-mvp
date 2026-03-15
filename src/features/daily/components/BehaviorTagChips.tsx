@@ -19,6 +19,7 @@ import {
   Chip,
   Collapse,
   IconButton,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import React, { useState } from 'react';
@@ -46,6 +47,8 @@ export type BehaviorTagChipsProps = {
   selectedTags: string[];
   /** タグの on/off を切り替えるハンドラ */
   onToggleTag: (tagKey: string) => void;
+  /** インラインモード: 問題行動チップと同じ行に配置 */
+  inline?: boolean;
 };
 
 // ─── Component ──────────────────────────────────────────
@@ -53,12 +56,67 @@ export type BehaviorTagChipsProps = {
 export const BehaviorTagChips: React.FC<BehaviorTagChipsProps> = ({
   selectedTags,
   onToggleTag,
+  inline = false,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const selectedCount = selectedTags.length;
 
+  // ── Inline mode: compact icon-only toggle ──
+  if (inline) {
+    return (
+      <>
+        <Tooltip title={`行動タグ${selectedCount > 0 ? ` (${selectedCount})` : ''}`}>
+          <IconButton
+            size="small"
+            sx={{ p: 0.25, ml: 0.25 }}
+            onClick={(e) => { e.stopPropagation(); setExpanded(prev => !prev); }}
+            aria-expanded={expanded}
+            aria-label="行動タグを展開"
+          >
+            <Badge badgeContent={selectedCount} color="primary" overlap="rectangular">
+              <LocalOfferOutlinedIcon sx={{ fontSize: 14, color: selectedCount > 0 ? 'primary.main' : 'text.disabled' }} />
+            </Badge>
+          </IconButton>
+        </Tooltip>
+        {expanded && (
+          <Box sx={{ position: 'absolute', zIndex: 10, bgcolor: 'background.paper', border: 1, borderColor: 'divider', borderRadius: 1, p: 0.5, mt: 0.25, boxShadow: 2, minWidth: 200 }}>
+            {BEHAVIOR_TAG_CATEGORY_ORDER.map(category => {
+              const tags = getTagsByCategory(category);
+              return (
+                <Box key={category} sx={{ mb: 0.25 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', fontWeight: 600, display: 'block', mb: 0.1 }}>
+                    {BEHAVIOR_TAG_CATEGORIES[category]}
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.25 }}>
+                    {tags.map(tagKey => {
+                      const tag = BEHAVIOR_TAGS[tagKey];
+                      const isSelected = selectedTags.includes(tagKey);
+                      return (
+                        <Chip
+                          key={tagKey}
+                          label={tag.label}
+                          size="small"
+                          variant={isSelected ? 'filled' : 'outlined'}
+                          clickable
+                          onClick={() => onToggleTag(tagKey)}
+                          color={CATEGORY_COLOR[category]}
+                          sx={{ height: 22, fontSize: '0.65rem', '& .MuiChip-label': { px: 0.75 } }}
+                        />
+                      );
+                    })}
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        )}
+      </>
+    );
+  }
+
+  // ── Default block mode ──
   return (
-    <Box sx={{ mt: 0.5 }}>
+    <Box sx={{ mt: 0.25 }}>
       {/* ── Toggle Button ── */}
       <Box
         sx={{
@@ -81,12 +139,12 @@ export const BehaviorTagChips: React.FC<BehaviorTagChipsProps> = ({
         }}
       >
         <Badge badgeContent={selectedCount} color="primary" overlap="rectangular">
-          <LocalOfferOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+          <LocalOfferOutlinedIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
         </Badge>
         <Typography
           variant="caption"
           color="text.secondary"
-          sx={{ ml: 0.5, fontSize: '0.7rem' }}
+          sx={{ ml: 0.5, fontSize: '0.65rem' }}
         >
           行動タグ
         </Typography>
@@ -101,7 +159,7 @@ export const BehaviorTagChips: React.FC<BehaviorTagChipsProps> = ({
 
       {/* ── Collapsible Tag Panel ── */}
       <Collapse in={expanded} timeout="auto" unmountOnExit>
-        <Box sx={{ mt: 0.5 }}>
+        <Box sx={{ mt: 0.25 }}>
           {BEHAVIOR_TAG_CATEGORY_ORDER.map(category => {
             const tags = getTagsByCategory(category);
             return (
@@ -109,7 +167,7 @@ export const BehaviorTagChips: React.FC<BehaviorTagChipsProps> = ({
                 <Typography
                   variant="caption"
                   color="text.secondary"
-                  sx={{ fontSize: '0.65rem', fontWeight: 600, display: 'block', mb: 0.25 }}
+                  sx={{ fontSize: '0.6rem', fontWeight: 600, display: 'block', mb: 0.15 }}
                 >
                   {BEHAVIOR_TAG_CATEGORIES[category]}
                 </Typography>
@@ -127,9 +185,9 @@ export const BehaviorTagChips: React.FC<BehaviorTagChipsProps> = ({
                         onClick={() => onToggleTag(tagKey)}
                         color={CATEGORY_COLOR[category]}
                         sx={{
-                          height: 28,
-                          fontSize: '0.7rem',
-                          '& .MuiChip-label': { px: 1 },
+                          height: 22,
+                          fontSize: '0.65rem',
+                          '& .MuiChip-label': { px: 0.75 },
                         }}
                       />
                     );
