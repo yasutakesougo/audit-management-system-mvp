@@ -2,25 +2,32 @@
  * MonitoringTab — モニタリングタブ
  *
  * SectionKey: 'monitoring'
- * プレゼンテーショナルコンポーネント（状態・副作用なし）。
  *
  * 他のセクションタブと異なり、MonitoringEvidenceSection を条件付きで描画する。
  * Phase 1: MonitoringDailyDashboard を前段に配置し、客観指標を可視化する。
+ * Phase 4-C4: ISP 判断記録のフルスタック接続。
+ *   - form.goals → goalNames / GoalLike
+ *   - useIspRecommendationDecisions → decisionStatuses / onDecision
+ *   - MonitoringDailyDashboard へ透過
  */
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import BubbleChartIcon from '@mui/icons-material/BubbleChart';
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import Paper from '@mui/material/Paper';
+import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { useAuth } from '@/auth/useAuth';
 import { buildIcebergPdcaUrl } from '@/app/links/navigationLinks';
 
 import { buildIcebergEvidence } from '@/features/ibd/analysis/pdca/icebergEvidenceAdapter';
@@ -28,6 +35,8 @@ import { useIcebergPdcaList } from '@/features/ibd/analysis/pdca/queries';
 import { buildMonitoringEvidence } from '@/features/ibd/plans/support-plan/monitoringEvidenceAdapter';
 import MonitoringDailyDashboard from '@/features/monitoring/components/MonitoringDailyDashboard';
 import { useMonitoringDailyAnalytics } from '@/features/monitoring/hooks/useMonitoringDailyAnalytics';
+import { useIspRecommendationDecisions } from '@/features/monitoring/hooks/useIspRecommendationDecisions';
+import type { GoalLike } from '@/features/monitoring/domain/goalProgressTypes';
 import type { MonitoringEvidenceSectionProps, ToastState } from '../../types';
 import { findSection, minusDaysYmd, todayYmd } from '../../utils/helpers';
 import FieldCard from './FieldCard';
@@ -39,6 +48,46 @@ export type MonitoringTabProps = SectionTabProps & {
   /** トースト表示用 */
   setToast: (toast: ToastState) => void;
 };
+
+// ─── ヘルパー ───────────────────────────────────────────
+
+const DEFAULT_LOOKBACK_DAYS = 60;
+
+/** form.goals → GoalLike[] を安定参照で返す */
+function useGoalLikes(goals: { id: string; domains?: string[]; overrideCategories?: string[] }[]): GoalLike[] {
+  return React.useMemo(
+    () => goals.map(g => ({ id: g.id, domains: g.domains, overrideCategories: g.overrideCategories })),
+    // JSON.stringify for stable comparison of deep goal array
+    [JSON.stringify(goals.map(g => g.id + (g.domains?.join(',') ?? '') + (g.overrideCategories?.join(',') ?? '')))],
+  );
+}
+
+/** form.goals → Record<goalId, label> */
+function useGoalNames(goals: { id: string; label: string }[]): Record<string, string> {
+  return React.useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const g of goals) {
+      if (g.id && g.label) map[g.id] = g.label;
+    }
+    return map;
+    // JSON.stringify for stable comparison of deep goal array
+  }, [JSON.stringify(goals.map(g => `${g.id}:${g.label}`))]);
+}
+
+/** 集計期間（lookbackDays から算出） */
+function useMonitoringPeriod(lookbackDays = DEFAULT_LOOKBACK_DAYS) {
+  return React.useMemo(() => {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - lookbackDays);
+    return {
+      from: from.toISOString().slice(0, 10),
+      to: to.toISOString().slice(0, 10),
+    };
+  }, [lookbackDays]);
+}
+
+// ─── サブコンポーネント ──────────────────────────────────
 
 /** エビデンスセクション（内部コンポーネント） */
 const MonitoringEvidenceSection: React.FC<MonitoringEvidenceSectionProps> = ({ userId, onAppend, isAdmin }) => {
@@ -155,12 +204,63 @@ const IcebergEvidenceSection: React.FC<{
   );
 };
 
+// ─── メインコンポーネント ────────────────────────────────
+
 const MonitoringTab: React.FC<MonitoringTabProps> = ({ userId, setToast, ...sectionProps }) => {
   const navigate = useNavigate();
   const section = findSection('monitoring');
+  const { account } = useAuth();
 
   const userIdStr = userId ? String(userId) : '';
-  const { summary, insightLines, recordCount } = useMonitoringDailyAnalytics(userIdStr);
+
+  // ── Phase 3+4: goals から派生データを構築 ─────────────
+  const goalLikes = useGoalLikes(sectionProps.form.goals);
+  const goalNames = useGoalNames(sectionProps.form.goals);
+
+  // ── モニタリング集計（目標進捗 + ISP 提案含む） ─────────
+  const { summary, insightLines, recordCount } = useMonitoringDailyAnalytics(
+    userIdStr,
+    DEFAULT_LOOKBACK_DAYS,
+    goalLikes.length > 0 ? goalLikes : undefined,
+    Object.keys(goalNames).length > 0 ? goalNames : undefined,
+  );
+
+  // ── Phase 4-C4: ISP 判断記録 ──────────────────────────
+  const monitoringPeriod = useMonitoringPeriod(DEFAULT_LOOKBACK_DAYS);
+
+  const {
+    decisionStatuses,
+    decisionNotes,
+    handleDecision,
+    isSaving,
+    error: decisionError,
+    decisions,
+  } = useIspRecommendationDecisions(
+    userIdStr,
+    userIdStr ? monitoringPeriod : undefined,
+    summary?.ispRecommendations ?? null,
+    account?.username ?? 'unknown',
+  );
+
+  // ── saving / error フィードバック ──────────────────────
+  const [snackOpen, setSnackOpen] = React.useState(false);
+  const [snackMsg, setSnackMsg] = React.useState('');
+  const [snackSeverity, setSnackSeverity] = React.useState<'success' | 'error'>('success');
+
+  const handleDecisionWithFeedback = React.useCallback(
+    async (input: Parameters<typeof handleDecision>[0]) => {
+      await handleDecision(input);
+      if (!decisionError) {
+        setSnackMsg('判断を記録しました');
+        setSnackSeverity('success');
+      } else {
+        setSnackMsg('判断の保存に失敗しました');
+        setSnackSeverity('error');
+      }
+      setSnackOpen(true);
+    },
+    [handleDecision, decisionError],
+  );
 
   /** monitoringPlan フィールドへの追記共通ヘルパー */
   const appendToMonitoringPlan = React.useCallback(
@@ -187,13 +287,18 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({ userId, setToast, ...sect
         </Typography>
       ) : null}
 
-      {/* Phase 1: 集計ダッシュボード（新規） */}
+      {/* Phase 1+4: 集計ダッシュボード + ISP 判断記録 */}
       {userIdStr && (
         <MonitoringDailyDashboard
           summary={summary}
           insightLines={insightLines}
           recordCount={recordCount}
           isAdmin={sectionProps.isAdmin}
+          goalNames={goalNames}
+          decisionStatuses={decisionStatuses}
+          decisionNotes={decisionNotes}
+          onDecision={handleDecisionWithFeedback}
+          decisions={decisions}
           onAppendInsight={(text) =>
             appendToMonitoringPlan(
               text,
@@ -202,6 +307,16 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({ userId, setToast, ...sect
             )
           }
         />
+      )}
+
+      {/* Phase 4-C4: 保存中インジケーター */}
+      {isSaving && (
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ pl: 1 }}>
+          <CircularProgress size={14} />
+          <Typography variant="caption" color="text.secondary">
+            判断を保存中…
+          </Typography>
+        </Stack>
       )}
 
       {/* 既存: 日次記録エビデンス（生データ引用） */}
@@ -254,6 +369,23 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({ userId, setToast, ...sect
           <FieldCard key={field.key} field={field} {...sectionProps} />
         ))}
       </Stack>
+
+      {/* Phase 4-C4: フィードバック Snackbar */}
+      <Snackbar
+        open={snackOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={snackSeverity}
+          variant="filled"
+          onClose={() => setSnackOpen(false)}
+          sx={{ width: '100%' }}
+        >
+          {snackMsg}
+        </Alert>
+      </Snackbar>
     </Stack>
   );
 };

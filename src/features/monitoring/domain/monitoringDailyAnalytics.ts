@@ -24,6 +24,9 @@ import { BEHAVIOR_TAGS, type BehaviorTagKey, BEHAVIOR_TAG_CATEGORIES, type Behav
 import type { GoalLike, GoalProgressSummary } from './goalProgressTypes';
 import { PROGRESS_LEVEL_LABELS } from './goalProgressTypes';
 import { inferGoalTagLinks, assessGoalProgress } from './goalProgressUtils';
+import type { IspRecommendationSummary } from './ispRecommendationTypes';
+import { ISP_RECOMMENDATION_LABELS } from './ispRecommendationTypes';
+import { buildIspRecommendations } from './ispRecommendationUtils';
 
 // ─── 型定義 ──────────────────────────────────────────────
 
@@ -112,6 +115,8 @@ export interface DailyMonitoringSummary {
   behaviorTagSummary: BehaviorTagSummary | null;
   /** Phase 3: 目標ごとの進捗判定（goals 未指定時は undefined） */
   goalProgress?: GoalProgressSummary[];
+  /** Phase 4-A: ISP 見直し提案（goalProgress から自動導出、goals 未指定時は undefined） */
+  ispRecommendations?: IspRecommendationSummary;
 }
 
 // ─── 定数 ────────────────────────────────────────────────
@@ -523,10 +528,12 @@ function computeGoalProgress(
 /**
  * @param records 日次記録
  * @param goals ISP 目標（省略時は goalProgress を算出しない）
+ * @param options.goalNames 目標名のマッピング（ISP提案の reason に使用）
  */
 export function buildMonitoringDailySummary(
   records: DailyTableRecord[],
   goals?: GoalLike[],
+  options?: { goalNames?: Record<string, string> },
 ): DailyMonitoringSummary | null {
   if (records.length === 0) return null;
 
@@ -550,6 +557,12 @@ export function buildMonitoringDailySummary(
   // goals が渡されたときだけ goalProgress を算出
   if (goals && goals.length > 0) {
     result.goalProgress = computeGoalProgress(records, goals);
+
+    // Phase 4-A: goalProgress から ISP 見直し提案を自動導出
+    result.ispRecommendations = buildIspRecommendations(
+      result.goalProgress,
+      { goalNames: options?.goalNames },
+    );
   }
 
   return result;
@@ -656,6 +669,23 @@ export function buildMonitoringInsightText(
       );
     });
     lines.push(`【目標進捗】${progressTexts.join('。')}。`);
+  }
+
+  // ISP 見直し提案
+  if (summary.ispRecommendations && summary.ispRecommendations.actionableCount > 0) {
+    const rec = summary.ispRecommendations;
+    const overallLabel = ISP_RECOMMENDATION_LABELS[rec.overallLevel];
+    const details = rec.recommendations
+      .filter((r) => r.level !== 'pending')
+      .map((r) => {
+        const goalNames = options?.goalNames;
+        const name = goalNames?.[r.goalId] ?? `目標(${r.goalId})`;
+        return `${name}: ${ISP_RECOMMENDATION_LABELS[r.level]}`;
+      });
+    lines.push(
+      `【ISP見直し提案】総合判定: ${overallLabel}。${details.join('、')}。` +
+        `※本提案は支援記録の分析に基づく補助情報です。最終的な見直し判断は担当者が行ってください。`,
+    );
   }
 
   return lines;
