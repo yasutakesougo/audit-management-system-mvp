@@ -8,6 +8,7 @@ import React, { useEffect } from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './app/router';
 import { routerFutureFlags } from './app/routerFuture';
+import { SpInitBridge } from './app/SpInitBridge';
 import { ThemeRoot } from './app/theme';
 import { MsalProvider } from './auth/MsalProvider';
 import { ToastProvider, useToast } from './hooks/useToast';
@@ -54,6 +55,7 @@ function App() {
     <MsalProvider>
       {/* 🔐 認証コンテキスト */}
       <QueryClientProvider client={queryClient}>
+        <SpInitBridge />
         <SettingsProvider>
           {/* ⚙️ ユーザー表示設定 — ThemeRootより外側に配置し、density/fontSize をテーマに反映 */}
           <ThemeRoot>
