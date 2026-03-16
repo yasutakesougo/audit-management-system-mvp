@@ -243,6 +243,14 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'master' as NavGroupKey,
     },
     {
+      label: '運用メトリクス',
+      to: '/ops',
+      isActive: (pathname) => pathname === '/ops' || pathname.startsWith('/ops/'),
+      icon: undefined,
+      audience: NAV_AUDIENCE.staff,
+      group: 'ops' as NavGroupKey,
+    },
+    {
       label: '請求処理',
       to: '/billing',
       isActive: (pathname) => pathname === '/billing' || pathname.startsWith('/billing/'),
