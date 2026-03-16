@@ -5,7 +5,7 @@
  *
  * 実データモード:
  * - Proposal: localStorage の SuggestionAction から自動変換
- * - PDCA: userPdcaInputs が渡されれば実データ、なければデモ
+ * - PDCA: 利用者一覧から userPdcaInputs を自動構築
  * - Knowledge: 将来接続予定（Phase 3）
  *
  * @see docs/ops/ops-dashboard-observability-layer.md
@@ -15,40 +15,65 @@ import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import React from 'react';
+import React, { useMemo } from 'react';
 
 import OpsMetricsDashboard from '@/features/ops-dashboard/OpsMetricsDashboard';
 import { useOpsMetrics } from '@/features/ops-dashboard/hooks/useOpsMetrics';
+import { useUsers } from '@/stores/useUsers';
+import { buildUserPdcaInputs } from '@/domain/metrics/adapters/userPdcaInputConnector';
 
 const OpsMetricsPage: React.FC = () => {
+  // 利用者データ取得
+  const { data: users, isLoading: usersLoading } = useUsers();
+
+  // 利用者から UserPdcaInput[] を構築
+  const userPdcaInputs = useMemo(
+    () => buildUserPdcaInputs(
+      users.map(u => ({
+        userId: u.userId,
+        serviceStartDate: u.serviceStartDate,
+        active: u.active,
+      })),
+    ),
+    [users],
+  );
+
+  // Ops Metrics 統合 hook（Proposal + PDCA 実データ接続）
   const {
     isReady,
     proposalMetrics,
     pdcaMetrics,
     knowledgeMetrics,
     excludedUserCount,
-  } = useOpsMetrics();
+  } = useOpsMetrics({
+    userPdcaInputs,
+  });
 
-  // Proposal に実データがあるか
+  // 状態判定
+  const loading = usersLoading || !isReady;
   const hasRealProposalData = isReady && proposalMetrics !== null;
-  // PDCA に実データがあるか（Phase 2 の userPdcaInputs 接続後）
   const hasRealPdcaData = pdcaMetrics !== null;
-
-  // 全てデモフォールバック必要か
-  const needsDemoFallback = !hasRealProposalData && !hasRealPdcaData;
+  const hasAnyRealData = hasRealProposalData || hasRealPdcaData;
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 1200, mx: 'auto' }}>
       {/* ステータスバー */}
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+      <Stack
+        direction="row"
+        alignItems="center"
+        spacing={1}
+        sx={{ mb: 1, flexWrap: 'wrap' }}
+      >
         <Typography
           variant="caption"
           color="text.secondary"
-          sx={{ textAlign: 'right', flex: 1 }}
+          sx={{ flex: 1, minWidth: 200 }}
         >
-          {needsDemoFallback
-            ? '※ デモデータで表示中 — 運用データが蓄積されると実データに切り替わります'
-            : '※ 実データから自動計算中'
+          {loading
+            ? '読み込み中…'
+            : hasAnyRealData
+              ? `※ 実データから自動計算中（対象 ${users.filter(u => u.active).length} 名）`
+              : '※ デモデータで表示中 — 運用データが蓄積されると実データに切り替わります'
           }
         </Typography>
         {hasRealProposalData && (
@@ -59,8 +84,8 @@ const OpsMetricsPage: React.FC = () => {
         )}
       </Stack>
 
-      {/* 実データがあればそれを使い、なければ demo フォールバック */}
-      {needsDemoFallback ? (
+      {/* メインダッシュボード */}
+      {!hasAnyRealData ? (
         <OpsMetricsDashboard demo />
       ) : (
         <OpsMetricsDashboard
@@ -71,11 +96,18 @@ const OpsMetricsPage: React.FC = () => {
         />
       )}
 
-      {/* 実データがある場合の補足 */}
-      {!needsDemoFallback && !hasRealPdcaData && (
+      {/* 補足情報 */}
+      {hasAnyRealData && !hasRealPdcaData && (
         <Alert severity="info" sx={{ mt: 2 }}>
           PDCA サイクルデータはまだ接続されていません。
           利用者の支援開始日が登録されると、自動的にサイクル計測が始まります。
+        </Alert>
+      )}
+
+      {hasRealPdcaData && excludedUserCount > 0 && (
+        <Alert severity="warning" sx={{ mt: 2 }}>
+          {excludedUserCount} 名の利用者は支援開始日が未設定のため、PDCA 計測対象外です。
+          利用者情報の「利用開始日」を登録すると計測対象に含まれます。
         </Alert>
       )}
     </Box>
