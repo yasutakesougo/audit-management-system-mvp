@@ -14,6 +14,12 @@ import { useUsersDemoSeed } from '../../useUsersDemoSeed';
 import { buildErrorMessage } from '../utils';
 import type { UsersTab } from './useUsersPanelTabs';
 
+/** 削除確認ダイアログ用の対象情報 */
+export type DeleteTarget = {
+  id: number | string;
+  userName: string;
+};
+
 export type UseUsersPanelCrudReturn = {
   data: IUserMaster[];
   status: string;
@@ -28,9 +34,13 @@ export type UseUsersPanelCrudReturn = {
   setShowCreateForm: (v: boolean) => void;
   // setBusyId（Export からも使える）
   setBusyId: (id: number | null) => void;
+  // Delete confirmation state
+  deleteTarget: DeleteTarget | null;
+  requestDelete: (id: number | string, userName: string) => void;
+  confirmDelete: () => Promise<void>;
+  cancelDelete: () => void;
   // Handlers
   handleCreate: (payload: IUserMasterCreateDto) => Promise<void>;
-  handleDelete: (id: number | string) => Promise<void>;
   handleRefresh: () => Promise<void>;
   handleEditClick: (user: IUserMaster) => void;
   handleCloseForm: () => void;
@@ -55,6 +65,7 @@ export function useUsersPanelCrud(
   const [showEditForm, setShowEditForm] = useState(false);
   const [selectedUser, setSelectedUser] = useState<IUserMaster | null>(null);
   const [integrityErrors, setIntegrityErrors] = useState<string[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
   // ---- Initial fetch ----
   useEffect(() => {
@@ -86,18 +97,28 @@ export function useUsersPanelCrud(
     [create, setActiveTabRef],
   );
 
-  const handleDelete = useCallback(
-    async (id: number | string) => {
-      if (!window.confirm('この利用者を削除しますか？')) return;
-      setBusyId(Number(id));
-      try {
-        await remove(id);
-      } finally {
-        setBusyId(null);
-      }
+  const requestDelete = useCallback(
+    (id: number | string, userName: string) => {
+      setDeleteTarget({ id, userName });
     },
-    [remove],
+    [],
   );
+
+  const confirmDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+    const { id } = deleteTarget;
+    setDeleteTarget(null);
+    setBusyId(Number(id));
+    try {
+      await remove(id);
+    } finally {
+      setBusyId(null);
+    }
+  }, [deleteTarget, remove]);
+
+  const cancelDelete = useCallback(() => {
+    setDeleteTarget(null);
+  }, []);
 
   const handleRefresh = useCallback(async () => {
     if (busyId !== null) return;
@@ -158,8 +179,11 @@ export function useUsersPanelCrud(
     selectedUser,
     setShowCreateForm,
     setBusyId,
+    deleteTarget,
+    requestDelete,
+    confirmDelete,
+    cancelDelete,
     handleCreate,
-    handleDelete,
     handleRefresh,
     handleEditClick,
     handleCloseForm,

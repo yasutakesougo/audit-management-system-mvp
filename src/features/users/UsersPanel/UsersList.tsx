@@ -51,7 +51,7 @@ type UsersListProps = {
   detailSectionRef: RefObject<HTMLDivElement>;
   errorMessage: string | null;
   onRefresh: () => Promise<void> | void;
-  onDelete?: (id: number | string) => Promise<void> | void;
+  onDelete?: (id: number | string, userName: string) => Promise<void> | void;
   onEdit?: (user: IUserMaster) => void;
   onSelectDetail: (event: ReactMouseEvent<HTMLButtonElement>, user: IUserMaster) => void;
   onCloseDetail: () => void;
@@ -419,7 +419,7 @@ const UsersList: FC<UsersListProps> = ({
                             color="error"
                             onClick={(event: ReactMouseEvent<HTMLButtonElement>) => {
                               event.stopPropagation();
-                              onDelete(user.Id);
+                              onDelete(user.Id, user.FullName ?? '');
                             }}
                             disabled={rowBusy}
                             title="削除"

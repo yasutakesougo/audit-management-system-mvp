@@ -11,12 +11,13 @@
  */
 import { useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
-import { useUsersPanelCrud } from './hooks/useUsersPanelCrud';
+import { useUsersPanelCrud, type DeleteTarget } from './hooks/useUsersPanelCrud';
 import { useUsersPanelExport } from './hooks/useUsersPanelExport';
 import { useUsersPanelTabs, type UsersTab } from './hooks/useUsersPanelTabs';
 
 // Re-export sub-hook types for consumers
 export type { UsersTab } from './hooks/useUsersPanelTabs';
+export type { DeleteTarget } from './hooks/useUsersPanelCrud';
 
 // ---------------------------------------------------------------------------
 // 戻り値型（既存 UI との互換性を維持）
@@ -42,9 +43,13 @@ export type UseUsersPanelReturn = {
   showEditForm: boolean;
   selectedUser: IUserMaster | null;
   setShowCreateForm: (v: boolean) => void;
+  // Delete confirmation
+  deleteTarget: DeleteTarget | null;
+  requestDelete: (id: number | string, userName: string) => void;
+  confirmDelete: () => Promise<void>;
+  cancelDelete: () => void;
   // Handlers
   handleCreate: (payload: IUserMasterCreateDto) => Promise<void>;
-  handleDelete: (id: number | string) => Promise<void>;
   handleRefresh: () => Promise<void>;
   handleDetailSelect: (event: ReactMouseEvent<HTMLButtonElement>, user: IUserMaster) => void;
   handleDetailClose: () => void;
@@ -104,9 +109,13 @@ export function useUsersPanel(): UseUsersPanelReturn {
     showEditForm: crud.showEditForm,
     selectedUser: crud.selectedUser,
     setShowCreateForm: crud.setShowCreateForm,
+    // Delete confirmation (from CRUD)
+    deleteTarget: crud.deleteTarget,
+    requestDelete: crud.requestDelete,
+    confirmDelete: crud.confirmDelete,
+    cancelDelete: crud.cancelDelete,
     // CRUD handlers
     handleCreate: crud.handleCreate,
-    handleDelete: crud.handleDelete,
     handleRefresh: crud.handleRefresh,
     // Detail handlers (from Tabs)
     handleDetailSelect: tabs.handleDetailSelect,

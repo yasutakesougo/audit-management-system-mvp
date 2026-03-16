@@ -12,6 +12,7 @@
 import { useAdminOverride } from '@/auth/useAdminOverride';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { TESTIDS } from '@/testids';
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import LockOpenRoundedIcon from '@mui/icons-material/LockOpenRounded';
@@ -55,7 +56,10 @@ const UsersPanel = () => {
     selectedUser,
     setShowCreateForm,
     handleCreate,
-    handleDelete,
+    requestDelete,
+    confirmDelete,
+    cancelDelete,
+    deleteTarget,
     handleRefresh,
     handleDetailSelect,
     handleDetailClose,
@@ -169,7 +173,7 @@ const UsersPanel = () => {
                 detailSectionRef={detailSectionRef}
                 errorMessage={errorMessage}
                 onRefresh={handleRefresh}
-                onDelete={canEdit ? handleDelete : undefined}
+                onDelete={canEdit ? requestDelete : undefined}
                 onEdit={canEdit ? handleEditClick : undefined}
                 onSelectDetail={handleDetailSelect}
                 onCloseDetail={handleDetailClose}
@@ -302,6 +306,53 @@ const UsersPanel = () => {
             disabled={!pinValue.trim()}
           >
             承認
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 削除確認ダイアログ */}
+      <Dialog
+        open={deleteTarget !== null}
+        onClose={cancelDelete}
+        maxWidth="xs"
+        fullWidth
+        aria-labelledby="delete-confirm-title"
+      >
+        <DialogTitle
+          id="delete-confirm-title"
+          sx={{
+            pb: 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+          }}
+        >
+          <DeleteRoundedIcon color="error" />
+          <Typography variant="h6" component="span">
+            利用者の削除
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 1 }}>
+            <strong>「{deleteTarget?.userName}」</strong>を削除しますか？
+          </Typography>
+          <Alert severity="warning" variant="outlined" sx={{ mt: 1.5 }}>
+            <Typography variant="body2">
+              この操作は元に戻せません。関連するサービス記録や個別支援計画のデータには影響しませんが、利用者一覧から完全に削除されます。
+            </Typography>
+          </Alert>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={cancelDelete} color="inherit">
+            キャンセル
+          </Button>
+          <Button
+            onClick={confirmDelete}
+            variant="contained"
+            color="error"
+            startIcon={<DeleteRoundedIcon />}
+          >
+            削除する
           </Button>
         </DialogActions>
       </Dialog>
