@@ -29,6 +29,10 @@ export enum ListKeys {
   PlanningSheetMaster = 'SupportPlanningSheet_Master',
   ProcedureRecordDaily = 'SupportProcedureRecord_Daily',
   HolidayMaster = 'Holiday_Master',
+  // ── P1-2/P1-3 追加 ──
+  PdfOutputLog = 'PdfOutput_Log',
+  NurseObservations = 'NurseObservations',
+  DailyAttendance = 'Daily_Attendance',
 }
 
 export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
@@ -55,4 +59,8 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.PlanningSheetMaster]: { title: 'SupportPlanningSheet_Master' },
   [ListKeys.ProcedureRecordDaily]: { title: 'SupportProcedureRecord_Daily' },
   [ListKeys.HolidayMaster]: { title: 'Holiday_Master' },
+  // ── P1-2/P1-3 追加 ──
+  [ListKeys.PdfOutputLog]: { title: 'PdfOutput_Log' },
+  [ListKeys.NurseObservations]: { title: 'NurseObservations' },
+  [ListKeys.DailyAttendance]: { title: 'Daily_Attendance' },
 };

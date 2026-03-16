@@ -1,5 +1,5 @@
 /**
- * SharePoint リスト レジストリ — 全32リストの Single Source of Truth
+ * SharePoint リスト レジストリ — 全33リストの Single Source of Truth
  *
  * 各エントリは以下を保持:
  * - key: プログラム内で使用するユニーク識別子
@@ -121,7 +121,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
   {
     key: 'daily_attendance',
     displayName: '日次出欠',
-    resolve: () => envOr('VITE_SP_LIST_ATTENDANCE', 'Daily_Attendance'),
+    resolve: () => envOr('VITE_SP_LIST_ATTENDANCE', fromConfig(ListKeys.DailyAttendance)),
     operations: ['R'],
     category: 'attendance',
   },
@@ -278,7 +278,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
   {
     key: 'nurse_observations',
     displayName: '看護観察記録',
-    resolve: () => envOr('VITE_SP_LIST_NURSE_OBSERVATION', 'NurseObservations'),
+    resolve: () => envOr('VITE_SP_LIST_NURSE_OBSERVATION', fromConfig(ListKeys.NurseObservations)),
     operations: ['R', 'W'],
     category: 'other',
   },
@@ -297,6 +297,13 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
       return envVal ? `guid:${envVal}` : 'guid:00000000-0000-0000-0000-000000000003';
     },
     operations: ['R'],
+    category: 'other',
+  },
+  {
+    key: 'pdf_output_log',
+    displayName: '帳票出力ログ',
+    resolve: () => envOr('VITE_SP_LIST_PDF_OUTPUT_LOG', fromConfig(ListKeys.PdfOutputLog)),
+    operations: ['R', 'W'],
     category: 'other',
   },
 ] as const;
