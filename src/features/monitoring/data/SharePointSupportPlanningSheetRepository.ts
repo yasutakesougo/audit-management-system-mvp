@@ -24,9 +24,8 @@
  */
 import { get as getEnv } from '@/env';
 import { toSafeError } from '@/lib/errors';
-import { fetchSp } from '@/lib/fetchSp';
-import { ensureConfig } from '@/lib/spClient';
 import { ensureListExists } from '@/lib/sp/spListSchema';
+import type { SpFetchFn } from '@/lib/sp/spLists';
 import type { SpFieldDef } from '@/lib/sp/types';
 
 import type { SupportPlanningSheetRecord } from '../domain/supportPlanningSheetTypes';
@@ -95,24 +94,12 @@ let ensureListPromise: Promise<void> | null = null;
 
 type SpResponse<T> = { value?: T[] };
 
-const buildListPath = (baseUrl: string): string => {
+const buildListPath = (): string => {
   const title = getListTitle();
-  return `${baseUrl}/lists/GetByTitle('${encodeURIComponent(title)}')`;
+  return `/lists/GetByTitle('${encodeURIComponent(title)}')`;
 };
 
-const readSpErrorMessage = async (response: Response): Promise<string> => {
-  const text = await response.text().catch(() => '');
-  if (!text) return '';
-  try {
-    const data = JSON.parse(text) as {
-      error?: { message?: { value?: string } };
-      'odata.error'?: { message?: { value?: string } };
-    };
-    return data.error?.message?.value ?? data['odata.error']?.message?.value ?? '';
-  } catch {
-    return text.slice(0, 400);
-  }
-};
+// readSpErrorMessage 削除: spFetch (throwOnError: true) が SpHttpError として自動 throw する
 
 /** SharePoint アイテム → ドメインオブジェクト */
 const toRecord = (item: Record<string, unknown>): SupportPlanningSheetRecord | null => {
@@ -146,30 +133,18 @@ const generateId = (): string =>
 
 // ─── リスト自動作成 ───────────────────────────────────────
 
-/**
- * fetchSp（フルURL）を spListSchema.ensureListExists（相対パス）用に変換するアダプタ。
- * ensureListExists は "/lists/..." 形式の相対パスを渡してくるので、
- * baseUrl を先頭に付加してフル URL に変換する。
- */
-const createRelativeSpFetch = (baseUrl: string) => {
-  return (path: string, init?: RequestInit): Promise<Response> => {
-    const url = path.startsWith('http') ? path : `${baseUrl}${path}`;
-    return fetchSp(url, init ?? {});
-  };
-};
+// createRelativeSpFetch 削除: spFetch がそのまま相対パスを受け付ける
 
 /**
  * 初回呼び出し時にリストが存在するか確認し、なければ自動作成する。
  * 2回目以降は即座に resolve する (Promise キャッシュ)。
  */
-const ensureSupportPlanningSheetList = (): Promise<void> => {
+const ensureSupportPlanningSheetList = (spFetch: SpFetchFn): Promise<void> => {
   if (!ensureListPromise) {
     ensureListPromise = (async () => {
       try {
-        const { baseUrl } = ensureConfig();
-        const spFetchAdapter = createRelativeSpFetch(baseUrl);
         const listTitle = getListTitle();
-        await ensureListExists(spFetchAdapter, listTitle, SUPPORT_PLANNING_SHEET_FIELD_DEFS);
+        await ensureListExists(spFetch, listTitle, SUPPORT_PLANNING_SHEET_FIELD_DEFS);
         console.info(`[SharePointSupportPlanningSheetRepository] List "${listTitle}" ensured`);
       } catch (error) {
         // 失敗時は次回リトライ可能にする
@@ -184,12 +159,13 @@ const ensureSupportPlanningSheetList = (): Promise<void> => {
 // ─── Repository 実装 ─────────────────────────────────────
 
 export class SharePointSupportPlanningSheetRepository implements SupportPlanningSheetRepository {
+  constructor(private readonly spFetch: SpFetchFn) {}
+
   async save(input: SaveSupportPlanningSheetInput): Promise<SupportPlanningSheetRecord> {
-    await ensureSupportPlanningSheetList();
+    await ensureSupportPlanningSheetList(this.spFetch);
     const id = generateId();
     try {
-      const { baseUrl } = ensureConfig();
-      const listPath = buildListPath(baseUrl);
+      const listPath = buildListPath();
 
       const itemData = {
         [SP_FIELDS.title]: id,
@@ -204,7 +180,7 @@ export class SharePointSupportPlanningSheetRepository implements SupportPlanning
         [SP_FIELDS.snapshotJson]: JSON.stringify(input.snapshot),
       };
 
-      const response = await fetchSp(`${listPath}/items`, {
+      await this.spFetch(`${listPath}/items`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json;odata=verbose',
@@ -212,11 +188,6 @@ export class SharePointSupportPlanningSheetRepository implements SupportPlanning
         },
         body: JSON.stringify(itemData),
       });
-
-      if (!response.ok) {
-        const message = await readSpErrorMessage(response);
-        throw new Error(`Failed to save SupportPlanningSheet record: ${message}`);
-      }
 
       return { ...input, id };
     } catch (error) {
@@ -232,11 +203,10 @@ export class SharePointSupportPlanningSheetRepository implements SupportPlanning
 
   async list(filter: SupportPlanningSheetFilter): Promise<SupportPlanningSheetRecord[]> {
     if (filter.signal?.aborted) return [];
-    await ensureSupportPlanningSheetList();
+    await ensureSupportPlanningSheetList(this.spFetch);
 
     try {
-      const { baseUrl } = ensureConfig();
-      const listPath = buildListPath(baseUrl);
+      const listPath = buildListPath();
 
       // OData フィルタ構築
       const filters: string[] = [`${SP_FIELDS.userId} eq '${filter.userId}'`];
@@ -251,13 +221,7 @@ export class SharePointSupportPlanningSheetRepository implements SupportPlanning
       params.set('$top', '500');
       params.set('$select', ALL_SELECT_FIELDS);
 
-      const url = `${listPath}/items?${params.toString()}`;
-      const response = await fetchSp(url);
-
-      if (!response.ok) {
-        const message = await readSpErrorMessage(response);
-        throw new Error(`Failed to list SupportPlanningSheet records: ${message}`);
-      }
+      const response = await this.spFetch(`${listPath}/items?${params.toString()}`);
 
       const payload = (await response.json()) as SpResponse<Record<string, unknown>>;
       const items = payload.value ?? [];
@@ -280,5 +244,4 @@ export class SharePointSupportPlanningSheetRepository implements SupportPlanning
   }
 }
 
-/** シングルトンインスタンス */
-export const sharePointSupportPlanningSheetRepository = new SharePointSupportPlanningSheetRepository();
+// シングルトンインスタンスはファクトリ (createSupportPlanningSheetRepository) で生成する

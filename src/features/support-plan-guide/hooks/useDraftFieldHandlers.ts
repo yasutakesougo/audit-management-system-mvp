@@ -5,6 +5,9 @@
  * Handles individual field changes, phrase appending, and form reset.
  */
 
+import type { ConfirmDialogProps } from '@/components/ui/ConfirmDialog';
+import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
+
 import type {
     SectionKey,
     SupportPlanDraft,
@@ -33,6 +36,7 @@ export function useDraftFieldHandlers({
   setToast,
 }: DraftFieldHandlersParams) {
   const activeDraft = activeDraftId ? drafts[activeDraftId] : undefined;
+  const confirmDialog = useConfirmDialog();
 
   const handleFieldChange = (key: SupportPlanStringFieldKey, value: string) => {
     if (!activeDraftId || !isAdmin) return;
@@ -76,9 +80,8 @@ export function useDraftFieldHandlers({
     });
   };
 
-  const handleReset = () => {
+  const executeReset = () => {
     if (!activeDraftId) return;
-    if (!window.confirm(`${activeDraft?.name ?? 'この利用者'}の入力内容をすべてリセットしますか？`)) return;
     setDrafts((prev) => {
       const target = prev[activeDraftId];
       if (!target) return prev;
@@ -97,5 +100,20 @@ export function useDraftFieldHandlers({
     setToast({ open: true, message: `${activeDraft?.name ?? '利用者'}のフォームを初期化しました`, severity: 'success' });
   };
 
-  return { handleFieldChange, handleAppendPhrase, handleReset };
+  const handleReset = () => {
+    if (!activeDraftId) return;
+    confirmDialog.open({
+      title: '入力内容のリセット',
+      message: `${activeDraft?.name ?? 'この利用者'}の入力内容をすべてリセットします。`,
+      warningText: 'この操作は取り消せません。',
+      confirmLabel: 'リセットする',
+      cancelLabel: 'キャンセル',
+      severity: 'warning',
+      onConfirm: executeReset,
+    });
+  };
+
+  const resetConfirmDialog: ConfirmDialogProps = confirmDialog.dialogProps;
+
+  return { handleFieldChange, handleAppendPhrase, handleReset, resetConfirmDialog };
 }

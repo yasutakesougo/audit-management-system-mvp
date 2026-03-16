@@ -29,10 +29,42 @@ module.exports = {
     ],
     'no-empty': ['warn', { allowEmptyCatch: true }],
     'no-constant-condition': 'warn',
+    // window.confirm 禁止 — useConfirmDialog に統一 (docs/guides/confirm-dialog-guideline.md)
+    // fetch 直書き禁止 — spFetch / graphFetch 等のドメイン別クライアントに統一 (docs/guides/fetch-client-guideline.md)
+    'no-restricted-globals': [
+      'error',
+      {
+        name: 'confirm',
+        message: 'window.confirm は禁止です。useConfirmDialog + ConfirmDialog を使用してください。',
+      },
+      {
+        name: 'fetch',
+        message: '生 fetch() は禁止です。spFetch / graphFetch / resilientFetch 等のドメイン別クライアントを使用してください。',
+      },
+    ],
+    'no-restricted-properties': [
+      'error',
+      {
+        object: 'window',
+        property: 'confirm',
+        message: 'window.confirm は禁止です。useConfirmDialog + ConfirmDialog を使用してください。',
+      },
+      {
+        object: 'window',
+        property: 'fetch',
+        message: '生 window.fetch() は禁止です。spFetch / graphFetch / resilientFetch 等のドメイン別クライアントを使用してください。',
+      },
+    ],
+    // fetchSp 凍結 — 新規コードでは spClient / useSP() を使用 (Phase 3-B)
     'no-restricted-imports': [
       'error',
       {
         paths: [
+          {
+            name: '@/lib/fetchSp',
+            message:
+              'fetchSp は互換レイヤーです。新規コードでは useSP() または createSpClient() を使用してください。(docs/guides/fetch-client-guideline.md)',
+          },
           {
             name: '@/lib/env',
             importNames: [
@@ -116,6 +148,8 @@ module.exports = {
         '@typescript-eslint/no-restricted-call': 'off',
         'no-restricted-properties': [
           'error',
+          { object: 'window', property: 'confirm', message: 'window.confirm は禁止です。useConfirmDialog + ConfirmDialog を使用してください。' },
+          { object: 'window', property: 'fetch', message: '生 window.fetch() は禁止です。spFetch / graphFetch 等を使用してください。' },
           { object: 'Date', property: 'setHours', message: '壁時計→UTCはdateutils経由で' },
           { object: 'Date', property: 'setMinutes', message: '壁時計→UTCはdateutils経由で' },
           { object: 'Date', property: 'setSeconds', message: '壁時計→UTCはdateutils経由で' },
@@ -142,6 +176,8 @@ module.exports = {
       rules: {
         'no-restricted-properties': [
           'error',
+          { object: 'window', property: 'confirm', message: 'window.confirm は禁止です。useConfirmDialog + ConfirmDialog を使用してください。' },
+          { object: 'window', property: 'fetch', message: '生 window.fetch() は禁止です。spFetch / graphFetch 等を使用してください。' },
           { object: 'Date', property: 'toLocaleString', message: 'Use formatInTimeZone() instead' },
           { object: 'Date', property: 'setHours', message: 'Use fromZonedTime() helpers instead' },
           { object: 'Date', property: 'setUTCHours', message: 'Use fromZonedTime() helpers instead' }
@@ -181,6 +217,29 @@ module.exports = {
       ],
       rules: {
         'no-console': 'off',
+      }
+    },
+    {
+      // Cloudflare Worker: サーバーサイドのため fetch 制限を除外
+      files: ['src/worker.ts'],
+      rules: {
+        'no-restricted-globals': [
+          'error',
+          {
+            name: 'confirm',
+            message: 'window.confirm は禁止です。useConfirmDialog + ConfirmDialog を使用してください。',
+          },
+          // fetch は Worker の正規 API のため除外
+        ],
+        'no-restricted-properties': [
+          'error',
+          {
+            object: 'window',
+            property: 'confirm',
+            message: 'window.confirm は禁止です。useConfirmDialog + ConfirmDialog を使用してください。',
+          },
+          // window.fetch は Worker では使わないが念のため除外
+        ],
       }
     }
   ]

@@ -1,7 +1,6 @@
 import { get as getEnv } from '@/env';
 import { toSafeError } from '@/lib/errors';
-import { fetchSp } from '@/lib/fetchSp';
-import { createSpClient, ensureConfig } from '@/lib/spClient';
+import type { SpFetchFn } from '@/lib/sp/spLists';
 
 import {
     SUPPORT_PLANS_FIELDS,
@@ -23,29 +22,11 @@ import { sanitizeForm } from '../utils/helpers';
 const getListTitle = (): string =>
   getEnv('VITE_SP_LIST_SUPPORT_PLANS', 'SupportPlans');
 
-const buildListPath = (baseUrl: string): string => {
-  const listTitle = getListTitle();
-  return `${baseUrl}/_api/web/lists/GetByTitle('${encodeURIComponent(listTitle)}')`;
-};
+// readSpErrorMessage 削除: spFetch (throwOnError: true) が自動 throw する
 
-/** Read error body from SharePoint response. */
-const readSpErrorMessage = async (response: Response): Promise<string> => {
-  try {
-    const text = await response.text();
-    try {
-      const json = JSON.parse(text);
-      return (
-        json?.error?.message?.value ??
-        json?.['odata.error']?.message?.value ??
-        json?.error_description ??
-        text.slice(0, 500)
-      );
-    } catch {
-      return text.slice(0, 500);
-    }
-  } catch {
-    return `HTTP ${response.status}`;
-  }
+const buildListPath = (): string => {
+  const listTitle = getListTitle();
+  return `/_api/web/lists/GetByTitle('${encodeURIComponent(listTitle)}')`;
 };
 
 /** Map a validated SP row to SupportPlanDraft domain object. */
@@ -72,6 +53,15 @@ const mapSpRowToDraft = (
   }
 };
 
+/**
+ * HTTP エラーが特定ステータスかどうかを判定する。
+ * raiseHttpError が投げる Error には status プロパティが付与されている。
+ */
+const isHttpStatusError = (error: unknown, status: number): boolean => {
+  if (typeof error !== 'object' || error === null) return false;
+  return (error as { status?: number }).status === status;
+};
+
 // ────────────────────────────────────────────────────────────────────────────
 // SharePoint Repository
 // ────────────────────────────────────────────────────────────────────────────
@@ -79,6 +69,8 @@ const mapSpRowToDraft = (
 interface SharePointSupportPlanDraftRepositoryOptions {
   acquireToken?: () => Promise<string | null>;
   listTitle?: string;
+  /** DI: spFetch (createSpClient 経由で生成) */
+  spFetch?: SpFetchFn;
 }
 
 /**
@@ -100,21 +92,17 @@ interface SharePointSupportPlanDraftRepositoryOptions {
  * - SchemaVersion (Number): currently 2
  */
 export class SharePointSupportPlanDraftRepository implements SupportPlanDraftRepository {
-  private readonly acquireToken: () => Promise<string | null>;
+  private readonly spFetch: SpFetchFn;
   private readonly listTitle: string;
-  private client: ReturnType<typeof createSpClient> | null = null;
 
   constructor(options: SharePointSupportPlanDraftRepositoryOptions = {}) {
-    this.acquireToken = options.acquireToken ?? (async () => null);
-    this.listTitle = options.listTitle ?? getListTitle();
-  }
-
-  private getClient(): ReturnType<typeof createSpClient> {
-    if (!this.client) {
-      const { baseUrl } = ensureConfig();
-      this.client = createSpClient(this.acquireToken, baseUrl);
+    if (!options.spFetch) {
+      throw new Error(
+        '[SharePointSupportPlanDraftRepository] spFetch is required. Use factory to create instances.',
+      );
     }
-    return this.client;
+    this.spFetch = options.spFetch;
+    this.listTitle = options.listTitle ?? getListTitle();
   }
 
   // ── listDrafts ──────────────────────────────────────────────────────────
@@ -123,8 +111,7 @@ export class SharePointSupportPlanDraftRepository implements SupportPlanDraftRep
     if (params?.signal?.aborted) return [];
 
     try {
-      const { baseUrl } = ensureConfig();
-      const listPath = buildListPath(baseUrl);
+      const listPath = buildListPath();
 
       const queryParams = new URLSearchParams();
       queryParams.set('$select', joinSelect(SUPPORT_PLANS_SELECT_FIELDS));
@@ -152,12 +139,8 @@ export class SharePointSupportPlanDraftRepository implements SupportPlanDraftRep
       }
 
       const url = `${listPath}/items?${queryParams.toString()}`;
-      const response = await fetchSp(url);
-
-      if (!response.ok) {
-        const message = await readSpErrorMessage(response);
-        throw new Error(`Failed to list support plans: ${message}`);
-      }
+      // throwOnError: true — エラーは自動 throw
+      const response = await this.spFetch(url);
 
       const payload = await response.json() as { value?: unknown[] };
       const items = payload.value ?? [];
@@ -185,8 +168,7 @@ export class SharePointSupportPlanDraftRepository implements SupportPlanDraftRep
 
   async saveDraft(draft: SupportPlanDraft): Promise<void> {
     try {
-      const { baseUrl } = ensureConfig();
-      const listPath = buildListPath(baseUrl);
+      const listPath = buildListPath();
 
       const compositeKey = `${draft.userCode ?? '_'}:${draft.id}`;
       const itemData = {
@@ -203,9 +185,9 @@ export class SharePointSupportPlanDraftRepository implements SupportPlanDraftRep
       const existing = await this.findByDraftId(draft.id);
 
       if (existing) {
-        // Update existing
+        // Update existing — throwOnError: true
         const updateUrl = `${listPath}/items(${existing.Id})`;
-        const response = await fetchSp(updateUrl, {
+        await this.spFetch(updateUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json;odata=verbose',
@@ -215,15 +197,10 @@ export class SharePointSupportPlanDraftRepository implements SupportPlanDraftRep
           },
           body: JSON.stringify(itemData),
         });
-
-        if (!response.ok) {
-          const message = await readSpErrorMessage(response);
-          throw new Error(`Failed to update support plan draft: ${message}`);
-        }
       } else {
-        // Create new
+        // Create new — throwOnError: true
         const createUrl = `${listPath}/items`;
-        const response = await fetchSp(createUrl, {
+        await this.spFetch(createUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json;odata=verbose',
@@ -231,11 +208,6 @@ export class SharePointSupportPlanDraftRepository implements SupportPlanDraftRep
           },
           body: JSON.stringify(itemData),
         });
-
-        if (!response.ok) {
-          const message = await readSpErrorMessage(response);
-          throw new Error(`Failed to create support plan draft: ${message}`);
-        }
       }
     } catch (error) {
       const safeError = toSafeError(error);
@@ -251,28 +223,28 @@ export class SharePointSupportPlanDraftRepository implements SupportPlanDraftRep
 
   async deleteDraft(draftId: string): Promise<void> {
     try {
-      const { baseUrl } = ensureConfig();
-      const listPath = buildListPath(baseUrl);
-
       const existing = await this.findByDraftId(draftId);
       if (!existing) {
         // Already deleted or never existed — idempotent
         return;
       }
 
+      const listPath = buildListPath();
       const deleteUrl = `${listPath}/items(${existing.Id})`;
-      const response = await fetchSp(deleteUrl, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json;odata=verbose',
-          'IF-MATCH': '*',
-          'X-HTTP-Method': 'DELETE',
-        },
-      });
 
-      if (!response.ok && response.status !== 404) {
-        const message = await readSpErrorMessage(response);
-        throw new Error(`Failed to delete support plan draft: ${message}`);
+      try {
+        await this.spFetch(deleteUrl, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json;odata=verbose',
+            'IF-MATCH': '*',
+            'X-HTTP-Method': 'DELETE',
+          },
+        });
+      } catch (deleteError) {
+        // 404 は冪等削除として無視（既に削除済み）
+        if (isHttpStatusError(deleteError, 404)) return;
+        throw deleteError;
       }
     } catch (error) {
       const safeError = toSafeError(error);
@@ -297,8 +269,7 @@ export class SharePointSupportPlanDraftRepository implements SupportPlanDraftRep
 
   private async findByDraftId(draftId: string): Promise<{ Id: number } | null> {
     try {
-      const { baseUrl } = ensureConfig();
-      const listPath = buildListPath(baseUrl);
+      const listPath = buildListPath();
 
       const filter = `${SUPPORT_PLANS_FIELDS.draftId} eq '${draftId}'`;
       const queryParams = new URLSearchParams();
@@ -307,13 +278,18 @@ export class SharePointSupportPlanDraftRepository implements SupportPlanDraftRep
       queryParams.set('$top', '1');
 
       const url = `${listPath}/items?${queryParams.toString()}`;
-      const response = await fetchSp(url);
 
-      if (!response.ok) return null;
-
-      const payload = await response.json() as { value?: Array<{ Id: number }> };
-      const items = payload.value ?? [];
-      return items.length > 0 ? items[0] : null;
+      try {
+        const response = await this.spFetch(url);
+        const payload = await response.json() as { value?: Array<{ Id: number }> };
+        const items = payload.value ?? [];
+        return items.length > 0 ? items[0] : null;
+      } catch (fetchError) {
+        // findByDraftId はルックアップ用途 — HTTP エラーは null に変換
+        if (isHttpStatusError(fetchError, 404)) return null;
+        // その他のエラーも null（既存動作維持: try/catch で null 返却）
+        return null;
+      }
     } catch {
       return null;
     }
@@ -322,15 +298,11 @@ export class SharePointSupportPlanDraftRepository implements SupportPlanDraftRep
   /** Check if list exists (for diagnostics). */
   async checkListExists(): Promise<boolean> {
     try {
-      const { baseUrl } = ensureConfig();
-      const listPath = buildListPath(baseUrl);
-      const response = await fetchSp(`${listPath}?$select=Id`);
-      return response.ok;
+      const listPath = buildListPath();
+      await this.spFetch(`${listPath}?$select=Id`);
+      return true;
     } catch {
       return false;
     }
   }
 }
-
-// ── Singleton export ──
-export const sharePointSupportPlanDraftRepository = new SharePointSupportPlanDraftRepository();

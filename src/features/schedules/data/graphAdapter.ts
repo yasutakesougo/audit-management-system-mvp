@@ -1,11 +1,10 @@
-import { getAppConfig, readOptionalEnv } from '@/lib/env';
+import { readOptionalEnv, getAppConfig } from '@/lib/env';
 import { toSafeError } from '@/lib/errors';
 import { withUserMessage } from '@/lib/notice';
+import { createGraphClient, GraphAuthError, GraphApiError, type GetToken } from '@/lib/graph/graphFetch';
 import type { Event as GraphEvent } from '@microsoft/microsoft-graph-types';
 import type { SchedItem, SchedulesPort } from './port';
 import { result } from '@/shared/result';
-
-type GetToken = () => Promise<string | null>;
 
 type GraphSchedulesPortOptions = {
   create?: SchedulesPort['create'];
@@ -50,7 +49,7 @@ const mapGraphEventToItem = (event: GraphEvent): SchedItem | null => {
     null;
 
   const id = fallbackId(event);
-  const etagValue = (event as { __metadata?: { id?: string } })?.__metadata?.id || `"graph-${id}"`; // Phase 2-0: etag from Graph
+  const etagValue = (event as { __metadata?: { id?: string } })?.__metadata?.id || `"graph-${id}"`;
 
   return {
     id,
@@ -58,63 +57,21 @@ const mapGraphEventToItem = (event: GraphEvent): SchedItem | null => {
     start,
     end,
     assignedTo: assignedTo ? assignedTo.toLowerCase() : null,
-    etag: etagValue, // Phase 2-0: required field
+    etag: etagValue,
   };
 };
 
+const isAbortError = (e: unknown): e is DOMException =>
+  e instanceof DOMException && e.name === 'AbortError';
+
 export const makeGraphSchedulesPort = (getToken: GetToken, options?: GraphSchedulesPortOptions): SchedulesPort => {
   const timezone = resolveTimezone();
-  const { schedulesCacheTtlSec, graphRetryMax, graphRetryBaseMs, graphRetryCapMs } = getAppConfig();
+  const { schedulesCacheTtlSec } = getAppConfig();
   const cacheTtlMs = Math.max(0, schedulesCacheTtlSec) * 1000;
-  const retryMax = Math.max(0, graphRetryMax);
-  const retryBase = Math.max(0, graphRetryBaseMs);
-  const retryCap = Math.max(retryBase, graphRetryCapMs);
   const cache = new Map<string, { ts: number; items: SchedItem[] }>();
   const inflight = new Map<string, { controller: AbortController; promise: Promise<SchedItem[]> }>();
-  const sleep = (ms: number) =>
-    ms > 0 ? new Promise<void>((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
 
-  const parseRetryAfter = (value: string | null): number | null => {
-    if (!value) return null;
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-    const seconds = Number(trimmed);
-    if (Number.isFinite(seconds)) {
-      return Math.max(0, seconds * 1000);
-    }
-    const absolute = Date.parse(trimmed);
-    if (!Number.isNaN(absolute)) {
-      const delta = absolute - Date.now();
-      return delta > 0 ? delta : 0;
-    }
-    return null;
-  };
-
-  const computeDelay = (attempt: number, retryAfter: string | null): number => {
-    const headerDelay = parseRetryAfter(retryAfter);
-    if (headerDelay !== null) {
-      const baseline = retryBase > 0 ? retryBase : 0;
-      const desired = headerDelay < baseline ? baseline : headerDelay;
-      return retryCap > 0 ? Math.min(retryCap, desired) : desired;
-    }
-    if (retryBase <= 0) {
-      return 0;
-    }
-    const backoff = retryBase * Math.pow(2, attempt);
-    return retryCap > 0 ? Math.min(retryCap, backoff) : backoff;
-  };
-
-  const readRetryAfter = (response: Response): string | null => {
-    const candidate = (response as { headers?: { get?: (name: string) => string | null } }).headers;
-    if (candidate && typeof candidate.get === 'function') {
-      try {
-        return candidate.get('retry-after');
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  };
+  const graphClient = createGraphClient(getToken);
 
   const createImpl = options?.create ?? (async () => {
     throw new Error('Schedules create is not configured for Graph adapter. Provide a create handler.');
@@ -144,14 +101,6 @@ export const makeGraphSchedulesPort = (getToken: GetToken, options?: GraphSchedu
       const controller = new AbortController();
       const promise = (async () => {
         try {
-          const token = await getToken();
-          if (!token) {
-            throw withUserMessage(
-              toSafeError(new Error('Graph token not available')),
-              'Microsoft 連携の権限が必要です。サインインをやり直してください。',
-            );
-          }
-
           const params = new URLSearchParams({
             startDateTime: range.from,
             endDateTime: range.to,
@@ -159,55 +108,34 @@ export const makeGraphSchedulesPort = (getToken: GetToken, options?: GraphSchedu
             $orderby: 'start/dateTime',
           });
 
-          const url = `https://graph.microsoft.com/v1.0/me/calendarView?${params.toString()}`;
-          const headers = {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/json',
-            Prefer: `outlook.timezone="${timezone}"`,
-          } as const;
+          const path = `/me/calendarView?${params.toString()}`;
 
-          let attempt = 0;
-          let payload: { value?: GraphEvent[] } = {};
-
-          while (attempt <= retryMax) {
-            let response: Response;
-            try {
-              response = await fetch(url, { headers, signal: controller.signal });
-            } catch (error) {
-              if (controller.signal.aborted) {
-                throw new DOMException('Aborted', 'AbortError');
-              }
-              throw withUserMessage(
-                toSafeError(error instanceof Error ? error : new Error(String(error))),
-                '予定の取得に失敗しました。時間をおいて再試行してください。',
-              );
-            }
-
-            if (response.ok) {
-              payload = (await response.json().catch(() => ({}))) as { value?: GraphEvent[] };
-              break;
-            }
-
-            if (controller.signal.aborted) {
+          let payload: { value?: GraphEvent[] };
+          try {
+            payload = await graphClient.fetchJson<{ value?: GraphEvent[] }>(path, {
+              headers: { Prefer: `outlook.timezone="${timezone}"` },
+              signal: controller.signal,
+            });
+          } catch (error) {
+            if (isAbortError(error)) {
               throw new DOMException('Aborted', 'AbortError');
             }
-
-            const status = response.status;
-            const retryableStatus = status === 429 || (status >= 500 && status < 600);
-
-            if (!retryableStatus || attempt === retryMax) {
-              const details = await response.text().catch(() => '');
+            if (error instanceof GraphAuthError) {
               throw withUserMessage(
-                toSafeError(new Error(`Graph error ${status}: ${details.slice(0, 200)}`)),
+                toSafeError(error),
+                'Microsoft 連携の権限が必要です。サインインをやり直してください。',
+              );
+            }
+            if (error instanceof GraphApiError) {
+              throw withUserMessage(
+                toSafeError(error),
                 '予定の取得に失敗しました。時間をおいて再試行してください。',
               );
             }
-
-            const delay = computeDelay(attempt, readRetryAfter(response));
-            attempt += 1;
-            if (delay > 0) {
-              await sleep(delay);
-            }
+            throw withUserMessage(
+              toSafeError(error instanceof Error ? error : new Error(String(error))),
+              '予定の取得に失敗しました。時間をおいて再試行してください。',
+            );
           }
 
           const events = Array.isArray(payload.value) ? payload.value : [];
@@ -246,57 +174,8 @@ export const makeGraphSchedulesPort = (getToken: GetToken, options?: GraphSchedu
 /**
  * Fetch the list of group IDs the current user is a member of.
  * Used for authorization checks (reception, admin roles).
+ *
+ * @deprecated Use `import { fetchMyGroupIds } from '@/auth/fetchMyGroupIds'` instead.
+ * This re-export exists only for backward compatibility.
  */
-export const fetchMyGroupIds = async (getToken: GetToken): Promise<string[]> => {
-  const token = await getToken();
-  if (!token) return [];
-
-  const fetchAllIds = async (initialUrl: string): Promise<string[]> => {
-    const ids: string[] = [];
-    let nextUrl: string | undefined = initialUrl;
-
-    while (nextUrl) {
-      const res = await fetch(nextUrl, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/json',
-        },
-      });
-
-      if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        throw new Error(`memberOf failed: ${res.status} ${body.slice(0, 200)}`.trim());
-      }
-
-      const json = (await res.json().catch(() => ({}))) as {
-        value?: Array<{ id?: string }>;
-        '@odata.nextLink'?: string;
-      };
-
-      const chunk = (json.value ?? [])
-        .map((v) => v.id)
-        .filter((id): id is string => typeof id === 'string' && id.length > 0);
-      ids.push(...chunk);
-      nextUrl = json['@odata.nextLink'];
-    }
-
-    return ids;
-  };
-
-  const endpoints = [
-    'https://graph.microsoft.com/v1.0/me/transitiveMemberOf?$select=id',
-    'https://graph.microsoft.com/v1.0/me/memberOf?$select=id',
-  ];
-
-  for (const endpoint of endpoints) {
-    try {
-      return await fetchAllIds(endpoint);
-    } catch (error) {
-      if (endpoint === endpoints[endpoints.length - 1]) {
-        throw error;
-      }
-    }
-  }
-
-  return [];
-};
+export { fetchMyGroupIds } from '@/auth/fetchMyGroupIds';

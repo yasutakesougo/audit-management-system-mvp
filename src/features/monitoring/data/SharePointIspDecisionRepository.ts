@@ -20,9 +20,8 @@
  */
 import { get as getEnv } from '@/env';
 import { toSafeError } from '@/lib/errors';
-import { fetchSp } from '@/lib/fetchSp';
-import { ensureConfig } from '@/lib/spClient';
 import { ensureListExists } from '@/lib/sp/spListSchema';
+import type { SpFetchFn } from '@/lib/sp/spLists';
 import type { SpFieldDef } from '@/lib/sp/types';
 
 import type { IspRecommendationDecision } from '../domain/ispRecommendationDecisionTypes';
@@ -91,25 +90,12 @@ let ensureListPromise: Promise<void> | null = null;
 
 type SpResponse<T> = { value?: T[] };
 
-const buildListPath = (baseUrl: string): string => {
+const buildListPath = (): string => {
   const title = getListTitle();
-  // NOTE: ensureConfig().baseUrl already ends with "/_api/web"
-  return `${baseUrl}/lists/GetByTitle('${encodeURIComponent(title)}')`;
+  return `/lists/GetByTitle('${encodeURIComponent(title)}')`;
 };
 
-const readSpErrorMessage = async (response: Response): Promise<string> => {
-  const text = await response.text().catch(() => '');
-  if (!text) return '';
-  try {
-    const data = JSON.parse(text) as {
-      error?: { message?: { value?: string } };
-      'odata.error'?: { message?: { value?: string } };
-    };
-    return data.error?.message?.value ?? data['odata.error']?.message?.value ?? '';
-  } catch {
-    return text.slice(0, 400);
-  }
-};
+// readSpErrorMessage 削除: spFetch (throwOnError: true) が SpHttpError として自動 throw する
 
 /** SharePoint アイテム → ドメインオブジェクト */
 const toDecision = (item: Record<string, unknown>): IspRecommendationDecision | null => {
@@ -144,30 +130,18 @@ const generateId = (): string =>
 
 // ─── リスト自動作成 ───────────────────────────────────────
 
-/**
- * fetchSp（フルURL）を spListSchema.ensureListExists（相対パス）用に変換するアダプタ。
- * ensureListExists は "/lists/..." 形式の相対パスを渡してくるので、
- * baseUrl を先頭に付加してフル URL に変換する。
- */
-const createRelativeSpFetch = (baseUrl: string) => {
-  return (path: string, init?: RequestInit): Promise<Response> => {
-    const url = path.startsWith('http') ? path : `${baseUrl}${path}`;
-    return fetchSp(url, init ?? {});
-  };
-};
+// createRelativeSpFetch 削除: spFetch がそのまま相対パスを受け付ける
 
 /**
  * 初回呼び出し時にリストが存在するか確認し、なければ自動作成する。
  * 2回目以降は即座に resolve する (Promise キャッシュ)。
  */
-const ensureIspDecisionList = (): Promise<void> => {
+const ensureIspDecisionList = (spFetch: SpFetchFn): Promise<void> => {
   if (!ensureListPromise) {
     ensureListPromise = (async () => {
       try {
-        const { baseUrl } = ensureConfig();
-        const spFetchAdapter = createRelativeSpFetch(baseUrl);
         const listTitle = getListTitle();
-        await ensureListExists(spFetchAdapter, listTitle, ISP_DECISION_FIELD_DEFS);
+        await ensureListExists(spFetch, listTitle, ISP_DECISION_FIELD_DEFS);
         console.info(`[SharePointIspDecisionRepository] List "${listTitle}" ensured`);
       } catch (error) {
         // 失敗時は次回リトライ可能にする
@@ -182,12 +156,13 @@ const ensureIspDecisionList = (): Promise<void> => {
 // ─── Repository 実装 ─────────────────────────────────────
 
 export class SharePointIspDecisionRepository implements IspDecisionRepository {
+  constructor(private readonly spFetch: SpFetchFn) {}
+
   async save(input: SaveDecisionInput): Promise<IspRecommendationDecision> {
-    await ensureIspDecisionList();
+    await ensureIspDecisionList(this.spFetch);
     const id = generateId();
     try {
-      const { baseUrl } = ensureConfig();
-      const listPath = buildListPath(baseUrl);
+      const listPath = buildListPath();
 
       const itemData = {
         [SP_FIELDS.title]: id,
@@ -202,18 +177,13 @@ export class SharePointIspDecisionRepository implements IspDecisionRepository {
         [SP_FIELDS.snapshotJson]: JSON.stringify(input.snapshot),
       };
 
-      const response = await fetchSp(`${listPath}/items`, {
+      await this.spFetch(`${listPath}/items`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json;odata=nometadata',
         },
         body: JSON.stringify(itemData),
       });
-
-      if (!response.ok) {
-        const message = await readSpErrorMessage(response);
-        throw new Error(`Failed to save ISP decision: ${message}`);
-      }
 
       return { ...input, id };
     } catch (error) {
@@ -228,11 +198,10 @@ export class SharePointIspDecisionRepository implements IspDecisionRepository {
 
   async list(filter: DecisionListFilter): Promise<IspRecommendationDecision[]> {
     if (filter.signal?.aborted) return [];
-    await ensureIspDecisionList();
+    await ensureIspDecisionList(this.spFetch);
 
     try {
-      const { baseUrl } = ensureConfig();
-      const listPath = buildListPath(baseUrl);
+      const listPath = buildListPath();
 
       // OData フィルタ構築
       const filters: string[] = [`${SP_FIELDS.userId} eq '${filter.userId}'`];
@@ -252,13 +221,7 @@ export class SharePointIspDecisionRepository implements IspDecisionRepository {
       params.set('$top', '200');
       params.set('$select', ALL_SELECT_FIELDS);
 
-      const url = `${listPath}/items?${params.toString()}`;
-      const response = await fetchSp(url);
-
-      if (!response.ok) {
-        const message = await readSpErrorMessage(response);
-        throw new Error(`Failed to list ISP decisions: ${message}`);
-      }
+      const response = await this.spFetch(`${listPath}/items?${params.toString()}`);
 
       const payload = (await response.json()) as SpResponse<Record<string, unknown>>;
       const items = payload.value ?? [];
@@ -281,5 +244,4 @@ export class SharePointIspDecisionRepository implements IspDecisionRepository {
   }
 }
 
-/** シングルトンインスタンス */
-export const sharePointIspDecisionRepository = new SharePointIspDecisionRepository();
+// シングルトンインスタンスはファクトリ (createIspDecisionRepository) で生成する

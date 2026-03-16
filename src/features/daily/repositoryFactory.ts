@@ -7,6 +7,8 @@ import {
   shouldSkipLogin,
 } from '@/lib/env';
 import { hasSpfxContext } from '@/lib/runtime';
+// contract:allow-sp-direct — ファクトリ層: DI 組み立てで spClient を注入する正当な用途
+import { createSpClient, ensureConfig } from '@/lib/spClient';
 
 import { useAuth } from '@/auth/useAuth';
 import type { DailyRecordRepository } from './domain/DailyRecordRepository';
@@ -74,8 +76,11 @@ const createRepository = (
     );
   }
 
+  const { baseUrl } = ensureConfig();
+  const { spFetch } = createSpClient(acquireToken, baseUrl);
+
   return new SharePointDailyRecordRepository({
-    acquireToken,
+    spFetch,
     listTitle: options?.listTitle,
   });
 };

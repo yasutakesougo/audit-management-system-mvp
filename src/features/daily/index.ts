@@ -12,7 +12,6 @@ export {
 
 export {
     SharePointDailyRecordRepository,
-    sharePointDailyRecordRepository
 } from './infra/SharePointDailyRecordRepository';
 
 // Repository Factory

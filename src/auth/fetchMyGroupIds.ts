@@ -4,54 +4,32 @@
  *
  * Moved from features/schedules/data/graphAdapter.ts to auth/
  * because this is an authorization concern, not a schedules concern.
+ *
+ * Refactored to use graphFetch client (Phase 2).
  */
 
-type GetToken = () => Promise<string | null>;
+import { createGraphClient, type GetToken } from '@/lib/graph/graphFetch';
+
+type GroupEntry = { id?: string };
 
 export const fetchMyGroupIds = async (getToken: GetToken): Promise<string[]> => {
+  // トークンが取得できない場合は未認証 — 空配列で返す（旧実装互換）
   const token = await getToken();
   if (!token) return [];
 
-  const fetchAllIds = async (initialUrl: string): Promise<string[]> => {
-    const ids: string[] = [];
-    let nextUrl: string | undefined = initialUrl;
-
-    while (nextUrl) {
-      const res = await fetch(nextUrl, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/json',
-        },
-      });
-
-      if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        throw new Error(`memberOf failed: ${res.status} ${body.slice(0, 200)}`.trim());
-      }
-
-      const json = (await res.json().catch(() => ({}))) as {
-        value?: Array<{ id?: string }>;
-        '@odata.nextLink'?: string;
-      };
-
-      const chunk = (json.value ?? [])
-        .map((v) => v.id)
-        .filter((id): id is string => typeof id === 'string' && id.length > 0);
-      ids.push(...chunk);
-      nextUrl = json['@odata.nextLink'];
-    }
-
-    return ids;
-  };
+  const client = createGraphClient(async () => token);
 
   const endpoints = [
-    'https://graph.microsoft.com/v1.0/me/transitiveMemberOf?$select=id',
-    'https://graph.microsoft.com/v1.0/me/memberOf?$select=id',
+    '/me/transitiveMemberOf?$select=id',
+    '/me/memberOf?$select=id',
   ];
 
   for (const endpoint of endpoints) {
     try {
-      return await fetchAllIds(endpoint);
+      const entries = await client.fetchAllPages<GroupEntry>(endpoint);
+      return entries
+        .map((v) => v.id)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0);
     } catch (error) {
       if (endpoint === endpoints[endpoints.length - 1]) {
         throw error;

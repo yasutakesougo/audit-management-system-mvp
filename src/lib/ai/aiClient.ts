@@ -52,6 +52,7 @@ export function createAzureOpenAiClient(config: AzureOpenAiConfig): AiClient {
       }
       messages.push({ role: 'user', content: prompt });
 
+      // eslint-disable-next-line no-restricted-globals -- AI クライアント SSOT: Azure OpenAI 専用認証 (api-key)
       const response = await fetch(url, {
         method: 'POST',
         headers: {

@@ -95,6 +95,7 @@ export async function resilientFetch(
   let lastError: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
+      // eslint-disable-next-line no-restricted-globals -- resilientFetch SSOT: リトライラッパーの最下層
       const response = await fetch(input, init);
       if (response.ok) {
         return response;

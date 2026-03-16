@@ -28,6 +28,7 @@ const SITE = `${readOptionalEnv('VITE_SP_SITE_URL') ?? 'https://contoso.sharepoi
 const USERS_LIST = "lists/getbytitle('Users')/items";
 
 // @see Issue #767: createUsersClient() ファクトリパターンへの完全移行を検討（下記 L122）
+// eslint-disable-next-line no-restricted-globals -- spWriteResilient の DI（Phase 3 で createUsersClient に移行予定）
 const fetcher = (path: string, init?: RequestInit) => fetch(path, init);
 
 const buildUsersUrl = (_list: string, itemId?: number) =>
@@ -119,6 +120,7 @@ export async function deleteUser(id: number, etag: string = "*"): Promise<void> 
  * const newUser = await usersApi.createUser({ Title: 'John Doe' });
  * ```
  */
+// eslint-disable-next-line no-restricted-globals -- 型参照のみ（DI パラメータ）
 export function createUsersClient(spFetch: typeof fetch) {
   const clientFetcher = (path: string, init?: RequestInit) => spFetch(path, init);
 

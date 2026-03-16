@@ -133,7 +133,9 @@ export function sendHydrationSpans(
     // swallow sendBeacon errors and try fetch fallback
   }
 
+  // eslint-disable-next-line no-restricted-globals -- テレメトリ: sendBeacon フォールバック (fire-and-forget)
   if (typeof fetch === 'function') {
+    // eslint-disable-next-line no-restricted-globals -- テレメトリ: sendBeacon フォールバック (fire-and-forget)
     fetch(endpoint, {
       method: 'POST',
       body,

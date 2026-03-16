@@ -27,6 +27,8 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { SupportRecord, SupportRecordTimeSlot } from './types';
 
 interface SupportRecordFormProps {
@@ -88,6 +90,7 @@ const TimeBasedSupportRecordForm: React.FC<SupportRecordFormProps> = ({
   // Phase 2: Saving 状態
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const confirmDialog = useConfirmDialog();
 
   // P0防波堤: 初期値スナップショット
   const initialFormDataRef = useRef<string>('');
@@ -104,12 +107,23 @@ const TimeBasedSupportRecordForm: React.FC<SupportRecordFormProps> = ({
   // P0防波堤: 未保存ガード付き閉じる処理（Phase 2: isSaving中はclose禁止）
   const handleClose = useCallback(() => {
     if (isSaving) return;
-    if (isDirty && !window.confirm('保存されていない変更があります。破棄して閉じますか？')) {
+    if (isDirty) {
+      confirmDialog.open({
+        title: '変更が保存されていません',
+        message: 'このまま閉じると入力内容は失われます。',
+        confirmLabel: '破棄して閉じる',
+        cancelLabel: '戻る',
+        severity: 'warning',
+        onConfirm: () => {
+          setSaveError(null);
+          onClose();
+        },
+      });
       return;
     }
     setSaveError(null);
     onClose();
-  }, [isDirty, isSaving, onClose]);
+  }, [isDirty, isSaving, onClose, confirmDialog]);
 
   // P0防波堤: ブラウザ離脱時の警告
   useEffect(() => {
@@ -163,6 +177,7 @@ const TimeBasedSupportRecordForm: React.FC<SupportRecordFormProps> = ({
   };
 
   return (
+    <>
     <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
       <DialogTitle>
         <Box display="flex" alignItems="center" gap={2}>
@@ -519,6 +534,8 @@ const TimeBasedSupportRecordForm: React.FC<SupportRecordFormProps> = ({
         </Stack>
       </DialogActions>
     </Dialog>
+    <ConfirmDialog {...confirmDialog.dialogProps} />
+    </>
   );
 };
 

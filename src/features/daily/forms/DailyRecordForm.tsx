@@ -45,6 +45,7 @@ import { DailyRecordFormActivities } from './DailyRecordFormActivities';
 import { DailyRecordFormBehavior } from './DailyRecordFormBehavior';
 import { isProblemBehaviorEmpty, mealOptions } from './dailyRecordFormLogic';
 import { useDailyRecordFormState } from './useDailyRecordFormState';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface DailyRecordFormProps {
   open: boolean;
@@ -57,6 +58,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
   const s = useDailyRecordFormState({ open, onClose, record, onSave });
 
   return (
+    <>
     <Dialog
       open={open}
       onClose={s.handleClose}
@@ -380,5 +382,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
         </Stack>
       </DialogActions>
     </Dialog>
+    <ConfirmDialog {...s.closeConfirmDialog} />
+    </>
   );
 }

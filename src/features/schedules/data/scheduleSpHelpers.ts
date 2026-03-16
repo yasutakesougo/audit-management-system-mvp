@@ -5,16 +5,17 @@
  * date formatting, OData filter/query construction, error detection, and
  * field metadata introspection.
  *
+ * All fetch operations accept `spFetch: SpFetchFn` via explicit parameter injection.
+ *
  * @module features/schedules/data/scheduleSpHelpers
  */
 
-import { fetchSp } from '@/lib/fetchSp';
-import { ensureConfig } from '@/lib/spClient';
+import type { SpFetchFn } from '@/lib/sp';
 
 import type { DateRange, SchedItem } from './port';
 import { mapSpRowToSchedule, parseSpScheduleRows } from './spRowSchema';
 import {
-    buildSchedulesListPath,
+    buildSchedulesRelativeListPath,
     getSchedulesListTitle,
     resolveSchedulesListIdentifier,
 } from './spSchema';
@@ -137,42 +138,24 @@ export const getHttpStatus = (e: unknown): number | undefined => {
   return undefined;
 };
 
-// ============================================================================
-// SharePoint Response Helpers
-// ============================================================================
-
-export const readSpErrorMessage = async (response: Response): Promise<string> => {
-  const text = await response.text().catch(() => '');
-  if (!text) return '';
-  try {
-    const data = JSON.parse(text) as {
-      error?: { message?: { value?: string } };
-      'odata.error'?: { message?: { value?: string } };
-      message?: { value?: string };
-    };
-    return (
-      data.error?.message?.value ??
-      data['odata.error']?.message?.value ??
-      data.message?.value ??
-      ''
-    );
-  } catch {
-    return text.slice(0, 4000);
-  }
-};
+// readSpErrorMessage 削除: spFetch (throwOnError: true) が SpHttpError として自動 throw する
 
 // ============================================================================
 // SharePoint Fetch Operations
 // ============================================================================
 
+/**
+ * Fetch schedule items within a date range.
+ * Uses spFetch (DI) with relative paths.
+ */
 export const fetchRange = async (
+  spFetch: SpFetchFn,
   range: DateRange,
   select: readonly string[],
   fields: ScheduleFieldNames,
   options?: { includeOrderby?: boolean; includeFilter?: boolean; top?: number }
 ): Promise<ReturnType<typeof parseSpScheduleRows>> => {
-  const { baseUrl } = ensureConfig();
-  const listPath = buildSchedulesListPath(baseUrl);
+  const listPath = buildSchedulesRelativeListPath();
   const params = new URLSearchParams();
   params.set('$top', String(options?.top ?? 500));
   if (options?.includeOrderby ?? true) {
@@ -184,24 +167,9 @@ export const fetchRange = async (
   params.set('$select', select.join(','));
 
   const url = `${listPath}?${params.toString()}`;
-  const response = await fetchSp(url);
-  if (!response.ok) {
-    const message = await readSpErrorMessage(response);
-    console.error('[schedules] SharePoint list query failed', {
-      status: response.status,
-      listTitle: getSchedulesListTitle(),
-      url,
-      select: select.join(','),
-      includeOrderby: options?.includeOrderby ?? true,
-      includeFilter: options?.includeFilter ?? true,
-      message,
-    });
-    const error = new Error(message || `SharePoint request failed (${response.status})`);
-    (error as { status?: number }).status = response.status;
-    (error as { url?: string }).url = url;
-    (error as { body?: string }).body = message;
-    throw error;
-  }
+  // spFetch throws on non-2xx (throwOnError: true by default)
+  const response = await spFetch(url);
+
   const payload = (await response.json()) as SharePointResponse<unknown>;
   try {
     return parseSpScheduleRows(payload.value ?? []);
@@ -209,7 +177,6 @@ export const fetchRange = async (
     // Dump raw payload on parse failure (helps diagnose field/shape issues)
     console.error('[schedules] fetchRange parse failed', {
       url,
-      status: response.status,
       payloadPreview: JSON.stringify(payload).slice(0, 2000),
     });
     throw parseError;
@@ -217,25 +184,18 @@ export const fetchRange = async (
 };
 
 /**
- * List field metadata for diagnostics
+ * List field metadata for diagnostics.
+ * Uses spFetch (DI) with relative paths.
  */
-export const getListFieldsMeta = async (): Promise<ListFieldMeta[]> => {
-  const { baseUrl } = ensureConfig();
+export const getListFieldsMeta = async (spFetch: SpFetchFn): Promise<ListFieldMeta[]> => {
   const identifier = resolveSchedulesListIdentifier();
   const listBase = identifier.type === 'guid'
-    ? `${baseUrl}/lists(guid'${identifier.value}')`
-    : `${baseUrl}/lists/getbytitle('${identifier.value.replace(/'/g, "''")}')`;
+    ? `lists(guid'${identifier.value}')`
+    : `lists/getbytitle('${identifier.value.replace(/'/g, "''")}')`;
   const url = `${listBase}/fields?$select=InternalName,TypeAsString,Required,Choices&$filter=Hidden eq false`;
 
-  const response = await fetchSp(url);
-  if (!response.ok) {
-    const message = await readSpErrorMessage(response);
-    const error = new Error(message || `SharePoint request failed (${response.status})`);
-    (error as { status?: number }).status = response.status;
-    (error as { url?: string }).url = url;
-    (error as { body?: string }).body = message;
-    throw error;
-  }
+  // spFetch throws on non-2xx (throwOnError: true by default)
+  const response = await spFetch(url);
 
   const payload = (await response.json()) as SharePointResponse<{
     InternalName?: string;
@@ -264,9 +224,10 @@ export const getListFieldsMeta = async (): Promise<ListFieldMeta[]> => {
 };
 
 /**
- * Default list range implementation with progressive fallback stages
+ * Default list range implementation with progressive fallback stages.
+ * Accepts spFetch (DI) for all SharePoint communication.
  */
-export const defaultListRange = async (range: DateRange): Promise<SchedItem[]> => {
+export const defaultListRange = async (spFetch: SpFetchFn, range: DateRange): Promise<SchedItem[]> => {
   const listTitle = getSchedulesListTitle().trim().toLowerCase();
   if (listTitle === 'dailyopssignals') {
     if (SCHEDULES_DEBUG) {
@@ -291,7 +252,7 @@ export const defaultListRange = async (range: DateRange): Promise<SchedItem[]> =
 
   for (const stage of stages) {
     try {
-      const rows = await fetchRange(range, stage.select, fields, {
+      const rows = await fetchRange(spFetch, range, stage.select, fields, {
         includeOrderby: stage.keepOrderby,
         includeFilter: stage.keepFilter,
         top: stage.top,
@@ -324,9 +285,8 @@ export const defaultListRange = async (range: DateRange): Promise<SchedItem[]> =
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const _fetchItemById = async (id: number): Promise<SchedItem> => {
-  const { baseUrl } = ensureConfig();
-  const listPath = buildSchedulesListPath(baseUrl);
+export const _fetchItemById = async (spFetch: SpFetchFn, id: number): Promise<SchedItem> => {
+  const listPath = buildSchedulesRelativeListPath();
   const { selectVariants } = buildSelectSets();
 
   for (let index = 0; index < selectVariants.length; index += 1) {
@@ -335,7 +295,7 @@ export const _fetchItemById = async (id: number): Promise<SchedItem> => {
     params.set('$select', select.join(','));
 
     try {
-      const response = await fetchSp(`${listPath}(${id})?${params.toString()}`);
+      const response = await spFetch(`${listPath}(${id})?${params.toString()}`);
       const row = (await response.json()) as unknown;
       const mapped = mapSpRowToSchedule(row as never);
       if (!mapped) {

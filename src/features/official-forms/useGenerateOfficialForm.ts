@@ -76,6 +76,7 @@ export function useGenerateOfficialForm(): UseGenerateOfficialFormReturn {
       const userCodesWithRecords = new Set(allRecords.map((r) => r.userCode));
 
       // 3) テンプレ取得（1回だけ）
+      // eslint-disable-next-line no-restricted-globals -- 静的アセット: 認証不要のテンプレートファイル取得
       const templateRes = await fetch('/templates/seikatsu_kaigo_template.xlsx');
       if (!templateRes.ok) throw new Error('テンプレートが見つかりません');
       const templateBuf = await templateRes.arrayBuffer();

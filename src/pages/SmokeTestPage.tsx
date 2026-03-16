@@ -79,6 +79,7 @@ export default function SmokeTestPage() {
 
 
                 try {
+                    // eslint-disable-next-line no-restricted-globals -- 診断ページ: 意図的に低レベルで SP を直接叩く
                     const response = await fetch(url, {
                         headers: {
                             'Authorization': `Bearer ${token}`,
@@ -179,6 +180,7 @@ export default function SmokeTestPage() {
 
             const fetcher = async (path: string, init?: RequestInit): Promise<Response> => {
                 const url = path.startsWith('http') ? path : `${siteBaseUrl}${path}`;
+                // eslint-disable-next-line no-restricted-globals -- 診断ページ: Health Check の直接呼び出し
                 return fetch(url, {
                     ...init,
                     headers: {

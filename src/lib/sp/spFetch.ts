@@ -9,6 +9,7 @@ import { auditLog } from '@/lib/debugLogger';
 import type { EnvRecord } from '@/lib/env';
 import { isE2eMsalMockEnabled, shouldSkipLogin, skipSharePoint } from '@/lib/env';
 import { AuthRequiredError } from '@/lib/errors';
+import { startFetchSpan } from '@/telemetry/fetchSpan';
 import { raiseHttpError } from './helpers';
 import type { RetryReason, SpClientOptions } from './types';
 
@@ -22,6 +23,11 @@ export type SpFetchDeps = {
   debugEnabled: boolean;
   spSiteLegacy: string;
   onRetry?: SpClientOptions['onRetry'];
+  /**
+   * true (default): !response.ok 時に raiseHttpError で例外を投げる
+   * false: Response をそのまま返す（互換レイヤー用）
+   */
+  throwOnError?: boolean;
 };
 
 // ─── normalizePath (extracted as standalone) ────────────────────────────────
@@ -123,7 +129,7 @@ function computeDelay(attempt: number, res: Response, baseDelay: number, capDela
 // ─── Factory ────────────────────────────────────────────────────────────────
 
 export function createSpFetch(deps: SpFetchDeps) {
-  const { acquireToken, baseUrl, config, retrySettings, debugEnabled, onRetry } = deps;
+  const { acquireToken, baseUrl, config, retrySettings, debugEnabled, onRetry, throwOnError = true } = deps;
   const _e2eMsalMockFlag = config.VITE_E2E_MSAL_MOCK;
   const tokenMetricsCarrier = globalThis as { __TOKEN_METRICS__?: Record<string, unknown> };
 
@@ -134,6 +140,7 @@ export function createSpFetch(deps: SpFetchDeps) {
 
   return async function spFetch(path: string, init: RequestInit = {}): Promise<Response> {
     const resolvedPath = path; // normalizePath is applied BEFORE calling spFetch by createSpClient
+    const method = (init.method ?? 'GET').toUpperCase();
 
     // Mock decision
     const isE2EWithMsalMock = isE2eMsalMockEnabled(config);
@@ -150,7 +157,7 @@ export function createSpFetch(deps: SpFetchDeps) {
       });
     }
 
-    // Dev / demo / skip-login mock responses
+    // Dev / demo / skip-login mock responses (スパン不要)
     if (shouldMock) {
       if (AUDIT_DEBUG) {
         auditLog.debug('sp:mock', 'mock_response', { method: init.method || 'GET', path: resolvedPath });
@@ -228,15 +235,20 @@ export function createSpFetch(deps: SpFetchDeps) {
           Accept: headers.get('Accept'), ContentType: headers.get('Content-Type'),
         });
       }
+      // eslint-disable-next-line no-restricted-globals -- SP基盤 SSOT: fetch はこの最下層でのみ許可
       return fetch(url, { ...init, headers }).catch((e: unknown) => {
         if (isAbortError(e)) throw e;
         throw e;
       });
     };
 
+    // ── Observability span ──
+    const span = startFetchSpan({ layer: 'sp', method, path: resolvedPath });
+
     // ── Retry loop ──
     let response: Response;
     try { response = await doFetch(token1); } catch (e) {
+      span.error(e instanceof Error ? e.name : 'NetworkError');
       if (isAbortError(e)) throw e;
       throw e;
     }
@@ -258,6 +270,7 @@ export function createSpFetch(deps: SpFetchDeps) {
       if (delayMs > 0) { await sleep(delayMs); } else { await Promise.resolve(); }
       attempt += 1;
       try { response = await doFetch(token1); } catch (e) {
+        span.error(e instanceof Error ? e.name : 'NetworkError', attempt);
         if (isAbortError(e)) throw e;
         throw e;
       }
@@ -276,8 +289,15 @@ export function createSpFetch(deps: SpFetchDeps) {
       }
     }
 
-    if (!response.ok) {
-      await raiseHttpError(response, { url: resolveUrl(resolvedPath), method: init.method ?? 'GET' });
+    // ── Span completion ──
+    if (response.ok) {
+      span.succeed(response.status, attempt - 1);
+    } else {
+      span.fail(response.status, 'SpHttpError', attempt - 1);
+    }
+
+    if (!response.ok && throwOnError) {
+      await raiseHttpError(response, { url: resolveUrl(resolvedPath), method });
     }
     return response;
   };
