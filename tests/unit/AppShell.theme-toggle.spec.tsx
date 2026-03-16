@@ -1,31 +1,45 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
-import AppShell from '@/app/AppShell';
-import { routerFutureFlags } from '@/app/routerFuture';
+import { SettingsDialog } from '@/features/settings/SettingsDialog';
 import { ThemeRoot } from '@/app/theme';
-import { FeatureFlagsProvider, featureFlags } from '@/config/featureFlags';
+import { SettingsProvider } from '@/features/settings/SettingsContext';
 import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 
-describe('AppShell theme toggle accessibility', () => {
-  it('toggles aria-pressed when switching themes', () => {
+/**
+ * テーマ切り替えのアクセシビリティテスト
+ *
+ * テーマ切り替えは AppShellHeader の IconButton から
+ * SettingsDialog 内の Switch に移行されたため、テスト対象を更新。
+ */
+describe('SettingsDialog theme toggle accessibility', () => {
+  it('toggles dark mode when the theme switch is clicked', async () => {
+    const user = userEvent.setup();
+    const onClose = () => {};
+
     renderWithAppProviders(
-      <ThemeRoot>
-        <FeatureFlagsProvider value={featureFlags}>
-          <AppShell>
-            <div />
-          </AppShell>
-        </FeatureFlagsProvider>
-      </ThemeRoot>,
-      { future: routerFutureFlags }
+      <SettingsProvider>
+        <ThemeRoot>
+          <SettingsDialog open onClose={onClose} />
+        </ThemeRoot>
+      </SettingsProvider>,
     );
 
-    const toggleButton = screen.getByRole('button', { name: /テーマ切り替え/ });
+    // SettingsDialog内のテーマ切り替えスイッチを取得
+    // MUI Switch は <input type="checkbox"> として描画される
+    // FormControlLabel のラベルから取得
+    const themeSwitch = screen.getByLabelText(/ライトモード|ダークモード/i);
 
-    expect(toggleButton).toHaveAttribute('aria-pressed', 'false');
-    fireEvent.click(toggleButton);
-    expect(toggleButton).toHaveAttribute('aria-pressed', 'true');
-    fireEvent.click(toggleButton);
-    expect(toggleButton).toHaveAttribute('aria-pressed', 'false');
+    // 初期状態: ライトモード (checked=false)
+    expect(themeSwitch).not.toBeChecked();
+
+    // ダークモードに切り替え
+    await user.click(themeSwitch);
+    expect(themeSwitch).toBeChecked();
+
+    // ライトモードに戻す
+    await user.click(themeSwitch);
+    expect(themeSwitch).not.toBeChecked();
   });
 });

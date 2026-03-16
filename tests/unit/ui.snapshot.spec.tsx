@@ -69,6 +69,5 @@ test("AppShell snapshot", { timeout: 15_000 }, async () => {
     screen.getByRole("button", { name: /ナビゲーションを(開く|閉じる)|メニューを開く/i })
   ).toBeTruthy();
   expect(screen.getByRole("button", { name: "表示設定" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "テーマ切り替え" })).toBeTruthy();
   expect(screen.getByRole("link", { name: "監査ログ" })).toBeTruthy();
 });

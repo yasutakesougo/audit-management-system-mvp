@@ -77,8 +77,8 @@ describe('getCurrentPhaseFromConfig', () => {
     expect(getCurrentPhaseFromConfig(dateAt('10:30'), config)).toBe('am_activity');
   });
 
-  it('15:30 → departure_support（退所対応の開始）', () => {
-    expect(getCurrentPhaseFromConfig(dateAt('15:30'), config)).toBe('departure_support');
+  it('15:30 → pm_activity（PM活動の中間）13:45-15:45）', () => {
+    expect(getCurrentPhaseFromConfig(dateAt('15:30'), config)).toBe('pm_activity');
   });
 
   it('16:00 → record_wrapup（記録仕上げの開始）', () => {
@@ -163,7 +163,7 @@ describe('getCurrentPhaseFromConfig', () => {
     expect(getCurrentPhaseFromConfig(dateAt('11:59'), config)).toBe('am_activity');
   });
 
-  it('15:29 → pm_activity（午後活動の終了1分前）', () => {
+  it('15:29 → pm_activity（PM活動の終了1分前）13:45-15:45）', () => {
     expect(getCurrentPhaseFromConfig(dateAt('15:29'), config)).toBe('pm_activity');
   });
 
@@ -192,7 +192,7 @@ describe('getCurrentPhaseFromConfig', () => {
 
   // ── pm_activity の開始境界（12:00） ──
 
-  it('12:00 → pm_activity（午後活動の開始）', () => {
-    expect(getCurrentPhaseFromConfig(dateAt('12:00'), config)).toBe('pm_activity');
+  it('12:00 → lunch_break（昧食休みの開始）12:00-13:45）', () => {
+    expect(getCurrentPhaseFromConfig(dateAt('12:00'), config)).toBe('lunch_break');
   });
 });

@@ -86,6 +86,7 @@ describe('spClient ensureListExists', () => {
     expect(schemaCalls.length).toBeGreaterThanOrEqual(2);
 
     const addStatusBody = JSON.parse((schemaCalls[0][1] as RequestInit).body as string);
+    expect(addStatusBody.parameters.AddToDefaultView).toBeFalsy();
     expect(addStatusBody.parameters.SchemaXml).toContain('Type="Choice"');
     expect(addStatusBody.parameters.SchemaXml).toContain('Required="TRUE"');
     expect(addStatusBody.parameters.SchemaXml).toContain('<CHOICES><CHOICE>Active</CHOICE><CHOICE>Closed</CHOICE></CHOICES>');
