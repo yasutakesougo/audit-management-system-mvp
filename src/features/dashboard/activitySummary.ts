@@ -28,7 +28,7 @@ export function buildActivitySummary(
   const topMissing = todayRecords
     .filter(r => r.status === '未作成')
     .slice(0, 5)
-    .map(r => `${r.personName}（${r.personId}）`);
+    .map(r => `${r.userName}（${r.userId}）`);
 
   const alerts: DashboardAlert[] = [];
 

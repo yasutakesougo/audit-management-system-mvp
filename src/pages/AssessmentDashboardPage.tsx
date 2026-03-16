@@ -6,6 +6,7 @@ import type { AssessmentItem, SensoryProfile, UserAssessment } from '@/features/
 import { useAssessmentStore } from '@/features/assessment/stores/assessmentStore';
 import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { createUserNameResolver } from '@/domain/user';
 import { isDemoModeEnabled } from '@/lib/env';
 import DownloadIcon from '@mui/icons-material/Download';
 import PersonIcon from '@mui/icons-material/Person';
@@ -95,9 +96,14 @@ const AssessmentDashboardPage: React.FC = () => {
     setFormData(data);
   }, [demoModeEnabled, getByUserId, seedDemoData, targetUserId]);
 
-  const selectedUserName = useMemo(() => {
-    return users.find((user) => user.UserID === targetUserId)?.FullName;
-  }, [targetUserId, users]);
+  const resolveUserName = useMemo(
+    () => createUserNameResolver(users),
+    [users],
+  );
+  const selectedUserName = useMemo(
+    () => (targetUserId ? resolveUserName(targetUserId) : undefined),
+    [targetUserId, resolveUserName],
+  );
 
   const handleSave = () => {
     if (!formData) return;

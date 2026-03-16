@@ -8,8 +8,8 @@ import { toLocalDateISO } from '@/utils/getNow';
 
 type BaseRecord = {
   id: number;
-  personName: string;
-  personId: string;
+  userName: string;
+  userId: string;
   status: string;
   date: string;
   draft: { isDraft: boolean };
@@ -40,7 +40,7 @@ export type DailyRecordViewModel<TRecord extends BaseRecord> = {
   handleOpenForm: () => void;
   handleEditRecord: (record: TRecord) => void;
   handleCloseForm: () => void;
-  handleOpenAttendance: (record: { personId: string; date: string }) => void;
+  handleOpenAttendance: (record: { userId: string; date: string }) => void;
   handleSaveRecord: (record: Omit<TRecord, 'id'>) => Promise<void>;
   handleDeleteRecord: (recordId: number) => void;
   handleGenerateTodayRecords: () => void;
@@ -115,8 +115,8 @@ export function useDailyRecordViewModel<TRecord extends BaseRecord>(
     return records.filter((record) => {
       const matchesSearch =
         !searchQuery ||
-        record.personName.includes(searchQuery) ||
-        record.personId.includes(searchQuery);
+        record.userName.includes(searchQuery) ||
+        record.userId.includes(searchQuery);
 
       const matchesStatus = statusFilter === 'all' || record.status === statusFilter;
       const matchesDate = !dateFilter || record.date === dateFilter;
@@ -145,8 +145,8 @@ export function useDailyRecordViewModel<TRecord extends BaseRecord>(
   }, [setFormOpen, setEditingRecord]);
 
   const handleOpenAttendance = useCallback(
-    (record: { personId: string; date: string }) => {
-      navigate(`/daily/attendance?userId=${record.personId}&date=${record.date}`);
+    (record: { userId: string; date: string }) => {
+      navigate(`/daily/attendance?userId=${record.userId}&date=${record.date}`);
     },
     [navigate],
   );
@@ -171,7 +171,7 @@ export function useDailyRecordViewModel<TRecord extends BaseRecord>(
       // 成功通知
       const operation = editingRecord ? '更新' : '新規作成';
       toast.success(
-        `日次記録の${operation}が完了しました\n\n利用者: ${record.personName}\n日付: ${record.date}`,
+        `日次記録の${operation}が完了しました\n\n利用者: ${record.userName}\n日付: ${record.date}`,
         {
           duration: 4000,
           style: {
@@ -196,7 +196,7 @@ export function useDailyRecordViewModel<TRecord extends BaseRecord>(
       setRecords(records.filter((record) => record.id !== recordId));
 
       if (recordToDelete) {
-        toast.success(`${recordToDelete.personName}さんの記録を削除しました`, {
+        toast.success(`${recordToDelete.userName}さんの記録を削除しました`, {
           duration: 3000,
         });
       } else {
@@ -220,7 +220,7 @@ export function useDailyRecordViewModel<TRecord extends BaseRecord>(
     const today = toLocalDateISO();
     const existingPersonIds = records
       .filter((record) => record.date === today)
-      .map((record) => record.personId);
+      .map((record) => record.userId);
 
     const missingUsers = mockUsers.filter((_name, index) => {
       const userId = String(index + 1).padStart(3, '0');

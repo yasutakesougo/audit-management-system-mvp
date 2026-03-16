@@ -11,7 +11,7 @@ describe('useImportantHandoffsForDaily utilities', () => {
   const mockHandoffs: ImportantHandoffForDaily[] = [
     {
       id: 1,
-      personId: '001',
+      userId: '001',
       personDisplayName: '田中太郎',
       date: '2025-11-18',
       time: '09:30',
@@ -23,7 +23,7 @@ describe('useImportantHandoffsForDaily utilities', () => {
     },
     {
       id: 2,
-      personId: '001',
+      userId: '001',
       personDisplayName: '田中太郎',
       date: '2025-11-18',
       time: '14:15',

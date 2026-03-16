@@ -114,8 +114,8 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
                       {...params}
                       label="利用者の選択"
                       placeholder="氏名で検索してください"
-                      helperText={s.errors.personId || '氏名から利用者を検索できます'}
-                      error={!!s.errors.personId}
+                      helperText={s.errors.userId || '氏名から利用者を検索できます'}
+                      error={!!s.errors.userId}
                     />
                   )}
                   data-testid="daily-record-user-picker"
@@ -146,7 +146,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
           </Paper>
 
           {/* Related handoffs banner */}
-          {s.formData.personId && (
+          {s.formData.userId && (
             <>
               {s.loadingHandoffs && <Skeleton variant="rectangular" height={80} />}
 
@@ -258,7 +258,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
             onProblemBehaviorChange={s.handleProblemBehaviorChange}
             onSeizureRecordChange={s.handleSeizureRecordChange}
             showSuggestion={
-              !!s.formData.personId &&
+              !!s.formData.userId &&
               !!s.formData.date &&
               !s.loadingHandoffs &&
               !s.handoffError &&

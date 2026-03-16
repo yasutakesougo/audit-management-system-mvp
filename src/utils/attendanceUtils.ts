@@ -110,7 +110,7 @@ export function getAbsentUserIds(
       return isAbsentSchedule(schedule);
     })
     .map(schedule => {
-      const id = schedule.userId || schedule.personId;
+      const id = schedule.userId || schedule.userId;
       // number型対応: 文字列に統一
       return typeof id === 'number' ? String(id) : id;
     })

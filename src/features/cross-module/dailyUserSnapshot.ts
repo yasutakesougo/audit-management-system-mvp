@@ -1,3 +1,4 @@
+import type { UserRef } from '@/domain/user';
 import type { PersonDaily } from '@/features/daily';
 // Note: Dashboard is another feature, but it seems to be used as a public API here if available.
 // If not, we might need a barrel for dashboard too.
@@ -19,6 +20,8 @@ export function buildDailyUserSnapshot(input: DailyUserSnapshotInput): DailyUser
     userId: input.userId,
     userName: input.userName,
     date: input.date,
+    // Phase 4a: 利用者参照を凍結保存（指定時のみ）
+    ...(input.userRef ? { userRef: input.userRef } : {}),
     lastUpdated: new Date().toISOString(),
   };
 
@@ -74,6 +77,8 @@ export function buildDailyUserSnapshot(input: DailyUserSnapshotInput): DailyUser
 
 /**
  * 既存のデモデータからDailyUserSnapshotを生成
+ *
+ * @param userRef - Phase 4a: 利用者参照（指定時はスナップショットに凍結保存）
  */
 export function buildDailyUserSnapshotFromExistingData(
   userId: string,
@@ -81,12 +86,14 @@ export function buildDailyUserSnapshotFromExistingData(
   date: string,
   personDaily?: PersonDaily,
   attendanceUser?: AttendanceUser,
-  attendanceVisit?: AttendanceVisit
+  attendanceVisit?: AttendanceVisit,
+  userRef?: UserRef,
 ): DailyUserSnapshot {
   const input: DailyUserSnapshotInput = {
     userId,
     userName,
     date,
+    ...(userRef ? { userRef } : {}),
   };
 
   // PersonDaily から Activity データを抽出

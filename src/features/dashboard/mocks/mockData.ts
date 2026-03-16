@@ -22,8 +22,8 @@ export const generateMockActivityRecords = (users: IUserMaster[], date: string):
 
     return {
       id: index + 1,
-      personId: user.UserID,
-      personName: user.FullName,
+      userId: user.UserID,
+      userName: user.FullName,
       date,
       status: Math.random() > 0.1 ? '完了' as const : '作成中' as const,
       reporter: { name: '職員A' },

@@ -50,7 +50,7 @@ const calculateMonthlyUsageCounts = (
       record.date.startsWith(monthPrefix)
     )
     .reduce<Record<string, number>>((acc, record) => {
-      acc[record.personId] = (acc[record.personId] || 0) + 1;
+      acc[record.userId] = (acc[record.userId] || 0) + 1;
       return acc;
     }, {});
 };

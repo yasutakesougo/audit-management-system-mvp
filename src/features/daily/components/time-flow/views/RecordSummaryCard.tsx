@@ -24,7 +24,7 @@ const RecordSummaryCard: React.FC<RecordSummaryCardProps> = ({ record, date }) =
     <CardContent>
       <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
         <AssignmentIcon color="primary" />
-        記録サマリー - {record.personName} ({date})
+        記録サマリー - {record.userName} ({date})
       </Typography>
       <Divider sx={{ my: 2 }} />
 

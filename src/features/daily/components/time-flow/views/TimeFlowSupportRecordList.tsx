@@ -152,8 +152,8 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
     const baseRecord: SupportRecord = existingRecord ?? {
       id: Date.now(),
       supportPlanId: dailyRecord.supportPlanId,
-      personId: dailyRecord.personId,
-      personName: dailyRecord.personName,
+      userId: dailyRecord.userId,
+      userName: dailyRecord.userName,
       date: dailyRecord.date,
       timeSlot: '',
       userActivities: { planned: '', actual: '', notes: '' },
