@@ -11,6 +11,8 @@
  *   Tab4: POST Tester      — 任意の JSON を送信
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { useSP } from '../lib/spClient';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -405,17 +407,12 @@ function PostTab({ spFetch }: { spFetch: (path: string, init?: RequestInit) => P
   const [body, setBody] = usePersisted('post.body', '{\n  "Title": "テスト"\n}');
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState(false);
+  const confirmDialog = useConfirmDialog();
 
-  const run = useCallback(async () => {
+  const executePost = useCallback(async () => {
+    setLoading(true); setResult('');
     if (!listName.trim()) return;
 
-    // ── Confirmation dialog (accident prevention) ──
-    const confirmed = window.confirm(
-      `⚠️ この操作は実際にアイテムを作成します。\n\nList: ${listName}\n\n実行しますか？`
-    );
-    if (!confirmed) return;
-
-    setLoading(true); setResult('');
     try {
       // 1. Get EntityType
       const metaUrl = `/_api/web/lists/getbytitle('${encodeURIComponent(listName.trim())}')?$select=ListItemEntityTypeFullName`;
@@ -454,6 +451,18 @@ function PostTab({ spFetch }: { spFetch: (path: string, init?: RequestInit) => P
     }
   }, [spFetch, listName, body]);
 
+  const run = useCallback(() => {
+    if (!listName.trim()) return;
+    confirmDialog.open({
+      title: 'POST 実行の確認',
+      message: `この操作は実際にアイテムを作成します。\nList: ${listName}`,
+      confirmLabel: '実行する',
+      cancelLabel: 'キャンセル',
+      severity: 'info',
+      onConfirm: executePost,
+    });
+  }, [listName, confirmDialog, executePost]);
+
   return (
     <div>
       <input
@@ -476,6 +485,7 @@ function PostTab({ spFetch }: { spFetch: (path: string, init?: RequestInit) => P
         {result && <CopyButton text={result} />}
       </div>
       {result && <div style={RESULT}>{result}</div>}
+      <ConfirmDialog {...confirmDialog.dialogProps} />
     </div>
   );
 }

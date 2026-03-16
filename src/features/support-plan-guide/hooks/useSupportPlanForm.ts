@@ -15,6 +15,7 @@
  * @see ./useGoalActions.ts - Goal CRUD
  * @see ./draftPersistence.ts - Pure localStorage functions
  */
+import type { ConfirmDialogProps } from '@/components/ui/ConfirmDialog';
 import React from 'react';
 
 import type { IUserMaster } from '@/features/users/types';
@@ -110,6 +111,9 @@ export type UseSupportPlanFormReturn = {
 
   // ── Compliance (A-2) ──
   complianceForm: UseComplianceFormReturn;
+
+  // ── Confirm Dialogs ──
+  resetConfirmDialog: ConfirmDialogProps;
 };
 
 // ────────────────────────────────────────────
@@ -243,7 +247,7 @@ export function useSupportPlanForm({
   // HANDLERS (delegated)
   // ════════════════════════════════════════════
 
-  const { handleFieldChange, handleAppendPhrase, handleReset } = useDraftFieldHandlers({
+  const { handleFieldChange, handleAppendPhrase, handleReset, resetConfirmDialog } = useDraftFieldHandlers({
     activeDraftId,
     isAdmin,
     drafts,
@@ -338,5 +342,6 @@ export function useSupportPlanForm({
     handleAddGoal,
     handleDeleteGoal,
     complianceForm,
+    resetConfirmDialog,
   };
 }

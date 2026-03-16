@@ -29,6 +29,22 @@ module.exports = {
     ],
     'no-empty': ['warn', { allowEmptyCatch: true }],
     'no-constant-condition': 'warn',
+    // window.confirm 禁止 — useConfirmDialog に統一 (docs/guides/confirm-dialog-guideline.md)
+    'no-restricted-globals': [
+      'error',
+      {
+        name: 'confirm',
+        message: 'window.confirm は禁止です。useConfirmDialog + ConfirmDialog を使用してください。',
+      },
+    ],
+    'no-restricted-properties': [
+      'error',
+      {
+        object: 'window',
+        property: 'confirm',
+        message: 'window.confirm は禁止です。useConfirmDialog + ConfirmDialog を使用してください。',
+      },
+    ],
     'no-restricted-imports': [
       'error',
       {
@@ -116,6 +132,7 @@ module.exports = {
         '@typescript-eslint/no-restricted-call': 'off',
         'no-restricted-properties': [
           'error',
+          { object: 'window', property: 'confirm', message: 'window.confirm は禁止です。useConfirmDialog + ConfirmDialog を使用してください。' },
           { object: 'Date', property: 'setHours', message: '壁時計→UTCはdateutils経由で' },
           { object: 'Date', property: 'setMinutes', message: '壁時計→UTCはdateutils経由で' },
           { object: 'Date', property: 'setSeconds', message: '壁時計→UTCはdateutils経由で' },
@@ -142,6 +159,7 @@ module.exports = {
       rules: {
         'no-restricted-properties': [
           'error',
+          { object: 'window', property: 'confirm', message: 'window.confirm は禁止です。useConfirmDialog + ConfirmDialog を使用してください。' },
           { object: 'Date', property: 'toLocaleString', message: 'Use formatInTimeZone() instead' },
           { object: 'Date', property: 'setHours', message: 'Use fromZonedTime() helpers instead' },
           { object: 'Date', property: 'setUTCHours', message: 'Use fromZonedTime() helpers instead' }

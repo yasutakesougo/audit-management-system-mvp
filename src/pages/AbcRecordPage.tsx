@@ -57,6 +57,8 @@ import { getStrategyUsagesForAbcRecord } from '@/domain/isp/reverseTrace';
 import type { StrategyUsageSummary } from '@/domain/isp/reverseTrace';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { useAuth } from '@/auth/useAuth';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 
 // ─────────────────────────────────────────────
 // Types
@@ -518,12 +520,21 @@ const LogTab: React.FC<{
     return result;
   }, [records, filterUser, filterIntensity, filterRiskOnly, datePreset, customStart, customEnd, filterTags]);
 
+  const deleteConfirm = useConfirmDialog();
+
   const handleDelete = useCallback(async (id: string) => {
-    if (!confirm('この記録を削除しますか？この操作は元に戻せません。')) return;
-    await localAbcRecordRepository.delete(id);
-    setDetailRecord(null);
-    onRefresh();
-  }, [onRefresh]);
+    deleteConfirm.open({
+      title: 'ABC 記録を削除',
+      message: 'この記録を削除しますか？この操作は元に戻せません。',
+      severity: 'error',
+      confirmLabel: '削除',
+      onConfirm: async () => {
+        await localAbcRecordRepository.delete(id);
+        setDetailRecord(null);
+        onRefresh();
+      },
+    });
+  }, [onRefresh, deleteConfirm]);
 
   const startEdit = useCallback(() => {
     if (!detailRecord) return;
@@ -862,6 +873,7 @@ const LogTab: React.FC<{
           </>
         )}
       </Dialog>
+      <ConfirmDialog {...deleteConfirm.dialogProps} />
     </Stack>
   );
 };
