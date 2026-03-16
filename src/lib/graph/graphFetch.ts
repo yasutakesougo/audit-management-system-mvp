@@ -23,6 +23,7 @@
  */
 
 import { getAppConfig } from '@/lib/env';
+import { startFetchSpan } from '@/telemetry/fetchSpan';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -177,6 +178,7 @@ export const createGraphClient = (getToken: GetToken): GraphClient => {
       throw new GraphAuthError();
     }
 
+    const method = (options.method ?? 'GET').toUpperCase();
     const url = resolveUrl(path);
     const retryMax = options.retryMax ?? retryMaxDefault;
     const mergedHeaders: Record<string, string> = {
@@ -185,6 +187,7 @@ export const createGraphClient = (getToken: GetToken): GraphClient => {
       ...options.headers,
     };
 
+    const span = startFetchSpan({ layer: 'graph', method, path });
     let attempt = 0;
 
     while (attempt <= retryMax) {
@@ -192,13 +195,16 @@ export const createGraphClient = (getToken: GetToken): GraphClient => {
       try {
         // eslint-disable-next-line no-restricted-globals -- graphFetch SSOT: Graph API 最下層の唯一の出口
         response = await fetch(url, {
-          method: options.method ?? 'GET',
+          method,
           headers: mergedHeaders,
           body: options.body,
           signal: options.signal,
         });
       } catch (e) {
-        if (isAbortError(e)) throw e;
+        if (isAbortError(e)) {
+          span.error('AbortError', attempt);
+          throw e;
+        }
         // ネットワーク障害 — リトライ可能なら続行
         if (attempt < retryMax) {
           const delay = computeDelay(attempt, null, retryBase, retryCap);
@@ -206,16 +212,19 @@ export const createGraphClient = (getToken: GetToken): GraphClient => {
           await sleep(delay);
           continue;
         }
+        span.error(e instanceof Error ? e.name : 'NetworkError', attempt);
         throw e;
       }
 
       if (response.ok) {
+        span.succeed(response.status, attempt);
         return response;
       }
 
       // リトライ不可 or 最終試行
       if (!isRetryable(response.status) || attempt >= retryMax) {
         const body = await response.text().catch(() => '');
+        span.fail(response.status, 'GraphApiError', attempt);
         throw new GraphApiError(response.status, response.statusText, body);
       }
 
@@ -227,6 +236,7 @@ export const createGraphClient = (getToken: GetToken): GraphClient => {
     }
 
     // ここには到達しないが TypeScript の型を満たすため
+    span.fail(0, 'MaxRetries');
     throw new GraphApiError(0, 'MaxRetries', 'Maximum retry attempts exceeded');
   };
 
