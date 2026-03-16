@@ -1,7 +1,7 @@
 # Fetch Client ガイドライン
 
-> **最終更新**: Phase 3-B (fetchSp 凍結)  
-> **ステータス**: 運用中
+> **最終更新**: Phase 3-C 完了 (fetchSp.ts 削除)  
+> **ステータス**: ✅ 全フェーズ完了
 
 ---
 
@@ -37,16 +37,10 @@
 'no-restricted-properties': ['error', { object: 'window', property: 'fetch', ... }]
 ```
 
-### `fetchSp` import 禁止 (Phase 3-B)
+### `fetchSp` (削除済み)
 
-```
-'no-restricted-imports': ['error', {
-  paths: [{ name: '@/lib/fetchSp', message: '...' }]
-}]
-```
-
-`fetchSp` は `spFetch` への互換レイヤーとして残存していますが、
-**新規コードでの import は禁止** です。
+`fetchSp.ts` は Phase 3-C で全利用箇所を `spClient` に移行し、**削除済み** です。
+ESLint の `no-restricted-imports` ルールが残っているため、万一復活しても即検出されます。
 
 ---
 
@@ -90,17 +84,15 @@ import { fetchSp } from '@/lib/fetchSp'; // ESLint エラー
 
 ---
 
-## `fetchSp` 互換レイヤーの仕組み
+## `fetchSp` 移行の変遷
 
-Phase 3-A で `fetchSp.ts` の内部実装を `spFetch` に委譲しました。
+| Phase | 状態 |
+|-------|------|
+| 3-A | `fetchSp.ts` 内部を `spFetch` に委譲（互換レイヤー化） |
+| 3-B | ESLint で `fetchSp` import を凍結 |
+| 3-C | 全7箇所を `spClient` に移行、`fetchSp.ts` を **削除** |
 
-```
-呼び出し元 → fetchSp() → createSpFetch(throwOnError: false) → spFetch() → fetch()
-```
-
-- 既存7箇所は `fetchSp` 経由でも `spFetch` の恩恵 (リトライ, mock, トークン更新) を受ける
-- `throwOnError: false` により既存の `response.ok` チェックとの互換性を維持
-- **新規コードは `fetchSp` ではなく `spClient` / `useSP()` を使うこと**
+現在は `spClient` / `useSP()` が唯一の SharePoint 通信手段です。
 
 ---
 
@@ -173,7 +165,7 @@ const response = await spFetch(path);
 
 ---
 
-## 既存 `fetchSp` 利用箇所 (Phase 3-C 移行状況)
+## 既存 `fetchSp` 利用箇所 (Phase 3-C 移行完了)
 
 | ファイル | 用途 | Issue | 状態 |
 |---------|------|-------|------|
@@ -182,8 +174,10 @@ const response = await spFetch(path);
 | `features/monitoring/data/SharePointSupportPlanningSheetRepository.ts` | 計画書シート | #994 | ✅ #999 |
 | `features/support-plan-guide/infra/SharePointSupportPlanDraftRepository.ts` | 支援計画ドラフト | #995 | ✅ 完了 |
 | `features/daily/infra/SharePointDailyRecordRepository.ts` | 日次記録 CRUD | #996 | ✅ 完了 |
-| `features/schedules/data/scheduleSpHelpers.ts` | スケジュール取得 | #997 | 🔜 |
-| `features/schedules/infra/SharePointScheduleRepository.ts` | スケジュール Repository | #997 | 🔜 |
+| `features/schedules/data/scheduleSpHelpers.ts` | スケジュール取得 | #997 | ✅ 完了 |
+| `features/schedules/infra/SharePointScheduleRepository.ts` | スケジュール Repository | #997 | ✅ 完了 |
+
+> **`fetchSp.ts` は削除済み** — 全7箇所が `spClient` に移行完了
 
 ---
 
@@ -195,4 +189,4 @@ const response = await spFetch(path);
 | 2 | `graphFetch` 設計 + Graph 4箇所移行 | ✅ 完了 |
 | 3-A | `fetchSp` を `spFetch` 互換レイヤーに変換 | ✅ 完了 |
 | 3-B | `fetchSp` import 禁止 (ESLint) + 全既存箇所に disable 付与 | ✅ 完了 |
-| 3-C | 既存7箇所を `spClient` に段階移行 → `fetchSp.ts` 削除 | 🔄 5/7 完了 |
+| 3-C | 既存7箇所を `spClient` に段階移行 → `fetchSp.ts` 削除 | ✅ **完了** |
