@@ -104,6 +104,11 @@ export {
     buildHandoffSelectFields, FIELD_MAP_HANDOFF
 } from './handoffFields';
 
+// ── Holiday_Master (監査 P0-5 追加) ──
+export {
+    HOLIDAY_MASTER_FIELDS, HOLIDAY_MASTER_LIST_TITLE, HOLIDAY_MASTER_SELECT_FIELDS
+} from './holidayFields';
+
 // ── BillingOrders ──
 export {
     BILLING_ORDERS_LIST_ID,
