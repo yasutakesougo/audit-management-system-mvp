@@ -13,6 +13,8 @@
  */
 
 import { z } from 'zod';
+import type { UserSnapshot } from '@/domain/user';
+import { toUserSnapshot } from '@/domain/user/userRelation';
 
 export const severityValues = ['低', '中', '高', '重大インシデント'] as const;
 export type RiskSeverity = (typeof severityValues)[number];
@@ -52,7 +54,7 @@ const hypothesisSchema = z.object({
 });
 
 export const highRiskIncidentDraftSchema = z.object({
-  personId: z.string(),
+  userId: z.string(),
   supportPlanId: z.string(),
   reportedAtStepId: z.string().optional(),
   incidentTimestamp: z.string().datetime().default(() => new Date().toISOString()),
@@ -75,6 +77,13 @@ export type HighRiskIncident = {
   triggers?: string[];
   actions?: string[];
   notes?: string;
+  /**
+   * 作成時点の利用者スナップショット（Phase 4b）。
+   * インシデント発生時の利用者属性（支援区分、重度フラグ等）を凍結保存。
+   * 監査時に「事故発生時点の利用者状態」を遡及参照するために使用。
+   * 既存レコードでは undefined（後方互換）。
+   */
+  userSnapshot?: UserSnapshot;
 };
 
 /**
@@ -84,7 +93,7 @@ export type HighRiskIncident = {
 export function fromDraftToIncident(id: string, draft: HighRiskIncidentDraft): HighRiskIncident {
   return {
     id,
-    userId: draft.personId,
+    userId: draft.userId,
     occurredAt: draft.incidentTimestamp,
     severity: draft.severity,
     description: draft.targetBehavior || undefined,
@@ -98,17 +107,85 @@ export function fromDraftToIncident(id: string, draft: HighRiskIncidentDraft): H
   };
 }
 
+// ─────────────────────────────────────────────
+// Phase 4b: Incident 作成境界（UserSnapshot 注入）
+// ─────────────────────────────────────────────
+
+/**
+ * IUserMaster 互換の最小インターフェース。
+ * features/users に対する依存を持たないように domain 層では必要フィールドだけ宣言する。
+ */
+export interface IncidentUserMasterLike {
+  readonly UserID: string;
+  readonly FullName: string;
+  readonly DisabilitySupportLevel?: string | null;
+  readonly severeFlag?: boolean | null;
+  readonly IsHighIntensitySupportTarget?: boolean | null;
+  readonly RecipientCertNumber?: string | null;
+  readonly RecipientCertExpiry?: string | null;
+  readonly GrantPeriodStart?: string | null;
+  readonly GrantPeriodEnd?: string | null;
+  readonly GrantedDaysPerMonth?: string | null;
+  readonly UsageStatus?: string | null;
+}
+
+/**
+ * create 時に user が解決できなかった場合のエラー。
+ * ISP と同じ厳格ルール: サイレントフォールバック禁止。
+ */
+export class IncidentUserNotResolvedError extends Error {
+  readonly code = 'INCIDENT_USER_NOT_RESOLVED' as const;
+  readonly userId: string;
+
+  constructor(userId: string) {
+    super(`Incident 作成時に対象利用者が解決できません: userId=${userId}`);
+    this.name = 'IncidentUserNotResolvedError';
+    this.userId = userId;
+  }
+}
+
+/**
+ * Incident 作成入力を組み立てる純粋関数。
+ *
+ * 責務:
+ * 1. Draft → HighRiskIncident のフィールド変換
+ * 2. 対象利用者の UserSnapshot 注入（凍結保存）
+ * 3. user 未解決時はエラーで止める（監査重要度最高）
+ *
+ * @param id - 生成済みの incident ID
+ * @param draft - UI で入力された下書きデータ
+ * @param targetUser - 対象利用者のマスタ情報（lookup で O(1) 解決済み）
+ * @returns UserSnapshot 付きの HighRiskIncident
+ * @throws IncidentUserNotResolvedError targetUser が null/undefined の場合
+ */
+export function buildIncidentCreateInput(
+  id: string,
+  draft: HighRiskIncidentDraft,
+  targetUser: IncidentUserMasterLike | null | undefined,
+): HighRiskIncident {
+  if (!targetUser) {
+    throw new IncidentUserNotResolvedError(draft.userId);
+  }
+
+  const base = fromDraftToIncident(id, draft);
+
+  return {
+    ...base,
+    userSnapshot: toUserSnapshot(targetUser),
+  };
+}
+
 /**
  * Create empty incident draft with minimal required fields.
  * Leverages schema defaults for all other fields.
  */
 export function createEmptyIncidentDraft(
-  personId: string,
+  userId: string,
   supportPlanId: string,
   reportedAtStepId?: string,
 ): HighRiskIncidentDraft {
   return highRiskIncidentDraftSchema.parse({
-    personId,
+    userId,
     supportPlanId,
     reportedAtStepId,
     // All other fields use schema defaults

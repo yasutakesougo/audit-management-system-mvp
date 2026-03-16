@@ -326,8 +326,8 @@ const TimeBasedSupportRecordList: React.FC<TimeBasedSupportRecordListProps> = ({
         onSave={handleSaveRecord}
         timeSlot={selectedTimeSlot}
         initialData={editingRecord || undefined}
-        personId={dailyRecord.personId}
-        personName={dailyRecord.personName}
+        userId={dailyRecord.userId}
+        userName={dailyRecord.userName}
         date={dailyRecord.date}
       />
     </Box>

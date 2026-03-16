@@ -19,8 +19,8 @@ export interface SupportStep {
 export interface SupportRecord {
   id: number;
   supportPlanId: string;
-  personId: string;
-  personName: string;
+  userId: string;
+  userName: string;
   date: string;
   stepId: string;
   stepNumber: number;
@@ -48,8 +48,8 @@ export interface SupportRecord {
 export interface DailySupportRecord {
   id: number;
   supportPlanId: string;
-  personId: string;
-  personName: string;
+  userId: string;
+  userName: string;
   date: string;
   records: SupportRecord[];
   summary: {

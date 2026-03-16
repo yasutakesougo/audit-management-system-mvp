@@ -551,7 +551,7 @@ HighRiskIncidentDialog.defaultProps = {
 };
 
 export const createDialogDraft = (
-  personId: string,
+  userId: string,
   supportPlanId: string,
   reportedAtStepId?: string,
-) => createEmptyIncidentDraft(personId, supportPlanId, reportedAtStepId);
+) => createEmptyIncidentDraft(userId, supportPlanId, reportedAtStepId);

@@ -10,10 +10,10 @@ import type { DailySupportRecord, SupportRecord, SupportStep } from '@/types/sup
 /**
  * Generate support steps with unique IDs for a specific person.
  */
-export const generateSupportSteps = (personId: string): SupportStep[] => {
+export const generateSupportSteps = (userId: string): SupportStep[] => {
   return defaultSupportSteps.map((step, index) => ({
     ...step,
-    id: `${personId}-step-${String(index + 1).padStart(2, '0')}`,
+    id: `${userId}-step-${String(index + 1).padStart(2, '0')}`,
   }));
 };
 
@@ -22,15 +22,15 @@ export const generateSupportSteps = (personId: string): SupportStep[] => {
  * Uses deterministic IDs for stability.
  */
 export const generateEmptyRecord = (
-  personId: string,
-  personName: string,
+  userId: string,
+  userName: string,
   date: string,
   step: SupportStep,
 ): SupportRecord => ({
-  id: parseInt(`${personId.replace(/\D/g, '')}${step.stepNumber.toString().padStart(2, '0')}${date.replace(/-/g, '')}`),
-  supportPlanId: `plan-${personId}`,
-  personId,
-  personName,
+  id: parseInt(`${userId.replace(/\D/g, '')}${step.stepNumber.toString().padStart(2, '0')}${date.replace(/-/g, '')}`),
+  supportPlanId: `plan-${userId}`,
+  userId,
+  userName,
   date,
   stepId: step.id,
   stepNumber: step.stepNumber,
@@ -100,8 +100,8 @@ export const generateMockDailyRecord = (
   return {
     id: parseInt(`${userIdNum}${date.replace(/-/g, '')}`),
     supportPlanId: `plan-${user.id}`,
-    personId: user.id,
-    personName: user.name,
+    userId: user.id,
+    userName: user.name,
     date,
     records,
     summary: {

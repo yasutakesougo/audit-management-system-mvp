@@ -51,6 +51,8 @@ import { useDraftFieldHandlers } from './useDraftFieldHandlers';
 import { useDraftManagement } from './useDraftManagement';
 import { useGoalActions } from './useGoalActions';
 import { useComplianceForm, type UseComplianceFormReturn } from './useComplianceForm';
+import { useIspCreate, type UseIspCreateReturn } from './useIspCreate';
+import { useIspRepositories } from './useIspRepositories';
 
 // ────────────────────────────────────────────
 // Params & Return type
@@ -112,6 +114,9 @@ export type UseSupportPlanFormReturn = {
   // ── Compliance (A-2) ──
   complianceForm: UseComplianceFormReturn;
 
+  // ── ISP 正式作成 (Phase 3) ──
+  ispCreate: UseIspCreateReturn;
+
   // ── Confirm Dialogs ──
   resetConfirmDialog: ConfirmDialogProps;
 };
@@ -127,6 +132,7 @@ export function useSupportPlanForm({
 }: UseSupportPlanFormParams): UseSupportPlanFormReturn {
   // ── Repository ──
   const repository = useSupportPlanDraftRepository();
+  const ispRepos = useIspRepositories();
 
   // ── Primary state ──
   const [drafts, setDrafts] = React.useState<Record<string, SupportPlanDraft>>({});
@@ -298,6 +304,15 @@ export function useSupportPlanForm({
     setDrafts,
   });
 
+  // ── ISP 正式作成 (Phase 3: UserSnapshot 注入) ──
+  const ispCreate = useIspCreate({
+    activeDraft,
+    userList: masterUsers,
+    ispRepo: ispRepos.ispRepo,
+    onSuccess: () => setToast({ open: true, message: '支援計画を正式作成しました', severity: 'success' }),
+    onError: (msg) => setToast({ open: true, message: msg, severity: 'error' }),
+  });
+
   // ════════════════════════════════════════════
   // Return
   // ════════════════════════════════════════════
@@ -342,6 +357,7 @@ export function useSupportPlanForm({
     handleAddGoal,
     handleDeleteGoal,
     complianceForm,
+    ispCreate,
     resetConfirmDialog,
   };
 }

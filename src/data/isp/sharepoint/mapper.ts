@@ -35,6 +35,8 @@ import type { SpIspMasterRow, SpIspMasterPayload } from '@/sharepoint/fields/isp
 import type { SpPlanningSheetRow, SpPlanningSheetPayload } from '@/sharepoint/fields/ispThreeLayerFields';
 import type { SpProcedureRecordRow, SpProcedureRecordPayload } from '@/sharepoint/fields/ispThreeLayerFields';
 
+import { userSnapshotSchema, type UserSnapshot } from '@/domain/user/userRelation';
+
 // ─────────────────────────────────────────────
 // 共通ヘルパー
 // ─────────────────────────────────────────────
@@ -68,6 +70,18 @@ function parseJsonObject<T extends Record<string, unknown>>(json: string | null 
 }
 
 const EMPTY_SNAPSHOT = { supportLevel: null, behaviorScore: null, serviceType: null, eligibilityCheckedAt: null };
+
+/** JSON 文字列を安全にパースして UserSnapshot を返す（失敗時は undefined） */
+function parseUserSnapshot(json: string | null | undefined): UserSnapshot | undefined {
+  if (!json) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(json);
+    const result = userSnapshotSchema.safeParse(parsed);
+    return result.success ? result.data : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 const EMPTY_INTAKE = {
   presentingProblem: '', targetBehaviorsDraft: [], behaviorItemsTotal: null,
@@ -124,6 +138,9 @@ export function mapIspRowToDomain(row: SpIspMasterRow): IndividualSupportPlan {
 
     status: row.Status ?? 'assessment',
     isCurrent: row.IsCurrent ?? true,
+
+    // 利用者スナップショット（作成時点の利用者マスタ属性を凍結保存）
+    userSnapshot: parseUserSnapshot(row.UserSnapshotJson),
   });
 }
 
@@ -159,6 +176,11 @@ export function mapIspCreateInputToPayload(input: IspCreateInput): SpIspMasterPa
     Status: input.status ?? 'assessment',
     VersionNo: 1,
     IsCurrent: true,
+
+    // 利用者スナップショット（JSONシリアライズ）
+    UserSnapshotJson: input.userSnapshot
+      ? JSON.stringify(input.userSnapshot)
+      : undefined,
   };
 }
 
@@ -178,6 +200,9 @@ export function mapIspUpdateInputToPayload(input: IspUpdateInput): SpIspMasterPa
   if (input.supportSummary !== undefined) payload.SupportSummary = input.supportSummary;
   if (input.precautions !== undefined) payload.Precautions = input.precautions;
   if (input.status !== undefined) payload.Status = input.status;
+
+  // 利用者スナップショット（更新時にも再スナップショット可能）
+  if (input.userSnapshot !== undefined) payload.UserSnapshotJson = JSON.stringify(input.userSnapshot);
 
   return payload;
 }

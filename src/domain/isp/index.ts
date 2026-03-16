@@ -69,3 +69,9 @@ export {
 // 支援計画シート再評価（ISP MonitoringRecord とは別管理）
 // ─────────────────────────────────────────────
 export * from './planningSheetReassessment';
+
+// ─────────────────────────────────────────────
+// ISP 作成入力組み立て（UserSnapshot 注入）
+// ─────────────────────────────────────────────
+export { buildIspCreateInput, UserNotResolvedError } from './buildIspCreateInput';
+export type { IspUserMasterLike } from './buildIspCreateInput';

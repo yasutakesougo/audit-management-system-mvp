@@ -17,6 +17,7 @@
  */
 
 import { z } from 'zod';
+import { userSnapshotSchema } from '@/domain/user/userRelation';
 
 // ─────────────────────────────────────────────
 // 共通
@@ -270,6 +271,9 @@ export const ispFormSchema = z.object({
 
   // ── 生活介護コンプライアンスメタデータ ──
   compliance: ispComplianceMetadataSchema.optional(),
+
+  // ── 利用者スナップショット（作成時点の利用者マスタ属性を凍結） ──
+  userSnapshot: userSnapshotSchema.optional(),
 });
 
 export type IspFormValues = z.infer<typeof ispFormSchema>;
@@ -305,6 +309,9 @@ export const individualSupportPlanSchema = baseAuditFieldsSchema.extend({
 
   // ── 生活介護コンプライアンスメタデータ（A-1 追加） ──
   compliance: ispComplianceMetadataSchema.optional(),
+
+  // ── 利用者スナップショット（作成時点の利用者マスタ属性を凍結） ──
+  userSnapshot: userSnapshotSchema.optional(),
 });
 
 export type IndividualSupportPlan = z.infer<typeof individualSupportPlanSchema>;
