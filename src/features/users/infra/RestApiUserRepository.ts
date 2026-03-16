@@ -306,6 +306,22 @@ export class RestApiUserRepository implements UserRepository {
     return candidates.some((value) => value.includes(keyword));
   }
 
+  /**
+   * SharePoint returns dates as ISO-8601 datetime strings (e.g. "2026-03-31T00:00:00Z").
+   * HTML <input type="date"> requires "yyyy-MM-dd" format.
+   * This helper strips the time portion so React doesn't emit console warnings.
+   */
+  private toDateOnly(value: unknown): string | null {
+    if (value == null || value === '') return null;
+    const s = String(value);
+    // Already yyyy-MM-dd
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    // ISO datetime -> take date part
+    const match = /^(\d{4}-\d{2}-\d{2})T/.exec(s);
+    if (match) return match[1];
+    return s;
+  }
+
   private toDomain(
     raw: UserRow,
     effectiveMode: UserSelectMode = 'core',
@@ -326,14 +342,15 @@ export class RestApiUserRepository implements UserRepository {
       Furigana: get<string | null>(fields.furigana) ?? raw.Furigana ?? null,
       FullNameKana:
         get<string | null>(fields.fullNameKana) ?? raw.FullNameKana ?? null,
-      ContractDate:
-        get<string | null>(fields.contractDate) ?? raw.ContractDate ?? null,
-      ServiceStartDate:
-        get<string | null>(fields.serviceStartDate) ??
-        raw.ServiceStartDate ??
-        null,
-      ServiceEndDate:
-        get<string | null>(fields.serviceEndDate) ?? raw.ServiceEndDate ?? null,
+      ContractDate: this.toDateOnly(
+        get<string | null>(fields.contractDate) ?? raw.ContractDate,
+      ),
+      ServiceStartDate: this.toDateOnly(
+        get<string | null>(fields.serviceStartDate) ?? raw.ServiceStartDate,
+      ),
+      ServiceEndDate: this.toDateOnly(
+        get<string | null>(fields.serviceEndDate) ?? raw.ServiceEndDate,
+      ),
       IsHighIntensitySupportTarget:
         get<boolean | null>(fields.isHighIntensitySupportTarget) ?? null,
       IsSupportProcedureTarget:
@@ -347,19 +364,21 @@ export class RestApiUserRepository implements UserRepository {
         get<string | null>(fields.recipientCertNumber) ??
         raw.RecipientCertNumber ??
         null,
-      RecipientCertExpiry:
-        get<string | null>(fields.recipientCertExpiry) ??
-        raw.RecipientCertExpiry ??
-        null,
+      RecipientCertExpiry: this.toDateOnly(
+        get<string | null>(fields.recipientCertExpiry) ?? raw.RecipientCertExpiry,
+      ),
       Modified: get<string | null>(fields.modified) ?? raw.Modified ?? null,
       Created: get<string | null>(fields.created) ?? raw.Created ?? null,
       // ── 支給決定・請求加算 (DETAIL/FULL only) ──
       UsageStatus: get<string | null>(fields.usageStatus) ?? null,
       GrantMunicipality:
         get<string | null>(fields.grantMunicipality) ?? null,
-      GrantPeriodStart:
-        get<string | null>(fields.grantPeriodStart) ?? null,
-      GrantPeriodEnd: get<string | null>(fields.grantPeriodEnd) ?? null,
+      GrantPeriodStart: this.toDateOnly(
+        get<string | null>(fields.grantPeriodStart),
+      ),
+      GrantPeriodEnd: this.toDateOnly(
+        get<string | null>(fields.grantPeriodEnd),
+      ),
       DisabilitySupportLevel:
         get<string | null>(fields.disabilitySupportLevel) ?? null,
       GrantedDaysPerMonth:
