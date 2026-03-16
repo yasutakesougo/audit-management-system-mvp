@@ -87,6 +87,7 @@ export const envSchema = z.object({
   VITE_SP_LIST_PROCEDURE_RECORD: z.string().optional().default('SupportProcedureRecord_Daily'),
   VITE_SP_LIST_ICEBERG_ANALYSIS: z.string().optional().default('Iceberg_Analysis'),
   VITE_SP_LIST_BILLING_ORDERS: z.string().optional(),
+  VITE_SP_LIST_HOLIDAY_MASTER: z.string().optional().default('Holiday_Master'),
   VITE_SP_HANDOFF_LIST_ID: z.string().optional(),
   VITE_SCHEDULES_LIST_TITLE: z.string().optional().default('Schedules'),
   VITE_SP_TENANT: z.string().optional(),

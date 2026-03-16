@@ -28,6 +28,7 @@ export enum ListKeys {
   IspMaster = 'ISP_Master',
   PlanningSheetMaster = 'SupportPlanningSheet_Master',
   ProcedureRecordDaily = 'SupportProcedureRecord_Daily',
+  HolidayMaster = 'Holiday_Master',
 }
 
 export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
@@ -53,4 +54,5 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.IspMaster]: { title: 'ISP_Master' },
   [ListKeys.PlanningSheetMaster]: { title: 'SupportPlanningSheet_Master' },
   [ListKeys.ProcedureRecordDaily]: { title: 'SupportProcedureRecord_Daily' },
+  [ListKeys.HolidayMaster]: { title: 'Holiday_Master' },
 };

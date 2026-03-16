@@ -1,5 +1,5 @@
 /**
- * SharePoint リスト レジストリ — 全31リストの Single Source of Truth
+ * SharePoint リスト レジストリ — 全32リストの Single Source of Truth
  *
  * 各エントリは以下を保持:
  * - key: プログラム内で使用するユニーク識別子
@@ -76,6 +76,13 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     key: 'org_master',
     displayName: '組織マスタ',
     resolve: () => envOr('VITE_SP_LIST_ORG_MASTER', fromConfig(ListKeys.OrgMaster)),
+    operations: ['R'],
+    category: 'master',
+  },
+  {
+    key: 'holiday_master',
+    displayName: '祝日・休業日マスタ',
+    resolve: () => envOr('VITE_SP_LIST_HOLIDAY_MASTER', fromConfig(ListKeys.HolidayMaster)),
     operations: ['R'],
     category: 'master',
   },
