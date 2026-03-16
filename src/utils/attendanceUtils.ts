@@ -18,7 +18,6 @@ export interface UserMaster {
 export interface Schedule {
   id: string | number;
   userId?: string;
-  personId?: string;
   title: string;
   startLocal?: string;
   startUtc?: string;
@@ -110,7 +109,7 @@ export function getAbsentUserIds(
       return isAbsentSchedule(schedule);
     })
     .map(schedule => {
-      const id = schedule.userId || schedule.userId;
+      const id = schedule.userId;
       // number型対応: 文字列に統一
       return typeof id === 'number' ? String(id) : id;
     })
