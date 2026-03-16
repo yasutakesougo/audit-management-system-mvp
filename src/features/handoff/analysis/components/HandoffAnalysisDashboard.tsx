@@ -1,7 +1,7 @@
 /**
  * 申し送りAI分析ダッシュボード
  *
- * Phase 1 + Phase 2 のデータを統合し、
+ * Phase 1 + Phase 2 + Phase 3 のデータを統合し、
  * 朝会・夕会・管理者確認で使える分析&運用支援画面を提供する。
  *
  * データフロー:
@@ -11,6 +11,7 @@
  *     → computeTimePatterns   → TimePatternHeatmap
  *     → evaluateAlertRules    → AlertCard        (Phase 2)
  *     → computeRiskScores     → RiskScoreCard    (Phase 2)
+ *     → generateHandoffInsight → InsightReportCard (Phase 3, on-demand)
  *
  * 子コンポーネントでは再計算しない。
  */
@@ -27,9 +28,14 @@ import Stack from '@mui/material/Stack';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createMockAiClient } from '@/lib/ai/aiClient';
+import type { AiClient } from '@/lib/ai/aiClientTypes';
 import type { HandoffRecord } from '../../handoffTypes';
+import type { InsightReportResult } from '../ai/aiTypes';
+import { buildSummaryInput } from '../ai/buildHandoffSummaryPrompt';
+import { generateHandoffInsight } from '../ai/handoffAiService';
 import type { TriggeredAlert } from '../alertRules';
 import { evaluateAlertRules } from '../alertRules';
 import { computeTimePatterns } from '../computeTimePatterns';
@@ -37,6 +43,7 @@ import { computeUserTrends } from '../computeUserTrends';
 import { extractKeywords } from '../extractKeywords';
 import { computeRiskScores, type UserRiskScore } from '../riskScoring';
 import AlertCard from './AlertCard';
+import InsightReportCard from './InsightReportCard';
 import KeywordCloudCard from './KeywordCloudCard';
 import RiskScoreCard from './RiskScoreCard';
 import TimePatternHeatmap from './TimePatternHeatmap';
@@ -76,6 +83,14 @@ export default function HandoffAnalysisDashboard({
   const navigate = useNavigate();
   const [period, setPeriod] = useState<PeriodOption>(14);
 
+  // ── Phase 3: AI 要約 ──
+  const [insightReport, setInsightReport] = useState<InsightReportResult | null>(null);
+  const [insightLoading, setInsightLoading] = useState(false);
+  const [insightError, setInsightError] = useState<string | null>(null);
+
+  // AI クライアント（TODO: 環境変数から Azure OpenAI に切替）
+  const aiClientRef = useRef<AiClient>(createMockAiClient());
+
   // ── 期間フィルタ ──
   const filteredRecords = useMemo(() => {
     if (records.length === 0) return [];
@@ -112,6 +127,64 @@ export default function HandoffAnalysisDashboard({
 
     return { total, critical, topCategory, trendingUsers };
   }, [filteredRecords, keywords, userTrends]);
+
+  // ── Phase 3: AI 要約 DTO 構築 ──
+  const summaryInput = useMemo(() => {
+    const categoryBreakdown = keywords.hits
+      .reduce<{ category: string; count: number }[]>((acc, h) => {
+        const existing = acc.find((c) => c.category === h.category);
+        if (existing) existing.count += h.count;
+        else acc.push({ category: h.category, count: h.count });
+        return acc;
+      }, []);
+
+    return buildSummaryInput({
+      totalRecords: summary.total,
+      criticalCount: summary.critical,
+      categoryBreakdown,
+      topKeywords: keywords.hits.slice(0, 5).map((h) => ({
+        keyword: h.keyword,
+        count: h.count,
+      })),
+      trendingUsers: userTrends.map((t) => ({
+        userDisplayName: t.userDisplayName,
+        recentTrend: t.recentTrend,
+        topCategory: t.topCategories[0]?.category ?? '',
+        totalMentions: t.totalMentions,
+      })),
+      alerts: alertResult.alerts.map((a) => ({
+        label: a.label,
+        severity: a.severity,
+        userDisplayName: a.userDisplayName,
+        suggestion: a.suggestion,
+      })),
+      highRiskUsers: riskResult.scores.map((s) => ({
+        userDisplayName: s.userDisplayName,
+        score: s.score,
+        level: s.level,
+        topSuggestion: s.topSuggestion,
+      })),
+      context: {
+        periodLabel: `直近${period}日`,
+        facilityName: '',  // TODO: 事業所名を設定から取得
+        audience: 'morning',
+      },
+    });
+  }, [summary, keywords, userTrends, alertResult, riskResult, period]);
+
+  // ── AI 要約生成 ──
+  const handleGenerateInsight = useCallback(async () => {
+    setInsightLoading(true);
+    setInsightError(null);
+    try {
+      const report = await generateHandoffInsight(summaryInput, aiClientRef.current);
+      setInsightReport(report);
+    } catch (e) {
+      setInsightError(e instanceof Error ? e.message : 'AI要約の生成に失敗しました');
+    } finally {
+      setInsightLoading(false);
+    }
+  }, [summaryInput]);
 
   // ── クリック導線 ──
   const handleAlertClick = useCallback(
@@ -233,6 +306,16 @@ export default function HandoffAnalysisDashboard({
           </Grid>
         </CardContent>
       </Card>
+
+      {/* ── Phase 3: AI 要約 ── */}
+      <Box sx={{ mb: 3 }}>
+        <InsightReportCard
+          report={insightReport}
+          loading={insightLoading}
+          onGenerate={handleGenerateInsight}
+          error={insightError}
+        />
+      </Box>
 
       {/* ── Phase 2: アラート + リスクスコア ── */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
