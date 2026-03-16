@@ -8,6 +8,7 @@ import type { RouteObject } from 'react-router-dom';
 import {
     SuspendedBillingPage,
     SuspendedBusinessJournalPreviewPage,
+    SuspendedHandoffAnalysisPage,
     SuspendedHandoffTimelinePage,
     SuspendedMonthlyRecordPage,
     SuspendedPersonalJournalPage,
@@ -69,6 +70,14 @@ export const recordRoutes: RouteObject[] = [
     element: (
       <RequireAudience requiredRole="viewer">
         <SuspendedHandoffTimelinePage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'handoff-analysis',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <SuspendedHandoffAnalysisPage />
       </RequireAudience>
     ),
   },

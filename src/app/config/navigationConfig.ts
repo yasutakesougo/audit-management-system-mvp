@@ -116,6 +116,14 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       audience: NAV_AUDIENCE.all,
       group: 'daily' as NavGroupKey,
     },
+    {
+      label: '申し送り分析',
+      to: '/handoff-analysis',
+      isActive: (pathname) => pathname.startsWith('/handoff-analysis'),
+      icon: undefined,
+      audience: NAV_AUDIENCE.staff,
+      group: 'daily' as NavGroupKey,
+    },
     // 会議系は「議事録」に統合。司会ガイド・朝会夕会情報・朝会/夕会（作成）は
     // 議事録ページ内またはURL直接アクセスで到達可能。
     {
