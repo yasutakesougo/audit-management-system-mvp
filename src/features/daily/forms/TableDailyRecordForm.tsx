@@ -59,32 +59,22 @@ export function TableDailyRecordForm({
 
   const state = controlledState ?? internalState!;
 
+  // ── Structured access ──────────────────────────────
+  const { header, picker, table, draft, handoff, actions } = state;
+  const { formData, setFormData, validationErrors, clearValidationErrors } = header;
   const {
-    formData,
-    setFormData,
-    searchQuery,
-    setSearchQuery,
-    showTodayOnly,
-    setShowTodayOnly,
-    filteredUsers,
-    selectedUserIds,
-    handleUserToggle,
-    handleSelectAll,
-    handleClearAll,
-    handleRowDataChange,
-    handleProblemBehaviorChange,
-    handleBehaviorTagToggle,
-    handleClearRow,
+    searchQuery, setSearchQuery,
+    showTodayOnly, setShowTodayOnly,
+    filteredUsers, selectedUserIds,
+    handleUserToggle, handleSelectAll, handleClearAll,
+  } = picker;
+  const {
+    handleRowDataChange, handleProblemBehaviorChange,
+    handleBehaviorTagToggle, handleClearRow,
     visibleRows,
-    handleSaveDraft,
-    handleSave,
-    saving,
-    validationErrors,
-    clearValidationErrors,
-    handoffAffectedUserCount,
-    handoffTotalCount,
-    handoffLoading,
-  } = state;
+  } = table;
+  const { handleSaveDraft } = draft;
+  const { handleSave, saving } = actions;
 
   const hasValidationErrors = Object.keys(validationErrors).length > 0;
 
@@ -109,12 +99,12 @@ export function TableDailyRecordForm({
                 onUserToggle={handleUserToggle}
               />
             </Box>
-            {!handoffLoading && handoffTotalCount > 0 && (
+            {!handoff.loading && handoff.totalCount > 0 && (
               <Chip
                 size="small"
                 color="info"
                 variant="outlined"
-                label={`申送${handoffTotalCount}件→${handoffAffectedUserCount}名`}
+                label={`申送${handoff.totalCount}件→${handoff.affectedUserCount}名`}
                 sx={{ fontSize: '0.65rem', height: 22, flexShrink: 0 }}
               />
             )}
