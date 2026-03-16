@@ -10,6 +10,7 @@ declare global {
 import { canAccess } from '@/auth/roles';
 import { useAuth } from '@/auth/useAuth';
 import { useUserAuthz } from '@/auth/useUserAuthz';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useCurrentPlanningSheet } from '@/features/planning-sheet/hooks/useCurrentPlanningSheet';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { useIspRepositories } from '@/features/support-plan-guide/hooks/useIspRepositories';
@@ -154,6 +155,9 @@ export default function SupportPlanGuidePage() {
 
     // Compliance (A-2)
     complianceForm,
+
+    // Confirm Dialogs
+    resetConfirmDialog,
   } = hook;
 
   // ── selectUser: Autocomplete → SelectChangeEvent adapter ──
@@ -450,6 +454,7 @@ export default function SupportPlanGuidePage() {
           ))}
         </Paper>
       </Stack>
+      <ConfirmDialog {...resetConfirmDialog} />
     </Box>
   );
 }

@@ -469,9 +469,8 @@ describe('useStaffForm', () => {
       expect(onClose).toHaveBeenCalled();
     });
 
-    it('calls onClose when dirty and user confirms via window.confirm', () => {
+    it('opens confirm dialog (not window.confirm) when dirty', () => {
       const onClose = vi.fn();
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
       const { result } = renderCreate({ onClose });
       act(() => {
         result.current.setField('FullName', '変更あり');
@@ -479,14 +478,13 @@ describe('useStaffForm', () => {
       act(() => {
         result.current.handleClose();
       });
-      expect(confirmSpy).toHaveBeenCalledTimes(1);
-      expect(onClose).toHaveBeenCalledTimes(1);
-      confirmSpy.mockRestore();
+      // Dialog should be open, onClose should NOT be called yet
+      expect(result.current.closeConfirmDialog.open).toBe(true);
+      expect(onClose).not.toHaveBeenCalled();
     });
 
-    it('does NOT call onClose when dirty and user cancels confirm', () => {
+    it('calls onClose when confirm dialog onConfirm is invoked', () => {
       const onClose = vi.fn();
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
       const { result } = renderCreate({ onClose });
       act(() => {
         result.current.setField('FullName', '変更あり');
@@ -494,8 +492,11 @@ describe('useStaffForm', () => {
       act(() => {
         result.current.handleClose();
       });
-      expect(onClose).not.toHaveBeenCalled();
-      confirmSpy.mockRestore();
+      // Simulate user clicking confirm in the dialog
+      act(() => {
+        result.current.closeConfirmDialog.onConfirm();
+      });
+      expect(onClose).toHaveBeenCalledTimes(1);
     });
 
     it('does nothing when onClose is not provided', () => {
