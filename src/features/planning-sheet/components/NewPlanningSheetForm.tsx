@@ -40,20 +40,27 @@ import StepLabel from '@mui/material/StepLabel';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
+import Snackbar from '@mui/material/Snackbar';
+
 // ── Icons ──
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
 import NavigateBeforeRoundedIcon from '@mui/icons-material/NavigateBeforeRounded';
 import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded';
 import PersonSearchRoundedIcon from '@mui/icons-material/PersonSearchRounded';
+import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded';
 
 // ── Domain ──
+import type { TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
+import { useTokuseiSurveyResponses } from '@/features/assessment/hooks/useTokuseiSurveyResponses';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { useAuth } from '@/auth/useAuth';
 import type { PlanningSheetRepository, IspRepository } from '@/domain/isp/port';
 import type { PlanningSheetFormValues } from '@/domain/isp/schema';
+import { tokuseiToPlanningBridge } from '../tokuseiToPlanningBridge';
 
 // ─────────────────────────────────────────────
 // Types
@@ -382,6 +389,14 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   const [isSaving, setIsSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState<string | null>(null);
 
+  // ── 特性アンケート読込 ──
+  const { responses: tokuseiResponses, status: tokuseiStatus } = useTokuseiSurveyResponses();
+  const [selectedTokusei, setSelectedTokusei] = React.useState<TokuseiSurveyResponse | null>(null);
+  const [tokuseiImported, setTokuseiImported] = React.useState(false);
+  const [toast, setToast] = React.useState<{ open: boolean; message: string; severity: 'success' | 'info' }>({
+    open: false, message: '', severity: 'success',
+  });
+
   // ── Helpers ──
   const userOptions = React.useMemo<UserOption[]>(
     () => users.map(u => ({ id: u.UserID, label: `${u.FullName} (${u.UserID})` })),
@@ -419,6 +434,59 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
     },
     [ispRepo],
   );
+
+  // ── 特性アンケート: 利用者に紐づく回答をフィルタ ──
+  const matchedTokuseiResponses = React.useMemo(() => {
+    if (!selectedUser || tokuseiResponses.length === 0) return [];
+    const userName = selectedUser.label.split(' (')[0]; // FullName を抽出
+    return tokuseiResponses.filter(r =>
+      r.targetUserName === userName ||
+      r.targetUserName === selectedUser.id,
+    );
+  }, [selectedUser, tokuseiResponses]);
+
+  // ── 特性アンケートから読込 ──
+  const handleTokuseiImport = React.useCallback(() => {
+    if (!selectedTokusei) return;
+
+    const result = tokuseiToPlanningBridge({
+      kind: 'aggregated',
+      response: selectedTokusei,
+      responseId: selectedTokusei.responseId,
+      updatedAt: selectedTokusei.createdAt,
+    });
+
+    // formPatches を FormState に反映（空フィールドのみ上書き）
+    setForm(prev => {
+      const next = { ...prev };
+      for (const [key, value] of Object.entries(result.formPatches)) {
+        if (key in next && typeof value === 'string') {
+          const k = key as keyof FormState;
+          const current = next[k];
+          if (typeof current === 'string' && !current.trim()) {
+            (next as Record<string, unknown>)[k] = value;
+          } else if (typeof current === 'string' && current.trim()) {
+            // 既存値がある場合は追記
+            (next as Record<string, unknown>)[k] = `${current}\n\n【特性アンケートより】\n${value}`;
+          }
+        }
+      }
+      return next;
+    });
+
+    setTokuseiImported(true);
+
+    // サマリーをトースト表示
+    const parts: string[] = [];
+    if (result.summary.icebergFieldsFilled > 0) parts.push(`氷山分析${result.summary.icebergFieldsFilled}項目`);
+    if (result.summary.sensoryTriggersAdded > 0) parts.push(`感覚トリガー${result.summary.sensoryTriggersAdded}件`);
+    if (result.summary.hypothesesGenerated > 0) parts.push(`行動仮説${result.summary.hypothesesGenerated}件`);
+    if (result.summary.targetBehaviorCandidates > 0) parts.push(`対象行動候補${result.summary.targetBehaviorCandidates}件`);
+    const summaryText = parts.length > 0
+      ? `特性アンケートから取込完了: ${parts.join('、')}`
+      : '特性アンケートから取込完了（該当データなし）';
+    setToast({ open: true, message: summaryText, severity: 'success' });
+  }, [selectedTokusei]);
 
   // ── Fill sample data ──
   const handleFillSample = React.useCallback(() => setForm(SAMPLE_FORM), []);
@@ -709,6 +777,89 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
           </Stack>
         </Paper>
 
+        {/* ── 特性アンケート読込 ── */}
+        {canProceedToForm && (
+          <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderColor: tokuseiImported ? 'success.main' : 'divider' }}>
+            <Stack spacing={2}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <SupportAgentRoundedIcon color={tokuseiImported ? 'success' : 'primary'} />
+                <Typography variant="subtitle1" fontWeight={600}>
+                  特性アンケートから読込
+                </Typography>
+                {tokuseiImported && (
+                  <Chip icon={<CheckCircleRoundedIcon />} label="取込済" size="small" color="success" variant="outlined" />
+                )}
+              </Stack>
+
+              <Typography variant="body2" color="text.secondary">
+                特性アンケート（保護者・関係者回答）のデータを元に、氷山分析・FBA・感覚特性を自動入力します。
+              </Typography>
+
+              {tokuseiStatus === 'loading' && (
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <CircularProgress size={16} />
+                  <Typography variant="body2" color="text.secondary">アンケート回答を取得中…</Typography>
+                </Stack>
+              )}
+
+              {tokuseiStatus === 'success' && matchedTokuseiResponses.length === 0 && (
+                <Alert severity="info" variant="outlined">
+                  この利用者に対応する特性アンケートの回答がありません。先に保護者・関係者にアンケートを依頼してください。
+                </Alert>
+              )}
+
+              {matchedTokuseiResponses.length > 0 && (
+                <>
+                  <Typography variant="body2" fontWeight={600}>
+                    {matchedTokuseiResponses.length}件の回答が見つかりました。取り込む回答を選択してください:
+                  </Typography>
+                  <Stack spacing={1}>
+                    {matchedTokuseiResponses.map((r) => (
+                      <Paper
+                        key={r.id}
+                        variant="outlined"
+                        sx={{
+                          p: 1.5,
+                          cursor: 'pointer',
+                          borderColor: selectedTokusei?.id === r.id ? 'primary.main' : 'divider',
+                          bgcolor: selectedTokusei?.id === r.id ? 'primary.50' : 'transparent',
+                          '&:hover': { borderColor: 'primary.light' },
+                        }}
+                        onClick={() => setSelectedTokusei(r)}
+                      >
+                        <Stack direction="row" justifyContent="space-between" alignItems="center">
+                          <Stack>
+                            <Typography variant="body2" fontWeight={600}>
+                              {r.responderName || '回答者不明'}
+                              {r.relation ? `（${r.relation}）` : ''}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              回答日: {r.fillDate ? new Date(r.fillDate).toLocaleDateString('ja-JP') : '不明'}
+                              {r.guardianName ? ` / ${r.guardianName}` : ''}
+                            </Typography>
+                          </Stack>
+                          {selectedTokusei?.id === r.id && (
+                            <CheckCircleRoundedIcon color="primary" sx={{ fontSize: 20 }} />
+                          )}
+                        </Stack>
+                      </Paper>
+                    ))}
+                  </Stack>
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    startIcon={<SupportAgentRoundedIcon />}
+                    onClick={handleTokuseiImport}
+                    disabled={!selectedTokusei}
+                  >
+                    {tokuseiImported ? '再度読み込む' : '特性アンケートから読込'}
+                  </Button>
+                </>
+              )}
+            </Stack>
+          </Paper>
+        )}
+
         {/* ── Stepper + Form ── */}
         {canProceedToForm && (
           <>
@@ -771,6 +922,22 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
           </>
         )}
       </Stack>
+
+      {/* ── Toast ── */}
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={5000}
+        onClose={() => setToast(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={toast.severity}
+          onClose={() => setToast(prev => ({ ...prev, open: false }))}
+          variant="filled"
+        >
+          {toast.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
