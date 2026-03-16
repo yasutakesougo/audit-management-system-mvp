@@ -83,6 +83,7 @@ export const APP_ROUTE_PATHS = [
   'ibd',
   'planning-sheet-list',
   'abc-record',
+  'ops',
   'settings/operation-flow',
 ] as const;
 
