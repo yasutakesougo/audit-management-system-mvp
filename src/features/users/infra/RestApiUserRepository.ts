@@ -234,10 +234,9 @@ export class RestApiUserRepository implements UserRepository {
     const path = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items(${numericId})/recycle()`;
     const res = await this.spFetch(path, {
       method: 'POST',
-      headers: { 'X-HTTP-Method': 'DELETE', 'If-Match': '*' },
     });
 
-    if (!res.ok && res.status !== 200) {
+    if (!res.ok) {
       const text = await res.text().catch(() => '');
       throw new Error(`Delete failed: HTTP ${res.status} - ${text}`);
     }
