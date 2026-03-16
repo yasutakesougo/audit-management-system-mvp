@@ -8,6 +8,7 @@ import {
     type UpdateScheduleInput as RepoUpdateInput,
 } from '@/infra/sharepoint/repos/schedulesRepo';
 import { AuthRequiredError, toSafeError } from '@/lib/errors';
+// eslint-disable-next-line no-restricted-imports -- Phase 3-C: spClient 移行予定
 import { fetchSp } from '@/lib/fetchSp';
 import { withUserMessage } from '@/lib/notice';
 import { createSpClient, ensureConfig } from '@/lib/spClient';

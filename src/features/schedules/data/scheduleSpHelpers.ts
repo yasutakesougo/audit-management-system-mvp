@@ -8,6 +8,7 @@
  * @module features/schedules/data/scheduleSpHelpers
  */
 
+// eslint-disable-next-line no-restricted-imports -- Phase 3-C: spClient 移行予定
 import { fetchSp } from '@/lib/fetchSp';
 import { ensureConfig } from '@/lib/spClient';
 
