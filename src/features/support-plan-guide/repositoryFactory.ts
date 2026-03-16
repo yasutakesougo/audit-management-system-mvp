@@ -7,6 +7,8 @@
 
 import type { BaseFactoryOptions } from '@/lib/createRepositoryFactory';
 import { createRepositoryFactory } from '@/lib/createRepositoryFactory';
+import { ensureConfig } from '@/lib/sp/config';
+import { createSpClient } from '@/lib/spClient';
 
 import type { SupportPlanDraftRepository } from './domain/SupportPlanDraftRepository';
 import {
@@ -33,11 +35,14 @@ export interface SupportPlanDraftFactoryOptions extends BaseFactoryOptions {
 const factory = createRepositoryFactory<SupportPlanDraftRepository, SupportPlanDraftFactoryOptions>({
   name: 'SupportPlanDraft',
   createDemo: () => inMemorySupportPlanDraftRepository,
-  createReal: (opts) =>
-    new SharePointSupportPlanDraftRepository({
-      acquireToken: opts.acquireToken,
+  createReal: (opts) => {
+    const { baseUrl } = ensureConfig();
+    const client = createSpClient(opts.acquireToken!, baseUrl);
+    return new SharePointSupportPlanDraftRepository({
+      spFetch: client.spFetch,
       listTitle: opts.listTitle,
-    }),
+    });
+  },
 });
 
 // ────────────────────────────────────────────────────────────────────────────

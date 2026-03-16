@@ -8,12 +8,11 @@ import {
     type UpdateScheduleInput as RepoUpdateInput,
 } from '@/infra/sharepoint/repos/schedulesRepo';
 import { AuthRequiredError, toSafeError } from '@/lib/errors';
-// eslint-disable-next-line no-restricted-imports -- Phase 3-C: spClient 移行予定
-import { fetchSp } from '@/lib/fetchSp';
 import { withUserMessage } from '@/lib/notice';
+import type { SpFetchFn } from '@/lib/sp';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { mapSpRowToSchedule, parseSpScheduleRows } from '../data/spRowSchema';
-import { buildSchedulesListPath, getSchedulesListTitle } from '../data/spSchema';
+import { buildSchedulesRelativeListPath, getSchedulesListTitle } from '../data/spSchema';
 import { SCHEDULES_DEBUG } from '../debug';
 import type { CreateScheduleInput, DateRange, ScheduleItem, ScheduleRepository, ScheduleRepositoryListParams, ScheduleRepositoryMutationParams, UpdateScheduleInput } from '../domain/ScheduleRepository';
 import type { ScheduleCategory, ScheduleServiceType, ScheduleStatus } from '../domain/types';
@@ -26,7 +25,6 @@ import {
     getHttpStatus,
     isMissingFieldError,
     monthKeyInTz,
-    readSpErrorMessage,
     sortByStart,
     type ScheduleFieldNames,
     type SharePointResponse,
@@ -65,6 +63,7 @@ const mapRepoScheduleToScheduleItem = (repo: RepoSchedule): ScheduleItem | null 
 
 export type SharePointScheduleRepositoryOptions = {
   acquireToken?: () => Promise<string | null>;
+  spFetch?: SpFetchFn;
   listTitle?: string;
   currentOwnerUserId?: string; // For visibility filtering
 };
@@ -75,9 +74,13 @@ export type SharePointScheduleRepositoryOptions = {
  * Implements ScheduleRepository interface for SharePoint backend.
  * Centralizes all SharePoint communication logic previously scattered
  * across sharePointAdapter.ts and useSchedules.ts.
+ *
+ * spFetch is injected via constructor for direct REST calls (fetchRange).
+ * High-level mutations (create/update/remove) use getClient() for typed operations.
  */
 export class SharePointScheduleRepository implements ScheduleRepository {
   private readonly acquireToken: () => Promise<string | null>;
+  private readonly spFetch: SpFetchFn;
   private readonly listTitle: string;
   private readonly currentOwnerUserId?: string;
   private client: ReturnType<typeof createSpClient> | null = null;
@@ -86,10 +89,21 @@ export class SharePointScheduleRepository implements ScheduleRepository {
     this.acquireToken = options.acquireToken ?? (async () => null);
     this.listTitle = options.listTitle ?? getSchedulesListTitle();
     this.currentOwnerUserId = options.currentOwnerUserId;
+
+    // spFetch is required for fetchRange (list operations).
+    // If not provided, fall back to creating a client internally.
+    if (options.spFetch) {
+      this.spFetch = options.spFetch;
+    } else {
+      const { baseUrl } = ensureConfig();
+      const fallbackClient = createSpClient(this.acquireToken, baseUrl);
+      this.spFetch = fallbackClient.spFetch;
+    }
   }
 
   /**
    * Get or create SPClient (lazy initialization)
+   * Used for high-level typed operations (create/update/remove).
    */
   private getClient(): ReturnType<typeof createSpClient> {
     if (!this.client) {
@@ -138,6 +152,7 @@ export class SharePointScheduleRepository implements ScheduleRepository {
 
   /**
    * Fetch schedules within date range with fallback queries
+   * Uses spFetch (DI) with relative paths.
    */
   private async fetchRange(
     range: DateRange,
@@ -149,8 +164,7 @@ export class SharePointScheduleRepository implements ScheduleRepository {
       throw new Error('Request aborted');
     }
 
-    const { baseUrl } = ensureConfig();
-    const listPath = buildSchedulesListPath(baseUrl);
+    const listPath = buildSchedulesRelativeListPath();
     const params = new URLSearchParams();
     params.set('$top', String(options?.top ?? 500));
     if (options?.includeOrderby ?? true) {
@@ -162,22 +176,8 @@ export class SharePointScheduleRepository implements ScheduleRepository {
     params.set('$select', select.join(','));
 
     const url = `${listPath}?${params.toString()}`;
-    const response = await fetchSp(url);
-
-    if (!response.ok) {
-      const message = await readSpErrorMessage(response);
-      console.error('[SharePointScheduleRepository] List query failed', {
-        status: response.status,
-        listTitle: this.listTitle,
-        url,
-        message,
-      });
-      const error = new Error(message || `SharePoint request failed (${response.status})`);
-      (error as { status?: number }).status = response.status;
-      (error as { url?: string }).url = url;
-      (error as { body?: string }).body = message;
-      throw error;
-    }
+    // spFetch throws on non-2xx (throwOnError: true by default)
+    const response = await this.spFetch(url);
 
     const payload = (await response.json()) as SharePointResponse<unknown>;
     try {
@@ -185,7 +185,6 @@ export class SharePointScheduleRepository implements ScheduleRepository {
     } catch (parseError) {
       console.error('[SharePointScheduleRepository] Parse failed', {
         url,
-        status: response.status,
         payloadPreview: JSON.stringify(payload).slice(0, 2000),
       });
       throw parseError;
@@ -293,7 +292,7 @@ export class SharePointScheduleRepository implements ScheduleRepository {
     try {
       const { baseUrl } = ensureConfig();
       // Bypass mutation if baseUrl is missing AND we are not in E2E mode.
-      // In E2E, we want to proceed to fetchSp so Playwright can intercept/mock the network layer.
+      // In E2E, we want to proceed so Playwright can intercept/mock the network layer.
       if (!baseUrl && !isE2E) {
         return {
           id: String(Date.now()),
@@ -377,7 +376,7 @@ export class SharePointScheduleRepository implements ScheduleRepository {
     try {
       const { baseUrl } = ensureConfig();
       // Bypass mutation if baseUrl is missing AND we are not in E2E mode.
-      // In E2E, we want to proceed to fetchSp so Playwright can intercept/mock the network layer.
+      // In E2E, we want to proceed so Playwright can intercept/mock the network layer.
       if (!baseUrl && !isE2E) {
         return {
           id: input.id,

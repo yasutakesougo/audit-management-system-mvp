@@ -281,16 +281,25 @@ const run = async (): Promise<void> => {
   }
 
   if (hasWindow && window.__ENV__?.VITE_AUDIT_DEBUG === '1') {
-    void Promise.all([import('./lib/fetchSp'), import('./lib/spClient')])
-      .then(([{ fetchSp }, { ensureConfig }]) => {
+    void import('./lib/spClient')
+      .then(({ createSpClient, ensureConfig }) => {
+        const { baseUrl } = ensureConfig();
+        // acquireToken は遅延取得（デバッグ呼び出し時に MSAL から取得）
+        const lazyAcquireToken = async (): Promise<string | null> => {
+          try {
+            const { acquireSpAccessToken, getSharePointScopes } = await import('./lib/msal');
+            return await acquireSpAccessToken(getSharePointScopes());
+          } catch {
+            return null;
+          }
+        };
+        const client = createSpClient(lazyAcquireToken, baseUrl);
         const helper = async ({ path, method = 'GET' }: { path: string; method?: string }) => {
-          const { baseUrl } = ensureConfig();
-          const url = path.startsWith('http') ? path : `${baseUrl}${path}`;
-          const response = await fetchSp(url, { method });
+          const response = await client.spFetch(path, { method });
           return response.json();
         };
         (window as Window & { __spFetch__?: typeof helper }).__spFetch__ = helper;
-        console.info('[debug] __spFetch__ exposed');
+        console.info('[debug] __spFetch__ exposed (via spClient)');
       })
       .catch((error) => {
         console.warn('[debug] failed to expose __spFetch__', error);

@@ -178,10 +178,10 @@ const response = await spFetch(path);
 | ファイル | 用途 | Issue | 状態 |
 |---------|------|-------|------|
 | `pages/admin/DataIntegrityPage.tsx` | データ整合性チェック | #993 | ✅ #998 |
-| `features/monitoring/data/SharePointIspDecisionRepository.ts` | ISP 判断レコード | #994 | 🔜 |
-| `features/monitoring/data/SharePointSupportPlanningSheetRepository.ts` | 計画書シート | #994 | 🔜 |
-| `features/support-plan-guide/infra/SharePointSupportPlanDraftRepository.ts` | 支援計画ドラフト | #995 | 🔜 |
-| `features/daily/infra/SharePointDailyRecordRepository.ts` | 日次記録 CRUD | #996 | 🔜 |
+| `features/monitoring/data/SharePointIspDecisionRepository.ts` | ISP 判断レコード | #994 | ✅ #999 |
+| `features/monitoring/data/SharePointSupportPlanningSheetRepository.ts` | 計画書シート | #994 | ✅ #999 |
+| `features/support-plan-guide/infra/SharePointSupportPlanDraftRepository.ts` | 支援計画ドラフト | #995 | ✅ 完了 |
+| `features/daily/infra/SharePointDailyRecordRepository.ts` | 日次記録 CRUD | #996 | ✅ 完了 |
 | `features/schedules/data/scheduleSpHelpers.ts` | スケジュール取得 | #997 | 🔜 |
 | `features/schedules/infra/SharePointScheduleRepository.ts` | スケジュール Repository | #997 | 🔜 |
 
@@ -195,4 +195,4 @@ const response = await spFetch(path);
 | 2 | `graphFetch` 設計 + Graph 4箇所移行 | ✅ 完了 |
 | 3-A | `fetchSp` を `spFetch` 互換レイヤーに変換 | ✅ 完了 |
 | 3-B | `fetchSp` import 禁止 (ESLint) + 全既存箇所に disable 付与 | ✅ 完了 |
-| 3-C | 既存7箇所を `spClient` に段階移行 → `fetchSp.ts` 削除 | 🔄 1/7 完了 |
+| 3-C | 既存7箇所を `spClient` に段階移行 → `fetchSp.ts` 削除 | 🔄 5/7 完了 |

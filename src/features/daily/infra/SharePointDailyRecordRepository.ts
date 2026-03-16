@@ -1,9 +1,7 @@
 import { get as getEnv } from '@/env';
 import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { toSafeError } from '@/lib/errors';
-// eslint-disable-next-line no-restricted-imports -- Phase 3-C: spClient 移行予定
-import { fetchSp } from '@/lib/fetchSp';
-import { createSpClient, ensureConfig } from '@/lib/spClient';
+import type { SpFetchFn } from '@/lib/sp/spLists';
 import type {
     ApproveRecordInput,
     DailyRecordItem,
@@ -53,28 +51,7 @@ interface SharePointItem {
   };
 }
 
-/**
- * Read error message from SharePoint response
- */
-const readSpErrorMessage = async (response: Response): Promise<string> => {
-  const text = await response.text().catch(() => '');
-  if (!text) return '';
-  try {
-    const data = JSON.parse(text) as {
-      error?: { message?: { value?: string } };
-      'odata.error'?: { message?: { value?: string } };
-      message?: { value?: string };
-    };
-    return (
-      data.error?.message?.value ??
-      data['odata.error']?.message?.value ??
-      data.message?.value ??
-      ''
-    );
-  } catch {
-    return text.slice(0, 400);
-  }
-};
+// readSpErrorMessage 削除: spFetch (throwOnError: true) が自動 throw する
 
 /**
  * Parse SharePoint item to DailyRecordItem using Zod schema
@@ -92,11 +69,11 @@ const parseSpItem = (item: unknown): DailyRecordItem | null => {
 };
 
 /**
- * Build list path for API requests
+ * Build list path for API requests (relative path — baseUrl は spFetch が付与)
  */
-const buildListPath = (baseUrl: string): string => {
+const buildListPath = (): string => {
   const listTitle = getListTitle();
-  return `${baseUrl}/_api/web/lists/GetByTitle('${encodeURIComponent(listTitle)}')`;
+  return `/_api/web/lists/GetByTitle('${encodeURIComponent(listTitle)}')`;
 };
 
 /**
@@ -112,6 +89,8 @@ const buildDateRangeFilter = (startDate: string, endDate: string): string => {
 type SharePointDailyRecordRepositoryOptions = {
   acquireToken?: () => Promise<string | null>;
   listTitle?: string;
+  /** DI: spFetch (createSpClient 経由で生成) */
+  spFetch?: SpFetchFn;
 };
 
 /**
@@ -131,24 +110,17 @@ type SharePointDailyRecordRepositoryOptions = {
  * - UserCount (Number): Count of users for quick filtering
  */
 export class SharePointDailyRecordRepository implements DailyRecordRepository {
-  private readonly acquireToken: () => Promise<string | null>;
+  private readonly spFetch: SpFetchFn;
   private readonly listTitle: string;
-  private client: ReturnType<typeof createSpClient> | null = null;
 
   constructor(options: SharePointDailyRecordRepositoryOptions = {}) {
-    this.acquireToken = options.acquireToken ?? (async () => null);
-    this.listTitle = options.listTitle ?? getListTitle();
-  }
-
-  /**
-   * Get or create SPClient (lazy initialization)
-   */
-  private getClient(): ReturnType<typeof createSpClient> {
-    if (!this.client) {
-      const { baseUrl } = ensureConfig();
-      this.client = createSpClient(this.acquireToken, baseUrl);
+    if (!options.spFetch) {
+      throw new Error(
+        '[SharePointDailyRecordRepository] spFetch is required. Use factory to create instances.',
+      );
     }
-    return this.client;
+    this.spFetch = options.spFetch;
+    this.listTitle = options.listTitle ?? getListTitle();
   }
 
   /**
@@ -168,8 +140,7 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
       userCount: input.userRows.length,
     });
     try {
-      const { baseUrl } = ensureConfig();
-      const listPath = buildListPath(baseUrl);
+      const listPath = buildListPath();
 
       // Check if item exists for this date
       const existingItem = await this.findItemByDate(input.date, params?.signal) as SharePointItem | null;
@@ -187,9 +158,9 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
       };
 
       if (existingItem) {
-        // Update existing item
+        // Update existing item — throwOnError: true
         const updateUrl = `${listPath}/items(${existingItem.Id})`;
-        const response = await fetchSp(updateUrl, {
+        await this.spFetch(updateUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json;odata=verbose',
@@ -199,15 +170,10 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
           },
           body: JSON.stringify(itemData),
         });
-
-        if (!response.ok) {
-          const message = await readSpErrorMessage(response);
-          throw new Error(`Failed to update daily record: ${message}`);
-        }
       } else {
-        // Create new item
+        // Create new item — throwOnError: true
         const createUrl = `${listPath}/items`;
-        const response = await fetchSp(createUrl, {
+        await this.spFetch(createUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json;odata=verbose',
@@ -215,11 +181,6 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
           },
           body: JSON.stringify(itemData),
         });
-
-        if (!response.ok) {
-          const message = await readSpErrorMessage(response);
-          throw new Error(`Failed to create daily record: ${message}`);
-        }
       }
       finishSpan({ meta: { status: 'ok', mode } });
     } catch (error) {
@@ -267,8 +228,7 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
       range: params.range,
     });
     try {
-      const { baseUrl } = ensureConfig();
-      const listPath = buildListPath(baseUrl);
+      const listPath = buildListPath();
 
       const { startDate, endDate } = params.range;
       const filter = buildDateRangeFilter(startDate, endDate);
@@ -290,17 +250,8 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
       ].join(','));
 
       const url = `${listPath}/items?${queryParams.toString()}`;
-      const response = await fetchSp(url);
-
-      if (!response.ok) {
-        const message = await readSpErrorMessage(response);
-        console.error('[SharePointDailyRecordRepository] List query failed', {
-          status: response.status,
-          url,
-          message,
-        });
-        throw new Error(`Failed to list daily records: ${message}`);
-      }
+      // throwOnError: true — エラーは自動 throw
+      const response = await this.spFetch(url);
 
       const payload = (await response.json()) as SharePointResponse<unknown>;
       const items = payload.value ?? [];
@@ -344,15 +295,14 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
       operation: 'approve',
     });
     try {
-      const { baseUrl } = ensureConfig();
-      const listPath = buildListPath(baseUrl);
+      const listPath = buildListPath();
 
       const existingItem = await this.findItemByDate(input.date, params?.signal) as SharePointItem | null;
       if (!existingItem) {
         throw new Error(`Record not found for date: ${input.date}`);
       }
 
-      // PATCH approval metadata
+      // PATCH approval metadata — throwOnError: true
       const updateUrl = `${listPath}/items(${existingItem.Id})`;
       const approvalData = {
         ApprovalStatus: 'approved',
@@ -360,7 +310,7 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
         ApprovedAt: new Date().toISOString(),
       };
 
-      const response = await fetchSp(updateUrl, {
+      await this.spFetch(updateUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json;odata=verbose',
@@ -370,11 +320,6 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
         },
         body: JSON.stringify(approvalData),
       });
-
-      if (!response.ok) {
-        const message = await readSpErrorMessage(response);
-        throw new Error(`Failed to approve daily record: ${message}`);
-      }
 
       // Re-fetch to get the updated record
       const updated = await this.load(input.date);
@@ -408,8 +353,7 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
     }
 
     try {
-      const { baseUrl } = ensureConfig();
-      const listPath = buildListPath(baseUrl);
+      const listPath = buildListPath();
 
       const queryParams = new URLSearchParams();
       queryParams.set('$filter', `Title eq '${date}'`);
@@ -427,22 +371,20 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
       ].join(','));
 
       const url = `${listPath}/items?${queryParams.toString()}`;
-      const response = await fetchSp(url);
 
-      if (!response.ok) {
-        const message = await readSpErrorMessage(response);
+      try {
+        const response = await this.spFetch(url);
+        const payload = (await response.json()) as SharePointResponse<unknown>;
+        const items = payload.value ?? [];
+        return items.length > 0 ? (items[0] as SharePointItem) : null;
+      } catch (fetchError) {
+        // findItemByDate はルックアップ用途 — HTTP エラーは null に変換
         console.warn('[SharePointDailyRecordRepository] Find by date failed', {
           date,
-          status: response.status,
-          message,
+          error: toSafeError(fetchError).message,
         });
         return null;
       }
-
-      const payload = (await response.json()) as SharePointResponse<unknown>;
-      const items = payload.value ?? [];
-
-      return items.length > 0 ? (items[0] as SharePointItem) : null;
     } catch (error) {
       console.warn('[SharePointDailyRecordRepository] Find by date error', {
         date,
@@ -457,17 +399,12 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
    */
   async checkListExists(): Promise<boolean> {
     try {
-      const client = this.getClient();
-      const metadata = await client.tryGetListMetadata(this.listTitle);
-      return Boolean(metadata);
+      const listPath = buildListPath();
+      await this.spFetch(`${listPath}?$select=Id`);
+      return true;
     } catch (error) {
       console.error('[SharePointDailyRecordRepository] List existence check failed:', error);
       return false;
     }
   }
 }
-
-/**
- * Singleton instance with default configuration
- */
-export const sharePointDailyRecordRepository = new SharePointDailyRecordRepository();

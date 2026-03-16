@@ -7,6 +7,8 @@ import {
 } from '@/lib/env';
 import { isE2E } from '@/env';
 import { hasSpfxContext } from '@/lib/runtime';
+// contract:allow-sp-direct — factory creates spClient for DI
+import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { useMemo } from 'react';
 
 /** Debug-only window extension for tracking repository changes in E2E */
@@ -84,8 +86,13 @@ const createRepository = (
     );
   }
 
+  // contract:allow-sp-direct — factory creates spClient for DI
+  const { baseUrl } = ensureConfig();
+  const { spFetch } = createSpClient(acquireToken, baseUrl);
+
   return new SharePointScheduleRepository({
     acquireToken,
+    spFetch,
     listTitle: options?.listTitle,
     currentOwnerUserId: options?.currentOwnerUserId,
   });
