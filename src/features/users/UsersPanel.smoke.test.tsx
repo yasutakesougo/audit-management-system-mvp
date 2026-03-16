@@ -1,20 +1,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import type { MockInstance } from 'vitest';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { usersStoreMock } from './testUtils/usersStoreMock';
 import UsersPanel from './UsersPanel/index';
 
 describe('UsersPanel smoke test', () => {
-  let confirmSpy: MockInstance;
-
   beforeEach(() => {
     usersStoreMock.reset();
-    confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-  });
-
-  afterEach(() => {
-    confirmSpy.mockRestore();
   });
 
   it('allows creating and deleting a user with list refresh', async () => {
@@ -42,6 +34,10 @@ describe('UsersPanel smoke test', () => {
     const deleteButton = testUserRow?.querySelector('button[title="削除"]');
     expect(deleteButton).toBeInTheDocument();
     fireEvent.click(deleteButton!);
+
+    // MUI Dialog の確認ボタンをクリック
+    const confirmButton = await screen.findByRole('button', { name: '削除する' });
+    fireEvent.click(confirmButton);
 
     await waitFor(() => {
       expect(screen.queryByText('テスト太郎')).toBeNull();
