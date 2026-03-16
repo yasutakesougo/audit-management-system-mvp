@@ -21,6 +21,7 @@
  */
 
 import { safeRate, daysBetween, median } from './proposalMetrics';
+import { STALLED_DETECTION } from './metricsThresholds';
 
 // ─── 入力型 ──────────────────────────────────────────────
 
@@ -107,7 +108,7 @@ export interface PdcaCycleMetricsResult {
 // ─── 定数 ────────────────────────────────────────────────
 
 /** 提案採用から動きがないと stalled と見なす日数 */
-const STALLED_THRESHOLD_DAYS = 14;
+const STALLED_THRESHOLD_DAYS = STALLED_DETECTION.STALLED_THRESHOLD_DAYS;
 
 // ─── 個別サイクル診断 ────────────────────────────────────
 

@@ -5,6 +5,7 @@ import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined';
 import React from 'react';
 
 import type { KnowledgeMetricsResult } from '@/domain/metrics/knowledgeMetrics';
+import { KNOWLEDGE_GROWTH } from '@/domain/metrics/metricsThresholds';
 
 import OpsMetricCard from './OpsMetricCard';
 import type { MetricStatus } from './OpsMetricCard';
@@ -14,7 +15,7 @@ export interface KnowledgeGrowthCardProps {
 }
 
 function deriveStatus(result: KnowledgeMetricsResult): MetricStatus {
-  if (result.provenPatternCount >= 3) return 'good';
+  if (result.provenPatternCount >= KNOWLEDGE_GROWTH.GOOD_PROVEN_PATTERNS) return 'good';
   if (result.totalDecisions > 0) return 'warning';
   return 'critical';
 }

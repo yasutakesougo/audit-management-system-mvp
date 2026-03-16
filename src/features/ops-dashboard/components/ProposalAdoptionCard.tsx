@@ -5,6 +5,7 @@ import ThumbUpAltOutlinedIcon from '@mui/icons-material/ThumbUpAltOutlined';
 import React from 'react';
 
 import type { ProposalMetricsResult } from '@/domain/metrics/proposalMetrics';
+import { PROPOSAL_ADOPTION } from '@/domain/metrics/metricsThresholds';
 
 import OpsMetricCard from './OpsMetricCard';
 import type { MetricStatus } from './OpsMetricCard';
@@ -14,8 +15,8 @@ export interface ProposalAdoptionCardProps {
 }
 
 function deriveStatus(rate: number): MetricStatus {
-  if (rate >= 50) return 'good';
-  if (rate >= 30) return 'warning';
+  if (rate >= PROPOSAL_ADOPTION.GOOD_THRESHOLD) return 'good';
+  if (rate >= PROPOSAL_ADOPTION.WARNING_THRESHOLD) return 'warning';
   return 'critical';
 }
 

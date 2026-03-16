@@ -16,6 +16,7 @@
 import type { ProposalSource } from '@/features/handoff/analysis/proposalBundle';
 
 import { safeRate } from './proposalMetrics';
+import { KNOWLEDGE_GROWTH } from './metricsThresholds';
 
 // ─── 入力型 ──────────────────────────────────────────────
 
@@ -195,9 +196,9 @@ function computePatternReuse(decisions: DecisionRecord[]): {
       acceptanceRate: safeRate(counts.accepted, counts.total),
     }));
 
-  // 成功パターン: 採用率 ≥ 60% かつ出現 ≥ 3
+  // 成功パターン: 採用率 ≥ PROVEN_ACCEPTANCE_RATE かつ出現 ≥ PROVEN_MIN_OCCURRENCES
   const provenPatternCount = allPatterns.filter(
-    p => p.acceptanceRate >= 60 && p.totalOccurrences >= 3,
+    p => p.acceptanceRate >= KNOWLEDGE_GROWTH.PROVEN_ACCEPTANCE_RATE && p.totalOccurrences >= KNOWLEDGE_GROWTH.PROVEN_MIN_OCCURRENCES,
   ).length;
 
   // 上位 10 パターン（採用回数降順）

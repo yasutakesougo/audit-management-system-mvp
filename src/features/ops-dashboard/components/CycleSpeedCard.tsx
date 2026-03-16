@@ -5,6 +5,7 @@ import SpeedIcon from '@mui/icons-material/Speed';
 import React from 'react';
 
 import type { PdcaCycleMetricsResult } from '@/domain/metrics/pdcaCycleMetrics';
+import { CYCLE_SPEED } from '@/domain/metrics/metricsThresholds';
 
 import OpsMetricCard from './OpsMetricCard';
 import type { MetricStatus } from './OpsMetricCard';
@@ -15,8 +16,8 @@ export interface CycleSpeedCardProps {
 
 function deriveStatus(medianDays: number): MetricStatus {
   if (medianDays === 0) return 'good'; // データなし
-  if (medianDays <= 60) return 'good';
-  if (medianDays <= 90) return 'warning';
+  if (medianDays <= CYCLE_SPEED.GOOD_MAX_DAYS) return 'good';
+  if (medianDays <= CYCLE_SPEED.WARNING_MAX_DAYS) return 'warning';
   return 'critical';
 }
 
