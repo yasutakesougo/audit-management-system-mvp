@@ -2,11 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { UserSelectMode } from '@/sharepoint/fields';
 import type {
-    UserRepository,
     UserRepositoryListParams,
     UserRepositoryUpdateDto,
 } from './domain/UserRepository';
-import { getUserRepository } from './repositoryFactory';
+import { useUserRepository } from './repositoryFactory';
 import type { IUserMaster, IUserMasterCreateDto } from './types';
 
 export type AsyncStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -39,10 +38,6 @@ const coerceNumericId = (value?: number | string): number | undefined => {
   }
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : undefined;
-};
-
-const useUserRepository = (): UserRepository => {
-  return useMemo(() => getUserRepository(), []);
 };
 
 export function useUsers(params?: UsersHookParams): UsersHookReturn {
