@@ -14,6 +14,13 @@ import { useUsersDemoSeed } from '../../useUsersDemoSeed';
 import { buildErrorMessage } from '../utils';
 import type { UsersTab } from './useUsersPanelTabs';
 
+/** 削除確認ダイアログの状態 */
+export type DeleteConfirmState = {
+  open: boolean;
+  targetId: number | string | null;
+  targetName: string | null;
+};
+
 export type UseUsersPanelCrudReturn = {
   data: IUserMaster[];
   status: string;
@@ -28,9 +35,13 @@ export type UseUsersPanelCrudReturn = {
   setShowCreateForm: (v: boolean) => void;
   // setBusyId（Export からも使える）
   setBusyId: (id: number | null) => void;
+  // Delete confirmation
+  deleteConfirm: DeleteConfirmState;
   // Handlers
   handleCreate: (payload: IUserMasterCreateDto) => Promise<void>;
-  handleDelete: (id: number | string) => Promise<void>;
+  handleDeleteRequest: (id: number | string, name?: string) => void;
+  handleDeleteConfirm: () => Promise<void>;
+  handleDeleteCancel: () => void;
   handleRefresh: () => Promise<void>;
   handleEditClick: (user: IUserMaster) => void;
   handleCloseForm: () => void;
@@ -55,6 +66,11 @@ export function useUsersPanelCrud(
   const [showEditForm, setShowEditForm] = useState(false);
   const [selectedUser, setSelectedUser] = useState<IUserMaster | null>(null);
   const [integrityErrors, setIntegrityErrors] = useState<string[]>([]);
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState>({
+    open: false,
+    targetId: null,
+    targetName: null,
+  });
 
   // ---- Initial fetch ----
   useEffect(() => {
@@ -86,18 +102,32 @@ export function useUsersPanelCrud(
     [create, setActiveTabRef],
   );
 
-  const handleDelete = useCallback(
-    async (id: number | string) => {
-      if (!window.confirm('この利用者を削除しますか？')) return;
-      setBusyId(Number(id));
-      try {
-        await remove(id);
-      } finally {
-        setBusyId(null);
-      }
+  /** 削除リクエスト: 確認ダイアログを開く */
+  const handleDeleteRequest = useCallback(
+    (id: number | string, name?: string) => {
+      setDeleteConfirm({ open: true, targetId: id, targetName: name ?? null });
     },
-    [remove],
+    [],
   );
+
+  /** 削除確定: 確認ダイアログの「削除」ボタン */
+  const handleDeleteConfirm = useCallback(async () => {
+    const { targetId } = deleteConfirm;
+    if (targetId == null) return;
+
+    setDeleteConfirm({ open: false, targetId: null, targetName: null });
+    setBusyId(Number(targetId));
+    try {
+      await remove(targetId);
+    } finally {
+      setBusyId(null);
+    }
+  }, [deleteConfirm, remove]);
+
+  /** 削除キャンセル */
+  const handleDeleteCancel = useCallback(() => {
+    setDeleteConfirm({ open: false, targetId: null, targetName: null });
+  }, []);
 
   const handleRefresh = useCallback(async () => {
     if (busyId !== null) return;
@@ -158,8 +188,11 @@ export function useUsersPanelCrud(
     selectedUser,
     setShowCreateForm,
     setBusyId,
+    deleteConfirm,
     handleCreate,
-    handleDelete,
+    handleDeleteRequest,
+    handleDeleteConfirm,
+    handleDeleteCancel,
     handleRefresh,
     handleEditClick,
     handleCloseForm,

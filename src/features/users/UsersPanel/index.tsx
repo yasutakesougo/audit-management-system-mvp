@@ -13,6 +13,7 @@ import { useAdminOverride } from '@/auth/useAdminOverride';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { TESTIDS } from '@/testids';
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import LockOpenRoundedIcon from '@mui/icons-material/LockOpenRounded';
 import LockRoundedIcon from '@mui/icons-material/LockRounded';
@@ -55,7 +56,10 @@ const UsersPanel = () => {
     selectedUser,
     setShowCreateForm,
     handleCreate,
-    handleDelete,
+    deleteConfirm,
+    handleDeleteRequest,
+    handleDeleteConfirm,
+    handleDeleteCancel,
     handleRefresh,
     handleDetailSelect,
     handleDetailClose,
@@ -169,7 +173,10 @@ const UsersPanel = () => {
                 detailSectionRef={detailSectionRef}
                 errorMessage={errorMessage}
                 onRefresh={handleRefresh}
-                onDelete={canEdit ? handleDelete : undefined}
+                onDelete={canEdit ? (id: number | string) => {
+                  const user = data.find((u) => u.Id === Number(id));
+                  handleDeleteRequest(id, user?.FullName ?? undefined);
+                } : undefined}
                 onEdit={canEdit ? handleEditClick : undefined}
                 onSelectDetail={handleDetailSelect}
                 onCloseDetail={handleDetailClose}
@@ -302,6 +309,42 @@ const UsersPanel = () => {
             disabled={!pinValue.trim()}
           >
             承認
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 削除確認ダイアログ */}
+      <Dialog
+        open={deleteConfirm.open}
+        onClose={handleDeleteCancel}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ pb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <DeleteRoundedIcon color="error" />
+          <Typography variant="h6" component="span">利用者の削除</Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            {deleteConfirm.targetName
+              ? `「${deleteConfirm.targetName}」を削除しますか？`
+              : 'この利用者を削除しますか？'}
+          </Typography>
+          <Typography variant="caption" color="text.disabled" sx={{ mt: 1, display: 'block' }}>
+            削除した利用者はSharePointのごみ箱に移動されます。
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleDeleteCancel} color="inherit">
+            キャンセル
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            variant="contained"
+            color="error"
+            startIcon={<DeleteRoundedIcon />}
+          >
+            削除
           </Button>
         </DialogActions>
       </Dialog>

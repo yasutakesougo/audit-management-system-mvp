@@ -11,7 +11,7 @@
  */
 import { useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
-import { useUsersPanelCrud } from './hooks/useUsersPanelCrud';
+import { useUsersPanelCrud, type DeleteConfirmState } from './hooks/useUsersPanelCrud';
 import { useUsersPanelExport } from './hooks/useUsersPanelExport';
 import { useUsersPanelTabs, type UsersTab } from './hooks/useUsersPanelTabs';
 
@@ -42,9 +42,13 @@ export type UseUsersPanelReturn = {
   showEditForm: boolean;
   selectedUser: IUserMaster | null;
   setShowCreateForm: (v: boolean) => void;
+  // Delete confirmation
+  deleteConfirm: DeleteConfirmState;
   // Handlers
   handleCreate: (payload: IUserMasterCreateDto) => Promise<void>;
-  handleDelete: (id: number | string) => Promise<void>;
+  handleDeleteRequest: (id: number | string, name?: string) => void;
+  handleDeleteConfirm: () => Promise<void>;
+  handleDeleteCancel: () => void;
   handleRefresh: () => Promise<void>;
   handleDetailSelect: (event: ReactMouseEvent<HTMLButtonElement>, user: IUserMaster) => void;
   handleDetailClose: () => void;
@@ -104,9 +108,13 @@ export function useUsersPanel(): UseUsersPanelReturn {
     showEditForm: crud.showEditForm,
     selectedUser: crud.selectedUser,
     setShowCreateForm: crud.setShowCreateForm,
+    // Delete confirmation (from CRUD)
+    deleteConfirm: crud.deleteConfirm,
     // CRUD handlers
     handleCreate: crud.handleCreate,
-    handleDelete: crud.handleDelete,
+    handleDeleteRequest: crud.handleDeleteRequest,
+    handleDeleteConfirm: crud.handleDeleteConfirm,
+    handleDeleteCancel: crud.handleDeleteCancel,
     handleRefresh: crud.handleRefresh,
     // Detail handlers (from Tabs)
     handleDetailSelect: tabs.handleDetailSelect,
