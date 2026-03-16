@@ -104,6 +104,11 @@ export {
     buildHandoffSelectFields, FIELD_MAP_HANDOFF
 } from './handoffFields';
 
+// ── Holiday_Master (監査 P0-5 追加) ──
+export {
+    HOLIDAY_MASTER_FIELDS, HOLIDAY_MASTER_LIST_TITLE, HOLIDAY_MASTER_SELECT_FIELDS
+} from './holidayFields';
+
 // ── BillingOrders ──
 export {
     BILLING_ORDERS_LIST_ID,
@@ -119,6 +124,21 @@ export {
 export {
     buildTransportLogTitle, TRANSPORT_LOG_FIELDS, TRANSPORT_LOG_LIST_TITLE, TRANSPORT_LOG_SELECT_FIELDS
 } from './transportFields';
+
+// ── PdfOutput_Log (監査 P1-2 追加) ──
+export {
+    buildPdfOutputLogTitle, PDF_OUTPUT_LOG_FIELDS, PDF_OUTPUT_LOG_LIST_TITLE, PDF_OUTPUT_LOG_SELECT_FIELDS
+} from './pdfOutputLogFields';
+
+// ── NurseObservations (監査 P1-3 追加) ──
+export {
+    NURSE_OBSERVATIONS_FIELDS, NURSE_OBSERVATIONS_LIST_TITLE, NURSE_OBSERVATIONS_SELECT_FIELDS
+} from './nurseObservationFields';
+
+// ── Daily_Attendance (監査 P1-3 追加) ──
+export {
+    DAILY_ATTENDANCE_FIELDS, DAILY_ATTENDANCE_LIST_TITLE, DAILY_ATTENDANCE_SELECT_FIELDS
+} from './dailyAttendanceFields';
 
 // ──────────────────────────────────────────────────────────────
 // 統合 FIELD_MAP（後方互換用）

@@ -24,6 +24,15 @@ export enum ListKeys {
   PlanGoals = 'PlanGoals',
   SupportPlans = 'SupportPlans',
   TransportLog = 'Transport_Log',
+  // ── ISP 三層モデル (監査 P0-2 追加) ──
+  IspMaster = 'ISP_Master',
+  PlanningSheetMaster = 'SupportPlanningSheet_Master',
+  ProcedureRecordDaily = 'SupportProcedureRecord_Daily',
+  HolidayMaster = 'Holiday_Master',
+  // ── P1-2/P1-3 追加 ──
+  PdfOutputLog = 'PdfOutput_Log',
+  NurseObservations = 'NurseObservations',
+  DailyAttendance = 'Daily_Attendance',
 }
 
 export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
@@ -45,4 +54,13 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.PlanGoals]: { title: 'PlanGoals' },
   [ListKeys.SupportPlans]: { title: 'SupportPlans' },
   [ListKeys.TransportLog]: { title: 'Transport_Log' },
+  // ── ISP 三層モデル (監査 P0-2 追加) ──
+  [ListKeys.IspMaster]: { title: 'ISP_Master' },
+  [ListKeys.PlanningSheetMaster]: { title: 'SupportPlanningSheet_Master' },
+  [ListKeys.ProcedureRecordDaily]: { title: 'SupportProcedureRecord_Daily' },
+  [ListKeys.HolidayMaster]: { title: 'Holiday_Master' },
+  // ── P1-2/P1-3 追加 ──
+  [ListKeys.PdfOutputLog]: { title: 'PdfOutput_Log' },
+  [ListKeys.NurseObservations]: { title: 'NurseObservations' },
+  [ListKeys.DailyAttendance]: { title: 'Daily_Attendance' },
 };
