@@ -104,19 +104,86 @@ Phase 3-A で `fetchSp.ts` の内部実装を `spFetch` に委譲しました。
 
 ---
 
-## 既存 `fetchSp` 利用箇所 (7箇所 — Phase 3-C で段階移行)
+## Phase 3-C 移行テンプレート
 
-| ファイル | 用途 |
-|---------|------|
-| `features/daily/infra/SharePointDailyRecordRepository.ts` | 日次記録 CRUD |
-| `features/monitoring/data/SharePointIspDecisionRepository.ts` | ISP 判断レコード |
-| `features/monitoring/data/SharePointSupportPlanningSheetRepository.ts` | 計画書シート |
-| `features/schedules/data/scheduleSpHelpers.ts` | スケジュール取得ヘルパー |
-| `features/schedules/infra/SharePointScheduleRepository.ts` | スケジュール Repository |
-| `features/support-plan-guide/infra/SharePointSupportPlanDraftRepository.ts` | 支援計画ドラフト |
-| `pages/admin/DataIntegrityPage.tsx` | データ整合性チェック |
+> **参照PR**: #998 (DataIntegrityPage 移行)
 
-各箇所には `eslint-disable-next-line no-restricted-imports -- Phase 3-C: spClient 移行予定` が付与済み。
+`fetchSp` → `spClient` 移行は以下の3ステップで行います。
+
+### Step 1: import を差し替える
+
+```typescript
+// ❌ Before
+// eslint-disable-next-line no-restricted-imports -- Phase 3-C: spClient 移行予定
+import { fetchSp } from '@/lib/fetchSp';
+
+// ✅ After (React コンポーネント内)
+import { useSP } from '@/lib/spClient';
+const { spFetch } = useSP();
+
+// ✅ After (非 React / Repository 層)
+// acquireToken を引数またはコンストラクタでDI
+import { createSpClient } from '@/lib/spClient';
+const client = createSpClient(acquireToken, baseUrl);
+```
+
+### Step 2: パスを相対化する
+
+```typescript
+// ❌ Before: 絶対 URL
+const res = await fetchSp(`${baseUrl}/_api/web/lists/GetByTitle('Users')/items`);
+
+// ✅ After: 相対パス（baseUrl は spFetch 内部で解決）
+const res = await spFetch(`/_api/web/lists/GetByTitle('Users')/items`);
+```
+
+**注意**: `odata.nextLink` は絶対 URL で返るため、パス抽出が必要:
+
+```typescript
+const nextLink = payload['odata.nextLink'] ?? null;
+if (nextLink) {
+  const idx = nextLink.indexOf('/_api/');
+  path = idx >= 0 ? nextLink.slice(idx) : nextLink;
+}
+```
+
+### Step 3: エラー契約を throwOnError 前提に合わせる
+
+```typescript
+// ❌ Before: 手動チェック
+const response = await fetchSp(url);
+if (!response.ok) {
+  auditLog.warn('context', 'action', { status: response.status });
+  break;
+}
+
+// ✅ After: spFetch は throwOnError: true がデフォルト
+// → HTTP エラーは SpHttpError として自動 throw される
+// → 上位の try-catch で補足すればよい
+const response = await spFetch(path);
+```
+
+### 完了チェック
+
+- [ ] `fetchSp` import を除去
+- [ ] `eslint-disable-next-line no-restricted-imports` コメントを除去
+- [ ] パスを相対化 (`baseUrl` 直指定を排除)
+- [ ] `response.ok` 手動チェックを削除 or `throwOnError` 前提に変更
+- [ ] TypeScript / ESLint / テスト全通過
+
+---
+
+## 既存 `fetchSp` 利用箇所 (Phase 3-C 移行状況)
+
+| ファイル | 用途 | Issue | 状態 |
+|---------|------|-------|------|
+| `pages/admin/DataIntegrityPage.tsx` | データ整合性チェック | #993 | ✅ #998 |
+| `features/monitoring/data/SharePointIspDecisionRepository.ts` | ISP 判断レコード | #994 | 🔜 |
+| `features/monitoring/data/SharePointSupportPlanningSheetRepository.ts` | 計画書シート | #994 | 🔜 |
+| `features/support-plan-guide/infra/SharePointSupportPlanDraftRepository.ts` | 支援計画ドラフト | #995 | 🔜 |
+| `features/daily/infra/SharePointDailyRecordRepository.ts` | 日次記録 CRUD | #996 | 🔜 |
+| `features/schedules/data/scheduleSpHelpers.ts` | スケジュール取得 | #997 | 🔜 |
+| `features/schedules/infra/SharePointScheduleRepository.ts` | スケジュール Repository | #997 | 🔜 |
 
 ---
 
@@ -128,4 +195,4 @@ Phase 3-A で `fetchSp.ts` の内部実装を `spFetch` に委譲しました。
 | 2 | `graphFetch` 設計 + Graph 4箇所移行 | ✅ 完了 |
 | 3-A | `fetchSp` を `spFetch` 互換レイヤーに変換 | ✅ 完了 |
 | 3-B | `fetchSp` import 禁止 (ESLint) + 全既存箇所に disable 付与 | ✅ 完了 |
-| 3-C | 既存7箇所を `spClient` に段階移行 → `fetchSp.ts` 削除 | 🔜 次回 |
+| 3-C | 既存7箇所を `spClient` に段階移行 → `fetchSp.ts` 削除 | 🔄 1/7 完了 |
