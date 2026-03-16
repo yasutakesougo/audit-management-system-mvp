@@ -408,6 +408,61 @@ class HandoffApi {
     }
   }
 
+  /**
+   * 分析用: 指定日数分の申し送りを一括取得する。
+   *
+   * @param periodDays 取得する日数（デフォルト: 30）
+   * @returns HandoffRecord[] (createdAt 降順)
+   */
+  async getHandoffRecordsForAnalysis(periodDays: number = 30): Promise<HandoffRecord[]> {
+    const cacheKey = `handoff:analysis:${periodDays}d`;
+
+    const cached = this.cache.get<HandoffRecord[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    return this.callWithRetry(async () => {
+      const now = new Date();
+      const cutoff = new Date(now);
+      cutoff.setDate(cutoff.getDate() - periodDays);
+      cutoff.setHours(0, 0, 0, 0);
+
+      const filterQuery = `CreatedAt ge '${cutoff.toISOString()}'`;
+
+      const existingFields = await this.sp.getListFieldInternalNames(handoffConfig.listTitle);
+      const selectArray = buildHandoffSelectFields(Array.from(existingFields));
+      const selectFields = selectArray.join(',');
+      const query = `?$select=${selectFields}&$filter=${filterQuery}&$orderby=CreatedAt desc&$top=5000`;
+
+      const response = await this.sp.spFetch(`lists/getbytitle('${handoffConfig.listTitle}')/items${query}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch handoffs for analysis: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const items: SpHandoffItem[] = data.value || [];
+      const records = items.map(fromSpHandoffItem);
+
+      // CarryOverDateStore からのローカル補完
+      const mergedRecords = records.map(record => {
+        if (!record.carryOverDate) {
+          const localDate = CarryOverDateStore.get(record.id);
+          if (localDate) {
+            return { ...record, carryOverDate: localDate };
+          }
+        }
+        return record;
+      });
+
+      // キャッシュ保存（分析用はやや長めのTTL）
+      const etag = response.headers?.get('etag') ?? undefined;
+      this.cache.set(cacheKey, mergedRecords, etag);
+
+      return mergedRecords;
+    });
+  }
+
   /** 関連キャッシュの無効化 */
   private invalidateRelatedCaches(): void {
     this.cache.invalidateByPrefix('handoff:');
