@@ -95,6 +95,24 @@ graph LR
 
 > 📖 詳細: **[1ページ概要](docs/architecture/support-pdca-engine-overview.md)** ｜ [完全アーキテクチャ図](docs/architecture/system-architecture-complete.md) ｜ [業務モデル・運用設計](docs/operations/operating-model.md)
 
+---
+
+#### 📜 Product Principles
+
+Support Operations OS is built on **10 design principles** that ensure human-in-the-loop decision support:
+
+- 🎯 **Situation-first UI** — Field workflows are the main stage, not analytics
+- ✏️ **Minimal input burden** — Never increase recording effort for analysis
+- 💡 **Proposals as candidates** — AI suggests, never commands
+- 📊 **Evidence-based** — Every proposal carries provenance: period, records, comparison, rules, sources
+- 🧑‍⚕️ **Human decides** — AI proposes → Human approves → System records → History preserved
+
+> 📖 詳細: **[設計原則 10 箇条](docs/product/principles.md)** ｜ [UI 設計規約](docs/product/ui-conventions.md) ｜ [プロダクトロードマップ](docs/product/roadmap.md) ｜ **[OS Architecture](docs/product/support-operations-os-architecture.md)** ｜ [ISP-Driven Model](docs/model/isp-driven-operations-model.md) ｜ [ADR Index](docs/adr/README.md)
+>
+> 🧑‍💻 開発者: [Developer Onboarding](docs/dev/onboarding.md)
+
+---
+
 <details>
 <summary>📐 プレゼン用アーキテクチャ図（クリックで展開）</summary>
 
