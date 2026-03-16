@@ -97,15 +97,14 @@ export class RestApiUserRepository implements UserRepository {
     try {
       items = await this.fetchItems(path, selectMode);
     } catch (e) {
-      // Select field fallback: core fields only
-      if (this.isSelectError(e) && selectMode !== 'core') {
-        const coreFields = [...resolveUserSelectFields('core')];
-        const coreParts: string[] = [];
-        if (coreFields.length) coreParts.push(`$select=${coreFields.join(',')}`);
-        if (top > 0) coreParts.push(`$top=${top}`);
-        if (filterParts.length) coreParts.push(`$filter=${filterParts.join(' and ')}`);
-        const corePath = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items${coreParts.length ? '?' + coreParts.join('&') : ''}`;
-        items = await this.fetchItems(corePath, 'core');
+      if (this.isSelectError(e)) {
+        // Fallback: $select を外して全列取得（存在しないフィールドを含んでいても安全）
+        console.warn('[RestApiUserRepository] $select error, retrying without $select', e);
+        const fallbackParts: string[] = [];
+        if (top > 0) fallbackParts.push(`$top=${top}`);
+        if (filterParts.length) fallbackParts.push(`$filter=${filterParts.join(' and ')}`);
+        const fallbackPath = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items${fallbackParts.length ? '?' + fallbackParts.join('&') : ''}`;
+        items = await this.fetchItems(fallbackPath, selectMode);
       } else {
         throw e;
       }
@@ -142,10 +141,21 @@ export class RestApiUserRepository implements UserRepository {
     const path = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items(${numericId})${queryParts.length ? '?' + queryParts.join('&') : ''}`;
 
     try {
-      const res = await this.spFetch(path);
+      let res = await this.spFetch(path);
       if (!res.ok) {
         if (res.status === 404) return null;
-        throw new Error(`HTTP ${res.status}`);
+        // $select フィールド不在の 400 → $select なしでリトライ
+        if (this.isSelectError(new Error(`HTTP ${res.status}`))) {
+          console.warn('[RestApiUserRepository] $select error on getById, retrying without $select');
+          const fallbackPath = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items(${numericId})`;
+          res = await this.spFetch(fallbackPath);
+          if (!res.ok) {
+            if (res.status === 404) return null;
+            throw new Error(`HTTP ${res.status}`);
+          }
+        } else {
+          throw new Error(`HTTP ${res.status}`);
+        }
       }
       const raw = (await res.json()) as SpItemResponse;
       const row = raw.d ?? raw;
