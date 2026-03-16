@@ -173,7 +173,7 @@ src/components/ui/
 
 ---
 
-## 導入実績（全9箇所 → 0 window.confirm）
+## 導入実績（全10箇所 → 0 window.confirm）
 
 | ファイル | 用途 | severity |
 |---------|------|----------|
@@ -186,3 +186,28 @@ src/components/ui/
 | `useDraftFieldHandlers.ts` | リセット確認 | `warning` |
 | `SpDevPanel.tsx` | POST 実行確認 | `info` |
 | `SupportPlanGuidePage.tsx` | リセット確認 | `warning` |
+| `AbcRecordPage.tsx` | ABC 記録削除 | `error` |
+
+---
+
+## ESLint による自動防止
+
+`.eslintrc.cjs` に以下のルールを設定済み。新規の `window.confirm` / `confirm()` は CI でブロックされる。
+
+```js
+// グローバル confirm() の禁止
+'no-restricted-globals': ['error', {
+  name: 'confirm',
+  message: 'window.confirm は禁止です。useConfirmDialog + ConfirmDialog を使用してください。',
+}],
+
+// window.confirm() の禁止
+'no-restricted-properties': ['error', {
+  object: 'window',
+  property: 'confirm',
+  message: 'window.confirm は禁止です。useConfirmDialog + ConfirmDialog を使用してください。',
+}],
+```
+
+> **注意**: `no-restricted-properties` を override ブロック内で再宣言する場合は、`window.confirm` のエントリも必ず含めること。ESLint の override は親ルールを**完全に上書き**するため。
+
