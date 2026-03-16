@@ -1,21 +1,25 @@
 /**
  * @fileoverview OpsMetricsDashboard — 運用指標ダッシュボード
  * @description
- * proposalMetrics + pdcaCycleMetrics + knowledgeMetrics を 5 枚のカードで表示する。
- * デモモードでは内蔵のサンプルデータを使って即座に表示を確認できる。
+ * 5 枚の KPI カードで運用状態を可視化する。
+ *
+ * 2 つのモードで動作:
+ * - demo=true: 内蔵サンプルデータ
+ * - demo=false: useOpsMetrics() の出力を直接渡す
  */
 import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
 import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React, { useMemo } from 'react';
 
 import { computeProposalMetrics } from '@/domain/metrics/proposalMetrics';
-import type { ProposalDecisionRecord, MetricsPeriod } from '@/domain/metrics/proposalMetrics';
+import type { ProposalMetricsResult, ProposalDecisionRecord, MetricsPeriod } from '@/domain/metrics/proposalMetrics';
 import { computePdcaCycleMetrics } from '@/domain/metrics/pdcaCycleMetrics';
-import type { PdcaCycleRecord } from '@/domain/metrics/pdcaCycleMetrics';
+import type { PdcaCycleMetricsResult, PdcaCycleRecord } from '@/domain/metrics/pdcaCycleMetrics';
 import { computeKnowledgeMetrics } from '@/domain/metrics/knowledgeMetrics';
-import type { DecisionRecord, EvidenceLinkRecord, KnowledgePeriod } from '@/domain/metrics/knowledgeMetrics';
+import type { KnowledgeMetricsResult, DecisionRecord, EvidenceLinkRecord, KnowledgePeriod } from '@/domain/metrics/knowledgeMetrics';
 
 import ProposalAdoptionCard from './components/ProposalAdoptionCard';
 import PdcaCycleHealthCard from './components/PdcaCycleHealthCard';
@@ -26,24 +30,28 @@ import KnowledgeGrowthCard from './components/KnowledgeGrowthCard';
 // ─── Props ───────────────────────────────────────────────
 
 export interface OpsMetricsDashboardProps {
-  /** 提案判断記録 */
-  proposalRecords?: ProposalDecisionRecord[];
-  /** 集計期間 */
-  period?: MetricsPeriod;
-  /** PDCA サイクル記録 */
-  cycleRecords?: PdcaCycleRecord[];
-  /** 現在日時 ISO 8601 */
-  today?: string;
-  /** Knowledge: 判断記録 */
-  decisionRecords?: DecisionRecord[];
-  /** Knowledge: Evidence Link */
-  evidenceLinks?: EvidenceLinkRecord[];
-  /** Knowledge: 全支援計画 ID */
-  planningSheetIds?: string[];
-  /** Knowledge: 集計期間 */
-  knowledgePeriod?: KnowledgePeriod;
-  /** デモモード（内蔵サンプルデータを使用） */
+  /** デモモード */
   demo?: boolean;
+
+  // ── 計算済みメトリクス（useOpsMetrics の出力をそのまま渡す）──
+  /** 計算済み Proposal Metrics */
+  proposalMetrics?: ProposalMetricsResult | null;
+  /** 計算済み PDCA Metrics */
+  pdcaMetrics?: PdcaCycleMetricsResult | null;
+  /** 計算済み Knowledge Metrics */
+  knowledgeMetrics?: KnowledgeMetricsResult | null;
+  /** schedule 未設定で除外された利用者数 */
+  excludedUserCount?: number;
+
+  // ── デモモード用の生データ props（後方互換）──
+  proposalRecords?: ProposalDecisionRecord[];
+  period?: MetricsPeriod;
+  cycleRecords?: PdcaCycleRecord[];
+  today?: string;
+  decisionRecords?: DecisionRecord[];
+  evidenceLinks?: EvidenceLinkRecord[];
+  planningSheetIds?: string[];
+  knowledgePeriod?: KnowledgePeriod;
 }
 
 // ─── デモデータ ──────────────────────────────────────────
@@ -97,51 +105,32 @@ const DEMO_EVIDENCE_LINKS: EvidenceLinkRecord[] = [
 ];
 
 const DEMO_SHEET_IDS = ['ps-1', 'ps-2', 'ps-3', 'ps-4', 'ps-5'];
-
 const DEMO_KNOWLEDGE_PERIOD: KnowledgePeriod = { start: '2026-01-01', end: '2026-03-31', months: 3 };
 
 // ─── コンポーネント ──────────────────────────────────────
 
-const OpsMetricsDashboard: React.FC<OpsMetricsDashboardProps> = ({
-  proposalRecords,
-  period,
-  cycleRecords,
-  today,
-  decisionRecords,
-  evidenceLinks,
-  planningSheetIds,
-  knowledgePeriod,
-  demo = false,
-}) => {
-  const effectiveProposals = demo ? DEMO_PROPOSAL_RECORDS : (proposalRecords ?? []);
-  const effectivePeriod = demo ? DEMO_PERIOD : (period ?? { start: '', end: '' });
-  const effectiveCycles = demo ? DEMO_CYCLE_RECORDS : (cycleRecords ?? []);
-  const effectiveToday = demo ? DEMO_TODAY : (today ?? new Date().toISOString());
-  const effectiveDecisions = demo ? DEMO_DECISION_RECORDS : (decisionRecords ?? []);
-  const effectiveLinks = demo ? DEMO_EVIDENCE_LINKS : (evidenceLinks ?? []);
-  const effectiveSheets = demo ? DEMO_SHEET_IDS : (planningSheetIds ?? []);
-  const effectiveKnowledgePeriod = demo ? DEMO_KNOWLEDGE_PERIOD : (knowledgePeriod ?? { start: '', end: '', months: 1 });
+const OpsMetricsDashboard: React.FC<OpsMetricsDashboardProps> = (props) => {
+  const { demo = false } = props;
 
-  const proposalMetrics = useMemo(
-    () => effectiveProposals.length > 0
-      ? computeProposalMetrics(effectiveProposals, effectivePeriod)
-      : null,
-    [effectiveProposals, effectivePeriod],
+  // ── デモモード: 内蔵データから計算 ──
+  const demoProposalMetrics = useMemo(
+    () => demo ? computeProposalMetrics(DEMO_PROPOSAL_RECORDS, DEMO_PERIOD) : null,
+    [demo],
+  );
+  const demoPdcaMetrics = useMemo(
+    () => demo ? computePdcaCycleMetrics(DEMO_CYCLE_RECORDS, DEMO_TODAY) : null,
+    [demo],
+  );
+  const demoKnowledgeMetrics = useMemo(
+    () => demo ? computeKnowledgeMetrics(DEMO_DECISION_RECORDS, DEMO_EVIDENCE_LINKS, DEMO_SHEET_IDS, DEMO_KNOWLEDGE_PERIOD) : null,
+    [demo],
   );
 
-  const pdcaMetrics = useMemo(
-    () => effectiveCycles.length > 0
-      ? computePdcaCycleMetrics(effectiveCycles, effectiveToday)
-      : null,
-    [effectiveCycles, effectiveToday],
-  );
-
-  const knowledgeMetrics = useMemo(
-    () => effectiveDecisions.length > 0 || effectiveLinks.length > 0
-      ? computeKnowledgeMetrics(effectiveDecisions, effectiveLinks, effectiveSheets, effectiveKnowledgePeriod)
-      : null,
-    [effectiveDecisions, effectiveLinks, effectiveSheets, effectiveKnowledgePeriod],
-  );
+  // ── 最終値: props 優先、なければデモ ──
+  const proposalMetrics = demo ? demoProposalMetrics : (props.proposalMetrics ?? null);
+  const pdcaMetrics = demo ? demoPdcaMetrics : (props.pdcaMetrics ?? null);
+  const knowledgeMetrics = demo ? demoKnowledgeMetrics : (props.knowledgeMetrics ?? null);
+  const excludedUserCount = props.excludedUserCount ?? 0;
 
   return (
     <Box>
@@ -166,6 +155,15 @@ const OpsMetricsDashboard: React.FC<OpsMetricsDashboardProps> = ({
           >
             DEMO
           </Typography>
+        )}
+        {!demo && excludedUserCount > 0 && (
+          <Chip
+            label={`${excludedUserCount}名 計測対象外`}
+            size="small"
+            color="warning"
+            variant="outlined"
+            sx={{ ml: 1 }}
+          />
         )}
       </Stack>
 
