@@ -1,14 +1,16 @@
 /**
  * 申し送りAI分析ダッシュボード
  *
- * Phase 1 の3本の Pure Function を統合し、
- * 朝会・夕会・管理者確認で使える分析画面を提供する。
+ * Phase 1 + Phase 2 のデータを統合し、
+ * 朝会・夕会・管理者確認で使える分析&運用支援画面を提供する。
  *
  * データフロー:
- *   HandoffRecord[] → useMemo × 3
- *     → extractKeywords    → KeywordCloudCard
- *     → computeUserTrends  → UserTrendCard
- *     → computeTimePatterns → TimePatternHeatmap
+ *   HandoffRecord[] → useMemo × 5
+ *     → extractKeywords       → KeywordCloudCard
+ *     → computeUserTrends     → UserTrendCard
+ *     → computeTimePatterns   → TimePatternHeatmap
+ *     → evaluateAlertRules    → AlertCard        (Phase 2)
+ *     → computeRiskScores     → RiskScoreCard    (Phase 2)
  *
  * 子コンポーネントでは再計算しない。
  */
@@ -25,12 +27,18 @@ import Stack from '@mui/material/Stack';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { HandoffRecord } from '../../handoffTypes';
+import type { TriggeredAlert } from '../alertRules';
+import { evaluateAlertRules } from '../alertRules';
 import { computeTimePatterns } from '../computeTimePatterns';
 import { computeUserTrends } from '../computeUserTrends';
 import { extractKeywords } from '../extractKeywords';
+import { computeRiskScores, type UserRiskScore } from '../riskScoring';
+import AlertCard from './AlertCard';
 import KeywordCloudCard from './KeywordCloudCard';
+import RiskScoreCard from './RiskScoreCard';
 import TimePatternHeatmap from './TimePatternHeatmap';
 import UserTrendCard from './UserTrendCard';
 
@@ -65,6 +73,7 @@ export default function HandoffAnalysisDashboard({
   records,
   title = '申し送り分析ダッシュボード',
 }: HandoffAnalysisDashboardProps) {
+  const navigate = useNavigate();
   const [period, setPeriod] = useState<PeriodOption>(14);
 
   // ── 期間フィルタ ──
@@ -77,10 +86,20 @@ export default function HandoffAnalysisDashboard({
     return records.filter((r) => r.createdAt >= cutoffIso);
   }, [records, period]);
 
-  // ── 分析計算（子コンポーネントでは再計算しない） ──
+  // ── Phase 1 分析計算 ──
   const keywords = useMemo(() => extractKeywords(filteredRecords), [filteredRecords]);
   const userTrends = useMemo(() => computeUserTrends(filteredRecords), [filteredRecords]);
   const timePatterns = useMemo(() => computeTimePatterns(filteredRecords), [filteredRecords]);
+
+  // ── Phase 2 分析計算 ──
+  const alertResult = useMemo(
+    () => evaluateAlertRules(filteredRecords),
+    [filteredRecords],
+  );
+  const riskResult = useMemo(
+    () => computeRiskScores(filteredRecords),
+    [filteredRecords],
+  );
 
   // ── サマリー値 ──
   const summary = useMemo(() => {
@@ -93,6 +112,21 @@ export default function HandoffAnalysisDashboard({
 
     return { total, critical, topCategory, trendingUsers };
   }, [filteredRecords, keywords, userTrends]);
+
+  // ── クリック導線 ──
+  const handleAlertClick = useCallback(
+    (alert: TriggeredAlert) => {
+      navigate(`/handoff-timeline?userCode=${encodeURIComponent(alert.userCode)}`);
+    },
+    [navigate],
+  );
+
+  const handleUserClick = useCallback(
+    (score: UserRiskScore) => {
+      navigate(`/handoff-timeline?userCode=${encodeURIComponent(score.userCode)}`);
+    },
+    [navigate],
+  );
 
   return (
     <Box>
@@ -200,7 +234,23 @@ export default function HandoffAnalysisDashboard({
         </CardContent>
       </Card>
 
-      {/* ── 分析カード ── */}
+      {/* ── Phase 2: アラート + リスクスコア ── */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <AlertCard
+            alerts={alertResult.alerts}
+            onAlertClick={handleAlertClick}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <RiskScoreCard
+            result={riskResult}
+            onUserClick={handleUserClick}
+          />
+        </Grid>
+      </Grid>
+
+      {/* ── Phase 1: 分析カード ── */}
       <Grid container spacing={3}>
         {/* キーワード + ユーザー: 左右2カラム */}
         <Grid size={{ xs: 12, md: 6 }}>
