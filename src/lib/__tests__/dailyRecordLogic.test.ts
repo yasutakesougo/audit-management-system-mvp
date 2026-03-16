@@ -17,8 +17,8 @@ import {
 // テスト用のモックデータ
 const createMockRecord = (overrides: Partial<PersonDaily> = {}): PersonDaily => ({
   id: 1,
-  personId: '001',
-  personName: '田中太郎',
+  userId: '001',
+  userName: '田中太郎',
   date: '2024-11-16',
   status: '完了',
   reporter: { name: '職員A' },
@@ -92,16 +92,16 @@ describe('dailyRecordLogic', () => {
         createMockRecord({ id: 2 })
       ];
       const newRecord = createRecordWithoutId({
-        personName: '佐藤花子',
-        personId: '002'
+        userName: '佐藤花子',
+        userId: '002'
       });
 
       const result = addDailyRecord(existingRecords, newRecord);
 
       expect(result).toHaveLength(3);
       expect(result[2].id).toBe(3);
-      expect(result[2].personName).toBe('佐藤花子');
-      expect(result[2].personId).toBe('002');
+      expect(result[2].userName).toBe('佐藤花子');
+      expect(result[2].userId).toBe('002');
     });
 
     it('元の配列は変更されない（immutable）', () => {
@@ -118,11 +118,11 @@ describe('dailyRecordLogic', () => {
   describe('updateDailyRecord', () => {
     it('指定されたIDのレコードを更新する', () => {
       const existingRecords = [
-        createMockRecord({ id: 1, personName: '田中太郎' }),
-        createMockRecord({ id: 2, personName: '佐藤花子' })
+        createMockRecord({ id: 1, userName: '田中太郎' }),
+        createMockRecord({ id: 2, userName: '佐藤花子' })
       ];
       const updatedRecord = createRecordWithoutId({
-        personName: '田中次郎',
+        userName: '田中次郎',
         status: '作成中'
       });
 
@@ -130,9 +130,9 @@ describe('dailyRecordLogic', () => {
 
       expect(result).toHaveLength(2);
       expect(result[0].id).toBe(1);
-      expect(result[0].personName).toBe('田中次郎');
+      expect(result[0].userName).toBe('田中次郎');
       expect(result[0].status).toBe('作成中');
-      expect(result[1].personName).toBe('佐藤花子'); // 他のレコードは変更されない
+      expect(result[1].userName).toBe('佐藤花子'); // 他のレコードは変更されない
     });
 
     it('存在しないIDを指定した場合、元の配列をそのまま返す', () => {
@@ -151,15 +151,15 @@ describe('dailyRecordLogic', () => {
   describe('deleteDailyRecord', () => {
     it('指定されたIDのレコードを削除する', () => {
       const existingRecords = [
-        createMockRecord({ id: 1, personName: '田中太郎' }),
-        createMockRecord({ id: 2, personName: '佐藤花子' }),
-        createMockRecord({ id: 3, personName: '鈴木次郎' })
+        createMockRecord({ id: 1, userName: '田中太郎' }),
+        createMockRecord({ id: 2, userName: '佐藤花子' }),
+        createMockRecord({ id: 3, userName: '鈴木次郎' })
       ];
 
       const result = deleteDailyRecord(existingRecords, 2);
 
       expect(result).toHaveLength(2);
-      expect(result.map(r => r.personName)).toEqual(['田中太郎', '鈴木次郎']);
+      expect(result.map(r => r.userName)).toEqual(['田中太郎', '鈴木次郎']);
     });
 
     it('存在しないIDを指定した場合、元の配列をそのまま返す', () => {
@@ -175,29 +175,29 @@ describe('dailyRecordLogic', () => {
     it('editingRecordIdが未定義の場合は新規追加', () => {
       const existingRecords = [createMockRecord({ id: 1 })];
       const newRecord = createRecordWithoutId({
-        personName: '佐藤花子'
+        userName: '佐藤花子'
       });
 
       const result = saveDailyRecord(existingRecords, newRecord);
 
       expect(result).toHaveLength(2);
       expect(result[1].id).toBe(2);
-      expect(result[1].personName).toBe('佐藤花子');
+      expect(result[1].userName).toBe('佐藤花子');
     });
 
     it('editingRecordIdが指定されている場合は更新', () => {
       const existingRecords = [
-        createMockRecord({ id: 1, personName: '田中太郎' })
+        createMockRecord({ id: 1, userName: '田中太郎' })
       ];
       const updatedRecord = createRecordWithoutId({
-        personName: '田中次郎'
+        userName: '田中次郎'
       });
 
       const result = saveDailyRecord(existingRecords, updatedRecord, 1);
 
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe(1);
-      expect(result[0].personName).toBe('田中次郎');
+      expect(result[0].userName).toBe('田中次郎');
     });
   });
 
@@ -213,7 +213,7 @@ describe('dailyRecordLogic', () => {
 
     it('利用者名が空の場合、エラーを返す', () => {
       const invalidRecord = createRecordWithoutId({
-        personName: ''
+        userName: ''
       });
 
       const result = validateDailyRecord(invalidRecord);
@@ -224,7 +224,7 @@ describe('dailyRecordLogic', () => {
 
     it('利用者の選択が空の場合、エラーを返す', () => {
       const invalidRecord = createRecordWithoutId({
-        personId: ''
+        userId: ''
       });
 
       const result = validateDailyRecord(invalidRecord);
@@ -329,8 +329,8 @@ describe('dailyRecordLogic', () => {
 
     it('複数のエラーがある場合、全てのエラーを返す', () => {
       const invalidRecord = createRecordWithoutId({
-        personName: '',
-        personId: '',
+        userName: '',
+        userId: '',
         date: ''
       });
 
@@ -388,23 +388,23 @@ describe('dailyRecordLogic', () => {
 
   describe('searchRecordsByName', () => {
     const records = [
-      createMockRecord({ id: 1, personName: '田中太郎', personId: '001' }),
-      createMockRecord({ id: 2, personName: '佐藤花子', personId: '002' }),
-      createMockRecord({ id: 3, personName: '田中二郎', personId: '003' })
+      createMockRecord({ id: 1, userName: '田中太郎', userId: '001' }),
+      createMockRecord({ id: 2, userName: '佐藤花子', userId: '002' }),
+      createMockRecord({ id: 3, userName: '田中二郎', userId: '003' })
     ];
 
     it('利用者名での部分一致検索', () => {
       const result = searchRecordsByName(records, '田中');
 
       expect(result).toHaveLength(2);
-      expect(result.map(r => r.personName)).toEqual(['田中太郎', '田中二郎']);
+      expect(result.map(r => r.userName)).toEqual(['田中太郎', '田中二郎']);
     });
 
     it('利用者IDでの検索', () => {
       const result = searchRecordsByName(records, '002');
 
       expect(result).toHaveLength(1);
-      expect(result[0].personName).toBe('佐藤花子');
+      expect(result[0].userName).toBe('佐藤花子');
     });
 
     it('大文字小文字を無視して検索', () => {

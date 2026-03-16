@@ -8,7 +8,7 @@ import { toLocalDateISO } from '@/utils/getNow';
  */
 export interface ImportantHandoffForDaily {
   id: string | number;
-  personId: string;
+  userId: string;
   personDisplayName: string;
   date: string;      // 'YYYY-MM-DD'
   time: string;      // 'HH:mm' 時刻表示用
@@ -22,11 +22,11 @@ export interface ImportantHandoffForDaily {
 /**
  * 日次記録作成時に重要な申し送り情報を取得するフック
  *
- * @param personId 対象利用者のID
+ * @param userId 対象利用者のID
  * @param date 対象日付（YYYY-MM-DD）
  * @returns 重要度「重要」の申し送りのみ
  */
-export function useImportantHandoffsForDaily(personId: string, date: string) {
+export function useImportantHandoffsForDaily(userId: string, date: string) {
   const [importantHandoffs, setImportantHandoffs] = useState<ImportantHandoffForDaily[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,9 +56,11 @@ export function useImportantHandoffsForDaily(personId: string, date: string) {
       // 指定された利用者 + 重要度「重要」のみを抽出
       const filtered = allHandoffs
         .filter(handoff => {
-          // 利用者IDマッチング（userCode または personId で照合）
-          const userMatch = handoff.userCode === personId ||
-                           handoff.userDisplayName.includes(personId);
+          // 利用者IDマッチング: userCode（= UserID）で厳密照合
+          // NOTE: userId は呼び出し側で UserID に統一されている前提。
+          //       将来 UserRef ベースに移行する際は domain/user の
+          //       buildUserRefLookup を利用する。
+          const userMatch = handoff.userCode === userId;
 
           // 重要度フィルタ
           const severityMatch = handoff.severity === '重要';
@@ -71,7 +73,7 @@ export function useImportantHandoffsForDaily(personId: string, date: string) {
     } else {
       setImportantHandoffs([]);
     }
-  }, [personId, date, allHandoffs, handoffsLoading, handoffsError]);
+  }, [userId, date, allHandoffs, handoffsLoading, handoffsError]);
 
   return {
     items: importantHandoffs,
@@ -92,7 +94,7 @@ function convertToImportantHandoff(handoff: HandoffRecord): ImportantHandoffForD
 
   return {
     id: handoff.id,
-    personId: handoff.userCode,
+    userId: handoff.userCode,
     personDisplayName: handoff.userDisplayName,
     date,
     time,
@@ -164,13 +166,13 @@ function getStatusIcon(status: string): string {
  */
 export function shouldAutoGenerateSpecialNotes(
   isNewRecord: boolean,
-  personId: string,
+  userId: string,
   currentSpecialNotes: string,
   importantHandoffsCount: number
 ): boolean {
   return (
     isNewRecord &&                                    // 新規作成時のみ
-    Boolean(personId) &&                             // 利用者が選択済み
+    Boolean(userId) &&                             // 利用者が選択済み
     importantHandoffsCount > 0 &&                    // 重要な申し送りが存在
     (!currentSpecialNotes || currentSpecialNotes.trim() === '')  // 特記事項が空
   );

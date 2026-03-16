@@ -69,8 +69,8 @@ describe('countRecordedSlots', () => {
     ({
       id: 1,
       supportPlanId: 'plan-1',
-      personId: 'u-1',
-      personName: 'Test',
+      userId: 'u-1',
+      userName: 'Test',
       date: '2026-03-14',
       timeSlot: '09:00 活動',
       activityKey: '09:00',

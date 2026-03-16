@@ -6,8 +6,8 @@ import { toLocalDateISO } from '@/utils/getNow';
 // Helper function to create mock PersonDaily records
 const createMockPersonDaily = (overrides: Partial<PersonDaily> = {}): PersonDaily => ({
   id: 1,
-  personId: '001',
-  personName: '田中太郎',
+  userId: '001',
+  userName: '田中太郎',
   date: toLocalDateISO(),
   status: '完了',
   reporter: { name: '職員A' },
@@ -32,10 +32,10 @@ describe('buildActivitySummary', () => {
   describe('基本的な集計機能', () => {
     it('完了/作成中/未作成を正しく集計する', () => {
       const records: PersonDaily[] = [
-        createMockPersonDaily({ id: 1, personId: '001', personName: '田中太郎', status: '完了' }),
-        createMockPersonDaily({ id: 2, personId: '002', personName: '佐藤花子', status: '作成中' }),
-        createMockPersonDaily({ id: 3, personId: '003', personName: '鈴木次郎', status: '未作成' }),
-        createMockPersonDaily({ id: 4, personId: '004', personName: '高橋美咲', status: '完了' }),
+        createMockPersonDaily({ id: 1, userId: '001', userName: '田中太郎', status: '完了' }),
+        createMockPersonDaily({ id: 2, userId: '002', userName: '佐藤花子', status: '作成中' }),
+        createMockPersonDaily({ id: 3, userId: '003', userName: '鈴木次郎', status: '未作成' }),
+        createMockPersonDaily({ id: 4, userId: '004', userName: '高橋美咲', status: '完了' }),
       ];
 
       const result = buildActivitySummary(records, 4);
@@ -107,10 +107,10 @@ describe('buildActivitySummary', () => {
 
     it('未作成が3-5件の場合はwarning alertを生成する', () => {
       const records: PersonDaily[] = [
-        createMockPersonDaily({ id: 1, personId: '001', personName: '田中太郎', status: '未作成' }),
-        createMockPersonDaily({ id: 2, personId: '002', personName: '佐藤花子', status: '未作成' }),
-        createMockPersonDaily({ id: 3, personId: '003', personName: '鈴木次郎', status: '未作成' }),
-        createMockPersonDaily({ id: 4, personId: '004', personName: '高橋美咲', status: '完了' }),
+        createMockPersonDaily({ id: 1, userId: '001', userName: '田中太郎', status: '未作成' }),
+        createMockPersonDaily({ id: 2, userId: '002', userName: '佐藤花子', status: '未作成' }),
+        createMockPersonDaily({ id: 3, userId: '003', userName: '鈴木次郎', status: '未作成' }),
+        createMockPersonDaily({ id: 4, userId: '004', userName: '高橋美咲', status: '完了' }),
       ];
 
       const result = buildActivitySummary(records, 4);
@@ -128,8 +128,8 @@ describe('buildActivitySummary', () => {
       const records: PersonDaily[] = Array.from({ length: 8 }, (_, i) =>
         createMockPersonDaily({
           id: i + 1,
-          personId: String(i + 1).padStart(3, '0'),
-          personName: `利用者${i + 1}`,
+          userId: String(i + 1).padStart(3, '0'),
+          userName: `利用者${i + 1}`,
           status: i < 6 ? '未作成' : '完了'
         })
       );
@@ -144,9 +144,9 @@ describe('buildActivitySummary', () => {
 
     it('作成中の記録がある場合はinfo alertを生成する', () => {
       const records: PersonDaily[] = [
-        createMockPersonDaily({ id: 1, personId: '001', personName: '田中太郎', status: '作成中' }),
-        createMockPersonDaily({ id: 2, personId: '002', personName: '佐藤花子', status: '作成中' }),
-        createMockPersonDaily({ id: 3, personId: '003', personName: '鈴木次郎', status: '完了' }),
+        createMockPersonDaily({ id: 1, userId: '001', userName: '田中太郎', status: '作成中' }),
+        createMockPersonDaily({ id: 2, userId: '002', userName: '佐藤花子', status: '作成中' }),
+        createMockPersonDaily({ id: 3, userId: '003', userName: '鈴木次郎', status: '完了' }),
       ];
 
       const result = buildActivitySummary(records, 3);
@@ -163,8 +163,8 @@ describe('buildActivitySummary', () => {
       const records: PersonDaily[] = Array.from({ length: 10 }, (_, i) =>
         createMockPersonDaily({
           id: i + 1,
-          personId: String(i + 1).padStart(3, '0'),
-          personName: `利用者${i + 1}`,
+          userId: String(i + 1).padStart(3, '0'),
+          userName: `利用者${i + 1}`,
           status: i < 8 ? '未作成' : '完了'
         })
       );

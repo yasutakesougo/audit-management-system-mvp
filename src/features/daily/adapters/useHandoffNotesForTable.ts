@@ -146,7 +146,7 @@ function convertToImportantHandoff(
 
   return {
     id: handoff.id,
-    personId: handoff.userCode,
+    userId: handoff.userCode,
     personDisplayName: handoff.userDisplayName,
     date,
     time,

@@ -97,11 +97,11 @@ function isValidDateFormat(value: string): boolean {
 export function validateDailyRecord(record: DailyRecordWithoutId): DailyRecordValidationResult {
   const errors: string[] = [];
 
-  if (!record.personName || !record.personName.trim()) {
+  if (!record.userName || !record.userName.trim()) {
     errors.push('利用者名は必須です');
   }
 
-  if (!record.personId || !record.personId.trim()) {
+  if (!record.userId || !record.userId.trim()) {
     errors.push('利用者の選択は必須です');
   }
 
@@ -149,8 +149,8 @@ export function searchRecordsByName(records: PersonDaily[], query: string): Pers
   }
 
   return records.filter((record) => {
-    const nameHit = record.personName?.includes(trimmed);
-    const idHit = record.personId?.includes(trimmed);
+    const nameHit = record.userName?.includes(trimmed);
+    const idHit = record.userId?.includes(trimmed);
     return Boolean(nameHit || idHit);
   });
 }

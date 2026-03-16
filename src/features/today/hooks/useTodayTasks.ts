@@ -21,6 +21,7 @@
 import { useMemo } from 'react';
 import { useHandoffTimeline } from '@/features/handoff/useHandoffTimeline';
 import { useTodaySummary } from '../domain/useTodaySummary';
+import { createUserNameResolver } from '@/domain/user';
 import {
   buildTodayTasks,
   dedupeTasks,
@@ -52,16 +53,11 @@ export function useTodayTasks(): TodayTasksResult {
   const todaySummary = useTodaySummary();
   const { todayHandoffs, loading: handoffLoading } = useHandoffTimeline('all', 'today');
 
-  // 2. Map users for name resolution
-  const userNameMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const u of todaySummary.users) {
-      const uid = (u.UserID ?? '').trim() || `U${String(u.Id ?? 0).padStart(3, '0')}`;
-      const name = u.FullName ?? u.Title ?? uid;
-      map.set(uid, name);
-    }
-    return map;
-  }, [todaySummary.users]);
+  // 2. Build user name resolver via domain/user
+  const resolveUserName = useMemo(
+    () => createUserNameResolver(todaySummary.users),
+    [todaySummary.users],
+  );
 
   // 3. Build engine input from existing sources
   const engineInput: TodayEngineInput = useMemo(() => {
@@ -90,14 +86,14 @@ export function useTodayTasks(): TodayTasksResult {
       })),
       scheduleLanes: allLanes,
       handoffItems,
-      resolveUserName: (uid: string) => userNameMap.get(uid) ?? uid,
+      resolveUserName,
     };
   }, [
     todayHandoffs,
     todaySummary.dailyRecordStatus.pendingUserIds,
     todaySummary.briefingAlerts,
     todaySummary.scheduleLanesToday,
-    userNameMap,
+    resolveUserName,
   ]);
 
   // 4. Run pure engine pipeline

@@ -44,8 +44,8 @@ const createMinimalUser = (overrides?: Partial<IUserMaster>): IUserMaster => ({
 
 const createMinimalPersonDaily = (overrides?: Partial<PersonDaily>): PersonDaily => ({
   id: 1,
-  personId: 'U001',
-  personName: 'Test User',
+  userId: 'U001',
+  userName: 'Test User',
   date: '2026-02-23',
   status: '完了',
   reporter: { name: 'Staff A' },
@@ -92,8 +92,8 @@ const createMinimalAttendanceCounts = (
 const mockGenerateMockActivityRecords = (users: IUserMaster[], _today: string): PersonDaily[] => {
   return users.map((user, index) => createMinimalPersonDaily({
     id: index + 1,
-    personId: user.UserID,
-    personName: user.FullName,
+    userId: user.UserID,
+    userName: user.FullName,
   }));
 };
 
