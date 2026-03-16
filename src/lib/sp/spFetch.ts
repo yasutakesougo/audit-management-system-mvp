@@ -22,6 +22,11 @@ export type SpFetchDeps = {
   debugEnabled: boolean;
   spSiteLegacy: string;
   onRetry?: SpClientOptions['onRetry'];
+  /**
+   * true (default): !response.ok 時に raiseHttpError で例外を投げる
+   * false: Response をそのまま返す（互換レイヤー用）
+   */
+  throwOnError?: boolean;
 };
 
 // ─── normalizePath (extracted as standalone) ────────────────────────────────
@@ -123,7 +128,7 @@ function computeDelay(attempt: number, res: Response, baseDelay: number, capDela
 // ─── Factory ────────────────────────────────────────────────────────────────
 
 export function createSpFetch(deps: SpFetchDeps) {
-  const { acquireToken, baseUrl, config, retrySettings, debugEnabled, onRetry } = deps;
+  const { acquireToken, baseUrl, config, retrySettings, debugEnabled, onRetry, throwOnError = true } = deps;
   const _e2eMsalMockFlag = config.VITE_E2E_MSAL_MOCK;
   const tokenMetricsCarrier = globalThis as { __TOKEN_METRICS__?: Record<string, unknown> };
 
@@ -277,7 +282,7 @@ export function createSpFetch(deps: SpFetchDeps) {
       }
     }
 
-    if (!response.ok) {
+    if (!response.ok && throwOnError) {
       await raiseHttpError(response, { url: resolveUrl(resolvedPath), method: init.method ?? 'GET' });
     }
     return response;
