@@ -40,20 +40,30 @@ import StepLabel from '@mui/material/StepLabel';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
+import Snackbar from '@mui/material/Snackbar';
+
 // ── Icons ──
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import AutoFixHighRoundedIcon from '@mui/icons-material/AutoFixHighRounded';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
 import NavigateBeforeRoundedIcon from '@mui/icons-material/NavigateBeforeRounded';
 import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded';
 import PersonSearchRoundedIcon from '@mui/icons-material/PersonSearchRounded';
+import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded';
 
 // ── Domain ──
+import type { TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
+import { useTokuseiSurveyResponses } from '@/features/assessment/hooks/useTokuseiSurveyResponses';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
 import { useAuth } from '@/auth/useAuth';
 import type { PlanningSheetRepository, IspRepository } from '@/domain/isp/port';
 import type { PlanningSheetFormValues } from '@/domain/isp/schema';
+import { tokuseiToPlanningBridge } from '../tokuseiToPlanningBridge';
+import { buildImportPreview } from '../buildImportPreview';
+import type { ImportPreviewResult } from '../buildImportPreview';
+import { ImportPreviewDialog } from './ImportPreviewDialog';
 
 // ─────────────────────────────────────────────
 // Types
@@ -382,6 +392,18 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   const [isSaving, setIsSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState<string | null>(null);
 
+  // ── 特性アンケート読込 ──
+  const { responses: tokuseiResponses, status: tokuseiStatus } = useTokuseiSurveyResponses();
+  const [selectedTokusei, setSelectedTokusei] = React.useState<TokuseiSurveyResponse | null>(null);
+  const [tokuseiImported, setTokuseiImported] = React.useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
+  const [importPreview, setImportPreview] = React.useState<ImportPreviewResult | null>(null);
+  const [lastBridgeResult, setLastBridgeResult] = React.useState<ReturnType<typeof tokuseiToPlanningBridge> | null>(null);
+  const [tokuseiProvenance, setTokuseiProvenance] = React.useState<Map<string, { name: string; relation?: string; fillDate?: string }>>(new Map());
+  const [toast, setToast] = React.useState<{ open: boolean; message: string; severity: 'success' | 'info' }>({
+    open: false, message: '', severity: 'success',
+  });
+
   // ── Helpers ──
   const userOptions = React.useMemo<UserOption[]>(
     () => users.map(u => ({ id: u.UserID, label: `${u.FullName} (${u.UserID})` })),
@@ -419,6 +441,97 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
     },
     [ispRepo],
   );
+
+  // ── 特性アンケート: 利用者に紐づく回答をフィルタ ──
+  const matchedTokuseiResponses = React.useMemo(() => {
+    if (!selectedUser || tokuseiResponses.length === 0) return [];
+    const userName = selectedUser.label.split(' (')[0]; // FullName を抽出
+    return tokuseiResponses.filter(r =>
+      r.targetUserName === userName ||
+      r.targetUserName === selectedUser.id,
+    );
+  }, [selectedUser, tokuseiResponses]);
+
+  // ── 特性アンケート: プレビュー表示 ──
+  const handleTokuseiImport = React.useCallback(() => {
+    if (!selectedTokusei) return;
+
+    const result = tokuseiToPlanningBridge({
+      kind: 'aggregated',
+      response: selectedTokusei,
+      responseId: selectedTokusei.responseId,
+      updatedAt: selectedTokusei.createdAt,
+    });
+
+    // プレビュー生成
+    const preview = buildImportPreview(result.formPatches, form as unknown as Record<string, unknown>);
+    setImportPreview(preview);
+    setLastBridgeResult(result);
+    setPreviewDialogOpen(true);
+  }, [selectedTokusei, form]);
+
+  // ── 特性アンケート: プレビュー確定→反映 ──
+  const handlePreviewConfirm = React.useCallback(() => {
+    if (!lastBridgeResult || !selectedTokusei) return;
+
+    // formPatches を FormState に反映
+    setForm(prev => {
+      const next = { ...prev };
+      for (const [key, value] of Object.entries(lastBridgeResult.formPatches)) {
+        if (key in next && typeof value === 'string') {
+          const k = key as keyof FormState;
+          const current = next[k];
+          if (typeof current === 'string' && !current.trim()) {
+            (next as Record<string, unknown>)[k] = value;
+          } else if (typeof current === 'string' && current.trim()) {
+            (next as Record<string, unknown>)[k] = `${current}\n\n【特性アンケートより】\n${value}`;
+          }
+        }
+      }
+      return next;
+    });
+
+    // provenance を記録
+    setTokuseiProvenance(prev => {
+      const next = new Map(prev);
+      for (const key of Object.keys(lastBridgeResult.formPatches)) {
+        if (lastBridgeResult.formPatches[key]?.trim()) {
+          next.set(key, {
+            name: selectedTokusei.responderName || '不明',
+            relation: selectedTokusei.relation,
+            fillDate: selectedTokusei.fillDate,
+          });
+        }
+      }
+      return next;
+    });
+
+    setTokuseiImported(true);
+    setPreviewDialogOpen(false);
+
+    // サマリーをトースト表示
+    const s = importPreview?.summary;
+    const summaryText = s && s.totalAffected > 0
+      ? `特性アンケートから取込完了: 新規${s.newCount}項目 + 追記${s.appendCount}項目`
+      : '特性アンケートから取込完了（該当データなし）';
+    setToast({ open: true, message: summaryText, severity: 'success' });
+  }, [lastBridgeResult, selectedTokusei, importPreview]);
+
+  // ── Provenance バッジヘルパー ──
+  const renderProvenanceBadge = React.useCallback((fieldKey: string) => {
+    const prov = tokuseiProvenance.get(fieldKey);
+    if (!prov) return null;
+    const dateStr = prov.fillDate ? new Date(prov.fillDate).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) : '';
+    return (
+      <Chip
+        size="small"
+        variant="outlined"
+        color="secondary"
+        sx={{ height: 20, '& .MuiChip-label': { px: 0.8, fontSize: '0.65rem' } }}
+        label={`📋 特性アンケ ${prov.name}${prov.relation ? `(${prov.relation})` : ''} ${dateStr}`}
+      />
+    );
+  }, [tokuseiProvenance]);
 
   // ── Fill sample data ──
   const handleFillSample = React.useCallback(() => setForm(SAMPLE_FORM), []);
@@ -505,16 +618,31 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
                 {'　　　🏔️ 問題行動（水面上）\n━━━━━━━━━━━━━━━━━━\n　  💭 感情・心理\n──────────────────\n　  🧠 認知・理解\n──────────────────\n　  🏠 環境要因\n──────────────────\n　  💡 本人のニーズ（水面下）'}
               </Typography>
             </Paper>
-            <TextField label="トリガー（きっかけ）" value={form.triggers} onChange={e => updateField('triggers', e.target.value)} required fullWidth multiline minRows={2}
-              placeholder="行動を引き起こす直接的なきっかけ" />
-            <TextField label="環境要因" value={form.environmentFactors} onChange={e => updateField('environmentFactors', e.target.value)} fullWidth multiline minRows={2}
-              placeholder="物理的環境・人的環境・時間帯" />
-            <TextField label="本人の感情" value={form.emotions} onChange={e => updateField('emotions', e.target.value)} fullWidth multiline minRows={2}
-              placeholder="不安、混乱、怒り、恐怖など" />
-            <TextField label="理解状況（認知）" value={form.cognition} onChange={e => updateField('cognition', e.target.value)} fullWidth multiline minRows={2}
-              placeholder="言語理解力、見通しの持ちやすさ" />
-            <TextField label="本人ニーズ" value={form.needs} onChange={e => updateField('needs', e.target.value)} required fullWidth multiline minRows={2}
-              placeholder="「本当はこうしたい」「こうなりたい」" />
+            <Stack spacing={0.5}>
+              {renderProvenanceBadge('triggers')}
+              <TextField label="トリガー（きっかけ）" value={form.triggers} onChange={e => updateField('triggers', e.target.value)} required fullWidth multiline minRows={2}
+                placeholder="行動を引き起こす直接的なきっかけ" />
+            </Stack>
+            <Stack spacing={0.5}>
+              {renderProvenanceBadge('environmentFactors')}
+              <TextField label="環境要因" value={form.environmentFactors} onChange={e => updateField('environmentFactors', e.target.value)} fullWidth multiline minRows={2}
+                placeholder="物理的環境・人的環境・時間帯" />
+            </Stack>
+            <Stack spacing={0.5}>
+              {renderProvenanceBadge('emotions')}
+              <TextField label="本人の感情" value={form.emotions} onChange={e => updateField('emotions', e.target.value)} fullWidth multiline minRows={2}
+                placeholder="不安、混乱、怒り、恐怖など" />
+            </Stack>
+            <Stack spacing={0.5}>
+              {renderProvenanceBadge('cognition')}
+              <TextField label="理解状況（認知）" value={form.cognition} onChange={e => updateField('cognition', e.target.value)} fullWidth multiline minRows={2}
+                placeholder="言語理解力、見通しの持ちやすさ" />
+            </Stack>
+            <Stack spacing={0.5}>
+              {renderProvenanceBadge('needs')}
+              <TextField label="本人ニーズ" value={form.needs} onChange={e => updateField('needs', e.target.value)} required fullWidth multiline minRows={2}
+                placeholder="「本当はこうしたい」「こうなりたい」" />
+            </Stack>
           </Stack>
         );
       case 3: // §4 FBA
@@ -709,6 +837,89 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
           </Stack>
         </Paper>
 
+        {/* ── 特性アンケート読込 ── */}
+        {canProceedToForm && (
+          <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderColor: tokuseiImported ? 'success.main' : 'divider' }}>
+            <Stack spacing={2}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <SupportAgentRoundedIcon color={tokuseiImported ? 'success' : 'primary'} />
+                <Typography variant="subtitle1" fontWeight={600}>
+                  特性アンケートから読込
+                </Typography>
+                {tokuseiImported && (
+                  <Chip icon={<CheckCircleRoundedIcon />} label="取込済" size="small" color="success" variant="outlined" />
+                )}
+              </Stack>
+
+              <Typography variant="body2" color="text.secondary">
+                特性アンケート（保護者・関係者回答）のデータを元に、氷山分析・FBA・感覚特性を自動入力します。
+              </Typography>
+
+              {tokuseiStatus === 'loading' && (
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <CircularProgress size={16} />
+                  <Typography variant="body2" color="text.secondary">アンケート回答を取得中…</Typography>
+                </Stack>
+              )}
+
+              {tokuseiStatus === 'success' && matchedTokuseiResponses.length === 0 && (
+                <Alert severity="info" variant="outlined">
+                  この利用者に対応する特性アンケートの回答がありません。先に保護者・関係者にアンケートを依頼してください。
+                </Alert>
+              )}
+
+              {matchedTokuseiResponses.length > 0 && (
+                <>
+                  <Typography variant="body2" fontWeight={600}>
+                    {matchedTokuseiResponses.length}件の回答が見つかりました。取り込む回答を選択してください:
+                  </Typography>
+                  <Stack spacing={1}>
+                    {matchedTokuseiResponses.map((r) => (
+                      <Paper
+                        key={r.id}
+                        variant="outlined"
+                        sx={{
+                          p: 1.5,
+                          cursor: 'pointer',
+                          borderColor: selectedTokusei?.id === r.id ? 'primary.main' : 'divider',
+                          bgcolor: selectedTokusei?.id === r.id ? 'primary.50' : 'transparent',
+                          '&:hover': { borderColor: 'primary.light' },
+                        }}
+                        onClick={() => setSelectedTokusei(r)}
+                      >
+                        <Stack direction="row" justifyContent="space-between" alignItems="center">
+                          <Stack>
+                            <Typography variant="body2" fontWeight={600}>
+                              {r.responderName || '回答者不明'}
+                              {r.relation ? `（${r.relation}）` : ''}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              回答日: {r.fillDate ? new Date(r.fillDate).toLocaleDateString('ja-JP') : '不明'}
+                              {r.guardianName ? ` / ${r.guardianName}` : ''}
+                            </Typography>
+                          </Stack>
+                          {selectedTokusei?.id === r.id && (
+                            <CheckCircleRoundedIcon color="primary" sx={{ fontSize: 20 }} />
+                          )}
+                        </Stack>
+                      </Paper>
+                    ))}
+                  </Stack>
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    startIcon={<SupportAgentRoundedIcon />}
+                    onClick={handleTokuseiImport}
+                    disabled={!selectedTokusei}
+                  >
+                    {tokuseiImported ? '再度読み込む' : '特性アンケートから読込'}
+                  </Button>
+                </>
+              )}
+            </Stack>
+          </Paper>
+        )}
+
         {/* ── Stepper + Form ── */}
         {canProceedToForm && (
           <>
@@ -771,6 +982,35 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
           </>
         )}
       </Stack>
+
+      {/* ── 取込プレビューダイアログ ── */}
+      <ImportPreviewDialog
+        open={previewDialogOpen}
+        onClose={() => setPreviewDialogOpen(false)}
+        onConfirm={handlePreviewConfirm}
+        preview={importPreview}
+        responderInfo={selectedTokusei ? {
+          name: selectedTokusei.responderName || '不明',
+          relation: selectedTokusei.relation,
+          fillDate: selectedTokusei.fillDate,
+        } : undefined}
+      />
+
+      {/* ── Toast ── */}
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={5000}
+        onClose={() => setToast(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={toast.severity}
+          onClose={() => setToast(prev => ({ ...prev, open: false }))}
+          variant="filled"
+        >
+          {toast.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
