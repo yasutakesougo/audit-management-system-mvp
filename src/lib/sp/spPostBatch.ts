@@ -74,6 +74,7 @@ export function createPostBatch(deps: PostBatchDeps) {
       const headers = new Headers({ 'Content-Type': `multipart/mixed; boundary=${boundary}` });
       if (token) headers.set('Authorization', `Bearer ${token}`);
 
+      // eslint-disable-next-line no-restricted-globals -- SP $batch SSOT: fetch はこの最下層でのみ許可
       const res = await fetch(`${apiRoot}/$batch`, { method: 'POST', headers, body: batchBody });
 
       // E2E instrumentation

@@ -172,6 +172,7 @@ export const makeGraphSchedulesPort = (getToken: GetToken, options?: GraphSchedu
           while (attempt <= retryMax) {
             let response: Response;
             try {
+              // eslint-disable-next-line no-restricted-globals -- TODO: Phase 2 で graphFetch に統一
               response = await fetch(url, { headers, signal: controller.signal });
             } catch (error) {
               if (controller.signal.aborted) {
@@ -256,6 +257,7 @@ export const fetchMyGroupIds = async (getToken: GetToken): Promise<string[]> => 
     let nextUrl: string | undefined = initialUrl;
 
     while (nextUrl) {
+      // eslint-disable-next-line no-restricted-globals -- TODO: Phase 2 で graphFetch に統一
       const res = await fetch(nextUrl, {
         headers: {
           Authorization: `Bearer ${token}`,

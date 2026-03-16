@@ -228,6 +228,7 @@ export function createSpFetch(deps: SpFetchDeps) {
           Accept: headers.get('Accept'), ContentType: headers.get('Content-Type'),
         });
       }
+      // eslint-disable-next-line no-restricted-globals -- SP基盤 SSOT: fetch はこの最下層でのみ許可
       return fetch(url, { ...init, headers }).catch((e: unknown) => {
         if (isAbortError(e)) throw e;
         throw e;

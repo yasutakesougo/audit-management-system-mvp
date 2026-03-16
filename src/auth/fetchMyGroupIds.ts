@@ -17,6 +17,7 @@ export const fetchMyGroupIds = async (getToken: GetToken): Promise<string[]> => 
     let nextUrl: string | undefined = initialUrl;
 
     while (nextUrl) {
+      // eslint-disable-next-line no-restricted-globals -- TODO: Phase 2 で graphFetch に統一
       const res = await fetch(nextUrl, {
         headers: {
           Authorization: `Bearer ${token}`,

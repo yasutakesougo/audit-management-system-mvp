@@ -293,6 +293,7 @@ export class RestApiUserRepository implements UserRepository {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    // eslint-disable-next-line no-restricted-globals -- RestApiUserRepository 内の spFetch 最下層
     return fetch(url, {
       ...init,
       headers,

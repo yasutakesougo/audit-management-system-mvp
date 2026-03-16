@@ -13,6 +13,7 @@ const applyHeaders = (init: RequestInit): RequestInit => {
 
 export const fetchSp = async (url: string, init: RequestInit = {}): Promise<Response> => {
   if (typeof window === 'undefined') {
+    // eslint-disable-next-line no-restricted-globals -- 旧 SP fetch ラッパー SSOT（Phase 4 で spFetch に統合予定）
     return fetch(url, init);
   }
 
@@ -23,6 +24,7 @@ export const fetchSp = async (url: string, init: RequestInit = {}): Promise<Resp
     const headers = new Headers(requestInit.headers);
     headers.set('Authorization', `Bearer ${accessToken}`);
 
+    // eslint-disable-next-line no-restricted-globals -- 旧 SP fetch ラッパー SSOT（Phase 4 で spFetch に統合予定）
     return fetch(url, { ...requestInit, headers });
   } catch (error) {
     console.error('[fetchSp] SharePoint request failed', error);

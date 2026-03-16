@@ -77,6 +77,7 @@ const loadRuntimeEnvFile = async (runtimeEnv: EnvRecord): Promise<EnvRecord> => 
   if (!path) return {};
 
   try {
+    // eslint-disable-next-line no-restricted-globals -- ブートストラップ: 認証前の静的 env.runtime.json ロード
     const response = await fetch(path, { cache: 'no-store' });
     if (!response.ok) {
       if (isDev) {

@@ -10,6 +10,7 @@ function normalizeApiBaseUrl(input: string): string {
 // NOTE: siteOrApiBaseUrl は "https://tenant.sharepoint.com/sites/xxx" も
 // "https://tenant.sharepoint.com/sites/xxx/_api/web" も許容。
 async function spJson<T>(url: string, init?: RequestInit): Promise<T> {
+  // eslint-disable-next-line no-restricted-globals -- TODO: Phase 3 で spFetch に移行
   const res = await fetch(url, {
     ...init,
     headers: {
