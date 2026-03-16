@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { saveLastActivities } from './useLastActivities';
 import { useHandoffNotesForTable } from '../adapters/useHandoffNotesForTable';
+import type { TableDailyRecordFormStructured } from './tableDailyRecordFormTypes';
 import { useTableDailyRecordFiltering } from './useTableDailyRecordFiltering';
 import type { DraftInput } from './useTableDailyRecordPersistence';
 import { useTableDailyRecordPersistence } from './useTableDailyRecordPersistence';
@@ -61,6 +62,7 @@ export type UseTableDailyRecordFormParams = {
 };
 
 export type UseTableDailyRecordFormResult = {
+  // ── Flat fields (backward-compatible) ──────────────
   formData: TableDailyRecordData;
   setFormData: Dispatch<SetStateAction<TableDailyRecordData>>;
   searchQuery: string;
@@ -96,7 +98,14 @@ export type UseTableDailyRecordFormResult = {
   handoffTotalCount: number;
   /** 申し送り連携: データ読み込み中 */
   handoffLoading: boolean;
-};
+
+  // ── Structured sub-objects ─────────────────────────
+  /**
+   * 構造化アクセス: 責務別サブオブジェクト。
+   * フラットフィールドと同じ値を構造化して返す。
+   * 消費者は `result.header.formData` のように参照可能。
+   */
+} & TableDailyRecordFormStructured;
 
 const createInitialFormData = (initialDate?: string | null): TableDailyRecordData => ({
   date: initialDate ?? toLocalDateISO(),
@@ -326,7 +335,10 @@ export const useTableDailyRecordForm = ({
 
   // ── Return ────────────────────────────────────────
 
+  const hasDraft = Boolean(draftSavedAt);
+
   return {
+    // ── Flat fields (backward-compatible) ───────────
     formData,
     setFormData,
     searchQuery,
@@ -347,7 +359,7 @@ export const useTableDailyRecordForm = ({
     setShowUnsentOnly,
     visibleRows,
     unsentRowCount,
-    hasDraft: Boolean(draftSavedAt),
+    hasDraft,
     draftSavedAt,
     handleSaveDraft,
     handleSave,
@@ -357,5 +369,26 @@ export const useTableDailyRecordForm = ({
     handoffAffectedUserCount,
     handoffTotalCount,
     handoffLoading,
+
+    // ── Structured sub-objects ─────────────────────
+    header: { formData, setFormData, validationErrors, clearValidationErrors },
+    picker: {
+      searchQuery, setSearchQuery,
+      showTodayOnly, setShowTodayOnly,
+      filteredUsers, selectedUsers, selectedUserIds,
+      handleUserToggle, handleSelectAll, handleClearAll,
+    },
+    table: {
+      handleRowDataChange, handleProblemBehaviorChange,
+      handleBehaviorTagToggle, handleClearRow,
+      visibleRows, showUnsentOnly, setShowUnsentOnly, unsentRowCount,
+    },
+    draft: { hasDraft, draftSavedAt, handleSaveDraft },
+    handoff: {
+      affectedUserCount: handoffAffectedUserCount,
+      totalCount: handoffTotalCount,
+      loading: handoffLoading,
+    },
+    actions: { handleSave, saving },
   };
 };

@@ -31,7 +31,9 @@ export const TableDailyRecordPage: React.FC = () => {
     onSave: vm.onSave,
   });
 
-  const displayedUnsentCount = Math.max(formState.unsentRowCount, formState.selectedUserIds.length);
+  const { header, picker, table, draft, actions } = formState;
+
+  const displayedUnsentCount = Math.max(table.unsentRowCount, picker.selectedUserIds.length);
 
   const headerActions = (
     <Stack direction="row" spacing={0.5} alignItems="center" sx={{ flexShrink: 0 }}>
@@ -39,8 +41,8 @@ export const TableDailyRecordPage: React.FC = () => {
       <TextField
         type="date"
         size="small"
-        value={formState.formData.date}
-        onChange={(e) => formState.setFormData((prev) => ({ ...prev, date: e.target.value }))}
+        value={header.formData.date}
+        onChange={(e) => header.setFormData((prev) => ({ ...prev, date: e.target.value }))}
         InputLabelProps={{ shrink: true }}
         sx={{
           width: 130,
@@ -50,8 +52,8 @@ export const TableDailyRecordPage: React.FC = () => {
       />
       <TextField
         size="small"
-        value={formState.formData.reporter.name}
-        onChange={(e) => formState.setFormData((prev) => ({
+        value={header.formData.reporter.name}
+        onChange={(e) => header.setFormData((prev) => ({
           ...prev,
           reporter: { ...prev.reporter, name: e.target.value },
         }))}
@@ -70,7 +72,7 @@ export const TableDailyRecordPage: React.FC = () => {
       {/* ── User count badge ── */}
       <Tooltip title="利用者の選択は下のリストで変更できます">
         <Badge
-          badgeContent={formState.selectedUserIds.length}
+          badgeContent={picker.selectedUserIds.length}
           color="primary"
           max={99}
         >
@@ -80,14 +82,14 @@ export const TableDailyRecordPage: React.FC = () => {
 
       {/* ── Unsent filter toggle ── */}
       {displayedUnsentCount > 0 && (
-        <Tooltip title={formState.showUnsentOnly ? '全件表示に戻す' : '未送信のみ表示'}>
+        <Tooltip title={table.showUnsentOnly ? '全件表示に戻す' : '未送信のみ表示'}>
           <Chip
-            icon={formState.showUnsentOnly ? <FilterListOffIcon sx={{ fontSize: 14 }} /> : <FilterListIcon sx={{ fontSize: 14 }} />}
+            icon={table.showUnsentOnly ? <FilterListOffIcon sx={{ fontSize: 14 }} /> : <FilterListIcon sx={{ fontSize: 14 }} />}
             label={`未送信${displayedUnsentCount}`}
             size="small"
-            color={formState.showUnsentOnly ? 'primary' : 'default'}
-            variant={formState.showUnsentOnly ? 'filled' : 'outlined'}
-            onClick={() => formState.setShowUnsentOnly((prev) => !prev)}
+            color={table.showUnsentOnly ? 'primary' : 'default'}
+            variant={table.showUnsentOnly ? 'filled' : 'outlined'}
+            onClick={() => table.setShowUnsentOnly((prev) => !prev)}
             sx={{ height: 24, fontSize: '0.7rem', cursor: 'pointer' }}
             data-testid={TESTIDS['daily-table-unsent-count-chip']}
           />
@@ -95,9 +97,9 @@ export const TableDailyRecordPage: React.FC = () => {
       )}
 
       {/* ── Draft status ── */}
-      {formState.hasDraft && (
+      {draft.hasDraft && (
         <Chip
-          label={`下書き${formState.draftSavedAt ? ` ${new Date(formState.draftSavedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}` : ''}`}
+          label={`下書き${draft.draftSavedAt ? ` ${new Date(draft.draftSavedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}` : ''}`}
           color="warning"
           variant="outlined"
           size="small"
@@ -111,8 +113,8 @@ export const TableDailyRecordPage: React.FC = () => {
 
       {/* ── Save actions ── */}
       <Button
-        onClick={formState.handleSaveDraft}
-        disabled={formState.saving}
+        onClick={draft.handleSaveDraft}
+        disabled={actions.saving}
         variant="outlined"
         size="small"
         sx={{
@@ -131,13 +133,13 @@ export const TableDailyRecordPage: React.FC = () => {
         variant="contained"
         size="small"
         sx={{ minHeight: 30, fontSize: '0.75rem', px: 1.5 }}
-        onClick={formState.handleSave}
-        disabled={formState.saving || formState.selectedUserIds.length === 0}
+        onClick={actions.handleSave}
+        disabled={actions.saving || picker.selectedUserIds.length === 0}
         startIcon={<SaveIcon sx={{ fontSize: 16 }} />}
       >
-        {formState.saving
+        {actions.saving
           ? '保存中...'
-          : `${formState.selectedUserIds.length}人分保存`}
+          : `${picker.selectedUserIds.length}人分保存`}
       </Button>
     </Stack>
   );
@@ -149,7 +151,7 @@ export const TableDailyRecordPage: React.FC = () => {
       backTo={vm.backTo}
       testId={vm.testId}
       onClose={vm.onClose}
-      busy={formState.saving}
+      busy={actions.saving}
       headerActions={headerActions}
     >
       <TableDailyRecordForm
