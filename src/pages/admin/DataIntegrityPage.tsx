@@ -1,4 +1,4 @@
-﻿import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ErrorIcon from '@mui/icons-material/Error';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -27,8 +27,7 @@ import { SpUserMasterItemSchema } from '@/features/users/schema';
 import { useDataIntegrityScan } from '@/hooks/useDataIntegrityScan';
 import { formatScanSummary, type ScanResult, type ScanTarget } from '@/lib/dataIntegrityScanner';
 import { auditLog } from '@/lib/debugLogger';
-import { fetchSp } from '@/lib/fetchSp';
-import { ensureConfig } from '@/lib/spClient';
+import { useSP } from '@/lib/spClient';
 import { USERS_SELECT_FIELDS_SAFE } from '@/sharepoint/fields';
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -58,25 +57,20 @@ const MAX_PAGES = 4; // Safety limit: 500 × 4 = 2000 items max
  * Uses pagination ($skiptoken / odata.nextLink) to collect all items.
  */
 async function fetchRawItems(
-  baseUrl: string,
+  spFetch: (path: string, init?: RequestInit) => Promise<Response>,
   listTitle: string,
   selectFields: readonly string[],
   signal?: AbortSignal,
 ): Promise<unknown[]> {
   const allItems: unknown[] = [];
   const select = selectFields.join(',');
-  let url: string | null =
-    `${baseUrl}/_api/web/lists/GetByTitle('${encodeURIComponent(listTitle)}')/items?$select=${select}&$top=${MAX_ITEMS_PER_REQUEST}`;
+  let path: string | null =
+    `/_api/web/lists/GetByTitle('${encodeURIComponent(listTitle)}')/items?$select=${select}&$top=${MAX_ITEMS_PER_REQUEST}`;
 
-  for (let page = 0; page < MAX_PAGES && url; page++) {
+  for (let page = 0; page < MAX_PAGES && path; page++) {
     if (signal?.aborted) break;
 
-    const response = await fetchSp(url);
-    if (!response.ok) {
-      auditLog.warn('data-integrity', 'fetch_list_failed', { listTitle, status: response.status });
-      break;
-    }
-
+    const response = await spFetch(path);
     const payload = (await response.json()) as {
       value?: unknown[];
       'odata.nextLink'?: string;
@@ -86,7 +80,14 @@ async function fetchRawItems(
       allItems.push(...payload.value);
     }
 
-    url = payload['odata.nextLink'] ?? null;
+    // odata.nextLink は絶対 URL で返るため、baseUrl 以降のパスを抽出
+    const nextLink = payload['odata.nextLink'] ?? null;
+    if (nextLink) {
+      const idx = nextLink.indexOf('/_api/');
+      path = idx >= 0 ? nextLink.slice(idx) : nextLink;
+    } else {
+      path = null;
+    }
   }
 
   return allItems;
@@ -103,6 +104,7 @@ async function fetchRawItems(
  * 不整合レコードの一覧を表示するページ。
  */
 const DataIntegrityPage: React.FC = () => {
+  const { spFetch } = useSP();
   const { status, progress, results, error, startScan, cancelScan } = useDataIntegrityScan();
   const [copied, setCopied] = useState(false);
   const [fetchingData, setFetchingData] = useState(false);
@@ -110,12 +112,11 @@ const DataIntegrityPage: React.FC = () => {
   const handleStartScan = useCallback(async () => {
     try {
       setFetchingData(true);
-      const { baseUrl } = ensureConfig();
 
       // Fetch raw data from SharePoint for each target
       const data = new Map<string, unknown[]>();
       for (const target of SCAN_TARGETS) {
-        const items = await fetchRawItems(baseUrl, target.listTitle, target.selectFields);
+        const items = await fetchRawItems(spFetch, target.listTitle, target.selectFields);
         data.set(target.name, items);
       }
 
@@ -127,7 +128,7 @@ const DataIntegrityPage: React.FC = () => {
         error: err instanceof Error ? err.message : String(err),
       });
     }
-  }, [startScan]);
+  }, [spFetch, startScan]);
 
 
   const handleCopy = useCallback(async () => {

@@ -60,7 +60,7 @@ vi.mock('@/lib/tz', () => ({
 // InMemoryScheduleRepository) were mocked, but repositoryFactory itself
 // was NOT mocked, causing Vitest to resolve the full transitive import
 // chain: repositoryFactory → @/env → import.meta, and
-// repositoryFactory → SharePointScheduleRepository → fetchSp → spClient
+// repositoryFactory → SharePointScheduleRepository → spClient
 // → msal, which exhausted worker memory (OOM).
 //
 // By mocking the factory at the boundary, we cut off the entire heavy

@@ -53,6 +53,11 @@ vi.mock('@/auth/useAuth', () => ({
     setListReadyState: vi.fn(),
   }),
 }));
+const mockSpFetch = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/spClient', () => ({
+  ensureConfig: vi.fn().mockReturnValue({ baseUrl: 'https://test.sharepoint.com/sites/test' }),
+  createSpClient: vi.fn().mockReturnValue({ spFetch: mockSpFetch }),
+}));
 vi.mock('@/features/daily/infra/SharePointDailyRecordRepository', () => ({
   SharePointDailyRecordRepository: MockSPRepo,
 }));
@@ -122,7 +127,7 @@ describe('Daily repositoryFactory', () => {
       expect(repo).toBe(mockSpInstance);
       // forceKind with custom options is not cached, so MockSPRepo was called
       expect(MockSPRepo).toHaveBeenCalledWith(
-        expect.objectContaining({ acquireToken: mockAcquireToken }),
+        expect.objectContaining({ spFetch: mockSpFetch }),
       );
     });
 

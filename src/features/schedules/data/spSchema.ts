@@ -33,6 +33,19 @@ export const buildSchedulesListPath = (baseUrl: string): string => {
   return `${baseUrl}/lists/getbytitle('${escaped}')/items`;
 };
 
+/**
+ * Relative-path variant for spFetch (which already includes baseUrl).
+ * Returns path like `lists/getbytitle('Schedules')/items` without leading slash.
+ */
+export const buildSchedulesRelativeListPath = (): string => {
+  const identifier = resolveSchedulesListIdentifier();
+  if (identifier.type === 'guid') {
+    return `lists(guid'${identifier.value}')/items`;
+  }
+  const escaped = identifier.value.replace(/'/g, "''");
+  return `lists/getbytitle('${escaped}')/items`;
+};
+
 export const SCHEDULES_FIELDS = {
   title: 'Title',
   serviceType: 'Category',  // ScheduleEvents uses Category field

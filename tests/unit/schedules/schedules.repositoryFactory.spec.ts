@@ -75,6 +75,19 @@ vi.mock('@/auth/useAuth', () => ({
   useAuth: vi.fn(() => ({ acquireToken: vi.fn(async () => null) })),
 }));
 
+// Mock spClient — factory calls createSpClient + ensureConfig for DI
+vi.mock('@/lib/spClient', () => ({
+  createSpClient: vi.fn(() => ({
+    spFetch: vi.fn(),
+    tryGetListMetadata: vi.fn(),
+  })),
+  ensureConfig: vi.fn(() => ({
+    siteUrl: 'https://example.sharepoint.com/sites/test',
+    baseUrl: 'https://example.sharepoint.com/sites/test/_api',
+  })),
+}));
+
+
 import {
     getCurrentScheduleRepositoryKind,
     getScheduleRepository,

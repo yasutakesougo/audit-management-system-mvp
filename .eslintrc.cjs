@@ -55,10 +55,16 @@ module.exports = {
         message: '生 window.fetch() は禁止です。spFetch / graphFetch / resilientFetch 等のドメイン別クライアントを使用してください。',
       },
     ],
+    // fetchSp 凍結 — 新規コードでは spClient / useSP() を使用 (Phase 3-B)
     'no-restricted-imports': [
       'error',
       {
         paths: [
+          {
+            name: '@/lib/fetchSp',
+            message:
+              'fetchSp は互換レイヤーです。新規コードでは useSP() または createSpClient() を使用してください。(docs/guides/fetch-client-guideline.md)',
+          },
           {
             name: '@/lib/env',
             importNames: [

@@ -43,18 +43,16 @@ export type { ListFieldMeta } from './scheduleSpMappers';
 // ============================================================================
 
 export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOptions): SchedulesPort => {
-  // Create client for mutations if acquireToken is provided
-  let client: ReturnType<typeof createSpClient> | null = null;
-  if (options?.acquireToken) {
-    const { baseUrl } = ensureConfig();
-    client = createSpClient(options.acquireToken, baseUrl);
-  }
+  // Create client — needed for both list (spFetch) and mutations
+  const { baseUrl } = ensureConfig();
+  const acquireToken = options?.acquireToken ?? (async () => null as string | null);
+  const client = createSpClient(acquireToken, baseUrl);
 
   return {
     async list(range) {
       try {
-        // Step 2: Use legacy defaultListRange (already working with SharePoint via fetchSp)
-        const allItems = await defaultListRange(range);
+        // spFetch DI: pass client.spFetch to defaultListRange
+        const allItems = await defaultListRange(client.spFetch, range);
 
         // Phase 1: visibility filtering
         if (!options?.currentOwnerUserId) {

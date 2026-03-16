@@ -9,6 +9,9 @@
  *
  * テスト時は __setSupportPlanningSheetRepositoryForTesting() で任意の実装を注入可能。
  */
+import { acquireSpAccessToken, getSharePointScopes } from '@/lib/msal';
+import { createSpClient } from '@/lib/spClient';
+import { ensureConfig } from '@/lib/sp/config';
 import { shouldSkipSharePoint } from '@/lib/sharepoint/skipSharePoint';
 import { InMemorySupportPlanningSheetRepository } from './InMemorySupportPlanningSheetRepository';
 import type { SupportPlanningSheetRepository } from './SupportPlanningSheetRepository';
@@ -27,11 +30,20 @@ let instance: SupportPlanningSheetRepository | null = null;
 export function createSupportPlanningSheetRepository(): SupportPlanningSheetRepository {
   if (!instance) {
     const skip = shouldSkipSharePoint();
-    instance = skip
-      ? new InMemorySupportPlanningSheetRepository()
-      : new SharePointSupportPlanningSheetRepository();
-
-    if (!skip) {
+    if (skip) {
+      instance = new InMemorySupportPlanningSheetRepository();
+    } else {
+      const { baseUrl } = ensureConfig();
+      const scopes = getSharePointScopes();
+      const acquireToken = async (): Promise<string | null> => {
+        try {
+          return await acquireSpAccessToken(scopes.length ? scopes : getSharePointScopes());
+        } catch {
+          return null;
+        }
+      };
+      const client = createSpClient(acquireToken, baseUrl);
+      instance = new SharePointSupportPlanningSheetRepository(client.spFetch);
       console.info('[SupportPlanningSheetRepository] Using SharePoint backend');
     }
   }

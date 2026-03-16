@@ -9,6 +9,9 @@
  *
  * テスト時は __setIspDecisionRepositoryForTesting() で任意の実装を注入可能。
  */
+import { acquireSpAccessToken, getSharePointScopes } from '@/lib/msal';
+import { createSpClient } from '@/lib/spClient';
+import { ensureConfig } from '@/lib/sp/config';
 import { shouldSkipSharePoint } from '@/lib/sharepoint/skipSharePoint';
 import { InMemoryIspDecisionRepository } from './InMemoryIspDecisionRepository';
 import type { IspDecisionRepository } from './IspDecisionRepository';
@@ -27,11 +30,20 @@ let instance: IspDecisionRepository | null = null;
 export function createIspDecisionRepository(): IspDecisionRepository {
   if (!instance) {
     const skip = shouldSkipSharePoint();
-    instance = skip
-      ? new InMemoryIspDecisionRepository()
-      : new SharePointIspDecisionRepository();
-
-    if (!skip) {
+    if (skip) {
+      instance = new InMemoryIspDecisionRepository();
+    } else {
+      const { baseUrl } = ensureConfig();
+      const scopes = getSharePointScopes();
+      const acquireToken = async (): Promise<string | null> => {
+        try {
+          return await acquireSpAccessToken(scopes.length ? scopes : getSharePointScopes());
+        } catch {
+          return null;
+        }
+      };
+      const client = createSpClient(acquireToken, baseUrl);
+      instance = new SharePointIspDecisionRepository(client.spFetch);
       console.info('[IspDecisionRepository] Using SharePoint backend');
     }
   }
@@ -53,3 +65,4 @@ export function __resetIspDecisionRepositoryForTesting(): void {
 export function __setIspDecisionRepositoryForTesting(repo: IspDecisionRepository): void {
   instance = repo;
 }
+
