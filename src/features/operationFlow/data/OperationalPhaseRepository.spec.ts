@@ -95,9 +95,9 @@ describe('InMemoryOperationalPhaseRepository', () => {
   });
 
   it('saveAll は既存の設定を完全に置換する', async () => {
-    // 最初はデフォルト9件
+    // 最初はデフォルト（10件）
     const before = await repo.getAll();
-    expect(before).toHaveLength(9);
+    expect(before).toHaveLength(DEFAULT_PHASE_CONFIG.length);
 
     // 2件だけ保存
     await repo.saveAll([

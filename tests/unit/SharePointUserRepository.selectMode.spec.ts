@@ -8,12 +8,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // and control which calls succeed/fail to verify the fallback cascade.
 // ---------------------------------------------------------------------------
 
-vi.mock('@/lib/env', () => ({
-  getAppConfig: () => ({
-    VITE_SP_RESOURCE: 'https://example.sharepoint.com',
-    VITE_SP_SITE_RELATIVE: '/sites/test',
-  }),
-}));
+vi.mock('@/lib/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/env')>();
+  return {
+    ...actual,
+    getAppConfig: () => ({
+      VITE_SP_RESOURCE: 'https://example.sharepoint.com',
+      VITE_SP_SITE_RELATIVE: '/sites/test',
+    }),
+  };
+});
 
 const auditMock = vi.fn();
 

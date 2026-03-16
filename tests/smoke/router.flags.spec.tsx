@@ -23,6 +23,10 @@ vi.mock('@/auth/useAuth', () => ({
     account: null,
     shouldSkipLogin: true,
     loading: false,
+    tokenReady: true,
+    getListReadyState: () => true,
+    setListReadyState: vi.fn(),
+    acquireToken: vi.fn(async () => 'mock-token'),
   }),
 }));
 
@@ -119,10 +123,10 @@ import App from '../../src/App';
  * - useAuth でログイン済み状態をシミュレート + shouldSkipLogin: true
  * - spClient, stores (users/staff/schedules) をモック化
  *
- * 改善点:
- * - userEvent使用でより現実的なユーザー操作をシミュレート
- * - 認証・API呼び出しの副作用検証追加
- * - マジックインデックス [1] の課題は data-testid 追加で将来解決予定
+ * ナビゲーション構造:
+ * - nav-audit はヘッダーの IconButton（サイドバーにはない）
+ * - nav-checklist は管理ツール (/admin) に統合済み
+ * - nav-daily はサイドバーのナビアイテム
  */
 
 describe('router future flags smoke', () => {
@@ -181,9 +185,12 @@ describe('router future flags smoke', () => {
     // 初期表示: ホーム画面の確認
     expect(await screen.findByTestId('dashboard-root', undefined, arrivalOptions)).toBeInTheDocument();
 
-    // ナビゲーション経路のテスト: ホーム → 監査ログ → 日次記録 → 自己点検 → ホーム
+    // ナビゲーション経路のテスト: ホーム → 監査ログ → 日次記録 → ホーム
 
-    await user.click(await ensureNavItem(TESTIDS.nav.audit));
+    // nav-audit はヘッダーの IconButton <a> なので、ensureNavItem ではなく直接検索
+    const auditLink = await screen.findByTestId(TESTIDS.nav.audit, undefined, arrivalOptions);
+    expect(auditLink).toBeInTheDocument();
+    await user.click(auditLink);
     // Ensure router observes location updates in JSDOM when the nav item is an anchor.
     navigateToPath('/audit');
     await waitFor(
@@ -191,17 +198,10 @@ describe('router future flags smoke', () => {
       { timeout: 10_000 },
     );
     expect(screen.queryByText(/権限を確認中/)).not.toBeInTheDocument();
-    // ✅ Audit nav via role-based aria-label query (stable across CI/local)
-    // AppShell.tsx: IconButton component={RouterLink} to="/audit" aria-label="監査ログ"
-    // rendered as <a> so role="link"
-    const auditLink = await screen.findByRole('link', { name: /監査ログ/i }, arrivalOptions);
-    expect(auditLink).toBeInTheDocument();
 
+    // 日次記録ナビ（サイドバー）
     await user.click(await ensureNavItem(TESTIDS.nav.daily));
     expect(await screen.findByTestId('daily-hub-root', undefined, arrivalOptions)).toBeInTheDocument();
-
-    await user.click(await ensureNavItem(TESTIDS.nav.checklist));
-    expect(await screen.findByText('自己点検ビュー', undefined, arrivalOptions)).toBeInTheDocument();
 
     // nav-dashboard は常設UI契約ではないため、戻りは history 遷移を契約にする
     navigateToPath('/');

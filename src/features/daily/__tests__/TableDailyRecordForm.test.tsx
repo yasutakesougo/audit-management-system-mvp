@@ -255,7 +255,7 @@ describe('TableDailyRecordForm', () => {
     expect(table.getByText('利用者')).toBeInTheDocument();
     expect(table.getByText('午前活動')).toBeInTheDocument();
     expect(table.getByText('午後活動')).toBeInTheDocument();
-    expect(table.getByText('昼食摂取')).toBeInTheDocument();
+    expect(table.getByText('昼食')).toBeInTheDocument();
     expect(table.getByText('問題行動')).toBeInTheDocument();
     expect(table.getByText('特記事項')).toBeInTheDocument();
   });

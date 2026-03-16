@@ -251,17 +251,16 @@ describe('navigationConfig', () => {
         navAudience: NAV_AUDIENCE.admin,
       });
 
-      expect(items.some((item) => item.testId === TESTIDS.nav.checklist)).toBe(true);
-      expect(items.some((item) => item.testId === TESTIDS.nav.audit)).toBe(true);
-      expect(items.some((item) => item.label === '支援手順マスタ')).toBe(true);
+      // Admin items are now consolidated into '管理ツール' hub
+      expect(items.some((item) => item.label === '管理ツール')).toBe(true);
+      expect(items.some((item) => item.label === '職員勤怠管理')).toBe(true);
     });
 
     it('should not include admin items for non-admin users', () => {
       const items = createNavItems(baseConfig);
 
-      expect(items.some((item) => item.testId === TESTIDS.nav.checklist)).toBe(false);
-      expect(items.some((item) => item.testId === TESTIDS.nav.audit)).toBe(false);
-      expect(items.some((item) => item.label === '支援手順マスタ')).toBe(false);
+      expect(items.some((item) => item.label === '管理ツール')).toBe(false);
+      expect(items.some((item) => item.label === '職員勤怠管理')).toBe(false);
     });
 
     it('should filter items by audience (all items visible to all)', () => {
@@ -284,7 +283,8 @@ describe('navigationConfig', () => {
         navAudience: NAV_AUDIENCE.admin,
       });
 
-      expect(itemsWithSkip.some((item) => item.testId === TESTIDS.nav.checklist)).toBe(true);
+      // Admin items visible with skipLogin
+      expect(itemsWithSkip.some((item) => item.label === '管理ツール')).toBe(true);
     });
 
     it('should exclude admin-audience items for staff navAudience', () => {
@@ -312,8 +312,8 @@ describe('navigationConfig', () => {
       // admin audience sees all items regardless of their audience setting
       expect(items.some((item) => item.label === '日次記録')).toBe(true);
       expect(items.some((item) => item.label === '請求処理')).toBe(true);
-      expect(items.some((item) => item.testId === TESTIDS.nav.checklist)).toBe(true);
-      expect(items.some((item) => item.testId === TESTIDS.nav.audit)).toBe(true);
+      // Admin items consolidated into 管理ツール
+      expect(items.some((item) => item.label === '管理ツール')).toBe(true);
     });
   });
 
@@ -422,7 +422,7 @@ describe('navigationConfig', () => {
     it('should maintain group order', () => {
       const { ORDER } = groupNavItems(sampleItems, false);
 
-      expect(ORDER).toEqual(['daily', 'record', 'isp', 'ibd', 'master', 'ops', 'admin', 'settings']);
+      expect(ORDER).toEqual(['daily', 'record', 'isp', 'ibd', 'master', 'ops']);
     });
 
     it('should omit empty groups from the map', () => {
@@ -469,7 +469,7 @@ describe('navigationConfig', () => {
     });
 
     it('should have correct group order', () => {
-      expect(NAV_GROUP_ORDER).toEqual(['daily', 'record', 'isp', 'ibd', 'master', 'ops', 'admin', 'settings']);
+      expect(NAV_GROUP_ORDER).toEqual(['daily', 'record', 'isp', 'ibd', 'master', 'ops']);
     });
   });
 });

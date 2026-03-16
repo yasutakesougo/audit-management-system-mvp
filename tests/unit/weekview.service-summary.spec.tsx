@@ -13,7 +13,7 @@ type WeekItem = {
   allDay?: boolean;
 };
 
-describe.skip('WeekView service summary chips', () => {
+describe('WeekView service summary chips', () => {
   const range = { from: '2025-03-03', to: '2025-03-10' };
 
   it('aggregates counts by service type for the week range', () => {

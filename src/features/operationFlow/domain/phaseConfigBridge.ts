@@ -1,8 +1,8 @@
 /**
- * phaseConfigBridge — 9分割設定値を既存6分割 OperationalPhase に橋渡し
+ * phaseConfigBridge — 10分割設定値を既存6分割 OperationalPhase に橋渡し
  *
  * 目的:
- *   - getCurrentPhaseFromConfig() が返す OperationFlowPhaseKey (9分割) を
+ *   - getCurrentPhaseFromConfig() が返す OperationFlowPhaseKey (10分割) を
  *     既存コードが期待する OperationalPhase (6分割) にマッピングする
  *   - 設定配列から primaryScreen を取得する
  *   - 既存フェーズラベルも設定値ベースに切り替えられる
@@ -24,13 +24,14 @@ import type { OperationFlowPhaseConfig, OperationFlowPhaseKey, PrimaryScreen as 
 // ────────────────────────────────────────
 
 /**
- * 9分割キーを旧6分割 OperationalPhase にマッピングする
+ * 10分割キーを旧6分割 OperationalPhase にマッピングする
  *
  * マッピング根拠 (operationFlowTypes.ts のコメントと同一):
  *   staff_prep          → preparation
  *   morning_briefing    → morning-meeting
  *   arrival_intake      → am-operation
  *   am_activity         → am-operation
+ *   lunch_break         → pm-operation
  *   pm_activity         → pm-operation
  *   departure_support   → evening-closing
  *   record_wrapup       → record-review
@@ -42,6 +43,7 @@ const PHASE_KEY_TO_LEGACY: Record<OperationFlowPhaseKey, OperationalPhase> = {
   morning_briefing:   'morning-meeting',
   arrival_intake:     'am-operation',
   am_activity:        'am-operation',
+  lunch_break:        'pm-operation',
   pm_activity:        'pm-operation',
   departure_support:  'evening-closing',
   record_wrapup:      'record-review',

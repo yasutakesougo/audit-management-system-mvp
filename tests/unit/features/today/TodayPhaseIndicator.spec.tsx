@@ -33,12 +33,12 @@ function at(h: number, m: number): Date {
 // 純粋関数テスト: getTodayPhaseHint
 // ────────────────────────────────────────
 describe('getTodayPhaseHint', () => {
-  // 9分割 DEFAULT_PHASE_CONFIG ベース:
+  // 10分割 DEFAULT_PHASE_CONFIG ベース:
   // after_hours_review 18:00-08:30, staff_prep 08:30-09:00,
   // morning_briefing 09:00-09:15, arrival_intake 09:15-10:30,
-  // am_activity 10:30-12:00, pm_activity 12:00-15:30,
-  // departure_support 15:30-16:00, record_wrapup 16:00-17:00,
-  // evening_briefing 17:00-18:00
+  // am_activity 10:30-12:00, lunch_break 12:00-13:45,
+  // pm_activity 13:45-15:45, departure_support 15:45-16:00,
+  // record_wrapup 16:00-17:00, evening_briefing 17:00-18:00
 
   it('06:00 → record-review (深夜→after_hours_review)', () => {
     const hint = getTodayPhaseHint(at(6, 0));
@@ -75,16 +75,17 @@ describe('getTodayPhaseHint', () => {
     expect(hint.primaryScreen).toBe('/today');
   });
 
-  it('12:00 → pm-operation (主役は /daily)', () => {
+  it('12:00 → pm-operation (lunch_break, 主役は /today)', () => {
     const hint = getTodayPhaseHint(at(12, 0));
     expect(hint.phase).toBe('pm-operation');
-    expect(hint.isTodayPrimary).toBe(false);
-    expect(hint.primaryScreen).toBe('/daily');
+    // lunch_break の configPrimaryScreen は /today
+    expect(hint.isTodayPrimary).toBe(true);
+    expect(hint.primaryScreen).toBe('/today');
   });
 
-  it('15:30 → evening-closing (主役は /daily)', () => {
+  it('15:30 → pm-operation (pm_activity 13:45-15:45, 主役は /daily)', () => {
     const hint = getTodayPhaseHint(at(15, 30));
-    expect(hint.phase).toBe('evening-closing');
+    expect(hint.phase).toBe('pm-operation');
     expect(hint.isTodayPrimary).toBe(false);
     expect(hint.primaryScreen).toBe('/daily');
   });
@@ -114,10 +115,10 @@ describe('getTodayPhaseHint', () => {
     }
   });
 
-  it('主役画面が /today のフェーズは staff_prep と am_activity のみ', () => {
-    // staff_prep 08:30-09:00, am_activity 10:30-12:00 → /today
-    const todayPrimaryPhases = [at(8, 45), at(10, 30)];
-    const notTodayPhases = [at(7, 0), at(9, 5), at(9, 20), at(13, 0), at(16, 0), at(18, 0)];
+  it('主役画面が /today のフェーズは staff_prep, am_activity, lunch_break のみ', () => {
+    // staff_prep 08:30-09:00, am_activity 10:30-12:00, lunch_break 12:00-13:45 → /today
+    const todayPrimaryPhases = [at(8, 45), at(10, 30), at(12, 30)];
+    const notTodayPhases = [at(7, 0), at(9, 5), at(9, 20), at(14, 0), at(16, 0), at(18, 0)];
 
     todayPrimaryPhases.forEach(t => {
       expect(getTodayPhaseHint(t).isTodayPrimary).toBe(true);
@@ -175,8 +176,8 @@ describe('TodayPhaseIndicator', () => {
 
   it('サジェストボタンクリックで onNavigate が呼ばれる', () => {
     const handleNavigate = vi.fn();
-    // 12:30 → pm_activity → pm-operation → /daily が主役
-    render(<TodayPhaseIndicator now={at(12, 30)} onNavigate={handleNavigate} />);
+    // 14:00 → pm_activity → pm-operation → /daily が主役
+    render(<TodayPhaseIndicator now={at(14, 0)} onNavigate={handleNavigate} />);
     const btn = screen.getByText(/今は「日々の記録」がメインの時間帯です/);
     fireEvent.click(btn);
     expect(handleNavigate).toHaveBeenCalledWith('/daily');

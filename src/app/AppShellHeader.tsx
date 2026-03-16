@@ -146,6 +146,7 @@ export const AppShellHeader: React.FC<Props> = ({
             to="/audit"
             color="inherit"
             aria-label="監査ログ"
+            data-testid={TESTIDS.nav.audit}
             size="small"
             sx={{ p: 0.5 }}
           >

@@ -28,26 +28,12 @@ export const RECORD_ROUTES_BASE: NavItem[] = [
     audience: NAV_AUDIENCE.staff,
     group: 'record' as NavGroupKey,
   },
-  {
-    label: '月次記録',
-    to: '/records/monthly',
-    isActive: (pathname) => pathname.startsWith('/records/monthly'),
-    icon: undefined,
-    audience: NAV_AUDIENCE.staff,
-    group: 'record' as NavGroupKey,
-  },
+  // 月次記録・業務日誌プレビューは
+  // 記録一覧（/records）のサブページとして到達可能なため除外。
   {
     label: 'サービス提供実績記録',
     to: '/records/service-provision',
     isActive: (pathname) => pathname.startsWith('/records/service-provision'),
-    icon: undefined,
-    audience: NAV_AUDIENCE.staff,
-    group: 'record' as NavGroupKey,
-  },
-  {
-    label: '業務日誌プレビュー',
-    to: '/records/journal',
-    isActive: (pathname) => pathname === '/records/journal',
     icon: undefined,
     audience: NAV_AUDIENCE.staff,
     group: 'record' as NavGroupKey,

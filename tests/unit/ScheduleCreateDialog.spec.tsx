@@ -29,7 +29,7 @@ afterEach(() => {
   cleanup();
 });
 
-describe.skip('createInitialScheduleFormState', () => {
+describe('createInitialScheduleFormState', () => {
   it('uses provided initial date and default user while setting a 1-hour slot', () => {
     const initialDate = new Date(2025, 10, 12, 9, 15, 0);
     const form = createInitialScheduleFormState({
@@ -46,7 +46,7 @@ describe.skip('createInitialScheduleFormState', () => {
   });
 });
 
-describe.skip('validateScheduleForm', () => {
+describe('validateScheduleForm', () => {
   it('collects errors for missing required fields', () => {
     const result = validateScheduleForm(
       buildForm({ title: '', startLocal: '', endLocal: '', serviceType: '' })
@@ -77,7 +77,7 @@ describe.skip('validateScheduleForm', () => {
   });
 });
 
-describe.skip('toCreateScheduleInput', () => {
+describe('toCreateScheduleInput', () => {
   it('throws when required fields are missing', () => {
     expect(() =>
       toCreateScheduleInput(buildForm({ title: '', serviceType: 'normal' }))
@@ -111,7 +111,7 @@ describe.skip('toCreateScheduleInput', () => {
   });
 });
 
-describe.skip('ScheduleCreateDialog component', () => {
+describe('ScheduleCreateDialog component', () => {
   it('links aria-labelledby/aria-describedby to heading and description test ids', () => {
     render(
       <ScheduleCreateDialog

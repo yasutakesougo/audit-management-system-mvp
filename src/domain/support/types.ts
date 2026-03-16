@@ -69,17 +69,17 @@ export const defaultSupportActivities: Omit<SupportActivityTemplate, 'id'>[] = [
   },
   {
     specificTime: '12:00',
-    activityName: '昼食準備・摂取',
+    activityName: '昼食休み',
     category: '昼食',
-    description: '昼食の準備、食事、片付け',
-    userExpectedActions: '手洗い、配膳手伝い、楽しく食事する',
-    staffSupportMethods: '衛生管理、配膳支援、食事見守り',
-    duration: 90,
+    description: '昼食の準備、食事、休憩',
+    userExpectedActions: '手洗い、配膳手伝い、楽しく食事する、休憩する',
+    staffSupportMethods: '衛生管理、配膳支援、食事見守り、休憩環境の確保',
+    duration: 105,
     importance: '必須',
     iconEmoji: '🍽️'
   },
   {
-    specificTime: '13:30',
+    specificTime: '13:45',
     activityName: 'PM活動・レクリエーション',
     category: 'PM活動',
     description: '午後の活動、グループワーク、レクリエーション',
@@ -90,7 +90,7 @@ export const defaultSupportActivities: Omit<SupportActivityTemplate, 'id'>[] = [
     iconEmoji: '🎯'
   },
   {
-    specificTime: '15:30',
+    specificTime: '15:45',
     activityName: '帰宅準備・振り返り',
     category: '終了準備',
     description: '一日の振り返り、片付け、帰宅準備',

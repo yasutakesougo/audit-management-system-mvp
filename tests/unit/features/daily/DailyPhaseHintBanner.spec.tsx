@@ -49,8 +49,8 @@ describe('getDailyPhaseHint', () => {
     ['11:00 → am-operation', at(11, 0), 'am-operation', '記録'],
     ['12:00 → pm-operation', at(12, 0), 'pm-operation', '午後活動'],
     ['14:00 → pm-operation', at(14, 0), 'pm-operation', '午前分'],
-    // 15:30 は departure_support → evening-closing
-    ['15:30 → evening-closing', at(15, 30), 'evening-closing', '帰り支度'],
+    // 15:30 は pm_activity (13:45-15:45) → pm-operation
+    ['15:30 → pm-operation', at(15, 30), 'pm-operation', '午前分'],
     // 16:00 は record_wrapup (16:00-17:00) → record-review
     ['16:00 → record-review', at(16, 0), 'record-review', '振り返り'],
     // 17:00-18:00 は evening_briefing → record-review

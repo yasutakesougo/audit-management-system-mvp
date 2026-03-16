@@ -114,6 +114,20 @@ export const ORPHAN_ALLOWLIST_DETAILS: AllowlistRoute[] = [
   { path: '/support-planning-sheet/:planningSheetId', category: 'Detail', reason: '支援計画シート詳細画面（計画書一覧・ISPエディタからリンク経由）' },
   { path: '/planning-sheet-list', category: 'Drilldown', reason: '計画書一覧ページ（ISPエディタ・支援計画ガイドからリンク経由）' },
   { path: '/abc-record', category: 'Drilldown', reason: 'ABC記録ページ（IcebergPDCA・計画シートからリンク経由）' },
+  { path: '/dashboard/briefing', category: 'Drilldown', reason: 'ブリーフィングビュー（ダッシュボードからリンク経由）' },
+  { path: '/meeting-guide', category: 'Drilldown', reason: '会議ガイドページ（管理ツールからリンク経由）' },
+  { path: '/records/monthly', category: 'Drilldown', reason: '月次記録ページ（日次記録・ダッシュボードからリンク経由）' },
+  { path: '/records/journal', category: 'Drilldown', reason: '業務日誌ページ（日次記録・ダッシュボードからリンク経由）' },
+  { path: '/checklist', category: 'Admin', reason: '自己点検チェックリスト（管理ツールhubからリンク経由）' },
+  { path: '/audit', category: 'Admin', reason: '監査ログ（管理ツールhubからリンク経由）' },
+  { path: '/analysis/intervention', category: 'Drilldown', reason: '介入分析（分析ワークスペースからリンク経由）' },
+  { path: '/admin/templates', category: 'Admin', reason: 'テンプレート管理（管理ツールhubからリンク経由）' },
+  { path: '/admin/step-templates', category: 'Admin', reason: '支援手順テンプレート（管理ツールhubからリンク経由）' },
+  { path: '/admin/individual-support/:userCode?', category: 'Admin', reason: '個別支援設定（管理ツールhubからリンク経由）' },
+  { path: '/admin/navigation-diagnostics', category: 'Dev', reason: 'ナビゲーション診断ツール（管理ツールhubからリンク経由）' },
+  { path: '/admin/mode-switch', category: 'Admin', reason: 'モード切替画面（管理ツールhubからリンク経由）' },
+  { path: '/ibd', category: 'Redirect', reason: 'IBD分析へのリダイレクト' },
+  { path: '/settings/operation-flow', category: 'Settings', reason: '運営フロー設定（設定画面からリンク経由）' },
 ].map(item => ({ ...item, path: normalizeRouterPath(item.path) }));
 
 export const ORPHAN_ALLOWLIST = new Set(ORPHAN_ALLOWLIST_DETAILS.map(d => d.path));

@@ -5,7 +5,7 @@ vi.mock('@/features/schedules', () => ({
   makeRange: vi.fn(),
 }));
 
-describe.skip('MonthPage contracts', () => {
+describe('MonthPage contracts', () => {
   it('does not call useSchedules directly (items are provided by parent)', async () => {
     const mod = await import('@/features/schedules');
     expect(mod).toBeTruthy();

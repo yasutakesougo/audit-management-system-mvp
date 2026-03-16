@@ -17,7 +17,7 @@ import type { LastActivities } from '../hooks/useLastActivities';
 
 // ─── Types ──────────────────────────────────────────────
 
-// contract:allow-interface — function parameter types, not domain models
+// contract:allow-interface — 関数パラメータ型、domain entity ではない
 export type CreateEmptyRowOptions = {
   /** 申し送りから取得した特記事項テキスト */
   handoffNote?: string;
@@ -126,11 +126,13 @@ export function applyHandoffNotesToRows(
 
 // ─── Row Synchronization ────────────────────────────────
 
+// contract:allow-interface — 関数パラメータ型、domain entity ではない
 export type SyncRowsUser = {
   userId: string;
   name: string;
 };
 
+// contract:allow-interface — 関数パラメータ型、domain entity ではない
 export type SyncRowsOptions = {
   /** 前回活動を取得する関数（DI ポイント） */
   getLastActivities?: (userId: string) => LastActivities | null;

@@ -116,46 +116,12 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       audience: NAV_AUDIENCE.all,
       group: 'daily' as NavGroupKey,
     },
+    // 会議系は「議事録」に統合。司会ガイド・朝会夕会情報・朝会/夕会（作成）は
+    // 議事録ページ内またはURL直接アクセスで到達可能。
     {
-      label: '司会ガイド',
-      to: '/meeting-guide',
-      isActive: (pathname) => pathname.startsWith('/meeting-guide'),
-      icon: undefined,
-      audience: NAV_AUDIENCE.all,
-      group: 'daily' as NavGroupKey,
-    },
-    {
-      label: '朝会・夕会情報',
-      to: '/dashboard/briefing',
-      isActive: (pathname) => pathname.startsWith('/dashboard/briefing'),
-      icon: undefined,
-      audience: NAV_AUDIENCE.all,
-      group: 'daily' as NavGroupKey,
-    },
-    {
-      label: '朝会（作成）',
-      to: '/meeting-minutes/new?category=朝会',
-      isActive: (pathname, search = '') =>
-        pathname.startsWith('/meeting-minutes/new') &&
-        new URLSearchParams(search).get('category') === '朝会',
-      icon: undefined,
-      audience: NAV_AUDIENCE.all,
-      group: 'daily' as NavGroupKey,
-    },
-    {
-      label: '夕会（作成）',
-      to: '/meeting-minutes/new?category=夕会',
-      isActive: (pathname, search = '') =>
-        pathname.startsWith('/meeting-minutes/new') &&
-        new URLSearchParams(search).get('category') === '夕会',
-      icon: undefined,
-      audience: NAV_AUDIENCE.all,
-      group: 'daily' as NavGroupKey,
-    },
-    {
-      label: '議事録アーカイブ',
+      label: '議事録',
       to: '/meeting-minutes',
-      isActive: (pathname) => pathname.startsWith('/meeting-minutes'),
+      isActive: (pathname) => pathname.startsWith('/meeting-minutes') || pathname.startsWith('/meeting-guide') || pathname.startsWith('/dashboard/briefing'),
       icon: undefined,
       audience: NAV_AUDIENCE.all,
       group: 'daily' as NavGroupKey,
@@ -177,26 +143,12 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       audience: NAV_AUDIENCE.staff,
       group: 'record' as NavGroupKey,
     },
-    {
-      label: '月次記録',
-      to: '/records/monthly',
-      isActive: (pathname) => pathname.startsWith('/records/monthly'),
-      icon: undefined,
-      audience: NAV_AUDIENCE.staff,
-      group: 'record' as NavGroupKey,
-    },
+    // 月次記録・業務日誌プレビューは
+    // 記録一覧（/records）のサブページとして到達可能なため、サイドナビからは除外。
     {
       label: 'サービス提供実績記録',
       to: '/records/service-provision',
       isActive: (pathname) => pathname.startsWith('/records/service-provision'),
-      icon: undefined,
-      audience: NAV_AUDIENCE.staff,
-      group: 'record' as NavGroupKey,
-    },
-    {
-      label: '業務日誌プレビュー',
-      to: '/records/journal',
-      isActive: (pathname) => pathname === '/records/journal',
       icon: undefined,
       audience: NAV_AUDIENCE.staff,
       group: 'record' as NavGroupKey,
@@ -210,28 +162,12 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'record' as NavGroupKey,
     },
     {
-      label: '支援ハブ',
-      to: '/ibd',
-      isActive: (pathname) => pathname === '/ibd',
-      icon: undefined,
-      audience: NAV_AUDIENCE.staff,
-      group: 'ibd' as NavGroupKey,
-    },
-    {
       label: '分析ワークスペース',
       to: '/analysis',
       isActive: (pathname) => pathname.startsWith('/analysis'),
       icon: undefined,
       prefetchKey: PREFETCH_KEYS.analysisDashboard,
       testId: TESTIDS.nav.analysis,
-      audience: NAV_AUDIENCE.staff,
-      group: 'ibd' as NavGroupKey,
-    },
-    {
-      label: '行動対応プラン',
-      to: '/analysis/intervention',
-      isActive: (pathname) => pathname.startsWith('/analysis/intervention'),
-      icon: undefined,
       audience: NAV_AUDIENCE.staff,
       group: 'ibd' as NavGroupKey,
     },
@@ -325,23 +261,8 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
   }
 
   if (isAdmin && (authzReady || skipLogin)) {
+    // ops グループ: 運営管理系はそのまま残す
     items.push(
-      {
-        label: '支援手順マスタ',
-        to: '/admin/step-templates',
-        isActive: (pathname: string) => pathname.startsWith('/admin/step-templates'),
-        icon: undefined,
-        audience: NAV_AUDIENCE.admin,
-        group: 'ibd' as NavGroupKey,
-      },
-      {
-        label: '個別支援手順',
-        to: '/admin/individual-support',
-        isActive: (pathname: string) => pathname.startsWith('/admin/individual-support'),
-        icon: undefined,
-        audience: NAV_AUDIENCE.admin,
-        group: 'ibd' as NavGroupKey,
-      },
       {
         label: '職員勤怠管理',
         to: '/admin/staff-attendance',
@@ -349,26 +270,6 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
         icon: undefined,
         audience: NAV_AUDIENCE.admin,
         group: 'ops' as NavGroupKey,
-      },
-      {
-        label: '自己点検',
-        to: '/checklist',
-        isActive: (pathname: string) => pathname.startsWith('/checklist'),
-        icon: undefined,
-        prefetchKey: PREFETCH_KEYS.checklist,
-        testId: TESTIDS.nav.checklist,
-        audience: NAV_AUDIENCE.admin,
-        group: 'admin' as NavGroupKey,
-      },
-      {
-        label: '監査ログ',
-        to: '/audit',
-        isActive: (pathname: string) => pathname.startsWith('/audit'),
-        testId: TESTIDS.nav.audit,
-        icon: undefined,
-        prefetchKey: PREFETCH_KEYS.audit,
-        audience: NAV_AUDIENCE.admin,
-        group: 'admin' as NavGroupKey,
       },
     );
     if (schedulesEnabled) {
@@ -384,16 +285,6 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     }
 
     items.push({
-      label: 'ナビ診断',
-      to: '/admin/navigation-diagnostics',
-      isActive: (pathname: string) => pathname.startsWith('/admin/navigation-diagnostics'),
-      icon: undefined,
-      testId: TESTIDS.nav.navigationDiagnostics,
-      audience: NAV_AUDIENCE.admin,
-      group: 'admin' as NavGroupKey,
-    });
-
-    items.push({
       label: 'お部屋管理',
       to: '/room-management',
       isActive: (pathname: string) => pathname.startsWith('/room-management'),
@@ -403,46 +294,21 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'ops' as NavGroupKey,
     });
 
-    items.push({
-      label: 'モード切替',
-      to: '/admin/mode-switch',
-      isActive: (pathname: string) => pathname.startsWith('/admin/mode-switch'),
-      icon: undefined,
-      audience: NAV_AUDIENCE.admin,
-      group: 'admin' as NavGroupKey,
-    });
-
-    items.push({
-      label: '1日の流れ設定',
-      to: '/settings/operation-flow',
-      isActive: (pathname: string) => pathname.startsWith('/settings/operation-flow'),
-      icon: undefined,
-      testId: TESTIDS.nav.operationFlowSettings,
-      audience: NAV_AUDIENCE.admin,
-      group: 'settings' as NavGroupKey,
-    });
-
+    // 管理ツール（ハブ）1つに集約。
+    // 自己点検・監査ログ・ナビ診断・モード切替・1日の流れ設定は
+    // /admin ハブページから到達可能。
     items.push({
       label: '管理ツール',
       to: '/admin',
-      isActive: (pathname: string) => pathname === '/admin',
+      isActive: (pathname: string) => pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/checklist') || pathname.startsWith('/audit') || pathname.startsWith('/settings/'),
       icon: undefined,
       audience: NAV_AUDIENCE.admin,
-      group: 'admin' as NavGroupKey,
+      group: 'ops' as NavGroupKey,
     });
   }
 
-  items.push({
-    label: '支援活動マスタ',
-    to: '/admin/templates',
-    isActive: (pathname: string) => pathname.startsWith('/admin/templates'),
-    icon: undefined,
-    prefetchKey: PREFETCH_KEYS.adminTemplates,
-    prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
-    testId: TESTIDS.nav.admin,
-    audience: NAV_AUDIENCE.admin,
-    group: 'ibd' as NavGroupKey,
-  });
+  // 支援活動マスタは支援計画シート（ISPグループ）に統合済みのため、
+  // サイドナビからは除外。/admin/templates ルートは引き続き有効。
 
   // Feature-flagged items
   // NOTE: 氷山PDCA は /analysis?tab=pdca に統合済み

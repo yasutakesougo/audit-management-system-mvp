@@ -90,11 +90,13 @@ export const groupLabel: Record<NavGroupKey, string> = {
   isp: '📋 個別支援計画',
   master: '👥 利用者・職員',
   ops: '🏢 運営管理',
+  // admin/settings はサイドナビから廃止。管理ツール（/admin）ハブに集約済み。
   admin: '🛡️ システム管理',
   settings: '⚙️ 表示設定',
 };
 
 /**
  * Navigation groups display order
+ * admin/settings はサイドナビに項目がないため除外。
  */
-export const NAV_GROUP_ORDER: NavGroupKey[] = ['daily', 'record', 'isp', 'ibd', 'master', 'ops', 'admin', 'settings'];
+export const NAV_GROUP_ORDER: NavGroupKey[] = ['daily', 'record', 'isp', 'ibd', 'master', 'ops'];

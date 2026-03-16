@@ -39,7 +39,7 @@ describe('OperationFlowSettingsPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('全9フェーズの行が表示される', async () => {
+  it('全フェーズの行が表示される', async () => {
     render(<OperationFlowSettingsPage />);
     const table = await screen.findByTestId('phase-config-table');
     expect(table).toBeInTheDocument();
@@ -55,7 +55,7 @@ describe('OperationFlowSettingsPage', () => {
 
     // テーブル行のラベルを検証（MUI select のMenuItem にも同名が出る場合がある)
     const labels = [
-      '出勤・朝準備', '朝会', '通所受入', '午前活動', '午後活動',
+      '出勤・朝準備', '朝会', '通所受入', '午前活動', '昼食休み', 'PM活動',
       '退所対応', '記録仕上げ', '夕会', '振り返り・翌日準備',
     ];
     for (const label of labels) {
@@ -115,8 +115,8 @@ describe('OperationFlowSettingsPage', () => {
       expect(spy).toHaveBeenCalledTimes(1);
     });
 
-    // 9件がそのまま保存される
-    expect(spy.mock.calls[0][0]).toHaveLength(9);
+    // 10件がそのまま保存される
+    expect(spy.mock.calls[0][0]).toHaveLength(DEFAULT_PHASE_CONFIG.length);
   });
 
   it('保存後に成功メッセージが表示される', async () => {
