@@ -1,6 +1,7 @@
 import { get as getEnv } from '@/env';
 import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { toSafeError } from '@/lib/errors';
+// eslint-disable-next-line no-restricted-imports -- Phase 3-C: spClient 移行予定
 import { fetchSp } from '@/lib/fetchSp';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import type {

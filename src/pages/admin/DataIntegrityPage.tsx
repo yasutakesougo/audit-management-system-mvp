@@ -1,4 +1,4 @@
-﻿import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ErrorIcon from '@mui/icons-material/Error';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -27,6 +27,7 @@ import { SpUserMasterItemSchema } from '@/features/users/schema';
 import { useDataIntegrityScan } from '@/hooks/useDataIntegrityScan';
 import { formatScanSummary, type ScanResult, type ScanTarget } from '@/lib/dataIntegrityScanner';
 import { auditLog } from '@/lib/debugLogger';
+// eslint-disable-next-line no-restricted-imports -- Phase 3-C: spClient 移行予定
 import { fetchSp } from '@/lib/fetchSp';
 import { ensureConfig } from '@/lib/spClient';
 import { USERS_SELECT_FIELDS_SAFE } from '@/sharepoint/fields';
