@@ -160,9 +160,38 @@ telemetry / adoption-log   → proposalAcceptedAt (精度向上)
 | なし | あり | in_progress / overdue |
 | なし | なし | in_progress / overdue |
 
-## 7. 将来の拡張
+## 7. Schedule 未設定利用者の扱い
+
+`supportStartDate` が未設定（null / undefined）の利用者は、
+PDCA サイクルの **計測対象に含めない（excluded）**。
+
+| 状態 | 扱い | 理由 |
+|------|------|------|
+| supportStartDate あり | ✅ 計測対象 | サイクルが定義可能 |
+| supportStartDate なし | ❌ 除外 | サイクル開始日が不明 |
+
+**PDCA 完走率の分母** は「計測可能な利用者のサイクル」のみ。
+未設定利用者を overdue に含めると、率が不当に悪化する。
+
+ただし、未設定利用者の **件数は別指標** として表示することを推奨:
+- `excludedUserCount`: schedule 未設定の利用者数
+- これにより「計測できていない利用者がいる」ことが運用者に見える
+
+## 8. cycleId の一意性保証
+
+`cycleId` は `{userId}-cycle-{round}` であり、
+同一利用者・同一ラウンドでは必ず 1 レコードになる。
+
+| ケース | 対応 |
+|--------|------|
+| 同一ラウンドで accept が複数回 | 最初の accept のみ使用 |
+| 同一ラウンドで plan が複数回更新 | 最後の正式反映を使用 |
+| 再アセスメントでサイクルがリセット | 新しい supportStartDate で round 1 から再生成 |
+
+## 9. 将来の拡張
 
 - `draftSavedAt`: 下書き保存日（planUpdatedAt とは別管理）
 - `source`: レコードの由来（`'schedule'` / `'planning-sheet'` / `'derived'`）
 - `staffId`: 担当職員 ID
 - `notes`: 備考
+- `excludedReason`: 除外理由（将来の分析用）
