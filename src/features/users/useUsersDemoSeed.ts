@@ -56,9 +56,13 @@ const seedUsersFromStorage = (): void => {
   }
 };
 
-export function useUsersDemoSeed(): void {
-  seedUsersFromStorage();
-  useEffect(() => {
+export function useUsersDemoSeed(enabled = true): void {
+  if (enabled) {
     seedUsersFromStorage();
-  }, []);
+  }
+  useEffect(() => {
+    if (enabled) {
+      seedUsersFromStorage();
+    }
+  }, [enabled]);
 }

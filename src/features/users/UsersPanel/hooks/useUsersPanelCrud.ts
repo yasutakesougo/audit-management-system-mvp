@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ZodError } from 'zod';
 import { useUsersStore } from '../../store';
 import type { IUserMaster, IUserMasterCreateDto } from '../../types';
+import { getCurrentUserRepositoryKind } from '../../repositoryFactory';
 import { useUsersDemoSeed } from '../../useUsersDemoSeed';
 import { buildErrorMessage } from '../utils';
 import type { UsersTab } from './useUsersPanelTabs';
@@ -43,7 +44,9 @@ export type UseUsersPanelCrudReturn = {
 export function useUsersPanelCrud(
   setActiveTabRef: React.MutableRefObject<(tab: UsersTab) => void>,
 ): UseUsersPanelCrudReturn {
-  useUsersDemoSeed();
+  // Demo モードの場合のみシードを実行
+  const repositoryKind = getCurrentUserRepositoryKind();
+  useUsersDemoSeed(repositoryKind === 'demo');
   const { data, status, create, remove, refresh, error } = useUsersStore();
 
   // ---- State ----
