@@ -16,7 +16,6 @@ import {
 import { ensureConfig } from '@/lib/sp/config';
 import {
   FIELD_MAP,
-  resolveUserSelectFields,
   type UserRow,
   type UserSelectMode,
 } from '@/sharepoint/fields';
@@ -78,7 +77,6 @@ export class RestApiUserRepository implements UserRepository {
     const filters = params?.filters;
     const top = params?.top ?? this.defaultTop;
     const selectMode = params?.selectMode ?? 'core';
-    const selectFields = [...resolveUserSelectFields(selectMode)];
 
     const filterParts: string[] = [];
     if (filters?.isActive !== undefined) {
@@ -86,29 +84,16 @@ export class RestApiUserRepository implements UserRepository {
       filterParts.push(`${fieldName} eq ${filters.isActive ? 1 : 0}`);
     }
 
+    // NOTE: $select を使わず全列取得。SharePoint リストのフィールド定義と
+    // コード上の FIELD_MAP が完全一致するまでの安全策。
+    // toDomain() が必要な列だけマッピングするので問題ない。
     const queryParts: string[] = [];
-    if (selectFields.length) queryParts.push(`$select=${selectFields.join(',')}`);
     if (top > 0) queryParts.push(`$top=${top}`);
     if (filterParts.length) queryParts.push(`$filter=${filterParts.join(' and ')}`);
 
     const path = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items${queryParts.length ? '?' + queryParts.join('&') : ''}`;
 
-    let items: IUserMaster[];
-    try {
-      items = await this.fetchItems(path, selectMode);
-    } catch (e) {
-      if (this.isSelectError(e)) {
-        // Fallback: $select を外して全列取得（存在しないフィールドを含んでいても安全）
-        console.warn('[RestApiUserRepository] $select error, retrying without $select', e);
-        const fallbackParts: string[] = [];
-        if (top > 0) fallbackParts.push(`$top=${top}`);
-        if (filterParts.length) fallbackParts.push(`$filter=${filterParts.join(' and ')}`);
-        const fallbackPath = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items${fallbackParts.length ? '?' + fallbackParts.join('&') : ''}`;
-        items = await this.fetchItems(fallbackPath, selectMode);
-      } else {
-        throw e;
-      }
-    }
+    const items = await this.fetchItems(path, selectMode);
 
     if (filters?.keyword) {
       const keyword = filters.keyword.trim().toLowerCase();
@@ -134,28 +119,15 @@ export class RestApiUserRepository implements UserRepository {
     }
 
     const selectMode = params?.selectMode ?? 'detail';
-    const selectFields = [...resolveUserSelectFields(selectMode)];
-    const queryParts: string[] = [];
-    if (selectFields.length) queryParts.push(`$select=${selectFields.join(',')}`);
 
-    const path = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items(${numericId})${queryParts.length ? '?' + queryParts.join('&') : ''}`;
+    // $select なし — 全列取得で toDomain() がマッピング
+    const path = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items(${numericId})`;
 
     try {
-      let res = await this.spFetch(path);
+      const res = await this.spFetch(path);
       if (!res.ok) {
         if (res.status === 404) return null;
-        // $select フィールド不在の 400 → $select なしでリトライ
-        if (this.isSelectError(new Error(`HTTP ${res.status}`))) {
-          console.warn('[RestApiUserRepository] $select error on getById, retrying without $select');
-          const fallbackPath = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items(${numericId})`;
-          res = await this.spFetch(fallbackPath);
-          if (!res.ok) {
-            if (res.status === 404) return null;
-            throw new Error(`HTTP ${res.status}`);
-          }
-        } else {
-          throw new Error(`HTTP ${res.status}`);
-        }
+        throw new Error(`HTTP ${res.status}`);
       }
       const raw = (await res.json()) as SpItemResponse;
       const row = raw.d ?? raw;
