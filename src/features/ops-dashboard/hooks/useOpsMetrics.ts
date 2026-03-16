@@ -6,7 +6,7 @@
  *
  * Phase 1: Proposal → SuggestionAction adapter 接続済み
  * Phase 2: PDCA    → buildPdcaCycleRecords builder 接続済み
- * Phase 3: Knowledge → 外部 props スロット（将来接続用）
+ * Phase 3: Knowledge → localEvidenceLinkRepository + SuggestionAction 自動変換
  *
  * @see docs/ops/ops-dashboard-observability-layer.md
  * @see docs/ops/pdca-cycle-record-definition.md
@@ -20,13 +20,17 @@ import type { PdcaCycleMetricsResult } from '@/domain/metrics/pdcaCycleMetrics';
 import { computeKnowledgeMetrics } from '@/domain/metrics/knowledgeMetrics';
 import type {
   KnowledgeMetricsResult,
-  DecisionRecord,
-  EvidenceLinkRecord,
   KnowledgePeriod,
 } from '@/domain/metrics/knowledgeMetrics';
 import { adaptSuggestionActions } from '@/domain/metrics/adapters/proposalDecisionAdapter';
 import { buildPdcaCycleRecords } from '@/domain/metrics/adapters/pdcaCycleBuilder';
 import type { CycleBuilderInput } from '@/domain/metrics/adapters/pdcaCycleBuilder';
+import {
+  adaptEvidenceLinks,
+  adaptSuggestionActionsToDecisionRecords,
+  extractPlanningSheetIds,
+} from '@/domain/metrics/adapters/knowledgeDataAdapter';
+import { localEvidenceLinkRepository } from '@/infra/localStorage/localEvidenceLinkRepository';
 import type { SuggestionAction } from '@/features/daily/domain/suggestionAction';
 
 // ─── 型定義 ──────────────────────────────────────────────
@@ -62,12 +66,6 @@ export interface UseOpsMetricsOptions {
   period?: MetricsPeriod;
   /** 利用者ごとの PDCA 入力データ */
   userPdcaInputs?: UserPdcaInput[];
-  /** Knowledge: 判断記録（将来: リポジトリから取得） */
-  decisionRecords?: DecisionRecord[];
-  /** Knowledge: Evidence Link（将来: リポジトリから取得） */
-  evidenceLinks?: EvidenceLinkRecord[];
-  /** Knowledge: 支援計画 ID 一覧 */
-  planningSheetIds?: string[];
   /** Knowledge: 集計期間 */
   knowledgePeriod?: KnowledgePeriod;
   /** 現在日時 ISO 8601 */
@@ -147,7 +145,7 @@ function collectSuggestionActions(): SuggestionAction[] {
  *
  * Phase 1: Proposal → SuggestionAction から自動変換
  * Phase 2: PDCA    → userPdcaInputs + SuggestionAction から自動構築
- * Phase 3: Knowledge → 外部 props
+ * Phase 3: Knowledge → localEvidenceLinkRepository + SuggestionAction から自動変換
  *
  * @example
  * ```tsx
@@ -162,9 +160,6 @@ export function useOpsMetrics(options: UseOpsMetricsOptions = {}): OpsMetricsDat
   const {
     period = getDefaultPeriod(),
     userPdcaInputs = [],
-    decisionRecords = [],
-    evidenceLinks = [],
-    planningSheetIds = [],
     knowledgePeriod = getDefaultKnowledgePeriod(),
     today = new Date().toISOString(),
   } = options;
@@ -235,13 +230,23 @@ export function useOpsMetrics(options: UseOpsMetricsOptions = {}): OpsMetricsDat
     return { pdcaMetrics: metrics, excludedUserCount: excluded };
   }, [userPdcaInputs, suggestionActions, today]);
 
-  // ── Knowledge Metrics ──
-  const knowledgeMetrics = useMemo(
-    () => decisionRecords.length > 0 || evidenceLinks.length > 0
-      ? computeKnowledgeMetrics(decisionRecords, evidenceLinks, planningSheetIds, knowledgePeriod)
-      : null,
-    [decisionRecords, evidenceLinks, planningSheetIds, knowledgePeriod],
-  );
+  // ── Phase 3: Knowledge Metrics ──
+  // SuggestionAction → DecisionRecord + localEvidenceLinkRepository → EvidenceLinkRecord
+  const knowledgeMetrics = useMemo(() => {
+    // DecisionRecord: SuggestionAction から自動変換
+    const decisionRecords = adaptSuggestionActionsToDecisionRecords(suggestionActions);
+
+    // EvidenceLinkRecord: localEvidenceLinkRepository から取得
+    const allLinks = localEvidenceLinkRepository.getAll();
+    const evidenceLinks = adaptEvidenceLinks(allLinks);
+    const planningSheetIds = extractPlanningSheetIds(allLinks);
+
+    if (decisionRecords.length === 0 && evidenceLinks.length === 0) return null;
+
+    return computeKnowledgeMetrics(
+      decisionRecords, evidenceLinks, planningSheetIds, knowledgePeriod,
+    );
+  }, [suggestionActions, knowledgePeriod]);
 
   return {
     isReady,

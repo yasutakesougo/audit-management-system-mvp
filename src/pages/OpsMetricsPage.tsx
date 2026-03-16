@@ -53,7 +53,8 @@ const OpsMetricsPage: React.FC = () => {
   const loading = usersLoading || !isReady;
   const hasRealProposalData = isReady && proposalMetrics !== null;
   const hasRealPdcaData = pdcaMetrics !== null;
-  const hasAnyRealData = hasRealProposalData || hasRealPdcaData;
+  const hasRealKnowledgeData = knowledgeMetrics !== null;
+  const hasAnyRealData = hasRealProposalData || hasRealPdcaData || hasRealKnowledgeData;
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 1200, mx: 'auto' }}>
@@ -81,6 +82,9 @@ const OpsMetricsPage: React.FC = () => {
         )}
         {hasRealPdcaData && (
           <Chip label="PDCA: 実データ" size="small" color="success" variant="outlined" />
+        )}
+        {hasRealKnowledgeData && (
+          <Chip label="Knowledge: 実データ" size="small" color="success" variant="outlined" />
         )}
       </Stack>
 
