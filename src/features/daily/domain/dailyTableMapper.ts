@@ -22,6 +22,7 @@ import type {
 
 // ─── Types ──────────────────────────────────────────────
 
+// contract:allow-interface — SaveContext is a mapper-local context type, not a domain model
 export type SaveContext = {
   /** 記録対象日 (YYYY-MM-DD) */
   date: string;

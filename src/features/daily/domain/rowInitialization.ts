@@ -17,6 +17,7 @@ import type { LastActivities } from '../hooks/useLastActivities';
 
 // ─── Types ──────────────────────────────────────────────
 
+// contract:allow-interface — function parameter types, not domain models
 export type CreateEmptyRowOptions = {
   /** 申し送りから取得した特記事項テキスト */
   handoffNote?: string;
