@@ -61,6 +61,9 @@ import { useAuth } from '@/auth/useAuth';
 import type { PlanningSheetRepository, IspRepository } from '@/domain/isp/port';
 import type { PlanningSheetFormValues } from '@/domain/isp/schema';
 import { tokuseiToPlanningBridge } from '../tokuseiToPlanningBridge';
+import { buildImportPreview } from '../buildImportPreview';
+import type { ImportPreviewResult } from '../buildImportPreview';
+import { ImportPreviewDialog } from './ImportPreviewDialog';
 
 // ─────────────────────────────────────────────
 // Types
@@ -393,6 +396,10 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   const { responses: tokuseiResponses, status: tokuseiStatus } = useTokuseiSurveyResponses();
   const [selectedTokusei, setSelectedTokusei] = React.useState<TokuseiSurveyResponse | null>(null);
   const [tokuseiImported, setTokuseiImported] = React.useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
+  const [importPreview, setImportPreview] = React.useState<ImportPreviewResult | null>(null);
+  const [lastBridgeResult, setLastBridgeResult] = React.useState<ReturnType<typeof tokuseiToPlanningBridge> | null>(null);
+  const [tokuseiProvenance, setTokuseiProvenance] = React.useState<Map<string, { name: string; relation?: string; fillDate?: string }>>(new Map());
   const [toast, setToast] = React.useState<{ open: boolean; message: string; severity: 'success' | 'info' }>({
     open: false, message: '', severity: 'success',
   });
@@ -445,7 +452,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
     );
   }, [selectedUser, tokuseiResponses]);
 
-  // ── 特性アンケートから読込 ──
+  // ── 特性アンケート: プレビュー表示 ──
   const handleTokuseiImport = React.useCallback(() => {
     if (!selectedTokusei) return;
 
@@ -456,17 +463,27 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
       updatedAt: selectedTokusei.createdAt,
     });
 
-    // formPatches を FormState に反映（空フィールドのみ上書き）
+    // プレビュー生成
+    const preview = buildImportPreview(result.formPatches, form as unknown as Record<string, unknown>);
+    setImportPreview(preview);
+    setLastBridgeResult(result);
+    setPreviewDialogOpen(true);
+  }, [selectedTokusei, form]);
+
+  // ── 特性アンケート: プレビュー確定→反映 ──
+  const handlePreviewConfirm = React.useCallback(() => {
+    if (!lastBridgeResult || !selectedTokusei) return;
+
+    // formPatches を FormState に反映
     setForm(prev => {
       const next = { ...prev };
-      for (const [key, value] of Object.entries(result.formPatches)) {
+      for (const [key, value] of Object.entries(lastBridgeResult.formPatches)) {
         if (key in next && typeof value === 'string') {
           const k = key as keyof FormState;
           const current = next[k];
           if (typeof current === 'string' && !current.trim()) {
             (next as Record<string, unknown>)[k] = value;
           } else if (typeof current === 'string' && current.trim()) {
-            // 既存値がある場合は追記
             (next as Record<string, unknown>)[k] = `${current}\n\n【特性アンケートより】\n${value}`;
           }
         }
@@ -474,19 +491,47 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
       return next;
     });
 
+    // provenance を記録
+    setTokuseiProvenance(prev => {
+      const next = new Map(prev);
+      for (const key of Object.keys(lastBridgeResult.formPatches)) {
+        if (lastBridgeResult.formPatches[key]?.trim()) {
+          next.set(key, {
+            name: selectedTokusei.responderName || '不明',
+            relation: selectedTokusei.relation,
+            fillDate: selectedTokusei.fillDate,
+          });
+        }
+      }
+      return next;
+    });
+
     setTokuseiImported(true);
+    setPreviewDialogOpen(false);
 
     // サマリーをトースト表示
-    const parts: string[] = [];
-    if (result.summary.icebergFieldsFilled > 0) parts.push(`氷山分析${result.summary.icebergFieldsFilled}項目`);
-    if (result.summary.sensoryTriggersAdded > 0) parts.push(`感覚トリガー${result.summary.sensoryTriggersAdded}件`);
-    if (result.summary.hypothesesGenerated > 0) parts.push(`行動仮説${result.summary.hypothesesGenerated}件`);
-    if (result.summary.targetBehaviorCandidates > 0) parts.push(`対象行動候補${result.summary.targetBehaviorCandidates}件`);
-    const summaryText = parts.length > 0
-      ? `特性アンケートから取込完了: ${parts.join('、')}`
+    const s = importPreview?.summary;
+    const summaryText = s && s.totalAffected > 0
+      ? `特性アンケートから取込完了: 新規${s.newCount}項目 + 追記${s.appendCount}項目`
       : '特性アンケートから取込完了（該当データなし）';
     setToast({ open: true, message: summaryText, severity: 'success' });
-  }, [selectedTokusei]);
+  }, [lastBridgeResult, selectedTokusei, importPreview]);
+
+  // ── Provenance バッジヘルパー ──
+  const renderProvenanceBadge = React.useCallback((fieldKey: string) => {
+    const prov = tokuseiProvenance.get(fieldKey);
+    if (!prov) return null;
+    const dateStr = prov.fillDate ? new Date(prov.fillDate).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) : '';
+    return (
+      <Chip
+        size="small"
+        variant="outlined"
+        color="secondary"
+        sx={{ height: 20, '& .MuiChip-label': { px: 0.8, fontSize: '0.65rem' } }}
+        label={`📋 特性アンケ ${prov.name}${prov.relation ? `(${prov.relation})` : ''} ${dateStr}`}
+      />
+    );
+  }, [tokuseiProvenance]);
 
   // ── Fill sample data ──
   const handleFillSample = React.useCallback(() => setForm(SAMPLE_FORM), []);
@@ -573,16 +618,31 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
                 {'　　　🏔️ 問題行動（水面上）\n━━━━━━━━━━━━━━━━━━\n　  💭 感情・心理\n──────────────────\n　  🧠 認知・理解\n──────────────────\n　  🏠 環境要因\n──────────────────\n　  💡 本人のニーズ（水面下）'}
               </Typography>
             </Paper>
-            <TextField label="トリガー（きっかけ）" value={form.triggers} onChange={e => updateField('triggers', e.target.value)} required fullWidth multiline minRows={2}
-              placeholder="行動を引き起こす直接的なきっかけ" />
-            <TextField label="環境要因" value={form.environmentFactors} onChange={e => updateField('environmentFactors', e.target.value)} fullWidth multiline minRows={2}
-              placeholder="物理的環境・人的環境・時間帯" />
-            <TextField label="本人の感情" value={form.emotions} onChange={e => updateField('emotions', e.target.value)} fullWidth multiline minRows={2}
-              placeholder="不安、混乱、怒り、恐怖など" />
-            <TextField label="理解状況（認知）" value={form.cognition} onChange={e => updateField('cognition', e.target.value)} fullWidth multiline minRows={2}
-              placeholder="言語理解力、見通しの持ちやすさ" />
-            <TextField label="本人ニーズ" value={form.needs} onChange={e => updateField('needs', e.target.value)} required fullWidth multiline minRows={2}
-              placeholder="「本当はこうしたい」「こうなりたい」" />
+            <Stack spacing={0.5}>
+              {renderProvenanceBadge('triggers')}
+              <TextField label="トリガー（きっかけ）" value={form.triggers} onChange={e => updateField('triggers', e.target.value)} required fullWidth multiline minRows={2}
+                placeholder="行動を引き起こす直接的なきっかけ" />
+            </Stack>
+            <Stack spacing={0.5}>
+              {renderProvenanceBadge('environmentFactors')}
+              <TextField label="環境要因" value={form.environmentFactors} onChange={e => updateField('environmentFactors', e.target.value)} fullWidth multiline minRows={2}
+                placeholder="物理的環境・人的環境・時間帯" />
+            </Stack>
+            <Stack spacing={0.5}>
+              {renderProvenanceBadge('emotions')}
+              <TextField label="本人の感情" value={form.emotions} onChange={e => updateField('emotions', e.target.value)} fullWidth multiline minRows={2}
+                placeholder="不安、混乱、怒り、恐怖など" />
+            </Stack>
+            <Stack spacing={0.5}>
+              {renderProvenanceBadge('cognition')}
+              <TextField label="理解状況（認知）" value={form.cognition} onChange={e => updateField('cognition', e.target.value)} fullWidth multiline minRows={2}
+                placeholder="言語理解力、見通しの持ちやすさ" />
+            </Stack>
+            <Stack spacing={0.5}>
+              {renderProvenanceBadge('needs')}
+              <TextField label="本人ニーズ" value={form.needs} onChange={e => updateField('needs', e.target.value)} required fullWidth multiline minRows={2}
+                placeholder="「本当はこうしたい」「こうなりたい」" />
+            </Stack>
           </Stack>
         );
       case 3: // §4 FBA
@@ -922,6 +982,19 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
           </>
         )}
       </Stack>
+
+      {/* ── 取込プレビューダイアログ ── */}
+      <ImportPreviewDialog
+        open={previewDialogOpen}
+        onClose={() => setPreviewDialogOpen(false)}
+        onConfirm={handlePreviewConfirm}
+        preview={importPreview}
+        responderInfo={selectedTokusei ? {
+          name: selectedTokusei.responderName || '不明',
+          relation: selectedTokusei.relation,
+          fillDate: selectedTokusei.fillDate,
+        } : undefined}
+      />
 
       {/* ── Toast ── */}
       <Snackbar
