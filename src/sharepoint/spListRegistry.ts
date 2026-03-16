@@ -1,5 +1,5 @@
 /**
- * SharePoint リスト レジストリ — 全26リストの Single Source of Truth
+ * SharePoint リスト レジストリ — 全31リストの Single Source of Truth
  *
  * 各エントリは以下を保持:
  * - key: プログラム内で使用するユニーク識別子
@@ -215,6 +215,34 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W', 'D'],
     category: 'handoff',
   },
+  {
+    key: 'iceberg_analysis',
+    displayName: '氷山モデル分析',
+    resolve: () => envOr('VITE_SP_LIST_ICEBERG_ANALYSIS', fromConfig(ListKeys.IcebergAnalysis)),
+    operations: ['R', 'W'],
+    category: 'handoff',
+  },
+  {
+    key: 'isp_master',
+    displayName: '個別支援計画（ISP）',
+    resolve: () => envOr('VITE_SP_LIST_ISP_MASTER', fromConfig(ListKeys.IspMaster)),
+    operations: ['R', 'W'],
+    category: 'handoff',
+  },
+  {
+    key: 'planning_sheet_master',
+    displayName: '支援計画シート',
+    resolve: () => envOr('VITE_SP_LIST_PLANNING_SHEET', fromConfig(ListKeys.PlanningSheetMaster)),
+    operations: ['R', 'W'],
+    category: 'handoff',
+  },
+  {
+    key: 'procedure_record_daily',
+    displayName: '支援手順書兼記録（日次）',
+    resolve: () => envOr('VITE_SP_LIST_PROCEDURE_RECORD', fromConfig(ListKeys.ProcedureRecordDaily)),
+    operations: ['R', 'W'],
+    category: 'daily',
+  },
 
   // ── 7. コンプライアンス・診断系 ────────────────────────
   {
@@ -252,6 +280,16 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     displayName: '公式帳票ライブラリ',
     resolve: () => envOr('VITE_SP_LIST_OFFICIAL_FORMS', 'OfficialForms'),
     operations: ['W'],
+    category: 'other',
+  },
+  {
+    key: 'billing_orders',
+    displayName: '請求オーダー',
+    resolve: () => {
+      const envVal = readOptionalEnv('VITE_SP_LIST_BILLING_ORDERS');
+      return envVal ? `guid:${envVal}` : 'guid:00000000-0000-0000-0000-000000000003';
+    },
+    operations: ['R'],
     category: 'other',
   },
 ] as const;
