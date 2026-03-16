@@ -19,8 +19,8 @@ import { describe, expect, it } from 'vitest';
 // ---------------------------------------------------------------------------
 
 describe('getAllListKeys', () => {
-  it('should return exactly 26 keys', () => {
-    expect(getAllListKeys()).toHaveLength(26);
+  it('should return exactly 33 keys', () => {
+    expect(getAllListKeys()).toHaveLength(33);
   });
 
   it('should return unique keys', () => {
@@ -35,6 +35,19 @@ describe('getAllListKeys', () => {
     expect(keys).toContain('compliance_check_rules');
     expect(keys).toContain('official_forms');
     expect(keys).toContain('schedule_events');
+  });
+
+  it('should include audit-remediation keys (P0/P1)', () => {
+    const keys = getAllListKeys();
+    // P0 additions
+    expect(keys).toContain('isp_master');
+    expect(keys).toContain('planning_sheet_master');
+    expect(keys).toContain('procedure_record_daily');
+    expect(keys).toContain('iceberg_analysis');
+    expect(keys).toContain('billing_orders');
+    expect(keys).toContain('holiday_master');
+    // P1 addition
+    expect(keys).toContain('pdf_output_log');
   });
 });
 
