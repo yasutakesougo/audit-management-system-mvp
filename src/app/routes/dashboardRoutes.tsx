@@ -9,6 +9,7 @@ import type { RouteObject } from 'react-router-dom';
 import {
     SuspendedDashboardBriefingPage,
     SuspendedMeetingGuidePage,
+    SuspendedOpsMetricsPage,
     SuspendedRoomManagementPage,
     SuspendedStaffDashboardPage,
     SuspendedTodayOpsPage,
@@ -37,6 +38,14 @@ export const dashboardRoutes: RouteObject[] = [
     element: (
       <RequireAudience requiredRole="viewer">
         <div className="p-4">コンプラ報告（近日公開）</div>
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'ops',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <SuspendedOpsMetricsPage />
       </RequireAudience>
     ),
   },
