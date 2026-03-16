@@ -3,7 +3,7 @@
 > **Audit Management System MVP**
 > 生活介護事業所向け 支援改善循環エンジン
 >
-> Version 1.0 — 2026-03-16
+> Version 1.1 — 2026-03-16
 
 ---
 
@@ -313,9 +313,8 @@ graph LR
     ABC -->|"Evidence Link"| S5["§5 予防的支援"]
     PDCA["PDCAメモ"] -->|"Evidence Link"| S6["§6 代替行動"]
     ASS["アセスメント"] -->|"ImportDialog"| S3
-    MON["行動モニタリング"] -->|"ImportDialog"| S5
-    HH["ヒヤリハット"] -.->|"将来"| S8["§8 危機対応"]
-    HO["申し送り傾向"] -.->|"将来"| S2["§2 対象行動"]
+    MON["行動モニタリング"] -->|"RevisionDraft"| S5
+    HO["申し送り傾向"] -->|"ReviewProposal"| S2["§2 対象行動"]
 
     style T fill:#e3f2fd,stroke:#1565c0
     style ABC fill:#f3e5f5,stroke:#7b1fa2
@@ -472,63 +471,109 @@ graph TB
 
 ---
 
-## 12. 今後強化すべきデータフロー
+## 12. 実装済み改善提案パイプライン
 
-### 🔴 最重要: 申し送り → 支援計画提案
+> **3本すべて実装完了** (PR #989 / 2026-03-16)
 
-**現状**: 申し送り分析（Phase 1-3）はダッシュボード表示まで。
+### ✅ #986: 申し送り → 支援計画見直し提案
 
-**課題**: 分析結果が「この利用者の支援計画を見直すべき」という**計画改定提案**にまだ届いていない。
-
-**強化案**:
+**パイプライン**:
 
 ```
-申し送り分析
-    ↓ riskScoring が閾値超過
+computeRiskScores()              → リスク評価
     ↓
-「支援計画見直し提案」自動生成
+buildReviewRecommendations()     → urgency判定 + セクション特定
     ↓
-支援計画シートに改定候補を表示
+buildReviewProposal()            → フィールド単位アクション展開
+    ↓
+ReviewRecommendationBanner       → 支援計画シート上部
+ReviewProposalCard               → 各セクション内
 ```
 
-**実装イメージ**:
-- `riskScoring` のスコアが `critical` の利用者を抽出
-- 該当利用者の支援計画シートに「見直し推奨」バナー表示
-- クリックで申し送り分析ダッシュボードへ遷移
+| モジュール | テスト |
+|---|---|
+| `reviewRecommendation.ts` | 16 |
+| `buildReviewProposal.ts` | 15 |
+| `ReviewRecommendationBanner.tsx` | — |
+| `ReviewProposalCard.tsx` | — |
 
-### 🟠 重要: ABC記録 → 支援計画改善
+**urgency 判定**:
+- `urgent` (≥60) → error バナー
+- `recommended` (≥35) → warning バナー
+- `suggested` (≥15) → info バナー
 
-**現状**: ABC記録は Evidence Link で支援計画に紐付け可能。パターン分析・逆方向追跡も実装済み。
+**セクション→フィールド展開**:
+- §2 → targetBehavior, behaviorFrequency, behaviorSituation
+- §3 → triggers, environmentFactors, emotions, needs
+- §5 → environmentalAdjustment, visualSupport, communicationSupport, preSupport
+- §7 → initialResponse, staffResponse
+- §8 → dangerousBehavior, emergencyResponse, medicalCoordination
+- §9 → evaluationIndicator, evaluationMethod
 
-**課題**: 「パターンが変化した → 支援手順の修正が必要」という**変化検出**が自動化されていない。
+### ✅ #987: ABC記録 → 支援計画改善提案
 
-**強化案**:
-
-```
-ABC記録パターン分析
-    ↓ 先月と今月で頻出場面が変化
-    ↓
-「場面変化アラート」生成
-    ↓
-支援計画 §5 予防的支援の改善提案
-```
-
-### 🟡 次点: モニタリング → 計画改定
-
-**現状**: モニタリング結果は手動で支援計画に反映可能。
-
-**課題**: モニタリング周期の自動スケジュール + 改定必要性の判定。
-
-**強化案**:
+**パイプライン**:
 
 ```
-モニタリング結果
-    ↓ 目標達成度を評価
+previousRecords + currentRecords
     ↓
-計画改定の必要性判定
+compareAbcPatternPeriods()        → 場面パターン変化検出
     ↓
-改定ドラフト自動生成（AI補助）
+SceneChangeAlert 生成             → 4種類のアラート
+    ↓
+SceneChangeAlertCard             → 場面変化アラート UI
 ```
+
+| モジュール | テスト |
+|---|---|
+| `compareAbcPatternPeriods.ts` | 15 |
+| `SceneChangeAlertCard.tsx` | — |
+
+**検出する変化**:
+- 新出場面 (`new_scene`)
+- 場面急増 (`scene_spike`)
+- 場面消失 (`scene_disappeared`)
+- 強度悪化 (`intensity_worsening`)
+
+### ✅ #988: モニタリング → 計画改定ドラフト
+
+**パイプライン**:
+
+```
+BehaviorMonitoringRecord
+    ↓
+evaluateGoalProgress()            → 目標達成度評価
+    ↓
+buildRevisionDraft()              → 改定ドラフト生成
+    ↓
+RevisionDraft                    → §2/§3/§5/§8/§9 への変更提案
+```
+
+| モジュール | テスト |
+|---|---|
+| `evaluateGoalProgress.ts` | 19 |
+
+**revisionLevel 判定**:
+- `maintain` (score≥70, ineffective≤10%) → 継続
+- `adjust` (score≥40 or ineffective≤30%) → 部分調整
+- `revise` (それ以外) → 根本見直し
+
+**改定項目の生成**:
+- 効果なし → §5 modify（見直し）
+- 有効 → §5 keep（継続）
+- 新規トリガー → §3 add
+- 困難場面 → §2 add
+- 医療安全 → §8 add
+- 未観察率30%超 → §9 指標見直し
+
+### 今後の拡張方向
+
+| 方向 | 内容 |
+|---|---|
+| 統一反映UX | 3系統の提案を共通の差分プレビュー → 採用 → provenance保存 で処理 |
+| AI補助 | pure function の出力をAIで自然言語化 |
+| 会議資料自動生成 | 改善提案のサマリーをケース会議資料に出力 |
+| 監査対応 | provenance + revisionDraft で変更履歴を説明可能に |
 
 ---
 
@@ -601,10 +646,13 @@ domain/
 | 申し送り分析 Phase 1 | 65 | キーワード・傾向・時間帯 |
 | 申し送り分析 Phase 2 | 54 | アラート・パターン・リスク |
 | 申し送り分析 Phase 3 | 51 | プロンプト・パーサー・AI Service |
+| 改善提案 #986 | 31 | 見直し提案 + フィールド展開 |
+| 改善提案 #987 | 15 | ABC パターン変化検出 |
+| 改善提案 #988 | 19 | モニタリング評価 + 改定ドラフト |
 | 特性アンケート Bridge | 61 | 正規化・変換・プレビュー |
 | Evidence Link | 30+ | リンク操作・パターン分析・逆追跡 |
 | ナビゲーション整合性 | 2 | ルート定義の一貫性 |
-| **合計** | **260+** | |
+| **合計** | **325+** | |
 
 ---
 
