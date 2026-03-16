@@ -11,8 +11,8 @@ export type SupportRecordTimeSlot =
 export interface SupportRecord {
   id: string;
   supportPlanId: string;
-  personId: string;
-  personName: string;
+  userId: string;
+  userName: string;
   date: string;
   timeSlot: SupportRecordTimeSlot;
   userActivities: {
@@ -49,8 +49,8 @@ export interface SupportRecord {
 // 日別支援記録の型定義
 export interface DailySupportRecord {
   id: string;
-  personId: string;
-  personName: string;
+  userId: string;
+  userName: string;
   date: string;
   records: SupportRecord[];
   createdAt: string;

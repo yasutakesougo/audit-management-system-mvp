@@ -38,6 +38,7 @@ export const ISP_MASTER_FIELDS = {
   versionNo: 'VersionNo',
   isCurrent: 'IsCurrent',
   formDataJson: 'FormDataJson',
+  userSnapshotJson: 'UserSnapshotJson',
   created: 'Created',
   modified: 'Modified',
 } as const;
@@ -56,6 +57,7 @@ export const ISP_MASTER_SELECT_FIELDS = [
   ISP_MASTER_FIELDS.lastMonitoringAt,
   ISP_MASTER_FIELDS.nextReviewAt,
   ISP_MASTER_FIELDS.formDataJson,
+  ISP_MASTER_FIELDS.userSnapshotJson,
   ISP_MASTER_FIELDS.created,
   ISP_MASTER_FIELDS.modified,
 ] as const;
@@ -84,6 +86,7 @@ export interface SpIspMasterRow {
   VersionNo: number;
   IsCurrent: boolean;
   FormDataJson?: string | null;
+  UserSnapshotJson?: string | null;
   Created?: string | null;
   Modified?: string | null;
 }
@@ -111,6 +114,7 @@ export interface SpIspMasterPayload {
   VersionNo?: number;
   IsCurrent?: boolean;
   FormDataJson?: string;
+  UserSnapshotJson?: string;
 }
 
 /** 動的 $select ビルダー */

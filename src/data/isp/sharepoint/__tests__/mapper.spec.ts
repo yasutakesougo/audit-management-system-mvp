@@ -240,6 +240,109 @@ describe('ISP mapper', () => {
       expect(payload.LongTermGoalsJson).toBe('["新目標"]');
     });
   });
+
+  // ─────────────────────────────────────────────
+  // UserSnapshot 統合テスト
+  // ─────────────────────────────────────────────
+
+  describe('UserSnapshot round-trip', () => {
+    const validSnapshot = {
+      userId: 'U001',
+      userName: '田中太郎',
+      disabilitySupportLevel: '4',
+      severeFlag: true,
+      isHighIntensitySupportTarget: false,
+      recipientCertNumber: 'CERT-123',
+      recipientCertExpiry: '2027-03-31',
+      grantPeriodStart: '2026-04-01',
+      grantPeriodEnd: '2027-03-31',
+      grantedDaysPerMonth: '22',
+      usageStatus: 'active',
+      snapshotAt: '2026-04-01T09:00:00.000Z',
+    };
+
+    it('有効な UserSnapshotJson を読み取りドメインモデルに復元する', () => {
+      const domain = mapIspRowToDomain(makeSpIspRow({
+        UserSnapshotJson: JSON.stringify(validSnapshot),
+      }));
+
+      expect(domain.userSnapshot).toBeDefined();
+      expect(domain.userSnapshot!.userId).toBe('U001');
+      expect(domain.userSnapshot!.userName).toBe('田中太郎');
+      expect(domain.userSnapshot!.disabilitySupportLevel).toBe('4');
+      expect(domain.userSnapshot!.severeFlag).toBe(true);
+      expect(domain.userSnapshot!.snapshotAt).toBe('2026-04-01T09:00:00.000Z');
+    });
+
+    it('UserSnapshotJson が未設定の場合 undefined にフォールバックする', () => {
+      const domain = mapIspRowToDomain(makeSpIspRow());
+
+      expect(domain.userSnapshot).toBeUndefined();
+    });
+
+    it('UserSnapshotJson が不正な JSON の場合 undefined にフォールバックする', () => {
+      const domain = mapIspRowToDomain(makeSpIspRow({
+        UserSnapshotJson: 'これは不正なJSONです',
+      }));
+
+      expect(domain.userSnapshot).toBeUndefined();
+    });
+
+    it('create input に userSnapshot を含めると JSON シリアライズされる', () => {
+      const payload = mapIspCreateInputToPayload({
+        userId: 'U001',
+        title: '2026年度ISP',
+        planStartDate: '2026-04-01',
+        planEndDate: '2027-03-31',
+        userIntent: 'テスト意向',
+        familyIntent: '',
+        overallSupportPolicy: 'テスト方針',
+        qolIssues: '',
+        longTermGoals: [],
+        shortTermGoals: [],
+        supportSummary: '',
+        precautions: '',
+        status: 'assessment',
+        userSnapshot: validSnapshot,
+      });
+
+      expect(payload.UserSnapshotJson).toBeDefined();
+      const parsed = JSON.parse(payload.UserSnapshotJson!);
+      expect(parsed.userId).toBe('U001');
+      expect(parsed.severeFlag).toBe(true);
+    });
+
+    it('create input に userSnapshot が省略された場合 undefined になる', () => {
+      const payload = mapIspCreateInputToPayload({
+        userId: 'U001',
+        title: '2026年度ISP',
+        planStartDate: '2026-04-01',
+        planEndDate: '2027-03-31',
+        userIntent: 'テスト意向',
+        familyIntent: '',
+        overallSupportPolicy: 'テスト方針',
+        qolIssues: '',
+        longTermGoals: [],
+        shortTermGoals: [],
+        supportSummary: '',
+        precautions: '',
+        status: 'assessment',
+      });
+
+      expect(payload.UserSnapshotJson).toBeUndefined();
+    });
+
+    it('update input に userSnapshot を含めると JSON シリアライズされる', () => {
+      const payload = mapIspUpdateInputToPayload({
+        userSnapshot: validSnapshot,
+      });
+
+      expect(payload.UserSnapshotJson).toBeDefined();
+      const parsed = JSON.parse(payload.UserSnapshotJson!);
+      expect(parsed.userName).toBe('田中太郎');
+      expect(parsed.recipientCertNumber).toBe('CERT-123');
+    });
+  });
 });
 
 // ═════════════════════════════════════════════

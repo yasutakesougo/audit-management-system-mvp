@@ -14,12 +14,12 @@ import Typography from '@mui/material/Typography';
 import React from 'react';
 
 interface MonitoringInfoProps {
-  personName: string;
+  userName: string;
   currentDate: string;
 }
 
 const MonitoringInfo: React.FC<MonitoringInfoProps> = ({
-  personName,
+  userName,
   currentDate
 }) => {
   // 現在日付から四半期を計算
@@ -63,7 +63,7 @@ const MonitoringInfo: React.FC<MonitoringInfoProps> = ({
       <CardContent>
         <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
           <AssessmentIcon color="primary" />
-          モニタリング情報 - {personName}
+          モニタリング情報 - {userName}
         </Typography>
 
         <Divider sx={{ my: 2 }} />

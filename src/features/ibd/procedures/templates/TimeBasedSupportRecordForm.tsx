@@ -37,8 +37,8 @@ interface SupportRecordFormProps {
   onSave: (record: Omit<SupportRecord, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   timeSlot: SupportRecordTimeSlot;
   initialData?: SupportRecord;
-  personId: string;
-  personName: string;
+  userId: string;
+  userName: string;
   date: string;
 }
 
@@ -48,14 +48,14 @@ const TimeBasedSupportRecordForm: React.FC<SupportRecordFormProps> = ({
   onSave,
   timeSlot,
   initialData,
-  personId,
-  personName,
+  userId,
+  userName,
   date
 }) => {
   const [formData, setFormData] = useState<Omit<SupportRecord, 'id' | 'createdAt' | 'updatedAt'>>({
     supportPlanId: initialData?.supportPlanId || '',
-    personId,
-    personName,
+    userId,
+    userName,
     date,
     timeSlot,
     userActivities: {
@@ -187,7 +187,7 @@ const TimeBasedSupportRecordForm: React.FC<SupportRecordFormProps> = ({
               時間別支援記録 - {timeSlot}
             </Typography>
             <Typography variant="subtitle2" color="text.secondary">
-              {personName} ({date})
+              {userName} ({date})
             </Typography>
           </Box>
           <Chip

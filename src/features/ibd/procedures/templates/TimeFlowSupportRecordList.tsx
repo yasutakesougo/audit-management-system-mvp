@@ -456,8 +456,8 @@ const TimeFlowSupportRecordList: React.FC<TimeFlowSupportRecordListProps> = ({
           onSave={handleSaveRecord}
           timeSlot={`${parseInt(selectedActivity.specificTime.split(':')[0]).toString().padStart(2, '0')}:00-${(parseInt(selectedActivity.specificTime.split(':')[0]) + 1).toString().padStart(2, '0')}:00` as SupportRecordTimeSlot}
           initialData={editingRecord || undefined}
-          personId={dailyRecord.personId}
-          personName={dailyRecord.personName}
+          userId={dailyRecord.userId}
+          userName={dailyRecord.userName}
           date={dailyRecord.date}
         />
       )}

@@ -118,7 +118,7 @@ const SupportRecordPage: React.FC = () => {
     }
     // 実際の更新処理をここに実装
     // 更新後にキャッシュの該当項目を更新
-    const cacheKey = `${record.personId}-${record.date}`;
+    const cacheKey = `${record.userId}-${record.date}`;
     if (dailyRecordCacheRef.current.has(cacheKey)) {
       const currentRecord = dailyRecordCacheRef.current.get(cacheKey)!;
       const updatedRecords = currentRecord.records.map(r =>

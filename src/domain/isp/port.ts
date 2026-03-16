@@ -24,15 +24,23 @@ import type {
   PlanningDesign,
 } from './schema';
 
+import type { UserSnapshot } from '@/domain/user/userRelation';
+
 // ─────────────────────────────────────────────
 // Input 型（Create / Update 分離）
 // ─────────────────────────────────────────────
 
+/** ISP のシステム付与項目（フォーム外） */
+interface IspSystemFields {
+  /** 作成時点の利用者マスタ属性を凍結保存 */
+  userSnapshot?: UserSnapshot;
+}
+
 /** ISP 新規作成入力（id, version, timestamps は自動付与） */
-export type IspCreateInput = IspFormValues;
+export type IspCreateInput = IspFormValues & IspSystemFields;
 
 /** ISP 更新入力（部分更新可） */
-export type IspUpdateInput = Partial<IspFormValues>;
+export type IspUpdateInput = Partial<IspFormValues> & IspSystemFields;
 
 /** 支援計画シートのシステム付与項目（フォーム外） */
 interface PlanningSheetSystemFields {
