@@ -20,6 +20,8 @@ import {
 import { useTheme } from '@mui/material/styles';
 import React from 'react';
 
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { RoomMonthCalendar } from './components/RoomMonthCalendar';
 import { RoomReservationForm } from './components/RoomReservationForm';
 import { useRoomReservations } from './hooks/useRoomReservations';
@@ -28,6 +30,7 @@ import { GROUP_COLORS, ROOMS, SLOTS, getRoomAbbr } from './roomStatusConstants';
 export const RoomStatusTab: React.FC = () => {
   const theme = useTheme();
   const rs = useRoomReservations();
+  const confirm = useConfirmDialog();
 
   return (
     <Box>
@@ -179,9 +182,13 @@ export const RoomStatusTab: React.FC = () => {
                           <Box
                             key={res.id}
                             onClick={() => {
-                              if (window.confirm('この予約を削除しますか？')) {
-                                rs.handleDeleteReservation(res.id);
-                              }
+                              confirm.open({
+                                title: '予約削除',
+                                message: `${res.room}（${res.slot}）の予約を削除しますか？`,
+                                severity: 'error',
+                                confirmLabel: '削除',
+                                onConfirm: () => rs.handleDeleteReservation(res.id),
+                              });
                             }}
                             sx={{
                               p: 2, bgcolor: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '8px',
@@ -268,6 +275,9 @@ export const RoomStatusTab: React.FC = () => {
           <Button onClick={rs.handleClearAll} color="error" variant="contained">クリア</Button>
         </DialogActions>
       </Dialog>
+
+      {/* 予約削除確認ダイアログ */}
+      <ConfirmDialog {...confirm.dialogProps} />
     </Box>
   );
 };

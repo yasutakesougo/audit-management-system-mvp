@@ -11,6 +11,8 @@ import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
 import { SupportActivityTemplate, defaultSupportActivities } from '@/domain/support/types';
 import { SupportActivityTemplateForm } from '../features/ibd/procedures/templates/SupportActivityTemplateForm';
 import { SupportActivityTemplateList } from '../features/ibd/procedures/templates/SupportActivityTemplateList';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 
 // LocalStorage管理: 今はローカルストレージ版の簡易マスタです。
 // 将来的にSharePointの支援活動マスタへ移行予定
@@ -59,6 +61,7 @@ const SupportActivityMasterPage: React.FC = () => {
     message: '',
     severity: 'success'
   });
+  const confirm = useConfirmDialog();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -85,29 +88,42 @@ const SupportActivityMasterPage: React.FC = () => {
 
   // テンプレート削除
   const handleDelete = useCallback((templateId: string) => {
-    // 削除確認ダイアログを表示するのが理想的
-    if (window.confirm('このテンプレートを削除しますか？\n※削除後は元に戻せません。')) {
-      setTemplates(prev => prev.filter(t => t.id !== templateId));
-      setSnackbar({
-        open: true,
-        message: 'テンプレートを削除しました。',
-        severity: 'success'
-      });
-    }
-  }, []);
+    confirm.open({
+      title: 'テンプレート削除',
+      message: 'このテンプレートを削除しますか？',
+      warningText: '削除後は元に戻せません。',
+      severity: 'error',
+      confirmLabel: '削除',
+      onConfirm: () => {
+        setTemplates(prev => prev.filter(t => t.id !== templateId));
+        setSnackbar({
+          open: true,
+          message: 'テンプレートを削除しました。',
+          severity: 'success'
+        });
+      },
+    });
+  }, [confirm]);
 
   // デフォルトテンプレートにリセット
   const handleResetToDefaults = useCallback(() => {
-    if (window.confirm('すべてのテンプレートをデフォルト設定に戻しますか？\n※現在の設定は失われます。')) {
-      const defaultTemplates = buildDefaultTemplates();
-      setTemplates(defaultTemplates);
-      setSnackbar({
-        open: true,
-        message: 'デフォルトテンプレートに復元しました。',
-        severity: 'success'
-      });
-    }
-  }, []);
+    confirm.open({
+      title: 'デフォルトに復元',
+      message: 'すべてのテンプレートをデフォルト設定に戻しますか？',
+      warningText: '現在の設定は失われます。',
+      severity: 'warning',
+      confirmLabel: 'リセット',
+      onConfirm: () => {
+        const defaultTemplates = buildDefaultTemplates();
+        setTemplates(defaultTemplates);
+        setSnackbar({
+          open: true,
+          message: 'デフォルトテンプレートに復元しました。',
+          severity: 'success'
+        });
+      },
+    });
+  }, [confirm]);
 
   // テンプレート保存
   const handleSave = useCallback((templateData: Omit<SupportActivityTemplate, 'id'>) => {
@@ -206,6 +222,9 @@ const SupportActivityMasterPage: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* 確認ダイアログ */}
+      <ConfirmDialog {...confirm.dialogProps} />
     </Box>
   );
 };
