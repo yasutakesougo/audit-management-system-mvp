@@ -63,7 +63,7 @@ describe('createAdapters helpers', () => {
     expect(payload.body[SCHEDULES_FIELDS.targetUserId]).toBe('42');
     expect(payload.body[SCHEDULES_FIELDS.assignedStaff]).toBeNull();
     expect(payload.body).not.toHaveProperty('cr014_personId');
-    expect(payload.body).not.toHaveProperty('cr014_personName');
+    expect(payload.body).not.toHaveProperty('cr014_userName');
     expect(payload.body).not.toHaveProperty('cr014_usercode');
   });
 

@@ -53,7 +53,7 @@ export const ScheduleDetailSchema = ScheduleCoreSchema.extend({
   // User/staff assignment
   userId: z.string().optional(),
   userLookupId: z.union([z.string(), z.number()]).optional(),
-  personName: z.string().optional(),
+  userName: z.string().optional(),
   assignedStaffId: z.string().optional(),
   assignedTo: z.string().nullable().optional(),
   vehicleId: z.string().optional(),

@@ -251,7 +251,7 @@ const buildSchedItem = (args: BuildSchedItemArgs): SchedItem => ({
   serviceType: args.serviceType as SchedItem['serviceType'],
   locationName: args.locationName,
   notes: args.notes,
-  personName: args.personName,
+  userName: args.personName,
   assignedStaffId: args.assignedStaffId,
   vehicleId: args.vehicleId,
   status: args.status as ScheduleStatus | undefined,

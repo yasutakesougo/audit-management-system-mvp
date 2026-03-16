@@ -92,6 +92,7 @@ const DEMO_SCHEDULES: Schedule[] = [
 		category: 'User',
 		serviceType: 'ショートステイ' as ServiceType,
 		personType: 'Internal',
+		personId: undefined,
 		personName: '山田 太郎',
 		staffIds: ['101', '102'],
 		staffNames: ['佐藤 花子', '鈴木 次郎'],
@@ -121,7 +122,6 @@ const DEMO_SCHEDULES: Schedule[] = [
 		personId: null,
 		personName: null,
 		serviceType: null,
-		userId: null,
 		dayPart: 'AM',
 	}),
 ];

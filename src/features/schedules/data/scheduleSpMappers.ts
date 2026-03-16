@@ -123,7 +123,7 @@ export const mapRepoScheduleToSchedItem = (repo: RepoSchedule): SchedItem | null
       end: repo.endDate,
       category: repo.personType as ScheduleCategory,
       userId: repo.personId || undefined,
-      personName: repo.personName,
+      userName: repo.personName,
       assignedStaffId: repo.assignedStaffId,
       status: repo.status as ScheduleStatus | undefined,
       serviceType: repo.serviceType,
