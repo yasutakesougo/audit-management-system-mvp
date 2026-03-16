@@ -170,3 +170,5 @@ const OperationFlowSettingsPage = React.lazy(() => import('@/features/settings/p
 export const SuspendedOperationFlowSettingsPage = createSuspended(OperationFlowSettingsPage, '1日の流れ設定を読み込んでいます…');
 const AbcRecordPage = React.lazy(() => import('@/pages/AbcRecordPage'));
 export const SuspendedAbcRecordPage = createSuspended(AbcRecordPage, 'ABC行動記録を読み込んでいます…');
+const HandoffAnalysisPage = React.lazy(() => import('@/pages/HandoffAnalysisPage'));
+export const SuspendedHandoffAnalysisPage = createSuspended(HandoffAnalysisPage, '申し送り分析ダッシュボードを読み込んでいます…');

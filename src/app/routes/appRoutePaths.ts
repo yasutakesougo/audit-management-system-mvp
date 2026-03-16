@@ -18,6 +18,7 @@ export const APP_ROUTE_PATHS = [
   'isp-editor/:userId',
   'support-planning-sheet/:planningSheetId',
   'handoff-timeline',
+  'handoff-analysis',
   'meeting-minutes',
   'meeting-minutes/new',
   'meeting-minutes/:id',
