@@ -5,6 +5,8 @@
  * Handles all form state, handlers, effects, validation, and saving logic.
  */
 
+import type { ConfirmDialogProps } from '@/components/ui/ConfirmDialog';
+import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import type { DailyAData, MealAmount, PersonDaily } from '@/features/daily';
 import {
     buildSpecialNotesFromImportantHandoffs,
@@ -81,6 +83,9 @@ export interface DailyRecordFormState {
   handleRemoveActivity: (period: 'AM' | 'PM', index: number) => void;
   applyProblemBehaviorSuggestion: () => void;
   handleSave: () => Promise<void>;
+
+  // Confirm dialog for unsaved-changes guard
+  closeConfirmDialog: ConfirmDialogProps;
 }
 
 export function useDailyRecordFormState({
@@ -91,6 +96,7 @@ export function useDailyRecordFormState({
 }: DailyRecordFormStateParams): DailyRecordFormState {
   const navigate = useNavigate();
   const { options: userOptions, findByPersonId } = useDailyUserOptions();
+  const confirmDialog = useConfirmDialog();
 
   const initialFormDataRef = useRef<string>('');
   const [formData, setFormData] = useState<Omit<PersonDaily, 'id'>>(() => createEmptyDailyRecord());
@@ -206,10 +212,23 @@ export function useDailyRecordFormState({
 
   const handleClose = useCallback(() => {
     if (isSaving) return;
-    if (isDirty && !window.confirm('保存されていない変更があります。破棄して閉じますか？')) return;
+    if (isDirty) {
+      confirmDialog.open({
+        title: '変更が保存されていません',
+        message: 'このまま閉じると入力内容は失われます。',
+        confirmLabel: '破棄して閉じる',
+        cancelLabel: '戻る',
+        severity: 'warning',
+        onConfirm: () => {
+          setSaveError(null);
+          onClose();
+        },
+      });
+      return;
+    }
     setSaveError(null);
     onClose();
-  }, [isDirty, isSaving, onClose]);
+  }, [isDirty, isSaving, onClose, confirmDialog]);
 
   const handleDateChange = (value: string) => {
     setFormData((prev) => ({ ...prev, date: value }));
@@ -376,5 +395,6 @@ export function useDailyRecordFormState({
     handleRemoveActivity,
     applyProblemBehaviorSuggestion,
     handleSave,
+    closeConfirmDialog: confirmDialog.dialogProps,
   };
 }

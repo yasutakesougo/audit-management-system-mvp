@@ -86,6 +86,7 @@ const exchangeFirebaseCustomToken = async (): Promise<CustomTokenExchangeRespons
   }
 
   const msalAccessToken = await acquireMsalAccessToken();
+  // eslint-disable-next-line no-restricted-globals -- Worker カスタムトークン交換: Graph ではないため graphFetch 対象外。将来的に専用クライアントを検討
   const response = await fetch(exchangeUrl, {
     method: 'POST',
     headers: {

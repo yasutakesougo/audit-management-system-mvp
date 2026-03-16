@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 
 import { TESTIDS } from '@/testids';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { StaffFormBasicInfoSection } from './components/StaffFormBasicInfoSection';
 import { StaffFormCertSection } from './components/StaffFormCertSection';
 import { StaffFormContactSection } from './components/StaffFormContactSection';
@@ -42,9 +43,11 @@ export function StaffForm(props: StaffFormProps) {
     handleAddCustomCertification,
     handleClose,
     handleSubmit,
+    closeConfirmDialog,
   } = useStaffForm(props);
 
   return (
+    <>
     <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }} data-testid={TESTIDS['staff-form-root']}>
       <StaffFormHeader mode={mode} onClose={onClose} handleClose={handleClose} />
 
@@ -145,6 +148,8 @@ export function StaffForm(props: StaffFormProps) {
         </Snackbar>
       </form>
     </Paper>
+    <ConfirmDialog {...closeConfirmDialog} />
+    </>
   );
 }
 

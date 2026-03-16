@@ -25,6 +25,7 @@ export function useFetcher() {
 
     return async (path: string, init?: RequestInit): Promise<Response> => {
       const url = path.startsWith('http') ? path : `${siteBaseUrl}${path}`;
+      // eslint-disable-next-line no-restricted-globals -- TODO: Phase 3 で spFetch に移行
       return fetch(url, {
         ...init,
         headers: {

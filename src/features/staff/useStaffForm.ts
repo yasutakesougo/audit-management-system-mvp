@@ -1,3 +1,5 @@
+import type { ConfirmDialogProps } from '@/components/ui/ConfirmDialog';
+import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { useStaff } from '@/stores/useStaff';
 import type { Staff } from '@/types';
 import { createRef, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -29,6 +31,9 @@ export interface UseStaffFormReturn {
     baseShift: React.RefObject<HTMLInputElement>;
   };
 
+  // confirm dialog for unsaved-changes guard
+  closeConfirmDialog: ConfirmDialogProps;
+
   // setters / handlers
   setMessage: React.Dispatch<React.SetStateAction<MessageState>>;
   setCustomCertification: React.Dispatch<React.SetStateAction<string>>;
@@ -50,6 +55,7 @@ export function useStaffForm({
   onClose,
 }: StaffFormProps): UseStaffFormReturn {
   const { createStaff, updateStaff } = useStaff();
+  const confirmDialog = useConfirmDialog();
 
   const deriveInitialValues = useCallback(
     (): FormValues => ({
@@ -117,11 +123,21 @@ export function useStaffForm({
 
   const handleClose = useCallback(() => {
     if (isSaving) return;
-    if (isDirty && !window.confirm('未保存の変更があります。閉じてもよろしいですか？')) {
+    if (isDirty) {
+      confirmDialog.open({
+        title: '変更が保存されていません',
+        message: 'このまま閉じると入力内容は失われます。',
+        confirmLabel: '破棄して閉じる',
+        cancelLabel: '戻る',
+        severity: 'warning',
+        onConfirm: () => {
+          onClose?.();
+        },
+      });
       return;
     }
     onClose?.();
-  }, [isDirty, isSaving, onClose]);
+  }, [isDirty, isSaving, onClose, confirmDialog]);
 
   useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -278,6 +294,7 @@ export function useStaffForm({
     customCertification,
     formRef,
     errRefs,
+    closeConfirmDialog: confirmDialog.dialogProps,
     setMessage,
     setCustomCertification,
     setField,
