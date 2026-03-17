@@ -12,19 +12,24 @@
  */
 
 import { PageHeader } from '@/components/PageHeader';
+import { ContextPanel } from '@/features/context/components/ContextPanel';
+import { buildContextAlerts, createEmptyContextData, type ContextPanelData } from '@/features/context/domain/contextPanelLogic';
 import { PersonDaily } from '@/domain/daily/types';
 import { saveDailyRecord, validateDailyRecord } from '@/features/daily/domain/dailyRecordLogic';
+import { getNextIncompleteRecord } from '@/features/daily/domain/nextIncompleteRecord';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import AddIcon from '@mui/icons-material/Add';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Container from '@mui/material/Container';
+import Fab from '@mui/material/Fab';
 import Stack from '@mui/material/Stack';
 import { useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useCallback, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { buildHandoffTimelineUrl } from '@/app/links/navigationLinks';
@@ -59,6 +64,7 @@ export default function DailyRecordPage() {
   const [records, setRecords] = useState<PersonDaily[]>(mockRecords);
   const [formOpen, setFormOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<PersonDaily | undefined>();
+  const [contextOpen, setContextOpen] = useState(false);
   const vm = useDailyRecordViewModel<PersonDaily>({
     locationState: location.state,
     searchParams,
@@ -96,11 +102,68 @@ export default function DailyRecordPage() {
     handleBulkComplete,
   } = vm;
 
+  // MVP-004: 保存成功時に次の未入力レコードを自動表示
+  const handleSaveRecordWithNext = useCallback(
+    async (record: Omit<PersonDaily, 'id'>) => {
+      await handleSaveRecord(record);
+
+      // 保存後にrecordsが更新されるので、setTimeout で1フレーム待つ
+      setTimeout(() => {
+        setRecords((currentRecords) => {
+          const savedRecord = currentRecords.find(
+            (r) => r.userId === record.userId && r.date === record.date,
+          );
+          if (!savedRecord) return currentRecords;
+
+          const next = getNextIncompleteRecord(currentRecords, savedRecord.id);
+          if (next) {
+            setEditingRecord(next);
+            setFormOpen(true);
+          }
+          // Note: 全完了時のトーストは handleSaveRecord 内で既に表示されている
+          return currentRecords;
+        });
+      }, 100);
+    },
+    [handleSaveRecord, setRecords, setEditingRecord, setFormOpen],
+  );
+
   // Phase 1A: handoff summary
   const {
     total: handoffTotal,
     criticalCount: handoffCritical,
   } = useHandoffSummary({ dayScope: 'today' });
+
+  // MVP-005: ContextPanel data
+  const contextData: ContextPanelData = useMemo(() => {
+    if (!editingRecord) return createEmptyContextData();
+    const user = usersData?.find((u) => u.UserID === editingRecord.userId || String(u.Id) === editingRecord.userId);
+    const alerts = buildContextAlerts({
+      supportPlan: { status: 'none', planPeriod: '', goals: [] },
+      handoffs: [],
+      recentRecords: records
+        .filter((r) => r.userId === editingRecord.userId && r.status === '完了')
+        .slice(0, 5)
+        .map((r) => ({ date: r.date, status: r.status })),
+      isHighIntensity: user?.IsHighIntensitySupportTarget ?? false,
+      isSupportProcedureTarget: user?.IsSupportProcedureTarget ?? false,
+    });
+    return {
+      supportPlan: { status: 'none', planPeriod: '', goals: [] },
+      handoffs: [],
+      recentRecords: records
+        .filter((r) => r.userId === editingRecord.userId)
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 5)
+        .map((r) => ({
+          date: r.date,
+          status: r.status,
+          specialNotes: r.kind === 'A' ? r.data.specialNotes : undefined,
+        })),
+      alerts,
+    };
+  }, [editingRecord, records, usersData]);
+  const contextUserName = editingRecord?.userName ?? '';
 
   // Phase 2-1: highlight state (auto-dismiss after 1.5s)
   const [activeHighlightUserId, setActiveHighlightUserId] = useState<string | null>(null);
@@ -265,7 +328,7 @@ export default function DailyRecordPage() {
             open={formOpen}
             onClose={handleCloseForm}
             record={editingRecord}
-            onSave={handleSaveRecord}
+            onSave={handleSaveRecordWithNext}
             data-testid="daily-record-form"
           />
 
@@ -274,6 +337,31 @@ export default function DailyRecordPage() {
             ariaLabel="新規記録作成"
             onClick={handleOpenForm}
             testId="add-record-fab"
+          />
+
+
+          {/* MVP-005: Context Panel Toggle */}
+          <Fab
+            color="primary"
+            aria-label="コンテキスト参照"
+            size="medium"
+            onClick={() => setContextOpen((prev) => !prev)}
+            data-testid="context-panel-toggle"
+            sx={{
+              position: 'fixed',
+              bottom: 88,
+              right: 16,
+            }}
+          >
+            <AutoStoriesIcon />
+          </Fab>
+
+          {/* MVP-005: Context Panel */}
+          <ContextPanel
+            open={contextOpen}
+            onClose={() => setContextOpen(false)}
+            userName={contextUserName}
+            data={contextData}
           />
 
           <Toaster
