@@ -11,7 +11,7 @@ import { ProactiveAlertBanner } from '@/features/ibd/core/components/ProactiveAl
 import { useProactiveSPSAlerts } from '@/features/ibd/core/useProactiveSPSAlerts';
 import { useSPSAlerts } from '@/features/ibd/core/useSPSAlerts';
 import { useSupportStepTemplates } from '@/features/ibd/procedures/templates/hooks/useSupportStepTemplates';
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { useUsers } from '@/features/users/useUsers';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import BuildIcon from '@mui/icons-material/Build';
@@ -355,7 +355,7 @@ function DrilldownDialog({ open, onClose, users, onSelectUser }: DrilldownDialog
 const IBDHubPage: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
-  const { data: allUsers } = useUsersDemo();
+  const { data: allUsers } = useUsers();
   const [drilldownOpen, setDrilldownOpen] = useState(false);
 
   // 行動分析対象者のみ

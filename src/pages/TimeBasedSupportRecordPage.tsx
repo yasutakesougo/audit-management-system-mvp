@@ -15,7 +15,7 @@ import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
 import { useSupportWizard } from '@/features/daily/hooks/useSupportWizard';
 import type { ProcedureItem } from '@/features/daily/stores/procedureStore';
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { useUsers } from '@/features/users/useUsers';
 import { useSupportRecordSubmit } from '@/pages/hooks/useSupportRecordSubmit';
 import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
 import Alert from '@mui/material/Alert';
@@ -55,7 +55,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   // ── Data hooks (same as before) ──
   const procedureRepo = useProcedureData();
   const { repo: behaviorRepo, data: behaviorRecords, error: behaviorError, clearError } = useBehaviorData();
-  const { data: users } = useUsersDemo();
+  const { data: users } = useUsers();
   const { filter, updateFilter, resetFilter, filteredUsers, hasActiveFilter } = useDailySupportUserFilter(users);
   const interventionStore = useInterventionStore();
   const executionStore = useExecutionData();

@@ -26,7 +26,7 @@ import {
     type PersistDailyPdcaInput,
 } from '@/features/ibd/analysis/pdca/persistDailyPdca';
 import { getABCRecordsForUser, getLatestSPS, getSupervisionCounter } from '@/features/ibd/core/ibdStore';
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { useUsers } from '@/features/users/useUsers';
 import { getEnv } from '@/lib/runtimeEnv';
 import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -74,7 +74,7 @@ export function useTimeBasedSupportPage() {
   const procedureRepo = useProcedureData();
   const { repo: behaviorRepo, data: behaviorRecords, error: behaviorError, clearError } =
     useBehaviorData();
-  const { data: users } = useUsersDemo();
+  const { data: users } = useUsers();
   const { filter, updateFilter, resetFilter, filteredUsers, hasActiveFilter } =
     useDailySupportUserFilter(users);
   const interventionStore = useInterventionStore();

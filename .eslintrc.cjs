@@ -99,6 +99,10 @@ module.exports = {
           {
             group: ['@/adapters/schedules', '@/adapters/schedules/*'],
             message: 'Legacy adapter deleted. Use useScheduleRepository() from features/schedules/repositoryFactory.'
+          },
+          {
+            group: ['**/users/usersStoreDemo', '**/users/usersStoreDemo.*'],
+            message: 'usersStoreDemo は削除済みです。useUsers() (→ repositoryFactory) を使用してください。'
           }
         ]
       }

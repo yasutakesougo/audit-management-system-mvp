@@ -27,7 +27,7 @@ import { addSPS, confirmSPS, getLatestSPS, getSPSHistory } from '@/features/ibd/
 import { useSPSRevision } from '@/features/ibd/core/useSPSHistory';
 import { useSupportStepTemplates } from '@/features/ibd/procedures/templates/hooks/useSupportStepTemplates';
 import { UserSelectionGrid } from '@/features/users/components/UserSelectionGrid';
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { useUsers } from '@/features/users/useUsers';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -54,7 +54,7 @@ import {
 const IndividualSupportManagementPage: React.FC = () => {
   const { userCode } = useParams<{ userCode: string }>();
   const navigate = useNavigate();
-  const { data: allUsers } = useUsersDemo();
+  const { data: allUsers } = useUsers();
 
   // 行動分析対象利用者のみフィルタ
   const ibdUsers = useMemo(

@@ -10,7 +10,7 @@ import { seedDemoBehaviors, useBehaviorStore } from '@/features/daily/stores/beh
 import { useProcedureStore } from '@/features/daily/stores/procedureStore';
 import { AttendanceSummaryCard } from '@/features/dashboard/components/AttendanceSummaryCard';
 import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { useUsers } from '@/features/users/useUsers';
 import { createUserNameResolver } from '@/domain/user';
 import { isDemoModeEnabled } from '@/lib/env';
 import { toLocalDateISO } from '@/utils/getNow';
@@ -53,7 +53,7 @@ import { CssBarChart, CssHeatmap, EventTimeline, KpiStatCard, SvgDonutChart } fr
 // ---------------------------------------------------------------------------
 
 const AnalysisDashboardPage: React.FC = () => {
-  const { data: users } = useUsersDemo();
+  const { data: users } = useUsers();
   const { analysisData, fetchForAnalysis } = useBehaviorStore();
   const demoModeEnabled = isDemoModeEnabled();
   const [targetUserId, setTargetUserId] = useState<string>('');

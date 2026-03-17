@@ -1,5 +1,5 @@
 import type { IUserMaster } from '@/features/users';
-import { useUsersDemo } from '@/features/users';
+import { useUsers } from '@/features/users';
 import { useMemo } from 'react';
 import type { TransportMethod } from './transportMethod';
 
@@ -68,7 +68,7 @@ const buildDemoVisits = (users: IUserMaster[]): Record<string, AttendanceVisitSn
 };
 
 export const useAttendanceStore = (): AttendanceStoreState => {
-  const { data: users } = useUsersDemo();
+  const { data: users } = useUsers();
 
   const visits = useMemo(() => buildDemoVisits(users), [users]);
 

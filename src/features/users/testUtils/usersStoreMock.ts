@@ -138,14 +138,6 @@ vi.mock('../useUsers', () => {
   };
 });
 
-vi.mock('../usersStoreDemo', () => {
-  const useUsersLike = createMockStoreHook();
-
-  return {
-    useUsersDemo: useUsersLike,
-  };
-});
-
 export const usersStoreMock = {
   reset: resetStore,
 };

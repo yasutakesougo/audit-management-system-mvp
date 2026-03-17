@@ -34,7 +34,7 @@ import { DailyRecordForm } from '../features/daily/forms/DailyRecordForm';
 import { DailyRecordList } from '../features/daily/lists/DailyRecordList';
 import { useDailyRecordViewModel } from '../features/daily/lists/useDailyRecordViewModel';
 import { useHandoffSummary } from '../features/handoff/useHandoffSummary';
-import { useUsersDemo } from '../features/users/usersStoreDemo';
+import { useUsers } from '../features/users/useUsers';
 import { useSchedules } from '../stores/useSchedules';
 import { calculateAttendanceRate, getExpectedAttendeeCount } from '../utils/attendanceUtils';
 import { DailyRecordBulkActions } from './DailyRecordBulkActions';
@@ -53,7 +53,7 @@ export default function DailyRecordPage() {
   const [searchParams] = useSearchParams();
   const theme = useTheme();
 
-  const { data: usersData } = useUsersDemo();
+  const { data: usersData } = useUsers();
   const { data: schedulesData } = useSchedules();
 
   const [records, setRecords] = useState<PersonDaily[]>(mockRecords);
