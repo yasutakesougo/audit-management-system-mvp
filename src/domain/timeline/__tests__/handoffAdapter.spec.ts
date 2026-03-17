@@ -62,7 +62,7 @@ describe('handoffToTimelineEvent', () => {
     expect(result.id).toBe('handoff-100');
     expect(result.source).toBe('handoff');
     expect(result.title).toBe('申し送り: 水分摂取量の注意');
-    expect(result.sourceRef).toEqual({ id: 100 });
+    expect(result.sourceRef).toEqual({ source: 'handoff', handoffId: 100 });
   });
 
   it('occurredAt に createdAt がそのまま使われる', () => {

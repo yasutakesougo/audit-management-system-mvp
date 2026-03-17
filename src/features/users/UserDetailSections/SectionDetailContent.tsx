@@ -27,12 +27,15 @@ type SectionDetailContentProps = {
   section: MenuSection;
   user: IUserMaster;
   attendanceLabel: string;
+  /** タイムラインの sourceCounts が確定したときのコールバック */
+  onTimelineCountsReady?: (counts: { total: number }) => void;
 };
 
 export const SectionDetailContent: React.FC<SectionDetailContentProps> = ({
   section,
   user,
   attendanceLabel,
+  onTimelineCountsReady,
 }) => {
   // ── Basic info rows ──
   if (section.key === 'basic') {
@@ -102,7 +105,10 @@ export const SectionDetailContent: React.FC<SectionDetailContentProps> = ({
   if (section.key === 'timeline') {
     return (
       <Suspense fallback={<LoadingState message="タイムラインを準備中…" inline />}>
-        <TimelineSectionWrapperLazy user={user} />
+        <TimelineSectionWrapperLazy
+          user={user}
+          onSourceCountsReady={onTimelineCountsReady}
+        />
       </Suspense>
     );
   }

@@ -48,7 +48,7 @@ export function handoffToTimelineEvent(
     title: `申し送り: ${handoff.title}`,
     description: handoff.message || undefined,
     severity: SEVERITY_MAP[handoff.severity] ?? 'info',
-    sourceRef: { id: handoff.id },
+    sourceRef: { source: 'handoff', handoffId: handoff.id },
     meta: {
       category: handoff.category,
       severity: handoff.severity,

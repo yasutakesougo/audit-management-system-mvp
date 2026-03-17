@@ -32,7 +32,7 @@ export function dailyToTimelineEvent(daily: AnyDaily): TimelineEvent {
     title: `日次記録 (${kindLabel})`,
     description: description || undefined,
     severity: 'info',
-    sourceRef: { id: daily.id },
+    sourceRef: { source: 'daily', date: daily.date, recordId: daily.id },
     meta: {
       kind: daily.kind,
       status: daily.status,
