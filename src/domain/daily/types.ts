@@ -114,6 +114,7 @@ export const DailyADataZ = z.object({
   seizureRecord: SeizureRecordZ.optional(),
   specialNotes: z.string().optional(),
   hasAttachment: z.boolean().optional(),       // 別紙（無/有）
+  behaviorTags: z.array(z.string()).optional(), // 構造化行動タグ (MVP-004)
 });
 export type DailyAData = z.infer<typeof DailyADataZ>;
 
