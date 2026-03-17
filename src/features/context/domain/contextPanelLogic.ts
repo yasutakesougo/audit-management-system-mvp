@@ -52,6 +52,8 @@ export type ContextPanelData = {
   handoffs: ContextHandoff[];
   recentRecords: ContextRecentRecord[];
   alerts: ContextAlert[];
+  summary: string;
+  prompts: string[];
 };
 
 // ─── アラート生成（純粋関数） ──────────────────────────────────
@@ -128,5 +130,77 @@ export function createEmptyContextData(): ContextPanelData {
     handoffs: [],
     recentRecords: [],
     alerts: [],
+    summary: '直近の関連履歴はありません。',
+    prompts: ['💡 本日の利用者の様子で気になった些細な変化や気づきを記録してください。'],
   };
+}
+
+// ─── 新規追加: MVP-009 履歴要約と推奨プロンプト抽出 ────────────────────────
+
+/**
+ * 過去の申し送りと記録から、短い履歴要約（1〜3文）を生成する
+ */
+export function buildContextSummary(
+  records: ContextRecentRecord[],
+  handoffs: ContextHandoff[]
+): string {
+  const parts: string[] = [];
+
+  const recentCritical = handoffs.filter(
+    (h) => h.severity === '重要' && h.status !== '完了' && h.status !== '確認済'
+  );
+  if (recentCritical.length > 0) {
+    parts.push(`未対応の重要な申し送りが${recentCritical.length}件あります。`);
+  }
+
+  const specialNotes = records.filter((r) => !!r.specialNotes).slice(0, 2);
+  if (specialNotes.length > 0) {
+    parts.push(`直近の記録に特記事項あり（${specialNotes.length}件）。`);
+  }
+
+  if (parts.length === 0) {
+    if (records.length > 0) {
+      parts.push(`直近${records.length}回の記録は特筆すべき問題なく完了しています。`);
+    } else {
+      parts.push('直近の関連履歴はありません。');
+    }
+  }
+
+  return parts.join(' ');
+}
+
+/**
+ * 支援計画やアラート状態から、今回の記録で確認すべき「推奨アクション」を抽出する
+ */
+export function buildRecommendedPrompts(
+  plan: ContextSupportPlan,
+  isHighIntensity: boolean,
+  isSupportProcedureTarget: boolean
+): string[] {
+  const prompts: string[] = [];
+
+  if (isHighIntensity) {
+    prompts.push('💡 強度行動障害の支援手順書に沿った対応ができているか確認してください。');
+  } else if (isSupportProcedureTarget) {
+    prompts.push('💡 個別支援手順書に基づく対応ができているか確認してください。');
+  }
+
+  const supportGoals = plan.goals.filter((g) => g.type === 'support' || g.type === 'short').slice(0, 2);
+  for (const goal of supportGoals) {
+    prompts.push(`💡 目標「${goal.label}」に対する本日のアプローチ結果はどうでしたか？`);
+  }
+
+  if (prompts.length === 0) {
+    prompts.push('💡 本日の利用者の様子で気になった些細な変化や気づきを記録してください。');
+  }
+
+  return prompts.slice(0, 3); // 最大3件
+}
+
+/**
+ * アラートを優先度順 (error -> warning -> info) に並び替える
+ */
+export function prioritizeContextAlerts(alerts: ContextAlert[]): ContextAlert[] {
+  const priorityMap = { error: 0, warning: 1, info: 2 };
+  return [...alerts].sort((a, b) => priorityMap[a.level] - priorityMap[b.level]);
 }

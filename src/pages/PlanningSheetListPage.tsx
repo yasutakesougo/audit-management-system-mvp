@@ -135,7 +135,7 @@ export default function PlanningSheetListPage() {
                   size="small"
                   variant="contained"
                   startIcon={<AddRoundedIcon />}
-                  onClick={() => navigate('/support-planning-sheet/new')}
+                  onClick={() => navigate(userId ? `/support-planning-sheet/new?userId=${userId}` : '/support-planning-sheet/new')}
                 >
                   新規作成
                 </Button>
@@ -170,7 +170,7 @@ export default function PlanningSheetListPage() {
               <Button
                 variant="contained"
                 startIcon={<AddRoundedIcon />}
-                onClick={() => navigate('/support-planning-sheet/new')}
+                onClick={() => navigate(userId ? `/support-planning-sheet/new?userId=${userId}` : '/support-planning-sheet/new')}
               >
                 新規作成
               </Button>
