@@ -34,7 +34,7 @@ describe('computePlannerInsights', () => {
   it('提案・判断・HUD 全空で goals ありなら actions は空配列', () => {
     const result = computePlannerInsights(
       makeInput({
-        goals: [{ id: 'g1', type: 'short', title: 'ダミー', domains: [] }],
+        goals: [{ id: 'g1', type: 'short', label: 'ダミー', domains: [] }],
       }),
     );
     expect(result.actions).toEqual([]);
@@ -128,7 +128,7 @@ describe('computePlannerInsights', () => {
   it('goals が存在すれば missingGoals を返さない', () => {
     const result = computePlannerInsights(
       makeInput({
-        goals: [{ id: 'g1', type: 'short', title: 'テスト目標', domains: [] }],
+        goals: [{ id: 'g1', type: 'short', label: 'テスト目標', domains: [] }],
       }),
     );
 
@@ -174,7 +174,7 @@ describe('computePlannerInsights', () => {
       makeInput({
         suggestions: [],
         decisions: [],
-        goals: [{ id: 'g1', type: 'short', title: 'ある', domains: [] }],
+        goals: [{ id: 'g1', type: 'short', label: 'ある', domains: [] }],
         regulatoryItems: [{ key: 'r1', label: 'OK', signal: 'ok' }],
       }),
     );

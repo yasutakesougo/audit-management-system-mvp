@@ -60,7 +60,8 @@ export type PlannerInsights = {
 export type PlannerGoalInput = {
   id: string;
   type: string;
-  title: string;
+  /** GoalItem.label に対応（表示テキスト） */
+  label: string;
   domains: string[];
 };
 

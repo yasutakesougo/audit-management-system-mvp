@@ -45,6 +45,8 @@ export type PlanCapability =
   | 'ruleMetrics.view'       // ルール別評価パネルの表示
   // ── 制度HUD ──
   | 'regulatoryHud.view'     // 制度状態HUDの表示
+  // ── Planner Assist ──
+  | 'plannerAssist.view'     // Next Action Panel の表示
   // ── 設定 ──
   | 'settings.manage'        // 全設定変更
   // ── コンプライアンス ──
@@ -73,6 +75,8 @@ const ROLE_CAPABILITIES: Record<PlanRole, ReadonlySet<PlanCapability>> = {
     'memo.act',
     // メトリクス
     'metrics.view',
+    // Planner Assist
+    'plannerAssist.view',
     // コンプライアンス
     'compliance.approve',
   ]),
@@ -87,6 +91,7 @@ const ROLE_CAPABILITIES: Record<PlanRole, ReadonlySet<PlanCapability>> = {
     'memo.view',
     'memo.act',
     'metrics.view',
+    'plannerAssist.view',
     'compliance.approve',
     // admin-only
     'ruleMetrics.view',

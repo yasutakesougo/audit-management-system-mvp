@@ -19,6 +19,7 @@ import { useSupportPlanBundle } from '@/features/support-plan-guide/hooks/useSup
 import { useSupportPlanForm } from '@/features/support-plan-guide/hooks/useSupportPlanForm';
 import { useSuggestionDecisionPersistence } from '@/features/support-plan-guide/hooks/useSuggestionDecisionPersistence';
 import { usePlanRole } from '@/features/support-plan-guide/hooks/usePlanRole';
+import { usePlannerInsights } from '@/features/support-plan-guide/hooks/usePlannerInsights';
 import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIcebergEvidence';
 import type {
     SectionKey,
@@ -66,6 +67,7 @@ const PreviewTab = React.lazy(() => import('@/features/support-plan-guide/compon
 
 // Lazy-loaded regulatory section (code-split to stay under 80 kB budget)
 const RegulatorySection = React.lazy(() => import('@/features/support-plan-guide/components/RegulatorySection'));
+const NextActionPanel = React.lazy(() => import('@/features/support-plan-guide/components/planner-assist/NextActionPanel'));
 
 const TabFallback = <CircularProgress size={20} sx={{ m: 2 }} />;
 
@@ -367,6 +369,35 @@ export default function SupportPlanGuidePage() {
 
   const { bundle: regulatoryBundle, userId: linkedUserId, isAvailable: regulatoryAvailable } = useRegulatorySummary(activeDraft, mergedBundle);
 
+  // ── P5-A: Planner Assist data resolution ──
+  const icebergTotalForHud = React.useMemo(() => {
+    if (!icebergEvidence?.sessionCount) return 0;
+    return Object.values(icebergEvidence.sessionCount).reduce((a: number, b: number) => a + b, 0);
+  }, [icebergEvidence]);
+
+  const regulatoryHudInput = React.useMemo(() => {
+    if (!regulatoryBundle || !regulatoryAvailable) return null;
+    const resolvedDeadlines = deadlines ?? {
+      creation: { label: '作成期限', color: 'default' as const },
+      monitoring: { label: 'モニタ期限', color: 'default' as const },
+    };
+    return {
+      ispStatus: regulatoryBundle.isp.status,
+      compliance: complianceForm.compliance ?? null,
+      deadlines: resolvedDeadlines,
+      latestMonitoring: regulatoryBundle.latestMonitoring,
+      icebergTotal: icebergTotalForHud,
+    };
+  }, [regulatoryBundle, regulatoryAvailable, deadlines, complianceForm.compliance, icebergTotalForHud]);
+
+  const plannerInsights = usePlannerInsights({
+    bundle: mergedBundle,
+    form,
+    goals: form.goals ?? [],
+    decisions: currentDecisions ?? [],
+    regulatoryInput: regulatoryHudInput,
+  });
+
   // ── Planning Sheet 動的遷移 ──
   const planningSheetRepo = usePlanningSheetRepositories();
   const { currentSheet: _currentSheet, allCurrentSheets: _allCurrentSheets, isLoading: _isLoadingSheets } = useCurrentPlanningSheet(regulatoryUserId, planningSheetRepo);
@@ -394,6 +425,18 @@ export default function SupportPlanGuidePage() {
             />
           </Suspense>
         )}
+
+        {/* ── P5-A: Planner Assist — Next Action Panel ── */}
+        {can('plannerAssist.view') && plannerInsights.actions.length > 0 && (
+          <Suspense fallback={TabFallback}>
+            <NextActionPanel
+              actions={plannerInsights.actions}
+              summary={plannerInsights.summary}
+              onNavigate={(tab) => setActiveTab(tab as SectionKey)}
+            />
+          </Suspense>
+        )}
+
 
         <Paper
           variant="outlined"
