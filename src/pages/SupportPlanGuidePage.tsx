@@ -18,6 +18,8 @@ import { useRegulatorySummary } from '@/features/support-plan-guide/hooks/useReg
 import { useSupportPlanBundle } from '@/features/support-plan-guide/hooks/useSupportPlanBundle';
 import { useSupportPlanForm } from '@/features/support-plan-guide/hooks/useSupportPlanForm';
 import { useSuggestionDecisionPersistence } from '@/features/support-plan-guide/hooks/useSuggestionDecisionPersistence';
+import { usePlanRole } from '@/features/support-plan-guide/hooks/usePlanRole';
+
 import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIcebergEvidence';
 import type {
     SectionKey,
@@ -65,6 +67,7 @@ const PreviewTab = React.lazy(() => import('@/features/support-plan-guide/compon
 
 // Lazy-loaded regulatory section (code-split to stay under 80 kB budget)
 const RegulatorySection = React.lazy(() => import('@/features/support-plan-guide/components/RegulatorySection'));
+const NextActionPanelContainer = React.lazy(() => import('@/features/support-plan-guide/components/planner-assist/NextActionPanelContainer'));
 
 const TabFallback = <CircularProgress size={20} sx={{ m: 2 }} />;
 
@@ -98,6 +101,9 @@ export default function SupportPlanGuidePage() {
   const { account } = useAuth();
   const isAdmin = canAccess(role, 'admin');
   const approverUpn = account?.username ?? '';
+
+  // ── P4: Role-based visibility ──
+  const { role: planRole, can } = usePlanRole({ isAdmin });
 
   // ── Data sources ──
   const { data: userList = [] } = useUsersStore();
@@ -239,6 +245,9 @@ export default function SupportPlanGuidePage() {
     suggestionMetrics,
     // P3-F: Raw decisions for rule-level metrics
     suggestionDecisions: currentDecisions,
+    // P4: Role-based visibility
+    planRole,
+    can,
   };
 
   // ── Draft progress chip (render helper) ──
@@ -360,6 +369,29 @@ export default function SupportPlanGuidePage() {
 
   const { bundle: regulatoryBundle, userId: linkedUserId, isAvailable: regulatoryAvailable } = useRegulatorySummary(activeDraft, mergedBundle);
 
+  // ── P5-A: Planner Assist data resolution ──
+  const icebergTotalForHud = React.useMemo(() => {
+    if (!icebergEvidence?.sessionCount) return 0;
+    return Object.values(icebergEvidence.sessionCount).reduce((a: number, b: number) => a + b, 0);
+  }, [icebergEvidence]);
+
+  const regulatoryHudInput = React.useMemo(() => {
+    if (!regulatoryBundle || !regulatoryAvailable) return null;
+    const resolvedDeadlines = deadlines ?? {
+      creation: { label: '作成期限', color: 'default' as const },
+      monitoring: { label: 'モニタ期限', color: 'default' as const },
+    };
+    return {
+      ispStatus: regulatoryBundle.isp.status,
+      compliance: complianceForm.compliance ?? null,
+      deadlines: resolvedDeadlines,
+      latestMonitoring: regulatoryBundle.latestMonitoring,
+      icebergTotal: icebergTotalForHud,
+    };
+  }, [regulatoryBundle, regulatoryAvailable, deadlines, complianceForm.compliance, icebergTotalForHud]);
+
+
+
   // ── Planning Sheet 動的遷移 ──
   const planningSheetRepo = usePlanningSheetRepositories();
   const { currentSheet: _currentSheet, allCurrentSheets: _allCurrentSheets, isLoading: _isLoadingSheets } = useCurrentPlanningSheet(regulatoryUserId, planningSheetRepo);
@@ -373,8 +405,8 @@ export default function SupportPlanGuidePage() {
           </Alert>
         )}
 
-        {/* ── 制度サマリー帯 + シート一覧カード (lazy-loaded) ── */}
-        {regulatoryAvailable && (
+        {/* ── 制度サマリー帯 + シート一覧カード (P4: regulatoryHud.view ガード) ── */}
+        {can('regulatoryHud.view') && regulatoryAvailable && (
           <Suspense fallback={TabFallback}>
             <RegulatorySection
               bundle={regulatoryBundle}
@@ -387,6 +419,21 @@ export default function SupportPlanGuidePage() {
             />
           </Suspense>
         )}
+
+        {/* ── P5-A: Planner Assist — Next Action Panel ── */}
+        {can('plannerAssist.view') && (
+          <Suspense fallback={TabFallback}>
+            <NextActionPanelContainer
+              bundle={mergedBundle}
+              form={form}
+              goals={form.goals ?? []}
+              decisions={currentDecisions ?? []}
+              regulatoryInput={regulatoryHudInput}
+              onNavigate={(tab) => setActiveTab(tab as SectionKey)}
+            />
+          </Suspense>
+        )}
+
 
         <Paper
           variant="outlined"
