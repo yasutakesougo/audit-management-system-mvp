@@ -20,14 +20,18 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select, { type SelectChangeEvent } from '@mui/material/Select';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import {
   type TimelineEventSource,
   type TimelineFilter,
+  type TimelineRangePresetKey,
   type TimelineSeverity,
   TIMELINE_SOURCES,
   TIMELINE_SOURCE_LABELS,
+  TIMELINE_RANGE_PRESETS,
 } from '@/domain/timeline';
 import { motionTokens } from '@/app/theme';
 
@@ -61,6 +65,10 @@ export interface TimelineFilterBarProps {
   filter: TimelineFilter;
   /** フィルタ更新 */
   onFilterChange: (filter: TimelineFilter) => void;
+  /** 現在の期間プリセット */
+  rangePreset: TimelineRangePresetKey;
+  /** 期間プリセット変更 */
+  onRangePresetChange: (preset: TimelineRangePresetKey) => void;
   /** ソースごとの件数 */
   sourceCounts: Record<TimelineEventSource, number>;
   /** 未解決 handoff 件数 */
@@ -76,6 +84,8 @@ export interface TimelineFilterBarProps {
 export const TimelineFilterBar: React.FC<TimelineFilterBarProps> = ({
   filter,
   onFilterChange,
+  rangePreset,
+  onRangePresetChange,
   sourceCounts,
   unresolvedHandoff = 0,
   totalCount,
@@ -112,8 +122,77 @@ export const TimelineFilterBar: React.FC<TimelineFilterBarProps> = ({
     });
   };
 
+  const handleRangeChange = (
+    _: React.MouseEvent<HTMLElement>,
+    value: TimelineRangePresetKey | null,
+  ) => {
+    if (value) onRangePresetChange(value);
+  };
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+      {/* Range preset + Severity row */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+        }}
+      >
+        <ToggleButtonGroup
+          value={rangePreset}
+          exclusive
+          onChange={handleRangeChange}
+          size="small"
+          aria-label="期間プリセット"
+          sx={{
+            height: 32,
+            '& .MuiToggleButton-root': {
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              px: 1.5,
+              py: 0,
+              textTransform: 'none',
+              borderColor: 'divider',
+              transition: motionTokens.transition.microAll,
+              '&.Mui-selected': {
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                borderColor: 'primary.main',
+                '&:hover': {
+                  bgcolor: 'primary.dark',
+                },
+              },
+            },
+          }}
+        >
+          {TIMELINE_RANGE_PRESETS.map((p) => (
+            <ToggleButton key={p.key} value={p.key}>
+              {p.label}
+            </ToggleButton>
+          ))}
+        </ToggleButtonGroup>
+
+        {/* Severity filter */}
+        <FormControl size="small" sx={{ minWidth: 120, ml: 'auto' }}>
+          <InputLabel id="timeline-severity-label" sx={{ fontSize: '0.8rem' }}>
+            重要度
+          </InputLabel>
+          <Select
+            labelId="timeline-severity-label"
+            value={filter.severity ?? ''}
+            label="重要度"
+            onChange={handleSeverityChange}
+            sx={{ fontSize: '0.8rem', height: 32 }}
+          >
+            {SEVERITY_OPTIONS.map((opt) => (
+              <MenuItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
       {/* Source filter chips */}
       <Box
         sx={{
@@ -151,26 +230,6 @@ export const TimelineFilterBar: React.FC<TimelineFilterBarProps> = ({
             />
           );
         })}
-
-        {/* Severity filter */}
-        <FormControl size="small" sx={{ minWidth: 120, ml: 'auto' }}>
-          <InputLabel id="timeline-severity-label" sx={{ fontSize: '0.8rem' }}>
-            重要度
-          </InputLabel>
-          <Select
-            labelId="timeline-severity-label"
-            value={filter.severity ?? ''}
-            label="重要度"
-            onChange={handleSeverityChange}
-            sx={{ fontSize: '0.8rem', height: 32 }}
-          >
-            {SEVERITY_OPTIONS.map((opt) => (
-              <MenuItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
       </Box>
 
       {/* Summary line + unresolved warning */}

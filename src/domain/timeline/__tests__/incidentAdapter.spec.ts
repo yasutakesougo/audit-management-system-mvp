@@ -23,7 +23,7 @@ describe('incidentToTimelineEvent', () => {
     expect(result.id).toBe('incident-INC-001');
     expect(result.source).toBe('incident');
     expect(result.userId).toBe('U001');
-    expect(result.sourceRef).toEqual({ id: 'INC-001' });
+    expect(result.sourceRef).toEqual({ source: 'incident', incidentId: 'INC-001' });
   });
 
   it('occurredAt がそのまま渡される', () => {

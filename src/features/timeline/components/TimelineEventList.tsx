@@ -12,7 +12,7 @@ import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 import type { TimelineEvent } from '@/domain/timeline';
-import { TimelineEventCard } from './TimelineEventCard';
+import { TimelineEventCard, type TimelineEventCardProps } from './TimelineEventCard';
 
 // ─────────────────────────────────────────────
 // 日付グループヘルパー
@@ -66,10 +66,13 @@ function groupByDate(
 
 export interface TimelineEventListProps {
   events: readonly TimelineEvent[];
+  /** イベントクリック時のハンドラ */
+  onOpen?: TimelineEventCardProps['onOpen'];
 }
 
 export const TimelineEventList: React.FC<TimelineEventListProps> = ({
   events,
+  onOpen,
 }) => {
   if (events.length === 0) return null;
 
@@ -98,7 +101,7 @@ export const TimelineEventList: React.FC<TimelineEventListProps> = ({
           {/* イベントカード群 */}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {group.events.map((event) => (
-              <TimelineEventCard key={event.id} event={event} />
+              <TimelineEventCard key={event.id} event={event} onOpen={onOpen} />
             ))}
           </Box>
         </Box>

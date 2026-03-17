@@ -31,7 +31,7 @@ export function ispToTimelineEvent(isp: IndividualSupportPlan): TimelineEvent {
     occurredAt: isp.createdAt,
     title: `個別支援計画 (${statusLabel})`,
     severity: 'info',
-    sourceRef: { id: isp.id },
+    sourceRef: { source: 'isp', ispId: isp.id },
     meta: {
       status: isp.status,
       version: isp.version,

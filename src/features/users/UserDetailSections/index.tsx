@@ -51,6 +51,13 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
   const [activeTab, setActiveTab] = useState<MenuSection['key']>(DEFAULT_TAB_KEY);
   const tabPanelRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
+
+  // ── タイムラインイベント件数（タブバッジ表示用） ──
+  const [timelineCount, setTimelineCount] = useState<number | null>(null);
+  const handleTimelineCountsReady = useCallback((counts: { total: number }) => {
+    setTimelineCount(counts.total);
+  }, []);
+
   const quickAccessSections = useMemo(
     () => menuSections.filter((section) => QUICK_ACCESS_KEYS.includes(section.key)),
     [],
@@ -183,11 +190,16 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
             >
               {TAB_SECTIONS.map((section) => {
                 const IconComponent = section.icon;
+                // タイムラインタブには件数バッジを表示
+                const badge =
+                  section.key === 'timeline' && timelineCount != null && timelineCount > 0
+                    ? ` (${timelineCount})`
+                    : '';
                 return (
                   <Tab
                     key={section.key}
                     value={section.key}
-                    label={section.title}
+                    label={`${section.title}${badge}`}
                     icon={<IconComponent fontSize="small" />}
                     iconPosition="start"
                     id={`user-menu-tab-${section.key}`}
@@ -204,6 +216,7 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
               attendanceLabel={attendanceLabel}
               activeTab={activeTab}
               tabPanelRef={tabPanelRef}
+              onTimelineCountsReady={handleTimelineCountsReady}
             />
           </Stack>
         </Paper>
