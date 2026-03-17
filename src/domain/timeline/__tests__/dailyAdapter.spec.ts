@@ -50,7 +50,7 @@ describe('dailyToTimelineEvent', () => {
     expect(result.userId).toBe('U001');
     expect(result.title).toBe('日次記録 (個人)');
     expect(result.severity).toBe('info');
-    expect(result.sourceRef).toEqual({ id: 1 });
+    expect(result.sourceRef).toEqual({ source: 'daily', date: '2026-03-15', recordId: 1 });
   });
 
   it('B型レコードを変換: title に「軸別」が含まれる', () => {

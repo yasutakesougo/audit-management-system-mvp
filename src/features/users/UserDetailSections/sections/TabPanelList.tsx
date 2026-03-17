@@ -23,6 +23,8 @@ type TabPanelListProps = {
   attendanceLabel: string;
   activeTab: string;
   tabPanelRef: React.RefObject<HTMLDivElement | null>;
+  /** タイムラインの sourceCounts が確定したときのコールバック */
+  onTimelineCountsReady?: (counts: { total: number }) => void;
 };
 
 export const TabPanelList: React.FC<TabPanelListProps> = ({
@@ -31,6 +33,7 @@ export const TabPanelList: React.FC<TabPanelListProps> = ({
   attendanceLabel,
   activeTab,
   tabPanelRef,
+  onTimelineCountsReady,
 }) => (
   <>
     {sections.map((section) => {
@@ -76,6 +79,9 @@ export const TabPanelList: React.FC<TabPanelListProps> = ({
                 section={section}
                 user={user}
                 attendanceLabel={attendanceLabel}
+                onTimelineCountsReady={
+                  section.key === 'timeline' ? onTimelineCountsReady : undefined
+                }
               />
             </Stack>
           )}

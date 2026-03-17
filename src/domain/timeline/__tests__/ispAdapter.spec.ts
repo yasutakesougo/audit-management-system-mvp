@@ -44,7 +44,7 @@ describe('ispToTimelineEvent', () => {
     expect(result.id).toBe('isp-ISP-001');
     expect(result.source).toBe('isp');
     expect(result.userId).toBe('U001');
-    expect(result.sourceRef).toEqual({ id: 'ISP-001' });
+    expect(result.sourceRef).toEqual({ source: 'isp', ispId: 'ISP-001' });
   });
 
   it('occurredAt に createdAt が使われる', () => {

@@ -11,10 +11,10 @@
  * 設計:
  *   - データ取得は外から注入された fetcher に委譲
  *   - 表示のみの責務（thin view layer）
- *   - Phase 3 MVP: read-only の時系列一覧
+ *   - ナビゲーションは sourceRef → resolveSourceRefPath → onNavigate コールバック
  */
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -23,7 +23,16 @@ import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import TimelineIcon from '@mui/icons-material/Timeline';
-import type { TimelineFilter } from '@/domain/timeline';
+import type {
+  TimelineEvent,
+  TimelineFilter,
+  TimelineRangePresetKey,
+} from '@/domain/timeline';
+import {
+  resolveSourceRefPath,
+  DEFAULT_RANGE_PRESET,
+  computeRangeFilter,
+} from '@/domain/timeline';
 import type { IUserMaster } from '@/features/users/types';
 import {
   useUserTimeline,
@@ -46,6 +55,10 @@ export interface UserTimelinePanelProps {
   fetcher: TimelineDataFetcher;
   /** UserMaster 一覧（Handoff resolver 構築用） */
   users: IUserMaster[];
+  /** ソース詳細画面への遷移コールバック */
+  onNavigate?: (path: string) => void;
+  /** sourceCounts が確定したときのコールバック（タブ見出しバッジ等に使用） */
+  onSourceCountsReady?: (counts: { total: number }) => void;
 }
 
 // ─────────────────────────────────────────────
@@ -123,16 +136,48 @@ export const UserTimelinePanel: React.FC<UserTimelinePanelProps> = ({
   userName,
   fetcher,
   users,
+  onNavigate,
+  onSourceCountsReady,
 }) => {
   // ── Filter state（このパネル内で管理） ──
   const [filter, setFilter] = useState<TimelineFilter>({});
+  const [rangePreset, setRangePreset] =
+    useState<TimelineRangePresetKey>(DEFAULT_RANGE_PRESET);
+
+  // ── 期間プリセットから from/to を計算 ──
+  const rangeFilter = useMemo(() => computeRangeFilter(rangePreset), [rangePreset]);
+
+  // ── filter + rangeFilter をマージして hook に渡す ──
+  const mergedFilter = useMemo<TimelineFilter>(
+    () => ({ ...filter, from: rangeFilter.from, to: rangeFilter.to }),
+    [filter, rangeFilter],
+  );
 
   // ── hook 呼び出し ──
   const { events, isLoading, error, refresh, sourceCounts } = useUserTimeline(
     userId,
     fetcher,
     users,
-    { filter },
+    { filter: mergedFilter },
+  );
+
+  // ── sourceCounts が確定したら親に通知 ──
+  useEffect(() => {
+    if (!isLoading && onSourceCountsReady) {
+      onSourceCountsReady({ total: sourceCounts.total });
+    }
+  }, [isLoading, sourceCounts.total, onSourceCountsReady]);
+
+  // ── Event open handler ──
+  const handleOpenEvent = useCallback(
+    (event: TimelineEvent) => {
+      if (!onNavigate) return;
+      const path = resolveSourceRefPath(event.sourceRef);
+      if (path) {
+        onNavigate(path);
+      }
+    },
+    [onNavigate],
   );
 
   // ── Error ──
@@ -221,6 +266,8 @@ export const UserTimelinePanel: React.FC<UserTimelinePanelProps> = ({
         <TimelineFilterBar
           filter={filter}
           onFilterChange={setFilter}
+          rangePreset={rangePreset}
+          onRangePresetChange={setRangePreset}
           sourceCounts={sourceCounts}
           unresolvedHandoff={sourceCounts.unresolvedHandoff}
           totalCount={events.length}
@@ -229,7 +276,7 @@ export const UserTimelinePanel: React.FC<UserTimelinePanelProps> = ({
 
       {/* イベント一覧 or Empty */}
       {events.length > 0 ? (
-        <TimelineEventList events={events} />
+        <TimelineEventList events={events} onOpen={onNavigate ? handleOpenEvent : undefined} />
       ) : hasAnyData ? (
         // フィルタ結果が空
         <Box sx={{ py: 4, textAlign: 'center' }}>
@@ -239,7 +286,10 @@ export const UserTimelinePanel: React.FC<UserTimelinePanelProps> = ({
           <Button
             size="small"
             sx={{ mt: 1, textTransform: 'none' }}
-            onClick={() => setFilter({})}
+            onClick={() => {
+              setFilter({});
+              setRangePreset(DEFAULT_RANGE_PRESET);
+            }}
           >
             フィルタをリセット
           </Button>

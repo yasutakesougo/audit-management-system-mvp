@@ -20,6 +20,7 @@
  */
 
 import React, { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { UserTimelinePanel } from '@/features/timeline/components/UserTimelinePanel';
 import { createTimelineDataFetcher } from '@/features/timeline/createTimelineDataFetcher';
 import { useUsersStore } from '@/features/users/store';
@@ -32,13 +33,17 @@ import type { IUserMaster } from '../types';
 export interface TimelineSectionWrapperProps {
   /** 対象利用者 */
   user: IUserMaster;
+  /** sourceCounts が確定したときのコールバック（タブ見出しバッジ等に使用） */
+  onSourceCountsReady?: (counts: { total: number }) => void;
 }
 
 export const TimelineSectionWrapper: React.FC<TimelineSectionWrapperProps> = ({
   user,
+  onSourceCountsReady,
 }) => {
   // userId を IUserMaster から抽出
   const userId = user.UserID ?? String(user.Id);
+  const navigate = useNavigate();
 
   // UserMaster 一覧（Handoff resolver 構築用）
   const { data: users = [] } = useUsersStore();
@@ -66,6 +71,8 @@ export const TimelineSectionWrapper: React.FC<TimelineSectionWrapperProps> = ({
       userName={user.FullName}
       fetcher={fetcher}
       users={users}
+      onNavigate={navigate}
+      onSourceCountsReady={onSourceCountsReady}
     />
   );
 };

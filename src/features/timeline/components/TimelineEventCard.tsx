@@ -6,17 +6,19 @@
  *   - occurredAt の日時表示
  *   - title / description の表示
  *   - severity に応じた視覚マーカー
+ *   - クリック可能な場合のインタラクション表示
  *
  * 設計:
- *   - カードはクリック不可（Phase 3 MVP）
+ *   - `onOpen` が渡された場合のみカードをクリック可能にする
  *   - source チップは最小限の色分けで視認性を確保
  *   - description は長い場合に省略表示（2行まで）
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Typography from '@mui/material/Typography';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import {
   type TimelineEvent,
   type TimelineEventSource,
@@ -77,16 +79,41 @@ function formatOccurredAt(iso: string): string {
 
 export interface TimelineEventCardProps {
   event: TimelineEvent;
+  /** クリック時のハンドラ。渡すとカードがクリック可能になる */
+  onOpen?: (event: TimelineEvent) => void;
 }
 
 export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({
   event,
+  onOpen,
 }) => {
   const chipColor = SOURCE_CHIP_COLORS[event.source];
   const severityColor = SEVERITY_COLORS[event.severity];
+  const isClickable = !!onOpen;
+
+  const handleClick = useCallback(() => {
+    if (onOpen) {
+      onOpen(event);
+    }
+  }, [onOpen, event]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (onOpen && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        onOpen(event);
+      }
+    },
+    [onOpen, event],
+  );
 
   return (
     <Box
+      onClick={isClickable ? handleClick : undefined}
+      onKeyDown={isClickable ? handleKeyDown : undefined}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      aria-label={isClickable ? `${event.title} を開く` : undefined}
       sx={{
         display: 'flex',
         gap: 1.5,
@@ -97,10 +124,28 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({
         border: '1px solid',
         borderColor: 'divider',
         transition: motionTokens.transition.hoverAll,
-        '&:hover': {
-          borderColor: severityColor,
-          boxShadow: `0 0 0 1px ${severityColor}20`,
-        },
+        ...(isClickable && {
+          cursor: 'pointer',
+          userSelect: 'none',
+          '&:hover': {
+            borderColor: severityColor,
+            boxShadow: `0 0 0 1px ${severityColor}20`,
+            bgcolor: 'action.hover',
+          },
+          '&:focus-visible': {
+            outline: `2px solid ${severityColor}`,
+            outlineOffset: 1,
+          },
+          '&:active': {
+            transform: 'scale(0.995)',
+          },
+        }),
+        ...(!isClickable && {
+          '&:hover': {
+            borderColor: severityColor,
+            boxShadow: `0 0 0 1px ${severityColor}20`,
+          },
+        }),
       }}
     >
       {/* Severity indicator bar */}
@@ -176,6 +221,24 @@ export const TimelineEventCard: React.FC<TimelineEventCardProps> = ({
           </Typography>
         )}
       </Box>
+
+      {/* Clickable indicator */}
+      {isClickable && (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            flexShrink: 0,
+            color: 'text.disabled',
+            transition: motionTokens.transition.hoverAll,
+            '.MuiBox-root:hover > &': {
+              color: 'text.secondary',
+            },
+          }}
+        >
+          <ChevronRightIcon fontSize="small" />
+        </Box>
+      )}
     </Box>
   );
 };

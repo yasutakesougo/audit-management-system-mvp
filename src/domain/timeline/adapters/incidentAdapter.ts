@@ -35,7 +35,7 @@ export function incidentToTimelineEvent(incident: HighRiskIncident): TimelineEve
     title: `インシデント (${incident.severity})`,
     description: incident.description,
     severity: SEVERITY_MAP[incident.severity] ?? 'warning',
-    sourceRef: { id: incident.id },
+    sourceRef: { source: 'incident', incidentId: incident.id },
     meta: { severity: incident.severity },
   };
 }
