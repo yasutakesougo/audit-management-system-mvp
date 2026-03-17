@@ -1,14 +1,15 @@
 /**
- * usePlannerInsights — Planner Assist のデータ解決 hook (P5-A / P5-C1)
+ * usePlannerInsights — Planner Assist のデータ解決 hook (P5-A / P5-C1 / P5-C2)
  *
- * computePlannerInsights() + computePlannerInsightDetails() を呼ぶために
- * 必要なデータを既存 hook から集め、memoized で返す Thin Orchestrator。
+ * computePlannerInsights() + computePlannerInsightDetails() + computePlannerTrendSeries()
+ * を呼ぶために必要なデータを既存 hook から集め、memoized で返す Thin Orchestrator。
  *
  * 責務:
  *  - buildSuggestedGoals で提案候補を生成
  *  - buildRegulatoryHudItems で制度 HUD 項目を生成
  *  - form.goals / currentDecisions と合わせて computePlannerInsights を呼ぶ
  *  - 展開詳細のために computePlannerInsightDetails を呼ぶ
+ *  - スパークライン用に computePlannerTrendSeries を呼ぶ
  *
  * 新ロジック: なし。既存 pure 関数の組み合わせのみ。
  */
@@ -20,8 +21,10 @@ import type { GoalItem } from '@/features/shared/goal/goalTypes';
 import {
   computePlannerInsights,
   computePlannerInsightDetails,
+  computePlannerTrendSeries,
   type PlannerInsights,
   type PlannerInsightDetails,
+  type PlannerTrendSeries,
 } from '../domain/plannerInsights';
 import { buildSuggestedGoals } from '../domain/suggestedGoals';
 import { toSuggestedGoalsInput } from '../domain/suggestedGoalsAdapter';
@@ -44,6 +47,8 @@ export type UsePlannerInsightsInput = {
 export type UsePlannerInsightsResult = PlannerInsights & {
   /** 各アクション行の展開詳細 (P5-C1) */
   details: PlannerInsightDetails;
+  /** 週次トレンドシリーズ (P5-C2) */
+  trendSeries: PlannerTrendSeries;
 };
 
 // ────────────────────────────────────────────
@@ -75,10 +80,12 @@ export function usePlannerInsights(
 
     const insights = computePlannerInsights(insightsInput);
     const details = computePlannerInsightDetails(insightsInput);
+    const trendSeries = computePlannerTrendSeries(decisions);
 
     return {
       ...insights,
       details,
+      trendSeries,
     };
   }, [bundle, form, goals, decisions, regulatoryInput]);
 }

@@ -243,3 +243,72 @@ describe('NextActionPanel — expand/collapse (P5-C1)', () => {
   });
 });
 
+// ────────────────────────────────────────────
+// P5-C2: スパークライン表示テスト
+// ────────────────────────────────────────────
+
+describe('NextActionPanel — sparkline (P5-C2)', () => {
+  const trendSeriesWithData = {
+    points: [
+      { weekStart: '2026-03-09', weekLabel: '3/9', acceptanceRate: 0.8, decisionCount: 5 },
+      { weekStart: '2026-03-16', weekLabel: '3/16', acceptanceRate: 0.5, decisionCount: 4 },
+    ],
+    isEmpty: false,
+  };
+
+  const trendSeriesEmpty = {
+    points: [
+      { weekStart: '2026-03-09', weekLabel: '3/9', decisionCount: 0 },
+      { weekStart: '2026-03-16', weekLabel: '3/16', decisionCount: 0 },
+    ],
+    isEmpty: true,
+  };
+
+  it('trendSeries にデータがあれば週次トレンドを表示する', () => {
+    renderPanel({
+      actions: [makeAction()],
+      trendSeries: trendSeriesWithData,
+    });
+
+    expect(screen.getByText(/週次トレンド/)).toBeInTheDocument();
+  });
+
+  it('trendSeries が isEmpty なら週次トレンドを表示しない', () => {
+    renderPanel({
+      actions: [makeAction()],
+      trendSeries: trendSeriesEmpty,
+    });
+
+    expect(screen.queryByText(/週次トレンド/)).not.toBeInTheDocument();
+  });
+
+  it('trendSeries が undefined ならスパークラインを表示しない', () => {
+    renderPanel({
+      actions: [makeAction()],
+      // trendSeries を渡さない
+    });
+
+    expect(screen.queryByText(/週次トレンド/)).not.toBeInTheDocument();
+  });
+
+  it('スパークラインに SVG が含まれる', () => {
+    renderPanel({
+      actions: [makeAction()],
+      trendSeries: trendSeriesWithData,
+    });
+
+    // 2つの SVG: 採用率折れ線 + 判断件数バー
+    const svgs = screen.getByTestId('next-action-panel').querySelectorAll('svg');
+    expect(svgs.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('週ラベルの範囲を表示する', () => {
+    renderPanel({
+      actions: [makeAction()],
+      trendSeries: trendSeriesWithData,
+    });
+
+    expect(screen.getByText('3/9')).toBeInTheDocument();
+    expect(screen.getByText('3/16')).toBeInTheDocument();
+  });
+});

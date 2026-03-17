@@ -367,3 +367,164 @@ export function computePlannerInsightDetails(
   return result;
 }
 
+// ────────────────────────────────────────────
+// P5-C2: 週次トレンドシリーズ（スパークライン用）
+// ────────────────────────────────────────────
+
+/** 1週分のデータポイント */
+export type PlannerTrendPoint = {
+  /** 週の開始日（月曜）ISO 8601 yyyy-MM-dd */
+  weekStart: string;
+  /** 表示用ラベル（例: "3/10"） */
+  weekLabel: string;
+  /** その週の SmartTab 採用率（0-1）。判断 0 件なら undefined */
+  acceptanceRate?: number;
+  /** その週の全判断件数 */
+  decisionCount: number;
+};
+
+/** スパークライン用トレンドシリーズ */
+export type PlannerTrendSeries = {
+  /** 週次データポイント（古い順） */
+  points: PlannerTrendPoint[];
+  /** データがない（全0）かどうか */
+  isEmpty: boolean;
+};
+
+/** computePlannerTrendSeries のオプション */
+export type PlannerTrendOptions = {
+  /** 基準日時。省略時は現在日時 */
+  now?: Date;
+  /** 遡る週数。省略時は 8 */
+  weeks?: number;
+};
+
+/**
+ * 判断レコードを週次バケットに集約し、スパークライン用のシリーズを返す。
+ *
+ * - 週の区切りは月曜始まり（ISO week）
+ * - 各週の acceptanceRate は accepted / (accepted + dismissed)
+ * - now から weeks 週分のバケットを生成（データがない週も 0 件で含む）
+ *
+ * Pure function — React 非依存。
+ *
+ * @param decisions - 判断レコード（append-only）
+ * @param options - 基準日時と週数
+ * @returns PlannerTrendSeries
+ */
+export function computePlannerTrendSeries(
+  decisions: SuggestionDecisionRecord[],
+  options: PlannerTrendOptions = {},
+): PlannerTrendSeries {
+  const { now = new Date(), weeks = 8 } = options;
+
+  // ── 週バケットの開始日を生成（古い順） ──
+  const buckets = buildWeekBuckets(now, weeks);
+
+  // ── 判断レコードをバケットに割り当て ──
+  type WeekBucket = {
+    weekStart: string;
+    weekLabel: string;
+    accepted: number;
+    dismissed: number;
+    total: number;
+  };
+
+  const bucketMap = new Map<string, WeekBucket>();
+  for (const b of buckets) {
+    bucketMap.set(b.weekStart, {
+      weekStart: b.weekStart,
+      weekLabel: b.weekLabel,
+      accepted: 0,
+      dismissed: 0,
+      total: 0,
+    });
+  }
+
+  for (const record of decisions) {
+    const weekStart = toWeekStart(record.decidedAt);
+    const bucket = bucketMap.get(weekStart);
+    if (!bucket) continue; // 範囲外
+
+    bucket.total++;
+    if (record.action === 'accepted') bucket.accepted++;
+    else if (record.action === 'dismissed') bucket.dismissed++;
+  }
+
+  // ── バケットをポイントに変換 ──
+  const points: PlannerTrendPoint[] = [];
+  let hasData = false;
+
+  for (const b of buckets) {
+    const bucket = bucketMap.get(b.weekStart)!;
+    const denominator = bucket.accepted + bucket.dismissed;
+    const acceptanceRate = denominator > 0 ? bucket.accepted / denominator : undefined;
+
+    points.push({
+      weekStart: bucket.weekStart,
+      weekLabel: bucket.weekLabel,
+      acceptanceRate,
+      decisionCount: bucket.total,
+    });
+
+    if (bucket.total > 0) hasData = true;
+  }
+
+  return {
+    points,
+    isEmpty: !hasData,
+  };
+}
+
+// ────────────────────────────────────────────
+// 内部ヘルパー: 週バケット
+// ────────────────────────────────────────────
+
+/**
+ * ISO Week の月曜始まり日を返す。
+ * @param isoDateStr - ISO 8601 文字列（例: "2026-03-18T00:00:00Z"）
+ * @returns yyyy-MM-dd 形式の月曜日
+ */
+function toWeekStart(isoDateStr: string): string {
+  const d = new Date(isoDateStr);
+  // getDay: 0=日 1=月 ... 6=土 → 月曜を 0 にする
+  const dayOfWeek = (d.getUTCDay() + 6) % 7; // 0=月 1=火 ... 6=日
+  const monday = new Date(d);
+  monday.setUTCDate(d.getUTCDate() - dayOfWeek);
+  return formatDateISO(monday);
+}
+
+/**
+ * 基準日から weeks 週分の月曜開始日リストを生成する（古い順）。
+ */
+function buildWeekBuckets(
+  now: Date,
+  weeks: number,
+): { weekStart: string; weekLabel: string }[] {
+  // 今週の月曜を求める
+  const currentMonday = new Date(now);
+  const dayOfWeek = (currentMonday.getUTCDay() + 6) % 7;
+  currentMonday.setUTCDate(currentMonday.getUTCDate() - dayOfWeek);
+  currentMonday.setUTCHours(0, 0, 0, 0);
+
+  const result: { weekStart: string; weekLabel: string }[] = [];
+
+  for (let i = weeks - 1; i >= 0; i--) {
+    const weekMonday = new Date(currentMonday);
+    weekMonday.setUTCDate(currentMonday.getUTCDate() - i * 7);
+    result.push({
+      weekStart: formatDateISO(weekMonday),
+      weekLabel: `${weekMonday.getUTCMonth() + 1}/${weekMonday.getUTCDate()}`,
+    });
+  }
+
+  return result;
+}
+
+/** UTC 日付を yyyy-MM-dd に変換する */
+function formatDateISO(d: Date): string {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}

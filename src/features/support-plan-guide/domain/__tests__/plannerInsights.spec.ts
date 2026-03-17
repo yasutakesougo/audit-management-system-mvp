@@ -9,6 +9,7 @@ import { describe, it, expect } from 'vitest';
 import {
   computePlannerInsights,
   computePlannerInsightDetails,
+  computePlannerTrendSeries,
   type PlannerInsightsInput,
 } from '../plannerInsights';
 
@@ -405,3 +406,101 @@ describe('computePlannerInsightDetails', () => {
   });
 });
 
+// ────────────────────────────────────────────
+// P5-C2: computePlannerTrendSeries テスト
+// ────────────────────────────────────────────
+
+describe('computePlannerTrendSeries', () => {
+  // 基準日: 2026-03-18 (水曜)
+  // → 今週の月曜 = 2026-03-16
+  const NOW = new Date('2026-03-18T12:00:00Z');
+
+  // ── 1. 空データ ──
+  it('判断なしなら isEmpty:true で全ポイント decisionCount=0', () => {
+    const result = computePlannerTrendSeries([], { now: NOW, weeks: 4 });
+
+    expect(result.isEmpty).toBe(true);
+    expect(result.points).toHaveLength(4);
+    expect(result.points.every((p) => p.decisionCount === 0)).toBe(true);
+    expect(result.points.every((p) => p.acceptanceRate === undefined)).toBe(true);
+  });
+
+  // ── 2. バケット数 ──
+  it('weeks 指定分のポイントを返す', () => {
+    const r3 = computePlannerTrendSeries([], { now: NOW, weeks: 3 });
+    expect(r3.points).toHaveLength(3);
+
+    const r8 = computePlannerTrendSeries([], { now: NOW, weeks: 8 });
+    expect(r8.points).toHaveLength(8);
+  });
+
+  // ── 3. 月曜始まりバケット ──
+  it('ポイントの weekStart が月曜になる', () => {
+    const result = computePlannerTrendSeries([], { now: NOW, weeks: 2 });
+    // 2週前の月曜 = 2026-03-09, 今週の月曜 = 2026-03-16
+    expect(result.points[0].weekStart).toBe('2026-03-09');
+    expect(result.points[1].weekStart).toBe('2026-03-16');
+  });
+
+  // ── 4. 判断レコードの振り分け ──
+  it('判断を正しい週バケットに振り分ける', () => {
+    const decisions = [
+      // 今週（3/16-3/22）
+      { id: 's1', source: 'smart' as const, action: 'accepted' as const, decidedAt: '2026-03-18T10:00:00Z' },
+      { id: 's2', source: 'smart' as const, action: 'dismissed' as const, decidedAt: '2026-03-17T08:00:00Z' },
+      // 先週（3/9-3/15）
+      { id: 's3', source: 'smart' as const, action: 'accepted' as const, decidedAt: '2026-03-10T09:00:00Z' },
+    ];
+
+    const result = computePlannerTrendSeries(decisions, { now: NOW, weeks: 2 });
+
+    // 先週: 1件 accepted
+    expect(result.points[0].decisionCount).toBe(1);
+    expect(result.points[0].acceptanceRate).toBe(1.0);
+
+    // 今週: 1 accepted + 1 dismissed = 2件
+    expect(result.points[1].decisionCount).toBe(2);
+    expect(result.points[1].acceptanceRate).toBe(0.5);
+  });
+
+  // ── 5. acceptanceRate 計算 ──
+  it('accepted/dismissed がない週の acceptanceRate は undefined', () => {
+    const decisions = [
+      // 今週に noted（memo系 — accepted/dismissed ではない）
+      { id: 'm1', source: 'memo' as const, action: 'noted' as const, decidedAt: '2026-03-18T10:00:00Z' },
+    ];
+
+    const result = computePlannerTrendSeries(decisions, { now: NOW, weeks: 2 });
+
+    // 今週: total=1 だが accepted/dismissed が 0 → rate undefined
+    expect(result.points[1].decisionCount).toBe(1);
+    expect(result.points[1].acceptanceRate).toBeUndefined();
+  });
+
+  // ── 6. isEmpty フラグ ──
+  it('判断ありなら isEmpty:false', () => {
+    const decisions = [
+      { id: 's1', source: 'smart' as const, action: 'accepted' as const, decidedAt: '2026-03-18T10:00:00Z' },
+    ];
+    const result = computePlannerTrendSeries(decisions, { now: NOW, weeks: 4 });
+    expect(result.isEmpty).toBe(false);
+  });
+
+  // ── 7. 範囲外レコードは無視 ──
+  it('バケット範囲外の判断は無視する', () => {
+    const decisions = [
+      // 2ヶ月前（範囲外）
+      { id: 's1', source: 'smart' as const, action: 'accepted' as const, decidedAt: '2026-01-01T10:00:00Z' },
+    ];
+    const result = computePlannerTrendSeries(decisions, { now: NOW, weeks: 4 });
+    expect(result.isEmpty).toBe(true);
+    expect(result.points.every((p) => p.decisionCount === 0)).toBe(true);
+  });
+
+  // ── 8. weekLabel のフォーマット ──
+  it('weekLabel が "月/日" 形式', () => {
+    const result = computePlannerTrendSeries([], { now: NOW, weeks: 1 });
+    // 今週の月曜 = 2026-03-16
+    expect(result.points[0].weekLabel).toBe('3/16');
+  });
+});

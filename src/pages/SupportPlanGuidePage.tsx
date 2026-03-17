@@ -433,6 +433,7 @@ export default function SupportPlanGuidePage() {
               actions={plannerInsights.actions}
               summary={plannerInsights.summary}
               details={plannerInsights.details}
+              trendSeries={plannerInsights.trendSeries}
               onNavigate={(tab) => setActiveTab(tab as SectionKey)}
             />
           </Suspense>

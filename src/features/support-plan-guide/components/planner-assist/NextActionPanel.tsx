@@ -1,8 +1,9 @@
 /**
- * NextActionPanel — Planner Assist の Next Action Panel (P5-A / P5-C1)
+ * NextActionPanel — Planner Assist の Next Action Panel (P5-A / P5-C1 / P5-C2)
  *
  * computePlannerInsights() の出力を受けて描画する Thin Component。
  * P5-C1: 各アクション行をクリックで展開し、詳細内訳を表示する。
+ * P5-C2: アクション一覧の下に週次トレンドスパークラインを表示する。
  *
  * 新しいロジックは持たず、既存レイヤーの集約結果を可視化する。
  *
@@ -26,8 +27,10 @@ import type {
   PlannerInsights,
   PlannerInsightDetails,
   PlannerInsightDetailItem,
+  PlannerTrendSeries,
 } from '../../domain/plannerInsights';
 import { formatRate } from '../../domain/suggestionDecisionMetrics';
+import { PlannerTrendSparkline } from './PlannerTrendSparkline';
 
 // ────────────────────────────────────────────
 // severity → color mapping
@@ -54,6 +57,8 @@ export type NextActionPanelProps = {
   summary: PlannerInsights['summary'];
   /** 各アクション行の展開詳細 (P5-C1) */
   details?: PlannerInsightDetails;
+  /** 週次トレンドシリーズ (P5-C2) */
+  trendSeries?: PlannerTrendSeries;
   onNavigate: (tab: string) => void;
 };
 
@@ -65,6 +70,7 @@ export const NextActionPanel: React.FC<NextActionPanelProps> = ({
   actions,
   summary,
   details,
+  trendSeries,
   onNavigate,
 }) => {
   // 全アクション 0件なら非表示
@@ -119,6 +125,9 @@ export const NextActionPanel: React.FC<NextActionPanelProps> = ({
             />
           ))}
         </Stack>
+
+        {/* ── スパークライン (P5-C2) ── */}
+        {trendSeries && <PlannerTrendSparkline series={trendSeries} />}
       </Stack>
     </Paper>
   );
