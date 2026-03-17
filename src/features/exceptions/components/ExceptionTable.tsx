@@ -70,6 +70,7 @@ const SEVERITY_ORDER: Record<ExceptionSeverity, number> = {
   low: 4,
 };
 
+
 // ─── Component ──────────────────────────────────────────────
 
 export const ExceptionTable: React.FC<ExceptionTableProps> = ({
@@ -106,7 +107,6 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
       if (severityFilter !== 'all' && item.severity !== severityFilter) return false;
       return true;
     });
-
     // 2. Sort
     return filtered.sort((a, b) => {
       const dateStrA = a.targetDate ?? a.updatedAt;
