@@ -288,6 +288,8 @@ export default function SupportPlanGuidePage() {
             {...sectionTabProps}
             userId={activeDraft?.userId}
             setToast={setToast}
+            memoBundle={mergedBundle}
+            onPromoteToGoal={handleAcceptSuggestion}
           />
         );
       case 'preview':
