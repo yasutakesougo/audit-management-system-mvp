@@ -29,6 +29,8 @@ import type { IncidentRecord, IncidentType } from '@/domain/support/incidentRepo
 import { localIncidentRepository } from '@/infra/localStorage/localIncidentRepository';
 import { formatRelativeTime } from '@/lib/dateFormat';
 
+import IncidentDetailDialog from './IncidentDetailDialog';
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -91,6 +93,7 @@ export default function IncidentHistoryList({
 }: IncidentHistoryListProps) {
   const [records, setRecords] = useState<IncidentRecord[]>([]);
   const [filter, setFilter] = useState<SeverityFilter>('all');
+  const [selectedIncident, setSelectedIncident] = useState<IncidentRecord | null>(null);
   const highlightRowRef = useRef<HTMLTableRowElement | null>(null);
   const hasScrolled = useRef(false);
 
@@ -224,7 +227,9 @@ export default function IncidentHistoryList({
                 key={record.id}
                 ref={isHighlighted ? highlightRowRef : undefined}
                 hover
+                onClick={() => setSelectedIncident(record)}
                 sx={{
+                  cursor: 'pointer',
                   borderLeft: isHighlighted
                     ? '3px solid'
                     : record.severity === '重大インシデント'
@@ -304,6 +309,13 @@ export default function IncidentHistoryList({
           </Typography>
         </Box>
       )}
+
+      {/* ── Detail Dialog ─────────────────────── */}
+      <IncidentDetailDialog
+        open={selectedIncident != null}
+        incident={selectedIncident}
+        onClose={() => setSelectedIncident(null)}
+      />
     </Stack>
   );
 }
