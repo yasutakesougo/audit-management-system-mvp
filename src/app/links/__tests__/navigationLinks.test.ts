@@ -172,15 +172,15 @@ describe('buildIcebergPdcaUrl', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildSupportPlanMonitoringUrl', () => {
-  it('userId と tab=monitoring を query param に含める', () => {
+  it('userId と tab=operations.monitoring を query param に含める', () => {
     expect(buildSupportPlanMonitoringUrl('I022')).toBe(
-      '/support-plan-guide?userId=I022&tab=monitoring',
+      '/support-plan-guide?userId=I022&tab=operations.monitoring',
     );
   });
 
-  it('tab は必ず monitoring 固定', () => {
+  it('tab は必ず operations.monitoring 固定', () => {
     const url = buildSupportPlanMonitoringUrl('U999');
-    expect(url).toContain('tab=monitoring');
+    expect(url).toContain('tab=operations.monitoring');
     expect(url).toContain('userId=U999');
   });
 });

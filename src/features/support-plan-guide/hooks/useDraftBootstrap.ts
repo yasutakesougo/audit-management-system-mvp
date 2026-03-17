@@ -9,18 +9,15 @@
 import { estimatePayloadSize, HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import React from 'react';
 import type { SupportPlanDraftRepository } from '../domain/SupportPlanDraftRepository';
+import { parseTabRoute } from '../domain/tabRoute';
 import type { SectionKey, SupportPlanDraft, ToastState, UserOption } from '../types';
 import { MAX_DRAFTS } from '../types';
 import { createDraft, createDraftForUser, sanitizeForm } from '../utils/helpers';
 import { loadFromLocalStorage, persistToLocalStorage } from './draftPersistence';
 
-/** tab query param が有効な SectionKey かを検証 */
-const VALID_TABS: ReadonlySet<SectionKey> = new Set<SectionKey>([
-  'overview', 'assessment', 'smart', 'supports',
-  'decision', 'monitoring', 'risk', 'excellence', 'preview',
-]);
+/** tab query param を SectionKey に解決する（新形式 group.sub + 旧形式 sub を両方サポート） */
 const parseTabParam = (value: string | null): SectionKey | undefined =>
-  value && VALID_TABS.has(value as SectionKey) ? (value as SectionKey) : undefined;
+  parseTabRoute(value)?.sub;
 
 export interface DraftBootstrapParams {
   repository: SupportPlanDraftRepository;

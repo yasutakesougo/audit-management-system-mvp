@@ -41,7 +41,7 @@ import {
     createEmptyForm,
     sanitizeValue,
 } from '../utils/helpers';
-import { buildMarkdown } from '../utils/markdownExport';
+import { buildSupportPlanMarkdown } from '../utils/markdownExport';
 
 // Sub-hooks
 import { useDraftAutoSave } from './useDraftAutoSave';
@@ -184,7 +184,7 @@ export function useSupportPlanForm({
   );
   const activeDraft = activeDraftId ? drafts[activeDraftId] : undefined;
   const form = activeDraft?.data ?? createEmptyForm();
-  const markdown = React.useMemo(() => buildMarkdown(form), [form]);
+  // markdown は complianceForm 初期化後に計算（P2-A: compliance/deadline 統合）
   const deadlines = React.useMemo(() => computeDeadlineInfo(form), [form]);
 
   const auditAlertCount = React.useMemo(() => {
@@ -277,6 +277,24 @@ export function useSupportPlanForm({
     setSelectedMasterUserId,
   });
 
+  // ── Compliance form (A-2) ── ※ markdown 計算に必要なため Export/Import より先に初期化
+  const complianceForm = useComplianceForm({
+    activeDraft,
+    activeDraftId,
+    isAdmin,
+    setDrafts,
+  });
+
+  // ── Markdown (P2-A: form + compliance + deadlines 統合) ──
+  const markdown = React.useMemo(
+    () => buildSupportPlanMarkdown({
+      form,
+      compliance: complianceForm.compliance,
+      deadlines,
+    }),
+    [form, complianceForm.compliance, deadlines],
+  );
+
   const { handleCopyMarkdown, handleExportJson, handleDownloadMarkdown, handleImportJson } = useDraftExportImport({
     activeDraftId,
     drafts,
@@ -291,14 +309,6 @@ export function useSupportPlanForm({
   });
 
   const { handleGoalChange, handleToggleDomain, handleAddGoal, handleDeleteGoal } = useGoalActions({
-    activeDraftId,
-    isAdmin,
-    setDrafts,
-  });
-
-  // ── Compliance form (A-2) ──
-  const complianceForm = useComplianceForm({
-    activeDraft,
     activeDraftId,
     isAdmin,
     setDrafts,

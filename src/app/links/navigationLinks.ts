@@ -271,13 +271,20 @@ export function buildIcebergPdcaUrlWithHighlight(
 
 // ─── Support Plan Monitoring Navigation ───────────────────────────────
 
+import { resolveTabRoute, serializeTabRoute } from '@/features/support-plan-guide/domain/tabRoute';
+
 /**
- * /support-plan-guide?userId=xxx&tab=monitoring を生成する。
+ * /support-plan-guide?userId=xxx&tab=operations.monitoring を生成する。
  * Iceberg PDCA → Monitoring への導線で使用。
+ *
+ * 新形式 group.sub を使用。useDraftBootstrap の parseTabRoute が
+ * 旧形式（monitoring）・新形式（operations.monitoring）を両方受け入れるため
+ * 後方互換は維持される。
  */
 export function buildSupportPlanMonitoringUrl(userId: string): string {
   const search = new URLSearchParams();
   search.set('userId', userId);
-  search.set('tab', 'monitoring');
+  const route = resolveTabRoute('monitoring');
+  search.set('tab', route ? serializeTabRoute(route) : 'monitoring');
   return `/support-plan-guide?${search.toString()}`;
 }
