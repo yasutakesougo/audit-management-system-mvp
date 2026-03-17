@@ -105,5 +105,25 @@ export function useGoalActions({ activeDraftId, isAdmin, setDrafts }: GoalAction
     });
   };
 
-  return { handleGoalChange, handleToggleDomain, handleAddGoal, handleDeleteGoal };
+  /** P3-B: 目標候補を採用して goals に追加する */
+  const handleAcceptSuggestion = (goal: GoalItem) => {
+    if (!activeDraftId || !isAdmin) return;
+    setDrafts((prev) => {
+      const target = prev[activeDraftId];
+      if (!target) return prev;
+      return {
+        ...prev,
+        [activeDraftId]: {
+          ...target,
+          data: {
+            ...target.data,
+            goals: [...target.data.goals, goal],
+          },
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    });
+  };
+
+  return { handleGoalChange, handleToggleDomain, handleAddGoal, handleDeleteGoal, handleAcceptSuggestion };
 }

@@ -1,9 +1,11 @@
 /**
- * SmartTab — SMART目標タブ (Phase 3: 構造化エディタ版)
+ * SmartTab — SMART目標タブ (Phase 3: 構造化エディタ版 + P3-B 候補提案)
  *
  * SectionKey: 'smart'
  * form.goals から type === 'long' / 'short' をフィルタし、
  * StructuredGoalEditor で個別編集する。
+ *
+ * P3-B: bundle が渡されている場合、目標候補の提案セクションを表示する。
  */
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -15,19 +17,23 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import React from 'react';
+import React, { useCallback } from 'react';
 
 import StructuredGoalEditor from '@/features/shared/goal/StructuredGoalEditor';
+import { useSuggestedGoals } from '../../hooks/useSuggestedGoals';
 import { findSection } from '../../utils/helpers';
+import SuggestedGoalsList from '../suggested-goals/SuggestedGoalsList';
 import type { SectionTabProps } from './tabProps';
 
 const SmartTab: React.FC<SectionTabProps> = ({
   form,
   isAdmin,
+  bundle,
   onGoalChange,
   onToggleDomain,
   onAddGoal,
   onDeleteGoal,
+  onAcceptSuggestion,
 }) => {
   const section = findSection('smart');
 
@@ -41,6 +47,27 @@ const SmartTab: React.FC<SectionTabProps> = ({
     [form.goals],
   );
 
+  // ── P3-B: 目標候補 ──
+  const {
+    suggestions,
+    pendingSuggestions,
+    metrics,
+    accept,
+    dismiss,
+    undoDecision,
+    hasSuggestions,
+  } = useSuggestedGoals(bundle ?? null, form);
+
+  const handleAccept = useCallback(
+    (id: string) => {
+      const goal = accept(id);
+      if (goal && onAcceptSuggestion) {
+        onAcceptSuggestion(goal);
+      }
+    },
+    [accept, onAcceptSuggestion],
+  );
+
   return (
     <Stack spacing={3}>
       {/* セクション説明 */}
@@ -49,6 +76,18 @@ const SmartTab: React.FC<SectionTabProps> = ({
           {section.description}
         </Typography>
       ) : null}
+
+      {/* ── P3-B: 目標候補の提案セクション ── */}
+      {isAdmin && hasSuggestions && (
+        <SuggestedGoalsList
+          suggestions={suggestions}
+          pendingSuggestions={pendingSuggestions}
+          metrics={metrics}
+          onAccept={handleAccept}
+          onDismiss={dismiss}
+          onUndo={undoDecision}
+        />
+      )}
 
       {/* ── 長期目標 ── */}
       <Stack spacing={2}>
