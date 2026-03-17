@@ -77,8 +77,8 @@ export function isProblemBehaviorEmpty(pb: DailyAData['problemBehavior'] | undef
 
 export function createEmptyDailyRecord(): Omit<PersonDaily, 'id'> {
   return {
-    personId: '',
-    personName: '',
+    userId: '',
+    userName: '',
     date: toLocalDateISO(),
     status: '作成中',
     reporter: { name: '' },
@@ -120,8 +120,8 @@ export function todayYmdLocal(): string {
 
 export function validateDailyRecordForm(formData: Omit<PersonDaily, 'id'>): Record<string, string> {
   const newErrors: Record<string, string> = {};
-  if (!formData.personId) {
-    newErrors.personId = '利用者の選択は必須です';
+  if (!formData.userId) {
+    newErrors.userId = '利用者の選択は必須です';
   }
   if (!formData.date) {
     newErrors.date = '日付を入力してください';

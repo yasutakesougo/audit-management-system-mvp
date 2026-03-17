@@ -183,7 +183,7 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
           ? item.userLookupId.trim()
           : String(item.userLookupId ?? '')).trim();
       const resolvedTitle =
-        item.title?.trim() || (item.personName?.trim() ? `${item.personName.trim()}の予定` : '');
+        item.title?.trim() || (item.userName?.trim() ? `${item.userName.trim()}の予定` : '');
 
       setDialogInitialValues({
         id: item.id,

@@ -23,8 +23,8 @@ export const mockUsers = [
 export const mockRecords: PersonDaily[] = [
   {
     id: 1,
-    personId: '001',
-    personName: '田中太郎',
+    userId: '001',
+    userName: '田中太郎',
     date: toLocalDateISO(),
     status: '完了',
     reporter: { name: '職員A' },
@@ -56,8 +56,8 @@ export const mockRecords: PersonDaily[] = [
   },
   {
     id: 2,
-    personId: '002',
-    personName: '佐藤花子',
+    userId: '002',
+    userName: '佐藤花子',
     date: toLocalDateISO(),
     status: '作成中',
     reporter: { name: '職員B' },
@@ -89,8 +89,8 @@ export const mockRecords: PersonDaily[] = [
   },
   {
     id: 3,
-    personId: '003',
-    personName: '鈴木次郎',
+    userId: '003',
+    userName: '鈴木次郎',
     date: toLocalDateISO(),
     status: '未作成',
     reporter: { name: '' },
@@ -133,8 +133,8 @@ export const generateTodayRecords = (): PersonDaily[] => {
 
     return {
       id: index + 1,
-      personId: userId,
-      personName: name,
+      userId: userId,
+      userName: name,
       date: today,
       status,
       reporter: { name: status === '未作成' ? '' : '職員' + String.fromCharCode(65 + (index % 5)) },
@@ -176,8 +176,8 @@ export const createMissingRecord = (
   index: number,
 ): PersonDaily => ({
   id: Date.now() + index,
-  personId: userId,
-  personName: name,
+  userId: userId,
+  userName: name,
   date,
   status: '未作成',
   reporter: { name: '' },

@@ -3,6 +3,8 @@
  * 利用者×日付をキーとした各モジュール情報の統合型定義
  */
 
+import type { UserRef } from '@/domain/user';
+
 // ========================================
 // Core Types
 // ========================================
@@ -36,6 +38,16 @@ export interface DailyUserSnapshot {
   userName: string;
   /** 対象日付 (ISO形式: YYYY-MM-DD) */
   date: string;
+
+  // ========================================
+  // User Reference (Phase 4a)
+  // ========================================
+  /**
+   * 作成時点の利用者参照（軽量版）。
+   * マスタ変更の影響を受けない不変コピー。
+   * Phase 4a で追加。既存レコードで undefined の場合は userId/userName にフォールバック。
+   */
+  userRef?: UserRef;
 
   // ========================================
   // Attendance Module Data
@@ -113,6 +125,8 @@ export interface DailyUserSnapshotInput {
   userId: string;
   userName: string;
   date: string;
+  /** 利用者参照（Phase 4a）。指定時は作成時点の UserRef を凍結保存する */
+  userRef?: UserRef;
   attendanceData?: {
     status: AttendanceStatus;
     providedMinutes?: number;

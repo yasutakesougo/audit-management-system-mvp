@@ -19,6 +19,10 @@ const ISPSummarySectionLazy = React.lazy(() =>
   import('./ISPSummarySection').then((m) => ({ default: m.ISPSummarySection })),
 );
 
+const TimelineSectionWrapperLazy = React.lazy(() =>
+  import('./TimelineSectionWrapper').then((m) => ({ default: m.TimelineSectionWrapper })),
+);
+
 type SectionDetailContentProps = {
   section: MenuSection;
   user: IUserMaster;
@@ -90,6 +94,15 @@ export const SectionDetailContent: React.FC<SectionDetailContentProps> = ({
     return (
       <Suspense fallback={<LoadingState message="個別支援計画書を準備中…" inline />}>
         <ISPSummarySectionLazy userId={user.UserID} />
+      </Suspense>
+    );
+  }
+
+  // ── Timeline — lazy-loaded timeline panel ──
+  if (section.key === 'timeline') {
+    return (
+      <Suspense fallback={<LoadingState message="タイムラインを準備中…" inline />}>
+        <TimelineSectionWrapperLazy user={user} />
       </Suspense>
     );
   }

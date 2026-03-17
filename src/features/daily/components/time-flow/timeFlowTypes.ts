@@ -10,8 +10,8 @@ import type { SupportStrategyStage } from '@/features/planDeployment/supportFlow
 export interface SupportRecord {
   id: number;
   supportPlanId: string;
-  personId: string;
-  personName: string;
+  userId: string;
+  userName: string;
   date: string;
   timeSlot?: string;
   userActivities: {
@@ -58,8 +58,8 @@ export interface SupportRecord {
 export interface DailySupportRecord {
   id: number;
   supportPlanId: string;
-  personId: string;
-  personName: string;
+  userId: string;
+  userName: string;
   date: string;
   records: SupportRecord[];
   summary: {

@@ -9,7 +9,7 @@ import { getRuntimeEnv } from "@/env";
  * 各リストの必須フィールドは src/sharepoint/fields.ts の定義に基づく
  * - Users_Master: Title, UserID, FullName
  * - Staff_Master: Title, StaffID, FullName  
- * - SupportRecord_Daily: Title, cr013_personId, cr013_date, cr013_reporterId
+ * - SupportRecord_Daily: Title, cr013_userId, cr013_date, cr013_reporterId
  */
 const listSpecs: ListSpec[] = [
   {
@@ -45,7 +45,7 @@ const listSpecs: ListSpec[] = [
     ],
     createItem: { 
       Title: "healthcheck-record", 
-      cr013_personId: "1",
+      cr013_userId: "1",
       cr013_date: new Date().toISOString(),
       cr013_reporterId: "healthcheck"
     },
