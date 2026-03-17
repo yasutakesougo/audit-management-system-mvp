@@ -312,3 +312,118 @@ describe('NextActionPanel — sparkline (P5-C2)', () => {
     expect(screen.getByText('3/16')).toBeInTheDocument();
   });
 });
+
+// ────────────────────────────────────────────
+// P5-C3: データ更新体験テスト
+// ────────────────────────────────────────────
+
+describe('NextActionPanel — update experience (P5-C3)', () => {
+  it('合計件数が変化すると差分バッジ (+N) が表示される', () => {
+    const { rerender } = render(
+      <NextActionPanel
+        actions={[makeAction({ count: 3 })]}
+        summary={makeSummary({ totalOpenActions: 3 })}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    // 件数が増加
+    rerender(
+      <NextActionPanel
+        actions={[makeAction({ count: 4 })]}
+        summary={makeSummary({ totalOpenActions: 4 })}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    const badge = screen.getByTestId('total-delta-badge');
+    expect(badge).toBeInTheDocument();
+    expect(badge.textContent).toBe('+1');
+  });
+
+  it('合計件数が減少すると差分バッジ (-N) が表示される', () => {
+    const { rerender } = render(
+      <NextActionPanel
+        actions={[makeAction({ count: 5 })]}
+        summary={makeSummary({ totalOpenActions: 5 })}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    rerender(
+      <NextActionPanel
+        actions={[makeAction({ count: 3 })]}
+        summary={makeSummary({ totalOpenActions: 3 })}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    const badge = screen.getByTestId('total-delta-badge');
+    expect(badge).toBeInTheDocument();
+    expect(badge.textContent).toBe('-2');
+  });
+
+  it('件数変化時に「更新済」インジケータが表示される', () => {
+    const { rerender } = render(
+      <NextActionPanel
+        actions={[makeAction({ count: 3 })]}
+        summary={makeSummary({ totalOpenActions: 3 })}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    rerender(
+      <NextActionPanel
+        actions={[makeAction({ count: 5 })]}
+        summary={makeSummary({ totalOpenActions: 5 })}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('update-indicator')).toBeInTheDocument();
+    expect(screen.getByText('更新済')).toBeInTheDocument();
+  });
+
+  it('採用率が変化すると方向アイコン (↑/↓) が表示される', () => {
+    const { rerender } = render(
+      <NextActionPanel
+        actions={[makeAction()]}
+        summary={makeSummary({ weeklyAcceptanceRate: 0.5 })}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    rerender(
+      <NextActionPanel
+        actions={[makeAction()]}
+        summary={makeSummary({ weeklyAcceptanceRate: 0.8 })}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    const rateChip = screen.getByTestId('acceptance-rate-chip');
+    expect(rateChip.textContent).toContain('↑');
+  });
+
+  it('行のカウント変化で行内に差分バッジが表示される', () => {
+    const { rerender } = render(
+      <NextActionPanel
+        actions={[makeAction({ key: 'pendingSuggestions', count: 3 })]}
+        summary={makeSummary({ totalOpenActions: 3 })}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    rerender(
+      <NextActionPanel
+        actions={[makeAction({ key: 'pendingSuggestions', count: 5 })]}
+        summary={makeSummary({ totalOpenActions: 5 })}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    const rowDelta = screen.getByTestId('row-delta-pendingSuggestions');
+    expect(rowDelta).toBeInTheDocument();
+    expect(rowDelta.textContent).toBe('+2');
+  });
+});

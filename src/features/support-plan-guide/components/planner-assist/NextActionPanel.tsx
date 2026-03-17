@@ -1,9 +1,10 @@
 /**
- * NextActionPanel — Planner Assist の Next Action Panel (P5-A / P5-C1 / P5-C2)
+ * NextActionPanel — Planner Assist の Next Action Panel (P5-A / P5-C1 / P5-C2 / P5-C3)
  *
  * computePlannerInsights() の出力を受けて描画する Thin Component。
  * P5-C1: 各アクション行をクリックで展開し、詳細内訳を表示する。
  * P5-C2: アクション一覧の下に週次トレンドスパークラインを表示する。
+ * P5-C3: 値の変化をハイライト・差分バッジ・方向アイコンで認知しやすくする。
  *
  * 新しいロジックは持たず、既存レイヤーの集約結果を可視化する。
  *
@@ -31,6 +32,7 @@ import type {
 } from '../../domain/plannerInsights';
 import { formatRate } from '../../domain/suggestionDecisionMetrics';
 import { PlannerTrendSparkline } from './PlannerTrendSparkline';
+import { useNumberChange, useRateChange } from '../../hooks/useChangeDetection';
 
 // ────────────────────────────────────────────
 // severity → color mapping
@@ -47,6 +49,17 @@ const SEVERITY_BG: Record<PlannerInsightItem['severity'], string> = {
   warning: 'rgba(237, 108, 2, 0.08)',
   info: 'rgba(2, 136, 209, 0.08)',
 };
+
+/** P5-C3: ハイライトパルスの背景色 */
+const HIGHLIGHT_BG = 'rgba(33, 150, 243, 0.12)';
+
+/** P5-C3: 差分バッジの色 */
+const DELTA_COLORS = {
+  positive: '#d32f2f', // 件数が増えた = 要注意
+  negative: '#2e7d32', // 件数が減った = 改善
+  rateUp: '#2e7d32',   // 採用率上昇 = 良い
+  rateDown: '#d32f2f', // 採用率低下 = 要注意
+} as const;
 
 // ────────────────────────────────────────────
 // Props
@@ -76,6 +89,11 @@ export const NextActionPanel: React.FC<NextActionPanelProps> = ({
   // 全アクション 0件なら非表示
   if (actions.length === 0) return null;
 
+  // P5-C3: 合計件数の変化検出
+  const totalChange = useNumberChange(summary.totalOpenActions);
+  // P5-C3: 採用率の変化検出
+  const rateChange = useRateChange(summary.weeklyAcceptanceRate);
+
   return (
     <Paper
       variant="outlined"
@@ -84,7 +102,8 @@ export const NextActionPanel: React.FC<NextActionPanelProps> = ({
         px: { xs: 1.5, md: 2 },
         py: { xs: 1.25, md: 1.5 },
         borderLeft: (theme) => `3px solid ${theme.palette.primary.main}`,
-        transition: 'box-shadow 0.2s ease-in-out',
+        transition: 'box-shadow 0.2s ease-in-out, background-color 0.3s ease-in-out',
+        bgcolor: totalChange.justChanged ? HIGHLIGHT_BG : 'transparent',
       }}
     >
       <Stack spacing={1.25}>
@@ -102,16 +121,75 @@ export const NextActionPanel: React.FC<NextActionPanelProps> = ({
               variant="outlined"
               sx={{ fontWeight: 600, fontSize: '0.7rem', height: 20 }}
             />
+            {/* P5-C3: 件数差分バッジ */}
+            {totalChange.justChanged && totalChange.delta !== undefined && (
+              <Typography
+                variant="caption"
+                data-testid="total-delta-badge"
+                sx={{
+                  fontWeight: 700,
+                  fontSize: '0.65rem',
+                  color: totalChange.delta > 0 ? DELTA_COLORS.positive : DELTA_COLORS.negative,
+                  animation: 'fadeInOut 1.5s ease-in-out',
+                  '@keyframes fadeInOut': {
+                    '0%': { opacity: 0, transform: 'translateY(-4px)' },
+                    '20%': { opacity: 1, transform: 'translateY(0)' },
+                    '80%': { opacity: 1 },
+                    '100%': { opacity: 0 },
+                  },
+                }}
+              >
+                {totalChange.delta > 0 ? `+${totalChange.delta}` : totalChange.delta}
+              </Typography>
+            )}
           </Stack>
-          {summary.weeklyAcceptanceRate !== undefined && (
-            <Chip
-              size="small"
-              variant="outlined"
-              label={`採用率: ${formatRate(summary.weeklyAcceptanceRate)}`}
-              data-testid="acceptance-rate-chip"
-              sx={{ fontSize: '0.7rem', height: 20, fontWeight: 500 }}
-            />
-          )}
+          <Stack direction="row" alignItems="center" spacing={0.5}>
+            {/* P5-C3: 採用率 + 変化方向 */}
+            {summary.weeklyAcceptanceRate !== undefined && (
+              <Chip
+                size="small"
+                variant="outlined"
+                label={
+                  rateChange.directionIcon
+                    ? `${rateChange.directionIcon} 採用率: ${formatRate(summary.weeklyAcceptanceRate)}`
+                    : `採用率: ${formatRate(summary.weeklyAcceptanceRate)}`
+                }
+                data-testid="acceptance-rate-chip"
+                sx={{
+                  fontSize: '0.7rem',
+                  height: 20,
+                  fontWeight: 500,
+                  transition: 'border-color 0.3s ease-in-out',
+                  borderColor: rateChange.justChanged
+                    ? rateChange.directionIcon === '↑'
+                      ? DELTA_COLORS.rateUp
+                      : DELTA_COLORS.rateDown
+                    : undefined,
+                }}
+              />
+            )}
+            {/* P5-C3: 更新インジケータ */}
+            {totalChange.justChanged && (
+              <Typography
+                variant="caption"
+                data-testid="update-indicator"
+                sx={{
+                  color: 'text.secondary',
+                  fontSize: '0.6rem',
+                  fontStyle: 'italic',
+                  animation: 'fadeInOut 1.5s ease-in-out',
+                  '@keyframes fadeInOut': {
+                    '0%': { opacity: 0 },
+                    '20%': { opacity: 1 },
+                    '80%': { opacity: 1 },
+                    '100%': { opacity: 0 },
+                  },
+                }}
+              >
+                更新済
+              </Typography>
+            )}
+          </Stack>
         </Stack>
 
         {/* ── アクション行 ── */}
@@ -144,6 +222,9 @@ const NextActionRow: React.FC<{
 }> = ({ item, detailItems, onNavigate }) => {
   const [expanded, setExpanded] = React.useState(false);
   const hasDetails = detailItems && detailItems.length > 0;
+
+  // P5-C3: 行別カウント変化検出
+  const countChange = useNumberChange(item.count);
 
   const handleClick = React.useCallback(() => {
     if (hasDetails) {
@@ -180,9 +261,9 @@ const NextActionRow: React.FC<{
           px: 1.5,
           py: 0.75,
           borderRadius: 1,
-          bgcolor: SEVERITY_BG[item.severity],
+          bgcolor: countChange.justChanged ? HIGHLIGHT_BG : SEVERITY_BG[item.severity],
           cursor: 'pointer',
-          transition: 'all 0.15s ease-in-out',
+          transition: 'all 0.15s ease-in-out, background-color 0.3s ease-in-out',
           '&:hover': {
             bgcolor: (theme) =>
               theme.palette.mode === 'dark'
@@ -210,6 +291,23 @@ const NextActionRow: React.FC<{
               flexShrink: 0,
             }}
           />
+          {/* P5-C3: 行別カウント差分バッジ */}
+          {countChange.justChanged && countChange.delta !== undefined && (
+            <Typography
+              variant="caption"
+              data-testid={`row-delta-${item.key}`}
+              sx={{
+                fontWeight: 700,
+                fontSize: '0.6rem',
+                flexShrink: 0,
+                color: countChange.delta > 0 ? DELTA_COLORS.positive : DELTA_COLORS.negative,
+                minWidth: 20,
+                textAlign: 'center',
+              }}
+            >
+              {countChange.delta > 0 ? `+${countChange.delta}` : countChange.delta}
+            </Typography>
+          )}
           <Typography
             variant="body2"
             fontWeight={600}
