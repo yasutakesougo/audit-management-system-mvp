@@ -12,9 +12,9 @@ describe('resolveSourceRefPath', () => {
     expect(resolveSourceRefPath(ref)).toBe('/daily/table');
   });
 
-  it('incident → null (未実装)', () => {
+  it('incident → /incidents?incidentId=INC-001', () => {
     const ref: TimelineSourceRef = { source: 'incident', incidentId: 'INC-001' };
-    expect(resolveSourceRefPath(ref)).toBeNull();
+    expect(resolveSourceRefPath(ref)).toBe('/incidents?incidentId=INC-001');
   });
 
   it('isp → /support-plan-guide', () => {
@@ -25,5 +25,10 @@ describe('resolveSourceRefPath', () => {
   it('handoff → /handoff-timeline', () => {
     const ref: TimelineSourceRef = { source: 'handoff', handoffId: 100 };
     expect(resolveSourceRefPath(ref)).toBe('/handoff-timeline');
+  });
+
+  it('incident — encodes special characters in incidentId', () => {
+    const ref: TimelineSourceRef = { source: 'incident', incidentId: 'INC/2026&01' };
+    expect(resolveSourceRefPath(ref)).toBe('/incidents?incidentId=INC%2F2026%2601');
   });
 });

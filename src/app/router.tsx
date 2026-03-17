@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Application Router — Thin Orchestrator
  *
  * Composes domain-specific route modules into the final route tree.
@@ -17,6 +17,7 @@ import { dailyRoutes } from './routes/dailyRoutes';
 import { dashboardRoutes } from './routes/dashboardRoutes';
 import { ibdRoutes } from './routes/ibdRoutes';
 import { recordRoutes } from './routes/recordRoutes';
+import { safetyRoutes } from './routes/safetyRoutes';
 import { scheduleRoutes } from './routes/scheduleRoutes';
 import { supportPlanRoutes } from './routes/supportPlanRoutes';
 
@@ -30,6 +31,7 @@ const childRoutes: RouteObject[] = [
   ...supportPlanRoutes,
   ...ibdRoutes,
   ...adminRoutes,
+  ...safetyRoutes,
   ...scheduleRoutes,
   nurseRoutes(),
 ];

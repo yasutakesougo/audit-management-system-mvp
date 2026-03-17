@@ -174,3 +174,5 @@ const HandoffAnalysisPage = React.lazy(() => import('@/pages/HandoffAnalysisPage
 export const SuspendedHandoffAnalysisPage = createSuspended(HandoffAnalysisPage, '申し送り分析ダッシュボードを読み込んでいます…');
 const OpsMetricsPage = React.lazy(() => import('@/pages/OpsMetricsPage'));
 export const SuspendedOpsMetricsPage = createSuspended(OpsMetricsPage, '運用指標ダッシュボードを読み込んでいます…');
+const IncidentListPage = React.lazy(() => import('@/pages/IncidentListPage'));
+export const SuspendedIncidentListPage = createSuspended(IncidentListPage, 'インシデント履歴を読み込んでいます…');

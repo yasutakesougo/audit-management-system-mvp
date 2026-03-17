@@ -68,7 +68,7 @@ export function resolveSourceRefPath(ref: TimelineSourceRef): string | null {
     case 'daily':
       return `/daily/table`;
     case 'incident':
-      return null; // インシデント詳細ページは未実装
+      return `/incidents?incidentId=${encodeURIComponent(ref.incidentId)}`;
     case 'isp':
       return `/support-plan-guide`;
     case 'handoff':
