@@ -19,7 +19,7 @@ import { useSupportPlanBundle } from '@/features/support-plan-guide/hooks/useSup
 import { useSupportPlanForm } from '@/features/support-plan-guide/hooks/useSupportPlanForm';
 import { useSuggestionDecisionPersistence } from '@/features/support-plan-guide/hooks/useSuggestionDecisionPersistence';
 import { usePlanRole } from '@/features/support-plan-guide/hooks/usePlanRole';
-import { usePlannerInsights } from '@/features/support-plan-guide/hooks/usePlannerInsights';
+
 import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIcebergEvidence';
 import type {
     SectionKey,
@@ -67,7 +67,7 @@ const PreviewTab = React.lazy(() => import('@/features/support-plan-guide/compon
 
 // Lazy-loaded regulatory section (code-split to stay under 80 kB budget)
 const RegulatorySection = React.lazy(() => import('@/features/support-plan-guide/components/RegulatorySection'));
-const NextActionPanel = React.lazy(() => import('@/features/support-plan-guide/components/planner-assist/NextActionPanel'));
+const NextActionPanelContainer = React.lazy(() => import('@/features/support-plan-guide/components/planner-assist/NextActionPanelContainer'));
 
 const TabFallback = <CircularProgress size={20} sx={{ m: 2 }} />;
 
@@ -390,13 +390,7 @@ export default function SupportPlanGuidePage() {
     };
   }, [regulatoryBundle, regulatoryAvailable, deadlines, complianceForm.compliance, icebergTotalForHud]);
 
-  const plannerInsights = usePlannerInsights({
-    bundle: mergedBundle,
-    form,
-    goals: form.goals ?? [],
-    decisions: currentDecisions ?? [],
-    regulatoryInput: regulatoryHudInput,
-  });
+
 
   // ── Planning Sheet 動的遷移 ──
   const planningSheetRepo = usePlanningSheetRepositories();
@@ -427,13 +421,14 @@ export default function SupportPlanGuidePage() {
         )}
 
         {/* ── P5-A: Planner Assist — Next Action Panel ── */}
-        {can('plannerAssist.view') && plannerInsights.actions.length > 0 && (
+        {can('plannerAssist.view') && (
           <Suspense fallback={TabFallback}>
-            <NextActionPanel
-              actions={plannerInsights.actions}
-              summary={plannerInsights.summary}
-              details={plannerInsights.details}
-              trendSeries={plannerInsights.trendSeries}
+            <NextActionPanelContainer
+              bundle={mergedBundle}
+              form={form}
+              goals={form.goals ?? []}
+              decisions={currentDecisions ?? []}
+              regulatoryInput={regulatoryHudInput}
               onNavigate={(tab) => setActiveTab(tab as SectionKey)}
             />
           </Suspense>

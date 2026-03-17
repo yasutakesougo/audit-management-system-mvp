@@ -167,10 +167,10 @@ describe('getCapabilities', () => {
   });
 
   it('planner は 9 capability', () => {
-    expect(getCapabilities('planner').size).toBe(9);
+    expect(getCapabilities('planner').size).toBe(10);
   });
 
   it('admin は 12 capability（全数）', () => {
-    expect(getCapabilities('admin').size).toBe(12);
+    expect(getCapabilities('admin').size).toBe(13);
   });
 });
