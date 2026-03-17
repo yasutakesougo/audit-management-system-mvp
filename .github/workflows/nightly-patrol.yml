@@ -1,0 +1,55 @@
+name: Nightly Patrol
+
+on:
+  schedule:
+    # JST 03:15 = UTC 18:15 (nightly-health の15分後)
+    - cron: '15 18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly-patrol
+  cancel-in-progress: false
+
+jobs:
+  patrol:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Prepare directories
+        run: |
+          mkdir -p docs/nightly-patrol
+          mkdir -p scripts/ops
+
+      - name: Run patrol scan
+        run: node scripts/ops/nightly-patrol.mjs
+
+      - name: Generate metrics dashboard
+        run: node scripts/ops/os-metrics.mjs
+
+      - name: Commit report if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet -- docs/nightly-patrol; then
+            echo "No report changes"
+            exit 0
+          fi
+
+          git add docs/nightly-patrol
+          git commit -m "chore(ops): nightly patrol report"
+          git push
