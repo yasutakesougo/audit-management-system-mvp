@@ -13,7 +13,7 @@
  */
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 
 import type { SupportPlanBundle } from '@/domain/isp/schema';
 import type { GoalItem } from '@/features/shared/goal/goalTypes';
@@ -21,10 +21,13 @@ import { suggestionToGoalItem } from '../../domain/suggestedGoals';
 import { useSuggestionMemo } from '../../hooks/useSuggestionMemo';
 import type { ToastState } from '../../types';
 import { findSection } from '../../utils/helpers';
+import { computeSuggestionRuleMetrics } from '../../domain/suggestionRuleMetrics';
 import AdoptionMetricsPanel from './AdoptionMetricsPanel';
 import FieldCard from './FieldCard';
 import ISPCandidateImportSection from './ISPCandidateImportSection';
 import SuggestionMemoSection from '../suggested-goals/SuggestionMemoSection';
+import SuggestionMetricsBadge from '../suggested-goals/SuggestionMetricsBadge';
+import RuleMetricsPanel from '../suggested-goals/RuleMetricsPanel';
 import type { SectionTabProps } from './tabProps';
 
 /** ExcellenceTab 固有の Props（MonitoringTab と同じパターン） */
@@ -44,12 +47,20 @@ const ExcellenceTab: React.FC<ExcellenceTabProps> = ({
   setToast,
   memoBundle,
   onPromoteToGoal,
+  // P3-D: Decision persistence
+  memoInitialActions,
+  onDecisionChange,
+  onDecisionUndo,
+  // P3-E: Metrics
+  suggestionMetrics,
+  // P3-F: Rule metrics raw data
+  suggestionDecisions,
   ...sectionProps
 }) => {
   const section = findSection('excellence');
   if (!section) return null;
 
-  // ── P3-C: 改善メモ提案候補 ──
+  // ── P3-C: 改善メモ提案候補 (P3-D: 永続化連携) ──
   const {
     suggestions,
     pendingSuggestions,
@@ -60,7 +71,19 @@ const ExcellenceTab: React.FC<ExcellenceTabProps> = ({
     promote,
     undoAction,
     hasSuggestions,
-  } = useSuggestionMemo(memoBundle ?? null, sectionProps.form);
+  } = useSuggestionMemo(memoBundle ?? null, sectionProps.form, {
+    initialActions: memoInitialActions,
+    onDecisionChange,
+    onDecisionUndo,
+  });
+
+  // ── P3-F: ルール別メトリクス（suggestions × decisions の突き合わせ） ──
+  const ruleMetrics = useMemo(() => {
+    if (!suggestionDecisions || suggestionDecisions.length === 0 || suggestions.length === 0) {
+      return null;
+    }
+    return computeSuggestionRuleMetrics(suggestions, suggestionDecisions);
+  }, [suggestions, suggestionDecisions]);
 
   // 「メモに追記」ハンドラ
   const handleNoteToMemo = useCallback(
@@ -107,16 +130,24 @@ const ExcellenceTab: React.FC<ExcellenceTabProps> = ({
 
       {/* P3-C: 提案候補ワークスペース */}
       {sectionProps.isAdmin && hasSuggestions && (
-        <SuggestionMemoSection
-          suggestions={suggestions}
-          pendingSuggestions={pendingSuggestions}
-          deferredSuggestions={deferredSuggestions}
-          metrics={metrics}
-          onNoteToMemo={handleNoteToMemo}
-          onDefer={defer}
-          onPromote={handlePromote}
-          onUndo={undoAction}
-        />
+        <>
+          {/* P3-E: メトリクスバッジ */}
+          {suggestionMetrics && (
+            <SuggestionMetricsBadge metrics={suggestionMetrics} variant="memo" />
+          )}
+          <SuggestionMemoSection
+            suggestions={suggestions}
+            pendingSuggestions={pendingSuggestions}
+            deferredSuggestions={deferredSuggestions}
+            metrics={metrics}
+            onNoteToMemo={handleNoteToMemo}
+            onDefer={defer}
+            onPromote={handlePromote}
+            onUndo={undoAction}
+          />
+          {/* P3-F: ルール別提案品質メトリクス */}
+          {ruleMetrics && <RuleMetricsPanel ruleMetrics={ruleMetrics} />}
+        </>
       )}
 
       {/* Issue #10 Phase 2: ISP 候補取り込みセクション */}

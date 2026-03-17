@@ -2,6 +2,7 @@
  * useSuggestionMemo — 改善メモ向け提案候補の状態管理
  *
  * P3-C: ExcellenceTab（改善メモ）に配置する提案候補の管理 hook。
+ * P3-D: 初期 memoActions の復元 + onChange コールバックで永続化連携。
  *
  * 責務:
  *  - SmartTab の useSuggestedGoals とは独立して候補を生成
@@ -16,7 +17,7 @@
  *  - 改善メモ: 「この候補をどう活用するか」の作業台
  */
 
-import { useMemo, useCallback, useState } from 'react';
+import { useMemo, useCallback, useState, useRef, useEffect } from 'react';
 import type { SupportPlanBundle } from '@/domain/isp/schema';
 import type { SupportPlanForm } from '../types';
 import {
@@ -24,6 +25,7 @@ import {
   type GoalSuggestion,
 } from '../domain/suggestedGoals';
 import { toSuggestedGoalsInput } from '../domain/suggestedGoalsAdapter';
+import type { OnDecisionChange, OnDecisionUndo } from './useSuggestedGoals';
 
 // ────────────────────────────────────────────
 // 型定義
@@ -68,6 +70,16 @@ export type UseSuggestionMemoReturn = {
   hasSuggestions: boolean;
 };
 
+/** P3-D: Hook のオプション引数 */
+export type UseSuggestionMemoOptions = {
+  /** 永続化済みの初期 memoActions（source='memo' のみ抽出済み） */
+  initialActions?: Record<string, SuggestionMemoAction>;
+  /** 判断変更時のコールバック */
+  onDecisionChange?: OnDecisionChange;
+  /** undo 時のコールバック */
+  onDecisionUndo?: OnDecisionUndo;
+};
+
 // ────────────────────────────────────────────
 // テキスト生成
 // ────────────────────────────────────────────
@@ -104,9 +116,24 @@ export function formatSuggestionForMemo(suggestion: GoalSuggestion): string {
 export function useSuggestionMemo(
   bundle: SupportPlanBundle | null,
   form: SupportPlanForm,
+  options?: UseSuggestionMemoOptions,
 ): UseSuggestionMemoReturn {
+  const { initialActions, onDecisionChange, onDecisionUndo } = options ?? {};
+
   // memo action 状態（id → action）
-  const [actions, setActions] = useState<Record<string, SuggestionMemoAction>>({});
+  // P3-D: 初期値を initialActions から復元（変換は coordinator が担当済み）
+  const [actions, setActions] = useState<Record<string, SuggestionMemoAction>>(
+    () => initialActions ?? {},
+  );
+
+  // P3-D: initialActions が外部から変わった場合にリセット
+  const prevInitialRef = useRef(initialActions);
+  useEffect(() => {
+    if (prevInitialRef.current !== initialActions && initialActions != null) {
+      setActions(initialActions);
+      prevInitialRef.current = initialActions;
+    }
+  }, [initialActions]);
 
   // 候補生成（SmartTab と同じ builder を使うが、状態は独立）
   const rawSuggestions = useMemo<GoalSuggestion[]>(() => {
@@ -153,15 +180,20 @@ export function useSuggestionMemo(
       const suggestion = rawSuggestions.find((s) => s.id === id);
       if (!suggestion) return null;
       setActions((prev) => ({ ...prev, [id]: 'noted' }));
+      onDecisionChange?.(id, 'noted', 'memo');
       return formatSuggestionForMemo(suggestion);
     },
-    [rawSuggestions],
+    [rawSuggestions, onDecisionChange],
   );
 
   /** 「あとで検討」 */
-  const defer = useCallback((id: string) => {
-    setActions((prev) => ({ ...prev, [id]: 'deferred' }));
-  }, []);
+  const defer = useCallback(
+    (id: string) => {
+      setActions((prev) => ({ ...prev, [id]: 'deferred' }));
+      onDecisionChange?.(id, 'deferred', 'memo');
+    },
+    [onDecisionChange],
+  );
 
   /** 「目標に昇格」— GoalSuggestion を返す */
   const promote = useCallback(
@@ -169,19 +201,24 @@ export function useSuggestionMemo(
       const suggestion = rawSuggestions.find((s) => s.id === id);
       if (!suggestion) return null;
       setActions((prev) => ({ ...prev, [id]: 'promoted' }));
+      onDecisionChange?.(id, 'promoted', 'memo');
       return suggestion;
     },
-    [rawSuggestions],
+    [rawSuggestions, onDecisionChange],
   );
 
   /** 「保留に戻す」 */
-  const undoAction = useCallback((id: string) => {
-    setActions((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-  }, []);
+  const undoAction = useCallback(
+    (id: string) => {
+      setActions((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      onDecisionUndo?.(id, 'memo');
+    },
+    [onDecisionUndo],
+  );
 
   return {
     suggestions,
