@@ -11,6 +11,7 @@ import {
   computePlannerAssistMetrics,
   generateSessionId,
   generateInteractionId,
+  MIN_UPLIFT_SAMPLES,
   type PlannerAssistEvent,
   type PlannerAssistEventBase,
 } from '../plannerAssistMetrics';
@@ -310,7 +311,11 @@ describe('computeNavigationLatency', () => {
 // ────────────────────────────────────────────
 
 describe('computeAdoptionUplift', () => {
-  it('cutoff 前後の平均採用率と uplift を算出する', () => {
+  it('MIN_UPLIFT_SAMPLES が 3 であること', () => {
+    expect(MIN_UPLIFT_SAMPLES).toBe(3);
+  });
+
+  it('before=2, after=2 はサンプル不足で insufficient=true, uplift=0', () => {
     const events: PlannerAssistEvent[] = [
       makeEvent({
         type: 'planner_assist_adoption_snapshot',
@@ -348,16 +353,81 @@ describe('computeAdoptionUplift', () => {
 
     const result = computeAdoptionUplift(events, '2026-03-10T00:00:00Z');
 
-    // before: (0.5 + 0.6) / 2 = 0.55
     expect(result.beforeRate).toBeCloseTo(0.55, 5);
-    // after: (0.8 + 0.9) / 2 = 0.85
     expect(result.afterRate).toBeCloseTo(0.85, 5);
     expect(result.sampleCount).toBe(4);
-    // uplift: 0.85 - 0.55 = 0.30
-    expect(result.uplift).toBeCloseTo(0.3, 5);
+    // サンプル不足なので uplift=0, insufficient=true
+    expect(result.uplift).toBe(0);
+    expect(result.insufficient).toBe(true);
   });
 
-  it('before のみの場合は afterRate=0, uplift が負になる', () => {
+  it('before=3, after=3 なら insufficient=false で正しい uplift を返す', () => {
+    const events: PlannerAssistEvent[] = [
+      // before: 3件
+      makeEvent({
+        type: 'planner_assist_adoption_snapshot',
+        acceptanceRate: 0.4,
+        totalDecisions: 8,
+        weeklyDecisions: 2,
+        weeklyAcceptanceRate: 0.3,
+        occurredAt: '2026-02-25T10:00:00Z',
+      }),
+      makeEvent({
+        type: 'planner_assist_adoption_snapshot',
+        acceptanceRate: 0.5,
+        totalDecisions: 10,
+        weeklyDecisions: 3,
+        weeklyAcceptanceRate: 0.4,
+        occurredAt: '2026-03-01T10:00:00Z',
+      }),
+      makeEvent({
+        type: 'planner_assist_adoption_snapshot',
+        acceptanceRate: 0.6,
+        totalDecisions: 15,
+        weeklyDecisions: 5,
+        weeklyAcceptanceRate: 0.5,
+        occurredAt: '2026-03-05T10:00:00Z',
+      }),
+      // after: 3件
+      makeEvent({
+        type: 'planner_assist_adoption_snapshot',
+        acceptanceRate: 0.8,
+        totalDecisions: 20,
+        weeklyDecisions: 5,
+        weeklyAcceptanceRate: 0.7,
+        occurredAt: '2026-03-15T10:00:00Z',
+      }),
+      makeEvent({
+        type: 'planner_assist_adoption_snapshot',
+        acceptanceRate: 0.85,
+        totalDecisions: 23,
+        weeklyDecisions: 4,
+        weeklyAcceptanceRate: 0.75,
+        occurredAt: '2026-03-18T10:00:00Z',
+      }),
+      makeEvent({
+        type: 'planner_assist_adoption_snapshot',
+        acceptanceRate: 0.9,
+        totalDecisions: 25,
+        weeklyDecisions: 5,
+        weeklyAcceptanceRate: 0.85,
+        occurredAt: '2026-03-20T10:00:00Z',
+      }),
+    ];
+
+    const result = computeAdoptionUplift(events, '2026-03-10T00:00:00Z');
+
+    // before: (0.4 + 0.5 + 0.6) / 3 = 0.5
+    expect(result.beforeRate).toBeCloseTo(0.5, 5);
+    // after: (0.8 + 0.85 + 0.9) / 3 = 0.85
+    expect(result.afterRate).toBeCloseTo(0.85, 5);
+    expect(result.sampleCount).toBe(6);
+    // uplift: 0.85 - 0.5 = 0.35
+    expect(result.uplift).toBeCloseTo(0.35, 5);
+    expect(result.insufficient).toBe(false);
+  });
+
+  it('before のみの場合は insufficient=true, uplift=0', () => {
     const events: PlannerAssistEvent[] = [
       makeEvent({
         type: 'planner_assist_adoption_snapshot',
@@ -372,16 +442,18 @@ describe('computeAdoptionUplift', () => {
     const result = computeAdoptionUplift(events, '2026-03-10T00:00:00Z');
     expect(result.beforeRate).toBe(0.7);
     expect(result.afterRate).toBe(0);
-    expect(result.uplift).toBe(-0.7);
+    expect(result.uplift).toBe(0);
+    expect(result.insufficient).toBe(true);
   });
 
-  it('snapshot がなければすべて 0 を返す', () => {
+  it('snapshot がなければすべて 0 + insufficient=true を返す', () => {
     const result = computeAdoptionUplift([], '2026-03-10T00:00:00Z');
     expect(result).toEqual({
       beforeRate: 0,
       afterRate: 0,
       sampleCount: 0,
       uplift: 0,
+      insufficient: true,
     });
   });
 });
@@ -441,5 +513,6 @@ describe('computePlannerAssistMetrics', () => {
     expect(result.actionClickRate.totalClicks).toBe(1);
     expect(result.navigationLatency.medianMs).toBe(500);
     expect(result.adoptionUplift.afterRate).toBe(0.8);
+    expect(result.adoptionUplift.insufficient).toBe(true); // after=1 < MIN_UPLIFT_SAMPLES
   });
 });

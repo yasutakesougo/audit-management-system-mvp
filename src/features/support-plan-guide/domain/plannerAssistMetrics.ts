@@ -21,7 +21,18 @@ import type { PlannerInsightActionKey } from './plannerInsights';
 
 /** 全イベント共通の base 型 */
 export type PlannerAssistEventBase = {
-  /** セッション単位の ID（ページロードごとに一意） */
+  /**
+   * セッション ID — Planner Assist パネルの表示ライフサイクル単位で一意。
+   *
+   * 境界定義:
+   *  - 生成タイミング: usePlannerAssistTracking の初回マウント時
+   *  - 維持: 同一コンポーネントの re-render では変わらない (useRef)
+   *  - リセット: ページ遷移・タブ移動でコンポーネントが unmount → remount すると新規
+   *  - 粒度: 「Planner Assist パネル表示単位」= 対象利用者の詳細ページ閲覧 1 回
+   *
+   * ⚠ ブラウザリロードや React key 変更でもリセットされる。
+   *   ナビゲーション移動による unmount → 再マウントは別セッション扱い。
+   */
   sessionId: string;
   /** 操作者のロール */
   userRole: 'staff' | 'planner' | 'admin';
@@ -95,7 +106,11 @@ export type PlannerAssistEventType = PlannerAssistEvent['type'];
 // イベント ID 生成
 // ────────────────────────────────────────────
 
-/** セッション ID 生成（ページロード単位） */
+/**
+ * セッション ID 生成。
+ * Planner Assist パネルのマウントライフサイクルに 1:1 で対応する。
+ * @see PlannerAssistEventBase.sessionId — 境界定義
+ */
 export function generateSessionId(): string {
   return `pas_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -143,16 +158,30 @@ export type NavigationLatency = {
   p90Ms: number;
 };
 
-/** 集計結果: 採用率変化 */
+/**
+ * 集計結果: 採用率変化 (before/after 比較)
+ *
+ * 比較窓ルール:
+ *  - before/after の区切りは `cutoffDate` (ISO 8601) で決定する
+ *  - cutoffDate は Planner Assist 機能リリース日 or A/B テスト開始日を想定
+ *  - 日付基準 (バージョン基準ではない) — バージョンは panelVersion で別管理
+ *
+ * 最低サンプル数:
+ *  - before / after それぞれ MIN_UPLIFT_SAMPLES (3) 以上を要求
+ *  - 不足時は insufficient=true, uplift=0 を返す
+ *  - UI側は insufficient フラグで「データ不足」表示に切り替える
+ */
 export type AdoptionUplift = {
   /** before 期間の平均採用率 */
   beforeRate: number;
   /** after 期間の平均採用率 */
   afterRate: number;
-  /** サンプル数 */
+  /** 有効サンプル数（before + after の合計） */
   sampleCount: number;
-  /** 改善幅 (after - before) */
+  /** 改善幅 (after - before)。insufficient 時は 0 */
   uplift: number;
+  /** before/after いずれかが MIN_UPLIFT_SAMPLES 未満の場合 true */
+  insufficient: boolean;
 };
 
 /** 4指標の集約 */
@@ -270,10 +299,20 @@ export function computeNavigationLatency(events: PlannerAssistEvent[]): Navigati
 // ────────────────────────────────────────────
 
 /**
+ * before / after 各期間に必要な最低スナップショット数。
+ * これ未満の場合は insufficient=true として uplift を 0 で返す。
+ */
+export const MIN_UPLIFT_SAMPLES = 3;
+
+/**
  * snapshot イベントを before / after に分割して uplift を算出する。
  *
  * @param events - 全イベント
- * @param cutoffDate - before/after の境界日時（ISO 8601）
+ * @param cutoffDate - before/after の境界日時（ISO 8601）。
+ *   通常は Planner Assist リリース日 or A/B テスト開始日を指定する。
+ *
+ * @returns AdoptionUplift — insufficient=true なら uplift の数値は信用できない。
+ *   UI 側は insufficient をチェックし「データ不足」表示に切り替えること。
  */
 export function computeAdoptionUplift(
   events: PlannerAssistEvent[],
@@ -296,12 +335,15 @@ export function computeAdoptionUplift(
 
   const beforeRate = avgRate(before);
   const afterRate = avgRate(after);
+  const insufficient =
+    before.length < MIN_UPLIFT_SAMPLES || after.length < MIN_UPLIFT_SAMPLES;
 
   return {
     beforeRate,
     afterRate,
     sampleCount: snapshots.length,
-    uplift: afterRate - beforeRate,
+    uplift: insufficient ? 0 : afterRate - beforeRate,
+    insufficient,
   };
 }
 

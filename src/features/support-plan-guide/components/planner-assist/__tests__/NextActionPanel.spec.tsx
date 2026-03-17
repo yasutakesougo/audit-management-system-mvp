@@ -427,3 +427,102 @@ describe('NextActionPanel — update experience (P5-C3)', () => {
     expect(rowDelta.textContent).toBe('+2');
   });
 });
+
+// ────────────────────────────────────────────
+// P6-A-emit: イベント発火テスト
+// ────────────────────────────────────────────
+
+describe('NextActionPanel P6-A tracking', () => {
+  function makeTracker() {
+    return {
+      trackPanelShown: vi.fn(),
+      trackActionClicked: vi.fn().mockReturnValue('pai-test'),
+      trackTabLanded: vi.fn(),
+      trackAdoptionSnapshot: vi.fn(),
+      sessionId: 'pas-test',
+    };
+  }
+
+  it('マウント時に trackPanelShown が 1 回だけ呼ばれる', () => {
+    const tracker = makeTracker();
+    const { rerender } = render(
+      <NextActionPanel
+        actions={[makeAction()]}
+        summary={makeSummary({ totalOpenActions: 5, weeklyAcceptanceRate: 0.8 })}
+        onNavigate={vi.fn()}
+        tracker={tracker}
+      />,
+    );
+
+    expect(tracker.trackPanelShown).toHaveBeenCalledTimes(1);
+    expect(tracker.trackPanelShown).toHaveBeenCalledWith(1, 0.8);
+
+    // re-render しても二重発火しない
+    rerender(
+      <NextActionPanel
+        actions={[makeAction()]}
+        summary={makeSummary({ totalOpenActions: 5, weeklyAcceptanceRate: 0.8 })}
+        onNavigate={vi.fn()}
+        tracker={tracker}
+      />,
+    );
+
+    expect(tracker.trackPanelShown).toHaveBeenCalledTimes(1);
+  });
+
+  it('アクション行クリックで trackActionClicked が呼ばれる', () => {
+    const tracker = makeTracker();
+    const onNavigate = vi.fn();
+
+    // 詳細なしのアクション（クリック→直接ナビゲート）
+    render(
+      <NextActionPanel
+        actions={[makeAction({ key: 'regulatoryIssues', tab: 'monitoring' })]}
+        summary={makeSummary()}
+        onNavigate={onNavigate}
+        tracker={tracker}
+      />,
+    );
+
+    const row = screen.getByTestId('next-action-row-regulatoryIssues');
+    const clickTarget = row.querySelector('[role="button"]');
+    fireEvent.click(clickTarget!);
+
+    expect(tracker.trackActionClicked).toHaveBeenCalledWith('regulatoryIssues', 'monitoring');
+  });
+
+  it('ナビゲートアイコンクリックで trackActionClicked → trackTabLanded が呼ばれる', () => {
+    const tracker = makeTracker();
+    const onNavigate = vi.fn();
+
+    render(
+      <NextActionPanel
+        actions={[makeAction({ key: 'pendingSuggestions', tab: 'smart' })]}
+        summary={makeSummary()}
+        onNavigate={onNavigate}
+        tracker={tracker}
+      />,
+    );
+
+    // ナビゲートアイコンをクリック
+    const openButton = screen.getByLabelText('未判断の提案を開く');
+    fireEvent.click(openButton);
+
+    expect(tracker.trackActionClicked).toHaveBeenCalledWith('pendingSuggestions', 'smart');
+    // handleNavigate は tab_landed も発火する
+    expect(tracker.trackTabLanded).toHaveBeenCalledWith('smart');
+    expect(onNavigate).toHaveBeenCalledWith('smart');
+  });
+
+  it('tracker 未指定時でもエラーにならない', () => {
+    expect(() => {
+      render(
+        <NextActionPanel
+          actions={[makeAction()]}
+          summary={makeSummary()}
+          onNavigate={vi.fn()}
+        />,
+      );
+    }).not.toThrow();
+  });
+});

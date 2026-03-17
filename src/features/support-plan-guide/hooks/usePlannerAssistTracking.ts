@@ -74,7 +74,9 @@ export function usePlannerAssistTracking(
 ): PlannerAssistTracker {
   const { userRole, targetUserId, onEvent = defaultSink } = input;
 
-  // セッション ID は hook ライフサイクル（ページロード）で一意
+  // sessionId は Planner Assist パネルのマウントライフサイクルで一意。
+  // re-render では変わらず、unmount→remount で新規生成される。
+  // @see PlannerAssistEventBase.sessionId — 境界定義
   const sessionIdRef = useRef(generateSessionId());
 
   // 最後の action_clicked の timestamp と interactionId を保持

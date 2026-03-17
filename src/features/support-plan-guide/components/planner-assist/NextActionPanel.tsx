@@ -1,10 +1,11 @@
 /**
- * NextActionPanel — Planner Assist の Next Action Panel (P5-A / P5-C1 / P5-C2 / P5-C3)
+ * NextActionPanel — Planner Assist の Next Action Panel (P5-A / P5-C1 / P5-C2 / P5-C3 / P6-A)
  *
  * computePlannerInsights() の出力を受けて描画する Thin Component。
  * P5-C1: 各アクション行をクリックで展開し、詳細内訳を表示する。
  * P5-C2: アクション一覧の下に週次トレンドスパークラインを表示する。
  * P5-C3: 値の変化をハイライト・差分バッジ・方向アイコンで認知しやすくする。
+ * P6-A:  usePlannerAssistTracking を接続し、shown / clicked / landed イベントを発火する。
  *
  * 新しいロジックは持たず、既存レイヤーの集約結果を可視化する。
  *
@@ -12,7 +13,7 @@
  * 権限: plannerAssist.view が true のときのみ表示。
  */
 
-import React from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Collapse from '@mui/material/Collapse';
@@ -33,6 +34,7 @@ import type {
 import { formatRate } from '../../domain/suggestionDecisionMetrics';
 import { PlannerTrendSparkline } from './PlannerTrendSparkline';
 import { useNumberChange, useRateChange } from '../../hooks/useChangeDetection';
+import type { PlannerAssistTracker } from '../../hooks/usePlannerAssistTracking';
 
 // ────────────────────────────────────────────
 // severity → color mapping
@@ -73,6 +75,8 @@ export type NextActionPanelProps = {
   /** 週次トレンドシリーズ (P5-C2) */
   trendSeries?: PlannerTrendSeries;
   onNavigate: (tab: string) => void;
+  /** P6-A: イベントトラッカー。未指定時はイベント発火なし */
+  tracker?: PlannerAssistTracker;
 };
 
 // ────────────────────────────────────────────
@@ -85,9 +89,28 @@ export const NextActionPanel: React.FC<NextActionPanelProps> = ({
   details,
   trendSeries,
   onNavigate,
+  tracker,
 }) => {
   // 全アクション 0件なら非表示
   if (actions.length === 0) return null;
+
+  // P6-A: panel_shown — 同一 session 内 1 回のみ
+  const shownRef = useRef(false);
+  useEffect(() => {
+    if (tracker && !shownRef.current) {
+      shownRef.current = true;
+      tracker.trackPanelShown(actions.length, summary.weeklyAcceptanceRate);
+    }
+  }, [tracker, actions.length, summary.weeklyAcceptanceRate]);
+
+  // P6-A: onNavigate をラップして tab_landed を発火
+  const handleNavigate = useCallback(
+    (tab: string) => {
+      tracker?.trackTabLanded(tab);
+      onNavigate(tab);
+    },
+    [tracker, onNavigate],
+  );
 
   // P5-C3: 合計件数の変化検出
   const totalChange = useNumberChange(summary.totalOpenActions);
@@ -199,7 +222,8 @@ export const NextActionPanel: React.FC<NextActionPanelProps> = ({
               key={item.key}
               item={item}
               detailItems={details?.[item.key]}
-              onNavigate={onNavigate}
+              onNavigate={handleNavigate}
+              tracker={tracker}
             />
           ))}
         </Stack>
@@ -219,7 +243,8 @@ const NextActionRow: React.FC<{
   item: PlannerInsightItem;
   detailItems?: PlannerInsightDetailItem[];
   onNavigate: (tab: string) => void;
-}> = ({ item, detailItems, onNavigate }) => {
+  tracker?: PlannerAssistTracker;
+}> = ({ item, detailItems, onNavigate, tracker }) => {
   const [expanded, setExpanded] = React.useState(false);
   const hasDetails = detailItems && detailItems.length > 0;
 
@@ -230,16 +255,20 @@ const NextActionRow: React.FC<{
     if (hasDetails) {
       setExpanded((prev) => !prev);
     } else {
+      // P6-A: action_clicked を発火
+      tracker?.trackActionClicked(item.key, item.tab);
       onNavigate(item.tab);
     }
-  }, [hasDetails, item.tab, onNavigate]);
+  }, [hasDetails, item.tab, item.key, onNavigate, tracker]);
 
   const handleNavigate = React.useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
+      // P6-A: action_clicked を発火
+      tracker?.trackActionClicked(item.key, item.tab);
       onNavigate(item.tab);
     },
-    [item.tab, onNavigate],
+    [item.tab, item.key, onNavigate, tracker],
   );
 
   return (
