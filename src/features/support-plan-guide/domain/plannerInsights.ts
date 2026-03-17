@@ -265,3 +265,105 @@ export function computePlannerInsights(
     },
   };
 }
+
+// ────────────────────────────────────────────
+// P5-C1: 展開詳細
+// ────────────────────────────────────────────
+
+/**
+ * 各アクション行の展開詳細として表示する内訳1件。
+ */
+export type PlannerInsightDetailItem = {
+  /** 表示テキスト（例: "ISP未確定", "提案: 自己決定支援の強化"） */
+  label: string;
+  /** 補足テキスト */
+  detail?: string;
+  /** 遷移先タブ（省略なら親の tab を使う） */
+  navigateTo?: string;
+};
+
+/**
+ * アクション key → 展開詳細リストのマップ。
+ * detail が 0 件のキーは含まれない。
+ */
+export type PlannerInsightDetails = Partial<
+  Record<PlannerInsightActionKey, PlannerInsightDetailItem[]>
+>;
+
+/**
+ * 各アクション行の展開詳細を算出する。
+ *
+ * computePlannerInsights と同じ入力を受け、
+ * 各アクションの内訳を返す。0件のキーは省略される。
+ *
+ * Pure function — React 非依存。
+ */
+export function computePlannerInsightDetails(
+  input: PlannerInsightsInput,
+): PlannerInsightDetails {
+  const result: PlannerInsightDetails = {};
+
+  // ── 1. 未判断提案の詳細 ──
+  if (input.suggestions.length > 0) {
+    const latestMap = getLatestDecisionMap(input.decisions);
+    const pending = input.suggestions.filter((s) => !latestMap.has(s.id));
+    if (pending.length > 0) {
+      result.pendingSuggestions = pending.map((s) => ({
+        label: s.title,
+        detail: s.rationale,
+        navigateTo: 'smart',
+      }));
+    }
+  }
+
+  // ── 2. 昇格候補の詳細 ──
+  {
+    const latestMap = getLatestDecisionMap(input.decisions);
+    const candidates: PlannerInsightDetailItem[] = [];
+    for (const record of latestMap.values()) {
+      if (
+        record.source === 'memo' &&
+        (record.action === 'noted' || record.action === 'deferred')
+      ) {
+        // 対応する suggestion タイトルを引く
+        const suggestion = input.suggestions.find((s) => s.id === record.id);
+        candidates.push({
+          label: suggestion?.title ?? record.id,
+          detail: record.action === 'noted' ? '保留中' : '再検討予定',
+          navigateTo: 'excellence',
+        });
+      }
+    }
+    if (candidates.length > 0) {
+      result.promotionCandidates = candidates;
+    }
+  }
+
+  // ── 3. 目標未設定 ──
+  if (input.goals.length === 0) {
+    result.missingGoals = [
+      {
+        label: '支援目標が未設定です',
+        detail: 'SmartTab で提案を確認し、目標を追加してください',
+        navigateTo: 'smart',
+      },
+    ];
+  }
+
+  // ── 4. 制度要件問題の詳細 ──
+  {
+    const issues = input.regulatoryItems.filter(
+      (item) => item.signal === 'warning' || item.signal === 'danger',
+    );
+    if (issues.length > 0) {
+      result.regulatoryIssues = issues.map((item) => ({
+        label: item.label,
+        detail: item.detail,
+        navigateTo: item.navigateTo ?? 'compliance',
+      }));
+    }
+  }
+
+  return result;
+}
+

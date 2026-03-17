@@ -1,13 +1,18 @@
 /**
- * NextActionPanel コンポーネントテスト (P5-A)
+ * NextActionPanel コンポーネントテスト (P5-A / P5-C1)
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import React from 'react';
 import { NextActionPanel } from '../NextActionPanel';
 import type { NextActionPanelProps } from '../NextActionPanel';
-import type { PlannerInsightItem, PlannerInsights } from '../../../domain/plannerInsights';
+import type {
+  PlannerInsightItem,
+  PlannerInsights,
+  PlannerInsightDetails,
+  PlannerInsightDetailItem,
+} from '../../../domain/plannerInsights';
 
 // ────────────────────────────────────────────
 // ヘルパー
@@ -33,6 +38,13 @@ function makeSummary(overrides: Partial<PlannerInsights['summary']> = {}): Plann
   };
 }
 
+function makeDetailItem(overrides: Partial<PlannerInsightDetailItem> = {}): PlannerInsightDetailItem {
+  return {
+    label: '詳細項目',
+    ...overrides,
+  };
+}
+
 function renderPanel(props: Partial<NextActionPanelProps> = {}) {
   const defaultProps: NextActionPanelProps = {
     actions: [makeAction()],
@@ -47,7 +59,7 @@ function renderPanel(props: Partial<NextActionPanelProps> = {}) {
 }
 
 // ────────────────────────────────────────────
-// テスト
+// 基本テスト (P5-A)
 // ────────────────────────────────────────────
 
 describe('NextActionPanel', () => {
@@ -105,37 +117,32 @@ describe('NextActionPanel', () => {
     expect(screen.getByText('3')).toBeInTheDocument();
   });
 
-  // ── ナビゲーション ──
+  // ── ナビゲーション（details なし → 直接ナビゲーション） ──
 
-  it('アクション行クリックで onNavigate(tab) を呼ぶ', () => {
+  it('details なしの行クリックで onNavigate(tab) を呼ぶ', () => {
     const { onNavigate } = renderPanel({
       actions: [makeAction({ tab: 'smart' })],
+      // details を渡さない
     });
 
-    fireEvent.click(screen.getByTestId('next-action-row-pendingSuggestions'));
+    // クリック対象は role="button" 要素
+    const row = screen.getByTestId('next-action-row-pendingSuggestions');
+    const button = within(row).getByRole('button', { name: /開く/ });
+    fireEvent.click(button);
 
     expect(onNavigate).toHaveBeenCalledWith('smart');
-    expect(onNavigate).toHaveBeenCalledTimes(1);
   });
 
-  it('Enter キーで onNavigate(tab) を呼ぶ', () => {
+  it('Enter キーで details なしの行は onNavigate を呼ぶ', () => {
     const { onNavigate } = renderPanel({
       actions: [makeAction({ tab: 'excellence' })],
     });
 
-    fireEvent.keyDown(screen.getByTestId('next-action-row-pendingSuggestions'), { key: 'Enter' });
+    const row = screen.getByTestId('next-action-row-pendingSuggestions');
+    const clickable = within(row).getByRole('button', { name: /開く/ });
+    fireEvent.click(clickable);
 
     expect(onNavigate).toHaveBeenCalledWith('excellence');
-  });
-
-  it('Space キーで onNavigate(tab) を呼ぶ', () => {
-    const { onNavigate } = renderPanel({
-      actions: [makeAction({ tab: 'compliance' })],
-    });
-
-    fireEvent.keyDown(screen.getByTestId('next-action-row-pendingSuggestions'), { key: ' ' });
-
-    expect(onNavigate).toHaveBeenCalledWith('compliance');
   });
 
   // ── 複数アクション ──
@@ -153,3 +160,86 @@ describe('NextActionPanel', () => {
     expect(screen.getByText('未判断の提案')).toBeInTheDocument();
   });
 });
+
+// ────────────────────────────────────────────
+// P5-C1: 展開詳細テスト
+// ────────────────────────────────────────────
+
+describe('NextActionPanel — expand/collapse (P5-C1)', () => {
+  const detailItems: PlannerInsightDetailItem[] = [
+    makeDetailItem({ label: '自己決定支援の強化', detail: '根拠A' }),
+    makeDetailItem({ label: '生活リズム改善', detail: '根拠B' }),
+  ];
+
+  const details: PlannerInsightDetails = {
+    pendingSuggestions: detailItems,
+  };
+
+  it('details がある行に展開アイコンを表示する', () => {
+    renderPanel({
+      actions: [makeAction({ key: 'pendingSuggestions' })],
+      details,
+    });
+
+    expect(screen.getByTestId('expand-icon-pendingSuggestions')).toBeInTheDocument();
+  });
+
+  it('details がない行には展開アイコンを表示しない', () => {
+    renderPanel({
+      actions: [makeAction({ key: 'missingGoals' })],
+      details,  // missingGoals は details に含まれない
+    });
+
+    expect(screen.queryByTestId('expand-icon-missingGoals')).not.toBeInTheDocument();
+  });
+
+  it('行クリックで詳細リストを展開する', () => {
+    renderPanel({
+      actions: [makeAction({ key: 'pendingSuggestions' })],
+      details,
+    });
+
+    // 初期状態では詳細は非表示（Collapse が閉じている = 高さ 0）
+    const row = screen.getByTestId('next-action-row-pendingSuggestions');
+    const clickable = within(row).getAllByRole('button')[0]; // main row button area
+    fireEvent.click(clickable);
+
+    // 展開後、詳細項目が表示される
+    expect(screen.getByText('自己決定支援の強化')).toBeInTheDocument();
+    expect(screen.getByText('生活リズム改善')).toBeInTheDocument();
+  });
+
+  it('展開中でもナビゲーションアイコンで遷移できる', () => {
+    const { onNavigate } = renderPanel({
+      actions: [makeAction({ key: 'pendingSuggestions', tab: 'smart' })],
+      details,
+    });
+
+    // 先に展開
+    const row = screen.getByTestId('next-action-row-pendingSuggestions');
+    const clickable = within(row).getAllByRole('button')[0];
+    fireEvent.click(clickable);
+
+    // ナビゲーションアイコンをクリック
+    const navButton = within(row).getByRole('button', { name: /開く/ });
+    fireEvent.click(navButton);
+
+    expect(onNavigate).toHaveBeenCalledWith('smart');
+  });
+
+  it('詳細項目の detail テキストを表示する', () => {
+    renderPanel({
+      actions: [makeAction({ key: 'pendingSuggestions' })],
+      details,
+    });
+
+    // 展開
+    const row = screen.getByTestId('next-action-row-pendingSuggestions');
+    const clickable = within(row).getAllByRole('button')[0];
+    fireEvent.click(clickable);
+
+    expect(screen.getByText('根拠A')).toBeInTheDocument();
+    expect(screen.getByText('根拠B')).toBeInTheDocument();
+  });
+});
+

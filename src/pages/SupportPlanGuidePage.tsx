@@ -432,6 +432,7 @@ export default function SupportPlanGuidePage() {
             <NextActionPanel
               actions={plannerInsights.actions}
               summary={plannerInsights.summary}
+              details={plannerInsights.details}
               onNavigate={(tab) => setActiveTab(tab as SectionKey)}
             />
           </Suspense>
