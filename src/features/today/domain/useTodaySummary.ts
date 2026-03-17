@@ -11,7 +11,7 @@
 import { useAttendanceStore } from '@/features/attendance';
 import { useDashboardSummary } from '@/features/dashboard';
 import { useStaffStore } from '@/features/staff';
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { useUsers } from '@/features/users/useUsers';
 import { toLocalDateISO } from '@/utils/getNow';
 import { useMemo } from 'react';
 import { useSupportRecordCompletion } from '../hooks/useSupportRecordCompletion';
@@ -107,7 +107,7 @@ function buildMockServiceStructure(staffNames: string[]): ServiceStructure {
  */
 export function useTodaySummary(): TodaySummary {
   // ─── 1. Data Fetching (internalized from TodayOpsPage) ───
-  const { data: users } = useUsersDemo();
+  const { data: users } = useUsers();
   const { visits } = useAttendanceStore();
   const { staff } = useStaffStore();
   const today = toLocalDateISO();

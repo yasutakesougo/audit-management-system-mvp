@@ -36,7 +36,7 @@ import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/us
 import { NewPlanningSheetForm } from '@/features/planning-sheet/components/NewPlanningSheetForm';
 import { createSharePointIspRepository } from '@/data/isp/sharepoint/SharePointIspRepository';
 import { useSP } from '@/lib/spClient';
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { useUsers } from '@/features/users/useUsers';
 import { TESTIDS, tid } from '@/testids';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import Alert from '@mui/material/Alert';
@@ -153,7 +153,7 @@ export default function SupportPlanningSheetPage() {
 
   // ── アセスメント取込 ──
   const { getByUserId: getAssessment } = useAssessmentStore();
-  const { data: users } = useUsersDemo();
+  const { data: users } = useUsers();
   const { account } = useAuth();
   const { saveAuditRecord, getAllProvenance, getBySheetId } = useImportAuditStore();
   const targetUser = React.useMemo(

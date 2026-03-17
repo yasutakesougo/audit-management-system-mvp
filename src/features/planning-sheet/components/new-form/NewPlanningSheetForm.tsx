@@ -36,13 +36,14 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
 import NavigateBeforeRoundedIcon from '@mui/icons-material/NavigateBeforeRounded';
 import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded';
+import QuizRoundedIcon from '@mui/icons-material/QuizRounded';
 import PersonSearchRoundedIcon from '@mui/icons-material/PersonSearchRounded';
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded';
 
 // ── Domain ──
 import type { TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
 import { useTokuseiSurveyResponses } from '@/features/assessment/hooks/useTokuseiSurveyResponses';
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { useUsers } from '@/features/users/useUsers';
 import { useAuth } from '@/auth/useAuth';
 import { tokuseiToPlanningBridge } from '../../tokuseiToPlanningBridge';
 import { buildImportPreview } from '../../buildImportPreview';
@@ -64,7 +65,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   ispRepo,
 }) => {
   const navigate = useNavigate();
-  const { data: users } = useUsersDemo();
+  const { data: users } = useUsers();
   const { account } = useAuth();
 
   // ── User selection state ──
@@ -92,6 +93,9 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   const [toast, setToast] = React.useState<{ open: boolean; message: string; severity: 'success' | 'info' }>({
     open: false, message: '', severity: 'success',
   });
+
+  // ── 特性アンケートセクション ref ──
+  const tokuseiSectionRef = React.useRef<HTMLDivElement>(null);
 
   // ── Helpers ──
   const userOptions = React.useMemo<UserOption[]>(
@@ -258,6 +262,16 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
               </Typography>
             </Stack>
             <Stack direction="row" spacing={1}>
+              <Button
+                size="small"
+                variant="outlined"
+                color="primary"
+                startIcon={<QuizRoundedIcon />}
+                disabled={!canProceedToForm}
+                onClick={() => tokuseiSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              >
+                特性アンケートを読み込む
+              </Button>
               <Button size="small" variant="outlined" color="secondary" startIcon={<AutoFixHighRoundedIcon />} onClick={handleFillSample} disabled={!canProceedToForm}>
                 サンプルデータ
               </Button>
@@ -294,7 +308,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
 
         {/* ── 特性アンケート読込 ── */}
         {canProceedToForm && (
-          <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderColor: tokuseiImported ? 'success.main' : 'divider' }}>
+          <Paper ref={tokuseiSectionRef} variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderColor: tokuseiImported ? 'success.main' : 'divider' }}>
             <Stack spacing={2}>
               <Stack direction="row" spacing={1} alignItems="center">
                 <SupportAgentRoundedIcon color={tokuseiImported ? 'success' : 'primary'} />

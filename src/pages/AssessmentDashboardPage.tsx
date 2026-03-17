@@ -5,7 +5,7 @@ import { SensoryProfilePanel } from '@/features/assessment/components/SensoryPro
 import type { AssessmentItem, SensoryProfile, UserAssessment } from '@/features/assessment/domain/types';
 import { useAssessmentStore } from '@/features/assessment/stores/assessmentStore';
 import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { useUsers } from '@/features/users/useUsers';
 import { createUserNameResolver } from '@/domain/user';
 import { isDemoModeEnabled } from '@/lib/env';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -69,7 +69,7 @@ const deriveSensoryProfile = (current: SensoryProfile, response: TokuseiSurveyRe
 };
 
 const AssessmentDashboardPage: React.FC = () => {
-  const { data: users } = useUsersDemo();
+  const { data: users } = useUsers();
   const { getByUserId, save, seedDemoData } = useAssessmentStore();
   const demoModeEnabled = isDemoModeEnabled();
 

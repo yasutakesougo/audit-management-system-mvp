@@ -8,7 +8,7 @@ import { createIcebergRepository } from '@/features/ibd/analysis/iceberg/SharePo
 import { useIcebergStore } from '@/features/ibd/analysis/iceberg/icebergStore';
 import type { EnvironmentFactor } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { useUsers } from '@/features/users/useUsers';
 import { auditLog } from '@/lib/debugLogger';
 import { getAppConfig } from '@/lib/env';
 import AddLinkIcon from '@mui/icons-material/AddLink';
@@ -107,7 +107,7 @@ const IcebergAnalysisPage: React.FC = () => {
 
   const { currentSession, initSession, moveNode, addNodeFromData, linkNodes, saveState, lastSaveError, savePersistent } = useIcebergStore(repository ?? undefined);
   const { getByUserId, seedDemoData } = useAssessmentStore();
-  const { data: users } = useUsersDemo();
+  const { data: users } = useUsers();
   const [targetUserId, setTargetUserId] = useState('');
   const activeSessionUserId = currentSession?.targetUserId;
   const [isSaving, setIsSaving] = useState(false);

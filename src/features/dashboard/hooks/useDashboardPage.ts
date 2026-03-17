@@ -18,7 +18,7 @@ import { useDashboardSummary } from '@/features/dashboard/useDashboardSummary';
 import { useDashboardViewModel, type DashboardViewModel } from '@/features/dashboard/useDashboardViewModel';
 import { useAttendanceCounts } from '@/features/staff/attendance/useAttendanceCounts';
 import { useStaffStore } from '@/features/staff/store';
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { useUsers } from '@/features/users/useUsers';
 import { toLocalDateISO } from '@/utils/getNow';
 
 import { useDashboardHandoff, type DashboardHandoffGroup } from './useDashboardHandoff';
@@ -41,7 +41,7 @@ export interface UseDashboardPageReturn {
 // ── フック本体 ──
 export function useDashboardPage(audience: DashboardAudience = 'staff'): UseDashboardPageReturn {
   // ── Shared domain data (summary と ui の両方で使用) ──
-  const { data: users } = useUsersDemo();
+  const { data: users } = useUsers();
   const { visits } = useAttendanceStore();
   const { staff } = useStaffStore();
   const today = toLocalDateISO();

@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { getAppConfig } from '@/lib/env';
 import type { IUserMaster } from './types';
-import { seedDemoUsers } from './usersStoreDemo';
 import { seedInMemoryUsers } from './infra/InMemoryUserRepository';
 
 export const USERS_MASTER_STORAGE_KEY = 'users.master.dev.v1';
@@ -48,7 +47,6 @@ const seedUsersFromStorage = (): void => {
     const users = normalizeUsers(parsed);
     if (!users) return;
 
-    seedDemoUsers(users);
     seedInMemoryUsers(users);
     lastSeedSnapshot = raw;
   } catch (error) {
