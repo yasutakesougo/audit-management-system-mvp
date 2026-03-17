@@ -110,6 +110,8 @@ export type UseSupportPlanFormReturn = {
   handleToggleDomain: (goalId: string, domainId: string) => void;
   handleAddGoal: (type: 'long' | 'short' | 'support', defaultLabel: string) => void;
   handleDeleteGoal: (goalId: string) => void;
+  /** P3-B: 目標候補を採用して goals に追加 */
+  handleAcceptSuggestion: (goal: import('@/features/shared/goal/goalTypes').GoalItem) => void;
 
   // ── Compliance (A-2) ──
   complianceForm: UseComplianceFormReturn;
@@ -308,7 +310,7 @@ export function useSupportPlanForm({
     setSyncError,
   });
 
-  const { handleGoalChange, handleToggleDomain, handleAddGoal, handleDeleteGoal } = useGoalActions({
+  const { handleGoalChange, handleToggleDomain, handleAddGoal, handleDeleteGoal, handleAcceptSuggestion } = useGoalActions({
     activeDraftId,
     isAdmin,
     setDrafts,
@@ -366,6 +368,7 @@ export function useSupportPlanForm({
     handleToggleDomain,
     handleAddGoal,
     handleDeleteGoal,
+    handleAcceptSuggestion,
     complianceForm,
     ispCreate,
     resetConfirmDialog,
