@@ -55,6 +55,8 @@ const ExcellenceTab: React.FC<ExcellenceTabProps> = ({
   suggestionMetrics,
   // P3-F: Rule metrics raw data
   suggestionDecisions,
+  // P4: capability guard
+  can: canDo,
   ...sectionProps
 }) => {
   const section = findSection('excellence');
@@ -128,11 +130,11 @@ const ExcellenceTab: React.FC<ExcellenceTabProps> = ({
         </Typography>
       ) : null}
 
-      {/* P3-C: 提案候補ワークスペース */}
-      {sectionProps.isAdmin && hasSuggestions && (
+      {/* P3-C: 提案候補ワークスペース (P4: capability ガード) */}
+      {canDo?.('memo.view') && hasSuggestions && (
         <>
-          {/* P3-E: メトリクスバッジ */}
-          {suggestionMetrics && (
+          {/* P3-E: メトリクスバッジ (P4: metrics.view) */}
+          {canDo?.('metrics.view') && suggestionMetrics && (
             <SuggestionMetricsBadge metrics={suggestionMetrics} variant="memo" />
           )}
           <SuggestionMemoSection
@@ -145,8 +147,8 @@ const ExcellenceTab: React.FC<ExcellenceTabProps> = ({
             onPromote={handlePromote}
             onUndo={undoAction}
           />
-          {/* P3-F: ルール別提案品質メトリクス */}
-          {ruleMetrics && <RuleMetricsPanel ruleMetrics={ruleMetrics} />}
+          {/* P3-F: ルール別提案品質メトリクス (P4: ruleMetrics.view = adminのみ) */}
+          {canDo?.('ruleMetrics.view') && ruleMetrics && <RuleMetricsPanel ruleMetrics={ruleMetrics} />}
         </>
       )}
 

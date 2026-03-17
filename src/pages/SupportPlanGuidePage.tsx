@@ -18,6 +18,7 @@ import { useRegulatorySummary } from '@/features/support-plan-guide/hooks/useReg
 import { useSupportPlanBundle } from '@/features/support-plan-guide/hooks/useSupportPlanBundle';
 import { useSupportPlanForm } from '@/features/support-plan-guide/hooks/useSupportPlanForm';
 import { useSuggestionDecisionPersistence } from '@/features/support-plan-guide/hooks/useSuggestionDecisionPersistence';
+import { usePlanRole } from '@/features/support-plan-guide/hooks/usePlanRole';
 import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIcebergEvidence';
 import type {
     SectionKey,
@@ -98,6 +99,9 @@ export default function SupportPlanGuidePage() {
   const { account } = useAuth();
   const isAdmin = canAccess(role, 'admin');
   const approverUpn = account?.username ?? '';
+
+  // ── P4: Role-based visibility ──
+  const { role: planRole, can } = usePlanRole({ isAdmin });
 
   // ── Data sources ──
   const { data: userList = [] } = useUsersStore();
@@ -239,6 +243,9 @@ export default function SupportPlanGuidePage() {
     suggestionMetrics,
     // P3-F: Raw decisions for rule-level metrics
     suggestionDecisions: currentDecisions,
+    // P4: Role-based visibility
+    planRole,
+    can,
   };
 
   // ── Draft progress chip (render helper) ──
@@ -373,8 +380,8 @@ export default function SupportPlanGuidePage() {
           </Alert>
         )}
 
-        {/* ── 制度サマリー帯 + シート一覧カード (lazy-loaded) ── */}
-        {regulatoryAvailable && (
+        {/* ── 制度サマリー帯 + シート一覧カード (P4: regulatoryHud.view ガード) ── */}
+        {can('regulatoryHud.view') && regulatoryAvailable && (
           <Suspense fallback={TabFallback}>
             <RegulatorySection
               bundle={regulatoryBundle}
