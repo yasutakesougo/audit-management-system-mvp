@@ -88,6 +88,9 @@ export type UseSupportPlanFormReturn = {
   maxDraftsReached: boolean;
   userOptions: UserOption[];
 
+  /** P3-D: Direct draft state setter for suggestion decision persistence */
+  setDrafts: React.Dispatch<React.SetStateAction<Record<string, SupportPlanDraft>>>;
+
   // ── Actions ──
   setActiveTab: (tab: SectionKey) => void;
   setActiveDraftId: (id: string) => void;
@@ -369,6 +372,7 @@ export function useSupportPlanForm({
     handleAddGoal,
     handleDeleteGoal,
     handleAcceptSuggestion,
+    setDrafts,
     complianceForm,
     ispCreate,
     resetConfirmDialog,

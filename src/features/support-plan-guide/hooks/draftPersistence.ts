@@ -7,6 +7,7 @@
 
 import type { SupportPlanDraft, SupportPlanForm } from '../types';
 import { FIELD_KEYS, MAX_DRAFTS, NAME_LIMIT, STORAGE_KEY } from '../types';
+import { sanitizeDecisionRecords } from '../domain/suggestionDecisionHelpers';
 import { createDraft, sanitizeForm, sanitizeValue } from '../utils/helpers';
 
 /** Persist drafts + activeDraftId to localStorage (sync, write-through). */
@@ -69,6 +70,7 @@ export function loadFromLocalStorage(): {
           userId: entry.userId ?? null,
           userCode: entry.userCode ?? null,
           data: sanitizeForm(entry.data),
+          suggestionDecisions: sanitizeDecisionRecords(entry.suggestionDecisions),
         };
       });
       loadedActiveId =
@@ -140,6 +142,7 @@ export function parseDraftPayload(parsed: Record<string, unknown>): {
         userId: entry.userId ?? null,
         userCode: entry.userCode ?? null,
         data: sanitizeForm(entry.data),
+        suggestionDecisions: sanitizeDecisionRecords(entry.suggestionDecisions),
       };
     });
     nextActiveId =

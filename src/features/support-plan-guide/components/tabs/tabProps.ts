@@ -46,4 +46,22 @@ export type SectionTabProps = {
   linkedUserCode?: string | null;
   /** 利用者マスタから利用者を選択するハンドラ */
   onSelectUser?: (userId: string) => void;
+
+  // ── Suggestion Decision Persistence (P3-D) ──
+  /** SmartTab 用: 永続化済みの初期 decisions */
+  smartInitialDecisions?: Record<string, import('../../hooks/useSuggestedGoals').SuggestedGoalDecision>;
+  /** ExcellenceTab 用: 永続化済みの初期 memo actions */
+  memoInitialActions?: Record<string, import('../../hooks/useSuggestionMemo').SuggestionMemoAction>;
+  /** 判断変更時の永続化コールバック */
+  onDecisionChange?: import('../../hooks/useSuggestedGoals').OnDecisionChange;
+  /** undo 時の永続化コールバック */
+  onDecisionUndo?: import('../../hooks/useSuggestedGoals').OnDecisionUndo;
+
+  // ── Suggestion Decision Metrics (P3-E) ──
+  /** 横断メトリクス（SmartTab / ExcellenceTab ヘッダーに表示） */
+  suggestionMetrics?: import('../../domain/suggestionDecisionMetrics').SuggestionDecisionMetrics;
+
+  // ── Suggestion Rule Metrics (P3-F) ──
+  /** ルール別メトリクス算出のための生データ（ExcellenceTab で suggestions と突き合わせ） */
+  suggestionDecisions?: import('../../types').SuggestionDecisionRecord[];
 };
