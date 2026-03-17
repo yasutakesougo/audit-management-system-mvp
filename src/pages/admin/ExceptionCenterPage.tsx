@@ -14,7 +14,7 @@
  * - EmptyStateAction (MVP-001) を例外0件時に表示
  * - Phase 2 でドロワー/詳細モーダルを追加予定
  */
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // ── MUI ──
@@ -33,6 +33,7 @@ import {
   detectAttentionUsers,
   detectCriticalHandoffs,
   detectMissingRecords,
+  type ExceptionCategory,
 } from '@/features/exceptions/domain/exceptionLogic';
 import { ExceptionTable } from '@/features/exceptions/components/ExceptionTable';
 import { useUsers } from '@/features/users/useUsers';
@@ -42,6 +43,8 @@ import { useUsers } from '@/features/users/useUsers';
 export default function ExceptionCenterPage() {
   const navigate = useNavigate();
   const { data: users } = useUsers();
+  
+  const [categoryFilter, setCategoryFilter] = useState<ExceptionCategory | 'all'>('all');
 
   // ── 例外検出 ──
   const exceptions = useMemo(() => {
@@ -145,28 +148,40 @@ export default function ExceptionCenterPage() {
           }}
           data-testid="exception-summary-cards"
         >
-          {summaryCards.map((card) => (
-            <Paper
-              key={card.key}
-              variant="outlined"
-              sx={{
-                p: 2,
-                borderRadius: 2,
-                borderLeft: 4,
-                borderLeftColor: card.color,
-                textAlign: 'center',
-              }}
-              data-testid={`summary-card-${card.key}`}
-            >
-              <Box sx={{ fontSize: 28, mb: 0.5 }}>{card.icon}</Box>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: card.color }}>
-                {card.count}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {card.label}
-              </Typography>
-            </Paper>
-          ))}
+          {summaryCards.map((card) => {
+            const isSelected = categoryFilter === (card.key === 'total' ? 'all' : card.key);
+
+            return (
+              <Paper
+                key={card.key}
+                variant="outlined"
+                onClick={() => setCategoryFilter(card.key === 'total' ? 'all' : card.key as ExceptionCategory)}
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  borderLeft: 4,
+                  borderLeftColor: card.color,
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  bgcolor: isSelected ? `${card.color}15` : 'background.paper',
+                  borderColor: isSelected ? card.color : 'divider',
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    bgcolor: `${card.color}0A`,
+                  }
+                }}
+                data-testid={`summary-card-${card.key}`}
+              >
+                <Box sx={{ fontSize: 28, mb: 0.5 }}>{card.icon}</Box>
+                <Typography variant="h4" sx={{ fontWeight: 700, color: card.color }}>
+                  {card.count}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {card.label}
+                </Typography>
+              </Paper>
+            );
+          })}
         </Box>
 
         {/* ════════════════════════════════════════════════════════════
@@ -176,6 +191,8 @@ export default function ExceptionCenterPage() {
           items={exceptions}
           title="対応が必要な例外"
           showFilters
+          categoryFilter={categoryFilter}
+          onCategoryFilterChange={setCategoryFilter}
         />
       </Stack>
     </Container>

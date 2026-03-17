@@ -29,6 +29,7 @@ export type ExceptionItem = {
   title: string;
   description: string;
   targetUser?: string;
+  targetUserId?: string;
   targetDate?: string;
   updatedAt: string;
   actionLabel?: string;
@@ -72,6 +73,7 @@ export type HandoffSummaryItem = {
   severity: string;
   status: string;
   userName?: string;
+  userId?: string;
   createdAt: string;
 };
 
@@ -107,6 +109,7 @@ export function detectMissingRecords(params: {
       title: `${u.userName}の記録が未入力`,
       description: `${targetDate} の日次記録が作成されていません`,
       targetUser: u.userName,
+      targetUserId: u.userId,
       targetDate,
       updatedAt: targetDate,
       actionLabel: '記録を作成',
@@ -129,6 +132,7 @@ export function detectCriticalHandoffs(
       title: '重要な申し送りが未対応',
       description: h.message.length > 60 ? `${h.message.slice(0, 60)}…` : h.message,
       targetUser: h.userName,
+      targetUserId: h.userId,
       updatedAt: h.createdAt,
       actionLabel: '確認する',
       actionPath: '/handoff/timeline',
@@ -152,6 +156,7 @@ export function detectAttentionUsers(
         title: `${u.userName}: 強度行動障害対象者の計画未作成`,
         description: '個別支援計画書を早急に作成してください',
         targetUser: u.userName,
+        targetUserId: u.userId,
         updatedAt: new Date().toISOString().split('T')[0],
         actionLabel: '計画を作成',
         actionPath: `/isp-editor/${encodeURIComponent(u.userId)}`,

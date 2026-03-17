@@ -42,10 +42,16 @@ import {
 
 // ─── Props ──────────────────────────────────────────────────
 
+export type ExceptionTableSortOrder = 'severity' | 'newest' | 'oldest';
+
 export type ExceptionTableProps = {
   items: ExceptionItem[];
   title?: string;
   showFilters?: boolean;
+  categoryFilter?: ExceptionCategory | 'all';
+  onCategoryFilterChange?: (category: ExceptionCategory | 'all') => void;
+  severityFilter?: ExceptionSeverity | 'all';
+  onSeverityFilterChange?: (severity: ExceptionSeverity | 'all') => void;
 };
 
 // ─── Severity Chip Config ───────────────────────────────────
@@ -57,24 +63,73 @@ const SEVERITY_CONFIG: Record<ExceptionSeverity, { label: string; color: 'error'
   low: { label: '低', color: 'default' },
 };
 
+const SEVERITY_ORDER: Record<ExceptionSeverity, number> = {
+  critical: 1,
+  high: 2,
+  medium: 3,
+  low: 4,
+};
+
 // ─── Component ──────────────────────────────────────────────
 
 export const ExceptionTable: React.FC<ExceptionTableProps> = ({
   items,
   title = '例外一覧',
   showFilters = true,
+  categoryFilter: externalCategoryFilter,
+  onCategoryFilterChange,
+  severityFilter: externalSeverityFilter,
+  onSeverityFilterChange,
 }) => {
   const navigate = useNavigate();
-  const [categoryFilter, setCategoryFilter] = useState<ExceptionCategory | 'all'>('all');
-  const [severityFilter, setSeverityFilter] = useState<ExceptionSeverity | 'all'>('all');
+  const [internalCategoryFilter, setInternalCategoryFilter] = useState<ExceptionCategory | 'all'>('all');
+  const [internalSeverityFilter, setInternalSeverityFilter] = useState<ExceptionSeverity | 'all'>('all');
+  const [sortOrder, setSortOrder] = useState<ExceptionTableSortOrder>('severity');
 
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => {
+  const categoryFilter = externalCategoryFilter !== undefined ? externalCategoryFilter : internalCategoryFilter;
+  const severityFilter = externalSeverityFilter !== undefined ? externalSeverityFilter : internalSeverityFilter;
+
+  const handleCategoryChange = (val: ExceptionCategory | 'all') => {
+    if (onCategoryFilterChange) onCategoryFilterChange(val);
+    else setInternalCategoryFilter(val);
+  };
+
+  const handleSeverityChange = (val: ExceptionSeverity | 'all') => {
+    if (onSeverityFilterChange) onSeverityFilterChange(val);
+    else setInternalSeverityFilter(val);
+  };
+
+  const filteredAndSortedItems = useMemo(() => {
+    // 1. Filter
+    const filtered = items.filter((item) => {
       if (categoryFilter !== 'all' && item.category !== categoryFilter) return false;
       if (severityFilter !== 'all' && item.severity !== severityFilter) return false;
       return true;
     });
-  }, [items, categoryFilter, severityFilter]);
+
+    // 2. Sort
+    return filtered.sort((a, b) => {
+      const dateStrA = a.targetDate ?? a.updatedAt;
+      const dateStrB = b.targetDate ?? b.updatedAt;
+      const dateA = dateStrA ? new Date(dateStrA).getTime() : 0;
+      const dateB = dateStrB ? new Date(dateStrB).getTime() : 0;
+
+      if (sortOrder === 'severity') {
+        const sevDiff = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
+        if (sevDiff !== 0) return sevDiff;
+        return dateB - dateA;
+      }
+      if (sortOrder === 'newest') {
+        if (dateA !== dateB) return dateB - dateA;
+        return SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
+      }
+      if (sortOrder === 'oldest') {
+        if (dateA !== dateB) return dateA - dateB;
+        return SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
+      }
+      return 0;
+    });
+  }, [items, categoryFilter, severityFilter, sortOrder]);
 
   return (
     <Box data-testid="exception-table">
@@ -101,7 +156,7 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
             <Select
               value={categoryFilter}
               label="カテゴリ"
-              onChange={(e) => setCategoryFilter(e.target.value as ExceptionCategory | 'all')}
+              onChange={(e) => handleCategoryChange(e.target.value as ExceptionCategory | 'all')}
               data-testid="exception-filter-category"
             >
               <MenuItem value="all">すべて</MenuItem>
@@ -117,7 +172,7 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
             <Select
               value={severityFilter}
               label="重要度"
-              onChange={(e) => setSeverityFilter(e.target.value as ExceptionSeverity | 'all')}
+              onChange={(e) => handleSeverityChange(e.target.value as ExceptionSeverity | 'all')}
               data-testid="exception-filter-severity"
             >
               <MenuItem value="all">すべて</MenuItem>
@@ -128,11 +183,24 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
               ))}
             </Select>
           </FormControl>
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <InputLabel>並び順</InputLabel>
+            <Select
+              value={sortOrder}
+              label="並び順"
+              onChange={(e) => setSortOrder(e.target.value as ExceptionTableSortOrder)}
+              data-testid="exception-sort-order"
+            >
+              <MenuItem value="severity">🚨 重要度順</MenuItem>
+              <MenuItem value="newest">⬇️ 新しい順</MenuItem>
+              <MenuItem value="oldest">⬆️ 古い順</MenuItem>
+            </Select>
+          </FormControl>
         </Stack>
       )}
 
       {/* Table or Empty */}
-      {filteredItems.length === 0 ? (
+      {filteredAndSortedItems.length === 0 ? (
         <EmptyStateAction
           icon={items.length === 0 ? '🎉' : '🔍'}
           title={items.length === 0 ? '例外なし — すべて正常です' : 'フィルタ条件に一致する例外はありません'}
@@ -158,7 +226,7 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredItems.map((item) => {
+              {filteredAndSortedItems.map((item) => {
                 const catMeta = EXCEPTION_CATEGORIES[item.category];
                 const sevConfig = SEVERITY_CONFIG[item.severity];
                 return (
@@ -197,9 +265,21 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2">
-                        {item.targetUser ?? '—'}
-                      </Typography>
+                      {item.targetUserId ? (
+                        <Button
+                          variant="text"
+                          size="small"
+                          sx={{ textTransform: 'none', p: 0, minWidth: 'auto', fontWeight: 600 }}
+                          onClick={() => navigate(`/users/${item.targetUserId}`)}
+                          data-testid={`exception-user-link-${item.id}`}
+                        >
+                          {item.targetUser ?? '—'}
+                        </Button>
+                      ) : (
+                        <Typography variant="body2">
+                          {item.targetUser ?? '—'}
+                        </Typography>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Typography variant="caption" color="text.secondary">
