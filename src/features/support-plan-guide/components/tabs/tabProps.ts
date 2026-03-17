@@ -4,6 +4,7 @@
  * 全セクションタブで共通して必要なProps。
  * PreviewTab は独自のPropsを持つため別途定義。
  */
+import type { SupportPlanBundle } from '@/domain/isp/schema';
 import type { GoalItem } from '@/features/shared/goal/goalTypes';
 import type { SupportPlanForm, SupportPlanStringFieldKey, UserOption } from '../../types';
 
@@ -29,6 +30,12 @@ export type SectionTabProps = {
   onAddGoal?: (type: GoalItem['type'], defaultLabel: string) => void;
   /** 目標の削除 */
   onDeleteGoal?: (goalId: string) => void;
+
+  // ── Suggested Goals (P3-B) ──
+  /** SupportPlanBundle（目標候補生成のデータソース） */
+  bundle?: SupportPlanBundle | null;
+  /** 目標候補を採用してフォームの goals に追加するハンドラ */
+  onAcceptSuggestion?: (goal: GoalItem) => void;
 
   // ── User Link (利用者マスタ紐付け) ──
   /** 利用者マスタ選択肢（OverviewTab で使用） */
