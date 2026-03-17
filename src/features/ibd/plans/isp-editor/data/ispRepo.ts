@@ -157,8 +157,7 @@ export function computeDiff(oldText: string, newText: string): DiffSegment[] {
  * SharePoint PlanGoals リストの生行データ型
  * fields.ts の PLAN_GOALS_FIELDS と 1:1 対応
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type SpPlanGoalRow = Record<string, any>;
+export type SpPlanGoalRow = Record<string, unknown>;
 
 /**
  * SP クライアント型（useSP() の戻り値互換）

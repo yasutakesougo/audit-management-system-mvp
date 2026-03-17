@@ -52,8 +52,7 @@ function assertWriteEnabled(operation: string): void {
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 /** Raw SP row for Transport_Log */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SpTransportLogRow = Record<string, any>;
+type SpTransportLogRow = Record<string, unknown>;
 
 /** Input for saving a transport log entry */
 export type SaveTransportLogInput = {

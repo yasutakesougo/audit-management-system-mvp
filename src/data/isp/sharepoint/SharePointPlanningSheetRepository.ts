@@ -41,6 +41,16 @@ const escapeOData = (s: string) => s.replace(/'/g, "''");
 const SELECT = [...PLANNING_SHEET_SELECT_FIELDS] as string[];
 
 // ────────────────────────────────────────────────────────────────
+// SharePoint 作成系レスポンス型
+// ────────────────────────────────────────────────────────────────
+
+type SpCreatedItem = {
+  Id?: number;
+  d?: { Id?: number };
+  data?: { Id?: number };
+} & Record<string, unknown>;
+
+// ────────────────────────────────────────────────────────────────
 // Repository 実装
 // ────────────────────────────────────────────────────────────────
 
@@ -83,8 +93,7 @@ export function createSharePointPlanningSheetRepository(client: UseSP): Planning
       assertWriteEnabled('planningSheet.create');
 
       const payload = mapPlanningSheetCreateInputToPayload(input);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const created: any = await client.addListItemByTitle(PLANNING_SHEET_LIST_TITLE, payload);
+      const created = await client.addListItemByTitle(PLANNING_SHEET_LIST_TITLE, payload) as SpCreatedItem;
       const createdId = Number(created?.Id ?? created?.d?.Id ?? created?.data?.Id);
 
       if (!createdId || !Number.isFinite(createdId)) {
