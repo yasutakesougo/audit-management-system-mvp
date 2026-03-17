@@ -17,6 +17,7 @@ import { useIspRepositories } from '@/features/support-plan-guide/hooks/useIspRe
 import { useRegulatorySummary } from '@/features/support-plan-guide/hooks/useRegulatorySummary';
 import { useSupportPlanBundle } from '@/features/support-plan-guide/hooks/useSupportPlanBundle';
 import { useSupportPlanForm } from '@/features/support-plan-guide/hooks/useSupportPlanForm';
+import { useSuggestionDecisionPersistence } from '@/features/support-plan-guide/hooks/useSuggestionDecisionPersistence';
 import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIcebergEvidence';
 import type {
     SectionKey,
@@ -117,6 +118,7 @@ export default function SupportPlanGuidePage() {
     syncError,
 
     // State
+    drafts,
     activeDraftId,
     activeTab,
     previewMode,
@@ -153,6 +155,7 @@ export default function SupportPlanGuidePage() {
     handleAddGoal,
     handleDeleteGoal,
     handleAcceptSuggestion,
+    setDrafts,
 
     // Compliance (A-2)
     complianceForm,
@@ -160,6 +163,16 @@ export default function SupportPlanGuidePage() {
     // Confirm Dialogs
     resetConfirmDialog,
   } = hook;
+
+  // ── P3-D/E/F: Suggestion Decision Persistence + Metrics ──
+  const {
+    smartInitialDecisions,
+    memoInitialActions,
+    onDecisionChange,
+    onDecisionUndo,
+    suggestionMetrics,
+    currentDecisions,
+  } = useSuggestionDecisionPersistence({ drafts, activeDraftId, setDrafts });
 
   // ── selectUser: Autocomplete → SelectChangeEvent adapter ──
   const selectUser = React.useCallback(
@@ -217,6 +230,15 @@ export default function SupportPlanGuidePage() {
     linkedUserId: activeDraft?.userId,
     linkedUserCode: activeDraft?.userCode,
     onSelectUser: selectUser,
+    // P3-D: Suggestion Decision Persistence
+    smartInitialDecisions,
+    memoInitialActions,
+    onDecisionChange,
+    onDecisionUndo,
+    // P3-E: Suggestion Decision Metrics
+    suggestionMetrics,
+    // P3-F: Raw decisions for rule-level metrics
+    suggestionDecisions: currentDecisions,
   };
 
   // ── Draft progress chip (render helper) ──

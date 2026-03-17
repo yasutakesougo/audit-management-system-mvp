@@ -63,6 +63,38 @@ export type SectionConfig = {
 
 export type ToastState = { open: boolean; message: string; severity: 'success' | 'error' | 'info' };
 
+// ────────────────────────────────────────────
+// P3-D: 提案判断の永続化
+// ────────────────────────────────────────────
+
+/** 提案判断アクション（SmartTab + 改善メモ 全状態の union） */
+export type SuggestionDecisionAction =
+  | 'accepted'
+  | 'dismissed'
+  | 'noted'
+  | 'deferred'
+  | 'promoted';
+
+/** 判断を行ったタブ */
+export type SuggestionDecisionSource = 'smart' | 'memo';
+
+/**
+ * 個々の提案判断レコード
+ *
+ * append-only で保存し、UI では id ごとの最新レコードを採用する。
+ * これにより状態変更の履歴を保持しつつ、表示は常に最新を見る。
+ */
+export type SuggestionDecisionRecord = {
+  /** GoalSuggestion.id */
+  id: string;
+  /** どのタブで判断したか */
+  source: SuggestionDecisionSource;
+  /** 判断アクション */
+  action: SuggestionDecisionAction;
+  /** ISO 8601 判断日時 */
+  decidedAt: string;
+};
+
 export type SupportPlanDraft = {
   id: string;
   name: string;
@@ -71,6 +103,8 @@ export type SupportPlanDraft = {
   data: SupportPlanForm;
   userId?: number | string | null;
   userCode?: string | null;
+  /** P3-D: 提案判断履歴（append-only） */
+  suggestionDecisions?: SuggestionDecisionRecord[];
 };
 
 export type UserOption = {
