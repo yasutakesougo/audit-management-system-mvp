@@ -12,8 +12,12 @@ import type { SupportPlanForm, SupportPlanStringFieldKey, UserOption } from '../
 export type SectionTabProps = {
   /** 現在のフォームデータ */
   form: SupportPlanForm;
-  /** 管理者かどうか（falseなら読み取り専用） */
+  /** 管理者かどうか（falseなら読み取り専用）— 後方互換用。新コードは planRole/can を使う */
   isAdmin: boolean;
+  /** P4: 解決済みロール */
+  planRole?: import('../../domain/planPermissions').PlanRole;
+  /** P4: capability 判定ショートカット */
+  can?: (cap: import('../../domain/planPermissions').PlanCapability) => boolean;
   /** フィールド値の変更ハンドラ */
   onFieldChange: (key: SupportPlanStringFieldKey, value: string) => void;
   /** クイックフレーズ追記ハンドラ */
