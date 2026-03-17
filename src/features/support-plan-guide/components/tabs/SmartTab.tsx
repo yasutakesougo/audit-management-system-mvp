@@ -29,6 +29,7 @@ import type { SectionTabProps } from './tabProps';
 const SmartTab: React.FC<SectionTabProps> = ({
   form,
   isAdmin,
+  can: canDo,
   bundle,
   onGoalChange,
   onToggleDomain,
@@ -88,11 +89,11 @@ const SmartTab: React.FC<SectionTabProps> = ({
         </Typography>
       ) : null}
 
-      {/* ── P3-B: 目標候補の提案セクション ── */}
-      {isAdmin && hasSuggestions && (
+      {/* ── P3-B: 目標候補の提案セクション (P4: capability ガード) ── */}
+      {canDo?.('suggestions.view') && hasSuggestions && (
         <>
-          {/* P3-E: メトリクスバッジ */}
-          {suggestionMetrics && (
+          {/* P3-E: メトリクスバッジ (P4: metrics.view ガード) */}
+          {canDo?.('metrics.view') && suggestionMetrics && (
             <SuggestionMetricsBadge metrics={suggestionMetrics} variant="smart" />
           )}
           <SuggestedGoalsList
