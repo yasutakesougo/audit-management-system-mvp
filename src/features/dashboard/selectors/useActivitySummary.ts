@@ -44,7 +44,7 @@ export function useActivitySummary(
     });
     try {
       const map = calculateUsageFromDailyRecords(activityRecords, users, currentMonth, {
-        userKey: (record) => String(record.personId ?? ''),
+        userKey: (record) => String(record.userId ?? ''),
         dateKey: (record) => record.date ?? '',
         countRule: (record) => record.status === '完了',
       });
@@ -119,7 +119,7 @@ export function useActivitySummary(
     const recordedUserIds = new Set(
       activityRecords
         .filter(r => r.status === '完了' || r.status === '作成中')
-        .map(r => normalizeUserId(String(r.personId)))
+        .map(r => normalizeUserId(String(r.userId)))
     );
 
     const rawPendingUserIds = users

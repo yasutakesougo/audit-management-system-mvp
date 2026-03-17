@@ -137,7 +137,6 @@ export default function DailyRecordPage() {
     const adaptedSchedules = schedulesData.map((schedule) => ({
       id: schedule.id,
       userId: schedule.userId?.toString() || schedule.personId?.toString(),
-      personId: schedule.personId?.toString(),
       title: schedule.title || '',
       startLocal: schedule.startLocal || undefined,
       startUtc: schedule.startUtc || undefined,

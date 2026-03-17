@@ -66,8 +66,8 @@ export type Reporter = z.infer<typeof ReporterZ>;
 /** Base daily record fields shared across all record types */
 export const BaseDailyZ = z.object({
   id: z.number(),
-  personId: z.string(),
-  personName: z.string(),
+  userId: z.string(),
+  userName: z.string(),
   date: YmdString,
   status: DailyStatusZ,
   reporter: ReporterZ,

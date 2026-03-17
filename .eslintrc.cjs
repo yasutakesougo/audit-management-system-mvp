@@ -106,6 +106,7 @@ module.exports = {
     // a11y: subtitle1/subtitle2 はデフォルトで <h6> を出力するため、
     // component prop なしでの使用を禁止し heading-order 違反を防ぐ
     // NOTE: 現在 ~180箇所が未修正のため off で待機。全修正後に warn → error へ段階昇格
+    // NOTE: personId / personName ガードは overrides で domain / features 限定で有効化
     'no-restricted-syntax': [
       'off',
       {
@@ -241,6 +242,43 @@ module.exports = {
           // window.fetch は Worker では使わないが念のため除外
         ],
       }
+    },
+    {
+      // Phase 5: personId / personName 新規追加ガード
+      // Domain / Features 層では userId / userName を使用する。
+      // SharePoint 内部名 (cr014_personId 等) は infra / mapper / adapter に封じ込める。
+      // See: docs/guides/naming-convention.md
+      files: ['src/domain/**', 'src/features/**'],
+      excludedFiles: [
+        'src/features/schedules/data/**',
+        'src/features/schedules/infra/**',
+        'src/features/meeting/**',
+      ],
+      rules: {
+        'no-restricted-syntax': [
+          'warn',
+          {
+            selector: "TSPropertySignature > Identifier[name='personId']",
+            message:
+              'personId は廃止されました。userId を使用してください。(Phase 5 命名統一)',
+          },
+          {
+            selector: "TSPropertySignature > Identifier[name='personName']",
+            message:
+              'personName は廃止されました。userName を使用してください。(Phase 5 命名統一)',
+          },
+          {
+            selector: "Property > Identifier[name='personId']",
+            message:
+              'personId は廃止されました。userId を使用してください。(Phase 5 命名統一)',
+          },
+          {
+            selector: "Property > Identifier[name='personName']",
+            message:
+              'personName は廃止されました。userName を使用してください。(Phase 5 命名統一)',
+          },
+        ],
+      },
     }
   ]
 };

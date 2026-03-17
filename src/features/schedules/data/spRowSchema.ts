@@ -288,7 +288,7 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
       acceptedOn: coerceIso(row.AcceptedOn),
       acceptedBy: coerceString(row.AcceptedBy),
       acceptedNote: coerceString(row.AcceptedNote) ?? null,
-      personName: undefined,
+      userName: undefined,
       userLookupId: userLookupIds[0],
       assignedStaffId: assignedStaffId ?? undefined,
       vehicleId: vehicleId ?? undefined,

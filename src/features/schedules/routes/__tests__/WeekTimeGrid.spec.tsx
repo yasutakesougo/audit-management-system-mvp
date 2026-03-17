@@ -19,7 +19,7 @@ const makeItem = (overrides: Partial<{
   title: string;
   start: string;
   end: string;
-  personName: string;
+  userName: string;
   baseShiftWarnings: { staffId?: string; staffName?: string }[];
 }> = {}) => ({
   id: overrides.id ?? 'item-1',
@@ -29,7 +29,7 @@ const makeItem = (overrides: Partial<{
   allDay: false,
   status: 'Planned' as const,
   etag: '',
-  personName: overrides.personName,
+  userName: overrides.userName,
   baseShiftWarnings: overrides.baseShiftWarnings,
 });
 
@@ -167,7 +167,7 @@ describe('WeekTimeGrid — onTimeSlotClick', () => {
 
 describe('WeekTimeGrid — schedule items', () => {
   it('renders a schedule item title/personName in the correct time slot', () => {
-    const item = makeItem({ personName: '山田太郎', start: '2026-03-11T09:00:00+09:00' });
+    const item = makeItem({ userName: '山田太郎', start: '2026-03-11T09:00:00+09:00' });
     const grouped = emptyGroupedItems();
     grouped.set('2026-03-11', [item]);
 
@@ -184,7 +184,7 @@ describe('WeekTimeGrid — schedule items', () => {
   it('falls back to title when personName is absent', () => {
     const item = makeItem({
       title: '組織研修',
-      personName: undefined,
+      userName: undefined,
       start: '2026-03-11T10:00:00+09:00',
     });
     const grouped = emptyGroupedItems();
