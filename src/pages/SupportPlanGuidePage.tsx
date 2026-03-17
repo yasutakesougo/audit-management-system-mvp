@@ -152,6 +152,7 @@ export default function SupportPlanGuidePage() {
     handleToggleDomain,
     handleAddGoal,
     handleDeleteGoal,
+    handleAcceptSuggestion,
 
     // Compliance (A-2)
     complianceForm,
@@ -258,7 +259,7 @@ export default function SupportPlanGuidePage() {
       case 'assessment':
         return <AssessmentTab {...sectionTabProps} />;
       case 'smart':
-        return <SmartTab {...sectionTabProps} />;
+        return <SmartTab {...sectionTabProps} bundle={mergedBundle} onAcceptSuggestion={handleAcceptSuggestion} />;
       case 'supports':
         return <SupportsTab {...sectionTabProps} />;
       case 'decision':
