@@ -50,18 +50,18 @@ export const useDailyUserOptions = () => {
     return normalized;
   }, [users]);
 
-  const findByPersonId = useCallback(
-    (personId?: string | null) => {
-      if (!personId) {
+  const findByUserId = useCallback(
+    (userId?: string | null) => {
+      if (!userId) {
         return undefined;
       }
-      return options.find((option) => option.id === personId);
+      return options.find((option) => option.id === userId);
     },
     [options],
   );
 
   return {
     options,
-    findByPersonId,
+    findByUserId,
   };
 };

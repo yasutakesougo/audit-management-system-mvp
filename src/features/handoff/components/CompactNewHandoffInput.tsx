@@ -26,7 +26,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { alpha, useTheme } from '@mui/material/styles';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useUsersDemo } from '../../users/usersStoreDemo';
 import type { HandoffCategory, HandoffSeverity } from '../handoffTypes';
 import { useNewHandoffForm } from '../hooks/useNewHandoffForm';
@@ -63,6 +63,15 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
 }) => {
   const theme = useTheme();
   const { data: users } = useUsersDemo();
+
+  // O(1) ルックアップマップ
+  const userLookup = useMemo(() => {
+    const map = new Map<string, (typeof users)[number]>();
+    for (const u of users) {
+      map.set(u.UserID.toString(), u);
+    }
+    return map;
+  }, [users]);
 
   const form = useNewHandoffForm(onSuccess);
 
@@ -177,7 +186,7 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
                 if (value === 'ALL') {
                   form.setTarget('ALL');
                 } else {
-                  const user = users.find((u) => u.UserID.toString() === value);
+                  const user = userLookup.get(value);
                   if (user) form.setTarget(user);
                 }
               }}

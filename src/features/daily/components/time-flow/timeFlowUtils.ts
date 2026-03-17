@@ -140,8 +140,8 @@ export const generateMockTimeFlowDailyRecord = (
     return {
       id: Date.now() + index,
       supportPlanId: deployment?.planId ?? `plan-${user.id}`,
-      personId: user.id,
-      personName: user.name,
+      userId: user.id,
+      userName: user.name,
       date,
       timeSlot: `${activity.time} ${activity.title}`,
       activityKey: activity.time,
@@ -185,8 +185,8 @@ export const generateMockTimeFlowDailyRecord = (
   return {
     id: Date.now(),
     supportPlanId: deployment?.planId ?? `plan-${user.id}`,
-    personId: user.id,
-    personName: user.name,
+    userId: user.id,
+    userName: user.name,
     date,
     records: sampleRecords,
     summary: {

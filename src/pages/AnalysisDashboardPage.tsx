@@ -11,6 +11,7 @@ import { useProcedureStore } from '@/features/daily/stores/procedureStore';
 import { AttendanceSummaryCard } from '@/features/dashboard/components/AttendanceSummaryCard';
 import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
 import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { createUserNameResolver } from '@/domain/user';
 import { isDemoModeEnabled } from '@/lib/env';
 import { toLocalDateISO } from '@/utils/getNow';
 import AssessmentIcon from '@mui/icons-material/Assessment';
@@ -70,9 +71,13 @@ const AnalysisDashboardPage: React.FC = () => {
   );
 
   const { dailyStats } = useBehaviorAnalytics(analysisData);
+  const resolveUserName = useMemo(
+    () => createUserNameResolver(users),
+    [users],
+  );
   const selectedUserName = useMemo(
-    () => users.find((u) => u.UserID === targetUserId)?.FullName ?? '',
-    [targetUserId, users],
+    () => (targetUserId ? resolveUserName(targetUserId) : ''),
+    [targetUserId, resolveUserName],
   );
 
   // --- Execution stats ---
