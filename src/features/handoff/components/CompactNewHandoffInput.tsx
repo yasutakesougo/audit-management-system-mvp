@@ -27,7 +27,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { alpha, useTheme } from '@mui/material/styles';
 import React, { useMemo } from 'react';
-import { useUsersDemo } from '../../users/usersStoreDemo';
+import { useUsers } from '../../users/useUsers';
 import type { HandoffCategory, HandoffSeverity } from '../handoffTypes';
 import { useNewHandoffForm } from '../hooks/useNewHandoffForm';
 
@@ -62,7 +62,7 @@ export const CompactNewHandoffInput: React.FC<CompactNewHandoffInputProps> = ({
   onSuccess,
 }) => {
   const theme = useTheme();
-  const { data: users } = useUsersDemo();
+  const { data: users } = useUsers();
 
   // O(1) ルックアップマップ
   const userLookup = useMemo(() => {

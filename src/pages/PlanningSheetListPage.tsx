@@ -15,7 +15,7 @@ import {
 } from '@/domain/isp/schema';
 import type { PlanningSheetRepository } from '@/domain/isp/port';
 import { UserSelectionGrid } from '@/features/users/components/UserSelectionGrid';
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { useUsers } from '@/features/users/useUsers';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
@@ -89,7 +89,7 @@ export default function PlanningSheetListPage() {
   const userId = searchParams.get('userId');
   const repo = usePlanningSheetRepositories();
   const { sheets, isLoading, error } = usePlanningSheetList(userId, repo);
-  const { data: allUsers } = useUsersDemo();
+  const { data: allUsers } = useUsers();
 
   // ---------- 利用者未選択 → グリッド表示 ----------
   if (!userId) {
@@ -130,14 +130,16 @@ export default function PlanningSheetListPage() {
               <Chip size="small" variant="outlined" label={`利用者: ${userId}`} />
             </Stack>
             <Stack direction="row" spacing={1}>
-              <Button
-                size="small"
-                variant="contained"
-                startIcon={<AddRoundedIcon />}
-                onClick={() => navigate('/support-planning-sheet/new')}
-              >
-                新規作成
-              </Button>
+              {sheets.length > 0 && (
+                <Button
+                  size="small"
+                  variant="contained"
+                  startIcon={<AddRoundedIcon />}
+                  onClick={() => navigate('/support-planning-sheet/new')}
+                >
+                  新規作成
+                </Button>
+              )}
               <Button
                 size="small"
                 startIcon={<ArrowBackRoundedIcon />}

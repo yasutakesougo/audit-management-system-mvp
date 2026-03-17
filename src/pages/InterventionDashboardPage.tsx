@@ -10,7 +10,7 @@ import { getIncompleteStrategies, STRATEGY_LABELS } from '@/features/analysis/do
 import { useInterventionDashboard } from '@/features/analysis/hooks/useInterventionDashboard';
 import { useIcebergStore } from '@/features/ibd/analysis/iceberg/icebergStore';
 import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { useUsers } from '@/features/users/useUsers';
 import AcUnitIcon from '@mui/icons-material/AcUnit';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -63,7 +63,7 @@ const InterventionDashboardPage: React.FC = () => {
   } = useInterventionDashboard();
 
   const { currentSession } = useIcebergStore();
-  const { data: users } = useUsersDemo();
+  const { data: users } = useUsers();
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 

@@ -1,4 +1,4 @@
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { useUsers } from '@/features/users/useUsers';
 import type { IUserMaster } from '@/sharepoint/fields';
 import { useMemo } from 'react';
 
@@ -20,7 +20,7 @@ export type PriorityUser = {
  * @returns PriorityUser[] - 重点フォロー対象者のリスト（最大3名）
  */
 export function usePriorityFollowUsers(): PriorityUser[] {
-  const { data: users } = useUsersDemo();
+  const { data: users } = useUsers();
 
   const priorityFollowUsers = useMemo(() => {
     // 強度行動障害対象者をフィルタリング

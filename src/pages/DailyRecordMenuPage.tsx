@@ -21,7 +21,7 @@ import Typography from '@mui/material/Typography';
 import React, { useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { IUserMaster } from '../features/users/types';
-import { useUsersDemo } from '../features/users/usersStoreDemo';
+import { useUsers } from '../features/users/useUsers';
 
 type DailyHubSummary = {
   activity: {
@@ -97,7 +97,7 @@ const DailyRecordMenuPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { from: navFrom, date: navDate } = parseNavQuery(searchParams);
   const fromToday = navFrom === 'today';
-  const { data: usersRaw } = useUsersDemo();
+  const { data: usersRaw } = useUsers();
   const users = usersRaw ?? []; // ← 常に配列にしておく
   const dailyHubSummary = useDailyHubSummary(users);
 

@@ -28,7 +28,7 @@ import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 // ── Domain ──
 import type { AbcRecord } from '@/domain/abc/abcRecord';
 import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { useUsers } from '@/features/users/useUsers';
 import { useAuth } from '@/auth/useAuth';
 
 // ── Local ──
@@ -39,7 +39,7 @@ import LogTab from './LogTab';
 const AbcRecordPage: React.FC = () => {
   const [tab, setTab] = useState(0);
   const [records, setRecords] = useState<AbcRecord[]>([]);
-  const { data: users } = useUsersDemo();
+  const { data: users } = useUsers();
   const { account } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();

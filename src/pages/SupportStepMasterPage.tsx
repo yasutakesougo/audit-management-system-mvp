@@ -1,4 +1,4 @@
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { useUsers } from '@/features/users/useUsers';
 import AddIcon from '@mui/icons-material/Add';
 import TemplatesIcon from '@mui/icons-material/LibraryBooks';
 import ListAltIcon from '@mui/icons-material/ListAlt';
@@ -54,7 +54,7 @@ function a11yProps(index: number) {
 // ─── Page ────────────────────────────────────────────────
 const SupportStepMasterPage: React.FC = () => {
   // ── 利用者選択 ──
-  const { data: users } = useUsersDemo();
+  const { data: users } = useUsers();
   const [selectedUserCode, setSelectedUserCode] = useState<string>('');
 
   // ── SP テンプレート取得 + Mutation ──

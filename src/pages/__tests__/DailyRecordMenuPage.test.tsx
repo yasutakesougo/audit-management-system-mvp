@@ -24,9 +24,9 @@ vi.mock('@/features/attendance/store', () => ({
   useAttendanceStore: () => ({ visits: {} }),
 }));
 
-// Mock useUsersDemo with IsSupportProcedureTarget users
-vi.mock('@/features/users/usersStoreDemo', () => ({
-  useUsersDemo: () => ({
+// Mock useUsers with IsSupportProcedureTarget users
+vi.mock('@/features/users/useUsers', () => ({
+  useUsers: () => ({
     data: [
       { Id: 1, UserID: 'U001', DisplayName: 'テスト太郎', IsSupportProcedureTarget: false },
       { Id: 2, UserID: 'U002', DisplayName: 'テスト花子', IsSupportProcedureTarget: true },

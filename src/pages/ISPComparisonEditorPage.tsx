@@ -10,7 +10,7 @@ import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
 import ISPComparisonEditorView from '@/features/ibd/plans/isp-editor/components/ISPComparisonEditorView';
 import { useISPComparisonEditor } from '@/features/ibd/plans/isp-editor/hooks/useISPComparisonEditor';
 import { UserSelectionGrid } from '@/features/users/components/UserSelectionGrid';
-import { useUsersDemo } from '@/features/users/usersStoreDemo';
+import { useUsers } from '@/features/users/useUsers';
 import DescriptionIcon from '@mui/icons-material/Description';
 import Box from '@mui/material/Box';
 import FormControl from '@mui/material/FormControl';
@@ -25,7 +25,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 export default function ISPComparisonEditorPage() {
   const { userId } = useParams<{ userId?: string }>();
   const navigate = useNavigate();
-  const { data: allUsers } = useUsersDemo();
+  const { data: allUsers } = useUsers();
 
   // ---------- ユーザー未選択 → グリッド表示 ----------
   if (!userId) {
