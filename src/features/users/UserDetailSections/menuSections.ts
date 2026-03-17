@@ -5,6 +5,7 @@ import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
 import PersonAddRoundedIcon from '@mui/icons-material/PersonAddRounded';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import SupportIcon from '@mui/icons-material/Support';
+import TimelineRoundedIcon from '@mui/icons-material/TimelineRounded';
 import type { MenuSection, MenuSectionKey } from './types';
 
 const menuSections: MenuSection[] = [
@@ -49,6 +50,20 @@ const menuSections: MenuSection[] = [
       '短期・中期目標の設定と進捗レビュー',
       '支援内容の見直しや家族との合意記録',
       '評価コメントと次期課題の整理',
+    ],
+  },
+  {
+    key: 'timeline',
+    anchor: 'timeline',
+    title: 'タイムライン',
+    description: '日次記録・インシデント・個別支援計画・申し送りを時系列で俯瞰します。',
+    icon: TimelineRoundedIcon,
+    avatarColor: '#5C6BC0',
+    status: 'available',
+    highlights: [
+      '4ドメインのイベントを時系列で統合表示',
+      'ソース別フィルタと重要度での絞り込み',
+      '日付グループによる直感的な履歴確認',
     ],
   },
   {
@@ -112,6 +127,7 @@ const menuSections: MenuSection[] = [
 const TAB_SECTION_KEYS: MenuSectionKey[] = [
   'basic',
   'support-plan',
+  'timeline',
   'service-records',
   'support-procedure',
   'assessment',
