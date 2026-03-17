@@ -23,6 +23,7 @@ import StructuredGoalEditor from '@/features/shared/goal/StructuredGoalEditor';
 import { useSuggestedGoals } from '../../hooks/useSuggestedGoals';
 import { findSection } from '../../utils/helpers';
 import SuggestedGoalsList from '../suggested-goals/SuggestedGoalsList';
+import SuggestionMetricsBadge from '../suggested-goals/SuggestionMetricsBadge';
 import type { SectionTabProps } from './tabProps';
 
 const SmartTab: React.FC<SectionTabProps> = ({
@@ -34,6 +35,12 @@ const SmartTab: React.FC<SectionTabProps> = ({
   onAddGoal,
   onDeleteGoal,
   onAcceptSuggestion,
+  // P3-D: Decision persistence
+  smartInitialDecisions,
+  onDecisionChange,
+  onDecisionUndo,
+  // P3-E: Metrics
+  suggestionMetrics,
 }) => {
   const section = findSection('smart');
 
@@ -47,7 +54,7 @@ const SmartTab: React.FC<SectionTabProps> = ({
     [form.goals],
   );
 
-  // ── P3-B: 目標候補 ──
+  // ── P3-B: 目標候補 (P3-D: 永続化連携) ──
   const {
     suggestions,
     pendingSuggestions,
@@ -56,7 +63,11 @@ const SmartTab: React.FC<SectionTabProps> = ({
     dismiss,
     undoDecision,
     hasSuggestions,
-  } = useSuggestedGoals(bundle ?? null, form);
+  } = useSuggestedGoals(bundle ?? null, form, {
+    initialDecisions: smartInitialDecisions,
+    onDecisionChange,
+    onDecisionUndo,
+  });
 
   const handleAccept = useCallback(
     (id: string) => {
@@ -79,14 +90,20 @@ const SmartTab: React.FC<SectionTabProps> = ({
 
       {/* ── P3-B: 目標候補の提案セクション ── */}
       {isAdmin && hasSuggestions && (
-        <SuggestedGoalsList
-          suggestions={suggestions}
-          pendingSuggestions={pendingSuggestions}
-          metrics={metrics}
-          onAccept={handleAccept}
-          onDismiss={dismiss}
-          onUndo={undoDecision}
-        />
+        <>
+          {/* P3-E: メトリクスバッジ */}
+          {suggestionMetrics && (
+            <SuggestionMetricsBadge metrics={suggestionMetrics} variant="smart" />
+          )}
+          <SuggestedGoalsList
+            suggestions={suggestions}
+            pendingSuggestions={pendingSuggestions}
+            metrics={metrics}
+            onAccept={handleAccept}
+            onDismiss={dismiss}
+            onUndo={undoDecision}
+          />
+        </>
       )}
 
       {/* ── 長期目標 ── */}
