@@ -81,6 +81,7 @@ export const APP_ROUTE_PATHS = [
   'schedules/create',
   'dev/schedule-create-dialog',
   'ibd',
+  'incidents',
   'planning-sheet-list',
   'abc-record',
   'ops',
