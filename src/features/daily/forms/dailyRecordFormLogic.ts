@@ -106,6 +106,7 @@ export function createEmptyDailyRecord(): Omit<PersonDaily, 'id'> {
         notes: '',
       },
       specialNotes: '',
+      behaviorTags: [],
     },
   };
 }
