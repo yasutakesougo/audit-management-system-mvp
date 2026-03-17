@@ -176,3 +176,5 @@ const OpsMetricsPage = React.lazy(() => import('@/pages/OpsMetricsPage'));
 export const SuspendedOpsMetricsPage = createSuspended(OpsMetricsPage, '運用指標ダッシュボードを読み込んでいます…');
 const IncidentListPage = React.lazy(() => import('@/pages/IncidentListPage'));
 export const SuspendedIncidentListPage = createSuspended(IncidentListPage, 'インシデント履歴を読み込んでいます…');
+const ExceptionCenterPage = React.lazy(() => import('@/pages/admin/ExceptionCenterPage'));
+export const SuspendedExceptionCenterPage = createSuspended(ExceptionCenterPage, '例外センターを読み込んでいます…');
