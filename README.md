@@ -109,7 +109,7 @@ Support Operations OS is built on **10 design principles** that ensure human-in-
 
 > 📖 詳細: **[設計原則 10 箇条](docs/product/principles.md)** ｜ [UI 設計規約](docs/product/ui-conventions.md) ｜ [プロダクトロードマップ](docs/product/roadmap.md) ｜ **[OS Architecture](docs/product/support-operations-os-architecture.md)** ｜ [ISP-Driven Model](docs/model/isp-driven-operations-model.md) ｜ [ADR Index](docs/adr/README.md)
 >
-> 🧑‍💻 開発者: [Developer Onboarding](docs/dev/onboarding.md)
+> 🧑‍💻 開発者: [Developer Onboarding](docs/dev/onboarding.md) ｜ [モジュール硬化テンプレート](docs/guides/module-hardening-template.md)
 
 ---
 
@@ -237,7 +237,7 @@ This ensures all production deployments are traceable to a specific main commit 
 - **インライン表示** — 入力欄のそばにバッジ、手順行に `[📋 計画]` マーク
 - **取込履歴** — いつ・誰が・何を取り込んだかを時系列で追跡
 
-> 📖 詳細: [概要図](docs/guides/bridge-overview.md) ｜ [デモシナリオ](docs/guides/bridge-demo-scenario.md) ｜ [運用ガイド](docs/guides/bridge-operations-guide.md)
+> 📖 詳細: [概要図](docs/guides/bridge-overview.md) ｜ [デモシナリオ](docs/guides/bridge-demo-scenario.md) ｜ [運用ガイド](docs/guides/bridge-operations-guide.md) ｜ [モジュール硬化テンプレート](docs/guides/module-hardening-template.md)
 
 ## Local Operation Mode
 

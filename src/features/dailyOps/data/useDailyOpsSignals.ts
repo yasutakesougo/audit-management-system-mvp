@@ -1,28 +1,19 @@
 import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/useAuth';
-import { shouldSkipSharePoint } from '@/lib/env';
-import type { DailyOpsStatus, UpsertDailyOpsSignalInput, DailyOpsSignalsPort } from './port';
-import { makeSharePointDailyOpsSignalsPort } from './sharePointAdapter';
+import type { DailyOpsStatus, UpsertDailyOpsSignalInput } from './port';
+import { createDailyOpsSignalsPort } from './dailyOpsSignalsFactory';
 
 const QK = {
   byDate: (date: string, status?: DailyOpsStatus) => ['dailyOpsSignals', date, status ?? 'ALL'] as const,
 };
 
-// Demo/E2E mode: return empty in-memory port that never hits external APIs
-const makeDemoPort = (): DailyOpsSignalsPort => ({
-  listByDate: async () => [],
-  upsert: async () => ({ id: 1, title: 'Demo', date: '', targetType: 'User', targetId: '', kind: 'Other', time: '', summary: '', status: 'Active', source: 'Other', createdAt: '', updatedAt: '' }),
-  setStatus: async () => {},
-});
-
 export const useDailyOpsSignals = (date: string, opts?: { status?: DailyOpsStatus }) => {
   const { acquireToken } = useAuth();
-  const skipSharePoint = shouldSkipSharePoint();
-  
+
   const port = useMemo(
-    () => (skipSharePoint ? makeDemoPort() : makeSharePointDailyOpsSignalsPort(acquireToken)),
-    [skipSharePoint, acquireToken]
+    () => createDailyOpsSignalsPort(acquireToken),
+    [acquireToken]
   );
   
   const qc = useQueryClient();

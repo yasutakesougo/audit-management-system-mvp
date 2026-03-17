@@ -1,1 +1,1 @@
-export { useOrgStore, type OrgOption } from './store';
+export { useOrgStore, type OrgOption, type UseOrgStoreOptions } from './store';

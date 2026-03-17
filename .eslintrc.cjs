@@ -283,6 +283,30 @@ module.exports = {
           },
         ],
       },
+    },
+    {
+      // Module Hardening: useDailyOpsSignals は factory 経由で環境判定する。
+      // shouldSkipSharePoint の直参照を防ぐ。
+      files: ['src/features/dailyOps/data/useDailyOpsSignals.ts'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            paths: [
+              {
+                name: '@/lib/env',
+                importNames: ['shouldSkipSharePoint'],
+                message: 'Hook 層で shouldSkipSharePoint を直接参照しないでください。createDailyOpsSignalsPort (factory) 経由で環境判定を行ってください。'
+              },
+              {
+                name: '@/lib/sharepoint/skipSharePoint',
+                importNames: ['shouldSkipSharePoint'],
+                message: 'Hook 層で shouldSkipSharePoint を直接参照しないでください。createDailyOpsSignalsPort (factory) 経由で環境判定を行ってください。'
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 };
