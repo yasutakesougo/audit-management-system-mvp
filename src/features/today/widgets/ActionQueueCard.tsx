@@ -40,6 +40,8 @@ export interface QueueCategory {
   color: 'error' | 'warning' | 'info';
   /** Navigation target when clicked */
   href: string;
+  /** Optional: reason label for the top priority item (MVP-011) */
+  topReasonLabel?: string;
 }
 
 export interface ActionQueueCardProps {
@@ -226,6 +228,27 @@ export const ActionQueueCard: React.FC<ActionQueueCardProps> = ({
               >
                 {cat.label}
               </Typography>
+
+              {/* Priority Reason (MVP-011) */}
+              {cat.count > 0 && cat.topReasonLabel && (
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontSize: '0.65rem',
+                    fontWeight: 600,
+                    color: `${cat.color}.dark`,
+                    bgcolor: `${cat.color}.50`,
+                    px: 0.75,
+                    py: 0.25,
+                    borderRadius: 1,
+                    mt: 0.25,
+                    lineHeight: 1.4,
+                  }}
+                  data-testid={`action-queue-reason-${cat.key}`}
+                >
+                  {cat.topReasonLabel}
+                </Typography>
+              )}
             </ButtonBase>
           ))}
         </Stack>
