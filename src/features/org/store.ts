@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { create } from 'zustand';
 
-import { logSkipSharePointGuard, shouldSkipSharePoint } from '@/lib/sharepoint/skipSharePoint';
+import { shouldSkipSharePoint } from '@/lib/sharepoint/skipSharePoint';
 import { useSP } from '@/lib/spClient';
 
 import {
@@ -30,6 +30,17 @@ type OrgStoreState = {
   error: string | null;
   loadedOnce: boolean;
   refresh: () => Promise<void>;
+};
+
+/**
+ * Options for useOrgStore. Allows callers to control skip-SharePoint
+ * behavior externally instead of the hook evaluating it directly.
+ *
+ * When `skipSharePoint` is omitted, the hook falls back to
+ * `shouldSkipSharePoint()` for backward compatibility.
+ */
+export type UseOrgStoreOptions = {
+  skipSharePoint?: boolean;
 };
 
 const FALLBACK_ORG_OPTIONS: OrgOption[] = [
@@ -76,7 +87,8 @@ const useOrgCacheStore = create<OrgCacheState>()(() => ({
 // React Hook
 // ============================================================================
 
-export function useOrgStore(): OrgStoreState {
+export function useOrgStore(options?: UseOrgStoreOptions): OrgStoreState {
+  const skip = options?.skipSharePoint ?? shouldSkipSharePoint();
   const sp = useSP();
   const spRef = useRef(sp);
 
@@ -95,8 +107,8 @@ export function useOrgStore(): OrgStoreState {
     const cacheState = useOrgCacheStore.getState();
 
     // Guard -1: Skip SharePoint (demo / baseUrl empty / skip-login / automation)
-    if (shouldSkipSharePoint()) {
-      logSkipSharePointGuard('useOrgStore');
+    if (skip) {
+      console.debug('[useOrgStore] Guard -1: skipSharePoint=true, using fallback');
       useOrgCacheStore.setState({ orgCachedOptions: null }); // Clear cache
       setItems(FALLBACK_ORG_OPTIONS);
       setLoadedOnce(true);
