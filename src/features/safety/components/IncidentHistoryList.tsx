@@ -22,7 +22,7 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { RiskSeverity } from '@/domain/support/highRiskIncident';
 import type { IncidentRecord, IncidentType } from '@/domain/support/incidentRepository';
@@ -75,6 +75,8 @@ type IncidentHistoryListProps = {
   refreshKey?: number;
   /** 表示件数上限（デフォルト 20） */
   maxItems?: number;
+  /** タイムライン遷移時にハイライトする incidentId */
+  highlightId?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -85,9 +87,12 @@ export default function IncidentHistoryList({
   userId,
   refreshKey = 0,
   maxItems = 20,
+  highlightId,
 }: IncidentHistoryListProps) {
   const [records, setRecords] = useState<IncidentRecord[]>([]);
   const [filter, setFilter] = useState<SeverityFilter>('all');
+  const highlightRowRef = useRef<HTMLTableRowElement | null>(null);
+  const hasScrolled = useRef(false);
 
   const loadRecords = useCallback(async () => {
     const data = userId
@@ -99,6 +104,20 @@ export default function IncidentHistoryList({
   useEffect(() => {
     void loadRecords();
   }, [loadRecords, refreshKey]);
+
+  // ── highlightId に一致する行へスクロール ──
+  useEffect(() => {
+    if (highlightId && highlightRowRef.current && !hasScrolled.current) {
+      hasScrolled.current = true;
+      // DOM がレンダリングされた後にスクロール
+      requestAnimationFrame(() => {
+        highlightRowRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      });
+    }
+  }, [highlightId, records]); // records 変更時にも再チェック（初期ロード後）
 
   const handleClear = useCallback(async () => {
     // 全件削除（確認付き）
@@ -198,21 +217,36 @@ export default function IncidentHistoryList({
             </TableRow>
           </TableHead>
           <TableBody>
-            {display.map((record) => (
+            {display.map((record) => {
+              const isHighlighted = highlightId != null && record.id === highlightId;
+              return (
               <TableRow
                 key={record.id}
+                ref={isHighlighted ? highlightRowRef : undefined}
                 hover
                 sx={{
-                  borderLeft: record.severity === '重大インシデント'
+                  borderLeft: isHighlighted
                     ? '3px solid'
-                    : record.severity === '高'
+                    : record.severity === '重大インシデント'
                       ? '3px solid'
-                      : 'none',
-                  borderLeftColor: record.severity === '重大インシデント'
-                    ? 'error.main'
-                    : record.severity === '高'
-                      ? 'warning.main'
-                      : 'transparent',
+                      : record.severity === '高'
+                        ? '3px solid'
+                        : 'none',
+                  borderLeftColor: isHighlighted
+                    ? 'warning.main'
+                    : record.severity === '重大インシデント'
+                      ? 'error.main'
+                      : record.severity === '高'
+                        ? 'warning.main'
+                        : 'transparent',
+                  ...(isHighlighted && {
+                    bgcolor: 'rgba(237, 108, 2, 0.08)',
+                    animation: 'highlightFadeIn 0.6s ease-out',
+                    '@keyframes highlightFadeIn': {
+                      '0%': { bgcolor: 'rgba(237, 108, 2, 0.20)' },
+                      '100%': { bgcolor: 'rgba(237, 108, 2, 0.08)' },
+                    },
+                  }),
                 }}
               >
                 <TableCell>
@@ -256,7 +290,8 @@ export default function IncidentHistoryList({
                   )}
                 </TableCell>
               </TableRow>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>

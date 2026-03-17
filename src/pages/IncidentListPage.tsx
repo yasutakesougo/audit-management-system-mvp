@@ -14,7 +14,7 @@ import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import IncidentHistoryList from '@/features/safety/components/IncidentHistoryList';
@@ -27,13 +27,6 @@ export default function IncidentListPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const highlightId = searchParams.get('incidentId');
-
-  // ハイライト対象の ref（将来のスクロール対応用）
-  const highlightRef = useRef<string | null>(highlightId);
-
-  useEffect(() => {
-    highlightRef.current = highlightId;
-  }, [highlightId]);
 
   const handleBack = useCallback(() => {
     navigate(-1);
@@ -84,7 +77,7 @@ export default function IncidentListPage() {
         )}
 
         {/* ── Incident List ────────────────────── */}
-        <IncidentHistoryList />
+        <IncidentHistoryList highlightId={highlightId} />
       </Stack>
     </Container>
   );
