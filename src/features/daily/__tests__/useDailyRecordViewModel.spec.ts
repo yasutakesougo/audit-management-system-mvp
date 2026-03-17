@@ -4,8 +4,8 @@ import { useDailyRecordViewModel } from '../lists/useDailyRecordViewModel';
 
 type PersonDaily = {
   id: number;
-  personName: string;
-  personId: string;
+  userName: string;
+  userId: string;
   status: string;
   date: string;
   draft: { isDraft: boolean };
@@ -15,9 +15,9 @@ function createDeps(
   overrides?: Partial<Parameters<typeof useDailyRecordViewModel<PersonDaily>>[0]>,
 ) {
   const records: PersonDaily[] = [
-    { id: 1, personName: '山田 太郎', personId: 'U001', status: 'open', date: '2026-02-07', draft: { isDraft: false } },
-    { id: 2, personName: '佐藤 花子', personId: 'U002', status: 'done', date: '2026-02-06', draft: { isDraft: false } },
-    { id: 3, personName: '鈴木 次郎', personId: 'U003', status: 'open', date: '2026-02-06', draft: { isDraft: true } },
+    { id: 1, userName: '山田 太郎', userId: 'U001', status: 'open', date: '2026-02-07', draft: { isDraft: false } },
+    { id: 2, userName: '佐藤 花子', userId: 'U002', status: 'done', date: '2026-02-06', draft: { isDraft: false } },
+    { id: 3, userName: '鈴木 次郎', userId: 'U003', status: 'open', date: '2026-02-06', draft: { isDraft: true } },
   ];
 
   const deps: Parameters<typeof useDailyRecordViewModel<PersonDaily>>[0] = {
@@ -35,8 +35,8 @@ function createDeps(
     mockUsers: ['山田 太郎', '佐藤 花子', '鈴木 次郎'],
     createMissingRecord: vi.fn((name, userId, date, index) => ({
       id: Date.now() + index,
-      personId: userId,
-      personName: name,
+      userId: userId,
+      userName: name,
       date,
       status: '未作成',
       draft: { isDraft: true },
@@ -71,6 +71,6 @@ describe('useDailyRecordViewModel', () => {
 
     const list = result.current.filteredRecords as PersonDaily[];
     expect(list).toHaveLength(1);
-    expect(list[0].personId).toBe('U002');
+    expect(list[0].userId).toBe('U002');
   });
 });

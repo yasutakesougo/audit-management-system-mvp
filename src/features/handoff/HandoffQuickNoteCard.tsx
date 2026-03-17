@@ -52,6 +52,15 @@ export const HandoffQuickNoteCard: React.FC = () => {
   const { createHandoff } = useHandoffTimeline();
   const { data: users } = useUsersDemo();
 
+  // UserRelation: O(1) ルックアップ
+  const userLookup = useMemo(() => {
+    const map = new Map<string, IUserMaster>();
+    for (const u of users) {
+      map.set(u.UserID.toString(), u);
+    }
+    return map;
+  }, [users]);
+
   const [target, setTarget] = useState<TargetOption>('ALL');
   const [category, setCategory] = useState<HandoffCategory>('体調');
   const [severity, setSeverity] = useState<HandoffSeverity>('通常');
@@ -157,7 +166,7 @@ export const HandoffQuickNoteCard: React.FC = () => {
                 if (value === 'ALL') {
                   setTarget('ALL');
                 } else {
-                  const user = users.find(u => u.UserID.toString() === value);
+                  const user = userLookup.get(value);
                   if (user) setTarget(user);
                 }
               }}

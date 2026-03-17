@@ -4,6 +4,7 @@ type MenuSectionKey =
   | 'create-user'
   | 'basic'
   | 'support-plan'
+  | 'timeline'
   | 'service-records'
   | 'support-procedure'
   | 'assessment'

@@ -14,7 +14,7 @@
 
 import { z } from 'zod';
 import type { UserSnapshot } from '@/domain/user';
-import { toUserSnapshot } from '@/domain/user/userRelation';
+import { buildRequiredUserSnapshot } from '@/domain/user/buildRequiredUserSnapshot';
 
 export const severityValues = ['低', '中', '高', '重大インシデント'] as const;
 export type RiskSeverity = (typeof severityValues)[number];
@@ -171,7 +171,7 @@ export function buildIncidentCreateInput(
 
   return {
     ...base,
-    userSnapshot: toUserSnapshot(targetUser),
+    userSnapshot: buildRequiredUserSnapshot(targetUser, draft.userId),
   };
 }
 
