@@ -18,10 +18,12 @@ import React from 'react';
 
 // ── MUI ──
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import HistoryIcon from '@mui/icons-material/History';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
 import SendIcon from '@mui/icons-material/Send';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import Accordion from '@mui/material/Accordion';
@@ -130,6 +132,31 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
             </Stack>
           </Box>
         )}
+
+        {/* Section: Summary & Prompts */}
+        <Box sx={{ p: 2, bgcolor: 'primary.50', borderBottom: '1px solid', borderColor: 'divider' }}>
+          <Stack spacing={0.5} sx={{ mb: 1 }}>
+            <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <AutoAwesomeIcon fontSize="small" sx={{ fontSize: 16 }} /> コンテキスト要約
+            </Typography>
+            <Typography variant="body2" sx={{ lineHeight: 1.6, fontSize: '0.85rem' }}>
+              {data.summary}
+            </Typography>
+          </Stack>
+
+          <Stack spacing={0.5}>
+            <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}>
+              <LightbulbOutlinedIcon fontSize="small" sx={{ fontSize: 16 }} /> 今回の入力で確認したいこと
+            </Typography>
+            <Stack spacing={0.5}>
+              {data.prompts.map((prompt, i) => (
+                <Typography key={i} variant="body2" sx={{ fontSize: '0.8rem', bgcolor: 'background.paper', p: 1, borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+                  {prompt}
+                </Typography>
+              ))}
+            </Stack>
+          </Stack>
+        </Box>
 
         {/* Section 2: Support Plan */}
         <ContextAccordion
