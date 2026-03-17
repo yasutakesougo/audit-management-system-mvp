@@ -70,6 +70,7 @@ export const APP_ROUTE_PATHS = [
   'admin/csv-import',
   'admin/mode-switch',
   'admin/regulatory-dashboard',
+  'admin/planner-assist/metrics',
   'schedule',
   'schedule/*',
   'schedules',

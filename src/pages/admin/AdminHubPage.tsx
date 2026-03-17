@@ -10,6 +10,7 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import GavelIcon from '@mui/icons-material/Gavel';
+import InsightsIcon from '@mui/icons-material/Insights';
 import SecurityIcon from '@mui/icons-material/Security';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import StorageIcon from '@mui/icons-material/Storage';
@@ -70,6 +71,13 @@ const ADMIN_TOOLS: AdminTool[] = [
     description: '委員会・指針・研修の適正化運用状況',
     to: '/admin/compliance-dashboard',
     icon: <SecurityIcon />,
+    category: 'overview',
+  },
+  {
+    label: '支援品質アシスト利用状況',
+    description: 'プランナーアシストの利用状況と効果指標',
+    to: '/admin/planner-assist/metrics',
+    icon: <InsightsIcon />,
     category: 'overview',
   },
   // Data
