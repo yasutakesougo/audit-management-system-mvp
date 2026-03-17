@@ -104,7 +104,9 @@
     "perf:summary": "node scripts/report.mjs",
     "perf:report": "sh -c 'npm run -s perf:check; status=$?; npm run -s perf:summary; exit $status'",
     "ci:perf-report": "sh -c 'npm run -s perf:check; status=$?; npm run -s perf:summary; if [ $status -ne 0 ]; then NOTIFY_LAST_EXIT_CODE=$status npm run -s notify -- --only-on-fail --title \"Perf Budget / Lighthouse\" --files reports/perf-summary.md; exit $status; fi'",
-    "release": ".github/scripts/release.sh"
+    "release": ".github/scripts/release.sh",
+    "patrol": "node scripts/ops/nightly-patrol.mjs",
+    "patrol:dashboard": "node scripts/ops/os-metrics.mjs"
   },
   "dependencies": {
     "@azure/msal-browser": "^3.30.0",
