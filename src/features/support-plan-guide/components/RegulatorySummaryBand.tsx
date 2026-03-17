@@ -1,122 +1,144 @@
 /**
- * RegulatorySummaryBand — SupportPlanGuidePage 上部の制度サマリー帯
+ * RegulatorySummaryBand — 制度適合 HUD 信号灯帯
  *
- * SupportPlanBundle のデータを使って、
- * ISP ステータス・シート数・Iceberg 分析件数・実施記録数・
- * 直近モニタリング・再分析推奨を表示する。
+ * P2-B: 制度状態を信号灯（🟢 OK / 🟡 注意 / 🔴 未対応）で可視化し、
+ * クリックで該当タブへ遷移できる。
  *
- * この帯が表示されることで、支援者はシートを開く前に
- * 「制度的にどういう状況か」をひと目で把握できる。
+ * 判定ロジックは domain/regulatoryHud.ts の純関数に完全分離。
+ * このコンポーネントは受け取った HudItem[] を表示するだけ。
  */
 import React, { useMemo } from 'react';
-import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
-import Divider from '@mui/material/Divider';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
+import Box from '@mui/material/Box';
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
-import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
-import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
-import EventNoteRoundedIcon from '@mui/icons-material/EventNoteRounded';
-import PsychologyRoundedIcon from '@mui/icons-material/PsychologyRounded';
-import { ISP_STATUS_DISPLAY } from '@/domain/isp/schema';
-import type { IspStatus, SupportPlanBundle } from '@/domain/isp/schema';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
+import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded';
+import type { IspComplianceMetadata, SupportPlanBundle } from '@/domain/isp/schema';
+import type { DeadlineInfo, SectionKey } from '../types';
+import {
+  buildRegulatoryHudItems,
+  worstSignal,
+  signalCounts,
+  type RegulatoryHudInput,
+  type RegulatoryHudItem,
+  type RegulatorySignal,
+} from '../domain/regulatoryHud';
+
+// ────────────────────────────────────────────
+// 信号灯の色マッピング
+// ────────────────────────────────────────────
+
+const SIGNAL_CHIP_COLOR: Record<RegulatorySignal, 'success' | 'warning' | 'error'> = {
+  ok: 'success',
+  warning: 'warning',
+  danger: 'error',
+};
+
+const SIGNAL_ICON: Record<RegulatorySignal, React.ReactElement> = {
+  ok: <CheckCircleRoundedIcon />,
+  warning: <WarningAmberRoundedIcon />,
+  danger: <ErrorRoundedIcon />,
+};
+
+const SIGNAL_EMOJI: Record<RegulatorySignal, string> = {
+  ok: '🟢',
+  warning: '🟡',
+  danger: '🔴',
+};
+
+// ────────────────────────────────────────────
+// Props
+// ────────────────────────────────────────────
 
 type RegulatorySummaryBandProps = {
   bundle: SupportPlanBundle;
+  /** 制度適合メタデータ（コンプライアンスタブの入力データ） */
+  compliance?: IspComplianceMetadata | null;
+  /** 期限情報 */
+  deadlines?: {
+    creation: DeadlineInfo;
+    monitoring: DeadlineInfo;
+  };
+  /** Iceberg 分析件数の合計 */
+  icebergTotal?: number;
+  /** HUD チップクリック時に該当タブへ遷移するコールバック */
+  onNavigateToTab?: (sub: SectionKey) => void;
 };
 
-/**
- * 再分析推奨かどうかを判定する。
- *
- * ルール:
- * - latestMonitoring.planChangeRequired === true → 推奨
- * - latestMonitoring がない → 推奨
- * - latestMonitoring が 180 日以上前 → 推奨
- */
-function shouldRecommendReanalysis(
-  monitoring: SupportPlanBundle['latestMonitoring'],
-): boolean {
-  if (!monitoring) return true;
-  if (monitoring.planChangeRequired) return true;
+// ────────────────────────────────────────────
+// Component
+// ────────────────────────────────────────────
 
-  const monitoringDate = new Date(monitoring.date);
-  const daysSince = Math.floor(
-    (Date.now() - monitoringDate.getTime()) / (1000 * 60 * 60 * 24),
-  );
-  return daysSince >= 180;
-}
-
-/**
- * 実施記録の総数を集計する。
- */
-function totalRecordCount(countBySheet?: Record<string, number>): number {
-  if (!countBySheet) return 0;
-  return Object.values(countBySheet).reduce((a, b) => a + b, 0);
-}
-
-/**
- * ISP ステータスのラベルを返す。
- * ISP_STATUS_DISPLAY に存在しない場合はそのまま返す。
- */
-function ispStatusLabel(status: IspStatus): string {
-  return ISP_STATUS_DISPLAY[status] ?? status;
-}
-
-export const RegulatorySummaryBand: React.FC<RegulatorySummaryBandProps> = ({ bundle }) => {
+export const RegulatorySummaryBand: React.FC<RegulatorySummaryBandProps> = ({
+  bundle,
+  compliance = null,
+  deadlines,
+  icebergTotal: icebergTotalProp,
+  onNavigateToTab,
+}) => {
+  // fallback: bundle から Iceberg 件数を算出
   const icebergTotal = useMemo(() => {
+    if (icebergTotalProp != null) return icebergTotalProp;
     if (!bundle.icebergCountBySheet) return 0;
     return Object.values(bundle.icebergCountBySheet).reduce((a, b) => a + b, 0);
-  }, [bundle.icebergCountBySheet]);
+  }, [icebergTotalProp, bundle.icebergCountBySheet]);
 
-  const recordTotal = useMemo(
-    () => totalRecordCount(bundle.procedureRecordCountBySheet),
-    [bundle.procedureRecordCountBySheet],
+  // fallback: deadlines がない場合はデフォルト
+  const resolvedDeadlines = useMemo(
+    () =>
+      deadlines ?? {
+        creation: { label: '作成期限', color: 'default' as const },
+        monitoring: { label: 'モニタ期限', color: 'default' as const },
+      },
+    [deadlines],
   );
 
-  const needsReanalysis = useMemo(
-    () => shouldRecommendReanalysis(bundle.latestMonitoring),
-    [bundle.latestMonitoring],
+  // HUD 項目を生成
+  const hudInput: RegulatoryHudInput = useMemo(
+    () => ({
+      ispStatus: bundle.isp.status,
+      compliance,
+      deadlines: resolvedDeadlines,
+      latestMonitoring: bundle.latestMonitoring,
+      icebergTotal,
+    }),
+    [bundle.isp.status, compliance, resolvedDeadlines, bundle.latestMonitoring, icebergTotal],
   );
 
-  const nextReview = bundle.isp.nextReviewAt;
-  const daysUntilReview = useMemo(() => {
-    if (!nextReview) return null;
-    const due = new Date(nextReview);
-    const now = new Date();
-    return Math.floor((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  }, [nextReview]);
+  const hudItems = useMemo(() => buildRegulatoryHudItems(hudInput), [hudInput]);
+  const worst = useMemo(() => worstSignal(hudItems), [hudItems]);
+  const counts = useMemo(() => signalCounts(hudItems), [hudItems]);
 
-  const sheetCount = bundle.planningSheetCount ?? 0;
+  // ── バンドのボーダー色 ──
+  const borderColorMap: Record<RegulatorySignal, string> = {
+    ok: 'success.main',
+    warning: 'warning.main',
+    danger: 'error.main',
+  };
 
   return (
     <Paper
       variant="outlined"
       data-testid="regulatory-summary-band"
       sx={{
-        p: { xs: 1.5, md: 2 },
+        px: { xs: 1.5, md: 2 },
+        py: { xs: 1, md: 1.25 },
         background: (theme) =>
           theme.palette.mode === 'dark'
             ? 'linear-gradient(135deg, rgba(30,60,90,0.5) 0%, rgba(20,40,60,0.5) 100%)'
             : 'linear-gradient(135deg, rgba(232,245,255,0.8) 0%, rgba(240,248,255,0.9) 100%)',
-        borderColor: (theme) =>
-          needsReanalysis
-            ? theme.palette.warning.main
-            : theme.palette.divider,
+        borderColor: borderColorMap[worst],
+        borderWidth: worst === 'ok' ? 1 : 2,
+        transition: 'border-color 0.3s ease',
       }}
     >
-      <Stack spacing={1.5}>
+      <Stack spacing={0.75}>
         {/* ── ヘッダー行 ── */}
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <AssessmentRoundedIcon fontSize="small" color="primary" />
-          <Typography variant="subtitle2" fontWeight={600}>
-            制度サマリー
-          </Typography>
-        </Stack>
-
-        {/* ── チップ行: メイン指標 ── */}
         <Stack
           direction="row"
           spacing={1}
@@ -124,128 +146,98 @@ export const RegulatorySummaryBand: React.FC<RegulatorySummaryBandProps> = ({ bu
           useFlexGap
           alignItems="center"
         >
-          {/* ISP ステータス */}
-          <Chip
-            size="small"
-            variant="outlined"
-            label={`ISP: ${ispStatusLabel(bundle.isp.status)}`}
-            color="primary"
-          />
+          <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mr: 0.5 }}>
+            <AssessmentRoundedIcon sx={{ fontSize: 16 }} color="primary" />
+            <Typography variant="body2" fontWeight={600} sx={{ whiteSpace: 'nowrap' }}>
+              制度サマリー
+            </Typography>
+          </Stack>
 
-          {/* シート数 */}
-          <Chip
-            size="small"
-            variant="outlined"
-            icon={<DescriptionRoundedIcon />}
-            label={`シート: ${sheetCount}件`}
-          />
-
-          {/* Iceberg 分析件数 */}
-          <Chip
-            size="small"
-            variant="outlined"
-            icon={<PsychologyRoundedIcon />}
-            label={`Iceberg分析: ${icebergTotal}件`}
-          />
-
-          {/* 実施記録数 */}
-          <Chip
-            size="small"
-            variant="outlined"
-            icon={<EditNoteRoundedIcon />}
-            label={`実施記録: ${recordTotal}件`}
-            color={recordTotal === 0 ? 'warning' : 'default'}
-          />
-
-          {/* 次回見直し */}
-          {nextReview && (
-            <Chip
-              size="small"
-              variant="outlined"
-              icon={<EventNoteRoundedIcon />}
-              label={`次回見直し: ${nextReview}${daysUntilReview != null ? ` (${daysUntilReview}日後)` : ''}`}
-              color={daysUntilReview != null && daysUntilReview <= 30 ? 'warning' : 'default'}
-            />
-          )}
+          {/* サマリーバッジ */}
+          <Box
+            sx={{
+              px: 1,
+              py: 0.25,
+              borderRadius: 1,
+              bgcolor: `${borderColorMap[worst]}`,
+              color: 'white',
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              lineHeight: 1.4,
+              minWidth: 'auto',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 0.5,
+            }}
+          >
+            {counts.danger > 0 && `${SIGNAL_EMOJI.danger} ${counts.danger}`}
+            {counts.warning > 0 && ` ${SIGNAL_EMOJI.warning} ${counts.warning}`}
+            {counts.danger === 0 && counts.warning === 0 && `${SIGNAL_EMOJI.ok} すべて完了`}
+          </Box>
         </Stack>
 
-        {/* ── チップ行: ステータス指標 ── */}
-        <Divider sx={{ opacity: 0.5 }} />
+        {/* ── 信号灯チップ一覧 ── */}
         <Stack
           direction="row"
-          spacing={1}
+          spacing={0.75}
           flexWrap="wrap"
           useFlexGap
           alignItems="center"
         >
-          {/* 直近モニタリング */}
-          {bundle.latestMonitoring ? (
-            <Chip
-              size="small"
-              variant="outlined"
-              label={`直近モニタリング: ${bundle.latestMonitoring.date}`}
-              color={bundle.latestMonitoring.planChangeRequired ? 'warning' : 'success'}
-            />
-          ) : (
-            <Chip
-              size="small"
-              variant="filled"
-              label="モニタリング未実施"
-              color="warning"
-            />
-          )}
-
-          {/* 直近実施日 */}
-          {bundle.lastProcedureRecordDate && (
-            <Chip
-              size="small"
-              variant="outlined"
-              label={`最終実施: ${bundle.lastProcedureRecordDate}`}
-              color="default"
-            />
-          )}
-
-          {/* 再分析推奨 */}
-          {needsReanalysis && (
-            <Chip
-              size="small"
-              variant="filled"
-              icon={<WarningAmberRoundedIcon />}
-              label="再分析推奨"
-              color="warning"
-            />
-          )}
+          {hudItems.map((item) => (
+            <HudChip key={item.key} item={item} onNavigateToTab={onNavigateToTab} />
+          ))}
         </Stack>
-
-        {/* ── シートごとの内訳（3件以上ある場合） ── */}
-        {bundle.icebergCountBySheet && Object.keys(bundle.icebergCountBySheet).length > 0 && (
-          <>
-            <Divider sx={{ opacity: 0.5 }} />
-            <Box>
-              <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ mb: 0.5, display: 'block' }}>
-                シート別内訳
-              </Typography>
-              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                {Object.entries(bundle.icebergCountBySheet).map(([sheetId, count]) => {
-                  const recordCount = bundle.procedureRecordCountBySheet?.[sheetId] ?? 0;
-                  return (
-                    <Chip
-                      key={sheetId}
-                      size="small"
-                      variant="outlined"
-                      label={`${sheetId.slice(0, 8)}… — 分析${count} / 記録${recordCount}`}
-                      sx={{ fontSize: '0.7rem' }}
-                    />
-                  );
-                })}
-              </Stack>
-            </Box>
-          </>
-        )}
       </Stack>
     </Paper>
   );
 };
 
+// ────────────────────────────────────────────
+// 個別チップ
+// ────────────────────────────────────────────
+
+const HudChip: React.FC<{
+  item: RegulatoryHudItem;
+  onNavigateToTab?: (sub: SectionKey) => void;
+}> = ({ item, onNavigateToTab }) => {
+  const chipColor = SIGNAL_CHIP_COLOR[item.signal];
+  const chipIcon = SIGNAL_ICON[item.signal];
+  const isClickable = !!item.navigateTo && !!onNavigateToTab;
+
+  const chip = (
+    <Chip
+      size="small"
+      variant={item.signal === 'ok' ? 'outlined' : 'filled'}
+      color={chipColor}
+      icon={chipIcon}
+      label={item.label}
+      data-testid={`hud-chip-${item.key}`}
+      onClick={isClickable ? () => onNavigateToTab!(item.navigateTo!) : undefined}
+      sx={{
+        cursor: isClickable ? 'pointer' : 'default',
+        fontWeight: item.signal === 'danger' ? 700 : 500,
+        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+        '&:hover': isClickable
+          ? {
+              transform: 'translateY(-1px)',
+              boxShadow: 1,
+            }
+          : undefined,
+      }}
+    />
+  );
+
+  if (item.detail) {
+    return (
+      <Tooltip title={item.detail} arrow placement="bottom">
+        {chip}
+      </Tooltip>
+    );
+  }
+
+  return chip;
+};
+
 /** テスト用 export */
-export { shouldRecommendReanalysis, totalRecordCount };
+export { buildRegulatoryHudItems, worstSignal };

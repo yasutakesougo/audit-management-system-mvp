@@ -360,3 +360,8 @@ export const TAB_SECTIONS = TAB_ORDER.map((key) => ({
   key,
   label: findSection(key)?.label ?? key,
 }));
+
+// ── group.sub ルーティング (P1.5 SSOT) ──
+// P1-B で UI 層が TAB_GROUPS を直接参照するための re-export
+export { TAB_GROUPS, getAllSubsFlat } from '../domain/tabRoute';
+export type { TabGroupKey, TabGroupDef, SupportPlanTabRoute } from '../domain/tabRoute';

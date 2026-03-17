@@ -4,11 +4,32 @@
  * buildMarkdown() を SupportPlanGuidePage.tsx から抽出。
  *
  * Phase 5: form.goals (GoalItem[]) のみを出力ソースとする。
+ * Phase P2-A: buildSupportPlanMarkdown() で compliance / deadline を統合。
  */
 import type { GoalItem } from '@/features/shared/goal/goalTypes';
-import type { SupportPlanForm } from '../types';
+import type { IspComplianceMetadata } from '@/domain/isp/schema';
+import type { DeadlineInfo, SupportPlanForm } from '../types';
 
-// ── Goal → Markdown 変換ヘルパー ──
+// ────────────────────────────────────────────
+// Export Model
+// ────────────────────────────────────────────
+
+/** Markdown / PDF 出力用の統合モデル */
+export type SupportPlanExportModel = {
+  /** フォームデータ */
+  form: SupportPlanForm;
+  /** コンプライアンスメタデータ（null = 未設定） */
+  compliance: IspComplianceMetadata | null;
+  /** 期限情報 */
+  deadlines: {
+    creation: DeadlineInfo;
+    monitoring: DeadlineInfo;
+  };
+};
+
+// ────────────────────────────────────────────
+// Goal → Markdown 変換ヘルパー
+// ────────────────────────────────────────────
 
 /** GoalItem[] を type でフィルタし、箇条書き Markdown 行を生成する */
 function goalsToLines(goals: GoalItem[] | undefined, type: GoalItem['type']): string[] {
@@ -21,8 +42,14 @@ function goalsToLines(goals: GoalItem[] | undefined, type: GoalItem['type']): st
   });
 }
 
-export const buildMarkdown = (form: SupportPlanForm) => {
-  // ── 目標セクション: goals のみ ──
+// ────────────────────────────────────────────
+// Form → Sections (共通ロジック)
+// ────────────────────────────────────────────
+
+type MdSection = { title: string; lines: string[] };
+
+/** フォームデータからセクション一覧を構築する（form 部分のみ） */
+function buildFormSections(form: SupportPlanForm): MdSection[] {
   const longGoalLines = goalsToLines(form.goals, 'long');
   const shortGoalLines = goalsToLines(form.goals, 'short');
   const supportGoalLines = goalsToLines(form.goals, 'support');
@@ -32,7 +59,7 @@ export const buildMarkdown = (form: SupportPlanForm) => {
     ...(shortGoalLines.length > 0 ? ['### 短期目標', ...shortGoalLines] : []),
   ];
 
-  const sections: Array<{ title: string; lines: string[] }> = [
+  return [
     {
       title: '基本情報',
       lines: [
@@ -83,16 +110,134 @@ export const buildMarkdown = (form: SupportPlanForm) => {
       lines: [form.improvementIdeas && form.improvementIdeas].filter(Boolean) as string[],
     },
   ];
+}
 
-  const sectionsBody = sections
+/** セクション配列を Markdown 文字列にレンダリングする */
+function renderSections(sections: MdSection[]): string {
+  return sections
     .map((section) => {
-      if (section.lines.length === 0) {
-        return '';
-      }
+      if (section.lines.length === 0) return '';
       return `## ${section.title}\n${section.lines.join('\n')}`;
     })
     .filter(Boolean)
     .join('\n\n');
+}
 
-  return sectionsBody ? `# 個別支援計画書ドラフト\n\n${sectionsBody}\n` : '# 個別支援計画書ドラフト\n';
+// ────────────────────────────────────────────
+// Compliance → Markdown セクション
+// ────────────────────────────────────────────
+
+/** ISO 8601 日付文字列を日本語日付に変換 */
+function formatIsoDate(iso: string | null | undefined): string {
+  if (!iso) return '未入力';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '未入力';
+    return d.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  } catch {
+    return '未入力';
+  }
+}
+
+/** コンプライアンスデータから Markdown セクションを構築 */
+function buildComplianceSection(compliance: IspComplianceMetadata | null): MdSection {
+  if (!compliance) {
+    return { title: '制度適合（コンプライアンス）', lines: [] };
+  }
+
+  const { consent, delivery, approval } = compliance;
+  const lines: string[] = [];
+
+  // 同意記録
+  lines.push('### 同意記録');
+  lines.push(`- 説明実施日: ${formatIsoDate(consent.explainedAt)}`);
+  if (consent.explainedBy) lines.push(`- 説明実施者: ${consent.explainedBy}`);
+  lines.push(`- 同意取得日: ${formatIsoDate(consent.consentedAt)}`);
+  if (consent.consentedBy) lines.push(`- 同意者: ${consent.consentedBy}`);
+  if (consent.proxyName) {
+    lines.push(`- 代理人: ${consent.proxyName}${consent.proxyRelation ? `（${consent.proxyRelation}）` : ''}`);
+  }
+  if (consent.notes) lines.push(`- 備考: ${consent.notes}`);
+
+  // 交付記録
+  lines.push('### 交付記録');
+  lines.push(`- 交付日: ${formatIsoDate(delivery.deliveredAt)}`);
+  lines.push(`- 本人への交付: ${delivery.deliveredToUser ? '✓ 済' : '✗ 未'}`);
+  lines.push(`- 相談支援専門員への交付: ${delivery.deliveredToConsultationSupport ? '✓ 済' : '✗ 未'}`);
+  if (delivery.deliveryMethod) lines.push(`- 交付方法: ${delivery.deliveryMethod}`);
+  if (delivery.notes) lines.push(`- 備考: ${delivery.notes}`);
+
+  // 承認記録
+  lines.push('### 承認記録');
+  lines.push(`- ステータス: ${approval.approvalStatus === 'approved' ? '✓ 承認済み' : '下書き'}`);
+  if (approval.approvedBy) lines.push(`- 承認者: ${approval.approvedBy}`);
+  if (approval.approvedAt) lines.push(`- 承認日時: ${formatIsoDate(approval.approvedAt)}`);
+
+  return { title: '制度適合（コンプライアンス）', lines };
+}
+
+// ────────────────────────────────────────────
+// Deadline → Markdown セクション
+// ────────────────────────────────────────────
+
+/** DeadlineInfo の色をステータス文字列に変換 */
+function deadlineStatus(info: DeadlineInfo): string {
+  if (info.daysLeft === undefined || !info.date) return '未設定';
+  if (info.daysLeft < 0) return `⚠ ${Math.abs(info.daysLeft)}日超過`;
+  if (info.daysLeft === 0) return '⚠ 本日期限';
+  return `残り ${info.daysLeft}日`;
+}
+
+/** 期限情報から Markdown セクションを構築 */
+function buildDeadlineSection(deadlines: SupportPlanExportModel['deadlines']): MdSection {
+  const { creation, monitoring } = deadlines;
+  const lines: string[] = [];
+
+  // 作成期限
+  const creationDate = creation.date
+    ? creation.date.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' })
+    : '未設定';
+  lines.push(`- ${creation.label}: ${creationDate}（${deadlineStatus(creation)}）`);
+
+  // モニタ期限
+  const monitoringDate = monitoring.date
+    ? monitoring.date.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' })
+    : '未設定';
+  lines.push(`- ${monitoring.label}: ${monitoringDate}（${deadlineStatus(monitoring)}）`);
+
+  return { title: '期限管理', lines };
+}
+
+// ────────────────────────────────────────────
+// Public API
+// ────────────────────────────────────────────
+
+/**
+ * @deprecated P2-A: buildSupportPlanMarkdown() を使用してください。
+ * 後方互換のため残しています。
+ */
+export const buildMarkdown = (form: SupportPlanForm): string => {
+  const sections = buildFormSections(form);
+  const body = renderSections(sections);
+  return body ? `# 個別支援計画書ドラフト\n\n${body}\n` : '# 個別支援計画書ドラフト\n';
+};
+
+/**
+ * P2-A: ExportModel から Markdown を生成する。
+ *
+ * form + compliance + deadlines を統合して出力。
+ */
+export const buildSupportPlanMarkdown = (model: SupportPlanExportModel): string => {
+  const formSections = buildFormSections(model.form);
+  const complianceSection = buildComplianceSection(model.compliance);
+  const deadlineSection = buildDeadlineSection(model.deadlines);
+
+  const allSections = [
+    ...formSections,
+    complianceSection,
+    deadlineSection,
+  ];
+
+  const body = renderSections(allSections);
+  return body ? `# 個別支援計画書ドラフト\n\n${body}\n` : '# 個別支援計画書ドラフト\n';
 };

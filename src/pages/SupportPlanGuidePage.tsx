@@ -27,8 +27,9 @@ import {
 } from '@/features/support-plan-guide/types';
 import {
     computeRequiredCompletion,
-    TAB_SECTIONS,
 } from '@/features/support-plan-guide/utils/helpers';
+import { getAllSubsFlat } from '@/features/support-plan-guide/domain/tabRoute';
+import SupportPlanTabHeader from '@/features/support-plan-guide/components/SupportPlanTabHeader';
 import { useUsersStore } from '@/features/users/store';
 import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { PREFETCH_KEYS, prefetchByKey, warmRoute } from '@/prefetch/routes';
@@ -44,8 +45,6 @@ import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
-import Tab from '@mui/material/Tab';
-import Tabs from '@mui/material/Tabs';
 import Tooltip from '@mui/material/Tooltip';
 
 import React, { Suspense } from 'react';
@@ -129,6 +128,7 @@ export default function SupportPlanGuidePage() {
     activeDraft,
     form,
     markdown,
+    deadlines,
     auditAlertCount,
     filledCount,
     completionPercent,
@@ -340,8 +340,8 @@ export default function SupportPlanGuidePage() {
   const { currentSheet: _currentSheet, allCurrentSheets: _allCurrentSheets, isLoading: _isLoadingSheets } = useCurrentPlanningSheet(regulatoryUserId, planningSheetRepo);
 
   return (
-    <Box sx={{ p: { xs: 2, md: 3 }, pb: 4 }}>
-      <Stack spacing={3}>
+    <Box sx={{ p: { xs: 1.5, md: 2 }, pb: 4 }}>
+      <Stack spacing={2}>
         {!isAdmin && (
           <Alert severity="info" sx={{ mb: 1 }}>
             このページは閲覧のみです。編集・保存は管理者（サビ管）権限が必要です。
@@ -355,16 +355,20 @@ export default function SupportPlanGuidePage() {
               bundle={regulatoryBundle}
               linkedUserId={linkedUserId}
               onNavigate={(url) => navigate(url)}
+              compliance={complianceForm.compliance}
+              deadlines={deadlines}
+              icebergTotal={icebergEvidence?.sessionCount ? Object.values(icebergEvidence.sessionCount).reduce((a, b) => a + b, 0) : undefined}
+              onNavigateToTab={setActiveTab}
             />
           </Suspense>
         )}
 
         <Paper
           variant="outlined"
-          sx={{ p: { xs: 2, md: 3 } }}
+          sx={{ px: { xs: 1.5, md: 2 }, py: { xs: 1, md: 1.25 } }}
           {...tid(TESTIDS['support-plan-hud'])}
         >
-          <Stack spacing={1.5}>
+          <Stack spacing={0.75}>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               {draftList.length > 0 ? (
                 draftList.map(getDraftProgressChip)
@@ -429,27 +433,14 @@ export default function SupportPlanGuidePage() {
           </Stack>
         </Paper>
 
-        <Paper variant="outlined" sx={{ p: { xs: 1, md: 2 } }}>
-          <Tabs
-            value={activeTab}
-            onChange={(_event, nextValue) => setActiveTab(nextValue as SectionKey)}
-            variant="scrollable"
-            scrollButtons="auto"
-            aria-label="支援計画セクション切り替え"
-          >
-            {TAB_SECTIONS.map((tab) => (
-              <Tab
-                key={tab.key}
-                value={tab.key}
-                label={tab.label}
-                id={`support-plan-tab-${tab.key}`}
-                aria-controls={`support-plan-tabpanel-${tab.key}`}
-              />
-            ))}
-          </Tabs>
-          {TAB_SECTIONS.map((tab) => (
-            <TabPanel key={tab.key} current={activeTab} value={tab.key}>
-              {renderTabContent(tab.key)}
+        <Paper variant="outlined" sx={{ px: { xs: 1, md: 1.5 }, py: { xs: 0.5, md: 1 } }}>
+          <SupportPlanTabHeader
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+          />
+          {getAllSubsFlat().map((sub) => (
+            <TabPanel key={sub} current={activeTab} value={sub}>
+              {renderTabContent(sub)}
             </TabPanel>
           ))}
         </Paper>
