@@ -128,6 +128,7 @@ export const ORPHAN_ALLOWLIST_DETAILS: AllowlistRoute[] = [
   { path: '/admin/mode-switch', category: 'Admin', reason: 'モード切替画面（管理ツールhubからリンク経由）' },
   { path: '/ibd', category: 'Redirect', reason: 'IBD分析へのリダイレクト' },
   { path: '/settings/operation-flow', category: 'Settings', reason: '運営フロー設定（設定画面からリンク経由）' },
+  { path: '/incidents', category: 'Drilldown', reason: 'インシデント管理（日次記録・ダッシュボードからリンク経由）' },
 ].map(item => ({ ...item, path: normalizeRouterPath(item.path) }));
 
 export const ORPHAN_ALLOWLIST = new Set(ORPHAN_ALLOWLIST_DETAILS.map(d => d.path));

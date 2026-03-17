@@ -81,6 +81,7 @@ export interface DailyRecordFormState {
   handlePersonChange: (option: DailyUserOption | null) => void;
   handleAddActivity: (period: 'AM' | 'PM') => void;
   handleRemoveActivity: (period: 'AM' | 'PM', index: number) => void;
+  handleBehaviorTagToggle: (tagKey: string) => void;
   applyProblemBehaviorSuggestion: () => void;
   handleSave: () => Promise<void>;
 
@@ -319,6 +320,16 @@ export function useDailyRecordFormState({
     }));
   };
 
+  const handleBehaviorTagToggle = useCallback((tagKey: string) => {
+    setFormData((prev) => {
+      const current = prev.data.behaviorTags ?? [];
+      const next = current.includes(tagKey)
+        ? current.filter((t: string) => t !== tagKey)
+        : [...current, tagKey];
+      return { ...prev, data: { ...prev.data, behaviorTags: next } };
+    });
+  }, []);
+
   const applyProblemBehaviorSuggestion = () => {
     if (!problemSuggestion) return;
     setFormData((prev) => ({
@@ -393,6 +404,7 @@ export function useDailyRecordFormState({
     handlePersonChange,
     handleAddActivity,
     handleRemoveActivity,
+    handleBehaviorTagToggle,
     applyProblemBehaviorSuggestion,
     handleSave,
     closeConfirmDialog: confirmDialog.dialogProps,

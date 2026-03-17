@@ -15,6 +15,7 @@ import { buildHandoffTimelineUrl } from '@/app/links/navigationLinks';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import GavelIcon from '@mui/icons-material/Gavel';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PersonIcon from '@mui/icons-material/Person';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
@@ -46,6 +47,7 @@ import { DailyRecordFormBehavior } from './DailyRecordFormBehavior';
 import { isProblemBehaviorEmpty, mealOptions } from './dailyRecordFormLogic';
 import { useDailyRecordFormState } from './useDailyRecordFormState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { BehaviorTagChips } from '../components/BehaviorTagChips';
 
 interface DailyRecordFormProps {
   open: boolean;
@@ -268,6 +270,26 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
             problemSuggestion={s.problemSuggestion}
             onApplySuggestion={s.applyProblemBehaviorSuggestion}
           />
+
+          {/* Behavior tags (MVP-004) */}
+          <Paper sx={{ p: 2 }} data-testid="behavior-tags-section">
+            <Typography variant="subtitle1" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+              <LocalOfferIcon sx={{ mr: 1 }} />
+              行動タグ
+              {(s.formData.data.behaviorTags?.length ?? 0) > 0 && (
+                <Chip
+                  label={`${(s.formData.data.behaviorTags ?? []).length}件`}
+                  size="small"
+                  color="primary"
+                  sx={{ ml: 1 }}
+                />
+              )}
+            </Typography>
+            <BehaviorTagChips
+              selectedTags={s.formData.data.behaviorTags ?? []}
+              onToggleTag={s.handleBehaviorTagToggle}
+            />
+          </Paper>
 
           {/* Compliance fields — 法的記録 */}
           <Paper sx={{ p: 2 }}>
