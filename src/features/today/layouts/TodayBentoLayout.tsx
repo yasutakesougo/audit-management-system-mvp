@@ -51,6 +51,7 @@ import { PlanningWorkflowCard, type PlanningWorkflowCardProps } from '../widgets
 import { TodayTasksCard, type TodayTasksCardProps } from '../widgets/TodayTasksCard';
 import { TodayServiceStructureCard } from '../widgets/TodayServiceStructureCard';
 import { UserCompactList, type UserRow } from '../widgets/UserCompactList';
+import { ActionQueueCard, type ActionQueueCardProps } from '../widgets/ActionQueueCard';
 import { TodayPhaseIndicator } from '../widgets/TodayPhaseIndicator';
 
 // ─── Types ───────────────────────────────────────────────────
@@ -81,6 +82,8 @@ export type TodayBentoProps = {
   onPhaseNavigate?: (path: string) => void;
   /** TodayEngine output (optional: widget hidden when undefined) */
   todayTasks?: TodayTasksCardProps;
+  /** 未処理キュー表示 (optional: widget hidden when undefined) */
+  actionQueue?: ActionQueueCardProps;
   /** 支援計画管理カード (optional: hidden when undefined) */
   workflowCard?: PlanningWorkflowCardProps;
   transport: { pending: TransportUser[]; inProgress: TransportUser[]; onArrived: (id: string) => void };
@@ -126,6 +129,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   onNextActionNavigate,
   onPhaseNavigate,
   todayTasks,
+  actionQueue,
   workflowCard,
   transportCard,
   users,
@@ -162,6 +166,17 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
             onNavigate={onNextActionNavigate}
           />
         </BentoCard>
+
+        {/* ── Row 0.3: ActionQueue (未処理キュー — MVP-002) ── */}
+        {actionQueue && (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            variant="default"
+            testId="bento-action-queue"
+          >
+            <ActionQueueCard {...actionQueue} />
+          </BentoCard>
+        )}
 
         {/* ── Row 0.5: TodayTasks (engine-driven focus + summary) ── */}
         {todayTasks && (
