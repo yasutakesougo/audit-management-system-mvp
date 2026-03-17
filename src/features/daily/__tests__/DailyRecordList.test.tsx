@@ -6,8 +6,8 @@ import { DailyRecordList } from '../lists/DailyRecordList';
 // Create a mock record with proper data structure
 const createMockRecord = (overrides = {}): PersonDaily => ({
   id: 1,
-  personId: 'P001',
-  personName: 'テスト太郎',
+  userId: 'P001',
+  userName: 'テスト太郎',
   date: '2025-01-01',
   status: '完了',
   reporter: {

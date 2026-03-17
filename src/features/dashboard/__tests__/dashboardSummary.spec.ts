@@ -19,8 +19,8 @@ const FIXED_DATE = '2025-01-01';
 function createMockPersonDaily(status: '未作成' | '作成中' | '完了' = '未作成', id = 1): PersonDaily {
   return {
     id,
-    personId: 'P001',
-    personName: 'Mock Person',
+    userId: 'P001',
+    userName: 'Mock Person',
     date: FIXED_DATE,
     status,
     reporter: { name: 'Reporter' },

@@ -11,7 +11,7 @@
  * Error handling strategy:
  * - Status normalization: English/Japanese synonyms → Zod validation → fallback to '未作成'
  * - JSON serialization: Size limits + custom error types for troubleshooting
- * - Person/Reporter resolution: Multiple fallback chains to prevent "unknown" records
+ * - User/Reporter resolution: Multiple fallback chains to prevent "unknown" records
  * - Type coercion: Safe parsing with sensible defaults throughout
  */
 
@@ -174,13 +174,13 @@ const coerceReporter = (item: SpDailyItem) => {
   return { name, ...(id ? { id } : {}) };
 };
 
-const coercePerson = (item: SpDailyItem) => {
+const coerceUser = (item: SpDailyItem) => {
   const id = typeof item[DAILY_FIELD_PERSON_ID] === 'string' && item[DAILY_FIELD_PERSON_ID] ? item[DAILY_FIELD_PERSON_ID].trim() : '';
   const name = typeof item.Title === 'string' && item.Title ? item.Title.trim() : '';
   return { id, name };
 };
 
-const coercePersonName = (item: SpDailyItem) => {
+const coerceUserName = (item: SpDailyItem) => {
   const name = typeof item.Title === 'string' && item.Title ? item.Title.trim() : '';
   return name || coerceReporter(item).name;
 };
@@ -212,12 +212,12 @@ export const fromSpItem = (item: SpDailyItem, argKind: 'A' | 'B'): AnyDaily => {
   const storedKind = typeof item[DAILY_FIELD_KIND] === 'string' ? item[DAILY_FIELD_KIND] : undefined;
   const kind: 'A' | 'B' = storedKind === 'A' || storedKind === 'B' ? storedKind : argKind;
 
-  const person = coercePerson(item);
+  const user = coerceUser(item);
 
   const base = {
     id: typeof item.Id === 'number' ? item.Id : Number(item.Id ?? 0) || 0,
-    personId: person.id,
-    personName: coercePersonName(item),
+    userId: user.id,
+    userName: coerceUserName(item),
     date: typeof item[DAILY_FIELD_DATE] === 'string' ? item[DAILY_FIELD_DATE] : '',
     status: coerceStatus(item[DAILY_FIELD_STATUS]),
     reporter: coerceReporter(item),
@@ -250,7 +250,7 @@ export const fromSpItem = (item: SpDailyItem, argKind: 'A' | 'B'): AnyDaily => {
  * - Input validation through AnyDailyZ parsing
  * - Safe JSON serialization of complex fields
  * - Proper null handling for optional reporter ID
- * - Title field population from personName
+ * - Title field population from userName
  *
  * @param daily - Validated domain object
  * @returns SharePoint field mapping ready for SP operations
@@ -260,8 +260,8 @@ export const toSpFields = (daily: AnyDaily): Record<string, unknown> => {
   const reporterId = 'reporter' in parsed && parsed.reporter && 'id' in parsed.reporter ? parsed.reporter.id : undefined;
   const reporterName = parsed.reporter?.name ?? '';
   return {
-    Title: parsed.personName,
-    [DAILY_FIELD_PERSON_ID]: parsed.personId,
+    Title: parsed.userName,
+    [DAILY_FIELD_PERSON_ID]: parsed.userId,
     [DAILY_FIELD_DATE]: parsed.date,
     [DAILY_FIELD_STATUS]: parsed.status,
     [DAILY_FIELD_REPORTER_NAME]: reporterName,
@@ -272,17 +272,17 @@ export const toSpFields = (daily: AnyDaily): Record<string, unknown> => {
   } satisfies Record<string, unknown>;
 };
 
-export const extractPersonFromItem = (item: SpDailyItem) => {
-  const { id, name } = coercePerson(item);
+export const extractUserFromItem = (item: SpDailyItem) => {
+  const { id, name } = coerceUser(item);
   return {
-    personId: id,
-    personName: name,
+    userId: id,
+    userName: name,
     group: typeof item[DAILY_FIELD_GROUP] === 'string' && item[DAILY_FIELD_GROUP] ? item[DAILY_FIELD_GROUP] : undefined,
   };
 };
 
 export const getFieldNames = () => ({
-  personId: DAILY_FIELD_PERSON_ID,
+  userId: DAILY_FIELD_PERSON_ID,
   date: DAILY_FIELD_DATE,
   status: DAILY_FIELD_STATUS,
   group: DAILY_FIELD_GROUP,

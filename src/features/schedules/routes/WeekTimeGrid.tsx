@@ -230,7 +230,7 @@ export function WeekTimeGrid({
                           title={item.title}
                         >
                           <span style={{ flex: 1, textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' }}>
-                            {item.personName || item.title}
+                            {item.userName || item.title}
                           </span>
                           {item.baseShiftWarnings && item.baseShiftWarnings.length > 0 && (
                             <div

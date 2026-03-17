@@ -146,16 +146,16 @@ export function createMockDailySnapshotsFromExistingData(
   // 全ユーザーのベースリストを作成（attendance基準）
   const allUserIds = new Set([
     ...attendanceUsers.map(u => u.userCode),
-    ...personDailies.map(p => p.personId),
+    ...personDailies.map(p => p.userId),
   ]);
 
   allUserIds.forEach(userId => {
     // 対応するデータを検索
     const attendanceUser = attendanceUsers.find(u => u.userCode === userId);
     const attendanceVisit = attendanceVisits.find(v => v.userCode === userId);
-    const personDaily = personDailies.find(p => p.personId === userId && p.date === date);
+    const personDaily = personDailies.find(p => p.userId === userId && p.date === date);
 
-    const userName = attendanceUser?.fullName || personDaily?.personName || `利用者${userId}`;
+    const userName = attendanceUser?.fullName || personDaily?.userName || `利用者${userId}`;
 
     const snapshot = buildDailyUserSnapshotFromExistingData(
       userId,

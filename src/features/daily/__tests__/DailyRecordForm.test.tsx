@@ -37,15 +37,15 @@ const dailyUserOptions: DailyUserOption[] = [
 vi.mock('../forms/useDailyUserOptions', () => ({
   useDailyUserOptions: () => ({
     options: dailyUserOptions,
-    findByPersonId: (personId?: string | null) =>
-      dailyUserOptions.find((option) => option.id === personId),
+    findByUserId: (userId?: string | null) =>
+      dailyUserOptions.find((option) => option.id === userId),
   }),
 }));
 
 const mockRecord: PersonDaily = {
   id: 1,
-  personId: '001',
-  personName: '田中太郎',
+  userId: '001',
+  userName: '田中太郎',
   date: '2024-01-15',
   status: '作成中',
   reporter: { name: '山田花子' },
@@ -223,8 +223,8 @@ describe('DailyRecordForm', () => {
       fireEvent.click(saveButton);
 
       expect(mockOnSave).toHaveBeenCalledWith({
-        personId: '001',
-        personName: '田中太郎',
+        userId: '001',
+        userName: '田中太郎',
         date: '2024-01-15',
         status: '作成中',
         reporter: { name: '山田花子' },

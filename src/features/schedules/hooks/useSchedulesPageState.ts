@@ -244,7 +244,7 @@ export const useSchedulesPageState = ({ myUpn, canEditByRole, ready }: Schedules
         item.subType,
         item.serviceType,
         Array.isArray(item.staffNames) ? item.staffNames.join(' ') : '',
-        item.personName ?? '',
+        item.userName ?? '',
       ]
         .filter(Boolean)
         .join(' ')

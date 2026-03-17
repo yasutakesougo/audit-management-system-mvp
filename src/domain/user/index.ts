@@ -29,3 +29,9 @@ export {
   enrichWithUserRef,
   enrichAllWithUserRef,
 } from './userRelation';
+
+export {
+  buildRequiredUserSnapshot,
+  buildRequiredUserRef,
+  RequiredUserNotResolvedError,
+} from './buildRequiredUserSnapshot';

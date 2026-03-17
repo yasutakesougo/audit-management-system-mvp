@@ -130,14 +130,14 @@ export default function ScheduleViewDialog({
             </div>
 
             {/* Person/Staff Name */}
-            {item.personName && (
+            {item.userName && (
               <>
                 <Divider />
                 <div>
                   <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
                     対象者
                   </Typography>
-                  <Typography variant="body1">{item.personName}</Typography>
+                  <Typography variant="body1">{item.userName}</Typography>
                 </div>
               </>
             )}

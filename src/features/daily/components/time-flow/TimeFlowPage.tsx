@@ -198,7 +198,7 @@ const TimeFlowPage: React.FC = () => {
             />
 
             <MonitoringInfo
-              personName={s.currentDailyRecord.personName}
+              userName={s.currentDailyRecord.userName}
               currentDate={s.selectedDate}
             />
 

@@ -67,6 +67,57 @@ describe('Cross-Module Integration: DailyUserSnapshot', () => {
       expect(snapshot.providedMinutes).toBe(150);
       expect(snapshot.standardMinutes).toBe(240);
     });
+
+    // ── Phase 4a: UserRef 統合テスト ──
+
+    it('UserRef が指定された場合、スナップショットに凍結保存される', () => {
+      const userRef = { userId: 'U001', userName: '田中太郎' };
+      const input: DailyUserSnapshotInput = {
+        userId: 'U001',
+        userName: '田中太郎',
+        date: '2024-01-15',
+        userRef,
+      };
+
+      const snapshot = buildDailyUserSnapshot(input);
+
+      expect(snapshot.userRef).toEqual({ userId: 'U001', userName: '田中太郎' });
+      // フラットフィールドも維持（後方互換）
+      expect(snapshot.userId).toBe('U001');
+      expect(snapshot.userName).toBe('田中太郎');
+    });
+
+    it('UserRef が未指定の場合、userRef フィールドは存在しない（後方互換）', () => {
+      const input: DailyUserSnapshotInput = {
+        userId: 'U002',
+        userName: '鈴木花子',
+        date: '2024-01-15',
+      };
+
+      const snapshot = buildDailyUserSnapshot(input);
+
+      expect(snapshot.userRef).toBeUndefined();
+      // フラットフィールドは正常に動作
+      expect(snapshot.userId).toBe('U002');
+      expect(snapshot.userName).toBe('鈴木花子');
+    });
+
+    it('UserRef はマスタ変更の影響を受けない不変コピーである', () => {
+      const mutableRef = { userId: 'U003', userName: '佐藤次郎' };
+      const input: DailyUserSnapshotInput = {
+        userId: 'U003',
+        userName: '佐藤次郎',
+        date: '2024-01-15',
+        userRef: { ...mutableRef },
+      };
+
+      const snapshot = buildDailyUserSnapshot(input);
+
+      // 元の参照を変更しても snapshot は影響を受けない
+      mutableRef.userName = '佐藤三郎（改名後）';
+
+      expect(snapshot.userRef!.userName).toBe('佐藤次郎');
+    });
   });
 
   describe('detectCrossModuleIssues', () => {

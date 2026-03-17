@@ -25,7 +25,7 @@
 
 import type { IspCreateInput } from './port';
 import type { IspFormValues } from './schema';
-import { toUserSnapshot } from '@/domain/user/userRelation';
+import { buildRequiredUserSnapshot } from '@/domain/user/buildRequiredUserSnapshot';
 
 // ─────────────────────────────────────────────
 // 入力型
@@ -97,6 +97,6 @@ export function buildIspCreateInput(
 
   return {
     ...formValues,
-    userSnapshot: toUserSnapshot(targetUser),
+    userSnapshot: buildRequiredUserSnapshot(targetUser, formValues.userId),
   };
 }

@@ -154,11 +154,11 @@ export function DailyRecordList({
           const isHighlighted =
             !!highlightUserId &&
             !!highlightDate &&
-            record.personId === highlightUserId &&
+            record.userId === highlightUserId &&
             record.date === highlightDate;
 
           // Phase 2-1: 一時ハイライト（スクロール直後）
-          const isActiveHighlight = activeHighlightUserId === record.personId;
+          const isActiveHighlight = activeHighlightUserId === record.userId;
 
           // Check for problem behaviors
           const hasProblemBehavior =
@@ -176,7 +176,7 @@ export function DailyRecordList({
               key={record.id}
               variant="outlined"
               data-testid={`daily-record-card-${record.id}`}
-              data-person-id={record.personId}
+              data-person-id={record.userId}
               data-date-ymd={record.date}
               {...(isHighlighted && {
                 'data-highlighted': 'true',
@@ -222,10 +222,10 @@ export function DailyRecordList({
                   </Avatar>
                   <Box>
                     <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }} data-testid={`person-name-${record.id}`}>
-                      {record.personName}
+                      {record.userName}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" data-testid={`person-id-${record.id}`}>
-                      ID: {record.personId}
+                      ID: {record.userId}
                     </Typography>
                   </Box>
                 </Box>
@@ -242,7 +242,7 @@ export function DailyRecordList({
                     size="small"
                     onClick={(e) => handleMenuOpen(e, record)}
                     data-testid={`menu-button-${record.id}`}
-                    aria-label={`${record.personName}さんのメニューを開く`}
+                    aria-label={`${record.userName}さんのメニューを開く`}
                     aria-haspopup="menu"
                   >
                     <MoreVertIcon />
@@ -415,7 +415,7 @@ export function DailyRecordList({
         onClose={handleMenuClose}
         data-testid="record-menu"
         MenuListProps={{
-          'aria-label': `${selectedRecord?.personName || ''}さんの操作メニュー`,
+          'aria-label': `${selectedRecord?.userName || ''}さんの操作メニュー`,
         }}
       >
         <MenuItem onClick={handleEdit} data-testid={`edit-record-menu-item-${selectedRecord?.id || ''}`}>
@@ -452,7 +452,7 @@ export function DailyRecordList({
         <DialogTitle id="delete-confirm-title">記録の削除</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            {deleteConfirmRecord?.personName}さんの記録（{deleteConfirmRecord?.date}）を削除します。
+            {deleteConfirmRecord?.userName}さんの記録（{deleteConfirmRecord?.date}）を削除します。
             この操作は取り消せません。
           </DialogContentText>
         </DialogContent>

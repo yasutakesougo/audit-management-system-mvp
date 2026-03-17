@@ -95,7 +95,7 @@ export function useDailyRecordFormState({
   onSave,
 }: DailyRecordFormStateParams): DailyRecordFormState {
   const navigate = useNavigate();
-  const { options: userOptions, findByPersonId } = useDailyUserOptions();
+  const { options: userOptions, findByUserId } = useDailyUserOptions();
   const confirmDialog = useConfirmDialog();
 
   const initialFormDataRef = useRef<string>('');
@@ -109,14 +109,14 @@ export function useDailyRecordFormState({
 
   // User selection
   const selectedUserValue = useMemo<DailyUserOption | null>(() => {
-    if (!formData.personId) return null;
-    const matched = findByPersonId(formData.personId);
+    if (!formData.userId) return null;
+    const matched = findByUserId(formData.userId);
     if (matched) return matched;
-    if (formData.personName) {
-      return { id: formData.personId, label: formData.personName, lookupId: undefined, furigana: null };
+    if (formData.userName) {
+      return { id: formData.userId, label: formData.userName, lookupId: undefined, furigana: null };
     }
     return null;
-  }, [findByPersonId, formData.personId, formData.personName]);
+  }, [findByUserId, formData.userId, formData.userName]);
 
   // Date scope for handoff lookup
   const todayYmd = todayYmdLocal();
@@ -128,7 +128,7 @@ export function useDailyRecordFormState({
     loading: loadingHandoffs,
     error: handoffError,
     count: handoffCount,
-  } = useImportantHandoffsForDaily(formData.personId, formData.date);
+  } = useImportantHandoffsForDaily(formData.userId, formData.date);
 
   // Problem behavior suggestion
   const problemSuggestion = useMemo(
@@ -145,8 +145,8 @@ export function useDailyRecordFormState({
   useEffect(() => {
     if (record) {
       const initial = {
-        personId: record.personId,
-        personName: record.personName,
+        userId: record.userId,
+        userName: record.userName,
         date: record.date,
         status: record.status,
         reporter: record.reporter,
@@ -187,7 +187,7 @@ export function useDailyRecordFormState({
     if (
       shouldAutoGenerateSpecialNotes(
         !record,
-        formData.personId,
+        formData.userId,
         formData.data.specialNotes || '',
         handoffCount,
       ) &&
@@ -206,7 +206,7 @@ export function useDailyRecordFormState({
         },
       }));
     }
-  }, [record, formData.personId, loadingHandoffs, importantHandoffs, handoffCount, handoffError]);
+  }, [record, formData.userId, loadingHandoffs, importantHandoffs, handoffCount, handoffError]);
 
   // ─── Handlers ───────────────────────────────────────────────────────────
 
@@ -289,10 +289,10 @@ export function useDailyRecordFormState({
   const handlePersonChange = (option: DailyUserOption | null) => {
     setFormData((prev) => ({
       ...prev,
-      personId: option?.id ?? '',
-      personName: option?.label ?? '',
+      userId: option?.id ?? '',
+      userName: option?.label ?? '',
     }));
-    if (errors.personId) setErrors((prev) => ({ ...prev, personId: '' }));
+    if (errors.userId) setErrors((prev) => ({ ...prev, userId: '' }));
   };
 
   const handleAddActivity = (period: 'AM' | 'PM') => {
@@ -359,7 +359,7 @@ export function useDailyRecordFormState({
     }
   }, [isSaving, onSave, formData, onClose]);
 
-  const isFormValid = formData.personId && formData.date && formData.reporter.name.trim();
+  const isFormValid = formData.userId && formData.date && formData.reporter.name.trim();
 
   return {
     formData,
