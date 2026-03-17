@@ -163,17 +163,17 @@ if (-not (Get-PnPList -Identity "PdfOutput_Log" -ErrorAction SilentlyContinue)) 
 
 ## 3. 既存リストへのインデックス追加
 
-```powershell
-Write-Host "`n=== インデックス追加 ===" -ForegroundColor Cyan
+> **2026-03-17 確認結果**: 以下のリストが SharePoint 上に存在し、インデックスを追加可能。
+> 未作成リスト（AttendanceDaily 等）は Section 3.1 を参照。
 
+```powershell
+Write-Host "`n=== インデックス追加（既存リスト） ===" -ForegroundColor Cyan
+
+# ── 既存リスト（2026-03-17 時点で SharePoint 上に存在確認済み） ──
 $indexTargets = @(
     @{ List = "DailyActivityRecords"; Fields = @("UserCode", "RecordDate") },
     @{ List = "SupportRecord_Daily"; Fields = @("cr013_personId", "cr013_date") },
-    @{ List = "AttendanceDaily"; Fields = @("UserCode", "RecordDate", "Key") },
-    @{ List = "ServiceProvisionRecords"; Fields = @("EntryKey", "UserCode", "RecordDate") },
-    @{ List = "Transport_Log"; Fields = @("UserCode", "RecordDate", "Title") },
-    @{ List = "SupportProcedureRecord_Daily"; Fields = @("UserCode", "RecordDate") },
-    @{ List = "Schedules"; Fields = @("Date", "MonthKey", "ServiceType") }
+    @{ List = "Schedules"; Fields = @("EventDate", "MonthKey", "ServiceType") }
 )
 
 $totalAdded = 0
@@ -203,6 +203,51 @@ foreach ($target in $indexTargets) {
 }
 
 Write-Host "`n  📊 Summary: Added=$totalAdded Skipped=$totalSkipped Failed=$totalFailed" -ForegroundColor Cyan
+```
+
+---
+
+### 3.1 未作成リスト — プロビジョニング時の必須設定
+
+> **状態**: 2026-03-17 時点で SharePoint 上に未作成。  
+> コードベース（`src/sharepoint/fields/*.ts`）に列定義は存在する。  
+> **リスト作成時に下記インデックスを必ず設定すること。**
+
+| リスト名 | 必須インデックス列 | 用途 | 定義ファイル |
+|---------|------------------|------|------------|
+| `AttendanceDaily` | `UserCode`, `RecordDate`, `Key` | 利用者出欠日次 | `attendanceFields.ts` |
+| `ServiceProvisionRecords` | `EntryKey`, `UserCode`, `RecordDate` | サービス提供記録 | `serviceProvisionFields.ts` |
+| `Transport_Log` | `UserCode`, `RecordDate`, `Title` | 送迎記録 | `transportFields.ts` |
+| `SupportProcedureRecord_Daily` | `UserCode`, `RecordDate` | 支援手順書兼記録 | `ispThreeLayerFields.ts` |
+
+#### Unique 制約候補（将来検討）
+
+| リスト | 列 | キー形式 |
+|--------|-----|----------|
+| `AttendanceDaily` | `Key` | `{UserCode}_{yyyy-MM-dd}` |
+| `ServiceProvisionRecords` | `EntryKey` | 複合キー |
+| `Transport_Log` | `Title` | `{UserCode}_{Date}_{Direction}` |
+
+```powershell
+# ── 未作成リスト用（リスト作成後に実行） ──
+$futureIndexTargets = @(
+    @{ List = "AttendanceDaily"; Fields = @("UserCode", "RecordDate", "Key") },
+    @{ List = "ServiceProvisionRecords"; Fields = @("EntryKey", "UserCode", "RecordDate") },
+    @{ List = "Transport_Log"; Fields = @("UserCode", "RecordDate", "Title") },
+    @{ List = "SupportProcedureRecord_Daily"; Fields = @("UserCode", "RecordDate") }
+)
+
+foreach ($target in $futureIndexTargets) {
+    Write-Host "`n  --- $($target.List) ---" -ForegroundColor White
+    foreach ($fieldName in $target.Fields) {
+        try {
+            Set-PnPField -List $target.List -Identity $fieldName -Values @{Indexed=$true}
+            Write-Host "    ✅ Indexed: $fieldName" -ForegroundColor Green
+        } catch {
+            Write-Host "    ⚠️ Failed: $fieldName — $_" -ForegroundColor Yellow
+        }
+    }
+}
 ```
 
 ---
