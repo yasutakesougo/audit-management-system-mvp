@@ -50,7 +50,7 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { PhaseNextStepBanner } from '@/features/planning-sheet/components/PhaseNextStepBanner';
 import { determineWorkflowPhase, type WorkflowPhase } from '@/domain/bridge/workflowPhase';
 import { AbcEvidencePanel } from '@/features/ibd/analysis/pdca/components/AbcEvidencePanel';
@@ -77,6 +77,8 @@ import SheetHeader from './support-planning-sheet/SheetHeader';
 export default function SupportPlanningSheetPage() {
   const { planningSheetId } = useParams<{ planningSheetId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const userIdFromQuery = searchParams.get('userId');
   const [activeTab, setActiveTab] = React.useState<SheetTabKey>('overview');
   const [isEditing, setIsEditing] = React.useState(false);
   const [toast, setToast] = React.useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
@@ -364,6 +366,7 @@ export default function SupportPlanningSheetPage() {
       <NewPlanningSheetForm
         planningSheetRepo={planningSheetRepo}
         ispRepo={ispRepo}
+        initialUserId={userIdFromQuery ?? undefined}
       />
     );
   }
