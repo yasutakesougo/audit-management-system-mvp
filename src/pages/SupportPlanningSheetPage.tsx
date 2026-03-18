@@ -18,7 +18,8 @@ import { EditableRegulatorySection } from '@/features/planning-sheet/components/
 import { ImportAssessmentDialog } from '@/features/planning-sheet/components/ImportAssessmentDialog';
 import { ImportMonitoringDialog } from '@/features/planning-sheet/components/ImportMonitoringDialog';
 import type { MonitoringToPlanningResult } from '@/features/planning-sheet/monitoringToPlanningBridge';
-import type { BehaviorMonitoringRecord } from '@/domain/isp/behaviorMonitoring';
+import { useLatestBehaviorMonitoring } from '@/features/planning-sheet/hooks/useLatestBehaviorMonitoring';
+import { localMonitoringMeetingRepository } from '@/infra/localStorage/localMonitoringMeetingRepository';
 import { ImportHistoryTimeline } from '@/features/planning-sheet/components/ImportHistoryTimeline';
 import { ProvenancePanel } from '@/features/planning-sheet/components/ProvenanceBadge';
 import type { AssessmentBridgeResult, ProvenanceEntry } from '@/features/planning-sheet/assessmentBridge';
@@ -227,28 +228,16 @@ export default function SupportPlanningSheetPage() {
   }, [form, planningSheetId, currentAssessment, account, saveAuditRecord]);
 
   // ── 行動モニタリング取込 ──
-  const demoMonitoringRecord: BehaviorMonitoringRecord | null = React.useMemo(() => {
-    if (!sheet?.userId) return null;
-    return {
-      id: 'bm-demo-1',
-      userId: sheet.userId,
-      planningSheetId: planningSheetId ?? '',
-      periodStart: '2026-01-01',
-      periodEnd: '2026-03-31',
-      supportEvaluations: [],
-      environmentFindings: [],
-      effectiveSupports: '',
-      difficultiesObserved: '',
-      newTriggers: [],
-      medicalSafetyNotes: '',
-      userFeedback: '',
-      familyFeedback: '',
-      recommendedChanges: [],
-      summary: '',
-      recordedBy: 'デモ記録者',
-      recordedAt: new Date().toISOString(),
-    };
-  }, [sheet?.userId, planningSheetId]);
+  // NOTE:
+  // Latest monitoring record is resolved via useLatestBehaviorMonitoring hook.
+  // Do not fetch monitoring data directly in this component.
+  // This keeps /new and edit flows consistent.
+  const {
+    record: latestMonitoringRecord,
+  } = useLatestBehaviorMonitoring(sheet?.userId ?? null, {
+    repository: localMonitoringMeetingRepository,
+    planningSheetId: planningSheetId ?? 'new',
+  });
 
   const handleMonitoringImport = React.useCallback(
     (result: MonitoringToPlanningResult, selectedCandidateIds: string[]) => {
@@ -398,7 +387,7 @@ export default function SupportPlanningSheetPage() {
           isSaving={form.isSaving}
           isValid={form.isValid}
           hasAssessment={!!currentAssessment}
-          hasMonitoringRecord={!!demoMonitoringRecord}
+          hasMonitoringRecord={!!latestMonitoringRecord}
           icebergEvidence={icebergEvidence}
           onBack={() => navigate('/support-plan-guide')}
           onEdit={() => setIsEditing(true)}
@@ -577,11 +566,11 @@ export default function SupportPlanningSheetPage() {
       )}
 
       {/* ── 行動モニタリング取込ダイアログ ── */}
-      {demoMonitoringRecord && (
+      {latestMonitoringRecord && (
         <ImportMonitoringDialog
           open={monitoringDialogOpen}
           onClose={() => setMonitoringDialogOpen(false)}
-          monitoringRecord={demoMonitoringRecord}
+          monitoringRecord={latestMonitoringRecord}
           currentForm={form.values}
           onImport={handleMonitoringImport}
         />

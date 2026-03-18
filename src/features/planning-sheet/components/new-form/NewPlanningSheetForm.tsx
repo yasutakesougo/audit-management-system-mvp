@@ -39,9 +39,12 @@ import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded';
 import QuizRoundedIcon from '@mui/icons-material/QuizRounded';
 import PersonSearchRoundedIcon from '@mui/icons-material/PersonSearchRounded';
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded';
+import TimelineRoundedIcon from '@mui/icons-material/TimelineRounded';
 
 // ── Domain ──
 import type { TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
+import type { PlanningSheetFormValues } from '@/domain/isp/schema';
+import type { MonitoringToPlanningResult } from '../../monitoringToPlanningBridge';
 import { useTokuseiSurveyResponses } from '@/features/assessment/hooks/useTokuseiSurveyResponses';
 import { useUsers } from '@/features/users/useUsers';
 import { useAuth } from '@/auth/useAuth';
@@ -49,6 +52,9 @@ import { tokuseiToPlanningBridge } from '../../tokuseiToPlanningBridge';
 import { buildImportPreview } from '../../buildImportPreview';
 import type { ImportPreviewResult } from '../../buildImportPreview';
 import { ImportPreviewDialog } from '../ImportPreviewDialog';
+import { ImportMonitoringDialog } from '../ImportMonitoringDialog';
+import { useLatestBehaviorMonitoring } from '../../hooks/useLatestBehaviorMonitoring';
+import { localMonitoringMeetingRepository } from '@/infra/localStorage/localMonitoringMeetingRepository';
 
 // ── Local (split) ──
 import type { NewPlanningSheetFormProps, UserOption, FormState } from './types';
@@ -91,12 +97,27 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   const [importPreview, setImportPreview] = React.useState<ImportPreviewResult | null>(null);
   const [lastBridgeResult, setLastBridgeResult] = React.useState<ReturnType<typeof tokuseiToPlanningBridge> | null>(null);
   const [tokuseiProvenance, setTokuseiProvenance] = React.useState<Map<string, { name: string; relation?: string; fillDate?: string }>>(new Map());
-  const [toast, setToast] = React.useState<{ open: boolean; message: string; severity: 'success' | 'info' }>({
+  const [toast, setToast] = React.useState<{ open: boolean; message: string; severity: 'success' | 'info' | 'warning' }>({
     open: false, message: '', severity: 'success',
   });
 
   // ── 特性アンケートセクション ref ──
   const tokuseiSectionRef = React.useRef<HTMLDivElement>(null);
+
+  // ── モニタリング読込 ──
+  // NOTE:
+  // Latest monitoring record is resolved via useLatestBehaviorMonitoring hook.
+  // Do not fetch monitoring data directly in this component.
+  // This keeps /new and edit flows consistent.
+  const {
+    record: latestMonitoringRecord,
+    isLoading: isMonitoringLoading,
+  } = useLatestBehaviorMonitoring(selectedUser?.id ?? null, {
+    repository: localMonitoringMeetingRepository,
+    planningSheetId: 'new',
+  });
+  const [monitoringDialogOpen, setMonitoringDialogOpen] = React.useState(false);
+  const [monitoringImported, setMonitoringImported] = React.useState(false);
 
   // ── Helpers ──
   const userOptions = React.useMemo<UserOption[]>(
@@ -237,6 +258,40 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
     );
   }, [tokuseiProvenance]);
 
+  // ── モニタリング反映 ──
+  const handleMonitoringImport = React.useCallback(
+    (result: MonitoringToPlanningResult, _selectedCandidateIds: string[]) => {
+      if (!result) return;
+
+      // autoPatches を FormState に反映（フィールド名が一致するもののみ）
+      setForm(prev => {
+        const next = { ...prev };
+        for (const [key, value] of Object.entries(result.autoPatches)) {
+          if (key in next && typeof value === 'string') {
+            const k = key as keyof FormState;
+            const current = next[k];
+            if (typeof current === 'string' && !current.trim()) {
+              (next as Record<string, unknown>)[k] = value;
+            } else if (typeof current === 'string' && current.trim()) {
+              (next as Record<string, unknown>)[k] = `${current}\n\n【モニタリングより】\n${value}`;
+            }
+          }
+        }
+        return next;
+      });
+
+      setMonitoringImported(true);
+      setMonitoringDialogOpen(false);
+
+      const s = result.summary;
+      const summaryText = (s.autoFieldCount + s.candidateCount) > 0
+        ? `モニタリングから取込完了: 自動${s.autoFieldCount}項目 + 候補${s.candidateCount}件`
+        : 'モニタリングから取込完了（該当データなし）';
+      setToast({ open: true, message: summaryText, severity: 'success' });
+    },
+    [],
+  );
+
   // ── Fill sample data ──
   const handleFillSample = React.useCallback(() => setForm(SAMPLE_FORM), []);
 
@@ -272,7 +327,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
                 強度行動障害支援計画シート
               </Typography>
             </Stack>
-            <Stack direction="row" spacing={1}>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               <Button
                 size="small"
                 variant="outlined"
@@ -282,6 +337,16 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
                 onClick={() => tokuseiSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               >
                 特性アンケートを読み込む
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                color="secondary"
+                startIcon={<TimelineRoundedIcon />}
+                disabled={!canProceedToForm || !latestMonitoringRecord || isMonitoringLoading}
+                onClick={() => setMonitoringDialogOpen(true)}
+              >
+                {isMonitoringLoading ? '読込中…' : monitoringImported ? 'モニタリングから再反映' : 'モニタリングから反映'}
               </Button>
               <Button size="small" variant="outlined" color="secondary" startIcon={<AutoFixHighRoundedIcon />} onClick={handleFillSample} disabled={!canProceedToForm}>
                 サンプルデータ
@@ -480,6 +545,17 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
           fillDate: selectedTokusei.fillDate,
         } : undefined}
       />
+
+      {/* ── モニタリング取込ダイアログ ── */}
+      {latestMonitoringRecord && (
+        <ImportMonitoringDialog
+          open={monitoringDialogOpen}
+          onClose={() => setMonitoringDialogOpen(false)}
+          monitoringRecord={latestMonitoringRecord}
+          currentForm={form as unknown as PlanningSheetFormValues}
+          onImport={handleMonitoringImport}
+        />
+      )}
 
       {/* ── Toast ── */}
       <Snackbar
