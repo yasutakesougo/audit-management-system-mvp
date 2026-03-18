@@ -1,4 +1,5 @@
 import { auditLog } from '@/lib/debugLogger';
+import { SP_TELEMETRY_THRESHOLDS } from '@/shared/api/spQueryLimits';
 import type { GuardedQueryParams, SharePointQueryRiskLevel } from './queryGuard';
 
 export interface SpTelemetryMetrics {
@@ -26,6 +27,22 @@ export interface QueryTelemetryPayload {
   warningCodes: string[];
   startTimeMs: number;
 }
+
+/**
+ * Extensible sink for telemetry data.
+ * Currently relays to auditLog, but structured to support external sinks
+ * (e.g., Application Insights, Datadog, or custom analytics endpoints) in the future.
+ */
+export const telemetrySink = {
+  recordQuery(metrics: SpTelemetryMetrics) {
+    if (metrics.isError || metrics.riskLevel === 'high' || metrics.durationMs > SP_TELEMETRY_THRESHOLDS.slowQueryMs) {
+      auditLog.warn('sp:telemetry', 'High risk, slow, or failed query recorded', metrics);
+    } else {
+      auditLog.info('sp:telemetry', 'Query recorded', metrics);
+    }
+    // TODO (Phase 2): Send structured event to real telemetry endpoint
+  }
+};
 
 /**
  * Begins a telemetry recording session for a SharePoint query.
@@ -84,12 +101,7 @@ export function endSpQueryTelemetry(options: EndSpQueryTelemetryOptions): SpTele
     isError,
     errorMessage
   };
-
-  if (isError || payload.riskLevel === 'high') {
-    auditLog.warn('sp:telemetry', 'Potentially dangerous or failed query recorded', metrics);
-  } else {
-    auditLog.info('sp:telemetry', 'Query recorded', metrics);
-  }
+  telemetrySink.recordQuery(metrics);
 
   return metrics;
 }

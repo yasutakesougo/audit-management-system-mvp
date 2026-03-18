@@ -10,7 +10,7 @@ import {
 import type { BehaviorQueryOptions, BehaviorRepository } from '../domain/BehaviorRepository';
 import type { BehaviorObservation } from '../domain/daily/types';
 
-import { DEFAULT_SP_QUERY_LIMIT, MAX_SP_QUERY_LIMIT } from '@/shared/api/spQueryLimits';
+import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 
 export type SharePointBehaviorRepositoryOptions = {
   sp?: ReturnType<typeof createSpClient>;
@@ -24,7 +24,7 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
 
   constructor(options: SharePointBehaviorRepositoryOptions = {}) {
     this.ensureSharePointConfig();
-    this.defaultTop = options.defaultTop ?? DEFAULT_SP_QUERY_LIMIT;
+    this.defaultTop = options.defaultTop ?? SP_QUERY_LIMITS.default;
     const { baseUrl } = ensureConfig();
     this.sp = options.sp ?? createSpClient(acquireSpAccessToken, baseUrl);
   }
@@ -98,7 +98,7 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
       params.set('$filter', filters.join(' and '));
     }
     const limit = options?.limit ?? this.defaultTop;
-    const safeTop = Math.min(Math.max(1, limit), MAX_SP_QUERY_LIMIT);
+    const safeTop = Math.min(Math.max(1, limit), SP_QUERY_LIMITS.hardMax);
     params.set('$top', String(safeTop));
 
     const url = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items?${params.toString()}`;

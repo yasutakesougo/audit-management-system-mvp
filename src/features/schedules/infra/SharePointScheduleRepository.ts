@@ -17,7 +17,7 @@ import { SCHEDULES_DEBUG } from '../debug';
 import type { CreateScheduleInput, DateRange, ScheduleItem, ScheduleRepository, ScheduleRepositoryListParams, ScheduleRepositoryMutationParams, UpdateScheduleInput } from '../domain/ScheduleRepository';
 import type { ScheduleCategory, ScheduleServiceType, ScheduleStatus } from '../domain/types';
 
-import { DEFAULT_SP_QUERY_LIMIT, MAX_SP_QUERY_LIMIT } from '@/shared/api/spQueryLimits';
+import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 
 import {
     buildRangeFilter,
@@ -166,8 +166,8 @@ export class SharePointScheduleRepository implements ScheduleRepository {
       throw new Error('Request aborted');
     }
 
-    const rawTop = options?.top ?? DEFAULT_SP_QUERY_LIMIT;
-    const safeTop = Math.min(Math.max(1, rawTop), MAX_SP_QUERY_LIMIT);
+    const rawTop = options?.top ?? SP_QUERY_LIMITS.default;
+    const safeTop = Math.min(Math.max(1, rawTop), SP_QUERY_LIMITS.hardMax);
 
     const listPath = buildSchedulesRelativeListPath();
     const params = new URLSearchParams();
@@ -219,9 +219,9 @@ export class SharePointScheduleRepository implements ScheduleRepository {
       const selectMin = isEventList ? required : selectVariants[2];
 
       const stages = [
-        { name: 'full', select: selectFull, keepOrderby: true, keepFilter: true, top: limit ?? DEFAULT_SP_QUERY_LIMIT },
-        { name: 'selectLite', select: selectLite, keepOrderby: true, keepFilter: true, top: limit ?? DEFAULT_SP_QUERY_LIMIT },
-        { name: 'noOrderby', select: selectLite, keepOrderby: false, keepFilter: true, top: limit ?? DEFAULT_SP_QUERY_LIMIT },
+        { name: 'full', select: selectFull, keepOrderby: true, keepFilter: true, top: limit ?? SP_QUERY_LIMITS.default },
+        { name: 'selectLite', select: selectLite, keepOrderby: true, keepFilter: true, top: limit ?? SP_QUERY_LIMITS.default },
+        { name: 'noOrderby', select: selectLite, keepOrderby: false, keepFilter: true, top: limit ?? SP_QUERY_LIMITS.default },
         { name: 'noFilter', select: selectMin, keepOrderby: false, keepFilter: false, top: 1 },
       ] as const;
 

@@ -17,11 +17,7 @@
 // ─────────────────────────────────────────────
 // Primary API: Zod schemas + runtime types + utilities
 // ─────────────────────────────────────────────
-export * from './base';
-export * from './isp';
-export * from './planningSheet';
-export * from './procedure';
-export * from './bundle';
+export * from './schema';
 
 // ─────────────────────────────────────────────
 // Repository Ports + Input types

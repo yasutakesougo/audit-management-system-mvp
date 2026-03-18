@@ -31,7 +31,7 @@ import type {
   SaveDecisionInput,
 } from './IspDecisionRepository';
 
-import { DEFAULT_SP_QUERY_LIMIT, MAX_SP_QUERY_LIMIT } from '@/shared/api/spQueryLimits';
+import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 
 // ─── 定数 ────────────────────────────────────────────────
 
@@ -222,8 +222,8 @@ export class SharePointIspDecisionRepository implements IspDecisionRepository {
       params.set('$filter', filters.join(' and '));
       params.set('$orderby', `${SP_FIELDS.decidedAt} desc`);
 
-      const limit = filter.limit ?? DEFAULT_SP_QUERY_LIMIT;
-      const safeLimit = Math.min(Math.max(1, limit), MAX_SP_QUERY_LIMIT);
+      const limit = filter.limit ?? SP_QUERY_LIMITS.default;
+      const safeLimit = Math.min(Math.max(1, limit), SP_QUERY_LIMITS.hardMax);
       params.set('$top', String(safeLimit));
       params.set('$select', ALL_SELECT_FIELDS);
 

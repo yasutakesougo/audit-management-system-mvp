@@ -11,7 +11,7 @@ import { readEnv } from '@/lib/env';
 import { buildItemPath, resolveListPath } from './helpers';
 import type { NormalizePathFn, SpFetchFn } from './spLists';
 import type { JsonRecord, ListItemsOptions } from './types';
-import { guardSharePointQuery } from './queryGuard';
+import { evaluateQueryRisk, enforceQueryPolicy } from './queryGuard';
 import { beginSpQueryTelemetry, endSpQueryTelemetry } from './telemetry';
 
 // ── Read helpers ────────────────────────────────────────────────────────────
@@ -52,8 +52,8 @@ export async function listItems<TRow = JsonRecord>(
 ): Promise<TRow[]> {
   const { pageCap, signal } = options;
   
-  // 1. Guard Query
-  const guardResult = guardSharePointQuery({
+  // 1. Evaluate Query Risk
+  const evaluation = evaluateQueryRisk({
     listName: listIdentifier,
     queryKind: 'list',
     top: options.top,
@@ -61,6 +61,11 @@ export async function listItems<TRow = JsonRecord>(
     expand: options.expand ? options.expand.split(',') : undefined,
     orderBy: options.orderby,
     filter: options.filter
+  });
+
+  // 2. Enforce Policy (Phase 1.5: log high risk, but don't strictly throw yet)
+  const guardResult = enforceQueryPolicy(evaluation, {
+    throwOnHighRisk: false 
   });
 
   const sanitized = guardResult.sanitized;

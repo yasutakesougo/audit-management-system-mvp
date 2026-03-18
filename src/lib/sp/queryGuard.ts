@@ -1,4 +1,4 @@
-import { DEFAULT_SP_QUERY_LIMIT, MAX_SP_QUERY_LIMIT } from '@/shared/api/spQueryLimits';
+import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 
 export type SharePointQueryRiskLevel = 'low' | 'medium' | 'high';
 
@@ -31,11 +31,11 @@ export interface GuardedQueryResult {
 const filterNeedsIndexPattern = /(substringof|startswith| eq | ge | le |Id|Date)/i;
 
 /**
- * Validates and sanitizes a SharePoint REST API query.
- * Assesses its risk level based on the current context and parameters to detect potentially dangerous patterns,
- * such as unlimited retrievals, expensive joins (expand), or unindexed filtering.
+ * Validates a SharePoint REST API query and evaluates its risk level.
+ * This is a pure function that returns a structured assessment (sanitized params, risk level, warnings)
+ * without side-effects or throws.
  */
-export function guardSharePointQuery(params: GuardedQueryParams): GuardedQueryResult {
+export function evaluateQueryRisk(params: GuardedQueryParams): GuardedQueryResult {
   const flags = {
     cappedTop: false,
     missingSelect: false,
@@ -50,17 +50,20 @@ export function guardSharePointQuery(params: GuardedQueryParams): GuardedQueryRe
   
   // A. Check and sanitize `top`
   if (params.top === undefined || params.top === null) {
-    sanitized.top = DEFAULT_SP_QUERY_LIMIT;
+    sanitized.top = SP_QUERY_LIMITS.default;
   } else if (params.top < 1) {
     sanitized.top = 1;
     flags.cappedTop = true;
     warningCodes.push('TOP_CAPPED');
     warnings.push(`Query top increased from ${params.top} to minimum allowed value of 1.`);
-  } else if (params.top > MAX_SP_QUERY_LIMIT) {
-    sanitized.top = MAX_SP_QUERY_LIMIT;
+  } else if (params.top > SP_QUERY_LIMITS.hardMax) {
+    sanitized.top = SP_QUERY_LIMITS.hardMax;
     flags.cappedTop = true;
     warningCodes.push('TOP_CAPPED');
-    warnings.push(`Query top reduced from ${params.top} to MAX_SP_QUERY_LIMIT (${MAX_SP_QUERY_LIMIT}).`);
+    warnings.push(`Query top reduced from ${params.top} to hard max limit (${SP_QUERY_LIMITS.hardMax}).`);
+  } else if (params.top > SP_QUERY_LIMITS.recommended) {
+    warningCodes.push('TOP_EXCEEDS_RECOMMENDED');
+    warnings.push(`Query top (${params.top}) exceeds recommended limit (${SP_QUERY_LIMITS.recommended}). Use pagination if possible.`);
   }
 
   // B. Check `select`
@@ -129,4 +132,26 @@ export function guardSharePointQuery(params: GuardedQueryParams): GuardedQueryRe
     riskLevel,
     flags,
   };
+}
+
+export interface EnforcePolicyOptions {
+  /**
+   * If true, throws an error when riskLevel is 'high'. 
+   * Useful when strict policies are enforced (e.g., in critical paths).
+   */
+  throwOnHighRisk?: boolean;
+}
+
+/**
+ * Enforcer function that receives the result of `evaluateQueryRisk` and decides
+ * whether to block the query or let it pass based on policy options.
+ */
+export function enforceQueryPolicy(result: GuardedQueryResult, options: EnforcePolicyOptions = {}): GuardedQueryResult {
+  const { throwOnHighRisk = false } = options;
+
+  if (result.riskLevel === 'high' && throwOnHighRisk) {
+    throw new Error(`[SharePoint Safety Engine] Blocked high-risk query. Reasons: ${result.warningCodes.join(', ')}`);
+  }
+
+  return result;
 }

@@ -12,7 +12,7 @@ import type {
 } from '../domain/DailyRecordRepository';
 import { DailyRecordItemSchema } from '../schema';
 
-import { DEFAULT_SP_QUERY_LIMIT, MAX_SP_QUERY_LIMIT } from '@/shared/api/spQueryLimits';
+import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 
 /**
  * SharePoint List Name for Daily Records
@@ -239,8 +239,8 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
       queryParams.set('$filter', filter);
       queryParams.set('$orderby', 'Title desc'); // Newest first
 
-      const limit = params.limit ?? DEFAULT_SP_QUERY_LIMIT;
-      const safeLimit = Math.min(Math.max(1, limit), MAX_SP_QUERY_LIMIT);
+      const limit = params.limit ?? SP_QUERY_LIMITS.default;
+      const safeLimit = Math.min(Math.max(1, limit), SP_QUERY_LIMITS.hardMax);
       queryParams.set('$top', String(safeLimit));
       queryParams.set('$select', [
         'Id',
