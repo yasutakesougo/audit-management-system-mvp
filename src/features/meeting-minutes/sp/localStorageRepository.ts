@@ -28,12 +28,14 @@ function writeAll(items: MeetingMinutes[]): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
-function nextId(items: MeetingMinutes[]): number {
+/** @internal テスト用に公開。プロダクションコードからは直接使わないこと。 */
+export function nextId(items: MeetingMinutes[]): number {
   if (items.length === 0) return 1;
   return Math.max(...items.map((i) => i.id)) + 1;
 }
 
-function matchesSearch(item: MeetingMinutes, params: MinutesSearchParams): boolean {
+/** @internal テスト用に公開。プロダクションコードからは直接使わないこと。 */
+export function matchesSearch(item: MeetingMinutes, params: MinutesSearchParams): boolean {
   if (params.publishedOnly && item.isPublished === false) return false;
 
   if (params.category && params.category !== 'ALL') {

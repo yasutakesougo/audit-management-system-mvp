@@ -55,8 +55,8 @@
 |---|--------|------|
 | R1 | overallLevel の優先順位 | critical > warning > good。この順序が壊れると、要対応なのに 'good' と表示される可能性 |
 | R2 | actionRequiredCount の二重カウント | restraint の `pendingApproval` と `incompleteRequirements` は独立加算。集計ロジックが変わると監査書類と数値が合わなくなる |
-| R3 | meetsQuarterlyRequirement の境界 | 四半期に1回の開催要件。「ちょうど90日前」がインかアウトかを計算する境界値 |
-| R4 | meetsBiannualRequirement の境界 | 年2回。同上 |
+| R3 | meetsQuarterlyRequirement の境界 | 四半期に1回の開催要件。実装は「会計年度（4/1〜3/31）内の開催回数 ≥ 4」で判定。3月31日の記録は前年度扱いになる点が注意境界。 |
+| R4 | meetsBiannualRequirement の境界 | 年2回。実装は「会計年度内の completed 研修 ≥ 2」で判定。cancelled / planned はカウント外。 |
 | R5 | computeDurationMinutes の負の値 | endedAt < startedAt の場合、負の分数を返す可能性 |
 | R6 | 全リポジトリ並列 Promise.all | 1つでもリポジトリ失敗すると全summary失敗。エラー状態が loading のまま固まるリスク |
 | R7 | localStorage 依存 | 実装が localStorage に直結しており、環境依存のテストになりやすい |
