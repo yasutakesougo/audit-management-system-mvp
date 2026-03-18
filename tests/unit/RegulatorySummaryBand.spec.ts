@@ -1,62 +1,51 @@
-/**
- * RegulatorySummaryBand.spec.tsx
- *
- * 統合ビュー強化で追加した Chip（シート数・実施記録数・直近実施日・シート別内訳）と
- * 既存の Chip（ISP ステータス・Iceberg 分析件数・モニタリング・再分析推奨）の
- * 表示/非表示を検証するテスト。
- */
 import { describe, it, expect } from 'vitest';
-import { shouldRecommendReanalysis, totalRecordCount } from '@/features/support-plan-guide/components/RegulatorySummaryBand';
+import { worstSignal, signalCounts } from '@/features/support-plan-guide/domain/regulatoryHud';
+import type { RegulatoryHudItem } from '@/features/support-plan-guide/domain/regulatoryHud';
 
-// ─────────────────────────────────────────────
-// shouldRecommendReanalysis
-// ─────────────────────────────────────────────
-
-describe('shouldRecommendReanalysis', () => {
-  it('returns true when monitoring is null', () => {
-    expect(shouldRecommendReanalysis(null)).toBe(true);
+describe('worstSignal', () => {
+  it('returns ok for empty items', () => {
+    expect(worstSignal([])).toBe('ok');
   });
 
-  it('returns true when monitoring is undefined', () => {
-    expect(shouldRecommendReanalysis(undefined)).toBe(true);
+  it('returns danger if any item is danger', () => {
+    const items: RegulatoryHudItem[] = [
+      { key: '1', label: '', signal: 'ok' },
+      { key: '2', label: '', signal: 'warning' },
+      { key: '3', label: '', signal: 'danger' },
+    ];
+    expect(worstSignal(items)).toBe('danger');
   });
 
-  it('returns true when planChangeRequired is true', () => {
-    const today = new Date().toISOString().slice(0, 10);
-    expect(shouldRecommendReanalysis({ date: today, planChangeRequired: true })).toBe(true);
+  it('returns warning if worst is warning', () => {
+    const items: RegulatoryHudItem[] = [
+      { key: '1', label: '', signal: 'ok' },
+      { key: '2', label: '', signal: 'warning' },
+    ];
+    expect(worstSignal(items)).toBe('warning');
   });
 
-  it('returns true when monitoring is 180+ days old', () => {
-    const old = new Date();
-    old.setDate(old.getDate() - 200);
-    expect(shouldRecommendReanalysis({ date: old.toISOString().slice(0, 10), planChangeRequired: false })).toBe(true);
-  });
-
-  it('returns false when monitoring is recent and no plan change required', () => {
-    const recent = new Date();
-    recent.setDate(recent.getDate() - 30);
-    expect(shouldRecommendReanalysis({ date: recent.toISOString().slice(0, 10), planChangeRequired: false })).toBe(false);
+  it('returns ok if all are ok', () => {
+    const items: RegulatoryHudItem[] = [
+      { key: '1', label: '', signal: 'ok' },
+      { key: '2', label: '', signal: 'ok' },
+    ];
+    expect(worstSignal(items)).toBe('ok');
   });
 });
 
-// ─────────────────────────────────────────────
-// totalRecordCount
-// ─────────────────────────────────────────────
-
-describe('totalRecordCount', () => {
-  it('returns 0 for undefined', () => {
-    expect(totalRecordCount(undefined)).toBe(0);
-  });
-
-  it('returns 0 for empty object', () => {
-    expect(totalRecordCount({})).toBe(0);
-  });
-
-  it('sums all values', () => {
-    expect(totalRecordCount({ 'sheet-1': 3, 'sheet-2': 5 })).toBe(8);
-  });
-
-  it('handles single sheet', () => {
-    expect(totalRecordCount({ 'sheet-1': 7 })).toBe(7);
+describe('signalCounts', () => {
+  it('counts correctly', () => {
+    const items: RegulatoryHudItem[] = [
+      { key: '1', label: '', signal: 'ok' },
+      { key: '2', label: '', signal: 'warning' },
+      { key: '3', label: '', signal: 'danger' },
+      { key: '4', label: '', signal: 'danger' },
+    ];
+    
+    expect(signalCounts(items)).toEqual({
+      ok: 1,
+      warning: 1,
+      danger: 2,
+    });
   });
 });

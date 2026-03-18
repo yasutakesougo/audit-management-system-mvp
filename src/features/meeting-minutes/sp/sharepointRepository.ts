@@ -1,26 +1,33 @@
+import { auditLog } from '@/lib/debugLogger';
 import type { MeetingCategory, MeetingMinutes } from '../types';
 import type { MeetingMinutesRepository, MeetingMinutesUpdateDto, MinutesSearchParams } from './repository';
 import { MeetingMinutesFields as F, MEETING_MINUTES_LIST_TITLE } from './sharepoint';
 
-function normalizeApiBaseUrl(input: string): string {
-  const trimmed = input.trim();
-  return trimmed.endsWith('/_api/web') ? trimmed : `${trimmed.replace(/\/$/, '')}/_api/web`;
-}
-
-// NOTE: siteOrApiBaseUrl は "https://tenant.sharepoint.com/sites/xxx" も
-// "https://tenant.sharepoint.com/sites/xxx/_api/web" も許容。
-async function spJson<T>(url: string, init?: RequestInit): Promise<T> {
-  // eslint-disable-next-line no-restricted-globals -- TODO: Phase 3 で spFetch に移行
-  const res = await fetch(url, {
+// NOTE: spFetch は "/lists/getbytitle('...')" などの相対パスをそのまま受け付け、
+// auth token などの必要な設定を自動で付与します。
+async function spJson<T>(
+  spFetch: (path: string, init?: RequestInit) => Promise<Response>,
+  url: string,
+  init?: RequestInit
+): Promise<T> {
+  const res = await spFetch(url, {
     ...init,
     headers: {
       Accept: 'application/json;odata=nometadata',
       'Content-Type': 'application/json;odata=nometadata',
       ...(init?.headers ?? {}),
     },
-    credentials: 'include',
   });
-  if (!res.ok) throw new Error(`SP error: ${res.status}`);
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    auditLog.error('meeting-minutes', 'sp_fetch_failed', { 
+      status: res.status, 
+      url, 
+      method: init?.method ?? 'GET',
+      response: text
+    });
+    throw new Error(`SP error: ${res.status} - ${text}`);
+  }
   return (await res.json()) as T;
 }
 
@@ -116,9 +123,10 @@ const buildPatchBody = (patch: MeetingMinutesUpdateDto): Record<string, unknown>
   return body;
 };
 
-export function createSharePointMeetingMinutesRepository(siteOrApiBaseUrl: string): MeetingMinutesRepository {
-  const apiBaseUrl = normalizeApiBaseUrl(siteOrApiBaseUrl);
-  const listApiBase = `${apiBaseUrl}/lists/getbytitle('${MEETING_MINUTES_LIST_TITLE}')/items`;
+export function createSharePointMeetingMinutesRepository(
+  spFetch: (path: string, init?: RequestInit) => Promise<Response>
+): MeetingMinutesRepository {
+  const listApiBase = `/lists/getbytitle('${MEETING_MINUTES_LIST_TITLE}')/items`;
 
   return {
     async list(params) {
@@ -150,7 +158,7 @@ export function createSharePointMeetingMinutesRepository(siteOrApiBaseUrl: strin
         (filter ? `&$filter=${encodeURIComponent(filter)}` : '') +
         `&$orderby=${encodeURIComponent(orderBy)}`;
 
-      const data = await spJson<{ value: SpItem[] }>(url);
+      const data = await spJson<{ value: SpItem[] }>(spFetch, url);
       let rows = (data.value ?? []).map(mapItemToMinutes);
 
       const q = (params.q ?? '').trim();
@@ -192,7 +200,7 @@ export function createSharePointMeetingMinutesRepository(siteOrApiBaseUrl: strin
         F.userHealthNotes,
       ].join(',');
       const url = `${listApiBase}(${id})?$select=${encodeURIComponent(select)}`;
-      const item = await spJson<SpItem>(url);
+      const item = await spJson<SpItem>(spFetch, url);
       return mapItemToMinutes(item);
     },
 
@@ -214,7 +222,7 @@ export function createSharePointMeetingMinutesRepository(siteOrApiBaseUrl: strin
         [F.staffAttendance]: draft.staffAttendance ?? '',
         [F.userHealthNotes]: draft.userHealthNotes ?? '',
       };
-      const created = await spJson<SpItem>(url, { method: 'POST', body: JSON.stringify(body) });
+      const created = await spJson<SpItem>(spFetch, url, { method: 'POST', body: JSON.stringify(body) });
       return Number(created.Id ?? created[F.id] ?? 0);
     },
 
@@ -223,7 +231,7 @@ export function createSharePointMeetingMinutesRepository(siteOrApiBaseUrl: strin
       const body = buildPatchBody(patch);
       if (!Object.keys(body).length) return;
 
-      await spJson<SpItem>(url, {
+      await spJson<SpItem>(spFetch, url, {
         method: 'POST',
         headers: {
           'X-HTTP-Method': 'MERGE',

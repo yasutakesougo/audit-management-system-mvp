@@ -17,6 +17,8 @@ import { SCHEDULES_DEBUG } from '../debug';
 import type { CreateScheduleInput, DateRange, ScheduleItem, ScheduleRepository, ScheduleRepositoryListParams, ScheduleRepositoryMutationParams, UpdateScheduleInput } from '../domain/ScheduleRepository';
 import type { ScheduleCategory, ScheduleServiceType, ScheduleStatus } from '../domain/types';
 
+import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
+
 import {
     buildRangeFilter,
     buildSelectSets,
@@ -164,9 +166,12 @@ export class SharePointScheduleRepository implements ScheduleRepository {
       throw new Error('Request aborted');
     }
 
+    const rawTop = options?.top ?? SP_QUERY_LIMITS.default;
+    const safeTop = Math.min(Math.max(1, rawTop), SP_QUERY_LIMITS.hardMax);
+
     const listPath = buildSchedulesRelativeListPath();
     const params = new URLSearchParams();
-    params.set('$top', String(options?.top ?? 500));
+    params.set('$top', String(safeTop));
     if (options?.includeOrderby ?? true) {
       params.set('$orderby', `${fields.start} asc,Id asc`);
     }
@@ -195,8 +200,8 @@ export class SharePointScheduleRepository implements ScheduleRepository {
    * List schedules within date range
    * Implements multi-stage fallback for field compatibility
    */
-  async list(params: ScheduleRepositoryListParams): Promise<ScheduleItem[]> {
-    const { range, signal } = params;
+  async list(params: ScheduleRepositoryListParams & { limit?: number }): Promise<ScheduleItem[]> {
+    const { range, signal, limit } = params;
 
     try {
       const listTitle = this.listTitle.trim().toLowerCase();
@@ -214,9 +219,9 @@ export class SharePointScheduleRepository implements ScheduleRepository {
       const selectMin = isEventList ? required : selectVariants[2];
 
       const stages = [
-        { name: 'full', select: selectFull, keepOrderby: true, keepFilter: true, top: 500 },
-        { name: 'selectLite', select: selectLite, keepOrderby: true, keepFilter: true, top: 500 },
-        { name: 'noOrderby', select: selectLite, keepOrderby: false, keepFilter: true, top: 500 },
+        { name: 'full', select: selectFull, keepOrderby: true, keepFilter: true, top: limit ?? SP_QUERY_LIMITS.default },
+        { name: 'selectLite', select: selectLite, keepOrderby: true, keepFilter: true, top: limit ?? SP_QUERY_LIMITS.default },
+        { name: 'noOrderby', select: selectLite, keepOrderby: false, keepFilter: true, top: limit ?? SP_QUERY_LIMITS.default },
         { name: 'noFilter', select: selectMin, keepOrderby: false, keepFilter: false, top: 1 },
       ] as const;
 

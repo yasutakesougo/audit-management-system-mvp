@@ -35,6 +35,8 @@ import type {
 } from '../domain/supportPlanningSheetTypes';
 import type { SupportPlanningSheetRepository } from './SupportPlanningSheetRepository';
 
+import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
+
 // ─── 定数 ────────────────────────────────────────────────
 
 const DEFAULT_LIST_TITLE = 'SupportPlanningSheet_Master';
@@ -201,7 +203,7 @@ export class SharePointSupportPlanningSheetRepository implements SupportPlanning
     }
   }
 
-  async list(filter: SupportPlanningSheetFilter): Promise<SupportPlanningSheetRecord[]> {
+  async list(filter: SupportPlanningSheetFilter & { limit?: number }): Promise<SupportPlanningSheetRecord[]> {
     if (filter.signal?.aborted) return [];
     await ensureSupportPlanningSheetList(this.spFetch);
 
@@ -216,9 +218,13 @@ export class SharePointSupportPlanningSheetRepository implements SupportPlanning
       }
 
       const params = new URLSearchParams();
+      // TODO: SharePoint側でこの列(UserId, GoalId等)にインデックス設定が必要かも
       params.set('$filter', filters.join(' and '));
       params.set('$orderby', `${SP_FIELDS.decisionAt} desc`);
-      params.set('$top', '500');
+
+      const limit = filter.limit ?? SP_QUERY_LIMITS.default;
+      const safeLimit = Math.min(Math.max(1, limit), SP_QUERY_LIMITS.hardMax);
+      params.set('$top', String(safeLimit));
       params.set('$select', ALL_SELECT_FIELDS);
 
       const response = await this.spFetch(`${listPath}/items?${params.toString()}`);

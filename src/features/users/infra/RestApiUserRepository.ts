@@ -13,13 +13,13 @@ import {
   DEFAULT_USERS_LIST_TITLE,
   sanitizeEnvValue,
 } from '@/lib/sp/helpers';
-import { ensureConfig } from '@/lib/sp/config';
 import {
   FIELD_MAP,
   resolveUserSelectFields,
   type UserRow,
   type UserSelectMode,
 } from '@/sharepoint/fields';
+import { auditLog } from '@/lib/debugLogger';
 
 import { normalizeAttendanceDays } from '../attendance';
 import type {
@@ -34,7 +34,7 @@ import type { IUserMaster, IUserMasterCreateDto } from '../types';
 const DEFAULT_TOP = 500;
 
 export type RestApiUserRepositoryOptions = {
-  acquireToken: () => Promise<string | null>;
+  spFetch: (path: string, init?: RequestInit) => Promise<Response>;
   defaultTop?: number;
   audit?: (event: Omit<AuditEvent, 'ts'>) => void;
 };
@@ -51,19 +51,15 @@ type SpItemResponse = UserRow & {
 };
 
 export class RestApiUserRepository implements UserRepository {
-  private readonly acquireToken: () => Promise<string | null>;
-  private readonly baseUrl: string;
+  private readonly spFetchInternal: (path: string, init?: RequestInit) => Promise<Response>;
   private readonly listTitle: string;
   private readonly defaultTop: number;
   private readonly audit?: (event: Omit<AuditEvent, 'ts'>) => void;
 
   constructor(options: RestApiUserRepositoryOptions) {
-    this.acquireToken = options.acquireToken;
+    this.spFetchInternal = options.spFetch;
     this.defaultTop = options.defaultTop ?? DEFAULT_TOP;
     this.audit = options.audit;
-
-    const cfg = ensureConfig();
-    this.baseUrl = cfg.baseUrl;
 
     this.listTitle =
       sanitizeEnvValue(readEnv('VITE_SP_LIST_USERS', '')) ||
@@ -99,7 +95,7 @@ export class RestApiUserRepository implements UserRepository {
     } catch (e) {
       if (this.isSelectError(e)) {
         // Fallback: $select を外して全列取得（存在しないフィールドを含んでいても安全）
-        console.warn('[RestApiUserRepository] $select error, retrying without $select', e);
+        auditLog.warn('users', 'rest_api_repo.select_error_retry', { error: String(e) });
         const fallbackParts: string[] = [];
         if (top > 0) fallbackParts.push(`$top=${top}`);
         if (filterParts.length) fallbackParts.push(`$filter=${filterParts.join(' and ')}`);
@@ -146,7 +142,7 @@ export class RestApiUserRepository implements UserRepository {
         if (res.status === 404) return null;
         // $select フィールド不在の 400 → $select なしでリトライ
         if (this.isSelectError(new Error(`HTTP ${res.status}`))) {
-          console.warn('[RestApiUserRepository] $select error on getById, retrying without $select');
+          auditLog.warn('users', 'rest_api_repo.select_error_getbyid_retry');
           const fallbackPath = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items(${numericId})`;
           res = await this.spFetch(fallbackPath);
           if (!res.ok) {
@@ -161,7 +157,7 @@ export class RestApiUserRepository implements UserRepository {
       const row = raw.d ?? raw;
       return this.toDomain(row as UserRow, selectMode);
     } catch (error) {
-      console.error('RestApiUserRepository.getById failed', error);
+      auditLog.error('users', 'rest_api_repo.get_by_id_failed', { error: String(error) });
       return null;
     }
   }
@@ -282,22 +278,7 @@ export class RestApiUserRepository implements UserRepository {
   // ── Private helpers ──────────────────────────────────────────
 
   private async spFetch(path: string, init: RequestInit = {}): Promise<Response> {
-    const token = await this.acquireToken();
-    const url = `${this.baseUrl}${path}`;
-
-    const headers: Record<string, string> = {
-      Accept: 'application/json;odata=nometadata',
-      ...(init.headers as Record<string, string> ?? {}),
-    };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    // eslint-disable-next-line no-restricted-globals -- RestApiUserRepository 内の spFetch 最下層
-    return fetch(url, {
-      ...init,
-      headers,
-    });
+    return this.spFetchInternal(path, init);
   }
 
   private async fetchItems(
@@ -407,11 +388,10 @@ export class RestApiUserRepository implements UserRepository {
     try {
       userMasterSchema.parse(domain);
     } catch (error) {
-      console.warn(
-        '[RestApiUserRepository] Domain object validation failed',
-        error,
-        domain,
-      );
+      auditLog.warn('users', 'rest_api_repo.domain_validation_failed', { 
+        error: String(error), 
+        domainId: domain.Id 
+      });
     }
 
     return domain;

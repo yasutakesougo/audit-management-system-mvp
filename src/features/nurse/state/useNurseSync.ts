@@ -62,7 +62,7 @@ type SummaryOverride = Partial<Omit<FlushSummary, 'source' | 'entries'>> & {
   entries?: FlushEntrySummary[];
 };
 
-const ensureSharePointApi = (sp?: SharePointListApi) => sp ?? makeSharePointListApi();
+const ensureSharePointApi = (sp?: SharePointListApi, spFetch?: (path: string, init?: RequestInit) => Promise<Response>) => sp ?? makeSharePointListApi(spFetch);
 
 const resolveUserId = (codeOrId: string): number => {
   const numeric = Number(codeOrId);
@@ -179,8 +179,8 @@ const resolveSummaryOverride = (source: SyncSource): FlushSummary | null => {
 
 const perfNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now());
 
-export async function flushNurseQueue(sp?: SharePointListApi, options: FlushOptions = {}): Promise<FlushSummary> {
-  const api = ensureSharePointApi(sp);
+export async function flushNurseQueue(sp?: SharePointListApi, options: FlushOptions = {}, spFetch?: (path: string, init?: RequestInit) => Promise<Response>): Promise<FlushSummary> {
+  const api = ensureSharePointApi(sp, spFetch);
   const { source = 'manual', suppressToast = false } = options;
   markSyncPending(source);
   const flushStartedMs = Date.now();

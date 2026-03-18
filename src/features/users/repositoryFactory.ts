@@ -1,3 +1,4 @@
+// contract:allow-sp-direct
 import { pushAudit } from '@/lib/audit';
 import {
     getAppConfig,
@@ -10,12 +11,12 @@ import {
 import { hasSpfxContext } from '@/lib/runtime';
 import { useMemo } from 'react';
 
-import { useAuth } from '@/auth/useAuth';
 import type { UserRepository } from './domain/UserRepository';
 import { inMemoryUserRepository } from './infra/InMemoryUserRepository';
 import {
     RestApiUserRepository,
 } from './infra/RestApiUserRepository';
+import { useSP } from '@/lib/spClient';
 import {
     SharePointUserRepository,
     type SharePointUserRepositoryOptions,
@@ -25,7 +26,7 @@ export type UserRepositoryKind = 'demo' | 'sharepoint';
 
 export type UserRepositoryFactoryOptions = SharePointUserRepositoryOptions & {
   forceKind?: UserRepositoryKind;
-  acquireToken?: () => Promise<string | null>;
+  spFetch?: (path: string, init?: RequestInit) => Promise<Response>;
 };
 
 let cachedRepository: UserRepository | null = null;
@@ -76,10 +77,10 @@ const createRepository = (
     return inMemoryUserRepository;
   }
 
-  // acquireToken がある場合は REST API リポジトリを優先（SPFx 不要）
-  if (options?.acquireToken) {
+  // spFetch がある場合は REST API リポジトリを優先（SPFx 不要）
+  if (options?.spFetch) {
     return new RestApiUserRepository({
-      acquireToken: options.acquireToken,
+      spFetch: options.spFetch,
       audit: pushAudit,
     });
   }
@@ -89,10 +90,10 @@ const createRepository = (
     return new SharePointUserRepository({ ...options, audit: pushAudit });
   }
 
-  // acquireToken も SPFx もない場合はエラー
+  // spFetch も SPFx もない場合はエラー
   throw new Error(
-    '[UserRepositoryFactory] acquireToken is required for SharePoint repository in non-SPFx environments. ' +
-    'Provide acquireToken via useUserRepository() hook or set VITE_FEATURE_USERS_SP=0.',
+    '[UserRepositoryFactory] spFetch is required for SharePoint repository in non-SPFx environments. ' +
+    'Provide spFetch via useUserRepository() hook or set VITE_FEATURE_USERS_SP=0.',
   );
 };
 
@@ -103,10 +104,10 @@ const shouldUseCache = (kind: UserRepositoryKind, options?: UserRepositoryFactor
   if (!options) {
     return true;
   }
-  const { forceKind, acquireToken, sp, spfxContext, defaultTop } = options;
+  const { forceKind, spFetch, sp, spfxContext, defaultTop } = options;
   return (
     forceKind === undefined &&
-    acquireToken === undefined &&
+    spFetch === undefined &&
     sp === undefined &&
     spfxContext === undefined &&
     defaultTop === undefined
@@ -117,10 +118,10 @@ const shouldCacheRepository = (options?: UserRepositoryFactoryOptions): boolean 
   if (!options) {
     return true;
   }
-  const { forceKind, acquireToken, sp, spfxContext, defaultTop } = options;
+  const { forceKind, spFetch, sp, spfxContext, defaultTop } = options;
   return (
     forceKind === undefined &&
-    acquireToken === undefined &&
+    spFetch === undefined &&
     sp === undefined &&
     spfxContext === undefined &&
     defaultTop === undefined
@@ -179,19 +180,19 @@ export const getCurrentUserRepositoryKind = (): UserRepositoryKind => {
 /**
  * React Hook: Get user repository instance
  *
- * Automatically provides acquireToken from auth context.
+ * Automatically provides spFetch from auth context.
  * This enables the REST API repository for local development
  * without SPFx context.
  *
  * @returns UserRepository instance
  */
 export const useUserRepository = (options?: UserRepositoryFactoryOptions): UserRepository => {
-  const { acquireToken } = useAuth();
+  const { spFetch } = useSP();
 
   return useMemo(() => {
     return getUserRepository({
       ...options,
-      acquireToken: options?.acquireToken ?? acquireToken,
+      spFetch: options?.spFetch ?? spFetch,
     });
-  }, [options, acquireToken]);
+  }, [options, spFetch]);
 };
