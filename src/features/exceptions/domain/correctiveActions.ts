@@ -1,0 +1,217 @@
+/**
+ * @fileoverview 是正アクションエンジン（純粋関数）
+ * @description
+ * MVP-012: Sprint 3 Priority 1
+ *
+ * ExceptionItem を受け取り「今すぐ取れる是正アクション候補」を返す。
+ *
+ * 設計原則:
+ * - UI 非依存 / React 非依存 / 副作用なし
+ * - ExceptionCategory ごとに定型アクションを定義
+ * - severity によって一部アクションの表示強調度を変える
+ * - 将来の「カスタムアクション」拡張に備えた open/closed 設計
+ */
+
+import type { ExceptionItem, ExceptionCategory, ExceptionSeverity } from './exceptionLogic';
+
+// ─── 型定義 ──────────────────────────────────────────────────────
+
+export type CorrectiveActionVariant = 'primary' | 'secondary' | 'ghost';
+
+export type CorrectiveAction = {
+  /** アクションの一意キー */
+  key: string;
+  /** ボタン表示ラベル */
+  label: string;
+  /** 遷移先ルート (router-link 相当) */
+  route: string;
+  /** 視覚上の強調度 */
+  variant: CorrectiveActionVariant;
+  /** アクションの緊急度 (ボタンカラーに使用) */
+  severity: ExceptionSeverity;
+  /** アイコン文字 */
+  icon: string;
+  /** このアクションが有効な理由 (ツールチップ等に利用) */
+  reason: string;
+};
+
+// ─── カテゴリ別 是正アクション定義 ─────────────────────────────
+
+/**
+ * カテゴリ × userId ごとの定型アクションテンプレート
+ */
+const CORRECTIVE_ACTION_MAP: Record<
+  ExceptionCategory,
+  (item: ExceptionItem) => CorrectiveAction[]
+> = {
+  'missing-record': (item) => {
+    // userId を actionPath から抽出 (例: /daily/activity?userId=U-001)
+    const userId = extractUserId(item.actionPath ?? '');
+    return [
+      {
+        key: `${item.id}-record`,
+        label: '記録を入力する',
+        route: userId
+          ? `/daily/activity?userId=${encodeURIComponent(userId)}`
+          : '/dailysupport',
+        variant: 'primary',
+        severity: 'high',
+        icon: '📝',
+        reason: '日次記録が未入力です。すぐに入力してください。',
+      },
+      {
+        key: `${item.id}-hub`,
+        label: '利用者ハブを開く',
+        route: userId ? `/users/${encodeURIComponent(userId)}` : '/users',
+        variant: 'ghost',
+        severity: 'medium',
+        icon: '👤',
+        reason: '利用者の状況を確認してから記録を入力できます。',
+      },
+    ];
+  },
+
+  'overdue-plan': (item) => {
+    const userId = extractUserId(item.actionPath ?? '');
+    return [
+      {
+        key: `${item.id}-plan`,
+        label: '支援計画を作成する',
+        route: userId
+          ? `/isp-editor/${encodeURIComponent(userId)}`
+          : '/planning',
+        variant: 'primary',
+        severity: 'high',
+        icon: '📋',
+        reason: '個別支援計画書の作成が必要です。',
+      },
+      {
+        key: `${item.id}-hub`,
+        label: '利用者ハブを開く',
+        route: userId ? `/users/${encodeURIComponent(userId)}` : '/users',
+        variant: 'ghost',
+        severity: 'low',
+        icon: '👤',
+        reason: '利用者の現在の状況を確認できます。',
+      },
+    ];
+  },
+
+  'critical-handoff': (item) => [
+    {
+      key: `${item.id}-handoff`,
+      label: '申し送りを確認する',
+      route: '/handoff/timeline',
+      variant: 'primary',
+      severity: 'critical',
+      icon: '🔴',
+      reason: '重要な申し送りが未対応のままです。今すぐ確認してください。',
+    },
+    {
+      key: `${item.id}-record`,
+      label: '対応記録を残す',
+      route: item.actionPath ?? '/dailysupport',
+      variant: 'secondary',
+      severity: 'high',
+      icon: '📝',
+      reason: '対応内容を記録として残しておくことを推奨します。',
+    },
+  ],
+
+  'attention-user': (item) => {
+    const userId = extractUserId(item.actionPath ?? '');
+    return [
+      {
+        key: `${item.id}-plan`,
+        label: '支援手順書を確認する',
+        route: userId
+          ? `/isp-editor/${encodeURIComponent(userId)}`
+          : '/planning',
+        variant: 'primary',
+        severity: 'high',
+        icon: '📋',
+        reason: '強度行動障害対象者は支援手順書に基づいた対応が必要です。',
+      },
+      {
+        key: `${item.id}-hub`,
+        label: '利用者の詳細を見る',
+        route: userId ? `/users/${encodeURIComponent(userId)}` : '/users',
+        variant: 'secondary',
+        severity: 'medium',
+        icon: '👤',
+        reason: '利用者の全体状況を把握したうえで対応を検討してください。',
+      },
+    ];
+  },
+};
+
+// ─── ユーティリティ ───────────────────────────────────────────
+
+/**
+ * actionPath から userId を抽出するヘルパー
+ * /daily/activity?userId=U-001 → "U-001"
+ * /isp-editor/U-001 → "U-001"
+ * /users/U-001 → "U-001"
+ */
+export function extractUserId(path: string): string | null {
+  // 1. クエリパラメータからの抽出（最優先）
+  const qsMatch = path.match(/[?&]userId=([^&]+)/);
+  if (qsMatch) return decodeURIComponent(qsMatch[1]);
+
+  // 2. 既知のパターン: /isp-editor/:id または /users/:id
+  const knownPatternMatch = path.match(/\/(?:isp-editor|users)\/([^/?#]+)/);
+  if (knownPatternMatch) return decodeURIComponent(knownPatternMatch[1]);
+
+  return null;
+}
+
+// ─── 純粋関数 ────────────────────────────────────────────────
+
+/**
+ * ExceptionItem に対する是正アクション候補を返す
+ *
+ * @param item - 対象の例外アイテム
+ * @returns 優先度順の是正アクション配列 (primary が先頭)
+ */
+export function buildCorrectiveActions(item: ExceptionItem): CorrectiveAction[] {
+  const builder = CORRECTIVE_ACTION_MAP[item.category];
+  if (!builder) return [];
+
+  const actions = builder(item);
+
+  // variant 優先順でソート: primary > secondary > ghost
+  const ORDER: Record<CorrectiveActionVariant, number> = { primary: 0, secondary: 1, ghost: 2 };
+  return actions.sort((a, b) => ORDER[a.variant] - ORDER[b.variant]);
+}
+
+/**
+ * 複数の ExceptionItem に対してアクションをまとめて生成する
+ *
+ * @param items - 例外アイテムのリスト
+ * @returns item ごとのアクションマップ
+ */
+export function buildAllCorrectiveActions(
+  items: ExceptionItem[],
+): Map<string, CorrectiveAction[]> {
+  const map = new Map<string, CorrectiveAction[]>();
+  for (const item of items) {
+    map.set(item.id, buildCorrectiveActions(item));
+  }
+  return map;
+}
+
+/**
+ * 全例外をまたいで「最も優先すべき是正アクション」を1件返す
+ * (Today の ActionQueue や UserHub のスナップショットで使用する想定)
+ *
+ * @param items - severity でソート済みの例外アイテム
+ * @returns 最優先是正アクション (存在しない場合は null)
+ */
+export function pickTopCorrectiveAction(items: ExceptionItem[]): CorrectiveAction | null {
+  for (const item of items) {
+    const actions = buildCorrectiveActions(item);
+    const primary = actions.find((a) => a.variant === 'primary');
+    if (primary) return primary;
+  }
+  return null;
+}

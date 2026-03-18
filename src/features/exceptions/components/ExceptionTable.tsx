@@ -9,6 +9,9 @@
  * - ExceptionCenterPage (MVP-007) から再利用される
  * - EmptyStateAction (MVP-001) を0件時に再利用
  * - フィルタは category と severity で可能
+ *
+ * ## MVP-012 Phase B
+ * - CorrectiveActionsCell: buildCorrectiveActions() による複数是正アクション表示
  */
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -39,6 +42,7 @@ import {
   type ExceptionItem,
   type ExceptionSeverity,
 } from '../domain/exceptionLogic';
+import { buildCorrectiveActions } from '../domain/correctiveActions';
 
 // ─── Props ──────────────────────────────────────────────────
 
@@ -70,6 +74,65 @@ const SEVERITY_ORDER: Record<ExceptionSeverity, number> = {
   low: 4,
 };
 
+// ─── CorrectiveActionsCell (MVP-012 Phase B) ─────────────────
+// ExceptionTable の前に定義して「使用前宣言」エラーを回避する
+
+const SEVERITY_TO_COLOR: Record<string, 'error' | 'warning' | 'primary' | 'inherit'> = {
+  critical: 'error',
+  high: 'warning',
+  medium: 'primary',
+  low: 'inherit',
+};
+
+const CorrectiveActionsCell: React.FC<{
+  item: ExceptionItem;
+  onNavigate: (route: string) => void;
+}> = ({ item, onNavigate }) => {
+  const actions = buildCorrectiveActions(item);
+  const primary = actions.find((a) => a.variant === 'primary');
+  const secondary = actions.find((a) => a.variant === 'secondary' || a.variant === 'ghost');
+
+  if (!primary) return null;
+
+  return (
+    <Stack spacing={0.5} alignItems="flex-start">
+      {/* Primary: 主アクション */}
+      <Button
+        size="small"
+        variant="contained"
+        color={SEVERITY_TO_COLOR[primary.severity] ?? 'primary'}
+        onClick={() => onNavigate(primary.route)}
+        startIcon={<span style={{ fontSize: 12 }}>{primary.icon}</span>}
+        sx={{ fontSize: '0.7rem', textTransform: 'none', py: 0.25, px: 1 }}
+        title={primary.reason}
+        data-testid={`corrective-primary-${item.id}`}
+      >
+        {primary.label}
+      </Button>
+
+      {/* Secondary/Ghost: 補助アクション（小） */}
+      {secondary && (
+        <Button
+          size="small"
+          variant="text"
+          onClick={() => onNavigate(secondary.route)}
+          sx={{
+            fontSize: '0.65rem',
+            textTransform: 'none',
+            color: 'text.secondary',
+            py: 0,
+            px: 0.5,
+            minHeight: 'auto',
+          }}
+          title={secondary.reason}
+          data-testid={`corrective-secondary-${item.id}`}
+        >
+          {secondary.icon} {secondary.label}
+        </Button>
+      )}
+    </Stack>
+  );
+};
 
 // ─── Component ──────────────────────────────────────────────
 
@@ -222,7 +285,7 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
                 <TableCell sx={{ fontWeight: 700 }}>内容</TableCell>
                 <TableCell sx={{ fontWeight: 700, width: 100 }}>対象者</TableCell>
                 <TableCell sx={{ fontWeight: 700, width: 100 }}>日付</TableCell>
-                <TableCell sx={{ fontWeight: 700, width: 100 }}>操作</TableCell>
+                <TableCell sx={{ fontWeight: 700, width: 160 }}>是正アクション</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -286,18 +349,8 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
                         {item.targetDate ?? item.updatedAt}
                       </Typography>
                     </TableCell>
-                    <TableCell>
-                      {item.actionLabel && item.actionPath && (
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => navigate(item.actionPath!)}
-                          sx={{ fontSize: '0.7rem', textTransform: 'none' }}
-                          data-testid={`exception-action-${item.id}`}
-                        >
-                          {item.actionLabel}
-                        </Button>
-                      )}
+                    <TableCell sx={{ minWidth: 160 }}>
+                      <CorrectiveActionsCell item={item} onNavigate={navigate} />
                     </TableCell>
                   </TableRow>
                 );
