@@ -2,6 +2,7 @@ import { routerFutureFlags } from '@/app/routerFuture';
 import { ToastProvider } from '@/hooks/useToast';
 import { SettingsProvider } from '@/features/settings';
 import type { FutureConfig } from '@remix-run/router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, type RenderResult } from '@testing-library/react';
 import React, { StrictMode } from 'react';
 import {
@@ -72,13 +73,19 @@ export function renderWithAppProviders(ui: React.ReactNode, opts: Options = {}):
 
   // Note: ToastProvider and SettingsProvider are included here; tests should NOT wrap UI with them again
   // to avoid double-mounting and snapshot mismatches.
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+
   const utils = render(
     <StrictMode>
-      <ToastProvider>
-        <SettingsProvider>
-          <RouterProvider router={router} />
-        </SettingsProvider>
-      </ToastProvider>
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <SettingsProvider>
+            <RouterProvider router={router} />
+          </SettingsProvider>
+        </ToastProvider>
+      </QueryClientProvider>
     </StrictMode>
   );
 

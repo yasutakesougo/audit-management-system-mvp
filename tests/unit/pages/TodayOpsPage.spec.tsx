@@ -2,6 +2,8 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ToastProvider } from '../../../src/hooks/useToast';
 import TodayOpsPage from '../../../src/pages/TodayOpsPage';
 import { TodayBentoLayout } from '../../../src/features/today/layouts/TodayBentoLayout';
 import { useTodayActionQueue } from '../../../src/features/today/hooks/useTodayActionQueue';
@@ -128,10 +130,17 @@ describe('TodayOpsPage (ActionQueueTimeline integration)', () => {
     });
 
     // Act
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
     render(
-      <MemoryRouter>
-        <TodayOpsPage />
-      </MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <MemoryRouter>
+            <TodayOpsPage />
+          </MemoryRouter>
+        </ToastProvider>
+      </QueryClientProvider>
     );
 
     // Assert layout received the queue timeline props

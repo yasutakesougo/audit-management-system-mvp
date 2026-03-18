@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React, { type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 
 import AppShell from '@/app/AppShell';
@@ -91,22 +92,28 @@ describe('AppShell navigation smoke test', () => {
 
   const colorMode = { mode: 'light' as const, toggle: vi.fn(), sticky: false };
 
-  const renderWithProviders = (flags: FeatureFlagSnapshot = baseFlags) =>
-    render(
-      <MemoryRouter initialEntries={['/daily']}>
-        <ColorModeContext.Provider value={colorMode}>
-          <FeatureFlagsContext.Provider value={flags}>
-            <SettingsProvider>
-              <ToastProvider>
-                <AppShell>
-                  <div />
-                </AppShell>
-              </ToastProvider>
-            </SettingsProvider>
-          </FeatureFlagsContext.Provider>
-        </ColorModeContext.Provider>
-      </MemoryRouter>
+  const renderWithProviders = (flags: FeatureFlagSnapshot = baseFlags) => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/daily']}>
+          <ColorModeContext.Provider value={colorMode}>
+            <FeatureFlagsContext.Provider value={flags}>
+              <SettingsProvider>
+                <ToastProvider>
+                  <AppShell>
+                    <div />
+                  </AppShell>
+                </ToastProvider>
+              </SettingsProvider>
+            </FeatureFlagsContext.Provider>
+          </ColorModeContext.Provider>
+        </MemoryRouter>
+      </QueryClientProvider>
     );
+  };
 
   it('exposes nav and footer test IDs', async () => {
     renderWithProviders();
