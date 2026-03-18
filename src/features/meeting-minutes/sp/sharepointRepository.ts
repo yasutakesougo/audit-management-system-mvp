@@ -44,7 +44,7 @@ const asStringArray = (value: unknown): string[] | undefined => {
   return value.filter((entry): entry is string => typeof entry === 'string');
 };
 
-function mapItemToMinutes(item: SpItem): MeetingMinutes {
+export function mapItemToMinutes(item: SpItem): MeetingMinutes {
   const id = Number(item[F.id] ?? 0);
   const meetingDate = asString(item[F.meetingDate]);
   const category = asString(item[F.category]);
@@ -77,9 +77,9 @@ function mapItemToMinutes(item: SpItem): MeetingMinutes {
   };
 }
 
-const escapeODataString = (value: string): string => value.replace(/'/g, "''");
+export const escapeODataString = (value: string): string => value.replace(/'/g, "''");
 
-function buildFilter(params: MinutesSearchParams): string {
+export function buildFilter(params: MinutesSearchParams): string {
   const filters: string[] = [];
 
   if (params.publishedOnly) {
@@ -98,7 +98,7 @@ function buildFilter(params: MinutesSearchParams): string {
   return filters.join(' and ');
 }
 
-const buildPatchBody = (patch: MeetingMinutesUpdateDto): Record<string, unknown> => {
+export const buildPatchBody = (patch: MeetingMinutesUpdateDto): Record<string, unknown> => {
   const body: Record<string, unknown> = {};
   const set = (field: string, value: unknown) => {
     if (value !== undefined) body[field] = value;

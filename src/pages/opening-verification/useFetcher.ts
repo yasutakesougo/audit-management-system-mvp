@@ -1,41 +1,28 @@
 /**
  * Opening Verification — Authenticated fetcher hook
  *
- * Acquires an MSAL token and returns a thin fetch wrapper
- * that attaches Authorization + Accept headers.
+ * Acquires an MSAL token via useAuth and returns a thin fetch wrapper
+ * (Fetcher) that is transport-compatible with the opening verification steps.
+ *
+ * ## Migration note (Issue #1)
+ * Replaced raw `fetch` + independent MSAL token flow with
+ * `createSpClient(acquireToken, baseUrl).spFetch`.
+ * This unifies the SharePoint communication boundary across the app and
+ * removes the `eslint-disable no-restricted-globals` suppression.
  */
-import { getAppConfig } from '@/lib/env';
-import { useMsal } from '@azure/msal-react';
-import { useCallback } from 'react';
+import { useAuth } from '@/auth/useAuth';
+import { createSpClient, ensureConfig } from '@/lib/spClient';
+import { useCallback, useMemo } from 'react';
 import type { Fetcher } from './types';
 
 export function useFetcher() {
-  const { instance, accounts } = useMsal();
+  const { acquireToken } = useAuth();
+  const cfg = useMemo(() => ensureConfig(), []);
 
   const getFetcher = useCallback(async (): Promise<Fetcher> => {
-    if (accounts.length === 0) throw new Error('No MSAL account. Please login first.');
-    const env = getAppConfig();
-    const account = accounts[0];
-    const tokenResponse = await instance.acquireTokenSilent({
-      scopes: [env.VITE_SP_SCOPE_DEFAULT || 'https://isogokatudouhome.sharepoint.com/AllSites.Read'],
-      account,
-    });
-    const token = tokenResponse.accessToken;
-    const siteBaseUrl = env.VITE_SP_RESOURCE + env.VITE_SP_SITE_RELATIVE;
-
-    return async (path: string, init?: RequestInit): Promise<Response> => {
-      const url = path.startsWith('http') ? path : `${siteBaseUrl}${path}`;
-      // eslint-disable-next-line no-restricted-globals -- TODO: Phase 3 で spFetch に移行
-      return fetch(url, {
-        ...init,
-        headers: {
-          ...(init?.headers as Record<string, string>),
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/json;odata=nometadata',
-        },
-      });
-    };
-  }, [accounts, instance]);
+    const { spFetch } = createSpClient(acquireToken, cfg.baseUrl);
+    return spFetch;
+  }, [acquireToken, cfg.baseUrl]);
 
   return { getFetcher };
 }
