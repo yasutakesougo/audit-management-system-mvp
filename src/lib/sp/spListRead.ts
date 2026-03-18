@@ -11,6 +11,8 @@ import { readEnv } from '@/lib/env';
 import { buildItemPath, resolveListPath } from './helpers';
 import type { NormalizePathFn, SpFetchFn } from './spLists';
 import type { JsonRecord, ListItemsOptions } from './types';
+import { evaluateQueryRisk, enforceQueryPolicy } from './queryGuard';
+import { beginSpQueryTelemetry, endSpQueryTelemetry } from './telemetry';
 
 // ── Read helpers ────────────────────────────────────────────────────────────
 
@@ -48,13 +50,33 @@ export async function listItems<TRow = JsonRecord>(
   listIdentifier: string,
   options: ListItemsOptions = {},
 ): Promise<TRow[]> {
-  const { select, filter, orderby, expand, top = 100, pageCap, signal } = options;
+  const { pageCap, signal } = options;
+  
+  // 1. Evaluate Query Risk
+  const evaluation = evaluateQueryRisk({
+    listName: listIdentifier,
+    queryKind: 'list',
+    top: options.top,
+    select: options.select,
+    expand: options.expand ? options.expand.split(',') : undefined,
+    orderBy: options.orderby,
+    filter: options.filter
+  });
+
+  // 2. Enforce Policy (Phase 1.5: log high risk, but don't strictly throw yet)
+  const guardResult = enforceQueryPolicy(evaluation, {
+    throwOnHighRisk: false 
+  });
+
+  const sanitized = guardResult.sanitized;
+  const telemetryPayload = beginSpQueryTelemetry(sanitized, guardResult.riskLevel, guardResult.warningCodes);
+
   const params = new URLSearchParams();
-  if (select?.length) params.append('$select', select.join(','));
-  if (filter) params.append('$filter', filter);
-  if (orderby) params.append('$orderby', orderby);
-  if (expand) params.append('$expand', expand);
-  params.append('$top', String(top));
+  if (sanitized.select?.length) params.append('$select', sanitized.select.join(','));
+  if (sanitized.filter) params.append('$filter', sanitized.filter);
+  if (sanitized.orderBy) params.append('$orderby', sanitized.orderBy);
+  if (sanitized.expand?.length) params.append('$expand', sanitized.expand.join(','));
+  params.append('$top', String(sanitized.top));
 
   const basePath = resolveListPath(listIdentifier);
   const query = params.toString();
@@ -73,31 +95,53 @@ export async function listItems<TRow = JsonRecord>(
       ? Math.floor(pageCap)
       : Number.POSITIVE_INFINITY;
 
-  while (nextPath && pages < maxPages) {
-    if (AUDIT_DEBUG) {
-      auditLog.debug('sp:read', 'list_items_page', { path: nextPath });
-    }
-    const res = await spFetch(nextPath, signal ? { signal } : {});
-    const payload = (await res.json().catch(() => ({}) as Record<string, unknown>)) as {
-      value?: unknown[];
-      '@odata.nextLink'?: string;
-      nextLink?: string;
-    };
-    const batch = (Array.isArray(payload.value) ? payload.value : []) as TRow[];
-    rows.push(...batch);
-    pages += 1;
+  let finalResponse: Response | undefined;
+  let finalError: Error | unknown;
+  let attemptCount = 0; // spFetch actually retries internally, this just shows higher level req count
 
-    const nextLinkRaw =
-      typeof payload['@odata.nextLink'] === 'string'
-        ? payload['@odata.nextLink']
-        : typeof payload.nextLink === 'string'
-          ? payload.nextLink
-          : null;
-    if (!nextLinkRaw) {
-      nextPath = null;
-      continue;
+  try {
+    while (nextPath && pages < maxPages) {
+      if (AUDIT_DEBUG) {
+        auditLog.debug('sp:read', 'list_items_page', { path: nextPath });
+      }
+      attemptCount += 1;
+      const res = await spFetch(nextPath, signal ? { signal } : {});
+      finalResponse = res;
+      
+      const payload = (await res.json().catch(() => ({}) as Record<string, unknown>)) as {
+        value?: unknown[];
+        '@odata.nextLink'?: string;
+        nextLink?: string;
+      };
+      
+      const batch = (Array.isArray(payload.value) ? payload.value : []) as TRow[];
+      rows.push(...batch);
+      pages += 1;
+
+      const nextLinkRaw =
+        typeof payload['@odata.nextLink'] === 'string'
+          ? payload['@odata.nextLink']
+          : typeof payload.nextLink === 'string'
+            ? payload.nextLink
+            : null;
+      if (!nextLinkRaw) {
+        nextPath = null;
+        continue;
+      }
+      nextPath = normalizePath(nextLinkRaw);
     }
-    nextPath = normalizePath(nextLinkRaw);
+  } catch (err) {
+    finalError = err;
+    throw err;
+  } finally {
+    // 2. End Telemetry
+    endSpQueryTelemetry({
+      payload: telemetryPayload,
+      response: finalResponse,
+      error: finalError,
+      retryCount: Math.max(0, attemptCount - 1), 
+      resultCount: rows.length
+    });
   }
 
   return rows;

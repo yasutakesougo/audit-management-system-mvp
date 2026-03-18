@@ -1,3 +1,4 @@
+// contract:allow-interface
 /**
  * @fileoverview UserDetailHub のビジネスロジック（純粋関数）
  * @description

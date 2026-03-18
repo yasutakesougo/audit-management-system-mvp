@@ -11,7 +11,7 @@ function makeAction(overrides: Partial<SuggestionAction> = {}): SuggestionAction
   return {
     action: 'accept',
     ruleId: 'highCoOccurrence.001',
-    category: 'pattern',
+    category: 'co-occurrence',
     message: 'テスト提案',
     evidence: 'テスト根拠',
     timestamp: '2026-02-10T09:00:00Z',

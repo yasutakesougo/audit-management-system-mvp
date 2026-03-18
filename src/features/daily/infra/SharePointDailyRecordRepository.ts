@@ -12,6 +12,8 @@ import type {
 } from '../domain/DailyRecordRepository';
 import { DailyRecordItemSchema } from '../schema';
 
+import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
+
 /**
  * SharePoint List Name for Daily Records
  * Can be overridden via environment variable
@@ -219,7 +221,7 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
   /**
    * List daily records within date range
    */
-  async list(params: DailyRecordRepositoryListParams): Promise<DailyRecordItem[]> {
+  async list(params: DailyRecordRepositoryListParams & { limit?: number }): Promise<DailyRecordItem[]> {
     if (params.signal?.aborted) {
       return [];
     }
@@ -236,7 +238,10 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
       const queryParams = new URLSearchParams();
       queryParams.set('$filter', filter);
       queryParams.set('$orderby', 'Title desc'); // Newest first
-      queryParams.set('$top', '100'); // Reasonable limit for date range
+
+      const limit = params.limit ?? SP_QUERY_LIMITS.default;
+      const safeLimit = Math.min(Math.max(1, limit), SP_QUERY_LIMITS.hardMax);
+      queryParams.set('$top', String(safeLimit));
       queryParams.set('$select', [
         'Id',
         DAILY_RECORD_FIELDS.title,

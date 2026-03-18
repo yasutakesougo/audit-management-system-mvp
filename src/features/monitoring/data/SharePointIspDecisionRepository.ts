@@ -31,6 +31,8 @@ import type {
   SaveDecisionInput,
 } from './IspDecisionRepository';
 
+import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
+
 // ─── 定数 ────────────────────────────────────────────────
 
 const DEFAULT_LIST_TITLE = 'IspRecommendationDecisions';
@@ -196,7 +198,7 @@ export class SharePointIspDecisionRepository implements IspDecisionRepository {
     }
   }
 
-  async list(filter: DecisionListFilter): Promise<IspRecommendationDecision[]> {
+  async list(filter: DecisionListFilter & { limit?: number }): Promise<IspRecommendationDecision[]> {
     if (filter.signal?.aborted) return [];
     await ensureIspDecisionList(this.spFetch);
 
@@ -216,9 +218,13 @@ export class SharePointIspDecisionRepository implements IspDecisionRepository {
       }
 
       const params = new URLSearchParams();
+      // TODO: SharePoint側でこの列(UserId, GoalId等)にインデックス設定が必要かも
       params.set('$filter', filters.join(' and '));
       params.set('$orderby', `${SP_FIELDS.decidedAt} desc`);
-      params.set('$top', '200');
+
+      const limit = filter.limit ?? SP_QUERY_LIMITS.default;
+      const safeLimit = Math.min(Math.max(1, limit), SP_QUERY_LIMITS.hardMax);
+      params.set('$top', String(safeLimit));
       params.set('$select', ALL_SELECT_FIELDS);
 
       const response = await this.spFetch(`${listPath}/items?${params.toString()}`);

@@ -1,5 +1,17 @@
 /**
- * SharePoint REST API クエリスロットリング保護定数
+ * SharePoint REST API Query Throttling and Limits configuration.
  */
-export const DEFAULT_SP_QUERY_LIMIT = 100;
-export const MAX_SP_QUERY_LIMIT = 4999; // リストビュースレッショルド(5000)回避用
+
+export const SP_QUERY_LIMITS = {
+  /** Default limit for UI queries (fast, lightweight) */
+  default: 100,
+  /** Recommended limit for background or data-heavy UI queries */
+  recommended: 500,
+  /** Hard maximum limit before the 5000 item threshold exception is triggered */
+  hardMax: 4999,
+};
+
+export const SP_TELEMETRY_THRESHOLDS = {
+  /** Queries taking longer than this are considered slow */
+  slowQueryMs: 1000,
+};

@@ -21,7 +21,7 @@ export type UserRepositoryGetParams = {
 
 export type UserRepositoryUpdateDto = Partial<IUserMasterCreateDto>;
 
-export interface UserRepository {
+export type UserRepository = {
   getAll(params?: UserRepositoryListParams): Promise<IUserMaster[]>;
   getById(id: number | string, params?: UserRepositoryGetParams): Promise<IUserMaster | null>;
   create(payload: IUserMasterCreateDto): Promise<IUserMaster>;

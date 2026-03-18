@@ -22,6 +22,7 @@ import { useCreateHandoffFromExternalSource } from '@/features/handoff/useCreate
 import { useToast } from '@/hooks/useToast';
 import { useMeetingMinutesDetail } from '../hooks/useMeetingMinutes';
 import type { MeetingMinutesRepository } from '../sp/repository';
+import { auditLog } from '@/lib/debugLogger';
 
 const renderMultiline = (value?: string) =>
   (value ?? '')
@@ -151,7 +152,7 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
                     setQuickSent(true);
                     show('success', '申し送りに送信しました。');
                   } catch (error) {
-                    console.error('[meeting-minutes] quick handoff send failed:', error);
+                    auditLog.error('meeting-minutes', 'quick_handoff_send_failed', { error: String(error) });
                     setQuickError('送信に失敗しました。もう一度お試しください。');
                   } finally {
                     setQuickSending(false);
@@ -333,7 +334,7 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
                 setOpenSend(false);
                 setExtra('');
               } catch (error) {
-                console.error('[meeting-minutes] handoff send failed:', error);
+                auditLog.error('meeting-minutes', 'handoff_send_failed', { error: String(error) });
                 setSendError('送信に失敗しました。もう一度お試しください。');
               } finally {
                 setSending(false);

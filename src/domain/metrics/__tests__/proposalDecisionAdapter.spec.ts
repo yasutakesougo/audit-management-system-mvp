@@ -11,7 +11,7 @@ function makeAction(overrides: Partial<SuggestionAction> = {}): SuggestionAction
   return {
     action: 'accept',
     ruleId: 'highCoOccurrence.001',
-    category: 'pattern',
+    category: 'co-occurrence',
     message: '午前に不安傾向タグが多く見られます',
     evidence: '不安傾向: 3/5件 (60%)',
     timestamp: '2026-02-10T09:00:00Z',
