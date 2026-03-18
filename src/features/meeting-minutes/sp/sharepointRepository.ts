@@ -44,7 +44,7 @@ const asStringArray = (value: unknown): string[] | undefined => {
   return value.filter((entry): entry is string => typeof entry === 'string');
 };
 
-function mapItemToMinutes(item: SpItem): MeetingMinutes {
+export function mapItemToMinutes(item: SpItem): MeetingMinutes {
   const id = Number(item[F.id] ?? 0);
   const meetingDate = asString(item[F.meetingDate]);
   const category = asString(item[F.category]);
