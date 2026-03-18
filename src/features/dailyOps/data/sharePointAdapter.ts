@@ -4,15 +4,16 @@ import { DAILY_OPS_FIELDS, DAILY_OPS_LIST_TITLE } from './spSchema';
 
 type SpItem = Record<string, unknown>;
 
-const toIsoDateOnly = (value: string): string => String(value).slice(0, 10);
+/** @internal テスト用に公開。プロダクションコードからは直接使わないこと。 */
+export const toIsoDateOnly = (value: string): string => String(value).slice(0, 10);
 
 const makeTitle = (input: UpsertDailyOpsSignalInput): string => {
   const t = input.time ? ` ${input.time}` : '';
   return `[${input.date}] ${input.targetId} ${input.kind}${t}`;
 };
 
-// 重複キー = (date, targetType, targetId, kind, time)
-const buildCompositeFilter = (
+/** @internal テスト用に公開。プロダクションコードからは直接使わないこと。 */
+export const buildCompositeFilter = (
   input: Pick<UpsertDailyOpsSignalInput, 'date' | 'targetType' | 'targetId' | 'kind' | 'time'>,
 ): string => {
   const f = DAILY_OPS_FIELDS;
@@ -31,7 +32,8 @@ const buildCompositeFilter = (
   ].join(' and ');
 };
 
-const mapFromSp = (item: SpItem): DailyOpsSignal => {
+/** @internal テスト用に公開。プロダクションコードからは直接使わないこと。 */
+export const mapFromSp = (item: SpItem): DailyOpsSignal => {
   const f = DAILY_OPS_FIELDS;
 
   return {

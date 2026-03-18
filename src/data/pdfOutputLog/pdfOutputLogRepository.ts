@@ -88,6 +88,13 @@ interface SpPdfOutputLogRow {
   Modified: string;
 }
 
+/** SharePoint 作成系レスポンス型（addListItemByTitle の返却値） */
+type SpLogCreatedItem = {
+  Id?: number;
+  d?: { Id?: number };
+  data?: { Id?: number };
+} & Record<string, unknown>;
+
 // ────────────────────────────────────────────────────────────────
 // Mapper
 // ────────────────────────────────────────────────────────────────
@@ -141,8 +148,7 @@ export function createPdfOutputLogRepository(sp: UseSP): PdfOutputLogRepository 
         payload[PDF_OUTPUT_LOG_FIELDS.errorMessage] = input.errorMessage;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result: any = await sp.addListItemByTitle(PDF_OUTPUT_LOG_LIST_TITLE, payload);
+      const result = await sp.addListItemByTitle(PDF_OUTPUT_LOG_LIST_TITLE, payload) as SpLogCreatedItem;
       const createdId = Number(result?.Id ?? result?.d?.Id ?? result?.data?.Id ?? 0);
 
       console.info(`[PdfOutputLog] ✅ Logged: ${title} (ID: ${createdId})`);

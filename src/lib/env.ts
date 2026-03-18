@@ -47,6 +47,8 @@ export type AppConfig = {
   schedulesTz: string;
   schedulesWeekStart: number;
   isDev: boolean;
+  /** 事業所名（AI要約プロンプト等に利用） */
+  facilityName: string;
 };
 
 const TRUTHY = new Set(['1', 'true', 'yes', 'y', 'on', 'enabled']);
@@ -226,6 +228,7 @@ export const getAppConfig = (envOverride?: EnvRecord): AppConfig => {
     schedulesTz: readEnv('VITE_SCHEDULES_TZ', '', envOverride).trim(),
     schedulesWeekStart: clampWeekStart(parseNumber(readEnv('VITE_SCHEDULES_WEEK_START', '1', envOverride), 1)),
     isDev: resolveIsDev(envOverride),
+    facilityName: readEnv('VITE_FACILITY_NAME', '', envOverride),
   };
 
   if (!envOverride) {

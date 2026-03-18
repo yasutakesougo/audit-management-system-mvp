@@ -154,6 +154,7 @@ List names used in API calls are resolved by [`spListRegistry.ts`](../src/sharep
 | `VITE_ATTENDANCE_DISCREPANCY_THRESHOLD` | Discrepancy threshold (as a float). | No | `0.75` | `env.schema.ts` | Must be positive; used by `serviceRecords.ts`. |
 | `VITE_ABSENCE_MONTHLY_LIMIT` | Maximum number of absences allowed per month. | No | `4` | `env.schema.ts` | Must be an integer. |
 | `VITE_FACILITY_CLOSE_TIME` | Time of day the facility officially closes, formatted `HH:mm`. | No | `"18:00"` | `env.schema.ts` | Validated against `HH:MM` 24h format. |
+| `VITE_FACILITY_NAME` | 事業所名。AI 요約プロンプト等に埋め込まれる。 | No | `""` | `src/lib/env.ts` | 未設定の場合は空文字のままで動作する。 |
 
 ## 8. Firebase & Firestore
 
