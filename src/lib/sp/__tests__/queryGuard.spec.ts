@@ -28,30 +28,34 @@ describe('queryGuard - evaluateQueryRisk', () => {
     expect(res.warnings[0]).toContain(`hard max limit (${SP_QUERY_LIMITS.hardMax})`);
   });
 
-  test('select: missing triggers missingSelect and medium risk', () => {
+  test('select: missing triggers missingSelect and +2 riskScore', () => {
     const res = evaluateQueryRisk({ top: 100, orderBy: 'Id' });
     expect(res.flags.missingSelect).toBe(true);
-    expect(res.riskLevel).toBe('medium');
+    expect(res.riskScore).toBe(2);
+    expect(res.riskLevel).toBe('low');
     expect(res.warnings.some(w => w.includes('$select'))).toBe(true);
   });
 
-  test('expand: single expand triggers hasExpand and medium risk', () => {
+  test('expand: single expand triggers hasExpand and +2 riskScore', () => {
     const res = evaluateQueryRisk({ top: 100, select: ['Id'], orderBy: 'Id', expand: ['User'] });
     expect(res.flags.hasExpand).toBe(true);
-    expect(res.riskLevel).toBe('medium');
+    expect(res.riskScore).toBe(2);
+    expect(res.riskLevel).toBe('low');
     expect(res.warnings.some(w => w.includes('$expand'))).toBe(true);
   });
 
-  test('expand: multiple expands trigger high risk', () => {
+  test('expand: multiple expands trigger +4 riskScore and medium risk', () => {
     const res = evaluateQueryRisk({ top: 100, select: ['Id'], orderBy: 'Id', expand: ['User', 'Department'] });
     expect(res.flags.hasExpand).toBe(true);
-    expect(res.riskLevel).toBe('high');
+    expect(res.riskScore).toBe(4);
+    expect(res.riskLevel).toBe('medium');
   });
 
-  test('orderBy: missing in list triggers missingOrderBy and medium risk', () => {
+  test('orderBy: missing in list triggers missingOrderBy and +2 riskScore', () => {
     const res = evaluateQueryRisk({ top: 100, select: ['Id'], queryKind: 'list' });
     expect(res.flags.missingOrderBy).toBe(true);
-    expect(res.riskLevel).toBe('medium');
+    expect(res.riskScore).toBe(2);
+    expect(res.riskLevel).toBe('low');
     expect(res.warnings.some(w => w.includes('$orderby'))).toBe(true);
   });
 
@@ -64,7 +68,8 @@ describe('queryGuard - evaluateQueryRisk', () => {
   test('filter: index heuristic - catches potentially unindexed filters', () => {
     const res1 = evaluateQueryRisk({ top: 100, select: ['Id'], orderBy: 'Id', filter: "substringof('foo', Title)" });
     expect(res1.flags.filterMayNeedIndex).toBe(true);
-    expect(res1.riskLevel).toBe('medium');
+    expect(res1.riskScore).toBe(2);
+    expect(res1.riskLevel).toBe('low');
     expect(res1.warnings.some(w => w.includes('$filter'))).toBe(true);
 
     const res2 = evaluateQueryRisk({ top: 100, select: ['Id'], orderBy: 'Id', filter: "Date ge '2023-01-01'" });
@@ -78,10 +83,11 @@ describe('queryGuard - evaluateQueryRisk', () => {
     expect(res.flags.filterMayNeedIndex).toBe(true);
   });
 
-  test('riskLevel: high for export/analytics with large top', () => {
+  test('riskLevel: medium for export with top exceeding recommendation', () => {
     const res = evaluateQueryRisk({ top: 2000, select: ['Id'], orderBy: 'Id', queryKind: 'export' });
-    // Assuming 2000 is > 1000
-    expect(res.riskLevel).toBe('high');
+    // top exceeds recommended (+1), export (+2) => score 3 = medium
+    expect(res.riskScore).toBe(3);
+    expect(res.riskLevel).toBe('medium');
   });
 
   test('riskLevel: low for well-formed queries', () => {

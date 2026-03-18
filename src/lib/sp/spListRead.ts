@@ -69,7 +69,7 @@ export async function listItems<TRow = JsonRecord>(
   });
 
   const sanitized = guardResult.sanitized;
-  const telemetryPayload = beginSpQueryTelemetry(sanitized, guardResult.riskLevel, guardResult.warningCodes);
+  const telemetryPayload = beginSpQueryTelemetry(sanitized, guardResult.riskLevel, guardResult.riskScore, guardResult.warningCodes);
 
   const params = new URLSearchParams();
   if (sanitized.select?.length) params.append('$select', sanitized.select.join(','));

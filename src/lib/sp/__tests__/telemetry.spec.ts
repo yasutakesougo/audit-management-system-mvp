@@ -18,7 +18,7 @@ describe('spQueryTelemetry', () => {
     };
 
     // 1. Begin Telemetry
-    const payload = beginSpQueryTelemetry(params, 'medium', ['FILTER_MAY_NEED_INDEX']);
+    const payload = beginSpQueryTelemetry(params, 'medium', 3, ['FILTER_MAY_NEED_INDEX']);
     
     // Simulate some time passed during fetch
     mockTime = 1250;
@@ -59,7 +59,7 @@ describe('spQueryTelemetry', () => {
     vi.spyOn(globalThis.performance, 'now').mockImplementation(() => mockTime);
 
     const params: GuardedQueryParams = { top: 5000 };
-    const payload = beginSpQueryTelemetry(params, 'high', ['TOP_CAPPED']);
+    const payload = beginSpQueryTelemetry(params, 'high', 6, ['TOP_CAPPED']);
     mockTime = 1500;
 
     const fakeThrottleResponse = new Response(null, { status: 429 });

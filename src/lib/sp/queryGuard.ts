@@ -2,6 +2,16 @@ import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 
 export type SharePointQueryRiskLevel = 'low' | 'medium' | 'high';
 
+export type SharePointWarningCode = 
+  | 'TOP_CAPPED'
+  | 'TOP_EXCEEDS_RECOMMENDED'
+  | 'SELECT_MISSING'
+  | 'EXPAND_PRESENT'
+  | 'ORDERBY_MISSING'
+  | 'FILTER_NEEDS_INDEX'
+  | 'HIGH_RISK_EXPORT'
+  | 'HIGH_RISK_ANALYTICS';
+
 export interface GuardedQueryParams {
   top?: number;
   select?: string[];
@@ -15,8 +25,9 @@ export interface GuardedQueryParams {
 export interface GuardedQueryResult {
   sanitized: GuardedQueryParams;
   warnings: string[];
-  warningCodes: string[];
+  warningCodes: SharePointWarningCode[];
   riskLevel: SharePointQueryRiskLevel;
+  riskScore: number;
   flags: {
     cappedTop: boolean;
     missingSelect: boolean;
@@ -45,8 +56,9 @@ export function evaluateQueryRisk(params: GuardedQueryParams): GuardedQueryResul
   };
 
   const warnings: string[] = [];
-  const warningCodes: string[] = [];
+  const warningCodes: SharePointWarningCode[] = [];
   const sanitized: GuardedQueryParams = { ...params };
+  let riskScore = 0;
   
   // A. Check and sanitize `top`
   if (params.top === undefined || params.top === null) {
@@ -56,14 +68,17 @@ export function evaluateQueryRisk(params: GuardedQueryParams): GuardedQueryResul
     flags.cappedTop = true;
     warningCodes.push('TOP_CAPPED');
     warnings.push(`Query top increased from ${params.top} to minimum allowed value of 1.`);
+    riskScore += 3;
   } else if (params.top > SP_QUERY_LIMITS.hardMax) {
     sanitized.top = SP_QUERY_LIMITS.hardMax;
     flags.cappedTop = true;
     warningCodes.push('TOP_CAPPED');
     warnings.push(`Query top reduced from ${params.top} to hard max limit (${SP_QUERY_LIMITS.hardMax}).`);
+    riskScore += 3;
   } else if (params.top > SP_QUERY_LIMITS.recommended) {
     warningCodes.push('TOP_EXCEEDS_RECOMMENDED');
     warnings.push(`Query top (${params.top}) exceeds recommended limit (${SP_QUERY_LIMITS.recommended}). Use pagination if possible.`);
+    riskScore += 1;
   }
 
   // B. Check `select`
@@ -71,6 +86,7 @@ export function evaluateQueryRisk(params: GuardedQueryParams): GuardedQueryResul
     flags.missingSelect = true;
     warningCodes.push('SELECT_MISSING');
     warnings.push('Query omits $select. This risks returning large amounts of unneeded data and hitting the 2MB response size limit.');
+    riskScore += 2;
   }
 
   // C. Check `expand`
@@ -78,8 +94,9 @@ export function evaluateQueryRisk(params: GuardedQueryParams): GuardedQueryResul
   if (params.expand && params.expand.length > 0) {
     flags.hasExpand = true;
     expandCount = params.expand.length;
-    warningCodes.push('HAS_EXPAND');
+    warningCodes.push('EXPAND_PRESENT');
     warnings.push(`Query contains ${expandCount} $expand parameter(s).`);
+    riskScore += 2 * expandCount;
   }
 
   // D. Check `orderBy`
@@ -89,39 +106,38 @@ export function evaluateQueryRisk(params: GuardedQueryParams): GuardedQueryResul
     flags.missingOrderBy = true;
     warningCodes.push('ORDERBY_MISSING');
     warnings.push('Query for multiple items missing $orderby. Results may be inconsistently sorted or cause pagination issues.');
+    riskScore += 2;
   }
 
   // E. Check `filter` heuristic for index need
   if (params.filter) {
     if (filterNeedsIndexPattern.test(params.filter)) {
       flags.filterMayNeedIndex = true;
-      warningCodes.push('FILTER_MAY_NEED_INDEX');
+      warningCodes.push('FILTER_NEEDS_INDEX');
       warnings.push(`Query uses $filter (${params.filter}) that may rely on non-indexed columns, risking 5000-item threshold failures.`);
+      riskScore += 2;
     }
   }
 
-  // F. Calculate Risk Level
+  // Query Kind Risks
+  if (params.queryKind === 'export') {
+    warningCodes.push('HIGH_RISK_EXPORT');
+    riskScore += 2;
+  } else if (params.queryKind === 'analytics') {
+    warningCodes.push('HIGH_RISK_ANALYTICS');
+    riskScore += 2;
+  }
+
+  // F. Calculate Risk Level based strictly on score (plus hard overrides if needed, though +3 usually takes care of it)
+  // To keep compatibility with override logic (cappedTop = high), we adjust score if necessary:
+  if (flags.cappedTop && riskScore < 6) {
+    riskScore = 6;
+  }
+
   let riskLevel: SharePointQueryRiskLevel = 'low';
-
-  const isExportOrAnalytics = params.queryKind === 'export' || params.queryKind === 'analytics';
-  const hasLargeTop = (sanitized.top ?? 0) > 1000;
-
-  // High Risk Thresholds
-  if (flags.cappedTop) {
+  if (riskScore >= 6) {
     riskLevel = 'high';
-  } else if (expandCount > 1) {
-    riskLevel = 'high';
-  } else if (flags.missingSelect && flags.hasExpand) {
-    riskLevel = 'high';
-  } else if (flags.missingOrderBy && hasLargeTop) {
-    riskLevel = 'high';
-  } else if (flags.filterMayNeedIndex && flags.hasExpand) {
-    riskLevel = 'high';
-  } else if (isExportOrAnalytics && hasLargeTop) {
-    riskLevel = 'high';
-  } 
-  // Medium Risk Thresholds
-  else if (flags.missingSelect || flags.missingOrderBy || flags.filterMayNeedIndex || expandCount === 1) {
+  } else if (riskScore >= 3) {
     riskLevel = 'medium';
   }
 
@@ -130,6 +146,7 @@ export function evaluateQueryRisk(params: GuardedQueryParams): GuardedQueryResul
     warnings,
     warningCodes,
     riskLevel,
+    riskScore,
     flags,
   };
 }

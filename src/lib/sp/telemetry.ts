@@ -9,6 +9,7 @@ export interface SpTelemetryMetrics {
   selectCount?: number;
   expandCount?: number;
   riskLevel: SharePointQueryRiskLevel;
+  riskScore: number;
   warningCodes: string[];
   durationMs: number;
   resultCount?: number;
@@ -24,6 +25,7 @@ export interface SpTelemetryMetrics {
 export interface QueryTelemetryPayload {
   guardedParams: GuardedQueryParams;
   riskLevel: SharePointQueryRiskLevel;
+  riskScore: number;
   warningCodes: string[];
   startTimeMs: number;
 }
@@ -51,11 +53,13 @@ export const telemetrySink = {
 export function beginSpQueryTelemetry(
   guardedParams: GuardedQueryParams, 
   riskLevel: SharePointQueryRiskLevel, 
+  riskScore: number,
   warningCodes: string[]
 ): QueryTelemetryPayload {
   return {
     guardedParams,
     riskLevel,
+    riskScore,
     warningCodes,
     startTimeMs: performance.now()
   };
@@ -92,6 +96,7 @@ export function endSpQueryTelemetry(options: EndSpQueryTelemetryOptions): SpTele
     hasFilter: !!p.filter,
     hasOrderBy: !!p.orderBy,
     riskLevel: payload.riskLevel,
+    riskScore: payload.riskScore,
     warningCodes: payload.warningCodes,
     durationMs,
     resultCount,
