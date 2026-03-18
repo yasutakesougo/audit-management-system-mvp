@@ -25,11 +25,24 @@ export type NavItem = {
   prefetchKey?: PrefetchKey;
   prefetchKeys?: PrefetchKey[];
   audience?: NavAudience | NavAudience[];
-  /** Explicit group assignment. When set, pickGroup() uses this directly. */
-  group?: NavGroupKey;
+  /** 
+   * 紐づくナビゲーショングループのキー。
+   * 新画面追加時、どの業務フロー/目的に沿うか（'daily' | 'assessment' | 'record' | 'ops' | 'admin'）を必ず指定します。
+   */
+  group: NavGroupKey;
 };
 
-export type NavGroupKey = 'daily' | 'record' | 'ibd' | 'isp' | 'master' | 'ops' | 'admin' | 'settings';
+/**
+ * Navigation Group Keys (ユーザーの目的・業務フローに基づく分類)
+ *
+ * @remarks
+ * - daily: 現場の実行 (今日の業務, スケジュール, 日次記録など現場で開く順に配置)
+ * - assessment: 支援計画・アセスメント (個別支援計画(ISP), 評価, 分析など)
+ * - record: 記録・振り返り (各種記録一覧, 運営状況, 分析など)
+ * - ops: 拠点運営 (請求, 勤怠, カレンダーなど拠点全体の運用機能)
+ * - admin: マスタ・管理 (利用者・職員マスタ, 管理ツールなど全体のハブ)
+ */
+export type NavGroupKey = 'daily' | 'assessment' | 'record' | 'ops' | 'admin';
 
 /**
  * Configuration for creating navigation items
@@ -65,13 +78,10 @@ export const NAV_AUDIENCE = {
  */
 export const NAV_GROUP_I18N_KEYS = {
   daily: 'NAV_GROUP.DAILY',
+  assessment: 'NAV_GROUP.ASSESSMENT',
   record: 'NAV_GROUP.RECORD',
-  ibd: 'NAV_GROUP.IBD',
-  isp: 'NAV_GROUP.ISP',
-  master: 'NAV_GROUP.MASTER',
   ops: 'NAV_GROUP.OPS',
   admin: 'NAV_GROUP.ADMIN',
-  settings: 'NAV_GROUP.SETTINGS',
 } as const;
 
 /**
@@ -84,19 +94,15 @@ export const NAV_GROUP_I18N_KEYS = {
  * - Pairs with NAV_GROUP_I18N_KEYS for future i18n integration
  */
 export const groupLabel: Record<NavGroupKey, string> = {
-  daily: '📌 今日の業務',
-  record: '📚 記録を参照',
-  ibd: '🧩 強度行動障害支援',
-  isp: '📋 個別支援計画',
-  master: '👥 利用者・職員',
-  ops: '🏢 運営管理',
-  // admin/settings はサイドナビから廃止。管理ツール（/admin）ハブに集約済み。
-  admin: '🛡️ システム管理',
-  settings: '⚙️ 表示設定',
+  daily: '📌 現場の実行',
+  assessment: '🧩 支援計画・アセスメント',
+  record: '📚 記録・振り返り',
+  ops: '🏢 拠点運営',
+  admin: '⚙️ マスタ・管理',
 };
 
 /**
  * Navigation groups display order
  * admin/settings はサイドナビに項目がないため除外。
  */
-export const NAV_GROUP_ORDER: NavGroupKey[] = ['daily', 'record', 'isp', 'ibd', 'master', 'ops'];
+export const NAV_GROUP_ORDER: NavGroupKey[] = ['daily', 'assessment', 'record', 'ops', 'admin'];

@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **ナビゲーション再編: 機能別から業務目的別へ移行**
+  - サイドバーが目的別（`daily`, `assessment`, `record`, `ops`, `admin`）へ整理されました。
+  - TypeScriptの型で `group` 指定を必須化し、設定漏れを防ぐガードレールを導入しました。
+  - ナビゲーション設定の整合性を保証する単体テストを追加しました。
+
 ## [2026-02-04] Phase 3.7-A Complete
 
 ### Added
