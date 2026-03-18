@@ -1,312 +1,419 @@
 /**
- * meeting-minutes — localStorageRepository 純関数テスト
+ * Contract Tests: createLocalStorageMeetingMinutesRepository
  *
- * 対象:
- *   - matchesSearch  q / tag / category / from / to / publishedOnly の複合フィルタ
- *   - nextId         空配列・通常ケース
+ * localStorage 実装の保存・取得・更新・検索契約を固定し、
+ * meeting-minutes の local / SP 両輪を揃える。
  *
- * テスト設計書: docs/test-design/meeting-minutes.md
+ * ## local vs SP 対応関係
+ * | 操作     | localStorageRepository   | sharepointRepository          |
+ * |---------|--------------------------|-------------------------------|
+ * | フィルタ | matchesSearch (client)   | buildFilter (SP OData) + client |
+ * | 変換     | そのまま保存             | mapItemToMinutes              |
+ * | 更新     | スプレッド展開           | buildPatchBody → MERGE        |
+ * | q/tag   | client matchesSearch     | client 処理（SP では行わない） |
  *
- * 設計上の注意:
- *   - q は title / summary / tags を AND でなく OR で検索（いずれか1つにヒットすれば一致）
- *   - tag は tags フィールドのみを検索（部分一致）
- *   - from / to は文字列比較（YYYY-MM-DD 前提）
- *   - 大文字小文字は区別しない（toLowerCase 済み）
+ * ## 仕様の核心
+ * - nextId: max(id) + 1（空配列なら 1）
+ * - ソート: meetingDate desc → modified desc
+ * - publishedOnly: `isPublished === false` のみ除外（undefined は残す）
+ * - matchesSearch q: title/summary/tags を対象
+ * - update: スプレッドで上書き、modified は自動更新
+ * - getById: 存在しない場合は例外
+ * - 壊れた localStorage: catch → [] にフォールバック
  */
-import { describe, it, expect } from 'vitest';
-
-import { matchesSearch, nextId } from '../localStorageRepository';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { createLocalStorageMeetingMinutesRepository } from '../localStorageRepository';
 import type { MeetingMinutes } from '../../types';
 
-// ─── テスト用ファクトリ ───────────────────────────────────────────────────────
+// ─── テスト用フィクスチャ ───────────────────────────────────
 
-function makeMinutes(overrides?: Partial<MeetingMinutes>): MeetingMinutes {
-  return {
-    id: 1,
-    title: 'テスト議事録',
-    meetingDate: '2026-01-15',
-    category: '職員会議',
-    summary: '会議の概要',
-    decisions: '決定事項',
-    actions: '次のアクション',
-    tags: 'タグA タグB',
-    relatedLinks: '',
-    isPublished: true,
-    ...overrides,
-  };
+const STORAGE_KEY = 'meeting-minutes-local';
+
+function seedStorage(items: MeetingMinutes[]): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
-// ─── 条件なし（全件許可）────────────────────────────────────────────────────
+function readStorage(): MeetingMinutes[] {
+  return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as MeetingMinutes[];
+}
 
-describe('matchesSearch — 条件が空', () => {
-  it('should match any item when all params are empty/omitted', () => {
-    const item = makeMinutes();
-    expect(matchesSearch(item, {})).toBe(true);
-  });
+const baseItem: MeetingMinutes = {
+  id: 1,
+  title: '4月度職員会議',
+  meetingDate: '2026-04-01',
+  category: '職員会議',
+  summary: '今月の目標を確認',
+  decisions: '来週実施',
+  actions: '担当: 田中',
+  tags: '月次,定例',
+  relatedLinks: '',
+  isPublished: true,
+  chair: '田中',
+  scribe: '鈴木',
+  attendees: ['田中', '鈴木'],
+  staffAttendance: '',
+  userHealthNotes: '',
+  created: '2026-04-01T09:00:00.000Z',
+  modified: '2026-04-01T10:00:00.000Z',
+};
 
-  it('should match even for unpublished items when publishedOnly is not set', () => {
-    const item = makeMinutes({ isPublished: false });
-    expect(matchesSearch(item, {})).toBe(true);
-  });
+// ─── セットアップ / クリーンアップ ──────────────────────────
+
+beforeEach(() => {
+  localStorage.clear();
 });
 
-// ─── publishedOnly ───────────────────────────────────────────────────────────
-
-describe('matchesSearch — publishedOnly', () => {
-  it('should exclude unpublished items when publishedOnly is true', () => {
-    const item = makeMinutes({ isPublished: false });
-    expect(matchesSearch(item, { publishedOnly: true })).toBe(false);
-  });
-
-  it('should include published items when publishedOnly is true', () => {
-    const item = makeMinutes({ isPublished: true });
-    expect(matchesSearch(item, { publishedOnly: true })).toBe(true);
-  });
-
-  it('should include items with isPublished=undefined when publishedOnly is true', () => {
-    // isPublished が明示的に false でなければ除外しない
-    const item = makeMinutes({ isPublished: undefined });
-    expect(matchesSearch(item, { publishedOnly: true })).toBe(true);
-  });
+afterEach(() => {
+  localStorage.clear();
 });
 
-// ─── q 検索（title / summary / tags の OR） ──────────────────────────────────
+// ─── テスト本体 ──────────────────────────────────────────────
 
-describe('matchesSearch — q', () => {
-  it('should match when q is found in title', () => {
-    const item = makeMinutes({ title: '職員会議 議事録', summary: '', tags: '' });
-    expect(matchesSearch(item, { q: '職員会議' })).toBe(true);
-  });
+describe('createLocalStorageMeetingMinutesRepository', () => {
+  // ── 初期状態 ───────────────────────────────────────────────
 
-  it('should match when q is found in summary', () => {
-    const item = makeMinutes({ title: 'A', summary: '重要な議題について', tags: '' });
-    expect(matchesSearch(item, { q: '重要な議題' })).toBe(true);
-  });
-
-  it('should match when q is found in tags', () => {
-    const item = makeMinutes({ title: 'A', summary: 'B', tags: '研修 安全' });
-    expect(matchesSearch(item, { q: '安全' })).toBe(true);
-  });
-
-  it('should NOT match when q is not found in any of title/summary/tags', () => {
-    const item = makeMinutes({ title: 'A', summary: 'B', tags: 'C' });
-    expect(matchesSearch(item, { q: 'Z' })).toBe(false);
-  });
-
-  it('should be case-insensitive for q', () => {
-    const item = makeMinutes({ title: 'Safety Check', summary: '', tags: '' });
-    expect(matchesSearch(item, { q: 'safety' })).toBe(true);
-    expect(matchesSearch(item, { q: 'SAFETY' })).toBe(true);
-  });
-
-  it('should trim whitespace from q before matching', () => {
-    const item = makeMinutes({ title: '会議', summary: '', tags: '' });
-    expect(matchesSearch(item, { q: '  会議  ' })).toBe(true);
-  });
-
-  it('should match all items when q is empty string', () => {
-    const item = makeMinutes({ title: 'X', summary: 'Y', tags: 'Z' });
-    expect(matchesSearch(item, { q: '' })).toBe(true);
-  });
-});
-
-// ─── tag 検索（tags フィールドのみ・部分一致） ───────────────────────────────
-
-describe('matchesSearch — tag', () => {
-  it('should match when tag is found in tags field', () => {
-    const item = makeMinutes({ tags: '研修 安全管理' });
-    expect(matchesSearch(item, { tag: '安全管理' })).toBe(true);
-  });
-
-  it('should NOT match when tag is not in tags field', () => {
-    const item = makeMinutes({ tags: '研修' });
-    expect(matchesSearch(item, { tag: '安全' })).toBe(false);
-  });
-
-  it('should be case-insensitive for tag', () => {
-    const item = makeMinutes({ tags: 'Safety Training' });
-    expect(matchesSearch(item, { tag: 'safety' })).toBe(true);
-  });
-
-  it('should match all items when tag is empty string', () => {
-    const item = makeMinutes({ tags: '' });
-    expect(matchesSearch(item, { tag: '' })).toBe(true);
-  });
-
-  it('should NOT search title or summary for tag (tags-only search)', () => {
-    // title に 'safety' があっても tag: 'safety' はタグフィールドのみ検索
-    const item = makeMinutes({ title: 'Safety Meeting', tags: '' });
-    expect(matchesSearch(item, { tag: 'safety' })).toBe(false);
-  });
-});
-
-// ─── category 検索 ──────────────────────────────────────────────────────────
-
-describe('matchesSearch — category', () => {
-  it('should match when category exactly equals item category', () => {
-    const item = makeMinutes({ category: '朝会' });
-    expect(matchesSearch(item, { category: '朝会' })).toBe(true);
-  });
-
-  it('should NOT match when category differs', () => {
-    const item = makeMinutes({ category: '職員会議' });
-    expect(matchesSearch(item, { category: '朝会' })).toBe(false);
-  });
-
-  it('should match all items when category is ALL', () => {
-    const item = makeMinutes({ category: '朝会' });
-    expect(matchesSearch(item, { category: 'ALL' })).toBe(true);
-  });
-
-  it('should match all items when category is not specified', () => {
-    const item = makeMinutes({ category: '夕会' });
-    expect(matchesSearch(item, {})).toBe(true);
-  });
-});
-
-// ─── from 境界値 ─────────────────────────────────────────────────────────────
-
-describe('matchesSearch — from (日付範囲)', () => {
-  it('should match when meetingDate === from (boundary: exact)', () => {
-    const item = makeMinutes({ meetingDate: '2026-03-01' });
-    expect(matchesSearch(item, { from: '2026-03-01' })).toBe(true);
-  });
-
-  it('should match when meetingDate > from (after boundary)', () => {
-    const item = makeMinutes({ meetingDate: '2026-03-02' });
-    expect(matchesSearch(item, { from: '2026-03-01' })).toBe(true);
-  });
-
-  it('should NOT match when meetingDate < from (before boundary)', () => {
-    const item = makeMinutes({ meetingDate: '2026-02-28' });
-    expect(matchesSearch(item, { from: '2026-03-01' })).toBe(false);
-  });
-});
-
-// ─── to 境界値 ───────────────────────────────────────────────────────────────
-
-describe('matchesSearch — to (日付範囲)', () => {
-  it('should match when meetingDate === to (boundary: exact)', () => {
-    const item = makeMinutes({ meetingDate: '2026-03-31' });
-    expect(matchesSearch(item, { to: '2026-03-31' })).toBe(true);
-  });
-
-  it('should match when meetingDate < to (before boundary)', () => {
-    const item = makeMinutes({ meetingDate: '2026-03-30' });
-    expect(matchesSearch(item, { to: '2026-03-31' })).toBe(true);
-  });
-
-  it('should NOT match when meetingDate > to (after boundary)', () => {
-    const item = makeMinutes({ meetingDate: '2026-04-01' });
-    expect(matchesSearch(item, { to: '2026-03-31' })).toBe(false);
-  });
-});
-
-// ─── from + to 範囲 ──────────────────────────────────────────────────────────
-
-describe('matchesSearch — from + to (range)', () => {
-  it('should match items within the date range', () => {
-    const item = makeMinutes({ meetingDate: '2026-02-15' });
-    expect(matchesSearch(item, { from: '2026-01-01', to: '2026-03-31' })).toBe(true);
-  });
-
-  it('should NOT match items before from in a range', () => {
-    const item = makeMinutes({ meetingDate: '2025-12-31' });
-    expect(matchesSearch(item, { from: '2026-01-01', to: '2026-03-31' })).toBe(false);
-  });
-
-  it('should NOT match items after to in a range', () => {
-    const item = makeMinutes({ meetingDate: '2026-04-01' });
-    expect(matchesSearch(item, { from: '2026-01-01', to: '2026-03-31' })).toBe(false);
-  });
-});
-
-// ─── 複合条件 ────────────────────────────────────────────────────────────────
-
-describe('matchesSearch — 複合条件', () => {
-  it('should match when q AND tag both match', () => {
-    const item = makeMinutes({ title: '安全会議', tags: '安全管理' });
-    // q が title に、tag が tags にそれぞれ一致
-    expect(matchesSearch(item, { q: '安全会議', tag: '安全管理' })).toBe(true);
-  });
-
-  it('should NOT match when q matches but tag does not', () => {
-    const item = makeMinutes({ title: '安全会議', tags: '研修' });
-    expect(matchesSearch(item, { q: '安全会議', tag: '安全管理' })).toBe(false);
-  });
-
-  it('should match when q AND category both match', () => {
-    const item = makeMinutes({ title: '安全確認', category: '朝会' });
-    expect(matchesSearch(item, { q: '安全', category: '朝会' })).toBe(true);
-  });
-
-  it('should NOT match when q matches but category does not', () => {
-    const item = makeMinutes({ title: '安全確認', category: '職員会議' });
-    expect(matchesSearch(item, { q: '安全', category: '朝会' })).toBe(false);
-  });
-
-  it('should match when tag + category + from/to all match', () => {
-    const item = makeMinutes({
-      meetingDate: '2026-02-15',
-      category: '委員会',
-      tags: '拘束 適正化',
+  describe('初期状態', () => {
+    it('should return empty array when localStorage is empty', async () => {
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.list({});
+      expect(result).toEqual([]);
     });
-    expect(
-      matchesSearch(item, {
-        tag: '拘束',
-        category: '委員会',
-        from: '2026-01-01',
-        to: '2026-03-31',
-      }),
-    ).toBe(true);
-  });
 
-  it('should NOT match when one condition in complex query fails', () => {
-    const item = makeMinutes({
-      meetingDate: '2026-02-15',
-      category: '委員会',
-      tags: '拘束 適正化',
+    it('should return empty array when localStorage key is missing', async () => {
+      localStorage.removeItem(STORAGE_KEY);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      expect(await repo.list({})).toEqual([]);
     });
-    // from の条件が不一致（日付が範囲外）
-    expect(
-      matchesSearch(item, {
-        tag: '拘束',
-        category: '委員会',
-        from: '2026-03-01', // ← これが不一致
-        to: '2026-03-31',
-      }),
-    ).toBe(false);
+
+    it('should return empty array when localStorage value is invalid JSON', async () => {
+      localStorage.setItem(STORAGE_KEY, 'not-valid-json');
+      const repo = createLocalStorageMeetingMinutesRepository();
+      expect(await repo.list({})).toEqual([]);
+    });
   });
 
-  it('should NOT match when q matches but publishedOnly excludes the item', () => {
-    const item = makeMinutes({ title: '重要会議', isPublished: false });
-    expect(matchesSearch(item, { q: '重要会議', publishedOnly: true })).toBe(false);
+  // ── create ─────────────────────────────────────────────────
+
+  describe('create', () => {
+    it('should assign id=1 when storage is empty', async () => {
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const { id: _, ...draft } = baseItem;
+      const id = await repo.create(draft);
+      expect(id).toBe(1);
+    });
+
+    it('should assign nextId = max(id) + 1', async () => {
+      seedStorage([{ ...baseItem, id: 5 }, { ...baseItem, id: 3 }]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const { id: _, ...draft } = baseItem;
+      const id = await repo.create(draft);
+      expect(id).toBe(6);
+    });
+
+    it('should persist item to localStorage', async () => {
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const { id: _, ...draft } = baseItem;
+      await repo.create(draft);
+      const stored = readStorage();
+      expect(stored).toHaveLength(1);
+      expect(stored[0].title).toBe(baseItem.title);
+    });
+
+    it('should set created and modified to current ISO timestamp', async () => {
+      const before = new Date().toISOString();
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const { id: _, created: _c, modified: _m, ...draft } = baseItem;
+      const id = await repo.create(draft);
+      const after = new Date().toISOString();
+      const item = await repo.getById(id);
+      expect(item.created! >= before).toBe(true);
+      expect(item.created! <= after).toBe(true);
+      expect(item.modified! >= before).toBe(true);
+    });
+
+    it('created items are retrievable via getById', async () => {
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const { id: _, ...draft } = baseItem;
+      const id = await repo.create(draft);
+      const item = await repo.getById(id);
+      expect(item.id).toBe(id);
+      expect(item.title).toBe(draft.title);
+    });
   });
-});
 
-// ─── nextId ──────────────────────────────────────────────────────────────────
+  // ── getById ────────────────────────────────────────────────
 
-describe('nextId', () => {
-  it('should return 1 when items array is empty', () => {
-    expect(nextId([])).toBe(1);
+  describe('getById', () => {
+    it('should return the item with matching id', async () => {
+      seedStorage([baseItem]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.getById(1);
+      expect(result.id).toBe(1);
+      expect(result.title).toBe(baseItem.title);
+    });
+
+    it('should throw when id does not exist', async () => {
+      const repo = createLocalStorageMeetingMinutesRepository();
+      await expect(repo.getById(999)).rejects.toThrow('999');
+    });
   });
 
-  it('should return max id + 1 for a single item', () => {
-    const items = [makeMinutes({ id: 5 })];
-    expect(nextId(items)).toBe(6);
+  // ── update ─────────────────────────────────────────────────
+
+  describe('update', () => {
+    it('should update only the patched fields', async () => {
+      seedStorage([{ ...baseItem, id: 1 }, { ...baseItem, id: 2, title: '別の会議' }]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      await repo.update(1, { title: '更新済みタイトル' });
+      const updated = await repo.getById(1);
+      expect(updated.title).toBe('更新済みタイトル');
+      expect(updated.category).toBe(baseItem.category); // 他フィールド維持
+    });
+
+    it('should NOT affect other items', async () => {
+      seedStorage([{ ...baseItem, id: 1 }, { ...baseItem, id: 2, title: '別の会議' }]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      await repo.update(1, { title: '変更' });
+      const other = await repo.getById(2);
+      expect(other.title).toBe('別の会議');
+    });
+
+    it('should update modified timestamp automatically', async () => {
+      seedStorage([baseItem]);
+      const before = new Date().toISOString();
+      const repo = createLocalStorageMeetingMinutesRepository();
+      await repo.update(1, { summary: '更新後' });
+      const item = await repo.getById(1);
+      expect(item.modified! >= before).toBe(true);
+      expect(item.modified).not.toBe(baseItem.modified); // 旧値と異なる
+    });
+
+    it('should apply empty string update (explicit clear)', async () => {
+      seedStorage([{ ...baseItem, summary: '既存の内容' }]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      await repo.update(1, { summary: '' });
+      const item = await repo.getById(1);
+      expect(item.summary).toBe('');
+    });
+
+    it('should throw when updating non-existent id', async () => {
+      const repo = createLocalStorageMeetingMinutesRepository();
+      await expect(repo.update(999, { title: '変更' })).rejects.toThrow('999');
+    });
   });
 
-  it('should return max id + 1 for multiple items with non-sequential ids', () => {
-    const items = [
-      makeMinutes({ id: 3 }),
-      makeMinutes({ id: 10 }),
-      makeMinutes({ id: 7 }),
+  // ── list / sort ─────────────────────────────────────────────
+
+  describe('list: sort (meetingDate desc → modified desc)', () => {
+    it('should sort by meetingDate descending', async () => {
+      seedStorage([
+        { ...baseItem, id: 1, meetingDate: '2026-01-01' },
+        { ...baseItem, id: 2, meetingDate: '2026-03-01' },
+        { ...baseItem, id: 3, meetingDate: '2026-02-01' },
+      ]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.list({});
+      expect(result.map((r) => r.meetingDate)).toEqual(['2026-03-01', '2026-02-01', '2026-01-01']);
+    });
+
+    it('should sort by modified desc when meetingDate is equal', async () => {
+      seedStorage([
+        { ...baseItem, id: 1, meetingDate: '2026-03-01', modified: '2026-03-01T09:00:00Z' },
+        { ...baseItem, id: 2, meetingDate: '2026-03-01', modified: '2026-03-01T11:00:00Z' },
+      ]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.list({});
+      expect(result[0].id).toBe(2); // 新しい modified が先
+    });
+  });
+
+  // ── list: publishedOnly ─────────────────────────────────────
+
+  describe('list: publishedOnly', () => {
+    it('should exclude isPublished===false when publishedOnly is true', async () => {
+      seedStorage([
+        { ...baseItem, id: 1, isPublished: true },
+        { ...baseItem, id: 2, isPublished: false },
+      ]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.list({ publishedOnly: true });
+      expect(result.map((r) => r.id)).toEqual([1]);
+    });
+
+    it('should include items with isPublished===undefined when publishedOnly is true', async () => {
+      seedStorage([{ ...baseItem, id: 1, isPublished: undefined }]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.list({ publishedOnly: true });
+      expect(result.map((r) => r.id)).toContain(1);
+    });
+
+    it('should return all items when publishedOnly is false/undefined', async () => {
+      seedStorage([
+        { ...baseItem, id: 1, isPublished: true },
+        { ...baseItem, id: 2, isPublished: false },
+      ]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      expect(await repo.list({})).toHaveLength(2);
+      expect(await repo.list({ publishedOnly: false })).toHaveLength(2);
+    });
+  });
+
+  // ── list: category ──────────────────────────────────────────
+
+  describe('list: category', () => {
+    it('should filter by category', async () => {
+      seedStorage([
+        { ...baseItem, id: 1, category: '職員会議' },
+        { ...baseItem, id: 2, category: '朝会' },
+      ]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.list({ category: '朝会' });
+      expect(result.map((r) => r.id)).toEqual([2]);
+    });
+
+    it('should return all when category is ALL', async () => {
+      seedStorage([
+        { ...baseItem, id: 1, category: '職員会議' },
+        { ...baseItem, id: 2, category: '朝会' },
+      ]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.list({ category: 'ALL' });
+      expect(result).toHaveLength(2);
+    });
+  });
+
+  // ── list: from/to 境界包含 ──────────────────────────────────
+
+  describe('list: from/to (boundary inclusive)', () => {
+    const items: MeetingMinutes[] = [
+      { ...baseItem, id: 1, meetingDate: '2026-01-01' },
+      { ...baseItem, id: 2, meetingDate: '2026-03-01' },
+      { ...baseItem, id: 3, meetingDate: '2026-06-01' },
     ];
-    expect(nextId(items)).toBe(11);
+
+    it('should include item on from date (ge)', async () => {
+      seedStorage(items);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.list({ from: '2026-03-01' });
+      expect(result.map((r) => r.id).sort()).toEqual([2, 3]);
+    });
+
+    it('should include item on to date (le)', async () => {
+      seedStorage(items);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.list({ to: '2026-03-01' });
+      expect(result.map((r) => r.id).sort()).toEqual([1, 2]);
+    });
+
+    it('should return items within from/to range', async () => {
+      seedStorage(items);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.list({ from: '2026-02-01', to: '2026-05-01' });
+      expect(result.map((r) => r.id)).toEqual([2]);
+    });
   });
 
-  it('should return 2 when the only item has id = 1', () => {
-    const items = [makeMinutes({ id: 1 })];
-    expect(nextId(items)).toBe(2);
+  // ── list: q 検索 ─────────────────────────────────────────────
+
+  describe('list: q (title/summary/tags 対象)', () => {
+    it('should match by title', async () => {
+      seedStorage([
+        { ...baseItem, id: 1, title: '職員会議', summary: '' },
+        { ...baseItem, id: 2, title: '朝のミーティング', summary: '' },
+      ]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.list({ q: '朝' });
+      expect(result.map((r) => r.id)).toEqual([2]);
+    });
+
+    it('should match by summary', async () => {
+      seedStorage([{ ...baseItem, id: 1, summary: '重要な議題あり' }]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.list({ q: '重要' });
+      expect(result.map((r) => r.id)).toEqual([1]);
+    });
+
+    it('should match by tags', async () => {
+      seedStorage([{ ...baseItem, id: 1, tags: '月次,重点課題' }]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.list({ q: '重点' });
+      expect(result.map((r) => r.id)).toEqual([1]);
+    });
+
+    it('should be case-insensitive', async () => {
+      seedStorage([{ ...baseItem, id: 1, title: 'Meeting Minutes' }]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.list({ q: 'meeting' });
+      expect(result.map((r) => r.id)).toEqual([1]);
+    });
+
+    it('should return empty when q does not match any field', async () => {
+      seedStorage([baseItem]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.list({ q: 'xyznotfound' });
+      expect(result).toEqual([]);
+    });
+  });
+
+  // ── list: tag ───────────────────────────────────────────────
+
+  describe('list: tag', () => {
+    it('should match by tag', async () => {
+      seedStorage([
+        { ...baseItem, id: 1, tags: '月次,定例' },
+        { ...baseItem, id: 2, tags: '臨時' },
+      ]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.list({ tag: '定例' });
+      expect(result.map((r) => r.id)).toEqual([1]);
+    });
+
+    it('should be case-insensitive for tag', async () => {
+      seedStorage([{ ...baseItem, id: 1, tags: 'Monthly' }]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.list({ tag: 'monthly' });
+      expect(result).toHaveLength(1);
+    });
+  });
+
+  // ── list: 複合条件 ──────────────────────────────────────────
+
+  describe('list: 複合条件', () => {
+    it('should apply publishedOnly + category together', async () => {
+      seedStorage([
+        { ...baseItem, id: 1, category: '朝会', isPublished: true },
+        { ...baseItem, id: 2, category: '朝会', isPublished: false },
+        { ...baseItem, id: 3, category: '職員会議', isPublished: true },
+      ]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.list({ publishedOnly: true, category: '朝会' });
+      expect(result.map((r) => r.id)).toEqual([1]);
+    });
+
+    it('should apply q + from/to together', async () => {
+      seedStorage([
+        { ...baseItem, id: 1, title: '朝会', meetingDate: '2026-03-01' },
+        { ...baseItem, id: 2, title: '朝会', meetingDate: '2026-05-01' },
+        { ...baseItem, id: 3, title: '職員会議', meetingDate: '2026-03-01' },
+      ]);
+      const repo = createLocalStorageMeetingMinutesRepository();
+      const result = await repo.list({ q: '朝会', from: '2026-04-01' });
+      expect(result.map((r) => r.id)).toEqual([2]);
+    });
+  });
+
+  // ── persistence ─────────────────────────────────────────────
+
+  describe('persistence: 別インスタンスでの読み込み', () => {
+    it('should persist data across different repository instances', async () => {
+      const repo1 = createLocalStorageMeetingMinutesRepository();
+      const { id: _, ...draft } = baseItem;
+      const id = await repo1.create(draft);
+
+      // 別インスタンスで読み込む
+      const repo2 = createLocalStorageMeetingMinutesRepository();
+      const item = await repo2.getById(id);
+      expect(item.title).toBe(draft.title);
+    });
   });
 });
