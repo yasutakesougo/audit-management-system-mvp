@@ -77,9 +77,9 @@ function mapItemToMinutes(item: SpItem): MeetingMinutes {
   };
 }
 
-const escapeODataString = (value: string): string => value.replace(/'/g, "''");
+export const escapeODataString = (value: string): string => value.replace(/'/g, "''");
 
-function buildFilter(params: MinutesSearchParams): string {
+export function buildFilter(params: MinutesSearchParams): string {
   const filters: string[] = [];
 
   if (params.publishedOnly) {
