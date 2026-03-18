@@ -54,7 +54,7 @@ import type { ImportPreviewResult } from '../../buildImportPreview';
 import { ImportPreviewDialog } from '../ImportPreviewDialog';
 import { ImportMonitoringDialog } from '../ImportMonitoringDialog';
 import { useLatestBehaviorMonitoring } from '../../hooks/useLatestBehaviorMonitoring';
-import { localMonitoringMeetingRepository } from '@/infra/localStorage/localMonitoringMeetingRepository';
+import { createMonitoringMeetingRepository } from '@/features/monitoring/repositories/createMonitoringMeetingRepository';
 
 // ── Local (split) ──
 import type { NewPlanningSheetFormProps, UserOption, FormState } from './types';
@@ -106,14 +106,15 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
 
   // ── モニタリング読込 ──
   // NOTE:
-  // Latest monitoring record is resolved via useLatestBehaviorMonitoring hook.
-  // Do not fetch monitoring data directly in this component.
-  // This keeps /new and edit flows consistent.
+  // Repository is resolved via createMonitoringMeetingRepository factory.
+  // Do not import localMonitoringMeetingRepository directly in UI components.
+  // This keeps /new and edit flows consistent and enables future SP swap.
+  const monitoringRepo = React.useMemo(() => createMonitoringMeetingRepository(), []);
   const {
     record: latestMonitoringRecord,
     isLoading: isMonitoringLoading,
   } = useLatestBehaviorMonitoring(selectedUser?.id ?? null, {
-    repository: localMonitoringMeetingRepository,
+    repository: monitoringRepo,
     planningSheetId: 'new',
   });
   const [monitoringDialogOpen, setMonitoringDialogOpen] = React.useState(false);
