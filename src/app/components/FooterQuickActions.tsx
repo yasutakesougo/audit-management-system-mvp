@@ -7,6 +7,7 @@
 
 import { createFooterActions, type FooterAction } from '@/app/config/footerActionsConfig';
 import { HandoffQuickNoteCard } from '@/features/handoff/HandoffQuickNoteCard';
+import { CallLogQuickDrawer } from '@/features/callLogs/components/CallLogQuickDrawer';
 import { TESTIDS } from '@/testids';
 import CloseIcon from '@mui/icons-material/Close';
 import EditNoteIcon from '@mui/icons-material/EditNote';
@@ -32,6 +33,7 @@ export const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true
   const location = useLocation();
   const theme = useTheme();
   const [quickNoteOpen, setQuickNoteOpen] = useState(false);
+  const [callLogOpen, setCallLogOpen] = useState(false);
 
   // Listen for global open event from any page (e.g. /handoff-timeline page button)
   useEffect(() => {
@@ -40,9 +42,17 @@ export const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true
     return () => window.removeEventListener('handoff-open-quicknote-dialog', handler);
   }, []);
 
+  // Listen for global call-log open event (e.g. from CallLogPage)
+  useEffect(() => {
+    const handler = () => setCallLogOpen(true);
+    window.addEventListener('call-log-open-drawer', handler);
+    return () => window.removeEventListener('call-log-open-drawer', handler);
+  }, []);
+
   const dialogHandlers: DialogRegistry = useMemo(
     () => ({
       'handoff-quicknote': () => setQuickNoteOpen(true),
+      'call-log-quick': () => setCallLogOpen(true),
     }),
     [],
   );
@@ -138,6 +148,12 @@ export const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true
           <HandoffQuickNoteCard />
         </DialogContent>
       </Dialog>
+
+      {/* 受電ログ クイック Drawer（CallLogPage と同一 Drawer を FooterQuickActions でも共有） */}
+      <CallLogQuickDrawer
+        open={callLogOpen}
+        onClose={() => setCallLogOpen(false)}
+      />
     </Box>
   );
 };
