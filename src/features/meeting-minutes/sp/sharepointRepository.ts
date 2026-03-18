@@ -98,7 +98,7 @@ export function buildFilter(params: MinutesSearchParams): string {
   return filters.join(' and ');
 }
 
-const buildPatchBody = (patch: MeetingMinutesUpdateDto): Record<string, unknown> => {
+export const buildPatchBody = (patch: MeetingMinutesUpdateDto): Record<string, unknown> => {
   const body: Record<string, unknown> = {};
   const set = (field: string, value: unknown) => {
     if (value !== undefined) body[field] = value;
