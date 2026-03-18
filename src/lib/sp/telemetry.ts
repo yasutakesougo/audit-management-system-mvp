@@ -1,6 +1,7 @@
 import { auditLog } from '@/lib/debugLogger';
 import { SP_TELEMETRY_THRESHOLDS } from '@/shared/api/spQueryLimits';
 import type { GuardedQueryParams, SharePointQueryRiskLevel } from './queryGuard';
+import { useTelemetryStore } from './telemetryStore';
 
 export interface SpTelemetryMetrics {
   listName?: string;
@@ -42,7 +43,7 @@ export const telemetrySink = {
     } else {
       auditLog.info('sp:telemetry', 'Query recorded', metrics);
     }
-    // TODO (Phase 2): Send structured event to real telemetry endpoint
+    useTelemetryStore.getState().addEntry(metrics);
   }
 };
 

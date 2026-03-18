@@ -27,6 +27,10 @@ const LazySpDevPanel = isDev
   ? React.lazy(() => import('@/debug/SpDevPanel'))
   : null;
 
+const LazyQueryTelemetryHUD = isDev
+  ? React.lazy(() => import('@/components/dev/QueryTelemetryHUD'))
+  : null;
+
 function useLockBodyScroll(enabled: boolean) {
   React.useLayoutEffect(() => {
     if (!enabled) return;
@@ -161,6 +165,11 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {LazySpDevPanel && (
             <React.Suspense fallback={null}>
               <LazySpDevPanel />
+            </React.Suspense>
+          )}
+          {LazyQueryTelemetryHUD && (
+            <React.Suspense fallback={null}>
+              <LazyQueryTelemetryHUD />
             </React.Suspense>
           )}
         </div>
