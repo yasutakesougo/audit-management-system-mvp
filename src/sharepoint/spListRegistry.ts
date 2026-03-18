@@ -90,8 +90,8 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
   // ── 2. 日々の記録系 ─────────────────────────────────────
   {
     key: 'support_record_daily',
-    displayName: '日次支援記録',
-    resolve: () => envOr('VITE_SP_LIST_DAILY', 'SupportRecord_Daily'),
+    displayName: '日次支援記録 (支援手順書兼記録)',
+    resolve: () => envOr('VITE_SP_LIST_PROCEDURE_RECORD', fromConfig(ListKeys.ProcedureRecordDaily)),
     operations: ['R', 'W'],
     category: 'daily',
   },
@@ -158,7 +158,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
   {
     key: 'schedule_events',
     displayName: 'スケジュール',
-    resolve: () => envOr('VITE_SP_LIST_SCHEDULES', 'Schedules'),
+    resolve: () => envOr('VITE_SP_LIST_SCHEDULES', fromConfig(ListKeys.Schedules)),
     operations: ['R', 'W', 'D'],
     category: 'schedule',
   },

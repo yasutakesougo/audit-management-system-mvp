@@ -26,6 +26,17 @@ export const createFooterActions = (
 ): FooterAction[] => {
   const actions: FooterAction[] = [
     {
+      key: 'call-log-quick',
+      label: '受電ログ登録',
+      shortLabel: '受電ログ',
+      color: 'primary',
+      variant: 'contained',
+      accent: '#2B6CB0',
+      testId: 'footer-action-call-log-quick',
+      kind: 'dialog',
+      onClickKey: 'call-log-quick',
+    },
+    {
       key: 'handoff-quicknote',
       label: '今すぐ申し送り',
       shortLabel: '申し送り',

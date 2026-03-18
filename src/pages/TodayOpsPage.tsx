@@ -35,9 +35,12 @@ import { useTransportStatus } from '@/features/today/transport';
 import { ApprovalDialog } from '@/features/today/widgets/ApprovalDialog';
 import { toLocalDateISO } from '@/utils/getNow';
 import { HandoffPanel } from '@/features/handoff/components';
+import { useCallLogsSummary } from '@/features/callLogs/hooks/useCallLogsSummary';
+import { CallLogQuickDrawer } from '@/features/callLogs/components/CallLogQuickDrawer';
+import { useAuth } from '@/auth/useAuth';
 
 import { Alert, Snackbar } from '@mui/material';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export const TodayOpsPage: React.FC = () => {
@@ -115,6 +118,13 @@ export const TodayOpsPage: React.FC = () => {
     [quickRecord.openUnfilled, navigate]
   );
 
+  // ── CallLog Summary (Today 連携) ──
+  // account.name を myName として注入し、自分宛未対応件数を算出する
+  const { account } = useAuth();
+  const myName = (account as { name?: string } | null)?.name ?? '';
+  const callLogsSummary = useCallLogsSummary({ myName });
+  const [callLogDrawerOpen, setCallLogDrawerOpen] = useState(false);
+
   // ── Schedule Detail Deep Link ──
   const scheduleDetailHref = useMemo(() => {
     const dateIso = toLocalDateISO();
@@ -156,7 +166,17 @@ export const TodayOpsPage: React.FC = () => {
         }
       : undefined,
     handoffPanel: <HandoffPanel targetDate={toLocalDateISO()} />,
-  }), [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick]);
+    callLogSummary: {
+      openCount: callLogsSummary.openCount,
+      urgentCount: callLogsSummary.urgentCount,
+      callbackPendingCount: callLogsSummary.callbackPendingCount,
+      myOpenCount: callLogsSummary.myOpenCount,
+      overdueCount: callLogsSummary.overdueCount,
+      isLoading: callLogsSummary.isLoading,
+      onNavigate: () => navigate('/call-logs'),
+      onOpenDrawer: () => setCallLogDrawerOpen(true),
+    },
+  }), [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, callLogsSummary]);
 
   // ── Save Success Handler (Quick Record auto-next) ──
   const [showCompletionToast, setShowCompletionToast] = React.useState(false);
@@ -196,6 +216,12 @@ export const TodayOpsPage: React.FC = () => {
         onSaveSuccess={handleSaveSuccess}
         autoNextEnabled={quickRecord.autoNextEnabled}
         setAutoNextEnabled={quickRecord.setAutoNextEnabled}
+      />
+
+      {/* 電話ログ Quick Drawer (Today 内専用インスタンス) */}
+      <CallLogQuickDrawer
+        open={callLogDrawerOpen}
+        onClose={() => setCallLogDrawerOpen(false)}
       />
 
       <Snackbar

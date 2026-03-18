@@ -22,8 +22,8 @@
  * - 壊れた localStorage: catch → [] にフォールバック
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createLocalStorageMeetingMinutesRepository } from '../localStorageRepository';
 import type { MeetingMinutes } from '../../types';
+import { createLocalStorageMeetingMinutesRepository } from '../localStorageRepository';
 
 // ─── テスト用フィクスチャ ───────────────────────────────────
 
@@ -89,6 +89,15 @@ describe('createLocalStorageMeetingMinutesRepository', () => {
       localStorage.setItem(STORAGE_KEY, 'not-valid-json');
       const repo = createLocalStorageMeetingMinutesRepository();
       expect(await repo.list({})).toEqual([]);
+    });
+
+    it('should return empty array when localStorage value is null string', async () => {
+      localStorage.setItem(STORAGE_KEY, 'null');
+      const repo = createLocalStorageMeetingMinutesRepository();
+      // JSON.parse('null') = null; then .filter would throw → catch → []
+      // 実装の耐性テスト（型アサーション起因の安全性確認）
+      const result = await repo.list({});
+      expect(Array.isArray(result)).toBe(true);
     });
   });
 

@@ -54,6 +54,7 @@ import { UserCompactList, type UserRow } from '../widgets/UserCompactList';
 import { ActionQueueCard, type ActionQueueCardProps } from '../widgets/ActionQueueCard';
 import { ActionQueueTimelineWidget, type ActionQueueTimelineWidgetProps } from '../widgets/ActionQueueTimelineWidget';
 import { TodayPhaseIndicator } from '../widgets/TodayPhaseIndicator';
+import { CallLogSummaryCard, type CallLogSummaryCardProps } from '@/features/callLogs/components/CallLogSummaryCard';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -94,6 +95,8 @@ export type TodayBentoProps = {
   users: { items: UserRow[]; onOpenQuickRecord: (id: string) => void; onOpenISP?: (id: string) => void; onOpenIceberg?: (id: string) => void; onEmptyAction?: () => void };
   /** 日々の申し送り一覧パネル (optional) */
   handoffPanel?: React.ReactNode;
+  /** 電話・連絡ログ要約カード (undefined 時は非表示) */
+  callLogSummary?: CallLogSummaryCardProps;
 };
 
 // ─── Compact Section Title ───────────────────────────────────
@@ -140,6 +143,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   transportCard,
   users,
   handoffPanel,
+  callLogSummary,
 }) => {
   return (
     <Box
@@ -243,6 +247,17 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
             testId="bento-handoff"
           >
             {handoffPanel}
+          </BentoCard>
+        )}
+
+        {/* ── Row 2.6: CallLog Summary (full-width, optional) ── */}
+        {callLogSummary && (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            variant="default"
+            testId="bento-call-log-summary"
+          >
+            <CallLogSummaryCard {...callLogSummary} />
           </BentoCard>
         )}
 

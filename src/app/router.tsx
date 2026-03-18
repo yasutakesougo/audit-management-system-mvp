@@ -13,6 +13,7 @@ import { routerFutureFlags } from './routerFuture';
 // ── Domain route modules ─────────────────────────────────────────────────
 import { adminRoutes } from './routes/adminRoutes';
 import { analysisRoutes } from './routes/analysisRoutes';
+import { callLogRoutes } from './routes/callLogRoutes';
 import { dailyRoutes } from './routes/dailyRoutes';
 import { dashboardRoutes } from './routes/dashboardRoutes';
 import { ibdRoutes } from './routes/ibdRoutes';
@@ -33,6 +34,7 @@ const childRoutes: RouteObject[] = [
   ...adminRoutes,
   ...safetyRoutes,
   ...scheduleRoutes,
+  ...callLogRoutes,
   nurseRoutes(),
 ];
 
