@@ -7,7 +7,8 @@
  */
 import { describe, expect, it } from 'vitest';
 import { buildDailySupportUrl } from '@/app/links/buildDailySupportUrl';
-import { shouldRecommendReanalysis } from '@/features/support-plan-guide/components/RegulatorySummaryBand';
+import { buildRegulatoryHudItems } from '@/features/support-plan-guide/domain/regulatoryHud';
+import type { RegulatoryHudInput } from '@/features/support-plan-guide/domain/regulatoryHud';
 
 // =====================
 // buildDailySupportUrl
@@ -41,49 +42,65 @@ describe('buildDailySupportUrl', () => {
 });
 
 // =====================
-// shouldRecommendReanalysis
+// judgeIcebergAnalysis (via buildRegulatoryHudItems)
 // =====================
 
-describe('shouldRecommendReanalysis', () => {
-  it('recommends when monitoring is null', () => {
-    expect(shouldRecommendReanalysis(null)).toBe(true);
+describe('RegulatoryHudIcebergAnalysis', () => {
+  const baseInput: RegulatoryHudInput = {
+    ispStatus: 'active' as const,
+    compliance: null,
+    deadlines: {
+      creation: { label: '', color: 'default' as const },
+      monitoring: { label: '', color: 'default' as const },
+    },
+    latestMonitoring: null,
+    icebergTotal: 1,
+  };
+
+  const getIcebergSignal = (latestMonitoring: { date: string; planChangeRequired: boolean } | null | undefined, icebergTotal = 1) => {
+    const items = buildRegulatoryHudItems({ ...baseInput, latestMonitoring, icebergTotal });
+    return items.find((i) => i.key === 'iceberg-analysis')?.signal;
+  };
+
+  it('danger when monitoring is null', () => {
+    expect(getIcebergSignal(null)).toBe('danger');
   });
 
-  it('recommends when monitoring is undefined', () => {
-    expect(shouldRecommendReanalysis(undefined)).toBe(true);
+  it('danger when monitoring is undefined', () => {
+    expect(getIcebergSignal(undefined)).toBe('danger');
   });
 
-  it('recommends when planChangeRequired is true', () => {
-    expect(shouldRecommendReanalysis({
+  it('warning when planChangeRequired is true', () => {
+    expect(getIcebergSignal({
       date: new Date().toISOString().slice(0, 10),
       planChangeRequired: true,
-    })).toBe(true);
+    })).toBe('warning');
   });
 
-  it('does not recommend when recent and no change required', () => {
+  it('ok when recent and no change required', () => {
     const recentDate = new Date();
     recentDate.setDate(recentDate.getDate() - 30);
-    expect(shouldRecommendReanalysis({
+    expect(getIcebergSignal({
       date: recentDate.toISOString().slice(0, 10),
       planChangeRequired: false,
-    })).toBe(false);
+    })).toBe('ok');
   });
 
-  it('recommends when monitoring is older than 180 days', () => {
+  it('warning when monitoring is older than 180 days', () => {
     const oldDate = new Date();
     oldDate.setDate(oldDate.getDate() - 200);
-    expect(shouldRecommendReanalysis({
+    expect(getIcebergSignal({
       date: oldDate.toISOString().slice(0, 10),
       planChangeRequired: false,
-    })).toBe(true);
+    })).toBe('warning');
   });
 
-  it('does not recommend at exactly 179 days', () => {
+  it('ok at exactly 179 days', () => {
     const borderDate = new Date();
     borderDate.setDate(borderDate.getDate() - 179);
-    expect(shouldRecommendReanalysis({
+    expect(getIcebergSignal({
       date: borderDate.toISOString().slice(0, 10),
       planChangeRequired: false,
-    })).toBe(false);
+    })).toBe('ok');
   });
 });

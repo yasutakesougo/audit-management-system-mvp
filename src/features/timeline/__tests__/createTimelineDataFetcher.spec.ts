@@ -63,7 +63,6 @@ function makeIncidentRecord(userId: string): IncidentRecord {
   return {
     id: 'inc-1',
     userId,
-    title: 'テスト事故',
     description: '事故の詳細',
     occurredAt: '2026-03-15T10:00:00',
     severity: '中',
@@ -74,8 +73,6 @@ function makeIncidentRecord(userId: string): IncidentRecord {
     relatedStaff: ['スタッフA'],
     outcome: '結果',
     followUpRequired: false,
-    createdAt: '2026-03-15T10:30:00',
-    modifiedAt: '2026-03-15T10:30:00',
   };
 }
 
@@ -86,25 +83,26 @@ function makeIspListItem(userId: string): IspListItem {
     title: 'ISP テスト',
     planStartDate: '2026-01-01',
     planEndDate: '2026-12-31',
-    status: 'approved',
+    status: 'active',
     isCurrent: true,
-    version: 1,
-    createdAt: '2026-01-01T00:00:00',
-    modifiedAt: '2026-01-01T00:00:00',
+    nextReviewAt: null,
   };
 }
 
 function makeHandoffRecord(): HandoffRecord {
   return {
     id: 1,
+    title: 'テスト申し送り',
     userCode: 'UC001',
-    userName: '利用者A',
-    category: '健康管理',
+    userDisplayName: '利用者A',
+    category: '体調',
     severity: '通常',
+    timeBand: '午前',
     message: 'テスト申し送り',
     status: '未対応',
     createdAt: '2026-03-15T08:00:00',
-    createdBy: '作成者',
+    createdByName: '作成者',
+    isDraft: false,
   };
 }
 
@@ -138,9 +136,9 @@ describe('createTimelineDataFetcher', () => {
 
       // user-1 の行だけ抽出される（user-2 は除外）
       expect(result.dailyRecords).toHaveLength(1);
-      expect(result.dailyRecords[0].userId).toBe('user-1');
-      expect(result.dailyRecords[0].kind).toBe('A');
-      expect(result.dailyRecords[0].date).toBe('2026-03-15');
+      expect(result.dailyRecords![0].userId).toBe('user-1');
+      expect(result.dailyRecords![0].kind).toBe('A');
+      expect(result.dailyRecords![0].date).toBe('2026-03-15');
     });
 
     it('DailyRecordUserRow → PersonDaily の変換が正しい', async () => {
@@ -153,7 +151,7 @@ describe('createTimelineDataFetcher', () => {
 
       const fetcher = createTimelineDataFetcher({ dailyRepo });
       const result = await fetcher('user-1');
-      const daily = result.dailyRecords[0];
+      const daily = result.dailyRecords![0];
 
       expect(daily.kind).toBe('A');
       if (daily.kind === 'A') {
@@ -198,7 +196,7 @@ describe('createTimelineDataFetcher', () => {
       const result = await fetcher('user-1');
 
       expect(result.incidents).toHaveLength(1);
-      expect(result.incidents[0].userId).toBe('user-1');
+      expect(result.incidents![0].userId).toBe('user-1');
     });
 
     it('Incident 取得エラー時は空配列を返す', async () => {
@@ -324,10 +322,10 @@ describe('createTimelineDataFetcher', () => {
       });
       const result = await fetcher('user-1');
 
-      expect(result.dailyRecords.length).toBeGreaterThan(0);
-      expect(result.incidents.length).toBeGreaterThan(0);
-      expect(result.ispRecords.length).toBeGreaterThan(0);
-      expect(result.handoffRecords.length).toBeGreaterThan(0);
+      expect(result.dailyRecords!.length).toBeGreaterThan(0);
+      expect(result.incidents!.length).toBeGreaterThan(0);
+      expect(result.ispRecords!.length).toBeGreaterThan(0);
+      expect(result.handoffRecords!.length).toBeGreaterThan(0);
     });
 
     it('一部ソースがエラーでも他ソースは正常に返る', async () => {

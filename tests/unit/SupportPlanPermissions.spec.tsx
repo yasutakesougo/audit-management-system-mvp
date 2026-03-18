@@ -104,8 +104,12 @@ describe('SupportPlanGuidePage Permissions', () => {
 
     render(<SupportPlanGuidePage />, { wrapper: createWrapper() });
 
+    // Switch to Operations (運用・実行) tab group first
+    const operationsTabGroup = await screen.findByRole('tab', { name: /運用・実行/ });
+    await user.click(operationsTabGroup);
+
     // Switch to Monitoring tab
-    const monitoringTab = screen.getByRole('tab', { name: /モニタリング/ });
+    const monitoringTab = await screen.findByRole('tab', { name: /モニタリング/ });
     await user.click(monitoringTab);
 
     // Check '本日を記録' button in the Monitoring tab

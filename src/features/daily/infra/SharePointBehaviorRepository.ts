@@ -10,7 +10,7 @@ import {
 import type { BehaviorQueryOptions, BehaviorRepository } from '../domain/BehaviorRepository';
 import type { BehaviorObservation } from '../domain/daily/types';
 
-const DEFAULT_TOP = 200;
+import { DEFAULT_SP_QUERY_LIMIT, MAX_SP_QUERY_LIMIT } from '@/shared/api/spQueryLimits';
 
 export type SharePointBehaviorRepositoryOptions = {
   sp?: ReturnType<typeof createSpClient>;
@@ -24,7 +24,7 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
 
   constructor(options: SharePointBehaviorRepositoryOptions = {}) {
     this.ensureSharePointConfig();
-    this.defaultTop = options.defaultTop ?? DEFAULT_TOP;
+    this.defaultTop = options.defaultTop ?? DEFAULT_SP_QUERY_LIMIT;
     const { baseUrl } = ensureConfig();
     this.sp = options.sp ?? createSpClient(acquireSpAccessToken, baseUrl);
   }
@@ -97,10 +97,9 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
     if (filters.length) {
       params.set('$filter', filters.join(' and '));
     }
-    const top = options?.limit ?? this.defaultTop;
-    if (top && top > 0) {
-      params.set('$top', String(top));
-    }
+    const limit = options?.limit ?? this.defaultTop;
+    const safeTop = Math.min(Math.max(1, limit), MAX_SP_QUERY_LIMIT);
+    params.set('$top', String(safeTop));
 
     const url = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items?${params.toString()}`;
     const res = await this.sp.spFetch(url, { method: 'GET' });

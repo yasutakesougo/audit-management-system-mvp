@@ -20,7 +20,7 @@ import type { UserRepository, UserRepositoryGetParams, UserRepositoryListParams,
 import { userMasterCreateSchema, userMasterSchema } from '../schema';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
 
-const DEFAULT_TOP = 500;
+import { DEFAULT_SP_QUERY_LIMIT, MAX_SP_QUERY_LIMIT } from '@/shared/api/spQueryLimits';
 
 type SpContextCarrier = {
   __SPFX_CONTEXT__?: ISPFXContext;
@@ -59,7 +59,7 @@ export class SharePointUserRepository implements UserRepository {
 
   constructor(options: SharePointUserRepositoryOptions = {}) {
     this.ensureSharePointConfig();
-    this.defaultTop = options.defaultTop ?? DEFAULT_TOP;
+    this.defaultTop = options.defaultTop ?? DEFAULT_SP_QUERY_LIMIT;
     this.audit = options.audit;
     this.sp = options.sp ?? this.createSpInstance(options.spfxContext);
   }
@@ -74,9 +74,10 @@ export class SharePointUserRepository implements UserRepository {
     const filters = params?.filters;
     const top = params?.top ?? this.defaultTop;
     const requestedMode = params?.selectMode ?? 'core';
+    const safeTop = Math.min(Math.max(1, top), MAX_SP_QUERY_LIMIT);
 
     const items = await this.runWithSelectFallback(requestedMode, async (selectFields, mode) => {
-      let query = this.list.items.select(...selectFields).top(top);
+      let query = this.list.items.select(...selectFields).top(safeTop);
 
       if (filters?.isActive !== undefined) {
         const fieldName = FIELD_MAP.Users_Master.isActive;

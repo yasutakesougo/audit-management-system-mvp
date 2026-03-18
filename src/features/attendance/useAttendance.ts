@@ -1,7 +1,9 @@
+// contract:allow-sp-direct
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { upsertObservation } from '@/features/nurse';
 import { makeSharePointListApi } from '@/features/nurse/sp/client';
+import { useSP } from '@/lib/spClient';
 import { NURSE_LISTS } from '@/features/nurse/sp/constants';
 import type { ObservationListItem } from '@/features/nurse/sp/map';
 import type { AbsentSupportLog } from '@/features/service-provision/domain/absentSupportLog';
@@ -46,6 +48,7 @@ export type UseAttendanceReturn = {
 
 export function useAttendance(): UseAttendanceReturn {
   const repository = useAttendanceRepository();
+  const { spFetch } = useSP();
   const [status, setStatus] = useState<AttendanceHookStatus>('loading');
   const [rowsRaw, setRowsRaw] = useState<AttendanceRowVM[]>([]);
   const [filters, setFiltersState] = useState<AttendanceFilter>({ date: todayIso(), query: '' });
@@ -369,7 +372,7 @@ export function useAttendance(): UseAttendanceReturn {
           Source: 'attendance',
         };
 
-        const api = makeSharePointListApi();
+        const api = makeSharePointListApi(spFetch);
         await upsertObservation(api, NURSE_LISTS.observation, payload);
 
         // C1.7: high-temp (≥37.5) fires warning + '看護記録へ' action
@@ -401,7 +404,7 @@ export function useAttendance(): UseAttendanceReturn {
         bumpSavingTick();
       }
     },
-    [bumpSavingTick, filters.date, rowsRaw, dismissNotification],
+    [bumpSavingTick, filters.date, rowsRaw, dismissNotification, spFetch],
   );
 
   const rows = useMemo(() => {
