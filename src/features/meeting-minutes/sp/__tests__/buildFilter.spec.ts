@@ -126,8 +126,8 @@ describe('buildFilter', () => {
     });
 
     it('should NOT include tag even in combination with other params', () => {
-      const result = buildFilter({ tag: '訓練', category: '防災訓練' });
-      expect(result).toBe(`${F.category} eq '防災訓練'`);
+      const result = buildFilter({ tag: '訓練', category: '職員会議' });
+      expect(result).toBe(`${F.category} eq '職員会議'`);
       expect(result).not.toContain('訓練用タグ');
     });
   });

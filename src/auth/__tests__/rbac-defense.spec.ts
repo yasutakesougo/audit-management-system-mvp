@@ -18,9 +18,10 @@ import type { NavItem } from '@/app/config/navigationConfig.types';
 const makeNavItem = (overrides: Partial<NavItem> = {}): NavItem => ({
   label: 'Test Item',
   to: '/test',
+  group: 'daily',
   isActive: () => false,
   ...overrides,
-});
+} as NavItem);
 
 describe('RBAC Defense Layer', () => {
   // -----------------------------------------------------------------------

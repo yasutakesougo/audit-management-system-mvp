@@ -46,6 +46,7 @@ const DEFAULT_APP_CONFIG: AppConfig = {
   schedulesTz: 'Asia/Tokyo',
   schedulesWeekStart: 1,
   isDev: false,
+  facilityName: 'Test Facility',
 };
 
 beforeEach(() => {

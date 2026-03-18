@@ -137,10 +137,14 @@ export function pickGroup(item: Partial<NavItem>, _isAdmin: boolean): NavGroupKe
     to === '/admin' ||
     to.startsWith('/admin/') ||
     to.startsWith('/settings') ||
+    to.startsWith('/checklist') ||
+    to.startsWith('/audit') ||
     label.includes('利用者') ||
     (label.includes('職員') && !label.includes('勤怠')) ||
     label.includes('管理ツール') ||
-    label.includes('設定')
+    label.includes('設定') ||
+    label.includes('監査ログ') ||
+    label.includes('自己点検')
   ) {
     return 'admin';
   }
