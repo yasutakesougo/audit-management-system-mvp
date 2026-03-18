@@ -20,6 +20,7 @@ import { ImportMonitoringDialog } from '@/features/planning-sheet/components/Imp
 import type { MonitoringToPlanningResult } from '@/features/planning-sheet/monitoringToPlanningBridge';
 import { useLatestBehaviorMonitoring } from '@/features/planning-sheet/hooks/useLatestBehaviorMonitoring';
 import { createMonitoringMeetingRepository } from '@/features/monitoring/repositories/createMonitoringMeetingRepository';
+import { SP_ENABLED } from '@/lib/env';
 import { ImportHistoryTimeline } from '@/features/planning-sheet/components/ImportHistoryTimeline';
 import { ProvenancePanel } from '@/features/planning-sheet/components/ProvenanceBadge';
 import type { AssessmentBridgeResult, ProvenanceEntry } from '@/features/planning-sheet/assessmentBridge';
@@ -231,8 +232,13 @@ export default function SupportPlanningSheetPage() {
   // NOTE:
   // Repository is resolved via createMonitoringMeetingRepository factory.
   // Do not import localMonitoringMeetingRepository directly in UI components.
-  // This keeps /new and edit flows consistent and enables future SP swap.
-  const monitoringRepo = React.useMemo(() => createMonitoringMeetingRepository(), []);
+  // SP_ENABLED のときは sharepoint モードで SP リストから取得する。
+  const monitoringRepo = React.useMemo(
+    () => SP_ENABLED
+      ? createMonitoringMeetingRepository('sharepoint', { spClient })
+      : createMonitoringMeetingRepository('local'),
+    [spClient],
+  );
   const {
     record: latestMonitoringRecord,
   } = useLatestBehaviorMonitoring(sheet?.userId ?? null, {

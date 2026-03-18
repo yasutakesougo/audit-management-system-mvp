@@ -7,13 +7,15 @@
 // 使い方:
 //   const repo = createMonitoringMeetingRepository();          // default: local
 //   const repo = createMonitoringMeetingRepository('local');
-//   const repo = createMonitoringMeetingRepository('sharepoint'); // 将来
+//   const repo = createMonitoringMeetingRepository('sharepoint', { spClient });
 //
 // @see src/domain/isp/monitoringMeetingRepository.ts (Port)
 // ---------------------------------------------------------------------------
 
 import type { MonitoringMeetingRepository } from '@/domain/isp/monitoringMeetingRepository';
 import { localMonitoringMeetingRepository } from '@/infra/localStorage/localMonitoringMeetingRepository';
+import { createSpMonitoringMeetingRepository } from '@/infra/sharepoint/repos/spMonitoringMeetingRepository';
+import type { UseSP } from '@/lib/spClient';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -23,9 +25,18 @@ import { localMonitoringMeetingRepository } from '@/infra/localStorage/localMoni
  * Repository の実装モード。
  *
  * - `'local'`      — localStorage ベース（開発・デモ用）
- * - `'sharepoint'` — SharePoint リスト（本番用、未実装）
+ * - `'sharepoint'` — SharePoint リスト（本番用）
  */
 export type MonitoringRepositoryMode = 'local' | 'sharepoint';
+
+/**
+ * Factory のオプション。
+ * `sharepoint` モードでは `spClient` が必須。
+ */
+export interface MonitoringRepositoryOptions {
+  /** useSP() の戻り値。sharepoint モードで必須 */
+  spClient?: UseSP;
+}
 
 // ---------------------------------------------------------------------------
 // Factory
@@ -35,29 +46,34 @@ export type MonitoringRepositoryMode = 'local' | 'sharepoint';
  * mode に応じた MonitoringMeetingRepository を返す。
  *
  * デフォルトは `'local'`。
- * SharePoint 実装が追加されたら、ここに分岐を1行足すだけで切替完了。
  *
  * @example
  * ```ts
- * // UI 側
+ * // local mode (開発・デモ)
  * const repo = createMonitoringMeetingRepository();
- * useLatestBehaviorMonitoring(userId, { repository: repo });
+ *
+ * // SharePoint mode (本番)
+ * const sp = useSP();
+ * const repo = createMonitoringMeetingRepository('sharepoint', { spClient: sp });
  * ```
  */
 export function createMonitoringMeetingRepository(
   mode: MonitoringRepositoryMode = 'local',
+  options: MonitoringRepositoryOptions = {},
 ): MonitoringMeetingRepository {
   switch (mode) {
     case 'local':
       return localMonitoringMeetingRepository;
 
-    case 'sharepoint':
-      // TODO: SharePoint 実装が完成したら差し替え
-      // return spMonitoringMeetingRepository;
-      throw new Error(
-        '[createMonitoringMeetingRepository] sharepoint mode is not yet implemented. ' +
-        'Use "local" until spMonitoringMeetingRepository is available.',
-      );
+    case 'sharepoint': {
+      if (!options.spClient) {
+        throw new Error(
+          '[createMonitoringMeetingRepository] sharepoint mode requires options.spClient. ' +
+          'Pass useSP() result via { spClient }.',
+        );
+      }
+      return createSpMonitoringMeetingRepository(options.spClient);
+    }
 
     default: {
       const _exhaustive: never = mode;
@@ -65,3 +81,4 @@ export function createMonitoringMeetingRepository(
     }
   }
 }
+

@@ -34,6 +34,7 @@ import { recordLanding } from '@/features/today/telemetry/recordLanding';
 import { useTransportStatus } from '@/features/today/transport';
 import { ApprovalDialog } from '@/features/today/widgets/ApprovalDialog';
 import { toLocalDateISO } from '@/utils/getNow';
+import { HandoffPanel } from '@/features/handoff/components';
 
 import { Alert, Snackbar } from '@mui/material';
 import React, { useEffect, useMemo, useRef } from 'react';
@@ -154,6 +155,7 @@ export const TodayOpsPage: React.FC = () => {
           onNavigate: (href: string) => navigate(href),
         }
       : undefined,
+    handoffPanel: <HandoffPanel targetDate={toLocalDateISO()} />,
   }), [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick]);
 
   // ── Save Success Handler (Quick Record auto-next) ──

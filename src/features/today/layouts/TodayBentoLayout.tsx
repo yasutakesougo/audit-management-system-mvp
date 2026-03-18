@@ -92,6 +92,8 @@ export type TodayBentoProps = {
   transport: { pending: TransportUser[]; inProgress: TransportUser[]; onArrived: (id: string) => void };
   transportCard?: TransportStatusCardProps;
   users: { items: UserRow[]; onOpenQuickRecord: (id: string) => void; onOpenISP?: (id: string) => void; onOpenIceberg?: (id: string) => void; onEmptyAction?: () => void };
+  /** 日々の申し送り一覧パネル (optional) */
+  handoffPanel?: React.ReactNode;
 };
 
 // ─── Compact Section Title ───────────────────────────────────
@@ -137,6 +139,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   workflowCard,
   transportCard,
   users,
+  handoffPanel,
 }) => {
   return (
     <Box
@@ -232,6 +235,16 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
         >
           <BriefingActionList alerts={briefingAlerts} />
         </BentoCard>
+
+        {/* ── Row 2.5: Handoff Panel (full-width) ── */}
+        {handoffPanel && (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            testId="bento-handoff"
+          >
+            {handoffPanel}
+          </BentoCard>
+        )}
 
         {/* ── Row 3: Service Structure (full-width) ── */}
         {serviceStructure && (
