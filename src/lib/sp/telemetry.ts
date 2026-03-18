@@ -2,6 +2,7 @@ import { auditLog } from '@/lib/debugLogger';
 import { SP_TELEMETRY_THRESHOLDS } from '@/shared/api/spQueryLimits';
 import type { GuardedQueryParams, SharePointQueryRiskLevel } from './queryGuard';
 import { useTelemetryStore } from './telemetryStore';
+import { extractODataIndexCandidates, ODataIndexCandidate } from './indexAudit/extractor';
 
 export interface SpTelemetryMetrics {
   listName?: string;
@@ -21,6 +22,7 @@ export interface SpTelemetryMetrics {
   hasOrderBy: boolean;
   isError: boolean;
   errorMessage?: string;
+  indexCandidates?: ODataIndexCandidate[];
 }
 
 export interface QueryTelemetryPayload {
@@ -105,7 +107,11 @@ export function endSpQueryTelemetry(options: EndSpQueryTelemetryOptions): SpTele
     statusCode,
     throttled,
     isError,
-    errorMessage
+    errorMessage,
+    indexCandidates: extractODataIndexCandidates({
+      filter: p.filter || undefined,
+      orderby: p.orderBy || undefined,
+    }),
   };
   telemetrySink.recordQuery(metrics);
 

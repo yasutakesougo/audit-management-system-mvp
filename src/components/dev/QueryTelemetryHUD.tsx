@@ -106,6 +106,14 @@ export default function QueryTelemetryHUD() {
                       .join(', ')}
                   </Typography>
                 )}
+                {summary.topIndexCandidates.length > 0 && (
+                  <Typography variant="body2" color="warning.main" sx={{ mt: 0.5, fontWeight: 'medium' }}>
+                    <strong>Top Index Candidates:</strong>{' '}
+                    {summary.topIndexCandidates
+                      .map(c => `${c.listName}.${c.field} (${c.score})`)
+                      .join(', ')}
+                  </Typography>
+                )}
               </Box>
               <Button
                 size="small"
@@ -125,7 +133,7 @@ export default function QueryTelemetryHUD() {
                     <TableCell>List</TableCell>
                     <TableCell>Ms</TableCell>
                     <TableCell>Score</TableCell>
-                    <TableCell>Codes</TableCell>
+                    <TableCell>Codes/Idx</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -143,6 +151,7 @@ export default function QueryTelemetryHUD() {
                       </TableCell>
                       <TableCell sx={{ maxWidth: 120, WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box' }}>
                         {metric.isError ? `ERR: ${metric.errorMessage}` : (metric.warningCodes.length ? metric.warningCodes.join(',') : '-')}
+                        {metric.indexCandidates?.length ? ` | idx:[${metric.indexCandidates.map(c => c.field).join(',')}]` : ''}
                       </TableCell>
                     </TableRow>
                   ))}
