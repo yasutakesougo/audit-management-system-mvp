@@ -312,7 +312,7 @@ function buildNextActionsSection(input: BuildIspPlanDraftInput): IspPlanDraftSec
   const latestDecisions = resolveLatestDecisionsByGoal(decisions);
   let actionIndex = 1;
 
-  // 採用 → 計画反映 TODO
+  // 採用判断: 計画反映アクション行を生成
   const accepted = filterByStatus(latestDecisions, 'accepted');
   for (const d of accepted) {
     const name = goalNames[d.goalId] ?? `目標(${d.goalId})`;
@@ -320,7 +320,7 @@ function buildNextActionsSection(input: BuildIspPlanDraftInput): IspPlanDraftSec
     actionIndex++;
   }
 
-  // 保留 → 再評価 TODO
+  // 保留判断: 次回モニタリング再評価アクション行を生成
   const deferred = filterByStatus(latestDecisions, 'deferred');
   for (const d of deferred) {
     const name = goalNames[d.goalId] ?? `目標(${d.goalId})`;
@@ -328,7 +328,7 @@ function buildNextActionsSection(input: BuildIspPlanDraftInput): IspPlanDraftSec
     actionIndex++;
   }
 
-  // 未判断 → 判断確定 TODO
+  // 未判断目標: 判断確定アクション行を生成
   const decidedGoalIds = new Set(latestDecisions.keys());
   const undecidedGoals = goalProgress.filter((gp) => !decidedGoalIds.has(gp.goalId));
   for (const gp of undecidedGoals) {
