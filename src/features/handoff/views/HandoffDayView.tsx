@@ -81,98 +81,111 @@ export function HandoffDayView({
   return (
     <>
       {/* ── Day 固有フィルタ群 ── */}
-      <Box
-        sx={{
-          mt: 2,
-          mb: 1,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 3,
-          flexWrap: 'wrap',
-          rowGap: 1.5,
-        }}
-      >
-        {/* 会議モード切替 */}
-        <ToggleButtonGroup
-          value={state.meetingMode}
-          exclusive
-          onChange={state.handleMeetingModeChange}
-          size="small"
-          color="primary"
+      <Box sx={{ mt: 2, mb: 1 }}>
+        {/* 上段: コンテキスト系フィルタ（会議モード + 時間帯） */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            flexWrap: 'wrap',
+            rowGap: 1,
+          }}
         >
-          <ToggleButton value="normal">
-            <MeetingIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
-            通常
-          </ToggleButton>
-          <ToggleButton value="evening">
-            <EveningIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
-            🌆 夕会
-          </ToggleButton>
-          <ToggleButton value="morning">
-            <MorningIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
-            🌅 朝会
-          </ToggleButton>
-        </ToggleButtonGroup>
+          {/* 会議モード切替 */}
+          <ToggleButtonGroup
+            value={state.meetingMode}
+            exclusive
+            onChange={state.handleMeetingModeChange}
+            size="small"
+            color="primary"
+          >
+            <ToggleButton value="normal">
+              <MeetingIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              通常
+            </ToggleButton>
+            <ToggleButton value="evening">
+              <EveningIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              🌆 夕会
+            </ToggleButton>
+            <ToggleButton value="morning">
+              <MorningIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              🌅 朝会
+            </ToggleButton>
+          </ToggleButtonGroup>
 
-        {/* 時間帯フィルタ */}
-        <ToggleButtonGroup
-          value={state.timeFilter}
-          exclusive
-          onChange={state.handleTimeFilterChange}
-          size="small"
-          color="primary"
-        >
-          <ToggleButton value="all">
-            📅 全て
-          </ToggleButton>
-          <ToggleButton value="morning" {...tid(TESTIDS['agenda-filter-morning'])}>
-            <MorningIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
-            朝〜午前
-          </ToggleButton>
-          <ToggleButton value="evening" {...tid(TESTIDS['agenda-filter-evening'])}>
-            <EveningIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
-            午後〜夕方
-          </ToggleButton>
-        </ToggleButtonGroup>
+          {/* 時間帯フィルタ */}
+          <ToggleButtonGroup
+            value={state.timeFilter}
+            exclusive
+            onChange={state.handleTimeFilterChange}
+            size="small"
+            color="primary"
+          >
+            <ToggleButton value="all">
+              📅 全て
+            </ToggleButton>
+            <ToggleButton value="morning" {...tid(TESTIDS['agenda-filter-morning'])}>
+              <MorningIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              朝〜午前
+            </ToggleButton>
+            <ToggleButton value="evening" {...tid(TESTIDS['agenda-filter-evening'])}>
+              <EveningIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              午後〜夕方
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
 
-        {/* 表示モード切替: 時系列 / 利用者別 */}
-        <ToggleButtonGroup
-          value={state.displayMode}
-          exclusive
-          onChange={(_, v) => { if (v) state.setDisplayMode(v as HandoffDisplayMode); }}
-          size="small"
-          color="primary"
+        {/* 下段: 表示制御系フィルタ（表示モード + ステータス） */}
+        <Box
+          sx={{
+            mt: 1.5,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            flexWrap: 'wrap',
+            rowGap: 1,
+          }}
         >
-          <ToggleButton value="timeline" data-testid="handoff-mode-timeline">
-            <ViewListIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
-            時系列
-          </ToggleButton>
-          <ToggleButton value="grouped" data-testid="handoff-mode-grouped">
-            <PersonIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
-            利用者別
-          </ToggleButton>
-        </ToggleButtonGroup>
+          {/* 表示モード切替: 時系列 / 利用者別 */}
+          <ToggleButtonGroup
+            value={state.displayMode}
+            exclusive
+            onChange={(_, v) => { if (v) state.setDisplayMode(v as HandoffDisplayMode); }}
+            size="small"
+            color="primary"
+          >
+            <ToggleButton value="timeline" data-testid="handoff-mode-timeline">
+              <ViewListIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              時系列
+            </ToggleButton>
+            <ToggleButton value="grouped" data-testid="handoff-mode-grouped">
+              <PersonIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              利用者別
+            </ToggleButton>
+          </ToggleButtonGroup>
 
-        {/* ステータスフィルタ */}
-        <ToggleButtonGroup
-          value={state.statusFilter}
-          exclusive
-          onChange={(_, v) => { if (v) state.setStatusFilter(v as HandoffStatusFilter); }}
-          size="small"
-          color="primary"
-          data-testid="handoff-status-filter"
-        >
-          <ToggleButton value="actionRequired" data-testid="handoff-filter-action">
-            <FilterListIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
-            {STATUS_FILTER_LABELS.actionRequired}
-          </ToggleButton>
-          <ToggleButton value="pending" data-testid="handoff-filter-pending">
-            {STATUS_FILTER_LABELS.pending}
-          </ToggleButton>
-          <ToggleButton value="all" data-testid="handoff-filter-all">
-            {STATUS_FILTER_LABELS.all}
-          </ToggleButton>
-        </ToggleButtonGroup>
+          {/* ステータスフィルタ */}
+          <ToggleButtonGroup
+            value={state.statusFilter}
+            exclusive
+            onChange={(_, v) => { if (v) state.setStatusFilter(v as HandoffStatusFilter); }}
+            size="small"
+            color="primary"
+            data-testid="handoff-status-filter"
+          >
+            <ToggleButton value="actionRequired" data-testid="handoff-filter-action">
+              <FilterListIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              {STATUS_FILTER_LABELS.actionRequired}
+            </ToggleButton>
+            <ToggleButton value="pending" data-testid="handoff-filter-pending">
+              {STATUS_FILTER_LABELS.pending}
+            </ToggleButton>
+            <ToggleButton value="all" data-testid="handoff-filter-all">
+              {STATUS_FILTER_LABELS.all}
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
       </Box>
 
       {/* ── Stats サマリー ── */}

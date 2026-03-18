@@ -9,7 +9,6 @@
  */
 import React, { useMemo } from 'react';
 import Chip from '@mui/material/Chip';
-import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
@@ -122,74 +121,59 @@ export const RegulatorySummaryBand: React.FC<RegulatorySummaryBandProps> = ({
   };
 
   return (
-    <Paper
-      variant="outlined"
+    <Box
       data-testid="regulatory-summary-band"
       sx={{
-        px: { xs: 1.5, md: 2 },
-        py: { xs: 1, md: 1.25 },
-        background: (theme) =>
-          theme.palette.mode === 'dark'
-            ? 'linear-gradient(135deg, rgba(30,60,90,0.5) 0%, rgba(20,40,60,0.5) 100%)'
-            : 'linear-gradient(135deg, rgba(232,245,255,0.8) 0%, rgba(240,248,255,0.9) 100%)',
+        pl: 1.5,
+        py: 0.5,
+        borderLeft: 3,
         borderColor: borderColorMap[worst],
-        borderWidth: worst === 'ok' ? 1 : 2,
+        borderRadius: 1,
         transition: 'border-color 0.3s ease',
       }}
     >
-      <Stack spacing={0.75}>
-        {/* ── ヘッダー行 ── */}
-        <Stack
-          direction="row"
-          spacing={1}
-          flexWrap="wrap"
-          useFlexGap
-          alignItems="center"
-        >
-          <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mr: 0.5 }}>
-            <AssessmentRoundedIcon sx={{ fontSize: 16 }} color="primary" />
-            <Typography variant="body2" fontWeight={600} sx={{ whiteSpace: 'nowrap' }}>
-              制度サマリー
-            </Typography>
-          </Stack>
-
-          {/* サマリーバッジ */}
-          <Box
-            sx={{
-              px: 1,
-              py: 0.25,
-              borderRadius: 1,
-              bgcolor: `${borderColorMap[worst]}`,
-              color: 'white',
-              fontSize: '0.7rem',
-              fontWeight: 700,
-              lineHeight: 1.4,
-              minWidth: 'auto',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 0.5,
-            }}
-          >
-            {counts.danger > 0 && `${SIGNAL_EMOJI.danger} ${counts.danger}`}
-            {counts.warning > 0 && ` ${SIGNAL_EMOJI.warning} ${counts.warning}`}
-            {counts.danger === 0 && counts.warning === 0 && `${SIGNAL_EMOJI.ok} すべて完了`}
-          </Box>
+      {/* ヘッダー + 信号灯チップを1行に統合 */}
+      <Stack
+        direction="row"
+        spacing={0.75}
+        flexWrap="wrap"
+        useFlexGap
+        alignItems="center"
+      >
+        <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mr: 0.5 }}>
+          <AssessmentRoundedIcon sx={{ fontSize: 14 }} color="primary" />
+          <Typography variant="caption" fontWeight={600} sx={{ whiteSpace: 'nowrap' }}>
+            制度サマリー
+          </Typography>
         </Stack>
 
-        {/* ── 信号灯チップ一覧 ── */}
-        <Stack
-          direction="row"
-          spacing={0.75}
-          flexWrap="wrap"
-          useFlexGap
-          alignItems="center"
+        {/* サマリーバッジ */}
+        <Box
+          sx={{
+            px: 0.75,
+            py: 0.125,
+            borderRadius: 1,
+            bgcolor: `${borderColorMap[worst]}`,
+            color: 'white',
+            fontSize: '0.65rem',
+            fontWeight: 700,
+            lineHeight: 1.4,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 0.5,
+          }}
         >
-          {hudItems.map((item) => (
-            <HudChip key={item.key} item={item} onNavigateToTab={onNavigateToTab} />
-          ))}
-        </Stack>
+          {counts.danger > 0 && `${SIGNAL_EMOJI.danger} ${counts.danger}`}
+          {counts.warning > 0 && ` ${SIGNAL_EMOJI.warning} ${counts.warning}`}
+          {counts.danger === 0 && counts.warning === 0 && `${SIGNAL_EMOJI.ok} OK`}
+        </Box>
+
+        {/* 信号灯チップ一覧（ヘッダーと同じ行） */}
+        {hudItems.map((item) => (
+          <HudChip key={item.key} item={item} onNavigateToTab={onNavigateToTab} />
+        ))}
       </Stack>
-    </Paper>
+    </Box>
   );
 };
 
