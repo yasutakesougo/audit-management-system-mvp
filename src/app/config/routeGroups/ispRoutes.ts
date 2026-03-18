@@ -16,7 +16,7 @@ export const ISP_ROUTES: NavItem[] = [
     isActive: (pathname) => pathname === '/support-plan-guide',
     icon: undefined,
     testId: TESTIDS.nav.supportPlanGuide,
-    audience: NAV_AUDIENCE.staff,
+    audience: NAV_AUDIENCE.all as NavAudience,
     group: 'isp' as NavGroupKey,
   },
   {

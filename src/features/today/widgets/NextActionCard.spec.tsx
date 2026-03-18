@@ -246,12 +246,20 @@ describe('NextActionCard — overdue 表示 (#852)', () => {
 // ─── Today → Schedule 導線 ─────────────────────────────────
 
 describe('NextActionCard — Schedule deep link', () => {
-  it('calls onNavigate with scheduleDetailHref when 予定表で確認 is clicked', () => {
+  it('calls onNavigate with scheduleDetailHref when 予定表で確認 is clicked (non-schedule opsStep)', () => {
     const handleNavigate = vi.fn();
     const href = '/schedules/week?date=2026-03-12&tab=day&cat=User';
     render(
       <NextActionCard
-        nextAction={makeProps()}
+        nextAction={makeProps({
+          item: {
+            id: 'ops-1',
+            time: '09:15',
+            title: '通所受け入れ',
+            opsStep: 'intake',
+            minutesUntil: 15,
+          },
+        })}
         scheduleDetailHref={href}
         onNavigate={handleNavigate}
       />,
@@ -262,6 +270,39 @@ describe('NextActionCard — Schedule deep link', () => {
     expect(link.tagName).toBe('BUTTON');
     link.click();
     expect(handleNavigate).toHaveBeenCalledWith(href);
+  });
+
+  it('uses scheduleDetailHref as main CTA href when opsStep falls back to schedule', () => {
+    const handleNavigate = vi.fn();
+    const deepLink = '/schedules/week?date=2026-03-12&tab=day&cat=User';
+    render(
+      <NextActionCard
+        nextAction={makeProps()}
+        scheduleDetailHref={deepLink}
+        onNavigate={handleNavigate}
+      />,
+    );
+
+    // メインCTAが deep link を使用する
+    const cta = screen.getByTestId('next-action-nav-cta');
+    cta.click();
+    expect(handleNavigate).toHaveBeenCalledWith(deepLink);
+    // 補助リンクは非表示（重複回避）
+    expect(screen.queryByTestId('next-action-schedule-link')).not.toBeInTheDocument();
+  });
+
+  it('does not render schedule link when main CTA is already schedule navigation (avoids duplication)', () => {
+    const handleNavigate = vi.fn();
+    render(
+      <NextActionCard
+        nextAction={makeProps()}
+        scheduleDetailHref="/schedules/week?date=2026-03-12"
+        onNavigate={handleNavigate}
+      />,
+    );
+
+    // メインCTAが「予定を確認」（scheduleアイコン）のとき、補助リンクは重複するため非表示
+    expect(screen.queryByTestId('next-action-schedule-link')).not.toBeInTheDocument();
   });
 
   it('does not render schedule link when onNavigate is not provided', () => {

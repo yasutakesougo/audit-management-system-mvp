@@ -158,7 +158,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname === '/support-plan-guide',
       icon: undefined,
       testId: TESTIDS.nav.supportPlanGuide,
-      audience: NAV_AUDIENCE.staff,
+      audience: NAV_AUDIENCE.all,
       group: 'assessment' as NavGroupKey,
     },
     {
