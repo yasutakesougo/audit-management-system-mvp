@@ -25,6 +25,7 @@ import {
   toTelemetrySpan,
   type HydrationTelemetrySpan,
 } from '@/telemetry/hydrationBeacon';
+import { TodayQueueHudPanel } from '@/features/today/telemetry/TodayQueueHudPanel';
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 
 const STORAGE_KEY = 'prefetch:hud:visible';
@@ -465,6 +466,8 @@ export const HydrationHud: React.FC = () => {
                 </span>
               </div>
             </div>
+            {/* ── Today Queue Telemetry ───────────────────── */}
+            <TodayQueueHudPanel />
             <div style={sectionLabelStyle}>
             <span style={{ textTransform: 'uppercase', letterSpacing: 0.8 }}>Prefetch</span>
             <span style={totalStyle}>{prefetchEntries.length}</span>

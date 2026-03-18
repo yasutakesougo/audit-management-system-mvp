@@ -22,6 +22,8 @@ import { useSceneNextAction } from '@/features/today/hooks/useSceneNextAction';
 import { useTodayScheduleLanes } from '@/features/today/hooks/useTodayScheduleLanes';
 import { useWorkflowPhases } from '@/features/today/hooks/useWorkflowPhases';
 import { useTodayLayoutProps } from '@/features/today/hooks/useTodayLayoutProps';
+import { useTodayActionQueue } from '@/features/today/hooks/useTodayActionQueue';
+import type { ActionCard } from '@/features/today/domain/models/queue.types';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { TodayBentoLayout } from '@/features/today/layouts/TodayBentoLayout';
 import { recordAutoNextComplete, recordAutoNextSave } from '@/features/today/records/autoNextCounters';
@@ -92,6 +94,26 @@ export const TodayOpsPage: React.FC = () => {
     isServiceManager ? planningSheetRepo : null,
   );
 
+  // ── Timeline Action Queue (Phase 3) ──
+  const { actionQueue, isLoading: isQueueLoading } = useTodayActionQueue({
+    currentStaffId: 'staff-a', // 仮: ログインユーザーのIDを連携できるとベター
+  });
+
+  const handleActionClick = React.useCallback(
+    (action: ActionCard) => {
+      if (action.actionType === 'OPEN_DRAWER') {
+        quickRecord.openUnfilled();
+      } else if (action.actionType === 'NAVIGATE') {
+        const payload = action.payload as { path?: string };
+        if (payload?.path) navigate(payload.path);
+        else navigate('/schedules');
+      } else if (action.actionType === 'ACKNOWLEDGE') {
+        // No-op for now. Acknowledge handler can be hooked into an API action later.
+      }
+    },
+    [quickRecord.openUnfilled, navigate]
+  );
+
   // ── Schedule Detail Deep Link ──
   const scheduleDetailHref = useMemo(() => {
     const dateIso = toLocalDateISO();
@@ -118,6 +140,11 @@ export const TodayOpsPage: React.FC = () => {
 
   const layoutProps = useMemo(() => ({
     ...baseLayoutProps,
+    actionQueueTimeline: {
+      actionQueue,
+      isLoading: isQueueLoading,
+      onActionClick: handleActionClick,
+    },
     workflowCard: isServiceManager && workflowPhases.items.length > 0
       ? {
           items: workflowPhases.items,
@@ -127,7 +154,7 @@ export const TodayOpsPage: React.FC = () => {
           onNavigate: (href: string) => navigate(href),
         }
       : undefined,
-  }), [baseLayoutProps, isServiceManager, workflowPhases, navigate]);
+  }), [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick]);
 
   // ── Save Success Handler (Quick Record auto-next) ──
   const [showCompletionToast, setShowCompletionToast] = React.useState(false);
