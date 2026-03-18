@@ -30,10 +30,10 @@
     { listTitle: "PlanGoals",                    indexes: [] },
     { listTitle: "MeetingMinutes",               indexes: [] },
     { listTitle: "Staff_Attendance",             indexes: [] },
-    { listTitle: "AttendanceUsers",              indexes: [] },
+    { listTitle: "AttendanceUsers",              indexes: [{ field: "UserCode", unique: false }, { field: "IsActive", unique: false }] },
     { listTitle: "AttendanceDaily",              indexes: [] },
     { listTitle: "Daily_Attendance",             indexes: [] },
-    { listTitle: "Transport_Log",                indexes: [] },
+    { listTitle: "Transport_Log",                indexes: [{ field: "UserCode", unique: false }, { field: "RecordDate", unique: false }] },
     { listTitle: "Iceberg_PDCA",                 indexes: [] },
     { listTitle: "Iceberg_Analysis",             indexes: [{ field: "EntryHash", unique: true }, { field: "SessionId", unique: false }, { field: "UserId", unique: false }] },
     { listTitle: "Compliance_CheckRules",        indexes: [] },
@@ -41,6 +41,7 @@
     { listTitle: "FormsResponses_Tokusei",       indexes: [] },
     { listTitle: "NurseObservations",            indexes: [] },
     { listTitle: "PdfOutput_Log",               indexes: [] },
+    { listTitle: "CallLogs",                     indexes: [{ field: "ReceivedAt", unique: false }, { field: "Status", unique: false }] },
   ];
 
   // ── ヘルパー ───────────────────────────────────────────────────────────────
