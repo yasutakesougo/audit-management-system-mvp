@@ -63,6 +63,7 @@ import FormSections from './FormSections';
 export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   planningSheetRepo,
   ispRepo,
+  initialUserId,
 }) => {
   const navigate = useNavigate();
   const { data: users } = useUsers();
@@ -109,7 +110,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
 
   // ── User selection handler ──
   const handleUserSelect = React.useCallback(
-    async (_event: React.SyntheticEvent, value: UserOption | null) => {
+    async (_event: React.SyntheticEvent | null, value: UserOption | null) => {
       setSelectedUser(value);
       setIspId(null);
       setIspWarning(null);
@@ -134,6 +135,16 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
     },
     [ispRepo],
   );
+
+  // ── Auto select initial user ──
+  React.useEffect(() => {
+    if (initialUserId && users && users.length > 0 && !selectedUser && !ispLoading) {
+      const u = userOptions.find(o => o.id === initialUserId);
+      if (u) {
+        handleUserSelect(null, u).catch(console.error);
+      }
+    }
+  }, [initialUserId, users, userOptions, selectedUser, handleUserSelect, ispLoading]);
 
   // ── 特性アンケート: 利用者に紐づく回答をフィルタ ──
   const matchedTokuseiResponses = React.useMemo(() => {

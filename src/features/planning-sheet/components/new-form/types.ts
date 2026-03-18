@@ -6,6 +6,7 @@ import type { PlanningSheetRepository, IspRepository } from '@/domain/isp/port';
 export interface NewPlanningSheetFormProps {
   planningSheetRepo: PlanningSheetRepository;
   ispRepo: IspRepository;
+  initialUserId?: string;
 }
 
 export interface UserOption {

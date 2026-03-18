@@ -13,7 +13,15 @@
 
 import { PageHeader } from '@/components/PageHeader';
 import { ContextPanel } from '@/features/context/components/ContextPanel';
-import { buildContextAlerts, createEmptyContextData, type ContextPanelData } from '@/features/context/domain/contextPanelLogic';
+import {
+  buildContextAlerts,
+  buildContextSummary,
+  buildRecommendedPrompts,
+  createEmptyContextData,
+  prioritizeContextAlerts,
+  type ContextPanelData,
+  type ContextHandoff,
+} from '@/features/context/domain/contextPanelLogic';
 import { PersonDaily } from '@/domain/daily/types';
 import { saveDailyRecord, validateDailyRecord } from '@/features/daily/domain/dailyRecordLogic';
 import { getNextIncompleteRecord } from '@/features/daily/domain/nextIncompleteRecord';
@@ -138,29 +146,42 @@ export default function DailyRecordPage() {
   const contextData: ContextPanelData = useMemo(() => {
     if (!editingRecord) return createEmptyContextData();
     const user = usersData?.find((u) => u.UserID === editingRecord.userId || String(u.Id) === editingRecord.userId);
+    
+    const isHighIntensity = user?.IsHighIntensitySupportTarget ?? false;
+    const isSupportProcedureTarget = user?.IsSupportProcedureTarget ?? false;
+
+    // TODO: Phase 2 - 実データ連携
+    const supportPlan = { status: 'none' as const, planPeriod: '', goals: [] };
+    const handoffs: ContextHandoff[] = []; 
+
+    const recentRecordsBase = records
+      .filter((r) => r.userId === editingRecord.userId)
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 5);
+
     const alerts = buildContextAlerts({
-      supportPlan: { status: 'none', planPeriod: '', goals: [] },
-      handoffs: [],
-      recentRecords: records
-        .filter((r) => r.userId === editingRecord.userId && r.status === '完了')
-        .slice(0, 5)
+      supportPlan,
+      handoffs,
+      recentRecords: recentRecordsBase
+        .filter((r) => r.status === '完了')
         .map((r) => ({ date: r.date, status: r.status })),
-      isHighIntensity: user?.IsHighIntensitySupportTarget ?? false,
-      isSupportProcedureTarget: user?.IsSupportProcedureTarget ?? false,
+      isHighIntensity,
+      isSupportProcedureTarget,
     });
+
+    const recentRecordsForDisplay = recentRecordsBase.map((r) => ({
+      date: r.date,
+      status: r.status,
+      specialNotes: r.kind === 'A' ? r.data.specialNotes : undefined,
+    }));
+
     return {
-      supportPlan: { status: 'none', planPeriod: '', goals: [] },
-      handoffs: [],
-      recentRecords: records
-        .filter((r) => r.userId === editingRecord.userId)
-        .sort((a, b) => b.date.localeCompare(a.date))
-        .slice(0, 5)
-        .map((r) => ({
-          date: r.date,
-          status: r.status,
-          specialNotes: r.kind === 'A' ? r.data.specialNotes : undefined,
-        })),
-      alerts,
+      supportPlan,
+      handoffs,
+      recentRecords: recentRecordsForDisplay,
+      alerts: prioritizeContextAlerts(alerts),
+      summary: buildContextSummary(recentRecordsForDisplay, handoffs),
+      prompts: buildRecommendedPrompts(supportPlan, isHighIntensity, isSupportProcedureTarget),
     };
   }, [editingRecord, records, usersData]);
   const contextUserName = editingRecord?.userName ?? '';

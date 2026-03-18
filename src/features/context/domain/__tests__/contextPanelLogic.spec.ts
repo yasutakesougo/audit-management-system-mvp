@@ -5,7 +5,15 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { buildContextAlerts, createEmptyContextData } from '../contextPanelLogic';
+import {
+  buildContextAlerts,
+  buildContextSummary,
+  buildRecommendedPrompts,
+  createEmptyContextData,
+  prioritizeContextAlerts,
+  type ContextSupportPlan,
+  type ContextAlert,
+} from '../contextPanelLogic';
 
 describe('createEmptyContextData', () => {
   it('空のコンテキストデータを返す', () => {
@@ -121,5 +129,81 @@ describe('buildContextAlerts', () => {
     expect(keys).toContain('isp-missing');
     expect(keys).toContain('critical-handoff');
     expect(keys).toContain('high-intensity');
+  });
+});
+
+describe('buildContextSummary', () => {
+  it('記録と申し送りから履歴要約を生成する', () => {
+    const summary = buildContextSummary(
+      [
+        { date: '2026-03-17', status: '完了', specialNotes: '転倒あり' },
+      ],
+      [
+        { id: '1', message: '薬忘れ', category: '健康', severity: '重要', status: '未対応', createdAt: '' }
+      ]
+    );
+    expect(summary).toContain('未対応の重要な申し送りが1件あります。');
+    expect(summary).toContain('直近の記録に特記事項あり（1件）。');
+  });
+
+  it('問題がない場合は正常完了の旨を返す', () => {
+    const summary = buildContextSummary(
+      [
+        { date: '2026-03-17', status: '完了' },
+        { date: '2026-03-16', status: '完了' },
+      ],
+      []
+    );
+    expect(summary).toContain('直近2回の記録は特筆すべき問題なく完了しています。');
+  });
+
+  it('データが全くない場合', () => {
+    expect(buildContextSummary([], [])).toBe('直近の関連履歴はありません。');
+  });
+});
+
+describe('buildRecommendedPrompts', () => {
+  const basePlan: ContextSupportPlan = {
+    status: 'confirmed',
+    planPeriod: '2026',
+    goals: [
+      { type: 'support', label: '本人の支援', text: '見守り' },
+    ]
+  };
+
+  it('強度行動障害がある場合は専用のプロンプトを優先する', () => {
+    const prompts = buildRecommendedPrompts(basePlan, true, true);
+    expect(prompts[0]).toContain('強度行動障害');
+    expect(prompts).toHaveLength(2); // 手順対象 + goal 1つ
+  });
+
+  it('支援手順対象のみの場合', () => {
+    const prompts = buildRecommendedPrompts(basePlan, false, true);
+    expect(prompts[0]).toContain('個別支援手順書');
+  });
+
+  it('目標から効果的なプロンプトを生成する', () => {
+    const prompts = buildRecommendedPrompts(basePlan, false, false);
+    expect(prompts[0]).toContain('目標「本人の支援」に対する本日のアプローチ結果はどうでしたか？');
+  });
+
+  it('目標がない場合は汎用プロンプトを返す', () => {
+    const emptyPlan: ContextSupportPlan = { ...basePlan, goals: [] };
+    const prompts = buildRecommendedPrompts(emptyPlan, false, false);
+    expect(prompts[0]).toContain('本日の利用者の様子で気になった些細な変化や気づきを記録してください。');
+  });
+});
+
+describe('prioritizeContextAlerts', () => {
+  it('アラートを error > warning > info の順にソートする', () => {
+    const alerts: ContextAlert[] = [
+      { key: '3', level: 'info', message: 'C' },
+      { key: '1', level: 'error', message: 'A' },
+      { key: '2', level: 'warning', message: 'B' },
+    ];
+    const sorted = prioritizeContextAlerts(alerts);
+    expect(sorted[0].level).toBe('error');
+    expect(sorted[1].level).toBe('warning');
+    expect(sorted[2].level).toBe('info');
   });
 });

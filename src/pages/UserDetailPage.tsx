@@ -37,7 +37,20 @@ import Typography from '@mui/material/Typography';
 // ── App ──
 import { EmptyStateAction } from '@/components/ui/EmptyStateAction';
 import { useUsers } from '@/features/users/useUsers';
-import { buildQuickActions, buildSummaryStats, type QuickAction, type SummaryStat } from '@/features/users/domain/userDetailHubLogic';
+import {
+  buildQuickActions,
+  buildSummaryStats,
+  buildRecentRecordPreview,
+  buildRecentHandoffPreview,
+  buildTodayUserSnapshot,
+  buildPlanHighlights,
+  type QuickAction,
+  type SummaryStat,
+  type RecordPreviewItem,
+  type HandoffPreviewItem,
+  type TodayUserSnapshot,
+  type PlanHighlight,
+} from '@/features/users/domain/userDetailHubLogic';
 
 // ─── Component ────────────────────────────────────────────────
 
@@ -71,6 +84,32 @@ const UserDetailPage: React.FC = () => {
       handoffInfo: null,              // Phase 2: 実データ接続
       isHighIntensity: user.IsHighIntensitySupportTarget ?? false,
     });
+  }, [user]);
+
+  // ── MVP-010: Hub 深化データ生成 ──
+  const todaySnapshot = useMemo<TodayUserSnapshot | null>(() => {
+    if (!userId || !user) return null;
+    return buildTodayUserSnapshot({
+      userId,
+      hasRecordToday: false,      // Phase 2: 実データ接続
+      hasCriticalHandoff: false,  // Phase 2: 実データ接続
+      hasPlan: false,             // Phase 2: ISP接続
+    });
+  }, [userId, user]);
+
+  const recentRecords = useMemo<RecordPreviewItem[]>(() => {
+    // Phase 2: 実記録データを接続する。現在はデモ用空配列
+    return buildRecentRecordPreview([]);
+  }, [user]);
+
+  const recentHandoffs = useMemo<HandoffPreviewItem[]>(() => {
+    // Phase 2: 実申し送りデータを接続する。現在はデモ用空配列
+    return buildRecentHandoffPreview([]);
+  }, [user]);
+
+  const planHighlights = useMemo<PlanHighlight[]>(() => {
+    // Phase 2: ISPの目標データを接続する。現在はデモ用空配列
+    return buildPlanHighlights([]);
   }, [user]);
 
   // ── Loading ──
@@ -223,6 +262,84 @@ const UserDetailPage: React.FC = () => {
             />
           )}
         </Box>
+
+        {/* ════════════════════════════════════════════════════════════
+            Section 4: 今日のスナップショット (MVP-010)
+           ════════════════════════════════════════════════════════════ */}
+        {todaySnapshot && (
+          <TodaySnapshotSection snapshot={todaySnapshot} onAction={(path) => navigate(path)} />
+        )}
+
+        {/* ════════════════════════════════════════════════════════════
+            Section 5: 直近記録プレビュー (MVP-010)
+           ════════════════════════════════════════════════════════════ */}
+        <Box data-testid="user-detail-recent-records">
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>📋 直近の記録</Typography>
+          {recentRecords.length > 0 ? (
+            <Stack spacing={1}>
+              {recentRecords.map((r, i) => (
+                <RecordPreviewCard key={i} item={r} />
+              ))}
+            </Stack>
+          ) : (
+            <EmptyStateAction
+              icon="📝"
+              title="直近の記録はありません"
+              description="今日から記録を開始しましょう。"
+              variant="info"
+              minHeight="6vh"
+              testId="user-detail-no-records"
+            />
+          )}
+        </Box>
+
+        {/* ════════════════════════════════════════════════════════════
+            Section 6: 直近申し送りプレビュー (MVP-010)
+           ════════════════════════════════════════════════════════════ */}
+        <Box data-testid="user-detail-recent-handoffs">
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>📨 直近の申し送り</Typography>
+          {recentHandoffs.length > 0 ? (
+            <Stack spacing={1}>
+              {recentHandoffs.map((h) => (
+                <HandoffPreviewCard key={h.id} item={h} />
+              ))}
+            </Stack>
+          ) : (
+            <EmptyStateAction
+              icon="📨"
+              title="直近の申し送りはありません"
+              description="申し送り事項があれば記録してください。"
+              variant="info"
+              minHeight="6vh"
+              testId="user-detail-no-handoffs"
+            />
+          )}
+        </Box>
+
+        {/* ════════════════════════════════════════════════════════════
+            Section 7: 支援計画ハイライト (MVP-010)
+           ════════════════════════════════════════════════════════════ */}
+        <Box data-testid="user-detail-plan-highlights">
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>🎯 支援計画 要点</Typography>
+          {planHighlights.length > 0 ? (
+            <Stack spacing={1}>
+              {planHighlights.map((p, i) => (
+                <PlanHighlightCard key={i} item={p} />
+              ))}
+            </Stack>
+          ) : (
+            <EmptyStateAction
+              icon="📋"
+              title="支援計画が未作成です"
+              description="個別支援計画書を作成すると、ここに要点が表示されます。"
+              actionLabel="計画を作成する"
+              onAction={() => navigate(`/users?tab=list&selected=${encodeURIComponent(userId ?? '')}`)}
+              variant="warning"
+              minHeight="6vh"
+              testId="user-detail-no-plan"
+            />
+          )}
+        </Box>
       </Stack>
     </Container>
   );
@@ -293,5 +410,125 @@ const SummaryStatCard: React.FC<SummaryStatCardProps> = ({ stat }) => {
     </Paper>
   );
 };
+
+// ── MVP-010: 今日のスナップショット ──
+
+const URGENCY_COLORS: Record<TodayUserSnapshot['urgency'], string> = {
+  high: '#d32f2f',
+  medium: '#ed6c02',
+  low: '#388e3c',
+};
+
+const TodaySnapshotSection: React.FC<{ snapshot: TodayUserSnapshot; onAction: (path: string) => void }> = ({ snapshot, onAction }) => (
+  <Paper
+    variant="outlined"
+    sx={{
+      p: 2,
+      borderRadius: 2,
+      borderLeft: 4,
+      borderLeftColor: URGENCY_COLORS[snapshot.urgency],
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 2,
+    }}
+    data-testid="user-detail-today-snapshot"
+  >
+    <Box flex={1}>
+      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        今日の次アクション
+      </Typography>
+      <Typography variant="subtitle1" sx={{ fontWeight: 700, mt: 0.25, color: URGENCY_COLORS[snapshot.urgency] }}>
+        {snapshot.nextAction}
+      </Typography>
+    </Box>
+    <Button
+      variant="contained"
+      size="small"
+      onClick={() => onAction(snapshot.nextActionPath)}
+      sx={{ bgcolor: URGENCY_COLORS[snapshot.urgency], '&:hover': { bgcolor: URGENCY_COLORS[snapshot.urgency], filter: 'brightness(0.9)' }, whiteSpace: 'nowrap', flexShrink: 0 }}
+      data-testid="user-detail-snapshot-action"
+    >
+      移動する
+    </Button>
+  </Paper>
+);
+
+// ── MVP-010: 直近記録カード ──
+
+const RecordPreviewCard: React.FC<{ item: RecordPreviewItem }> = ({ item }) => (
+  <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }} data-testid={`record-preview-${item.date}`}>
+    <Stack direction="row" spacing={1} alignItems="center">
+      <Typography variant="caption" sx={{ fontWeight: 700, minWidth: 85 }}>{item.date}</Typography>
+      <Chip
+        label={item.status}
+        size="small"
+        color={item.status === '完了' ? 'success' : 'default'}
+        sx={{ height: 20, fontSize: '0.65rem' }}
+      />
+      {item.hasSpecialNote && (
+        <Chip label="特記あり" size="small" color="warning" sx={{ height: 20, fontSize: '0.65rem' }} />
+      )}
+    </Stack>
+    {item.noteExcerpt && (
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, fontSize: '0.78rem' }}>
+        📝 {item.noteExcerpt}
+      </Typography>
+    )}
+  </Paper>
+);
+
+// ── MVP-010: 申し送りプレビューカード ──
+
+const HandoffPreviewCard: React.FC<{ item: HandoffPreviewItem }> = ({ item }) => (
+  <Paper
+    variant="outlined"
+    sx={{
+      p: 1.5,
+      borderRadius: 2,
+      borderLeft: 3,
+      borderLeftColor: item.severity === '重要' ? 'error.main' : 'divider',
+    }}
+    data-testid={`handoff-preview-${item.id}`}
+  >
+    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.5 }}>
+      {item.severity === '重要' && <Chip label="重要" size="small" color="error" sx={{ height: 20, fontSize: '0.65rem' }} />}
+      <Chip label={item.status} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
+      <Typography variant="caption" color="text.secondary">{item.createdAt}</Typography>
+    </Stack>
+    <Typography variant="body2" sx={{ fontSize: '0.82rem' }}>{item.message}</Typography>
+  </Paper>
+);
+
+// ── MVP-010: 支援計画ハイライトカード ──
+
+const PLAN_TYPE_COLORS: Record<string, string> = {
+  long: '#1e88e5',
+  short: '#43a047',
+  support: '#f4511e',
+};
+const PLAN_TYPE_LABELS: Record<string, string> = {
+  long: '長期',
+  short: '短期',
+  support: '支援',
+};
+
+const PlanHighlightCard: React.FC<{ item: PlanHighlight }> = ({ item }) => (
+  <Paper
+    variant="outlined"
+    sx={{ p: 1.5, borderRadius: 2, borderLeft: 3, borderLeftColor: PLAN_TYPE_COLORS[item.type] ?? '#757575' }}
+    data-testid={`plan-highlight-${item.type}`}
+  >
+    <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.5 }}>
+      <Chip
+        label={PLAN_TYPE_LABELS[item.type] ?? item.type}
+        size="small"
+        sx={{ bgcolor: PLAN_TYPE_COLORS[item.type] ?? '#757575', color: '#fff', height: 20, fontSize: '0.65rem' }}
+      />
+      <Typography variant="caption" sx={{ fontWeight: 600 }}>{item.label}</Typography>
+    </Stack>
+    <Typography variant="body2" sx={{ fontSize: '0.82rem' }}>{item.excerpt}</Typography>
+  </Paper>
+);
 
 export default UserDetailPage;
