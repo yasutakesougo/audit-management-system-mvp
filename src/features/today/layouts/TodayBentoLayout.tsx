@@ -93,6 +93,8 @@ export type TodayBentoProps = {
   transport: { pending: TransportUser[]; inProgress: TransportUser[]; onArrived: (id: string) => void };
   transportCard?: TransportStatusCardProps;
   users: { items: UserRow[]; onOpenQuickRecord: (id: string) => void; onOpenISP?: (id: string) => void; onOpenIceberg?: (id: string) => void; onEmptyAction?: () => void };
+  /** 日々の申し送り一覧パネル (optional) */
+  handoffPanel?: React.ReactNode;
   /** 電話・連絡ログ要約カード (undefined 時は非表示) */
   callLogSummary?: CallLogSummaryCardProps;
 };
@@ -140,6 +142,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   workflowCard,
   transportCard,
   users,
+  handoffPanel,
   callLogSummary,
 }) => {
   return (
@@ -237,7 +240,17 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           <BriefingActionList alerts={briefingAlerts} />
         </BentoCard>
 
-        {/* ── Row 2.5: CallLog Summary (full-width, optional) ── */}
+        {/* ── Row 2.5: Handoff Panel (full-width) ── */}
+        {handoffPanel && (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            testId="bento-handoff"
+          >
+            {handoffPanel}
+          </BentoCard>
+        )}
+
+        {/* ── Row 2.6: CallLog Summary (full-width, optional) ── */}
         {callLogSummary && (
           <BentoCard
             colSpan={{ xs: 1, sm: 2, md: 4 }}

@@ -19,7 +19,8 @@ import { ImportAssessmentDialog } from '@/features/planning-sheet/components/Imp
 import { ImportMonitoringDialog } from '@/features/planning-sheet/components/ImportMonitoringDialog';
 import type { MonitoringToPlanningResult } from '@/features/planning-sheet/monitoringToPlanningBridge';
 import { useLatestBehaviorMonitoring } from '@/features/planning-sheet/hooks/useLatestBehaviorMonitoring';
-import { localMonitoringMeetingRepository } from '@/infra/localStorage/localMonitoringMeetingRepository';
+import { createMonitoringMeetingRepository } from '@/features/monitoring/repositories/createMonitoringMeetingRepository';
+import { SP_ENABLED } from '@/lib/env';
 import { ImportHistoryTimeline } from '@/features/planning-sheet/components/ImportHistoryTimeline';
 import { ProvenancePanel } from '@/features/planning-sheet/components/ProvenanceBadge';
 import type { AssessmentBridgeResult, ProvenanceEntry } from '@/features/planning-sheet/assessmentBridge';
@@ -229,13 +230,19 @@ export default function SupportPlanningSheetPage() {
 
   // ── 行動モニタリング取込 ──
   // NOTE:
-  // Latest monitoring record is resolved via useLatestBehaviorMonitoring hook.
-  // Do not fetch monitoring data directly in this component.
-  // This keeps /new and edit flows consistent.
+  // Repository is resolved via createMonitoringMeetingRepository factory.
+  // Do not import localMonitoringMeetingRepository directly in UI components.
+  // SP_ENABLED のときは sharepoint モードで SP リストから取得する。
+  const monitoringRepo = React.useMemo(
+    () => SP_ENABLED
+      ? createMonitoringMeetingRepository('sharepoint', { spClient })
+      : createMonitoringMeetingRepository('local'),
+    [spClient],
+  );
   const {
     record: latestMonitoringRecord,
   } = useLatestBehaviorMonitoring(sheet?.userId ?? null, {
-    repository: localMonitoringMeetingRepository,
+    repository: monitoringRepo,
     planningSheetId: planningSheetId ?? 'new',
   });
 

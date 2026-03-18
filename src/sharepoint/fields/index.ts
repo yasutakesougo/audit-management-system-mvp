@@ -140,6 +140,14 @@ export {
     DAILY_ATTENDANCE_FIELDS, DAILY_ATTENDANCE_LIST_TITLE, DAILY_ATTENDANCE_SELECT_FIELDS
 } from './dailyAttendanceFields';
 
+// ── MonitoringMeetings (P3 追加) ──
+export {
+    MONITORING_MEETING_FIELDS, MONITORING_MEETING_SELECT,
+    safeJsonParse,
+    type MonitoringMeetingFieldKey, type MonitoringMeetingSPField,
+    type SpMonitoringMeetingRow
+} from './monitoringMeetingFields';
+
 // ──────────────────────────────────────────────────────────────
 // 統合 FIELD_MAP（後方互換用）
 //

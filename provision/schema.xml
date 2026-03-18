@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <pnp:Provisioning xmlns:pnp="http://schemas.dev.office.com/PnP/2021/03/ProvisioningSchema">
   <pnp:Preferences Generator="PnP.PowerShell" />
   <pnp:Templates>
@@ -337,6 +337,22 @@
             <pnp:Field Type="Text" DisplayName="変更後ハッシュ" StaticName="after_hash" Name="after_hash" MaxLength="128" />
             <pnp:Field Type="Note" DisplayName="差分サマリ" StaticName="diff_summary" Name="diff_summary" NumLines="6" RichText="FALSE" />
             <pnp:Field Type="Note" DisplayName="クライアント情報" StaticName="client_info" Name="client_info" NumLines="4" RichText="FALSE" />
+          </pnp:Fields>
+        </pnp:ListInstance>
+        <!-- =========================
+             7) 情報共有
+           ========================= -->
+        <!-- Handoffs: 申し送り事項 -->
+        <pnp:ListInstance Title="Handoffs" Description="申し送り事項" TemplateType="100" Url="Lists/Handoffs">
+          <pnp:Fields>
+            <pnp:Field Type="Text" DisplayName="Record ID" Required="TRUE" EnforceUniqueValues="TRUE" Indexed="TRUE" StaticName="cr015_recordId" Name="cr015_recordId" />
+            <pnp:Field Type="Text" DisplayName="User ID" StaticName="cr015_userId" Name="cr015_userId" />
+            <pnp:Field Type="Text" DisplayName="対象日" Required="TRUE" Indexed="TRUE" StaticName="cr015_targetDate" Name="cr015_targetDate" />
+            <pnp:Field Type="Note" DisplayName="本文" Required="TRUE" StaticName="cr015_content" Name="cr015_content" NumLines="6" RichText="FALSE" />
+            <pnp:Field Type="Text" DisplayName="優先度" Required="TRUE" StaticName="cr015_priority" Name="cr015_priority" />
+            <pnp:Field Type="Text" DisplayName="ステータス" Required="TRUE" StaticName="cr015_status" Name="cr015_status" />
+            <pnp:Field Type="Text" DisplayName="記録者名" Required="TRUE" StaticName="cr015_reporterName" Name="cr015_reporterName" />
+            <pnp:Field Type="Text" DisplayName="記録日時" Required="TRUE" StaticName="cr015_recordedAt" Name="cr015_recordedAt" />
           </pnp:Fields>
         </pnp:ListInstance>
       </pnp:Lists>

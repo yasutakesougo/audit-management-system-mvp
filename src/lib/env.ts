@@ -540,13 +540,17 @@ export const SP_BASE_URL = SP_SITE_URL;
 
 export const IS_DEMO = readEnv('VITE_DEMO_MODE', '') === '1';
 export const IS_SKIP_LOGIN = readBool('VITE_SKIP_LOGIN', false);
+export const IS_EMERGENCY_SKIP = readBool('VITE_IS_SKIP_SHAREPOINT', false);
 
 /**
- * ✅ Master guard: Should we skip all SharePoint operations?
- * This is what stores actually check — more accurate than IS_DEMO alone.
+ * ✅ SharePoint 関連の動作を抑制するためのレガシーフォールバックガード
+ * (以前の複雑なフラグ構成。リポジトリのモード選択には使用しない)
  */
-export const IS_EMERGENCY_SKIP = readBool('VITE_IS_SKIP_SHAREPOINT', false);
 export const IS_SKIP_SHAREPOINT = IS_DEMO || !SP_BASE_URL || IS_SKIP_LOGIN || IS_EMERGENCY_SKIP;
 
-export const SP_ENABLED = !IS_SKIP_SHAREPOINT;
-export const SP_DISABLED = IS_SKIP_SHAREPOINT;
+/**
+ * ✅ SharePoint Repository モード選択マスタフラグ
+ * 'true' との厳密比較のみを使用し、未設定・'1'・'yes' などの曖昧な値はすべて local モードに落とす
+ */
+export const SP_ENABLED = readEnv('VITE_SP_ENABLED', '') === 'true';
+export const SP_DISABLED = !SP_ENABLED;
