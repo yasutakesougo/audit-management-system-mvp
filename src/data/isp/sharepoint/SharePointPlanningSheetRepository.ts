@@ -82,7 +82,7 @@ export function createSharePointPlanningSheetRepository(client: UseSP): Planning
     async listCurrentByUser(userId: string): Promise<PlanningSheetListItem[]> {
       const rows = await client.listItems<SpPlanningSheetRow>(PLANNING_SHEET_LIST_TITLE, {
         select: SELECT,
-        filter: `UserCode eq '${escapeOData(userId)}' and IsCurrent eq 1`,
+        filter: `UserCode eq '${escapeOData(userId)}' and IsCurrent eq true`,
         orderby: 'Created desc',
       });
 

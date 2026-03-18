@@ -64,7 +64,7 @@ describe('holidayLoader', () => {
 
       expect(mockListItems).toHaveBeenCalledWith('Holiday_Master', {
         select: expect.arrayContaining(['Id']),
-        filter: "IsActive eq 1 and FiscalYear eq '2026'",
+        filter: "IsActive eq true and FiscalYear eq '2026'",
         top: 500,
       });
     });

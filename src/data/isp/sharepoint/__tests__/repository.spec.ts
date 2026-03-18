@@ -232,7 +232,7 @@ describe('SharePointIspRepository', () => {
       expect(client.listItems).toHaveBeenCalledWith(
         'ISP_Master',
         expect.objectContaining({
-          filter: "UserCode eq 'U001' and IsCurrent eq 1",
+          filter: "UserCode eq 'U001' and IsCurrent eq true",
         }),
       );
     });
@@ -350,7 +350,7 @@ describe('SharePointPlanningSheetRepository', () => {
       expect(client.listItems).toHaveBeenCalledWith(
         'SupportPlanningSheet_Master',
         expect.objectContaining({
-          filter: "UserCode eq 'U001' and IsCurrent eq 1",
+          filter: "UserCode eq 'U001' and IsCurrent eq true",
         }),
       );
     });
