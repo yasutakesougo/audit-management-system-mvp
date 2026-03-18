@@ -15,3 +15,67 @@ jobs:
           node-version: 20
       - run: npm ci
       - run: npm audit --omit=dev
+
+  sp-manifest-lint:
+    name: SP Manifest vs ListKeys Consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm ci
+      - name: Run SP manifest lint
+        id: sp_audit
+        run: |
+          npm run sp:audit 2>&1 | tee /tmp/sp-audit-result.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+        continue-on-error: true
+      - name: Write step summary
+        run: |
+          echo "## SP Manifest Lint Results" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat /tmp/sp-audit-result.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.sp_audit.outputs.exit_code }}" != "0" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### ⚠️ Action Required" >> $GITHUB_STEP_SUMMARY
+            echo "See [monthly-sp-structure-audit.md](docs/runbook/monthly-sp-structure-audit.md) for remediation steps." >> $GITHUB_STEP_SUMMARY
+          fi
+      - name: Upload audit result artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sp-manifest-audit-${{ github.run_number }}
+          path: /tmp/sp-audit-result.txt
+          retention-days: 90
+      - name: Fail job if audit failed
+        if: steps.sp_audit.outputs.exit_code != '0'
+        run: exit 1
+      - name: Create GitHub Issue on failure
+        if: failure() && github.event_name == 'schedule'
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "[sp:audit] SP manifest 整合エラー検出 — ${{ github.run_number }}"
+          content-filepath: /tmp/sp-audit-result.txt
+          labels: |
+            sp-drift
+            infra
+            priority-high
+          assignees: ${{ github.repository_owner }}
+          body: |
+            ## SP Manifest 整合エラーが検出されました
+
+            monthly-audit CI の `sp-manifest-lint` ジョブでエラーが発生しました。
+
+            **対処優先順位**: Mismatch/Unique > Missing/List > Missing/Field > Mismatch/Index
+
+            詳細は [Runbook](docs/runbook/monthly-sp-structure-audit.md) を参照してください。
+
+            ---
+
+            ### Audit 結果（自動取得）
+
+
+

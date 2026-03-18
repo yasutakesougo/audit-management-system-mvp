@@ -1,0 +1,450 @@
+{
+  "_comment": "SP本番前監査マニフェスト — リポジトリ ListKeys / FIELD_MAP を正として生成 (2026-03-18)",
+  "schemaVersion": "2026-03-18",
+  "generatedAt": "2026-03-18T10:10:00+09:00",
+  "_version": "2.0.0",
+  "_generator": "aligned to src/sharepoint/fields/listRegistry.ts",
+  "lists": [
+
+    {
+      "listTitle": "Users_Master",
+      "listKey": "UsersMaster",
+      "description": "利用者マスタ",
+      "category": "master",
+      "requiredFields": [
+        { "internalName": "Id",                          "type": "Number",   "required": true  },
+        { "internalName": "Title",                       "type": "Text",     "required": true  },
+        { "internalName": "UserID",                      "type": "Text",     "required": true  },
+        { "internalName": "FullName",                    "type": "Text",     "required": true  },
+        { "internalName": "Furigana",                    "type": "Text",     "required": false },
+        { "internalName": "FullNameKana",                "type": "Text",     "required": false },
+        { "internalName": "IsActive",                    "type": "Boolean",  "required": true  },
+        { "internalName": "severeFlag",                  "type": "Boolean",  "required": false },
+        { "internalName": "IsHighIntensitySupportTarget","type": "Boolean",  "required": false },
+        { "internalName": "IsSupportProcedureTarget",    "type": "Boolean",  "required": false },
+        { "internalName": "ServiceStartDate",            "type": "DateTime", "required": false },
+        { "internalName": "ServiceEndDate",              "type": "DateTime", "required": false },
+        { "internalName": "ContractDate",                "type": "DateTime", "required": false },
+        { "internalName": "AttendanceDays",              "type": "Text",     "required": false },
+        { "internalName": "UsageStatus",                 "type": "Text",     "required": false },
+        { "internalName": "GrantMunicipality",           "type": "Text",     "required": false },
+        { "internalName": "GrantPeriodStart",            "type": "DateTime", "required": false },
+        { "internalName": "GrantPeriodEnd",              "type": "DateTime", "required": false },
+        { "internalName": "DisabilitySupportLevel",      "type": "Text",     "required": false },
+        { "internalName": "GrantedDaysPerMonth",         "type": "Text",     "required": false },
+        { "internalName": "UserCopayLimit",              "type": "Text",     "required": false },
+        { "internalName": "TransportAdditionType",       "type": "Text",     "required": false },
+        { "internalName": "MealAddition",                "type": "Text",     "required": false },
+        { "internalName": "CopayPaymentMethod",          "type": "Text",     "required": false },
+        { "internalName": "RecipientCertNumber",         "type": "Text",     "required": false },
+        { "internalName": "RecipientCertExpiry",         "type": "DateTime", "required": false },
+        { "internalName": "LastAssessmentDate",          "type": "DateTime", "required": false },
+        { "internalName": "BehaviorScore",               "type": "Number",   "required": false },
+        { "internalName": "ChildBehaviorScore",          "type": "Number",   "required": false },
+        { "internalName": "ServiceTypesJson",            "type": "Note",     "required": false },
+        { "internalName": "EligibilityCheckedAt",        "type": "DateTime", "required": false }
+      ],
+      "indexes": [
+        { "field": "UserID",   "unique": true },
+        { "field": "IsActive", "unique": false }
+      ]
+    },
+
+    {
+      "listTitle": "Holiday_Master",
+      "listKey": "HolidayMaster",
+      "description": "祝日・休業日マスタ",
+      "category": "master",
+      "requiredFields": [
+        { "internalName": "Id",         "type": "Number",   "required": true  },
+        { "internalName": "Title",      "type": "Text",     "required": true  },
+        { "internalName": "Date",       "type": "DateTime", "required": true  },
+        { "internalName": "Label",      "type": "Text",     "required": false },
+        { "internalName": "Type",       "type": "Choice",   "required": true,
+          "choices": ["national", "company", "special"] },
+        { "internalName": "FiscalYear", "type": "Text",     "required": true  },
+        { "internalName": "IsActive",   "type": "Boolean",  "required": true  }
+      ],
+      "indexes": [
+        { "field": "Date",       "unique": false },
+        { "field": "FiscalYear", "unique": false }
+      ]
+    },
+
+    {
+      "listTitle": "SupportTemplates",
+      "listKey": "SupportTemplates",
+      "description": "支援手順テンプレート（旧称 SupportTemplate_TEMPL から修正）",
+      "category": "master",
+      "_note": "内部名に '0' サフィックスが付く列が存在する（SharePoint の重複列名回避による）",
+      "requiredFields": [
+        { "internalName": "Id",              "type": "Number", "required": true  },
+        { "internalName": "Title",           "type": "Text",   "required": true  },
+        { "internalName": "UserCode0",       "type": "Text",   "required": false },
+        { "internalName": "RowNo0",          "type": "Number", "required": false },
+        { "internalName": "TimeSlot0",       "type": "Text",   "required": false },
+        { "internalName": "Activity0",       "type": "Text",   "required": false },
+        { "internalName": "PersonManual0",   "type": "Note",   "required": false },
+        { "internalName": "SupporterManual0","type": "Note",   "required": false }
+      ],
+      "indexes": [
+        { "field": "UserCode0", "unique": false }
+      ]
+    },
+
+    {
+      "listTitle": "Schedules",
+      "listKey": "Schedules",
+      "description": "スケジュール（scheduleFields.ts 実装済み、ListKeys 登録漏れを今回修正）",
+      "category": "schedule",
+      "requiredFields": [
+        { "internalName": "Id",                      "type": "Number",   "required": true  },
+        { "internalName": "Title",                   "type": "Text",     "required": true  },
+        { "internalName": "EventDate",               "type": "DateTime", "required": true  },
+        { "internalName": "EndDate",                 "type": "DateTime", "required": true  },
+        { "internalName": "Status",                  "type": "Choice",   "required": true  },
+        { "internalName": "ServiceType",             "type": "Text",     "required": false },
+        { "internalName": "cr014_personType",        "type": "Choice",   "required": false,
+          "choices": ["User", "Staff", "Org"] },
+        { "internalName": "cr014_personId",          "type": "Text",     "required": false },
+        { "internalName": "cr014_personName",        "type": "Text",     "required": false },
+        { "internalName": "AssignedStaffId",         "type": "Text",     "required": false },
+        { "internalName": "TargetUserId",            "type": "Text",     "required": false },
+        { "internalName": "RowKey",                  "type": "Text",     "required": false },
+        { "internalName": "cr014_dayKey",            "type": "DateTime", "required": false },
+        { "internalName": "MonthKey",                "type": "Text",     "required": false },
+        { "internalName": "cr014_fiscalYear",        "type": "Text",     "required": false },
+        { "internalName": "EntryHash",               "type": "Text",     "required": false },
+        { "internalName": "Note",                    "type": "Note",     "required": false },
+        { "internalName": "cr014_staffIds",          "type": "Text",     "required": false },
+        { "internalName": "cr014_staffNames",        "type": "Text",     "required": false },
+        { "internalName": "BillingFlags",            "type": "Text",     "required": false },
+        { "internalName": "SubType",                 "type": "Text",     "required": false },
+        { "internalName": "cr014_orgAudience",       "type": "Text",     "required": false },
+        { "internalName": "cr014_dayPart",           "type": "Text",     "required": false },
+        { "internalName": "CreatedAt",               "type": "DateTime", "required": false },
+        { "internalName": "UpdatedAt",               "type": "DateTime", "required": false }
+      ],
+      "indexes": [
+        { "field": "cr014_dayKey",    "unique": false },
+        { "field": "MonthKey",        "unique": false },
+        { "field": "RowKey",          "unique": false },
+        { "field": "cr014_personId",  "unique": false }
+      ]
+    },
+
+    {
+      "listTitle": "DailyActivityRecords",
+      "listKey": "DailyActivityRecords",
+      "description": "日次活動記録（観察・行動・タイムスライス単位）",
+      "category": "daily",
+      "_note": "intensity→'version'、duration→'duration' は小文字の SharePoint レガシースキーマ（変更不可）",
+      "requiredFields": [
+        { "internalName": "Id",             "type": "Number",   "required": true  },
+        { "internalName": "Title",          "type": "Text",     "required": false },
+        { "internalName": "UserCode",       "type": "Text",     "required": true  },
+        { "internalName": "RecordDate",     "type": "DateTime", "required": true  },
+        { "internalName": "TimeSlot",       "type": "Text",     "required": false },
+        { "internalName": "PlanSlotKey",    "type": "Text",     "required": false },
+        { "internalName": "PlannedActivity","type": "Text",     "required": false },
+        { "internalName": "RecordedAtText", "type": "Text",     "required": false },
+        { "internalName": "Observation",    "type": "Note",     "required": false },
+        { "internalName": "Behavior",       "type": "Note",     "required": false },
+        { "internalName": "version",        "type": "Text",     "required": false, "_logicalName": "intensity" },
+        { "internalName": "duration",       "type": "Number",   "required": false },
+        { "internalName": "Order",          "type": "Number",   "required": false }
+      ],
+      "indexes": [
+        { "field": "UserCode",   "unique": false },
+        { "field": "RecordDate", "unique": false }
+      ]
+    },
+
+    {
+      "listTitle": "SupportProcedureRecord_Daily",
+      "listKey": "ProcedureRecordDaily",
+      "description": "支援手順書兼記録（日次）— ISP三層モデルの最下層。PlanningSheetと連携",
+      "category": "daily",
+      "requiredFields": [
+        { "internalName": "Id",                      "type": "Number",   "required": true  },
+        { "internalName": "Title",                   "type": "Text",     "required": true  },
+        { "internalName": "UserCode",                "type": "Text",     "required": true  },
+        { "internalName": "ISPLookupId",             "type": "Number",   "required": false },
+        { "internalName": "ISPId",                   "type": "Text",     "required": false },
+        { "internalName": "PlanningSheetLookupId",   "type": "Number",   "required": false },
+        { "internalName": "PlanningSheetId",         "type": "Text",     "required": false },
+        { "internalName": "RecordDate",              "type": "DateTime", "required": true  },
+        { "internalName": "TimeSlot",                "type": "Text",     "required": false },
+        { "internalName": "Activity",                "type": "Text",     "required": false },
+        { "internalName": "ProcedureText",           "type": "Note",     "required": true  },
+        { "internalName": "ExecutionStatus",         "type": "Choice",   "required": true  },
+        { "internalName": "UserResponse",            "type": "Note",     "required": false },
+        { "internalName": "SpecialNotes",            "type": "Note",     "required": false },
+        { "internalName": "HandoffNotes",            "type": "Note",     "required": false },
+        { "internalName": "PerformedBy",             "type": "Text",     "required": true  },
+        { "internalName": "PerformedAt",             "type": "DateTime", "required": true  }
+      ],
+      "indexes": [
+        { "field": "UserCode",          "unique": false },
+        { "field": "RecordDate",        "unique": false },
+        { "field": "PlanningSheetId",   "unique": false }
+      ]
+    },
+
+    {
+      "listTitle": "ISP_Master",
+      "listKey": "IspMaster",
+      "description": "個別支援計画本体（ISP三層モデル 第1層）",
+      "category": "plan",
+      "requiredFields": [
+        { "internalName": "Id",                      "type": "Number",   "required": true  },
+        { "internalName": "Title",                   "type": "Text",     "required": true  },
+        { "internalName": "UserCode",                "type": "Text",     "required": true  },
+        { "internalName": "PlanStartDate",           "type": "DateTime", "required": true  },
+        { "internalName": "PlanEndDate",             "type": "DateTime", "required": true  },
+        { "internalName": "Status",                  "type": "Choice",   "required": true  },
+        { "internalName": "VersionNo",               "type": "Number",   "required": true  },
+        { "internalName": "IsCurrent",               "type": "Boolean",  "required": true  },
+        { "internalName": "ConsentAt",               "type": "DateTime", "required": false },
+        { "internalName": "DeliveredAt",             "type": "DateTime", "required": false },
+        { "internalName": "LastMonitoringAt",        "type": "DateTime", "required": false },
+        { "internalName": "NextReviewAt",            "type": "DateTime", "required": false },
+        { "internalName": "FormDataJson",            "type": "Note",     "required": false },
+        { "internalName": "UserSnapshotJson",        "type": "Note",     "required": false }
+      ],
+      "indexes": [
+        { "field": "UserCode",  "unique": false },
+        { "field": "IsCurrent", "unique": false }
+      ]
+    },
+
+    {
+      "listTitle": "SupportPlanningSheet_Master",
+      "listKey": "PlanningSheetMaster",
+      "description": "支援計画シート（ISP三層モデル 第2層）",
+      "category": "plan",
+      "requiredFields": [
+        { "internalName": "Id",                          "type": "Number",   "required": true  },
+        { "internalName": "Title",                       "type": "Text",     "required": true  },
+        { "internalName": "UserCode",                    "type": "Text",     "required": true  },
+        { "internalName": "ISPLookupId",                 "type": "Number",   "required": false },
+        { "internalName": "ISPId",                       "type": "Text",     "required": false },
+        { "internalName": "Status",                      "type": "Choice",   "required": true  },
+        { "internalName": "VersionNo",                   "type": "Number",   "required": true  },
+        { "internalName": "IsCurrent",                   "type": "Boolean",  "required": true  },
+        { "internalName": "AppliedFrom",                 "type": "DateTime", "required": false },
+        { "internalName": "NextReviewAt",                "type": "DateTime", "required": false },
+        { "internalName": "FormDataJson",                "type": "Note",     "required": false },
+        { "internalName": "AuthoredByStaffId",           "type": "Text",     "required": false },
+        { "internalName": "AuthoredByQualification",     "type": "Text",     "required": false },
+        { "internalName": "AuthoredAt",                  "type": "DateTime", "required": false },
+        { "internalName": "ApplicableServiceType",       "type": "Text",     "required": false },
+        { "internalName": "DeliveredToUserAt",           "type": "DateTime", "required": false },
+        { "internalName": "ReviewedAt",                  "type": "DateTime", "required": false },
+        { "internalName": "HasMedicalCoordination",      "type": "Boolean",  "required": false },
+        { "internalName": "HasEducationCoordination",    "type": "Boolean",  "required": false },
+        { "internalName": "IntakeJson",                  "type": "Note",     "required": false },
+        { "internalName": "AssessmentJson",              "type": "Note",     "required": false },
+        { "internalName": "PlanningJson",                "type": "Note",     "required": false }
+      ],
+      "indexes": [
+        { "field": "UserCode",  "unique": false },
+        { "field": "ISPId",     "unique": false },
+        { "field": "IsCurrent", "unique": false }
+      ]
+    },
+
+    {
+      "listTitle": "SupportPlans",
+      "listKey": "SupportPlans",
+      "description": "個別支援計画（旧モデル・後方互換）",
+      "category": "plan",
+      "requiredFields": [
+        { "internalName": "Id",    "type": "Number", "required": true },
+        { "internalName": "Title", "type": "Text",   "required": true }
+      ],
+      "indexes": []
+    },
+
+    {
+      "listTitle": "PlanGoals",
+      "listKey": "PlanGoals",
+      "description": "支援計画目標（ISP旧モデル）",
+      "category": "plan",
+      "requiredFields": [
+        { "internalName": "Id",    "type": "Number", "required": true },
+        { "internalName": "Title", "type": "Text",   "required": true }
+      ],
+      "indexes": []
+    },
+
+    {
+      "listTitle": "MeetingMinutes",
+      "listKey": "MeetingMinutes",
+      "description": "議事録",
+      "category": "meeting",
+      "requiredFields": [
+        { "internalName": "Id",    "type": "Number", "required": true },
+        { "internalName": "Title", "type": "Text",   "required": true }
+      ],
+      "indexes": []
+    },
+
+    {
+      "listTitle": "Staff_Attendance",
+      "listKey": "StaffAttendance",
+      "description": "職員出勤管理",
+      "category": "attendance",
+      "requiredFields": [
+        { "internalName": "Id",    "type": "Number", "required": true },
+        { "internalName": "Title", "type": "Text",   "required": true }
+      ],
+      "indexes": []
+    },
+
+    {
+      "listTitle": "AttendanceUsers",
+      "listKey": "AttendanceUsers",
+      "description": "出席管理ユーザー",
+      "category": "attendance",
+      "requiredFields": [
+        { "internalName": "Id",    "type": "Number", "required": true },
+        { "internalName": "Title", "type": "Text",   "required": true }
+      ],
+      "indexes": []
+    },
+
+    {
+      "listTitle": "AttendanceDaily",
+      "listKey": "AttendanceDaily",
+      "description": "日次出席詳細",
+      "category": "attendance",
+      "requiredFields": [
+        { "internalName": "Id",    "type": "Number", "required": true },
+        { "internalName": "Title", "type": "Text",   "required": true }
+      ],
+      "indexes": []
+    },
+
+    {
+      "listTitle": "Daily_Attendance",
+      "listKey": "DailyAttendance",
+      "description": "日次出欠（監査 P1-3 追加）",
+      "category": "attendance",
+      "requiredFields": [
+        { "internalName": "Id",    "type": "Number", "required": true },
+        { "internalName": "Title", "type": "Text",   "required": true }
+      ],
+      "indexes": []
+    },
+
+    {
+      "listTitle": "Transport_Log",
+      "listKey": "TransportLog",
+      "description": "送迎ステータスログ",
+      "category": "attendance",
+      "requiredFields": [
+        { "internalName": "Id",    "type": "Number", "required": true },
+        { "internalName": "Title", "type": "Text",   "required": true }
+      ],
+      "indexes": []
+    },
+
+    {
+      "listTitle": "Iceberg_PDCA",
+      "listKey": "IcebergPdca",
+      "description": "氷山モデル PDCA",
+      "category": "analysis",
+      "requiredFields": [
+        { "internalName": "Id",    "type": "Number", "required": true },
+        { "internalName": "Title", "type": "Text",   "required": true }
+      ],
+      "indexes": []
+    },
+
+    {
+      "listTitle": "Iceberg_Analysis",
+      "listKey": "IcebergAnalysis",
+      "description": "氷山モデル分析（EntryHash で重複検知）",
+      "category": "analysis",
+      "requiredFields": [
+        { "internalName": "Id",         "type": "Number", "required": true  },
+        { "internalName": "Title",      "type": "Text",   "required": true  },
+        { "internalName": "EntryHash",  "type": "Text",   "required": true  },
+        { "internalName": "SessionId",  "type": "Text",   "required": true  },
+        { "internalName": "UserId",     "type": "Text",   "required": true  },
+        { "internalName": "PayloadJson","type": "Note",   "required": true  }
+      ],
+      "indexes": [
+        { "field": "EntryHash", "unique": true },
+        { "field": "SessionId", "unique": false },
+        { "field": "UserId",    "unique": false }
+      ]
+    },
+
+    {
+      "listTitle": "Compliance_CheckRules",
+      "listKey": "ComplianceCheckRules",
+      "description": "監査チェックルール",
+      "category": "compliance",
+      "requiredFields": [
+        { "internalName": "Id",    "type": "Number", "required": true },
+        { "internalName": "Title", "type": "Text",   "required": true }
+      ],
+      "indexes": []
+    },
+
+    {
+      "listTitle": "Diagnostics_Reports",
+      "listKey": "DiagnosticsReports",
+      "description": "環境診断レポート",
+      "category": "compliance",
+      "requiredFields": [
+        { "internalName": "Id",    "type": "Number", "required": true },
+        { "internalName": "Title", "type": "Text",   "required": true }
+      ],
+      "indexes": []
+    },
+
+    {
+      "listTitle": "FormsResponses_Tokusei",
+      "listKey": "SurveyTokusei",
+      "description": "特性アンケート（Forms 連携）",
+      "category": "analysis",
+      "requiredFields": [
+        { "internalName": "Id",    "type": "Number", "required": true },
+        { "internalName": "Title", "type": "Text",   "required": true }
+      ],
+      "indexes": []
+    },
+
+    {
+      "listTitle": "NurseObservations",
+      "listKey": "NurseObservations",
+      "description": "看護観察記録（監査 P1-3 追加）",
+      "category": "daily",
+      "requiredFields": [
+        { "internalName": "Id",    "type": "Number", "required": true },
+        { "internalName": "Title", "type": "Text",   "required": true }
+      ],
+      "indexes": []
+    },
+
+    {
+      "listTitle": "PdfOutput_Log",
+      "listKey": "PdfOutputLog",
+      "description": "帳票出力ログ（監査 P1-2 追加）",
+      "category": "compliance",
+      "requiredFields": [
+        { "internalName": "Id",    "type": "Number", "required": true },
+        { "internalName": "Title", "type": "Text",   "required": true }
+      ],
+      "indexes": []
+    }
+  ],
+
+  "_excluded": {
+    "_reason": "コードに ListKeys / FIELD_MAP / Repository 実装が存在しないため、今回の本番前対象から除外",
+    "lists": ["Inquiries", "CoffeeOrderHistory", "MonthlyCoffeeBilling", "SupportRecord_Daily（架空名）"]
+  }
+}
