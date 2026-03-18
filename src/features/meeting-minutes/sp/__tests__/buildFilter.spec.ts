@@ -8,7 +8,7 @@
  * - from / to は境界値を含む（ge / le）
  * - 複数条件は ' and ' で結合する
  * - category: 'ALL' は条件なし扱い
- * - publishedOnly は isPublished eq 1
+ * - publishedOnly は isPublished eq true
  *
  * ## local matchesSearch との対応
  * | 条件     | SP buildFilter   | local matchesSearch       |
@@ -51,9 +51,9 @@ describe('buildFilter', () => {
   // ── 単一条件 ────────────────────────────────────────────────
 
   describe('publishedOnly', () => {
-    it('should include isPublished eq 1 when publishedOnly is true', () => {
+    it('should include isPublished eq true when publishedOnly is true', () => {
       const result = buildFilter({ publishedOnly: true });
-      expect(result).toBe(`${F.isPublished} eq 1`);
+      expect(result).toBe(`${F.isPublished} eq true`);
     });
 
     it('should not include isPublished filter when publishedOnly is false', () => {
@@ -114,7 +114,7 @@ describe('buildFilter', () => {
     it('should NOT include q even in combination with other params', () => {
       const result = buildFilter({ q: '計画', publishedOnly: true });
       // publishedOnly は残る、q は含まれない
-      expect(result).toBe(`${F.isPublished} eq 1`);
+      expect(result).toBe(`${F.isPublished} eq true`);
       expect(result).not.toContain('計画');
     });
   });
@@ -154,7 +154,7 @@ describe('buildFilter', () => {
     it('should join publishedOnly and category with AND', () => {
       const result = buildFilter({ publishedOnly: true, category: '職員会議' });
       expect(result).toBe(
-        `${F.isPublished} eq 1 and ${F.category} eq '職員会議'`
+        `${F.isPublished} eq true and ${F.category} eq '職員会議'`
       );
     });
   });
@@ -168,7 +168,7 @@ describe('buildFilter', () => {
         to: '2026-12-31',
       });
       expect(result).toBe(
-        `${F.isPublished} eq 1 and ` +
+        `${F.isPublished} eq true and ` +
         `${F.category} eq '職員会議' and ` +
         `${F.meetingDate} ge '2026-01-01' and ` +
         `${F.meetingDate} le '2026-12-31'`
@@ -186,7 +186,7 @@ describe('buildFilter', () => {
       });
       expect(result).not.toContain('検索ワード');
       expect(result).not.toContain('タグ');
-      expect(result).toContain(`${F.isPublished} eq 1`);
+      expect(result).toContain(`${F.isPublished} eq true`);
     });
   });
 });

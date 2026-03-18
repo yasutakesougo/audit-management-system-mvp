@@ -93,7 +93,7 @@ export function createSharePointIspRepository(client: UseSP): IspRepository {
     async getCurrentByUser(userId: string): Promise<IndividualSupportPlan | null> {
       const rows = await client.listItems<SpIspMasterRow>(ISP_MASTER_LIST_TITLE, {
         select: SELECT,
-        filter: `UserCode eq '${escapeOData(userId)}' and IsCurrent eq 1`,
+        filter: `UserCode eq '${escapeOData(userId)}' and IsCurrent eq true`,
         top: 1,
         orderby: 'PlanStartDate desc',
       });

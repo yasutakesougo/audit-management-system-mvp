@@ -73,7 +73,7 @@ export async function getActiveUsers(
   listTitle: string = ATTENDANCE_USERS_LIST_TITLE
 ): Promise<AttendanceUserItem[]> {
   const select = [...ATTENDANCE_USERS_SELECT_FIELDS];
-  const filter = `${ATTENDANCE_USERS_FIELDS.isActive} eq 1`;
+  const filter = `${ATTENDANCE_USERS_FIELDS.isActive} eq true`;
   const orderby = ATTENDANCE_USERS_FIELDS.userCode;
 
   try {

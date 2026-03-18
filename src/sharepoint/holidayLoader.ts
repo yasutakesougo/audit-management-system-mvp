@@ -55,7 +55,7 @@ export async function loadHolidaysFromSharePoint(
     // OData フィルター構築
     const filters: string[] = [];
     if (activeOnly) {
-      filters.push(`${HOLIDAY_MASTER_FIELDS.isActive} eq 1`);
+      filters.push(`${HOLIDAY_MASTER_FIELDS.isActive} eq true`);
     }
     if (fiscalYear) {
       filters.push(`${HOLIDAY_MASTER_FIELDS.fiscalYear} eq '${fiscalYear}'`);

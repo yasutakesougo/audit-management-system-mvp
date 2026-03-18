@@ -83,7 +83,7 @@ export function buildFilter(params: MinutesSearchParams): string {
   const filters: string[] = [];
 
   if (params.publishedOnly) {
-    filters.push(`${F.isPublished} eq 1`);
+    filters.push(`${F.isPublished} eq true`);
   }
   if (params.category && params.category !== 'ALL') {
     filters.push(`${F.category} eq '${escapeODataString(params.category)}'`);
