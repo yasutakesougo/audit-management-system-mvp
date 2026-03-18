@@ -51,6 +51,12 @@
 - [ ] **レイアウト規約**: 新規ルートは `viewportMode`（`fixed` / `adaptive`）を明示し、[docs/layout/viewport-mode.md](docs/layout/viewport-mode.md) に従っている
 - [ ] (詳細: [docs/ui-architecture.md](docs/ui-architecture.md))
 
+### Navigation Changes
+- [ ] **所属グループ**: `group` が業務目的に合致して指定されているか（`daily` `assessment` `record` `ops` `admin`）
+- [ ] **並び順**: 対象グループ内で「現場での使用順・頻度順」に配置されているか（末尾にただ追加していないか）
+- [ ] **権限・表示**: `navAudience` や `ALWAYS_VISIBLE_GROUPS` の意図（ロックアウト防止等）を守れているか
+- [ ] (詳細なレビュー観点: [nav-review-checklist.md](.gemini/antigravity/brain/b9eabdec-d770-4d06-9271-4f866e1c1821/artifacts/nav-review-checklist.md) 参照)
+
 ### CI/Infra Changes
 - [ ] Rollback Plan: 失敗時の戻し方を記述済み
 - [ ] Required checks green

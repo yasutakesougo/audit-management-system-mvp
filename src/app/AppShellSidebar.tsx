@@ -149,11 +149,15 @@ const GroupedNavList: React.FC<{
     );
   }
 
+  const activeGroups = groupedNavItems.ORDER.filter(
+    (key) => (groupedNavItems.map.get(key) ?? []).length > 0
+  );
+
   return (
     <List dense component="div" sx={{ px: 1 }}>
-      {groupedNavItems.ORDER.map((groupKey) => {
-        const items = groupedNavItems.map.get(groupKey) ?? [];
-        if (items.length === 0) return null;
+      {activeGroups.map((groupKey, index) => {
+        const items = groupedNavItems.map.get(groupKey)!;
+        const isLastGroup = index === activeGroups.length - 1;
 
         return (
           <Box key={groupKey} sx={{ mb: 1.5 }}>
@@ -186,7 +190,7 @@ const GroupedNavList: React.FC<{
                 onNavigate={onNavigate}
               />
             ))}
-            {!navCollapsed && groupKey !== 'settings' && <Divider sx={{ mt: 1, mb: 0.5 }} />}
+            {!navCollapsed && !isLastGroup && <Divider sx={{ mt: 1, mb: 0.5 }} />}
           </Box>
         );
       })}

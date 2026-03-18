@@ -33,8 +33,13 @@ interface NavGroupVisibilityControlProps {
   onItemChange: (hiddenItems: string[]) => void;
 }
 
-/** Groups that cannot be hidden at group level (always visible) */
-const ALWAYS_VISIBLE_GROUPS: NavGroupKey[] = ['daily', 'settings'];
+/** 
+ * Groups that cannot be hidden at group level (always visible)
+ * - daily: 現場運用において必須の入口（業務開始の起点）であるため。
+ * - admin: 管理用ハブであり、意図せず非表示にして管理機能からロックアウトされるのを防ぐため。
+ *          ※実際の表示制限は navigationConfig の audience (権限) で行われます。
+ */
+const ALWAYS_VISIBLE_GROUPS: NavGroupKey[] = ['daily', 'admin'];
 
 export const NavGroupVisibilityControl: React.FC<NavGroupVisibilityControlProps> = ({
   hiddenGroups,

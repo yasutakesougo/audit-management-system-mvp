@@ -40,146 +40,112 @@ export function isNavVisible(item: NavItem, navAudience: NavAudience): boolean {
 // ============================================================================
 
 /**
- * Determines which navigation group a nav item belongs to
+ * Determins the fallback navigation group for items without explicit grouping
  *
- * @param item - Navigation item
+ * @remarks
+ * `NavItem.group` is now strictly required in TypeScript, so this function acts primarily
+ * as a safety net for dynamically generated URLs or partially typed migration data.
+ * The internal logic has been retained to avoid breaking external generic links.
+ *
+ * @param item - Partial or loosely-typed Navigation item
  * @param isAdmin - Whether the current user is an admin
- * @returns The group key for this item
+ * @returns The fallback or explicit group key
  */
-export function pickGroup(item: NavItem, isAdmin: boolean): NavGroupKey {
-  // Explicit group assignment takes priority over inference
+export function pickGroup(item: Partial<NavItem>, _isAdmin: boolean): NavGroupKey {
+  // Explicit group assignment takes priority (This should always hit for valid NavItems)
   if (item.group) return item.group;
 
-  // DEV warning: flag items that lack explicit group (migration aid)
+  // DEV warning: flag items that lack explicit group (used as migration/dynamic data warning)
   if (isDevMode()) {
     console.warn(
-      `[pickGroup] NavItem "${item.label}" (to=${item.to}) has no explicit group — falling back to label inference. ` +
-      `Add \`group: '...'\` to suppress this warning.`,
+      `[pickGroup] Fallback rule hit for nav item "${item.label}" (to=${item.to}). ` +
+      `Ensure full NavItem typing with \`group\` to suppress this warning.`,
     );
   }
 
-  const { to, label, testId } = item;
+  const to = item.to || '';
+  const label = item.label || '';
+  const testId = item.testId;
 
-  // 日次: daily + handoff/meeting + meeting minutes
+  // 1. 現場の実行 (daily)
   if (
     testId === TESTIDS.nav.daily ||
     to.startsWith('/daily') ||
     to.startsWith('/dailysupport') ||
-    to.startsWith('/handoff') ||
-    to.startsWith('/meeting-guide') ||
-    to.startsWith('/meeting-minutes') ||
+    to.startsWith('/handoff-timeline') ||
+    to.startsWith('/meeting') ||
+    to.startsWith('/schedule') ||
+    label.includes('今日') ||
     label.includes('日次') ||
     label.includes('健康') ||
-    label.includes('申し送り') ||
-    label.includes('司会') ||
-    label.includes('朝会') ||
-    label.includes('夕会') ||
-    label.includes('議事録')
+    label.includes('タイムライン') ||
+    label.includes('議事録') ||
+    label.includes('スケジュール')
   ) {
     return 'daily';
   }
 
-  // 記録・運用: records, schedules
-  if (
-    testId === TESTIDS.nav.schedules ||
-    to.startsWith('/records') ||
-    to.startsWith('/schedule') ||
-    label.includes('運営状況') ||
-    label.includes('記録一覧') ||
-    label.includes('月次')
-  ) {
-    return 'record';
-  }
-
-  // 強度行動障害支援: analysis, iceberg, assessment, survey, 支援マスタ系
-  if (
-    testId === TESTIDS.nav.analysis ||
-    testId === TESTIDS.nav.iceberg ||
-    testId === TESTIDS.nav.icebergPdca ||
-    testId === TESTIDS.nav.assessment ||
-    to.startsWith('/analysis') ||
-    to.startsWith('/assessment') ||
-    to.startsWith('/survey') ||
-    to === '/admin/step-templates' ||
-    to === '/admin/individual-support' ||
-    to === '/admin/templates' ||
-    label.includes('分析') ||
-    label.includes('氷山') ||
-    label.includes('アセスメント') ||
-    label.includes('特性') ||
-    label.includes('支援手順マスタ') ||
-    label.includes('個別支援手順') ||
-    label.includes('支援活動マスタ')
-  ) {
-    return 'ibd';
-  }
-
-  // 個別支援計画: ISP作成・更新・支援計画シート
+  // 2. 支援計画・アセスメント (assessment)
   if (
     testId === TESTIDS.nav.supportPlanGuide ||
     testId === TESTIDS.nav.ispEditor ||
     testId === TESTIDS.nav.planningSheet ||
-    to.startsWith('/support-plan-guide') ||
-    to.startsWith('/isp-editor') ||
-    to.startsWith('/support-planning-sheet') ||
+    testId === TESTIDS.nav.analysis ||
+    testId === TESTIDS.nav.assessment ||
+    to.startsWith('/support') ||
+    to.startsWith('/isp') ||
+    to.startsWith('/assessment') ||
+    to.startsWith('/analysis') ||
+    to.startsWith('/survey') ||
     label.includes('ISP') ||
-    label.includes('個別支援計画書') ||
-    label.includes('支援計画シート')
+    label.includes('支援計画') ||
+    label.includes('アセスメント') ||
+    label.includes('分析ワークスペース') ||
+    label.includes('特性')
   ) {
-    return 'isp';
+    return 'assessment';
   }
 
-  // マスタ: users, staff
-  if (
-    to.startsWith('/users') ||
-    to.startsWith('/staff') ||
-    label.includes('利用者') ||
-    label.includes('職員')
-  ) {
-    return 'master';
-  }
-
-  // 設定: label based
-  if (label.includes('設定')) {
-    return 'settings';
-  }
-
-  // 運営管理: billing, attendance, room, compliance
+  // 3. 拠点運営 (ops)
   if (
     testId === TESTIDS.nav.billing ||
     testId === TESTIDS.nav.staffAttendance ||
     testId === TESTIDS.nav.integratedResourceCalendar ||
     testId === TESTIDS.nav.roomManagement ||
+    to.startsWith('/ops') ||
     to.startsWith('/billing') ||
     to.startsWith('/staff/attendance') ||
     to.startsWith('/admin/staff-attendance') ||
-    to.startsWith('/admin/integrated-resource-calendar') ||
+    to.startsWith('/admin/integrated') ||
     to.startsWith('/room-management') ||
     to.startsWith('/compliance') ||
+    label.includes('メトリクス') ||
     label.includes('請求') ||
     label.includes('勤怠') ||
-    label.includes('お部屋') ||
+    label.includes('カレンダー') ||
+    label.includes('部屋') ||
     label.includes('コンプラ')
   ) {
     return 'ops';
   }
 
-  // 管理: checklist, audit, admin/* (管理者のみ)
+  // 4. マスタ・管理 (admin)
   if (
-    isAdmin &&
-    (testId === TESTIDS.nav.checklist ||
-      testId === TESTIDS.nav.audit ||
-      testId === TESTIDS.nav.admin ||
-      to.startsWith('/checklist') ||
-      to.startsWith('/audit') ||
-      to.startsWith('/admin') ||
-      label.includes('自己点検') ||
-      label.includes('監査'))
+    testId === TESTIDS.nav.admin ||
+    to.startsWith('/users') ||
+    (to.startsWith('/staff') && !to.includes('attendance')) ||
+    to === '/admin' ||
+    to.startsWith('/admin/') ||
+    to.startsWith('/settings') ||
+    label.includes('利用者') ||
+    (label.includes('職員') && !label.includes('勤怠')) ||
+    label.includes('管理ツール') ||
+    label.includes('設定')
   ) {
     return 'admin';
   }
 
-  // デフォルトは記録
+  // 5. デフォルト (record) - 記録・振り返り
   return 'record';
 }
 

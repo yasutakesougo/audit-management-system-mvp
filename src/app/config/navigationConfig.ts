@@ -75,8 +75,17 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
   // - /dev/schedule-create-dialog (dev-only)
   // - /daily/activity, /daily/support-checklist, /daily/time-based
   // - /schedules/day, /schedules/month
+  // ============================================================================
+  // Navigation Items
+  //
+  // ルール:
+  // 1. 各項目は必ず group を指定し、どの目的・業務フローに属するかを明示してください。
+  // 2. 各グループ内の並び順は「上から現場での使用順・頻度順」で固定しています。
+  //    新機能を追加する際は、単に末尾につなげるのではなく順序を検討してください。
+  // ============================================================================
   const items: NavItem[] = [
-    // todayOps gated: 今日の業務グループ先頭
+    // --- 1. 現場の実行 (daily) ---
+    // 順序: 今日の業務 → スケジュール → 日次記録 → 健康記録 → 申し送りタイムライン → 議事録
     ...(todayOpsEnabled
       ? [
           {
@@ -86,6 +95,21 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
             icon: undefined as React.ElementType | undefined,
             testId: TESTIDS.nav.todayOps,
             audience: NAV_AUDIENCE.all as NavAudience,
+            group: 'daily' as NavGroupKey,
+          },
+        ]
+      : []),
+    ...(schedulesEnabled
+      ? [
+          {
+            label: 'スケジュール',
+            to: '/schedules/week',
+            isActive: (pathname: string) => pathname.startsWith('/schedule') || pathname.startsWith('/schedules'),
+            testId: TESTIDS.nav.schedules,
+            icon: undefined,
+            prefetchKey: PREFETCH_KEYS.schedulesWeek,
+            prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
+            audience: NAV_AUDIENCE.staff,
             group: 'daily' as NavGroupKey,
           },
         ]
@@ -117,16 +141,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'daily' as NavGroupKey,
     },
     {
-      label: '申し送り分析',
-      to: '/handoff-analysis',
-      isActive: (pathname) => pathname.startsWith('/handoff-analysis'),
-      icon: undefined,
-      audience: NAV_AUDIENCE.staff,
-      group: 'daily' as NavGroupKey,
-    },
-    // 会議系は「議事録」に統合。司会ガイド・朝会夕会情報・朝会/夕会（作成）は
-    // 議事録ページ内またはURL直接アクセスで到達可能。
-    {
+      // 会議系は「議事録」に統合。司会ガイド・朝会夕会情報・朝会/夕会（作成）は議事録ページ内またはURL直接アクセスで到達可能。
       label: '議事録',
       to: '/meeting-minutes',
       isActive: (pathname) => pathname.startsWith('/meeting-minutes') || pathname.startsWith('/meeting-guide') || pathname.startsWith('/dashboard/briefing'),
@@ -134,6 +149,67 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       audience: NAV_AUDIENCE.all,
       group: 'daily' as NavGroupKey,
     },
+
+    // --- 2. 支援計画・アセスメント (assessment) ---
+    // 順序: ISP作成・更新 → 支援計画シート → アセスメント系 → 分析系 → アンケート
+    {
+      label: 'ISP作成',
+      to: '/support-plan-guide',
+      isActive: (pathname) => pathname === '/support-plan-guide',
+      icon: undefined,
+      testId: TESTIDS.nav.supportPlanGuide,
+      audience: NAV_AUDIENCE.staff,
+      group: 'assessment' as NavGroupKey,
+    },
+    {
+      label: 'ISP更新（前回比較）',
+      to: '/isp-editor',
+      isActive: (pathname) => pathname.startsWith('/isp-editor'),
+      icon: undefined,
+      testId: TESTIDS.nav.ispEditor,
+      audience: NAV_AUDIENCE.all,
+      group: 'assessment' as NavGroupKey,
+    },
+    {
+      label: '支援計画シート',
+      to: '/planning-sheet-list',
+      isActive: (pathname) => pathname.startsWith('/planning-sheet-list') || pathname.startsWith('/support-planning-sheet'),
+      icon: undefined,
+      testId: TESTIDS.nav.planningSheet,
+      audience: NAV_AUDIENCE.staff,
+      group: 'assessment' as NavGroupKey,
+    },
+    {
+      label: 'アセスメント',
+      to: '/assessment',
+      isActive: (pathname) => pathname.startsWith('/assessment'),
+      icon: undefined,
+      prefetchKey: PREFETCH_KEYS.assessmentDashboard,
+      testId: TESTIDS.nav.assessment,
+      audience: NAV_AUDIENCE.staff,
+      group: 'assessment' as NavGroupKey,
+    },
+    {
+      label: '分析ワークスペース',
+      to: '/analysis',
+      isActive: (pathname) => pathname.startsWith('/analysis'),
+      icon: undefined,
+      prefetchKey: PREFETCH_KEYS.analysisDashboard,
+      testId: TESTIDS.nav.analysis,
+      audience: NAV_AUDIENCE.staff,
+      group: 'assessment' as NavGroupKey,
+    },
+    {
+      label: '特性アンケート',
+      to: '/survey/tokusei',
+      isActive: (pathname) => pathname.startsWith('/survey/tokusei'),
+      icon: undefined,
+      audience: NAV_AUDIENCE.staff,
+      group: 'assessment' as NavGroupKey,
+    },
+
+    // --- 3. 記録・振り返り (record) ---
+    // 順序: 運営状況 → 記録一覧(日々のサマリー) → サービス提供実績記録 → 個人月次業務日誌 → 申し送り分析
     {
       label: '運営状況',
       to: '/dashboard',
@@ -151,9 +227,8 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       audience: NAV_AUDIENCE.staff,
       group: 'record' as NavGroupKey,
     },
-    // 月次記録・業務日誌プレビューは
-    // 記録一覧（/records）のサブページとして到達可能なため、サイドナビからは除外。
     {
+      // 月次記録・業務日誌プレビューは、記録一覧（/records）のサブページとして到達可能なためサイドナビから除外
       label: 'サービス提供実績記録',
       to: '/records/service-provision',
       isActive: (pathname) => pathname.startsWith('/records/service-provision'),
@@ -170,78 +245,16 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'record' as NavGroupKey,
     },
     {
-      label: '分析ワークスペース',
-      to: '/analysis',
-      isActive: (pathname) => pathname.startsWith('/analysis'),
-      icon: undefined,
-      prefetchKey: PREFETCH_KEYS.analysisDashboard,
-      testId: TESTIDS.nav.analysis,
-      audience: NAV_AUDIENCE.staff,
-      group: 'ibd' as NavGroupKey,
-    },
-    {
-      label: 'アセスメント',
-      to: '/assessment',
-      isActive: (pathname) => pathname.startsWith('/assessment'),
-      icon: undefined,
-      prefetchKey: PREFETCH_KEYS.assessmentDashboard,
-      testId: TESTIDS.nav.assessment,
-      audience: NAV_AUDIENCE.staff,
-      group: 'ibd' as NavGroupKey,
-    },
-    {
-      label: '特性アンケート',
-      to: '/survey/tokusei',
-      isActive: (pathname) => pathname.startsWith('/survey/tokusei'),
+      label: '申し送り分析',
+      to: '/handoff-analysis',
+      isActive: (pathname) => pathname.startsWith('/handoff-analysis'),
       icon: undefined,
       audience: NAV_AUDIENCE.staff,
-      group: 'ibd' as NavGroupKey,
+      group: 'record' as NavGroupKey,
     },
-    {
-      label: 'ISP作成',
-      to: '/support-plan-guide',
-      isActive: (pathname) => pathname === '/support-plan-guide',
-      icon: undefined,
-      testId: TESTIDS.nav.supportPlanGuide,
-      audience: NAV_AUDIENCE.staff,
-      group: 'isp' as NavGroupKey,
-    },
-    {
-      label: 'ISP更新（前回比較）',
-      to: '/isp-editor',
-      isActive: (pathname) => pathname.startsWith('/isp-editor'),
-      icon: undefined,
-      testId: TESTIDS.nav.ispEditor,
-      audience: NAV_AUDIENCE.all,
-      group: 'isp' as NavGroupKey,
-    },
-    {
-      label: '支援計画シート',
-      to: '/planning-sheet-list',
-      isActive: (pathname) => pathname.startsWith('/planning-sheet-list') || pathname.startsWith('/support-planning-sheet'),
-      icon: undefined,
-      testId: TESTIDS.nav.planningSheet,
-      audience: NAV_AUDIENCE.staff,
-      group: 'isp' as NavGroupKey,
-    },
-    {
-      label: '利用者',
-      to: '/users',
-      isActive: (pathname: string) => pathname.startsWith('/users'),
-      icon: undefined,
-      prefetchKey: PREFETCH_KEYS.users,
-      audience: NAV_AUDIENCE.staff,
-      group: 'master' as NavGroupKey,
-    },
-    {
-      label: '職員',
-      to: '/staff',
-      isActive: (pathname: string) => pathname.startsWith('/staff') && !pathname.startsWith('/staff/attendance'),
-      icon: undefined,
-      prefetchKey: PREFETCH_KEYS.staff,
-      audience: NAV_AUDIENCE.staff,
-      group: 'master' as NavGroupKey,
-    },
+
+    // --- 4. 拠点運営 (ops) ---
+    // 順序: 運用メトリクス → 請求処理 → (以下条件付で追加) 職員勤怠 → 統合カレンダー等 → コンプライアンス監査
     {
       label: '運用メトリクス',
       to: '/ops',
@@ -259,10 +272,35 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       audience: [NAV_AUDIENCE.reception, NAV_AUDIENCE.admin],
       group: 'ops' as NavGroupKey,
     },
+
+    // --- 5. マスタ・管理 (admin) ---
+    // 順序: 利用者マスタ → 職員マスタ → (以下条件付で追加) 管理ツール (システム設定ハブ/チェックリスト等)
+    {
+      label: '利用者',
+      to: '/users',
+      isActive: (pathname: string) => pathname.startsWith('/users'),
+      icon: undefined,
+      prefetchKey: PREFETCH_KEYS.users,
+      audience: NAV_AUDIENCE.staff,
+      group: 'admin' as NavGroupKey,
+    },
+    {
+      label: '職員',
+      to: '/staff',
+      isActive: (pathname: string) => pathname.startsWith('/staff') && !pathname.startsWith('/staff/attendance'),
+      icon: undefined,
+      prefetchKey: PREFETCH_KEYS.staff,
+      audience: NAV_AUDIENCE.staff,
+      group: 'admin' as NavGroupKey,
+    },
   ];
 
   // Conditional items based on feature flags and permissions
 
+  // 支援活動マスタは支援計画シート（ISPグループ）に統合済みのためサイドナビから除外。/admin/templates ルートは引き続き有効。
+  // NOTE: 氷山PDCA は /analysis?tab=pdca に統合済み
+
+  // --- 拠点運営 (ops) ---
   if (staffAttendanceEnabled) {
     items.push({
       label: '職員勤怠',
@@ -276,18 +314,27 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     });
   }
 
+  if (complianceFormEnabled) {
+    items.push({
+      label: 'コンプラ報告',
+      to: '/compliance',
+      isActive: (pathname: string) => pathname.startsWith('/compliance'),
+      icon: undefined,
+      audience: 'staff',
+      group: 'ops' as NavGroupKey,
+    });
+  }
+
   if (isAdmin && (authzReady || skipLogin)) {
-    // ops グループ: 運営管理系はそのまま残す
-    items.push(
-      {
-        label: '職員勤怠管理',
-        to: '/admin/staff-attendance',
-        isActive: (pathname: string) => pathname.startsWith('/admin/staff-attendance'),
-        icon: undefined,
-        audience: NAV_AUDIENCE.admin,
-        group: 'ops' as NavGroupKey,
-      },
-    );
+    items.push({
+      label: '職員勤怠管理',
+      to: '/admin/staff-attendance',
+      isActive: (pathname: string) => pathname.startsWith('/admin/staff-attendance'),
+      icon: undefined,
+      audience: NAV_AUDIENCE.admin,
+      group: 'ops' as NavGroupKey,
+    });
+
     if (schedulesEnabled) {
       items.push({
         label: '統合リソースカレンダー',
@@ -310,47 +357,16 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'ops' as NavGroupKey,
     });
 
+    // --- マスタ・管理 (admin) ---
     // 管理ツール（ハブ）1つに集約。
-    // 自己点検・監査ログ・ナビ診断・モード切替・1日の流れ設定は
-    // /admin ハブページから到達可能。
+    // 自己点検・監査ログ・ナビ診断・モード切替・1日の流れ設定は /admin ハブページから到達可能。
     items.push({
       label: '管理ツール',
       to: '/admin',
       isActive: (pathname: string) => pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/checklist') || pathname.startsWith('/audit') || pathname.startsWith('/settings/'),
       icon: undefined,
       audience: NAV_AUDIENCE.admin,
-      group: 'ops' as NavGroupKey,
-    });
-  }
-
-  // 支援活動マスタは支援計画シート（ISPグループ）に統合済みのため、
-  // サイドナビからは除外。/admin/templates ルートは引き続き有効。
-
-  // Feature-flagged items
-  // NOTE: 氷山PDCA は /analysis?tab=pdca に統合済み
-
-  if (schedulesEnabled && !items.some(item => item.testId === TESTIDS.nav.schedules)) {
-    items.push({
-      label: 'スケジュール',
-      to: '/schedules/week',
-      isActive: (pathname: string) => pathname.startsWith('/schedule') || pathname.startsWith('/schedules'),
-      testId: TESTIDS.nav.schedules,
-      icon: undefined,
-      prefetchKey: PREFETCH_KEYS.schedulesWeek,
-      prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
-      audience: NAV_AUDIENCE.staff,
-      group: 'record' as NavGroupKey,
-    });
-  }
-
-  if (complianceFormEnabled) {
-    items.push({
-      label: 'コンプラ報告',
-      to: '/compliance',
-      isActive: (pathname: string) => pathname.startsWith('/compliance'),
-      icon: undefined,
-      audience: 'staff',
-      group: 'ops' as NavGroupKey,
+      group: 'admin' as NavGroupKey,
     });
   }
 
