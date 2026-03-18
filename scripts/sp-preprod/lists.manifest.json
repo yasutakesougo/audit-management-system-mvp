@@ -305,13 +305,24 @@
     {
       "listTitle": "AttendanceUsers",
       "listKey": "AttendanceUsers",
-      "description": "出席管理ユーザー",
+      "description": "出席管理ユーザーマスタ（通所対象・送迎対象・標準時間）",
       "category": "attendance",
       "requiredFields": [
-        { "internalName": "Id",    "type": "Number", "required": true },
-        { "internalName": "Title", "type": "Text",   "required": true }
+        { "internalName": "Id",                       "type": "Number",  "required": true  },
+        { "internalName": "Title",                    "type": "Text",    "required": true  },
+        { "internalName": "UserCode",                 "type": "Text",    "required": true  },
+        { "internalName": "IsTransportTarget",        "type": "Boolean", "required": false },
+        { "internalName": "StandardMinutes",          "type": "Number",  "required": false },
+        { "internalName": "IsActive",                 "type": "Boolean", "required": true  },
+        { "internalName": "DefaultTransportToMethod",  "type": "Text",   "required": false, "_note": "optional — 送迎方法デフォルト" },
+        { "internalName": "DefaultTransportFromMethod","type": "Text",   "required": false },
+        { "internalName": "DefaultTransportToNote",    "type": "Text",   "required": false },
+        { "internalName": "DefaultTransportFromNote",  "type": "Text",   "required": false }
       ],
-      "indexes": []
+      "indexes": [
+        { "field": "UserCode", "unique": false },
+        { "field": "IsActive", "unique": false }
+      ]
     },
 
     {
@@ -341,13 +352,27 @@
     {
       "listTitle": "Transport_Log",
       "listKey": "TransportLog",
-      "description": "送迎ステータスログ",
+      "description": "送迎ステータスログ（状態遷移・監査証跡）",
       "category": "attendance",
       "requiredFields": [
-        { "internalName": "Id",    "type": "Number", "required": true },
-        { "internalName": "Title", "type": "Text",   "required": true }
+        { "internalName": "Id",            "type": "Number",   "required": true  },
+        { "internalName": "Title",         "type": "Text",     "required": true, "_note": "composite key: {UserCode}_{Date}_{Direction}" },
+        { "internalName": "UserCode",      "type": "Text",     "required": true  },
+        { "internalName": "RecordDate",    "type": "Text",     "required": true  },
+        { "internalName": "Direction",     "type": "Choice",   "required": true, "choices": ["to", "from"] },
+        { "internalName": "Status",        "type": "Choice",   "required": true, "choices": ["pending", "in-progress", "arrived", "absent", "self"] },
+        { "internalName": "Method",        "type": "Choice",   "required": false, "choices": ["facility-vehicle", "family", "taxi", "walk", "self", "other"] },
+        { "internalName": "ScheduledTime", "type": "Text",     "required": false },
+        { "internalName": "ActualTime",    "type": "Text",     "required": false },
+        { "internalName": "DriverName",    "type": "Text",     "required": false },
+        { "internalName": "Notes",         "type": "Note",     "required": false },
+        { "internalName": "UpdatedBy",     "type": "Text",     "required": false },
+        { "internalName": "UpdatedAt",     "type": "DateTime", "required": false }
       ],
-      "indexes": []
+      "indexes": [
+        { "field": "UserCode",   "unique": false },
+        { "field": "RecordDate", "unique": false }
+      ]
     },
 
     {
@@ -440,6 +465,34 @@
         { "internalName": "Title", "type": "Text",   "required": true }
       ],
       "indexes": []
+    },
+
+    {
+      "listTitle": "CallLogs",
+      "listKey": "CallLogs",
+      "description": "電話受付ログ（連絡オペレーション監視）",
+      "category": "daily",
+      "requiredFields": [
+        { "internalName": "Id",              "type": "Number",   "required": true  },
+        { "internalName": "Title",           "type": "Text",     "required": true  },
+        { "internalName": "ReceivedAt",      "type": "DateTime", "required": true  },
+        { "internalName": "CallerName",      "type": "Text",     "required": true  },
+        { "internalName": "CallerOrg",       "type": "Text",     "required": false },
+        { "internalName": "TargetStaffName", "type": "Text",     "required": true  },
+        { "internalName": "ReceivedByName",  "type": "Text",     "required": true  },
+        { "internalName": "MessageBody",     "type": "Note",     "required": true  },
+        { "internalName": "NeedCallback",    "type": "Boolean",  "required": false },
+        { "internalName": "Urgency",         "type": "Choice",   "required": true, "choices": ["normal", "today", "urgent"] },
+        { "internalName": "Status",          "type": "Choice",   "required": true, "choices": ["new", "callback_pending", "done"] },
+        { "internalName": "RelatedUserId",   "type": "Text",     "required": false },
+        { "internalName": "RelatedUserName", "type": "Text",     "required": false },
+        { "internalName": "CallbackDueAt",   "type": "DateTime", "required": false },
+        { "internalName": "CompletedAt",     "type": "DateTime", "required": false }
+      ],
+      "indexes": [
+        { "field": "ReceivedAt", "unique": false },
+        { "field": "Status",     "unique": false }
+      ]
     }
   ],
 

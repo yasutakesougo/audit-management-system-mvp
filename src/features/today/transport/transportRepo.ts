@@ -140,12 +140,16 @@ export async function loadTransportLogs(
 
     return rows.map(mapSpRowToLogEntry);
   } catch (err: unknown) {
-    // Graceful degradation: list not found → empty
+    // Graceful degradation: list not found (404) or field not found (400) → empty
     const status = (err as { status?: number })?.status;
     const message = err instanceof Error ? err.message : String(err);
 
     if (status === 404 || message.includes('does not exist')) {
       console.warn(`${LOG} Transport_Log list not found, returning empty. Create the list to enable persistence.`);
+      return [];
+    }
+    if (status === 400 || message.includes('は存在しません')) {
+      console.warn(`${LOG} Transport_Log has missing columns (400), returning empty. Provision required columns to enable persistence.`);
       return [];
     }
 
@@ -203,6 +207,10 @@ export async function saveTransportLog(
 
     if (status === 404 || message.includes('does not exist')) {
       console.warn(`${LOG} Transport_Log list not found, skipping save. Create the list to enable persistence.`);
+      return;
+    }
+    if (status === 400 || message.includes('は存在しません')) {
+      console.warn(`${LOG} Transport_Log has missing columns (400), skipping save. Provision required columns to enable persistence.`);
       return;
     }
 

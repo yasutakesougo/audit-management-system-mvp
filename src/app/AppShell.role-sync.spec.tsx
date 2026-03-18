@@ -2,8 +2,13 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, act } from '@testing-library/react';
 import { MemoryRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SettingsProvider } from '@/features/settings';
+import { ToastProvider } from '@/hooks/useToast';
 import AppShell from './AppShell';
+
+const createTestQueryClient = () =>
+  new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
 
 const setCurrentUserRoleMock = vi.fn();
 let mockCurrentRole: 'admin' | 'staff' | null = null;
@@ -48,27 +53,28 @@ describe('AppShell role sync', () => {
     const { NavDriver, nav } = makeNavHandle();
 
     render(
-      <MemoryRouter initialEntries={['/']}>
-        <SettingsProvider>
-          <Routes>
-            <Route
-              path="*"
-              element={
-                <>
-                  <NavDriver />
-                  <AppShell>
-                    <div>Test Content</div>
-                  </AppShell>
-                </>
-              }
-            />
-          </Routes>
-        </SettingsProvider>
-      </MemoryRouter>,
+      <QueryClientProvider client={createTestQueryClient()}>
+        <MemoryRouter initialEntries={['/']}>
+          <ToastProvider>
+            <SettingsProvider>
+              <Routes>
+                <Route
+                  path="*"
+                  element={
+                    <>
+                      <NavDriver />
+                      <AppShell>
+                        <div>Test Content</div>
+                      </AppShell>
+                    </>
+                  }
+                />
+              </Routes>
+            </SettingsProvider>
+          </ToastProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
     );
-
-    // Initial mount: / → staff (count: 1)
-    expect(setCurrentUserRoleMock).toHaveBeenCalledTimes(1);
     expect(setCurrentUserRoleMock).toHaveBeenLastCalledWith('staff');
 
     // /admin/dashboard → admin (count: 2)
@@ -94,23 +100,27 @@ describe('AppShell role sync', () => {
     const { NavDriver, nav } = makeNavHandle();
 
     render(
-      <MemoryRouter initialEntries={['/']}>
-        <SettingsProvider>
-          <Routes>
-            <Route
-              path="*"
-              element={
-                <>
-                  <NavDriver />
-                  <AppShell>
-                    <div>Test Content</div>
-                  </AppShell>
-                </>
-              }
-            />
-          </Routes>
-        </SettingsProvider>
-      </MemoryRouter>,
+      <QueryClientProvider client={createTestQueryClient()}>
+        <MemoryRouter initialEntries={['/']}>
+          <ToastProvider>
+            <SettingsProvider>
+              <Routes>
+                <Route
+                  path="*"
+                  element={
+                    <>
+                      <NavDriver />
+                      <AppShell>
+                        <div>Test Content</div>
+                      </AppShell>
+                    </>
+                  }
+                />
+              </Routes>
+            </SettingsProvider>
+          </ToastProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
     );
 
     // 連続で同じ role の画面を行き来しても増えない

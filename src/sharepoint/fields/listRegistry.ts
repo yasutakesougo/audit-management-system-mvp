@@ -37,6 +37,8 @@ export enum ListKeys {
   MonitoringMeetings = 'MonitoringMeetings',
   // ── スケジュール（登録漏れ修正） ──
   Schedules = 'Schedules',
+  // ── 電話受付ログ ──
+  CallLogs = 'CallLogs',
 }
 
 export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
@@ -71,4 +73,6 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.MonitoringMeetings]: { title: 'MonitoringMeetings' },
   // ── スケジュール（登録漏れ修正） ──
   [ListKeys.Schedules]: { title: 'Schedules' },
+  // ── 電話受付ログ ──
+  [ListKeys.CallLogs]: { title: 'CallLogs' },
 };

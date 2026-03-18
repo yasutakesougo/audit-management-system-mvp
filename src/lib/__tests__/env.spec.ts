@@ -9,8 +9,13 @@ describe('VITE_SP_ENABLED strictly resolves SP_ENABLED to true only when "true"'
     vi.unstubAllEnvs();
     if (val !== undefined) {
       vi.stubEnv('VITE_SP_ENABLED', val);
+    } else {
+      // Simulate "unset" by explicitly clearing the env var
+      // (.env.local may set VITE_SP_ENABLED=true which would leak into tests)
+      vi.stubEnv('VITE_SP_ENABLED', '');
     }
-    // Dynamic import to force re-evaluation
+    // Reset modules AFTER env stub so the import gets the correct env value
+    vi.resetModules();
     const { SP_ENABLED } = await import('@/lib/env');
     return SP_ENABLED;
   };

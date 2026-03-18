@@ -76,16 +76,34 @@ export async function getActiveUsers(
   const filter = `${ATTENDANCE_USERS_FIELDS.isActive} eq 1`;
   const orderby = ATTENDANCE_USERS_FIELDS.userCode;
 
-  const rows = await client.getListItemsByTitle<SharePointUserRow>(
-    listTitle,
-    select,
-    filter,
-    orderby
-  );
+  try {
+    const rows = await client.getListItemsByTitle<SharePointUserRow>(
+      listTitle,
+      select,
+      filter,
+      orderby
+    );
 
-  return (rows ?? [])
-    .map(toAttendanceUser)
-    .filter((u): u is AttendanceUserItem => u !== null);
+    return (rows ?? [])
+      .map(toAttendanceUser)
+      .filter((u): u is AttendanceUserItem => u !== null);
+  } catch (err: unknown) {
+    const status = (err as { status?: number })?.status;
+    const message = err instanceof Error ? err.message : String(err);
+
+    // Graceful degradation: list not found (404) or field not found (400)
+    if (status === 404 || message.includes('does not exist')) {
+      console.warn(`[AttendanceUsers] List not found (404), returning empty.`);
+      return [];
+    }
+    if (status === 400 || message.includes('は存在しません')) {
+      console.warn(`[AttendanceUsers] Missing columns (400), returning empty. Provision required columns.`);
+      return [];
+    }
+
+    console.error(`[AttendanceUsers] Failed to load:`, err);
+    throw err;
+  }
 }
 
 /**
