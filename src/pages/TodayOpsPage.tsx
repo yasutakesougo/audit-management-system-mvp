@@ -34,6 +34,7 @@ import { recordLanding } from '@/features/today/telemetry/recordLanding';
 import { useTransportStatus } from '@/features/today/transport';
 import { ApprovalDialog } from '@/features/today/widgets/ApprovalDialog';
 import { toLocalDateISO } from '@/utils/getNow';
+import { HandoffPanel } from '@/features/handoff/components';
 import { useCallLogsSummary } from '@/features/callLogs/hooks/useCallLogsSummary';
 import { CallLogQuickDrawer } from '@/features/callLogs/components/CallLogQuickDrawer';
 import { useAuth } from '@/auth/useAuth';
@@ -164,6 +165,7 @@ export const TodayOpsPage: React.FC = () => {
           onNavigate: (href: string) => navigate(href),
         }
       : undefined,
+    handoffPanel: <HandoffPanel targetDate={toLocalDateISO()} />,
     callLogSummary: {
       openCount: callLogsSummary.openCount,
       urgentCount: callLogsSummary.urgentCount,

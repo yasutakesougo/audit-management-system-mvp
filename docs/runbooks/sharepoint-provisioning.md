@@ -252,6 +252,56 @@ foreach ($target in $futureIndexTargets) {
 
 ---
 
+## 3.2 MonitoringMeetings（モニタリング会議記録）
+
+> **追加日**: 2026-03-18  
+> **設計書**: `monitoring-meetings-sp-schema.md`  
+> **Field Map**: `src/sharepoint/fields/monitoringMeetingFields.ts`  
+> **Repository**: `src/infra/sharepoint/repos/spMonitoringMeetingRepository.ts`
+
+**専用スクリプトあり:**
+
+```powershell
+# 冪等・確認レポート付きの専用スクリプトで実行（推奨）
+.\scripts\provision-monitoring-meetings-pnp.ps1
+
+# サイトURLを指定する場合
+.\scripts\provision-monitoring-meetings-pnp.ps1 -SiteUrl "https://tenant.sharepoint.com/sites/dev"
+```
+
+**作成される列 (17列 + Title):**
+
+| カテゴリ | 列数 | 内容 |
+|---------|------|------|
+| 主キー・参照 | 4列 | `recordId`, `userId`, `ispId`, `planningSheetId` |
+| 会議情報 | 3列 | `meetingType`, `meetingDate`, `venue` |
+| 参加者 | 1列 | `attendeesJson` (JSON) |
+| 評価内容 | 4列 | `goalEvaluationsJson` (JSON), `overallAssessment`, `userFeedback`, `familyFeedback` |
+| 決定事項 | 4列 | `planChangeDecision`, `changeReason`, `decisionsJson` (JSON), `nextMonitoringDate` |
+| メタ情報 | 2列 | `recordedBy`, `recordedAt` |
+
+**作成されるインデックス (4本):**
+
+| インデックス | 対象列 | 用途 |
+|-------------|--------|------|
+| idx_recordId | `cr014_recordId` | `getById(id)` |
+| idx_userId | `cr014_userId` | `listByUser(userId)` |
+| idx_ispId | `cr014_ispId` | `listByIsp(ispId)` |
+| idx_meetingDate | `cr014_meetingDate` | 最新順ソート |
+
+**確認ポイント:**
+
+```powershell
+# 作成後の目視確認
+Get-PnPField -List "MonitoringMeetings" | Format-Table InternalName, TypeAsString, Required, Indexed
+```
+
+1. 全17列が存在すること
+2. `cr014_recordId`, `cr014_userId`, `cr014_ispId`, `cr014_meetingDate` にインデックスが付与されていること
+3. Note 型列が `RichText='FALSE'` であること（JSON保存に重要）
+
+---
+
 ## 4. Users_Master.UserID ユニーク制約
 
 ```powershell
@@ -334,7 +384,7 @@ $requiredLists = @(
     "ISP_Master", "SupportPlanningSheet_Master", "SupportProcedureRecord_Daily",
     "Compliance_CheckRules", "Diagnostics_Reports",
     "FormsResponses_Tokusei", "NurseObservations", "OfficialForms",
-    "PdfOutput_Log"
+    "PdfOutput_Log", "MonitoringMeetings"
 )
 
 $existCount = 0

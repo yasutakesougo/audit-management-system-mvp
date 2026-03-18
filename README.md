@@ -113,6 +113,16 @@ Support Operations OS is built on **10 design principles** that ensure human-in-
 
 ---
 
+#### 🛠️ Welfare OS Development Framework (新機能の開発・量産)
+
+新機能（モジュール）をプロジェクトに追加する際は、都度ゼロから設計せず、完全に標準化された以下の「3点セット」を使用してください。
+
+- 📖 **設計原則・標準構造を確認したい (憲法)** → [`welfare-os-development-framework.md`](docs/architecture/welfare-os-development-framework.md)
+- ✅ **新機能を始める前・完了前 (点検)** → [`module-starter-checklist.md`](docs/checklists/module-starter-checklist.md)
+- 🪄 **AI に初期実装を作らせる (生成)** → [`sharepoint-module-generator.md`](docs/prompts/sharepoint-module-generator.md)
+
+---
+
 <details>
 <summary>📐 プレゼン用アーキテクチャ図（クリックで展開）</summary>
 

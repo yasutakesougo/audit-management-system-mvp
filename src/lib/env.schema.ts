@@ -98,6 +98,7 @@ export const envSchema = z.object({
   VITE_ALLOW_SHAREPOINT_OUTSIDE_SPFX: zBoolFromString.optional().default(false),
   VITE_SKIP_SHAREPOINT: zBoolFromString.optional().default(false),
   VITE_SKIP_LOGIN: zBoolFromString.optional().default(false),
+  VITE_SP_ENABLED: z.string().optional().default('false'),
 
   // Feature Flags
   VITE_FEATURE_SCHEDULES: zBoolFromString.optional().default(false),
