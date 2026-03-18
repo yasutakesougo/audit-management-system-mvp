@@ -13,6 +13,11 @@ import {
   createMonitoringMeetingRepository,
 } from '@/features/monitoring/repositories/createMonitoringMeetingRepository';
 import type { MonitoringMeetingRepository } from '@/domain/isp/monitoringMeetingRepository';
+import type { UseSP } from '@/lib/spClient';
+
+/** Minimal spClient mock typed to satisfy the factory without `any` leaks. */
+const createMockSpClient = () =>
+  ({ spFetch: vi.fn() }) as unknown as UseSP;
 
 describe('createMonitoringMeetingRepository — Phase 3 モード切替', () => {
   it('mode=local で repository が返る', () => {
@@ -26,13 +31,10 @@ describe('createMonitoringMeetingRepository — Phase 3 モード切替', () => 
   });
 
   it('mode=sharepoint + spClient で repository が返る', () => {
-    // spClient の最低限のモック
-    const mockSpClient = {
-      spFetch: vi.fn(),
-    };
+    const mockSpClient = createMockSpClient();
 
     const repo = createMonitoringMeetingRepository('sharepoint', {
-      spClient: mockSpClient as any,
+      spClient: mockSpClient,
     });
 
     expect(repo).toBeDefined();
@@ -46,10 +48,10 @@ describe('createMonitoringMeetingRepository — Phase 3 モード切替', () => 
   it('UI層の SP_ENABLED 分岐パターン: SP_ENABLED=true → sharepoint mode', () => {
     // UI コンポーネント内のパターンを再現
     const SP_ENABLED = true;
-    const spClient = { spFetch: vi.fn() };
+    const spClient = createMockSpClient();
 
     const repo: MonitoringMeetingRepository = SP_ENABLED
-      ? createMonitoringMeetingRepository('sharepoint', { spClient: spClient as any })
+      ? createMonitoringMeetingRepository('sharepoint', { spClient })
       : createMonitoringMeetingRepository('local');
 
     expect(repo).toBeDefined();
@@ -58,13 +60,14 @@ describe('createMonitoringMeetingRepository — Phase 3 モード切替', () => 
 
   it('UI層の SP_ENABLED 分岐パターン: SP_ENABLED=false → local mode', () => {
     const SP_ENABLED = false;
-    const spClient = { spFetch: vi.fn() };
+    const spClient = createMockSpClient();
 
     const repo: MonitoringMeetingRepository = SP_ENABLED
-      ? createMonitoringMeetingRepository('sharepoint', { spClient: spClient as any })
+      ? createMonitoringMeetingRepository('sharepoint', { spClient })
       : createMonitoringMeetingRepository('local');
 
     expect(repo).toBeDefined();
     expect(typeof repo.listByUser).toBe('function');
   });
 });
+
