@@ -86,8 +86,7 @@ const DEFAULT_COMPLIANCE = ispComplianceMetadataSchema.parse({});
  * 未設定の場合はデフォルト値を返す。
  */
 function extractCompliance(draft: SupportPlanDraft | undefined): ComplianceFormState {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const raw = (draft?.data as any)?.compliance;
+  const raw = draft?.data?.compliance;
   if (!raw) return { ...DEFAULT_COMPLIANCE };
   try {
     return ispComplianceMetadataSchema.parse(raw);
@@ -147,8 +146,7 @@ export function useComplianceForm({
             updatedAt: new Date().toISOString(),
             data: {
               ...draft.data,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              compliance: nextCompliance as any,
+              compliance: nextCompliance,
             },
           },
         };

@@ -41,8 +41,34 @@ function assertWriteEnabled(operation: string): void {
 
 export type SchedulePersonType = 'User' | 'Staff' | 'Org';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type SpScheduleRow = Record<string, any>;
+export type SpScheduleRow = {
+  Id?: number;
+  Title?: string;
+  EventDate?: string;
+  EndDate?: string;
+  Status?: string;
+  ServiceType?: string;
+  RowKey?: string;
+  MonthKey?: string;
+  ETag?: string;
+  CreatedAt?: string;
+  UpdatedAt?: string;
+  cr014_personType?: string;
+  cr014_personId?: string;
+  cr014_personName?: string;
+  cr014_dayKey?: string;
+  cr014_fiscalYear?: string;
+  cr014_orgAudience?: string;
+  AssignedStaffId?: string;
+  TargetUserId?: string;
+  Note?: string;
+  '@odata.etag'?: string;
+  etag?: string;
+  d?: { Id?: number };
+  data?: { Id?: number };
+  headers?: { etag?: string; ETag?: string };
+  __metadata?: { etag?: string };
+} & Record<string, unknown>;
 
 export type QuerySchedulesArgs = {
   from: Date;
@@ -254,7 +280,7 @@ export type UpdateScheduleInput = Partial<Omit<CreateScheduleInput, 'rowKey'>> &
   // rowKey は原則不変
 };
 
-const pickEtag = (v: SpScheduleRow | Record<string, unknown> | undefined | null): string | undefined => {
+const pickEtag = (v: SpScheduleRow | undefined | null): string | undefined => {
   if (!v) return undefined;
   return (v.etag ?? v.ETag ?? v.__metadata?.etag ?? v.headers?.etag ?? v.headers?.ETag) as string | undefined;
 };

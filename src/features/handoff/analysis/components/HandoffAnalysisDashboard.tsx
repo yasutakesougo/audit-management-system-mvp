@@ -32,6 +32,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createMockAiClient } from '@/lib/ai/aiClient';
 import type { AiClient } from '@/lib/ai/aiClientTypes';
+import { getAppConfig } from '@/lib/env';
 import type { HandoffRecord } from '../../handoffTypes';
 import type { InsightReportResult } from '../ai/aiTypes';
 import { buildSummaryInput } from '../ai/buildHandoffSummaryPrompt';
@@ -166,7 +167,7 @@ export default function HandoffAnalysisDashboard({
       })),
       context: {
         periodLabel: `直近${period}日`,
-        facilityName: '',  // TODO: 事業所名を設定から取得
+        facilityName: getAppConfig().facilityName,
         audience: 'morning',
       },
     });

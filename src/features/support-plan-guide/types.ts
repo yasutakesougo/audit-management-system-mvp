@@ -27,10 +27,15 @@ export type SupportPlanForm = {
   lastMonitoringDate: string; // 直近のモニタ実施日 (YYYY/MM/DD)
   /** 構造化目標データ */
   goals: GoalItem[];
+  /**
+   * ISP コンプライアンスメタデータ（useComplianceForm が読み書き）
+   * 型はドメイン層に依存しないよう unknown で管理し、読み出し側で Zod parse する。
+   */
+  compliance?: unknown;
 };
 
 /** SupportPlanForm のうち string フィールドのみのキー集合 */
-export type SupportPlanStringFieldKey = Exclude<keyof SupportPlanForm, 'goals'>;
+export type SupportPlanStringFieldKey = Exclude<keyof SupportPlanForm, 'goals' | 'compliance'>;
 
 export type SectionKey =
   | 'overview'

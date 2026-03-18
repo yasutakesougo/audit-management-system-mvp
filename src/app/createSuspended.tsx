@@ -14,9 +14,8 @@ const DEFAULT_LOADING_CLASS = 'p-4 text-sm text-slate-600';
  * @example
  * const SuspendedDailyRecordPage = createSuspended(DailyRecordPage, '記録を読み込んでいます…');
  */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export function createSuspended(
-  LazyComponent: React.LazyExoticComponent<any>,
+  LazyComponent: React.LazyExoticComponent<React.ComponentType<object>>,
   loadingMessage = '読み込んでいます…',
 ): React.FC {
   const Wrapped: React.FC = () => (

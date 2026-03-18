@@ -52,6 +52,16 @@ const escapeOData = (s: string) => s.replace(/'/g, "''");
 const SELECT = [...ISP_MASTER_SELECT_FIELDS] as string[];
 
 // ────────────────────────────────────────────────────────────────
+// SharePoint 作成系レスポンス型（REST API は Id / d.Id / data.Id のいずれかで返す）
+// ────────────────────────────────────────────────────────────────
+
+type SpCreatedItem = {
+  Id?: number;
+  d?: { Id?: number };
+  data?: { Id?: number };
+} & Record<string, unknown>;
+
+// ────────────────────────────────────────────────────────────────
 // Repository 実装
 // ────────────────────────────────────────────────────────────────
 
@@ -95,8 +105,7 @@ export function createSharePointIspRepository(client: UseSP): IspRepository {
       assertWriteEnabled('isp.create');
 
       const payload = mapIspCreateInputToPayload(input);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const created: any = await client.addListItemByTitle(ISP_MASTER_LIST_TITLE, payload);
+      const created = await client.addListItemByTitle(ISP_MASTER_LIST_TITLE, payload) as SpCreatedItem;
       const createdId = Number(created?.Id ?? created?.d?.Id ?? created?.data?.Id);
 
       if (!createdId || !Number.isFinite(createdId)) {

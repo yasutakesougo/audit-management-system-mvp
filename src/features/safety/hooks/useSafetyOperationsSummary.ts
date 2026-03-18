@@ -36,6 +36,10 @@ import {
   localGuidelineRepository,
   localTrainingRepository,
 } from '@/infra/localStorage/localComplianceRepository';
+import {
+  computeOverallLevel,
+  computeActionRequiredCount,
+} from '@/domain/safety/safetyLevel';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -79,31 +83,16 @@ export function useSafetyOperationsSummary() {
       const guidelineSummary = computeGuidelineSummary(guidelines);
       const trainingSummary = computeTrainingSummary(trainings);
 
-      // 要対応数: 個別の基準未達アイテムをカウント
-      let actionRequiredCount = 0;
-      if (!committeeSummary.meetsQuarterlyRequirement) actionRequiredCount++;
-      if (!guidelineSummary.allItemsFulfilled) actionRequiredCount++;
-      if (!trainingSummary.meetsBiannualRequirement) actionRequiredCount++;
-      actionRequiredCount += restraintSummary.pendingApproval;
-      actionRequiredCount += restraintSummary.incompleteRequirements;
-      actionRequiredCount += incidentSummary.pendingFollowUp;
-
-      // 全体レベル
-      const hasCritical =
-        incidentSummary.pendingFollowUp > 0 ||
-        restraintSummary.pendingApproval > 0 ||
-        restraintSummary.incompleteRequirements > 0;
-
-      const hasWarning =
-        !committeeSummary.meetsQuarterlyRequirement ||
-        !guidelineSummary.allItemsFulfilled ||
-        !trainingSummary.meetsBiannualRequirement;
-
-      const overallLevel: SafetyOperationsSummary['overallLevel'] = hasCritical
-        ? 'critical'
-        : hasWarning
-          ? 'warning'
-          : 'good';
+      // 要対応数・全体レベルを純関数で算出
+      const levelInput = {
+        incident: incidentSummary,
+        restraint: restraintSummary,
+        committee: committeeSummary,
+        guideline: guidelineSummary,
+        training: trainingSummary,
+      };
+      const overallLevel = computeOverallLevel(levelInput);
+      const actionRequiredCount = computeActionRequiredCount(levelInput);
 
       setSummary({
         incident: incidentSummary,
