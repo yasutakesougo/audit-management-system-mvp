@@ -24,10 +24,11 @@ This document defines the single source of truth for switching the application's
 
 ## 実装上の注意点
 
-`src/lib/env.ts` では、文字列の厳密な比較を用いてモードを決定しています。
+`src/lib/env.ts` では、Vite の環境変数 (`VITE_SP_ENABLED`) を文字列の厳密な比較で評価し、モードを決定しています。
 
 ```ts
-export const SP_ENABLED = import.meta.env.VITE_SP_ENABLED === 'true';
+// src/lib/env.ts — 実装は env.ts を参照
+export const SP_ENABLED = /* VITE_SP_ENABLED === 'true' */;
 export const SP_DISABLED = !SP_ENABLED;
 ```
 
