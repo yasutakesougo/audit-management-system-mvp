@@ -1,7 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { ActionCard, RawActionSource } from '../domain/models/queue.types';
 import { buildTodayActionQueue } from '../domain/engine/buildTodayActionQueue';
 import { fetchMockActionSources } from '../domain/repositories/mockActionSources';
+import { summarizeTodayQueue } from '../telemetry/summarizeTodayQueue';
+import { useTodayQueueTelemetryStore } from '../telemetry/todayQueueTelemetryStore';
 
 interface UseTodayActionQueueOptions {
   pollingIntervalMs?: number;
@@ -61,6 +63,30 @@ export function useTodayActionQueue(
     if (sources.length === 0) return [];
     return buildTodayActionQueue(sources, now, currentStaffId);
   }, [sources, now, currentStaffId]);
+
+  // 5. Telemetry 観測と送信
+  const pushSample = useTodayQueueTelemetryStore((s) => s.pushSample);
+  const lastSignatureRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    // データがフェッチされていない初期状態はスキップ
+    if (sources.length === 0 && actionQueue.length === 0) return;
+
+    // queueの意図的変更を判定する署名を生成
+    const signature = JSON.stringify({
+      ids: actionQueue.map((x) => x.id),
+      priorities: actionQueue.map((x) => x.priority),
+      overdue: actionQueue.map((x) => x.isOverdue),
+    });
+
+    if (lastSignatureRef.current === signature) return;
+    lastSignatureRef.current = signature;
+
+    const sample = summarizeTodayQueue(actionQueue, Date.now());
+    pushSample(sample);
+  }, [actionQueue, isLoading, pushSample, sources.length]);
 
   return {
     actionQueue,

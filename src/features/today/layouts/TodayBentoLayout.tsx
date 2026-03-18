@@ -52,6 +52,7 @@ import { TodayTasksCard, type TodayTasksCardProps } from '../widgets/TodayTasksC
 import { TodayServiceStructureCard } from '../widgets/TodayServiceStructureCard';
 import { UserCompactList, type UserRow } from '../widgets/UserCompactList';
 import { ActionQueueCard, type ActionQueueCardProps } from '../widgets/ActionQueueCard';
+import { ActionQueueTimelineWidget, type ActionQueueTimelineWidgetProps } from '../widgets/ActionQueueTimelineWidget';
 import { TodayPhaseIndicator } from '../widgets/TodayPhaseIndicator';
 
 // ─── Types ───────────────────────────────────────────────────
@@ -84,6 +85,8 @@ export type TodayBentoProps = {
   todayTasks?: TodayTasksCardProps;
   /** 未処理キュー表示 (optional: widget hidden when undefined) */
   actionQueue?: ActionQueueCardProps;
+  /** Timeline Engine queue (optional) */
+  actionQueueTimeline?: ActionQueueTimelineWidgetProps;
   /** 支援計画管理カード (optional: hidden when undefined) */
   workflowCard?: PlanningWorkflowCardProps;
   transport: { pending: TransportUser[]; inProgress: TransportUser[]; onArrived: (id: string) => void };
@@ -130,6 +133,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   onPhaseNavigate,
   todayTasks,
   actionQueue,
+  actionQueueTimeline,
   workflowCard,
   transportCard,
   users,
@@ -175,6 +179,18 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
             testId="bento-action-queue"
           >
             <ActionQueueCard {...actionQueue} />
+          </BentoCard>
+        )}
+
+        {/* ── Row 0.4: ActionQueueTimeline (Engine-driven Action Queue) ── */}
+        {actionQueueTimeline && (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            variant="default"
+            testId="bento-action-queue-timeline"
+          >
+            <SectionLabel emoji="⚡️" text="アクションキュー" />
+            <ActionQueueTimelineWidget {...actionQueueTimeline} />
           </BentoCard>
         )}
 
