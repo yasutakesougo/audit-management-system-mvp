@@ -35,6 +35,8 @@ import {
   PERIOD_PRESET_ORDER,
 } from '../domain/tagAnalytics';
 import { TrendAlertsBanner } from './TrendAlertsBanner';
+import { PlanningSuggestionsCard } from './PlanningSuggestionsCard';
+import { buildPlanningSuggestions } from '../domain/planningSuggestions';
 
 // ─── Props ───────────────────────────────────────────────
 
@@ -46,6 +48,8 @@ type TagAnalyticsSectionProps = {
   onPeriodChange?: (preset: PeriodPreset) => void;
   /** プリセット切替UIを非表示にする（Accordion 内など） */
   hidePeriodSelector?: boolean;
+  /** F3: Planning 示唆を表示するか（PlanningSheetPage 用） */
+  showSuggestions?: boolean;
 };
 
 // ─── Main Component ──────────────────────────────────────
@@ -55,6 +59,7 @@ export const TagAnalyticsSection: React.FC<TagAnalyticsSectionProps> = ({
   periodPreset = '30d',
   onPeriodChange,
   hidePeriodSelector = false,
+  showSuggestions = false,
 }) => {
   // ── Loading ──
   if (analytics.status === 'loading') {
@@ -107,6 +112,13 @@ export const TagAnalyticsSection: React.FC<TagAnalyticsSectionProps> = ({
       {/* F2: Trend Alerts */}
       {analytics.trendAlerts.hasAlerts && (
         <TrendAlertsBanner alerts={analytics.trendAlerts} />
+      )}
+
+      {/* F3: Planning Suggestions */}
+      {showSuggestions && analytics.trendAlerts.hasAlerts && (
+        <PlanningSuggestionsCard
+          suggestions={buildPlanningSuggestions(analytics.trendAlerts.all)}
+        />
       )}
 
       {/* Top Tags */}

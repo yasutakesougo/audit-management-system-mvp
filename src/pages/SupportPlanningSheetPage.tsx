@@ -732,6 +732,7 @@ const TagAnalyticsAccordion: React.FC<{ userId: string | undefined }> = ({ userI
           analytics={tagAnalytics}
           periodPreset={period}
           onPeriodChange={setPeriod}
+          showSuggestions
         />
       </AccordionDetails>
     </Accordion>
