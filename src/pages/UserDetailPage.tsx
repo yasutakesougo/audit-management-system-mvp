@@ -57,6 +57,7 @@ import {
   type UnifiedRecommendation,
 } from '@/features/recommendation/domain/unifiedRecommendation';
 import { useUserHubDataSources } from '@/features/users/hooks/useUserHubDataSources';
+import { useTagAnalytics, TagAnalyticsSection } from '@/features/tag-analytics';
 
 // ─── Component ────────────────────────────────────────────────
 
@@ -83,6 +84,9 @@ const UserDetailPage: React.FC = () => {
 
   // Sprint-1 Phase B: 実データ接続
   const hubData = useUserHubDataSources(userId);
+
+  // ── Phase F1: 行動タグ分析 ──
+  const tagAnalytics = useTagAnalytics(userId);
 
   // ── サマリー統計 ──
   const summaryStats = useMemo(() => {
@@ -378,6 +382,14 @@ const UserDetailPage: React.FC = () => {
               testId="user-detail-no-plan"
             />
           )}
+        </Box>
+
+        {/* ════════════════════════════════════════════════════════════
+            Section 8: 行動タグ分析 (Phase F1)
+           ════════════════════════════════════════════════════════════ */}
+        <Box data-testid="user-detail-tag-analytics">
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>🏷️ 行動タグ分析</Typography>
+          <TagAnalyticsSection analytics={tagAnalytics} />
         </Box>
       </Stack>
     </Container>
