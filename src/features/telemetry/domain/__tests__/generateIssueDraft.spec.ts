@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { generateIssueDraft } from '../generateIssueDraft';
 import type { KpiAlert } from '../computeCtaKpiDiff';
 import type { PlaybookEntry } from '../alertPlaybook';
+import type { AlertPersistence } from '../computeAlertPersistence';
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -21,6 +22,18 @@ const mkPlaybook = (overrides: Partial<PlaybookEntry> = {}): PlaybookEntry => ({
   checkpoints: ['確認点1', '確認点2'],
   relatedScreens: [{ label: 'Today', path: '/today' }],
   issueTemplate: { title: '[改善] Hero 利用率が閾値を下回っている', labels: ['ux', 'telemetry'] },
+  ...overrides,
+});
+
+const mkPersistence = (overrides: Partial<AlertPersistence> = {}): AlertPersistence => ({
+  alertKey: 'hero-rate-low',
+  firstSeenAt: '2026-03-13',
+  lastSeenAt: '2026-03-20',
+  consecutivePeriods: 2,
+  worseningStreak: 1,
+  status: 'worsening',
+  previousValue: 65,
+  delta: -5,
   ...overrides,
 });
 
@@ -74,4 +87,53 @@ describe('generateIssueDraft', () => {
     const draft = generateIssueDraft(mkAlert({ message: msg }), mkPlaybook());
     expect(draft.body).toContain(msg);
   });
+
+  // ── v6: metadata ──
+
+  it('metadata に alertId, severity, currentValue, threshold が含まれる', () => {
+    const draft = generateIssueDraft(mkAlert(), mkPlaybook());
+    expect(draft.metadata.alertId).toBe('hero-rate-low');
+    expect(draft.metadata.severity).toBe('warning');
+    expect(draft.metadata.currentValue).toBe(60);
+    expect(draft.metadata.threshold).toBe(70);
+  });
+
+  it('role 付き alertId から metadata.role を推定する', () => {
+    const draft = generateIssueDraft(
+      mkAlert({ id: 'hero-rate-low:staff' }),
+      mkPlaybook(),
+    );
+    expect(draft.metadata.role).toBe('staff');
+  });
+
+  it('role なし alertId では metadata.role が undefined', () => {
+    const draft = generateIssueDraft(mkAlert(), mkPlaybook());
+    expect(draft.metadata.role).toBeUndefined();
+  });
+
+  // ── v6: persistenceInfo ──
+
+  it('persistenceInfo あり → body に状態情報セクションが含まれる', () => {
+    const draft = generateIssueDraft(mkAlert(), mkPlaybook(), mkPersistence());
+    expect(draft.body).toContain('アラート状態');
+    expect(draft.body).toContain('悪化傾向');
+    expect(draft.body).toContain('2期間継続');
+    expect(draft.body).toContain('1期間連続悪化');
+    expect(draft.body).toContain('-5%');
+  });
+
+  it('persistenceInfo あり → metadata に state/consecutivePeriods/worseningStreak', () => {
+    const draft = generateIssueDraft(mkAlert(), mkPlaybook(), mkPersistence());
+    expect(draft.metadata.state).toBe('worsening');
+    expect(draft.metadata.consecutivePeriods).toBe(2);
+    expect(draft.metadata.worseningStreak).toBe(1);
+  });
+
+  it('persistenceInfo なし → body に状態セクションなし & metadata.state undefined', () => {
+    const draft = generateIssueDraft(mkAlert(), mkPlaybook());
+    expect(draft.body).not.toContain('アラート状態');
+    expect(draft.metadata.state).toBeUndefined();
+    expect(draft.metadata.consecutivePeriods).toBeUndefined();
+  });
 });
+
