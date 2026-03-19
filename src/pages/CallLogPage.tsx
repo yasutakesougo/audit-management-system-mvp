@@ -13,6 +13,7 @@
 import { PageHeader } from '@/components/PageHeader';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import PhoneIcon from '@mui/icons-material/Phone';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -40,12 +41,15 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CallLogStatusChip } from '@/features/callLogs/components/CallLogStatusChip';
 import { CallLogUrgencyChip } from '@/features/callLogs/components/CallLogUrgencyChip';
 import { CallLogQuickDrawer } from '@/features/callLogs/components/CallLogQuickDrawer';
 import { useCallLogs, type CallLogTabValue } from '@/features/callLogs/hooks/useCallLogs';
 import { filterCallLogs } from '@/features/callLogs/domain/filterCallLogs';
+import { getCallbackDueInfo, type CallbackDueLevel } from '@/features/callLogs/domain/callbackDueLabel';
+import { parseFilterPreset, getPresetConfig } from '@/features/callLogs/domain/callLogFilterPresets';
 import type { CallLog } from '@/domain/callLogs/schema';
 
 // ─── 日時フォーマットヘルパー ─────────────────────────────────────────────────
@@ -61,6 +65,15 @@ const formatDateTime = (iso: string): string => {
   } catch {
     return iso;
   }
+};
+
+// ─── 期限チップカラーマップ ─────────────────────────────────────────────────────
+
+const DUE_CHIP_COLOR: Record<CallbackDueLevel, 'error' | 'warning' | 'default' | 'info'> = {
+  overdue: 'error',
+  'due-soon': 'warning',
+  'due-later': 'default',
+  none: 'default',
 };
 
 // ─── タブ定義 ─────────────────────────────────────────────────────────────────
@@ -80,7 +93,10 @@ type CallLogRowProps = {
   isUpdating: boolean;
 };
 
-const CallLogRow: React.FC<CallLogRowProps> = ({ log, onMarkDone, isUpdating }) => (
+const CallLogRow: React.FC<CallLogRowProps> = ({ log, onMarkDone, isUpdating }) => {
+  const dueInfo = getCallbackDueInfo(log);
+
+  return (
   <ListItem
     divider
     data-testid={`call-log-row-${log.id}`}
@@ -143,21 +159,51 @@ const CallLogRow: React.FC<CallLogRowProps> = ({ log, onMarkDone, isUpdating }) 
               data-testid={`call-log-related-user-${log.id}`}
             />
           )}
+          {dueInfo.level !== 'none' && (
+            <Chip
+              icon={<AccessTimeIcon sx={{ fontSize: 14 }} />}
+              label={dueInfo.label}
+              size="small"
+              variant={dueInfo.level === 'overdue' ? 'filled' : 'outlined'}
+              color={DUE_CHIP_COLOR[dueInfo.level]}
+              sx={{ fontSize: '0.7rem', height: 20, fontWeight: dueInfo.level === 'overdue' ? 700 : 400 }}
+              data-testid={`call-log-due-chip-${log.id}`}
+            />
+          )}
         </Stack>
       }
     />
   </ListItem>
-);
+  );
+};
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export const CallLogPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<CallLogTabValue>('new');
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   // ── フィルタ state ──
   const [keyword, setKeyword] = useState('');
   const [onlyWithRelatedUser, setOnlyWithRelatedUser] = useState(false);
+  const [activePreset, setActivePreset] = useState<string | null>(null);
+
+  // ── URL search params からフィルタプリセットを復元 ──
+  useEffect(() => {
+    const filterParam = searchParams.get('filter');
+    const preset = parseFilterPreset(filterParam);
+    if (preset) {
+      const config = getPresetConfig(preset);
+      setActiveTab(config.tab);
+      setKeyword(config.keyword);
+      setOnlyWithRelatedUser(config.onlyWithRelatedUser);
+      setActivePreset(config.label);
+      // 消費後に URL から filter param を削除（ブラウザバック時に再適用されないように）
+      searchParams.delete('filter');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, []); // eslint-disable-line
 
   const { logs, isLoading, error, updateStatus, refresh } = useCallLogs({
     activeTab,
@@ -181,11 +227,12 @@ export const CallLogPage: React.FC = () => {
   };
 
   const isUpdating = updateStatus.isPending;
-  const hasActiveFilter = !!keyword.trim() || onlyWithRelatedUser;
+  const hasActiveFilter = !!keyword.trim() || onlyWithRelatedUser || !!activePreset;
 
   const handleClearFilters = () => {
     setKeyword('');
     setOnlyWithRelatedUser(false);
+    setActivePreset(null);
   };
 
   // ─── Render ────────────────────────────────────────────────────────────────

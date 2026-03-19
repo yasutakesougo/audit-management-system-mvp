@@ -37,6 +37,7 @@ import { toLocalDateISO } from '@/utils/getNow';
 import { HandoffPanel } from '@/features/handoff/components';
 import { useCallLogsSummary } from '@/features/callLogs/hooks/useCallLogsSummary';
 import { CallLogQuickDrawer } from '@/features/callLogs/components/CallLogQuickDrawer';
+import { buildCallLogFilterUrl, type CallLogFilterPreset } from '@/features/callLogs/domain/callLogFilterPresets';
 import { useAuth } from '@/auth/useAuth';
 import type { ProgressRingItem } from '@/features/today/components/ProgressRings';
 
@@ -225,6 +226,7 @@ export const TodayOpsPage: React.FC = () => {
       overdueCount: callLogsSummary.overdueCount,
       isLoading: callLogsSummary.isLoading,
       onNavigate: () => navigate('/call-logs'),
+      onNavigateWithFilter: (preset: CallLogFilterPreset) => navigate(buildCallLogFilterUrl(preset)),
       onOpenDrawer: () => setCallLogDrawerOpen(true),
     },
     };
