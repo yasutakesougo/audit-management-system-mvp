@@ -359,13 +359,24 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'ops' as NavGroupKey,
     });
 
+    // --- 拠点運営 (ops) --- 例外センター
+    items.push({
+      label: '例外センター',
+      to: '/admin/exception-center',
+      isActive: (pathname: string) => pathname.startsWith('/admin/exception-center'),
+      icon: undefined,
+      testId: TESTIDS.nav.exceptionCenter,
+      audience: NAV_AUDIENCE.admin,
+      group: 'ops' as NavGroupKey,
+    });
+
     // --- マスタ・管理 (admin) ---
     // 管理ツール（ハブ）1つに集約。
     // 自己点検・監査ログ・ナビ診断・モード切替・1日の流れ設定は /admin ハブページから到達可能。
     items.push({
       label: '管理ツール',
       to: '/admin',
-      isActive: (pathname: string) => pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/checklist') || pathname.startsWith('/audit') || pathname.startsWith('/settings/'),
+      isActive: (pathname: string) => (pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/checklist') || pathname.startsWith('/audit') || pathname.startsWith('/settings/')) && !pathname.startsWith('/admin/exception-center'),
       icon: undefined,
       audience: NAV_AUDIENCE.admin,
       group: 'admin' as NavGroupKey,

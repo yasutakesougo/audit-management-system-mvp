@@ -23,6 +23,7 @@ const NAV_TESTIDS = {
   roomManagement: 'nav-room-management',
   operationFlowSettings: 'nav-operation-flow-settings',
   planningSheet: 'nav-planning-sheet',
+  exceptionCenter: 'nav-exception-center',
 } as const;
 
 const FOOTER_TESTIDS = {
