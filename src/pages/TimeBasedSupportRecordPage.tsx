@@ -244,7 +244,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   return (
     <FullScreenDailyDialogPage
       title="支援手順兼記録"
-      backTo="/dashboard"
+      backTo="/today"
       testId="daily-support-page"
       headerActions={
         <React.Fragment>
