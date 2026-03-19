@@ -66,6 +66,20 @@ import { EvidencePatternSummaryCard } from '@/features/planning-sheet/components
 import { buildAbcRecordUrl, buildIcebergPdcaUrlWithHighlight } from '@/app/links/navigationLinks';
 import type { EvidenceLinkType } from '@/domain/isp/evidenceLink';
 import { formatDateTimeIntl } from '@/lib/dateFormat';
+import { ContextPanel } from '@/features/context/components/ContextPanel';
+import {
+  buildContextAlerts,
+  buildContextSummary,
+  buildRecommendedPrompts,
+  createEmptyContextData,
+  prioritizeContextAlerts,
+  type ContextHandoff,
+  type ContextPanelData,
+} from '@/features/context/domain/contextPanelLogic';
+import { useHandoffData } from '@/features/handoff/hooks/useHandoffData';
+import type { HandoffRecord } from '@/features/handoff/handoffTypes';
+import AutoStoriesIcon from '@mui/icons-material/AutoStories';
+import Fab from '@mui/material/Fab';
 
 // ── Local (split) ──
 import { type SheetTabKey, TAB_SECTIONS, TabPanel } from './support-planning-sheet/types';
@@ -89,6 +103,7 @@ export default function SupportPlanningSheetPage() {
   const [importDialogOpen, setImportDialogOpen] = React.useState(false);
   const [monitoringDialogOpen, setMonitoringDialogOpen] = React.useState(false);
   const [sessionProvenance, setSessionProvenance] = React.useState<ProvenanceEntry[]>([]);
+  const [contextOpen, setContextOpen] = React.useState(false);
 
   // ── Evidence Links state (persisted to localStorage) ──
   const [evidenceLinks, setEvidenceLinksRaw] = React.useState<EvidenceLinkMap>(createEmptyEvidenceLinkMap());
@@ -347,6 +362,67 @@ export default function SupportPlanningSheetPage() {
     }
   }, [navigate, sheet?.userId]);
 
+  // ── Sprint-1 Phase C: ContextPanel データ ──
+  const { repo: handoffRepo } = useHandoffData();
+  const [handoffRecordsForContext, setHandoffRecordsForContext] = React.useState<HandoffRecord[]>([]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const records = await handoffRepo.getRecords('today', 'all');
+        if (!cancelled) setHandoffRecordsForContext(records);
+      } catch {
+        if (!cancelled) setHandoffRecordsForContext([]);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [handoffRepo]);
+
+  const contextData: ContextPanelData = React.useMemo(() => {
+    if (!sheet?.userId) return createEmptyContextData();
+    const isHighIntensity = targetUser?.IsHighIntensitySupportTarget ?? false;
+    const isSupportProcedureTarget = targetUser?.IsSupportProcedureTarget ?? false;
+
+    // supportPlan: Phase 3 で ISP 完全接続時にゴール表示を実装
+    // 現時点では PlanningDesign に goals がないため空で初期化
+    const supportPlan = {
+      status: 'confirmed' as const,
+      planPeriod: '',
+      goals: [] as Array<{ type: 'long' | 'short' | 'support'; label: string; text: string }>,
+    };
+
+    const handoffs: ContextHandoff[] = handoffRecordsForContext
+      .filter((h) => h.userCode === sheet.userId || h.userDisplayName === (targetUser?.FullName ?? ''))
+      .map((h) => ({
+        id: String(h.id),
+        message: h.message ?? '',
+        category: h.category ?? '',
+        severity: h.severity ?? '',
+        status: h.status ?? '',
+        createdAt: h.createdAt ?? '',
+      }));
+
+    const alerts = buildContextAlerts({
+      supportPlan,
+      handoffs,
+      recentRecords: [],
+      isHighIntensity,
+      isSupportProcedureTarget,
+    });
+
+    return {
+      supportPlan,
+      handoffs,
+      recentRecords: [],
+      alerts: prioritizeContextAlerts(alerts),
+      summary: buildContextSummary([], handoffs),
+      prompts: buildRecommendedPrompts(supportPlan, isHighIntensity, isSupportProcedureTarget),
+    };
+  }, [sheet, targetUser, handoffRecordsForContext]);
+  const contextUserName = targetUser?.FullName ?? sheet?.userId ?? '';
+
   // ── Loading / Error states ──
   if (isLoading) {
     return (
@@ -384,7 +460,9 @@ export default function SupportPlanningSheetPage() {
 
   // ── Render ──
   return (
-    <Box sx={{ p: { xs: 2, md: 3 }, pb: 4 }} {...tid(TESTIDS['planning-sheet-page'])}>
+    <Box sx={{ display: 'flex', position: 'relative' }}>
+      {/* メインコンテンツ */}
+      <Box sx={{ flex: 1, p: { xs: 2, md: 3 }, pb: 4 }} {...tid(TESTIDS['planning-sheet-page'])}>
       <Stack spacing={3}>
         {/* ── ヘッダー ── */}
         <SheetHeader
@@ -582,6 +660,32 @@ export default function SupportPlanningSheetPage() {
           onImport={handleMonitoringImport}
         />
       )}
+      </Box>
+
+      {/* Sprint-1 Phase C: ContextPanel */}
+      <ContextPanel
+        open={contextOpen}
+        onClose={() => setContextOpen(false)}
+        userName={contextUserName}
+        data={contextData}
+      />
+
+      {/* ContextPanel Toggle FAB */}
+      <Fab
+        color="primary"
+        aria-label="コンテキスト参照"
+        size="medium"
+        onClick={() => setContextOpen((prev) => !prev)}
+        data-testid="context-panel-toggle"
+        sx={{
+          position: 'fixed',
+          bottom: 88,
+          right: 16,
+          zIndex: 1100,
+        }}
+      >
+        <AutoStoriesIcon />
+      </Fab>
     </Box>
   );
 }
