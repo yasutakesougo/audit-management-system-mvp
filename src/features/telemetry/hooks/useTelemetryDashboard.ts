@@ -22,6 +22,11 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { computeCtaKpis, type DashboardKpis } from '../domain/computeCtaKpis';
 import { computeCtaKpiDiff, type DashboardKpiDiffs } from '../domain/computeCtaKpiDiff';
+import { computeCtaKpisByRole, type RoleBreakdown } from '../domain/computeCtaKpisByRole';
+import { computeRoleAlerts } from '../domain/computeRoleAlerts';
+import { classifyAlertStates, type ClassifiedAlert } from '../domain/classifyAlertState';
+import { computeAlertPersistence, type AlertPersistence } from '../domain/computeAlertPersistence';
+import { buildReviewLoopSummary, type ReviewLoopSummary } from '../domain/buildReviewLoopSummary';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -34,6 +39,7 @@ export type TelemetryDoc = {
   phase?: string;
   path?: string;
   screen?: string;
+  role?: 'staff' | 'admin' | 'unknown';
   clientTs?: string;
   ts?: Date;
 };
@@ -57,6 +63,10 @@ type DashboardState = {
   stats: TelemetryStats | null;
   kpis: DashboardKpis | null;
   kpiDiffs: DashboardKpiDiffs | null;
+  roleBreakdown: RoleBreakdown;
+  classifiedAlerts: ClassifiedAlert[];
+  persistence: AlertPersistence[];
+  reviewSummary: ReviewLoopSummary | null;
   loading: boolean;
   error: string | null;
   range: DateRange;
@@ -75,6 +85,9 @@ function toDate(ts: unknown): Date | undefined {
 }
 
 function docToTelemetry(id: string, data: DocumentData): TelemetryDoc {
+  const rawRole = data.role;
+  const role: TelemetryDoc['role'] =
+    rawRole === 'staff' || rawRole === 'admin' ? rawRole : 'unknown';
   return {
     id,
     type: data.type ?? 'unknown',
@@ -82,6 +95,7 @@ function docToTelemetry(id: string, data: DocumentData): TelemetryDoc {
     phase: data.phase,
     path: data.path ?? data.screen,
     screen: data.screen,
+    role,
     clientTs: data.clientTs,
     ts: toDate(data.ts),
   };
@@ -139,6 +153,10 @@ export function useTelemetryDashboard() {
     stats: null,
     kpis: null,
     kpiDiffs: null,
+    roleBreakdown: [],
+    classifiedAlerts: [],
+    persistence: [],
+    reviewSummary: null,
     loading: true,
     error: null,
     range: 'today',
@@ -184,8 +202,10 @@ export function useTelemetryDashboard() {
         sourceComponent: d.screen,
         clientTs: d.clientTs,
         ts: d.ts,
+        role: d.role,
       });
-      const kpis = computeCtaKpis(docs.map(toKpiRecord));
+      const kpiRecords = docs.map(toKpiRecord);
+      const kpis = computeCtaKpis(kpiRecords);
 
       // ── 前期間 KPI 算出 ──
       let previousKpis: DashboardKpis | null = null;
@@ -196,6 +216,43 @@ export function useTelemetryDashboard() {
 
       // ── Diff + Alerts 算出 ──
       const kpiDiffs = computeCtaKpiDiff(kpis, previousKpis);
+
+      // ── Role Breakdown 算出 ──
+      const roleBreakdown = computeCtaKpisByRole(kpiRecords);
+
+      // ── Role Alerts → 全体 alerts にマージ ──
+      const roleAlerts = computeRoleAlerts(roleBreakdown);
+      kpiDiffs.alerts = [...kpiDiffs.alerts, ...roleAlerts];
+
+      // ── Alert State Classification ──
+      let previousAlerts: import('../domain/computeCtaKpiDiff').KpiAlert[] = [];
+      if (previousKpis) {
+        const prevRoleBreakdown = computeCtaKpisByRole(
+          previousSnapshot!.docs
+            .map((d) => docToTelemetry(d.id, d.data()))
+            .map(toKpiRecord),
+        );
+        const prevDiff = computeCtaKpiDiff(previousKpis, null);
+        const prevRoleAlerts = computeRoleAlerts(prevRoleBreakdown);
+        previousAlerts = [...prevDiff.alerts, ...prevRoleAlerts];
+      }
+      const classifiedAlerts = classifyAlertStates(kpiDiffs.alerts, previousAlerts);
+
+      // ── Alert Persistence ──
+      const currentPeriodStart = rangeStart.toISOString().slice(0, 10);
+      const previousPeriodStart = prev.start.toISOString().slice(0, 10);
+      const persistence = computeAlertPersistence({
+        currentAlerts: kpiDiffs.alerts,
+        previousAlerts,
+        currentPeriodStart,
+        previousPeriodStart,
+      });
+
+      // ── Review Loop Summary ──
+      const reviewSummary = buildReviewLoopSummary({
+        alerts: kpiDiffs.alerts,
+        persistence,
+      });
 
       // ── 集計 ──
       const byType: Record<string, number> = {};
@@ -235,6 +292,10 @@ export function useTelemetryDashboard() {
         },
         kpis,
         kpiDiffs,
+        roleBreakdown,
+        classifiedAlerts,
+        persistence,
+        reviewSummary,
         loading: false,
         error: null,
         range,
@@ -242,7 +303,7 @@ export function useTelemetryDashboard() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[telemetry-dashboard] fetch failed:', err);
-      setState((prev) => ({ ...prev, stats: null, kpis: null, kpiDiffs: null, loading: false, error: msg }));
+      setState((prev) => ({ ...prev, stats: null, kpis: null, kpiDiffs: null, roleBreakdown: [], persistence: [], reviewSummary: null, loading: false, error: msg }));
     }
   }, []);
 

@@ -13,483 +13,350 @@
  * ⑨ 最新イベント一覧（直近10件テーブル）
  */
 import { useState } from 'react';
+import { PHASE_LABELS, TYPE_LABELS, TYPE_SHORT, TYPE_COLORS, RANGE_LABELS } from './constants/labels';
+import { SectionCard } from './ui/SectionCard';
+import { SectionTitle } from './ui/SectionTitle';
+import { EmptyState } from './ui/EmptyState';
+import { KpiCard } from './ui/KpiCard';
+import { RangeTabs } from './ui/RangeTabs';
+import { StatCard } from './ui/StatCard';
+import { EventTypeChip } from './ui/EventTypeChip';
+import { FlowDistributionChart } from './charts/FlowDistributionChart';
+import { HeroQueueChart } from './charts/HeroQueueChart';
+import { FunnelChart } from './charts/FunnelChart';
+import { HourlyChart } from './charts/HourlyChart';
 import { useTelemetryDashboard } from '../hooks/useTelemetryDashboard';
-import type { DateRange, EventRankItem, TelemetryDoc } from '../hooks/useTelemetryDashboard';
-import type { FlowDistribution, FunnelStep, HourlyBucket, ScreenKpi } from '../domain/computeCtaKpis';
-import type { KpiAlert, KpiDiff, Trend } from '../domain/computeCtaKpiDiff';
+import type { EventRankItem, TelemetryDoc } from '../hooks/useTelemetryDashboard';
+import { RoleBreakdownSection } from './RoleBreakdownSection';
+import { getPlaybookEntry } from '../domain/alertPlaybook';
+import { generateIssueDraft } from '../domain/generateIssueDraft';
+import { ALERT_STATE_LABELS, ALERT_STATE_COLORS, type AlertState, type ClassifiedAlert } from '../domain/classifyAlertState';
+import { type AlertPersistence, formatPersistenceDuration, formatWorseningStreak } from '../domain/computeAlertPersistence';
+import { type ReviewLoopSummary } from '../domain/buildReviewLoopSummary';
+// ── Alert Chip ──────────────────────────────────────────────────────────────
 
-// ── Label Maps ──────────────────────────────────────────────────────────────
+function AlertChip({ classified, persistenceVal }: { classified: ClassifiedAlert; persistenceVal?: AlertPersistence }) {
+  const { alert, state, delta } = classified;
+  const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const isCritical = alert.severity === 'critical';
+  const playbook = getPlaybookEntry(alert.id);
 
-const PHASE_LABELS: Record<string, string> = {
-  'am-operation': '午前活動',
-  'pm-operation': '午後活動',
-  'night-operation': '夜間対応',
-  'reception': '受入・送迎',
-  'lunch': '昼食',
-  'break': '休憩',
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  todayops_landing: '📍 ランディング',
-  todayops_cta_click: '👆 CTAクリック',
-  todayops_first_navigation: '🧭 初回ナビ',
-  operational_phase_event: '⚡ フェーズイベント',
-};
-
-const TYPE_SHORT: Record<string, string> = {
-  todayops_landing: 'landing',
-  todayops_cta_click: 'cta',
-  todayops_first_navigation: 'nav',
-  operational_phase_event: 'phase',
-};
-
-const TYPE_COLORS: Record<string, string> = {
-  todayops_landing: '#3b82f6',
-  todayops_cta_click: '#f59e0b',
-  todayops_first_navigation: '#10b981',
-  operational_phase_event: '#8b5cf6',
-};
-
-const RANGE_LABELS: Record<DateRange, string> = {
-  today: '今日',
-  '7d': '7日間',
-  '30d': '30日間',
-};
-
-// ── Shared Sub-components ───────────────────────────────────────────────────
-
-function RangeTabs({
-  current,
-  onChange,
-  disabled,
-}: {
-  current: DateRange;
-  onChange: (r: DateRange) => void;
-  disabled?: boolean;
-}) {
-  const ranges: DateRange[] = ['today', '7d', '30d'];
-  return (
-    <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', borderRadius: 10, padding: 3 }}>
-      {ranges.map((r) => {
-        const active = r === current;
-        return (
-          <button
-            key={r}
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange(r)}
-            style={{
-              padding: '6px 16px',
-              borderRadius: 8,
-              border: 'none',
-              background: active ? '#fff' : 'transparent',
-              color: active ? '#1e293b' : '#94a3b8',
-              fontWeight: active ? 600 : 400,
-              fontSize: 13,
-              cursor: disabled ? 'wait' : 'pointer',
-              boxShadow: active ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            {RANGE_LABELS[r]}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function SectionCard({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <section
-      style={{
-        marginBottom: 20,
-        background: '#fff',
-        borderRadius: 12,
-        padding: 20,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-        ...style,
-      }}
-    >
-      {children}
-    </section>
-  );
-}
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 style={{
-      fontSize: 13,
-      fontWeight: 600,
-      color: '#64748b',
-      marginBottom: 14,
-      textTransform: 'uppercase',
-      letterSpacing: 1,
-      margin: '0 0 14px 0',
-    }}>
-      {children}
-    </h2>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div style={{ textAlign: 'center', padding: 20, color: '#94a3b8', fontSize: 13 }}>
-      {message}
-    </div>
-  );
-}
-
-// ── KPI Card ────────────────────────────────────────────────────────────────
-
-function KpiCard({
-  label,
-  value,
-  unit,
-  color,
-  subLabel,
-  diff,
-}: {
-  label: string;
-  value: number | string;
-  unit?: string;
-  color: string;
-  subLabel?: string;
-  diff?: KpiDiff;
-}) {
-  const trendColor: Record<Trend, string> = {
-    up: '#10b981',
-    down: '#ef4444',
-    flat: '#94a3b8',
+  const handleCopyDraft = () => {
+    if (!playbook) return;
+    // v6: 永続化（persistence）情報を Issue 生成に反映
+    const draft = generateIssueDraft(alert, playbook, persistenceVal);
+    const text = `# ${draft.title}\n\nLabels: ${draft.labels.join(', ')}\n\n${draft.body}`;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   };
 
   return (
     <div
       style={{
-        background: `linear-gradient(135deg, ${color}08, ${color}15)`,
-        border: `1.5px solid ${color}30`,
-        borderRadius: 14,
-        padding: '16px 20px',
-        minWidth: 150,
-        flex: 1,
-      }}
-    >
-      <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-        {label}
-      </div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-        <span style={{ fontSize: 32, fontWeight: 800, color, lineHeight: 1 }}>
-          {value}
-        </span>
-        {unit && (
-          <span style={{ fontSize: 14, fontWeight: 600, color: `${color}90` }}>
-            {unit}
-          </span>
-        )}
-      </div>
-      {diff && (
-        <div style={{
-          fontSize: 12,
-          fontWeight: 600,
-          color: trendColor[diff.trend],
-          marginTop: 4,
-        }}>
-          {diff.diffFormatted}
-          <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 400, marginLeft: 4 }}>
-            vs 前期間
-          </span>
-        </div>
-      )}
-      {subLabel && (
-        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: diff ? 2 : 4 }}>
-          {subLabel}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Alert Chip ──────────────────────────────────────────────────────────────
-
-function AlertChip({ alert }: { alert: KpiAlert }) {
-  const isCritical = alert.severity === 'critical';
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: 10,
-        padding: '12px 16px',
         borderRadius: 10,
         background: isCritical ? '#fef2f2' : '#fffbeb',
         border: `1px solid ${isCritical ? '#fecaca' : '#fed7aa'}`,
+        overflow: 'hidden',
       }}
     >
-      <span style={{ fontSize: 16, lineHeight: 1.2, flexShrink: 0 }}>
-        {isCritical ? '🔴' : '🟡'}
-      </span>
-      <div style={{ flex: 1 }}>
-        <div style={{
-          fontSize: 13,
-          fontWeight: 600,
-          color: isCritical ? '#dc2626' : '#d97706',
-          marginBottom: 2,
-        }}>
-          {alert.label}
+      {/* Main alert row */}
+      <div
+        onClick={() => playbook && setExpanded(!expanded)}
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 10,
+          padding: '12px 16px',
+          cursor: playbook ? 'pointer' : 'default',
+        }}
+      >
+        <span style={{ fontSize: 16, lineHeight: 1.2, flexShrink: 0 }}>
+          {isCritical ? '🔴' : '🟡'}
+        </span>
+        <div style={{ flex: 1 }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 13,
+            fontWeight: 600,
+            color: isCritical ? '#dc2626' : '#d97706',
+            marginBottom: 2,
+          }}>
+            {alert.label}
+            {/* State badge */}
+            <span style={{
+              fontSize: 10,
+              fontWeight: 500,
+              padding: '1px 6px',
+              borderRadius: 4,
+              background: `${ALERT_STATE_COLORS[state]}18`,
+              color: ALERT_STATE_COLORS[state],
+              whiteSpace: 'nowrap',
+            }}>
+              {ALERT_STATE_LABELS[state]}
+              {delta !== null && delta !== 0 && (
+                <span style={{ marginLeft: 3 }}>
+                  ({delta > 0 ? '+' : ''}{delta}%)
+                </span>
+              )}
+            </span>
+          </div>
+          <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.4, marginBottom: persistenceVal ? 4 : 0 }}>
+            {alert.message}
+          </div>
+          {persistenceVal && (
+            <div style={{ display: 'flex', gap: 6, fontSize: 11, color: '#475569' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                ⏱ {formatPersistenceDuration(persistenceVal.consecutivePeriods)}
+              </span>
+              {persistenceVal.worseningStreak > 0 && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 2, color: '#dc2626' }}>
+                  📉 {formatWorseningStreak(persistenceVal.worseningStreak)}
+                </span>
+              )}
+            </div>
+          )}
         </div>
-        <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.4 }}>
-          {alert.message}
-        </div>
+        {playbook && (
+          <span style={{
+            fontSize: 11,
+            color: '#94a3b8',
+            flexShrink: 0,
+            marginTop: 2,
+            transition: 'transform 0.2s ease',
+            transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+          }}>
+            ▼
+          </span>
+        )}
       </div>
+
+      {/* Playbook expansion */}
+      {expanded && playbook && (
+        <div style={{
+          padding: '0 16px 14px 42px',
+          borderTop: `1px solid ${isCritical ? '#fecaca40' : '#fed7aa40'}`,
+        }}>
+          {/* 想定原因 */}
+          <div style={{ marginTop: 10, marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+              🔍 想定原因
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
+              {playbook.causes.map((c, i) => <li key={i}>{c}</li>)}
+            </ul>
+          </div>
+
+          {/* 確認ポイント */}
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+              ✅ 推奨確認ポイント
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
+              {playbook.checkpoints.map((c, i) => <li key={i}>{c}</li>)}
+            </ul>
+          </div>
+
+          {/* 関連画面 */}
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+              📍 関連画面
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {playbook.relatedScreens.map((s) => (
+                <span
+                  key={s.path}
+                  style={{
+                    fontSize: 11,
+                    padding: '2px 8px',
+                    borderRadius: 6,
+                    background: '#f1f5f9',
+                    color: '#3b82f6',
+                    fontWeight: 500,
+                  }}
+                >
+                  {s.label}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Issue Draft — コピーボタン付き */}
+          <div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 11,
+              fontWeight: 700,
+              color: '#475569',
+              marginBottom: 4,
+            }}>
+              📝 Issue 下書き
+              <button
+                onClick={(e) => { e.stopPropagation(); handleCopyDraft(); }}
+                style={{
+                  fontSize: 10,
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  border: '1px solid #cbd5e1',
+                  background: copied ? '#dcfce7' : '#ffffff',
+                  color: copied ? '#16a34a' : '#64748b',
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                  transition: 'all 0.2s',
+                }}
+              >
+                {copied ? '✓ コピー済み' : '📋 コピー'}
+              </button>
+            </div>
+            <div style={{
+              fontSize: 12,
+              color: '#334155',
+              background: '#f8fafc',
+              padding: '8px 12px',
+              borderRadius: 6,
+              border: '1px solid #e2e8f0',
+              lineHeight: 1.5,
+            }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                {playbook.issueTemplate.title}
+              </div>
+              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>
+                指標: {alert.value}% (閾値: {alert.threshold}%) | {ALERT_STATE_LABELS[state]}
+              </div>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {playbook.issueTemplate.labels.map((l) => (
+                  <span
+                    key={l}
+                    style={{
+                      fontSize: 10,
+                      padding: '1px 6px',
+                      borderRadius: 4,
+                      background: '#e2e8f0',
+                      color: '#475569',
+                    }}
+                  >
+                    #{l}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function AlertSection({ alerts }: { alerts: KpiAlert[] }) {
-  if (alerts.length === 0) return null;
+function AlertSection({ classifiedAlerts, persistence }: { classifiedAlerts: ClassifiedAlert[], persistence: AlertPersistence[] }) {
+  if (classifiedAlerts.length === 0) return null;
+
+  // 新規・悪化を上に、改善・継続を下に
+  const stateOrder: Record<AlertState, number> = { worsening: 0, new: 1, continuing: 2, improving: 3 };
+  const sorted = [...classifiedAlerts].sort((a, b) => stateOrder[a.state] - stateOrder[b.state]);
+
   return (
     <section style={{ marginBottom: 20 }}>
-      <SectionTitle>⚠️ アラート ({alerts.length})</SectionTitle>
+      <SectionTitle>⚠️ アラート ({classifiedAlerts.length})</SectionTitle>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {alerts.map((a) => (
-          <AlertChip key={a.id} alert={a} />
-        ))}
+        {sorted.map((ca) => {
+          const pVal = persistence.find((p) => p.alertKey === ca.alert.id);
+          return <AlertChip key={ca.alert.id} classified={ca} persistenceVal={pVal} />;
+        })}
       </div>
     </section>
   );
 }
 
-// ── Flow Distribution Chart ─────────────────────────────────────────────────
+// ── 新規 UI: Review Summary ────────────────────────────────────────────────
+function ReviewSummarySection({ summary }: { summary: ReviewLoopSummary | null }) {
+  if (!summary) return null;
 
-function FlowDistributionChart({ data }: { data: FlowDistribution[] }) {
-  if (data.length === 0) return <EmptyState message="導線データがありません" />;
+  // Derive overallStatus based on summary counts
+  const overallStatus: 'critical' | 'warning' | 'stable' | 'improving' =
+    summary.criticalAlerts > 0 || summary.worseningAlerts > 0 ? 'critical' :
+    summary.warningAlerts > 0 || summary.ongoingAlerts > 0 ? 'warning' :
+    summary.totalCurrentAlerts === 0 ? 'stable' : 'improving';
 
-  const colors = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6'];
-
-  return (
-    <div>
-      {/* Bar chart */}
-      <div style={{ display: 'flex', gap: 2, height: 32, borderRadius: 8, overflow: 'hidden', marginBottom: 12 }}>
-        {data.map((d, i) => (
-          <div
-            key={d.destination}
-            style={{
-              width: `${d.rate}%`,
-              background: colors[i % colors.length],
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minWidth: d.rate > 0 ? 24 : 0,
-              transition: 'width 0.5s ease',
-            }}
-          >
-            {d.rate >= 15 && (
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>
-                {d.rate}%
-              </span>
-            )}
-          </div>
-        ))}
-      </div>
-      {/* Legend */}
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-        {data.map((d, i) => (
-          <div key={d.destination} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-            <div style={{ width: 10, height: 10, borderRadius: 3, background: colors[i % colors.length], flexShrink: 0 }} />
-            <span style={{ color: '#334155', fontWeight: 500 }}>{d.label}</span>
-            <span style={{ color: '#94a3b8' }}>{d.count}件</span>
-            <span style={{ color: '#94a3b8' }}>({d.rate}%)</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── Hero vs Queue Ratio Chart ───────────────────────────────────────────────
-
-function HeroQueueChart({ screenKpis, totalHeroRate }: { screenKpis: ScreenKpi[]; totalHeroRate: number }) {
-  if (screenKpis.length === 0) return <EmptyState message="CTA データがありません" />;
+  const getStatusColor = (s: typeof overallStatus) => {
+    if (s === 'critical') return '#dc2626';
+    if (s === 'warning') return '#d97706';
+    if (s === 'stable') return '#10b981';
+    return '#64748b';
+  };
+  const getStatusText = (s: typeof overallStatus) => {
+    if (s === 'critical') return '要緊急対応 🚨';
+    if (s === 'warning') return '注意 🟡';
+    if (s === 'stable') return '安定 🟢';
+    return '改善中 🚀';
+  };
 
   return (
-    <div>
-      {/* Total ratio bar */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-          <span style={{ color: '#3b82f6', fontWeight: 600 }}>🎯 Hero {totalHeroRate}%</span>
-          <span style={{ color: '#f59e0b', fontWeight: 600 }}>📋 Queue {100 - totalHeroRate}%</span>
+    <div style={{
+      marginBottom: 20,
+      background: '#fff',
+      borderRadius: 12,
+      padding: 16,
+      border: `2px solid ${getStatusColor(overallStatus)}30`,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: '#1e293b' }}>
+          📈 改善サイクル サマリ
+        </h2>
+        <span style={{
+          fontSize: 12,
+          fontWeight: 700,
+          color: getStatusColor(overallStatus),
+          background: `${getStatusColor(overallStatus)}15`,
+          padding: '4px 10px',
+          borderRadius: 16,
+        }}>
+          {getStatusText(overallStatus)}
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+        <div style={{ flex: 1, background: '#f8fafc', padding: 10, borderRadius: 8, textAlign: 'center' }}>
+          <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>新規 / 悪化</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: (summary.newAlerts + summary.worseningAlerts) > 0 ? '#dc2626' : '#1e293b' }}>
+            {summary.newAlerts + summary.worseningAlerts}
+          </div>
         </div>
-        <div style={{ display: 'flex', height: 24, borderRadius: 8, overflow: 'hidden' }}>
-          <div
-            style={{
-              width: `${totalHeroRate}%`,
-              background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
-              transition: 'width 0.5s ease',
-              minWidth: totalHeroRate > 0 ? 4 : 0,
-            }}
-          />
-          <div
-            style={{
-              width: `${100 - totalHeroRate}%`,
-              background: 'linear-gradient(90deg, #f59e0b, #fbbf24)',
-              transition: 'width 0.5s ease',
-              minWidth: 100 - totalHeroRate > 0 ? 4 : 0,
-            }}
-          />
+        <div style={{ flex: 1, background: '#f8fafc', padding: 10, borderRadius: 8, textAlign: 'center' }}>
+          <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>改善</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: summary.improvingAlerts > 0 ? '#10b981' : '#1e293b' }}>
+            {summary.improvingAlerts}
+          </div>
+        </div>
+        <div style={{ flex: 1, background: '#f8fafc', padding: 10, borderRadius: 8, textAlign: 'center' }}>
+          <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>継続</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: '#d97706' }}>
+            {summary.ongoingAlerts}
+          </div>
         </div>
       </div>
 
-      {/* Per-screen breakdown */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
-        {screenKpis.map((s) => (
-          <div
-            key={s.screen}
-            style={{
-              background: '#f8fafc',
-              borderRadius: 10,
-              padding: '10px 14px',
-              border: '1px solid #e2e8f0',
-            }}
-          >
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
-              {s.label}
-            </div>
-            <div style={{ display: 'flex', gap: 4, height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: 6 }}>
-              <div style={{ width: `${s.heroRate}%`, background: '#3b82f6', borderRadius: 3 }} />
-              <div style={{ width: `${100 - s.heroRate}%`, background: '#f59e0b', borderRadius: 3 }} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#64748b' }}>
-              <span>H: {s.heroClicks}</span>
-              <span>Q: {s.queueClicks}</span>
-            </div>
-          </div>
-        ))}
-      </div>
+      {summary.topConcerns.length > 0 && (
+        <div style={{ fontSize: 12, background: '#fef2f2', padding: 10, borderRadius: 8, border: '1px solid #fee2e2' }}>
+          <div style={{ fontWeight: 600, color: '#991b1b', marginBottom: 6 }}>優先対応項目:</div>
+          <ul style={{ margin: 0, paddingLeft: 16, color: '#b91c1c', lineHeight: 1.5 }}>
+            {summary.topConcerns.map((item, i) => (
+              <li key={i}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Funnel Chart ────────────────────────────────────────────────────────────
 
-function FunnelChart({ steps }: { steps: FunnelStep[] }) {
-  if (steps.length === 0) return <EmptyState message="ファネルデータがありません" />;
-
-  const maxCount = Math.max(...steps.map((s) => s.count), 1);
-  const colors = ['#3b82f6', '#10b981', '#f59e0b'];
-
-  return (
-    <div>
-      {steps.map((step, i) => {
-        const width = maxCount > 0 ? Math.max((step.count / maxCount) * 100, 8) : 8;
-        return (
-          <div key={step.label} style={{ marginBottom: i < steps.length - 1 ? 8 : 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
-              <span style={{ color: '#334155', fontWeight: 500 }}>
-                {i > 0 && <span style={{ color: '#94a3b8', marginRight: 4 }}>→</span>}
-                {step.label}
-              </span>
-              <span style={{ color: '#64748b' }}>
-                {step.count}件
-                {i > 0 && (
-                  <span style={{ color: step.rate >= 50 ? '#10b981' : '#ef4444', fontWeight: 600, marginLeft: 6 }}>
-                    {step.rate}%
-                  </span>
-                )}
-              </span>
-            </div>
-            <div style={{ background: '#f1f5f9', borderRadius: 6, height: 20, overflow: 'hidden' }}>
-              <div
-                style={{
-                  width: `${width}%`,
-                  height: '100%',
-                  background: `linear-gradient(90deg, ${colors[i % colors.length]}, ${colors[i % colors.length]}80)`,
-                  borderRadius: 6,
-                  transition: 'width 0.5s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {width >= 20 && (
-                  <span style={{ fontSize: 10, fontWeight: 600, color: '#fff' }}>{step.count}</span>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Hourly Distribution Chart ───────────────────────────────────────────────
-
-function HourlyChart({ buckets }: { buckets: HourlyBucket[] }) {
-  const maxCount = Math.max(...buckets.map((b) => b.count), 1);
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 80 }}>
-      {buckets.map((b) => {
-        const height = maxCount > 0 ? Math.max((b.count / maxCount) * 100, 2) : 2;
-        const active = b.count > 0;
-        return (
-          <div
-            key={b.hour}
-            style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 2,
-            }}
-            title={`${b.hour}時: ${b.count}件`}
-          >
-            <div
-              style={{
-                width: '100%',
-                height: `${height}%`,
-                background: active
-                  ? 'linear-gradient(180deg, #3b82f6, #60a5fa)'
-                  : '#e2e8f0',
-                borderRadius: '3px 3px 0 0',
-                transition: 'height 0.5s ease',
-                minHeight: 2,
-              }}
-            />
-            <span style={{ fontSize: 9, color: '#94a3b8', lineHeight: 1 }}>
-              {b.hour}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Legacy Sub-components (preserved) ───────────────────────────────────────
-
-function StatCard({ label, count, color }: { label: string; count: number; color: string }) {
-  return (
-    <div
-      style={{
-        background: '#fff',
-        border: `2px solid ${color}20`,
-        borderRadius: 12,
-        padding: '16px 20px',
-        minWidth: 130,
-        textAlign: 'center',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-      }}
-    >
-      <div style={{ fontSize: 32, fontWeight: 700, color, lineHeight: 1.2 }}>
-        {count}
-      </div>
-      <div style={{ fontSize: 12, color: '#64748b', marginTop: 4, fontWeight: 500 }}>
-        {label}
-      </div>
-    </div>
-  );
-}
 
 function PhaseBar({ label, count, maxCount }: { label: string; count: number; maxCount: number }) {
   const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
@@ -602,30 +469,11 @@ function formatDate(doc: TelemetryDoc): string {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-function EventTypeChip({ type }: { type: string }) {
-  const bg = TYPE_COLORS[type] ?? '#94a3b8';
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        padding: '2px 8px',
-        borderRadius: 12,
-        fontSize: 11,
-        fontWeight: 600,
-        color: '#fff',
-        background: bg,
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {TYPE_LABELS[type] ?? type}
-    </span>
-  );
-}
 
 // ── Main Component ──────────────────────────────────────────────────────────
 
 export default function TelemetryDashboard() {
-  const { stats, kpis, kpiDiffs, loading, error, range, setRange, refresh } = useTelemetryDashboard();
+  const { stats, kpis, kpiDiffs, roleBreakdown, classifiedAlerts, persistence, reviewSummary, loading, error, range, setRange, refresh } = useTelemetryDashboard();
   const [showAllRanking, setShowAllRanking] = useState(false);
   const [activeTab, setActiveTab] = useState<'kpi' | 'raw'>('kpi');
 
@@ -801,8 +649,14 @@ export default function TelemetryDashboard() {
             </div>
           </section>
 
-          {/* ── ① b アラート ── */}
-          {kpiDiffs && <AlertSection alerts={kpiDiffs.alerts} />}
+          {/* ── ① b1 Review Summary (v6) ── */}
+          <ReviewSummarySection summary={reviewSummary} />
+
+          {/* ── ① b2 アラート一覧 ── */}
+          {classifiedAlerts.length > 0 && <AlertSection classifiedAlerts={classifiedAlerts} persistence={persistence} />}
+
+          {/* ── ① c Role Breakdown ── */}
+          <RoleBreakdownSection data={roleBreakdown} />
 
           {/* ── ② 導線分布 ── */}
           <SectionCard>

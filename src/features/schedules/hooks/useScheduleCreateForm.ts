@@ -370,6 +370,17 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
     const nextCategory = event.target.value as ScheduleCategory;
     setForm((prev) => {
       if (prev.category === nextCategory) return prev;
+
+      // Build current auto-title to detect if title was auto-generated
+      const prevUserName = users.find((u) => u.id === prev.userId)?.name ?? '';
+      const prevAutoTitle = buildAutoTitle({
+        userName: prevUserName,
+        serviceType: prev.serviceType,
+        assignedStaffId: prev.assignedStaffId,
+        vehicleId: prev.vehicleId,
+      });
+      const shouldResetTitle = !prev.title.trim() || prev.title === prevAutoTitle;
+
       const next: ScheduleFormState = {
         ...prev,
         category: nextCategory,
@@ -380,6 +391,19 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
       if (nextCategory !== 'Staff') {
         next.assignedStaffId = '';
       }
+
+      // Rebuild auto-title with cleared fields
+      if (shouldResetTitle) {
+        const nextUserName = nextCategory === 'User' ? prevUserName : '';
+        const nextStaffId = nextCategory === 'Staff' ? next.assignedStaffId : '';
+        next.title = buildAutoTitle({
+          userName: nextUserName || undefined,
+          serviceType: next.serviceType,
+          assignedStaffId: nextStaffId,
+          vehicleId: next.vehicleId,
+        });
+      }
+
       return next;
     });
   };

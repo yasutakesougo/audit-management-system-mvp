@@ -14,6 +14,7 @@ import type { PersonDaily } from '@/domain/daily/types';
 
 // ─── Types ──────────────────────────────────────────────────────
 
+// contract:allow-interface
 export type QueueClassification = {
   /** 未完了レコード（作成中 → 未作成 の順） */
   incomplete: readonly PersonDaily[];
