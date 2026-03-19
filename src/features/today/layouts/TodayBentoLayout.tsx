@@ -1,30 +1,28 @@
 /**
- * TodayBentoLayout — Bento Grid 版「今日の業務」画面レイアウト
+ * TodayBentoLayout — 3-Zone "Action-First" Bento Grid
  *
- * NextAction-First Layout (UX昇格):
- *
- * Grid 配置 (md 4-column):
+ * 3-Zone Architecture:
  * ┌──────────────────────────────────────┐
- * │  NextAction (full 4col, accent)       │  ← PRIMARY: 今すぐやること
+ * │  ZONE A: Hero (NextAction, 4col)     │  ← 0-5秒: 今やること1つ
  * ├──────────────────┬───────────────────┤
- * │  Progress (3col)  │ Attendance (1col) │  ← STATUS: 進捗要約
+ * │  ZONE B: Progress (3col) + Att(1col) │  ← 5-10秒: あとどれくらいか
  * ├──────────────────┴───────────────────┤
- * │  Briefing (full 4col) ← 対応が必要    │
+ * │  ZONE C1: Users + Handoff + CallLog  │  ← 常時表示: 実行対象
  * ├──────────────────────────────────────┤
- * │  ServiceStructure (full 4col)         │
- * ├──────────────────────────────────────┤
- * │  Users (full 4col) ← 記録操作導線     │
- * ├──────────────────────────────────────┤
- * │  Transport (full 4col)                │
+ * │  ZONE C2: Structure/Plan/Transport   │  ← 折りたたみ: 必要時開く
  * └──────────────────────────────────────┘
  *
- * Mobile (1-column): NextAction → Progress → Attendance → ...
+ * Mobile (1-column): A → B(縦積み) → C1 → C2
  *
  * Design Principle:
+ *   "探させない、考えさせない、戻らせない"
  *   NextAction = 認知の入口（「今何をすべきか？」に即答）
- *   Progress/Attendance = 補足証拠（NextAction を裏付ける情報）
  *
- * Layout state は view-only。データ集約・副作用は追加しない。
+ * ⚠️ Step 3: ProgressRings + HeroActionCard visual enhancement.
+ *   - useTodaySummary / useTodayLayoutProps は変更しない.
+ *   - ZONE A は HeroActionCard (sceneAction 優先, NextActionCard fallback).
+ *   - ZONE B は ProgressRings (3指標圧縮表示) に統合.
+ *   - ActionQueue/BriefingActionList remain hidden (not deleted).
  *
  * @see docs/adr/ADR-002-today-execution-layer-guardrails.md
  * @see docs/ui-principles.md
@@ -34,9 +32,13 @@ import type { BriefingAlert } from '@/features/dashboard/sections/types';
 import type { ServiceStructure } from '@/features/today/domain/serviceStructure.types';
 import type { TodayScene } from '@/features/today/domain/todayScene';
 import {
+    Accordion,
+    AccordionDetails,
+    AccordionSummary,
     Box,
     Typography,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import React from 'react';
 import type { NextActionWithProgress } from '../hooks/useNextAction';
 import type { SceneNextActionViewModel } from '../hooks/useSceneNextAction';
@@ -45,8 +47,8 @@ import type { AttendanceSummaryCardProps } from '../widgets/AttendanceSummaryCar
 import { AttendanceSummaryCard } from '../widgets/AttendanceSummaryCard';
 import { BriefingActionList } from '../widgets/BriefingActionList';
 import { ProgressStatusBar, type TodayProgressSummary, type ProgressChipKey } from '../widgets/ProgressStatusBar';
-import type { NextActionCardProps } from '../widgets/NextActionCard';
-import { NextActionCard } from '../widgets/NextActionCard';
+import { HeroActionCard, type HeroActionCardProps } from '../components/HeroActionCard';
+import { ProgressRings, type ProgressRingItem } from '../components/ProgressRings';
 import { PlanningWorkflowCard, type PlanningWorkflowCardProps } from '../widgets/PlanningWorkflowCard';
 import { TodayTasksCard, type TodayTasksCardProps } from '../widgets/TodayTasksCard';
 import { TodayServiceStructureCard } from '../widgets/TodayServiceStructureCard';
@@ -70,13 +72,15 @@ type TransportUser = { userId: string; name: string };
 export type TodayBentoProps = {
   progress: ProgressSummaryProps;
   attendance: AttendanceSummaryCardProps;
+  /** Step 3: ProgressRings 用の3指標。undefined 時は旧 ProgressStatusBar にフォールバック */
+  progressRings?: ProgressRingItem[];
   briefingAlerts: BriefingAlert[];
   serviceStructure?: ServiceStructure;
   nextAction: NextActionWithProgress;
   sceneAction?: SceneNextActionViewModel;
   onSceneAction?: (target: string, userId?: string) => void;
-  nextActionEmptyAction?: NextActionCardProps['onEmptyAction'];
-  nextActionMenuAction?: NextActionCardProps['onMenuAction'];
+  nextActionEmptyAction?: HeroActionCardProps['onEmptyAction'];
+  nextActionMenuAction?: HeroActionCardProps['onMenuAction'];
   scheduleDetailHref?: string;
   /** ナビゲーション CTA クリック → ページ遷移 */
   onNextActionNavigate?: (href: string) => void;
@@ -121,11 +125,17 @@ function SectionLabel({ emoji, text }: { emoji: string; text: string }) {
   );
 }
 
+// ─── Step 1: Feature flag for 3-zone mode ────────────────────
+// When false, falls back to original layout order.
+// Step 2/3 will remove this flag once integration is complete.
+const ENABLE_3ZONE = true;
+
 // ─── Layout ──────────────────────────────────────────────────
 
 export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   progress,
   attendance,
+  progressRings,
   briefingAlerts,
   serviceStructure,
   nextAction,
@@ -153,24 +163,33 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
         pb: 8,
       }}
     >
-      {/* ── Phase Indicator (OperationalPhase 接続) ── */}
-      <Box sx={{ px: { xs: 2, sm: 3 }, pt: 2, pb: 0 }}>
-        <TodayPhaseIndicator onNavigate={onPhaseNavigate} />
-      </Box>
+      {/* ── Phase Indicator: 非表示化 (Step 1) ──
+       *  TodayPhaseIndicator は削除せず非表示にする。
+       *  Step 2 で場面ラベルを HeroActionCard 内に統合するため残す。
+       */}
+      {!ENABLE_3ZONE && (
+        <Box sx={{ px: { xs: 2, sm: 3 }, pt: 2, pb: 0 }}>
+          <TodayPhaseIndicator onNavigate={onPhaseNavigate} />
+        </Box>
+      )}
 
       {/* ── Bento Grid ── */}
       <BentoContainer sx={{ mt: 2 }}>
-        {/* ── Row 0: NextAction (full-width) — PRIMARY ENTRY POINT ── */}
+
+        {/* ════════════════════════════════════════════════════
+         *  ZONE A: ヒーローゾーン — 「今やること」が1つ見える
+         *  Step 2: HeroActionCard (sceneAction 優先 → NextActionCard fallback)
+         *  ════════════════════════════════════════════════════ */}
         <BentoCard
           colSpan={{ xs: 1, sm: 2, md: 4 }}
           variant="accent"
           testId="bento-next-action"
           sx={{ py: { xs: 2.5, sm: 3 } }}
         >
-          <NextActionCard
-            nextAction={nextAction}
+          <HeroActionCard
             sceneAction={sceneAction}
             onSceneAction={onSceneAction}
+            nextAction={nextAction}
             onEmptyAction={nextActionEmptyAction}
             onMenuAction={nextActionMenuAction}
             scheduleDetailHref={scheduleDetailHref}
@@ -178,8 +197,10 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           />
         </BentoCard>
 
-        {/* ── Row 0.3: ActionQueue (未処理キュー — MVP-002) ── */}
-        {actionQueue && (
+        {/* ── ActionQueue 系: 非表示化 (Step 1) ──
+         *  Step 2 で HeroActionCard に統合予定。コンポーネントは残す。
+         */}
+        {!ENABLE_3ZONE && actionQueue && (
           <BentoCard
             colSpan={{ xs: 1, sm: 2, md: 4 }}
             variant="default"
@@ -189,8 +210,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           </BentoCard>
         )}
 
-        {/* ── Row 0.4: ActionQueueTimeline (Engine-driven Action Queue) ── */}
-        {actionQueueTimeline && (
+        {!ENABLE_3ZONE && actionQueueTimeline && (
           <BentoCard
             colSpan={{ xs: 1, sm: 2, md: 4 }}
             variant="default"
@@ -201,8 +221,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           </BentoCard>
         )}
 
-        {/* ── Row 0.5: TodayTasks (engine-driven focus + summary) ── */}
-        {todayTasks && (
+        {!ENABLE_3ZONE && todayTasks && (
           <BentoCard
             colSpan={{ xs: 1, sm: 2, md: 4 }}
             variant="default"
@@ -212,78 +231,48 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           </BentoCard>
         )}
 
-        {/* ── Row 1: Progress (3col) + Attendance (1col) — 進捗要約 ── */}
-        <BentoCard
-          colSpan={{ xs: 1, sm: 2, md: 3 }}
-          variant="default"
-          noHover
-          testId="bento-progress"
-          sx={{ p: 0, overflow: 'hidden' }}
-        >
-          <ProgressStatusBar summary={progress.summary} onChipClick={progress.onChipClick} scene={progress.scene} />
-        </BentoCard>
-
-        <BentoCard
-          colSpan={{ xs: 1, sm: 1, md: 1 }}
-          testId="bento-attendance"
-        >
-          <SectionLabel emoji="📊" text="出席状況" />
-          <AttendanceSummaryCard {...attendance} />
-        </BentoCard>
-
-        {/* ── Row 2: Briefing (full-width) — 対応が必要な申し送り ── */}
-        <BentoCard
-          colSpan={{ xs: 1, sm: 2, md: 4 }}
-          variant="subtle"
-          testId="bento-briefing"
-        >
-          <BriefingActionList alerts={briefingAlerts} />
-        </BentoCard>
-
-        {/* ── Row 2.5: Handoff Panel (full-width) ── */}
-        {handoffPanel && (
-          <BentoCard
-            colSpan={{ xs: 1, sm: 2, md: 4 }}
-            testId="bento-handoff"
-          >
-            {handoffPanel}
-          </BentoCard>
-        )}
-
-        {/* ── Row 2.6: CallLog Summary (full-width, optional) ── */}
-        {callLogSummary && (
+        {/* ════════════════════════════════════════════════════
+         *  ZONE B: 進捗ダッシュ — 「あとどれくらいか」がわかる
+         *  Step 3: ProgressRings (3指標圧縮) or legacy fallback
+         *  ════════════════════════════════════════════════════ */}
+        {progressRings ? (
           <BentoCard
             colSpan={{ xs: 1, sm: 2, md: 4 }}
             variant="default"
-            testId="bento-call-log-summary"
+            noHover
+            testId="bento-progress-rings"
           >
-            <CallLogSummaryCard {...callLogSummary} />
+            <SectionLabel emoji="📊" text="本日の進捗" />
+            <ProgressRings items={progressRings} />
           </BentoCard>
+        ) : (
+          /* ── Legacy fallback: ProgressStatusBar + AttendanceSummaryCard ── */
+          <>
+            <BentoCard
+              colSpan={{ xs: 1, sm: 2, md: 3 }}
+              variant="default"
+              noHover
+              testId="bento-progress"
+              sx={{ p: 0, overflow: 'hidden' }}
+            >
+              <ProgressStatusBar summary={progress.summary} onChipClick={progress.onChipClick} scene={progress.scene} />
+            </BentoCard>
+
+            <BentoCard
+              colSpan={{ xs: 1, sm: 1, md: 1 }}
+              testId="bento-attendance"
+            >
+              <SectionLabel emoji="📊" text="出席状況" />
+              <AttendanceSummaryCard {...attendance} />
+            </BentoCard>
+          </>
         )}
 
-        {/* ── Row 3: Service Structure (full-width) ── */}
-        {serviceStructure && (
-          <BentoCard
-            colSpan={{ xs: 1, sm: 2, md: 4 }}
-            testId="bento-service-structure"
-          >
-            <SectionLabel emoji="🏢" text="業務体制" />
-            <TodayServiceStructureCard serviceStructure={serviceStructure} />
-          </BentoCard>
-        )}
+        {/* ════════════════════════════════════════════════════
+         *  ZONE C1: 常時表示 — 今日すぐ触るもの
+         *  ════════════════════════════════════════════════════ */}
 
-        {/* ── Row 3.5: Planning Workflow (full-width) — 支援計画管理 ── */}
-        {workflowCard && (
-          <BentoCard
-            colSpan={{ xs: 1, sm: 2, md: 4 }}
-            testId="bento-workflow"
-          >
-            <SectionLabel emoji="📋" text="支援計画管理" />
-            <PlanningWorkflowCard {...workflowCard} />
-          </BentoCard>
-        )}
-
-        {/* ── Row 4: Users (full-width) — 利用者記録操作 ── */}
+        {/* ── C1-a: 利用者リスト（未記録優先ソート済み） ── */}
         <BentoCard
           colSpan={{ xs: 1, sm: 2, md: 4 }}
           testId="bento-users"
@@ -298,28 +287,92 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           />
         </BentoCard>
 
-        {/* ── Row 5: Transport (full-width) ── */}
-        <BentoCard
-          colSpan={{ xs: 1, sm: 2, md: 4 }}
-          testId="bento-transport"
-        >
-          {transportCard ? (
+        {/* ── C1-b: 申し送りパネル ── */}
+        {handoffPanel && (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            testId="bento-handoff"
+          >
+            {handoffPanel}
+          </BentoCard>
+        )}
+
+        {/* ── C1-c: 電話・連絡ログ ── */}
+        {callLogSummary && (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            variant="default"
+            testId="bento-call-log-summary"
+          >
+            <CallLogSummaryCard {...callLogSummary} />
+          </BentoCard>
+        )}
+
+        {/* ── BriefingActionList: 非表示化 (Step 1) ──
+         *  Step 2 で HeroActionCard 内 BriefingInlineBadge に統合予定。
+         */}
+        {!ENABLE_3ZONE && (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            variant="subtle"
+            testId="bento-briefing"
+          >
+            <BriefingActionList alerts={briefingAlerts} />
+          </BentoCard>
+        )}
+
+        {/* ════════════════════════════════════════════════════
+         *  ZONE C2: 折りたたみ — 必要時だけ開くもの
+         *  ════════════════════════════════════════════════════ */}
+
+        {/* ── C2-a: 業務体制（デフォルト閉じ） ── */}
+        {serviceStructure && (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            testId="bento-service-structure"
+            sx={{ p: 0 }}
+          >
+            <Accordion defaultExpanded={false} disableGutters elevation={0} sx={{ bgcolor: 'transparent' }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
+                <SectionLabel emoji="🏢" text="業務体制" />
+              </AccordionSummary>
+              <AccordionDetails sx={{ pt: 0, px: 2.5, pb: 2 }}>
+                <TodayServiceStructureCard serviceStructure={serviceStructure} />
+              </AccordionDetails>
+            </Accordion>
+          </BentoCard>
+        )}
+
+        {/* ── C2-b: 支援計画管理（管理者のみ・デフォルト閉じ） ── */}
+        {workflowCard && (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            testId="bento-workflow"
+            sx={{ p: 0 }}
+          >
+            <Accordion defaultExpanded={false} disableGutters elevation={0} sx={{ bgcolor: 'transparent' }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2.5 }}>
+                <SectionLabel emoji="📋" text="支援計画管理" />
+              </AccordionSummary>
+              <AccordionDetails sx={{ pt: 0, px: 2.5, pb: 2 }}>
+                <PlanningWorkflowCard {...workflowCard} />
+              </AccordionDetails>
+            </Accordion>
+          </BentoCard>
+        )}
+
+        {/* ── C2-c: 送迎（isReady=true の場合のみ表示） ──
+         *  「準備中です」フォールバックを削除。transportCard が undefined なら非表示。
+         */}
+        {transportCard && (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            testId="bento-transport"
+          >
             <TransportStatusCard {...transportCard} />
-          ) : (
-            <Box
-              sx={{
-                p: 3,
-                textAlign: 'center',
-                borderRadius: 2,
-                bgcolor: 'rgba(255, 255, 255, 0.03)',
-              }}
-            >
-              <Typography variant="body2" color="text.secondary">
-                🚚 送迎機能は準備中です
-              </Typography>
-            </Box>
-          )}
-        </BentoCard>
+          </BentoCard>
+        )}
+
       </BentoContainer>
     </Box>
   );
