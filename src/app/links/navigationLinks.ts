@@ -1,11 +1,11 @@
 // ---------------------------------------------------------------------------
-// navigationLinks — Hub 間遷移用の URL ビルダー
+// navigationLinks — Hub 間過渡用の URL ビルダー
 //
-// /today (Ops Hub) ⇄ /dailysupport (Records Hub) の双方向導線で使う。
+// /today (Ops Hub) → /daily/activity (Records) の主導線で使う。
 // query を手書きで散らさず、このモジュール経由で URL を組み立てる。
 //
-// ⚠️ Hub間遷移（/today ⇄ /dailysupport）でのみ使用。
-//    通常のページ遷移は dailyPaths（dailyLinks.ts）を使うこと。
+// ⚠️ Hub間過渡（/today → /daily/activity）でのみ使用。
+//    管理・例外導線は /dailysupport（DailyRecordMenuPage）を使うこと。
 //
 // パターンは dailySupportLinks.ts と同一。
 // ---------------------------------------------------------------------------
@@ -26,11 +26,14 @@ const allowedFrom = new Set<NavFrom>(['today']);
 // ─── Builders ──────────────────────────────────────────────────────────
 
 /**
- * /dailysupport?from=today&date=YYYY-MM-DD を生成する。
- * /today → /dailysupport への導線で使用。
+ * /daily/activity?from=today&date=YYYY-MM-DD を生成する。
+ * /today → /daily/activity への主導線で使用。
+ *
+ * → Hero 付きの記録画面に直接入る。
+ *   管理・例外導線は dailyPaths.hub (/dailysupport) を使う。
  */
 export function buildDailyHubFromTodayUrl(date?: string): string {
-  const base = dailyPaths.hub;
+  const base = dailyPaths.activity;
   const search = new URLSearchParams();
   search.set(NAV_QUERY.from, 'today');
 

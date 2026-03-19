@@ -76,7 +76,7 @@ export function buildQueueCategories(tasks: TodayTask[]): QueueCategory[] {
       icon: '📝',
       count: unrecordedCount,
       color: unrecordedCount > 0 ? 'error' : 'info',
-      href: '/dailysupport',
+      href: '/daily/activity',
     },
     {
       key: 'handoff',

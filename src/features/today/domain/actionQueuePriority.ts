@@ -169,7 +169,7 @@ export function buildScoredQueueCategories(
       icon: '📝',
       count: unrecordedGroup.length,
       color: unrecordedGroup.length > 0 ? 'error' : 'info',
-      href: '/dailysupport',
+      href: '/daily/activity',
       topReasonLabel: topReason('unrecorded'),
     },
     {

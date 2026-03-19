@@ -54,6 +54,16 @@ export const CTA_EVENTS = {
   HANDOFF_PRIORITY_ITEM: 'handoff_priority_item_clicked',
   /** Handoff Priority Queue「対応済にする」 */
   HANDOFF_PRIORITY_DONE: 'handoff_priority_done_clicked',
+
+  // ── DailyRecord 再設計 ──────────────────────────────────────
+  /** DailyRecord Hero CTA（続ける / 記録する） */
+  DAILY_HERO_CLICKED: 'daily_hero_clicked',
+  /** DailyRecord Queue アイテム CTA */
+  DAILY_QUEUE_ITEM_CLICKED: 'daily_queue_item_clicked',
+  /** DailyRecord Queue 完了済みアコーディオン展開/閉じ */
+  DAILY_QUEUE_COMPLETED_TOGGLED: 'daily_queue_completed_toggled',
+  /** DailyRecord Hero 全件完了 CTA */
+  DAILY_HERO_ALL_COMPLETED: 'daily_hero_all_completed_clicked',
 } as const;
 
 export type CtaEventName = (typeof CTA_EVENTS)[keyof typeof CTA_EVENTS];

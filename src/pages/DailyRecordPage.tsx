@@ -25,6 +25,10 @@ import {
 import { PersonDaily } from '@/domain/daily/types';
 import { saveDailyRecord, validateDailyRecord } from '@/features/daily/domain/dailyRecordLogic';
 import { getNextIncompleteRecord } from '@/features/daily/domain/nextIncompleteRecord';
+import { NextRecordHero } from '@/features/daily/components/NextRecordHero';
+import { RecordActionQueue } from '@/features/daily/components/RecordActionQueue';
+import { CTA_EVENTS, recordCtaClick } from '@/features/today/telemetry/recordCtaClick';
+import { toLocalDateISO } from '@/utils/getNow';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import AddIcon from '@mui/icons-material/Add';
@@ -109,6 +113,64 @@ export default function DailyRecordPage() {
     handleBulkCreateMissing,
     handleBulkComplete,
   } = vm;
+
+  // ── Hero 用: 今日のレコード ──
+  const todayStr = useMemo(() => toLocalDateISO(), []);
+  const todayRecords = useMemo(
+    () => records.filter((r) => r.date === todayStr),
+    [records, todayStr],
+  );
+
+  // ── Hero CTA: レコードを開く ──
+  const handleHeroStartRecord = useCallback(
+    (record: PersonDaily) => {
+      recordCtaClick({
+        ctaId: CTA_EVENTS.DAILY_HERO_CLICKED,
+        sourceComponent: 'NextRecordHero',
+        stateType: 'widget-action',
+        scene: record.status,
+      });
+      setEditingRecord(record);
+      setFormOpen(true);
+    },
+    [setEditingRecord, setFormOpen],
+  );
+
+  // ── Queue CTA: レコードを開く ──
+  const handleQueueStartRecord = useCallback(
+    (record: PersonDaily) => {
+      recordCtaClick({
+        ctaId: CTA_EVENTS.DAILY_QUEUE_ITEM_CLICKED,
+        sourceComponent: 'RecordActionQueue',
+        stateType: 'widget-action',
+        scene: record.status,
+      });
+      setEditingRecord(record);
+      setFormOpen(true);
+    },
+    [setEditingRecord, setFormOpen],
+  );
+
+  // ── Queue 完了済みアコーディオンの展開/閉じ ──
+  const handleCompletedToggle = useCallback((expanded: boolean) => {
+    recordCtaClick({
+      ctaId: CTA_EVENTS.DAILY_QUEUE_COMPLETED_TOGGLED,
+      sourceComponent: 'RecordActionQueue',
+      stateType: 'widget-action',
+      scene: expanded ? 'expanded' : 'collapsed',
+    });
+  }, []);
+  const handleAllCompletedAction = useCallback(() => {
+    recordCtaClick({
+      ctaId: CTA_EVENTS.DAILY_HERO_ALL_COMPLETED,
+      sourceComponent: 'NextRecordHero',
+      stateType: 'navigation',
+      targetUrl: '/handoff/timeline',
+    });
+    navigate(buildHandoffTimelineUrl(), {
+      state: { dayScope: 'today', timeFilter: 'all' },
+    });
+  }, [navigate]);
 
   // MVP-004: 保存成功時に次の未入力レコードを自動表示
   const handleSaveRecordWithNext = useCallback(
@@ -252,6 +314,20 @@ export default function DailyRecordPage() {
           <PageHeader
             title="支援記録（ケース記録）"
             subtitle="利用者全員の日々の活動状況、問題行動、発作記録を管理します"
+          />
+
+          {/* ── NextRecordHero: 次に書く1件 ── */}
+          <NextRecordHero
+            todayRecords={todayRecords}
+            onStartRecord={handleHeroStartRecord}
+            onAllCompletedAction={handleAllCompletedAction}
+          />
+
+          {/* ── RecordActionQueue: 残りの未完了キュー ── */}
+          <RecordActionQueue
+            todayRecords={todayRecords}
+            onStartRecord={handleQueueStartRecord}
+            onCompletedToggle={handleCompletedToggle}
           />
 
           {/* Handoff summary banner */}

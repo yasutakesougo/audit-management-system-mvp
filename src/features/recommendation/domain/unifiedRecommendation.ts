@@ -98,11 +98,11 @@ const FACTOR_HEADLINE: Record<RecommendationFactor, string> = {
 /** factor → 推奨アクション */
 const FACTOR_ACTION: Record<RecommendationFactor, { label: string; route: string }> = {
   'critical-handoff': { label: '申し送りを確認する', route: '/handoff/timeline' },
-  'missing-record': { label: '記録を入力する', route: '/dailysupport' },
+  'missing-record': { label: '記録を入力する', route: '/daily/activity' },
   'high-intensity': { label: '支援手順書を確認する', route: '/planning' },
   'snapshot-urgent': { label: '今日の画面を確認する', route: '/today' },
   'missing-plan': { label: '支援計画を作成する', route: '/planning' },
-  'no-issues': { label: '今日の記録を開く', route: '/dailysupport' },
+  'no-issues': { label: '今日の記録を開く', route: '/daily/activity' },
 };
 
 // ─── 純粋関数 ────────────────────────────────────────────────────

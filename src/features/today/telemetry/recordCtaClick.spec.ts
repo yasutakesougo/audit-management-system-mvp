@@ -102,12 +102,12 @@ describe('CTA_EVENTS', () => {
   it('has consistent naming convention', () => {
     const values = Object.values(CTA_EVENTS);
     for (const v of values) {
-      expect(v).toMatch(/^(today|calllog|handoff)_/);
-      expect(v).toMatch(/_clicked$/);
+      expect(v).toMatch(/^(today|calllog|handoff|daily)_/);
+      expect(v).toMatch(/_(clicked|toggled)$/);
     }
   });
 
-  it('has 18 defined events', () => {
-    expect(Object.keys(CTA_EVENTS)).toHaveLength(18);
+  it('has 22 defined events', () => {
+    expect(Object.keys(CTA_EVENTS)).toHaveLength(22);
   });
 });

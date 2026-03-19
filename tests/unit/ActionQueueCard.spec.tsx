@@ -121,7 +121,7 @@ describe('ActionQueueCard', () => {
     const tasks = [createTask({ source: 'unrecorded' })];
     render(<ActionQueueCard tasks={tasks} onNavigate={onNavigate} />);
     fireEvent.click(screen.getByTestId('action-queue-unrecorded'));
-    expect(onNavigate).toHaveBeenCalledWith('/dailysupport');
+    expect(onNavigate).toHaveBeenCalledWith('/daily/activity');
   });
 
   it('navigates to handoff on handoff click', () => {

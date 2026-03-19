@@ -16,17 +16,17 @@ import {
 
 describe('buildDailyHubFromTodayUrl', () => {
   it('日付なしで from=today のみ', () => {
-    expect(buildDailyHubFromTodayUrl()).toBe('/dailysupport?from=today');
+    expect(buildDailyHubFromTodayUrl()).toBe('/daily/activity?from=today');
   });
 
   it('日付ありで from + date を付与', () => {
     expect(buildDailyHubFromTodayUrl('2026-02-28')).toBe(
-      '/dailysupport?from=today&date=2026-02-28',
+      '/daily/activity?from=today&date=2026-02-28',
     );
   });
 
   it('空文字の date は無視される', () => {
-    expect(buildDailyHubFromTodayUrl('  ')).toBe('/dailysupport?from=today');
+    expect(buildDailyHubFromTodayUrl('  ')).toBe('/daily/activity?from=today');
   });
 });
 
