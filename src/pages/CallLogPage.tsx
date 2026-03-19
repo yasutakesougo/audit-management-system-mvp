@@ -13,6 +13,7 @@
 import { PageHeader } from '@/components/PageHeader';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import PhoneIcon from '@mui/icons-material/Phone';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -46,6 +47,7 @@ import { CallLogUrgencyChip } from '@/features/callLogs/components/CallLogUrgenc
 import { CallLogQuickDrawer } from '@/features/callLogs/components/CallLogQuickDrawer';
 import { useCallLogs, type CallLogTabValue } from '@/features/callLogs/hooks/useCallLogs';
 import { filterCallLogs } from '@/features/callLogs/domain/filterCallLogs';
+import { getCallbackDueInfo, type CallbackDueLevel } from '@/features/callLogs/domain/callbackDueLabel';
 import type { CallLog } from '@/domain/callLogs/schema';
 
 // ─── 日時フォーマットヘルパー ─────────────────────────────────────────────────
@@ -61,6 +63,15 @@ const formatDateTime = (iso: string): string => {
   } catch {
     return iso;
   }
+};
+
+// ─── 期限チップカラーマップ ─────────────────────────────────────────────────────
+
+const DUE_CHIP_COLOR: Record<CallbackDueLevel, 'error' | 'warning' | 'default' | 'info'> = {
+  overdue: 'error',
+  'due-soon': 'warning',
+  'due-later': 'default',
+  none: 'default',
 };
 
 // ─── タブ定義 ─────────────────────────────────────────────────────────────────
@@ -80,7 +91,10 @@ type CallLogRowProps = {
   isUpdating: boolean;
 };
 
-const CallLogRow: React.FC<CallLogRowProps> = ({ log, onMarkDone, isUpdating }) => (
+const CallLogRow: React.FC<CallLogRowProps> = ({ log, onMarkDone, isUpdating }) => {
+  const dueInfo = getCallbackDueInfo(log);
+
+  return (
   <ListItem
     divider
     data-testid={`call-log-row-${log.id}`}
@@ -143,11 +157,23 @@ const CallLogRow: React.FC<CallLogRowProps> = ({ log, onMarkDone, isUpdating }) 
               data-testid={`call-log-related-user-${log.id}`}
             />
           )}
+          {dueInfo.level !== 'none' && (
+            <Chip
+              icon={<AccessTimeIcon sx={{ fontSize: 14 }} />}
+              label={dueInfo.label}
+              size="small"
+              variant={dueInfo.level === 'overdue' ? 'filled' : 'outlined'}
+              color={DUE_CHIP_COLOR[dueInfo.level]}
+              sx={{ fontSize: '0.7rem', height: 20, fontWeight: dueInfo.level === 'overdue' ? 700 : 400 }}
+              data-testid={`call-log-due-chip-${log.id}`}
+            />
+          )}
         </Stack>
       }
     />
   </ListItem>
-);
+  );
+};
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 
