@@ -11,6 +11,7 @@ import {
   computeTagTimeSlots,
   computeUserTopTags,
   getTopTagsFromCounts,
+  presetToDateRange,
   type TagAnalyticsInput,
 } from '../tagAnalytics';
 
@@ -295,5 +296,38 @@ describe('getTopTagsFromCounts', () => {
     const result = getTopTagsFromCounts({ panic: 0, cooperation: 1 });
     expect(result).toHaveLength(1);
     expect(result[0].key).toBe('cooperation');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+// presetToDateRange
+// ═══════════════════════════════════════════════════════════
+
+describe('presetToDateRange', () => {
+  const TODAY = '2024-03-15';
+
+  it('7d → 7日間の範囲', () => {
+    const result = presetToDateRange('7d', TODAY);
+    expect(result).toEqual({ from: '2024-03-09', to: '2024-03-15' });
+  });
+
+  it('30d → 30日間の範囲', () => {
+    const result = presetToDateRange('30d', TODAY);
+    expect(result).toEqual({ from: '2024-02-15', to: '2024-03-15' });
+  });
+
+  it('90d → 90日間の範囲', () => {
+    const result = presetToDateRange('90d', TODAY);
+    expect(result).toEqual({ from: '2023-12-17', to: '2024-03-15' });
+  });
+
+  it('年跨ぎでも正しい', () => {
+    const result = presetToDateRange('30d', '2024-01-10');
+    expect(result).toEqual({ from: '2023-12-12', to: '2024-01-10' });
+  });
+
+  it('月末でも正しい', () => {
+    const result = presetToDateRange('7d', '2024-03-01');
+    expect(result).toEqual({ from: '2024-02-24', to: '2024-03-01' });
   });
 });

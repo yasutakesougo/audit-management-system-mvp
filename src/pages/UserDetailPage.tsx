@@ -14,7 +14,7 @@
  * - 情報量より「次にどこへ行くか」を優先
  * - EmptyStateAction (MVP-001) を空状態に再利用
  */
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 // ── MUI ──
@@ -57,7 +57,12 @@ import {
   type UnifiedRecommendation,
 } from '@/features/recommendation/domain/unifiedRecommendation';
 import { useUserHubDataSources } from '@/features/users/hooks/useUserHubDataSources';
-import { useTagAnalytics, TagAnalyticsSection } from '@/features/tag-analytics';
+import {
+  useTagAnalytics,
+  TagAnalyticsSection,
+  presetToDateRange,
+  type PeriodPreset,
+} from '@/features/tag-analytics';
 
 // ─── Component ────────────────────────────────────────────────
 
@@ -85,8 +90,10 @@ const UserDetailPage: React.FC = () => {
   // Sprint-1 Phase B: 実データ接続
   const hubData = useUserHubDataSources(userId);
 
-  // ── Phase F1: 行動タグ分析 ──
-  const tagAnalytics = useTagAnalytics(userId);
+  // ── Phase F1.5: 行動タグ分析（期間プリセット切替） ──
+  const [tagPeriod, setTagPeriod] = useState<PeriodPreset>('30d');
+  const tagRange = useMemo(() => presetToDateRange(tagPeriod), [tagPeriod]);
+  const tagAnalytics = useTagAnalytics(userId, tagRange);
 
   // ── サマリー統計 ──
   const summaryStats = useMemo(() => {
@@ -389,7 +396,11 @@ const UserDetailPage: React.FC = () => {
            ════════════════════════════════════════════════════════════ */}
         <Box data-testid="user-detail-tag-analytics">
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>🏷️ 行動タグ分析</Typography>
-          <TagAnalyticsSection analytics={tagAnalytics} />
+          <TagAnalyticsSection
+            analytics={tagAnalytics}
+            periodPreset={tagPeriod}
+            onPeriodChange={setTagPeriod}
+          />
         </Box>
       </Stack>
     </Container>

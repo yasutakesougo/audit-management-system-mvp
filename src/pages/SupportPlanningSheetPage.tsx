@@ -84,7 +84,7 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Fab from '@mui/material/Fab';
-import { useTagAnalytics, TagAnalyticsSection } from '@/features/tag-analytics';
+import { useTagAnalytics, TagAnalyticsSection, presetToDateRange, type PeriodPreset } from '@/features/tag-analytics';
 
 // ── Local (split) ──
 import { type SheetTabKey, TAB_SECTIONS, TabPanel } from './support-planning-sheet/types';
@@ -698,14 +698,17 @@ export default function SupportPlanningSheetPage() {
   );
 }
 
-// ─── TagAnalytics Accordion (Phase F1 深化) ─────────────
+// ─── TagAnalytics Accordion (Phase F1.5 深化) ────────────
 
 /**
  * 行動タグ分析を Accordion で折りたたみ表示する。
  * 閲覧時に自動展開、計画編集UXを邪魔しない。
+ * F1.5: 内部で期間プリセットを管理。
  */
 const TagAnalyticsAccordion: React.FC<{ userId: string | undefined }> = ({ userId }) => {
-  const tagAnalytics = useTagAnalytics(userId);
+  const [period, setPeriod] = React.useState<PeriodPreset>('30d');
+  const range = React.useMemo(() => presetToDateRange(period), [period]);
+  const tagAnalytics = useTagAnalytics(userId, range);
 
   // empty/error 時は非表示（ノイズ回避）
   if (tagAnalytics.status === 'empty' || tagAnalytics.status === 'error') {
@@ -725,7 +728,11 @@ const TagAnalyticsAccordion: React.FC<{ userId: string | undefined }> = ({ userI
         </Typography>
       </AccordionSummary>
       <AccordionDetails>
-        <TagAnalyticsSection analytics={tagAnalytics} />
+        <TagAnalyticsSection
+          analytics={tagAnalytics}
+          periodPreset={period}
+          onPeriodChange={setPeriod}
+        />
       </AccordionDetails>
     </Accordion>
   );

@@ -1,11 +1,15 @@
 /**
- * @fileoverview Phase F1: TagAnalyticsSection — 行動タグ分析 UI コンポーネント
+ * @fileoverview Phase F1.5: TagAnalyticsSection — 行動タグ分析 UI コンポーネント
  * @description
- * UserDetailPage に統合する最小 UI:
  * - Top Tags（Chip 表示）
  * - Trend（↑↓バッジ）
+ * - Period Preset 切替（7d / 30d / 90d）
  * - Empty（データなしメッセージ）
  * - Error（Alert）
+ *
+ * Period Preset は内部 state で管理し、onPeriodChange で
+ * 親に通知する。これにより UserDetailPage / PlanningSheetPage
+ * の両方で同じ UI を再利用できる。
  */
 import React from 'react';
 
@@ -15,6 +19,8 @@ import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded';
@@ -22,18 +28,32 @@ import TrendingFlatRoundedIcon from '@mui/icons-material/TrendingFlatRounded';
 
 import { EmptyStateAction } from '@/components/ui/EmptyStateAction';
 import type { TagAnalytics } from '../hooks/useTagAnalytics';
-import type { TagTrendItem } from '../domain/tagAnalytics';
+import {
+  type TagTrendItem,
+  type PeriodPreset,
+  PERIOD_PRESETS,
+  PERIOD_PRESET_ORDER,
+} from '../domain/tagAnalytics';
 
 // ─── Props ───────────────────────────────────────────────
 
 type TagAnalyticsSectionProps = {
   analytics: TagAnalytics;
+  /** 現在選択中のプリセット */
+  periodPreset?: PeriodPreset;
+  /** プリセット変更時のコールバック */
+  onPeriodChange?: (preset: PeriodPreset) => void;
+  /** プリセット切替UIを非表示にする（Accordion 内など） */
+  hidePeriodSelector?: boolean;
 };
 
 // ─── Main Component ──────────────────────────────────────
 
 export const TagAnalyticsSection: React.FC<TagAnalyticsSectionProps> = ({
   analytics,
+  periodPreset = '30d',
+  onPeriodChange,
+  hidePeriodSelector = false,
 }) => {
   // ── Loading ──
   if (analytics.status === 'loading') {
@@ -59,20 +79,30 @@ export const TagAnalyticsSection: React.FC<TagAnalyticsSectionProps> = ({
   // ── Empty ──
   if (analytics.status === 'empty') {
     return (
-      <EmptyStateAction
-        icon="🏷️"
-        title="タグデータがありません"
-        description="記録に行動タグを付けると、ここに傾向分析が表示されます。"
-        variant="info"
-        minHeight="6vh"
-        testId="tag-analytics-empty"
-      />
+      <Stack spacing={1.5}>
+        {!hidePeriodSelector && onPeriodChange && (
+          <PeriodSelector current={periodPreset} onChange={onPeriodChange} />
+        )}
+        <EmptyStateAction
+          icon="🏷️"
+          title="タグデータがありません"
+          description="記録に行動タグを付けると、ここに傾向分析が表示されます。"
+          variant="info"
+          minHeight="6vh"
+          testId="tag-analytics-empty"
+        />
+      </Stack>
     );
   }
 
   // ── Ready ──
   return (
     <Stack spacing={2} data-testid="tag-analytics-ready">
+      {/* Period Selector */}
+      {!hidePeriodSelector && onPeriodChange && (
+        <PeriodSelector current={periodPreset} onChange={onPeriodChange} />
+      )}
+
       {/* Top Tags */}
       <TopTagsCard topTags={analytics.topTags} trend={analytics.trend} />
 
@@ -87,6 +117,47 @@ export const TagAnalyticsSection: React.FC<TagAnalyticsSectionProps> = ({
     </Stack>
   );
 };
+
+// ─── Period Selector ─────────────────────────────────────
+
+type PeriodSelectorProps = {
+  current: PeriodPreset;
+  onChange: (preset: PeriodPreset) => void;
+};
+
+const PeriodSelector: React.FC<PeriodSelectorProps> = ({ current, onChange }) => (
+  <Box data-testid="tag-analytics-period-selector">
+    <ToggleButtonGroup
+      value={current}
+      exclusive
+      onChange={(_e, val) => {
+        if (val !== null) onChange(val as PeriodPreset);
+      }}
+      size="small"
+      sx={{
+        '& .MuiToggleButton-root': {
+          textTransform: 'none',
+          fontWeight: 600,
+          fontSize: '0.75rem',
+          px: 1.5,
+          py: 0.5,
+          borderRadius: 1,
+          '&.Mui-selected': {
+            bgcolor: 'primary.main',
+            color: '#fff',
+            '&:hover': { bgcolor: 'primary.dark' },
+          },
+        },
+      }}
+    >
+      {PERIOD_PRESET_ORDER.map((key) => (
+        <ToggleButton key={key} value={key} data-testid={`period-preset-${key}`}>
+          {PERIOD_PRESETS[key].label}
+        </ToggleButton>
+      ))}
+    </ToggleButtonGroup>
+  </Box>
+);
 
 // ─── Sub Components ──────────────────────────────────────
 

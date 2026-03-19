@@ -9,12 +9,16 @@ export {
   computeTagTimeSlots,
   computeUserTopTags,
   getTopTagsFromCounts,
+  presetToDateRange,
+  PERIOD_PRESETS,
+  PERIOD_PRESET_ORDER,
   type TagCount,
   type TagTrend,
   type TagTrendItem,
   type TagTimeSlotDistribution,
   type UserTopTags,
   type TagAnalyticsInput,
+  type PeriodPreset,
 } from './domain/tagAnalytics';
 
 // Hooks

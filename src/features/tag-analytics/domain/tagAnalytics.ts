@@ -223,3 +223,50 @@ export function getTopTagsFromCounts(
       };
     });
 }
+
+// ─── 期間プリセット ──────────────────────────────────────
+
+/** 期間プリセットキー */
+export type PeriodPreset = '7d' | '30d' | '90d';
+
+/** プリセット定義（表示ラベル + 日数） */
+export const PERIOD_PRESETS: Record<PeriodPreset, { label: string; days: number }> = {
+  '7d':  { label: '7日', days: 7 },
+  '30d': { label: '30日', days: 30 },
+  '90d': { label: '90日', days: 90 },
+};
+
+/** プリセットの表示順序 */
+export const PERIOD_PRESET_ORDER: PeriodPreset[] = ['7d', '30d', '90d'];
+
+/**
+ * PeriodPreset を { from, to } の日付範囲に変換する。
+ * to は今日、from は (days - 1) 日前。
+ *
+ * @param preset プリセットキー
+ * @param today 基準日（テスト用に注入可能）
+ */
+export function presetToDateRange(
+  preset: PeriodPreset,
+  today?: string,
+): { from: string; to: string } {
+  const toDate = today
+    ? new Date(today + 'T00:00:00')
+    : new Date();
+  const days = PERIOD_PRESETS[preset].days;
+  const fromDate = new Date(toDate);
+  fromDate.setDate(fromDate.getDate() - (days - 1));
+
+  return {
+    from: formatLocalDate(fromDate),
+    to: formatLocalDate(toDate),
+  };
+}
+
+/** ローカルタイムベースで YYYY-MM-DD を返す（toISOString は UTC で日付がずれるため回避） */
+function formatLocalDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
