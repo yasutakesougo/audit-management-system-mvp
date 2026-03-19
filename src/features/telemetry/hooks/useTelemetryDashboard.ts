@@ -24,6 +24,7 @@ import { computeCtaKpis, type DashboardKpis } from '../domain/computeCtaKpis';
 import { computeCtaKpiDiff, type DashboardKpiDiffs } from '../domain/computeCtaKpiDiff';
 import { computeCtaKpisByRole, type RoleBreakdown } from '../domain/computeCtaKpisByRole';
 import { computeRoleAlerts } from '../domain/computeRoleAlerts';
+import { classifyAlertStates, type ClassifiedAlert } from '../domain/classifyAlertState';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -61,6 +62,7 @@ type DashboardState = {
   kpis: DashboardKpis | null;
   kpiDiffs: DashboardKpiDiffs | null;
   roleBreakdown: RoleBreakdown;
+  classifiedAlerts: ClassifiedAlert[];
   loading: boolean;
   error: string | null;
   range: DateRange;
@@ -148,6 +150,7 @@ export function useTelemetryDashboard() {
     kpis: null,
     kpiDiffs: null,
     roleBreakdown: [],
+    classifiedAlerts: [],
     loading: true,
     error: null,
     range: 'today',
@@ -215,6 +218,20 @@ export function useTelemetryDashboard() {
       const roleAlerts = computeRoleAlerts(roleBreakdown);
       kpiDiffs.alerts = [...kpiDiffs.alerts, ...roleAlerts];
 
+      // ── Alert State Classification ──
+      let previousAlerts: import('../domain/computeCtaKpiDiff').KpiAlert[] = [];
+      if (previousKpis) {
+        const prevRoleBreakdown = computeCtaKpisByRole(
+          previousSnapshot!.docs
+            .map((d) => docToTelemetry(d.id, d.data()))
+            .map(toKpiRecord),
+        );
+        const prevDiff = computeCtaKpiDiff(previousKpis, null);
+        const prevRoleAlerts = computeRoleAlerts(prevRoleBreakdown);
+        previousAlerts = [...prevDiff.alerts, ...prevRoleAlerts];
+      }
+      const classifiedAlerts = classifyAlertStates(kpiDiffs.alerts, previousAlerts);
+
       // ── 集計 ──
       const byType: Record<string, number> = {};
       const byPhase: Record<string, number> = {};
@@ -254,6 +271,7 @@ export function useTelemetryDashboard() {
         kpis,
         kpiDiffs,
         roleBreakdown,
+        classifiedAlerts,
         loading: false,
         error: null,
         range,
