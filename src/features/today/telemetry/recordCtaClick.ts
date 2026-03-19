@@ -1,7 +1,7 @@
 /**
  * Operations CTA Click Telemetry
  *
- * /today および /call-logs ページの CTA 押下を Firestore に記録する。
+ * /today, /call-logs, /handoff ページの CTA 押下を Firestore に記録する。
  * Fire-and-forget — 書き込み失敗は無視し、UI をブロックしない。
  *
  * 導線整理後の実データ収集が目的。
@@ -44,6 +44,26 @@ export const CTA_EVENTS = {
   CALLLOG_PRIORITY_ITEM: 'calllog_priority_item_clicked',
   /** CallLog Priority Queue「完了にする」 */
   CALLLOG_PRIORITY_DONE: 'calllog_priority_done_clicked',
+
+  // ── Handoff 再設計 ─────────────────────────────────────────
+  /** Handoff Hero「確認する」 */
+  HANDOFF_HERO_CONFIRM: 'handoff_hero_confirm_clicked',
+  /** Handoff Hero「対応済にする」 */
+  HANDOFF_HERO_DONE: 'handoff_hero_done_clicked',
+  /** Handoff Priority Queue 行クリック */
+  HANDOFF_PRIORITY_ITEM: 'handoff_priority_item_clicked',
+  /** Handoff Priority Queue「対応済にする」 */
+  HANDOFF_PRIORITY_DONE: 'handoff_priority_done_clicked',
+
+  // ── DailyRecord 再設計 ──────────────────────────────────────
+  /** DailyRecord Hero CTA（続ける / 記録する） */
+  DAILY_HERO_CLICKED: 'daily_hero_clicked',
+  /** DailyRecord Queue アイテム CTA */
+  DAILY_QUEUE_ITEM_CLICKED: 'daily_queue_item_clicked',
+  /** DailyRecord Queue 完了済みアコーディオン展開/閉じ */
+  DAILY_QUEUE_COMPLETED_TOGGLED: 'daily_queue_completed_toggled',
+  /** DailyRecord Hero 全件完了 CTA */
+  DAILY_HERO_ALL_COMPLETED: 'daily_hero_all_completed_clicked',
 } as const;
 
 export type CtaEventName = (typeof CTA_EVENTS)[keyof typeof CTA_EVENTS];

@@ -1,12 +1,18 @@
 /**
- * HandoffDayView — 日ビュー専用コンポーネント (v2: Hook 分離 + entryMode)
+ * HandoffDayView — 日ビュー専用コンポーネント (v3: Hero/Queue 三層構造)
  *
  * Phase 3 (C-1 / C-2):
  *  - State 管理を useHandoffDayViewState に委譲
  *  - fromToday: boolean → entryMode: 'from-today' | 'direct' に意味明確化
  *
+ * v3:
+ *  - ZONE A: UrgentHandoffHero（最優先の未対応1件）
+ *  - ZONE B: HandoffActionQueue（残りの要対応を重要度順）
+ *  - ZONE C: 既存フィルタ + タイムライン/利用者別（温存）
+ *
  * このファイルは描画のみを担当するオーケストレーター。
  */
+import { useMemo } from 'react';
 import { TESTIDS, tid } from '@/testids';
 import {
   FilterList as FilterListIcon,
@@ -27,6 +33,10 @@ import {
 import HandoffCategorySummaryCard from '../HandoffCategorySummaryCard';
 import { TodayHandoffTimelineList } from '../TodayHandoffTimelineList';
 import { HandoffUserGroupedView } from '../components/HandoffUserGroupedView';
+import { UrgentHandoffHero } from '../components/UrgentHandoffHero';
+import { HandoffActionQueue } from '../components/HandoffActionQueue';
+import { resolveNextHandoffAction } from '../domain/resolveNextHandoffAction';
+import { groupHandoffsByPriority } from '../domain/groupHandoffsByPriority';
 import {
   STATUS_FILTER_LABELS,
   type HandoffStatusFilter,
@@ -38,6 +48,7 @@ import {
   type EntryMode,
   type HandoffDisplayMode,
 } from '../hooks/useHandoffDayViewState';
+import { recordCtaClick, CTA_EVENTS } from '@/features/today/telemetry/recordCtaClick';
 
 // ────────────────────────────────────────────────────────────
 // Props
@@ -78,8 +89,72 @@ export function HandoffDayView({
     goToToday,
   });
 
+  // ── ZONE A/B: Hero + Queue データ計算 ──
+  const heroAction = useMemo(
+    () => resolveNextHandoffAction(state.todayHandoffs),
+    [state.todayHandoffs],
+  );
+  const heroLogId = heroAction?.record.id;
+  const queueGroups = useMemo(
+    () => groupHandoffsByPriority(state.todayHandoffs, heroLogId),
+    [state.todayHandoffs, heroLogId],
+  );
+
+  // ── ZONE A/B: ハンドラー（テレメトリ → ステータス更新） ──
+  const handleHeroConfirm = (recordId: number) => {
+    recordCtaClick({
+      ctaId: CTA_EVENTS.HANDOFF_HERO_CONFIRM,
+      sourceComponent: 'UrgentHandoffHero',
+      stateType: 'scene-action',
+      priority: heroAction?.reason,
+    });
+    // 将来的には詳細画面へ遷移する想定
+    void recordId;
+  };
+  const handleHeroDone = async (recordId: number) => {
+    recordCtaClick({
+      ctaId: CTA_EVENTS.HANDOFF_HERO_DONE,
+      sourceComponent: 'UrgentHandoffHero',
+      stateType: 'scene-action',
+      priority: heroAction?.reason,
+    });
+    await state.updateHandoffStatus(recordId, '対応済');
+  };
+  const handleQueueItemClick = (recordId: number) => {
+    recordCtaClick({
+      ctaId: CTA_EVENTS.HANDOFF_PRIORITY_ITEM,
+      sourceComponent: 'HandoffActionQueue',
+      stateType: 'navigation',
+    });
+    // 将来的には詳細画面へ遷移する想定
+    void recordId;
+  };
+  const handleQueueDone = async (recordId: number) => {
+    recordCtaClick({
+      ctaId: CTA_EVENTS.HANDOFF_PRIORITY_DONE,
+      sourceComponent: 'HandoffActionQueue',
+      stateType: 'widget-action',
+    });
+    await state.updateHandoffStatus(recordId, '対応済');
+  };
+
   return (
     <>
+      {/* ── ZONE A: 最優先の未対応1件 ── */}
+      <UrgentHandoffHero
+        action={heroAction}
+        onConfirm={handleHeroConfirm}
+        onMarkDone={handleHeroDone}
+      />
+
+      {/* ── ZONE B: 残りの要対応（重要度順） ── */}
+      <HandoffActionQueue
+        groups={queueGroups}
+        onItemClick={handleQueueItemClick}
+        onMarkDone={handleQueueDone}
+      />
+
+      {/* ── ZONE C: 既存フィルタ + タイムライン（温存） ── */}
       {/* ── Day 固有フィルタ群 ── */}
       <Box sx={{ mt: 2, mb: 1 }}>
         {/* 上段: コンテキスト系フィルタ（会議モード + 時間帯） */}

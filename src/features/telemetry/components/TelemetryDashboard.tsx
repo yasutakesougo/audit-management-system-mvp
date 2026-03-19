@@ -1,16 +1,22 @@
 /**
- * TelemetryDashboard — テレメトリダッシュボード v2
+ * TelemetryDashboard — テレメトリダッシュボード v3 (KPI 可視化)
  *
- * 5ウィジェット構成:
+ * 既存5ウィジェット + 新4ウィジェット構成:
  * ① 期間切替タブ（今日 / 7日 / 30日）
- * ② イベント数カード（type 別）
- * ③ フェーズ分布（横棒グラフ）
- * ④ イベント別ランキング（type×event 組み合わせ）
- * ⑤ 最新イベント一覧（直近10件テーブル）
+ * ② KPI サマリカード（Hero利用率 / Queue利用率 / 完了率 / CTAクリック総数）
+ * ③ 導線分布（Today → どこへ遷移したか）
+ * ④ Hero vs Queue 画面別比率
+ * ⑤ 完了ファネル（ランディング → クリック → 完了）
+ * ⑥ 時間帯別利用分布
+ * ⑦ イベント別ランキング（type×event）
+ * ⑧ フェーズ分布（横棒グラフ）
+ * ⑨ 最新イベント一覧（直近10件テーブル）
  */
 import { useState } from 'react';
 import { useTelemetryDashboard } from '../hooks/useTelemetryDashboard';
 import type { DateRange, EventRankItem, TelemetryDoc } from '../hooks/useTelemetryDashboard';
+import type { FlowDistribution, FunnelStep, HourlyBucket, ScreenKpi } from '../domain/computeCtaKpis';
+import type { KpiAlert, KpiDiff, Trend } from '../domain/computeCtaKpiDiff';
 
 // ── Label Maps ──────────────────────────────────────────────────────────────
 
@@ -50,7 +56,7 @@ const RANGE_LABELS: Record<DateRange, string> = {
   '30d': '30日間',
 };
 
-// ── Sub-components ──────────────────────────────────────────────────────────
+// ── Shared Sub-components ───────────────────────────────────────────────────
 
 function RangeTabs({
   current,
@@ -92,6 +98,375 @@ function RangeTabs({
     </div>
   );
 }
+
+function SectionCard({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <section
+      style={{
+        marginBottom: 20,
+        background: '#fff',
+        borderRadius: 12,
+        padding: 20,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        ...style,
+      }}
+    >
+      {children}
+    </section>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 style={{
+      fontSize: 13,
+      fontWeight: 600,
+      color: '#64748b',
+      marginBottom: 14,
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+      margin: '0 0 14px 0',
+    }}>
+      {children}
+    </h2>
+  );
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div style={{ textAlign: 'center', padding: 20, color: '#94a3b8', fontSize: 13 }}>
+      {message}
+    </div>
+  );
+}
+
+// ── KPI Card ────────────────────────────────────────────────────────────────
+
+function KpiCard({
+  label,
+  value,
+  unit,
+  color,
+  subLabel,
+  diff,
+}: {
+  label: string;
+  value: number | string;
+  unit?: string;
+  color: string;
+  subLabel?: string;
+  diff?: KpiDiff;
+}) {
+  const trendColor: Record<Trend, string> = {
+    up: '#10b981',
+    down: '#ef4444',
+    flat: '#94a3b8',
+  };
+
+  return (
+    <div
+      style={{
+        background: `linear-gradient(135deg, ${color}08, ${color}15)`,
+        border: `1.5px solid ${color}30`,
+        borderRadius: 14,
+        padding: '16px 20px',
+        minWidth: 150,
+        flex: 1,
+      }}
+    >
+      <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        {label}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+        <span style={{ fontSize: 32, fontWeight: 800, color, lineHeight: 1 }}>
+          {value}
+        </span>
+        {unit && (
+          <span style={{ fontSize: 14, fontWeight: 600, color: `${color}90` }}>
+            {unit}
+          </span>
+        )}
+      </div>
+      {diff && (
+        <div style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: trendColor[diff.trend],
+          marginTop: 4,
+        }}>
+          {diff.diffFormatted}
+          <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 400, marginLeft: 4 }}>
+            vs 前期間
+          </span>
+        </div>
+      )}
+      {subLabel && (
+        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: diff ? 2 : 4 }}>
+          {subLabel}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Alert Chip ──────────────────────────────────────────────────────────────
+
+function AlertChip({ alert }: { alert: KpiAlert }) {
+  const isCritical = alert.severity === 'critical';
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 10,
+        padding: '12px 16px',
+        borderRadius: 10,
+        background: isCritical ? '#fef2f2' : '#fffbeb',
+        border: `1px solid ${isCritical ? '#fecaca' : '#fed7aa'}`,
+      }}
+    >
+      <span style={{ fontSize: 16, lineHeight: 1.2, flexShrink: 0 }}>
+        {isCritical ? '🔴' : '🟡'}
+      </span>
+      <div style={{ flex: 1 }}>
+        <div style={{
+          fontSize: 13,
+          fontWeight: 600,
+          color: isCritical ? '#dc2626' : '#d97706',
+          marginBottom: 2,
+        }}>
+          {alert.label}
+        </div>
+        <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.4 }}>
+          {alert.message}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AlertSection({ alerts }: { alerts: KpiAlert[] }) {
+  if (alerts.length === 0) return null;
+  return (
+    <section style={{ marginBottom: 20 }}>
+      <SectionTitle>⚠️ アラート ({alerts.length})</SectionTitle>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {alerts.map((a) => (
+          <AlertChip key={a.id} alert={a} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ── Flow Distribution Chart ─────────────────────────────────────────────────
+
+function FlowDistributionChart({ data }: { data: FlowDistribution[] }) {
+  if (data.length === 0) return <EmptyState message="導線データがありません" />;
+
+  const colors = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6'];
+
+  return (
+    <div>
+      {/* Bar chart */}
+      <div style={{ display: 'flex', gap: 2, height: 32, borderRadius: 8, overflow: 'hidden', marginBottom: 12 }}>
+        {data.map((d, i) => (
+          <div
+            key={d.destination}
+            style={{
+              width: `${d.rate}%`,
+              background: colors[i % colors.length],
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: d.rate > 0 ? 24 : 0,
+              transition: 'width 0.5s ease',
+            }}
+          >
+            {d.rate >= 15 && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>
+                {d.rate}%
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+        {data.map((d, i) => (
+          <div key={d.destination} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 3, background: colors[i % colors.length], flexShrink: 0 }} />
+            <span style={{ color: '#334155', fontWeight: 500 }}>{d.label}</span>
+            <span style={{ color: '#94a3b8' }}>{d.count}件</span>
+            <span style={{ color: '#94a3b8' }}>({d.rate}%)</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Hero vs Queue Ratio Chart ───────────────────────────────────────────────
+
+function HeroQueueChart({ screenKpis, totalHeroRate }: { screenKpis: ScreenKpi[]; totalHeroRate: number }) {
+  if (screenKpis.length === 0) return <EmptyState message="CTA データがありません" />;
+
+  return (
+    <div>
+      {/* Total ratio bar */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+          <span style={{ color: '#3b82f6', fontWeight: 600 }}>🎯 Hero {totalHeroRate}%</span>
+          <span style={{ color: '#f59e0b', fontWeight: 600 }}>📋 Queue {100 - totalHeroRate}%</span>
+        </div>
+        <div style={{ display: 'flex', height: 24, borderRadius: 8, overflow: 'hidden' }}>
+          <div
+            style={{
+              width: `${totalHeroRate}%`,
+              background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
+              transition: 'width 0.5s ease',
+              minWidth: totalHeroRate > 0 ? 4 : 0,
+            }}
+          />
+          <div
+            style={{
+              width: `${100 - totalHeroRate}%`,
+              background: 'linear-gradient(90deg, #f59e0b, #fbbf24)',
+              transition: 'width 0.5s ease',
+              minWidth: 100 - totalHeroRate > 0 ? 4 : 0,
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Per-screen breakdown */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
+        {screenKpis.map((s) => (
+          <div
+            key={s.screen}
+            style={{
+              background: '#f8fafc',
+              borderRadius: 10,
+              padding: '10px 14px',
+              border: '1px solid #e2e8f0',
+            }}
+          >
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+              {s.label}
+            </div>
+            <div style={{ display: 'flex', gap: 4, height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: 6 }}>
+              <div style={{ width: `${s.heroRate}%`, background: '#3b82f6', borderRadius: 3 }} />
+              <div style={{ width: `${100 - s.heroRate}%`, background: '#f59e0b', borderRadius: 3 }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#64748b' }}>
+              <span>H: {s.heroClicks}</span>
+              <span>Q: {s.queueClicks}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Funnel Chart ────────────────────────────────────────────────────────────
+
+function FunnelChart({ steps }: { steps: FunnelStep[] }) {
+  if (steps.length === 0) return <EmptyState message="ファネルデータがありません" />;
+
+  const maxCount = Math.max(...steps.map((s) => s.count), 1);
+  const colors = ['#3b82f6', '#10b981', '#f59e0b'];
+
+  return (
+    <div>
+      {steps.map((step, i) => {
+        const width = maxCount > 0 ? Math.max((step.count / maxCount) * 100, 8) : 8;
+        return (
+          <div key={step.label} style={{ marginBottom: i < steps.length - 1 ? 8 : 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
+              <span style={{ color: '#334155', fontWeight: 500 }}>
+                {i > 0 && <span style={{ color: '#94a3b8', marginRight: 4 }}>→</span>}
+                {step.label}
+              </span>
+              <span style={{ color: '#64748b' }}>
+                {step.count}件
+                {i > 0 && (
+                  <span style={{ color: step.rate >= 50 ? '#10b981' : '#ef4444', fontWeight: 600, marginLeft: 6 }}>
+                    {step.rate}%
+                  </span>
+                )}
+              </span>
+            </div>
+            <div style={{ background: '#f1f5f9', borderRadius: 6, height: 20, overflow: 'hidden' }}>
+              <div
+                style={{
+                  width: `${width}%`,
+                  height: '100%',
+                  background: `linear-gradient(90deg, ${colors[i % colors.length]}, ${colors[i % colors.length]}80)`,
+                  borderRadius: 6,
+                  transition: 'width 0.5s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {width >= 20 && (
+                  <span style={{ fontSize: 10, fontWeight: 600, color: '#fff' }}>{step.count}</span>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Hourly Distribution Chart ───────────────────────────────────────────────
+
+function HourlyChart({ buckets }: { buckets: HourlyBucket[] }) {
+  const maxCount = Math.max(...buckets.map((b) => b.count), 1);
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 80 }}>
+      {buckets.map((b) => {
+        const height = maxCount > 0 ? Math.max((b.count / maxCount) * 100, 2) : 2;
+        const active = b.count > 0;
+        return (
+          <div
+            key={b.hour}
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 2,
+            }}
+            title={`${b.hour}時: ${b.count}件`}
+          >
+            <div
+              style={{
+                width: '100%',
+                height: `${height}%`,
+                background: active
+                  ? 'linear-gradient(180deg, #3b82f6, #60a5fa)'
+                  : '#e2e8f0',
+                borderRadius: '3px 3px 0 0',
+                transition: 'height 0.5s ease',
+                minHeight: 2,
+              }}
+            />
+            <span style={{ fontSize: 9, color: '#94a3b8', lineHeight: 1 }}>
+              {b.hour}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Legacy Sub-components (preserved) ───────────────────────────────────────
 
 function StatCard({ label, count, color }: { label: string; count: number; color: string }) {
   return (
@@ -247,52 +622,12 @@ function EventTypeChip({ type }: { type: string }) {
   );
 }
 
-function SectionCard({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <section
-      style={{
-        marginBottom: 20,
-        background: '#fff',
-        borderRadius: 12,
-        padding: 20,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-        ...style,
-      }}
-    >
-      {children}
-    </section>
-  );
-}
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 style={{
-      fontSize: 13,
-      fontWeight: 600,
-      color: '#64748b',
-      marginBottom: 14,
-      textTransform: 'uppercase',
-      letterSpacing: 1,
-      margin: '0 0 14px 0',
-    }}>
-      {children}
-    </h2>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div style={{ textAlign: 'center', padding: 20, color: '#94a3b8', fontSize: 13 }}>
-      {message}
-    </div>
-  );
-}
-
 // ── Main Component ──────────────────────────────────────────────────────────
 
 export default function TelemetryDashboard() {
-  const { stats, loading, error, range, setRange, refresh } = useTelemetryDashboard();
+  const { stats, kpis, kpiDiffs, loading, error, range, setRange, refresh } = useTelemetryDashboard();
   const [showAllRanking, setShowAllRanking] = useState(false);
+  const [activeTab, setActiveTab] = useState<'kpi' | 'raw'>('kpi');
 
   // ── Loading ──
   if (loading && !stats) {
@@ -350,7 +685,7 @@ export default function TelemetryDashboard() {
   const hasMoreRanking = stats.eventRanking.length > RANKING_PREVIEW;
 
   return (
-    <div style={{ padding: 16, maxWidth: 800, margin: '0 auto' }}>
+    <div style={{ padding: 16, maxWidth: 900, margin: '0 auto' }}>
       {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
         <div>
@@ -384,6 +719,32 @@ export default function TelemetryDashboard() {
         </div>
       </div>
 
+      {/* ── View Tabs ── */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
+        {(['kpi', 'raw'] as const).map((tab) => {
+          const active = tab === activeTab;
+          return (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              style={{
+                padding: '6px 16px',
+                borderRadius: 8,
+                border: active ? '1.5px solid #3b82f6' : '1px solid #e2e8f0',
+                background: active ? '#eff6ff' : '#fff',
+                color: active ? '#1d4ed8' : '#64748b',
+                fontWeight: active ? 600 : 400,
+                fontSize: 13,
+                cursor: 'pointer',
+              }}
+            >
+              {tab === 'kpi' ? '📈 KPI分析' : '📋 イベントログ'}
+            </button>
+          );
+        })}
+      </div>
+
       {/* ── Loading Overlay (期間切替中) ── */}
       {loading && (
         <div style={{
@@ -397,129 +758,215 @@ export default function TelemetryDashboard() {
         </div>
       )}
 
-      {/* ── ① イベント数カード ── */}
-      <section style={{ marginBottom: 20 }}>
-        <SectionTitle>
-          {RANGE_LABELS[range]}のイベント数
-        </SectionTitle>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <StatCard label="TOTAL" count={stats.total} color="#1e293b" />
-          {Object.entries(stats.byType)
-            .sort(([, a], [, b]) => b - a)
-            .map(([type, count]) => (
-              <StatCard
-                key={type}
-                label={TYPE_LABELS[type] ?? type}
-                count={count}
-                color={TYPE_COLORS[type] ?? '#94a3b8'}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/*  KPI Tab                                                         */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'kpi' && kpis && (
+        <>
+          {/* ── ① KPI サマリカード ── */}
+          <section style={{ marginBottom: 20 }}>
+            <SectionTitle>📊 {RANGE_LABELS[range]}の KPI サマリ</SectionTitle>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <KpiCard
+                label="Hero 利用率"
+                value={kpis.heroQueueRatio.heroRate}
+                unit="%"
+                color="#3b82f6"
+                subLabel={`${kpis.heroQueueRatio.heroCount}回 / ${kpis.heroQueueRatio.heroCount + kpis.heroQueueRatio.queueCount}回`}
+                diff={kpiDiffs?.heroRate}
               />
-            ))}
-        </div>
-      </section>
-
-      {/* ── ② イベント別ランキング (NEW) ── */}
-      <SectionCard>
-        <SectionTitle>🏆 イベント別ランキング</SectionTitle>
-        {stats.eventRanking.length === 0 ? (
-          <EmptyState message="イベントデータがありません" />
-        ) : (
-          <>
-            {visibleRanking.map((item, i) => (
-              <EventRankRow
-                key={item.key}
-                item={item}
-                rank={i + 1}
-                maxCount={maxEventCount}
+              <KpiCard
+                label="Queue 利用率"
+                value={kpis.heroQueueRatio.queueRate}
+                unit="%"
+                color="#f59e0b"
+                subLabel={`${kpis.heroQueueRatio.queueCount}回`}
+                diff={kpiDiffs?.queueRate}
               />
-            ))}
-            {hasMoreRanking && (
-              <button
-                type="button"
-                onClick={() => setShowAllRanking(!showAllRanking)}
-                style={{
-                  display: 'block',
-                  margin: '8px auto 0',
-                  padding: '4px 16px',
-                  borderRadius: 6,
-                  border: '1px solid #e2e8f0',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  color: '#64748b',
-                }}
-              >
-                {showAllRanking
-                  ? '▲ 折りたたむ'
-                  : `▼ 残り ${stats.eventRanking.length - RANKING_PREVIEW} 件を表示`}
-              </button>
-            )}
-          </>
-        )}
-      </SectionCard>
+              <KpiCard
+                label="完了ファネル"
+                value={kpis.funnel[2]?.rate ?? 0}
+                unit="%"
+                color="#10b981"
+                subLabel={`CTA→完了 ${kpis.funnel[2]?.count ?? 0}件`}
+                diff={kpiDiffs?.completionRate}
+              />
+              <KpiCard
+                label="CTA 総数"
+                value={kpis.totalCtaClicks}
+                color="#8b5cf6"
+                subLabel={`Landing: ${kpis.totalLandings}回`}
+                diff={kpiDiffs?.totalCtaClicks}
+              />
+            </div>
+          </section>
 
-      {/* ── ③ フェーズ分布 ── */}
-      {Object.keys(stats.byPhase).length > 0 && (
+          {/* ── ① b アラート ── */}
+          {kpiDiffs && <AlertSection alerts={kpiDiffs.alerts} />}
+
+          {/* ── ② 導線分布 ── */}
+          <SectionCard>
+            <SectionTitle>🧭 導線分布（CTA 遷移先）</SectionTitle>
+            <FlowDistributionChart data={kpis.flowDistribution} />
+          </SectionCard>
+
+          {/* ── ③ Hero vs Queue 比率 ── */}
+          <SectionCard>
+            <SectionTitle>🎯 Hero vs Queue 画面別比率</SectionTitle>
+            <HeroQueueChart screenKpis={kpis.screenKpis} totalHeroRate={kpis.heroQueueRatio.heroRate} />
+          </SectionCard>
+
+          {/* ── ④ ファネル ── */}
+          <SectionCard>
+            <SectionTitle>🔻 完了ファネル</SectionTitle>
+            <FunnelChart steps={kpis.funnel} />
+          </SectionCard>
+
+          {/* ── ⑤ 時間帯分布 ── */}
+          <SectionCard>
+            <SectionTitle>🕐 時間帯別利用分布</SectionTitle>
+            <HourlyChart buckets={kpis.hourlyDistribution} />
+          </SectionCard>
+        </>
+      )}
+
+      {/* KPI data unavailable */}
+      {activeTab === 'kpi' && !kpis && (
         <SectionCard>
-          <SectionTitle>フェーズ分布</SectionTitle>
-          {Object.entries(stats.byPhase)
-            .sort(([, a], [, b]) => b - a)
-            .map(([phase, count]) => (
-              <PhaseBar
-                key={phase}
-                label={PHASE_LABELS[phase] ?? phase}
-                count={count}
-                maxCount={maxPhaseCount}
-              />
-            ))}
+          <EmptyState message="KPI データの算出に必要なイベントがありません" />
         </SectionCard>
       )}
 
-      {/* ── ④ 最新イベント一覧 ── */}
-      <SectionCard>
-        <SectionTitle>最新イベント（直近10件）</SectionTitle>
-        {stats.latestEvents.length === 0 ? (
-          <EmptyState message={`${RANGE_LABELS[range]}のイベントはまだありません`} />
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                  {showDate && (
-                    <th style={{ textAlign: 'left', padding: '8px 8px', color: '#64748b', fontWeight: 600, fontSize: 12 }}>日付</th>
-                  )}
-                  <th style={{ textAlign: 'left', padding: '8px 8px', color: '#64748b', fontWeight: 600, fontSize: 12 }}>時刻</th>
-                  <th style={{ textAlign: 'left', padding: '8px 8px', color: '#64748b', fontWeight: 600, fontSize: 12 }}>タイプ</th>
-                  <th style={{ textAlign: 'left', padding: '8px 8px', color: '#64748b', fontWeight: 600, fontSize: 12 }}>イベント</th>
-                  <th style={{ textAlign: 'left', padding: '8px 8px', color: '#64748b', fontWeight: 600, fontSize: 12 }}>パス</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.latestEvents.map((doc) => (
-                  <tr key={doc.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    {showDate && (
-                      <td style={{ padding: '8px 8px', fontSize: 12, color: '#64748b' }}>
-                        {formatDate(doc)}
-                      </td>
-                    )}
-                    <td style={{ padding: '8px 8px', fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>
-                      {formatTime(doc)}
-                    </td>
-                    <td style={{ padding: '8px 8px' }}>
-                      <EventTypeChip type={doc.type} />
-                    </td>
-                    <td style={{ padding: '8px 8px', color: '#334155', fontSize: 12 }}>
-                      {doc.event ?? '—'}
-                    </td>
-                    <td style={{ padding: '8px 8px', color: '#94a3b8', fontFamily: 'monospace', fontSize: 11 }}>
-                      {doc.path ?? '—'}
-                    </td>
-                  </tr>
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {/*  Raw Tab (existing)                                              */}
+      {/* ══════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'raw' && (
+        <>
+          {/* ── イベント数カード ── */}
+          <section style={{ marginBottom: 20 }}>
+            <SectionTitle>
+              {RANGE_LABELS[range]}のイベント数
+            </SectionTitle>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <StatCard label="TOTAL" count={stats.total} color="#1e293b" />
+              {Object.entries(stats.byType)
+                .sort(([, a], [, b]) => b - a)
+                .map(([type, count]) => (
+                  <StatCard
+                    key={type}
+                    label={TYPE_LABELS[type] ?? type}
+                    count={count}
+                    color={TYPE_COLORS[type] ?? '#94a3b8'}
+                  />
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </SectionCard>
+            </div>
+          </section>
+
+          {/* ── イベント別ランキング ── */}
+          <SectionCard>
+            <SectionTitle>🏆 イベント別ランキング</SectionTitle>
+            {stats.eventRanking.length === 0 ? (
+              <EmptyState message="イベントデータがありません" />
+            ) : (
+              <>
+                {visibleRanking.map((item, i) => (
+                  <EventRankRow
+                    key={item.key}
+                    item={item}
+                    rank={i + 1}
+                    maxCount={maxEventCount}
+                  />
+                ))}
+                {hasMoreRanking && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllRanking(!showAllRanking)}
+                    style={{
+                      display: 'block',
+                      margin: '8px auto 0',
+                      padding: '4px 16px',
+                      borderRadius: 6,
+                      border: '1px solid #e2e8f0',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      color: '#64748b',
+                    }}
+                  >
+                    {showAllRanking
+                      ? '▲ 折りたたむ'
+                      : `▼ 残り ${stats.eventRanking.length - RANKING_PREVIEW} 件を表示`}
+                  </button>
+                )}
+              </>
+            )}
+          </SectionCard>
+
+          {/* ── フェーズ分布 ── */}
+          {Object.keys(stats.byPhase).length > 0 && (
+            <SectionCard>
+              <SectionTitle>フェーズ分布</SectionTitle>
+              {Object.entries(stats.byPhase)
+                .sort(([, a], [, b]) => b - a)
+                .map(([phase, count]) => (
+                  <PhaseBar
+                    key={phase}
+                    label={PHASE_LABELS[phase] ?? phase}
+                    count={count}
+                    maxCount={maxPhaseCount}
+                  />
+                ))}
+            </SectionCard>
+          )}
+
+          {/* ── 最新イベント一覧 ── */}
+          <SectionCard>
+            <SectionTitle>最新イベント（直近10件）</SectionTitle>
+            {stats.latestEvents.length === 0 ? (
+              <EmptyState message={`${RANGE_LABELS[range]}のイベントはまだありません`} />
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
+                      {showDate && (
+                        <th style={{ textAlign: 'left', padding: '8px 8px', color: '#64748b', fontWeight: 600, fontSize: 12 }}>日付</th>
+                      )}
+                      <th style={{ textAlign: 'left', padding: '8px 8px', color: '#64748b', fontWeight: 600, fontSize: 12 }}>時刻</th>
+                      <th style={{ textAlign: 'left', padding: '8px 8px', color: '#64748b', fontWeight: 600, fontSize: 12 }}>タイプ</th>
+                      <th style={{ textAlign: 'left', padding: '8px 8px', color: '#64748b', fontWeight: 600, fontSize: 12 }}>イベント</th>
+                      <th style={{ textAlign: 'left', padding: '8px 8px', color: '#64748b', fontWeight: 600, fontSize: 12 }}>パス</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.latestEvents.map((doc) => (
+                      <tr key={doc.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        {showDate && (
+                          <td style={{ padding: '8px 8px', fontSize: 12, color: '#64748b' }}>
+                            {formatDate(doc)}
+                          </td>
+                        )}
+                        <td style={{ padding: '8px 8px', fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>
+                          {formatTime(doc)}
+                        </td>
+                        <td style={{ padding: '8px 8px' }}>
+                          <EventTypeChip type={doc.type} />
+                        </td>
+                        <td style={{ padding: '8px 8px', color: '#334155', fontSize: 12 }}>
+                          {doc.event ?? '—'}
+                        </td>
+                        <td style={{ padding: '8px 8px', color: '#94a3b8', fontFamily: 'monospace', fontSize: 11 }}>
+                          {doc.path ?? '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+        </>
+      )}
 
       {/* ── Footer ── */}
       <div style={{ marginTop: 12, fontSize: 11, color: '#c0c0c0', textAlign: 'center' }}>

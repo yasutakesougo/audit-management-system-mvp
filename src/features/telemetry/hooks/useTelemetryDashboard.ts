@@ -20,6 +20,8 @@ import {
   type Timestamp,
 } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
+import { computeCtaKpis, type DashboardKpis } from '../domain/computeCtaKpis';
+import { computeCtaKpiDiff, type DashboardKpiDiffs } from '../domain/computeCtaKpiDiff';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -53,6 +55,8 @@ export type TelemetryStats = {
 
 type DashboardState = {
   stats: TelemetryStats | null;
+  kpis: DashboardKpis | null;
+  kpiDiffs: DashboardKpiDiffs | null;
   loading: boolean;
   error: string | null;
   range: DateRange;
@@ -96,6 +100,30 @@ function getRangeStart(range: DateRange): Date {
   }
 }
 
+/** 前期間の開始日を算出（同じ幅だけ前にずらす） */
+function getPreviousRangeStart(range: DateRange): { start: Date; end: Date } {
+  const now = new Date();
+  switch (range) {
+    case '7d': {
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7, 0, 0, 0, 0);
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 14, 0, 0, 0, 0);
+      return { start, end };
+    }
+    case '30d': {
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30, 0, 0, 0, 0);
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 60, 0, 0, 0, 0);
+      return { start, end };
+    }
+    case 'today':
+    default: {
+      // 前日
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0, 0);
+      return { start, end };
+    }
+  }
+}
+
 function getQueryLimit(range: DateRange): number {
   switch (range) {
     case '30d': return 2000;
@@ -109,6 +137,8 @@ function getQueryLimit(range: DateRange): number {
 export function useTelemetryDashboard() {
   const [state, setState] = useState<DashboardState>({
     stats: null,
+    kpis: null,
+    kpiDiffs: null,
     loading: true,
     error: null,
     range: 'today',
@@ -122,15 +152,50 @@ export function useTelemetryDashboard() {
       const rangeStart = getRangeStart(range);
       const maxDocs = getQueryLimit(range);
 
-      const q = query(
+      // ── 現在期間取得 ──
+      const currentQuery = query(
         col,
         where('ts', '>=', rangeStart),
         orderBy('ts', 'desc'),
         limit(maxDocs),
       );
 
-      const snapshot = await getDocs(q);
-      const docs = snapshot.docs.map((d) => docToTelemetry(d.id, d.data()));
+      // ── 前期間取得（並列） ──
+      const prev = getPreviousRangeStart(range);
+      const previousQuery = query(
+        col,
+        where('ts', '>=', prev.start),
+        where('ts', '<', prev.end),
+        orderBy('ts', 'desc'),
+        limit(maxDocs),
+      );
+
+      const [currentSnapshot, previousSnapshot] = await Promise.all([
+        getDocs(currentQuery),
+        getDocs(previousQuery).catch(() => null), // 前期間取得失敗は無視
+      ]);
+
+      const docs = currentSnapshot.docs.map((d) => docToTelemetry(d.id, d.data()));
+
+      // ── KPI 算出（pure function） ──
+      const toKpiRecord = (d: TelemetryDoc) => ({
+        type: d.type,
+        ctaId: d.event,
+        sourceComponent: d.screen,
+        clientTs: d.clientTs,
+        ts: d.ts,
+      });
+      const kpis = computeCtaKpis(docs.map(toKpiRecord));
+
+      // ── 前期間 KPI 算出 ──
+      let previousKpis: DashboardKpis | null = null;
+      if (previousSnapshot) {
+        const prevDocs = previousSnapshot.docs.map((d) => docToTelemetry(d.id, d.data()));
+        previousKpis = computeCtaKpis(prevDocs.map(toKpiRecord));
+      }
+
+      // ── Diff + Alerts 算出 ──
+      const kpiDiffs = computeCtaKpiDiff(kpis, previousKpis);
 
       // ── 集計 ──
       const byType: Record<string, number> = {};
@@ -168,6 +233,8 @@ export function useTelemetryDashboard() {
           eventRanking,
           latestEvents: docs.slice(0, 10),
         },
+        kpis,
+        kpiDiffs,
         loading: false,
         error: null,
         range,
@@ -175,7 +242,7 @@ export function useTelemetryDashboard() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[telemetry-dashboard] fetch failed:', err);
-      setState((prev) => ({ ...prev, stats: null, loading: false, error: msg }));
+      setState((prev) => ({ ...prev, stats: null, kpis: null, kpiDiffs: null, loading: false, error: msg }));
     }
   }, []);
 
