@@ -86,6 +86,7 @@ export const APP_ROUTE_PATHS = [
   'abc-record',
   'ops',
   'settings/operation-flow',
+  'admin/telemetry',
 ] as const;
 
 export type AppRoutePath = typeof APP_ROUTE_PATHS[number];

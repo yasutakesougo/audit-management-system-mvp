@@ -32,6 +32,7 @@ import {
     SuspendedRegulatoryDashboardPage,
     SuspendedComplianceDashboardPage,
     SuspendedExceptionCenterPage,
+    SuspendedTelemetryDashboardPage,
 } from './lazyPages';
 
 export const adminRoutes: RouteObject[] = [
@@ -213,6 +214,14 @@ export const adminRoutes: RouteObject[] = [
     element: (
       <RequireAudience requiredRole="admin">
         <SuspendedExceptionCenterPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'admin/telemetry',
+    element: (
+      <RequireAudience requiredRole="admin">
+        <SuspendedTelemetryDashboardPage />
       </RequireAudience>
     ),
   },
