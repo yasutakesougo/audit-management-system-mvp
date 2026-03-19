@@ -5,6 +5,7 @@
  * 今後の管理機能追加はここにカードを追加するだけで対応可能。
  */
 import BadgeIcon from '@mui/icons-material/Badge';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import BuildIcon from '@mui/icons-material/Build';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -70,6 +71,13 @@ const ADMIN_TOOLS: AdminTool[] = [
     description: '委員会・指針・研修の適正化運用状況',
     to: '/admin/compliance-dashboard',
     icon: <SecurityIcon />,
+    category: 'overview',
+  },
+  {
+    label: 'テレメトリ',
+    description: '利用状況の集計・異常検知',
+    to: '/admin/telemetry',
+    icon: <BarChartIcon />,
     category: 'overview',
   },
   // Data
