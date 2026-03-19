@@ -39,6 +39,8 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 
 // ── Domain ──
 import type {
@@ -82,6 +84,9 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
   userName,
   data,
 }) => {
+  // Sprint-1 Phase C: モバイル対応
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const alertCount = data.alerts.filter((a) => a.level !== 'info').length;
 
   return (
@@ -89,10 +94,11 @@ export const ContextPanel: React.FC<ContextPanelProps> = ({
       anchor="right"
       open={open}
       onClose={onClose}
-      variant="persistent"
+      variant={isMobile ? 'temporary' : 'persistent'}
       sx={{
         '& .MuiDrawer-paper': {
-          width: DRAWER_WIDTH,
+          width: isMobile ? '85vw' : DRAWER_WIDTH,
+          maxWidth: DRAWER_WIDTH,
           boxSizing: 'border-box',
           borderLeft: '1px solid',
           borderColor: 'divider',
