@@ -17,6 +17,7 @@ import { useTelemetryDashboard } from '../hooks/useTelemetryDashboard';
 import type { DateRange, EventRankItem, TelemetryDoc } from '../hooks/useTelemetryDashboard';
 import type { FlowDistribution, FunnelStep, HourlyBucket, ScreenKpi } from '../domain/computeCtaKpis';
 import type { KpiAlert, KpiDiff, Trend } from '../domain/computeCtaKpiDiff';
+import { RoleBreakdownSection } from './RoleBreakdownSection';
 
 // ── Label Maps ──────────────────────────────────────────────────────────────
 
@@ -625,7 +626,7 @@ function EventTypeChip({ type }: { type: string }) {
 // ── Main Component ──────────────────────────────────────────────────────────
 
 export default function TelemetryDashboard() {
-  const { stats, kpis, kpiDiffs, loading, error, range, setRange, refresh } = useTelemetryDashboard();
+  const { stats, kpis, kpiDiffs, roleBreakdown, loading, error, range, setRange, refresh } = useTelemetryDashboard();
   const [showAllRanking, setShowAllRanking] = useState(false);
   const [activeTab, setActiveTab] = useState<'kpi' | 'raw'>('kpi');
 
@@ -803,6 +804,9 @@ export default function TelemetryDashboard() {
 
           {/* ── ① b アラート ── */}
           {kpiDiffs && <AlertSection alerts={kpiDiffs.alerts} />}
+
+          {/* ── ① c Role Breakdown ── */}
+          <RoleBreakdownSection data={roleBreakdown} />
 
           {/* ── ② 導線分布 ── */}
           <SectionCard>
