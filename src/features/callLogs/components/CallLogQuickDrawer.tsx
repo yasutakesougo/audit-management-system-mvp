@@ -29,6 +29,7 @@ import React, { useCallback, useRef, useState } from 'react';
 
 import type { CreateCallLogInput } from '@/domain/callLogs/schema';
 import { useCallLogs } from '@/features/callLogs/hooks/useCallLogs';
+import { useUsers } from '@/features/users/useUsers';
 import { useToast } from '@/hooks/useToast';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
@@ -49,6 +50,7 @@ export const CallLogQuickDrawer: React.FC<CallLogQuickDrawerProps> = ({ open, on
   const { show } = useToast();
 
   const { createLog } = useCallLogs();
+  const { data: users } = useUsers();
 
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -156,6 +158,7 @@ export const CallLogQuickDrawer: React.FC<CallLogQuickDrawerProps> = ({ open, on
           onSubmit={handleSubmit}
           onCancel={handleCloseRequest}
           onIsDirtyChange={handleIsDirtyChange}
+          users={users}
         />
       </Box>
     </Box>
