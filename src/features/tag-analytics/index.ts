@@ -1,5 +1,5 @@
 /**
- * @fileoverview tag-analytics feature — public API (F1 + F1.5 + F2)
+ * @fileoverview tag-analytics feature — public API (F1 + F1.5 + F2 + F2.5 + F3)
  */
 
 // Domain - Core
@@ -33,6 +33,13 @@ export {
   type TrendThresholds,
 } from './domain/tagTrendAlerts';
 
+// Domain - Planning Suggestions (F3)
+export {
+  buildPlanningSuggestions,
+  groupSuggestionsByCategory,
+  type PlanningSuggestion,
+} from './domain/planningSuggestions';
+
 // Hooks
 export {
   useTagAnalytics,
@@ -44,3 +51,4 @@ export {
 // Components
 export { TagAnalyticsSection } from './components/TagAnalyticsSection';
 export { TrendAlertsBanner } from './components/TrendAlertsBanner';
+export { PlanningSuggestionsCard } from './components/PlanningSuggestionsCard';
