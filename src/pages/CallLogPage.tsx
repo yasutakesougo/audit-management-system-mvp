@@ -11,6 +11,7 @@
  */
 
 import { PageHeader } from '@/components/PageHeader';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import PhoneIcon from '@mui/icons-material/Phone';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import AddIcon from '@mui/icons-material/Add';
@@ -124,6 +125,17 @@ const CallLogRow: React.FC<CallLogRowProps> = ({ log, onMarkDone, isUpdating }) 
             color="primary"
             sx={{ fontSize: '0.7rem', height: 20 }}
           />
+          {log.relatedUserName && (
+            <Chip
+              icon={<PersonOutlineIcon sx={{ fontSize: 14 }} />}
+              label={log.relatedUserName}
+              size="small"
+              variant="outlined"
+              color="secondary"
+              sx={{ fontSize: '0.7rem', height: 20 }}
+              data-testid={`call-log-related-user-${log.id}`}
+            />
+          )}
         </Stack>
       }
     />

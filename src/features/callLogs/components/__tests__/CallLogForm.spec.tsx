@@ -6,12 +6,15 @@
  *   - 全フィールド入力時に onSubmit が正しい値で呼ばれること
  *   - needCallback=true 時に callbackDueAt フィールドが現れること
  *   - isSubmitting=true 時にボタンが無効化されること
+ *   - 利用者選択 UI（Autocomplete）の動作
  */
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { CallLogForm } from '../CallLogForm';
+import type { IUserMaster } from '@/features/users/types';
 
 // ─── ヘルパー ─────────────────────────────────────────────────────────────────
 
@@ -29,6 +32,12 @@ function fillRequired() {
     target: { value: 'テスト本文' },
   });
 }
+
+const MOCK_USERS: IUserMaster[] = [
+  { Id: 1, UserID: 'U001', FullName: '利用者A', Furigana: 'リヨウシャエー' },
+  { Id: 2, UserID: 'U002', FullName: '利用者B', Furigana: 'リヨウシャビー' },
+  { Id: 3, UserID: 'U003', FullName: '利用者C', Furigana: null },
+] as IUserMaster[];
 
 // ─── テスト ───────────────────────────────────────────────────────────────────
 
@@ -104,4 +113,58 @@ describe('CallLogForm', () => {
     const normalRadio = screen.getByDisplayValue('normal') as HTMLInputElement;
     expect(normalRadio.checked).toBe(true);
   });
+
+  // ─── 利用者選択 UI テスト ──────────────────────────────────────────────────
+
+  it('should render the related user autocomplete', () => {
+    render(<CallLogForm onSubmit={vi.fn()} users={MOCK_USERS} />);
+
+    expect(screen.getByTestId('call-log-form-related-user-autocomplete')).toBeInTheDocument();
+    expect(screen.getByTestId('call-log-form-related-user')).toBeInTheDocument();
+  });
+
+  it('should submit without relatedUserId when no user is selected', async () => {
+    const onSubmit = vi.fn();
+    render(<CallLogForm onSubmit={onSubmit} users={MOCK_USERS} />);
+
+    fillRequired();
+    fireEvent.click(screen.getByTestId('call-log-form-submit'));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      const args = onSubmit.mock.calls[0][0];
+      expect(args.relatedUserId).toBeUndefined();
+      expect(args.relatedUserName).toBeUndefined();
+    });
+  });
+
+  it('should include relatedUserId/relatedUserName when a user is selected', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+
+    render(<CallLogForm onSubmit={onSubmit} users={MOCK_USERS} />);
+
+    fillRequired();
+
+    // Autocomplete を操作
+    const input = screen.getByTestId('call-log-form-related-user');
+    await user.click(input);
+    await user.type(input, '利用者A');
+
+    // ドロップダウンから選択
+    await waitFor(() => {
+      expect(screen.getByText(/利用者A/)).toBeInTheDocument();
+    });
+    await user.click(screen.getByText(/利用者A/));
+
+    fireEvent.click(screen.getByTestId('call-log-form-submit'));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      const args = onSubmit.mock.calls[0][0];
+      expect(args.relatedUserId).toBe('U001');
+      expect(args.relatedUserName).toBe('利用者A');
+    });
+  });
 });
+

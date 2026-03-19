@@ -14,14 +14,17 @@
  * 受電日時・受付者名・status は submit 側（CallLogQuickDrawer）で付与する。
  */
 
+import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Checkbox,
   FormControl,
   FormControlLabel,
   FormLabel,
+  InputAdornment,
   Radio,
   RadioGroup,
   Stack,
@@ -32,6 +35,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { CreateCallLogInput } from '@/domain/callLogs/schema';
 import { CreateCallLogInputSchema } from '@/domain/callLogs/schema';
+import type { IUserMaster } from '@/features/users/types';
 
 // ─── 型 ─────────────────────────────────────────────────────────────────────
 
@@ -45,6 +49,8 @@ export type CallLogFormValues = {
   needCallback: boolean;
   urgency: 'normal' | 'today' | 'urgent';
   callbackDueAt: string;
+  relatedUserId: string;
+  relatedUserName: string;
 };
 
 export type CallLogFormProps = {
@@ -54,6 +60,8 @@ export type CallLogFormProps = {
   onCancel?: () => void;
   /** フォームの dirty 状態が変わったときに通知するコールバック */
   onIsDirtyChange?: (isDirty: boolean) => void;
+  /** 利用者マスタ候補リスト（外部から注入して依存分離） */
+  users?: IUserMaster[];
 };
 
 // ─── 初期値 ──────────────────────────────────────────────────────────────────
@@ -67,6 +75,8 @@ const DEFAULT_VALUES: CallLogFormValues = {
   needCallback: false,
   urgency: 'normal',
   callbackDueAt: '',
+  relatedUserId: '',
+  relatedUserName: '',
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -77,6 +87,7 @@ export const CallLogForm: React.FC<CallLogFormProps> = ({
   onSubmit,
   onCancel,
   onIsDirtyChange,
+  users = [],
 }) => {
   // マウント時の初期値を固定（比較の基準として変えない）
   const mergedInitial = useMemo<CallLogFormValues>(
@@ -113,6 +124,22 @@ export const CallLogForm: React.FC<CallLogFormProps> = ({
     });
   }, []);
 
+  // ── 利用者選択ヘルパー ──────────────────────────────────────────────────────
+
+  /** Autocomplete で選択された利用者 */
+  const selectedUser = useMemo(() => {
+    if (!values.relatedUserId) return null;
+    return users.find((u) => u.UserID === values.relatedUserId) ?? null;
+  }, [values.relatedUserId, users]);
+
+  const handleUserChange = useCallback(
+    (_: unknown, user: IUserMaster | null) => {
+      set('relatedUserId', user?.UserID ?? '');
+      set('relatedUserName', user?.FullName ?? '');
+    },
+    [set],
+  );
+
   // ── Submit ────────────────────────────────────────────────────────────────
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -128,6 +155,8 @@ export const CallLogForm: React.FC<CallLogFormProps> = ({
       needCallback: values.needCallback,
       urgency: values.urgency,
       callbackDueAt: values.callbackDueAt.trim() || undefined,
+      relatedUserId: values.relatedUserId || undefined,
+      relatedUserName: values.relatedUserName || undefined,
     };
 
     const result = CreateCallLogInputSchema.safeParse(input);
@@ -225,6 +254,41 @@ export const CallLogForm: React.FC<CallLogFormProps> = ({
         size="small"
         inputProps={{ 'data-testid': 'call-log-form-subject' }}
         disabled={isSubmitting}
+      />
+
+      {/* 関連利用者 */}
+      <Autocomplete
+        id="call-log-form-relatedUser"
+        options={users}
+        getOptionLabel={(u) => u.FullName + (u.Furigana ? ` (${u.Furigana})` : '')}
+        getOptionKey={(u) => u.UserID}
+        value={selectedUser}
+        onChange={handleUserChange}
+        isOptionEqualToValue={(opt, val) => opt.UserID === val.UserID}
+        disabled={isSubmitting}
+        noOptionsText="該当する利用者がいません"
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label="関連利用者"
+            size="small"
+            placeholder="名前で検索…"
+            InputProps={{
+              ...params.InputProps,
+              startAdornment: (
+                <InputAdornment position="start">
+                  <PersonSearchIcon fontSize="small" color="action" />
+                </InputAdornment>
+              ),
+            }}
+            inputProps={{
+              ...params.inputProps,
+              'data-testid': 'call-log-form-related-user',
+            }}
+            helperText="電話の対象となる利用者を選択（任意）"
+          />
+        )}
+        data-testid="call-log-form-related-user-autocomplete"
       />
 
       {/* 用件 */}
