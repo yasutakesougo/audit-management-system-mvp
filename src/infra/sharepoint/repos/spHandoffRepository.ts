@@ -5,20 +5,23 @@ import { HandoffStatus } from "@/domain/Handoff";
 import { mapSPToHandoff, mapHandoffToSPPayload, SPHandoffItemSchema } from "../fields/handoffFields";
 
 /**
- * SharePoint の Handoffs リストを対象とする HandoffRepository の実装
+ * SharePoint の Handoff リストを対象とする HandoffRepository の実装
+ *
+ * 2026-03-19: リスト名を 'Handoffs' → 'Handoff' (単数形)、
+ *             フィルタ列名を cr015_* → 実列名 に修正
  */
 export class SPHandoffRepository implements HandoffRepository {
   constructor(private client: UseSP) {}
 
   private get listTitle() {
-    return "Handoffs";
+    return "Handoff";
   }
 
   async getHandoffsByDate(targetDate: string): Promise<Handoff[]> {
     const rawItems = await this.client.getListItemsByTitle(
       this.listTitle,
       undefined,
-      `cr015_targetDate eq '${targetDate}'`,
+      `CarryOverDate eq '${targetDate}'`,
       undefined,
       5000
     );
@@ -39,7 +42,7 @@ export class SPHandoffRepository implements HandoffRepository {
     const rawItems = await this.client.getListItemsByTitle(
       this.listTitle,
       undefined,
-      `cr015_userId eq '${userId}'`,
+      `UserCode eq '${userId}'`,
       undefined,
       5000
     );
@@ -79,7 +82,7 @@ export class SPHandoffRepository implements HandoffRepository {
     const rawItems = await this.client.getListItemsByTitle<{ Id: number }>(
       this.listTitle,
       ["Id"],
-      `cr015_recordId eq '${id}'`
+      `Id eq ${Number(id)}`
     );
 
     if (rawItems.length === 0) {
@@ -88,7 +91,7 @@ export class SPHandoffRepository implements HandoffRepository {
 
     const spId = rawItems[0].Id;
     await this.client.updateItemByTitle(this.listTitle, spId, {
-      cr015_status: newStatus,
+      Status: newStatus === 'read' ? '確認済' : '未対応',
     });
   }
 }
