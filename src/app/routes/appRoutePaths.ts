@@ -8,6 +8,7 @@ export const APP_ROUTE_PATHS = [
   'dashboard',
   'admin/dashboard',
   'admin',
+  'admin/exception-center',
   'dashboard/briefing',
   'today',
   'room-management',
