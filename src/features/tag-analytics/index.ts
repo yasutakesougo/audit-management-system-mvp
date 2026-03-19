@@ -1,8 +1,8 @@
 /**
- * @fileoverview Phase F1: tag-analytics feature — public API
+ * @fileoverview tag-analytics feature — public API (F1 + F1.5 + F2)
  */
 
-// Domain
+// Domain - Core
 export {
   computeTagCounts,
   computeTagTrend,
@@ -21,6 +21,18 @@ export {
   type PeriodPreset,
 } from './domain/tagAnalytics';
 
+// Domain - Trend Alerts (F2)
+export {
+  detectTagTrends,
+  DEFAULT_THRESHOLDS,
+  type TrendAlert,
+  type TrendAlertType,
+  type TrendAlertSeverity,
+  type TagTrendAlerts,
+  type DetectTagTrendsInput,
+  type TrendThresholds,
+} from './domain/tagTrendAlerts';
+
 // Hooks
 export {
   useTagAnalytics,
@@ -31,3 +43,4 @@ export {
 
 // Components
 export { TagAnalyticsSection } from './components/TagAnalyticsSection';
+export { TrendAlertsBanner } from './components/TrendAlertsBanner';
