@@ -15,6 +15,7 @@ const ChecklistPage = React.lazy(() => import('@/features/compliance-checklist/C
 const AuditPanel = React.lazy(() => import('@/features/audit/AuditPanel'));
 
 const NewSchedulesWeekPage = lazyWithPreload(() => import('@/features/schedules/routes/WeekPage'));
+const OpsSchedulePage = React.lazy(() => import('@/features/schedules/components/ops/OpsSchedulePage').then(m => ({ default: m.OpsSchedulePage })));
 const DailyRecordPage = React.lazy(() => import('@/pages/DailyRecordPage'));
 const DailyRecordMenuPage = React.lazy(() => import('@/pages/DailyRecordMenuPage'));
 const TableDailyRecordPage = React.lazy(() => import('@/features/daily/table/TableDailyRecordPage'));
@@ -100,6 +101,7 @@ export const SuspendedDevScheduleCreateDialogPage: React.FC | null = DevSchedule
 // ── Suspended wrappers ─────────────────────────────────────────────────────
 
 export const SuspendedNewSchedulesWeekPage = createSuspended(NewSchedulesWeekPage, '週間予定を読み込んでいます…');
+export const SuspendedOpsSchedulePage = createSuspended(OpsSchedulePage, 'スケジュール（運営ビュー）を読み込んでいます…');
 export const SuspendedDailyRecordPage = createSuspended(DailyRecordPage, '支援記録を読み込んでいます…');
 export const SuspendedMonthlyRecordPage = createSuspended(MonthlyRecordPage, '月次記録を読み込んでいます…');
 export const SuspendedServiceProvisionFormPage = createSuspended(ServiceProvisionFormPage, 'サービス提供実績記録を読み込んでいます…');

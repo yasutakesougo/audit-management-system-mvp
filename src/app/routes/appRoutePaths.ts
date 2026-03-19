@@ -73,6 +73,7 @@ export const APP_ROUTE_PATHS = [
   'admin/regulatory-dashboard',
   'schedule',
   'schedule/*',
+  'schedule-ops',
   'schedules',
   'schedules/week',
   'schedules/day',
