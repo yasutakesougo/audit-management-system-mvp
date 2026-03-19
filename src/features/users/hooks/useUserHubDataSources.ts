@@ -15,6 +15,7 @@ import { useDailyRecordRepository } from '@/features/daily/repositoryFactory';
 import type { DailyRecordItem } from '@/features/daily/domain/DailyRecordRepository';
 import { useHandoffData } from '@/features/handoff/hooks/useHandoffData';
 import type { HandoffRecord } from '@/features/handoff/handoffTypes';
+import type { DataSourceStatus } from '@/features/exceptions/hooks/useExceptionDataSources';
 
 // ── 型定義 ──
 
@@ -45,8 +46,10 @@ export type UserHubDataSources = {
     status: string;
     createdAt: string;
   }>;
-  /** 読み込み中 */
-  isLoading: boolean;
+  /** 4状態契約: loading → ready/empty/error */
+  status: DataSourceStatus;
+  /** エラー時のメッセージ */
+  error: string | null;
 };
 
 // ── Hook ──
@@ -59,6 +62,8 @@ export function useUserHubDataSources(userId: string | undefined): UserHubDataSo
   const [handoffRecords, setHandoffRecords] = useState<HandoffRecord[]>([]);
   const [dailyLoading, setDailyLoading] = useState(true);
   const [handoffLoading, setHandoffLoading] = useState(true);
+  const [dailyError, setDailyError] = useState<string | null>(null);
+  const [handoffError, setHandoffError] = useState<string | null>(null);
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
@@ -83,10 +88,10 @@ export function useUserHubDataSources(userId: string | undefined): UserHubDataSo
         const records = await dailyRepo.list({
           range: { startDate, endDate },
         });
-        if (!cancelled) setRecentDailyRecords(records);
+        if (!cancelled) { setRecentDailyRecords(records); setDailyError(null); }
       } catch (err) {
         console.warn('[useUserHubDataSources] DailyRecord load failed:', err);
-        if (!cancelled) setRecentDailyRecords([]);
+        if (!cancelled) { setRecentDailyRecords([]); setDailyError(err instanceof Error ? err.message : '日次記録の取得に失敗'); }
       } finally {
         if (!cancelled) setDailyLoading(false);
       }
@@ -110,10 +115,10 @@ export function useUserHubDataSources(userId: string | undefined): UserHubDataSo
     async function loadHandoffs() {
       try {
         const records = await handoffRepo.getRecords('today', 'all');
-        if (!cancelled) setHandoffRecords(records);
+        if (!cancelled) { setHandoffRecords(records); setHandoffError(null); }
       } catch (err) {
         console.warn('[useUserHubDataSources] Handoff load failed:', err);
-        if (!cancelled) setHandoffRecords([]);
+        if (!cancelled) { setHandoffRecords([]); setHandoffError(err instanceof Error ? err.message : '申し送りの取得に失敗'); }
       } finally {
         if (!cancelled) setHandoffLoading(false);
       }
@@ -134,7 +139,8 @@ export function useUserHubDataSources(userId: string | undefined): UserHubDataSo
         hasPlan: false,
         recentRecordsForUser: [],
         recentHandoffs: [],
-        isLoading: false,
+        status: 'empty' as const,
+        error: null,
       };
     }
 
@@ -182,6 +188,17 @@ export function useUserHubDataSources(userId: string | undefined): UserHubDataSo
       createdAt: h.createdAt ?? '',
     }));
 
+    // 4状態契約
+    const isLoading = dailyLoading || handoffLoading;
+    const errorMsg = dailyError ?? handoffError;
+    const status: DataSourceStatus = isLoading
+      ? 'loading'
+      : errorMsg
+        ? 'error'
+        : (!hasRecordToday && recentRecordsForUser.length === 0 && recentHandoffs.length === 0)
+          ? 'empty'
+          : 'ready';
+
     return {
       hasRecordToday,
       latestDailyRecord,
@@ -193,7 +210,8 @@ export function useUserHubDataSources(userId: string | undefined): UserHubDataSo
       hasPlan: false, // TODO Phase 3: ISP Repository 接続
       recentRecordsForUser,
       recentHandoffs,
-      isLoading: dailyLoading || handoffLoading,
+      status,
+      error: errorMsg,
     };
-  }, [userId, recentDailyRecords, handoffRecords, today, dailyLoading, handoffLoading]);
+  }, [userId, recentDailyRecords, handoffRecords, today, dailyLoading, handoffLoading, dailyError, handoffError]);
 }

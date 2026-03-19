@@ -19,10 +19,12 @@ import { useNavigate } from 'react-router-dom';
 
 // ── MUI ──
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
+import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
@@ -109,6 +111,37 @@ export default function ExceptionCenterPage() {
         管理ツールに戻る
       </Button>
 
+      {/* ── Loading 状態 ── */}
+      {dataSources.status === 'loading' && (
+        <Stack spacing={2}>
+          <Skeleton variant="rectangular" height={80} sx={{ borderRadius: 2 }} />
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: '1fr 1fr 1fr 1fr' }, gap: 2 }}>
+            {[1,2,3,4].map(i => <Skeleton key={i} variant="rectangular" height={100} sx={{ borderRadius: 2 }} />)}
+          </Box>
+          <Skeleton variant="rectangular" height={300} sx={{ borderRadius: 2 }} />
+        </Stack>
+      )}
+
+      {/* ── Error 状態 ── */}
+      {dataSources.status === 'error' && (
+        <Alert severity="error" sx={{ my: 2 }} data-testid="exception-center-error">
+          データの取得に失敗しました: {dataSources.error}
+        </Alert>
+      )}
+
+      {/* ── Empty 状態 ── */}
+      {dataSources.status === 'empty' && (
+        <Paper variant="outlined" sx={{ p: 4, textAlign: 'center', borderRadius: 2 }} data-testid="exception-center-empty">
+          <Typography variant="h5" sx={{ mb: 1 }}>✅</Typography>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>例外は検出されていません</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            現在、対応が必要な例外はありません。
+          </Typography>
+        </Paper>
+      )}
+
+      {/* ── Ready 状態 ── */}
+      {dataSources.status === 'ready' && (
       <Stack spacing={3}>
         {/* ════════════════════════════════════════════════════════════
             Header
@@ -180,6 +213,7 @@ export default function ExceptionCenterPage() {
           onCategoryFilterChange={setCategoryFilter}
         />
       </Stack>
+      )}
     </Container>
   );
 }

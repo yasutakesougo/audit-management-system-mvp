@@ -23,6 +23,9 @@ import type { DailyRecordSummary, HandoffSummaryItem, UserSummary } from '../dom
 
 // ── 型定義 ──
 
+/** 画面判断の共通契約 — boolean 群ではなく 1 つの status で制御 */
+export type DataSourceStatus = 'loading' | 'ready' | 'empty' | 'error';
+
 export type ExceptionDataSources = {
   /** 今日の日付 (YYYY-MM-DD) */
   today: string;
@@ -34,8 +37,10 @@ export type ExceptionDataSources = {
   criticalHandoffs: HandoffSummaryItem[];
   /** ユーザーサマリー (detectAttentionUsers 用) */
   userSummaries: UserSummary[];
-  /** データ読み込み中フラグ */
-  isLoading: boolean;
+  /** 4状態契約: loading → ready/empty/error */
+  status: DataSourceStatus;
+  /** エラー時のメッセージ */
+  error: string | null;
 };
 
 // ── Hook ──
@@ -49,6 +54,8 @@ export function useExceptionDataSources(): ExceptionDataSources {
   const [handoffRecords, setHandoffRecords] = useState<HandoffRecord[]>([]);
   const [dailyLoading, setDailyLoading] = useState(true);
   const [handoffLoading, setHandoffLoading] = useState(true);
+  const [dailyError, setDailyError] = useState<string | null>(null);
+  const [handoffError, setHandoffError] = useState<string | null>(null);
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
@@ -62,10 +69,10 @@ export function useExceptionDataSources(): ExceptionDataSources {
         const records = await dailyRepo.list({
           range: { startDate: today, endDate: today },
         });
-        if (!cancelled) setTodayRecords(records);
+        if (!cancelled) { setTodayRecords(records); setDailyError(null); }
       } catch (err) {
         console.warn('[useExceptionDataSources] DailyRecord load failed:', err);
-        if (!cancelled) setTodayRecords([]);
+        if (!cancelled) { setTodayRecords([]); setDailyError(err instanceof Error ? err.message : '日次記録の取得に失敗'); }
       } finally {
         if (!cancelled) setDailyLoading(false);
       }
@@ -83,10 +90,10 @@ export function useExceptionDataSources(): ExceptionDataSources {
     async function loadHandoffs() {
       try {
         const records = await handoffRepo.getRecords('today', 'all');
-        if (!cancelled) setHandoffRecords(records);
+        if (!cancelled) { setHandoffRecords(records); setHandoffError(null); }
       } catch (err) {
         console.warn('[useExceptionDataSources] Handoff load failed:', err);
-        if (!cancelled) setHandoffRecords([]);
+        if (!cancelled) { setHandoffRecords([]); setHandoffError(err instanceof Error ? err.message : '申し送りの取得に失敗'); }
       } finally {
         if (!cancelled) setHandoffLoading(false);
       }
@@ -141,13 +148,25 @@ export function useExceptionDataSources(): ExceptionDataSources {
         hasPlan: true, // TODO Phase 3: ISP Repository で実際に確認
       }));
 
+    // 4状態契約
+    const isLoading = dailyLoading || handoffLoading;
+    const errorMsg = dailyError ?? handoffError;
+    const status: DataSourceStatus = isLoading
+      ? 'loading'
+      : errorMsg
+        ? 'error'
+        : (dailyRecordSummaries.length === 0 && criticalHandoffs.length === 0)
+          ? 'empty'
+          : 'ready';
+
     return {
       today,
       expectedUsers,
       todayRecords: dailyRecordSummaries,
       criticalHandoffs,
       userSummaries,
-      isLoading: dailyLoading || handoffLoading,
+      status,
+      error: errorMsg,
     };
-  }, [users, todayRecords, handoffRecords, today, dailyLoading, handoffLoading]);
+  }, [users, todayRecords, handoffRecords, today, dailyLoading, handoffLoading, dailyError, handoffError]);
 }

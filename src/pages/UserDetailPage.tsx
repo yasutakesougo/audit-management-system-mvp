@@ -21,6 +21,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
+import Alert from '@mui/material/Alert';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -176,6 +177,17 @@ const UserDetailPage: React.FC = () => {
 
   return (
     <Container maxWidth="md" sx={{ py: 3 }} data-testid="user-detail-hub">
+      {/* ── Hub データソース エラー/ローディング 通知 ── */}
+      {hubData.status === 'error' && (
+        <Alert severity="warning" sx={{ mb: 2 }} data-testid="user-hub-data-error">
+          一部のデータ取得に失敗しました: {hubData.error}
+        </Alert>
+      )}
+      {hubData.status === 'loading' && (
+        <Alert severity="info" sx={{ mb: 2 }} data-testid="user-hub-data-loading">
+          記録・申し送りデータを読み込み中...
+        </Alert>
+      )}
       {/* ── Back Navigation ── */}
       <Button
         startIcon={<ArrowBackRoundedIcon />}
