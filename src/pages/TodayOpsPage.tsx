@@ -31,6 +31,7 @@ import { QuickRecordDrawer } from '@/features/today/records/QuickRecordDrawer';
 import { resolveNextUser } from '@/features/today/records/resolveNextUser';
 import { useQuickRecord } from '@/features/today/records/useQuickRecord';
 import { recordLanding } from '@/features/today/telemetry/recordLanding';
+import { CTA_EVENTS, recordCtaClick } from '@/features/today/telemetry/recordCtaClick';
 import { useTransportStatus } from '@/features/today/transport';
 import { ApprovalDialog } from '@/features/today/widgets/ApprovalDialog';
 import { toLocalDateISO } from '@/utils/getNow';
@@ -39,6 +40,7 @@ import { useCallLogsSummary } from '@/features/callLogs/hooks/useCallLogsSummary
 import { CallLogQuickDrawer } from '@/features/callLogs/components/CallLogQuickDrawer';
 import { buildCallLogFilterUrl, type CallLogFilterPreset } from '@/features/callLogs/domain/callLogFilterPresets';
 import { useAuth } from '@/auth/useAuth';
+import type { ProgressRingItem } from '@/features/today/components/ProgressRings';
 
 import { Alert, Snackbar } from '@mui/material';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -150,15 +152,99 @@ export const TodayOpsPage: React.FC = () => {
     scheduleDetailHref,
   });
 
-  const layoutProps = useMemo(() => ({
-    ...baseLayoutProps,
-    actionQueueTimeline: {
-      actionQueue,
-      isLoading: isQueueLoading,
-      onActionClick: handleActionClick,
-    },
-    workflowCard: isServiceManager && workflowPhases.items.length > 0
-      ? {
+  const layoutProps = useMemo(() => {
+    // ── Step 3: ProgressRings — 既存データから4指標を投影 ──
+    // Guard: テストmock等で progress が未定義の場合はリング生成をスキップ
+    const progressData = baseLayoutProps.progress;
+    const attendanceData = baseLayoutProps.attendance;
+
+    let progressRings: ProgressRingItem[] | undefined;
+
+    if (progressData?.summary && attendanceData) {
+      const { summary: progressSummary, onChipClick } = progressData;
+
+      // ── 支援手順記録 (todayRecordCompletion 起点) ──
+      const recordTotal = progressSummary.totalRecordCount || 1;
+      const recordCompleted = Math.max(0, recordTotal - progressSummary.pendingRecordCount);
+      const recordPct = Math.round((recordCompleted / recordTotal) * 100);
+
+      // ── ケース記録 (dailyRecordStatus — Dashboard 起点) ──
+      const caseRecordStatus = summary.dailyRecordStatus;
+      const caseTotal = caseRecordStatus?.total || (summary.users?.length ?? 0) || 1;
+      const caseCompleted = caseRecordStatus?.completed ?? 0;
+      const casePct = Math.round((caseCompleted / caseTotal) * 100);
+
+      // ── 出欠 ──
+      const attScheduled = attendanceData.scheduledCount || 1;
+      const attPresent = attendanceData.facilityAttendees || 0;
+      const attPct = Math.round((attPresent / attScheduled) * 100);
+
+      const contactCount = callLogsSummary.openCount + callLogsSummary.callbackPendingCount;
+
+      progressRings = [
+        {
+          key: 'records',
+          label: '支援手順',
+          valueText: `${recordCompleted}/${recordTotal}`,
+          progress: recordPct,
+          status: recordPct >= 100 ? 'complete' : recordPct >= 50 ? 'in_progress' : 'attention',
+          onClick: () => onChipClick?.('record'),
+        },
+        {
+          key: 'caseRecords',
+          label: 'ケース記録',
+          valueText: `${caseCompleted}/${caseTotal}`,
+          progress: casePct,
+          status: casePct >= 100 ? 'complete' : casePct >= 50 ? 'in_progress' : 'attention',
+          onClick: () => {
+            recordCtaClick({
+              ctaId: CTA_EVENTS.PROGRESS_RING_CASE_RECORD,
+              sourceComponent: 'ProgressRings',
+              stateType: 'navigation',
+              targetUrl: '/daily/table',
+              userRole: role,
+            });
+            navigate('/daily/table');
+          },
+        },
+        {
+          key: 'attendance',
+          label: '出欠',
+          valueText: `${attPresent}/${attScheduled}`,
+          progress: attPct,
+          status: attPct >= 100 ? 'complete' : attPct >= 50 ? 'in_progress' : 'attention',
+          onClick: () => onChipClick?.('attendance'),
+        },
+        {
+          key: 'contacts',
+          label: '連絡',
+          valueText: `${contactCount}件`,
+          progress: undefined,
+          status: contactCount === 0 ? 'complete' : contactCount <= 2 ? 'in_progress' : 'attention',
+          onClick: () => {
+            recordCtaClick({
+              ctaId: CTA_EVENTS.PROGRESS_RING_CONTACTS,
+              sourceComponent: 'ProgressRings',
+              stateType: 'navigation',
+              targetUrl: '/call-logs',
+              userRole: role,
+            });
+            navigate('/call-logs');
+          },
+        },
+      ];
+    }
+
+    return {
+      ...baseLayoutProps,
+      progressRings,
+      actionQueueTimeline: {
+        actionQueue,
+        isLoading: isQueueLoading,
+        onActionClick: handleActionClick,
+      },
+      workflowCard: isServiceManager && workflowPhases.items.length > 0
+        ? {
           items: workflowPhases.items,
           counts: workflowPhases.counts,
           topPriorityItem: workflowPhases.topPriorityItem,
@@ -178,7 +264,8 @@ export const TodayOpsPage: React.FC = () => {
       onNavigateWithFilter: (preset: CallLogFilterPreset) => navigate(buildCallLogFilterUrl(preset)),
       onOpenDrawer: () => setCallLogDrawerOpen(true),
     },
-  }), [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, callLogsSummary]);
+    };
+  }, [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, callLogsSummary]);
 
   // ── Save Success Handler (Quick Record auto-next) ──
   const [showCompletionToast, setShowCompletionToast] = React.useState(false);
