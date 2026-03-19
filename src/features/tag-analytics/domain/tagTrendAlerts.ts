@@ -1,8 +1,11 @@
 /**
- * @fileoverview Phase F2: タグトレンド検知 — pure domain functions
+ * @fileoverview Phase F2 + F2.5: タグトレンド検知 — pure domain functions
  * @description
  * 2つの期間（current / baseline）のタグ頻度を比較し、
  * 急増(spike)・消失(drop)・新規出現(new) を検知する。
+ *
+ * F2.5: ノイズ制御 — maxAlerts / maxPerType / minNewCount で
+ * アラートの「出すぎ問題」を domain レベルで抑制する。
  *
  * 閾値はデフォルトで提供し、呼び出し側で上書き可能。
  *
@@ -66,6 +69,13 @@ export type TrendThresholds = {
   detectNew: boolean;
   /** spike/drop の最低カウント（ノイズ除去）（default: 2） */
   minCount: number;
+  // ── F2.5: ノイズ制御 ──
+  /** new タグの最低カウント（default: 2、1回だけの new はノイズ） */
+  minNewCount: number;
+  /** 全アラート合計の最大件数（default: 5） */
+  maxAlerts: number;
+  /** 種類別の最大件数（default: 3、spike/drop/new それぞれ最大3件） */
+  maxPerType: number;
 };
 
 /** detectTagTrends の出力 */
@@ -80,6 +90,8 @@ export type TagTrendAlerts = {
   all: TrendAlert[];
   /** アラートが1つ以上あるか */
   hasAlerts: boolean;
+  /** F2.5: ノイズ制御で切り捨てられた件数 */
+  truncatedCount: number;
 };
 
 // ─── 定数 ────────────────────────────────────────────────
@@ -89,6 +101,9 @@ export const DEFAULT_THRESHOLDS: TrendThresholds = {
   detectDrops: true,
   detectNew: true,
   minCount: 2,
+  minNewCount: 2,
+  maxAlerts: 5,
+  maxPerType: 3,
 };
 
 // ─── メインロジック ──────────────────────────────────────
@@ -127,7 +142,7 @@ export function detectTagTrends(
     const tagInfo = resolveTagInfo(key);
 
     // ── 新規出現 ──
-    if (config.detectNew && cur > 0 && base === 0) {
+    if (config.detectNew && cur >= config.minNewCount && base === 0) {
       newTags.push({
         type: 'new',
         severity: 'info',
@@ -188,8 +203,13 @@ export function detectTagTrends(
   drops.sort((a, b) => b.baselineCount - a.baselineCount);
   newTags.sort((a, b) => b.currentCount - a.currentCount);
 
+  // F2.5: 種類別の上限カット（ソート後に slice）
+  const trimmedSpikes = spikes.slice(0, config.maxPerType);
+  const trimmedDrops = drops.slice(0, config.maxPerType);
+  const trimmedNewTags = newTags.slice(0, config.maxPerType);
+
   // 全アラート統合: warning → info、その中で changeRate 降順
-  const all = [...spikes, ...drops, ...newTags].sort((a, b) => {
+  const allUntrimmed = [...trimmedSpikes, ...trimmedDrops, ...trimmedNewTags].sort((a, b) => {
     const severityOrder = a.severity === b.severity ? 0 : a.severity === 'warning' ? -1 : 1;
     if (severityOrder !== 0) return severityOrder;
     // Infinity の比較を安全にする
@@ -198,12 +218,18 @@ export function detectTagTrends(
     return bRate - aRate;
   });
 
+  // F2.5: 全体の上限カット
+  const all = allUntrimmed.slice(0, config.maxAlerts);
+  const totalRaw = spikes.length + drops.length + newTags.length;
+  const truncatedCount = totalRaw - all.length;
+
   return {
-    spikes,
-    drops,
-    newTags,
+    spikes: trimmedSpikes,
+    drops: trimmedDrops,
+    newTags: trimmedNewTags,
     all,
     hasAlerts: all.length > 0,
+    truncatedCount: Math.max(0, truncatedCount),
   };
 }
 

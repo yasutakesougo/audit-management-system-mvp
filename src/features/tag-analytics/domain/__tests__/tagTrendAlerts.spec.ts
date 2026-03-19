@@ -1,8 +1,8 @@
 /**
- * @fileoverview Phase F2: detectTagTrends 契約テスト
+ * @fileoverview Phase F2 + F2.5: detectTagTrends 契約テスト
  * @description
  * spike / drop / new の3種のトレンド検知を網羅的にテスト。
- * 閾値カスタマイズ、エッジケース、ソート順を検証。
+ * F2.5: ノイズ制御（maxAlerts / maxPerType / minNewCount / truncatedCount）を検証。
  */
 import { describe, it, expect } from 'vitest';
 import {
@@ -233,7 +233,7 @@ describe('detectTagTrends - all ソート', () => {
 
   it('hasAlerts がアラートありの時 true', () => {
     const result = detectTagTrends(mkInput({
-      currentCounts: { newTag: 1 },
+      currentCounts: { newTag: 2 },
       baselineCounts: {},
     }));
     expect(result.hasAlerts).toBe(true);
@@ -273,6 +273,9 @@ describe('detectTagTrends - 閾値カスタマイズ', () => {
   it('DEFAULT_THRESHOLDS がエクスポートされている', () => {
     expect(DEFAULT_THRESHOLDS.spikeMultiplier).toBe(2.0);
     expect(DEFAULT_THRESHOLDS.minCount).toBe(2);
+    expect(DEFAULT_THRESHOLDS.minNewCount).toBe(2);
+    expect(DEFAULT_THRESHOLDS.maxAlerts).toBe(5);
+    expect(DEFAULT_THRESHOLDS.maxPerType).toBe(3);
     expect(DEFAULT_THRESHOLDS.detectDrops).toBe(true);
     expect(DEFAULT_THRESHOLDS.detectNew).toBe(true);
   });
@@ -300,5 +303,130 @@ describe('detectTagTrends - タグ情報', () => {
     }));
     expect(result.newTags[0].tagLabel).toBe('unknownTag');
     expect(result.newTags[0].category).toBe('unknown');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+// F2.5: ノイズ制御
+// ═══════════════════════════════════════════════════════════
+
+describe('detectTagTrends - F2.5 ノイズ制御', () => {
+  it('minNewCount — 1回だけの new はノイズとして除外', () => {
+    const result = detectTagTrends(mkInput({
+      currentCounts: { tag1: 1 },
+      baselineCounts: {},
+    }));
+    expect(result.newTags).toHaveLength(0);
+    expect(result.hasAlerts).toBe(false);
+  });
+
+  it('minNewCount — 2回以上なら new として検知', () => {
+    const result = detectTagTrends(mkInput({
+      currentCounts: { tag1: 2 },
+      baselineCounts: {},
+    }));
+    expect(result.newTags).toHaveLength(1);
+  });
+
+  it('minNewCount カスタマイズ', () => {
+    const result = detectTagTrends(
+      mkInput({
+        currentCounts: { tag1: 3 },
+        baselineCounts: {},
+      }),
+      { minNewCount: 5 },
+    );
+    expect(result.newTags).toHaveLength(0);
+  });
+
+  it('maxPerType — 各種類最大3件に制限', () => {
+    // 5個の drop を作る
+    const baseline: Record<string, number> = {};
+    for (let i = 0; i < 5; i++) baseline[`tag${i}`] = 10 - i;
+    const result = detectTagTrends(mkInput({
+      currentCounts: {},
+      baselineCounts: baseline,
+    }));
+    expect(result.drops).toHaveLength(3); // maxPerType = 3
+  });
+
+  it('maxPerType カスタマイズ', () => {
+    const baseline: Record<string, number> = {};
+    for (let i = 0; i < 5; i++) baseline[`tag${i}`] = 5;
+    const result = detectTagTrends(
+      mkInput({ currentCounts: {}, baselineCounts: baseline }),
+      { maxPerType: 2 },
+    );
+    expect(result.drops).toHaveLength(2);
+  });
+
+  it('maxAlerts — 全体で最大5件に制限', () => {
+    // 3 spike + 3 drop + 3 new = 9 個のアラートを作る
+    const current: Record<string, number> = {};
+    const baseline: Record<string, number> = {};
+    // spike: s0-s2 (current 高、baseline 低)
+    for (let i = 0; i < 3; i++) {
+      current[`spike${i}`] = 20;
+      baseline[`spike${i}`] = 2;
+    }
+    // drop: d0-d2 (baseline のみ)
+    for (let i = 0; i < 3; i++) {
+      baseline[`drop${i}`] = 5;
+    }
+    // new: n0-n2 (current のみ)
+    for (let i = 0; i < 3; i++) {
+      current[`new${i}`] = 3;
+    }
+    const result = detectTagTrends(mkInput({
+      currentCounts: current,
+      baselineCounts: baseline,
+      currentDays: 7,
+      baselineDays: 30,
+    }));
+    expect(result.all.length).toBeLessThanOrEqual(5);
+  });
+
+  it('truncatedCount — 切り捨て件数が正確', () => {
+    const current: Record<string, number> = {};
+    const baseline: Record<string, number> = {};
+    for (let i = 0; i < 3; i++) {
+      current[`spike${i}`] = 20;
+      baseline[`spike${i}`] = 2;
+    }
+    for (let i = 0; i < 3; i++) {
+      baseline[`drop${i}`] = 5;
+    }
+    for (let i = 0; i < 3; i++) {
+      current[`new${i}`] = 3;
+    }
+    const result = detectTagTrends(mkInput({
+      currentCounts: current,
+      baselineCounts: baseline,
+      currentDays: 7,
+      baselineDays: 30,
+    }));
+    const totalRaw = 3 + 3 + 3; // 9 raw alerts
+    expect(result.truncatedCount).toBe(totalRaw - result.all.length);
+  });
+
+  it('truncatedCount — 切り捨てなしの場合は 0', () => {
+    const result = detectTagTrends(mkInput({
+      currentCounts: { panic: 3 },
+      baselineCounts: {},
+    }));
+    expect(result.truncatedCount).toBe(0);
+  });
+
+  it('maxAlerts = 0 → 全て切り捨て', () => {
+    const result = detectTagTrends(
+      mkInput({
+        currentCounts: { panic: 3 },
+        baselineCounts: {},
+      }),
+      { maxAlerts: 0 },
+    );
+    expect(result.all).toHaveLength(0);
+    expect(result.hasAlerts).toBe(false);
+    expect(result.truncatedCount).toBeGreaterThan(0);
   });
 });

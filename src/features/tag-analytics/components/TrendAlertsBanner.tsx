@@ -1,8 +1,9 @@
 /**
- * @fileoverview Phase F2: TrendAlertsBanner — トレンドアラート表示 UI
+ * @fileoverview Phase F2 + F2.5: TrendAlertsBanner — トレンドアラート表示 UI
  * @description
  * detectTagTrends の出力を、コンパクトなバナーで表示する。
- * spike は warning Alert、drop/new は info Chip で表示。
+ * F2.5: ノイズ制御は domain 側で完了しているため、
+ * UI は alerts.all をそのまま描画するだけで良い。
  */
 import React from 'react';
 
@@ -21,19 +22,14 @@ import type { TagTrendAlerts, TrendAlert } from '../domain/tagTrendAlerts';
 
 type TrendAlertsBannerProps = {
   alerts: TagTrendAlerts;
-  /** 最大表示件数（default: 5） */
-  maxItems?: number;
 };
 
 // ─── Main Component ──────────────────────────────────────
 
 export const TrendAlertsBanner: React.FC<TrendAlertsBannerProps> = ({
   alerts,
-  maxItems = 5,
 }) => {
   if (!alerts.hasAlerts) return null;
-
-  const displayed = alerts.all.slice(0, maxItems);
 
   // spike があるかどうかで Alert severity を決定
   const hasSpikes = alerts.spikes.length > 0;
@@ -53,17 +49,18 @@ export const TrendAlertsBanner: React.FC<TrendAlertsBannerProps> = ({
           {hasSpikes ? '⚠️ タグ傾向の変化を検知' : 'ℹ️ タグの動き'}
         </Typography>
         <Stack spacing={0.5}>
-          {displayed.map((alert, i) => (
+          {alerts.all.map((alert, i) => (
             <TrendAlertItem key={`${alert.tagKey}-${alert.type}-${i}`} alert={alert} />
           ))}
         </Stack>
-        {alerts.all.length > maxItems && (
+        {alerts.truncatedCount > 0 && (
           <Typography
             variant="caption"
             color="text.secondary"
             sx={{ mt: 0.5, display: 'block' }}
+            data-testid="trend-alerts-truncated"
           >
-            他 {alerts.all.length - maxItems} 件
+            他 {alerts.truncatedCount} 件は省略
           </Typography>
         )}
       </Alert>
