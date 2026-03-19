@@ -38,6 +38,7 @@ import { HandoffPanel } from '@/features/handoff/components';
 import { useCallLogsSummary } from '@/features/callLogs/hooks/useCallLogsSummary';
 import { CallLogQuickDrawer } from '@/features/callLogs/components/CallLogQuickDrawer';
 import { useAuth } from '@/auth/useAuth';
+import type { ProgressRingItem } from '@/features/today/components/ProgressRings';
 
 import { Alert, Snackbar } from '@mui/material';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -149,15 +150,65 @@ export const TodayOpsPage: React.FC = () => {
     scheduleDetailHref,
   });
 
-  const layoutProps = useMemo(() => ({
-    ...baseLayoutProps,
-    actionQueueTimeline: {
-      actionQueue,
-      isLoading: isQueueLoading,
-      onActionClick: handleActionClick,
-    },
-    workflowCard: isServiceManager && workflowPhases.items.length > 0
-      ? {
+  const layoutProps = useMemo(() => {
+    // ── Step 3: ProgressRings — 既存データから3指標を投影 ──
+    // Guard: テストmock等で progress が未定義の場合はリング生成をスキップ
+    const progressData = baseLayoutProps.progress;
+    const attendanceData = baseLayoutProps.attendance;
+
+    let progressRings: ProgressRingItem[] | undefined;
+
+    if (progressData?.summary && attendanceData) {
+      const { summary: progressSummary, onChipClick } = progressData;
+
+      const recordTotal = progressSummary.totalRecordCount || 1;
+      const recordCompleted = Math.max(0, recordTotal - progressSummary.pendingRecordCount);
+      const recordPct = Math.round((recordCompleted / recordTotal) * 100);
+
+      const attScheduled = attendanceData.scheduledCount || 1;
+      const attPresent = attendanceData.facilityAttendees || 0;
+      const attPct = Math.round((attPresent / attScheduled) * 100);
+
+      const contactCount = callLogsSummary.openCount + callLogsSummary.callbackPendingCount;
+
+      progressRings = [
+        {
+          key: 'records',
+          label: '記録',
+          valueText: `${recordCompleted}/${recordTotal}`,
+          progress: recordPct,
+          status: recordPct >= 100 ? 'complete' : recordPct >= 50 ? 'in_progress' : 'attention',
+          onClick: () => onChipClick?.('record'),
+        },
+        {
+          key: 'attendance',
+          label: '出欠',
+          valueText: `${attPresent}/${attScheduled}`,
+          progress: attPct,
+          status: attPct >= 100 ? 'complete' : attPct >= 50 ? 'in_progress' : 'attention',
+          onClick: () => onChipClick?.('attendance'),
+        },
+        {
+          key: 'contacts',
+          label: '連絡',
+          valueText: `${contactCount}件`,
+          progress: undefined,
+          status: contactCount === 0 ? 'complete' : contactCount <= 2 ? 'in_progress' : 'attention',
+          onClick: () => navigate('/call-logs'),
+        },
+      ];
+    }
+
+    return {
+      ...baseLayoutProps,
+      progressRings,
+      actionQueueTimeline: {
+        actionQueue,
+        isLoading: isQueueLoading,
+        onActionClick: handleActionClick,
+      },
+      workflowCard: isServiceManager && workflowPhases.items.length > 0
+        ? {
           items: workflowPhases.items,
           counts: workflowPhases.counts,
           topPriorityItem: workflowPhases.topPriorityItem,
@@ -176,7 +227,8 @@ export const TodayOpsPage: React.FC = () => {
       onNavigate: () => navigate('/call-logs'),
       onOpenDrawer: () => setCallLogDrawerOpen(true),
     },
-  }), [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, callLogsSummary]);
+    };
+  }, [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, callLogsSummary]);
 
   // ── Save Success Handler (Quick Record auto-next) ──
   const [showCompletionToast, setShowCompletionToast] = React.useState(false);
