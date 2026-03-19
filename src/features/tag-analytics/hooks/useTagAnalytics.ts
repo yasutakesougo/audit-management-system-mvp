@@ -171,7 +171,7 @@ export function useTagAnalytics(
   // F2: トレンドアラート検知
   const trendAlerts = useMemo(() => {
     if (status !== 'ready') {
-      return { spikes: [], drops: [], newTags: [], all: [], hasAlerts: false };
+      return { spikes: [], drops: [], newTags: [], all: [], hasAlerts: false, truncatedCount: 0 };
     }
     const fromDate = new Date(effectiveRange.from + 'T00:00:00');
     const toDate = new Date(effectiveRange.to + 'T00:00:00');
