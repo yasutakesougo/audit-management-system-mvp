@@ -32,6 +32,10 @@ export const CTA_EVENTS = {
   PROGRESS_CHIP_ATTENDANCE: 'today_progress_chip_attendance_clicked',
   /** ProgressStatusBar 申し送りチップ */
   PROGRESS_CHIP_BRIEFING: 'today_progress_chip_briefing_clicked',
+  /** ProgressRings ケース記録リング */
+  PROGRESS_RING_CASE_RECORD: 'today_progress_ring_case_record_clicked',
+  /** ProgressRings 連絡リング */
+  PROGRESS_RING_CONTACTS: 'today_progress_ring_contacts_clicked',
 } as const;
 
 export type CtaEventName = (typeof CTA_EVENTS)[keyof typeof CTA_EVENTS];
