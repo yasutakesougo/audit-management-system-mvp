@@ -30,6 +30,7 @@ import {
   Typography,
 } from '@mui/material';
 import React from 'react';
+import type { CallLogFilterPreset } from '../domain/callLogFilterPresets';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -46,8 +47,10 @@ export type CallLogSummaryCardProps = {
   overdueCount?: number;
   /** データ取得中かどうか */
   isLoading: boolean;
-  /** /call-logs への遷移 */
+  /** /call-logs への遷移（デフォルト: フィルタなし） */
   onNavigate: () => void;
+  /** フィルタプリセット付き遷移（タイル個別クリック用） */
+  onNavigateWithFilter?: (preset: CallLogFilterPreset) => void;
   /** CallLogQuickDrawer を開く */
   onOpenDrawer: () => void;
 };
@@ -60,41 +63,54 @@ type CountTileProps = {
   count: number;
   color: 'error' | 'warning' | 'info' | 'success' | 'primary';
   testId: string;
+  /** タイルクリック時のハンドラ（未指定時は親の ButtonBase に委譲） */
+  onClick?: () => void;
 };
 
-const CountTile: React.FC<CountTileProps> = ({ icon, label, count, color, testId }) => (
-  <Box
-    data-testid={testId}
-    sx={{
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      gap: 0.5,
-      py: 1.5,
-      px: 1,
-      borderRadius: 2,
-      border: '1px solid',
-      borderColor: count > 0 ? `${color}.main` : 'divider',
-      bgcolor: count > 0 ? `${color}.main` : 'transparent',
-      ...(count > 0 && { bgcolor: 'transparent' }),
-    }}
-  >
-    <Box sx={{ color: count > 0 ? `${color}.main` : 'text.disabled', display: 'flex' }}>
-      {icon}
+const CountTile: React.FC<CountTileProps> = ({ icon, label, count, color, testId, onClick }) => {
+  const tileContent = (
+    <Box
+      data-testid={testId}
+      sx={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 0.5,
+        py: 1.5,
+        px: 1,
+        borderRadius: 2,
+        border: '1px solid',
+        borderColor: count > 0 ? `${color}.main` : 'divider',
+        bgcolor: count > 0 ? `${color}.main` : 'transparent',
+        ...(count > 0 && { bgcolor: 'transparent' }),
+        ...(onClick && count > 0 && {
+          cursor: 'pointer',
+          '&:hover': { bgcolor: `${color}.50`, transition: 'background 0.15s' },
+        }),
+      }}
+      onClick={onClick && count > 0 ? (e: React.MouseEvent) => { e.stopPropagation(); onClick(); } : undefined}
+      role={onClick && count > 0 ? 'button' : undefined}
+      tabIndex={onClick && count > 0 ? 0 : undefined}
+    >
+      <Box sx={{ color: count > 0 ? `${color}.main` : 'text.disabled', display: 'flex' }}>
+        {icon}
+      </Box>
+      <Chip
+        label={count}
+        size="small"
+        color={count > 0 ? color : 'default'}
+        variant={count > 0 ? 'filled' : 'outlined'}
+        sx={{ fontWeight: 700, fontSize: '0.9rem', minWidth: 32 }}
+      />
+      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+        {label}
+      </Typography>
     </Box>
-    <Chip
-      label={count}
-      size="small"
-      color={count > 0 ? color : 'default'}
-      variant={count > 0 ? 'filled' : 'outlined'}
-      sx={{ fontWeight: 700, fontSize: '0.9rem', minWidth: 32 }}
-    />
-    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
-      {label}
-    </Typography>
-  </Box>
-);
+  );
+
+  return tileContent;
+};
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -106,6 +122,7 @@ export const CallLogSummaryCard: React.FC<CallLogSummaryCardProps> = ({
   overdueCount,
   isLoading,
   onNavigate,
+  onNavigateWithFilter,
   onOpenDrawer,
 }) => {
   const allClear = openCount === 0 && !isLoading;
@@ -182,6 +199,7 @@ export const CallLogSummaryCard: React.FC<CallLogSummaryCardProps> = ({
                 count={openCount}
                 color="warning"
                 testId="call-log-summary-open-count"
+                onClick={onNavigateWithFilter ? () => onNavigateWithFilter('open') : undefined}
               />
               <CountTile
                 icon={<ErrorOutlineIcon fontSize="small" />}
@@ -189,6 +207,7 @@ export const CallLogSummaryCard: React.FC<CallLogSummaryCardProps> = ({
                 count={urgentCount}
                 color="error"
                 testId="call-log-summary-urgent-count"
+                onClick={onNavigateWithFilter ? () => onNavigateWithFilter('urgent') : undefined}
               />
               <CountTile
                 icon={<PhoneCallbackIcon fontSize="small" />}
@@ -196,6 +215,7 @@ export const CallLogSummaryCard: React.FC<CallLogSummaryCardProps> = ({
                 count={callbackPendingCount}
                 color="info"
                 testId="call-log-summary-callback-count"
+                onClick={onNavigateWithFilter ? () => onNavigateWithFilter('callback') : undefined}
               />
               {/* 自分宛: 0 件時はノイズ防止のため非表示 */}
               {myOpenCount != null && myOpenCount > 0 && (
@@ -205,6 +225,7 @@ export const CallLogSummaryCard: React.FC<CallLogSummaryCardProps> = ({
                   count={myOpenCount}
                   color="primary"
                   testId="call-log-summary-my-count"
+                  onClick={onNavigateWithFilter ? () => onNavigateWithFilter('mine') : undefined}
                 />
               )}
               {/* 期限超過: 0 件時は非表示。至急タイルと色相を分けるため warning */}
@@ -215,6 +236,7 @@ export const CallLogSummaryCard: React.FC<CallLogSummaryCardProps> = ({
                   count={overdueCount}
                   color="warning"
                   testId="call-log-summary-overdue-count"
+                  onClick={onNavigateWithFilter ? () => onNavigateWithFilter('overdue') : undefined}
                 />
               )}
             </Stack>
