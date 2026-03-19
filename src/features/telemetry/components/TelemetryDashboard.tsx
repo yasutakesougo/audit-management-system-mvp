@@ -16,9 +16,11 @@ import { useState } from 'react';
 import { useTelemetryDashboard } from '../hooks/useTelemetryDashboard';
 import type { DateRange, EventRankItem, TelemetryDoc } from '../hooks/useTelemetryDashboard';
 import type { FlowDistribution, FunnelStep, HourlyBucket, ScreenKpi } from '../domain/computeCtaKpis';
-import type { KpiAlert, KpiDiff, Trend } from '../domain/computeCtaKpiDiff';
+import type { KpiDiff, Trend } from '../domain/computeCtaKpiDiff';
 import { RoleBreakdownSection } from './RoleBreakdownSection';
 import { getPlaybookEntry } from '../domain/alertPlaybook';
+import { generateIssueDraft } from '../domain/generateIssueDraft';
+import { ALERT_STATE_LABELS, ALERT_STATE_COLORS, type AlertState, type ClassifiedAlert } from '../domain/classifyAlertState';
 
 // ── Label Maps ──────────────────────────────────────────────────────────────
 
@@ -213,10 +215,22 @@ function KpiCard({
 
 // ── Alert Chip ──────────────────────────────────────────────────────────────
 
-function AlertChip({ alert }: { alert: KpiAlert }) {
+function AlertChip({ classified }: { classified: ClassifiedAlert }) {
+  const { alert, state, delta } = classified;
   const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
   const isCritical = alert.severity === 'critical';
   const playbook = getPlaybookEntry(alert.id);
+
+  const handleCopyDraft = () => {
+    if (!playbook) return;
+    const draft = generateIssueDraft(alert, playbook);
+    const text = `# ${draft.title}\n\nLabels: ${draft.labels.join(', ')}\n\n${draft.body}`;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   return (
     <div
@@ -243,12 +257,32 @@ function AlertChip({ alert }: { alert: KpiAlert }) {
         </span>
         <div style={{ flex: 1 }}>
           <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
             fontSize: 13,
             fontWeight: 600,
             color: isCritical ? '#dc2626' : '#d97706',
             marginBottom: 2,
           }}>
             {alert.label}
+            {/* State badge */}
+            <span style={{
+              fontSize: 10,
+              fontWeight: 500,
+              padding: '1px 6px',
+              borderRadius: 4,
+              background: `${ALERT_STATE_COLORS[state]}18`,
+              color: ALERT_STATE_COLORS[state],
+              whiteSpace: 'nowrap',
+            }}>
+              {ALERT_STATE_LABELS[state]}
+              {delta !== null && delta !== 0 && (
+                <span style={{ marginLeft: 3 }}>
+                  ({delta > 0 ? '+' : ''}{delta}%)
+                </span>
+              )}
+            </span>
           </div>
           <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.4 }}>
             {alert.message}
@@ -318,23 +352,66 @@ function AlertChip({ alert }: { alert: KpiAlert }) {
             </div>
           </div>
 
-          {/* Issue テンプレ */}
+          {/* Issue Draft — コピーボタン付き */}
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
-              📝 Issue 候補
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 11,
+              fontWeight: 700,
+              color: '#475569',
+              marginBottom: 4,
+            }}>
+              📝 Issue 下書き
+              <button
+                onClick={(e) => { e.stopPropagation(); handleCopyDraft(); }}
+                style={{
+                  fontSize: 10,
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  border: '1px solid #cbd5e1',
+                  background: copied ? '#dcfce7' : '#ffffff',
+                  color: copied ? '#16a34a' : '#64748b',
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                  transition: 'all 0.2s',
+                }}
+              >
+                {copied ? '✓ コピー済み' : '📋 コピー'}
+              </button>
             </div>
             <div style={{
               fontSize: 12,
               color: '#334155',
               background: '#f8fafc',
-              padding: '6px 10px',
+              padding: '8px 12px',
               borderRadius: 6,
               border: '1px solid #e2e8f0',
+              lineHeight: 1.5,
             }}>
-              {playbook.issueTemplate.title}
-              <span style={{ marginLeft: 8, fontSize: 10, color: '#94a3b8' }}>
-                {playbook.issueTemplate.labels.map((l) => `#${l}`).join(' ')}
-              </span>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                {playbook.issueTemplate.title}
+              </div>
+              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>
+                指標: {alert.value}% (閾値: {alert.threshold}%) | {ALERT_STATE_LABELS[state]}
+              </div>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {playbook.issueTemplate.labels.map((l) => (
+                  <span
+                    key={l}
+                    style={{
+                      fontSize: 10,
+                      padding: '1px 6px',
+                      borderRadius: 4,
+                      background: '#e2e8f0',
+                      color: '#475569',
+                    }}
+                  >
+                    #{l}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -343,14 +420,19 @@ function AlertChip({ alert }: { alert: KpiAlert }) {
   );
 }
 
-function AlertSection({ alerts }: { alerts: KpiAlert[] }) {
-  if (alerts.length === 0) return null;
+function AlertSection({ classifiedAlerts }: { classifiedAlerts: ClassifiedAlert[] }) {
+  if (classifiedAlerts.length === 0) return null;
+
+  // 新規・悪化を上に、改善・継続を下に
+  const stateOrder: Record<AlertState, number> = { worsening: 0, new: 1, continuing: 2, improving: 3 };
+  const sorted = [...classifiedAlerts].sort((a, b) => stateOrder[a.state] - stateOrder[b.state]);
+
   return (
     <section style={{ marginBottom: 20 }}>
-      <SectionTitle>⚠️ アラート ({alerts.length})</SectionTitle>
+      <SectionTitle>⚠️ アラート ({classifiedAlerts.length})</SectionTitle>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {alerts.map((a) => (
-          <AlertChip key={a.id} alert={a} />
+        {sorted.map((ca) => (
+          <AlertChip key={ca.alert.id} classified={ca} />
         ))}
       </div>
     </section>
@@ -723,7 +805,7 @@ function EventTypeChip({ type }: { type: string }) {
 // ── Main Component ──────────────────────────────────────────────────────────
 
 export default function TelemetryDashboard() {
-  const { stats, kpis, kpiDiffs, roleBreakdown, loading, error, range, setRange, refresh } = useTelemetryDashboard();
+  const { stats, kpis, kpiDiffs, roleBreakdown, classifiedAlerts, loading, error, range, setRange, refresh } = useTelemetryDashboard();
   const [showAllRanking, setShowAllRanking] = useState(false);
   const [activeTab, setActiveTab] = useState<'kpi' | 'raw'>('kpi');
 
@@ -900,7 +982,7 @@ export default function TelemetryDashboard() {
           </section>
 
           {/* ── ① b アラート ── */}
-          {kpiDiffs && <AlertSection alerts={kpiDiffs.alerts} />}
+          {classifiedAlerts.length > 0 && <AlertSection classifiedAlerts={classifiedAlerts} />}
 
           {/* ── ① c Role Breakdown ── */}
           <RoleBreakdownSection data={roleBreakdown} />
