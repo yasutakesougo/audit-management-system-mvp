@@ -34,6 +34,7 @@ import {
   PERIOD_PRESETS,
   PERIOD_PRESET_ORDER,
 } from '../domain/tagAnalytics';
+import { TrendAlertsBanner } from './TrendAlertsBanner';
 
 // ─── Props ───────────────────────────────────────────────
 
@@ -101,6 +102,11 @@ export const TagAnalyticsSection: React.FC<TagAnalyticsSectionProps> = ({
       {/* Period Selector */}
       {!hidePeriodSelector && onPeriodChange && (
         <PeriodSelector current={periodPreset} onChange={onPeriodChange} />
+      )}
+
+      {/* F2: Trend Alerts */}
+      {analytics.trendAlerts.hasAlerts && (
+        <TrendAlertsBanner alerts={analytics.trendAlerts} />
       )}
 
       {/* Top Tags */}

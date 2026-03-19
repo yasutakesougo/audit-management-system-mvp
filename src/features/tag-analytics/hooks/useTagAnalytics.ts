@@ -26,6 +26,11 @@ import {
   type TagTimeSlotDistribution,
 } from '../domain/tagAnalytics';
 
+import {
+  detectTagTrends,
+  type TagTrendAlerts,
+} from '../domain/tagTrendAlerts';
+
 // ─── 型定義 ──────────────────────────────────────────────
 
 export type TagAnalyticsStatus = 'loading' | 'ready' | 'empty' | 'error';
@@ -52,6 +57,8 @@ export type TagAnalytics = {
     categoryLabel: string;
     count: number;
   }>;
+  /** F2: トレンドアラート（spike / drop / new） */
+  trendAlerts: TagTrendAlerts;
   /** エラーメッセージ（error 時のみ） */
   error: string | null;
 };
@@ -111,6 +118,7 @@ export function useTagAnalytics(
 
   // メモ化した結果
   const [counts, setCounts] = useState<TagCount>({});
+  const [previousCounts, setPreviousCounts] = useState<TagCount>({});
   const [trend, setTrend] = useState<TagTrend>({});
   const [timeSlots, setTimeSlots] = useState<TagTimeSlotDistribution>({ am: {}, pm: {} });
 
@@ -118,6 +126,7 @@ export function useTagAnalytics(
     if (!userId) {
       setStatus('empty');
       setCounts({});
+      setPreviousCounts({});
       setTrend({});
       setTimeSlots({ am: {}, pm: {} });
       setError(null);
@@ -136,11 +145,12 @@ export function useTagAnalytics(
 
       // 集計
       const currentCounts = computeTagCounts(currentRecords);
-      const previousCounts = computeTagCounts(previousRecords);
-      const computedTrend = computeTagTrend(currentCounts, previousCounts);
+      const prevCounts = computeTagCounts(previousRecords);
+      const computedTrend = computeTagTrend(currentCounts, prevCounts);
       const computedTimeSlots = computeTagTimeSlots(currentRecords);
 
       setCounts(currentCounts);
+      setPreviousCounts(prevCounts);
       setTrend(computedTrend);
       setTimeSlots(computedTimeSlots);
       setError(null);
@@ -158,12 +168,34 @@ export function useTagAnalytics(
   // トップタグ（ラベル付き）
   const topTags = useMemo(() => getTopTagsFromCounts(counts), [counts]);
 
+  // F2: トレンドアラート検知
+  const trendAlerts = useMemo(() => {
+    if (status !== 'ready') {
+      return { spikes: [], drops: [], newTags: [], all: [], hasAlerts: false };
+    }
+    const fromDate = new Date(effectiveRange.from + 'T00:00:00');
+    const toDate = new Date(effectiveRange.to + 'T00:00:00');
+    const currentDays = Math.max(1, Math.round((toDate.getTime() - fromDate.getTime()) / 86_400_000) + 1);
+    const prevRange = computePreviousRange(effectiveRange);
+    const prevFromDate = new Date(prevRange.from + 'T00:00:00');
+    const prevToDate = new Date(prevRange.to + 'T00:00:00');
+    const baselineDays = Math.max(1, Math.round((prevToDate.getTime() - prevFromDate.getTime()) / 86_400_000) + 1);
+
+    return detectTagTrends({
+      currentCounts: counts,
+      baselineCounts: previousCounts,
+      currentDays,
+      baselineDays,
+    });
+  }, [status, counts, previousCounts, effectiveRange]);
+
   return {
     status,
     counts,
     trend,
     timeSlots,
     topTags,
+    trendAlerts,
     error,
   };
 }
