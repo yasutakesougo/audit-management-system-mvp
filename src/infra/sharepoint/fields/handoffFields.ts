@@ -1,56 +1,90 @@
 import { z } from "zod";
-import { HandoffSchema, HandoffPrioritySchema, HandoffStatusSchema } from "@/domain/Handoff";
+import { HandoffSchema } from "@/domain/Handoff";
 
 /**
- * SharePoint の Handoffs リストのアイテム型
+ * SharePoint の Handoff リストのアイテム型
+ *
+ * ⚠ 旧 `cr015_*` プレフィックスは Power Apps が付与した内部名。
+ *   本番 SP `/sites/welfare` の Handoff リストは以下のカスタム列を持つ:
+ *     Message, UserCode, UserDisplayName, Category, Severity, Status,
+ *     TimeBand, CreatedAt, CreatedByName, IsDraft, MeetingSessionKey,
+ *     SourceId, SourceUrl, SourceKey, SourceLabel, CarryOverDate,
+ *     SourceType, CreatedBy, ModifiedBy, ModifiedAt
+ *
+ *   2026-03-19: cr015_ → 実列名に合わせてマッピング修正
  */
 export const SPHandoffItemSchema = z.object({
   Id: z.number().int(),
-  Title: z.string().nullish(), // 自動生成 `{userId}_{targetDate}_{priority}`
-  cr015_recordId: z.string(),
-  cr015_userId: z.string().nullish(),
-  cr015_targetDate: z.string(),
-  cr015_content: z.string(),
-  cr015_priority: z.string(),
-  cr015_status: z.string(),
-  cr015_reporterName: z.string(),
-  cr015_recordedAt: z.string(),
+  Title: z.string().nullish(),
+  Message: z.string().default(""),
+  UserCode: z.string().nullish(),
+  Severity: z.string().default("通常"),
+  Status: z.string().default("未対応"),
+  CreatedByName: z.string().default(""),
+  CreatedAt: z.string().nullish(),
+  CarryOverDate: z.string().nullish(),
 });
 
 export type SPHandoffItem = z.infer<typeof SPHandoffItemSchema>;
 
 /**
  * SharePoint のアイテムをドメインモデルに変換
+ *
+ * 旧ドメイン `Handoff` 型は priority: "normal"|"high"|"emergency"、
+ * status: "unread"|"read" を使う。
+ * SP 側は Severity: "通常"|"要注意"|"重要"、Status: "未対応"|"対応中"|"対応済"|"確認済"|"明日へ持越"|"完了"。
+ * → 変換マップで橋渡し。
  */
+
+const severityToPriority: Record<string, "normal" | "high" | "emergency"> = {
+  "通常": "normal",
+  "要注意": "high",
+  "重要": "emergency",
+};
+
+const statusToReadStatus: Record<string, "unread" | "read"> = {
+  "未対応": "unread",
+  "対応中": "unread",
+  "対応済": "read",
+  "確認済": "read",
+  "明日へ持越": "unread",
+  "完了": "read",
+};
+
 export const mapSPToHandoff = (item: SPHandoffItem): z.infer<typeof HandoffSchema> => {
-  const parsedPriority = HandoffPrioritySchema.safeParse(item.cr015_priority);
-  const parsedStatus = HandoffStatusSchema.safeParse(item.cr015_status);
+  const priority = severityToPriority[item.Severity] ?? "normal";
+  const status = statusToReadStatus[item.Status] ?? "unread";
 
   return HandoffSchema.parse({
-    id: item.cr015_recordId,
-    userId: item.cr015_userId || "",
-    targetDate: item.cr015_targetDate,
-    content: item.cr015_content,
-    priority: parsedPriority.success ? parsedPriority.data : "normal",
-    status: parsedStatus.success ? parsedStatus.data : "unread",
-    reporterName: item.cr015_reporterName,
-    recordedAt: item.cr015_recordedAt,
+    id: String(item.Id),
+    userId: item.UserCode || "",
+    targetDate: item.CarryOverDate || new Date().toISOString().slice(0, 10),
+    content: item.Message,
+    priority,
+    status,
+    reporterName: item.CreatedByName,
+    recordedAt: item.CreatedAt || new Date().toISOString(),
   });
 };
 
 /**
  * ドメインモデルから SharePoint 用のペイロードを作成
  */
+const priorityToSeverity: Record<string, string> = {
+  normal: "通常",
+  high: "要注意",
+  emergency: "重要",
+};
+
 export const mapHandoffToSPPayload = (handoff: z.infer<typeof HandoffSchema>) => {
   return {
     Title: `${handoff.userId || 'ALL'}_${handoff.targetDate}_${handoff.priority}`,
-    cr015_recordId: handoff.id,
-    cr015_userId: handoff.userId || "",
-    cr015_targetDate: handoff.targetDate,
-    cr015_content: handoff.content,
-    cr015_priority: handoff.priority,
-    cr015_status: handoff.status,
-    cr015_reporterName: handoff.reporterName,
-    cr015_recordedAt: handoff.recordedAt,
+    Message: handoff.content,
+    UserCode: handoff.userId || "",
+    Severity: priorityToSeverity[handoff.priority] || "通常",
+    Status: "未対応",
+    CreatedByName: handoff.reporterName,
+    CreatedAt: handoff.recordedAt,
+    CarryOverDate: handoff.targetDate,
   };
 };
