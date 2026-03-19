@@ -405,21 +405,6 @@ export default function SupportPlanGuidePage() {
           </Alert>
         )}
 
-        {/* ── 制度サマリー帯 + シート一覧カード (P4: regulatoryHud.view ガード) ── */}
-        {can('regulatoryHud.view') && regulatoryAvailable && (
-          <Suspense fallback={TabFallback}>
-            <RegulatorySection
-              bundle={regulatoryBundle}
-              linkedUserId={linkedUserId}
-              onNavigate={(url) => navigate(url)}
-              compliance={complianceForm.compliance}
-              deadlines={deadlines}
-              icebergTotal={icebergEvidence?.sessionCount ? Object.values(icebergEvidence.sessionCount).reduce((a, b) => a + b, 0) : undefined}
-              onNavigateToTab={setActiveTab}
-            />
-          </Suspense>
-        )}
-
         {/* ── P5-A: Planner Assist — Next Action Panel ── */}
         {can('plannerAssist.view') && (
           <Suspense fallback={TabFallback}>
@@ -440,37 +425,50 @@ export default function SupportPlanGuidePage() {
           sx={{ px: { xs: 1.5, md: 2 }, py: { xs: 1, md: 1.25 } }}
           {...tid(TESTIDS['support-plan-hud'])}
         >
-          <Stack spacing={0.75}>
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Stack spacing={1}>
+            {/* ── 制度サマリー帯（ドラフトHUD内に統合） ── */}
+            {can('regulatoryHud.view') && regulatoryAvailable && (
+              <Suspense fallback={TabFallback}>
+                <RegulatorySection
+                  bundle={regulatoryBundle}
+                  linkedUserId={linkedUserId}
+                  onNavigate={(url) => navigate(url)}
+                  compliance={complianceForm.compliance}
+                  deadlines={deadlines}
+                  icebergTotal={icebergEvidence?.sessionCount ? Object.values(icebergEvidence.sessionCount).reduce((a, b) => a + b, 0) : undefined}
+                  onNavigateToTab={setActiveTab}
+                />
+              </Suspense>
+            )}
+
+            {/* ── ドラフト一覧 + 進捗状況（1行） ── */}
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+              useFlexGap
+            >
               {draftList.length > 0 ? (
                 draftList.map(getDraftProgressChip)
               ) : (
                 <Chip size="small" variant="outlined" label="ドラフト未作成" />
               )}
-            </Stack>
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={1}
-              alignItems={{ xs: 'flex-start', sm: 'center' }}
-              justifyContent="space-between"
-            >
-              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                <Chip size="small" variant="outlined" label={`必須達成: ${completionPercent}%`} />
+              <Chip size="small" variant="outlined" label={`必須達成: ${completionPercent}%`} />
+              <Chip
+                size="small"
+                variant="outlined"
+                label={`入力済み: ${filledCount}/${FIELD_KEYS.length}`}
+              />
+              {auditAlertCount > 0 && (
                 <Chip
                   size="small"
-                  variant="outlined"
-                  label={`入力済み: ${filledCount}/${FIELD_KEYS.length}`}
+                  color="warning"
+                  variant="filled"
+                  label={`期限超過: ${auditAlertCount}件`}
                 />
-                {auditAlertCount > 0 && (
-                  <Chip
-                    size="small"
-                    color="warning"
-                    variant="filled"
-                    label={`期限超過の可能性: ${auditAlertCount}件`}
-                    sx={{ ml: 1 }}
-                  />
-                )}
-              </Stack>
+              )}
+              <Box sx={{ flex: 1 }} />
               {isFetching ? (
                 <Chip
                   size="small"
@@ -482,14 +480,14 @@ export default function SupportPlanGuidePage() {
                 <Chip
                   size="small"
                   icon={<CloudOffRoundedIcon />}
-                  label="通信エラー（端末内に保存済）"
+                  label="通信エラー"
                   color="warning"
                 />
               ) : isSaving ? (
                 <Chip
                   size="small"
                   icon={<CloudSyncRoundedIcon />}
-                  label="クラウドへ保存中..."
+                  label="保存中..."
                   color="info"
                 />
               ) : (

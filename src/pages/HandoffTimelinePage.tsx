@@ -17,7 +17,6 @@ import {
   Button,
   Chip,
   Container,
-  Divider,
   IconButton,
   Popover,
   TextField,
@@ -123,7 +122,7 @@ export default function HandoffTimelinePage() {
           icon={<AccessTimeIcon />}
         />
 
-        {/* ── 日付ナビゲーション ── */}
+        {/* ── 日付ナビゲーション + 申し送りボタン ── */}
         <Box
           sx={{
             mt: 2,
@@ -221,6 +220,17 @@ export default function HandoffTimelinePage() {
             </ToggleButton>
           </ToggleButtonGroup>
 
+          {/* 申し送り入力ボタン — 右寄せ */}
+          <Button
+            variant="outlined"
+            startIcon={<EditNoteIcon />}
+            onClick={openQuickNoteDialog}
+            data-testid="handoff-page-quicknote-open"
+            sx={{ ml: 'auto' }}
+          >
+            今すぐ申し送り
+          </Button>
+
           {/* DatePicker Popover */}
           <Popover
             open={Boolean(datePickerAnchor)}
@@ -245,20 +255,6 @@ export default function HandoffTimelinePage() {
           </Popover>
         </Box>
       </Box>
-
-      {/* 申し送り入力ボタン */}
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-start' }}>
-        <Button
-          variant="outlined"
-          startIcon={<EditNoteIcon />}
-          onClick={openQuickNoteDialog}
-          data-testid="handoff-page-quicknote-open"
-        >
-          今すぐ申し送り
-        </Button>
-      </Box>
-
-      <Divider sx={{ my: 2 }} />
 
       {/* ── Active View Switch ── */}
       {dateNav.range === 'month' ? (

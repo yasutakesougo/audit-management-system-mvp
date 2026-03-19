@@ -217,7 +217,11 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({
         : theme.palette.background.paper;
 
   // Resolve navigation target from opsStep
-  const navTarget = item ? resolveOpsNavTarget(item.opsStep) : null;
+  // スケジュール fallback 時は deep link (scheduleDetailHref) を優先する
+  const rawNavTarget = item ? resolveOpsNavTarget(item.opsStep) : null;
+  const navTarget = rawNavTarget && rawNavTarget.icon === 'schedule' && scheduleDetailHref
+    ? { ...rawNavTarget, href: scheduleDetailHref }
+    : rawNavTarget;
 
   return (
     <Paper
@@ -349,8 +353,9 @@ export const NextActionCard: React.FC<NextActionCardProps> = ({
             )}
           </Box>
 
-          {/* 予定表への補助導線 (SPA navigate — telemetry 経路統一) */}
-          {scheduleDetailHref && onNavigate && (
+          {/* 予定表への補助導線 (SPA navigate — telemetry 経路統一)
+             メインCTAが既にスケジュール導線の場合は重複するため非表示 */}
+          {scheduleDetailHref && onNavigate && navTarget?.icon !== 'schedule' && (
             <Box sx={{ mt: 1, textAlign: 'right' }}>
               <Typography
                 component="button"
