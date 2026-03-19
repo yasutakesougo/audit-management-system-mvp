@@ -161,7 +161,7 @@ describe('buildUnifiedRecommendation — factor 具体値', () => {
     const result = buildUnifiedRecommendation(makeInput());
     expect(result.headline).toBe('今日の対応に特記事項はありません');
     expect(result.suggestedAction).toBe('今日の記録を開く');
-    expect(result.actionRoute).toBe('/dailysupport');
+    expect(result.actionRoute).toBe('/daily/activity');
     expect(result.urgency).toBe('low');
   });
 });
