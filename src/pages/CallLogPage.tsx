@@ -50,6 +50,11 @@ import { useCallLogs, type CallLogTabValue } from '@/features/callLogs/hooks/use
 import { filterCallLogs } from '@/features/callLogs/domain/filterCallLogs';
 import { getCallbackDueInfo, type CallbackDueLevel } from '@/features/callLogs/domain/callbackDueLabel';
 import { parseFilterPreset, getPresetConfig } from '@/features/callLogs/domain/callLogFilterPresets';
+import { resolveNextCallAction } from '@/features/callLogs/domain/resolveNextCallAction';
+import { groupCallLogsByPriority } from '@/features/callLogs/domain/groupCallLogsByPriority';
+import { NextCallHero } from '@/features/callLogs/components/NextCallHero';
+import { CallLogPriorityQueue } from '@/features/callLogs/components/CallLogPriorityQueue';
+import { CTA_EVENTS, recordCtaClick } from '@/features/today/telemetry/recordCtaClick';
 import type { CallLog } from '@/domain/callLogs/schema';
 
 // ─── 日時フォーマットヘルパー ─────────────────────────────────────────────────
@@ -209,6 +214,19 @@ export const CallLogPage: React.FC = () => {
     activeTab,
   });
 
+  // ── ZONE A/B 用: 全ログ取得（タブに依存しない） ──
+  const { logs: allLogs } = useCallLogs({ activeTab: 'all' });
+
+  const nextAction = useMemo(
+    () => resolveNextCallAction(allLogs ?? []),
+    [allLogs],
+  );
+
+  const priorityGroups = useMemo(
+    () => groupCallLogsByPriority(allLogs ?? []),
+    [allLogs],
+  );
+
   // ── クライアントサイドフィルタ適用 ──
   const filteredLogs = useMemo(() => {
     if (!logs) return undefined;
@@ -223,6 +241,36 @@ export const CallLogPage: React.FC = () => {
   };
 
   const handleMarkDone = (id: string) => {
+    updateStatus.mutate({ id, status: 'done' });
+  };
+
+  // ── ZONE A: Hero 「完了にする」 ──
+  const handleHeroDone = (id: string) => {
+    recordCtaClick({
+      ctaId: CTA_EVENTS.CALLLOG_HERO_DONE,
+      sourceComponent: 'NextCallHero',
+      stateType: 'widget-action',
+      priority: nextAction?.reason,
+    });
+    updateStatus.mutate({ id, status: 'done' });
+  };
+
+  // ── ZONE B: Queue 行クリック ──
+  const handlePriorityItemClick = () => {
+    recordCtaClick({
+      ctaId: CTA_EVENTS.CALLLOG_PRIORITY_ITEM,
+      sourceComponent: 'CallLogPriorityQueue',
+      stateType: 'widget-action',
+    });
+  };
+
+  // ── ZONE B: Queue 「完了にする」 ──
+  const handlePriorityDone = (id: string) => {
+    recordCtaClick({
+      ctaId: CTA_EVENTS.CALLLOG_PRIORITY_DONE,
+      sourceComponent: 'CallLogPriorityQueue',
+      stateType: 'widget-action',
+    });
     updateStatus.mutate({ id, status: 'done' });
   };
 
@@ -271,7 +319,23 @@ export const CallLogPage: React.FC = () => {
         }
       />
 
-      <Divider sx={{ my: 1.5 }} />
+      {/* ── ZONE A: Next Call Hero ── */}
+      <NextCallHero
+        action={nextAction}
+        onMarkDone={handleHeroDone}
+        isUpdating={isUpdating}
+      />
+
+      {/* ── ZONE B: Priority Queue ── */}
+      <CallLogPriorityQueue
+        groups={priorityGroups}
+        heroLogId={nextAction?.log.id}
+        onMarkDone={handlePriorityDone}
+        isUpdating={isUpdating}
+        onItemClick={handlePriorityItemClick}
+      />
+
+      <Divider sx={{ my: 2 }} />
 
       {/* タブ */}
       <Tabs

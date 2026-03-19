@@ -1,7 +1,7 @@
 /**
- * TodayOps CTA Click Telemetry
+ * Operations CTA Click Telemetry
  *
- * /today ページの CTA 押下を Firestore に記録する。
+ * /today および /call-logs ページの CTA 押下を Firestore に記録する。
  * Fire-and-forget — 書き込み失敗は無視し、UI をブロックしない。
  *
  * 導線整理後の実データ収集が目的。
@@ -36,6 +36,14 @@ export const CTA_EVENTS = {
   PROGRESS_RING_CASE_RECORD: 'today_progress_ring_case_record_clicked',
   /** ProgressRings 連絡リング */
   PROGRESS_RING_CONTACTS: 'today_progress_ring_contacts_clicked',
+
+  // ── CallLog 再設計 ──────────────────────────────────────────
+  /** CallLog Hero「完了にする」 */
+  CALLLOG_HERO_DONE: 'calllog_hero_done_clicked',
+  /** CallLog Priority Queue 行クリック */
+  CALLLOG_PRIORITY_ITEM: 'calllog_priority_item_clicked',
+  /** CallLog Priority Queue「完了にする」 */
+  CALLLOG_PRIORITY_DONE: 'calllog_priority_done_clicked',
 } as const;
 
 export type CtaEventName = (typeof CTA_EVENTS)[keyof typeof CTA_EVENTS];
