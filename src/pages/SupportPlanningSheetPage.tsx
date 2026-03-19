@@ -79,7 +79,12 @@ import {
 import { useHandoffData } from '@/features/handoff/hooks/useHandoffData';
 import type { HandoffRecord } from '@/features/handoff/handoffTypes';
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
+import Accordion from '@mui/material/Accordion';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Fab from '@mui/material/Fab';
+import { useTagAnalytics, TagAnalyticsSection } from '@/features/tag-analytics';
 
 // ── Local (split) ──
 import { type SheetTabKey, TAB_SECTIONS, TabPanel } from './support-planning-sheet/types';
@@ -599,6 +604,9 @@ export default function SupportPlanningSheetPage() {
           </TabPanel>
         </Paper>
 
+        {/* ── 行動タグ分析 (Phase F1 深化) ── */}
+        <TagAnalyticsAccordion userId={sheet.userId} />
+
         {/* ── メタ情報フッター ── */}
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Stack direction="row" spacing={3} flexWrap="wrap" useFlexGap>
@@ -689,3 +697,36 @@ export default function SupportPlanningSheetPage() {
     </Box>
   );
 }
+
+// ─── TagAnalytics Accordion (Phase F1 深化) ─────────────
+
+/**
+ * 行動タグ分析を Accordion で折りたたみ表示する。
+ * 閲覧時に自動展開、計画編集UXを邪魔しない。
+ */
+const TagAnalyticsAccordion: React.FC<{ userId: string | undefined }> = ({ userId }) => {
+  const tagAnalytics = useTagAnalytics(userId);
+
+  // empty/error 時は非表示（ノイズ回避）
+  if (tagAnalytics.status === 'empty' || tagAnalytics.status === 'error') {
+    return null;
+  }
+
+  return (
+    <Accordion
+      defaultExpanded={tagAnalytics.status === 'ready'}
+      variant="outlined"
+      sx={{ borderRadius: 2 }}
+      data-testid="planning-sheet-tag-analytics"
+    >
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+          🏷️ 行動タグ分析
+        </Typography>
+      </AccordionSummary>
+      <AccordionDetails>
+        <TagAnalyticsSection analytics={tagAnalytics} />
+      </AccordionDetails>
+    </Accordion>
+  );
+};
