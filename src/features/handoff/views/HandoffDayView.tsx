@@ -48,6 +48,7 @@ import {
   type EntryMode,
   type HandoffDisplayMode,
 } from '../hooks/useHandoffDayViewState';
+import { recordCtaClick, CTA_EVENTS } from '@/features/today/telemetry/recordCtaClick';
 
 // ────────────────────────────────────────────────────────────
 // Props
@@ -99,19 +100,41 @@ export function HandoffDayView({
     [state.todayHandoffs, heroLogId],
   );
 
-  // ── ZONE A/B: ハンドラー（props コールバック） ──
+  // ── ZONE A/B: ハンドラー（テレメトリ → ステータス更新） ──
   const handleHeroConfirm = (recordId: number) => {
-    // Step 3 でテレメトリ接続予定
-    // 暫定: 何もしない（Page 層で画面遷移に変更可能）
+    recordCtaClick({
+      ctaId: CTA_EVENTS.HANDOFF_HERO_CONFIRM,
+      sourceComponent: 'UrgentHandoffHero',
+      stateType: 'scene-action',
+      priority: heroAction?.reason,
+    });
+    // 将来的には詳細画面へ遷移する想定
     void recordId;
   };
   const handleHeroDone = async (recordId: number) => {
+    recordCtaClick({
+      ctaId: CTA_EVENTS.HANDOFF_HERO_DONE,
+      sourceComponent: 'UrgentHandoffHero',
+      stateType: 'scene-action',
+      priority: heroAction?.reason,
+    });
     await state.updateHandoffStatus(recordId, '対応済');
   };
   const handleQueueItemClick = (recordId: number) => {
+    recordCtaClick({
+      ctaId: CTA_EVENTS.HANDOFF_PRIORITY_ITEM,
+      sourceComponent: 'HandoffActionQueue',
+      stateType: 'navigation',
+    });
+    // 将来的には詳細画面へ遷移する想定
     void recordId;
   };
   const handleQueueDone = async (recordId: number) => {
+    recordCtaClick({
+      ctaId: CTA_EVENTS.HANDOFF_PRIORITY_DONE,
+      sourceComponent: 'HandoffActionQueue',
+      stateType: 'widget-action',
+    });
     await state.updateHandoffStatus(recordId, '対応済');
   };
 

@@ -1,7 +1,7 @@
 /**
  * Operations CTA Click Telemetry
  *
- * /today および /call-logs ページの CTA 押下を Firestore に記録する。
+ * /today, /call-logs, /handoff ページの CTA 押下を Firestore に記録する。
  * Fire-and-forget — 書き込み失敗は無視し、UI をブロックしない。
  *
  * 導線整理後の実データ収集が目的。
@@ -44,6 +44,16 @@ export const CTA_EVENTS = {
   CALLLOG_PRIORITY_ITEM: 'calllog_priority_item_clicked',
   /** CallLog Priority Queue「完了にする」 */
   CALLLOG_PRIORITY_DONE: 'calllog_priority_done_clicked',
+
+  // ── Handoff 再設計 ─────────────────────────────────────────
+  /** Handoff Hero「確認する」 */
+  HANDOFF_HERO_CONFIRM: 'handoff_hero_confirm_clicked',
+  /** Handoff Hero「対応済にする」 */
+  HANDOFF_HERO_DONE: 'handoff_hero_done_clicked',
+  /** Handoff Priority Queue 行クリック */
+  HANDOFF_PRIORITY_ITEM: 'handoff_priority_item_clicked',
+  /** Handoff Priority Queue「対応済にする」 */
+  HANDOFF_PRIORITY_DONE: 'handoff_priority_done_clicked',
 } as const;
 
 export type CtaEventName = (typeof CTA_EVENTS)[keyof typeof CTA_EVENTS];
