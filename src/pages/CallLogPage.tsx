@@ -11,6 +11,8 @@
  */
 
 import { PageHeader } from '@/components/PageHeader';
+import SearchIcon from '@mui/icons-material/Search';
+import ClearIcon from '@mui/icons-material/Clear';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import PhoneIcon from '@mui/icons-material/Phone';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -24,21 +26,26 @@ import {
   CircularProgress,
   Container,
   Divider,
+  FormControlLabel,
   IconButton,
+  InputAdornment,
   List,
   ListItem,
   ListItemText,
   Stack,
+  Switch,
   Tab,
   Tabs,
+  TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { CallLogStatusChip } from '@/features/callLogs/components/CallLogStatusChip';
 import { CallLogUrgencyChip } from '@/features/callLogs/components/CallLogUrgencyChip';
 import { CallLogQuickDrawer } from '@/features/callLogs/components/CallLogQuickDrawer';
 import { useCallLogs, type CallLogTabValue } from '@/features/callLogs/hooks/useCallLogs';
+import { filterCallLogs } from '@/features/callLogs/domain/filterCallLogs';
 import type { CallLog } from '@/domain/callLogs/schema';
 
 // ─── 日時フォーマットヘルパー ─────────────────────────────────────────────────
@@ -148,10 +155,22 @@ export const CallLogPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<CallLogTabValue>('new');
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // ── フィルタ state ──
+  const [keyword, setKeyword] = useState('');
+  const [onlyWithRelatedUser, setOnlyWithRelatedUser] = useState(false);
 
   const { logs, isLoading, error, updateStatus, refresh } = useCallLogs({
     activeTab,
   });
+
+  // ── クライアントサイドフィルタ適用 ──
+  const filteredLogs = useMemo(() => {
+    if (!logs) return undefined;
+    return filterCallLogs(logs, {
+      keyword,
+      onlyWithRelatedUser,
+    });
+  }, [logs, keyword, onlyWithRelatedUser]);
 
   const handleTabChange = (_: React.SyntheticEvent, value: CallLogTabValue) => {
     setActiveTab(value);
@@ -162,6 +181,12 @@ export const CallLogPage: React.FC = () => {
   };
 
   const isUpdating = updateStatus.isPending;
+  const hasActiveFilter = !!keyword.trim() || onlyWithRelatedUser;
+
+  const handleClearFilters = () => {
+    setKeyword('');
+    setOnlyWithRelatedUser(false);
+  };
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -221,6 +246,70 @@ export const CallLogPage: React.FC = () => {
         ))}
       </Tabs>
 
+      {/* フィルタバー */}
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={1.5}
+        alignItems={{ sm: 'center' }}
+        sx={{ mb: 2 }}
+        data-testid="call-log-filter-bar"
+      >
+        <TextField
+          size="small"
+          placeholder="キーワード検索…"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" color="action" />
+              </InputAdornment>
+            ),
+            endAdornment: keyword ? (
+              <InputAdornment position="end">
+                <IconButton
+                  size="small"
+                  onClick={() => setKeyword('')}
+                  aria-label="検索をクリア"
+                  data-testid="call-log-keyword-clear"
+                >
+                  <ClearIcon fontSize="small" />
+                </IconButton>
+              </InputAdornment>
+            ) : null,
+          }}
+          inputProps={{
+            'data-testid': 'call-log-keyword-input',
+          }}
+          sx={{ minWidth: 200, flexGrow: 1, maxWidth: 400 }}
+        />
+        <FormControlLabel
+          control={
+            <Switch
+              size="small"
+              checked={onlyWithRelatedUser}
+              onChange={(e) => setOnlyWithRelatedUser(e.target.checked)}
+              data-testid="call-log-filter-related-user-toggle"
+            />
+          }
+          label={
+            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <PersonOutlineIcon sx={{ fontSize: 16 }} />
+              利用者紐付けあり
+            </Typography>
+          }
+        />
+        {hasActiveFilter && (
+          <Button
+            size="small"
+            onClick={handleClearFilters}
+            data-testid="call-log-filter-clear-all"
+          >
+            フィルタ解除
+          </Button>
+        )}
+      </Stack>
+
       {/* コンテンツ */}
       <Box
         role="tabpanel"
@@ -258,8 +347,8 @@ export const CallLogPage: React.FC = () => {
           </Alert>
         )}
 
-        {/* 空状態 */}
-        {!isLoading && !error && logs && logs.length === 0 && (
+        {/* 空状態（データ自体が0件） */}
+        {!isLoading && !error && filteredLogs && filteredLogs.length === 0 && !hasActiveFilter && (
           <Box
             display="flex"
             flexDirection="column"
@@ -275,18 +364,54 @@ export const CallLogPage: React.FC = () => {
           </Box>
         )}
 
+        {/* フィルタ結果0件 */}
+        {!isLoading && !error && filteredLogs && filteredLogs.length === 0 && hasActiveFilter && (
+          <Box
+            display="flex"
+            flexDirection="column"
+            alignItems="center"
+            py={8}
+            gap={1}
+            data-testid="call-log-filter-empty"
+          >
+            <SearchIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
+            <Typography variant="body2" color="text.secondary">
+              条件に一致するログはありません
+            </Typography>
+            <Button
+              size="small"
+              onClick={handleClearFilters}
+              data-testid="call-log-filter-empty-clear"
+            >
+              フィルタを解除
+            </Button>
+          </Box>
+        )}
+
         {/* ログ一覧 */}
-        {!isLoading && !error && logs && logs.length > 0 && (
-          <List disablePadding data-testid="call-log-list">
-            {logs.map((log) => (
-              <CallLogRow
-                key={log.id}
-                log={log}
-                onMarkDone={handleMarkDone}
-                isUpdating={isUpdating}
-              />
-            ))}
-          </List>
+        {!isLoading && !error && filteredLogs && filteredLogs.length > 0 && (
+          <>
+            {hasActiveFilter && (
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mb: 1, display: 'block' }}
+                data-testid="call-log-filter-count"
+              >
+                {filteredLogs.length}件 / {logs?.length ?? 0}件中
+              </Typography>
+            )}
+            <List disablePadding data-testid="call-log-list">
+              {filteredLogs.map((log) => (
+                <CallLogRow
+                  key={log.id}
+                  log={log}
+                  onMarkDone={handleMarkDone}
+                  isUpdating={isUpdating}
+                />
+              ))}
+            </List>
+          </>
         )}
       </Box>
 
