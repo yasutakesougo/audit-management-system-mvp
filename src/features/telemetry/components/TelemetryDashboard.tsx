@@ -17,6 +17,8 @@ import { useTelemetryDashboard } from '../hooks/useTelemetryDashboard';
 import type { DateRange, EventRankItem, TelemetryDoc } from '../hooks/useTelemetryDashboard';
 import type { FlowDistribution, FunnelStep, HourlyBucket, ScreenKpi } from '../domain/computeCtaKpis';
 import type { KpiAlert, KpiDiff, Trend } from '../domain/computeCtaKpiDiff';
+import { RoleBreakdownSection } from './RoleBreakdownSection';
+import { getPlaybookEntry } from '../domain/alertPlaybook';
 
 // ── Label Maps ──────────────────────────────────────────────────────────────
 
@@ -212,35 +214,131 @@ function KpiCard({
 // ── Alert Chip ──────────────────────────────────────────────────────────────
 
 function AlertChip({ alert }: { alert: KpiAlert }) {
+  const [expanded, setExpanded] = useState(false);
   const isCritical = alert.severity === 'critical';
+  const playbook = getPlaybookEntry(alert.id);
+
   return (
     <div
       style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: 10,
-        padding: '12px 16px',
         borderRadius: 10,
         background: isCritical ? '#fef2f2' : '#fffbeb',
         border: `1px solid ${isCritical ? '#fecaca' : '#fed7aa'}`,
+        overflow: 'hidden',
       }}
     >
-      <span style={{ fontSize: 16, lineHeight: 1.2, flexShrink: 0 }}>
-        {isCritical ? '🔴' : '🟡'}
-      </span>
-      <div style={{ flex: 1 }}>
-        <div style={{
-          fontSize: 13,
-          fontWeight: 600,
-          color: isCritical ? '#dc2626' : '#d97706',
-          marginBottom: 2,
-        }}>
-          {alert.label}
+      {/* Main alert row */}
+      <div
+        onClick={() => playbook && setExpanded(!expanded)}
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 10,
+          padding: '12px 16px',
+          cursor: playbook ? 'pointer' : 'default',
+        }}
+      >
+        <span style={{ fontSize: 16, lineHeight: 1.2, flexShrink: 0 }}>
+          {isCritical ? '🔴' : '🟡'}
+        </span>
+        <div style={{ flex: 1 }}>
+          <div style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: isCritical ? '#dc2626' : '#d97706',
+            marginBottom: 2,
+          }}>
+            {alert.label}
+          </div>
+          <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.4 }}>
+            {alert.message}
+          </div>
         </div>
-        <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.4 }}>
-          {alert.message}
-        </div>
+        {playbook && (
+          <span style={{
+            fontSize: 11,
+            color: '#94a3b8',
+            flexShrink: 0,
+            marginTop: 2,
+            transition: 'transform 0.2s ease',
+            transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+          }}>
+            ▼
+          </span>
+        )}
       </div>
+
+      {/* Playbook expansion */}
+      {expanded && playbook && (
+        <div style={{
+          padding: '0 16px 14px 42px',
+          borderTop: `1px solid ${isCritical ? '#fecaca40' : '#fed7aa40'}`,
+        }}>
+          {/* 想定原因 */}
+          <div style={{ marginTop: 10, marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+              🔍 想定原因
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
+              {playbook.causes.map((c, i) => <li key={i}>{c}</li>)}
+            </ul>
+          </div>
+
+          {/* 確認ポイント */}
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+              ✅ 推奨確認ポイント
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
+              {playbook.checkpoints.map((c, i) => <li key={i}>{c}</li>)}
+            </ul>
+          </div>
+
+          {/* 関連画面 */}
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+              📍 関連画面
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {playbook.relatedScreens.map((s) => (
+                <span
+                  key={s.path}
+                  style={{
+                    fontSize: 11,
+                    padding: '2px 8px',
+                    borderRadius: 6,
+                    background: '#f1f5f9',
+                    color: '#3b82f6',
+                    fontWeight: 500,
+                  }}
+                >
+                  {s.label}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Issue テンプレ */}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+              📝 Issue 候補
+            </div>
+            <div style={{
+              fontSize: 12,
+              color: '#334155',
+              background: '#f8fafc',
+              padding: '6px 10px',
+              borderRadius: 6,
+              border: '1px solid #e2e8f0',
+            }}>
+              {playbook.issueTemplate.title}
+              <span style={{ marginLeft: 8, fontSize: 10, color: '#94a3b8' }}>
+                {playbook.issueTemplate.labels.map((l) => `#${l}`).join(' ')}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -625,7 +723,7 @@ function EventTypeChip({ type }: { type: string }) {
 // ── Main Component ──────────────────────────────────────────────────────────
 
 export default function TelemetryDashboard() {
-  const { stats, kpis, kpiDiffs, loading, error, range, setRange, refresh } = useTelemetryDashboard();
+  const { stats, kpis, kpiDiffs, roleBreakdown, loading, error, range, setRange, refresh } = useTelemetryDashboard();
   const [showAllRanking, setShowAllRanking] = useState(false);
   const [activeTab, setActiveTab] = useState<'kpi' | 'raw'>('kpi');
 
@@ -803,6 +901,9 @@ export default function TelemetryDashboard() {
 
           {/* ── ① b アラート ── */}
           {kpiDiffs && <AlertSection alerts={kpiDiffs.alerts} />}
+
+          {/* ── ① c Role Breakdown ── */}
+          <RoleBreakdownSection data={roleBreakdown} />
 
           {/* ── ② 導線分布 ── */}
           <SectionCard>
