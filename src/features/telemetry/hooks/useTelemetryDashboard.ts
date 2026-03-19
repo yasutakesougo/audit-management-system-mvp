@@ -23,6 +23,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { computeCtaKpis, type DashboardKpis } from '../domain/computeCtaKpis';
 import { computeCtaKpiDiff, type DashboardKpiDiffs } from '../domain/computeCtaKpiDiff';
 import { computeCtaKpisByRole, type RoleBreakdown } from '../domain/computeCtaKpisByRole';
+import { computeRoleAlerts } from '../domain/computeRoleAlerts';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -209,6 +210,10 @@ export function useTelemetryDashboard() {
 
       // ── Role Breakdown 算出 ──
       const roleBreakdown = computeCtaKpisByRole(kpiRecords);
+
+      // ── Role Alerts → 全体 alerts にマージ ──
+      const roleAlerts = computeRoleAlerts(roleBreakdown);
+      kpiDiffs.alerts = [...kpiDiffs.alerts, ...roleAlerts];
 
       // ── 集計 ──
       const byType: Record<string, number> = {};
