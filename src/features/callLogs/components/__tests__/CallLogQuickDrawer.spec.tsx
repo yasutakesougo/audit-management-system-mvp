@@ -17,9 +17,13 @@ import { CallLogQuickDrawer } from '../CallLogQuickDrawer';
 // ─── モック ──────────────────────────────────────────────────────────────────
 
 // InMemory repository を使用させる
-vi.mock('@/lib/env', () => ({
-  shouldSkipSharePoint: vi.fn(() => true),
-}));
+vi.mock('@/lib/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/env')>();
+  return {
+    ...actual,
+    shouldSkipSharePoint: vi.fn(() => true),
+  };
+});
 
 // useAuth モック (useCallLogs.spec と同パターン)
 vi.mock('@/auth/useAuth', () => ({
