@@ -1,12 +1,13 @@
 /**
- * ProgressRings — 3指標のコンパクト進捗表示
+ * ProgressRings — 4指標のコンパクト進捗表示
  *
- * Step 3: ZONE B を「3つの小さな証拠」に圧縮する。
+ * Step 3: ZONE B を「4つの小さな証拠」に圧縮する。
  *
  * 表示する指標:
- * 1. 記録   → 完了率リング (completed / total)
- * 2. 出欠   → 完了率リング (attended / scheduled)
- * 3. 連絡   → 件数モード可 (count only, no percentage)
+ * 1. 支援手順   → 完了率リング (completed / total)
+ * 2. ケース記録 → 完了率リング (completed / total)
+ * 3. 出欠       → 完了率リング (attended / scheduled)
+ * 4. 連絡       → 件数モード可 (count only, no percentage)
  *
  * ⚠️ データ取得や計算ロジックは追加しない。
  *    Props で受け取った値をそのまま表示する。
@@ -23,7 +24,7 @@ import React from 'react';
 // ─── Types ───────────────────────────────────────────────────
 
 export type ProgressRingItem = {
-  key: 'records' | 'attendance' | 'contacts';
+  key: 'records' | 'caseRecords' | 'attendance' | 'contacts';
   label: string;
   /** 表示テキスト: "5 / 12" や "2件" */
   valueText: string;

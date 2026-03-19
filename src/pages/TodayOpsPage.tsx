@@ -31,6 +31,7 @@ import { QuickRecordDrawer } from '@/features/today/records/QuickRecordDrawer';
 import { resolveNextUser } from '@/features/today/records/resolveNextUser';
 import { useQuickRecord } from '@/features/today/records/useQuickRecord';
 import { recordLanding } from '@/features/today/telemetry/recordLanding';
+import { CTA_EVENTS, recordCtaClick } from '@/features/today/telemetry/recordCtaClick';
 import { useTransportStatus } from '@/features/today/transport';
 import { ApprovalDialog } from '@/features/today/widgets/ApprovalDialog';
 import { toLocalDateISO } from '@/utils/getNow';
@@ -152,7 +153,7 @@ export const TodayOpsPage: React.FC = () => {
   });
 
   const layoutProps = useMemo(() => {
-    // ── Step 3: ProgressRings — 既存データから3指標を投影 ──
+    // ── Step 3: ProgressRings — 既存データから4指標を投影 ──
     // Guard: テストmock等で progress が未定義の場合はリング生成をスキップ
     const progressData = baseLayoutProps.progress;
     const attendanceData = baseLayoutProps.attendance;
@@ -162,10 +163,18 @@ export const TodayOpsPage: React.FC = () => {
     if (progressData?.summary && attendanceData) {
       const { summary: progressSummary, onChipClick } = progressData;
 
+      // ── 支援手順記録 (todayRecordCompletion 起点) ──
       const recordTotal = progressSummary.totalRecordCount || 1;
       const recordCompleted = Math.max(0, recordTotal - progressSummary.pendingRecordCount);
       const recordPct = Math.round((recordCompleted / recordTotal) * 100);
 
+      // ── ケース記録 (dailyRecordStatus — Dashboard 起点) ──
+      const caseRecordStatus = summary.dailyRecordStatus;
+      const caseTotal = caseRecordStatus?.total || (summary.users?.length ?? 0) || 1;
+      const caseCompleted = caseRecordStatus?.completed ?? 0;
+      const casePct = Math.round((caseCompleted / caseTotal) * 100);
+
+      // ── 出欠 ──
       const attScheduled = attendanceData.scheduledCount || 1;
       const attPresent = attendanceData.facilityAttendees || 0;
       const attPct = Math.round((attPresent / attScheduled) * 100);
@@ -175,11 +184,28 @@ export const TodayOpsPage: React.FC = () => {
       progressRings = [
         {
           key: 'records',
-          label: '記録',
+          label: '支援手順',
           valueText: `${recordCompleted}/${recordTotal}`,
           progress: recordPct,
           status: recordPct >= 100 ? 'complete' : recordPct >= 50 ? 'in_progress' : 'attention',
           onClick: () => onChipClick?.('record'),
+        },
+        {
+          key: 'caseRecords',
+          label: 'ケース記録',
+          valueText: `${caseCompleted}/${caseTotal}`,
+          progress: casePct,
+          status: casePct >= 100 ? 'complete' : casePct >= 50 ? 'in_progress' : 'attention',
+          onClick: () => {
+            recordCtaClick({
+              ctaId: CTA_EVENTS.PROGRESS_RING_CASE_RECORD,
+              sourceComponent: 'ProgressRings',
+              stateType: 'navigation',
+              targetUrl: '/daily/table',
+              userRole: role,
+            });
+            navigate('/daily/table');
+          },
         },
         {
           key: 'attendance',
@@ -195,7 +221,16 @@ export const TodayOpsPage: React.FC = () => {
           valueText: `${contactCount}件`,
           progress: undefined,
           status: contactCount === 0 ? 'complete' : contactCount <= 2 ? 'in_progress' : 'attention',
-          onClick: () => navigate('/call-logs'),
+          onClick: () => {
+            recordCtaClick({
+              ctaId: CTA_EVENTS.PROGRESS_RING_CONTACTS,
+              sourceComponent: 'ProgressRings',
+              stateType: 'navigation',
+              targetUrl: '/call-logs',
+              userRole: role,
+            });
+            navigate('/call-logs');
+          },
         },
       ];
     }
