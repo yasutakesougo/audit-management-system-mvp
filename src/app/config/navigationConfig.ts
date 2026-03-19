@@ -64,7 +64,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     icebergPdcaEnabled: _icebergPdcaEnabled,
     staffAttendanceEnabled,
     todayOpsEnabled,
-    isAdmin,
+    isAdmin: _isAdmin, // TODO: 運用後レビューで再有効化
     authzReady,
     navAudience,
     skipLogin = false,
@@ -325,7 +325,9 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     });
   }
 
-  if (isAdmin && (authzReady || skipLogin)) {
+  // TODO: 運用後レビューで isAdmin ガードを再有効化
+  // 元の条件: if (isAdmin && (authzReady || skipLogin))
+  if (authzReady || skipLogin) {
     items.push({
       label: '職員勤怠管理',
       to: '/admin/staff-attendance',
