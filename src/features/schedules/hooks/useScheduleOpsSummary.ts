@@ -4,6 +4,7 @@
  * 責務:
  * - 取得したデータに対してフィルタリングとサマリー計算を行う
  * - computeOpsSummary, computeWeeklySummary, filterOpsItems を連携
+ * - Phase 3-A: computeWeeklyLoadScores で負荷スコアを算出
  */
 
 import { useMemo } from 'react';
@@ -18,12 +19,15 @@ import {
   computeWeeklySummary,
   filterOpsItems,
 } from '../domain/scheduleOps';
+import type { DayLoadScore } from '../domain/scheduleOpsLoadScore';
+import { computeWeeklyLoadScores } from '../domain/scheduleOpsLoadScore';
 import type { ScheduleOpsItem } from '../domain/scheduleOpsSchema';
 
 export type ScheduleOpsSummaryReturn = {
   filteredItems: ScheduleOpsItem[];
   dailySummary: OpsSummary;
   weeklySummary: DaySummaryEntry[];
+  weeklyLoadScores: DayLoadScore[];
 };
 
 export const useScheduleOpsSummary = (
@@ -50,5 +54,12 @@ export const useScheduleOpsSummary = (
     [rawItems, weekDates, capacity]
   );
 
-  return { filteredItems, dailySummary, weeklySummary };
+  // 4. Weekly Load Scores (Phase 3-A: 負荷スコアと年休可否判定)
+  const weeklyLoadScores = useMemo(
+    () => computeWeeklyLoadScores(weeklySummary),
+    [weeklySummary]
+  );
+
+  return { filteredItems, dailySummary, weeklySummary, weeklyLoadScores };
 };
+

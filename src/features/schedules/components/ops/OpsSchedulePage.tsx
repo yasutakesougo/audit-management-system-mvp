@@ -51,6 +51,7 @@ export const OpsSchedulePage: FC = () => {
         return (
           <OpsWeekBoard
             weekSummary={opsState.weeklySummary}
+            loadScores={opsState.weeklyLoadScores}
             isLoading={opsState.isLoading}
             onDayClick={handleWeekDayClick}
           />

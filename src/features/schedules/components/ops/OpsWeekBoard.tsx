@@ -14,24 +14,32 @@ import CalendarViewWeekIcon from '@mui/icons-material/CalendarViewWeek';
 import Box from '@mui/material/Box';
 import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
-import type { FC } from 'react';
+import { type FC, useMemo } from 'react';
 
 import type { DaySummaryEntry } from '../../domain/scheduleOps';
+import type { DayLoadScore } from '../../domain/scheduleOpsLoadScore';
 import { OpsWeekDayCell } from './OpsWeekDayCell';
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export type OpsWeekBoardProps = {
   weekSummary: readonly DaySummaryEntry[];
+  loadScores?: readonly DayLoadScore[];
   isLoading?: boolean;
   onDayClick?: (dateIso: string) => void;
 };
 
 export const OpsWeekBoard: FC<OpsWeekBoardProps> = ({
   weekSummary,
+  loadScores,
   isLoading,
   onDayClick,
 }) => {
+  // Build lookup map for load scores
+  const scoreMap = useMemo(() => {
+    if (!loadScores) return new Map<string, DayLoadScore>();
+    return new Map(loadScores.map((s) => [s.dateIso, s]));
+  }, [loadScores]);
   // ─── Loading ────────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
@@ -95,6 +103,7 @@ export const OpsWeekBoard: FC<OpsWeekBoardProps> = ({
           <OpsWeekDayCell
             key={day.dateIso}
             day={day}
+            loadScore={scoreMap.get(day.dateIso)}
             onClick={onDayClick}
           />
         ))}

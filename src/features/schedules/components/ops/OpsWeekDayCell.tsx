@@ -4,6 +4,7 @@
  * 責務:
  * - DaySummaryEntry を受け取り、1日の負荷サマリーを表示する
  * - 定員超過日を視覚的に警告表示する
+ * - 負荷スコアと年休可否バッジを表示する（Phase 3-A）
  * - onClick でその日への drilldown をトリガーする
  *
  * 「俯瞰」に特化: 情報過多にせず、total / respite / shortStay / attention / availableSlots に絞る
@@ -13,11 +14,13 @@ import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { alpha, useTheme } from '@mui/material/styles';
 import type { FC } from 'react';
 
 import type { DaySummaryEntry } from '../../domain/scheduleOps';
+import type { DayLoadScore, LeaveEligibility } from '../../domain/scheduleOpsLoadScore';
 
 // ─── Date Formatter ──────────────────────────────────────────────────────────
 
@@ -36,14 +39,23 @@ function formatDayCellDate(dateIso: string): { label: string; weekday: string } 
   };
 }
 
+// ─── Leave Badge Config ──────────────────────────────────────────────────────
+
+const LEAVE_CONFIG: Record<LeaveEligibility, { emoji: string; label: string; tooltip: string }> = {
+  available: { emoji: '🟢', label: '休可', tooltip: '余裕あり — 休暇取得可能' },
+  caution: { emoji: '🟡', label: '要確認', tooltip: 'やや忙しい — 確認推奨' },
+  unavailable: { emoji: '🔴', label: '不可', tooltip: '忙しい — 休暇は避ける' },
+};
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export type OpsWeekDayCellProps = {
   day: DaySummaryEntry;
+  loadScore?: DayLoadScore;
   onClick?: (dateIso: string) => void;
 };
 
-export const OpsWeekDayCell: FC<OpsWeekDayCellProps> = ({ day, onClick }) => {
+export const OpsWeekDayCell: FC<OpsWeekDayCellProps> = ({ day, loadScore, onClick }) => {
   const theme = useTheme();
   const { label, weekday } = formatDayCellDate(day.dateIso);
 
@@ -119,6 +131,33 @@ export const OpsWeekDayCell: FC<OpsWeekDayCellProps> = ({ day, onClick }) => {
         </Typography>
       </Typography>
 
+      {/* 年休可否バッジ (Phase 3-A) */}
+      {loadScore && (
+        <Tooltip title={LEAVE_CONFIG[loadScore.leaveEligibility].tooltip} arrow disableInteractive>
+          <Chip
+            label={`${LEAVE_CONFIG[loadScore.leaveEligibility].emoji} ${LEAVE_CONFIG[loadScore.leaveEligibility].label}`}
+            size="small"
+            variant="outlined"
+            sx={{
+              height: 22,
+              '& .MuiChip-label': { px: 0.75, fontSize: '0.7rem' },
+              borderColor:
+                loadScore.leaveEligibility === 'available'
+                  ? theme.palette.success.main
+                  : loadScore.leaveEligibility === 'caution'
+                    ? theme.palette.warning.main
+                    : theme.palette.error.main,
+              backgroundColor:
+                loadScore.leaveEligibility === 'available'
+                  ? alpha(theme.palette.success.main, 0.08)
+                  : loadScore.leaveEligibility === 'caution'
+                    ? alpha(theme.palette.warning.main, 0.08)
+                    : alpha(theme.palette.error.main, 0.08),
+            }}
+          />
+        </Tooltip>
+      )}
+
       {/* 超過警告 */}
       {day.isOverCapacity && (
         <Chip
@@ -152,17 +191,37 @@ export const OpsWeekDayCell: FC<OpsWeekDayCellProps> = ({ day, onClick }) => {
         )}
       </Box>
 
-      {/* 空き枠 */}
-      <Typography
-        variant="caption"
-        sx={{
-          color: day.availableSlots === 0 ? 'error.main' : 'text.secondary',
-          fontVariantNumeric: 'tabular-nums',
-          mt: 'auto',
-        }}
-      >
-        空き {day.availableSlots}
-      </Typography>
+      {/* 負荷スコア + 空き枠 */}
+      <Box sx={{ mt: 'auto', textAlign: 'center' }}>
+        {loadScore && (
+          <Typography
+            variant="caption"
+            sx={{
+              fontWeight: 600,
+              fontVariantNumeric: 'tabular-nums',
+              color:
+                loadScore.level === 'critical'
+                  ? 'error.main'
+                  : loadScore.level === 'high'
+                    ? 'warning.main'
+                    : 'text.secondary',
+              display: 'block',
+              fontSize: '0.65rem',
+            }}
+          >
+            負荷 {loadScore.score}
+          </Typography>
+        )}
+        <Typography
+          variant="caption"
+          sx={{
+            color: day.availableSlots === 0 ? 'error.main' : 'text.secondary',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          空き {day.availableSlots}
+        </Typography>
+      </Box>
     </Paper>
   );
 };
@@ -188,3 +247,4 @@ const DetailRow: FC<DetailRowProps> = ({ label, value, color }) => (
     </Typography>
   </Box>
 );
+
