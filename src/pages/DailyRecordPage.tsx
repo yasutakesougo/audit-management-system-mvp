@@ -51,6 +51,8 @@ import { DailyRecordForm } from '../features/daily/forms/DailyRecordForm';
 import { DailyRecordList } from '../features/daily/lists/DailyRecordList';
 import { useDailyRecordViewModel } from '../features/daily/lists/useDailyRecordViewModel';
 import { useHandoffSummary } from '../features/handoff/useHandoffSummary';
+import { useHandoffData } from '../features/handoff/hooks/useHandoffData';
+import type { HandoffRecord } from '../features/handoff/handoffTypes';
 import { useUsers } from '../features/users/useUsers';
 import { useSchedules } from '../stores/useSchedules';
 import { calculateAttendanceRate, getExpectedAttendeeCount } from '../utils/attendanceUtils';
@@ -204,6 +206,24 @@ export default function DailyRecordPage() {
     criticalCount: handoffCritical,
   } = useHandoffSummary({ dayScope: 'today' });
 
+  // Sprint-1 Phase C: ContextPanel 用の Handoff 実データ取得
+  const { repo: handoffRepo } = useHandoffData();
+  const [handoffRecordsForContext, setHandoffRecordsForContext] = useState<HandoffRecord[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadHandoffs() {
+      try {
+        const records = await handoffRepo.getRecords('today', 'all');
+        if (!cancelled) setHandoffRecordsForContext(records);
+      } catch {
+        if (!cancelled) setHandoffRecordsForContext([]);
+      }
+    }
+    loadHandoffs();
+    return () => { cancelled = true; };
+  }, [handoffRepo]);
+
   // MVP-005: ContextPanel data
   const contextData: ContextPanelData = useMemo(() => {
     if (!editingRecord) return createEmptyContextData();
@@ -212,9 +232,19 @@ export default function DailyRecordPage() {
     const isHighIntensity = user?.IsHighIntensitySupportTarget ?? false;
     const isSupportProcedureTarget = user?.IsSupportProcedureTarget ?? false;
 
-    // TODO: Phase 2 - 実データ連携
+    // Sprint-1 Phase C: 実データ連携 — supportPlan は Phase 3 (ISP接続)
     const supportPlan = { status: 'none' as const, planPeriod: '', goals: [] };
-    const handoffs: ContextHandoff[] = []; 
+    // handoffs は handoffRecordsForContext から editingRecord のユーザーでフィルタ 
+    const handoffs: ContextHandoff[] = handoffRecordsForContext
+      .filter((h) => h.userCode === editingRecord.userId || h.userDisplayName === editingRecord.userName)
+      .map((h) => ({
+        id: String(h.id),
+        message: h.message ?? '',
+        category: h.category ?? '',
+        severity: h.severity ?? '',
+        status: h.status ?? '',
+        createdAt: h.createdAt ?? '',
+      }));
 
     const recentRecordsBase = records
       .filter((r) => r.userId === editingRecord.userId)
@@ -245,7 +275,7 @@ export default function DailyRecordPage() {
       summary: buildContextSummary(recentRecordsForDisplay, handoffs),
       prompts: buildRecommendedPrompts(supportPlan, isHighIntensity, isSupportProcedureTarget),
     };
-  }, [editingRecord, records, usersData]);
+  }, [editingRecord, records, usersData, handoffRecordsForContext]);
   const contextUserName = editingRecord?.userName ?? '';
 
   // Phase 2-1: highlight state (auto-dismiss after 1.5s)
