@@ -55,6 +55,7 @@ import {
   buildUnifiedRecommendation,
   type UnifiedRecommendation,
 } from '@/features/recommendation/domain/unifiedRecommendation';
+import { useUserHubDataSources } from '@/features/users/hooks/useUserHubDataSources';
 
 // ─── Component ────────────────────────────────────────────────
 
@@ -79,40 +80,41 @@ const UserDetailPage: React.FC = () => {
     [userId],
   );
 
+  // Sprint-1 Phase B: 実データ接続
+  const hubData = useUserHubDataSources(userId);
+
   // ── サマリー統計 ──
   const summaryStats = useMemo(() => {
     if (!user) return [];
     return buildSummaryStats({
-      todayRecordExists: false,       // Phase 2: 実データ接続
-      latestDailyRecord: null,        // Phase 2: 実データ接続
-      handoffInfo: null,              // Phase 2: 実データ接続
+      todayRecordExists: hubData.hasRecordToday,
+      latestDailyRecord: hubData.latestDailyRecord,
+      handoffInfo: hubData.handoffInfo,
       isHighIntensity: user.IsHighIntensitySupportTarget ?? false,
     });
-  }, [user]);
+  }, [user, hubData]);
 
   // ── MVP-010: Hub 深化データ生成 ──
   const todaySnapshot = useMemo<TodayUserSnapshot | null>(() => {
     if (!userId || !user) return null;
     return buildTodayUserSnapshot({
       userId,
-      hasRecordToday: false,      // Phase 2: 実データ接続
-      hasCriticalHandoff: false,  // Phase 2: 実データ接続
-      hasPlan: false,             // Phase 2: ISP接続
+      hasRecordToday: hubData.hasRecordToday,
+      hasCriticalHandoff: hubData.hasCriticalHandoff,
+      hasPlan: hubData.hasPlan,
     });
-  }, [userId, user]);
+  }, [userId, user, hubData]);
 
   const recentRecords = useMemo<RecordPreviewItem[]>(() => {
-    // Phase 2: 実記録データを接続する。現在はデモ用空配列
-    return buildRecentRecordPreview([]);
-  }, [user]);
+    return buildRecentRecordPreview(hubData.recentRecordsForUser);
+  }, [hubData.recentRecordsForUser]);
 
   const recentHandoffs = useMemo<HandoffPreviewItem[]>(() => {
-    // Phase 2: 実申し送りデータを接続する。現在はデモ用空配列
-    return buildRecentHandoffPreview([]);
-  }, [user]);
+    return buildRecentHandoffPreview(hubData.recentHandoffs);
+  }, [hubData.recentHandoffs]);
 
   const planHighlights = useMemo<PlanHighlight[]>(() => {
-    // Phase 2: ISPの目標データを接続する。現在はデモ用空配列
+    // Phase 3: ISPの目標データを接続する
     return buildPlanHighlights([]);
   }, [user]);
 
@@ -121,14 +123,14 @@ const UserDetailPage: React.FC = () => {
     if (!userId || !user) return null;
     return buildUnifiedRecommendation({
       userId,
-      contextAlerts: [],          // Phase 2: ContextPanelのアラートと接続
-      todaySnapshot: null,        // Phase 2: buildTodayUserSnapshotと接続
-      hasRecordToday: false,      // Phase 2: 実データ接続
-      criticalHandoffCount: 0,    // Phase 2: 実データ接続
-      hasPlan: false,             // Phase 2: ISP接続
+      contextAlerts: [],          // Phase 3: ContextPanelのアラートと接続
+      todaySnapshot: todaySnapshot,
+      hasRecordToday: hubData.hasRecordToday,
+      criticalHandoffCount: hubData.criticalHandoffCount,
+      hasPlan: hubData.hasPlan,
       isHighIntensity: user.IsHighIntensitySupportTarget ?? false,
     });
-  }, [userId, user]);
+  }, [userId, user, hubData, todaySnapshot]);
 
   // ── Loading ──
   if (status === 'loading') {

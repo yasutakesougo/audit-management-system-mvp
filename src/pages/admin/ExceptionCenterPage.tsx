@@ -36,47 +36,32 @@ import {
   type ExceptionCategory,
 } from '@/features/exceptions/domain/exceptionLogic';
 import { ExceptionTable } from '@/features/exceptions/components/ExceptionTable';
-import { useUsers } from '@/features/users/useUsers';
+import { useExceptionDataSources } from '@/features/exceptions/hooks/useExceptionDataSources';
 
 // ─── Component ────────────────────────────────────────────────
 
 export default function ExceptionCenterPage() {
   const navigate = useNavigate();
-  const { data: users } = useUsers();
+
+  // Sprint-1 Phase B: 実データ接続
+  const dataSources = useExceptionDataSources();
   
   const [categoryFilter, setCategoryFilter] = useState<ExceptionCategory | 'all'>('all');
 
-  // ── 例外検出 ──
+  // ── 例外検出（実データ） ──
   const exceptions = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-
-    // 未入力記録の検出（Phase 1: モック。Phase 2 で実記録接続）
-    const expectedUsers = (users ?? [])
-      .filter((u) => u.IsActive !== false)
-      .map((u) => ({ userId: u.UserID ?? String(u.Id), userName: u.FullName ?? '' }));
-
     const missingRecords = detectMissingRecords({
-      expectedUsers,
-      existingRecords: [],   // Phase 2: 実データ接続
-      targetDate: today,
+      expectedUsers: dataSources.expectedUsers,
+      existingRecords: dataSources.todayRecords,
+      targetDate: dataSources.today,
     });
 
-    // 重要申し送り（Phase 2: 実データ接続）
-    const criticalHandoffs = detectCriticalHandoffs([]);
+    const criticalHandoffs = detectCriticalHandoffs(dataSources.criticalHandoffs);
 
-    // 注意対象者
-    const attentionUsers = detectAttentionUsers(
-      (users ?? []).map((u) => ({
-        userId: u.UserID ?? String(u.Id),
-        userName: u.FullName ?? '',
-        isHighIntensity: u.IsHighIntensitySupportTarget ?? false,
-        isSupportProcedureTarget: u.IsSupportProcedureTarget ?? false,
-        hasPlan: true,  // Phase 2: ISP接続
-      })),
-    );
+    const attentionUsers = detectAttentionUsers(dataSources.userSummaries);
 
     return aggregateExceptions(missingRecords, criticalHandoffs, attentionUsers);
-  }, [users]);
+  }, [dataSources]);
 
   const stats = useMemo(() => computeExceptionStats(exceptions), [exceptions]);
 
