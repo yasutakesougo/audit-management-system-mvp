@@ -233,4 +233,179 @@ describe('OpsSchedulePage', () => {
     // Assert: Empty 表示のテキストがあるか
     expect(screen.getByText('予定はありません')).toBeInTheDocument();
   });
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // Phase 2: Weekly / List View Smoke Tests
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  it('Case 5: Weekly 表示 — viewMode=weekly でセルが描画される', () => {
+    // Arrange: weekSummary にデータ配置
+    mockUseScheduleOps.mockReturnValue(
+      createMockState({
+        viewMode: 'weekly',
+        weeklySummary: [
+          {
+            dateIso: '2026-03-16',
+            totalCount: 15,
+            respiteCount: 2,
+            shortStayCount: 1,
+            attentionCount: 3,
+            availableSlots: 10,
+            isOverCapacity: false,
+          },
+          {
+            dateIso: '2026-03-17',
+            totalCount: 22,
+            respiteCount: 1,
+            shortStayCount: 0,
+            attentionCount: 1,
+            availableSlots: 3,
+            isOverCapacity: false,
+          },
+        ],
+      })
+    );
+
+    // Act
+    render(<OpsSchedulePage />);
+
+    // Assert: 日次テーブルは描画されていない
+    expect(screen.queryByText('予定はありません')).not.toBeInTheDocument();
+
+    // Assert: WeekDayCell の合計人数が表示される
+    expect(screen.getByText('15')).toBeInTheDocument();
+    expect(screen.getByText('22')).toBeInTheDocument();
+  });
+
+  it('Case 6: Weekly → Daily drilldown — 日クリックで daily に遷移する', () => {
+    // Arrange
+    const setSelectedDateMock = vi.fn();
+    const setViewModeMock = vi.fn();
+    mockUseScheduleOps.mockReturnValue(
+      createMockState({
+        viewMode: 'weekly',
+        setSelectedDate: setSelectedDateMock,
+        setViewMode: setViewModeMock,
+        weeklySummary: [
+          {
+            dateIso: '2026-03-16',
+            totalCount: 10,
+            respiteCount: 0,
+            shortStayCount: 0,
+            attentionCount: 0,
+            availableSlots: 15,
+            isOverCapacity: false,
+          },
+        ],
+      })
+    );
+
+    render(<OpsSchedulePage />);
+
+    // Act: セルをクリック（aria-label で特定可能）
+    const cell = screen.getByRole('button', { name: /3\/16/ });
+    fireEvent.click(cell);
+
+    // Assert: setSelectedDate and setViewMode が呼ばれたか
+    expect(setSelectedDateMock).toHaveBeenCalledTimes(1);
+    expect(setViewModeMock).toHaveBeenCalledWith('daily');
+  });
+
+  it('Case 7: List 表示 — viewMode=list でテーブルが描画される', () => {
+    // Arrange
+    mockUseScheduleOps.mockReturnValue(
+      createMockState({
+        viewMode: 'list',
+        filteredItems: [
+          {
+            id: 'list-item-1',
+            title: '佐藤 花子',
+            userName: '佐藤 花子',
+            category: 'User',
+            start: '2026-03-18T09:00:00Z',
+            end: '2026-03-18T16:00:00Z',
+            etag: '1',
+            serviceType: 'respite',
+            visibility: 'team',
+            status: 'Planned',
+            opsStatus: 'confirmed',
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any,
+        ],
+      })
+    );
+
+    // Act
+    render(<OpsSchedulePage />);
+
+    // Assert: List View のテーブルが描画される
+    expect(screen.getByText('佐藤 花子')).toBeInTheDocument();
+    // Assert: Daily の "予定はありません" は表示されていない
+    expect(screen.queryByText('予定はありません')).not.toBeInTheDocument();
+  });
+
+  it('Case 8: List 行クリック — selectItem が発火する', () => {
+    // Arrange
+    const selectItemMock = vi.fn();
+    mockUseScheduleOps.mockReturnValue(
+      createMockState({
+        viewMode: 'list',
+        filteredItems: [
+          {
+            id: 'list-item-2',
+            title: '鈴木 一郎',
+            userName: '鈴木 一郎',
+            category: 'User',
+            start: '2026-03-19T10:00:00Z',
+            end: '2026-03-19T17:00:00Z',
+            etag: '1',
+            serviceType: 'normal',
+            visibility: 'team',
+            status: 'Planned',
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any,
+        ],
+        selectItem: selectItemMock,
+      })
+    );
+
+    render(<OpsSchedulePage />);
+
+    // Act
+    fireEvent.click(screen.getByText('鈴木 一郎'));
+
+    // Assert
+    expect(selectItemMock).toHaveBeenCalledTimes(1);
+    expect(selectItemMock).toHaveBeenCalledWith(expect.objectContaining({ id: 'list-item-2' }));
+  });
+
+  it('Case 9: 3 View 切替が壊れていない — daily → weekly → list と viewMode を切り替えても crash しない', () => {
+    // Test 1: daily (default)
+    mockUseScheduleOps.mockReturnValue(createMockState({ viewMode: 'daily' }));
+    const { unmount: u1 } = render(<OpsSchedulePage />);
+    expect(screen.getByText('予定はありません')).toBeInTheDocument();
+    u1();
+
+    // Test 2: weekly
+    mockUseScheduleOps.mockReturnValue(
+      createMockState({
+        viewMode: 'weekly',
+        weeklySummary: [],
+      })
+    );
+    const { unmount: u2 } = render(<OpsSchedulePage />);
+    expect(screen.getByText('週間データがありません')).toBeInTheDocument();
+    u2();
+
+    // Test 3: list
+    mockUseScheduleOps.mockReturnValue(
+      createMockState({
+        viewMode: 'list',
+        filteredItems: [],
+      })
+    );
+    const { unmount: u3 } = render(<OpsSchedulePage />);
+    expect(screen.getByText('一覧に表示するデータがありません')).toBeInTheDocument();
+    u3();
+  });
 });

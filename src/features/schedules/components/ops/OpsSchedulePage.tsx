@@ -4,24 +4,73 @@
  * 責務:
  * - useScheduleOps hook を使って state orchestration を行う
  * - UI部品に Props を分配し、画面を組み立てる
- * - Phase 1 では ViewMode が 'daily' のみ実装
+ * - ViewMode: daily / weekly / list をサポート
  */
 
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
-import Typography from '@mui/material/Typography';
 import type { FC } from 'react';
+import { useCallback } from 'react';
 
 import { useScheduleOps } from '../../hooks/useScheduleOps';
 import { OpsDailyTable } from './OpsDailyTable';
 import { OpsDetailDrawer } from './OpsDetailDrawer';
 import { OpsFilterBar } from './OpsFilterBar';
+import { OpsListView } from './OpsListView';
 import { OpsScheduleHeader } from './OpsScheduleHeader';
 import { OpsSummaryCards } from './OpsSummaryCards';
+import { OpsWeekBoard } from './OpsWeekBoard';
 
 export const OpsSchedulePage: FC = () => {
   // 1. Compose all state using the single facade hook
   const opsState = useScheduleOps();
+
+  // 2. Weekly drilldown: 日クリック → 日付更新 + daily 切替
+  const handleWeekDayClick = useCallback(
+    (dateIso: string) => {
+      opsState.setSelectedDate(new Date(dateIso + 'T00:00:00'));
+      opsState.setViewMode('daily');
+    },
+    [opsState],
+  );
+
+  // 3. Render the active view
+  const renderContent = () => {
+    switch (opsState.viewMode) {
+      case 'daily':
+        return (
+          <OpsDailyTable
+            items={opsState.filteredItems}
+            isLoading={opsState.isLoading}
+            error={opsState.error}
+            onRetry={opsState.refetch}
+            onItemClick={opsState.selectItem}
+          />
+        );
+      case 'weekly':
+        return (
+          <OpsWeekBoard
+            weekSummary={opsState.weeklySummary}
+            isLoading={opsState.isLoading}
+            onDayClick={handleWeekDayClick}
+          />
+        );
+      case 'list':
+        return (
+          <OpsListView
+            items={opsState.filteredItems}
+            isLoading={opsState.isLoading}
+            error={opsState.error}
+            onRetry={opsState.refetch}
+            onItemClick={opsState.selectItem}
+          />
+        );
+      default: {
+        const _exhaustive: never = opsState.viewMode;
+        return _exhaustive;
+      }
+    }
+  };
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
@@ -70,22 +119,8 @@ export const OpsSchedulePage: FC = () => {
           activeFilterCount={opsState.activeFilterCount}
         />
 
-        {/* Main Content Area */}
-        {opsState.viewMode === 'daily' ? (
-          <OpsDailyTable
-            items={opsState.filteredItems}
-            isLoading={opsState.isLoading}
-            error={opsState.error}
-            onRetry={opsState.refetch}
-            onItemClick={opsState.selectItem}
-          />
-        ) : (
-          <Box sx={{ p: 4, textAlign: 'center' }}>
-            <Typography color="text.secondary">
-              {opsState.viewMode === 'weekly' ? '週次ビュー' : '一覧ビュー'}は実装中（Phase 2/3）です。
-            </Typography>
-          </Box>
-        )}
+        {/* Main Content Area — view mode switch */}
+        {renderContent()}
       </Box>
 
       {/* Detail Drawer (Layered over the main view) */}

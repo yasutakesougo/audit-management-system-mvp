@@ -7,9 +7,13 @@ export * from './OpsDetailHandoffSection';
 export * from './OpsDetailRelatedLinks';
 export * from './OpsDetailSupportFlags';
 export * from './OpsFilterBar';
+export * from './OpsListView';
 export * from './OpsScheduleHeader';
 export * from './OpsSchedulePage';
 export * from './OpsServiceTypeChip';
 export * from './OpsStatusBadge';
 export * from './OpsSummaryCards';
 export * from './OpsSupportTagChips';
+export * from './OpsWeekBoard';
+export * from './OpsWeekDayCell';
+
