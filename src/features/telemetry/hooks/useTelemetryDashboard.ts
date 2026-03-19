@@ -25,6 +25,8 @@ import { computeCtaKpiDiff, type DashboardKpiDiffs } from '../domain/computeCtaK
 import { computeCtaKpisByRole, type RoleBreakdown } from '../domain/computeCtaKpisByRole';
 import { computeRoleAlerts } from '../domain/computeRoleAlerts';
 import { classifyAlertStates, type ClassifiedAlert } from '../domain/classifyAlertState';
+import { computeAlertPersistence, type AlertPersistence } from '../domain/computeAlertPersistence';
+import { buildReviewLoopSummary, type ReviewLoopSummary } from '../domain/buildReviewLoopSummary';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -63,6 +65,8 @@ type DashboardState = {
   kpiDiffs: DashboardKpiDiffs | null;
   roleBreakdown: RoleBreakdown;
   classifiedAlerts: ClassifiedAlert[];
+  persistence: AlertPersistence[];
+  reviewSummary: ReviewLoopSummary | null;
   loading: boolean;
   error: string | null;
   range: DateRange;
@@ -151,6 +155,8 @@ export function useTelemetryDashboard() {
     kpiDiffs: null,
     roleBreakdown: [],
     classifiedAlerts: [],
+    persistence: [],
+    reviewSummary: null,
     loading: true,
     error: null,
     range: 'today',
@@ -232,6 +238,22 @@ export function useTelemetryDashboard() {
       }
       const classifiedAlerts = classifyAlertStates(kpiDiffs.alerts, previousAlerts);
 
+      // ── Alert Persistence ──
+      const currentPeriodStart = rangeStart.toISOString().slice(0, 10);
+      const previousPeriodStart = prev.start.toISOString().slice(0, 10);
+      const persistence = computeAlertPersistence({
+        currentAlerts: kpiDiffs.alerts,
+        previousAlerts,
+        currentPeriodStart,
+        previousPeriodStart,
+      });
+
+      // ── Review Loop Summary ──
+      const reviewSummary = buildReviewLoopSummary({
+        alerts: kpiDiffs.alerts,
+        persistence,
+      });
+
       // ── 集計 ──
       const byType: Record<string, number> = {};
       const byPhase: Record<string, number> = {};
@@ -272,6 +294,8 @@ export function useTelemetryDashboard() {
         kpiDiffs,
         roleBreakdown,
         classifiedAlerts,
+        persistence,
+        reviewSummary,
         loading: false,
         error: null,
         range,
@@ -279,7 +303,7 @@ export function useTelemetryDashboard() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[telemetry-dashboard] fetch failed:', err);
-      setState((prev) => ({ ...prev, stats: null, kpis: null, kpiDiffs: null, roleBreakdown: [], loading: false, error: msg }));
+      setState((prev) => ({ ...prev, stats: null, kpis: null, kpiDiffs: null, roleBreakdown: [], persistence: [], reviewSummary: null, loading: false, error: msg }));
     }
   }, []);
 
