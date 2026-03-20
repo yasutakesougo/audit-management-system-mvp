@@ -5,6 +5,7 @@
  * - 取得したデータに対してフィルタリングとサマリー計算を行う
  * - computeOpsSummary, computeWeeklySummary, filterOpsItems を連携
  * - Phase 3-A: computeWeeklyLoadScores で負荷スコアを算出
+ * - Phase 3-B: suggestBestLeaveDays で年休推奨日を提示
  */
 
 import { useMemo } from 'react';
@@ -19,8 +20,8 @@ import {
   computeWeeklySummary,
   filterOpsItems,
 } from '../domain/scheduleOps';
-import type { DayLoadScore } from '../domain/scheduleOpsLoadScore';
-import { computeWeeklyLoadScores } from '../domain/scheduleOpsLoadScore';
+import type { DayLoadScore, LeaveSuggestion } from '../domain/scheduleOpsLoadScore';
+import { computeWeeklyLoadScores, suggestBestLeaveDays } from '../domain/scheduleOpsLoadScore';
 import type { ScheduleOpsItem } from '../domain/scheduleOpsSchema';
 
 export type ScheduleOpsSummaryReturn = {
@@ -28,6 +29,7 @@ export type ScheduleOpsSummaryReturn = {
   dailySummary: OpsSummary;
   weeklySummary: DaySummaryEntry[];
   weeklyLoadScores: DayLoadScore[];
+  leaveSuggestions: LeaveSuggestion[];
 };
 
 export const useScheduleOpsSummary = (
@@ -60,6 +62,12 @@ export const useScheduleOpsSummary = (
     [weeklySummary]
   );
 
-  return { filteredItems, dailySummary, weeklySummary, weeklyLoadScores };
+  // 5. Leave Suggestions (Phase 3-B: 年休推奨日)
+  const leaveSuggestions = useMemo(
+    () => suggestBestLeaveDays(weeklyLoadScores),
+    [weeklyLoadScores]
+  );
+
+  return { filteredItems, dailySummary, weeklySummary, weeklyLoadScores, leaveSuggestions };
 };
 

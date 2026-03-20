@@ -16,6 +16,7 @@ import { useScheduleOps } from '../../hooks/useScheduleOps';
 import { OpsDailyTable } from './OpsDailyTable';
 import { OpsDetailDrawer } from './OpsDetailDrawer';
 import { OpsFilterBar } from './OpsFilterBar';
+import { OpsLeaveSuggestionPanel } from './OpsLeaveSuggestionPanel';
 import { OpsListView } from './OpsListView';
 import { OpsScheduleHeader } from './OpsScheduleHeader';
 import { OpsSummaryCards } from './OpsSummaryCards';
@@ -49,12 +50,18 @@ export const OpsSchedulePage: FC = () => {
         );
       case 'weekly':
         return (
-          <OpsWeekBoard
-            weekSummary={opsState.weeklySummary}
-            loadScores={opsState.weeklyLoadScores}
-            isLoading={opsState.isLoading}
-            onDayClick={handleWeekDayClick}
-          />
+          <>
+            <OpsLeaveSuggestionPanel
+              suggestions={opsState.leaveSuggestions}
+              onDayClick={handleWeekDayClick}
+            />
+            <OpsWeekBoard
+              weekSummary={opsState.weeklySummary}
+              loadScores={opsState.weeklyLoadScores}
+              isLoading={opsState.isLoading}
+              onDayClick={handleWeekDayClick}
+            />
+          </>
         );
       case 'list':
         return (
