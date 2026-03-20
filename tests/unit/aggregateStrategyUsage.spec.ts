@@ -9,6 +9,7 @@ import {
   aggregateStrategyUsage,
   getUsageCount,
   getCategoryTotal,
+  compareStrategyUsage,
 } from '@/domain/isp/aggregateStrategyUsage';
 
 // ─────────────────────────────────────────────
@@ -343,5 +344,208 @@ describe('getCategoryTotal', () => {
     expect(getCategoryTotal(summary, 'teaching')).toBe(0);
     expect(getCategoryTotal(summary, 'consequence')).toBe(0);
     expect(getCategoryTotal(summary, 'antecedent')).toBe(1);
+  });
+});
+
+// ─────────────────────────────────────────────
+// compareStrategyUsage (Phase C-3b)
+// ─────────────────────────────────────────────
+
+describe('compareStrategyUsage', () => {
+  // 期間設定ヘルパー
+  const CURRENT_FROM = '2026-03-01T00:00:00+09:00';
+  const CURRENT_TO = '2026-03-31T23:59:59+09:00';
+  const PREVIOUS_FROM = '2026-02-01T00:00:00+09:00';
+  const PREVIOUS_TO = '2026-02-28T23:59:59+09:00';
+
+  it('current だけ件数あり → up', () => {
+    const records = [
+      makeRecord('2026-03-10T10:00:00+09:00', [
+        { strategyKey: 'antecedent', strategyText: '環境調整', applied: true },
+      ]),
+    ];
+    const result = compareStrategyUsage(records, CURRENT_FROM, CURRENT_TO, PREVIOUS_FROM, PREVIOUS_TO);
+
+    expect(result.totals.trend).toBe('up');
+    expect(result.totals.currentCount).toBe(1);
+    expect(result.totals.previousCount).toBe(0);
+    expect(result.totals.delta).toBe(1);
+
+    const item = result.items.find(i => i.strategyText === '環境調整');
+    expect(item).toBeDefined();
+    expect(item!.trend).toBe('up');
+    expect(item!.currentCount).toBe(1);
+    expect(item!.previousCount).toBe(0);
+  });
+
+  it('previous だけ件数あり → down', () => {
+    const records = [
+      makeRecord('2026-02-15T10:00:00+09:00', [
+        { strategyKey: 'teaching', strategyText: '代替行動', applied: true },
+        { strategyKey: 'teaching', strategyText: '代替行動', applied: true },
+      ]),
+    ];
+    const result = compareStrategyUsage(records, CURRENT_FROM, CURRENT_TO, PREVIOUS_FROM, PREVIOUS_TO);
+
+    expect(result.totals.trend).toBe('down');
+    expect(result.totals.currentCount).toBe(0);
+    expect(result.totals.previousCount).toBe(2);
+    expect(result.totals.delta).toBe(-2);
+
+    const item = result.items.find(i => i.strategyText === '代替行動');
+    expect(item!.trend).toBe('down');
+    expect(item!.delta).toBe(-2);
+  });
+
+  it('同数 → flat', () => {
+    const records = [
+      makeRecord('2026-02-15T10:00:00+09:00', [
+        { strategyKey: 'antecedent', strategyText: '事前予告', applied: true },
+      ]),
+      makeRecord('2026-03-15T10:00:00+09:00', [
+        { strategyKey: 'antecedent', strategyText: '事前予告', applied: true },
+      ]),
+    ];
+    const result = compareStrategyUsage(records, CURRENT_FROM, CURRENT_TO, PREVIOUS_FROM, PREVIOUS_TO);
+
+    expect(result.totals.trend).toBe('flat');
+    expect(result.totals.delta).toBe(0);
+
+    const item = result.items.find(i => i.strategyText === '事前予告');
+    expect(item!.trend).toBe('flat');
+    expect(item!.currentCount).toBe(1);
+    expect(item!.previousCount).toBe(1);
+  });
+
+  it('applied=false は無視', () => {
+    const records = [
+      makeRecord('2026-03-10T10:00:00+09:00', [
+        { strategyKey: 'antecedent', strategyText: '環境調整', applied: false },
+      ]),
+      makeRecord('2026-02-10T10:00:00+09:00', [
+        { strategyKey: 'antecedent', strategyText: '環境調整', applied: false },
+      ]),
+    ];
+    const result = compareStrategyUsage(records, CURRENT_FROM, CURRENT_TO, PREVIOUS_FROM, PREVIOUS_TO);
+
+    expect(result.items).toHaveLength(0);
+    expect(result.totals.currentCount).toBe(0);
+    expect(result.totals.previousCount).toBe(0);
+    expect(result.totals.trend).toBe('flat');
+  });
+
+  it('referencedStrategies なしは無視', () => {
+    const records = [
+      makeRecord('2026-03-10T10:00:00+09:00'),
+      makeRecord('2026-02-10T10:00:00+09:00', undefined),
+    ];
+    const result = compareStrategyUsage(records, CURRENT_FROM, CURRENT_TO, PREVIOUS_FROM, PREVIOUS_TO);
+
+    expect(result.items).toHaveLength(0);
+    expect(result.totals.trend).toBe('flat');
+  });
+
+  it('同一戦略テキストは合算', () => {
+    const records = [
+      // previous: 環境調整 ×2
+      makeRecord('2026-02-10T10:00:00+09:00', [
+        { strategyKey: 'antecedent', strategyText: '環境調整', applied: true },
+      ]),
+      makeRecord('2026-02-20T10:00:00+09:00', [
+        { strategyKey: 'antecedent', strategyText: '環境調整', applied: true },
+      ]),
+      // current: 環境調整 ×5
+      makeRecord('2026-03-05T10:00:00+09:00', [
+        { strategyKey: 'antecedent', strategyText: '環境調整', applied: true },
+      ]),
+      makeRecord('2026-03-10T10:00:00+09:00', [
+        { strategyKey: 'antecedent', strategyText: '環境調整', applied: true },
+      ]),
+      makeRecord('2026-03-15T10:00:00+09:00', [
+        { strategyKey: 'antecedent', strategyText: '環境調整', applied: true },
+      ]),
+      makeRecord('2026-03-20T10:00:00+09:00', [
+        { strategyKey: 'antecedent', strategyText: '環境調整', applied: true },
+      ]),
+      makeRecord('2026-03-25T10:00:00+09:00', [
+        { strategyKey: 'antecedent', strategyText: '環境調整', applied: true },
+      ]),
+    ];
+    const result = compareStrategyUsage(records, CURRENT_FROM, CURRENT_TO, PREVIOUS_FROM, PREVIOUS_TO);
+
+    const item = result.items.find(i => i.strategyText === '環境調整');
+    expect(item!.currentCount).toBe(5);
+    expect(item!.previousCount).toBe(2);
+    expect(item!.delta).toBe(3);
+    expect(item!.trend).toBe('up');
+  });
+
+  it('カテゴリ別でも崩れない（3カテゴリ混在）', () => {
+    const records = [
+      // previous
+      makeRecord('2026-02-10T10:00:00+09:00', [
+        { strategyKey: 'antecedent', strategyText: '環境調整', applied: true },
+        { strategyKey: 'teaching', strategyText: '代替行動', applied: true },
+        { strategyKey: 'consequence', strategyText: '称賛', applied: true },
+      ]),
+      // current
+      makeRecord('2026-03-10T10:00:00+09:00', [
+        { strategyKey: 'antecedent', strategyText: '環境調整', applied: true },
+        { strategyKey: 'antecedent', strategyText: '環境調整', applied: true },
+        { strategyKey: 'teaching', strategyText: '代替行動', applied: true },
+        // consequence は今期ゼロ
+      ]),
+    ];
+    const result = compareStrategyUsage(records, CURRENT_FROM, CURRENT_TO, PREVIOUS_FROM, PREVIOUS_TO);
+
+    expect(result.items).toHaveLength(3);
+
+    const env = result.items.find(i => i.strategyText === '環境調整')!;
+    expect(env.strategyKey).toBe('antecedent');
+    expect(env.currentCount).toBe(2);
+    expect(env.previousCount).toBe(1);
+    expect(env.trend).toBe('up');
+
+    const alt = result.items.find(i => i.strategyText === '代替行動')!;
+    expect(alt.strategyKey).toBe('teaching');
+    expect(alt.currentCount).toBe(1);
+    expect(alt.previousCount).toBe(1);
+    expect(alt.trend).toBe('flat');
+
+    const praise = result.items.find(i => i.strategyText === '称賛')!;
+    expect(praise.strategyKey).toBe('consequence');
+    expect(praise.currentCount).toBe(0);
+    expect(praise.previousCount).toBe(1);
+    expect(praise.trend).toBe('down');
+
+    // totals
+    expect(result.totals.currentCount).toBe(3);
+    expect(result.totals.previousCount).toBe(3);
+    expect(result.totals.trend).toBe('flat');
+  });
+
+  it('両期間とも空 → items 空 + totals flat', () => {
+    const result = compareStrategyUsage([], CURRENT_FROM, CURRENT_TO, PREVIOUS_FROM, PREVIOUS_TO);
+
+    expect(result.items).toHaveLength(0);
+    expect(result.totals.currentCount).toBe(0);
+    expect(result.totals.previousCount).toBe(0);
+    expect(result.totals.trend).toBe('flat');
+  });
+
+  it('期間外レコードは無視される', () => {
+    const records = [
+      // 両期間のどちらにも入らない
+      makeRecord('2025-12-01T10:00:00+09:00', [
+        { strategyKey: 'antecedent', strategyText: '古い', applied: true },
+      ]),
+      makeRecord('2026-05-01T10:00:00+09:00', [
+        { strategyKey: 'antecedent', strategyText: '未来', applied: true },
+      ]),
+    ];
+    const result = compareStrategyUsage(records, CURRENT_FROM, CURRENT_TO, PREVIOUS_FROM, PREVIOUS_TO);
+
+    expect(result.items).toHaveLength(0);
+    expect(result.totals.trend).toBe('flat');
   });
 });

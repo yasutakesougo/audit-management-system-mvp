@@ -157,3 +157,131 @@ export function getCategoryTotal(
   }
   return total;
 }
+
+// ─────────────────────────────────────────────
+// Phase C-3b: トレンド比較
+// ─────────────────────────────────────────────
+
+/** トレンド方向 */
+export type StrategyTrend = 'up' | 'down' | 'flat';
+
+/** 戦略別のトレンド項目 */
+export interface StrategyUsageTrendItem {
+  /** カテゴリ */
+  strategyKey: StrategyCategory;
+  /** 戦略テキスト（スナップショット） */
+  strategyText: string;
+  /** 今期間の実施回数 */
+  currentCount: number;
+  /** 前期間の実施回数 */
+  previousCount: number;
+  /** 増減数（current - previous） */
+  delta: number;
+  /** トレンド方向 */
+  trend: StrategyTrend;
+}
+
+/** トレンド集計の全体結果 */
+export interface StrategyUsageTrendResult {
+  /** 戦略別のトレンド項目 */
+  items: StrategyUsageTrendItem[];
+  /** 全体の合計トレンド */
+  totals: {
+    currentCount: number;
+    previousCount: number;
+    delta: number;
+    trend: StrategyTrend;
+  };
+}
+
+/**
+ * delta から trend 方向を判定する。
+ */
+function deriveTrend(delta: number): StrategyTrend {
+  if (delta > 0) return 'up';
+  if (delta < 0) return 'down';
+  return 'flat';
+}
+
+/**
+ * 日常記録を current / previous の2期間に分けて、
+ * 戦略テキスト別のトレンドを算出する。
+ *
+ * - records を日付で2つのウィンドウに分ける
+ * - `referencedStrategies?.applied === true` のみカウント
+ * - `strategyKey + strategyText` 単位で集計
+ * - delta と trend を作る
+ *
+ * @param records    - 全レコード（2期間分をまとめて渡す）
+ * @param currentFrom  - 今期間の開始 ISO string
+ * @param currentTo    - 今期間の終了 ISO string
+ * @param previousFrom - 前期間の開始 ISO string
+ * @param previousTo   - 前期間の終了 ISO string
+ */
+export function compareStrategyUsage(
+  records: readonly RecordWithStrategies[],
+  currentFrom: string,
+  currentTo: string,
+  previousFrom: string,
+  previousTo: string,
+): StrategyUsageTrendResult {
+  const currentSummary = aggregateStrategyUsage(records, {
+    fromDate: currentFrom,
+    toDate: currentTo,
+  });
+  const previousSummary = aggregateStrategyUsage(records, {
+    fromDate: previousFrom,
+    toDate: previousTo,
+  });
+
+  // ── 全 strategyKey × strategyText を収集 ──
+  const categories: StrategyCategory[] = ['antecedent', 'teaching', 'consequence'];
+  const seen = new Map<string, { key: StrategyCategory; text: string }>();
+
+  for (const cat of categories) {
+    for (const text of currentSummary[cat].keys()) {
+      seen.set(`${cat}:${text}`, { key: cat, text });
+    }
+    for (const text of previousSummary[cat].keys()) {
+      const k = `${cat}:${text}`;
+      if (!seen.has(k)) {
+        seen.set(k, { key: cat, text });
+      }
+    }
+  }
+
+  // ── items を生成 ──
+  const items: StrategyUsageTrendItem[] = [];
+
+  for (const { key: strategyKey, text: strategyText } of seen.values()) {
+    const curMap = currentSummary[strategyKey];
+    const prevMap = previousSummary[strategyKey];
+    const currentCount = curMap.get(strategyText) ?? 0;
+    const previousCount = prevMap.get(strategyText) ?? 0;
+    const delta = currentCount - previousCount;
+
+    items.push({
+      strategyKey,
+      strategyText,
+      currentCount,
+      previousCount,
+      delta,
+      trend: deriveTrend(delta),
+    });
+  }
+
+  // ── totals ──
+  const totalCurrent = currentSummary.totalApplications;
+  const totalPrevious = previousSummary.totalApplications;
+  const totalDelta = totalCurrent - totalPrevious;
+
+  return {
+    items,
+    totals: {
+      currentCount: totalCurrent,
+      previousCount: totalPrevious,
+      delta: totalDelta,
+      trend: deriveTrend(totalDelta),
+    },
+  };
+}
