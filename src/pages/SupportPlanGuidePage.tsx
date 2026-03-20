@@ -308,6 +308,7 @@ export default function SupportPlanGuidePage() {
           <MonitoringTab
             {...sectionTabProps}
             userId={activeDraft?.userId}
+            userName={activeDraft?.name ?? ''}
             setToast={setToast}
           />
         );
