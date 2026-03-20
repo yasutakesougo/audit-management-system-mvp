@@ -13,6 +13,7 @@ import Typography from '@mui/material/Typography';
 import React from 'react';
 
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import { AppliedStrategiesBadges } from '@/features/daily/components/AppliedStrategiesBadges';
 
 export interface TbsRecentRecordsDialogProps {
   open: boolean;
@@ -56,18 +57,21 @@ export const TbsRecentRecordsDialog: React.FC<TbsRecentRecordsDialogProps> = ({
       ) : (
         <Stack spacing={1.5}>
           {observations.slice(0, 10).map((observation) => (
-            <Box key={observation.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="caption" color="text.secondary" sx={{ minWidth: 60 }}>
-                {new Date(observation.recordedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </Typography>
-              <Chip
-                label={`${observation.behavior} / Lv.${observation.intensity}`}
-                color={observation.intensity >= 4 ? 'error' : observation.intensity >= 3 ? 'warning' : 'success'}
-                size="small"
-              />
-              <Typography variant="caption" color="text.secondary">
-                A: {observation.antecedent ?? '―'} / C: {observation.consequence ?? '―'}
-              </Typography>
+            <Box key={observation.id}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ minWidth: 60 }}>
+                  {new Date(observation.recordedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Typography>
+                <Chip
+                  label={`${observation.behavior} / Lv.${observation.intensity}`}
+                  color={observation.intensity >= 4 ? 'error' : observation.intensity >= 3 ? 'warning' : 'success'}
+                  size="small"
+                />
+                <Typography variant="caption" color="text.secondary">
+                  A: {observation.antecedent ?? '―'} / C: {observation.consequence ?? '―'}
+                </Typography>
+              </Box>
+              <AppliedStrategiesBadges strategies={observation.referencedStrategies} />
             </Box>
           ))}
         </Stack>

@@ -26,6 +26,7 @@ import {
   buildIcebergPdcaUrl,
   sceneToTimeBand,
 } from '@/app/links/navigationLinks';
+import { buildDailySupportUrl } from '@/app/links/dailySupportLinks';
 import { isE2E } from '@/lib/env';
 import { getWindowFlag } from '@/env';
 import { CTA_EVENTS, recordCtaClick } from '@/features/today/telemetry/recordCtaClick';
@@ -35,6 +36,7 @@ import type { ProgressChipKey } from '../widgets/ProgressStatusBar';
 import type { NextActionWithProgress } from './useNextAction';
 import type { SceneNextActionViewModel } from './useSceneNextAction';
 import type { UseTransportStatusReturn } from '../transport';
+import type { UserAlert } from '../domain/buildUserAlerts';
 
 // ── Input Types ──
 
@@ -75,6 +77,8 @@ export type TodayLayoutPropsInput = {
   navigate: NavigateFunction;
   role: string;
   scheduleDetailHref: string;
+  /** 利用者ごとの直近注意点（useUserAlerts の出力） */
+  alertsByUser?: Map<string, UserAlert[]>;
 };
 
 // ── Return Type ──
@@ -93,6 +97,7 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
     navigate,
     role,
     scheduleDetailHref,
+    alertsByUser,
   } = input;
 
   return useMemo(() => {
@@ -136,7 +141,8 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
         else if (visit.status === '当日欠席' || visit.status === '事前欠席') status = 'absent';
       }
       const recordFilled = !pendingUserIds.has(userId);
-      return { userId, name, status, recordFilled };
+      const alerts = alertsByUser?.get(userId);
+      return { userId, name, status, recordFilled, alerts };
     });
 
     const sortedUserItems = [...userItems].sort((a, b) => {
@@ -268,6 +274,17 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
         onOpenQuickRecord: quickRecord.openUser,
         onOpenISP: (userId: string) => navigate(`/isp-editor/${userId}`),
         onOpenIceberg: (userId: string) => navigate(buildIcebergPdcaUrl(userId)),
+        onAlertClick: (userId: string) => {
+          const targetUrl = buildDailySupportUrl({ userId });
+          recordCtaClick({
+            ctaId: CTA_EVENTS.USER_ALERT_CLICKED,
+            sourceComponent: 'UserCompactList',
+            stateType: 'navigation',
+            targetUrl,
+            userRole: role,
+          });
+          navigate(targetUrl);
+        },
         onEmptyAction: () => navigate('/schedules'),
       },
       nextActionEmptyAction: () => {
@@ -304,5 +321,5 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
         navigate(href);
       },
     };
-  }, [summary, nextAction, sceneAction, transport, quickRecord.openUnfilled, quickRecord.openUser, navigate, role, scheduleDetailHref]);
+  }, [summary, nextAction, sceneAction, transport, quickRecord.openUnfilled, quickRecord.openUser, navigate, role, scheduleDetailHref, alertsByUser]);
 }

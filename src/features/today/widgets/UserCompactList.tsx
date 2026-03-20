@@ -10,6 +10,7 @@ import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { Box, Button, Chip, IconButton, Paper, Stack, Tooltip, Typography } from '@mui/material';
 import React, { useMemo, useState } from 'react';
 import { EmptyStateBlock } from './EmptyStateBlock';
+import type { UserAlert } from '../domain/buildUserAlerts';
 
 /** 初期表示件数 — 未記録優先で上位 n 件を表示 */
 const INITIAL_DISPLAY_COUNT = 6;
@@ -19,6 +20,8 @@ export type UserRow = {
   name: string;
   status: 'present' | 'absent' | 'unknown';
   recordFilled?: boolean;
+  /** 直近の注意点（buildUserAlerts で算出。未設定時は非表示） */
+  alerts?: UserAlert[];
 };
 
 export type UserCompactListProps = {
@@ -27,6 +30,8 @@ export type UserCompactListProps = {
   onOpenISP?: (id: string) => void;
   /** Iceberg PDCA 行動分析への導線 */
   onOpenIceberg?: (id: string) => void;
+  /** アラートチップクリック → daily/support 直行（未設定時はカード全体と同じ動作） */
+  onAlertClick?: (userId: string) => void;
   /** zero-users 時の弱いCTA（スケジュール確認等） */
   onEmptyAction?: () => void;
 };
@@ -37,7 +42,9 @@ const UserCompactRow = React.memo<{
   onOpenQuickRecord: (id: string) => void;
   onOpenISP?: (id: string) => void;
   onOpenIceberg?: (id: string) => void;
-}>(function UserCompactRow({ user, onOpenQuickRecord, onOpenISP, onOpenIceberg }) {
+  onAlertClick?: (userId: string) => void;
+}>(function UserCompactRow({ user, onOpenQuickRecord, onOpenISP, onOpenIceberg, onAlertClick }) {
+  const hasAlerts = user.alerts && user.alerts.length > 0;
   const needsAttention = !user.recordFilled && user.status !== 'absent';
   const isAbsent = user.status === 'absent';
 
@@ -95,13 +102,46 @@ const UserCompactRow = React.memo<{
             aria-label="未記録"
           />
         )}
-        <Typography
-          variant="body1"
-          fontWeight={user.recordFilled ? 400 : 600}
-          sx={user.recordFilled ? { color: 'text.secondary' } : undefined}
-        >
-          {user.name}
-        </Typography>
+        <Box>
+          <Typography
+            variant="body1"
+            fontWeight={user.recordFilled ? 400 : 600}
+            sx={user.recordFilled ? { color: 'text.secondary' } : undefined}
+          >
+            {user.name}
+          </Typography>
+          {/* 直近注意点チップ（最大2件） */}
+          {hasAlerts && (
+            <Box sx={{ display: 'flex', gap: 0.5, mt: 0.25, flexWrap: 'wrap' }}>
+              {user.alerts!.map((alert, idx) => (
+                <Chip
+                  key={idx}
+                  label={alert.label}
+                  size="small"
+                  color={alert.severity === 'warning' ? 'warning' : 'default'}
+                  variant={alert.severity === 'warning' ? 'filled' : 'outlined'}
+                  clickable={!!onAlertClick}
+                  onClick={onAlertClick ? (e) => {
+                    e.stopPropagation();
+                    onAlertClick(user.userId);
+                  } : undefined}
+                  data-testid={`user-alert-${user.userId}-${idx}`}
+                  sx={{
+                    height: 20,
+                    fontSize: '0.65rem',
+                    fontWeight: 600,
+                    '& .MuiChip-label': { px: 0.75 },
+                    ...(onAlertClick && {
+                      cursor: 'pointer',
+                      '&:hover': { transform: 'scale(1.05)' },
+                      transition: 'transform 0.15s ease',
+                    }),
+                  }}
+                />
+              ))}
+            </Box>
+          )}
+        </Box>
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         {onOpenISP ? (
@@ -147,7 +187,7 @@ const UserCompactRow = React.memo<{
   );
 });
 
-export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQuickRecord, onOpenISP, onOpenIceberg, onEmptyAction }) => {
+export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQuickRecord, onOpenISP, onOpenIceberg, onAlertClick, onEmptyAction }) => {
   const [expanded, setExpanded] = useState(false);
 
   // 未記録を先頭に並べる（元の順序を保ちつつ）
@@ -202,6 +242,7 @@ export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQ
           onOpenQuickRecord={onOpenQuickRecord}
           onOpenISP={onOpenISP}
           onOpenIceberg={onOpenIceberg}
+          onAlertClick={onAlertClick}
         />
       ))}
       {needsFold && (

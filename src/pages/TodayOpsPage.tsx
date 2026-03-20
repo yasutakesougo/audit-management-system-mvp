@@ -23,6 +23,7 @@ import { useTodayScheduleLanes } from '@/features/today/hooks/useTodayScheduleLa
 import { useWorkflowPhases } from '@/features/today/hooks/useWorkflowPhases';
 import { useTodayLayoutProps } from '@/features/today/hooks/useTodayLayoutProps';
 import { useTodayActionQueue } from '@/features/today/hooks/useTodayActionQueue';
+import { useUserAlerts } from '@/features/today/hooks/useUserAlerts';
 import type { ActionCard } from '@/features/today/domain/models/queue.types';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { TodayBentoLayout } from '@/features/today/layouts/TodayBentoLayout';
@@ -128,6 +129,15 @@ export const TodayOpsPage: React.FC = () => {
   const callLogsSummary = useCallLogsSummary({ myName });
   const [callLogDrawerOpen, setCallLogDrawerOpen] = useState(false);
 
+  // ── User Alerts (直近7日の注意点) ──
+  const alertUserIds = useMemo(
+    () => (summary.users ?? []).map((u, i) =>
+      (u.UserID ?? '').trim() || `U${String(u.Id ?? i + 1).padStart(3, '0')}`
+    ),
+    [summary.users],
+  );
+  const { alertsByUser } = useUserAlerts(alertUserIds);
+
   // ── Schedule Detail Deep Link ──
   const scheduleDetailHref = useMemo(() => {
     const dateIso = toLocalDateISO();
@@ -150,6 +160,7 @@ export const TodayOpsPage: React.FC = () => {
     navigate,
     role,
     scheduleDetailHref,
+    alertsByUser,
   });
 
   const layoutProps = useMemo(() => {

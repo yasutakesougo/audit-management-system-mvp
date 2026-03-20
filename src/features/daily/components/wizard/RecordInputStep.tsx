@@ -4,19 +4,29 @@
  * 選択された時間帯の記録フォームを表示。
  * 保存後は Step 2 (Plan) に戻って次の時間帯を選択（連続入力フロー）。
  *
+ * Phase C: 戦略チップのトグルで「実施した戦略」を記録に含める。
+ *
  * NOTE: ヘッダーはコンパクトに1行で表示し、縦スペースを最大化。
  */
+import type { ReferencedStrategy, StrategyCategory } from '@/domain/behavior';
 import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 import { RecordPanel, type RecordPanelLockState } from '@/features/daily/components/split-stream/RecordPanel';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
+import { useLinkedStrategies } from '@/features/daily/hooks/useLinkedStrategies';
+import {
+  StrategyChipBar,
+  type StrategyChipKey,
+  type AppliedStrategies,
+} from './StrategyChipBar';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
-import React, { memo, useCallback } from 'react';
+import { useDefaultStrategies } from '@/features/daily/hooks/useDefaultStrategies';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 export type RecordInputStepProps = {
   /** 選択ユーザー名 */
@@ -37,9 +47,28 @@ export type RecordInputStepProps = {
   onSlotChange?: (next: string) => void;
   /** 戻るボタン — Step 2 へ */
   onBack: () => void;
+  /** 利用者ID（戦略参照用） */
+  userId?: string;
   /** ABC記録への導線（slotId 付きで遷移） */
   onAbcRecord?: () => void;
 };
+
+// ── Helper: ChipKey → ReferencedStrategy ──
+
+function parseChipKey(key: StrategyChipKey): { strategyKey: StrategyCategory; strategyText: string } {
+  const colonIdx = key.indexOf(':');
+  return {
+    strategyKey: key.slice(0, colonIdx) as StrategyCategory,
+    strategyText: key.slice(colonIdx + 1),
+  };
+}
+
+function buildReferencedStrategies(applied: AppliedStrategies): ReferencedStrategy[] {
+  return Array.from(applied).map((key) => ({
+    ...parseChipKey(key),
+    applied: true,
+  }));
+}
 
 export const RecordInputStep: React.FC<RecordInputStepProps> = memo(({
   userName,
@@ -51,11 +80,57 @@ export const RecordInputStep: React.FC<RecordInputStepProps> = memo(({
   onAfterSubmit,
   onSlotChange,
   onBack,
+  userId,
   onAbcRecord,
 }) => {
+  // ── 参照戦略の取得 ──
+  const linkedStrategies = useLinkedStrategies(userId);
+
+  // ── 直近記録からの初期選択 (Step B) ──
+  const { defaultKeys, sourceLabel, resolved } = useDefaultStrategies(userId);
+
+  // ── 実施済み戦略の選択状態 (Phase C) ──
+  const [appliedStrategies, setAppliedStrategies] = useState<AppliedStrategies>(new Set());
+  const initialAppliedRef = useRef(false);
+
+  // resolved 時に初期値を適用（1回のみ、ユーザーが未操作の場合）
+  useEffect(() => {
+    if (resolved && defaultKeys.size > 0 && !initialAppliedRef.current) {
+      initialAppliedRef.current = true;
+      setAppliedStrategies(defaultKeys);
+    }
+  }, [resolved, defaultKeys]);
+
+  const handleToggleStrategy = useCallback((key: StrategyChipKey) => {
+    setAppliedStrategies(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }, []);
+
   // スロット名を表示用に解決 — getScheduleKey フォーマットで照合
   const slotLabel = schedule.find(
     (s) => getScheduleKey(s.time, s.activity) === selectedSlotKey,
+  );
+
+  // ── 保存ハンドラのラップ: referencedStrategies を合流 ──
+  const handleSubmitWithStrategies = useCallback(
+    async (data: Omit<BehaviorObservation, 'id' | 'userId'>) => {
+      const strategies = buildReferencedStrategies(appliedStrategies);
+      await onSubmit({
+        ...data,
+        ...(strategies.length > 0 ? { referencedStrategies: strategies } : {}),
+      });
+      // リセット（次のスロット入力のため）
+      setAppliedStrategies(new Set());
+      initialAppliedRef.current = false; // 次スロットで再度初期適用を許可
+    },
+    [appliedStrategies, onSubmit],
   );
 
   const handleAfterSubmit = useCallback(() => {
@@ -112,11 +187,38 @@ export const RecordInputStep: React.FC<RecordInputStepProps> = memo(({
         )}
       </Box>
 
+      {/* ── 由来ラベル (Step B) ── */}
+      {sourceLabel && appliedStrategies.size > 0 && (
+        <Box
+          sx={{
+            px: 1.5,
+            pt: 0.5,
+            pb: 0,
+            bgcolor: 'grey.50',
+          }}
+        >
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontSize: '0.65rem', fontStyle: 'italic' }}
+          >
+            💡 {sourceLabel}
+          </Typography>
+        </Box>
+      )}
+
+      {/* ── Strategy chips (Phase B+C: toggleable) ── */}
+      <StrategyChipBar
+        strategies={linkedStrategies}
+        appliedStrategies={appliedStrategies}
+        onToggle={handleToggleStrategy}
+      />
+
       {/* ── Record form (RecordPanel compact mode) ── */}
       <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
         <RecordPanel
           lockState={lockState}
-          onSubmit={onSubmit}
+          onSubmit={handleSubmitWithStrategies}
           schedule={schedule}
           selectedSlotKey={selectedSlotKey}
           onSlotChange={onSlotChange}

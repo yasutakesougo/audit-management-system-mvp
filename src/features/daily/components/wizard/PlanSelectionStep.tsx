@@ -11,7 +11,9 @@
  */
 import type { AbcRecord } from '@/domain/abc/abcRecord';
 import { buildAbcCountBySlot, filterAbcBySlot, type AbcCountBySlot } from '@/domain/abc/buildAbcCountBySlot';
+import { useLinkedStrategies } from '@/features/daily/hooks/useLinkedStrategies';
 import { AbcSlotDialog } from './AbcSlotDialog';
+import { StrategyReferenceAccordion } from './StrategyReferenceAccordion';
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
 import type { BehaviorInterventionPlan } from '@/features/analysis/domain/interventionTypes';
 import { computeMonitoringCycle } from '@/features/daily/components/MonitoringCountdown';
@@ -31,6 +33,7 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // ─────────────────────────────────────────────
 // Types
@@ -311,6 +314,14 @@ export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
   userId,
   lastAssessmentDate,
 }) => {
+  const navigate = useNavigate();
+
+  // ── 参照戦略の取得 ──
+  const linkedStrategies = useLinkedStrategies(userId);
+
+  const handleNavigateToSheet = useCallback((sheetId: string) => {
+    navigate(`/support-planning-sheet/${sheetId}?tab=planning`);
+  }, [navigate]);
   // Plan 項目タップ時に onSelectSlot を呼ぶ
   const handleStepSelect = useCallback((step: ScheduleItem | string, _stepId?: string) => {
     let resolvedId: string;
@@ -374,6 +385,12 @@ export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
         unfilledCount={unfilledCount}
         onIcebergAnalysis={onIcebergAnalysis}
         onAbcRecord={onAbcRecord}
+      />
+
+      {/* ── Strategy Reference Accordion ── */}
+      <StrategyReferenceAccordion
+        strategies={linkedStrategies}
+        onNavigateToSheet={handleNavigateToSheet}
       />
 
       {/* ── Procedure panel ── */}

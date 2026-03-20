@@ -5,10 +5,11 @@
  * MonitoringTab は本 hook から返される state/actions を各 Section に配るだけ。
  *
  * ## 責務マップ
- * - fieldState   → FieldCard の追記ヘルパー
- * - dashboardState → MonitoringDailyDashboard + ISP 判断 + ドラフト保存
- * - evidenceState  → 日次記録・Iceberg PDCA エビデンス引用
- * - feedbackState  → Snackbar 状態管理
+ * - fieldState        → FieldCard の追記ヘルパー
+ * - dashboardState    → MonitoringDailyDashboard + ISP 判断 + ドラフト保存
+ * - evidenceState     → 日次記録・Iceberg PDCA エビデンス引用
+ * - meetingDraftState → 会議ドラフト自動引用
+ * - feedbackState     → Snackbar 状態管理
  */
 import React from 'react';
 
@@ -16,6 +17,7 @@ import { useAuth } from '@/auth/useAuth';
 import { useMonitoringDailyAnalytics } from '@/features/monitoring/hooks/useMonitoringDailyAnalytics';
 import { useIspRecommendationDecisions } from '@/features/monitoring/hooks/useIspRecommendationDecisions';
 import { useSupportPlanningSheet } from '@/features/monitoring/hooks/useSupportPlanningSheet';
+import { useMeetingEvidenceDraft } from '@/features/monitoring/hooks/useMeetingEvidenceDraft';
 import type { GoalLike } from '@/features/monitoring/domain/goalProgressTypes';
 import type { SaveSupportPlanningSheetInput } from '@/features/monitoring/domain/supportPlanningSheetTypes';
 import type { DraftBatch } from '@/features/monitoring/components/DraftHistoryPanel';
@@ -91,6 +93,8 @@ function useSnackbar() {
 
 export type UseMonitoringTabStateInput = {
   userId: string | number | null | undefined;
+  /** 利用者名（会議ドラフトヘッダー用） */
+  userName: string;
   form: SectionTabProps['form'];
   isAdmin: SectionTabProps['isAdmin'];
   onFieldChange: SectionTabProps['onFieldChange'];
@@ -99,6 +103,7 @@ export type UseMonitoringTabStateInput = {
 
 export function useMonitoringTabState({
   userId,
+  userName,
   form,
   isAdmin,
   onFieldChange,
@@ -144,6 +149,9 @@ export function useMonitoringTabState({
     hasSaved: hasSavedDraft,
     error: draftError,
   } = useSupportPlanningSheet(userIdStr);
+
+  // ── 会議ドラフト自動引用 ─────────────────────────────
+  const meetingEvidence = useMeetingEvidenceDraft(userIdStr, userName);
 
   // ── Snackbar ─────────────────────────────────────────
   const snackbar = useSnackbar();
@@ -308,6 +316,17 @@ export function useMonitoringTabState({
           text,
           'Iceberg分析結果は既に引用されています。',
           'Iceberg分析結果を引用しました。内容を調整してください。',
+        ),
+    },
+
+    /** MeetingEvidenceDraftPanel 用 */
+    meetingDraftState: {
+      evidence: meetingEvidence,
+      onAppendToField: (text: string) =>
+        appendToMonitoringPlan(
+          text,
+          '会議ドラフトは既に引用されています。',
+          '会議ドラフトを引用しました。内容を調整してください。',
         ),
     },
 

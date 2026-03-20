@@ -143,4 +143,5 @@ graph TB
 |---|---|
 | [System Architecture (Full)](system-architecture-complete.md) | ISP 三層 + ブリッジ + PDCA 全体図 |
 | [Support PDCA Engine (Technical)](support-pdca-engine.md) | モニタリング分析エンジンの技術詳細 |
+| [Planning–Daily–Monitoring Loop](planning-daily-monitoring-loop.md) | 支援計画シートを起点とした PDCA 循環モデル |
 | [Operating Model](../operations/operating-model.md) | 業務モデル・運用・保守の設計 |
