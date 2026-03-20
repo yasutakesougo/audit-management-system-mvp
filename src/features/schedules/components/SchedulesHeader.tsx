@@ -10,7 +10,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import React, { type FocusEventHandler } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-type ViewMode = 'day' | 'week' | 'month' | 'org';
+type ViewMode = 'day' | 'week' | 'month' | 'org' | 'ops' | 'list';
 type ViewModeOption = ViewMode;
 
 type Props = {
@@ -114,15 +114,33 @@ export const SchedulesHeader: React.FC<Props> = ({
     },
   } : undefined;
 
+  // Filter isolation: params owned by each tab group
+  const CALENDAR_FILTER_PARAMS = ['cat', 'q', 'lane'] as const;
+  const OPS_FILTER_PARAMS = ['serviceType', 'staffId', 'searchQuery', 'includeCancelled', 'hasAttention', 'hasPickup', 'hasBath', 'hasMedication'] as const;
+
+  const isOpsTab = (tab: ViewMode) => tab === 'ops' || tab === 'list';
+  const isCalendarTab = (tab: ViewMode) => tab === 'day' || tab === 'week' || tab === 'month' || tab === 'org';
+
   const handleTabChange = (_: React.SyntheticEvent, value: ViewMode) => {
     if (value === mode) {
       return;
     }
-    const nextHref = { day: dayHref, week: weekHref, month: monthHref, org: weekHref }[value];
+    const nextHref = { day: dayHref, week: weekHref, month: monthHref, org: weekHref, ops: weekHref, list: weekHref }[value];
     if (!nextHref) return;
     // Append tab parameter to maintain tab state in URL for E2E tests and history tracking
     const urlObj = new URL(nextHref, window.location.origin);
     urlObj.searchParams.set('tab', value);
+
+    // Cross-group filter isolation: clear the other group's filter params
+    if (isCalendarTab(mode) && isOpsTab(value)) {
+      // Leaving calendar → entering ops: clear calendar filters
+      for (const key of CALENDAR_FILTER_PARAMS) urlObj.searchParams.delete(key);
+    } else if (isOpsTab(mode) && isCalendarTab(value)) {
+      // Leaving ops → entering calendar: clear ops filters
+      for (const key of OPS_FILTER_PARAMS) urlObj.searchParams.delete(key);
+    }
+    // Same-group: preserve all filters (e.g. day→week, ops→list)
+
     navigate(urlObj.pathname + urlObj.search);
   };
 
@@ -202,6 +220,22 @@ export const SchedulesHeader: React.FC<Props> = ({
               value="org"
               sx={{ minHeight: tabMinHeight, minWidth: tabMinWidth, px: tabPaddingX }}
               data-testid="schedule-tab-org"
+            />
+          )}
+          {modes.includes('ops') && (
+            <Tab
+              label="運営"
+              value="ops"
+              sx={{ minHeight: tabMinHeight, minWidth: tabMinWidth, px: tabPaddingX }}
+              data-testid="schedule-tab-ops"
+            />
+          )}
+          {modes.includes('list') && (
+            <Tab
+              label="一覧"
+              value="list"
+              sx={{ minHeight: tabMinHeight, minWidth: tabMinWidth, px: tabPaddingX }}
+              data-testid="schedule-tab-list"
             />
           )}
         </Tabs>

@@ -10,7 +10,6 @@ import {
     devHarnessEnabled,
     SuspendedDevScheduleCreateDialogPage,
     SuspendedNewSchedulesWeekPage,
-    SuspendedOpsSchedulePage,
 } from './lazyPages';
 import {
     SchedulesDayRedirect,
@@ -49,7 +48,7 @@ export const scheduleRoutes: RouteObject[] = [
       <SchedulesGate>
         <ProtectedRoute flag="schedules">
           <RequireAudience requiredRole="viewer">
-            <SuspendedOpsSchedulePage />
+            <Navigate to="/schedules/week?tab=ops" replace />
           </RequireAudience>
         </ProtectedRoute>
       </SchedulesGate>

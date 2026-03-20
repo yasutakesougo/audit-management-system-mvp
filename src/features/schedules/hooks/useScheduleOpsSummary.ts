@@ -20,8 +20,8 @@ import {
   computeWeeklySummary,
   filterOpsItems,
 } from '../domain/scheduleOps';
-import type { DayLoadScore, LeaveSuggestion } from '../domain/scheduleOpsLoadScore';
-import { computeWeeklyLoadScores, suggestBestLeaveDays } from '../domain/scheduleOpsLoadScore';
+import type { DayLoadScore, HighLoadWarning, LeaveSuggestion } from '../domain/scheduleOpsLoadScore';
+import { computeHighLoadWarnings, computeWeeklyLoadScores, suggestBestLeaveDays } from '../domain/scheduleOpsLoadScore';
 import type { ScheduleOpsItem } from '../domain/scheduleOpsSchema';
 
 export type ScheduleOpsSummaryReturn = {
@@ -30,6 +30,7 @@ export type ScheduleOpsSummaryReturn = {
   weeklySummary: DaySummaryEntry[];
   weeklyLoadScores: DayLoadScore[];
   leaveSuggestions: LeaveSuggestion[];
+  highLoadWarnings: HighLoadWarning[];
 };
 
 export const useScheduleOpsSummary = (
@@ -68,6 +69,12 @@ export const useScheduleOpsSummary = (
     [weeklyLoadScores, weeklySummary]
   );
 
-  return { filteredItems, dailySummary, weeklySummary, weeklyLoadScores, leaveSuggestions };
+  // 6. High Load Warnings (Phase 4-A-1: 高負荷日警告)
+  const highLoadWarnings = useMemo(
+    () => computeHighLoadWarnings(weeklyLoadScores, weeklySummary),
+    [weeklyLoadScores, weeklySummary]
+  );
+
+  return { filteredItems, dailySummary, weeklySummary, weeklyLoadScores, leaveSuggestions, highLoadWarnings };
 };
 

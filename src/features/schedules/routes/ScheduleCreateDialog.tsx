@@ -26,6 +26,7 @@ import {
     Typography
 } from '@mui/material';
 import Autocomplete from '@mui/material/Autocomplete';
+import Chip from '@mui/material/Chip';
 import React, { useState } from 'react';
 
 import { TESTIDS } from '@/testids';
@@ -44,6 +45,7 @@ import {
     type ScheduleFormState,
     type ScheduleUserOption,
 } from '../domain/scheduleFormState';
+import type { QuickTemplate } from '../domain/scheduleQuickTemplates';
 import type { OrgOption } from '../hooks/useOrgOptions';
 import { useScheduleCreateForm } from '../hooks/useScheduleCreateForm';
 import { SCHEDULE_STATUS_OPTIONS } from '../statusMetadata';
@@ -66,6 +68,8 @@ type ScheduleCreateDialogBaseProps = {
   submitTestId?: string;
   isSubmitting?: boolean;
   isDeleting?: boolean;
+  /** Phase 7-A: Quick templates for one-click input */
+  quickTemplates?: QuickTemplate[];
 };
 
 type ScheduleCreateDialogCreateProps = {
@@ -150,6 +154,37 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
             {FACILITY_ONE_TIME_GUIDE}
           </Alert>
         ) : null}
+
+        {/* Phase 7-A: Quick templates */}
+        {mode === 'create' && props.quickTemplates && props.quickTemplates.length > 0 && (
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ mb: 2, flexWrap: 'wrap', gap: 0.5 }}
+            data-testid="quick-template-chips"
+          >
+            {props.quickTemplates.map((tpl, i) => (
+              <Chip
+                key={i}
+                label={tpl.label}
+                variant="outlined"
+                color="primary"
+                size="small"
+                onClick={() => {
+                  // Apply template override to all form fields
+                  if (tpl.override.category) vm.handleFieldChange('category', tpl.override.category);
+                  if (tpl.override.serviceType !== undefined) vm.handleFieldChange('serviceType', tpl.override.serviceType ?? '');
+                  if (tpl.override.startLocal) vm.handleFieldChange('startLocal', tpl.override.startLocal);
+                  if (tpl.override.endLocal) vm.handleFieldChange('endLocal', tpl.override.endLocal);
+                  if (tpl.override.userId !== undefined) vm.handleFieldChange('userId', tpl.override.userId);
+                  if (tpl.override.assignedStaffId !== undefined) vm.handleFieldChange('assignedStaffId', tpl.override.assignedStaffId);
+                  if (tpl.override.locationName !== undefined) vm.handleFieldChange('locationName', tpl.override.locationName);
+                }}
+                sx={{ cursor: 'pointer' }}
+              />
+            ))}
+          </Stack>
+        )}
 
         <Stack spacing={2}>
           {vm.errors.length > 0 && (

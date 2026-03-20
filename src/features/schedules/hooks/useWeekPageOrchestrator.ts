@@ -18,8 +18,9 @@ import type { CreateScheduleEventInput, SchedItem } from '@/features/schedules/d
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
 import { useSchedulesCrud } from './useSchedulesCrud';
 import { useSchedulesNavigation } from './useSchedulesNavigation';
+import { findNextGap } from '../domain/scheduleNextGap';
 import type { ScheduleEditDialogValues } from './useSchedulesPageState';
-import { useSchedulesPageState } from './useSchedulesPageState';
+import { buildCreateDialogIntent, useSchedulesPageState } from './useSchedulesPageState';
 import { useWeekPageUiState } from './useWeekPageUiState';
 
 // Type inference from hooks
@@ -148,6 +149,28 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     setPendingFabFocus: (v: boolean) => { pendingFabFocusRef.current = v; },
     setDialogParams: route.setDialogParams,
     clearDialogParams: route.clearDialogParams,
+    // Phase 7-C: After successful create, auto-open next gap
+    onCreateSuccess: useCallback((startLocal: string) => {
+      // Extract date and end time from what was just created
+      const createdDate = startLocal.split('T')[0];
+      const createdEndTime = startLocal.split('T')[1]?.substring(0, 5);
+      if (!createdDate) return;
+
+      // Small delay to let the item list update (refetch triggered by create)
+      setTimeout(() => {
+        const nextGap = findNextGap(filteredItems, createdDate, createdEndTime);
+        if (nextGap) {
+          // Auto-open create dialog for next gap
+          const startDate = new Date(`${nextGap.date}T${nextGap.startTime}:00`);
+          const endDate = new Date(`${nextGap.date}T${nextGap.endTime}:00`);
+          const createCategory = categoryFilter === 'All' ? 'User' : categoryFilter;
+          route.setDialogParams(buildCreateDialogIntent(createCategory, startDate, endDate));
+          showSnack('info', `次の未入力枠を開きました（${nextGap.startTime}〜${nextGap.endTime}）`);
+        } else {
+          showSnack('success', 'この日の予定入力が完了しました 🎉');
+        }
+      }, 500);
+    }, [filteredItems, categoryFilter, route, showSnack]),
   });
 
   // ─── Cross-cutting effects (orchestration-only) ───────────────────────────

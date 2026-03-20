@@ -1,5 +1,5 @@
-import { useId, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useCallback, useEffect, useId, useMemo } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useBreakpointFlags, useOrientation } from '@/app/LayoutContext';
 import { canAccess } from '@/auth/roles';
@@ -11,11 +11,19 @@ import { ScheduleFilterBar } from '@/features/schedules/components/ScheduleFilte
 import { ScheduleReadOnlyAlert } from '@/features/schedules/components/ScheduleReadOnlyAlert';
 import { ScheduleViewContainer } from '@/features/schedules/components/ScheduleViewContainer';
 import SchedulesHeader from '@/features/schedules/components/SchedulesHeader';
+import { OpsFilterBar } from '@/features/schedules/components/ops/OpsFilterBar';
+import { OpsHighLoadWarningBanner } from '@/features/schedules/components/ops/OpsHighLoadWarningBanner';
+import { OpsLeaveSuggestionPanel } from '@/features/schedules/components/ops/OpsLeaveSuggestionPanel';
+import { OpsListView } from '@/features/schedules/components/ops/OpsListView';
+import { OpsStaffingShortageList } from '@/features/schedules/components/ops/OpsStaffingShortageList';
+import { OpsSummaryCards } from '@/features/schedules/components/ops/OpsSummaryCards';
+import { OpsWeekBoard } from '@/features/schedules/components/ops/OpsWeekBoard';
 import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedules/constants';
 import { TESTIDS } from '@/testids';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
+import { useScheduleOps } from '../hooks/useScheduleOps';
 import { useScheduleUserOptions } from '../hooks/useScheduleUserOptions';
-import { useSchedulesPageState } from '../hooks/useSchedulesPageState';
+import { buildCreateDialogIntent, buildNextSlot, useSchedulesPageState } from '../hooks/useSchedulesPageState';
 import { useWeekPageOrchestrator } from '../hooks/useWeekPageOrchestrator';
 import { useWeekPageUiState } from '../hooks/useWeekPageUiState';
 
@@ -30,6 +38,7 @@ export default function WeekPage() {
   const canEditByRole = ready && canAccess(role, 'reception');
   const schedulesTz = useMemo(() => resolveSchedulesTz(), []);
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Page state (business logic)
   const pageState = useSchedulesPageState({ myUpn, canEditByRole, ready });
@@ -126,6 +135,46 @@ export default function WeekPage() {
   const fabInset = `max(24px, calc(env(safe-area-inset-bottom, 0px) + 8px))`;
   const fabInsetRight = `max(24px, calc(env(safe-area-inset-right, 0px) + 8px))`;
 
+  // Ops integration: detect ops/list mode
+  const isOpsMode = mode === 'ops' || mode === 'list';
+
+  // Ops state — only instantiated when in ops/list mode
+  const opsState = useScheduleOps();
+
+  // Today deep-link: ?source=today&date=YYYY-MM-DD
+  const [searchParams] = useSearchParams();
+  const todayFocusDate = searchParams.get('date');
+  const isFromToday = searchParams.get('source') === 'today';
+
+  // Ops: weekly drilldown handler — navigate to day tab with auto-create
+  const handleOpsWeekDayClick = useCallback(
+    (dateIso: string) => {
+      opsState.setSelectedDate(new Date(dateIso + 'T00:00:00'));
+      // Navigate to day tab with action=create for auto-open dialog
+      const urlObj = new URL(window.location.href);
+      urlObj.searchParams.set('tab', 'day');
+      urlObj.searchParams.set('date', dateIso);
+      urlObj.searchParams.set('action', 'create');
+      // Clear ops filter params (cross-group isolation)
+      for (const key of ['serviceType', 'staffId', 'searchQuery', 'includeCancelled', 'hasAttention', 'hasPickup', 'hasBath', 'hasMedication']) {
+        urlObj.searchParams.delete(key);
+      }
+      navigate(urlObj.pathname + urlObj.search);
+    },
+    [opsState, navigate],
+  );
+
+  // Phase 6: Auto-open create dialog when action=create is in URL
+  const actionParam = searchParams.get('action');
+  useEffect(() => {
+    if (actionParam !== 'create' || mode !== 'day') return;
+    // Build the dialog intent for the focused date
+    const { start, end } = buildNextSlot(resolvedActiveDateIso);
+    const intent = buildCreateDialogIntent('User', start, end);
+    // setDialogParams also clears 'action' param atomically
+    route.setDialogParams(intent);
+  }, [actionParam, mode, resolvedActiveDateIso, route]);
+
   // IDs for accessibility
   const headingId = useId();
   const rangeDescriptionId = 'schedules-week-range';
@@ -202,7 +251,7 @@ export default function WeekPage() {
             dayHref={dayViewHref}
             weekHref={weekViewHref}
             monthHref={monthViewHref}
-            modes={['day', 'week', 'month', 'org']}
+            modes={['day', 'week', 'month', 'ops', 'list']}
             prevTestId={TESTIDS.SCHEDULES_PREV_WEEK}
             nextTestId={TESTIDS.SCHEDULES_NEXT_WEEK}
           >
@@ -211,7 +260,7 @@ export default function WeekPage() {
               onCategoryChange={(category) => route.setFilter({ category })}
               query={pageState.query}
               onQueryChange={(q) => route.setFilter({ query: q })}
-              mode={mode}
+              mode={mode as 'day' | 'week' | 'month' | 'org'}
               orgParam={orchestrator.orgParam}
               onOrgChange={handleOrgChange}
               compact={compact && mode !== 'org'}
@@ -221,22 +270,105 @@ export default function WeekPage() {
 
         <ScheduleReadOnlyAlert readOnlyReason={readOnlyReason} />
 
-        <div>
-          <ScheduleViewContainer
-            mode={mode}
-            isLoading={isLoading}
-            items={filteredItems}
-            weekRange={weekRange}
-            onDayClick={handleDayClick}
-            onTimeSlotClick={handleTimeSlotClick}
-            activeDateIso={resolvedActiveDateIso}
-            onItemSelect={handleViewClick}
-            highlightId={highlightId}
-            activeDayRange={activeDayRange}
-            categoryFilter={categoryFilter}
-            compact={compact}
-          />
-        </div>
+        {/* Today Deep-Link Banner */}
+        {isFromToday && todayFocusDate && (
+          <div
+            style={{
+              padding: '8px 16px',
+              backgroundColor: 'rgba(25, 118, 210, 0.06)',
+              borderBottom: '1px solid rgba(25, 118, 210, 0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: '0.85rem',
+              fontWeight: 500,
+              color: '#1565c0',
+            }}
+          >
+            <span aria-hidden>📍</span>
+            <span>
+              Todayからの注目日:
+              {' '}
+              <strong>
+                {new Intl.DateTimeFormat('ja-JP', { month: 'numeric', day: 'numeric', weekday: 'short' }).format(
+                  new Date(todayFocusDate + 'T00:00:00'),
+                )}
+              </strong>
+            </span>
+          </div>
+        )}
+
+        {/* Content: existing views or ops views */}
+        {isOpsMode ? (
+          <div style={{ padding: '0 16px 16px' }}>
+            {/* Ops Summary Cards */}
+            <OpsSummaryCards
+              summary={opsState.dailySummary}
+              isLoading={opsState.isLoading}
+            />
+
+            {/* Ops Filter Bar */}
+            <OpsFilterBar
+              filter={opsState.filter}
+              onFilterChange={opsState.setFilter}
+              onClear={opsState.clearFilter}
+              staffOptions={opsState.staffOptions}
+              activeFilterCount={opsState.activeFilterCount}
+            />
+
+            {mode === 'ops' && (
+              <>
+                <OpsLeaveSuggestionPanel
+                  suggestions={opsState.leaveSuggestions}
+                  onDayClick={handleOpsWeekDayClick}
+                />
+                <OpsHighLoadWarningBanner
+                  warnings={opsState.highLoadWarnings}
+                  onDayClick={handleOpsWeekDayClick}
+                />
+                <OpsWeekBoard
+                  weekSummary={opsState.weeklySummary}
+                  loadScores={opsState.weeklyLoadScores}
+                  isLoading={opsState.isLoading}
+                  onDayClick={handleOpsWeekDayClick}
+                />
+              </>
+            )}
+
+            {mode === 'list' && (
+              <>
+                <OpsStaffingShortageList
+                  warnings={opsState.highLoadWarnings}
+                  onDayClick={handleOpsWeekDayClick}
+                />
+                <OpsListView
+                  items={opsState.filteredItems}
+                  isLoading={opsState.isLoading}
+                  error={opsState.error}
+                  onRetry={opsState.refetch}
+                  onItemClick={opsState.selectItem}
+                />
+              </>
+            )}
+          </div>
+        ) : (
+          <div>
+            <ScheduleViewContainer
+              mode={mode as 'day' | 'week' | 'month' | 'org'}
+              isLoading={isLoading}
+              items={filteredItems}
+              weekRange={weekRange}
+              onDayClick={handleDayClick}
+              onTimeSlotClick={handleTimeSlotClick}
+              activeDateIso={resolvedActiveDateIso}
+              onItemSelect={handleViewClick}
+              highlightId={highlightId}
+              activeDayRange={activeDayRange}
+              categoryFilter={categoryFilter}
+              compact={compact}
+            />
+          </div>
+        )}
 
         {showFab && (
           <ScheduleFAB
@@ -289,6 +421,9 @@ export default function WeekPage() {
           onClearLastError={clearLastError}
           onSetFocusScheduleId={uiState.setFocusScheduleId}
           networkOpen={false}
+          allItems={filteredItems}
+          activeDateIso={resolvedActiveDateIso}
+          navigationSource={searchParams.get('source') ?? (actionParam === 'create' ? 'ops' : undefined)}
         />
       </div>
     </section>
