@@ -17,6 +17,7 @@ import {
     ExpandMore as ExpandMoreIcon,
     History as HistoryIcon,
     OpenInNew as OpenInNewIcon,
+    PersonAdd as PersonAddIcon,
 } from '@mui/icons-material';
 import {
     Box,
@@ -53,6 +54,8 @@ export type HandoffItemProps = {
   meetingMode: MeetingMode;
   /** v3: ワークフローアクション */
   workflowActions?: WorkflowActions;
+  /** Phase 8-A: 利用者状態登録コールバック */
+  onRegisterStatus?: (handoff: HandoffRecord) => void;
 };
 
 // ────────────────────────────────────────────────────────────
@@ -94,6 +97,7 @@ export const HandoffItem: React.FC<HandoffItemProps> = ({
   onStatusChange,
   meetingMode,
   workflowActions,
+  onRegisterStatus,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [statusPulse, setStatusPulse] = useState(false);
@@ -300,9 +304,9 @@ export const HandoffItem: React.FC<HandoffItemProps> = ({
             </Box>
           </Collapse>
 
-          {/* この利用者の記録を開くCTA */}
+          {/* この利用者の記録を開くCTA + 状態登録 */}
           {item.userCode && item.userCode !== 'ALL' && (
-            <Box sx={{ mt: 1, pt: 0.75, borderTop: '1px solid', borderColor: 'divider' }}>
+            <Box sx={{ mt: 1, pt: 0.75, borderTop: '1px solid', borderColor: 'divider', display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               <Button
                 size="small"
                 variant="text"
@@ -320,6 +324,25 @@ export const HandoffItem: React.FC<HandoffItemProps> = ({
               >
                 この利用者の記録を開く
               </Button>
+              {onRegisterStatus && !isCompleted && (
+                <Button
+                  size="small"
+                  variant="text"
+                  startIcon={<PersonAddIcon sx={{ fontSize: 14 }} />}
+                  onClick={() => onRegisterStatus(item)}
+                  data-testid="handoff-register-status"
+                  sx={{
+                    justifyContent: 'flex-start',
+                    fontSize: '0.72rem',
+                    color: 'warning.main',
+                    textTransform: 'none',
+                    py: 0.25,
+                    '&:hover': { color: 'warning.dark' },
+                  }}
+                >
+                  状態を登録
+                </Button>
+              )}
             </Box>
           )}
 

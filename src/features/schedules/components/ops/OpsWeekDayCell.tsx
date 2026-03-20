@@ -189,6 +189,12 @@ export const OpsWeekDayCell: FC<OpsWeekDayCellProps> = ({ day, loadScore, onClic
         {day.attentionCount > 0 && (
           <DetailRow label="要注意" value={day.attentionCount} color={theme.palette.error.main} />
         )}
+        {day.absenceCount > 0 && (
+          <DetailRow label="欠席" value={day.absenceCount} color={theme.palette.error.dark} />
+        )}
+        {day.lateCount > 0 && (
+          <DetailRow label="遅刻" value={day.lateCount} color={theme.palette.warning.main} />
+        )}
       </Box>
 
       {/* 負荷スコア + 空き枠 */}

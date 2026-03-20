@@ -59,6 +59,18 @@ const CARD_CONFIGS: readonly CardConfig[] = [
     getColor: (s) => (s.cancelledCount > 0 ? 'default' : 'default'),
   },
   {
+    key: 'absence',
+    label: '欠席',
+    getValue: (s) => s.absenceCount,
+    getColor: (s) => (s.absenceCount > 0 ? 'error' : 'default'),
+  },
+  {
+    key: 'late',
+    label: '遅刻',
+    getValue: (s) => s.lateCount,
+    getColor: (s) => (s.lateCount > 0 ? 'warning' : 'default'),
+  },
+  {
     key: 'attention',
     label: '注意',
     getValue: (s) => s.attentionCount,

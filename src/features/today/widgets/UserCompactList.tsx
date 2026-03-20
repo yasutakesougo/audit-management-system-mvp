@@ -1,4 +1,6 @@
 import { motionTokens } from '@/app/theme';
+import type { UserStatusType } from '@/features/schedules/domain/userStatus';
+import { USER_STATUS_LABELS } from '@/features/schedules/domain/userStatus';
 import BubbleChartIcon from '@mui/icons-material/BubbleChart';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import EditNoteIcon from '@mui/icons-material/EditNote';
@@ -22,6 +24,8 @@ export type UserRow = {
   recordFilled?: boolean;
   /** 直近の注意点（buildUserAlerts で算出。未設定時は非表示） */
   alerts?: UserAlert[];
+  /** Phase 8-A: 利用者状態種別（登録済みの場合） */
+  userStatusType?: UserStatusType;
 };
 
 export type UserCompactListProps = {
@@ -32,6 +36,8 @@ export type UserCompactListProps = {
   onOpenIceberg?: (id: string) => void;
   /** アラートチップクリック → daily/support 直行（未設定時はカード全体と同じ動作） */
   onAlertClick?: (userId: string) => void;
+  /** Phase 8-A: 利用者状態登録ダイアログを開く */
+  onOpenUserStatus?: (userId: string, userName: string, statusType: UserStatusType) => void;
   /** zero-users 時の弱いCTA（スケジュール確認等） */
   onEmptyAction?: () => void;
 };
@@ -43,7 +49,8 @@ const UserCompactRow = React.memo<{
   onOpenISP?: (id: string) => void;
   onOpenIceberg?: (id: string) => void;
   onAlertClick?: (userId: string) => void;
-}>(function UserCompactRow({ user, onOpenQuickRecord, onOpenISP, onOpenIceberg, onAlertClick }) {
+  onOpenUserStatus?: (userId: string, userName: string, statusType: UserStatusType) => void;
+}>(function UserCompactRow({ user, onOpenQuickRecord, onOpenISP, onOpenIceberg, onAlertClick, onOpenUserStatus }) {
   const hasAlerts = user.alerts && user.alerts.length > 0;
   const needsAttention = !user.recordFilled && user.status !== 'absent';
   const isAbsent = user.status === 'absent';
@@ -141,9 +148,20 @@ const UserCompactRow = React.memo<{
               ))}
             </Box>
           )}
+          {/* Phase 8-A: 利用者状態バッジ */}
+          {user.userStatusType && (
+            <Chip
+              size="small"
+              label={USER_STATUS_LABELS[user.userStatusType]}
+              color={user.userStatusType === 'absence' || user.userStatusType === 'preAbsence' ? 'error' : 'warning'}
+              variant="outlined"
+              sx={{ height: 20, fontSize: '0.65rem', ml: 0.5 }}
+              data-testid={`user-status-badge-${user.userId}`}
+            />
+          )}
         </Box>
       </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
         {onOpenISP ? (
           <Tooltip title="個別支援計画（ISP）">
             <IconButton
@@ -158,6 +176,47 @@ const UserCompactRow = React.memo<{
             </IconButton>
           </Tooltip>
         ) : null}
+        {/* Phase 8-A: 利用者状態クイックアクション */}
+        {onOpenUserStatus && !isAbsent && (
+          <>
+            <Tooltip title="欠席を入力">
+              <IconButton
+                size="small"
+                onClick={(e) => { e.stopPropagation(); onOpenUserStatus(user.userId, user.name, 'absence'); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); }}
+                aria-label={`${user.name}の欠席を入力`}
+                data-testid={`user-status-absence-${user.userId}`}
+                sx={{
+                  minHeight: 36, minWidth: 36, fontSize: '0.7rem',
+                  color: 'error.main',
+                  border: '1px solid',
+                  borderColor: 'error.light',
+                  '&:hover': { bgcolor: 'error.50' },
+                }}
+              >
+                ❌
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="遅刻を入力">
+              <IconButton
+                size="small"
+                onClick={(e) => { e.stopPropagation(); onOpenUserStatus(user.userId, user.name, 'late'); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); }}
+                aria-label={`${user.name}の遅刻を入力`}
+                data-testid={`user-status-late-${user.userId}`}
+                sx={{
+                  minHeight: 36, minWidth: 36, fontSize: '0.7rem',
+                  color: 'warning.main',
+                  border: '1px solid',
+                  borderColor: 'warning.light',
+                  '&:hover': { bgcolor: 'warning.50' },
+                }}
+              >
+                🕐
+              </IconButton>
+            </Tooltip>
+          </>
+        )}
         {onOpenIceberg ? (
           <Tooltip title="行動分析（Iceberg PDCA）">
             <IconButton
@@ -187,7 +246,7 @@ const UserCompactRow = React.memo<{
   );
 });
 
-export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQuickRecord, onOpenISP, onOpenIceberg, onAlertClick, onEmptyAction }) => {
+export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQuickRecord, onOpenISP, onOpenIceberg, onAlertClick, onOpenUserStatus, onEmptyAction }) => {
   const [expanded, setExpanded] = useState(false);
 
   // 未記録を先頭に並べる（元の順序を保ちつつ）
@@ -243,6 +302,7 @@ export const UserCompactList: React.FC<UserCompactListProps> = ({ items, onOpenQ
           onOpenISP={onOpenISP}
           onOpenIceberg={onOpenIceberg}
           onAlertClick={onAlertClick}
+          onOpenUserStatus={onOpenUserStatus}
         />
       ))}
       {needsFold && (

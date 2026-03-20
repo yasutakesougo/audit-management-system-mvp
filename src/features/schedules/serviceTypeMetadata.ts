@@ -12,6 +12,7 @@ export type ServiceTypeKey =
   | 'absence'
   | 'late'
   | 'earlyLeave'
+  | 'preAbsence'
   | 'other'
   | 'unset';
 
@@ -34,6 +35,7 @@ const RAW_TO_KEY: { [key: string]: ServiceTypeKey } = {
   absence: 'absence',
   late: 'late',
   earlyLeave: 'earlyLeave',
+  preAbsence: 'preAbsence',
   other: 'other',
   未設定: 'unset',
   // Japanese labels
@@ -46,6 +48,7 @@ const RAW_TO_KEY: { [key: string]: ServiceTypeKey } = {
   '看護': 'nursing',
   '欠席・休み': 'absence',
   '欠席': 'absence',
+  '事前欠席': 'preAbsence',
   '遅刻': 'late',
   '早退': 'earlyLeave',
   '会議': 'meeting',
@@ -69,6 +72,7 @@ export const SERVICE_TYPE_COLOR: { [K in ServiceTypeKey]: ServiceTypeColor } = {
   absence: 'error',
   late: 'warning',
   earlyLeave: 'warning',
+  preAbsence: 'error',
   other: 'default',
   unset: 'default',
 };
@@ -85,6 +89,7 @@ const SERVICE_TYPE_LABEL: { [K in ServiceTypeKey]: string } = {
   absence: SERVICE_TYPE_LABELS.absence,
   late: SERVICE_TYPE_LABELS.late,
   earlyLeave: SERVICE_TYPE_LABELS.earlyLeave,
+  preAbsence: '事前欠席',
   other: 'その他',
   unset: '未設定',
 };

@@ -16,6 +16,7 @@
 import type { ServiceTypeKey } from '../serviceTypeMetadata';
 import { normalizeServiceType } from '../serviceTypeMetadata';
 import type { OpsStatus, ScheduleOpsItem, SupportTag } from './scheduleOpsSchema';
+import { isUserStatusServiceType, type UserStatusType } from './userStatus';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Types
@@ -39,6 +40,11 @@ export type OpsSummary = {
   readonly shortStayCount: number;
   readonly cancelledCount: number;
   readonly attentionCount: number;
+
+  // 利用者状態カウント (Phase 8-A)
+  readonly absenceCount: number;     // 当日欠席 + 事前欠席
+  readonly lateCount: number;        // 遅刻
+  readonly earlyLeaveCount: number;  // 早退
 
   // 総枠
   readonly availableSlots: number;
@@ -73,6 +79,8 @@ export type OpsSummaryCardKey =
   | 'respite'
   | 'shortStay'
   | 'cancelled'
+  | 'absence'
+  | 'late'
   | 'attention'
   | 'capacity'
   | 'staffing';
@@ -84,6 +92,8 @@ export type DaySummaryEntry = {
   readonly respiteCount: number;
   readonly shortStayCount: number;
   readonly attentionCount: number;
+  readonly absenceCount: number;      // 欠席+事前欠席
+  readonly lateCount: number;         // 遅刻
   readonly availableSlots: number;
   readonly isOverCapacity: boolean;
 };
@@ -207,9 +217,21 @@ export function computeOpsSummary(
   let shortStayCount = 0;
   let cancelledCount = 0;
   let attentionCount = 0;
+  let absenceCount = 0;
+  let lateCount = 0;
+  let earlyLeaveCount = 0;
   const staffIds = new Set<string>();
 
   for (const item of items) {
+    // 利用者状態アイテムの集計 (Phase 8-A)
+    if (isUserStatusServiceType(item.serviceType)) {
+      const st = item.serviceType as UserStatusType;
+      if (st === 'absence' || st === 'preAbsence') absenceCount++;
+      else if (st === 'late') lateCount++;
+      else if (st === 'earlyLeave') earlyLeaveCount++;
+      continue; // 利用者状態は通常の集計から除外（定員には含めない）
+    }
+
     if (item.opsStatus === 'cancelled') {
       cancelledCount++;
       continue;
@@ -234,6 +256,9 @@ export function computeOpsSummary(
     shortStayCount,
     cancelledCount,
     attentionCount,
+    absenceCount,
+    lateCount,
+    earlyLeaveCount,
     availableSlots: Math.max(0, totalMax - totalCount),
     availableNormalSlots: Math.max(0, capacity.normalMax - normalCount),
     availableRespiteSlots: Math.max(0, capacity.respiteMax - respiteCount),
@@ -328,10 +353,27 @@ export function computeWeeklySummary(
     capacity.normalMax + capacity.respiteMax + capacity.shortStayMax;
 
   return weekDates.map((dateIso) => {
-    const dayItems = items.filter((item) => {
+    const allDayItems = items.filter((item) => {
       const itemDate = item.start?.slice(0, 10);
-      return itemDate === dateIso && item.opsStatus !== 'cancelled';
+      return itemDate === dateIso;
     });
+
+    // 利用者状態は通常の集計から除外
+    let absenceCount = 0;
+    let lateCount = 0;
+    const dayItems: ScheduleOpsItem[] = [];
+
+    for (const item of allDayItems) {
+      if (isUserStatusServiceType(item.serviceType)) {
+        const st = item.serviceType as UserStatusType;
+        if (st === 'absence' || st === 'preAbsence') absenceCount++;
+        else if (st === 'late') lateCount++;
+        continue;
+      }
+      if (item.opsStatus !== 'cancelled') {
+        dayItems.push(item);
+      }
+    }
 
     let respiteCount = 0;
     let shortStayCount = 0;
@@ -350,6 +392,8 @@ export function computeWeeklySummary(
       respiteCount,
       shortStayCount,
       attentionCount,
+      absenceCount,
+      lateCount,
       availableSlots: Math.max(0, totalMax - dayItems.length),
       isOverCapacity: dayItems.length > totalMax,
     };

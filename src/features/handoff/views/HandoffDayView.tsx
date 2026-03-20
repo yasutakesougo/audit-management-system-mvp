@@ -14,6 +14,7 @@
  */
 import { useMemo } from 'react';
 import { TESTIDS, tid } from '@/testids';
+import type { HandoffRecord } from '../handoffTypes';
 import {
   FilterList as FilterListIcon,
   Nightlight as EveningIcon,
@@ -69,6 +70,8 @@ export type HandoffDayViewProps = {
   goToDate: (date: string) => void;
   /** dateNav の今日移動関数 — 会議モード切替時に使用 */
   goToToday: () => void;
+  /** Phase 8-A: 利用者状態登録コールバック */
+  onRegisterStatus?: (handoff: HandoffRecord) => void;
 };
 
 // ────────────────────────────────────────────────────────────
@@ -81,6 +84,7 @@ export function HandoffDayView({
   entryMode,
   goToDate,
   goToToday,
+  onRegisterStatus,
 }: HandoffDayViewProps) {
   const state = useHandoffDayViewState({
     dayScope,
@@ -337,6 +341,7 @@ export function HandoffDayView({
               onStatsChange={state.setHandoffStats}
               meetingMode={state.meetingMode}
               workflowActions={state.workflowActions}
+              onRegisterStatus={onRegisterStatus}
             />
           ) : (
             <HandoffUserGroupedView

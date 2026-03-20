@@ -5,3 +5,4 @@ export * from './schema';
 export * from './scheduleOps';
 export * from './scheduleOpsSchema';
 export * from './types';
+export * from './userStatus';

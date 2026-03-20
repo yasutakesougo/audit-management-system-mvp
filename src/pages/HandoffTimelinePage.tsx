@@ -12,18 +12,7 @@ import {
   Today as TodayIcon,
   ViewDay as DayIcon,
 } from '@mui/icons-material';
-import {
-  Box,
-  Button,
-  Chip,
-  Container,
-  IconButton,
-  Popover,
-  TextField,
-  ToggleButton,
-  ToggleButtonGroup,
-  Tooltip,
-} from '@mui/material';
+import { Alert, Box, Button, Chip, Container, IconButton, Popover, Snackbar, TextField, ToggleButton, ToggleButtonGroup, Tooltip } from '@mui/material';
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { DateRange } from '../features/handoff/hooks/useHandoffDateNav';
@@ -33,6 +22,11 @@ import {
   HandoffMonthViewSection,
   HandoffWeekViewSection,
 } from '../features/handoff/views';
+import type { HandoffRecord } from '../features/handoff/handoffTypes';
+import { suggestStatusFromHandoffCategory } from '../features/schedules/domain/userStatus';
+import type { UserStatusType } from '../features/schedules/domain/userStatus';
+import { useUserStatusActions } from '../features/schedules/hooks/useUserStatusActions';
+import { UserStatusQuickDialog } from '../features/schedules/components/UserStatusQuickDialog';
 
 /**
  * 申し送りタイムラインページ（薄いオーケストレーター）
@@ -74,6 +68,28 @@ export default function HandoffTimelinePage() {
   const openQuickNoteDialog = useCallback(() => {
     window.dispatchEvent(new CustomEvent('handoff-open-quicknote-dialog'));
   }, []);
+
+  // ── Phase 8-A: User Status Quick Dialog ──
+  const userStatusActions = useUserStatusActions();
+  const [userStatusDialogOpen, setUserStatusDialogOpen] = useState(false);
+  const [userStatusPreset, setUserStatusPreset] = useState<{
+    userId: string;
+    userName: string;
+    statusType: UserStatusType;
+  } | null>(null);
+  const [userStatusSuccessMsg, setUserStatusSuccessMsg] = useState<string | null>(null);
+
+  const handleRegisterStatusFromHandoff = useCallback(
+    (handoff: HandoffRecord) => {
+      setUserStatusPreset({
+        userId: handoff.userCode,
+        userName: handoff.userDisplayName,
+        statusType: suggestStatusFromHandoffCategory(handoff.category),
+      });
+      setUserStatusDialogOpen(true);
+    },
+    [],
+  );
 
   // ── DatePicker popover state ──
   const [datePickerAnchor, setDatePickerAnchor] = useState<HTMLElement | null>(null);
@@ -276,8 +292,39 @@ export default function HandoffTimelinePage() {
           entryMode={dateNav.entryMode}
           goToDate={dateNav.goToDate}
           goToToday={dateNav.goToToday}
+          onRegisterStatus={handleRegisterStatusFromHandoff}
         />
       )}
+
+      {/* Phase 8-A: 利用者状態 Quick Dialog */}
+      {userStatusPreset && (
+        <UserStatusQuickDialog
+          open={userStatusDialogOpen}
+          onClose={() => setUserStatusDialogOpen(false)}
+          userId={userStatusPreset.userId}
+          userName={userStatusPreset.userName}
+          initialStatusType={userStatusPreset.statusType}
+          source="handoff"
+          actions={userStatusActions}
+          onSuccess={(msg) => setUserStatusSuccessMsg(msg)}
+        />
+      )}
+
+      <Snackbar
+        open={!!userStatusSuccessMsg}
+        autoHideDuration={3000}
+        onClose={() => setUserStatusSuccessMsg(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setUserStatusSuccessMsg(null)}
+          severity="success"
+          variant="filled"
+          sx={{ width: '100%', fontWeight: 'bold' }}
+        >
+          {userStatusSuccessMsg}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 }

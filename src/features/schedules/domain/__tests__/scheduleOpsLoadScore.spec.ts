@@ -34,6 +34,8 @@ function makeDaySummary(overrides?: Partial<DaySummaryEntry>): DaySummaryEntry {
     respiteCount: 0,
     shortStayCount: 0,
     attentionCount: 0,
+    absenceCount: 0,
+    lateCount: 0,
     availableSlots: 25,
     isOverCapacity: false,
     ...overrides,

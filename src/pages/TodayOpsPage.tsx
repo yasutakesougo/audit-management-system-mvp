@@ -42,9 +42,13 @@ import { CallLogQuickDrawer } from '@/features/callLogs/components/CallLogQuickD
 import { buildCallLogFilterUrl, type CallLogFilterPreset } from '@/features/callLogs/domain/callLogFilterPresets';
 import { useAuth } from '@/auth/useAuth';
 import type { ProgressRingItem } from '@/features/today/components/ProgressRings';
+// Phase 8-A: 利用者状態登録
+import type { UserStatusType } from '@/features/schedules/domain/userStatus';
+import { useUserStatusActions } from '@/features/schedules/hooks/useUserStatusActions';
+import { UserStatusQuickDialog } from '@/features/schedules/components/UserStatusQuickDialog';
 
 import { Alert, Snackbar } from '@mui/material';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export const TodayOpsPage: React.FC = () => {
@@ -138,6 +142,29 @@ export const TodayOpsPage: React.FC = () => {
   );
   const { alertsByUser } = useUserAlerts(alertUserIds);
 
+  // ── Phase 8-A: User Status Quick Dialog ──
+  const userStatusActions = useUserStatusActions();
+  const [userStatusDialogOpen, setUserStatusDialogOpen] = useState(false);
+  const [userStatusPreset, setUserStatusPreset] = useState<{
+    userId: string;
+    userName: string;
+    statusType: UserStatusType;
+  } | null>(null);
+
+  const handleOpenUserStatus = useCallback(
+    (userId: string, userName: string, statusType: UserStatusType) => {
+      setUserStatusPreset({ userId, userName, statusType });
+      setUserStatusDialogOpen(true);
+    },
+    [],
+  );
+
+  const handleUserStatusSuccess = useCallback((msg: string) => {
+    setShowCompletionToast(false); // reuse snackbar
+    setUserStatusSuccessMsg(msg);
+  }, []);
+  const [userStatusSuccessMsg, setUserStatusSuccessMsg] = useState<string | null>(null);
+
   // ── Schedule Detail Deep Link ──
   const scheduleDetailHref = useMemo(() => {
     const dateIso = toLocalDateISO();
@@ -161,6 +188,8 @@ export const TodayOpsPage: React.FC = () => {
     role,
     scheduleDetailHref,
     alertsByUser,
+    onOpenUserStatus: handleOpenUserStatus,
+    userStatusRecords: userStatusActions.todayStatusRecords,
   });
 
   const layoutProps = useMemo(() => {
@@ -276,7 +305,7 @@ export const TodayOpsPage: React.FC = () => {
       onOpenDrawer: () => setCallLogDrawerOpen(true),
     },
     };
-  }, [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, callLogsSummary]);
+  }, [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, callLogsSummary, handleOpenUserStatus, userStatusActions.todayStatusRecords]);
 
   // ── Save Success Handler (Quick Record auto-next) ──
   const [showCompletionToast, setShowCompletionToast] = React.useState(false);
@@ -349,6 +378,38 @@ export const TodayOpsPage: React.FC = () => {
         onApprove={approvalFlow.approve}
         onClose={approvalFlow.close}
       />
+
+      {/* Phase 8-A: 利用者状態 Quick Dialog */}
+      {userStatusPreset && (
+        <UserStatusQuickDialog
+          open={userStatusDialogOpen}
+          onClose={() => setUserStatusDialogOpen(false)}
+          userId={userStatusPreset.userId}
+          userName={userStatusPreset.userName}
+          initialStatusType={userStatusPreset.statusType}
+          source="today"
+          actions={userStatusActions}
+          onSuccess={handleUserStatusSuccess}
+        />
+      )}
+
+      {/* Phase 8-A: 利用者状態成功トースト */}
+      <Snackbar
+        open={!!userStatusSuccessMsg}
+        autoHideDuration={3000}
+        onClose={() => setUserStatusSuccessMsg(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        data-testid="user-status-success-toast"
+      >
+        <Alert
+          onClose={() => setUserStatusSuccessMsg(null)}
+          severity="success"
+          variant="filled"
+          sx={{ width: '100%', fontWeight: 'bold' }}
+        >
+          {userStatusSuccessMsg}
+        </Alert>
+      </Snackbar>
     </>
   );
 };
