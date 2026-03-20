@@ -10,6 +10,8 @@ import type { ScheduleItem } from '@/features/daily/components/split-stream/Proc
 import { RecordPanel, type RecordPanelLockState } from '@/features/daily/components/split-stream/RecordPanel';
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
+import { useLinkedStrategies } from '@/features/daily/hooks/useLinkedStrategies';
+import { StrategyChipBar } from './StrategyChipBar';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
 import Box from '@mui/material/Box';
@@ -37,6 +39,8 @@ export type RecordInputStepProps = {
   onSlotChange?: (next: string) => void;
   /** 戻るボタン — Step 2 へ */
   onBack: () => void;
+  /** 利用者ID（戦略参照用） */
+  userId?: string;
   /** ABC記録への導線（slotId 付きで遷移） */
   onAbcRecord?: () => void;
 };
@@ -51,8 +55,12 @@ export const RecordInputStep: React.FC<RecordInputStepProps> = memo(({
   onAfterSubmit,
   onSlotChange,
   onBack,
+  userId,
   onAbcRecord,
 }) => {
+  // ── 参照戦略の取得 ──
+  const linkedStrategies = useLinkedStrategies(userId);
+
   // スロット名を表示用に解決 — getScheduleKey フォーマットで照合
   const slotLabel = schedule.find(
     (s) => getScheduleKey(s.time, s.activity) === selectedSlotKey,
@@ -111,6 +119,9 @@ export const RecordInputStep: React.FC<RecordInputStepProps> = memo(({
           </Button>
         )}
       </Box>
+
+      {/* ── Strategy chips (Phase B) ── */}
+      <StrategyChipBar strategies={linkedStrategies} />
 
       {/* ── Record form (RecordPanel compact mode) ── */}
       <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>

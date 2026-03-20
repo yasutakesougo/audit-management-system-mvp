@@ -379,6 +379,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               onSlotChange={handleWizardSelectSlot}
               onAfterSubmit={() => handleWizardAfterSubmit(wizard.wizardSlotId || null)}
               onBack={handleWizardBackToPlan}
+              userId={wizard.wizardUserId || targetUserId}
               onAbcRecord={
                 (wizard.wizardUserId || targetUserId)
                   ? () => {
