@@ -255,14 +255,8 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
 
     // --- 4. 拠点運営 (ops) ---
     // 順序: 運用メトリクス → 請求処理 → (以下条件付で追加) 職員勤怠 → 統合カレンダー等 → コンプライアンス監査
-    {
-      label: '運営スケジュール',
-      to: '/schedules/week?tab=ops',
-      isActive: (pathname) => pathname.startsWith('/schedule') && new URLSearchParams(window.location.search).get('tab') === 'ops',
-      icon: undefined,
-      audience: NAV_AUDIENCE.staff,
-      group: 'ops' as NavGroupKey,
-    },
+    // NOTE: 「運営スケジュール」は /schedules/week?tab=ops に統合済み（PR #1121）。
+    //       独立ナビ項目は削除し、「スケジュール」タブから到達する。
     {
       label: '運用メトリクス',
       to: '/ops',
