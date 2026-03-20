@@ -32,6 +32,10 @@ export type OpsLoadWeights = {
   readonly shortStayWeight: number;
   readonly attentionWeight: number;
   readonly availableSlotWeight: number;
+  // 以下、イレギュラー・変動対応負荷のペナルティ (Phase 8-A)
+  readonly absencePenalty: number;
+  readonly latePenalty: number;
+  readonly existingLeavePenalty: number;
 };
 
 /** 負荷スコアの閾値 */
@@ -98,6 +102,11 @@ export const DEFAULT_LOAD_WEIGHTS: OpsLoadWeights = {
   shortStayWeight: 3,
   attentionWeight: 2,
   availableSlotWeight: 1,
+
+  // イレギュラー対応・リソース低下による管理負荷ペナルティ
+  absencePenalty: 2,         // 送迎再編・保護者連絡等やや重め
+  latePenalty: 1,            // 局所的な対応
+  existingLeavePenalty: 1,   // 人員減によるベースラインひっ迫
 };
 
 /**
@@ -139,12 +148,19 @@ export function computeLoadScore(
   day: DaySummaryEntry,
   weights: OpsLoadWeights = DEFAULT_LOAD_WEIGHTS,
 ): number {
-  const raw =
+  let raw =
     day.totalCount * weights.totalWeight +
     day.respiteCount * weights.respiteWeight +
     day.shortStayCount * weights.shortStayWeight +
     day.attentionCount * weights.attentionWeight -
     day.availableSlots * weights.availableSlotWeight;
+
+  // 変動対応負荷ペナルティを加算
+  raw += day.absenceCount * weights.absencePenalty;
+  raw += day.lateCount * weights.latePenalty;
+  // existingLeaveCountがオプショナル（未設定）の場合は0として扱う
+  raw += (day.existingLeaveCount ?? 0) * weights.existingLeavePenalty;
+
   return Math.max(0, Math.round(raw));
 }
 
