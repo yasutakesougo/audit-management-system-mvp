@@ -240,3 +240,78 @@ export function suggestStatusFromHandoffCategory(
       return 'late'; // デフォルトは遅刻（最も軽い状態変更）
   }
 }
+
+/**
+ * 欠席種別を日付で自動判定する。
+ *
+ * - 当日 → 'absence'（当日欠席）
+ * - 未来日 → 'preAbsence'（事前欠席）
+ *
+ * 遅刻・早退はそのまま返す（日付による区別なし）。
+ *
+ * @param statusType ユーザーが選んだ状態種別
+ * @param targetDate 対象日 (YYYY-MM-DD)
+ * @param todayDate 今日の日付 (YYYY-MM-DD) - テスト注入用
+ */
+export function resolveAbsenceType(
+  statusType: UserStatusType,
+  targetDate: string,
+  todayDate: string,
+): UserStatusType {
+  if (statusType === 'absence' && targetDate > todayDate) {
+    return 'preAbsence';
+  }
+  if (statusType === 'preAbsence' && targetDate === todayDate) {
+    return 'absence';
+  }
+  return statusType;
+}
+
+/**
+ * UserStatusType を Attendance 系のステータス文字列に変換する。
+ *
+ * Attendance リスト (AttendanceDailyItem.Status) は日本語文字列:
+ *   - '当日欠席'
+ *   - '事前欠席'
+ *   - '未' (遅刻・早退は通所扱いのため未変更)
+ *
+ * @returns Attendance のステータス値。null の場合は Attendance 書き込み不要。
+ */
+export function toAttendanceStatus(
+  statusType: UserStatusType,
+): '当日欠席' | '事前欠席' | null {
+  switch (statusType) {
+    case 'absence':
+      return '当日欠席';
+    case 'preAbsence':
+      return '事前欠席';
+    default:
+      // 遅刻・早退は Attendance のステータスを変更しない
+      return null;
+  }
+}
+
+/** 未来の予定登録で許容する最大日数 */
+export const MAX_FUTURE_DAYS = 31;
+
+/**
+ * 対象日が登録可能な範囲かバリデーションする。
+ *
+ * @returns エラーメッセージ。null なら有効。
+ */
+export function validateTargetDate(
+  targetDate: string,
+  todayDate: string,
+  maxFutureDays: number = MAX_FUTURE_DAYS,
+): string | null {
+  if (targetDate < todayDate) {
+    return '過去の日付には登録できません';
+  }
+  const targetMs = new Date(`${targetDate}T00:00:00`).getTime();
+  const todayMs = new Date(`${todayDate}T00:00:00`).getTime();
+  const diffDays = Math.round((targetMs - todayMs) / (1000 * 60 * 60 * 24));
+  if (diffDays > maxFutureDays) {
+    return `${maxFutureDays}日先までしか登録できません`;
+  }
+  return null;
+}

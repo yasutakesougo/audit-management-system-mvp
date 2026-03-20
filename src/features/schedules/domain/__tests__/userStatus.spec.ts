@@ -11,10 +11,13 @@ import {
   buildUserStatusKey,
   findExistingUserStatus,
   isUserStatusServiceType,
+  resolveAbsenceType,
   shouldReplaceExistingStatus,
   suggestStatusFromHandoffCategory,
+  toAttendanceStatus,
   toScheduleDraft,
   toUserStatusRecord,
+  validateTargetDate,
   type UserStatusRecord,
 } from '../userStatus';
 
@@ -398,4 +401,100 @@ describe('round-trip conversion', () => {
       expect(recovered!.statusType).toBe(original.statusType);
     },
   );
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// resolveAbsenceType
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+describe('resolveAbsenceType', () => {
+  const TODAY = '2026-03-20';
+
+  it('keeps absence as absence for today', () => {
+    expect(resolveAbsenceType('absence', TODAY, TODAY)).toBe('absence');
+  });
+
+  it('converts absence to preAbsence for future date', () => {
+    expect(resolveAbsenceType('absence', '2026-03-21', TODAY)).toBe('preAbsence');
+  });
+
+  it('converts preAbsence back to absence for today', () => {
+    expect(resolveAbsenceType('preAbsence', TODAY, TODAY)).toBe('absence');
+  });
+
+  it('keeps preAbsence for future date', () => {
+    expect(resolveAbsenceType('preAbsence', '2026-03-25', TODAY)).toBe('preAbsence');
+  });
+
+  it('does not change late regardless of date', () => {
+    expect(resolveAbsenceType('late', TODAY, TODAY)).toBe('late');
+    expect(resolveAbsenceType('late', '2026-03-25', TODAY)).toBe('late');
+  });
+
+  it('does not change earlyLeave regardless of date', () => {
+    expect(resolveAbsenceType('earlyLeave', TODAY, TODAY)).toBe('earlyLeave');
+    expect(resolveAbsenceType('earlyLeave', '2026-04-01', TODAY)).toBe('earlyLeave');
+  });
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// toAttendanceStatus
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+describe('toAttendanceStatus', () => {
+  it('maps absence to 当日欠席', () => {
+    expect(toAttendanceStatus('absence')).toBe('当日欠席');
+  });
+
+  it('maps preAbsence to 事前欠席', () => {
+    expect(toAttendanceStatus('preAbsence')).toBe('事前欠席');
+  });
+
+  it('returns null for late (no Attendance write needed)', () => {
+    expect(toAttendanceStatus('late')).toBeNull();
+  });
+
+  it('returns null for earlyLeave (no Attendance write needed)', () => {
+    expect(toAttendanceStatus('earlyLeave')).toBeNull();
+  });
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// validateTargetDate
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+describe('validateTargetDate', () => {
+  const TODAY = '2026-03-20';
+
+  it('returns null for today (valid)', () => {
+    expect(validateTargetDate(TODAY, TODAY)).toBeNull();
+  });
+
+  it('returns null for tomorrow (valid)', () => {
+    expect(validateTargetDate('2026-03-21', TODAY)).toBeNull();
+  });
+
+  it('returns null for 31 days ahead (valid, boundary)', () => {
+    expect(validateTargetDate('2026-04-20', TODAY)).toBeNull();
+  });
+
+  it('returns error for past date', () => {
+    const result = validateTargetDate('2026-03-19', TODAY);
+    expect(result).not.toBeNull();
+    expect(result).toContain('過去');
+  });
+
+  it('returns error for date beyond max future days', () => {
+    const result = validateTargetDate('2026-04-21', TODAY);
+    expect(result).not.toBeNull();
+    expect(result).toContain('31日先');
+  });
+
+  it('respects custom maxFutureDays', () => {
+    expect(validateTargetDate('2026-03-27', TODAY, 7)).toBeNull();
+
+    const over = validateTargetDate('2026-03-28', TODAY, 7);
+    expect(over).not.toBeNull();
+    expect(over).toContain('7日先');
+  });
 });
