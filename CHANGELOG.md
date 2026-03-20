@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **氷山分析ページ再設計 (Phase 1〜3)**
+  - 3タブ構成へ再設計: 傾向 / 氷山構造 / 改善サイクル
+  - URL同期 (`?tab=trend|iceberg|pdca`) による共有・再訪対応
+  - SVG氷山ビジュアライゼーション: 3層構造（行動・場面・背景）のクリック選択・詳細展開
+  - 層別サマリカード（アイテム数・重み分布・最新更新日）
+  - Kanban形式のPDCAボード: Plan / Do / Check / Act 4列表示
+  - **インラインフェーズ遷移**: カードから直接 Plan→Do→Check→Act へワンクリック進行
+  - フェーズ遷移成功時のスナックバー通知
+  - **停滞フィルタ**: 7日以上未更新のアイテムだけに絞り込むトグルチップ
+  - 停滞件数バッジ表示・空列での「停滞なし」メッセージ分岐
+  - KPI再配置: 完了率・リードタイムを改善サイクルタブへ移動
 - **ABC記録 × 支援手順 連動 (MVP-1〜6)**
   - Step 2 / Step 3 から ABC 記録ページへの双方向ナビゲーション
   - `sourceContext` (source, slotId, date) を ABC 記録に保存
