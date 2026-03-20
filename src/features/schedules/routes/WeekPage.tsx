@@ -1,4 +1,4 @@
-import { useCallback, useId, useMemo } from 'react';
+import { useCallback, useEffect, useId, useMemo } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useBreakpointFlags, useOrientation } from '@/app/LayoutContext';
@@ -23,7 +23,7 @@ import { TESTIDS } from '@/testids';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
 import { useScheduleOps } from '../hooks/useScheduleOps';
 import { useScheduleUserOptions } from '../hooks/useScheduleUserOptions';
-import { useSchedulesPageState } from '../hooks/useSchedulesPageState';
+import { buildCreateDialogIntent, buildNextSlot, useSchedulesPageState } from '../hooks/useSchedulesPageState';
 import { useWeekPageOrchestrator } from '../hooks/useWeekPageOrchestrator';
 import { useWeekPageUiState } from '../hooks/useWeekPageUiState';
 
@@ -146,19 +146,34 @@ export default function WeekPage() {
   const todayFocusDate = searchParams.get('date');
   const isFromToday = searchParams.get('source') === 'today';
 
-  // Ops: weekly drilldown handler
+  // Ops: weekly drilldown handler — navigate to day tab with auto-create
   const handleOpsWeekDayClick = useCallback(
     (dateIso: string) => {
       opsState.setSelectedDate(new Date(dateIso + 'T00:00:00'));
-      // Switch to daily ops view? Or navigate to day tab?
-      // Navigate to day tab for unified experience
+      // Navigate to day tab with action=create for auto-open dialog
       const urlObj = new URL(window.location.href);
       urlObj.searchParams.set('tab', 'day');
       urlObj.searchParams.set('date', dateIso);
+      urlObj.searchParams.set('action', 'create');
+      // Clear ops filter params (cross-group isolation)
+      for (const key of ['serviceType', 'staffId', 'searchQuery', 'includeCancelled', 'hasAttention', 'hasPickup', 'hasBath', 'hasMedication']) {
+        urlObj.searchParams.delete(key);
+      }
       navigate(urlObj.pathname + urlObj.search);
     },
     [opsState, navigate],
   );
+
+  // Phase 6: Auto-open create dialog when action=create is in URL
+  const actionParam = searchParams.get('action');
+  useEffect(() => {
+    if (actionParam !== 'create' || mode !== 'day') return;
+    // Build the dialog intent for the focused date
+    const { start, end } = buildNextSlot(resolvedActiveDateIso);
+    const intent = buildCreateDialogIntent('User', start, end);
+    // setDialogParams also clears 'action' param atomically
+    route.setDialogParams(intent);
+  }, [actionParam, mode, resolvedActiveDateIso, route]);
 
   // IDs for accessibility
   const headingId = useId();

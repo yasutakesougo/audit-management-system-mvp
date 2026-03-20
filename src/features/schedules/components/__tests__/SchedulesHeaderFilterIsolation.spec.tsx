@@ -38,7 +38,7 @@ const baseProps = {
   dayHref: '/schedules/week',
   weekHref: '/schedules/week',
   monthHref: '/schedules/week',
-  modes: ['day', 'week', 'month', 'ops', 'list'] as const,
+  modes: ['day', 'week', 'month', 'ops', 'list'] as ('day' | 'week' | 'month' | 'ops' | 'list')[],
 };
 
 afterEach(() => {

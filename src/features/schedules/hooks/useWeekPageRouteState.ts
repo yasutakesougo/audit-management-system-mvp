@@ -173,6 +173,9 @@ export const useWeekPageRouteState = (): RouteState => {
       } else {
         next.delete('eventId');
       }
+      // Clear transient action params to prevent re-triggering
+      next.delete('action');
+      next.delete('source');
       setSearchParams(next, { replace: true });
     },
     [searchParams, setSearchParams],
