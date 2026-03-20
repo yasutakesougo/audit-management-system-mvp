@@ -96,7 +96,7 @@ export type TodayBentoProps = {
   workflowCard?: PlanningWorkflowCardProps;
   transport: { pending: TransportUser[]; inProgress: TransportUser[]; onArrived: (id: string) => void };
   transportCard?: TransportStatusCardProps;
-  users: { items: UserRow[]; onOpenQuickRecord: (id: string) => void; onOpenISP?: (id: string) => void; onOpenIceberg?: (id: string) => void; onEmptyAction?: () => void };
+  users: { items: UserRow[]; onOpenQuickRecord: (id: string) => void; onOpenISP?: (id: string) => void; onOpenIceberg?: (id: string) => void; onAlertClick?: (userId: string) => void; onEmptyAction?: () => void };
   /** 日々の申し送り一覧パネル (optional) */
   handoffPanel?: React.ReactNode;
   /** 電話・連絡ログ要約カード (undefined 時は非表示) */
@@ -283,6 +283,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
             onOpenQuickRecord={users.onOpenQuickRecord}
             onOpenISP={users.onOpenISP}
             onOpenIceberg={users.onOpenIceberg}
+            onAlertClick={users.onAlertClick}
             onEmptyAction={users.onEmptyAction}
           />
         </BentoCard>

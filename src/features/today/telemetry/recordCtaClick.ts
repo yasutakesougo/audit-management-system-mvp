@@ -64,6 +64,10 @@ export const CTA_EVENTS = {
   DAILY_QUEUE_COMPLETED_TOGGLED: 'daily_queue_completed_toggled',
   /** DailyRecord Hero 全件完了 CTA */
   DAILY_HERO_ALL_COMPLETED: 'daily_hero_all_completed_clicked',
+
+  // ── User Alert 直行導線 ────────────────────────────────────
+  /** 利用者カードのアラートチップクリック → daily/support 直行 */
+  USER_ALERT_CLICKED: 'today_user_alert_clicked',
 } as const;
 
 export type CtaEventName = (typeof CTA_EVENTS)[keyof typeof CTA_EVENTS];
