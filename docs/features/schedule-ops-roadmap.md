@@ -61,17 +61,50 @@
 
 ### 4-A-1: High Load Day Warnings (PR #1118)
 - `computeHighLoadReasons` — 危険理由の導出（6種類）
-- `computeHighLoadWarnings` — high/critical 日の抽出
-- `OpsHighLoadWarningBanner` — weekly 上の警告バナー
+- `computeHighLoadWarnings` — 週間の危険日一覧（high/critical 日の抽出）
+- `OpsHighLoadWarningBanner` — weekly view 上部の警告バナー
 - 57 domain tests
 
 ### 4-A-2: Staffing Shortage List (PR #1119)
-- `OpsStaffingShortageList` — 逼迫日のテーブル表示（list view）
+- `OpsStaffingShortageList` — 逼迫日テーブル（list view）
+- 日付・レベル・負荷スコア・理由をカラム表示
 - 新規ロジックなし — HighLoadWarning[] を並べるだけ
 
 ### ⏭ 4-A-3: 既存休暇データ反映 (#1117)
 - 承認済み休暇を負荷スコアに加味
 - 推奨精度の向上
+
+---
+
+## ✅ Phase 5-A: Schedule Unified Tabs (PR #1121)
+
+**Goal**: 2つのスケジュールページを1つに統合
+
+### 達成内容
+- SchedulesHeader に「運営」「一覧」タブ追加
+- WeekPage で tab=ops/list 時に Ops コンポーネントをレンダリング
+- Today 連動: `?date=YYYY-MM-DD&source=today` で注目日バナー
+- `/schedule-ops` → `/schedules/week?tab=ops` リダイレクト
+
+### Before / After
+```
+Before: /schedules/week [日][週][月][組織] + /schedule-ops [日][週][一覧]
+After:  /schedules/week [日][週][月][運営][一覧]
+```
+
+---
+
+## ✅ Phase 5-B: Navigation Cleanup (#1122)
+
+- [x] サイドナビ「運営スケジュール」項目削除
+- [x] OpsSchedulePage の deprecation
+- [x] リダイレクトのクエリパラメータ引き継ぎ確認
+
+## ✅ Phase 5-C: Filter State Isolation (#1123)
+
+- [x] タブ切替時のフィルタクリアルール
+- [x] 予定表系 ↔ Ops系パラメータの分離
+- [x] テスト追加
 
 ---
 
