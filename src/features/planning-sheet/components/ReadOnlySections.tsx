@@ -7,7 +7,7 @@
  * @see src/pages/SupportPlanningSheetPage.tsx
  */
 import type { StrategyCategory } from '@/domain/behavior';
-import type { StrategyUsageSummary } from '@/domain/isp/aggregateStrategyUsage';
+import type { StrategyUsageSummary, StrategyUsageTrendResult } from '@/domain/isp/aggregateStrategyUsage';
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
 import type { EvidenceLinkMap, EvidenceLinkType } from '@/domain/isp/evidenceLink';
 import { EvidenceLinksDisplay } from './EvidenceLinkSelector';
@@ -16,6 +16,7 @@ import {
   CategoryUsageSummary,
   StrategyUsageOverview,
 } from './StrategyUsageBadge';
+import { StrategyTrendBadge, CategoryTrendSummary } from './StrategyTrendIndicator';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
@@ -41,12 +42,16 @@ export const ChipRow: React.FC<{
   items: string[];
   strategyCategory?: StrategyCategory;
   strategyUsage?: StrategyUsageSummary | null;
-}> = ({ label, items, strategyCategory, strategyUsage }) => (
+  trendResult?: StrategyUsageTrendResult | null;
+}> = ({ label, items, strategyCategory, strategyUsage, trendResult }) => (
   <Stack spacing={0.5}>
     <Stack direction="row" spacing={1} alignItems="center">
       <Typography variant="body2" color="text.secondary">{label}</Typography>
       {strategyCategory && strategyUsage && (
         <CategoryUsageSummary category={strategyCategory} summary={strategyUsage} />
+      )}
+      {strategyCategory && trendResult && (
+        <CategoryTrendSummary category={strategyCategory} trendResult={trendResult} />
       )}
     </Stack>
     <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
@@ -56,6 +61,9 @@ export const ChipRow: React.FC<{
               <Chip size="small" label={item} variant="outlined" />
               {strategyCategory && strategyUsage && (
                 <StrategyItemBadge text={item} category={strategyCategory} summary={strategyUsage} />
+              )}
+              {strategyCategory && trendResult && (
+                <StrategyTrendBadge text={item} category={strategyCategory} trendResult={trendResult} />
               )}
             </Stack>
           ))
@@ -163,7 +171,8 @@ export const PlanningDesignSection: React.FC<{
   onEvidenceClick?: (type: EvidenceLinkType, referenceId: string) => void;
   strategyUsage?: StrategyUsageSummary | null;
   strategyUsageLoading?: boolean;
-}> = ({ sheet, evidenceLinks, onEvidenceClick, strategyUsage, strategyUsageLoading }) => {
+  trendResult?: StrategyUsageTrendResult | null;
+}> = ({ sheet, evidenceLinks, onEvidenceClick, strategyUsage, strategyUsageLoading, trendResult }) => {
   const { planning } = sheet;
   return (
     <Stack spacing={2}>
@@ -172,11 +181,11 @@ export const PlanningDesignSection: React.FC<{
       <Paper variant="outlined" sx={{ p: 2 }}>
         <Stack spacing={1.5}>
           <ChipRow label="支援課題の優先順位" items={planning.supportPriorities} />
-          <ChipRow label="先行事象戦略（予防的支援）" items={planning.antecedentStrategies} strategyCategory="antecedent" strategyUsage={strategyUsage} />
+          <ChipRow label="先行事象戦略（予防的支援）" items={planning.antecedentStrategies} strategyCategory="antecedent" strategyUsage={strategyUsage} trendResult={trendResult} />
           {evidenceLinks && <EvidenceLinksDisplay sectionLabel="先行事象戦略" links={evidenceLinks.antecedentStrategies} onEvidenceClick={onEvidenceClick} />}
-          <ChipRow label="教授戦略（代替行動）" items={planning.teachingStrategies} strategyCategory="teaching" strategyUsage={strategyUsage} />
+          <ChipRow label="教授戦略（代替行動）" items={planning.teachingStrategies} strategyCategory="teaching" strategyUsage={strategyUsage} trendResult={trendResult} />
           {evidenceLinks && <EvidenceLinksDisplay sectionLabel="教授戦略" links={evidenceLinks.teachingStrategies} onEvidenceClick={onEvidenceClick} />}
-          <ChipRow label="後続事象戦略（危機対応）" items={planning.consequenceStrategies} strategyCategory="consequence" strategyUsage={strategyUsage} />
+          <ChipRow label="後続事象戦略（危機対応）" items={planning.consequenceStrategies} strategyCategory="consequence" strategyUsage={strategyUsage} trendResult={trendResult} />
           {evidenceLinks && <EvidenceLinksDisplay sectionLabel="後続事象戦略" links={evidenceLinks.consequenceStrategies} onEvidenceClick={onEvidenceClick} />}
         </Stack>
       </Paper>

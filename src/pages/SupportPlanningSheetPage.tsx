@@ -86,6 +86,8 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Fab from '@mui/material/Fab';
 import { useTagAnalytics, TagAnalyticsSection, presetToDateRange, type PeriodPreset } from '@/features/tag-analytics';
 import { useStrategyUsageCounts } from '@/features/planning-sheet/hooks/useStrategyUsageCounts';
+import { useStrategyUsageTrend } from '@/features/planning-sheet/hooks/useStrategyUsageTrend';
+import { TrendOverviewBar } from '@/features/planning-sheet/components/StrategyTrendIndicator';
 
 // ── Local (split) ──
 import { type SheetTabKey, TAB_SECTIONS, TabPanel } from './support-planning-sheet/types';
@@ -155,6 +157,14 @@ export default function SupportPlanningSheetPage() {
 
   // ── Phase C-3a: 戦略実施回数集計 ──
   const { summary: strategyUsage, loading: strategyUsageLoading } = useStrategyUsageCounts(sheet?.userId);
+
+  // ── Phase C-3b: 戦略トレンド（前期間比較） ──
+  const {
+    result: trendResult,
+    days: trendDays,
+    setDays: setTrendDays,
+    loading: trendLoading,
+  } = useStrategyUsageTrend(sheet?.userId);
 
   // ── ABC/PDCA データ取得（根拠選択用） ──
   React.useEffect(() => {
@@ -583,6 +593,13 @@ export default function SupportPlanningSheetPage() {
               defaultExpanded={!isEditing}
             />
             <Box sx={{ mt: 2 }}>
+              {/* Phase C-3b: トレンドバー（期間セレクタ + 全体トレンド） */}
+              <TrendOverviewBar
+                trendResult={trendResult}
+                days={trendDays}
+                onDaysChange={setTrendDays}
+                loading={trendLoading}
+              />
               {isEditing ? (
                 <EditablePlanningDesignSection
                   planning={form.planning}
@@ -594,9 +611,10 @@ export default function SupportPlanningSheetPage() {
                   onEvidenceClick={handleEvidenceClick}
                   strategyUsage={strategyUsage}
                   strategyUsageLoading={strategyUsageLoading}
+                  trendResult={trendResult}
                 />
               ) : (
-                <PlanningDesignSection sheet={sheet} evidenceLinks={evidenceLinks} onEvidenceClick={handleEvidenceClick} strategyUsage={strategyUsage} strategyUsageLoading={strategyUsageLoading} />
+                <PlanningDesignSection sheet={sheet} evidenceLinks={evidenceLinks} onEvidenceClick={handleEvidenceClick} strategyUsage={strategyUsage} strategyUsageLoading={strategyUsageLoading} trendResult={trendResult} />
               )}
             </Box>
           </TabPanel>
