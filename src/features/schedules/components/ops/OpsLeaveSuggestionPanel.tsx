@@ -178,6 +178,29 @@ export const OpsLeaveSuggestionPanel: FC<OpsLeaveSuggestionPanelProps> = ({
                   負荷 {s.score}
                 </Typography>
               </Box>
+
+              {/* Reasons (Phase 3-C) */}
+              {s.reasons.length > 0 && (
+                <Box sx={{ mt: 0.75, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                  {s.reasons.map((r) => (
+                    <Typography
+                      key={r.key}
+                      variant="caption"
+                      sx={{
+                        fontSize: '0.6rem',
+                        color: 'text.disabled',
+                        backgroundColor: 'action.hover',
+                        borderRadius: 0.5,
+                        px: 0.5,
+                        py: 0.125,
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {r.label}
+                    </Typography>
+                  ))}
+                </Box>
+              )}
             </Paper>
           );
         })}

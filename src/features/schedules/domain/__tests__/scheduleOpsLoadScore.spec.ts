@@ -17,6 +17,7 @@ import {
   assessLeaveEligibility,
   classifyLoadLevel,
   computeDayLoadScore,
+  computeLeaveReasons,
   computeLoadScore,
   computeWeeklyLoadScores,
   suggestBestLeaveDays,
@@ -322,5 +323,120 @@ describe('computeDayLoadScore', () => {
     expect(result.score).toBe(0);
     expect(result.level).toBe('low');
     expect(result.leaveEligibility).toBe('available');
+  });
+});
+
+// ============================================================================
+// computeLeaveReasons (Phase 3-C)
+// ============================================================================
+
+describe('computeLeaveReasons', () => {
+  it('空の日 → 利用人数がとても少ない + 空き枠に余裕あり', () => {
+    const day = makeDaySummary({ totalCount: 0, availableSlots: 25 });
+    const reasons = computeLeaveReasons(day);
+
+    expect(reasons).toHaveLength(2);
+    expect(reasons[0]!.key).toBe('very-low-total');
+    expect(reasons[1]!.key).toBe('high-availability');
+  });
+
+  it('利用者5人以下は very-low-total', () => {
+    const day = makeDaySummary({ totalCount: 5, availableSlots: 20 });
+    const reasons = computeLeaveReasons(day);
+
+    expect(reasons[0]!.key).toBe('very-low-total');
+  });
+
+  it('利用者6〜10人は low-total（優先度低め）', () => {
+    const day = makeDaySummary({ totalCount: 8, availableSlots: 5, attentionCount: 1, shortStayCount: 1 });
+    const reasons = computeLeaveReasons(day);
+
+    // high-availability (5 < 10) は入らない、注意対象あり、ショートステイあり
+    // なので low-total が候補に入るはず
+    expect(reasons.some((r) => r.key === 'low-total')).toBe(true);
+  });
+
+  it('利用者11人以上は total 系の理由が出ない', () => {
+    const day = makeDaySummary({ totalCount: 15, availableSlots: 10 });
+    const reasons = computeLeaveReasons(day);
+
+    expect(reasons.every((r) => !r.key.includes('total'))).toBe(true);
+  });
+
+  it('空き枠10以上は high-availability', () => {
+    const day = makeDaySummary({ totalCount: 12, availableSlots: 10 });
+    const reasons = computeLeaveReasons(day);
+
+    expect(reasons[0]!.key).toBe('high-availability');
+  });
+
+  it('注意対象0は no-attention', () => {
+    const day = makeDaySummary({ totalCount: 12, availableSlots: 5, attentionCount: 0 });
+    const reasons = computeLeaveReasons(day);
+
+    expect(reasons.some((r) => r.key === 'no-attention')).toBe(true);
+  });
+
+  it('ショートステイ0は no-short-stay', () => {
+    const day = makeDaySummary({ totalCount: 12, availableSlots: 5, attentionCount: 2, shortStayCount: 0 });
+    const reasons = computeLeaveReasons(day);
+
+    expect(reasons.some((r) => r.key === 'no-short-stay')).toBe(true);
+  });
+
+  it('レスパイト0は no-respite', () => {
+    const day = makeDaySummary({
+      totalCount: 12, availableSlots: 5, attentionCount: 2, shortStayCount: 1, respiteCount: 0,
+    });
+    const reasons = computeLeaveReasons(day);
+
+    expect(reasons.some((r) => r.key === 'no-respite')).toBe(true);
+  });
+
+  it('maxReasons=1 で1つだけ返す', () => {
+    const day = makeDaySummary({ totalCount: 0, availableSlots: 25 });
+    const reasons = computeLeaveReasons(day, 1);
+
+    expect(reasons).toHaveLength(1);
+  });
+
+  it('すべて該当する日は優先度上位2つだけ返す', () => {
+    const day = makeDaySummary({
+      totalCount: 3, availableSlots: 15, attentionCount: 0, shortStayCount: 0, respiteCount: 0,
+    });
+    const reasons = computeLeaveReasons(day);
+
+    expect(reasons).toHaveLength(2);
+    // 優先度順: very-low-total > high-availability
+    expect(reasons[0]!.key).toBe('very-low-total');
+    expect(reasons[1]!.key).toBe('high-availability');
+  });
+});
+
+// ============================================================================
+// suggestBestLeaveDays with reasons (Phase 3-C)
+// ============================================================================
+
+describe('suggestBestLeaveDays with weekSummary', () => {
+  it('weekSummary を渡すと reasons が含まれる', () => {
+    const week = [
+      makeDaySummary({ dateIso: '2026-03-16', totalCount: 3, availableSlots: 22 }),
+      makeDaySummary({ dateIso: '2026-03-17', totalCount: 15, availableSlots: 10 }),
+    ];
+    const scores = computeWeeklyLoadScores(week);
+    const suggestions = suggestBestLeaveDays(scores, 3, week);
+
+    expect(suggestions[0]!.reasons.length).toBeGreaterThan(0);
+    expect(suggestions[0]!.reasons[0]!.key).toBe('very-low-total');
+  });
+
+  it('weekSummary なしでも動作する（reasons は空配列）', () => {
+    const week = [
+      makeDaySummary({ dateIso: '2026-03-16', totalCount: 3, availableSlots: 22 }),
+    ];
+    const scores = computeWeeklyLoadScores(week);
+    const suggestions = suggestBestLeaveDays(scores);
+
+    expect(suggestions[0]!.reasons).toEqual([]);
   });
 });

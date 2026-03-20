@@ -57,12 +57,19 @@ export type DayLoadScore = {
   readonly leaveEligibility: LeaveEligibility;
 };
 
+/** 年休推奨理由ラベル */
+export type LeaveReason = {
+  readonly key: string;
+  readonly label: string;
+};
+
 /** 年休推奨日 */
 export type LeaveSuggestion = {
   readonly dateIso: string;
   readonly score: number;
   readonly level: LoadLevel;
   readonly rank: number; // 1 が最もおすすめ
+  readonly reasons: readonly LeaveReason[];
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -222,17 +229,92 @@ export function computeWeeklyLoadScores(
 export function suggestBestLeaveDays(
   loadScores: readonly DayLoadScore[],
   maxSuggestions: number = 3,
+  weekSummary?: readonly DaySummaryEntry[],
 ): LeaveSuggestion[] {
+  // dateIso → DaySummaryEntry lookup for reason computation
+  const summaryMap = new Map<string, DaySummaryEntry>();
+  if (weekSummary) {
+    for (const s of weekSummary) {
+      summaryMap.set(s.dateIso, s);
+    }
+  }
+
   return loadScores
     .filter((d) => d.leaveEligibility !== 'unavailable')
     .sort((a, b) => a.score - b.score)
     .slice(0, maxSuggestions)
-    .map((d, i) => ({
-      dateIso: d.dateIso,
-      score: d.score,
-      level: d.level,
-      rank: i + 1,
-    }));
+    .map((d, i) => {
+      const summary = summaryMap.get(d.dateIso);
+      return {
+        dateIso: d.dateIso,
+        score: d.score,
+        level: d.level,
+        rank: i + 1,
+        reasons: summary ? computeLeaveReasons(summary) : [],
+      };
+    });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Leave Reason Computation (Phase 3-C)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/**
+ * 年休推奨理由を算出する。
+ * DaySummaryEntry の各フィールドを分析し、最も説得力のある理由を
+ * 優先度順に最大2つ返す。
+ *
+ * 理由の優先度:
+ *   1. 利用者が非常に少ない（totalCount <= 5）
+ *   2. 空き枠に余裕あり（availableSlots >= 10）
+ *   3. 注意対象なし（attentionCount === 0）
+ *   4. ショートステイなし（shortStayCount === 0）
+ *   5. レスパイトなし（respiteCount === 0）
+ *   6. 利用者が少なめ（totalCount <= 10）
+ *
+ * @param day - 日別集計データ
+ * @param maxReasons - 最大理由数（デフォルト 2）
+ * @returns LeaveReason[]
+ */
+export function computeLeaveReasons(
+  day: DaySummaryEntry,
+  maxReasons: number = 2,
+): LeaveReason[] {
+  const candidates: LeaveReason[] = [];
+
+  // 優先度順に候補を追加
+  if (day.totalCount <= 5) {
+    candidates.push({ key: 'very-low-total', label: '利用人数がとても少ない' });
+  } else if (day.totalCount <= 10) {
+    // 後で追加（優先度低め）
+  }
+
+  if (day.availableSlots >= 10) {
+    candidates.push({ key: 'high-availability', label: '空き枠に余裕あり' });
+  }
+
+  if (day.attentionCount === 0) {
+    candidates.push({ key: 'no-attention', label: '注意対象なし' });
+  }
+
+  if (day.shortStayCount === 0) {
+    candidates.push({ key: 'no-short-stay', label: 'ショートステイなし' });
+  }
+
+  if (day.respiteCount === 0) {
+    candidates.push({ key: 'no-respite', label: 'レスパイトなし' });
+  }
+
+  // 低優先の「少なめ」（very-low が既に入っていなければ）
+  if (
+    day.totalCount > 5 &&
+    day.totalCount <= 10 &&
+    !candidates.some((c) => c.key === 'very-low-total')
+  ) {
+    candidates.push({ key: 'low-total', label: '利用人数が少なめ' });
+  }
+
+  return candidates.slice(0, maxReasons);
 }
 
 /**

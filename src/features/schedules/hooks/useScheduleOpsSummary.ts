@@ -62,10 +62,10 @@ export const useScheduleOpsSummary = (
     [weeklySummary]
   );
 
-  // 5. Leave Suggestions (Phase 3-B: 年休推奨日)
+  // 5. Leave Suggestions (Phase 3-B: 年休推奨日 + Phase 3-C: 推奨理由)
   const leaveSuggestions = useMemo(
-    () => suggestBestLeaveDays(weeklyLoadScores),
-    [weeklyLoadScores]
+    () => suggestBestLeaveDays(weeklyLoadScores, 3, weeklySummary),
+    [weeklyLoadScores, weeklySummary]
   );
 
   return { filteredItems, dailySummary, weeklySummary, weeklyLoadScores, leaveSuggestions };
