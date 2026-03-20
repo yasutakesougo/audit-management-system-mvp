@@ -17,6 +17,7 @@ import type { ResultError } from '@/shared/result';
 import type { CreateScheduleEventInput, SchedItem } from '../data';
 import type { ScheduleFormState, ScheduleUserOption } from '../domain/scheduleFormState';
 import type { ScheduleEditDialogValues } from '../hooks/useSchedulesPageState';
+import { buildCopyLastTemplate, buildQuickTemplates, type ScheduleItemForTemplate } from '../domain/scheduleQuickTemplates';
 import ScheduleCreateDialog from '../routes/ScheduleCreateDialog';
 import ScheduleViewDialog from '../routes/ScheduleViewDialog';
 
@@ -78,6 +79,11 @@ export type ScheduleDialogManagerProps = {
   onClearLastError: () => void;
   onSetFocusScheduleId: (id: string | null) => void;
   networkOpen: boolean;
+
+  /** Phase 7-A: All schedule items for template extraction */
+  allItems?: ScheduleItemForTemplate[];
+  /** Phase 7-A: Active date for template date projection */
+  activeDateIso?: string;
 };
 
 export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
@@ -119,6 +125,8 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
     onClearLastError,
     onSetFocusScheduleId,
     networkOpen,
+    allItems,
+    activeDateIso,
   } = props;
 
   const handleConflictRefetchWithFocus = useCallback(() => {
@@ -148,6 +156,21 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
     () => normalizeInitialOverride(scheduleDialogModeProps.initialOverride),
     [normalizeInitialOverride, scheduleDialogModeProps.initialOverride],
   );
+
+  // Phase 7-A: Compute quick templates from existing schedule items
+  const quickTemplates = useMemo(() => {
+    if (!allItems || !activeDateIso || scheduleDialogModeProps.mode !== 'create') return undefined;
+    const selectedUserId = defaultScheduleUser?.id;
+    const copyLast = selectedUserId
+      ? buildCopyLastTemplate(allItems, selectedUserId, activeDateIso)
+      : null;
+    const frequent = buildQuickTemplates(allItems, activeDateIso, {
+      userId: selectedUserId,
+      limit: 2,
+    });
+    const templates = copyLast ? [copyLast, ...frequent] : frequent;
+    return templates.length > 0 ? templates : undefined;
+  }, [allItems, activeDateIso, scheduleDialogModeProps.mode, defaultScheduleUser?.id]);
 
   return (
     <>
@@ -200,6 +223,7 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
           initialStartTime={createDialogInitialStartTime}
           initialEndTime={createDialogInitialEndTime}
           defaultUser={defaultScheduleUser}
+          quickTemplates={quickTemplates}
         />
       )}
 

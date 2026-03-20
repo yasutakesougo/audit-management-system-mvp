@@ -421,6 +421,8 @@ export default function WeekPage() {
           onClearLastError={clearLastError}
           onSetFocusScheduleId={uiState.setFocusScheduleId}
           networkOpen={false}
+          allItems={filteredItems}
+          activeDateIso={resolvedActiveDateIso}
         />
       </div>
     </section>
