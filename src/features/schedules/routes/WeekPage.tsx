@@ -423,6 +423,7 @@ export default function WeekPage() {
           networkOpen={false}
           allItems={filteredItems}
           activeDateIso={resolvedActiveDateIso}
+          navigationSource={searchParams.get('source') ?? (actionParam === 'create' ? 'ops' : undefined)}
         />
       </div>
     </section>

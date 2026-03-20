@@ -17,6 +17,7 @@ import type { ResultError } from '@/shared/result';
 import type { CreateScheduleEventInput, SchedItem } from '../data';
 import type { ScheduleFormState, ScheduleUserOption } from '../domain/scheduleFormState';
 import type { ScheduleEditDialogValues } from '../hooks/useSchedulesPageState';
+import { computeAutofill } from '../domain/scheduleAutofillRules';
 import { buildCopyLastTemplate, buildQuickTemplates, type ScheduleItemForTemplate } from '../domain/scheduleQuickTemplates';
 import ScheduleCreateDialog from '../routes/ScheduleCreateDialog';
 import ScheduleViewDialog from '../routes/ScheduleViewDialog';
@@ -84,6 +85,8 @@ export type ScheduleDialogManagerProps = {
   allItems?: ScheduleItemForTemplate[];
   /** Phase 7-A: Active date for template date projection */
   activeDateIso?: string;
+  /** Phase 7-B: Navigation source for autofill context */
+  navigationSource?: string;
 };
 
 export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
@@ -127,6 +130,7 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
     networkOpen,
     allItems,
     activeDateIso,
+    navigationSource,
   } = props;
 
   const handleConflictRefetchWithFocus = useCallback(() => {
@@ -172,6 +176,29 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
     return templates.length > 0 ? templates : undefined;
   }, [allItems, activeDateIso, scheduleDialogModeProps.mode, defaultScheduleUser?.id]);
 
+  // Phase 7-B: Compute autofill values
+  const autofillResult = useMemo(() => {
+    if (!allItems || !activeDateIso || scheduleDialogModeProps.mode !== 'create') return null;
+    return computeAutofill({
+      targetDate: activeDateIso,
+      targetStartTime: createDialogInitialStartTime,
+      targetEndTime: createDialogInitialEndTime,
+      source: navigationSource,
+      userId: defaultScheduleUser?.id,
+      items: allItems,
+    });
+  }, [allItems, activeDateIso, scheduleDialogModeProps.mode, createDialogInitialStartTime, createDialogInitialEndTime, navigationSource, defaultScheduleUser?.id]);
+
+  // Merge autofill with explicit override (explicit wins)
+  const mergedInitialOverride = useMemo(() => {
+    if (!autofillResult) return normalizedInitialOverride;
+    // autofill provides base, explicit override wins
+    return {
+      ...autofillResult.override,
+      ...normalizedInitialOverride,
+    };
+  }, [autofillResult, normalizedInitialOverride]);
+
   return (
     <>
       {/* Inline Edit Dialog (clicking schedule card) */}
@@ -215,7 +242,7 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
         <ScheduleCreateDialog
           open={!suppressRouteDialog && createDialogOpen && canEdit && canWrite}
           mode="create"
-          initialOverride={normalizedInitialOverride}
+          initialOverride={mergedInitialOverride}
           onClose={onCreateDialogClose}
           onSubmit={onScheduleDialogSubmit}
           users={scheduleUserOptions}
