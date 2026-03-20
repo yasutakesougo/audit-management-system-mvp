@@ -47,6 +47,8 @@ type TodayHandoffTimelineListProps = {
   meetingMode?: MeetingMode;
   /** v3: ワークフローアクション */
   workflowActions?: WorkflowActions;
+  /** Phase 8-A: 利用者状態登録コールバック */
+  onRegisterStatus?: (handoff: HandoffRecord) => void;
 };
 
 // ────────────────────────────────────────────────────────────
@@ -63,6 +65,7 @@ export const TodayHandoffTimelineList: React.FC<TodayHandoffTimelineListProps> =
   maxItems,
   meetingMode = 'normal',
   workflowActions,
+  onRegisterStatus,
 }) => {
   const safeHandoffs = Array.isArray(items) ? items : [];
 
@@ -192,6 +195,7 @@ export const TodayHandoffTimelineList: React.FC<TodayHandoffTimelineListProps> =
             onStatusChange={updateHandoffStatus}
             meetingMode={meetingMode}
             workflowActions={workflowActions}
+            onRegisterStatus={onRegisterStatus}
           />
         ))}
       </Stack>
