@@ -16,6 +16,7 @@ import { buildSupportPlanMonitoringUrl } from '@/app/links/navigationLinks';
 import { useFeatureFlag } from '@/config/featureFlags';
 import { canAccessDashboardAudience, isDashboardAudience, useAuthStore } from '@/features/auth/store';
 import { useUsersStore } from '@/features/users/store';
+import { getMsalInstance } from '@/lib/msal';
 import { getEnv } from '@/lib/runtimeEnv';
 import { TESTIDS } from '@/testids';
 import { toLocalDateISO } from '@/utils/getNow';
@@ -35,7 +36,7 @@ import {
 import { resolveDailyMetrics } from './icebergPdcaHelpers';
 import { useCreatePdca, useDeletePdca, useIcebergPdcaList, useUpdatePdca } from './queries';
 import { readDailySnapshot, type DailySnapshotMetrics } from './readDailySnapshot';
-import type { IcebergPdcaItem, IcebergPdcaPhase } from './types';
+import type { IcebergPdcaItem, IcebergPdcaPhase, PhaseChangeTrace } from './types';
 
 // ============================================================================
 // Constants
@@ -211,6 +212,17 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
     selectedUserId ? { userId: selectedUserId } : undefined,
   );
 
+  // Merge phase change traces from ref into items (in-memory only)
+  const phaseTraceRef = React.useRef<Map<string, PhaseChangeTrace>>(new Map());
+  const itemsWithTrace = React.useMemo(() => {
+    if (phaseTraceRef.current.size === 0) return items;
+    return items.map((item) => {
+      const trace = phaseTraceRef.current.get(item.id);
+      if (!trace) return item;
+      return { ...item, lastPhaseChange: trace };
+    });
+  }, [items]);
+
   const [formState, setFormState] = React.useState<{
     mode: 'create' | 'edit';
     id?: string;
@@ -255,6 +267,17 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
     if (!formState.title.trim()) return;
 
     if (formState.mode === 'edit' && formState.id) {
+      // Check if phase changed during edit — record trace
+      const existing = itemsWithTrace.find((i) => i.id === formState.id);
+      if (existing && existing.phase !== formState.phase) {
+        phaseTraceRef.current.set(formState.id, {
+          from: existing.phase,
+          to: formState.phase,
+          at: new Date().toISOString(),
+          by: getCurrentUserName(),
+        });
+      }
+
       await updateMutation.mutateAsync({
         id: formState.id,
         title: formState.title.trim(),
@@ -299,7 +322,29 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
     ACT: 'Act',
   };
 
+  // ── Helper: get current user name from MSAL ──
+  const getCurrentUserName = React.useCallback((): string => {
+    try {
+      const instance = getMsalInstance();
+      const account = instance.getActiveAccount() as { name?: string; username?: string } | null;
+      return account?.name ?? account?.username ?? 'unknown';
+    } catch {
+      return 'unknown';
+    }
+  }, []);
+
+
   const handleAdvancePhase = async (item: IcebergPdcaItem, nextPhase: IcebergPdcaPhase) => {
+    const trace: PhaseChangeTrace = {
+      from: item.phase,
+      to: nextPhase,
+      at: new Date().toISOString(),
+      by: getCurrentUserName(),
+    };
+
+    // Store trace in ref for persistence across cache invalidations
+    phaseTraceRef.current.set(item.id, trace);
+
     await updateMutation.mutateAsync({
       id: item.id,
       phase: nextPhase,
@@ -317,7 +362,7 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
 
   const context: IcebergPdcaEmptyContext | null = !selectedUserId
     ? 'no-user-selected'
-    : status === 'success' && items.length === 0 && !canWrite
+    : status === 'success' && itemsWithTrace.length === 0 && !canWrite
       ? isAdmin
         ? 'no-items-admin'
         : 'no-items-staff'
@@ -346,7 +391,7 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
     }
     return (
       <IcebergPdcaFormSection
-        items={items}
+        items={itemsWithTrace}
         canWrite={canWrite}
         selectedUserId={selectedUserId}
         isMutating={isMutating}

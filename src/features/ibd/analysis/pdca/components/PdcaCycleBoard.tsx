@@ -119,6 +119,24 @@ function shortDate(iso: string): string {
   }
 }
 
+/** 日時を "3/19 14:12" のように表示 */
+function shortDateTime(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+  } catch {
+    return iso.slice(5, 16);
+  }
+}
+
+/** Phase short labels for trace display */
+const PHASE_SHORT: Record<IcebergPdcaPhase, string> = {
+  PLAN: 'Plan',
+  DO: 'Do',
+  CHECK: 'Check',
+  ACT: 'Act',
+};
+
 /** stalled = 7日以上更新がないかどうか */
 function isStalled(item: IcebergPdcaItem): boolean {
   const diff = Date.now() - new Date(item.updatedAt).getTime();
@@ -253,6 +271,48 @@ const PdcaCard: React.FC<CardProps> = ({
       <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>
         更新 {shortDate(item.updatedAt)}
       </Typography>
+
+      {/* Phase change trace */}
+      {item.lastPhaseChange && (
+        <Tooltip
+          title={`${item.lastPhaseChange.by} が ${shortDateTime(item.lastPhaseChange.at)} に変更`}
+          arrow
+          placement="top"
+        >
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={0.5}
+            sx={{
+              mt: 0.5,
+              px: 0.75,
+              py: 0.25,
+              bgcolor: 'action.hover',
+              borderRadius: 0.75,
+              cursor: 'default',
+            }}
+          >
+            <ArrowForwardRoundedIcon sx={{ fontSize: 10, color: 'text.disabled' }} />
+            <Typography
+              variant="caption"
+              sx={{
+                fontSize: '0.6rem',
+                color: 'text.secondary',
+                fontWeight: 600,
+                lineHeight: 1,
+              }}
+            >
+              {PHASE_SHORT[item.lastPhaseChange.from]} → {PHASE_SHORT[item.lastPhaseChange.to]}
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{ fontSize: '0.55rem', color: 'text.disabled', lineHeight: 1 }}
+            >
+              {shortDateTime(item.lastPhaseChange.at)} / {item.lastPhaseChange.by}
+            </Typography>
+          </Stack>
+        </Tooltip>
+      )}
 
       {/* Reverse trace */}
       <PdcaReverseTraceSection pdcaItemId={item.id} />
