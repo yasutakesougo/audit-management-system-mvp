@@ -22,8 +22,8 @@ import type { DailySupportUserFilter } from '@/features/daily/hooks/useDailySupp
 import type { IUserMaster } from '@/features/users/types';
 import { DISABILITY_SUPPORT_LEVEL_OPTIONS } from '@/features/users/typesExtended';
 import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
-import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
-import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
+
+
 import BlockRoundedIcon from '@mui/icons-material/BlockRounded';
 import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 import EventRoundedIcon from '@mui/icons-material/EventRounded';
@@ -31,16 +31,14 @@ import FilterListOffIcon from '@mui/icons-material/FilterListOff';
 import PersonIcon from '@mui/icons-material/Person';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
+
 import Card from '@mui/material/Card';
 import CardActionArea from '@mui/material/CardActionArea';
 import Chip from '@mui/material/Chip';
-import Divider from '@mui/material/Divider';
 import FormControl from '@mui/material/FormControl';
 import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
-import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import ToggleButton from '@mui/material/ToggleButton';
@@ -284,182 +282,7 @@ const UserCard: React.FC<{
 });
 UserCard.displayName = 'UserCard';
 
-// ─────────────────────────────────────────────
-// Selection Summary Panel
-// ─────────────────────────────────────────────
 
-const SelectionSummaryPanel: React.FC<{
-  user: IUserMaster;
-  abcSummary: AbcSummary;
-  planningSheet: SupportPlanningSheet | undefined;
-  onProceed: () => void;
-  onDeselect: () => void;
-}> = memo(({ user, abcSummary, planningSheet, onProceed, onDeselect }) => {
-  const isHighIntensity = user.IsHighIntensitySupportTarget === true;
-  const abcToday = abcSummary.todayCounts.get(user.UserID) ?? 0;
-  const latestAbcDate = abcSummary.latestDates.get(user.UserID);
-
-  // モニタリングサイクル
-  const monitoringInfo = useMemo(() => {
-    if (!user.LastAssessmentDate) return null;
-    const now = new Date();
-    return computeMonitoringCycle(new Date(`${user.LastAssessmentDate}T00:00:00`), now);
-  }, [user.LastAssessmentDate]);
-
-  // 支援計画シートの状態ラベル
-  const planStatusLabel = useMemo(() => {
-    if (!planningSheet) return { label: '未作成', color: 'default' as const };
-    if (planningSheet.status === 'active') return { label: '有効', color: 'success' as const };
-    if (planningSheet.status === 'draft') return { label: '下書き', color: 'warning' as const };
-    return { label: planningSheet.status, color: 'default' as const };
-  }, [planningSheet]);
-
-  const formatDate = (dateStr: string): string => {
-    try {
-      return new Date(dateStr).toLocaleDateString('ja-JP', {
-        year: 'numeric', month: 'short', day: 'numeric',
-      });
-    } catch {
-      return dateStr;
-    }
-  };
-
-  return (
-    <Paper
-      variant="outlined"
-      sx={{
-        gridColumn: '1 / -1',
-        p: 2,
-        borderColor: 'primary.main',
-        borderWidth: 2,
-        bgcolor: 'background.paper',
-        animation: 'fadeIn 0.2s ease-out',
-        '@keyframes fadeIn': {
-          from: { opacity: 0, transform: 'translateY(-8px)' },
-          to: { opacity: 1, transform: 'translateY(0)' },
-        },
-      }}
-    >
-      <Stack spacing={2}>
-        {/* ── ヘッダー ── */}
-        <Stack direction="row" alignItems="center" justifyContent="space-between">
-          <Stack direction="row" spacing={1} alignItems="center">
-            <PersonIcon color="primary" />
-            <Typography variant="h6" fontWeight={700}>{user.FullName}</Typography>
-            {isHighIntensity && (
-              <Chip icon={<WarningAmberRoundedIcon />} label="強度行動障害対象" size="small" color="warning" />
-            )}
-          </Stack>
-          <Button size="small" variant="text" onClick={onDeselect} sx={{ fontSize: '0.75rem' }}>
-            選択解除
-          </Button>
-        </Stack>
-
-        <Divider />
-
-        {/* ── 情報グリッド ── */}
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-            gap: 1.5,
-          }}
-        >
-          {/* 1. 支援計画シート */}
-          <Stack direction="row" spacing={1} alignItems="center">
-            <AssignmentRoundedIcon fontSize="small" color="action" />
-            <Box>
-              <Typography variant="caption" color="text.secondary">支援計画シート</Typography>
-              <Typography variant="body2" fontWeight={600}>
-                <Chip
-                  label={planStatusLabel.label}
-                  size="small"
-                  color={planStatusLabel.color}
-                  variant={planStatusLabel.color === 'default' ? 'outlined' : 'filled'}
-                  sx={{ fontSize: '0.75rem', height: 20 }}
-                />
-                {planningSheet && (
-                  <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
-                    v{planningSheet.version}
-                  </Typography>
-                )}
-              </Typography>
-            </Box>
-          </Stack>
-
-          {/* 2. モニタリング */}
-          <Stack direction="row" spacing={1} alignItems="center">
-            <EventRoundedIcon fontSize="small" color="action" />
-            <Box>
-              <Typography variant="caption" color="text.secondary">最新モニタリング</Typography>
-              {monitoringInfo ? (
-                <Stack direction="row" spacing={0.5} alignItems="center">
-                  <Typography variant="body2" fontWeight={600}>
-                    {formatDate(monitoringInfo.prevDate.toISOString())}
-                  </Typography>
-                  <Chip
-                    label={`残${monitoringInfo.remaining}日`}
-                    size="small"
-                    color={monitoringInfo.remaining <= 14 ? 'error' : monitoringInfo.remaining <= 30 ? 'warning' : 'default'}
-                    variant="outlined"
-                    sx={{ fontSize: '0.7rem', height: 20 }}
-                  />
-                </Stack>
-              ) : (
-                <Typography variant="body2" color="text.secondary">未設定</Typography>
-              )}
-            </Box>
-          </Stack>
-
-          {/* 3. 今日のABC記録 */}
-          <Stack direction="row" spacing={1} alignItems="center">
-            <EditNoteRoundedIcon fontSize="small" color="action" />
-            <Box>
-              <Typography variant="caption" color="text.secondary">今日の記録</Typography>
-              <Typography variant="body2" fontWeight={600}>
-                {abcToday > 0 ? (
-                  <Chip
-                    label={`${abcToday}件`}
-                    size="small"
-                    color="info"
-                    variant="filled"
-                    sx={{ fontSize: '0.75rem', height: 20 }}
-                  />
-                ) : (
-                  <Typography component="span" variant="body2" color="text.secondary">未記録</Typography>
-                )}
-              </Typography>
-            </Box>
-          </Stack>
-
-          {/* 4. 最新ABC記録日 */}
-          <Stack direction="row" spacing={1} alignItems="center">
-            <EditNoteRoundedIcon fontSize="small" color="action" />
-            <Box>
-              <Typography variant="caption" color="text.secondary">最新ABC記録</Typography>
-              <Typography variant="body2" fontWeight={600}>
-                {latestAbcDate ? formatDate(latestAbcDate) : '記録なし'}
-              </Typography>
-            </Box>
-          </Stack>
-        </Box>
-
-        {/* ── アクションボタン ── */}
-        <Button
-          variant="contained"
-          size="large"
-          fullWidth
-          endIcon={<ArrowForwardRoundedIcon />}
-          onClick={onProceed}
-          sx={{ fontWeight: 700 }}
-        >
-          この利用者で支援手順へ進む
-        </Button>
-      </Stack>
-    </Paper>
-  );
-});
-SelectionSummaryPanel.displayName = 'SelectionSummaryPanel';
 
 // ─────────────────────────────────────────────
 // Main Component
@@ -478,26 +301,12 @@ export const UserSelectionStep: React.FC<UserSelectionStepProps> = memo(({
   const abcSummary = useAbcSummary();
   const planningSheets = usePlanningSheetStatus();
 
-  // ── 選択中の利用者（まだ Step2 に遷移しない）──
-  const [previewUserId, setPreviewUserId] = useState<string | null>(null);
-  const previewUser = useMemo(
-    () => previewUserId ? filteredUsers.find(u => u.UserID === previewUserId) ?? null : null,
-    [filteredUsers, previewUserId],
-  );
-
+  // ── カードタップで即 Step 2 へ遷移 ──
   const handleCardClick = useCallback((userId: string) => {
-    setPreviewUserId(prev => prev === userId ? null : userId);
-  }, []);
+    onSelectUser(userId);
+  }, [onSelectUser]);
 
-  const handleProceed = useCallback(() => {
-    if (previewUserId) {
-      onSelectUser(previewUserId);
-    }
-  }, [previewUserId, onSelectUser]);
 
-  const handleDeselect = useCallback(() => {
-    setPreviewUserId(null);
-  }, []);
 
   // Sort: 強度行動障害対象者を先頭 → 行動関連項目点数の降順
   const sortedUsers = useMemo(() => {
@@ -516,18 +325,7 @@ export const UserSelectionStep: React.FC<UserSelectionStepProps> = memo(({
     [filteredUsers],
   );
 
-  // 選択中カードのグリッド内 index
-  const selectedIndex = useMemo(
-    () => previewUserId ? sortedUsers.findIndex(u => u.UserID === previewUserId) : -1,
-    [sortedUsers, previewUserId],
-  );
 
-  // 3 列グリッドでのサマリー挿入位置 — 選択したカードの行末の次
-  const summaryInsertAfterIndex = useMemo(() => {
-    if (selectedIndex < 0) return -1;
-    // 行末 = 3の倍数の境界
-    return Math.ceil((selectedIndex + 1) / 3) * 3 - 1;
-  }, [selectedIndex]);
 
   return (
     <Box sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -641,44 +439,23 @@ export const UserSelectionStep: React.FC<UserSelectionStepProps> = memo(({
             該当する利用者がいません
           </Typography>
         ) : (
-          sortedUsers.map((user, index) => {
+          sortedUsers.map((user) => {
             const userMonitoringCycle = user.LastAssessmentDate
               ? computeMonitoringCycle(new Date(`${user.LastAssessmentDate}T00:00:00`), new Date())
               : null;
             return (
-            <React.Fragment key={user.UserID}>
               <UserCard
+                key={user.UserID}
                 user={user}
                 unfilled={unfilledCountMap?.get(user.UserID)}
                 abcTodayCount={abcSummary.todayCounts.get(user.UserID) ?? 0}
-                isSelected={previewUserId === user.UserID}
+                isSelected={false}
                 hasPlan={planningSheets.has(user.UserID)}
                 monitoringCycle={userMonitoringCycle}
                 onSelect={handleCardClick}
               />
-              {/* サマリーパネル: 選択カードの行末に挿入 */}
-              {previewUser && index === summaryInsertAfterIndex && (
-                <SelectionSummaryPanel
-                  user={previewUser}
-                  abcSummary={abcSummary}
-                  planningSheet={planningSheets.get(previewUser.UserID)}
-                  onProceed={handleProceed}
-                  onDeselect={handleDeselect}
-                />
-              )}
-            </React.Fragment>
-          );
+            );
           })
-        )}
-        {/* 選択カードが最後の行で、行末を超えている場合のフォールバック */}
-        {previewUser && summaryInsertAfterIndex >= sortedUsers.length && (
-          <SelectionSummaryPanel
-            user={previewUser}
-            abcSummary={abcSummary}
-            planningSheet={planningSheets.get(previewUser.UserID)}
-            onProceed={handleProceed}
-            onDeselect={handleDeselect}
-          />
         )}
       </Box>
     </Box>

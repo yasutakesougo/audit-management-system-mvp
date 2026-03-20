@@ -1,3 +1,4 @@
+// contract:allow-interface — Pure domain function types, not API boundary schemas
 /**
  * Schedule Ops Load Score — 負荷スコアと判断支援の純粋関数
  *

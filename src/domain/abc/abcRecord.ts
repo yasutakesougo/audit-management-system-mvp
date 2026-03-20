@@ -21,6 +21,22 @@ export const ABC_INTENSITY_DISPLAY: Record<AbcIntensity, string> = {
 } as const;
 
 // ─────────────────────────────────────────────
+// Source context (どの画面から作成されたか)
+// ─────────────────────────────────────────────
+
+/** ABC 記録の作成元コンテキスト */
+export interface AbcRecordSourceContext {
+  /** 作成元画面 */
+  source: 'daily-support' | 'standalone';
+  /** 支援計画 ID（将来の逆引き用） */
+  planId?: string;
+  /** 時間帯スロットキー (例: "09:00|朝の受け入れ") */
+  slotId?: string;
+  /** 対象日 (YYYY-MM-DD) */
+  date?: string;
+}
+
+// ─────────────────────────────────────────────
 // Entity
 // ─────────────────────────────────────────────
 
@@ -55,6 +71,8 @@ export interface AbcRecord {
   notes: string;
   /** 作成日時 */
   createdAt: string;
+  /** 作成元コンテキスト（daily-support 起源の場合に設定） */
+  sourceContext?: AbcRecordSourceContext;
 }
 
 export type AbcRecordCreateInput = Omit<AbcRecord, 'id' | 'createdAt'>;

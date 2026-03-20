@@ -1,4 +1,4 @@
-import { useCancelToDashboard } from '@/lib/nav/useCancelToDashboard';
+import { useCancelToToday } from '@/lib/nav/useCancelToDashboard';
 import { TESTIDS } from '@/testids';
 import { useCallback, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -18,14 +18,14 @@ type TableDailyRecordViewModel = {
 };
 
 export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
-  const cancelToDashboard = useCancelToDashboard();
+  const cancelToToday = useCancelToToday();
   const repository = useDailyRecordRepository();
   const [open, setOpen] = useState(true);
 
   const navigateBackToMenu = useCallback(() => {
     setOpen(false);
-    cancelToDashboard();
-  }, [cancelToDashboard]);
+    cancelToToday();
+  }, [cancelToToday]);
 
   const handleTableSave = useCallback(async (data: TableDailyRecordPayload) => {
     try {
@@ -42,7 +42,7 @@ export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
   return {
     open,
     title: '一覧形式ケース記録',
-    backTo: '/dashboard',
+    backTo: '/today',
     testId: TESTIDS['daily-table-record-page'],
     onClose: navigateBackToMenu,
     onSave: handleTableSave,
