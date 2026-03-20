@@ -1,7 +1,7 @@
 /**
- * Iceberg PDCA — Form & Item List Section
+ * Iceberg PDCA — Form & Cycle Board Section
  *
- * Contains the PDCA create/edit form, item list with edit/delete actions,
+ * Contains the PDCA create/edit form, 4-column cycle board,
  * delete confirmation dialog, and snackbar notifications.
  * Extracted from IcebergPdcaPage.tsx for maintainability.
  *
@@ -25,14 +25,12 @@ import {
     Snackbar,
     Stack,
     TextField,
-    Tooltip,
     Typography,
 } from '@mui/material';
-import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import * as React from 'react';
 
 import type { IcebergPdcaItem, IcebergPdcaPhase } from './types';
-import { PdcaReverseTraceSection } from './components/PdcaReverseTraceSection';
+import { PdcaCycleBoard } from './components/PdcaCycleBoard';
 
 // ============================================================================
 // Types
@@ -64,6 +62,8 @@ export interface IcebergPdcaFormSectionProps {
   onCloseSnackbar: () => void;
   snapshotWarning: string | null;
   onCloseSnapshotWarning: () => void;
+  /** カードから次フェーズへ進めるコールバック */
+  onAdvancePhase?: (item: IcebergPdcaItem, nextPhase: IcebergPdcaPhase) => void;
   /** ACT フェーズのアイテムから支援計画モニタリングへの導線 */
   onNavigateToMonitoring?: (userId: string) => void;
   /** ディープリンクでハイライトするPDCA ID */
@@ -94,28 +94,13 @@ export function IcebergPdcaFormSection({
   onCloseSnackbar,
   snapshotWarning,
   onCloseSnapshotWarning,
+  onAdvancePhase,
   onNavigateToMonitoring,
   highlightPdcaId,
-  source,
 }: IcebergPdcaFormSectionProps) {
-  // ── Deep link highlight ──
-  const [showHighlight, setShowHighlight] = React.useState(!!highlightPdcaId);
-  const highlightRef = React.useRef<HTMLDivElement | null>(null);
-
-  React.useEffect(() => {
-    if (highlightPdcaId && highlightRef.current) {
-      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [highlightPdcaId, items]);
-
-  React.useEffect(() => {
-    if (!highlightPdcaId) return;
-    setShowHighlight(true);
-    const timer = setTimeout(() => setShowHighlight(false), 4000);
-    return () => clearTimeout(timer);
-  }, [highlightPdcaId]);
   return (
     <Box>
+      {/* ── Create / Edit Form ── */}
       {canWrite && selectedUserId && (
         <Paper sx={{ p: 2, mb: 2 }} variant="outlined" component="form" onSubmit={onSubmit}>
           <Stack spacing={1.5}>
@@ -178,100 +163,19 @@ export function IcebergPdcaFormSection({
         </Paper>
       )}
 
-      <Stack spacing={1.5}>
-        {items.map((item) => {
-          const isHighlighted = showHighlight && item.id === highlightPdcaId;
-          return (
-          <Paper
-            key={item.id}
-            ref={item.id === highlightPdcaId ? highlightRef : undefined}
-            sx={{
-              p: 2,
-              ...(isHighlighted && {
-                borderColor: 'primary.main',
-                borderWidth: 2,
-                bgcolor: 'primary.50',
-                animation: 'highlightPulse 2s ease-in-out',
-                '@keyframes highlightPulse': {
-                  '0%': { boxShadow: '0 0 0 0 rgba(25,118,210,0.4)' },
-                  '50%': { boxShadow: '0 0 0 6px rgba(25,118,210,0.0)' },
-                  '100%': { boxShadow: '0 0 0 0 rgba(25,118,210,0.0)' },
-                },
-              }),
-            }}
-            variant="outlined"
-          >
-            {isHighlighted && source === 'support-planning' && (
-              <Alert
-                severity="info"
-                variant="outlined"
-                sx={{ mb: 1.5, py: 0 }}
-              >
-                📍 支援計画シートから参照されたPDCA項目を表示中
-              </Alert>
-            )}
-            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
-                  {item.title}
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                  Phase: {item.phase} / 更新: {item.updatedAt}
-                </Typography>
-                {item.summary ? (
-                  <Typography variant="body2" sx={{ mt: 0.5 }}>
-                    {item.summary}
-                  </Typography>
-                ) : null}
-                {/* Phase 4-B2: Reverse Trace */}
-                <PdcaReverseTraceSection pdcaItemId={item.id} />
-              </Box>
-              {canWrite && (
-                <Stack direction="row" spacing={1}>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={() => onStartEdit(item)}
-                    disabled={isMutating}
-                  >
-                    編集
-                  </Button>
-                  <Button
-                    size="small"
-                    color="error"
-                    variant="outlined"
-                    onClick={() => onDelete(item)}
-                    disabled={isMutating}
-                  >
-                    削除
-                  </Button>
-                  {item.phase === 'ACT' && onNavigateToMonitoring && item.userId && (
-                    <Tooltip title="この改善内容を支援計画のモニタリングに反映">
-                      <Button
-                        size="small"
-                        color="success"
-                        variant="outlined"
-                        startIcon={<AssignmentTurnedInIcon />}
-                        onClick={() => onNavigateToMonitoring(item.userId)}
-                        data-testid={`pdca-to-monitoring-${item.id}`}
-                      >
-                        支援計画に反映
-                      </Button>
-                    </Tooltip>
-                  )}
-                </Stack>
-              )}
-            </Stack>
-          </Paper>
-          );
-        })}
-        {items.length === 0 && (
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            PDCA項目はまだありません。
-          </Typography>
-        )}
-      </Stack>
+      {/* ── 4-Column Cycle Board ── */}
+      <PdcaCycleBoard
+        items={items}
+        canWrite={canWrite}
+        isMutating={isMutating}
+        onStartEdit={onStartEdit}
+        onDelete={onDelete}
+        onAdvancePhase={onAdvancePhase}
+        onNavigateToMonitoring={onNavigateToMonitoring}
+        highlightPdcaId={highlightPdcaId}
+      />
 
+      {/* ── Delete Confirmation Dialog ── */}
       <Dialog open={Boolean(deleteTarget)} onClose={onCloseDelete} fullWidth maxWidth="xs">
         <DialogTitle>この記録を削除しますか？</DialogTitle>
         <DialogContent>
@@ -302,6 +206,7 @@ export function IcebergPdcaFormSection({
         </DialogActions>
       </Dialog>
 
+      {/* ── Snackbars ── */}
       <Snackbar
         open={Boolean(snackbar)}
         autoHideDuration={4000}

@@ -11,7 +11,9 @@ import { RecordPanel, type RecordPanelLockState } from '@/features/daily/compone
 import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import React, { memo, useCallback } from 'react';
@@ -35,6 +37,8 @@ export type RecordInputStepProps = {
   onSlotChange?: (next: string) => void;
   /** 戻るボタン — Step 2 へ */
   onBack: () => void;
+  /** ABC記録への導線（slotId 付きで遷移） */
+  onAbcRecord?: () => void;
 };
 
 export const RecordInputStep: React.FC<RecordInputStepProps> = memo(({
@@ -47,6 +51,7 @@ export const RecordInputStep: React.FC<RecordInputStepProps> = memo(({
   onAfterSubmit,
   onSlotChange,
   onBack,
+  onAbcRecord,
 }) => {
   // スロット名を表示用に解決 — getScheduleKey フォーマットで照合
   const slotLabel = schedule.find(
@@ -91,6 +96,19 @@ export const RecordInputStep: React.FC<RecordInputStepProps> = memo(({
               {slotLabel.activity}
             </Typography>
           </>
+        )}
+        {/* ── ABC 記録へ ── */}
+        {onAbcRecord && (
+          <Button
+            size="small"
+            variant="outlined"
+            color="warning"
+            startIcon={<AssignmentRoundedIcon />}
+            onClick={onAbcRecord}
+            sx={{ ml: 'auto', flexShrink: 0, fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+          >
+            ABC記録へ
+          </Button>
         )}
       </Box>
 
