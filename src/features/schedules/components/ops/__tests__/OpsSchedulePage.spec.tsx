@@ -68,6 +68,7 @@ const createMockState = (overrides?: Partial<UseScheduleOpsReturn>): UseSchedule
     },
     weeklySummary: [],
     weeklyLoadScores: [],
+    leaveSuggestions: [],
     
     isLoading: false,
     error: null,
