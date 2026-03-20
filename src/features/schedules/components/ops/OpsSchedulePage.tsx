@@ -20,6 +20,7 @@ import { OpsHighLoadWarningBanner } from './OpsHighLoadWarningBanner';
 import { OpsLeaveSuggestionPanel } from './OpsLeaveSuggestionPanel';
 import { OpsListView } from './OpsListView';
 import { OpsScheduleHeader } from './OpsScheduleHeader';
+import { OpsStaffingShortageList } from './OpsStaffingShortageList';
 import { OpsSummaryCards } from './OpsSummaryCards';
 import { OpsWeekBoard } from './OpsWeekBoard';
 
@@ -70,13 +71,19 @@ export const OpsSchedulePage: FC = () => {
         );
       case 'list':
         return (
-          <OpsListView
-            items={opsState.filteredItems}
-            isLoading={opsState.isLoading}
-            error={opsState.error}
-            onRetry={opsState.refetch}
-            onItemClick={opsState.selectItem}
-          />
+          <>
+            <OpsStaffingShortageList
+              warnings={opsState.highLoadWarnings}
+              onDayClick={handleWeekDayClick}
+            />
+            <OpsListView
+              items={opsState.filteredItems}
+              isLoading={opsState.isLoading}
+              error={opsState.error}
+              onRetry={opsState.refetch}
+              onItemClick={opsState.selectItem}
+            />
+          </>
         );
       default: {
         const _exhaustive: never = opsState.viewMode;
