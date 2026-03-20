@@ -257,8 +257,8 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     // 順序: 運用メトリクス → 請求処理 → (以下条件付で追加) 職員勤怠 → 統合カレンダー等 → コンプライアンス監査
     {
       label: '運営スケジュール',
-      to: '/schedule-ops',
-      isActive: (pathname) => pathname.startsWith('/schedule-ops'),
+      to: '/schedules/week?tab=ops',
+      isActive: (pathname) => pathname.startsWith('/schedule') && new URLSearchParams(window.location.search).get('tab') === 'ops',
       icon: undefined,
       audience: NAV_AUDIENCE.staff,
       group: 'ops' as NavGroupKey,

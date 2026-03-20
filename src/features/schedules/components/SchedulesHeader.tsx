@@ -10,7 +10,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import React, { type FocusEventHandler } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-type ViewMode = 'day' | 'week' | 'month' | 'org';
+type ViewMode = 'day' | 'week' | 'month' | 'org' | 'ops' | 'list';
 type ViewModeOption = ViewMode;
 
 type Props = {
@@ -118,7 +118,7 @@ export const SchedulesHeader: React.FC<Props> = ({
     if (value === mode) {
       return;
     }
-    const nextHref = { day: dayHref, week: weekHref, month: monthHref, org: weekHref }[value];
+    const nextHref = { day: dayHref, week: weekHref, month: monthHref, org: weekHref, ops: weekHref, list: weekHref }[value];
     if (!nextHref) return;
     // Append tab parameter to maintain tab state in URL for E2E tests and history tracking
     const urlObj = new URL(nextHref, window.location.origin);
@@ -202,6 +202,22 @@ export const SchedulesHeader: React.FC<Props> = ({
               value="org"
               sx={{ minHeight: tabMinHeight, minWidth: tabMinWidth, px: tabPaddingX }}
               data-testid="schedule-tab-org"
+            />
+          )}
+          {modes.includes('ops') && (
+            <Tab
+              label="運営"
+              value="ops"
+              sx={{ minHeight: tabMinHeight, minWidth: tabMinWidth, px: tabPaddingX }}
+              data-testid="schedule-tab-ops"
+            />
+          )}
+          {modes.includes('list') && (
+            <Tab
+              label="一覧"
+              value="list"
+              sx={{ minHeight: tabMinHeight, minWidth: tabMinWidth, px: tabPaddingX }}
+              data-testid="schedule-tab-list"
             />
           )}
         </Tabs>
