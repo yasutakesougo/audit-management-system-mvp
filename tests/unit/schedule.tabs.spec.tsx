@@ -164,6 +164,23 @@ vi.mock('@/utils/scheduleTz', () => ({
   resolveSchedulesTz: () => 'Asia/Tokyo',
 }));
 
+// ── Mock: useScheduleOps (ops tab integration) ──────────────────────────────
+vi.mock('@/features/schedules/hooks/useScheduleOps', () => ({
+  useScheduleOps: () => ({
+    filter: { searchQuery: '', serviceType: null, staffId: null, hasAttention: false, hasPickup: false, hasBath: false, hasMedication: false, includeCancelled: false },
+    setFilter: vi.fn(),
+    summary: { total: 0, normal: 0, respite: 0, shortStay: 0, cancelled: 0, attention: 0, availableSlots: 0, assignedStaff: 0, requiredStaff: 0 },
+    filteredItems: [],
+    viewMode: 'daily' as const,
+    setViewMode: vi.fn(),
+    selectedItem: null,
+    setSelectedItem: vi.fn(),
+    weekDates: [],
+    weeklySummary: [],
+    leaveSuggestions: [],
+  }),
+}));
+
 const renderWeekPage = () =>
   render(
     <MemoryRouter initialEntries={['/schedule/week']}>

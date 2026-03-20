@@ -66,6 +66,9 @@ export interface CrudDeps {
   setPendingFabFocus: (v: boolean) => void;
   setDialogParams: (params: import('./useWeekPageRouteState').DialogIntentParams) => void;
   clearDialogParams: () => void;
+
+  /** Phase 7-C: Called after successful create with the startLocal of the new schedule */
+  onCreateSuccess?: (startLocal: string) => void;
 }
 
 export interface CrudReturn {
@@ -99,6 +102,7 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
     categoryFilter,    setActiveDateIso, primeRouteReset,
     setPendingFabFocus,
     setDialogParams, clearDialogParams,
+    onCreateSuccess,
   } = deps;
 
   const [viewItem, setViewItem] = useState<SchedItem | null>(null);
@@ -304,6 +308,8 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
             sourceInput: input,
           };
           await create(draft);
+          // Phase 7-C: notify parent of successful create for continuous input
+          onCreateSuccess?.(input.startLocal);
         }
         handleCreateDialogClose();
       } catch (error) {
@@ -316,7 +322,7 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
         throw error;
       }
     },
-    [canEdit, canWrite, create, dialogEventId, dialogMode, showSnack, update],
+    [canEdit, canWrite, create, dialogEventId, dialogMode, showSnack, update, onCreateSuccess],
   );
 
   const handleCreateDialogClose = useCallback(() => {
