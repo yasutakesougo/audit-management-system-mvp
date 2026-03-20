@@ -1,3 +1,4 @@
+// contract:allow-interface — Pure domain function types, not API boundary schemas
 /**
  * Schedule Ops — Pure domain functions for schedule operations view
  *

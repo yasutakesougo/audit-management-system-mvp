@@ -30,7 +30,7 @@ import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 
 // ── Domain ──
-import type { AbcRecord, AbcRecordCreateInput } from '@/domain/abc/abcRecord';
+import type { AbcRecord, AbcRecordCreateInput, AbcRecordSourceContext } from '@/domain/abc/abcRecord';
 import { ABC_INTENSITY_VALUES, ABC_INTENSITY_DISPLAY } from '@/domain/abc/abcRecord';
 import type { AbcIntensity } from '@/domain/abc/abcRecord';
 import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
@@ -45,9 +45,13 @@ interface QuickRecordTabProps {
   onSaved: () => void;
   initialUserId?: string;
   todayRecords: AbcRecord[];
+  /** daily-support 等からの遷移時に保存するコンテキスト */
+  sourceContext?: AbcRecordSourceContext;
+  /** MVP-5: Step 3 からの下書き behavior テキスト */
+  initialBehavior?: string;
 }
 
-const QuickRecordTab: React.FC<QuickRecordTabProps> = ({ users, recorderName, onSaved, initialUserId, todayRecords }) => {
+const QuickRecordTab: React.FC<QuickRecordTabProps> = ({ users, recorderName, onSaved, initialUserId, todayRecords, sourceContext, initialBehavior }) => {
   const navigate = useNavigate();
   const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -62,6 +66,16 @@ const QuickRecordTab: React.FC<QuickRecordTabProps> = ({ users, recorderName, on
       if (found) setSelectedUser(found);
     }
   }, [initialUserId, users, selectedUser]);
+
+  // MVP-5: 下書き behavior を初期値としてセット
+  const [draftApplied, setDraftApplied] = useState(false);
+  useEffect(() => {
+    if (initialBehavior && !draftApplied) {
+      setForm(prev => ({ ...prev, behavior: initialBehavior }));
+      setDraftApplied(true);
+    }
+  }, [initialBehavior, draftApplied]);
+
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const updateField = useCallback(<K extends keyof typeof EMPTY_FORM>(key: K, value: (typeof EMPTY_FORM)[K]) => {
@@ -90,6 +104,7 @@ const QuickRecordTab: React.FC<QuickRecordTabProps> = ({ users, recorderName, on
         recorderName,
         tags: form.tags,
         notes: form.notes.trim(),
+        ...(sourceContext ? { sourceContext } : {}),
       };
       await localAbcRecordRepository.save(input);
       setSaveSuccess(true);
@@ -167,6 +182,11 @@ const QuickRecordTab: React.FC<QuickRecordTabProps> = ({ users, recorderName, on
           <Typography variant="subtitle2" fontWeight={700} color="warning.main">
             🔍 ABC 観察記録
           </Typography>
+          {draftApplied && form.behavior && (
+            <Alert severity="info" variant="outlined" sx={{ py: 0.5 }}>
+              📝 支援手順から行動の下書きが入力されています。内容を確認・編集してください。
+            </Alert>
+          )}
           <TextField
             label="A: 直前の状況（何が起きた？）"
             value={form.antecedent}

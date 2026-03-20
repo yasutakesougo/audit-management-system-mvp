@@ -1,8 +1,10 @@
 import { motionTokens } from '@/app/theme';
+import type { AbcCountBySlot } from '@/domain/abc/buildAbcCountBySlot';
 import type { BehaviorInterventionPlan } from '@/features/analysis/domain/interventionTypes';
 import BipSummaryPopover from '@/features/daily/components/procedure/BipSummaryPopover';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import EditIcon from '@mui/icons-material/Edit';
+import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 import ShieldIcon from '@mui/icons-material/Shield';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -51,6 +53,10 @@ type GuidedProcedurePanelProps = {
   interventionPlans?: BehaviorInterventionPlan[];
   /** 保存済みスロットの観察テキスト (slotKey → 観察文) */
   savedObservations?: Map<string, string>;
+  /** スロット別 ABC 記録件数 (slotId → count) */
+  abcCountBySlot?: AbcCountBySlot;
+  /** ABC バッジクリック時のコールバック (slotId, slotLabel) */
+  onAbcBadgeClick?: (slotId: string, slotLabel: string) => void;
   children?: undefined;
 };
 
@@ -87,6 +93,8 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
     totalCount,
     interventionPlans,
     savedObservations,
+    abcCountBySlot,
+    onAbcBadgeClick,
     children,
   } = isGuided
     ? props
@@ -301,6 +309,36 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
                       sx={{ height: 20, fontSize: '0.65rem', '& .MuiChip-label': { px: 0.5 }, '& .MuiChip-icon': { ml: 0.5 } }}
                     />
                   </Tooltip>
+                )}
+                {/* ABC 件数バッジ (1件以上のみ表示) */}
+                {abcCountBySlot && (abcCountBySlot[stepId] ?? 0) > 0 && (
+                  <Chip
+                    icon={<EditNoteRoundedIcon sx={{ fontSize: 14 }} />}
+                    label={`ABC ${abcCountBySlot[stepId]}`}
+                    size="small"
+                    color="info"
+                    variant="filled"
+                    onPointerDown={onAbcBadgeClick ? (e: React.PointerEvent) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                    } : undefined}
+                    onMouseDown={onAbcBadgeClick ? (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                    } : undefined}
+                    onClick={onAbcBadgeClick ? (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      onAbcBadgeClick(stepId, `${item.time} ${item.activity}`);
+                    } : undefined}
+                    sx={{
+                      height: 22,
+                      fontWeight: 'bold',
+                      fontSize: '0.7rem',
+                      '& .MuiChip-label': { px: 0.6 },
+                      '& .MuiChip-icon': { ml: 0.3 },
+                      ...(onAbcBadgeClick ? { cursor: 'pointer', '&:hover': { bgcolor: 'info.dark', color: 'white' } } : {}),
+                    }}
+                    data-testid={`abc-count-${stepId}`}
+                  />
                 )}
                 {filledStepIds && (() => {
                   const obsText = isFilled ? savedObservations?.get(stepId) : undefined;

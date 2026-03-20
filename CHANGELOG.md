@@ -8,6 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **氷山分析ページ再設計 (Phase 1〜3)**
+  - 3タブ構成へ再設計: 傾向 / 氷山構造 / 改善サイクル
+  - URL同期 (`?tab=trend|iceberg|pdca`) による共有・再訪対応
+  - SVG氷山ビジュアライゼーション: 3層構造（行動・場面・背景）のクリック選択・詳細展開
+  - 層別サマリカード（アイテム数・重み分布・最新更新日）
+  - Kanban形式のPDCAボード: Plan / Do / Check / Act 4列表示
+  - **インラインフェーズ遷移**: カードから直接 Plan→Do→Check→Act へワンクリック進行
+  - フェーズ遷移成功時のスナックバー通知
+  - **停滞フィルタ**: 7日以上未更新のアイテムだけに絞り込むトグルチップ
+  - 停滞件数バッジ表示・空列での「停滞なし」メッセージ分岐
+  - **軽量監査トレース**: フェーズ変更時に `from→to / 時刻 / 変更者` をカード上に表示
+  - MSAL アカウント名による変更者自動取得（SharePointスキーマ変更なし・フロントメモリ上のみ）
+  - インライン遷移・フォーム編集の両方でトレース記録
+  - Tooltipで詳細表示（変更者 + 日時）
+  - KPI再配置: 完了率・リードタイムを改善サイクルタブへ移動
+- **ABC記録 × 支援手順 連動 (MVP-1〜6)**
+  - Step 2 / Step 3 から ABC 記録ページへの双方向ナビゲーション
+  - `sourceContext` (source, slotId, date) を ABC 記録に保存
+  - `buildAbcCountBySlot` 純粋関数によるスロット別 ABC 件数集計
+  - Step 2 のスロット行に `ABC N` 件数バッジ表示
+  - Step 3 → ABC 遷移時に behavior フィールドに下書き自動入力（draft assist）
+  - ドラフトバナーで「下書きです」と明示、一度だけ適用の安全設計
+  - ABCバッジクリック → `AbcSlotDialog` でスロット別ABC記録一覧をダイアログ表示
+  - `filterAbcBySlot` 関数でスロット単位の記録抽出
+  - ダイアログ内カードクリックでABC詳細ページへ遷移
+- **ナビゲーション統一: キャンセル→ /today**
+  - `AttendanceRecordPage`, `TableDailyRecord`, `TimeBasedSupportRecordPage` のキャンセルボタンを `/today` へ統一
+  - `useCancelToToday` フック追加（旧名 deprecated alias 残存）
+
 ### Changed
 - **ナビゲーション再編: 機能別から業務目的別へ移行**
   - サイドバーが目的別（`daily`, `assessment`, `record`, `ops`, `admin`）へ整理されました。
