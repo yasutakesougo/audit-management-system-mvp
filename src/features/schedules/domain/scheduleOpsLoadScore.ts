@@ -73,6 +73,14 @@ export type LeaveSuggestion = {
   readonly reasons: readonly LeaveReason[];
 };
 
+/** 高負荷警告 */
+export type HighLoadWarning = {
+  readonly dateIso: string;
+  readonly score: number;
+  readonly level: Extract<LoadLevel, 'high' | 'critical'>;
+  readonly reasons: readonly LeaveReason[];
+};
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Defaults
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -343,4 +351,92 @@ export function computeDayLoadScore(
     level,
     leaveEligibility,
   };
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// High Load Warnings (Phase 4-A-1)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/**
+ * 高負荷日の警告理由を算出する。
+ * 「なぜこの日が危険か」を優先度順に最大2つ返す。
+ *
+ * 理由の優先度:
+ *   1. 定員超過（isOverCapacity）
+ *   2. 空き枠なし（availableSlots === 0）
+ *   3. 注意対象が多い（attentionCount >= 5）
+ *   4. レスパイトが多い（respiteCount >= 3）
+ *   5. ショートステイが多い（shortStayCount >= 2）
+ *   6. 利用者が非常に多い（totalCount >= 20）
+ *
+ * @param day - 日別集計データ
+ * @param maxReasons - 最大理由数（デフォルト 2）
+ * @returns LeaveReason[]
+ */
+export function computeHighLoadReasons(
+  day: DaySummaryEntry,
+  maxReasons: number = 2,
+): LeaveReason[] {
+  const candidates: LeaveReason[] = [];
+
+  if (day.isOverCapacity) {
+    candidates.push({ key: 'over-capacity', label: '定員超過' });
+  }
+
+  if (day.availableSlots === 0) {
+    candidates.push({ key: 'no-slots', label: '空き枠なし' });
+  }
+
+  if (day.attentionCount >= 5) {
+    candidates.push({ key: 'many-attention', label: `注意対象${day.attentionCount}名` });
+  }
+
+  if (day.respiteCount >= 3) {
+    candidates.push({ key: 'many-respite', label: `レスパイト${day.respiteCount}名` });
+  }
+
+  if (day.shortStayCount >= 2) {
+    candidates.push({ key: 'many-short-stay', label: `ショートステイ${day.shortStayCount}名` });
+  }
+
+  if (day.totalCount >= 20) {
+    candidates.push({ key: 'very-high-total', label: `利用者${day.totalCount}名` });
+  }
+
+  return candidates.slice(0, maxReasons);
+}
+
+/**
+ * 週間の高負荷警告を抽出する。
+ * high / critical な日だけをスコア降順で返す。
+ *
+ * @param loadScores - DayLoadScore[] (computeWeeklyLoadScores の結果)
+ * @param weekSummary - DaySummaryEntry[] (理由算出用)
+ * @returns HighLoadWarning[]
+ */
+export function computeHighLoadWarnings(
+  loadScores: readonly DayLoadScore[],
+  weekSummary?: readonly DaySummaryEntry[],
+): HighLoadWarning[] {
+  const summaryMap = new Map<string, DaySummaryEntry>();
+  if (weekSummary) {
+    for (const s of weekSummary) {
+      summaryMap.set(s.dateIso, s);
+    }
+  }
+
+  return loadScores
+    .filter((d): d is DayLoadScore & { level: 'high' | 'critical' } =>
+      d.level === 'high' || d.level === 'critical'
+    )
+    .sort((a, b) => b.score - a.score) // 危険度が高い順
+    .map((d) => {
+      const summary = summaryMap.get(d.dateIso);
+      return {
+        dateIso: d.dateIso,
+        score: d.score,
+        level: d.level,
+        reasons: summary ? computeHighLoadReasons(summary) : [],
+      };
+    });
 }
