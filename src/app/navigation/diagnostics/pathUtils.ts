@@ -131,6 +131,7 @@ export const ORPHAN_ALLOWLIST_DETAILS: AllowlistRoute[] = [
   { path: '/incidents', category: 'Drilldown', reason: 'インシデント管理（日次記録・ダッシュボードからリンク経由）' },
   { path: '/admin/exception-center', category: 'Admin', reason: '例外センター（管理ツールhubからリンク経由）' },
   { path: '/admin/telemetry', category: 'Admin', reason: 'テレメトリダッシュボード（管理ツールhubからリンク経由）' },
+  { path: '/schedule-ops', category: 'Drilldown', reason: 'スケジュール運用ページ（スケジュール画面からリンク経由）' },
 ].map(item => ({ ...item, path: normalizeRouterPath(item.path) }));
 
 export const ORPHAN_ALLOWLIST = new Set(ORPHAN_ALLOWLIST_DETAILS.map(d => d.path));
