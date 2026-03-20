@@ -187,6 +187,160 @@ const CONFLICTS_BASIC_SEED: WarningSchedItem[] = [
 ];
 
 /**
+ * Ops-daily scenario: 生活介護 + 一時ケア + ショートステイ混在データ
+ * OpsSchedulePage の開発・デモ用
+ */
+const OPS_DAILY_DATE = '2026-03-20';
+
+const OPS_DAILY_SEED: ScheduleItem[] = [
+  {
+    id: 'ops-normal-1',
+    title: '山田太郎の予定',
+    category: 'User',
+    userId: 'USR-001',
+    userName: '山田太郎',
+    start: `${OPS_DAILY_DATE}T09:00:00+09:00`,
+    end: `${OPS_DAILY_DATE}T15:00:00+09:00`,
+    serviceType: 'normal',
+    assignedStaffId: 'STF-001',
+    status: 'Planned',
+    statusReason: null,
+    etag: '"ops-1"',
+    source: 'demo' as const,
+    // Ops extension fields (型は ScheduleItem 上では unknown だが runtime で参照可)
+    ...({
+      assignedStaffName: '佐藤美咲',
+      hasPickup: true,
+      hasMeal: true,
+      hasBath: true,
+      hasMedication: false,
+      hasAttention: true,
+      attentionSummary: '転倒リスク高い。歩行時見守り必須。',
+      opsStatus: 'confirmed',
+    } as Record<string, unknown>),
+  },
+  {
+    id: 'ops-normal-2',
+    title: '鈴木花子の予定',
+    category: 'User',
+    userId: 'USR-002',
+    userName: '鈴木花子',
+    start: `${OPS_DAILY_DATE}T09:30:00+09:00`,
+    end: `${OPS_DAILY_DATE}T15:30:00+09:00`,
+    serviceType: 'normal',
+    assignedStaffId: 'STF-002',
+    status: 'Planned',
+    statusReason: null,
+    etag: '"ops-2"',
+    source: 'demo' as const,
+    ...({
+      assignedStaffName: '田中健一',
+      hasPickup: false,
+      hasMeal: true,
+      hasBath: false,
+      hasMedication: true,
+      hasAttention: false,
+      opsStatus: 'planned',
+    } as Record<string, unknown>),
+  },
+  {
+    id: 'ops-respite-1',
+    title: '田中一郎の予定',
+    category: 'LivingSupport',
+    userId: 'USR-003',
+    userName: '田中一郎',
+    start: `${OPS_DAILY_DATE}T10:00:00+09:00`,
+    end: `${OPS_DAILY_DATE}T16:00:00+09:00`,
+    serviceType: 'respite',
+    assignedStaffId: 'STF-001',
+    status: 'Planned',
+    statusReason: null,
+    etag: '"ops-3"',
+    source: 'demo' as const,
+    ...({
+      assignedStaffName: '佐藤美咲',
+      hasPickup: true,
+      hasMeal: true,
+      hasBath: false,
+      hasMedication: false,
+      hasAttention: true,
+      attentionSummary: '初回利用。環境変化に注意。',
+      medicalNote: 'てんかん既往あり。発作時対応マニュアル確認済み。',
+      opsStatus: 'confirmed',
+    } as Record<string, unknown>),
+  },
+  {
+    id: 'ops-shortstay-1',
+    title: '高橋次郎の予定',
+    category: 'LivingSupport',
+    userId: 'USR-004',
+    userName: '高橋次郎',
+    start: `${OPS_DAILY_DATE}T14:00:00+09:00`,
+    end: '2026-03-21T10:00:00+09:00',
+    serviceType: 'shortStay',
+    assignedStaffId: 'STF-003',
+    status: 'Planned',
+    statusReason: null,
+    etag: '"ops-4"',
+    source: 'demo' as const,
+    ...({
+      assignedStaffName: '伊藤恵',
+      hasPickup: true,
+      hasMeal: true,
+      hasBath: true,
+      hasMedication: true,
+      hasOvernight: true,
+      hasAttention: true,
+      attentionSummary: '夜間帯に不穏あり。宿直者は30分おきに確認。',
+      behavioralNote: '他害傾向あり。他利用者との距離に注意。',
+      handoffSummary: '17時以降は宿直の伊藤が対応。薬は19時に服用。',
+      opsStatus: 'confirmed',
+    } as Record<string, unknown>),
+  },
+  {
+    id: 'ops-cancelled-1',
+    title: '佐藤三郎の予定',
+    category: 'User',
+    userId: 'USR-005',
+    userName: '佐藤三郎',
+    start: `${OPS_DAILY_DATE}T09:00:00+09:00`,
+    end: `${OPS_DAILY_DATE}T15:00:00+09:00`,
+    serviceType: 'normal',
+    status: 'Cancelled',
+    statusReason: '体調不良',
+    etag: '"ops-5"',
+    source: 'demo' as const,
+    ...({
+      opsStatus: 'cancelled',
+    } as Record<string, unknown>),
+  },
+  {
+    id: 'ops-normal-3',
+    title: '中村四郎の予定',
+    category: 'User',
+    userId: 'USR-006',
+    userName: '中村四郎',
+    start: `${OPS_DAILY_DATE}T09:00:00+09:00`,
+    end: `${OPS_DAILY_DATE}T12:00:00+09:00`,
+    serviceType: 'normal',
+    assignedStaffId: 'STF-002',
+    status: 'Planned',
+    statusReason: null,
+    etag: '"ops-6"',
+    source: 'demo' as const,
+    ...({
+      assignedStaffName: '田中健一',
+      hasPickup: false,
+      hasMeal: false,
+      hasBath: false,
+      hasMedication: false,
+      hasAttention: false,
+      opsStatus: 'planned',
+    } as Record<string, unknown>),
+  },
+];
+
+/**
  * Resolve scenario from URL params
  */
 const resolveScenario = (): string | null => {
@@ -206,6 +360,8 @@ const resolveSeedForScenario = (scenario: string | null): ScheduleItem[] | null 
   switch (scenario) {
     case 'conflicts-basic':
       return CONFLICTS_BASIC_SEED;
+    case 'ops-daily':
+      return OPS_DAILY_SEED;
     default:
       return null;
   }
