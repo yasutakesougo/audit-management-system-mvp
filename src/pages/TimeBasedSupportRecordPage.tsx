@@ -1,4 +1,5 @@
 import { buildIcebergPdcaUrl } from '@/app/links/navigationLinks';
+import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import { useInterventionStore } from '@/features/analysis/stores/interventionStore';
 import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
 import { MonitoringCountdown } from '@/features/daily/components/MonitoringCountdown';
@@ -347,7 +348,21 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               lastAssessmentDate={selectedUser?.LastAssessmentDate}
               onAbcRecord={
                 (wizard.wizardUserId || targetUserId)
-                  ? () => navigate(`/abc-record?userId=${encodeURIComponent(wizard.wizardUserId || targetUserId)}&source=daily-support`)
+                  ? () => {
+                      const uid = wizard.wizardUserId || targetUserId;
+                      const params = new URLSearchParams({
+                        userId: uid,
+                        source: 'daily-support',
+                        date: recordDate.toISOString().slice(0, 10),
+                      });
+                      if (wizard.wizardSlotId) {
+                        params.set('slotId', wizard.wizardSlotId);
+                      }
+                      // returnUrl: ABC記録後に支援手順の同じ位置へ戻れるようにする
+                      const returnUrl = `/daily/support?wizard=plan&user=${encodeURIComponent(uid)}&userId=${encodeURIComponent(uid)}`;
+                      params.set('returnUrl', returnUrl);
+                      navigate(`/abc-record?${params.toString()}`);
+                    }
                   : undefined
               }
             />
@@ -364,6 +379,35 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               onSlotChange={handleWizardSelectSlot}
               onAfterSubmit={() => handleWizardAfterSubmit(wizard.wizardSlotId || null)}
               onBack={handleWizardBackToPlan}
+              onAbcRecord={
+                (wizard.wizardUserId || targetUserId)
+                  ? () => {
+                      const uid = wizard.wizardUserId || targetUserId;
+                      const currentSlotId = wizard.wizardSlotId || '';
+                      const params = new URLSearchParams({
+                        userId: uid,
+                        source: 'daily-support',
+                        date: recordDate.toISOString().slice(0, 10),
+                      });
+                      if (currentSlotId) {
+                        params.set('slotId', currentSlotId);
+                      }
+                      // returnUrl: Step 3 の同じスロットへ正確に戻る
+                      const returnUrl = `/daily/support?wizard=record&user=${encodeURIComponent(uid)}&userId=${encodeURIComponent(uid)}&step=${encodeURIComponent(currentSlotId)}`;
+                      params.set('returnUrl', returnUrl);
+
+                      // MVP-5: スロットの活動名を ABC 記録の behavior 下書きとして渡す
+                      const slotItem = schedule.find(s => getScheduleKey(s.time, s.activity) === currentSlotId);
+                      const draftBehavior = slotItem
+                        ? `${slotItem.time} ${slotItem.activity}の時間帯に問題行動あり`
+                        : undefined;
+
+                      navigate(`/abc-record?${params.toString()}`, {
+                        state: { draftBehavior, draftSlotId: currentSlotId },
+                      });
+                    }
+                  : undefined
+              }
             />
           )}
         </Box>

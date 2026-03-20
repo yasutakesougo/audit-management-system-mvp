@@ -10,6 +10,7 @@
  *   ・記録進捗プログレスバー
  */
 import type { AbcRecord } from '@/domain/abc/abcRecord';
+import { buildAbcCountBySlot, type AbcCountBySlot } from '@/domain/abc/buildAbcCountBySlot';
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
 import type { BehaviorInterventionPlan } from '@/features/analysis/domain/interventionTypes';
 import { computeMonitoringCycle } from '@/features/daily/components/MonitoringCountdown';
@@ -71,10 +72,11 @@ export type PlanSelectionStepProps = {
 // ABC 件数カウント（今日）
 // ─────────────────────────────────────────────
 
-function useAbcTodayCount(userId?: string): { todayCount: number; latestDate: string | null } {
-  const [data, setData] = useState<{ todayCount: number; latestDate: string | null }>({
+function useAbcTodayCount(userId?: string): { todayCount: number; latestDate: string | null; abcCountBySlot: AbcCountBySlot } {
+  const [data, setData] = useState<{ todayCount: number; latestDate: string | null; abcCountBySlot: AbcCountBySlot }>({
     todayCount: 0,
     latestDate: null,
+    abcCountBySlot: {},
   });
 
   useEffect(() => {
@@ -91,7 +93,8 @@ function useAbcTodayCount(userId?: string): { todayCount: number; latestDate: st
           if (r.occurredAt.slice(0, 10) === today) count++;
           if (!latest || r.occurredAt > latest) latest = r.occurredAt;
         }
-        if (mounted) setData({ todayCount: count, latestDate: latest });
+        const countBySlot = buildAbcCountBySlot(all, userId, today);
+        if (mounted) setData({ todayCount: count, latestDate: latest, abcCountBySlot: countBySlot });
       } catch {
         // ignore
       }
@@ -154,7 +157,7 @@ const StatusSummaryBar: React.FC<{
   onIcebergAnalysis?: () => void;
   onAbcRecord?: () => void;
 }> = memo(({ userId, lastAssessmentDate, totalCount, unfilledCount, onIcebergAnalysis, onAbcRecord }) => {
-  const abcData = useAbcTodayCount(userId);
+  const { todayCount: abcTodayCount, abcCountBySlot: _unusedSlotCount } = useAbcTodayCount(userId);
   const planStatus = usePlanStatus(userId);
 
   const monitoringCycle: MonitoringCycleResult | null = useMemo(() => {
@@ -224,9 +227,9 @@ const StatusSummaryBar: React.FC<{
         {/* ABC 記録 */}
         <Chip
           icon={<EditNoteRoundedIcon />}
-          label={abcData.todayCount > 0 ? `ABC ${abcData.todayCount}件` : '今日未記録'}
+          label={abcTodayCount > 0 ? `ABC ${abcTodayCount}件` : '今日未記録'}
           size="small"
-          color={abcData.todayCount > 0 ? 'info' : 'default'}
+          color={abcTodayCount > 0 ? 'info' : 'default'}
           variant="outlined"
           sx={{ fontSize: '0.7rem', height: 22 }}
         />
@@ -310,6 +313,9 @@ export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
     onSelectSlot(resolvedId);
   }, [onSelectSlot]);
 
+  // ABC 件数をスロット別に集計
+  const { abcCountBySlot } = useAbcTodayCount(userId);
+
   return (
     <Box sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* ── Header ── */}
@@ -355,6 +361,7 @@ export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
           totalCount={totalCount}
           interventionPlans={interventionPlans}
           savedObservations={savedObservations}
+          abcCountBySlot={abcCountBySlot}
         />
       </Box>
     </Box>

@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **ABC記録 × 支援手順 連動 (MVP-1〜5)**
+  - Step 2 / Step 3 から ABC 記録ページへの双方向ナビゲーション
+  - `sourceContext` (source, slotId, date) を ABC 記録に保存
+  - `buildAbcCountBySlot` 純粋関数によるスロット別 ABC 件数集計
+  - Step 2 のスロット行に `ABC N` 件数バッジ表示
+  - Step 3 → ABC 遷移時に behavior フィールドに下書き自動入力（draft assist）
+  - ドラフトバナーで「下書きです」と明示、一度だけ適用の安全設計
+- **ナビゲーション統一: キャンセル→ /today**
+  - `AttendanceRecordPage`, `TableDailyRecord`, `TimeBasedSupportRecordPage` のキャンセルボタンを `/today` へ統一
+  - `useCancelToToday` フック追加（旧名 deprecated alias 残存）
+
 ### Changed
 - **ナビゲーション再編: 機能別から業務目的別へ移行**
   - サイドバーが目的別（`daily`, `assessment`, `record`, `ops`, `admin`）へ整理されました。
