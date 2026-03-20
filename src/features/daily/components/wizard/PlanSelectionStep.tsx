@@ -10,7 +10,8 @@
  *   ・記録進捗プログレスバー
  */
 import type { AbcRecord } from '@/domain/abc/abcRecord';
-import { buildAbcCountBySlot, type AbcCountBySlot } from '@/domain/abc/buildAbcCountBySlot';
+import { buildAbcCountBySlot, filterAbcBySlot, type AbcCountBySlot } from '@/domain/abc/buildAbcCountBySlot';
+import { AbcSlotDialog } from './AbcSlotDialog';
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
 import type { BehaviorInterventionPlan } from '@/features/analysis/domain/interventionTypes';
 import { computeMonitoringCycle } from '@/features/daily/components/MonitoringCountdown';
@@ -72,11 +73,19 @@ export type PlanSelectionStepProps = {
 // ABC 件数カウント（今日）
 // ─────────────────────────────────────────────
 
-function useAbcTodayCount(userId?: string): { todayCount: number; latestDate: string | null; abcCountBySlot: AbcCountBySlot } {
-  const [data, setData] = useState<{ todayCount: number; latestDate: string | null; abcCountBySlot: AbcCountBySlot }>({
+type AbcTodayData = {
+  todayCount: number;
+  latestDate: string | null;
+  abcCountBySlot: AbcCountBySlot;
+  allRecords: AbcRecord[];
+};
+
+function useAbcTodayCount(userId?: string): AbcTodayData {
+  const [data, setData] = useState<AbcTodayData>({
     todayCount: 0,
     latestDate: null,
     abcCountBySlot: {},
+    allRecords: [],
   });
 
   useEffect(() => {
@@ -94,7 +103,7 @@ function useAbcTodayCount(userId?: string): { todayCount: number; latestDate: st
           if (!latest || r.occurredAt > latest) latest = r.occurredAt;
         }
         const countBySlot = buildAbcCountBySlot(all, userId, today);
-        if (mounted) setData({ todayCount: count, latestDate: latest, abcCountBySlot: countBySlot });
+        if (mounted) setData({ todayCount: count, latestDate: latest, abcCountBySlot: countBySlot, allRecords: all });
       } catch {
         // ignore
       }
@@ -314,7 +323,28 @@ export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
   }, [onSelectSlot]);
 
   // ABC 件数をスロット別に集計
-  const { abcCountBySlot } = useAbcTodayCount(userId);
+  const { abcCountBySlot, allRecords: abcAllRecords } = useAbcTodayCount(userId);
+
+  // ABC スロットダイアログ state
+  const [abcDialogOpen, setAbcDialogOpen] = useState(false);
+  const [abcDialogSlotId, setAbcDialogSlotId] = useState('');
+  const [abcDialogSlotLabel, setAbcDialogSlotLabel] = useState('');
+
+  const handleAbcBadgeClick = useCallback((slotId: string, slotLabel: string) => {
+    setAbcDialogSlotId(slotId);
+    setAbcDialogSlotLabel(slotLabel);
+    setAbcDialogOpen(true);
+  }, []);
+
+  const handleAbcDialogClose = useCallback(() => {
+    setAbcDialogOpen(false);
+  }, []);
+
+  const abcDialogRecords = useMemo(() => {
+    if (!abcDialogOpen || !userId || !abcDialogSlotId) return [];
+    const today = new Date().toISOString().slice(0, 10);
+    return filterAbcBySlot(abcAllRecords, userId, today, abcDialogSlotId);
+  }, [abcDialogOpen, userId, abcDialogSlotId, abcAllRecords]);
 
   return (
     <Box sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -362,8 +392,18 @@ export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
           interventionPlans={interventionPlans}
           savedObservations={savedObservations}
           abcCountBySlot={abcCountBySlot}
+          onAbcBadgeClick={handleAbcBadgeClick}
         />
       </Box>
+
+      {/* ── ABC Slot Dialog ── */}
+      <AbcSlotDialog
+        open={abcDialogOpen}
+        onClose={handleAbcDialogClose}
+        slotLabel={abcDialogSlotLabel}
+        records={abcDialogRecords}
+        userId={userId}
+      />
     </Box>
   );
 });

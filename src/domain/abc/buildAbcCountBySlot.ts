@@ -25,3 +25,26 @@ export function buildAbcCountBySlot(
     return acc;
   }, {});
 }
+
+/**
+ * filterAbcBySlot — 特定スロットの ABC レコードを抽出
+ *
+ * userId + date + slotId + source=daily-support で絞り込み。
+ * 新しい順（occurredAt 降順）で返す。
+ */
+export function filterAbcBySlot(
+  records: AbcRecord[],
+  userId: string,
+  date: string,
+  slotId: string,
+): AbcRecord[] {
+  return records
+    .filter(r => {
+      if (r.userId !== userId) return false;
+      if (r.sourceContext?.source !== 'daily-support') return false;
+      if (r.sourceContext?.date !== date) return false;
+      if (r.sourceContext?.slotId !== slotId) return false;
+      return true;
+    })
+    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+}

@@ -55,6 +55,8 @@ type GuidedProcedurePanelProps = {
   savedObservations?: Map<string, string>;
   /** スロット別 ABC 記録件数 (slotId → count) */
   abcCountBySlot?: AbcCountBySlot;
+  /** ABC バッジクリック時のコールバック (slotId, slotLabel) */
+  onAbcBadgeClick?: (slotId: string, slotLabel: string) => void;
   children?: undefined;
 };
 
@@ -92,6 +94,7 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
     interventionPlans,
     savedObservations,
     abcCountBySlot,
+    onAbcBadgeClick,
     children,
   } = isGuided
     ? props
@@ -315,12 +318,24 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
                     size="small"
                     color="info"
                     variant="filled"
+                    onPointerDown={onAbcBadgeClick ? (e: React.PointerEvent) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                    } : undefined}
+                    onMouseDown={onAbcBadgeClick ? (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                    } : undefined}
+                    onClick={onAbcBadgeClick ? (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      onAbcBadgeClick(stepId, `${item.time} ${item.activity}`);
+                    } : undefined}
                     sx={{
                       height: 22,
                       fontWeight: 'bold',
                       fontSize: '0.7rem',
                       '& .MuiChip-label': { px: 0.6 },
                       '& .MuiChip-icon': { ml: 0.3 },
+                      ...(onAbcBadgeClick ? { cursor: 'pointer', '&:hover': { bgcolor: 'info.dark', color: 'white' } } : {}),
                     }}
                     data-testid={`abc-count-${stepId}`}
                   />
