@@ -101,7 +101,10 @@ export default function SupportPlanningSheetPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const userIdFromQuery = searchParams.get('userId');
-  const [activeTab, setActiveTab] = React.useState<SheetTabKey>('overview');
+  const tabFromQuery = searchParams.get('tab') as SheetTabKey | null;
+  const validTabs: SheetTabKey[] = ['overview', 'intake', 'assessment', 'planning', 'regulatory'];
+  const initialTab = tabFromQuery && validTabs.includes(tabFromQuery) ? tabFromQuery : 'overview';
+  const [activeTab, setActiveTab] = React.useState<SheetTabKey>(initialTab);
   const [isEditing, setIsEditing] = React.useState(false);
   const [toast, setToast] = React.useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false, message: '', severity: 'success',
@@ -593,7 +596,7 @@ export default function SupportPlanningSheetPage() {
                   strategyUsageLoading={strategyUsageLoading}
                 />
               ) : (
-                <PlanningDesignSection sheet={sheet} evidenceLinks={evidenceLinks} onEvidenceClick={handleEvidenceClick} />
+                <PlanningDesignSection sheet={sheet} evidenceLinks={evidenceLinks} onEvidenceClick={handleEvidenceClick} strategyUsage={strategyUsage} strategyUsageLoading={strategyUsageLoading} />
               )}
             </Box>
           </TabPanel>

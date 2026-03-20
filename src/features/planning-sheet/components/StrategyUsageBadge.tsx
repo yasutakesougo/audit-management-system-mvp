@@ -216,6 +216,9 @@ export const StrategyUsageOverview: React.FC<StrategyUsageOverviewProps> = ({
       <Typography variant="caption" color="text.secondary">
         計{summary.totalApplications}回 ・ {summary.recordsWithStrategies}件の記録
       </Typography>
+      <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.65rem', ml: 'auto' }}>
+        ※日常支援記録の実施データ
+      </Typography>
     </Box>
   );
 };

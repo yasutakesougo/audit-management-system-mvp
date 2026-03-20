@@ -320,7 +320,7 @@ export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
   const linkedStrategies = useLinkedStrategies(userId);
 
   const handleNavigateToSheet = useCallback((sheetId: string) => {
-    navigate(`/support-planning-sheet/${sheetId}`);
+    navigate(`/support-planning-sheet/${sheetId}?tab=planning`);
   }, [navigate]);
   // Plan 項目タップ時に onSelectSlot を呼ぶ
   const handleStepSelect = useCallback((step: ScheduleItem | string, _stepId?: string) => {
