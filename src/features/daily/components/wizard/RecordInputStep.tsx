@@ -25,7 +25,8 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
-import React, { memo, useCallback, useState } from 'react';
+import { useDefaultStrategies } from '@/features/daily/hooks/useDefaultStrategies';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 export type RecordInputStepProps = {
   /** 選択ユーザー名 */
@@ -85,8 +86,20 @@ export const RecordInputStep: React.FC<RecordInputStepProps> = memo(({
   // ── 参照戦略の取得 ──
   const linkedStrategies = useLinkedStrategies(userId);
 
+  // ── 直近記録からの初期選択 (Step B) ──
+  const { defaultKeys, sourceLabel, resolved } = useDefaultStrategies(userId);
+
   // ── 実施済み戦略の選択状態 (Phase C) ──
   const [appliedStrategies, setAppliedStrategies] = useState<AppliedStrategies>(new Set());
+  const initialAppliedRef = useRef(false);
+
+  // resolved 時に初期値を適用（1回のみ、ユーザーが未操作の場合）
+  useEffect(() => {
+    if (resolved && defaultKeys.size > 0 && !initialAppliedRef.current) {
+      initialAppliedRef.current = true;
+      setAppliedStrategies(defaultKeys);
+    }
+  }, [resolved, defaultKeys]);
 
   const handleToggleStrategy = useCallback((key: StrategyChipKey) => {
     setAppliedStrategies(prev => {
@@ -115,6 +128,7 @@ export const RecordInputStep: React.FC<RecordInputStepProps> = memo(({
       });
       // リセット（次のスロット入力のため）
       setAppliedStrategies(new Set());
+      initialAppliedRef.current = false; // 次スロットで再度初期適用を許可
     },
     [appliedStrategies, onSubmit],
   );
@@ -172,6 +186,26 @@ export const RecordInputStep: React.FC<RecordInputStepProps> = memo(({
           </Button>
         )}
       </Box>
+
+      {/* ── 由来ラベル (Step B) ── */}
+      {sourceLabel && appliedStrategies.size > 0 && (
+        <Box
+          sx={{
+            px: 1.5,
+            pt: 0.5,
+            pb: 0,
+            bgcolor: 'grey.50',
+          }}
+        >
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontSize: '0.65rem', fontStyle: 'italic' }}
+          >
+            💡 {sourceLabel}
+          </Typography>
+        </Box>
+      )}
 
       {/* ── Strategy chips (Phase B+C: toggleable) ── */}
       <StrategyChipBar
