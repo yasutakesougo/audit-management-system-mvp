@@ -17,6 +17,8 @@ import {
   assessLeaveEligibility,
   classifyLoadLevel,
   computeDayLoadScore,
+  computeHighLoadReasons,
+  computeHighLoadWarnings,
   computeLeaveReasons,
   computeLoadScore,
   computeWeeklyLoadScores,
@@ -438,5 +440,150 @@ describe('suggestBestLeaveDays with weekSummary', () => {
     const suggestions = suggestBestLeaveDays(scores);
 
     expect(suggestions[0]!.reasons).toEqual([]);
+  });
+});
+
+// ============================================================================
+// computeHighLoadReasons (Phase 4-A-1)
+// ============================================================================
+
+describe('computeHighLoadReasons', () => {
+  it('定員超過日 → over-capacity', () => {
+    const day = makeDaySummary({ totalCount: 30, availableSlots: 0, isOverCapacity: true });
+    const reasons = computeHighLoadReasons(day);
+
+    expect(reasons[0]!.key).toBe('over-capacity');
+    expect(reasons[0]!.label).toBe('定員超過');
+  });
+
+  it('空き枠なし → no-slots', () => {
+    const day = makeDaySummary({ totalCount: 20, availableSlots: 0 });
+    const reasons = computeHighLoadReasons(day);
+
+    expect(reasons.some((r) => r.key === 'no-slots')).toBe(true);
+  });
+
+  it('注意対象5名以上 → many-attention', () => {
+    const day = makeDaySummary({ totalCount: 20, attentionCount: 5, availableSlots: 5 });
+    const reasons = computeHighLoadReasons(day);
+
+    expect(reasons.some((r) => r.key === 'many-attention')).toBe(true);
+    expect(reasons.find((r) => r.key === 'many-attention')!.label).toBe('注意対象5名');
+  });
+
+  it('レスパイト3名以上 → many-respite', () => {
+    const day = makeDaySummary({ totalCount: 20, respiteCount: 3, availableSlots: 5 });
+    const reasons = computeHighLoadReasons(day);
+
+    expect(reasons.some((r) => r.key === 'many-respite')).toBe(true);
+  });
+
+  it('ショートステイ2名以上 → many-short-stay', () => {
+    const day = makeDaySummary({ totalCount: 20, shortStayCount: 2, availableSlots: 5 });
+    const reasons = computeHighLoadReasons(day);
+
+    expect(reasons.some((r) => r.key === 'many-short-stay')).toBe(true);
+  });
+
+  it('利用者20名以上 → very-high-total', () => {
+    const day = makeDaySummary({ totalCount: 22, availableSlots: 3 });
+    const reasons = computeHighLoadReasons(day);
+
+    expect(reasons.some((r) => r.key === 'very-high-total')).toBe(true);
+    expect(reasons.find((r) => r.key === 'very-high-total')!.label).toBe('利用者22名');
+  });
+
+  it('maxReasons=1 で1つだけ返す', () => {
+    const day = makeDaySummary({ totalCount: 30, availableSlots: 0, isOverCapacity: true, attentionCount: 8 });
+    const reasons = computeHighLoadReasons(day, 1);
+
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0]!.key).toBe('over-capacity');
+  });
+
+  it('優先度順: over-capacity > no-slots > many-attention', () => {
+    const day = makeDaySummary({
+      totalCount: 30, availableSlots: 0, isOverCapacity: true, attentionCount: 6,
+    });
+    const reasons = computeHighLoadReasons(day);
+
+    expect(reasons[0]!.key).toBe('over-capacity');
+    expect(reasons[1]!.key).toBe('no-slots');
+  });
+
+  it('該当理由なし → 空配列', () => {
+    const day = makeDaySummary({ totalCount: 10, availableSlots: 15 });
+    const reasons = computeHighLoadReasons(day);
+
+    expect(reasons).toHaveLength(0);
+  });
+});
+
+// ============================================================================
+// computeHighLoadWarnings (Phase 4-A-1)
+// ============================================================================
+
+describe('computeHighLoadWarnings', () => {
+  it('high/critical のみ抽出される', () => {
+    const week = [
+      makeDaySummary({ dateIso: '2026-03-16', totalCount: 3, availableSlots: 22 }),       // low
+      makeDaySummary({ dateIso: '2026-03-17', totalCount: 15, availableSlots: 8 }),       // moderate
+      makeDaySummary({ dateIso: '2026-03-18', totalCount: 25, respiteCount: 3, shortStayCount: 2, attentionCount: 5, availableSlots: 0 }), // critical
+    ];
+    const scores = computeWeeklyLoadScores(week);
+    const warnings = computeHighLoadWarnings(scores, week);
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]!.dateIso).toBe('2026-03-18');
+    expect(warnings[0]!.level).toBe('critical');
+  });
+
+  it('スコア降順でソートされる', () => {
+    const week = [
+      makeDaySummary({ dateIso: '2026-03-16', totalCount: 22, attentionCount: 4, availableSlots: 2 }),  // high (score ~28)
+      makeDaySummary({ dateIso: '2026-03-17', totalCount: 30, respiteCount: 3, shortStayCount: 2, attentionCount: 6, availableSlots: 0, isOverCapacity: true }),  // critical (score ~54)
+    ];
+    const scores = computeWeeklyLoadScores(week);
+    const warnings = computeHighLoadWarnings(scores, week);
+
+    expect(warnings).toHaveLength(2);
+    expect(warnings[0]!.dateIso).toBe('2026-03-17'); // より高いスコアが先
+    expect(warnings[0]!.score).toBeGreaterThan(warnings[1]!.score);
+  });
+
+  it('weekSummary ありで reasons が含まれる', () => {
+    const week = [
+      makeDaySummary({ dateIso: '2026-03-18', totalCount: 30, availableSlots: 0, isOverCapacity: true }),
+    ];
+    const scores = computeWeeklyLoadScores(week);
+    const warnings = computeHighLoadWarnings(scores, week);
+
+    expect(warnings[0]!.reasons.length).toBeGreaterThan(0);
+    expect(warnings[0]!.reasons[0]!.key).toBe('over-capacity');
+  });
+
+  it('weekSummary なしでも動作する（reasons は空配列）', () => {
+    const week = [
+      makeDaySummary({ dateIso: '2026-03-18', totalCount: 30, availableSlots: 0, isOverCapacity: true }),
+    ];
+    const scores = computeWeeklyLoadScores(week);
+    const warnings = computeHighLoadWarnings(scores);
+
+    expect(warnings[0]!.reasons).toEqual([]);
+  });
+
+  it('全日 low/moderate → 空配列', () => {
+    const week = [
+      makeDaySummary({ dateIso: '2026-03-16', totalCount: 3, availableSlots: 22 }),
+      makeDaySummary({ dateIso: '2026-03-17', totalCount: 15, availableSlots: 8 }),
+    ];
+    const scores = computeWeeklyLoadScores(week);
+    const warnings = computeHighLoadWarnings(scores, week);
+
+    expect(warnings).toHaveLength(0);
+  });
+
+  it('空配列 → 空配列', () => {
+    expect(computeHighLoadWarnings([])).toEqual([]);
   });
 });

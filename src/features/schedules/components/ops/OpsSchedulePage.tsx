@@ -16,6 +16,7 @@ import { useScheduleOps } from '../../hooks/useScheduleOps';
 import { OpsDailyTable } from './OpsDailyTable';
 import { OpsDetailDrawer } from './OpsDetailDrawer';
 import { OpsFilterBar } from './OpsFilterBar';
+import { OpsHighLoadWarningBanner } from './OpsHighLoadWarningBanner';
 import { OpsLeaveSuggestionPanel } from './OpsLeaveSuggestionPanel';
 import { OpsListView } from './OpsListView';
 import { OpsScheduleHeader } from './OpsScheduleHeader';
@@ -53,6 +54,10 @@ export const OpsSchedulePage: FC = () => {
           <>
             <OpsLeaveSuggestionPanel
               suggestions={opsState.leaveSuggestions}
+              onDayClick={handleWeekDayClick}
+            />
+            <OpsHighLoadWarningBanner
+              warnings={opsState.highLoadWarnings}
               onDayClick={handleWeekDayClick}
             />
             <OpsWeekBoard
