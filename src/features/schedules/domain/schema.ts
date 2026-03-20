@@ -22,7 +22,7 @@ export const ScheduleStatusSchema = z.enum(['Planned', 'Postponed', 'Cancelled']
 
 // ScheduleServiceType allows known values + arbitrary strings
 export const ScheduleServiceTypeSchema = z.union([
-  z.enum(['absence', 'late', 'earlyLeave']),
+  z.enum(['absence', 'late', 'earlyLeave', 'preAbsence']),
   z.string(),
 ]);
 

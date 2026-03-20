@@ -13,7 +13,7 @@ export type ScheduleVisibility = 'org' | 'team' | 'private';
 export type ScheduleCategory = 'User' | 'Staff' | 'Org' | 'LivingSupport';
 export type ScheduleSource = 'sharepoint' | 'graph' | 'demo';
 export type ScheduleStatus = 'Planned' | 'Postponed' | 'Cancelled';
-export type ScheduleServiceType = 'absence' | 'late' | 'earlyLeave' | string;
+export type ScheduleServiceType = 'absence' | 'late' | 'earlyLeave' | 'preAbsence' | string;
 
 // ─── Derived item types (SSOT = schema.ts) ──────────────────────────────────
 

@@ -32,11 +32,13 @@ import { getWindowFlag } from '@/env';
 import { CTA_EVENTS, recordCtaClick } from '@/features/today/telemetry/recordCtaClick';
 
 import type { TodayBentoProps } from '../layouts/TodayBentoLayout';
+import type { UserCompactListProps } from '../widgets/UserCompactList';
 import type { ProgressChipKey } from '../widgets/ProgressStatusBar';
 import type { NextActionWithProgress } from './useNextAction';
 import type { SceneNextActionViewModel } from './useSceneNextAction';
 import type { UseTransportStatusReturn } from '../transport';
 import type { UserAlert } from '../domain/buildUserAlerts';
+import type { UserStatusRecord } from '@/features/schedules/domain/userStatus';
 
 // ── Input Types ──
 
@@ -79,6 +81,10 @@ export type TodayLayoutPropsInput = {
   scheduleDetailHref: string;
   /** 利用者ごとの直近注意点（useUserAlerts の出力） */
   alertsByUser?: Map<string, UserAlert[]>;
+  /** Phase 8-A: 利用者状態ダイアログを開くコールバック */
+  onOpenUserStatus?: UserCompactListProps['onOpenUserStatus'];
+  /** Phase 8-A: 当日の利用者状態レコード一覧 */
+  userStatusRecords?: UserStatusRecord[];
 };
 
 // ── Return Type ──
@@ -98,6 +104,8 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
     role,
     scheduleDetailHref,
     alertsByUser,
+    onOpenUserStatus,
+    userStatusRecords,
   } = input;
 
   return useMemo(() => {
@@ -148,6 +156,24 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
     const sortedUserItems = [...userItems].sort((a, b) => {
       if (a.recordFilled === b.recordFilled) return 0;
       return a.recordFilled ? 1 : -1;
+    });
+
+    // Phase 8-A: Merge user status badges into user items
+    const statusMap = new Map<string, UserStatusRecord>();
+    for (const record of (userStatusRecords ?? [])) {
+      statusMap.set(record.userId, record);
+    }
+    const userItemsWithStatus = sortedUserItems.map((item) => {
+      const statusRecord = statusMap.get(item.userId);
+      if (!statusRecord) return item;
+      return {
+        ...item,
+        userStatusType: statusRecord.statusType,
+        // If status is absence/preAbsence, reflect in existing status field too
+        status: (statusRecord.statusType === 'absence' || statusRecord.statusType === 'preAbsence')
+          ? 'absent' as const
+          : item.status,
+      };
     });
 
     // ── Assemble Props ──
@@ -270,7 +296,7 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
               { userId: 'I022', name: '中村 裕樹', status: 'present' as const, recordFilled: false },
               { userId: 'I105', name: '山田 花子', status: 'present' as const, recordFilled: true },
             ]
-          : sortedUserItems,
+          : userItemsWithStatus,
         onOpenQuickRecord: quickRecord.openUser,
         onOpenISP: (userId: string) => navigate(`/isp-editor/${userId}`),
         onOpenIceberg: (userId: string) => navigate(buildIcebergPdcaUrl(userId)),
@@ -285,6 +311,7 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
           });
           navigate(targetUrl);
         },
+        onOpenUserStatus,
         onEmptyAction: () => navigate('/schedules'),
       },
       nextActionEmptyAction: () => {
@@ -321,5 +348,5 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
         navigate(href);
       },
     };
-  }, [summary, nextAction, sceneAction, transport, quickRecord.openUnfilled, quickRecord.openUser, navigate, role, scheduleDetailHref, alertsByUser]);
+  }, [summary, nextAction, sceneAction, transport, quickRecord.openUnfilled, quickRecord.openUser, navigate, role, scheduleDetailHref, alertsByUser, onOpenUserStatus, userStatusRecords]);
 }
