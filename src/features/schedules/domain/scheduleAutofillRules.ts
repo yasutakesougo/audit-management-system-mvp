@@ -1,3 +1,4 @@
+// contract:allow-interface — Pure autofill domain types, not API boundary schemas
 /**
  * scheduleAutofillRules.ts
  *
