@@ -588,6 +588,30 @@ describe('computeHighLoadReasons', () => {
     expect(reasons[1]!.key).toBe('no-slots');
   });
 
+  it('既存有休1件以上 → staff-on-leave', () => {
+    const day = makeDaySummary({ totalCount: 20, existingLeaveCount: 3, availableSlots: 5 });
+    const reasons = computeHighLoadReasons(day);
+
+    expect(reasons.some((r) => r.key === 'staff-on-leave')).toBe(true);
+    expect(reasons.find((r) => r.key === 'staff-on-leave')!.label).toBe('既存有休 3件');
+  });
+
+  it('欠席対応1件以上 → absence-handling', () => {
+    const day = makeDaySummary({ totalCount: 20, absenceCount: 2, availableSlots: 5 });
+    const reasons = computeHighLoadReasons(day);
+
+    expect(reasons.some((r) => r.key === 'absence-handling')).toBe(true);
+    expect(reasons.find((r) => r.key === 'absence-handling')!.label).toBe('欠席対応 2件');
+  });
+
+  it('遅刻対応1件以上 → late-handling', () => {
+    const day = makeDaySummary({ totalCount: 20, lateCount: 1, availableSlots: 5 });
+    const reasons = computeHighLoadReasons(day);
+
+    expect(reasons.some((r) => r.key === 'late-handling')).toBe(true);
+    expect(reasons.find((r) => r.key === 'late-handling')!.label).toBe('遅刻対応 1件');
+  });
+
   it('該当理由なし → 空配列', () => {
     const day = makeDaySummary({ totalCount: 10, availableSlots: 15 });
     const reasons = computeHighLoadReasons(day);

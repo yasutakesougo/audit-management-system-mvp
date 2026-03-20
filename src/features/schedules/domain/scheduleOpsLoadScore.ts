@@ -380,10 +380,13 @@ export function computeDayLoadScore(
  * 理由の優先度:
  *   1. 定員超過（isOverCapacity）
  *   2. 空き枠なし（availableSlots === 0）
- *   3. 注意対象が多い（attentionCount >= 5）
- *   4. レスパイトが多い（respiteCount >= 3）
- *   5. ショートステイが多い（shortStayCount >= 2）
- *   6. 利用者が非常に多い（totalCount >= 20）
+ *   3. 既存有休あり（existingLeaveCount >= 1）
+ *   4. 欠席対応あり（absenceCount >= 1）
+ *   5. 遅刻対応あり（lateCount >= 1）
+ *   6. 注意対象が多い（attentionCount >= 5）
+ *   7. レスパイトが多い（respiteCount >= 3）
+ *   8. ショートステイが多い（shortStayCount >= 2）
+ *   9. 利用者が非常に多い（totalCount >= 20）
  *
  * @param day - 日別集計データ
  * @param maxReasons - 最大理由数（デフォルト 2）
@@ -401,6 +404,18 @@ export function computeHighLoadReasons(
 
   if (day.availableSlots === 0) {
     candidates.push({ key: 'no-slots', label: '空き枠なし' });
+  }
+
+  if ((day.existingLeaveCount ?? 0) >= 1) {
+    candidates.push({ key: 'staff-on-leave', label: `既存有休 ${day.existingLeaveCount}件` });
+  }
+
+  if (day.absenceCount >= 1) {
+    candidates.push({ key: 'absence-handling', label: `欠席対応 ${day.absenceCount}件` });
+  }
+
+  if (day.lateCount >= 1) {
+    candidates.push({ key: 'late-handling', label: `遅刻対応 ${day.lateCount}件` });
   }
 
   if (day.attentionCount >= 5) {
