@@ -85,6 +85,7 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Fab from '@mui/material/Fab';
 import { useTagAnalytics, TagAnalyticsSection, presetToDateRange, type PeriodPreset } from '@/features/tag-analytics';
+import { useStrategyUsageCounts } from '@/features/planning-sheet/hooks/useStrategyUsageCounts';
 
 // ── Local (split) ──
 import { type SheetTabKey, TAB_SECTIONS, TabPanel } from './support-planning-sheet/types';
@@ -148,6 +149,9 @@ export default function SupportPlanningSheetPage() {
 
   // ── Iceberg Evidence（ADR-006 準拠: useIcebergEvidence 経由） ──
   const { data: icebergEvidence } = useIcebergEvidence(sheet?.userId ?? null);
+
+  // ── Phase C-3a: 戦略実施回数集計 ──
+  const { summary: strategyUsage, loading: strategyUsageLoading } = useStrategyUsageCounts(sheet?.userId);
 
   // ── ABC/PDCA データ取得（根拠選択用） ──
   React.useEffect(() => {
@@ -585,6 +589,8 @@ export default function SupportPlanningSheetPage() {
                   evidenceLinks={evidenceLinks}
                   onEvidenceLinksChange={setEvidenceLinks}
                   onEvidenceClick={handleEvidenceClick}
+                  strategyUsage={strategyUsage}
+                  strategyUsageLoading={strategyUsageLoading}
                 />
               ) : (
                 <PlanningDesignSection sheet={sheet} evidenceLinks={evidenceLinks} onEvidenceClick={handleEvidenceClick} />

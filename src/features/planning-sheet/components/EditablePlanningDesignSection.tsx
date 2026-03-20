@@ -9,6 +9,8 @@
  */
 import type { PlanningDesign, ProcedureStep } from '@/domain/isp/schema';
 import type { EvidenceLinkMap, StrategyEvidenceKey, EvidenceLink, EvidenceLinkType } from '@/domain/isp/evidenceLink';
+import type { StrategyUsageSummary } from '@/domain/isp/aggregateStrategyUsage';
+import type { StrategyCategory } from '@/domain/behavior';
 import type { AbcRecord } from '@/domain/abc/abcRecord';
 import type { IcebergPdcaItem } from '@/features/ibd/analysis/pdca/types';
 import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded';
@@ -27,6 +29,7 @@ import type React from 'react';
 import { useCallback, useState } from 'react';
 import { ImportTemplateDialog } from './ImportTemplateDialog';
 import { EvidenceLinkSelector } from './EvidenceLinkSelector';
+import { StrategyItemBadge, CategoryUsageSummary, StrategyUsageOverview } from './StrategyUsageBadge';
 
 interface Props {
   planning: PlanningDesign;
@@ -41,6 +44,10 @@ interface Props {
   onEvidenceLinksChange?: (updated: EvidenceLinkMap) => void;
   /** 根拠チップクリック時のコールバック（遷移導線用） */
   onEvidenceClick?: (type: EvidenceLinkType, referenceId: string) => void;
+  /** 戦略実施回数の集計結果（Phase C-3a） */
+  strategyUsage?: StrategyUsageSummary | null;
+  /** 戦略実施回数の読み込み中フラグ */
+  strategyUsageLoading?: boolean;
 }
 
 // ── ChipInput（再利用） ──
@@ -49,7 +56,11 @@ const ChipInput: React.FC<{
   items: string[];
   onChange: (items: string[]) => void;
   placeholder?: string;
-}> = ({ label, items, onChange: onChangeItems, placeholder }) => {
+  /** Phase C-3a: 戦略カテゴリ（実施回数表示用） */
+  strategyCategory?: StrategyCategory;
+  /** Phase C-3a: 集計結果 */
+  strategyUsage?: StrategyUsageSummary | null;
+}> = ({ label, items, onChange: onChangeItems, placeholder, strategyCategory, strategyUsage }) => {
   const handleAdd = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== 'Enter') return;
     const input = e.target as HTMLInputElement;
@@ -67,16 +78,30 @@ const ChipInput: React.FC<{
 
   return (
     <Stack spacing={0.5}>
-      <TextField
-        label={label}
-        size="small"
-        placeholder={placeholder ?? 'Enter で追加'}
-        onKeyDown={handleAdd}
-        fullWidth
-      />
+      <Stack direction="row" alignItems="center" spacing={1}>
+        <TextField
+          label={label}
+          size="small"
+          placeholder={placeholder ?? 'Enter で追加'}
+          onKeyDown={handleAdd}
+          fullWidth
+        />
+        {strategyCategory && strategyUsage && (
+          <CategoryUsageSummary category={strategyCategory} summary={strategyUsage} />
+        )}
+      </Stack>
       <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
         {items.map((item, i) => (
-          <Chip key={i} size="small" label={item} onDelete={() => handleDelete(i)} />
+          <Box key={i} sx={{ display: 'inline-flex', alignItems: 'center' }}>
+            <Chip size="small" label={item} onDelete={() => handleDelete(i)} />
+            {strategyCategory && strategyUsage && (
+              <StrategyItemBadge
+                text={item}
+                category={strategyCategory}
+                summary={strategyUsage}
+              />
+            )}
+          </Box>
         ))}
       </Stack>
     </Stack>
@@ -91,6 +116,8 @@ export const EditablePlanningDesignSection: React.FC<Props> = ({
   evidenceLinks,
   onEvidenceLinksChange,
   onEvidenceClick,
+  strategyUsage,
+  strategyUsageLoading,
 }) => {
   const hasEvidence = abcRecords.length > 0 || pdcaItems.length > 0;
 
@@ -124,6 +151,9 @@ export const EditablePlanningDesignSection: React.FC<Props> = ({
     <Stack spacing={3}>
       <Typography variant="subtitle1" fontWeight={600}>支援設計</Typography>
 
+      {/* ── Phase C-3a: 実施状況オーバービュー ── */}
+      <StrategyUsageOverview summary={strategyUsage ?? null} loading={strategyUsageLoading} />
+
       {/* ── 戦略チップ群 + 根拠紐づけ ── */}
       <ChipInput
         label="支援課題の優先順位"
@@ -137,6 +167,8 @@ export const EditablePlanningDesignSection: React.FC<Props> = ({
         items={planning.antecedentStrategies}
         onChange={(items) => onChange({ ...planning, antecedentStrategies: items })}
         placeholder="例: スケジュール提示、環境構造化"
+        strategyCategory="antecedent"
+        strategyUsage={strategyUsage}
       />
       {hasEvidence && evidenceLinks && (
         <EvidenceLinkSelector
@@ -154,6 +186,8 @@ export const EditablePlanningDesignSection: React.FC<Props> = ({
         items={planning.teachingStrategies}
         onChange={(items) => onChange({ ...planning, teachingStrategies: items })}
         placeholder="例: モデリング、タスク分析"
+        strategyCategory="teaching"
+        strategyUsage={strategyUsage}
       />
       {hasEvidence && evidenceLinks && (
         <EvidenceLinkSelector
@@ -171,6 +205,8 @@ export const EditablePlanningDesignSection: React.FC<Props> = ({
         items={planning.consequenceStrategies}
         onChange={(items) => onChange({ ...planning, consequenceStrategies: items })}
         placeholder="例: 正の強化、代替行動の強化"
+        strategyCategory="consequence"
+        strategyUsage={strategyUsage}
       />
       {hasEvidence && evidenceLinks && (
         <EvidenceLinkSelector
