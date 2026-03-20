@@ -8,7 +8,9 @@ export type {
     BehaviorIntensity,
     BehaviorMood,
     BehaviorOutcome,
-    ObservationMaster
+    ObservationMaster,
+    ReferencedStrategy,
+    StrategyCategory,
 } from './abc';
 
 export {

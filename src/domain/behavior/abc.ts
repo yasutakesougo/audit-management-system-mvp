@@ -83,6 +83,27 @@ export interface ABCRecord {
   userMood?: BehaviorMood;
   /** フォローアップメモ */
   followUpNote?: string;
+
+  // ── 参照戦略（Phase C: 計画→記録の還流） ──
+  /** 記録時に実施した計画戦略 */
+  referencedStrategies?: ReferencedStrategy[];
+}
+
+// ---------------------------------------------------------------------------
+// 参照戦略の記録（Phase C）
+// ---------------------------------------------------------------------------
+
+/** 計画シートの戦略カテゴリ */
+export type StrategyCategory = 'antecedent' | 'teaching' | 'consequence';
+
+/** 日次記録保存時に「実施した戦略」を記録するための型 */
+export interface ReferencedStrategy {
+  /** 戦略カテゴリ */
+  strategyKey: StrategyCategory;
+  /** 戦略テキスト（スナップショット。計画変更後もその時点の文言を残す） */
+  strategyText: string;
+  /** 実施したかどうか */
+  applied: boolean;
 }
 
 // ---------------------------------------------------------------------------
