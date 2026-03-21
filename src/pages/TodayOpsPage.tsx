@@ -233,7 +233,15 @@ export const TodayOpsPage: React.FC = () => {
           valueText: `${recordCompleted}/${recordTotal}`,
           progress: recordPct,
           status: recordPct >= 100 ? 'complete' : recordPct >= 50 ? 'in_progress' : 'attention',
-          onClick: () => onChipClick?.('record'),
+          onClick: () => {
+            recordCtaClick({
+              ctaId: CTA_EVENTS.PROGRESS_RING_RECORDS,
+              sourceComponent: 'ProgressRings',
+              stateType: 'navigation',
+              userRole: role,
+            });
+            onChipClick?.('record');
+          },
         },
         {
           key: 'caseRecords',
@@ -258,7 +266,15 @@ export const TodayOpsPage: React.FC = () => {
           valueText: `${attPresent}/${attScheduled}`,
           progress: attPct,
           status: attPct >= 100 ? 'complete' : attPct >= 50 ? 'in_progress' : 'attention',
-          onClick: () => onChipClick?.('attendance'),
+          onClick: () => {
+            recordCtaClick({
+              ctaId: CTA_EVENTS.PROGRESS_RING_ATTENDANCE,
+              sourceComponent: 'ProgressRings',
+              stateType: 'navigation',
+              userRole: role,
+            });
+            onChipClick?.('attendance');
+          },
         },
         {
           key: 'contacts',
