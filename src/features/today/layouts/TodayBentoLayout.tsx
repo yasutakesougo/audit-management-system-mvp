@@ -57,6 +57,8 @@ import { ActionQueueCard, type ActionQueueCardProps } from '../widgets/ActionQue
 import { ActionQueueTimelineWidget, type ActionQueueTimelineWidgetProps } from '../widgets/ActionQueueTimelineWidget';
 import { TodayPhaseIndicator } from '../widgets/TodayPhaseIndicator';
 import { CallLogSummaryCard, type CallLogSummaryCardProps } from '@/features/callLogs/components/CallLogSummaryCard';
+import { ScheduleOpsHighLoadTile } from '../widgets/ScheduleOpsHighLoadTile';
+import type { HighLoadTileViewModel } from '../domain/buildHighLoadTileViewModel';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -101,6 +103,11 @@ export type TodayBentoProps = {
   handoffPanel?: React.ReactNode;
   /** 電話・連絡ログ要約カード (undefined 時は非表示) */
   callLogSummary?: CallLogSummaryCardProps;
+  /** 高負荷日タイル (undefined または visible:false 時は非表示) */
+  highLoadTile?: {
+    viewModel: HighLoadTileViewModel;
+    onClick: () => void;
+  };
 };
 
 // ─── Compact Section Title ───────────────────────────────────
@@ -154,6 +161,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   users,
   handoffPanel,
   callLogSummary,
+  highLoadTile,
 }) => {
   return (
     <Box
@@ -266,6 +274,20 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
               <AttendanceSummaryCard {...attendance} />
             </BentoCard>
           </>
+        )}
+
+        {/* ── 高負荷日警告タイル (Schedule Ops 連携) ── */}
+        {highLoadTile?.viewModel.visible && (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            variant="default"
+            testId="bento-high-load-tile"
+          >
+            <ScheduleOpsHighLoadTile
+              viewModel={highLoadTile.viewModel}
+              onClick={highLoadTile.onClick}
+            />
+          </BentoCard>
         )}
 
         {/* ════════════════════════════════════════════════════
