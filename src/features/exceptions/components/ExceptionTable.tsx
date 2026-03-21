@@ -33,6 +33,10 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import ViewListIcon from '@mui/icons-material/ViewList';
+import PersonIcon from '@mui/icons-material/Person';
 
 // ── Domain ──
 import { EmptyStateAction } from '@/components/ui/EmptyStateAction';
@@ -211,6 +215,7 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
   const [internalCategoryFilter, setInternalCategoryFilter] = useState<ExceptionCategory | 'all'>('all');
   const [internalSeverityFilter, setInternalSeverityFilter] = useState<ExceptionSeverity | 'all'>('all');
   const [sortOrder, setSortOrder] = useState<ExceptionTableSortOrder>('severity');
+  const [displayMode, setDisplayMode] = useState<'flat' | 'grouped'>('flat');
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     {},
   );
@@ -236,39 +241,37 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
       return true;
     });
 
-    // 2. Corrective-action だけ利用者単位に集約
-    const correctiveItems = filtered.filter(
-      (item) => item.category === 'corrective-action',
-    );
-    const nonCorrectiveRows: ExceptionDisplayRow[] = filtered
-      .filter((item) => item.category !== 'corrective-action')
-      .map((item) => ({
+    // 2. 表示モードに応じた行の生成
+    let nonGroupedRows: ExceptionDisplayRow[] = [];
+    let groupedRows: ExceptionDisplayRow[] = [];
+
+    if (displayMode === 'flat') {
+      nonGroupedRows = filtered.map((item) => ({
         kind: 'item',
         item,
         sortDate: getExceptionSortDate(item),
         sortSeverity: item.severity,
       }));
+    } else {
+      groupedRows = groupExceptionsByUser(filtered, 'all').map((group) => {
+        const sortedItems = [...group.items].sort((a, b) => {
+          const severityDiff = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
+          if (severityDiff !== 0) return severityDiff;
+          return getExceptionSortDate(b) - getExceptionSortDate(a);
+        });
+        const representative = sortedItems[0] ?? group.items[0];
 
-    const correctiveRows: ExceptionDisplayRow[] = groupExceptionsByUser(
-      correctiveItems,
-    ).map((group) => {
-      const sortedItems = [...group.items].sort((a, b) => {
-        const severityDiff = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
-        if (severityDiff !== 0) return severityDiff;
-        return getExceptionSortDate(b) - getExceptionSortDate(a);
+        return {
+          kind: 'corrective-group',
+          group: { ...group, items: sortedItems },
+          representative,
+          sortDate: getExceptionSortDate(representative),
+          sortSeverity: group.highestSeverity,
+        };
       });
-      const representative = sortedItems[0] ?? group.items[0];
+    }
 
-      return {
-        kind: 'corrective-group',
-        group: { ...group, items: sortedItems },
-        representative,
-        sortDate: getExceptionSortDate(representative),
-        sortSeverity: group.highestSeverity,
-      };
-    });
-
-    const rows = [...nonCorrectiveRows, ...correctiveRows];
+    const rows = [...nonGroupedRows, ...groupedRows];
 
     // 3. Sort
     return rows.sort((a, b) => {
@@ -288,7 +291,7 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
       }
       return 0;
     });
-  }, [items, categoryFilter, severityFilter, sortOrder]);
+  }, [items, categoryFilter, severityFilter, sortOrder, displayMode]);
 
   const toggleGroup = (groupId: string) => {
     setExpandedGroups((prev) => ({
@@ -314,9 +317,26 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
         </Typography>
       </Stack>
 
-      {/* Filters */}
+      {/* Filters & Toggles */}
       {showFilters && items.length > 0 && (
-        <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+        <Stack direction="row" spacing={2} sx={{ mb: 2, flexWrap: 'wrap', gap: 1 }}>
+          <ToggleButtonGroup
+            value={displayMode}
+            exclusive
+            onChange={(_, v) => { if (v) setDisplayMode(v as 'flat' | 'grouped'); }}
+            size="small"
+            color="primary"
+          >
+            <ToggleButton value="flat" data-testid="exception-mode-flat">
+              <ViewListIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              フラット一覧
+            </ToggleButton>
+            <ToggleButton value="grouped" data-testid="exception-mode-grouped">
+              <PersonIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
+              利用者単位
+            </ToggleButton>
+          </ToggleButtonGroup>
+
           <FormControl size="small" sx={{ minWidth: 140 }}>
             <InputLabel>カテゴリ</InputLabel>
             <Select
@@ -470,12 +490,13 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
                 }
 
                 const { group, representative } = row;
-                const catMeta = EXCEPTION_CATEGORIES['corrective-action'];
+                const catMeta = EXCEPTION_CATEGORIES[representative.category];
                 const sevConfig = SEVERITY_CONFIG[representative.severity];
                 const isExpanded = expandedGroups[group.userId] ?? false;
                 const canExpand = group.items.length > 1;
-                const userName = group.userName ?? representative.targetUser ?? '—';
+                const userName = group.userName ?? representative.targetUser ?? (group.userId === '__unknown__' ? '共通・その他' : '—');
                 const canOpenUser = group.userId !== '__unknown__';
+                const groupTitle = group.userId === '__unknown__' ? `共通・その他の例外 (${group.count}件)` : `${userName} の例外 (${group.count}件)`;
 
                 return (
                   <React.Fragment key={`group-${group.userId}`}>
@@ -505,7 +526,7 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {userName} の改善提案 ({group.count}件)
+                          {groupTitle}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                           {representative.description}
@@ -547,7 +568,7 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
                               onClick={() => toggleGroup(group.userId)}
                               data-testid={`exception-group-toggle-${group.userId}`}
                             >
-                              {isExpanded ? '個別提案を隠す' : '個別提案を表示'} ({group.count})
+                              {isExpanded ? '個別例外を隠す' : '個別例外を表示'} ({group.count})
                             </Button>
                           )}
                         </Stack>
