@@ -10,7 +10,7 @@ import type { SupportStepTemplate } from '@/domain/support/step-templates';
 // Types
 // ---------------------------------------------------------------------------
 
-export type TabValue = 'plan' | 'records';
+export type TabValue = 'plan' | 'records' | 'pdca';
 
 export interface ScheduleSlot {
   id: string;

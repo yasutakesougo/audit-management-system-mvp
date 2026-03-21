@@ -15,6 +15,7 @@
  */
 
 import type { WorkflowPhase } from './workflowPhase';
+import type { PdcaCycleState } from '@/domain/isp/types';
 
 // ─────────────────────────────────────────────
 // Types
@@ -30,6 +31,24 @@ export type BannerContext =
 /** バナーのトーン */
 export type BannerTone = 'info' | 'success' | 'warning' | 'danger';
 
+/** 補助アラートの優先度 */
+export type NextStepAlertPriority = 'p0' | 'p1' | 'p2';
+
+/**
+ * バナー内補助アラート
+ *
+ * 位置づけ:
+ * - 既存 CTA を上書きしない補助レイヤー
+ * - 既存の title / description / cta は維持し、alerts のみ追加する
+ * - priority は P0/P1/P2 で段階判定する
+ */
+export interface NextStepAlert {
+  type: Extract<BannerTone, 'warning' | 'danger'>;
+  message: string;
+  action: string;
+  priority: NextStepAlertPriority;
+}
+
 /** バナー判定の入力 */
 export interface ResolveNextStepInput {
   /** 利用者の現在のワークフローフェーズ */
@@ -44,6 +63,8 @@ export interface ResolveNextStepInput {
   hasMonitoringSignals?: boolean;
   /** 再評価結果が未反映か */
   hasUnappliedReassessment?: boolean;
+  /** PDCA サイクル状態（ある場合のみ補助判定に使用） */
+  pdcaCycleState?: PdcaCycleState | null;
 }
 
 /** バナー判定結果（UIモデル） */
@@ -60,6 +81,8 @@ export interface NextStepBannerModel {
   href: string;
   /** 非表示にするか */
   hidden: boolean;
+  /** 補助アラート（optional PDCA 拡張） */
+  alerts: NextStepAlert[];
 }
 
 // ─────────────────────────────────────────────
@@ -73,7 +96,192 @@ const HIDDEN_BANNER: NextStepBannerModel = {
   ctaLabel: '',
   href: '',
   hidden: true,
+  alerts: [],
 };
+
+function toHealthScorePercent(score: number): number {
+  if (!Number.isFinite(score)) return 100;
+  return score <= 1 ? score * 100 : score;
+}
+
+function toDateOnly(value: string | Date | null | undefined): string | null {
+  if (!value) return null;
+
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    return value.toISOString().slice(0, 10);
+  }
+
+  const normalized = value.trim().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return null;
+  return normalized;
+}
+
+function toEpochDay(dateOnly: string): number | null {
+  const ts = Date.parse(`${dateOnly}T00:00:00Z`);
+  if (Number.isNaN(ts)) return null;
+  return Math.floor(ts / 86_400_000);
+}
+
+function getDaysSince(startDate: string | null | undefined, referenceDate: string): number | null {
+  const start = toDateOnly(startDate);
+  const startEpochDay = start ? toEpochDay(start) : null;
+  const referenceEpochDay = toEpochDay(referenceDate);
+  if (startEpochDay === null || referenceEpochDay === null) return null;
+
+  return Math.max(0, referenceEpochDay - startEpochDay);
+}
+
+export function normalizeHealthScore(score: number): number {
+  const percent = toHealthScorePercent(score);
+  return Math.max(0, Math.min(100, percent));
+}
+
+export function resolveCheckPriority(daysSince: number): NextStepAlertPriority {
+  if (daysSince >= 14) return 'p0';
+  if (daysSince >= 7) return 'p1';
+  return 'p2';
+}
+
+export function resolveActPriority(daysSince: number): NextStepAlertPriority {
+  if (daysSince >= 14) return 'p0';
+  if (daysSince >= 7) return 'p1';
+  return 'p2';
+}
+
+export function resolveHealthPriority(scorePercent: number): NextStepAlertPriority | null {
+  if (scorePercent < 20) return 'p0';
+  if (scorePercent < 40) return 'p1';
+  if (scorePercent < 60) return 'p2';
+  return null;
+}
+
+function resolveReferenceDate(now: string | Date | undefined, fallback: string): string {
+  return toDateOnly(now) ?? toDateOnly(fallback) ?? new Date().toISOString().slice(0, 10);
+}
+
+const ALERT_PRIORITY_ORDER: Record<NextStepAlertPriority, number> = {
+  p0: 0,
+  p1: 1,
+  p2: 2,
+};
+
+function sortAlertsByPriority(alerts: NextStepAlert[]): NextStepAlert[] {
+  return [...alerts].sort(
+    (a, b) => ALERT_PRIORITY_ORDER[a.priority] - ALERT_PRIORITY_ORDER[b.priority],
+  );
+}
+
+function alertTypeFromPriority(priority: NextStepAlertPriority): NextStepAlert['type'] {
+  return priority === 'p0' ? 'danger' : 'warning';
+}
+
+function checkMessageByPriority(priority: NextStepAlertPriority): string {
+  switch (priority) {
+    case 'p0':
+      return 'モニタリング長期未実施';
+    case 'p1':
+      return 'モニタリング未実施';
+    case 'p2':
+      return 'モニタリング確認推奨';
+    default: {
+      const _exhaustive: never = priority;
+      return _exhaustive;
+    }
+  }
+}
+
+function actMessageByPriority(priority: NextStepAlertPriority): string {
+  switch (priority) {
+    case 'p0':
+      return '再評価長期未実施';
+    case 'p1':
+      return '再評価未実施';
+    case 'p2':
+      return '再評価確認推奨';
+    default: {
+      const _exhaustive: never = priority;
+      return _exhaustive;
+    }
+  }
+}
+
+function healthMessageByPriority(priority: NextStepAlertPriority): string {
+  switch (priority) {
+    case 'p0':
+      return '支援状態が危険域';
+    case 'p1':
+      return '支援状態に注意';
+    case 'p2':
+      return '支援状態を確認';
+    default: {
+      const _exhaustive: never = priority;
+      return _exhaustive;
+    }
+  }
+}
+
+function resolveCheckStartDate(state: PdcaCycleState): string | null {
+  return state.phaseCompletions.do ?? state.phaseCompletions.plan ?? state.computedAt;
+}
+
+function resolveActStartDate(state: PdcaCycleState): string | null {
+  return state.phaseCompletions.check ?? state.phaseCompletions.do ?? state.computedAt;
+}
+
+/**
+ * PDCA 状態から補助アラートを生成する（純関数）
+ *
+ * - 既存の phase/context 分岐は変更せず、末尾合流で追加する
+ * - healthScore は 0.0–1.0 / 0–100 どちらでも受ける
+ * - now を渡すと、日数判定の基準日をテストで固定できる
+ */
+export function buildPdcaAlerts(
+  state?: PdcaCycleState | null,
+  now?: string | Date,
+): NextStepAlert[] {
+  if (!state) return [];
+
+  const referenceDate = resolveReferenceDate(now, state.computedAt);
+  const alerts: NextStepAlert[] = [];
+
+  if (state.currentPhase === 'check') {
+    const daysSinceCheckStart =
+      getDaysSince(resolveCheckStartDate(state), referenceDate) ?? 0;
+    const priority = resolveCheckPriority(daysSinceCheckStart);
+
+    alerts.push({
+      type: alertTypeFromPriority(priority),
+      message: checkMessageByPriority(priority),
+      action: 'モニタリングへ',
+      priority,
+    });
+  }
+
+  if (state.currentPhase === 'act') {
+    const daysSinceActStart = getDaysSince(resolveActStartDate(state), referenceDate) ?? 0;
+    const priority = resolveActPriority(daysSinceActStart);
+
+    alerts.push({
+      type: alertTypeFromPriority(priority),
+      message: actMessageByPriority(priority),
+      action: '再評価入力へ',
+      priority,
+    });
+  }
+
+  const healthPriority = resolveHealthPriority(normalizeHealthScore(state.healthScore));
+  if (healthPriority) {
+    alerts.push({
+      type: alertTypeFromPriority(healthPriority),
+      message: healthMessageByPriority(healthPriority),
+      action: 'PDCA確認',
+      priority: healthPriority,
+    });
+  }
+
+  return sortAlertsByPriority(alerts);
+}
 
 // ─────────────────────────────────────────────
 // Context-specific resolvers
@@ -91,6 +299,7 @@ function resolveOverview(input: ResolveNextStepInput): NextStepBannerModel {
         ctaLabel: 'モニタリングを実施',
         href: `/support-planning-sheet/${planningSheetId}?tab=monitoring`,
         hidden: false,
+        alerts: [],
       };
 
     case 'needs_reassessment':
@@ -101,6 +310,7 @@ function resolveOverview(input: ResolveNextStepInput): NextStepBannerModel {
         ctaLabel: '再評価を確認',
         href: `/support-planning-sheet/${planningSheetId}?tab=reassessment`,
         hidden: false,
+        alerts: [],
       };
 
     case 'needs_monitoring':
@@ -111,6 +321,7 @@ function resolveOverview(input: ResolveNextStepInput): NextStepBannerModel {
         ctaLabel: 'モニタリングを確認',
         href: `/support-planning-sheet/${planningSheetId}?tab=monitoring`,
         hidden: false,
+        alerts: [],
       };
 
     case 'needs_plan':
@@ -121,6 +332,7 @@ function resolveOverview(input: ResolveNextStepInput): NextStepBannerModel {
         ctaLabel: '支援設計を続ける',
         href: `/support-planning-sheet/${planningSheetId}?tab=planning`,
         hidden: false,
+        alerts: [],
       };
 
     case 'active_plan':
@@ -134,6 +346,7 @@ function resolveOverview(input: ResolveNextStepInput): NextStepBannerModel {
         ctaLabel: '計画シートを新規作成',
         href: '/support-planning-sheet/new',
         hidden: false,
+        alerts: [],
       };
 
     default:
@@ -152,6 +365,7 @@ function resolveMonitoring(input: ResolveNextStepInput): NextStepBannerModel {
       ctaLabel: '再評価に反映',
       href: `/support-planning-sheet/${planningSheetId}?tab=reassessment`,
       hidden: false,
+      alerts: [],
     };
   }
 
@@ -162,6 +376,7 @@ function resolveMonitoring(input: ResolveNextStepInput): NextStepBannerModel {
     ctaLabel: '再評価を確認',
     href: `/support-planning-sheet/${planningSheetId}?tab=reassessment`,
     hidden: false,
+    alerts: [],
   };
 }
 
@@ -176,6 +391,7 @@ function resolveReassessment(input: ResolveNextStepInput): NextStepBannerModel {
       ctaLabel: '計画を更新',
       href: `/support-planning-sheet/${planningSheetId}?tab=planning`,
       hidden: false,
+      alerts: [],
     };
   }
 
@@ -186,6 +402,7 @@ function resolveReassessment(input: ResolveNextStepInput): NextStepBannerModel {
     ctaLabel: '反映内容を確認',
     href: `/support-planning-sheet/${planningSheetId}?tab=monitoring`,
     hidden: false,
+    alerts: [],
   };
 }
 
@@ -200,6 +417,7 @@ function resolvePlanning(input: ResolveNextStepInput): NextStepBannerModel {
       ctaLabel: '手順を追加',
       href: '', // 同じ画面なので遷移なし
       hidden: false,
+      alerts: [],
     };
   }
 
@@ -211,6 +429,7 @@ function resolvePlanning(input: ResolveNextStepInput): NextStepBannerModel {
     ctaLabel: 'Dailyで確認',
     href: `/daily/support?userId=${userId}`,
     hidden: false,
+    alerts: [],
   };
 }
 
@@ -227,16 +446,25 @@ function resolvePlanning(input: ResolveNextStepInput): NextStepBannerModel {
 export function resolveNextStepBanner(
   input: ResolveNextStepInput,
 ): NextStepBannerModel {
-  switch (input.context) {
-    case 'overview':
-      return resolveOverview(input);
-    case 'monitoring':
-      return resolveMonitoring(input);
-    case 'reassessment':
-      return resolveReassessment(input);
-    case 'planning':
-      return resolvePlanning(input);
-    default:
-      return HIDDEN_BANNER;
-  }
+  const existingBanner: NextStepBannerModel = (() => {
+    switch (input.context) {
+      case 'overview':
+        return resolveOverview(input);
+      case 'monitoring':
+        return resolveMonitoring(input);
+      case 'reassessment':
+        return resolveReassessment(input);
+      case 'planning':
+        return resolvePlanning(input);
+      default:
+        return HIDDEN_BANNER;
+    }
+  })();
+
+  const pdcaAlerts = buildPdcaAlerts(input.pdcaCycleState);
+
+  return {
+    ...existingBanner,
+    alerts: [...existingBanner.alerts, ...pdcaAlerts],
+  };
 }

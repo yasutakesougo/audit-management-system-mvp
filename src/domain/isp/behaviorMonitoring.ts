@@ -121,7 +121,12 @@ export interface BehaviorMonitoringRecord {
 import type { MonitoringMeetingRecord } from './monitoringMeeting';
 
 /**
- * ISPモニタリング会議記録を行動モニタリング記録に変換する（暫定 adapter）。
+ * @deprecated 制度上、ISPモニタリングと支援計画シート再評価（行動モニタリング）は混同してはならないため、この型変換は原則非推奨です。
+ *
+ * ISPモニタリング会議記録（第1層）から行動モニタリング記録（第2層）への暫定変換用 adapter です。
+ * 現在は UI が統合されているための暫定措置であり、
+ * 将来的に「行動モニタリング直接入力 UI」および「ルーティング分離」が実装された段階で本関数は削除されます。
+ * （監査対応上、この同一視変換ルートが正式な運用とみなされることは避ける必要があります）
  *
  * goalEvaluations → supportEvaluations に変換する際、
  * 達成度を行動支援文脈に読み替える。

@@ -10,9 +10,11 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
+  buildPdcaAlerts,
   resolveNextStepBanner,
   type ResolveNextStepInput,
 } from '../nextStepBanner';
+import type { PdcaCycleState } from '@/domain/isp/types';
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -27,6 +29,32 @@ function makeInput(overrides: Partial<ResolveNextStepInput> = {}): ResolveNextSt
     hasMonitoringSignals: false,
     hasUnappliedReassessment: false,
     ...overrides,
+  };
+}
+
+function makePdcaState(overrides: Partial<PdcaCycleState> = {}): PdcaCycleState {
+  const basePhaseCompletions: PdcaCycleState['phaseCompletions'] = {
+    plan: '2026-03-01',
+    do: '2026-03-01',
+    check: null,
+    act: null,
+  };
+
+  const { phaseCompletions, ...rest } = overrides;
+
+  return {
+    userId: 'u-1',
+    planningSheetId: 'ps-1',
+    currentPhase: 'check',
+    cycleNumber: 1,
+    healthScore: 0.9,
+    healthScoreBreakdown: [],
+    computedAt: '2026-03-10',
+    ...rest,
+    phaseCompletions: {
+      ...basePhaseCompletions,
+      ...(phaseCompletions ?? {}),
+    },
   };
 }
 
@@ -95,6 +123,20 @@ describe('resolveNextStepBanner — overview', () => {
     );
 
     expect(result.hidden).toBe(true);
+  });
+
+  it('pdcaCycleState 未指定でも従来どおり（alerts は空）', () => {
+    const result = resolveNextStepBanner(
+      makeInput({
+        phase: 'needs_monitoring',
+        context: 'overview',
+      }),
+    );
+
+    expect(result.hidden).toBe(false);
+    expect(result.tone).toBe('warning');
+    expect(result.ctaLabel).toBe('モニタリングを確認');
+    expect(result.alerts).toEqual([]);
   });
 });
 
@@ -251,5 +293,192 @@ describe('resolveNextStepBanner — ルール', () => {
     );
 
     expect(result.hidden).toBe(true);
+  });
+});
+
+describe('resolveNextStepBanner — PDCA alerts', () => {
+  it('check phase + 3日 → p2', () => {
+    const alerts = buildPdcaAlerts(
+      makePdcaState({
+        currentPhase: 'check',
+        phaseCompletions: { do: '2026-03-07' },
+      }),
+      '2026-03-10',
+    );
+
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toMatchObject({
+      message: 'モニタリング確認推奨',
+      action: 'モニタリングへ',
+      priority: 'p2',
+    });
+  });
+
+  it('check phase + 8日 → p1', () => {
+    const alerts = buildPdcaAlerts(
+      makePdcaState({
+        currentPhase: 'check',
+        phaseCompletions: { do: '2026-03-02' },
+      }),
+      '2026-03-10',
+    );
+
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toMatchObject({
+      message: 'モニタリング未実施',
+      priority: 'p1',
+    });
+  });
+
+  it('check phase + 15日 → p0', () => {
+    const alerts = buildPdcaAlerts(
+      makePdcaState({
+        currentPhase: 'check',
+        phaseCompletions: { do: '2026-02-23' },
+      }),
+      '2026-03-10',
+    );
+
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toMatchObject({
+      message: 'モニタリング長期未実施',
+      priority: 'p0',
+      type: 'danger',
+    });
+  });
+
+  it('act phase + 3日 → p2', () => {
+    const alerts = buildPdcaAlerts(
+      makePdcaState({
+        currentPhase: 'act',
+        phaseCompletions: { check: '2026-03-07' },
+      }),
+      '2026-03-10',
+    );
+
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toMatchObject({
+      message: '再評価確認推奨',
+      action: '再評価入力へ',
+      priority: 'p2',
+    });
+  });
+
+  it('act phase + 8日 → p1', () => {
+    const alerts = buildPdcaAlerts(
+      makePdcaState({
+        currentPhase: 'act',
+        phaseCompletions: { check: '2026-03-02' },
+      }),
+      '2026-03-10',
+    );
+
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toMatchObject({
+      message: '再評価未実施',
+      priority: 'p1',
+    });
+  });
+
+  it('act phase + 15日 → p0', () => {
+    const alerts = buildPdcaAlerts(
+      makePdcaState({
+        currentPhase: 'act',
+        phaseCompletions: { check: '2026-02-23' },
+      }),
+      '2026-03-10',
+    );
+
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toMatchObject({
+      message: '再評価長期未実施',
+      priority: 'p0',
+      type: 'danger',
+    });
+  });
+
+  it('healthScore 0.55 → p2', () => {
+    const alerts = buildPdcaAlerts(
+      makePdcaState({
+        currentPhase: 'do',
+        healthScore: 0.55,
+      }),
+      '2026-03-10',
+    );
+
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toMatchObject({
+      message: '支援状態を確認',
+      priority: 'p2',
+      action: 'PDCA確認',
+    });
+  });
+
+  it('healthScore 0.35 → p1', () => {
+    const alerts = buildPdcaAlerts(
+      makePdcaState({
+        currentPhase: 'do',
+        healthScore: 0.35,
+      }),
+      '2026-03-10',
+    );
+
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toMatchObject({
+      message: '支援状態に注意',
+      priority: 'p1',
+    });
+  });
+
+  it('healthScore 0.15 → p0', () => {
+    const alerts = buildPdcaAlerts(
+      makePdcaState({
+        currentPhase: 'do',
+        healthScore: 0.15,
+      }),
+      '2026-03-10',
+    );
+
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toMatchObject({
+      message: '支援状態が危険域',
+      priority: 'p0',
+      type: 'danger',
+    });
+  });
+
+  it('既存バナー内容を壊さず、PDCA alerts のみ追加する', () => {
+    const result = resolveNextStepBanner(
+      makeInput({
+        phase: 'monitoring_overdue',
+        context: 'overview',
+        pdcaCycleState: makePdcaState({
+          currentPhase: 'check',
+          phaseCompletions: { do: '2026-02-20' },
+        }),
+      }),
+    );
+
+    expect(result.tone).toBe('danger');
+    expect(result.title).toBe('モニタリング期限を過ぎています');
+    expect(result.description).toBe('速やかにモニタリングを実施してください。');
+    expect(result.ctaLabel).toBe('モニタリングを実施');
+    expect(result.href).toContain('tab=monitoring');
+    expect(result.alerts).toHaveLength(1);
+    expect(result.alerts[0].message).toBe('モニタリング長期未実施');
+    expect(result.alerts[0].priority).toBe('p0');
+  });
+
+  it('複数 alert は priority 順（p0→p1→p2）に整列', () => {
+    const alerts = buildPdcaAlerts(
+      makePdcaState({
+        currentPhase: 'check',
+        phaseCompletions: { do: '2026-02-20' }, // check は p0
+        healthScore: 0.35, // health は p1
+      }),
+      '2026-03-10',
+    );
+
+    expect(alerts.map((a) => a.priority)).toEqual(['p0', 'p1']);
   });
 });
