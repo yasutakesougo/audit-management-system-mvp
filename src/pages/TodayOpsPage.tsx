@@ -46,6 +46,8 @@ import type { ProgressRingItem } from '@/features/today/components/ProgressRings
 import type { UserStatusType } from '@/features/schedules/domain/userStatus';
 import { useUserStatusActions } from '@/features/schedules/hooks/useUserStatusActions';
 import { UserStatusQuickDialog } from '@/features/schedules/components/UserStatusQuickDialog';
+// Phase 9: Today → Schedule Ops 高負荷タイル連携
+import { useWeeklyHighLoadStatus } from '@/features/today/hooks/useWeeklyHighLoadStatus';
 
 import { Alert, Snackbar } from '@mui/material';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -141,6 +143,9 @@ export const TodayOpsPage: React.FC = () => {
     [summary.users],
   );
   const { alertsByUser } = useUserAlerts(alertUserIds);
+
+  // ── Phase 9: Weekly High Load Status (Today → Schedule Ops 連携) ──
+  const highLoadStatus = useWeeklyHighLoadStatus();
 
   // ── Phase 8-A: User Status Quick Dialog ──
   const userStatusActions = useUserStatusActions();
@@ -304,8 +309,23 @@ export const TodayOpsPage: React.FC = () => {
       onNavigateWithFilter: (preset: CallLogFilterPreset) => navigate(buildCallLogFilterUrl(preset)),
       onOpenDrawer: () => setCallLogDrawerOpen(true),
     },
+    // Phase 9: 高負荷日タイル
+    highLoadTile: highLoadStatus.visible ? {
+      viewModel: highLoadStatus,
+      onClick: () => {
+        const focusDate = highLoadStatus.topWarning.dateIso;
+        recordCtaClick({
+          ctaId: CTA_EVENTS.HIGH_LOAD_TILE_CLICKED,
+          sourceComponent: 'ScheduleOpsHighLoadTile',
+          stateType: 'navigation',
+          targetUrl: `/schedule-ops?focusDate=${focusDate}`,
+          userRole: role,
+        });
+        navigate(`/schedule-ops?focusDate=${focusDate}`);
+      },
+    } : undefined,
     };
-  }, [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, callLogsSummary, handleOpenUserStatus, userStatusActions.todayStatusRecords]);
+  }, [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, callLogsSummary, handleOpenUserStatus, userStatusActions.todayStatusRecords, highLoadStatus, role]);
 
   // ── Save Success Handler (Quick Record auto-next) ──
   const [showCompletionToast, setShowCompletionToast] = React.useState(false);
