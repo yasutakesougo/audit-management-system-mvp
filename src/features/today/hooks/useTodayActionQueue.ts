@@ -7,6 +7,7 @@ import { useTodayQueueTelemetryStore } from '../telemetry/todayQueueTelemetrySto
 import { mapSuggestionToActionSource } from '../domain/engine/mapSuggestionToActionSource';
 import type { ActionSuggestion, ActionSuggestionState } from '../../action-engine/domain/types';
 import { isSuggestionVisible } from '../../action-engine/domain/types';
+import { filterSuggestionsByDisplayTiming } from '../../action-engine/domain/suggestionDisplayTiming';
 import { useSuggestionVisibilityTelemetry } from '../../action-engine/telemetry/useSuggestionVisibilityTelemetry';
 
 interface UseTodayActionQueueOptions {
@@ -71,8 +72,13 @@ export function useTodayActionQueue(
   }, [refresh]);
 
   // corrective_action 提案の visible 遷移を観測して telemetry を送る
+  const timedCorrectiveActions = useMemo(
+    () => filterSuggestionsByDisplayTiming(correctiveActions, now),
+    [correctiveActions, now],
+  );
+
   useSuggestionVisibilityTelemetry({
-    suggestions: correctiveActions,
+    suggestions: timedCorrectiveActions,
     states: suggestionStates ?? {},
     sourceScreen: 'today',
     now,
@@ -82,7 +88,7 @@ export function useTodayActionQueue(
   // corrective_action を既存 sources に注入してから Engine に渡す
   const actionQueue = useMemo(() => {
     // 4a. dismiss / snooze 済みの提案を除外
-    const visibleActions = correctiveActions.filter((s) =>
+    const visibleActions = timedCorrectiveActions.filter((s) =>
       isSuggestionVisible(suggestionStates?.[s.stableId], now),
     );
 
@@ -93,7 +99,7 @@ export function useTodayActionQueue(
     const allSources = [...sources, ...correctiveSources];
     if (allSources.length === 0) return [];
     return buildTodayActionQueue(allSources, now, currentStaffId);
-  }, [sources, now, currentStaffId, correctiveActions, suggestionStates]);
+  }, [sources, now, currentStaffId, timedCorrectiveActions, suggestionStates]);
 
   // 5. Telemetry 観測と送信
   const pushSample = useTodayQueueTelemetryStore((s) => s.pushSample);
