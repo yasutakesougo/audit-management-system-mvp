@@ -176,14 +176,21 @@ function alertTypeFromPriority(priority: NextStepAlertPriority): NextStepAlert['
   return priority === 'p0' ? 'danger' : 'warning';
 }
 
-function checkMessageByPriority(priority: NextStepAlertPriority): string {
+function withElapsedDays(message: string, daysSince: number): string {
+  return `${message}（${daysSince}日）`;
+}
+
+function checkMessageByPriority(
+  priority: NextStepAlertPriority,
+  daysSince: number,
+): string {
   switch (priority) {
     case 'p0':
-      return 'モニタリング長期未実施';
+      return withElapsedDays('モニタリング長期未実施', daysSince);
     case 'p1':
-      return 'モニタリング未実施';
+      return withElapsedDays('モニタリング未実施', daysSince);
     case 'p2':
-      return 'モニタリング確認推奨';
+      return withElapsedDays('モニタリング確認推奨', daysSince);
     default: {
       const _exhaustive: never = priority;
       return _exhaustive;
@@ -191,14 +198,17 @@ function checkMessageByPriority(priority: NextStepAlertPriority): string {
   }
 }
 
-function actMessageByPriority(priority: NextStepAlertPriority): string {
+function actMessageByPriority(
+  priority: NextStepAlertPriority,
+  daysSince: number,
+): string {
   switch (priority) {
     case 'p0':
-      return '再評価長期未実施';
+      return withElapsedDays('再評価長期未実施', daysSince);
     case 'p1':
-      return '再評価未実施';
+      return withElapsedDays('再評価未実施', daysSince);
     case 'p2':
-      return '再評価確認推奨';
+      return withElapsedDays('再評価確認推奨', daysSince);
     default: {
       const _exhaustive: never = priority;
       return _exhaustive;
@@ -252,7 +262,7 @@ export function buildPdcaAlerts(
 
     alerts.push({
       type: alertTypeFromPriority(priority),
-      message: checkMessageByPriority(priority),
+      message: checkMessageByPriority(priority, daysSinceCheckStart),
       action: 'モニタリングへ',
       priority,
     });
@@ -264,7 +274,7 @@ export function buildPdcaAlerts(
 
     alerts.push({
       type: alertTypeFromPriority(priority),
-      message: actMessageByPriority(priority),
+      message: actMessageByPriority(priority, daysSinceActStart),
       action: '再評価入力へ',
       priority,
     });
