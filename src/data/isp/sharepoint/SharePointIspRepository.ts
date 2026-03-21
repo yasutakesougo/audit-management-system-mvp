@@ -101,6 +101,15 @@ export function createSharePointIspRepository(client: UseSP): IspRepository {
       return rows[0] ? mapIspRowToDomain(rows[0]) : null;
     },
 
+    async listAllCurrent(): Promise<IndividualSupportPlan[]> {
+      const rows = await client.listItems<SpIspMasterRow>(ISP_MASTER_LIST_TITLE, {
+        select: SELECT,
+        filter: `IsCurrent eq true`,
+      });
+
+      return rows.map(mapIspRowToDomain);
+    },
+
     async create(input: IspCreateInput): Promise<IndividualSupportPlan> {
       assertWriteEnabled('isp.create');
 

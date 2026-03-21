@@ -165,7 +165,7 @@ describe('detectCriticalHandoffs — 境界値補完', () => {
     const result = detectCriticalHandoffs([
       { id: '1', message: '確認', severity: '重要', status: '未対応', createdAt: '2026-03-18' },
     ]);
-    expect(result[0].actionPath).toBe('/handoff/timeline');
+    expect(result[0].actionPath).toBe('/handoff/timeline?date=2026-03-18&handoffId=1');
   });
 
   it('should set severity to critical regardless of input severity label', () => {
