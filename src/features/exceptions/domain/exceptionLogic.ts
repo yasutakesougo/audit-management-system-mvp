@@ -18,7 +18,8 @@ export type ExceptionCategory =
   | 'missing-record'
   | 'overdue-plan'
   | 'critical-handoff'
-  | 'attention-user';
+  | 'attention-user'
+  | 'corrective-action';
 
 export type ExceptionSeverity = 'low' | 'medium' | 'high' | 'critical';
 
@@ -34,6 +35,8 @@ export type ExceptionItem = {
   updatedAt: string;
   actionLabel?: string;
   actionPath?: string;
+  /** Action Engine 提案の安定ID（dismiss/snooze 追跡用） */
+  stableId?: string;
 };
 
 // ─── カテゴリ表示情報 ────────────────────────────────────────
@@ -49,6 +52,7 @@ export const EXCEPTION_CATEGORIES: Record<ExceptionCategory, CategoryMeta> = {
   'overdue-plan': { label: '期限超過', icon: '⏰', color: '#f57c00' },
   'critical-handoff': { label: '重要申し送り', icon: '🔴', color: '#d32f2f' },
   'attention-user': { label: '注意対象', icon: '⚠️', color: '#ed6c02' },
+  'corrective-action': { label: '改善提案', icon: '🔧', color: '#1565c0' },
 };
 
 export const SEVERITY_ORDER: Record<ExceptionSeverity, number> = {
@@ -192,7 +196,7 @@ export function computeExceptionStats(items: ExceptionItem[]): ExceptionStats {
   const stats: ExceptionStats = {
     total: items.length,
     bySeverity: { critical: 0, high: 0, medium: 0, low: 0 },
-    byCategory: { 'missing-record': 0, 'overdue-plan': 0, 'critical-handoff': 0, 'attention-user': 0 },
+    byCategory: { 'missing-record': 0, 'overdue-plan': 0, 'critical-handoff': 0, 'attention-user': 0, 'corrective-action': 0 },
   };
 
   for (const item of items) {

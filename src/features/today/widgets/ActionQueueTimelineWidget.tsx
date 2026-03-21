@@ -2,18 +2,23 @@ import React from 'react';
 import { Box, Typography, Skeleton } from '@mui/material';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { ActionCard } from './ActionCard';
+import type { SnoozePreset } from '@/features/action-engine/domain/computeSnoozeUntil';
 import type { ActionCard as IActionCard } from '../domain/models/queue.types';
 
 export interface ActionQueueTimelineWidgetProps {
   actionQueue: IActionCard[];
   isLoading: boolean;
   onActionClick?: (action: IActionCard) => void;
+  onDismissSuggestion?: (stableId: string) => void;
+  onSnoozeSuggestion?: (stableId: string, preset: SnoozePreset) => void;
 }
 
 export const ActionQueueTimelineWidget: React.FC<ActionQueueTimelineWidgetProps> = ({
   actionQueue,
   isLoading,
   onActionClick,
+  onDismissSuggestion,
+  onSnoozeSuggestion,
 }) => {
   if (isLoading) {
     return (
@@ -52,7 +57,9 @@ export const ActionQueueTimelineWidget: React.FC<ActionQueueTimelineWidgetProps>
         <ActionCard 
           key={action.id} 
           action={action} 
-          onClick={onActionClick} 
+          onClick={onActionClick}
+          onDismissSuggestion={onDismissSuggestion}
+          onSnoozeSuggestion={onSnoozeSuggestion}
         />
       ))}
     </Box>

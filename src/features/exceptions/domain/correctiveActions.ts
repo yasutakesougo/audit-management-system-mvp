@@ -143,6 +143,34 @@ const CORRECTIVE_ACTION_MAP: Record<
       },
     ];
   },
+
+  'corrective-action': (item) => {
+    const userId = extractUserId(item.actionPath ?? '');
+    return [
+      {
+        key: `${item.id}-action`,
+        label: item.actionLabel ?? '改善アクションを実行',
+        route: item.actionPath ?? '/assessment',
+        variant: 'primary',
+        severity: item.severity,
+        icon: '🔧',
+        reason: item.description || 'Action Engine が改善提案を検出しました。',
+      },
+      ...(userId
+        ? [
+            {
+              key: `${item.id}-hub`,
+              label: '利用者の詳細を見る',
+              route: `/users/${encodeURIComponent(userId)}`,
+              variant: 'ghost' as CorrectiveActionVariant,
+              severity: 'low' as ExceptionSeverity,
+              icon: '👤',
+              reason: '利用者の全体状況を確認してから対応できます。',
+            },
+          ]
+        : []),
+    ];
+  },
 };
 
 // ─── ユーティリティ ───────────────────────────────────────────

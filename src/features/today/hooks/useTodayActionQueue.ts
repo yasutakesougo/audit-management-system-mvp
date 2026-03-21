@@ -4,10 +4,17 @@ import { buildTodayActionQueue } from '../domain/engine/buildTodayActionQueue';
 import { fetchMockActionSources } from '../domain/repositories/mockActionSources';
 import { summarizeTodayQueue } from '../telemetry/summarizeTodayQueue';
 import { useTodayQueueTelemetryStore } from '../telemetry/todayQueueTelemetryStore';
+import { mapSuggestionToActionSource } from '../domain/engine/mapSuggestionToActionSource';
+import type { ActionSuggestion, ActionSuggestionState } from '../../action-engine/domain/types';
+import { isSuggestionVisible } from '../../action-engine/domain/types';
 
 interface UseTodayActionQueueOptions {
   pollingIntervalMs?: number;
   currentStaffId?: string;
+  /** Action Engine から注入する修正提案（省略可） */
+  correctiveActions?: ActionSuggestion[];
+  /** dismiss/snooze 状態マップ（省略可） */
+  suggestionStates?: Record<string, ActionSuggestionState>;
 }
 
 interface UseTodayActionQueueReturn {
@@ -20,7 +27,12 @@ interface UseTodayActionQueueReturn {
 export function useTodayActionQueue(
   options: UseTodayActionQueueOptions = {}
 ): UseTodayActionQueueReturn {
-  const { pollingIntervalMs = 60000, currentStaffId = 'staff-a' } = options;
+  const {
+    pollingIntervalMs = 60000,
+    currentStaffId = 'staff-a',
+    correctiveActions = [],
+    suggestionStates,
+  } = options;
 
   // 1. 状態管理
   const [now, setNow] = useState(new Date());
@@ -58,11 +70,21 @@ export function useTodayActionQueue(
   }, [refresh]);
 
   // 4. Engineへの結合（純粋関数の呼び出し）
-  // 今の時刻 (now) またはデータ (sources) が変わるたびに再計算される
+  // corrective_action を既存 sources に注入してから Engine に渡す
   const actionQueue = useMemo(() => {
-    if (sources.length === 0) return [];
-    return buildTodayActionQueue(sources, now, currentStaffId);
-  }, [sources, now, currentStaffId]);
+    // 4a. dismiss / snooze 済みの提案を除外
+    const visibleActions = correctiveActions.filter((s) =>
+      isSuggestionVisible(suggestionStates?.[s.stableId], now),
+    );
+
+    // 4b. ActionSuggestion → RawActionSource に変換
+    const correctiveSources = visibleActions.map(mapSuggestionToActionSource);
+
+    // 4c. 既存 sources と corrective sources を合流させてキュー構築
+    const allSources = [...sources, ...correctiveSources];
+    if (allSources.length === 0) return [];
+    return buildTodayActionQueue(allSources, now, currentStaffId);
+  }, [sources, now, currentStaffId, correctiveActions, suggestionStates]);
 
   // 5. Telemetry 観測と送信
   const pushSample = useTodayQueueTelemetryStore((s) => s.pushSample);

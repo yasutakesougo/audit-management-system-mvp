@@ -3,12 +3,16 @@ import { Box, Typography, Chip, IconButton, useTheme, alpha } from '@mui/materia
 import AssignmentLateIcon from '@mui/icons-material/AssignmentLate';
 import LaunchIcon from '@mui/icons-material/Launch';
 import CheckBoxOutlinedIcon from '@mui/icons-material/CheckBoxOutlined';
+import type { SnoozePreset } from '@/features/action-engine/domain/computeSnoozeUntil';
+import { DismissSnoozeMenu } from '@/features/action-engine/components/DismissSnoozeMenu';
 
 import type { ActionCard as IActionCard, ActionPriority, ActionType } from '../domain/models/queue.types';
 
 export interface ActionCardProps {
   action: IActionCard;
   onClick?: (action: IActionCard) => void;
+  onDismissSuggestion?: (stableId: string) => void;
+  onSnoozeSuggestion?: (stableId: string, preset: SnoozePreset) => void;
 }
 
 const PRIORITY_STYLES: Record<ActionPriority, { color: string; label: string }> = {
@@ -24,10 +28,23 @@ const ACTION_ICONS: Record<ActionType, React.ReactNode> = {
   ACKNOWLEDGE: <AssignmentLateIcon fontSize="small" />,
 };
 
-export const ActionCard: React.FC<ActionCardProps> = ({ action, onClick }) => {
+function extractSuggestionStableId(action: IActionCard): string | null {
+  if (!action.id.startsWith('corrective:')) return null;
+  const payload = action.payload as { suggestion?: { stableId?: string } } | undefined;
+  return payload?.suggestion?.stableId ?? action.id.replace(/^corrective:/, '');
+}
+
+export const ActionCard: React.FC<ActionCardProps> = ({
+  action,
+  onClick,
+  onDismissSuggestion,
+  onSnoozeSuggestion,
+}) => {
   const theme = useTheme();
   const priorityStyle = PRIORITY_STYLES[action.priority];
   const isCritical = action.priority === 'P0';
+  const stableId = extractSuggestionStableId(action);
+  const canOpenSuggestionMenu = Boolean(stableId && (onDismissSuggestion || onSnoozeSuggestion));
 
   return (
     <Box
@@ -96,20 +113,29 @@ export const ActionCard: React.FC<ActionCardProps> = ({ action, onClick }) => {
       </Box>
 
       {/* Action CTA Segment */}
-      <IconButton 
-        size="small" 
-        sx={{ 
-          color: priorityStyle.color,
-          bgcolor: alpha(priorityStyle.color, 0.1),
-          '&:hover': { bgcolor: alpha(priorityStyle.color, 0.2) }
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick?.(action);
-        }}
-      >
-        <CheckBoxOutlinedIcon />
-      </IconButton>
+      {canOpenSuggestionMenu && stableId ? (
+        <DismissSnoozeMenu
+          buttonAriaLabel="改善提案メニュー"
+          buttonTestId={`suggestion-menu-button-${action.id}`}
+          onDismiss={() => onDismissSuggestion?.(stableId)}
+          onSnooze={(preset) => onSnoozeSuggestion?.(stableId, preset)}
+        />
+      ) : (
+        <IconButton
+          size="small"
+          sx={{
+            color: priorityStyle.color,
+            bgcolor: alpha(priorityStyle.color, 0.1),
+            '&:hover': { bgcolor: alpha(priorityStyle.color, 0.2) }
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick?.(action);
+          }}
+        >
+          <CheckBoxOutlinedIcon />
+        </IconButton>
+      )}
     </Box>
   );
 };

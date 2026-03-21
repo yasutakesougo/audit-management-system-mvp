@@ -4,7 +4,8 @@ export type ActionSourceType =
   | 'schedule'
   | 'vital_alert'
   | 'handoff'
-  | 'incident';
+  | 'incident'
+  | 'corrective_action';
 
 export interface RawActionSource {
   id: string;

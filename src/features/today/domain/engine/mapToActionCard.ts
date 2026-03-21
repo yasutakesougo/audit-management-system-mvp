@@ -1,4 +1,6 @@
 import type { ActionCard, ActionType, ScoredActionItem } from '../models/queue.types';
+import { summarizeEvidence } from '../../../action-engine/domain/summarizeEvidence';
+import type { ActionSuggestion } from '../../../action-engine/domain/types';
 
 function formatTime(date?: Date): string {
   if (!date) return '時刻指定なし';
@@ -12,6 +14,7 @@ function resolveActionType(item: ScoredActionItem): ActionType {
     case 'vital_alert':
       return 'ACKNOWLEDGE';
     case 'incident':
+    case 'corrective_action':
       return 'NAVIGATE';
     case 'schedule':
       return 'OPEN_DRAWER';
@@ -25,6 +28,15 @@ function resolveActionType(item: ScoredActionItem): ActionType {
 }
 
 function buildContextMessage(item: ScoredActionItem): string {
+  // corrective_action: evidence から要約を生成
+  if (item.sourceType === 'corrective_action') {
+    const payload = item.payload as { suggestion?: ActionSuggestion } | undefined;
+    if (payload?.suggestion?.evidence) {
+      return summarizeEvidence(payload.suggestion.evidence);
+    }
+    return '改善提案';
+  }
+
   const base = item.targetTime
     ? `${formatTime(item.targetTime)}予定`
     : '時刻指定なし';

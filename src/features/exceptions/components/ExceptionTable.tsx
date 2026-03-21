@@ -36,6 +36,8 @@ import Typography from '@mui/material/Typography';
 
 // ── Domain ──
 import { EmptyStateAction } from '@/components/ui/EmptyStateAction';
+import { DismissSnoozeMenu } from '@/features/action-engine/components/DismissSnoozeMenu';
+import type { SnoozePreset } from '@/features/action-engine/domain/computeSnoozeUntil';
 import {
   EXCEPTION_CATEGORIES,
   type ExceptionCategory,
@@ -43,6 +45,10 @@ import {
   type ExceptionSeverity,
 } from '../domain/exceptionLogic';
 import { buildCorrectiveActions } from '../domain/correctiveActions';
+import {
+  TEMPERATURE_LABELS,
+  severityToPriority,
+} from '../domain/mapSuggestionToException';
 
 // ─── Props ──────────────────────────────────────────────────
 
@@ -56,6 +62,10 @@ export type ExceptionTableProps = {
   onCategoryFilterChange?: (category: ExceptionCategory | 'all') => void;
   severityFilter?: ExceptionSeverity | 'all';
   onSeverityFilterChange?: (severity: ExceptionSeverity | 'all') => void;
+  suggestionActions?: {
+    onDismiss: (stableId: string) => void;
+    onSnooze: (stableId: string, preset: SnoozePreset) => void;
+  };
 };
 
 // ─── Severity Chip Config ───────────────────────────────────
@@ -87,28 +97,45 @@ const SEVERITY_TO_COLOR: Record<string, 'error' | 'warning' | 'primary' | 'inher
 const CorrectiveActionsCell: React.FC<{
   item: ExceptionItem;
   onNavigate: (route: string) => void;
-}> = ({ item, onNavigate }) => {
+  suggestionActions?: ExceptionTableProps['suggestionActions'];
+}> = ({ item, onNavigate, suggestionActions }) => {
   const actions = buildCorrectiveActions(item);
   const primary = actions.find((a) => a.variant === 'primary');
   const secondary = actions.find((a) => a.variant === 'secondary' || a.variant === 'ghost');
+  const stableId = item.stableId;
+  const canOpenSuggestionMenu = Boolean(
+    item.category === 'corrective-action' &&
+      stableId &&
+      suggestionActions,
+  );
 
   if (!primary) return null;
 
   return (
     <Stack spacing={0.5} alignItems="flex-start">
       {/* Primary: 主アクション */}
-      <Button
-        size="small"
-        variant="contained"
-        color={SEVERITY_TO_COLOR[primary.severity] ?? 'primary'}
-        onClick={() => onNavigate(primary.route)}
-        startIcon={<span style={{ fontSize: 12 }}>{primary.icon}</span>}
-        sx={{ fontSize: '0.7rem', textTransform: 'none', py: 0.25, px: 1 }}
-        title={primary.reason}
-        data-testid={`corrective-primary-${item.id}`}
-      >
-        {primary.label}
-      </Button>
+      <Stack direction="row" spacing={0.5} alignItems="center">
+        <Button
+          size="small"
+          variant="contained"
+          color={SEVERITY_TO_COLOR[primary.severity] ?? 'primary'}
+          onClick={() => onNavigate(primary.route)}
+          startIcon={<span style={{ fontSize: 12 }}>{primary.icon}</span>}
+          sx={{ fontSize: '0.7rem', textTransform: 'none', py: 0.25, px: 1 }}
+          title={primary.reason}
+          data-testid={`corrective-primary-${item.id}`}
+        >
+          {primary.label}
+        </Button>
+        {canOpenSuggestionMenu && stableId && suggestionActions && (
+          <DismissSnoozeMenu
+            buttonAriaLabel="改善提案メニュー"
+            buttonTestId={`suggestion-menu-button-${item.id}`}
+            onDismiss={() => suggestionActions.onDismiss(stableId)}
+            onSnooze={(preset) => suggestionActions.onSnooze(stableId, preset)}
+          />
+        )}
+      </Stack>
 
       {/* Secondary/Ghost: 補助アクション（小） */}
       {secondary && (
@@ -144,6 +171,7 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
   onCategoryFilterChange,
   severityFilter: externalSeverityFilter,
   onSeverityFilterChange,
+  suggestionActions,
 }) => {
   const navigate = useNavigate();
   const [internalCategoryFilter, setInternalCategoryFilter] = useState<ExceptionCategory | 'all'>('all');
@@ -305,7 +333,11 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
                   >
                     <TableCell>
                       <Chip
-                        label={sevConfig.label}
+                        label={
+                          item.category === 'corrective-action'
+                            ? (TEMPERATURE_LABELS[severityToPriority(item.severity) ?? 'P2'] ?? sevConfig.label)
+                            : sevConfig.label
+                        }
                         size="small"
                         color={sevConfig.color}
                         sx={{ fontWeight: 600, fontSize: '0.7rem' }}
@@ -350,7 +382,11 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
                       </Typography>
                     </TableCell>
                     <TableCell sx={{ minWidth: 160 }}>
-                      <CorrectiveActionsCell item={item} onNavigate={navigate} />
+                      <CorrectiveActionsCell
+                        item={item}
+                        onNavigate={navigate}
+                        suggestionActions={suggestionActions}
+                      />
                     </TableCell>
                   </TableRow>
                 );
