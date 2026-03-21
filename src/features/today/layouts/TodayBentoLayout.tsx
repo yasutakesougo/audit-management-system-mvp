@@ -29,13 +29,16 @@
  */
 import { BentoCard, BentoContainer } from '@/components/ui/BentoGrid';
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
+import type { HighLoadWarning } from '@/features/schedules/domain/scheduleOpsLoadScore';
 import type { ServiceStructure } from '@/features/today/domain/serviceStructure.types';
 import type { TodayScene } from '@/features/today/domain/todayScene';
 import {
     Accordion,
     AccordionDetails,
     AccordionSummary,
+    Alert,
     Box,
+    Chip,
     Typography,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -101,6 +104,11 @@ export type TodayBentoProps = {
   handoffPanel?: React.ReactNode;
   /** 電話・連絡ログ要約カード (undefined 時は非表示) */
   callLogSummary?: CallLogSummaryCardProps;
+  /** 高負荷警告タイル (undefined or empty → 非表示) */
+  highLoadTile?: {
+    warnings: readonly HighLoadWarning[];
+    onNavigate: (dateIso: string) => void;
+  };
 };
 
 // ─── Compact Section Title ───────────────────────────────────
@@ -154,6 +162,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   users,
   handoffPanel,
   callLogSummary,
+  highLoadTile,
 }) => {
   return (
     <Box
@@ -266,6 +275,40 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
               <AttendanceSummaryCard {...attendance} />
             </BentoCard>
           </>
+        )}
+
+        {/* ── High Load Warning Tile (ZONE B 直後) ── */}
+        {highLoadTile && highLoadTile.warnings.length > 0 && (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            variant="default"
+            testId="bento-high-load"
+            sx={{ p: 0 }}
+          >
+            <Alert
+              severity={highLoadTile.warnings.some(w => w.level === 'critical') ? 'error' : 'warning'}
+              sx={{ cursor: 'pointer', '& .MuiAlert-message': { width: '100%' } }}
+              onClick={() => highLoadTile.onNavigate(highLoadTile.warnings[0].dateIso)}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                <Typography variant="body2" fontWeight={600}>
+                  {'⚠️ 今週の高負荷日: '}
+                  <strong>{highLoadTile.warnings.length}日</strong>
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                  {highLoadTile.warnings.slice(0, 3).map(w => (
+                    <Chip
+                      key={w.dateIso}
+                      label={`${w.dateIso.slice(5)} (${w.level === 'critical' ? '危険' : '注意'})`}
+                      size="small"
+                      color={w.level === 'critical' ? 'error' : 'warning'}
+                      onClick={(e) => { e.stopPropagation(); highLoadTile.onNavigate(w.dateIso); }}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            </Alert>
+          </BentoCard>
         )}
 
         {/* ════════════════════════════════════════════════════

@@ -24,6 +24,7 @@ import { useWorkflowPhases } from '@/features/today/hooks/useWorkflowPhases';
 import { useTodayLayoutProps } from '@/features/today/hooks/useTodayLayoutProps';
 import { useTodayActionQueue } from '@/features/today/hooks/useTodayActionQueue';
 import { useUserAlerts } from '@/features/today/hooks/useUserAlerts';
+import { useTodayHighLoadWarnings } from '@/features/today/hooks/useTodayHighLoadWarnings';
 import type { ActionCard } from '@/features/today/domain/models/queue.types';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { TodayBentoLayout } from '@/features/today/layouts/TodayBentoLayout';
@@ -110,6 +111,9 @@ export const TodayOpsPage: React.FC = () => {
   const { actionQueue, isLoading: isQueueLoading } = useTodayActionQueue({
     currentStaffId: 'staff-a', // 仮: ログインユーザーのIDを連携できるとベター
   });
+
+  // ── High Load Warnings (PR-C) ──
+  const highLoadData = useTodayHighLoadWarnings();
 
   const handleActionClick = React.useCallback(
     (action: ActionCard) => {
@@ -304,8 +308,17 @@ export const TodayOpsPage: React.FC = () => {
       onNavigateWithFilter: (preset: CallLogFilterPreset) => navigate(buildCallLogFilterUrl(preset)),
       onOpenDrawer: () => setCallLogDrawerOpen(true),
     },
+    highLoadTile: highLoadData.count > 0
+      ? {
+          warnings: highLoadData.warnings,
+          onNavigate: (dateIso: string) => {
+            const params = new URLSearchParams({ date: dateIso, tab: 'day' });
+            navigate(`/schedules/week?${params.toString()}`);
+          },
+        }
+      : undefined,
     };
-  }, [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, callLogsSummary, handleOpenUserStatus, userStatusActions.todayStatusRecords]);
+  }, [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, callLogsSummary, handleOpenUserStatus, userStatusActions.todayStatusRecords, highLoadData]);
 
   // ── Save Success Handler (Quick Record auto-next) ──
   const [showCompletionToast, setShowCompletionToast] = React.useState(false);
