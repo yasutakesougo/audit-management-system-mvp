@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react';
 import {
+  detectSuggestionLifecycleAnomalies,
   useSuggestionLifecycleEvents,
   useSuggestionTelemetrySummary,
 } from '@/features/action-engine';
@@ -9,6 +10,7 @@ import { SectionCard } from './ui/SectionCard';
 import { SectionTitle } from './ui/SectionTitle';
 import { StatCard } from './ui/StatCard';
 import {
+  buildPreviousSuggestionLifecycleWindow,
   buildSuggestionLifecycleWindow,
   formatSuggestionRate,
 } from './suggestionLifecycle';
@@ -75,6 +77,10 @@ export function SuggestionLifecycleSection({
     () => buildSuggestionLifecycleWindow(range, nowRef.current),
     [range],
   );
+  const previousLifecycleWindow = useMemo(
+    () => buildPreviousSuggestionLifecycleWindow(lifecycleWindow),
+    [lifecycleWindow],
+  );
 
   const {
     events,
@@ -88,6 +94,12 @@ export function SuggestionLifecycleSection({
     now: nowRef.current,
     maxDocs: lifecycleWindow.maxDocs,
   });
+  const { events: previousEvents } = useSuggestionLifecycleEvents({
+    from: previousLifecycleWindow.from,
+    to: previousLifecycleWindow.to,
+    now: nowRef.current,
+    maxDocs: previousLifecycleWindow.maxDocs,
+  });
 
   const { summary, byRule, byScreen, byPriority } = useSuggestionTelemetrySummary({
     events,
@@ -97,6 +109,26 @@ export function SuggestionLifecycleSection({
       now: nowRef.current,
     },
   });
+  const { summary: previousSummary, byRule: previousByRule } =
+    useSuggestionTelemetrySummary({
+      events: previousEvents,
+      window: {
+        from: previousLifecycleWindow.from,
+        to: previousLifecycleWindow.to,
+        now: nowRef.current,
+      },
+    });
+
+  const anomalies = useMemo(
+    () =>
+      detectSuggestionLifecycleAnomalies({
+        currentSummary: summary,
+        previousSummary,
+        currentByRule: byRule,
+        previousByRule,
+      }),
+    [summary, previousSummary, byRule, previousByRule],
+  );
 
   const screenRows: RateRow[] = byScreen.map((row) => ({
     key: row.sourceScreen,
@@ -178,6 +210,37 @@ export function SuggestionLifecycleSection({
 
       {!isEmpty && (
         <>
+          {anomalies.length > 0 && (
+            <div
+              data-testid="suggestion-lifecycle-anomalies"
+              style={{
+                marginBottom: 12,
+                padding: 10,
+                borderRadius: 8,
+                border: '1px solid #fde68a',
+                background: '#fffbeb',
+              }}
+            >
+              <div style={{ fontSize: 12, color: '#92400e', fontWeight: 700, marginBottom: 6 }}>
+                anomaly detection: {anomalies.length} 件
+              </div>
+              <div style={{ display: 'grid', gap: 6 }}>
+                {anomalies.map((anomaly) => (
+                  <div
+                    key={anomaly.id}
+                    style={{
+                      fontSize: 12,
+                      color: anomaly.severity === 'critical' ? '#991b1b' : '#92400e',
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    [{anomaly.type}] {anomaly.message}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <StatCard label="shown" count={summary.shown} color="#334155" />
             <StatCard label="clicked" count={summary.clicked} color="#0ea5e9" />

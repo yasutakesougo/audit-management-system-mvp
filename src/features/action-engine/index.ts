@@ -102,3 +102,14 @@ export type {
   UseSuggestionTelemetrySummaryOptions,
   UseSuggestionTelemetrySummaryResult,
 } from './telemetry/useSuggestionTelemetrySummary';
+export {
+  detectSuggestionLifecycleAnomalies,
+  DEFAULT_SUGGESTION_LIFECYCLE_ANOMALY_THRESHOLDS,
+} from './telemetry/detectSuggestionLifecycleAnomalies';
+export type {
+  SuggestionLifecycleAnomaly,
+  SuggestionLifecycleAnomalyType,
+  SuggestionLifecycleAnomalySeverity,
+  SuggestionLifecycleAnomalyThresholds,
+  DetectSuggestionLifecycleAnomaliesInput,
+} from './telemetry/detectSuggestionLifecycleAnomalies';

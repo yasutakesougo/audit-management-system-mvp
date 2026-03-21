@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildPreviousSuggestionLifecycleWindow,
   buildSuggestionLifecycleWindow,
   formatSuggestionRate,
 } from '../suggestionLifecycle';
@@ -51,5 +52,23 @@ describe('formatSuggestionRate', () => {
   it('NaN / 負値は 0% 扱いにする', () => {
     expect(formatSuggestionRate(Number.NaN)).toBe('0.0%');
     expect(formatSuggestionRate(-1)).toBe('0.0%');
+  });
+});
+
+describe('buildPreviousSuggestionLifecycleWindow', () => {
+  it('現在windowと同幅で、重複しない前期間windowを返す', () => {
+    const current = buildSuggestionLifecycleWindow(
+      '7d',
+      new Date('2026-03-21T12:34:56.000Z'),
+    );
+    const previous = buildPreviousSuggestionLifecycleWindow(current);
+
+    const currentSpan = current.to.getTime() - current.from.getTime();
+    const previousSpan = previous.to.getTime() - previous.from.getTime();
+
+    expect(previous.days).toBe(current.days);
+    expect(previous.maxDocs).toBe(current.maxDocs);
+    expect(previous.to.getTime()).toBeLessThan(current.from.getTime());
+    expect(previousSpan).toBe(currentSpan);
   });
 });
