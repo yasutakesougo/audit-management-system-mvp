@@ -7,6 +7,7 @@ import { useTodayQueueTelemetryStore } from '../telemetry/todayQueueTelemetrySto
 import { mapSuggestionToActionSource } from '../domain/engine/mapSuggestionToActionSource';
 import type { ActionSuggestion, ActionSuggestionState } from '../../action-engine/domain/types';
 import { isSuggestionVisible } from '../../action-engine/domain/types';
+import { useSuggestionVisibilityTelemetry } from '../../action-engine/telemetry/useSuggestionVisibilityTelemetry';
 
 interface UseTodayActionQueueOptions {
   pollingIntervalMs?: number;
@@ -68,6 +69,14 @@ export function useTodayActionQueue(
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // corrective_action 提案の visible 遷移を観測して telemetry を送る
+  useSuggestionVisibilityTelemetry({
+    suggestions: correctiveActions,
+    states: suggestionStates ?? {},
+    sourceScreen: 'today',
+    now,
+  });
 
   // 4. Engineへの結合（純粋関数の呼び出し）
   // corrective_action を既存 sources に注入してから Engine に渡す

@@ -11,17 +11,20 @@
  * ExceptionCenterPage はこの hook の戻り値を aggregateExceptions に渡すだけでいい。
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ActionSuggestion, ActionSuggestionState } from '@/features/action-engine/domain/types';
 import { isSuggestionVisible } from '@/features/action-engine/domain/types';
 import { mapSuggestionToException } from '@/features/exceptions/domain/mapSuggestionToException';
 import type { ExceptionItem } from '@/features/exceptions/domain/exceptionLogic';
+import { useSuggestionVisibilityTelemetry } from '@/features/action-engine/telemetry/useSuggestionVisibilityTelemetry';
 
 export interface UseCorrectiveActionExceptionsOptions {
   /** 全利用者分の Action Engine 提案（外部から注入） */
   suggestions: ActionSuggestion[];
   /** dismiss / snooze 状態（stableId → state） */
   states: Record<string, ActionSuggestionState>;
+  /** snooze 期限再評価の間隔（既定: 60秒） */
+  pollingIntervalMs?: number;
 }
 
 export interface UseCorrectiveActionExceptionsReturn {
@@ -40,17 +43,35 @@ export interface UseCorrectiveActionExceptionsReturn {
 export function useCorrectiveActionExceptions(
   options: UseCorrectiveActionExceptionsOptions,
 ): UseCorrectiveActionExceptionsReturn {
-  const { suggestions, states } = options;
+  const {
+    suggestions,
+    states,
+    pollingIntervalMs = 60_000,
+  } = options;
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, pollingIntervalMs);
+    return () => clearInterval(timer);
+  }, [pollingIntervalMs]);
+
+  useSuggestionVisibilityTelemetry({
+    suggestions,
+    states,
+    sourceScreen: 'exception-center',
+    now,
+  });
 
   const items = useMemo(() => {
-    const now = new Date();
     return suggestions
       .filter((s) => {
         const state = states[s.stableId];
         return isSuggestionVisible(state, now);
       })
       .map(mapSuggestionToException);
-  }, [suggestions, states]);
+  }, [suggestions, states, now]);
 
   return {
     items,

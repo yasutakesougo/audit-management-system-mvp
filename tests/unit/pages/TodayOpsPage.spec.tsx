@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react';
 import React from 'react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../../../src/hooks/useToast';
@@ -9,6 +9,7 @@ import { TodayBentoLayout } from '../../../src/features/today/layouts/TodayBento
 import { useTodayActionQueue } from '../../../src/features/today/hooks/useTodayActionQueue';
 
 import type { ActionCard as IActionCard } from '../../../src/features/today/domain/models/queue.types';
+import type { ActionSuggestion } from '../../../src/features/action-engine/domain/types';
 
 // Mocks for all the dependencies the page relies on
 const mockNavigate = vi.fn();
@@ -82,10 +83,42 @@ vi.mock('../../../src/features/today/hooks/useTodayActionQueue', () => ({
   useTodayActionQueue: vi.fn(),
 }));
 
+const mockRecordSuggestionTelemetry = vi.fn();
+vi.mock('../../../src/features/action-engine/telemetry/recordSuggestionTelemetry', () => ({
+  recordSuggestionTelemetry: (...args: unknown[]) => mockRecordSuggestionTelemetry(...args),
+}));
+
 describe('TodayOpsPage (ActionQueueTimeline integration)', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-21T10:00:00Z'));
     vi.clearAllMocks();
   });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const correctiveSuggestion: ActionSuggestion = {
+    id: 's1',
+    stableId: 'behavior-trend-increase:user-001:2026-W12',
+    type: 'assessment_update',
+    priority: 'P1',
+    targetUserId: 'user-001',
+    title: '改善提案',
+    reason: '理由',
+    evidence: {
+      metric: 'm',
+      currentValue: 1,
+      threshold: 2,
+      period: '7d',
+    },
+    cta: {
+      label: '確認',
+      route: '/assessment',
+    },
+    createdAt: '2026-03-21T09:00:00Z',
+    ruleId: 'behavior-trend-increase',
+  };
 
   const dummyActionQueue: IActionCard[] = [
     {
@@ -118,6 +151,16 @@ describe('TodayOpsPage (ActionQueueTimeline integration)', () => {
       isOverdue: false,
       payload: null,
     },
+    {
+      id: `corrective:${correctiveSuggestion.stableId}`,
+      title: 'Corrective Test',
+      priority: 'P1',
+      contextMessage: 'msg',
+      actionType: 'NAVIGATE',
+      requiresAttention: true,
+      isOverdue: false,
+      payload: { suggestion: correctiveSuggestion },
+    },
   ];
 
   it('passes actionQueue and correct click handlers to TodayBentoLayout', () => {
@@ -137,7 +180,7 @@ describe('TodayOpsPage (ActionQueueTimeline integration)', () => {
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
           <MemoryRouter>
-            <TodayOpsPage />
+            <TodayOpsPage correctiveActions={[correctiveSuggestion]} />
           </MemoryRouter>
         </ToastProvider>
       </QueryClientProvider>
@@ -170,5 +213,36 @@ describe('TodayOpsPage (ActionQueueTimeline integration)', () => {
     // Nav and Drawer should NOT be triggered
     expect(mockNavigate).toHaveBeenCalledTimes(prevNavCount);
     expect(mockOpenUnfilled).toHaveBeenCalledTimes(prevOpenCount);
+
+    // Corrective CTA click emits telemetry and navigates to suggestion route
+    timelineProps.onActionClick(dummyActionQueue[3]);
+    expect(mockNavigate).toHaveBeenCalledWith('/assessment');
+    expect(mockRecordSuggestionTelemetry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'suggestion_cta_clicked',
+        sourceScreen: 'today',
+        stableId: correctiveSuggestion.stableId,
+      }),
+    );
+
+    // Dismiss / Snooze emits telemetry from shared callback
+    timelineProps.onDismissSuggestion(correctiveSuggestion.stableId);
+    timelineProps.onSnoozeSuggestion(correctiveSuggestion.stableId, 'tomorrow');
+
+    expect(mockRecordSuggestionTelemetry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'suggestion_dismissed',
+        sourceScreen: 'today',
+        stableId: correctiveSuggestion.stableId,
+      }),
+    );
+    expect(mockRecordSuggestionTelemetry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'suggestion_snoozed',
+        sourceScreen: 'today',
+        stableId: correctiveSuggestion.stableId,
+        snoozePreset: 'tomorrow',
+      }),
+    );
   });
 });
