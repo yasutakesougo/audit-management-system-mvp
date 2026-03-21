@@ -304,7 +304,7 @@ export const TodayOpsPage: React.FC = () => {
         isLoading: isQueueLoading,
         onActionClick: handleActionClick,
       },
-      workflowCard: isServiceManager && workflowPhases.items.length > 0
+      workflowCard: isServiceManager
         ? {
           items: workflowPhases.items,
           counts: workflowPhases.counts,
