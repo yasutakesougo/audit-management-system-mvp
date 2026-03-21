@@ -46,6 +46,10 @@ import {
 } from '../domain/exceptionLogic';
 import { buildCorrectiveActions } from '../domain/correctiveActions';
 import {
+  groupExceptionsByUser,
+  type UserExceptionGroup,
+} from '../domain/groupByUser';
+import {
   TEMPERATURE_LABELS,
   severityToPriority,
 } from '../domain/mapSuggestionToException';
@@ -53,6 +57,21 @@ import {
 // ─── Props ──────────────────────────────────────────────────
 
 export type ExceptionTableSortOrder = 'severity' | 'newest' | 'oldest';
+
+type ExceptionDisplayRow =
+  | {
+      kind: 'item';
+      item: ExceptionItem;
+      sortDate: number;
+      sortSeverity: ExceptionSeverity;
+    }
+  | {
+      kind: 'corrective-group';
+      group: UserExceptionGroup;
+      representative: ExceptionItem;
+      sortDate: number;
+      sortSeverity: ExceptionSeverity;
+    };
 
 export type ExceptionTableProps = {
   items: ExceptionItem[];
@@ -84,6 +103,13 @@ const SEVERITY_ORDER: Record<ExceptionSeverity, number> = {
   medium: 3,
   low: 4,
 };
+
+function getExceptionSortDate(item: ExceptionItem): number {
+  const dateStr = item.targetDate ?? item.updatedAt;
+  if (!dateStr) return 0;
+  const ts = new Date(dateStr).getTime();
+  return Number.isNaN(ts) ? 0 : ts;
+}
 
 // ─── CorrectiveActionsCell (MVP-012 Phase B) ─────────────────
 // ExceptionTable の前に定義して「使用前宣言」エラーを回避する
@@ -185,6 +211,9 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
   const [internalCategoryFilter, setInternalCategoryFilter] = useState<ExceptionCategory | 'all'>('all');
   const [internalSeverityFilter, setInternalSeverityFilter] = useState<ExceptionSeverity | 'all'>('all');
   const [sortOrder, setSortOrder] = useState<ExceptionTableSortOrder>('severity');
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
+    {},
+  );
 
   const categoryFilter = externalCategoryFilter !== undefined ? externalCategoryFilter : internalCategoryFilter;
   const severityFilter = externalSeverityFilter !== undefined ? externalSeverityFilter : internalSeverityFilter;
@@ -199,36 +228,74 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
     else setInternalSeverityFilter(val);
   };
 
-  const filteredAndSortedItems = useMemo(() => {
+  const displayRows = useMemo<ExceptionDisplayRow[]>(() => {
     // 1. Filter
     const filtered = items.filter((item) => {
       if (categoryFilter !== 'all' && item.category !== categoryFilter) return false;
       if (severityFilter !== 'all' && item.severity !== severityFilter) return false;
       return true;
     });
-    // 2. Sort
-    return filtered.sort((a, b) => {
-      const dateStrA = a.targetDate ?? a.updatedAt;
-      const dateStrB = b.targetDate ?? b.updatedAt;
-      const dateA = dateStrA ? new Date(dateStrA).getTime() : 0;
-      const dateB = dateStrB ? new Date(dateStrB).getTime() : 0;
 
+    // 2. Corrective-action だけ利用者単位に集約
+    const correctiveItems = filtered.filter(
+      (item) => item.category === 'corrective-action',
+    );
+    const nonCorrectiveRows: ExceptionDisplayRow[] = filtered
+      .filter((item) => item.category !== 'corrective-action')
+      .map((item) => ({
+        kind: 'item',
+        item,
+        sortDate: getExceptionSortDate(item),
+        sortSeverity: item.severity,
+      }));
+
+    const correctiveRows: ExceptionDisplayRow[] = groupExceptionsByUser(
+      correctiveItems,
+    ).map((group) => {
+      const sortedItems = [...group.items].sort((a, b) => {
+        const severityDiff = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
+        if (severityDiff !== 0) return severityDiff;
+        return getExceptionSortDate(b) - getExceptionSortDate(a);
+      });
+      const representative = sortedItems[0] ?? group.items[0];
+
+      return {
+        kind: 'corrective-group',
+        group: { ...group, items: sortedItems },
+        representative,
+        sortDate: getExceptionSortDate(representative),
+        sortSeverity: group.highestSeverity,
+      };
+    });
+
+    const rows = [...nonCorrectiveRows, ...correctiveRows];
+
+    // 3. Sort
+    return rows.sort((a, b) => {
       if (sortOrder === 'severity') {
-        const sevDiff = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
-        if (sevDiff !== 0) return sevDiff;
-        return dateB - dateA;
+        const severityDiff =
+          SEVERITY_ORDER[a.sortSeverity] - SEVERITY_ORDER[b.sortSeverity];
+        if (severityDiff !== 0) return severityDiff;
+        return b.sortDate - a.sortDate;
       }
       if (sortOrder === 'newest') {
-        if (dateA !== dateB) return dateB - dateA;
-        return SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
+        if (a.sortDate !== b.sortDate) return b.sortDate - a.sortDate;
+        return SEVERITY_ORDER[a.sortSeverity] - SEVERITY_ORDER[b.sortSeverity];
       }
       if (sortOrder === 'oldest') {
-        if (dateA !== dateB) return dateA - dateB;
-        return SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
+        if (a.sortDate !== b.sortDate) return a.sortDate - b.sortDate;
+        return SEVERITY_ORDER[a.sortSeverity] - SEVERITY_ORDER[b.sortSeverity];
       }
       return 0;
     });
   }, [items, categoryFilter, severityFilter, sortOrder]);
+
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupId]: !prev[groupId],
+    }));
+  };
 
   return (
     <Box data-testid="exception-table">
@@ -299,7 +366,7 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
       )}
 
       {/* Table or Empty */}
-      {filteredAndSortedItems.length === 0 ? (
+      {displayRows.length === 0 ? (
         <EmptyStateAction
           icon={items.length === 0 ? '🎉' : '🔍'}
           title={items.length === 0 ? '例外なし — すべて正常です' : 'フィルタ条件に一致する例外はありません'}
@@ -325,78 +392,208 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredAndSortedItems.map((item) => {
-                const catMeta = EXCEPTION_CATEGORIES[item.category];
-                const sevConfig = SEVERITY_CONFIG[item.severity];
-                return (
-                  <TableRow
-                    key={item.id}
-                    hover
-                    sx={{
-                      borderLeft: 4,
-                      borderLeftColor: catMeta.color,
-                      '&:last-child td': { borderBottom: 0 },
-                    }}
-                    data-testid={`exception-row-${item.id}`}
-                  >
-                    <TableCell>
-                      <Chip
-                        label={
-                          item.category === 'corrective-action'
-                            ? (TEMPERATURE_LABELS[severityToPriority(item.severity) ?? 'P2'] ?? sevConfig.label)
-                            : sevConfig.label
-                        }
-                        size="small"
-                        color={sevConfig.color}
-                        sx={{ fontWeight: 600, fontSize: '0.7rem' }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Stack direction="row" spacing={0.5} alignItems="center">
-                        <Box sx={{ fontSize: 14 }}>{catMeta.icon}</Box>
-                        <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                          {catMeta.label}
-                        </Typography>
-                      </Stack>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {item.title}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {item.description}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      {item.targetUserId ? (
-                        <Button
-                          variant="text"
+              {displayRows.map((row) => {
+                if (row.kind === 'item') {
+                  const item = row.item;
+                  const catMeta = EXCEPTION_CATEGORIES[item.category];
+                  const sevConfig = SEVERITY_CONFIG[item.severity];
+                  return (
+                    <TableRow
+                      key={item.id}
+                      hover
+                      sx={{
+                        borderLeft: 4,
+                        borderLeftColor: catMeta.color,
+                        '&:last-child td': { borderBottom: 0 },
+                      }}
+                      data-testid={`exception-row-${item.id}`}
+                    >
+                      <TableCell>
+                        <Chip
+                          label={
+                            item.category === 'corrective-action'
+                              ? (TEMPERATURE_LABELS[severityToPriority(item.severity) ?? 'P2'] ?? sevConfig.label)
+                              : sevConfig.label
+                          }
                           size="small"
-                          sx={{ textTransform: 'none', p: 0, minWidth: 'auto', fontWeight: 600 }}
-                          onClick={() => navigate(`/users/${item.targetUserId}`)}
-                          data-testid={`exception-user-link-${item.id}`}
-                        >
-                          {item.targetUser ?? '—'}
-                        </Button>
-                      ) : (
-                        <Typography variant="body2">
-                          {item.targetUser ?? '—'}
+                          color={sevConfig.color}
+                          sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                          <Box sx={{ fontSize: 14 }}>{catMeta.icon}</Box>
+                          <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                            {catMeta.label}
+                          </Typography>
+                        </Stack>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {item.title}
                         </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="caption" color="text.secondary">
-                        {item.targetDate ?? item.updatedAt}
-                      </Typography>
-                    </TableCell>
-                    <TableCell sx={{ minWidth: 160 }}>
-                      <CorrectiveActionsCell
-                        item={item}
-                        onNavigate={navigate}
-                        suggestionActions={suggestionActions}
-                      />
-                    </TableCell>
-                  </TableRow>
+                        <Typography variant="caption" color="text.secondary">
+                          {item.description}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {item.targetUserId ? (
+                          <Button
+                            variant="text"
+                            size="small"
+                            sx={{ textTransform: 'none', p: 0, minWidth: 'auto', fontWeight: 600 }}
+                            onClick={() => navigate(`/users/${item.targetUserId}`)}
+                            data-testid={`exception-user-link-${item.id}`}
+                          >
+                            {item.targetUser ?? '—'}
+                          </Button>
+                        ) : (
+                          <Typography variant="body2">
+                            {item.targetUser ?? '—'}
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="caption" color="text.secondary">
+                          {item.targetDate ?? item.updatedAt}
+                        </Typography>
+                      </TableCell>
+                      <TableCell sx={{ minWidth: 160 }}>
+                        <CorrectiveActionsCell
+                          item={item}
+                          onNavigate={navigate}
+                          suggestionActions={suggestionActions}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+
+                const { group, representative } = row;
+                const catMeta = EXCEPTION_CATEGORIES['corrective-action'];
+                const sevConfig = SEVERITY_CONFIG[representative.severity];
+                const isExpanded = expandedGroups[group.userId] ?? false;
+                const canExpand = group.items.length > 1;
+                const userName = group.userName ?? representative.targetUser ?? '—';
+                const canOpenUser = group.userId !== '__unknown__';
+
+                return (
+                  <React.Fragment key={`group-${group.userId}`}>
+                    <TableRow
+                      hover
+                      sx={{
+                        borderLeft: 4,
+                        borderLeftColor: catMeta.color,
+                      }}
+                      data-testid={`exception-row-${representative.id}`}
+                    >
+                      <TableCell>
+                        <Chip
+                          label={TEMPERATURE_LABELS[severityToPriority(representative.severity) ?? 'P2'] ?? sevConfig.label}
+                          size="small"
+                          color={sevConfig.color}
+                          sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                          <Box sx={{ fontSize: 14 }}>{catMeta.icon}</Box>
+                          <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                            {catMeta.label}
+                          </Typography>
+                        </Stack>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {userName} の改善提案 ({group.count}件)
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {representative.description}
+                          {group.count > 1 ? ` / 他 ${group.count - 1} 件` : ''}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {canOpenUser ? (
+                          <Button
+                            variant="text"
+                            size="small"
+                            sx={{ textTransform: 'none', p: 0, minWidth: 'auto', fontWeight: 600 }}
+                            onClick={() => navigate(`/users/${group.userId}`)}
+                            data-testid={`exception-user-link-${representative.id}`}
+                          >
+                            {userName}
+                          </Button>
+                        ) : (
+                          <Typography variant="body2">{userName}</Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="caption" color="text.secondary">
+                          {representative.targetDate ?? representative.updatedAt}
+                        </Typography>
+                      </TableCell>
+                      <TableCell sx={{ minWidth: 180 }}>
+                        <Stack spacing={0.5} alignItems="flex-start">
+                          <CorrectiveActionsCell
+                            item={representative}
+                            onNavigate={navigate}
+                            suggestionActions={suggestionActions}
+                          />
+                          {canExpand && (
+                            <Button
+                              size="small"
+                              variant="text"
+                              sx={{ textTransform: 'none', p: 0, minHeight: 'auto' }}
+                              onClick={() => toggleGroup(group.userId)}
+                              data-testid={`exception-group-toggle-${group.userId}`}
+                            >
+                              {isExpanded ? '個別提案を隠す' : '個別提案を表示'} ({group.count})
+                            </Button>
+                          )}
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                    {canExpand && isExpanded && (
+                      <TableRow data-testid={`exception-group-details-${group.userId}`}>
+                        <TableCell colSpan={6} sx={{ bgcolor: 'grey.50', py: 1.25 }}>
+                          <Stack spacing={1}>
+                            {group.items.map((item) => {
+                              const detailConfig = SEVERITY_CONFIG[item.severity];
+                              return (
+                                <Paper
+                                  key={item.id}
+                                  variant="outlined"
+                                  sx={{ p: 1, borderRadius: 1, bgcolor: 'background.paper' }}
+                                >
+                                  <Stack spacing={0.75}>
+                                    <Stack direction="row" spacing={0.75} alignItems="center">
+                                      <Chip
+                                        label={TEMPERATURE_LABELS[severityToPriority(item.severity) ?? 'P2'] ?? detailConfig.label}
+                                        size="small"
+                                        color={detailConfig.color}
+                                        sx={{ fontWeight: 600, fontSize: '0.65rem' }}
+                                      />
+                                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                        {item.title}
+                                      </Typography>
+                                    </Stack>
+                                    <Typography variant="caption" color="text.secondary">
+                                      {item.description}
+                                    </Typography>
+                                    <CorrectiveActionsCell
+                                      item={item}
+                                      onNavigate={navigate}
+                                      suggestionActions={suggestionActions}
+                                    />
+                                  </Stack>
+                                </Paper>
+                              );
+                            })}
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </TableBody>
