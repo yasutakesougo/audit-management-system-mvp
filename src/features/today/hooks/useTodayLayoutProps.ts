@@ -244,11 +244,15 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
         });
         switch (target) {
           case 'briefing':
+            // reserved: 将来 HandoffPanel 連携で申し送り起点 Hero を実装する際に使用
             navigate(buildHandoffTimelineUrl(), {
               state: buildHandoffFromTodayState({
                 timeFilter: sceneAction ? sceneToTimeBand(sceneAction.scene) : undefined,
               }),
             });
+            break;
+          case 'attendance-alert':
+            navigate('/daily/attendance');
             break;
           case 'attendance':
             navigate('/daily/attendance');
