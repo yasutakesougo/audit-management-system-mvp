@@ -34,6 +34,10 @@ export const CTA_EVENTS = {
   PROGRESS_CHIP_BRIEFING: 'today_progress_chip_briefing_clicked',
   /** ProgressRings ケース記録リング */
   PROGRESS_RING_CASE_RECORD: 'today_progress_ring_case_record_clicked',
+  /** ProgressRings 支援手順リング */
+  PROGRESS_RING_RECORDS: 'today_progress_ring_records_clicked',
+  /** ProgressRings 出欠リング */
+  PROGRESS_RING_ATTENDANCE: 'today_progress_ring_attendance_clicked',
   /** ProgressRings 連絡リング */
   PROGRESS_RING_CONTACTS: 'today_progress_ring_contacts_clicked',
 
