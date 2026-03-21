@@ -282,6 +282,7 @@ export default function SupportPlanningSheetPage() {
     repository: monitoringRepo,
     planningSheetId: planningSheetId ?? 'new',
   });
+  const canImportMonitoring = !!latestMonitoringRecord;
 
   const handleMonitoringImport = React.useCallback(
     (result: MonitoringToPlanningResult, selectedCandidateIds: string[]) => {
@@ -378,6 +379,11 @@ export default function SupportPlanningSheetPage() {
     const history = document.getElementById('monitoring-history-timeline');
     history?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
+
+  const handleOpenMonitoringImport = React.useCallback(() => {
+    if (!canImportMonitoring) return;
+    setMonitoringDialogOpen(true);
+  }, [canImportMonitoring]);
 
   // ── Evidence Click Navigation (Phase 4-C) ──
   const handleEvidenceClick = React.useCallback((type: EvidenceLinkType, referenceId: string) => {
@@ -569,9 +575,28 @@ export default function SupportPlanningSheetPage() {
             <ImportHistoryTimeline records={auditRecords} compact />
           </Box>
         ) : (
-          <Alert severity="info" variant="outlined" id="monitoring-history-timeline">
-            モニタリング履歴はまだありません。モニタリング取込後に履歴が表示されます。
-          </Alert>
+          <Box id="monitoring-history-timeline">
+            <Alert severity="info" variant="outlined">
+              モニタリング履歴はまだありません。モニタリング取込後に履歴が表示されます。
+            </Alert>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+              まだモニタリング履歴がありません。最新の記録を取り込んで反映できます。
+            </Typography>
+            <Button
+              size="small"
+              variant="contained"
+              onClick={handleOpenMonitoringImport}
+              disabled={!canImportMonitoring}
+              sx={{ mt: 1 }}
+            >
+              モニタリングを取り込む
+            </Button>
+            {!canImportMonitoring && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                取り込み可能な最新モニタリング記録がありません。
+              </Typography>
+            )}
+          </Box>
         )}
 
         {/* ── タブ ── */}
