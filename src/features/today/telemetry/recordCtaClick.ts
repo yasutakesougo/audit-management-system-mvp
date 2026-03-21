@@ -68,6 +68,10 @@ export const CTA_EVENTS = {
   // ── User Alert 直行導線 ────────────────────────────────────
   /** 利用者カードのアラートチップクリック → daily/support 直行 */
   USER_ALERT_CLICKED: 'today_user_alert_clicked',
+
+  // ── Schedule Ops 連携 ──────────────────────────────────────
+  /** Today 高負荷タイルクリック → Schedule Ops 遷移 */
+  HIGH_LOAD_TILE_CLICKED: 'today_high_load_tile_clicked',
 } as const;
 
 export type CtaEventName = (typeof CTA_EVENTS)[keyof typeof CTA_EVENTS];

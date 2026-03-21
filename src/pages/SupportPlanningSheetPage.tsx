@@ -374,6 +374,11 @@ export default function SupportPlanningSheetPage() {
     }
   }, [navigate, setActiveTab]);
 
+  const handleJumpToMonitoringHistory = React.useCallback(() => {
+    const history = document.getElementById('monitoring-history-timeline');
+    history?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
   // ── Evidence Click Navigation (Phase 4-C) ──
   const handleEvidenceClick = React.useCallback((type: EvidenceLinkType, referenceId: string) => {
     if (!sheet?.userId) return;
@@ -504,6 +509,39 @@ export default function SupportPlanningSheetPage() {
           onImportMonitoring={() => setMonitoringDialogOpen(true)}
         />
 
+        {/* ── 操作ガイド（履歴・手順確認・編集更新） ── */}
+        <Alert severity="info" variant="outlined" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
+          <Stack spacing={1}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+              操作ガイド
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              モニタリング履歴: 「モニタリング履歴 / 取込履歴」を確認してください。
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              支援手順の確認・更新: 「支援設計」タブで手順を確認し、編集後に保存してください。
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              編集更新の確認: 保存後に画面下部の更新日・更新者を確認してください。
+            </Typography>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+              <Button size="small" onClick={handleJumpToMonitoringHistory}>
+                モニタリング履歴へ
+              </Button>
+              <Button size="small" onClick={() => setActiveTab('planning')}>
+                支援手順を確認
+              </Button>
+              <Button
+                size="small"
+                onClick={() => setIsEditing(true)}
+                disabled={isEditing}
+              >
+                編集を開始
+              </Button>
+            </Stack>
+          </Stack>
+        </Alert>
+
         {/* ── ABC根拠データ ── */}
         {sheet.userId && <AbcEvidencePanel userId={sheet.userId} />}
 
@@ -519,9 +557,21 @@ export default function SupportPlanningSheetPage() {
           <ProvenancePanel entries={allProvenanceEntries} defaultExpanded={false} />
         )}
 
-        {/* ── 取込履歴タイムライン ── */}
-        {auditRecords.length > 0 && (
-          <ImportHistoryTimeline records={auditRecords} compact />
+        {/* ── モニタリング履歴 / 取込履歴タイムライン ── */}
+        {auditRecords.length > 0 ? (
+          <Box id="monitoring-history-timeline">
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>
+              モニタリング履歴 / 取込履歴
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              モニタリング取込後の反映履歴はこのセクションで確認できます。
+            </Typography>
+            <ImportHistoryTimeline records={auditRecords} compact />
+          </Box>
+        ) : (
+          <Alert severity="info" variant="outlined" id="monitoring-history-timeline">
+            モニタリング履歴はまだありません。モニタリング取込後に履歴が表示されます。
+          </Alert>
         )}
 
         {/* ── タブ ── */}
@@ -636,6 +686,9 @@ export default function SupportPlanningSheetPage() {
 
         {/* ── メタ情報フッター ── */}
         <Paper variant="outlined" sx={{ p: 2 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+            編集後は更新日・更新者を確認し、意図した内容で保存されていることを確認してください。
+          </Typography>
           <Stack direction="row" spacing={3} flexWrap="wrap" useFlexGap>
             <Typography variant="caption" color="text.secondary">
               作成日: {formatDateTimeIntl(sheet.createdAt, { year: 'numeric', month: '2-digit', day: '2-digit' })}
