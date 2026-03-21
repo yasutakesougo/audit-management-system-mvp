@@ -308,8 +308,24 @@ describe('resolveNextStepBanner — PDCA alerts', () => {
 
     expect(alerts).toHaveLength(1);
     expect(alerts[0]).toMatchObject({
-      message: 'モニタリング確認推奨',
+      message: 'モニタリング確認推奨（3日）',
       action: 'モニタリングへ',
+      priority: 'p2',
+    });
+  });
+
+  it('check phase で開始日が未来日でも 0日扱いで p2', () => {
+    const alerts = buildPdcaAlerts(
+      makePdcaState({
+        currentPhase: 'check',
+        phaseCompletions: { do: '2026-03-12' },
+      }),
+      '2026-03-10',
+    );
+
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toMatchObject({
+      message: 'モニタリング確認推奨（0日）',
       priority: 'p2',
     });
   });
@@ -325,7 +341,7 @@ describe('resolveNextStepBanner — PDCA alerts', () => {
 
     expect(alerts).toHaveLength(1);
     expect(alerts[0]).toMatchObject({
-      message: 'モニタリング未実施',
+      message: 'モニタリング未実施（8日）',
       priority: 'p1',
     });
   });
@@ -341,7 +357,7 @@ describe('resolveNextStepBanner — PDCA alerts', () => {
 
     expect(alerts).toHaveLength(1);
     expect(alerts[0]).toMatchObject({
-      message: 'モニタリング長期未実施',
+      message: 'モニタリング長期未実施（15日）',
       priority: 'p0',
       type: 'danger',
     });
@@ -358,7 +374,7 @@ describe('resolveNextStepBanner — PDCA alerts', () => {
 
     expect(alerts).toHaveLength(1);
     expect(alerts[0]).toMatchObject({
-      message: '再評価確認推奨',
+      message: '再評価確認推奨（3日）',
       action: '再評価入力へ',
       priority: 'p2',
     });
@@ -375,7 +391,7 @@ describe('resolveNextStepBanner — PDCA alerts', () => {
 
     expect(alerts).toHaveLength(1);
     expect(alerts[0]).toMatchObject({
-      message: '再評価未実施',
+      message: '再評価未実施（8日）',
       priority: 'p1',
     });
   });
@@ -391,7 +407,7 @@ describe('resolveNextStepBanner — PDCA alerts', () => {
 
     expect(alerts).toHaveLength(1);
     expect(alerts[0]).toMatchObject({
-      message: '再評価長期未実施',
+      message: '再評価長期未実施（15日）',
       priority: 'p0',
       type: 'danger',
     });
@@ -465,7 +481,7 @@ describe('resolveNextStepBanner — PDCA alerts', () => {
     expect(result.ctaLabel).toBe('モニタリングを実施');
     expect(result.href).toContain('tab=monitoring');
     expect(result.alerts).toHaveLength(1);
-    expect(result.alerts[0].message).toBe('モニタリング長期未実施');
+    expect(result.alerts[0].message).toBe('モニタリング長期未実施（18日）');
     expect(result.alerts[0].priority).toBe('p0');
   });
 

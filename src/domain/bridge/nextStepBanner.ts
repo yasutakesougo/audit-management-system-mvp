@@ -176,14 +176,25 @@ function alertTypeFromPriority(priority: NextStepAlertPriority): NextStepAlert['
   return priority === 'p0' ? 'danger' : 'warning';
 }
 
-function checkMessageByPriority(priority: NextStepAlertPriority): string {
+function withElapsedDays(message: string, daysSince: number): string {
+  return `${message}（${daysSince}日）`;
+}
+
+function toSafeElapsedDays(daysSince: number): number {
+  return Math.max(0, daysSince);
+}
+
+function checkMessageByPriority(
+  priority: NextStepAlertPriority,
+  daysSince: number,
+): string {
   switch (priority) {
     case 'p0':
-      return 'モニタリング長期未実施';
+      return withElapsedDays('モニタリング長期未実施', daysSince);
     case 'p1':
-      return 'モニタリング未実施';
+      return withElapsedDays('モニタリング未実施', daysSince);
     case 'p2':
-      return 'モニタリング確認推奨';
+      return withElapsedDays('モニタリング確認推奨', daysSince);
     default: {
       const _exhaustive: never = priority;
       return _exhaustive;
@@ -191,14 +202,17 @@ function checkMessageByPriority(priority: NextStepAlertPriority): string {
   }
 }
 
-function actMessageByPriority(priority: NextStepAlertPriority): string {
+function actMessageByPriority(
+  priority: NextStepAlertPriority,
+  daysSince: number,
+): string {
   switch (priority) {
     case 'p0':
-      return '再評価長期未実施';
+      return withElapsedDays('再評価長期未実施', daysSince);
     case 'p1':
-      return '再評価未実施';
+      return withElapsedDays('再評価未実施', daysSince);
     case 'p2':
-      return '再評価確認推奨';
+      return withElapsedDays('再評価確認推奨', daysSince);
     default: {
       const _exhaustive: never = priority;
       return _exhaustive;
@@ -248,11 +262,12 @@ export function buildPdcaAlerts(
   if (state.currentPhase === 'check') {
     const daysSinceCheckStart =
       getDaysSince(resolveCheckStartDate(state), referenceDate) ?? 0;
-    const priority = resolveCheckPriority(daysSinceCheckStart);
+    const safeDaysSinceCheckStart = toSafeElapsedDays(daysSinceCheckStart);
+    const priority = resolveCheckPriority(safeDaysSinceCheckStart);
 
     alerts.push({
       type: alertTypeFromPriority(priority),
-      message: checkMessageByPriority(priority),
+      message: checkMessageByPriority(priority, safeDaysSinceCheckStart),
       action: 'モニタリングへ',
       priority,
     });
@@ -260,11 +275,12 @@ export function buildPdcaAlerts(
 
   if (state.currentPhase === 'act') {
     const daysSinceActStart = getDaysSince(resolveActStartDate(state), referenceDate) ?? 0;
-    const priority = resolveActPriority(daysSinceActStart);
+    const safeDaysSinceActStart = toSafeElapsedDays(daysSinceActStart);
+    const priority = resolveActPriority(safeDaysSinceActStart);
 
     alerts.push({
       type: alertTypeFromPriority(priority),
-      message: actMessageByPriority(priority),
+      message: actMessageByPriority(priority, safeDaysSinceActStart),
       action: '再評価入力へ',
       priority,
     });
