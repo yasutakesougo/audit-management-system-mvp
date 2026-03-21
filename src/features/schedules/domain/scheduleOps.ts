@@ -94,6 +94,7 @@ export type DaySummaryEntry = {
   readonly attentionCount: number;
   readonly absenceCount: number;      // 欠席+事前欠席
   readonly lateCount: number;         // 遅刻
+  readonly existingLeaveCount?: number; // 他スタッフの有休等によるリソース低下 (Phase 8-A)
   readonly availableSlots: number;
   readonly isOverCapacity: boolean;
 };
@@ -394,6 +395,7 @@ export function computeWeeklySummary(
       attentionCount,
       absenceCount,
       lateCount,
+      existingLeaveCount: 0, // 今後シフトデータ等と連動するまでデフォルト0
       availableSlots: Math.max(0, totalMax - dayItems.length),
       isOverCapacity: dayItems.length > totalMax,
     };

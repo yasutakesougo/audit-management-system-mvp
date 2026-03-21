@@ -32,6 +32,10 @@ export type OpsLoadWeights = {
   readonly shortStayWeight: number;
   readonly attentionWeight: number;
   readonly availableSlotWeight: number;
+  // 以下、イレギュラー・変動対応負荷のペナルティ (Phase 8-A)
+  readonly absencePenalty: number;
+  readonly latePenalty: number;
+  readonly existingLeavePenalty: number;
 };
 
 /** 負荷スコアの閾値 */
@@ -98,6 +102,11 @@ export const DEFAULT_LOAD_WEIGHTS: OpsLoadWeights = {
   shortStayWeight: 3,
   attentionWeight: 2,
   availableSlotWeight: 1,
+
+  // イレギュラー対応・リソース低下による管理負荷ペナルティ
+  absencePenalty: 2,         // 送迎再編・保護者連絡等やや重め
+  latePenalty: 1,            // 局所的な対応
+  existingLeavePenalty: 1,   // 人員減によるベースラインひっ迫
 };
 
 /**
@@ -139,12 +148,19 @@ export function computeLoadScore(
   day: DaySummaryEntry,
   weights: OpsLoadWeights = DEFAULT_LOAD_WEIGHTS,
 ): number {
-  const raw =
+  let raw =
     day.totalCount * weights.totalWeight +
     day.respiteCount * weights.respiteWeight +
     day.shortStayCount * weights.shortStayWeight +
     day.attentionCount * weights.attentionWeight -
     day.availableSlots * weights.availableSlotWeight;
+
+  // 変動対応負荷ペナルティを加算
+  raw += day.absenceCount * weights.absencePenalty;
+  raw += day.lateCount * weights.latePenalty;
+  // existingLeaveCountがオプショナル（未設定）の場合は0として扱う
+  raw += (day.existingLeaveCount ?? 0) * weights.existingLeavePenalty;
+
   return Math.max(0, Math.round(raw));
 }
 
@@ -364,10 +380,13 @@ export function computeDayLoadScore(
  * 理由の優先度:
  *   1. 定員超過（isOverCapacity）
  *   2. 空き枠なし（availableSlots === 0）
- *   3. 注意対象が多い（attentionCount >= 5）
- *   4. レスパイトが多い（respiteCount >= 3）
- *   5. ショートステイが多い（shortStayCount >= 2）
- *   6. 利用者が非常に多い（totalCount >= 20）
+ *   3. 既存有休あり（existingLeaveCount >= 1）
+ *   4. 欠席対応あり（absenceCount >= 1）
+ *   5. 遅刻対応あり（lateCount >= 1）
+ *   6. 注意対象が多い（attentionCount >= 5）
+ *   7. レスパイトが多い（respiteCount >= 3）
+ *   8. ショートステイが多い（shortStayCount >= 2）
+ *   9. 利用者が非常に多い（totalCount >= 20）
  *
  * @param day - 日別集計データ
  * @param maxReasons - 最大理由数（デフォルト 2）
@@ -385,6 +404,18 @@ export function computeHighLoadReasons(
 
   if (day.availableSlots === 0) {
     candidates.push({ key: 'no-slots', label: '空き枠なし' });
+  }
+
+  if ((day.existingLeaveCount ?? 0) >= 1) {
+    candidates.push({ key: 'staff-on-leave', label: `既存有休 ${day.existingLeaveCount}件` });
+  }
+
+  if (day.absenceCount >= 1) {
+    candidates.push({ key: 'absence-handling', label: `欠席対応 ${day.absenceCount}件` });
+  }
+
+  if (day.lateCount >= 1) {
+    candidates.push({ key: 'late-handling', label: `遅刻対応 ${day.lateCount}件` });
   }
 
   if (day.attentionCount >= 5) {
