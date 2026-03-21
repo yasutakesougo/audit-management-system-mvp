@@ -123,3 +123,14 @@ export type {
   WeeklyReviewResult,
   ComputeWeeklyReviewResultInput,
 } from './telemetry/computeWeeklyReviewResult';
+export {
+  computeAssessmentStaleReviewResult,
+  ASSESSMENT_STALE_RULE_ALIASES,
+  ASSESSMENT_STALE_REVIEW_MIN_SHOWN,
+} from './telemetry/computeAssessmentStaleReviewResult';
+export type {
+  AssessmentStaleReviewStatus,
+  AssessmentStaleLifecycleSnapshot,
+  AssessmentStaleReviewResult,
+  ComputeAssessmentStaleReviewResultInput,
+} from './telemetry/computeAssessmentStaleReviewResult';
