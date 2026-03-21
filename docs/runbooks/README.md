@@ -13,6 +13,10 @@
 
 - [Page Touchpoints Template](./page-touchpoints-template.md)
 
+## Operations
+
+- [Corrective-Action Telemetry Review](./corrective-action-telemetry-review.md)
+
 ## 使い方
 
 1. まず対象画面の touchpoints を開く。
