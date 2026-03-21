@@ -1,3 +1,4 @@
+// contract:allow-interface — Pure gap-finding domain types, not API boundary schemas
 /**
  * scheduleNextGap.ts
  *
