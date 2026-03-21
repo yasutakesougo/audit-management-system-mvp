@@ -25,6 +25,10 @@ import { useTodayLayoutProps } from '@/features/today/hooks/useTodayLayoutProps'
 import { useTodayActionQueue } from '@/features/today/hooks/useTodayActionQueue';
 import { useUserAlerts } from '@/features/today/hooks/useUserAlerts';
 import type { ActionCard } from '@/features/today/domain/models/queue.types';
+import type { ActionSuggestion } from '@/features/action-engine/domain/types';
+import type { SnoozePreset } from '@/features/action-engine/domain/computeSnoozeUntil';
+import { computeSnoozeUntil } from '@/features/action-engine/domain/computeSnoozeUntil';
+import { useSuggestionStateStore } from '@/features/action-engine/hooks/useSuggestionStateStore';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { TodayBentoLayout } from '@/features/today/layouts/TodayBentoLayout';
 import { recordAutoNextComplete, recordAutoNextSave } from '@/features/today/records/autoNextCounters';
@@ -53,10 +57,19 @@ import { Alert, Snackbar } from '@mui/material';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-export const TodayOpsPage: React.FC = () => {
+export type TodayOpsPageProps = {
+  correctiveActions?: ActionSuggestion[];
+};
+
+export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
+  correctiveActions = [],
+}) => {
   const navigate = useNavigate();
   const location = useLocation();
   const role = useAuthStore((s) => s.currentUserRole);
+  const suggestionStates = useSuggestionStateStore((s) => s.states);
+  const dismissSuggestion = useSuggestionStateStore((s) => s.dismiss);
+  const snoozeSuggestion = useSuggestionStateStore((s) => s.snooze);
 
   // ── Landing Telemetry (Trial Observation) ────────────────────────
   const landingLoggedRef = useRef(false);
@@ -111,6 +124,8 @@ export const TodayOpsPage: React.FC = () => {
   // ── Timeline Action Queue (Phase 3) ──
   const { actionQueue, isLoading: isQueueLoading } = useTodayActionQueue({
     currentStaffId: 'staff-a', // 仮: ログインユーザーのIDを連携できるとベター
+    correctiveActions,
+    suggestionStates,
   });
 
   const handleActionClick = React.useCallback(
@@ -127,6 +142,15 @@ export const TodayOpsPage: React.FC = () => {
     },
     [quickRecord.openUnfilled, navigate]
   );
+
+  const handleDismissSuggestion = useCallback((stableId: string) => {
+    dismissSuggestion(stableId, { by: 'today' });
+  }, [dismissSuggestion]);
+
+  const handleSnoozeSuggestion = useCallback((stableId: string, preset: SnoozePreset) => {
+    const until = computeSnoozeUntil(preset, new Date());
+    snoozeSuggestion(stableId, until, { by: 'today' });
+  }, [snoozeSuggestion]);
 
   // ── CallLog Summary (Today 連携) ──
   // account.name を myName として注入し、自分宛未対応件数を算出する
@@ -303,6 +327,8 @@ export const TodayOpsPage: React.FC = () => {
         actionQueue,
         isLoading: isQueueLoading,
         onActionClick: handleActionClick,
+        onDismissSuggestion: handleDismissSuggestion,
+        onSnoozeSuggestion: handleSnoozeSuggestion,
       },
       workflowCard: isServiceManager
         ? {
@@ -341,7 +367,7 @@ export const TodayOpsPage: React.FC = () => {
       },
     } : undefined,
     };
-  }, [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, callLogsSummary, handleOpenUserStatus, userStatusActions.todayStatusRecords, highLoadStatus, role]);
+  }, [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, handleDismissSuggestion, handleSnoozeSuggestion, callLogsSummary, handleOpenUserStatus, userStatusActions.todayStatusRecords, highLoadStatus, role]);
 
   // ── Save Success Handler (Quick Record auto-next) ──
   const [showCompletionToast, setShowCompletionToast] = React.useState(false);

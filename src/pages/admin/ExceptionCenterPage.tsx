@@ -39,16 +39,50 @@ import {
 } from '@/features/exceptions/domain/exceptionLogic';
 import { ExceptionTable } from '@/features/exceptions/components/ExceptionTable';
 import { useExceptionDataSources } from '@/features/exceptions/hooks/useExceptionDataSources';
+import { useCorrectiveActionExceptions } from '@/features/exceptions/hooks/useCorrectiveActionExceptions';
+import type { ActionSuggestion, ActionSuggestionState } from '@/features/action-engine/domain/types';
+import type { SnoozePreset } from '@/features/action-engine/domain/computeSnoozeUntil';
+import { computeSnoozeUntil } from '@/features/action-engine/domain/computeSnoozeUntil';
+import { useSuggestionStateStore } from '@/features/action-engine/hooks/useSuggestionStateStore';
 
 // ─── Component ────────────────────────────────────────────────
 
-export default function ExceptionCenterPage() {
+export interface ExceptionCenterPageProps {
+  /** Action Engine が生成した全利用者分の提案（外部から注入） */
+  allSuggestions?: ActionSuggestion[];
+  /** 提案の dismiss/snooze 状態 */
+  suggestionStates?: Record<string, ActionSuggestionState>;
+}
+
+export default function ExceptionCenterPage({
+  allSuggestions = [],
+  suggestionStates,
+}: ExceptionCenterPageProps) {
   const navigate = useNavigate();
+  const storeStates = useSuggestionStateStore((s) => s.states);
+  const dismissSuggestion = useSuggestionStateStore((s) => s.dismiss);
+  const snoozeSuggestion = useSuggestionStateStore((s) => s.snooze);
+  const effectiveSuggestionStates = suggestionStates ?? storeStates;
 
   // Sprint-1 Phase B: 実データ接続
   const dataSources = useExceptionDataSources();
   
   const [categoryFilter, setCategoryFilter] = useState<ExceptionCategory | 'all'>('all');
+
+  // Action Engine 提案 → ExceptionItem
+  const { items: correctiveItems } = useCorrectiveActionExceptions({
+    suggestions: allSuggestions,
+    states: effectiveSuggestionStates,
+  });
+
+  const handleDismissSuggestion = React.useCallback((stableId: string) => {
+    dismissSuggestion(stableId, { by: 'exception-center' });
+  }, [dismissSuggestion]);
+
+  const handleSnoozeSuggestion = React.useCallback((stableId: string, preset: SnoozePreset) => {
+    const until = computeSnoozeUntil(preset, new Date());
+    snoozeSuggestion(stableId, until, { by: 'exception-center' });
+  }, [snoozeSuggestion]);
 
   // ── 例外検出（実データ） ──
   const exceptions = useMemo(() => {
@@ -62,8 +96,8 @@ export default function ExceptionCenterPage() {
 
     const attentionUsers = detectAttentionUsers(dataSources.userSummaries);
 
-    return aggregateExceptions(missingRecords, criticalHandoffs, attentionUsers);
-  }, [dataSources]);
+    return aggregateExceptions(missingRecords, criticalHandoffs, attentionUsers, correctiveItems);
+  }, [dataSources, correctiveItems]);
 
   const stats = useMemo(() => computeExceptionStats(exceptions), [exceptions]);
 
@@ -89,6 +123,13 @@ export default function ExceptionCenterPage() {
       count: stats.byCategory['attention-user'],
       icon: '⚠️',
       color: '#ed6c02',
+    },
+    {
+      key: 'corrective-action',
+      label: '改善提案',
+      count: stats.byCategory['corrective-action'],
+      icon: '🔧',
+      color: '#1565c0',
     },
     {
       key: 'total',
@@ -161,7 +202,7 @@ export default function ExceptionCenterPage() {
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr 1fr', sm: '1fr 1fr 1fr 1fr' },
+            gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(5, 1fr)' },
             gap: 2,
           }}
           data-testid="exception-summary-cards"
@@ -211,6 +252,10 @@ export default function ExceptionCenterPage() {
           showFilters
           categoryFilter={categoryFilter}
           onCategoryFilterChange={setCategoryFilter}
+          suggestionActions={{
+            onDismiss: handleDismissSuggestion,
+            onSnooze: handleSnoozeSuggestion,
+          }}
         />
       </Stack>
       )}

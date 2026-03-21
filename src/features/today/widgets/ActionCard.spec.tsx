@@ -63,4 +63,34 @@ describe('ActionCard', () => {
     expect(handleClick).toHaveBeenCalledWith(baseAction);
     expect(handleClick).toHaveBeenCalledTimes(1);
   });
+
+  it('corrective_action では dismiss/snooze メニューを表示して操作できる', () => {
+    const correctiveAction: IActionCard = {
+      ...baseAction,
+      id: 'corrective:behavior-trend-increase:user-001:2026-W12',
+      payload: {
+        suggestion: {
+          stableId: 'behavior-trend-increase:user-001:2026-W12',
+        },
+      },
+    };
+    const handleDismiss = vi.fn();
+    const handleSnooze = vi.fn();
+
+    renderWithTheme(
+      <ActionCard
+        action={correctiveAction}
+        onDismissSuggestion={handleDismiss}
+        onSnoozeSuggestion={handleSnooze}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId(`suggestion-menu-button-${correctiveAction.id}`));
+    fireEvent.click(screen.getByText('対応済みにする'));
+    expect(handleDismiss).toHaveBeenCalledWith('behavior-trend-increase:user-001:2026-W12');
+
+    fireEvent.click(screen.getByTestId(`suggestion-menu-button-${correctiveAction.id}`));
+    fireEvent.click(screen.getByText('明日まで'));
+    expect(handleSnooze).toHaveBeenCalledWith('behavior-trend-increase:user-001:2026-W12', 'tomorrow');
+  });
 });
