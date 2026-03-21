@@ -115,6 +115,8 @@ export default function SupportPlanningSheetPage() {
   const [monitoringDialogOpen, setMonitoringDialogOpen] = React.useState(false);
   const [sessionProvenance, setSessionProvenance] = React.useState<ProvenanceEntry[]>([]);
   const [contextOpen, setContextOpen] = React.useState(false);
+  const [showMonitoringHistoryFeedback, setShowMonitoringHistoryFeedback] = React.useState(false);
+  const monitoringHistoryFeedbackTimeoutRef = React.useRef<number | null>(null);
 
   // ── Evidence Links state (persisted to localStorage) ──
   const [evidenceLinks, setEvidenceLinksRaw] = React.useState<EvidenceLinkMap>(createEmptyEvidenceLinkMap());
@@ -284,6 +286,23 @@ export default function SupportPlanningSheetPage() {
   });
   const canImportMonitoring = !!latestMonitoringRecord;
 
+  const scrollToMonitoringHistory = React.useCallback((showFeedback = false) => {
+    requestAnimationFrame(() => {
+      const history = document.getElementById('monitoring-history-timeline');
+      history?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    if (showFeedback) {
+      setShowMonitoringHistoryFeedback(true);
+      if (monitoringHistoryFeedbackTimeoutRef.current !== null) {
+        window.clearTimeout(monitoringHistoryFeedbackTimeoutRef.current);
+      }
+      monitoringHistoryFeedbackTimeoutRef.current = window.setTimeout(() => {
+        setShowMonitoringHistoryFeedback(false);
+        monitoringHistoryFeedbackTimeoutRef.current = null;
+      }, 4000);
+    }
+  }, []);
+
   const handleMonitoringImport = React.useCallback(
     (result: MonitoringToPlanningResult, selectedCandidateIds: string[]) => {
       // 自動追記の反映
@@ -330,8 +349,11 @@ export default function SupportPlanningSheetPage() {
           summaryText,
         });
       }
+
+      setMonitoringDialogOpen(false);
+      scrollToMonitoringHistory(true);
     },
-    [form, planningSheetId, account, saveAuditRecord],
+    [form, planningSheetId, account, saveAuditRecord, scrollToMonitoringHistory],
   );
 
   // ── Handlers ──
@@ -376,14 +398,19 @@ export default function SupportPlanningSheetPage() {
   }, [navigate, setActiveTab]);
 
   const handleJumpToMonitoringHistory = React.useCallback(() => {
-    const history = document.getElementById('monitoring-history-timeline');
-    history?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
+    scrollToMonitoringHistory(false);
+  }, [scrollToMonitoringHistory]);
 
   const handleOpenMonitoringImport = React.useCallback(() => {
     if (!canImportMonitoring) return;
     setMonitoringDialogOpen(true);
   }, [canImportMonitoring]);
+
+  React.useEffect(() => () => {
+    if (monitoringHistoryFeedbackTimeoutRef.current !== null) {
+      window.clearTimeout(monitoringHistoryFeedbackTimeoutRef.current);
+    }
+  }, []);
 
   // ── Evidence Click Navigation (Phase 4-C) ──
   const handleEvidenceClick = React.useCallback((type: EvidenceLinkType, referenceId: string) => {
@@ -564,6 +591,11 @@ export default function SupportPlanningSheetPage() {
         )}
 
         {/* ── モニタリング履歴 / 取込履歴タイムライン ── */}
+        {showMonitoringHistoryFeedback && (
+          <Alert severity="success" variant="outlined">
+            取り込み内容を反映しました。モニタリング履歴 / 取込履歴をご確認ください。
+          </Alert>
+        )}
         {auditRecords.length > 0 ? (
           <Box id="monitoring-history-timeline">
             <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>
