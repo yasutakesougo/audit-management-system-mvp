@@ -24,3 +24,32 @@ export type IcebergPdcaItem = {
   /** フロントメモリ上のみ — 直近のフェーズ変更トレース */
   lastPhaseChange?: PhaseChangeTrace;
 };
+
+// ─────────────────────────────────────────────
+// Bridge: IcebergPdcaPhase → PdcaCyclePhase
+// ─────────────────────────────────────────────
+
+import type { PdcaCyclePhase } from '@/domain/isp/types';
+
+/**
+ * 大文字 IcebergPdcaPhase → 小文字 PdcaCyclePhase の正規化マップ
+ *
+ * 既存の IcebergPdca UI から統一ドメイン型へ安全に変換する。
+ */
+const PHASE_NORMALIZE_MAP: Record<IcebergPdcaPhase, PdcaCyclePhase> = {
+  PLAN: 'plan',
+  DO: 'do',
+  CHECK: 'check',
+  ACT: 'act',
+} as const;
+
+/**
+ * IcebergPdcaPhase を PdcaCyclePhase に正規化する。
+ *
+ * 純関数 — 副作用なし。
+ * 万一マップにないキーが渡された場合は 'plan' にフォールバック。
+ */
+export function normalizePdcaPhase(phase: IcebergPdcaPhase): PdcaCyclePhase {
+  return PHASE_NORMALIZE_MAP[phase] ?? 'plan';
+}
+

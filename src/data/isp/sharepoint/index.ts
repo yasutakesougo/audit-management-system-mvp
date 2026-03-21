@@ -14,3 +14,5 @@
 export { createSharePointIspRepository, extractSpId } from './SharePointIspRepository';
 export { createSharePointPlanningSheetRepository } from './SharePointPlanningSheetRepository';
 export { createSharePointProcedureRecordRepository } from './SharePointProcedureRecordRepository';
+export { createSharePointBehaviorMonitoringRepository } from './SharePointBehaviorMonitoringRepository';
+export { createSharePointPlanningSheetReassessmentRepository } from './SharePointPlanningSheetReassessmentRepository';

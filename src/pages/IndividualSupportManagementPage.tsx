@@ -8,6 +8,7 @@ import EditNoteIcon from '@mui/icons-material/EditNote';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import SupportIcon from '@mui/icons-material/Support';
+import AutorenewRoundedIcon from '@mui/icons-material/AutorenewRounded';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -26,14 +27,22 @@ import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
 import { addSPS, confirmSPS, getLatestSPS, getSPSHistory } from '@/features/ibd/core/ibdStore';
 import { useSPSRevision } from '@/features/ibd/core/useSPSHistory';
 import { useSupportStepTemplates } from '@/features/ibd/procedures/templates/hooks/useSupportStepTemplates';
+import { useCurrentPlanningSheet } from '@/features/planning-sheet/hooks/useCurrentPlanningSheet';
+import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { UserSelectionGrid } from '@/features/users/components/UserSelectionGrid';
 import { useUsers } from '@/features/users/useUsers';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import {
+  usePdcaBehaviorMonitoringRecords,
+  usePdcaPlanningSheetReassessments,
+} from '@/features/ibd/analysis/pdca/queries';
 import { DailyRecordsTab } from '@/features/ibd/procedures/daily-records/components/DailyRecordsTab';
 import { MonitoringRevisionDialog } from '@/features/ibd/procedures/daily-records/components/MonitoringRevisionDialog';
 import { SupportPlanTab } from '@/features/ibd/procedures/daily-records/components/SupportPlanTab';
+import { PdcaCyclePanel } from '@/features/ibd/analysis/pdca/components/PdcaCyclePanel';
+import { usePdcaCycleState } from '@/features/ibd/analysis/pdca/queries/usePdcaCycleState';
 import { toLocalDateISO } from '@/utils/getNow';
 import {
     type ABCSelection,
@@ -67,6 +76,39 @@ const IndividualSupportManagementPage: React.FC = () => {
     () => ibdUsers.find((u) => u.UserID === userCode) ?? null,
     [ibdUsers, userCode],
   );
+
+  const planningSheetRepository = usePlanningSheetRepositories();
+  const { currentSheet } = useCurrentPlanningSheet(
+    selectedUser?.UserID ?? null,
+    planningSheetRepository,
+  );
+  const targetPlanningSheetId = currentSheet?.id ?? null;
+
+  const { data: behaviorMonitoringRecords } = usePdcaBehaviorMonitoringRecords({
+    userCode: selectedUser?.UserID ?? null,
+    supervisionUserId: selectedUser?.Id ?? null,
+    planningSheetId: targetPlanningSheetId,
+  });
+
+  const { data: planningSheetReassessments } = usePdcaPlanningSheetReassessments(
+    {
+      planningSheetId: targetPlanningSheetId,
+    },
+  );
+
+  const suppliedBehaviorMonitoringRecords = behaviorMonitoringRecords ?? [];
+  const suppliedPlanningSheetReassessments = planningSheetReassessments ?? [];
+
+  const {
+    state: pdcaCycleState,
+    isLoading: isPdcaLoading,
+    error: pdcaError,
+  } = usePdcaCycleState({
+    userId: selectedUser?.UserID ?? null,
+    planningSheetId: targetPlanningSheetId,
+    behaviorMonitoringRecords: suppliedBehaviorMonitoringRecords,
+    planningSheetReassessments: suppliedPlanningSheetReassessments,
+  });
 
   // SP 支援手順テンプレートを取得
   const {
@@ -321,6 +363,7 @@ const IndividualSupportManagementPage: React.FC = () => {
         >
           <Tab value="plan" label="支援計画書" icon={<FavoriteIcon fontSize="small" />} iconPosition="start" />
           <Tab value="records" label="日々の記録" icon={<ScheduleIcon fontSize="small" />} iconPosition="start" />
+          <Tab value="pdca" label="PDCAサイクル" icon={<AutorenewRoundedIcon fontSize="small" />} iconPosition="start" />
         </Tabs>
 
         {tab === 'plan' && (
@@ -340,6 +383,16 @@ const IndividualSupportManagementPage: React.FC = () => {
             onRecord={handleRecord}
             onToggleUnrecorded={setShowOnlyUnrecorded}
           />
+        )}
+
+        {tab === 'pdca' && (
+          <Box sx={{ p: 2 }}>
+            <PdcaCyclePanel
+              state={pdcaCycleState}
+              loading={isPdcaLoading}
+              error={pdcaError}
+            />
+          </Box>
         )}
       </Paper>
 

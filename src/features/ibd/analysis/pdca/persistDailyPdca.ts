@@ -1,3 +1,26 @@
+/**
+ * persistDailyPdca — Daily PDCA イベントの永続化
+ *
+ * ── 永続化責務マップ ──
+ *
+ * | データ種別                | 永続化先      | 担当                          |
+ * |--------------------------|--------------|-------------------------------|
+ * | ISP / 計画シート / 手順書  | SharePoint   | sharepoint/operations (R/W)   |
+ * | モニタリング記録           | SharePoint   | sharepoint/operations (R/W)   |
+ * | 再評価記録                | SharePoint   | sharepoint/operations (R/W)   |
+ * | Daily PDCA イベントログ    | Firestore    | ★ 本ファイル (W)              |
+ * | Daily スナップショット      | Firestore    | ★ 本ファイル (W)              |
+ * | PDCA サイクル状態          | 永続化しない  | pdcaCycleOrchestrator (計算)   |
+ *
+ * ── 設計判断 ──
+ * - Firestore はイベントソーシング的な「追記ログ」として使用
+ * - SharePoint は「現在の状態」を保持する Read Model
+ * - PdcaCycleState は毎回計算で導出し、永続化しない
+ *
+ * @module features/ibd/analysis/pdca/persistDailyPdca
+ * @see domain/bridge/pdcaCycleOrchestrator.ts — PDCA 状態の計算
+ * @see domain/isp/types.ts — PdcaCycleState 型定義
+ */
 import { doc, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore';
 
 import { db } from '@/infra/firestore/client';

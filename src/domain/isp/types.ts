@@ -393,6 +393,61 @@ export interface RecordToISPPath {
 }
 
 // ─────────────────────────────────────────────
+// PDCA サイクル — 統一型定義
+// ─────────────────────────────────────────────
+
+/**
+ * PDCA サイクルフェーズ（正規化済み — 小文字統一）
+ *
+ * システム全体で使用する唯一の PDCA フェーズ型。
+ * 既存の IcebergPdcaPhase（大文字）は normalizePdcaPhase() 経由で変換する。
+ *
+ * @see features/ibd/analysis/pdca/types.ts — normalizePdcaPhase()
+ */
+export type PdcaCyclePhase = 'plan' | 'do' | 'check' | 'act';
+
+/** PDCA フェーズの日本語ラベル */
+export const PDCA_PHASE_LABELS: Record<PdcaCyclePhase, string> = {
+  plan: '計画（Plan）',
+  do: '実施（Do）',
+  check: '評価（Check）',
+  act: '改善（Act）',
+} as const;
+
+/** 各フェーズの完了日マップ — null は未完了 */
+export type PdcaPhaseCompletionMap = Record<PdcaCyclePhase, string | null>;
+
+/**
+ * PDCA サイクル状態
+ *
+ * ── 永続化方針 ──
+ * この型のインスタンスは *永続化しない* 。
+ * determinePdcaCycleState() が呼ばれるたびに
+ * SharePoint の Read Model + Firestore の Event Log から計算で生成する。
+ *
+ * ── Read Model ──  SharePoint（ISP / PlanningSheet / Monitoring）
+ * ── Event Log  ──  Firestore（persistDailyPdca のみ）
+ */
+export interface PdcaCycleState {
+  /** 利用者 ID */
+  userId: string;
+  /** 対象の支援計画シート ID */
+  planningSheetId: string;
+  /** 現在のフェーズ */
+  currentPhase: PdcaCyclePhase;
+  /** サイクル番号（1 = 初回計画, 2 = Act→次Plan, …） */
+  cycleNumber: number;
+  /** 各フェーズの完了日（null = 未完了） */
+  phaseCompletions: PdcaPhaseCompletionMap;
+  /** サイクル健全度スコア（0.0–1.0, 高いほど良い） */
+  healthScore: number;
+  /** スコア算出の内訳メモ（UI tooltip 用） */
+  healthScoreBreakdown: string[];
+  /** 計算基準日 */
+  computedAt: string;
+}
+
+// ─────────────────────────────────────────────
 // ユーティリティ
 // ─────────────────────────────────────────────
 

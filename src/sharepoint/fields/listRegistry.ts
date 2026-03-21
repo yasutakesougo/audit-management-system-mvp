@@ -28,6 +28,8 @@ export enum ListKeys {
   IspMaster = 'ISP_Master',
   PlanningSheetMaster = 'SupportPlanningSheet_Master',
   ProcedureRecordDaily = 'SupportProcedureRecord_Daily',
+  BehaviorMonitoringMaster = 'BehaviorMonitoringRecord_Master',
+  PlanningSheetReassessmentMaster = 'PlanningSheetReassessment_Master',
   HolidayMaster = 'Holiday_Master',
   // ── P1-2/P1-3 追加 ──
   PdfOutputLog = 'PdfOutput_Log',
@@ -64,6 +66,8 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.IspMaster]: { title: 'ISP_Master' },
   [ListKeys.PlanningSheetMaster]: { title: 'SupportPlanningSheet_Master' },
   [ListKeys.ProcedureRecordDaily]: { title: 'SupportProcedureRecord_Daily' },
+  [ListKeys.BehaviorMonitoringMaster]: { title: 'BehaviorMonitoringRecord_Master' },
+  [ListKeys.PlanningSheetReassessmentMaster]: { title: 'PlanningSheetReassessment_Master' },
   [ListKeys.HolidayMaster]: { title: 'Holiday_Master' },
   // ── P1-2/P1-3 追加 ──
   [ListKeys.PdfOutputLog]: { title: 'PdfOutput_Log' },

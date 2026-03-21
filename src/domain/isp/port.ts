@@ -23,6 +23,8 @@ import type {
   PlanningAssessment,
   PlanningDesign,
 } from './schema';
+import type { BehaviorMonitoringRecord } from './behaviorMonitoring';
+import type { PlanningSheetReassessment } from './planningSheetReassessment';
 
 import type { UserSnapshot } from '@/domain/user/userRelation';
 
@@ -115,4 +117,27 @@ export interface ProcedureRecordRepository {
   create(input: ProcedureRecordCreateInput): Promise<SupportProcedureRecord>;
   /** 支援手順記録更新 */
   update(id: string, input: ProcedureRecordUpdateInput): Promise<SupportProcedureRecord>;
+}
+
+// ─────────────────────────────────────────────
+// 第2層補助: BehaviorMonitoring Repository Port
+// ─────────────────────────────────────────────
+
+export interface BehaviorMonitoringRepository {
+  /** 支援計画シート × 利用者に紐づく行動モニタリング記録一覧 */
+  findByPlanningSheetId(params: {
+    planningSheetId: string;
+    userId: string;
+  }): Promise<BehaviorMonitoringRecord[]>;
+}
+
+// ─────────────────────────────────────────────
+// 第2層補助: PlanningSheetReassessment Repository Port
+// ─────────────────────────────────────────────
+
+export interface PlanningSheetReassessmentRepository {
+  /** 支援計画シートに紐づく再評価一覧 */
+  findByPlanningSheetId(params: {
+    planningSheetId: string;
+  }): Promise<PlanningSheetReassessment[]>;
 }
