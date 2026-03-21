@@ -84,6 +84,8 @@ const PRIORITY_COLORS: Record<NextStepAlertPriority, string> = {
   p2: 'text.secondary',
 };
 
+const P0_EMPHASIS_COLOR = 'error.dark';
+
 // ─── Component ────────────────────────────────────────────────
 
 export const PhaseNextStepBanner: React.FC<PhaseNextStepBannerProps> = ({
@@ -148,8 +150,10 @@ export const PhaseNextStepBanner: React.FC<PhaseNextStepBannerProps> = ({
                   component="li"
                   variant="caption"
                   color={PRIORITY_COLORS[alert.priority]}
+                  data-p0-emphasis={alert.priority === 'p0' ? 'true' : undefined}
                   sx={{
                     fontWeight: alert.priority === 'p0' ? 700 : 400,
+                    ...(alert.priority === 'p0' ? { color: P0_EMPHASIS_COLOR } : {}),
                   }}
                 >
                   [{PRIORITY_LABELS[alert.priority]}] {alert.message}（{alert.action}）
