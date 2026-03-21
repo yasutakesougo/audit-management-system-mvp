@@ -148,6 +148,14 @@ export {
     type SpMonitoringMeetingRow
 } from './monitoringMeetingFields';
 
+// ── PDCA Check/Act Lists ──
+export {
+    BEHAVIOR_MONITORING_FIELDS, BEHAVIOR_MONITORING_LIST_TITLE, BEHAVIOR_MONITORING_SELECT_FIELDS,
+    PLANNING_SHEET_REASSESSMENT_FIELDS, PLANNING_SHEET_REASSESSMENT_LIST_TITLE,
+    PLANNING_SHEET_REASSESSMENT_SELECT_FIELDS, safeJsonParse as safePdcaJsonParse,
+    type SpBehaviorMonitoringRow, type SpPlanningSheetReassessmentRow
+} from './pdcaCycleFields';
+
 // ──────────────────────────────────────────────────────────────
 // 統合 FIELD_MAP（後方互換用）
 //

@@ -26,9 +26,11 @@ import {
   resolveNextStepBanner,
   type BannerContext,
   type BannerTone,
+  type NextStepAlertPriority,
   type ResolveNextStepInput,
 } from '@/domain/bridge/nextStepBanner';
 import type { WorkflowPhase } from '@/domain/bridge/workflowPhase';
+import type { PdcaCycleState } from '@/domain/isp/types';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
@@ -52,6 +54,8 @@ export interface PhaseNextStepBannerProps {
   hasMonitoringSignals?: boolean;
   /** 再評価結果が未反映か */
   hasUnappliedReassessment?: boolean;
+  /** PDCA サイクル状態（optional） */
+  pdcaCycleState?: PdcaCycleState | null;
   /** 遷移ハンドラ */
   onNavigate?: (href: string) => void;
 }
@@ -68,6 +72,18 @@ const TONE_MAP: Record<BannerTone, {
   danger: { severity: 'error', icon: <ErrorOutlineIcon /> },
 };
 
+const PRIORITY_LABELS: Record<NextStepAlertPriority, string> = {
+  p0: '早急対応',
+  p1: '注意',
+  p2: '確認',
+};
+
+const PRIORITY_COLORS: Record<NextStepAlertPriority, string> = {
+  p0: 'error.main',
+  p1: 'warning.main',
+  p2: 'text.secondary',
+};
+
 // ─── Component ────────────────────────────────────────────────
 
 export const PhaseNextStepBanner: React.FC<PhaseNextStepBannerProps> = ({
@@ -77,6 +93,7 @@ export const PhaseNextStepBanner: React.FC<PhaseNextStepBannerProps> = ({
   planningSheetId,
   hasMonitoringSignals,
   hasUnappliedReassessment,
+  pdcaCycleState,
   onNavigate,
 }) => {
   const input: ResolveNextStepInput = {
@@ -86,6 +103,7 @@ export const PhaseNextStepBanner: React.FC<PhaseNextStepBannerProps> = ({
     planningSheetId,
     hasMonitoringSignals,
     hasUnappliedReassessment,
+    pdcaCycleState,
   };
 
   const model = resolveNextStepBanner(input);
@@ -122,6 +140,20 @@ export const PhaseNextStepBanner: React.FC<PhaseNextStepBannerProps> = ({
           <Typography variant="caption" color="text.secondary">
             {model.description}
           </Typography>
+          {model.alerts.length > 0 && (
+            <Box component="ul" sx={{ m: 0, mt: 0.75, pl: 2 }}>
+              {model.alerts.map((alert, index) => (
+                <Typography
+                  key={`${alert.type}-${alert.message}-${index}`}
+                  component="li"
+                  variant="caption"
+                  color={PRIORITY_COLORS[alert.priority]}
+                >
+                  [{PRIORITY_LABELS[alert.priority]}] {alert.message}（{alert.action}）
+                </Typography>
+              ))}
+            </Box>
+          )}
         </Box>
 
         {model.ctaLabel && model.href && (

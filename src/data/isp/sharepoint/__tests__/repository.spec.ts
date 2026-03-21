@@ -14,7 +14,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { createSharePointIspRepository, extractSpId } from '../SharePointIspRepository';
+import { createSharePointBehaviorMonitoringRepository } from '../SharePointBehaviorMonitoringRepository';
 import { createSharePointPlanningSheetRepository } from '../SharePointPlanningSheetRepository';
+import { createSharePointPlanningSheetReassessmentRepository } from '../SharePointPlanningSheetReassessmentRepository';
 import { createSharePointProcedureRecordRepository } from '../SharePointProcedureRecordRepository';
 import type { UseSP } from '@/lib/spClient';
 
@@ -138,6 +140,68 @@ function makeSpProcedureRecordRow(id = 100) {
     PerformedAt: '2026-05-01T12:30:00Z',
     Created: '2026-05-01T13:00:00Z',
     Modified: '2026-05-01T13:00:00Z',
+  };
+}
+
+function makeSpBehaviorMonitoringRow(id = 501) {
+  return {
+    Id: id,
+    Title: `BM-${id}`,
+    UserId: 'U001',
+    PlanningSheetId: 'sp-10',
+    PeriodStart: '2026-03-01',
+    PeriodEnd: '2026-03-10',
+    SupportEvaluationsJson: JSON.stringify([
+      {
+        methodDescription: '手順A',
+        achievementLevel: 'effective',
+        comment: '有効',
+      },
+    ]),
+    EnvironmentFindingsJson: JSON.stringify([
+      {
+        adjustment: '座席調整',
+        wasEffective: true,
+        comment: '落ち着きあり',
+      },
+    ]),
+    EffectiveSupports: '視覚提示',
+    DifficultiesObserved: '移行時の不安',
+    NewTriggersJson: JSON.stringify(['大きな音']),
+    MedicalSafetyNotes: '',
+    UserFeedback: '安心した',
+    FamilyFeedback: '',
+    RecommendedChangesJson: JSON.stringify(['手順A継続']),
+    Summary: '全体として安定',
+    RecordedBy: 'staff-1',
+    RecordedAt: '2026-03-10T09:00:00Z',
+    Created: '2026-03-10T09:00:00Z',
+    Modified: '2026-03-10T09:00:00Z',
+  };
+}
+
+function makeSpPlanningSheetReassessmentRow(id = 701) {
+  return {
+    Id: id,
+    Title: `RA-${id}`,
+    PlanningSheetId: 'sp-10',
+    UserId: 'U001',
+    ReassessmentTrigger: 'monitoring',
+    ReassessmentDate: '2026-03-18',
+    Summary: '再評価の要約',
+    CreatedByText: 'staff-1',
+    CreatedAtText: '2026-03-18',
+    VersionNo: 1,
+    PlanChangeDecision: 'major_revision',
+    AbcSummary: 'abc',
+    HypothesisReview: 'hypothesis',
+    ProcedureEffectiveness: 'effective',
+    EnvironmentChange: '',
+    NextReassessmentAt: '2026-06-16',
+    Notes: 'notes',
+    ReassessedBy: 'staff-1',
+    Created: '2026-03-18T10:00:00Z',
+    Modified: '2026-03-18T10:00:00Z',
   };
 }
 
@@ -472,5 +536,108 @@ describe('SharePointProcedureRecordRepository', () => {
         expect.objectContaining({ ExecutionStatus: 'skipped' }),
       );
     });
+  });
+});
+
+// ═════════════════════════════════════════════
+// BehaviorMonitoring Repository
+// ═════════════════════════════════════════════
+
+describe('SharePointBehaviorMonitoringRepository', () => {
+  let client: ReturnType<typeof createMockClient>;
+
+  beforeEach(() => {
+    client = createMockClient();
+  });
+
+  it('planningSheetId + userId でフィルタして一覧を返す', async () => {
+    client.listItems.mockResolvedValueOnce([makeSpBehaviorMonitoringRow(501)]);
+    const repo = createSharePointBehaviorMonitoringRepository(
+      client as unknown as UseSP,
+    );
+
+    const result = await repo.findByPlanningSheetId({
+      planningSheetId: 'sp-10',
+      userId: 'U001',
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].planningSheetId).toBe('sp-10');
+    expect(result[0].supportEvaluations[0]?.achievementLevel).toBe('effective');
+    expect(client.listItems).toHaveBeenCalledWith(
+      'BehaviorMonitoringRecord_Master',
+      expect.objectContaining({
+        filter: "PlanningSheetId eq 'sp-10' and UserId eq 'U001'",
+      }),
+    );
+  });
+
+  it('不正データは schema で弾く', async () => {
+    // planningSheetId を欠損させて schema エラーを誘発
+    client.listItems.mockResolvedValueOnce([
+      {
+        ...makeSpBehaviorMonitoringRow(502),
+        PlanningSheetId: '',
+      },
+    ]);
+
+    const repo = createSharePointBehaviorMonitoringRepository(
+      client as unknown as UseSP,
+    );
+
+    await expect(
+      repo.findByPlanningSheetId({
+        planningSheetId: 'sp-10',
+        userId: 'U001',
+      }),
+    ).rejects.toThrow('Invalid row data');
+  });
+});
+
+// ═════════════════════════════════════════════
+// PlanningSheetReassessment Repository
+// ═════════════════════════════════════════════
+
+describe('SharePointPlanningSheetReassessmentRepository', () => {
+  let client: ReturnType<typeof createMockClient>;
+
+  beforeEach(() => {
+    client = createMockClient();
+  });
+
+  it('planningSheetId でフィルタして再評価一覧を返す', async () => {
+    client.listItems.mockResolvedValueOnce([
+      makeSpPlanningSheetReassessmentRow(701),
+    ]);
+    const repo = createSharePointPlanningSheetReassessmentRepository(
+      client as unknown as UseSP,
+    );
+
+    const result = await repo.findByPlanningSheetId({
+      planningSheetId: 'sp-10',
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].planChangeDecision).toBe('major_revision');
+    expect(result[0].triggerType).toBe('monitoring');
+    expect(client.listItems).toHaveBeenCalledWith(
+      'PlanningSheetReassessment_Master',
+      expect.objectContaining({
+        filter: "PlanningSheetId eq 'sp-10'",
+      }),
+    );
+  });
+
+  it('データ未設定時は空配列', async () => {
+    client.listItems.mockResolvedValueOnce([]);
+    const repo = createSharePointPlanningSheetReassessmentRepository(
+      client as unknown as UseSP,
+    );
+
+    const result = await repo.findByPlanningSheetId({
+      planningSheetId: 'sp-10',
+    });
+
+    expect(result).toEqual([]);
   });
 });
