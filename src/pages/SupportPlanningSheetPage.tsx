@@ -50,6 +50,8 @@ import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -88,6 +90,7 @@ import { useTagAnalytics, TagAnalyticsSection, presetToDateRange, type PeriodPre
 import { useStrategyUsageCounts } from '@/features/planning-sheet/hooks/useStrategyUsageCounts';
 import { useStrategyUsageTrend } from '@/features/planning-sheet/hooks/useStrategyUsageTrend';
 import { TrendOverviewBar } from '@/features/planning-sheet/components/StrategyTrendIndicator';
+import { filterAuditHistoryRecords, type AuditHistoryFilter } from '@/features/planning-sheet/domain/filterAuditHistory';
 
 // ── Local (split) ──
 import { type SheetTabKey, TAB_SECTIONS, TabPanel } from './support-planning-sheet/types';
@@ -115,6 +118,7 @@ export default function SupportPlanningSheetPage() {
   const [monitoringDialogOpen, setMonitoringDialogOpen] = React.useState(false);
   const [sessionProvenance, setSessionProvenance] = React.useState<ProvenanceEntry[]>([]);
   const [contextOpen, setContextOpen] = React.useState(false);
+  const [historyFilter, setHistoryFilter] = React.useState<AuditHistoryFilter>('all');
 
   // ── Evidence Links state (persisted to localStorage) ──
   const [evidenceLinks, setEvidenceLinksRaw] = React.useState<EvidenceLinkMap>(createEmptyEvidenceLinkMap());
@@ -220,6 +224,10 @@ export default function SupportPlanningSheetPage() {
   const auditRecords = React.useMemo(
     () => (planningSheetId ? getBySheetId(planningSheetId) : []),
     [planningSheetId, getBySheetId],
+  );
+  const filteredAuditRecords = React.useMemo(
+    () => filterAuditHistoryRecords(auditRecords, historyFilter),
+    [auditRecords, historyFilter],
   );
 
   const handleAssessmentImport = React.useCallback((result: AssessmentBridgeResult) => {
@@ -519,6 +527,9 @@ export default function SupportPlanningSheetPage() {
               モニタリング履歴: 「モニタリング履歴 / 取込履歴」を確認してください。
             </Typography>
             <Typography variant="caption" color="text.secondary">
+              履歴の絞り込み: 「すべて / モニタリング / アセスメント」を切り替えて確認できます。
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
               支援手順の確認・更新: 「支援設計」タブで手順を確認し、編集後に保存してください。
             </Typography>
             <Typography variant="caption" color="text.secondary">
@@ -560,13 +571,40 @@ export default function SupportPlanningSheetPage() {
         {/* ── モニタリング履歴 / 取込履歴タイムライン ── */}
         {auditRecords.length > 0 ? (
           <Box id="monitoring-history-timeline">
-            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>
-              モニタリング履歴 / 取込履歴
-            </Typography>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              justifyContent="space-between"
+              alignItems={{ xs: 'flex-start', sm: 'center' }}
+              sx={{ mb: 1 }}
+            >
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                モニタリング履歴 / 取込履歴
+              </Typography>
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={historyFilter}
+                onChange={(_event, next) => {
+                  if (next) setHistoryFilter(next as AuditHistoryFilter);
+                }}
+                aria-label="履歴フィルタ"
+              >
+                <ToggleButton value="all">すべて</ToggleButton>
+                <ToggleButton value="monitoring">モニタリング</ToggleButton>
+                <ToggleButton value="assessment">アセスメント</ToggleButton>
+              </ToggleButtonGroup>
+            </Stack>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-              モニタリング取込後の反映履歴はこのセクションで確認できます。
+              モニタリング取込後の反映履歴はこのセクションで確認できます。必要に応じて履歴フィルタを切り替えてください。
             </Typography>
-            <ImportHistoryTimeline records={auditRecords} compact />
+            {filteredAuditRecords.length > 0 ? (
+              <ImportHistoryTimeline records={filteredAuditRecords} compact />
+            ) : (
+              <Alert severity="info" variant="outlined">
+                選択した条件に一致する履歴はありません。履歴フィルタを切り替えて確認してください。
+              </Alert>
+            )}
           </Box>
         ) : (
           <Alert severity="info" variant="outlined" id="monitoring-history-timeline">
