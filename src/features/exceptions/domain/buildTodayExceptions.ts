@@ -3,6 +3,7 @@ import { ExceptionItem } from './exceptionLogic';
 export type TodayExceptionAction = {
   id: string;
   sourceExceptionId: string;
+  stableId?: string;
   kind: 'critical-handoff' | 'missing-record' | 'attention-user';
   priority: 'high' | 'critical';
   title: string;
@@ -48,10 +49,9 @@ export function buildTodayExceptions(
 
   for (const item of items) {
     // 1. dismiss / snooze の除外
-    if (item.stableId) {
-      if (dismissedStableIds.has(item.stableId)) continue;
-      if (snoozedStableIds.has(item.stableId)) continue;
-    }
+    const effectiveStableId = item.stableId ?? item.id;
+    if (dismissedStableIds.has(effectiveStableId)) continue;
+    if (snoozedStableIds.has(effectiveStableId)) continue;
 
     // 2. actionPath がないものは原則除外
     if (!item.actionPath) continue;
@@ -87,6 +87,7 @@ export function buildTodayExceptions(
       actionPath: item.actionPath,
       userId: item.targetUserId,
       date: item.targetDate ?? item.updatedAt,
+      stableId: effectiveStableId,
     });
   }
 
