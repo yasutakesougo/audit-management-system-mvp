@@ -3,8 +3,7 @@ import { routerFutureFlags } from '@/app/routerFuture';
 import { ColorModeContext } from '@/app/theme';
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { cleanup, screen, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { cleanup, fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 
@@ -57,6 +56,11 @@ vi.mock('@/ui/components/SignInButton', () => ({
   default: () => <div data-testid="sign-in-button" />,
 }));
 
+vi.mock('@/app/components/FooterQuickActions', () => ({
+  FooterQuickActions: () => <footer role="contentinfo" data-testid="footer-quick-actions-mock" />,
+  default: () => <footer role="contentinfo" data-testid="footer-quick-actions-mock" />,
+}));
+
 vi.mock('@/lib/env', async () => {
   const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
   return {
@@ -87,10 +91,10 @@ vi.mock('@/auth/useUserAuthz', () => ({
 }));
 
 describe('AppShell navigation', () => {
-  const ensureDesktopNavOpen = async () => {
+  const ensureDesktopNavOpen = () => {
     const navToggleButton = screen.getByRole('button', { name: /サイドメニューを(開く|閉じる)/i });
     if (navToggleButton.getAttribute('aria-label')?.includes('開く')) {
-      await userEvent.click(navToggleButton);
+      fireEvent.click(navToggleButton);
     }
   };
 
@@ -120,7 +124,7 @@ describe('AppShell navigation', () => {
     });
 
     // Open the desktop navigation drawer
-    await ensureDesktopNavOpen();
+    ensureDesktopNavOpen();
 
     const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
     const nav = within(navRoot);
@@ -208,7 +212,7 @@ describe('AppShell navigation', () => {
         routeChildren: routeEntries.map((path) => ({ path, element: getShell() })),
       });
 
-      await ensureDesktopNavOpen();
+      ensureDesktopNavOpen();
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
@@ -242,7 +246,7 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      await ensureDesktopNavOpen();
+      ensureDesktopNavOpen();
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
@@ -276,7 +280,7 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      await ensureDesktopNavOpen();
+      ensureDesktopNavOpen();
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
@@ -311,7 +315,7 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      await ensureDesktopNavOpen();
+      ensureDesktopNavOpen();
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
@@ -325,7 +329,7 @@ describe('AppShell navigation', () => {
       const initialCount = linksBeforeSearch.length;
 
       // Type a search query
-      await userEvent.type(searchInput, '記録');
+      fireEvent.change(searchInput, { target: { value: '記録' } });
 
       // After search, fewer links should be visible
       const linksAfterSearch = nav.queryAllByRole('link');
@@ -356,18 +360,18 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      await ensureDesktopNavOpen();
+      ensureDesktopNavOpen();
 
       const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
       const nav = within(navRoot);
       const searchInput = nav.getByPlaceholderText(/メニュー検索/i) as HTMLInputElement;
 
       // Type a search query
-      await userEvent.type(searchInput, '記録');
+      fireEvent.change(searchInput, { target: { value: '記録' } });
       expect(searchInput.value).toBe('記録');
 
       // Press Escape
-      await userEvent.keyboard('{Escape}');
+      fireEvent.keyDown(searchInput, { key: 'Escape', code: 'Escape' });
       expect(searchInput.value).toBe('');
     });
   });
@@ -396,13 +400,13 @@ describe('AppShell navigation', () => {
         routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
       });
 
-      await ensureDesktopNavOpen();
+      ensureDesktopNavOpen();
 
       const toggleButton = screen.getByRole('button', { name: /ナビを(折りたたみ|展開)/i });
       expect(toggleButton).toBeInTheDocument();
 
       const beforeLabel = toggleButton.getAttribute('aria-label') ?? '';
-      await userEvent.click(toggleButton);
+      fireEvent.click(toggleButton);
 
       if (beforeLabel.includes('折りたたみ')) {
         const expandButton = await screen.findByRole('button', { name: /ナビを展開/i });
