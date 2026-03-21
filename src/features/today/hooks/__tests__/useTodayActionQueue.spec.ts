@@ -2,6 +2,33 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useTodayActionQueue } from '../useTodayActionQueue';
 import { useTodayQueueTelemetryStore } from '../../telemetry/todayQueueTelemetryStore';
+import type { ActionSuggestion } from '@/features/action-engine/domain/types';
+
+vi.mock('@/features/action-engine/telemetry/useSuggestionVisibilityTelemetry', () => ({
+  useSuggestionVisibilityTelemetry: () => {},
+}));
+
+const assessmentStaleSuggestion: ActionSuggestion = {
+  id: 'assessment-stale-user-001-1711000000000',
+  stableId: 'assessment-stale:user-001:2026-W12',
+  type: 'assessment_update',
+  priority: 'P2',
+  targetUserId: 'user-001',
+  title: 'アセスメント更新が停滞しています',
+  reason: 'しばらく更新がありません。',
+  evidence: {
+    metric: 'アセスメント最終更新',
+    currentValue: '21日',
+    threshold: '14日超',
+    period: '直近30日',
+  },
+  cta: {
+    label: 'アセスメントを確認',
+    route: '/assessment',
+  },
+  createdAt: '2026-03-21T09:00:00Z',
+  ruleId: 'assessment-stale',
+};
 
 describe('useTodayActionQueue', () => {
   beforeEach(() => {
@@ -42,6 +69,30 @@ describe('useTodayActionQueue', () => {
     // 再計算が走っているためオブジェクト参照が異なるはず
     // ※今回はUrgencyScoreや値が変わらなくても常に新しい配列が生成される設計
     expect(newQueue).not.toBe(initialQueue);
+  });
+
+  it('assessment-stale は週初（月曜）では Today に表示しない', () => {
+    vi.setSystemTime(new Date('2026-03-23T10:00:00Z')); // Monday
+    const { result } = renderHook(() =>
+      useTodayActionQueue({ correctiveActions: [assessmentStaleSuggestion] }),
+    );
+
+    const exists = result.current.actionQueue.some(
+      (item) => item.id === `corrective:${assessmentStaleSuggestion.stableId}`,
+    );
+    expect(exists).toBe(false);
+  });
+
+  it('assessment-stale は平日中盤（水曜）では Today に表示する', () => {
+    vi.setSystemTime(new Date('2026-03-25T10:00:00Z')); // Wednesday
+    const { result } = renderHook(() =>
+      useTodayActionQueue({ correctiveActions: [assessmentStaleSuggestion] }),
+    );
+
+    const exists = result.current.actionQueue.some(
+      (item) => item.id === `corrective:${assessmentStaleSuggestion.stableId}`,
+    );
+    expect(exists).toBe(true);
   });
 
   describe('Telemetry Tracking', () => {
