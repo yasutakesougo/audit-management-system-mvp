@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import {
   computeAssessmentStaleReviewResult,
+  computeBehaviorTrendReviewResult,
   computeWeeklyReviewResult,
   detectSuggestionLifecycleAnomalies,
   useSuggestionLifecycleEvents,
@@ -160,6 +161,14 @@ export function SuggestionLifecycleSection({
   const assessmentStaleReview = useMemo(
     () =>
       computeAssessmentStaleReviewResult({
+        currentByRule: byRule,
+        previousByRule: previousByRule,
+      }),
+    [byRule, previousByRule],
+  );
+  const behaviorTrendReview = useMemo(
+    () =>
+      computeBehaviorTrendReviewResult({
         currentByRule: byRule,
         previousByRule: previousByRule,
       }),
@@ -387,6 +396,98 @@ export function SuggestionLifecycleSection({
                       assessmentStaleReview.status === 'PASS'
                         ? '#166534'
                         : assessmentStaleReview.status === 'FAIL'
+                          ? '#991b1b'
+                          : '#475569',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  - {reason}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div
+            data-testid="suggestion-behavior-trend-review"
+            style={{
+              marginBottom: 12,
+              padding: 10,
+              borderRadius: 8,
+              border: `1px solid ${
+                behaviorTrendReview.status === 'PASS'
+                  ? '#86efac'
+                  : behaviorTrendReview.status === 'FAIL'
+                    ? '#fecaca'
+                    : '#cbd5e1'
+              }`,
+              background:
+                behaviorTrendReview.status === 'PASS'
+                  ? '#f0fdf4'
+                  : behaviorTrendReview.status === 'FAIL'
+                    ? '#fef2f2'
+                    : '#f8fafc',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+                marginBottom: 8,
+              }}
+            >
+              <div style={{ fontSize: 12, color: '#334155', fontWeight: 700 }}>
+                behavior-trend Review (#1166)
+              </div>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  color:
+                    behaviorTrendReview.status === 'PASS'
+                      ? '#166534'
+                      : behaviorTrendReview.status === 'FAIL'
+                        ? '#991b1b'
+                        : '#334155',
+                  background:
+                    behaviorTrendReview.status === 'PASS'
+                      ? '#dcfce7'
+                      : behaviorTrendReview.status === 'FAIL'
+                        ? '#fee2e2'
+                        : '#e2e8f0',
+                }}
+              >
+                {behaviorTrendReview.status}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gap: 4, fontSize: 12, color: '#475569', marginBottom: 8 }}>
+              <div>
+                shown: {behaviorTrendReview.current.shown} / 前期間 {behaviorTrendReview.previous.shown}
+              </div>
+              <div>
+                dismissRate: {formatRate(behaviorTrendReview.previous.dismissRate)} → {formatRate(behaviorTrendReview.current.dismissRate)}
+                {' '}({formatDeltaPt(behaviorTrendReview.deltas.dismissRatePt)})
+              </div>
+              <div>
+                ctaRate: {formatRate(behaviorTrendReview.previous.ctaRate)} → {formatRate(behaviorTrendReview.current.ctaRate)}
+                {' '}({formatDeltaPt(behaviorTrendReview.deltas.ctaRatePt)})
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gap: 4 }}>
+              {behaviorTrendReview.reasons.map((reason) => (
+                <div
+                  key={reason}
+                  style={{
+                    fontSize: 12,
+                    color:
+                      behaviorTrendReview.status === 'PASS'
+                        ? '#166534'
+                        : behaviorTrendReview.status === 'FAIL'
                           ? '#991b1b'
                           : '#475569',
                     lineHeight: 1.4,
