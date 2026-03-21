@@ -14,6 +14,7 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   filterHandoffsByStatus,
   getFilteredCountInfo,
@@ -71,6 +72,9 @@ export type HandoffDayViewState = {
   timeFilter: ReturnType<typeof useHandoffTimelineViewModel>['timeFilter'];
   handleTimeFilterChange: ReturnType<typeof useHandoffTimelineViewModel>['handleTimeFilterChange'];
   workflowActions: ReturnType<typeof useHandoffTimelineViewModel>['workflowActions'];
+
+  // PR-B: 該当カードのハイライト用
+  highlightedHandoffId: number | null;
 };
 
 // ────────────────────────────────────────────────────────────
@@ -129,10 +133,25 @@ export function useHandoffDayViewState({
   } = useHandoffTimeline(timeFilter, dayScope);
 
   // ── ステータスフィルタ適用 ──
-  const filteredHandoffs = useMemo(
-    () => filterHandoffsByStatus(todayHandoffs, statusFilter),
-    [todayHandoffs, statusFilter],
-  );
+  // PR-B: URLの handoffId を読み取り、該当カードを先頭へ移動する
+  const [searchParams] = useSearchParams();
+  const highlightedHandoffId = useMemo(() => {
+    const param = searchParams.get('handoffId');
+    return param ? Number(param) : null;
+  }, [searchParams]);
+
+  const filteredHandoffs = useMemo(() => {
+    const list = filterHandoffsByStatus(todayHandoffs, statusFilter);
+    if (highlightedHandoffId) {
+      const targetIndex = list.findIndex(h => h.id === highlightedHandoffId);
+      if (targetIndex > -1) {
+        const [target] = list.splice(targetIndex, 1);
+        list.unshift(target); // 先頭に移動
+      }
+    }
+    return list;
+  }, [todayHandoffs, statusFilter, highlightedHandoffId]);
+
   const filteredCountInfo = useMemo(
     () => getFilteredCountInfo(todayHandoffs.length, filteredHandoffs.length, statusFilter),
     [todayHandoffs.length, filteredHandoffs.length, statusFilter],
@@ -159,5 +178,6 @@ export function useHandoffDayViewState({
     timeFilter,
     handleTimeFilterChange,
     workflowActions,
+    highlightedHandoffId,
   };
 }

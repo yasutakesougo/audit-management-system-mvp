@@ -1,14 +1,14 @@
 // ---------------------------------------------------------------------------
 // Rule 1: 行動増加傾向 → アセスメント見直し
 //
-// 直近期間の平均発生件数が前期間比で 30% 以上増加している場合に提案。
+// 直近期間の平均発生件数が前期間比で 40% 以上増加している場合に提案。
 // ---------------------------------------------------------------------------
 
 import type { ActionSuggestion, CorrectiveActionInput } from '../types';
 import { buildStableId } from '../types';
 
-/** 変化率の閾値: 30% 増加 */
-const INCREASE_THRESHOLD = 1.3;
+/** 変化率の閾値: 40% 増加 */
+const INCREASE_THRESHOLD = 1.4;
 const RULE_ID = 'behavior-trend-increase';
 
 export function detectBehaviorTrend(input: CorrectiveActionInput, now: Date): ActionSuggestion | null {
@@ -25,12 +25,12 @@ export function detectBehaviorTrend(input: CorrectiveActionInput, now: Date): Ac
     type: 'assessment_update',
     priority: 'P0',
     targetUserId,
-    title: '行動発生が増加傾向です',
-    reason: `行動発生件数が前週比 ${pctIncrease}% 増加しています。アセスメントの見直しを推奨します。`,
+    title: '行動発生は要確認です',
+    reason: `行動発生件数が前週比 ${pctIncrease}% 増加しています。状況を要確認のうえ、アセスメントの見直しを推奨します。`,
     evidence: {
       metric: '行動発生件数（日平均）',
       currentValue: trend.recentAvg.toFixed(1),
-      threshold: `前週比 +30%`,
+      threshold: `前週比 +40%`,
       period: '直近7日 vs 前7日',
       metrics: {
         recentAvg: trend.recentAvg,

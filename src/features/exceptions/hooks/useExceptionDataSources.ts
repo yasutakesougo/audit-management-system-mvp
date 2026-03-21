@@ -19,6 +19,7 @@ import type { DailyRecordItem } from '@/features/daily/domain/DailyRecordReposit
 import { useHandoffData } from '@/features/handoff/hooks/useHandoffData';
 import type { HandoffRecord } from '@/features/handoff/handoffTypes';
 import { useUsers } from '@/features/users/useUsers';
+import { useIspRepositories } from '@/features/support-plan-guide/hooks/useIspRepositories';
 import type { DailyRecordSummary, HandoffSummaryItem, UserSummary } from '../domain/exceptionLogic';
 
 // ── 型定義 ──
@@ -49,13 +50,19 @@ export function useExceptionDataSources(): ExceptionDataSources {
   const { data: users } = useUsers();
   const dailyRepo = useDailyRecordRepository();
   const { repo: handoffRepo } = useHandoffData();
+  const { ispRepo } = useIspRepositories();
 
   const [todayRecords, setTodayRecords] = useState<DailyRecordItem[]>([]);
   const [handoffRecords, setHandoffRecords] = useState<HandoffRecord[]>([]);
+  const [currentPlanUserIds, setCurrentPlanUserIds] = useState<Set<string>>(new Set());
+
   const [dailyLoading, setDailyLoading] = useState(true);
   const [handoffLoading, setHandoffLoading] = useState(true);
+  const [ispLoading, setIspLoading] = useState(true);
+
   const [dailyError, setDailyError] = useState<string | null>(null);
   const [handoffError, setHandoffError] = useState<string | null>(null);
+  const [ispError, setIspError] = useState<string | null>(null);
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
@@ -103,6 +110,34 @@ export function useExceptionDataSources(): ExceptionDataSources {
     return () => { cancelled = true; };
   }, [handoffRepo]);
 
+  // 現行 ISP 取得
+  useEffect(() => {
+    let cancelled = false;
+    setIspLoading(true);
+
+    async function loadCurrentIsps() {
+      try {
+        const currentIsps = await ispRepo.listAllCurrent();
+        if (!cancelled) {
+          const userIds = new Set(currentIsps.map(isp => isp.userId));
+          setCurrentPlanUserIds(userIds);
+          setIspError(null);
+        }
+      } catch (err) {
+        console.warn('[useExceptionDataSources] ISP load failed:', err);
+        if (!cancelled) {
+          setCurrentPlanUserIds(new Set());
+          setIspError(err instanceof Error ? err.message : 'ISPの取得に失敗');
+        }
+      } finally {
+        if (!cancelled) setIspLoading(false);
+      }
+    }
+
+    loadCurrentIsps();
+    return () => { cancelled = true; };
+  }, [ispRepo]);
+
   // データ変換
   return useMemo(() => {
     // アクティブユーザー一覧
@@ -145,15 +180,19 @@ export function useExceptionDataSources(): ExceptionDataSources {
         userName: u.FullName ?? '',
         isHighIntensity: u.IsHighIntensitySupportTarget ?? false,
         isSupportProcedureTarget: u.IsSupportProcedureTarget ?? false,
-        hasPlan: true, // TODO Phase 3: ISP Repository で実際に確認
+        hasPlan: ispError
+          ? true // ISP取得失敗時は、誤検知で全員が attention-user になるのを防ぐため安全側（true）に倒す
+          : currentPlanUserIds.has(u.UserID ?? String(u.Id)),
       }));
 
     // 4状態契約
-    const isLoading = dailyLoading || handoffLoading;
-    const errorMsg = dailyError ?? handoffError;
+    // ISPエラー時は安全側にフォールバックするため全体の error 画面にはしない
+    const isLoading = dailyLoading || handoffLoading || ispLoading;
+    const isFatalError = dailyError ?? handoffError;
+    const errorMsg = dailyError ?? handoffError ?? ispError;
     const status: DataSourceStatus = isLoading
       ? 'loading'
-      : errorMsg
+      : isFatalError
         ? 'error'
         : (dailyRecordSummaries.length === 0 && criticalHandoffs.length === 0)
           ? 'empty'
@@ -168,5 +207,17 @@ export function useExceptionDataSources(): ExceptionDataSources {
       status,
       error: errorMsg,
     };
-  }, [users, todayRecords, handoffRecords, today, dailyLoading, handoffLoading, dailyError, handoffError]);
+  }, [
+    users,
+    todayRecords,
+    handoffRecords,
+    currentPlanUserIds,
+    today,
+    dailyLoading,
+    handoffLoading,
+    ispLoading,
+    dailyError,
+    handoffError,
+    ispError,
+  ]);
 }

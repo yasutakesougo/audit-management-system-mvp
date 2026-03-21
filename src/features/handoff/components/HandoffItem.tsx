@@ -56,6 +56,8 @@ export type HandoffItemProps = {
   workflowActions?: WorkflowActions;
   /** Phase 8-A: 利用者状態登録コールバック */
   onRegisterStatus?: (handoff: HandoffRecord) => void;
+  /** PR-B: ハイライトフラグ */
+  isHighlighted?: boolean;
 };
 
 // ────────────────────────────────────────────────────────────
@@ -98,6 +100,7 @@ export const HandoffItem: React.FC<HandoffItemProps> = ({
   meetingMode,
   workflowActions,
   onRegisterStatus,
+  isHighlighted,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [statusPulse, setStatusPulse] = useState(false);
@@ -167,13 +170,18 @@ export const HandoffItem: React.FC<HandoffItemProps> = ({
         borderLeft: `${severityStyle.borderLeftWidth}px solid`,
         borderLeftColor: severityStyle.borderLeftColor,
         opacity: isCompleted ? 0.65 : 1,
-        bgcolor: isSeen
-          ? (severityStyle.bgTint || 'background.paper')
-          : 'action.hover',
+        bgcolor: isHighlighted
+          ? 'warning.50'
+          : isSeen
+            ? (severityStyle.bgTint || 'background.paper')
+            : 'action.hover',
         ...(severityStyle.glowColor && !isCompleted && {
           boxShadow: `inset 4px 0 8px -4px ${severityStyle.glowColor}, 0 1px 3px rgba(0,0,0,0.04)`,
         }),
         transition: motionTokens.transition.cardInteractive,
+        ...(isHighlighted && !statusPulse && {
+          boxShadow: (theme) => `0 0 0 2px ${theme.palette.warning.main}`,
+        }),
         ...(statusPulse && {
           boxShadow: (theme) =>
             `0 0 0 2px ${theme.palette.primary.main}40`,
