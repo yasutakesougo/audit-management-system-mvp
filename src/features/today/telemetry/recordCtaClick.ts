@@ -42,6 +42,12 @@ export const CTA_EVENTS = {
   PROGRESS_RING_CONTACTS: 'today_progress_ring_contacts_clicked',
 
   // ── CallLog 再設計 ──────────────────────────────────────────
+  /** CallLog Summary カード全体クリック */
+  CALLLOG_SUMMARY_CLICKED: 'calllog_summary_clicked',
+  /** CallLog Summary 各種タイルクリック */
+  CALLLOG_SUMMARY_TILE_CLICKED: 'calllog_summary_tile_clicked',
+  /** CallLog Summary 新規登録アイコン */
+  CALLLOG_SUMMARY_NEW_CLICKED: 'calllog_summary_new_clicked',
   /** CallLog Hero「完了にする」 */
   CALLLOG_HERO_DONE: 'calllog_hero_done_clicked',
   /** CallLog Priority Queue 行クリック */
