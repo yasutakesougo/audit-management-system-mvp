@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react';
 import {
+  computeWeeklyReviewResult,
   detectSuggestionLifecycleAnomalies,
   useSuggestionLifecycleEvents,
   useSuggestionTelemetrySummary,
@@ -28,6 +29,11 @@ type RateRow = {
   snooze: number;
   resurfaced: number;
 };
+
+function formatDeltaPt(value: number): string {
+  const rounded = Number(value.toFixed(1));
+  return `${rounded >= 0 ? '+' : ''}${rounded.toFixed(1)}pt`;
+}
 
 function SummaryRowTable({
   title,
@@ -129,6 +135,23 @@ export function SuggestionLifecycleSection({
       }),
     [summary, previousSummary, byRule, previousByRule],
   );
+  const weeklyReview = useMemo(
+    () =>
+      computeWeeklyReviewResult({
+        current: {
+          dismissRate: summary.rates.dismiss,
+          resurfacedRate: summary.rates.resurfaced,
+          shownCount: summary.shown,
+        },
+        previous: {
+          dismissRate: previousSummary.rates.dismiss,
+          resurfacedRate: previousSummary.rates.resurfaced,
+          shownCount: previousSummary.shown,
+        },
+        anomalies,
+      }),
+    [summary, previousSummary, anomalies],
+  );
 
   const screenRows: RateRow[] = byScreen.map((row) => ({
     key: row.sourceScreen,
@@ -210,6 +233,66 @@ export function SuggestionLifecycleSection({
 
       {!isEmpty && (
         <>
+          <div
+            data-testid="suggestion-weekly-review"
+            style={{
+              marginBottom: 12,
+              padding: 10,
+              borderRadius: 8,
+              border: `1px solid ${weeklyReview.status === 'PASS' ? '#86efac' : '#fecaca'}`,
+              background: weeklyReview.status === 'PASS' ? '#f0fdf4' : '#fef2f2',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+                marginBottom: 8,
+              }}
+            >
+              <div style={{ fontSize: 12, color: '#334155', fontWeight: 700 }}>
+                Weekly Review
+              </div>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  color: weeklyReview.status === 'PASS' ? '#166534' : '#991b1b',
+                  background: weeklyReview.status === 'PASS' ? '#dcfce7' : '#fee2e2',
+                }}
+              >
+                {weeklyReview.status}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gap: 4, fontSize: 12, color: '#475569', marginBottom: 8 }}>
+              <div>dismissRate Δ: {formatDeltaPt(weeklyReview.metrics.deltas.dismissRatePt)}</div>
+              <div>resurfacedRate Δ: {formatDeltaPt(weeklyReview.metrics.deltas.resurfacedRatePt)}</div>
+              <div>
+                shown: {summary.shown} / 前期間 {previousSummary.shown}（{Math.round(weeklyReview.metrics.deltas.shownCoverage * 100)}%）
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gap: 4 }}>
+              {weeklyReview.reasons.map((reason) => (
+                <div
+                  key={reason}
+                  style={{
+                    fontSize: 12,
+                    color: weeklyReview.status === 'PASS' ? '#166534' : '#991b1b',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  - {reason}
+                </div>
+              ))}
+            </div>
+          </div>
+
           {anomalies.length > 0 && (
             <div
               data-testid="suggestion-lifecycle-anomalies"
