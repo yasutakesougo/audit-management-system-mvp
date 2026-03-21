@@ -57,6 +57,7 @@ import { useUserStatusActions } from '@/features/schedules/hooks/useUserStatusAc
 import { UserStatusQuickDialog } from '@/features/schedules/components/UserStatusQuickDialog';
 // Phase 9: Today → Schedule Ops 高負荷タイル連携
 import { useWeeklyHighLoadStatus } from '@/features/today/hooks/useWeeklyHighLoadStatus';
+import { useTodayExceptions } from '@/features/today/hooks/useTodayExceptions';
 
 import { Alert, Snackbar } from '@mui/material';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -92,6 +93,7 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
 
   // ── Data Fetching (Facade) ──
   const summary = useTodaySummary();
+  const exceptionsQueue = useTodayExceptions();
 
   // ── Schedule Lanes (Real-data with fallback) ──
   const realSchedule = useTodayScheduleLanes();
@@ -445,8 +447,9 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
         navigate(`/schedule-ops?focusDate=${focusDate}`);
       },
     } : undefined,
+    exceptionsQueue,
     };
-  }, [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, handleDismissSuggestion, handleSnoozeSuggestion, callLogsSummary, handleOpenUserStatus, userStatusActions.todayStatusRecords, highLoadStatus, role]);
+  }, [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, handleDismissSuggestion, handleSnoozeSuggestion, callLogsSummary, handleOpenUserStatus, userStatusActions.todayStatusRecords, highLoadStatus, role, exceptionsQueue]);
 
   // ── Save Success Handler (Quick Record auto-next) ──
   const [showCompletionToast, setShowCompletionToast] = React.useState(false);
