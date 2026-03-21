@@ -18,11 +18,11 @@ function makeInput(overrides: Partial<SceneNextActionInput> = {}): SceneNextActi
 describe('buildSceneNextAction', () => {
   // ── P1: 申し送り最優先 ──
 
-  it('returns briefing action when pendingBriefings > 0 (critical)', () => {
+  it('returns attendance-alert action when pendingBriefings > 0 (critical)', () => {
     const result = buildSceneNextAction(makeInput({ pendingBriefings: 2 }));
     expect(result.priority).toBe('critical');
-    expect(result.ctaTarget).toBe('briefing');
-    expect(result.reasons).toContain('未確認の申し送り 2件');
+    expect(result.ctaTarget).toBe('attendance-alert');
+    expect(result.reasons).toContain('注意アラート 2件');
   });
 
   it('briefing priority overrides scene-specific checks', () => {
@@ -33,7 +33,7 @@ describe('buildSceneNextAction', () => {
         pendingAttendance: 5,
       }),
     );
-    expect(result.ctaTarget).toBe('briefing');
+    expect(result.ctaTarget).toBe('attendance-alert');
     expect(result.priority).toBe('critical');
   });
 
@@ -147,7 +147,7 @@ describe('buildSceneNextAction', () => {
         pendingDailyRecords: 5,
       }),
     );
-    expect(result.ctaTarget).toBe('briefing');
+    expect(result.ctaTarget).toBe('attendance-alert');
     expect(result.priority).toBe('critical');
   });
 
