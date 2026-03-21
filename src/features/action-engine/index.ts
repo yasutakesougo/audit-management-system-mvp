@@ -113,3 +113,13 @@ export type {
   SuggestionLifecycleAnomalyThresholds,
   DetectSuggestionLifecycleAnomaliesInput,
 } from './telemetry/detectSuggestionLifecycleAnomalies';
+export {
+  computeWeeklyReviewResult,
+  WEEKLY_REVIEW_THRESHOLDS,
+} from './telemetry/computeWeeklyReviewResult';
+export type {
+  WeeklyReviewInputMetrics,
+  WeeklyReviewMetrics,
+  WeeklyReviewResult,
+  ComputeWeeklyReviewResultInput,
+} from './telemetry/computeWeeklyReviewResult';
