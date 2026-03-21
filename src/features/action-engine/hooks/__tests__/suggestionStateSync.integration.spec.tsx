@@ -6,7 +6,10 @@ import type { ReactNode } from 'react';
 import type { ActionSuggestion } from '../../domain/types';
 import type { SnoozePreset } from '../../domain/computeSnoozeUntil';
 import { computeSnoozeUntil } from '../../domain/computeSnoozeUntil';
-import { useSuggestionStateStore } from '../useSuggestionStateStore';
+import {
+  SUGGESTION_STATE_STORAGE_KEY,
+  useSuggestionStateStore,
+} from '../useSuggestionStateStore';
 import { useTodayActionQueue } from '@/features/today/hooks/useTodayActionQueue';
 import { ActionQueueTimelineWidget } from '@/features/today/widgets/ActionQueueTimelineWidget';
 import { useCorrectiveActionExceptions } from '@/features/exceptions/hooks/useCorrectiveActionExceptions';
@@ -110,6 +113,7 @@ describe('suggestion state sync (Today ↔ ExceptionCenter)', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-21T10:00:00Z'));
+    localStorage.removeItem(SUGGESTION_STATE_STORAGE_KEY);
     useSuggestionStateStore.setState({ states: {} });
     mockRecordSuggestionTelemetry.mockReset();
   });
