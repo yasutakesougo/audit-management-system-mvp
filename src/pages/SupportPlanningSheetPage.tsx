@@ -563,6 +563,9 @@ export default function SupportPlanningSheetPage() {
             <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>
               モニタリング履歴 / 取込履歴
             </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              モニタリング取込後の反映履歴はこのセクションで確認できます。
+            </Typography>
             <ImportHistoryTimeline records={auditRecords} compact />
           </Box>
         ) : (
@@ -683,6 +686,9 @@ export default function SupportPlanningSheetPage() {
 
         {/* ── メタ情報フッター ── */}
         <Paper variant="outlined" sx={{ p: 2 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+            編集後は更新日・更新者を確認し、意図した内容で保存されていることを確認してください。
+          </Typography>
           <Stack direction="row" spacing={3} flexWrap="wrap" useFlexGap>
             <Typography variant="caption" color="text.secondary">
               作成日: {formatDateTimeIntl(sheet.createdAt, { year: 'numeric', month: '2-digit', day: '2-digit' })}
