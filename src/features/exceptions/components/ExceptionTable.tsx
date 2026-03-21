@@ -65,6 +65,7 @@ export type ExceptionTableProps = {
   suggestionActions?: {
     onDismiss: (stableId: string) => void;
     onSnooze: (stableId: string, preset: SnoozePreset) => void;
+    onCtaClick?: (stableId: string, targetUrl: string) => void;
   };
 };
 
@@ -109,6 +110,13 @@ const CorrectiveActionsCell: React.FC<{
       suggestionActions,
   );
 
+  const handleNavigate = (route: string) => {
+    if (item.category === 'corrective-action' && stableId) {
+      suggestionActions?.onCtaClick?.(stableId, route);
+    }
+    onNavigate(route);
+  };
+
   if (!primary) return null;
 
   return (
@@ -119,7 +127,7 @@ const CorrectiveActionsCell: React.FC<{
           size="small"
           variant="contained"
           color={SEVERITY_TO_COLOR[primary.severity] ?? 'primary'}
-          onClick={() => onNavigate(primary.route)}
+          onClick={() => handleNavigate(primary.route)}
           startIcon={<span style={{ fontSize: 12 }}>{primary.icon}</span>}
           sx={{ fontSize: '0.7rem', textTransform: 'none', py: 0.25, px: 1 }}
           title={primary.reason}
@@ -142,7 +150,7 @@ const CorrectiveActionsCell: React.FC<{
         <Button
           size="small"
           variant="text"
-          onClick={() => onNavigate(secondary.route)}
+          onClick={() => handleNavigate(secondary.route)}
           sx={{
             fontSize: '0.65rem',
             textTransform: 'none',

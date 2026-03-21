@@ -44,6 +44,11 @@ import type { ActionSuggestion, ActionSuggestionState } from '@/features/action-
 import type { SnoozePreset } from '@/features/action-engine/domain/computeSnoozeUntil';
 import { computeSnoozeUntil } from '@/features/action-engine/domain/computeSnoozeUntil';
 import { useSuggestionStateStore } from '@/features/action-engine/hooks/useSuggestionStateStore';
+import {
+  buildSuggestionTelemetryEvent,
+  SUGGESTION_TELEMETRY_EVENTS,
+} from '@/features/action-engine/telemetry/buildSuggestionTelemetryEvent';
+import { recordSuggestionTelemetry } from '@/features/action-engine/telemetry/recordSuggestionTelemetry';
 
 // ─── Component ────────────────────────────────────────────────
 
@@ -68,6 +73,9 @@ export default function ExceptionCenterPage({
   const dataSources = useExceptionDataSources();
   
   const [categoryFilter, setCategoryFilter] = useState<ExceptionCategory | 'all'>('all');
+  const suggestionByStableId = useMemo(() => {
+    return new Map(allSuggestions.map((s) => [s.stableId, s]));
+  }, [allSuggestions]);
 
   // Action Engine 提案 → ExceptionItem
   const { items: correctiveItems } = useCorrectiveActionExceptions({
@@ -76,13 +84,57 @@ export default function ExceptionCenterPage({
   });
 
   const handleDismissSuggestion = React.useCallback((stableId: string) => {
+    const suggestion = suggestionByStableId.get(stableId);
+    if (suggestion) {
+      recordSuggestionTelemetry(
+        buildSuggestionTelemetryEvent({
+          event: SUGGESTION_TELEMETRY_EVENTS.DISMISSED,
+          sourceScreen: 'exception-center',
+          stableId: suggestion.stableId,
+          ruleId: suggestion.ruleId,
+          priority: suggestion.priority,
+          targetUserId: suggestion.targetUserId,
+        }),
+      );
+    }
     dismissSuggestion(stableId, { by: 'exception-center' });
-  }, [dismissSuggestion]);
+  }, [dismissSuggestion, suggestionByStableId]);
 
   const handleSnoozeSuggestion = React.useCallback((stableId: string, preset: SnoozePreset) => {
+    const suggestion = suggestionByStableId.get(stableId);
     const until = computeSnoozeUntil(preset, new Date());
+    if (suggestion) {
+      recordSuggestionTelemetry(
+        buildSuggestionTelemetryEvent({
+          event: SUGGESTION_TELEMETRY_EVENTS.SNOOZED,
+          sourceScreen: 'exception-center',
+          stableId: suggestion.stableId,
+          ruleId: suggestion.ruleId,
+          priority: suggestion.priority,
+          targetUserId: suggestion.targetUserId,
+          snoozePreset: preset,
+          snoozedUntil: until,
+        }),
+      );
+    }
     snoozeSuggestion(stableId, until, { by: 'exception-center' });
-  }, [snoozeSuggestion]);
+  }, [snoozeSuggestion, suggestionByStableId]);
+
+  const handleSuggestionCtaClick = React.useCallback((stableId: string, targetUrl: string) => {
+    const suggestion = suggestionByStableId.get(stableId);
+    if (!suggestion) return;
+    recordSuggestionTelemetry(
+      buildSuggestionTelemetryEvent({
+        event: SUGGESTION_TELEMETRY_EVENTS.CTA_CLICKED,
+        sourceScreen: 'exception-center',
+        stableId: suggestion.stableId,
+        ruleId: suggestion.ruleId,
+        priority: suggestion.priority,
+        targetUserId: suggestion.targetUserId,
+        targetUrl,
+      }),
+    );
+  }, [suggestionByStableId]);
 
   // ── 例外検出（実データ） ──
   const exceptions = useMemo(() => {
@@ -255,6 +307,7 @@ export default function ExceptionCenterPage({
           suggestionActions={{
             onDismiss: handleDismissSuggestion,
             onSnooze: handleSnoozeSuggestion,
+            onCtaClick: handleSuggestionCtaClick,
           }}
         />
       </Stack>
