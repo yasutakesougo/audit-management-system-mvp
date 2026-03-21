@@ -28,6 +28,7 @@
  * @see docs/ui-principles.md
  */
 import { BentoCard, BentoContainer } from '@/components/ui/BentoGrid';
+import { TESTIDS } from '@/testids';
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
 import type { ServiceStructure } from '@/features/today/domain/serviceStructure.types';
 import type { TodayScene } from '@/features/today/domain/todayScene';
@@ -191,7 +192,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
         <BentoCard
           colSpan={{ xs: 1, sm: 2, md: 4 }}
           variant="accent"
-          testId="bento-next-action"
+          testId={TESTIDS.TODAY_HERO}
           sx={{ py: { xs: 2.5, sm: 3 } }}
         >
           <HeroActionCard
@@ -248,7 +249,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
             colSpan={{ xs: 1, sm: 2, md: 4 }}
             variant="default"
             noHover
-            testId="bento-progress-rings"
+            testId={TESTIDS.TODAY_PROGRESS_RINGS}
           >
             <SectionLabel emoji="📊" text="本日の進捗" />
             <ProgressRings items={progressRings} />
@@ -281,7 +282,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           <BentoCard
             colSpan={{ xs: 1, sm: 2, md: 4 }}
             variant="default"
-            testId="bento-high-load-tile"
+            testId={TESTIDS.TODAY_HIGH_LOAD_TILE}
           >
             <ScheduleOpsHighLoadTile
               viewModel={highLoadTile.viewModel}
@@ -297,7 +298,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
         {/* ── C1-a: 利用者リスト（未記録優先ソート済み） ── */}
         <BentoCard
           colSpan={{ xs: 1, sm: 2, md: 4 }}
-          testId="bento-users"
+          testId={TESTIDS.TODAY_USER_LIST}
         >
           <SectionLabel emoji="👥" text="利用者記録" />
           <UserCompactList
@@ -315,7 +316,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
         {handoffPanel && (
           <BentoCard
             colSpan={{ xs: 1, sm: 2, md: 4 }}
-            testId="bento-handoff"
+            testId={TESTIDS.TODAY_HANDOFF}
           >
             {handoffPanel}
           </BentoCard>
@@ -326,7 +327,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           <BentoCard
             colSpan={{ xs: 1, sm: 2, md: 4 }}
             variant="default"
-            testId="bento-call-log-summary"
+            testId={TESTIDS.TODAY_CALL_LOG_SUMMARY}
           >
             <CallLogSummaryCard {...callLogSummary} />
           </BentoCard>
@@ -371,7 +372,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
         {workflowCard && (
           <BentoCard
             colSpan={{ xs: 1, sm: 2, md: 4 }}
-            testId="bento-workflow"
+            testId={TESTIDS.TODAY_WORKFLOW_CARD}
             sx={{ p: 0 }}
           >
             <Accordion defaultExpanded={false} disableGutters elevation={0} sx={{ bgcolor: 'transparent' }}>
@@ -391,7 +392,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
         {transportCard && (
           <BentoCard
             colSpan={{ xs: 1, sm: 2, md: 4 }}
-            testId="bento-transport"
+            testId={TESTIDS.TODAY_TRANSPORT}
           >
             <TransportStatusCard {...transportCard} />
           </BentoCard>

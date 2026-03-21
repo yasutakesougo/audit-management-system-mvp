@@ -52,6 +52,16 @@ export const TESTIDS = {
   'iceberg-pdca-root': 'iceberg-pdca-root',
   ICEBERG_PDCA_EMPTY: 'iceberg-pdca-empty',
 
+  // Today Ops — BentoLayout セクション
+  TODAY_HERO: 'bento-next-action',
+  TODAY_PROGRESS_RINGS: 'bento-progress-rings',
+  TODAY_HIGH_LOAD_TILE: 'bento-high-load-tile',
+  TODAY_USER_LIST: 'bento-users',
+  TODAY_HANDOFF: 'bento-handoff',
+  TODAY_CALL_LOG_SUMMARY: 'bento-call-log-summary',
+  TODAY_WORKFLOW_CARD: 'bento-workflow',
+  TODAY_TRANSPORT: 'bento-transport',
+
   // PDCA dashboard cards & trend toggles
   'pdca-daily-completion-card': 'pdca-daily-completion-card',
   'pdca-daily-completion-value': 'pdca-daily-completion-value',
