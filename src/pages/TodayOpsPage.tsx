@@ -347,9 +347,37 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
       myOpenCount: callLogsSummary.myOpenCount,
       overdueCount: callLogsSummary.overdueCount,
       isLoading: callLogsSummary.isLoading,
-      onNavigate: () => navigate('/call-logs'),
-      onNavigateWithFilter: (preset: CallLogFilterPreset) => navigate(buildCallLogFilterUrl(preset)),
-      onOpenDrawer: () => setCallLogDrawerOpen(true),
+      onNavigate: () => {
+        recordCtaClick({
+          ctaId: CTA_EVENTS.CALLLOG_SUMMARY_CLICKED,
+          sourceComponent: 'CallLogSummaryCard',
+          stateType: 'navigation',
+          targetUrl: '/call-logs',
+          userRole: role,
+        });
+        navigate('/call-logs');
+      },
+      onNavigateWithFilter: (preset: CallLogFilterPreset) => {
+        const targetUrl = buildCallLogFilterUrl(preset);
+        recordCtaClick({
+          ctaId: CTA_EVENTS.CALLLOG_SUMMARY_TILE_CLICKED,
+          sourceComponent: 'CallLogSummaryCard',
+          stateType: 'navigation',
+          scene: preset,
+          targetUrl,
+          userRole: role,
+        });
+        navigate(targetUrl);
+      },
+      onOpenDrawer: () => {
+        recordCtaClick({
+          ctaId: CTA_EVENTS.CALLLOG_SUMMARY_NEW_CLICKED,
+          sourceComponent: 'CallLogSummaryCard',
+          stateType: 'widget-action',
+          userRole: role,
+        });
+        setCallLogDrawerOpen(true);
+      },
     },
     // Phase 9: 高負荷日タイル
     highLoadTile: highLoadStatus.visible ? {
