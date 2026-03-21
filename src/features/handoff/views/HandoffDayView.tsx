@@ -342,6 +342,7 @@ export function HandoffDayView({
               meetingMode={state.meetingMode}
               workflowActions={state.workflowActions}
               onRegisterStatus={onRegisterStatus}
+              highlightedHandoffId={state.highlightedHandoffId}
             />
           ) : (
             <HandoffUserGroupedView
