@@ -73,6 +73,7 @@ export {
 export { useSuggestionVisibilityTelemetry } from './telemetry/useSuggestionVisibilityTelemetry';
 export type { UseSuggestionVisibilityTelemetryOptions } from './telemetry/useSuggestionVisibilityTelemetry';
 export {
+  resolveSuggestionTelemetryWindow,
   summarizeSuggestionTelemetry,
   groupSuggestionTelemetryByRule,
   groupSuggestionTelemetryByScreen,
@@ -81,6 +82,7 @@ export {
 export type {
   SuggestionTelemetryRecord,
   SuggestionTelemetryWindow,
+  ResolvedSuggestionTelemetryWindow,
   SuggestionTelemetryCounts,
   SuggestionTelemetryRates,
   SuggestionTelemetrySummary,
@@ -88,3 +90,15 @@ export type {
   SuggestionTelemetryByScreen,
   SuggestionTelemetryByPriority,
 } from './telemetry/summarizeSuggestionTelemetry';
+export {
+  useSuggestionLifecycleEvents,
+} from './telemetry/useSuggestionLifecycleEvents';
+export type {
+  UseSuggestionLifecycleEventsOptions,
+  UseSuggestionLifecycleEventsResult,
+} from './telemetry/useSuggestionLifecycleEvents';
+export { useSuggestionTelemetrySummary } from './telemetry/useSuggestionTelemetrySummary';
+export type {
+  UseSuggestionTelemetrySummaryOptions,
+  UseSuggestionTelemetrySummaryResult,
+} from './telemetry/useSuggestionTelemetrySummary';

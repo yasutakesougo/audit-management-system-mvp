@@ -80,6 +80,8 @@ type ResolvedWindow = {
   to: Date;
 };
 
+export type ResolvedSuggestionTelemetryWindow = ResolvedWindow;
+
 function createEmptyCounts(): SuggestionTelemetryCounts {
   return {
     shown: 0,
@@ -133,7 +135,9 @@ function normalizeRuleId(ruleId: string): string {
   return normalized || 'unknown-rule';
 }
 
-function resolveWindow(window?: SuggestionTelemetryWindow): ResolvedWindow {
+export function resolveSuggestionTelemetryWindow(
+  window?: SuggestionTelemetryWindow,
+): ResolvedWindow {
   const to = window?.to ?? window?.now ?? new Date();
   const from =
     window?.from ?? new Date(to.getTime() - DEFAULT_WINDOW_DAYS * MS_PER_DAY);
@@ -155,7 +159,7 @@ function prepareSuggestionTelemetryEvents(
   events: SuggestionTelemetryRecord[],
   window?: SuggestionTelemetryWindow,
 ): { prepared: PreparedSuggestionTelemetryEvent[]; resolvedWindow: ResolvedWindow } {
-  const resolvedWindow = resolveWindow(window);
+  const resolvedWindow = resolveSuggestionTelemetryWindow(window);
   const prepared: PreparedSuggestionTelemetryEvent[] = [];
   const shownDedupe = new Set<string>();
 
