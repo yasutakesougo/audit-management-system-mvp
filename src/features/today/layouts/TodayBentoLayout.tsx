@@ -60,6 +60,8 @@ import { TodayPhaseIndicator } from '../widgets/TodayPhaseIndicator';
 import { CallLogSummaryCard, type CallLogSummaryCardProps } from '@/features/callLogs/components/CallLogSummaryCard';
 import { ScheduleOpsHighLoadTile } from '../widgets/ScheduleOpsHighLoadTile';
 import type { HighLoadTileViewModel } from '../domain/buildHighLoadTileViewModel';
+import { TodayExceptionAlerts } from '../components/TodayExceptionAlerts';
+import type { UseTodayExceptionsResult } from '../hooks/useTodayExceptions';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -109,6 +111,7 @@ export type TodayBentoProps = {
     viewModel: HighLoadTileViewModel;
     onClick: () => void;
   };
+  exceptionsQueue?: UseTodayExceptionsResult;
 };
 
 // ─── Compact Section Title ───────────────────────────────────
@@ -163,6 +166,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   handoffPanel,
   callLogSummary,
   highLoadTile,
+  exceptionsQueue,
 }) => {
   return (
     <Box
@@ -184,6 +188,8 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
 
       {/* ── Bento Grid ── */}
       <BentoContainer sx={{ mt: 2 }}>
+
+        <TodayExceptionAlerts exceptionsQueue={exceptionsQueue} />
 
         {/* ════════════════════════════════════════════════════
          *  ZONE A: ヒーローゾーン — 「今やること」が1つ見える

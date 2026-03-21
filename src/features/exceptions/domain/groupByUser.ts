@@ -42,12 +42,12 @@ export type UserExceptionGroup = {
  */
 export function groupExceptionsByUser(
   items: ExceptionItem[],
-  filterCategory: string = 'corrective-action',
+  filterCategory: string | 'all' = 'corrective-action',
 ): UserExceptionGroup[] {
   const map = new Map<string, UserExceptionGroup>();
 
   for (const item of items) {
-    if (item.category !== filterCategory) continue;
+    if (filterCategory !== 'all' && item.category !== filterCategory) continue;
 
     const uid = item.targetUserId ?? '__unknown__';
     let group = map.get(uid);

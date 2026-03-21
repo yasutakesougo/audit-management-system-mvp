@@ -38,8 +38,10 @@ import {
   type ExceptionCategory,
 } from '@/features/exceptions/domain/exceptionLogic';
 import { ExceptionTable } from '@/features/exceptions/components/ExceptionTable';
+import { applyExceptionPreferences } from '@/features/exceptions/domain/applyExceptionPreferences';
 import { useExceptionDataSources } from '@/features/exceptions/hooks/useExceptionDataSources';
 import { useCorrectiveActionExceptions } from '@/features/exceptions/hooks/useCorrectiveActionExceptions';
+import { useActiveExceptionPreferences } from '@/features/exceptions/hooks/useExceptionPreferences';
 import type { ActionSuggestion, ActionSuggestionState } from '@/features/action-engine/domain/types';
 import type { SnoozePreset } from '@/features/action-engine/domain/computeSnoozeUntil';
 import { computeSnoozeUntil } from '@/features/action-engine/domain/computeSnoozeUntil';
@@ -136,6 +138,8 @@ export default function ExceptionCenterPage({
     );
   }, [suggestionByStableId]);
 
+  const { dismissedStableIds, snoozedStableIds } = useActiveExceptionPreferences();
+
   // ── 例外検出（実データ） ──
   const exceptions = useMemo(() => {
     const missingRecords = detectMissingRecords({
@@ -148,8 +152,9 @@ export default function ExceptionCenterPage({
 
     const attentionUsers = detectAttentionUsers(dataSources.userSummaries);
 
-    return aggregateExceptions(missingRecords, criticalHandoffs, attentionUsers, correctiveItems);
-  }, [dataSources, correctiveItems]);
+    const aggregated = aggregateExceptions(missingRecords, criticalHandoffs, attentionUsers, correctiveItems);
+    return applyExceptionPreferences(aggregated, dismissedStableIds, snoozedStableIds);
+  }, [dataSources, correctiveItems, dismissedStableIds, snoozedStableIds]);
 
   const stats = useMemo(() => computeExceptionStats(exceptions), [exceptions]);
 

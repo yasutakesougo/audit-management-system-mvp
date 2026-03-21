@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ActionSuggestion, ActionSuggestionState } from '@/features/action-engine/domain/types';
 import { isSuggestionVisible } from '@/features/action-engine/domain/types';
+import { filterSuggestionsByDisplayTiming } from '@/features/action-engine/domain/suggestionDisplayTiming';
 import { mapSuggestionToException } from '@/features/exceptions/domain/mapSuggestionToException';
 import type { ExceptionItem } from '@/features/exceptions/domain/exceptionLogic';
 import { useSuggestionVisibilityTelemetry } from '@/features/action-engine/telemetry/useSuggestionVisibilityTelemetry';
@@ -57,21 +58,26 @@ export function useCorrectiveActionExceptions(
     return () => clearInterval(timer);
   }, [pollingIntervalMs]);
 
+  const timedSuggestions = useMemo(
+    () => filterSuggestionsByDisplayTiming(suggestions, now),
+    [suggestions, now],
+  );
+
   useSuggestionVisibilityTelemetry({
-    suggestions,
+    suggestions: timedSuggestions,
     states,
     sourceScreen: 'exception-center',
     now,
   });
 
   const items = useMemo(() => {
-    return suggestions
+    return timedSuggestions
       .filter((s) => {
         const state = states[s.stableId];
         return isSuggestionVisible(state, now);
       })
       .map(mapSuggestionToException);
-  }, [suggestions, states, now]);
+  }, [timedSuggestions, states, now]);
 
   return {
     items,
