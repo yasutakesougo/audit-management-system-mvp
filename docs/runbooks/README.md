@@ -16,6 +16,7 @@
 ## Operations
 
 - [Corrective-Action Telemetry Review](./corrective-action-telemetry-review.md)
+- Weekly Review Issue Template: `.github/ISSUE_TEMPLATE/corrective-action-weekly-review.yml`
 
 ## 使い方
 

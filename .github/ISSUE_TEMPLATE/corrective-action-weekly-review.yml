@@ -1,0 +1,128 @@
+name: "📊 Corrective-Action Weekly Review"
+description: "corrective-action telemetry の週次レビュー記録"
+title: "[Weekly Review] corrective-action telemetry - YYYY-MM-DD"
+labels:
+  - ops
+  - area:telemetry
+  - review-friendly
+body:
+  - type: markdown
+    attributes:
+      value: |
+        週次レビュー runbook:
+        - [Corrective-Action Telemetry Review](../../docs/runbooks/corrective-action-telemetry-review.md)
+
+  - type: input
+    id: review-date
+    attributes:
+      label: レビュー日
+      placeholder: "YYYY-MM-DD"
+    validations:
+      required: true
+
+  - type: input
+    id: period
+    attributes:
+      label: 集計期間
+      description: デフォルトは直近7日
+      placeholder: "YYYY-MM-DD - YYYY-MM-DD"
+      value: "直近7日"
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary-cards
+    attributes:
+      label: 総数サマリー
+      description: shown / clicked / dismissed / snoozed / resurfaced
+      placeholder: |
+        - shown:
+        - clicked:
+        - dismissed:
+        - snoozed:
+        - resurfaced:
+    validations:
+      required: true
+
+  - type: textarea
+    id: high-dismiss-rules
+    attributes:
+      label: dismiss率が高い rule（ノイズ候補）
+      description: 目安 60%以上。ruleId と対応案を記載
+      placeholder: |
+        - ruleId:
+          dismissRate:
+          action: 閾値見直し / 文言調整 / priority見直し
+    validations:
+      required: true
+
+  - type: textarea
+    id: high-cta-rules
+    attributes:
+      label: CTA率が高い rule（強化候補）
+      description: 目安 40%以上。ruleId と強化方針を記載
+      placeholder: |
+        - ruleId:
+          ctaRate:
+          action: 維持 / 導線強化 / 自動化候補
+    validations:
+      required: true
+
+  - type: textarea
+    id: snooze-resurfaced
+    attributes:
+      label: snooze / resurfaced 観察
+      description: 目安 snooze率 30%以上 / resurfaced率 20%以上
+      placeholder: |
+        - ruleId:
+          snoozeRate:
+          resurfacedRate:
+          action: タイミング見直し / snooze preset見直し / ExceptionCenter改善
+    validations:
+      required: true
+
+  - type: textarea
+    id: screen-priority-observations
+    attributes:
+      label: sourceScreen / priority 観察
+      description: today と exception-center の差、P0/P1/P2の反応差を記載
+      placeholder: |
+        - sourceScreen:
+          finding:
+        - priority:
+          finding:
+    validations:
+      required: true
+
+  - type: textarea
+    id: decisions
+    attributes:
+      label: 今週の判断（決定事項）
+      description: 「やらないこと」も明記
+      placeholder: |
+        - Keep:
+        - Tune:
+        - UI:
+        - Deferred:
+    validations:
+      required: true
+
+  - type: textarea
+    id: actions
+    attributes:
+      label: 次アクション（owner / due）
+      placeholder: |
+        - [ ] action: 
+          owner:
+          due:
+          linkedIssue:
+    validations:
+      required: true
+
+  - type: input
+    id: next-review-date
+    attributes:
+      label: 次回レビュー予定日
+      placeholder: "YYYY-MM-DD"
+    validations:
+      required: true
