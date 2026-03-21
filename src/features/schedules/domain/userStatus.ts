@@ -1,3 +1,4 @@
+// contract:allow-interface — Pure domain DTO types, not API boundary schemas
 /**
  * User Status — 利用者状態の共通ドメインモデル
  *

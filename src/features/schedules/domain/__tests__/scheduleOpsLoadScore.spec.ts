@@ -36,6 +36,7 @@ function makeDaySummary(overrides?: Partial<DaySummaryEntry>): DaySummaryEntry {
     attentionCount: 0,
     absenceCount: 0,
     lateCount: 0,
+    existingLeaveCount: 0,
     availableSlots: 25,
     isOverCapacity: false,
     ...overrides,
@@ -79,9 +80,83 @@ describe('computeLoadScore', () => {
       shortStayWeight: 5,
       attentionWeight: 4,
       availableSlotWeight: 2,
+      absencePenalty: 2,
+      latePenalty: 1,
+      existingLeavePenalty: 1,
     };
     // raw = 10*2 + 1*3 + 1*5 + 1*4 - 5*2 = 20 + 3 + 5 + 4 - 10 = 22
     expect(computeLoadScore(day, weights)).toBe(22);
+  });
+
+  it('0件なら既存挙動を変えない（スコア維持）', () => {
+    const day = makeDaySummary({
+      totalCount: 15,
+      availableSlots: 10,
+      absenceCount: 0,
+      lateCount: 0,
+      existingLeaveCount: 0,
+    });
+    // raw = 15*1 - 10*1 = 5
+    expect(computeLoadScore(day)).toBe(5);
+  });
+
+  it('absenceCount (欠席) のみ増えた場合、absencePenalty(2) が加算される', () => {
+    const day = makeDaySummary({
+      totalCount: 15,
+      availableSlots: 10,
+      absenceCount: 2, // 2名欠席
+    });
+    // base=5, absence=2*2=4 -> 9
+    expect(computeLoadScore(day)).toBe(9);
+  });
+
+  it('lateCount (遅刻) のみ増えた場合、latePenalty(1) が加算される', () => {
+    const day = makeDaySummary({
+      totalCount: 15,
+      availableSlots: 10,
+      lateCount: 3, // 3名遅刻
+    });
+    // base=5, late=3*1=3 -> 8
+    expect(computeLoadScore(day)).toBe(8);
+  });
+
+  it('existingLeaveCount (有休) のみ増えた場合、existingLeavePenalty(1) が加算される', () => {
+    const day = makeDaySummary({
+      totalCount: 15,
+      availableSlots: 10,
+      existingLeaveCount: 2, // 2名有休
+    });
+    // base=5, leave=2*1=2 -> 7
+    expect(computeLoadScore(day)).toBe(7);
+  });
+
+  it('複合時にスコアが合算され、閾値を跨いでレベルが変化する', () => {
+    const dayInfo = {
+      totalCount: 20,
+      availableSlots: 5, // base = 20 - 5 = 15 (moderate: 11-20)
+    };
+    const day1 = makeDaySummary(dayInfo);
+    expect(computeLoadScore(day1)).toBe(15);
+    expect(classifyLoadLevel(computeLoadScore(day1))).toBe('moderate');
+
+    const day2 = makeDaySummary({
+      ...dayInfo,
+      absenceCount: 2,      // +4
+      lateCount: 1,         // +1
+      existingLeaveCount: 1,// +1
+    });
+    // total = 15 + 6 = 21 (high: 21-30)
+    expect(computeLoadScore(day2)).toBe(21);
+    expect(classifyLoadLevel(computeLoadScore(day2))).toBe('high');
+  });
+
+  it('オプショナルな existingLeaveCount が未指定時にも壊れない', () => {
+    const day = makeDaySummary({
+      totalCount: 15,
+      availableSlots: 10,
+      existingLeaveCount: undefined,
+    });
+    expect(computeLoadScore(day)).toBe(5);
   });
 
   it('定員超過の日は高スコアになる', () => {
@@ -511,6 +586,30 @@ describe('computeHighLoadReasons', () => {
 
     expect(reasons[0]!.key).toBe('over-capacity');
     expect(reasons[1]!.key).toBe('no-slots');
+  });
+
+  it('既存有休1件以上 → staff-on-leave', () => {
+    const day = makeDaySummary({ totalCount: 20, existingLeaveCount: 3, availableSlots: 5 });
+    const reasons = computeHighLoadReasons(day);
+
+    expect(reasons.some((r) => r.key === 'staff-on-leave')).toBe(true);
+    expect(reasons.find((r) => r.key === 'staff-on-leave')!.label).toBe('既存有休 3件');
+  });
+
+  it('欠席対応1件以上 → absence-handling', () => {
+    const day = makeDaySummary({ totalCount: 20, absenceCount: 2, availableSlots: 5 });
+    const reasons = computeHighLoadReasons(day);
+
+    expect(reasons.some((r) => r.key === 'absence-handling')).toBe(true);
+    expect(reasons.find((r) => r.key === 'absence-handling')!.label).toBe('欠席対応 2件');
+  });
+
+  it('遅刻対応1件以上 → late-handling', () => {
+    const day = makeDaySummary({ totalCount: 20, lateCount: 1, availableSlots: 5 });
+    const reasons = computeHighLoadReasons(day);
+
+    expect(reasons.some((r) => r.key === 'late-handling')).toBe(true);
+    expect(reasons.find((r) => r.key === 'late-handling')!.label).toBe('遅刻対応 1件');
   });
 
   it('該当理由なし → 空配列', () => {

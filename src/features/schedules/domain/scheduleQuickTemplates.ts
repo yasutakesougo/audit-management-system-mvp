@@ -1,3 +1,4 @@
+// contract:allow-interface — Pure template domain types, not API boundary schemas
 /**
  * scheduleQuickTemplates.ts
  *
