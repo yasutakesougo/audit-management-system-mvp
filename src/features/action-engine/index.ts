@@ -134,3 +134,15 @@ export type {
   AssessmentStaleReviewResult,
   ComputeAssessmentStaleReviewResultInput,
 } from './telemetry/computeAssessmentStaleReviewResult';
+export {
+  computeBehaviorTrendReviewResult,
+  BEHAVIOR_TREND_RULE_ALIASES,
+  BEHAVIOR_TREND_REVIEW_MIN_SHOWN,
+  BEHAVIOR_TREND_REVIEW_CTA_DELTA_MIN_PT,
+} from './telemetry/computeBehaviorTrendReviewResult';
+export type {
+  BehaviorTrendReviewStatus,
+  BehaviorTrendLifecycleSnapshot,
+  BehaviorTrendReviewResult,
+  ComputeBehaviorTrendReviewResultInput,
+} from './telemetry/computeBehaviorTrendReviewResult';
