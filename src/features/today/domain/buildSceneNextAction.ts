@@ -18,6 +18,7 @@ export type SceneNextActionPriority = 'critical' | 'high' | 'medium' | 'low';
 export type SceneNextActionTarget =
   | 'briefing'
   | 'attendance'
+  | 'attendance-alert'
   | 'quick-record'
   | 'user'
   | 'transport'
@@ -45,15 +46,16 @@ export type SceneNextActionInput = {
 export function buildSceneNextAction(input: SceneNextActionInput): SceneNextAction {
   const criticalUser = input.alertUsers[0];
 
-  // ── P1: 未確認の申し送り → 最優先（場面を問わない）
+  // ── P1: 注意アラート（欠席・発熱等）→ 最優先（場面を問わない）
+  // briefingAlerts は出席系アラートであり、HandoffPanel の「申し送り」とは別概念。
   if (input.pendingBriefings > 0) {
     return {
       scene: input.scene,
-      title: '対応が必要な申し送りがあります',
-      description: '申し送りを確認してください',
-      reasons: [`未確認の申し送り ${input.pendingBriefings}件`],
-      ctaLabel: '確認する',
-      ctaTarget: 'briefing',
+      title: '対応が必要な注意アラートがあります',
+      description: '出欠状況を確認してください',
+      reasons: [`注意アラート ${input.pendingBriefings}件`],
+      ctaLabel: '出欠を確認',
+      ctaTarget: 'attendance-alert',
       priority: 'critical',
     };
   }
