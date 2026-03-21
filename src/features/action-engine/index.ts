@@ -72,3 +72,19 @@ export {
 } from './telemetry/recordSuggestionTelemetry';
 export { useSuggestionVisibilityTelemetry } from './telemetry/useSuggestionVisibilityTelemetry';
 export type { UseSuggestionVisibilityTelemetryOptions } from './telemetry/useSuggestionVisibilityTelemetry';
+export {
+  summarizeSuggestionTelemetry,
+  groupSuggestionTelemetryByRule,
+  groupSuggestionTelemetryByScreen,
+  groupSuggestionTelemetryByPriority,
+} from './telemetry/summarizeSuggestionTelemetry';
+export type {
+  SuggestionTelemetryRecord,
+  SuggestionTelemetryWindow,
+  SuggestionTelemetryCounts,
+  SuggestionTelemetryRates,
+  SuggestionTelemetrySummary,
+  SuggestionTelemetryByRule,
+  SuggestionTelemetryByScreen,
+  SuggestionTelemetryByPriority,
+} from './telemetry/summarizeSuggestionTelemetry';
