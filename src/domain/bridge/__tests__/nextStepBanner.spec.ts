@@ -314,6 +314,22 @@ describe('resolveNextStepBanner — PDCA alerts', () => {
     });
   });
 
+  it('check phase で開始日が未来日でも 0日扱いで p2', () => {
+    const alerts = buildPdcaAlerts(
+      makePdcaState({
+        currentPhase: 'check',
+        phaseCompletions: { do: '2026-03-12' },
+      }),
+      '2026-03-10',
+    );
+
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toMatchObject({
+      message: 'モニタリング確認推奨（0日）',
+      priority: 'p2',
+    });
+  });
+
   it('check phase + 8日 → p1', () => {
     const alerts = buildPdcaAlerts(
       makePdcaState({

@@ -180,6 +180,10 @@ function withElapsedDays(message: string, daysSince: number): string {
   return `${message}（${daysSince}日）`;
 }
 
+function toSafeElapsedDays(daysSince: number): number {
+  return Math.max(0, daysSince);
+}
+
 function checkMessageByPriority(
   priority: NextStepAlertPriority,
   daysSince: number,
@@ -258,11 +262,12 @@ export function buildPdcaAlerts(
   if (state.currentPhase === 'check') {
     const daysSinceCheckStart =
       getDaysSince(resolveCheckStartDate(state), referenceDate) ?? 0;
-    const priority = resolveCheckPriority(daysSinceCheckStart);
+    const safeDaysSinceCheckStart = toSafeElapsedDays(daysSinceCheckStart);
+    const priority = resolveCheckPriority(safeDaysSinceCheckStart);
 
     alerts.push({
       type: alertTypeFromPriority(priority),
-      message: checkMessageByPriority(priority, daysSinceCheckStart),
+      message: checkMessageByPriority(priority, safeDaysSinceCheckStart),
       action: 'モニタリングへ',
       priority,
     });
@@ -270,11 +275,12 @@ export function buildPdcaAlerts(
 
   if (state.currentPhase === 'act') {
     const daysSinceActStart = getDaysSince(resolveActStartDate(state), referenceDate) ?? 0;
-    const priority = resolveActPriority(daysSinceActStart);
+    const safeDaysSinceActStart = toSafeElapsedDays(daysSinceActStart);
+    const priority = resolveActPriority(safeDaysSinceActStart);
 
     alerts.push({
       type: alertTypeFromPriority(priority),
-      message: actMessageByPriority(priority, daysSinceActStart),
+      message: actMessageByPriority(priority, safeDaysSinceActStart),
       action: '再評価入力へ',
       priority,
     });
