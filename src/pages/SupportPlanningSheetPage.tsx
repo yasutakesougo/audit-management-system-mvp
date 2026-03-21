@@ -536,7 +536,7 @@ export default function SupportPlanningSheetPage() {
                 onClick={() => setIsEditing(true)}
                 disabled={isEditing}
               >
-                編集を開始
+                編集を始める
               </Button>
             </Stack>
           </Stack>
