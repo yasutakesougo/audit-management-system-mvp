@@ -69,21 +69,23 @@ describe('buildCorrectiveActions', () => {
   // ---------- Rule 1: 行動増加傾向 ----------
 
   describe('Rule 1: behaviorTrend', () => {
-    it('30% 増加で assessment_update を提案', () => {
+    it('40% 増加で assessment_update を提案', () => {
       const input = createBaseInput({
-        trend: { recentAvg: 3.9, previousAvg: 3.0, changeRate: 1.3 },
+        trend: { recentAvg: 4.2, previousAvg: 3.0, changeRate: 1.4 },
       });
       const result = buildCorrectiveActions(input, NOW);
       const suggestion = result.find((r) => r.ruleId === 'behavior-trend-increase');
       expect(suggestion).toBeDefined();
       expect(suggestion!.type).toBe('assessment_update');
       expect(suggestion!.priority).toBe('P0');
+      expect(suggestion!.title).toBe('行動発生は要確認です');
+      expect(suggestion!.evidence.threshold).toBe('前週比 +40%');
       expect(suggestion!.cta.route).toBe('/assessment');
     });
 
-    it('29% 増加では提案しない', () => {
+    it('39% 増加では提案しない', () => {
       const input = createBaseInput({
-        trend: { recentAvg: 3.87, previousAvg: 3.0, changeRate: 1.29 },
+        trend: { recentAvg: 4.17, previousAvg: 3.0, changeRate: 1.39 },
       });
       const result = buildCorrectiveActions(input, NOW);
       expect(result.find((r) => r.ruleId === 'behavior-trend-increase')).toBeUndefined();
