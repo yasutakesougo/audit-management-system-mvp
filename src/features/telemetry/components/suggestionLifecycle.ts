@@ -43,6 +43,25 @@ export function buildSuggestionLifecycleWindow(
   };
 }
 
+/**
+ * 現在windowと同幅の前期間windowを返す。
+ * クエリ境界重複を避けるため、previous.to は current.from - 1ms とする。
+ */
+export function buildPreviousSuggestionLifecycleWindow(
+  current: SuggestionLifecycleWindow,
+): SuggestionLifecycleWindow {
+  const spanMs = Math.max(current.to.getTime() - current.from.getTime(), 1);
+  const previousTo = new Date(current.from.getTime() - 1);
+  const previousFrom = new Date(previousTo.getTime() - spanMs);
+
+  return {
+    from: previousFrom,
+    to: previousTo,
+    days: current.days,
+    maxDocs: current.maxDocs,
+  };
+}
+
 export function formatSuggestionRate(rate: number): string {
   const normalized = Number.isFinite(rate) ? rate : 0;
   const percent = Math.max(0, normalized * 100);
