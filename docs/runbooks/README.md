@@ -8,6 +8,7 @@
 - [TodayOpsPage Touchpoints](./today-ops-touchpoints.md)
 - [DailyRecordPage Touchpoints](./daily-record-touchpoints.md)
 - [CallLogPage Touchpoints](./call-log-touchpoints.md)
+- [HandoffTimelinePage Touchpoints](./handoff-touchpoints.md)
 
 ## Template
 
