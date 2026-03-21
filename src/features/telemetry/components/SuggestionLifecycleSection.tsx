@@ -1,5 +1,6 @@
 import { useMemo, useRef } from 'react';
 import {
+  computeAssessmentStaleReviewResult,
   computeWeeklyReviewResult,
   detectSuggestionLifecycleAnomalies,
   useSuggestionLifecycleEvents,
@@ -33,6 +34,10 @@ type RateRow = {
 function formatDeltaPt(value: number): string {
   const rounded = Number(value.toFixed(1));
   return `${rounded >= 0 ? '+' : ''}${rounded.toFixed(1)}pt`;
+}
+
+function formatRate(value: number): string {
+  return `${(value * 100).toFixed(1)}%`;
 }
 
 function SummaryRowTable({
@@ -151,6 +156,14 @@ export function SuggestionLifecycleSection({
         anomalies,
       }),
     [summary, previousSummary, anomalies],
+  );
+  const assessmentStaleReview = useMemo(
+    () =>
+      computeAssessmentStaleReviewResult({
+        currentByRule: byRule,
+        previousByRule: previousByRule,
+      }),
+    [byRule, previousByRule],
   );
 
   const screenRows: RateRow[] = byScreen.map((row) => ({
@@ -284,6 +297,98 @@ export function SuggestionLifecycleSection({
                   style={{
                     fontSize: 12,
                     color: weeklyReview.status === 'PASS' ? '#166534' : '#991b1b',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  - {reason}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div
+            data-testid="suggestion-assessment-stale-review"
+            style={{
+              marginBottom: 12,
+              padding: 10,
+              borderRadius: 8,
+              border: `1px solid ${
+                assessmentStaleReview.status === 'PASS'
+                  ? '#86efac'
+                  : assessmentStaleReview.status === 'FAIL'
+                    ? '#fecaca'
+                    : '#cbd5e1'
+              }`,
+              background:
+                assessmentStaleReview.status === 'PASS'
+                  ? '#f0fdf4'
+                  : assessmentStaleReview.status === 'FAIL'
+                    ? '#fef2f2'
+                    : '#f8fafc',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+                marginBottom: 8,
+              }}
+            >
+              <div style={{ fontSize: 12, color: '#334155', fontWeight: 700 }}>
+                assessment-stale Review (#1167)
+              </div>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  color:
+                    assessmentStaleReview.status === 'PASS'
+                      ? '#166534'
+                      : assessmentStaleReview.status === 'FAIL'
+                        ? '#991b1b'
+                        : '#334155',
+                  background:
+                    assessmentStaleReview.status === 'PASS'
+                      ? '#dcfce7'
+                      : assessmentStaleReview.status === 'FAIL'
+                        ? '#fee2e2'
+                        : '#e2e8f0',
+                }}
+              >
+                {assessmentStaleReview.status}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gap: 4, fontSize: 12, color: '#475569', marginBottom: 8 }}>
+              <div>
+                shown: {assessmentStaleReview.current.shown} / 前期間 {assessmentStaleReview.previous.shown}
+              </div>
+              <div>
+                snoozeRate: {formatRate(assessmentStaleReview.previous.snoozeRate)} → {formatRate(assessmentStaleReview.current.snoozeRate)}
+                {' '}({formatDeltaPt(assessmentStaleReview.deltas.snoozeRatePt)})
+              </div>
+              <div>
+                resurfacedRate: {formatRate(assessmentStaleReview.previous.resurfacedRate)} → {formatRate(assessmentStaleReview.current.resurfacedRate)}
+                {' '}({formatDeltaPt(assessmentStaleReview.deltas.resurfacedRatePt)})
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gap: 4 }}>
+              {assessmentStaleReview.reasons.map((reason) => (
+                <div
+                  key={reason}
+                  style={{
+                    fontSize: 12,
+                    color:
+                      assessmentStaleReview.status === 'PASS'
+                        ? '#166534'
+                        : assessmentStaleReview.status === 'FAIL'
+                          ? '#991b1b'
+                          : '#475569',
                     lineHeight: 1.4,
                   }}
                 >
