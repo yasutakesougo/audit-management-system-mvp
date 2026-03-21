@@ -129,18 +129,21 @@ export function detectCriticalHandoffs(
 ): ExceptionItem[] {
   return handoffs
     .filter((h) => h.severity === '重要' && h.status !== '完了' && h.status !== '確認済')
-    .map((h) => ({
-      id: `handoff-${h.id}`,
-      category: 'critical-handoff' as const,
-      severity: 'critical' as const,
-      title: '重要な申し送りが未対応',
-      description: h.message.length > 60 ? `${h.message.slice(0, 60)}…` : h.message,
-      targetUser: h.userName,
-      targetUserId: h.userId,
-      updatedAt: h.createdAt,
-      actionLabel: '確認する',
-      actionPath: '/handoff/timeline',
-    }));
+    .map((h) => {
+      const dateQuery = h.createdAt.split('T')[0];
+      return {
+        id: `handoff-${h.id}`,
+        category: 'critical-handoff' as const,
+        severity: 'critical' as const,
+        title: '重要な申し送りが未対応',
+        description: h.message.length > 60 ? `${h.message.slice(0, 60)}…` : h.message,
+        targetUser: h.userName,
+        targetUserId: h.userId,
+        updatedAt: h.createdAt,
+        actionLabel: '確認する',
+        actionPath: `/handoff/timeline?date=${dateQuery}&handoffId=${h.id}`,
+      };
+    });
 }
 
 /**

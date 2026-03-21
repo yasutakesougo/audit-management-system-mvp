@@ -49,6 +49,8 @@ type TodayHandoffTimelineListProps = {
   workflowActions?: WorkflowActions;
   /** Phase 8-A: 利用者状態登録コールバック */
   onRegisterStatus?: (handoff: HandoffRecord) => void;
+  /** PR-B: ハイライト対象のID */
+  highlightedHandoffId?: number | null;
 };
 
 // ────────────────────────────────────────────────────────────
@@ -66,6 +68,7 @@ export const TodayHandoffTimelineList: React.FC<TodayHandoffTimelineListProps> =
   meetingMode = 'normal',
   workflowActions,
   onRegisterStatus,
+  highlightedHandoffId,
 }) => {
   const safeHandoffs = Array.isArray(items) ? items : [];
 
@@ -196,6 +199,7 @@ export const TodayHandoffTimelineList: React.FC<TodayHandoffTimelineListProps> =
             meetingMode={meetingMode}
             workflowActions={workflowActions}
             onRegisterStatus={onRegisterStatus}
+            isHighlighted={item.id === highlightedHandoffId}
           />
         ))}
       </Stack>
