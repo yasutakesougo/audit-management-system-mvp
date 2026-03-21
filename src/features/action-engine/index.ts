@@ -54,3 +54,51 @@ export type {
 // State store
 export { useSuggestionStateStore } from './hooks/useSuggestionStateStore';
 export type { SuggestionStateStore, SuggestionStateMeta } from './hooks/useSuggestionStateStore';
+
+// Telemetry
+export {
+  buildSuggestionTelemetryEvent,
+  SUGGESTION_TELEMETRY_EVENTS,
+} from './telemetry/buildSuggestionTelemetryEvent';
+export type {
+  SuggestionTelemetryEvent,
+  SuggestionTelemetryEventName,
+  SuggestionTelemetrySourceScreen,
+  BuildSuggestionTelemetryEventInput,
+} from './telemetry/buildSuggestionTelemetryEvent';
+export {
+  recordSuggestionTelemetry,
+  _resetSuggestionTelemetryGuard,
+} from './telemetry/recordSuggestionTelemetry';
+export { useSuggestionVisibilityTelemetry } from './telemetry/useSuggestionVisibilityTelemetry';
+export type { UseSuggestionVisibilityTelemetryOptions } from './telemetry/useSuggestionVisibilityTelemetry';
+export {
+  resolveSuggestionTelemetryWindow,
+  summarizeSuggestionTelemetry,
+  groupSuggestionTelemetryByRule,
+  groupSuggestionTelemetryByScreen,
+  groupSuggestionTelemetryByPriority,
+} from './telemetry/summarizeSuggestionTelemetry';
+export type {
+  SuggestionTelemetryRecord,
+  SuggestionTelemetryWindow,
+  ResolvedSuggestionTelemetryWindow,
+  SuggestionTelemetryCounts,
+  SuggestionTelemetryRates,
+  SuggestionTelemetrySummary,
+  SuggestionTelemetryByRule,
+  SuggestionTelemetryByScreen,
+  SuggestionTelemetryByPriority,
+} from './telemetry/summarizeSuggestionTelemetry';
+export {
+  useSuggestionLifecycleEvents,
+} from './telemetry/useSuggestionLifecycleEvents';
+export type {
+  UseSuggestionLifecycleEventsOptions,
+  UseSuggestionLifecycleEventsResult,
+} from './telemetry/useSuggestionLifecycleEvents';
+export { useSuggestionTelemetrySummary } from './telemetry/useSuggestionTelemetrySummary';
+export type {
+  UseSuggestionTelemetrySummaryOptions,
+  UseSuggestionTelemetrySummaryResult,
+} from './telemetry/useSuggestionTelemetrySummary';

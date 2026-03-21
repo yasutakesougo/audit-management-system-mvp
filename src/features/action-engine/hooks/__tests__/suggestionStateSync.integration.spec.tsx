@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import type { ReactNode } from 'react';
@@ -14,6 +14,11 @@ import { ExceptionTable } from '@/features/exceptions/components/ExceptionTable'
 
 const theme = createTheme();
 const STABLE_ID = 'behavior-trend-increase:user-001:2026-W12';
+const mockRecordSuggestionTelemetry = vi.fn();
+
+vi.mock('../../telemetry/recordSuggestionTelemetry', () => ({
+  recordSuggestionTelemetry: (...args: unknown[]) => mockRecordSuggestionTelemetry(...args),
+}));
 
 const suggestionFixture: ActionSuggestion = {
   id: 'trend-increase-user-001-1711000000000',
@@ -58,6 +63,7 @@ function TodayExceptionSyncHarness() {
   const { items, count } = useCorrectiveActionExceptions({
     suggestions: [suggestionFixture],
     states,
+    pollingIntervalMs: 3_600_000,
   });
 
   const handleDismiss = (stableId: string) => {
@@ -105,6 +111,7 @@ describe('suggestion state sync (Today ↔ ExceptionCenter)', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-21T10:00:00Z'));
     useSuggestionStateStore.setState({ states: {} });
+    mockRecordSuggestionTelemetry.mockReset();
   });
 
   afterEach(() => {
@@ -113,6 +120,17 @@ describe('suggestion state sync (Today ↔ ExceptionCenter)', () => {
 
   it('Today で snooze すると ExceptionCenter でも非表示になる', async () => {
     renderWithProviders(<TodayExceptionSyncHarness />);
+
+    // 初回表示で shown が Today / ExceptionCenter それぞれ1件ずつ送信される
+    await Promise.resolve();
+    const shownCalls = mockRecordSuggestionTelemetry.mock.calls
+      .map((c) => c[0] as { event: string; sourceScreen: string })
+      .filter((event) => event.event === 'suggestion_shown');
+    expect(shownCalls).toHaveLength(2);
+    expect(shownCalls.map((event) => event.sourceScreen).sort()).toEqual([
+      'exception-center',
+      'today',
+    ]);
 
     expect(screen.getByTestId('exception-count').textContent).toBe('1');
     expect(screen.getByTestId('today-corrective-visible').textContent).toBe('1');
@@ -138,5 +156,32 @@ describe('suggestion state sync (Today ↔ ExceptionCenter)', () => {
     await Promise.resolve();
     expect(screen.getByTestId('exception-count').textContent).toBe('0');
     expect(screen.getByTestId('today-corrective-visible').textContent).toBe('0');
+  });
+
+  it('snooze 期限経過後に Today / ExceptionCenter で resurfaced が送信される', async () => {
+    renderWithProviders(<TodayExceptionSyncHarness />);
+    await Promise.resolve();
+    mockRecordSuggestionTelemetry.mockClear();
+
+    fireEvent.click(screen.getByTestId(`suggestion-menu-button-corrective:${STABLE_ID}`));
+    fireEvent.click(screen.getByText('明日まで'));
+    await Promise.resolve();
+    expect(screen.getByTestId('exception-count').textContent).toBe('0');
+
+    act(() => {
+      vi.advanceTimersByTime(25 * 60 * 60 * 1000);
+    });
+    await Promise.resolve();
+
+    expect(screen.getByTestId('exception-count').textContent).toBe('1');
+    expect(screen.getByTestId('today-corrective-visible').textContent).toBe('1');
+
+    const resurfacedCalls = mockRecordSuggestionTelemetry.mock.calls
+      .map((c) => c[0] as { event: string; sourceScreen: string })
+      .filter((event) => event.event === 'suggestion_resurfaced');
+    expect(resurfacedCalls.length).toBeGreaterThanOrEqual(1);
+    expect(resurfacedCalls.map((event) => event.sourceScreen)).toEqual(
+      expect.arrayContaining(['today']),
+    );
   });
 });

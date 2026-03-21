@@ -29,6 +29,11 @@ import type { ActionSuggestion } from '@/features/action-engine/domain/types';
 import type { SnoozePreset } from '@/features/action-engine/domain/computeSnoozeUntil';
 import { computeSnoozeUntil } from '@/features/action-engine/domain/computeSnoozeUntil';
 import { useSuggestionStateStore } from '@/features/action-engine/hooks/useSuggestionStateStore';
+import {
+  buildSuggestionTelemetryEvent,
+  SUGGESTION_TELEMETRY_EVENTS,
+} from '@/features/action-engine/telemetry/buildSuggestionTelemetryEvent';
+import { recordSuggestionTelemetry } from '@/features/action-engine/telemetry/recordSuggestionTelemetry';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { TodayBentoLayout } from '@/features/today/layouts/TodayBentoLayout';
 import { recordAutoNextComplete, recordAutoNextSave } from '@/features/today/records/autoNextCounters';
@@ -127,14 +132,32 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
     correctiveActions,
     suggestionStates,
   });
+  const suggestionByStableId = useMemo(() => {
+    return new Map(correctiveActions.map((s) => [s.stableId, s]));
+  }, [correctiveActions]);
 
   const handleActionClick = React.useCallback(
     (action: ActionCard) => {
       if (action.actionType === 'OPEN_DRAWER') {
         quickRecord.openUnfilled();
       } else if (action.actionType === 'NAVIGATE') {
-        const payload = action.payload as { path?: string };
-        if (payload?.path) navigate(payload.path);
+        const payload = action.payload as { path?: string; suggestion?: ActionSuggestion } | undefined;
+        const suggestion = payload?.suggestion;
+        const targetUrl = payload?.path ?? suggestion?.cta?.route;
+        if (suggestion) {
+          recordSuggestionTelemetry(
+            buildSuggestionTelemetryEvent({
+              event: SUGGESTION_TELEMETRY_EVENTS.CTA_CLICKED,
+              sourceScreen: 'today',
+              stableId: suggestion.stableId,
+              ruleId: suggestion.ruleId,
+              priority: suggestion.priority,
+              targetUserId: suggestion.targetUserId,
+              targetUrl,
+            }),
+          );
+        }
+        if (targetUrl) navigate(targetUrl);
         else navigate('/schedules');
       } else if (action.actionType === 'ACKNOWLEDGE') {
         // No-op for now. Acknowledge handler can be hooked into an API action later.
@@ -144,13 +167,41 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
   );
 
   const handleDismissSuggestion = useCallback((stableId: string) => {
+    const suggestion = suggestionByStableId.get(stableId);
+    if (suggestion) {
+      recordSuggestionTelemetry(
+        buildSuggestionTelemetryEvent({
+          event: SUGGESTION_TELEMETRY_EVENTS.DISMISSED,
+          sourceScreen: 'today',
+          stableId: suggestion.stableId,
+          ruleId: suggestion.ruleId,
+          priority: suggestion.priority,
+          targetUserId: suggestion.targetUserId,
+        }),
+      );
+    }
     dismissSuggestion(stableId, { by: 'today' });
-  }, [dismissSuggestion]);
+  }, [dismissSuggestion, suggestionByStableId]);
 
   const handleSnoozeSuggestion = useCallback((stableId: string, preset: SnoozePreset) => {
+    const suggestion = suggestionByStableId.get(stableId);
     const until = computeSnoozeUntil(preset, new Date());
+    if (suggestion) {
+      recordSuggestionTelemetry(
+        buildSuggestionTelemetryEvent({
+          event: SUGGESTION_TELEMETRY_EVENTS.SNOOZED,
+          sourceScreen: 'today',
+          stableId: suggestion.stableId,
+          ruleId: suggestion.ruleId,
+          priority: suggestion.priority,
+          targetUserId: suggestion.targetUserId,
+          snoozePreset: preset,
+          snoozedUntil: until,
+        }),
+      );
+    }
     snoozeSuggestion(stableId, until, { by: 'today' });
-  }, [snoozeSuggestion]);
+  }, [snoozeSuggestion, suggestionByStableId]);
 
   // ── CallLog Summary (Today 連携) ──
   // account.name を myName として注入し、自分宛未対応件数を算出する

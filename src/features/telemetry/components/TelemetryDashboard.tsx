@@ -28,6 +28,7 @@ import { HourlyChart } from './charts/HourlyChart';
 import { useTelemetryDashboard } from '../hooks/useTelemetryDashboard';
 import type { EventRankItem, TelemetryDoc } from '../hooks/useTelemetryDashboard';
 import { RoleBreakdownSection } from './RoleBreakdownSection';
+import { SuggestionLifecycleSection } from './SuggestionLifecycleSection';
 import { getPlaybookEntry } from '../domain/alertPlaybook';
 import { generateIssueDraft } from '../domain/generateIssueDraft';
 import { ALERT_STATE_LABELS, ALERT_STATE_COLORS, type AlertState, type ClassifiedAlert } from '../domain/classifyAlertState';
@@ -648,6 +649,9 @@ export default function TelemetryDashboard() {
               />
             </div>
           </section>
+
+          {/* ── ① a2 Corrective-Action lifecycle（最小ダッシュボード） ── */}
+          <SuggestionLifecycleSection range={range} />
 
           {/* ── ① b1 Review Summary (v6) ── */}
           <ReviewSummarySection summary={reviewSummary} />
