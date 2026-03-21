@@ -7,6 +7,7 @@
 - [SupportPlanningSheetPage Touchpoints](./support-planning-sheet-touchpoints.md)
 - [TodayOpsPage Touchpoints](./today-ops-touchpoints.md)
 - [DailyRecordPage Touchpoints](./daily-record-touchpoints.md)
+- [CallLogPage Touchpoints](./call-log-touchpoints.md)
 
 ## Template
 
