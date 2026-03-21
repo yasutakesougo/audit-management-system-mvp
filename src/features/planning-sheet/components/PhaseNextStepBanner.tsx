@@ -148,6 +148,9 @@ export const PhaseNextStepBanner: React.FC<PhaseNextStepBannerProps> = ({
                   component="li"
                   variant="caption"
                   color={PRIORITY_COLORS[alert.priority]}
+                  sx={{
+                    fontWeight: alert.priority === 'p0' ? 700 : 400,
+                  }}
                 >
                   [{PRIORITY_LABELS[alert.priority]}] {alert.message}（{alert.action}）
                 </Typography>
