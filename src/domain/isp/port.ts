@@ -79,6 +79,8 @@ export interface IspRepository {
   listByUser(userId: string): Promise<IspListItem[]>;
   /** 利用者の現行 ISP を取得（isCurrent: true） */
   getCurrentByUser(userId: string): Promise<IndividualSupportPlan | null>;
+  /** 全利用者の現行 ISP を一括取得（isCurrent: true） */
+  listAllCurrent(): Promise<IndividualSupportPlan[]>;
   /** ISP 新規作成 */
   create(input: IspCreateInput): Promise<IndividualSupportPlan>;
   /** ISP 更新 */
