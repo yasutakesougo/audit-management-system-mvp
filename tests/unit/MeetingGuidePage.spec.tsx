@@ -3,7 +3,46 @@ import { TESTIDS } from '@/testids';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@/features/handoff/HandoffSummaryForMeeting', () => ({
+  default: () => null,
+}));
+
+vi.mock('@/features/handoff/RegulatoryFindingsForMeeting', () => ({
+  default: () => null,
+}));
+
+vi.mock('@/features/meeting/useCurrentMeeting', () => ({
+  useCurrentMeeting: () => ({
+    sessionKey: '2026-03-22_morning',
+    kind: 'morning',
+    session: null,
+    steps: [
+      {
+        id: 1,
+        title: 'Safety HUD 確認',
+        description: '今日の安全インジケーター・予定の重なり状況',
+        completed: false,
+        timeSpent: 0,
+      },
+    ],
+    stats: {
+      totalCount: 1,
+      completedCount: 0,
+      progressPercentage: 0,
+    },
+    toggleStep: vi.fn(),
+    priorityUsers: [],
+    handoffAlert: {
+      criticalCount: 0,
+      totalActiveCount: 0,
+      hasAlerts: false,
+    },
+    loading: false,
+    error: null,
+  }),
+}));
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
