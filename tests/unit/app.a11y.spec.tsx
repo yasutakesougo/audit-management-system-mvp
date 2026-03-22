@@ -2,8 +2,13 @@ import AppShell from "@/app/AppShell";
 import { routerFutureFlags } from "@/app/routerFuture";
 import { FeatureFlagsProvider, featureFlags } from "@/config/featureFlags";
 import { screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderWithAppProviders } from "../helpers/renderWithAppProviders";
+
+vi.mock("@/app/components/FooterQuickActions", () => ({
+  FooterQuickActions: () => null,
+  default: () => null,
+}));
 
 describe("AppShell accessibility landmarks", () => {
   it("has single <main> landmark", () => {
