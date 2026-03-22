@@ -1,18 +1,31 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DensityControl } from '../DensityControl';
 
 describe('DensityControl Component', () => {
   const mockOnChange = vi.fn();
+  const noRippleTheme = createTheme({
+    components: {
+      MuiButtonBase: {
+        defaultProps: {
+          disableRipple: true,
+          disableTouchRipple: true,
+        },
+      },
+    },
+  });
+
+  const renderWithNoRipple = (ui: React.ReactElement) =>
+    render(<ThemeProvider theme={noRippleTheme}>{ui}</ThemeProvider>);
 
   beforeEach(() => {
     mockOnChange.mockClear();
   });
 
   it('renders all three density options', () => {
-    render(
+    renderWithNoRipple(
       <DensityControl value="comfortable" onChange={mockOnChange} />
     );
 
@@ -22,7 +35,7 @@ describe('DensityControl Component', () => {
   });
 
   it('renders descriptions for each option', () => {
-    render(
+    renderWithNoRipple(
       <DensityControl value="comfortable" onChange={mockOnChange} />
     );
 
@@ -32,7 +45,7 @@ describe('DensityControl Component', () => {
   });
 
   it('displays the correct radio button as checked', () => {
-    const { rerender } = render(
+    const { rerender } = renderWithNoRipple(
       <DensityControl value="comfortable" onChange={mockOnChange} />
     );
 
@@ -40,39 +53,39 @@ describe('DensityControl Component', () => {
     expect(comfortableRadio).toBeChecked();
 
     rerender(
-      <DensityControl value="compact" onChange={mockOnChange} />
+      <ThemeProvider theme={noRippleTheme}>
+        <DensityControl value="compact" onChange={mockOnChange} />
+      </ThemeProvider>,
     );
 
     const compactRadio = screen.getByRole('radio', { name: /コンパクト/ });
     expect(compactRadio).toBeChecked();
   });
 
-  it('calls onChange when a different density option is selected', async () => {
-    const user = userEvent.setup();
-    render(
+  it('calls onChange when a different density option is selected', () => {
+    renderWithNoRipple(
       <DensityControl value="comfortable" onChange={mockOnChange} />
     );
 
     const compactRadio = screen.getByRole('radio', { name: /コンパクト/ });
-    await user.click(compactRadio);
+    fireEvent.click(compactRadio);
 
     expect(mockOnChange).toHaveBeenCalledWith('compact');
   });
 
-  it('calls onChange with spacious when spacious option is selected', async () => {
-    const user = userEvent.setup();
-    render(
+  it('calls onChange with spacious when spacious option is selected', () => {
+    renderWithNoRipple(
       <DensityControl value="comfortable" onChange={mockOnChange} />
     );
 
     const spaciousRadio = screen.getByRole('radio', { name: /ゆったり/ });
-    await user.click(spaciousRadio);
+    fireEvent.click(spaciousRadio);
 
     expect(mockOnChange).toHaveBeenCalledWith('spacious');
   });
 
   it('has proper accessibility labels', () => {
-    render(
+    renderWithNoRipple(
       <DensityControl value="comfortable" onChange={mockOnChange} />
     );
 
@@ -82,7 +95,7 @@ describe('DensityControl Component', () => {
   });
 
   it('renders all radio buttons without errors', () => {
-    render(
+    renderWithNoRipple(
       <DensityControl value="comfortable" onChange={mockOnChange} />
     );
 
@@ -90,20 +103,21 @@ describe('DensityControl Component', () => {
     expect(radios).toHaveLength(3);
   });
 
-  it('maintains selection state when onChange is called', async () => {
-    const user = userEvent.setup();
-    const { rerender } = render(
+  it('maintains selection state when onChange is called', () => {
+    const { rerender } = renderWithNoRipple(
       <DensityControl value="comfortable" onChange={mockOnChange} />
     );
 
     const compactRadio = screen.getByRole('radio', { name: /コンパクト/ });
-    await user.click(compactRadio);
+    fireEvent.click(compactRadio);
 
     expect(mockOnChange).toHaveBeenCalledWith('compact');
 
     // Simulate parent updating the value prop
     rerender(
-      <DensityControl value="compact" onChange={mockOnChange} />
+      <ThemeProvider theme={noRippleTheme}>
+        <DensityControl value="compact" onChange={mockOnChange} />
+      </ThemeProvider>,
     );
 
     expect(screen.getByRole('radio', { name: /コンパクト/ })).toBeChecked();
