@@ -1,6 +1,5 @@
 import { TESTIDS } from '@/testids';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import toast from 'react-hot-toast';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BulkDailyRecordForm } from '../forms/BulkDailyRecordForm';
@@ -97,11 +96,10 @@ describe('BulkDailyRecordForm', () => {
   });
 
   it('filters users based on search query', async () => {
-    const user = userEvent.setup();
     renderForm();
 
     const searchInput = screen.getByTestId(TESTIDS['bulk-daily-record-search']);
-    await user.type(searchInput, '田中');
+    fireEvent.change(searchInput, { target: { value: '田中' } });
 
     const userList = getUserList();
     expect(within(userList).getByText('田中 太郎 (U001)')).toBeInTheDocument();
@@ -110,53 +108,50 @@ describe('BulkDailyRecordForm', () => {
   });
 
   it('selects and deselects users', async () => {
-    const user = userEvent.setup();
     renderForm();
 
     const checkbox1 = getUserCheckbox('U001');
-    await user.click(checkbox1);
+    fireEvent.click(checkbox1);
     expect(checkbox1).toBeChecked();
     expect(screen.getByText('1人の利用者が選択されています')).toBeInTheDocument();
 
     const checkbox2 = getUserCheckbox('U002');
-    await user.click(checkbox2);
+    fireEvent.click(checkbox2);
     expect(checkbox2).toBeChecked();
     expect(screen.getByText('2人の利用者が選択されています')).toBeInTheDocument();
 
-    await user.click(checkbox1);
+    fireEvent.click(checkbox1);
     expect(checkbox1).not.toBeChecked();
     expect(screen.getByText('1人の利用者が選択されています')).toBeInTheDocument();
   });
 
   it('adds and removes AM activities', async () => {
-    const user = userEvent.setup();
     renderForm();
 
     const amInput = screen.getByTestId(TESTIDS['bulk-daily-record-activity-input-am']);
-    await user.type(amInput, '朝の体操{enter}');
+    fireEvent.change(amInput, { target: { value: '朝の体操' } });
+    fireEvent.keyPress(amInput, { key: 'Enter', code: 'Enter', charCode: 13 });
 
     expect(screen.getByText('朝の体操')).toBeInTheDocument();
 
     const chip = screen.getByTestId(`${TESTIDS['bulk-daily-record-activity-chip-am']}-0`);
     const deleteButton = within(chip).getByTestId(`${TESTIDS['bulk-daily-record-activity-delete-am']}-0`);
-    await user.click(deleteButton);
+    fireEvent.click(deleteButton);
     expect(screen.queryByText('朝の体操')).not.toBeInTheDocument();
   });
 
   it('fills reporter information', async () => {
-    const user = userEvent.setup();
     renderForm();
 
     const reporterInput = screen.getByRole('textbox', { name: '記録者名' });
-    await user.type(reporterInput, '支援員A');
+    fireEvent.change(reporterInput, { target: { value: '支援員A' } });
     expect(reporterInput).toHaveValue('支援員A');
   });
 
   it('shows individual notes for selected users', async () => {
-    const user = userEvent.setup();
     renderForm();
 
-    await user.click(getUserCheckbox('U001'));
+    fireEvent.click(getUserCheckbox('U001'));
 
     const notesSection = screen.getByTestId(TESTIDS['bulk-daily-record-individual-notes']);
     expect(notesSection).toBeInTheDocument();
@@ -165,21 +160,21 @@ describe('BulkDailyRecordForm', () => {
 
   it('calls onSave with correct data when saved', async () => {
     const mockOnSave = vi.fn().mockResolvedValue(undefined);
-    const user = userEvent.setup();
 
     render(<BulkDailyRecordForm {...defaultProps} onSave={mockOnSave} />);
 
     const reporterInput = screen.getByRole('textbox', { name: '記録者名' });
-    await user.type(reporterInput, '支援員A');
+    fireEvent.change(reporterInput, { target: { value: '支援員A' } });
 
-    await user.click(getUserCheckbox('U001'));
-    await user.click(getUserCheckbox('U002'));
+    fireEvent.click(getUserCheckbox('U001'));
+    fireEvent.click(getUserCheckbox('U002'));
 
     const amInput = screen.getByTestId(TESTIDS['bulk-daily-record-activity-input-am']);
-    await user.type(amInput, '朝の体操{enter}');
+    fireEvent.change(amInput, { target: { value: '朝の体操' } });
+    fireEvent.keyPress(amInput, { key: 'Enter', code: 'Enter', charCode: 13 });
 
     const saveButton = screen.getByRole('button', { name: '2人分保存' });
-    await user.click(saveButton);
+    fireEvent.click(saveButton);
 
     await waitFor(() => expect(mockOnSave).toHaveBeenCalledTimes(1));
     const [payload, selectedIds] = mockOnSave.mock.calls[0];
@@ -192,12 +187,11 @@ describe('BulkDailyRecordForm', () => {
 
   it('prevents saving without selected users', async () => {
     const mockOnSave = vi.fn();
-    const user = userEvent.setup();
 
     render(<BulkDailyRecordForm {...defaultProps} onSave={mockOnSave} />);
 
     const reporterInput = screen.getByRole('textbox', { name: '記録者名' });
-    await user.type(reporterInput, '支援員A');
+    fireEvent.change(reporterInput, { target: { value: '支援員A' } });
 
     const saveButton = screen.getByRole('button', { name: '0人分保存' });
     expect(saveButton).toBeDisabled();
@@ -206,24 +200,22 @@ describe('BulkDailyRecordForm', () => {
 
   it('prevents saving without reporter name', async () => {
     const mockOnSave = vi.fn();
-    const user = userEvent.setup();
 
     render(<BulkDailyRecordForm {...defaultProps} onSave={mockOnSave} />);
 
-    await user.click(getUserCheckbox('U001'));
+    fireEvent.click(getUserCheckbox('U001'));
     const saveButton = screen.getByRole('button', { name: '1人分保存' });
-    await user.click(saveButton);
+    fireEvent.click(saveButton);
 
     expect(vi.mocked(toast.error)).toHaveBeenCalledWith('記録者名を入力してください', { duration: 4000 });
     expect(mockOnSave).not.toHaveBeenCalled();
   });
 
   it('handles select all functionality', async () => {
-    const user = userEvent.setup();
     renderForm();
 
     const selectAllButton = screen.getByTestId(TESTIDS['bulk-daily-record-select-all']);
-    await user.click(selectAllButton);
+    fireEvent.click(selectAllButton);
 
     expect(screen.getByText('3人の利用者が選択されています')).toBeInTheDocument();
     ['U001', 'U002', 'U003'].forEach((id) => {
@@ -232,15 +224,14 @@ describe('BulkDailyRecordForm', () => {
   });
 
   it('handles clear all functionality', async () => {
-    const user = userEvent.setup();
     renderForm();
 
-    await user.click(getUserCheckbox('U001'));
-    await user.click(getUserCheckbox('U002'));
+    fireEvent.click(getUserCheckbox('U001'));
+    fireEvent.click(getUserCheckbox('U002'));
     expect(screen.getByText('2人の利用者が選択されています')).toBeInTheDocument();
 
     const clearAllButton = screen.getByTestId(TESTIDS['bulk-daily-record-clear-all']);
-    await user.click(clearAllButton);
+    fireEvent.click(clearAllButton);
 
     expect(screen.queryByText(/人の利用者が選択されています/)).not.toBeInTheDocument();
     expect(getUserCheckbox('U001')).not.toBeChecked();
