@@ -1,13 +1,37 @@
 import RecordList from '@/features/records/RecordList';
 import { ToastProvider } from '@/hooks/useToast';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { axe, toHaveNoViolations } from 'jest-axe';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 expect.extend(toHaveNoViolations);
 
-const noop = async () => undefined;
+const listMock = vi.fn();
+const addMock = vi.fn();
+
+vi.mock('@/features/records/api', () => ({
+  useRecordsApi: () => ({
+    list: listMock,
+    add: addMock,
+  }),
+}));
+
+const renderRecordList = () =>
+  render(
+    <MemoryRouter>
+      <ToastProvider>
+        <RecordList />
+      </ToastProvider>
+    </MemoryRouter>
+  );
+
+const defaultRecord = {
+  Id: 1,
+  Title: 'テスト記録',
+  cr013_recorddate: '2026-03-22',
+  cr013_specialnote: '特記事項',
+};
 
 /**
  * RecordList Accessibility Tests (#340)
@@ -17,60 +41,43 @@ const noop = async () => undefined;
  */
 describe('RecordList Accessibility', () => {
   beforeEach(() => {
-    vi.mock('@/features/records/api', () => ({
-      useRecordsApi: () => ({
-        list: vi.fn().mockResolvedValue([]),
-        add: vi.fn(noop),
-      }),
-    }));
+    listMock.mockReset();
+    addMock.mockReset();
+    listMock.mockResolvedValue([]);
+    addMock.mockResolvedValue(undefined);
   });
 
   test('has no a11y violations (empty state)', async () => {
-    const { container } = render(
-      <MemoryRouter>
-        <ToastProvider>
-          <RecordList />
-        </ToastProvider>
-      </MemoryRouter>
-    );
+    const { container } = renderRecordList();
+    await screen.findByRole('heading', { name: '日次記録' });
+
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
 
   test('has no a11y violations (with mock data)', async () => {
-    // mock data should be provided by API mock instead
+    listMock.mockResolvedValue([defaultRecord]);
+    const { container } = renderRecordList();
+    await screen.findByText('テスト記録');
 
-    const { container } = render(
-      <MemoryRouter>
-        <ToastProvider>
-          <RecordList />
-        </ToastProvider>
-      </MemoryRouter>
-    );
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
 
   test('has no a11y violations (loading state)', async () => {
-    const { container } = render(
-      <MemoryRouter>
-        <ToastProvider>
-          <RecordList />
-        </ToastProvider>
-      </MemoryRouter>
-    );
+    listMock.mockImplementation(() => new Promise(() => undefined));
+    const { container } = renderRecordList();
+    await screen.findByRole('progressbar', { name: '読み込み中…' });
+
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
 
   test('has no a11y violations (error state)', async () => {
-    const { container } = render(
-      <MemoryRouter>
-        <ToastProvider>
-          <RecordList />
-        </ToastProvider>
-      </MemoryRouter>
-    );
+    listMock.mockRejectedValue(new Error('日次記録の取得に失敗しました'));
+    const { container } = renderRecordList();
+    await screen.findByRole('alert');
+
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
