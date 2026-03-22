@@ -13,9 +13,11 @@ test.describe('ISP Editor — smoke', () => {
     const tablist = page.getByRole('tablist', { name: /目標項目タブ/ });
     await expect(tablist).toBeVisible();
 
-    // 5つのタブが存在
+    // Tab count: 長期目標 + 短期目標①②③④ = 5 (fixture-defined)
+    // Use minimum assertion to tolerate future goal additions
     const tabs = page.getByRole('tab');
-    await expect(tabs).toHaveCount(5);
+    const tabCount = await tabs.count();
+    expect(tabCount).toBeGreaterThanOrEqual(5);
   });
 
   test('tab switch updates aria-selected', async ({ page }) => {

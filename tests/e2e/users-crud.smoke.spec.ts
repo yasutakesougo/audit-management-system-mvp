@@ -12,8 +12,8 @@
 import { expect, test } from '@playwright/test';
 import { bootUsersPage } from './_helpers/bootUsersPage.mjs';
 
-// TODO: Re-enable after optimizing smoke test performance (currently timing out at 20 min)
 test.describe('Users CRUD smoke', () => {
+  test.setTimeout(60_000);
   test.beforeEach(async ({ page }) => {
     // bootUsersPage で環境をセットアップ
     await bootUsersPage(page, {
@@ -68,7 +68,7 @@ test.describe('Users CRUD smoke', () => {
 
     // Step 6: Wait for dialog to be processed and deletion to complete
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('domcontentloaded');
 
     // Step 7: Verify user is deleted
     await expect(page.getByText(testUserName)).not.toBeVisible({ timeout: 10000 });
@@ -112,7 +112,7 @@ test.describe('Users CRUD smoke', () => {
     const deleteButton = userRow.getByRole('button', { name: /削除/i });
     await deleteButton.click();
 
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('domcontentloaded');
 
     // Verify user still exists (deletion was cancelled)
     await expect(page.getByText(testUserName)).toBeVisible({ timeout: 5000 });
