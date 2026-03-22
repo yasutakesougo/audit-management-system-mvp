@@ -82,6 +82,14 @@ vi.mock('../useCurrentMeeting', () => ({
   }),
 }));
 
+vi.mock('@/features/handoff/HandoffSummaryForMeeting', () => ({
+  default: () => null,
+}));
+
+vi.mock('@/features/handoff/RegulatoryFindingsForMeeting', () => ({
+  default: () => null,
+}));
+
 // meetingLoggerをモック
 vi.mock('../logging/meetingLogger', () => ({
   meetingLogger: {
