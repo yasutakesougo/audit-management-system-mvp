@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InMemoryOperationalPhaseRepository } from '@/features/operationFlow/data/InMemoryOperationalPhaseRepository';
@@ -13,7 +14,7 @@ vi.mock('@/features/operationFlow/data/createOperationalPhaseRepository', () => 
 
 vi.mock('@mui/material/Snackbar', () => ({
   __esModule: true,
-  default: ({ open, children }: { open: boolean; children: unknown }) =>
+  default: ({ open, children }: { open: boolean; children: ReactNode }) =>
     open ? <div data-testid="snackbar-mock">{children}</div> : null,
 }));
 
