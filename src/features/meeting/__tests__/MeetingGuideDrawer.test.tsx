@@ -27,6 +27,10 @@ vi.mock('../useCurrentMeeting', () => ({
   useCurrentMeeting: vi.fn(),
 }));
 
+vi.mock('@/features/handoff/HandoffMiniSummaryForDrawer', () => ({
+  HandoffMiniSummaryForDrawer: () => null,
+}));
+
 const mockUseCurrentMeeting = vi.mocked(useCurrentMeeting);
 
 const buildMeetingState = (
