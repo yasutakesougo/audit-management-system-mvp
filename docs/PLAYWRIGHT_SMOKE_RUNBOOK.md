@@ -360,6 +360,44 @@ Two-layer wait strategy、responsive UI handling、troubleshooting checklist が
 
 ---
 
+## Barrel Import ガードレール（E2E spec 限定）
+
+> **追加日**: 2026-03-22 — PR #1208 で修正済み
+
+### ルール
+
+**E2E spec (`tests/e2e/**/*.spec.ts`) では barrel import を避け、直接サブモジュールからインポートする。**
+
+```typescript
+// ❌ NG — barrel 経由（CJS/ESM crash のリスクあり）
+import { SCHEDULE_FIELD_CATEGORY } from '@/sharepoint/fields';
+
+// ✅ OK — 直接サブモジュール
+import { SCHEDULE_FIELD_CATEGORY } from '@/sharepoint/fields/scheduleFields';
+```
+
+### 理由
+
+- Playwright の ESM runner は Vite と異なり **CJS↔ESM 自動変換を行わない**
+- barrel (`index.ts`) の re-export チェーンに CJS パターン (`exports`) が含まれると、
+  `ReferenceError: exports is not defined in ES module scope` で **テスト 0 件実行** のまま crash する
+- Vite の dev/build では問題にならないため、ローカルでは気づけない
+
+### 該当する barrel（既知）
+
+| barrel | サブモジュール数 | リスク |
+|--------|:------------:|:-----:|
+| `@/sharepoint/fields` | 40+ modules | 🔴 高 |
+
+### 検知方法
+
+```bash
+# E2E spec が barrel import を使っていないか確認
+grep -r "from '@/sharepoint/fields'" tests/e2e/ --include="*.ts"
+```
+
+---
+
 ## 参考資料
 
 - [playwright.smoke.config.ts](../playwright.smoke.config.ts) - webServer 設定の詳細
@@ -367,3 +405,4 @@ Two-layer wait strategy、responsive UI handling、troubleshooting checklist が
 - [tests/e2e/utils/muiSelect.ts](../tests/e2e/utils/muiSelect.ts) - 「monthly型」実装
 - [E2E_BEST_PRACTICES.md](./E2E_BEST_PRACTICES.md) - Element wait 戦略・responsive 対応
 - 👉 **[PR_MERGE_CHECKLIST.md](./PR_MERGE_CHECKLIST.md)** — PR 作成〜マージ時の事故防止チェックリスト
+
