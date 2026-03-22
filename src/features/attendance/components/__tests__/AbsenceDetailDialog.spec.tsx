@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { EMPTY_ABSENT_LOG, type AbsentSupportLog } from '@/features/service-provision/domain/absentSupportLog';
@@ -21,49 +21,63 @@ const baseProps: AbsenceDetailDialogProps = {
   onCancel: vi.fn(),
 };
 
+const noRippleTheme = createTheme({
+  components: {
+    MuiButtonBase: {
+      defaultProps: {
+        disableRipple: true,
+        disableTouchRipple: true,
+      },
+    },
+  },
+});
+
+const renderWithNoRipple = (ui: React.ReactElement) =>
+  render(<ThemeProvider theme={noRippleTheme}>{ui}</ThemeProvider>);
+
 describe('AbsenceDetailDialog', () => {
   it('renders dialog with user name when open', () => {
-    render(<AbsenceDetailDialog {...baseProps} />);
+    renderWithNoRipple(<AbsenceDetailDialog {...baseProps} />);
     expect(screen.getByText('欠席情報の登録')).toBeInTheDocument();
     expect(screen.getByText('田中太郎')).toBeInTheDocument();
   });
 
   it('does not render content when closed', () => {
-    render(<AbsenceDetailDialog {...baseProps} open={false} />);
+    renderWithNoRipple(<AbsenceDetailDialog {...baseProps} open={false} />);
     expect(screen.queryByText('欠席情報の登録')).not.toBeInTheDocument();
   });
 
   it('shows both section headers', () => {
-    render(<AbsenceDetailDialog {...baseProps} />);
+    renderWithNoRipple(<AbsenceDetailDialog {...baseProps} />);
     expect(screen.getByText('朝連絡（受け入れ）')).toBeInTheDocument();
     expect(screen.getByText('夕方連絡（様子伺い）')).toBeInTheDocument();
   });
 
   it('shows all 3 action buttons', () => {
-    render(<AbsenceDetailDialog {...baseProps} />);
+    renderWithNoRipple(<AbsenceDetailDialog {...baseProps} />);
     expect(screen.getByRole('button', { name: 'キャンセル' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '後で入力' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '保存' })).toBeInTheDocument();
   });
 
-  it('calls onCancel when cancel button is clicked', async () => {
+  it('calls onCancel when cancel button is clicked', () => {
     const onCancel = vi.fn();
-    render(<AbsenceDetailDialog {...baseProps} onCancel={onCancel} />);
-    await userEvent.click(screen.getByRole('button', { name: 'キャンセル' }));
+    renderWithNoRipple(<AbsenceDetailDialog {...baseProps} onCancel={onCancel} />);
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onSkip when "後で入力" button is clicked', async () => {
+  it('calls onSkip when "後で入力" button is clicked', () => {
     const onSkip = vi.fn();
-    render(<AbsenceDetailDialog {...baseProps} onSkip={onSkip} />);
-    await userEvent.click(screen.getByRole('button', { name: '後で入力' }));
+    renderWithNoRipple(<AbsenceDetailDialog {...baseProps} onSkip={onSkip} />);
+    fireEvent.click(screen.getByRole('button', { name: '後で入力' }));
     expect(onSkip).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onSubmit with form data when "保存" is clicked', async () => {
+  it('calls onSubmit with form data when "保存" is clicked', () => {
     const onSubmit = vi.fn();
-    render(<AbsenceDetailDialog {...baseProps} onSubmit={onSubmit} />);
-    await userEvent.click(screen.getByRole('button', { name: '保存' }));
+    renderWithNoRipple(<AbsenceDetailDialog {...baseProps} onSubmit={onSubmit} />);
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
     expect(onSubmit).toHaveBeenCalledTimes(1);
 
     const submitted: AbsentSupportLog = onSubmit.mock.calls[0][0];
@@ -90,7 +104,7 @@ describe('AbsenceDetailDialog', () => {
       followUpResult: '実施',
       nextPlannedDate: '2026-03-04',
     };
-    render(<AbsenceDetailDialog {...baseProps} initialData={editData} />);
+    renderWithNoRipple(<AbsenceDetailDialog {...baseProps} initialData={editData} />);
 
     // Contact datetime should be pre-filled
     const datetimeInput = screen.getByTestId('absence-contact-datetime')
@@ -140,7 +154,7 @@ describe('AbsenceDetailDialog', () => {
   });
 
   it('shows info caption about eveningChecked auto-set in section ②', () => {
-    render(<AbsenceDetailDialog {...baseProps} />);
+    renderWithNoRipple(<AbsenceDetailDialog {...baseProps} />);
     expect(
       screen.getByText(/このセクションを入力すると、夕方の様子確認が自動的に「済」になります/),
     ).toBeInTheDocument();
