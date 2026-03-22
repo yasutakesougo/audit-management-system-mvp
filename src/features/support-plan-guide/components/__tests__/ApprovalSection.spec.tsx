@@ -5,6 +5,8 @@
  * 承認状態の表示切替、ボタンの有効/無効、確認ダイアログの動作を検証する。
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ApprovalState } from '../../hooks/useComplianceForm';
@@ -28,6 +30,21 @@ const approvedState: ApprovalState = {
   approvalStatus: 'approved',
 };
 
+const noRippleTheme = createTheme({
+  components: {
+    MuiButtonBase: {
+      defaultProps: {
+        disableRipple: true,
+        disableTouchRipple: true,
+      },
+    },
+  },
+});
+
+function renderWithNoRipple(ui: ReactElement) {
+  return render(<ThemeProvider theme={noRippleTheme}>{ui}</ThemeProvider>);
+}
+
 // ────────────────────────────────────────────
 // Tests
 // ────────────────────────────────────────────
@@ -36,7 +53,7 @@ describe('ApprovalSection', () => {
   describe('未承認状態', () => {
     it('管理者には承認ボタンが有効で表示される', () => {
       const onApprove = vi.fn();
-      render(
+      renderWithNoRipple(
         <ApprovalSection
           approvalState={defaultApprovalState}
           isAdmin={true}
@@ -54,7 +71,7 @@ describe('ApprovalSection', () => {
     });
 
     it('非管理者にはボタンが無効になる', () => {
-      render(
+      renderWithNoRipple(
         <ApprovalSection
           approvalState={defaultApprovalState}
           isAdmin={false}
@@ -69,7 +86,7 @@ describe('ApprovalSection', () => {
     });
 
     it('未入力項目がある場合は警告が表示される', () => {
-      render(
+      renderWithNoRipple(
         <ApprovalSection
           approvalState={defaultApprovalState}
           isAdmin={true}
@@ -83,7 +100,7 @@ describe('ApprovalSection', () => {
     });
 
     it('承認ボタンをクリックすると確認ダイアログが開く', () => {
-      render(
+      renderWithNoRipple(
         <ApprovalSection
           approvalState={defaultApprovalState}
           isAdmin={true}
@@ -99,7 +116,7 @@ describe('ApprovalSection', () => {
 
     it('確認ダイアログで「承認する」をクリックするとonApproveが呼ばれる', () => {
       const onApprove = vi.fn();
-      render(
+      renderWithNoRipple(
         <ApprovalSection
           approvalState={defaultApprovalState}
           isAdmin={true}
@@ -115,7 +132,7 @@ describe('ApprovalSection', () => {
 
     it('確認ダイアログで「キャンセル」をクリックするとonApproveは呼ばれない', () => {
       const onApprove = vi.fn();
-      render(
+      renderWithNoRipple(
         <ApprovalSection
           approvalState={defaultApprovalState}
           isAdmin={true}
@@ -132,7 +149,7 @@ describe('ApprovalSection', () => {
 
   describe('承認済み状態', () => {
     it('承認済みチップとアラートを表示する', () => {
-      render(
+      renderWithNoRipple(
         <ApprovalSection
           approvalState={approvedState}
           isAdmin={true}
@@ -150,7 +167,7 @@ describe('ApprovalSection', () => {
     });
 
     it('承認済みの場合は承認ボタンが表示されない', () => {
-      render(
+      renderWithNoRipple(
         <ApprovalSection
           approvalState={approvedState}
           isAdmin={true}
