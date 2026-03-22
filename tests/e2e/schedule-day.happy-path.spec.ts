@@ -3,7 +3,7 @@
 import '@/test/captureSp400';
 import { expect, test } from '@playwright/test';
 import { TESTIDS } from '@/testids';
-import { SCHEDULE_FIELD_CATEGORY, SCHEDULE_FIELD_SERVICE_TYPE } from '@/sharepoint/fields';
+import { SCHEDULE_FIELD_CATEGORY, SCHEDULE_FIELD_SERVICE_TYPE } from '@/sharepoint/fields/scheduleFields';
 import { bootSchedule } from './_helpers/bootSchedule';
 import { getSchedulesTodaySeedDate, readSchedulesTodaySeed } from './_helpers/schedulesTodaySeed';
 import { gotoDay } from './utils/scheduleNav';
