@@ -23,12 +23,16 @@ const STORAGE_KEY = 'procedureStore.v1';
 
 beforeEach(() => {
   localStorage.clear();
-  __clearStore();
+  act(() => {
+    __clearStore();
+  });
 });
 
 afterEach(() => {
   localStorage.clear();
-  __clearStore();
+  act(() => {
+    __clearStore();
+  });
 });
 
 // ---------------------------------------------------------------------------
