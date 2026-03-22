@@ -95,7 +95,8 @@ async function safeClick(
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     await locator.click({ timeout: opts.timeout ?? 3000 });
-    await page.waitForTimeout(1000); // let transitions settle
+    // Wait for navigation or DOM to settle instead of fixed timeout
+    await page.waitForLoadState('domcontentloaded', { timeout: 3000 }).catch(() => {});
     return { ok: true };
   } catch (err) {
     return { ok: false, error: String(err) };
@@ -116,14 +117,16 @@ async function checkDrawerOpened(page: Page): Promise<boolean> {
 async function closeDrawerIfOpen(page: Page) {
   // Try ESC key first
   await page.keyboard.press('Escape');
-  await page.waitForTimeout(500);
+  // Wait for drawer to disappear instead of fixed timeout
+  const drawer = page.locator('.MuiDrawer-root, .MuiDialog-root, [role="presentation"]').first();
+  await drawer.waitFor({ state: 'hidden', timeout: 2000 }).catch(() => {});
   
   // If drawer still visible, try clicking backdrop
   const backdrop = page.locator('.MuiBackdrop-root').first();
   try {
     if (await backdrop.isVisible()) {
       await backdrop.click({ force: true, timeout: 1000 });
-      await page.waitForTimeout(500);
+      await drawer.waitFor({ state: 'hidden', timeout: 2000 }).catch(() => {});
     }
   } catch {
     // ignore
@@ -186,7 +189,8 @@ test.describe('Today Navigation Audit', () => {
   test('Step 1-2: Page Inventory — collect all clickable elements', async ({ page }) => {
     await page.goto('/today');
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(3000); // extra settle time for lazy data
+    // Wait for any lazy data to settle by checking for testids
+    await page.waitForSelector('[data-testid]', { timeout: 5000 }).catch(() => {});
 
     await screenshot(page, '01-initial-load');
 
@@ -319,7 +323,7 @@ test.describe('Today Navigation Audit', () => {
       // Navigate to /today fresh
       await page.goto('/today');
       await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(2000);
+      await page.waitForSelector('[data-testid]', { timeout: 5000 }).catch(() => {});
 
       const beforeUrl = page.url();
       let locator: Locator;
@@ -359,7 +363,6 @@ test.describe('Today Navigation Audit', () => {
 
         // Scroll element into view
         await locator.scrollIntoViewIfNeeded();
-        await page.waitForTimeout(500);
 
         // Screenshot before click
         const safeName = target.label.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -449,7 +452,7 @@ test.describe('Today Navigation Audit', () => {
     // ── Also audit user row icon buttons ──
     await page.goto('/today');
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForSelector('[data-testid]', { timeout: 5000 }).catch(() => {});
 
     // Find ISP icons
     const ispIcons = page.locator('[aria-label*="ISPを確認"]');
@@ -482,7 +485,7 @@ test.describe('Today Navigation Audit', () => {
     // Find Iceberg icons
     await page.goto('/today');
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForSelector('[data-testid]', { timeout: 5000 }).catch(() => {});
     
     const icebergIcons = page.locator('[data-testid^="iceberg-analysis-"]');
     const iceCount = await icebergIcons.count().catch(() => 0);
@@ -513,7 +516,7 @@ test.describe('Today Navigation Audit', () => {
     // Find User Status buttons
     await page.goto('/today');
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForSelector('[data-testid]', { timeout: 5000 }).catch(() => {});
     
     const absenceBtn = page.locator('[data-testid^="user-status-absence-"]').first();
     if (await absenceBtn.isVisible().catch(() => false)) {
@@ -562,7 +565,7 @@ test.describe('Today Navigation Audit', () => {
   test('Step 5: Conditional Elements Audit', async ({ page }) => {
     await page.goto('/today');
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(3000);
+    await page.waitForSelector('[data-testid]', { timeout: 5000 }).catch(() => {});
 
     const conditionals: ConditionalElement[] = [];
 
@@ -649,7 +652,7 @@ test.describe('Today Navigation Audit', () => {
       // Fallback: re-collect
       await page.goto('/today');
       await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(2000);
+      await page.waitForSelector('[data-testid]', { timeout: 5000 }).catch(() => {});
       inventory = {
         url: page.url(),
         title: await page.title(),

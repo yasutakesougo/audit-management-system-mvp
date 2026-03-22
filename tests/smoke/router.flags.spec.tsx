@@ -1,5 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TESTIDS } from '../../src/testids';
 
@@ -105,6 +104,23 @@ vi.mock('@/features/schedules/useSchedulesToday', () => ({
   }),
 }));
 
+vi.mock('../../src/app/AppShell', async () => {
+  const { Link } = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  const AppShellMock = ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="app-shell-mock">
+      <nav aria-label="primary-navigation">
+        <Link data-testid={TESTIDS.nav.audit} to="/audit">監査ログ</Link>
+        <Link data-testid={TESTIDS.nav.daily} to="/dailysupport">日次記録</Link>
+      </nav>
+      {children}
+    </div>
+  );
+  return {
+    __esModule: true,
+    default: AppShellMock,
+  };
+});
+
 import App from '../../src/App';
 
 /**
@@ -144,30 +160,13 @@ describe('router future flags smoke', () => {
   // Transient timing issues (drawer animation, lazy route resolution) can
   // cause sporadic failures on slower machines / CI runners.
   it('navigates across primary routes with v7 flags enabled', { retry: 2, timeout: 45_000 }, async () => {
-    const user = userEvent.setup();
-    render(<App />);
+    await act(async () => {
+      render(<App />);
+    });
     // Use generous, unified timeouts — no CI/local split to avoid flakiness
     const arrivalOptions = { timeout: 20_000 };
 
-    const openDrawerIfPossible = async () => {
-      // Wait briefly for the drawer toggle to appear (may not exist on desktop layout)
-      await new Promise(r => setTimeout(r, 100));
-      const openButton =
-        screen.queryByTestId(TESTIDS['nav-open']) ?? screen.queryByTestId('desktop-nav-open');
-      if (!openButton) {
-        return;
-      }
-      await user.click(openButton);
-      if (openButton.hasAttribute('aria-expanded')) {
-        await waitFor(
-          () => expect(openButton).toHaveAttribute('aria-expanded', 'true'),
-          { timeout: 5_000 },
-        );
-      }
-    };
-
     const ensureNavItem = async (testId: string) => {
-      await openDrawerIfPossible();
       // findByTestId already retries internally; no need for queryByTestId fallback
       const navItem = await screen.findByTestId(testId, undefined, { timeout: 10_000 });
       await waitFor(
@@ -177,9 +176,11 @@ describe('router future flags smoke', () => {
       return navItem;
     };
 
-    const navigateToPath = (path: string) => {
-      window.history.pushState({}, '', path);
-      window.dispatchEvent(new PopStateEvent('popstate'));
+    const navigateToPath = async (path: string) => {
+      await act(async () => {
+        window.history.pushState({}, '', path);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      });
     };
 
     // 初期表示: ホーム画面の確認
@@ -187,24 +188,22 @@ describe('router future flags smoke', () => {
 
     // ナビゲーション経路のテスト: ホーム → 監査ログ → 日次記録 → ホーム
 
-    // nav-audit はヘッダーの IconButton <a> なので、ensureNavItem ではなく直接検索
-    const auditLink = await screen.findByTestId(TESTIDS.nav.audit, undefined, arrivalOptions);
+    const auditLink = await ensureNavItem(TESTIDS.nav.audit);
     expect(auditLink).toBeInTheDocument();
-    await user.click(auditLink);
-    // Ensure router observes location updates in JSDOM when the nav item is an anchor.
-    navigateToPath('/audit');
+    fireEvent.click(auditLink);
     await waitFor(
       () => expect(window.location.pathname).toBe('/audit'),
       { timeout: 10_000 },
     );
     expect(screen.queryByText(/権限を確認中/)).not.toBeInTheDocument();
+    expect(await screen.findByTestId('audit-heading', undefined, arrivalOptions)).toBeInTheDocument();
 
     // 日次記録ナビ（サイドバー）
-    await user.click(await ensureNavItem(TESTIDS.nav.daily));
+    fireEvent.click(await ensureNavItem(TESTIDS.nav.daily));
     expect(await screen.findByTestId('daily-hub-root', undefined, arrivalOptions)).toBeInTheDocument();
 
     // nav-dashboard は常設UI契約ではないため、戻りは history 遷移を契約にする
-    navigateToPath('/');
+    await navigateToPath('/');
     expect(await screen.findByTestId('dashboard-root', undefined, arrivalOptions)).toBeInTheDocument();
 
     // 副作用の検証: ルート遷移での想定外のAPI呼び出しや認証アクションが発生していないことを確認

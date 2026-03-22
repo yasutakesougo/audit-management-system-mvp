@@ -3,8 +3,8 @@ import { installNetworkGuard } from '../helpers/networkGuard';
 import { bootstrapDashboard } from './utils/bootstrapApp';
 import { expectTestIdVisibleBestEffort } from './_helpers/smoke';
 
-// TODO: Re-enable after optimizing smoke test performance (currently timing out at 20 min)
-test.describe.skip('Users page smoke (hermetic E2E)', () => {
+test.describe('Users page smoke (hermetic E2E)', () => {
+  test.setTimeout(60_000);
   test('loads /users and search input is visible', async ({ page }) => {
     installNetworkGuard(page, 'allowlist-localhost');
 
@@ -13,14 +13,14 @@ test.describe.skip('Users page smoke (hermetic E2E)', () => {
     // Wait for stable markers
     console.info('[e2e] url=', page.url());
     console.info('[e2e] title=', await page.title());
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
     
     // Verify root panel is visible
     await expectTestIdVisibleBestEffort(page, 'users-panel-root');
 
     // Click the "利用者一覧" tab to show the search input
     await page.getByRole('tab', { name: /利用者一覧/ }).click();
-    await page.waitForTimeout(300);
+    await page.waitForLoadState('domcontentloaded');
 
     // ---- Diagnostic: Verify page state ----
     const bodyText = (await page.locator('body').innerText()).slice(0, 1200);

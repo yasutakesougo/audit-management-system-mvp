@@ -12,6 +12,8 @@ import Divider from '@mui/material/Divider';
 import type { FC } from 'react';
 import { useCallback } from 'react';
 
+import { canAccess } from '@/auth/roles';
+import { useUserAuthz } from '@/auth/useUserAuthz';
 import { useScheduleOps } from '../../hooks/useScheduleOps';
 import { OpsDailyTable } from './OpsDailyTable';
 import { OpsDetailDrawer } from './OpsDetailDrawer';
@@ -26,6 +28,8 @@ import { OpsWeekBoard } from './OpsWeekBoard';
 
 export const OpsSchedulePage: FC = () => {
   // 1. Compose all state using the single facade hook
+  const { role, ready } = useUserAuthz();
+  const canEditByRole = ready && canAccess(role, 'reception');
   const opsState = useScheduleOps();
 
   // 2. Weekly drilldown: 日クリック → 日付更新 + daily 切替
@@ -148,7 +152,7 @@ export const OpsSchedulePage: FC = () => {
         item={opsState.selectedItem}
         open={opsState.detailOpen}
         onClose={() => opsState.selectItem(null)}
-        canEdit={true} // TODO: hook into authz for actual write permissions
+        canEdit={canEditByRole}
         onEdit={(item) => {
           // TODO: Phase 3
           // eslint-disable-next-line no-console
