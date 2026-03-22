@@ -1,5 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InMemoryOperationalPhaseRepository } from '@/features/operationFlow/data/InMemoryOperationalPhaseRepository';
@@ -10,6 +9,12 @@ let mockRepo: InMemoryOperationalPhaseRepository;
 
 vi.mock('@/features/operationFlow/data/createOperationalPhaseRepository', () => ({
   createOperationalPhaseRepository: () => mockRepo,
+}));
+
+vi.mock('@mui/material/Snackbar', () => ({
+  __esModule: true,
+  default: ({ open, children }: { open: boolean; children: unknown }) =>
+    open ? <div data-testid="snackbar-mock">{children}</div> : null,
 }));
 
 // ── Mock: Date.now で固定時刻（10:00）を使う ──
@@ -105,11 +110,10 @@ describe('OperationFlowSettingsPage', () => {
 
   it('保存ボタンをクリックすると saveAll が呼ばれる', async () => {
     const spy = vi.spyOn(mockRepo, 'saveAll');
-    const user = userEvent.setup();
     render(<OperationFlowSettingsPage />);
 
     const btn = await screen.findByTestId('save-button');
-    await user.click(btn);
+    fireEvent.click(btn);
 
     await waitFor(() => {
       expect(spy).toHaveBeenCalledTimes(1);
@@ -120,11 +124,10 @@ describe('OperationFlowSettingsPage', () => {
   });
 
   it('保存後に成功メッセージが表示される', async () => {
-    const user = userEvent.setup();
     render(<OperationFlowSettingsPage />);
 
     const btn = await screen.findByTestId('save-button');
-    await user.click(btn);
+    fireEvent.click(btn);
 
     expect(await screen.findByText('設定を保存しました')).toBeInTheDocument();
   });
@@ -133,11 +136,10 @@ describe('OperationFlowSettingsPage', () => {
 
   it('初期値に戻すをクリックすると resetToDefault が呼ばれる', async () => {
     const spy = vi.spyOn(mockRepo, 'resetToDefault');
-    const user = userEvent.setup();
     render(<OperationFlowSettingsPage />);
 
     const btn = await screen.findByTestId('reset-button');
-    await user.click(btn);
+    fireEvent.click(btn);
 
     await waitFor(() => {
       expect(spy).toHaveBeenCalledTimes(1);
@@ -145,11 +147,10 @@ describe('OperationFlowSettingsPage', () => {
   });
 
   it('初期値に戻した後にメッセージが表示される', async () => {
-    const user = userEvent.setup();
     render(<OperationFlowSettingsPage />);
 
     const btn = await screen.findByTestId('reset-button');
-    await user.click(btn);
+    fireEvent.click(btn);
 
     expect(await screen.findByText('初期値に戻しました')).toBeInTheDocument();
   });
