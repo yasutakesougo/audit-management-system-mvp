@@ -32,7 +32,11 @@ function makeInput(overrides: Partial<ResolveNextStepInput> = {}): ResolveNextSt
   };
 }
 
-function makePdcaState(overrides: Partial<PdcaCycleState> = {}): PdcaCycleState {
+function makePdcaState(
+  overrides: Omit<Partial<PdcaCycleState>, 'phaseCompletions'> & {
+    phaseCompletions?: Partial<PdcaCycleState['phaseCompletions']>;
+  } = {},
+): PdcaCycleState {
   const basePhaseCompletions: PdcaCycleState['phaseCompletions'] = {
     plan: '2026-03-01',
     do: '2026-03-01',

@@ -28,6 +28,7 @@ import {
   toExecutionRecords,
   toWorkflowSnapshot,
   usePdcaCycleState,
+  type UsePdcaCycleStateParams,
 } from '../usePdcaCycleState';
 
 function makePlanningSheet(
@@ -293,19 +294,21 @@ describe('usePdcaCycleState', () => {
       ]),
     };
 
+    const initialProps: UsePdcaCycleStateParams = {
+      userId: 'U-001',
+      planningSheetId: sheet.id,
+      referenceDate: '2026-03-20',
+      behaviorMonitoringRecords: [],
+      planningSheetReassessments: [],
+      repositories,
+    };
+
     const { result, rerender } = renderHook(
       (
-        props: Parameters<typeof usePdcaCycleState>[0],
+        props: UsePdcaCycleStateParams,
       ) => usePdcaCycleState(props),
       {
-        initialProps: {
-          userId: 'U-001',
-          planningSheetId: sheet.id,
-          referenceDate: '2026-03-20',
-          behaviorMonitoringRecords: [],
-          planningSheetReassessments: [],
-          repositories,
-        },
+        initialProps,
       },
     );
 
@@ -344,19 +347,21 @@ describe('usePdcaCycleState', () => {
       ]),
     };
 
+    const initialProps: UsePdcaCycleStateParams = {
+      userId: 'U-001',
+      planningSheetId: sheet.id,
+      referenceDate: '2026-03-20',
+      behaviorMonitoringRecords: [],
+      planningSheetReassessments: [],
+      repositories,
+    };
+
     const { result, rerender } = renderHook(
       (
-        props: Parameters<typeof usePdcaCycleState>[0],
+        props: UsePdcaCycleStateParams,
       ) => usePdcaCycleState(props),
       {
-        initialProps: {
-          userId: 'U-001',
-          planningSheetId: sheet.id,
-          referenceDate: '2026-03-20',
-          behaviorMonitoringRecords: [],
-          planningSheetReassessments: [],
-          repositories,
-        },
+        initialProps,
       },
     );
 
