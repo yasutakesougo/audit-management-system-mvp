@@ -6,9 +6,7 @@
  * 2. 全件対応済みマーカー表示
  * 3. 週サマリーバーの残件警告
  */
-
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { WeekDaySummary, WeekSummary } from '../hooks/useHandoffWeekViewModel';
 import { HandoffWeekView } from '../components/HandoffWeekView';
@@ -153,13 +151,12 @@ describe('HandoffWeekView', () => {
     expect(screen.queryByText(/日に残件あり/)).not.toBeInTheDocument();
   });
 
-  it('日カードクリックでコールバックが呼ばれる', async () => {
-    const user = userEvent.setup();
+  it('日カードクリックでコールバックが呼ばれる', () => {
     const onDayClick = vi.fn();
     const day = makeDaySummary({ date: '2026-03-09', count: 1 });
     const summary = makeWeekSummary([day]);
     render(<HandoffWeekView {...defaultProps} summary={summary} onDayClick={onDayClick} />);
-    await user.click(screen.getByTestId('handoff-week-day-btn-2026-03-09'));
+    fireEvent.click(screen.getByTestId('handoff-week-day-btn-2026-03-09'));
     expect(onDayClick).toHaveBeenCalledWith('2026-03-09');
   });
 
