@@ -9,8 +9,7 @@
  */
 
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { SettingsProvider, useSettingsContext } from '../index';
 import { SETTINGS_STORAGE_KEY } from '../settingsModel';
@@ -57,7 +56,6 @@ describe('Phase 3: Density Context Integration', () => {
     });
 
     it('updates density in context', async () => {
-      const user = userEvent.setup();
       render(
         <SettingsProvider>
           <TestConsumer />
@@ -65,7 +63,7 @@ describe('Phase 3: Density Context Integration', () => {
       );
 
       const compactButton = screen.getByTestId('change-density-compact');
-      await user.click(compactButton);
+      fireEvent.click(compactButton);
 
       await waitFor(() => {
         expect(screen.getByTestId('current-density')).toHaveTextContent('compact');
@@ -98,7 +96,6 @@ describe('Phase 3: Density Context Integration', () => {
 
   describe('Context Updates', () => {
     it('updates density in context', async () => {
-      const user = userEvent.setup();
       render(
         <SettingsProvider>
           <TestConsumer />
@@ -106,7 +103,7 @@ describe('Phase 3: Density Context Integration', () => {
       );
 
       const spaciousButton = screen.getByTestId('change-density-spacious');
-      await user.click(spaciousButton);
+      fireEvent.click(spaciousButton);
 
       await waitFor(() => {
         expect(screen.getByTestId('current-density')).toHaveTextContent('spacious');
@@ -114,7 +111,6 @@ describe('Phase 3: Density Context Integration', () => {
     });
 
     it('handles multiple sequential density changes', async () => {
-      const user = userEvent.setup();
       render(
         <SettingsProvider>
           <TestConsumer />
@@ -124,12 +120,12 @@ describe('Phase 3: Density Context Integration', () => {
       const compactButton = screen.getByTestId('change-density-compact');
       const spaciousButton = screen.getByTestId('change-density-spacious');
 
-      await user.click(compactButton);
+      fireEvent.click(compactButton);
       await waitFor(() => {
         expect(screen.getByTestId('current-density')).toHaveTextContent('compact');
       });
 
-      await user.click(spaciousButton);
+      fireEvent.click(spaciousButton);
       await waitFor(() => {
         expect(screen.getByTestId('current-density')).toHaveTextContent('spacious');
       });
@@ -153,8 +149,6 @@ describe('Phase 3: Density Context Integration', () => {
     });
 
     it('handles localStorage quota exceeded gracefully', async () => {
-      const user = userEvent.setup();
-
       // Mock localStorage setItem to throw quota error
       const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
       const error = new Error('QuotaExceededError') as Error & { code?: number };
@@ -170,9 +164,9 @@ describe('Phase 3: Density Context Integration', () => {
       );
 
       const compactButton = screen.getByTestId('change-density-compact');
-      
+
       // Should not throw even if localStorage fails
-      await user.click(compactButton);
+      fireEvent.click(compactButton);
 
       await waitFor(() => {
         expect(screen.getByTestId('current-density')).toHaveTextContent('compact');
