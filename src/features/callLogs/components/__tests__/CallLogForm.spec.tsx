@@ -11,7 +11,6 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { CallLogForm } from '../CallLogForm';
 import type { IUserMaster } from '@/features/users/types';
@@ -139,7 +138,6 @@ describe('CallLogForm', () => {
   });
 
   it('should include relatedUserId/relatedUserName when a user is selected', async () => {
-    const user = userEvent.setup();
     const onSubmit = vi.fn();
 
     render(<CallLogForm onSubmit={onSubmit} users={MOCK_USERS} />);
@@ -148,14 +146,14 @@ describe('CallLogForm', () => {
 
     // Autocomplete を操作
     const input = screen.getByTestId('call-log-form-related-user');
-    await user.click(input);
-    await user.type(input, '利用者A');
+    fireEvent.mouseDown(input);
+    fireEvent.change(input, { target: { value: '利用者A' } });
 
     // ドロップダウンから選択
     await waitFor(() => {
       expect(screen.getByText(/利用者A/)).toBeInTheDocument();
     });
-    await user.click(screen.getByText(/利用者A/));
+    fireEvent.click(screen.getByText(/利用者A/));
 
     fireEvent.click(screen.getByTestId('call-log-form-submit'));
 
@@ -167,4 +165,3 @@ describe('CallLogForm', () => {
     });
   });
 });
-
