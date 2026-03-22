@@ -185,7 +185,7 @@ describe('useIspRecommendationDecisions', () => {
   describe('decisionStatuses / decisionNotes 解決', () => {
     it('recommendations が null なら両 Map は空', () => {
       const { result } = renderHook(() =>
-        useIspRecommendationDecisions(USER_ID, PERIOD, null, DECIDED_BY),
+        useIspRecommendationDecisions('', PERIOD, null, DECIDED_BY),
       );
 
       expect(result.current.decisionStatuses.size).toBe(0);
@@ -215,7 +215,7 @@ describe('useIspRecommendationDecisions', () => {
       ]);
 
       const { result } = renderHook(() =>
-        useIspRecommendationDecisions(USER_ID, PERIOD, summary, DECIDED_BY),
+        useIspRecommendationDecisions('', PERIOD, summary, DECIDED_BY),
       );
 
       // level=pending の goal-1 は statuses に含まれない
@@ -638,7 +638,7 @@ describe('useIspRecommendationDecisions', () => {
       const summary = makeSummary();
 
       const { result } = renderHook(() =>
-        useIspRecommendationDecisions(USER_ID, PERIOD, summary, DECIDED_BY),
+        useIspRecommendationDecisions('', PERIOD, summary, DECIDED_BY),
       );
 
       // 初期レンダリング時点では空
