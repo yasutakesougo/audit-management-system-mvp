@@ -1,13 +1,27 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { FontSizeControl } from '../FontSizeControl';
+
+const noRippleTheme = createTheme({
+  components: {
+    MuiButtonBase: {
+      defaultProps: {
+        disableRipple: true,
+        disableTouchRipple: true,
+      },
+    },
+  },
+});
+
+const renderWithNoRipple = (ui: React.ReactElement) =>
+  render(<ThemeProvider theme={noRippleTheme}>{ui}</ThemeProvider>);
 
 describe('FontSizeControl', () => {
   describe('Rendering', () => {
     it('should render the font size control with all options', () => {
       const onChange = vi.fn();
-      render(<FontSizeControl value="medium" onChange={onChange} />);
+      renderWithNoRipple(<FontSizeControl value="medium" onChange={onChange} />);
 
       expect(screen.getByText('フォントサイズ')).toBeInTheDocument();
       expect(screen.getByText('小')).toBeInTheDocument();
@@ -17,7 +31,7 @@ describe('FontSizeControl', () => {
 
     it('should render radio buttons for each font size option', () => {
       const onChange = vi.fn();
-      render(<FontSizeControl value="medium" onChange={onChange} />);
+      renderWithNoRipple(<FontSizeControl value="medium" onChange={onChange} />);
 
       const radioGroup = screen.getByTestId('font-size-radio-group');
       expect(radioGroup).toBeInTheDocument();
@@ -29,7 +43,7 @@ describe('FontSizeControl', () => {
 
     it('should render descriptions for each font size option', () => {
       const onChange = vi.fn();
-      render(<FontSizeControl value="medium" onChange={onChange} />);
+      renderWithNoRipple(<FontSizeControl value="medium" onChange={onChange} />);
 
       expect(screen.getByText('12px - コンパクト表示')).toBeInTheDocument();
       expect(screen.getByText('14px - 標準表示')).toBeInTheDocument();
@@ -38,7 +52,7 @@ describe('FontSizeControl', () => {
 
     it('should render preview examples', () => {
       const onChange = vi.fn();
-      render(<FontSizeControl value="medium" onChange={onChange} />);
+      renderWithNoRipple(<FontSizeControl value="medium" onChange={onChange} />);
 
       expect(screen.getByText('プレビュー:')).toBeInTheDocument();
       expect(screen.getByText('小サイズ表示です')).toBeInTheDocument();
@@ -50,7 +64,7 @@ describe('FontSizeControl', () => {
   describe('Selection State', () => {
     it('should have radio buttons with correct values', () => {
       const onChange = vi.fn();
-      render(<FontSizeControl value="small" onChange={onChange} />);
+      renderWithNoRipple(<FontSizeControl value="small" onChange={onChange} />);
 
       const radios = screen.getAllByRole('radio');
       expect(radios[0]).toHaveAttribute('value', 'small');
@@ -60,50 +74,51 @@ describe('FontSizeControl', () => {
   });
 
   describe('Interactions', () => {
-    it('should call onChange when selecting a different font size', async () => {
+    it('should call onChange when selecting a different font size', () => {
       const onChange = vi.fn();
-      const user = userEvent.setup();
 
-      render(<FontSizeControl value="medium" onChange={onChange} />);
+      renderWithNoRipple(<FontSizeControl value="medium" onChange={onChange} />);
 
       const smallRadio = screen.getByTestId('font-size-radio-small');
-      await user.click(smallRadio);
+      fireEvent.click(smallRadio);
 
       expect(onChange).toHaveBeenCalledWith('small');
       expect(onChange).toHaveBeenCalledTimes(1);
     });
 
-    it('should call onChange with correct value for each option', async () => {
+    it('should call onChange with correct value for each option', () => {
       const onChange = vi.fn();
-      const user = userEvent.setup();
 
-      const { rerender } = render(<FontSizeControl value="small" onChange={onChange} />);
+      const { rerender } = renderWithNoRipple(<FontSizeControl value="small" onChange={onChange} />);
 
       const mediumRadio = screen.getByTestId('font-size-radio-medium');
-      await user.click(mediumRadio);
+      fireEvent.click(mediumRadio);
       expect(onChange).toHaveBeenCalledWith('medium');
 
       onChange.mockClear();
-      rerender(<FontSizeControl value="medium" onChange={onChange} />);
+      rerender(
+        <ThemeProvider theme={noRippleTheme}>
+          <FontSizeControl value="medium" onChange={onChange} />
+        </ThemeProvider>,
+      );
 
       const largeRadio = screen.getByTestId('font-size-radio-large');
-      await user.click(largeRadio);
+      fireEvent.click(largeRadio);
       expect(onChange).toHaveBeenCalledWith('large');
     });
 
-    it('should handle rapid changes between font sizes', async () => {
+    it('should handle rapid changes between font sizes', () => {
       const onChange = vi.fn();
-      const user = userEvent.setup();
 
-      render(<FontSizeControl value="medium" onChange={onChange} />);
+      renderWithNoRipple(<FontSizeControl value="medium" onChange={onChange} />);
 
       const smallRadio = screen.getByTestId('font-size-radio-small');
       const largeRadio = screen.getByTestId('font-size-radio-large');
 
-      await user.click(smallRadio);
+      fireEvent.click(smallRadio);
       expect(onChange).toHaveBeenCalledWith('small');
 
-      await user.click(largeRadio);
+      fireEvent.click(largeRadio);
       expect(onChange).toHaveBeenCalledWith('large');
 
       expect(onChange).toHaveBeenCalledTimes(2);
@@ -113,7 +128,7 @@ describe('FontSizeControl', () => {
   describe('Accessibility', () => {
     it('should have proper form control labels', () => {
       const onChange = vi.fn();
-      render(<FontSizeControl value="medium" onChange={onChange} />);
+      renderWithNoRipple(<FontSizeControl value="medium" onChange={onChange} />);
 
       const formControl = screen.getByRole('group');
       expect(formControl).toBeInTheDocument();
@@ -121,7 +136,7 @@ describe('FontSizeControl', () => {
 
     it('should have proper radio button roles', () => {
       const onChange = vi.fn();
-      render(<FontSizeControl value="medium" onChange={onChange} />);
+      renderWithNoRipple(<FontSizeControl value="medium" onChange={onChange} />);
 
       const radios = screen.getAllByRole('radio');
       expect(radios).toHaveLength(3);
@@ -130,9 +145,9 @@ describe('FontSizeControl', () => {
       expect(radios[2]).toHaveAttribute('value', 'large');
     });
 
-    it('should support keyboard navigation', async () => {
+    it('should support keyboard navigation', () => {
       const onChange = vi.fn();
-      render(<FontSizeControl value="small" onChange={onChange} />);
+      renderWithNoRipple(<FontSizeControl value="small" onChange={onChange} />);
 
       const radioGroup = screen.getByTestId('font-size-radio-group');
       radioGroup.focus();
@@ -145,7 +160,7 @@ describe('FontSizeControl', () => {
 
     it('should maintain label associations', () => {
       const onChange = vi.fn();
-      render(<FontSizeControl value="medium" onChange={onChange} />);
+      renderWithNoRipple(<FontSizeControl value="medium" onChange={onChange} />);
 
       const radios = screen.getAllByRole('radio');
       radios.forEach((radio) => {
