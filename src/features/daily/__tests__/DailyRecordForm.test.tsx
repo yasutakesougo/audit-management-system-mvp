@@ -1,5 +1,4 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { PersonDaily } from '../../../domain/daily/types';
@@ -151,19 +150,16 @@ describe('DailyRecordForm', () => {
         </MemoryRouter>
       );
 
-      const user = userEvent.setup();
-
       // 利用者を選択
       const userSelect = screen.getByRole('combobox', { name: '利用者の選択' });
-      await user.click(userSelect);
-      await user.type(userSelect, '田中');
+      fireEvent.mouseDown(userSelect);
+      fireEvent.change(userSelect, { target: { value: '田中' } });
       const option = await screen.findByRole('option', { name: /田中太郎/ });
-      await user.click(option);
+      fireEvent.click(option);
 
       // 記録者名を入力
       const reporterInput = screen.getByRole('textbox', { name: /記録者名/ });
-      await user.clear(reporterInput);
-      await user.type(reporterInput, '記録者');
+      fireEvent.change(reporterInput, { target: { value: '記録者' } });
 
       await waitFor(() => {
         const saveButton = screen.getByRole('button', { name: /保存/ });
@@ -221,6 +217,11 @@ describe('DailyRecordForm', () => {
 
       const saveButton = screen.getByRole('button', { name: /更新/ });
       fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(mockOnSave).toHaveBeenCalledTimes(1);
+        expect(mockOnClose).toHaveBeenCalledTimes(1);
+      });
 
       expect(mockOnSave).toHaveBeenCalledWith({
         userId: '001',
