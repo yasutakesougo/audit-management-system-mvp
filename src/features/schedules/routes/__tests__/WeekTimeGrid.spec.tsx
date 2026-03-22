@@ -1,11 +1,10 @@
 /**
  * WeekTimeGrid.spec.tsx — focused render tests for the WeekTimeGrid component.
  *
- * Uses React Testing Library + userEvent.
+ * Uses React Testing Library + fireEvent.
  * No MSW, no router, no MUI ThemeProvider required (inline styles only).
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { WeekTimeGridProps } from '../WeekTimeGrid';
 import { WeekTimeGrid } from '../WeekTimeGrid';
@@ -194,8 +193,7 @@ describe('WeekTimeGrid — schedule items', () => {
     expect(screen.getByText('組織研修')).toBeInTheDocument();
   });
 
-  it('calls onItemSelect when a schedule item is clicked', async () => {
-    const user = userEvent.setup();
+  it('calls onItemSelect when a schedule item is clicked', () => {
     const onItemSelect = vi.fn();
     const item = makeItem({ start: '2026-03-11T09:00:00+09:00' });
     const grouped = emptyGroupedItems();
@@ -210,7 +208,7 @@ describe('WeekTimeGrid — schedule items', () => {
     );
 
     const scheduleButton = screen.getByTestId('schedule-item');
-    await user.click(scheduleButton);
+    fireEvent.click(scheduleButton);
 
     expect(onItemSelect).toHaveBeenCalledTimes(1);
     expect(onItemSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }));
