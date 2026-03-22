@@ -1,7 +1,6 @@
 import { TESTIDS } from '@/testids';
 import { TextField } from '@mui/material';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import toast from 'react-hot-toast';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TableDailyRecordForm } from '../forms/TableDailyRecordForm';
@@ -144,13 +143,12 @@ describe('TableDailyRecordForm', () => {
       expect(input).toHaveValue(value);
     });
   };
-  const createUser = () => userEvent.setup();
 
   /**
    * Helper to expand the UserPicker accordion.
    * The search input and filter button are inside the expandable panel.
    */
-  const expandUserPicker = async (_user: ReturnType<typeof createUser>) => {
+  const expandUserPicker = async () => {
     // Click the summary bar directly via its test ID
     const summaryBar = screen.getByTestId('user-picker-summary');
     fireEvent.click(summaryBar);
@@ -171,12 +169,14 @@ describe('TableDailyRecordForm', () => {
     cleanup();
   });
 
-  it('should render table daily record form when open', () => {
+  it('should render table daily record form when open', async () => {
     renderForm();
 
-    expect(screen.getByTestId(TESTIDS['daily-table-record-form'])).toBeInTheDocument();
-    // The form shows a selection-count chip
-    expect(screen.getByTestId('selection-count')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId(TESTIDS['daily-table-record-form'])).toBeInTheDocument();
+      // The form shows a selection-count chip
+      expect(screen.getByTestId('selection-count')).toBeInTheDocument();
+    });
   });
 
   it('should not render when closed', async () => {
@@ -188,16 +188,15 @@ describe('TableDailyRecordForm', () => {
   });
 
   it('should display all users in the selection list', async () => {
-    const user = createUser();
     renderForm();
 
     // Expand user picker to see user list
-    await expandUserPicker(user);
+    await expandUserPicker();
 
     // Toggle filter to show all users if needed
     const filterButton = screen.getByText(/^(全利用者|通所日のみ)$/);
     if (filterButton.textContent?.includes('通所日のみ')) {
-      await user.click(filterButton);
+      fireEvent.click(filterButton);
     }
 
     const list = withinUserList();
@@ -207,23 +206,22 @@ describe('TableDailyRecordForm', () => {
   });
 
   it('should filter users based on search query', async () => {
-    const user = createUser();
     renderForm();
 
     // Expand user picker
-    await expandUserPicker(user);
+    await expandUserPicker();
 
     // Toggle to show all users first
     const filterButton = screen.getByText(/^(全利用者|通所日のみ)$/);
     if (filterButton.textContent?.includes('通所日のみ')) {
-      await user.click(filterButton);
+      fireEvent.click(filterButton);
       await waitFor(() => {
         expect(filterButton).toHaveTextContent('全利用者');
       });
     }
 
     const searchInput = screen.getByPlaceholderText('名前またはIDで検索');
-    await user.type(searchInput, '田中');
+    fireEvent.change(searchInput, { target: { value: '田中' } });
 
     await waitFor(() => {
       expect(withinUserList().getByText('田中 太郎 (U001)')).toBeInTheDocument();
@@ -261,7 +259,6 @@ describe('TableDailyRecordForm', () => {
   });
 
   it('should allow input in table fields', async () => {
-    const user = createUser();
     renderForm();
 
     await waitForTable();
@@ -270,23 +267,22 @@ describe('TableDailyRecordForm', () => {
     const amActivityInput = table.getAllByPlaceholderText('午前')[0];
     const pmActivityInput = table.getAllByPlaceholderText('午後')[0];
 
-    await user.type(amActivityInput, '朝の体操');
-    await user.type(pmActivityInput, '作業活動');
+    fireEvent.change(amActivityInput, { target: { value: '朝の体操' } });
+    fireEvent.change(pmActivityInput, { target: { value: '作業活動' } });
 
     expect(amActivityInput).toHaveValue('朝の体操');
     expect(pmActivityInput).toHaveValue('作業活動');
   });
 
   it('should handle lunch amount selection', async () => {
-    const user = createUser();
     renderForm();
 
     await waitForTable();
 
     const table = within(getTableContainer());
     const lunchSelect = table.getAllByRole('combobox')[0];
-    await user.click(lunchSelect);
-    await user.click(screen.getByRole('option', { name: '完食' }));
+    fireEvent.mouseDown(lunchSelect);
+    fireEvent.click(await screen.findByRole('option', { name: '完食' }));
 
     await waitFor(() => {
       expect(table.getByText('完食')).toBeInTheDocument();
@@ -294,7 +290,6 @@ describe('TableDailyRecordForm', () => {
   });
 
   it('should handle problem behavior chips', async () => {
-    const user = createUser();
     renderForm();
 
     await waitForTable();
@@ -302,36 +297,34 @@ describe('TableDailyRecordForm', () => {
     const table = within(getTableContainer());
     const firstRow = table.getAllByRole('row')[1];
     const selfHarmChip = within(firstRow).getByText('自傷');
-    await user.click(selfHarmChip);
+    fireEvent.click(selfHarmChip);
 
     expect(selfHarmChip).toBeInTheDocument();
   });
 
   it('should handle special notes input', async () => {
-    const user = createUser();
     renderForm();
 
     await waitForTable();
 
     const table = within(getTableContainer());
     const specialNotesInput = table.getAllByPlaceholderText('特記')[0];
-    await user.type(specialNotesInput, '今日は元気でした');
+    fireEvent.change(specialNotesInput, { target: { value: '今日は元気でした' } });
 
     expect(specialNotesInput).toHaveValue('今日は元気でした');
   });
 
   it('should clear row data when clear button is clicked', async () => {
-    const user = createUser();
     renderForm();
 
     await waitForTable();
 
     const table = within(getTableContainer());
     const amActivityInput = table.getAllByPlaceholderText('午前')[0];
-    await user.type(amActivityInput, '朝の体操');
+    fireEvent.change(amActivityInput, { target: { value: '朝の体操' } });
 
     const clearButton = table.getAllByLabelText('この行をクリア')[0];
-    await user.click(clearButton);
+    fireEvent.click(clearButton);
 
     await waitFor(() => {
       expect(amActivityInput).toHaveValue('');
@@ -340,7 +333,6 @@ describe('TableDailyRecordForm', () => {
 
   it('should call onSave with correct data when saved', async () => {
     const mockOnSave = vi.fn().mockResolvedValue(undefined);
-    const user = createUser();
 
     renderForm({ onSave: mockOnSave });
 
@@ -348,20 +340,20 @@ describe('TableDailyRecordForm', () => {
     await waitForSelectionInfo(FIXED_DATE_SELECTION_COUNT);
 
     const reporterInput = getReporterInput();
-    await user.type(reporterInput, '支援員A');
+    fireEvent.change(reporterInput, { target: { value: '支援員A' } });
 
     await waitForTable();
 
     const table = within(getTableContainer());
     const amActivityInput = table.getAllByPlaceholderText('午前')[0];
-    await user.type(amActivityInput, '朝の体操');
+    fireEvent.change(amActivityInput, { target: { value: '朝の体操' } });
 
     const saveButton = await screen.findByRole(
       'button',
       { name: `${FIXED_DATE_SELECTION_COUNT}人分保存` },
       { timeout: 5000 },
     );
-    await user.click(saveButton);
+    fireEvent.click(saveButton);
 
     await waitFor(
       () => {
@@ -383,17 +375,16 @@ describe('TableDailyRecordForm', () => {
 
   it('should prevent saving without selected users', async () => {
     const mockOnSave = vi.fn();
-    const user = createUser();
 
     renderForm({ onSave: mockOnSave });
 
     await waitForTable();
 
     const clearAllButton = screen.getByLabelText(/選択をクリア/);
-    await user.click(clearAllButton);
+    fireEvent.click(clearAllButton);
 
     const reporterInput = getReporterInput();
-    await user.type(reporterInput, '支援員A');
+    fireEvent.change(reporterInput, { target: { value: '支援員A' } });
 
     const saveButton = await screen.findByRole('button', { name: '0人分保存' }, { timeout: 5000 });
     expect(saveButton).toBeDisabled();
@@ -405,7 +396,6 @@ describe('TableDailyRecordForm', () => {
     'should prevent saving without reporter name',
     async () => {
       const mockOnSave = vi.fn();
-      const user = createUser();
 
       renderForm({ onSave: mockOnSave });
 
@@ -414,7 +404,7 @@ describe('TableDailyRecordForm', () => {
       await waitForSelectionInfo(FIXED_DATE_SELECTION_COUNT);
 
       const saveButton = await screen.findByRole('button', { name: `${FIXED_DATE_SELECTION_COUNT}人分保存` }, { timeout: 5000 });
-      await user.click(saveButton);
+      fireEvent.click(saveButton);
 
       expect(vi.mocked(toast.error)).toHaveBeenCalledWith('記録者名を入力してください', { duration: 4000 });
       expect(mockOnSave).not.toHaveBeenCalled();
@@ -424,17 +414,16 @@ describe('TableDailyRecordForm', () => {
   it(
     'should handle select all functionality',
     async () => {
-      const user = createUser();
       renderForm();
 
       await setRecordDate(FIXED_DATE);
       await waitForTable();
 
       const clearAllButton = screen.getByLabelText(/選択をクリア/);
-      await user.click(clearAllButton);
+      fireEvent.click(clearAllButton);
 
       const selectAllButton = screen.getByLabelText(/表示中の利用者を全選択/);
-      await user.click(selectAllButton);
+      fireEvent.click(selectAllButton);
 
       await waitForSelectionInfo(FIXED_DATE_SELECTION_COUNT);
     }
@@ -444,14 +433,13 @@ describe('TableDailyRecordForm', () => {
     'should handle clear all functionality',
     { timeout: 15000 },
     async () => {
-      const user = createUser();
       renderForm();
 
       await setRecordDate(FIXED_DATE);
       await waitForSelectionInfo(FIXED_DATE_SELECTION_COUNT);
 
       const clearAllButton = screen.getByLabelText(/選択をクリア/);
-      await user.click(clearAllButton);
+      fireEvent.click(clearAllButton);
 
       await waitFor(() => {
         const el = screen.getByTestId('selection-count');
@@ -462,10 +450,9 @@ describe('TableDailyRecordForm', () => {
 
   describe('Attendance Day Filter', () => {
     it('should show attendance filter button in expanded panel', async () => {
-      const user = createUser();
       renderForm();
 
-      await expandUserPicker(user);
+      await expandUserPicker();
 
       // Filter button should be visible with either "通所日のみ" or "全利用者"
       const filterButton = screen.getByText(/^(全利用者|通所日のみ)$/);
@@ -473,14 +460,13 @@ describe('TableDailyRecordForm', () => {
     });
 
     it('should toggle filter between attendance day and all users', async () => {
-      const user = createUser();
       renderForm();
 
-      await expandUserPicker(user);
+      await expandUserPicker();
 
       const filterButton = screen.getByText(/^(全利用者|通所日のみ)$/);
       const currentText = filterButton.textContent;
-      await user.click(filterButton);
+      fireEvent.click(filterButton);
 
       await waitFor(() => {
         if (currentText?.includes('通所日のみ')) {
@@ -492,11 +478,10 @@ describe('TableDailyRecordForm', () => {
     });
 
     it('should filter users based on attendance days when date is Monday', async () => {
-      const user = createUser();
       renderForm();
 
       await setRecordDate('2024-01-01');
-      await expandUserPicker(user);
+      await expandUserPicker();
 
       // Should show 田中太郎 (Monday attendee) and 山田一郎 (no attendance days set)
       const list = withinUserList();
@@ -506,11 +491,10 @@ describe('TableDailyRecordForm', () => {
     });
 
     it('should filter users based on attendance days when date is Tuesday', async () => {
-      const user = createUser();
       renderForm();
 
       await setRecordDate('2024-01-02');
-      await expandUserPicker(user);
+      await expandUserPicker();
 
       // Should show 佐藤花子 (Tuesday attendee) and 山田一郎 (no attendance days set)
       const list = withinUserList();
@@ -539,15 +523,14 @@ describe('TableDailyRecordForm', () => {
     });
 
     it('should show all users when attendance filter is disabled', async () => {
-      const user = createUser();
       renderForm();
 
-      await expandUserPicker(user);
+      await expandUserPicker();
 
       // Disable attendance filter
       const filterButton = screen.getByText(/^(通所日のみ|全利用者)$/);
       if (filterButton.textContent?.includes('通所日のみ')) {
-        await user.click(filterButton);
+        fireEvent.click(filterButton);
       }
 
       // Should show all users regardless of attendance days
