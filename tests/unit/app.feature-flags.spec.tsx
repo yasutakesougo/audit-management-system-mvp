@@ -11,6 +11,11 @@ vi.mock('@/lib/spClient', () => ({
   }),
 }));
 
+vi.mock('@/app/components/FooterQuickActions', () => ({
+  __esModule: true,
+  FooterQuickActions: () => null,
+}));
+
 const renderWithFlags = (flags: FeatureFlagSnapshot) =>
   renderWithAppProviders(
     <FeatureFlagsProvider value={flags}>
