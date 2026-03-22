@@ -1,5 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import type { PlanningSheetReassessmentRepository } from '@/domain/isp/port';
+import type { PlanningSheetReassessment } from '@/domain/isp/planningSheetReassessment';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockUsePlanningSheetReassessmentRepository = vi.fn();
@@ -20,6 +21,26 @@ function createReassessmentRepository(
   };
 }
 
+function makeReassessment(
+  overrides?: Partial<PlanningSheetReassessment>,
+): PlanningSheetReassessment {
+  return {
+    id: 'reassess-1',
+    planningSheetId: 'sp-1',
+    reassessedAt: '2026-03-18',
+    reassessedBy: 'staff-1',
+    triggerType: 'monitoring',
+    abcSummary: 'abc',
+    hypothesisReview: 'hypothesis',
+    procedureEffectiveness: 'effectiveness',
+    environmentChange: 'none',
+    planChangeDecision: 'major_revision',
+    nextReassessmentAt: '2026-06-16',
+    notes: '',
+    ...overrides,
+  };
+}
+
 describe('usePdcaPlanningSheetReassessments', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -30,22 +51,7 @@ describe('usePdcaPlanningSheetReassessments', () => {
 
   it('repository から planningSheet 再評価を取得する', async () => {
     const repository = createReassessmentRepository({
-      findByPlanningSheetId: vi.fn(async () => [
-        {
-          id: 'reassess-1',
-          planningSheetId: 'sp-1',
-          reassessedAt: '2026-03-18',
-          reassessedBy: 'staff-1',
-          triggerType: 'monitoring',
-          abcSummary: 'abc',
-          hypothesisReview: 'hypothesis',
-          procedureEffectiveness: 'effectiveness',
-          environmentChange: 'none',
-          planChangeDecision: 'major_revision',
-          nextReassessmentAt: '2026-06-16',
-          notes: '',
-        },
-      ]),
+      findByPlanningSheetId: vi.fn(async () => [makeReassessment()]),
     });
 
     const { result } = renderHook(() =>

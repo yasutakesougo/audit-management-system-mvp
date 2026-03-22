@@ -4,7 +4,11 @@ import { describe, expect, it } from 'vitest';
 import { PhaseNextStepBanner } from '../PhaseNextStepBanner';
 import type { PdcaCycleState } from '@/domain/isp/types';
 
-function makePdcaState(overrides: Partial<PdcaCycleState> = {}): PdcaCycleState {
+function makePdcaState(
+  overrides: Omit<Partial<PdcaCycleState>, 'phaseCompletions'> & {
+    phaseCompletions?: Partial<PdcaCycleState['phaseCompletions']>;
+  } = {},
+): PdcaCycleState {
   const basePhaseCompletions: PdcaCycleState['phaseCompletions'] = {
     plan: '2026-01-01',
     do: '2026-01-01',
