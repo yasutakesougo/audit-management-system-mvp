@@ -1,7 +1,7 @@
 import { EXECUTION_RECORD_KEY } from '@/features/daily/domain/executionRecordTypes';
 import { __resetStore } from '@/features/daily/stores/executionStore';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 // We need to import ExecutionToggle after store setup
 import { ExecutionToggle } from '../ExecutionToggle';
@@ -30,11 +30,6 @@ function renderToggle(overrides: { scheduleItemId?: string } = {}) {
 
 describe('ExecutionToggle', () => {
   beforeEach(() => {
-    localStorage.removeItem(EXECUTION_RECORD_KEY);
-    __resetStore();
-  });
-
-  afterEach(() => {
     localStorage.removeItem(EXECUTION_RECORD_KEY);
     __resetStore();
   });

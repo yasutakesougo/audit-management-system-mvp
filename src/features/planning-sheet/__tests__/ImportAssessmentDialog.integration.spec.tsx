@@ -13,8 +13,8 @@
  *  6. モード切替で特性アンケート選択UIが出る
  */
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
 import React from 'react';
 import { ImportAssessmentDialog } from '../components/ImportAssessmentDialog';
 import type { PlanningIntake, PlanningSheetFormValues } from '@/domain/isp/schema';
@@ -125,6 +125,17 @@ const makeEmptyIntake = (): PlanningIntake => ({
 // Helper: ダイアログ描画
 // ---------------------------------------------------------------------------
 
+const TEST_MUI_THEME = createTheme({
+  components: {
+    MuiButtonBase: {
+      defaultProps: {
+        disableRipple: true,
+        disableTouchRipple: true,
+      },
+    },
+  },
+});
+
 function renderDialog(props: {
   assessment?: UserAssessment;
   currentForm?: PlanningSheetFormValues;
@@ -132,23 +143,24 @@ function renderDialog(props: {
   onImport?: (result: AssessmentBridgeResult) => void;
   targetUserName?: string;
 }) {
-  const user = userEvent.setup();
   const onImport = props.onImport ?? vi.fn();
   const onClose = vi.fn();
 
   const result = render(
-    <ImportAssessmentDialog
-      open={true}
-      onClose={onClose}
-      assessment={props.assessment ?? makeAssessment()}
-      targetUserName={props.targetUserName ?? 'テスト太郎'}
-      currentForm={props.currentForm ?? makeEmptyForm()}
-      currentIntake={props.currentIntake ?? makeEmptyIntake()}
-      onImport={onImport}
-    />,
+    <ThemeProvider theme={TEST_MUI_THEME}>
+      <ImportAssessmentDialog
+        open={true}
+        onClose={onClose}
+        assessment={props.assessment ?? makeAssessment()}
+        targetUserName={props.targetUserName ?? 'テスト太郎'}
+        currentForm={props.currentForm ?? makeEmptyForm()}
+        currentIntake={props.currentIntake ?? makeEmptyIntake()}
+        onImport={onImport}
+      />
+    </ThemeProvider>,
   );
 
-  return { user, onImport, onClose, ...result };
+  return { onImport, onClose, ...result };
 }
 
 // ---------------------------------------------------------------------------
@@ -203,14 +215,14 @@ describe('ImportAssessmentDialog — 統合テスト', () => {
   });
 
   // ── Step 4: 「取り込む」ボタンで onImport が呼ばれる ──
-  it('「取り込む」ボタンでonImportが正しいresultで呼ばれる', async () => {
+  it('「取り込む」ボタンでonImportが正しいresultで呼ばれる', () => {
     const onImport = vi.fn();
-    const { user } = renderDialog({ onImport });
+    renderDialog({ onImport });
 
     const importButton = screen.getByRole('button', { name: '取り込む' });
     expect(importButton).toBeEnabled();
 
-    await user.click(importButton);
+    fireEvent.click(importButton);
 
     expect(onImport).toHaveBeenCalledTimes(1);
     const result: AssessmentBridgeResult = onImport.mock.calls[0][0];
@@ -252,12 +264,12 @@ describe('ImportAssessmentDialog — 統合テスト', () => {
   });
 
   // ── Step 6: モード切替 ──
-  it('「アセスメント＋特性アンケート」モードに切替えると選択UIが表示される', async () => {
-    const { user } = renderDialog({});
+  it('「アセスメント＋特性アンケート」モードに切替えると選択UIが表示される', () => {
+    renderDialog({});
 
     // 初期はアセスメントのみモード
     const withTokuseiRadio = screen.getByLabelText('アセスメント＋特性アンケート');
-    await user.click(withTokuseiRadio);
+    fireEvent.click(withTokuseiRadio);
 
     // 特性アンケート選択セクションが表示される
     expect(screen.getByText('特性アンケート回答の選択')).toBeInTheDocument();
@@ -267,21 +279,21 @@ describe('ImportAssessmentDialog — 統合テスト', () => {
   });
 
   // ── Step 7: 特性アンケート選択 → provenance にアンケート出典が追加 ──
-  it('特性アンケートを選択すると、provenanceにアンケート出典が追加される', async () => {
+  it('特性アンケートを選択すると、provenanceにアンケート出典が追加される', () => {
     const onImport = vi.fn();
-    const { user } = renderDialog({ onImport });
+    renderDialog({ onImport });
 
     // 「アセスメント＋特性アンケート」モードに切替
     const withTokuseiRadio = screen.getByLabelText('アセスメント＋特性アンケート');
-    await user.click(withTokuseiRadio);
+    fireEvent.click(withTokuseiRadio);
 
     // アンケート回答を選択
     const responseItem = screen.getByText('テスト太郎');
-    await user.click(responseItem);
+    fireEvent.click(responseItem);
 
     // 取込実行
     const importButton = screen.getByRole('button', { name: '取り込む' });
-    await user.click(importButton);
+    fireEvent.click(importButton);
 
     const result: AssessmentBridgeResult = onImport.mock.calls[0][0];
 
@@ -299,20 +311,20 @@ describe('ImportAssessmentDialog — 統合テスト', () => {
   });
 
   // ── Step 8: onClose が呼ばれる ──
-  it('取込後にonCloseが呼ばれる', async () => {
-    const { user, onClose } = renderDialog({});
+  it('取込後にonCloseが呼ばれる', () => {
+    const { onClose } = renderDialog({});
 
     const importButton = screen.getByRole('button', { name: '取り込む' });
-    await user.click(importButton);
+    fireEvent.click(importButton);
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('キャンセルボタンでonCloseが呼ばれる', async () => {
-    const { user, onClose } = renderDialog({});
+  it('キャンセルボタンでonCloseが呼ばれる', () => {
+    const { onClose } = renderDialog({});
 
     const cancelButton = screen.getByRole('button', { name: 'キャンセル' });
-    await user.click(cancelButton);
+    fireEvent.click(cancelButton);
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
