@@ -1,8 +1,29 @@
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
 import { StaffAttendanceInputPage } from '@/pages/StaffAttendanceInputPage';
 import { screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { renderWithAppProviders } from '../../helpers/renderWithAppProviders';
+
+vi.mock('@/features/staff/attendance/StaffAttendanceInput', () => ({
+  StaffAttendanceInput: () => <div data-testid="mock-staff-attendance-input" />,
+}));
+
+vi.mock('@/features/staff/attendance/hooks/useStaffAttendanceDay', () => ({
+  useStaffAttendanceDay: () => ({
+    items: [],
+    isLoading: false,
+    error: null,
+    reload: vi.fn(),
+    storageKind: 'local',
+  }),
+}));
+
+vi.mock('@/stores/useStaff', () => ({
+  useStaff: () => ({
+    staff: [],
+    isLoading: false,
+  }),
+}));
 
 const baseFlags: FeatureFlagSnapshot = {
   schedules: false,
