@@ -24,20 +24,20 @@ import {
 /**
  * Determines whether a navigation item should be visible to a given audience.
  *
- * 運用初期は全ロールに全メニューを開放。
- * 運用後レビューで audience フィルタを再有効化する。
+ * audience 属性に基づいてナビゲーション項目の表示を制御する。
+ * - audience が 'all' または未設定: 全ユーザーに表示
+ * - navAudience が 'admin': admin は全項目を閲覧可能
+ * - それ以外: audience リストに navAudience が含まれる場合のみ表示
  *
- * @param _item - Navigation item to evaluate (currently unused)
- * @param _navAudience - The current user's audience level (currently unused)
- * @returns always true (全開放中)
+ * @param item - Navigation item to evaluate
+ * @param navAudience - The current user's audience level
+ * @returns Whether the item should be visible
  */
-export function isNavVisible(_item: NavItem, _navAudience: NavAudience): boolean {
-  // TODO: 運用後レビューで再有効化
-  // const audienceList = Array.isArray(item.audience) ? item.audience : [item.audience ?? 'all'];
-  // if (audienceList.includes('all')) return true;
-  // if (navAudience === 'admin') return true;
-  // return audienceList.includes(navAudience);
-  return true;
+export function isNavVisible(item: NavItem, navAudience: NavAudience): boolean {
+  const audienceList = Array.isArray(item.audience) ? item.audience : [item.audience ?? 'all'];
+  if (audienceList.includes('all')) return true;
+  if (navAudience === 'admin') return true;
+  return audienceList.includes(navAudience);
 }
 
 // ============================================================================

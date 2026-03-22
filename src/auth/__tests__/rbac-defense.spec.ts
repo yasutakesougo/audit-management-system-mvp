@@ -59,7 +59,7 @@ describe('RBAC Defense Layer', () => {
   // -----------------------------------------------------------------------
   // Layer 1: navigation visibility
   // -----------------------------------------------------------------------
-  describe.skip('isNavVisible – audience filtering (暫定的に全開放中のためスキップ)', () => {
+  describe('isNavVisible – audience filtering', () => {
     it('audience "all" is visible to every navAudience', () => {
       const item = makeNavItem({ audience: 'all' });
       expect(isNavVisible(item, 'all')).toBe(true);
@@ -98,7 +98,7 @@ describe('RBAC Defense Layer', () => {
   // -----------------------------------------------------------------------
   // Composite: admin-only routes are doubly protected
   // -----------------------------------------------------------------------
-  describe.skip('composite: admin-only routes are doubly protected (暫定的に全開放中のためスキップ)', () => {
+  describe('composite: admin-only routes are doubly protected', () => {
     const adminOnlyItem = makeNavItem({
       label: '自己点検',
       to: '/checklist',

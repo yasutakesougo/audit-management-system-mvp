@@ -257,15 +257,13 @@ describe('navigationConfig', () => {
     });
 
     it('should not include admin items for non-admin users', () => {
-      // NOTE: isAdmin guard AND audience filter are both currently disabled
-      // (TODO: 運用後レビューで再有効化)
-      // isNavVisible always returns true (all-open mode)
-      // With authzReady=true, admin items are generated AND visible to all
+      // isAdmin guard は有効: isAdmin=false の場合、admin ブロック内の項目は生成されない
+      // isNavVisible も有効: audience フィルタで admin 項目は staff に非表示
       const items = createNavItems(baseConfig);
 
-      // In all-open mode, admin items ARE visible to non-admin users
-      expect(items.some((item) => item.label === '管理ツール')).toBe(true);
-      expect(items.some((item) => item.label === '職員勤怠管理')).toBe(true);
+      // isAdmin=false なので管理ツール・職員勤怠管理は生成されない
+      expect(items.some((item) => item.label === '管理ツール')).toBe(false);
+      expect(items.some((item) => item.label === '職員勤怠管理')).toBe(false);
     });
 
     it('should filter items by audience (all items visible to all)', () => {
@@ -293,16 +291,15 @@ describe('navigationConfig', () => {
     });
 
     it('should exclude admin-audience items for staff navAudience', () => {
-      // NOTE: isNavVisible is currently all-open (always true)
-      // so audience filtering is NOT active. All items visible to all.
+      // isNavVisible が有効: audience フィルタで admin/reception 専用項目は staff に非表示
       const items = createNavItems({
         ...baseConfig,
         isAdmin: false,
         navAudience: NAV_AUDIENCE.staff,
       });
 
-      // In all-open mode, admin-audience items ARE visible to staff
-      expect(items.some((item) => item.label === '請求処理')).toBe(true);
+      // 請求処理は audience: [reception, admin] → staff には非表示
+      expect(items.some((item) => item.label === '請求処理')).toBe(false);
 
       // all-audience items should still be visible
       expect(items.some((item) => item.label === '日次記録')).toBe(true);
