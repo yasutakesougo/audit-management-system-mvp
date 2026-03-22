@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { bootUsersPage } from './_helpers/bootUsersPage.mts';
 
-// TODO: Re-enable after optimizing smoke test performance (currently timing out at 20 min)
-test.describe.skip('Users selection URL sync', () => {
+test.describe('Users selection URL sync', () => {
+  test.setTimeout(60_000);
   test('persists selection in URL and restores on reload', async ({ page }) => {
     await bootUsersPage(page, { route: '/users?tab=list' });
 
