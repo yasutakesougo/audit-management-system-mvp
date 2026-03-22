@@ -1,7 +1,6 @@
 import SupportPlanGuidePage from '@/pages/SupportPlanGuidePage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mocking dependencies to isolate the permission logic
@@ -99,18 +98,17 @@ describe('SupportPlanGuidePage Permissions', () => {
   });
 
   it('guarded buttons are disabled for non-admin on the monitoring tab', async () => {
-    const user = userEvent.setup();
     vi.mocked(useUserAuthz).mockReturnValue({ role: 'viewer', ready: true });
 
     render(<SupportPlanGuidePage />, { wrapper: createWrapper() });
 
     // Switch to Operations (運用・実行) tab group first
     const operationsTabGroup = await screen.findByRole('tab', { name: /運用・実行/ });
-    await user.click(operationsTabGroup);
+    fireEvent.click(operationsTabGroup);
 
     // Switch to Monitoring tab
     const monitoringTab = await screen.findByRole('tab', { name: /モニタリング/ });
-    await user.click(monitoringTab);
+    fireEvent.click(monitoringTab);
 
     // Check '本日を記録' button in the Monitoring tab
     const todayBtn = await screen.findByText(/本日を記録/i);
