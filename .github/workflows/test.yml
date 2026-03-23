@@ -101,10 +101,16 @@ jobs:
         continue-on-error: true
       - name: Test (PR)
         if: ${{ github.event_name == 'pull_request' }}
-        run: npm run test:ci:required
+        run: |
+          set -o pipefail
+          npm run test:ci:required 2>&1 | tee /tmp/vitest-required.log
+          node scripts/ci/check-act-warnings.mjs /tmp/vitest-required.log --json --json-output /tmp/act-warnings-required.json
       - name: Test (coverage)
         if: ${{ github.event_name != 'pull_request' }}
-        run: npm run test:coverage -- --reporter=default
+        run: |
+          set -o pipefail
+          npm run test:coverage -- --reporter=default 2>&1 | tee /tmp/vitest-coverage.log
+          node scripts/ci/check-act-warnings.mjs /tmp/vitest-coverage.log --json --json-output /tmp/act-warnings-coverage.json
       - name: Free port 5173 (best-effort, lsof OR fuser)
         if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && steps.changes.outputs.playwright == 'true')
         run: |
@@ -245,7 +251,10 @@ jobs:
       - name: Install deps
         run: npm ci
       - name: Test (ci full)
-        run: npm run test:ci
+        run: |
+          set -o pipefail
+          npm run test:ci 2>&1 | tee /tmp/vitest-full.log
+          node scripts/ci/check-act-warnings.mjs /tmp/vitest-full.log --json --json-output /tmp/act-warnings-full.json
 
   canary:
     runs-on: ubuntu-latest
