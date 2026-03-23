@@ -1,28 +1,42 @@
-import React, { useEffect, useState } from 'react';
+/**
+ * HandoffPanel — 今日の申し送り一覧 + 新規追加
+ *
+ * P0 修正: データ系統を統一
+ * - useHandoff (旧・audit log なし) → useHandoffTimeline (新・audit log あり)
+ * - HandoffComposerDialog (旧モーダル) → グローバル QuickNote Dialog に統一
+ * - 表示を HandoffRecord 型 (category/severity/timeBand) に対応
+ *
+ * @see HandoffQuickNoteCard — 実際の入力UI（FooterQuickActions 経由で共有）
+ */
+import React from 'react';
 import { Box, Typography, Button, Stack, Chip, Card, CardContent } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import { useHandoff } from '../hooks/useHandoff';
-import { HandoffComposerDialog } from './HandoffComposerDialog';
+import { useHandoffTimeline } from '../useHandoffTimeline';
+import { getSeverityColor } from '../handoffConstants';
 
 export type HandoffPanelProps = {
   /** YYYY-MM-DD */
   targetDate: string;
 };
 
-export const HandoffPanel: React.FC<HandoffPanelProps> = ({ targetDate }) => {
-  const { handoffs, loadHandoffsByDate, markHandoffAsRead } = useHandoff();
-  const [openComposer, setOpenComposer] = useState(false);
+export const HandoffPanel: React.FC<HandoffPanelProps> = ({ targetDate: _targetDate }) => {
+  const { todayHandoffs, loading, updateHandoffStatus } = useHandoffTimeline();
 
-  useEffect(() => {
-    if (targetDate) {
-      loadHandoffsByDate(targetDate);
-    }
-  }, [targetDate, loadHandoffsByDate]);
+  /**
+   * P0 修正: 旧 HandoffComposerDialog の代わりに
+   * グローバル QuickNote Dialog を開く（FooterQuickActions がリッスン）
+   *
+   * これにより:
+   * - データは常に NewHandoffInput (新系) 経由で保存
+   * - audit log が自動記録される
+   * - カテゴリ・重要度・対象ユーザー選択が統一
+   */
+  const handleOpenQuickNote = () => {
+    window.dispatchEvent(new Event('handoff-open-quicknote-dialog'));
+  };
 
-  const handleMarkAsRead = async (id: string) => {
-    await markHandoffAsRead(id);
-    await loadHandoffsByDate(targetDate);
+  const handleStatusChange = async (id: number, newStatus: '対応中' | '対応済' | '確認済') => {
+    await updateHandoffStatus(id, newStatus);
   };
 
   return (
@@ -36,49 +50,60 @@ export const HandoffPanel: React.FC<HandoffPanelProps> = ({ targetDate }) => {
           color="primary"
           size="small"
           startIcon={<AddIcon />}
-          onClick={() => setOpenComposer(true)}
+          onClick={handleOpenQuickNote}
+          data-testid="handoff-panel-add-button"
         >
           申し送り追加
         </Button>
       </Stack>
       
       <Stack spacing={2}>
-        {handoffs.length === 0 && (
+        {!loading && todayHandoffs.length === 0 && (
           <Typography variant="body2" color="text.secondary">
             本日の申し送りはありません。
             <br />
-            必要な申し送りがあれば「申し送り追加」から登録できます。
+            「申し送り追加」から気軽に登録してみてください。
           </Typography>
         )}
-        {handoffs.map((h) => {
-          const isUnread = h.status === 'unread';
-          const isHigh = h.priority === 'high' || h.priority === 'emergency';
+        {todayHandoffs.map((h) => {
+          const isNew = h.status === '未対応';
+          const isUrgent = h.severity === '重要' || h.severity === '要注意';
 
           return (
             <Card
               key={h.id}
               variant="outlined"
               sx={{
-                bgcolor: isUnread ? (isHigh ? 'error.50' : 'info.50') : 'background.paper',
-                borderLeft: isUnread ? 4 : 1,
-                borderColor: isUnread ? (isHigh ? 'error.main' : 'info.main') : 'divider',
+                bgcolor: isNew ? (isUrgent ? 'error.50' : 'info.50') : 'background.paper',
+                borderLeft: isNew ? 4 : 1,
+                borderColor: isNew ? (isUrgent ? 'error.main' : 'info.main') : 'divider',
               }}
             >
               <CardContent sx={{ pb: '16px !important' }}>
                 <Stack direction="row" spacing={1} mb={1} alignItems="center" flexWrap="wrap">
-                  {isUnread ? (
-                    <Chip label="未読" size="small" color="primary" />
-                  ) : (
-                    <Chip label="確認済み" size="small" variant="outlined" color="default" sx={{ opacity: 0.7 }} />
-                  )}
-                  {h.priority === 'emergency' && <Chip label="緊急" size="small" color="error" />}
-                  {h.priority === 'high' && <Chip label="重要" size="small" color="warning" />}
-                  {h.priority === 'normal' && <Chip label="通常" size="small" color="default" />}
+                  {/* ステータス */}
+                  <Chip
+                    label={h.status}
+                    size="small"
+                    color={isNew ? 'primary' : 'default'}
+                    variant={isNew ? 'filled' : 'outlined'}
+                    sx={isNew ? {} : { opacity: 0.7 }}
+                  />
+                  {/* 重要度 */}
+                  <Chip
+                    label={h.severity}
+                    size="small"
+                    color={getSeverityColor(h.severity) as 'default' | 'warning' | 'error'}
+                  />
+                  {/* カテゴリ */}
+                  <Chip label={h.category} size="small" variant="outlined" />
+                  {/* 対象者 */}
                   <Typography variant="body2" fontWeight="bold">
-                    {h.userId || '全体共有'}
+                    {h.userDisplayName || '全体共有'}
                   </Typography>
+                  {/* 記録者 + 時間帯 */}
                   <Typography variant="caption" color="text.secondary">
-                    記録: {h.reporterName}
+                    {h.createdByName} · {h.timeBand}
                   </Typography>
                 </Stack>
                 <Typography
@@ -86,21 +111,21 @@ export const HandoffPanel: React.FC<HandoffPanelProps> = ({ targetDate }) => {
                   sx={{
                     whiteSpace: 'pre-wrap',
                     display: '-webkit-box',
-                    WebkitLineClamp: isUnread ? undefined : 2,
+                    WebkitLineClamp: isNew ? undefined : 2,
                     WebkitBoxOrient: 'vertical',
                     overflow: 'hidden',
                   }}
                 >
-                  {h.content}
+                  {h.message}
                 </Typography>
-                {isUnread && (
+                {isNew && (
                   <Box mt={2} textAlign="right">
                     <Button
                       size="small"
-                      startIcon={<CheckCircleOutlineIcon />}
-                      onClick={() => handleMarkAsRead(h.id)}
+                      variant="text"
+                      onClick={() => handleStatusChange(h.id, '確認済')}
                     >
-                      確認済み
+                      確認済みにする
                     </Button>
                   </Box>
                 )}
@@ -109,15 +134,6 @@ export const HandoffPanel: React.FC<HandoffPanelProps> = ({ targetDate }) => {
           );
         })}
       </Stack>
-      
-      {openComposer && (
-        <HandoffComposerDialog 
-          open={openComposer} 
-          onClose={() => setOpenComposer(false)} 
-          targetDate={targetDate}
-          onSaved={() => loadHandoffsByDate(targetDate)}
-        />
-      )}
     </Box>
   );
 };
