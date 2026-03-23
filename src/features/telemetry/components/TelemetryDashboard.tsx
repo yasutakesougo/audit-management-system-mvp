@@ -7,6 +7,7 @@ import { RangeTabs } from './ui/RangeTabs';
 import { useTelemetryDashboard } from '../hooks/useTelemetryDashboard';
 import { KpiTabContent } from './sections/KpiTabContent';
 import { RawTabContent } from './sections/RawTabContent';
+import { AnomalyStatusChip, deriveAnomalyUiStatus } from './ui/AnomalyStatusChip';
 
 type DashboardTab = 'kpi' | 'raw';
 
@@ -82,6 +83,12 @@ export default function TelemetryDashboard() {
 
   if (!stats) return null;
 
+  const warningCount = kpiDiffs?.alerts.length ?? 0;
+  const anomalyStatus = deriveAnomalyUiStatus({
+    totalEvents: stats.total,
+    warningCount,
+  });
+
   return (
     <div style={{ padding: 16, maxWidth: 900, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
@@ -95,6 +102,7 @@ export default function TelemetryDashboard() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <RangeTabs current={range} onChange={setRange} disabled={loading} />
+          <AnomalyStatusChip status={anomalyStatus} count={warningCount} label="anomaly" />
           <button
             type="button"
             onClick={refresh}
