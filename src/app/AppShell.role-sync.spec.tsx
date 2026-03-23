@@ -13,6 +13,10 @@ const createTestQueryClient = () =>
 const setCurrentUserRoleMock = vi.fn();
 let mockCurrentRole: 'admin' | 'staff' | null = null;
 
+vi.mock('@/features/callLogs/components/CallLogQuickDrawer', () => ({
+  CallLogQuickDrawer: () => <div data-testid="call-log-quick-drawer-stub" />,
+}));
+
 vi.mock('@/features/auth/store', async () => {
   return {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
