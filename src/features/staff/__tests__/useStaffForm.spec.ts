@@ -483,7 +483,7 @@ describe('useStaffForm', () => {
       expect(onClose).not.toHaveBeenCalled();
     });
 
-    it('calls onClose when confirm dialog onConfirm is invoked', () => {
+    it('calls onClose when confirm dialog onConfirm is invoked', async () => {
       const onClose = vi.fn();
       const { result } = renderCreate({ onClose });
       act(() => {
@@ -493,8 +493,8 @@ describe('useStaffForm', () => {
         result.current.handleClose();
       });
       // Simulate user clicking confirm in the dialog
-      act(() => {
-        result.current.closeConfirmDialog.onConfirm();
+      await act(async () => {
+        await result.current.closeConfirmDialog.onConfirm();
       });
       expect(onClose).toHaveBeenCalledTimes(1);
     });
