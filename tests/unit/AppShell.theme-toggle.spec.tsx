@@ -1,5 +1,4 @@
-import { screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { SettingsDialog } from '@/features/settings/SettingsDialog';
@@ -14,8 +13,7 @@ import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
  * SettingsDialog 内の Switch に移行されたため、テスト対象を更新。
  */
 describe('SettingsDialog theme toggle accessibility', () => {
-  it('toggles dark mode when the theme switch is clicked', async () => {
-    const user = userEvent.setup();
+  it('toggles dark mode when the theme switch is clicked', () => {
     const onClose = () => {};
 
     renderWithAppProviders(
@@ -35,11 +33,11 @@ describe('SettingsDialog theme toggle accessibility', () => {
     expect(themeSwitch).not.toBeChecked();
 
     // ダークモードに切り替え
-    await user.click(themeSwitch);
+    fireEvent.click(themeSwitch);
     expect(themeSwitch).toBeChecked();
 
     // ライトモードに戻す
-    await user.click(themeSwitch);
+    fireEvent.click(themeSwitch);
     expect(themeSwitch).not.toBeChecked();
   });
 });
