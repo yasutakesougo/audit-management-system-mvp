@@ -5,6 +5,7 @@
  * Extracted from TokuseiSurveyResultsPage.tsx.
  */
 import type { TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
+import { formatDateTimeIntl } from '@/lib/dateFormat';
 
 // ---------------------------------------------------------------------------
 // Formatting
@@ -14,18 +15,14 @@ import type { TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
  * Format an ISO date-time string to a localized Japanese date-time string.
  * Returns '未入力' for empty values and the raw value for unparseable dates.
  */
-export const formatDateTime = (value: string): string => {
-  if (!value) return '未入力';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('ja-JP', {
+export const formatDateTime = (value: string): string =>
+  formatDateTimeIntl(value, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(date);
-};
+  }, value || '未入力');
 
 // ---------------------------------------------------------------------------
 // User options

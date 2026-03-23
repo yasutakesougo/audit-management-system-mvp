@@ -22,6 +22,7 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import type React from 'react';
+import { formatDateTimeIntl } from '@/lib/dateFormat';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -39,17 +40,12 @@ interface ImportHistoryTimelineProps {
 // ---------------------------------------------------------------------------
 
 function formatDateTime(iso: string): string {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleString('ja-JP', {
-      month: 'numeric',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return iso;
-  }
+  return formatDateTimeIntl(iso, {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }, iso);
 }
 
 const MODE_LABELS: Record<string, string> = {

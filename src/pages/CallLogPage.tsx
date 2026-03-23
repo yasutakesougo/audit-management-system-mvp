@@ -56,21 +56,17 @@ import { NextCallHero } from '@/features/callLogs/components/NextCallHero';
 import { CallLogPriorityQueue } from '@/features/callLogs/components/CallLogPriorityQueue';
 import { CTA_EVENTS, recordCtaClick } from '@/features/today/telemetry/recordCtaClick';
 import type { CallLog } from '@/domain/callLogs/schema';
+import { formatDateTimeIntl } from '@/lib/dateFormat';
 
 // ─── 日時フォーマットヘルパー ─────────────────────────────────────────────────
 
-const formatDateTime = (iso: string): string => {
-  try {
-    return new Intl.DateTimeFormat('ja-JP', {
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
-};
+const formatDateTime = (iso: string): string =>
+  formatDateTimeIntl(iso, {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }, iso);
 
 // ─── 期限チップカラーマップ ─────────────────────────────────────────────────────
 

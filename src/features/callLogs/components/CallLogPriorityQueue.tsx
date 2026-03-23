@@ -35,6 +35,7 @@ import type { CallLog } from '@/domain/callLogs/schema';
 import { getCallbackDueInfo, type CallbackDueLevel } from '../domain/callbackDueLabel';
 import { CallLogStatusChip } from './CallLogStatusChip';
 import { CallLogUrgencyChip } from './CallLogUrgencyChip';
+import { formatDateTimeIntl } from '@/lib/dateFormat';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -74,18 +75,13 @@ const DUE_CHIP_COLOR: Record<CallbackDueLevel, 'error' | 'warning' | 'default' |
 
 // ─── 日時フォーマット ─────────────────────────────────────────────────────────
 
-const formatDateTime = (iso: string): string => {
-  try {
-    return new Intl.DateTimeFormat('ja-JP', {
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
-};
+const formatDateTime = (iso: string): string =>
+  formatDateTimeIntl(iso, {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }, iso);
 
 // ─── PriorityRow（Queue 内の行） ──────────────────────────────────────────────
 
