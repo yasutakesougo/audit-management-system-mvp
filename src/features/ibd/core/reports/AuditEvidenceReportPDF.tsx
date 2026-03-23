@@ -8,6 +8,7 @@ import React from 'react';
 
 import type { AuditEvidenceReportData } from '../ibdReportTypes';
 import { PDCA_RECOMMENDATION_LABELS } from '../ibdTypes';
+import { formatDateYmd, formatDateTimeYmdHm } from '@/lib/dateFormat';
 
 // ---------------------------------------------------------------------------
 // スタイル
@@ -145,15 +146,11 @@ const styles = StyleSheet.create({
 // ---------------------------------------------------------------------------
 
 function formatDate(iso: string): string {
-  if (!iso) return '-';
-  const d = new Date(iso);
-  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+  return formatDateYmd(iso, '-');
 }
 
 function formatDateTime(iso: string): string {
-  if (!iso) return '-';
-  const d = new Date(iso);
-  return `${formatDate(iso)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return formatDateTimeYmdHm(iso, '-');
 }
 
 // ---------------------------------------------------------------------------

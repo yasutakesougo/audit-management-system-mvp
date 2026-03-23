@@ -20,6 +20,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React, { useMemo } from 'react';
+import { safeFormatDate } from '@/lib/dateFormat';
 
 import type { IspRecommendationDecision } from '../domain/ispRecommendationDecisionTypes';
 import { buildDecisionSummary } from '../domain/ispRecommendationDecisionUtils';
@@ -28,16 +29,13 @@ import type { IspRecommendationSummary } from '../domain/ispRecommendationTypes'
 // ─── ヘルパー ──────────────────────────────────────────────
 
 function formatDateTime(iso: string): string {
-  try {
-    const d = new Date(iso);
+  return safeFormatDate(iso, (d) => {
     const month = d.getMonth() + 1;
     const day = d.getDate();
     const hours = String(d.getHours()).padStart(2, '0');
     const minutes = String(d.getMinutes()).padStart(2, '0');
     return `${month}/${day} ${hours}:${minutes}`;
-  } catch {
-    return iso;
-  }
+  }, iso);
 }
 
 function completionColor(rate: number): 'success' | 'warning' | 'inherit' {

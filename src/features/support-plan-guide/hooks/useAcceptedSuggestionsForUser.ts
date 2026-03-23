@@ -20,6 +20,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDailyRecordRepository } from '@/features/daily/repositoryFactory';
 import type { SuggestionAction } from '@/features/daily/domain/suggestionAction';
+import { formatDateIso } from '@/lib/dateFormat';
 
 // ─── 型定義 ──────────────────────────────────────────────
 
@@ -58,19 +59,14 @@ export function computeDateRange(lookbackDays: number): {
   endDate: string;
 } {
   const now = new Date();
-  const endDate = formatDate(now);
+  const endDate = formatDateIso(now);
   const start = new Date(now);
   start.setDate(start.getDate() - lookbackDays);
-  const startDate = formatDate(start);
+  const startDate = formatDateIso(start);
   return { startDate, endDate };
 }
 
-function formatDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
+
 
 // ─── Hook ────────────────────────────────────────────────
 
