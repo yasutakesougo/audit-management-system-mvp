@@ -137,11 +137,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          if git diff --quiet -- docs/nightly-patrol; then
+          if [ -z "$(git status --porcelain -- docs/nightly-patrol)" ]; then
             echo "No report changes"
             exit 0
           fi
 
-          git add docs/nightly-patrol
+          git add -A docs/nightly-patrol
           git commit -m "chore(ops): nightly patrol report"
           git push
