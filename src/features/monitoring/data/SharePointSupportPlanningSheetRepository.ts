@@ -218,7 +218,10 @@ export class SharePointSupportPlanningSheetRepository implements SupportPlanning
       }
 
       const params = new URLSearchParams();
-      // TODO: SharePoint側でこの列(UserId, GoalId等)にインデックス設定が必要かも
+      // PERF: SharePoint list index recommended on columns: UserId, GoalId
+      // Without indexes, $filter on large lists (>5000 items) will hit throttle threshold.
+      // Action: Add column indexes via SharePoint site settings or PnP PowerShell.
+      // See: nightly-autonomous-report 2026-03-23 — P1 SharePoint index recommendation
       params.set('$filter', filters.join(' and '));
       params.set('$orderby', `${SP_FIELDS.decisionAt} desc`);
 
