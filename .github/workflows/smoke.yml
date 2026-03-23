@@ -84,6 +84,9 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
     needs: [lint, typecheck]
     if: |
       always() &&
@@ -104,6 +107,18 @@ jobs:
           set -o pipefail
           TZ=Asia/Tokyo npm run test:ci 2>&1 | tee /tmp/vitest-smoke.log
           node scripts/ci/check-act-warnings.mjs /tmp/vitest-smoke.log --json --json-output /tmp/act-warnings-smoke.json
+      - name: Create/Update act warning regression issue
+        if: ${{ failure() }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node scripts/ci/create-act-warning-issue.mjs \
+            --summary /tmp/act-warnings-smoke.json \
+            --repo "${{ github.repository }}" \
+            --workflow "${{ github.workflow }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --branch "${{ github.ref_name }}" \
+            --sha "${{ github.sha }}"
       - name: Upload test coverage on failure
         if: failure()
         uses: actions/upload-artifact@v4
