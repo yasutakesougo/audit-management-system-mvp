@@ -81,7 +81,9 @@ describe('useExceptionPreferences', () => {
     expect(parsed.state.snoozed['snoozed-1']).toBe(until);
 
     // 別インスタンスのように振る舞うため、store を初期化して localStorage から読ませる
-    useExceptionPreferences.setState({ dismissed: {}, snoozed: {} });
+    act(() => {
+      useExceptionPreferences.setState({ dismissed: {}, snoozed: {} });
+    });
     
     // Hooks が初回マウント時に loadFromStorage する（Store初期化時のみなので、テストでは手動で適用が必要ですが
     // Zustand store の外で生成された initial state に依存するため、完全なシミュレーションは別モジュール扱いに近い）
