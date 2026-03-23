@@ -26,6 +26,7 @@ import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useMemo } from 'react';
+import { safeFormatDate, formatDateYmd } from '@/lib/dateFormat';
 
 import type {
   DecisionStatus,
@@ -48,28 +49,17 @@ import type { IspRecommendationSummary } from '../domain/ispRecommendationTypes'
 // ─── 日時フォーマッタ ────────────────────────────────────
 
 function formatDateTime(isoString: string): string {
-  try {
-    const d = new Date(isoString);
+  return safeFormatDate(isoString, (d) => {
     const month = d.getMonth() + 1;
     const day = d.getDate();
     const hours = String(d.getHours()).padStart(2, '0');
     const minutes = String(d.getMinutes()).padStart(2, '0');
     return `${month}/${day} ${hours}:${minutes}`;
-  } catch {
-    return isoString;
-  }
+  }, isoString);
 }
 
 function formatDate(isoString: string): string {
-  try {
-    const d = new Date(isoString);
-    const year = d.getFullYear();
-    const month = d.getMonth() + 1;
-    const day = d.getDate();
-    return `${year}/${month}/${day}`;
-  } catch {
-    return isoString;
-  }
+  return formatDateYmd(isoString, isoString);
 }
 
 // ─── ステータスのボーダーカラー ──────────────────────────
