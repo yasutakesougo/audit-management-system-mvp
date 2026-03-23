@@ -3,7 +3,7 @@
  *
  * TimeBasedSupportRecordPage の handleRecordSubmit, handleRetryPersist を抽出 (#766)
  */
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import type { ABCRecord } from '@/domain/behavior';
 import type { ExecutionRecordRepository } from '@/features/daily/domain/ExecutionRecordRepository';
 import type { BehaviorRepository } from '@/features/daily/infra/repositoryTypes';
 import {
@@ -52,7 +52,7 @@ export function useSupportRecordSubmit({
   const clientVersion = getEnv('VITE_APP_VERSION') ?? 'dev';
   const templateId = 'daily-support.v1';
 
-  const handleRecordSubmit = useCallback(async (payload: Omit<BehaviorObservation, 'id' | 'userId'>) => {
+  const handleRecordSubmit = useCallback(async (payload: Omit<ABCRecord, 'id' | 'userId'>) => {
     if (!targetUserId) return;
     try {
       await behaviorRepo.add({

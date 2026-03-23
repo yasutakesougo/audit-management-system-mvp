@@ -1,16 +1,16 @@
-import { BehaviorIntensity, type BehaviorObservation, MOCK_OBSERVATION_MASTER } from '@/features/daily/domain/daily/types';
+import { type ABCRecord, type BehaviorIntensity, DEFAULT_OBSERVATION_MASTER } from '@/domain/behavior';
 import { useCallback, useState } from 'react';
 import { getBehaviorRepository, getInMemoryBehaviorRepository } from '../infra/behaviorRepositoryFactory';
 
 export function useBehaviorStore() {
-  const [data, setData] = useState<BehaviorObservation[]>([]);
-  const [analysisData, setAnalysisData] = useState<BehaviorObservation[]>([]);
+  const [data, setData] = useState<ABCRecord[]>([]);
+  const [analysisData, setAnalysisData] = useState<ABCRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const repo = getBehaviorRepository();
   const RECENT_LIMIT = 5;
 
-  const ensureDesc = useCallback((items: BehaviorObservation[]) => {
+  const ensureDesc = useCallback((items: ABCRecord[]) => {
     return [...items].sort(
       (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
     );
@@ -32,7 +32,7 @@ export function useBehaviorStore() {
     }
   }, [RECENT_LIMIT, ensureDesc, repo]);
 
-  const add = useCallback(async (record: Omit<BehaviorObservation, 'id'>) => {
+  const add = useCallback(async (record: Omit<ABCRecord, 'id'>) => {
     setLoading(true);
     try {
       const newRecord = await repo.add(record);
@@ -101,7 +101,7 @@ export const seedDemoBehaviors = (userId: string, days = 7): number => {
   }
 
   const now = new Date();
-  const seeded: BehaviorObservation[] = [];
+  const seeded: ABCRecord[] = [];
 
   for (let dayOffset = 0; dayOffset < days; dayOffset += 1) {
     const baseDate = new Date(now);
@@ -117,10 +117,10 @@ export const seedDemoBehaviors = (userId: string, days = 7): number => {
         id: `demo-${userId}-${dayOffset}-${idx}-${eventDate.getTime()}`,
         userId,
         recordedAt: eventDate.toISOString(),
-        behavior: pickRandom(MOCK_OBSERVATION_MASTER.behaviors),
-        antecedent: pickRandom(MOCK_OBSERVATION_MASTER.antecedents) ?? '',
+        behavior: pickRandom(DEFAULT_OBSERVATION_MASTER.behaviors),
+        antecedent: pickRandom(DEFAULT_OBSERVATION_MASTER.antecedents) ?? '',
         antecedentTags: [],
-        consequence: pickRandom(MOCK_OBSERVATION_MASTER.consequences) ?? '',
+        consequence: pickRandom(DEFAULT_OBSERVATION_MASTER.consequences) ?? '',
         intensity: (Math.floor(Math.random() * 5) + 1) as BehaviorIntensity,
       });
     }

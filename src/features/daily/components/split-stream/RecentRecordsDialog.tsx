@@ -3,7 +3,7 @@
  *
  * TimeBasedSupportRecordPage から抽出 (#766)
  */
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import type { ABCRecord } from '@/domain/behavior';
 import { AppliedStrategiesBadges } from '@/features/daily/components/AppliedStrategiesBadges';
 import CloseIcon from '@mui/icons-material/Close';
 import Box from '@mui/material/Box';
@@ -19,7 +19,7 @@ import React from 'react';
 export type RecentRecordsDialogProps = {
   open: boolean;
   onClose: () => void;
-  observations: BehaviorObservation[];
+  observations: ABCRecord[];
   userName?: string;
 };
 

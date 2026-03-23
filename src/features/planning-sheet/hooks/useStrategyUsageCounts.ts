@@ -1,7 +1,7 @@
 /**
  * useStrategyUsageCounts — 戦略の実施回数を集計する hook
  *
- * BehaviorObservation から referencedStrategies を読み取り、
+ * ABCRecord から referencedStrategies を読み取り、
  * StrategyUsageSummary を返す。
  *
  * Phase C-3a: 支援計画シートで戦略ごとの実施カウントを表示するため。
@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import type { ABCRecord } from '@/domain/behavior';
 import {
   aggregateStrategyUsage,
   type StrategyUsageSummary,
@@ -64,7 +64,7 @@ export function useStrategyUsageCounts(
   options: UseStrategyUsageCountsOptions = {},
 ): UseStrategyUsageCountsResult {
   const { days = 30 } = options;
-  const [records, setRecords] = useState<BehaviorObservation[]>([]);
+  const [records, setRecords] = useState<ABCRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 

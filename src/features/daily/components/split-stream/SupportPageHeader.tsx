@@ -3,7 +3,7 @@
  *
  * TimeBasedSupportRecordPage から抽出 (#766)
  */
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import type { ABCRecord } from '@/domain/behavior';
 import type { DailySupportUserFilter } from '@/features/daily/hooks/useDailySupportUserFilter';
 import type { IUserMaster } from '@/features/users/types';
 import { DISABILITY_SUPPORT_LEVEL_OPTIONS } from '@/features/users/typesExtended';
@@ -30,7 +30,7 @@ export type SupportPageHeaderProps = {
   selectedUser?: IUserMaster;
   filteredUsers: IUserMaster[];
   allUsersCount: number;
-  recentObservations: BehaviorObservation[];
+  recentObservations: ABCRecord[];
   filter: DailySupportUserFilter;
   hasActiveFilter: boolean;
   onUserChange: (userId: string) => void;

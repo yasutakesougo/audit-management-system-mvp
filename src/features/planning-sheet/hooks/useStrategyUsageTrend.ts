@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import type { ABCRecord } from '@/domain/behavior';
 import {
   compareStrategyUsage,
   type StrategyUsageTrendResult,
@@ -105,7 +105,7 @@ export function useStrategyUsageTrend(
   initialDays: TrendDays = 30,
 ): UseStrategyUsageTrendResult {
   const [days, setDays] = useState<TrendDays>(initialDays);
-  const [records, setRecords] = useState<BehaviorObservation[]>([]);
+  const [records, setRecords] = useState<ABCRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 

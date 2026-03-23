@@ -10,7 +10,7 @@ import Slider from '@mui/material/Slider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { memo, useMemo } from 'react';
-import { type BehaviorIntensity, MOCK_OBSERVATION_MASTER } from '../../domain/daily/types';
+import { type BehaviorIntensity, DEFAULT_OBSERVATION_MASTER } from '@/domain/behavior';
 
 type AbcRecordSectionProps = {
   selectedBehavior: string | null;
@@ -48,7 +48,7 @@ function AbcRecordSection({
           特異行動・インシデント (ABC記録)
         </Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-          {MOCK_OBSERVATION_MASTER.behaviors.map((behavior) => {
+          {DEFAULT_OBSERVATION_MASTER.behaviors.map((behavior) => {
             const isSelected = selectedBehavior === behavior;
             return (
               <Chip
@@ -91,7 +91,7 @@ function AbcRecordSection({
                 直前の状況 (Antecedent)
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                {MOCK_OBSERVATION_MASTER.antecedents.map((antecedent) => (
+                {DEFAULT_OBSERVATION_MASTER.antecedents.map((antecedent) => (
                   <Chip
                     key={antecedent}
                     label={antecedent}
@@ -111,7 +111,7 @@ function AbcRecordSection({
                 対応・結果 (Consequence)
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                {MOCK_OBSERVATION_MASTER.consequences.map((consequence) => (
+                {DEFAULT_OBSERVATION_MASTER.consequences.map((consequence) => (
                   <Chip
                     key={consequence}
                     label={consequence}

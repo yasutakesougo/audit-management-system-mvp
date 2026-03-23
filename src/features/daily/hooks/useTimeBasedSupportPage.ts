@@ -11,7 +11,7 @@
  */
 import { useInterventionStore } from '@/features/analysis/stores/interventionStore';
 import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import type { ABCRecord } from '@/domain/behavior';
 import { generateDailyReport } from '@/features/daily/domain/generateDailyReport';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import { toBipOptions } from '@/features/daily/domain/toBipOptions';
@@ -208,7 +208,7 @@ export function useTimeBasedSupportPage() {
 
   // ── Submit handler ─────────────────────────────────────────────────────
   const handleRecordSubmit = useCallback(
-    async (payload: Omit<BehaviorObservation, 'id' | 'userId'>) => {
+    async (payload: Omit<ABCRecord, 'id' | 'userId'>) => {
       if (!core.targetUserId) return;
       try {
         await behaviorRepo.add({ ...payload, userId: core.targetUserId });

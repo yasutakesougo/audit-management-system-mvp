@@ -1,4 +1,4 @@
-import type { BehaviorObservation } from '@/features/daily';
+import type { ABCRecord } from '@/domain/behavior';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -16,7 +16,7 @@ import {
 } from 'recharts';
 
 export type BehaviorHeatmapProps = {
-  data: BehaviorObservation[];
+  data: ABCRecord[];
   title?: string;
 };
 

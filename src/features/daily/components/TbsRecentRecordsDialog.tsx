@@ -12,13 +12,13 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import type { ABCRecord } from '@/domain/behavior';
 import { AppliedStrategiesBadges } from '@/features/daily/components/AppliedStrategiesBadges';
 
 export interface TbsRecentRecordsDialogProps {
   open: boolean;
   onClose: () => void;
-  observations: BehaviorObservation[];
+  observations: ABCRecord[];
   userName?: string;
 }
 
