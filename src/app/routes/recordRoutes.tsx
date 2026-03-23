@@ -28,7 +28,7 @@ export const recordRoutes: RouteObject[] = [
   {
     path: 'records/monthly',
     element: (
-      <RequireAudience requiredRole="reception">
+      <RequireAudience requiredRole="viewer">
         <SuspendedMonthlyRecordPage />
       </RequireAudience>
     ),
@@ -52,7 +52,7 @@ export const recordRoutes: RouteObject[] = [
   {
     path: 'records/service-provision',
     element: (
-      <RequireAudience requiredRole="reception">
+      <RequireAudience requiredRole="viewer">
         <SuspendedServiceProvisionFormPage />
       </RequireAudience>
     ),
