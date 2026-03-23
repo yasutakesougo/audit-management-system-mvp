@@ -22,13 +22,11 @@ import { useAuth } from '@/auth/useAuth';
 import { createSharePointIspRepository } from '@/data/isp/sharepoint/SharePointIspRepository';
 import { determineWorkflowPhase, type WorkflowPhase } from '@/domain/bridge/workflowPhase';
 import { useHandoffData } from '@/features/handoff/hooks/useHandoffData';
-import { AbcEvidencePanel } from '@/features/ibd/analysis/pdca/components/AbcEvidencePanel';
 import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIcebergEvidence';
 import { usePlanningSheetData } from '@/features/planning-sheet/hooks/usePlanningSheetData';
 import { usePlanningSheetForm } from '@/features/planning-sheet/hooks/usePlanningSheetForm';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { NewPlanningSheetForm } from '@/features/planning-sheet/components/NewPlanningSheetForm';
-import { ProvenancePanel } from '@/features/planning-sheet/components/ProvenanceBadge';
 import type { ProvenanceEntry } from '@/features/planning-sheet/assessmentBridge';
 import { useAssessmentStore } from '@/features/assessment/stores/assessmentStore';
 import { useImportAuditStore } from '@/features/planning-sheet/stores/importAuditStore';
@@ -52,6 +50,7 @@ import { ContextPanelSection } from './support-planning-sheet/sections/ContextPa
 import { ImportDialogsSection } from './support-planning-sheet/sections/ImportDialogsSection';
 import { ImportHistorySection } from './support-planning-sheet/sections/ImportHistorySection';
 import { PlanningTabsSection } from './support-planning-sheet/sections/PlanningTabsSection';
+import { PlanningStatusSection } from './support-planning-sheet/sections/PlanningStatusSection';
 import { TagAnalyticsAccordionSection } from './support-planning-sheet/sections/TagAnalyticsAccordionSection';
 import { useImportHandlers } from './support-planning-sheet/hooks/useImportHandlers';
 import { usePlanningEvidenceState } from './support-planning-sheet/hooks/usePlanningEvidenceState';
@@ -256,18 +255,12 @@ export default function SupportPlanningSheetPage() {
             onJumpToPlanningTab={() => setActiveTab('planning')}
             onStartEditing={() => setIsEditing(true)}
           />
-
-          {sheet.userId && <AbcEvidencePanel userId={sheet.userId} />}
-
-          {isEditing && Object.keys(form.validationErrors).length > 0 && (
-            <Alert severity="warning" variant="outlined">
-              入力にエラーがあります: {Object.values(form.validationErrors).filter(Boolean).join(' / ')}
-            </Alert>
-          )}
-
-          {isEditing && allProvenanceEntries.length > 0 && (
-            <ProvenancePanel entries={allProvenanceEntries} defaultExpanded={false} />
-          )}
+          <PlanningStatusSection
+            userId={sheet.userId}
+            isEditing={isEditing}
+            validationErrors={form.validationErrors}
+            provenanceEntries={allProvenanceEntries}
+          />
 
           <ImportHistorySection
             auditRecords={auditRecords}
