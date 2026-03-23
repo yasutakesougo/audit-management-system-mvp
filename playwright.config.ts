@@ -16,6 +16,7 @@ const junitOutput = process.env.PLAYWRIGHT_JUNIT_OUTPUT ?? 'junit/results.xml';
 const ciReporters: ReporterDescription[] = [
   ['list'],
   ['junit', { outputFile: junitOutput }],
+  ['json', { outputFile: 'test-results/results.json' }],
   ['html', { outputFolder: 'playwright-report' }],
 ];
 

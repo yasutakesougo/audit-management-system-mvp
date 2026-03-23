@@ -11,6 +11,7 @@ test-results.json
 tests/.auth/storageState.json
 tmp/
 reports/flaky-tests.md
+stability-metrics.json
 playwright-report
 junit
 
