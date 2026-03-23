@@ -27,6 +27,7 @@ import { inferGoalTagLinks, assessGoalProgress } from './goalProgressUtils';
 import type { IspRecommendationSummary } from './ispRecommendationTypes';
 import { ISP_RECOMMENDATION_LABELS } from './ispRecommendationTypes';
 import { buildIspRecommendations } from './ispRecommendationUtils';
+import { buildMonitoringPeriodMetrics } from './monitoringDailyPeriod';
 
 // ─── 型定義 ──────────────────────────────────────────────
 
@@ -148,14 +149,6 @@ const clean = (s: unknown): string => {
   const t = String(s ?? '').trim();
   return t || '';
 };
-
-/** YYYY-MM-DD 間の暦日数（inclusive） */
-function daysBetween(from: string, to: string): number {
-  const a = new Date(from + 'T00:00:00');
-  const b = new Date(to + 'T00:00:00');
-  const diff = b.getTime() - a.getTime();
-  return Math.max(1, Math.floor(diff / 86_400_000) + 1);
-}
 
 /** YYYY-MM-DD → 週番号文字列（月曜起点） */
 function toWeekKey(ymd: string): string {
@@ -537,17 +530,10 @@ export function buildMonitoringDailySummary(
 ): DailyMonitoringSummary | null {
   if (records.length === 0) return null;
 
-  // 期間を recordDate の min/max から算出
-  const dates = records.map((r) => r.recordDate).sort();
-  const from = dates[0];
-  const to = dates[dates.length - 1];
-  const totalDays = daysBetween(from, to);
-  const uniqueDates = new Set(dates);
-  const recordedDays = uniqueDates.size;
-  const recordRate = totalDays > 0 ? Math.round((recordedDays / totalDays) * 100) : 0;
+  const period = buildMonitoringPeriodMetrics(records);
 
   const result: DailyMonitoringSummary = {
-    period: { from, to, totalDays, recordedDays, recordRate },
+    period,
     activity: aggregateActivities(records),
     lunch: aggregateLunch(records),
     behavior: aggregateBehaviors(records),

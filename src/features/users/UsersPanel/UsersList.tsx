@@ -495,7 +495,7 @@ const UsersList: FC<UsersListProps> = ({
                 sx={{ fontSize: 48, color: 'text.disabled', mb: 1.5 }}
               />
               <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 600 }}>
-                利用者詳細
+                利用者が未選択です
               </Typography>
               <Typography variant="body2" color="text.disabled" textAlign="center" sx={{ mt: 0.5 }}>
                 一覧から利用者を選択すると、ここに詳細が表示されます

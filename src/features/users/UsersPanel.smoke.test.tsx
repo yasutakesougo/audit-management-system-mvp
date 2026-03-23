@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { usersStoreMock } from './testUtils/usersStoreMock';
 import UsersPanel from './UsersPanel/index';
@@ -8,6 +8,15 @@ describe('UsersPanel smoke test', () => {
   beforeEach(() => {
     usersStoreMock.reset();
   });
+
+  const renderOnUsersRoute = (path = '/users') => {
+    const router = createMemoryRouter(
+      [{ path: '/users', element: <UsersPanel /> }],
+      { initialEntries: [path] },
+    );
+    render(<RouterProvider router={router} />);
+    return router;
+  };
 
   it('allows creating and deleting a user with list refresh', async () => {
     render(
@@ -64,10 +73,10 @@ describe('UsersPanel smoke test', () => {
       </MemoryRouter>
     );
 
-  fireEvent.click(screen.getAllByRole('tab', { name: /利用者一覧/ })[0]);
+    fireEvent.click(screen.getAllByRole('tab', { name: /利用者一覧/ })[0]);
 
-  const detailLink = screen.getByRole('link', { name: '詳細' });
-  fireEvent.click(detailLink);
+    const detailLink = screen.getByRole('link', { name: '詳細' });
+    fireEvent.click(detailLink);
 
     expect(await screen.findByRole('button', { name: '詳細表示を閉じる' })).toBeInTheDocument();
     expect(screen.getAllByText(/inline-001/).length).toBeGreaterThan(0);
@@ -75,6 +84,62 @@ describe('UsersPanel smoke test', () => {
     fireEvent.click(screen.getByRole('button', { name: '詳細表示を閉じる' }));
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: '詳細表示を閉じる' })).toBeNull();
+    });
+  });
+
+  it('restores selected detail from URL query', async () => {
+    usersStoreMock.reset([
+      {
+        Id: 101,
+        UserID: 'inline-001',
+        FullName: '埋め込み太郎',
+        IsActive: true,
+      },
+    ]);
+
+    const router = renderOnUsersRoute('/users?tab=list&selected=inline-001');
+
+    expect(await screen.findByRole('button', { name: '詳細表示を閉じる' })).toBeInTheDocument();
+    expect(screen.getAllByText(/inline-001/).length).toBeGreaterThan(0);
+    expect(router.state.location.search).toContain('selected=inline-001');
+  });
+
+  it('clears invalid selected query and keeps panel stable', async () => {
+    usersStoreMock.reset([
+      {
+        Id: 101,
+        UserID: 'inline-001',
+        FullName: '埋め込み太郎',
+        IsActive: true,
+      },
+    ]);
+
+    const router = renderOnUsersRoute('/users?tab=list&selected=U-999');
+
+    await waitFor(() => {
+      expect(router.state.location.search).toBe('?tab=list');
+    });
+
+    expect(await screen.findByText('利用者が未選択です')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '詳細表示を閉じる' })).toBeNull();
+  });
+
+  it('writes selected query when detail is opened from list', async () => {
+    usersStoreMock.reset([
+      {
+        Id: 101,
+        UserID: 'inline-001',
+        FullName: '埋め込み太郎',
+        IsActive: true,
+      },
+    ]);
+
+    const router = renderOnUsersRoute('/users?tab=list');
+
+    fireEvent.click(screen.getByRole('link', { name: '詳細' }));
+
+    await waitFor(() => {
+      expect(router.state.location.search).toContain('selected=inline-001');
     });
   });
 });
