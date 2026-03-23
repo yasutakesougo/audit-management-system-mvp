@@ -37,7 +37,7 @@ test.describe('Schedules SharePoint Integration Smoke Test', () => {
     );
 
     // Wait for any initial loading to complete
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
 
     // Verify no console errors
     const consoleErrors: string[] = [];
@@ -47,7 +47,7 @@ test.describe('Schedules SharePoint Integration Smoke Test', () => {
       }
     });
 
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('domcontentloaded');
     
     // In demo mode, we should have no errors
     expect(consoleErrors.length).toBe(0);
@@ -61,7 +61,7 @@ test.describe('Schedules SharePoint Integration Smoke Test', () => {
       await createButton.click();
 
       // Wait for dialog to appear
-      await page.waitForTimeout(1000);
+      await page.getByRole('dialog').waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
 
       // Fill in the form
       const titleInput = page.locator('input[name="title"], input[placeholder*="タイトル"]').first();
@@ -78,7 +78,7 @@ test.describe('Schedules SharePoint Integration Smoke Test', () => {
           await saveButton.click({ timeout: 5000 }).catch(() => {});
 
           // Wait for the dialog to close
-          await page.waitForTimeout(2000);
+          await page.getByRole('dialog').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
 
           // Verify the page is still stable
           await expectTestIdVisibleBestEffort(page, TESTIDS['schedules-week-page']);
@@ -98,7 +98,7 @@ test.describe('Schedules SharePoint Integration Smoke Test', () => {
     // Try to navigate to previous day
     if (await prevButton.isVisible().catch(() => false)) {
       await prevButton.click();
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('domcontentloaded');
       
       // Verify page is still visible
       await expectTestIdVisibleBestEffort(page, TESTIDS['schedules-week-page']);
@@ -107,7 +107,7 @@ test.describe('Schedules SharePoint Integration Smoke Test', () => {
     // Try to navigate to next day
     if (await nextButton.isVisible().catch(() => false)) {
       await nextButton.click();
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('domcontentloaded');
       
       // Verify page is still visible
       await expectTestIdVisibleBestEffort(page, TESTIDS['schedules-week-page']);
@@ -160,7 +160,7 @@ test.describe('Schedules SharePoint Integration Smoke Test', () => {
       }
     });
 
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
 
     // No critical errors should be present
     const hasProtectedRouteFetchFailure = criticalErrors.some((entry) =>
@@ -280,7 +280,7 @@ test.describe('Schedules Navigation Integration', () => {
       await expect(page).toHaveURL(/\/schedules/);
 
       // Verify schedules page loaded
-      await page.waitForTimeout(1000);
+      await page.waitForLoadState('networkidle');
     } else {
       // If nav link not found, try direct navigation
       await page.goto('/schedules/day');
