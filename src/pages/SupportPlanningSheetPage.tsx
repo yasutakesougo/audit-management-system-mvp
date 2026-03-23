@@ -16,7 +16,6 @@ import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
-import Stack from '@mui/material/Stack';
 
 import { useAuth } from '@/auth/useAuth';
 import { createSharePointIspRepository } from '@/data/isp/sharepoint/SharePointIspRepository';
@@ -43,15 +42,9 @@ import { TESTIDS, tid } from '@/testids';
 // ── Local (split) ──
 import { type SheetTabKey } from './support-planning-sheet/types';
 import { VALID_TABS } from './support-planning-sheet/constants';
-import SheetHeader from './support-planning-sheet/SheetHeader';
-import { OperationGuideAlert } from './support-planning-sheet/components/ui/OperationGuideAlert';
-import { SheetMetadataFooter } from './support-planning-sheet/components/ui/SheetMetadataFooter';
 import { ContextPanelSection } from './support-planning-sheet/sections/ContextPanelSection';
 import { ImportDialogsSection } from './support-planning-sheet/sections/ImportDialogsSection';
-import { ImportHistorySection } from './support-planning-sheet/sections/ImportHistorySection';
-import { PlanningTabsSection } from './support-planning-sheet/sections/PlanningTabsSection';
-import { PlanningStatusSection } from './support-planning-sheet/sections/PlanningStatusSection';
-import { TagAnalyticsAccordionSection } from './support-planning-sheet/sections/TagAnalyticsAccordionSection';
+import { PlanningMainStackSection } from './support-planning-sheet/sections/PlanningMainStackSection';
 import { useImportHandlers } from './support-planning-sheet/hooks/useImportHandlers';
 import { usePlanningEvidenceState } from './support-planning-sheet/hooks/usePlanningEvidenceState';
 import { useSupportPlanningContextPanel } from './support-planning-sheet/hooks/useSupportPlanningContextPanel';
@@ -231,70 +224,65 @@ export default function SupportPlanningSheetPage() {
   return (
     <Box sx={{ display: 'flex', position: 'relative' }}>
       <Box sx={{ flex: 1, p: { xs: 2, md: 3 }, pb: 4 }} {...tid(TESTIDS['planning-sheet-page'])}>
-        <Stack spacing={3}>
-          <SheetHeader
-            sheet={sheet}
-            isEditing={isEditing}
-            isDirty={form.isDirty}
-            isSaving={form.isSaving}
-            isValid={form.isValid}
-            hasAssessment={!!currentAssessment}
-            hasMonitoringRecord={!!latestMonitoringRecord}
-            icebergEvidence={icebergEvidence}
-            onBack={() => navigate('/support-plan-guide')}
-            onEdit={() => setIsEditing(true)}
-            onReset={handleReset}
-            onSave={handleSave}
-            onImportAssessment={() => setImportDialogOpen(true)}
-            onImportMonitoring={() => setMonitoringDialogOpen(true)}
-          />
-
-          <OperationGuideAlert
-            isEditing={isEditing}
-            onJumpToMonitoringHistory={handleJumpToMonitoringHistory}
-            onJumpToPlanningTab={() => setActiveTab('planning')}
-            onStartEditing={() => setIsEditing(true)}
-          />
-          <PlanningStatusSection
-            userId={sheet.userId}
-            isEditing={isEditing}
-            validationErrors={form.validationErrors}
-            provenanceEntries={allProvenanceEntries}
-          />
-
-          <ImportHistorySection
-            auditRecords={auditRecords}
-            filteredAuditRecords={filteredAuditRecords}
-            historyFilter={historyFilter}
-            onHistoryFilterChange={setHistoryFilter}
-          />
-
-          <PlanningTabsSection
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            currentPhase={currentPhase}
-            onBannerNavigate={handleBannerNavigate}
-            isEditing={isEditing}
-            form={form}
-            allProvenanceEntries={allProvenanceEntries}
-            sheet={sheet}
-            evidenceLinks={evidenceLinks}
-            abcRecords={abcRecords}
-            pdcaItems={pdcaItems}
-            onEvidenceLinksChange={setEvidenceLinks}
-            onEvidenceClick={handleEvidenceClick}
-            strategyUsage={strategyUsage}
-            strategyUsageLoading={strategyUsageLoading}
-            trendResult={trendResult}
-            trendDays={trendDays}
-            onTrendDaysChange={setTrendDays}
-            trendLoading={trendLoading}
-          />
-
-          <TagAnalyticsAccordionSection userId={sheet.userId} />
-
-          <SheetMetadataFooter sheet={sheet} />
-        </Stack>
+        <PlanningMainStackSection
+          headerProps={{
+            sheet,
+            isEditing,
+            isDirty: form.isDirty,
+            isSaving: form.isSaving,
+            isValid: form.isValid,
+            hasAssessment: !!currentAssessment,
+            hasMonitoringRecord: !!latestMonitoringRecord,
+            icebergEvidence,
+            onBack: () => navigate('/support-plan-guide'),
+            onEdit: () => setIsEditing(true),
+            onReset: handleReset,
+            onSave: handleSave,
+            onImportAssessment: () => setImportDialogOpen(true),
+            onImportMonitoring: () => setMonitoringDialogOpen(true),
+          }}
+          operationGuideProps={{
+            isEditing,
+            onJumpToMonitoringHistory: handleJumpToMonitoringHistory,
+            onJumpToPlanningTab: () => setActiveTab('planning'),
+            onStartEditing: () => setIsEditing(true),
+          }}
+          planningStatusProps={{
+            userId: sheet.userId,
+            isEditing,
+            validationErrors: form.validationErrors,
+            provenanceEntries: allProvenanceEntries,
+          }}
+          importHistoryProps={{
+            auditRecords,
+            filteredAuditRecords,
+            historyFilter,
+            onHistoryFilterChange: setHistoryFilter,
+          }}
+          planningTabsProps={{
+            activeTab,
+            onTabChange: setActiveTab,
+            currentPhase,
+            onBannerNavigate: handleBannerNavigate,
+            isEditing,
+            form,
+            allProvenanceEntries,
+            sheet,
+            evidenceLinks,
+            abcRecords,
+            pdcaItems,
+            onEvidenceLinksChange: setEvidenceLinks,
+            onEvidenceClick: handleEvidenceClick,
+            strategyUsage,
+            strategyUsageLoading,
+            trendResult,
+            trendDays,
+            onTrendDaysChange: setTrendDays,
+            trendLoading,
+          }}
+          tagAnalyticsProps={{ userId: sheet.userId }}
+          metadataFooterProps={{ sheet }}
+        />
 
         <ImportDialogsSection
           toast={toast}
