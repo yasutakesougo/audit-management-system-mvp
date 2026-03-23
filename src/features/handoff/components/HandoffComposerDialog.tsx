@@ -1,3 +1,14 @@
+/**
+ * @deprecated P0 統一対象 — 使用禁止
+ *
+ * このダイアログは旧 domain/Handoff.ts + useHandoff (audit log なし) に依存しており、
+ * 新系 (useHandoffTimeline + HandoffRecord + audit log) と**データ不整合**を起こします。
+ *
+ * 代替: HandoffQuickNoteCard（FooterQuickActions 経由で表示）
+ * 削除予定: P2 フェーズ
+ *
+ * @see HandoffPanel.tsx — P0 修正で本ダイアログの呼び出しを撤去済み
+ */
 import React, { useState } from 'react';
 import {
   Dialog,

@@ -1,3 +1,14 @@
+/**
+ * @deprecated P0 統一対象 — 新規利用禁止
+ *
+ * この Hook は旧 domain/HandoffRepository に依存しており:
+ * - audit log を記録しない（福祉監査上の盲点）
+ * - 2値ステータス (unread/read) のみ対応（新系は6値）
+ * - CreateHandoffInput と NewHandoffInput の型不整合
+ *
+ * 代替: useHandoffTimeline (features/handoff/useHandoffTimeline.ts)
+ * 削除予定: P2 フェーズ
+ */
 import { useState, useCallback, useMemo } from "react";
 import type { Handoff } from "@/domain/Handoff";
 import type { CreateHandoffInput } from "@/domain/HandoffRepository";
