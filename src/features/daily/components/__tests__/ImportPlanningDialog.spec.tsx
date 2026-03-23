@@ -2,8 +2,8 @@
  * ImportPlanningDialog.spec.tsx — 支援計画シートから手順取込ダイアログのテスト
  */
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { ImportPlanningDialog } from '../procedure/ImportPlanningDialog';
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
 import type { ProcedureStep } from '@/features/daily/domain/ProcedureRepository';
@@ -85,6 +85,18 @@ const makeSheet = (overrides: Partial<SupportPlanningSheet> = {}): SupportPlanni
 });
 
 const emptySteps: ProcedureStep[] = [];
+const noRippleTheme = createTheme({
+  components: {
+    MuiButtonBase: {
+      defaultProps: {
+        disableRipple: true,
+        disableTouchRipple: true,
+      },
+    },
+  },
+});
+
+const renderWithNoRipple = (ui: JSX.Element) => render(<ThemeProvider theme={noRippleTheme}>{ui}</ThemeProvider>);
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -100,57 +112,56 @@ describe('ImportPlanningDialog', () => {
   };
 
   it('ダイアログタイトルを表示する', () => {
-    render(<ImportPlanningDialog {...defaultProps} />);
+    renderWithNoRipple(<ImportPlanningDialog {...defaultProps} />);
     expect(screen.getByText('支援計画シートから手順を取込')).toBeInTheDocument();
   });
 
   it('取込元シート名を表示する', () => {
-    render(<ImportPlanningDialog {...defaultProps} />);
+    renderWithNoRipple(<ImportPlanningDialog {...defaultProps} />);
     expect(screen.getByText(/テスト支援計画シート/)).toBeInTheDocument();
   });
 
   it('追加されるステップ数を表示する', () => {
-    render(<ImportPlanningDialog {...defaultProps} />);
+    renderWithNoRipple(<ImportPlanningDialog {...defaultProps} />);
     // 方針2 + 具体策2 + 環境1 = 5ステップ（ボタンとプレビュー見出しに表示）
     const matches = screen.getAllByText(/5件/);
     expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 
   it('支援方針のプレビューを表示する', () => {
-    render(<ImportPlanningDialog {...defaultProps} />);
+    renderWithNoRipple(<ImportPlanningDialog {...defaultProps} />);
     expect(screen.getByText(/声掛けは穏やかに行う/)).toBeInTheDocument();
     expect(screen.getByText(/指示は短文で伝える/)).toBeInTheDocument();
   });
 
   it('具体的対応のプレビューを表示する', () => {
-    render(<ImportPlanningDialog {...defaultProps} />);
+    renderWithNoRipple(<ImportPlanningDialog {...defaultProps} />);
     expect(screen.getByText(/挨拶は目線を合わせて行う/)).toBeInTheDocument();
   });
 
   it('環境調整のプレビューを表示する', () => {
-    render(<ImportPlanningDialog {...defaultProps} />);
+    renderWithNoRipple(<ImportPlanningDialog {...defaultProps} />);
     expect(screen.getByText(/照明を調整する/)).toBeInTheDocument();
   });
 
   it('全ステップ共通注記に感覚トリガーと医療フラグが表示される', () => {
-    render(<ImportPlanningDialog {...defaultProps} />);
+    renderWithNoRipple(<ImportPlanningDialog {...defaultProps} />);
     expect(screen.getByText(/聴覚過敏/)).toBeInTheDocument();
     expect(screen.getByText(/てんかんの既往/)).toBeInTheDocument();
   });
 
   it('変換根拠のChipが表示される', () => {
-    render(<ImportPlanningDialog {...defaultProps} />);
+    renderWithNoRipple(<ImportPlanningDialog {...defaultProps} />);
     expect(screen.getByText(/変換根拠/)).toBeInTheDocument();
   });
 
-  it('「取り込む」ボタンでonImportが呼ばれ、ダイアログが閉じる', async () => {
-    const user = userEvent.setup();
+  it('「取り込む」ボタンでonImportが呼ばれ、ダイアログが閉じる', () => {
     const onImport = vi.fn();
     const onClose = vi.fn();
-    render(<ImportPlanningDialog {...defaultProps} onImport={onImport} onClose={onClose} />);
+    renderWithNoRipple(<ImportPlanningDialog {...defaultProps} onImport={onImport} onClose={onClose} />);
 
     const importBtn = screen.getByRole('button', { name: /取り込む/ });
-    await user.click(importBtn);
+    fireEvent.click(importBtn);
 
     expect(onImport).toHaveBeenCalledTimes(1);
     const result = onImport.mock.calls[0][0];
@@ -161,7 +172,7 @@ describe('ImportPlanningDialog', () => {
   });
 
   it('planningSheet が null のとき警告メッセージを表示する', () => {
-    render(<ImportPlanningDialog {...defaultProps} planningSheet={null} />);
+    renderWithNoRipple(<ImportPlanningDialog {...defaultProps} planningSheet={null} />);
     expect(screen.getByText(/紐づく支援計画シートが見つかりません/)).toBeInTheDocument();
   });
 
@@ -173,7 +184,7 @@ describe('ImportPlanningDialog', () => {
       { time: '', activity: '具体的対応', instruction: '活動切替3分前に予告する', isKey: false },
       { time: '', activity: '環境調整（留意点）', instruction: '【環境調整】照明を調整する', isKey: false },
     ];
-    render(<ImportPlanningDialog {...defaultProps} existingSteps={existingSteps} />);
+    renderWithNoRipple(<ImportPlanningDialog {...defaultProps} existingSteps={existingSteps} />);
     // ステップは全て重複だが、globalNotes（感覚/医療）は常に表示される
     const matches = screen.getAllByText(/全ステップ共通注記/);
     expect(matches.length).toBeGreaterThanOrEqual(1);
@@ -182,12 +193,11 @@ describe('ImportPlanningDialog', () => {
     expect(importBtn).not.toBeDisabled();
   });
 
-  it('キャンセルボタンでonCloseが呼ばれる', async () => {
-    const user = userEvent.setup();
+  it('キャンセルボタンでonCloseが呼ばれる', () => {
     const onClose = vi.fn();
-    render(<ImportPlanningDialog {...defaultProps} onClose={onClose} />);
+    renderWithNoRipple(<ImportPlanningDialog {...defaultProps} onClose={onClose} />);
 
-    await user.click(screen.getByRole('button', { name: 'キャンセル' }));
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
