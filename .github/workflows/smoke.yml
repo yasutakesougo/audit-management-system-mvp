@@ -302,6 +302,20 @@ jobs:
           retention-days: 30
           if-no-files-found: ignore
 
+      - name: Extract stability metrics
+        if: always()
+        run: node scripts/ops/extractStabilityMetrics.mjs test-results/results.json
+        continue-on-error: true
+
+      - name: Upload stability metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stability-metrics-${{ github.run_number }}
+          path: stability-metrics.json
+          retention-days: 90
+          if-no-files-found: ignore
+
       - name: Fail job if smoke tests failed
         if: steps.smoke_core.outcome == 'failure' || steps.smoke_all.outcome == 'failure'
         run: exit 1
