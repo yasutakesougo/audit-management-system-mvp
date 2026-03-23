@@ -17,6 +17,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+      issues: write
     env:
       VITE_MSAL_CLIENT_ID: dummy-client-id
       VITE_MSAL_TENANT_ID: dummy-tenant-id
@@ -33,8 +34,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: 24
           cache: "npm"
+
+      - name: Guard Node 24 workflow baseline
+        id: node24
+        run: |
+          node scripts/ci/check-node24-workflows.mjs \
+            --json-output /tmp/node24-workflow-guard.json
 
       - name: Validate env (fail-fast)
         run: node scripts/validate-env.mjs
@@ -81,6 +88,19 @@ jobs:
           npm run test:ci 2>&1 | tee /tmp/vitest-ci.log
           node scripts/ci/check-act-warnings.mjs /tmp/vitest-ci.log --json --json-output /tmp/act-warnings-ci.json
           echo "✅ Tests completed successfully"
+
+      - name: Create/Update act warning regression issue
+        if: ${{ failure() }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node scripts/ci/create-act-warning-issue.mjs \
+            --summary /tmp/act-warnings-ci.json \
+            --repo "${{ github.repository }}" \
+            --workflow "${{ github.workflow }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --branch "${{ github.ref_name }}" \
+            --sha "${{ github.sha }}"
       
       - name: Summary
         if: always()
@@ -88,6 +108,21 @@ jobs:
           {
             echo "## CI Results"
             echo ""
+            if [ -f /tmp/node24-workflow-guard.json ]; then
+              echo "### Node 24 Workflow Guard"
+              echo "- outcome: ${{ steps.node24.outcome }}"
+              echo "- targetWorkflows: **$(node -e "const s=require('/tmp/node24-workflow-guard.json');console.log(Number(s.targetWorkflows||0));")**"
+              echo "- node24CompliantWorkflows: **$(node -e "const s=require('/tmp/node24-workflow-guard.json');console.log(Number(s.node24CompliantWorkflows||0));")**"
+              echo "- nonCompliantWorkflows: **$(node -e "const s=require('/tmp/node24-workflow-guard.json');console.log(Number(s.nonCompliantWorkflows||0));")**"
+              echo "- setupNodeUsages: **$(node -e "const s=require('/tmp/node24-workflow-guard.json');console.log(Number(s.setupNodeUsages||0));")**"
+              echo "- nonCompliantUsages: **$(node -e "const s=require('/tmp/node24-workflow-guard.json');console.log(Number(s.nonCompliantUsages||0));")**"
+              if [ "$(node -e "const s=require('/tmp/node24-workflow-guard.json');console.log(Number(s.nonCompliantUsages||0));")" -gt 0 ]; then
+                echo ""
+                echo "#### Non-compliant entries"
+                node -e "const s=require('/tmp/node24-workflow-guard.json');for(const entry of (s.nonCompliantEntries||[])){const line=entry.line??entry.stepLine??'?';console.log('- '+entry.file+':'+line+' node-version='+(entry.nodeVersion??'<missing>')+' reason='+entry.reason);}"
+              fi
+              echo ""
+            fi
             echo "- ESLint (ARCHITECTURE_GUARDS): ${{ steps.lint.outcome }}"
             echo "- ESLint (boundaries report): ${{ steps.lint_boundaries.outcome }}"
             echo "- TypeScript typecheck: ${{ steps.typecheck.outcome }}"
