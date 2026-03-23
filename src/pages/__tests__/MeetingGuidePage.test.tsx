@@ -5,10 +5,51 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import MeetingGuidePage from '../MeetingGuidePage';
 
-const theme = createTheme();
+vi.mock('@/features/handoff/HandoffSummaryForMeeting', () => ({
+  default: () => <div data-testid="handoff-summary-stub" />,
+}));
+
+vi.mock('@/features/handoff/RegulatoryFindingsForMeeting', () => ({
+  default: () => <div data-testid="regulatory-findings-stub" />,
+}));
+
+vi.mock('@/features/meeting/useCurrentMeeting', () => ({
+  useCurrentMeeting: vi.fn((kind: 'morning' | 'evening') => ({
+    sessionKey: `2026-03-21_${kind}`,
+    session: {
+      sessionKey: `2026-03-21_${kind}`,
+      createdAt: '2026-03-21T09:00:00.000Z',
+      updatedAt: '2026-03-21T09:30:00.000Z',
+    },
+    steps: [
+      { id: `${kind}-1`, title: 'Safety HUD 確認', completed: false },
+      { id: `${kind}-2`, title: '引き継ぎ要点確認', completed: true },
+    ],
+    stats: {
+      completedCount: 1,
+      totalCount: 2,
+    },
+    toggleStep: vi.fn(async () => {}),
+    priorityUsers: [],
+    handoffAlert: null,
+    loading: false,
+    error: null,
+  })),
+}));
+
+const theme = createTheme({
+  components: {
+    MuiButtonBase: {
+      defaultProps: {
+        disableRipple: true,
+        disableTouchRipple: true,
+      },
+    },
+  },
+});
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
 });
