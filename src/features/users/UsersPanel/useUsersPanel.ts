@@ -81,7 +81,7 @@ export function useUsersPanel(): UseUsersPanelReturn {
   const crud = useUsersPanelCrud(setActiveTabRef);
 
   // 2) Tabs — タブ管理 + 詳細ユーザー選択（CRUD のデータを受け取る）
-  const tabs = useUsersPanelTabs(crud.data);
+  const tabs = useUsersPanelTabs(crud.data, crud.status);
 
   // ref を接続（Tabs の setActiveTab を CRUD が使えるようにする）
   setActiveTabRef.current = tabs.setActiveTab;
