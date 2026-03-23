@@ -195,3 +195,36 @@ export function getStatusColor(status: import('./handoffTypes').HandoffStatus): 
     default: return 'default';
   }
 }
+
+// ────────────────────────────────────────────────────────────
+// カテゴリ絵文字マップ（入力側 CompactNewHandoffInput と共通化）
+// ────────────────────────────────────────────────────────────
+
+import type { HandoffCategory, MeetingMode } from './handoffTypes';
+
+/** カテゴリに対応する絵文字（入力UI / 一覧UI で統一） */
+export const CATEGORY_EMOJI: Record<HandoffCategory, string> = {
+  '体調': '🩺',
+  '行動面': '🏃',
+  '家族連絡': '📞',
+  '支援の工夫': '💡',
+  '良かったこと': '✨',
+  '事故・ヒヤリ': '⚠️',
+  'その他': '📝',
+};
+
+/**
+ * 現在の TimeBand から MeetingMode を導出
+ *
+ * HandoffRecord には MeetingMode フィールドがないため、
+ * 現在時刻から推定する。state machine の getAllowedActions に渡す。
+ */
+export function timeBandToMeetingMode(timeBand: TimeBand): MeetingMode {
+  switch (timeBand) {
+    case '朝': return 'morning';
+    case '午前': return 'normal';
+    case '午後': return 'normal';
+    case '夕方': return 'evening';
+    default: return 'normal';
+  }
+}
