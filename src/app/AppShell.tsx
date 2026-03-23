@@ -9,6 +9,7 @@
  *  - AppShellV2         → viewport & layout container
  */
 import LiveAnnouncer from '@/a11y/LiveAnnouncer';
+import { DataSourceBanner } from '@/app/components/DataSourceBanner';
 import { FooterQuickActions } from '@/app/components/FooterQuickActions';
 import { AppShellV2 } from '@/components/layout/AppShellV2';
 import { isDev } from '@/env';
@@ -121,6 +122,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             contentPaddingY={contentPaddingY}
             viewportMode={viewportMode}
           >
+            <DataSourceBanner />
             {children}
           </AppShellV2>
 
