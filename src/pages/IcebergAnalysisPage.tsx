@@ -2,7 +2,7 @@ import { useAuth } from '@/auth/useAuth';
 import { sensoryToAssessmentItems } from '@/features/analysis/domain/sensoryToAssessmentItems';
 import type { AssessmentItem } from '@/features/assessment/domain/types';
 import { useAssessmentStore } from '@/features/assessment/stores/assessmentStore';
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import type { ABCRecord } from '@/domain/behavior';
 import { IcebergCanvas } from '@/features/ibd/analysis/iceberg/IcebergCanvas';
 import { createIcebergRepository } from '@/features/ibd/analysis/iceberg/SharePointIcebergRepository';
 import { useIcebergStore } from '@/features/ibd/analysis/iceberg/icebergStore';
@@ -28,7 +28,7 @@ import Snackbar from '@mui/material/Snackbar';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
-const createDemoBehaviors = (userId: string): BehaviorObservation[] => [
+const createDemoBehaviors = (userId: string): ABCRecord[] => [
   {
     id: `demo-beh-${userId}-1`,
     userId,

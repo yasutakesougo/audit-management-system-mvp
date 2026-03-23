@@ -8,7 +8,7 @@ import {
     ListKeys,
 } from '@/sharepoint/fields';
 import type { BehaviorQueryOptions, BehaviorRepository } from '../domain/BehaviorRepository';
-import type { BehaviorObservation } from '../domain/daily/types';
+import type { ABCRecord } from '@/domain/behavior';
 
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 
@@ -29,7 +29,7 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
     this.sp = options.sp ?? createSpClient(acquireSpAccessToken, baseUrl);
   }
 
-  async add(observation: Omit<BehaviorObservation, 'id'>): Promise<BehaviorObservation> {
+  async add(observation: Omit<ABCRecord, 'id'>): Promise<ABCRecord> {
     this.assertPlanSlotKeyRequirement(observation);
     const internalNames = await this.sp.getListFieldInternalNames(this.listTitle);
     this.assertRequiredFields(internalNames, {
@@ -53,11 +53,11 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
     return this.toDomain({ ...payload, ...data });
   }
 
-  async getByUser(userId: string, options?: BehaviorQueryOptions): Promise<BehaviorObservation[]> {
+  async getByUser(userId: string, options?: BehaviorQueryOptions): Promise<ABCRecord[]> {
     return this.listByUser(userId, options);
   }
 
-  async listByUser(userId: string, options?: BehaviorQueryOptions): Promise<BehaviorObservation[]> {
+  async listByUser(userId: string, options?: BehaviorQueryOptions): Promise<ABCRecord[]> {
     if (!userId) return [];
 
     // 🔥 動的フィールド取得：テナント差分に完全対応
@@ -109,7 +109,7 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
     return (json.value ?? []).map((item) => this.toDomain(item));
   }
 
-  private serializeObservationPayload(observation: Omit<BehaviorObservation, 'id'>): string | null {
+  private serializeObservationPayload(observation: Omit<ABCRecord, 'id'>): string | null {
     const text = observation.actualObservation ?? observation.followUpNote ?? '';
     const hasMeta = Boolean(observation.planSlotKey || observation.recordedAt || observation.plannedActivity);
     if (!hasMeta) {
@@ -181,7 +181,7 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
     }
   }
 
-  private toDomain(item: Record<string, unknown>): BehaviorObservation {
+  private toDomain(item: Record<string, unknown>): ABCRecord {
     const field = FIELD_MAP_DAILY_ACTIVITY;
     const get = <T = unknown>(key: string): T | undefined => item[key] as T | undefined;
     const parsedObservation = this.parseObservationPayload(get<string | null>(field.observation));
@@ -197,7 +197,7 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
       antecedentTags: [],
       behavior: String(get(field.behavior) ?? ''),
       consequence: '',
-      intensity: Number(get(field.intensity) ?? 0) as BehaviorObservation['intensity'],
+      intensity: Number(get(field.intensity) ?? 0) as ABCRecord['intensity'],
       durationMinutes: get<number | null>(field.duration) ?? undefined,
       timeSlot: get<string | null>(field.timeSlot) ?? undefined,
       plannedActivity: plannedActivityFromColumn ?? parsedObservation.plannedActivity,
@@ -207,7 +207,7 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
   }
 
   private toRequest(
-    observation: Omit<BehaviorObservation, 'id'>,
+    observation: Omit<ABCRecord, 'id'>,
     internalNames?: Set<string>
   ): Record<string, unknown> {
     const fm = FIELD_MAP_DAILY_ACTIVITY;
@@ -237,7 +237,7 @@ export class SharePointBehaviorRepository implements BehaviorRepository {
     );
   }
 
-  private assertPlanSlotKeyRequirement(observation: Omit<BehaviorObservation, 'id'>): void {
+  private assertPlanSlotKeyRequirement(observation: Omit<ABCRecord, 'id'>): void {
     if (!observation.timeSlot) return;
     if (observation.planSlotKey) return;
     throw new Error('[SharePointBehaviorRepository] planSlotKey is required when timeSlot is provided.');

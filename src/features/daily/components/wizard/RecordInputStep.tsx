@@ -11,7 +11,7 @@
 import type { ReferencedStrategy, StrategyCategory } from '@/domain/behavior';
 import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 import { RecordPanel, type RecordPanelLockState } from '@/features/daily/components/split-stream/RecordPanel';
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import type { ABCRecord } from '@/domain/behavior';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import { useLinkedStrategies } from '@/features/daily/hooks/useLinkedStrategies';
 import {
@@ -36,7 +36,7 @@ export type RecordInputStepProps = {
   /** ロック状態 */
   lockState: RecordPanelLockState;
   /** 記録送信ハンドラ */
-  onSubmit: (data: Omit<BehaviorObservation, 'id' | 'userId'>) => Promise<void> | void;
+  onSubmit: (data: Omit<ABCRecord, 'id' | 'userId'>) => Promise<void> | void;
   /** スケジュールリスト（スロットセレクタ用） */
   schedule: ScheduleItem[];
   /** 記録日 */
@@ -120,7 +120,7 @@ export const RecordInputStep: React.FC<RecordInputStepProps> = memo(({
 
   // ── 保存ハンドラのラップ: referencedStrategies を合流 ──
   const handleSubmitWithStrategies = useCallback(
-    async (data: Omit<BehaviorObservation, 'id' | 'userId'>) => {
+    async (data: Omit<ABCRecord, 'id' | 'userId'>) => {
       const strategies = buildReferencedStrategies(appliedStrategies);
       await onSubmit({
         ...data,

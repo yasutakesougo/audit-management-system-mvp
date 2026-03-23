@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useUsers } from '@/features/users/useUsers';
 import { getBehaviorRepository } from '@/features/daily/infra/behaviorRepositoryFactory';
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import type { ABCRecord } from '@/domain/behavior';
 import type { ActionSuggestion, CorrectiveActionInput, TrendSummary, HeatmapPeak } from '../domain/types';
 import { buildCorrectiveActions } from '../domain/buildCorrectiveActions';
 import {
@@ -53,7 +53,7 @@ const ANALYSIS_DAYS = 30;
  */
 function buildInputFromRecords(
   userId: string,
-  records: BehaviorObservation[],
+  records: ABCRecord[],
 ): CorrectiveActionInput {
   // 日別集計からトレンドサマリーを構築
   const dailyMap = new Map<string, number>();

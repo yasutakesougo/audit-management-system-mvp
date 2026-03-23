@@ -1,7 +1,7 @@
 /**
  * toProcedureRecord — 行動記録を制度三層の支援手順実施記録に変換する Adapter
  *
- * /daily/support で入力された BehaviorObservation (ABCRecord) を
+ * /daily/support で入力された ABCRecord を
  * ISP 三層モデルの第3層 SupportProcedureRecord の入力形式に変換する。
  *
  * これにより、日次の支援記録が監査証跡として制度記録に流れる。
@@ -71,7 +71,7 @@ export function deriveExecutionStatus(record: ABCRecord): ProcedureExecutionStat
 /**
  * ABCRecord + ProcedureStep → ProcedureRecordInput に変換する。
  *
- * @param record - 行動記録 (ABCRecord / BehaviorObservation)
+ * @param record - 行動記録 (ABCRecord)
  * @param step - 対応する手順ステップ（planningSheetId を持つ）
  * @param performedBy - 実施者ID（スタッフ）
  * @param options - オプション（ispId, executionStatus の手動指定など）

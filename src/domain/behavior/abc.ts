@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // ABCRecord — 統一行動記録ドメインモデル
 //
-// BehaviorObservation (features/daily) + ABCRecord (features/ibd) +
+// Unified ABCRecord type — single source of truth for behavior observation records.
 // ABCSelection (IndividualSupportManagementPage) を統合した
 // One Source of Truth。
 // ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { AssessmentItem } from '@/features/assessment/domain/types';
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import type { ABCRecord } from '@/domain/behavior';
 
 export type IcebergNodeType = 'behavior' | 'assessment' | 'environment';
 
@@ -43,7 +43,7 @@ export type EnvironmentFactor = {
   description?: string;
 };
 
-export type IcebergSource = BehaviorObservation | AssessmentItem | EnvironmentFactor;
+export type IcebergSource = ABCRecord | AssessmentItem | EnvironmentFactor;
 // ===== Zod Validation Schemas (for SharePoint persistence) =====
 
 /** Node Zod schema: Validate positions and IDs */

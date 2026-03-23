@@ -16,7 +16,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import type { ReactNode } from 'react';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { type BehaviorIntensity, BehaviorMood, type BehaviorObservation } from '../../domain/daily/types';
+import { type BehaviorIntensity, type BehaviorMood, type ABCRecord } from '@/domain/behavior';
 import AbcRecordSection from './AbcRecordSection';
 import PlanSlotSelector from './PlanSlotSelector';
 import type { ScheduleItem } from './ProcedurePanel';
@@ -27,7 +27,7 @@ export type RecordPanelLockState = 'unlocked' | 'no-user' | 'unconfirmed';
 type InteractiveRecordPanelProps = {
   title?: string;
   lockState: RecordPanelLockState;
-  onSubmit: (data: Omit<BehaviorObservation, 'id' | 'userId'>) => Promise<void> | void;
+  onSubmit: (data: Omit<ABCRecord, 'id' | 'userId'>) => Promise<void> | void;
   schedule?: ScheduleItem[];
   selectedSlotKey?: string;
   onSlotChange?: (next: string) => void;

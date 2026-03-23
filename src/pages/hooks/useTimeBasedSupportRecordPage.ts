@@ -1,6 +1,6 @@
 import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 import type { RecordPanelLockState } from '@/features/daily/components/split-stream/RecordPanel';
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import type { ABCRecord } from '@/domain/behavior';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import type { BehaviorRepository, ProcedureRepository } from '@/features/daily/infra/repositoryTypes';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 type UseTimeBasedSupportRecordPageArgs = {
   procedureRepo: ProcedureRepository;
   behaviorRepo: BehaviorRepository;
-  behaviorRecords: BehaviorObservation[];
+  behaviorRecords: ABCRecord[];
   initialUserId?: string;
   initialStepKey?: string;
   initialUnfilledOnly?: boolean;
