@@ -17,6 +17,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+      issues: write
     env:
       VITE_MSAL_CLIENT_ID: dummy-client-id
       VITE_MSAL_TENANT_ID: dummy-tenant-id
@@ -81,6 +82,19 @@ jobs:
           npm run test:ci 2>&1 | tee /tmp/vitest-ci.log
           node scripts/ci/check-act-warnings.mjs /tmp/vitest-ci.log --json --json-output /tmp/act-warnings-ci.json
           echo "✅ Tests completed successfully"
+
+      - name: Create/Update act warning regression issue
+        if: ${{ failure() }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node scripts/ci/create-act-warning-issue.mjs \
+            --summary /tmp/act-warnings-ci.json \
+            --repo "${{ github.repository }}" \
+            --workflow "${{ github.workflow }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --branch "${{ github.ref_name }}" \
+            --sha "${{ github.sha }}"
       
       - name: Summary
         if: always()
