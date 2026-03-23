@@ -55,6 +55,25 @@ class HandoffApi {
   }
 
   /**
+   * Resolve $select fields for handoff list.
+   * Falls back to static safe fields when list schema introspection is blocked
+   * (e.g. account has item read permission but no schema read permission).
+   */
+  private async resolveSelectFields(context: string): Promise<string> {
+    try {
+      const existingFields = await this.sp.getListFieldInternalNames(handoffConfig.listTitle);
+      return buildHandoffSelectFields(Array.from(existingFields)).join(',');
+    } catch (error) {
+      auditLog.warn('handoff', 'api.select_fields_fallback', {
+        context,
+        listTitle: handoffConfig.listTitle,
+        error: toErrorMessage(error),
+      });
+      return buildHandoffSelectFields().join(',');
+    }
+  }
+
+  /**
    * エラーリトライ機能付きの SP クライアント呼び出し
    */
   private async callWithRetry<T>(
@@ -136,9 +155,7 @@ class HandoffApi {
       }
 
       // 🔥 動的フィールド取得：テナント差分に完全対応
-      const existingFields = await this.sp.getListFieldInternalNames(handoffConfig.listTitle);
-      const selectArray = buildHandoffSelectFields(Array.from(existingFields));
-      const selectFields = selectArray.join(',');
+      const selectFields = await this.resolveSelectFields('getHandoffRecords');
       let query = `?$select=${selectFields}&$orderby=CreatedAt desc`;
 
       if (filterQuery) {
@@ -247,9 +264,7 @@ class HandoffApi {
       });
 
       // 更新後のデータを取得
-      const existingFields = await this.sp.getListFieldInternalNames(handoffConfig.listTitle);
-      const selectArray = buildHandoffSelectFields(Array.from(existingFields));
-      const selectFields = selectArray.join(',');
+      const selectFields = await this.resolveSelectFields('updateHandoffRecord');
       const response = await this.sp.spFetch(
         `lists/getbytitle('${handoffConfig.listTitle}')/items(${id})?$select=${selectFields}`
       );
@@ -334,9 +349,7 @@ class HandoffApi {
         filterQuery += ` and TimeBand eq '${timeFilter}'`;
       }
 
-      const existingFields = await this.sp.getListFieldInternalNames(handoffConfig.listTitle);
-      const selectArray = buildHandoffSelectFields(Array.from(existingFields));
-      const selectFields = selectArray.join(',');
+      const selectFields = await this.resolveSelectFields('getUserHandoffRecords');
       const query = `?$select=${selectFields}&$filter=${filterQuery}&$orderby=CreatedAt desc`;
 
       const response = await this.sp.spFetch(`lists/getbytitle('${handoffConfig.listTitle}')/items${query}`);
@@ -358,9 +371,7 @@ class HandoffApi {
   async getMeetingHandoffRecords(meetingSessionKey: string): Promise<HandoffRecord[]> {
     try {
       const filterQuery = `MeetingSessionKey eq '${meetingSessionKey}'`;
-      const existingFields = await this.sp.getListFieldInternalNames(handoffConfig.listTitle);
-      const selectArray = buildHandoffSelectFields(Array.from(existingFields));
-      const selectFields = selectArray.join(',');
+      const selectFields = await this.resolveSelectFields('getMeetingHandoffRecords');
       const query = `?$select=${selectFields}&$filter=${filterQuery}&$orderby=CreatedAt desc`;
 
       const response = await this.sp.spFetch(`lists/getbytitle('${handoffConfig.listTitle}')/items${query}`);
@@ -430,9 +441,7 @@ class HandoffApi {
 
       const filterQuery = `CreatedAt ge '${cutoff.toISOString()}'`;
 
-      const existingFields = await this.sp.getListFieldInternalNames(handoffConfig.listTitle);
-      const selectArray = buildHandoffSelectFields(Array.from(existingFields));
-      const selectFields = selectArray.join(',');
+      const selectFields = await this.resolveSelectFields('getHandoffRecordsForAnalysis');
       const query = `?$select=${selectFields}&$filter=${filterQuery}&$orderby=CreatedAt desc&$top=5000`;
 
       const response = await this.sp.spFetch(`lists/getbytitle('${handoffConfig.listTitle}')/items${query}`);

@@ -200,6 +200,23 @@ describe('HandoffApi', () => {
 
       expect(records).toEqual([]);
     });
+
+    it('フィールド一覧取得が権限エラーでも fallback select で継続する', async () => {
+      const items = [createSpItem({ Id: 99, Title: 'fallback' })];
+      mockSP.getListFieldInternalNames.mockRejectedValueOnce(
+        new Error('Attempted to perform an unauthorized operation.')
+      );
+      mockSP.spFetch.mockResolvedValueOnce(mockResponse({ value: items }));
+
+      const api = createHandoffApi(mockSP as never);
+      const records = await api.getHandoffRecords('today', 'all');
+
+      expect(records).toHaveLength(1);
+      expect(records[0].id).toBe(99);
+      expect(mockSP.spFetch).toHaveBeenCalledTimes(1);
+      const queryPath = String(mockSP.spFetch.mock.calls[0][0]);
+      expect(queryPath).toContain('$select=');
+    });
   });
 
   // ─── キャッシュ ─────────────────────────────────────────
@@ -376,6 +393,26 @@ describe('HandoffApi', () => {
       await vi.runAllTimersAsync();
 
       await expect(promise).rejects.toThrow('申し送り記録の更新に失敗しました');
+    });
+
+    it('更新後再取得のフィールド一覧取得が権限エラーでも fallback select で再取得できる', async () => {
+      const patchResponse = mockResponse({}, 200);
+      const updatedItem = createSpItem({ Id: 7, Status: '対応済' });
+      const refetchResponse = mockResponse(updatedItem);
+
+      mockSP.getListFieldInternalNames.mockRejectedValueOnce(
+        new Error('Attempted to perform an unauthorized operation.')
+      );
+      mockSP.spFetch
+        .mockResolvedValueOnce(patchResponse)
+        .mockResolvedValueOnce(refetchResponse);
+
+      const api = createHandoffApi(mockSP as never);
+      const record = await api.updateHandoffRecord('7', { status: '対応済' });
+
+      expect(record.id).toBe(7);
+      expect(record.status).toBe('対応済');
+      expect(mockSP.spFetch).toHaveBeenCalledTimes(2);
     });
   });
 
