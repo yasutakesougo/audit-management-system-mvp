@@ -100,7 +100,10 @@ jobs:
         id: vitest
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
-        run: TZ=Asia/Tokyo npm run test:ci
+        run: |
+          set -o pipefail
+          TZ=Asia/Tokyo npm run test:ci 2>&1 | tee /tmp/vitest-smoke.log
+          node scripts/ci/check-act-warnings.mjs /tmp/vitest-smoke.log --json --json-output /tmp/act-warnings-smoke.json
       - name: Upload test coverage on failure
         if: failure()
         uses: actions/upload-artifact@v4

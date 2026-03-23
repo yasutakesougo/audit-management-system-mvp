@@ -76,8 +76,10 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=4096'
         run: |
+          set -o pipefail
           echo "Running unit tests..."
-          npm run test:ci
+          npm run test:ci 2>&1 | tee /tmp/vitest-ci.log
+          node scripts/ci/check-act-warnings.mjs /tmp/vitest-ci.log --json --json-output /tmp/act-warnings-ci.json
           echo "✅ Tests completed successfully"
       
       - name: Summary
