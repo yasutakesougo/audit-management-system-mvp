@@ -32,6 +32,22 @@ const mm = String(today.getUTCMonth() + 1).padStart(2, '0');
 const dd = String(today.getUTCDate()).padStart(2, '0');
 const stamp = `${yyyy}-${mm}-${dd}`;
 
+// --- Optional CI Inputs (act warning monitor) ---
+
+const ACT_WARNING_SUMMARY_PATH = process.env.ACT_WARNING_SUMMARY_PATH || '';
+const ACT_WARNING_OPEN_ISSUE_COUNT = Number(process.env.ACT_WARNING_OPEN_ISSUE_COUNT || '0');
+const ACT_WARNING_OPEN_ISSUE_URL = process.env.ACT_WARNING_OPEN_ISSUE_URL || '';
+
+let actWarningSummary = null;
+if (ACT_WARNING_SUMMARY_PATH && fs.existsSync(ACT_WARNING_SUMMARY_PATH)) {
+  try {
+    const raw = fs.readFileSync(ACT_WARNING_SUMMARY_PATH, 'utf8');
+    actWarningSummary = JSON.parse(raw);
+  } catch {
+    actWarningSummary = null;
+  }
+}
+
 // --- File Walking ---
 
 const IGNORED_DIRS = new Set([
@@ -235,6 +251,56 @@ function status(count, warnThreshold, errorThreshold) {
   return '🟢';
 }
 
+function toNonNegativeNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+const actTotalWarnings = toNonNegativeNumber(actWarningSummary?.totalWarnings);
+const actAffectedFiles = toNonNegativeNumber(actWarningSummary?.affectedFiles);
+const actMaxWarningsPerFile = toNonNegativeNumber(actWarningSummary?.maxWarningsPerFile);
+const actMaxWarningsFile = typeof actWarningSummary?.maxWarningsFile === 'string'
+  ? actWarningSummary.maxWarningsFile
+  : null;
+const actCountsByFile = actWarningSummary && typeof actWarningSummary.countsByFile === 'object'
+  ? actWarningSummary.countsByFile
+  : {};
+
+const actCountsEntries = Object.entries(actCountsByFile)
+  .map(([file, count]) => ({ file, count: toNonNegativeNumber(count) ?? 0 }))
+  .sort((a, b) => b.count - a.count || a.file.localeCompare(b.file))
+  .slice(0, 30);
+
+const actStatusIcon = actTotalWarnings === null
+  ? '⚪'
+  : actTotalWarnings > 0
+    ? '🔴'
+    : '🟢';
+
+const actStatusCountLabel = actTotalWarnings === null
+  ? 'n/a'
+  : `${actTotalWarnings}`;
+
+const actOpenIssueState = ACT_WARNING_OPEN_ISSUE_COUNT > 0
+  ? `あり (${ACT_WARNING_OPEN_ISSUE_COUNT})`
+  : 'なし';
+
+const actWarningSection = actTotalWarnings === null
+  ? 'ℹ️ act warning summary は未提供です（Nightly workflow の入力未設定または読み取り失敗）。'
+  : [
+    `- totalWarnings: **${actTotalWarnings}**`,
+    `- affectedFiles: **${actAffectedFiles ?? 0}**`,
+    `- maxWarningsFile: **${actMaxWarningsFile ?? 'none'}**`,
+    `- maxWarningsPerFile: **${actMaxWarningsPerFile ?? 0}**`,
+    `- openIssue: **${actOpenIssueState}**${ACT_WARNING_OPEN_ISSUE_URL ? ` (${ACT_WARNING_OPEN_ISSUE_URL})` : ''}`,
+    '',
+    actCountsEntries.length === 0
+      ? '✅ countsByFile: なし'
+      : `| Count | File |
+| ---: | --- |
+${actCountsEntries.map((x) => `| ${x.count} | \`${x.file}\` |`).join('\n')}`,
+  ].join('\n');
+
 // --- Report Generation ---
 
 console.log('  Generating report...');
@@ -260,6 +326,7 @@ const report = `# 🔍 Nightly Patrol Report — ${stamp}
 | TODO/FIXME/HACK | ${status(todoHits.length, 20, 50)} | ${todoHits.length} |
 | テスト未整備 feature | ${status(untestedFeatures.length, 2, 5)} | ${untestedFeatures.length} |
 | Handoff | ${lastHandoffInfo.includes('No ') ? '🟡' : '🟢'} | — |
+| act(...) warning (nightly) | ${actStatusIcon} | ${actStatusCountLabel} |
 
 ---
 
@@ -317,6 +384,12 @@ ${lastHandoffInfo}
 
 ---
 
+## 6. act(...) warning monitor
+
+${actWarningSection}
+
+---
+
 ## Suggested Next Actions
 
 ${[
@@ -331,6 +404,12 @@ ${[
     : null,
   untestedFeatures.length > 0
     ? `- 🟡 テスト未整備 ${untestedFeatures.length} feature を \`/test-design\` で設計`
+    : null,
+  actTotalWarnings !== null && actTotalWarnings > 0
+    ? `- 🔴 act(...) warning 再発 (${actTotalWarnings}件) を 1 file = 1 PR で解消`
+    : null,
+  actTotalWarnings === 0
+    ? '- ✅ act(...) warning は 0件維持（Nightly確認）'
     : null,
   lastHandoffInfo.includes('No ')
     ? '- 🟡 Handoff ファイルを作成 (`/handoff`)'
@@ -358,6 +437,11 @@ console.log(`  any hits:        ${anyHits.length}`);
 console.log(`  TODO/FIXME:      ${todoHits.length}`);
 console.log(`  Untested feat:   ${untestedFeatures.length}`);
 console.log(`  Handoff:         ${lastHandoffInfo}`);
+if (actTotalWarnings !== null) {
+  console.log(`  act warnings:    ${actTotalWarnings} (files=${actAffectedFiles ?? 0}, max=${actMaxWarningsPerFile ?? 0})`);
+} else {
+  console.log('  act warnings:    n/a');
+}
 console.log('');
 
 // --- Phase B: Issue Draft Generation ---
@@ -381,4 +465,3 @@ if (drafts.length === 0) {
   console.log(`  📄 Written: docs/nightly-patrol/issue-drafts-${stamp}.md`);
 }
 console.log('');
-

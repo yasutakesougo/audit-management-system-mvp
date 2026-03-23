@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 concurrency:
   group: nightly-patrol
@@ -16,7 +17,7 @@ concurrency:
 jobs:
   patrol:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -28,17 +29,108 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Prepare directories
         run: |
           mkdir -p docs/nightly-patrol
           mkdir -p scripts/ops
 
+      - name: Nightly act warning scan
+        id: act_scan
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npm run test:ci:required 2>&1 | tee /tmp/vitest-nightly-act.log
+          node scripts/ci/check-act-warnings.mjs /tmp/vitest-nightly-act.log --json --json-output /tmp/act-warnings-nightly.json
+
+      - name: Create/Update act warning regression issue
+        if: ${{ always() }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node scripts/ci/create-act-warning-issue.mjs \
+            --summary /tmp/act-warnings-nightly.json \
+            --repo "${{ github.repository }}" \
+            --workflow "${{ github.workflow }}" \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --branch "${{ github.ref_name }}" \
+            --sha "${{ github.sha }}"
+
+      - name: Detect open act warning issue
+        id: act_issue
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          json=$(gh issue list \
+            --repo "${{ github.repository }}" \
+            --state open \
+            --search 'in:title "CI: act(...) warning regression detected"' \
+            --limit 1 \
+            --json number,url)
+          count=$(node -e "const d=JSON.parse(process.argv[1]);console.log(d.length);" "$json")
+          url=$(node -e "const d=JSON.parse(process.argv[1]);console.log(d[0]?.url || '');" "$json")
+          echo "open_count=${count}" >> "$GITHUB_OUTPUT"
+          echo "open_url=${url}" >> "$GITHUB_OUTPUT"
+
       - name: Run patrol scan
+        env:
+          ACT_WARNING_SUMMARY_PATH: /tmp/act-warnings-nightly.json
+          ACT_WARNING_OPEN_ISSUE_COUNT: ${{ steps.act_issue.outputs.open_count }}
+          ACT_WARNING_OPEN_ISSUE_URL: ${{ steps.act_issue.outputs.open_url }}
         run: node scripts/ops/nightly-patrol.mjs
 
       - name: Generate metrics dashboard
         run: node scripts/ops/os-metrics.mjs
+
+      - name: Upload nightly act warning artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-act-warning-${{ github.run_number }}
+          path: |
+            /tmp/act-warnings-nightly.json
+            /tmp/vitest-nightly-act.log
+          if-no-files-found: warn
+
+      - name: Nightly act warning summary
+        if: ${{ always() }}
+        run: |
+          echo "## Nightly act(...) warning monitor" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f /tmp/act-warnings-nightly.json ]; then
+            node - <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+          const fs = require('node:fs');
+          const p = '/tmp/act-warnings-nightly.json';
+          const s = JSON.parse(fs.readFileSync(p, 'utf8'));
+          const total = Number(s.totalWarnings || 0);
+          const affected = Number(s.affectedFiles || 0);
+          const maxFile = s.maxWarningsFile || 'none';
+          const maxCount = Number(s.maxWarningsPerFile || 0);
+          console.log(`- totalWarnings: **${total}**`);
+          console.log(`- affectedFiles: **${affected}**`);
+          console.log(`- maxWarningsFile: **${maxFile}**`);
+          console.log(`- maxWarningsPerFile: **${maxCount}**`);
+          NODE
+          else
+            echo "- summary: unavailable" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "- openIssueCount: **${{ steps.act_issue.outputs.open_count || '0' }}**" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "${{ steps.act_issue.outputs.open_url }}" ]; then
+            echo "- openIssue: ${{ steps.act_issue.outputs.open_url }}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- openIssue: none" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -f /tmp/act-warnings-nightly.json ]; then
+            total=$(node -e "const s=require('/tmp/act-warnings-nightly.json');console.log(Number(s.totalWarnings||0));")
+            if [ "$total" -eq 0 ]; then
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo "✅ 0件維持を確認しました。" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
 
       - name: Commit report if changed
         run: |
