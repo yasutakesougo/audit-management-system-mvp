@@ -88,6 +88,73 @@ vi.mock('../../../src/features/action-engine/telemetry/recordSuggestionTelemetry
   recordSuggestionTelemetry: (...args: unknown[]) => mockRecordSuggestionTelemetry(...args),
 }));
 
+const mockDismissSuggestion = vi.fn();
+const mockSnoozeSuggestion = vi.fn();
+vi.mock('../../../src/features/action-engine/hooks/useSuggestionStateStore', () => ({
+  useSuggestionStateStore: vi.fn((selector: (state: {
+    states: Record<string, unknown>;
+    dismiss: typeof mockDismissSuggestion;
+    snooze: typeof mockSnoozeSuggestion;
+  }) => unknown) => selector({
+    states: {},
+    dismiss: mockDismissSuggestion,
+    snooze: mockSnoozeSuggestion,
+  })),
+}));
+
+vi.mock('../../../src/features/today/hooks/useUserAlerts', () => ({
+  useUserAlerts: vi.fn(() => ({ alertsByUser: {} })),
+}));
+
+vi.mock('../../../src/features/today/hooks/useTodayExceptions', () => ({
+  useTodayExceptions: vi.fn(() => ({ items: [], isLoading: false })),
+}));
+
+vi.mock('../../../src/features/today/hooks/useWeeklyHighLoadStatus', () => ({
+  useWeeklyHighLoadStatus: vi.fn(() => ({ visible: false })),
+}));
+
+vi.mock('../../../src/features/callLogs/hooks/useCallLogsSummary', () => ({
+  useCallLogsSummary: vi.fn(() => ({
+    openCount: 0,
+    urgentCount: 0,
+    callbackPendingCount: 0,
+    myOpenCount: 0,
+    overdueCount: 0,
+    isLoading: false,
+  })),
+}));
+
+vi.mock('../../../src/auth/useAuth', () => ({
+  useAuth: vi.fn(() => ({ account: { name: 'Test User' } })),
+}));
+
+vi.mock('../../../src/features/schedules/hooks/useUserStatusActions', () => ({
+  useUserStatusActions: vi.fn(() => ({
+    todayStatusRecords: {},
+  })),
+}));
+
+vi.mock('../../../src/features/today/records/QuickRecordDrawer', () => ({
+  QuickRecordDrawer: vi.fn(() => null),
+}));
+
+vi.mock('../../../src/features/callLogs/components/CallLogQuickDrawer', () => ({
+  CallLogQuickDrawer: vi.fn(() => null),
+}));
+
+vi.mock('../../../src/features/handoff/components', () => ({
+  HandoffPanel: vi.fn(() => null),
+}));
+
+vi.mock('../../../src/features/today/widgets/ApprovalDialog', () => ({
+  ApprovalDialog: vi.fn(() => null),
+}));
+
+vi.mock('../../../src/features/schedules/components/UserStatusQuickDialog', () => ({
+  UserStatusQuickDialog: vi.fn(() => null),
+}));
+
 describe('TodayOpsPage (ActionQueueTimeline integration)', () => {
   beforeEach(() => {
     vi.useFakeTimers();
