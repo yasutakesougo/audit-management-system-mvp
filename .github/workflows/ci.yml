@@ -37,6 +37,12 @@ jobs:
           node-version: 24
           cache: "npm"
 
+      - name: Guard Node 24 workflow baseline
+        id: node24
+        run: |
+          node scripts/ci/check-node24-workflows.mjs \
+            --json-output /tmp/node24-workflow-guard.json
+
       - name: Validate env (fail-fast)
         run: node scripts/validate-env.mjs
         env:
@@ -102,6 +108,21 @@ jobs:
           {
             echo "## CI Results"
             echo ""
+            if [ -f /tmp/node24-workflow-guard.json ]; then
+              echo "### Node 24 Workflow Guard"
+              echo "- outcome: ${{ steps.node24.outcome }}"
+              echo "- targetWorkflows: **$(node -e "const s=require('/tmp/node24-workflow-guard.json');console.log(Number(s.targetWorkflows||0));")**"
+              echo "- node24CompliantWorkflows: **$(node -e "const s=require('/tmp/node24-workflow-guard.json');console.log(Number(s.node24CompliantWorkflows||0));")**"
+              echo "- nonCompliantWorkflows: **$(node -e "const s=require('/tmp/node24-workflow-guard.json');console.log(Number(s.nonCompliantWorkflows||0));")**"
+              echo "- setupNodeUsages: **$(node -e "const s=require('/tmp/node24-workflow-guard.json');console.log(Number(s.setupNodeUsages||0));")**"
+              echo "- nonCompliantUsages: **$(node -e "const s=require('/tmp/node24-workflow-guard.json');console.log(Number(s.nonCompliantUsages||0));")**"
+              if [ "$(node -e "const s=require('/tmp/node24-workflow-guard.json');console.log(Number(s.nonCompliantUsages||0));")" -gt 0 ]; then
+                echo ""
+                echo "#### Non-compliant entries"
+                node -e "const s=require('/tmp/node24-workflow-guard.json');for(const entry of (s.nonCompliantEntries||[])){const line=entry.line??entry.stepLine??'?';console.log('- '+entry.file+':'+line+' node-version='+(entry.nodeVersion??'<missing>')+' reason='+entry.reason);}"
+              fi
+              echo ""
+            fi
             echo "- ESLint (ARCHITECTURE_GUARDS): ${{ steps.lint.outcome }}"
             echo "- ESLint (boundaries report): ${{ steps.lint_boundaries.outcome }}"
             echo "- TypeScript typecheck: ${{ steps.typecheck.outcome }}"
