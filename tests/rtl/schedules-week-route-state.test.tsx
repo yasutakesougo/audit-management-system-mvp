@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
@@ -60,9 +60,8 @@ describe('useWeekPageRouteState', () => {
   });
 
   it('clears q/cat params when filter is reset', async () => {
-    const user = userEvent.setup();
     renderWithRoute('/schedules/week?date=2026-02-09&cat=User&q=foo');
-    await user.click(screen.getByTestId('clear-filter'));
+    fireEvent.click(screen.getByTestId('clear-filter'));
     await waitFor(() => {
       const search = screen.getByTestId('search').textContent ?? '';
       expect(search).toBe('?date=2026-02-09');
