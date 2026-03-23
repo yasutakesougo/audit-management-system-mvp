@@ -42,10 +42,10 @@ import { applyExceptionPreferences } from '@/features/exceptions/domain/applyExc
 import { useExceptionDataSources } from '@/features/exceptions/hooks/useExceptionDataSources';
 import { useCorrectiveActionExceptions } from '@/features/exceptions/hooks/useCorrectiveActionExceptions';
 import { useActiveExceptionPreferences } from '@/features/exceptions/hooks/useExceptionPreferences';
-import type { ActionSuggestion, ActionSuggestionState } from '@/features/action-engine/domain/types';
 import type { SnoozePreset } from '@/features/action-engine/domain/computeSnoozeUntil';
 import { computeSnoozeUntil } from '@/features/action-engine/domain/computeSnoozeUntil';
 import { useSuggestionStateStore } from '@/features/action-engine/hooks/useSuggestionStateStore';
+import { useAllCorrectiveActions } from '@/features/action-engine/hooks/useAllCorrectiveActions';
 import {
   buildSuggestionTelemetryEvent,
   SUGGESTION_TELEMETRY_EVENTS,
@@ -54,22 +54,14 @@ import { recordSuggestionTelemetry } from '@/features/action-engine/telemetry/re
 
 // ─── Component ────────────────────────────────────────────────
 
-export interface ExceptionCenterPageProps {
-  /** Action Engine が生成した全利用者分の提案（外部から注入） */
-  allSuggestions?: ActionSuggestion[];
-  /** 提案の dismiss/snooze 状態 */
-  suggestionStates?: Record<string, ActionSuggestionState>;
-}
-
-export default function ExceptionCenterPage({
-  allSuggestions = [],
-  suggestionStates,
-}: ExceptionCenterPageProps) {
+export default function ExceptionCenterPage() {
   const navigate = useNavigate();
-  const storeStates = useSuggestionStateStore((s) => s.states);
+
+  // Action Engine: 全利用者分の是正提案を自給自足
+  const { suggestions: allSuggestions, status: suggestionsStatus, error: suggestionsError } = useAllCorrectiveActions();
+  const suggestionStates = useSuggestionStateStore((s) => s.states);
   const dismissSuggestion = useSuggestionStateStore((s) => s.dismiss);
   const snoozeSuggestion = useSuggestionStateStore((s) => s.snooze);
-  const effectiveSuggestionStates = suggestionStates ?? storeStates;
 
   // Sprint-1 Phase B: 実データ接続
   const dataSources = useExceptionDataSources();
@@ -82,7 +74,7 @@ export default function ExceptionCenterPage({
   // Action Engine 提案 → ExceptionItem
   const { items: correctiveItems } = useCorrectiveActionExceptions({
     suggestions: allSuggestions,
-    states: effectiveSuggestionStates,
+    states: suggestionStates,
   });
 
   const handleDismissSuggestion = React.useCallback((stableId: string) => {
@@ -197,6 +189,9 @@ export default function ExceptionCenterPage({
     },
   ];
 
+  // 是正提案データの取得状況を loading に含める
+  const isLoading = dataSources.status === 'loading' || suggestionsStatus === 'loading';
+
   return (
     <Container maxWidth="lg" sx={{ py: 3 }} data-testid="exception-center-page">
       {/* ── Back Navigation ── */}
@@ -210,7 +205,7 @@ export default function ExceptionCenterPage({
       </Button>
 
       {/* ── Loading 状態 ── */}
-      {dataSources.status === 'loading' && (
+      {isLoading && (
         <Stack spacing={2}>
           <Skeleton variant="rectangular" height={80} sx={{ borderRadius: 2 }} />
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: '1fr 1fr 1fr 1fr' }, gap: 2 }}>
@@ -227,8 +222,15 @@ export default function ExceptionCenterPage({
         </Alert>
       )}
 
+      {/* ── 是正提案 Error 状態（他のデータソースとは独立） ── */}
+      {suggestionsStatus === 'error' && suggestionsError && (
+        <Alert severity="warning" sx={{ my: 1 }} data-testid="exception-center-suggestions-error">
+          是正提案の取得に失敗しました: {suggestionsError}
+        </Alert>
+      )}
+
       {/* ── Empty 状態 ── */}
-      {dataSources.status === 'empty' && (
+      {!isLoading && dataSources.status === 'empty' && allSuggestions.length === 0 && (
         <Paper variant="outlined" sx={{ p: 4, textAlign: 'center', borderRadius: 2 }} data-testid="exception-center-empty">
           <Typography variant="h5" sx={{ mb: 1 }}>✅</Typography>
           <Typography variant="h6" sx={{ fontWeight: 600 }}>例外は検出されていません</Typography>
@@ -239,7 +241,7 @@ export default function ExceptionCenterPage({
       )}
 
       {/* ── Ready 状態 ── */}
-      {dataSources.status === 'ready' && (
+      {(dataSources.status === 'ready' || (dataSources.status === 'empty' && allSuggestions.length > 0)) && (
       <Stack spacing={3}>
         {/* ════════════════════════════════════════════════════════════
             Header

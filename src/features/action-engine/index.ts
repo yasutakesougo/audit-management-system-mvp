@@ -51,6 +51,13 @@ export type {
   UseActionSuggestionsReturn,
 } from './hooks/useActionSuggestions';
 
+// Batch hook (Exception Center 向け)
+export { useAllCorrectiveActions } from './hooks/useAllCorrectiveActions';
+export type {
+  AllCorrectiveActionsStatus,
+  UseAllCorrectiveActionsReturn,
+} from './hooks/useAllCorrectiveActions';
+
 // State store
 export { useSuggestionStateStore } from './hooks/useSuggestionStateStore';
 export type { SuggestionStateStore, SuggestionStateMeta } from './hooks/useSuggestionStateStore';

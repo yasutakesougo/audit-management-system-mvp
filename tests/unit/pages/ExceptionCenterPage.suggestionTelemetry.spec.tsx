@@ -70,6 +70,17 @@ vi.mock('../../../src/features/action-engine/hooks/useSuggestionStateStore', () 
   }),
 }));
 
+// useAllCorrectiveActions mock — suggestion データの注入
+let mockAllSuggestions: ActionSuggestion[] = [];
+vi.mock('../../../src/features/action-engine/hooks/useAllCorrectiveActions', () => ({
+  useAllCorrectiveActions: vi.fn(() => ({
+    suggestions: mockAllSuggestions,
+    status: 'ready',
+    error: null,
+    count: mockAllSuggestions.length,
+  })),
+}));
+
 const mockRecordSuggestionTelemetry = vi.fn();
 vi.mock('../../../src/features/action-engine/telemetry/recordSuggestionTelemetry', () => ({
   recordSuggestionTelemetry: (...args: unknown[]) => mockRecordSuggestionTelemetry(...args),
@@ -80,6 +91,7 @@ describe('ExceptionCenterPage suggestion telemetry', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-21T10:00:00Z'));
     vi.clearAllMocks();
+    mockAllSuggestions = [];
   });
 
   afterEach(() => {
@@ -109,9 +121,12 @@ describe('ExceptionCenterPage suggestion telemetry', () => {
       ruleId: 'behavior-trend-increase',
     };
 
+    // useAllCorrectiveActions を通じてデータを注入
+    mockAllSuggestions = [suggestion];
+
     render(
       <MemoryRouter>
-        <ExceptionCenterPage allSuggestions={[suggestion]} suggestionStates={{}} />
+        <ExceptionCenterPage />
       </MemoryRouter>,
     );
 
