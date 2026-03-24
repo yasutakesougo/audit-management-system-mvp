@@ -13,7 +13,8 @@
 import { useMemo } from 'react';
 import type { HandoffCategory, HandoffRecord, HandoffSeverity, HandoffStatus } from '../handoffTypes';
 import { useHandoffTimeline } from '../useHandoffTimeline';
-import { formatDateLocal, getWeekRange, parseDateString } from './useHandoffDateNav';
+import { getWeekRange, parseDateString } from './useHandoffDateNav';
+import { formatDateIso } from '@/lib/dateFormat';
 
 // ────────────────────────────────────────────────────────────
 // Types
@@ -118,12 +119,12 @@ export function buildWeekBuckets(startStr: string, endStr: string): WeekDaySumma
   const end = parseDateString(endStr);
   if (!start || !end) return [];
 
-  const today = formatDateLocal();
+  const today = formatDateIso(new Date());
   const days: WeekDaySummary[] = [];
   const cursor = new Date(start);
 
   while (cursor <= end) {
-    const dateStr = formatDateLocal(cursor);
+    const dateStr = formatDateIso(cursor);
     const dow = cursor.getDay();
     days.push({
       date: dateStr,
@@ -232,7 +233,7 @@ function extractDateFromRecord(record: HandoffRecord): string | null {
   try {
     const d = new Date(record.createdAt);
     if (isNaN(d.getTime())) return null;
-    return formatDateLocal(d);
+    return formatDateIso(d);
   } catch {
     return null;
   }
