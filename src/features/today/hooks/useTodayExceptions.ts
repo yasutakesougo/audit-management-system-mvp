@@ -18,6 +18,8 @@ export type UseTodayExceptionsResult = {
   queueItems: TodayExceptionAction[];
   isLoading: boolean;
   error: string | null;
+  /** 保存後に司令塔アラートを再同期する */
+  refetchDailyRecords: () => void;
 };
 
 /**
@@ -71,7 +73,8 @@ export function useTodayExceptions(): UseTodayExceptionsResult {
       queueItems,
       isLoading: dataSources.status === 'loading',
       error: dataSources.error,
+      refetchDailyRecords: dataSources.refetchDailyRecords,
     }),
-    [items, heroItem, queueItems, dataSources.status, dataSources.error]
+    [items, heroItem, queueItems, dataSources.status, dataSources.error, dataSources.refetchDailyRecords]
   );
 }

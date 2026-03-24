@@ -12,7 +12,7 @@
  * @see features/handoff/handoffTypes.ts — HandoffRecord (userCode, userDisplayName)
  * @see features/exceptions/domain/exceptionLogic.ts — detect 関数の入力型
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useDailyRecordRepository } from '@/features/daily/repositoryFactory';
 import type { DailyRecordItem } from '@/features/daily/domain/DailyRecordRepository';
@@ -42,6 +42,8 @@ export type ExceptionDataSources = {
   status: DataSourceStatus;
   /** エラー時のメッセージ */
   error: string | null;
+  /** 日次記録の再取得を要求する（保存後の即時同期用） */
+  refetchDailyRecords: () => void;
 };
 
 // ── Hook ──
@@ -63,6 +65,12 @@ export function useExceptionDataSources(): ExceptionDataSources {
   const [dailyError, setDailyError] = useState<string | null>(null);
   const [handoffError, setHandoffError] = useState<string | null>(null);
   const [ispError, setIspError] = useState<string | null>(null);
+
+  /** Increment to re-trigger the dailyRecord useEffect */
+  const [dailyRefreshTrigger, setDailyRefreshTrigger] = useState(0);
+  const refetchDailyRecords = useCallback(() => {
+    setDailyRefreshTrigger((prev) => prev + 1);
+  }, []);
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
@@ -87,7 +95,7 @@ export function useExceptionDataSources(): ExceptionDataSources {
 
     loadDailyRecords();
     return () => { cancelled = true; };
-  }, [dailyRepo, today]);
+  }, [dailyRepo, today, dailyRefreshTrigger]);
 
   // Handoff 取得
   useEffect(() => {
@@ -206,6 +214,7 @@ export function useExceptionDataSources(): ExceptionDataSources {
       userSummaries,
       status,
       error: errorMsg,
+      refetchDailyRecords,
     };
   }, [
     users,
