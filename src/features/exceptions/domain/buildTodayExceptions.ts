@@ -10,6 +10,9 @@ export type TodayExceptionAction = {
   description: string;
   actionLabel: string;
   actionPath: string;
+  /** セカンダリアクション（例: 支援記録の確認リンク） */
+  secondaryActionLabel?: string;
+  secondaryActionPath?: string;
   userId?: string;
   date?: string;
 };
@@ -85,6 +88,8 @@ export function buildTodayExceptions(
       description: item.description,
       actionLabel: item.actionLabel ?? '詳細を確認',
       actionPath: item.actionPath,
+      secondaryActionLabel: item.secondaryActionLabel,
+      secondaryActionPath: item.secondaryActionPath,
       userId: item.targetUserId,
       date: item.targetDate ?? item.updatedAt,
       stableId: effectiveStableId,

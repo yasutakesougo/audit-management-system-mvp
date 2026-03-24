@@ -62,7 +62,7 @@ import { ScheduleOpsHighLoadTile } from '../widgets/ScheduleOpsHighLoadTile';
 import type { HighLoadTileViewModel } from '../domain/buildHighLoadTileViewModel';
 import { TodayExceptionAlerts } from '../components/TodayExceptionAlerts';
 import { KioskStatusBar, type KioskStatusMetrics } from '../components/KioskStatusBar';
-import { KioskQuickLinks } from '../components/KioskQuickLinks';
+import { KioskHeroBlock } from '../components/KioskHeroBlock';
 import type { UseTodayExceptionsResult } from '../hooks/useTodayExceptions';
 import { useSettingsContext } from '@/features/settings/SettingsContext';
 
@@ -181,20 +181,42 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   const isKiosk = settings.layoutMode === 'kiosk';
 
   // ── KioskStatusBar metrics ──
+  // progressRings から各指標を抽出（ProgressRings と同一データソース）
   const kioskMetrics: KioskStatusMetrics | undefined = React.useMemo(() => {
     if (!isKiosk) return undefined;
     const recordTotal = progress.summary?.totalRecordCount || 0;
     const recordCompleted = Math.max(0, recordTotal - (progress.summary?.pendingRecordCount || 0));
+
+    // ケース記録: progressRings の "caseRecords" から取得 (valueText: "0/32")
+    const caseRing = progressRings?.find((r) => r.key === 'caseRecords');
+    let caseCompleted = 0;
+    let caseTotal = 0;
+    if (caseRing?.valueText) {
+      const parts = caseRing.valueText.split('/');
+      if (parts.length === 2) {
+        caseCompleted = parseInt(parts[0], 10) || 0;
+        caseTotal = parseInt(parts[1], 10) || 0;
+      }
+    }
+
+    // 連絡: progressRings の "contacts" から取得 (valueText: "2件")
+    const contactRing = progressRings?.find((r) => r.key === 'contacts');
+    let contactPending = contactPendingCount ?? 0;
+    if (contactRing?.valueText) {
+      const parsed = parseInt(contactRing.valueText, 10);
+      if (!isNaN(parsed)) contactPending = parsed;
+    }
+
     return {
       recordCompleted,
       recordTotal,
-      caseCompleted: 0, // ← TodayOpsPage で構築して渡す
-      caseTotal: 0,
+      caseCompleted,
+      caseTotal,
       attendeeCount: attendance.facilityAttendees || 0,
       scheduledCount: attendance.scheduledCount || 0,
-      contactPending: contactPendingCount ?? 0,
+      contactPending,
     };
-  }, [isKiosk, progress.summary, attendance, contactPendingCount]);
+  }, [isKiosk, progress.summary, attendance, contactPendingCount, progressRings]);
 
   return (
     <Box
@@ -222,28 +244,57 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
       {/* ── Bento Grid ── */}
       <BentoContainer sx={{ mt: 2 }}>
 
-        <TodayExceptionAlerts exceptionsQueue={exceptionsQueue} />
-
         {/* ════════════════════════════════════════════════════
-         *  ZONE A: ヒーローゾーン — 「今やること」が1つ見える
-         *  Step 2: HeroActionCard (sceneAction 優先 → NextActionCard fallback)
+         *  キオスクモード: KioskHeroBlock（統合ブロック）
+         *  Hero + アラート + 進捗 + QuickLinks を1ブロックに
          *  ════════════════════════════════════════════════════ */}
-        <BentoCard
-          colSpan={{ xs: 1, sm: 2, md: 4 }}
-          variant="accent"
-          testId={TESTIDS.TODAY_HERO}
-          sx={{ py: { xs: 2.5, sm: 3 } }}
-        >
-          <HeroActionCard
-            sceneAction={sceneAction}
-            onSceneAction={onSceneAction}
-            nextAction={nextAction}
-            onEmptyAction={nextActionEmptyAction}
-            onMenuAction={nextActionMenuAction}
-            scheduleDetailHref={scheduleDetailHref}
-            onNavigate={onNextActionNavigate}
-          />
-        </BentoCard>
+        {isKiosk ? (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            variant="accent"
+            testId={TESTIDS.TODAY_HERO}
+            sx={{ py: { xs: 2.5, sm: 3 } }}
+          >
+            <KioskHeroBlock
+              heroProps={{
+                sceneAction,
+                onSceneAction,
+                nextAction,
+                onEmptyAction: nextActionEmptyAction,
+                onMenuAction: nextActionMenuAction,
+                scheduleDetailHref,
+                onNavigate: onNextActionNavigate,
+              }}
+              exceptionsQueue={exceptionsQueue}
+              progressRings={progressRings}
+              onQuickLinkNavigate={onQuickLinkNavigate}
+            />
+          </BentoCard>
+        ) : (
+          /* ════════════════════════════════════════════════════
+           *  通常モード: 既存のレイアウト（変更なし）
+           *  ════════════════════════════════════════════════════ */
+          <>
+            <TodayExceptionAlerts exceptionsQueue={exceptionsQueue} />
+
+            <BentoCard
+              colSpan={{ xs: 1, sm: 2, md: 4 }}
+              variant="accent"
+              testId={TESTIDS.TODAY_HERO}
+              sx={{ py: { xs: 2.5, sm: 3 } }}
+            >
+              <HeroActionCard
+                sceneAction={sceneAction}
+                onSceneAction={onSceneAction}
+                nextAction={nextAction}
+                onEmptyAction={nextActionEmptyAction}
+                onMenuAction={nextActionMenuAction}
+                scheduleDetailHref={scheduleDetailHref}
+                onNavigate={onNextActionNavigate}
+              />
+            </BentoCard>
+          </>
+        )}
 
         {/* ── ActionQueue 系: 非表示化 (Step 1) ──
          *  Step 2 で HeroActionCard に統合予定。コンポーネントは残す。
@@ -280,43 +331,41 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
         )}
 
         {/* ════════════════════════════════════════════════════
-         *  ZONE B: 進捗ダッシュ — 「あとどれくらいか」がわかる
-         *  Step 3: ProgressRings (3指標圧縮) or legacy fallback
+         *  ZONE B: 進捗ダッシュ — 通常モードのみ（キオスクは HeroBlock に統合）
          *  ════════════════════════════════════════════════════ */}
-        {progressRings ? (
-          <BentoCard
-            colSpan={{ xs: 1, sm: 2, md: 4 }}
-            variant="default"
-            noHover
-            testId={TESTIDS.TODAY_PROGRESS_RINGS}
-          >
-            <SectionLabel emoji="📊" text="本日の進捗" />
-            <ProgressRings items={progressRings} />
-            {isKiosk && onQuickLinkNavigate && (
-              <KioskQuickLinks onNavigate={onQuickLinkNavigate} />
-            )}
-          </BentoCard>
-        ) : (
-          /* ── Legacy fallback: ProgressStatusBar + AttendanceSummaryCard ── */
-          <>
+        {!isKiosk && (
+          progressRings ? (
             <BentoCard
-              colSpan={{ xs: 1, sm: 2, md: 3 }}
+              colSpan={{ xs: 1, sm: 2, md: 4 }}
               variant="default"
               noHover
-              testId="bento-progress"
-              sx={{ p: 0, overflow: 'hidden' }}
+              testId={TESTIDS.TODAY_PROGRESS_RINGS}
             >
-              <ProgressStatusBar summary={progress.summary} onChipClick={progress.onChipClick} scene={progress.scene} />
+              <SectionLabel emoji="📊" text="本日の進捗" />
+              <ProgressRings items={progressRings} />
             </BentoCard>
+          ) : (
+            /* ── Legacy fallback: ProgressStatusBar + AttendanceSummaryCard ── */
+            <>
+              <BentoCard
+                colSpan={{ xs: 1, sm: 2, md: 3 }}
+                variant="default"
+                noHover
+                testId="bento-progress"
+                sx={{ p: 0, overflow: 'hidden' }}
+              >
+                <ProgressStatusBar summary={progress.summary} onChipClick={progress.onChipClick} scene={progress.scene} />
+              </BentoCard>
 
-            <BentoCard
-              colSpan={{ xs: 1, sm: 1, md: 1 }}
-              testId="bento-attendance"
-            >
-              <SectionLabel emoji="📊" text="出席状況" />
-              <AttendanceSummaryCard {...attendance} />
-            </BentoCard>
-          </>
+              <BentoCard
+                colSpan={{ xs: 1, sm: 1, md: 1 }}
+                testId="bento-attendance"
+              >
+                <SectionLabel emoji="📊" text="出席状況" />
+                <AttendanceSummaryCard {...attendance} />
+              </BentoCard>
+            </>
+          )
         )}
 
         {/* ── 高負荷日警告タイル (Schedule Ops 連携) ── */}
