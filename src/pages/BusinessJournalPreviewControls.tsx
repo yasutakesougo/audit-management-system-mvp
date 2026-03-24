@@ -9,9 +9,11 @@
 
 import { TESTIDS } from '@/testids';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import PrintIcon from '@mui/icons-material/Print';
 
 import {
     ATTENDANCE_COLORS,
@@ -32,6 +34,8 @@ interface BusinessJournalPreviewControlsProps {
   selectedMonth: number;
   monthOptions: MonthOption[];
   onMonthChange: (value: string) => void;
+  /** 印刷 / PDF保存ボタンのクリックハンドラー */
+  onPrint?: () => void;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -41,19 +45,36 @@ export function BusinessJournalPreviewControls({
   selectedMonth,
   monthOptions,
   onMonthChange,
+  onPrint,
 }: BusinessJournalPreviewControlsProps) {
   const currentValue = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
 
   return (
     <>
-      {/* Page title */}
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="h5" component="h1" gutterBottom>
-          業務日誌プレビュー
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          紙の業務日誌と同等のレイアウトで月間の日次記録を一覧表示します
-        </Typography>
+      {/* Page title + Print button */}
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
+        <Box>
+          <Typography variant="h5" component="h1" gutterBottom>
+            業務日誌プレビュー
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            紙の業務日誌と同等のレイアウトで月間の日次記録を一覧表示します
+          </Typography>
+        </Box>
+        <Button
+          variant="outlined"
+          startIcon={<PrintIcon />}
+          onClick={onPrint}
+          data-testid="journal-print-button"
+          sx={{
+            minWidth: 140,
+            fontWeight: 600,
+            borderColor: 'primary.main',
+            '@media print': { display: 'none' },
+          }}
+        >
+          印刷 / PDF保存
+        </Button>
       </Box>
 
       {/* Month selector */}
