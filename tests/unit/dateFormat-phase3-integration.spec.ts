@@ -14,8 +14,7 @@ import {
   safeFormatDate,
 } from '@/lib/dateFormat';
 
-// ── 置換対象の wrapper 関数 ──
-import { formatDateLocal } from '@/features/handoff/hooks/useHandoffDateNav';
+
 
 // ─────────────────────────────────────────────────────────────────────
 // Round A: useRoomReservations — formatDateDisplay → safeFormatDate
@@ -65,10 +64,10 @@ describe('Phase 3: useRoomReservations formatDateDisplay parity', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────
-// Round A: useHandoffDateNav — formatDateLocal → formatDateIso
+// Round A: useHandoffDateNav — formatDateLocal removed, formatDateIso used directly
 // ─────────────────────────────────────────────────────────────────────
 
-describe('Phase 3: useHandoffDateNav formatDateLocal → formatDateIso parity', () => {
+describe('Phase 3: formatDateIso (formerly formatDateLocal wrapper)', () => {
   const cases = [
     { input: new Date(2026, 2, 11), expected: '2026-03-11' },
     { input: new Date(2026, 0, 5), expected: '2026-01-05' },
@@ -78,15 +77,12 @@ describe('Phase 3: useHandoffDateNav formatDateLocal → formatDateIso parity', 
 
   for (const { input, expected } of cases) {
     it(`${expected}`, () => {
-      expect(formatDateLocal(input)).toBe(expected);
       expect(formatDateIso(input)).toBe(expected);
-      // Verify they match
-      expect(formatDateLocal(input)).toBe(formatDateIso(input));
     });
   }
 
-  it('default parameter (no arg) returns today in YYYY-MM-DD', () => {
-    const result = formatDateLocal();
+  it('default today returns YYYY-MM-DD', () => {
+    const result = formatDateIso(new Date());
     expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });

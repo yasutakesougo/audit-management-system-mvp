@@ -455,6 +455,11 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
   const [showCompletionToast, setShowCompletionToast] = React.useState(false);
 
   const handleSaveSuccess = React.useCallback(() => {
+    // ── 司令塔アラートの再同期 ──
+    // 保存成功したら SP から最新の日次記録を再取得し、
+    // 「未入力」アラートを即時に更新する
+    exceptionsQueue.refetchDailyRecords();
+
     if (!quickRecord.autoNextEnabled) {
       quickRecord.close();
       return;
@@ -474,7 +479,7 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
       setShowCompletionToast(true);
       recordAutoNextComplete();
     }
-  }, [summary?.dailyRecordStatus?.pendingUserIds, quickRecord]);
+  }, [summary?.dailyRecordStatus?.pendingUserIds, quickRecord, exceptionsQueue]);
 
   // ── Render ──
   return (

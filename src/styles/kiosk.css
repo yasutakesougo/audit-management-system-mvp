@@ -1,0 +1,112 @@
+/**
+ * Kiosk Mode — Tablet Touch Optimization Tokens
+ *
+ * Applied via `data-kiosk="true"` attribute on AppShell root.
+ * Ensures:
+ *   - Minimum touch targets of 48px (Material Design guideline)
+ *   - Larger text for tablet-distance reading (~50-80cm)
+ *   - Accidental touch prevention via manipulation touch-action
+ *
+ * @see docs/adr/ADR-010-kiosk-mode.md (future)
+ */
+
+/* ───────────────────────────────────────────────────
+ * 1. CSS Custom Properties (Design Tokens)
+ * ─────────────────────────────────────────────────── */
+[data-kiosk='true'] {
+  --kiosk-touch-min: 48px;
+  --kiosk-touch-comfortable: 56px;
+  --kiosk-font-base: 16px;
+  --kiosk-font-label: 14px;
+  --kiosk-font-hero: 24px;
+  --kiosk-gap: 12px;
+
+  /* Prevent accidental double-tap zoom & swipe gestures */
+  touch-action: manipulation;
+}
+
+/* ───────────────────────────────────────────────────
+ * 2. Button / Chip / IconButton — Minimum Touch Targets
+ * ─────────────────────────────────────────────────── */
+[data-kiosk='true'] .MuiButton-root {
+  min-height: var(--kiosk-touch-min);
+}
+
+[data-kiosk='true'] .MuiChip-root {
+  min-height: 36px;
+}
+
+[data-kiosk='true'] .MuiIconButton-root {
+  min-width: var(--kiosk-touch-min);
+  min-height: var(--kiosk-touch-min);
+}
+
+[data-kiosk='true'] .MuiFab-root {
+  min-width: var(--kiosk-touch-comfortable);
+  min-height: var(--kiosk-touch-comfortable);
+}
+
+/* ───────────────────────────────────────────────────
+ * 3. List Items — Comfortable Row Height
+ * ─────────────────────────────────────────────────── */
+[data-kiosk='true'] .MuiListItemButton-root,
+[data-kiosk='true'] .MuiListItem-root {
+  min-height: var(--kiosk-touch-comfortable);
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+/* ───────────────────────────────────────────────────
+ * 4. Cards — Larger Spacing
+ * ─────────────────────────────────────────────────── */
+[data-kiosk='true'] .MuiCard-root {
+  min-height: 64px;
+}
+
+/* BentoContainer → wider gap in kiosk */
+[data-kiosk='true'] [data-testid='bento-container'] {
+  gap: var(--kiosk-gap);
+}
+
+/* ───────────────────────────────────────────────────
+ * 5. Typography — Tablet Distance Readability
+ * ─────────────────────────────────────────────────── */
+[data-kiosk='true'] .MuiTypography-body2 {
+  font-size: var(--kiosk-font-label);
+}
+
+[data-kiosk='true'] .MuiTypography-h5,
+[data-kiosk='true'] .MuiTypography-h6 {
+  font-size: var(--kiosk-font-hero);
+}
+
+/* ───────────────────────────────────────────────────
+ * 6. Wake Lock Indicator (visual hint)
+ * ─────────────────────────────────────────────────── */
+[data-kiosk='true'] [data-testid='kiosk-exit-fab'] {
+  opacity: 0.25;
+  transition: opacity 0.3s ease;
+}
+
+[data-kiosk='true'] [data-testid='kiosk-exit-fab']:hover,
+[data-kiosk='true'] [data-testid='kiosk-exit-fab']:focus-visible {
+  opacity: 1;
+}
+
+/* ───────────────────────────────────────────────────
+ * 7. Back Navigation Banner (kiosk only)
+ * ─────────────────────────────────────────────────── */
+[data-kiosk='true'] .kiosk-back-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.04);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  min-height: var(--kiosk-touch-min);
+  cursor: pointer;
+}
+
+[data-kiosk='true'] .kiosk-back-nav:active {
+  background: rgba(0, 0, 0, 0.08);
+}

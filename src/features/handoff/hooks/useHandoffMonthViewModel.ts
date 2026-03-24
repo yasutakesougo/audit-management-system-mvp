@@ -14,10 +14,10 @@ import { useMemo } from 'react';
 import type { HandoffRecord } from '../handoffTypes';
 import { useHandoffTimeline } from '../useHandoffTimeline';
 import {
-  formatDateLocal,
   getMonthRange,
   parseDateString,
 } from './useHandoffDateNav';
+import { formatDateIso } from '@/lib/dateFormat';
 import { buildTopCategories } from './useHandoffWeekViewModel';
 import type { CategoryCount } from './useHandoffWeekViewModel';
 
@@ -104,7 +104,7 @@ const MAX_TOP_CATEGORIES_MONTH = 3;
  * @param month 月 (1-12)
  */
 export function buildMonthGrid(year: number, month: number): MonthWeekRow[] {
-  const today = formatDateLocal();
+  const today = formatDateIso(new Date());
 
   // 月の初日・末日
   const firstDate = new Date(year, month - 1, 1);
@@ -126,7 +126,7 @@ export function buildMonthGrid(year: number, month: number): MonthWeekRow[] {
   while (weeks.length < 6) {
     const row: MonthDaySummary[] = [];
     for (let i = 0; i < 7; i++) {
-      const dateStr = formatDateLocal(cursor);
+      const dateStr = formatDateIso(cursor);
       const isCurrentMonth =
         cursor.getMonth() === month - 1 && cursor.getFullYear() === year;
 
@@ -251,7 +251,7 @@ function extractDateFromRecord(record: HandoffRecord): string | null {
   try {
     const d = new Date(record.createdAt);
     if (isNaN(d.getTime())) return null;
-    return formatDateLocal(d);
+    return formatDateIso(d);
   } catch {
     return null;
   }
