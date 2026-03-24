@@ -4,6 +4,10 @@ export type {
     DailyRecordRepositoryMutationParams, SaveDailyRecordInput
 } from './domain/DailyRecordRepository';
 
+// Behavior / Procedure / Execution Repository Interfaces
+export type { BehaviorRepository, ProcedureRepository } from './infra/repositoryTypes';
+export type { ExecutionRecordRepository } from './domain/ExecutionRecordRepository';
+
 // Repository Pattern - Infrastructure Layer
 export {
     InMemoryDailyRecordRepository,

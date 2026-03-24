@@ -4,8 +4,7 @@
  * TimeBasedSupportRecordPage の handleRecordSubmit, handleRetryPersist を抽出 (#766)
  */
 import type { ABCRecord } from '@/domain/behavior';
-import type { ExecutionRecordRepository } from '@/features/daily/domain/ExecutionRecordRepository';
-import type { BehaviorRepository } from '@/features/daily/infra/repositoryTypes';
+import type { BehaviorRepository, ExecutionRecordRepository } from '@/features/daily';
 import {
     makeIdempotencyKey,
     persistDailySubmission,
