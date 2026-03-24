@@ -337,7 +337,8 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
          *  ZONE C1: 常時表示 — 今日すぐ触るもの
          *  ════════════════════════════════════════════════════ */}
 
-        {/* ── C1-a: 利用者リスト（未記録優先ソート済み） ── */}
+        {/* ── C1-a: 利用者リスト（未記録優先ソート済み） — キオスクモードでは非表示 ── */}
+        {!isKiosk && (
         <BentoCard
           colSpan={{ xs: 1, sm: 2, md: 4 }}
           testId={TESTIDS.TODAY_USER_LIST}
@@ -353,6 +354,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
             onEmptyAction={users.onEmptyAction}
           />
         </BentoCard>
+        )}
 
         {/* ── C1-b: 申し送りパネル ── */}
         {handoffPanel && (
