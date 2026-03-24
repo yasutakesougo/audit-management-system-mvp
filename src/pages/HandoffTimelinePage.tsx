@@ -8,12 +8,14 @@ import {
   CalendarViewWeek as WeekIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
+  Close as CloseIcon,
   EditNote as EditNoteIcon,
   Today as TodayIcon,
   ViewDay as DayIcon,
 } from '@mui/icons-material';
-import { Alert, Box, Button, Chip, Container, IconButton, Popover, Snackbar, TextField, ToggleButton, ToggleButtonGroup, Tooltip } from '@mui/material';
+import { Alert, Box, Button, Chip, Container, Dialog, DialogContent, DialogTitle, IconButton, Popover, Snackbar, TextField, ToggleButton, ToggleButtonGroup, Tooltip } from '@mui/material';
 import { useCallback, useRef, useState } from 'react';
+import { HandoffQuickNoteCard } from '../features/handoff/HandoffQuickNoteCard';
 import { useNavigate } from 'react-router-dom';
 import type { DateRange } from '../features/handoff/hooks/useHandoffDateNav';
 import { useHandoffDateNav } from '../features/handoff/hooks/useHandoffDateNav';
@@ -64,8 +66,11 @@ export default function HandoffTimelinePage() {
     [dateNav],
   );
 
-  // ── QuickNote dialog ──
+  // ── QuickNote dialog (自前管理) ──
+  const [quickNoteOpen, setQuickNoteOpen] = useState(false);
   const openQuickNoteDialog = useCallback(() => {
+    setQuickNoteOpen(true);
+    // 互換性: FooterQuickActions がリッスンしている場合に備えて発火
     window.dispatchEvent(new CustomEvent('handoff-open-quicknote-dialog'));
   }, []);
 
@@ -325,6 +330,25 @@ export default function HandoffTimelinePage() {
           {userStatusSuccessMsg}
         </Alert>
       </Snackbar>
+
+      {/* ── 申し送り追加ダイアログ (自前管理) ── */}
+      <Dialog
+        open={quickNoteOpen}
+        onClose={() => setQuickNoteOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        data-testid="handoff-page-quicknote-dialog"
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          今すぐ申し送り
+          <IconButton aria-label="申し送りダイアログを閉じる" onClick={() => setQuickNoteOpen(false)}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <HandoffQuickNoteCard />
+        </DialogContent>
+      </Dialog>
     </Container>
   );
 }
