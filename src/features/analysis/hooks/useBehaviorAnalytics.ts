@@ -1,4 +1,4 @@
-import type { BehaviorObservation } from '@/features/daily';
+import type { ABCRecord } from '@/domain/behavior';
 import { useMemo } from 'react';
 
 export type DailyBehaviorStat = {
@@ -11,7 +11,7 @@ export type DailyBehaviorStat = {
 
 const dateFormatter = new Intl.DateTimeFormat('ja-JP', { month: 'numeric', day: 'numeric' });
 
-export const useBehaviorAnalytics = (records: BehaviorObservation[]) => {
+export const useBehaviorAnalytics = (records: ABCRecord[]) => {
   const dailyStats = useMemo<DailyBehaviorStat[]>(() => {
     if (!records?.length) return [];
 

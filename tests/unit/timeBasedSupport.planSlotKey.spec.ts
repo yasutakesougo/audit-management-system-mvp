@@ -1,4 +1,4 @@
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import type { ABCRecord } from '@/domain/behavior';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
 import { renderHook } from '@testing-library/react';
@@ -29,7 +29,7 @@ const makeBehaviorRepo = () => ({
 
 describe('useTimeBasedSupportRecordPage planSlotKey matching', () => {
   it('marks plan row as filled when observation has planSlotKey (even if recorded time differs)', () => {
-    const behaviorRecords: BehaviorObservation[] = [
+    const behaviorRecords: ABCRecord[] = [
       {
         id: 'obs-1',
         userId: 'u1',
@@ -60,7 +60,7 @@ describe('useTimeBasedSupportRecordPage planSlotKey matching', () => {
   });
 
   it('keeps backward compatibility via timeSlot+plannedActivity when planSlotKey is missing', () => {
-    const behaviorRecords: BehaviorObservation[] = [
+    const behaviorRecords: ABCRecord[] = [
       {
         id: 'obs-2',
         userId: 'u1',

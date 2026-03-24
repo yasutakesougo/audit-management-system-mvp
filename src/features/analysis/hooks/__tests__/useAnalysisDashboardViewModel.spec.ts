@@ -1,4 +1,4 @@
-import type { BehaviorObservation } from '@/features/daily';
+import type { ABCRecord } from '@/domain/behavior';
 import { describe, expect, it } from 'vitest';
 import {
     buildAttendanceSummaryData,
@@ -11,7 +11,7 @@ import {
 // Test helpers
 // ---------------------------------------------------------------------------
 
-const makeRecord = (hour: number, intensity: number, dayOffset = 0): BehaviorObservation => {
+const makeRecord = (hour: number, intensity: number, dayOffset = 0): ABCRecord => {
   const d = new Date('2025-04-01T00:00:00');
   d.setDate(d.getDate() - dayOffset);
   d.setHours(hour, 15, 0, 0);
@@ -51,7 +51,7 @@ describe('buildHourlyHeatmap', () => {
   });
 
   it('ignores records with invalid dates', () => {
-    const bad: BehaviorObservation = {
+    const bad: ABCRecord = {
       id: 'bad',
       userId: 'U-001',
       recordedAt: 'INVALID',

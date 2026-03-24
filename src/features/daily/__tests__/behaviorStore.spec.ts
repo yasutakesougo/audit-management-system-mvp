@@ -1,11 +1,11 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { BehaviorObservation } from '../domain/daily/types';
+import type { ABCRecord } from '@/domain/behavior';
 
 const repo = {
-  listByUser: vi.fn<(...args: unknown[]) => Promise<BehaviorObservation[]>>(),
-  getByUser: vi.fn<(...args: unknown[]) => Promise<BehaviorObservation[]>>(),
-  add: vi.fn<(...args: unknown[]) => Promise<BehaviorObservation>>(),
+  listByUser: vi.fn<(...args: unknown[]) => Promise<ABCRecord[]>>(),
+  getByUser: vi.fn<(...args: unknown[]) => Promise<ABCRecord[]>>(),
+  add: vi.fn<(...args: unknown[]) => Promise<ABCRecord>>(),
 };
 
 vi.mock('../infra/behaviorRepositoryFactory', () => ({
@@ -24,7 +24,7 @@ describe('useBehaviorStore', () => {
 
   it('fetchByUser returns 5 items sorted descending by recordedAt', async () => {
     const base = new Date('2025-01-01T09:00:00.000Z');
-    const observations: BehaviorObservation[] = Array.from({ length: 7 }, (_, index) => ({
+    const observations: ABCRecord[] = Array.from({ length: 7 }, (_, index) => ({
       id: `obs-${index}`,
       userId: 'U1',
       recordedAt: new Date(base.getTime() + index * 60_000).toISOString(),
@@ -62,7 +62,7 @@ describe('useBehaviorStore', () => {
   });
 
   it('add prepends the new record to the store data', async () => {
-    const newRecord: BehaviorObservation = {
+    const newRecord: ABCRecord = {
       id: 'new-1',
       userId: 'U1',
       recordedAt: new Date('2025-01-01T10:00:00.000Z').toISOString(),

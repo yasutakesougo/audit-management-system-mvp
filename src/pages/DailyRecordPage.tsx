@@ -23,8 +23,7 @@ import {
   type ContextHandoff,
 } from '@/features/context/domain/contextPanelLogic';
 import { PersonDaily } from '@/domain/daily/types';
-import { saveDailyRecord, validateDailyRecord } from '@/features/daily/domain/dailyRecordLogic';
-import { getNextIncompleteRecord } from '@/features/daily/domain/nextIncompleteRecord';
+import { getNextIncompleteRecord, saveDailyRecord, validateDailyRecord } from '@/features/daily';
 import { NextRecordHero } from '@/features/daily/components/NextRecordHero';
 import { RecordActionQueue } from '@/features/daily/components/RecordActionQueue';
 import { CTA_EVENTS, recordCtaClick } from '@/features/today/telemetry/recordCtaClick';

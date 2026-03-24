@@ -1,5 +1,5 @@
 import type { AssessmentItem } from '@/features/assessment/domain/types';
-import type { BehaviorObservation } from '@/features/daily/domain/daily/types';
+import type { ABCRecord } from '@/domain/behavior';
 import type { IcebergRepository } from '@/features/ibd/analysis/iceberg/SharePointIcebergRepository';
 import { ConflictError } from '@/features/ibd/analysis/iceberg/errors';
 import type {
@@ -62,7 +62,7 @@ const persistSession = (session: IcebergSession) => {
   }));
 };
 
-const inferBehaviorDetails = (source: BehaviorObservation): string | undefined => {
+const inferBehaviorDetails = (source: ABCRecord): string | undefined => {
   if ('memo' in source && typeof source.memo === 'string' && source.memo.trim()) {
     return source.memo;
   }
@@ -79,11 +79,11 @@ const inferAssessmentDetails = (source: AssessmentItem): string | undefined => {
   return undefined;
 };
 
-type NodeSource = BehaviorObservation | AssessmentItem | EnvironmentFactor;
+type NodeSource = ABCRecord | AssessmentItem | EnvironmentFactor;
 
 const toNode = (data: NodeSource, type: IcebergNodeType, initialPos?: NodePosition): IcebergNode => {
   if (type === 'behavior') {
-    const behavior = data as BehaviorObservation;
+    const behavior = data as ABCRecord;
     return {
       id: `node-${behavior.id}`,
       type,

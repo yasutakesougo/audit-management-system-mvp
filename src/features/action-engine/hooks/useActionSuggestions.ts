@@ -6,7 +6,7 @@
 // CorrectiveActionInput を組み立て、buildCorrectiveActions に渡す。
 // ---------------------------------------------------------------------------
 
-import type { BehaviorObservation } from '@/features/daily';
+import type { ABCRecord } from '@/domain/behavior';
 import type { DailyBehaviorStat } from '@/features/analysis/hooks/useBehaviorAnalytics';
 import type { HeatmapCell } from '@/features/analysis/hooks/useAnalysisDashboardViewModel';
 import { useMemo } from 'react';
@@ -76,9 +76,9 @@ export function buildHeatmapPeak(heatmap: HeatmapCell[]): HeatmapPeak {
   };
 }
 
-/** BehaviorObservation[] から高強度イベントを抽出 */
+/** ABCRecord[] から高強度イベントを抽出 */
 export function extractHighIntensityEvents(
-  records: BehaviorObservation[],
+  records: ABCRecord[],
   days = 7,
   now = new Date(),
 ): HighIntensityEvent[] {
@@ -98,7 +98,7 @@ export function extractHighIntensityEvents(
 }
 
 /** 最終記録日を取得 */
-export function getLastRecordDate(records: BehaviorObservation[]): string | null {
+export function getLastRecordDate(records: ABCRecord[]): string | null {
   if (records.length === 0) return null;
   const sorted = [...records].sort(
     (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
@@ -112,7 +112,7 @@ export function getLastRecordDate(records: BehaviorObservation[]): string | null
 
 export interface UseActionSuggestionsOptions {
   targetUserId: string;
-  analysisData: BehaviorObservation[];
+  analysisData: ABCRecord[];
   dailyStats: DailyBehaviorStat[];
   executionStats: { completed: number; triggered: number; skipped: number; total: number };
   heatmap: HeatmapCell[];

@@ -1,7 +1,7 @@
 /**
  * aggregateStrategyUsage — 日常記録の referencedStrategies を集計
  *
- * BehaviorObservation[] を受け取り、カテゴリ別 × 戦略テキスト別の
+ * ABCRecord[] を受け取り、カテゴリ別 × 戦略テキスト別の
  * 実施回数を返す Pure function。
  *
  * Phase C-3a: 支援計画シートに実施回数を表示するための基盤。
@@ -48,7 +48,7 @@ export interface AggregateOptions {
 }
 
 // ─────────────────────────────────────────────
-// 入力の最小型（BehaviorObservation の該当フィールドのみ）
+// 入力の最小型（ABCRecord の該当フィールドのみ）
 // ─────────────────────────────────────────────
 
 interface RecordWithStrategies {
@@ -67,7 +67,7 @@ interface RecordWithStrategies {
 /**
  * 日常記録から applied な戦略を集計する。
  *
- * @param records - BehaviorObservation 配列（referencedStrategies を持つもの）
+ * @param records - ABCRecord 配列（referencedStrategies を持つもの）
  * @param options - 期間フィルタ（省略時は全期間）
  * @returns カテゴリ別 × テキスト別の実施回数
  */

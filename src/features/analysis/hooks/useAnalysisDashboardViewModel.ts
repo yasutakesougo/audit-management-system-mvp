@@ -5,7 +5,7 @@
 // 「描画するだけのプレーンなデータ」に変換して返す B-layer フック。
 // ---------------------------------------------------------------------------
 
-import type { BehaviorObservation } from '@/features/daily';
+import type { ABCRecord } from '@/domain/behavior';
 import { useMemo } from 'react';
 import type { DailyBehaviorStat } from './useBehaviorAnalytics';
 
@@ -130,7 +130,7 @@ export function buildAttendanceSummaryData(
 }
 
 /** 24時間ヒートマップを生成 */
-export function buildHourlyHeatmap(records: BehaviorObservation[]): HeatmapCell[] {
+export function buildHourlyHeatmap(records: ABCRecord[]): HeatmapCell[] {
   const buckets = Array.from({ length: 24 }, (_, i) => ({ hour: i, count: 0, intensity: 0 }));
 
   for (const r of records) {
@@ -171,7 +171,7 @@ export function buildDonutData(
 }
 
 /** 最近のイベント (最新10件) */
-export function buildRecentEvents(records: BehaviorObservation[], limit = 10): RecentEvent[] {
+export function buildRecentEvents(records: ABCRecord[], limit = 10): RecentEvent[] {
   const fmt = new Intl.DateTimeFormat('ja-JP', {
     month: 'numeric',
     day: 'numeric',
@@ -199,7 +199,7 @@ export function buildRecentEvents(records: BehaviorObservation[], limit = 10): R
 // ---------------------------------------------------------------------------
 
 export function useAnalysisDashboardViewModel(
-  analysisData: BehaviorObservation[],
+  analysisData: ABCRecord[],
   dailyStats: DailyBehaviorStat[],
   executionStats: { completed: number; triggered: number; skipped: number; total: number },
   activeBipCount: number,
