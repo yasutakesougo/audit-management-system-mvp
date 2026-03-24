@@ -13,33 +13,21 @@
 
 import { PageHeader } from '@/components/PageHeader';
 import { ContextPanel } from '@/features/context/components/ContextPanel';
-import {
-  buildContextAlerts,
-  buildContextSummary,
-  buildRecommendedPrompts,
-  createEmptyContextData,
-  prioritizeContextAlerts,
-  type ContextPanelData,
-  type ContextHandoff,
-} from '@/features/context/domain/contextPanelLogic';
+import { useDailyRecordContextData } from '@/features/daily/hooks/useDailyRecordContextData';
 import { PersonDaily } from '@/domain/daily/types';
 import { getNextIncompleteRecord, saveDailyRecord, validateDailyRecord } from '@/features/daily';
 import { NextRecordHero } from '@/features/daily/components/NextRecordHero';
 import { RecordActionQueue } from '@/features/daily/components/RecordActionQueue';
+import { HandoffSummaryBanner } from '@/features/daily/components/HandoffSummaryBanner';
+import { useTodayAttendanceInfo } from '@/features/daily/hooks/useTodayAttendanceInfo';
 import { CTA_EVENTS, recordCtaClick } from '@/features/today/telemetry/recordCtaClick';
 import { toLocalDateISO } from '@/utils/getNow';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import AddIcon from '@mui/icons-material/Add';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
 import Container from '@mui/material/Container';
 import Fab from '@mui/material/Fab';
-import Stack from '@mui/material/Stack';
 import { useTheme } from '@mui/material/styles';
-import Typography from '@mui/material/Typography';
 import { useEffect, useMemo, useCallback, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -54,7 +42,6 @@ import { useHandoffData } from '../features/handoff/hooks/useHandoffData';
 import type { HandoffRecord } from '../features/handoff/handoffTypes';
 import { useUsers } from '../features/users/useUsers';
 import { useSchedules } from '../stores/useSchedules';
-import { calculateAttendanceRate, getExpectedAttendeeCount } from '../utils/attendanceUtils';
 import { DailyRecordBulkActions } from './DailyRecordBulkActions';
 import { DailyRecordFilterPanel } from './DailyRecordFilterPanel';
 import {
@@ -173,6 +160,13 @@ export default function DailyRecordPage() {
     });
   }, [navigate]);
 
+  // ── Handoff Timeline 遷移 ──
+  const handleNavigateToTimeline = useCallback(() => {
+    navigate(buildHandoffTimelineUrl(), {
+      state: { dayScope: 'today', timeFilter: 'all' },
+    });
+  }, [navigate]);
+
   // MVP-004: 保存成功時に次の未入力レコードを自動表示
   const handleSaveRecordWithNext = useCallback(
     async (record: Omit<PersonDaily, 'id'>) => {
@@ -224,58 +218,12 @@ export default function DailyRecordPage() {
   }, [handoffRepo]);
 
   // MVP-005: ContextPanel data
-  const contextData: ContextPanelData = useMemo(() => {
-    if (!editingRecord) return createEmptyContextData();
-    const user = usersData?.find((u) => u.UserID === editingRecord.userId || String(u.Id) === editingRecord.userId);
-    
-    const isHighIntensity = user?.IsHighIntensitySupportTarget ?? false;
-    const isSupportProcedureTarget = user?.IsSupportProcedureTarget ?? false;
-
-    // Sprint-1 Phase C: 実データ連携 — supportPlan は Phase 3 (ISP接続)
-    const supportPlan = { status: 'none' as const, planPeriod: '', goals: [] };
-    // handoffs は handoffRecordsForContext から editingRecord のユーザーでフィルタ 
-    const handoffs: ContextHandoff[] = handoffRecordsForContext
-      .filter((h) => h.userCode === editingRecord.userId || h.userDisplayName === editingRecord.userName)
-      .map((h) => ({
-        id: String(h.id),
-        message: h.message ?? '',
-        category: h.category ?? '',
-        severity: h.severity ?? '',
-        status: h.status ?? '',
-        createdAt: h.createdAt ?? '',
-      }));
-
-    const recentRecordsBase = records
-      .filter((r) => r.userId === editingRecord.userId)
-      .sort((a, b) => b.date.localeCompare(a.date))
-      .slice(0, 5);
-
-    const alerts = buildContextAlerts({
-      supportPlan,
-      handoffs,
-      recentRecords: recentRecordsBase
-        .filter((r) => r.status === '完了')
-        .map((r) => ({ date: r.date, status: r.status })),
-      isHighIntensity,
-      isSupportProcedureTarget,
-    });
-
-    const recentRecordsForDisplay = recentRecordsBase.map((r) => ({
-      date: r.date,
-      status: r.status,
-      specialNotes: r.kind === 'A' ? r.data.specialNotes : undefined,
-    }));
-
-    return {
-      supportPlan,
-      handoffs,
-      recentRecords: recentRecordsForDisplay,
-      alerts: prioritizeContextAlerts(alerts),
-      summary: buildContextSummary(recentRecordsForDisplay, handoffs),
-      prompts: buildRecommendedPrompts(supportPlan, isHighIntensity, isSupportProcedureTarget),
-    };
-  }, [editingRecord, records, usersData, handoffRecordsForContext]);
-  const contextUserName = editingRecord?.userName ?? '';
+  const { contextData, contextUserName } = useDailyRecordContextData({
+    editingRecord: editingRecord ? { userId: editingRecord.userId, userName: editingRecord.userName } : null,
+    records,
+    usersData,
+    handoffRecordsForContext,
+  });
 
   // Phase 2-1: highlight state (auto-dismiss after 1.5s)
   const [activeHighlightUserId, setActiveHighlightUserId] = useState<string | null>(null);
@@ -294,43 +242,7 @@ export default function DailyRecordPage() {
   }, [highlightUserId, records]);
 
   // Attendance calculation
-  const todayAttendanceInfo = useMemo(() => {
-    const today = new Date();
-    if (!usersData || !schedulesData) {
-      return { expectedCount: 32, attendanceRate: 0 };
-    }
-
-    const adaptedUsers = usersData.map((user) => ({
-      Id: user.Id,
-      UserID: user.UserID,
-      FullName: user.FullName,
-      AttendanceDays: user.AttendanceDays || [],
-      ServiceStartDate: user.ServiceStartDate || undefined,
-      ServiceEndDate: user.ServiceEndDate || undefined,
-    }));
-
-    const adaptedSchedules = schedulesData.map((schedule) => ({
-      id: schedule.id,
-      userId: schedule.userId?.toString() || schedule.personId?.toString(),
-      title: schedule.title || '',
-      startLocal: schedule.startLocal || undefined,
-      startUtc: schedule.startUtc || undefined,
-      status: schedule.status,
-      category: schedule.category || undefined,
-    }));
-
-    const { expectedCount, absentUserIds } = getExpectedAttendeeCount(
-      adaptedUsers,
-      adaptedSchedules,
-      today,
-    );
-
-    const todayRecords = records.filter((r) => r.date === today.toISOString().split('T')[0]);
-    const actualCount = todayRecords.filter((r) => r.status === '完了').length;
-    const attendanceRate = calculateAttendanceRate(actualCount, expectedCount);
-
-    return { expectedCount, attendanceRate, actualCount, absentUserIds };
-  }, [usersData, schedulesData, records]);
+  const todayAttendanceInfo = useTodayAttendanceInfo(usersData, schedulesData, records);
 
   return (
     <FullScreenDailyDialogPage
@@ -360,57 +272,11 @@ export default function DailyRecordPage() {
           />
 
           {/* Handoff summary banner */}
-          {handoffTotal > 0 && (
-            <Card
-              sx={{
-                mb: 2,
-                bgcolor: handoffCritical > 0 ? 'error.50' : 'info.50',
-                border: '1px solid',
-                borderColor: handoffCritical > 0 ? 'error.200' : 'info.200',
-              }}
-              data-testid="daily-handoff-summary"
-            >
-              <CardContent>
-                <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
-                  justifyContent="space-between"
-                  alignItems={{ xs: 'flex-start', sm: 'center' }}
-                  spacing={2}
-                >
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <AccessTimeIcon
-                      color={handoffCritical > 0 ? 'error' : 'primary'}
-                      sx={{ fontSize: 32 }}
-                    />
-                    <Box>
-                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                        本日の申し送り: {handoffTotal}件
-                      </Typography>
-                      {handoffCritical > 0 && (
-                        <Typography variant="body2" color="error.main" sx={{ mt: 0.5 }}>
-                          ⚠️ 重要 {handoffCritical}件 - 要確認
-                        </Typography>
-                      )}
-                    </Box>
-                  </Stack>
-                  <Button
-                    variant="contained"
-                    size="medium"
-                    startIcon={<AccessTimeIcon />}
-                    onClick={() =>
-                      navigate(buildHandoffTimelineUrl(), {
-                        state: { dayScope: 'today', timeFilter: 'all' },
-                      })
-                    }
-                    sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
-                    data-testid="daily-handoff-summary-cta"
-                  >
-                    タイムラインで確認
-                  </Button>
-                </Stack>
-              </CardContent>
-            </Card>
-          )}
+          <HandoffSummaryBanner
+            handoffTotal={handoffTotal}
+            handoffCritical={handoffCritical}
+            onNavigateToTimeline={handleNavigateToTimeline}
+          />
 
           <DailyRecordStatsPanel
             records={records}
