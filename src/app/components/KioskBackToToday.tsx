@@ -12,8 +12,8 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSettingsContext } from '@/features/settings/SettingsContext';
 
-/** Today系パス（この配下にいるときはバーを出さない） */
-const TODAY_PATHS = ['/today', '/dashboard', '/admin/dashboard'];
+/** Today系パス（完全一致でのみバーを非表示にする） */
+const TODAY_EXACT_PATHS = new Set(['/today', '/dashboard', '/admin/dashboard']);
 
 export const KioskBackToToday: React.FC = () => {
   const { settings } = useSettingsContext();
@@ -23,8 +23,8 @@ export const KioskBackToToday: React.FC = () => {
 
   const isKiosk = settings.layoutMode === 'kiosk';
 
-  // Today 画面にいるなら非表示
-  const isOnToday = TODAY_PATHS.some((p) => location.pathname.startsWith(p));
+  // Today 画面にいるなら非表示（完全一致のみ）
+  const isOnToday = TODAY_EXACT_PATHS.has(location.pathname);
 
   if (!isKiosk || isOnToday) return null;
 
