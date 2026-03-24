@@ -21,7 +21,7 @@ import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { getAppConfig, isDemoModeEnabled } from '@/lib/env';
+import { getAppConfig, isDemoModeEnabled, SP_ENABLED } from '@/lib/env';
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -34,13 +34,14 @@ export const DataSourceBanner: React.FC = () => {
     setDismissed(true);
   }, []);
 
-  // 本番完全運用 & デモモードOFF → 非表示
-  const shouldShow = (isDev || isDemo) && !dismissed;
+  // 本番 SP 接続中 & デモモードOFF → 非表示（実データを見ているのに不安を与えない）
+  const isSpConnected = SP_ENABLED && !isDemo;
+  const shouldShow = !isSpConnected && (isDev || isDemo) && !dismissed;
   if (!shouldShow) return null;
 
   const message = isDemo
     ? '一部サンプルデータを表示しています'
-    : '通信状況によりサンプル表示に切り替わる場合があります';
+    : '開発環境: 一部デモデータで動作中';
 
   return (
     <Box
