@@ -38,6 +38,8 @@ export type { DailyUserOption } from './forms/useDailyUserOptions';
 export { getScheduleKey } from './domain/getScheduleKey';
 export { generateDailyReport } from './domain/generateDailyReport';
 export { toBipOptions } from './domain/toBipOptions';
+export { saveDailyRecord, validateDailyRecord } from './domain/dailyRecordLogic';
+export { getNextIncompleteRecord } from './domain/nextIncompleteRecord';
 
 // Domain Types
 export * from '../../domain/daily/types';
