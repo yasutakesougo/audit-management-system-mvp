@@ -1,0 +1,94 @@
+/**
+ * Global Print Styles
+ *
+ * Hides non-essential UI elements when printing (window.print).
+ * Used by Business Journal Preview and other printable pages.
+ *
+ * Import in main.tsx alongside kiosk.css.
+ */
+
+@media print {
+  /* ── Hide navigation and chrome ── */
+  /* MUI Drawer (sidebar) */
+  .MuiDrawer-root,
+  .MuiDrawer-paper {
+    display: none !important;
+  }
+
+  /* AppBar / Header */
+  .MuiAppBar-root,
+  header[class*="MuiAppBar"] {
+    display: none !important;
+  }
+
+  /* Bottom navigation / footer tabs */
+  .MuiBottomNavigation-root,
+  [data-testid="bottom-nav"] {
+    display: none !important;
+  }
+
+  /* FABs */
+  .MuiFab-root {
+    display: none !important;
+  }
+
+  /* Data source banner */
+  [data-testid="data-source-banner"] {
+    display: none !important;
+  }
+
+  /* Snackbar / Toast */
+  .MuiSnackbar-root,
+  [role="status"][aria-live="polite"] {
+    display: none !important;
+  }
+
+  /* Print/PDF button itself */
+  [data-testid="journal-print-button"] {
+    display: none !important;
+  }
+
+  /* ── Layout adjustments ── */
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Remove Container max-width for full page usage */
+  .MuiContainer-root {
+    max-width: none !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  /* Ensure content fills the page */
+  main,
+  [role="main"] {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  /* ── Table print improvements ── */
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  /* ── Preserve colors ── */
+  .MuiChip-root,
+  .MuiAlert-root {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

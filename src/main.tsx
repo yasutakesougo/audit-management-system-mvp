@@ -1,6 +1,7 @@
 import { clearEnvCache, getRuntimeEnv, isDev } from '@/env';
 import { guardProdMisconfig } from '@/lib/envGuards';
 import '@/styles/kiosk.css';
+import '@/styles/print.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import ErrorBoundary from './app/ErrorBoundary';
