@@ -9,6 +9,8 @@
 import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
 import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded';
 import SummarizeRoundedIcon from '@mui/icons-material/SummarizeRounded';
+import MeetingRoomRoundedIcon from '@mui/icons-material/MeetingRoomRounded';
+import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
 import { Box, ButtonBase, Typography } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import React from 'react';
@@ -47,6 +49,18 @@ const LINKS: KioskQuickLinkItem[] = [
     icon: <SummarizeRoundedIcon fontSize="small" />,
     href: '/meeting-minutes',
   },
+  {
+    key: 'room',
+    label: 'お部屋管理',
+    icon: <MeetingRoomRoundedIcon fontSize="small" />,
+    href: '/room-management',
+  },
+  {
+    key: 'briefing',
+    label: '朝会・夕会',
+    icon: <GroupsRoundedIcon fontSize="small" />,
+    href: '/dashboard/briefing',
+  },
 ];
 
 // ─── Component ───────────────────────────────────────────────
@@ -59,6 +73,7 @@ export const KioskQuickLinks: React.FC<KioskQuickLinksProps> = ({ onNavigate }) 
       data-testid="kiosk-quick-links"
       sx={{
         display: 'flex',
+        flexWrap: 'wrap',
         justifyContent: 'center',
         gap: 1.5,
         pt: 1.5,
