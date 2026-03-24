@@ -61,7 +61,9 @@ import { CallLogSummaryCard, type CallLogSummaryCardProps } from '@/features/cal
 import { ScheduleOpsHighLoadTile } from '../widgets/ScheduleOpsHighLoadTile';
 import type { HighLoadTileViewModel } from '../domain/buildHighLoadTileViewModel';
 import { TodayExceptionAlerts } from '../components/TodayExceptionAlerts';
+import { KioskStatusBar, type KioskStatusMetrics } from '../components/KioskStatusBar';
 import type { UseTodayExceptionsResult } from '../hooks/useTodayExceptions';
+import { useSettingsContext } from '@/features/settings/SettingsContext';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -112,6 +114,8 @@ export type TodayBentoProps = {
     onClick: () => void;
   };
   exceptionsQueue?: UseTodayExceptionsResult;
+  /** 電話・連絡ログの未対応件数 (KioskStatusBar 用、callLogSummary から派生) */
+  contactPendingCount?: number;
 };
 
 // ─── Compact Section Title ───────────────────────────────────
@@ -167,7 +171,27 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   callLogSummary,
   highLoadTile,
   exceptionsQueue,
+  contactPendingCount,
 }) => {
+  const { settings } = useSettingsContext();
+  const isKiosk = settings.layoutMode === 'kiosk';
+
+  // ── KioskStatusBar metrics ──
+  const kioskMetrics: KioskStatusMetrics | undefined = React.useMemo(() => {
+    if (!isKiosk) return undefined;
+    const recordTotal = progress.summary?.totalRecordCount || 0;
+    const recordCompleted = Math.max(0, recordTotal - (progress.summary?.pendingRecordCount || 0));
+    return {
+      recordCompleted,
+      recordTotal,
+      caseCompleted: 0, // ← TodayOpsPage で構築して渡す
+      caseTotal: 0,
+      attendeeCount: attendance.facilityAttendees || 0,
+      scheduledCount: attendance.scheduledCount || 0,
+      contactPending: contactPendingCount ?? 0,
+    };
+  }, [isKiosk, progress.summary, attendance, contactPendingCount]);
+
   return (
     <Box
       sx={{
@@ -176,6 +200,11 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
         pb: 8,
       }}
     >
+      {/* ── Kiosk Status Bar (キオスクモード専用) ── */}
+      {isKiosk && kioskMetrics && (
+        <KioskStatusBar metrics={kioskMetrics} />
+      )}
+
       {/* ── Phase Indicator: 非表示化 (Step 1) ──
        *  TodayPhaseIndicator は削除せず非表示にする。
        *  Step 2 で場面ラベルを HeroActionCard 内に統合するため残す。
@@ -356,8 +385,8 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
          *  ZONE C2: 折りたたみ — 必要時だけ開くもの
          *  ════════════════════════════════════════════════════ */}
 
-        {/* ── C2-a: 業務体制（デフォルト閉じ） ── */}
-        {serviceStructure && (
+        {/* ── C2-a: 業務体制（デフォルト閉じ） — キオスクモードでは非表示 ── */}
+        {serviceStructure && !isKiosk && (
           <BentoCard
             colSpan={{ xs: 1, sm: 2, md: 4 }}
             testId="bento-service-structure"
@@ -374,8 +403,8 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           </BentoCard>
         )}
 
-        {/* ── C2-b: 支援計画管理（管理者のみ・デフォルト閉じ） ── */}
-        {workflowCard && (
+        {/* ── C2-b: 支援計画管理（管理者のみ・デフォルト閉じ） — キオスクモードでは非表示 ── */}
+        {workflowCard && !isKiosk && (
           <BentoCard
             colSpan={{ xs: 1, sm: 2, md: 4 }}
             testId={TESTIDS.TODAY_WORKFLOW_CARD}

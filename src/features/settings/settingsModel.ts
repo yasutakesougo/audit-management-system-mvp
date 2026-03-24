@@ -20,8 +20,8 @@ export type UserSettings = {
   // Color presets (Phase 2+)
   colorPreset: 'default' | 'highContrast' | 'custom';
 
-  // Layout mode (Phase 6: Focus Mode)
-  layoutMode: 'normal' | 'focus';
+  // Layout mode (Phase 6: Focus Mode / Phase 10: Kiosk Mode)
+  layoutMode: 'normal' | 'focus' | 'kiosk';
 
   // Hidden navigation groups (sidebar menu visibility)
   hiddenNavGroups: NavGroupKey[];
@@ -75,7 +75,9 @@ export function loadSettingsFromStorage(): UserSettings {
       density: parsed.density as UserSettings['density'],
       fontSize: parsed.fontSize as UserSettings['fontSize'],
       colorPreset: parsed.colorPreset || 'default',
-      layoutMode: parsed.layoutMode || 'normal',
+      layoutMode: (['normal', 'focus', 'kiosk'] as const).includes(parsed.layoutMode)
+        ? parsed.layoutMode
+        : 'normal',
       hiddenNavGroups: Array.isArray(parsed.hiddenNavGroups) ? parsed.hiddenNavGroups : [],
       hiddenNavItems: Array.isArray(parsed.hiddenNavItems) ? parsed.hiddenNavItems : [],
       lastModified: parsed.lastModified || Date.now(),
