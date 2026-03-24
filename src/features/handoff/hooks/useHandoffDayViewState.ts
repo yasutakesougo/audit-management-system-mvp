@@ -24,7 +24,8 @@ import type { HandoffDayScope, HandoffRecord, MeetingMode } from '../handoffType
 import { useHandoffTimeline } from '../useHandoffTimeline';
 import { useHandoffTimelineViewModel } from '../useHandoffTimelineViewModel';
 import type { HandoffStats } from '../TodayHandoffTimelineList';
-import { addDays, formatDateLocal } from './useHandoffDateNav';
+import { addDays } from './useHandoffDateNav';
+import { formatDateIso } from '@/lib/dateFormat';
 
 // ────────────────────────────────────────────────────────────
 // Types
@@ -116,7 +117,7 @@ export function useHandoffDayViewState({
     (event: React.MouseEvent<HTMLElement>, newMode: string) => {
       vmHandleMeetingModeChange(event, newMode as MeetingMode);
       if (newMode === 'morning') {
-        goToDate(addDays(formatDateLocal(), -1));
+        goToDate(addDays(formatDateIso(new Date()), -1));
       } else if (newMode === 'evening') {
         goToToday();
       }

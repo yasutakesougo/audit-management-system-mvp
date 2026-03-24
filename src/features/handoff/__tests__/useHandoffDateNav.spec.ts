@@ -5,24 +5,24 @@ import {
   dateToDayScope,
   dayScopeToDate,
   formatDateLabel,
-  formatDateLocal,
   formatWeekLabel,
   getWeekRange,
   parseDateString,
   parseRange,
 } from '../hooks/useHandoffDateNav';
+import { formatDateIso } from '@/lib/dateFormat';
 
 describe('useHandoffDateNav pure helpers', () => {
-  // ── formatDateLocal ──
-  describe('formatDateLocal', () => {
+  // ── formatDateIso ──
+  describe('formatDateIso', () => {
     it('returns YYYY-MM-DD format', () => {
       const d = new Date(2026, 2, 11); // 2026-03-11
-      expect(formatDateLocal(d)).toBe('2026-03-11');
+      expect(formatDateIso(d)).toBe('2026-03-11');
     });
 
     it('zero-pads month and day', () => {
       const d = new Date(2026, 0, 5); // 2026-01-05
-      expect(formatDateLocal(d)).toBe('2026-01-05');
+      expect(formatDateIso(d)).toBe('2026-01-05');
     });
   });
 
@@ -65,24 +65,24 @@ describe('useHandoffDateNav pure helpers', () => {
   // ── dayScopeToDate / dateToDayScope ──
   describe('dayScopeToDate', () => {
     it('today returns today\'s date', () => {
-      const today = formatDateLocal();
+      const today = formatDateIso(new Date());
       expect(dayScopeToDate('today')).toBe(today);
     });
 
     it('yesterday returns yesterday\'s date', () => {
-      const yesterday = addDays(formatDateLocal(), -1);
+      const yesterday = addDays(formatDateIso(new Date()), -1);
       expect(dayScopeToDate('yesterday')).toBe(yesterday);
     });
   });
 
   describe('dateToDayScope', () => {
     it('returns "today" for today\'s date', () => {
-      const today = formatDateLocal();
+      const today = formatDateIso(new Date());
       expect(dateToDayScope(today)).toBe('today');
     });
 
     it('returns "yesterday" for yesterday', () => {
-      const yesterday = addDays(formatDateLocal(), -1);
+      const yesterday = addDays(formatDateIso(new Date()), -1);
       expect(dateToDayScope(yesterday)).toBe('yesterday');
     });
 
@@ -94,12 +94,12 @@ describe('useHandoffDateNav pure helpers', () => {
   // ── formatDateLabel ──
   describe('formatDateLabel', () => {
     it('shows 今日 for today', () => {
-      const today = formatDateLocal();
+      const today = formatDateIso(new Date());
       expect(formatDateLabel(today)).toBe('今日');
     });
 
     it('shows 昨日 for yesterday', () => {
-      const yesterday = addDays(formatDateLocal(), -1);
+      const yesterday = addDays(formatDateIso(new Date()), -1);
       expect(formatDateLabel(yesterday)).toBe('昨日');
     });
 
