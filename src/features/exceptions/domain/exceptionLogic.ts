@@ -121,6 +121,8 @@ export function detectMissingRecords(params: {
       updatedAt: targetDate,
       actionLabel: 'ケース記録',
       actionPath: `/daily/activity?userId=${encodeURIComponent(u.userId)}`,
+      secondaryActionLabel: '支援手順記録',
+      secondaryActionPath: `/daily/support?wizard=plan&user=${encodeURIComponent(u.userId)}&userId=${encodeURIComponent(u.userId)}`,
     }));
 }
 
