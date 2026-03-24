@@ -13,6 +13,7 @@ import { DataSourceBanner } from '@/app/components/DataSourceBanner';
 import { FooterQuickActions } from '@/app/components/FooterQuickActions';
 import { KioskExitFab } from '@/app/components/KioskExitFab';
 import { OfflineBanner } from '@/app/components/OfflineBanner';
+import { useKeyboardAwareScroll } from '@/hooks/useKeyboardAwareScroll';
 import { AppShellV2 } from '@/components/layout/AppShellV2';
 import { isDev } from '@/env';
 import { SettingsDialog } from '@/features/settings/SettingsDialog';
@@ -171,6 +172,9 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   // ── Wake Lock（キオスクモード時のみ） ───────────────────────────────
   useWakeLock(isKioskMode);
+
+  // ── キーボード対策（キオスクモード時のみ） ────────────────────────────
+  useKeyboardAwareScroll(isKioskMode);
 
   // ── Slots ──────────────────────────────────────────────────────────────────
 

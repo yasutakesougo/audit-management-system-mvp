@@ -110,3 +110,21 @@
 [data-kiosk='true'] .kiosk-back-nav:active {
   background: rgba(0, 0, 0, 0.08);
 }
+
+/* ───────────────────────────────────────────────────
+ * 8. Keyboard-Aware Layout
+ *    --keyboard-inset は useKeyboardAwareScroll が動的に更新
+ * ─────────────────────────────────────────────────── */
+
+/* キーボード表示時に固定要素を退避 */
+[data-kiosk='true'] [data-testid='kiosk-exit-fab'] {
+  bottom: calc(16px + var(--keyboard-inset, 0px));
+  transition:
+    opacity 0.3s ease,
+    bottom 0.3s ease;
+}
+
+/* キーボード表示時にMUIダイアログの余白を縮小 */
+[data-kiosk='true'] .MuiDialog-paper {
+  max-height: calc(100vh - var(--keyboard-inset, 0px) - 32px);
+}
