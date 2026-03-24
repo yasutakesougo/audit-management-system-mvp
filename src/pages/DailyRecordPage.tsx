@@ -13,15 +13,7 @@
 
 import { PageHeader } from '@/components/PageHeader';
 import { ContextPanel } from '@/features/context/components/ContextPanel';
-import {
-  buildContextAlerts,
-  buildContextSummary,
-  buildRecommendedPrompts,
-  createEmptyContextData,
-  prioritizeContextAlerts,
-  type ContextPanelData,
-  type ContextHandoff,
-} from '@/features/context/domain/contextPanelLogic';
+import { useDailyRecordContextData } from '@/features/daily/hooks/useDailyRecordContextData';
 import { PersonDaily } from '@/domain/daily/types';
 import { getNextIncompleteRecord, saveDailyRecord, validateDailyRecord } from '@/features/daily';
 import { NextRecordHero } from '@/features/daily/components/NextRecordHero';
@@ -226,58 +218,12 @@ export default function DailyRecordPage() {
   }, [handoffRepo]);
 
   // MVP-005: ContextPanel data
-  const contextData: ContextPanelData = useMemo(() => {
-    if (!editingRecord) return createEmptyContextData();
-    const user = usersData?.find((u) => u.UserID === editingRecord.userId || String(u.Id) === editingRecord.userId);
-    
-    const isHighIntensity = user?.IsHighIntensitySupportTarget ?? false;
-    const isSupportProcedureTarget = user?.IsSupportProcedureTarget ?? false;
-
-    // Sprint-1 Phase C: 実データ連携 — supportPlan は Phase 3 (ISP接続)
-    const supportPlan = { status: 'none' as const, planPeriod: '', goals: [] };
-    // handoffs は handoffRecordsForContext から editingRecord のユーザーでフィルタ 
-    const handoffs: ContextHandoff[] = handoffRecordsForContext
-      .filter((h) => h.userCode === editingRecord.userId || h.userDisplayName === editingRecord.userName)
-      .map((h) => ({
-        id: String(h.id),
-        message: h.message ?? '',
-        category: h.category ?? '',
-        severity: h.severity ?? '',
-        status: h.status ?? '',
-        createdAt: h.createdAt ?? '',
-      }));
-
-    const recentRecordsBase = records
-      .filter((r) => r.userId === editingRecord.userId)
-      .sort((a, b) => b.date.localeCompare(a.date))
-      .slice(0, 5);
-
-    const alerts = buildContextAlerts({
-      supportPlan,
-      handoffs,
-      recentRecords: recentRecordsBase
-        .filter((r) => r.status === '完了')
-        .map((r) => ({ date: r.date, status: r.status })),
-      isHighIntensity,
-      isSupportProcedureTarget,
-    });
-
-    const recentRecordsForDisplay = recentRecordsBase.map((r) => ({
-      date: r.date,
-      status: r.status,
-      specialNotes: r.kind === 'A' ? r.data.specialNotes : undefined,
-    }));
-
-    return {
-      supportPlan,
-      handoffs,
-      recentRecords: recentRecordsForDisplay,
-      alerts: prioritizeContextAlerts(alerts),
-      summary: buildContextSummary(recentRecordsForDisplay, handoffs),
-      prompts: buildRecommendedPrompts(supportPlan, isHighIntensity, isSupportProcedureTarget),
-    };
-  }, [editingRecord, records, usersData, handoffRecordsForContext]);
-  const contextUserName = editingRecord?.userName ?? '';
+  const { contextData, contextUserName } = useDailyRecordContextData({
+    editingRecord: editingRecord ? { userId: editingRecord.userId, userName: editingRecord.userName } : null,
+    records,
+    usersData,
+    handoffRecordsForContext,
+  });
 
   // Phase 2-1: highlight state (auto-dismiss after 1.5s)
   const [activeHighlightUserId, setActiveHighlightUserId] = useState<string | null>(null);
