@@ -62,6 +62,7 @@ import { ScheduleOpsHighLoadTile } from '../widgets/ScheduleOpsHighLoadTile';
 import type { HighLoadTileViewModel } from '../domain/buildHighLoadTileViewModel';
 import { TodayExceptionAlerts } from '../components/TodayExceptionAlerts';
 import { KioskStatusBar, type KioskStatusMetrics } from '../components/KioskStatusBar';
+import { KioskQuickLinks } from '../components/KioskQuickLinks';
 import type { UseTodayExceptionsResult } from '../hooks/useTodayExceptions';
 import { useSettingsContext } from '@/features/settings/SettingsContext';
 
@@ -116,6 +117,8 @@ export type TodayBentoProps = {
   exceptionsQueue?: UseTodayExceptionsResult;
   /** 電話・連絡ログの未対応件数 (KioskStatusBar 用、callLogSummary から派生) */
   contactPendingCount?: number;
+  /** キオスクモードでのクイックリンク遷移ハンドラ */
+  onQuickLinkNavigate?: (href: string) => void;
 };
 
 // ─── Compact Section Title ───────────────────────────────────
@@ -172,6 +175,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   highLoadTile,
   exceptionsQueue,
   contactPendingCount,
+  onQuickLinkNavigate,
 }) => {
   const { settings } = useSettingsContext();
   const isKiosk = settings.layoutMode === 'kiosk';
@@ -288,6 +292,9 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           >
             <SectionLabel emoji="📊" text="本日の進捗" />
             <ProgressRings items={progressRings} />
+            {isKiosk && onQuickLinkNavigate && (
+              <KioskQuickLinks onNavigate={onQuickLinkNavigate} />
+            )}
           </BentoCard>
         ) : (
           /* ── Legacy fallback: ProgressStatusBar + AttendanceSummaryCard ── */
