@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useExceptionDataSources } from '@/features/exceptions/hooks/useExceptionDataSources';
 import {
   detectMissingRecords,
+  detectMissingSupportLogs,
   detectCriticalHandoffs,
   detectAttentionUsers,
   aggregateExceptions,
@@ -11,6 +12,11 @@ import {
   type TodayExceptionAction,
 } from '@/features/exceptions/domain/buildTodayExceptions';
 import { useActiveExceptionPreferences } from '@/features/exceptions/hooks/useExceptionPreferences';
+
+export type UseTodayExceptionsOptions = {
+  /** 支援手順記録が未入力のユーザー一覧（todayRecordCompletion から取得） */
+  pendingSupportUsers?: Array<{ userId: string; userName: string }>;
+};
 
 export type UseTodayExceptionsResult = {
   items: TodayExceptionAction[];
@@ -26,7 +32,10 @@ export type UseTodayExceptionsResult = {
  * ExceptionCenter のデータソースフックを呼び出し、Today 向けの表示モデルに変換する。
  * Today は ExceptionCenter の Consumer として振る舞う。
  */
-export function useTodayExceptions(): UseTodayExceptionsResult {
+export function useTodayExceptions(
+  options: UseTodayExceptionsOptions = {},
+): UseTodayExceptionsResult {
+  const { pendingSupportUsers = [] } = options;
   const dataSources = useExceptionDataSources();
   const { dismissedStableIds, snoozedStableIds } = useActiveExceptionPreferences();
 
@@ -42,17 +51,74 @@ export function useTodayExceptions(): UseTodayExceptionsResult {
       targetDate: dataSources.today,
     });
 
+    const missingSupportLogs = detectMissingSupportLogs({
+      pendingUsers: pendingSupportUsers,
+      targetDate: dataSources.today,
+    });
+
     const criticalHandoffs = detectCriticalHandoffs(dataSources.criticalHandoffs);
     const attentionUsers = detectAttentionUsers(dataSources.userSummaries);
 
-    return aggregateExceptions(missingRecords, criticalHandoffs, attentionUsers);
-  }, [dataSources]);
+    return aggregateExceptions(missingRecords, missingSupportLogs, criticalHandoffs, attentionUsers);
+  }, [dataSources, pendingSupportUsers]);
 
   const items = useMemo(() => {
-    return buildTodayExceptions(exceptions, {
+    const raw = buildTodayExceptions(exceptions, {
       dismissedStableIds,
       snoozedStableIds,
     });
+
+    // ユーザー単位でマージ: 同一ユーザーの missing-record(ケース記録) と
+    // missing-support(支援手順記録) を 1アイテムに統合する。
+    // 支援手順記録のアクションは secondaryAction として付与。
+    const merged: TodayExceptionAction[] = [];
+    const userMergeMap = new Map<string, TodayExceptionAction>();
+
+    for (const item of raw) {
+      if (!item.userId) {
+        merged.push(item);
+        continue;
+      }
+
+      const isCaseRecord = item.id.startsWith('today-action-missing-') && !item.id.includes('-support-');
+      const isSupportRecord = item.id.includes('-support-');
+
+      if (isCaseRecord) {
+        // ケース記録 → primary。まずマップに登録。
+        const existing = userMergeMap.get(item.userId);
+        if (existing) {
+          // 既にsupport が先に来ていた場合（順序は保証されないので念のため）
+          existing.actionLabel = item.actionLabel;
+          existing.actionPath = item.actionPath;
+          existing.title = `${item.title.replace(/のケース記録が未入力/, '')}の記録が未入力`;
+        } else {
+          const clone = { ...item, title: item.title.replace(/のケース記録が未入力/, 'の記録が未入力') };
+          userMergeMap.set(item.userId, clone);
+          merged.push(clone);
+        }
+      } else if (isSupportRecord) {
+        // 支援手順記録 → secondary
+        const existing = userMergeMap.get(item.userId);
+        if (existing) {
+          existing.secondaryActionLabel = item.actionLabel;
+          existing.secondaryActionPath = item.actionPath;
+        } else {
+          // support が先に来た場合。primary として登録し、後でcaseが来たらマージ。
+          const clone = {
+            ...item,
+            title: item.title.replace(/の支援手順記録が未入力/, 'の記録が未入力'),
+            secondaryActionLabel: item.actionLabel,
+            secondaryActionPath: item.actionPath,
+          };
+          userMergeMap.set(item.userId, clone);
+          merged.push(clone);
+        }
+      } else {
+        merged.push(item);
+      }
+    }
+
+    return merged;
   }, [exceptions, dismissedStableIds, snoozedStableIds]);
 
   const { heroItem, queueItems } = useMemo(() => {
@@ -78,3 +144,4 @@ export function useTodayExceptions(): UseTodayExceptionsResult {
     [items, heroItem, queueItems, dataSources.status, dataSources.error, dataSources.refetchDailyRecords]
   );
 }
+

@@ -93,7 +93,20 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
 
   // ── Data Fetching (Facade) ──
   const summary = useTodaySummary();
-  const exceptionsQueue = useTodayExceptions();
+
+  // 支援手順記録の未入力ユーザーを算出（todayRecordCompletion.pendingUserIds 起点）
+  const pendingSupportUsers = useMemo(() => {
+    const completion = summary.todayRecordCompletion;
+    const pendingIds = completion?.pendingUserIds ?? [];
+    if (pendingIds.length === 0) return [];
+    const usersArr = summary.users ?? [];
+    const userMap = new Map(usersArr.map((u) => [u.UserID ?? String(u.Id), u.FullName ?? '']));
+    return pendingIds
+      .map((id) => ({ userId: id, userName: userMap.get(id) ?? id }))
+      .filter((u) => u.userName !== '');
+  }, [summary.todayRecordCompletion?.pendingUserIds, summary.users]);
+
+  const exceptionsQueue = useTodayExceptions({ pendingSupportUsers });
 
   // ── Schedule Lanes (Real-data with fallback) ──
   const realSchedule = useTodayScheduleLanes();
