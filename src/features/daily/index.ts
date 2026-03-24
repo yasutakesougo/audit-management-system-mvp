@@ -36,6 +36,8 @@ export type { DailyUserOption } from './forms/useDailyUserOptions';
 
 // Domain Utilities
 export { getScheduleKey } from './domain/getScheduleKey';
+export { generateDailyReport } from './domain/generateDailyReport';
+export { toBipOptions } from './domain/toBipOptions';
 
 // Domain Types
 export * from '../../domain/daily/types';
