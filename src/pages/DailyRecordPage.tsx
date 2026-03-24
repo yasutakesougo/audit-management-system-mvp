@@ -26,20 +26,15 @@ import { PersonDaily } from '@/domain/daily/types';
 import { getNextIncompleteRecord, saveDailyRecord, validateDailyRecord } from '@/features/daily';
 import { NextRecordHero } from '@/features/daily/components/NextRecordHero';
 import { RecordActionQueue } from '@/features/daily/components/RecordActionQueue';
+import { HandoffSummaryBanner } from '@/features/daily/components/HandoffSummaryBanner';
 import { CTA_EVENTS, recordCtaClick } from '@/features/today/telemetry/recordCtaClick';
 import { toLocalDateISO } from '@/utils/getNow';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import AddIcon from '@mui/icons-material/Add';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
 import Container from '@mui/material/Container';
 import Fab from '@mui/material/Fab';
-import Stack from '@mui/material/Stack';
 import { useTheme } from '@mui/material/styles';
-import Typography from '@mui/material/Typography';
 import { useEffect, useMemo, useCallback, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -168,6 +163,13 @@ export default function DailyRecordPage() {
       stateType: 'navigation',
       targetUrl: '/handoff/timeline',
     });
+    navigate(buildHandoffTimelineUrl(), {
+      state: { dayScope: 'today', timeFilter: 'all' },
+    });
+  }, [navigate]);
+
+  // ── Handoff Timeline 遷移 ──
+  const handleNavigateToTimeline = useCallback(() => {
     navigate(buildHandoffTimelineUrl(), {
       state: { dayScope: 'today', timeFilter: 'all' },
     });
@@ -360,57 +362,11 @@ export default function DailyRecordPage() {
           />
 
           {/* Handoff summary banner */}
-          {handoffTotal > 0 && (
-            <Card
-              sx={{
-                mb: 2,
-                bgcolor: handoffCritical > 0 ? 'error.50' : 'info.50',
-                border: '1px solid',
-                borderColor: handoffCritical > 0 ? 'error.200' : 'info.200',
-              }}
-              data-testid="daily-handoff-summary"
-            >
-              <CardContent>
-                <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
-                  justifyContent="space-between"
-                  alignItems={{ xs: 'flex-start', sm: 'center' }}
-                  spacing={2}
-                >
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <AccessTimeIcon
-                      color={handoffCritical > 0 ? 'error' : 'primary'}
-                      sx={{ fontSize: 32 }}
-                    />
-                    <Box>
-                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                        本日の申し送り: {handoffTotal}件
-                      </Typography>
-                      {handoffCritical > 0 && (
-                        <Typography variant="body2" color="error.main" sx={{ mt: 0.5 }}>
-                          ⚠️ 重要 {handoffCritical}件 - 要確認
-                        </Typography>
-                      )}
-                    </Box>
-                  </Stack>
-                  <Button
-                    variant="contained"
-                    size="medium"
-                    startIcon={<AccessTimeIcon />}
-                    onClick={() =>
-                      navigate(buildHandoffTimelineUrl(), {
-                        state: { dayScope: 'today', timeFilter: 'all' },
-                      })
-                    }
-                    sx={{ minWidth: { xs: '100%', sm: 'auto' } }}
-                    data-testid="daily-handoff-summary-cta"
-                  >
-                    タイムラインで確認
-                  </Button>
-                </Stack>
-              </CardContent>
-            </Card>
-          )}
+          <HandoffSummaryBanner
+            handoffTotal={handoffTotal}
+            handoffCritical={handoffCritical}
+            onNavigateToTimeline={handleNavigateToTimeline}
+          />
 
           <DailyRecordStatsPanel
             records={records}
