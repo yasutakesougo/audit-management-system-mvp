@@ -1,21 +1,21 @@
 /**
- * KioskStatusBar — キオスクモード専用ステータスバー
+ * KioskStatusBar — キオスクモード専用ステータスバー (v2: 行動指標)
  *
- * Today画面上部に常時表示。1行で業務進捗が把握できる。
+ * Today画面上部に常時表示。
  *
- * 表示内容:
- *   - 現在時刻（リアルタイム更新）
- *   - 支援記録 完了/全件
- *   - ケース記録 完了/全件
- *   - 出席数
- *   - 未対応連絡件数
- *   - オンライン/オフライン状態
+ * v1: 支援記録 8/12  ケース記録 0/5  出席 18/20  連絡 2件
+ * v2: 残り4件  ⚠️要対応2件  出席18名
+ *
+ * 設計原則: 「あと何件で終わるか」が一瞬でわかる
  */
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Typography from '@mui/material/Typography';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
+import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
 import WifiIcon from '@mui/icons-material/Wifi';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
 import React from 'react';
@@ -47,31 +47,6 @@ function useCurrentTime() {
   return time;
 }
 
-type StatusChipProps = {
-  label: string;
-  completed: number;
-  total: number;
-};
-
-function StatusChip({ label, completed, total }: StatusChipProps) {
-  const done = completed >= total && total > 0;
-  return (
-    <Chip
-      icon={done ? <CheckCircleIcon /> : <ErrorOutlineIcon />}
-      label={`${label} ${completed}/${total}`}
-      size="small"
-      color={done ? 'success' : completed > 0 ? 'warning' : 'error'}
-      variant="outlined"
-      sx={{
-        fontWeight: 700,
-        fontSize: '0.8rem',
-        height: 32,
-        '& .MuiChip-icon': { fontSize: '1rem' },
-      }}
-    />
-  );
-}
-
 export const KioskStatusBar: React.FC<{ metrics: KioskStatusMetrics }> = ({ metrics }) => {
   const now = useCurrentTime();
   const { isOnline } = useNetworkStatus();
@@ -80,6 +55,15 @@ export const KioskStatusBar: React.FC<{ metrics: KioskStatusMetrics }> = ({ metr
     hour: '2-digit',
     minute: '2-digit',
   });
+
+  // ── v2: 行動指標の導出 ──
+  const remainingRecords = Math.max(0, metrics.recordTotal - metrics.recordCompleted);
+  const remainingCases = Math.max(0, metrics.caseTotal - metrics.caseCompleted);
+  const remainingCount = remainingRecords + remainingCases;
+  const attentionCount = remainingCount + metrics.contactPending;
+
+  const isDone = remainingCount === 0 && metrics.contactPending === 0;
+  const isDanger = attentionCount > 0;
 
   return (
     <Box
@@ -90,11 +74,12 @@ export const KioskStatusBar: React.FC<{ metrics: KioskStatusMetrics }> = ({ metr
         gap: 1.5,
         px: 2,
         py: 1,
-        bgcolor: 'background.paper',
-        borderBottom: '1px solid',
-        borderColor: 'divider',
+        bgcolor: isDanger ? 'error.50' : 'background.paper',
+        borderBottom: '2px solid',
+        borderColor: isDanger ? 'error.main' : isDone ? 'success.main' : 'divider',
         flexWrap: 'wrap',
         minHeight: 48,
+        transition: 'background-color 0.3s ease, border-color 0.3s ease',
       }}
     >
       {/* 現在時刻 */}
@@ -110,18 +95,73 @@ export const KioskStatusBar: React.FC<{ metrics: KioskStatusMetrics }> = ({ metr
         🕐 {timeStr}
       </Typography>
 
-      {/* 業務指標 */}
-      <StatusChip label="支援記録" completed={metrics.recordCompleted} total={metrics.recordTotal} />
-      <StatusChip label="ケース記録" completed={metrics.caseCompleted} total={metrics.caseTotal} />
-      <StatusChip label="出席" completed={metrics.attendeeCount} total={metrics.scheduledCount} />
-
-      {/* 連絡 */}
+      {/* 残り件数 */}
       <Chip
-        label={`連絡 ${metrics.contactPending}件`}
+        icon={isDone ? <AssignmentTurnedInIcon /> : <ErrorOutlineIcon />}
+        label={isDone ? '✅ 全件完了' : `📊 残り${remainingCount}件`}
         size="small"
-        color={metrics.contactPending === 0 ? 'success' : 'warning'}
+        color={isDone ? 'success' : remainingCount > 3 ? 'error' : 'warning'}
+        variant={isDone ? 'filled' : 'outlined'}
+        sx={{
+          fontWeight: 700,
+          fontSize: '0.85rem',
+          height: 34,
+          '& .MuiChip-icon': { fontSize: '1.1rem' },
+        }}
+      />
+
+      {/* 要対応件数（未記録 + 未対応連絡） */}
+      {attentionCount > 0 && (
+        <Chip
+          icon={<WarningAmberIcon />}
+          label={`⚠️ 要対応${attentionCount}件`}
+          size="small"
+          color="error"
+          variant="outlined"
+          sx={{
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            height: 34,
+            '& .MuiChip-icon': { fontSize: '1.1rem' },
+            animation: attentionCount > 3 ? 'status-pulse 2s infinite' : 'none',
+            '@keyframes status-pulse': {
+              '0%': { opacity: 1 },
+              '50%': { opacity: 0.6 },
+              '100%': { opacity: 1 },
+            },
+          }}
+        />
+      )}
+
+      {/* 完了した時のみ表示 */}
+      {isDone && (
+        <Chip
+          icon={<CheckCircleIcon />}
+          label="お疲れさまです！"
+          size="small"
+          color="success"
+          variant="filled"
+          sx={{
+            fontWeight: 700,
+            fontSize: '0.8rem',
+            height: 34,
+          }}
+        />
+      )}
+
+      {/* 出席実数 */}
+      <Chip
+        icon={<PeopleAltIcon />}
+        label={`出席${metrics.attendeeCount}名`}
+        size="small"
+        color="default"
         variant="outlined"
-        sx={{ fontWeight: 700, fontSize: '0.8rem', height: 32 }}
+        sx={{
+          fontWeight: 700,
+          fontSize: '0.8rem',
+          height: 32,
+          '& .MuiChip-icon': { fontSize: '1rem' },
+        }}
       />
 
       {/* スペーサー */}
