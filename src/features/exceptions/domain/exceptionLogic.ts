@@ -35,6 +35,9 @@ export type ExceptionItem = {
   updatedAt: string;
   actionLabel?: string;
   actionPath?: string;
+  /** セカンダリアクション（例: 支援記録確認用リンク） */
+  secondaryActionLabel?: string;
+  secondaryActionPath?: string;
   /** Action Engine 提案の安定ID（dismiss/snooze 追跡用） */
   stableId?: string;
 };
@@ -116,8 +119,10 @@ export function detectMissingRecords(params: {
       targetUserId: u.userId,
       targetDate,
       updatedAt: targetDate,
-      actionLabel: '記録を作成',
+      actionLabel: 'ケース記録',
       actionPath: `/daily/activity?userId=${encodeURIComponent(u.userId)}`,
+      secondaryActionLabel: '支援手順記録',
+      secondaryActionPath: `/daily/support?wizard=plan&user=${encodeURIComponent(u.userId)}&userId=${encodeURIComponent(u.userId)}`,
     }));
 }
 

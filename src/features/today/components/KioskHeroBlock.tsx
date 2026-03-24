@@ -58,12 +58,6 @@ const InlineAlertItem: React.FC<{
   return (
     <Box
       data-testid={`kiosk-inline-alert-${item.id}`}
-      onClick={() => onNavigate(item.actionPath)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') onNavigate(item.actionPath);
-      }}
       sx={{
         display: 'flex',
         alignItems: 'center',
@@ -75,20 +69,6 @@ const InlineAlertItem: React.FC<{
           isHigh ? theme.palette.error.main : theme.palette.warning.main,
           0.08,
         ),
-        cursor: 'pointer',
-        transition: 'background-color 0.2s ease',
-        '&:hover': {
-          bgcolor: alpha(
-            isHigh ? theme.palette.error.main : theme.palette.warning.main,
-            0.16,
-          ),
-        },
-        '&:active': {
-          bgcolor: alpha(
-            isHigh ? theme.palette.error.main : theme.palette.warning.main,
-            0.24,
-          ),
-        },
       }}
     >
       <WarningAmberRoundedIcon
@@ -109,16 +89,44 @@ const InlineAlertItem: React.FC<{
       >
         {item.title}
       </Typography>
+      {/* セカンダリアクション（支援記録など） */}
+      {item.secondaryActionPath && (
+        <Chip
+          label={item.secondaryActionLabel ?? '確認'}
+          size="small"
+          icon={<ArrowForwardRoundedIcon sx={{ fontSize: '0.85rem !important' }} />}
+          onClick={(e) => {
+            e.stopPropagation();
+            onNavigate(item.secondaryActionPath!);
+          }}
+          sx={{
+            fontWeight: 600,
+            fontSize: '0.7rem',
+            height: 26,
+            flexShrink: 0,
+            '& .MuiChip-icon': { ml: '4px', mr: '-2px' },
+            cursor: 'pointer',
+          }}
+          color="default"
+          variant="outlined"
+        />
+      )}
+      {/* プライマリアクション（記録を作成） */}
       <Chip
         label={item.actionLabel ?? '対応'}
         size="small"
         icon={<ArrowForwardRoundedIcon sx={{ fontSize: '0.85rem !important' }} />}
+        onClick={(e) => {
+          e.stopPropagation();
+          onNavigate(item.actionPath);
+        }}
         sx={{
           fontWeight: 600,
           fontSize: '0.7rem',
           height: 26,
           flexShrink: 0,
           '& .MuiChip-icon': { ml: '4px', mr: '-2px' },
+          cursor: 'pointer',
         }}
         color={isHigh ? 'error' : 'warning'}
         variant="outlined"
