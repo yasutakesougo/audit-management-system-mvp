@@ -18,7 +18,7 @@ import { TESTIDS } from '@/testids';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
-import React from 'react';
+import React, { useCallback } from 'react';
 
 import { generateMockData } from './businessJournalPreview.mock';
 import { BusinessJournalPreviewControls, type MonthOption } from './BusinessJournalPreviewControls';
@@ -48,6 +48,11 @@ export default function BusinessJournalPreviewPage() {
 
   const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
   const dayHeaders = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  // 印刷 / PDF保存
+  const handlePrint = useCallback(() => {
+    window.print();
+  }, []);
 
   // Generate month options (current month ± 6 months)
   const monthOptions = React.useMemo<MonthOption[]>(() => {
@@ -90,6 +95,7 @@ export default function BusinessJournalPreviewPage() {
           selectedMonth={selectedMonth}
           monthOptions={monthOptions}
           onMonthChange={handleMonthChange}
+          onPrint={handlePrint}
         />
 
         <BusinessJournalPreviewGrid
