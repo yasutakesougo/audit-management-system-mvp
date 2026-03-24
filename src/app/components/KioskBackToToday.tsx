@@ -13,7 +13,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useSettingsContext } from '@/features/settings/SettingsContext';
 
 /** Today系パス（この配下にいるときはバーを出さない） */
-const TODAY_PATHS = ['/dashboard', '/admin/dashboard'];
+const TODAY_PATHS = ['/today', '/dashboard', '/admin/dashboard'];
 
 export const KioskBackToToday: React.FC = () => {
   const { settings } = useSettingsContext();
@@ -43,7 +43,7 @@ export const KioskBackToToday: React.FC = () => {
       }}
     >
       <ButtonBase
-        onClick={() => navigate('/dashboard')}
+        onClick={() => navigate('/today')}
         sx={{
           display: 'flex',
           alignItems: 'center',
