@@ -62,7 +62,7 @@ import { ScheduleOpsHighLoadTile } from '../widgets/ScheduleOpsHighLoadTile';
 import type { HighLoadTileViewModel } from '../domain/buildHighLoadTileViewModel';
 import { TodayExceptionAlerts } from '../components/TodayExceptionAlerts';
 import { KioskStatusBar, type KioskStatusMetrics } from '../components/KioskStatusBar';
-import { KioskQuickLinks } from '../components/KioskQuickLinks';
+import { KioskHeroBlock } from '../components/KioskHeroBlock';
 import type { UseTodayExceptionsResult } from '../hooks/useTodayExceptions';
 import { useSettingsContext } from '@/features/settings/SettingsContext';
 
@@ -222,28 +222,57 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
       {/* ── Bento Grid ── */}
       <BentoContainer sx={{ mt: 2 }}>
 
-        <TodayExceptionAlerts exceptionsQueue={exceptionsQueue} />
-
         {/* ════════════════════════════════════════════════════
-         *  ZONE A: ヒーローゾーン — 「今やること」が1つ見える
-         *  Step 2: HeroActionCard (sceneAction 優先 → NextActionCard fallback)
+         *  キオスクモード: KioskHeroBlock（統合ブロック）
+         *  Hero + アラート + 進捗 + QuickLinks を1ブロックに
          *  ════════════════════════════════════════════════════ */}
-        <BentoCard
-          colSpan={{ xs: 1, sm: 2, md: 4 }}
-          variant="accent"
-          testId={TESTIDS.TODAY_HERO}
-          sx={{ py: { xs: 2.5, sm: 3 } }}
-        >
-          <HeroActionCard
-            sceneAction={sceneAction}
-            onSceneAction={onSceneAction}
-            nextAction={nextAction}
-            onEmptyAction={nextActionEmptyAction}
-            onMenuAction={nextActionMenuAction}
-            scheduleDetailHref={scheduleDetailHref}
-            onNavigate={onNextActionNavigate}
-          />
-        </BentoCard>
+        {isKiosk ? (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            variant="accent"
+            testId={TESTIDS.TODAY_HERO}
+            sx={{ py: { xs: 2.5, sm: 3 } }}
+          >
+            <KioskHeroBlock
+              heroProps={{
+                sceneAction,
+                onSceneAction,
+                nextAction,
+                onEmptyAction: nextActionEmptyAction,
+                onMenuAction: nextActionMenuAction,
+                scheduleDetailHref,
+                onNavigate: onNextActionNavigate,
+              }}
+              exceptionsQueue={exceptionsQueue}
+              progressRings={progressRings}
+              onQuickLinkNavigate={onQuickLinkNavigate}
+            />
+          </BentoCard>
+        ) : (
+          /* ════════════════════════════════════════════════════
+           *  通常モード: 既存のレイアウト（変更なし）
+           *  ════════════════════════════════════════════════════ */
+          <>
+            <TodayExceptionAlerts exceptionsQueue={exceptionsQueue} />
+
+            <BentoCard
+              colSpan={{ xs: 1, sm: 2, md: 4 }}
+              variant="accent"
+              testId={TESTIDS.TODAY_HERO}
+              sx={{ py: { xs: 2.5, sm: 3 } }}
+            >
+              <HeroActionCard
+                sceneAction={sceneAction}
+                onSceneAction={onSceneAction}
+                nextAction={nextAction}
+                onEmptyAction={nextActionEmptyAction}
+                onMenuAction={nextActionMenuAction}
+                scheduleDetailHref={scheduleDetailHref}
+                onNavigate={onNextActionNavigate}
+              />
+            </BentoCard>
+          </>
+        )}
 
         {/* ── ActionQueue 系: 非表示化 (Step 1) ──
          *  Step 2 で HeroActionCard に統合予定。コンポーネントは残す。
@@ -280,10 +309,9 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
         )}
 
         {/* ════════════════════════════════════════════════════
-         *  ZONE B: 進捗ダッシュ — 「あとどれくらいか」がわかる
-         *  Step 3: ProgressRings (3指標圧縮) or legacy fallback
+         *  ZONE B: 進捗ダッシュ — 通常モードのみ（キオスクは HeroBlock に統合）
          *  ════════════════════════════════════════════════════ */}
-        {progressRings ? (
+        {!isKiosk && progressRings ? (
           <BentoCard
             colSpan={{ xs: 1, sm: 2, md: 4 }}
             variant="default"
@@ -292,9 +320,6 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           >
             <SectionLabel emoji="📊" text="本日の進捗" />
             <ProgressRings items={progressRings} />
-            {isKiosk && onQuickLinkNavigate && (
-              <KioskQuickLinks onNavigate={onQuickLinkNavigate} />
-            )}
           </BentoCard>
         ) : (
           /* ── Legacy fallback: ProgressStatusBar + AttendanceSummaryCard ── */
