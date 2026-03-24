@@ -1,7 +1,7 @@
 import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 import type { RecordPanelLockState } from '@/features/daily/components/split-stream/RecordPanel';
 import type { ABCRecord } from '@/domain/behavior';
-import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
+import { getScheduleKey } from '@/features/daily';
 import type { BehaviorRepository, ProcedureRepository } from '@/features/daily';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 

@@ -34,6 +34,9 @@ export { DailyRecordList } from './lists/DailyRecordList';
 export { useDailyUserOptions } from './forms/useDailyUserOptions';
 export type { DailyUserOption } from './forms/useDailyUserOptions';
 
+// Domain Utilities
+export { getScheduleKey } from './domain/getScheduleKey';
+
 // Domain Types
 export * from '../../domain/daily/types';
 export * from './domain/daily/types';

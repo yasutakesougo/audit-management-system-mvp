@@ -1,5 +1,5 @@
 import { buildIcebergPdcaUrl } from '@/app/links/navigationLinks';
-import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
+import { getScheduleKey } from '@/features/daily';
 import { useInterventionStore } from '@/features/analysis/stores/interventionStore';
 import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
 import { MonitoringCountdown } from '@/features/daily/components/MonitoringCountdown';
