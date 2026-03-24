@@ -12,6 +12,7 @@ import LiveAnnouncer from '@/a11y/LiveAnnouncer';
 import { DataSourceBanner } from '@/app/components/DataSourceBanner';
 import { FooterQuickActions } from '@/app/components/FooterQuickActions';
 import { KioskExitFab } from '@/app/components/KioskExitFab';
+import { KioskBackToToday } from '@/app/components/KioskBackToToday';
 import { OfflineBanner } from '@/app/components/OfflineBanner';
 import { useKeyboardAwareScroll } from '@/hooks/useKeyboardAwareScroll';
 import { AppShellV2 } from '@/components/layout/AppShellV2';
@@ -221,6 +222,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           >
             <OfflineBanner />
             <DataSourceBanner />
+            <KioskBackToToday />
             {children}
           </AppShellV2>
 
