@@ -73,12 +73,7 @@ export interface HandoffDateNavActions {
 // Pure helpers
 // ────────────────────────────────────────────────────────────
 
-/** YYYY-MM-DD を JST で生成 (timezone-safe)
- * @deprecated 内部実装は formatDateIso に委譲。デフォルト引数の維持のため wrapper を残す。
- */
-export function formatDateLocal(d: Date = new Date()): string {
-  return formatDateIso(d);
-}
+
 
 /** YYYY-MM-DD 文字列 → Date */
 export function parseDateString(s: string): Date | null {
@@ -95,12 +90,12 @@ export function addDays(dateStr: string, n: number): string {
   const d = parseDateString(dateStr);
   if (!d) return dateStr;
   d.setDate(d.getDate() + n);
-  return formatDateLocal(d);
+  return formatDateIso(d);
 }
 
 /** dayScope → date 変換 */
 export function dayScopeToDate(scope: HandoffDayScope): string {
-  const today = formatDateLocal();
+  const today = formatDateIso(new Date());
   if (scope === 'yesterday') {
     return addDays(today, -1);
   }
@@ -110,7 +105,7 @@ export function dayScopeToDate(scope: HandoffDayScope): string {
 
 /** date → dayScope への逆変換 (互換用) */
 export function dateToDayScope(dateStr: string): HandoffDayScope {
-  const today = formatDateLocal();
+  const today = formatDateIso(new Date());
   const yesterday = addDays(today, -1);
   if (dateStr === today) return 'today';
   if (dateStr === yesterday) return 'yesterday';
@@ -120,7 +115,7 @@ export function dateToDayScope(dateStr: string): HandoffDayScope {
 
 /** 日本語で日付ラベルを生成 */
 export function formatDateLabel(dateStr: string): string {
-  const today = formatDateLocal();
+  const today = formatDateIso(new Date());
   const yesterday = addDays(today, -1);
 
   if (dateStr === today) return '今日';
@@ -153,7 +148,7 @@ export function getWeekRange(dateStr: string): [string, string] {
   const d = parseDateString(dateStr);
   if (!d) {
     // fallback: 今日の週
-    return getWeekRange(formatDateLocal());
+    return getWeekRange(formatDateIso(new Date()));
   }
   // JS getDay: 0=Sun → offset=6, 1=Mon → offset=0, ..., 6=Sat → offset=5
   const jsDay = d.getDay();
@@ -162,7 +157,7 @@ export function getWeekRange(dateStr: string): [string, string] {
   monday.setDate(d.getDate() - offset);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
-  return [formatDateLocal(monday), formatDateLocal(sunday)];
+  return [formatDateIso(monday), formatDateIso(sunday)];
 }
 
 /** 基準日を +/- n 週移動 (7日単位) */
@@ -190,13 +185,13 @@ export function formatWeekLabel(startStr: string, endStr: string): string {
 export function getMonthRange(dateStr: string): [string, string] {
   const d = parseDateString(dateStr);
   if (!d) {
-    return getMonthRange(formatDateLocal());
+    return getMonthRange(formatDateIso(new Date()));
   }
   const year = d.getFullYear();
   const month = d.getMonth();
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0); // 翌月0日 = 今月末日
-  return [formatDateLocal(firstDay), formatDateLocal(lastDay)];
+  return [formatDateIso(firstDay), formatDateIso(lastDay)];
 }
 
 /** 基準日を +/- n 月移動 (同日を維持。28→28, 31→末日clamp) */
@@ -208,7 +203,7 @@ export function addMonths(dateStr: string, n: number): string {
   const normalizedMonth = ((targetMonth % 12) + 12) % 12;
   const maxDay = new Date(targetYear, normalizedMonth + 1, 0).getDate();
   const day = Math.min(d.getDate(), maxDay);
-  return formatDateLocal(new Date(targetYear, normalizedMonth, day));
+  return formatDateIso(new Date(targetYear, normalizedMonth, day));
 }
 
 /** 月ラベル: "2026年3月" */
@@ -247,13 +242,13 @@ export function useHandoffDateNav(): HandoffDateNavState & HandoffDateNavActions
     if (navState?.dayScope) return dayScopeToDate(navState.dayScope);
 
     // 3. fallback: 今日
-    return formatDateLocal();
+    return formatDateIso(new Date());
   }, [searchParams, navState?.dayScope]);
 
   const range = parseRange(searchParams.get('range'));
   const dayScope = dateToDayScope(resolvedDate);
   const entryMode: EntryMode = navState?.from === 'today' ? 'from-today' : 'direct';
-  const todayStr = formatDateLocal();
+  const todayStr = formatDateIso(new Date());
   const isToday = resolvedDate === todayStr;
 
   // ── Week range ─────────────────────────────────────────────
