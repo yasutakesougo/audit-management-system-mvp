@@ -17,6 +17,7 @@ import { useMemo } from 'react';
 import { useSupportRecordCompletion } from '../hooks/useSupportRecordCompletion';
 import type { SupportRecordCompletionSummary } from '../hooks/useSupportRecordCompletion';
 import type { ServiceStructure } from './serviceStructure.types';
+import { buildServiceStructure } from './buildServiceStructure';
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
 import type { IUserMaster } from '@/sharepoint/fields';
 import type { AttendanceVisitSnapshot } from '@/features/dashboard/selectors/useAttendanceAnalytics';
@@ -59,43 +60,7 @@ const generateMockActivityRecords = () => [];
 const mockAttendanceCounts = { onDuty: 0, out: 0, absent: 0, total: 0 };
 const mockSpSyncStatus = { loading: false, error: null, itemCount: 0, source: 'demo' as const };
 
-/** 業務体制モック — staff 名からデモ配置を生成 */
-function buildMockServiceStructure(staffNames: string[]): ServiceStructure {
-  const s = (i: number) => staffNames[i % staffNames.length] ?? '未定';
-  return {
-    dayCare: {
-      floorWatchStaff: [s(0), s(1)],
-      activityLeadStaff: [s(2)],
-      mealSupportStaff: [s(3)],
-      recordCheckStaff: [s(4)],
-      returnAcceptStaff: [s(5)],
-    },
-    lifeSupport: {
-      shortStayCount: 1,
-      temporaryCareCount: 2,
-      intakeDeskStaff: [s(1)],
-      supportStaff: [s(3), s(5)],
-      coordinatorStaff: [s(4)],
-      notes: ['送迎時間確認あり'],
-    },
-    decisionSupport: {
-      directorPresent: true,
-      serviceManagerPresent: true,
-      nursePresent: true,
-      directorNames: [s(0)],
-      serviceManagerNames: [s(4)],
-      nurseNames: [s(2)],
-    },
-    operationalSupport: {
-      accountantPresent: true,
-      accountantNames: [s(3)],
-      mealStaff: [s(5), s(6 % staffNames.length)],
-      transportStaff: [s(1), s(7 % staffNames.length)],
-      volunteerStaff: [s(6 % staffNames.length)],
-      visitorNames: [s(7 % staffNames.length)],
-    },
-  };
-}
+// buildMockServiceStructure は削除 → buildServiceStructure.ts に移行済み
 
 /**
  * Today Summary Facade
@@ -125,13 +90,10 @@ export function useTodaySummary(): TodaySummary {
     spSyncStatus: mockSpSyncStatus,
   });
 
-  // ─── 3. Service Structure (Today-only: facade 内で生成) ───
+  // ─── 3. Service Structure (Today-only: スケジュール staffLane + Staff マスタから導出) ───
   const serviceStructure = useMemo(
-    () => {
-      const staffNames = staff.map((s) => s.name ?? `職員${staff.indexOf(s) + 1}`);
-      return buildMockServiceStructure(staffNames);
-    },
-    [staff],
+    () => buildServiceStructure(full.scheduleLanesToday.staffLane, staff),
+    [full.scheduleLanesToday.staffLane, staff],
   );
 
   // ─── 3b. Support Record Completion (Today-only) ───
