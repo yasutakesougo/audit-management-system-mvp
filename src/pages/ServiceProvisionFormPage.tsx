@@ -208,7 +208,7 @@ const ServiceProvisionFormPage: React.FC = () => {
         <Stack direction="row" alignItems="center" spacing={2}>
           <SyncIcon color="info" />
           <Box sx={{ flex: 1 }}>
-            <Typography variant="subtitle2">通園管理データを同期</Typography>
+            <Typography variant="subtitle2">通所管理データを同期</Typography>
             <Typography variant="caption" color="text.secondary">
               /daily/attendance の入退所データをサービス提供実績に変換します
             </Typography>

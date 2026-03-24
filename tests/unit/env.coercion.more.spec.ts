@@ -10,6 +10,8 @@ const TRACKED_ENV_KEYS = [
   'VITE_MSAL_LOGIN_SCOPES',
   'VITE_SKIP_LOGIN',
   'VITE_DEMO_MODE',
+  'VITE_MSAL_CLIENT_ID',
+  'VITE_MSAL_TENANT_ID',
 ] as const;
 
 const originalEnv = TRACKED_ENV_KEYS.reduce<Record<string, string | undefined>>((acc, key) => {
@@ -104,7 +106,12 @@ describe('SharePoint scope precedence', () => {
     setProcessEnv('VITE_SP_RESOURCE', 'https://contoso.sharepoint.com');
     setProcessEnv('VITE_SP_SITE_RELATIVE', '/sites/demo');
     setProcessEnv('VITE_SP_SCOPE_DEFAULT', 'https://contoso.sharepoint.com/AllSites.FullControl');
+    // Provide required MSAL env vars so module-level schema validation doesn't warn
+    setProcessEnv('VITE_MSAL_CLIENT_ID', 'test-client-id');
+    setProcessEnv('VITE_MSAL_TENANT_ID', 'test-tenant-id');
     const env = await loadEnvModule();
+    // Reset call history so only post-load behavior is asserted
+    warnSpy.mockClear();
 
     const scope = env.getSharePointDefaultScope();
 
@@ -117,7 +124,12 @@ describe('SharePoint scope precedence', () => {
     setProcessEnv('VITE_SP_SCOPE_DEFAULT', '   ');
     setProcessEnv('VITE_SP_RESOURCE', 'https://example.com/resource');
     setProcessEnv('VITE_SP_SITE_RELATIVE', '/sites/demo');
+    // Provide required MSAL env vars so module-level schema validation doesn't warn
+    setProcessEnv('VITE_MSAL_CLIENT_ID', 'test-client-id');
+    setProcessEnv('VITE_MSAL_TENANT_ID', 'test-tenant-id');
     const env = await loadEnvModule();
+    // Reset call history so only post-load behavior is asserted
+    warnSpy.mockClear();
 
     expect(() => env.getSharePointDefaultScope()).toThrow(
       'VITE_SP_SCOPE_DEFAULT is required (e.g. https://{host}.sharepoint.com/AllSites.Read)'
