@@ -9,6 +9,7 @@ export {
   detectAttentionUsers,
   detectCriticalHandoffs,
   detectMissingRecords,
+  detectMissingSupportLogs,
   EXCEPTION_CATEGORIES,
   SEVERITY_ORDER,
 } from './domain/exceptionLogic';
