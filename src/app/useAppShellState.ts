@@ -112,20 +112,33 @@ export function useAppShellState() {
     }));
   }, [dashboardPath, currentRole, schedulesEnabled, complianceFormEnabled, icebergPdcaEnabled, staffAttendanceEnabled, todayOps, isAdmin, authzReady, navAudience]);
 
+  const isKiosk = settings.layoutMode === 'kiosk';
+
   const filteredNavItems = useMemo(() => {
     const searched = filterNavItems(navItems, navQuery);
+
+    // ── Kiosk mode: 現場で使う導線だけに絞る ──────────────────────────
+    // Today → 進捗 → 各記録に直接飛べるため「日次記録」「健康記録」は非表示。
+    // daily 以外のグループ (assessment, record, ops, admin) もキオスクでは不要。
+    const KIOSK_HIDDEN_PATHS = ['/dailysupport', '/daily/health'];
+    const KIOSK_ALLOWED_GROUPS = new Set(['daily']);
+
     // Hide groups that user has disabled in settings
     const hiddenGroups = settings.hiddenNavGroups;
     const hiddenItems = settings.hiddenNavItems;
-    if (hiddenGroups.length === 0 && hiddenItems.length === 0) return searched;
+
     return searched.filter((item) => {
-      // Filter by group
+      // Kiosk filtering
+      if (isKiosk) {
+        if (item.group && !KIOSK_ALLOWED_GROUPS.has(item.group)) return false;
+        if (KIOSK_HIDDEN_PATHS.includes(item.to)) return false;
+      }
+      // User preference filtering
       if (item.group && hiddenGroups.includes(item.group)) return false;
-      // Filter by individual item path
       if (hiddenItems.includes(item.to)) return false;
       return true;
     });
-  }, [navItems, navQuery, settings.hiddenNavGroups, settings.hiddenNavItems]);
+  }, [navItems, navQuery, settings.hiddenNavGroups, settings.hiddenNavItems, isKiosk]);
   const groupedNavItems = useMemo(() => groupNavItems(filteredNavItems, isAdmin), [filteredNavItems, isAdmin]);
 
   // ── Callbacks ──────────────────────────────────────────────────────────────

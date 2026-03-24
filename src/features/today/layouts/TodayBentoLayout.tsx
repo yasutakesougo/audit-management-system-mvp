@@ -62,6 +62,7 @@ import { ScheduleOpsHighLoadTile } from '../widgets/ScheduleOpsHighLoadTile';
 import type { HighLoadTileViewModel } from '../domain/buildHighLoadTileViewModel';
 import { TodayExceptionAlerts } from '../components/TodayExceptionAlerts';
 import { KioskStatusBar, type KioskStatusMetrics } from '../components/KioskStatusBar';
+import { KioskQuickLinks } from '../components/KioskQuickLinks';
 import type { UseTodayExceptionsResult } from '../hooks/useTodayExceptions';
 import { useSettingsContext } from '@/features/settings/SettingsContext';
 
@@ -116,6 +117,8 @@ export type TodayBentoProps = {
   exceptionsQueue?: UseTodayExceptionsResult;
   /** 電話・連絡ログの未対応件数 (KioskStatusBar 用、callLogSummary から派生) */
   contactPendingCount?: number;
+  /** キオスクモードでのクイックリンク遷移ハンドラ */
+  onQuickLinkNavigate?: (href: string) => void;
 };
 
 // ─── Compact Section Title ───────────────────────────────────
@@ -172,6 +175,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   highLoadTile,
   exceptionsQueue,
   contactPendingCount,
+  onQuickLinkNavigate,
 }) => {
   const { settings } = useSettingsContext();
   const isKiosk = settings.layoutMode === 'kiosk';
@@ -288,6 +292,9 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
           >
             <SectionLabel emoji="📊" text="本日の進捗" />
             <ProgressRings items={progressRings} />
+            {isKiosk && onQuickLinkNavigate && (
+              <KioskQuickLinks onNavigate={onQuickLinkNavigate} />
+            )}
           </BentoCard>
         ) : (
           /* ── Legacy fallback: ProgressStatusBar + AttendanceSummaryCard ── */
@@ -330,7 +337,8 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
          *  ZONE C1: 常時表示 — 今日すぐ触るもの
          *  ════════════════════════════════════════════════════ */}
 
-        {/* ── C1-a: 利用者リスト（未記録優先ソート済み） ── */}
+        {/* ── C1-a: 利用者リスト（未記録優先ソート済み） — キオスクモードでは非表示 ── */}
+        {!isKiosk && (
         <BentoCard
           colSpan={{ xs: 1, sm: 2, md: 4 }}
           testId={TESTIDS.TODAY_USER_LIST}
@@ -346,6 +354,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
             onEmptyAction={users.onEmptyAction}
           />
         </BentoCard>
+        )}
 
         {/* ── C1-b: 申し送りパネル ── */}
         {handoffPanel && (
@@ -385,8 +394,8 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
          *  ZONE C2: 折りたたみ — 必要時だけ開くもの
          *  ════════════════════════════════════════════════════ */}
 
-        {/* ── C2-a: 業務体制（デフォルト閉じ） — キオスクモードでは非表示 ── */}
-        {serviceStructure && !isKiosk && (
+        {/* ── C2-a: 業務体制（デフォルト閉じ） ── */}
+        {serviceStructure && (
           <BentoCard
             colSpan={{ xs: 1, sm: 2, md: 4 }}
             testId="bento-service-structure"

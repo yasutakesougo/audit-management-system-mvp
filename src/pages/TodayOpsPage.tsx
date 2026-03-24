@@ -448,6 +448,7 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
       },
     } : undefined,
     exceptionsQueue,
+    onQuickLinkNavigate: (href: string) => navigate(href),
     };
   }, [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, handleDismissSuggestion, handleSnoozeSuggestion, callLogsSummary, handleOpenUserStatus, userStatusActions.todayStatusRecords, highLoadStatus, role, exceptionsQueue]);
 
