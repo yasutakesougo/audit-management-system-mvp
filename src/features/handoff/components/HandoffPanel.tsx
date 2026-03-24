@@ -9,9 +9,14 @@
  * @see HandoffQuickNoteCard — 入力UI（FooterQuickActions 経由で共有）
  * @see handoffStateMachine.ts — getAllowedActions / HANDOFF_STATUS_META
  */
-import React, { useMemo } from 'react';
-import { Box, Typography, Button, Stack, Chip, Card, CardContent } from '@mui/material';
+import React, { useMemo, useState } from 'react';
+import {
+  Box, Typography, Button, Stack, Chip, Card, CardContent,
+  Dialog, DialogTitle, DialogContent, IconButton,
+} from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
+import { HandoffQuickNoteCard } from '../HandoffQuickNoteCard';
 import { useHandoffTimeline } from '../useHandoffTimeline';
 import { getSeverityColor, CATEGORY_EMOJI, timeBandToMeetingMode } from '../handoffConstants';
 import { getAllowedActions, HANDOFF_STATUS_META } from '../handoffStateMachine';
@@ -34,6 +39,7 @@ const EMPTY_MESSAGES: Record<string, string> = {
 export const HandoffPanel: React.FC<HandoffPanelProps> = ({ targetDate: _targetDate }) => {
   const { todayHandoffs, loading, updateHandoffStatus } = useHandoffTimeline();
   const currentTimeBand = useCurrentTimeBand();
+  const [quickNoteOpen, setQuickNoteOpen] = useState(false);
 
   // ── 導出値 ──
   const unreadCount = useMemo(
@@ -46,6 +52,8 @@ export const HandoffPanel: React.FC<HandoffPanelProps> = ({ targetDate: _targetD
   );
 
   const handleOpenQuickNote = () => {
+    setQuickNoteOpen(true);
+    // 互換性: FooterQuickActions が存在する場合もリッスンできるよう発火
     window.dispatchEvent(new Event('handoff-open-quicknote-dialog'));
   };
 
@@ -181,6 +189,25 @@ export const HandoffPanel: React.FC<HandoffPanelProps> = ({ targetDate: _targetD
           );
         })}
       </Stack>
+
+      {/* ── 申し送り追加ダイアログ (自前管理) ── */}
+      <Dialog
+        open={quickNoteOpen}
+        onClose={() => setQuickNoteOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        data-testid="handoff-panel-quicknote-dialog"
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          今すぐ申し送り
+          <IconButton aria-label="申し送りダイアログを閉じる" onClick={() => setQuickNoteOpen(false)}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <HandoffQuickNoteCard />
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };
