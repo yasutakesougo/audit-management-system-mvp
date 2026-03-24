@@ -3,10 +3,11 @@
  *
  * Sprint-1 Phase B: 実データ接続
  *
- * 3つのデータソースを統合し、exceptionLogic の detect 関数に渡す形に変換:
+ * 4つのデータソースを統合し、exceptionLogic の detect 関数に渡す形に変換:
  * 1. DailyRecord → 今日の記録状況 (未入力者の特定)
  * 2. Handoff → 重要申し送りの未対応分
  * 3. Users → 注意対象者 + ISP 有無
+ * 4. SupportLogs → 支援手順記録の未入力者
  *
  * @see features/daily/schema.ts — DailyRecordDomainSchema (userRows)
  * @see features/handoff/handoffTypes.ts — HandoffRecord (userCode, userDisplayName)

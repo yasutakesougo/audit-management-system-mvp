@@ -121,9 +121,31 @@ export function detectMissingRecords(params: {
       updatedAt: targetDate,
       actionLabel: 'ケース記録',
       actionPath: `/daily/activity?userId=${encodeURIComponent(u.userId)}`,
-      secondaryActionLabel: '支援手順記録',
-      secondaryActionPath: `/daily/support?wizard=plan&user=${encodeURIComponent(u.userId)}&userId=${encodeURIComponent(u.userId)}`,
     }));
+}
+
+/**
+ * 支援手順記録の未入力を検出する
+ */
+export function detectMissingSupportLogs(params: {
+  pendingUsers: Array<{ userId: string; userName: string }>;
+  targetDate: string;
+}): ExceptionItem[] {
+  const { pendingUsers, targetDate } = params;
+
+  return pendingUsers.map((u) => ({
+    id: `missing-support-${u.userId}-${targetDate}`,
+    category: 'missing-record' as const,
+    severity: 'high' as const,
+    title: `${u.userName}の支援手順記録が未入力`,
+    description: `${targetDate} の支援手順記録が作成されていません`,
+    targetUser: u.userName,
+    targetUserId: u.userId,
+    targetDate,
+    updatedAt: targetDate,
+    actionLabel: '支援手順記録',
+    actionPath: `/daily/support?wizard=plan&user=${encodeURIComponent(u.userId)}&userId=${encodeURIComponent(u.userId)}`,
+  }));
 }
 
 /**
