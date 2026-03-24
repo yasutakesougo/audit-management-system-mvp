@@ -87,6 +87,37 @@ describe('settingsModel', () => {
       const loaded = loadSettingsFromStorage();
       expect(loaded.colorPreset).toBe('default');
     });
+
+    it('loads kiosk layoutMode correctly', () => {
+      const settings: UserSettings = {
+        colorMode: 'light',
+        density: 'comfortable',
+        fontSize: 'medium',
+        colorPreset: 'default',
+        layoutMode: 'kiosk',
+        hiddenNavGroups: [],
+        hiddenNavItems: [],
+        lastModified: Date.now(),
+      };
+      localVault.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+
+      const loaded = loadSettingsFromStorage();
+      expect(loaded.layoutMode).toBe('kiosk');
+    });
+
+    it('falls back to normal for unknown layoutMode values', () => {
+      const settings = {
+        colorMode: 'light',
+        density: 'comfortable',
+        fontSize: 'medium',
+        layoutMode: 'unknown_mode',
+        lastModified: Date.now(),
+      };
+      localVault.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+
+      const loaded = loadSettingsFromStorage();
+      expect(loaded.layoutMode).toBe('normal');
+    });
   });
 
   describe('saveSettingsToStorage', () => {

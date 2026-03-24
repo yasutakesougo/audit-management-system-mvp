@@ -11,6 +11,8 @@
 import LiveAnnouncer from '@/a11y/LiveAnnouncer';
 import { DataSourceBanner } from '@/app/components/DataSourceBanner';
 import { FooterQuickActions } from '@/app/components/FooterQuickActions';
+import { KioskExitFab } from '@/app/components/KioskExitFab';
+import { OfflineBanner } from '@/app/components/OfflineBanner';
 import { AppShellV2 } from '@/components/layout/AppShellV2';
 import { isDev } from '@/env';
 import { SettingsDialog } from '@/features/settings/SettingsDialog';
@@ -48,12 +50,100 @@ function useLockBodyScroll(enabled: boolean) {
   }, [enabled]);
 }
 
+// ── Wake Lock: キオスクモード時に画面消灯を防止 ────────────────────────
+// iPad Safari 対策: visibilitychange だけでは不十分。
+// pageshow (bfcache復帰) / focus (アプリ切替) / release (OS奪取) を監視。
+// 200ms デバウンスで連続再取得を防止。
+function useWakeLock(enabled: boolean) {
+  React.useEffect(() => {
+    if (!enabled) return;
+    if (!('wakeLock' in navigator)) return;
+
+    let sentinel: WakeLockSentinel | null = null;
+    let cancelled = false;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const request = async () => {
+      // 既にアクティブなら再取得不要
+      if (sentinel && !sentinel.released) return;
+      try {
+        sentinel = await navigator.wakeLock.request('screen');
+        if (cancelled) {
+          sentinel.release();
+          sentinel = null;
+          return;
+        }
+        // sentinel が OS に解除された場合に自動再取得
+        sentinel.addEventListener('release', handleRelease);
+      } catch {
+        // Wake Lock がサポートされない環境 or Low Battery Mode では無視
+      }
+    };
+
+    const debouncedRequest = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        if (!cancelled) void request();
+      }, 200);
+    };
+
+    // sentinel が OS に奪われたとき（画面ロック解除後など）
+    const handleRelease = () => {
+      sentinel = null;
+      if (!cancelled && document.visibilityState === 'visible') {
+        debouncedRequest();
+      }
+    };
+
+    // ── イベントリスナー群 ──
+
+    // 1. visibilitychange: タブ切り替え・画面ロック/解除
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && !cancelled) {
+        debouncedRequest();
+      }
+    };
+
+    // 2. pageshow: iPad Safari bfcache 復帰
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted && !cancelled) {
+        debouncedRequest();
+      }
+    };
+
+    // 3. focus: アプリ切替からの復帰（Slide Over / Split View 含む）
+    const handleFocus = () => {
+      if (!cancelled) debouncedRequest();
+    };
+
+    void request();
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      cancelled = true;
+      if (debounceTimer) clearTimeout(debounceTimer);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener('focus', handleFocus);
+      if (sentinel) {
+        sentinel.removeEventListener('release', handleRelease);
+        sentinel.release().catch(() => {});
+      }
+    };
+  }, [enabled]);
+}
+
 const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   useLockBodyScroll(true);
 
   const {
     dashboardPath,
     isFocusMode,
+    isKioskMode,
+    isFullscreenMode,
     isDesktop,
     viewportMode,
     contentPaddingY,
@@ -79,9 +169,12 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     handleToggleNavCollapse,
   } = useAppShellState();
 
+  // ── Wake Lock（キオスクモード時のみ） ───────────────────────────────
+  useWakeLock(isKioskMode);
+
   // ── Slots ──────────────────────────────────────────────────────────────────
 
-  const headerContent = isFocusMode ? null : (
+  const headerContent = isFullscreenMode ? null : (
     <AppShellHeader
       isDesktop={isDesktop}
       desktopNavOpen={desktopNavOpen}
@@ -105,28 +198,29 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     />
   ) : null;
 
-  const footerContent = !isFocusMode ? <FooterQuickActions fixed={false} /> : null;
+  const footerContent = !isFullscreenMode ? <FooterQuickActions fixed={false} /> : null;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <RouteHydrationListener>
       <LiveAnnouncer>
-        <div data-testid="app-shell">
+        <div data-testid="app-shell" data-kiosk={isKioskMode ? 'true' : undefined}>
           <AppShellV2
             header={headerContent}
             sidebar={sidebarContent}
             footer={footerContent}
             sidebarWidth={showDesktopSidebar ? currentDrawerWidth : 0}
-            contentPaddingX={isFocusMode ? 0 : 16}
+            contentPaddingX={isFullscreenMode ? 0 : 16}
             contentPaddingY={contentPaddingY}
             viewportMode={viewportMode}
           >
+            <OfflineBanner />
             <DataSourceBanner />
             {children}
           </AppShellV2>
 
-          {!isFocusMode && !isDesktop && (
+          {!isFullscreenMode && !isDesktop && (
             <Drawer
               data-testid="nav-drawer"
               variant="temporary"
@@ -149,6 +243,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </Drawer>
           )}
 
+          {/* Focus Mode: ESCキーで解除可能なFAB */}
           {isFocusMode && (
             <Fab
               size="small"
@@ -158,6 +253,11 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             >
               <CloseFullscreenRoundedIcon fontSize="small" />
             </Fab>
+          )}
+
+          {/* Kiosk Mode: 長押しで解除可能なFAB（誤操作防止） */}
+          {isKioskMode && (
+            <KioskExitFab onExit={() => updateSettings({ layoutMode: 'normal' })} />
           )}
           <SettingsDialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} navItems={navItems} />
           {LazySpDevPanel && (

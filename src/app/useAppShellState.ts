@@ -37,11 +37,13 @@ export function useAppShellState() {
   const theme = useTheme();
   const { settings, updateSettings } = useSettingsContext();
   const isFocusMode = settings.layoutMode === 'focus';
+  const isKioskMode = settings.layoutMode === 'kiosk';
+  const isFullscreenMode = isFocusMode || isKioskMode;
   const isSchedulesRoute =
     location.pathname.startsWith('/schedules') || location.pathname.startsWith('/schedule');
   const viewportMode: 'adaptive' | 'fixed' = isSchedulesRoute ? 'adaptive' : 'fixed';
   const schedulesPaddingY = isSchedulesRoute ? 0 : 16;
-  const contentPaddingY = isFocusMode ? 0 : schedulesPaddingY;
+  const contentPaddingY = isFullscreenMode ? 0 : schedulesPaddingY;
 
   const schedulesEnabled = Boolean(schedules);
   const complianceFormEnabled = Boolean(complianceForm);
@@ -67,6 +69,7 @@ export function useAppShellState() {
 
   useEffect(() => {
     if (!isFocusMode) return;
+    // キオスクモードではESCキーによる脱出を無効化（長押しFABのみ）
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         updateSettings({ layoutMode: 'normal' });
@@ -154,7 +157,7 @@ export function useAppShellState() {
     setNavQuery('');
   }, []);
 
-  const showDesktopSidebar = !isFocusMode && isDesktop && desktopNavOpen;
+  const showDesktopSidebar = !isFullscreenMode && isDesktop && desktopNavOpen;
 
   return {
     // Location/navigation
@@ -164,6 +167,8 @@ export function useAppShellState() {
     // Theme/mode
     theme,
     isFocusMode,
+    isKioskMode,
+    isFullscreenMode,
     isDesktop,
     viewportMode,
     contentPaddingY,
