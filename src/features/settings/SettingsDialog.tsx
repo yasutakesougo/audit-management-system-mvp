@@ -117,23 +117,44 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose, n
 
           <Divider sx={{ my: 2 }} />
 
-          <FormControlLabel
-            control={
-              <Switch
-                checked={settings.layoutMode === 'focus'}
-                onChange={(_, checked) =>
-                  updateSettings({ layoutMode: checked ? 'focus' : 'normal' })
-                }
-                inputProps={{ 'aria-label': '集中モード（全画面）' }}
-              />
-            }
-            label="集中モード（全画面）"
-          />
-
-          {/* 将来の設定項目プレースホルダー */}
-          <Typography variant="caption" color="text.secondary" sx={{ pt: 2 }}>
-            その他の表示設定（レイアウトプリセットなど）は今後実装予定です。
-          </Typography>
+          {/* レイアウトモード設定 */}
+          <Stack spacing={2}>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              📺 レイアウトモード
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              画面の表示スタイルを切り替えます。タブレット端末での運用にはキオスクモードがおすすめです。
+            </Typography>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={settings.layoutMode === 'focus'}
+                  onChange={(_, checked) =>
+                    updateSettings({ layoutMode: checked ? 'focus' : 'normal' })
+                  }
+                  inputProps={{ 'aria-label': '集中モード（全画面）' }}
+                />
+              }
+              label="集中モード（ヘッダー・サイドバー非表示）"
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={settings.layoutMode === 'kiosk'}
+                  onChange={(_, checked) =>
+                    updateSettings({ layoutMode: checked ? 'kiosk' : 'normal' })
+                  }
+                  inputProps={{ 'aria-label': 'キオスクモード（タブレット端末用）' }}
+                />
+              }
+              label="キオスクモード（タブレット端末用）"
+            />
+            {settings.layoutMode === 'kiosk' && (
+              <Typography variant="caption" color="primary.main" sx={{ pl: 4 }}>
+                ✅ キオスク有効: 全画面 ＋ タッチ最適化 ＋ 画面消灯防止（長押しで解除）
+              </Typography>
+            )}
+          </Stack>
 
           <Divider sx={{ my: 2 }} />
 
