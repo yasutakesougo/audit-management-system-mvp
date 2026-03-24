@@ -394,8 +394,8 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
          *  ZONE C2: 折りたたみ — 必要時だけ開くもの
          *  ════════════════════════════════════════════════════ */}
 
-        {/* ── C2-a: 業務体制（デフォルト閉じ） — キオスクモードでは非表示 ── */}
-        {serviceStructure && !isKiosk && (
+        {/* ── C2-a: 業務体制（デフォルト閉じ） ── */}
+        {serviceStructure && (
           <BentoCard
             colSpan={{ xs: 1, sm: 2, md: 4 }}
             testId="bento-service-structure"
