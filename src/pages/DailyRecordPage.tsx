@@ -27,6 +27,7 @@ import { getNextIncompleteRecord, saveDailyRecord, validateDailyRecord } from '@
 import { NextRecordHero } from '@/features/daily/components/NextRecordHero';
 import { RecordActionQueue } from '@/features/daily/components/RecordActionQueue';
 import { HandoffSummaryBanner } from '@/features/daily/components/HandoffSummaryBanner';
+import { useTodayAttendanceInfo } from '@/features/daily/hooks/useTodayAttendanceInfo';
 import { CTA_EVENTS, recordCtaClick } from '@/features/today/telemetry/recordCtaClick';
 import { toLocalDateISO } from '@/utils/getNow';
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
@@ -49,7 +50,6 @@ import { useHandoffData } from '../features/handoff/hooks/useHandoffData';
 import type { HandoffRecord } from '../features/handoff/handoffTypes';
 import { useUsers } from '../features/users/useUsers';
 import { useSchedules } from '../stores/useSchedules';
-import { calculateAttendanceRate, getExpectedAttendeeCount } from '../utils/attendanceUtils';
 import { DailyRecordBulkActions } from './DailyRecordBulkActions';
 import { DailyRecordFilterPanel } from './DailyRecordFilterPanel';
 import {
@@ -296,43 +296,7 @@ export default function DailyRecordPage() {
   }, [highlightUserId, records]);
 
   // Attendance calculation
-  const todayAttendanceInfo = useMemo(() => {
-    const today = new Date();
-    if (!usersData || !schedulesData) {
-      return { expectedCount: 32, attendanceRate: 0 };
-    }
-
-    const adaptedUsers = usersData.map((user) => ({
-      Id: user.Id,
-      UserID: user.UserID,
-      FullName: user.FullName,
-      AttendanceDays: user.AttendanceDays || [],
-      ServiceStartDate: user.ServiceStartDate || undefined,
-      ServiceEndDate: user.ServiceEndDate || undefined,
-    }));
-
-    const adaptedSchedules = schedulesData.map((schedule) => ({
-      id: schedule.id,
-      userId: schedule.userId?.toString() || schedule.personId?.toString(),
-      title: schedule.title || '',
-      startLocal: schedule.startLocal || undefined,
-      startUtc: schedule.startUtc || undefined,
-      status: schedule.status,
-      category: schedule.category || undefined,
-    }));
-
-    const { expectedCount, absentUserIds } = getExpectedAttendeeCount(
-      adaptedUsers,
-      adaptedSchedules,
-      today,
-    );
-
-    const todayRecords = records.filter((r) => r.date === today.toISOString().split('T')[0]);
-    const actualCount = todayRecords.filter((r) => r.status === '完了').length;
-    const attendanceRate = calculateAttendanceRate(actualCount, expectedCount);
-
-    return { expectedCount, attendanceRate, actualCount, absentUserIds };
-  }, [usersData, schedulesData, records]);
+  const todayAttendanceInfo = useTodayAttendanceInfo(usersData, schedulesData, records);
 
   return (
     <FullScreenDailyDialogPage
