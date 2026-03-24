@@ -190,41 +190,45 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'assessment' as NavGroupKey,
     },
     {
+      // Tier C: Mock依存。管理者のみ表示。
       label: '分析ワークスペース',
       to: '/analysis',
       isActive: (pathname) => pathname.startsWith('/analysis'),
       icon: undefined,
       prefetchKey: PREFETCH_KEYS.analysisDashboard,
       testId: TESTIDS.nav.analysis,
-      audience: NAV_AUDIENCE.staff,
+      audience: NAV_AUDIENCE.admin,
       group: 'assessment' as NavGroupKey,
     },
     {
+      // Tier C: Mock依存。管理者のみ表示。
       label: '特性アンケート',
       to: '/survey/tokusei',
       isActive: (pathname) => pathname.startsWith('/survey/tokusei'),
       icon: undefined,
-      audience: NAV_AUDIENCE.staff,
+      audience: NAV_AUDIENCE.admin,
       group: 'assessment' as NavGroupKey,
     },
 
     // --- 3. 記録・振り返り (record) ---
     // 順序: 運営状況 → 記録一覧(日々のサマリー) → サービス提供実績記録 → 個人月次業務日誌 → 申し送り分析
     {
+      // Tier B: Mock混在。管理者のみ表示。
       label: '運営状況',
       to: '/dashboard',
       isActive: (pathname) => pathname === '/dashboard',
       icon: undefined,
       testId: TESTIDS.nav.dashboard,
-      audience: NAV_AUDIENCE.staff,
+      audience: NAV_AUDIENCE.admin,
       group: 'record' as NavGroupKey,
     },
     {
+      // Tier B: Mock依存。管理者のみ表示。
       label: '記録一覧',
       to: '/records',
       isActive: (pathname) => pathname.startsWith('/records'),
       icon: undefined,
-      audience: NAV_AUDIENCE.staff,
+      audience: NAV_AUDIENCE.admin,
       group: 'record' as NavGroupKey,
     },
     {
@@ -245,11 +249,12 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'record' as NavGroupKey,
     },
     {
+      // Tier B: SP接続済だが本番運用未検証。管理者のみ表示。
       label: '申し送り分析',
       to: '/handoff-analysis',
       isActive: (pathname) => pathname.startsWith('/handoff-analysis'),
       icon: undefined,
-      audience: NAV_AUDIENCE.staff,
+      audience: NAV_AUDIENCE.admin,
       group: 'record' as NavGroupKey,
     },
 
@@ -258,20 +263,22 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     // NOTE: 「運営スケジュール」は /schedules/week?tab=ops に統合済み（PR #1121）。
     //       独立ナビ項目は削除し、「スケジュール」タブから到達する。
     {
+      // Tier C: Mock依存。管理者のみ表示。
       label: '運用メトリクス',
       to: '/ops',
       isActive: (pathname) => pathname === '/ops' || pathname.startsWith('/ops/'),
       icon: undefined,
-      audience: NAV_AUDIENCE.staff,
+      audience: NAV_AUDIENCE.admin,
       group: 'ops' as NavGroupKey,
     },
     {
+      // Tier C: Mock依存。管理者のみ表示。
       label: '請求処理',
       to: '/billing',
       isActive: (pathname) => pathname === '/billing' || pathname.startsWith('/billing/'),
       icon: undefined,
       testId: TESTIDS.nav.billing,
-      audience: [NAV_AUDIENCE.reception, NAV_AUDIENCE.admin],
+      audience: NAV_AUDIENCE.admin,
       group: 'ops' as NavGroupKey,
     },
 
