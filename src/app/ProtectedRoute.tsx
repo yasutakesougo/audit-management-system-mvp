@@ -57,6 +57,17 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
   const pendingPath = useMemo(() => `${location.pathname}${location.search ?? ''}`, [location.pathname, location.search]);
   const signInAttemptedRef = useRef(false);
   const [listGate, setListGate] = useState<ListGate>('idle');
+  const [forceReauth, setForceReauth] = useState(false);
+
+  useEffect(() => {
+    const handleReauth = () => {
+      debug('msal-interaction-required event caught. Forcing AuthRequiredNotice.');
+      setForceReauth(true);
+    };
+    window.addEventListener('msal-interaction-required', handleReauth);
+    return () => window.removeEventListener('msal-interaction-required', handleReauth);
+  }, []);
+
   const isMsalInProgress = inProgress !== InteractionStatus.None && inProgress !== 'none';
   const corrIdRef = useRef<string | null>(null);
   const lastDiagCodeRef = useRef<AuthDiagSummary['code'] | null>(null);
@@ -312,7 +323,7 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || forceReauth) {
     const summary = summarizeAuthBlockReason({
       inProgress,
       isAuthenticated,

@@ -215,7 +215,10 @@ export const useAuth = () => {
         msalError?.errorCode === 'consent_required' ||
         msalError?.errorCode === 'login_required';
       if (interactionRequired) {
-        debugLog('acquireTokenSilent requires interaction; suppressing auto-redirect');
+        debugLog('acquireTokenSilent requires interaction; suppressing auto-redirect and emitting event');
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('msal-interaction-required'));
+        }
       } else {
         debugLog('acquireTokenSilent failed without interaction-required error');
       }
