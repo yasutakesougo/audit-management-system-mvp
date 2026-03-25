@@ -6,7 +6,7 @@ import { isE2E } from '@/env';
 import { authDiagnostics } from '@/features/auth/diagnostics/collector';
 import { getSchedulesListTitle } from '@/features/schedules/data/spSchema';
 import { createAuthCorrId, summarizeAuthBlockReason, type AuthDiagSummary } from '@/lib/authDiag';
-import { getAppConfig, isDemoModeEnabled, readEnv } from '@/lib/env';
+import { getAppConfig } from '@/lib/env';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import Typography from '@mui/material/Typography';
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
@@ -31,33 +31,7 @@ const debug = (...args: unknown[]) => {
   }
 };
 
-const isAutomationRuntime = (): boolean => {
-  if (typeof navigator !== 'undefined' && navigator.webdriver) return true;
-  if (typeof window !== 'undefined') {
-    const automationHints = window as Window & { __PLAYWRIGHT__?: unknown; Cypress?: unknown };
-    if (automationHints.__PLAYWRIGHT__ || automationHints.Cypress) return true;
-  }
-  if (typeof process !== 'undefined' && process.env) {
-    if (process.env.VITEST === '1' || process.env.PLAYWRIGHT_TEST === '1') return true;
-  }
-  return false;
-};
-
-const isSkipLoginEnabled = (): boolean => {
-  const skipLogin = readEnv('VITE_SKIP_LOGIN', '0') === '1';
-  const e2e = readEnv('VITE_E2E', '0') === '1';
-  const msalMock = readEnv('VITE_E2E_MSAL_MOCK', '0') === '1';
-  return skipLogin || e2e || msalMock;
-};
-
-const isMsalConfigured = (): boolean => {
-  const clientId = readEnv('VITE_MSAL_CLIENT_ID', readEnv('VITE_AAD_CLIENT_ID', '')).trim();
-  const tenantId = readEnv('VITE_MSAL_TENANT_ID', readEnv('VITE_AAD_TENANT_ID', '')).trim();
-  if (!clientId || !tenantId) return false;
-  if (clientId.toLowerCase().includes('dummy')) return false;
-  if (tenantId.toLowerCase().includes('dummy')) return false;
-  return true;
-};
+import { shouldBypassAuthGuard } from '@/lib/auth/guardResolution';
 
 /**
  * Determine if a feature flag should be bypassed in E2E environment.
@@ -103,8 +77,7 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
     });
   };
 
-  const isAutomationOrDemo = isAutomationRuntime() || isDemoModeEnabled();
-  const allowBypass = isAutomationOrDemo || isSkipLoginEnabled() || !isMsalConfigured();
+  const allowBypass = shouldBypassAuthGuard();
 
   // ① Auto-stop patch: Remove auto sign-in from useEffect
   // Sign-in is now button-click only (moved to AuthRequiredNotice/AuthRedirectingNotice handlers)
