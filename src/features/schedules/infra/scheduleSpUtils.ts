@@ -127,6 +127,10 @@ export const buildSelectSets = () => {
   const optional = compact([
     fields.serviceType,
     fields.locationName,
+    'AssignedStaff',
+    'AssignedStaffId',
+    'Vehicle',
+    'VehicleId',
     'Created',
     'Modified',
   ]);
@@ -137,6 +141,10 @@ export const buildSelectSets = () => {
     fields.end,
     fields.locationName,
     fields.serviceType,
+    'AssignedStaff',
+    'AssignedStaffId',
+    'Vehicle',
+    'VehicleId',
   ]);
   const mergeSelectFields = (fallbackOnly: boolean): readonly string[] =>
     fallbackOnly ? [...required] : [...new Set([...required, ...optional])];

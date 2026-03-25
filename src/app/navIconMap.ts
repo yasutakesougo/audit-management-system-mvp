@@ -7,6 +7,7 @@ import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded';
 import ChecklistRoundedIcon from '@mui/icons-material/ChecklistRounded';
+import DirectionsBusFilledRoundedIcon from '@mui/icons-material/DirectionsBusFilledRounded';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
 import HistoryIcon from '@mui/icons-material/History';
@@ -21,6 +22,7 @@ export const navIconMap: Record<string, React.ElementType> = {
   '日次記録': AssignmentTurnedInRoundedIcon,
   '健康記録': EditNoteIcon,
   '申し送りタイムライン': HistoryIcon,
+  '送迎配車表': DirectionsBusFilledRoundedIcon,
   '司会ガイド': PsychologyIcon,
   '朝会（作成）': AddCircleOutlineIcon,
   '夕会（作成）': AddCircleOutlineIcon,

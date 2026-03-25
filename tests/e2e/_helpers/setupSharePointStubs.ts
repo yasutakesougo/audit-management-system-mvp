@@ -307,6 +307,12 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
     const url = new URL(request.url());
     const pathname = url.pathname;
     const method = request.method().toUpperCase();
+    const headers = request.headers();
+    const methodOverride = (headers['x-http-method'] ?? headers['x-http-method-override'] ?? '').toUpperCase();
+    const effectiveMethod =
+      method === 'POST' && (methodOverride === 'MERGE' || methodOverride === 'PATCH' || methodOverride === 'DELETE')
+        ? methodOverride
+        : method;
 
     if (/\/_api\/web\/currentuser$/i.test(pathname)) {
       await fulfill(route, options.currentUser ?? DEFAULT_CURRENT_USER);
@@ -357,13 +363,13 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
           await fulfill(route, { status: 404, body: {} });
           return;
         }
-        if (method === 'GET') {
+        if (effectiveMethod === 'GET') {
           const item = cloneRecord(items[index] as Record<string, unknown>);
           const responseItem = isSchedule ? normalizeScheduleRecord(item) : item;
           await fulfill(route, { status: 200, body: responseItem });
           return;
         }
-        if (method === 'PATCH' || method === 'MERGE') {
+        if (effectiveMethod === 'PATCH' || effectiveMethod === 'MERGE') {
           const payload = normalizeBody(parseRequestBody(request));
           const previous = items[index];
           const patchRecord = cloneRecord(payload as Record<string, unknown>);
@@ -380,10 +386,10 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
           const nextItems = getItems().slice();
           nextItems[index] = nextRecord;
           setItems(nextItems);
-          await fulfill(route, { status: 204, body: '' });
+          await fulfill(route, { status: 200, body: cloneRecord(nextRecord) });
           return;
         }
-        if (method === 'DELETE') {
+        if (effectiveMethod === 'DELETE') {
           const nextItems = getItems().slice();
           nextItems.splice(index, 1);
           setItems(nextItems);
@@ -399,7 +405,7 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
             isSchedule ? normalizeScheduleRecord(item as Record<string, unknown>) : item,
           );
           if (debug) {
-            console.log(`[stub] GET ${url.href} -> ${items.length} item(s)`);
+            // no-op: keep hook point for local debugging without console usage in CI lint
           }
           await fulfill(route, { status: 200, body: { value: items } });
           return;
@@ -427,7 +433,7 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
           }
           setItems(nextItems);
           if (debug) {
-            console.log(`[stub] POST ${url.href} -> ${JSON.stringify(createdRecord)}`);
+            // no-op: keep hook point for local debugging without console usage in CI lint
           }
           await fulfill(route, { status: 201, body: nextRecord });
           return;

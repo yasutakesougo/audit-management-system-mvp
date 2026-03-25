@@ -22,6 +22,7 @@
  * | transport-fallback-active | high     | /today → 対象者リストを確認       |
  * | transport-stale-count     | medium   | /today → 停滞中の利用者を確認     |
  * | transport-low-completion  | medium   | /today → 未到着の利用者を確認     |
+ * | transport-missing-driver-assignment | high | /today → 配車漏れを確認  |
  *
  * @see computeTransportAlerts.ts
  * @see extractTransportDetails.ts
@@ -39,6 +40,13 @@ type AlertMapping = {
   title: string;
   actionLabel: string;
   actionPath: string;
+};
+
+export type MissingDriverDetail = {
+  userCode: string;
+  userName?: string;
+  direction: 'to' | 'from';
+  vehicleId: string;
 };
 
 /**
@@ -68,6 +76,12 @@ const ALERT_MAPPINGS: Record<string, AlertMapping> = {
     severity: 'medium',
     title: '送迎完了率が閾値を下回っています',
     actionLabel: '未到着者を確認',
+    actionPath: '/today',
+  },
+  'transport-missing-driver-assignment': {
+    severity: 'high',
+    title: '運転者未設定の送迎車両があります',
+    actionLabel: '配車ボードを確認',
     actionPath: '/today',
   },
 };
@@ -101,6 +115,8 @@ export type BuildTransportExceptionsOptions = {
   today: string;
   /** per-user 詳細（optional: enriched exceptions を生成する） */
   details?: TransportDetails;
+  /** 運転者未設定の配車詳細（optional） */
+  missingDriverUsers?: MissingDriverDetail[];
   /** userCode → 表示名 のマッピング（optional） */
   userNames?: UserNameMap;
 };
@@ -139,8 +155,10 @@ export function buildTransportExceptions(
       : alertsOrOptions;
 
   const { alerts, today, details, userNames } = opts;
+  const missingDriverUsers = opts.missingDriverUsers ?? [];
 
   const items: ExceptionItem[] = [];
+  const MAX_PER_USER = 5;
 
   for (const alert of alerts) {
     const mapping = ALERT_MAPPINGS[alert.id];
@@ -161,13 +179,8 @@ export function buildTransportExceptions(
       actionPath: mapping.actionPath,
     });
 
-    // ── per-user Exceptions (enrichment) ────────────────────────────────────
-    if (!details) continue;
-
-    const MAX_PER_USER = 5;
-
     // stale: 各ユーザーを子 Exception として生成
-    if (alert.id === 'transport-stale-count') {
+    if (alert.id === 'transport-stale-count' && details) {
       const staleSlice = details.staleUsers.slice(0, MAX_PER_USER);
       for (const stale of staleSlice) {
         const name = resolveName(stale.userCode, userNames);
@@ -189,7 +202,7 @@ export function buildTransportExceptions(
     }
 
     // sync-failed: 各ユーザーを子 Exception として生成
-    if (alert.id === 'transport-sync-fail-count') {
+    if (alert.id === 'transport-sync-fail-count' && details) {
       const syncSlice = details.syncFailedUsers.slice(0, MAX_PER_USER);
       for (const sf of syncSlice) {
         const name = resolveName(sf.userCode, userNames);
@@ -206,6 +219,28 @@ export function buildTransportExceptions(
           updatedAt: today,
           actionLabel: `${name}の${dirLabel(sf.direction)}タブを開く`,
           actionPath: `/today?highlight=${encodeURIComponent(sf.userCode)}&direction=${sf.direction}`,
+        });
+      }
+    }
+
+    // missing-driver: 配車あり・運転者未設定の子 Exception を生成
+    if (alert.id === 'transport-missing-driver-assignment') {
+      const missingSlice = missingDriverUsers.slice(0, MAX_PER_USER);
+      for (const missing of missingSlice) {
+        const name = missing.userName ?? resolveName(missing.userCode, userNames);
+        items.push({
+          id: `transport-missing-driver-${missing.userCode}-${missing.direction}-${today}`,
+          parentId: aggregateId,
+          category: 'transport-alert',
+          severity: 'high',
+          title: `${name}（${dirLabel(missing.direction)}）は${missing.vehicleId}で運転者未設定`,
+          description: `${missing.vehicleId} の運転者が未設定のままです。配車を確認して運転担当を設定してください。`,
+          targetUser: name,
+          targetUserId: missing.userCode,
+          targetDate: today,
+          updatedAt: today,
+          actionLabel: `${name}の${dirLabel(missing.direction)}を開く`,
+          actionPath: `/today?highlight=${encodeURIComponent(missing.userCode)}&direction=${missing.direction}`,
         });
       }
     }

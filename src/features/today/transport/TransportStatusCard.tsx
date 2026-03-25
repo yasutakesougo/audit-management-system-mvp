@@ -38,6 +38,7 @@ import {
     keyframes,
 } from '@mui/material';
 import React, { useEffect, useRef } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import {
     DIRECTION_EMOJI,
     DIRECTION_LABEL,
@@ -49,6 +50,11 @@ import {
     type TransportLeg,
     type TransportLegStatus,
 } from './transportTypes';
+import {
+  buildVehicleBoardGroups,
+  DEFAULT_TRANSPORT_VEHICLE_IDS,
+  hasMissingVehicleDriver,
+} from './transportAssignments';
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
@@ -123,6 +129,76 @@ function DirectionProgress({ summary }: { summary: TransportDirectionSummary }) 
           </Typography>
         </Stack>
       )}
+    </Box>
+  );
+}
+
+function VehicleAssignmentBoard({ legs }: { legs: TransportLeg[] }) {
+  const groups = buildVehicleBoardGroups(legs, DEFAULT_TRANSPORT_VEHICLE_IDS);
+  const totalRiders = groups.reduce((sum, group) => sum + group.riders.length, 0);
+
+  return (
+    <Box data-testid="transport-vehicle-board" sx={{ px: 2, py: 1.5 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+        <Typography variant="body2" fontWeight="bold" color="text.secondary">
+          車両別配車
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {groups.length} 台 / 乗車 {totalRiders} 名
+        </Typography>
+      </Stack>
+
+      <Stack spacing={1}>
+        {groups.map((group, index) => {
+          const missingDriver = hasMissingVehicleDriver(group);
+          return (
+            <Box
+              key={group.vehicleId}
+              data-testid={`transport-vehicle-row-${index}`}
+              sx={{
+                p: 1,
+                borderRadius: 1,
+                bgcolor: missingDriver ? 'warning.50' : 'grey.50',
+                border: '1px solid',
+                borderColor: missingDriver ? 'warning.main' : 'divider',
+              }}
+            >
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
+                <Typography variant="caption" fontWeight="bold">
+                  🚗 {group.vehicleId}
+                </Typography>
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <Typography variant="caption" color={group.driverName ? 'text.primary' : 'warning.main'}>
+                    運転: {group.driverName ?? '未設定'}
+                  </Typography>
+                  {missingDriver && (
+                    <Stack direction="row" spacing={0.25} alignItems="center" data-testid={`transport-vehicle-warning-${index}`}>
+                      <WarningAmberIcon sx={{ fontSize: 12, color: 'warning.main' }} />
+                      <Typography variant="caption" color="warning.main" fontWeight="bold">
+                        要確認
+                      </Typography>
+                    </Stack>
+                  )}
+                  {group.riders.length === 0 && (
+                    <Chip
+                      label="空車"
+                      size="small"
+                      color="default"
+                      variant="outlined"
+                      sx={{ height: 18, '& .MuiChip-label': { px: 0.75, fontSize: '0.65rem' } }}
+                    />
+                  )}
+                </Stack>
+              </Stack>
+              <Typography variant="caption" color="text.secondary">
+                {group.riders.length > 0
+                  ? `乗車 (${group.riders.length}名): ${group.riders.map((leg) => leg.userName).join(' / ')}`
+                  : '乗車: 0名'}
+              </Typography>
+            </Box>
+          );
+        })}
+      </Stack>
     </Box>
   );
 }
@@ -375,9 +451,27 @@ export function TransportStatusCard({
             送迎状況
           </Typography>
         </Stack>
-        <Typography variant="caption" color="text.secondary">
-          {currentTime} 現在
-        </Typography>
+        <Stack spacing={0.5} alignItems="flex-end">
+          <Button
+            component={RouterLink}
+            to="/transport/assignments"
+            size="small"
+            variant="outlined"
+            data-testid="transport-edit-assignments-link"
+            sx={{
+              minHeight: 28,
+              px: 1.25,
+              fontSize: '0.75rem',
+              textTransform: 'none',
+              lineHeight: 1.2,
+            }}
+          >
+            配車表を編集
+          </Button>
+          <Typography variant="caption" color="text.secondary">
+            {currentTime} 現在
+          </Typography>
+        </Stack>
       </Box>
 
       {/* Direction Tabs */}
@@ -412,6 +506,11 @@ export function TransportStatusCard({
       <DirectionProgress summary={activeSummary} />
 
       <Divider />
+
+      {/* Vehicle assignment board */}
+      <VehicleAssignmentBoard legs={sortedLegs} />
+
+      {sortedLegs.length > 0 && <Divider />}
 
       {/* Leg List */}
       <CardContent

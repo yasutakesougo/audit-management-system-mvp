@@ -20,6 +20,7 @@ const NAV_TESTIDS = {
   integratedResourceCalendar: 'nav-integrated-resource-calendar',
   navigationDiagnostics: 'nav-navigation-diagnostics',
   todayOps: 'nav-today-ops',
+  transportAssignments: 'nav-transport-assignments',
   roomManagement: 'nav-room-management',
   operationFlowSettings: 'nav-operation-flow-settings',
   planningSheet: 'nav-planning-sheet',
