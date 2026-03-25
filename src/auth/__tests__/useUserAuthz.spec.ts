@@ -374,6 +374,25 @@ describe('useUserAuthz', () => {
   // ── env var fallback chains ──────────────────────────────────────
 
   describe('env var fallback chains', () => {
+    it('prefers VITE_RECEPTION_GROUP_ID over stale VITE_AAD_RECEPTION_GROUP_ID when both exist', async () => {
+      setRuntimeEnv({
+        VITE_ADMIN_GROUP_ID: 'admin-grp',
+        VITE_RECEPTION_GROUP_ID: 'runtime-reception-grp',
+        VITE_AAD_RECEPTION_GROUP_ID: 'stale-build-reception-grp',
+      });
+      mockFetchGroupIds.mockResolvedValue(['runtime-reception-grp']);
+      setupAuth({
+        account: mockAccount('agent@corp.com'),
+      });
+
+      const { result } = renderHook(() => useUserAuthz());
+
+      await waitFor(() => {
+        expect(result.current.ready).toBe(true);
+      });
+      expect(result.current.role).toBe('reception');
+    });
+
     it('reads admin group ID from VITE_ADMIN_GROUP_ID when AAD variant is missing', async () => {
       setRuntimeEnv({ VITE_ADMIN_GROUP_ID: 'fallback-admin-grp' });
       mockFetchGroupIds.mockResolvedValue(['fallback-admin-grp']);
