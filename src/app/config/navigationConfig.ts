@@ -85,7 +85,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
   // ============================================================================
   const items: NavItem[] = [
     // --- 1. 現場の実行 (daily) ---
-    // 順序: 今日の業務 → スケジュール → 日次記録 → 健康記録 → 申し送りタイムライン → 議事録
+    // 順序: 今日の業務 → 送迎配車表 → スケジュール → 日次記録 → 健康記録 → 申し送りタイムライン → 議事録
     ...(todayOpsEnabled
       ? [
           {
@@ -99,6 +99,15 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
           },
         ]
       : []),
+    {
+      label: '送迎配車表',
+      to: '/transport/assignments',
+      isActive: (pathname) => pathname.startsWith('/transport/assignments'),
+      icon: undefined,
+      testId: TESTIDS.nav.transportAssignments,
+      audience: NAV_AUDIENCE.staff,
+      group: 'daily' as NavGroupKey,
+    },
     ...(schedulesEnabled
       ? [
           {

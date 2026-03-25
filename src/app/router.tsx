@@ -21,6 +21,7 @@ import { recordRoutes } from './routes/recordRoutes';
 import { safetyRoutes } from './routes/safetyRoutes';
 import { scheduleRoutes } from './routes/scheduleRoutes';
 import { supportPlanRoutes } from './routes/supportPlanRoutes';
+import { transportRoutes } from './routes/transportRoutes';
 
 // ── Route composition ────────────────────────────────────────────────────
 
@@ -34,6 +35,7 @@ const childRoutes: RouteObject[] = [
   ...adminRoutes,
   ...safetyRoutes,
   ...scheduleRoutes,
+  ...transportRoutes,
   ...callLogRoutes,
   nurseRoutes(),
 ];

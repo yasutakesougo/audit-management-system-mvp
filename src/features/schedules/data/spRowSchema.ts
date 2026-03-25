@@ -32,6 +32,7 @@ export const SpScheduleRowSchema = z
     TargetUserId: z.unknown().optional().nullable(),
 
     AssignedStaff: z.union([z.number(), z.string()]).optional().nullable(),
+    AssignedStaffId: z.union([z.number(), z.string()]).optional().nullable(),
     ServiceType: z.string().optional().nullable(),
     cr014_serviceType: z.string().optional().nullable(),
     LocationName: z.string().optional().nullable(),
@@ -41,6 +42,7 @@ export const SpScheduleRowSchema = z
     AcceptedBy: z.string().optional().nullable(),
     AcceptedNote: z.string().optional().nullable(),
     Vehicle: z.union([z.number(), z.string()]).optional().nullable(),
+    VehicleId: z.union([z.number(), z.string()]).optional().nullable(),
     Status: z.string().optional().nullable(),
     StatusReason: z.string().optional().nullable(),
     EntryHash: z.string().optional().nullable(),
@@ -267,8 +269,8 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
     if (!normalizedUserId && userLookupIds.length) {
       normalizedUserId = normalizeUserId(userLookupIds[0]);
     }
-    const assignedStaffId = coerceIdString(row.AssignedStaff);
-    const vehicleId = coerceIdString(row.Vehicle);
+    const assignedStaffId = coerceIdString(row.AssignedStaff ?? row.AssignedStaffId);
+    const vehicleId = coerceIdString(row.Vehicle ?? row.VehicleId);
 
     const category = inferCategory(row);
 
