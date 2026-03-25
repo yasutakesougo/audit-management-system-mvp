@@ -2,6 +2,7 @@
 import type { IPublicClientApplication } from '@azure/msal-browser';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { getAppConfig, isE2eMsalMockEnabled, shouldSkipLogin } from '../lib/env';
+import { clearRuntimeListReady } from '../lib/listReadyRuntime';
 import { createE2EMsalAccount, persistMsalToken } from '../lib/msal';
 import { InteractionStatus } from './interactionStatus';
 import { GRAPH_RESOURCE, GRAPH_SCOPES, LOGIN_SCOPES, SP_RESOURCE } from './msalConfig';
@@ -286,7 +287,13 @@ export const useAuth = () => {
 
   // --- signOut ---
 
-  const signOut = useCallback(() => instance.logoutRedirect(), [instance]);
+  const signOut = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.removeItem('__listReady');
+    }
+    clearRuntimeListReady('schedules');
+    return instance.logoutRedirect();
+  }, [instance]);
 
   // ══════════════════════════════════════════════════════════════════════════
   // Return based on mode — all hooks have already been called above

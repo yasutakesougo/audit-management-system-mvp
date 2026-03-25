@@ -36,9 +36,14 @@ type BatchSyncSummary = {
  */
 type BatchSyncResult = BatchSyncSummary | { error: string };
 
+type ListReadyRuntimeStore = {
+  schedules?: Record<string, true>;
+};
+
 declare global {
   interface Window {
     __AUDIT_BATCH_METRICS__?: AuditBatchMetrics;
+    __listReady?: ListReadyRuntimeStore;
     // E2E testing hooks
     __E2E_FORCE_BATCH__?: (chunk: unknown[]) => Promise<{ body: string } | null>;
     __E2E_LAST_PARSED__?: unknown;

@@ -17,7 +17,7 @@
  *
  * @see docs/design/today-page-architecture.md
  */
-import { db } from '@/infra/firestore/client';
+import { getDb, isFirestoreWriteAvailable } from '@/infra/firestore/client';
 import type { OperationalPhase } from '@/shared/domain/operationalPhase';
 import type { DayPhase } from '../lib/resolvePhase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
@@ -78,6 +78,7 @@ export function createFirstNavigationTracker(opts: {
     record(targetUrl: string, trigger: NavigationTrigger) {
       if (_recorded) return;
       _recorded = true;
+      if (!isFirestoreWriteAvailable()) return;
 
       const event: FirstNavigationEvent = {
         targetUrl,
@@ -96,7 +97,7 @@ export function createFirstNavigationTracker(opts: {
       };
 
       try {
-        addDoc(collection(db, 'telemetry'), payload).catch((err) => {
+        addDoc(collection(getDb(), 'telemetry'), payload).catch((err) => {
           // eslint-disable-next-line no-console
           console.warn('[todayops:first-nav] telemetry write failed', err);
         });

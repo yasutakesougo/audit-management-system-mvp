@@ -9,7 +9,7 @@
  *
  * @see docs/design/today-page-architecture.md
  */
-import { db } from '@/infra/firestore/client';
+import { getDb, isFirestoreWriteAvailable } from '@/infra/firestore/client';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 // ── イベント名定数 ──────────────────────────────────────────
@@ -117,6 +117,10 @@ export type CtaClickEvent = {
  * エラーは console.warn のみ。UI に影響を与えない。
  */
 export function recordCtaClick(event: CtaClickEvent): void {
+  if (!isFirestoreWriteAvailable()) {
+    return;
+  }
+
   const payload = {
     ...event,
     type: 'todayops_cta_click' as const,
@@ -125,7 +129,7 @@ export function recordCtaClick(event: CtaClickEvent): void {
   };
 
   try {
-    addDoc(collection(db, 'telemetry'), payload).catch((err) => {
+    addDoc(collection(getDb(), 'telemetry'), payload).catch((err) => {
       // eslint-disable-next-line no-console
       console.warn('[todayops:cta] telemetry write failed', err);
     });
