@@ -21,6 +21,7 @@ export type FormValues = {
   IsHighIntensitySupportTarget: boolean;
   IsSupportProcedureTarget: boolean;
   IsActive: boolean;
+  TransportCourse: string;
   TransportSchedule: Record<string, { to: string; from: string }>;
   RecipientCertNumber: string;
   RecipientCertExpiry: string;

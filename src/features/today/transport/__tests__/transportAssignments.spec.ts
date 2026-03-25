@@ -4,6 +4,7 @@ import {
   buildVehicleBoardGroups,
   buildTransportAssignmentIndex,
   buildVehicleGroups,
+  hasMissingVehicleCourse,
   hasMissingVehicleDriver,
   enrichTransportLegsWithAssignments,
 } from '../transportAssignments';
@@ -52,6 +53,43 @@ describe('buildTransportAssignmentIndex', () => {
     expect(assignments.to.get('U002')).toEqual({ vehicleId: '車両2', driverName: '鈴木次郎' });
     expect(assignments.from.get('U002')).toEqual({ vehicleId: '車両2', driverName: '鈴木次郎' });
   });
+
+  it('resolves attendant from notes marker', () => {
+    const assignments = buildTransportAssignmentIndex(
+      [
+        {
+          userId: 'U003',
+          hasPickup: true,
+          vehicleId: '車両3',
+          notes: '玄関前待機 [transport_attendant:STF-010]',
+        },
+      ],
+      (staffId) => (staffId === 'STF-010' ? '伊藤恵' : undefined),
+    );
+
+    expect(assignments.to.get('U003')).toEqual({ vehicleId: '車両3', attendantName: '伊藤恵' });
+    expect(assignments.from.get('U003')).toEqual({ vehicleId: '車両3', attendantName: '伊藤恵' });
+  });
+
+  it('resolves course from notes marker', () => {
+    const assignments = buildTransportAssignmentIndex(
+      [
+        {
+          userId: 'U008',
+          hasPickup: true,
+          vehicleId: '車両1',
+          notes: '[transport_course:isogo]',
+        },
+      ],
+      () => undefined,
+    );
+
+    expect(assignments.to.get('U008')).toEqual({
+      vehicleId: '車両1',
+      courseId: 'isogo',
+      courseLabel: '磯子',
+    });
+  });
 });
 
 describe('enrichTransportLegsWithAssignments', () => {
@@ -79,6 +117,28 @@ describe('enrichTransportLegsWithAssignments', () => {
     expect(enriched[0].driverName).toBe('既存運転者');
     expect(enriched[1]).toEqual(legs[1]);
   });
+
+  it('fills attendant name and keeps existing attendant', () => {
+    const assignments = buildTransportAssignmentIndex(
+      [
+        {
+          userId: 'U004',
+          hasPickup: true,
+          notes: '[transport_attendant:STF-020]',
+        },
+      ],
+      (staffId) => (staffId === 'STF-020' ? '加藤美咲' : undefined),
+    );
+
+    const legs = [
+      mkLeg({ userId: 'U004' }),
+      mkLeg({ userId: 'U005', attendantName: '既存添乗' }),
+    ];
+
+    const enriched = enrichTransportLegsWithAssignments(legs, assignments);
+    expect(enriched[0].attendantName).toBe('加藤美咲');
+    expect(enriched[1].attendantName).toBe('既存添乗');
+  });
 });
 
 describe('buildVehicleGroups', () => {
@@ -93,8 +153,30 @@ describe('buildVehicleGroups', () => {
 
     expect(groups.map((group) => group.vehicleId)).toEqual(['車両1', '車両2', '未割当']);
     expect(groups[0].driverName).toBe('鈴木');
+    expect(groups[0].attendantName).toBeNull();
     expect(groups[0].riders.map((leg) => leg.userId)).toEqual(['U001']);
     expect(groups[2].riders.map((leg) => leg.userId)).toEqual(['U003']);
+  });
+
+  it('keeps attendant name by vehicle', () => {
+    const groups = buildVehicleGroups([
+      mkLeg({ userId: 'U006', vehicleId: '車両1', driverName: '佐藤', attendantName: '鈴木' }),
+      mkLeg({ userId: 'U007', vehicleId: '車両1' }),
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].attendantName).toBe('鈴木');
+  });
+
+  it('keeps course label by vehicle', () => {
+    const groups = buildVehicleGroups([
+      mkLeg({ userId: 'U020', vehicleId: '車両2', courseId: 'kan2', courseLabel: '環2' }),
+      mkLeg({ userId: 'U021', vehicleId: '車両2' }),
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].courseId).toBe('kan2');
+    expect(groups[0].courseLabel).toBe('環2');
   });
 });
 
@@ -133,5 +215,13 @@ describe('hasMissingVehicleDriver', () => {
     expect(hasMissingVehicleDriver({ driverName: null, riders: [mkLeg()] })).toBe(true);
     expect(hasMissingVehicleDriver({ driverName: '佐藤', riders: [mkLeg()] })).toBe(false);
     expect(hasMissingVehicleDriver({ driverName: null, riders: [] })).toBe(false);
+  });
+});
+
+describe('hasMissingVehicleCourse', () => {
+  it('returns true only when riders exist and course is missing', () => {
+    expect(hasMissingVehicleCourse({ courseId: null, courseLabel: null, riders: [mkLeg()] })).toBe(true);
+    expect(hasMissingVehicleCourse({ courseId: 'isogo', courseLabel: '磯子', riders: [mkLeg()] })).toBe(false);
+    expect(hasMissingVehicleCourse({ courseId: null, courseLabel: null, riders: [] })).toBe(false);
   });
 });

@@ -102,6 +102,12 @@ test.describe('Transport assignments save reflects in today', () => {
       /佐藤/,
     );
     expect(selectedDriver).toBe(true);
+    const selectedAttendant = await selectMuiOptionByLabel(
+      page,
+      page.getByTestId('transport-assignment-attendant-select-1'),
+      /鈴木/,
+    );
+    expect(selectedAttendant).toBe(true);
 
     const saveButton = page.getByTestId('transport-assignment-save-button');
     await expect(saveButton).toBeEnabled();
@@ -117,6 +123,8 @@ test.describe('Transport assignments save reflects in today', () => {
       .filter({ hasText: '車両1' })
       .first();
     await expect(vehicle1Row).toContainText(/運転:\s*佐藤/);
+    await expect(vehicle1Row).toContainText(/添乗:\s*鈴木/);
+    await expect(vehicle1Row).toContainText('2名体制');
     await expect(vehicle1Row).toContainText('乗車 (1名)');
     await expect(vehicle1Row).toContainText(TARGET_USER_NAME);
 

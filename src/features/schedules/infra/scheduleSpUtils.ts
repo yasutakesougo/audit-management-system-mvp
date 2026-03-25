@@ -95,12 +95,14 @@ export type ScheduleFieldNames = {
   end: string;
   serviceType?: string;
   locationName?: string;
+  notes?: string;
 };
 
 // ─── Field resolution ────────────────────────────────────────────────────────
 
 export const resolveScheduleFieldNames = (): ScheduleFieldNames => {
   const listTitle = getSchedulesListTitle().trim().toLowerCase();
+  const isEventList = listTitle === 'scheduleevents';
   if (listTitle === 'dailyopssignals') {
     return {
       title: 'Title',
@@ -115,6 +117,7 @@ export const resolveScheduleFieldNames = (): ScheduleFieldNames => {
     end: SCHEDULES_FIELDS.end,
     serviceType: SCHEDULES_FIELDS.serviceType,
     locationName: SCHEDULES_FIELDS.locationName,
+    notes: isEventList ? 'Notes' : 'Note',
   };
 };
 
@@ -127,6 +130,7 @@ export const buildSelectSets = () => {
   const optional = compact([
     fields.serviceType,
     fields.locationName,
+    fields.notes,
     'AssignedStaff',
     'AssignedStaffId',
     'Vehicle',
@@ -140,6 +144,7 @@ export const buildSelectSets = () => {
     fields.start,
     fields.end,
     fields.locationName,
+    fields.notes,
     fields.serviceType,
     'AssignedStaff',
     'AssignedStaffId',

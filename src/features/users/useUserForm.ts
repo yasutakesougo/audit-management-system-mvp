@@ -9,6 +9,7 @@
  * ヘルパー  → useUserFormHelpers.ts
  */
 import { ChangeEvent, createRef, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { parseTransportCourse } from '../today/transport/transportCourse';
 import type { IUserMaster } from '../../sharepoint/fields';
 import { useUsersStore } from './store';
 import { CLEARED_VALUES } from './useUserFormConstants';
@@ -41,6 +42,7 @@ export {
     DISABILITY_SUPPORT_LEVEL_OPTIONS,
     MEAL_ADDITION_OPTIONS,
     TRANSPORT_ADDITION_OPTIONS,
+    TRANSPORT_COURSE_OPTIONS,
     TRANSPORT_METHOD_OPTIONS,
     USAGE_STATUS_OPTIONS,
     WEEKDAYS
@@ -75,6 +77,7 @@ export function useUserForm(
       IsSupportProcedureTarget:
         user?.IsSupportProcedureTarget ?? user?.IsHighIntensitySupportTarget ?? false,
       IsActive: user?.IsActive ?? true,
+      TransportCourse: parseTransportCourse(user?.TransportCourse) ?? '',
       TransportSchedule: parseTransportSchedule(user?.TransportSchedule),
       RecipientCertNumber: user?.RecipientCertNumber ?? '',
       RecipientCertExpiry: user?.RecipientCertExpiry ?? '',

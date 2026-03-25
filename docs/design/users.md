@@ -32,6 +32,7 @@
 | ステータス | `IsActive` | Yes/No | `active` | 在籍中かどうか（削除せず残す） |
 | 通所 | `TransportToDays` | MultiChoice | `toDays` | 送迎（往路）曜日 |
 | 通所 | `TransportFromDays` | MultiChoice | `fromDays` | 送迎（復路）曜日 |
+| 通所 | `TransportCourse` | Text | `transportCourse` | 送迎固定コース（`isogo` / `kan2` / `kanazawa`） |
 | 通所 | `AttendanceDays` | MultiChoice | `attendanceDays` | 想定出席曜日（Attendance 突合） |
 | 証書 | `RecipientCertNumber` | Text | `certNumber` | 受給者証番号 |
 | 証書 | `RecipientCertExpiry` | Date | `certExpiry` | 受給者証有効期限 |
@@ -48,6 +49,16 @@
 | メタ | `Created`/`Modified` | Date | `created`/`modified` | 監査用 |
 
 > 列追加時は `fields.ts` とこの表を同時更新し、ハードコードを避ける。
+
+### 3.1 送迎固定コースのSSOT
+
+- 正式列名: `TransportCourse`（Users_Master）
+- 正式値: `isogo` / `kan2` / `kanazawa`
+- 表示ラベル対応: `isogo=磯子`, `kan2=環2`, `kanazawa=金沢`
+- 互換ポリシー:
+  - 読み取り: 旧キー（`TransportCourseId` など）を当面 fallback として許可
+  - 書き込み/新規運用: `TransportCourse` のみを使用
+- 移行手順: `docs/runbooks/transport-course-migration.md`
 
 ## 4. 関連モジュール
 

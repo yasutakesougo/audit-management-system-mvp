@@ -53,8 +53,10 @@ import {
 import {
   buildVehicleBoardGroups,
   DEFAULT_TRANSPORT_VEHICLE_IDS,
+  hasMissingVehicleCourse,
   hasMissingVehicleDriver,
 } from './transportAssignments';
+import { TRANSPORT_COURSE_OPTIONS, type TransportCourse } from './transportCourse';
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
@@ -136,6 +138,34 @@ function DirectionProgress({ summary }: { summary: TransportDirectionSummary }) 
 function VehicleAssignmentBoard({ legs }: { legs: TransportLeg[] }) {
   const groups = buildVehicleBoardGroups(legs, DEFAULT_TRANSPORT_VEHICLE_IDS);
   const totalRiders = groups.reduce((sum, group) => sum + group.riders.length, 0);
+  const courseSummary = groups.reduce(
+    (acc, group) => {
+      const riderCount = group.riders.length;
+      if (riderCount === 0) return acc;
+
+      if (group.courseId) {
+        acc[group.courseId] += riderCount;
+      } else {
+        acc.unset += riderCount;
+      }
+      return acc;
+    },
+    {
+      isogo: 0,
+      kan2: 0,
+      kanazawa: 0,
+      unset: 0,
+    } satisfies Record<TransportCourse, number> & { unset: number },
+  );
+  const hasCourseSummary =
+    courseSummary.isogo > 0 || courseSummary.kan2 > 0 || courseSummary.kanazawa > 0 || courseSummary.unset > 0;
+
+  const resolveCourseChipColor = (courseId: TransportCourse | null): 'success' | 'secondary' | 'info' | 'default' => {
+    if (courseId === 'isogo') return 'success';
+    if (courseId === 'kan2') return 'secondary';
+    if (courseId === 'kanazawa') return 'info';
+    return 'default';
+  };
 
   return (
     <Box data-testid="transport-vehicle-board" sx={{ px: 2, py: 1.5 }}>
@@ -147,10 +177,48 @@ function VehicleAssignmentBoard({ legs }: { legs: TransportLeg[] }) {
           {groups.length} 台 / 乗車 {totalRiders} 名
         </Typography>
       </Stack>
+      {hasCourseSummary ? (
+        <Stack
+          direction="row"
+          spacing={0.5}
+          useFlexGap
+          flexWrap="wrap"
+          sx={{ mb: 1 }}
+          data-testid="transport-course-summary"
+        >
+          {TRANSPORT_COURSE_OPTIONS.map((course) =>
+            courseSummary[course.value] > 0 ? (
+              <Chip
+                key={course.value}
+                label={`${course.label} ${courseSummary[course.value]}名`}
+                size="small"
+                color={resolveCourseChipColor(course.value)}
+                variant="outlined"
+                data-testid={`transport-course-summary-${course.value}`}
+                sx={{ height: 20, '& .MuiChip-label': { px: 0.75, fontSize: '0.65rem' } }}
+              />
+            ) : null,
+          )}
+          {courseSummary.unset > 0 ? (
+            <Chip
+              label={`コース未設定 ${courseSummary.unset}名`}
+              size="small"
+              color="warning"
+              variant="outlined"
+              data-testid="transport-course-summary-unset"
+              sx={{ height: 20, '& .MuiChip-label': { px: 0.75, fontSize: '0.65rem' } }}
+            />
+          ) : null}
+        </Stack>
+      ) : null}
 
       <Stack spacing={1}>
         {groups.map((group, index) => {
           const missingDriver = hasMissingVehicleDriver(group);
+          const missingCourse = hasMissingVehicleCourse(group);
+          const needsAttention = missingDriver || missingCourse;
+          const hasAttendant = Boolean(group.attendantName);
+          const crewModeLabel = hasAttendant ? '2名体制' : '1名体制';
           return (
             <Box
               key={group.vehicleId}
@@ -158,9 +226,9 @@ function VehicleAssignmentBoard({ legs }: { legs: TransportLeg[] }) {
               sx={{
                 p: 1,
                 borderRadius: 1,
-                bgcolor: missingDriver ? 'warning.50' : 'grey.50',
+                bgcolor: needsAttention ? 'warning.50' : 'grey.50',
                 border: '1px solid',
-                borderColor: missingDriver ? 'warning.main' : 'divider',
+                borderColor: needsAttention ? 'warning.main' : 'divider',
               }}
             >
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
@@ -168,10 +236,43 @@ function VehicleAssignmentBoard({ legs }: { legs: TransportLeg[] }) {
                   🚗 {group.vehicleId}
                 </Typography>
                 <Stack direction="row" spacing={0.5} alignItems="center">
+                  {group.courseLabel ? (
+                    <Chip
+                      label={group.courseLabel}
+                      size="small"
+                      color={resolveCourseChipColor(group.courseId)}
+                      variant="outlined"
+                      data-testid={`transport-vehicle-course-${index}`}
+                      sx={{ height: 18, '& .MuiChip-label': { px: 0.75, fontSize: '0.65rem' } }}
+                    />
+                  ) : null}
+                  {missingCourse ? (
+                    <Chip
+                      label="コース未設定"
+                      size="small"
+                      color="warning"
+                      variant="outlined"
+                      data-testid={`transport-vehicle-course-warning-${index}`}
+                      sx={{ height: 18, '& .MuiChip-label': { px: 0.75, fontSize: '0.65rem' } }}
+                    />
+                  ) : null}
                   <Typography variant="caption" color={group.driverName ? 'text.primary' : 'warning.main'}>
                     運転: {group.driverName ?? '未設定'}
                   </Typography>
-                  {missingDriver && (
+                  <Typography variant="caption" color="text.secondary">
+                    添乗: {group.attendantName ?? 'なし'}
+                  </Typography>
+                  {group.riders.length > 0 && (
+                    <Chip
+                      label={crewModeLabel}
+                      size="small"
+                      color={hasAttendant ? 'primary' : 'default'}
+                      variant={hasAttendant ? 'filled' : 'outlined'}
+                      data-testid={`transport-vehicle-crew-mode-${index}`}
+                      sx={{ height: 18, '& .MuiChip-label': { px: 0.75, fontSize: '0.65rem' } }}
+                    />
+                  )}
+                  {needsAttention && (
                     <Stack direction="row" spacing={0.25} alignItems="center" data-testid={`transport-vehicle-warning-${index}`}>
                       <WarningAmberIcon sx={{ fontSize: 12, color: 'warning.main' }} />
                       <Typography variant="caption" color="warning.main" fontWeight="bold">

@@ -1,5 +1,6 @@
 import { toLocalDateISO } from '@/utils/getNow';
 import {
+  applyPreviousWeekdayDefaults,
   assignUserToVehicle,
   buildSchedulePatchPayloads,
   buildTransportAssignmentDraft,
@@ -11,9 +12,12 @@ import {
   type TransportAssignmentStaffSource,
   type TransportAssignmentUserSource,
 } from '@/features/transport-assignments/domain/transportAssignmentDraft';
+import { resolveUserFixedTransportCourse } from '@/features/transport-assignments/domain/userTransportCourse';
+import type { UpdateScheduleEventInput } from '@/features/schedules/data/port';
 import { useTransportAssignmentSave } from '@/features/transport-assignments/hooks/useTransportAssignmentSave';
 import { useSchedules } from '@/features/schedules/hooks/useSchedules';
 import { useStaffStore } from '@/features/staff/store';
+import { TRANSPORT_COURSE_OPTIONS, getTransportCourseLabel, parseTransportCourse } from '@/features/today/transport/transportCourse';
 import {
   DEFAULT_TRANSPORT_VEHICLE_IDS,
 } from '@/features/today/transport/transportAssignments';
@@ -41,10 +45,74 @@ import { Link as RouterLink } from 'react-router-dom';
 
 type TransportDirection = 'to' | 'from';
 
-function buildDateRange(date: string): { from: string; to: string } {
+const JST_TZ = 'Asia/Tokyo';
+const DAY_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_LOOKBACK_WEEKS = 8;
+
+type WeekDateOption = {
+  date: string;
+  label: string;
+};
+
+type WeekBulkApplyState = {
+  payloads: UpdateScheduleEventInput[];
+  summary: Array<{ date: string; count: number }>;
+};
+
+function toJstDateKey(date: Date): string {
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: JST_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
+function toJstWeekdayLabel(date: Date): string {
+  return new Intl.DateTimeFormat('ja-JP', {
+    timeZone: JST_TZ,
+    weekday: 'short',
+  }).format(date);
+}
+
+function toJstNoon(dateKey: string): Date {
+  return new Date(`${dateKey}T12:00:00+09:00`);
+}
+
+function shiftDateInJst(dateKey: string, days: number): string {
+  const base = toJstNoon(dateKey);
+  return toJstDateKey(new Date(base.getTime() + (days * DAY_MS)));
+}
+
+function getWeekStartDate(dateKey: string): string {
+  const base = toJstNoon(dateKey);
+  const day = base.getUTCDay(); // 0: Sun ... 6: Sat (stable for JST noon)
+  const diff = (day + 6) % 7; // Monday start
+  return toJstDateKey(new Date(base.getTime() - (diff * DAY_MS)));
+}
+
+function buildWeekDateOptions(weekStart: string): WeekDateOption[] {
+  return Array.from({ length: 5 }, (_, index) => {
+    const date = shiftDateInJst(weekStart, index);
+    const weekday = toJstWeekdayLabel(toJstNoon(date));
+    return {
+      date,
+      label: `${weekday} ${date.slice(5).replace('-', '/')}`,
+    };
+  });
+}
+
+function formatWeekRange(weekStart: string): string {
+  const weekEnd = shiftDateInJst(weekStart, 4);
+  return `${weekStart.slice(5).replace('-', '/')} - ${weekEnd.slice(5).replace('-', '/')}`;
+}
+
+function buildDateRange(weekStart: string, lookbackWeeks = 0): { from: string; to: string } {
+  const rangeStart = shiftDateInJst(weekStart, -(lookbackWeeks * 7));
+  const weekEnd = shiftDateInJst(weekStart, 4);
   return {
-    from: `${date}T00:00:00+09:00`,
-    to: `${date}T23:59:59+09:00`,
+    from: `${rangeStart}T00:00:00+09:00`,
+    to: `${weekEnd}T23:59:59+09:00`,
   };
 }
 
@@ -66,14 +134,35 @@ function formatSavedAt(iso: string | null): string {
   });
 }
 
+function isOnTargetDate(start: string | undefined, targetDate: string): boolean {
+  if (!start) return false;
+  const date = new Date(start);
+  if (Number.isNaN(date.getTime())) return false;
+  return toJstDateKey(date) === targetDate;
+}
+
+function normalizeToWeekdayDate(dateKey: string): string {
+  const day = toJstNoon(dateKey).getUTCDay();
+  if (day === 0) return shiftDateInJst(dateKey, 1);
+  if (day === 6) return shiftDateInJst(dateKey, -1);
+  return dateKey;
+}
+
 export default function TransportAssignmentPage() {
-  const [targetDate, setTargetDate] = useState<string>(() => toLocalDateISO());
+  const [targetDate, setTargetDate] = useState<string>(() => normalizeToWeekdayDate(toLocalDateISO()));
   const [direction, setDirection] = useState<TransportDirection>('to');
   const [draft, setDraft] = useState<TransportAssignmentDraft | null>(null);
   const [dirty, setDirty] = useState(false);
   const [pendingAssignByVehicle, setPendingAssignByVehicle] = useState<Record<string, string>>({});
+  const [weekBulkApplyState, setWeekBulkApplyState] = useState<WeekBulkApplyState | null>(null);
 
-  const scheduleRange = useMemo(() => buildDateRange(targetDate), [targetDate]);
+  const weekStartDate = useMemo(() => getWeekStartDate(targetDate), [targetDate]);
+  const scheduleRange = useMemo(
+    () => buildDateRange(weekStartDate, DEFAULT_LOOKBACK_WEEKS),
+    [weekStartDate],
+  );
+  const weekDateOptions = useMemo(() => buildWeekDateOptions(weekStartDate), [weekStartDate]);
+  const weekRangeLabel = useMemo(() => formatWeekRange(weekStartDate), [weekStartDate]);
   const {
     items: scheduleItems,
     loading: schedulesLoading,
@@ -96,10 +185,15 @@ export default function TransportAssignmentPage() {
   const userSources = useMemo<TransportAssignmentUserSource[]>(
     () =>
       usersData
-        .map((user) => ({
-          userId: user.UserID,
-          userName: user.FullName,
-        }))
+        .map((user) => {
+          const fixedCourseId = resolveUserFixedTransportCourse(user);
+          return {
+            userId: user.UserID,
+            userName: user.FullName,
+            fixedCourseId,
+            fixedCourseLabel: getTransportCourseLabel(fixedCourseId),
+          };
+        })
         .filter((user) => Boolean(normalizeText(user.userId)) && Boolean(normalizeText(user.userName))),
     [usersData],
   );
@@ -135,22 +229,37 @@ export default function TransportAssignmentPage() {
     () => scheduleItems as unknown as TransportAssignmentScheduleRow[],
     [scheduleItems],
   );
+  const selectedDateRows = useMemo(
+    () => scheduleRows.filter((row) => isOnTargetDate(row.start, targetDate)),
+    [scheduleRows, targetDate],
+  );
 
   const baseDraft = useMemo(
     () =>
       buildTransportAssignmentDraft({
         date: targetDate,
         direction,
-        schedules: scheduleRows,
+        schedules: selectedDateRows,
         users: userSources,
         staff: staffSources,
         fixedVehicleIds: DEFAULT_TRANSPORT_VEHICLE_IDS,
       }),
-    [direction, scheduleRows, staffSources, targetDate, userSources],
+    [direction, selectedDateRows, staffSources, targetDate, userSources],
   );
 
   const baseDraftSnapshot = useMemo(() => JSON.stringify(baseDraft), [baseDraft]);
   const stableBaseDraft = useMemo(() => baseDraft, [baseDraftSnapshot]);
+  const weekdayDefaultDraft = useMemo(
+    () =>
+      applyPreviousWeekdayDefaults({
+        draft: stableBaseDraft,
+        schedules: scheduleRows,
+        users: userSources,
+      }),
+    [scheduleRows, stableBaseDraft, userSources],
+  );
+  const weekdayDefaultSnapshot = useMemo(() => JSON.stringify(weekdayDefaultDraft), [weekdayDefaultDraft]);
+  const hasWeekdayDefaultSuggestion = weekdayDefaultSnapshot !== baseDraftSnapshot;
 
   useEffect(() => {
     setDraft(stableBaseDraft);
@@ -170,10 +279,34 @@ export default function TransportAssignmentPage() {
     () =>
       buildSchedulePatchPayloads({
         draft: currentDraft,
-        schedules: scheduleRows,
+        schedules: selectedDateRows,
       }),
-    [currentDraft, scheduleRows],
+    [currentDraft, selectedDateRows],
   );
+  const effectivePayloadPreview = useMemo(() => {
+    const byId = new Map<string, UpdateScheduleEventInput>();
+    if (weekBulkApplyState) {
+      for (const payload of weekBulkApplyState.payloads) {
+        byId.set(payload.id, payload);
+      }
+    }
+    for (const payload of payloadPreview) {
+      byId.set(payload.id, payload);
+    }
+    return [...byId.values()];
+  }, [payloadPreview, weekBulkApplyState]);
+  const weekBulkSummaryLabel = useMemo(() => {
+    if (!weekBulkApplyState) return '';
+    const weekdayByDate = new Map(
+      weekDateOptions.map((option) => [option.date, option.label.split(' ')[0] ?? option.date] as const),
+    );
+    return weekBulkApplyState.summary
+      .map((item) => {
+        const weekday = weekdayByDate.get(item.date) ?? item.date;
+        return item.count > 0 ? `${weekday} ${item.count}件` : `${weekday} 変更なし`;
+      })
+      .join(' / ');
+  }, [weekBulkApplyState, weekDateOptions]);
   const missingDriverVehicleIds = useMemo(
     () =>
       currentDraft.vehicles
@@ -181,7 +314,7 @@ export default function TransportAssignmentPage() {
         .map((vehicle) => vehicle.vehicleId),
     [currentDraft.vehicles],
   );
-  const canSave = dirty && payloadPreview.length > 0 && saveStatus !== 'saving';
+  const canSave = dirty && effectivePayloadPreview.length > 0 && saveStatus !== 'saving';
 
   const handleDriverChange = (vehicleId: string, staffId: string) => {
     clearSaveError();
@@ -194,6 +327,58 @@ export default function TransportAssignmentPage() {
               ...vehicle,
               driverStaffId: normalizedStaffId,
               driverName: normalizedStaffId ? (staffNameById.get(normalizedStaffId) ?? null) : null,
+            }
+          : vehicle,
+      );
+      const nextDraft = {
+        ...prev,
+        vehicles: nextVehicles,
+      };
+      return {
+        ...nextDraft,
+        unassignedUserIds: recomputeUnassignedUsers(nextDraft),
+      };
+    });
+    setDirty(true);
+  };
+
+  const handleCourseChange = (vehicleId: string, courseValue: string) => {
+    clearSaveError();
+    setDraft((prev) => {
+      if (!prev) return prev;
+      const courseId = parseTransportCourse(courseValue);
+      const nextVehicles = prev.vehicles.map((vehicle) =>
+        vehicle.vehicleId === vehicleId
+          ? {
+              ...vehicle,
+              courseId,
+              courseLabel: getTransportCourseLabel(courseId),
+            }
+          : vehicle,
+      );
+      const nextDraft = {
+        ...prev,
+        vehicles: nextVehicles,
+      };
+      return {
+        ...nextDraft,
+        unassignedUserIds: recomputeUnassignedUsers(nextDraft),
+      };
+    });
+    setDirty(true);
+  };
+
+  const handleAttendantChange = (vehicleId: string, staffId: string) => {
+    clearSaveError();
+    setDraft((prev) => {
+      if (!prev) return prev;
+      const normalizedStaffId = normalizeText(staffId);
+      const nextVehicles = prev.vehicles.map((vehicle) =>
+        vehicle.vehicleId === vehicleId
+          ? {
+              ...vehicle,
+              attendantStaffId: normalizedStaffId,
+              attendantName: normalizedStaffId ? (staffNameById.get(normalizedStaffId) ?? null) : null,
             }
           : vehicle,
       );
@@ -227,20 +412,75 @@ export default function TransportAssignmentPage() {
 
   const handleSave = async () => {
     if (!canSave) return;
-    const result = await save(payloadPreview);
+    const result = await save(effectivePayloadPreview);
     if (result.success) {
       setDirty(false);
+      setWeekBulkApplyState(null);
     }
+  };
+
+  const handleApplyWeekdayDefault = () => {
+    if (!hasWeekdayDefaultSuggestion) return;
+    clearSaveError();
+    setDraft(weekdayDefaultDraft);
+    setDirty(true);
+    setPendingAssignByVehicle({});
+  };
+
+  const handleApplyWeekBulkDefault = () => {
+    clearSaveError();
+
+    const nextTargetDraft = weekdayDefaultDraft;
+    const payloadMap = new Map<string, UpdateScheduleEventInput>();
+    const summary = weekDateOptions.map((option) => {
+      const dayRows = scheduleRows.filter((row) => isOnTargetDate(row.start, option.date));
+      const baseDraftForDate =
+        option.date === targetDate
+          ? nextTargetDraft
+          : buildTransportAssignmentDraft({
+              date: option.date,
+              direction,
+              schedules: dayRows,
+              users: userSources,
+              staff: staffSources,
+              fixedVehicleIds: DEFAULT_TRANSPORT_VEHICLE_IDS,
+            });
+      const appliedDraftForDate = applyPreviousWeekdayDefaults({
+        draft: baseDraftForDate,
+        schedules: scheduleRows,
+        users: userSources,
+      });
+      const dayPayloads = buildSchedulePatchPayloads({
+        draft: appliedDraftForDate,
+        schedules: dayRows,
+      });
+      for (const payload of dayPayloads) {
+        payloadMap.set(payload.id, payload);
+      }
+      return {
+        date: option.date,
+        count: dayPayloads.length,
+      };
+    });
+
+    setDraft(nextTargetDraft);
+    setPendingAssignByVehicle({});
+    const payloads = [...payloadMap.values()];
+    setWeekBulkApplyState({ payloads, summary });
+    setDirty(payloads.length > 0 || payloadPreview.length > 0);
   };
 
   useEffect(() => {
     if (dirty && payloadPreview.length === 0) {
-      setDirty(false);
+      if (!weekBulkApplyState || weekBulkApplyState.payloads.length === 0) {
+        setDirty(false);
+      }
     }
-  }, [dirty, payloadPreview.length]);
+  }, [dirty, payloadPreview.length, weekBulkApplyState]);
 
   useEffect(() => {
     clearSaveError();
+    setWeekBulkApplyState(null);
   }, [targetDate, direction, clearSaveError]);
 
   return (
@@ -270,10 +510,37 @@ export default function TransportAssignmentPage() {
             type="date"
             size="small"
             value={targetDate}
-            onChange={(event) => setTargetDate(event.target.value)}
+            onChange={(event) => {
+              const normalized = normalizeText(event.target.value);
+              if (!normalized) return;
+              setTargetDate(normalizeToWeekdayDate(normalized));
+            }}
             inputProps={{ 'data-testid': 'transport-assignment-date' }}
             sx={{ width: { xs: '100%', md: 220 } }}
           />
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setTargetDate((prev) => normalizeToWeekdayDate(shiftDateInJst(prev, -7)))}
+              data-testid="transport-assignment-week-prev"
+            >
+              前週
+            </Button>
+            <Chip
+              size="small"
+              label={`週 ${weekRangeLabel}`}
+              data-testid="transport-assignment-week-range"
+            />
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setTargetDate((prev) => normalizeToWeekdayDate(shiftDateInJst(prev, 7)))}
+              data-testid="transport-assignment-week-next"
+            >
+              次週
+            </Button>
+          </Stack>
           <ToggleButtonGroup
             size="small"
             color="primary"
@@ -287,6 +554,47 @@ export default function TransportAssignmentPage() {
             <ToggleButton value="to">迎え</ToggleButton>
             <ToggleButton value="from">送り</ToggleButton>
           </ToggleButtonGroup>
+          <ToggleButtonGroup
+            size="small"
+            color="primary"
+            exclusive
+            value={targetDate}
+            onChange={(_, value: string | null) => {
+              if (value) setTargetDate(value);
+            }}
+            data-testid="transport-assignment-weekdays"
+            sx={{ flexWrap: 'wrap' }}
+          >
+            {weekDateOptions.map((option) => (
+              <ToggleButton
+                key={option.date}
+                value={option.date}
+                data-testid={`transport-assignment-weekday-${option.date}`}
+              >
+                {option.label}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+          {hasWeekdayDefaultSuggestion ? (
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={handleApplyWeekdayDefault}
+              data-testid="transport-assignment-apply-weekday-default"
+              disabled={saveStatus === 'saving'}
+            >
+              同曜日デフォルト適用
+            </Button>
+          ) : null}
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={handleApplyWeekBulkDefault}
+            data-testid="transport-assignment-apply-week-bulk-default"
+            disabled={saveStatus === 'saving'}
+          >
+            今週に一括適用
+          </Button>
           <Typography variant="body2" color="text.secondary" sx={{ ml: { md: 'auto' } }}>
             {saveStatus === 'saving'
               ? '保存中...'
@@ -298,8 +606,8 @@ export default function TransportAssignmentPage() {
           </Typography>
           <Chip
             size="small"
-            color={payloadPreview.length > 0 ? 'warning' : 'default'}
-            label={`更新予定 ${payloadPreview.length}件`}
+            color={effectivePayloadPreview.length > 0 ? 'warning' : 'default'}
+            label={`更新予定 ${effectivePayloadPreview.length}件`}
             data-testid="transport-assignment-payload-count"
           />
           <Button
@@ -312,6 +620,12 @@ export default function TransportAssignmentPage() {
           </Button>
         </Stack>
       </Paper>
+
+      {weekBulkApplyState ? (
+        <Alert severity="info" sx={{ mb: 2 }} data-testid="transport-assignment-week-bulk-summary">
+          今週一括適用の結果: {weekBulkSummaryLabel}
+        </Alert>
+      ) : null}
 
       {saveStatus === 'success' ? (
         <Alert severity="success" sx={{ mb: 2 }} data-testid="transport-assignment-save-success">
@@ -367,6 +681,15 @@ export default function TransportAssignmentPage() {
           >
             <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
               <Typography variant="h6">{vehicle.vehicleId}</Typography>
+              {vehicle.courseLabel ? (
+                <Chip
+                  size="small"
+                  color="info"
+                  variant="outlined"
+                  label={`コース: ${vehicle.courseLabel}`}
+                  data-testid={`transport-assignment-vehicle-course-${index + 1}`}
+                />
+              ) : null}
               {hasVehicleMissingDriver(vehicle) ? (
                 <Chip
                   size="small"
@@ -378,6 +701,27 @@ export default function TransportAssignmentPage() {
             </Stack>
 
             <Stack spacing={1.5}>
+              <FormControl size="small" fullWidth>
+                <InputLabel id={`transport-assignment-course-label-${vehicle.vehicleId}`}>コース</InputLabel>
+                <Select
+                  labelId={`transport-assignment-course-label-${vehicle.vehicleId}`}
+                  label="コース"
+                  value={vehicle.courseId ?? ''}
+                  onChange={(event) => handleCourseChange(vehicle.vehicleId, String(event.target.value))}
+                  data-testid={`transport-assignment-course-select-${index + 1}`}
+                  disabled={saveStatus === 'saving'}
+                >
+                  <MenuItem value="">
+                    <em>未設定</em>
+                  </MenuItem>
+                  {TRANSPORT_COURSE_OPTIONS.map((course) => (
+                    <MenuItem key={course.value} value={course.value}>
+                      {course.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
               <FormControl size="small" fullWidth>
                 <InputLabel id={`transport-assignment-driver-label-${vehicle.vehicleId}`}>運転者</InputLabel>
                 <Select
@@ -393,6 +737,27 @@ export default function TransportAssignmentPage() {
                   </MenuItem>
                   {staffOptions.map((staff) => (
                     <MenuItem key={staff.staffId} value={staff.staffId}>
+                      {staff.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl size="small" fullWidth>
+                <InputLabel id={`transport-assignment-attendant-label-${vehicle.vehicleId}`}>添乗者</InputLabel>
+                <Select
+                  labelId={`transport-assignment-attendant-label-${vehicle.vehicleId}`}
+                  label="添乗者"
+                  value={vehicle.attendantStaffId ?? ''}
+                  onChange={(event) => handleAttendantChange(vehicle.vehicleId, String(event.target.value))}
+                  data-testid={`transport-assignment-attendant-select-${index + 1}`}
+                  disabled={saveStatus === 'saving'}
+                >
+                  <MenuItem value="">
+                    <em>なし</em>
+                  </MenuItem>
+                  {staffOptions.map((staff) => (
+                    <MenuItem key={`attendant-${staff.staffId}`} value={staff.staffId}>
                       {staff.label}
                     </MenuItem>
                   ))}

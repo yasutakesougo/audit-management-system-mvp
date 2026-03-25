@@ -17,6 +17,7 @@ const REQUIRED_CORE_FIELDS = [
   FIELD_MAP.Users_Master.isActive,
   FIELD_MAP.Users_Master.severeFlag,
   FIELD_MAP.Users_Master.isHighIntensitySupportTarget,
+  FIELD_MAP.Users_Master.transportCourse,
   FIELD_MAP.Users_Master.attendanceDays,
 ];
 

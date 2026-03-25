@@ -4,6 +4,11 @@ import {
   inferTransportDirections,
   isTransportScheduleRow,
 } from '@/features/today/transport/transportAssignments';
+import {
+  getTransportCourseLabel,
+  parseTransportCourse,
+  type TransportCourse,
+} from '@/features/today/transport/transportCourse';
 import type { TransportDirection } from '@/features/today/transport/transportTypes';
 
 export type TransportAssignmentScheduleRow = {
@@ -36,6 +41,8 @@ export type TransportAssignmentScheduleRow = {
 export type TransportAssignmentUserSource = {
   userId: string;
   userName: string;
+  fixedCourseId?: TransportCourse | null;
+  fixedCourseLabel?: string | null;
 };
 
 export type TransportAssignmentStaffSource = {
@@ -57,8 +64,12 @@ export type TransportAssignmentDraftUser = {
 
 export type TransportAssignmentVehicleDraft = {
   vehicleId: string;
+  courseId: TransportCourse | null;
+  courseLabel: string | null;
   driverStaffId: string | null;
   driverName: string | null;
+  attendantStaffId: string | null;
+  attendantName: string | null;
   riderUserIds: string[];
 };
 
@@ -84,19 +95,38 @@ export type BuildSchedulePatchPayloadsInput = {
   schedules: readonly TransportAssignmentScheduleRow[];
 };
 
+export type ApplyPreviousWeekdayDefaultsInput = {
+  draft: TransportAssignmentDraft;
+  schedules: readonly TransportAssignmentScheduleRow[];
+  users?: readonly TransportAssignmentUserSource[];
+};
+
 type UserAssignment = {
   userId: string;
   userName: string;
   vehicleId: string | null;
+  courseId: TransportCourse | null;
+  courseLabel: string | null;
   driverStaffId: string | null;
   driverName: string | null;
+  attendantStaffId: string | null;
+  attendantName: string | null;
   scheduleRefs: TransportScheduleRef[];
 };
 
-type DriverAssignment = {
+type CrewAssignment = {
   vehicleId: string | null;
+  courseId: TransportCourse | null;
   driverStaffId: string | null;
+  attendantStaffId: string | null;
 };
+
+const TRANSPORT_ATTENDANT_TAG_PATTERN = /\[transport_attendant:([^\]\r\n]+)\]/i;
+const TRANSPORT_ATTENDANT_TAG_PATTERN_GLOBAL = /\[transport_attendant:[^\]\r\n]+\]/gi;
+const TRANSPORT_COURSE_TAG_PATTERN = /\[transport_course:([^\]\r\n]+)\]/i;
+const TRANSPORT_COURSE_TAG_PATTERN_GLOBAL = /\[transport_course:[^\]\r\n]+\]/gi;
+const TRANSPORT_TZ = 'Asia/Tokyo';
+const TRANSPORT_NOON_SUFFIX = 'T12:00:00+09:00';
 
 function normalizeText(value: unknown): string | null {
   if (typeof value !== 'string') return null;
@@ -106,6 +136,65 @@ function normalizeText(value: unknown): string | null {
 
 function normalizeLookupKey(value: string): string {
   return value.trim().replace(/[-_\s]/g, '').toUpperCase();
+}
+
+function stripTransportMetaTags(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') return null;
+  const stripped = value
+    .replace(TRANSPORT_ATTENDANT_TAG_PATTERN_GLOBAL, '')
+    .replace(TRANSPORT_COURSE_TAG_PATTERN_GLOBAL, '')
+    .trim();
+  return stripped.length > 0 ? stripped : null;
+}
+
+function extractTransportAttendantStaffId(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') return null;
+  const match = TRANSPORT_ATTENDANT_TAG_PATTERN.exec(value);
+  return normalizeText(match?.[1]);
+}
+
+function extractTransportCourseId(value: string | null | undefined): TransportCourse | null {
+  if (typeof value !== 'string') return null;
+  const match = TRANSPORT_COURSE_TAG_PATTERN.exec(value);
+  return parseTransportCourse(match?.[1]);
+}
+
+function buildTransportNotes(
+  baseNotes: string | null | undefined,
+  attendantStaffId: string | null,
+  courseId: TransportCourse | null,
+): string | undefined {
+  const base = stripTransportMetaTags(baseNotes);
+  const normalizedAttendantStaffId = normalizeText(attendantStaffId);
+  const tags: string[] = [];
+  if (normalizedAttendantStaffId) {
+    tags.push(`[transport_attendant:${normalizedAttendantStaffId}]`);
+  }
+  if (courseId) {
+    tags.push(`[transport_course:${courseId}]`);
+  }
+  if (tags.length === 0) return base ?? undefined;
+  const joinedTags = tags.join(' ');
+  return base ? `${base} ${joinedTags}` : joinedTags;
+}
+
+function toDateKeyInTransportTz(value: string): string | null {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: TRANSPORT_TZ }).format(date);
+}
+
+function toWeekdayFromDateKey(dateKey: string): number {
+  return new Date(`${dateKey}${TRANSPORT_NOON_SUFFIX}`).getUTCDay();
+}
+
+function isSameDraftDate(
+  row: Pick<TransportAssignmentScheduleRow, 'start'>,
+  targetDate: string,
+): boolean {
+  const start = normalizeText(row.start);
+  if (!start) return false;
+  return toDateKeyInTransportTz(start) === targetDate;
 }
 
 function compareVehicleId(a: string, b: string): number {
@@ -253,8 +342,12 @@ export function assignUserToVehicle(
   if (targetIndex === -1) {
     nextVehicles.push({
       vehicleId: normalizedVehicleId,
+      courseId: null,
+      courseLabel: null,
       driverStaffId: null,
       driverName: null,
+      attendantStaffId: null,
+      attendantName: null,
       riderUserIds: [normalizedUserId],
     });
   } else if (!nextVehicles[targetIndex].riderUserIds.includes(normalizedUserId)) {
@@ -319,6 +412,7 @@ export function buildTransportAssignmentDraft(input: BuildTransportAssignmentDra
   const assignments = new Map<string, UserAssignment>();
 
   for (const row of input.schedules) {
+    if (!isSameDraftDate(row, input.date)) continue;
     const rawRow = row as unknown as Record<string, unknown>;
     if (!isTransportScheduleRow(rawRow)) continue;
     if (!inferTransportDirections(rawRow).includes(input.direction)) continue;
@@ -333,10 +427,18 @@ export function buildTransportAssignmentDraft(input: BuildTransportAssignmentDra
       userNameIndex.get(userId) ??
       userId;
     const vehicleId = existing?.vehicleId ?? normalizeText(row.vehicleId);
+    const courseId = existing?.courseId ?? extractTransportCourseId(row.notes);
+    const courseLabel = getTransportCourseLabel(courseId);
     const driverStaffId = existing?.driverStaffId ?? normalizeText(row.assignedStaffId);
     const driverName = resolveStaffName(
       driverStaffId ?? null,
       existing?.driverName ?? normalizeText(row.assignedStaffName),
+      staffNameIndex,
+    );
+    const attendantStaffId = existing?.attendantStaffId ?? extractTransportAttendantStaffId(row.notes);
+    const attendantName = resolveStaffName(
+      attendantStaffId,
+      existing?.attendantName ?? null,
       staffNameIndex,
     );
     const scheduleRefs = [...(existing?.scheduleRefs ?? []), toScheduleRef(row)];
@@ -345,8 +447,12 @@ export function buildTransportAssignmentDraft(input: BuildTransportAssignmentDra
       userId,
       userName,
       vehicleId: vehicleId ?? null,
+      courseId,
+      courseLabel,
       driverStaffId: driverStaffId ?? null,
       driverName,
+      attendantStaffId: attendantStaffId ?? null,
+      attendantName,
       scheduleRefs,
     });
   }
@@ -363,8 +469,12 @@ export function buildTransportAssignmentDraft(input: BuildTransportAssignmentDra
   for (const vehicleId of fixedVehicleIds) {
     vehicles.set(vehicleId, {
       vehicleId,
+      courseId: null,
+      courseLabel: null,
       driverStaffId: null,
       driverName: null,
+      attendantStaffId: null,
+      attendantName: null,
       riderUserIds: [],
     });
   }
@@ -377,8 +487,12 @@ export function buildTransportAssignmentDraft(input: BuildTransportAssignmentDra
     if (!currentVehicle) {
       vehicles.set(state.vehicleId, {
         vehicleId: state.vehicleId,
+        courseId: state.courseId,
+        courseLabel: state.courseLabel,
         driverStaffId: state.driverStaffId,
         driverName: state.driverName,
+        attendantStaffId: state.attendantStaffId,
+        attendantName: state.attendantName,
         riderUserIds: [assignment.userId],
       });
       continue;
@@ -390,6 +504,18 @@ export function buildTransportAssignmentDraft(input: BuildTransportAssignmentDra
     }
     if (!currentVehicle.driverName && state.driverName) {
       currentVehicle.driverName = state.driverName;
+    }
+    if (!currentVehicle.courseId && state.courseId) {
+      currentVehicle.courseId = state.courseId;
+    }
+    if (!currentVehicle.courseLabel && state.courseLabel) {
+      currentVehicle.courseLabel = state.courseLabel;
+    }
+    if (!currentVehicle.attendantStaffId && state.attendantStaffId) {
+      currentVehicle.attendantStaffId = state.attendantStaffId;
+    }
+    if (!currentVehicle.attendantName && state.attendantName) {
+      currentVehicle.attendantName = state.attendantName;
     }
   }
 
@@ -414,14 +540,152 @@ export function buildTransportAssignmentDraft(input: BuildTransportAssignmentDra
   };
 }
 
+type PreviousWeekdayDefaultsCandidate = CrewAssignment & {
+  date: string;
+  driverName: string | null;
+};
+
+type CoursePreferenceSource = Pick<TransportAssignmentUserSource, 'fixedCourseId' | 'fixedCourseLabel'>;
+type CourseHistorySource = Pick<CrewAssignment, 'courseId'>;
+
+export function resolveDefaultTransportCourse(
+  user: CoursePreferenceSource | null | undefined,
+  history: CourseHistorySource | null | undefined,
+): TransportCourse | null {
+  const fixed = parseTransportCourse(user?.fixedCourseId ?? user?.fixedCourseLabel);
+  if (fixed) return fixed;
+  return parseTransportCourse(history?.courseId) ?? null;
+}
+
+export function applyPreviousWeekdayDefaults(
+  input: ApplyPreviousWeekdayDefaultsInput,
+): TransportAssignmentDraft {
+  const targetWeekday = toWeekdayFromDateKey(input.draft.date);
+  const candidateByUserId = new Map<string, PreviousWeekdayDefaultsCandidate>();
+  const fixedCourseByUserId = new Map<string, TransportCourse>();
+  for (const source of input.users ?? []) {
+    const userId = normalizeText(source.userId);
+    if (!userId) continue;
+    const fixedCourseId = parseTransportCourse(source.fixedCourseId ?? source.fixedCourseLabel);
+    if (!fixedCourseId) continue;
+    fixedCourseByUserId.set(userId, fixedCourseId);
+  }
+
+  for (const row of input.schedules) {
+    const start = normalizeText(row.start);
+    if (!start) continue;
+    const rowDate = toDateKeyInTransportTz(start);
+    if (!rowDate || rowDate >= input.draft.date) continue;
+    if (toWeekdayFromDateKey(rowDate) !== targetWeekday) continue;
+
+    const rawRow = row as unknown as Record<string, unknown>;
+    if (!isTransportScheduleRow(rawRow)) continue;
+    if (!inferTransportDirections(rawRow).includes(input.draft.direction)) continue;
+
+    const userId = normalizeText(row.userId);
+    if (!userId) continue;
+
+    const candidate: PreviousWeekdayDefaultsCandidate = {
+      date: rowDate,
+      vehicleId: normalizeText(row.vehicleId),
+      courseId: extractTransportCourseId(row.notes),
+      driverStaffId: normalizeText(row.assignedStaffId),
+      attendantStaffId: extractTransportAttendantStaffId(row.notes),
+      driverName: normalizeText(row.assignedStaffName),
+    };
+    if (!candidate.vehicleId && !candidate.driverStaffId && !candidate.attendantStaffId && !candidate.courseId) continue;
+
+    const currentCandidate = candidateByUserId.get(userId);
+    if (!currentCandidate || candidate.date > currentCandidate.date) {
+      candidateByUserId.set(userId, candidate);
+    }
+  }
+
+  if (candidateByUserId.size === 0 && fixedCourseByUserId.size === 0) {
+    return input.draft;
+  }
+
+  let nextDraft = input.draft;
+
+  for (const user of nextDraft.users) {
+    const candidate = candidateByUserId.get(user.userId);
+    const fixedCourseId = fixedCourseByUserId.get(user.userId) ?? null;
+    if (!candidate && !fixedCourseId) continue;
+
+    const currentVehicle = nextDraft.vehicles.find((vehicle) => vehicle.riderUserIds.includes(user.userId));
+    const currentVehicleId = currentVehicle?.vehicleId ?? null;
+    const fallbackVehicleId = candidate?.vehicleId ?? null;
+    const targetVehicleId = currentVehicleId ?? fallbackVehicleId;
+    const isCurrentVehicleDifferentFromHistory =
+      Boolean(currentVehicleId && fallbackVehicleId && currentVehicleId !== fallbackVehicleId);
+
+    if (!currentVehicleId && fallbackVehicleId) {
+      nextDraft = assignUserToVehicle(nextDraft, user.userId, fallbackVehicleId);
+    }
+
+    if (!targetVehicleId) continue;
+
+    let vehicleChanged = false;
+    const nextVehicles = nextDraft.vehicles.map((vehicle) => {
+      if (vehicle.vehicleId !== targetVehicleId) return vehicle;
+
+      const currentDriverStaffId = normalizeText(vehicle.driverStaffId);
+      const currentAttendantStaffId = normalizeText(vehicle.attendantStaffId);
+      const currentCourseId = vehicle.courseId;
+      const historyDriverStaffId = isCurrentVehicleDifferentFromHistory ? null : (candidate?.driverStaffId ?? null);
+      const historyAttendantStaffId = isCurrentVehicleDifferentFromHistory ? null : (candidate?.attendantStaffId ?? null);
+      const historyCourseId = isCurrentVehicleDifferentFromHistory ? null : (candidate?.courseId ?? null);
+      const nextDriverStaffId = currentDriverStaffId ?? historyDriverStaffId;
+      const nextAttendantStaffId = currentAttendantStaffId ?? historyAttendantStaffId;
+      const nextCourseDefault = resolveDefaultTransportCourse(
+        { fixedCourseId },
+        { courseId: historyCourseId },
+      );
+      const nextCourseId = currentCourseId ?? nextCourseDefault;
+      const nextDriverName = normalizeText(vehicle.driverName) ?? (isCurrentVehicleDifferentFromHistory ? null : (candidate?.driverName ?? null));
+      const currentDriverName = normalizeText(vehicle.driverName);
+
+      if (
+        nextDriverStaffId === currentDriverStaffId
+        && nextAttendantStaffId === currentAttendantStaffId
+        && nextCourseId === currentCourseId
+        && nextDriverName === currentDriverName
+      ) {
+        return vehicle;
+      }
+
+      vehicleChanged = true;
+      return {
+        ...vehicle,
+        courseId: nextCourseId ?? null,
+        courseLabel: getTransportCourseLabel(nextCourseId),
+        driverStaffId: nextDriverStaffId ?? null,
+        driverName: nextDriverName ?? null,
+        attendantStaffId: nextAttendantStaffId ?? null,
+      };
+    });
+
+    if (vehicleChanged) {
+      nextDraft = {
+        ...nextDraft,
+        vehicles: nextVehicles,
+      };
+    }
+  }
+
+  return nextDraft;
+}
+
 export function buildSchedulePatchPayloads(input: BuildSchedulePatchPayloadsInput): UpdateScheduleEventInput[] {
-  const assignmentByUserId = new Map<string, DriverAssignment>();
+  const assignmentByUserId = new Map<string, CrewAssignment>();
 
   for (const vehicle of input.draft.vehicles) {
     for (const userId of vehicle.riderUserIds) {
       assignmentByUserId.set(userId, {
         vehicleId: vehicle.vehicleId,
+        courseId: vehicle.courseId,
         driverStaffId: vehicle.driverStaffId,
+        attendantStaffId: vehicle.attendantStaffId,
       });
     }
   }
@@ -429,13 +693,16 @@ export function buildSchedulePatchPayloads(input: BuildSchedulePatchPayloadsInpu
   for (const userId of input.draft.unassignedUserIds) {
     assignmentByUserId.set(userId, {
       vehicleId: null,
+      courseId: null,
       driverStaffId: null,
+      attendantStaffId: null,
     });
   }
 
   const payloads: UpdateScheduleEventInput[] = [];
 
   for (const row of input.schedules) {
+    if (!isSameDraftDate(row, input.draft.date)) continue;
     const rawRow = row as unknown as Record<string, unknown>;
     if (!isTransportScheduleRow(rawRow)) continue;
     if (!inferTransportDirections(rawRow).includes(input.draft.direction)) continue;
@@ -447,11 +714,21 @@ export function buildSchedulePatchPayloads(input: BuildSchedulePatchPayloadsInpu
     if (!nextAssignment) continue;
 
     const nextVehicleId = nextAssignment.vehicleId ?? '';
+    const nextCourseId = nextAssignment.courseId ?? '';
     const nextDriverStaffId = nextAssignment.driverStaffId ?? '';
+    const nextAttendantStaffId = nextAssignment.attendantStaffId ?? '';
     const currentVehicleId = normalizeText(row.vehicleId) ?? '';
+    const currentCourseId = extractTransportCourseId(row.notes) ?? '';
     const currentDriverStaffId = normalizeText(row.assignedStaffId) ?? '';
+    const currentAttendantStaffId = extractTransportAttendantStaffId(row.notes) ?? '';
+    const nextNotes = buildTransportNotes(row.notes, nextAssignment.attendantStaffId, nextAssignment.courseId);
 
-    if (nextVehicleId === currentVehicleId && nextDriverStaffId === currentDriverStaffId) {
+    if (
+      nextVehicleId === currentVehicleId
+      && nextCourseId === currentCourseId
+      && nextDriverStaffId === currentDriverStaffId
+      && nextAttendantStaffId === currentAttendantStaffId
+    ) {
       continue;
     }
 
@@ -473,7 +750,7 @@ export function buildSchedulePatchPayloads(input: BuildSchedulePatchPayloadsInpu
       userName: normalizeText(row.userName) ?? undefined,
       assignedStaffId: nextDriverStaffId,
       locationName: normalizeText(row.locationName) ?? undefined,
-      notes: normalizeText(row.notes) ?? undefined,
+      notes: nextNotes,
       vehicleId: nextVehicleId,
       status: toScheduleStatus(row.status),
       statusReason: row.statusReason ?? null,

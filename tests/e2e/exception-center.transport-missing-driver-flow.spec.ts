@@ -103,6 +103,7 @@ test.describe('ExceptionCenter transport missing-driver child flow', () => {
       .filter({ hasText: vehicleLabel })
       .first();
     await expect(vehicleRow).toContainText('運転: 未設定');
+    await expect(vehicleRow).toContainText('1名体制');
     await expect(vehicleRow).toContainText('要確認');
   });
 });

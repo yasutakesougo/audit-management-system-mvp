@@ -180,6 +180,7 @@ export const FIELD_LABEL_MAP: Readonly<Record<string, string>> = {
   IsDisabled: '無効フラグ',
   TransportToDays: '送迎（行き）曜日',
   TransportFromDays: '送迎（帰り）曜日',
+  TransportCourse: '送迎固定コース',
   AttendanceDays: '通所曜日',
   TransportAdditionType: '送迎加算種別',
   MealAddition: '食事提供加算',

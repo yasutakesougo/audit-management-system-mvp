@@ -20,6 +20,7 @@ import {
     COPAY_METHOD_OPTIONS,
     MEAL_ADDITION_OPTIONS,
     TRANSPORT_ADDITION_OPTIONS,
+    TRANSPORT_COURSE_OPTIONS,
     TRANSPORT_METHOD_OPTIONS,
     WEEKDAYS,
 } from '../../useUserForm';
@@ -47,6 +48,23 @@ export function TransportAdditionSection({
           <TransportIcon sx={{ mr: 1 }} />
           送迎・通所情報
         </Typography>
+
+        <TextField
+          fullWidth
+          label="送迎固定コース"
+          select
+          size="small"
+          value={values.TransportCourse}
+          onChange={(event) => setField('TransportCourse', event.target.value)}
+          helperText="未設定可。設定すると配車表のコース補完で優先されます。"
+          sx={{ mb: 2 }}
+        >
+          {TRANSPORT_COURSE_OPTIONS.map((opt) => (
+            <MenuItem key={opt.value || 'unset'} value={opt.value}>
+              {opt.label}
+            </MenuItem>
+          ))}
+        </TextField>
 
         <Box
           component="table"

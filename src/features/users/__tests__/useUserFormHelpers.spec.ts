@@ -22,6 +22,7 @@ const makeFormValues = (overrides: Partial<FormValues> = {}): FormValues => ({
   IsHighIntensitySupportTarget: false,
   IsSupportProcedureTarget: false,
   IsActive: true,
+  TransportCourse: '',
   TransportSchedule: {},
   RecipientCertNumber: '',
   RecipientCertExpiry: '',
@@ -238,6 +239,7 @@ describe('useUserFormHelpers', () => {
         IsHighIntensitySupportTarget: false,
         IsSupportProcedureTarget: false,
         IsActive: true,
+        TransportCourse: '',
         TransportSchedule: {},
         RecipientCertNumber: '',
         RecipientCertExpiry: '',
@@ -269,6 +271,7 @@ describe('useUserFormHelpers', () => {
       expect(dto.TransportFromDays).toBeNull();
       expect(dto.AttendanceDays).toBeNull();
       expect(dto.TransportSchedule).toBeNull();
+      expect(dto.TransportCourse).toBeNull();
       // severeFlag is always hardcoded false
       expect(dto.severeFlag).toBe(false);
     });
@@ -315,6 +318,11 @@ describe('useUserFormHelpers', () => {
       expect(dto.IsHighIntensitySupportTarget).toBe(true);
       expect(dto.IsSupportProcedureTarget).toBe(true);
       expect(dto.IsActive).toBe(false);
+    });
+
+    it('should map transport course to canonical TransportCourse value', () => {
+      const dto = toCreateDto(makeFormValues({ TransportCourse: '金沢' }));
+      expect(dto.TransportCourse).toBe('kanazawa');
     });
 
     it('should populate transport arrays and serialized JSON when office_shuttle days are set', () => {

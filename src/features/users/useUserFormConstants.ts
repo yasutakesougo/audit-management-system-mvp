@@ -5,6 +5,7 @@
  * 副作用なし、ランタイム値のみ。
  */
 import { TRANSPORT_METHOD_LABEL, TRANSPORT_METHODS } from '../attendance/transportMethod';
+import { TRANSPORT_COURSE_OPTIONS as COURSE_OPTIONS } from '../today/transport/transportCourse';
 import type { FormValues } from './useUserFormTypes';
 
 // ---------------------------------------------------------------------------
@@ -68,6 +69,11 @@ export const TRANSPORT_METHOD_OPTIONS = [
   ...TRANSPORT_METHODS.map((m) => ({ value: m, label: TRANSPORT_METHOD_LABEL[m] })),
 ] as const;
 
+export const TRANSPORT_COURSE_OPTIONS = [
+  { value: '', label: '未設定' },
+  ...COURSE_OPTIONS,
+] as const;
+
 // ---------------------------------------------------------------------------
 // フォームクリア値（デフォルト状態）
 // ---------------------------------------------------------------------------
@@ -82,6 +88,7 @@ export const CLEARED_VALUES: FormValues = {
   IsHighIntensitySupportTarget: false,
   IsSupportProcedureTarget: false,
   IsActive: true,
+  TransportCourse: '',
   TransportSchedule: {},
   RecipientCertNumber: '',
   RecipientCertExpiry: '',
