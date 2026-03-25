@@ -1,36 +1,10 @@
 import { acquireSpAccessToken } from '@/lib/msal';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
-import {
-    BILLING_ORDERS_LIST_ID,
-    FIELD_MAP_BILLING_ORDERS as F,
-} from '@/sharepoint/fields';
+import { BILLING_ORDERS_LIST_ID } from '@/sharepoint/fields';
 import type { BillingOrderRepository } from './repository';
-import type { BillingOrder } from './types';
 
-type SpItem = Record<string, unknown>;
 
-const asString = (v: unknown): string =>
-  typeof v === 'string' ? v : String(v ?? '');
-
-const asNumber = (v: unknown): number => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-};
-
-function mapItem(item: SpItem): BillingOrder {
-  return {
-    id: asNumber(item[F.id] ?? item['Id'] ?? item['ID']),
-    orderDate: asString(item[F.orderDate] ?? item['Title'] ?? ''),
-    ordererCode: asString(item[F.ordererCode] ?? ''),
-    ordererName: asString(item[F.ordererName] ?? ''),
-    orderCount: asNumber(item[F.orderCount] ?? 0),
-    served: asString(item[F.served] ?? ''),
-    item: asString(item[F.item] ?? ''),
-    sugar: asString(item[F.sugar] ?? ''),
-    milk: asString(item[F.milk] ?? ''),
-    drinkPrice: asNumber(item[F.drinkPrice] ?? 0),
-  };
-}
+import { mapToBillingOrder } from './domain/billingLogic';
 
 /**
  * List3 は /sites/2/ にあるため、メインサイト (/sites/welfare/) とは
@@ -56,7 +30,7 @@ export function createSharePointBillingOrderRepository(): BillingOrderRepository
       }
       try {
         const res = await sp.spFetch(url, { method: 'GET' });
-        const json = (await res.json().catch(() => ({ value: [] }))) as { value?: SpItem[] };
+        const json = (await res.json().catch(() => ({ value: [] }))) as { value?: Record<string, unknown>[] };
         const items = json.value ?? [];
 
         if (import.meta.env.DEV && items.length > 0) {
@@ -68,7 +42,7 @@ export function createSharePointBillingOrderRepository(): BillingOrderRepository
           console.warn('[Billing] No items returned from List3');
         }
 
-        return items.map(mapItem);
+        return items.map(mapToBillingOrder);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         const status = (err as Record<string, unknown>)?.['status'];

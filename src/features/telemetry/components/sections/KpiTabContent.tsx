@@ -20,6 +20,8 @@ import { SuggestionLifecycleSection } from '../SuggestionLifecycleSection';
 import { ReviewSummarySection } from './ReviewSummarySection';
 import { AlertInsightsSection } from './AlertInsightsSection';
 import { TransportTelemetrySection } from './TransportTelemetrySection';
+import { KioskUxTelemetrySection } from './KioskUxTelemetrySection';
+import type { KioskUxKpis } from '@/features/today/telemetry/computeKioskUxKpis';
 
 type KpiTabContentProps = {
   range: DateRange;
@@ -31,6 +33,7 @@ type KpiTabContentProps = {
   reviewSummary: ReviewLoopSummary | null;
   transportKpis: TransportKpis;
   transportAlerts: KpiAlert[];
+  kioskUxKpis: KioskUxKpis | null;
 };
 
 export function KpiTabContent({
@@ -43,6 +46,7 @@ export function KpiTabContent({
   reviewSummary,
   transportKpis,
   transportAlerts,
+  kioskUxKpis,
 }: KpiTabContentProps) {
   if (!kpis) {
     return (
@@ -91,6 +95,7 @@ export function KpiTabContent({
         </div>
       </section>
 
+      <KioskUxTelemetrySection kpis={kioskUxKpis} />
       <SuggestionLifecycleSection range={range} />
       <TransportTelemetrySection kpis={transportKpis} alerts={transportAlerts} />
       <ReviewSummarySection summary={reviewSummary} />

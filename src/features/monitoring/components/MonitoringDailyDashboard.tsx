@@ -13,11 +13,7 @@
  */
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
-import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
-import TrendingDownIcon from '@mui/icons-material/TrendingDown';
-import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -30,181 +26,23 @@ import Typography from '@mui/material/Typography';
 import React from 'react';
 
 import type { DecisionStatus, IspRecommendationDecision } from '../domain/ispRecommendationDecisionTypes';
-import type {
-  ActivityRank,
-  BehaviorTagSummary,
-  DailyMonitoringSummary,
-} from '../domain/monitoringDailyAnalytics';
+import type { DailyMonitoringSummary } from '../domain/monitoringDailyAnalytics';
 import type { SupportPlanningSheetRecord } from '../domain/supportPlanningSheetTypes';
-import { buildDecisionSummary } from '../domain/ispRecommendationDecisionUtils';
-import { buildIspPlanDraft } from '../domain/ispPlanDraftUtils';
-import type { BuildIspPlanDraftInput } from '../domain/ispPlanDraftTypes';
 import type { SupportPlanStringFieldKey } from '@/features/support-plan-guide/types';
 import DraftHistoryPanel from './DraftHistoryPanel';
 import type { DraftBatch } from './DraftHistoryPanel';
 import GoalProgressCard from './GoalProgressCard';
 import IspDecisionHistorySection from './IspDecisionHistorySection';
 import IspDecisionSummaryCard from './IspDecisionSummaryCard';
-import IspPlanDraftPreview from './IspPlanDraftPreview';
 import IspRecommendationCard from './IspRecommendationCard';
 import type { DecisionInput } from './IspRecommendationCard';
 
-// ─── 定数 ────────────────────────────────────────────────
+import { LUNCH_LABELS, LUNCH_COLORS, TREND_ICON, TREND_LABEL } from './dashboard/constants';
+import { SectionTitle } from './dashboard/SectionTitle';
+import { ActivityList } from './dashboard/ActivityList';
+import { BehaviorTagSection } from './dashboard/BehaviorTagSection';
+import { IspPlanDraftPreviewSection } from './dashboard/IspPlanDraftPreviewSection';
 
-const LUNCH_LABELS: Record<string, string> = {
-  full: '完食',
-  '80': '8割',
-  half: '半分',
-  small: '少量',
-  none: 'なし',
-};
-
-const LUNCH_COLORS: Record<string, 'success' | 'warning' | 'error' | 'default' | 'info'> = {
-  full: 'success',
-  '80': 'success',
-  half: 'warning',
-  small: 'error',
-  none: 'error',
-};
-
-const TREND_ICON: Record<string, React.ReactNode> = {
-  up: <TrendingUpIcon fontSize="small" color="error" />,
-  down: <TrendingDownIcon fontSize="small" color="success" />,
-  flat: <TrendingFlatIcon fontSize="small" color="action" />,
-};
-
-const TREND_LABEL: Record<string, string> = {
-  up: '増加傾向',
-  down: '減少傾向',
-  flat: '横ばい',
-};
-
-const TAG_CATEGORY_COLORS: Record<string, 'primary' | 'secondary' | 'success' | 'info'> = {
-  behavior: 'secondary',
-  communication: 'info',
-  dailyLiving: 'primary',
-  positive: 'success',
-};
-
-// ─── サブコンポーネント ──────────────────────────────────
-
-const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 600, mb: 0.5 }}>
-    {children}
-  </Typography>
-);
-
-const ActivityList: React.FC<{ label: string; items: ActivityRank[] }> = ({ label, items }) => {
-  if (items.length === 0) return null;
-  return (
-    <Box>
-      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-        {label}
-      </Typography>
-      <Stack direction="row" spacing={0.5} flexWrap="wrap" rowGap={0.5} sx={{ mt: 0.5 }}>
-        {items.map((a) => (
-          <Chip
-            key={a.label}
-            label={`${a.label} (${a.count}回)`}
-            size="small"
-            variant="outlined"
-          />
-        ))}
-      </Stack>
-    </Box>
-  );
-};
-
-const BehaviorTagSection: React.FC<{ tagSummary: BehaviorTagSummary }> = ({ tagSummary }) => {
-  const TrendIcon =
-    tagSummary.usageTrend === 'up'
-      ? TrendingUpIcon
-      : tagSummary.usageTrend === 'down'
-        ? TrendingDownIcon
-        : TrendingFlatIcon;
-
-  return (
-    <Box>
-      <SectionTitle>
-        <LocalOfferIcon sx={{ fontSize: 16, mr: 0.5, verticalAlign: 'text-bottom' }} />
-        行動タグ分析
-      </SectionTitle>
-
-      {/* Top タグ */}
-      <Stack direction="row" spacing={0.5} flexWrap="wrap" rowGap={0.5} sx={{ mt: 0.5 }}>
-        {tagSummary.topTags.map((t) => (
-          <Chip
-            key={t.key}
-            label={`${t.label} (${t.count}回)`}
-            size="small"
-            color={TAG_CATEGORY_COLORS[t.category ?? ''] ?? 'default'}
-            variant="outlined"
-            sx={{ maxWidth: 200 }}
-          />
-        ))}
-      </Stack>
-
-      {/* 付与率 */}
-      <Box sx={{ mt: 1 }}>
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <Typography variant="caption" color="text.secondary" sx={{ minWidth: 80 }}>
-            タグ付与率
-          </Typography>
-          <LinearProgress
-            variant="determinate"
-            value={tagSummary.tagUsageRate}
-            sx={{ flex: 1 }}
-          />
-          <Typography variant="caption" sx={{ fontWeight: 600, minWidth: 45 }}>
-            {tagSummary.tagUsageRate}%
-          </Typography>
-        </Stack>
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.3, display: 'block' }}>
-          {tagSummary.taggedRecords}件の記録にタグ付与あり（全{tagSummary.totalRecords}件中）、平均{tagSummary.avgTagsPerRecord}タグ/日
-        </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.65rem' }}>
-          ※ 日次記録で行動タグがどれだけ活用されているかの指標です
-        </Typography>
-      </Box>
-
-      {/* カテゴリ分布 */}
-      {tagSummary.categoryDistribution.length > 0 && (
-        <Box sx={{ mt: 1 }}>
-          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-            カテゴリ別分布
-          </Typography>
-          <Stack direction="row" spacing={0.5} flexWrap="wrap" rowGap={0.5} sx={{ mt: 0.3 }}>
-            {tagSummary.categoryDistribution.map((c) => (
-              <Chip
-                key={c.category}
-                label={`${c.label} ${c.percentage}%`}
-                size="small"
-                color={TAG_CATEGORY_COLORS[c.category] ?? 'default'}
-                variant="filled"
-                sx={{ fontSize: '0.7rem', maxWidth: 180 }}
-              />
-            ))}
-          </Stack>
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.3, display: 'block', fontSize: '0.65rem' }}>
-            ※ 全タグ付与数に対する各カテゴリの割合
-          </Typography>
-        </Box>
-      )}
-
-      {/* トレンド */}
-      <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 0.5 }}>
-        <TrendIcon fontSize="small" color={tagSummary.usageTrend === 'up' ? 'success' : 'inherit'} />
-        <Typography variant="caption" color="text.secondary">
-          {TREND_LABEL[tagSummary.usageTrend] || '横ばい'}
-          {tagSummary.usageTrendRate !== 0 && ` (${tagSummary.usageTrendRate > 0 ? '+' : ''}${tagSummary.usageTrendRate}%)`}
-        </Typography>
-        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', ml: 0.5 }}>
-          ※ 前半/後半比較
-        </Typography>
-      </Stack>
-    </Box>
-  );
-};
 
 // ─── メインコンポーネント ────────────────────────────────
 
@@ -560,61 +398,6 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
   );
 };
 
-// ─── Phase 5-B: ドラフトプレビューラッパー ─────────────────
 
-const IspPlanDraftPreviewSection: React.FC<{
-  summary: DailyMonitoringSummary;
-  insightLines: string[];
-  decisions: IspRecommendationDecision[];
-  goalNames?: Record<string, string>;
-  onAppendInsight: (text: string) => void;
-  onSaveDraft?: () => void;
-  isSavingDraft?: boolean;
-  hasSavedDraft?: boolean;
-  onApplyToEditor?: (fieldKey: SupportPlanStringFieldKey, text: string) => void;
-}> = ({ summary, insightLines, decisions, goalNames, onAppendInsight, onSaveDraft, isSavingDraft, hasSavedDraft, onApplyToEditor }) => {
-  const draft = React.useMemo(() => {
-    const recs = summary.ispRecommendations ?? {
-      recommendations: [],
-      overallLevel: 'pending' as const,
-      actionableCount: 0,
-      totalGoalCount: summary.goalProgress?.length ?? 0,
-      summaryText: '',
-    };
-    const decisionSummary = buildDecisionSummary(recs, decisions);
-
-    const input: BuildIspPlanDraftInput = {
-      periodSummary: {
-        from: summary.period.from,
-        to: summary.period.to,
-        recordedDays: summary.period.recordedDays,
-        totalDays: summary.period.totalDays,
-        recordRate: summary.period.recordRate,
-      },
-      monitoringFindings: insightLines.length > 0 ? insightLines : undefined,
-      goalProgress: summary.goalProgress,
-      ispRecommendations: summary.ispRecommendations ?? undefined,
-      decisions,
-      decisionSummary,
-      goalNames,
-    };
-
-    return buildIspPlanDraft(input);
-  }, [summary, insightLines, decisions, goalNames]);
-
-  return (
-    <>
-      <IspPlanDraftPreview
-        draft={draft}
-        onAppendToEvaluation={onAppendInsight}
-        onSaveDraft={onSaveDraft}
-        isSavingDraft={isSavingDraft}
-        hasSavedDraft={hasSavedDraft}
-        onApplyToEditor={onApplyToEditor}
-      />
-      <Divider />
-    </>
-  );
-};
 
 export default React.memo(MonitoringDailyDashboard);

@@ -1,0 +1,33 @@
+name: Danger Guardrails
+
+on:
+  pull_request:
+    paths:
+      - 'src/features/today/**'
+      - 'dangerfile.ts'
+
+jobs:
+  danger:
+    name: Run Danger.js Guardrails
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # Danger Needs permission to write comments on PRs
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      # 依存関係はプロジェクトに合わせる（pnpm等を使っていれば適宜変更）
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.node-version'
+          
+      - name: Install Cache and Dependencies
+        run: npm ci
+
+      # Today 領域が変更された場合に自動実行（RejectではなくWarnで啓蒙する）
+      - name: Run Danger
+        run: npx danger ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

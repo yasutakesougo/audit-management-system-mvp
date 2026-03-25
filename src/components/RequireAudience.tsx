@@ -6,7 +6,8 @@ import Typography from '@mui/material/Typography';
 import { useAuth } from '@/auth/useAuth';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { canAccess, type Role } from '@/auth/roles';
-import { readOptionalEnv, shouldSkipLogin as shouldSkipLoginEnv } from '@/lib/env';
+import { readOptionalEnv } from '@/lib/env';
+import { shouldBypassAuthGuard } from '@/lib/auth/guardResolution';
 
 type RequireAudienceProps = {
   requiredRole: Role;
@@ -17,9 +18,13 @@ export default function RequireAudience(props: RequireAudienceProps) {
   const { requiredRole, children } = props;
   const { role, ready, reason } = useUserAuthz();
   const { isAuthenticated, loading, shouldSkipLogin } = useAuth();
+  
+  // Align bypass logic with ProtectedRoute to prevent deadlocks
+  const allowBypass = shouldBypassAuthGuard();
+
   const enforceAudienceInE2E = readOptionalEnv('VITE_E2E_ENFORCE_AUDIENCE') === '1';
 
-  if (!enforceAudienceInE2E && (shouldSkipLoginEnv() || shouldSkipLogin)) {
+  if (!enforceAudienceInE2E && allowBypass) {
     return <>{children}</>;
   }
 

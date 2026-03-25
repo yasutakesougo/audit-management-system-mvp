@@ -91,13 +91,13 @@ function getDefaultKnowledgePeriod(): KnowledgePeriod {
 
 // ─── localStorage からの SuggestionAction 取得 ───────────
 
-const SUGGESTION_STORAGE_KEY_PATTERN = /^daily-record-/;
+export const SUGGESTION_STORAGE_KEY_PATTERN = /^daily-record-/;
 
 /**
  * localStorage から全利用者の SuggestionAction を収集する。
  * daily-record-* キーに格納された UserRowData の acceptedSuggestions を読む。
  */
-function collectSuggestionActions(): SuggestionAction[] {
+export function collectSuggestionActions(): SuggestionAction[] {
   const allActions: SuggestionAction[] = [];
 
   try {
