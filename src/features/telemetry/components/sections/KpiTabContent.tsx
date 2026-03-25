@@ -1,10 +1,11 @@
 import type { DateRange } from '../../hooks/useTelemetryDashboard';
 import type { DashboardKpis } from '../../domain/computeCtaKpis';
-import type { DashboardKpiDiffs } from '../../domain/computeCtaKpiDiff';
+import type { DashboardKpiDiffs, KpiAlert } from '../../domain/computeCtaKpiDiff';
 import type { RoleBreakdown } from '../../domain/computeCtaKpisByRole';
 import type { ClassifiedAlert } from '../../domain/classifyAlertState';
 import type { AlertPersistence } from '../../domain/computeAlertPersistence';
 import type { ReviewLoopSummary } from '../../domain/buildReviewLoopSummary';
+import type { TransportKpis } from '@/features/today/transport/computeTransportKpis';
 import { RANGE_LABELS } from '../constants/labels';
 import { KpiCard } from '../ui/KpiCard';
 import { SectionCard } from '../ui/SectionCard';
@@ -18,6 +19,7 @@ import { RoleBreakdownSection } from '../RoleBreakdownSection';
 import { SuggestionLifecycleSection } from '../SuggestionLifecycleSection';
 import { ReviewSummarySection } from './ReviewSummarySection';
 import { AlertInsightsSection } from './AlertInsightsSection';
+import { TransportTelemetrySection } from './TransportTelemetrySection';
 
 type KpiTabContentProps = {
   range: DateRange;
@@ -27,6 +29,8 @@ type KpiTabContentProps = {
   classifiedAlerts: ClassifiedAlert[];
   persistence: AlertPersistence[];
   reviewSummary: ReviewLoopSummary | null;
+  transportKpis: TransportKpis;
+  transportAlerts: KpiAlert[];
 };
 
 export function KpiTabContent({
@@ -37,6 +41,8 @@ export function KpiTabContent({
   classifiedAlerts,
   persistence,
   reviewSummary,
+  transportKpis,
+  transportAlerts,
 }: KpiTabContentProps) {
   if (!kpis) {
     return (
@@ -86,6 +92,7 @@ export function KpiTabContent({
       </section>
 
       <SuggestionLifecycleSection range={range} />
+      <TransportTelemetrySection kpis={transportKpis} alerts={transportAlerts} />
       <ReviewSummarySection summary={reviewSummary} />
       <AlertInsightsSection classifiedAlerts={classifiedAlerts} persistence={persistence} />
       <RoleBreakdownSection data={roleBreakdown} />
