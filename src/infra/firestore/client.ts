@@ -3,17 +3,27 @@ import { connectFirestoreEmulator, getFirestore, type Firestore } from 'firebase
 
 import { get, getFlag, getNumber } from '@/env';
 
-const firebaseConfig = {
+type FirebaseConfig = {
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+  appId: string;
+};
+
+const readFirebaseConfig = (): FirebaseConfig => ({
   apiKey: get('VITE_FIREBASE_API_KEY'),
   authDomain: get('VITE_FIREBASE_AUTH_DOMAIN'),
   projectId: get('VITE_FIREBASE_PROJECT_ID'),
   appId: get('VITE_FIREBASE_APP_ID'),
-};
+});
+
+const hasConfiguredApiKey = (apiKey: string | undefined): boolean =>
+  !!apiKey && apiKey !== 'undefined' && apiKey !== 'null';
 
 /**
  * Creates a no-op Firestore proxy for E2E tests.
- * This prevents "Cannot read properties of null" errors when Firebase operations
- * are called in test environments without a valid Firebase configuration.
+ * This prevents runtime failures when Firebase operations are called
+ * without a valid Firebase configuration.
  */
 function createNoopFirestore(): Firestore {
   const handler: ProxyHandler<Record<string, unknown>> = {
@@ -21,12 +31,11 @@ function createNoopFirestore(): Firestore {
       if (prop === 'type') return 'firestore';
       if (prop === 'app') return null;
       if (prop === 'toJSON') return () => ({ noop: true });
-      // Return a function that logs a warning and returns a safe value
       return (...args: unknown[]) => {
         if (getFlag('DEV', false)) {
           console.warn(`[firebase-noop] ${String(prop)} called with`, args);
         }
-        return createNoopFirestore(); // Chain-safe
+        return createNoopFirestore();
       };
     },
   };
@@ -34,52 +43,88 @@ function createNoopFirestore(): Firestore {
 }
 
 /**
- * Creates a stub Firebase app for E2E tests.
- * Returns a minimal object that satisfies FirebaseApp type requirements.
+ * Creates a stub Firebase app for E2E/tests.
  */
-function createNoopFirebaseApp() {
+function createNoopFirebaseApp(config: FirebaseConfig) {
   return {
     name: '[DEFAULT]',
-    options: firebaseConfig,
+    options: config,
     automaticDataCollectionEnabled: false,
   };
 }
 
+export function isFirestoreWriteAvailable(): boolean {
+  const isE2E = getFlag('VITE_E2E', false);
+  if (isE2E) return false;
+  const config = readFirebaseConfig();
+  return hasConfiguredApiKey(config.apiKey);
+}
+
 export function getFirebaseApp() {
   const isE2E = getFlag('VITE_E2E', false);
+  const config = readFirebaseConfig();
 
   if (isE2E) {
-    console.log('[firebase] disabled:', { VITE_E2E: getFlag('VITE_E2E', false) });
-    return createNoopFirebaseApp();
+    console.log('[firebase] disabled:', { VITE_E2E: true });
+    return createNoopFirebaseApp(config);
   }
 
-  // Skip Firebase when API key is not configured (graceful degradation)
-  const apiKey = firebaseConfig.apiKey;
-  if (!apiKey || apiKey === 'undefined' || apiKey === 'null') {
+  if (!hasConfiguredApiKey(config.apiKey)) {
     if (getFlag('DEV', false)) {
       console.info('[firebase] ⏭️ skipped: VITE_FIREBASE_API_KEY is not configured');
     }
-    return createNoopFirebaseApp();
+    return createNoopFirebaseApp(config);
   }
 
   const apps = getApps();
-  return apps.length ? apps[0]! : initializeApp(firebaseConfig);
+  return apps.length ? apps[0]! : initializeApp(config);
 }
 
-const isE2E = getFlag('VITE_E2E', false);
-const isFirebaseConfigured = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== 'undefined' && firebaseConfig.apiKey !== 'null';
-const firestore = (isE2E || !isFirebaseConfigured) ? createNoopFirestore() : getFirestore(getFirebaseApp());
+let cachedDb: { key: string; value: Firestore } | null = null;
 
-if (!isE2E && isFirebaseConfigured && getFlag('VITE_FIRESTORE_USE_EMULATOR', false)) {
+const buildDbCacheKey = (): string => {
+  const isE2E = getFlag('VITE_E2E', false);
+  const useEmulator = getFlag('VITE_FIRESTORE_USE_EMULATOR', false);
   const host = get('VITE_FIRESTORE_EMULATOR_HOST', '127.0.0.1');
   const port = getNumber('VITE_FIRESTORE_EMULATOR_PORT', 8080);
-  try {
-    connectFirestoreEmulator(firestore, host, port);
-  } catch (error) {
-    if (getFlag('DEV', false)) {
-      console.warn('[firestore] emulator connection skipped:', error);
+  const config = readFirebaseConfig();
+  return [
+    isE2E ? '1' : '0',
+    hasConfiguredApiKey(config.apiKey) ? '1' : '0',
+    config.apiKey ?? '',
+    config.projectId ?? '',
+    useEmulator ? '1' : '0',
+    host,
+    String(port),
+  ].join('|');
+};
+
+export function getDb(): Firestore {
+  const key = buildDbCacheKey();
+  if (cachedDb && cachedDb.key === key) {
+    return cachedDb.value;
+  }
+
+  const isE2E = getFlag('VITE_E2E', false);
+  const config = readFirebaseConfig();
+  const configured = hasConfiguredApiKey(config.apiKey);
+  const firestore = (isE2E || !configured) ? createNoopFirestore() : getFirestore(getFirebaseApp());
+
+  if (!isE2E && configured && getFlag('VITE_FIRESTORE_USE_EMULATOR', false)) {
+    const host = get('VITE_FIRESTORE_EMULATOR_HOST', '127.0.0.1');
+    const port = getNumber('VITE_FIRESTORE_EMULATOR_PORT', 8080);
+    try {
+      connectFirestoreEmulator(firestore, host, port);
+    } catch (error) {
+      if (getFlag('DEV', false)) {
+        console.warn('[firestore] emulator connection skipped:', error);
+      }
     }
   }
+
+  cachedDb = { key, value: firestore };
+  return firestore;
 }
 
-export const db = firestore;
+// Backward-compatible default export-style constant.
+export const db = getDb();

@@ -11,6 +11,7 @@ import type { FeatureFlagSnapshot } from '@/config/featureFlags';
 import { authDiagnostics } from '@/features/auth/diagnostics/collector';
 import { buildAuthDiagCopyText, type AuthDiagSummary } from '@/lib/authDiag';
 import { getAppConfig } from '@/lib/env';
+import { clearRuntimeListReady } from '@/lib/listReadyRuntime';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -144,8 +145,10 @@ function useAuthActions(props: AuthNoticeProps) {
       const removed = clearMsalCache();
       console.info('[auth] msal cache cleared', { removed, corrId });
       if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem('__listReady');
         window.sessionStorage.setItem('postLoginRedirect', pendingPath);
       }
+      clearRuntimeListReady('schedules');
       if (diagSummary && corrId) {
         authDiagnostics.collect({
           route: pendingPath ?? '',

@@ -4,6 +4,7 @@ import { createFirstNavigationTracker, type NavigationTrigger } from './recordFi
 // ── Mock Firestore ──
 const mockAddDoc = vi.fn().mockResolvedValue({ id: 'test-doc-id' });
 const mockCollection = vi.fn().mockReturnValue('mock-collection-ref');
+let firestoreWriteAvailable = true;
 
 vi.mock('firebase/firestore', () => ({
   addDoc: (...args: unknown[]) => mockAddDoc(...args),
@@ -12,11 +13,13 @@ vi.mock('firebase/firestore', () => ({
 }));
 
 vi.mock('@/infra/firestore/client', () => ({
-  db: 'mock-db',
+  getDb: () => 'mock-db',
+  isFirestoreWriteAvailable: () => firestoreWriteAvailable,
 }));
 
 describe('createFirstNavigationTracker', () => {
   beforeEach(() => {
+    firestoreWriteAvailable = true;
     vi.clearAllMocks();
   });
 
@@ -127,5 +130,16 @@ describe('createFirstNavigationTracker', () => {
 
     const payload = mockAddDoc.mock.calls[0][1];
     expect(payload.trigger).toBe(trigger);
+  });
+
+  it('is no-op when Firestore is unavailable', () => {
+    firestoreWriteAvailable = false;
+    const tracker = createFirstNavigationTracker(defaultOpts);
+
+    tracker.record('/daily/attendance', 'cta-primary');
+
+    expect(mockCollection).not.toHaveBeenCalled();
+    expect(mockAddDoc).not.toHaveBeenCalled();
+    expect(tracker.recorded).toBe(true);
   });
 });

@@ -6,7 +6,9 @@ import { isE2E } from '@/env';
 import { authDiagnostics } from '@/features/auth/diagnostics/collector';
 import { getSchedulesListTitle } from '@/features/schedules/data/spSchema';
 import { createAuthCorrId, summarizeAuthBlockReason, type AuthDiagSummary } from '@/lib/authDiag';
-import { getAppConfig } from '@/lib/env';
+import { getAppConfig, isDemoModeEnabled, readEnv } from '@/lib/env';
+import { buildSchedulesListReadyKey, clearRuntimeListReady, isRuntimeListReady, setRuntimeListReady } from '@/lib/listReadyRuntime';
+import { getAuthGuardState } from '@/lib/auth/guardResolution';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import Typography from '@mui/material/Typography';
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
@@ -21,6 +23,12 @@ export type ProtectedRouteProps = {
 
 type ListGate = 'idle' | 'checking' | 'ready' | 'blocked';
 
+type MsalAccountIdentity = {
+  homeAccountId?: string;
+  tenantId?: string;
+  username?: string;
+};
+
 /**
  * Development-only debug logging to avoid production noise
  */
@@ -30,8 +38,6 @@ const debug = (...args: unknown[]) => {
     console.log('[ProtectedRoute]', ...args);
   }
 };
-
-import { getAuthGuardState } from '@/lib/auth/guardResolution';
 
 /**
  * Determine if a feature flag should be bypassed in E2E environment.
@@ -47,12 +53,34 @@ const shouldBypassInE2E = (flag: keyof FeatureFlagSnapshot): boolean => {
   return !criticalFlags.includes(flag);
 };
 
+const toMsalAccountIdentity = (value: unknown): MsalAccountIdentity | null => {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+  const homeAccountId = typeof candidate.homeAccountId === 'string' ? candidate.homeAccountId : undefined;
+  const tenantId = typeof candidate.tenantId === 'string' ? candidate.tenantId : undefined;
+  const username = typeof candidate.username === 'string' ? candidate.username : undefined;
+  if (!homeAccountId && !tenantId && !username) return null;
+  return { homeAccountId, tenantId, username };
+};
+
 export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: ProtectedRouteProps) {
   const flags = useFeatureFlags();
   const enabled = flag ? flags[flag] : true;
   const { isAuthenticated, loading, shouldSkipLogin, tokenReady: tokenReadyRaw, signIn, getListReadyState: _getListReadyState, setListReadyState, acquireToken } = useAuth();
   const tokenReady = tokenReadyRaw ?? false;
   const { accounts, inProgress, instance, authReady } = useMsalContext();
+  const activeAccountIdentity = useMemo(() => {
+    const active = toMsalAccountIdentity(instance.getActiveAccount());
+    if (active) return active;
+    return toMsalAccountIdentity(accounts[0]);
+  }, [accounts, instance]);
+  const accountRuntimeId = `${activeAccountIdentity?.homeAccountId ?? activeAccountIdentity?.username ?? ''}`;
+  const tenantRuntimeId = activeAccountIdentity?.tenantId ?? '';
+  const schedulesRuntimeSignature = [
+    readEnv('VITE_SP_RESOURCE', '').trim().toLowerCase(),
+    readEnv('VITE_SP_SITE_RELATIVE', readEnv('VITE_SP_SITE', '')).trim().toLowerCase(),
+    getSchedulesListTitle().trim().toLowerCase(),
+  ].join('|');
   const location = useLocation();
   const pendingPath = useMemo(() => `${location.pathname}${location.search ?? ''}`, [location.pathname, location.search]);
   const signInAttemptedRef = useRef(false);
@@ -111,17 +139,87 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
 
   // List existence check: trigger when tokenReady + schedules flag
   const listCheckRetryRef = useRef(0);
+  const listCheckRunIdRef = useRef(0);
+  const listContextKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    return () => {
+      // Invalidate pending async list checks on unmount.
+      listCheckRunIdRef.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (flag !== 'schedules') return;
+    let nextContextKey: string | null = null;
+    try {
+      const { baseUrl } = ensureConfig();
+      const listName = getSchedulesListTitle();
+      nextContextKey = buildSchedulesListReadyKey({
+        baseUrl,
+        listTitle: listName,
+        accountId: accountRuntimeId,
+        tenantId: tenantRuntimeId,
+      });
+    } catch {
+      nextContextKey = null;
+    }
+
+    if (listContextKeyRef.current === null) {
+      listContextKeyRef.current = nextContextKey;
+      return;
+    }
+
+    if (listContextKeyRef.current !== nextContextKey) {
+      listContextKeyRef.current = nextContextKey;
+      clearRuntimeListReady('schedules');
+      listCheckRetryRef.current = 0;
+      setListReadyState(null);
+      setListGate('idle');
+      debug('[schedules] Schedules auth/site context changed; reset list gate cache');
+    }
+  }, [flag, accountRuntimeId, tenantRuntimeId, schedulesRuntimeSignature, setListReadyState]);
+
   useEffect(() => {
     if (isMsalInProgress) return;
     if (!tokenReady) return;
     if (flag !== 'schedules') return;
     if (listGate !== 'idle') return;
 
+    let baseUrl = '';
+    let listName = '';
+    let listReadyCacheKey = '';
+    try {
+      const spConfig = ensureConfig();
+      baseUrl = spConfig.baseUrl;
+      listName = getSchedulesListTitle();
+      listReadyCacheKey = buildSchedulesListReadyKey({
+        baseUrl,
+        listTitle: listName,
+        accountId: accountRuntimeId,
+        tenantId: tenantRuntimeId,
+      });
+    } catch (error) {
+      console.error('[ProtectedRoute] Failed to resolve list check context:', error);
+      setListReadyState(false);
+      setListGate('blocked');
+      return;
+    }
+
+    if (baseUrl && listReadyCacheKey && isRuntimeListReady('schedules', listReadyCacheKey)) {
+      debug(`[schedules] List check skipped by runtime cache: ${listName}`);
+      listCheckRetryRef.current = 0;
+      setListReadyState(true);
+      setListGate('ready');
+      return;
+    }
+
     setListGate('checking');
 
     const LIST_CHECK_TIMEOUT_MS = 15_000;
     const MAX_RETRIES = 2;
-    let cancelled = false;
+    const currentRunId = listCheckRunIdRef.current + 1;
+    listCheckRunIdRef.current = currentRunId;
+    const isStaleRun = () => listCheckRunIdRef.current !== currentRunId;
 
     const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> =>
       Promise.race([
@@ -133,15 +231,15 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
 
     const checkSchedulesListExistence = async () => {
       try {
-        const spConfig = ensureConfig();
-        const baseUrl = spConfig.baseUrl;
         if (!baseUrl) {
           debug('[schedules] No baseUrl (demo mode), skipping list check');
-          if (!cancelled) setListGate('ready');
+          if (!isStaleRun()) {
+            setListReadyState(true);
+            setListGate('ready');
+          }
           return;
         }
 
-        const listName = getSchedulesListTitle();
         // eslint-disable-next-line no-console
         console.log('[env-check] schedules list title =', listName);
         debug(`[schedules] Checking list existence: ${listName}`);
@@ -152,19 +250,27 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
           LIST_CHECK_TIMEOUT_MS,
         );
 
-        if (cancelled) return;
+        if (isStaleRun()) return;
 
         if (metadata) {
           debug('[schedules] List exists:', listName);
+          listCheckRetryRef.current = 0;
+          if (baseUrl && listReadyCacheKey) {
+            setRuntimeListReady('schedules', listReadyCacheKey, true);
+          }
           setListReadyState(true);
           setListGate('ready');
         } else {
           debug('[schedules] List NOT found:', listName);
+          listCheckRetryRef.current = 0;
+          if (baseUrl && listReadyCacheKey) {
+            setRuntimeListReady('schedules', listReadyCacheKey, false);
+          }
           setListReadyState(false);
           setListGate('blocked');
         }
       } catch (error) {
-        if (cancelled) return;
+        if (isStaleRun()) return;
         const isTimeout = error instanceof Error && error.message.includes('timed out');
         const attempt = listCheckRetryRef.current;
         console.error(`[ProtectedRoute] List existence check failed (attempt ${attempt + 1}):`, error);
@@ -177,6 +283,7 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
           return;
         }
 
+        listCheckRetryRef.current = 0;
         if (isTimeout) {
           // All retries exhausted on timeout — fall through optimistically
           // The actual data hooks will handle 404 gracefully
@@ -184,6 +291,9 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
           setListReadyState(true);
           setListGate('ready');
         } else {
+          if (baseUrl && listReadyCacheKey) {
+            setRuntimeListReady('schedules', listReadyCacheKey, false);
+          }
           setListReadyState(false);
           setListGate('blocked');
         }
@@ -191,8 +301,7 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
     };
 
     void checkSchedulesListExistence();
-    return () => { cancelled = true; };
-  }, [isMsalInProgress, tokenReady, flag, listGate, acquireToken, setListReadyState]);
+  }, [isMsalInProgress, tokenReady, flag, listGate, acquireToken, setListReadyState, accountRuntimeId, tenantRuntimeId]);
 
   // Collect diagnostics when the blocking reason changes
   // This must be in useEffect to avoid render-phase setState warnings

@@ -4,6 +4,7 @@ import { CTA_EVENTS, recordCtaClick, type CtaClickEvent } from './recordCtaClick
 // ── Mock Firestore ──
 const mockAddDoc = vi.fn().mockResolvedValue({ id: 'test-doc-id' });
 const mockCollection = vi.fn().mockReturnValue('mock-collection-ref');
+let firestoreWriteAvailable = true;
 
 vi.mock('firebase/firestore', () => ({
   addDoc: (...args: unknown[]) => mockAddDoc(...args),
@@ -12,11 +13,13 @@ vi.mock('firebase/firestore', () => ({
 }));
 
 vi.mock('@/infra/firestore/client', () => ({
-  db: 'mock-db',
+  getDb: () => 'mock-db',
+  isFirestoreWriteAvailable: () => firestoreWriteAvailable,
 }));
 
 describe('recordCtaClick', () => {
   beforeEach(() => {
+    firestoreWriteAvailable = true;
     vi.clearAllMocks();
   });
 
@@ -95,6 +98,19 @@ describe('recordCtaClick', () => {
     const payload = mockAddDoc.mock.calls[0][1];
     expect(payload.targetUrl).toBe('/schedules?date=2026-03-11');
     expect(payload.userRole).toBe('staff');
+  });
+
+  it('is no-op when Firestore is unavailable', () => {
+    firestoreWriteAvailable = false;
+
+    recordCtaClick({
+      ctaId: CTA_EVENTS.NEXT_ACTION_PRIMARY,
+      sourceComponent: 'NextActionCard',
+      stateType: 'scene-action',
+    });
+
+    expect(mockCollection).not.toHaveBeenCalled();
+    expect(mockAddDoc).not.toHaveBeenCalled();
   });
 });
 
