@@ -15,6 +15,9 @@ import { Box, ButtonBase, Typography } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import React from 'react';
 
+import { KIOSK_TELEMETRY_EVENTS } from '../telemetry/kioskNavigationTelemetry.types';
+import { recordKioskTelemetry } from '../telemetry/recordKioskTelemetry';
+
 // ─── Types ───────────────────────────────────────────────────
 
 export type KioskQuickLinkItem = {
@@ -84,7 +87,14 @@ export const KioskQuickLinks: React.FC<KioskQuickLinksProps> = ({ onNavigate }) 
       {LINKS.map((link) => (
         <ButtonBase
           key={link.key}
-          onClick={() => onNavigate(link.href)}
+          onClick={() => {
+            recordKioskTelemetry(KIOSK_TELEMETRY_EVENTS.NAVIGATE_FROM_TODAY, {
+              mode: 'kiosk',
+              target: link.key as Parameters<typeof recordKioskTelemetry>[1]['target'],
+              source: 'today',
+            });
+            onNavigate(link.href);
+          }}
           data-testid={`kiosk-quick-link-${link.key}`}
           sx={{
             display: 'flex',

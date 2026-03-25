@@ -7,7 +7,6 @@ function makeSuggestion(
 ): ActionSuggestion {
   return {
     id: `runtime-${overrides.stableId}`,
-    stableId: overrides.stableId,
     type: 'assessment_update',
     priority: 'P2',
     targetUserId: overrides.targetUserId ?? 'user-001',

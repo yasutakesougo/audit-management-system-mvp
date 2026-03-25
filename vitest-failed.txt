@@ -1,0 +1,86 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90mC:/Users/螳画ｭｦ/.vscode/workspace/audit-management-system[39m
+
+ [31m笶ｯ[39m tests/unit/features/safety/hooks/useSafetyOperationsSummary.spec.tsx [2m([22m[2m4 tests[22m[2m | [22m[31m3 failed[39m[2m)[22m[33m 321[2mms[22m[39m
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ Failed Tests 3 竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ
+
+[31m     [31mﾃ・[31m 泙 豁｣蟶ｸ邉ｻ: 縺吶∋縺ｦ縺ｮ繝ｪ繝昴ず繝医Μ縺ｫ豁｣蟶ｸ縺ｪ繝・・繧ｿ縺悟ｭ伜惠縺吶ｋ蝣ｴ蜷医・←蛻・↓邨仙粋縺輔ｌ summary 縺梧ｧ狗ｯ峨＆繧後ｋ縺薙→[39m[32m 79[2mms[22m[39m
+[31m     [31mﾃ・[31m 笞ｪ 遨ｺ繝・・繧ｿ: 蜷・ｨｮ繝ｪ繝昴ず繝医Μ縺九ｉ縺ｮ霑斐ｊ蛟､縺檎ｩｺ驟榊・縺ｮ蝣ｴ蜷医〒繧ゅ｛verallLevel: good 縺ｧ蛻晄悄蛹悶＆繧後ｋ縺薙→[39m[32m 76[2mms[22m[39m
+     [32m笨・[39m 泯 蠅・阜譚｡莉ｶ: 莠区腐遲峨・繝・・繧ｿ蠖ｱ髻ｿ縺ｧ overallLevel 縺碁明蛟､繧定ｶ・∴縺ｦ蛻､螳壹＆繧後ｋ縺薙→・域里蟄伜ｮ溯｣・崋螳夲ｼ・[32m 83[2mms[22m[39m
+[31m     [31mﾃ・[31m 楳 驥崎ｦ√↑蛻・ｲ・(Loading): 逶ｴ蠕後・ loading = true, 螳御ｺ・ｾ後↓ false 縺ｫ縺ｪ繧九％縺ｨ[39m[32m 81[2mms[22m[39m
+ FAIL  tests/unit/features/safety/hooks/useSafetyOperationsSummary.spec.tsx > useSafetyOperationsSummary > 泙 豁｣蟶ｸ邉ｻ: 縺吶∋縺ｦ縺ｮ繝ｪ繝昴ず繝医Μ縺ｫ豁｣蟶ｸ縺ｪ繝・・繧ｿ縺悟ｭ伜惠縺吶ｋ蝣ｴ蜷医・←蛻・↓邨仙粋縺輔ｌ summary 縺梧ｧ狗ｯ峨＆繧後ｋ縺薙→
+AssertionError: expected null not to be null
+ 笶ｯ tests/unit/features/safety/hooks/useSafetyOperationsSummary.spec.tsx:50:40
+     48| 
+     49|     // summary 縺梧悄蠕・壹ｊ蜈･縺｣縺ｦ縺・ｋ縺薙→
+     50|     expect(result.current.summary).not.toBeNull();
+       |                                        ^
+     51|     // 蜷・ョ繝ｼ繧ｿ縺碁←豁｣縺ｫ 1莉ｶ縺ｨ縺励※繧ｫ繧ｦ繝ｳ繝医＆繧後ｋ縺薙→・亥ｮ溯｣・・邏秘未謨ｰ縺梧ｭ｣縺励￥蜻ｼ縺ｰ繧後※縺・ｋ縺薙→縺ｮ諡・ｿ晢ｼ・[39m
+     52|     expect(result.current.summary?.incident.totalCount).toBe(1);
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ[1/3]竡ｯ
+
+ FAIL  tests/unit/features/safety/hooks/useSafetyOperationsSummary.spec.tsx > useSafetyOperationsSummary > 笞ｪ 遨ｺ繝・・繧ｿ: 蜷・ｨｮ繝ｪ繝昴ず繝医Μ縺九ｉ縺ｮ霑斐ｊ蛟､縺檎ｩｺ驟榊・縺ｮ蝣ｴ蜷医〒繧ゅ｛verallLevel: good 縺ｧ蛻晄悄蛹悶＆繧後ｋ縺薙→
+AssertionError: expected 'warning' to be 'good' // Object.is equality
+
+Expected: "good"
+Received: "warning"
+
+ 笶ｯ tests/unit/features/safety/hooks/useSafetyOperationsSummary.spec.tsx:70:50
+     68|     expect(result.current.summary).not.toBeNull();
+     69|     // 蜈ｨ縺ｦ遨ｺ縺ｧ縺ゅｌ縺ｰ縲∬ｦ∝ｯｾ蠢・0縲√Ξ繝吶Ν good 縺ｫ縺ｪ繧九・縺・[39m
+     70|     expect(result.current.summary?.overallLevel).toBe('good');
+       |                                                  ^
+     71|     expect(result.current.summary?.actionRequiredCount).toBe(0);
+     72|   });
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ[2/3]竡ｯ
+
+ FAIL  tests/unit/features/safety/hooks/useSafetyOperationsSummary.spec.tsx > useSafetyOperationsSummary > 楳 驥崎ｦ√↑蛻・ｲ・(Loading): 逶ｴ蠕後・ loading = true, 螳御ｺ・ｾ後↓ false 縺ｫ縺ｪ繧九％縺ｨ
+AssertionError: expected 'warning' to be 'good' // Object.is equality
+
+Expected: "good"
+Received: "warning"
+
+ 笶ｯ tests/unit/features/safety/hooks/useSafetyOperationsSummary.spec.tsx:112:50
+    110|     resolveIncidents([]);
+    111|     await waitFor(() => expect(result.current.loading).toBe(false));
+    112|     expect(result.current.summary?.overallLevel).toBe('good');
+       |                                                  ^
+    113|   });
+    114| });
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ[3/3]竡ｯ
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ Unhandled Errors 竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+竡ｯ竡ｯ竡ｯ竡ｯ Unhandled Rejection 竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ
+TypeError: Cannot read properties of undefined (reading 'immediacy')
+ 笶ｯ allThreeRequirementsMet src/domain/safety/physicalRestraint.ts:159:14
+    157| /** 荳芽ｦ∽ｻｶ縺後☆縺ｹ縺ｦ遒ｺ隱阪＆繧後※縺・ｋ縺・*/
+    158| export function allThreeRequirementsMet(req: ThreeRequirements): boole窶ｦ
+    159|   return req.immediacy && req.nonSubstitutability && req.temporariness;
+       |              ^
+    160| }
+    161| 
+ 笶ｯ computeRestraintSummary src/domain/safety/physicalRestraint.ts:241:10
+ 笶ｯ src/features/safety/hooks/useSafetyOperationsSummary.ts:81:32
+ 笶ｯ processTicksAndRejections node:internal/process/task_queues:104:5
+
+This error originated in "tests/unit/features/safety/hooks/useSafetyOperationsSummary.spec.tsx" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "泙 豁｣蟶ｸ邉ｻ: 縺吶∋縺ｦ縺ｮ繝ｪ繝昴ず繝医Μ縺ｫ豁｣蟶ｸ縺ｪ繝・・繧ｿ縺悟ｭ伜惠縺吶ｋ蝣ｴ蜷医・←蛻・↓邨仙粋縺輔ｌ summary 縺梧ｧ狗ｯ峨＆繧後ｋ縺薙→". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m3 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[90m (4)[39m
+[2m     Errors [22m [1m[31m1 error[39m[22m
+[2m   Start at [22m 14:07:17
+[2m   Duration [22m 1.37s[2m (transform 175ms, setup 499ms, import 69ms, tests 321ms, environment 361ms)[22m
+
