@@ -31,7 +31,7 @@ const debug = (...args: unknown[]) => {
   }
 };
 
-import { shouldBypassAuthGuard } from '@/lib/auth/guardResolution';
+import { getAuthGuardState } from '@/lib/auth/guardResolution';
 
 /**
  * Determine if a feature flag should be bypassed in E2E environment.
@@ -77,7 +77,16 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
     });
   };
 
-  const allowBypass = shouldBypassAuthGuard();
+  const guardState = getAuthGuardState();
+  const allowBypass = guardState.shouldBypass;
+
+  // Log bypass reason in DEV mode for visibility
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.debug('[auth-guard]', guardState);
+    }
+  }, [guardState.shouldBypass, guardState.reason]);
 
   // ① Auto-stop patch: Remove auto sign-in from useEffect
   // Sign-in is now button-click only (moved to AuthRequiredNotice/AuthRedirectingNotice handlers)

@@ -64,6 +64,7 @@ vi.mock('../../../src/features/planning-sheet/hooks/usePlanningSheetRepositories
 
 vi.mock('../../../src/features/today/transport', () => ({
   useTransportStatus: vi.fn(() => ({ pending: [], inProgress: [], onArrived: vi.fn() })),
+  useTransportHighlight: vi.fn(() => ({ highlightStyle: {}, clearHighlight: vi.fn() })),
 }));
 
 const mockOpenUnfilled = vi.fn();
