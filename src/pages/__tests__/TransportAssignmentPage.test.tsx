@@ -1,0 +1,81 @@
+import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { describe, expect, it, vi } from 'vitest';
+import TransportAssignmentPage from '@/pages/TransportAssignmentPage';
+
+vi.mock('@/features/schedules/hooks/useSchedules', () => ({
+  useSchedules: vi.fn(() => ({
+    items: [
+      {
+        id: 'row-1',
+        etag: '"1"',
+        title: '送迎（往路）',
+        category: 'User',
+        start: '2026-03-25T09:00:00+09:00',
+        end: '2026-03-25T09:30:00+09:00',
+        serviceType: 'transport',
+        userId: 'U001',
+        userName: '田中太郎',
+        vehicleId: '車両2',
+      },
+      {
+        id: 'row-2',
+        etag: '"2"',
+        title: '送迎（往路）',
+        category: 'User',
+        start: '2026-03-25T09:10:00+09:00',
+        end: '2026-03-25T09:40:00+09:00',
+        serviceType: 'transport',
+        userId: 'U002',
+        userName: '山田花子',
+      },
+    ],
+    loading: false,
+  })),
+}));
+
+vi.mock('@/features/users/useUsers', () => ({
+  useUsers: vi.fn(() => ({
+    data: [
+      { UserID: 'U001', FullName: '田中太郎' },
+      { UserID: 'U002', FullName: '山田花子' },
+    ],
+    status: 'success',
+  })),
+}));
+
+vi.mock('@/features/staff/store', () => ({
+  useStaffStore: vi.fn(() => ({
+    data: [
+      { id: 1, staffId: 'STF-001', name: '佐藤花子' },
+      { id: 2, staffId: 'STF-002', name: '鈴木次郎' },
+    ],
+    loading: false,
+  })),
+}));
+
+describe('TransportAssignmentPage', () => {
+  it('renders transport assignment board and controls', () => {
+    render(
+      <MemoryRouter>
+        <TransportAssignmentPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { level: 1, name: '送迎配車表' })).toBeInTheDocument();
+    expect(screen.getByTestId('transport-assignment-date')).toBeInTheDocument();
+    expect(screen.getByTestId('transport-assignment-direction')).toBeInTheDocument();
+
+    for (let i = 1; i <= 4; i += 1) {
+      expect(screen.getByTestId(`transport-assignment-vehicle-card-${i}`)).toBeInTheDocument();
+    }
+    expect(screen.getByTestId('transport-assignment-unassigned-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('transport-assignment-payload-count')).toBeInTheDocument();
+    expect(screen.getByTestId('transport-assignment-save-button')).toBeDisabled();
+    expect(screen.getByTestId('transport-assignment-missing-driver-warning')).toBeInTheDocument();
+    expect(screen.getByTestId('transport-assignment-vehicle-warning-2')).toBeInTheDocument();
+
+    const backLink = screen.getByTestId('transport-assignment-back-today');
+    expect(backLink).toHaveAttribute('href', '/today');
+  });
+});

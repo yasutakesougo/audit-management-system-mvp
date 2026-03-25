@@ -109,6 +109,7 @@ export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOpt
           personName: input.userName,
 
           assignedStaffId: input.assignedStaffId,
+          vehicleId: input.vehicleId,
           targetUserId: input.targetUserId,
 
           rowKey: generateRowKey(input.rowKey),
@@ -172,6 +173,7 @@ export const makeSharePointSchedulesPort = (options?: SharePointSchedulesPortOpt
           personName: input.userName,
 
           assignedStaffId: input.assignedStaffId,
+          vehicleId: input.vehicleId,
           targetUserId: input.targetUserId,
 
           dayKey,

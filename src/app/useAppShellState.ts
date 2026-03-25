@@ -120,7 +120,7 @@ export function useAppShellState() {
     // ── Kiosk mode: 現場で使う導線だけに絞る ──────────────────────────
     // Today → 進捗 → 各記録に直接飛べるため「日次記録」「健康記録」は非表示。
     // daily 以外のグループ (assessment, record, ops, admin) もキオスクでは不要。
-    const KIOSK_HIDDEN_PATHS = ['/dailysupport', '/daily/health'];
+    const KIOSK_HIDDEN_PATHS = ['/dailysupport', '/daily/health', '/transport/assignments'];
     const KIOSK_ALLOWED_GROUPS = new Set(['daily']);
 
     // Hide groups that user has disabled in settings

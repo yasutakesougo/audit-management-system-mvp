@@ -36,6 +36,13 @@ import { buildTransportExceptions } from '@/features/exceptions/domain/buildTran
 import { extractTransportDetails } from '@/features/exceptions/domain/extractTransportDetails';
 import type { ExceptionItem } from '@/features/exceptions/domain/exceptionLogic';
 import type { TransportTelemetryEvent } from '@/features/today/transport/transportTelemetry';
+import { useTransportStatus } from '@/features/today/transport';
+import {
+  buildVehicleBoardGroups,
+  DEFAULT_TRANSPORT_VEHICLE_IDS,
+  hasMissingVehicleDriver,
+} from '@/features/today/transport/transportAssignments';
+import type { MissingDriverDetail } from '@/features/exceptions/domain/buildTransportExceptions';
 
 export interface UseTransportExceptionsReturn {
   /** ExceptionItem に変換済みの送迎アラート */
@@ -52,6 +59,7 @@ export interface UseTransportExceptionsReturn {
 export function useTransportExceptions(): UseTransportExceptionsReturn {
   const [events, setEvents] = useState<TransportTelemetryEvent[]>([]);
   const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const transportStatus = useTransportStatus();
 
   // ── ユーザーマスタから UserID → FullName マップを生成 ──
   const { data: users } = useUsers();
@@ -122,23 +130,61 @@ export function useTransportExceptions(): UseTransportExceptionsReturn {
   }, []);
 
   // ── Pipeline: events → KPIs → Alerts → Details → ExceptionItems ──
-  const items = useMemo(() => {
-    if (events.length === 0) return [];
+  const missingDriverUsers = useMemo<MissingDriverDetail[]>(() => {
+    if (!transportStatus.isReady) return [];
 
+    const groups = buildVehicleBoardGroups(
+      transportStatus.status.legs,
+      DEFAULT_TRANSPORT_VEHICLE_IDS,
+    );
+
+    const details: MissingDriverDetail[] = [];
+    for (const group of groups) {
+      if (!hasMissingVehicleDriver(group)) continue;
+
+      for (const rider of group.riders) {
+        details.push({
+          userCode: rider.userId,
+          userName: rider.userName,
+          direction: rider.direction,
+          vehicleId: group.vehicleId,
+        });
+      }
+    }
+    return details;
+  }, [transportStatus.isReady, transportStatus.status.legs]);
+
+  const items = useMemo(() => {
     const kpis = computeTransportKpis(events);
     const alerts = computeTransportAlerts({
       kpis,
       now: new Date(),
     });
+    const missingVehicles = new Set(missingDriverUsers.map((d) => d.vehicleId));
+    const mergedAlerts = [...alerts];
+    if (missingDriverUsers.length > 0) {
+      mergedAlerts.push({
+        id: 'transport-missing-driver-assignment',
+        severity: 'warning',
+        label: '運転者未設定の配車',
+        message: `運転者未設定の車両が ${missingVehicles.size} 台、対象 ${missingDriverUsers.length} 名あります。配車を確認してください。`,
+        value: missingDriverUsers.length,
+        threshold: 0,
+      });
+    }
+
+    if (mergedAlerts.length === 0) return [];
+
     const details = extractTransportDetails(events);
 
     return buildTransportExceptions({
-      alerts,
+      alerts: mergedAlerts,
       today,
       details,
+      missingDriverUsers,
       userNames,
     });
-  }, [events, today, userNames]);
+  }, [events, missingDriverUsers, today, userNames]);
 
   return { items, status };
 }

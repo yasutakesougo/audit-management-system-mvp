@@ -1,6 +1,6 @@
 import type { ExceptionItem, ExceptionSeverity } from './exceptionLogic';
 
-export type ExceptionPrioritySignal = 'sync-fail' | 'stale' | 'none';
+export type ExceptionPrioritySignal = 'sync-fail' | 'missing-driver' | 'stale' | 'none';
 
 export type ExceptionPriorityBreakdown = {
   severity: number;
@@ -33,6 +33,7 @@ const STRUCTURE_SCORES = {
 
 const SIGNAL_SCORES: Record<ExceptionPrioritySignal, number> = {
   'sync-fail': 28,
+  'missing-driver': 22,
   stale: 18,
   none: 0,
 };
@@ -60,6 +61,14 @@ function detectSignal(item: ExceptionItem): ExceptionPrioritySignal {
     || text.includes('同期に失敗')
   ) {
     return 'sync-fail';
+  }
+
+  if (
+    text.includes('missing-driver')
+    || text.includes('運転者未設定')
+    || text.includes('配車漏れ')
+  ) {
+    return 'missing-driver';
   }
 
   if (

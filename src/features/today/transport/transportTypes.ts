@@ -59,6 +59,7 @@ export type TransportLeg = {
   status: TransportLegStatus;
   scheduledTime?: string;   // HH:mm
   actualTime?: string;      // HH:mm (on arrival)
+  vehicleId?: string;
   driverName?: string;
   notes?: string;
 };
