@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { useChecklistApi } from '@/features/compliance-checklist/api';
-import { mapToChecklistItem, ChecklistItemDTO, ChecklistInsertDTO } from '@/features/compliance-checklist/types';
+import { ChecklistItemDTO, ChecklistInsertDTO } from '@/features/compliance-checklist/types';
+import { mapToChecklistItem } from '@/features/compliance-checklist/domain/checklistLogic';
 import { useSP } from '@/lib/spClient';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
