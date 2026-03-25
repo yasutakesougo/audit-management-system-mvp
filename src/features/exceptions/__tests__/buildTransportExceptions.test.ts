@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { buildTransportExceptions } from '../domain/buildTransportExceptions';
 import type { KpiAlert } from '@/features/telemetry/domain/computeCtaKpiDiff';
 import type { TransportDetails } from '../domain/extractTransportDetails';
+import type { MissingDriverDetail } from '../domain/buildTransportExceptions';
 
 const TODAY = '2026-03-24';
 
@@ -84,6 +85,20 @@ describe('buildTransportExceptions (legacy 2-arg)', () => {
     });
   });
 
+  it('missing-driver アラートを high 例外に変換する', () => {
+    const alerts = [makeAlert({ id: 'transport-missing-driver-assignment' })];
+    const result = buildTransportExceptions(alerts, TODAY);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      category: 'transport-alert',
+      severity: 'high',
+      title: '運転者未設定の送迎車両があります',
+      actionLabel: '配車ボードを確認',
+      actionPath: '/today',
+    });
+  });
+
   it('未知のアラートIDはスキップする', () => {
     const alerts = [
       makeAlert({ id: 'transport-sync-fail-count' }),
@@ -152,6 +167,10 @@ describe('buildTransportExceptions (per-user enrichment)', () => {
     ],
     syncFailedUsers: [],
   };
+  const missingDriverUsers: MissingDriverDetail[] = [
+    { userCode: 'U010', userName: '山田太郎', direction: 'to', vehicleId: '車両2' },
+    { userCode: 'U011', direction: 'from', vehicleId: '車両4' },
+  ];
 
   it('stale アラートで per-user 子例外を生成する', () => {
     const result = buildTransportExceptions({
@@ -307,5 +326,45 @@ describe('buildTransportExceptions (per-user enrichment)', () => {
 
     expect(result[0].parentId).toBeUndefined();
     expect(result[1].parentId).toBe(`transport-transport-sync-fail-count-${TODAY}`);
+  });
+
+  it('missing-driver アラートで per-user 子例外を生成する', () => {
+    const result = buildTransportExceptions({
+      alerts: [makeAlert({ id: 'transport-missing-driver-assignment' })],
+      today: TODAY,
+      missingDriverUsers,
+      userNames: { U011: '佐藤花子' },
+    });
+
+    expect(result).toHaveLength(3);
+    expect(result[0].parentId).toBeUndefined();
+    expect(result[1]).toMatchObject({
+      parentId: `transport-transport-missing-driver-assignment-${TODAY}`,
+      targetUserId: 'U010',
+      targetUser: '山田太郎',
+      severity: 'high',
+      title: expect.stringContaining('車両2'),
+      actionPath: '/today?highlight=U010&direction=to',
+    });
+    expect(result[2]).toMatchObject({
+      targetUserId: 'U011',
+      targetUser: '佐藤花子',
+      actionPath: '/today?highlight=U011&direction=from',
+    });
+  });
+
+  it('missing-driver の子例外も最大5件に制限される', () => {
+    const manyMissing: MissingDriverDetail[] = Array.from({ length: 7 }, (_, i) => ({
+      userCode: `U${String(i + 1).padStart(3, '0')}`,
+      direction: 'to',
+      vehicleId: '車両1',
+    }));
+    const result = buildTransportExceptions({
+      alerts: [makeAlert({ id: 'transport-missing-driver-assignment' })],
+      today: TODAY,
+      missingDriverUsers: manyMissing,
+    });
+
+    expect(result).toHaveLength(6);
   });
 });
