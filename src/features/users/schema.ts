@@ -33,6 +33,7 @@ export const SpUserMasterItemSchema = z.object({
   // Arrays (normalized from string or unknown)
   TransportToDays: z.unknown().transform(normalizeAttendanceDays),
   TransportFromDays: z.unknown().transform(normalizeAttendanceDays),
+  TransportCourse: z.string().nullish(),
   AttendanceDays: z.unknown().transform(normalizeAttendanceDays),
   // Billing specific
   TransportAdditionType: z.string().nullish(),
@@ -79,6 +80,7 @@ export const UserMasterDomainSchema = SpUserMasterItemSchema.transform((sp) => (
   IsActive: sp.IsActive !== false,
   TransportToDays: sp.TransportToDays,
   TransportFromDays: sp.TransportFromDays,
+  TransportCourse: sp.TransportCourse ?? null,
   AttendanceDays: sp.AttendanceDays,
   TransportAdditionType: sp.TransportAdditionType ?? null,
   MealAddition: sp.MealAddition ?? null,
@@ -121,6 +123,7 @@ export const UserCoreSchema = z.object({
   IsActive: z.boolean().nullable().optional(),
   TransportToDays: z.array(z.string()).nullable().optional(),
   TransportFromDays: z.array(z.string()).nullable().optional(),
+  TransportCourse: z.string().nullable().optional(),
   TransportSchedule: z.string().nullable().optional(),
   AttendanceDays: z.array(z.string()).nullable().optional(),
   RecipientCertNumber: z.string().nullable().optional(),

@@ -65,6 +65,7 @@ export type SpScheduleRow = {
   VehicleId?: string;
   TargetUserId?: string;
   Note?: string;
+  Notes?: string;
   '@odata.etag'?: string;
   etag?: string;
   d?: { Id?: number };
@@ -100,6 +101,12 @@ const toIso = (d: Date) => {
 };
 
 const escapeOData = (s: string) => s.replace(/'/g, "''");
+
+const isEventScheduleList = (): boolean =>
+  getSchedulesListTitle().trim().toLowerCase() === 'scheduleevents';
+
+const resolveNotesFieldName = (): 'Note' | 'Notes' =>
+  isEventScheduleList() ? 'Notes' : 'Note';
 
 export function buildSchedulesFilter(args: QuerySchedulesArgs) {
   const clauses: string[] = [];
@@ -202,7 +209,9 @@ export function mapSpToRepoSchedule(sp: SpScheduleRow, etag?: string): RepoSched
     fiscalYear: String(sp.cr014_fiscalYear ?? ''),
 
     orgAudience: sp.cr014_orgAudience ? String(sp.cr014_orgAudience) : undefined,
-    note: sp.Note ? String(sp.Note) : undefined,
+    note: sp.Note
+      ? String(sp.Note)
+      : (sp.Notes ? String(sp.Notes) : undefined),
 
     createdAt: sp.CreatedAt ? String(sp.CreatedAt) : undefined,
     updatedAt: sp.UpdatedAt ? String(sp.UpdatedAt) : undefined,
@@ -219,6 +228,7 @@ export async function querySchedules(
   client: ReturnType<typeof useSP>
 ): Promise<RepoSchedule[]> {
   const listIdentifier = FIELD_MAP.Schedules.title;
+  const notesField = resolveNotesFieldName();
 
   const select = [
     'Id',
@@ -240,7 +250,7 @@ export async function querySchedules(
     'MonthKey',
     'cr014_fiscalYear',
     'cr014_orgAudience',
-    'Note',
+    notesField,
     'CreatedAt',
     'UpdatedAt',
   ];
@@ -366,7 +376,7 @@ const buildCreateBody = (input: CreateScheduleInput) => {
   }
   if (input.targetUserId) body.TargetUserId = input.targetUserId;
   if (input.orgAudience) body.cr014_orgAudience = input.orgAudience;
-  if (input.notes) body.Note = input.notes;
+  if (input.notes) body[resolveNotesFieldName()] = input.notes;
 
   return body;
 };
@@ -399,7 +409,7 @@ const buildUpdateBody = (input: UpdateScheduleInput) => {
   if (input.monthKey !== undefined) body.MonthKey = toMonthKeyJst(input.monthKey);
   if (input.fiscalYear !== undefined) body.cr014_fiscalYear = input.fiscalYear;
   if (input.orgAudience !== undefined) body.cr014_orgAudience = input.orgAudience;
-  if (input.notes !== undefined) body.Note = input.notes;
+  if (input.notes !== undefined) body[resolveNotesFieldName()] = input.notes;
 
   return body;
 };
@@ -427,6 +437,7 @@ export async function createSchedule(
   console.log('[schedulesRepo] Created schedule with ID:', createdId);
 
   // Step 3: Fetch the full item with all fields (same $select as query)
+  const notesField = resolveNotesFieldName();
   const select = [
     'Id',
     'Title',
@@ -447,7 +458,7 @@ export async function createSchedule(
     'MonthKey',
     'cr014_fiscalYear',
     'cr014_orgAudience',
-    'Note',
+    notesField,
     'CreatedAt',
     'UpdatedAt',
   ];

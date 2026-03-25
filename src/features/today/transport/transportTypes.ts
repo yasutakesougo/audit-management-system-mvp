@@ -13,6 +13,7 @@
  */
 
 import type { TransportMethod } from '@/features/attendance/transportMethod';
+import type { TransportCourse } from './transportCourse';
 
 // ─── Transport Leg Status (State Machine) ───────────────────────────────────
 
@@ -60,7 +61,10 @@ export type TransportLeg = {
   scheduledTime?: string;   // HH:mm
   actualTime?: string;      // HH:mm (on arrival)
   vehicleId?: string;
+  courseId?: TransportCourse;
+  courseLabel?: string;
   driverName?: string;
+  attendantName?: string;
   notes?: string;
 };
 

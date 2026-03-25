@@ -1,16 +1,27 @@
 import { normalizeServiceType } from '@/features/schedules/serviceTypeMetadata';
 import type { TransportDirection, TransportLeg } from './transportTypes';
+import {
+  getTransportCourseLabel,
+  parseTransportCourse,
+  type TransportCourse,
+} from './transportCourse';
 
 export type TransportAssignment = {
   vehicleId?: string;
+  courseId?: TransportCourse;
+  courseLabel?: string;
   driverName?: string;
+  attendantName?: string;
 };
 
 export type TransportAssignmentIndex = Record<TransportDirection, Map<string, TransportAssignment>>;
 
 export type TransportVehicleGroup = {
   vehicleId: string;
+  courseId: TransportCourse | null;
+  courseLabel: string | null;
   driverName: string | null;
+  attendantName: string | null;
   riders: TransportLeg[];
 };
 
@@ -20,6 +31,8 @@ const TO_PATTERNS = /(往路|迎え|行き|登所)/;
 const FROM_PATTERNS = /(復路|送り|帰り|退所)/;
 const TRANSPORT_TITLE_PATTERNS = /(送迎|迎え|送り|往路|復路)/;
 const UNASSIGNED_VEHICLE_LABEL = '未割当';
+const TRANSPORT_ATTENDANT_TAG_PATTERN = /\[transport_attendant:([^\]\r\n]+)\]/i;
+const TRANSPORT_COURSE_TAG_PATTERN = /\[transport_course:([^\]\r\n]+)\]/i;
 
 function normalizeText(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
@@ -47,6 +60,19 @@ function parseHour(value: string | undefined): number | null {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
   return date.getHours();
+}
+
+function extractAttendantStaffId(notes: unknown): string | undefined {
+  if (typeof notes !== 'string') return undefined;
+  const matched = TRANSPORT_ATTENDANT_TAG_PATTERN.exec(notes);
+  return normalizeText(matched?.[1]);
+}
+
+function extractTransportCourse(notes: unknown): TransportCourse | undefined {
+  if (typeof notes !== 'string') return undefined;
+  const matched = TRANSPORT_COURSE_TAG_PATTERN.exec(notes);
+  const parsed = parseTransportCourse(matched?.[1]);
+  return parsed ?? undefined;
 }
 
 function createEmptyIndex(): TransportAssignmentIndex {
@@ -92,10 +118,18 @@ function mergeAssignment(
   incoming: TransportAssignment,
 ): TransportAssignment {
   if (!current) return incoming;
-  return {
-    vehicleId: current.vehicleId ?? incoming.vehicleId,
-    driverName: current.driverName ?? incoming.driverName,
-  };
+  const merged: TransportAssignment = {};
+  const vehicleId = current.vehicleId ?? incoming.vehicleId;
+  const courseId = current.courseId ?? incoming.courseId;
+  const courseLabel = current.courseLabel ?? incoming.courseLabel;
+  const driverName = current.driverName ?? incoming.driverName;
+  const attendantName = current.attendantName ?? incoming.attendantName;
+  if (vehicleId) merged.vehicleId = vehicleId;
+  if (courseId) merged.courseId = courseId;
+  if (courseLabel) merged.courseLabel = courseLabel;
+  if (driverName) merged.driverName = driverName;
+  if (attendantName) merged.attendantName = attendantName;
+  return merged;
 }
 
 export function buildTransportAssignmentIndex(
@@ -114,13 +148,19 @@ export function buildTransportAssignmentIndex(
     const assignedStaffName = normalizeText(row.assignedStaffName);
     const assignedStaffId = normalizeText(row.assignedStaffId);
     const driverName = assignedStaffName ?? (assignedStaffId ? resolveStaffName(assignedStaffId) : undefined);
+    const attendantStaffId = extractAttendantStaffId(row.notes);
+    const attendantName = attendantStaffId ? resolveStaffName(attendantStaffId) : undefined;
+    const courseId = extractTransportCourse(row.notes);
+    const courseLabel = getTransportCourseLabel(courseId);
 
-    if (!vehicleId && !driverName) continue;
+    if (!vehicleId && !driverName && !attendantName && !courseLabel) continue;
 
-    const incoming: TransportAssignment = {
-      vehicleId,
-      driverName,
-    };
+    const incoming: TransportAssignment = {};
+    if (vehicleId) incoming.vehicleId = vehicleId;
+    if (courseId) incoming.courseId = courseId;
+    if (courseLabel) incoming.courseLabel = courseLabel;
+    if (driverName) incoming.driverName = driverName;
+    if (attendantName) incoming.attendantName = attendantName;
 
     for (const direction of inferTransportDirections(row)) {
       const map = index[direction];
@@ -148,7 +188,10 @@ export function enrichTransportLegsWithAssignments(
     return {
       ...leg,
       vehicleId: leg.vehicleId ?? assignment.vehicleId,
+      courseId: leg.courseId ?? assignment.courseId,
+      courseLabel: leg.courseLabel ?? assignment.courseLabel,
       driverName: leg.driverName ?? assignment.driverName,
+      attendantName: leg.attendantName ?? assignment.attendantName,
     };
   });
 }
@@ -172,13 +215,19 @@ export function buildVehicleGroups(legs: readonly TransportLeg[]): TransportVehi
   for (const leg of legs) {
     if (leg.status === 'self' || leg.status === 'absent') continue;
 
+    const legCourseId = parseTransportCourse(leg.courseId ?? leg.courseLabel);
+    const legCourseLabel = getTransportCourseLabel(legCourseId) ?? leg.courseLabel ?? null;
+
     const vehicleId = leg.vehicleId?.trim() || UNASSIGNED_VEHICLE_LABEL;
     const existing = grouped.get(vehicleId);
 
     if (!existing) {
       grouped.set(vehicleId, {
         vehicleId,
+        courseId: legCourseId,
+        courseLabel: legCourseLabel,
         driverName: leg.driverName?.trim() || null,
+        attendantName: leg.attendantName?.trim() || null,
         riders: [leg],
       });
       continue;
@@ -187,6 +236,15 @@ export function buildVehicleGroups(legs: readonly TransportLeg[]): TransportVehi
     existing.riders.push(leg);
     if (!existing.driverName) {
       existing.driverName = leg.driverName?.trim() || null;
+    }
+    if (!existing.attendantName) {
+      existing.attendantName = leg.attendantName?.trim() || null;
+    }
+    if (!existing.courseId && legCourseId) {
+      existing.courseId = legCourseId;
+    }
+    if (!existing.courseLabel && legCourseLabel) {
+      existing.courseLabel = legCourseLabel;
     }
   }
 
@@ -209,7 +267,14 @@ export function buildVehicleBoardGroups(
 
   const rows: TransportVehicleGroup[] = fixedIds.map((vehicleId) => {
     const group = groupMap.get(vehicleId);
-    return group ?? { vehicleId, driverName: null, riders: [] };
+    return group ?? {
+      vehicleId,
+      courseId: null,
+      courseLabel: null,
+      driverName: null,
+      attendantName: null,
+      riders: [],
+    };
   });
 
   const extraRows = groups
@@ -226,4 +291,10 @@ export function buildVehicleBoardGroups(
 
 export function hasMissingVehicleDriver(group: Pick<TransportVehicleGroup, 'driverName' | 'riders'>): boolean {
   return group.riders.length > 0 && !group.driverName;
+}
+
+export function hasMissingVehicleCourse(
+  group: Pick<TransportVehicleGroup, 'courseId' | 'courseLabel' | 'riders'>,
+): boolean {
+  return group.riders.length > 0 && !group.courseId && !group.courseLabel;
 }

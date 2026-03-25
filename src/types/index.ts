@@ -12,6 +12,7 @@ export type SpUserItem = {
   IsActive?: boolean;
   TransportToDays?: string[] | string | null;
   TransportFromDays?: string[] | string | null;
+  TransportCourse?: string | null;
   Transport_x0020_ToDays?: string[] | string | null;
   Transport_x0020_FromDays?: string[] | string | null;
   RecipientCertNumber?: string;

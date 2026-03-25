@@ -1,7 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import TransportAssignmentPage from '@/pages/TransportAssignmentPage';
+
+vi.mock('@/utils/getNow', () => ({
+  toLocalDateISO: vi.fn(() => '2026-03-25'),
+}));
 
 vi.mock('@/features/schedules/hooks/useSchedules', () => ({
   useSchedules: vi.fn(() => ({
@@ -28,6 +32,19 @@ vi.mock('@/features/schedules/hooks/useSchedules', () => ({
         serviceType: 'transport',
         userId: 'U002',
         userName: '山田花子',
+      },
+      {
+        id: 'row-3',
+        etag: '"3"',
+        title: '送迎（往路）',
+        category: 'User',
+        start: '2026-03-18T09:10:00+09:00',
+        end: '2026-03-18T09:40:00+09:00',
+        serviceType: 'transport',
+        userId: 'U002',
+        userName: '山田花子',
+        vehicleId: '車両3',
+        assignedStaffId: 'STF-002',
       },
     ],
     loading: false,
@@ -64,7 +81,20 @@ describe('TransportAssignmentPage', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: '送迎配車表' })).toBeInTheDocument();
     expect(screen.getByTestId('transport-assignment-date')).toBeInTheDocument();
+    expect(screen.getByTestId('transport-assignment-week-prev')).toBeInTheDocument();
+    expect(screen.getByTestId('transport-assignment-week-next')).toBeInTheDocument();
+    expect(screen.getByTestId('transport-assignment-week-range')).toBeInTheDocument();
+    expect(screen.getByTestId('transport-assignment-weekdays')).toBeInTheDocument();
+    expect(screen.getByTestId('transport-assignment-apply-weekday-default')).toBeInTheDocument();
+    expect(screen.getByTestId('transport-assignment-apply-week-bulk-default')).toBeInTheDocument();
     expect(screen.getByTestId('transport-assignment-direction')).toBeInTheDocument();
+    expect(screen.queryByTestId('transport-assignment-week-bulk-summary')).not.toBeInTheDocument();
+
+    const weekdayGroup = screen.getByTestId('transport-assignment-weekdays');
+    const weekdayButtons = within(weekdayGroup).getAllByRole('button');
+    expect(weekdayButtons).toHaveLength(5);
+    expect(within(weekdayGroup).queryByRole('button', { name: /土/ })).not.toBeInTheDocument();
+    expect(within(weekdayGroup).queryByRole('button', { name: /日/ })).not.toBeInTheDocument();
 
     for (let i = 1; i <= 4; i += 1) {
       expect(screen.getByTestId(`transport-assignment-vehicle-card-${i}`)).toBeInTheDocument();
@@ -74,8 +104,14 @@ describe('TransportAssignmentPage', () => {
     expect(screen.getByTestId('transport-assignment-save-button')).toBeDisabled();
     expect(screen.getByTestId('transport-assignment-missing-driver-warning')).toBeInTheDocument();
     expect(screen.getByTestId('transport-assignment-vehicle-warning-2')).toBeInTheDocument();
+    expect(screen.getByTestId('transport-assignment-course-select-1')).toBeInTheDocument();
+    expect(screen.getByTestId('transport-assignment-attendant-select-1')).toBeInTheDocument();
 
     const backLink = screen.getByTestId('transport-assignment-back-today');
     expect(backLink).toHaveAttribute('href', '/today');
+
+    fireEvent.click(screen.getByTestId('transport-assignment-apply-week-bulk-default'));
+    expect(screen.getByTestId('transport-assignment-week-bulk-summary')).toBeInTheDocument();
+    expect(screen.getByTestId('transport-assignment-save-button')).toBeEnabled();
   });
 });

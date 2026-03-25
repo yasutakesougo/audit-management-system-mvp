@@ -1,0 +1,75 @@
+name: "🧭 TransportCourse Fallback Removal Decision"
+description: "TransportCourse fallback 削除可否の判定（14日ゼロ確認）"
+title: "[Decision] transport-course fallback removal - YYYY-MM-DD"
+labels:
+  - ops
+  - area:transport
+  - migration
+body:
+  - type: markdown
+    attributes:
+      value: |
+        判定 runbook:
+        - [TransportCourse Migration](../../docs/runbooks/transport-course-migration.md)
+        - [TransportCourse Fallback Tracking CSV](../../docs/runbooks/templates/transport-course-fallback-tracking.csv)
+        - [Fallback Removal PR Template](../../docs/runbooks/templates/transport-course-fallback-removal-pr-template.md)
+
+  - type: input
+    id: decision-date
+    attributes:
+      label: 判定日
+      placeholder: "YYYY-MM-DD"
+      value: "2026-04-08"
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Objective
+        Confirm 14-day zero-hit window and decide fallback removal.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: fallback_hit_count = 0 が14日連続
+          required: true
+        - label: inventory_unset_count を確認
+          required: true
+        - label: backfill_target_count を確認
+          required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: 集計値を記入
+      value: |
+        inventory_unset_count =
+        backfill_target_count =
+        fallback_hit_count =
+        zero_hit_days =
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: decision
+    attributes:
+      label: Decision
+      options:
+        - label: 削除PR作成
+          required: false
+        - label: 継続監視
+          required: false
+
+  - type: textarea
+    id: next
+    attributes:
+      label: Next
+      value: |
+        使用テンプレ:
+        docs/runbooks/templates/transport-course-fallback-removal-pr-template.md
+    validations:
+      required: false

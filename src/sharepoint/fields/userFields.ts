@@ -28,6 +28,7 @@ export interface IUserMaster {
   IsActive?: boolean | null;
   TransportToDays?: string[] | null;
   TransportFromDays?: string[] | null;
+  TransportCourse?: string | null;
   TransportSchedule?: string | null;  // JSON: Record<曜日, { to: TransportMethod, from: TransportMethod }>
   AttendanceDays?: string[] | null;
   RecipientCertNumber?: string | null;
@@ -78,6 +79,7 @@ export interface IUserMasterCreateDto {
   IsActive?: boolean | null;
   TransportToDays?: string[] | null;
   TransportFromDays?: string[] | null;
+  TransportCourse?: string | null;
   TransportSchedule?: string | null;
   AttendanceDays?: string[] | null;
   RecipientCertNumber?: string | null;
@@ -125,6 +127,7 @@ export const USERS_MASTER_FIELD_MAP = {
   isActive: 'IsActive',
   transportToDays: 'TransportToDays',
   transportFromDays: 'TransportFromDays',
+  transportCourse: 'TransportCourse',
   attendanceDays: 'AttendanceDays',
   recipientCertNumber: 'RecipientCertNumber',
   recipientCertExpiry: 'RecipientCertExpiry',
@@ -166,6 +169,7 @@ export const USERS_SELECT_FIELDS_CORE = [
   USERS_MASTER_FIELD_MAP.isActive,
   USERS_MASTER_FIELD_MAP.transportToDays,
   USERS_MASTER_FIELD_MAP.transportFromDays,
+  USERS_MASTER_FIELD_MAP.transportCourse,
   USERS_MASTER_FIELD_MAP.attendanceDays,
   USERS_MASTER_FIELD_MAP.recipientCertNumber,
   USERS_MASTER_FIELD_MAP.recipientCertExpiry,

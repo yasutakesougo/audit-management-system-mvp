@@ -1,0 +1,2 @@
+record_date,inventory_total_items,inventory_unset_count,backfill_target_count,fallback_hit_count,fallback_unmappable_count,comment,next_action
+"2026-03-25","33","33","0","0","0","baseline run","rerun inventory in 1 day"

@@ -44,6 +44,7 @@ SharePoint リスト設計の対応関係を整理したものです。
 | isActive | `IsActive` | bool | 有効／無効 |
 | transportToDays | `TransportToDays` | multi-choice | 送迎（行き）曜日 |
 | transportFromDays | `TransportFromDays` | multi-choice | 送迎（帰り）曜日 |
+| transportCourse | `TransportCourse` | text | 送迎固定コース（`isogo` / `kan2` / `kanazawa`） |
 | attendanceDays | `AttendanceDays` | multi-choice | 通所曜日 |
 | recipientCertNumber | `RecipientCertNumber` | text | 受給者証番号 |
 | recipientCertExpiry | `RecipientCertExpiry` | date | 受給者証有効期限 |

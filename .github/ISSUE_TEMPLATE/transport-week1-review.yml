@@ -1,0 +1,82 @@
+name: "🚌 Transport Week1 Review"
+description: "transport 運用の Week1 レビュー（priority + nightly critical）"
+title: "[Week1 Review] transport ops - YYYY-MM-DD"
+labels:
+  - ops
+  - area:transport
+  - review-friendly
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Week1 レビュー用 runbook:
+        - [Transport Nightly Critical E2E](../../docs/runbooks/transport-nightly-critical-e2e.md)
+        - [ExceptionCenter Priority Week-1 Review](../../docs/runbooks/exception-center-priority-week1-review.md)
+        - [Transport Week1 Ops Review Template](../../docs/runbooks/templates/transport-week1-ops-review-template.md)
+
+  - type: input
+    id: review-date
+    attributes:
+      label: レビュー日
+      placeholder: "YYYY-MM-DD"
+      value: "2026-04-01"
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Objectives
+        - ExceptionCenter priority usage validation
+        - Nightly transport critical E2E stability check
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: Top3 shown / click / CTR を確認
+          required: true
+        - label: deep link 到達率を確認
+          required: true
+        - label: resolve までの時間を確認
+          required: true
+        - label: nightly transport critical 4本の実行結果を確認
+          required: true
+        - label: failure があれば runbook で一次切り分け
+          required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: 数値を記入
+      value: |
+        top3_ctr =
+        deep_link_arrived =
+        avg_time_to_resolve =
+        nightly_failures =
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: decision
+    attributes:
+      label: Decision
+      options:
+        - label: OK（そのまま運用）
+          required: false
+        - label: 要調整（priority 重み調整）
+          required: false
+
+  - type: textarea
+    id: next-action
+    attributes:
+      label: Next Action
+      placeholder: |
+        - [ ] action:
+          owner:
+          due:
+          linkedIssue:
+    validations:
+      required: false

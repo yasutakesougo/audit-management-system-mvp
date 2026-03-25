@@ -269,6 +269,7 @@ export class SharePointUserRepository implements UserRepository {
       IsActive: get<boolean | null>(fields.isActive) ?? raw.IsActive ?? null,
       TransportToDays: transportTo,
       TransportFromDays: transportFrom,
+      TransportCourse: get<string | null>(fields.transportCourse) ?? null,
       AttendanceDays: attendance,
       RecipientCertNumber: get<string | null>(fields.recipientCertNumber) ?? raw.RecipientCertNumber ?? null,
       RecipientCertExpiry: get<string | null>(fields.recipientCertExpiry) ?? raw.RecipientCertExpiry ?? null,
@@ -325,6 +326,7 @@ export class SharePointUserRepository implements UserRepository {
     if (dto.AttendanceDays !== undefined) assign('attendanceDays', normalizeAttendanceDays(dto.AttendanceDays));
     if (dto.TransportToDays !== undefined) assign('transportToDays', normalizeAttendanceDays(dto.TransportToDays));
     if (dto.TransportFromDays !== undefined) assign('transportFromDays', normalizeAttendanceDays(dto.TransportFromDays));
+    if (dto.TransportCourse !== undefined) assign('transportCourse', dto.TransportCourse);
     if (dto.RecipientCertNumber !== undefined) assign('recipientCertNumber', dto.RecipientCertNumber);
     if (dto.RecipientCertExpiry !== undefined) assign('recipientCertExpiry', dto.RecipientCertExpiry);
     // ── 支給決定・請求加算 ──

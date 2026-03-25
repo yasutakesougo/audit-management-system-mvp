@@ -5,6 +5,7 @@
  * React ステートやフック API への依存なし。
  */
 import type { IUserMasterCreateDto } from '../../sharepoint/fields';
+import { parseTransportCourse } from '../today/transport/transportCourse';
 import { WEEKDAYS } from './useUserFormConstants';
 import type { DayTransport, FormValues } from './useUserFormTypes';
 
@@ -84,6 +85,7 @@ export const toCreateDto = (values: FormValues): IUserMasterCreateDto => ({
   IsSupportProcedureTarget: values.IsSupportProcedureTarget,
   severeFlag: false,
   IsActive: values.IsActive,
+  TransportCourse: parseTransportCourse(values.TransportCourse) ?? null,
   ...(() => {
     const derived = deriveTransportDays(values.TransportSchedule);
     return {

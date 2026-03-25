@@ -352,6 +352,7 @@ export class RestApiUserRepository implements UserRepository {
       IsActive: get<boolean | null>(fields.isActive) ?? raw.IsActive ?? null,
       TransportToDays: transportTo,
       TransportFromDays: transportFrom,
+      TransportCourse: get<string | null>(fields.transportCourse) ?? null,
       AttendanceDays: attendance,
       RecipientCertNumber:
         get<string | null>(fields.recipientCertNumber) ??
@@ -434,6 +435,8 @@ export class RestApiUserRepository implements UserRepository {
         'transportFromDays',
         normalizeAttendanceDays(dto.TransportFromDays),
       );
+    if (dto.TransportCourse !== undefined)
+      assign('transportCourse', dto.TransportCourse);
     if (dto.RecipientCertNumber !== undefined)
       assign('recipientCertNumber', dto.RecipientCertNumber);
     if (dto.RecipientCertExpiry !== undefined)
