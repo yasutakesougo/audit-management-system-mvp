@@ -38,6 +38,7 @@ import {
     keyframes,
 } from '@mui/material';
 import React, { useEffect, useRef } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import {
     DIRECTION_EMOJI,
     DIRECTION_LABEL,
@@ -450,9 +451,27 @@ export function TransportStatusCard({
             送迎状況
           </Typography>
         </Stack>
-        <Typography variant="caption" color="text.secondary">
-          {currentTime} 現在
-        </Typography>
+        <Stack spacing={0.5} alignItems="flex-end">
+          <Button
+            component={RouterLink}
+            to="/transport/assignments"
+            size="small"
+            variant="outlined"
+            data-testid="transport-edit-assignments-link"
+            sx={{
+              minHeight: 28,
+              px: 1.25,
+              fontSize: '0.75rem',
+              textTransform: 'none',
+              lineHeight: 1.2,
+            }}
+          >
+            配車表を編集
+          </Button>
+          <Typography variant="caption" color="text.secondary">
+            {currentTime} 現在
+          </Typography>
+        </Stack>
       </Box>
 
       {/* Direction Tabs */}

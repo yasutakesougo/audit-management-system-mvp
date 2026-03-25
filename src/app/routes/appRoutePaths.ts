@@ -11,6 +11,7 @@ export const APP_ROUTE_PATHS = [
   'admin/exception-center',
   'dashboard/briefing',
   'today',
+  'transport/assignments',
   'room-management',
   'meeting-guide',
   'compliance',

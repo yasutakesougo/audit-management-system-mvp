@@ -27,6 +27,17 @@ function normalizeText(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+function normalizeUserLookupKey(value: string): string {
+  return value.trim().replace(/[-_\s]/g, '').toUpperCase();
+}
+
+function buildUserLookupKeys(value: string | undefined): string[] {
+  const raw = normalizeText(value);
+  if (!raw) return [];
+  const normalized = normalizeUserLookupKey(raw);
+  return normalized === raw ? [raw] : [raw, normalized];
+}
+
 function pickBoolean(value: unknown): boolean {
   return value === true;
 }
@@ -45,7 +56,7 @@ function createEmptyIndex(): TransportAssignmentIndex {
   };
 }
 
-function isTransportRow(row: Record<string, unknown>): boolean {
+export function isTransportScheduleRow(row: Record<string, unknown>): boolean {
   const serviceType = normalizeText(row.serviceType);
   const title = normalizeText(row.title);
   const hasPickup = pickBoolean(row.hasPickup);
@@ -59,7 +70,7 @@ function isTransportRow(row: Record<string, unknown>): boolean {
   return title ? TRANSPORT_TITLE_PATTERNS.test(title) : false;
 }
 
-function inferDirections(row: Record<string, unknown>): TransportDirection[] {
+export function inferTransportDirections(row: Record<string, unknown>): TransportDirection[] {
   const title = normalizeText(row.title) ?? '';
   if (TO_PATTERNS.test(title)) return ['to'];
   if (FROM_PATTERNS.test(title)) return ['from'];
@@ -94,7 +105,7 @@ export function buildTransportAssignmentIndex(
   const index = createEmptyIndex();
 
   for (const row of rows) {
-    if (!isTransportRow(row)) continue;
+    if (!isTransportScheduleRow(row)) continue;
 
     const userId = normalizeText(row.userId);
     if (!userId) continue;
@@ -111,10 +122,12 @@ export function buildTransportAssignmentIndex(
       driverName,
     };
 
-    for (const direction of inferDirections(row)) {
+    for (const direction of inferTransportDirections(row)) {
       const map = index[direction];
-      const merged = mergeAssignment(map.get(userId), incoming);
-      map.set(userId, merged);
+      for (const lookupKey of buildUserLookupKeys(userId)) {
+        const merged = mergeAssignment(map.get(lookupKey), incoming);
+        map.set(lookupKey, merged);
+      }
     }
   }
 
@@ -126,7 +139,10 @@ export function enrichTransportLegsWithAssignments(
   assignments: TransportAssignmentIndex,
 ): TransportLeg[] {
   return legs.map((leg) => {
-    const assignment = assignments[leg.direction].get(leg.userId);
+    const directionMap = assignments[leg.direction];
+    const assignment =
+      directionMap.get(leg.userId) ??
+      directionMap.get(normalizeUserLookupKey(leg.userId));
     if (!assignment) return leg;
 
     return {

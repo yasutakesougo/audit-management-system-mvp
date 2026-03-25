@@ -59,7 +59,10 @@ export type SpScheduleRow = {
   cr014_dayKey?: string;
   cr014_fiscalYear?: string;
   cr014_orgAudience?: string;
+  AssignedStaff?: string;
   AssignedStaffId?: string;
+  Vehicle?: string;
+  VehicleId?: string;
   TargetUserId?: string;
   Note?: string;
   '@odata.etag'?: string;
@@ -132,6 +135,7 @@ export type RepoSchedule = {
   personName?: string;
 
   assignedStaffId?: string;
+  vehicleId?: string;
   targetUserId?: string;
 
   dayKey: string; // yyyy-MM-dd
@@ -185,7 +189,12 @@ export function mapSpToRepoSchedule(sp: SpScheduleRow, etag?: string): RepoSched
     personId: String(sp.cr014_personId ?? ''),
     personName: sp.cr014_personName ? String(sp.cr014_personName) : undefined,
 
-    assignedStaffId: sp.AssignedStaffId ? String(sp.AssignedStaffId) : undefined,
+    assignedStaffId: sp.AssignedStaffId
+      ? String(sp.AssignedStaffId)
+      : (sp.AssignedStaff ? String(sp.AssignedStaff) : undefined),
+    vehicleId: sp.Vehicle
+      ? String(sp.Vehicle)
+      : (sp.VehicleId ? String(sp.VehicleId) : undefined),
     targetUserId: sp.TargetUserId ? String(sp.TargetUserId) : undefined,
 
     dayKey: dayKeyNormalized,
@@ -221,7 +230,10 @@ export async function querySchedules(
     'cr014_personType',
     'cr014_personId',
     'cr014_personName',
+    'AssignedStaff',
     'AssignedStaffId',
+    'Vehicle',
+    'VehicleId',
     'TargetUserId',
     'RowKey',
     'cr014_dayKey',
@@ -265,6 +277,7 @@ export type CreateScheduleInput = {
   personName?: string;
 
   assignedStaffId?: string;
+  vehicleId?: string;
   targetUserId?: string;
 
   rowKey: string;
@@ -343,7 +356,14 @@ const buildCreateBody = (input: CreateScheduleInput) => {
 
   // Optional fields
   if (input.personName) body.cr014_personName = input.personName;
-  if (input.assignedStaffId) body.AssignedStaffId = input.assignedStaffId;
+  if (input.assignedStaffId) {
+    body.AssignedStaff = input.assignedStaffId;
+    body.AssignedStaffId = input.assignedStaffId;
+  }
+  if (input.vehicleId) {
+    body.Vehicle = input.vehicleId;
+    body.VehicleId = input.vehicleId;
+  }
   if (input.targetUserId) body.TargetUserId = input.targetUserId;
   if (input.orgAudience) body.cr014_orgAudience = input.orgAudience;
   if (input.notes) body.Note = input.notes;
@@ -363,7 +383,16 @@ const buildUpdateBody = (input: UpdateScheduleInput) => {
   if (input.personType !== undefined) body.cr014_personType = input.personType;
   if (input.personId !== undefined) body.cr014_personId = input.personId;
   if (input.personName !== undefined) body.cr014_personName = input.personName;
-  if (input.assignedStaffId !== undefined) body.AssignedStaffId = input.assignedStaffId;
+  if (input.assignedStaffId !== undefined) {
+    const assignedStaff = input.assignedStaffId || null;
+    body.AssignedStaff = assignedStaff;
+    body.AssignedStaffId = assignedStaff;
+  }
+  if (input.vehicleId !== undefined) {
+    const vehicle = input.vehicleId || null;
+    body.Vehicle = vehicle;
+    body.VehicleId = vehicle;
+  }
   if (input.targetUserId !== undefined) body.TargetUserId = input.targetUserId;
   // CRITICAL: Use toDayKeyJst/toMonthKeyJst to ensure TEXT format
   if (input.dayKey !== undefined) body.cr014_dayKey = toDayKeyJst(input.dayKey);
@@ -408,7 +437,10 @@ export async function createSchedule(
     'cr014_personType',
     'cr014_personId',
     'cr014_personName',
+    'AssignedStaff',
     'AssignedStaffId',
+    'Vehicle',
+    'VehicleId',
     'TargetUserId',
     'RowKey',
     'cr014_dayKey',
