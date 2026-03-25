@@ -40,6 +40,10 @@ import {
 } from './transportStatusLogic';
 import { loadTransportLogs, saveTransportLog, syncToAttendanceDaily } from './transportRepo';
 import { getActiveUsers, type AttendanceUserItem } from '@/features/attendance/infra/attendanceUsersRepository';
+import {
+    getTransportStaleDedupKey,
+    trackTransportEvent,
+} from './transportTelemetry';
 import type {
     TodayTransportStatus,
     TransportDirection,
@@ -173,6 +177,9 @@ export function useTransportStatus(): UseTransportStatusReturn {
   const spRef = useRef(sp);
   useEffect(() => { spRef.current = sp; }, [sp]);
 
+  // Stale-in-progress dedup: prevents duplicate events for the same leg
+  const staleNotifiedRef = useRef<Set<string>>(new Set());
+
   // Current time for overdue detection (updates every minute)
   const [currentTime, setCurrentTime] = useState(() => formatHHmm(new Date()));
 
@@ -186,6 +193,42 @@ export function useTransportStatus(): UseTransportStatusReturn {
         const newDefault = getDefaultDirection();
         setActiveDirection(newDefault);
       }
+
+      // ── Stale-in-progress detection ──
+      const todayKey = getTodayKey();
+      setLegs((currentLegs) => {
+        for (const leg of currentLegs) {
+          if (leg.status !== 'in-progress' || !leg.actualTime) continue;
+
+          // Parse actualTime (HH:mm) to compute elapsed minutes
+          const [h, m] = leg.actualTime.split(':').map(Number);
+          if (h == null || m == null || isNaN(h) || isNaN(m)) continue;
+
+          const now = new Date();
+          const startMinutes = h * 60 + m;
+          const nowMinutes = now.getHours() * 60 + now.getMinutes();
+          const elapsed = nowMinutes - startMinutes;
+
+          if (elapsed >= 30) {
+            const dedupKey = getTransportStaleDedupKey(
+              leg.userId, todayKey, leg.direction, elapsed,
+            );
+            if (!staleNotifiedRef.current.has(dedupKey)) {
+              staleNotifiedRef.current.add(dedupKey);
+              trackTransportEvent({
+                type: 'transport:stale-in-progress',
+                eventVersion: 1,
+                source: 'transportTimer',
+                userCode: leg.userId,
+                direction: leg.direction,
+                minutesElapsed: elapsed,
+                clientTs: now.toISOString(),
+              });
+            }
+          }
+        }
+        return currentLegs; // no mutation — read-only scan
+      });
     }, 60_000);
 
     return () => clearInterval(timer);
@@ -201,6 +244,7 @@ export function useTransportStatus(): UseTransportStatusReturn {
     async function initLegs() {
       // Load existing transport logs and attendance users in parallel
       // Both are graceful: failures return empty arrays
+      let fallbackActivated = false;
       const [existingLogs, attendanceUsers] = await Promise.all([
         loadTransportLogs(sp, todayKey).catch((err) => {
           console.warn('[useTransportStatus] Failed to load SP logs, starting fresh', err);
@@ -208,6 +252,7 @@ export function useTransportStatus(): UseTransportStatusReturn {
         }),
         getActiveUsers(sp).catch((err) => {
           console.warn('[useTransportStatus] Failed to load AttendanceUsers, showing all users', err);
+          fallbackActivated = true;
           return [] as AttendanceUserItem[];
         }),
       ]);
@@ -223,6 +268,18 @@ export function useTransportStatus(): UseTransportStatusReturn {
       const fromLegs = deriveTransportLegs(users, visits, existingLogs, 'from');
 
       setLegs([...toLegs, ...fromLegs]);
+
+      // Telemetry: record fallback if AttendanceUsers failed
+      if (fallbackActivated) {
+        trackTransportEvent({
+          type: 'transport:fallback-all-users',
+          eventVersion: 1,
+          source: 'useTransportStatus',
+          reason: 'fetch-error',
+          totalUsersShown: users.length,
+          clientTs: new Date().toISOString(),
+        });
+      }
     }
 
     void initLegs();
@@ -249,6 +306,18 @@ export function useTransportStatus(): UseTransportStatusReturn {
         const next = [...prev];
         next[index] = updated;
 
+        // Telemetry: record status transition
+        trackTransportEvent({
+          type: 'transport:status-transition',
+          eventVersion: 1,
+          source: 'useTransportStatus',
+          userCode: updated.userId,
+          direction: updated.direction,
+          fromStatus: leg.status,
+          toStatus: updated.status,
+          clientTs: new Date().toISOString(),
+        });
+
         // Phase 3: Fire-and-forget SP save with optimistic rollback
         const todayKey = getTodayKey();
         saveTransportLog(spRef.current, {
@@ -272,6 +341,18 @@ export function useTransportStatus(): UseTransportStatusReturn {
               method: updated.method,
             }).catch((syncErr) => {
               console.warn('[useTransportStatus] AttendanceDaily sync failed (non-blocking):', syncErr);
+              // Telemetry: record sync failure
+              trackTransportEvent({
+                type: 'transport:sync-failed',
+                eventVersion: 1,
+                source: 'useTransportStatus',
+                userCode: updated.userId,
+                recordDate: todayKey,
+                direction: updated.direction,
+                errorMessage: syncErr instanceof Error ? syncErr.message : String(syncErr),
+                errorStatus: (syncErr as { status?: number })?.status,
+                clientTs: new Date().toISOString(),
+              });
             });
           }
         }).catch((err) => {
