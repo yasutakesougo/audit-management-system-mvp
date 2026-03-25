@@ -1,0 +1,30 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90mC:/Users/螳画ｭｦ/.vscode/workspace/audit-management-system[39m
+
+ [31m笶ｯ[39m tests/unit/features/operation-hub/useOperationHubData.spec.tsx [2m([22m[2m5 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 19[2mms[22m[39m
+       [32m笨・[39m 孱・・繝輔か繝ｼ繝ｫ繝舌ャ繧ｯ: 蠖ｹ閨ｷ role 譛ｪ蜈･蜉帙〒繧ゅけ繝ｩ繝・す繝･縺帙★縲後◎縺ｮ莉悶咲ｭ峨↓繝輔か繝ｼ繝ｫ繝舌ャ繧ｯ縺吶ｋ縺薙→[32m 3[2mms[22m[39m
+       [32m笨・[39m 泯 蠅・阜譚｡莉ｶ: 繧ｹ繧ｱ繧ｸ繝･繝ｼ繝ｫ縺ｮ遶ｯ縺後ヴ繝・ち繝ｪ驥阪↑繧句ｴ蜷・(end === next.start) 縺ｯ conflict = false (undefined) 縺ｫ縺ｪ繧九％縺ｨ[32m 1[2mms[22m[39m
+       [32m笨・[39m 泙 豁｣蟶ｸ邉ｻ: 諡・ｽ楢・悴蜑ｲ蠖薙・繧ｹ繧ｱ繧ｸ繝･繝ｼ繝ｫ縺後梧悴蜑ｲ蠖・(unassigned)縲阪げ繝ｫ繝ｼ繝励↓髮・ｴ・＆繧後ｋ縺薙→[32m 1[2mms[22m[39m
+       [32m笨・[39m 泙 豁｣蟶ｸ邉ｻ: 驕ｩ蛻・↑繧ｹ繧ｱ繧ｸ繝･繝ｼ繝ｫ繝ｻ閨ｷ蜩｡繝・・繧ｿ繧剃ｸ弱∴縺溘→縺阪∵ｭ｣縺励￥繝槭ャ繝斐Φ繧ｰ縺輔ｌ繧ｳ繝ｳ繝輔Μ繧ｯ繝医′縺ｪ縺・％縺ｨ[32m 1[2mms[22m[39m
+[31m       [31mﾃ・[31m 笞ｪ 遨ｺ繝・・繧ｿ: 蠖捺律縺ｮ莠亥ｮ壹′0莉ｶ縺ｮ蝣ｴ蜷医√お繝ｩ繝ｼ縺ｫ縺ｪ繧峨★縲・:00縲・8:00縲阪・繝・ヵ繧ｩ繝ｫ繝域棧縺瑚ｿ泌唆縺輔ｌ resources 縺檎ｩｺ縺ｫ縺ｪ繧九％縺ｨ[39m[32m 12[2mms[22m[39m
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ Failed Tests 1 竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ
+
+ FAIL  tests/unit/features/operation-hub/useOperationHubData.spec.tsx > OperationHub: useOperationHubData & pure functions > useOperationHubData() Hook Integration > 笞ｪ 遨ｺ繝・・繧ｿ: 蠖捺律縺ｮ莠亥ｮ壹′0莉ｶ縺ｮ蝣ｴ蜷医√お繝ｩ繝ｼ縺ｫ縺ｪ繧峨★縲・:00縲・8:00縲阪・繝・ヵ繧ｩ繝ｫ繝域棧縺瑚ｿ泌唆縺輔ｌ resources 縺檎ｩｺ縺ｫ縺ｪ繧九％縺ｨ
+AssertionError: expected null not to be null
+ 笶ｯ tests/unit/features/operation-hub/useOperationHubData.spec.tsx:138:43
+
+    136| 
+    137|       // Timeline must exist but be empty
+    138|       expect(result.current.timeline).not.toBeNull();
+       |                                           ^
+    139|       
+    140|       // Defaut bounds are roughly 9:00 to 18:00 relative to now
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ[1/1]竡ｯ
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m4 passed[39m[22m[90m (5)[39m
+[2m   Start at [22m 14:20:15
+[2m   Duration [22m 2.08s[2m (transform 385ms, setup 540ms, import 1.04s, tests 19ms, environment 354ms)[22m
+

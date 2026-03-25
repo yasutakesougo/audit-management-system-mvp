@@ -109,7 +109,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const ACCENT_FALLBACK = '#605E5C';
 
-const classifyEmployment = (staff: Staff | undefined): TimelineResource['employmentType'] => {
+export const classifyEmployment = (staff: Staff | undefined): TimelineResource['employmentType'] => {
   if (!staff) return 'その他';
   const source = staff.employmentType ?? staff.role ?? '';
   if (/施設長|管理者/.test(source)) return '施設長';
@@ -118,7 +118,7 @@ const classifyEmployment = (staff: Staff | undefined): TimelineResource['employm
   return 'その他';
 };
 
-const resolveGroupLabel = (type: TimelineResource['employmentType']): string => {
+export const resolveGroupLabel = (type: TimelineResource['employmentType']): string => {
   switch (type) {
     case '施設長':
       return '施設長';
@@ -143,7 +143,7 @@ const clampToDate = (value: Date, dayStart: Date, dayEnd: Date): Date => {
   return value;
 };
 
-const toTimelineEvents = (
+export const toTimelineEvents = (
   schedules: Schedule[],
   staffMap: Map<number, Staff>,
   dayStart: Date,
@@ -235,7 +235,7 @@ const toTimelineEvents = (
   return resourceArray;
 };
 
-const markConflicts = (events: TimelineEvent[]): void => {
+export const markConflicts = (events: TimelineEvent[]): void => {
   for (let i = 0; i < events.length; i += 1) {
     const current = events[i];
     for (let j = i + 1; j < events.length; j += 1) {
