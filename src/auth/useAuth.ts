@@ -211,10 +211,15 @@ export const useAuth = () => {
 
       console.warn('[auth] acquireTokenSilent failed', error);
 
+      const errorCode = msalError?.errorCode?.toLowerCase() ?? '';
+      const errorName = msalError?.name?.toLowerCase() ?? '';
       const interactionRequired =
-        msalError?.errorCode === 'interaction_required' ||
-        msalError?.errorCode === 'consent_required' ||
-        msalError?.errorCode === 'login_required';
+        errorCode === 'interaction_required' ||
+        errorCode === 'consent_required' ||
+        errorCode === 'login_required' ||
+        errorCode === 'refresh_token_expired' ||
+        errorCode === 'monitor_window_timeout' ||
+        errorName === 'interactionrequiredautherror';
       if (interactionRequired) {
         debugLog('acquireTokenSilent requires interaction; suppressing auto-redirect and emitting event');
         if (typeof window !== 'undefined') {

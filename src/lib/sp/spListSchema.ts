@@ -43,10 +43,6 @@ export async function tryGetListMetadata(
   const path = `/lists/getbytitle('${encoded}')?$select=Id,Title`;
   try {
     const res = await spFetch(path);
-    // 404 or other non-ok → list does not exist
-    if (!res.ok) {
-      return null;
-    }
     const json = (await res.json().catch(() => ({}))) as SharePointListMetadata;
     const nested = json.d ?? {};
     const rawId =
@@ -62,6 +58,12 @@ export async function tryGetListMetadata(
       title: rawTitle || listTitle,
     };
   } catch (error) {
+    const status = typeof error === 'object' && error && 'status' in error
+      ? (error as { status?: number }).status
+      : undefined;
+    if (status === 404) {
+      return null;
+    }
     const message = error instanceof Error ? error.message : String(error);
     if (
       /\b404\b/.test(message) ||
