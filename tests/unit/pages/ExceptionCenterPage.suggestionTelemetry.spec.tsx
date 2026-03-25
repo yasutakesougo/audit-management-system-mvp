@@ -50,6 +50,27 @@ vi.mock('../../../src/features/exceptions/hooks/useCorrectiveActionExceptions', 
   })),
 }));
 
+vi.mock('../../../src/features/exceptions/hooks/useHandoffExceptions', () => ({
+  useHandoffExceptions: vi.fn(() => ({
+    items: [],
+    count: 0,
+  })),
+}));
+
+vi.mock('../../../src/features/exceptions/hooks/useDailyRecordExceptions', () => ({
+  useDailyRecordExceptions: vi.fn(() => ({
+    items: [],
+    count: 0,
+  })),
+}));
+
+vi.mock('../../../src/features/exceptions/hooks/useTransportExceptions', () => ({
+  useTransportExceptions: vi.fn(() => ({
+    items: [],
+    status: 'ready',
+  })),
+}));
+
 vi.mock('../../../src/features/exceptions/components/ExceptionTable', () => ({
   ExceptionTable: vi.fn(() => <div data-testid="exception-table" />),
 }));

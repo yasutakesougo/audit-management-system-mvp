@@ -47,13 +47,15 @@ const CORRECTIVE_ACTION_MAP: Record<
   'missing-record': (item) => {
     // userId を actionPath から抽出 (例: /daily/activity?userId=U-001)
     const userId = extractUserId(item.actionPath ?? '');
+    const primaryRoute = item.actionPath
+      ?? (userId
+        ? `/daily/activity?userId=${encodeURIComponent(userId)}`
+        : '/dailysupport');
     return [
       {
         key: `${item.id}-record`,
         label: '記録を入力する',
-        route: userId
-          ? `/daily/activity?userId=${encodeURIComponent(userId)}`
-          : '/dailysupport',
+        route: primaryRoute,
         variant: 'primary',
         severity: 'high',
         icon: '📝',
@@ -97,26 +99,31 @@ const CORRECTIVE_ACTION_MAP: Record<
     ];
   },
 
-  'critical-handoff': (item) => [
-    {
-      key: `${item.id}-handoff`,
-      label: '申し送りを確認する',
-      route: '/handoff/timeline',
-      variant: 'primary',
-      severity: 'critical',
-      icon: '🔴',
-      reason: '重要な申し送りが未対応のままです。今すぐ確認してください。',
-    },
-    {
-      key: `${item.id}-record`,
-      label: '対応記録を残す',
-      route: item.actionPath ?? '/dailysupport',
-      variant: 'secondary',
-      severity: 'high',
-      icon: '📝',
-      reason: '対応内容を記録として残しておくことを推奨します。',
-    },
-  ],
+  'critical-handoff': (item) => {
+    const userId = item.targetUserId;
+    return [
+      {
+        key: `${item.id}-handoff`,
+        label: '申し送りを確認する',
+        route: item.actionPath ?? '/handoff-timeline',
+        variant: 'primary',
+        severity: 'critical',
+        icon: '🔴',
+        reason: '重要な申し送りが未対応のままです。今すぐ確認してください。',
+      },
+      {
+        key: `${item.id}-record`,
+        label: '対応記録を残す',
+        route: userId
+          ? `/daily/activity?userId=${encodeURIComponent(userId)}`
+          : '/daily/activity',
+        variant: 'secondary',
+        severity: 'high',
+        icon: '📝',
+        reason: '対応内容を日次記録へ残しておくことを推奨します。',
+      },
+    ];
+  },
 
   'attention-user': (item) => {
     const userId = extractUserId(item.actionPath ?? '');
@@ -171,6 +178,27 @@ const CORRECTIVE_ACTION_MAP: Record<
         : []),
     ];
   },
+
+  'transport-alert': (item) => [
+    {
+      key: `${item.id}-check`,
+      label: item.actionLabel ?? '送迎状況を確認',
+      route: item.actionPath ?? '/today',
+      variant: 'primary',
+      severity: item.severity,
+      icon: '🚐',
+      reason: item.description || '送迎の運用異常が検出されました。',
+    },
+    {
+      key: `${item.id}-telemetry`,
+      label: 'テレメトリを確認',
+      route: '/admin/telemetry',
+      variant: 'ghost',
+      severity: 'low',
+      icon: '📊',
+      reason: 'テレメトリダッシュボードで詳細な状況を確認できます。',
+    },
+  ],
 };
 
 // ─── ユーティリティ ───────────────────────────────────────────

@@ -45,9 +45,16 @@ export function groupExceptionsByUser(
   filterCategory: string | 'all' = 'corrective-action',
 ): UserExceptionGroup[] {
   const map = new Map<string, UserExceptionGroup>();
+  const parentIds = new Set(
+    items
+      .filter((item) => Boolean(item.parentId))
+      .map((item) => item.parentId as string),
+  );
 
   for (const item of items) {
     if (filterCategory !== 'all' && item.category !== filterCategory) continue;
+    // 親子構造の parent 行は grouped モードでは重複表示になるため除外
+    if (parentIds.has(item.id)) continue;
 
     const uid = item.targetUserId ?? '__unknown__';
     let group = map.get(uid);
