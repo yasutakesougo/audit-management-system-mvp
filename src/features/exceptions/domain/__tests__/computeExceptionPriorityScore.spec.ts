@@ -48,7 +48,7 @@ describe('computeExceptionPriorityScore', () => {
     expect(parentScore).toBeGreaterThan(standaloneScore);
   });
 
-  it('signal 重み: sync-fail > stale > none', () => {
+  it('signal 重み: sync-fail > missing-driver > stale > none', () => {
     const now = new Date('2026-03-25T12:00:00.000Z');
 
     const syncFail = makeItem({
@@ -56,6 +56,12 @@ describe('computeExceptionPriorityScore', () => {
       category: 'transport-alert',
       severity: 'medium',
       title: '送迎実績の同期に失敗があります',
+    });
+    const missingDriver = makeItem({
+      id: 'missing-driver',
+      category: 'transport-alert',
+      severity: 'medium',
+      title: '運転者未設定の送迎車両があります',
     });
     const stale = makeItem({
       id: 'stale',
@@ -71,10 +77,13 @@ describe('computeExceptionPriorityScore', () => {
     });
 
     const syncScore = computeExceptionPriorityScore(syncFail, { now });
+    const missingDriverScore = computeExceptionPriorityScore(missingDriver, { now });
     const staleScore = computeExceptionPriorityScore(stale, { now });
     const plainScore = computeExceptionPriorityScore(plain, { now });
 
     expect(syncScore).toBeGreaterThan(staleScore);
+    expect(syncScore).toBeGreaterThan(missingDriverScore);
+    expect(missingDriverScore).toBeGreaterThan(staleScore);
     expect(staleScore).toBeGreaterThan(plainScore);
   });
 
