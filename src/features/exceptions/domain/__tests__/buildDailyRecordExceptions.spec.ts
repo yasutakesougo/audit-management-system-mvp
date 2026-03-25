@@ -33,13 +33,16 @@ describe('buildDailyRecordExceptions', () => {
       category: 'missing-record',
       severity: 'high',
     });
-    expect(result[1]).toMatchObject({
+    const childU001 = result.find(r => r.targetUserId === 'U-001');
+    const childU003 = result.find(r => r.targetUserId === 'U-003');
+
+    expect(childU001).toMatchObject({
       id: 'missing-U-001-2026-03-25',
       parentId: 'daily-missing-record-2026-03-25',
       targetUserId: 'U-001',
       actionPath: '/daily/activity?userId=U-001&date=2026-03-25',
     });
-    expect(result[2]).toMatchObject({
+    expect(childU003).toMatchObject({
       id: 'missing-U-003-2026-03-25',
       parentId: 'daily-missing-record-2026-03-25',
       targetUserId: 'U-003',

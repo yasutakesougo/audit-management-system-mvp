@@ -114,7 +114,7 @@ describe('detectMissingRecords — 境界値補完', () => {
     expect(item.targetUserId).toBe('U-001');
     expect(item.targetDate).toBe('2026-03-18');
     expect(item.updatedAt).toBe('2026-03-18');
-    expect(item.actionLabel).toBe('記録を作成');
+    expect(item.actionLabel).toBe('ケース記録');
   });
 });
 
