@@ -405,7 +405,7 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
             isSchedule ? normalizeScheduleRecord(item as Record<string, unknown>) : item,
           );
           if (debug) {
-            console.log(`[stub] GET ${url.href} -> ${items.length} item(s)`);
+            // no-op: keep hook point for local debugging without console usage in CI lint
           }
           await fulfill(route, { status: 200, body: { value: items } });
           return;
@@ -433,7 +433,7 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
           }
           setItems(nextItems);
           if (debug) {
-            console.log(`[stub] POST ${url.href} -> ${JSON.stringify(createdRecord)}`);
+            // no-op: keep hook point for local debugging without console usage in CI lint
           }
           await fulfill(route, { status: 201, body: nextRecord });
           return;
