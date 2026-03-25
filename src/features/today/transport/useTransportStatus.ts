@@ -27,6 +27,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSP } from '@/lib/spClient';
+import { useSchedules } from '@/features/schedules/hooks/useSchedules';
+import { useStaffStore } from '@/features/staff/store';
 import { useTodaySummary } from '../domain';
 import {
     applyTransition,
@@ -44,6 +46,10 @@ import {
     getTransportStaleDedupKey,
     trackTransportEvent,
 } from './transportTelemetry';
+import {
+  buildTransportAssignmentIndex,
+  enrichTransportLegsWithAssignments,
+} from './transportAssignments';
 import type {
     TodayTransportStatus,
     TransportDirection,
@@ -152,9 +158,57 @@ function getTodayKey(): string {
   }).format(new Date());
 }
 
+function getTodayScheduleRange(): { from: string; to: string } {
+  const today = getTodayKey();
+  return {
+    from: `${today}T00:00:00+09:00`,
+    to: `${today}T23:59:59+09:00`,
+  };
+}
+
+function normalizeLookupKey(value: string): string {
+  return value.trim().replace(/[-_\s]/g, '').toUpperCase();
+}
+
+function toTrimmedString(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function buildStaffNameIndex(rows: unknown): Map<string, string> {
+  const index = new Map<string, string>();
+  if (!Array.isArray(rows)) return index;
+
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    const item = row as { id?: unknown; staffId?: unknown; name?: unknown };
+
+    const name = toTrimmedString(item.name);
+    if (!name) continue;
+
+    if (typeof item.id === 'string' || typeof item.id === 'number') {
+      const id = String(item.id);
+      index.set(id, name);
+      index.set(normalizeLookupKey(id), name);
+    }
+
+    const staffId = toTrimmedString(item.staffId);
+    if (staffId) {
+      index.set(staffId, name);
+      index.set(normalizeLookupKey(staffId), name);
+    }
+  }
+
+  return index;
+}
+
 export function useTransportStatus(): UseTransportStatusReturn {
   const summary = useTodaySummary();
   const sp = useSP();
+  const todayScheduleRange = useMemo(() => getTodayScheduleRange(), []);
+  const { items: todaySchedules } = useSchedules(todayScheduleRange);
+  const { data: staffRows } = useStaffStore();
 
   // Direction tab state (auto-switches at 13:00)
   const [activeDirection, setActiveDirection] = useState<TransportDirection>(
@@ -182,6 +236,21 @@ export function useTransportStatus(): UseTransportStatusReturn {
 
   // Current time for overdue detection (updates every minute)
   const [currentTime, setCurrentTime] = useState(() => formatHHmm(new Date()));
+
+  // Staff + schedule assignment enrichment (vehicle/driver visibility)
+  const staffNameIndex = useMemo(() => buildStaffNameIndex(staffRows), [staffRows]);
+  const assignmentIndex = useMemo(
+    () =>
+      buildTransportAssignmentIndex(
+        todaySchedules as unknown as Record<string, unknown>[],
+        (staffId) => staffNameIndex.get(staffId) ?? staffNameIndex.get(normalizeLookupKey(staffId)),
+      ),
+    [todaySchedules, staffNameIndex],
+  );
+  const enrichedLegs = useMemo(
+    () => enrichTransportLegsWithAssignments(legs, assignmentIndex),
+    [legs, assignmentIndex],
+  );
 
   // Timer: update currentTime every 60s for overdue detection
   useEffect(() => {
@@ -399,10 +468,10 @@ export function useTransportStatus(): UseTransportStatusReturn {
   // ─── Computed Status ──────────────────────────────────────────────────────
 
   const status: TodayTransportStatus = useMemo(() => ({
-    to: computeDirectionSummary(legs, 'to', currentTime),
-    from: computeDirectionSummary(legs, 'from', currentTime),
-    legs,
-  }), [legs, currentTime]);
+    to: computeDirectionSummary(enrichedLegs, 'to', currentTime),
+    from: computeDirectionSummary(enrichedLegs, 'from', currentTime),
+    legs: enrichedLegs,
+  }), [enrichedLegs, currentTime]);
 
   const isReady = legs.length > 0;
 
