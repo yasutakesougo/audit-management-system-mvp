@@ -30,6 +30,7 @@ import { buildReviewLoopSummary, type ReviewLoopSummary } from '../domain/buildR
 import { computeTransportKpis, EMPTY_TRANSPORT_KPIS, type TransportKpis } from '@/features/today/transport/computeTransportKpis';
 import { computeTransportAlerts } from '@/features/today/transport/computeTransportAlerts';
 import type { TransportTelemetryEvent } from '@/features/today/transport/transportTelemetry';
+import { computeKioskUxKpis, type KioskUxKpis } from '@/features/today/telemetry/computeKioskUxKpis';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -72,6 +73,7 @@ type DashboardState = {
   reviewSummary: ReviewLoopSummary | null;
   transportKpis: TransportKpis;
   transportAlerts: KpiAlert[];
+  kioskUxKpis: KioskUxKpis | null;
   loading: boolean;
   error: string | null;
   range: DateRange;
@@ -164,6 +166,7 @@ export function useTelemetryDashboard() {
     reviewSummary: null,
     transportKpis: EMPTY_TRANSPORT_KPIS,
     transportAlerts: [],
+    kioskUxKpis: null,
     loading: true,
     error: null,
     range: 'today',
@@ -309,6 +312,9 @@ export function useTelemetryDashboard() {
         now: new Date(),
       });
 
+      // ── Kiosk UX KPIs ──
+      const kioskUxKpis = computeKioskUxKpis(currentSnapshot.docs.map(d => d.data()));
+
       setState({
         stats: {
           total: docs.length,
@@ -325,6 +331,7 @@ export function useTelemetryDashboard() {
         reviewSummary,
         transportKpis,
         transportAlerts,
+        kioskUxKpis,
         loading: false,
         error: null,
         range,
@@ -332,7 +339,7 @@ export function useTelemetryDashboard() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[telemetry-dashboard] fetch failed:', err);
-      setState((prev) => ({ ...prev, stats: null, kpis: null, kpiDiffs: null, roleBreakdown: [], persistence: [], reviewSummary: null, transportKpis: EMPTY_TRANSPORT_KPIS, transportAlerts: [], loading: false, error: msg }));
+      setState((prev) => ({ ...prev, stats: null, kpis: null, kpiDiffs: null, roleBreakdown: [], persistence: [], reviewSummary: null, transportKpis: EMPTY_TRANSPORT_KPIS, transportAlerts: [], kioskUxKpis: null, loading: false, error: msg }));
     }
   }, []);
 

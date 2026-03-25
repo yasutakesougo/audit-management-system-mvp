@@ -33,6 +33,7 @@ export default function TelemetryDashboard() {
     reviewSummary,
     transportKpis,
     transportAlerts,
+    kioskUxKpis,
     loading,
     error,
     range,
@@ -176,6 +177,7 @@ export default function TelemetryDashboard() {
           reviewSummary={reviewSummary}
           transportKpis={transportKpis}
           transportAlerts={transportAlerts}
+          kioskUxKpis={kioskUxKpis}
         />
       ) : (
         <RawTabContent
