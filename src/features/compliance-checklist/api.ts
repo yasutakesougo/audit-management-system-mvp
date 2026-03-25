@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useSP } from '../../lib/spClient';
 import { LIST_CONFIG, ListKeys } from '../../sharepoint/fields';
 import type { ChecklistInsertDTO, ChecklistItem, ChecklistItemDTO } from './types';
-import { mapToChecklistItem } from './types';
+import { mapToChecklistItem } from './domain/checklistLogic';
 
 const LIST_TITLE = LIST_CONFIG[ListKeys.ComplianceCheckRules].title;
 

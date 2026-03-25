@@ -32,15 +32,4 @@ export interface ChecklistItemDTO {
   SeverityLevel?: 'INFO' | 'WARN' | 'ERROR';
 }
 
-export function mapToChecklistItem(dto: ChecklistItemDTO): ChecklistItem {
-  return {
-    id: dto.RuleID,
-    label: dto.RuleName,
-    value: dto.EvaluationLogic ?? null,
-    note: null, // 現在のスキーマには備考フィールドがない
-    required: undefined,
-    severityLevel: dto.SeverityLevel,
-    validFrom: dto.ValidFrom ?? null,
-    validTo: dto.ValidTo ?? null,
-  };
-}
+

@@ -12,6 +12,7 @@ import AddTaskRoundedIcon from '@mui/icons-material/AddTaskRounded';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
 import { pushAudit } from '../../lib/audit';
 import { useChecklistApi } from './api';
+import { filterChecklistItems, isValidChecklistInsert, sortChecklistItems } from './domain/checklistLogic';
 import type { ChecklistInsertDTO, ChecklistItem } from './types';
 
 export default function ChecklistPage() {
@@ -37,8 +38,8 @@ export default function ChecklistPage() {
 
   // Filtered items based on ruleId query param
   const visibleItems = React.useMemo(() => {
-    if (!ruleIdFilter) return items;
-    return items.filter(item => String(item.value ?? '').trim() === ruleIdFilter);
+    const filtered = filterChecklistItems(items, ruleIdFilter);
+    return sortChecklistItems(filtered);
   }, [items, ruleIdFilter]);
 
   React.useEffect(() => {
@@ -116,7 +117,7 @@ export default function ChecklistPage() {
             variant="contained"
             startIcon={<AddTaskRoundedIcon />}
             onClick={onAdd}
-            disabled={busy || !form.Title || !form.RuleID || !form.RuleName}
+            disabled={busy || !isValidChecklistInsert(form)}
             sx={{ minHeight: 44, minWidth: 120 }}
           >
             {busy ? '追加中…' : '追加'}
