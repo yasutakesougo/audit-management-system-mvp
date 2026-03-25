@@ -12,6 +12,7 @@
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { getFlag } from '@/env';
 import { useUsers } from '@/features/users/useUsers';
 import { getBehaviorRepository } from '@/features/daily/infra/behaviorRepositoryFactory';
 import type { ABCRecord } from '@/domain/behavior';
@@ -63,10 +64,7 @@ const VALID_TYPES = new Set<SuggestionType>([
 ]);
 
 function isE2eRuntimeEnabled(): boolean {
-  if (import.meta.env.VITE_E2E === '1') return true;
-  if (typeof window === 'undefined') return false;
-  const env = (window as typeof window & { __ENV__?: Record<string, unknown> }).__ENV__;
-  return env?.VITE_E2E === '1';
+  return getFlag('VITE_E2E', false);
 }
 
 function parseSeedSuggestion(raw: unknown, index: number): ActionSuggestion | null {
