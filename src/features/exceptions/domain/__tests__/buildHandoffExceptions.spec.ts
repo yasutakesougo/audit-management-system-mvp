@@ -6,7 +6,6 @@ function makeHandoff(
   overrides: Partial<HandoffSummaryItem> & { id: string; userId?: string },
 ): HandoffSummaryItem {
   return {
-    id: overrides.id,
     message: '服薬確認が必要です',
     severity: '重要',
     status: '未対応',

@@ -106,7 +106,6 @@ type PriorityTopItem = {
   actionLabel?: string;
   stableId?: string;
 };
-
 export type ExceptionTableProps = {
   items: ExceptionItem[];
   title?: string;
@@ -264,7 +263,6 @@ function sortFlatItemsByPriority(items: ExceptionItem[]): ExceptionItem[] {
 
   return groups.flatMap((group) => group.items);
 }
-
 // ─── CorrectiveActionsCell (MVP-012 Phase B) ─────────────────
 // ExceptionTable の前に定義して「使用前宣言」エラーを回避する
 
@@ -348,6 +346,8 @@ const CorrectiveActionsCell: React.FC<{
     </Stack>
   );
 };
+
+
 
 // ─── Component ──────────────────────────────────────────────
 

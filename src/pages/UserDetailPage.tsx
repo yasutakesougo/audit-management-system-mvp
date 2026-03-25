@@ -25,8 +25,6 @@ import Alert from '@mui/material/Alert';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Card from '@mui/material/Card';
-import CardActionArea from '@mui/material/CardActionArea';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Container from '@mui/material/Container';
@@ -45,8 +43,6 @@ import {
   buildRecentHandoffPreview,
   buildTodayUserSnapshot,
   buildPlanHighlights,
-  type QuickAction,
-  type SummaryStat,
   type RecordPreviewItem,
   type HandoffPreviewItem,
   type TodayUserSnapshot,
@@ -54,7 +50,6 @@ import {
 } from '@/features/users/domain/userDetailHubLogic';
 import {
   buildUnifiedRecommendation,
-  type UnifiedRecommendation,
 } from '@/features/recommendation/domain/unifiedRecommendation';
 import { useUserHubDataSources } from '@/features/users/hooks/useUserHubDataSources';
 import {
@@ -63,6 +58,14 @@ import {
   presetToDateRange,
   type PeriodPreset,
 } from '@/features/tag-analytics';
+
+import { QuickActionCard } from '@/features/users/components/hub/QuickActionCard';
+import { SummaryStatCard } from '@/features/users/components/hub/SummaryStatCard';
+import { TodaySnapshotSection } from '@/features/users/components/hub/TodaySnapshotSection';
+import { RecordPreviewCard } from '@/features/users/components/hub/RecordPreviewCard';
+import { HandoffPreviewCard } from '@/features/users/components/hub/HandoffPreviewCard';
+import { PlanHighlightCard } from '@/features/users/components/hub/PlanHighlightCard';
+import { RecommendationBanner } from '@/features/users/components/hub/RecommendationBanner';
 
 // ─── Component ────────────────────────────────────────────────
 
@@ -404,248 +407,6 @@ const UserDetailPage: React.FC = () => {
         </Box>
       </Stack>
     </Container>
-  );
-};
-
-// ─── Sub Components ──────────────────────────────────────────
-
-type QuickActionCardProps = {
-  action: QuickAction;
-  onClick: () => void;
-};
-
-const QuickActionCard: React.FC<QuickActionCardProps> = ({ action, onClick }) => (
-  <Card
-    variant="outlined"
-    sx={{ borderRadius: 2, transition: 'box-shadow 0.2s', '&:hover': { boxShadow: 3 } }}
-    data-testid={`quick-action-${action.key}`}
-  >
-    <CardActionArea
-      onClick={onClick}
-      sx={{ p: 2 }}
-    >
-      <Stack direction="row" spacing={1.5} alignItems="center">
-        <Box sx={{ fontSize: 28, lineHeight: 1 }}>{action.icon}</Box>
-        <Box>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            {action.label}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {action.description}
-          </Typography>
-        </Box>
-      </Stack>
-    </CardActionArea>
-  </Card>
-);
-
-type SummaryStatCardProps = {
-  stat: SummaryStat;
-};
-
-const SummaryStatCard: React.FC<SummaryStatCardProps> = ({ stat }) => {
-  const borderColor = stat.severity === 'attention'
-    ? 'warning.main'
-    : stat.severity === 'good'
-      ? 'success.main'
-      : 'divider';
-
-  return (
-    <Paper
-      variant="outlined"
-      sx={{
-        p: 1.5,
-        borderRadius: 2,
-        borderLeft: 3,
-        borderLeftColor: borderColor,
-        textAlign: 'center',
-      }}
-      data-testid={`summary-stat-${stat.key}`}
-    >
-      <Box sx={{ fontSize: 20, mb: 0.5 }}>{stat.icon}</Box>
-      <Typography variant="caption" color="text.secondary" display="block">
-        {stat.label}
-      </Typography>
-      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-        {stat.value}
-      </Typography>
-    </Paper>
-  );
-};
-
-// ── MVP-010: 今日のスナップショット ──
-
-const URGENCY_COLORS: Record<TodayUserSnapshot['urgency'], string> = {
-  high: '#d32f2f',
-  medium: '#ed6c02',
-  low: '#388e3c',
-};
-
-const TodaySnapshotSection: React.FC<{ snapshot: TodayUserSnapshot; onAction: (path: string) => void }> = ({ snapshot, onAction }) => (
-  <Paper
-    variant="outlined"
-    sx={{
-      p: 2,
-      borderRadius: 2,
-      borderLeft: 4,
-      borderLeftColor: URGENCY_COLORS[snapshot.urgency],
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 2,
-    }}
-    data-testid="user-detail-today-snapshot"
-  >
-    <Box flex={1}>
-      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-        今日の次アクション
-      </Typography>
-      <Typography variant="subtitle1" sx={{ fontWeight: 700, mt: 0.25, color: URGENCY_COLORS[snapshot.urgency] }}>
-        {snapshot.nextAction}
-      </Typography>
-    </Box>
-    <Button
-      variant="contained"
-      size="small"
-      onClick={() => onAction(snapshot.nextActionPath)}
-      sx={{ bgcolor: URGENCY_COLORS[snapshot.urgency], '&:hover': { bgcolor: URGENCY_COLORS[snapshot.urgency], filter: 'brightness(0.9)' }, whiteSpace: 'nowrap', flexShrink: 0 }}
-      data-testid="user-detail-snapshot-action"
-    >
-      移動する
-    </Button>
-  </Paper>
-);
-
-// ── MVP-010: 直近記録カード ──
-
-const RecordPreviewCard: React.FC<{ item: RecordPreviewItem }> = ({ item }) => (
-  <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }} data-testid={`record-preview-${item.date}`}>
-    <Stack direction="row" spacing={1} alignItems="center">
-      <Typography variant="caption" sx={{ fontWeight: 700, minWidth: 85 }}>{item.date}</Typography>
-      <Chip
-        label={item.status}
-        size="small"
-        color={item.status === '完了' ? 'success' : 'default'}
-        sx={{ height: 20, fontSize: '0.65rem' }}
-      />
-      {item.hasSpecialNote && (
-        <Chip label="特記あり" size="small" color="warning" sx={{ height: 20, fontSize: '0.65rem' }} />
-      )}
-    </Stack>
-    {item.noteExcerpt && (
-      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, fontSize: '0.78rem' }}>
-        📝 {item.noteExcerpt}
-      </Typography>
-    )}
-  </Paper>
-);
-
-// ── MVP-010: 申し送りプレビューカード ──
-
-const HandoffPreviewCard: React.FC<{ item: HandoffPreviewItem }> = ({ item }) => (
-  <Paper
-    variant="outlined"
-    sx={{
-      p: 1.5,
-      borderRadius: 2,
-      borderLeft: 3,
-      borderLeftColor: item.severity === '重要' ? 'error.main' : 'divider',
-    }}
-    data-testid={`handoff-preview-${item.id}`}
-  >
-    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.5 }}>
-      {item.severity === '重要' && <Chip label="重要" size="small" color="error" sx={{ height: 20, fontSize: '0.65rem' }} />}
-      <Chip label={item.status} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />
-      <Typography variant="caption" color="text.secondary">{item.createdAt}</Typography>
-    </Stack>
-    <Typography variant="body2" sx={{ fontSize: '0.82rem' }}>{item.message}</Typography>
-  </Paper>
-);
-
-// ── MVP-010: 支援計画ハイライトカード ──
-
-const PLAN_TYPE_COLORS: Record<string, string> = {
-  long: '#1e88e5',
-  short: '#43a047',
-  support: '#f4511e',
-};
-const PLAN_TYPE_LABELS: Record<string, string> = {
-  long: '長期',
-  short: '短期',
-  support: '支援',
-};
-
-const PlanHighlightCard: React.FC<{ item: PlanHighlight }> = ({ item }) => (
-  <Paper
-    variant="outlined"
-    sx={{ p: 1.5, borderRadius: 2, borderLeft: 3, borderLeftColor: PLAN_TYPE_COLORS[item.type] ?? '#757575' }}
-    data-testid={`plan-highlight-${item.type}`}
-  >
-    <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.5 }}>
-      <Chip
-        label={PLAN_TYPE_LABELS[item.type] ?? item.type}
-        size="small"
-        sx={{ bgcolor: PLAN_TYPE_COLORS[item.type] ?? '#757575', color: '#fff', height: 20, fontSize: '0.65rem' }}
-      />
-      <Typography variant="caption" sx={{ fontWeight: 600 }}>{item.label}</Typography>
-    </Stack>
-    <Typography variant="body2" sx={{ fontSize: '0.82rem' }}>{item.excerpt}</Typography>
-  </Paper>
-);
-
-// ── MVP-013: 統合推奨バナー ──────────────────────────────────────
-
-const URGENCY_PALETTE = {
-  critical: { border: '#d32f2f', bg: '#fff5f5', text: '#b71c1c', icon: '🔴' },
-  high:     { border: '#ed6c02', bg: '#fff8f0', text: '#e65100', icon: '🟠' },
-  medium:   { border: '#1976d2', bg: '#f0f7ff', text: '#0d47a1', icon: '🔵' },
-  low:      { border: '#388e3c', bg: '#f0fff4', text: '#1b5e20', icon: '✅' },
-} as const;
-
-const RecommendationBanner: React.FC<{
-  rec: UnifiedRecommendation;
-  onAction: (route: string) => void;
-}> = ({ rec, onAction }) => {
-  const p = URGENCY_PALETTE[rec.urgency];
-  return (
-    <Paper
-      variant="outlined"
-      sx={{
-        p: 2,
-        borderRadius: 2,
-        borderLeft: 4,
-        borderColor: p.border,
-        bgcolor: p.bg,
-      }}
-      data-testid="user-detail-recommendation-banner"
-    >
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }} justifyContent="space-between">
-        <Box flex={1}>
-          <Typography variant="caption" sx={{ fontWeight: 700, color: p.text, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            {p.icon} 今日の推奨
-          </Typography>
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: p.text, mt: 0.25 }}>
-            {rec.headline}
-          </Typography>
-          {rec.secondaryNotes.length > 0 && (
-            <Stack direction="row" spacing={0.5} sx={{ mt: 0.5 }} flexWrap="wrap">
-              {rec.secondaryNotes.map((note, i) => (
-                <Chip key={i} label={note} size="small" variant="outlined" sx={{ fontSize: '0.65rem', height: 20, borderColor: p.border, color: p.text }} />
-              ))}
-            </Stack>
-          )}
-        </Box>
-        <Button
-          variant="contained"
-          size="small"
-          onClick={() => onAction(rec.actionRoute)}
-          sx={{ bgcolor: p.border, '&:hover': { bgcolor: p.border, filter: 'brightness(0.9)' }, whiteSpace: 'nowrap', flexShrink: 0 }}
-          data-testid="user-detail-recommendation-action"
-        >
-          {rec.suggestedAction}
-        </Button>
-      </Stack>
-    </Paper>
   );
 };
 
