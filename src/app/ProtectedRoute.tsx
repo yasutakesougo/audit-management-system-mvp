@@ -229,6 +229,19 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
         ),
       ]);
 
+    const getErrorStatus = (error: unknown): number | null => {
+      if (!error || typeof error !== 'object') return null;
+      const candidate = error as { status?: unknown };
+      return typeof candidate.status === 'number' ? candidate.status : null;
+    };
+
+    const isNotFoundError = (error: unknown): boolean => {
+      const status = getErrorStatus(error);
+      if (status === 404) return true;
+      if (!(error instanceof Error)) return false;
+      return /\b404\b|not found|does not exist/i.test(error.message);
+    };
+
     const checkSchedulesListExistence = async () => {
       try {
         if (!baseUrl) {
@@ -272,10 +285,14 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
       } catch (error) {
         if (isStaleRun()) return;
         const isTimeout = error instanceof Error && error.message.includes('timed out');
+        const isNotFound = isNotFoundError(error);
+        const status = getErrorStatus(error);
+        const isRetryableStatus =
+          status === null || status === 401 || status === 403 || status === 429 || (status >= 500 && status <= 599);
         const attempt = listCheckRetryRef.current;
         console.error(`[ProtectedRoute] List existence check failed (attempt ${attempt + 1}):`, error);
 
-        if (isTimeout && attempt < MAX_RETRIES) {
+        if ((isTimeout || isRetryableStatus) && attempt < MAX_RETRIES) {
           // Retry: reset to idle so the effect re-fires
           listCheckRetryRef.current = attempt + 1;
           debug(`[schedules] Retrying list check (attempt ${attempt + 2}/${MAX_RETRIES + 1})`);
@@ -284,10 +301,20 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
         }
 
         listCheckRetryRef.current = 0;
-        if (isTimeout) {
-          // All retries exhausted on timeout — fall through optimistically
-          // The actual data hooks will handle 404 gracefully
-          console.warn('[ProtectedRoute] List check timed out after all retries; proceeding optimistically');
+        if (isNotFound) {
+          debug('[schedules] List NOT found (404):', listName);
+          if (baseUrl && listReadyCacheKey) {
+            setRuntimeListReady('schedules', listReadyCacheKey, false);
+          }
+          setListReadyState(false);
+          setListGate('blocked');
+          return;
+        }
+
+        // Non-404 failures (401/403/network/transient) should not hard-block route access.
+        // Downstream data hooks can still surface concrete API errors to the UI.
+        if (isTimeout || isRetryableStatus) {
+          console.warn('[ProtectedRoute] List check failed after retries; proceeding optimistically');
           setListReadyState(true);
           setListGate('ready');
         } else {
