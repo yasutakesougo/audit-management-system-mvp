@@ -1,5 +1,7 @@
 import { renderHook } from '@testing-library/react';
-import { useOperationHubData, toTimelineEvents, markConflicts, classifyEmployment, TimelineEvent } from '@/features/operation-hub/useOperationHubData';
+import { useOperationHubData, TimelineEvent } from '@/features/operation-hub/useOperationHubData';
+import { toTimelineEvents, markConflicts } from '@/features/operation-hub/logic/timelineLogic';
+import { classifyEmployment } from '@/features/operation-hub/logic/groupingLogic';
 import { useSchedules } from '@/stores/useSchedules';
 import { useUsers } from '@/stores/useUsers';
 import { useStaff } from '@/stores/useStaff';
