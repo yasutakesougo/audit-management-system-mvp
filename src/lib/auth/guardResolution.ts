@@ -28,10 +28,42 @@ export const isMsalConfigured = (): boolean => {
   return true;
 };
 
+export type AuthGuardBypassReason =
+  | 'webdriver'
+  | 'demo'
+  | 'skipLogin'
+  | 'msal-not-configured'
+  | 'none';
+
+export function getAuthGuardState() {
+  const isAutomation = isAutomationRuntime();
+  const isDemo = isDemoModeEnabled();
+  const isSkip = isSkipLoginEnabled();
+  const isMsalOk = isMsalConfigured();
+
+  let reason: AuthGuardBypassReason = 'none';
+
+  if (isAutomation) reason = 'webdriver';
+  else if (isDemo) reason = 'demo';
+  else if (isSkip) reason = 'skipLogin';
+  else if (!isMsalOk) reason = 'msal-not-configured';
+
+  return {
+    shouldBypass: reason !== 'none',
+    reason,
+    flags: {
+      isAutomation,
+      isDemo,
+      isSkip,
+      isMsalOk,
+    },
+  };
+}
+
 /**
  * Returns true if the authentication guard should be bypassed completely.
  * This ensures consistency across outer guards (ProtectedRoute) and inner access controls (RequireAudience).
  */
 export const shouldBypassAuthGuard = (): boolean => {
-  return isAutomationRuntime() || isDemoModeEnabled() || isSkipLoginEnabled() || !isMsalConfigured();
+  return getAuthGuardState().shouldBypass;
 };
