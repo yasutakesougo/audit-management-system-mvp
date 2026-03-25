@@ -51,7 +51,8 @@ const makeCriticalHandoff = (): ExceptionItem => ({
   id: 'ex-003',
   category: 'critical-handoff',
   severity: 'critical',
-  actionPath: '/handoff/timeline',
+  actionPath: '/handoff-timeline?range=day&date=2026-03-18&handoffId=77',
+  targetUserId: 'U-003',
 });
 
 const makeAttentionUser = (userId = 'U-004'): ExceptionItem => ({
@@ -210,7 +211,7 @@ describe('buildCorrectiveActions', () => {
       const primary = buildCorrectiveActions(makeCriticalHandoff())
         .find((a) => a.variant === 'primary')!;
       expect(primary.label).toBe('申し送りを確認する');
-      expect(primary.route).toBe('/handoff/timeline');
+      expect(primary.route).toBe('/handoff-timeline?range=day&date=2026-03-18&handoffId=77');
       expect(primary.severity).toBe('critical');
       expect(primary.icon).toBe('🔴');
     });
@@ -219,6 +220,7 @@ describe('buildCorrectiveActions', () => {
       const secondary = buildCorrectiveActions(makeCriticalHandoff())
         .find((a) => a.variant === 'secondary')!;
       expect(secondary.label).toBe('対応記録を残す');
+      expect(secondary.route).toBe('/daily/activity?userId=U-003');
       expect(secondary.severity).toBe('high');
       expect(secondary.icon).toBe('📝');
     });

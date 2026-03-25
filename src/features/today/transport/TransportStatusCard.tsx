@@ -35,8 +35,9 @@ import {
     Tabs,
     Tooltip,
     Typography,
+    keyframes,
 } from '@mui/material';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
     DIRECTION_EMOJI,
     DIRECTION_LABEL,
@@ -66,7 +67,17 @@ export type TransportStatusCardProps = {
   onTransition: (userId: string, direction: TransportDirection, nextStatus: TransportLegStatus) => void;
   /** Current time HH:mm (for display) */
   currentTime: string;
+  /** ExceptionCenter からのハイライト対象ユーザーID */
+  highlightUserId?: string | null;
 };
+
+// ─── Highlight animation ─────────────────────────────────────────────────────
+
+const highlightPulse = keyframes`
+  0% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0.4); }
+  50% { box-shadow: 0 0 8px 4px rgba(25, 118, 210, 0.2); }
+  100% { box-shadow: 0 0 0 0 rgba(25, 118, 210, 0); }
+`;
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
@@ -120,17 +131,28 @@ function DirectionProgress({ summary }: { summary: TransportDirectionSummary }) 
 const TransportLegRow = React.memo(function TransportLegRow({
   leg,
   isOverdue,
+  isHighlighted,
   onTransition,
 }: {
   leg: TransportLeg;
   isOverdue: boolean;
+  isHighlighted?: boolean;
   onTransition: (userId: string, direction: TransportDirection, nextStatus: TransportLegStatus) => void;
 }) {
+  const rowRef = useRef<HTMLDivElement>(null);
+
+  // ハイライト対象なら自動スクロール
+  useEffect(() => {
+    if (isHighlighted && rowRef.current) {
+      rowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [isHighlighted]);
   const isSelf = leg.status === 'self';
   const isTerminal = isTerminalStatus(leg.status);
 
   return (
     <Box
+      ref={rowRef}
       data-testid={`transport-leg-${leg.userId}-${leg.direction}`}
       sx={{
         display: 'flex',
@@ -139,12 +161,31 @@ const TransportLegRow = React.memo(function TransportLegRow({
         py: 1,
         px: 2,
         borderRadius: 1,
-        bgcolor: isOverdue ? 'error.50' : 'transparent',
-        borderLeft: isOverdue ? '3px solid' : 'none',
-        borderColor: isOverdue ? 'error.main' : 'transparent',
+        bgcolor: isHighlighted
+          ? 'rgba(25, 118, 210, 0.08)'
+          : isOverdue
+            ? 'error.50'
+            : 'transparent',
+        borderLeft: isHighlighted
+          ? '3px solid'
+          : isOverdue
+            ? '3px solid'
+            : 'none',
+        borderColor: isHighlighted
+          ? 'primary.main'
+          : isOverdue
+            ? 'error.main'
+            : 'transparent',
+        animation: isHighlighted
+          ? `${highlightPulse} 1.5s ease-in-out 3`
+          : 'none',
         transition: motionTokens.transition.bgColorSlow,
         '&:hover': {
-          bgcolor: isOverdue ? 'error.100' : 'action.hover',
+          bgcolor: isHighlighted
+            ? 'rgba(25, 118, 210, 0.12)'
+            : isOverdue
+              ? 'error.100'
+              : 'action.hover',
         },
       }}
     >
@@ -281,6 +322,7 @@ export function TransportStatusCard({
   onDirectionChange,
   onTransition,
   currentTime,
+  highlightUserId,
 }: TransportStatusCardProps) {
   const activeSummary = activeDirection === 'to' ? toSummary : fromSummary;
   const activeLegs = legs.filter((l) => l.direction === activeDirection);
@@ -394,6 +436,7 @@ export function TransportStatusCard({
             key={`${leg.userId}-${leg.direction}`}
             leg={leg}
             isOverdue={activeSummary.overdueUserIds.includes(leg.userId)}
+            isHighlighted={highlightUserId === leg.userId}
             onTransition={onTransition}
           />
         ))}

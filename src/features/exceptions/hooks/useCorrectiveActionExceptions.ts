@@ -15,9 +15,10 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ActionSuggestion, ActionSuggestionState } from '@/features/action-engine/domain/types';
 import { isSuggestionVisible } from '@/features/action-engine/domain/types';
 import { filterSuggestionsByDisplayTiming } from '@/features/action-engine/domain/suggestionDisplayTiming';
-import { mapSuggestionToException } from '@/features/exceptions/domain/mapSuggestionToException';
 import type { ExceptionItem } from '@/features/exceptions/domain/exceptionLogic';
 import { useSuggestionVisibilityTelemetry } from '@/features/action-engine/telemetry/useSuggestionVisibilityTelemetry';
+import { buildCorrectiveActionExceptions } from '@/features/exceptions/domain/buildCorrectiveActionExceptions';
+import { useUsers } from '@/features/users/useUsers';
 
 export interface UseCorrectiveActionExceptionsOptions {
   /** 全利用者分の Action Engine 提案（外部から注入） */
@@ -29,9 +30,9 @@ export interface UseCorrectiveActionExceptionsOptions {
 }
 
 export interface UseCorrectiveActionExceptionsReturn {
-  /** ExceptionItem に変換済みの提案（dismissed/snoozed 除外済み） */
+  /** ExceptionItem に変換済みの提案（parent + child） */
   items: ExceptionItem[];
-  /** 提案件数 */
+  /** 提案件数（child 件数） */
   count: number;
 }
 
@@ -39,7 +40,7 @@ export interface UseCorrectiveActionExceptionsReturn {
  * Action Engine 提案 → ExceptionItem 変換 hook
  *
  * 1. dismissed / snoozed を除外
- * 2. mapSuggestionToException で ExceptionItem に変換
+ * 2. 利用者ごとに parent + child へ変換
  */
 export function useCorrectiveActionExceptions(
   options: UseCorrectiveActionExceptionsOptions,
@@ -50,6 +51,7 @@ export function useCorrectiveActionExceptions(
     pollingIntervalMs = 60_000,
   } = options;
   const [now, setNow] = useState(new Date());
+  const { data: users } = useUsers();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -70,17 +72,35 @@ export function useCorrectiveActionExceptions(
     now,
   });
 
-  const items = useMemo(() => {
+  const visibleSuggestions = useMemo(() => {
     return timedSuggestions
       .filter((s) => {
         const state = states[s.stableId];
         return isSuggestionVisible(state, now);
-      })
-      .map(mapSuggestionToException);
+      });
   }, [timedSuggestions, states, now]);
+
+  const items = useMemo(() => {
+    const userNames: Record<string, string> = {};
+    for (const user of users) {
+      if (user.UserID && user.FullName) {
+        userNames[user.UserID] = user.FullName;
+      }
+    }
+
+    return buildCorrectiveActionExceptions({
+      suggestions: visibleSuggestions,
+      userNames,
+    });
+  }, [users, visibleSuggestions]);
+
+  const count = useMemo(
+    () => items.filter((item) => Boolean(item.stableId)).length,
+    [items],
+  );
 
   return {
     items,
-    count: items.length,
+    count,
   };
 }

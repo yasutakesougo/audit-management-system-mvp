@@ -103,6 +103,69 @@ describe('ExceptionTable', () => {
     expect(screen.getByText(/critical evidence/)).toBeInTheDocument();
   });
 
+  it('default ソートでは Top3 サマリーは表示しない', () => {
+    renderTable([
+      makeException({ id: 'a-1', title: '提案A' }),
+      makeException({ id: 'a-2', title: '提案B' }),
+    ]);
+
+    expect(screen.queryByTestId('exception-priority-top3')).not.toBeInTheDocument();
+  });
+
+  it('priority モードでは親子構造を維持したまま高優先グループが先頭に来る', async () => {
+    const items: ExceptionItem[] = [
+      makeException({
+        id: 'parent-normal',
+        category: 'missing-record',
+        severity: 'critical',
+        title: '通常の緊急例外',
+        description: '通常の重要例外',
+      }),
+      makeException({
+        id: 'child-normal',
+        category: 'missing-record',
+        severity: 'medium',
+        parentId: 'parent-normal',
+        title: '通常の個別例外',
+      }),
+      makeException({
+        id: 'parent-sync',
+        category: 'transport-alert',
+        severity: 'low',
+        title: '送迎の個別同期障害',
+        description: '同期失敗ユーザー 5件',
+      }),
+      makeException({
+        id: 'child-sync',
+        category: 'transport-alert',
+        severity: 'critical',
+        parentId: 'parent-sync',
+        title: '送迎実績の同期に失敗があります',
+        description: '移動中のまま 90 分停滞',
+      }),
+    ];
+
+    renderTable(items);
+
+    const sortMode = screen.getByTestId('exception-sort-mode');
+    fireEvent.mouseDown(within(sortMode).getByRole('combobox'));
+    fireEvent.click(await screen.findByRole('option', { name: '優先度順' }));
+
+    expect(screen.getByTestId('exception-priority-top3')).toBeInTheDocument();
+    expect(screen.getByTestId('exception-priority-top3-item-1')).toHaveTextContent('送迎の個別同期障害');
+    expect(screen.getByTestId('exception-priority-top3-item-2')).toHaveTextContent('通常の緊急例外');
+
+    const rowOrder = Array.from(
+      document.querySelectorAll('tr[data-testid^="exception-row-"]'),
+    ).map((el) => el.getAttribute('data-testid'));
+
+    expect(rowOrder.slice(0, 3)).toEqual([
+      'exception-row-parent-sync',
+      'exception-row-child-sync',
+      'exception-row-parent-normal',
+    ]);
+  });
+
   it('フラット表示から dismiss/snooze が実行できる', async () => {
     const onDismiss = vi.fn();
     const onSnooze = vi.fn();

@@ -12,10 +12,18 @@
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { getFlag } from '@/env';
 import { useUsers } from '@/features/users/useUsers';
 import { getBehaviorRepository } from '@/features/daily/infra/behaviorRepositoryFactory';
 import type { ABCRecord } from '@/domain/behavior';
-import type { ActionSuggestion, CorrectiveActionInput, TrendSummary, HeatmapPeak } from '../domain/types';
+import type {
+  ActionSuggestion,
+  CorrectiveActionInput,
+  SuggestionPriority,
+  SuggestionType,
+  TrendSummary,
+  HeatmapPeak,
+} from '../domain/types';
 import { buildCorrectiveActions } from '../domain/buildCorrectiveActions';
 import {
   extractHighIntensityEvents,
@@ -44,6 +52,86 @@ export interface UseAllCorrectiveActionsReturn {
 // ---------------------------------------------------------------------------
 
 const ANALYSIS_DAYS = 30;
+const E2E_SUGGESTIONS_STORAGE_KEY = 'e2e:corrective-suggestions.v1';
+
+const VALID_PRIORITIES = new Set<SuggestionPriority>(['P0', 'P1', 'P2']);
+const VALID_TYPES = new Set<SuggestionType>([
+  'assessment_update',
+  'plan_update',
+  'bip_strategy_update',
+  'new_bip_needed',
+  'data_collection',
+]);
+
+function isE2eRuntimeEnabled(): boolean {
+  return getFlag('VITE_E2E', false);
+}
+
+function parseSeedSuggestion(raw: unknown, index: number): ActionSuggestion | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const value = raw as Partial<ActionSuggestion>;
+  if (!value.stableId || !value.targetUserId || !value.title) return null;
+  if (!value.cta?.label || !value.cta?.route) return null;
+
+  const priority: SuggestionPriority = VALID_PRIORITIES.has(value.priority as SuggestionPriority)
+    ? value.priority as SuggestionPriority
+    : 'P2';
+  const type: SuggestionType = VALID_TYPES.has(value.type as SuggestionType)
+    ? value.type as SuggestionType
+    : 'assessment_update';
+
+  const nowIso = new Date().toISOString();
+  const createdAt = typeof value.createdAt === 'string' && value.createdAt.length > 0
+    ? value.createdAt
+    : nowIso;
+
+  return {
+    id: value.id ?? `e2e-seed-${index}`,
+    stableId: value.stableId,
+    type,
+    priority,
+    targetUserId: value.targetUserId,
+    title: value.title,
+    reason: value.reason ?? 'E2E seeded suggestion',
+    evidence: {
+      metric: value.evidence?.metric ?? 'E2E metric',
+      currentValue: value.evidence?.currentValue ?? '-',
+      threshold: value.evidence?.threshold ?? '-',
+      period: value.evidence?.period ?? 'E2E',
+      metrics: value.evidence?.metrics,
+      sourceRefs: value.evidence?.sourceRefs,
+    },
+    cta: {
+      label: value.cta.label,
+      route: value.cta.route,
+      params: value.cta.params,
+    },
+    createdAt,
+    expiresAt: value.expiresAt,
+    ruleId: value.ruleId ?? 'e2e-seed',
+  };
+}
+
+function readE2ESeededSuggestions(): ActionSuggestion[] | null {
+  if (!isE2eRuntimeEnabled()) return null;
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.localStorage.getItem(E2E_SUGGESTIONS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+
+    const suggestions: ActionSuggestion[] = [];
+    parsed.forEach((item, index) => {
+      const seeded = parseSeedSuggestion(item, index);
+      if (seeded) suggestions.push(seeded);
+    });
+    return suggestions;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * 行動観察データから CorrectiveActionInput を組み立てる。
@@ -204,6 +292,14 @@ export function useAllCorrectiveActions(): UseAllCorrectiveActionsReturn {
   }, []);
 
   useEffect(() => {
+    const seededSuggestions = readE2ESeededSuggestions();
+    if (seededSuggestions !== null) {
+      setAllSuggestions(seededSuggestions);
+      setStatus('ready');
+      setError(null);
+      return;
+    }
+
     if (activeUserIds.length > 0) {
       fetchAll(activeUserIds);
     } else if (users !== undefined) {
