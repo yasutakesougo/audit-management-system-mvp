@@ -85,6 +85,8 @@ export type TodayLayoutPropsInput = {
   onOpenUserStatus?: UserCompactListProps['onOpenUserStatus'];
   /** Phase 8-A: 当日の利用者状態レコード一覧 */
   userStatusRecords?: UserStatusRecord[];
+  /** ExceptionCenter deep link: ハイライト対象ユーザーID */
+  transportHighlightUserId?: string | null;
 };
 
 // ── Return Type ──
@@ -106,6 +108,7 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
     alertsByUser,
     onOpenUserStatus,
     userStatusRecords,
+    transportHighlightUserId,
   } = input;
 
   return useMemo(() => {
@@ -292,6 +295,7 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
             onDirectionChange: transport.setActiveDirection,
             onTransition: transport.transition,
             currentTime: transport.currentTime,
+            highlightUserId: transportHighlightUserId,
           }
         : undefined,
       users: {

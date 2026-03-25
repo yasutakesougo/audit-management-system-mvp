@@ -40,6 +40,8 @@ export {
 // Hook
 export { useTransportStatus } from './useTransportStatus';
 export type { UseTransportStatusReturn } from './useTransportStatus';
+export { useTransportHighlight } from './useTransportHighlight';
+export type { TransportHighlight } from './useTransportHighlight';
 
 // UI Widget
 export { TransportStatusCard } from './TransportStatusCard';

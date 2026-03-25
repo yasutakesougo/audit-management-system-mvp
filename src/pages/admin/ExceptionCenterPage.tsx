@@ -33,14 +33,15 @@ import {
   aggregateExceptions,
   computeExceptionStats,
   detectAttentionUsers,
-  detectCriticalHandoffs,
-  detectMissingRecords,
   type ExceptionCategory,
 } from '@/features/exceptions/domain/exceptionLogic';
 import { ExceptionTable } from '@/features/exceptions/components/ExceptionTable';
 import { applyExceptionPreferences } from '@/features/exceptions/domain/applyExceptionPreferences';
 import { useExceptionDataSources } from '@/features/exceptions/hooks/useExceptionDataSources';
 import { useCorrectiveActionExceptions } from '@/features/exceptions/hooks/useCorrectiveActionExceptions';
+import { useTransportExceptions } from '@/features/exceptions/hooks/useTransportExceptions';
+import { useHandoffExceptions } from '@/features/exceptions/hooks/useHandoffExceptions';
+import { useDailyRecordExceptions } from '@/features/exceptions/hooks/useDailyRecordExceptions';
 import { useActiveExceptionPreferences } from '@/features/exceptions/hooks/useExceptionPreferences';
 import type { SnoozePreset } from '@/features/action-engine/domain/computeSnoozeUntil';
 import { computeSnoozeUntil } from '@/features/action-engine/domain/computeSnoozeUntil';
@@ -48,9 +49,11 @@ import { useSuggestionStateStore } from '@/features/action-engine/hooks/useSugge
 import { useAllCorrectiveActions } from '@/features/action-engine/hooks/useAllCorrectiveActions';
 import {
   buildSuggestionTelemetryEvent,
+  type SuggestionTelemetryCtaSurface,
   SUGGESTION_TELEMETRY_EVENTS,
 } from '@/features/action-engine/telemetry/buildSuggestionTelemetryEvent';
 import { recordSuggestionTelemetry } from '@/features/action-engine/telemetry/recordSuggestionTelemetry';
+import { queuePendingSuggestionDeepLink } from '@/features/action-engine/telemetry/suggestionDeepLinkTracker';
 
 // ─── Component ────────────────────────────────────────────────
 
@@ -65,6 +68,17 @@ export default function ExceptionCenterPage() {
 
   // Sprint-1 Phase B: 実データ接続
   const dataSources = useExceptionDataSources();
+
+  // Step 4: Transport テレメトリ → ExceptionItem
+  const { items: transportItems, status: transportStatus } = useTransportExceptions();
+  const { items: handoffItems } = useHandoffExceptions({
+    handoffs: dataSources.criticalHandoffs,
+  });
+  const { items: dailyRecordItems } = useDailyRecordExceptions({
+    expectedUsers: dataSources.expectedUsers,
+    existingRecords: dataSources.todayRecords,
+    targetDate: dataSources.today,
+  });
   
   const [categoryFilter, setCategoryFilter] = useState<ExceptionCategory | 'all'>('all');
   const suggestionByStableId = useMemo(() => {
@@ -114,39 +128,63 @@ export default function ExceptionCenterPage() {
     snoozeSuggestion(stableId, until, { by: 'exception-center' });
   }, [snoozeSuggestion, suggestionByStableId]);
 
-  const handleSuggestionCtaClick = React.useCallback((stableId: string, targetUrl: string) => {
+  const handleSuggestionCtaClick = React.useCallback((
+    stableId: string,
+    targetUrl: string,
+    ctaSurface: SuggestionTelemetryCtaSurface = 'table',
+  ) => {
     const suggestion = suggestionByStableId.get(stableId);
     if (!suggestion) return;
-    recordSuggestionTelemetry(
-      buildSuggestionTelemetryEvent({
-        event: SUGGESTION_TELEMETRY_EVENTS.CTA_CLICKED,
-        sourceScreen: 'exception-center',
-        stableId: suggestion.stableId,
-        ruleId: suggestion.ruleId,
-        priority: suggestion.priority,
-        targetUserId: suggestion.targetUserId,
-        targetUrl,
-      }),
-    );
+    const event = buildSuggestionTelemetryEvent({
+      event: SUGGESTION_TELEMETRY_EVENTS.CTA_CLICKED,
+      sourceScreen: 'exception-center',
+      stableId: suggestion.stableId,
+      ruleId: suggestion.ruleId,
+      priority: suggestion.priority,
+      targetUserId: suggestion.targetUserId,
+      targetUrl,
+      ctaSurface,
+    });
+    recordSuggestionTelemetry(event);
+    queuePendingSuggestionDeepLink(event);
+  }, [suggestionByStableId]);
+
+  const handlePriorityTopShown = React.useCallback((stableIds: string[]) => {
+    for (const stableId of stableIds) {
+      const suggestion = suggestionByStableId.get(stableId);
+      if (!suggestion) continue;
+      recordSuggestionTelemetry(
+        buildSuggestionTelemetryEvent({
+          event: SUGGESTION_TELEMETRY_EVENTS.SHOWN,
+          sourceScreen: 'exception-center',
+          stableId: suggestion.stableId,
+          ruleId: suggestion.ruleId,
+          priority: suggestion.priority,
+          targetUserId: suggestion.targetUserId,
+          ctaSurface: 'priority-top3',
+        }),
+        {
+          dedupeKey: `suggestion_shown:exception-center:${suggestion.stableId}:priority-top3`,
+        },
+      );
+    }
   }, [suggestionByStableId]);
 
   const { dismissedStableIds, snoozedStableIds } = useActiveExceptionPreferences();
 
   // ── 例外検出（実データ） ──
   const exceptions = useMemo(() => {
-    const missingRecords = detectMissingRecords({
-      expectedUsers: dataSources.expectedUsers,
-      existingRecords: dataSources.todayRecords,
-      targetDate: dataSources.today,
-    });
-
-    const criticalHandoffs = detectCriticalHandoffs(dataSources.criticalHandoffs);
-
     const attentionUsers = detectAttentionUsers(dataSources.userSummaries);
 
-    const aggregated = aggregateExceptions(missingRecords, criticalHandoffs, attentionUsers, correctiveItems);
+    const aggregated = aggregateExceptions(
+      dailyRecordItems,
+      handoffItems,
+      attentionUsers,
+      correctiveItems,
+      transportItems,
+    );
     return applyExceptionPreferences(aggregated, dismissedStableIds, snoozedStableIds);
-  }, [dataSources, correctiveItems, dismissedStableIds, snoozedStableIds]);
+  }, [dailyRecordItems, dataSources, handoffItems, correctiveItems, transportItems, dismissedStableIds, snoozedStableIds]);
 
   const stats = useMemo(() => computeExceptionStats(exceptions), [exceptions]);
 
@@ -181,6 +219,13 @@ export default function ExceptionCenterPage() {
       color: '#1565c0',
     },
     {
+      key: 'transport-alert',
+      label: '送迎異常',
+      count: stats.byCategory['transport-alert'],
+      icon: '🚐',
+      color: '#7b1fa2',
+    },
+    {
       key: 'total',
       label: '合計例外',
       count: stats.total,
@@ -190,7 +235,8 @@ export default function ExceptionCenterPage() {
   ];
 
   // 是正提案データの取得状況を loading に含める
-  const isLoading = dataSources.status === 'loading' || suggestionsStatus === 'loading';
+  const isLoading = dataSources.status === 'loading' || suggestionsStatus === 'loading' || transportStatus === 'loading';
+  const hasVisibleExceptions = exceptions.length > 0;
 
   return (
     <Container maxWidth="lg" sx={{ py: 3 }} data-testid="exception-center-page">
@@ -230,7 +276,7 @@ export default function ExceptionCenterPage() {
       )}
 
       {/* ── Empty 状態 ── */}
-      {!isLoading && dataSources.status === 'empty' && allSuggestions.length === 0 && (
+      {!isLoading && !hasVisibleExceptions && dataSources.status !== 'error' && (
         <Paper variant="outlined" sx={{ p: 4, textAlign: 'center', borderRadius: 2 }} data-testid="exception-center-empty">
           <Typography variant="h5" sx={{ mb: 1 }}>✅</Typography>
           <Typography variant="h6" sx={{ fontWeight: 600 }}>例外は検出されていません</Typography>
@@ -241,7 +287,7 @@ export default function ExceptionCenterPage() {
       )}
 
       {/* ── Ready 状態 ── */}
-      {(dataSources.status === 'ready' || (dataSources.status === 'empty' && allSuggestions.length > 0)) && (
+      {!isLoading && hasVisibleExceptions && (
       <Stack spacing={3}>
         {/* ════════════════════════════════════════════════════════════
             Header
@@ -261,7 +307,7 @@ export default function ExceptionCenterPage() {
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(5, 1fr)' },
+            gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(3, 1fr)', md: 'repeat(6, 1fr)' },
             gap: 2,
           }}
           data-testid="exception-summary-cards"
@@ -315,6 +361,7 @@ export default function ExceptionCenterPage() {
             onDismiss: handleDismissSuggestion,
             onSnooze: handleSnoozeSuggestion,
             onCtaClick: handleSuggestionCtaClick,
+            onPriorityTopShown: handlePriorityTopShown,
           }}
         />
       </Stack>

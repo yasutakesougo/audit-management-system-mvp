@@ -4,6 +4,7 @@ import type { SuggestionPriority } from '../domain/types';
 export const SUGGESTION_TELEMETRY_EVENTS = {
   SHOWN: 'suggestion_shown',
   CTA_CLICKED: 'suggestion_cta_clicked',
+  DEEP_LINK_ARRIVED: 'suggestion_deep_link_arrived',
   DISMISSED: 'suggestion_dismissed',
   SNOOZED: 'suggestion_snoozed',
   RESURFACED: 'suggestion_resurfaced',
@@ -13,6 +14,7 @@ export type SuggestionTelemetryEventName =
   (typeof SUGGESTION_TELEMETRY_EVENTS)[keyof typeof SUGGESTION_TELEMETRY_EVENTS];
 
 export type SuggestionTelemetrySourceScreen = 'today' | 'exception-center';
+export type SuggestionTelemetryCtaSurface = 'table' | 'priority-top3';
 
 export type BuildSuggestionTelemetryEventInput = {
   event: SuggestionTelemetryEventName;
@@ -22,6 +24,7 @@ export type BuildSuggestionTelemetryEventInput = {
   priority: SuggestionPriority;
   targetUserId?: string;
   targetUrl?: string;
+  ctaSurface?: SuggestionTelemetryCtaSurface;
   snoozePreset?: SnoozePreset;
   snoozedUntil?: string;
   timestamp?: string;
@@ -36,6 +39,7 @@ export type SuggestionTelemetryEvent = {
   timestamp: string;
   targetUserId?: string;
   targetUrl?: string;
+  ctaSurface?: SuggestionTelemetryCtaSurface;
   snoozePreset?: SnoozePreset;
   snoozedUntil?: string;
 };
@@ -56,6 +60,7 @@ export function buildSuggestionTelemetryEvent(
     timestamp: input.timestamp ?? new Date().toISOString(),
     ...(input.targetUserId ? { targetUserId: input.targetUserId } : {}),
     ...(input.targetUrl ? { targetUrl: input.targetUrl } : {}),
+    ...(input.ctaSurface ? { ctaSurface: input.ctaSurface } : {}),
     ...(input.snoozePreset ? { snoozePreset: input.snoozePreset } : {}),
     ...(input.snoozedUntil ? { snoozedUntil: input.snoozedUntil } : {}),
   };

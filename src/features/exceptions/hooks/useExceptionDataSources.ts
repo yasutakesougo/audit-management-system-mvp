@@ -35,7 +35,7 @@ export type ExceptionDataSources = {
   expectedUsers: Array<{ userId: string; userName: string }>;
   /** 今日の日次記録 (detectMissingRecords 用) */
   todayRecords: DailyRecordSummary[];
-  /** 重要 × 未完了の申し送り (detectCriticalHandoffs 用) */
+  /** 重要 × 未完了の申し送り (buildHandoffExceptions / detectCriticalHandoffs 用) */
   criticalHandoffs: HandoffSummaryItem[];
   /** ユーザーサマリー (detectAttentionUsers 用) */
   userSummaries: UserSummary[];

@@ -16,7 +16,20 @@
 ## Operations
 
 - [Corrective-Action Telemetry Review](./corrective-action-telemetry-review.md)
+- [ExceptionCenter Horizontal Rollout](./exception-center-horizontal-rollout.md)
+- [ExceptionCenter Priority Week-1 Review](./exception-center-priority-week1-review.md)
 - Weekly Review Issue Template: `.github/ISSUE_TEMPLATE/corrective-action-weekly-review.yml`
+
+### ExceptionCenter 標準化状況
+
+- 横展開完了（実装 + unit/hook/page + E2E）:
+  - `corrective-action`
+  - `daily-record`
+  - `handoff`
+- E2E 導線保証 spec:
+  - `tests/e2e/exception-center.corrective-child-flow.spec.ts`
+  - `tests/e2e/exception-center.daily-child-flow.spec.ts`
+  - `tests/e2e/exception-center.handoff-child-flow.spec.ts`
 
 ## 使い方
 

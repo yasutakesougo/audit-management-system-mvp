@@ -104,4 +104,17 @@ describe('groupExceptionsByUser', () => {
     const result = groupExceptionsByUser(items);
     expect(result.map((g) => g.userId)).toEqual(['user-a', 'user-b', 'user-c']);
   });
+
+  it('親子構造がある場合、親行は grouped 集約から除外する', () => {
+    const items: ExceptionItem[] = [
+      makeItem({ id: 'parent-user-1', targetUserId: 'user-001', severity: 'high' }),
+      makeItem({ id: 'child-1', targetUserId: 'user-001', parentId: 'parent-user-1', severity: 'high' }),
+      makeItem({ id: 'child-2', targetUserId: 'user-001', parentId: 'parent-user-1', severity: 'medium' }),
+    ];
+
+    const result = groupExceptionsByUser(items);
+    expect(result).toHaveLength(1);
+    expect(result[0].count).toBe(2);
+    expect(result[0].items.map((item) => item.id)).toEqual(['child-1', 'child-2']);
+  });
 });

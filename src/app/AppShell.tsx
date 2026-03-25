@@ -18,6 +18,7 @@ import { useKeyboardAwareScroll } from '@/hooks/useKeyboardAwareScroll';
 import { AppShellV2 } from '@/components/layout/AppShellV2';
 import { isDev } from '@/env';
 import { SettingsDialog } from '@/features/settings/SettingsDialog';
+import { useSuggestionDeepLinkArrivalTelemetry } from '@/features/action-engine/telemetry/useSuggestionDeepLinkArrivalTelemetry';
 import RouteHydrationListener from '@/hydration/RouteHydrationListener';
 import CloseFullscreenRoundedIcon from '@mui/icons-material/CloseFullscreenRounded';
 import Drawer from '@mui/material/Drawer';
@@ -176,6 +177,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   // ── キーボード対策（キオスクモード時のみ） ────────────────────────────
   useKeyboardAwareScroll(isKioskMode);
+  useSuggestionDeepLinkArrivalTelemetry();
 
   // ── Slots ──────────────────────────────────────────────────────────────────
 

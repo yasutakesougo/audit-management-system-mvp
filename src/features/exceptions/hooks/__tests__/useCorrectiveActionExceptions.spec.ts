@@ -61,10 +61,14 @@ describe('useCorrectiveActionExceptions', () => {
       }),
     );
 
-    expect(result.current.items).toHaveLength(1);
-    expect(result.current.items[0]?.stableId).toBe(
+    // parent + child
+    expect(result.current.items).toHaveLength(2);
+    expect(result.current.count).toBe(1);
+    expect(result.current.items[1]?.stableId).toBe(
       assessmentStaleSuggestion.stableId,
+    );
+    expect(result.current.items[1]?.parentId).toBe(
+      'corrective-user-user-001',
     );
   });
 });
-

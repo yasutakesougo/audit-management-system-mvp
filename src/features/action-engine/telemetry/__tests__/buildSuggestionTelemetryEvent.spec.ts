@@ -71,4 +71,26 @@ describe('buildSuggestionTelemetryEvent', () => {
 
     expect(event.timestamp).toBe('2026-03-21T12:34:56.000Z');
   });
+
+  it('CTA surface を含めた payload を組み立てる', () => {
+    const event = buildSuggestionTelemetryEvent({
+      event: SUGGESTION_TELEMETRY_EVENTS.CTA_CLICKED,
+      sourceScreen: 'exception-center',
+      stableId: 'rule:user:2026-W12',
+      ruleId: 'rule',
+      priority: 'P1',
+      targetUrl: '/assessment',
+      ctaSurface: 'priority-top3',
+    });
+
+    expect(event).toEqual(
+      expect.objectContaining({
+        event: 'suggestion_cta_clicked',
+        sourceScreen: 'exception-center',
+        stableId: 'rule:user:2026-W12',
+        targetUrl: '/assessment',
+        ctaSurface: 'priority-top3',
+      }),
+    );
+  });
 });

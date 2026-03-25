@@ -21,12 +21,15 @@ import {
 } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
 import { computeCtaKpis, type DashboardKpis } from '../domain/computeCtaKpis';
-import { computeCtaKpiDiff, type DashboardKpiDiffs } from '../domain/computeCtaKpiDiff';
+import { computeCtaKpiDiff, type DashboardKpiDiffs, type KpiAlert } from '../domain/computeCtaKpiDiff';
 import { computeCtaKpisByRole, type RoleBreakdown } from '../domain/computeCtaKpisByRole';
 import { computeRoleAlerts } from '../domain/computeRoleAlerts';
 import { classifyAlertStates, type ClassifiedAlert } from '../domain/classifyAlertState';
 import { computeAlertPersistence, type AlertPersistence } from '../domain/computeAlertPersistence';
 import { buildReviewLoopSummary, type ReviewLoopSummary } from '../domain/buildReviewLoopSummary';
+import { computeTransportKpis, EMPTY_TRANSPORT_KPIS, type TransportKpis } from '@/features/today/transport/computeTransportKpis';
+import { computeTransportAlerts } from '@/features/today/transport/computeTransportAlerts';
+import type { TransportTelemetryEvent } from '@/features/today/transport/transportTelemetry';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -67,6 +70,8 @@ type DashboardState = {
   classifiedAlerts: ClassifiedAlert[];
   persistence: AlertPersistence[];
   reviewSummary: ReviewLoopSummary | null;
+  transportKpis: TransportKpis;
+  transportAlerts: KpiAlert[];
   loading: boolean;
   error: string | null;
   range: DateRange;
@@ -157,6 +162,8 @@ export function useTelemetryDashboard() {
     classifiedAlerts: [],
     persistence: [],
     reviewSummary: null,
+    transportKpis: EMPTY_TRANSPORT_KPIS,
+    transportAlerts: [],
     loading: true,
     error: null,
     range: 'today',
@@ -282,6 +289,26 @@ export function useTelemetryDashboard() {
         .map(([key, v]) => ({ key, ...v }))
         .sort((a, b) => b.count - a.count);
 
+      // ── Transport KPI / Alert 算出 ──
+      const TRANSPORT_TYPES = [
+        'transport:sync-failed',
+        'transport:fallback-all-users',
+        'transport:status-transition',
+        'transport:stale-in-progress',
+      ];
+      const transportEvents: TransportTelemetryEvent[] = [];
+      for (const doc of currentSnapshot.docs) {
+        const data = doc.data();
+        if (TRANSPORT_TYPES.includes(data.type)) {
+          transportEvents.push(data as TransportTelemetryEvent);
+        }
+      }
+      const transportKpis = computeTransportKpis(transportEvents);
+      const transportAlerts = computeTransportAlerts({
+        kpis: transportKpis,
+        now: new Date(),
+      });
+
       setState({
         stats: {
           total: docs.length,
@@ -296,6 +323,8 @@ export function useTelemetryDashboard() {
         classifiedAlerts,
         persistence,
         reviewSummary,
+        transportKpis,
+        transportAlerts,
         loading: false,
         error: null,
         range,
@@ -303,7 +332,7 @@ export function useTelemetryDashboard() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[telemetry-dashboard] fetch failed:', err);
-      setState((prev) => ({ ...prev, stats: null, kpis: null, kpiDiffs: null, roleBreakdown: [], persistence: [], reviewSummary: null, loading: false, error: msg }));
+      setState((prev) => ({ ...prev, stats: null, kpis: null, kpiDiffs: null, roleBreakdown: [], persistence: [], reviewSummary: null, transportKpis: EMPTY_TRANSPORT_KPIS, transportAlerts: [], loading: false, error: msg }));
     }
   }, []);
 

@@ -42,7 +42,7 @@ import { resolveNextUser } from '@/features/today/records/resolveNextUser';
 import { useQuickRecord } from '@/features/today/records/useQuickRecord';
 import { recordLanding } from '@/features/today/telemetry/recordLanding';
 import { CTA_EVENTS, recordCtaClick } from '@/features/today/telemetry/recordCtaClick';
-import { useTransportStatus } from '@/features/today/transport';
+import { useTransportStatus, useTransportHighlight } from '@/features/today/transport';
 import { ApprovalDialog } from '@/features/today/widgets/ApprovalDialog';
 import { toLocalDateISO } from '@/utils/getNow';
 import { HandoffPanel } from '@/features/handoff/components';
@@ -130,8 +130,16 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
     scheduledCount: summary.users?.length ?? 0,
   });
   const transport = useTransportStatus();
+  const transportHighlight = useTransportHighlight();
   const quickRecord = useQuickRecord();
   const approvalFlow = useApprovalFlow();
+
+  // ExceptionCenter deep link: direction 自動切り替え
+  useEffect(() => {
+    if (transportHighlight.direction && transport.isReady) {
+      transport.setActiveDirection(transportHighlight.direction);
+    }
+  }, [transportHighlight.direction, transport.isReady]);
 
   // ── Workflow Phases (Phase 2) ──
   const isServiceManager = role === 'admin';
@@ -278,6 +286,7 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
     nextAction,
     sceneAction,
     transport,
+    transportHighlightUserId: transportHighlight.userId,
     quickRecord,
     navigate,
     role,

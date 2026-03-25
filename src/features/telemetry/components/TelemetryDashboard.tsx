@@ -31,6 +31,8 @@ export default function TelemetryDashboard() {
     classifiedAlerts,
     persistence,
     reviewSummary,
+    transportKpis,
+    transportAlerts,
     loading,
     error,
     range,
@@ -172,6 +174,8 @@ export default function TelemetryDashboard() {
           classifiedAlerts={classifiedAlerts}
           persistence={persistence}
           reviewSummary={reviewSummary}
+          transportKpis={transportKpis}
+          transportAlerts={transportAlerts}
         />
       ) : (
         <RawTabContent
