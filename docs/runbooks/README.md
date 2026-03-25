@@ -17,6 +17,7 @@
 
 - [Corrective-Action Telemetry Review](./corrective-action-telemetry-review.md)
 - [ExceptionCenter Horizontal Rollout](./exception-center-horizontal-rollout.md)
+- [ExceptionCenter Priority Week-1 Review](./exception-center-priority-week1-review.md)
 - Weekly Review Issue Template: `.github/ISSUE_TEMPLATE/corrective-action-weekly-review.yml`
 
 ### ExceptionCenter 標準化状況

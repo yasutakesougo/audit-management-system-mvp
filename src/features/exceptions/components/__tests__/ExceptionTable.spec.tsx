@@ -26,7 +26,12 @@ const renderTable = (
   suggestionActions?: {
     onDismiss: (stableId: string) => void;
     onSnooze: (stableId: string, preset: 'tomorrow' | 'three-days' | 'end-of-week') => void;
-    onCtaClick?: (stableId: string, targetUrl: string) => void;
+    onCtaClick?: (
+      stableId: string,
+      targetUrl: string,
+      ctaSurface?: 'table' | 'priority-top3',
+    ) => void;
+    onPriorityTopShown?: (stableIds: string[]) => void;
   },
 ) => {
   render(
@@ -164,6 +169,59 @@ describe('ExceptionTable', () => {
       'exception-row-child-sync',
       'exception-row-parent-normal',
     ]);
+  });
+
+  it('priority Top3 の shown/click は suggestionActions に surface 付きで通知する', async () => {
+    const onDismiss = vi.fn();
+    const onSnooze = vi.fn();
+    const onCtaClick = vi.fn();
+    const onPriorityTopShown = vi.fn();
+
+    const items: ExceptionItem[] = [
+      makeException({
+        id: 'p1',
+        stableId: 'stable-p1',
+        severity: 'critical',
+        title: '最優先提案',
+        actionPath: '/assessment?u=1',
+      }),
+      makeException({
+        id: 'p2',
+        stableId: 'stable-p2',
+        severity: 'high',
+        title: '次点提案',
+        actionPath: '/assessment?u=2',
+      }),
+      makeException({
+        id: 'p3',
+        stableId: 'stable-p3',
+        severity: 'medium',
+        title: '3番目提案',
+        actionPath: '/assessment?u=3',
+      }),
+    ];
+
+    renderTable(items, {
+      onDismiss,
+      onSnooze,
+      onCtaClick,
+      onPriorityTopShown,
+    });
+
+    const sortMode = screen.getByTestId('exception-sort-mode');
+    fireEvent.mouseDown(within(sortMode).getByRole('combobox'));
+    fireEvent.click(await screen.findByRole('option', { name: '優先度順' }));
+
+    expect(onPriorityTopShown).toHaveBeenCalled();
+    const shownStableIds = onPriorityTopShown.mock.calls.flatMap((args) => args[0] as string[]);
+    expect(shownStableIds).toEqual(expect.arrayContaining(['stable-p1', 'stable-p2', 'stable-p3']));
+
+    fireEvent.click(screen.getByTestId('exception-priority-top3-action-p1'));
+    expect(onCtaClick).toHaveBeenCalledWith(
+      'stable-p1',
+      '/assessment?u=1',
+      'priority-top3',
+    );
   });
 
   it('フラット表示から dismiss/snooze が実行できる', async () => {

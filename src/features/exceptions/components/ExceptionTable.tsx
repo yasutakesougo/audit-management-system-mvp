@@ -76,6 +76,7 @@ import {
 
 export type ExceptionTableSortOrder = 'severity' | 'newest' | 'oldest';
 export type ExceptionTableSortMode = 'default' | 'priority';
+type SuggestionCtaSurface = 'table' | 'priority-top3';
 
 type ExceptionDisplayRow =
   | {
@@ -117,7 +118,12 @@ export type ExceptionTableProps = {
   suggestionActions?: {
     onDismiss: (stableId: string) => void;
     onSnooze: (stableId: string, preset: SnoozePreset) => void;
-    onCtaClick?: (stableId: string, targetUrl: string) => void;
+    onCtaClick?: (
+      stableId: string,
+      targetUrl: string,
+      ctaSurface?: SuggestionCtaSurface,
+    ) => void;
+    onPriorityTopShown?: (stableIds: string[]) => void;
   };
 };
 
@@ -286,7 +292,7 @@ const CorrectiveActionsCell: React.FC<{
 
   const handleNavigate = (route: string) => {
     if (item.category === 'corrective-action' && stableId) {
-      suggestionActions?.onCtaClick?.(stableId, route);
+      suggestionActions?.onCtaClick?.(stableId, route, 'table');
     }
     onNavigate(route);
   };
@@ -527,10 +533,33 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
       });
   }, [displayRows, sortMode, displayMode]);
 
+  const shownTopStableIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (sortMode !== 'priority') return;
+    if (!suggestionActions?.onPriorityTopShown) return;
+
+    const stableIds = priorityTopItems
+      .map((item) => item.stableId)
+      .filter((stableId): stableId is string => typeof stableId === 'string');
+
+    const unseen = stableIds.filter((stableId) => !shownTopStableIdsRef.current.has(stableId));
+    if (unseen.length === 0) return;
+
+    for (const stableId of unseen) {
+      shownTopStableIdsRef.current.add(stableId);
+    }
+    suggestionActions.onPriorityTopShown(unseen);
+  }, [priorityTopItems, sortMode, suggestionActions]);
+
   const handlePriorityTopAction = useCallback((item: PriorityTopItem) => {
     if (!item.actionPath) return;
     if (item.category === 'corrective-action' && item.stableId) {
-      suggestionActions?.onCtaClick?.(item.stableId, item.actionPath);
+      suggestionActions?.onCtaClick?.(
+        item.stableId,
+        item.actionPath,
+        'priority-top3',
+      );
     }
     navigate(item.actionPath);
   }, [navigate, suggestionActions]);

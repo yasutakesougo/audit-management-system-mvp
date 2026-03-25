@@ -167,6 +167,7 @@ describe('ExceptionCenterPage suggestion telemetry', () => {
         sourceScreen: 'exception-center',
         stableId,
         targetUrl: '/assessment',
+        ctaSurface: 'table',
       }),
     );
     expect(mockRecordSuggestionTelemetry).toHaveBeenCalledWith(
