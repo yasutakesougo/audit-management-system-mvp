@@ -6,7 +6,7 @@ import { isE2E } from '@/env';
 import { authDiagnostics } from '@/features/auth/diagnostics/collector';
 import { getSchedulesListTitle } from '@/features/schedules/data/spSchema';
 import { createAuthCorrId, summarizeAuthBlockReason, type AuthDiagSummary } from '@/lib/authDiag';
-import { getAppConfig, isDemoModeEnabled, readEnv } from '@/lib/env';
+import { getAppConfig, readEnv } from '@/lib/env';
 import { buildSchedulesListReadyKey, clearRuntimeListReady, isRuntimeListReady, setRuntimeListReady } from '@/lib/listReadyRuntime';
 import { getAuthGuardState } from '@/lib/auth/guardResolution';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
