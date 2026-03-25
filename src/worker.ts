@@ -327,7 +327,7 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    const serveIndex = async (): Promise<Response> => {
+    const serveIndex = async (options?: { allowSameOriginFrame?: boolean }): Promise<Response> => {
       const indexUrl = new URL(request.url);
       indexUrl.pathname = '/index.html';
       indexUrl.search = '';
@@ -343,6 +343,10 @@ export default {
       headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
       headers.set('Cache-Control', 'no-store, must-revalidate');
       headers.set('Content-Type', 'text/html; charset=UTF-8');
+      if (options?.allowSameOriginFrame) {
+        // MSAL hidden iframe for silent token refresh must load the callback page.
+        headers.set('X-Frame-Options', 'SAMEORIGIN');
+      }
 
       return new Response(indexHtml, {
         status: 200,
@@ -360,7 +364,7 @@ export default {
     }
 
     if (url.pathname === '/auth/callback' || url.pathname === '/callback') {
-      return serveIndex();
+      return serveIndex({ allowSameOriginFrame: true });
     }
 
     // Static files (has file extension) - serve as-is (no rewrites)
