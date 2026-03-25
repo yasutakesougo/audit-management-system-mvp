@@ -49,9 +49,11 @@ import { useSuggestionStateStore } from '@/features/action-engine/hooks/useSugge
 import { useAllCorrectiveActions } from '@/features/action-engine/hooks/useAllCorrectiveActions';
 import {
   buildSuggestionTelemetryEvent,
+  type SuggestionTelemetryCtaSurface,
   SUGGESTION_TELEMETRY_EVENTS,
 } from '@/features/action-engine/telemetry/buildSuggestionTelemetryEvent';
 import { recordSuggestionTelemetry } from '@/features/action-engine/telemetry/recordSuggestionTelemetry';
+import { queuePendingSuggestionDeepLink } from '@/features/action-engine/telemetry/suggestionDeepLinkTracker';
 
 // ─── Component ────────────────────────────────────────────────
 
@@ -126,20 +128,46 @@ export default function ExceptionCenterPage() {
     snoozeSuggestion(stableId, until, { by: 'exception-center' });
   }, [snoozeSuggestion, suggestionByStableId]);
 
-  const handleSuggestionCtaClick = React.useCallback((stableId: string, targetUrl: string) => {
+  const handleSuggestionCtaClick = React.useCallback((
+    stableId: string,
+    targetUrl: string,
+    ctaSurface: SuggestionTelemetryCtaSurface = 'table',
+  ) => {
     const suggestion = suggestionByStableId.get(stableId);
     if (!suggestion) return;
-    recordSuggestionTelemetry(
-      buildSuggestionTelemetryEvent({
-        event: SUGGESTION_TELEMETRY_EVENTS.CTA_CLICKED,
-        sourceScreen: 'exception-center',
-        stableId: suggestion.stableId,
-        ruleId: suggestion.ruleId,
-        priority: suggestion.priority,
-        targetUserId: suggestion.targetUserId,
-        targetUrl,
-      }),
-    );
+    const event = buildSuggestionTelemetryEvent({
+      event: SUGGESTION_TELEMETRY_EVENTS.CTA_CLICKED,
+      sourceScreen: 'exception-center',
+      stableId: suggestion.stableId,
+      ruleId: suggestion.ruleId,
+      priority: suggestion.priority,
+      targetUserId: suggestion.targetUserId,
+      targetUrl,
+      ctaSurface,
+    });
+    recordSuggestionTelemetry(event);
+    queuePendingSuggestionDeepLink(event);
+  }, [suggestionByStableId]);
+
+  const handlePriorityTopShown = React.useCallback((stableIds: string[]) => {
+    for (const stableId of stableIds) {
+      const suggestion = suggestionByStableId.get(stableId);
+      if (!suggestion) continue;
+      recordSuggestionTelemetry(
+        buildSuggestionTelemetryEvent({
+          event: SUGGESTION_TELEMETRY_EVENTS.SHOWN,
+          sourceScreen: 'exception-center',
+          stableId: suggestion.stableId,
+          ruleId: suggestion.ruleId,
+          priority: suggestion.priority,
+          targetUserId: suggestion.targetUserId,
+          ctaSurface: 'priority-top3',
+        }),
+        {
+          dedupeKey: `suggestion_shown:exception-center:${suggestion.stableId}:priority-top3`,
+        },
+      );
+    }
   }, [suggestionByStableId]);
 
   const { dismissedStableIds, snoozedStableIds } = useActiveExceptionPreferences();
@@ -333,6 +361,7 @@ export default function ExceptionCenterPage() {
             onDismiss: handleDismissSuggestion,
             onSnooze: handleSnoozeSuggestion,
             onCtaClick: handleSuggestionCtaClick,
+            onPriorityTopShown: handlePriorityTopShown,
           }}
         />
       </Stack>
