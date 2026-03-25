@@ -62,18 +62,27 @@ export const useUserAuthz = (): UserAuthz => {
     const normalized = value.trim();
     return normalized.length > 0 ? normalized : undefined;
   };
+
+  const readAny = (...keys: string[]): string | undefined => {
+    for (const key of keys) {
+      const runtimeValue = readRuntime(key);
+      if (runtimeValue) return runtimeValue;
+
+      const fallbackValue = readOptionalEnv(key);
+      if (fallbackValue && fallbackValue.trim().length > 0) {
+        return fallbackValue.trim();
+      }
+    }
+    return undefined;
+  };
+
   const receptionGroupId =
-    readRuntime('VITE_AAD_RECEPTION_GROUP_ID')
-    ?? readRuntime('VITE_RECEPTION_GROUP_ID')
-    ?? readOptionalEnv('VITE_AAD_RECEPTION_GROUP_ID')
-    ?? readOptionalEnv('VITE_RECEPTION_GROUP_ID');
+    // Prefer runtime rollout keys first to avoid stale build-time AAD values.
+    readAny('VITE_RECEPTION_GROUP_ID', 'VITE_AAD_RECEPTION_GROUP_ID');
+
   const adminGroupId =
-    readRuntime('VITE_AAD_ADMIN_GROUP_ID')
-    ?? readRuntime('VITE_ADMIN_GROUP_ID')
-    ?? readRuntime('VITE_SCHEDULE_ADMINS_GROUP_ID')
-    ?? readOptionalEnv('VITE_AAD_ADMIN_GROUP_ID')
-    ?? readOptionalEnv('VITE_ADMIN_GROUP_ID')
-    ?? readOptionalEnv('VITE_SCHEDULE_ADMINS_GROUP_ID');
+    // Prefer runtime rollout keys first to avoid stale build-time AAD values.
+    readAny('VITE_ADMIN_GROUP_ID', 'VITE_SCHEDULE_ADMINS_GROUP_ID', 'VITE_AAD_ADMIN_GROUP_ID');
   const envReady =
     typeof window === 'undefined'
       ? true
