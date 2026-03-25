@@ -117,6 +117,7 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
   }, [accounts.length]);
 
   // List existence check: trigger when tokenReady + schedules flag
+  const listCheckRetryRef = useRef(0);
   useEffect(() => {
     if (isMsalInProgress) return;
     if (!tokenReady) return;
@@ -125,13 +126,25 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
 
     setListGate('checking');
 
+    const LIST_CHECK_TIMEOUT_MS = 15_000;
+    const MAX_RETRIES = 2;
+    let cancelled = false;
+
+    const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> =>
+      Promise.race([
+        promise,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`List check timed out after ${ms}ms`)), ms),
+        ),
+      ]);
+
     const checkSchedulesListExistence = async () => {
       try {
         const spConfig = ensureConfig();
         const baseUrl = spConfig.baseUrl;
         if (!baseUrl) {
           debug('[schedules] No baseUrl (demo mode), skipping list check');
-          setListGate('ready');
+          if (!cancelled) setListGate('ready');
           return;
         }
 
@@ -141,7 +154,12 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
         debug(`[schedules] Checking list existence: ${listName}`);
 
         const client = createSpClient(acquireToken, baseUrl);
-        const metadata = await client.tryGetListMetadata(listName);
+        const metadata = await withTimeout(
+          client.tryGetListMetadata(listName),
+          LIST_CHECK_TIMEOUT_MS,
+        );
+
+        if (cancelled) return;
 
         if (metadata) {
           debug('[schedules] List exists:', listName);
@@ -153,13 +171,34 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
           setListGate('blocked');
         }
       } catch (error) {
-        console.error('[ProtectedRoute] List existence check failed:', error);
-        setListReadyState(false);
-        setListGate('blocked');
+        if (cancelled) return;
+        const isTimeout = error instanceof Error && error.message.includes('timed out');
+        const attempt = listCheckRetryRef.current;
+        console.error(`[ProtectedRoute] List existence check failed (attempt ${attempt + 1}):`, error);
+
+        if (isTimeout && attempt < MAX_RETRIES) {
+          // Retry: reset to idle so the effect re-fires
+          listCheckRetryRef.current = attempt + 1;
+          debug(`[schedules] Retrying list check (attempt ${attempt + 2}/${MAX_RETRIES + 1})`);
+          setListGate('idle');
+          return;
+        }
+
+        if (isTimeout) {
+          // All retries exhausted on timeout — fall through optimistically
+          // The actual data hooks will handle 404 gracefully
+          console.warn('[ProtectedRoute] List check timed out after all retries; proceeding optimistically');
+          setListReadyState(true);
+          setListGate('ready');
+        } else {
+          setListReadyState(false);
+          setListGate('blocked');
+        }
       }
     };
 
     void checkSchedulesListExistence();
+    return () => { cancelled = true; };
   }, [isMsalInProgress, tokenReady, flag, listGate, acquireToken, setListReadyState]);
 
   // Collect diagnostics when the blocking reason changes
