@@ -139,7 +139,6 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
     if (transportHighlight.direction && transport.isReady) {
       transport.setActiveDirection(transportHighlight.direction);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transportHighlight.direction, transport.isReady]);
 
   // ── Workflow Phases (Phase 2) ──

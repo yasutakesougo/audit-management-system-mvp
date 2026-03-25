@@ -41,7 +41,6 @@ export function useTransportHighlight(): TransportHighlight {
     const highlight = searchParams.get('highlight');
     const direction = searchParams.get('direction') as TransportDirection | null;
     return { highlight, direction };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentional: 初回マウント時のみ読み取る
 
   const [activeHighlight, setActiveHighlight] = useState<string | null>(
@@ -55,7 +54,6 @@ export function useTransportHighlight(): TransportHighlight {
     params.delete('highlight');
     params.delete('direction');
     setSearchParams(params, { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentional: マウント時1回だけ
 
   // 自動消去タイマー
