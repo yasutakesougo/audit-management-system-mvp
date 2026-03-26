@@ -12,7 +12,7 @@
  * - "all" は UI-only の値。repository には流さない。
  */
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/useAuth';
 import type { CallLogStatus, CreateCallLogInput } from '@/domain/callLogs/schema';
@@ -102,7 +102,10 @@ export const useCallLogs = (options: UseCallLogsOptions = {}) => {
 
   // ── 手動再取得 ────────────────────────────────────────────────────────────
 
-  const refresh = () => qc.invalidateQueries({ queryKey });
+  const refresh = useCallback(
+    () => qc.invalidateQueries({ queryKey }),
+    [qc, queryKey],
+  );
 
   return {
     /** 取得済みログ一覧（未取得時は undefined） */

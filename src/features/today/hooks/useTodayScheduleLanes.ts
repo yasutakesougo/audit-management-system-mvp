@@ -35,6 +35,8 @@ export type UseTodayScheduleLanesResult = {
   error: Error | null;
   /** Data source indicator (for monitoring/debug) */
   source: 'demo' | 'sharepoint';
+  /** Manual refresh for kiosk/background sync */
+  refetch: () => void;
 };
 
 /**
@@ -46,7 +48,7 @@ export type UseTodayScheduleLanesResult = {
  * This eliminates the mock-data dependency for /today NextAction.
  */
 export function useTodayScheduleLanes(): UseTodayScheduleLanesResult {
-  const { data, loading, error, source } = useSchedulesToday(TODAY_SCHEDULE_LIMIT);
+  const { data, loading, error, source, refetch } = useSchedulesToday(TODAY_SCHEDULE_LIMIT);
 
   const lanes = useMemo(
     () => mapSchedulesToTodayLanes(data),
@@ -58,5 +60,6 @@ export function useTodayScheduleLanes(): UseTodayScheduleLanesResult {
     isLoading: loading,
     error,
     source,
+    refetch,
   };
 }

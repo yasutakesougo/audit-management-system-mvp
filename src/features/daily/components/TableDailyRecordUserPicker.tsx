@@ -35,6 +35,8 @@ type TableDailyRecordUserPickerProps = {
   filteredUsers: User[];
   selectedUserIds: string[];
   onUserToggle: (userId: string) => void;
+  defaultExpanded?: boolean;
+  autoFocusSearch?: boolean;
 };
 
 export const TableDailyRecordUserPicker: React.FC<TableDailyRecordUserPickerProps> = ({
@@ -48,8 +50,10 @@ export const TableDailyRecordUserPicker: React.FC<TableDailyRecordUserPickerProp
   filteredUsers,
   selectedUserIds,
   onUserToggle,
+  defaultExpanded = false,
+  autoFocusSearch = false,
 }) => {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
 
   const dateLabel = formatDateTimeIntl(new Date(formDate), {
     month: 'short',
@@ -131,6 +135,7 @@ export const TableDailyRecordUserPicker: React.FC<TableDailyRecordUserPickerProp
               placeholder="名前またはIDで検索"
               value={searchQuery}
               onChange={(e) => onSearchQueryChange(e.target.value)}
+              autoFocus={autoFocusSearch}
               InputProps={{
                 startAdornment: <SearchIcon sx={{ mr: 0.5, color: 'text.secondary', fontSize: 18 }} />,
               }}

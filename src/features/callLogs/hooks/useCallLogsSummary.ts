@@ -38,6 +38,8 @@ export type CallLogsSummary = {
   isLoading: boolean;
   /** エラーオブジェクト（発生時のみ） */
   error: Error | null;
+  /** 手動再取得（キオスク更新用） */
+  refresh: () => Promise<void> | void;
 };
 
 // ─── Options ─────────────────────────────────────────────────────────────────
@@ -54,7 +56,7 @@ export type UseCallLogsSummaryOptions = {
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useCallLogsSummary(options: UseCallLogsSummaryOptions = {}): CallLogsSummary {
-  const { logs, isLoading, error } = useCallLogs({ activeTab: 'all' });
+  const { logs, isLoading, error, refresh } = useCallLogs({ activeTab: 'all' });
   const myName = options.myName ?? '';
 
   const summary = useMemo((): CallLogsSummary => {
@@ -67,8 +69,9 @@ export function useCallLogsSummary(options: UseCallLogsSummaryOptions = {}): Cal
       overdueCount: countOverdueCallLogs(safeLogs),
       isLoading,
       error: error instanceof Error ? error : error ? new Error(String(error)) : null,
+      refresh,
     };
-  }, [logs, isLoading, error, myName]);
+  }, [logs, isLoading, error, myName, refresh]);
 
   return summary;
 }

@@ -24,6 +24,17 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 const SKIP_LOGIN = shouldSkipLogin();
 
+type KioskRouteMode = 'enable' | 'disable' | null;
+
+function parseKioskRouteMode(search: string): KioskRouteMode {
+  const value = new URLSearchParams(search).get('kiosk');
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === '1' || normalized === 'true') return 'enable';
+  if (normalized === '0' || normalized === 'false') return 'disable';
+  return null;
+}
+
 export function useAppShellState() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -36,6 +47,10 @@ export function useAppShellState() {
   const navAudience: NavAudience = isAdmin ? NAV_AUDIENCE.admin : NAV_AUDIENCE.staff;
   const theme = useTheme();
   const { settings, updateSettings } = useSettingsContext();
+  const kioskRouteMode = useMemo(
+    () => parseKioskRouteMode(location.search),
+    [location.search],
+  );
   const isFocusMode = settings.layoutMode === 'focus';
   const isKioskMode = settings.layoutMode === 'kiosk';
   const isFullscreenMode = isFocusMode || isKioskMode;
@@ -66,6 +81,17 @@ export function useAppShellState() {
       navigate('/', { replace: true });
     }
   }, [navigate, location.pathname]);
+
+  useEffect(() => {
+    if (!location.pathname.startsWith('/today')) return;
+    if (kioskRouteMode === 'enable' && settings.layoutMode !== 'kiosk') {
+      updateSettings({ layoutMode: 'kiosk' });
+      return;
+    }
+    if (kioskRouteMode === 'disable' && settings.layoutMode === 'kiosk') {
+      updateSettings({ layoutMode: 'normal' });
+    }
+  }, [location.pathname, kioskRouteMode, settings.layoutMode, updateSettings]);
 
   useEffect(() => {
     if (!isFocusMode) return;
