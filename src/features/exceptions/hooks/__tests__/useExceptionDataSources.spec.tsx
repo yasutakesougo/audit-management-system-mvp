@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useExceptionDataSources } from '../useExceptionDataSources';
-import { useUsers } from '@/features/users/useUsers';
+import { useUsersQuery } from '@/features/users/hooks/useUsersQuery';
 import { useDailyRecordRepository } from '@/features/daily/repositoryFactory';
 import { useHandoffData } from '@/features/handoff/hooks/useHandoffData';
 import { useIspRepositories } from '@/features/support-plan-guide/hooks/useIspRepositories';
 
 // ─── Mocks ───────────────────────────────────────────────
-vi.mock('@/features/users/useUsers', () => ({
-  useUsers: vi.fn(),
+vi.mock('@/features/users/hooks/useUsersQuery', () => ({
+  useUsersQuery: vi.fn(),
 }));
 
 vi.mock('@/features/daily/repositoryFactory', () => ({
@@ -41,13 +41,15 @@ describe('useExceptionDataSources - ISP hasPlan 結合', () => {
   });
 
   it('current ISP を持つ user は hasPlan = true, 持たない user は hasPlan = false になる', async () => {
-    vi.mocked(useUsers).mockReturnValue({
+    vi.mocked(useUsersQuery).mockReturnValue({
       data: [
         { Id: 1, UserID: 'U-001', FullName: '山田 太郎', IsActive: true, IsHighIntensitySupportTarget: true },
         { Id: 2, UserID: 'U-002', FullName: '鈴木 次郎', IsActive: true, IsHighIntensitySupportTarget: true },
         { Id: 3, UserID: 'U-003', FullName: '佐藤 三郎', IsActive: true, IsHighIntensitySupportTarget: false },
       ],
-      isLoading: false,
+      status: 'success',
+      error: null,
+      refresh: vi.fn(),
     } as never);
 
     mockIspRepo.listAllCurrent.mockResolvedValue([
@@ -72,12 +74,14 @@ describe('useExceptionDataSources - ISP hasPlan 結合', () => {
   });
 
   it('ISP 取得失敗時は安全側にフォールバックして全員の hasPlan = true になる', async () => {
-    vi.mocked(useUsers).mockReturnValue({
+    vi.mocked(useUsersQuery).mockReturnValue({
       data: [
         { Id: 1, UserID: 'U-001', FullName: '山田 太郎', IsActive: true, IsHighIntensitySupportTarget: true },
         { Id: 2, UserID: 'U-002', FullName: '鈴木 次郎', IsActive: true, IsHighIntensitySupportTarget: true },
       ],
-      isLoading: false,
+      status: 'success',
+      error: null,
+      refresh: vi.fn(),
     } as never);
 
     // 強制的に ISP の取得を失敗させる

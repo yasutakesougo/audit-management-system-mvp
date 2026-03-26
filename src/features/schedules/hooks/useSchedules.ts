@@ -1,6 +1,10 @@
 import { useAuth } from '@/auth/useAuth';
 import { isE2eForceSchedulesWrite, isWriteEnabled } from '@/env';
 import { authDiagnostics } from '@/features/auth/diagnostics';
+import {
+  isSchedulesConflictError,
+  resolveOperationFailureFeedback,
+} from '@/features/today/feedback/operationFeedback';
 import { toSafeError } from '@/lib/errors';
 import type { ResultError } from '@/shared/result';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -41,6 +45,7 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
   const listCheckDoneRef = useRef<boolean>(false);
   const repository = useScheduleRepository();
   const { getListReadyState, setListReadyState } = useAuth();
+  const conflictFeedback = resolveOperationFailureFeedback('schedules:conflict-412');
 
   const clearLastError = () => setLastError(null);
   const refetch = () => setReloadToken((v) => v + 1);
@@ -203,9 +208,10 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
       }
     } catch (error) {
       const safeError = toSafeError(error);
+      const isConflict = isSchedulesConflictError(error);
       const resultError: ResultError = {
-        kind: 'unknown',
-        message: safeError.message,
+        kind: isConflict ? 'conflict' : 'unknown',
+        message: isConflict ? conflictFeedback.userMessage : safeError.message,
         cause: safeError,
       };
       setLastError(resultError);
@@ -259,15 +265,11 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
       );
     } catch (error) {
       const safeError = toSafeError(error);
-      // Phase 2-2b: Detect 412 conflict errors
-      const isConflict =
-        (error as { status?: number }).status === 412 ||
-        safeError.message.includes('412') ||
-        safeError.message.includes('conflict');
+      const isConflict = isSchedulesConflictError(error);
 
       const resultError: ResultError = {
         kind: isConflict ? 'conflict' : 'unknown',
-        message: safeError.message,
+        message: isConflict ? conflictFeedback.userMessage : safeError.message,
         cause: safeError,
         id: input.id, // Attach schedule id for post-refetch targeting
       };

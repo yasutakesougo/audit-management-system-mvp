@@ -24,6 +24,10 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { toLocalDateISO } from '@/utils/getNow';
 import { useAttendanceRepository } from '@/features/attendance/repositoryFactory';
+import {
+  isSchedulesConflictError,
+  resolveOperationFailureFeedback,
+} from '@/features/today/feedback/operationFeedback';
 import type { AttendanceDailyItem } from '@/features/attendance/infra/attendanceDailyRepository';
 import type { SchedItem } from '../data/port';
 import {
@@ -89,6 +93,7 @@ export function useUserStatusActions(
   options: UseUserStatusActionsOptions = {},
 ): UseUserStatusActionsReturn {
   const defaultDate = options.targetDate ?? toLocalDateISO();
+  const conflictFeedback = resolveOperationFailureFeedback('schedules:conflict-412');
 
   // ─── 1. Fetch today's schedules ───────────────────────────────
   const range = useMemo(() => {
@@ -235,8 +240,11 @@ export function useUserStatusActions(
         // Trigger refetch to sync UI
         refetch();
       } catch (e) {
-        const message =
-          e instanceof Error ? e.message : '利用者状態の登録に失敗しました';
+        const message = isSchedulesConflictError(e)
+          ? conflictFeedback.userMessage
+          : e instanceof Error
+            ? e.message
+            : '利用者状態の登録に失敗しました';
         setError(message);
         console.error('[useUserStatusActions] createOrUpdate failed', {
           input,
@@ -246,7 +254,7 @@ export function useUserStatusActions(
         setIsSubmitting(false);
       }
     },
-    [isSubmitting, defaultDate, items, create, update, refetch, syncToAttendance],
+    [isSubmitting, defaultDate, items, create, update, refetch, syncToAttendance, conflictFeedback],
   );
 
   // ─── 7. Clear helpers ─────────────────────────────────────────

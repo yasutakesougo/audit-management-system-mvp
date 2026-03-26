@@ -12,6 +12,7 @@
  * 6. Persist status changes to SharePoint Transport_Log (fire-and-forget)
  * 7. Load existing logs from SP on mount
  * 8. Filter by IsTransportTarget from AttendanceUsers
+ * 9. Report rollback / non-blocking sync failures with unified user feedback
  *
  * Data Flow:
  *   useTodaySummary → adaptUsers/adaptVisits
@@ -27,8 +28,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSP } from '@/lib/spClient';
+import { useToast } from '@/hooks/useToast';
 import { useSchedules } from '@/features/schedules/hooks/useSchedules';
 import { useStaffStore } from '@/features/staff/store';
+import { resolveOperationFailureFeedback } from '../feedback/operationFeedback';
 import { useTodaySummary } from '../domain';
 import {
     applyTransition,
@@ -206,6 +209,7 @@ function buildStaffNameIndex(rows: unknown): Map<string, string> {
 export function useTransportStatus(): UseTransportStatusReturn {
   const summary = useTodaySummary();
   const sp = useSP();
+  const { show } = useToast();
   const todayScheduleRange = useMemo(() => getTodayScheduleRange(), []);
   const { items: todaySchedules } = useSchedules(todayScheduleRange);
   const { data: staffRows } = useStaffStore();
@@ -250,6 +254,14 @@ export function useTransportStatus(): UseTransportStatusReturn {
   const enrichedLegs = useMemo(
     () => enrichTransportLegsWithAssignments(legs, assignmentIndex),
     [legs, assignmentIndex],
+  );
+
+  const notifyOperationFailure = useCallback(
+    (kind: 'transport:rollback' | 'transport:sync-non-blocking', userName?: string) => {
+      const feedback = resolveOperationFailureFeedback(kind, { userName });
+      show(feedback.toastSeverity, feedback.toastMessage);
+    },
+    [show],
   );
 
   // Timer: update currentTime every 60s for overdue detection
@@ -410,6 +422,7 @@ export function useTransportStatus(): UseTransportStatusReturn {
               method: updated.method,
             }).catch((syncErr) => {
               console.warn('[useTransportStatus] AttendanceDaily sync failed (non-blocking):', syncErr);
+              notifyOperationFailure('transport:sync-non-blocking', updated.userName);
               // Telemetry: record sync failure
               trackTransportEvent({
                 type: 'transport:sync-failed',
@@ -426,6 +439,7 @@ export function useTransportStatus(): UseTransportStatusReturn {
           }
         }).catch((err) => {
           console.error('[useTransportStatus] SP save failed, rolling back:', err);
+          notifyOperationFailure('transport:rollback', leg.userName);
           // Rollback: restore the previous leg state
           setLegs((current) => {
             const rollbackNext = [...current];
@@ -444,7 +458,7 @@ export function useTransportStatus(): UseTransportStatusReturn {
 
       return success;
     },
-    [],
+    [notifyOperationFailure],
   );
 
   const markInProgress = useCallback(

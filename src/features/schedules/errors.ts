@@ -6,6 +6,7 @@
  */
 
 import { getSchedulesListTitle } from './data/spSchema';
+import { resolveOperationFailureFeedback } from '@/features/today/feedback/operationFeedback';
 
 export type SchedulesErrorKind =
   | 'WRITE_DISABLED'
@@ -33,6 +34,8 @@ export type SchedulesErrorInfo = {
  * Classify error into actionable category with user-facing info
  */
 export function classifySchedulesError(error: unknown): SchedulesErrorInfo {
+  const conflictFeedback = resolveOperationFailureFeedback('schedules:conflict-412');
+
   // Extract message from various error shapes (Error instance, NoticedError object, or string)
   let message = '';
   if (error instanceof Error) {
@@ -140,8 +143,8 @@ export function classifySchedulesError(error: unknown): SchedulesErrorInfo {
     if (status === 412) {
       return {
         kind: 'CONFLICT',
-        title: '更新が競合しました',
-        message: '他のユーザーがこの予定を更新しました。最新の情報を読み込んでからもう一度お試しください。',
+        title: conflictFeedback.title,
+        message: conflictFeedback.userMessage,
         action: {
           label: '詳細を見る',
           onClick: () => {
@@ -157,8 +160,8 @@ export function classifySchedulesError(error: unknown): SchedulesErrorInfo {
   if (lowerMessage.includes('412') || lowerMessage.includes('conflict') || lowerMessage.includes('version of the item')) {
     return {
       kind: 'CONFLICT',
-      title: '更新が競合しました',
-      message: '他のユーザーがこの予定を更新しました。',
+      title: conflictFeedback.title,
+      message: conflictFeedback.userMessage,
       action: {
         label: '詳細を見る',
         onClick: () => {},
