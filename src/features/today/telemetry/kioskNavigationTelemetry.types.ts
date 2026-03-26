@@ -19,6 +19,18 @@ export const KIOSK_TELEMETRY_EVENTS = {
 
   /** 設定等からUIレイアウトをキオスクモードに切り替えた */
   KIOSK_MODE_ENABLED: 'ux_kiosk_mode_enabled',
+
+  /** キオスクモードの /today セッション開始 */
+  KIOSK_SESSION_STARTED: 'ux_kiosk_session_started',
+
+  /** タブ復帰時の refresh が完了した */
+  VISIBLE_REFRESH_COMPLETED: 'ux_visible_refresh_completed',
+
+  /** QuickRecord を開始してから保存まで完了した */
+  QUICK_RECORD_SAVE_COMPLETED: 'ux_quick_record_save_completed',
+
+  /** QuickRecord を開始したが保存せずに閉じた */
+  QUICK_RECORD_ABANDONED: 'ux_quick_record_abandoned',
 } as const;
 
 export type KioskTelemetryEventName =
@@ -45,4 +57,11 @@ export interface KioskNavigationPayload {
    * - `header_back` : 左上の「今日の業務に戻る」ボタンから
    */
   source: 'today' | 'fab' | 'header_back';
+
+  /** 追加計測値（イベント種別に応じて使用） */
+  durationMs?: number;
+  reason?: 'polling' | 'visibility_restore' | 'close_without_save' | 'save';
+  modeVariant?: 'user' | 'unfilled';
+  autoNextEnabled?: boolean;
+  userId?: string;
 }

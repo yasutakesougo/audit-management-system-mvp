@@ -44,6 +44,8 @@ import { resolveNextUser } from '@/features/today/records/resolveNextUser';
 import { useQuickRecord } from '@/features/today/records/useQuickRecord';
 import { recordLanding } from '@/features/today/telemetry/recordLanding';
 import { CTA_EVENTS, recordCtaClick } from '@/features/today/telemetry/recordCtaClick';
+import { recordKioskTelemetry } from '@/features/today/telemetry/recordKioskTelemetry';
+import { KIOSK_TELEMETRY_EVENTS } from '@/features/today/telemetry/kioskNavigationTelemetry.types';
 import { useTransportStatus, useTransportHighlight } from '@/features/today/transport';
 import { ApprovalDialog } from '@/features/today/widgets/ApprovalDialog';
 import { toLocalDateISO } from '@/utils/getNow';
@@ -82,6 +84,13 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
   const suggestionStates = useSuggestionStateStore((s) => s.states);
   const dismissSuggestion = useSuggestionStateStore((s) => s.dismiss);
   const snoozeSuggestion = useSuggestionStateStore((s) => s.snooze);
+  const kioskSessionLoggedRef = useRef(false);
+  const quickRecordSessionRef = useRef<{
+    startedAt: number;
+    mode: 'user' | 'unfilled' | null;
+    userId: string | null;
+  } | null>(null);
+  const quickRecordSavedRef = useRef(false);
 
   // ── Landing Telemetry (Trial Observation) ────────────────────────
   const landingLoggedRef = useRef(false);
@@ -96,6 +105,19 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
     });
   }, [location.pathname, location.search, role]);
+
+  useEffect(() => {
+    if (!isKioskMode || !location.pathname.startsWith('/today')) {
+      kioskSessionLoggedRef.current = false;
+      return;
+    }
+    if (kioskSessionLoggedRef.current) return;
+    kioskSessionLoggedRef.current = true;
+    recordKioskTelemetry(KIOSK_TELEMETRY_EVENTS.KIOSK_SESSION_STARTED, {
+      mode: 'kiosk',
+      source: 'today',
+    });
+  }, [isKioskMode, location.pathname]);
 
   // ── Data Fetching (Facade) ──
   const summary = useTodaySummary();
@@ -261,7 +283,58 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
     enabled: isKioskMode,
     intervalMs: 45_000,
     onRefresh: refreshTodayKioskSources,
+    onVisibilityRefreshComplete: (durationMs) => {
+      recordKioskTelemetry(KIOSK_TELEMETRY_EVENTS.VISIBLE_REFRESH_COMPLETED, {
+        mode: 'kiosk',
+        source: 'today',
+        reason: 'visibility_restore',
+        durationMs,
+      });
+    },
   });
+
+  useEffect(() => {
+    if (!isKioskMode) {
+      quickRecordSessionRef.current = null;
+      quickRecordSavedRef.current = false;
+      return;
+    }
+
+    if (!quickRecord.isOpen) {
+      const session = quickRecordSessionRef.current;
+      if (!session) return;
+
+      if (!quickRecordSavedRef.current) {
+        recordKioskTelemetry(KIOSK_TELEMETRY_EVENTS.QUICK_RECORD_ABANDONED, {
+          mode: 'kiosk',
+          source: 'today',
+          reason: 'close_without_save',
+          durationMs: Math.max(0, Date.now() - session.startedAt),
+          modeVariant: session.mode ?? undefined,
+          userId: session.userId ?? undefined,
+        });
+      }
+
+      quickRecordSessionRef.current = null;
+      quickRecordSavedRef.current = false;
+      return;
+    }
+
+    const current = quickRecordSessionRef.current;
+    const mode = quickRecord.mode ?? null;
+    const userId = quickRecord.userId ?? null;
+    if (!current || current.mode !== mode || current.userId !== userId) {
+      quickRecordSessionRef.current = {
+        startedAt: Date.now(),
+        mode,
+        userId,
+      };
+    }
+
+    if (quickRecordSavedRef.current) {
+      quickRecordSavedRef.current = false;
+    }
+  }, [isKioskMode, quickRecord.isOpen, quickRecord.mode, quickRecord.userId]);
 
   // ── User Alerts (直近7日の注意点) ──
   const alertUserIds = useMemo(
@@ -513,6 +586,20 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
     // 「未入力」アラートを即時に更新する
     exceptionsQueue.refetchDailyRecords();
 
+    if (isKioskMode && quickRecordSessionRef.current) {
+      const session = quickRecordSessionRef.current;
+      recordKioskTelemetry(KIOSK_TELEMETRY_EVENTS.QUICK_RECORD_SAVE_COMPLETED, {
+        mode: 'kiosk',
+        source: 'today',
+        reason: 'save',
+        durationMs: Math.max(0, Date.now() - session.startedAt),
+        modeVariant: session.mode ?? undefined,
+        userId: session.userId ?? undefined,
+        autoNextEnabled: quickRecord.autoNextEnabled,
+      });
+      quickRecordSavedRef.current = true;
+    }
+
     if (!quickRecord.autoNextEnabled) {
       quickRecord.close();
       return;
@@ -532,7 +619,7 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
       setShowCompletionToast(true);
       recordAutoNextComplete();
     }
-  }, [summary?.dailyRecordStatus?.pendingUserIds, quickRecord, exceptionsQueue]);
+  }, [summary?.dailyRecordStatus?.pendingUserIds, quickRecord, exceptionsQueue, isKioskMode]);
 
   // ── Render ──
   return (
