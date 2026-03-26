@@ -147,6 +147,9 @@ export type UseTransportStatusReturn = {
 
   /** Whether data is available */
   isReady: boolean;
+
+  /** Manual refresh for kiosk/background sync */
+  refresh: () => Promise<void>;
 };
 
 // ─── Hook Implementation ────────────────────────────────────────────────────
@@ -264,6 +267,54 @@ export function useTransportStatus(): UseTransportStatusReturn {
     [show],
   );
 
+  const buildLegSnapshot = useCallback(async () => {
+    if (!summary.users || summary.users.length === 0) return null;
+
+    let fallbackActivated = false;
+    const todayKey = getTodayKey();
+
+    const [existingLogs, attendanceUsers] = await Promise.all([
+      loadTransportLogs(sp, todayKey).catch((err) => {
+        console.warn('[useTransportStatus] Failed to load SP logs, starting fresh', err);
+        return [] as TransportLogEntry[];
+      }),
+      getActiveUsers(sp).catch((err) => {
+        console.warn('[useTransportStatus] Failed to load AttendanceUsers, showing all users', err);
+        fallbackActivated = true;
+        return [] as AttendanceUserItem[];
+      }),
+    ]);
+
+    const users = adaptUsers(summary.users, attendanceUsers);
+    const visits = adaptVisits(summary.visits);
+    const toLegs = deriveTransportLegs(users, visits, existingLogs, 'to');
+    const fromLegs = deriveTransportLegs(users, visits, existingLogs, 'from');
+
+    return {
+      fallbackActivated,
+      usersCount: users.length,
+      legs: [...toLegs, ...fromLegs],
+    };
+  }, [summary.users, summary.visits, sp]);
+
+  const refresh = useCallback(async () => {
+    const snapshot = await buildLegSnapshot();
+    if (!snapshot) return;
+
+    setLegs(snapshot.legs);
+
+    if (snapshot.fallbackActivated) {
+      trackTransportEvent({
+        type: 'transport:fallback-all-users',
+        eventVersion: 1,
+        source: 'useTransportStatus',
+        reason: 'fetch-error',
+        totalUsersShown: snapshot.usersCount,
+        clientTs: new Date().toISOString(),
+      });
+    }
+  }, [buildLegSnapshot]);
+
   // Timer: update currentTime every 60s for overdue detection
   useEffect(() => {
     const timer = setInterval(() => {
@@ -317,47 +368,22 @@ export function useTransportStatus(): UseTransportStatusReturn {
 
   // Derive initial legs when summary data changes (+ load from SP)
   useEffect(() => {
+    let cancelled = false;
     if (!summary.users || summary.users.length === 0) return;
 
-    let cancelled = false;
-    const todayKey = getTodayKey();
-
     async function initLegs() {
-      // Load existing transport logs and attendance users in parallel
-      // Both are graceful: failures return empty arrays
-      let fallbackActivated = false;
-      const [existingLogs, attendanceUsers] = await Promise.all([
-        loadTransportLogs(sp, todayKey).catch((err) => {
-          console.warn('[useTransportStatus] Failed to load SP logs, starting fresh', err);
-          return [] as TransportLogEntry[];
-        }),
-        getActiveUsers(sp).catch((err) => {
-          console.warn('[useTransportStatus] Failed to load AttendanceUsers, showing all users', err);
-          fallbackActivated = true;
-          return [] as AttendanceUserItem[];
-        }),
-      ]);
+      const snapshot = await buildLegSnapshot();
+      if (!snapshot || cancelled) return;
 
-      if (cancelled) return;
+      setLegs(snapshot.legs);
 
-      // Phase 3.5: Pass real AttendanceUsers for IsTransportTarget filtering
-      // If attendanceUsers is empty (list missing or error), adaptUsers falls back to showing all
-      const users = adaptUsers(summary.users, attendanceUsers);
-      const visits = adaptVisits(summary.visits);
-
-      const toLegs = deriveTransportLegs(users, visits, existingLogs, 'to');
-      const fromLegs = deriveTransportLegs(users, visits, existingLogs, 'from');
-
-      setLegs([...toLegs, ...fromLegs]);
-
-      // Telemetry: record fallback if AttendanceUsers failed
-      if (fallbackActivated) {
+      if (snapshot.fallbackActivated) {
         trackTransportEvent({
           type: 'transport:fallback-all-users',
           eventVersion: 1,
           source: 'useTransportStatus',
           reason: 'fetch-error',
-          totalUsersShown: users.length,
+          totalUsersShown: snapshot.usersCount,
           clientTs: new Date().toISOString(),
         });
       }
@@ -365,7 +391,7 @@ export function useTransportStatus(): UseTransportStatusReturn {
 
     void initLegs();
     return () => { cancelled = true; };
-  }, [summary.users, summary.visits, sp]);
+  }, [summary.users, buildLegSnapshot]);
 
   // ─── Actions ──────────────────────────────────────────────────────────────
 
@@ -499,5 +525,6 @@ export function useTransportStatus(): UseTransportStatusReturn {
     markAbsent,
     currentTime,
     isReady,
+    refresh,
   };
 }

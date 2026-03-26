@@ -15,6 +15,7 @@
  * @see docs/adr/ADR-002-today-execution-layer-guardrails.md
  */
 import { useAuthStore } from '@/features/auth/store';
+import { useSettingsContext } from '@/features/settings/SettingsContext';
 import { useTodaySummary } from '@/features/today/domain';
 import { useApprovalFlow } from '@/features/today/hooks/useApprovalFlow';
 import { useNextAction } from '@/features/today/hooks/useNextAction';
@@ -24,6 +25,7 @@ import { useWorkflowPhases } from '@/features/today/hooks/useWorkflowPhases';
 import { useTodayLayoutProps } from '@/features/today/hooks/useTodayLayoutProps';
 import { useTodayActionQueue } from '@/features/today/hooks/useTodayActionQueue';
 import { useUserAlerts } from '@/features/today/hooks/useUserAlerts';
+import { useKioskAutoRefresh } from '@/features/today/hooks/useKioskAutoRefresh';
 import type { ActionCard } from '@/features/today/domain/models/queue.types';
 import type { ActionSuggestion } from '@/features/action-engine/domain/types';
 import type { SnoozePreset } from '@/features/action-engine/domain/computeSnoozeUntil';
@@ -60,6 +62,7 @@ import { useWeeklyHighLoadStatus } from '@/features/today/hooks/useWeeklyHighLoa
 import { useTodayExceptions } from '@/features/today/hooks/useTodayExceptions';
 
 import { Alert, Snackbar } from '@mui/material';
+import { useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -72,6 +75,9 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
+  const { settings } = useSettingsContext();
+  const isKioskMode = settings.layoutMode === 'kiosk';
   const role = useAuthStore((s) => s.currentUserRole);
   const suggestionStates = useSuggestionStateStore((s) => s.states);
   const dismissSuggestion = useSuggestionStateStore((s) => s.dismiss);
@@ -232,6 +238,30 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
   const myName = (account as { name?: string } | null)?.name ?? '';
   const callLogsSummary = useCallLogsSummary({ myName });
   const [callLogDrawerOpen, setCallLogDrawerOpen] = useState(false);
+
+  const refreshTodayKioskSources = useCallback(async () => {
+    const tasks: Array<Promise<unknown>> = [
+      Promise.resolve(realSchedule.refetch()),
+      Promise.resolve(exceptionsQueue.refetchDailyRecords()),
+      transport.refresh(),
+      Promise.resolve(callLogsSummary.refresh()),
+      queryClient.invalidateQueries({ queryKey: ['users:list'] }),
+    ];
+
+    await Promise.allSettled(tasks);
+  }, [
+    realSchedule.refetch,
+    exceptionsQueue.refetchDailyRecords,
+    transport.refresh,
+    callLogsSummary.refresh,
+    queryClient,
+  ]);
+
+  useKioskAutoRefresh({
+    enabled: isKioskMode,
+    intervalMs: 45_000,
+    onRefresh: refreshTodayKioskSources,
+  });
 
   // ── User Alerts (直近7日の注意点) ──
   const alertUserIds = useMemo(

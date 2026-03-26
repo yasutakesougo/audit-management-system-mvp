@@ -4,6 +4,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../../../src/hooks/useToast';
+import { SettingsProvider } from '../../../src/features/settings';
 import TodayOpsPage from '../../../src/pages/TodayOpsPage';
 import { TodayBentoLayout } from '../../../src/features/today/layouts/TodayBentoLayout';
 import { useTodayActionQueue } from '../../../src/features/today/hooks/useTodayActionQueue';
@@ -43,7 +44,13 @@ vi.mock('../../../src/features/today/hooks/useSceneNextAction', () => ({
 }));
 
 vi.mock('../../../src/features/today/hooks/useTodayScheduleLanes', () => ({
-  useTodayScheduleLanes: vi.fn(() => ({ lanes: { staffLane: [], userLane: [], organizationLane: [] }, isLoading: false })),
+  useTodayScheduleLanes: vi.fn(() => ({
+    lanes: { staffLane: [], userLane: [], organizationLane: [] },
+    isLoading: false,
+    source: 'demo',
+    error: null,
+    refetch: vi.fn(),
+  })),
 }));
 
 vi.mock('../../../src/features/today/hooks/useWorkflowPhases', () => ({
@@ -63,7 +70,12 @@ vi.mock('../../../src/features/planning-sheet/hooks/usePlanningSheetRepositories
 }));
 
 vi.mock('../../../src/features/today/transport', () => ({
-  useTransportStatus: vi.fn(() => ({ pending: [], inProgress: [], onArrived: vi.fn() })),
+  useTransportStatus: vi.fn(() => ({
+    pending: [],
+    inProgress: [],
+    onArrived: vi.fn(),
+    refresh: vi.fn(async () => {}),
+  })),
   useTransportHighlight: vi.fn(() => ({ highlightStyle: {}, clearHighlight: vi.fn() })),
 }));
 
@@ -108,7 +120,14 @@ vi.mock('../../../src/features/today/hooks/useUserAlerts', () => ({
 }));
 
 vi.mock('../../../src/features/today/hooks/useTodayExceptions', () => ({
-  useTodayExceptions: vi.fn(() => ({ items: [], isLoading: false })),
+  useTodayExceptions: vi.fn(() => ({
+    items: [],
+    isLoading: false,
+    refetchDailyRecords: vi.fn(),
+    heroItem: null,
+    queueItems: [],
+    error: null,
+  })),
 }));
 
 vi.mock('../../../src/features/today/hooks/useWeeklyHighLoadStatus', () => ({
@@ -123,6 +142,7 @@ vi.mock('../../../src/features/callLogs/hooks/useCallLogsSummary', () => ({
     myOpenCount: 0,
     overdueCount: 0,
     isLoading: false,
+    refresh: vi.fn(async () => {}),
   })),
 }));
 
@@ -161,6 +181,7 @@ describe('TodayOpsPage (ActionQueueTimeline integration)', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-21T10:00:00Z'));
     vi.clearAllMocks();
+    localStorage.clear();
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -247,9 +268,11 @@ describe('TodayOpsPage (ActionQueueTimeline integration)', () => {
     render(
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
-          <MemoryRouter>
-            <TodayOpsPage correctiveActions={[correctiveSuggestion]} />
-          </MemoryRouter>
+          <SettingsProvider>
+            <MemoryRouter>
+              <TodayOpsPage correctiveActions={[correctiveSuggestion]} />
+            </MemoryRouter>
+          </SettingsProvider>
         </ToastProvider>
       </QueryClientProvider>
     );

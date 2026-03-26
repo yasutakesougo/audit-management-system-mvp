@@ -97,6 +97,8 @@ export function TableDailyRecordForm({
                 filteredUsers={filteredUsers}
                 selectedUserIds={selectedUserIds}
                 onUserToggle={handleUserToggle}
+                defaultExpanded={variant === 'content'}
+                autoFocusSearch={variant === 'content'}
               />
             </Box>
             {!handoff.loading && handoff.totalCount > 0 && (
