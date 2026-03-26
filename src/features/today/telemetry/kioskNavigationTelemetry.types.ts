@@ -31,6 +31,9 @@ export const KIOSK_TELEMETRY_EVENTS = {
 
   /** QuickRecord を開始したが保存せずに閉じた */
   QUICK_RECORD_ABANDONED: 'ux_quick_record_abandoned',
+
+  /** QuickRecord を開始した */
+  QUICK_RECORD_STARTED: 'ux_quick_record_started',
 } as const;
 
 export type KioskTelemetryEventName =
@@ -60,8 +63,10 @@ export interface KioskNavigationPayload {
 
   /** 追加計測値（イベント種別に応じて使用） */
   durationMs?: number;
-  reason?: 'polling' | 'visibility_restore' | 'close_without_save' | 'save';
+  reason?: 'polling' | 'visibility_restore' | 'close_without_save' | 'save' | 'start';
   modeVariant?: 'user' | 'unfilled';
   autoNextEnabled?: boolean;
   userId?: string;
+  sessionId?: string;
+  role?: 'staff' | 'admin' | 'unknown';
 }

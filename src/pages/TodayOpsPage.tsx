@@ -72,6 +72,13 @@ export type TodayOpsPageProps = {
   correctiveActions?: ActionSuggestion[];
 };
 
+function createKioskSessionId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `kiosk-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
   correctiveActions = [],
 }) => {
@@ -81,9 +88,11 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
   const { settings } = useSettingsContext();
   const isKioskMode = settings.layoutMode === 'kiosk';
   const role = useAuthStore((s) => s.currentUserRole);
+  const telemetryRole = role === 'admin' || role === 'staff' ? role : 'unknown';
   const suggestionStates = useSuggestionStateStore((s) => s.states);
   const dismissSuggestion = useSuggestionStateStore((s) => s.dismiss);
   const snoozeSuggestion = useSuggestionStateStore((s) => s.snooze);
+  const kioskSessionIdRef = useRef(createKioskSessionId());
   const kioskSessionLoggedRef = useRef(false);
   const quickRecordSessionRef = useRef<{
     startedAt: number;
@@ -109,6 +118,7 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
   useEffect(() => {
     if (!isKioskMode || !location.pathname.startsWith('/today')) {
       kioskSessionLoggedRef.current = false;
+      kioskSessionIdRef.current = createKioskSessionId();
       return;
     }
     if (kioskSessionLoggedRef.current) return;
@@ -116,8 +126,10 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
     recordKioskTelemetry(KIOSK_TELEMETRY_EVENTS.KIOSK_SESSION_STARTED, {
       mode: 'kiosk',
       source: 'today',
+      sessionId: kioskSessionIdRef.current,
+      role: telemetryRole,
     });
-  }, [isKioskMode, location.pathname]);
+  }, [isKioskMode, location.pathname, telemetryRole]);
 
   // ── Data Fetching (Facade) ──
   const summary = useTodaySummary();
@@ -289,6 +301,8 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
         source: 'today',
         reason: 'visibility_restore',
         durationMs,
+        sessionId: kioskSessionIdRef.current,
+        role: telemetryRole,
       });
     },
   });
@@ -312,6 +326,8 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
           durationMs: Math.max(0, Date.now() - session.startedAt),
           modeVariant: session.mode ?? undefined,
           userId: session.userId ?? undefined,
+          sessionId: kioskSessionIdRef.current,
+          role: telemetryRole,
         });
       }
 
@@ -329,12 +345,22 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
         mode,
         userId,
       };
+      recordKioskTelemetry(KIOSK_TELEMETRY_EVENTS.QUICK_RECORD_STARTED, {
+        mode: 'kiosk',
+        source: 'today',
+        reason: 'start',
+        modeVariant: mode ?? undefined,
+        userId: userId ?? undefined,
+        autoNextEnabled: quickRecord.autoNextEnabled,
+        sessionId: kioskSessionIdRef.current,
+        role: telemetryRole,
+      });
     }
 
     if (quickRecordSavedRef.current) {
       quickRecordSavedRef.current = false;
     }
-  }, [isKioskMode, quickRecord.isOpen, quickRecord.mode, quickRecord.userId]);
+  }, [isKioskMode, quickRecord.isOpen, quickRecord.mode, quickRecord.userId, quickRecord.autoNextEnabled, telemetryRole]);
 
   // ── User Alerts (直近7日の注意点) ──
   const alertUserIds = useMemo(
@@ -596,6 +622,8 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
         modeVariant: session.mode ?? undefined,
         userId: session.userId ?? undefined,
         autoNextEnabled: quickRecord.autoNextEnabled,
+        sessionId: kioskSessionIdRef.current,
+        role: telemetryRole,
       });
       quickRecordSavedRef.current = true;
     }
@@ -619,7 +647,7 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
       setShowCompletionToast(true);
       recordAutoNextComplete();
     }
-  }, [summary?.dailyRecordStatus?.pendingUserIds, quickRecord, exceptionsQueue, isKioskMode]);
+  }, [summary?.dailyRecordStatus?.pendingUserIds, quickRecord, exceptionsQueue, isKioskMode, telemetryRole]);
 
   // ── Render ──
   return (
