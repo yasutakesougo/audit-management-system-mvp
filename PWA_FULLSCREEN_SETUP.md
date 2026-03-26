@@ -3,7 +3,7 @@
 ## 実装内容
 
 ### 1. PWAマニフェスト作成
-- `public/manifest.json` を作成
+- `public/manifest.webmanifest` を作成
 - `display: "standalone"` でブラウザUIを非表示に設定
 - アプリ名、テーマカラー、アイコン設定を定義
 
@@ -32,7 +32,7 @@
 
 ## アイコンファイルについて
 
-manifest.jsonで以下のアイコンを参照しています：
+manifest.webmanifestで以下のアイコンを参照しています：
 - `/icon-192x192.png`（192x192ピクセル）
 - `/icon-512x512.png`（512x512ピクセル）
 

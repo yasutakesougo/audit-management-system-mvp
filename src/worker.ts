@@ -371,7 +371,21 @@ export default {
     if (url.pathname.includes('.')) {
       const assetResponse = await env.ASSETS.fetch(request);
       const headers = new Headers(assetResponse.headers);
-      headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+      const isManifest = url.pathname === '/manifest.json' || url.pathname === '/manifest.webmanifest';
+
+      if (!assetResponse.ok) {
+        // Prevent stale cache when an asset temporarily returns 404/500.
+        headers.set('Cache-Control', 'no-store');
+      } else if (isManifest) {
+        headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+      } else {
+        headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+
+      if (url.pathname.endsWith('.webmanifest')) {
+        headers.set('Content-Type', 'application/manifest+json; charset=UTF-8');
+      }
+
       return new Response(assetResponse.body, {
         status: assetResponse.status,
         headers,
