@@ -11,7 +11,6 @@
  *
  * @see Issue 3: /today に TodayServiceStructureCard を追加
  */
-import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import {
@@ -22,7 +21,6 @@ import {
 } from '@mui/material';
 import React from 'react';
 import type { ServiceStructure } from '../domain/serviceStructure.types';
-import { EmptyStateBlock } from './EmptyStateBlock';
 
 // ─── Props ───────────────────────────────────────────────────
 
@@ -32,8 +30,19 @@ export type TodayServiceStructureCardProps = {
 
 // ─── Helpers ─────────────────────────────────────────────────
 
-function RoleRow({ label, names }: { label: string; names: string[] }) {
-  if (names.length === 0) return null;
+function RoleRow({
+  label,
+  names,
+  showWhenEmpty = false,
+  emptyLabel = '未割当',
+}: {
+  label: string;
+  names: string[];
+  showWhenEmpty?: boolean;
+  emptyLabel?: string;
+}) {
+  const hasNames = names.length > 0;
+  if (!hasNames && !showWhenEmpty) return null;
   return (
     <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'baseline', py: 0.125 }}>
       <Typography
@@ -42,8 +51,15 @@ function RoleRow({ label, names }: { label: string; names: string[] }) {
       >
         {label}
       </Typography>
-      <Typography variant="body2" sx={{ fontSize: '0.78rem' }}>
-        {names.join('、')}
+      <Typography
+        variant="body2"
+        sx={{
+          fontSize: '0.78rem',
+          color: hasNames ? 'text.primary' : 'text.disabled',
+          fontStyle: hasNames ? 'normal' : 'italic',
+        }}
+      >
+        {hasNames ? names.join('、') : emptyLabel}
       </Typography>
     </Box>
   );
@@ -103,13 +119,6 @@ export const TodayServiceStructureCard: React.FC<TodayServiceStructureCardProps>
 }) => {
   const { dayCare, lifeSupport, decisionSupport, operationalSupport } = serviceStructure;
 
-  const hasDayCareStaff =
-    dayCare.firstWorkroomStaff.length > 0 ||
-    dayCare.secondWorkroomStaff.length > 0 ||
-    dayCare.outdoorActivityStaff.length > 0 ||
-    dayCare.japaneseRoomStaff.length > 0 ||
-    dayCare.playroomStaff.length > 0;
-
   const hasLifeSupport = lifeSupport.shortStayCount > 0 || lifeSupport.temporaryCareCount > 0;
 
   return (
@@ -125,22 +134,13 @@ export const TodayServiceStructureCard: React.FC<TodayServiceStructureCardProps>
         {/* A. 生活介護 */}
         <Box>
           <SectionHeader emoji="🟢" title="生活介護" />
-          {hasDayCareStaff ? (
-            <Box data-testid="section-daycare">
-              <RoleRow label="第一作業室" names={dayCare.firstWorkroomStaff} />
-              <RoleRow label="第二作業室" names={dayCare.secondWorkroomStaff} />
-              <RoleRow label="外活動" names={dayCare.outdoorActivityStaff} />
-              <RoleRow label="和室" names={dayCare.japaneseRoomStaff} />
-              <RoleRow label="プレイルーム" names={dayCare.playroomStaff} />
-            </Box>
-          ) : (
-            <EmptyStateBlock
-              icon={<BusinessCenterIcon />}
-              title="配置情報なし"
-              description="スケジュール登録後に表示"
-              testId="empty-daycare"
-            />
-          )}
+          <Box data-testid="section-daycare">
+            <RoleRow label="第一作業室" names={dayCare.firstWorkroomStaff} showWhenEmpty />
+            <RoleRow label="第二作業室" names={dayCare.secondWorkroomStaff} showWhenEmpty />
+            <RoleRow label="外活動" names={dayCare.outdoorActivityStaff} showWhenEmpty />
+            <RoleRow label="和室" names={dayCare.japaneseRoomStaff} showWhenEmpty />
+            <RoleRow label="プレイルーム" names={dayCare.playroomStaff} showWhenEmpty />
+          </Box>
         </Box>
 
         {/* B. 生活支援 */}

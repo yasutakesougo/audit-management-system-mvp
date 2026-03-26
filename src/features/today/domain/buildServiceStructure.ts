@@ -63,6 +63,21 @@ function classifyJobTitle(jobTitle: string): RoleCategory {
   return classifyOwner(jobTitle); // 同じロジックで分類
 }
 
+function findStaffNameInOwner(owner: string, staffNames: string[]): string | null {
+  if (!owner) return null;
+  if (staffNames.includes(owner)) return owner;
+  const matched = staffNames.find((name) => name.length >= 2 && owner.includes(name));
+  return matched ?? null;
+}
+
+function pushUnique(map: Map<RoleCategory, string[]>, category: RoleCategory, value: string): void {
+  const list = map.get(category) ?? [];
+  if (!list.includes(value)) {
+    list.push(value);
+  }
+  map.set(category, list);
+}
+
 /**
  * スケジュール staffLane + Staff マスタから ServiceStructure を組み立てる。
  *
@@ -73,39 +88,55 @@ export function buildServiceStructure(
   staffLane: StaffLaneItem[],
   staffList: Staff[],
 ): ServiceStructure {
-  // ── 1. staffLane の owner から配置マップを構築 ──
-  const byRole = new Map<RoleCategory, string[]>();
-
-  for (const item of staffLane) {
-    if (!item.owner) continue;
-    const cat = classifyOwner(item.owner);
-    const list = byRole.get(cat) ?? [];
-    // owner 名をそのまま入れる（表示用）
-    if (!list.includes(item.owner)) {
-      list.push(item.owner);
-    }
-    byRole.set(cat, list);
+  const unique = (values: string[]): string[] => Array.from(new Set(values.filter(Boolean)));
+  const activeStaff = staffList.filter((s) => s.active !== false);
+  const staffNames = unique(
+    activeStaff
+      .map((s) => s.name?.trim() ?? '')
+      .filter((name) => name.length > 0),
+  );
+  const staffCategoryByName = new Map<string, RoleCategory>();
+  for (const s of activeStaff) {
+    const name = s.name?.trim() ?? '';
+    if (!name) continue;
+    const jt = (s.jobTitle ?? s.role ?? '').trim();
+    if (!jt) continue;
+    staffCategoryByName.set(name, classifyJobTitle(jt));
   }
 
-  // ── 2. Staff マスタの jobTitle で補完 ──
-  // スケジュールに出てこない役職（所長、サビ管など）をスタッフ情報から補う
+  // ── 1. staffLane の owner から配置マップを構築（職員名のみ保持） ──
+  const byRole = new Map<RoleCategory, string[]>();
+  for (const item of staffLane) {
+    const owner = item.owner?.trim() ?? '';
+    if (!owner) continue;
+    const matchedStaffName = findStaffNameInOwner(owner, staffNames);
+    const laneCategory = matchedStaffName
+      ? (staffCategoryByName.get(matchedStaffName) ?? classifyOwner(owner))
+      : classifyOwner(owner);
+    // owner が職員名で解決できない場合は、ロール文字列誤表示を避けるため採用しない
+    const displayName = matchedStaffName ?? (laneCategory === 'other' ? owner : null);
+    if (!displayName) continue;
+    pushUnique(byRole, laneCategory, displayName);
+  }
+
+  // ── 2. Staff マスタの jobTitle で補完（職員名） ──
   const staffByRole = new Map<RoleCategory, string[]>();
-  for (const s of staffList) {
-    if (!s.active) continue;
-    const jt = s.jobTitle ?? s.role ?? '';
+  for (const s of activeStaff) {
+    const name = s.name?.trim() ?? '';
+    if (!name) continue;
+    const jt = (s.jobTitle ?? s.role ?? '').trim();
     if (!jt) continue;
     const cat = classifyJobTitle(jt);
-    const list = staffByRole.get(cat) ?? [];
-    list.push(s.name);
-    staffByRole.set(cat, list);
+    pushUnique(staffByRole, cat, name);
   }
 
-  // byRole になければ staffByRole から補完
-  const resolve = (cat: RoleCategory): string[] =>
-    byRole.get(cat) ?? staffByRole.get(cat) ?? [];
+  // staffLane 由来の職員名 + staff master 補完名を統合
+  const resolve = (cat: RoleCategory): string[] => unique([
+    ...(byRole.get(cat) ?? []),
+    ...(staffByRole.get(cat) ?? []),
+  ]);
 
   const hasAny = (cat: RoleCategory): boolean => resolve(cat).length > 0;
-  const unique = (values: string[]): string[] => Array.from(new Set(values.filter(Boolean)));
 
   // ── 3. ServiceStructure を組み立て ──
   const supportStaff = resolve('support');
