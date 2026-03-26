@@ -25,7 +25,7 @@ import {
     Typography,
 } from '@mui/material';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useUsers } from '../users/useUsers';
+import { useUsersQuery } from '@/features/users/hooks/useUsersQuery';
 import type { HandoffCategory, HandoffSeverity } from './handoffTypes';
 import { getTimeBandPlaceholder, useCurrentTimeBand } from './useCurrentTimeBand';
 import { useHandoffTimeline } from './useHandoffTimeline';
@@ -50,7 +50,7 @@ const SUCCESS_DISPLAY_MS = 3000;
 export const HandoffQuickNoteCard: React.FC = () => {
   const timeBand = useCurrentTimeBand();
   const { createHandoff } = useHandoffTimeline();
-  const { data: users } = useUsers();
+  const { data: users } = useUsersQuery();
 
   // UserRelation: O(1) ルックアップ
   const userLookup = useMemo(() => {

@@ -12,6 +12,7 @@ import {
 import { useCallback, useMemo } from 'react';
 
 import { isE2E } from '@/env';
+import { resolveOperationFailureFeedback } from '@/features/today/feedback/operationFeedback';
 
 import type { ResultError } from '@/shared/result';
 import type { CreateScheduleEventInput, SchedItem } from '../data';
@@ -160,6 +161,10 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
     () => normalizeInitialOverride(scheduleDialogModeProps.initialOverride),
     [normalizeInitialOverride, scheduleDialogModeProps.initialOverride],
   );
+  const conflictFeedback = useMemo(
+    () => resolveOperationFailureFeedback('schedules:conflict-412'),
+    [],
+  );
 
   // Phase 7-A: Compute quick templates from existing schedule items
   const quickTemplates = useMemo(() => {
@@ -298,7 +303,7 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
             ) : undefined
           }
         >
-          {snack.message || lastError?.message || (lastError?.kind === 'conflict' ? '更新が競合しました' : 'エラーが発生しました')}
+          {snack.message || lastError?.message || (lastError?.kind === 'conflict' ? conflictFeedback.toastMessage : 'エラーが発生しました')}
         </Alert>
       </Snackbar>
 
@@ -317,12 +322,12 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
         maxWidth="sm"
         data-testid="conflict-detail-dialog"
       >
-        <DialogTitle>スケジュール更新が競合しました</DialogTitle>
+        <DialogTitle>{conflictFeedback.title}</DialogTitle>
 
         <DialogContent dividers>
           <Stack spacing={1.5}>
             <Typography variant="body2">
-              他のユーザーが先に更新しました。「最新を読み込む」で最新状態を取得できます。
+              {conflictFeedback.userMessage}
             </Typography>
 
             {lastError ? (
@@ -344,7 +349,7 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
             破棄して閉じる
           </Button>
           <Button variant="contained" onClick={onConflictReload} disabled={conflictBusy}>
-            最新を読み込む
+            {conflictFeedback.followUpActionText}
           </Button>
         </DialogActions>
       </Dialog>

@@ -9,6 +9,11 @@ describe('hydration/routes', () => {
       expect(resolveHydrationEntry('/dashboard')).toEqual(HYDRATION_KEYS.dashboard);
     });
 
+    it('should match today route', () => {
+      expect(resolveHydrationEntry('/today')).toEqual(HYDRATION_KEYS.today);
+      expect(resolveHydrationEntry('/today', '?mode=unfilled')).toEqual(HYDRATION_KEYS.today);
+    });
+
     it('should match admin dashboard route', () => {
       expect(resolveHydrationEntry('/admin/dashboard')).toEqual(HYDRATION_KEYS.adminDashboard);
     });
@@ -70,6 +75,7 @@ describe('hydration/routes', () => {
 
       // These should all be matched by MATCHERS
       expect(unmatched).not.toContain('dashboard');
+      expect(unmatched).not.toContain('today');
       expect(unmatched).not.toContain('schedulesWeek');
       expect(unmatched).not.toContain('audit');
     });
@@ -80,11 +86,12 @@ describe('hydration/routes', () => {
       // Type test - this should compile without errors
       const routeIds: HydrationRouteId[] = [
         'route:dashboard',
+        'route:today',
         'route:audit',
         'route:admin:dashboard'
       ];
 
-      expect(routeIds).toHaveLength(3);
+      expect(routeIds).toHaveLength(4);
     });
   });
 

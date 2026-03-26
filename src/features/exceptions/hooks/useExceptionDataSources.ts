@@ -19,7 +19,7 @@ import { useDailyRecordRepository } from '@/features/daily/repositoryFactory';
 import type { DailyRecordItem } from '@/features/daily/domain/DailyRecordRepository';
 import { useHandoffData } from '@/features/handoff/hooks/useHandoffData';
 import type { HandoffRecord } from '@/features/handoff/handoffTypes';
-import { useUsers } from '@/features/users/useUsers';
+import { useUsersQuery } from '@/features/users/hooks/useUsersQuery';
 import { useIspRepositories } from '@/features/support-plan-guide/hooks/useIspRepositories';
 import type { DailyRecordSummary, HandoffSummaryItem, UserSummary } from '../domain/exceptionLogic';
 
@@ -50,7 +50,7 @@ export type ExceptionDataSources = {
 // ── Hook ──
 
 export function useExceptionDataSources(): ExceptionDataSources {
-  const { data: users } = useUsers();
+  const { data: users } = useUsersQuery();
   const dailyRepo = useDailyRecordRepository();
   const { repo: handoffRepo } = useHandoffData();
   const { ispRepo } = useIspRepositories();

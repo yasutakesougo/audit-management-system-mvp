@@ -9,6 +9,7 @@ describe('resolveHydrationEntry', () => {
       ['/', '', HYDRATION_KEYS.dashboard, 'dashboard'],
       ['', '', HYDRATION_KEYS.dashboard, 'dashboard'],
       ['/dashboard', '', HYDRATION_KEYS.dashboard, 'dashboard'],
+      ['/today', '', HYDRATION_KEYS.today, 'today'],
 
       // 記録・監査系
       ['/records', '', HYDRATION_KEYS.records, 'records'],

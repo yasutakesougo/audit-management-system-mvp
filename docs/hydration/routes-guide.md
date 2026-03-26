@@ -23,6 +23,7 @@ Central registry of all hydration entries with type safety:
 ```typescript
 export const HYDRATION_KEYS = {
   dashboard: { id: 'route:dashboard', label: 'Dashboard', budget: 80 },
+  today: { id: 'route:today', label: 'Today Ops', budget: 120 },
   // ...
 } as const satisfies Record<string, HydrationRouteEntry>;
 ```
@@ -86,6 +87,9 @@ import { resolveHydrationEntry } from '@/hydration/routes';
 // Simple path matching
 const entry = resolveHydrationEntry('/audit');
 // Returns: { id: 'route:audit', label: 'Audit', budget: 90 }
+
+const today = resolveHydrationEntry('/today');
+// Returns: { id: 'route:today', label: 'Today Ops', budget: 120 }
 
 // Query parameter matching
 const dayView = resolveHydrationEntry('/schedules', '?view=day');

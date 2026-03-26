@@ -8,6 +8,7 @@ export type HydrationRouteEntry = {
 
 export const HYDRATION_KEYS = {
   dashboard: { id: 'route:dashboard', label: 'Dashboard', budget: 80 },
+  today: { id: 'route:today', label: 'Today Ops', budget: 120 },
   meetingGuide: { id: 'route:meeting-guide', label: 'Meeting Guide', budget: 70 },
   handoffTimeline: {
     id: 'route:handoff-timeline',
@@ -67,6 +68,7 @@ const includesQuery = (search: string, key: string, expected: string): boolean =
 const MATCHERS: Matcher[] = [
   { match: (path) => path === '/dashboard', entry: HYDRATION_KEYS.dashboard },
   { match: (path) => path === '/' || path === '', entry: HYDRATION_KEYS.dashboard },
+  { match: (path) => path.startsWith('/today'), entry: HYDRATION_KEYS.today },
   { match: (path) => path.startsWith('/handoff-timeline'), entry: HYDRATION_KEYS.handoffTimeline },
   // Schedules - prefer specific view matches before generic fallback
   // Schedules - most specific to least specific (fallback last)

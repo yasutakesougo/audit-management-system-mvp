@@ -13,6 +13,7 @@
 import { isDev } from '@/env';
 import type { CreateScheduleEventInput, InlineScheduleDraft, SchedItem } from '@/features/schedules/domain';
 import type { ScheduleCategory, ScheduleServiceType } from '@/features/schedules/domain/types';
+import { resolveOperationFailureFeedback } from '@/features/today/feedback/operationFeedback';
 import { useCallback, useState } from 'react';
 import { classifySchedulesError } from '../errors';
 import {
@@ -108,6 +109,7 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
   const [viewItem, setViewItem] = useState<SchedItem | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogInitialValues, setDialogInitialValues] = useState<ScheduleEditDialogValues | null>(null);
+  const conflictFeedback = resolveOperationFailureFeedback('schedules:conflict-412');
 
   const clearInlineSelection = useCallback(() => {
     setDialogOpen(false);
@@ -245,7 +247,7 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
       } catch (e) {
         const info = classifySchedulesError(e);
         if (info.kind === 'CONFLICT') {
-          showSnack('warning', '更新が競合しました');
+          showSnack(conflictFeedback.toastSeverity, conflictFeedback.toastMessage);
           clearInlineSelection();
           return;
         }
@@ -255,7 +257,7 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
         setIsInlineSaving(false);
       }
     },
-    [clearInlineSelection, inlineEditingEventId, showSnack, update, isInlineSaving, setIsInlineSaving],
+    [clearInlineSelection, inlineEditingEventId, showSnack, update, isInlineSaving, setIsInlineSaving, conflictFeedback],
   );
 
   const handleInlineDialogDelete = useCallback(
@@ -269,7 +271,7 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
       } catch (e) {
         const info = classifySchedulesError(e);
         if (info.kind === 'CONFLICT') {
-          showSnack('warning', '削除が競合しました');
+          showSnack(conflictFeedback.toastSeverity, conflictFeedback.toastMessage);
           clearInlineSelection();
           return;
         }
@@ -279,7 +281,7 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
         setIsInlineDeleting(false);
       }
     },
-    [clearInlineSelection, remove, showSnack, isInlineDeleting, setIsInlineDeleting],
+    [clearInlineSelection, remove, showSnack, isInlineDeleting, setIsInlineDeleting, conflictFeedback],
   );
 
   const handleScheduleDialogSubmit = useCallback(
@@ -315,14 +317,14 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
       } catch (error) {
         const info = classifySchedulesError(error);
         if (info.kind === 'CONFLICT') {
-          showSnack('warning', '更新が競合しました');
+          showSnack(conflictFeedback.toastSeverity, conflictFeedback.toastMessage);
           handleCreateDialogClose();
           return;
         }
         throw error;
       }
     },
-    [canEdit, canWrite, create, dialogEventId, dialogMode, showSnack, update, onCreateSuccess],
+    [canEdit, canWrite, create, dialogEventId, dialogMode, showSnack, update, onCreateSuccess, conflictFeedback],
   );
 
   const handleCreateDialogClose = useCallback(() => {

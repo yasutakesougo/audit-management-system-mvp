@@ -25,6 +25,7 @@ const MIN_BUDGET = 30;  // ms (非現実的な小値を防止)
 
 // 必須ルート（業務要件として存在が保証されるべき）
 const REQUIRED_ROUTES = [
+  'route:today',
   'route:schedules:day',
   'route:schedules:week',
   'route:schedules:month',
