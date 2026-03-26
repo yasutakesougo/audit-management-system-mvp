@@ -1,4 +1,4 @@
-import { db } from '@/infra/firestore/client';
+import { getDb, isFirestoreWriteAvailable } from '@/infra/firestore/client';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import type {
   KioskNavigationPayload,
@@ -15,6 +15,10 @@ export function recordKioskTelemetry(
   eventName: KioskTelemetryEventName,
   payload: KioskNavigationPayload
 ): void {
+  if (!isFirestoreWriteAvailable()) {
+    return;
+  }
+
   try {
     const docData = {
       ...payload,
@@ -25,7 +29,7 @@ export function recordKioskTelemetry(
     };
 
     // 非同期で送信（成否に関わらずメインスレッドをブロックしない）
-    addDoc(collection(db, 'telemetry'), docData).catch((err) => {
+    addDoc(collection(getDb(), 'telemetry'), docData).catch((err) => {
       // eslint-disable-next-line no-console
       console.warn('[kiosk-telemetry] write failed', err);
     });
