@@ -209,10 +209,10 @@ export const TodayServiceStructureCard: React.FC<TodayServiceStructureCardProps>
         <Box data-testid="section-operational-support">
           <SectionHeader emoji="🟠" title="運営サポート" />
           <PresenceIndicator label="会計" present={operationalSupport.accountantPresent} names={operationalSupport.accountantNames} />
-          <RoleRow label="給食" names={operationalSupport.mealStaff} />
+          <RoleRow label="給食" names={operationalSupport.mealStaff} showWhenEmpty />
           <RoleRow label="送迎" names={operationalSupport.transportStaff} />
-          <RoleRow label="日中ボランティア" names={operationalSupport.volunteerStaff} />
-          <RoleRow label="日中来客" names={operationalSupport.visitorNames} />
+          <RoleRow label="日中ボランティア" names={operationalSupport.volunteerStaff} showWhenEmpty />
+          <RoleRow label="日中来客" names={operationalSupport.visitorNames} showWhenEmpty />
         </Box>
       </Box>
     </Box>

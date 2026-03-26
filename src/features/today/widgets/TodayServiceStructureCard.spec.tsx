@@ -74,6 +74,18 @@ const partialPresence: ServiceStructure = {
   },
 };
 
+const emptyOperationalSupport: ServiceStructure = {
+  ...fullStructure,
+  operationalSupport: {
+    accountantPresent: false,
+    accountantNames: [],
+    mealStaff: [],
+    transportStaff: [],
+    volunteerStaff: [],
+    visitorNames: [],
+  },
+};
+
 // ── Tests ──
 
 describe('TodayServiceStructureCard — 生活介護', () => {
@@ -184,6 +196,18 @@ describe('TodayServiceStructureCard — 運営サポート', () => {
     expect(section.getByText('山口')).toBeInTheDocument();
     expect(section.getByText('日中来客')).toBeInTheDocument();
     expect(section.getByText('外部監査員・佐藤')).toBeInTheDocument();
+  });
+
+  it('会計・給食・日中ボランティア・日中来客が空でもデフォルト表示される', () => {
+    render(<TodayServiceStructureCard serviceStructure={emptyOperationalSupport} />);
+
+    const section = within(screen.getByTestId('section-operational-support'));
+    expect(section.getByText('会計')).toBeInTheDocument();
+    expect(section.getByText('不在')).toBeInTheDocument();
+    expect(section.getByText('給食')).toBeInTheDocument();
+    expect(section.getByText('日中ボランティア')).toBeInTheDocument();
+    expect(section.getByText('日中来客')).toBeInTheDocument();
+    expect(section.getAllByText('未割当')).toHaveLength(3);
   });
 });
 
