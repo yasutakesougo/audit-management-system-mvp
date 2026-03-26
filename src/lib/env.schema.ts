@@ -191,6 +191,36 @@ export type ParsedEnv = EnvSchema;
 // Compatibility alias for AppEnvSchema if needed in env.ts
 export const AppEnvSchema = envSchema;
 
+const toNonEmptyString = (value: unknown): string | undefined => {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+
+  // Some environments may provide values as a single-element array.
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      if (typeof item !== 'string') continue;
+      const trimmed = item.trim();
+      if (trimmed.length > 0) return trimmed;
+    }
+  }
+
+  return undefined;
+};
+
+const normalizeAuthEnv = (raw: Record<string, unknown>): Record<string, unknown> => {
+  const normalized: Record<string, unknown> = { ...raw };
+
+  const clientId = toNonEmptyString(raw.VITE_MSAL_CLIENT_ID) ?? toNonEmptyString(raw.VITE_AAD_CLIENT_ID);
+  const tenantId = toNonEmptyString(raw.VITE_MSAL_TENANT_ID) ?? toNonEmptyString(raw.VITE_AAD_TENANT_ID);
+
+  if (clientId) normalized.VITE_MSAL_CLIENT_ID = clientId;
+  if (tenantId) normalized.VITE_MSAL_TENANT_ID = tenantId;
+
+  return normalized;
+};
+
 /**
  * Direct schema-only parsing (bypasses validation safety/placeholders)
  * Used by tests to verify strict schema behavior.
@@ -203,7 +233,7 @@ export function parseEnv(raw: Record<string, unknown>): EnvSchema {
     VITE_MSAL_CLIENT_ID: 'dummy-client-id',
     VITE_MSAL_TENANT_ID: 'dummy-tenant-id',
   };
-  return envSchema.parse({ ...placeholders, ...raw });
+  return envSchema.parse({ ...placeholders, ...normalizeAuthEnv(raw) });
 }
 
 /**
@@ -222,8 +252,10 @@ export function validateEnv(raw: Record<string, unknown>): EnvSchema {
     VITE_MSAL_TENANT_ID: 'dummy-tenant-id',
   };
 
+  const normalizedRaw = normalizeAuthEnv(raw);
+
   // Pre-merge for tests to improve safeParse success rate and provide defaults
-  const toParse = isTest ? { ...placeholders, ...raw } : raw;
+  const toParse = isTest ? { ...placeholders, ...normalizedRaw } : normalizedRaw;
   const result = envSchema.safeParse(toParse);
 
   if (!result.success) {
@@ -240,7 +272,7 @@ export function validateEnv(raw: Record<string, unknown>): EnvSchema {
       console.warn(`[env] Test environment validation warning:\n${errorMessages}`);
       return {
         ...placeholders,
-        ...raw,
+        ...normalizedRaw,
         ...(result.data || {}),
       } as EnvSchema;
     }
