@@ -4,7 +4,7 @@
  * 「担当表」ではなく「業務体制」を可視化する。
  * 4セクション: 生活介護 / 生活支援 / 判断窓口 / 運営サポート
  *
- * - 生活介護: 集団対応の配置・役割
+ * - 生活介護: 第一作業室 / 第二作業室 / 外活動 / 和室 / プレイルーム
  * - 生活支援: ショートステイ・一時ケア受け入れ体制
  * - 判断窓口: 所長・サビ管・ナースの在席（管理者・専門職）
  * - 運営サポート: 会計・給食・送迎・ボランティア・来客の配置
@@ -104,11 +104,11 @@ export const TodayServiceStructureCard: React.FC<TodayServiceStructureCardProps>
   const { dayCare, lifeSupport, decisionSupport, operationalSupport } = serviceStructure;
 
   const hasDayCareStaff =
-    dayCare.floorWatchStaff.length > 0 ||
-    dayCare.activityLeadStaff.length > 0 ||
-    dayCare.mealSupportStaff.length > 0 ||
-    dayCare.recordCheckStaff.length > 0 ||
-    dayCare.returnAcceptStaff.length > 0;
+    dayCare.firstWorkroomStaff.length > 0 ||
+    dayCare.secondWorkroomStaff.length > 0 ||
+    dayCare.outdoorActivityStaff.length > 0 ||
+    dayCare.japaneseRoomStaff.length > 0 ||
+    dayCare.playroomStaff.length > 0;
 
   const hasLifeSupport = lifeSupport.shortStayCount > 0 || lifeSupport.temporaryCareCount > 0;
 
@@ -127,11 +127,11 @@ export const TodayServiceStructureCard: React.FC<TodayServiceStructureCardProps>
           <SectionHeader emoji="🟢" title="生活介護" />
           {hasDayCareStaff ? (
             <Box data-testid="section-daycare">
-              <RoleRow label="フロア見守り" names={dayCare.floorWatchStaff} />
-              <RoleRow label="活動進行" names={dayCare.activityLeadStaff} />
-              <RoleRow label="食事対応" names={dayCare.mealSupportStaff} />
-              <RoleRow label="記録確認" names={dayCare.recordCheckStaff} />
-              <RoleRow label="送迎戻り受入" names={dayCare.returnAcceptStaff} />
+              <RoleRow label="第一作業室" names={dayCare.firstWorkroomStaff} />
+              <RoleRow label="第二作業室" names={dayCare.secondWorkroomStaff} />
+              <RoleRow label="外活動" names={dayCare.outdoorActivityStaff} />
+              <RoleRow label="和室" names={dayCare.japaneseRoomStaff} />
+              <RoleRow label="プレイルーム" names={dayCare.playroomStaff} />
             </Box>
           ) : (
             <EmptyStateBlock

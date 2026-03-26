@@ -7,13 +7,13 @@
  * @see Issue 3: TodayServiceStructureCard
  */
 
-/** 生活介護: 集団対応の配置・役割 */
+/** 生活介護: 現場配置（第一作業室 / 第二作業室 / 外活動 / 和室 / プレイルーム） */
 export type DayCareStructure = {
-  floorWatchStaff: string[];
-  activityLeadStaff: string[];
-  mealSupportStaff: string[];
-  recordCheckStaff: string[];
-  returnAcceptStaff: string[];
+  firstWorkroomStaff: string[];
+  secondWorkroomStaff: string[];
+  outdoorActivityStaff: string[];
+  japaneseRoomStaff: string[];
+  playroomStaff: string[];
 };
 
 /** 生活支援: ショートステイ・一時ケアの受け入れ体制 */
