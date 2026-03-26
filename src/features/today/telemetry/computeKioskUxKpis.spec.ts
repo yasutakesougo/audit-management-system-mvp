@@ -9,6 +9,7 @@ describe('computeKioskUxKpis', () => {
       { type: 'kiosk_ux_event', event: 'ux_return_to_today', source: 'header_back' },
       { type: 'kiosk_ux_event', event: 'ux_open_fab_menu', source: 'fab' },
       { type: 'kiosk_ux_event', event: 'ux_kiosk_session_started', source: 'today' },
+      { type: 'kiosk_ux_event', event: 'ux_quick_record_started', source: 'today' },
     ]);
 
     expect(result.navigateFromTodayBreakdown.schedules).toBe(2);
@@ -16,6 +17,7 @@ describe('computeKioskUxKpis', () => {
     expect(result.openFabMenuCount).toBe(1);
     expect(result.totalNavigateCount).toBe(2);
     expect(result.kioskSessionCount).toBe(1);
+    expect(result.quickRecordStartCount).toBe(1);
   });
 
   it('calculates median metrics for visibility refresh and quick record save', () => {
@@ -26,6 +28,9 @@ describe('computeKioskUxKpis', () => {
       { type: 'kiosk_ux_event', event: 'ux_quick_record_save_completed', durationMs: 26000, source: 'today' },
       { type: 'kiosk_ux_event', event: 'ux_quick_record_save_completed', durationMs: 12000, source: 'today' },
       { type: 'kiosk_ux_event', event: 'ux_quick_record_abandoned', source: 'today' },
+      { type: 'kiosk_ux_event', event: 'ux_quick_record_started', source: 'today' },
+      { type: 'kiosk_ux_event', event: 'ux_quick_record_started', source: 'today' },
+      { type: 'kiosk_ux_event', event: 'ux_quick_record_started', source: 'today' },
     ]);
 
     expect(result.visibleRefreshCount).toBe(3);
@@ -33,6 +38,6 @@ describe('computeKioskUxKpis', () => {
     expect(result.quickRecordSaveCount).toBe(2);
     expect(result.quickRecordSaveMedianMs).toBe(19000);
     expect(result.quickRecordAbandonCount).toBe(1);
+    expect(result.quickRecordStartCount).toBe(3);
   });
 });
-

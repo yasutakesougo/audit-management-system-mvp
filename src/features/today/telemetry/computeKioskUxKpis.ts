@@ -11,6 +11,7 @@ export interface KioskUxKpis {
   quickRecordSaveCount: number;
   quickRecordSaveMedianMs: number | null;
   quickRecordAbandonCount: number;
+  quickRecordStartCount: number;
 }
 
 function median(values: number[]): number | null {
@@ -35,6 +36,7 @@ export function computeKioskUxKpis(events: Record<string, unknown>[]): KioskUxKp
     quickRecordSaveCount: 0,
     quickRecordSaveMedianMs: null,
     quickRecordAbandonCount: 0,
+    quickRecordStartCount: 0,
   };
 
   let totalNavigate = 0;
@@ -71,6 +73,8 @@ export function computeKioskUxKpis(events: Record<string, unknown>[]): KioskUxKp
       }
     } else if (eventName === 'ux_quick_record_abandoned') {
       kpis.quickRecordAbandonCount += 1;
+    } else if (eventName === 'ux_quick_record_started') {
+      kpis.quickRecordStartCount += 1;
     }
   }
 
