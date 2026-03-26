@@ -20,13 +20,15 @@ describe('useKioskAutoRefresh', () => {
     vi.useRealTimers();
   });
 
-  it('polls while visible and refreshes immediately on visibility restore', () => {
+  it('polls while visible and refreshes immediately on visibility restore', async () => {
     const onRefresh = vi.fn();
+    const onVisibilityRefreshComplete = vi.fn();
     renderHook(() =>
       useKioskAutoRefresh({
         enabled: true,
         intervalMs: 1_000,
         onRefresh,
+        onVisibilityRefreshComplete,
       }),
     );
 
@@ -46,12 +48,16 @@ describe('useKioskAutoRefresh', () => {
       setVisibilityState('visible');
       document.dispatchEvent(new Event('visibilitychange'));
     });
+    await Promise.resolve();
     expect(onRefresh).toHaveBeenCalledTimes(2);
+    expect(onVisibilityRefreshComplete).toHaveBeenCalledTimes(1);
+    expect(onVisibilityRefreshComplete).toHaveBeenCalledWith(expect.any(Number));
 
     act(() => {
       vi.advanceTimersByTime(1_000);
     });
     expect(onRefresh).toHaveBeenCalledTimes(3);
+    expect(onVisibilityRefreshComplete).toHaveBeenCalledTimes(1);
   });
 
   it('does not run when disabled', () => {
@@ -73,4 +79,3 @@ describe('useKioskAutoRefresh', () => {
     expect(onRefresh).not.toHaveBeenCalled();
   });
 });
-

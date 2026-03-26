@@ -60,6 +60,44 @@ export function KioskUxTelemetrySection({ kpis }: { kpis: KioskUxKpis | null }) 
         {/* 2 & 3. Return & FAB */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, borderColor: '#e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+            <Typography variant="subtitle2" sx={{ mb: 1.5, color: '#7c3aed', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
+              📈 キオスク運用KPI
+            </Typography>
+            <Table size="small">
+              <TableBody>
+                <TableRow>
+                  <TableCell sx={{ color: '#64748b', fontWeight: 500 }}>キオスクセッション数</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: '#1e293b' }}>{kpis.kioskSessionCount}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell sx={{ color: '#64748b', fontWeight: 500 }}>復帰後更新回数</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: '#1e293b' }}>{kpis.visibleRefreshCount}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell sx={{ color: '#64748b', fontWeight: 500 }}>復帰後更新中央値</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                    {kpis.visibleRefreshMedianMs == null ? '—' : `${kpis.visibleRefreshMedianMs}ms`}
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell sx={{ color: '#64748b', fontWeight: 500 }}>QuickRecord 保存回数</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: '#1e293b' }}>{kpis.quickRecordSaveCount}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell sx={{ color: '#64748b', fontWeight: 500 }}>QuickRecord 保存中央値</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                    {kpis.quickRecordSaveMedianMs == null ? '—' : `${Math.round(kpis.quickRecordSaveMedianMs / 1000)}s`}
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell sx={{ color: '#64748b', fontWeight: 500 }}>QuickRecord 離脱回数</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: '#1e293b' }}>{kpis.quickRecordAbandonCount}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </Paper>
+
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, borderColor: '#e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
             <Typography variant="subtitle2" sx={{ mb: 1.5, color: '#059669', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1 }}>
               ↩️ 帰還導線の利用 (各機能 → Today)
             </Typography>

@@ -1,10 +1,11 @@
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../../../src/hooks/useToast';
 import { SettingsProvider } from '../../../src/features/settings';
+import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from '../../../src/features/settings/settingsModel';
 import TodayOpsPage from '../../../src/pages/TodayOpsPage';
 import { TodayBentoLayout } from '../../../src/features/today/layouts/TodayBentoLayout';
 import { useTodayActionQueue } from '../../../src/features/today/hooks/useTodayActionQueue';
@@ -99,6 +100,11 @@ vi.mock('../../../src/features/today/hooks/useTodayActionQueue', () => ({
 const mockRecordSuggestionTelemetry = vi.fn();
 vi.mock('../../../src/features/action-engine/telemetry/recordSuggestionTelemetry', () => ({
   recordSuggestionTelemetry: (...args: unknown[]) => mockRecordSuggestionTelemetry(...args),
+}));
+
+const mockRecordKioskTelemetry = vi.fn();
+vi.mock('../../../src/features/today/telemetry/recordKioskTelemetry', () => ({
+  recordKioskTelemetry: (...args: unknown[]) => mockRecordKioskTelemetry(...args),
 }));
 
 const mockDismissSuggestion = vi.fn();
@@ -335,5 +341,49 @@ describe('TodayOpsPage (ActionQueueTimeline integration)', () => {
         snoozePreset: 'tomorrow',
       }),
     );
+  });
+
+  it('records kiosk session start telemetry when /today is opened in kiosk mode', async () => {
+    vi.useRealTimers();
+    localStorage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        ...DEFAULT_SETTINGS,
+        layoutMode: 'kiosk',
+      }),
+    );
+
+    vi.mocked(useTodayActionQueue).mockReturnValue({
+      actionQueue: [],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <SettingsProvider>
+            <MemoryRouter>
+              <TodayOpsPage correctiveActions={[]} />
+            </MemoryRouter>
+          </SettingsProvider>
+        </ToastProvider>
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(mockRecordKioskTelemetry).toHaveBeenCalledWith(
+        'ux_kiosk_session_started',
+        expect.objectContaining({
+          mode: 'kiosk',
+          source: 'today',
+        }),
+      );
+    });
   });
 });

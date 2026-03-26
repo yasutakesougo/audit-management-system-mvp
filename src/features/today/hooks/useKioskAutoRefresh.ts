@@ -4,6 +4,7 @@ export type UseKioskAutoRefreshOptions = {
   enabled: boolean;
   intervalMs?: number;
   onRefresh: () => void | Promise<void>;
+  onVisibilityRefreshComplete?: (durationMs: number) => void;
 };
 
 /**
@@ -16,12 +17,18 @@ export function useKioskAutoRefresh({
   enabled,
   intervalMs = 45_000,
   onRefresh,
+  onVisibilityRefreshComplete,
 }: UseKioskAutoRefreshOptions): void {
   const refreshRef = useRef(onRefresh);
+  const visibilityMetricRef = useRef(onVisibilityRefreshComplete);
 
   useEffect(() => {
     refreshRef.current = onRefresh;
   }, [onRefresh]);
+
+  useEffect(() => {
+    visibilityMetricRef.current = onVisibilityRefreshComplete;
+  }, [onVisibilityRefreshComplete]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -29,8 +36,15 @@ export function useKioskAutoRefresh({
 
     let timer: ReturnType<typeof setInterval> | null = null;
 
-    const runRefresh = () => {
-      void Promise.resolve(refreshRef.current()).catch(() => {});
+    const runRefresh = (reason: 'polling' | 'visibility_restore') => {
+      const startedAt = performance.now();
+      void Promise.resolve(refreshRef.current())
+        .then(() => {
+          if (reason !== 'visibility_restore') return;
+          const elapsed = Math.max(0, Math.round(performance.now() - startedAt));
+          visibilityMetricRef.current?.(elapsed);
+        })
+        .catch(() => {});
     };
 
     const stop = () => {
@@ -43,7 +57,7 @@ export function useKioskAutoRefresh({
       stop();
       timer = setInterval(() => {
         if (document.visibilityState === 'visible') {
-          runRefresh();
+          runRefresh('polling');
         }
       }, intervalMs);
     };
@@ -53,7 +67,7 @@ export function useKioskAutoRefresh({
         stop();
         return;
       }
-      runRefresh();
+      runRefresh('visibility_restore');
       start();
     };
 
@@ -69,4 +83,3 @@ export function useKioskAutoRefresh({
     };
   }, [enabled, intervalMs]);
 }
-
