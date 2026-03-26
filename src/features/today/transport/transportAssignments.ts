@@ -30,7 +30,7 @@ export const DEFAULT_TRANSPORT_VEHICLE_IDS = ['車両1', '車両2', '車両3', '
 const TO_PATTERNS = /(往路|迎え|行き|登所)/;
 const FROM_PATTERNS = /(復路|送り|帰り|退所)/;
 const TRANSPORT_TITLE_PATTERNS = /(送迎|迎え|送り|往路|復路)/;
-const UNASSIGNED_VEHICLE_LABEL = '未割当';
+export const UNASSIGNED_TRANSPORT_VEHICLE_LABEL = '未割当';
 const TRANSPORT_ATTENDANT_TAG_PATTERN = /\[transport_attendant:([^\]\r\n]+)\]/i;
 const TRANSPORT_COURSE_TAG_PATTERN = /\[transport_course:([^\]\r\n]+)\]/i;
 
@@ -197,8 +197,8 @@ export function enrichTransportLegsWithAssignments(
 }
 
 function compareVehicleId(a: string, b: string): number {
-  if (a === UNASSIGNED_VEHICLE_LABEL) return 1;
-  if (b === UNASSIGNED_VEHICLE_LABEL) return -1;
+  if (a === UNASSIGNED_TRANSPORT_VEHICLE_LABEL) return 1;
+  if (b === UNASSIGNED_TRANSPORT_VEHICLE_LABEL) return -1;
 
   const aNumber = /\d+/.exec(a);
   const bNumber = /\d+/.exec(b);
@@ -218,7 +218,7 @@ export function buildVehicleGroups(legs: readonly TransportLeg[]): TransportVehi
     const legCourseId = parseTransportCourse(leg.courseId ?? leg.courseLabel);
     const legCourseLabel = getTransportCourseLabel(legCourseId) ?? leg.courseLabel ?? null;
 
-    const vehicleId = leg.vehicleId?.trim() || UNASSIGNED_VEHICLE_LABEL;
+    const vehicleId = leg.vehicleId?.trim() || UNASSIGNED_TRANSPORT_VEHICLE_LABEL;
     const existing = grouped.get(vehicleId);
 
     if (!existing) {
@@ -278,9 +278,9 @@ export function buildVehicleBoardGroups(
   });
 
   const extraRows = groups
-    .filter((group) => group.vehicleId !== UNASSIGNED_VEHICLE_LABEL)
+    .filter((group) => group.vehicleId !== UNASSIGNED_TRANSPORT_VEHICLE_LABEL)
     .filter((group) => !fixedIdSet.has(group.vehicleId));
-  const unassignedRow = groups.find((group) => group.vehicleId === UNASSIGNED_VEHICLE_LABEL);
+  const unassignedRow = groups.find((group) => group.vehicleId === UNASSIGNED_TRANSPORT_VEHICLE_LABEL);
 
   return [
     ...rows,

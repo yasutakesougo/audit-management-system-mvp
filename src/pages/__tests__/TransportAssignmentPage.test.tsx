@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import TransportAssignmentPage from '@/pages/TransportAssignmentPage';
 
 vi.mock('@/utils/getNow', () => ({
@@ -72,6 +72,10 @@ vi.mock('@/features/staff/store', () => ({
 }));
 
 describe('TransportAssignmentPage', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it('renders transport assignment board and controls', () => {
     render(
       <MemoryRouter>
@@ -106,9 +110,19 @@ describe('TransportAssignmentPage', () => {
     expect(screen.getByTestId('transport-assignment-vehicle-warning-2')).toBeInTheDocument();
     expect(screen.getByTestId('transport-assignment-course-select-1')).toBeInTheDocument();
     expect(screen.getByTestId('transport-assignment-attendant-select-1')).toBeInTheDocument();
+    expect(screen.getByTestId('transport-assignment-vehicle-name-input-1')).toHaveValue('ブルー');
+    expect(screen.getByTestId('transport-assignment-vehicle-name-input-2')).toHaveValue('シルバー');
+    expect(screen.getByTestId('transport-assignment-vehicle-name-input-3')).toHaveValue('ハイエース');
+    expect(screen.getByTestId('transport-assignment-vehicle-name-input-4')).toHaveValue('スクラム');
 
     const backLink = screen.getByTestId('transport-assignment-back-today');
     expect(backLink).toHaveAttribute('href', '/today');
+
+    const vehicleNameInput = screen.getByTestId('transport-assignment-vehicle-name-input-1');
+    fireEvent.change(vehicleNameInput, { target: { value: '青1号' } });
+    fireEvent.blur(vehicleNameInput);
+    expect(screen.getByTestId('transport-assignment-vehicle-name-input-1')).toHaveValue('青1号');
+    expect(localStorage.getItem('transport.vehicle-name-overrides.v1')).toContain('青1号');
 
     fireEvent.click(screen.getByTestId('transport-assignment-apply-week-bulk-default'));
     expect(screen.getByTestId('transport-assignment-week-bulk-summary')).toBeInTheDocument();

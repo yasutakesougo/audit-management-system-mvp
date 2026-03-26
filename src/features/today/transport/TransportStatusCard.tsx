@@ -57,6 +57,10 @@ import {
   hasMissingVehicleDriver,
 } from './transportAssignments';
 import { TRANSPORT_COURSE_OPTIONS, type TransportCourse } from './transportCourse';
+import {
+  loadTransportVehicleNameOverrides,
+  resolveTransportVehicleName,
+} from './transportVehicleNames';
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
@@ -137,6 +141,11 @@ function DirectionProgress({ summary }: { summary: TransportDirectionSummary }) 
 
 function VehicleAssignmentBoard({ legs }: { legs: TransportLeg[] }) {
   const groups = buildVehicleBoardGroups(legs, DEFAULT_TRANSPORT_VEHICLE_IDS);
+  const vehicleNameOverrides = React.useMemo(
+    () => loadTransportVehicleNameOverrides(),
+    [],
+  );
+  const vehicleCount = groups.filter((group) => group.vehicleId !== '未割当').length;
   const totalRiders = groups.reduce((sum, group) => sum + group.riders.length, 0);
   const courseSummary = groups.reduce(
     (acc, group) => {
@@ -174,7 +183,7 @@ function VehicleAssignmentBoard({ legs }: { legs: TransportLeg[] }) {
           車両別配車
         </Typography>
         <Typography variant="caption" color="text.secondary">
-          {groups.length} 台 / 乗車 {totalRiders} 名
+          {vehicleCount} 台 / 乗車 {totalRiders} 名
         </Typography>
       </Stack>
       {hasCourseSummary ? (
@@ -233,7 +242,7 @@ function VehicleAssignmentBoard({ legs }: { legs: TransportLeg[] }) {
             >
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
                 <Typography variant="caption" fontWeight="bold">
-                  🚗 {group.vehicleId}
+                  🚗 {resolveTransportVehicleName(group.vehicleId, vehicleNameOverrides)}
                 </Typography>
                 <Stack direction="row" spacing={0.5} alignItems="center">
                   {group.courseLabel ? (

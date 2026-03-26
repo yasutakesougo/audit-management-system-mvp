@@ -21,6 +21,13 @@ import { TRANSPORT_COURSE_OPTIONS, getTransportCourseLabel, parseTransportCourse
 import {
   DEFAULT_TRANSPORT_VEHICLE_IDS,
 } from '@/features/today/transport/transportAssignments';
+import {
+  applyTransportVehicleNameOverride,
+  loadTransportVehicleNameOverrides,
+  resolveTransportVehicleName,
+  saveTransportVehicleNameOverrides,
+  type TransportVehicleNameOverrides,
+} from '@/features/today/transport/transportVehicleNames';
 import { useUsers } from '@/features/users/useUsers';
 import Alert from '@mui/material/Alert';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
@@ -154,6 +161,10 @@ export default function TransportAssignmentPage() {
   const [draft, setDraft] = useState<TransportAssignmentDraft | null>(null);
   const [dirty, setDirty] = useState(false);
   const [pendingAssignByVehicle, setPendingAssignByVehicle] = useState<Record<string, string>>({});
+  const [vehicleNameOverrides, setVehicleNameOverrides] = useState<TransportVehicleNameOverrides>(
+    () => loadTransportVehicleNameOverrides(),
+  );
+  const [vehicleNameDraftByVehicle, setVehicleNameDraftByVehicle] = useState<Record<string, string>>({});
   const [weekBulkApplyState, setWeekBulkApplyState] = useState<WeekBulkApplyState | null>(null);
 
   const weekStartDate = useMemo(() => getWeekStartDate(targetDate), [targetDate]);
@@ -265,6 +276,7 @@ export default function TransportAssignmentPage() {
     setDraft(stableBaseDraft);
     setDirty(false);
     setPendingAssignByVehicle({});
+    setVehicleNameDraftByVehicle({});
   }, [stableBaseDraft]);
 
   const currentDraft = draft ?? stableBaseDraft;
@@ -311,10 +323,31 @@ export default function TransportAssignmentPage() {
     () =>
       currentDraft.vehicles
         .filter((vehicle) => hasVehicleMissingDriver(vehicle))
-        .map((vehicle) => vehicle.vehicleId),
-    [currentDraft.vehicles],
+        .map((vehicle) => resolveTransportVehicleName(vehicle.vehicleId, vehicleNameOverrides)),
+    [currentDraft.vehicles, vehicleNameOverrides],
   );
   const canSave = dirty && effectivePayloadPreview.length > 0 && saveStatus !== 'saving';
+
+  const handleVehicleNameDraftChange = (vehicleId: string, nextName: string) => {
+    setVehicleNameDraftByVehicle((prev) => ({
+      ...prev,
+      [vehicleId]: nextName,
+    }));
+  };
+
+  const handleVehicleNameCommit = (vehicleId: string, nextNameInput?: string) => {
+    const nextName = nextNameInput ?? vehicleNameDraftByVehicle[vehicleId];
+    if (nextName === undefined) return;
+
+    const nextOverrides = applyTransportVehicleNameOverride(vehicleNameOverrides, vehicleId, nextName);
+    setVehicleNameOverrides(nextOverrides);
+    saveTransportVehicleNameOverrides(nextOverrides);
+    setVehicleNameDraftByVehicle((prev) => {
+      const next = { ...prev };
+      delete next[vehicleId];
+      return next;
+    });
+  };
 
   const handleDriverChange = (vehicleId: string, staffId: string) => {
     clearSaveError();
@@ -680,7 +713,26 @@ export default function TransportAssignmentPage() {
             data-testid={`transport-assignment-vehicle-card-${index + 1}`}
           >
             <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-              <Typography variant="h6">{vehicle.vehicleId}</Typography>
+              <TextField
+                size="small"
+                label="車両名"
+                value={vehicleNameDraftByVehicle[vehicle.vehicleId] ?? resolveTransportVehicleName(vehicle.vehicleId, vehicleNameOverrides)}
+                onChange={(event) => handleVehicleNameDraftChange(vehicle.vehicleId, event.target.value)}
+                onBlur={(event) => handleVehicleNameCommit(vehicle.vehicleId, event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter') return;
+                  event.preventDefault();
+                  const value = (event.target as HTMLInputElement).value;
+                  handleVehicleNameCommit(vehicle.vehicleId, value);
+                  (event.target as HTMLInputElement).blur();
+                }}
+                disabled={saveStatus === 'saving'}
+                inputProps={{
+                  maxLength: 20,
+                  'data-testid': `transport-assignment-vehicle-name-input-${index + 1}`,
+                }}
+                sx={{ minWidth: 180 }}
+              />
               {vehicle.courseLabel ? (
                 <Chip
                   size="small"
