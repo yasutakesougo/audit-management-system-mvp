@@ -123,4 +123,28 @@ describe('env.schema', () => {
       expect(zodError.issues?.[0]?.code).toBe('custom');
     }
   });
+
+  it('accepts AAD alias keys by normalizing them to MSAL required keys', () => {
+    setTestEnv({
+      VITE_AAD_CLIENT_ID: 'aad-client-id-001',
+      VITE_AAD_TENANT_ID: 'aad-tenant-id-001',
+    });
+
+    const parsed = getParsedEnv();
+
+    expect(parsed.VITE_MSAL_CLIENT_ID).toBe('aad-client-id-001');
+    expect(parsed.VITE_MSAL_TENANT_ID).toBe('aad-tenant-id-001');
+  });
+
+  it('accepts single-element array values for MSAL keys', () => {
+    setTestEnv({
+      VITE_MSAL_CLIENT_ID: ['array-client-id-001'],
+      VITE_MSAL_TENANT_ID: ['array-tenant-id-001'],
+    });
+
+    const parsed = getParsedEnv();
+
+    expect(parsed.VITE_MSAL_CLIENT_ID).toBe('array-client-id-001');
+    expect(parsed.VITE_MSAL_TENANT_ID).toBe('array-tenant-id-001');
+  });
 });
