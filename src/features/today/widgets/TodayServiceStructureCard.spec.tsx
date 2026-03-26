@@ -7,11 +7,11 @@ import { TodayServiceStructureCard } from './TodayServiceStructureCard';
 
 const fullStructure: ServiceStructure = {
   dayCare: {
-    floorWatchStaff: ['山田', '佐藤'],
-    activityLeadStaff: ['鈴木'],
-    mealSupportStaff: ['田中'],
-    recordCheckStaff: ['村上'],
-    returnAcceptStaff: ['中村'],
+    firstWorkroomStaff: ['山田', '佐藤'],
+    secondWorkroomStaff: ['鈴木'],
+    outdoorActivityStaff: ['田中'],
+    japaneseRoomStaff: ['村上'],
+    playroomStaff: ['中村'],
   },
   lifeSupport: {
     shortStayCount: 1,
@@ -70,10 +70,14 @@ describe('TodayServiceStructureCard — 生活介護', () => {
     render(<TodayServiceStructureCard serviceStructure={fullStructure} />);
 
     const section = within(screen.getByTestId('section-daycare'));
-    expect(section.getByText('フロア見守り')).toBeInTheDocument();
+    expect(section.getByText('第一作業室')).toBeInTheDocument();
     expect(section.getByText('山田、佐藤')).toBeInTheDocument();
-    expect(section.getByText('活動進行')).toBeInTheDocument();
+    expect(section.getByText('第二作業室')).toBeInTheDocument();
     expect(section.getByText('鈴木')).toBeInTheDocument();
+    expect(section.getByText('和室')).toBeInTheDocument();
+    expect(section.getByText('村上')).toBeInTheDocument();
+    expect(section.getByText('プレイルーム')).toBeInTheDocument();
+    expect(section.getByText('中村')).toBeInTheDocument();
   });
 });
 

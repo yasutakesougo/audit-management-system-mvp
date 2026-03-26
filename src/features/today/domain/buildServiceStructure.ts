@@ -6,9 +6,12 @@
  *
  * ── マッピングルール ──
  *  owner / jobTitle        → ServiceStructure スロット
- *  "受付"                  → returnAcceptStaff / intakeDeskStaff
+ *  "受付"                  → playroomStaff / intakeDeskStaff
  *  "看護" / "看護師"        → nurseNames / nursePresent
- *  "支援員" / "生活支援員"  → floorWatchStaff / activityLeadStaff / supportStaff
+ *  "支援員" / "生活支援員"  → firstWorkroomStaff / secondWorkroomStaff / supportStaff
+ *  "外活動" / "外出"        → outdoorActivityStaff
+ *  "和室"                  → japaneseRoomStaff
+ *  "プレイルーム"          → playroomStaff
  *  "栄養士" / "管理栄養士"  → mealStaff
  *  "サービス管理責任者"     → serviceManagerNames
  *  "所長" / "施設長"        → directorNames
@@ -30,6 +33,9 @@ type RoleCategory =
   | 'reception'
   | 'nurse'
   | 'support'
+  | 'outdoor'
+  | 'japaneseRoom'
+  | 'playroom'
   | 'nutrition'
   | 'manager'
   | 'director'
@@ -41,6 +47,9 @@ function classifyOwner(owner: string): RoleCategory {
   const o = owner.trim();
   if (/受付/.test(o)) return 'reception';
   if (/看護/.test(o)) return 'nurse';
+  if (/外活動|外出|屋外|散歩/.test(o)) return 'outdoor';
+  if (/和室|畳/.test(o)) return 'japaneseRoom';
+  if (/プレイルーム|プレイ|遊び/.test(o)) return 'playroom';
   if (/支援員|支援|介護|世話人/.test(o)) return 'support';
   if (/栄養/.test(o)) return 'nutrition';
   if (/サービス管理|サビ管/.test(o)) return 'manager';
@@ -96,21 +105,31 @@ export function buildServiceStructure(
     byRole.get(cat) ?? staffByRole.get(cat) ?? [];
 
   const hasAny = (cat: RoleCategory): boolean => resolve(cat).length > 0;
+  const unique = (values: string[]): string[] => Array.from(new Set(values.filter(Boolean)));
 
   // ── 3. ServiceStructure を組み立て ──
   const supportStaff = resolve('support');
+  const japaneseRoomStaff = unique([
+    ...resolve('japaneseRoom'),
+    ...supportStaff.slice(4, 5),
+  ]);
+  const playroomStaff = unique([
+    ...resolve('playroom'),
+    ...supportStaff.slice(5),
+    ...resolve('reception'),
+    ...resolve('nutrition'),
+    ...resolve('other'),
+  ]);
 
   return {
     dayCare: {
-      floorWatchStaff: supportStaff.slice(0, 2),
-      activityLeadStaff: supportStaff.slice(2, 3),
-      mealSupportStaff: resolve('nutrition').slice(0, 1).length > 0
-        ? resolve('nutrition').slice(0, 1)
-        : supportStaff.slice(3, 4),
-      recordCheckStaff: supportStaff.slice(4, 5).length > 0
-        ? supportStaff.slice(4, 5)
-        : supportStaff.slice(0, 1),
-      returnAcceptStaff: resolve('reception'),
+      firstWorkroomStaff: supportStaff.slice(0, 2),
+      secondWorkroomStaff: supportStaff.slice(2, 4),
+      outdoorActivityStaff: resolve('outdoor').length > 0
+        ? resolve('outdoor')
+        : resolve('transport').slice(0, 1),
+      japaneseRoomStaff,
+      playroomStaff,
     },
     lifeSupport: {
       shortStayCount: 0,   // スケジュールからは不明 — 0 でフォールバック
