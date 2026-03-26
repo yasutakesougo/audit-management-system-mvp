@@ -51,6 +51,17 @@ const emptyLifeSupport: ServiceStructure = {
   },
 };
 
+const emptyDayCare: ServiceStructure = {
+  ...fullStructure,
+  dayCare: {
+    firstWorkroomStaff: [],
+    secondWorkroomStaff: [],
+    outdoorActivityStaff: [],
+    japaneseRoomStaff: [],
+    playroomStaff: [],
+  },
+};
+
 const partialPresence: ServiceStructure = {
   ...fullStructure,
   decisionSupport: {
@@ -78,6 +89,18 @@ describe('TodayServiceStructureCard — 生活介護', () => {
     expect(section.getByText('村上')).toBeInTheDocument();
     expect(section.getByText('プレイルーム')).toBeInTheDocument();
     expect(section.getByText('中村')).toBeInTheDocument();
+  });
+
+  it('職員未割当でも5項目がデフォルト表示される', () => {
+    render(<TodayServiceStructureCard serviceStructure={emptyDayCare} />);
+
+    const section = within(screen.getByTestId('section-daycare'));
+    expect(section.getByText('第一作業室')).toBeInTheDocument();
+    expect(section.getByText('第二作業室')).toBeInTheDocument();
+    expect(section.getByText('外活動')).toBeInTheDocument();
+    expect(section.getByText('和室')).toBeInTheDocument();
+    expect(section.getByText('プレイルーム')).toBeInTheDocument();
+    expect(section.getAllByText('未割当')).toHaveLength(5);
   });
 });
 
