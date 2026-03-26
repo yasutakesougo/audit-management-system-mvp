@@ -9,6 +9,10 @@ export function KioskUxTelemetrySection({ kpis }: { kpis: KioskUxKpis | null }) 
     ? (kpis.openFabMenuCount / kpis.totalNavigateCount) * 100 
     : 0;
   const fabRate = Math.round(fabRateRaw * 10) / 10;
+  const quickRecordAbandonRateRaw = kpis.quickRecordStartCount > 0
+    ? (kpis.quickRecordAbandonCount / kpis.quickRecordStartCount) * 100
+    : 0;
+  const quickRecordAbandonRate = Math.round(quickRecordAbandonRateRaw * 10) / 10;
   
   // 閾値（15%）
   const isFabAlert = fabRate > 15 && kpis.totalNavigateCount >= 5;
@@ -80,6 +84,10 @@ export function KioskUxTelemetrySection({ kpis }: { kpis: KioskUxKpis | null }) 
                   </TableCell>
                 </TableRow>
                 <TableRow>
+                  <TableCell sx={{ color: '#64748b', fontWeight: 500 }}>QuickRecord 開始回数</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: '#1e293b' }}>{kpis.quickRecordStartCount}</TableCell>
+                </TableRow>
+                <TableRow>
                   <TableCell sx={{ color: '#64748b', fontWeight: 500 }}>QuickRecord 保存回数</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700, color: '#1e293b' }}>{kpis.quickRecordSaveCount}</TableCell>
                 </TableRow>
@@ -92,6 +100,12 @@ export function KioskUxTelemetrySection({ kpis }: { kpis: KioskUxKpis | null }) 
                 <TableRow>
                   <TableCell sx={{ color: '#64748b', fontWeight: 500 }}>QuickRecord 離脱回数</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700, color: '#1e293b' }}>{kpis.quickRecordAbandonCount}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell sx={{ color: '#64748b', fontWeight: 500 }}>QuickRecord 離脱率</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                    {kpis.quickRecordStartCount === 0 ? '—' : `${quickRecordAbandonRate}%`}
+                  </TableCell>
                 </TableRow>
               </TableBody>
             </Table>
