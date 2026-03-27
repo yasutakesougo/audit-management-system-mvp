@@ -19,6 +19,7 @@ export {
     USERS_SELECT_FIELDS_FULL, USERS_SELECT_FIELDS_SAFE,
     USERS_SELECT_SAFE, type IUserMaster,
     type IUserMasterCreateDto,
+    type UserLifecycleStatus,
     type UserSelectMode
 } from './userFields';
 export type { UserRow } from './userFields';

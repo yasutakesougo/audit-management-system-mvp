@@ -14,6 +14,7 @@ const makeUser = (overrides: Partial<IUserMaster> = {}): IUserMaster => ({
   Id: 1,
   UserID: 'U-001',
   FullName: 'Test User',
+  IsActive: true,
   ...overrides,
 });
 
@@ -81,6 +82,14 @@ describe('getUserStatusChips', () => {
     expect(visible.length).toBeGreaterThan(0);
     expect(visible[0].label).toBe('利用中');
     expect(visible[0].color).toBe('success');
+  });
+
+  it('shows 状態未確定 when lifecycle signals are missing', () => {
+    const { visible } = getUserStatusChips(
+      makeUser({ IsActive: undefined, UsageStatus: null, ServiceEndDate: null }),
+    );
+    expect(visible[0].label).toBe('状態未確定');
+    expect(visible[0].color).toBe('warning');
   });
 
   it('shows 休止 for inactive user', () => {

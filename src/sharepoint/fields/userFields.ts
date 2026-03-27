@@ -11,6 +11,7 @@ export type UserRow = SpUserItem;
 
 // ── セレクトモード型 & リゾルバ ──
 export type UserSelectMode = 'core' | 'detail' | 'full';
+export type UserLifecycleStatus = 'active' | 'suspended' | 'terminated' | 'unknown';
 
 export interface IUserMaster {
   Id: number;
@@ -54,6 +55,8 @@ export interface IUserMaster {
 
   // 取得レベルマーカー（Repository から付与、UI 側で表示判定に使用可）
   __selectMode?: UserSelectMode;
+  // ライフサイクル判定（Repository 正規化で付与）
+  lifecycleStatus?: UserLifecycleStatus;
 
   // アセスメント会議実施日（モニタリング会議カウントダウンの起点）
   LastAssessmentDate?: string | null;
@@ -128,6 +131,7 @@ export const USERS_MASTER_FIELD_MAP = {
   transportToDays: 'TransportToDays',
   transportFromDays: 'TransportFromDays',
   transportCourse: 'TransportCourse',
+  transportSchedule: 'TransportSchedule',
   attendanceDays: 'AttendanceDays',
   recipientCertNumber: 'RecipientCertNumber',
   recipientCertExpiry: 'RecipientCertExpiry',
@@ -170,6 +174,7 @@ export const USERS_SELECT_FIELDS_CORE = [
   USERS_MASTER_FIELD_MAP.transportToDays,
   USERS_MASTER_FIELD_MAP.transportFromDays,
   USERS_MASTER_FIELD_MAP.transportCourse,
+  USERS_MASTER_FIELD_MAP.transportSchedule,
   USERS_MASTER_FIELD_MAP.attendanceDays,
   USERS_MASTER_FIELD_MAP.recipientCertNumber,
   USERS_MASTER_FIELD_MAP.recipientCertExpiry,

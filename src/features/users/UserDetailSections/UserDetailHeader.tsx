@@ -12,7 +12,7 @@ import Typography from '@mui/material/Typography';
 import React from 'react';
 import { MuiRouterLink } from '@/lib/muiLink';
 import type { IUserMaster } from '../types';
-import { USAGE_STATUS_VALUES } from '../typesExtended';
+import { canEditUser, resolveUserLifecycleStatus } from '../domain/userLifecycle';
 import { formatDateLabel, resolveUserIdentifier } from './helpers';
 
 type UserDetailHeaderProps = {
@@ -33,6 +33,7 @@ export const UserDetailHeader: React.FC<UserDetailHeaderProps> = ({
   isActive,
 }) => {
   const isEmbedded = variant === 'embedded';
+  const lifecycleStatus = resolveUserLifecycleStatus(user);
 
   return (
     <Paper variant="outlined" sx={{ p: isEmbedded ? 2 : { xs: 2.5, md: 3 }, borderRadius: isEmbedded ? 2 : 3 }}>
@@ -60,13 +61,13 @@ export const UserDetailHeader: React.FC<UserDetailHeaderProps> = ({
           {isEmbedded && (
             <Chip
               label={
-                user.UsageStatus === USAGE_STATUS_VALUES.TERMINATED ? '終了'
-                : user.UsageStatus === USAGE_STATUS_VALUES.SUSPENDED || user.IsActive === false ? '休止'
+                lifecycleStatus === 'terminated' ? '終了'
+                : lifecycleStatus === 'suspended' ? '休止'
+                : lifecycleStatus === 'unknown' ? '状態未確定'
                 : '利用中'
               }
               color={
-                user.UsageStatus === USAGE_STATUS_VALUES.TERMINATED || user.UsageStatus === USAGE_STATUS_VALUES.SUSPENDED || user.IsActive === false
-                  ? 'default' : 'success'
+                lifecycleStatus !== 'active' ? 'default' : 'success'
               }
               size="small"
             />
@@ -144,7 +145,7 @@ export const UserDetailHeader: React.FC<UserDetailHeaderProps> = ({
           <>
             <Divider />
             <Stack direction="row" spacing={1}>
-              {onEdit && (
+              {onEdit && canEditUser(user) && (
                 <Button
                   variant="outlined"
                   size="small"

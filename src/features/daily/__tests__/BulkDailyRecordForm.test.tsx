@@ -15,23 +15,29 @@ vi.mock('react-hot-toast', () => ({
 // Mock useUsers hook
 const mockUsers = [
   {
-    id: 1,
-    userId: 'U001',
-    name: '田中 太郎',
-    furigana: 'たなか たろう'
+    Id: 1,
+    UserID: 'U001',
+    FullName: '田中 太郎',
+    Furigana: 'たなか たろう',
+    IsActive: true,
+    lifecycleStatus: 'active' as const,
   },
   {
-    id: 2,
-    userId: 'U002',
-    name: '佐藤 花子',
-    furigana: 'さとう はなこ'
+    Id: 2,
+    UserID: 'U002',
+    FullName: '佐藤 花子',
+    Furigana: 'さとう はなこ',
+    IsActive: true,
+    lifecycleStatus: 'active' as const,
   },
   {
-    id: 3,
-    userId: 'U003',
-    name: '山田 一郎',
-    furigana: 'やまだ いちろう'
-  }
+    Id: 3,
+    UserID: 'U003',
+    FullName: '山田 一郎',
+    Furigana: 'やまだ いちろう',
+    IsActive: true,
+    lifecycleStatus: 'active' as const,
+  },
 ];
 
 vi.mock('@/stores/useUsers', () => ({
@@ -91,7 +97,7 @@ describe('BulkDailyRecordForm', () => {
 
     const userList = getUserList();
     mockUsers.forEach((user) => {
-      expect(within(userList).getByTestId(rowTestId(user.userId))).toHaveTextContent(user.name);
+      expect(within(userList).getByTestId(rowTestId(user.UserID))).toHaveTextContent(user.FullName);
     });
   });
 

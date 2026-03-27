@@ -11,6 +11,7 @@
 import { useAttendanceStore } from '@/features/attendance';
 import { useDashboardSummary } from '@/features/dashboard';
 import { useStaffStore } from '@/features/staff';
+import { filterActiveUsers } from '@/features/users/domain/userLifecycle';
 import { useUsersQuery } from '@/features/users/hooks/useUsersQuery';
 import { toLocalDateISO } from '@/utils/getNow';
 import { useMemo } from 'react';
@@ -72,7 +73,11 @@ const mockSpSyncStatus = { loading: false, error: null, itemCount: 0, source: 'd
  */
 export function useTodaySummary(): TodaySummary {
   // ─── 1. Data Fetching (internalized from TodayOpsPage) ───
-  const { data: users } = useUsersQuery();
+  const { data: queriedUsers } = useUsersQuery({ selectMode: 'detail' });
+  const users = useMemo(
+    () => filterActiveUsers(queriedUsers),
+    [queriedUsers],
+  );
   const { visits } = useAttendanceStore();
   const { staff } = useStaffStore();
   const today = toLocalDateISO();

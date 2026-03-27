@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import { useUsersStore } from '@/features/users/store';
+import { filterActiveUsers } from '@/features/users/domain/userLifecycle';
 import type { ScheduleUserOption } from '../domain/scheduleFormState';
 
 const normalizeUserId = (value: unknown, fallbackId?: number): string => {
@@ -36,7 +37,7 @@ export const useScheduleUserOptions = (): ScheduleUserOption[] => {
 
     const normalized: ScheduleUserOption[] = [];
 
-    for (const user of users) {
+    for (const user of filterActiveUsers(users)) {
       if (!user) {
         continue;
       }

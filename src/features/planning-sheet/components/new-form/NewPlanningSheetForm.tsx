@@ -46,6 +46,7 @@ import type { TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
 import type { PlanningSheetFormValues } from '@/domain/isp/schema';
 import type { MonitoringToPlanningResult } from '../../monitoringToPlanningBridge';
 import { useTokuseiSurveyResponses } from '@/features/assessment/hooks/useTokuseiSurveyResponses';
+import { filterActiveUsers } from '@/features/users/domain/userLifecycle';
 import { useUsers } from '@/features/users/useUsers';
 import { useAuth } from '@/auth/useAuth';
 import { tokuseiToPlanningBridge } from '../../tokuseiToPlanningBridge';
@@ -131,7 +132,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
 
   // ── Helpers ──
   const userOptions = React.useMemo<UserOption[]>(
-    () => users.map(u => ({ id: u.UserID, label: `${u.FullName} (${u.UserID})` })),
+    () => filterActiveUsers(users).map(u => ({ id: u.UserID, label: `${u.FullName} (${u.UserID})` })),
     [users],
   );
 
