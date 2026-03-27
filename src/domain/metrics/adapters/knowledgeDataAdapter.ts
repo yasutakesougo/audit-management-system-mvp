@@ -17,7 +17,7 @@
  */
 
 import type { EvidenceLinkMap } from '@/domain/isp/evidenceLink';
-import type { SuggestionAction } from '@/features/daily/domain/suggestionAction';
+import type { SuggestionAction } from '@/features/daily/domain/legacy/suggestionAction';
 import type { DecisionRecord, EvidenceLinkRecord } from '../knowledgeMetrics';
 
 // ─── Evidence Link 変換 ──────────────────────────────────

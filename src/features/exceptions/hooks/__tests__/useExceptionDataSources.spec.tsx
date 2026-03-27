@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useExceptionDataSources } from '../useExceptionDataSources';
 import { useUsersQuery } from '@/features/users/hooks/useUsersQuery';
-import { useDailyRecordRepository } from '@/features/daily/repositoryFactory';
+import { useDailyRecordRepository } from '@/features/daily/repositories/repositoryFactory';
 import { useHandoffData } from '@/features/handoff/hooks/useHandoffData';
 import { useIspRepositories } from '@/features/support-plan-guide/hooks/useIspRepositories';
 
@@ -11,7 +11,7 @@ vi.mock('@/features/users/hooks/useUsersQuery', () => ({
   useUsersQuery: vi.fn(),
 }));
 
-vi.mock('@/features/daily/repositoryFactory', () => ({
+vi.mock('@/features/daily/repositories/repositoryFactory', () => ({
   useDailyRecordRepository: vi.fn(),
 }));
 

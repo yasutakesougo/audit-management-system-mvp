@@ -18,7 +18,7 @@
  */
 import type { ABCRecord } from '@/domain/behavior';
 import type { ProcedureExecutionStatus } from '@/domain/isp/schema';
-import type { ProcedureStep } from '@/features/daily/domain/ProcedureRepository';
+import type { ProcedureStep } from '@/features/daily/domain/legacy/ProcedureRepository';
 
 /**
  * SupportProcedureRecord の作成入力型

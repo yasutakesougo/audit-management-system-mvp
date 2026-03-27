@@ -28,7 +28,7 @@ import {
   appendCandidateToImprovementIdeas,
   collectISPCandidates,
   isAlreadyInImprovementIdeas,
-} from '@/features/daily/domain/ispCandidateMapper';
+} from '@/features/daily/domain/mappers/ispCandidateMapper';
 import type { ToastState } from '../../types';
 import { useAcceptedSuggestionsForUser } from '../../hooks/useAcceptedSuggestionsForUser';
 

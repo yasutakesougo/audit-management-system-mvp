@@ -10,14 +10,14 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { UserRowData } from '../../hooks/useTableDailyRecordForm';
+import type { UserRowData } from '../../hooks/view-models/useTableDailyRecordForm';
 import {
   createEmptyRow,
   hasRowContent,
   shouldPrefillSpecialNotes,
   applyHandoffNotesToRows,
   syncRowsWithSelectedUsers,
-} from '../rowInitialization';
+} from '../builders/rowInitialization';
 
 // ─── helpers ────────────────────────────────────────────
 

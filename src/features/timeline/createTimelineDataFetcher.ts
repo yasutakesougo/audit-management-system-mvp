@@ -20,8 +20,8 @@
  */
 
 import type { AnyDaily, PersonDaily } from '@/domain/daily/types';
-import type { DailyRecordRepository, DailyRecordItem } from '@/features/daily/domain/DailyRecordRepository';
-import type { DailyRecordUserRow } from '@/features/daily/schema';
+import type { DailyRecordRepository, DailyRecordItem } from '@/features/daily/domain/legacy/DailyRecordRepository';
+import type { DailyRecordUserRow } from '@/features/daily/domain/schema';
 import type { HighRiskIncident } from '@/domain/support/highRiskIncident';
 import type { IncidentRepository } from '@/domain/support/incidentRepository';
 import type { IspRepository } from '@/domain/isp/port';

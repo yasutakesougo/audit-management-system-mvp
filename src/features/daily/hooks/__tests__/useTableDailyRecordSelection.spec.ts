@@ -15,8 +15,8 @@ import { useRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { User } from '@/types';
-import type { UseTableDailyRecordSelectionParams } from '../useTableDailyRecordSelection';
-import { useTableDailyRecordSelection } from '../useTableDailyRecordSelection';
+import type { UseTableDailyRecordSelectionParams } from '../orchestrators/useTableDailyRecordSelection';
+import { useTableDailyRecordSelection } from '../orchestrators/useTableDailyRecordSelection';
 
 // ── Mock ────────────────────────────────────────────
 

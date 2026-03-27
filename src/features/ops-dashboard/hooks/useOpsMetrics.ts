@@ -31,7 +31,7 @@ import {
   extractPlanningSheetIds,
 } from '@/domain/metrics/adapters/knowledgeDataAdapter';
 import { localEvidenceLinkRepository } from '@/infra/localStorage/localEvidenceLinkRepository';
-import type { SuggestionAction } from '@/features/daily/domain/suggestionAction';
+import type { SuggestionAction } from '@/features/daily/domain/legacy/suggestionAction';
 
 // ─── 型定義 ──────────────────────────────────────────────
 

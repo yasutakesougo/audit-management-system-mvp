@@ -11,8 +11,8 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 
-import { useDailyRecordRepository } from '@/features/daily/repositoryFactory';
-import type { DailyRecordItem } from '@/features/daily/domain/DailyRecordRepository';
+import { useDailyRecordRepository } from '@/features/daily/repositories/repositoryFactory';
+import type { DailyRecordItem } from '@/features/daily/domain/legacy/DailyRecordRepository';
 import { useHandoffData } from '@/features/handoff/hooks/useHandoffData';
 import type { HandoffRecord } from '@/features/handoff/handoffTypes';
 import type { DataSourceStatus } from '@/features/exceptions/hooks/useExceptionDataSources';

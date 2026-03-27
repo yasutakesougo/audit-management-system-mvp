@@ -21,7 +21,7 @@ import {
 } from '@/features/operationFlow/data/createOperationalPhaseRepository';
 import { DEFAULT_PHASE_CONFIG } from '@/features/operationFlow/domain/defaultPhaseConfig';
 import type { OperationFlowPhaseConfig } from '@/features/operationFlow/domain/operationFlowTypes';
-import { getDailyPhaseHint } from '@/features/daily/components/DailyPhaseHintBanner';
+import { getDailyPhaseHint } from '@/features/daily/components/sections/DailyPhaseHintBanner';
 import { getTodayPhaseHint } from '@/features/today/widgets/TodayPhaseIndicator';
 
 // ────────────────────────────────────────

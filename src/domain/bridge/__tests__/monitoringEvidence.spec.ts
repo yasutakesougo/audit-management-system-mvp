@@ -10,8 +10,8 @@ import {
   generateMonitoringNarrative,
   type SummarizeInput,
 } from '../monitoringEvidence';
-import type { ProcedureStep } from '@/features/daily/domain/ProcedureRepository';
-import type { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
+import type { ProcedureStep } from '@/features/daily/domain/legacy/ProcedureRepository';
+import type { ExecutionRecord } from '@/features/daily/domain/legacy/executionRecordTypes';
 
 // ─────────────────────────────────────────────
 // Factories

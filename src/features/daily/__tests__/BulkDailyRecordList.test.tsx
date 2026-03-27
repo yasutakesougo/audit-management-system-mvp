@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import BulkDailyRecordList, { type BulkDailyRow } from '../lists/BulkDailyRecordList';
+import BulkDailyRecordList, { type BulkDailyRow } from '../components/lists/BulkDailyRecordList';
 
 const getRowByUserId = (userId: string) => screen.getAllByTestId(`daily-bulk-row-${userId}`)[0];
 

@@ -15,7 +15,7 @@ const mockRepository = {
   save: vi.fn(),
 };
 
-vi.mock('@/features/daily/repositoryFactory', () => ({
+vi.mock('@/features/daily/repositories/repositoryFactory', () => ({
   useDailyRecordRepository: () => mockRepository,
 }));
 

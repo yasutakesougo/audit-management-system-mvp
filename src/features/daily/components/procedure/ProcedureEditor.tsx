@@ -1,5 +1,5 @@
-import type { BipOption } from '@/features/daily/domain/toBipOptions';
-import type { ProcedureItem } from '@/features/daily/stores/procedureStore';
+import type { BipOption } from '@/features/daily/domain/builders/toBipOptions';
+import type { ProcedureItem } from '@/features/daily/hooks/legacy-stores/procedureStore';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ShieldIcon from '@mui/icons-material/Shield';

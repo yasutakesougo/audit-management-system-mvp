@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import toast from 'react-hot-toast';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useTableDailyRecordViewModel } from '../table/useTableDailyRecordViewModel';
+import { useTableDailyRecordViewModel } from '../components/table/useTableDailyRecordViewModel';
 
 const navigateMock = vi.fn();
 
@@ -16,7 +16,7 @@ vi.mock('react-router-dom', async () => {
 
 // Mock repository
 const mockSave = vi.fn().mockResolvedValue(undefined);
-vi.mock('../repositoryFactory', () => ({
+vi.mock('@/features/daily/repositories/repositoryFactory', () => ({
   useDailyRecordRepository: () => ({
     save: mockSave,
   }),

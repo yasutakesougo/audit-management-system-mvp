@@ -6,8 +6,8 @@ import {
   isAlreadyAccepted,
   isAlreadyActioned,
   type SuggestionAction,
-} from '../suggestionAction';
-import type { PatternSuggestion } from '../behaviorPatternSuggestions';
+} from '../legacy/suggestionAction';
+import type { PatternSuggestion } from '../behavior/behaviorPatternSuggestions';
 
 // ─── ヘルパー ────────────────────────────────────────────
 

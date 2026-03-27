@@ -19,13 +19,13 @@ import { useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { User } from '@/types';
-import type { TableDailyRecordData, UserRowData } from '../useTableDailyRecordForm';
-import type { UseTableDailyRecordRowHandlersParams } from '../useTableDailyRecordRowHandlers';
-import { useTableDailyRecordRowHandlers } from '../useTableDailyRecordRowHandlers';
+import type { TableDailyRecordData, UserRowData } from '../view-models/useTableDailyRecordForm';
+import type { UseTableDailyRecordRowHandlersParams } from '../orchestrators/useTableDailyRecordRowHandlers';
+import { useTableDailyRecordRowHandlers } from '../orchestrators/useTableDailyRecordRowHandlers';
 
 // ── Mock: getLastActivitiesForUser ─────────────────────
 
-vi.mock('../useLastActivities', () => ({
+vi.mock('@/features/daily/hooks/legacy/useLastActivities', () => ({
   getLastActivitiesForUser: vi.fn(() => null),
   saveLastActivities: vi.fn(),
 }));

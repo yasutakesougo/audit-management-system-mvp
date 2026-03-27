@@ -10,7 +10,7 @@
  *   - BehaviorTagCategory は behaviorTag.ts から再エクスポートする
  */
 
-import type { BehaviorTagCategory } from '../../daily/domain/behaviorTag';
+import type { BehaviorTagCategory } from '../../daily/domain/behavior/behaviorTag';
 
 // ─── Goal 側の型 ────────────────────────────────────────
 

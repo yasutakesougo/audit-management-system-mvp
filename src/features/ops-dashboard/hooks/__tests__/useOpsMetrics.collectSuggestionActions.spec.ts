@@ -1,4 +1,4 @@
-import type { SuggestionAction } from '@/features/daily/domain/suggestionAction';
+import type { SuggestionAction } from '@/features/daily/domain/legacy/suggestionAction';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { collectSuggestionActions, SUGGESTION_STORAGE_KEY_PATTERN } from '../useOpsMetrics';
 

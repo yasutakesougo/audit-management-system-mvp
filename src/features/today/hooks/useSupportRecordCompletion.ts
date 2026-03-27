@@ -9,8 +9,8 @@
  *
  * @see ADR-002 guardrails — /today 側でのみ消費
  */
-import { useExecutionStore } from '@/features/daily/stores/executionStore';
-import { useProcedureStore } from '@/features/daily/stores/procedureStore';
+import { useExecutionStore } from '@/features/daily/hooks/legacy-stores/executionStore';
+import { useProcedureStore } from '@/features/daily/hooks/legacy-stores/procedureStore';
 import { useMemo } from 'react';
 
 // ---------------------------------------------------------------------------

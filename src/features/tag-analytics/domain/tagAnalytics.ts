@@ -8,7 +8,7 @@
  * SSOT: タグ定義は behaviorTag.ts、集計詳細は monitoringDailyAnalytics.ts
  */
 
-import { BEHAVIOR_TAGS, type BehaviorTagKey, BEHAVIOR_TAG_CATEGORIES, type BehaviorTagCategory } from '@/features/daily/domain/behaviorTag';
+import { BEHAVIOR_TAGS, type BehaviorTagKey, BEHAVIOR_TAG_CATEGORIES, type BehaviorTagCategory } from '@/features/daily/domain/behavior/behaviorTag';
 
 // ─── 型定義 ──────────────────────────────────────────────
 

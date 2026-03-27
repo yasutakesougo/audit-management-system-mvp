@@ -15,7 +15,7 @@
  */
 
 import type { PdcaCycleRecord } from '../pdcaCycleMetrics';
-import type { SuggestionAction } from '@/features/daily/domain/suggestionAction';
+import type { SuggestionAction } from '@/features/daily/domain/legacy/suggestionAction';
 
 // ─── 入力型 ──────────────────────────────────────────────
 

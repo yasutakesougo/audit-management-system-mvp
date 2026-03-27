@@ -14,9 +14,9 @@
  * @module domain/bridge/monitoringEvidence
  */
 
-import type { ProcedureStep } from '@/features/daily/domain/ProcedureRepository';
-import type { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
-import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
+import type { ProcedureStep } from '@/features/daily/domain/legacy/ProcedureRepository';
+import type { ExecutionRecord } from '@/features/daily/domain/legacy/executionRecordTypes';
+import { getScheduleKey } from '@/features/daily/domain/builders/getScheduleKey';
 
 // ─────────────────────────────────────────────
 // Types

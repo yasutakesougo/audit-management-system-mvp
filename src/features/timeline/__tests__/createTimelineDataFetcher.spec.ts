@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { createTimelineDataFetcher } from '../createTimelineDataFetcher';
-import type { DailyRecordRepository, DailyRecordItem } from '@/features/daily/domain/DailyRecordRepository';
+import type { DailyRecordRepository, DailyRecordItem } from '@/features/daily/domain/legacy/DailyRecordRepository';
 import type { IncidentRepository, IncidentRecord } from '@/domain/support/incidentRepository';
 import type { IspRepository } from '@/domain/isp/port';
 import type { IspListItem } from '@/domain/isp/schema';

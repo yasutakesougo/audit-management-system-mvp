@@ -19,7 +19,7 @@
  * @see assessmentBridge.ts — 同一パターンの先行実装
  */
 import type { PlanningIntake, PlanningSheetFormValues, SupportPlanningSheet } from '@/domain/isp/schema';
-import type { ProcedureStep } from '@/features/daily/domain/ProcedureRepository';
+import type { ProcedureStep } from '@/features/daily/domain/legacy/ProcedureRepository';
 import type { ProvenanceEntry } from '@/features/planning-sheet/assessmentBridge';
 
 // ---------------------------------------------------------------------------

@@ -8,7 +8,7 @@
  * 全関数は pure function。副作用・外部依存なし。
  */
 
-import type { BehaviorTagCategory } from '../../daily/domain/behaviorTag';
+import type { BehaviorTagCategory } from '../../daily/domain/behavior/behaviorTag';
 import type {
   GoalDomainId,
   GoalLike,

@@ -7,8 +7,8 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { StoreUser } from '@/stores/useUsers';
-import { useTableDailyRecordFiltering } from '../useTableDailyRecordFiltering';
+import type { StoreUser } from '../orchestrators/useTableDailyRecordFiltering';
+import { useTableDailyRecordFiltering } from '../orchestrators/useTableDailyRecordFiltering';
 
 // ── Mock attendanceUtils ────────────────────────────
 
@@ -36,10 +36,8 @@ const createUser = (
   Furigana: opts?.furigana,
   FullNameKana: opts?.nameKana,
   IsActive: true,
-  TransportToDays: [],
-  TransportFromDays: [],
   lifecycleStatus: 'active',
-});
+} as StoreUser);
 
 const tuesday = new Date('2026-03-03'); // Tuesday (火曜日)
 
@@ -287,12 +285,10 @@ describe('useTableDailyRecordFiltering', () => {
         UserID: '99',
         FullName: '判定不能ユーザー',
         AttendanceDays: ['火'],
-        TransportToDays: [],
-        TransportFromDays: [],
         UsageStatus: null,
         IsActive: undefined,
         ServiceEndDate: null,
-      };
+      } as StoreUser;
 
       const { result } = renderHook(() =>
         useTableDailyRecordFiltering({ users: [...testUsers, unknownUser], targetDate: tuesday }),

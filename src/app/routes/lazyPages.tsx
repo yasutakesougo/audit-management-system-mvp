@@ -19,7 +19,7 @@ const NewSchedulesWeekPage = lazyWithPreload(() => import('@/features/schedules/
 const OpsSchedulePage = React.lazy(() => import('@/features/schedules/components/ops/OpsSchedulePage').then(m => ({ default: m.OpsSchedulePage })));
 const DailyRecordPage = React.lazy(() => import('@/pages/DailyRecordPage'));
 const DailyRecordMenuPage = React.lazy(() => import('@/pages/DailyRecordMenuPage'));
-const TableDailyRecordPage = React.lazy(() => import('@/features/daily/table/TableDailyRecordPage'));
+const TableDailyRecordPage = React.lazy(() => import('@/features/daily/components/table/TableDailyRecordPage'));
 const TimeFlowSupportRecordPage = React.lazy(() => import('@/pages/TimeFlowSupportRecordPage'));
 const TimeBasedSupportRecordPage = React.lazy(() => import('@/pages/TimeBasedSupportRecordPage'));
 

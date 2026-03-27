@@ -58,16 +58,16 @@ vi.mock('@/lib/spClient', () => ({
   ensureConfig: vi.fn().mockReturnValue({ baseUrl: 'https://test.sharepoint.com/sites/test' }),
   createSpClient: vi.fn().mockReturnValue({ spFetch: mockSpFetch }),
 }));
-vi.mock('@/features/daily/infra/SharePointDailyRecordRepository', () => ({
+vi.mock('@/features/daily/repositories/sharepoint/SharePointDailyRecordRepository', () => ({
   SharePointDailyRecordRepository: MockSPRepo,
 }));
 
-import { inMemoryDailyRecordRepository } from '@/features/daily/infra/InMemoryDailyRecordRepository';
+import { inMemoryDailyRecordRepository } from '@/features/daily/repositories/sharepoint/InMemoryDailyRecordRepository';
 import {
     getCurrentDailyRecordRepositoryKind,
     getDailyRecordRepository,
     resetDailyRecordRepository,
-} from '@/features/daily/repositoryFactory';
+} from '@/features/daily/repositories/repositoryFactory';
 
 describe('Daily repositoryFactory', () => {
   beforeEach(() => {

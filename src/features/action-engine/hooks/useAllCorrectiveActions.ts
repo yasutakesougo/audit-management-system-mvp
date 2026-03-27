@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getFlag } from '@/env';
 import { useUsers } from '@/features/users/useUsers';
-import { getBehaviorRepository } from '@/features/daily/infra/behaviorRepositoryFactory';
+import { getBehaviorRepository } from '@/features/daily/repositories/sharepoint/behaviorRepositoryFactory';
 import type { ABCRecord } from '@/domain/behavior';
 import type {
   ActionSuggestion,

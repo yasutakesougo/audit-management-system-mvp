@@ -22,7 +22,7 @@ import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useMemo, useState } from 'react';
 
-import { SharePointDailyRecordItemSchema } from '@/features/daily/schema';
+import { SharePointDailyRecordItemSchema } from '@/features/daily/domain/schema';
 import { SpUserMasterItemSchema } from '@/features/users/schema';
 import { useDataIntegrityScan } from '@/hooks/useDataIntegrityScan';
 import { formatScanSummary, type ScanResult, type ScanTarget } from '@/lib/dataIntegrityScanner';
