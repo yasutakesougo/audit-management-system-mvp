@@ -181,11 +181,11 @@ export function BulkDailyRecordForm({
                 <Box sx={{ mt: 1 }}>
                     <Stack direction="row" flexWrap="wrap" gap={0.5}>
                     {selectedUsers.slice(0, 5).map((user) => {
-                      const userId = user.UserID || String(user.Id ?? '');
+                      const userId = user.userId || String(user.id ?? '');
                       return (
                         <Chip
                           key={userId}
-                          label={user.FullName}
+                          label={user.name}
                           size="small"
                           onDelete={() => handleUserToggle(userId)}
                         />
@@ -205,7 +205,7 @@ export function BulkDailyRecordForm({
               data-testid={TESTIDS['bulk-daily-record-user-list']}
             >
               {filteredUsers.map((user) => {
-                const userId = user.UserID || String(user.Id ?? '');
+                const userId = user.userId || String(user.id ?? '');
                 return (
                   <FormControlLabel
                     key={userId}
@@ -219,11 +219,11 @@ export function BulkDailyRecordForm({
                     label={
                       <Box>
                         <Typography variant="body2">
-                          {user.FullName} ({userId})
+                          {user.name} ({userId})
                         </Typography>
-                        {user.Furigana && (
+                        {user.furigana && (
                           <Typography variant="caption" color="textSecondary">
-                            {user.Furigana}
+                            {user.furigana}
                           </Typography>
                         )}
                       </Box>
@@ -394,12 +394,12 @@ export function BulkDailyRecordForm({
               </Typography>
               <Stack spacing={2}>
                 {selectedUsers.map((user) => {
-                  const userId = user.UserID || String(user.Id ?? '');
+                  const userId = user.userId || String(user.id ?? '');
                   return (
                     <Card key={userId} variant="outlined">
                       <CardContent sx={{ pb: 2 }}>
                         <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                          {user.FullName} ({userId})
+                          {user.name} ({userId})
                         </Typography>
                         <Stack spacing={1}>
                           <TextField
