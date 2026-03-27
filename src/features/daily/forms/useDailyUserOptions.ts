@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 
+import { filterActiveUsers } from '@/features/users/domain/userLifecycle';
 import { useUsersStore } from '@/features/users/store';
 import type { IUserMaster } from '@/features/users/types';
 
@@ -43,7 +44,7 @@ export const useDailyUserOptions = () => {
       return [] as DailyUserOption[];
     }
 
-    const normalized = users
+    const normalized = filterActiveUsers(users)
       .map((user) => (user ? buildOption(user) : null))
       .filter((option): option is DailyUserOption => option != null);
 

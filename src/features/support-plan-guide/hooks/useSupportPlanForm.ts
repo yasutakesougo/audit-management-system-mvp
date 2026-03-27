@@ -19,6 +19,7 @@ import type { ConfirmDialogProps } from '@/components/ui/ConfirmDialog';
 import React from 'react';
 
 import type { IUserMaster } from '@/features/users/types';
+import { filterActiveUsers } from '@/features/users/domain/userLifecycle';
 import { useSupportPlanDraftRepository } from '../repositoryFactory';
 import type {
     DeadlineInfo,
@@ -171,8 +172,7 @@ export function useSupportPlanForm({
 
   // ── Derived values ──
   const userOptions = React.useMemo<UserOption[]>(() => {
-    return (masterUsers ?? [])
-      .filter((user) => user && user.IsActive !== false)
+    return filterActiveUsers(masterUsers ?? [])
       .map((user) => {
         const baseName = user.FullName?.trim() || user.UserID?.trim() || `ID:${user.Id}`;
         const sanitizedLabel = sanitizeValue(baseName, NAME_LIMIT);

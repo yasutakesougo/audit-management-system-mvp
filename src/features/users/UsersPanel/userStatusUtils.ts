@@ -7,6 +7,7 @@
  * - 重要順ソート
  */
 import type { IUserMaster } from '../types';
+import { resolveUserLifecycleStatus } from '../domain/userLifecycle';
 import { USAGE_STATUS_VALUES } from '../typesExtended';
 
 // ---------------------------------------------------------------------------
@@ -63,13 +64,17 @@ function resolveUsageLabel(user: Pick<IUserMaster, 'IsActive' | 'UsageStatus'>):
   label: string;
   color: ChipColor;
 } {
-  const status = user.UsageStatus;
-  if (status === USAGE_STATUS_VALUES.TERMINATED) {
+  const lifecycleStatus = resolveUserLifecycleStatus(user);
+  if (lifecycleStatus === 'terminated') {
     return { label: '終了', color: 'default' };
   }
-  if (status === USAGE_STATUS_VALUES.SUSPENDED || user.IsActive === false) {
+  if (lifecycleStatus === 'suspended') {
     return { label: '休止', color: 'default' };
   }
+  if (lifecycleStatus === 'unknown') {
+    return { label: '状態未確定', color: 'warning' };
+  }
+  const status = user.UsageStatus;
   if (status === USAGE_STATUS_VALUES.PENDING) {
     return { label: '開始待ち', color: 'info' };
   }
@@ -135,9 +140,7 @@ export function getUserStatusChips(
 // ---------------------------------------------------------------------------
 
 export function isUserInactive(user: Pick<IUserMaster, 'IsActive' | 'UsageStatus'>): boolean {
-  if (user.IsActive === false) return true;
-  const status = user.UsageStatus;
-  return status === USAGE_STATUS_VALUES.TERMINATED || status === USAGE_STATUS_VALUES.SUSPENDED;
+  return resolveUserLifecycleStatus(user) !== 'active';
 }
 
 // ---------------------------------------------------------------------------

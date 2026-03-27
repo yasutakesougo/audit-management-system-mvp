@@ -22,6 +22,7 @@ import {
 import { auditLog } from '@/lib/debugLogger';
 
 import { normalizeAttendanceDays } from '../attendance';
+import { canEditUser, resolveUserLifecycleStatus, toDomainUser } from '../domain/userLifecycle';
 import type {
   UserRepository,
   UserRepositoryGetParams,
@@ -29,9 +30,20 @@ import type {
   UserRepositoryUpdateDto,
 } from '../domain/UserRepository';
 import { userMasterCreateSchema, userMasterSchema } from '../schema';
+import { USAGE_STATUS_VALUES } from '../typesExtended';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
 
 const DEFAULT_TOP = 500;
+const usersSelectDisabledByEnv = readEnv('VITE_USERS_DISABLE_SELECT', '0') === '1';
+let usersSelectSupported = !usersSelectDisabledByEnv;
+const usersUnsupportedWriteFields = new Set<string>();
+let usersWritableFieldSet: Set<string> | null = null;
+let usersWritableFieldSetLoaded = false;
+const MAX_WRITE_RETRY = 8;
+const TRANSPORT_SCHEDULE_FIELD = FIELD_MAP.Users_Master.transportSchedule;
+const MISSING_TRANSPORT_SCHEDULE_COLUMN_ERROR =
+  'Users_Master に TransportSchedule 列がないため、送迎手段を保存できません。管理者に列追加を依頼してください。';
+const getTodayIsoDate = (): string => new Date().toISOString().slice(0, 10);
 
 export type RestApiUserRepositoryOptions = {
   spFetch: (path: string, init?: RequestInit) => Promise<Response>;
@@ -48,6 +60,21 @@ type SpListItemsResponse = {
 
 type SpItemResponse = UserRow & {
   'd'?: UserRow;
+};
+
+type SpFieldsResponse = {
+  value?: Array<{
+    InternalName?: string;
+    ReadOnlyField?: boolean;
+    Hidden?: boolean;
+  }>;
+  d?: {
+    results?: Array<{
+      InternalName?: string;
+      ReadOnlyField?: boolean;
+      Hidden?: boolean;
+    }>;
+  };
 };
 
 export class RestApiUserRepository implements UserRepository {
@@ -73,7 +100,8 @@ export class RestApiUserRepository implements UserRepository {
 
     const filters = params?.filters;
     const top = params?.top ?? this.defaultTop;
-    const selectMode = params?.selectMode ?? 'core';
+    const requestedMode = params?.selectMode ?? 'detail';
+    const selectMode: UserSelectMode = usersSelectSupported ? requestedMode : 'core';
     const selectFields = [...resolveUserSelectFields(selectMode)];
 
     const filterParts: string[] = [];
@@ -83,7 +111,7 @@ export class RestApiUserRepository implements UserRepository {
     }
 
     const queryParts: string[] = [];
-    if (selectFields.length) queryParts.push(`$select=${selectFields.join(',')}`);
+    if (usersSelectSupported && selectFields.length) queryParts.push(`$select=${selectFields.join(',')}`);
     if (top > 0) queryParts.push(`$top=${top}`);
     if (filterParts.length) queryParts.push(`$filter=${filterParts.join(' and ')}`);
 
@@ -94,13 +122,14 @@ export class RestApiUserRepository implements UserRepository {
       items = await this.fetchItems(path, selectMode);
     } catch (e) {
       if (this.isSelectError(e)) {
+        usersSelectSupported = false;
         // Fallback: $select を外して全列取得（存在しないフィールドを含んでいても安全）
         auditLog.warn('users', 'rest_api_repo.select_error_retry', { error: String(e) });
         const fallbackParts: string[] = [];
         if (top > 0) fallbackParts.push(`$top=${top}`);
         if (filterParts.length) fallbackParts.push(`$filter=${filterParts.join(' and ')}`);
         const fallbackPath = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items${fallbackParts.length ? '?' + fallbackParts.join('&') : ''}`;
-        items = await this.fetchItems(fallbackPath, selectMode);
+        items = await this.fetchItems(fallbackPath, 'core');
       } else {
         throw e;
       }
@@ -129,34 +158,40 @@ export class RestApiUserRepository implements UserRepository {
       );
     }
 
-    const selectMode = params?.selectMode ?? 'detail';
+    const requestedMode = params?.selectMode ?? 'detail';
+    const selectMode: UserSelectMode = usersSelectSupported ? requestedMode : 'core';
     const selectFields = [...resolveUserSelectFields(selectMode)];
     const queryParts: string[] = [];
-    if (selectFields.length) queryParts.push(`$select=${selectFields.join(',')}`);
+    if (usersSelectSupported && selectFields.length) queryParts.push(`$select=${selectFields.join(',')}`);
 
-    const path = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items(${numericId})${queryParts.length ? '?' + queryParts.join('&') : ''}`;
+    const baseItemPath = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items(${numericId})`;
+    const path = `${baseItemPath}${queryParts.length ? `?${queryParts.join('&')}` : ''}`;
 
     try {
-      let res = await this.spFetch(path);
-      if (!res.ok) {
-        if (res.status === 404) return null;
-        // $select フィールド不在の 400 → $select なしでリトライ
-        if (this.isSelectError(new Error(`HTTP ${res.status}`))) {
-          auditLog.warn('users', 'rest_api_repo.select_error_getbyid_retry');
-          const fallbackPath = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items(${numericId})`;
-          res = await this.spFetch(fallbackPath);
-          if (!res.ok) {
-            if (res.status === 404) return null;
-            throw new Error(`HTTP ${res.status}`);
-          }
-        } else {
-          throw new Error(`HTTP ${res.status}`);
-        }
-      }
+      const res = await this.spFetch(path);
       const raw = (await res.json()) as SpItemResponse;
       const row = raw.d ?? raw;
       return this.toDomain(row as UserRow, selectMode);
     } catch (error) {
+      if (this.isNotFoundError(error)) {
+        return null;
+      }
+      if (this.isSelectError(error)) {
+        usersSelectSupported = false;
+        auditLog.warn('users', 'rest_api_repo.select_error_getbyid_retry', { error: String(error) });
+        try {
+          const fallbackRes = await this.spFetch(baseItemPath);
+          const fallbackRaw = (await fallbackRes.json()) as SpItemResponse;
+          const fallbackRow = fallbackRaw.d ?? fallbackRaw;
+          return this.toDomain(fallbackRow as UserRow, 'core');
+        } catch (fallbackError) {
+          if (this.isNotFoundError(fallbackError)) {
+            return null;
+          }
+          auditLog.error('users', 'rest_api_repo.get_by_id_fallback_failed', { error: String(fallbackError) });
+          return null;
+        }
+      }
       auditLog.error('users', 'rest_api_repo.get_by_id_failed', { error: String(error) });
       return null;
     }
@@ -165,34 +200,58 @@ export class RestApiUserRepository implements UserRepository {
   public async create(payload: IUserMasterCreateDto): Promise<IUserMaster> {
     userMasterCreateSchema.parse(payload);
 
-    const request = this.toRequest(payload);
+    let request = await this.buildWriteRequest(payload);
     const path = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items`;
 
-    const res = await this.spFetch(path, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json;odata=verbose' },
-      body: JSON.stringify(request),
-    });
+    for (let attempt = 0; attempt < MAX_WRITE_RETRY; attempt += 1) {
+      try {
+        const res = await this.spFetch(path, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json;odata=nometadata',
+            'Accept': 'application/json;odata=nometadata',
+          },
+          body: JSON.stringify(request),
+        });
+        const data = (await res.json()) as SpItemResponse;
+        const row = data.d ?? data;
+        const created = this.toDomain(row as UserRow, 'full');
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`Create failed: HTTP ${res.status} - ${text}`);
+        this.audit?.({
+          actor: 'user',
+          entity: 'Users_Master',
+          action: 'create',
+          entity_id: String(created.Id),
+          channel: 'UI',
+          after: { item: created },
+        });
+
+        return created;
+      } catch (error) {
+        if (this.isTransportScheduleMissingError(error)) {
+          throw new Error(MISSING_TRANSPORT_SCHEDULE_COLUMN_ERROR);
+        }
+        const retryField = this.resolveRetryField(error, request);
+        if (!retryField) {
+          throw error;
+        }
+        if (retryField === TRANSPORT_SCHEDULE_FIELD) {
+          throw new Error(MISSING_TRANSPORT_SCHEDULE_COLUMN_ERROR);
+        }
+        usersUnsupportedWriteFields.add(retryField);
+        request = this.removeField(request, retryField);
+        auditLog.warn('users', 'rest_api_repo.create_retry_without_field', {
+          field: retryField,
+          attempt: attempt + 1,
+          error: String(error),
+        });
+        if (!Object.keys(request).length) {
+          throw new Error('Create payload became empty after removing unsupported fields.');
+        }
+      }
     }
 
-    const data = (await res.json()) as SpItemResponse;
-    const row = data.d ?? data;
-    const created = this.toDomain(row as UserRow, 'full');
-
-    this.audit?.({
-      actor: 'user',
-      entity: 'Users_Master',
-      action: 'create',
-      entity_id: String(created.Id),
-      channel: 'UI',
-      after: { item: created },
-    });
-
-    return created;
+    throw new Error('Create failed after retrying unsupported SharePoint fields.');
   }
 
   public async update(
@@ -206,28 +265,65 @@ export class RestApiUserRepository implements UserRepository {
       );
     }
 
-    const request = this.toRequest(payload);
-
-    // Get the current ETag
-    const itemUrl = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items(${numericId})`;
-    const currentRes = await this.spFetch(itemUrl);
-    if (!currentRes.ok) {
-      throw new Error(`Failed to get current item for update: HTTP ${currentRes.status}`);
+    const current = await this.getById(numericId, { selectMode: 'detail' });
+    if (!current) {
+      throw new Error(`Unable to load record for id ${numericId}`);
+    }
+    if (!canEditUser(current)) {
+      throw new Error('契約終了の利用者は編集できません。');
     }
 
-    const updateRes = await this.spFetch(itemUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json;odata=verbose',
-        'X-HTTP-Method': 'MERGE',
-        'If-Match': '*',
-      },
-      body: JSON.stringify(request),
-    });
+    let request = await this.buildWriteRequest(payload);
 
-    if (!updateRes.ok && updateRes.status !== 204) {
-      const text = await updateRes.text().catch(() => '');
-      throw new Error(`Update failed: HTTP ${updateRes.status} - ${text}`);
+    const itemUrl = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items(${numericId})`;
+    await this.spFetch(itemUrl);
+    if (!Object.keys(request).length) {
+      const current = await this.getById(numericId, { selectMode: 'detail' });
+      if (!current) {
+        throw new Error(`Unable to load record for id ${numericId}`);
+      }
+      return current;
+    }
+
+    for (let attempt = 0; attempt < MAX_WRITE_RETRY; attempt += 1) {
+      try {
+        await this.spFetch(itemUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json;odata=nometadata',
+            'Accept': 'application/json;odata=nometadata',
+            'X-HTTP-Method': 'MERGE',
+            'If-Match': '*',
+          },
+          body: JSON.stringify(request),
+        });
+        break;
+      } catch (error) {
+        if (this.isTransportScheduleMissingError(error)) {
+          throw new Error(MISSING_TRANSPORT_SCHEDULE_COLUMN_ERROR);
+        }
+        const retryField = this.resolveRetryField(error, request);
+        if (!retryField) {
+          throw error;
+        }
+        if (retryField === TRANSPORT_SCHEDULE_FIELD) {
+          throw new Error(MISSING_TRANSPORT_SCHEDULE_COLUMN_ERROR);
+        }
+        usersUnsupportedWriteFields.add(retryField);
+        request = this.removeField(request, retryField);
+        auditLog.warn('users', 'rest_api_repo.update_retry_without_field', {
+          field: retryField,
+          id: numericId,
+          attempt: attempt + 1,
+          error: String(error),
+        });
+        if (!Object.keys(request).length) {
+          break;
+        }
+        if (attempt === MAX_WRITE_RETRY - 1) {
+          throw error;
+        }
+      }
     }
 
     const updated = await this.getById(numericId, { selectMode: 'detail' });
@@ -242,6 +338,101 @@ export class RestApiUserRepository implements UserRepository {
       entity_id: String(numericId),
       channel: 'UI',
       after: { patch: payload },
+    });
+
+    return updated;
+  }
+
+  public async terminate(id: number | string): Promise<IUserMaster> {
+    const numericId = Number(id);
+    if (!Number.isFinite(numericId)) {
+      throw new Error(
+        `Invalid id passed to RestApiUserRepository.terminate: ${String(id)}`,
+      );
+    }
+
+    const current = await this.getById(numericId, { selectMode: 'detail' });
+    if (!current) {
+      throw new Error(`Unable to load record for id ${numericId}`);
+    }
+    if (resolveUserLifecycleStatus(current) === 'terminated') {
+      return current;
+    }
+
+    const patch: UserRepositoryUpdateDto = {
+      UsageStatus: USAGE_STATUS_VALUES.TERMINATED,
+      ServiceEndDate: current.ServiceEndDate ?? getTodayIsoDate(),
+      IsActive: false,
+    };
+
+    const itemUrl = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items(${numericId})`;
+    let request = await this.buildWriteRequest(patch);
+
+    await this.spFetch(itemUrl);
+    if (!Object.keys(request).length) {
+      const unchanged = await this.getById(numericId, { selectMode: 'detail' });
+      if (!unchanged) {
+        throw new Error(`Unable to load record for id ${numericId}`);
+      }
+      return unchanged;
+    }
+
+    for (let attempt = 0; attempt < MAX_WRITE_RETRY; attempt += 1) {
+      try {
+        await this.spFetch(itemUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json;odata=nometadata',
+            'Accept': 'application/json;odata=nometadata',
+            'X-HTTP-Method': 'MERGE',
+            'If-Match': '*',
+          },
+          body: JSON.stringify(request),
+        });
+        break;
+      } catch (error) {
+        const retryField = this.resolveRetryField(error, request);
+        if (!retryField) {
+          throw error;
+        }
+        usersUnsupportedWriteFields.add(retryField);
+        request = this.removeField(request, retryField);
+        auditLog.warn('users', 'rest_api_repo.terminate_retry_without_field', {
+          field: retryField,
+          id: numericId,
+          attempt: attempt + 1,
+          error: String(error),
+        });
+        if (!Object.keys(request).length) {
+          break;
+        }
+        if (attempt === MAX_WRITE_RETRY - 1) {
+          throw error;
+        }
+      }
+    }
+
+    const updated = await this.getById(numericId, { selectMode: 'detail' });
+    if (!updated) {
+      throw new Error(`Unable to load updated record for id ${numericId}`);
+    }
+
+    this.audit?.({
+      actor: 'user',
+      entity: 'Users_Master',
+      action: 'terminate',
+      entity_id: String(numericId),
+      channel: 'UI',
+      before: {
+        UsageStatus: current.UsageStatus ?? null,
+        IsActive: current.IsActive ?? null,
+        ServiceEndDate: current.ServiceEndDate ?? null,
+      },
+      after: {
+        UsageStatus: updated.UsageStatus ?? null,
+        IsActive: updated.IsActive ?? null,
+        ServiceEndDate: updated.ServiceEndDate ?? null,
+      },
     });
 
     return updated;
@@ -298,15 +489,160 @@ export class RestApiUserRepository implements UserRepository {
 
   private isSelectError(error: unknown): boolean {
     if (error instanceof Error) {
-      const msg = error.message ?? '';
+      const msg = (error.message ?? '').toLowerCase();
       return (
-        msg.includes('400') ||
         msg.includes('does not exist') ||
+        msg.includes('property') ||
         msg.includes('column') ||
-        msg.includes('field')
+        msg.includes('field') ||
+        msg.includes('存在しません') ||
+        msg.includes('フィールド') ||
+        msg.includes('プロパティ')
       );
     }
     return false;
+  }
+
+  private isNotFoundError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+    const msg = (error.message ?? '').toLowerCase();
+    return msg.includes('404') || msg.includes('not found');
+  }
+
+  private async buildWriteRequest(
+    dto: Partial<IUserMasterCreateDto>,
+  ): Promise<Record<string, unknown>> {
+    const requiresTransportSchedule = dto.TransportSchedule !== undefined;
+    const filtered = this.filterUnsupportedWriteFields(this.toRequest(dto));
+    if (requiresTransportSchedule && !(TRANSPORT_SCHEDULE_FIELD in filtered)) {
+      throw new Error(MISSING_TRANSPORT_SCHEDULE_COLUMN_ERROR);
+    }
+    const writableFields = await this.getWritableFieldSet();
+    if (!writableFields) {
+      return filtered;
+    }
+    if (requiresTransportSchedule && !writableFields.has(TRANSPORT_SCHEDULE_FIELD)) {
+      throw new Error(MISSING_TRANSPORT_SCHEDULE_COLUMN_ERROR);
+    }
+    const removed: string[] = [];
+    const request: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(filtered)) {
+      if (writableFields.has(key)) {
+        request[key] = value;
+      } else {
+        removed.push(key);
+        usersUnsupportedWriteFields.add(key);
+      }
+    }
+    if (removed.length) {
+      auditLog.warn('users', 'rest_api_repo.drop_nonexistent_fields', {
+        fields: removed,
+      });
+    }
+    if (requiresTransportSchedule && !(TRANSPORT_SCHEDULE_FIELD in request)) {
+      throw new Error(MISSING_TRANSPORT_SCHEDULE_COLUMN_ERROR);
+    }
+    return request;
+  }
+
+  private async getWritableFieldSet(): Promise<Set<string> | null> {
+    if (usersWritableFieldSet) {
+      return usersWritableFieldSet;
+    }
+    if (usersWritableFieldSetLoaded) {
+      return null;
+    }
+    usersWritableFieldSetLoaded = true;
+    const path = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/fields?$select=InternalName,ReadOnlyField,Hidden`;
+    try {
+      const res = await this.spFetch(path);
+      const json = (await res.json()) as SpFieldsResponse;
+      const rows = json.value ?? json.d?.results ?? [];
+      const next = new Set<string>();
+      for (const row of rows) {
+        const name = row.InternalName?.trim();
+        if (!name) continue;
+        const isReadOnly = row.ReadOnlyField === true;
+        const isHidden = row.Hidden === true;
+        if (!isReadOnly && !isHidden) {
+          next.add(name);
+        }
+      }
+      if (next.size) {
+        usersWritableFieldSet = next;
+      }
+      return usersWritableFieldSet;
+    } catch (error) {
+      auditLog.warn('users', 'rest_api_repo.load_writable_fields_failed', {
+        error: String(error),
+      });
+      return null;
+    }
+  }
+
+  private filterUnsupportedWriteFields(
+    request: Record<string, unknown>,
+  ): Record<string, unknown> {
+    if (!usersUnsupportedWriteFields.size) {
+      return request;
+    }
+    const next: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(request)) {
+      if (!usersUnsupportedWriteFields.has(key)) {
+        next[key] = value;
+      }
+    }
+    return next;
+  }
+
+  private removeField(
+    request: Record<string, unknown>,
+    field: string,
+  ): Record<string, unknown> {
+    if (!field) {
+      return request;
+    }
+    if (!(field in request)) {
+      return request;
+    }
+    const next = { ...request };
+    delete next[field];
+    return next;
+  }
+
+  private extractUnsupportedWriteField(error: unknown): string | null {
+    if (!this.isSelectError(error)) {
+      return null;
+    }
+    if (!(error instanceof Error)) {
+      return null;
+    }
+    const message = error.message ?? '';
+    const match = message.match(/'([^']+)'/);
+    const field = match?.[1]?.trim();
+    return field || null;
+  }
+
+  private resolveRetryField(
+    error: unknown,
+    request: Record<string, unknown>,
+  ): string | null {
+    if (!this.isSelectError(error)) {
+      return null;
+    }
+    const fromMessage = this.extractUnsupportedWriteField(error);
+    if (fromMessage && fromMessage in request) {
+      return fromMessage;
+    }
+    return null;
+  }
+
+  private isTransportScheduleMissingError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false;
+    }
+    const msg = (error.message ?? '').toLowerCase();
+    return msg.includes('transportschedule') && this.isSelectError(error);
   }
 
   private matchesKeyword(row: IUserMaster, keyword: string): boolean {
@@ -353,6 +689,7 @@ export class RestApiUserRepository implements UserRepository {
       TransportToDays: transportTo,
       TransportFromDays: transportFrom,
       TransportCourse: get<string | null>(fields.transportCourse) ?? null,
+      TransportSchedule: get<string | null>(fields.transportSchedule) ?? null,
       AttendanceDays: attendance,
       RecipientCertNumber:
         get<string | null>(fields.recipientCertNumber) ??
@@ -386,16 +723,18 @@ export class RestApiUserRepository implements UserRepository {
       __selectMode: effectiveMode,
     };
 
+    const normalized = toDomainUser(domain);
+
     try {
-      userMasterSchema.parse(domain);
+      userMasterSchema.parse(normalized);
     } catch (error) {
       auditLog.warn('users', 'rest_api_repo.domain_validation_failed', { 
         error: String(error), 
-        domainId: domain.Id 
+        domainId: normalized.Id 
       });
     }
 
-    return domain;
+    return normalized;
   }
 
   private toRequest(
@@ -437,6 +776,8 @@ export class RestApiUserRepository implements UserRepository {
       );
     if (dto.TransportCourse !== undefined)
       assign('transportCourse', dto.TransportCourse);
+    if (dto.TransportSchedule !== undefined)
+      assign('transportSchedule', dto.TransportSchedule);
     if (dto.RecipientCertNumber !== undefined)
       assign('recipientCertNumber', dto.RecipientCertNumber);
     if (dto.RecipientCertExpiry !== undefined)
