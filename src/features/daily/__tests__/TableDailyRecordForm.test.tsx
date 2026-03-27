@@ -25,6 +25,7 @@ const mockUsers = [
     userId: 'U001',
     name: '田中 太郎',
     furigana: 'たなか たろう',
+    IsActive: true,
     attendanceDays: ['月', '水', '金'] // 月水金通所
   },
   {
@@ -32,13 +33,15 @@ const mockUsers = [
     userId: 'U002',
     name: '佐藤 花子',
     furigana: 'さとう はなこ',
+    IsActive: true,
     attendanceDays: ['火', '木'] // 火木通所
   },
   {
     id: 3,
     userId: 'U003',
     name: '山田 一郎',
-    furigana: 'やまだ いちろう'
+    furigana: 'やまだ いちろう',
+    IsActive: true,
     // attendanceDays未設定（毎日通所）
   }
 ];
