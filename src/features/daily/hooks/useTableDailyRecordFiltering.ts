@@ -1,20 +1,8 @@
 import { useMemo, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import type { User } from '@/types';
+import type { StoreUser } from '@/stores/useUsers';
 import { filterActiveUsers } from '@/features/users/domain/userLifecycle';
 import { isUserScheduledForDate } from '@/utils/attendanceUtils';
-
-type StoreUser = User & {
-  Id?: number;
-  UserID?: string | null;
-  FullName?: string | null;
-  Furigana?: string | null;
-  FullNameKana?: string | null;
-  AttendanceDays?: string[] | null;
-  UsageStatus?: string | null;
-  IsActive?: boolean | null;
-  ServiceEndDate?: string | null;
-};
 
 /**
  * Filtering configuration
@@ -77,9 +65,7 @@ export const useTableDailyRecordFiltering = ({
     }
 
     return candidateUsers.filter((user) => {
-      const attendanceDays = Array.isArray(user.AttendanceDays)
-        ? user.AttendanceDays
-        : user.attendanceDays;
+      const attendanceDays = user.AttendanceDays;
       
       // Fail-safe: Users without attendance data are always shown
       if (!attendanceDays || !Array.isArray(attendanceDays) || attendanceDays.length === 0) {
@@ -88,9 +74,9 @@ export const useTableDailyRecordFiltering = ({
 
       return isUserScheduledForDate(
         {
-          Id: user.Id ?? (typeof user.id === 'number' ? user.id : 0),
-          UserID: user.UserID ?? user.userId ?? '',
-          FullName: user.FullName ?? user.name ?? '',
+          Id: user.Id,
+          UserID: user.UserID ?? '',
+          FullName: user.FullName ?? '',
           AttendanceDays: attendanceDays,
         },
         targetDate,
@@ -110,10 +96,10 @@ export const useTableDailyRecordFiltering = ({
     
     return attendanceFilteredUsers.filter((user) => {
       // Match against multiple fields for better UX
-      const matchName = (user.FullName ?? user.name ?? '').toLowerCase().includes(query);
-      const matchUserId = (user.UserID ?? user.userId ?? '').toLowerCase().includes(query);
-      const matchFurigana = (user.Furigana ?? user.furigana ?? '').toLowerCase().includes(query);
-      const matchNameKana = (user.FullNameKana ?? user.nameKana ?? '').toLowerCase().includes(query);
+      const matchName = (user.FullName ?? '').toLowerCase().includes(query);
+      const matchUserId = (user.UserID ?? '').toLowerCase().includes(query);
+      const matchFurigana = (user.Furigana ?? '').toLowerCase().includes(query);
+      const matchNameKana = (user.FullNameKana ?? '').toLowerCase().includes(query);
 
       return matchName || matchUserId || matchFurigana || matchNameKana;
     });

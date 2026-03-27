@@ -70,18 +70,26 @@ export function createEmptyBulkActivityData(): BulkActivityData {
 }
 
 export type UserLike = {
-  userId?: string;
-  name?: string;
-  furigana?: string;
+  Id?: number | string;
+  UserID?: string | null;
+  FullName?: string | null;
+  Furigana?: string | null;
+  userId?: string | null;
+  name?: string | null;
+  furigana?: string | null;
   id?: number | string;
 };
 
 export function filterUsers<T extends UserLike>(users: T[], query: string): T[] {
   const trimmed = query.trim().toLowerCase();
   if (!trimmed) return users;
-  return users.filter(user =>
-    user.name?.toLowerCase().includes(trimmed) ||
-    user.userId?.toLowerCase().includes(trimmed) ||
-    user.furigana?.toLowerCase().includes(trimmed)
-  );
+  return users.filter((user) => {
+    const name = user.FullName ?? user.name;
+    const userId = user.UserID ?? user.userId;
+    const furigana = user.Furigana ?? user.furigana;
+
+    return name?.toLowerCase().includes(trimmed)
+      || userId?.toLowerCase().includes(trimmed)
+      || furigana?.toLowerCase().includes(trimmed);
+  });
 }

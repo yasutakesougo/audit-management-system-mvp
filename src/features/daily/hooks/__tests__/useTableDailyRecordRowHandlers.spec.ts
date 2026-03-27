@@ -18,7 +18,7 @@ import { act, renderHook } from '@testing-library/react';
 import { useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { User } from '@/types';
+import type { StoreUser } from '@/stores/useUsers';
 import type { TableDailyRecordData, UserRowData } from '../useTableDailyRecordForm';
 import type { UseTableDailyRecordRowHandlersParams } from '../useTableDailyRecordRowHandlers';
 import { useTableDailyRecordRowHandlers } from '../useTableDailyRecordRowHandlers';
@@ -32,16 +32,17 @@ vi.mock('../useLastActivities', () => ({
 
 // ── Helpers ─────────────────────────────────────────────
 
-const createUser = (id: string, name: string): User => ({
-  id: parseInt(id),
-  userId: id,
-  name,
-  attendanceDays: [],
-  toDays: [],
-  fromDays: [],
+const createUser = (id: string, name: string): StoreUser => ({
+  Id: Number.parseInt(id.replace(/\D/g, ''), 10) || 0,
+  UserID: id,
+  FullName: name,
+  AttendanceDays: [],
+  TransportToDays: [],
+  TransportFromDays: [],
+  lifecycleStatus: 'active',
 });
 
-const USERS: User[] = [
+const USERS: StoreUser[] = [
   createUser('u1', '田中太郎'),
   createUser('u2', '佐藤花子'),
   createUser('u3', '山田一郎'),

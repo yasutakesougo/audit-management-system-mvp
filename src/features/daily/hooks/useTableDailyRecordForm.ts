@@ -1,6 +1,5 @@
 import { emitDailySubmissionEvents } from '@/features/ibd/analysis/pdca/dailyMetricsAdapter';
-import { useUsers } from '@/stores/useUsers';
-import type { User } from '@/types';
+import { useUsers, type StoreUser } from '@/stores/useUsers';
 import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -69,8 +68,8 @@ export type UseTableDailyRecordFormResult = {
   setSearchQuery: Dispatch<SetStateAction<string>>;
   showTodayOnly: boolean;
   setShowTodayOnly: Dispatch<SetStateAction<boolean>>;
-  filteredUsers: User[];
-  selectedUsers: User[];
+  filteredUsers: StoreUser[];
+  selectedUsers: StoreUser[];
   selectedUserIds: string[];
   handleUserToggle: (userId: string) => void;
   handleSelectAll: () => void;
