@@ -174,13 +174,18 @@ export function classify(patrolResult) {
     (a, b) => (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9),
   );
 
-  const actions = classifications.map((c) => ({
-    kind: c.kind,
-    action: c.classification === 'auto-fixable'
+  // Derive action for each classification (used by nightly-apply)
+  for (const c of classifications) {
+    c.action = c.classification === 'auto-fixable'
       ? 'draft-pr'
       : c.classification === 'needs-review'
         ? 'draft-issue'
-        : 'log-only',
+        : 'log-only';
+  }
+
+  const actions = classifications.map((c) => ({
+    kind: c.kind,
+    action: c.action,
     priority: c.severity,
     fileCount: c.affectedFiles.length,
   }));
