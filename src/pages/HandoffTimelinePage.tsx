@@ -69,6 +69,12 @@ export default function HandoffTimelinePage() {
   // ── QuickNote dialog (自前管理) ──
   const [quickNoteOpen, setQuickNoteOpen] = useState(false);
   const openQuickNoteDialog = useCallback(() => {
+    if (typeof document !== 'undefined') {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) {
+        active.blur();
+      }
+    }
     setQuickNoteOpen(true);
   }, []);
   const closeQuickNoteDialog = useCallback(() => {

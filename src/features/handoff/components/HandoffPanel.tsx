@@ -52,6 +52,12 @@ export const HandoffPanel: React.FC<HandoffPanelProps> = ({ targetDate: _targetD
   );
 
   const handleOpenQuickNote = () => {
+    if (typeof document !== 'undefined') {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) {
+        active.blur();
+      }
+    }
     setQuickNoteOpen(true);
   };
 

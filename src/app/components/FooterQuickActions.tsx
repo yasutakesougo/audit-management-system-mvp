@@ -47,7 +47,10 @@ export const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true
 
   // Listen for global open event from any page (e.g. /handoff-timeline page button)
   useEffect(() => {
-    const handler = () => setQuickNoteOpen(true);
+    const handler = () => {
+      releaseActiveFocus();
+      setQuickNoteOpen(true);
+    };
     window.addEventListener('handoff-open-quicknote-dialog', handler);
     return () => window.removeEventListener('handoff-open-quicknote-dialog', handler);
   }, []);
@@ -61,7 +64,10 @@ export const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true
 
   const dialogHandlers: DialogRegistry = useMemo(
     () => ({
-      'handoff-quicknote': () => setQuickNoteOpen(true),
+      'handoff-quicknote': () => {
+        releaseActiveFocus();
+        setQuickNoteOpen(true);
+      },
       'call-log-quick': () => setCallLogOpen(true),
     }),
     [],
