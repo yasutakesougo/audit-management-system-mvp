@@ -36,6 +36,16 @@ export const QuickRecordDrawer: React.FC<QuickRecordDrawerProps> = ({
   // タブレット以上は右側Drawer、スマホは全画面Dialog (PR3ガードレール#3)
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+  const handleCloseWithFocusRelease = () => {
+    if (typeof document !== 'undefined') {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) {
+        active.blur();
+      }
+    }
+    onClose();
+  };
+
   const title = mode === 'unfilled' ? '未記録の一括照会' : `利用者記録: ${userId || ''}`;
 
   const content = (
@@ -80,7 +90,7 @@ export const QuickRecordDrawer: React.FC<QuickRecordDrawerProps> = ({
               }
             />
           )}
-          <IconButton onClick={onClose} aria-label="close" data-testid="today-quickrecord-close">
+          <IconButton onClick={handleCloseWithFocusRelease} aria-label="close" data-testid="today-quickrecord-close">
             <CloseIcon />
           </IconButton>
         </Box>
@@ -96,7 +106,7 @@ export const QuickRecordDrawer: React.FC<QuickRecordDrawerProps> = ({
         <QuickRecordFormEmbed
           userId={userId || undefined}
           date={toLocalDateISO()} // 本日
-          onClose={onClose}
+          onClose={handleCloseWithFocusRelease}
           onSaveSuccess={onSaveSuccess}
         />
       </Box>
@@ -105,14 +115,14 @@ export const QuickRecordDrawer: React.FC<QuickRecordDrawerProps> = ({
 
   if (isMobile) {
     return (
-      <Dialog fullScreen open={open} onClose={onClose}>
+      <Dialog fullScreen open={open} onClose={handleCloseWithFocusRelease}>
         {content}
       </Dialog>
     );
   }
 
   return (
-    <Drawer anchor="right" open={open} onClose={onClose}>
+    <Drawer anchor="right" open={open} onClose={handleCloseWithFocusRelease}>
       {content}
     </Drawer>
   );
