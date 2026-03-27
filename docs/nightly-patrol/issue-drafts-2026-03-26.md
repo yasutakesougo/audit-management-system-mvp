@@ -6,128 +6,14 @@
 
 | # | Severity | Category | Title |
 |:-:|:--------:|----------|-------|
-| 1 | 🔴 critical | large-file | [refactor] src/features/exceptions/components/ExceptionTable.tsx (1141行) を分割 |
-| 2 | 🔴 critical | large-file | [refactor] src/pages/TransportAssignmentPage.tsx (856行) を分割 |
-| 3 | 🔴 critical | test-coverage | [test] テスト未整備 7 feature のテスト追加 |
-| 4 | 🟠 high | large-file | [refactor] 巨大ファイル 4 件を監視・段階分割 |
+| 1 | 🟠 high | large-file | [refactor] 巨大ファイル 5 件を監視・段階分割 |
 
-**合計:** 4 件
-(🔴 critical: 3 / 🟠 high: 1)
+**合計:** 1 件
+(🟠 high: 1)
 
 ---
 
-## 1. 🔴 [critical] [refactor] src/features/exceptions/components/ExceptionTable.tsx (1141行) を分割
-
-### 背景
-
-Thin Orchestrator パターンでは 1 ファイル ≤200行を推奨。
-800行超はレビュー困難・テスト困難・変更事故のリスクが急上昇。
-nightly patrol で検知。
-
-### 現状
-
-`src/features/exceptions/components/ExceptionTable.tsx` が 1141 行で、即分割の閾値 (800行) を超えています。
-
-### 対象ファイル
-
-- `src/features/exceptions/components/ExceptionTable.tsx`
-
-### 提案
-
-- 表示層 (Presentational) と導出ロジック (Hook) を分離
-- 純関数を domain/ 配下へ移動
-- Orchestrator を ≤200行 に維持
-- `/refactor` ワークフローで段階的に分割
-
-### 受入条件
-
-- [ ] `src/features/exceptions/components/ExceptionTable.tsx` が 400 行未満になること
-- [ ] 既存テストがすべて通ること (`npx vitest run`)
-- [ ] 型チェックが通ること (`npx tsc --noEmit`)
-- [ ] 振る舞いが既存と一致すること
-
-**Labels:** `refactor`, `nightly-patrol`, `tech-debt`, `priority-high`
-
----
-
-## 2. 🔴 [critical] [refactor] src/pages/TransportAssignmentPage.tsx (856行) を分割
-
-### 背景
-
-Thin Orchestrator パターンでは 1 ファイル ≤200行を推奨。
-800行超はレビュー困難・テスト困難・変更事故のリスクが急上昇。
-nightly patrol で検知。
-
-### 現状
-
-`src/pages/TransportAssignmentPage.tsx` が 856 行で、即分割の閾値 (800行) を超えています。
-
-### 対象ファイル
-
-- `src/pages/TransportAssignmentPage.tsx`
-
-### 提案
-
-- 表示層 (Presentational) と導出ロジック (Hook) を分離
-- 純関数を domain/ 配下へ移動
-- Orchestrator を ≤200行 に維持
-- `/refactor` ワークフローで段階的に分割
-
-### 受入条件
-
-- [ ] `src/pages/TransportAssignmentPage.tsx` が 400 行未満になること
-- [ ] 既存テストがすべて通ること (`npx vitest run`)
-- [ ] 型チェックが通ること (`npx tsc --noEmit`)
-- [ ] 振る舞いが既存と一致すること
-
-**Labels:** `refactor`, `nightly-patrol`, `tech-debt`, `priority-high`
-
----
-
-## 3. 🔴 [critical] [test] テスト未整備 7 feature のテスト追加
-
-### 背景
-
-テストのない feature はリグレッションリスクが高い。
-nightly / CI で守れない領域が残る。
-`/test-design` で観点を整理してから追加するのが最も効率的。
-nightly patrol で検知。
-
-### 現状
-
-テストファイルが 0 件の feature ディレクトリが 7 個あり、閾値 (2件) を超えています。
-
-### 対象ファイル
-
-- `src/features/accessibility`
-- `src/features/kokuhoren-preview`
-- `src/features/official-forms`
-- `src/features/operation-hub`
-- `src/features/ops-dashboard`
-- `src/features/reports`
-- `src/features/safety`
-
-### 提案
-
-- `src/features/accessibility` (4 files) — `/test-design` で観点整理 → `/test` で追加
-- `src/features/kokuhoren-preview` (1 files) — `/test-design` で観点整理 → `/test` で追加
-- `src/features/official-forms` (4 files) — `/test-design` で観点整理 → `/test` で追加
-- `src/features/operation-hub` (5 files) — `/test-design` で観点整理 → `/test` で追加
-- `src/features/ops-dashboard` (8 files) — `/test-design` で観点整理 → `/test` で追加
-- `src/features/reports` (5 files) — `/test-design` で観点整理 → `/test` で追加
-- `src/features/safety` (14 files) — `/test-design` で観点整理 → `/test` で追加
-
-### 受入条件
-
-- [ ] 各 feature に最低 1 つのテストファイルがあること
-- [ ] テストが CI で通ること
-- [ ] カバレッジが主要パスをカバーしていること
-
-**Labels:** `testing`, `nightly-patrol`, `tech-debt`, `priority-critical`
-
----
-
-## 4. 🟠 [high] [refactor] 巨大ファイル 4 件を監視・段階分割
+## 1. 🟠 [high] [refactor] 巨大ファイル 5 件を監視・段階分割
 
 ### 背景
 
@@ -137,11 +23,12 @@ nightly patrol で検知。
 
 ### 現状
 
-600行以上のファイルが 4 件あり、監視閾値 (3件) を超えています。
+600行以上のファイルが 5 件あり、監視閾値 (3件) を超えています。
 
 ### 対象ファイル
 
 - `src/features/transport-assignments/domain/transportAssignmentDraft.ts`
+- `src/pages/TodayOpsPage.tsx`
 - `src/features/today/transport/TransportStatusCard.tsx`
 - `src/debug/HydrationHud.tsx`
 - `src/features/planning-sheet/tokuseiBridgeBuilders.ts`

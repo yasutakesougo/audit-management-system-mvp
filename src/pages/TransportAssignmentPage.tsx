@@ -17,10 +17,9 @@ import type { UpdateScheduleEventInput } from '@/features/schedules/data/port';
 import { useTransportAssignmentSave } from '@/features/transport-assignments/hooks/useTransportAssignmentSave';
 import { useSchedules } from '@/features/schedules/hooks/useSchedules';
 import { useStaffStore } from '@/features/staff/store';
-import { TRANSPORT_COURSE_OPTIONS, getTransportCourseLabel, parseTransportCourse } from '@/features/today/transport/transportCourse';
-import {
-  DEFAULT_TRANSPORT_VEHICLE_IDS,
-} from '@/features/today/transport/transportAssignments';
+import { getTransportCourseLabel, parseTransportCourse } from '@/features/today/transport/transportCourse';
+import { DEFAULT_TRANSPORT_VEHICLE_IDS } from '@/features/today/transport/transportAssignments';
+import type { TransportDirection } from '@/features/today/transport/transportTypes';
 import {
   applyTransportVehicleNameOverride,
   loadTransportVehicleNameOverrides,
@@ -29,131 +28,32 @@ import {
   type TransportVehicleNameOverrides,
 } from '@/features/today/transport/transportVehicleNames';
 import { useUsers } from '@/features/users/useUsers';
-import Alert from '@mui/material/Alert';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import DirectionsBusRoundedIcon from '@mui/icons-material/DirectionsBusRounded';
-import Box from '@mui/material/Box';
+import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Container from '@mui/material/Container';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
-import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
-import TextField from '@mui/material/TextField';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { useEffect, useMemo, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-
-type TransportDirection = 'to' | 'from';
-
-const JST_TZ = 'Asia/Tokyo';
-const DAY_MS = 24 * 60 * 60 * 1000;
-const DEFAULT_LOOKBACK_WEEKS = 8;
-
-type WeekDateOption = {
-  date: string;
-  label: string;
-};
-
-type WeekBulkApplyState = {
-  payloads: UpdateScheduleEventInput[];
-  summary: Array<{ date: string; count: number }>;
-};
-
-function toJstDateKey(date: Date): string {
-  return new Intl.DateTimeFormat('sv-SE', {
-    timeZone: JST_TZ,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(date);
-}
-
-function toJstWeekdayLabel(date: Date): string {
-  return new Intl.DateTimeFormat('ja-JP', {
-    timeZone: JST_TZ,
-    weekday: 'short',
-  }).format(date);
-}
-
-function toJstNoon(dateKey: string): Date {
-  return new Date(`${dateKey}T12:00:00+09:00`);
-}
-
-function shiftDateInJst(dateKey: string, days: number): string {
-  const base = toJstNoon(dateKey);
-  return toJstDateKey(new Date(base.getTime() + (days * DAY_MS)));
-}
-
-function getWeekStartDate(dateKey: string): string {
-  const base = toJstNoon(dateKey);
-  const day = base.getUTCDay(); // 0: Sun ... 6: Sat (stable for JST noon)
-  const diff = (day + 6) % 7; // Monday start
-  return toJstDateKey(new Date(base.getTime() - (diff * DAY_MS)));
-}
-
-function buildWeekDateOptions(weekStart: string): WeekDateOption[] {
-  return Array.from({ length: 5 }, (_, index) => {
-    const date = shiftDateInJst(weekStart, index);
-    const weekday = toJstWeekdayLabel(toJstNoon(date));
-    return {
-      date,
-      label: `${weekday} ${date.slice(5).replace('-', '/')}`,
-    };
-  });
-}
-
-function formatWeekRange(weekStart: string): string {
-  const weekEnd = shiftDateInJst(weekStart, 4);
-  return `${weekStart.slice(5).replace('-', '/')} - ${weekEnd.slice(5).replace('-', '/')}`;
-}
-
-function buildDateRange(weekStart: string, lookbackWeeks = 0): { from: string; to: string } {
-  const rangeStart = shiftDateInJst(weekStart, -(lookbackWeeks * 7));
-  const weekEnd = shiftDateInJst(weekStart, 4);
-  return {
-    from: `${rangeStart}T00:00:00+09:00`,
-    to: `${weekEnd}T23:59:59+09:00`,
-  };
-}
-
-function normalizeText(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-function formatSavedAt(iso: string | null): string {
-  if (!iso) return '';
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleTimeString('ja-JP', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
-}
-
-function isOnTargetDate(start: string | undefined, targetDate: string): boolean {
-  if (!start) return false;
-  const date = new Date(start);
-  if (Number.isNaN(date.getTime())) return false;
-  return toJstDateKey(date) === targetDate;
-}
-
-function normalizeToWeekdayDate(dateKey: string): string {
-  const day = toJstNoon(dateKey).getUTCDay();
-  if (day === 0) return shiftDateInJst(dateKey, 1);
-  if (day === 6) return shiftDateInJst(dateKey, -1);
-  return dateKey;
-}
+import { TransportAssignmentControlSection } from './transport-assignment/TransportAssignmentControlSection';
+import {
+  buildDateRange,
+  buildWeekBulkSummaryLabel,
+  buildWeekDateOptions,
+  DEFAULT_LOOKBACK_WEEKS,
+  formatWeekRange,
+  getWeekStartDate,
+  isOnTargetDate,
+  normalizeText,
+  normalizeToWeekdayDate,
+  shiftDateInJst,
+  type WeekBulkApplyState,
+} from './transport-assignment/TransportAssignmentPage.logic';
+import { TransportAssignmentVehicleSection } from './transport-assignment/TransportAssignmentVehicleSection';
 
 export default function TransportAssignmentPage() {
   const [targetDate, setTargetDate] = useState<string>(() => normalizeToWeekdayDate(toLocalDateISO()));
@@ -307,18 +207,10 @@ export default function TransportAssignmentPage() {
     }
     return [...byId.values()];
   }, [payloadPreview, weekBulkApplyState]);
-  const weekBulkSummaryLabel = useMemo(() => {
-    if (!weekBulkApplyState) return '';
-    const weekdayByDate = new Map(
-      weekDateOptions.map((option) => [option.date, option.label.split(' ')[0] ?? option.date] as const),
-    );
-    return weekBulkApplyState.summary
-      .map((item) => {
-        const weekday = weekdayByDate.get(item.date) ?? item.date;
-        return item.count > 0 ? `${weekday} ${item.count}件` : `${weekday} 変更なし`;
-      })
-      .join(' / ');
-  }, [weekBulkApplyState, weekDateOptions]);
+  const weekBulkSummaryLabel = useMemo(
+    () => buildWeekBulkSummaryLabel(weekBulkApplyState, weekDateOptions),
+    [weekBulkApplyState, weekDateOptions],
+  );
   const missingDriverVehicleIds = useMemo(
     () =>
       currentDraft.vehicles
@@ -327,6 +219,16 @@ export default function TransportAssignmentPage() {
     [currentDraft.vehicles, vehicleNameOverrides],
   );
   const canSave = dirty && effectivePayloadPreview.length > 0 && saveStatus !== 'saving';
+
+  const handleTargetDateChange = (nextDateValue: string) => {
+    const normalized = normalizeText(nextDateValue);
+    if (!normalized) return;
+    setTargetDate(normalizeToWeekdayDate(normalized));
+  };
+
+  const handleChangeWeek = (offsetDays: number) => {
+    setTargetDate((prev) => normalizeToWeekdayDate(shiftDateInJst(prev, offsetDays)));
+  };
 
   const handleVehicleNameDraftChange = (vehicleId: string, nextName: string) => {
     setVehicleNameDraftByVehicle((prev) => ({
@@ -443,6 +345,13 @@ export default function TransportAssignmentPage() {
     setDirty(true);
   };
 
+  const handlePendingAssignChange = (vehicleId: string, userId: string) => {
+    setPendingAssignByVehicle((prev) => ({
+      ...prev,
+      [vehicleId]: userId,
+    }));
+  };
+
   const handleSave = async () => {
     if (!canSave) return;
     const result = await save(effectivePayloadPreview);
@@ -536,123 +445,25 @@ export default function TransportAssignmentPage() {
         </Button>
       </Stack>
 
-      <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'center' }}>
-          <TextField
-            label="対象日"
-            type="date"
-            size="small"
-            value={targetDate}
-            onChange={(event) => {
-              const normalized = normalizeText(event.target.value);
-              if (!normalized) return;
-              setTargetDate(normalizeToWeekdayDate(normalized));
-            }}
-            inputProps={{ 'data-testid': 'transport-assignment-date' }}
-            sx={{ width: { xs: '100%', md: 220 } }}
-          />
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => setTargetDate((prev) => normalizeToWeekdayDate(shiftDateInJst(prev, -7)))}
-              data-testid="transport-assignment-week-prev"
-            >
-              前週
-            </Button>
-            <Chip
-              size="small"
-              label={`週 ${weekRangeLabel}`}
-              data-testid="transport-assignment-week-range"
-            />
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => setTargetDate((prev) => normalizeToWeekdayDate(shiftDateInJst(prev, 7)))}
-              data-testid="transport-assignment-week-next"
-            >
-              次週
-            </Button>
-          </Stack>
-          <ToggleButtonGroup
-            size="small"
-            color="primary"
-            exclusive
-            value={direction}
-            onChange={(_, value: TransportDirection | null) => {
-              if (value) setDirection(value);
-            }}
-            data-testid="transport-assignment-direction"
-          >
-            <ToggleButton value="to">迎え</ToggleButton>
-            <ToggleButton value="from">送り</ToggleButton>
-          </ToggleButtonGroup>
-          <ToggleButtonGroup
-            size="small"
-            color="primary"
-            exclusive
-            value={targetDate}
-            onChange={(_, value: string | null) => {
-              if (value) setTargetDate(value);
-            }}
-            data-testid="transport-assignment-weekdays"
-            sx={{ flexWrap: 'wrap' }}
-          >
-            {weekDateOptions.map((option) => (
-              <ToggleButton
-                key={option.date}
-                value={option.date}
-                data-testid={`transport-assignment-weekday-${option.date}`}
-              >
-                {option.label}
-              </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
-          {hasWeekdayDefaultSuggestion ? (
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={handleApplyWeekdayDefault}
-              data-testid="transport-assignment-apply-weekday-default"
-              disabled={saveStatus === 'saving'}
-            >
-              同曜日デフォルト適用
-            </Button>
-          ) : null}
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={handleApplyWeekBulkDefault}
-            data-testid="transport-assignment-apply-week-bulk-default"
-            disabled={saveStatus === 'saving'}
-          >
-            今週に一括適用
-          </Button>
-          <Typography variant="body2" color="text.secondary" sx={{ ml: { md: 'auto' } }}>
-            {saveStatus === 'saving'
-              ? '保存中...'
-              : dirty
-                ? '未保存の変更があります'
-                : saveStatus === 'success'
-                  ? `保存済み (${formatSavedAt(lastSavedAt)})`
-                  : '変更なし'}
-          </Typography>
-          <Chip
-            size="small"
-            color={effectivePayloadPreview.length > 0 ? 'warning' : 'default'}
-            label={`更新予定 ${effectivePayloadPreview.length}件`}
-            data-testid="transport-assignment-payload-count"
-          />
-          <Button
-            variant="contained"
-            disabled={!canSave}
-            onClick={handleSave}
-            data-testid="transport-assignment-save-button"
-          >
-            {saveStatus === 'saving' ? '保存中…' : '保存'}
-          </Button>
-        </Stack>
-      </Paper>
+      <TransportAssignmentControlSection
+        targetDate={targetDate}
+        direction={direction}
+        weekRangeLabel={weekRangeLabel}
+        weekDateOptions={weekDateOptions}
+        hasWeekdayDefaultSuggestion={hasWeekdayDefaultSuggestion}
+        saveStatus={saveStatus}
+        dirty={dirty}
+        lastSavedAt={lastSavedAt}
+        effectivePayloadCount={effectivePayloadPreview.length}
+        canSave={canSave}
+        onTargetDateChange={handleTargetDateChange}
+        onChangeWeek={handleChangeWeek}
+        onDirectionChange={setDirection}
+        onWeekdayChange={setTargetDate}
+        onApplyWeekdayDefault={handleApplyWeekdayDefault}
+        onApplyWeekBulkDefault={handleApplyWeekBulkDefault}
+        onSave={handleSave}
+      />
 
       {weekBulkApplyState ? (
         <Alert severity="info" sx={{ mb: 2 }} data-testid="transport-assignment-week-bulk-summary">
@@ -696,212 +507,23 @@ export default function TransportAssignmentPage() {
         </Alert>
       ) : null}
 
-      <Box
-        sx={{
-          display: 'grid',
-          gap: 2,
-          gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-          mb: 2,
-        }}
-        data-testid="transport-assignment-vehicle-board-placeholder"
-      >
-        {currentDraft.vehicles.map((vehicle, index) => (
-          <Paper
-            key={vehicle.vehicleId}
-            variant="outlined"
-            sx={{ p: 2, minHeight: 220 }}
-            data-testid={`transport-assignment-vehicle-card-${index + 1}`}
-          >
-            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-              <TextField
-                size="small"
-                label="車両名"
-                value={vehicleNameDraftByVehicle[vehicle.vehicleId] ?? resolveTransportVehicleName(vehicle.vehicleId, vehicleNameOverrides)}
-                onChange={(event) => handleVehicleNameDraftChange(vehicle.vehicleId, event.target.value)}
-                onBlur={(event) => handleVehicleNameCommit(vehicle.vehicleId, event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key !== 'Enter') return;
-                  event.preventDefault();
-                  const value = (event.target as HTMLInputElement).value;
-                  handleVehicleNameCommit(vehicle.vehicleId, value);
-                  (event.target as HTMLInputElement).blur();
-                }}
-                disabled={saveStatus === 'saving'}
-                inputProps={{
-                  maxLength: 20,
-                  'data-testid': `transport-assignment-vehicle-name-input-${index + 1}`,
-                }}
-                sx={{ minWidth: 180 }}
-              />
-              {vehicle.courseLabel ? (
-                <Chip
-                  size="small"
-                  color="info"
-                  variant="outlined"
-                  label={`コース: ${vehicle.courseLabel}`}
-                  data-testid={`transport-assignment-vehicle-course-${index + 1}`}
-                />
-              ) : null}
-              {hasVehicleMissingDriver(vehicle) ? (
-                <Chip
-                  size="small"
-                  color="warning"
-                  label="運転者未設定"
-                  data-testid={`transport-assignment-vehicle-warning-${index + 1}`}
-                />
-              ) : null}
-            </Stack>
-
-            <Stack spacing={1.5}>
-              <FormControl size="small" fullWidth>
-                <InputLabel id={`transport-assignment-course-label-${vehicle.vehicleId}`}>コース</InputLabel>
-                <Select
-                  labelId={`transport-assignment-course-label-${vehicle.vehicleId}`}
-                  label="コース"
-                  value={vehicle.courseId ?? ''}
-                  onChange={(event) => handleCourseChange(vehicle.vehicleId, String(event.target.value))}
-                  data-testid={`transport-assignment-course-select-${index + 1}`}
-                  disabled={saveStatus === 'saving'}
-                >
-                  <MenuItem value="">
-                    <em>未設定</em>
-                  </MenuItem>
-                  {TRANSPORT_COURSE_OPTIONS.map((course) => (
-                    <MenuItem key={course.value} value={course.value}>
-                      {course.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <FormControl size="small" fullWidth>
-                <InputLabel id={`transport-assignment-driver-label-${vehicle.vehicleId}`}>運転者</InputLabel>
-                <Select
-                  labelId={`transport-assignment-driver-label-${vehicle.vehicleId}`}
-                  label="運転者"
-                  value={vehicle.driverStaffId ?? ''}
-                  onChange={(event) => handleDriverChange(vehicle.vehicleId, String(event.target.value))}
-                  data-testid={`transport-assignment-driver-select-${index + 1}`}
-                  disabled={saveStatus === 'saving'}
-                >
-                  <MenuItem value="">
-                    <em>未設定</em>
-                  </MenuItem>
-                  {staffOptions.map((staff) => (
-                    <MenuItem key={staff.staffId} value={staff.staffId}>
-                      {staff.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <FormControl size="small" fullWidth>
-                <InputLabel id={`transport-assignment-attendant-label-${vehicle.vehicleId}`}>添乗者</InputLabel>
-                <Select
-                  labelId={`transport-assignment-attendant-label-${vehicle.vehicleId}`}
-                  label="添乗者"
-                  value={vehicle.attendantStaffId ?? ''}
-                  onChange={(event) => handleAttendantChange(vehicle.vehicleId, String(event.target.value))}
-                  data-testid={`transport-assignment-attendant-select-${index + 1}`}
-                  disabled={saveStatus === 'saving'}
-                >
-                  <MenuItem value="">
-                    <em>なし</em>
-                  </MenuItem>
-                  {staffOptions.map((staff) => (
-                    <MenuItem key={`attendant-${staff.staffId}`} value={staff.staffId}>
-                      {staff.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <Stack spacing={0.75}>
-                <Typography variant="caption" color="text.secondary">
-                  乗車利用者
-                </Typography>
-                {vehicle.riderUserIds.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary">割当なし</Typography>
-                ) : (
-                  vehicle.riderUserIds.map((userId) => (
-                    <Stack key={`${vehicle.vehicleId}-${userId}`} direction="row" spacing={1} alignItems="center">
-                      <Chip size="small" label={userNameById.get(userId) ?? userId} />
-                      <Button
-                        size="small"
-                        color="inherit"
-                        onClick={() => handleRemoveUser(userId)}
-                        data-testid={`transport-assignment-unassign-${vehicle.vehicleId}-${userId}`}
-                      >
-                        解除
-                      </Button>
-                    </Stack>
-                  ))
-                )}
-              </Stack>
-
-              <Stack direction="row" spacing={1} alignItems="center">
-                <FormControl size="small" fullWidth>
-                  <InputLabel id={`transport-assignment-add-user-label-${vehicle.vehicleId}`}>未割当から追加</InputLabel>
-                  <Select
-                    labelId={`transport-assignment-add-user-label-${vehicle.vehicleId}`}
-                    label="未割当から追加"
-                    value={pendingAssignByVehicle[vehicle.vehicleId] ?? ''}
-                    onChange={(event) =>
-                      setPendingAssignByVehicle((prev) => ({
-                        ...prev,
-                        [vehicle.vehicleId]: String(event.target.value),
-                      }))
-                    }
-                    data-testid={`transport-assignment-add-user-select-${index + 1}`}
-                    disabled={saveStatus === 'saving'}
-                  >
-                    <MenuItem value="">
-                      <em>選択してください</em>
-                    </MenuItem>
-                    {currentDraft.unassignedUserIds.map((userId) => (
-                      <MenuItem key={`${vehicle.vehicleId}-${userId}`} value={userId}>
-                        {userNameById.get(userId) ?? userId}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => handleAssignUser(vehicle.vehicleId)}
-                  disabled={saveStatus === 'saving' || !normalizeText(pendingAssignByVehicle[vehicle.vehicleId])}
-                >
-                  追加
-                </Button>
-              </Stack>
-            </Stack>
-          </Paper>
-        ))}
-      </Box>
-
-      <Paper
-        variant="outlined"
-        sx={{ p: 2, minHeight: 120 }}
-        data-testid="transport-assignment-unassigned-placeholder"
-      >
-        <Typography variant="h6" sx={{ mb: 1 }}>未割当利用者</Typography>
-        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" data-testid="transport-assignment-unassigned-list">
-          {currentDraft.unassignedUserIds.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              未割当はありません。
-            </Typography>
-          ) : (
-            currentDraft.unassignedUserIds.map((userId) => (
-              <Chip
-                key={`unassigned-${userId}`}
-                size="small"
-                label={userNameById.get(userId) ?? userId}
-                variant="outlined"
-              />
-            ))
-          )}
-        </Stack>
-      </Paper>
+      <TransportAssignmentVehicleSection
+        currentDraft={currentDraft}
+        saveStatus={saveStatus}
+        userNameById={userNameById}
+        staffOptions={staffOptions}
+        pendingAssignByVehicle={pendingAssignByVehicle}
+        vehicleNameOverrides={vehicleNameOverrides}
+        vehicleNameDraftByVehicle={vehicleNameDraftByVehicle}
+        onVehicleNameDraftChange={handleVehicleNameDraftChange}
+        onVehicleNameCommit={handleVehicleNameCommit}
+        onCourseChange={handleCourseChange}
+        onDriverChange={handleDriverChange}
+        onAttendantChange={handleAttendantChange}
+        onPendingAssignChange={handlePendingAssignChange}
+        onAssignUser={handleAssignUser}
+        onRemoveUser={handleRemoveUser}
+      />
     </Container>
   );
 }

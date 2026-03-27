@@ -19,10 +19,11 @@
 ## Quick Start
 
 ```bash
-# パトロールスキャン（手動実行）
-npm run patrol
+# パトロール + ダッシュボード（推奨: 連続実行）
+npm run patrol:full
 
-# メトリクスダッシュボード
+# 個別実行する場合（必ずこの順）
+npm run patrol
 npm run patrol:dashboard
 
 # レポート確認

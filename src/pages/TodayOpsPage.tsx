@@ -175,11 +175,14 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
   const approvalFlow = useApprovalFlow();
 
   // ExceptionCenter deep link: direction 自動切り替え
+  // isReady を待たずに即時反映し、初期 auto-switch に負けないようにする。
+  const highlightDirectionAppliedRef = useRef(false);
   useEffect(() => {
-    if (transportHighlight.direction && transport.isReady) {
-      transport.setActiveDirection(transportHighlight.direction);
-    }
-  }, [transportHighlight.direction, transport.isReady]);
+    if (!transportHighlight.direction) return;
+    if (highlightDirectionAppliedRef.current) return;
+    transport.setActiveDirection(transportHighlight.direction);
+    highlightDirectionAppliedRef.current = true;
+  }, [transportHighlight.direction, transport.setActiveDirection]);
 
   // ── Workflow Phases (Phase 2) ──
   const isServiceManager = role === 'admin';
