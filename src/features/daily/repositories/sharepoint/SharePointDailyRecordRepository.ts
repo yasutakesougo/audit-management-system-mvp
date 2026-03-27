@@ -11,6 +11,7 @@ import type {
     SaveDailyRecordInput,
 } from '../../domain/legacy/DailyRecordRepository';
 import { DailyRecordItemSchema } from '../../domain/schema';
+import { buildDailyRecordPayload } from '../../domain/builders/buildDailyRecordPayload';
 
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 
@@ -148,16 +149,8 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
       const existingItem = await this.findItemByDate(input.date, params?.signal) as SharePointItem | null;
       const mode = existingItem ? 'update' : 'create';
 
-      // Prepare item data
-      const userRowsJSON = JSON.stringify(input.userRows);
-      const itemData = {
-        Title: input.date,
-        RecordDate: new Date(input.date).toISOString(),
-        ReporterName: input.reporter.name,
-        ReporterRole: input.reporter.role,
-        UserRowsJSON: userRowsJSON,
-        UserCount: input.userRows.length,
-      };
+      // Prepare item data using pure builder
+      const itemData = buildDailyRecordPayload(input);
 
       if (existingItem) {
         // Update existing item — throwOnError: true
