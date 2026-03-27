@@ -14,7 +14,7 @@ import { useUsersDemoSeed } from '../../useUsersDemoSeed';
 import { buildErrorMessage } from '../utils';
 import type { UsersTab } from './useUsersPanelTabs';
 
-/** 削除確認ダイアログ用の対象情報 */
+/** 削除確認ダイアログ用の対象情報（実処理は terminate） */
 export type DeleteTarget = {
   id: number | string;
   userName: string;
@@ -34,7 +34,7 @@ export type UseUsersPanelCrudReturn = {
   setShowCreateForm: (v: boolean) => void;
   // setBusyId（Export からも使える）
   setBusyId: (id: number | null) => void;
-  // Delete confirmation state
+  // Delete confirmation state (UI名は delete、実処理は terminate)
   deleteTarget: DeleteTarget | null;
   requestDelete: (id: number | string, userName: string) => void;
   confirmDelete: () => Promise<void>;
@@ -57,7 +57,7 @@ export function useUsersPanelCrud(
   // Demo モードの場合のみシードを実行
   const repositoryKind = getCurrentUserRepositoryKind();
   useUsersDemoSeed(repositoryKind === 'demo');
-  const { data, status, create, remove, refresh, error } = useUsersStore();
+  const { data, status, create, terminate, refresh, error } = useUsersStore();
 
   // ---- State ----
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -66,6 +66,14 @@ export function useUsersPanelCrud(
   const [selectedUser, setSelectedUser] = useState<IUserMaster | null>(null);
   const [integrityErrors, setIntegrityErrors] = useState<string[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+
+  const blurActiveElement = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement) {
+      active.blur();
+    }
+  }, []);
 
   // ---- Initial fetch ----
   useEffect(() => {
@@ -99,26 +107,29 @@ export function useUsersPanelCrud(
 
   const requestDelete = useCallback(
     (id: number | string, userName: string) => {
+      blurActiveElement();
       setDeleteTarget({ id, userName });
     },
-    [],
+    [blurActiveElement],
   );
 
   const confirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
     const { id } = deleteTarget;
+    blurActiveElement();
     setDeleteTarget(null);
     setBusyId(Number(id));
     try {
-      await remove(id);
+      await terminate(id);
     } finally {
       setBusyId(null);
     }
-  }, [deleteTarget, remove]);
+  }, [blurActiveElement, deleteTarget, terminate]);
 
   const cancelDelete = useCallback(() => {
+    blurActiveElement();
     setDeleteTarget(null);
-  }, []);
+  }, [blurActiveElement]);
 
   const handleRefresh = useCallback(async () => {
     if (busyId !== null) return;
@@ -133,35 +144,47 @@ export function useUsersPanelCrud(
   // ---- Form dialog handlers ----
   const handleCreateFormSuccess = useCallback(
     (_newUser: IUserMaster) => {
-
+      blurActiveElement();
       setShowCreateForm(false);
       void refresh();
       setActiveTabRef.current('list');
     },
-    [refresh, setActiveTabRef],
+    [blurActiveElement, refresh, setActiveTabRef],
   );
 
   const handleEditFormSuccess = useCallback(
     (_updatedUser: IUserMaster) => {
-
+      blurActiveElement();
       setShowEditForm(false);
       setSelectedUser(null);
       void refresh();
       setActiveTabRef.current('list');
     },
-    [refresh, setActiveTabRef],
+    [blurActiveElement, refresh, setActiveTabRef],
   );
 
   const handleEditClick = useCallback((user: IUserMaster) => {
+    blurActiveElement();
     setSelectedUser(user);
     setShowEditForm(true);
-  }, []);
+  }, [blurActiveElement]);
+
+  const setShowCreateFormSafe = useCallback(
+    (open: boolean) => {
+      if (open) {
+        blurActiveElement();
+      }
+      setShowCreateForm(open);
+    },
+    [blurActiveElement],
+  );
 
   const handleCloseForm = useCallback(() => {
+    blurActiveElement();
     setShowCreateForm(false);
     setShowEditForm(false);
     setSelectedUser(null);
-  }, []);
+  }, [blurActiveElement]);
 
   // ---- Derived ----
   const errorMessage = error ? buildErrorMessage(error) : null;
@@ -177,7 +200,7 @@ export function useUsersPanelCrud(
     showCreateForm,
     showEditForm,
     selectedUser,
-    setShowCreateForm,
+    setShowCreateForm: setShowCreateFormSafe,
     setBusyId,
     deleteTarget,
     requestDelete,
