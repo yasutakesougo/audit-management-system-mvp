@@ -53,8 +53,16 @@ export const HandoffPanel: React.FC<HandoffPanelProps> = ({ targetDate: _targetD
 
   const handleOpenQuickNote = () => {
     setQuickNoteOpen(true);
-    // 互換性: FooterQuickActions が存在する場合もリッスンできるよう発火
-    window.dispatchEvent(new Event('handoff-open-quicknote-dialog'));
+  };
+
+  const handleCloseQuickNote = () => {
+    if (typeof document !== 'undefined') {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) {
+        active.blur();
+      }
+    }
+    setQuickNoteOpen(false);
   };
 
   const handleStatusChange = async (id: number, newStatus: HandoffStatus) => {
@@ -193,14 +201,14 @@ export const HandoffPanel: React.FC<HandoffPanelProps> = ({ targetDate: _targetD
       {/* ── 申し送り追加ダイアログ (自前管理) ── */}
       <Dialog
         open={quickNoteOpen}
-        onClose={() => setQuickNoteOpen(false)}
+        onClose={handleCloseQuickNote}
         fullWidth
         maxWidth="sm"
         data-testid="handoff-panel-quicknote-dialog"
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           今すぐ申し送り
-          <IconButton aria-label="申し送りダイアログを閉じる" onClick={() => setQuickNoteOpen(false)}>
+          <IconButton aria-label="申し送りダイアログを閉じる" onClick={handleCloseQuickNote}>
             <CloseIcon />
           </IconButton>
         </DialogTitle>
@@ -211,4 +219,3 @@ export const HandoffPanel: React.FC<HandoffPanelProps> = ({ targetDate: _targetD
     </Box>
   );
 };
-

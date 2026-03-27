@@ -70,8 +70,15 @@ export default function HandoffTimelinePage() {
   const [quickNoteOpen, setQuickNoteOpen] = useState(false);
   const openQuickNoteDialog = useCallback(() => {
     setQuickNoteOpen(true);
-    // 互換性: FooterQuickActions がリッスンしている場合に備えて発火
-    window.dispatchEvent(new CustomEvent('handoff-open-quicknote-dialog'));
+  }, []);
+  const closeQuickNoteDialog = useCallback(() => {
+    if (typeof document !== 'undefined') {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) {
+        active.blur();
+      }
+    }
+    setQuickNoteOpen(false);
   }, []);
 
   // ── Phase 8-A: User Status Quick Dialog ──
@@ -334,14 +341,14 @@ export default function HandoffTimelinePage() {
       {/* ── 申し送り追加ダイアログ (自前管理) ── */}
       <Dialog
         open={quickNoteOpen}
-        onClose={() => setQuickNoteOpen(false)}
+        onClose={closeQuickNoteDialog}
         fullWidth
         maxWidth="sm"
         data-testid="handoff-page-quicknote-dialog"
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           今すぐ申し送り
-          <IconButton aria-label="申し送りダイアログを閉じる" onClick={() => setQuickNoteOpen(false)}>
+          <IconButton aria-label="申し送りダイアログを閉じる" onClick={closeQuickNoteDialog}>
             <CloseIcon />
           </IconButton>
         </DialogTitle>

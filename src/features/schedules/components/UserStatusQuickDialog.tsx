@@ -180,6 +180,16 @@ export const UserStatusQuickDialog: React.FC<UserStatusQuickDialogProps> = ({
     [],
   );
 
+  const handleCloseWithFocusRelease = useCallback(() => {
+    if (typeof document !== 'undefined') {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) {
+        active.blur();
+      }
+    }
+    onClose();
+  }, [onClose]);
+
   const handleSubmit = useCallback(async () => {
     if (dateError) return;
 
@@ -203,11 +213,11 @@ export const UserStatusQuickDialog: React.FC<UserStatusQuickDialogProps> = ({
         ? `${userName}の状態を「${label}」に更新しました`
         : `${userName}を${dateLabel}の「${label}」として登録しました`;
       onSuccess?.(msg);
-      onClose();
+      handleCloseWithFocusRelease();
     }
   }, [
     userId, userName, resolvedStatusType, source, note, time, handoffId,
-    targetDate, dateError, today, actions, existingStatus, onSuccess, onClose,
+    targetDate, dateError, today, actions, existingStatus, onSuccess, handleCloseWithFocusRelease,
   ]);
 
   const showTimeField = resolvedStatusType === 'late';
@@ -215,7 +225,7 @@ export const UserStatusQuickDialog: React.FC<UserStatusQuickDialogProps> = ({
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleCloseWithFocusRelease}
       maxWidth="xs"
       fullWidth
       data-testid="user-status-quick-dialog"
@@ -356,7 +366,7 @@ export const UserStatusQuickDialog: React.FC<UserStatusQuickDialogProps> = ({
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button
-          onClick={onClose}
+          onClick={handleCloseWithFocusRelease}
           disabled={actions.isSubmitting}
           data-testid="user-status-cancel-btn"
         >

@@ -63,8 +63,17 @@ export const CallLogQuickDrawer: React.FC<CallLogQuickDrawerProps> = ({ open, on
   // 破棄確認ダイアログ
   const discardConfirm = useConfirmDialog();
 
+  const releaseActiveFocus = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement) {
+      active.blur();
+    }
+  }, []);
+
   // Drawer/Dialog を閉じようとしたとき — dirty なら確認を挟む
   const handleCloseRequest = useCallback(() => {
+    releaseActiveFocus();
     if (!isDirtyRef.current) {
       setSubmitError(null);
       onClose();
@@ -77,12 +86,13 @@ export const CallLogQuickDrawer: React.FC<CallLogQuickDrawerProps> = ({ open, on
       confirmLabel: '破棄して閉じる',
       cancelLabel: '入力に戻る',
       onConfirm: () => {
+        releaseActiveFocus();
         setSubmitError(null);
         isDirtyRef.current = false;
         onClose();
       },
     });
-  }, [discardConfirm, onClose]);
+  }, [discardConfirm, onClose, releaseActiveFocus]);
 
   // submit ハンドラ
   const handleSubmit = useCallback(
@@ -92,12 +102,13 @@ export const CallLogQuickDrawer: React.FC<CallLogQuickDrawerProps> = ({ open, on
         await createLog.mutateAsync(values);
         show('success', '📞 電話ログを登録しました');
         isDirtyRef.current = false;
+        releaseActiveFocus();
         onClose();
       } catch {
         setSubmitError('保存に失敗しました。ネットワークを確認して再試行してください。');
       }
     },
-    [createLog, show, onClose],
+    [createLog, show, onClose, releaseActiveFocus],
   );
 
   // ── コンテンツ ────────────────────────────────────────────────────────────

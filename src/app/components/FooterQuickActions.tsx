@@ -29,6 +29,16 @@ import { MuiRouterLink } from '@/lib/muiLink';
 // Maps onClickKey → state setter. Extend here when adding new dialog actions.
 type DialogRegistry = Record<string, () => void>;
 
+const releaseActiveFocus = () => {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  const active = document.activeElement;
+  if (active instanceof HTMLElement) {
+    active.blur();
+  }
+};
+
 export const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => {
   const location = useLocation();
   const theme = useTheme();
@@ -56,6 +66,10 @@ export const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true
     }),
     [],
   );
+  const handleCloseQuickNote = () => {
+    releaseActiveFocus();
+    setQuickNoteOpen(false);
+  };
 
   // Build actions from SSOT config.
   // schedulesEnabled is intentionally false here — schedule button currently always shown
@@ -133,14 +147,14 @@ export const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true
       </Container>
       <Dialog
         open={quickNoteOpen}
-        onClose={() => setQuickNoteOpen(false)}
+        onClose={handleCloseQuickNote}
         fullWidth
         maxWidth="sm"
         data-testid="handoff-quicknote-dialog"
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           今すぐ申し送り
-          <IconButton aria-label="申し送りダイアログを閉じる" onClick={() => setQuickNoteOpen(false)}>
+          <IconButton aria-label="申し送りダイアログを閉じる" onClick={handleCloseQuickNote}>
             <CloseIcon />
           </IconButton>
         </DialogTitle>

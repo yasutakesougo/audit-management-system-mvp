@@ -55,7 +55,17 @@ export function useConfirmDialog() {
   const [state, setState] = useState<ConfirmDialogState>(initialState);
   const [busy, setBusy] = useState(false);
 
+  const releaseActiveFocus = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement) {
+      active.blur();
+    }
+  }, []);
+
   const open = useCallback((params: OpenConfirmDialogParams) => {
+    // Nested modal時に親dialogへ aria-hidden が適用される前にフォーカスを退避する。
+    releaseActiveFocus();
     setState({
       isOpen: true,
       title: params.title,
@@ -66,7 +76,7 @@ export function useConfirmDialog() {
       cancelLabel: params.cancelLabel ?? 'キャンセル',
       onConfirmAction: params.onConfirm,
     });
-  }, []);
+  }, [releaseActiveFocus]);
 
   const close = useCallback(() => {
     setState(initialState);

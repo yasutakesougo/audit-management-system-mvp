@@ -171,6 +171,11 @@ export const HandoffQuickNoteCard: React.FC = () => {
                 }
               }}
               sx={{ minWidth: 200 }}
+              SelectProps={{
+                // Dialog 内 select の menu を portal せず同一ツリーに描画して
+                // 親 Dialog への aria-hidden 適用を避ける。
+                MenuProps: { disablePortal: true },
+              }}
             >
               <MenuItem value="ALL">🌟 全体向け</MenuItem>
               <Divider />

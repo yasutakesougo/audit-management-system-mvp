@@ -37,10 +37,20 @@ export const ApprovalDialog: React.FC<ApprovalDialogProps> = ({
   onApprove,
   onClose,
 }) => {
+  const handleCloseWithFocusRelease = () => {
+    if (typeof document !== 'undefined') {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) {
+        active.blur();
+      }
+    }
+    onClose();
+  };
+
   return (
     <Dialog
       open={open}
-      onClose={isApproving ? undefined : onClose}
+      onClose={isApproving ? undefined : handleCloseWithFocusRelease}
       maxWidth="xs"
       fullWidth
       data-testid="approval-dialog"
@@ -67,7 +77,7 @@ export const ApprovalDialog: React.FC<ApprovalDialogProps> = ({
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button
-          onClick={onClose}
+          onClick={handleCloseWithFocusRelease}
           disabled={isApproving}
           data-testid="approval-cancel-btn"
         >
