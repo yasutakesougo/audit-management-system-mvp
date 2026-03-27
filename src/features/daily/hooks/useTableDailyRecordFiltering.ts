@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import type { User } from '@/types';
+import type { StoreUser } from '@/stores/useUsers';
+import { filterActiveUsers } from '@/features/users/domain/userLifecycle';
 import { isUserScheduledForDate } from '@/utils/attendanceUtils';
 
 /**
@@ -17,8 +18,8 @@ export type TableDailyRecordFilters = {
  * Filtering result
  */
 export type TableDailyRecordFilteringResult = {
-  filteredUsers: User[];
-  attendanceFilteredUsers: User[];
+  filteredUsers: StoreUser[];
+  attendanceFilteredUsers: StoreUser[];
   filters: TableDailyRecordFilters;
 };
 
@@ -26,7 +27,7 @@ export type TableDailyRecordFilteringResult = {
  * Parameters for filtering hook
  */
 type UseTableDailyRecordFilteringParams = {
-  users: User[];
+  users: StoreUser[];
   targetDate: Date;
 };
 
@@ -52,15 +53,19 @@ export const useTableDailyRecordFiltering = ({
 }: UseTableDailyRecordFilteringParams): TableDailyRecordFilteringResult => {
   const [showTodayOnly, setShowTodayOnly] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const candidateUsers = useMemo(
+    () => filterActiveUsers(users),
+    [users],
+  );
 
   // Step 1: Filter by attendance (scheduled for target date)
   const attendanceFilteredUsers = useMemo(() => {
     if (!showTodayOnly) {
-      return users;
+      return candidateUsers;
     }
 
-    return users.filter((user) => {
-      const attendanceDays = user.attendanceDays;
+    return candidateUsers.filter((user) => {
+      const attendanceDays = user.AttendanceDays;
       
       // Fail-safe: Users without attendance data are always shown
       if (!attendanceDays || !Array.isArray(attendanceDays) || attendanceDays.length === 0) {
@@ -69,15 +74,15 @@ export const useTableDailyRecordFiltering = ({
 
       return isUserScheduledForDate(
         {
-          Id: user.id,
-          UserID: user.userId,
-          FullName: user.name || '',
+          Id: user.Id,
+          UserID: user.UserID ?? '',
+          FullName: user.FullName || '',
           AttendanceDays: attendanceDays,
         },
         targetDate,
       );
     });
-  }, [users, showTodayOnly, targetDate]);
+  }, [candidateUsers, showTodayOnly, targetDate]);
 
   // Step 2: Filter by search query
   const filteredUsers = useMemo(() => {
@@ -91,10 +96,10 @@ export const useTableDailyRecordFiltering = ({
     
     return attendanceFilteredUsers.filter((user) => {
       // Match against multiple fields for better UX
-      const matchName = user.name?.toLowerCase().includes(query);
-      const matchUserId = user.userId?.toLowerCase().includes(query);
-      const matchFurigana = user.furigana?.toLowerCase().includes(query);
-      const matchNameKana = user.nameKana?.toLowerCase().includes(query);
+      const matchName = user.FullName?.toLowerCase().includes(query);
+      const matchUserId = user.UserID?.toLowerCase().includes(query);
+      const matchFurigana = user.Furigana?.toLowerCase().includes(query);
+      const matchNameKana = user.FullNameKana?.toLowerCase().includes(query);
 
       return matchName || matchUserId || matchFurigana || matchNameKana;
     });

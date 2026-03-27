@@ -13,6 +13,7 @@ export type SpUserItem = {
   TransportToDays?: string[] | string | null;
   TransportFromDays?: string[] | string | null;
   TransportCourse?: string | null;
+  TransportSchedule?: string | null;
   Transport_x0020_ToDays?: string[] | string | null;
   Transport_x0020_FromDays?: string[] | string | null;
   RecipientCertNumber?: string;
@@ -41,6 +42,7 @@ export type User = {
   serviceEndDate?: string | null;
   contractDate?: string | null;
   highIntensitySupport?: boolean;
+  lifecycleStatus?: 'active' | 'suspended' | 'terminated' | 'unknown';
   modified?: string;
   created?: string;
 };

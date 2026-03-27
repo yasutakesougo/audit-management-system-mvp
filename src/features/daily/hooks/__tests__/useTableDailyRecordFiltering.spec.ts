@@ -7,7 +7,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { User } from '@/types';
+import type { StoreUser } from '@/stores/useUsers';
 import { useTableDailyRecordFiltering } from '../useTableDailyRecordFiltering';
 
 // ── Mock attendanceUtils ────────────────────────────
@@ -28,20 +28,22 @@ const createUser = (
   id: string,
   name: string,
   opts?: { attendanceDays?: string[]; furigana?: string; nameKana?: string },
-): User => ({
-  id: parseInt(id),
-  userId: id,
-  name,
-  attendanceDays: opts?.attendanceDays ?? [],
-  furigana: opts?.furigana,
-  nameKana: opts?.nameKana,
-  toDays: [],
-  fromDays: [],
+): StoreUser => ({
+  Id: parseInt(id, 10),
+  UserID: id,
+  FullName: name,
+  AttendanceDays: opts?.attendanceDays ?? [],
+  Furigana: opts?.furigana,
+  FullNameKana: opts?.nameKana,
+  IsActive: true,
+  TransportToDays: [],
+  TransportFromDays: [],
+  lifecycleStatus: 'active',
 });
 
 const tuesday = new Date('2026-03-03'); // Tuesday (火曜日)
 
-const testUsers: User[] = [
+const testUsers: StoreUser[] = [
   createUser('1', '田中太郎', {
     attendanceDays: ['月', '火', '水', '木', '金'],
     furigana: 'たなかたろう',
@@ -83,7 +85,7 @@ describe('useTableDailyRecordFiltering', () => {
 
       // 火曜日: 田中(月火水木金)、山田(火木)、鈴木(データなし=常に表示)
       // 佐藤(月水金)は除外
-      const userIds = result.current.filteredUsers.map((u) => u.userId);
+      const userIds = result.current.filteredUsers.map((u) => u.UserID);
       expect(userIds).toContain('1');  // 田中: 火曜あり
       expect(userIds).not.toContain('2');  // 佐藤: 火曜なし
       expect(userIds).toContain('3');  // 山田: 火曜あり
@@ -114,7 +116,7 @@ describe('useTableDailyRecordFiltering', () => {
 
       // 初期値は showTodayOnly=true
       const attendanceFiltered = result.current.attendanceFilteredUsers;
-      const nonAttendeeIds = attendanceFiltered.map((u) => u.userId);
+      const nonAttendeeIds = attendanceFiltered.map((u) => u.UserID);
 
       // 佐藤は月水金 → 火曜は除外
       expect(nonAttendeeIds).not.toContain('2');
@@ -125,7 +127,7 @@ describe('useTableDailyRecordFiltering', () => {
         useTableDailyRecordFiltering({ users: testUsers, targetDate: tuesday }),
       );
 
-      const userIds = result.current.attendanceFilteredUsers.map((u) => u.userId);
+      const userIds = result.current.attendanceFilteredUsers.map((u) => u.UserID);
       expect(userIds).toContain('4'); // 鈴木: attendanceDays 空配列
     });
   });
@@ -148,10 +150,10 @@ describe('useTableDailyRecordFiltering', () => {
       });
 
       expect(result.current.filteredUsers).toHaveLength(1);
-      expect(result.current.filteredUsers[0].name).toBe('田中太郎');
+      expect(result.current.filteredUsers[0].FullName).toBe('田中太郎');
     });
 
-    it('userId で検索できる', () => {
+    it('UserID で検索できる', () => {
       const { result } = renderHook(() =>
         useTableDailyRecordFiltering({ users: testUsers, targetDate: tuesday }),
       );
@@ -163,7 +165,7 @@ describe('useTableDailyRecordFiltering', () => {
         result.current.filters.setSearchQuery('3');
       });
 
-      const matchedIds = result.current.filteredUsers.map((u) => u.userId);
+      const matchedIds = result.current.filteredUsers.map((u) => u.UserID);
       expect(matchedIds).toContain('3');
     });
 
@@ -180,7 +182,7 @@ describe('useTableDailyRecordFiltering', () => {
       });
 
       expect(result.current.filteredUsers).toHaveLength(1);
-      expect(result.current.filteredUsers[0].name).toBe('佐藤花子');
+      expect(result.current.filteredUsers[0].FullName).toBe('佐藤花子');
     });
 
     it('nameKana で検索できる', () => {
@@ -196,7 +198,7 @@ describe('useTableDailyRecordFiltering', () => {
       });
 
       expect(result.current.filteredUsers).toHaveLength(1);
-      expect(result.current.filteredUsers[0].name).toBe('山田一郎');
+      expect(result.current.filteredUsers[0].FullName).toBe('山田一郎');
     });
 
     it('大文字 / 小文字を区別しない', () => {
@@ -260,7 +262,7 @@ describe('useTableDailyRecordFiltering', () => {
       });
 
       expect(result.current.filteredUsers).toHaveLength(1);
-      expect(result.current.filteredUsers[0].name).toBe('田中太郎');
+      expect(result.current.filteredUsers[0].FullName).toBe('田中太郎');
 
       // attendanceFilteredUsers は検索フィルタ前の値
       expect(result.current.attendanceFilteredUsers.length).toBeGreaterThan(1);
@@ -277,6 +279,31 @@ describe('useTableDailyRecordFiltering', () => {
 
       expect(result.current.filteredUsers).toEqual([]);
       expect(result.current.attendanceFilteredUsers).toEqual([]);
+    });
+
+    it('判定材料不足（unknown）のユーザーは候補に含めない', () => {
+      const unknownUser: StoreUser = {
+        Id: 99,
+        UserID: '99',
+        FullName: '判定不能ユーザー',
+        AttendanceDays: ['火'],
+        TransportToDays: [],
+        TransportFromDays: [],
+        UsageStatus: null,
+        IsActive: undefined,
+        ServiceEndDate: null,
+      };
+
+      const { result } = renderHook(() =>
+        useTableDailyRecordFiltering({ users: [...testUsers, unknownUser], targetDate: tuesday }),
+      );
+
+      act(() => {
+        result.current.filters.setShowTodayOnly(false);
+      });
+
+      const userIds = result.current.filteredUsers.map((u) => u.UserID);
+      expect(userIds).not.toContain('99');
     });
   });
 });

@@ -10,6 +10,7 @@ import { useUsers } from '@/stores/useUsers';
 import { useCallback, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 
+import { filterActiveUsers } from '@/features/users/domain/userLifecycle';
 import type { BulkActivityData, BulkDailyRecordFormProps } from './bulkDailyRecordFormLogic';
 import { createEmptyBulkActivityData, filterUsers } from './bulkDailyRecordFormLogic';
 
@@ -30,14 +31,19 @@ export function useBulkDailyRecordFormState(props: Pick<BulkDailyRecordFormProps
   const { data: users = [] } = useUsers();
 
   // ─── Derived ──────────────────────────────────────────────────────────
+  const candidateUsers = useMemo(
+    () => filterActiveUsers(users),
+    [users],
+  );
+
   const filteredUsers = useMemo(
-    () => filterUsers(users, searchQuery),
-    [users, searchQuery],
+    () => filterUsers(candidateUsers, searchQuery),
+    [candidateUsers, searchQuery],
   );
 
   const selectedUsers = useMemo(
-    () => users.filter(user => selectedUserIds.includes(user.userId || '')),
-    [users, selectedUserIds],
+    () => candidateUsers.filter((user) => selectedUserIds.includes(user.UserID || '')),
+    [candidateUsers, selectedUserIds],
   );
 
   // ─── Handlers ─────────────────────────────────────────────────────────
@@ -64,7 +70,9 @@ export function useBulkDailyRecordFormState(props: Pick<BulkDailyRecordFormProps
   }, []);
 
   const handleSelectAll = useCallback(() => {
-    const allIds = filteredUsers.map(user => user.userId || '');
+    const allIds = filteredUsers
+      .map((user) => user.UserID || '')
+      .filter((id): id is string => Boolean(id));
     setSelectedUserIds(allIds);
 
     const newIndividualNotes: Record<string, object> = {};
