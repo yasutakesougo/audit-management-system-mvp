@@ -104,6 +104,13 @@ function buildIssueContent(entry, date) {
     `| Error Count | ${entry.errorCount} |`,
     `| Test Only | ${entry.isTestOnly ? '✅ Yes' : '❌ No'} |`,
     '',
+    '### Source',
+    '',
+    `- **Patrol date:** ${date}`,
+    `- **Classification:** ${entry.classification}`,
+    `- **Pipeline:** nightly-patrol → nightly-classify → nightly-apply`,
+    `- **Report:** \`docs/nightly-patrol/${date}.md\``,
+    '',
   ];
 
   // Affected files
@@ -276,11 +283,22 @@ if (results.some((r) => r.url)) {
 console.log('');
 
 // Write apply results
+const skippedCount = actionableEntries.length - results.length;
+const applySummary = {
+  total: actionableEntries.length,
+  processed: results.length,
+  skipped: skippedCount,
+  created: results.filter((r) => r.status === 'created').length,
+  dryRun: results.filter((r) => r.status === 'dry-run').length,
+  failed: results.filter((r) => r.status === 'failed').length,
+};
+
 const applyResultsPath = path.join(REPORT_DIR, `apply-results-${stamp}.json`);
 fs.writeFileSync(applyResultsPath, JSON.stringify({
   version: 1,
   date: stamp,
   mode: isDryRun ? 'dry-run' : 'apply',
+  summary: applySummary,
   results,
 }, null, 2), 'utf8');
 console.log(`📄 Results written: docs/nightly-patrol/apply-results-${stamp}.json`);
