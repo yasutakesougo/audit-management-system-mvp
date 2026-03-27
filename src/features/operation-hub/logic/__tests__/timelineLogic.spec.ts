@@ -1,6 +1,7 @@
 import type { Schedule } from '@/lib/mappers';
 import type { Staff } from '@/types';
 import { describe, expect, it } from 'vitest';
+import type { TimelineEvent } from '../../useOperationHubData';
 import { markConflicts, toTimelineEvents } from '../timelineLogic';
 
 const makeStaff = (overrides: Partial<Staff> = {}): Staff => ({
@@ -54,7 +55,7 @@ const makeSchedule = (overrides: Partial<Schedule> = {}): Schedule => ({
 describe('operation-hub timelineLogic', () => {
   describe('markConflicts', () => {
     it('marks only overlapping events as conflict', () => {
-      const events = [
+      const events: TimelineEvent[] = [
         {
           id: 'a',
           label: 'A',

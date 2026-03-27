@@ -193,7 +193,8 @@ describe('navigationConfig', () => {
       expect(items.length).toBeGreaterThan(0);
       expect(items.some((item) => item.label === '日次記録')).toBe(true);
       expect(items.some((item) => item.label === '健康記録')).toBe(true);
-      expect(items.some((item) => item.label === '記録一覧')).toBe(true);
+      // NOTE: '記録一覧' は admin audience に変更されたため、staff には非表示
+      expect(items.some((item) => item.label === 'サービス提供実績記録')).toBe(true);
       expect(items.some((item) => item.label === '利用者')).toBe(true);
     });
 

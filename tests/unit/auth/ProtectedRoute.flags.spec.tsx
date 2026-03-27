@@ -43,7 +43,20 @@ vi.mock('@/auth/MsalProvider', () => ({
     accounts: [],
     inProgress: 'none',
     authReady: true,
+    instance: { getActiveAccount: () => null },
   })),
+}));
+
+// Prevent automation bypass: in Vitest runtime process.env.VITEST is always '1',
+// causing getAuthGuardState() to return shouldBypass=true and skip all auth UI.
+// We mock this to force normal auth flow so loading/sign-in/redirect states render.
+vi.mock('@/lib/auth/guardResolution', () => ({
+  getAuthGuardState: () => ({
+    shouldBypass: false,
+    reason: 'none' as const,
+    flags: { isAutomation: false, isDemo: false, isSkip: false, isMsalOk: true },
+  }),
+  shouldBypassAuthGuard: () => false,
 }));
 
 const mockUseAuth = vi.mocked(useAuth);

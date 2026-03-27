@@ -14,7 +14,7 @@ describe('uploadToSharePointLibrary', () => {
     const result = await uploadToSharePointLibrary(sp, 'test file.xlsx', bytes);
 
     expect(spFetch).toHaveBeenCalledTimes(1);
-    const [path, init] = spFetch.mock.calls[0] as [string, RequestInit];
+    const [path, init] = spFetch.mock.calls[0] as unknown as [string, RequestInit];
     expect(path).toContain("OfficialForms");
     expect(path).toContain(encodeURIComponent('test file.xlsx'));
     expect(path).toContain("overwrite=true");
