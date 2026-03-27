@@ -8,7 +8,7 @@
  * - event 別ランキング（type×event 組み合わせ）
  * - 最新10件のイベント一覧
  */
-import { db } from '@/infra/firestore/client';
+import { getDb, isFirestoreWriteAvailable } from '@/infra/firestore/client';
 import {
   collection,
   getDocs,
@@ -175,7 +175,34 @@ export function useTelemetryDashboard() {
   const fetchData = useCallback(async (range: DateRange) => {
     setState((prev) => ({ ...prev, loading: true, error: null, range }));
 
+    if (!isFirestoreWriteAvailable()) {
+      setState((prev) => ({
+        ...prev,
+        stats: {
+          total: 0,
+          byType: {},
+          byPhase: {},
+          eventRanking: [],
+          latestEvents: [],
+        },
+        kpis: null,
+        kpiDiffs: null,
+        roleBreakdown: [],
+        classifiedAlerts: [],
+        persistence: [],
+        reviewSummary: null,
+        transportKpis: EMPTY_TRANSPORT_KPIS,
+        transportAlerts: [],
+        kioskUxKpis: null,
+        loading: false,
+        error: null,
+        range,
+      }));
+      return;
+    }
+
     try {
+      const db = getDb();
       const col = collection(db, 'telemetry');
       const rangeStart = getRangeStart(range);
       const maxDocs = getQueryLimit(range);

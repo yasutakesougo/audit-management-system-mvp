@@ -228,6 +228,10 @@ function VehicleAssignmentBoard({ legs }: { legs: TransportLeg[] }) {
           const needsAttention = missingDriver || missingCourse;
           const hasAttendant = Boolean(group.attendantName);
           const crewModeLabel = hasAttendant ? '2名体制' : '1名体制';
+          const vehicleName = resolveTransportVehicleName(group.vehicleId, vehicleNameOverrides);
+          const vehicleLabel = group.vehicleId === '未割当' || vehicleName === group.vehicleId
+            ? vehicleName
+            : `${vehicleName} (${group.vehicleId})`;
           return (
             <Box
               key={group.vehicleId}
@@ -242,7 +246,7 @@ function VehicleAssignmentBoard({ legs }: { legs: TransportLeg[] }) {
             >
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
                 <Typography variant="caption" fontWeight="bold">
-                  🚗 {resolveTransportVehicleName(group.vehicleId, vehicleNameOverrides)}
+                  🚗 {vehicleLabel}
                 </Typography>
                 <Stack direction="row" spacing={0.5} alignItems="center">
                   {group.courseLabel ? (
