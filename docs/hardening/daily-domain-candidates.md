@@ -14,29 +14,32 @@
 ## PR 2-A: Validation & Mappers 抽出
 （最も副作用が少なく、UIから剥がしやすいドメインロジック群）
 
-### 1. `validateTimeOverlap` (時間重複チェック)
+### 1. `validateTimeOverlap` (時間重複チェック) [domain-ready, wiring-pending]
+- **状態:** 純関数とテストの実装完了（PR 2-Aにて）。しかし既存コード（`useTableDailyRecordForm` や `DailyRecordForm` 等）内にこれを検証する既存の重複チェックロジックが存在しなかったため、挙動変更（Feature Enhancement）を避ける方針で Wiring は保留とし、今後の機能追加で組み込む。
 - **概要:** 支援記録の開始〜終了時間が、他の記録と重複していないか検証する。
 - **入力:** `newRecord: { startTime, endTime }`, `existingRecords: Array<{ startTime, endTime }>`
 - **出力:** `boolean` (重複ありなら `true`)、または重複している記録のリスト
-- **既存の場所:** `hooks/legacy/useTableDailyRecordForm` や `components/forms/DailyRecordForm` の内部
+- **既存の場所:** （該当なし。今後、保存前ガードとして新規実装を推奨）
 - **テスト観点:**
   - 境界値（ちょうど終了時間に開始した場合どうなるか）
   - 同時刻の開始、完全包含パターンの網羅
 
-### 2. `calculateSupportDuration` (支援時間計算)
+### 2. `calculateSupportDuration` (支援時間計算) [domain-ready, wiring-pending]
+- **状態:** 純関数とテストの実装完了（PR 2-Aにて）。`daily` モジュール内でこれを算出する既存計算ロジックが存在していなかったため、Wiring 保留。
 - **概要:** 開始時間と終了時間の差分から、正味の支援分数を算出する（国保連請求の基礎データ）。
 - **入力:** `startTime: string (HH:mm)`, `endTime: string (HH:mm)`
 - **出力:** `number` (分)
-- **既存の場所:** UIコンポーネントの onChange ハイジャック内や、Zustandの setter 内
+- **既存の場所:** （該当なし。ServiceProvision 等での新規算出機能として推奨）
 - **テスト観点:**
   - 終了時間が翌日（24:00超過）になるケースの考慮
   - 不正な文字列が入った時のフォールバック処理
 
-### 3. `mapToTableViewModel` (表示用データ整形)
+### 3. `mapToTableViewModel` (表示用データ整形) [domain-ready, wiring-pending]
+- **状態:** 純関数とテストの実装完了（PR 2-Aにて）。既存の `PersonDaily` および `dailyTableMapper.ts` によるマッピングは `TableDailyRecordRow` とは仕様が異なり、純粋な抽出置換先のソートロジック等が存在しなかったため、Wiring を保留。
 - **概要:** SPから取得した生の `SupportRecord` リストを、Table画面で使いやすい平坦な `RowData` に変換する。
 - **入力:** `SupportRecord_Daily[]`, `Users[]`
 - **出力:** `TableDailyRecordRow[]`
-- **既存の場所:** `hooks/orchestrators/useTableDailyRecordSelection` など
+- **既存の場所:** （該当なし。現在の UI表示整形（Arrayのフィルタ等）は `useDailyRecordViewModel` に散在しているが、完全なソート・ビューモデル抽出ロジックとしては新規導入となるため保留）
 - **テスト観点:**
   - 欠損データ（Userマスタから消えた等）への堅牢性
   - ソート・グループ化のためのキー生成が正しく行われるか
