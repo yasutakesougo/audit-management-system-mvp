@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 expect.extend(toHaveNoViolations);
 
 const noop = async () => undefined;
+type UsersStoreState = ReturnType<typeof usersStore.useUsersStore>;
 
 /**
  * UsersPanel Accessibility Tests (#340)
@@ -28,7 +29,7 @@ describe('UsersPanel Accessibility', { retry: 2 }, () => {
       terminate: vi.fn(noop),
       remove: vi.fn(noop),
       refresh: vi.fn(noop),
-    } as any);
+    } as UsersStoreState);
   });
 
   test('has no a11y violations (menu tab)', async () => {
@@ -72,7 +73,7 @@ describe('UsersPanel Accessibility', { retry: 2 }, () => {
       terminate: vi.fn(noop),
       remove: vi.fn(noop),
       refresh: vi.fn(noop),
-    } as any);
+    } as UsersStoreState);
 
     const { container } = render(
       <MemoryRouter>
@@ -95,7 +96,7 @@ describe('UsersPanel Accessibility', { retry: 2 }, () => {
       terminate: vi.fn(noop),
       remove: vi.fn(noop),
       refresh: vi.fn(noop),
-    } as any);
+    } as UsersStoreState);
 
     const { container } = render(
       <MemoryRouter>
@@ -118,7 +119,7 @@ describe('UsersPanel Accessibility', { retry: 2 }, () => {
       terminate: vi.fn(noop),
       remove: vi.fn(noop),
       refresh: vi.fn(noop),
-    } as any);
+    } as UsersStoreState);
 
     const { container } = render(
       <MemoryRouter>
