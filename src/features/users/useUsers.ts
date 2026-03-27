@@ -19,6 +19,7 @@ type UsersHookReturn = {
   refresh: () => Promise<void>;
   create: (payload: IUserMasterCreateDto) => Promise<IUserMaster>;
   update: (id: number | string, payload: UserRepositoryUpdateDto) => Promise<IUserMaster>;
+  terminate: (id: number | string) => Promise<IUserMaster>;
   remove: (id: number | string) => Promise<void>;
 };
 
@@ -75,8 +76,8 @@ export function useUsers(params?: UsersHookParams): UsersHookReturn {
     try {
       const currentParams = stableParams.current;
       const listParams: UserRepositoryListParams = currentParams
-        ? { ...currentParams, signal }
-        : { signal };
+        ? { ...currentParams, signal, selectMode: currentParams.selectMode ?? 'detail' }
+        : { signal, selectMode: 'detail' };
       const rows = await repository.getAll(listParams);
       if (signal?.aborted) {
         return;
@@ -164,9 +165,33 @@ export function useUsers(params?: UsersHookParams): UsersHookReturn {
     }
   }, [repository, updateData]);
 
+  const terminate = useCallback(async (id: number | string) => {
+    setStatus('loading');
+    setError(null);
+
+    const numericId = coerceNumericId(id);
+    if (numericId == null) {
+      const err = new Error('Invalid user ID for terminate.');
+      setError(err);
+      setStatus('error');
+      throw err;
+    }
+
+    try {
+      const terminated = await repository.terminate(numericId);
+      updateData((prev) => prev.map((item) => (item.Id === numericId ? terminated : item)));
+      setStatus('success');
+      return terminated;
+    } catch (err) {
+      setError(err);
+      setStatus('error');
+      throw err;
+    }
+  }, [repository, updateData]);
+
   return useMemo(
-    () => ({ data, status, error, refresh, create, update, remove }),
-    [create, data, error, refresh, remove, status, update],
+    () => ({ data, status, error, refresh, create, update, terminate, remove }),
+    [create, data, error, refresh, remove, status, terminate, update],
   );
 }
 

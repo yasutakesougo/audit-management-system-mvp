@@ -16,8 +16,10 @@ import {
 } from '@/sharepoint/fields';
 
 import { normalizeAttendanceDays } from '../attendance';
+import { canEditUser, resolveUserLifecycleStatus, toDomainUser } from '../domain/userLifecycle';
 import type { UserRepository, UserRepositoryGetParams, UserRepositoryListParams, UserRepositoryUpdateDto } from '../domain/UserRepository';
 import { userMasterCreateSchema, userMasterSchema } from '../schema';
+import { USAGE_STATUS_VALUES } from '../typesExtended';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
 
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
@@ -30,7 +32,7 @@ export type SharePointUserRepositoryOptions = {
   sp?: SPFI;
   spfxContext?: ISPFXContext;
   defaultTop?: number;
-  /** Audit logger — called after successful create/update/remove */
+  /** Audit logger — called after successful create/update/terminate/remove */
   audit?: (event: Omit<AuditEvent, 'ts'>) => void;
 };
 
@@ -38,18 +40,30 @@ export type SharePointUserRepositoryOptions = {
 // SharePoint 400 判定ヘルパー
 // ---------------------------------------------------------------------------
 function isSharePointSelect400(error: unknown): boolean {
+  if (typeof error === 'object' && error !== null) {
+    const maybeStatus = (error as { status?: unknown }).status;
+    if (typeof maybeStatus === 'number' && maybeStatus === 400) {
+      return true;
+    }
+  }
   if (error instanceof Error) {
-    const msg = error.message ?? '';
+    const msg = (error.message ?? '').toLowerCase();
     // PnPJS wraps SP REST 400 errors with status info
     return (
       msg.includes('400') ||
       msg.includes("does not exist") ||
+      msg.includes('property') ||
       msg.includes("column") ||
-      msg.includes("field")
+      msg.includes("field") ||
+      msg.includes('存在しません') ||
+      msg.includes('フィールド') ||
+      msg.includes('プロパティ')
     );
   }
   return false;
 }
+
+const getTodayIsoDate = (): string => new Date().toISOString().slice(0, 10);
 
 export class SharePointUserRepository implements UserRepository {
   private readonly sp: SPFI;
@@ -73,7 +87,7 @@ export class SharePointUserRepository implements UserRepository {
 
     const filters = params?.filters;
     const top = params?.top ?? this.defaultTop;
-    const requestedMode = params?.selectMode ?? 'core';
+    const requestedMode = params?.selectMode ?? 'detail';
     const safeTop = Math.min(Math.max(1, top), SP_QUERY_LIMITS.hardMax);
 
     const items = await this.runWithSelectFallback(requestedMode, async (selectFields, mode) => {
@@ -138,6 +152,13 @@ export class SharePointUserRepository implements UserRepository {
     if (!Number.isFinite(numericId)) {
       throw new Error(`Invalid id passed to SharePointUserRepository.update: ${String(id)}`);
     }
+    const current = await this.getById(numericId, { selectMode: 'detail' });
+    if (!current) {
+      throw new Error(`Unable to load record for id ${numericId}`);
+    }
+    if (!canEditUser(current)) {
+      throw new Error('契約終了の利用者は編集できません。');
+    }
     const request = this.toRequest(payload);
     await this.list.items.getById(numericId).update(request);
     const updated = await this.getById(numericId, { selectMode: 'detail' });
@@ -149,6 +170,55 @@ export class SharePointUserRepository implements UserRepository {
       entity_id: String(numericId), channel: 'UI',
       after: { patch: payload },
     });
+    return updated;
+  }
+
+  public async terminate(id: number | string): Promise<IUserMaster> {
+    const numericId = Number(id);
+    if (!Number.isFinite(numericId)) {
+      throw new Error(`Invalid id passed to SharePointUserRepository.terminate: ${String(id)}`);
+    }
+
+    const current = await this.getById(numericId, { selectMode: 'detail' });
+    if (!current) {
+      throw new Error(`Unable to load record for id ${numericId}`);
+    }
+
+    if (resolveUserLifecycleStatus(current) === 'terminated') {
+      return current;
+    }
+
+    const patch: UserRepositoryUpdateDto = {
+      UsageStatus: USAGE_STATUS_VALUES.TERMINATED,
+      ServiceEndDate: current.ServiceEndDate ?? getTodayIsoDate(),
+      IsActive: false,
+    };
+
+    await this.list.items.getById(numericId).update(this.toRequest(patch));
+
+    const updated = await this.getById(numericId, { selectMode: 'detail' });
+    if (!updated) {
+      throw new Error(`Unable to load updated record for id ${numericId}`);
+    }
+
+    this.audit?.({
+      actor: 'user',
+      entity: 'Users_Master',
+      action: 'terminate',
+      entity_id: String(numericId),
+      channel: 'UI',
+      before: {
+        UsageStatus: current.UsageStatus ?? null,
+        IsActive: current.IsActive ?? null,
+        ServiceEndDate: current.ServiceEndDate ?? null,
+      },
+      after: {
+        UsageStatus: updated.UsageStatus ?? null,
+        IsActive: updated.IsActive ?? null,
+        ServiceEndDate: updated.ServiceEndDate ?? null,
+      },
+    });
+
     return updated;
   }
 
@@ -270,6 +340,7 @@ export class SharePointUserRepository implements UserRepository {
       TransportToDays: transportTo,
       TransportFromDays: transportFrom,
       TransportCourse: get<string | null>(fields.transportCourse) ?? null,
+      TransportSchedule: get<string | null>(fields.transportSchedule) ?? null,
       AttendanceDays: attendance,
       RecipientCertNumber: get<string | null>(fields.recipientCertNumber) ?? raw.RecipientCertNumber ?? null,
       RecipientCertExpiry: get<string | null>(fields.recipientCertExpiry) ?? raw.RecipientCertExpiry ?? null,
@@ -290,14 +361,16 @@ export class SharePointUserRepository implements UserRepository {
       __selectMode: effectiveMode,
     };
 
+    const normalized = toDomainUser(domain);
+
     // Validate domain object structure (best-effort, might warn instead of throw if legacy data)
     try {
-      userMasterSchema.parse(domain);
+      userMasterSchema.parse(normalized);
     } catch (error) {
-      console.warn('[SharePointUserRepository] Domain object validation failed', error, domain);
+      console.warn('[SharePointUserRepository] Domain object validation failed', error, normalized);
     }
 
-    return domain;
+    return normalized;
   }
 
   private toRequest(dto: Partial<IUserMasterCreateDto>): Record<string, unknown> {
@@ -327,6 +400,7 @@ export class SharePointUserRepository implements UserRepository {
     if (dto.TransportToDays !== undefined) assign('transportToDays', normalizeAttendanceDays(dto.TransportToDays));
     if (dto.TransportFromDays !== undefined) assign('transportFromDays', normalizeAttendanceDays(dto.TransportFromDays));
     if (dto.TransportCourse !== undefined) assign('transportCourse', dto.TransportCourse);
+    if (dto.TransportSchedule !== undefined) assign('transportSchedule', dto.TransportSchedule);
     if (dto.RecipientCertNumber !== undefined) assign('recipientCertNumber', dto.RecipientCertNumber);
     if (dto.RecipientCertExpiry !== undefined) assign('recipientCertExpiry', dto.RecipientCertExpiry);
     // ── 支給決定・請求加算 ──
