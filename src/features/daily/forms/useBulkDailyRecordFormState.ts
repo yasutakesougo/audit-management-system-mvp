@@ -7,12 +7,20 @@
  */
 
 import { useUsers } from '@/stores/useUsers';
+import type { IUserMaster } from '@/features/users/types';
 import { useCallback, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 
 import { filterActiveUsers } from '@/features/users/domain/userLifecycle';
 import type { BulkActivityData, BulkDailyRecordFormProps } from './bulkDailyRecordFormLogic';
 import { createEmptyBulkActivityData, filterUsers } from './bulkDailyRecordFormLogic';
+
+type BulkSelectableUser = {
+  id: number;
+  userId: string;
+  name: string;
+  furigana: string | undefined;
+};
 
 // ─── Hook ─────────────────────────────────────────────────────────────────
 
@@ -31,8 +39,23 @@ export function useBulkDailyRecordFormState(props: Pick<BulkDailyRecordFormProps
   const { data: users = [] } = useUsers();
 
   // ─── Derived ──────────────────────────────────────────────────────────
-  const candidateUsers = useMemo(
-    () => filterActiveUsers(users),
+  const candidateUsers = useMemo<BulkSelectableUser[]>(
+    () => {
+      const result: BulkSelectableUser[] = [];
+      for (const user of filterActiveUsers(users as unknown as IUserMaster[])) {
+        const userId = (user.UserID ?? '').trim();
+        if (!userId) {
+          continue;
+        }
+        result.push({
+          id: user.Id,
+          userId,
+          name: (user.FullName ?? '').trim() || userId,
+          furigana: (user.Furigana ?? user.FullNameKana ?? '').trim() || undefined,
+        });
+      }
+      return result;
+    },
     [users],
   );
 
@@ -42,7 +65,7 @@ export function useBulkDailyRecordFormState(props: Pick<BulkDailyRecordFormProps
   );
 
   const selectedUsers = useMemo(
-    () => candidateUsers.filter((user) => selectedUserIds.includes(user.UserID || '')),
+    () => candidateUsers.filter((user) => selectedUserIds.includes(user.userId)),
     [candidateUsers, selectedUserIds],
   );
 
@@ -71,7 +94,7 @@ export function useBulkDailyRecordFormState(props: Pick<BulkDailyRecordFormProps
 
   const handleSelectAll = useCallback(() => {
     const allIds = filteredUsers
-      .map((user) => user.UserID || '')
+      .map((user) => user.userId)
       .filter((id): id is string => Boolean(id));
     setSelectedUserIds(allIds);
 
