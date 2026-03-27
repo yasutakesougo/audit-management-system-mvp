@@ -179,15 +179,18 @@ export function BulkDailyRecordForm({
               <Alert severity="info" sx={{ mb: 2 }}>
                 {selectedUserIds.length}人の利用者が選択されています
                 <Box sx={{ mt: 1 }}>
-                  <Stack direction="row" flexWrap="wrap" gap={0.5}>
-                    {selectedUsers.slice(0, 5).map(user => (
-                      <Chip
-                        key={user.userId}
-                        label={user.name}
-                        size="small"
-                        onDelete={() => handleUserToggle(user.userId || '')}
-                      />
-                    ))}
+                    <Stack direction="row" flexWrap="wrap" gap={0.5}>
+                    {selectedUsers.slice(0, 5).map((user) => {
+                      const userId = user.UserID || String(user.Id ?? '');
+                      return (
+                        <Chip
+                          key={userId}
+                          label={user.FullName}
+                          size="small"
+                          onDelete={() => handleUserToggle(userId)}
+                        />
+                      );
+                    })}
                     {selectedUsers.length > 5 && (
                       <Chip label={`他${selectedUsers.length - 5}人`} size="small" />
                     )}
@@ -201,37 +204,40 @@ export function BulkDailyRecordForm({
               sx={{ maxHeight: 300, overflow: 'auto', border: '1px solid #e0e0e0', borderRadius: 1 }}
               data-testid={TESTIDS['bulk-daily-record-user-list']}
             >
-              {filteredUsers.map(user => (
-                <FormControlLabel
-                  key={user.userId}
-                  data-testid={`${TESTIDS['bulk-daily-record-user-row-prefix']}${user.userId || user.id}`}
-                  control={
-                    <Checkbox
-                      checked={selectedUserIds.includes(user.userId || '')}
-                      onChange={() => handleUserToggle(user.userId || '')}
-                    />
-                  }
-                  label={
-                    <Box>
-                      <Typography variant="body2">
-                        {user.name} ({user.userId})
-                      </Typography>
-                      {user.furigana && (
-                        <Typography variant="caption" color="textSecondary">
-                          {user.furigana}
+              {filteredUsers.map((user) => {
+                const userId = user.UserID || String(user.Id ?? '');
+                return (
+                  <FormControlLabel
+                    key={userId}
+                    data-testid={`${TESTIDS['bulk-daily-record-user-row-prefix']}${userId}`}
+                    control={
+                      <Checkbox
+                        checked={selectedUserIds.includes(userId)}
+                        onChange={() => handleUserToggle(userId)}
+                      />
+                    }
+                    label={
+                      <Box>
+                        <Typography variant="body2">
+                          {user.FullName} ({userId})
                         </Typography>
-                      )}
-                    </Box>
-                  }
-                  sx={{
-                    width: '100%',
-                    margin: 0,
-                    px: 1,
-                    py: 0.5,
-                    '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)' }
-                  }}
-                />
-              ))}
+                        {user.Furigana && (
+                          <Typography variant="caption" color="textSecondary">
+                            {user.Furigana}
+                          </Typography>
+                        )}
+                      </Box>
+                    }
+                    sx={{
+                      width: '100%',
+                      margin: 0,
+                      px: 1,
+                      py: 0.5,
+                      '&:hover': { backgroundColor: 'rgba(0,0,0,0.04)' }
+                    }}
+                  />
+                );
+              })}
               {filteredUsers.length === 0 && (
                 <Typography variant="body2" color="textSecondary" sx={{ p: 2, textAlign: 'center' }}>
                   該当する利用者が見つかりません
@@ -387,25 +393,28 @@ export function BulkDailyRecordForm({
                 個別メモ（必要に応じて入力）
               </Typography>
               <Stack spacing={2}>
-                {selectedUsers.map(user => (
-                  <Card key={user.userId} variant="outlined">
-                    <CardContent sx={{ pb: 2 }}>
-                      <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                        {user.name} ({user.userId})
-                      </Typography>
-                      <Stack spacing={1}>
-                        <TextField
-                          fullWidth
-                          size="small"
-                          label="個別特記事項"
-                          value={formData.individualNotes[user.userId || '']?.specialNotes || ''}
-                          onChange={(e) => handleIndividualNoteChange(user.userId || '', 'specialNotes', e.target.value)}
-                          placeholder="この利用者特有の記録事項があれば入力"
-                        />
-                      </Stack>
-                    </CardContent>
-                  </Card>
-                ))}
+                {selectedUsers.map((user) => {
+                  const userId = user.UserID || String(user.Id ?? '');
+                  return (
+                    <Card key={userId} variant="outlined">
+                      <CardContent sx={{ pb: 2 }}>
+                        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                          {user.FullName} ({userId})
+                        </Typography>
+                        <Stack spacing={1}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="個別特記事項"
+                            value={formData.individualNotes[userId]?.specialNotes || ''}
+                            onChange={(e) => handleIndividualNoteChange(userId, 'specialNotes', e.target.value)}
+                            placeholder="この利用者特有の記録事項があれば入力"
+                          />
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </Stack>
             </Paper>
           )}

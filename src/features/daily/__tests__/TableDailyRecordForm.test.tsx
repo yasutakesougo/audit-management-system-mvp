@@ -21,28 +21,28 @@ vi.mock('react-hot-toast', () => ({
 // Mock useUsers hook
 const mockUsers = [
   {
-    id: 1,
-    userId: 'U001',
-    name: '田中 太郎',
-    furigana: 'たなか たろう',
+    Id: 1,
+    UserID: 'U001',
+    FullName: '田中 太郎',
+    Furigana: 'たなか たろう',
     IsActive: true,
-    attendanceDays: ['月', '水', '金'] // 月水金通所
+    AttendanceDays: ['月', '水', '金'] // 月水金通所
   },
   {
-    id: 2,
-    userId: 'U002',
-    name: '佐藤 花子',
-    furigana: 'さとう はなこ',
+    Id: 2,
+    UserID: 'U002',
+    FullName: '佐藤 花子',
+    Furigana: 'さとう はなこ',
     IsActive: true,
-    attendanceDays: ['火', '木'] // 火木通所
+    AttendanceDays: ['火', '木'] // 火木通所
   },
   {
-    id: 3,
-    userId: 'U003',
-    name: '山田 一郎',
-    furigana: 'やまだ いちろう',
+    Id: 3,
+    UserID: 'U003',
+    FullName: '山田 一郎',
+    Furigana: 'やまだ いちろう',
     IsActive: true,
-    // attendanceDays未設定（毎日通所）
+    // AttendanceDays未設定（毎日通所）
   }
 ];
 
