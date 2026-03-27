@@ -43,6 +43,9 @@ vi.mock('@/auth/MsalProvider', () => ({
     accounts: [],
     inProgress: 'none',
     authReady: true,
+    instance: {
+      getActiveAccount: vi.fn(() => null),
+    },
   })),
 }));
 
