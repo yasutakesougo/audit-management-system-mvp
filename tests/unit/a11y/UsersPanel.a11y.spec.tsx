@@ -25,6 +25,7 @@ describe('UsersPanel Accessibility', { retry: 2 }, () => {
       status: 'idle',
       error: null,
       create: vi.fn(noop),
+      terminate: vi.fn(noop),
       remove: vi.fn(noop),
       refresh: vi.fn(noop),
     } as any);
@@ -68,6 +69,7 @@ describe('UsersPanel Accessibility', { retry: 2 }, () => {
       status: 'idle',
       error: null,
       create: vi.fn(noop),
+      terminate: vi.fn(noop),
       remove: vi.fn(noop),
       refresh: vi.fn(noop),
     } as any);
@@ -90,6 +92,7 @@ describe('UsersPanel Accessibility', { retry: 2 }, () => {
       status: 'loading',
       error: null,
       create: vi.fn(noop),
+      terminate: vi.fn(noop),
       remove: vi.fn(noop),
       refresh: vi.fn(noop),
     } as any);
@@ -112,6 +115,7 @@ describe('UsersPanel Accessibility', { retry: 2 }, () => {
       status: 'error',
       error: new Error('Failed to load users'),
       create: vi.fn(noop),
+      terminate: vi.fn(noop),
       remove: vi.fn(noop),
       refresh: vi.fn(noop),
     } as any);

@@ -18,7 +18,14 @@ type Props = FormSectionProps & {
   };
 };
 
-export function BasicInfoSection({ values, errors, setField, systemAssignedCode, errRefs }: Props) {
+export function BasicInfoSection({
+  formIdPrefix,
+  values,
+  errors,
+  setField,
+  systemAssignedCode,
+  errRefs,
+}: Props) {
   return (
     <Box sx={{ mb: 3 }}>
       <Typography
@@ -35,6 +42,8 @@ export function BasicInfoSection({ values, errors, setField, systemAssignedCode,
         </Typography>
 
         <TextField
+          id={`${formIdPrefix}-full-name`}
+          name="FullName"
           fullWidth
           required
           label="氏名"
@@ -49,6 +58,8 @@ export function BasicInfoSection({ values, errors, setField, systemAssignedCode,
         />
 
         <TextField
+          id={`${formIdPrefix}-furigana`}
+          name="Furigana"
           fullWidth
           label="ふりがな"
           inputRef={errRefs.furigana}
@@ -60,6 +71,8 @@ export function BasicInfoSection({ values, errors, setField, systemAssignedCode,
         />
 
         <TextField
+          id={`${formIdPrefix}-full-name-kana`}
+          name="FullNameKana"
           fullWidth
           label="カタカナ氏名"
           value={values.FullNameKana}
