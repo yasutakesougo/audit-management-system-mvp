@@ -54,7 +54,7 @@ const UsersMenu: FC<UsersMenuProps> = ({
     </Stack>
 
     <Typography variant="body2" color="text.secondary">
-      利用者一覧タブでは詳細表示・編集・削除、登録タブでは簡易登録や詳細フォームによる登録が行えます。
+      利用者一覧タブでは詳細表示・編集・契約終了、登録タブでは簡易登録や詳細フォームによる登録が行えます。
     </Typography>
   </Stack>
 );
