@@ -5,18 +5,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import { TESTIDS } from '@/testids';
 import type {
-    CreateScheduleEventInput,
     ScheduleCategory
 } from '../../data';
 import {
     buildAutoTitle,
     createInitialScheduleFormState,
-    toCreateScheduleInput,
-    validateScheduleForm,
     type ScheduleFormState,
     type ScheduleUserOption,
 } from '../../domain/scheduleFormState';
-import { buildScheduleFailureAnnouncement, buildScheduleSuccessAnnouncement } from '../../utils/scheduleAnnouncements';
 import { useOrgOptions, type OrgOption } from '../useOrgOptions';
 import { useStaffOptions, type StaffOption } from '../useStaffOptions';
 
@@ -25,8 +21,6 @@ import { useStaffOptions, type StaffOption } from '../useStaffOptions';
 export type UseScheduleCreateFormInput = {
   open: boolean;
   onClose: () => void;
-  onSubmit: (input: CreateScheduleEventInput) => Promise<void> | void;
-  onDelete?: (id: string) => Promise<void> | void;
   users: ScheduleUserOption[];
   initialDate?: Date | string;
   initialStartTime?: string;
@@ -37,9 +31,6 @@ export type UseScheduleCreateFormInput = {
   initialOverride?: Partial<ScheduleFormState> | null;
   dialogTestId?: string;
   externalErrors?: string[];
-  submitTestId?: string;
-  isSubmitting?: boolean;
-  isDeleting?: boolean;
 };
 
 // ===== ViewModel =====
@@ -48,7 +39,6 @@ export interface ScheduleCreateFormViewModel {
   // State
   form: ScheduleFormState;
   errors: string[];
-  submitting: boolean;
   showFacilityGuide: boolean;
 
   // Derived
@@ -75,7 +65,6 @@ export interface ScheduleCreateFormViewModel {
   handleCategoryChange: (event: SelectChangeEvent<ScheduleCategory>) => void;
   handleStaffChange: (_event: unknown, option: StaffOption | null) => void;
   handleClose: () => void;
-  handleSubmit: () => Promise<void>;
 
   // A11y
   headingId: string;
@@ -88,12 +77,7 @@ export interface ScheduleCreateFormViewModel {
   staffOptions: StaffOption[];
   orgOptions: OrgOption[];
 
-  // External flags
-  externalIsSubmitting: boolean;
-  externalIsDeleting: boolean;
-
   // Labels
-  failureMessage: string;
   openAnnouncement: string;
 }
 
@@ -103,7 +87,6 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
   const {
     open,
     onClose,
-    onSubmit,
     users,
     initialDate,
     initialStartTime,
@@ -113,8 +96,7 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
     eventId,
     initialOverride,
     dialogTestId,
-    isSubmitting: externalIsSubmitting = false,
-    isDeleting: externalIsDeleting = false,
+    externalErrors = [],
   } = input;
 
   const resolvedDialogTestId = dialogTestId ?? TESTIDS['schedule-create-dialog'];
@@ -165,8 +147,6 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
       override: initialOverride ?? undefined
     })
   );
-  const [errors, setErrors] = useState<string[]>([]);
-  const [submitting, setSubmitting] = useState(false);
   const [showFacilityGuide, setShowFacilityGuide] = useState(false);
 
   // ── Refs ─────────────────────────────────────────────────────────────────
@@ -179,7 +159,7 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
   const lastFocusedRef = useRef<HTMLElement | null>(null);
 
   // ── Derived a11y ────────────────────────────────────────────────────────
-  const errorSummaryId = errors.length > 0 ? `${resolvedDialogTestId}-errors` : undefined;
+  const errorSummaryId = externalErrors.length > 0 ? `${resolvedDialogTestId}-errors` : undefined;
   const dialogAriaDescribedBy = errorSummaryId ? `${descriptionId} ${errorSummaryId}` : descriptionId;
 
   // ── External data hooks ─────────────────────────────────────────────────
@@ -188,12 +168,12 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
 
   // ── Derived error messages ──────────────────────────────────────────────
   const dateOrderErrorMessage = useMemo(
-    () => errors.find((msg) => msg.includes('終了日時は開始日時より後にしてください')),
-    [errors],
+    () => externalErrors.find((msg) => msg.includes('終了日時は開始日時より後にしてください')),
+    [externalErrors],
   );
   const serviceTypeErrorMessage = useMemo(
-    () => errors.find((msg) => msg.includes('サービス種別を選択してください')),
-    [errors],
+    () => externalErrors.find((msg) => msg.includes('サービス種別を選択してください')),
+    [externalErrors],
   );
 
   // ── Derived selections ──────────────────────────────────────────────────
@@ -228,9 +208,6 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
   const isOrgCategory = form.category === 'Org';
   const titleLabel = mode === 'edit' ? 'スケジュール更新' : 'スケジュール新規作成';
   const primaryButtonLabel = mode === 'edit' ? '更新' : '作成';
-  const failureMessage = mode === 'edit'
-    ? 'スケジュールの更新に失敗しました。もう一度お試しください。'
-    : 'スケジュールの作成に失敗しました。もう一度お試しください。';
   const titlePlaceholder = isOrgCategory ? '例）会議：〇〇について' : '例）午前 利用者Aさん通所';
   const titleHelperText = isOrgCategory ? '施設全体イベントのタイトルを入力' : undefined;
   const openAnnouncement = useMemo(
@@ -257,8 +234,6 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
         }
         return next;
       });
-      setErrors([]);
-      setSubmitting(false);
     }
   }, [open, eventId, initialDate, initialStartTime, initialEndTime, defaultUser?.id, initialOverride, mode, resolvedDefaultTitle]);
 
@@ -436,52 +411,16 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
   };
 
   const handleClose = () => {
-    if (submitting) return;
     onClose();
   };
 
-  const handleSubmit = async () => {
-    const validation = validateScheduleForm(form);
-    if (!validation.isValid) {
-      setErrors(validation.errors);
-      if (validation.errors.length > 0) {
-        announce(validation.errors[0], 'assertive');
-      }
-      return;
-    }
 
-    const formInput = toCreateScheduleInput(form, selectedUser);
-
-    setSubmitting(true);
-    try {
-      await onSubmit(formInput);
-      const successAnnouncement = buildScheduleSuccessAnnouncement({
-        input: formInput,
-        userName: selectedUser?.name,
-        mode,
-      });
-      announce(successAnnouncement);
-      setSubmitting(false);
-      onClose();
-    } catch (error) {
-      console.error('[ScheduleCreateDialog] submit failed', error);
-      const failureAnnouncement = buildScheduleFailureAnnouncement({
-        input: formInput,
-        userName: selectedUser?.name,
-        mode,
-      });
-      setErrors([failureAnnouncement || failureMessage]);
-      announce(failureAnnouncement || failureMessage, 'assertive');
-      setSubmitting(false);
-    }
-  };
 
   // ── Return ViewModel ────────────────────────────────────────────────────
 
   return {
     form,
-    errors,
-    submitting,
+    errors: externalErrors,
     showFacilityGuide,
 
     selectedUser,
@@ -505,7 +444,6 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
     handleCategoryChange,
     handleStaffChange,
     handleClose,
-    handleSubmit,
 
     headingId,
     descriptionId,
@@ -516,10 +454,6 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
     staffOptions,
     orgOptions,
 
-    externalIsSubmitting,
-    externalIsDeleting,
-
-    failureMessage,
     openAnnouncement,
   };
 }

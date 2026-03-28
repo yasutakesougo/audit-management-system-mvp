@@ -49,7 +49,7 @@ import {
 import type { QuickTemplate } from '../../domain/builders/scheduleQuickTemplates';
 import type { OrgOption } from '../../hooks/useOrgOptions';
 import { useScheduleCreateForm } from '../../hooks/orchestrators/useScheduleCreateForm';
-import { useScheduleSaveOrchestrator } from '../../hooks/orchestrators/useScheduleSaveOrchestrator';
+import { useScheduleActionOrchestrator } from '../../hooks/orchestrators/useScheduleActionOrchestrator';
 import { SCHEDULE_STATUS_OPTIONS } from '../../statusMetadata';
 
 type ScheduleCreateDialogBaseProps = {
@@ -106,32 +106,35 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
     isDeleting: externalIsDeleting = false,
   } = props;
 
-  // 1. Setup Orchestrator for Save flow
-  const saveOrchestrator = useScheduleSaveOrchestrator({
+  // 1. Setup Orchestrator for Save & Delete flow
+  const actionOrchestrator = useScheduleActionOrchestrator({
     mode,
+    eventId,
     onSubmit,
+    onDelete,
     onClose,
     users,
   });
 
-  // 2. Setup ViewModel for UI State
   const vm = useScheduleCreateForm({
     ...props,
-    externalErrors: saveOrchestrator.saveErrors,
+    externalErrors: actionOrchestrator.saveErrors,
   });
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   // Derive interaction states
-  const isSubmitting = saveOrchestrator.executing || externalIsSubmitting;
+  const isSubmitting = actionOrchestrator.executing || externalIsSubmitting;
+  const isDeletingActual = actionOrchestrator.deleting || externalIsDeleting;
+  const isBusy = isSubmitting || isDeletingActual;
   
   const handleClose = () => {
-    if (isSubmitting) return;
+    if (isBusy) return;
     onClose();
   };
 
   const handleSubmitAsync = async () => {
-    await saveOrchestrator.handleSave(vm.form);
+    await actionOrchestrator.handleSave(vm.form);
   };
 
   return (
@@ -495,9 +498,9 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
             onClick={() => setDeleteConfirmOpen(true)}
             startIcon={<DeleteOutlineIcon />}
             color="error"
-            disabled={isSubmitting || externalIsDeleting}
+            disabled={isBusy}
           >
-            {externalIsDeleting ? (
+            {isDeletingActual ? (
               <>
                 <span>削除中…</span>
                 <CircularProgress size={16} sx={{ ml: 1 }} />
@@ -507,14 +510,14 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
             )}
           </Button>
         )}
-        <Button onClick={handleClose} startIcon={<CloseIcon />} disabled={isSubmitting}>
+        <Button onClick={handleClose} startIcon={<CloseIcon />} disabled={isBusy}>
           キャンセル
         </Button>
         <Button
           variant="contained"
           onClick={handleSubmitAsync}
           startIcon={<SaveIcon />}
-          disabled={isSubmitting}
+          disabled={isBusy}
           data-testid={submitTestId ?? TESTIDS['schedule-create-save']}
         >
             {isSubmitting ? '保存中...' : vm.primaryButtonLabel}
@@ -547,15 +550,11 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
           <Button
             onClick={async () => {
               setDeleteConfirmOpen(false);
-              try {
-                await onDelete(eventId);
-                onClose();
-              } catch (error) {
-                console.error('Failed to delete schedule:', error);
-              }
+              await actionOrchestrator.handleDelete();
             }}
             color="error"
             variant="contained"
+            disabled={isBusy}
           >
             削除する
           </Button>
