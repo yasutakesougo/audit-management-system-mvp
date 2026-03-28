@@ -1,0 +1,45 @@
+src/features/dashboard/sections/impl/ScheduleSection.tsx(12,33): error TS2307: Cannot find module '@/features/schedules/components/sections/SchedulesSpLane' or its corresponding type declarations.
+src/features/schedules/components/ScheduleDialogManager.tsx(20,47): error TS2307: Cannot find module '../hooks/view-models/useSchedulesPageState' or its corresponding type declarations.
+src/features/schedules/components/ScheduleFilterBar.tsx(12,39): error TS2307: Cannot find module '../components/sections/SchedulesFilterResponsive' or its corresponding type declarations.
+src/features/schedules/hooks/useScheduleOps.ts(14,32): error TS2307: Cannot find module './legacy/useSchedules' or its corresponding type declarations.
+src/features/schedules/hooks/useScheduleOpsData.ts(13,46): error TS2307: Cannot find module './legacy/useSchedules' or its corresponding type declarations.
+src/features/schedules/hooks/useSchedulesCrud.ts(31,8): error TS2307: Cannot find module '../view-models/useSchedulesPageState' or its corresponding type declarations.
+src/features/schedules/hooks/useSchedulesNavigation.ts(15,27): error TS2307: Cannot find module './legacy/useSchedules' or its corresponding type declarations.
+src/features/schedules/hooks/useSchedulesNavigation.ts(16,27): error TS2307: Cannot find module './view-models/useSchedulesPageState' or its corresponding type declarations.
+src/features/schedules/hooks/useSchedulesPageState.ts(9,41): error TS2307: Cannot find module '../legacy/useSchedules' or its corresponding type declarations.
+src/features/schedules/hooks/useSchedulesPageState.ts(10,85): error TS2307: Cannot find module '../view-models/useWeekPageRouteState' or its corresponding type declarations.
+src/features/schedules/hooks/useSchedulesPageState.ts(237,26): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/features/schedules/hooks/useSchedulesPageState.ts(264,24): error TS7006: Parameter 'candidate' implicitly has an 'any' type.
+src/features/schedules/hooks/useUserStatusActions.ts(43,41): error TS2307: Cannot find module './legacy/useSchedules' or its corresponding type declarations.
+src/features/schedules/hooks/useUserStatusActions.ts(130,33): error TS2345: Argument of type '{ userId?: string | undefined; start?: string | undefined; serviceType?: string | null | undefined; }' is not assignable to parameter of type '{ id: string; userId?: string | undefined; userName?: string | undefined; start: string; serviceType?: string | null | undefined; notes?: string | undefined; }'.
+  Property 'id' is missing in type '{ userId?: string | undefined; start?: string | undefined; serviceType?: string | null | undefined; }' but required in type '{ id: string; userId?: string | undefined; userName?: string | undefined; start: string; serviceType?: string | null | undefined; notes?: string | undefined; }'.
+src/features/schedules/hooks/useWeekPageOrchestrator.ts(19,34): error TS2307: Cannot find module '../legacy/useSchedulesCrud' or its corresponding type declarations.
+src/features/schedules/hooks/useWeekPageOrchestrator.ts(20,40): error TS2307: Cannot find module '../legacy/useSchedulesNavigation' or its corresponding type declarations.
+src/features/schedules/hooks/useWeekPageOrchestrator.ts(22,47): error TS2307: Cannot find module '../view-models/useSchedulesPageState' or its corresponding type declarations.
+src/features/schedules/hooks/useWeekPageOrchestrator.ts(23,64): error TS2307: Cannot find module '../view-models/useSchedulesPageState' or its corresponding type declarations.
+src/features/schedules/hooks/useWeekPageOrchestrator.ts(24,36): error TS2307: Cannot find module '../view-models/useWeekPageUiState' or its corresponding type declarations.
+src/features/schedules/index.ts(21,30): error TS2307: Cannot find module './hooks/legacy/useSchedules' or its corresponding type declarations.
+src/features/schedules/index.ts(23,39): error TS2307: Cannot find module './hooks/view-models/useWeekPageRouteState' or its corresponding type declarations.
+src/features/schedules/index.ts(27,33): error TS2307: Cannot find module './components/sections/SchedulesHeader' or its corresponding type declarations.
+src/features/schedules/routes/DayView.tsx(6,30): error TS2307: Cannot find module '../components/timeline/TimelineItem' or its corresponding type declarations.
+src/features/schedules/routes/DayView.tsx(11,41): error TS2307: Cannot find module '../hooks/legacy/useSchedules' or its corresponding type declarations.
+src/features/schedules/routes/ScheduleCreateDialog.tsx(50,39): error TS2307: Cannot find module '../hooks/orchestrators/useScheduleCreateForm' or its corresponding type declarations.
+src/features/schedules/routes/ScheduleCreateDialog.tsx(197,33): error TS7006: Parameter 'msg' implicitly has an 'any' type.
+src/features/schedules/routes/ScheduleCreateDialog.tsx(197,38): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/features/schedules/routes/WeekPage.tsx(8,39): error TS2307: Cannot find module '@/features/schedules/components/dialogs/ScheduleDialogManager' or its corresponding type declarations.
+src/features/schedules/routes/WeekPage.tsx(10,35): error TS2307: Cannot find module '@/features/schedules/components/sections/ScheduleFilterBar' or its corresponding type declarations.
+src/features/schedules/routes/WeekPage.tsx(12,39): error TS2307: Cannot find module '@/features/schedules/components/pages/ScheduleViewContainer' or its corresponding type declarations.
+src/features/schedules/routes/WeekPage.tsx(13,29): error TS2307: Cannot find module '@/features/schedules/components/sections/SchedulesHeader' or its corresponding type declarations.
+src/features/schedules/routes/WeekPage.tsx(26,79): error TS2307: Cannot find module '../hooks/view-models/useSchedulesPageState' or its corresponding type declarations.
+src/features/schedules/routes/WeekPage.tsx(27,41): error TS2307: Cannot find module '../hooks/orchestrators/useWeekPageOrchestrator' or its corresponding type declarations.
+src/features/schedules/routes/WeekPage.tsx(28,36): error TS2307: Cannot find module '../hooks/view-models/useWeekPageUiState' or its corresponding type declarations.
+src/features/schedules/routes/WeekPage.tsx(260,34): error TS7006: Parameter 'category' implicitly has an 'any' type.
+src/features/schedules/routes/WeekPage.tsx(262,31): error TS7006: Parameter 'q' implicitly has an 'any' type.
+src/features/schedules/routes/WeekPage.tsx(410,41): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/features/schedules/routes/WeekView.tsx(17,30): error TS2307: Cannot find module '../hooks/legacy/useSchedules' or its corresponding type declarations.
+src/features/schedules/routes/weekViewHelpers.ts(8,27): error TS2307: Cannot find module '../hooks/legacy/useSchedules' or its corresponding type declarations.
+src/features/today/transport/useTransportStatus.ts(32,30): error TS2307: Cannot find module '@/features/schedules/hooks/legacy/useSchedules' or its corresponding type declarations.
+src/pages/HandoffTimelinePage.tsx(31,39): error TS2307: Cannot find module '../features/schedules/components/dialogs/UserStatusQuickDialog' or its corresponding type declarations.
+src/pages/HandoffTimelinePage.tsx(327,23): error TS7006: Parameter 'msg' implicitly has an 'any' type.
+src/pages/TodayOpsPage.tsx(61,39): error TS2307: Cannot find module '@/features/schedules/components/dialogs/UserStatusQuickDialog' or its corresponding type declarations.
+src/pages/TransportAssignmentPage.tsx(18,30): error TS2307: Cannot find module '@/features/schedules/hooks/legacy/useSchedules' or its corresponding type declarations.

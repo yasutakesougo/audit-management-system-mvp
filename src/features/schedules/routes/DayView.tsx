@@ -3,12 +3,12 @@ import Loading from '@/ui/components/Loading';
 import { useId, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import ScheduleEmptyHint from '../components/ScheduleEmptyHint';
-import { TimelineItem } from '../components/TimelineItem';
+import { TimelineItem } from '../components/timeline/TimelineItem';
 import { SCHEDULE_TIMELINE_SPACING } from '../constants';
 import type { SchedItem } from '../data';
 import { type DateRange } from '../data';
 import type { ScheduleCategory } from '../domain/types';
-import { makeRange, useSchedules } from '../hooks/useSchedules';
+import { makeRange, useSchedules } from '../hooks/legacy/useSchedules';
 import { endOfDay, formatDayLabel, formatTimeRange, startOfDay, toLocalDateIso } from './dayViewHelpers';
 
 type ExtendedSchedItem = SchedItem &

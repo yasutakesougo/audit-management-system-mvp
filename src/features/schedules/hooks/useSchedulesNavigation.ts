@@ -12,8 +12,8 @@
 
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
 import { type MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { makeRange } from './useSchedules';
-import { toDateIso } from './useSchedulesPageState';
+import { makeRange } from './legacy/useSchedules';
+import { toDateIso } from './view-models/useSchedulesPageState';
 
 export interface NavigationDeps {
   focusDate: Date;

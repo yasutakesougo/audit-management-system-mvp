@@ -6,8 +6,8 @@ import type { CreateScheduleEventInput, SchedItem, UpdateScheduleEventInput } fr
 import type { ScheduleFormState } from '@/features/schedules/domain/scheduleFormState';
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
 import type { SchedulesErrorInfo } from '../errors';
-import { makeRange, useSchedules } from './useSchedules';
-import { type DialogIntentParams, type WeekDialogMode, useWeekPageRouteState } from './useWeekPageRouteState';
+import { makeRange, useSchedules } from './legacy/useSchedules';
+import { type DialogIntentParams, type WeekDialogMode, useWeekPageRouteState } from './view-models/useWeekPageRouteState';
 
 export const DEFAULT_START_TIME = '10:00';
 export const DEFAULT_END_TIME = '11:00';

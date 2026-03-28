@@ -16,12 +16,12 @@ import { useAnnounce } from '@/a11y/LiveAnnouncer';
 import { isE2E } from '@/env';
 import type { CreateScheduleEventInput, SchedItem } from '@/features/schedules/domain';
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
-import { useSchedulesCrud } from './useSchedulesCrud';
-import { useSchedulesNavigation } from './useSchedulesNavigation';
+import { useSchedulesCrud } from '../legacy/useSchedulesCrud';
+import { useSchedulesNavigation } from '../legacy/useSchedulesNavigation';
 import { findNextGap } from '../domain/validation/scheduleNextGap';
-import type { ScheduleEditDialogValues } from './useSchedulesPageState';
-import { buildCreateDialogIntent, useSchedulesPageState } from './useSchedulesPageState';
-import { useWeekPageUiState } from './useWeekPageUiState';
+import type { ScheduleEditDialogValues } from '../view-models/useSchedulesPageState';
+import { buildCreateDialogIntent, useSchedulesPageState } from '../view-models/useSchedulesPageState';
+import { useWeekPageUiState } from '../view-models/useWeekPageUiState';
 
 // Type inference from hooks
 type UseSchedulesPageStateReturn = ReturnType<typeof useSchedulesPageState>;

@@ -47,7 +47,7 @@ import {
 } from '../domain/scheduleFormState';
 import type { QuickTemplate } from '../domain/builders/scheduleQuickTemplates';
 import type { OrgOption } from '../hooks/useOrgOptions';
-import { useScheduleCreateForm } from '../hooks/useScheduleCreateForm';
+import { useScheduleCreateForm } from '../hooks/orchestrators/useScheduleCreateForm';
 import { SCHEDULE_STATUS_OPTIONS } from '../statusMetadata';
 
 // ===== Types for Dialog Component Only =====
@@ -194,7 +194,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
               id={vm.errorSummaryId}
             >
               <ul style={{ paddingLeft: '1.25rem', margin: 0 }}>
-                {vm.errors.map((msg, index) => (
+                {vm.errors.map((msg: any, index: any) => (
                   <li key={index}>{msg}</li>
                 ))}
               </ul>

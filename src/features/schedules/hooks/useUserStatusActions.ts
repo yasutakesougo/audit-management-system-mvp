@@ -40,7 +40,7 @@ import {
   toUserStatusRecord,
   USER_STATUS_LABELS,
 } from '../domain/mappers/userStatus';
-import { makeRange, useSchedules } from './useSchedules';
+import { makeRange, useSchedules } from './legacy/useSchedules';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Types

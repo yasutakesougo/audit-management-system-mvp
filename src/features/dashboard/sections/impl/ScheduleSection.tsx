@@ -9,7 +9,7 @@
  */
 
 import { type SpLaneModel } from '@/features/dashboard/types/hub';
-import { SchedulesSpLane } from '@/features/schedules/components/SchedulesSpLane';
+import { SchedulesSpLane } from '@/features/schedules/components/sections/SchedulesSpLane';
 import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid';

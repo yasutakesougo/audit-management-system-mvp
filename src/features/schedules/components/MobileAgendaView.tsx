@@ -133,7 +133,7 @@ const MobileAgendaView: React.FC<MobileAgendaViewProps> = ({
 
 			{/* 予定リスト */}
 			<Stack spacing={2}>
-				{filteredSchedules.map((schedule, index) => (
+				{filteredSchedules.map((schedule: any, index: any) => (
 					<AgendaCard
 						key={schedule.id || index}
 						schedule={schedule}

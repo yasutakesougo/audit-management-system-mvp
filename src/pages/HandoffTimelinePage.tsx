@@ -28,7 +28,7 @@ import type { HandoffRecord } from '../features/handoff/handoffTypes';
 import { suggestStatusFromHandoffCategory } from '../features/schedules/domain/mappers/userStatus';
 import type { UserStatusType } from '../features/schedules/domain/mappers/userStatus';
 import { useUserStatusActions } from '../features/schedules/hooks/useUserStatusActions';
-import { UserStatusQuickDialog } from '../features/schedules/components/UserStatusQuickDialog';
+import { UserStatusQuickDialog } from '../features/schedules/components/dialogs/UserStatusQuickDialog';
 
 /**
  * 申し送りタイムラインページ（薄いオーケストレーター）
@@ -324,7 +324,7 @@ export default function HandoffTimelinePage() {
           initialStatusType={userStatusPreset.statusType}
           source="handoff"
           actions={userStatusActions}
-          onSuccess={(msg) => setUserStatusSuccessMsg(msg)}
+          onSuccess={(msg: any) => setUserStatusSuccessMsg(msg)}
         />
       )}
 
