@@ -175,7 +175,7 @@ const base: ThemeOptions = {
     MuiListItemButton: { styleOverrides: { root: { minHeight: 48, py: 1.5 } } },
     MuiMenuItem: { styleOverrides: { root: { minHeight: 48, py: 1.5 } } },
     MuiTab: { styleOverrides: { root: { minHeight: 48 } } },
-    MuiCssBaseline: { styleOverrides: `*:focus-visible{outline:3px solid #5B8C5A;outline-offset:2px}` },
+    MuiCssBaseline: { styleOverrides: `*:focus-visible{outline:3px solid #4E7E4D;outline-offset:2px}` },
   },
 } as const;
 
@@ -236,10 +236,10 @@ export const ThemeRoot: React.FC<{ children: React.ReactNode }> = ({ children })
             }
           : {
               mode: 'light',
-              primary: { main: '#5B8C5A', light: '#E8F0E4', dark: '#3D6B3C' },
+              primary: { main: '#4E7E4D', light: '#E8F0E4', dark: '#3D6B3C' },
               secondary: { main: '#6B7280', contrastText: '#ffffff' },
-              info: { main: '#5B8C5A', dark: '#3D6B3C', contrastText: '#ffffff' },
-              warning: { main: '#D4A843' },
+              info: { main: '#4E7E4D', dark: '#3D6B3C', contrastText: '#ffffff' },
+              warning: { main: '#8A6400' },
               error: { main: '#C94A4A' },
               background: { default: '#F5F7F4', paper: '#FFFFFF' },
               text: { primary: '#1F2933', secondary: '#4B5563' },

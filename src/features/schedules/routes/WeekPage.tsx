@@ -21,6 +21,7 @@ import { OpsWeekBoard } from '@/features/schedules/components/ops/OpsWeekBoard';
 import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedules/constants';
 import { TESTIDS } from '@/testids';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
+import { alpha, useTheme } from '@mui/material/styles';
 import { useScheduleOps } from '../hooks/useScheduleOps';
 import { useScheduleUserOptions } from '../hooks/useScheduleUserOptions';
 import { buildCreateDialogIntent, buildNextSlot, useSchedulesPageState } from '../hooks/useSchedulesPageState';
@@ -29,6 +30,8 @@ import { useWeekPageUiState } from '../hooks/useWeekPageUiState';
 
 
 export default function WeekPage() {
+  const theme = useTheme();
+
   // Layout & Auth
   const { isDesktopSize, isTabletSize } = useBreakpointFlags();
   const { isLandscape } = useOrientation();
@@ -201,6 +204,14 @@ export default function WeekPage() {
   const navPrev = mode === 'month' ? handlePrevMonth : handlePrevWeek;
   const navNext = mode === 'month' ? handleNextMonth : handleNextWeek;
   const navToday = mode === 'month' ? handleTodayMonth : handleTodayWeek;
+  const stickyHeaderBackground =
+    theme.palette.mode === 'dark'
+      ? alpha(theme.palette.background.paper, 0.96)
+      : 'rgba(255,255,255,0.96)';
+  const stickyHeaderBorderColor =
+    theme.palette.mode === 'dark'
+      ? alpha(theme.palette.common.white, 0.12)
+      : 'rgba(0,0,0,0.08)';
 
   return (
     <section
@@ -218,11 +229,11 @@ export default function WeekPage() {
             position: 'sticky',
             top: 0,
             zIndex: 2,
-            background: 'rgba(255,255,255,0.96)',
+            background: stickyHeaderBackground,
             backdropFilter: 'blur(6px)',
             paddingTop: 0,
             paddingBottom: 4,
-            borderBottom: '1px solid rgba(0,0,0,0.08)',
+            borderBottom: `1px solid ${stickyHeaderBorderColor}`,
           }}
         >
           <span hidden>週間スケジュール</span>

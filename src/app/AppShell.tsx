@@ -21,6 +21,7 @@ import { SettingsDialog } from '@/features/settings/SettingsDialog';
 import { useSuggestionDeepLinkArrivalTelemetry } from '@/features/action-engine/telemetry/useSuggestionDeepLinkArrivalTelemetry';
 import RouteHydrationListener from '@/hydration/RouteHydrationListener';
 import CloseFullscreenRoundedIcon from '@mui/icons-material/CloseFullscreenRounded';
+import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
 import Fab from '@mui/material/Fab';
 import React from 'react';
@@ -213,6 +214,32 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     <RouteHydrationListener>
       <LiveAnnouncer>
         <div data-testid="app-shell" data-kiosk={isKioskMode ? 'true' : undefined}>
+          <Box
+            component="a"
+            href="#app-main-content"
+            data-testid="skip-to-main-link"
+            sx={{
+              position: 'absolute',
+              top: -48,
+              left: 8,
+              zIndex: (t) => t.zIndex.tooltip + 1,
+              px: 1.5,
+              py: 0.75,
+              borderRadius: 1,
+              bgcolor: 'background.paper',
+              color: 'text.primary',
+              border: '1px solid',
+              borderColor: 'divider',
+              textDecoration: 'none',
+              fontSize: 14,
+              fontWeight: 600,
+              '&:focus-visible': {
+                top: 8,
+              },
+            }}
+          >
+            メインコンテンツへスキップ
+          </Box>
           <AppShellV2
             header={headerContent}
             sidebar={sidebarContent}
