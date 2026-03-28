@@ -116,3 +116,40 @@ export interface TableDailyRecordFormStructured {
   initialization: FormInitialization;
 }
 
+// ────────────────────────────────────────────────────────────
+// New ViewModel Architecture (PR 3-C)
+// ────────────────────────────────────────────────────────────
+
+export interface TableDailyRecordViewModel {
+  state: {
+    formData: TableDailyRecordData;
+    targetDate: string;
+    selectedUserIds: string[];
+    filteredUsers: User[];
+    loading: boolean; // equivalent to hydrationLoading
+    saving: boolean;
+    error: Error | null; // equivalent to hydrationError
+  };
+
+  flags: {
+    hydrated: boolean;
+    isDirty: boolean;
+    canSave: boolean;
+    canReset: boolean;
+    showDraftNotice: boolean;
+    showEmptyState: boolean;
+  };
+
+  actions: {
+    changeDate: (date: string) => void;
+    changeSelectedUsers: (userIds: string[]) => void;
+    changeRecorder: (recorder: string) => void;
+    updateRowData: (userId: string, field: string, value: string | boolean) => void;
+    clearRowData: (userId: string) => void;
+    save: () => Promise<void>;
+    saveDraft: () => void;
+    clearDraft: () => void;
+    reset: () => void;
+  };
+}
+

@@ -61,22 +61,24 @@ export function TableDailyRecordForm({
 
   const state = controlledState ?? internalState!;
 
-  // ── Structured access ──────────────────────────────
-  const { header, picker, table, draft, handoff, actions } = state;
-  const { formData, setFormData, validationErrors, clearValidationErrors } = header;
+  // ── ViewModel Access (PR 3-C) ─────────────────────
+  const { vm } = state;
+  const { state: vmState, flags: vmFlags, actions: vmActions } = vm;
+
+  // ── Legacy Structured access ────────────────────────
+  // To be progressively deprecated in PR 3-C-2 and 3-C-3
+  const { header, picker, table, handoff } = state;
+  const { validationErrors, clearValidationErrors, setFormData } = header;
   const {
     searchQuery, setSearchQuery,
     showTodayOnly, setShowTodayOnly,
-    filteredUsers, selectedUserIds,
     handleUserToggle, handleSelectAll, handleClearAll,
   } = picker;
   const {
-    handleRowDataChange, handleProblemBehaviorChange,
-    handleBehaviorTagToggle, handleClearRow,
+    handleProblemBehaviorChange,
+    handleBehaviorTagToggle,
     visibleRows,
   } = table;
-  const { handleSaveDraft } = draft;
-  const { handleSave, saving } = actions;
 
   const hasValidationErrors = Object.keys(validationErrors).length > 0;
 
@@ -89,15 +91,15 @@ export function TableDailyRecordForm({
           <Stack direction="row" spacing={0.5} alignItems="center">
             <Box sx={{ flex: 1 }}>
               <TableDailyRecordUserPicker
-                formDate={formData.date}
+                formDate={vmState.formData.date}
                 searchQuery={searchQuery}
                 onSearchQueryChange={setSearchQuery}
                 showTodayOnly={showTodayOnly}
                 onToggleShowToday={() => setShowTodayOnly(!showTodayOnly)}
                 onSelectAll={handleSelectAll}
                 onClearAll={handleClearAll}
-                filteredUsers={filteredUsers}
-                selectedUserIds={selectedUserIds}
+                filteredUsers={vmState.filteredUsers}
+                selectedUserIds={vmState.selectedUserIds}
                 onUserToggle={handleUserToggle}
                 defaultExpanded={variant === 'content'}
                 autoFocusSearch={variant === 'content'}
@@ -156,21 +158,21 @@ export function TableDailyRecordForm({
           {visibleRows.length > 0 && visibleRows.some(r => (r.behaviorTags ?? []).length > 0) && (
             <SuggestionPanelMemo
               visibleRows={visibleRows}
-              date={formData.date}
+              date={vmState.formData.date}
               setFormData={setFormData}
-              handleRowDataChange={handleRowDataChange}
+              handleRowDataChange={vmActions.updateRowData}
             />
           )}
 
           {/* Table area — takes remaining space */}
-          {formData.userRows.length > 0 && (
+          {vmState.formData.userRows.length > 0 && (
             <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               <TableDailyRecordTable
                 rows={visibleRows}
-                onRowDataChange={handleRowDataChange}
+                onRowDataChange={vmActions.updateRowData}
                 onProblemBehaviorChange={handleProblemBehaviorChange}
                 onBehaviorTagToggle={handleBehaviorTagToggle}
-                onClearRow={handleClearRow}
+                onClearRow={vmActions.clearRowData}
               />
             </Box>
           )}
@@ -193,8 +195,8 @@ export function TableDailyRecordForm({
         >
           <Stack direction="row" spacing={0.75} sx={{ width: '100%' }}>
             <Button
-              onClick={handleSaveDraft}
-              disabled={saving}
+              onClick={vmActions.saveDraft}
+              disabled={vmState.saving}
               variant="outlined"
               size="small"
               sx={{ minHeight: 34, minWidth: 100, fontSize: '0.8rem' }}
@@ -205,7 +207,7 @@ export function TableDailyRecordForm({
             </Button>
             <Button
               onClick={onClose}
-              disabled={saving}
+              disabled={vmState.saving}
               variant="outlined"
               size="small"
               fullWidth
@@ -218,11 +220,11 @@ export function TableDailyRecordForm({
               size="small"
               fullWidth
               sx={{ minHeight: 34, fontSize: '0.8rem' }}
-              onClick={handleSave}
-              disabled={saving || selectedUserIds.length === 0}
+              onClick={vmActions.save}
+              disabled={!vmFlags.canSave}
               startIcon={<SaveIcon fontSize="small" />}
             >
-              {saving ? '保存中...' : `${selectedUserIds.length}人分保存`}
+              {vmState.saving ? '保存中...' : `${vmState.selectedUserIds.length}人分保存`}
             </Button>
           </Stack>
         </DialogActions>

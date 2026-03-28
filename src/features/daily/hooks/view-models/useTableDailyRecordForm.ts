@@ -3,7 +3,7 @@ import type { User } from '@/types';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useHandoffNotesForTable } from '../../repositories/adapters/useHandoffNotesForTable';
-import type { TableDailyRecordFormStructured } from './tableDailyRecordFormTypes';
+import type { TableDailyRecordFormStructured, TableDailyRecordViewModel } from './tableDailyRecordFormTypes';
 import { useTableDailyRecordFiltering } from '../orchestrators/useTableDailyRecordFiltering';
 import { useTableDailyRecordHydrationOrchestrator, createInitialFormData } from '../orchestrators/useTableDailyRecordHydrationOrchestrator';
 import { useTableDailyRecordSaveOrchestrator } from '../orchestrators/useTableDailyRecordSaveOrchestrator';
@@ -109,6 +109,7 @@ export type UseTableDailyRecordFormResult = {
    * フラットフィールドと同じ値を構造化して返す。
    * 消費者は `result.header.formData` のように参照可能。
    */
+  vm: TableDailyRecordViewModel;
 } & TableDailyRecordFormStructured;
 
 
@@ -265,6 +266,47 @@ export const useTableDailyRecordForm = ({
     onSuccess: handleSaveSuccess,
   });
 
+  // ── ViewModel Architecture (PR 3-C) ───────────────
+  const vm: TableDailyRecordViewModel = {
+    state: {
+      formData,
+      targetDate: formData.date,
+      selectedUserIds,
+      filteredUsers,
+      loading: hydrationLoading || handoffLoading,
+      saving,
+      error: hydrationError,
+    },
+    flags: {
+      hydrated,
+      isDirty: unsentRowCount > 0, // Simplified flag
+      canSave: selectedUserIds.length > 0 && !saving,
+      canReset: hasDraft,
+      showDraftNotice: hasDraft && !hydrated,
+      showEmptyState: visibleRows.length === 0,
+    },
+    actions: {
+      changeDate: useCallback((date: string) => {
+        setFormData((prev) => ({ ...prev, date }));
+      }, [setFormData]),
+      changeSelectedUsers: setSelectedUserIds,
+      changeRecorder: useCallback((recorder: string) => {
+        setFormData((prev) => ({ ...prev, reporter: { ...prev.reporter, name: recorder } }));
+      }, [setFormData]),
+      updateRowData: handleRowDataChange,
+      clearRowData: handleClearRow,
+      save: handleSave,
+      saveDraft: handleSaveDraftVoid,
+      clearDraft,
+      reset: useCallback(() => {
+        setFormData(createInitialFormData());
+        setSelectedUserIds([]);
+        setSearchQuery('');
+        clearDraft();
+      }, [setFormData, setSelectedUserIds, setSearchQuery, clearDraft]),
+    },
+  };
+
   // ── Return ────────────────────────────────────────
 
   return {
@@ -324,5 +366,6 @@ export const useTableDailyRecordForm = ({
     },
     actions: { handleSave, saving },
     initialization: { loading: hydrationLoading, hydrated, error: hydrationError },
+    vm,
   };
 };
