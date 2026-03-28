@@ -183,6 +183,30 @@ describe('RestApiUserRepository lifecycle fallback safety', () => {
     expect(users[0]?.lifecycleStatus).toBe('unknown');
   });
 
+  it('downgrades __selectMode to core on generic 400 from $select query', async () => {
+    const RestApiUserRepository = await loadRepository();
+    const spFetch = vi.fn(async (path: string) => {
+      if (path.includes('/items?$select=')) {
+        const error = new Error('Invalid query.');
+        (error as Error & { status?: number }).status = 400;
+        throw error;
+      }
+      if (path.includes('/items')) {
+        return jsonResponse({
+          value: [{ Id: 3, UserID: 'U-003', FullName: '400フォールバック' }],
+        });
+      }
+      throw new Error(`Unexpected request: ${path}`);
+    });
+
+    const repo = new RestApiUserRepository({ spFetch });
+    const users = await repo.getAll({ selectMode: 'detail' });
+
+    expect(users).toHaveLength(1);
+    expect(users[0]?.__selectMode).toBe('core');
+    expect(users[0]?.lifecycleStatus).toBe('unknown');
+  });
+
   it('downgrades getById to core when detail select fails', async () => {
     const RestApiUserRepository = await loadRepository();
     const spFetch = vi.fn(async (path: string) => {
@@ -197,6 +221,28 @@ describe('RestApiUserRepository lifecycle fallback safety', () => {
 
     const repo = new RestApiUserRepository({ spFetch });
     const user = await repo.getById(15, { selectMode: 'detail' });
+
+    expect(user).not.toBeNull();
+    expect(user?.__selectMode).toBe('core');
+    expect(user?.lifecycleStatus).toBe('unknown');
+  });
+
+  it('downgrades getById to core on generic 400 from $select query', async () => {
+    const RestApiUserRepository = await loadRepository();
+    const spFetch = vi.fn(async (path: string) => {
+      if (path.includes('/items(16)?$select=')) {
+        const error = new Error('Invalid query.');
+        (error as Error & { status?: number }).status = 400;
+        throw error;
+      }
+      if (path.includes('/items(16)')) {
+        return jsonResponse({ Id: 16, UserID: 'U-016', FullName: '単票400フォールバック' });
+      }
+      throw new Error(`Unexpected request: ${path}`);
+    });
+
+    const repo = new RestApiUserRepository({ spFetch });
+    const user = await repo.getById(16, { selectMode: 'detail' });
 
     expect(user).not.toBeNull();
     expect(user?.__selectMode).toBe('core');

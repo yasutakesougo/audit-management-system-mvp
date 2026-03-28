@@ -35,6 +35,9 @@ describe('UsersPanel smoke test', () => {
 
     fireEvent.click(screen.getAllByRole('tab', { name: /利用者一覧/ })[0]);
 
+    // デフォルトは「利用中のみ」フィルタONのため、全状態表示に切り替える
+    fireEvent.click(screen.getByRole('button', { name: '利用中のみ' }));
+
     expect(await screen.findByText('テスト太郎')).toBeInTheDocument();
     expect(screen.getByText('LOCAL-U-0001')).toBeInTheDocument();
 
