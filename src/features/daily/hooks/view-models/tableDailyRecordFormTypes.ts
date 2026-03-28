@@ -126,6 +126,15 @@ export interface TableDailyRecordViewModel {
     targetDate: string;
     selectedUserIds: string[];
     filteredUsers: User[];
+    visibleRows: UserRowData[];
+    searchQuery: string;
+    showTodayOnly: boolean;
+    validationErrors: TableDailyRecordValidationErrors;
+    handoff: {
+      loading: boolean;
+      totalCount: number;
+      affectedUserCount: number;
+    };
     loading: boolean; // equivalent to hydrationLoading
     saving: boolean;
     error: Error | null; // equivalent to hydrationError
@@ -138,6 +147,7 @@ export interface TableDailyRecordViewModel {
     canReset: boolean;
     showDraftNotice: boolean;
     showEmptyState: boolean;
+    hasValidationErrors: boolean;
   };
 
   actions: {
@@ -146,6 +156,16 @@ export interface TableDailyRecordViewModel {
     changeRecorder: (recorder: string) => void;
     updateRowData: (userId: string, field: string, value: string | boolean) => void;
     clearRowData: (userId: string) => void;
+    changeProblemBehavior: (userId: string, behaviorType: string, checked: boolean) => void;
+    toggleBehaviorTag: (userId: string, tagKey: string) => void;
+    acceptSuggestion: (userId: string, suggestion: import('../../domain/behavior/behaviorPatternSuggestions').PatternSuggestion) => void;
+    dismissSuggestion: (userId: string, suggestion: import('../../domain/behavior/behaviorPatternSuggestions').PatternSuggestion) => void;
+    setSearchQuery: (query: string) => void;
+    setShowTodayOnly: (show: boolean) => void;
+    toggleUser: (userId: string) => void;
+    selectAllUsers: () => void;
+    clearAllUsers: () => void;
+    clearValidationErrors: () => void;
     save: () => Promise<void>;
     saveDraft: () => void;
     clearDraft: () => void;

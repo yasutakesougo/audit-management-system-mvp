@@ -10,6 +10,8 @@ import { useTableDailyRecordSaveOrchestrator } from '../orchestrators/useTableDa
 import { useTableDailyRecordRouting } from '../orchestrators/useTableDailyRecordRouting';
 import { useTableDailyRecordRowHandlers } from '../orchestrators/useTableDailyRecordRowHandlers';
 import { useTableDailyRecordSelection } from '../orchestrators/useTableDailyRecordSelection';
+import { appendSuggestionMemo, createSuggestionAction } from '../../domain/legacy/suggestionAction';
+import type { PatternSuggestion } from '../../domain/behavior/behaviorPatternSuggestions';
 
 export type UserRowData = {
   userId: string;
@@ -273,6 +275,15 @@ export const useTableDailyRecordForm = ({
       targetDate: formData.date,
       selectedUserIds,
       filteredUsers,
+      visibleRows,
+      searchQuery,
+      showTodayOnly,
+      validationErrors,
+      handoff: {
+        loading: handoffLoading,
+        totalCount: handoffTotalCount,
+        affectedUserCount: handoffAffectedUserCount,
+      },
       loading: hydrationLoading || handoffLoading,
       saving,
       error: hydrationError,
@@ -284,6 +295,7 @@ export const useTableDailyRecordForm = ({
       canReset: hasDraft,
       showDraftNotice: hasDraft && !hydrated,
       showEmptyState: visibleRows.length === 0,
+      hasValidationErrors: Object.keys(validationErrors).length > 0,
     },
     actions: {
       changeDate: useCallback((date: string) => {
@@ -295,6 +307,43 @@ export const useTableDailyRecordForm = ({
       }, [setFormData]),
       updateRowData: handleRowDataChange,
       clearRowData: handleClearRow,
+      changeProblemBehavior: handleProblemBehaviorChange,
+      toggleBehaviorTag: handleBehaviorTagToggle,
+      acceptSuggestion: useCallback((userId: string, suggestion: PatternSuggestion) => {
+        setFormData(prev => {
+          const row = prev.userRows.find(r => r.userId === userId);
+          if (!row) return prev;
+          const newNotes = appendSuggestionMemo(row.specialNotes, suggestion, prev.date);
+          const action = createSuggestionAction(suggestion, 'accept', userId);
+          return {
+            ...prev,
+            userRows: prev.userRows.map(r =>
+              r.userId === userId
+                ? { ...r, specialNotes: newNotes, acceptedSuggestions: [...(r.acceptedSuggestions ?? []), action] }
+                : r,
+            ),
+          };
+        });
+      }, [setFormData]),
+      dismissSuggestion: useCallback((userId: string, suggestion: PatternSuggestion) => {
+        setFormData(prev => {
+          const action = createSuggestionAction(suggestion, 'dismiss', userId);
+          return {
+            ...prev,
+            userRows: prev.userRows.map(r =>
+              r.userId === userId
+                ? { ...r, acceptedSuggestions: [...(r.acceptedSuggestions ?? []), action] }
+                : r,
+            ),
+          };
+        });
+      }, [setFormData]),
+      setSearchQuery,
+      setShowTodayOnly,
+      toggleUser: handleUserToggle,
+      selectAllUsers: handleSelectAll,
+      clearAllUsers: handleClearAll,
+      clearValidationErrors,
       save: handleSave,
       saveDraft: handleSaveDraftVoid,
       clearDraft,

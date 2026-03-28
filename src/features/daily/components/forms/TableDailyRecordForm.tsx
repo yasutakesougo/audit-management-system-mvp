@@ -21,10 +21,7 @@ import { QuickTagArea } from '../sections/QuickTagArea';
 import { TableDailyRecordTable } from '../sections/TableDailyRecordTable';
 import { TableDailyRecordUserPicker } from '../sections/TableDailyRecordUserPicker';
 import { computeBehaviorTagCrossInsights, type CrossInsightInput } from '../../domain/behavior/behaviorTagCrossInsights';
-import {
-  appendSuggestionMemo,
-  createSuggestionAction,
-} from '../../domain/legacy/suggestionAction';
+// removed unused suggestionAction imports
 import type { PatternSuggestion } from '../../domain/behavior/behaviorPatternSuggestions';
 import type { DailyRecordRepository } from '../../domain/legacy/DailyRecordRepository';
 import {
@@ -67,20 +64,7 @@ export function TableDailyRecordForm({
 
   // ── Legacy Structured access ────────────────────────
   // To be progressively deprecated in PR 3-C-2 and 3-C-3
-  const { header, picker, table, handoff } = state;
-  const { validationErrors, clearValidationErrors, setFormData } = header;
-  const {
-    searchQuery, setSearchQuery,
-    showTodayOnly, setShowTodayOnly,
-    handleUserToggle, handleSelectAll, handleClearAll,
-  } = picker;
-  const {
-    handleProblemBehaviorChange,
-    handleBehaviorTagToggle,
-    visibleRows,
-  } = table;
-
-  const hasValidationErrors = Object.keys(validationErrors).length > 0;
+  // All handlers and state successfully migrated to ViewModel.
 
   const content = (
     <>
@@ -92,35 +76,35 @@ export function TableDailyRecordForm({
             <Box sx={{ flex: 1 }}>
               <TableDailyRecordUserPicker
                 formDate={vmState.formData.date}
-                searchQuery={searchQuery}
-                onSearchQueryChange={setSearchQuery}
-                showTodayOnly={showTodayOnly}
-                onToggleShowToday={() => setShowTodayOnly(!showTodayOnly)}
-                onSelectAll={handleSelectAll}
-                onClearAll={handleClearAll}
+                searchQuery={vmState.searchQuery}
+                onSearchQueryChange={vmActions.setSearchQuery}
+                showTodayOnly={vmState.showTodayOnly}
+                onToggleShowToday={() => vmActions.setShowTodayOnly(!vmState.showTodayOnly)}
+                onSelectAll={vmActions.selectAllUsers}
+                onClearAll={vmActions.clearAllUsers}
                 filteredUsers={vmState.filteredUsers}
                 selectedUserIds={vmState.selectedUserIds}
-                onUserToggle={handleUserToggle}
+                onUserToggle={vmActions.toggleUser}
                 defaultExpanded={variant === 'content'}
                 autoFocusSearch={variant === 'content'}
               />
             </Box>
-            {!handoff.loading && handoff.totalCount > 0 && (
+            {!vmState.handoff.loading && vmState.handoff.totalCount > 0 && (
               <Chip
                 size="small"
                 color="info"
                 variant="outlined"
-                label={`申送${handoff.totalCount}件→${handoff.affectedUserCount}名`}
+                label={`申送${vmState.handoff.totalCount}件→${vmState.handoff.affectedUserCount}名`}
                 sx={{ fontSize: '0.65rem', height: 22, flexShrink: 0 }}
               />
             )}
           </Stack>
 
           {/* Validation errors */}
-          <Collapse in={hasValidationErrors}>
+          <Collapse in={vmFlags.hasValidationErrors}>
             <Alert
               severity="error"
-              onClose={clearValidationErrors}
+              onClose={vmActions.clearValidationErrors}
               sx={{ py: 0.5 }}
               data-testid="daily-table-validation-errors"
             >
@@ -128,39 +112,38 @@ export function TableDailyRecordForm({
                 入力内容を確認してください
               </Typography>
               <Box component="ul" sx={{ m: 0, pl: 2, fontSize: '0.75rem' }}>
-                {validationErrors.date && <li>{validationErrors.date}</li>}
-                {validationErrors.reporterName && <li>{validationErrors.reporterName}</li>}
-                {validationErrors.selectedUsers && <li>{validationErrors.selectedUsers}</li>}
+                {vmState.validationErrors.date && <li>{vmState.validationErrors.date}</li>}
+                {vmState.validationErrors.reporterName && <li>{vmState.validationErrors.reporterName}</li>}
+                {vmState.validationErrors.selectedUsers && <li>{vmState.validationErrors.selectedUsers}</li>}
               </Box>
             </Alert>
           </Collapse>
 
           {/* Quick Tag Area — QuickRecord 1名記録時のみ */}
-          {variant === 'content' && visibleRows.length === 1 && (
+          {variant === 'content' && vmState.visibleRows.length === 1 && (
             <QuickTagArea
-              rows={visibleRows}
-              selectedTags={visibleRows[0].behaviorTags ?? []}
-              onToggleTag={(tagKey) => handleBehaviorTagToggle(visibleRows[0].userId, tagKey)}
+              rows={vmState.visibleRows}
+              selectedTags={vmState.visibleRows[0].behaviorTags ?? []}
+              onToggleTag={(tagKey) => vmActions.toggleBehaviorTag(vmState.visibleRows[0].userId, tagKey)}
             />
           )}
 
           {/* Behavior Tag Insight — 3行以上で行動タグ使用時のみ */}
-          {visibleRows.length >= 3 && visibleRows.some(r => (r.behaviorTags ?? []).length > 0) && (
-            <BehaviorTagInsightBar rows={visibleRows} />
+          {vmState.visibleRows.length >= 3 && vmState.visibleRows.some(r => (r.behaviorTags ?? []).length > 0) && (
+            <BehaviorTagInsightBar rows={vmState.visibleRows} />
           )}
 
           {/* Cross Insight — 行動タグ使用が3行以上時 */}
-          {visibleRows.length >= 3 && visibleRows.some(r => (r.behaviorTags ?? []).length > 0) && (
-            <BehaviorTagCrossInsightPanel rows={visibleRows} />
+          {vmState.visibleRows.length >= 3 && vmState.visibleRows.some(r => (r.behaviorTags ?? []).length > 0) && (
+            <BehaviorTagCrossInsightPanel rows={vmState.visibleRows} />
           )}
 
           {/* Pattern Suggestion — 行動タグ使用時のみ */}
-          {visibleRows.length > 0 && visibleRows.some(r => (r.behaviorTags ?? []).length > 0) && (
+          {vmState.visibleRows.length > 0 && vmState.visibleRows.some(r => (r.behaviorTags ?? []).length > 0) && (
             <SuggestionPanelMemo
-              visibleRows={visibleRows}
-              date={vmState.formData.date}
-              setFormData={setFormData}
-              handleRowDataChange={vmActions.updateRowData}
+              visibleRows={vmState.visibleRows}
+              acceptSuggestion={vmActions.acceptSuggestion}
+              dismissSuggestion={vmActions.dismissSuggestion}
             />
           )}
 
@@ -168,10 +151,10 @@ export function TableDailyRecordForm({
           {vmState.formData.userRows.length > 0 && (
             <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               <TableDailyRecordTable
-                rows={visibleRows}
+                rows={vmState.visibleRows}
                 onRowDataChange={vmActions.updateRowData}
-                onProblemBehaviorChange={handleProblemBehaviorChange}
-                onBehaviorTagToggle={handleBehaviorTagToggle}
+                onProblemBehaviorChange={vmActions.changeProblemBehavior}
+                onBehaviorTagToggle={vmActions.toggleBehaviorTag}
                 onClearRow={vmActions.clearRowData}
               />
             </Box>
@@ -281,14 +264,12 @@ function useTableDailyRecordFormConditional(
  */
 function SuggestionPanelMemo({
   visibleRows,
-  date,
-  setFormData,
-  handleRowDataChange,
+  acceptSuggestion,
+  dismissSuggestion,
 }: {
   visibleRows: CrossInsightInput[];
-  date: string;
-  setFormData: React.Dispatch<React.SetStateAction<import('../../hooks/view-models/useTableDailyRecordForm').TableDailyRecordData>>;
-  handleRowDataChange: (userId: string, field: string, value: string | boolean) => void;
+  acceptSuggestion: (userId: string, suggestion: PatternSuggestion) => void;
+  dismissSuggestion: (userId: string, suggestion: PatternSuggestion) => void;
 }) {
   const crossInsights = useMemo(
     () => computeBehaviorTagCrossInsights(visibleRows),
@@ -301,35 +282,13 @@ function SuggestionPanelMemo({
 
   const handleAccept = useCallback((suggestion: PatternSuggestion) => {
     if (!firstRow) return;
-    const userId = firstRow.userId;
-    // specialNotes に転記
-    const newNotes = appendSuggestionMemo(firstRow.specialNotes, suggestion, date);
-    handleRowDataChange(userId, 'specialNotes', newNotes);
-    // acceptedSuggestions に記録
-    const action = createSuggestionAction(suggestion, 'accept', userId);
-    setFormData(prev => ({
-      ...prev,
-      userRows: prev.userRows.map(r =>
-        r.userId === userId
-          ? { ...r, acceptedSuggestions: [...(r.acceptedSuggestions ?? []), action] }
-          : r,
-      ),
-    }));
-  }, [firstRow, date, handleRowDataChange, setFormData]);
+    acceptSuggestion(firstRow.userId, suggestion);
+  }, [firstRow, acceptSuggestion]);
 
   const handleDismiss = useCallback((suggestion: PatternSuggestion) => {
     if (!firstRow) return;
-    const userId = firstRow.userId;
-    const action = createSuggestionAction(suggestion, 'dismiss', userId);
-    setFormData(prev => ({
-      ...prev,
-      userRows: prev.userRows.map(r =>
-        r.userId === userId
-          ? { ...r, acceptedSuggestions: [...(r.acceptedSuggestions ?? []), action] }
-          : r,
-      ),
-    }));
-  }, [firstRow, setFormData]);
+    dismissSuggestion(firstRow.userId, suggestion);
+  }, [firstRow, dismissSuggestion]);
 
   return (
     <BehaviorPatternSuggestionPanel
