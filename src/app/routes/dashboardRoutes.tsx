@@ -1,6 +1,8 @@
 /**
  * Dashboard domain routes: /, /dashboard, /today, /dashboard/briefing
  */
+import HubLanding from '@/app/hubs/HubLanding';
+import { withHubAudienceGuard } from '@/app/hubs/hubRouting';
 import ProtectedRoute from '@/app/ProtectedRoute';
 import { AuthCallbackRoute } from '@/auth/AuthCallbackRoute';
 import RequireAudience from '@/components/RequireAudience';
@@ -18,21 +20,59 @@ import { DashboardRedirect } from './redirects';
 
 export const dashboardRoutes: RouteObject[] = [
   { path: 'auth/callback', element: <AuthCallbackRoute /> },
-  { index: true, element: <DashboardRedirect /> },
-  { path: 'dashboard', element: <SuspendedStaffDashboardPage /> },
-  { path: 'dashboard/briefing', element: <SuspendedDashboardBriefingPage /> },
+  {
+    index: true,
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <DashboardRedirect />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'dashboard',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <SuspendedStaffDashboardPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'dashboard/briefing',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <SuspendedDashboardBriefingPage />
+      </RequireAudience>
+    ),
+  },
   {
     path: 'today',
     element: (
       <ProtectedRoute flag="todayOps">
-        <RequireAudience requiredRole="viewer">
-          <SuspendedTodayOpsPage />
-        </RequireAudience>
+        {withHubAudienceGuard(
+          'today',
+          <HubLanding hubId="today" hideCardsWhenKiosk>
+            <SuspendedTodayOpsPage />
+          </HubLanding>,
+        )}
       </ProtectedRoute>
     ),
   },
-  { path: 'room-management', element: <SuspendedRoomManagementPage /> },
-  { path: 'meeting-guide', element: <SuspendedMeetingGuidePage /> },
+  {
+    path: 'room-management',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <SuspendedRoomManagementPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'meeting-guide',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <SuspendedMeetingGuidePage />
+      </RequireAudience>
+    ),
+  },
   {
     path: 'compliance',
     element: (

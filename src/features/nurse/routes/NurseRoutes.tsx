@@ -1,3 +1,4 @@
+import RequireAudience from '@/components/RequireAudience';
 import NurseToastBridge from '@/features/nurse/components/NurseToastBridge';
 import { useSnackbarHost } from '@/features/nurse/components/SnackbarHost';
 import VitalCard from '@/features/nurse/components/VitalCard';
@@ -235,10 +236,28 @@ const NurseLayout: React.FC = () => (
 
 export const nurseRoutes = (): RouteObject => ({
   path: '/nurse',
-  element: <NurseLayout />,
+  element: (
+    <RequireAudience requiredRole="viewer">
+      <NurseLayout />
+    </RequireAudience>
+  ),
   children: [
-    { index: true, element: <Navigate to="observation" replace /> },
-    { path: 'observation', element: <NurseObservationPage /> },
+    {
+      index: true,
+      element: (
+        <RequireAudience requiredRole="viewer">
+          <Navigate to="observation" replace />
+        </RequireAudience>
+      ),
+    },
+    {
+      path: 'observation',
+      element: (
+        <RequireAudience requiredRole="viewer">
+          <NurseObservationPage />
+        </RequireAudience>
+      ),
+    },
   ],
 });
 

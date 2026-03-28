@@ -4,7 +4,7 @@
  * Allows users to toggle visibility of navigation groups AND individual items.
  * - Group toggle: hides/shows entire group
  * - Item toggle: hides/shows specific items within a group
- * - 'daily' and 'settings' groups are always visible (group-level)
+ * - 'today' and 'platform' groups are always visible (group-level)
  * - Individual items within always-visible groups can still be hidden
  */
 import {
@@ -35,11 +35,11 @@ interface NavGroupVisibilityControlProps {
 
 /** 
  * Groups that cannot be hidden at group level (always visible)
- * - daily: 現場運用において必須の入口（業務開始の起点）であるため。
- * - admin: 管理用ハブであり、意図せず非表示にして管理機能からロックアウトされるのを防ぐため。
+ * - today: 現場運用において必須の入口（業務開始の起点）であるため。
+ * - platform: 管理用ハブであり、意図せず非表示にして管理機能からロックアウトされるのを防ぐため。
  *          ※実際の表示制限は navigationConfig の audience (権限) で行われます。
  */
-const ALWAYS_VISIBLE_GROUPS: NavGroupKey[] = ['daily', 'admin'];
+const ALWAYS_VISIBLE_GROUPS: NavGroupKey[] = ['today', 'platform'];
 
 export const NavGroupVisibilityControl: React.FC<NavGroupVisibilityControlProps> = ({
   hiddenGroups,
@@ -55,7 +55,7 @@ export const NavGroupVisibilityControl: React.FC<NavGroupVisibilityControlProps>
       map.set(key, []);
     }
     for (const item of allNavItems) {
-      const group = item.group ?? 'record';
+      const group = item.group ?? 'records';
       if (!map.has(group)) map.set(group, []);
       map.get(group)!.push(item);
     }

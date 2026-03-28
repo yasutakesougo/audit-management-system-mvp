@@ -8,6 +8,7 @@
  */
 
 import type { PrefetchKey } from '@/prefetch/routes';
+import type { HubId } from '@/app/hubs/hubTypes';
 import type React from 'react';
 
 // ============================================================================
@@ -27,22 +28,24 @@ export type NavItem = {
   audience?: NavAudience | NavAudience[];
   /** 
    * 紐づくナビゲーショングループのキー。
-   * 新画面追加時、どの業務フロー/目的に沿うか（'daily' | 'assessment' | 'record' | 'ops' | 'admin'）を必ず指定します。
+   * 新画面追加時、どの業務フロー/目的に沿うかを必ず指定します。
    */
   group: NavGroupKey;
 };
 
 /**
- * Navigation Group Keys (ユーザーの目的・業務フローに基づく分類)
+ * Navigation Group Keys (7-screen IA)
  *
  * @remarks
- * - daily: 現場の実行 (今日の業務, スケジュール, 日次記録など現場で開く順に配置)
- * - assessment: 支援計画・アセスメント (個別支援計画(ISP), 評価, 分析など)
- * - record: 記録・振り返り (各種記録一覧, 運営状況, 分析など)
- * - ops: 拠点運営 (請求, 勤怠, カレンダーなど拠点全体の運用機能)
- * - admin: マスタ・管理 (利用者・職員マスタ, 管理ツールなど全体のハブ)
+ * - today: 現場の当日実行
+ * - records: 記録・振り返り
+ * - planning: 支援計画・アセスメント
+ * - operations: 拠点運営
+ * - billing: 請求
+ * - master: 利用者・職員マスタ
+ * - platform: 管理基盤
  */
-export type NavGroupKey = 'daily' | 'assessment' | 'record' | 'ops' | 'admin';
+export type NavGroupKey = HubId;
 
 /**
  * Configuration for creating navigation items
@@ -77,16 +80,18 @@ export const NAV_AUDIENCE = {
  * Used for future internationalization support (ja/en/etc)
  */
 export const NAV_GROUP_I18N_KEYS = {
-  daily: 'NAV_GROUP.DAILY',
-  assessment: 'NAV_GROUP.ASSESSMENT',
-  record: 'NAV_GROUP.RECORD',
-  ops: 'NAV_GROUP.OPS',
-  admin: 'NAV_GROUP.ADMIN',
+  today: 'NAV_GROUP.TODAY',
+  records: 'NAV_GROUP.RECORDS',
+  planning: 'NAV_GROUP.PLANNING',
+  operations: 'NAV_GROUP.OPERATIONS',
+  billing: 'NAV_GROUP.BILLING',
+  master: 'NAV_GROUP.MASTER',
+  platform: 'NAV_GROUP.PLATFORM',
 } as const;
 
 /**
  * Navigation group labels
- * Order: daily → record → review → master → admin → settings
+ * Order: today → records → planning → operations → billing → master → platform
  *
  * Phase 1 UX Optimization (2026-02-23):
  * - Updated emoji and text to improve clarity and visual hierarchy
@@ -94,15 +99,25 @@ export const NAV_GROUP_I18N_KEYS = {
  * - Pairs with NAV_GROUP_I18N_KEYS for future i18n integration
  */
 export const groupLabel: Record<NavGroupKey, string> = {
-  daily: '📌 現場の実行',
-  assessment: '🧩 支援計画・アセスメント',
-  record: '📚 記録・振り返り',
-  ops: '🏢 拠点運営',
-  admin: '⚙️ マスタ・管理',
+  today: 'Today',
+  records: 'Records',
+  planning: 'Planning',
+  operations: 'Operations',
+  billing: 'Billing',
+  master: 'Master',
+  platform: 'Platform',
 };
 
 /**
  * Navigation groups display order
- * admin/settings はサイドナビに項目がないため除外。
+ * 7-screen IA canonical order.
  */
-export const NAV_GROUP_ORDER: NavGroupKey[] = ['daily', 'assessment', 'record', 'ops', 'admin'];
+export const NAV_GROUP_ORDER: NavGroupKey[] = [
+  'today',
+  'records',
+  'planning',
+  'operations',
+  'billing',
+  'master',
+  'platform',
+];

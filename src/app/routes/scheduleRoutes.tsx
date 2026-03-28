@@ -128,7 +128,15 @@ export const scheduleRoutes: RouteObject[] = [
   },
   {
     path: 'schedules/create',
-    element: <Navigate to="/schedules/week" replace />,
+    element: (
+      <SchedulesGate>
+        <ProtectedRoute flag="schedules">
+          <RequireAudience requiredRole="viewer">
+            <Navigate to="/schedules/week" replace />
+          </RequireAudience>
+        </ProtectedRoute>
+      </SchedulesGate>
+    ),
   },
   ...(devHarnessEnabled && SuspendedDevScheduleCreateDialogPage
     ? [{

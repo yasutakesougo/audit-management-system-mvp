@@ -20,6 +20,7 @@ type Props = {
   isDesktop: boolean;
   desktopNavOpen: boolean;
   dashboardPath: string;
+  currentBreadcrumb?: string;
   onMobileMenuOpen: () => void;
   onDesktopNavToggle: () => void;
   onSettingsOpen: () => void;
@@ -29,6 +30,7 @@ export const AppShellHeader: React.FC<Props> = ({
   isDesktop,
   desktopNavOpen,
   dashboardPath,
+  currentBreadcrumb,
   onMobileMenuOpen,
   onDesktopNavToggle,
   onSettingsOpen,
@@ -123,6 +125,20 @@ export const AppShellHeader: React.FC<Props> = ({
           >
             クロノート Link
           </Typography>
+          {currentBreadcrumb ? (
+            <Typography
+              variant="caption"
+              sx={{
+                lineHeight: '44px',
+                height: 44,
+                display: 'flex',
+                alignItems: 'center',
+                opacity: 0.8,
+              }}
+            >
+              / {currentBreadcrumb}
+            </Typography>
+          ) : null}
         </Box>
 
         <Box sx={{ flex: 1 }} />

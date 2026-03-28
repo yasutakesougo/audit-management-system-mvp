@@ -18,7 +18,7 @@ import type { NavItem } from '@/app/config/navigationConfig.types';
 const makeNavItem = (overrides: Partial<NavItem> = {}): NavItem => ({
   label: 'Test Item',
   to: '/test',
-  group: 'daily',
+  group: 'today',
   isActive: () => false,
   ...overrides,
 } as NavItem);
@@ -77,14 +77,16 @@ describe('RBAC Defense Layer', () => {
     it('audience "staff" is hidden from "all" but visible to admin', () => {
       const item = makeNavItem({ audience: 'staff' });
       expect(isNavVisible(item, 'staff')).toBe(true);
+      expect(isNavVisible(item, 'reception')).toBe(true);
       expect(isNavVisible(item, 'admin')).toBe(true); // admin sees everything
       expect(isNavVisible(item, 'all')).toBe(false);
     });
 
-    it('audience array ["reception", "admin"] is visible to admin', () => {
+    it('audience array ["reception", "admin"] is visible to reception/admin only', () => {
       const item = makeNavItem({ audience: ['reception', 'admin'] });
-      // isNavVisible handles Array.isArray – verify both included audiences
       expect(isNavVisible(item, 'admin')).toBe(true);
+      expect(isNavVisible(item, 'reception')).toBe(true);
+      expect(isNavVisible(item, 'staff')).toBe(false);
     });
 
     it('item with no audience defaults to "all"', () => {

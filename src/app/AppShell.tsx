@@ -145,6 +145,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const {
     dashboardPath,
+    hubRouteMeta,
     isFocusMode,
     isKioskMode,
     isFullscreenMode,
@@ -187,6 +188,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       isDesktop={isDesktop}
       desktopNavOpen={desktopNavOpen}
       dashboardPath={dashboardPath}
+      currentBreadcrumb={hubRouteMeta?.breadcrumbLabel}
       onMobileMenuOpen={() => setMobileOpen(true)}
       onDesktopNavToggle={() => setDesktopNavOpen((prev) => !prev)}
       onSettingsOpen={() => setSettingsDialogOpen(true)}
@@ -213,7 +215,13 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <RouteHydrationListener>
       <LiveAnnouncer>
-        <div data-testid="app-shell" data-kiosk={isKioskMode ? 'true' : undefined}>
+        <div
+          data-testid="app-shell"
+          data-kiosk={isKioskMode ? 'true' : undefined}
+          data-current-hub={hubRouteMeta?.hubId}
+          data-hub-telemetry={hubRouteMeta?.telemetryName}
+          data-hub-analytics={hubRouteMeta?.analyticsName}
+        >
           <Box
             component="a"
             href="#app-main-content"

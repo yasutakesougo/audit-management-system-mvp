@@ -16,6 +16,7 @@ import { analysisRoutes } from './routes/analysisRoutes';
 import { callLogRoutes } from './routes/callLogRoutes';
 import { dailyRoutes } from './routes/dailyRoutes';
 import { dashboardRoutes } from './routes/dashboardRoutes';
+import { hubRoutes } from './routes/hubRoutes';
 import { ibdRoutes } from './routes/ibdRoutes';
 import { recordRoutes } from './routes/recordRoutes';
 import { safetyRoutes } from './routes/safetyRoutes';
@@ -27,6 +28,7 @@ import { transportRoutes } from './routes/transportRoutes';
 
 const childRoutes: RouteObject[] = [
   ...dashboardRoutes,
+  ...hubRoutes,
   ...dailyRoutes,
   ...recordRoutes,
   ...analysisRoutes,

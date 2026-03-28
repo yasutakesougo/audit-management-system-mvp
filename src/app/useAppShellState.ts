@@ -6,9 +6,10 @@ import {
     createNavItems,
     filterNavItems,
     groupNavItems,
-    NAV_AUDIENCE,
+    roleToNavAudience,
     type NavAudience,
 } from '@/app/config/navigationConfig';
+import { resolveHubRouteMetadata } from '@/app/hubs/hubDefinitions';
 import { navIconMap } from '@/app/navIconMap';
 import { canAccess } from '@/auth/roles';
 import { useUserAuthz } from '@/auth/useUserAuthz';
@@ -44,7 +45,7 @@ export function useAppShellState() {
   const setCurrentUserRole = useAuthStore((s) => s.setCurrentUserRole);
   const { role, ready: authzReady } = useUserAuthz();
   const isAdmin = canAccess(role, 'admin');
-  const navAudience: NavAudience = isAdmin ? NAV_AUDIENCE.admin : NAV_AUDIENCE.staff;
+  const navAudience: NavAudience = roleToNavAudience(role);
   const theme = useTheme();
   const { settings, updateSettings } = useSettingsContext();
   const kioskRouteMode = useMemo(
@@ -54,6 +55,10 @@ export function useAppShellState() {
   const isFocusMode = settings.layoutMode === 'focus';
   const isKioskMode = settings.layoutMode === 'kiosk';
   const isFullscreenMode = isFocusMode || isKioskMode;
+  const hubRouteMeta = useMemo(
+    () => resolveHubRouteMetadata(location.pathname),
+    [location.pathname],
+  );
   const isSchedulesRoute =
     location.pathname.startsWith('/schedules') || location.pathname.startsWith('/schedule');
   const viewportMode: 'adaptive' | 'fixed' = isSchedulesRoute ? 'adaptive' : 'fixed';
@@ -116,6 +121,26 @@ export function useAppShellState() {
     }
   }, [location.pathname, currentRole, setCurrentUserRole]);
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const appName = 'クロノート Link';
+    document.title = hubRouteMeta ? `${hubRouteMeta.pageTitle} | ${appName}` : appName;
+  }, [hubRouteMeta]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !hubRouteMeta) return;
+    window.dispatchEvent(
+      new CustomEvent('app:hub-route-change', {
+        detail: {
+          hubId: hubRouteMeta.hubId,
+          telemetryName: hubRouteMeta.telemetryName,
+          analyticsName: hubRouteMeta.analyticsName,
+          pathname: location.pathname,
+        },
+      }),
+    );
+  }, [hubRouteMeta, location.pathname]);
+
   // ── Nav items ──────────────────────────────────────────────────────────────
 
   const navItems = useMemo(() => {
@@ -147,7 +172,7 @@ export function useAppShellState() {
     // Today → 進捗 → 各記録に直接飛べるため「日次記録」「健康記録」は非表示。
     // daily 以外のグループ (assessment, record, ops, admin) もキオスクでは不要。
     const KIOSK_HIDDEN_PATHS = ['/dailysupport', '/daily/health', '/transport/assignments'];
-    const KIOSK_ALLOWED_GROUPS = new Set(['daily']);
+    const KIOSK_ALLOWED_GROUPS = new Set(['today']);
 
     // Hide groups that user has disabled in settings
     const hiddenGroups = settings.hiddenNavGroups;
@@ -202,6 +227,7 @@ export function useAppShellState() {
     // Location/navigation
     location,
     dashboardPath,
+    hubRouteMeta,
     navigate,
     // Theme/mode
     theme,
