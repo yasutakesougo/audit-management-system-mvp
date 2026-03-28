@@ -171,5 +171,39 @@ export interface TableDailyRecordViewModel {
     clearDraft: () => void;
     reset: () => void;
   };
+
+  sections: {
+    picker: {
+      formDate: string;
+      searchQuery: string;
+      onSearchQueryChange: (query: string) => void;
+      showTodayOnly: boolean;
+      onToggleShowToday: () => void;
+      onSelectAll: () => void;
+      onClearAll: () => void;
+      filteredUsers: User[];
+      selectedUserIds: string[];
+      onUserToggle: (userId: string) => void;
+    };
+    table: {
+      rows: UserRowData[];
+      onRowDataChange: (userId: string, field: string, value: string | boolean) => void;
+      onProblemBehaviorChange: (userId: string, behaviorType: string, checked: boolean) => void;
+      onBehaviorTagToggle: (userId: string, tagKey: string) => void;
+      onClearRow: (userId: string) => void;
+    };
+    suggestion: {
+      visibleRows: UserRowData[];
+      acceptSuggestion: (userId: string, suggestion: import('../../domain/behavior/behaviorPatternSuggestions').PatternSuggestion) => void;
+      dismissSuggestion: (userId: string, suggestion: import('../../domain/behavior/behaviorPatternSuggestions').PatternSuggestion) => void;
+    };
+    footer: {
+      canSave: boolean;
+      saving: boolean;
+      onSave: () => Promise<void>;
+      onSaveDraft: () => void;
+      selectedUserCount: number;
+    };
+  };
 }
 

@@ -354,6 +354,39 @@ export const useTableDailyRecordForm = ({
         clearDraft();
       }, [setFormData, setSelectedUserIds, setSearchQuery, clearDraft]),
     },
+    sections: {
+      picker: {
+        formDate: formData.date,
+        searchQuery,
+        onSearchQueryChange: setSearchQuery,
+        showTodayOnly,
+        onToggleShowToday: () => setShowTodayOnly(!showTodayOnly),
+        onSelectAll: handleSelectAll,
+        onClearAll: handleClearAll,
+        filteredUsers,
+        selectedUserIds,
+        onUserToggle: handleUserToggle,
+      },
+      table: {
+        rows: visibleRows,
+        onRowDataChange: handleRowDataChange,
+        onProblemBehaviorChange: handleProblemBehaviorChange,
+        onBehaviorTagToggle: handleBehaviorTagToggle,
+        onClearRow: handleClearRow,
+      },
+      suggestion: {
+        visibleRows,
+        acceptSuggestion: (userId, suggestion) => vm.actions.acceptSuggestion(userId, suggestion),
+        dismissSuggestion: (userId, suggestion) => vm.actions.dismissSuggestion(userId, suggestion),
+      },
+      footer: {
+        canSave: selectedUserIds.length > 0 && !saving,
+        saving,
+        onSave: handleSave,
+        onSaveDraft: handleSaveDraftVoid,
+        selectedUserCount: selectedUserIds.length,
+      },
+    },
   };
 
   // ── Return ────────────────────────────────────────

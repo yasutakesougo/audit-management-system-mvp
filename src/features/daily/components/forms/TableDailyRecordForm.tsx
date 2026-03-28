@@ -75,16 +75,7 @@ export function TableDailyRecordForm({
           <Stack direction="row" spacing={0.5} alignItems="center">
             <Box sx={{ flex: 1 }}>
               <TableDailyRecordUserPicker
-                formDate={vmState.formData.date}
-                searchQuery={vmState.searchQuery}
-                onSearchQueryChange={vmActions.setSearchQuery}
-                showTodayOnly={vmState.showTodayOnly}
-                onToggleShowToday={() => vmActions.setShowTodayOnly(!vmState.showTodayOnly)}
-                onSelectAll={vmActions.selectAllUsers}
-                onClearAll={vmActions.clearAllUsers}
-                filteredUsers={vmState.filteredUsers}
-                selectedUserIds={vmState.selectedUserIds}
-                onUserToggle={vmActions.toggleUser}
+                {...vm.sections.picker}
                 defaultExpanded={variant === 'content'}
                 autoFocusSearch={variant === 'content'}
               />
@@ -140,23 +131,13 @@ export function TableDailyRecordForm({
 
           {/* Pattern Suggestion — 行動タグ使用時のみ */}
           {vmState.visibleRows.length > 0 && vmState.visibleRows.some(r => (r.behaviorTags ?? []).length > 0) && (
-            <SuggestionPanelMemo
-              visibleRows={vmState.visibleRows}
-              acceptSuggestion={vmActions.acceptSuggestion}
-              dismissSuggestion={vmActions.dismissSuggestion}
-            />
+            <SuggestionPanelMemo {...vm.sections.suggestion} />
           )}
 
           {/* Table area — takes remaining space */}
           {vmState.formData.userRows.length > 0 && (
             <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-              <TableDailyRecordTable
-                rows={vmState.visibleRows}
-                onRowDataChange={vmActions.updateRowData}
-                onProblemBehaviorChange={vmActions.changeProblemBehavior}
-                onBehaviorTagToggle={vmActions.toggleBehaviorTag}
-                onClearRow={vmActions.clearRowData}
-              />
+              <TableDailyRecordTable {...vm.sections.table} />
             </Box>
           )}
         </Stack>
@@ -178,8 +159,8 @@ export function TableDailyRecordForm({
         >
           <Stack direction="row" spacing={0.75} sx={{ width: '100%' }}>
             <Button
-              onClick={vmActions.saveDraft}
-              disabled={vmState.saving}
+              onClick={vm.sections.footer.onSaveDraft}
+              disabled={vm.sections.footer.saving}
               variant="outlined"
               size="small"
               sx={{ minHeight: 34, minWidth: 100, fontSize: '0.8rem' }}
@@ -190,7 +171,7 @@ export function TableDailyRecordForm({
             </Button>
             <Button
               onClick={onClose}
-              disabled={vmState.saving}
+              disabled={vm.sections.footer.saving}
               variant="outlined"
               size="small"
               fullWidth
@@ -203,11 +184,11 @@ export function TableDailyRecordForm({
               size="small"
               fullWidth
               sx={{ minHeight: 34, fontSize: '0.8rem' }}
-              onClick={vmActions.save}
-              disabled={!vmFlags.canSave}
+              onClick={vm.sections.footer.onSave}
+              disabled={!vm.sections.footer.canSave}
               startIcon={<SaveIcon fontSize="small" />}
             >
-              {vmState.saving ? '保存中...' : `${vmState.selectedUserIds.length}人分保存`}
+              {vm.sections.footer.saving ? '保存中...' : `${vm.sections.footer.selectedUserCount}人分保存`}
             </Button>
           </Stack>
         </DialogActions>
