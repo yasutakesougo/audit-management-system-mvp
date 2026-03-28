@@ -22,6 +22,8 @@ const { mockEnv, mockRuntime } = vi.hoisted(() => {
       isForceDemoEnabled: vi.fn().mockReturnValue(false),
       isTestMode: vi.fn().mockReturnValue(false),
       shouldSkipLogin: vi.fn().mockReturnValue(false),
+      shouldSkipSharePoint: vi.fn().mockReturnValue(false),
+      readBool: vi.fn().mockReturnValue(false),
       getConfiguredMsalScopes: vi.fn().mockReturnValue([]),
       isWriteEnabled: true,
       isE2eForceSchedulesWrite: false,

@@ -3,8 +3,9 @@ import {
     isDemoModeEnabled,
     isForceDemoEnabled,
     isTestMode,
+    readBool,
     shouldSkipLogin,
-    skipSharePoint,
+    shouldSkipSharePoint,
 } from '@/lib/env';
 import type { BehaviorRepository } from '../domain/BehaviorRepository';
 import { InMemoryBehaviorRepository } from './InMemoryBehaviorRepository';
@@ -13,15 +14,24 @@ import { SharePointBehaviorRepository } from './SharePointBehaviorRepository';
 let cachedRepository: BehaviorRepository | null = null;
 
 const shouldUseInMemoryRepository = (): boolean => {
-  const { isDev } = getAppConfig();
-  return (
-    isDev ||
+  if (
     isTestMode() ||
     isForceDemoEnabled() ||
     isDemoModeEnabled() ||
     shouldSkipLogin() ||
-    skipSharePoint()
-  );
+    shouldSkipSharePoint()
+  ) {
+    return true;
+  }
+
+  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
+  const spEnabled = readBool('VITE_SP_ENABLED', false);
+  if (forceSharePoint || spEnabled) {
+    return false;
+  }
+
+  const { isDev } = getAppConfig();
+  return isDev;
 };
 
 const createRepository = (): BehaviorRepository => {

@@ -7,6 +7,7 @@ import {
     isTestMode,
     readBool,
     shouldSkipLogin,
+    shouldSkipSharePoint,
 } from '@/lib/env';
 import { hasSpfxContext } from '@/lib/runtime';
 import { useMemo } from 'react';
@@ -52,15 +53,28 @@ const shouldUseDemoRepository = (): boolean => {
     return false;
   }
 
+  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
+  const spEnabled = readBool('VITE_SP_ENABLED', false);
+
+  if (
+    isTestMode() ||
+    isForceDemoEnabled() ||
+    isDemoModeEnabled() ||
+    shouldSkipLogin() ||
+    shouldSkipSharePoint()
+  ) {
+    return true;
+  }
+
+  if (forceSharePoint || spEnabled) {
+    return false;
+  }
+
   const { isDev } = getAppConfig();
   const spfxContextAvailable = hasSpfxContext();
 
   return (
     isDev ||
-    isTestMode() ||
-    isForceDemoEnabled() ||
-    isDemoModeEnabled() ||
-    shouldSkipLogin() ||
     // Workers/pages (non-SharePoint) runtime: avoid SPFx-only repository
     !spfxContextAvailable
   );
