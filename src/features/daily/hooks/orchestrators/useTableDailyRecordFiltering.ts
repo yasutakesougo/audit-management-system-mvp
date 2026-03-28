@@ -55,11 +55,7 @@ export const useTableDailyRecordFiltering = ({
     }
 
     return candidateUsers.filter((user) => {
-      const attendanceDays = Array.isArray(user.AttendanceDays)
-        ? user.AttendanceDays
-        : Array.isArray((user as any).attendanceDays)
-        ? (user as any).attendanceDays
-        : [];
+      const attendanceDays = user.AttendanceDays;
       
       // Fail-safe: Users without attendance data are always shown
       if (!attendanceDays || !Array.isArray(attendanceDays) || attendanceDays.length === 0) {
@@ -68,9 +64,9 @@ export const useTableDailyRecordFiltering = ({
 
       return isUserScheduledForDate(
         {
-          Id: Math.max(0, user.Id ?? (user as any).id ?? 0),
-          UserID: user.UserID ?? (user as any).userId ?? '',
-          FullName: user.FullName ?? (user as any).name ?? '',
+          Id: user.Id ?? 0,
+          UserID: user.UserID ?? '',
+          FullName: user.FullName ?? '',
           AttendanceDays: attendanceDays,
         },
         targetDate,
@@ -90,10 +86,10 @@ export const useTableDailyRecordFiltering = ({
     
     return attendanceFilteredUsers.filter((user) => {
       // Match against multiple fields for better UX
-      const matchName = (user.FullName ?? (user as any).name ?? '').toLowerCase().includes(query);
-      const matchUserId = (user.UserID ?? (user as any).userId ?? '').toLowerCase().includes(query);
-      const matchFurigana = (user.Furigana ?? (user as any).furigana ?? '').toLowerCase().includes(query);
-      const matchNameKana = (user.FullNameKana ?? (user as any).nameKana ?? '').toLowerCase().includes(query);
+      const matchName = (user.FullName ?? '').toLowerCase().includes(query);
+      const matchUserId = (user.UserID ?? '').toLowerCase().includes(query);
+      const matchFurigana = (user.Furigana ?? '').toLowerCase().includes(query);
+      const matchNameKana = (user.FullNameKana ?? '').toLowerCase().includes(query);
 
       return matchName || matchUserId || matchFurigana || matchNameKana;
     });

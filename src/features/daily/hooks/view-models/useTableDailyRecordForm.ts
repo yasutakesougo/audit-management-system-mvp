@@ -4,12 +4,14 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useHandoffNotesForTable } from '../../repositories/adapters/useHandoffNotesForTable';
 import type { TableDailyRecordFormStructured, TableDailyRecordViewModel } from './tableDailyRecordFormTypes';
+import type { TableDailyRecordRow } from '../../table/models/tableDailyRecordRow';
 import { useTableDailyRecordFiltering } from '../orchestrators/useTableDailyRecordFiltering';
 import { useTableDailyRecordHydrationOrchestrator, createInitialFormData } from '../orchestrators/useTableDailyRecordHydrationOrchestrator';
 import { useTableDailyRecordSaveOrchestrator } from '../orchestrators/useTableDailyRecordSaveOrchestrator';
 import { useTableDailyRecordRouting } from '../orchestrators/useTableDailyRecordRouting';
 import { useTableDailyRecordRowHandlers } from '../orchestrators/useTableDailyRecordRowHandlers';
 import { useTableDailyRecordSelection } from '../orchestrators/useTableDailyRecordSelection';
+import { buildTableDailyRecordRows } from '../../table/models/buildTableDailyRecordRows';
 import { appendSuggestionMemo, createSuggestionAction } from '../../domain/legacy/suggestionAction';
 import type { PatternSuggestion } from '../../domain/behavior/behaviorPatternSuggestions';
 
@@ -82,7 +84,7 @@ export type UseTableDailyRecordFormResult = {
   handleClearRow: (userId: string) => void;
   showUnsentOnly: boolean;
   setShowUnsentOnly: Dispatch<SetStateAction<boolean>>;
-  visibleRows: UserRowData[];
+  visibleRows: TableDailyRecordRow[];
   unsentRowCount: number;
   hasDraft: boolean;
   draftSavedAt: string | null;
@@ -194,7 +196,7 @@ export const useTableDailyRecordForm = ({
     handleProblemBehaviorChange,
     handleBehaviorTagToggle,
     handleClearRow,
-    visibleRows,
+    visibleRows: rawVisibleRows,
     unsentRowCount,
   } = useTableDailyRecordRowHandlers({
     setFormData,
@@ -204,6 +206,8 @@ export const useTableDailyRecordForm = ({
     formData,
     handoffNotesByUser,
   });
+
+  const tableRows = useMemo(() => buildTableDailyRecordRows(rawVisibleRows), [rawVisibleRows]);
 
   // ── Side effects ──────────────────────────────────
 
@@ -275,7 +279,7 @@ export const useTableDailyRecordForm = ({
       targetDate: formData.date,
       selectedUserIds,
       filteredUsers,
-      visibleRows,
+      visibleRows: tableRows,
       searchQuery,
       showTodayOnly,
       validationErrors,
@@ -294,7 +298,7 @@ export const useTableDailyRecordForm = ({
       canSave: selectedUserIds.length > 0 && !saving,
       canReset: hasDraft,
       showDraftNotice: hasDraft && !hydrated,
-      showEmptyState: visibleRows.length === 0,
+      showEmptyState: tableRows.length === 0,
       hasValidationErrors: Object.keys(validationErrors).length > 0,
     },
     actions: {
@@ -368,14 +372,14 @@ export const useTableDailyRecordForm = ({
         onUserToggle: handleUserToggle,
       },
       table: {
-        rows: visibleRows,
+        rows: tableRows,
         onRowDataChange: handleRowDataChange,
         onProblemBehaviorChange: handleProblemBehaviorChange,
         onBehaviorTagToggle: handleBehaviorTagToggle,
         onClearRow: handleClearRow,
       },
       suggestion: {
-        visibleRows,
+        visibleRows: tableRows,
         acceptSuggestion: (userId, suggestion) => vm.actions.acceptSuggestion(userId, suggestion),
         dismissSuggestion: (userId, suggestion) => vm.actions.dismissSuggestion(userId, suggestion),
       },
@@ -411,7 +415,7 @@ export const useTableDailyRecordForm = ({
     handleClearRow,
     showUnsentOnly,
     setShowUnsentOnly,
-    visibleRows,
+    visibleRows: tableRows,
     unsentRowCount,
     hasDraft,
     draftSavedAt,
@@ -438,7 +442,7 @@ export const useTableDailyRecordForm = ({
     table: {
       handleRowDataChange, handleProblemBehaviorChange,
       handleBehaviorTagToggle, handleClearRow,
-      visibleRows, showUnsentOnly, setShowUnsentOnly, unsentRowCount,
+      visibleRows: tableRows, showUnsentOnly, setShowUnsentOnly, unsentRowCount,
     },
     draft: { hasDraft, draftSavedAt, handleSaveDraft: handleSaveDraftVoid },
     handoff: {
