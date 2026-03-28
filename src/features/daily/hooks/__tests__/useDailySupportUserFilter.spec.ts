@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { IUserMaster } from '@/features/users/types';
-import { useDailySupportUserFilter } from '../useDailySupportUserFilter';
+import { useDailySupportUserFilter } from '../legacy/useDailySupportUserFilter';
 
 const makeUser = (overrides: Partial<IUserMaster>): IUserMaster => ({
   Id: 1,

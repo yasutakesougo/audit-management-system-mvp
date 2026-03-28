@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 expect.extend(toHaveNoViolations);
 
-const noop = async () => undefined;
+const noop = async () => ({} as any);
 type UsersStoreState = ReturnType<typeof usersStore.useUsersStore>;
 
 /**
@@ -26,6 +26,7 @@ describe('UsersPanel Accessibility', { retry: 2 }, () => {
       status: 'idle',
       error: null,
       create: vi.fn(noop),
+      update: vi.fn(noop),
       terminate: vi.fn(noop),
       remove: vi.fn(noop),
       refresh: vi.fn(noop),
@@ -70,6 +71,7 @@ describe('UsersPanel Accessibility', { retry: 2 }, () => {
       status: 'idle',
       error: null,
       create: vi.fn(noop),
+      update: vi.fn(noop),
       terminate: vi.fn(noop),
       remove: vi.fn(noop),
       refresh: vi.fn(noop),
@@ -93,6 +95,7 @@ describe('UsersPanel Accessibility', { retry: 2 }, () => {
       status: 'loading',
       error: null,
       create: vi.fn(noop),
+      update: vi.fn(noop),
       terminate: vi.fn(noop),
       remove: vi.fn(noop),
       refresh: vi.fn(noop),
@@ -116,6 +119,7 @@ describe('UsersPanel Accessibility', { retry: 2 }, () => {
       status: 'error',
       error: new Error('Failed to load users'),
       create: vi.fn(noop),
+      update: vi.fn(noop),
       terminate: vi.fn(noop),
       remove: vi.fn(noop),
       refresh: vi.fn(noop),
