@@ -12,6 +12,7 @@ import {
     NAV_AUDIENCE,
     NAV_GROUP_ORDER,
     pickGroup,
+    roleToNavAudience,
     type NavItem,
 } from '@/app/config/navigationConfig';
 import { TESTIDS } from '@/testids';
@@ -26,8 +27,8 @@ describe('navigationConfig', () => {
         isActive: () => false,
         testId: TESTIDS.nav.daily,
       };
-      expect(pickGroup(item, false)).toBe('daily');
-      expect(pickGroup(item, true)).toBe('daily');
+      expect(pickGroup(item, false)).toBe('today');
+      expect(pickGroup(item, true)).toBe('today');
     });
 
     it('should classify health records as daily', () => {
@@ -36,7 +37,7 @@ describe('navigationConfig', () => {
         to: '/daily/health',
         isActive: () => false,
       };
-      expect(pickGroup(item, false)).toBe('daily');
+      expect(pickGroup(item, false)).toBe('today');
     });
 
     it('should classify handoff timeline as daily', () => {
@@ -45,7 +46,7 @@ describe('navigationConfig', () => {
         to: '/handoff-timeline',
         isActive: () => false,
       };
-      expect(pickGroup(item, false)).toBe('daily');
+      expect(pickGroup(item, false)).toBe('today');
     });
 
     it('should classify meeting-related items as daily', () => {
@@ -68,27 +69,27 @@ describe('navigationConfig', () => {
       ];
 
       meetingItems.forEach((item) => {
-        expect(pickGroup(item, false)).toBe('daily');
+        expect(pickGroup(item, false)).toBe('today');
       });
     });
 
-    it('should classify records as record group', () => {
+    it('should classify records as records group', () => {
       const item: Partial<NavItem> = {
         label: '記録一覧',
         to: '/records',
         isActive: () => false,
       };
-      expect(pickGroup(item, false)).toBe('record');
+      expect(pickGroup(item, false)).toBe('records');
     });
 
-    it('should classify schedules as daily group', () => {
+    it('should classify schedules as today group', () => {
       const item: Partial<NavItem> = {
         label: 'スケジュール',
         to: '/schedules/week',
         isActive: () => false,
         testId: TESTIDS.nav.schedules,
       };
-      expect(pickGroup(item, false)).toBe('daily');
+      expect(pickGroup(item, false)).toBe('today');
     });
 
     it('should classify analysis as ibd group', () => {
@@ -98,27 +99,27 @@ describe('navigationConfig', () => {
         isActive: () => false,
         testId: TESTIDS.nav.analysis,
       };
-      expect(pickGroup(item, false)).toBe('assessment');
+      expect(pickGroup(item, false)).toBe('planning');
     });
 
-    it('should classify iceberg as assessment group', () => {
+    it('should classify iceberg as planning group', () => {
       const item: Partial<NavItem> = {
         label: '氷山分析',
         to: '/analysis/iceberg',
         isActive: () => false,
         testId: TESTIDS.nav.iceberg,
       };
-      expect(pickGroup(item, false)).toBe('assessment');
+      expect(pickGroup(item, false)).toBe('planning');
     });
 
-    it('should classify assessment as assessment group', () => {
+    it('should classify assessment as planning group', () => {
       const item: Partial<NavItem> = {
         label: 'アセスメント',
         to: '/assessment',
         isActive: () => false,
         testId: TESTIDS.nav.assessment,
       };
-      expect(pickGroup(item, false)).toBe('assessment');
+      expect(pickGroup(item, false)).toBe('planning');
     });
 
     it('should classify users and staff as master group', () => {
@@ -136,40 +137,40 @@ describe('navigationConfig', () => {
       ];
 
       items.forEach((item) => {
-        expect(pickGroup(item, false)).toBe('admin');
+        expect(pickGroup(item, false)).toBe('master');
       });
     });
 
-    it('should classify admin items as admin group for admins only', () => {
+    it('should classify admin items as platform group for admins only', () => {
       const item: Partial<NavItem> = {
         label: '自己点検',
         to: '/checklist',
         isActive: () => false,
         testId: TESTIDS.nav.checklist,
       };
-      expect(pickGroup(item, false)).toBe('admin');
-      expect(pickGroup(item, true)).toBe('admin');
+      expect(pickGroup(item, false)).toBe('platform');
+      expect(pickGroup(item, true)).toBe('platform');
     });
 
-    it('should classify audit log as admin group for admins only', () => {
+    it('should classify audit log as platform group for admins only', () => {
       const item: Partial<NavItem> = {
         label: '監査ログ',
         to: '/audit',
         isActive: () => false,
         testId: TESTIDS.nav.audit,
       };
-      expect(pickGroup(item, false)).toBe('admin');
-      expect(pickGroup(item, true)).toBe('admin');
+      expect(pickGroup(item, false)).toBe('platform');
+      expect(pickGroup(item, true)).toBe('platform');
     });
 
-    it('should default to record group for unknown items', () => {
+    it('should default to records group for unknown items', () => {
       const item: Partial<NavItem> = {
         label: 'Unknown Item',
         to: '/unknown',
         isActive: () => false,
       };
-      expect(pickGroup(item, false)).toBe('record');
-      expect(pickGroup(item, true)).toBe('record');
+      expect(pickGroup(item, false)).toBe('records');
+      expect(pickGroup(item, true)).toBe('records');
     });
   });
 
@@ -193,8 +194,8 @@ describe('navigationConfig', () => {
       expect(items.length).toBeGreaterThan(0);
       expect(items.some((item) => item.label === '日次記録')).toBe(true);
       expect(items.some((item) => item.label === '健康記録')).toBe(true);
-      // 記録一覧は admin audience のみ
-      expect(items.some((item) => item.label === '記録一覧')).toBe(false);
+      // 記録一覧は records ハブ入口（viewer 相当）として表示
+      expect(items.some((item) => item.label === '記録一覧')).toBe(true);
       expect(items.some((item) => item.label === '利用者')).toBe(true);
     });
 
@@ -307,6 +308,16 @@ describe('navigationConfig', () => {
       expect(items.some((item) => item.label === '健康記録')).toBe(true);
     });
 
+    it('should include reception and staff items for reception navAudience', () => {
+      const items = createNavItems({
+        ...baseConfig,
+        navAudience: NAV_AUDIENCE.reception,
+      });
+
+      expect(items.some((item) => item.label === '請求処理')).toBe(true);
+      expect(items.some((item) => item.label === '送迎配車表')).toBe(true);
+    });
+
     it('should show all items for admin navAudience (admin sees everything)', () => {
       const items = createNavItems({
         ...baseConfig,
@@ -411,23 +422,25 @@ describe('navigationConfig', () => {
       const { map, ORDER } = groupNavItems(sampleItems, false);
 
       expect(ORDER).toEqual(NAV_GROUP_ORDER);
-      expect(map.get('daily')).toHaveLength(1);
-      expect(map.get('record')).toHaveLength(1); // 記録一覧 only
-      expect(map.get('assessment')).toHaveLength(1);
-      expect(map.get('admin')).toHaveLength(2);
+      expect(map.get('today')).toHaveLength(1);
+      expect(map.get('records')).toHaveLength(1); // 記録一覧 only
+      expect(map.get('planning')).toHaveLength(1);
+      expect(map.get('master')).toHaveLength(1);
+      expect(map.get('platform')).toHaveLength(1);
     });
 
     it('should classify admin items correctly for admin users', () => {
       const { map } = groupNavItems(sampleItems, true);
 
-      expect(map.get('admin')).toHaveLength(2); // 利用者 + 自己点検
-      expect(map.get('record')).toHaveLength(1); // 記録一覧 only
+      expect(map.get('master')).toHaveLength(1); // 利用者
+      expect(map.get('platform')).toHaveLength(1); // 自己点検
+      expect(map.get('records')).toHaveLength(1); // 記録一覧 only
     });
 
     it('should maintain group order', () => {
       const { ORDER } = groupNavItems(sampleItems, false);
 
-      expect(ORDER).toEqual(['daily', 'assessment', 'record', 'ops', 'admin']);
+      expect(ORDER).toEqual(['today', 'records', 'planning', 'operations', 'billing', 'master', 'platform']);
     });
 
     it('should omit empty groups from the map', () => {
@@ -437,21 +450,22 @@ describe('navigationConfig', () => {
       expect((map as Map<string, NavItem[]>).has('settings')).toBe(false);
 
       // groups with items should still exist
-      expect(map.has('daily')).toBe(true);
-      expect(map.has('record')).toBe(true);
-      expect(map.has('assessment')).toBe(true);
-      expect(map.has('admin')).toBe(true);
+      expect(map.has('today')).toBe(true);
+      expect(map.has('records')).toBe(true);
+      expect(map.has('planning')).toBe(true);
+      expect(map.has('master')).toBe(true);
+      expect(map.has('platform')).toBe(true);
     });
 
     it('should bring back a group automatically when items are added to it', () => {
       const itemsWithSettings: Partial<NavItem>[] = [
         ...sampleItems,
-        { label: '追加項', to: '/ops-new', isActive: () => false, group: 'ops' },
+        { label: '追加項', to: '/ops-new', isActive: () => false, group: 'operations' },
       ];
       const { map } = groupNavItems(itemsWithSettings as NavItem[], false);
 
-      expect(map.has('ops')).toBe(true);
-      expect(map.get('ops')).toHaveLength(1);
+      expect(map.has('operations')).toBe(true);
+      expect(map.get('operations')).toHaveLength(1);
     });
   });
 
@@ -462,16 +476,24 @@ describe('navigationConfig', () => {
       expect(NAV_AUDIENCE.admin).toBe('admin');
     });
 
+    it('should map RBAC role to nav audience hierarchy', () => {
+      expect(roleToNavAudience('viewer')).toBe('staff');
+      expect(roleToNavAudience('reception')).toBe('reception');
+      expect(roleToNavAudience('admin')).toBe('admin');
+    });
+
     it('should have correct group labels', () => {
-      expect(groupLabel.daily).toBe('📌 現場の実行');
-      expect(groupLabel.assessment).toBe('🧩 支援計画・アセスメント');
-      expect(groupLabel.record).toBe('📚 記録・振り返り');
-      expect(groupLabel.ops).toBe('🏢 拠点運営');
-      expect(groupLabel.admin).toBe('⚙️ マスタ・管理');
+      expect(groupLabel.today).toBe('Today');
+      expect(groupLabel.records).toBe('Records');
+      expect(groupLabel.planning).toBe('Planning');
+      expect(groupLabel.operations).toBe('Operations');
+      expect(groupLabel.billing).toBe('Billing');
+      expect(groupLabel.master).toBe('Master');
+      expect(groupLabel.platform).toBe('Platform');
     });
 
     it('should have correct group order', () => {
-      expect(NAV_GROUP_ORDER).toEqual(['daily', 'assessment', 'record', 'ops', 'admin']);
+      expect(NAV_GROUP_ORDER).toEqual(['today', 'records', 'planning', 'operations', 'billing', 'master', 'platform']);
     });
   });
 });

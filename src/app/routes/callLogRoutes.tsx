@@ -1,6 +1,7 @@
 /**
  * callLogRoutes — 電話ログ機能のルート定義
  */
+import RequireAudience from '@/components/RequireAudience';
 import React from 'react';
 import type { RouteObject } from 'react-router-dom';
 import { createSuspended } from '../createSuspended';
@@ -17,6 +18,10 @@ const SuspendedCallLogPage = createSuspended(
 export const callLogRoutes: RouteObject[] = [
   {
     path: 'call-logs',
-    element: <SuspendedCallLogPage />,
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <SuspendedCallLogPage />
+      </RequireAudience>
+    ),
   },
 ];

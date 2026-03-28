@@ -41,13 +41,13 @@ describe("Navigation Configuration", () => {
       expect(NAV_GROUP_ORDER).toContain(key);
     });
 
-    // Check mapping integrity (e.g. today ops is in daily)
-    const dailyItems = map.get("daily") || [];
-    expect(dailyItems.some((i) => i.label === "今日の業務")).toBe(true);
-    expect(dailyItems.some((i) => i.label === "送迎配車表")).toBe(true);
+    // Check mapping integrity (e.g. today ops is in today)
+    const todayItems = map.get("today") || [];
+    expect(todayItems.some((i) => i.label === "今日の業務")).toBe(true);
+    expect(todayItems.some((i) => i.label === "送迎配車表")).toBe(true);
 
-    const adminItems = map.get("admin") || [];
-    expect(adminItems.some((i) => i.label === "利用者")).toBe(true);
+    const masterItems = map.get("master") || [];
+    expect(masterItems.some((i) => i.label === "利用者")).toBe(true);
   });
 
   it("hides admin items when feature flag/permissions omit them", () => {
@@ -61,7 +61,7 @@ describe("Navigation Configuration", () => {
     const items = createNavItems(adminConfig);
     const { map } = groupNavItems(items, true);
 
-    const opsItems = map.get("ops") || [];
+    const opsItems = map.get("billing") || [];
     expect(opsItems.some((i) => i.label === "請求処理")).toBe(true);
   });
 });

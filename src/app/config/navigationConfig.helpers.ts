@@ -9,6 +9,7 @@
 
 import { isDevMode } from '@/lib/env';
 import { TESTIDS } from '@/testids';
+import type { Role } from '@/auth/roles';
 
 import {
     NAV_GROUP_ORDER,
@@ -16,6 +17,23 @@ import {
     type NavGroupKey,
     type NavItem,
 } from './navigationConfig.types';
+
+const NAV_AUDIENCE_LEVEL: Record<NavAudience, number> = {
+  all: 0,
+  staff: 1,
+  reception: 2,
+  admin: 3,
+};
+
+export function roleToNavAudience(role: Role): NavAudience {
+  if (role === 'admin') return 'admin';
+  if (role === 'reception') return 'reception';
+  return 'staff';
+}
+
+export function requiredRoleToNavAudience(requiredRole: Role = 'viewer'): NavAudience {
+  return roleToNavAudience(requiredRole);
+}
 
 // ============================================================================
 // Visibility
@@ -26,8 +44,8 @@ import {
  *
  * audience 属性に基づいてナビゲーション項目の表示を制御する。
  * - audience が 'all' または未設定: 全ユーザーに表示
- * - navAudience が 'admin': admin は全項目を閲覧可能
- * - それ以外: audience リストに navAudience が含まれる場合のみ表示
+ * - audience に role 階層を適用して判定
+ *   (admin > reception > staff > all)
  *
  * @param item - Navigation item to evaluate
  * @param navAudience - The current user's audience level
@@ -35,9 +53,7 @@ import {
  */
 export function isNavVisible(item: NavItem, navAudience: NavAudience): boolean {
   const audienceList = Array.isArray(item.audience) ? item.audience : [item.audience ?? 'all'];
-  if (audienceList.includes('all')) return true;
-  if (navAudience === 'admin') return true;
-  return audienceList.includes(navAudience);
+  return audienceList.some((audience) => NAV_AUDIENCE_LEVEL[navAudience] >= NAV_AUDIENCE_LEVEL[audience]);
 }
 
 // ============================================================================
@@ -72,9 +88,14 @@ export function pickGroup(item: Partial<NavItem>, _isAdmin: boolean): NavGroupKe
   const label = item.label || '';
   const testId = item.testId;
 
-  // 1. 現場の実行 (daily)
+  // 1. Today
   if (
+    testId === TESTIDS.nav.todayOps ||
     testId === TESTIDS.nav.daily ||
+    testId === TESTIDS.nav.schedules ||
+    testId === TESTIDS.nav.transportAssignments ||
+    to.startsWith('/today') ||
+    to.startsWith('/transport/assignments') ||
     to.startsWith('/daily') ||
     to.startsWith('/dailysupport') ||
     to.startsWith('/handoff-timeline') ||
@@ -85,18 +106,20 @@ export function pickGroup(item: Partial<NavItem>, _isAdmin: boolean): NavGroupKe
     label.includes('健康') ||
     label.includes('タイムライン') ||
     label.includes('議事録') ||
-    label.includes('スケジュール')
+    label.includes('スケジュール') ||
+    label.includes('Today')
   ) {
-    return 'daily';
+    return 'today';
   }
 
-  // 2. 支援計画・アセスメント (assessment)
+  // 2. Planning
   if (
     testId === TESTIDS.nav.supportPlanGuide ||
     testId === TESTIDS.nav.ispEditor ||
     testId === TESTIDS.nav.planningSheet ||
     testId === TESTIDS.nav.analysis ||
     testId === TESTIDS.nav.assessment ||
+    to.startsWith('/planning') ||
     to.startsWith('/support') ||
     to.startsWith('/isp') ||
     to.startsWith('/assessment') ||
@@ -106,56 +129,78 @@ export function pickGroup(item: Partial<NavItem>, _isAdmin: boolean): NavGroupKe
     label.includes('支援計画') ||
     label.includes('アセスメント') ||
     label.includes('分析ワークスペース') ||
-    label.includes('特性')
+    label.includes('特性') ||
+    label.includes('Planning')
   ) {
-    return 'assessment';
+    return 'planning';
   }
 
-  // 3. 拠点運営 (ops)
+  // 3. Billing
   if (
     testId === TESTIDS.nav.billing ||
+    to.startsWith('/billing') ||
+    label.includes('請求') ||
+    label.includes('Billing')
+  ) {
+    return 'billing';
+  }
+
+  // 4. Operations
+  if (
     testId === TESTIDS.nav.staffAttendance ||
     testId === TESTIDS.nav.integratedResourceCalendar ||
     testId === TESTIDS.nav.roomManagement ||
+    testId === TESTIDS.nav.exceptionCenter ||
+    to.startsWith('/operations') ||
     to.startsWith('/ops') ||
-    to.startsWith('/billing') ||
     to.startsWith('/staff/attendance') ||
     to.startsWith('/admin/staff-attendance') ||
     to.startsWith('/admin/integrated') ||
     to.startsWith('/room-management') ||
+    to.startsWith('/admin/exception-center') ||
     to.startsWith('/compliance') ||
     label.includes('メトリクス') ||
-    label.includes('請求') ||
     label.includes('勤怠') ||
     label.includes('カレンダー') ||
     label.includes('部屋') ||
-    label.includes('コンプラ')
+    label.includes('コンプラ') ||
+    label.includes('Operations')
   ) {
-    return 'ops';
+    return 'operations';
   }
 
-  // 4. マスタ・管理 (admin)
+  // 5. Master
   if (
-    testId === TESTIDS.nav.admin ||
+    to.startsWith('/master') ||
     to.startsWith('/users') ||
     (to.startsWith('/staff') && !to.includes('attendance')) ||
+    label.includes('利用者') ||
+    (label.includes('職員') && !label.includes('勤怠')) ||
+    label.includes('Master')
+  ) {
+    return 'master';
+  }
+
+  // 6. Platform
+  if (
+    testId === TESTIDS.nav.admin ||
+    to.startsWith('/platform') ||
     to === '/admin' ||
     to.startsWith('/admin/') ||
     to.startsWith('/settings') ||
     to.startsWith('/checklist') ||
     to.startsWith('/audit') ||
-    label.includes('利用者') ||
-    (label.includes('職員') && !label.includes('勤怠')) ||
     label.includes('管理ツール') ||
     label.includes('設定') ||
     label.includes('監査ログ') ||
-    label.includes('自己点検')
+    label.includes('自己点検') ||
+    label.includes('Platform')
   ) {
-    return 'admin';
+    return 'platform';
   }
 
-  // 5. デフォルト (record) - 記録・振り返り
-  return 'record';
+  // 7. デフォルト (records)
+  return 'records';
 }
 
 // ============================================================================

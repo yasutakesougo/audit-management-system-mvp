@@ -38,9 +38,30 @@ import {
 export const adminRoutes: RouteObject[] = [
   // Dev-only debug routes
   ...(isDev ? [
-    { path: 'admin/debug/smoke-test', element: <SuspendedSmokeTestPage /> },
-    { path: 'admin/debug/zod-error', element: <SuspendedDebugZodErrorPage /> },
-    { path: 'admin/debug/opening-verification', element: <SuspendedOpeningVerificationPage /> },
+    {
+      path: 'admin/debug/smoke-test',
+      element: (
+        <RequireAudience requiredRole="admin">
+          <SuspendedSmokeTestPage />
+        </RequireAudience>
+      ),
+    },
+    {
+      path: 'admin/debug/zod-error',
+      element: (
+        <RequireAudience requiredRole="admin">
+          <SuspendedDebugZodErrorPage />
+        </RequireAudience>
+      ),
+    },
+    {
+      path: 'admin/debug/opening-verification',
+      element: (
+        <RequireAudience requiredRole="admin">
+          <SuspendedOpeningVerificationPage />
+        </RequireAudience>
+      ),
+    },
   ] : []),
 
   {

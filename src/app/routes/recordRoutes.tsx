@@ -1,6 +1,8 @@
 /**
  * Record domain routes: /records/*, /billing, /handoff-timeline, /meeting-minutes/*
  */
+import HubLanding from '@/app/hubs/HubLanding';
+import { withHubAudienceGuard } from '@/app/hubs/hubRouting';
 import RequireAudience from '@/components/RequireAudience';
 import { MeetingMinutesRoutes } from '@/features/meeting-minutes/routes';
 import type { RouteObject } from 'react-router-dom';
@@ -20,9 +22,12 @@ export const recordRoutes: RouteObject[] = [
   {
     path: 'records',
     element: (
-      <RequireAudience requiredRole="viewer">
-        <SuspendedRecordList />
-      </RequireAudience>
+      withHubAudienceGuard(
+        'records',
+        <HubLanding hubId="records">
+          <SuspendedRecordList />
+        </HubLanding>,
+      )
     ),
   },
   {
@@ -60,9 +65,12 @@ export const recordRoutes: RouteObject[] = [
   {
     path: 'billing',
     element: (
-      <RequireAudience requiredRole="reception">
-        <SuspendedBillingPage />
-      </RequireAudience>
+      withHubAudienceGuard(
+        'billing',
+        <HubLanding hubId="billing">
+          <SuspendedBillingPage />
+        </HubLanding>,
+      )
     ),
   },
   {
@@ -81,8 +89,36 @@ export const recordRoutes: RouteObject[] = [
       </RequireAudience>
     ),
   },
-  { path: 'meeting-minutes', element: MeetingMinutesRoutes.List },
-  { path: 'meeting-minutes/new', element: MeetingMinutesRoutes.New },
-  { path: 'meeting-minutes/:id', element: MeetingMinutesRoutes.Detail },
-  { path: 'meeting-minutes/:id/edit', element: MeetingMinutesRoutes.Edit },
+  {
+    path: 'meeting-minutes',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        {MeetingMinutesRoutes.List}
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'meeting-minutes/new',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        {MeetingMinutesRoutes.New}
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'meeting-minutes/:id',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        {MeetingMinutesRoutes.Detail}
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'meeting-minutes/:id/edit',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        {MeetingMinutesRoutes.Edit}
+      </RequireAudience>
+    ),
+  },
 ];

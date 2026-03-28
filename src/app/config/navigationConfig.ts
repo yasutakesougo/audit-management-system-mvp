@@ -10,16 +10,21 @@
  * @module app/config/navigationConfig
  */
 
+import {
+  getHubNavLabel,
+  getHubRequiredRole,
+  getHubRootPath,
+  isHubPathActive,
+} from '@/app/hubs/hubDefinitions';
+import type { HubId } from '@/app/hubs/hubTypes';
 import { PREFETCH_KEYS } from '@/prefetch/routes';
 import { TESTIDS } from '@/testids';
-import type React from 'react';
 
 // Import types and constants from extracted modules
-import { isNavVisible } from './navigationConfig.helpers';
+import { isNavVisible, requiredRoleToNavAudience } from './navigationConfig.helpers';
 import {
     NAV_AUDIENCE,
     type CreateNavItemsConfig,
-    type NavAudience,
     type NavGroupKey,
     type NavItem,
 } from './navigationConfig.types';
@@ -42,12 +47,33 @@ export {
     filterNavItems,
     groupNavItems,
     isNavVisible,
-    pickGroup
+    pickGroup,
+    requiredRoleToNavAudience,
+    roleToNavAudience,
 } from './navigationConfig.helpers';
 
 // ============================================================================
 // Nav Item Factory
 // ============================================================================
+
+type HubNavItemOverrides = {
+  label?: string;
+  testId?: string;
+  prefetchKey?: NavItem['prefetchKey'];
+  prefetchKeys?: NavItem['prefetchKeys'];
+};
+
+const createHubNavItem = (hubId: HubId, overrides: HubNavItemOverrides = {}): NavItem => ({
+  label: overrides.label ?? getHubNavLabel(hubId),
+  to: getHubRootPath(hubId),
+  isActive: (pathname) => isHubPathActive(hubId, pathname),
+  icon: undefined,
+  testId: overrides.testId,
+  prefetchKey: overrides.prefetchKey,
+  prefetchKeys: overrides.prefetchKeys,
+  audience: requiredRoleToNavAudience(getHubRequiredRole(hubId)),
+  group: hubId as NavGroupKey,
+});
 
 /**
  * Creates the navigation items array based on feature flags and permissions
@@ -87,17 +113,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     // --- 1. 現場の実行 (daily) ---
     // 順序: 今日の業務 → 送迎配車表 → スケジュール → 日次記録 → 健康記録 → 申し送りタイムライン → 議事録
     ...(todayOpsEnabled
-      ? [
-          {
-            label: '今日の業務',
-            to: '/today',
-            isActive: (pathname: string) => pathname === '/today',
-            icon: undefined as React.ElementType | undefined,
-            testId: TESTIDS.nav.todayOps,
-            audience: NAV_AUDIENCE.all as NavAudience,
-            group: 'daily' as NavGroupKey,
-          },
-        ]
+      ? [createHubNavItem('today', { testId: TESTIDS.nav.todayOps })]
       : []),
     {
       label: '送迎配車表',
@@ -106,7 +122,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.transportAssignments,
       audience: NAV_AUDIENCE.staff,
-      group: 'daily' as NavGroupKey,
+      group: 'today' as NavGroupKey,
     },
     ...(schedulesEnabled
       ? [
@@ -119,7 +135,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
             prefetchKey: PREFETCH_KEYS.schedulesWeek,
             prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
             audience: NAV_AUDIENCE.staff,
-            group: 'daily' as NavGroupKey,
+            group: 'today' as NavGroupKey,
           },
         ]
       : []),
@@ -131,7 +147,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.dailyMenu,
       testId: TESTIDS.nav.daily,
       audience: NAV_AUDIENCE.all,
-      group: 'daily' as NavGroupKey,
+      group: 'today' as NavGroupKey,
     },
     {
       label: '健康記録',
@@ -139,7 +155,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/daily/health'),
       icon: undefined,
       audience: NAV_AUDIENCE.all,
-      group: 'daily' as NavGroupKey,
+      group: 'today' as NavGroupKey,
     },
     {
       label: '申し送りタイムライン',
@@ -147,7 +163,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/handoff-timeline'),
       icon: undefined,
       audience: NAV_AUDIENCE.all,
-      group: 'daily' as NavGroupKey,
+      group: 'today' as NavGroupKey,
     },
     {
       // 会議系は「議事録」に統合。司会ガイド・朝会夕会情報・朝会/夕会（作成）は議事録ページ内またはURL直接アクセスで到達可能。
@@ -156,11 +172,12 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/meeting-minutes') || pathname.startsWith('/meeting-guide') || pathname.startsWith('/dashboard/briefing'),
       icon: undefined,
       audience: NAV_AUDIENCE.all,
-      group: 'daily' as NavGroupKey,
+      group: 'today' as NavGroupKey,
     },
 
     // --- 2. 支援計画・アセスメント (assessment) ---
     // 順序: ISP作成・更新 → 支援計画シート → アセスメント系 → 分析系 → アンケート
+    createHubNavItem('planning'),
     {
       label: 'ISP作成',
       to: '/support-plan-guide',
@@ -168,7 +185,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.supportPlanGuide,
       audience: NAV_AUDIENCE.all,
-      group: 'assessment' as NavGroupKey,
+      group: 'planning' as NavGroupKey,
     },
     {
       label: 'ISP更新（前回比較）',
@@ -177,7 +194,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.ispEditor,
       audience: NAV_AUDIENCE.all,
-      group: 'assessment' as NavGroupKey,
+      group: 'planning' as NavGroupKey,
     },
     {
       label: '支援計画シート',
@@ -186,7 +203,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.planningSheet,
       audience: NAV_AUDIENCE.staff,
-      group: 'assessment' as NavGroupKey,
+      group: 'planning' as NavGroupKey,
     },
     {
       label: 'アセスメント',
@@ -196,7 +213,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.assessmentDashboard,
       testId: TESTIDS.nav.assessment,
       audience: NAV_AUDIENCE.staff,
-      group: 'assessment' as NavGroupKey,
+      group: 'planning' as NavGroupKey,
     },
     {
       // Tier C: Mock依存。管理者のみ表示。
@@ -207,7 +224,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.analysisDashboard,
       testId: TESTIDS.nav.analysis,
       audience: NAV_AUDIENCE.admin,
-      group: 'assessment' as NavGroupKey,
+      group: 'planning' as NavGroupKey,
     },
     {
       // Tier C: Mock依存。管理者のみ表示。
@@ -216,7 +233,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/survey/tokusei'),
       icon: undefined,
       audience: NAV_AUDIENCE.admin,
-      group: 'assessment' as NavGroupKey,
+      group: 'planning' as NavGroupKey,
     },
 
     // --- 3. 記録・振り返り (record) ---
@@ -229,17 +246,9 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.dashboard,
       audience: NAV_AUDIENCE.admin,
-      group: 'record' as NavGroupKey,
+      group: 'records' as NavGroupKey,
     },
-    {
-      // Tier B: Mock依存。管理者のみ表示。
-      label: '記録一覧',
-      to: '/records',
-      isActive: (pathname) => pathname.startsWith('/records'),
-      icon: undefined,
-      audience: NAV_AUDIENCE.admin,
-      group: 'record' as NavGroupKey,
-    },
+    createHubNavItem('records'),
     {
       // 月次記録・業務日誌プレビューは、記録一覧（/records）のサブページとして到達可能なためサイドナビから除外
       label: 'サービス提供実績記録',
@@ -247,7 +256,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/records/service-provision'),
       icon: undefined,
       audience: NAV_AUDIENCE.staff,
-      group: 'record' as NavGroupKey,
+      group: 'records' as NavGroupKey,
     },
     {
       label: '個人月次業務日誌',
@@ -255,7 +264,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/records/journal/personal'),
       icon: undefined,
       audience: NAV_AUDIENCE.staff,
-      group: 'record' as NavGroupKey,
+      group: 'records' as NavGroupKey,
     },
     {
       // Tier B: SP接続済だが本番運用未検証。管理者のみ表示。
@@ -264,13 +273,14 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/handoff-analysis'),
       icon: undefined,
       audience: NAV_AUDIENCE.admin,
-      group: 'record' as NavGroupKey,
+      group: 'records' as NavGroupKey,
     },
 
     // --- 4. 拠点運営 (ops) ---
     // 順序: 運用メトリクス → 請求処理 → (以下条件付で追加) 職員勤怠 → 統合カレンダー等 → コンプライアンス監査
     // NOTE: 「運営スケジュール」は /schedules/week?tab=ops に統合済み（PR #1121）。
     //       独立ナビ項目は削除し、「スケジュール」タブから到達する。
+    createHubNavItem('operations'),
     {
       // Tier C: Mock依存。管理者のみ表示。
       label: '運用メトリクス',
@@ -278,21 +288,14 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname === '/ops' || pathname.startsWith('/ops/'),
       icon: undefined,
       audience: NAV_AUDIENCE.admin,
-      group: 'ops' as NavGroupKey,
+      group: 'operations' as NavGroupKey,
     },
-    {
-      // Tier C: Mock依存。管理者のみ表示。
-      label: '請求処理',
-      to: '/billing',
-      isActive: (pathname) => pathname === '/billing' || pathname.startsWith('/billing/'),
-      icon: undefined,
-      testId: TESTIDS.nav.billing,
-      audience: NAV_AUDIENCE.admin,
-      group: 'ops' as NavGroupKey,
-    },
+    createHubNavItem('billing', { testId: TESTIDS.nav.billing }),
 
     // --- 5. マスタ・管理 (admin) ---
     // 順序: 利用者マスタ → 職員マスタ → (以下条件付で追加) 管理ツール (システム設定ハブ/チェックリスト等)
+    createHubNavItem('master'),
+    createHubNavItem('platform'),
     {
       label: '利用者',
       to: '/users',
@@ -300,7 +303,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       prefetchKey: PREFETCH_KEYS.users,
       audience: NAV_AUDIENCE.staff,
-      group: 'admin' as NavGroupKey,
+      group: 'master' as NavGroupKey,
     },
     {
       label: '職員',
@@ -309,7 +312,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       prefetchKey: PREFETCH_KEYS.staff,
       audience: NAV_AUDIENCE.staff,
-      group: 'admin' as NavGroupKey,
+      group: 'master' as NavGroupKey,
     },
   ];
 
@@ -328,7 +331,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.staff,
       testId: TESTIDS.nav.staffAttendance,
       audience: NAV_AUDIENCE.staff,
-      group: 'ops' as NavGroupKey,
+      group: 'operations' as NavGroupKey,
     });
   }
 
@@ -339,7 +342,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname: string) => pathname.startsWith('/compliance'),
       icon: undefined,
       audience: 'staff',
-      group: 'ops' as NavGroupKey,
+      group: 'operations' as NavGroupKey,
     });
   }
 
@@ -350,7 +353,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname: string) => pathname.startsWith('/admin/staff-attendance'),
       icon: undefined,
       audience: NAV_AUDIENCE.admin,
-      group: 'ops' as NavGroupKey,
+      group: 'operations' as NavGroupKey,
     });
 
     if (schedulesEnabled) {
@@ -361,7 +364,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
         icon: undefined,
         testId: TESTIDS.nav.integratedResourceCalendar,
         audience: NAV_AUDIENCE.admin,
-        group: 'ops' as NavGroupKey,
+        group: 'operations' as NavGroupKey,
       });
     }
 
@@ -372,7 +375,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.roomManagement,
       audience: NAV_AUDIENCE.admin,
-      group: 'ops' as NavGroupKey,
+      group: 'operations' as NavGroupKey,
     });
 
     // --- 拠点運営 (ops) --- 例外センター
@@ -383,7 +386,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.exceptionCenter,
       audience: NAV_AUDIENCE.admin,
-      group: 'ops' as NavGroupKey,
+      group: 'operations' as NavGroupKey,
     });
 
     // --- マスタ・管理 (admin) ---
@@ -395,7 +398,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname: string) => (pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/checklist') || pathname.startsWith('/audit') || pathname.startsWith('/settings/')) && !pathname.startsWith('/admin/exception-center'),
       icon: undefined,
       audience: NAV_AUDIENCE.admin,
-      group: 'admin' as NavGroupKey,
+      group: 'platform' as NavGroupKey,
     });
   }
 

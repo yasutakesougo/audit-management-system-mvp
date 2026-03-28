@@ -23,11 +23,19 @@ export const supportPlanRoutes: RouteObject[] = [
   },
   {
     path: 'isp-editor',
-    element: <SuspendedISPComparisonEditorPage />,
+    element: (
+      <RequireAudience requiredRole="admin">
+        <SuspendedISPComparisonEditorPage />
+      </RequireAudience>
+    ),
   },
   {
     path: 'isp-editor/:userId',
-    element: <SuspendedISPComparisonEditorPage />,
+    element: (
+      <RequireAudience requiredRole="admin">
+        <SuspendedISPComparisonEditorPage />
+      </RequireAudience>
+    ),
   },
   {
     path: 'support-planning-sheet/:planningSheetId',
@@ -54,4 +62,3 @@ export const supportPlanRoutes: RouteObject[] = [
     ),
   },
 ];
-
