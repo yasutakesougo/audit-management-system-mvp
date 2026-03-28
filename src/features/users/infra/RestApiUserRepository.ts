@@ -121,7 +121,8 @@ export class RestApiUserRepository implements UserRepository {
     try {
       items = await this.fetchItems(path, selectMode);
     } catch (e) {
-      if (this.isSelectError(e)) {
+      const shouldRetryWithoutSelect = path.includes('$select=');
+      if (this.isSelectError(e) || this.isLikelySelectQueryFailure(e, path) || shouldRetryWithoutSelect) {
         usersSelectSupported = false;
         // Fallback: $select を外して全列取得（存在しないフィールドを含んでいても安全）
         auditLog.warn('users', 'rest_api_repo.select_error_retry', { error: String(e) });
@@ -176,7 +177,8 @@ export class RestApiUserRepository implements UserRepository {
       if (this.isNotFoundError(error)) {
         return null;
       }
-      if (this.isSelectError(error)) {
+      const shouldRetryWithoutSelect = path.includes('$select=');
+      if (this.isSelectError(error) || this.isLikelySelectQueryFailure(error, path) || shouldRetryWithoutSelect) {
         usersSelectSupported = false;
         auditLog.warn('users', 'rest_api_repo.select_error_getbyid_retry', { error: String(error) });
         try {
@@ -495,12 +497,37 @@ export class RestApiUserRepository implements UserRepository {
         msg.includes('property') ||
         msg.includes('column') ||
         msg.includes('field') ||
+        msg.includes('invalidclientqueryexception') ||
+        msg.includes('$select') ||
+        (msg.includes('query') && msg.includes('invalid')) ||
+        (msg.includes('expression') && msg.includes('not valid')) ||
         msg.includes('存在しません') ||
         msg.includes('フィールド') ||
-        msg.includes('プロパティ')
+        msg.includes('プロパティ') ||
+        (msg.includes('クエリ') && msg.includes('無効')) ||
+        (msg.includes('式') && msg.includes('無効'))
       );
     }
     return false;
+  }
+
+  private isLikelySelectQueryFailure(error: unknown, path: string): boolean {
+    if (!path.includes('$select=')) {
+      return false;
+    }
+    const status = this.extractErrorStatus(error);
+    return status === 400;
+  }
+
+  private extractErrorStatus(error: unknown): number | null {
+    if (!error || typeof error !== 'object') {
+      return null;
+    }
+    const status = (error as { status?: unknown }).status;
+    if (typeof status === 'number' && Number.isFinite(status)) {
+      return status;
+    }
+    return null;
   }
 
   private isNotFoundError(error: unknown): boolean {
