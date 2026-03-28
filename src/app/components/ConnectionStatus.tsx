@@ -9,14 +9,22 @@ import { useMsalContext } from '@/auth/MsalProvider';
 import { getAppConfig, isDemoModeEnabled, isE2eMsalMockEnabled, readBool, shouldSkipLogin } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
 import Box from '@mui/material/Box';
-import { useTheme } from '@mui/material/styles';
+import { getContrastRatio, useTheme } from '@mui/material/styles';
 import React, { useEffect, useMemo, useState } from 'react';
 
 const SKIP_LOGIN = shouldSkipLogin();
 const E2E_MSAL_MOCK_ENABLED = isE2eMsalMockEnabled();
 
+const resolveBadgeTextColor = (background: string, light: string, dark: string): string => {
+  const lightContrast = getContrastRatio(background, light);
+  const darkContrast = getContrastRatio(background, dark);
+  return darkContrast >= lightContrast ? dark : light;
+};
+
 const ConnectionStatusMock: React.FC = () => {
   const theme = useTheme();
+  const background = theme.palette.success.dark;
+  const textColor = resolveBadgeTextColor(background, theme.palette.common.white, theme.palette.common.black);
   return (
     <Box
       role="status"
@@ -24,8 +32,8 @@ const ConnectionStatusMock: React.FC = () => {
       data-testid="sp-connection-status"
       data-connection-state="ok"
       sx={{
-        background: theme.palette.success.dark,
-        color: theme.palette.common.white,
+        background,
+        color: textColor,
         px: 1,
         py: 0.25,
         borderRadius: 12,
@@ -119,6 +127,7 @@ const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ share
         return { label: 'Checking', background: theme.palette.warning.main };
     }
   }, [state, theme]);
+  const textColor = resolveBadgeTextColor(background, theme.palette.common.white, theme.palette.common.black);
 
   return (
     <Box
@@ -128,7 +137,7 @@ const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ share
       data-connection-state={state}
       sx={{
         background,
-        color: theme.palette.common.white,
+        color: textColor,
         px: 1,
         py: 0.25,
         borderRadius: 12,
