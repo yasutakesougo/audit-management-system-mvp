@@ -114,18 +114,20 @@ export const NextCallHero: React.FC<NextCallHeroProps> = ({
           <Box>
             <Typography
               variant="subtitle2"
-              color={(theme) =>
-                theme.palette.mode === 'dark' ? 'success.contrastText' : 'success.dark'
-              }
               fontWeight={700}
+              sx={{
+                color: (theme) =>
+                  theme.palette.mode === 'dark' ? 'success.contrastText' : 'success.dark',
+              }}
             >
               すべて対応済み
             </Typography>
             <Typography
               variant="caption"
-              color={(theme) =>
-                theme.palette.mode === 'dark' ? 'success.contrastText' : 'text.secondary'
-              }
+              sx={{
+                color: (theme) =>
+                  theme.palette.mode === 'dark' ? 'success.contrastText' : 'text.secondary',
+              }}
             >
               未対応の電話・連絡ログはありません
             </Typography>
