@@ -2,15 +2,28 @@ import type { ExceptionItem, ExceptionSeverity } from './exceptionLogic';
 
 export type ExceptionPrioritySignal = 'sync-fail' | 'missing-driver' | 'stale' | 'none';
 
+export type ExceptionPriorityMaterials = {
+  isOverdue: boolean;
+  overdueDays: number;
+  requiresCorrectiveAction: boolean;
+  userExceptionCount: number;
+  isCriticalCategory: boolean;
+};
+
 export type ExceptionPriorityBreakdown = {
   severity: number;
   structure: number;
   signal: number;
   age: number;
+  overdue: number;
+  correctiveAction: number;
+  criticalCategory: number;
+  userCount: number;
   volume: number;
   total: number;
   signalKind: ExceptionPrioritySignal;
   childCount: number;
+  materials: ExceptionPriorityMaterials;
 };
 
 export type ComputeExceptionPriorityScoreOptions = {
@@ -38,6 +51,10 @@ const SIGNAL_SCORES: Record<ExceptionPrioritySignal, number> = {
   none: 0,
 };
 
+const OVERDUE_BASE_SCORE = 22;
+const CORRECTIVE_ACTION_SCORE = 14;
+const CRITICAL_CATEGORY_SCORE = 16;
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -50,6 +67,10 @@ function toTimestamp(value: string | undefined): number | null {
   if (!value) return null;
   const ts = Date.parse(value);
   return Number.isNaN(ts) ? null : ts;
+}
+
+function startOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
 function detectSignal(item: ExceptionItem): ExceptionPrioritySignal {
@@ -93,6 +114,52 @@ function extractMaxNumberByPattern(text: string, pattern: RegExp): number {
   return max;
 }
 
+function extractOverdueDaysFromText(text: string): number {
+  return extractMaxNumberByPattern(text, /(\d+)\s*日(?:間)?\s*(?:超過|遅延|経過|期限切れ)/g);
+}
+
+function includesOverdueKeyword(text: string): boolean {
+  return (
+    text.includes('期限超過')
+    || text.includes('期限切れ')
+    || text.includes('overdue')
+    || text.includes('遅延')
+  );
+}
+
+function computeOverdueDaysByTargetDate(item: ExceptionItem, now: Date): number {
+  const ts = toTimestamp(item.targetDate ?? item.updatedAt);
+  if (ts === null) return 0;
+  const target = startOfDay(new Date(ts));
+  const today = startOfDay(now);
+  const diffDays = Math.floor((today.getTime() - target.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.max(0, diffDays);
+}
+
+function resolveUserExceptionCount(
+  item: ExceptionItem,
+  childCount: number,
+  siblingCount: number,
+): number {
+  const text = `${item.title} ${item.description}`;
+  const byTextCount = extractMaxNumberByPattern(text, /(\d+)\s*件/g);
+  const structuralCount = Math.max(childCount, siblingCount);
+  const inferred = Math.max(1, byTextCount, structuralCount);
+  return inferred;
+}
+
+function isCriticalCategory(category: ExceptionItem['category']): boolean {
+  return category === 'critical-handoff'
+    || category === 'transport-alert'
+    || category === 'overdue-plan';
+}
+
+function requiresCorrectiveAction(item: ExceptionItem): boolean {
+  if (item.category === 'corrective-action') return true;
+  const text = `${item.title} ${item.description} ${item.actionLabel ?? ''}`.toLowerCase();
+  return text.includes('是正') || text.includes('改善');
+}
+
 function computeAgeScore(item: ExceptionItem, now: Date): number {
   const base = resolveBaseDate(item);
   const ts = toTimestamp(base);
@@ -132,6 +199,9 @@ export function computeExceptionPriorityBreakdown(
 ): ExceptionPriorityBreakdown {
   const now = options.now ?? new Date();
   const childCount = options.childCountByParentId?.get(item.id) ?? 0;
+  const siblingCount = item.parentId
+    ? options.childCountByParentId?.get(item.parentId) ?? 0
+    : 0;
 
   const severity = SEVERITY_SCORES[item.severity];
   const structure = item.parentId
@@ -143,20 +213,65 @@ export function computeExceptionPriorityBreakdown(
   const signalKind = detectSignal(item);
   const signal = SIGNAL_SCORES[signalKind];
   const age = computeAgeScore(item, now);
-  const volume = computeVolumeScore(item, childCount);
+  const text = `${item.title} ${item.description}`.toLowerCase();
+  const overdueDays = Math.max(
+    extractOverdueDaysFromText(text),
+    computeOverdueDaysByTargetDate(item, now),
+  );
+  const isOverdue = includesOverdueKeyword(text) || overdueDays > 0;
+  const correctiveNeeded = requiresCorrectiveAction(item);
+  const criticalCategory = isCriticalCategory(item.category);
+  const userExceptionCount = resolveUserExceptionCount(item, childCount, siblingCount);
 
-  const total = severity + structure + signal + age + volume;
+  const overdue = isOverdue
+    ? OVERDUE_BASE_SCORE + clamp(overdueDays * 4, 0, 32)
+    : 0;
+  const correctiveAction = correctiveNeeded ? CORRECTIVE_ACTION_SCORE : 0;
+  const criticalCategoryScore = criticalCategory ? CRITICAL_CATEGORY_SCORE : 0;
+  const userCount = clamp((userExceptionCount - 1) * 3, 0, 24);
+  const volume = computeVolumeScore(item, Math.max(childCount, siblingCount));
+
+  const total =
+    severity
+    + structure
+    + signal
+    + age
+    + overdue
+    + correctiveAction
+    + criticalCategoryScore
+    + userCount
+    + volume;
+
+  const materials: ExceptionPriorityMaterials = {
+    isOverdue,
+    overdueDays,
+    requiresCorrectiveAction: correctiveNeeded,
+    userExceptionCount,
+    isCriticalCategory: criticalCategory,
+  };
 
   return {
     severity,
     structure,
     signal,
     age,
+    overdue,
+    correctiveAction,
+    criticalCategory: criticalCategoryScore,
+    userCount,
     volume,
     total,
     signalKind,
     childCount,
+    materials,
   };
+}
+
+export function extractExceptionPriorityMaterials(
+  item: ExceptionItem,
+  options: ComputeExceptionPriorityScoreOptions = {},
+): ExceptionPriorityMaterials {
+  return computeExceptionPriorityBreakdown(item, options).materials;
 }
 
 export function computeExceptionPriorityScore(

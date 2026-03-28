@@ -50,7 +50,7 @@ export const CallLogStatusChip: React.FC<CallLogStatusChipProps> = ({
       label={label}
       color={color}
       size={size}
-      variant="outlined"
+      variant={status === 'done' ? 'outlined' : 'filled'}
       data-testid={`call-log-status-chip-${status}`}
     />
   );

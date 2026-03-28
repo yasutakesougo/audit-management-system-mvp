@@ -11,6 +11,8 @@ import type { CallLogRepository } from '@/domain/callLogs/repository';
 import { InMemoryCallLogRepository } from './InMemoryCallLogRepository';
 import { makeSharePointCallLogRepository } from './SharePointCallLogRepository';
 
+let sharedInMemoryRepository: InMemoryCallLogRepository | null = null;
+
 /**
  * Factory:環境に応じた CallLogRepository を生成する。
  *
@@ -24,7 +26,16 @@ export function createCallLogRepository(
   acquireToken: (resource?: string) => Promise<string | null>,
 ): CallLogRepository {
   if (shouldSkipSharePoint()) {
-    return new InMemoryCallLogRepository();
+    if (!sharedInMemoryRepository) {
+      sharedInMemoryRepository = new InMemoryCallLogRepository([], {
+        useSharedStore: true,
+      });
+    }
+    return sharedInMemoryRepository;
   }
   return makeSharePointCallLogRepository(acquireToken);
 }
+
+export const __resetCallLogRepositoryFactoryForTests = (): void => {
+  sharedInMemoryRepository = null;
+};

@@ -14,8 +14,8 @@
  * - EmptyStateAction (MVP-001) を例外0件時に表示
  * - Phase 2 でドロワー/詳細モーダルを追加予定
  */
-import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 // ── MUI ──
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
@@ -35,6 +35,7 @@ import {
   detectAttentionUsers,
   type ExceptionCategory,
 } from '@/features/exceptions/domain/exceptionLogic';
+import { parseExceptionCenterDeepLinkParams } from '@/features/exceptions/domain/exceptionCenterDeepLink';
 import { ExceptionTable } from '@/features/exceptions/components/ExceptionTable';
 import { applyExceptionPreferences } from '@/features/exceptions/domain/applyExceptionPreferences';
 import { useExceptionDataSources } from '@/features/exceptions/hooks/useExceptionDataSources';
@@ -59,6 +60,11 @@ import { queuePendingSuggestionDeepLink } from '@/features/action-engine/telemet
 
 export default function ExceptionCenterPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const deepLinkFilters = useMemo(
+    () => parseExceptionCenterDeepLinkParams(searchParams),
+    [searchParams],
+  );
 
   // Action Engine: 全利用者分の是正提案を自給自足
   const { suggestions: allSuggestions, status: suggestionsStatus, error: suggestionsError } = useAllCorrectiveActions();
@@ -80,7 +86,24 @@ export default function ExceptionCenterPage() {
     targetDate: dataSources.today,
   });
   
-  const [categoryFilter, setCategoryFilter] = useState<ExceptionCategory | 'all'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<ExceptionCategory | 'all'>(
+    deepLinkFilters.category,
+  );
+  useEffect(() => {
+    setCategoryFilter(deepLinkFilters.category);
+  }, [deepLinkFilters.category]);
+
+  const handleCategoryFilterChange = React.useCallback((next: ExceptionCategory | 'all') => {
+    setCategoryFilter(next);
+    const nextParams = new URLSearchParams(searchParams);
+    if (next === 'all') nextParams.delete('category');
+    else nextParams.set('category', next);
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const clearDeepLinkFilters = React.useCallback(() => {
+    setSearchParams({}, { replace: true });
+  }, [setSearchParams]);
   const suggestionByStableId = useMemo(() => {
     return new Map(allSuggestions.map((s) => [s.stableId, s]));
   }, [allSuggestions]);
@@ -186,7 +209,12 @@ export default function ExceptionCenterPage() {
     return applyExceptionPreferences(aggregated, dismissedStableIds, snoozedStableIds);
   }, [dailyRecordItems, dataSources, handoffItems, correctiveItems, transportItems, dismissedStableIds, snoozedStableIds]);
 
-  const stats = useMemo(() => computeExceptionStats(exceptions), [exceptions]);
+  const scopedExceptions = useMemo(() => {
+    if (!deepLinkFilters.userId) return exceptions;
+    return exceptions.filter((item) => item.targetUserId === deepLinkFilters.userId);
+  }, [exceptions, deepLinkFilters.userId]);
+
+  const stats = useMemo(() => computeExceptionStats(scopedExceptions), [scopedExceptions]);
 
   // ── SummaryCard 定義 ──
   const summaryCards = [
@@ -236,7 +264,8 @@ export default function ExceptionCenterPage() {
 
   // 是正提案データの取得状況を loading に含める
   const isLoading = dataSources.status === 'loading' || suggestionsStatus === 'loading' || transportStatus === 'loading';
-  const hasVisibleExceptions = exceptions.length > 0;
+  const hasVisibleExceptions = scopedExceptions.length > 0;
+  const hasDeepLinkFilters = deepLinkFilters.category !== 'all' || !!deepLinkFilters.userId;
 
   return (
     <Container maxWidth="lg" sx={{ py: 3 }} data-testid="exception-center-page">
@@ -244,11 +273,28 @@ export default function ExceptionCenterPage() {
       <Button
         startIcon={<ArrowBackRoundedIcon />}
         onClick={() => navigate('/admin')}
-        sx={{ mb: 2 }}
+        sx={{ mb: 2, color: 'text.primary' }}
         data-testid="exception-center-back"
       >
         管理ツールに戻る
       </Button>
+
+      {hasDeepLinkFilters && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2 }}
+          data-testid="exception-center-deeplink-filters"
+          action={(
+            <Button color="inherit" size="small" onClick={clearDeepLinkFilters}>
+              絞り込み解除
+            </Button>
+          )}
+        >
+          Today からの絞り込みを適用中
+          {deepLinkFilters.category !== 'all' ? ` / category=${deepLinkFilters.category}` : ''}
+          {deepLinkFilters.userId ? ` / userId=${deepLinkFilters.userId}` : ''}
+        </Alert>
+      )}
 
       {/* ── Loading 状態 ── */}
       {isLoading && (
@@ -319,7 +365,9 @@ export default function ExceptionCenterPage() {
               <Paper
                 key={card.key}
                 variant="outlined"
-                onClick={() => setCategoryFilter(card.key === 'total' ? 'all' : card.key as ExceptionCategory)}
+                onClick={() => handleCategoryFilterChange(
+                  card.key === 'total' ? 'all' : card.key as ExceptionCategory,
+                )}
                 sx={{
                   p: 2,
                   borderRadius: 2,
@@ -352,11 +400,12 @@ export default function ExceptionCenterPage() {
             Exception Table (MVP-006)
            ════════════════════════════════════════════════════════════ */}
         <ExceptionTable
-          items={exceptions}
+          items={scopedExceptions}
           title="対応が必要な例外"
           showFilters
+          initialSortMode="priority"
           categoryFilter={categoryFilter}
-          onCategoryFilterChange={setCategoryFilter}
+          onCategoryFilterChange={handleCategoryFilterChange}
           suggestionActions={{
             onDismiss: handleDismissSuggestion,
             onSnooze: handleSnoozeSuggestion,
