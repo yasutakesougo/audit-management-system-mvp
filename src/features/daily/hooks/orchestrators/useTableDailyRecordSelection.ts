@@ -96,7 +96,7 @@ export function useTableDailyRecordSelection({
    */
   const selectedUsers = useMemo(() => {
     return selectedUserIds
-      .map((id) => users.find((user) => (user.UserID ?? (user as any).userId) === id))
+      .map((id) => users.find((user) => user.UserID === id))
       .filter((user): user is StoreUser => Boolean(user));
   }, [users, selectedUserIds]);
 
@@ -115,7 +115,7 @@ export function useTableDailyRecordSelection({
       return false;
     }
     const allFilteredIds = filteredUsers
-      .map((user) => user.UserID ?? (user as any).userId ?? '')
+      .map((user) => user.UserID ?? '')
       .filter((id): id is string => Boolean(id));
     return allFilteredIds.length === selectedUserIds.length &&
       allFilteredIds.every((id) => selectedUserIds.includes(id));
@@ -137,16 +137,16 @@ export function useTableDailyRecordSelection({
   useEffect(() => {
     if (showTodayOnly && selectedUserIds.length > 0) {
       const validUserIds = selectedUserIds.filter((userId) => {
-        const user = users.find((u) => (u.UserID ?? (u as any).userId) === userId);
-        const attendanceDays = Array.isArray(user?.AttendanceDays) ? user?.AttendanceDays : Array.isArray((user as any)?.attendanceDays) ? (user as any)?.attendanceDays : undefined;
-        if (!user || !attendanceDays || attendanceDays.length === 0) {
+        const user = users.find((u) => u.UserID === userId);
+        const attendanceDays = user?.AttendanceDays;
+        if (!user || !attendanceDays || !Array.isArray(attendanceDays) || attendanceDays.length === 0) {
           return true; // Fail-safe: データがない場合は残す
         }
 
         return isUserScheduledForDate({
-          Id: user.Id ?? (user as any).id ?? 0,
+          Id: user.Id ?? 0,
           UserID: userId,
-          FullName: user.FullName ?? (user as any).name ?? '',
+          FullName: user.FullName ?? '',
           AttendanceDays: attendanceDays,
         }, targetDate);
       });
@@ -167,7 +167,7 @@ export function useTableDailyRecordSelection({
     }
 
     const todayUserIds = attendanceFilteredUsers
-      .map((user) => user.UserID ?? (user as any).userId ?? '')
+      .map((user) => user.UserID ?? '')
       .filter((id): id is string => Boolean(id));
 
     if (todayUserIds.length === 0) {
@@ -209,7 +209,7 @@ export function useTableDailyRecordSelection({
    */
   const handleSelectAll = () => {
     const allIds = filteredUsers
-      .map((user) => user.UserID ?? (user as any).userId ?? '')
+      .map((user) => user.UserID ?? '')
       .filter((id): id is string => Boolean(id));
     setSelectionManuallyEdited(true);
     setSelectedUserIds(allIds);
