@@ -40,6 +40,7 @@ export function recordHubTelemetry(event: HubTelemetryEvent): void {
 
   const payload = {
     ...event,
+    event: event.eventName,
     type: 'hub_entry_telemetry' as const,
     ts: serverTimestamp(),
     clientTs: new Date().toISOString(),
@@ -55,4 +56,3 @@ export function recordHubTelemetry(event: HubTelemetryEvent): void {
     console.warn('[hub:telemetry] skipped (db not ready)', err);
   }
 }
-

@@ -43,6 +43,7 @@ describe('hubTelemetry', () => {
       'mock-collection-ref',
       expect.objectContaining({
         type: 'hub_entry_telemetry',
+        event: HUB_TELEMETRY_EVENTS.CARD_CLICKED,
         eventName: HUB_TELEMETRY_EVENTS.CARD_CLICKED,
         hubId: 'planning',
         role: 'viewer',
@@ -86,4 +87,3 @@ describe('hubTelemetry', () => {
     expect(mockAddDoc).not.toHaveBeenCalled();
   });
 });
-
