@@ -18,13 +18,13 @@ export { default as WeekPage } from './routes/WeekPage';
 export { default as WeekView } from './routes/WeekView';
 
 // Hooks
-export { useSchedules } from './hooks/useSchedules';
+export { useSchedules } from './hooks/legacy/useSchedules';
 export { useScheduleUserOptions } from './hooks/useScheduleUserOptions';
-export { useWeekPageRouteState } from './hooks/useWeekPageRouteState';
+export { useWeekPageRouteState } from './hooks/view-models/useWeekPageRouteState';
 
 // Components
 export { ScheduleEmptyHint } from './components/ScheduleEmptyHint';
-export { SchedulesHeader } from './components/SchedulesHeader';
+export { SchedulesHeader } from './components/sections/SchedulesHeader';
 
 // Domain types (SSOT)
 export type { CreateScheduleEventInput, InlineScheduleDraft, SchedItem } from './domain';

@@ -47,7 +47,7 @@ import {
 } from '../domain/scheduleFormState';
 import type { QuickTemplate } from '../domain/builders/scheduleQuickTemplates';
 import type { OrgOption } from '../hooks/useOrgOptions';
-import { useScheduleCreateForm } from '../hooks/useScheduleCreateForm';
+import { useScheduleCreateForm } from '../hooks/orchestrators/useScheduleCreateForm';
 import { SCHEDULE_STATUS_OPTIONS } from '../statusMetadata';
 
 // ===== Types for Dialog Component Only =====

@@ -5,7 +5,7 @@
  * All functions are stateless and side-effect free.
  */
 import type { DateRange, SchedItem } from '../data';
-import { makeRange } from '../hooks/useSchedules';
+import { makeRange } from '../hooks/legacy/useSchedules';
 import { SERVICE_TYPE_META, type ServiceTypeKey } from '../serviceTypeMetadata';
 
 // ---------------------------------------------------------------------------

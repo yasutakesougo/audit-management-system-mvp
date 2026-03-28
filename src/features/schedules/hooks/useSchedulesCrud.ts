@@ -28,7 +28,7 @@ import {
     extractTimePart,
     formatScheduleLocalInput,
     toDateIso,
-} from './useSchedulesPageState';
+} from './view-models/useSchedulesPageState';
 
 
 

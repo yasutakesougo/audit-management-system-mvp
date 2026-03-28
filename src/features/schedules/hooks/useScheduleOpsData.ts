@@ -10,7 +10,7 @@
 import { useMemo } from 'react';
 
 import type { ScheduleOpsItem } from '../domain/scheduleOpsSchema';
-import { type DateRange, useSchedules } from './useSchedules';
+import { type DateRange, useSchedules } from './legacy/useSchedules';
 
 export type ScheduleOpsDataReturn = {
   rawItems: ScheduleOpsItem[];

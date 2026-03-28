@@ -5,12 +5,12 @@ import { useBreakpointFlags, useOrientation } from '@/app/LayoutContext';
 import { canAccess } from '@/auth/roles';
 import { useAuth } from '@/auth/useAuth';
 import { useUserAuthz } from '@/auth/useUserAuthz';
-import { ScheduleDialogManager } from '@/features/schedules/components/ScheduleDialogManager';
+import { ScheduleDialogManager } from '@/features/schedules/components/dialogs/ScheduleDialogManager';
 import { ScheduleFAB } from '@/features/schedules/components/ScheduleFAB';
-import { ScheduleFilterBar } from '@/features/schedules/components/ScheduleFilterBar';
+import { ScheduleFilterBar } from '@/features/schedules/components/sections/ScheduleFilterBar';
 import { ScheduleReadOnlyAlert } from '@/features/schedules/components/ScheduleReadOnlyAlert';
-import { ScheduleViewContainer } from '@/features/schedules/components/ScheduleViewContainer';
-import SchedulesHeader from '@/features/schedules/components/SchedulesHeader';
+import { ScheduleViewContainer } from '@/features/schedules/components/pages/ScheduleViewContainer';
+import SchedulesHeader from '@/features/schedules/components/sections/SchedulesHeader';
 import { OpsFilterBar } from '@/features/schedules/components/ops/OpsFilterBar';
 import { OpsHighLoadWarningBanner } from '@/features/schedules/components/ops/OpsHighLoadWarningBanner';
 import { OpsLeaveSuggestionPanel } from '@/features/schedules/components/ops/OpsLeaveSuggestionPanel';
@@ -23,9 +23,9 @@ import { TESTIDS } from '@/testids';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
 import { useScheduleOps } from '../hooks/useScheduleOps';
 import { useScheduleUserOptions } from '../hooks/useScheduleUserOptions';
-import { buildCreateDialogIntent, buildNextSlot, useSchedulesPageState } from '../hooks/useSchedulesPageState';
-import { useWeekPageOrchestrator } from '../hooks/useWeekPageOrchestrator';
-import { useWeekPageUiState } from '../hooks/useWeekPageUiState';
+import { buildCreateDialogIntent, buildNextSlot, useSchedulesPageState } from '../hooks/view-models/useSchedulesPageState';
+import { useWeekPageOrchestrator } from '../hooks/orchestrators/useWeekPageOrchestrator';
+import { useWeekPageUiState } from '../hooks/view-models/useWeekPageUiState';
 
 
 export default function WeekPage() {

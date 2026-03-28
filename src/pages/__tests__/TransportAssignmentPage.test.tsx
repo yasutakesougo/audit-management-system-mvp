@@ -7,7 +7,7 @@ vi.mock('@/utils/getNow', () => ({
   toLocalDateISO: vi.fn(() => '2026-03-25'),
 }));
 
-vi.mock('@/features/schedules/hooks/useSchedules', () => ({
+vi.mock('@/features/schedules/hooks/legacy/useSchedules', () => ({
   useSchedules: vi.fn(() => ({
     items: [
       {
