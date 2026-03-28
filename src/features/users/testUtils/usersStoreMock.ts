@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { vi } from 'vitest';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
+import { USAGE_STATUS_VALUES } from '../typesExtended';
 import { ensureUserId } from '../utils/userId';
 
 export type MockUser = IUserMaster;
@@ -101,6 +102,36 @@ const createMockStoreHook = () => {
       }
     }, []);
 
+    const terminate = React.useCallback(async (id: number | string) => {
+      setStatus('loading');
+      try {
+        const numericId = Number(id);
+        const today = new Date().toISOString().slice(0, 10);
+        items = items.map((item) => {
+          if (item.Id !== numericId) {
+            return item;
+          }
+          if (item.UsageStatus === USAGE_STATUS_VALUES.TERMINATED) {
+            return item;
+          }
+          return {
+            ...item,
+            UsageStatus: USAGE_STATUS_VALUES.TERMINATED,
+            IsActive: false,
+            ServiceEndDate: item.ServiceEndDate ?? today,
+          };
+        });
+        emit();
+        const updated = items.find((item) => item.Id === numericId);
+        if (!updated) {
+          throw new Error(`User with id ${numericId} not found`);
+        }
+        return updated;
+      } finally {
+        setStatus('success');
+      }
+    }, []);
+
     const refresh = React.useCallback(async () => {
       setStatus('loading');
       try {
@@ -117,10 +148,11 @@ const createMockStoreHook = () => {
         error,
         create,
         update,
+        terminate,
         remove,
         refresh,
       }),
-      [create, data, error, refresh, remove, status, update],
+      [create, data, error, refresh, remove, status, terminate, update],
     );
   }
 

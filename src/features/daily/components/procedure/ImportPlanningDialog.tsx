@@ -5,7 +5,7 @@
  * 既存手順を壊さず、計画シートの方針・具体策を手順ステップとして追加する。
  */
 import type { PlanningIntake, PlanningSheetFormValues, SupportPlanningSheet } from '@/domain/isp/schema';
-import type { ProcedureStep } from '@/features/daily/domain/legacy/ProcedureRepository';
+import type { ProcedureStep } from '@/features/daily/domain/ProcedureRepository';
 import {
   bridgePlanningToRecord,
   type PlanningToRecordBridgeResult,

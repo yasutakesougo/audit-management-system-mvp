@@ -1,4 +1,4 @@
-import { getScheduleKey } from '@/features/daily/domain/builders/getScheduleKey';
+import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LockIcon from '@mui/icons-material/Lock';
 import PersonOffIcon from '@mui/icons-material/PersonOff';

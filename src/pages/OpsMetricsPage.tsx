@@ -19,6 +19,7 @@ import React, { useMemo } from 'react';
 
 import OpsMetricsDashboard from '@/features/ops-dashboard/OpsMetricsDashboard';
 import { useOpsMetrics } from '@/features/ops-dashboard/hooks/useOpsMetrics';
+import { resolveUserLifecycleStatus } from '@/features/users/domain/userLifecycle';
 import { useUsers } from '@/stores/useUsers';
 import { buildUserPdcaInputs } from '@/domain/metrics/adapters/userPdcaInputConnector';
 
@@ -30,9 +31,9 @@ const OpsMetricsPage: React.FC = () => {
   const userPdcaInputs = useMemo(
     () => buildUserPdcaInputs(
       users.map(u => ({
-        userId: u.userId,
-        serviceStartDate: u.serviceStartDate,
-        active: u.active,
+        userId: u.UserID || String(u.Id),
+        serviceStartDate: u.ServiceStartDate ?? null,
+        active: resolveUserLifecycleStatus(u) === 'active',
       })),
     ),
     [users],
@@ -73,7 +74,7 @@ const OpsMetricsPage: React.FC = () => {
           {loading
             ? '読み込み中…'
             : hasAnyRealData
-              ? `※ 実データから自動計算中（対象 ${users.filter(u => u.active).length} 名）`
+              ? `※ 実データから自動計算中（対象 ${users.filter((u) => resolveUserLifecycleStatus(u) === 'active').length} 名）`
               : '※ デモデータで表示中 — 運用データが蓄積されると実データに切り替わります'
           }
         </Typography>

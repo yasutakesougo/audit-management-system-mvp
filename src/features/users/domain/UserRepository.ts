@@ -26,5 +26,6 @@ export type UserRepository = {
   getById(id: number | string, params?: UserRepositoryGetParams): Promise<IUserMaster | null>;
   create(payload: IUserMasterCreateDto): Promise<IUserMaster>;
   update(id: number | string, payload: UserRepositoryUpdateDto): Promise<IUserMaster>;
+  terminate(id: number | string): Promise<IUserMaster>;
   remove(id: number | string): Promise<void>;
 }

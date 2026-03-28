@@ -3,10 +3,10 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
-import TableDailyRecordPage from '@/features/daily/components/table/TableDailyRecordPage';
+import TableDailyRecordPage from '@/features/daily/table/TableDailyRecordPage';
 import { TESTIDS } from '@/testids';
 
-vi.mock('@/features/daily/components/table/useTableDailyRecordViewModel', () => ({
+vi.mock('@/features/daily/table/useTableDailyRecordViewModel', () => ({
   useTableDailyRecordViewModel: () => ({
     open: true,
     title: '一覧形式ケース記録',
@@ -17,7 +17,7 @@ vi.mock('@/features/daily/components/table/useTableDailyRecordViewModel', () => 
   }),
 }));
 
-vi.mock('@/features/daily/hooks/view-models/useTableDailyRecordForm', () => ({
+vi.mock('@/features/daily/hooks/useTableDailyRecordForm', () => ({
   useTableDailyRecordForm: () =>
     ({
       header: {
@@ -47,7 +47,7 @@ vi.mock('@/features/daily/hooks/view-models/useTableDailyRecordForm', () => ({
     }) as unknown,
 }));
 
-vi.mock('@/features/daily/components/forms/TableDailyRecordForm', () => ({
+vi.mock('@/features/daily/forms/TableDailyRecordForm', () => ({
   TableDailyRecordForm: () => (
     <div data-testid={TESTIDS['daily-table-record-form']}>mock-table-form</div>
   ),

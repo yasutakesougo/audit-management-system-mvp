@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DailyRecordItemSchema, SharePointDailyRecordItemSchema } from '../domain/schema';
+import { DailyRecordItemSchema, SharePointDailyRecordItemSchema } from '../schema';
 
 describe('Daily Module Zod Schemas', () => {
   describe('SharePointDailyRecordItemSchema', () => {

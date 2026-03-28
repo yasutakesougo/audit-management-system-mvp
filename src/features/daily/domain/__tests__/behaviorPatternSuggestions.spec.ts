@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   generatePatternSuggestions,
-} from '../behavior/behaviorPatternSuggestions';
-import type { BehaviorTagCrossInsights } from '../behavior/behaviorTagCrossInsights';
+} from '../behaviorPatternSuggestions';
+import type { BehaviorTagCrossInsights } from '../behaviorTagCrossInsights';
 
 // ─── ヘルパー ────────────────────────────────────────────
 

@@ -1,5 +1,5 @@
-import { TableDailyRecordTable } from '@/features/daily/components/sections/TableDailyRecordTable';
-import type { UserRowData } from '@/features/daily/hooks/view-models/useTableDailyRecordForm';
+import { TableDailyRecordTable } from '@/features/daily/components/TableDailyRecordTable';
+import type { UserRowData } from '@/features/daily/hooks/useTableDailyRecordForm';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 

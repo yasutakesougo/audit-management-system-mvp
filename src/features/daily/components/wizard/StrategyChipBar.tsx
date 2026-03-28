@@ -13,7 +13,7 @@
  *   - 戦略がゼロなら非表示
  *   - タップで ON/OFF（実施記録）
  */
-import type { LinkedStrategiesResult } from '@/features/daily/hooks/legacy/useLinkedStrategies';
+import type { LinkedStrategiesResult } from '@/features/daily/hooks/useLinkedStrategies';
 import type { StrategyCategory } from '@/domain/behavior';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
