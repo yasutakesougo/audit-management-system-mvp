@@ -16,9 +16,9 @@
  */
 import type { AbcRecord } from '@/domain/abc/abcRecord';
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
-import { computeMonitoringCycle } from '@/features/daily/components/MonitoringCountdown';
-import type { MonitoringCycleResult } from '@/features/daily/components/MonitoringCountdown';
-import type { DailySupportUserFilter } from '@/features/daily/hooks/useDailySupportUserFilter';
+import { computeMonitoringCycle } from '@/features/daily/components/sections/MonitoringCountdown';
+import type { MonitoringCycleResult } from '@/features/daily/components/sections/MonitoringCountdown';
+import type { DailySupportUserFilter } from '@/features/daily/hooks/legacy/useDailySupportUserFilter';
 import type { IUserMaster } from '@/features/users/types';
 import { DISABILITY_SUPPORT_LEVEL_OPTIONS } from '@/features/users/typesExtended';
 import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';

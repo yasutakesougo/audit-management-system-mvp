@@ -22,7 +22,7 @@ import React from 'react';
 import {
   BEHAVIOR_TAG_CATEGORIES,
   type BehaviorTagCategory,
-} from '../../daily/domain/behaviorTag';
+} from '../../daily/domain/behavior/behaviorTag';
 
 // ─── 定数 ────────────────────────────────────────────────
 

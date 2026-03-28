@@ -10,7 +10,7 @@
  *   - 戦略がない/シートがない場合は非表示
  *   - 各カテゴリ最大3件（hook 側で制御）
  */
-import type { LinkedStrategiesResult } from '@/features/daily/hooks/useLinkedStrategies';
+import type { LinkedStrategiesResult } from '@/features/daily/hooks/legacy/useLinkedStrategies';
 import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';

@@ -6,7 +6,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { ImportPlanningDialog } from '../procedure/ImportPlanningDialog';
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
-import type { ProcedureStep } from '@/features/daily/domain/ProcedureRepository';
+import type { ProcedureStep } from '@/features/daily/domain/legacy/ProcedureRepository';
 
 // ---------------------------------------------------------------------------
 // Factories

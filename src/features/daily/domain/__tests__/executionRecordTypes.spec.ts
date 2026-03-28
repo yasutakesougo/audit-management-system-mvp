@@ -6,7 +6,7 @@ import {
     makeDailyUserKey,
     makeRecordId,
     type ExecutionRecord,
-} from '../executionRecordTypes';
+} from '../legacy/executionRecordTypes';
 
 // ---------------------------------------------------------------------------
 // Factory helpers

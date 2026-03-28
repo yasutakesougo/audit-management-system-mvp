@@ -10,8 +10,8 @@
 
 import { INTERVENTION_DRAFT_KEY, type BehaviorInterventionPlan, type UserInterventionPlans } from '@/features/analysis/domain/interventionTypes';
 import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
-import { EXECUTION_RECORD_KEY, type ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
-import { seedDemoBehaviors } from '@/features/daily/stores/behaviorStore';
+import { EXECUTION_RECORD_KEY, type ExecutionRecord } from '@/features/daily/domain/legacy/executionRecordTypes';
+import { seedDemoBehaviors } from '@/features/daily/hooks/legacy-stores/behaviorStore';
 import {
     addABCRecord,
     addSPS,

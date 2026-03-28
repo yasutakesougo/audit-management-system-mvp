@@ -26,7 +26,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React, { useState } from 'react';
 
-import type { RuleMetrics } from '@/features/daily/domain/adoptionMetrics';
+import type { RuleMetrics } from '@/features/daily/domain/legacy/adoptionMetrics';
 import { useAdoptionMetrics } from '../../hooks/useAdoptionMetrics';
 
 // ─── Props ───────────────────────────────────────────────

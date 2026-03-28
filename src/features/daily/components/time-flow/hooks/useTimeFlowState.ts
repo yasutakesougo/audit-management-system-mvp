@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // B層: TimeFlow の全 State / Derived / Effects / Handlers を集約
 // ---------------------------------------------------------------------------
-import { useProcedureStore } from '@/features/daily/stores/procedureStore';
+import { useProcedureStore } from '@/features/daily/hooks/legacy-stores/procedureStore';
 import { getDashboardPath } from '@/features/dashboard/dashboardRouting';
 import { resolveSupportFlowForUser } from '@/features/planDeployment/supportFlow';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

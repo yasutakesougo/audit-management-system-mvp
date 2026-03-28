@@ -12,7 +12,7 @@
  * @see features/tag-analytics/domain/tagAnalytics.ts
  */
 
-import { BEHAVIOR_TAGS, type BehaviorTagKey, BEHAVIOR_TAG_CATEGORIES, type BehaviorTagCategory } from '@/features/daily/domain/behaviorTag';
+import { BEHAVIOR_TAGS, type BehaviorTagKey, BEHAVIOR_TAG_CATEGORIES, type BehaviorTagCategory } from '@/features/daily/domain/behavior/behaviorTag';
 import type { TagCount } from './tagAnalytics';
 
 // ─── 型定義 ──────────────────────────────────────────────

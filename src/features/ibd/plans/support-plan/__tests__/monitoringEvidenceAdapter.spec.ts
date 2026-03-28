@@ -1,4 +1,4 @@
-import * as repo from '@/features/daily/infra/dailyTableRepository';
+import * as repo from '@/features/daily/repositories/sharepoint/dailyTableRepository';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildMonitoringEvidence } from '../monitoringEvidenceAdapter';
 

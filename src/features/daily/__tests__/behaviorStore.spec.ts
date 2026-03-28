@@ -8,12 +8,12 @@ const repo = {
   add: vi.fn<(...args: unknown[]) => Promise<ABCRecord>>(),
 };
 
-vi.mock('../infra/behaviorRepositoryFactory', () => ({
+vi.mock('@/features/daily/repositories/sharepoint/behaviorRepositoryFactory', () => ({
   getBehaviorRepository: () => repo,
   getInMemoryBehaviorRepository: () => null,
 }));
 
-import { useBehaviorStore } from '../stores/behaviorStore';
+import { useBehaviorStore } from '../hooks/legacy-stores/behaviorStore';
 
 describe('useBehaviorStore', () => {
   beforeEach(() => {

@@ -3,7 +3,7 @@ import {
   buildPdcaCycleRecords,
   buildAllPdcaCycleRecords,
 } from '../adapters/pdcaCycleBuilder';
-import type { SuggestionAction } from '@/features/daily/domain/suggestionAction';
+import type { SuggestionAction } from '@/features/daily/domain/legacy/suggestionAction';
 
 // ─── テストデータファクトリ ───────────────────────────────
 

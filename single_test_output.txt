@@ -1,0 +1,35 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90mC:/Users/安武/.vscode/workspace/audit-management-system[39m
+
+[90mstdout[2m | src/features/daily/__tests__/TableDailyRecordForm.test.tsx
+[22m[39m[MSAL ENV] Validated successfully
+
+ [31m❯[39m src/features/daily/__tests__/TableDailyRecordForm.test.tsx [2m([22m[2m22 tests[22m[2m | [22m[31m1 failed[39m[2m | [22m[33m21 skipped[39m[2m)[22m[32m 144[2mms[22m[39m
+     [2m[90m↓[39m[22m should render table daily record form when open
+     [2m[90m↓[39m[22m should not render when closed
+[31m     [31m×[31m should display all users in the selection list[39m[32m 143[2mms[22m[39m
+     [2m[90m↓[39m[22m should filter users based on search query
+     [2m[90m↓[39m[22m should auto-select todays attendees on open
+     [2m[90m↓[39m[22m should show table immediately with auto-selected attendees
+     [2m[90m↓[39m[22m should allow input in table fields
+     [2m[90m↓[39m[22m should handle lunch amount selection
+     [2m[90m↓[39m[22m should handle problem behavior chips
+     [2m[90m↓[39m[22m should handle special notes input
+     [2m[90m↓[39m[22m should clear row data when clear button is clicked
+     [2m[90m↓[39m[22m should call repository.save with correct data when saved
+     [2m[90m↓[39m[22m should prevent saving without selected users
+     [2m[90m↓[39m[22m should prevent saving without reporter name
+     [2m[90m↓[39m[22m should handle select all functionality
+     [2m[90m↓[39m[22m should handle clear all functionality
+       [2m[90m↓[39m[22m should show attendance filter button in expanded panel
+       [2m[90m↓[39m[22m should toggle filter between attendance day and all users
+       [2m[90m↓[39m[22m should filter users based on attendance days when date is Monday
+       [2m[90m↓[39m[22m should filter users based on attendance days when date is Tuesday
+       [2m[90m↓[39m[22m should auto-update selected users when date changes with attendance filter on
+       [2m[90m↓[39m[22m should show all users when attendance filter is disabled
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[33m21 skipped[39m[90m (22)[39m
+[2m   Start at [22m 09:27:56
+[2m   Duration [22m 8.04s[2m (transform 695ms, setup 506ms, import 6.91s, tests 144ms, environment 357ms)[22m
+

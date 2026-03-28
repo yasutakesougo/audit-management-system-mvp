@@ -23,8 +23,8 @@ import React from 'react';
 
 import type { GoalProgressSummary, ProgressLevel, ProgressTrend } from '../domain/goalProgressTypes';
 import { PROGRESS_LEVEL_LABELS, PROGRESS_LEVEL_COLORS } from '../domain/goalProgressTypes';
-import type { BehaviorTagCategory } from '../../daily/domain/behaviorTag';
-import { BEHAVIOR_TAG_CATEGORIES } from '../../daily/domain/behaviorTag';
+import type { BehaviorTagCategory } from '../../daily/domain/behavior/behaviorTag';
+import { BEHAVIOR_TAG_CATEGORIES } from '../../daily/domain/behavior/behaviorTag';
 import GoalCategoryOverridePopover from './GoalCategoryOverridePopover';
 
 // ─── 定数 ────────────────────────────────────────────────

@@ -14,12 +14,12 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { useDailyRecordRepository } from '@/features/daily/repositoryFactory';
-import type { SuggestionAction } from '@/features/daily/domain/suggestionAction';
+import { useDailyRecordRepository } from '@/features/daily/repositories/repositoryFactory';
+import type { SuggestionAction } from '@/features/daily/domain/legacy/suggestionAction';
 import {
   computeAdoptionMetrics,
   type AdoptionMetrics,
-} from '@/features/daily/domain/adoptionMetrics';
+} from '@/features/daily/domain/legacy/adoptionMetrics';
 import { computeDateRange, LOOKBACK_DAYS } from './useAcceptedSuggestionsForUser';
 
 // ─── 型定義 ──────────────────────────────────────────────

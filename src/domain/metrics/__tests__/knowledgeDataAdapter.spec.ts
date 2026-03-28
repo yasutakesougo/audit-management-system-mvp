@@ -5,7 +5,7 @@ import {
   extractPlanningSheetIds,
 } from '../adapters/knowledgeDataAdapter';
 import type { EvidenceLinkMap } from '@/domain/isp/evidenceLink';
-import type { SuggestionAction } from '@/features/daily/domain/suggestionAction';
+import type { SuggestionAction } from '@/features/daily/domain/legacy/suggestionAction';
 
 // ─── テストデータファクトリ ───────────────────────────────
 

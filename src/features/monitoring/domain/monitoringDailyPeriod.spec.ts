@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { DailyTableRecord } from '@/features/daily/infra/dailyTableRepository';
+import type { DailyTableRecord } from '@/features/daily/repositories/sharepoint/dailyTableRepository';
 import { buildMonitoringPeriodMetrics } from './monitoringDailyPeriod';
 
 const mkRecord = (

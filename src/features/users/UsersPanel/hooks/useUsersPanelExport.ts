@@ -6,7 +6,7 @@
  * Heavy report libraries (@react-pdf/renderer, xlsx) are loaded lazily
  * via dynamic import() so they stay out of the initial bundle.
  */
-import { useDailyRecordRepository } from '@/features/daily/repositoryFactory';
+import { useDailyRecordRepository } from '@/features/daily/repositories/repositoryFactory';
 import { useAchievementPDF } from '@/features/reports/achievement/useAchievementPDF';
 import { endOfMonth, format, parseISO, startOfMonth } from 'date-fns';
 import React, { useCallback } from 'react';

@@ -3,7 +3,7 @@ import { isWriteEnabled } from '@/env';
 import { useMsal } from '@azure/msal-react';
 import { useState } from 'react';
 import { z, type ZodIssue } from 'zod';
-import { SharePointDailyRecordItemSchema } from '../features/daily/schema';
+import { SharePointDailyRecordItemSchema } from '../features/daily/domain/schema';
 import { SpOrgRowSchema } from '../features/org/data/orgRowSchema';
 import { parseSpScheduleRows } from '../features/schedules/data/spRowSchema';
 import { SpUserMasterItemSchema } from '../features/users/schema';

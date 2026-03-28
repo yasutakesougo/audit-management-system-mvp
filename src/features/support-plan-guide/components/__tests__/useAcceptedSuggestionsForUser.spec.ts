@@ -16,13 +16,13 @@ import {
   LOOKBACK_DAYS,
 } from '../../hooks/useAcceptedSuggestionsForUser';
 
-import type { DailyRecordItem } from '@/features/daily/domain/DailyRecordRepository';
+import type { DailyRecordItem } from '@/features/daily/domain/legacy/DailyRecordRepository';
 
 // ─── mock ────────────────────────────────────────────────
 
 const mockList = vi.fn() as Mock;
 
-vi.mock('@/features/daily/repositoryFactory', () => ({
+vi.mock('@/features/daily/repositories/repositoryFactory', () => ({
   useDailyRecordRepository: () => ({
     list: mockList,
     load: vi.fn(),

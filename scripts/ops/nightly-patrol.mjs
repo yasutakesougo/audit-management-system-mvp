@@ -19,6 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { buildIssueDrafts } from './buildIssueDrafts.mjs';
+import { classify } from './nightly-classify.mjs';
 import { renderIssueDraftMarkdown } from './renderIssueDraftMarkdown.mjs';
 
 const ROOT = process.cwd();
@@ -37,6 +38,15 @@ const stamp = `${yyyy}-${mm}-${dd}`;
 const ACT_WARNING_SUMMARY_PATH = process.env.ACT_WARNING_SUMMARY_PATH || '';
 const ACT_WARNING_OPEN_ISSUE_COUNT = Number(process.env.ACT_WARNING_OPEN_ISSUE_COUNT || '0');
 const ACT_WARNING_OPEN_ISSUE_URL = process.env.ACT_WARNING_OPEN_ISSUE_URL || '';
+
+// --- Optional CI Inputs (gate results for Phase C classify) ---
+
+const GATE_UNIT_TEST_FAILED = Number(process.env.NIGHTLY_TEST_FAILED || '0');
+const GATE_UNIT_TEST_TOTAL = Number(process.env.NIGHTLY_TEST_TOTAL || '0');
+const GATE_TYPECHECK_ERRORS = Number(process.env.NIGHTLY_TYPECHECK_ERRORS || '0');
+const GATE_TYPECHECK_ERROR_FILES = (process.env.NIGHTLY_TYPECHECK_ERROR_FILES || '')
+  .split(',')
+  .filter(Boolean);
 
 let actWarningSummary = null;
 if (ACT_WARNING_SUMMARY_PATH && fs.existsSync(ACT_WARNING_SUMMARY_PATH)) {
@@ -449,6 +459,53 @@ console.log('');
 console.log('📋 Generating issue drafts (Phase B)...');
 
 const patrolResults = { largeFiles, anyHits, untestedFeatures, todoHits, lastHandoffInfo };
+
+// --- Phase C-1: Structured PatrolResult for JSON + classify pipeline ---
+
+const patrolResultsJson = {
+  version: 1,
+  date: stamp,
+  summary: {
+    sourceFiles: srcNonTestFiles.length,
+    testFiles: srcTestFiles.length,
+    testRatio: srcNonTestFiles.length > 0
+      ? Number((srcTestFiles.length / srcNonTestFiles.length * 100).toFixed(1))
+      : 0,
+    lastCommit,
+    commitCount7d: Number(commitCount7d) || 0,
+  },
+  metrics: {
+    largeFiles: largeFiles.map((f) => ({ file: f.file, lines: f.lines })),
+    anyCount: anyHits.length,
+    anyFiles: [...new Set(anyHits.map((h) => h.file))],
+    todoCount: todoHits.length,
+    untestedFeatures: untestedFeatures.map((f) => f.feature),
+  },
+  gates: {
+    unitTest: GATE_UNIT_TEST_TOTAL > 0
+      ? {
+          pass: GATE_UNIT_TEST_FAILED === 0,
+          failed: GATE_UNIT_TEST_FAILED,
+          total: GATE_UNIT_TEST_TOTAL,
+          errorFiles: [],  // enriched by CI in future
+        }
+      : null,
+    typeCheck: GATE_TYPECHECK_ERRORS > 0 || GATE_TYPECHECK_ERROR_FILES.length > 0
+      ? {
+          pass: GATE_TYPECHECK_ERRORS === 0,
+          errorCount: GATE_TYPECHECK_ERRORS,
+          errorFiles: GATE_TYPECHECK_ERROR_FILES,
+        }
+      : null,
+  },
+};
+
+// --- Phase C-1: JSON Output ---
+
+const jsonPath = path.join(REPORT_DIR, `${stamp}.json`);
+fs.writeFileSync(jsonPath, JSON.stringify(patrolResultsJson, null, 2), 'utf8');
+console.log(`📊 JSON written: docs/nightly-patrol/${stamp}.json`);
+
 const drafts = buildIssueDrafts(patrolResults);
 const draftMarkdown = renderIssueDraftMarkdown(drafts, stamp);
 
@@ -464,4 +521,23 @@ if (drafts.length === 0) {
   console.log(`  📋 Issue drafts: ${drafts.length} 件 (${sevSummary})`);
   console.log(`  📄 Written: docs/nightly-patrol/issue-drafts-${stamp}.md`);
 }
+console.log('');
+
+// --- Phase C-1: Classification Pipeline ---
+
+console.log('🏷️  Running classification pipeline (Phase C)...');
+
+const classification = classify(patrolResultsJson);
+const classificationPath = path.join(REPORT_DIR, `classification-${stamp}.json`);
+fs.writeFileSync(classificationPath, JSON.stringify(classification, null, 2), 'utf8');
+
+console.log(`  Status: ${classification.overall}`);
+if (classification.actions.length > 0) {
+  for (const a of classification.actions) {
+    console.log(`   ${a.priority} ${a.kind} → ${a.action} (${a.fileCount} files)`);
+  }
+} else {
+  console.log('  ✅ No action needed');
+}
+console.log(`  📄 Written: docs/nightly-patrol/classification-${stamp}.json`);
 console.log('');

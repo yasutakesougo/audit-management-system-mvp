@@ -2,7 +2,7 @@ import { AttendancePanel } from '@/features/attendance';
 import { TESTIDS } from '@/testids';
 import { Container } from '@mui/material';
 
-import { FullScreenDailyDialogPage } from '@/features/daily/components/FullScreenDailyDialogPage';
+import { FullScreenDailyDialogPage } from '@/features/daily/components/pages/FullScreenDailyDialogPage';
 
 type AttendanceRecordPageProps = {
   'data-testid'?: string;

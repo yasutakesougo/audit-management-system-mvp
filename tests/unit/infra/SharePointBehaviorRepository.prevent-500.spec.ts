@@ -1,4 +1,4 @@
-import { SharePointBehaviorRepository } from '@/features/daily/infra/SharePointBehaviorRepository';
+import { SharePointBehaviorRepository } from '@/features/daily/repositories/sharepoint/SharePointBehaviorRepository';
 import type { createSpClient } from '@/lib/spClient';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

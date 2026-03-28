@@ -15,7 +15,7 @@ import {
   compareStrategyUsage,
   type StrategyUsageTrendResult,
 } from '@/domain/isp/aggregateStrategyUsage';
-import { getBehaviorRepository } from '@/features/daily/infra/behaviorRepositoryFactory';
+import { getBehaviorRepository } from '@/features/daily/repositories/sharepoint/behaviorRepositoryFactory';
 
 // ─────────────────────────────────────────────
 // 期間プリセット

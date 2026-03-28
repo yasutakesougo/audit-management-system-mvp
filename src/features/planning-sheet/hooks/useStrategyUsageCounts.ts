@@ -15,7 +15,7 @@ import {
   aggregateStrategyUsage,
   type StrategyUsageSummary,
 } from '@/domain/isp/aggregateStrategyUsage';
-import { getBehaviorRepository } from '@/features/daily/infra/behaviorRepositoryFactory';
+import { getBehaviorRepository } from '@/features/daily/repositories/sharepoint/behaviorRepositoryFactory';
 
 // ─────────────────────────────────────────────
 // Types

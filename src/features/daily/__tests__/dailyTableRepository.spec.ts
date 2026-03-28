@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { getDailyTableRecords, upsertDailyTableRecords, type DailyTableRecord } from '../infra/dailyTableRepository';
+import { getDailyTableRecords, upsertDailyTableRecords, type DailyTableRecord } from '../repositories/sharepoint/dailyTableRepository';
 
 describe('dailyTableRepository', () => {
   beforeEach(() => {

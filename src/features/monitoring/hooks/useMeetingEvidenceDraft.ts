@@ -19,7 +19,7 @@
 
 import { useMemo } from 'react';
 
-import { getDailyTableRecords } from '@/features/daily/infra/dailyTableRepository';
+import { getDailyTableRecords } from '@/features/daily/repositories/sharepoint/dailyTableRepository';
 import {
   buildMonitoringDailySummary,
   type DailyMonitoringSummary,

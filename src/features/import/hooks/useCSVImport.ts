@@ -9,7 +9,7 @@ import { useCallback, useRef, useState } from 'react';
 import type { BehaviorInterventionPlan } from '@/features/analysis/domain/interventionTypes';
 import { useInterventionStore } from '@/features/analysis/stores/interventionStore';
 import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
-import { useProcedureStore } from '@/features/daily/stores/procedureStore';
+import { useProcedureStore } from '@/features/daily/hooks/legacy-stores/procedureStore';
 import { autoLinkBipToProcedures } from '@/features/import/domain/autoLinkBipToProcedures';
 import { importHistoryStore } from '@/features/import/domain/importHistory';
 import { parseCarePointsCsv } from '@/features/import/domain/parseCarePointsCsv';

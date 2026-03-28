@@ -7,7 +7,7 @@ import {
   buildMonitoringDailySummary,
   buildMonitoringInsightText,
 } from './monitoringDailyAnalytics';
-import type { DailyTableRecord } from '@/features/daily/infra/dailyTableRepository';
+import type { DailyTableRecord } from '@/features/daily/repositories/sharepoint/dailyTableRepository';
 
 // ─── テストデータファクトリ ──────────────────────────────
 

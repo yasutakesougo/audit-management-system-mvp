@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { PlanningDesign } from '@/domain/isp/schema';
-import type { ProcedureStep } from '@/features/daily/domain/ProcedureRepository';
+import type { ProcedureStep } from '@/features/daily/domain/legacy/ProcedureRepository';
 import type { ABCRecord } from '@/domain/behavior';
 import {
   resolveProcedureSteps,

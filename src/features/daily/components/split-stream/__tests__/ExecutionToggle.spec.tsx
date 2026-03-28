@@ -1,5 +1,5 @@
-import { EXECUTION_RECORD_KEY } from '@/features/daily/domain/executionRecordTypes';
-import { __resetStore } from '@/features/daily/stores/executionStore';
+import { EXECUTION_RECORD_KEY } from '@/features/daily/domain/legacy/executionRecordTypes';
+import { __resetStore } from '@/features/daily/hooks/legacy-stores/executionStore';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 

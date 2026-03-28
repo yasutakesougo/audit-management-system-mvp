@@ -3,7 +3,7 @@ import {
   adaptSuggestionActions,
   adaptAllSuggestionActions,
 } from '../adapters/proposalDecisionAdapter';
-import type { SuggestionAction } from '@/features/daily/domain/suggestionAction';
+import type { SuggestionAction } from '@/features/daily/domain/legacy/suggestionAction';
 
 // ─── テストデータファクトリ ───────────────────────────────
 

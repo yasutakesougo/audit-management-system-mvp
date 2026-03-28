@@ -14,7 +14,7 @@ import { useMemo, useState, useEffect } from 'react';
 import {
   getDailyTableRecords,
   type DateRange,
-} from '@/features/daily/infra/dailyTableRepository';
+} from '@/features/daily/repositories/sharepoint/dailyTableRepository';
 
 import {
   computeTagCounts,
