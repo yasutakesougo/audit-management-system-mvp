@@ -26,16 +26,17 @@ import {
   createSuggestionAction,
 } from '../../domain/legacy/suggestionAction';
 import type { PatternSuggestion } from '../../domain/behavior/behaviorPatternSuggestions';
+import type { DailyRecordRepository } from '../../domain/legacy/DailyRecordRepository';
 import {
     useTableDailyRecordForm,
-    type TableDailyRecordData,
     type UseTableDailyRecordFormResult,
 } from '../../hooks/view-models/useTableDailyRecordForm';
 
 interface TableDailyRecordFormProps {
-  open: boolean;
+  open?: boolean;
   onClose: () => void;
-  onSave: (data: TableDailyRecordData) => Promise<void>;
+  onSuccess: () => void;
+  repository: DailyRecordRepository;
   variant?: 'dialog' | 'content';
   /**
    * Controlled mode: when provided, the form skips calling
@@ -46,15 +47,16 @@ interface TableDailyRecordFormProps {
 }
 
 export function TableDailyRecordForm({
-  open,
+  open = false,
   onClose,
-  onSave,
+  onSuccess,
+  repository,
   variant = 'dialog',
   controlledState,
 }: TableDailyRecordFormProps) {
   // Internal hook — only called when NOT in controlled mode
   const internalState = useTableDailyRecordFormConditional(
-    controlledState ? null : { open, onClose, onSave },
+    controlledState ? null : { open, onClose, onSuccess, repository },
   );
 
   const state = controlledState ?? internalState!;
@@ -257,13 +259,14 @@ export function TableDailyRecordForm({
  * but with dummy params when in controlled mode.
  */
 function useTableDailyRecordFormConditional(
-  params: { open: boolean; onClose: () => void; onSave: (data: TableDailyRecordData) => Promise<void> } | null,
+  params: { open: boolean; onClose: () => void; onSuccess: () => void; repository: DailyRecordRepository } | null,
 ): UseTableDailyRecordFormResult | null {
   // Always call the hook (React rules), but use no-op params when controlled
   const effectiveParams = params ?? {
     open: false,
     onClose: () => {},
-    onSave: async () => {},
+    onSuccess: () => {},
+    repository: {} as DailyRecordRepository,
   };
   const result = useTableDailyRecordForm(effectiveParams);
   return params ? result : null;

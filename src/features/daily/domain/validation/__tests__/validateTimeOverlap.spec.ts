@@ -65,9 +65,9 @@ describe('validateTimeOverlap', () => {
     });
 
     it('既存データが不正（開始>=終了・値がないなど）な場合、そのレコードとの重複判定はスキップする', () => {
-      const badExisting: TimeRange[] = [
+      const badExisting: (TimeRange | { id: number; startTime: string; endTime: string | null })[] = [
         { id: 3, startTime: '14:00', endTime: '14:00' },
-        { id: 4, startTime: '15:00', endTime: null as any },
+        { id: 4, startTime: '15:00', endTime: null },
       ];
       const target = { startTime: '13:00', endTime: '16:00' };
       

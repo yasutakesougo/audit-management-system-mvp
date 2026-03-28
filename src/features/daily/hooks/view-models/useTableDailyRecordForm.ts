@@ -1,15 +1,13 @@
-import { emitDailySubmissionEvents } from '@/features/ibd/analysis/pdca/dailyMetricsAdapter';
 import { useUsers } from '@/stores/useUsers';
 import type { User } from '@/types';
 import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import toast from 'react-hot-toast';
-import { saveLastActivities } from '../legacy/useLastActivities';
 import { useHandoffNotesForTable } from '../../repositories/adapters/useHandoffNotesForTable';
 import type { TableDailyRecordFormStructured } from './tableDailyRecordFormTypes';
 import { useTableDailyRecordFiltering } from '../orchestrators/useTableDailyRecordFiltering';
 import type { DraftInput } from '../mutations/useTableDailyRecordPersistence';
 import { useTableDailyRecordPersistence } from '../mutations/useTableDailyRecordPersistence';
+import { useTableDailyRecordSaveOrchestrator } from '../orchestrators/useTableDailyRecordSaveOrchestrator';
 import { useTableDailyRecordRouting } from '../orchestrators/useTableDailyRecordRouting';
 import { useTableDailyRecordRowHandlers } from '../orchestrators/useTableDailyRecordRowHandlers';
 import { useTableDailyRecordSelection } from '../orchestrators/useTableDailyRecordSelection';
@@ -55,10 +53,13 @@ export type TableDailyRecordValidationErrors = {
   rows?: Record<string, string>;
 };
 
+import type { DailyRecordRepository } from '../../domain/legacy/DailyRecordRepository';
+
 export type UseTableDailyRecordFormParams = {
   open: boolean;
   onClose: () => void;
-  onSave: (data: TableDailyRecordData) => Promise<void>;
+  onSuccess: () => void;
+  repository: DailyRecordRepository;
 };
 
 export type UseTableDailyRecordFormResult = {
@@ -116,57 +117,17 @@ const createInitialFormData = (initialDate?: string | null): TableDailyRecordDat
   userRows: [],
 });
 
-/** YYYY-MM-DD 形式の日付バリデーション */
-const isValidDate = (value: string): boolean => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const d = new Date(value);
-  return !isNaN(d.getTime());
-};
-
-/**
- * フォームデータのバリデーション
- * @returns エラーオブジェクト（空 = エラーなし）
- */
-const validateFormData = (
-  formData: TableDailyRecordData,
-  selectedUserIds: string[],
-): TableDailyRecordValidationErrors => {
-  const errors: TableDailyRecordValidationErrors = {};
-
-  // 日付
-  if (!formData.date.trim()) {
-    errors.date = '日付を入力してください';
-  } else if (!isValidDate(formData.date)) {
-    errors.date = '有効な日付を入力してください（例: 2026-03-03）';
-  }
-
-  // 記録者名
-  if (!formData.reporter.name.trim()) {
-    errors.reporterName = '記録者名を入力してください';
-  }
-
-  // 利用者選択
-  if (selectedUserIds.length === 0) {
-    errors.selectedUsers = '利用者を1人以上選択してください';
-  }
-
-  return errors;
-};
-
 export const useTableDailyRecordForm = ({
   open,
   onClose,
-  onSave,
+  onSuccess,
+  repository,
 }: UseTableDailyRecordFormParams): UseTableDailyRecordFormResult => {
   // ── Routing ───────────────────────────────────────
   const { initialDateFromUrl, showUnsentOnly, setShowUnsentOnly } = useTableDailyRecordRouting(open);
 
   // ── Core state ────────────────────────────────────
   const [formData, setFormData] = useState<TableDailyRecordData>(() => createInitialFormData(initialDateFromUrl));
-  const [saving, setSaving] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<TableDailyRecordValidationErrors>({});
-
-  const clearValidationErrors = useCallback(() => setValidationErrors({}), []);
 
   const { data: users = [] } = useUsers();
 
@@ -280,58 +241,31 @@ export const useTableDailyRecordForm = ({
     };
   }, [formData, selectedUserIds, handleSaveDraft]);
 
-  const handleSave = async () => {
-    // バリデーション実行
-    const errors = validateFormData(formData, selectedUserIds);
-    setValidationErrors(errors);
+  // ── Save Orchestrator ──────────────────────────────
+  const handleSaveSuccess = useCallback(() => {
+    onClose();
+    setSelectedUserIds([]);
+    setSearchQuery('');
+    setShowTodayOnly(true);
+    setShowUnsentOnly(false);
+    setSelectionManuallyEdited(false);
+    setFormData(createInitialFormData());
+    onSuccess();
+  }, [onClose, setSelectedUserIds, setSearchQuery, setShowTodayOnly, setShowUnsentOnly, setSelectionManuallyEdited, setFormData, onSuccess]);
 
-    if (Object.keys(errors).length > 0) {
-      // 最初のエラーメッセージをトーストに表示
-      const firstError = Object.values(errors)[0];
-      const errorMessage = typeof firstError === 'string'
-        ? firstError
-        : '入力内容にエラーがあります';
-      toast.error(errorMessage, { duration: 4000 });
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await onSave(formData);
-
-      const submittedAt = new Date().toISOString();
-      const submissionEvents = selectedUserIds.map((userId) => ({
-        userId,
-        recordDate: formData.date,
-        submittedAt,
-        draftCreatedAt: draftSavedAt ?? undefined,
-      }));
-      emitDailySubmissionEvents(submissionEvents);
-
-      clearDraft();
-      setValidationErrors({});
-
-      // 前回の午前・午後活動を保存（次回のプリフィル用）
-      saveLastActivities(formData.userRows);
-
-      toast.success(
-        `${selectedUserIds.length}人分の活動記録を保存しました`,
-        { duration: 3000 },
-      );
-      onClose();
-      setSelectedUserIds([]);
-      setSearchQuery('');
-      setShowTodayOnly(true);
-      setShowUnsentOnly(false);
-      setSelectionManuallyEdited(false);
-      setFormData(createInitialFormData());
-    } catch (error) {
-      console.error('保存に失敗しました:', error);
-      toast.error('保存に失敗しました。もう一度お試しください。', { duration: 5000 });
-    } finally {
-      setSaving(false);
-    }
-  };
+  const {
+    saving,
+    validationErrors,
+    clearValidationErrors,
+    handleSave,
+  } = useTableDailyRecordSaveOrchestrator({
+    formData,
+    selectedUserIds,
+    repository,
+    draftSavedAt,
+    clearDraft,
+    onSuccess: handleSaveSuccess,
+  });
 
   // ── Return ────────────────────────────────────────
 

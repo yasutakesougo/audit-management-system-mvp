@@ -1,18 +1,13 @@
 import { act, renderHook } from '@testing-library/react';
-import toast from 'react-hot-toast';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useTableDailyRecordViewModel } from '../components/table/useTableDailyRecordViewModel';
 
 const navigateMock = vi.fn();
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
-  return {
-    ...actual,
-    useNavigate: () => navigateMock,
-  };
-});
+vi.mock('@/lib/nav/useCancelToDashboard', () => ({
+  useCancelToToday: () => navigateMock,
+}));
 
 // Mock repository
 const mockSave = vi.fn().mockResolvedValue(undefined);
@@ -22,26 +17,17 @@ vi.mock('@/features/daily/repositories/repositoryFactory', () => ({
   }),
 }));
 
-// Mock react-hot-toast
-vi.mock('react-hot-toast', () => ({
-  default: {
-    error: vi.fn(),
-    success: vi.fn(),
-  },
-}));
-
 describe('useTableDailyRecordViewModel', () => {
   beforeEach(() => {
     navigateMock.mockClear();
     mockSave.mockClear();
-    vi.mocked(toast.error).mockClear();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('returns expected shape and closes after save', async () => {
+  it('returns expected shape and exposes dependencies for orchestrator', () => {
     const { result } = renderHook(() => useTableDailyRecordViewModel());
 
     expect(result.current.open).toBe(true);
@@ -49,56 +35,29 @@ describe('useTableDailyRecordViewModel', () => {
     expect(result.current.backTo).toBe('/today');
     expect(result.current.testId).toBe('daily-table-record-page');
 
-    const payload = {
-      date: '2026-02-07',
-      reporter: { name: 'テスト担当者', role: '生活支援員' },
-      userRows: [
-        {
-          userId: 'U001',
-          userName: '山田太郎',
-          amActivity: '朝の活動',
-          pmActivity: '午後の活動',
-          lunchAmount: 'full',
-          problemBehavior: {
-            selfHarm: false,
-            otherInjury: false,
-            loudVoice: false,
-            pica: false,
-            other: false,
-          },
-          specialNotes: '特になし',
-          behaviorTags: [],
-        },
-      ],
-    };
+    expect(result.current.repository).toBeDefined();
+    expect(result.current.repository.save).toBe(mockSave);
+  });
 
-    await act(async () => {
-      await result.current.onSave(payload);
+  it('closes screen and navigates back to today when onSuccess is called', async () => {
+    const { result } = renderHook(() => useTableDailyRecordViewModel());
+
+    act(() => {
+      result.current.onSuccess();
     });
 
-    expect(mockSave).toHaveBeenCalledWith(payload);
-    expect(navigateMock).toHaveBeenCalledWith('/today', { replace: true });
+    expect(navigateMock).toHaveBeenCalled();
     expect(result.current.open).toBe(false);
   });
 
-  it('shows toast error on save failure', async () => {
-    mockSave.mockRejectedValueOnce(new Error('Save failed'));
+  it('closes screen and navigates back to today when onClose is called', async () => {
     const { result } = renderHook(() => useTableDailyRecordViewModel());
 
-    await expect(
-      act(async () => {
-        await result.current.onSave({
-          date: '2026-02-07',
-          reporter: { name: 'テスト担当者', role: '生活支援員' },
-          userRows: [],
-        });
-      }),
-    ).rejects.toThrow('Save failed');
+    act(() => {
+      result.current.onClose();
+    });
 
-    expect(vi.mocked(toast.error)).toHaveBeenCalledWith(
-      '保存に失敗しました。もう一度お試しください。',
-      { duration: 5000 },
-    );
-    expect(result.current.open).toBe(true);
+    expect(navigateMock).toHaveBeenCalled();
+    expect(result.current.open).toBe(false);
   });
 });

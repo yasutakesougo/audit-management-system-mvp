@@ -28,7 +28,8 @@ export const TableDailyRecordPage: React.FC = () => {
   const formState = useTableDailyRecordForm({
     open: vm.open,
     onClose: vm.onClose,
-    onSave: vm.onSave,
+    onSuccess: vm.onSuccess,
+    repository: vm.repository,
   });
 
   const { header, picker, table, draft, actions } = formState;
@@ -155,9 +156,9 @@ export const TableDailyRecordPage: React.FC = () => {
       headerActions={headerActions}
     >
       <TableDailyRecordForm
-        open={vm.open}
         onClose={vm.onClose}
-        onSave={vm.onSave}
+        onSuccess={vm.onSuccess}
+        repository={vm.repository}
         variant="content"
         controlledState={formState}
       />

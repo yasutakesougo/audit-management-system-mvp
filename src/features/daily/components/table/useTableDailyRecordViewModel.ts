@@ -1,12 +1,8 @@
 import { useCancelToToday } from '@/lib/nav/useCancelToDashboard';
 import { TESTIDS } from '@/testids';
 import { useCallback, useState } from 'react';
-import toast from 'react-hot-toast';
-import type { TableDailyRecordData } from '../../hooks/view-models/useTableDailyRecordForm';
 import { useDailyRecordRepository } from '../../repositories/repositoryFactory';
-
-// Re-export for backward compatibility
-export type TableDailyRecordPayload = TableDailyRecordData;
+import type { DailyRecordRepository } from '../../domain/legacy/DailyRecordRepository';
 
 type TableDailyRecordViewModel = {
   open: boolean;
@@ -14,7 +10,8 @@ type TableDailyRecordViewModel = {
   backTo: string;
   testId: string;
   onClose: () => void;
-  onSave: (data: TableDailyRecordPayload) => Promise<void>;
+  onSuccess: () => void;
+  repository: DailyRecordRepository;
 };
 
 export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
@@ -27,17 +24,10 @@ export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
     cancelToToday();
   }, [cancelToToday]);
 
-  const handleTableSave = useCallback(async (data: TableDailyRecordPayload) => {
-    try {
-      // Save to repository (SharePoint in production, InMemory in demo mode)
-      await repository.save(data);
-      navigateBackToMenu();
-    } catch (error) {
-      console.error('日報保存に失敗しました:', error);
-      toast.error('保存に失敗しました。もう一度お試しください。', { duration: 5000 });
-      throw error;
-    }
-  }, [repository, navigateBackToMenu]);
+  const handleTableSuccess = useCallback(() => {
+    // 成功時のコールバック（画面を閉じてメニューへ戻る）
+    navigateBackToMenu();
+  }, [navigateBackToMenu]);
 
   return {
     open,
@@ -45,7 +35,8 @@ export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
     backTo: '/today',
     testId: TESTIDS['daily-table-record-page'],
     onClose: navigateBackToMenu,
-    onSave: handleTableSave,
+    onSuccess: handleTableSuccess,
+    repository,
   };
 };
 
