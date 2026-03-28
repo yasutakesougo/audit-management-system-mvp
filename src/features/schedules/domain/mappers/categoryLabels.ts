@@ -1,4 +1,4 @@
-import type { ScheduleCategory } from './types';
+import type { ScheduleCategory } from '../types';
 
 export const scheduleCategoryLabels: Record<ScheduleCategory, string> = {
   User: '利用者',

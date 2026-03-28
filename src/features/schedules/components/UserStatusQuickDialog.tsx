@@ -38,10 +38,10 @@ import {
   resolveAbsenceType,
   validateTargetDate,
   type UserStatusType,
-} from '../domain/userStatus';
+} from '../domain/mappers/userStatus';
 import type { UserStatusInput, UseUserStatusActionsReturn } from '../hooks/useUserStatusActions';
-import type { UserStatusSource } from '../domain/userStatus';
-import type { UserStatusRecord } from '../domain/userStatus';
+import type { UserStatusSource } from '../domain/mappers/userStatus';
+import type { UserStatusRecord } from '../domain/mappers/userStatus';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Types

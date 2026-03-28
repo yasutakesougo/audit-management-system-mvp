@@ -1,8 +1,8 @@
-export type { InlineScheduleDraft } from './inlineScheduleDraft';
+export type { InlineScheduleDraft } from './builders/inlineScheduleDraft';
 export * from './scheduleFormState';
 export * from './ScheduleRepository';
 export * from './schema';
 export * from './scheduleOps';
 export * from './scheduleOpsSchema';
 export * from './types';
-export * from './userStatus';
+export * from './mappers/userStatus';

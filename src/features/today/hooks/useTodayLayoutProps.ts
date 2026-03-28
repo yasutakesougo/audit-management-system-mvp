@@ -38,7 +38,7 @@ import type { NextActionWithProgress } from './useNextAction';
 import type { SceneNextActionViewModel } from './useSceneNextAction';
 import type { UseTransportStatusReturn } from '../transport';
 import type { UserAlert } from '../domain/buildUserAlerts';
-import type { UserStatusRecord } from '@/features/schedules/domain/userStatus';
+import type { UserStatusRecord } from '@/features/schedules/domain/mappers/userStatus';
 
 // ── Input Types ──
 

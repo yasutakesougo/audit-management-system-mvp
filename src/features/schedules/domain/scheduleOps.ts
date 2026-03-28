@@ -16,7 +16,7 @@
 import type { ServiceTypeKey } from '../serviceTypeMetadata';
 import { normalizeServiceType } from '../serviceTypeMetadata';
 import type { OpsStatus, ScheduleOpsItem, SupportTag } from './scheduleOpsSchema';
-import { isUserStatusServiceType, type UserStatusType } from './userStatus';
+import { isUserStatusServiceType, type UserStatusType } from './mappers/userStatus';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Types

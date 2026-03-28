@@ -7,7 +7,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
 import { TESTIDS } from '@/testids';
-import { scheduleCategoryLabels } from '../domain/categoryLabels';
+import { scheduleCategoryLabels } from '../domain/mappers/categoryLabels';
 import type { ScheduleCategory } from '../domain/types';
 import SchedulesFilterResponsive from './SchedulesFilterResponsive';
 

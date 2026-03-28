@@ -13,9 +13,9 @@
  * - 保存は自動でしない
  */
 
-import type { ScheduleCategory, ScheduleServiceType } from '../data';
-import type { ScheduleFormState } from './scheduleFormState';
-import type { ScheduleItemForTemplate } from './scheduleQuickTemplates';
+import type { ScheduleCategory, ScheduleServiceType } from '../../data';
+import type { ScheduleFormState } from '../scheduleFormState';
+import type { ScheduleItemForTemplate } from '../builders/scheduleQuickTemplates';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

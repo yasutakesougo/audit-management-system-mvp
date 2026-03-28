@@ -18,7 +18,7 @@ import type { CreateScheduleEventInput, SchedItem } from '@/features/schedules/d
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
 import { useSchedulesCrud } from './useSchedulesCrud';
 import { useSchedulesNavigation } from './useSchedulesNavigation';
-import { findNextGap } from '../domain/scheduleNextGap';
+import { findNextGap } from '../domain/validation/scheduleNextGap';
 import type { ScheduleEditDialogValues } from './useSchedulesPageState';
 import { buildCreateDialogIntent, useSchedulesPageState } from './useSchedulesPageState';
 import { useWeekPageUiState } from './useWeekPageUiState';
