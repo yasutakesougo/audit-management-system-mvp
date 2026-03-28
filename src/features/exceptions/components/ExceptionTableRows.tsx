@@ -84,7 +84,7 @@ const FlatItemRow: React.FC<{
         borderLeftColor: isChild ? 'transparent' : catMeta.color,
         '&:last-child td': { borderBottom: 0 },
         ...(isChild && {
-          bgcolor: 'grey.50',
+          bgcolor: 'action.hover',
         }),
         ...(isParent && {
           cursor: 'pointer',
@@ -98,6 +98,7 @@ const FlatItemRow: React.FC<{
           <IconButton
             size="small"
             sx={{ p: 0, mr: 0.5 }}
+            aria-label={isCollapsed ? '子例外を展開' : '子例外を折りたたむ'}
             data-testid={`exception-toggle-${item.id}`}
           >
             {isCollapsed ? (
@@ -315,7 +316,7 @@ const GroupedRow: React.FC<{
       </TableRow>
       {canExpand && isExpanded && (
         <TableRow data-testid={`exception-group-details-${group.userId}`}>
-          <TableCell colSpan={6} sx={{ bgcolor: 'grey.50', py: 1.25 }}>
+          <TableCell colSpan={6} sx={{ bgcolor: 'action.hover', py: 1.25 }}>
             <Stack spacing={1}>
               {group.items.map((item) => {
                 const detailConfig = SEVERITY_CONFIG[item.severity];
@@ -396,13 +397,13 @@ export const ExceptionTableRows: React.FC<ExceptionTableRowsProps> = ({
     <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
       <Table size="small">
         <TableHead>
-          <TableRow sx={{ bgcolor: 'grey.50' }}>
-            <TableCell sx={{ fontWeight: 700, width: 80 }}>重要度</TableCell>
-            <TableCell sx={{ fontWeight: 700, width: 120 }}>種類</TableCell>
-            <TableCell sx={{ fontWeight: 700 }}>内容</TableCell>
-            <TableCell sx={{ fontWeight: 700, width: 100 }}>対象者</TableCell>
-            <TableCell sx={{ fontWeight: 700, width: 100 }}>日付</TableCell>
-            <TableCell sx={{ fontWeight: 700, width: 160 }}>是正アクション</TableCell>
+          <TableRow sx={{ bgcolor: 'action.hover' }}>
+            <TableCell sx={{ fontWeight: 700, width: 80, color: 'text.primary' }}>重要度</TableCell>
+            <TableCell sx={{ fontWeight: 700, width: 120, color: 'text.primary' }}>種類</TableCell>
+            <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>内容</TableCell>
+            <TableCell sx={{ fontWeight: 700, width: 100, color: 'text.primary' }}>対象者</TableCell>
+            <TableCell sx={{ fontWeight: 700, width: 100, color: 'text.primary' }}>日付</TableCell>
+            <TableCell sx={{ fontWeight: 700, width: 160, color: 'text.primary' }}>是正アクション</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
