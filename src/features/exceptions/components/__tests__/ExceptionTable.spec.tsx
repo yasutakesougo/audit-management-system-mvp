@@ -117,6 +117,22 @@ describe('ExceptionTable', () => {
     expect(screen.queryByTestId('exception-priority-top3')).not.toBeInTheDocument();
   });
 
+  it('initialSortMode=priority のときは初期表示で Top3 サマリーを表示する', () => {
+    render(
+      <MemoryRouter>
+        <ExceptionTable
+          items={[
+            makeException({ id: 'a-1', title: '提案A', severity: 'critical' }),
+            makeException({ id: 'a-2', title: '提案B', severity: 'high' }),
+          ]}
+          initialSortMode="priority"
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('exception-priority-top3')).toBeInTheDocument();
+  });
+
   it('priority モードでは親子構造を維持したまま高優先グループが先頭に来る', async () => {
     const items: ExceptionItem[] = [
       makeException({

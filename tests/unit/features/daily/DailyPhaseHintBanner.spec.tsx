@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   DailyPhaseHintBanner,
   getDailyPhaseHint,
-} from '@/features/daily/components/sections/DailyPhaseHintBanner';
+} from '@/features/daily/components/DailyPhaseHintBanner';
 
 // Mock hooks/telemetry that require context unavailable in unit tests
 vi.mock('@/features/operationFlow/hooks/useOperationFlowConfig', () => ({
