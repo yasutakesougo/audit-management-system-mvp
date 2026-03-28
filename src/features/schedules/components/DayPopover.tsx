@@ -9,7 +9,7 @@ import Typography from '@mui/material/Typography';
 import React from 'react';
 import { A11yList, A11yListItem, A11yRowButton } from '../../../components/a11y';
 import type { SchedItem } from '../data';
-import { scheduleCategoryLabels } from '../domain/categoryLabels';
+import { scheduleCategoryLabels } from '../domain/mappers/categoryLabels';
 
 // ---------------------------------------------------------------------------
 // Time range helper

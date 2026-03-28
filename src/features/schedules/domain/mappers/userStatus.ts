@@ -17,7 +17,7 @@
  * @see Phase 8-A: Today/Handoff からの利用者状態登録
  */
 
-import type { CreateScheduleEventInput } from '../data/port';
+import type { CreateScheduleEventInput } from '../../data/port';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Types

@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 import type { BehaviorInterventionPlan } from '@/features/analysis/domain/interventionTypes';
 import { describe, expect, it } from 'vitest';
-import { toBipOptions } from '../builders/toBipOptions';
+import { toBipOptions } from '../toBipOptions';
 
 const basePlan = (overrides: Partial<BehaviorInterventionPlan> = {}): BehaviorInterventionPlan => ({
   id: 'bip-1',

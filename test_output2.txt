@@ -1,0 +1,3 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90mC:/Users/螳画ｭｦ/.vscode/workspace/audit-management-system[39m
+

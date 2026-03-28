@@ -10,8 +10,8 @@
  * Pure function — テスト容易、副作用なし
  */
 
-import type { ScheduleCategory, ScheduleServiceType } from '../data';
-import type { ScheduleFormState } from './scheduleFormState';
+import type { ScheduleCategory, ScheduleServiceType } from '../../data';
+import type { ScheduleFormState } from '../scheduleFormState';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

@@ -11,15 +11,15 @@
  */
 import type { AbcRecord } from '@/domain/abc/abcRecord';
 import { buildAbcCountBySlot, filterAbcBySlot, type AbcCountBySlot } from '@/domain/abc/buildAbcCountBySlot';
-import { useLinkedStrategies } from '@/features/daily/hooks/legacy/useLinkedStrategies';
+import { useLinkedStrategies } from '@/features/daily/hooks/useLinkedStrategies';
 import { AbcSlotDialog } from './AbcSlotDialog';
 import { StrategyReferenceAccordion } from './StrategyReferenceAccordion';
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
 import type { BehaviorInterventionPlan } from '@/features/analysis/domain/interventionTypes';
-import { computeMonitoringCycle } from '@/features/daily/components/sections/MonitoringCountdown';
-import type { MonitoringCycleResult } from '@/features/daily/components/sections/MonitoringCountdown';
+import { computeMonitoringCycle } from '@/features/daily/components/MonitoringCountdown';
+import type { MonitoringCycleResult } from '@/features/daily/components/MonitoringCountdown';
 import { ProcedurePanel, type ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
-import { getScheduleKey } from '@/features/daily/domain/builders/getScheduleKey';
+import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';

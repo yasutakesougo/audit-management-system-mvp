@@ -18,8 +18,8 @@ import type { ResultError } from '@/shared/result';
 import type { CreateScheduleEventInput, SchedItem } from '../data';
 import type { ScheduleFormState, ScheduleUserOption } from '../domain/scheduleFormState';
 import type { ScheduleEditDialogValues } from '../hooks/useSchedulesPageState';
-import { computeAutofill } from '../domain/scheduleAutofillRules';
-import { buildCopyLastTemplate, buildQuickTemplates, type ScheduleItemForTemplate } from '../domain/scheduleQuickTemplates';
+import { computeAutofill } from '../domain/validation/scheduleAutofillRules';
+import { buildCopyLastTemplate, buildQuickTemplates, type ScheduleItemForTemplate } from '../domain/builders/scheduleQuickTemplates';
 import ScheduleCreateDialog from '../routes/ScheduleCreateDialog';
 import ScheduleViewDialog from '../routes/ScheduleViewDialog';
 

@@ -10,7 +10,7 @@
  * Pure function — テスト容易、副作用なし
  */
 
-import type { ScheduleItemForTemplate } from './scheduleQuickTemplates';
+import type { ScheduleItemForTemplate } from '../builders/scheduleQuickTemplates';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

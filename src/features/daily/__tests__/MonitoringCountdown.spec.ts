@@ -1,4 +1,4 @@
-import { computeMonitoringCycle } from '../components/sections/MonitoringCountdown';
+import { computeMonitoringCycle } from '../components/MonitoringCountdown';
 
 describe('computeMonitoringCycle（利用者別アセスメント起点）', () => {
   it('アセスメント日 2026-01-15 → 次回 2026-04-15', () => {

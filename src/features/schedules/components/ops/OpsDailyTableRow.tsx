@@ -15,7 +15,7 @@ import type { FC } from 'react';
 
 import { deriveSupportTags, toOpsServiceType } from '../../domain/scheduleOps';
 import type { ScheduleOpsItem } from '../../domain/scheduleOpsSchema';
-import { isUserStatusServiceType, USER_STATUS_LABELS, type UserStatusType } from '../../domain/userStatus';
+import { isUserStatusServiceType, USER_STATUS_LABELS, type UserStatusType } from '../../domain/mappers/userStatus';
 import { OpsServiceTypeChip } from './OpsServiceTypeChip';
 import { OpsStatusBadge } from './OpsStatusBadge';
 import { OpsSupportTagChips } from './OpsSupportTagChips';

@@ -10,11 +10,11 @@ import type { ResultError } from '@/shared/result';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getSchedulesListTitle } from '../data/spSchema';
 import { type DateRange, type SchedItem, type UpdateScheduleEventInput } from '../domain';
-import type { InlineScheduleDraft } from '../domain/inlineScheduleDraft';
+import type { InlineScheduleDraft } from '../domain/builders/inlineScheduleDraft';
 import { classifySchedulesError, shouldFallbackToReadOnly, type SchedulesErrorInfo } from '../errors';
 import { useScheduleRepository } from '../repositoryFactory';
 
-export type { InlineScheduleDraft } from '../domain/inlineScheduleDraft';
+export type { InlineScheduleDraft } from '../domain/builders/inlineScheduleDraft';
 
 export type UseSchedulesResult = {
   items: SchedItem[];

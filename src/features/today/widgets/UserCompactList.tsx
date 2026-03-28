@@ -1,6 +1,6 @@
 import { motionTokens } from '@/app/theme';
-import type { UserStatusType } from '@/features/schedules/domain/userStatus';
-import { USER_STATUS_LABELS } from '@/features/schedules/domain/userStatus';
+import type { UserStatusType } from '@/features/schedules/domain/mappers/userStatus';
+import { USER_STATUS_LABELS } from '@/features/schedules/domain/mappers/userStatus';
 import BubbleChartIcon from '@mui/icons-material/BubbleChart';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import EditNoteIcon from '@mui/icons-material/EditNote';

@@ -38,14 +38,14 @@ import type {
 import {
     scheduleCategoryLabels,
     scheduleFacilityHelpText
-} from '../domain/categoryLabels';
+} from '../domain/mappers/categoryLabels';
 import {
     LIVING_SUPPORT_SERVICE_TYPE_OPTIONS,
     SERVICE_TYPE_OPTIONS,
     type ScheduleFormState,
     type ScheduleUserOption,
 } from '../domain/scheduleFormState';
-import type { QuickTemplate } from '../domain/scheduleQuickTemplates';
+import type { QuickTemplate } from '../domain/builders/scheduleQuickTemplates';
 import type { OrgOption } from '../hooks/useOrgOptions';
 import { useScheduleCreateForm } from '../hooks/useScheduleCreateForm';
 import { SCHEDULE_STATUS_OPTIONS } from '../statusMetadata';

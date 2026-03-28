@@ -2,7 +2,7 @@
  * useLinkedStrategies.spec — 参照戦略 hook のテスト
  */
 import { renderHook } from '@testing-library/react';
-import { useLinkedStrategies } from '../legacy/useLinkedStrategies';
+import { useLinkedStrategies } from '../useLinkedStrategies';
 
 const LS_KEY = 'planningSheet.versions.v1';
 
