@@ -22,7 +22,7 @@
  * @see src/domain/metrics/proposalMetrics.ts
  */
 
-import type { SuggestionAction } from '@/features/daily/domain/suggestionAction';
+import type { SuggestionAction } from '@/features/daily/domain/legacy/suggestionAction';
 import type { ProposalDecisionRecord, ProposalAction } from '../proposalMetrics';
 
 // ─── ruleId → ソース推定 ─────────────────────────────────

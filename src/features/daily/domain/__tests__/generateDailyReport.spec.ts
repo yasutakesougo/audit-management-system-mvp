@@ -1,9 +1,9 @@
 import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
-import type { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
-import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
+import type { ExecutionRecord } from '@/features/daily/domain/legacy/executionRecordTypes';
+import { getScheduleKey } from '@/features/daily/domain/builders/getScheduleKey';
 import { describe, expect, it } from 'vitest';
 
-import { generateDailyReport } from '../generateDailyReport';
+import { generateDailyReport } from '../legacy/generateDailyReport';
 
 // ---------------------------------------------------------------------------
 // Fixtures

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { computeBehaviorTagInsights } from '../behaviorTagInsights';
+import { computeBehaviorTagInsights } from '../behavior/behaviorTagInsights';
 
 describe('computeBehaviorTagInsights', () => {
   // ─── null を返すケース ───────────────────────────────

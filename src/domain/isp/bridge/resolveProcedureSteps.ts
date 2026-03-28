@@ -12,7 +12,7 @@
  */
 import type { PlanningDesign } from '@/domain/isp/schema';
 import { toDailyProcedureSteps } from '@/domain/isp/bridge/toDailyProcedureSteps';
-import type { ProcedureStep, ProcedureSource } from '@/features/daily/domain/ProcedureRepository';
+import type { ProcedureStep, ProcedureSource } from '@/features/daily/domain/legacy/ProcedureRepository';
 
 export type ProcedureResolutionResult = {
   /** 解決された手順 */

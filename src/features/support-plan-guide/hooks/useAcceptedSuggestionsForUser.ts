@@ -18,8 +18,8 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { useDailyRecordRepository } from '@/features/daily/repositoryFactory';
-import type { SuggestionAction } from '@/features/daily/domain/suggestionAction';
+import { useDailyRecordRepository } from '@/features/daily/repositories/repositoryFactory';
+import type { SuggestionAction } from '@/features/daily/domain/legacy/suggestionAction';
 import { formatDateIso } from '@/lib/dateFormat';
 
 // ─── 型定義 ──────────────────────────────────────────────

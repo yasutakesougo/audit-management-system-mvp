@@ -17,7 +17,7 @@ vi.mock('@/lib/spClient', () => mockSpClient);
 import {
     getDailyRecordRepository,
     resetDailyRecordRepository,
-} from '@/features/daily/repositoryFactory';
+} from '@/features/daily/repositories/repositoryFactory';
 
 describe('Daily no-direct-sp guard', () => {
   beforeEach(() => {

@@ -15,7 +15,7 @@
  * @see UserCompactList   — UI消費先
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getBehaviorRepository } from '@/features/daily/infra/behaviorRepositoryFactory';
+import { getBehaviorRepository } from '@/features/daily/repositories/sharepoint/behaviorRepositoryFactory';
 import type { ABCRecord } from '@/domain/behavior/abc';
 import { buildUserAlerts, type UserAlert } from '../domain/buildUserAlerts';
 

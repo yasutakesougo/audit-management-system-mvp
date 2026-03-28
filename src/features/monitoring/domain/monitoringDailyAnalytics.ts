@@ -17,9 +17,9 @@ import type {
   DailyTableRecord,
   LunchIntake,
   ProblemBehaviorType,
-} from '@/features/daily/infra/dailyTableRepository';
+} from '@/features/daily/repositories/sharepoint/dailyTableRepository';
 
-import { BEHAVIOR_TAGS, type BehaviorTagKey, BEHAVIOR_TAG_CATEGORIES, type BehaviorTagCategory } from '@/features/daily/domain/behaviorTag';
+import { BEHAVIOR_TAGS, type BehaviorTagKey, BEHAVIOR_TAG_CATEGORIES, type BehaviorTagCategory } from '@/features/daily/domain/behavior/behaviorTag';
 
 import type { GoalLike, GoalProgressSummary } from './goalProgressTypes';
 import { PROGRESS_LEVEL_LABELS } from './goalProgressTypes';

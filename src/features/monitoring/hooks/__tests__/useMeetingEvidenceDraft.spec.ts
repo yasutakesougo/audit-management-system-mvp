@@ -14,14 +14,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useMeetingEvidenceDraft } from '../useMeetingEvidenceDraft';
 
 import type { ABCRecord } from '@/domain/behavior/abc';
-import type { DailyTableRecord, DateRange } from '@/features/daily/infra/dailyTableRepository';
+import type { DailyTableRecord, DateRange } from '@/features/daily/repositories/sharepoint/dailyTableRepository';
 
 // ── モックセットアップ ──────────────────────────────────────
 
 const mockGetDailyTableRecords = vi.fn<(userId: string, range: DateRange) => DailyTableRecord[]>();
 const mockGetABCRecordsForUser = vi.fn<(userId: string) => ABCRecord[]>();
 
-vi.mock('@/features/daily/infra/dailyTableRepository', () => ({
+vi.mock('@/features/daily/repositories/sharepoint/dailyTableRepository', () => ({
   getDailyTableRecords: (...args: unknown[]) =>
     mockGetDailyTableRecords(args[0] as string, args[1] as DateRange),
 }));

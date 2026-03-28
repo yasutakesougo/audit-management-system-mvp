@@ -3,7 +3,7 @@ import {
   computeBehaviorTagCrossInsights,
   hasProblemBehavior,
   type CrossInsightInput,
-} from '../behaviorTagCrossInsights';
+} from '../behavior/behaviorTagCrossInsights';
 
 // ─── ヘルパー ────────────────────────────────────────────
 

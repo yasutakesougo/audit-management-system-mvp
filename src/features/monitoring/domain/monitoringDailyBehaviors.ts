@@ -1,7 +1,7 @@
 import type {
   DailyTableRecord,
   ProblemBehaviorType,
-} from '@/features/daily/infra/dailyTableRepository';
+} from '@/features/daily/repositories/sharepoint/dailyTableRepository';
 
 export interface MonitoringBehaviorSummary {
   totalDays: number;

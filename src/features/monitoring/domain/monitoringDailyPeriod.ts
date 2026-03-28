@@ -1,4 +1,4 @@
-import type { DailyTableRecord } from '@/features/daily/infra/dailyTableRepository';
+import type { DailyTableRecord } from '@/features/daily/repositories/sharepoint/dailyTableRepository';
 
 export interface MonitoringPeriodMetrics {
   from: string;

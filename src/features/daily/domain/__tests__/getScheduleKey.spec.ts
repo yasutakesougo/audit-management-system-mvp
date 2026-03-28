@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
+import { getScheduleKey } from '@/features/daily/domain/builders/getScheduleKey';
 
 describe('getScheduleKey normalization', () => {
   it('normalizes whitespace and trims plannedActivity', () => {

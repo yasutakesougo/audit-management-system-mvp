@@ -20,8 +20,8 @@ import type { PdcaCycleState } from '@/domain/isp/types';
 import type {
   ExecutionRecord,
   RecordStatus,
-} from '@/features/daily/domain/executionRecordTypes';
-import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
+} from '@/features/daily/domain/legacy/executionRecordTypes';
+import { getScheduleKey } from '@/features/daily/domain/builders/getScheduleKey';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { useProcedureRecordRepository } from '@/features/regulatory/hooks/useProcedureRecordRepository';
 import { useEffect, useMemo, useState } from 'react';

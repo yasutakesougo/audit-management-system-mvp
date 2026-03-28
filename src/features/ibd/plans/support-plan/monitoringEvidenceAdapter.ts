@@ -1,5 +1,5 @@
-import type { DailyTableRecord, DateRange } from '@/features/daily/infra/dailyTableRepository';
-import { getDailyTableRecords } from '@/features/daily/infra/dailyTableRepository';
+import type { DailyTableRecord, DateRange } from '@/features/daily/repositories/sharepoint/dailyTableRepository';
+import { getDailyTableRecords } from '@/features/daily/repositories/sharepoint/dailyTableRepository';
 
 export interface MonitoringEvidence {
   userId: string;

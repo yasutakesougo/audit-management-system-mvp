@@ -1,0 +1,73 @@
+import type { BehaviorDateRange, BehaviorQueryOptions, BehaviorRepository } from '../../domain/legacy/BehaviorRepository';
+import type { ABCRecord } from '@/domain/behavior';
+
+let inMemoryStore: ABCRecord[] = [];
+
+const toTimestamp = (value?: string): number => {
+  if (!value) return Number.NaN;
+  return new Date(value).getTime();
+};
+
+const isWithinRange = (timestamp: string, range?: BehaviorDateRange): boolean => {
+  if (!range) return true;
+  const target = toTimestamp(timestamp);
+  if (!Number.isFinite(target)) return false;
+  if (range.from && target < toTimestamp(range.from)) return false;
+  if (range.to && target > toTimestamp(range.to)) return false;
+  return true;
+};
+
+const applyLimit = (items: ABCRecord[], options?: BehaviorQueryOptions): ABCRecord[] => {
+  if (!options?.limit || options.limit <= 0) {
+    return items;
+  }
+  return items.slice(0, options.limit);
+};
+
+const applyOrder = (items: ABCRecord[], options?: BehaviorQueryOptions): ABCRecord[] => {
+  if (!options?.order) return items;
+  const sorted = [...items].sort((a, b) => toTimestamp(a.recordedAt) - toTimestamp(b.recordedAt));
+  return options.order === 'desc' ? sorted.reverse() : sorted;
+};
+
+export class InMemoryBehaviorRepository implements BehaviorRepository {
+  async add(observation: Omit<ABCRecord, 'id'>): Promise<ABCRecord> {
+    if (observation.timeSlot && !observation.planSlotKey) {
+      throw new Error('[InMemoryBehaviorRepository] planSlotKey is required when timeSlot is provided.');
+    }
+    const newRecord: ABCRecord = {
+      ...observation,
+      id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    };
+    inMemoryStore = [newRecord, ...inMemoryStore].sort(
+      (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
+    );
+    return newRecord;
+  }
+
+  async getByUser(userId: string, options?: BehaviorQueryOptions): Promise<ABCRecord[]> {
+    return this.listByUser(userId, options);
+  }
+
+  async listByUser(userId: string, options?: BehaviorQueryOptions): Promise<ABCRecord[]> {
+    const dateRange = options?.dateRange;
+    const filtered = inMemoryStore.filter(
+      (behavior) => behavior.userId === userId && isWithinRange(behavior.recordedAt, dateRange),
+    );
+    const ordered = applyOrder(filtered, options);
+    return applyLimit(ordered, options);
+  }
+
+  public seed(records: ABCRecord[]): void {
+    if (!records.length) return;
+    inMemoryStore = [...records, ...inMemoryStore].sort(
+      (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
+    );
+  }
+
+  public reset(): void {
+    inMemoryStore = [];
+  }
+}
+
+export const __debugGetInMemoryBehaviors = (): ABCRecord[] => inMemoryStore;

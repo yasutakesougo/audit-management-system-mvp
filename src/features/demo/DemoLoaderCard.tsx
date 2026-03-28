@@ -5,7 +5,7 @@
 // 桂川さんモデルの「魔法の3分デモ」が開始できる完璧な状態にリセットする。
 // ---------------------------------------------------------------------------
 
-import { useProcedureStore } from '@/features/daily/stores/procedureStore';
+import { useProcedureStore } from '@/features/daily/hooks/legacy-stores/procedureStore';
 import { DEMO_USER_ID, loadMagicDemo } from '@/features/demo/loadMagicDemo';
 import { isDemoModeEnabled } from '@/lib/env';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';

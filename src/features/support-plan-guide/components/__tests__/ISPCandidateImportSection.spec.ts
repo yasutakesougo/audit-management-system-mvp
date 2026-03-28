@@ -12,12 +12,12 @@
  */
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import type { SuggestionAction } from '@/features/daily/domain/suggestionAction';
+import type { SuggestionAction } from '@/features/daily/domain/legacy/suggestionAction';
 import {
   collectISPCandidates,
   isAlreadyInImprovementIdeas,
   appendCandidateToImprovementIdeas,
-} from '@/features/daily/domain/ispCandidateMapper';
+} from '@/features/daily/domain/mappers/ispCandidateMapper';
 
 // ─── 1. Pure function ベースのテスト ─────────────────────
 // ISPCandidateImportSection の核心ロジックは pure function なので、

@@ -1,0 +1,1311 @@
+[
+  {
+    "feature": "accessibility",
+    "layer": "Platform",
+    "maturity": "Infra",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "pure-function"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 5,
+    "reviewRequired": false
+  },
+  {
+    "feature": "action-engine",
+    "layer": "Platform",
+    "maturity": "Prototype",
+    "prod": "partial",
+    "routes": [],
+    "storage": [
+      {
+        "kind": "localStorage"
+      },
+      {
+        "kind": "firestore"
+      },
+      {
+        "kind": "zustand"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 47,
+    "reviewRequired": false
+  },
+  {
+    "feature": "analysis",
+    "layer": "Decision",
+    "maturity": "Expanding",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "localStorage"
+      },
+      {
+        "kind": "zustand"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 11,
+    "reviewRequired": false
+  },
+  {
+    "feature": "assessment",
+    "layer": "Decision",
+    "maturity": "Expanding",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [
+          "SurveyTokusei"
+        ],
+        "access": [
+          "R",
+          "W"
+        ]
+      },
+      {
+        "kind": "localStorage"
+      },
+      {
+        "kind": "zustand"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 15,
+    "reviewRequired": false
+  },
+  {
+    "feature": "attendance",
+    "layer": "Platform",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      }
+    ],
+    "bridges": [],
+    "filesCount": 39,
+    "reviewRequired": false
+  },
+  {
+    "feature": "audit",
+    "layer": "Governance",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [
+      {
+        "path": "records",
+        "file": "app/routes/recordRoutes.tsx",
+        "kind": "lazy"
+      }
+    ],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      }
+    ],
+    "bridges": [
+      {
+        "name": "useAuditSync",
+        "file": "features/audit/useAuditSync.ts",
+        "kind": "bridge"
+      },
+      {
+        "name": "useAuditSyncBatch.core",
+        "file": "features/audit/useAuditSyncBatch.core.ts",
+        "kind": "bridge"
+      },
+      {
+        "name": "useAuditSyncBatch",
+        "file": "features/audit/useAuditSyncBatch.ts",
+        "kind": "bridge"
+      }
+    ],
+    "filesCount": 13,
+    "reviewRequired": false
+  },
+  {
+    "feature": "auth",
+    "layer": "Platform",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      },
+      {
+        "kind": "localStorage"
+      },
+      {
+        "kind": "zustand"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 15,
+    "reviewRequired": false
+  },
+  {
+    "feature": "billing",
+    "layer": "Output",
+    "maturity": "Expanding",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      }
+    ],
+    "bridges": [],
+    "filesCount": 6,
+    "reviewRequired": false
+  },
+  {
+    "feature": "callLogs",
+    "layer": "Execution",
+    "maturity": "Expanding",
+    "prod": "partial",
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      }
+    ],
+    "bridges": [],
+    "filesCount": 32,
+    "reviewRequired": false
+  },
+  {
+    "feature": "compliance-checklist",
+    "layer": "Governance",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [
+      {
+        "path": "records",
+        "file": "app/routes/recordRoutes.tsx",
+        "kind": "lazy"
+      }
+    ],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [
+          "ComplianceCheckRules"
+        ],
+        "access": [
+          "R",
+          "W"
+        ]
+      }
+    ],
+    "bridges": [],
+    "filesCount": 6,
+    "reviewRequired": false
+  },
+  {
+    "feature": "context",
+    "layer": "Platform",
+    "maturity": "Infra",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "pure-function"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 3,
+    "reviewRequired": false
+  },
+  {
+    "feature": "cross-module",
+    "layer": "Platform",
+    "maturity": "Infra",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "firestore"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 7,
+    "reviewRequired": false
+  },
+  {
+    "feature": "daily",
+    "layer": "Execution",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [
+      {
+        "path": "records",
+        "file": "app/routes/recordRoutes.tsx",
+        "kind": "lazy"
+      },
+      {
+        "path": "schedule",
+        "file": "app/routes/scheduleRoutes.tsx",
+        "kind": "lazy"
+      }
+    ],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [
+          "DailyActivityRecords"
+        ],
+        "access": [
+          "R",
+          "W"
+        ]
+      },
+      {
+        "kind": "localStorage"
+      },
+      {
+        "kind": "firestore"
+      },
+      {
+        "kind": "zustand"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 177,
+    "reviewRequired": false
+  },
+  {
+    "feature": "dailyOps",
+    "layer": "Execution",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      }
+    ],
+    "bridges": [],
+    "filesCount": 11,
+    "reviewRequired": false
+  },
+  {
+    "feature": "dashboard",
+    "layer": "Execution",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      }
+    ],
+    "bridges": [
+      {
+        "name": "syncGuardrails",
+        "file": "features/dashboard/logic/syncGuardrails.ts",
+        "kind": "bridge"
+      }
+    ],
+    "filesCount": 101,
+    "reviewRequired": false
+  },
+  {
+    "feature": "demo",
+    "layer": "Platform",
+    "maturity": "Infra",
+    "prod": false,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "localStorage"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 3,
+    "reviewRequired": false
+  },
+  {
+    "feature": "diagnostics",
+    "layer": "Platform",
+    "maturity": "Infra",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      }
+    ],
+    "bridges": [],
+    "filesCount": 9,
+    "reviewRequired": false
+  },
+  {
+    "feature": "exceptions",
+    "layer": "Governance",
+    "maturity": "Expanding",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      },
+      {
+        "kind": "localStorage"
+      },
+      {
+        "kind": "firestore"
+      },
+      {
+        "kind": "zustand"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 47,
+    "reviewRequired": false
+  },
+  {
+    "feature": "handoff",
+    "layer": "Execution",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      },
+      {
+        "kind": "localStorage"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 136,
+    "reviewRequired": false
+  },
+  {
+    "feature": "ibd",
+    "layer": "Decision",
+    "maturity": "Expanding",
+    "prod": true,
+    "routes": [
+      {
+        "path": "analysis (approx)",
+        "file": "app/routes/analysisRoutes.tsx",
+        "kind": "derived"
+      }
+    ],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [
+          "IcebergAnalysis",
+          "IcebergPdca"
+        ],
+        "access": [
+          "R",
+          "W"
+        ]
+      },
+      {
+        "kind": "localStorage"
+      },
+      {
+        "kind": "firestore"
+      },
+      {
+        "kind": "zustand"
+      },
+      {
+        "kind": "msal"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 109,
+    "reviewRequired": false
+  },
+  {
+    "feature": "import",
+    "layer": "Governance",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      },
+      {
+        "kind": "localStorage"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 15,
+    "reviewRequired": false
+  },
+  {
+    "feature": "kokuhoren-csv",
+    "layer": "Output",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "pure-function"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 8,
+    "reviewRequired": false
+  },
+  {
+    "feature": "kokuhoren-preview",
+    "layer": "Output",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "pure-function"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 2,
+    "reviewRequired": false
+  },
+  {
+    "feature": "kokuhoren-validation",
+    "layer": "Output",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "pure-function"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 7,
+    "reviewRequired": false
+  },
+  {
+    "feature": "meeting",
+    "layer": "Execution",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [
+      {
+        "path": "records (approx)",
+        "file": "app/routes/recordRoutes.tsx",
+        "kind": "derived"
+      }
+    ],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [
+          "VITE_SP_LIST_MEETING_PARTICIPATION",
+          "VITE_SP_LIST_MEETING_PRIORITY",
+          "VITE_SP_LIST_MEETING_SESSIONS",
+          "VITE_SP_LIST_MEETING_STEPS"
+        ],
+        "access": [
+          "R",
+          "W"
+        ]
+      }
+    ],
+    "bridges": [
+      {
+        "name": "MeetingSync.int.test",
+        "file": "features/meeting/__tests__/MeetingSync.int.test.tsx",
+        "kind": "bridge"
+      }
+    ],
+    "filesCount": 22,
+    "reviewRequired": false
+  },
+  {
+    "feature": "meeting-minutes",
+    "layer": "Execution",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [
+      {
+        "path": "records (approx)",
+        "file": "app/routes/recordRoutes.tsx",
+        "kind": "derived"
+      }
+    ],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      },
+      {
+        "kind": "localStorage"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 17,
+    "reviewRequired": false
+  },
+  {
+    "feature": "monitoring",
+    "layer": "Decision",
+    "maturity": "Expanding",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [
+          "VITE_SP_LIST_ISP_DECISIONS",
+          "VITE_SP_LIST_SUPPORT_PLANNING_SHEET"
+        ],
+        "access": [
+          "R",
+          "W"
+        ]
+      },
+      {
+        "kind": "localStorage"
+      },
+      {
+        "kind": "zustand"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 53,
+    "reviewRequired": false
+  },
+  {
+    "feature": "nurse",
+    "layer": "Execution",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [
+          "VITE_SP_LIST_NURSE_OBSERVATION"
+        ],
+        "access": [
+          "R",
+          "W"
+        ]
+      },
+      {
+        "kind": "localStorage"
+      },
+      {
+        "kind": "firestore"
+      },
+      {
+        "kind": "zustand"
+      }
+    ],
+    "bridges": [
+      {
+        "name": "NurseSyncButton",
+        "file": "features/nurse/components/NurseSyncButton.tsx",
+        "kind": "bridge"
+      },
+      {
+        "name": "NurseSyncHud.stories",
+        "file": "features/nurse/components/NurseSyncHud.stories.tsx",
+        "kind": "bridge"
+      },
+      {
+        "name": "NurseSyncHud",
+        "file": "features/nurse/components/NurseSyncHud.tsx",
+        "kind": "bridge"
+      },
+      {
+        "name": "NurseToastBridge",
+        "file": "features/nurse/components/NurseToastBridge.tsx",
+        "kind": "bridge"
+      },
+      {
+        "name": "SyncNowButton.stories",
+        "file": "features/nurse/components/SyncNowButton.stories.tsx",
+        "kind": "bridge"
+      },
+      {
+        "name": "SyncNowButton",
+        "file": "features/nurse/components/SyncNowButton.tsx",
+        "kind": "bridge"
+      },
+      {
+        "name": "SyncResultAnnouncer",
+        "file": "features/nurse/components/SyncResultAnnouncer.tsx",
+        "kind": "bridge"
+      },
+      {
+        "name": "SyncStatusCaption.stories",
+        "file": "features/nurse/components/SyncStatusCaption.stories.tsx",
+        "kind": "bridge"
+      },
+      {
+        "name": "ObservationBridge",
+        "file": "features/nurse/observation/ObservationBridge.tsx",
+        "kind": "bridge"
+      },
+      {
+        "name": "useLastSync",
+        "file": "features/nurse/state/useLastSync.ts",
+        "kind": "bridge"
+      },
+      {
+        "name": "useNurseSync",
+        "file": "features/nurse/state/useNurseSync.ts",
+        "kind": "bridge"
+      },
+      {
+        "name": "useOnlineSyncToast",
+        "file": "features/nurse/state/useOnlineSyncToast.ts",
+        "kind": "bridge"
+      }
+    ],
+    "filesCount": 58,
+    "reviewRequired": false
+  },
+  {
+    "feature": "official-forms",
+    "layer": "Output",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      }
+    ],
+    "bridges": [],
+    "filesCount": 5,
+    "reviewRequired": false
+  },
+  {
+    "feature": "operation-hub",
+    "layer": "Platform",
+    "maturity": "Infra",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      }
+    ],
+    "bridges": [],
+    "filesCount": 7,
+    "reviewRequired": false
+  },
+  {
+    "feature": "operationFlow",
+    "layer": "Operations",
+    "maturity": "Expanding",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      },
+      {
+        "kind": "firestore"
+      }
+    ],
+    "bridges": [
+      {
+        "name": "phaseConfigBridge",
+        "file": "features/operationFlow/domain/phaseConfigBridge.ts",
+        "kind": "bridge"
+      }
+    ],
+    "filesCount": 14,
+    "reviewRequired": false
+  },
+  {
+    "feature": "ops-dashboard",
+    "layer": "Operations",
+    "maturity": "Expanding",
+    "prod": "partial",
+    "routes": [],
+    "storage": [
+      {
+        "kind": "localStorage"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 9,
+    "reviewRequired": false
+  },
+  {
+    "feature": "org",
+    "layer": "Platform",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      },
+      {
+        "kind": "zustand"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 5,
+    "reviewRequired": false
+  },
+  {
+    "feature": "planDeployment",
+    "layer": "Operations",
+    "maturity": "Dormant",
+    "prod": false,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "localStorage"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 3,
+    "reviewRequired": false
+  },
+  {
+    "feature": "planning-sheet",
+    "layer": "Decision",
+    "maturity": "Expanding",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      },
+      {
+        "kind": "localStorage"
+      },
+      {
+        "kind": "zustand"
+      }
+    ],
+    "bridges": [
+      {
+        "name": "assessmentBridge",
+        "file": "features/planning-sheet/assessmentBridge.ts",
+        "kind": "bridge"
+      },
+      {
+        "name": "supportTemplateBridge",
+        "file": "features/planning-sheet/bridge/supportTemplateBridge.ts",
+        "kind": "bridge"
+      },
+      {
+        "name": "monitoringToPlanningBridge",
+        "file": "features/planning-sheet/monitoringToPlanningBridge.ts",
+        "kind": "bridge"
+      },
+      {
+        "name": "planningToRecordBridge",
+        "file": "features/planning-sheet/planningToRecordBridge.ts",
+        "kind": "bridge"
+      },
+      {
+        "name": "tokuseiBridgeBuilders",
+        "file": "features/planning-sheet/tokuseiBridgeBuilders.ts",
+        "kind": "builder"
+      },
+      {
+        "name": "tokuseiToPlanningBridge",
+        "file": "features/planning-sheet/tokuseiToPlanningBridge.ts",
+        "kind": "bridge"
+      }
+    ],
+    "filesCount": 53,
+    "reviewRequired": false
+  },
+  {
+    "feature": "recommendation",
+    "layer": "Decision",
+    "maturity": "Prototype",
+    "prod": false,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "pure-function"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 3,
+    "reviewRequired": false
+  },
+  {
+    "feature": "records",
+    "layer": "Output",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [
+      {
+        "path": "records",
+        "file": "app/routes/recordRoutes.tsx",
+        "kind": "lazy"
+      }
+    ],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      }
+    ],
+    "bridges": [],
+    "filesCount": 17,
+    "reviewRequired": false
+  },
+  {
+    "feature": "regulatory",
+    "layer": "Governance",
+    "maturity": "Expanding",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      }
+    ],
+    "bridges": [],
+    "filesCount": 7,
+    "reviewRequired": false
+  },
+  {
+    "feature": "reports",
+    "layer": "Output",
+    "maturity": "Expanding",
+    "prod": "partial",
+    "routes": [],
+    "storage": [
+      {
+        "kind": "pure-function"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 6,
+    "reviewRequired": false
+  },
+  {
+    "feature": "resources",
+    "layer": "Operations",
+    "maturity": "Expanding",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      }
+    ],
+    "bridges": [],
+    "filesCount": 16,
+    "reviewRequired": false
+  },
+  {
+    "feature": "safety",
+    "layer": "Governance",
+    "maturity": "Expanding",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "localStorage"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 15,
+    "reviewRequired": false
+  },
+  {
+    "feature": "schedules",
+    "layer": "Operations",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [
+      {
+        "path": "daily",
+        "file": "app/routes/dailyRoutes.tsx",
+        "kind": "lazy"
+      },
+      {
+        "path": "records",
+        "file": "app/routes/recordRoutes.tsx",
+        "kind": "lazy"
+      },
+      {
+        "path": "schedule",
+        "file": "app/routes/scheduleRoutes.tsx",
+        "kind": "lazy"
+      }
+    ],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [
+          "VITE_SP_LIST_SCHEDULES"
+        ],
+        "access": [
+          "R",
+          "W"
+        ]
+      },
+      {
+        "kind": "localStorage"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 132,
+    "reviewRequired": false
+  },
+  {
+    "feature": "service-provision",
+    "layer": "Output",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [],
+        "access": [
+          "R",
+          "W"
+        ]
+      }
+    ],
+    "bridges": [
+      {
+        "name": "syncAttendanceToProvision",
+        "file": "features/service-provision/syncAttendanceToProvision.ts",
+        "kind": "bridge"
+      },
+      {
+        "name": "useSyncAttendance",
+        "file": "features/service-provision/useSyncAttendance.ts",
+        "kind": "bridge"
+      }
+    ],
+    "filesCount": 19,
+    "reviewRequired": false
+  },
+  {
+    "feature": "settings",
+    "layer": "Platform",
+    "maturity": "Infra",
+    "prod": true,
+    "routes": [
+      {
+        "path": "records",
+        "file": "app/routes/recordRoutes.tsx",
+        "kind": "lazy"
+      },
+      {
+        "path": "schedule",
+        "file": "app/routes/scheduleRoutes.tsx",
+        "kind": "lazy"
+      }
+    ],
+    "storage": [
+      {
+        "kind": "localStorage"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 20,
+    "reviewRequired": false
+  },
+  {
+    "feature": "shared",
+    "layer": "Platform",
+    "maturity": "Infra",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "pure-function"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 4,
+    "reviewRequired": false
+  },
+  {
+    "feature": "staff",
+    "layer": "Platform",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [
+          "VITE_SP_LIST_STAFF_ATTENDANCE"
+        ],
+        "access": [
+          "R",
+          "W"
+        ]
+      },
+      {
+        "kind": "localStorage"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 41,
+    "reviewRequired": false
+  },
+  {
+    "feature": "support-plan-guide",
+    "layer": "Decision",
+    "maturity": "Expanding",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [
+          "VITE_SP_LIST_SUPPORT_PLANS"
+        ],
+        "access": [
+          "R",
+          "W"
+        ]
+      },
+      {
+        "kind": "localStorage"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 104,
+    "reviewRequired": false
+  },
+  {
+    "feature": "tag-analytics",
+    "layer": "Decision",
+    "maturity": "Prototype",
+    "prod": false,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "pure-function"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 11,
+    "reviewRequired": false
+  },
+  {
+    "feature": "telemetry",
+    "layer": "Platform",
+    "maturity": "Infra",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "firestore"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 51,
+    "reviewRequired": false
+  },
+  {
+    "feature": "timeline",
+    "layer": "Execution",
+    "maturity": "Expanding",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "pure-function"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 9,
+    "reviewRequired": false
+  },
+  {
+    "feature": "today",
+    "layer": "Execution",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [
+          "TransportLog"
+        ],
+        "access": [
+          "R",
+          "W"
+        ]
+      },
+      {
+        "kind": "localStorage"
+      },
+      {
+        "kind": "firestore"
+      },
+      {
+        "kind": "zustand"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 159,
+    "reviewRequired": false
+  },
+  {
+    "feature": "transport-assignments",
+    "layer": "Operations",
+    "maturity": "Prototype",
+    "prod": "partial",
+    "routes": [],
+    "storage": [
+      {
+        "kind": "pure-function"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 6,
+    "reviewRequired": false
+  },
+  {
+    "feature": "users",
+    "layer": "Platform",
+    "maturity": "Core",
+    "prod": true,
+    "routes": [],
+    "storage": [
+      {
+        "kind": "sharepoint",
+        "listKeys": [
+          "UsersMaster",
+          "VITE_SP_LIST_USERS"
+        ],
+        "access": [
+          "R",
+          "W"
+        ]
+      },
+      {
+        "kind": "localStorage"
+      }
+    ],
+    "bridges": [],
+    "filesCount": 76,
+    "reviewRequired": false
+  }
+]

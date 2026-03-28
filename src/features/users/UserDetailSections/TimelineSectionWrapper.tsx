@@ -24,7 +24,7 @@ import { useNavigate } from 'react-router-dom';
 import { UserTimelinePanel } from '@/features/timeline/components/UserTimelinePanel';
 import { createTimelineDataFetcher } from '@/features/timeline/createTimelineDataFetcher';
 import { useUsersStore } from '@/features/users/store';
-import { useDailyRecordRepository } from '@/features/daily/repositoryFactory';
+import { useDailyRecordRepository } from '@/features/daily/repositories/repositoryFactory';
 import { localIncidentRepository } from '@/infra/localStorage/localIncidentRepository';
 import { useIspRepositories } from '@/features/support-plan-guide/hooks/useIspRepositories';
 import { useHandoffData } from '@/features/handoff/hooks/useHandoffData';

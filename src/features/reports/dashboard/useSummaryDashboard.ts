@@ -1,4 +1,4 @@
-import { useDailyRecordRepository } from '@/features/daily/repositoryFactory';
+import { useDailyRecordRepository } from '@/features/daily/repositories/repositoryFactory';
 import { useUserRepository } from '@/features/users/repositoryFactory';
 import type { IUserMaster } from '@/features/users/types';
 import {

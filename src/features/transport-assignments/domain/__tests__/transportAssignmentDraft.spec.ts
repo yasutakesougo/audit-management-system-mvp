@@ -358,8 +358,8 @@ describe('buildSchedulePatchPayloads', () => {
         vehicle.vehicleId === '車両2'
           ? {
               ...vehicle,
-              courseId: 'kanazawa',
-              courseLabel: '金沢',
+              courseId: 'kanazawa' as const,
+              courseLabel: '金沢' as const,
             }
           : vehicle,
       ),

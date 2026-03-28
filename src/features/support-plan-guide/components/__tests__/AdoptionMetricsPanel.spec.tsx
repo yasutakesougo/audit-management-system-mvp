@@ -8,7 +8,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 
-import type { AdoptionMetrics } from '@/features/daily/domain/adoptionMetrics';
+import type { AdoptionMetrics } from '@/features/daily/domain/legacy/adoptionMetrics';
 import type { UseAdoptionMetricsReturn } from '../../hooks/useAdoptionMetrics';
 
 // ─── mock ────────────────────────────────────────────────

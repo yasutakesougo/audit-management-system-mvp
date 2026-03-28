@@ -357,7 +357,7 @@ const TimeSlotCard: React.FC<TimeSlotCardProps> = ({ am, pm }) => {
 
 // ─── ヘルパー ────────────────────────────────────────────
 
-import { BEHAVIOR_TAGS, type BehaviorTagKey } from '@/features/daily/domain/behaviorTag';
+import { BEHAVIOR_TAGS, type BehaviorTagKey } from '@/features/daily/domain/behavior/behaviorTag';
 
 function getTagLabel(key: string): string {
   const def = BEHAVIOR_TAGS[key as BehaviorTagKey];

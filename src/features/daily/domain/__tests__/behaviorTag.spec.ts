@@ -8,7 +8,7 @@ import {
   getTagLabel,
   getTagsByCategory,
   getTagCategoryLabel,
-} from '../behaviorTag';
+} from '../behavior/behaviorTag';
 
 describe('behaviorTag', () => {
   describe('BEHAVIOR_TAGS マスタ', () => {

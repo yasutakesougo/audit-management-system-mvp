@@ -12,7 +12,7 @@
  * /daily/support の時間割が自動更新される。
  */
 import type { PlanningDesign, ProcedureStep as IspProcedureStep } from '@/domain/isp/schema';
-import type { ProcedureStep } from '@/features/daily/domain/ProcedureRepository';
+import type { ProcedureStep } from '@/features/daily/domain/legacy/ProcedureRepository';
 
 /**
  * ISP の timing フィールドから HH:MM 形式の時刻を抽出する。

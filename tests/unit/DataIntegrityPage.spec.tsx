@@ -10,7 +10,7 @@ vi.mock('@/features/users/schema', () => ({
   SpUserMasterItemSchema: { safeParse: vi.fn(() => ({ success: true })) },
 }));
 
-vi.mock('@/features/daily/schema', () => ({
+vi.mock('@/features/daily/domain/schema', () => ({
   SharePointDailyRecordItemSchema: { safeParse: vi.fn(() => ({ success: true })) },
 }));
 

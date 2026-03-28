@@ -12,7 +12,7 @@
  * 関連: docs/architecture/support-pdca-engine.md
  */
 
-import type { BehaviorTagCategory } from '../../daily/domain/behaviorTag';
+import type { BehaviorTagCategory } from '../../daily/domain/behavior/behaviorTag';
 import type { ProgressLevel, ProgressTrend } from './goalProgressTypes';
 
 // ─── 提案レベル ──────────────────────────────────────────
