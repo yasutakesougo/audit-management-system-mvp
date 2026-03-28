@@ -71,6 +71,18 @@ export const ExceptionTableControls: React.FC<ExceptionTableControlsProps> = ({
         }}
         size="small"
         color="primary"
+        sx={{
+          '& .MuiToggleButton-root': {
+            color: 'text.primary',
+          },
+          '& .MuiToggleButton-root.Mui-selected': {
+            color: 'primary.contrastText',
+            bgcolor: 'primary.main',
+            '&:hover': {
+              bgcolor: 'primary.dark',
+            },
+          },
+        }}
       >
         <ToggleButton value="flat" data-testid="exception-mode-flat">
           <ViewListIcon sx={{ mr: 0.5, fontSize: '1rem' }} />
@@ -159,6 +171,7 @@ export const ExceptionTableControls: React.FC<ExceptionTableControlsProps> = ({
             <IconButton
               size="small"
               onClick={onExpandAll}
+              aria-label="すべて展開"
               data-testid="exception-expand-all"
             >
               <UnfoldMoreIcon fontSize="small" />
@@ -168,6 +181,7 @@ export const ExceptionTableControls: React.FC<ExceptionTableControlsProps> = ({
             <IconButton
               size="small"
               onClick={onCollapseAll}
+              aria-label="すべて折りたたみ"
               data-testid="exception-collapse-all"
             >
               <UnfoldLessIcon fontSize="small" />

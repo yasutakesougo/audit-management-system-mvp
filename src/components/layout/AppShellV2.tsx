@@ -11,6 +11,7 @@ type Props = {
   sidebar?: React.ReactNode;
   footer?: React.ReactNode;
   children: React.ReactNode;
+  mainId?: string;
 
   /** 外側レイアウトの幅制御（必要なら上書き） */
   activityWidth?: number;
@@ -35,6 +36,7 @@ export function AppShellV2({
   contentPaddingX = 16,
   contentPaddingY = 16,
   viewportMode = 'fixed',
+  mainId = 'app-main-content',
 }: Props) {
   const theme = useTheme();
   const isPhone = useMediaQuery(theme.breakpoints.down('sm'));
@@ -127,6 +129,8 @@ export function AppShellV2({
       {/* Main (only scroll here) */}
       <Box
         component="main"
+        id={mainId}
+        tabIndex={-1}
         sx={{
           gridArea: 'main',
           minHeight: 0,

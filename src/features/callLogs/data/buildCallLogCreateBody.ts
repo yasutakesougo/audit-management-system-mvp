@@ -3,13 +3,14 @@
  *
  * CreateCallLogInput → SharePoint 作成ペイロード変換。
  *
- * - status は 'new' に固定（アプリ側責務）
+ * - status は折返し要件に応じて決定（callback_pending / new）
  * - receivedByName はログインユーザーから注入
  * - receivedAt が省略された場合は現在日時を使用
  * - 規約: このモジュールは純粋関数のみ。副作用禁止
  */
 
 import type { CreateCallLogInput } from '@/domain/callLogs/schema';
+import { deriveInitialCallLogStatus } from '@/domain/callLogs/statusTransition';
 import { CALL_LOG_FIELDS } from './callLogFieldMap';
 
 /**
@@ -29,6 +30,7 @@ export const buildCallLogCreateBody = (
 ): Record<string, unknown> => {
   const f = CALL_LOG_FIELDS;
   const receivedAt = input.receivedAt ?? now.toISOString();
+  const initialStatus = deriveInitialCallLogStatus(input);
 
   // Title は "件名 (発信者名)" の複合で生成する
   const title = `${input.subject} (${input.callerName})`;
@@ -43,7 +45,7 @@ export const buildCallLogCreateBody = (
     [f.message]: input.message,
     [f.needCallback]: input.needCallback,
     [f.urgency]: input.urgency ?? 'normal',
-    [f.status]: 'new', // 作成時は必ず new
+    [f.status]: initialStatus,
     [f.relatedUserId]: input.relatedUserId ?? null,
     [f.relatedUserName]: input.relatedUserName ?? null,
     [f.callbackDueAt]: input.callbackDueAt ?? null,

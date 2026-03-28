@@ -43,6 +43,8 @@ vi.mock('@/lib/env', () => ({
   isForceDemoEnabled: vi.fn(() => false),
   isTestMode: vi.fn(() => false),
   shouldSkipLogin: vi.fn(() => false),
+  shouldSkipSharePoint: vi.fn(() => false),
+  readBool: vi.fn(() => false),
 }));
 
 vi.mock('@/lib/runtime', () => ({
@@ -109,6 +111,8 @@ describe('schedules repositoryFactory', () => {
     vi.mocked(envModule.isForceDemoEnabled).mockReturnValue(false);
     vi.mocked(envModule.isTestMode).mockReturnValue(false);
     vi.mocked(envModule.shouldSkipLogin).mockReturnValue(false);
+    vi.mocked(envModule.shouldSkipSharePoint).mockReturnValue(false);
+    vi.mocked(envModule.readBool).mockReturnValue(false);
     vi.mocked(runtimeModule.hasSpfxContext).mockReturnValue(true);
   });
 
