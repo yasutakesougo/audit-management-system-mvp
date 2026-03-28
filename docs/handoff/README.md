@@ -16,4 +16,8 @@
 3. 翌日の開始時に前日の handoff を読んでから作業を始める
 4. 3日以上間が空く場合は `/scan L2` も追加実行する
 
+## テンプレート
+
+- セッション引き継ぎテンプレート: [handoff-template.md](./handoff-template.md)
+
 詳細は [ai-dev-os-rules.md](../operations/ai-dev-os-rules.md) を参照。

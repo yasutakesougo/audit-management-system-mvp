@@ -36,6 +36,8 @@ vi.mock('@/auth/useAuth', () => ({
 // ── テスト用 import ──────────────────────────────────────────────────────────
 
 import { useCallLogs } from '../useCallLogs';
+import { __resetCallLogRepositoryFactoryForTests } from '../../data/callLogRepositoryFactory';
+import { __resetInMemoryCallLogStoreForTests } from '../../data/InMemoryCallLogRepository';
 
 // ── ヘルパー ─────────────────────────────────────────────────────────────────
 
@@ -53,6 +55,8 @@ describe('useCallLogs', () => {
   let qc: QueryClient;
 
   beforeEach(() => {
+    __resetCallLogRepositoryFactoryForTests();
+    __resetInMemoryCallLogStoreForTests();
     qc = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
@@ -99,6 +103,61 @@ describe('useCallLogs', () => {
     await waitFor(() => expect(result.current.logs?.length).toBe(1));
     expect(result.current.logs?.[0].callerName).toBe('田中太郎');
     expect(result.current.logs?.[0].status).toBe('new');
+  });
+
+  it('should create callback_pending when needCallback=true', async () => {
+    const wrapper = makeWrapper(qc);
+    const { result } = renderHook(() => useCallLogs({ activeTab: 'all' }), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    result.current.createLog.mutate({
+      callerName: '佐藤花子',
+      targetStaffName: '山田スタッフ',
+      subject: '折返し依頼',
+      message: '折返しお願いします',
+      needCallback: true,
+      callbackDueAt: '2026-03-28T12:00:00.000Z',
+    });
+
+    await waitFor(() => expect(result.current.logs?.length).toBe(1));
+    expect(result.current.logs?.[0].status).toBe('callback_pending');
+  });
+
+  it('should keep callback lifecycle: callback_pending -> done -> callback_pending', async () => {
+    const wrapper = makeWrapper(qc);
+    const { result } = renderHook(() => useCallLogs({ activeTab: 'all' }), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const created = await result.current.createLog.mutateAsync({
+      callerName: '運用シナリオ',
+      targetStaffName: '山田スタッフ',
+      subject: '折返し運用テスト',
+      message: '折返しをお願いします',
+      needCallback: true,
+      callbackDueAt: '2026-03-28T12:30:00.000Z',
+    });
+
+    await waitFor(() => expect(result.current.logs?.length).toBe(1));
+    expect(result.current.logs?.[0].status).toBe('callback_pending');
+    expect(result.current.logs?.[0].completedAt).toBeUndefined();
+
+    await result.current.updateStatus.mutateAsync({ id: created.id, status: 'done' });
+
+    await waitFor(() => expect(result.current.logs?.[0].status).toBe('done'));
+    expect(result.current.logs?.[0].completedAt).toBeDefined();
+    const doneCompletedAt = result.current.logs?.[0].completedAt;
+    expect(doneCompletedAt).toBeTruthy();
+
+    await result.current.updateStatus.mutateAsync({
+      id: created.id,
+      status: 'callback_pending',
+    });
+
+    await waitFor(() => expect(result.current.logs?.[0].status).toBe('callback_pending'));
+    expect(result.current.logs?.[0].completedAt).toBeUndefined();
+    expect(result.current.logs?.[0].callbackDueAt).toBe('2026-03-28T12:30:00.000Z');
   });
 
   /**

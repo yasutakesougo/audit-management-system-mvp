@@ -42,8 +42,10 @@
 - [ ] Self-review: コード品質、型安全性、エラーハンドリング確認
 - [ ] テスト: ローカル `npm run preflight` が通過
 - [ ] ドキュメント: 必要に応じて README / docs を更新
+- [ ] 既存の a11y/usability gate に影響がないことを確認した
 
 ### UI Changes
+- [ ] **a11y/usability checklist**: [docs/checklists/a11y-usability-rollout-checklist.md](docs/checklists/a11y-usability-rollout-checklist.md) を適用済み
 - [ ] **状態管理**: UIコンポーネントは状態を持ちすぎていない（hooksに逃がした）
 - [ ] **副作用の分離**: API/Storage/Telemetryがコンポーネントに漏れていない（adapter/clientへ）
 - [ ] **状態駆動**: 分岐は操作ではなく状態で表現されている
