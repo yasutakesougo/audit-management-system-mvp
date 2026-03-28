@@ -50,6 +50,7 @@ import type { QuickTemplate } from '../../domain/builders/scheduleQuickTemplates
 import type { OrgOption } from '../../hooks/useOrgOptions';
 import { useScheduleCreateForm } from '../../hooks/orchestrators/useScheduleCreateForm';
 import { useScheduleActionOrchestrator } from '../../hooks/orchestrators/useScheduleActionOrchestrator';
+import { useScheduleHydrationOrchestrator } from '../../hooks/orchestrators/useScheduleHydrationOrchestrator';
 import { SCHEDULE_STATUS_OPTIONS } from '../../statusMetadata';
 
 type ScheduleCreateDialogBaseProps = {
@@ -104,9 +105,27 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
     submitTestId,
     isSubmitting: externalIsSubmitting = false,
     isDeleting: externalIsDeleting = false,
+    initialDate,
+    initialStartTime,
+    initialEndTime,
+    defaultUser,
+    initialOverride,
   } = props;
 
-  // 1. Setup Orchestrator for Save & Delete flow
+  // 1. Setup Hydration Orchestrator
+  const hydration = useScheduleHydrationOrchestrator({
+    open,
+    mode,
+    eventId,
+    users,
+    defaultUser,
+    initialDate,
+    initialStartTime,
+    initialEndTime,
+    initialOverride,
+  });
+
+  // 2. Setup Orchestrator for Save & Delete flow
   const actionOrchestrator = useScheduleActionOrchestrator({
     mode,
     eventId,
@@ -118,6 +137,8 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
 
   const vm = useScheduleCreateForm({
     ...props,
+    initialFormState: hydration.initialFormState,
+    resolvedDefaultTitle: hydration.resolvedDefaultTitle,
     externalErrors: actionOrchestrator.saveErrors,
   });
 
