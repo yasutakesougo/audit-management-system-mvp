@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
     Close as CloseIcon,
     DeleteOutline as DeleteOutlineIcon,

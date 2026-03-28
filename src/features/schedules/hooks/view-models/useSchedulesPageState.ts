@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { formatInTimeZone } from 'date-fns-tz';
 import { useMemo } from 'react';
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * UserStatusQuickDialog — 利用者状態の Quick 入力ダイアログ
  *

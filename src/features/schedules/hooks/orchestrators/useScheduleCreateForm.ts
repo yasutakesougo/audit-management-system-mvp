@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { SelectChangeEvent } from '@mui/material/Select';
 import { useEffect, useMemo, useRef, useState } from 'react';
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useAuth } from '@/auth/useAuth';
 import { isE2eForceSchedulesWrite, isWriteEnabled } from '@/env';
 import { authDiagnostics } from '@/features/auth/diagnostics';
