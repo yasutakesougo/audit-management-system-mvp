@@ -9,7 +9,6 @@ import type {
 } from '../../data';
 import {
     buildAutoTitle,
-    createInitialScheduleFormState,
     type ScheduleFormState,
     type ScheduleUserOption,
 } from '../../domain/scheduleFormState';
@@ -22,15 +21,11 @@ export type UseScheduleCreateFormInput = {
   open: boolean;
   onClose: () => void;
   users: ScheduleUserOption[];
-  initialDate?: Date | string;
-  initialStartTime?: string;
-  initialEndTime?: string;
-  defaultUser?: ScheduleUserOption | null;
   mode: 'create' | 'edit';
-  eventId?: string;
-  initialOverride?: Partial<ScheduleFormState> | null;
   dialogTestId?: string;
   externalErrors?: string[];
+  initialFormState: ScheduleFormState;
+  resolvedDefaultTitle: string;
 };
 
 // ===== ViewModel =====
@@ -88,65 +83,19 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
     open,
     onClose,
     users,
-    initialDate,
-    initialStartTime,
-    initialEndTime,
-    defaultUser,
     mode,
-    eventId,
-    initialOverride,
     dialogTestId,
     externalErrors = [],
+    initialFormState,
+    resolvedDefaultTitle,
   } = input;
 
   const resolvedDialogTestId = dialogTestId ?? TESTIDS['schedule-create-dialog'];
   const headingId = `${resolvedDialogTestId}-heading`;
   const descriptionId = `${resolvedDialogTestId}-description`;
 
-  // ── Resolved default title ──────────────────────────────────────────────
-  const resolvedDefaultTitle = useMemo(() => {
-    if (initialOverride?.title?.trim()) return initialOverride.title;
-    const candidateUserId = initialOverride?.userId ?? defaultUser?.id;
-    const matchedUser = candidateUserId ? users.find((candidate: any) => candidate.id === candidateUserId) : undefined;
-    if (mode === 'edit') {
-      return matchedUser
-        ? buildAutoTitle({
-            userName: matchedUser.name,
-            serviceType: initialOverride?.serviceType ?? '',
-            assignedStaffId: initialOverride?.assignedStaffId ?? '',
-            vehicleId: initialOverride?.vehicleId ?? '',
-          })
-        : '';
-    }
-    return buildAutoTitle({
-      userName: matchedUser?.name ?? defaultUser?.name ?? undefined,
-      serviceType: initialOverride?.serviceType ?? '',
-      assignedStaffId: initialOverride?.assignedStaffId ?? '',
-      vehicleId: initialOverride?.vehicleId ?? '',
-    });
-  }, [
-    defaultUser?.id,
-    defaultUser?.name,
-    initialOverride?.title,
-    initialOverride?.userId,
-    initialOverride?.serviceType,
-    initialOverride?.assignedStaffId,
-    initialOverride?.vehicleId,
-    mode,
-    users
-  ]);
-
   // ── Core state ──────────────────────────────────────────────────────────
-  const [form, setForm] = useState<ScheduleFormState>(() =>
-    createInitialScheduleFormState({
-      initialDate,
-      initialStartTime,
-      initialEndTime,
-      defaultUserId: defaultUser?.id,
-      defaultTitle: resolvedDefaultTitle,
-      override: initialOverride ?? undefined
-    })
-  );
+  const [form, setForm] = useState<ScheduleFormState>(initialFormState);
   const [showFacilityGuide, setShowFacilityGuide] = useState(false);
 
   // ── Refs ─────────────────────────────────────────────────────────────────
@@ -220,22 +169,15 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
   // Reset form when dialog opens
   useEffect(() => {
     if (open) {
-      setForm((prev: any) => {
-        const next = createInitialScheduleFormState({
-          initialDate,
-          initialStartTime,
-          initialEndTime,
-          defaultUserId: defaultUser?.id,
-          defaultTitle: resolvedDefaultTitle,
-          override: initialOverride ?? undefined
-        });
+      setForm((prev: ScheduleFormState) => {
+        const next = { ...initialFormState };
         if (mode === 'create' && prev.title && prev.title.trim() && prev.title !== resolvedDefaultTitle) {
           next.title = prev.title;
         }
         return next;
       });
     }
-  }, [open, eventId, initialDate, initialStartTime, initialEndTime, defaultUser?.id, initialOverride, mode, resolvedDefaultTitle]);
+  }, [open, mode, initialFormState, resolvedDefaultTitle]);
 
   // Focus management on open/close
   useEffect(() => {
