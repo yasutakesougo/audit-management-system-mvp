@@ -40,6 +40,7 @@ import {
     Typography,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { useTheme } from '@mui/material/styles';
 import React from 'react';
 import type { NextActionWithProgress } from '../hooks/useNextAction';
 import type { SceneNextActionViewModel } from '../hooks/useSceneNextAction';
@@ -124,6 +125,9 @@ export type TodayBentoProps = {
 // ─── Compact Section Title ───────────────────────────────────
 
 function SectionLabel({ emoji, text }: { emoji: string; text: string }) {
+  const theme = useTheme();
+  const labelColor = theme.palette.mode === 'dark' ? theme.palette.grey[700] : theme.palette.text.secondary;
+
   return (
     <Typography
       variant="overline"
@@ -134,7 +138,7 @@ function SectionLabel({ emoji, text }: { emoji: string; text: string }) {
         mb: 1.5,
         fontWeight: 700,
         letterSpacing: '0.08em',
-        color: 'text.secondary',
+        color: labelColor,
         fontSize: '0.7rem',
       }}
     >

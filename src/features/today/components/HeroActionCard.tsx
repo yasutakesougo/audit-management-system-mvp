@@ -228,6 +228,16 @@ export const HeroActionCard: React.FC<HeroActionCardProps> = ({
           borderRadius: 2,
           px: 3,
           mt: 0.5,
+          ...(theme.palette.mode === 'light' &&
+            style.ctaVariant === 'outlined' &&
+            style.ctaColor === 'success' && {
+              color: theme.palette.success.dark,
+              borderColor: alpha(theme.palette.success.dark, 0.6),
+              '&:hover': {
+                borderColor: theme.palette.success.dark,
+                backgroundColor: alpha(theme.palette.success.dark, 0.04),
+              },
+            }),
           ...(style.pulse && {
             animation: 'hero-pulse 2s infinite',
             '@keyframes hero-pulse': {

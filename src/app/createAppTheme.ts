@@ -28,7 +28,7 @@ const fontSizeMap = {
  */
 const colorPresetMap = {
   default: {
-    primary: '#5B8C5A',      // Sage Green
+    primary: '#4E7E4D',      // Sage Green (WCAG AA compliant with white text)
     secondary: '#6B7280',    // Neutral Gray
   },
   highContrast: {
@@ -36,7 +36,7 @@ const colorPresetMap = {
     secondary: '#ffffff',    // White
   },
   custom: {
-    primary: '#5B8C5A',      // Placeholder - will be overridden in Phase 7.2 v2
+    primary: '#4E7E4D',      // Placeholder - will be overridden in Phase 7.2 v2
     secondary: '#6B7280',
   },
 } as const;

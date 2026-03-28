@@ -104,7 +104,7 @@ export const DataSourceBanner: React.FC = () => {
           sx={{
             fontSize: '0.75rem',
             fontWeight: 500,
-            color: 'text.secondary',
+            color: (theme) => (theme.palette.mode === 'dark' ? 'text.primary' : 'text.secondary'),
           }}
         >
           {message}
