@@ -117,7 +117,8 @@ describe('TableDailyRecordForm', () => {
   vi.setConfig({ testTimeout: 30000 });
 
   const mockSave = vi.fn().mockResolvedValue(undefined);
-  const mockRepository = { save: mockSave } as unknown as DailyRecordRepository;
+  const mockLoad = vi.fn().mockResolvedValue(null);
+  const mockRepository = { save: mockSave, load: mockLoad } as unknown as DailyRecordRepository;
 
   const defaultProps = {
     open: true,

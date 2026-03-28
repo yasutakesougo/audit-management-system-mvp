@@ -1,17 +1,15 @@
 import { useUsers } from '@/stores/useUsers';
 import type { User } from '@/types';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useHandoffNotesForTable } from '../../repositories/adapters/useHandoffNotesForTable';
 import type { TableDailyRecordFormStructured } from './tableDailyRecordFormTypes';
 import { useTableDailyRecordFiltering } from '../orchestrators/useTableDailyRecordFiltering';
-import type { DraftInput } from '../mutations/useTableDailyRecordPersistence';
-import { useTableDailyRecordPersistence } from '../mutations/useTableDailyRecordPersistence';
+import { useTableDailyRecordHydrationOrchestrator, createInitialFormData } from '../orchestrators/useTableDailyRecordHydrationOrchestrator';
 import { useTableDailyRecordSaveOrchestrator } from '../orchestrators/useTableDailyRecordSaveOrchestrator';
 import { useTableDailyRecordRouting } from '../orchestrators/useTableDailyRecordRouting';
 import { useTableDailyRecordRowHandlers } from '../orchestrators/useTableDailyRecordRowHandlers';
 import { useTableDailyRecordSelection } from '../orchestrators/useTableDailyRecordSelection';
-import { toLocalDateISO } from '@/utils/getNow';
 
 export type UserRowData = {
   userId: string;
@@ -100,6 +98,11 @@ export type UseTableDailyRecordFormResult = {
   /** 申し送り連携: データ読み込み中 */
   handoffLoading: boolean;
 
+  // ── Initialization state (Hydration Orchestrator) ──
+  hydrationLoading: boolean;
+  hydrated: boolean;
+  hydrationError: Error | null;
+
   // ── Structured sub-objects ─────────────────────────
   /**
    * 構造化アクセス: 責務別サブオブジェクト。
@@ -108,14 +111,6 @@ export type UseTableDailyRecordFormResult = {
    */
 } & TableDailyRecordFormStructured;
 
-const createInitialFormData = (initialDate?: string | null): TableDailyRecordData => ({
-  date: initialDate ?? toLocalDateISO(),
-  reporter: {
-    name: '',
-    role: '生活支援員',
-  },
-  userRows: [],
-});
 
 export const useTableDailyRecordForm = ({
   open,
@@ -126,21 +121,41 @@ export const useTableDailyRecordForm = ({
   // ── Routing ───────────────────────────────────────
   const { initialDateFromUrl, showUnsentOnly, setShowUnsentOnly } = useTableDailyRecordRouting(open);
 
-  // ── Core state ────────────────────────────────────
-  const [formData, setFormData] = useState<TableDailyRecordData>(() => createInitialFormData(initialDateFromUrl));
-
   const { data: users = [] } = useUsers();
 
-  // ── Persistence ───────────────────────────────────
-  const { draftSavedAt, loadedDraft, saveDraft, clearDraft } = useTableDailyRecordPersistence({ open });
+  // ── Hydration / Initialization Orchestrator ─────────
+  const {
+    formData,
+    setFormData,
+    searchQuery,
+    setSearchQuery,
+    showTodayOnly,
+    setShowTodayOnly,
+    loading: hydrationLoading,
+    hydrated,
+    error: hydrationError,
+    initialSelectedUserIds,
+    hasDraft,
+    draftSavedAt,
+    handleSaveDraft,
+    clearDraft,
+  } = useTableDailyRecordHydrationOrchestrator({
+    open,
+    initialDateFromUrl,
+    repository,
+  });
 
   // ── Filtering ─────────────────────────────────────
   const targetDate = useMemo(() => new Date(formData.date), [formData.date]);
   const {
     filteredUsers,
     attendanceFilteredUsers,
-    filters: { showTodayOnly, setShowTodayOnly, searchQuery, setSearchQuery },
-  } = useTableDailyRecordFiltering({ users, targetDate });
+  } = useTableDailyRecordFiltering({ 
+    users, 
+    targetDate,
+    showTodayOnly,
+    searchQuery,
+  });
 
   // ── Selection ─────────────────────────────────────
   const {
@@ -159,7 +174,7 @@ export const useTableDailyRecordForm = ({
     attendanceFilteredUsers,
     targetDate,
     users,
-    loadedDraftSelectedUserIds: loadedDraft?.selectedUserIds,
+    loadedDraftSelectedUserIds: initialSelectedUserIds,
   });
 
   // ── Handoff notes 連携 ─────────────────────────────
@@ -196,29 +211,6 @@ export const useTableDailyRecordForm = ({
     }
   }, [showUnsentOnly, unsentRowCount, setShowUnsentOnly]);
 
-  // Restore draft when loaded
-  useEffect(() => {
-    if (!loadedDraft) {
-      return;
-    }
-
-    setFormData(loadedDraft.formData);
-    setSearchQuery(loadedDraft.searchQuery);
-    setShowTodayOnly(loadedDraft.showTodayOnly);
-  }, [loadedDraft, setSearchQuery, setShowTodayOnly]);
-
-  // ── Actions ───────────────────────────────────────
-
-  const handleSaveDraft = useCallback(() => {
-    const input: DraftInput = {
-      formData,
-      selectedUserIds,
-      searchQuery,
-      showTodayOnly,
-    };
-    saveDraft(input);
-  }, [formData, selectedUserIds, searchQuery, showTodayOnly, saveDraft]);
-
   // ── Auto-save draft (debounced) ────────────────────
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -231,7 +223,7 @@ export const useTableDailyRecordForm = ({
     }
 
     autoSaveTimerRef.current = setTimeout(() => {
-      handleSaveDraft();
+      handleSaveDraft(selectedUserIds);
     }, 2000);
 
     return () => {
@@ -240,6 +232,12 @@ export const useTableDailyRecordForm = ({
       }
     };
   }, [formData, selectedUserIds, handleSaveDraft]);
+
+  // ── Actions ────────────────────────────────────────
+
+  const handleSaveDraftVoid = useCallback(() => {
+    handleSaveDraft(selectedUserIds);
+  }, [handleSaveDraft, selectedUserIds]);
 
   // ── Save Orchestrator ──────────────────────────────
   const handleSaveSuccess = useCallback(() => {
@@ -269,8 +267,6 @@ export const useTableDailyRecordForm = ({
 
   // ── Return ────────────────────────────────────────
 
-  const hasDraft = Boolean(draftSavedAt);
-
   return {
     // ── Flat fields (backward-compatible) ───────────
     formData,
@@ -295,7 +291,7 @@ export const useTableDailyRecordForm = ({
     unsentRowCount,
     hasDraft,
     draftSavedAt,
-    handleSaveDraft,
+    handleSaveDraft: handleSaveDraftVoid,
     handleSave,
     saving,
     validationErrors,
@@ -303,6 +299,9 @@ export const useTableDailyRecordForm = ({
     handoffAffectedUserCount,
     handoffTotalCount,
     handoffLoading,
+    hydrationLoading,
+    hydrated,
+    hydrationError,
 
     // ── Structured sub-objects ─────────────────────
     header: { formData, setFormData, validationErrors, clearValidationErrors },
@@ -317,12 +316,13 @@ export const useTableDailyRecordForm = ({
       handleBehaviorTagToggle, handleClearRow,
       visibleRows, showUnsentOnly, setShowUnsentOnly, unsentRowCount,
     },
-    draft: { hasDraft, draftSavedAt, handleSaveDraft },
+    draft: { hasDraft, draftSavedAt, handleSaveDraft: handleSaveDraftVoid },
     handoff: {
       affectedUserCount: handoffAffectedUserCount,
       totalCount: handoffTotalCount,
       loading: handoffLoading,
     },
     actions: { handleSave, saving },
+    initialization: { loading: hydrationLoading, hydrated, error: hydrationError },
   };
 };

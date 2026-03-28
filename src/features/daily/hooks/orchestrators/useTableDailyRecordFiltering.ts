@@ -1,5 +1,4 @@
-import { useMemo, useState } from 'react';
-import type { Dispatch, SetStateAction } from 'react';
+import { useMemo } from 'react';
 import type { User } from '@/types';
 import { filterActiveUsers } from '@/features/users/domain/userLifecycle';
 import { isUserScheduledForDate } from '@/utils/attendanceUtils';
@@ -17,22 +16,11 @@ export type StoreUser = User & {
 };
 
 /**
- * Filtering configuration
- */
-export type TableDailyRecordFilters = {
-  showTodayOnly: boolean;
-  setShowTodayOnly: Dispatch<SetStateAction<boolean>>;
-  searchQuery: string;
-  setSearchQuery: Dispatch<SetStateAction<string>>;
-};
-
-/**
  * Filtering result
  */
 export type TableDailyRecordFilteringResult = {
   filteredUsers: StoreUser[];
   attendanceFilteredUsers: StoreUser[];
-  filters: TableDailyRecordFilters;
 };
 
 /**
@@ -41,6 +29,8 @@ export type TableDailyRecordFilteringResult = {
 type UseTableDailyRecordFilteringParams = {
   users: StoreUser[];
   targetDate: Date;
+  searchQuery?: string;
+  showTodayOnly?: boolean;
 };
 
 /**
@@ -62,9 +52,9 @@ type UseTableDailyRecordFilteringParams = {
 export const useTableDailyRecordFiltering = ({
   users,
   targetDate,
+  searchQuery = '',
+  showTodayOnly = true,
 }: UseTableDailyRecordFilteringParams): TableDailyRecordFilteringResult => {
-  const [showTodayOnly, setShowTodayOnly] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
   const candidateUsers = useMemo(
     () => filterActiveUsers(users),
     [users],
@@ -122,11 +112,5 @@ export const useTableDailyRecordFiltering = ({
   return {
     filteredUsers,
     attendanceFilteredUsers,
-    filters: {
-      showTodayOnly,
-      setShowTodayOnly,
-      searchQuery,
-      setSearchQuery,
-    },
   };
 };

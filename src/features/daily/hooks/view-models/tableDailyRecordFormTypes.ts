@@ -93,6 +93,16 @@ export interface FormActions {
 }
 
 // ────────────────────────────────────────────────────────────
+// 7. Initialization — 初期化・データロード状態
+// ────────────────────────────────────────────────────────────
+
+export interface FormInitialization {
+  loading: boolean;
+  hydrated: boolean;
+  error: Error | null;
+}
+
+// ────────────────────────────────────────────────────────────
 // Composite — 全サブオブジェクトを持つ構造化リザルト
 // ────────────────────────────────────────────────────────────
 
@@ -103,4 +113,6 @@ export interface TableDailyRecordFormStructured {
   draft: FormDraft;
   handoff: FormHandoff;
   actions: FormActions;
+  initialization: FormInitialization;
 }
+
