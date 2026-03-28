@@ -14,7 +14,7 @@ import { act, renderHook } from '@testing-library/react';
 import { useRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { User } from '@/types';
+import type { StoreUser } from '@/stores/useUsers';
 import type { UseTableDailyRecordSelectionParams } from '../orchestrators/useTableDailyRecordSelection';
 import { useTableDailyRecordSelection } from '../orchestrators/useTableDailyRecordSelection';
 
@@ -26,16 +26,17 @@ vi.mock('@/utils/attendanceUtils', () => ({
 
 // ── Helpers ─────────────────────────────────────────
 
-const createUser = (id: string, name: string): User => ({
-  id: parseInt(id),
-  userId: id,
-  name,
-  attendanceDays: [],
-  toDays: [],
-  fromDays: [],
+const createUser = (id: string, name: string): StoreUser => ({
+  Id: parseInt(id, 10),
+  UserID: id,
+  FullName: name,
+  AttendanceDays: [],
+  TransportToDays: [],
+  TransportFromDays: [],
+  lifecycleStatus: 'active',
 });
 
-const USERS: User[] = [
+const USERS: StoreUser[] = [
   createUser('1', '田中太郎'),
   createUser('2', '佐藤花子'),
   createUser('3', '山田一郎'),
@@ -43,7 +44,7 @@ const USERS: User[] = [
 
 const TARGET_DATE = new Date('2026-03-03');
 
-const EMPTY_USERS: User[] = [];
+const EMPTY_USERS: StoreUser[] = [];
 const NULL_DRAFT: string[] | null = null;
 const EMPTY_DRAFT: string[] = [];
 const DRAFT_IDS: string[] = ['2', '3'];
@@ -189,7 +190,7 @@ describe('useTableDailyRecordSelection', () => {
       act(() => { result.current.handleUserToggle('3'); });
 
       expect(result.current.selectedUsers).toHaveLength(2);
-      expect(result.current.selectedUsers.map((u) => u.name)).toEqual([
+      expect(result.current.selectedUsers.map((u) => u.FullName)).toEqual([
         '田中太郎', '山田一郎',
       ]);
     });
@@ -209,7 +210,7 @@ describe('useTableDailyRecordSelection', () => {
 
       act(() => { result.current.setSelectedUserIds(['1', 'nonexistent']); });
       expect(result.current.selectedUsers).toHaveLength(1);
-      expect(result.current.selectedUsers[0].userId).toBe('1');
+      expect(result.current.selectedUsers[0].UserID).toBe('1');
     });
   });
 

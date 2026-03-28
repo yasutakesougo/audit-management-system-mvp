@@ -125,7 +125,7 @@ export interface TableDailyRecordViewModel {
     formData: TableDailyRecordData;
     targetDate: string;
     selectedUserIds: string[];
-    filteredUsers: User[];
+    filteredUsers: StoreUser[];
     visibleRows: UserRowData[];
     searchQuery: string;
     showTodayOnly: boolean;
@@ -181,7 +181,7 @@ export interface TableDailyRecordViewModel {
       onToggleShowToday: () => void;
       onSelectAll: () => void;
       onClearAll: () => void;
-      filteredUsers: User[];
+      filteredUsers: StoreUser[];
       selectedUserIds: string[];
       onUserToggle: (userId: string) => void;
     };

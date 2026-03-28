@@ -1,5 +1,5 @@
 import { useUsers } from '@/stores/useUsers';
-import type { User } from '@/types';
+import type { StoreUser } from '@/stores/useUsers';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useHandoffNotesForTable } from '../../repositories/adapters/useHandoffNotesForTable';
@@ -70,8 +70,8 @@ export type UseTableDailyRecordFormResult = {
   setSearchQuery: Dispatch<SetStateAction<string>>;
   showTodayOnly: boolean;
   setShowTodayOnly: Dispatch<SetStateAction<boolean>>;
-  filteredUsers: User[];
-  selectedUsers: User[];
+  filteredUsers: StoreUser[];
+  selectedUsers: StoreUser[];
   selectedUserIds: string[];
   handleUserToggle: (userId: string) => void;
   handleSelectAll: () => void;

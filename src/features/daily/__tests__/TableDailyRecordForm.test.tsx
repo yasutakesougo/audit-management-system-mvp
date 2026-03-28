@@ -18,26 +18,41 @@ vi.mock('react-hot-toast', () => ({
 // Mock useUsers hook
 const mockUsers = [
   {
-    id: 1,
-    userId: 'U001',
-    name: '田中 太郎',
-    furigana: 'たなか たろう',
-    attendanceDays: ['月', '水', '金'], // 月水金通所
+    Id: 1,
+    id: 1, // Legacy fallback
+    UserID: 'U001',
+    userId: 'U001', // Legacy fallback
+    FullName: '田中 太郎',
+    name: '田中 太郎', // Legacy fallback
+    Furigana: 'たなか たろう',
+    furigana: 'たなか たろう', // Legacy fallback
+    AttendanceDays: ['月', '水', '金'],
+    attendanceDays: ['月', '水', '金'], // Legacy fallback
     UsageStatus: '利用中',
   },
   {
+    Id: 2,
     id: 2,
+    UserID: 'U002',
     userId: 'U002',
+    FullName: '佐藤 花子',
     name: '佐藤 花子',
+    Furigana: 'さとう はなこ',
     furigana: 'さとう はなこ',
-    attendanceDays: ['火', '木'], // 火木通所
+    AttendanceDays: ['火', '木'],
+    attendanceDays: ['火', '木'],
     UsageStatus: '利用中',
   },
   {
+    Id: 3,
     id: 3,
+    UserID: 'U003',
     userId: 'U003',
+    FullName: '山田 一郎',
     name: '山田 一郎',
+    Furigana: 'やまだ いちろう',
     furigana: 'やまだ いちろう',
+    AttendanceDays: [],
     // attendanceDays未設定（毎日通所）
     UsageStatus: '利用中',
   }
