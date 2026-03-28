@@ -104,16 +104,29 @@ export const NextCallHero: React.FC<NextCallHeroProps> = ({
             px: 2.5,
             borderRadius: 2,
             border: '1px solid',
-            borderColor: 'success.light',
-            bgcolor: 'success.50',
+            borderColor: (theme) =>
+              theme.palette.mode === 'dark' ? 'success.main' : 'success.light',
+            bgcolor: (theme) =>
+              theme.palette.mode === 'dark' ? 'success.dark' : 'success.50',
           }}
         >
           <Typography sx={{ fontSize: 24 }}>✅</Typography>
           <Box>
-            <Typography variant="subtitle2" color="success.dark" fontWeight={700}>
+            <Typography
+              variant="subtitle2"
+              color={(theme) =>
+                theme.palette.mode === 'dark' ? 'success.contrastText' : 'success.dark'
+              }
+              fontWeight={700}
+            >
               すべて対応済み
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              color={(theme) =>
+                theme.palette.mode === 'dark' ? 'success.contrastText' : 'text.secondary'
+              }
+            >
               未対応の電話・連絡ログはありません
             </Typography>
           </Box>
@@ -211,6 +224,15 @@ export const NextCallHero: React.FC<NextCallHeroProps> = ({
             variant="contained"
             color="success"
             size="small"
+            sx={{
+              bgcolor: (theme) =>
+                theme.palette.mode === 'light' ? 'success.dark' : 'success.main',
+              color: 'success.contrastText',
+              '&:hover': {
+                bgcolor: (theme) =>
+                  theme.palette.mode === 'light' ? 'success.main' : 'success.dark',
+              },
+            }}
             startIcon={<CheckCircleOutlineIcon />}
             onClick={() => onMarkDone(log.id)}
             disabled={isUpdating}
