@@ -194,7 +194,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
               id={vm.errorSummaryId}
             >
               <ul style={{ paddingLeft: '1.25rem', margin: 0 }}>
-                {vm.errors.map((msg: any, index: any) => (
+                {vm.errors.map((msg, index) => (
                   <li key={index}>{msg}</li>
                 ))}
               </ul>

@@ -324,7 +324,7 @@ export default function HandoffTimelinePage() {
           initialStatusType={userStatusPreset.statusType}
           source="handoff"
           actions={userStatusActions}
-          onSuccess={(msg: any) => setUserStatusSuccessMsg(msg)}
+          onSuccess={(msg) => setUserStatusSuccessMsg(msg)}
         />
       )}
 

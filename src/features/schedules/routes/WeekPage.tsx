@@ -257,9 +257,9 @@ export default function WeekPage() {
           >
             <ScheduleFilterBar
               categoryFilter={categoryFilter}
-              onCategoryChange={(category: any) => route.setFilter({ category })}
+              onCategoryChange={(category) => route.setFilter({ category })}
               query={pageState.query}
-              onQueryChange={(q: any) => route.setFilter({ query: q })}
+              onQueryChange={(q) => route.setFilter({ query: q })}
               mode={mode as 'day' | 'week' | 'month' | 'org'}
               orgParam={orchestrator.orgParam}
               onOrgChange={handleOrgChange}
@@ -407,7 +407,7 @@ export default function WeekPage() {
           scheduleUserOptions={scheduleUserOptions}
           defaultScheduleUser={defaultScheduleUser ?? undefined}
           snack={snack}
-          onSnackClose={() => setSnack((s: any) => ({ ...s, open: false }))}
+          onSnackClose={() => setSnack((s) => ({ ...s, open: false }))}
           conflictOpen={conflictOpen}
           conflictDetailOpen={conflictDetailOpen}
           onOpenConflictDetail={() => setConflictDetailOpen(true)}
