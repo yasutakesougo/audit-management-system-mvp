@@ -50,7 +50,7 @@ export const CallLogUrgencyChip: React.FC<CallLogUrgencyChipProps> = ({
       label={label}
       color={color}
       size={size}
-      variant={urgency === 'urgent' ? 'filled' : 'outlined'}
+      variant={urgency === 'normal' ? 'outlined' : 'filled'}
       data-testid={`call-log-urgency-chip-${urgency}`}
     />
   );

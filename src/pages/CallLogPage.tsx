@@ -287,6 +287,7 @@ export const CallLogPage: React.FC = () => {
       <PageHeader
         title="電話・連絡ログ"
         subtitle="受電・伝言の受付と対応管理"
+        subtitleColor="text.secondary"
         icon={<PhoneIcon />}
         headingId="call-log-page-heading"
         actions={
@@ -338,7 +339,15 @@ export const CallLogPage: React.FC = () => {
         value={activeTab}
         onChange={handleTabChange}
         aria-label="電話ログ表示フィルタ"
-        sx={{ mb: 2 }}
+        sx={{
+          mb: 2,
+          '& .MuiTab-root': {
+            color: 'text.secondary',
+          },
+          '& .MuiTab-root.Mui-selected': {
+            color: 'text.primary',
+          },
+        }}
         data-testid="call-log-tabs"
       >
         {TABS.map((tab) => (
