@@ -13,7 +13,7 @@ export {
 export { default as DayView } from './routes/DayView';
 export { default as DevScheduleCreateDialogPage } from './routes/DevScheduleCreateDialogPage';
 export { default as MonthPage } from './routes/MonthPage';
-export { default as ScheduleCreateDialog } from './routes/ScheduleCreateDialog';
+export { default as ScheduleCreateDialog } from './components/dialogs/ScheduleCreateDialog';
 export { default as WeekPage } from './routes/WeekPage';
 export { default as WeekView } from './routes/WeekView';
 

@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import type { ScheduleItemForTemplate } from '../scheduleQuickTemplates';
+import type { ScheduleItemForTemplate } from '../../builders/scheduleQuickTemplates';
 import { countRemainingGaps, findNextGap } from '../scheduleNextGap';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────

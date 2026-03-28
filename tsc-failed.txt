@@ -1,5 +1,0 @@
-tests/unit/features/ops-dashboard/hooks/useOpsMetrics.spec.tsx(49,33): error TS2339: Property 'id' does not exist on type 'SuggestionAction'.
-tests/unit/features/ops-dashboard/hooks/useOpsMetrics.spec.tsx(50,33): error TS2339: Property 'id' does not exist on type 'SuggestionAction'.
-tests/unit/features/safety/hooks/useSafetyOperationsSummary.spec.tsx(25,18): error TS2353: Object literal may only specify known properties, and 'date' does not exist in type 'IncidentRecord'.
-tests/unit/features/safety/hooks/useSafetyOperationsSummary.spec.tsx(28,49): error TS2322: Type '"霄ｫ菴捺鋸譚・' is not assignable to type '"縺昴・莉・ | "霆翫＞縺吝崋螳壹・繝ｫ繝・ | "繝吶ャ繝画涎縺ｫ繧医ｋ陦悟虚蛻ｶ髯・ | "螻・ｮ､譁ｽ骭" | "縺､縺ｪ縺取恪逹逕ｨ" | "繝溘ヨ繝ｳ蝙区焔陲狗捩逕ｨ" | "謇区欠縺ｮ讖溯・蛻ｶ髯・ | "遶九■荳翫′繧頑椛蛻ｶ・・蟄怜梛謚大宛蟶ｯ遲会ｼ・ | "莉玖ｭｷ陦｣逹逕ｨ" | "蜷醍ｲｾ逾櫁脈縺ｫ繧医ｋ陦悟虚蛻ｶ髯・'.
-tests/unit/features/safety/hooks/useSafetyOperationsSummary.spec.tsx(77,49): error TS2322: Type '"霄ｫ菴捺鋸譚・' is not assignable to type '"縺昴・莉・ | "霆翫＞縺吝崋螳壹・繝ｫ繝・ | "繝吶ャ繝画涎縺ｫ繧医ｋ陦悟虚蛻ｶ髯・ | "螻・ｮ､譁ｽ骭" | "縺､縺ｪ縺取恪逹逕ｨ" | "繝溘ヨ繝ｳ蝙区焔陲狗捩逕ｨ" | "謇区欠縺ｮ讖溯・蛻ｶ髯・ | "遶九■荳翫′繧頑椛蛻ｶ・・蟄怜梛謚大宛蟶ｯ遲会ｼ・ | "莉玖ｭｷ陦｣逹逕ｨ" | "蜷醍ｲｾ逾櫁脈縺ｫ繧医ｋ陦悟虚蛻ｶ髯・'.
