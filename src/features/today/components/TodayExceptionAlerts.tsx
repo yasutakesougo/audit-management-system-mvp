@@ -1,7 +1,8 @@
 import { BentoCard } from '@/components/ui/BentoGrid';
 import type { UseTodayExceptionsResult } from '@/features/today/hooks/useTodayExceptions';
 import { useExceptionPreferences } from '@/features/exceptions/hooks/useExceptionPreferences';
-import { Alert, AlertTitle, Box, Button, Typography } from '@mui/material';
+import { buildExceptionCenterDeepLinkPath } from '@/features/exceptions/domain/exceptionCenterDeepLink';
+import { Alert, AlertTitle, Box, Button, Chip, Typography } from '@mui/material';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -61,6 +62,14 @@ export const TodayExceptionAlerts: React.FC<TodayExceptionAlertsProps> = ({
     : [exceptionsQueue.heroItem, ...exceptionsQueue.queueItems].filter(
         (item): item is NonNullable<typeof item> => Boolean(item),
       );
+  const topPriorityItemId = exceptionsQueue.topPriorityItem?.id;
+  const handlePriorityChipClick = (item: NonNullable<typeof listItems[number]>) => {
+    navigate(buildExceptionCenterDeepLinkPath({
+      category: item.kind,
+      userId: item.userId ?? null,
+      source: 'today',
+    }));
+  };
 
   return (
     <>
@@ -106,6 +115,7 @@ export const TodayExceptionAlerts: React.FC<TodayExceptionAlertsProps> = ({
               <Alert
                 key={item.id}
                 severity={item.priority === 'high' ? 'warning' : 'info'}
+                data-testid={`today-exception-alert-${item.id}`}
                 action={
                   <Box sx={{ display: 'flex', gap: 1 }}>
                     {item.stableId && (
@@ -124,7 +134,20 @@ export const TodayExceptionAlerts: React.FC<TodayExceptionAlertsProps> = ({
                   </Box>
                 }
               >
-                {item.title}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  {topPriorityItemId === item.id && (
+                    <Chip
+                      label="司令塔優先"
+                      size="small"
+                      color="warning"
+                      variant="outlined"
+                      data-testid={`today-exception-priority-chip-${item.id}`}
+                      onClick={() => handlePriorityChipClick(item)}
+                      sx={{ cursor: 'pointer' }}
+                    />
+                  )}
+                  <span>{item.title}</span>
+                </Box>
               </Alert>
             ))}
           </Box>

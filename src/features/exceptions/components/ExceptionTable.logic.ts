@@ -33,6 +33,11 @@ export const SEVERITY_ORDER: Record<ExceptionSeverity, number> = {
   low: 4,
 };
 
+function getRowStableId(row: ExceptionDisplayRow): string {
+  if (row.kind === 'item') return row.item.id;
+  return row.representative.id;
+}
+
 export function getExceptionSortDate(item: ExceptionItem): number {
   const dateStr = item.targetDate ?? item.updatedAt;
   if (!dateStr) return 0;
@@ -149,7 +154,10 @@ export function sortFlatItemsByPriority(items: ExceptionItem[]): ExceptionItem[]
       SEVERITY_ORDER[a.representative.severity] -
       SEVERITY_ORDER[b.representative.severity];
     if (repSeverityDiff !== 0) return repSeverityDiff;
-    return getExceptionSortDate(b.representative) - getExceptionSortDate(a.representative);
+    const dateDiff =
+      getExceptionSortDate(b.representative) - getExceptionSortDate(a.representative);
+    if (dateDiff !== 0) return dateDiff;
+    return a.representative.id.localeCompare(b.representative.id);
   });
 
   return groups.flatMap((group) => group.items);
@@ -253,7 +261,8 @@ export function buildDisplayRows({
       const severityDiff =
         SEVERITY_ORDER[a.sortSeverity] - SEVERITY_ORDER[b.sortSeverity];
       if (severityDiff !== 0) return severityDiff;
-      return b.sortDate - a.sortDate;
+      if (a.sortDate !== b.sortDate) return b.sortDate - a.sortDate;
+      return getRowStableId(a).localeCompare(getRowStableId(b));
     });
   }
 
