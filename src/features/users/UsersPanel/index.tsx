@@ -12,7 +12,7 @@
 import { useAdminOverride } from '@/auth/useAdminOverride';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { TESTIDS } from '@/testids';
-import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
+import BlockRoundedIcon from '@mui/icons-material/BlockRounded';
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import LockOpenRoundedIcon from '@mui/icons-material/LockOpenRounded';
@@ -85,9 +85,18 @@ const UsersPanel = () => {
   const [pinValue, setPinValue] = useState('');
   const [pinError, setPinError] = useState(false);
 
+  const blurActiveElement = () => {
+    if (typeof document === 'undefined') return;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement) {
+      active.blur();
+    }
+  };
+
   const handlePinSubmit = () => {
     const ok = requestOverride(pinValue);
     if (ok) {
+      blurActiveElement();
       setPinDialogOpen(false);
       setPinValue('');
       setPinError(false);
@@ -97,6 +106,7 @@ const UsersPanel = () => {
   };
 
   const handlePinDialogClose = () => {
+    blurActiveElement();
     setPinDialogOpen(false);
     setPinValue('');
     setPinError(false);
@@ -188,7 +198,10 @@ const UsersPanel = () => {
                     color="warning"
                     size="small"
                     startIcon={<EditRoundedIcon />}
-                    onClick={() => setPinDialogOpen(true)}
+                    onClick={() => {
+                      blurActiveElement();
+                      setPinDialogOpen(true);
+                    }}
                     sx={{ textTransform: 'none' }}
                   >
                     編集モードに切り替え（管理者承認が必要）
@@ -230,7 +243,7 @@ const UsersPanel = () => {
         disableEnforceFocus={false}
         disableRestoreFocus={false}
       >
-        <DialogContent sx={{ p: 0 }}>
+        <DialogContent sx={{ p: 0 }} data-users-form-dialog-content="true">
           <UserForm
             mode="create"
             onSuccess={handleCreateFormSuccess}
@@ -249,7 +262,7 @@ const UsersPanel = () => {
         disableEnforceFocus={false}
         disableRestoreFocus={false}
       >
-        <DialogContent sx={{ p: 0 }}>
+        <DialogContent sx={{ p: 0 }} data-users-form-dialog-content="true">
           <UserForm
             user={selectedUser || undefined}
             mode="update"
@@ -278,6 +291,7 @@ const UsersPanel = () => {
             承認後 30 分間、編集・新規登録が可能になります。
           </Typography>
           <TextField
+            id="users-panel-admin-pin"
             autoFocus
             fullWidth
             label="管理者 PIN"
@@ -310,16 +324,16 @@ const UsersPanel = () => {
         </DialogActions>
       </Dialog>
 
-      {/* 削除確認ダイアログ */}
+      {/* 契約終了確認ダイアログ */}
       <Dialog
         open={deleteTarget !== null}
         onClose={cancelDelete}
         maxWidth="xs"
         fullWidth
-        aria-labelledby="delete-confirm-title"
+        aria-labelledby="terminate-confirm-title"
       >
         <DialogTitle
-          id="delete-confirm-title"
+          id="terminate-confirm-title"
           sx={{
             pb: 1,
             display: 'flex',
@@ -327,18 +341,18 @@ const UsersPanel = () => {
             gap: 1,
           }}
         >
-          <DeleteRoundedIcon color="error" />
+          <BlockRoundedIcon color="warning" />
           <Typography variant="h6" component="span">
-            利用者の削除
+            契約終了
           </Typography>
         </DialogTitle>
         <DialogContent>
           <Typography variant="body1" sx={{ mb: 1 }}>
-            <strong>「{deleteTarget?.userName}」</strong>を削除しますか？
+            <strong>「{deleteTarget?.userName}」</strong>を契約終了にしますか？
           </Typography>
           <Alert severity="warning" variant="outlined" sx={{ mt: 1.5 }}>
             <Typography variant="body2">
-              この操作は元に戻せません。関連するサービス記録や個別支援計画のデータには影響しませんが、利用者一覧から完全に削除されます。
+              利用者データは削除されません。利用ステータスが「契約終了」になり、編集と実行導線から除外されます。
             </Typography>
           </Alert>
         </DialogContent>
@@ -349,10 +363,10 @@ const UsersPanel = () => {
           <Button
             onClick={confirmDelete}
             variant="contained"
-            color="error"
-            startIcon={<DeleteRoundedIcon />}
+            color="warning"
+            startIcon={<BlockRoundedIcon />}
           >
-            削除する
+            契約終了にする
           </Button>
         </DialogActions>
       </Dialog>

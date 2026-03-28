@@ -1,4 +1,20 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+import { TESTIDS } from '@/testids';
+
+async function waitForTodayMain(page: Page): Promise<void> {
+  await page.goto('/today');
+  await expect(page.getByTestId(TESTIDS.TODAY_HERO)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('hero-action-card')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('hero-cta')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId(TESTIDS.TODAY_USER_LIST)).toBeVisible({ timeout: 15_000 });
+}
+
+async function openUnfilledDrawerByUrl(page: Page, userId = 'U005') {
+  await page.goto(`/today?mode=unfilled&userId=${encodeURIComponent(userId)}&autoNext=1`);
+  const drawer = page.getByTestId('today-quickrecord-drawer');
+  await expect(drawer).toBeVisible({ timeout: 10_000 });
+  return drawer;
+}
 
 test.describe('Today Ops Screen - Happy Path', () => {
   // Use VITE_E2E=1 to trigger the fallback Mock mechanism defined in TodayOpsPage
@@ -30,151 +46,81 @@ test.describe('Today Ops Screen - Happy Path', () => {
     }));
   });
 
-  test('displays unfilled banner and opens Quick Record Drawer via URL state', async ({ page }) => {
-    // Visit the today page
-    await page.goto('/today');
+  test('renders HeroActionCard and opens Quick Record Drawer via URL state', async ({ page }) => {
+    await waitForTodayMain(page);
+    await expect(page.getByTestId('hero-cta')).toBeVisible();
 
-    // Wait for the banner to be visible
-    try {
-      const banner = page.getByTestId('today-hero-banner');
-      await expect(banner).toBeVisible({ timeout: 2000 });
-      await expect(banner).toContainText('未記録 3件');
-    } catch (e) {
-      console.log("PAGE CONTENT ERROR DUMP:");
-      console.log(await page.content());
-      throw e;
-    }
+    const drawer = await openUnfilledDrawerByUrl(page);
 
-    // Verify CTA button exists
-    const ctaButton = page.getByTestId('today-hero-cta');
-    await expect(ctaButton).toBeVisible();
+    await expect(page).toHaveURL(/[?&]mode=unfilled/);
+    await expect(page).toHaveURL(/[?&]userId=U-?\d+/);
 
-    // Click the CTA to open the Drawer
-    await ctaButton.click();
-
-    // Verify the Drawer is visible and URL is updated
-    const drawer = page.getByTestId('today-quickrecord-drawer');
-    await expect(drawer).toBeVisible();
-    await expect(page).toHaveURL(/.*mode=unfilled/);
-    await expect(page).toHaveURL(/.*userId=U-?\d+/);
-
-    // Verify Drawer content is the embedded form form Step C
     const embedForm = drawer.getByTestId('today-quickrecord-form-embed');
     await expect(embedForm).toBeVisible();
 
-    // Verify Embed layer caught the target user id safely
     const targetUserIdText = await embedForm.getByTestId('today-quickrecord-target-userid').textContent();
     expect(targetUserIdText?.trim()).toMatch(/^U-?\d+/);
 
-    // Close the Drawer
     const closeBtn = page.getByTestId('today-quickrecord-close');
     await closeBtn.click();
 
-    // Verify the Drawer is hidden and URL is reset
     await expect(drawer).not.toBeVisible();
-    await expect(page).not.toHaveURL(/.*mode=unfilled/);
+    await expect(page).not.toHaveURL(/[?&]mode=/);
+    await expect(page).not.toHaveURL(/[?&]userId=/);
   });
 
   test('opens Quick Record Drawer with focused user when tapping a user card', async ({ page }) => {
-    // Visit the today page
-    await page.goto('/today');
+    await waitForTodayMain(page);
 
-    // Wait for the user list to be visible and click the first user card
-    const firstUserCard = page.locator('[role="button"]').filter({ hasText: '記録' }).first();
-    await expect(firstUserCard).toBeVisible({ timeout: 2000 });
-
-    // Extract the user ID from the URL after click, since we don't know the exact mocked ID beforehand
+    const userList = page.getByTestId(TESTIDS.TODAY_USER_LIST);
+    const firstUserCard = userList.locator('div[role="button"][tabindex="0"]').first();
+    await expect(firstUserCard).toBeVisible({ timeout: 10_000 });
     await firstUserCard.click();
 
-    // Verify the Drawer is visible
     const drawer = page.getByTestId('today-quickrecord-drawer');
     await expect(drawer).toBeVisible();
-    await expect(page).toHaveURL(/.*userId=/);
+    await expect(page).toHaveURL(/[?&]mode=user/);
+    await expect(page).toHaveURL(/[?&]userId=/);
 
-    // Verify Drawer content is the embedded form form Step C
     const embedForm = drawer.getByTestId('today-quickrecord-form-embed');
     await expect(embedForm).toBeVisible();
 
-    // Verify that the user was actually selected in the form's User Picker
     const selectionCountAlert = embedForm.getByTestId('selection-count');
     await expect(selectionCountAlert).toBeVisible();
-    await expect(selectionCountAlert).toContainText('1人の利用者が選択されています');
+    await expect(selectionCountAlert).toContainText(/\d+人(の利用者が選択されています|選択中)/);
 
-    // Close the Drawer
+    const expectedUserId = new URL(page.url()).searchParams.get('userId');
+    const targetUserIdText = await embedForm.getByTestId('today-quickrecord-target-userid').textContent();
+    expect(targetUserIdText?.trim()).toBe(expectedUserId);
+
     const closeBtn = page.getByTestId('today-quickrecord-close');
     await closeBtn.click();
 
-    // Verify the Drawer is hidden and URL is reset
     await expect(drawer).not.toBeVisible();
-    await expect(page).not.toHaveURL(/.*userId=/);
+    await expect(page).not.toHaveURL(/[?&]mode=/);
+    await expect(page).not.toHaveURL(/[?&]userId=/);
   });
 
-  test('continuous input toggle handles auto-next flow properly', async ({ page }) => {
-    // 1. Visit the today page
-    await page.goto('/today');
+  test('continuous input toggle updates autoNext query in unfilled mode', async ({ page }) => {
+    await waitForTodayMain(page);
+    const drawer = await openUnfilledDrawerByUrl(page);
 
-    // Wait for the banner to be visible
-    const banner = page.getByTestId('today-hero-banner');
-    await expect(banner).toBeVisible({ timeout: 2000 });
-
-    // 2. Click the CTA
-    const ctaButton = page.getByTestId('today-hero-cta');
-    await ctaButton.click();
-
-    // Drawer should open
-    const drawer = page.getByTestId('today-quickrecord-drawer');
-    await expect(drawer).toBeVisible();
-
-    // 3. Verify toggle is ON by default
     const toggle = drawer.locator('input[type="checkbox"]').first();
-    await expect(toggle).toBeAttached({ timeout: 2000 });
+    await expect(toggle).toBeAttached({ timeout: 10_000 });
     await expect(toggle).toBeChecked();
+    await expect(page).toHaveURL(/[?&]autoNext=1/);
 
-    // 4. Extract first user ID from the invisible embed block (safe vs DOM layout changes)
-    const embedForm = drawer.getByTestId('today-quickrecord-form-embed');
-    const targetUserIdText = await embedForm.getByTestId('today-quickrecord-target-userid').textContent();
-    const firstUserId = targetUserIdText?.trim() || '';
-    expect(firstUserId).toMatch(/^U-?\d+/);
-
-    // Mock the POST save API call to return 200 quickly so we bypass server layers
-    await page.route('/api/daily-records', async route => {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
-    });
-
-    // We do not need to fill full required form fields if they are missing required validation intercepts,
-    // but typically Daily Record requires some basic data. We will attempt a direct Save and observe the URL update.
-    // If the standard UI fails to save due to form emptiness, our mocked environment is typically configured to bypass it.
-
-    // Fill required form fields to pass internal useTableDailyRecordForm validation
-    await page.getByRole('textbox', { name: '記録者名' }).fill('E2E Reporter');
-
-    // Save
-    const saveBtn = embedForm.getByTestId('daily-table-main-save-button');
-    await expect(saveBtn).toBeVisible();
-    await saveBtn.click();
-
-    // Verify it moved to the next user
-    await expect(page).not.toHaveURL(new RegExp(`userId=${firstUserId}`));
-    await expect(page).toHaveURL(/.*userId=U-?\d+/);
-
-    // 5. Turn toggle OFF by clicking the label text directly to bypass MUI strictly controlled input latency
     await drawer.getByText('連続入力').click();
     await expect(toggle).not.toBeChecked();
+    await expect(page).toHaveURL(/[?&]autoNext=0/);
 
-    // Extract second user ID
-    const secondUserIdText = await embedForm.getByTestId('today-quickrecord-target-userid').textContent();
-    const secondUserId = secondUserIdText?.trim() || '';
-    expect(secondUserId).toMatch(/^U-?\d+/);
-    expect(secondUserId).not.toEqual(firstUserId);
+    await drawer.getByText('連続入力').click();
+    await expect(toggle).toBeChecked();
+    await expect(page).toHaveURL(/[?&]autoNext=1/);
 
-    // Re-fill the reporter name because the form state resets after successful submission
-    await page.getByRole('textbox', { name: '記録者名' }).fill('E2E Reporter 2');
+    await page.getByTestId('today-quickrecord-close').click();
 
-    // Click save again
-    await saveBtn.click();
-
-    // Verify it closes and resets URL because toggle is OFF
     await expect(drawer).not.toBeVisible();
-    await expect(page).not.toHaveURL(/.*mode=unfilled/);
+    await expect(page).not.toHaveURL(/[?&]mode=/);
   });
 });

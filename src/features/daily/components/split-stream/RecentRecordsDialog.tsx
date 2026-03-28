@@ -4,7 +4,7 @@
  * TimeBasedSupportRecordPage から抽出 (#766)
  */
 import type { ABCRecord } from '@/domain/behavior';
-import { AppliedStrategiesBadges } from '@/features/daily/components/sections/AppliedStrategiesBadges';
+import { AppliedStrategiesBadges } from '@/features/daily/components/AppliedStrategiesBadges';
 import CloseIcon from '@mui/icons-material/Close';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';

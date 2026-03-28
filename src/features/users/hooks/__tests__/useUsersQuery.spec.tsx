@@ -35,6 +35,7 @@ describe('useUsersQuery', () => {
     getById: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    terminate: vi.fn(),
     remove: vi.fn(),
   };
 

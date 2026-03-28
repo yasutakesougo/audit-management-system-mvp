@@ -3,8 +3,8 @@ import { useSP } from '@/lib/spClient';
 import { formatInTimeZone } from '@/lib/tz';
 import { useSchedules } from '@/stores/useSchedules';
 import { useStaff } from '@/stores/useStaff';
-import { useUsers } from '@/stores/useUsers';
-import type { Staff, User } from '@/types';
+import { useUsers, type StoreUser } from '@/stores/useUsers';
+import type { Staff } from '@/types';
 import { formatRangeLocal } from '@/utils/datetime';
 import { getNow } from '@/utils/getNow';
 import { addMinutes, differenceInCalendarDays, differenceInMinutes, isBefore } from 'date-fns';
@@ -91,7 +91,7 @@ export type OperationHubData = {
   mobileTasks: MobileTask[];
   unassignedSchedules: Schedule[];
   staff: Staff[];
-  users: User[];
+  users: StoreUser[];
   refresh: () => Promise<void>;
 };
 
@@ -128,19 +128,19 @@ const sumStaffHours = (schedules: Schedule[]): number => {
   return totalHours;
 };
 
-const findExpiringUsers = (users: User[], reference: Date): AlertItem[] => {
+const findExpiringUsers = (users: StoreUser[], reference: Date): AlertItem[] => {
   const items: AlertItem[] = [];
   for (const user of users) {
-    const expiry = user.certExpiry ? parseIso(`${user.certExpiry}T00:00:00Z`) : null;
+    const expiry = user.RecipientCertExpiry ? parseIso(`${user.RecipientCertExpiry}T00:00:00Z`) : null;
     if (!expiry) continue;
     const days = differenceInCalendarDays(expiry, reference);
     if (days < 0) continue;
     if (days <= 30) {
       const dateLabel = formatInTimeZone(expiry, TIME_ZONE, 'M月d日');
       items.push({
-        id: `cert-${user.id}`,
+        id: `cert-${user.Id}`,
         tone: days <= 7 ? 'error' : 'warning',
-        message: `利用者${user.name || `#${user.userId}`}の受給者証が${dateLabel}に期限切れです。`,
+        message: `利用者${user.FullName || `#${user.UserID}`}の受給者証が${dateLabel}に期限切れです。`,
       });
     }
   }

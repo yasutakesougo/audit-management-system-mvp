@@ -76,7 +76,7 @@ import {
     getDailyRecordRepository,
     overrideDailyRecordRepository,
     resetDailyRecordRepository,
-} from '@/features/daily/repositories/repositoryFactory';
+} from '@/features/daily/repositoryFactory';
 
 import {
     getCurrentScheduleRepositoryKind,

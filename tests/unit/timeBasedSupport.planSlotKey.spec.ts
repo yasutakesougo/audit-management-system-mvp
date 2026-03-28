@@ -1,5 +1,5 @@
 import type { ABCRecord } from '@/domain/behavior';
-import { getScheduleKey } from '@/features/daily/domain/builders/getScheduleKey';
+import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';

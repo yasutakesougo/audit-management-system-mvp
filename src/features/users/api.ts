@@ -38,6 +38,11 @@ export function useUsersApi() {
       return repo.update(id, patch);
     },
 
+    terminateUser: async (id: number): Promise<IUserMaster> => {
+      return repo.terminate(id);
+    },
+
+    /** @deprecated Hard delete (recycle) is for admin maintenance paths only. */
     deleteUser: async (id: number): Promise<void> => {
       return repo.remove(id);
     },

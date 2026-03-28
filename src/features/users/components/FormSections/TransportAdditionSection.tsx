@@ -11,7 +11,6 @@ import {
     Box,
     Checkbox,
     FormControlLabel,
-    MenuItem,
     TextField,
     Typography,
 } from '@mui/material';
@@ -31,12 +30,18 @@ type Props = FormSectionProps & {
 };
 
 export function TransportAdditionSection({
+  formIdPrefix,
   values,
   errors,
   setField,
   setScheduleDay,
   handleSupportTargetToggle,
 }: Props) {
+  const nativeSelectFieldSx = {
+    '& .MuiInputBase-input': { lineHeight: 1.4 },
+    '& .MuiNativeSelect-select': { minHeight: '1.4375em' },
+  } as const;
+
   return (
     <>
       {/* 送迎・通所情報 — 曜日×往復グリッド */}
@@ -50,6 +55,8 @@ export function TransportAdditionSection({
         </Typography>
 
         <TextField
+          id={`${formIdPrefix}-transport-course`}
+          name="TransportCourse"
           fullWidth
           label="送迎固定コース"
           select
@@ -57,12 +64,14 @@ export function TransportAdditionSection({
           value={values.TransportCourse}
           onChange={(event) => setField('TransportCourse', event.target.value)}
           helperText="未設定可。設定すると配車表のコース補完で優先されます。"
-          sx={{ mb: 2 }}
+          sx={{ mb: 2, ...nativeSelectFieldSx }}
+          InputLabelProps={{ shrink: true }}
+          SelectProps={{ native: true }}
         >
           {TRANSPORT_COURSE_OPTIONS.map((opt) => (
-            <MenuItem key={opt.value || 'unset'} value={opt.value}>
+            <option key={opt.value || 'unset'} value={opt.value}>
               {opt.label}
-            </MenuItem>
+            </option>
           ))}
         </TextField>
 
@@ -111,35 +120,41 @@ export function TransportAdditionSection({
                   </Box>
                   <td>
                     <TextField
+                      id={`${formIdPrefix}-transport-to-${day.value}`}
+                      name={`TransportTo_${day.value}`}
                       fullWidth
                       select
                       size="small"
                       variant="standard"
                       value={entry.to}
                       onChange={(e) => setScheduleDay(day.value, 'to', e.target.value)}
-                      sx={{ minWidth: 120 }}
+                      sx={{ minWidth: 120, ...nativeSelectFieldSx }}
+                      SelectProps={{ native: true }}
                     >
                       {TRANSPORT_METHOD_OPTIONS.map((opt) => (
-                        <MenuItem key={opt.value} value={opt.value}>
+                        <option key={opt.value} value={opt.value}>
                           {opt.label}
-                        </MenuItem>
+                        </option>
                       ))}
                     </TextField>
                   </td>
                   <td>
                     <TextField
+                      id={`${formIdPrefix}-transport-from-${day.value}`}
+                      name={`TransportFrom_${day.value}`}
                       fullWidth
                       select
                       size="small"
                       variant="standard"
                       value={entry.from}
                       onChange={(e) => setScheduleDay(day.value, 'from', e.target.value)}
-                      sx={{ minWidth: 120 }}
+                      sx={{ minWidth: 120, ...nativeSelectFieldSx }}
+                      SelectProps={{ native: true }}
                     >
                       {TRANSPORT_METHOD_OPTIONS.map((opt) => (
-                        <MenuItem key={opt.value} value={opt.value}>
+                        <option key={opt.value} value={opt.value}>
                           {opt.label}
-                        </MenuItem>
+                        </option>
                       ))}
                     </TextField>
                   </td>
@@ -168,6 +183,8 @@ export function TransportAdditionSection({
           <FormControlLabel
             control={
               <Checkbox
+                id={`${formIdPrefix}-high-intensity-support-target`}
+                name="IsHighIntensitySupportTarget"
                 checked={values.IsHighIntensitySupportTarget}
                 onChange={handleSupportTargetToggle}
               />
@@ -178,6 +195,8 @@ export function TransportAdditionSection({
           <FormControlLabel
             control={
               <Checkbox
+                id={`${formIdPrefix}-is-active`}
+                name="IsActive"
                 checked={values.IsActive}
                 onChange={(event) => setField('IsActive', event.target.checked)}
               />
@@ -192,6 +211,8 @@ export function TransportAdditionSection({
           </Typography>
 
           <TextField
+            id={`${formIdPrefix}-transport-addition-type`}
+            name="TransportAdditionType"
             fullWidth
             label="送迎加算区分"
             select
@@ -200,41 +221,54 @@ export function TransportAdditionSection({
             onChange={(event) => setField('TransportAdditionType', event.target.value)}
             error={Boolean(errors.transportAddition)}
             helperText={errors.transportAddition || "送迎加算の請求区分（往復／片道／なし）"}
+            sx={nativeSelectFieldSx}
+            InputLabelProps={{ shrink: true }}
+            SelectProps={{ native: true }}
           >
             {TRANSPORT_ADDITION_OPTIONS.map((opt) => (
-              <MenuItem key={opt.value} value={opt.value}>
+              <option key={opt.value} value={opt.value}>
                 {opt.label}
-              </MenuItem>
+              </option>
             ))}
           </TextField>
 
           <TextField
+            id={`${formIdPrefix}-meal-addition`}
+            name="MealAddition"
             fullWidth
             label="食事提供体制加算"
             select
             size="small"
             value={values.MealAddition}
             onChange={(event) => setField('MealAddition', event.target.value)}
+            sx={nativeSelectFieldSx}
+            InputLabelProps={{ shrink: true }}
+            SelectProps={{ native: true }}
           >
             {MEAL_ADDITION_OPTIONS.map((opt) => (
-              <MenuItem key={opt.value} value={opt.value}>
+              <option key={opt.value} value={opt.value}>
                 {opt.label}
-              </MenuItem>
+              </option>
             ))}
           </TextField>
 
           <TextField
+            id={`${formIdPrefix}-copay-payment-method`}
+            name="CopayPaymentMethod"
             fullWidth
             label="利用者負担金支払方法"
             select
             size="small"
             value={values.CopayPaymentMethod}
             onChange={(event) => setField('CopayPaymentMethod', event.target.value)}
+            sx={nativeSelectFieldSx}
+            InputLabelProps={{ shrink: true }}
+            SelectProps={{ native: true }}
           >
             {COPAY_METHOD_OPTIONS.map((opt) => (
-              <MenuItem key={opt.value} value={opt.value}>
+              <option key={opt.value} value={opt.value}>
                 {opt.label}
-              </MenuItem>
+              </option>
             ))}
           </TextField>
         </Box>

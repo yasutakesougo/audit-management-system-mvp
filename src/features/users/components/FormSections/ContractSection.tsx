@@ -6,7 +6,7 @@
  * - 支給決定情報（市町村・期間・障害支援区分・支給量）
  */
 import MedicalIcon from '@mui/icons-material/LocalHospital';
-import { Box, MenuItem, TextField, Typography } from '@mui/material';
+import { Box, TextField, Typography } from '@mui/material';
 import {
     DISABILITY_SUPPORT_LEVEL_OPTIONS,
     USAGE_STATUS_OPTIONS,
@@ -15,7 +15,7 @@ import type { FormSectionProps } from './types';
 
 type Props = FormSectionProps;
 
-export function ContractSection({ values, errors, setField }: Props) {
+export function ContractSection({ formIdPrefix, values, errors, setField }: Props) {
   return (
     <Box sx={{ mb: 3 }}>
       <Typography
@@ -34,6 +34,8 @@ export function ContractSection({ values, errors, setField }: Props) {
           </Typography>
 
           <TextField
+            id={`${formIdPrefix}-contract-date`}
+            name="ContractDate"
             fullWidth
             label="契約日"
             type="date"
@@ -45,6 +47,8 @@ export function ContractSection({ values, errors, setField }: Props) {
           />
 
           <TextField
+            id={`${formIdPrefix}-service-start-date`}
+            name="ServiceStartDate"
             fullWidth
             label="サービス開始日"
             type="date"
@@ -56,6 +60,8 @@ export function ContractSection({ values, errors, setField }: Props) {
           />
 
           <TextField
+            id={`${formIdPrefix}-service-end-date`}
+            name="ServiceEndDate"
             fullWidth
             label="サービス終了日"
             type="date"
@@ -69,6 +75,8 @@ export function ContractSection({ values, errors, setField }: Props) {
           />
 
           <TextField
+            id={`${formIdPrefix}-usage-status`}
+            name="UsageStatus"
             fullWidth
             label="利用ステータス"
             select
@@ -76,11 +84,12 @@ export function ContractSection({ values, errors, setField }: Props) {
             value={values.UsageStatus}
             onChange={(event) => setField('UsageStatus', event.target.value)}
             helperText="請求対象者の抽出や稼働率集計に使用します"
+            SelectProps={{ native: true }}
           >
             {USAGE_STATUS_OPTIONS.map((opt) => (
-              <MenuItem key={opt.value} value={opt.value}>
+              <option key={opt.value} value={opt.value}>
                 {opt.label}
-              </MenuItem>
+              </option>
             ))}
           </TextField>
         </Box>
@@ -92,6 +101,8 @@ export function ContractSection({ values, errors, setField }: Props) {
           </Typography>
 
           <TextField
+            id={`${formIdPrefix}-grant-municipality`}
+            name="GrantMunicipality"
             fullWidth
             label="支給決定市町村"
             value={values.GrantMunicipality}
@@ -103,6 +114,8 @@ export function ContractSection({ values, errors, setField }: Props) {
 
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <TextField
+              id={`${formIdPrefix}-grant-period-start`}
+              name="GrantPeriodStart"
               fullWidth
               label="支給決定期間（開始）"
               type="date"
@@ -114,6 +127,8 @@ export function ContractSection({ values, errors, setField }: Props) {
               error={Boolean(errors.grantPeriod)}
             />
             <TextField
+              id={`${formIdPrefix}-grant-period-end`}
+              name="GrantPeriodEnd"
               fullWidth
               label="支給決定期間（終了）"
               type="date"
@@ -128,6 +143,8 @@ export function ContractSection({ values, errors, setField }: Props) {
           </Box>
 
           <TextField
+            id={`${formIdPrefix}-disability-support-level`}
+            name="DisabilitySupportLevel"
             fullWidth
             label="障害支援区分"
             select
@@ -135,15 +152,18 @@ export function ContractSection({ values, errors, setField }: Props) {
             value={values.DisabilitySupportLevel}
             onChange={(event) => setField('DisabilitySupportLevel', event.target.value)}
             helperText="生活介護の基本報酬単価の算定に使用します"
+            SelectProps={{ native: true }}
           >
             {DISABILITY_SUPPORT_LEVEL_OPTIONS.map((opt) => (
-              <MenuItem key={opt.value} value={opt.value}>
+              <option key={opt.value} value={opt.value}>
                 {opt.label}
-              </MenuItem>
+              </option>
             ))}
           </TextField>
 
           <TextField
+            id={`${formIdPrefix}-granted-days-per-month`}
+            name="GrantedDaysPerMonth"
             fullWidth
             label="契約支給量（日数／月）"
             value={values.GrantedDaysPerMonth}

@@ -1,5 +1,5 @@
 import { TESTIDS, tid, tidWithSuffix } from '@/testids';
-import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
+import BlockRoundedIcon from '@mui/icons-material/BlockRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import PersonSearchRoundedIcon from '@mui/icons-material/PersonSearchRounded';
@@ -33,6 +33,7 @@ import { MuiRouterLink } from '@/lib/muiLink';
 import ErrorState from '../../../ui/components/ErrorState';
 import Loading from '../../../ui/components/Loading';
 import type { IUserMaster } from '../types';
+import { canEditUser, resolveUserLifecycleStatus } from '../domain/userLifecycle';
 import { resolveUserIdentifier } from '../UserDetailSections/helpers';
 import UserDetailSections from '../UserDetailSections/index';
 import {
@@ -97,7 +98,7 @@ const UsersList: FC<UsersListProps> = ({
             .map((value) => (value ?? '').toString().toLowerCase())
             .some((value) => value.includes(needle))
         : true;
-      const isActive = user.IsActive !== false;
+      const isActive = resolveUserLifecycleStatus(user) === 'active';
       const isSevere = Boolean(user.severeFlag ?? user.IsHighIntensitySupportTarget);
       if (onlyActive && !isActive) {
         return false;
@@ -109,9 +110,34 @@ const UsersList: FC<UsersListProps> = ({
     });
   }, [onlyActive, onlySevere, search, users]);
 
+  const sortUsersByFurigana = useCallback((items: IUserMaster[]) => {
+    const toSortKey = (user: IUserMaster): string =>
+      (user.Furigana ?? user.FullNameKana ?? user.FullName ?? user.UserID ?? '').trim();
+
+    return [...items].sort((a, b) => {
+      const byKana = toSortKey(a).localeCompare(toSortKey(b), 'ja', {
+        sensitivity: 'base',
+        numeric: true,
+      });
+      if (byKana !== 0) return byKana;
+
+      const byName = (a.FullName ?? '').localeCompare((b.FullName ?? ''), 'ja', {
+        sensitivity: 'base',
+        numeric: true,
+      });
+      if (byName !== 0) return byName;
+
+      return String(a.UserID ?? a.Id ?? '').localeCompare(
+        String(b.UserID ?? b.Id ?? ''),
+        'ja',
+        { sensitivity: 'base', numeric: true },
+      );
+    });
+  }, []);
+
   const displayUsers = useMemo(
-    () => (prioritySort ? sortUsersByPriority(filteredUsers) : filteredUsers),
-    [filteredUsers, prioritySort],
+    () => (prioritySort ? sortUsersByPriority(filteredUsers) : sortUsersByFurigana(filteredUsers)),
+    [filteredUsers, prioritySort, sortUsersByFurigana],
   );
 
   // ── ④ 行クリックで詳細表示 ──
@@ -227,6 +253,7 @@ const UsersList: FC<UsersListProps> = ({
         sx={{ rowGap: 1 }}
       >
         <TextField
+          id="users-list-search"
           size="small"
           placeholder="ID / 氏名 / フリガナ"
           value={search}
@@ -404,9 +431,10 @@ const UsersList: FC<UsersListProps> = ({
                             color="primary"
                             onClick={(event: ReactMouseEvent<HTMLButtonElement>) => {
                               event.stopPropagation();
+                              if (!canEditUser(user)) return;
                               onEdit(user);
                             }}
-                            disabled={rowBusy}
+                            disabled={rowBusy || !canEditUser(user)}
                             title="編集"
                             aria-label="編集"
                           >
@@ -416,16 +444,17 @@ const UsersList: FC<UsersListProps> = ({
                         {onDelete && (
                           <IconButton
                             size="small"
-                            color="error"
+                            color="warning"
                             onClick={(event: ReactMouseEvent<HTMLButtonElement>) => {
                               event.stopPropagation();
+                              if (!canEditUser(user)) return;
                               onDelete(user.Id, user.FullName ?? '');
                             }}
-                            disabled={rowBusy}
-                            title="削除"
-                            aria-label="削除"
+                            disabled={rowBusy || !canEditUser(user)}
+                            title="契約終了"
+                            aria-label="契約終了"
                           >
-                            <DeleteRoundedIcon fontSize="small" />
+                            <BlockRoundedIcon fontSize="small" />
                           </IconButton>
                         )}
                         <IconButton

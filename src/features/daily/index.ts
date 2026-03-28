@@ -2,44 +2,44 @@
 export type {
     DailyRecordDateRange, DailyRecordItem, DailyRecordRepository, DailyRecordRepositoryListParams,
     DailyRecordRepositoryMutationParams, SaveDailyRecordInput
-} from './domain/legacy/DailyRecordRepository';
+} from './domain/DailyRecordRepository';
 
 // Behavior / Procedure / Execution Repository Interfaces
-export type { BehaviorRepository, ProcedureRepository } from './repositories/sharepoint/repositoryTypes';
-export type { ExecutionRecordRepository } from './domain/legacy/ExecutionRecordRepository';
+export type { BehaviorRepository, ProcedureRepository } from './infra/repositoryTypes';
+export type { ExecutionRecordRepository } from './domain/ExecutionRecordRepository';
 
 // Repository Pattern - Infrastructure Layer
 export {
     InMemoryDailyRecordRepository,
     inMemoryDailyRecordRepository
-} from './repositories/sharepoint/InMemoryDailyRecordRepository';
+} from './infra/InMemoryDailyRecordRepository';
 
 export {
     SharePointDailyRecordRepository,
-} from './repositories/sharepoint/SharePointDailyRecordRepository';
+} from './infra/SharePointDailyRecordRepository';
 
 // Repository Factory
 export type {
     DailyRecordRepositoryFactoryOptions, DailyRecordRepositoryKind
-} from './repositories/repositoryFactory';
+} from './repositoryFactory';
 
 export {
     getCurrentDailyRecordRepositoryKind, getDailyRecordRepository, overrideDailyRecordRepository,
     resetDailyRecordRepository, useDailyRecordRepository
-} from './repositories/repositoryFactory';
+} from './repositoryFactory';
 
 // Components & Hooks
-export { DailyRecordForm } from './components/forms/DailyRecordForm';
-export { DailyRecordList } from './components/lists/DailyRecordList';
-export { useDailyUserOptions } from './components/forms/useDailyUserOptions';
-export type { DailyUserOption } from './components/forms/useDailyUserOptions';
+export { DailyRecordForm } from './forms/DailyRecordForm';
+export { DailyRecordList } from './lists/DailyRecordList';
+export { useDailyUserOptions } from './forms/useDailyUserOptions';
+export type { DailyUserOption } from './forms/useDailyUserOptions';
 
 // Domain Utilities
-export { getScheduleKey } from './domain/builders/getScheduleKey';
-export { generateDailyReport } from './domain/legacy/generateDailyReport';
-export { toBipOptions } from './domain/builders/toBipOptions';
-export { saveDailyRecord, validateDailyRecord } from './domain/validation/dailyRecordLogic';
-export { getNextIncompleteRecord } from './domain/validation/nextIncompleteRecord';
+export { getScheduleKey } from './domain/getScheduleKey';
+export { generateDailyReport } from './domain/generateDailyReport';
+export { toBipOptions } from './domain/toBipOptions';
+export { saveDailyRecord, validateDailyRecord } from './domain/dailyRecordLogic';
+export { getNextIncompleteRecord } from './domain/nextIncompleteRecord';
 
 // Domain Types
 export * from '../../domain/daily/types';

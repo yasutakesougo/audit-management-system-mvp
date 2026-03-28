@@ -15,8 +15,8 @@ import Tooltip from '@mui/material/Tooltip';
 import type React from 'react';
 import { memo } from 'react';
 
-import type { RecordStatus } from '../../domain/legacy/executionRecordTypes';
-import { useExecutionRecord } from '../../hooks/legacy/useExecutionRecord';
+import type { RecordStatus } from '../../domain/executionRecordTypes';
+import { useExecutionRecord } from '../../hooks/useExecutionRecord';
 
 interface ExecutionToggleProps {
   date: string;
