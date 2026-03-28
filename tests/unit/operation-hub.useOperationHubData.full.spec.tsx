@@ -1,4 +1,5 @@
 import { useOperationHubData } from '@/features/operation-hub/useOperationHubData';
+import type { StoreUser } from '@/stores/useUsers';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -33,7 +34,7 @@ vi.mock('@/lib/spClient', () => ({
 // ---- ストア系：シナリオ毎に差し替えられるように工場関数化 ----
 type Sched = Partial<import('@/lib/mappers').Schedule>;
 type Staff = Partial<import('@/types').Staff>;
-type User = Partial<import('@/types').User>;
+type User = Partial<StoreUser>;
 
 type StoreShape<T> = {
   data: T[];
@@ -158,8 +159,8 @@ describe('useOperationHubData – full branches', () => {
 
   it('アラート：利用者 <=7日=error / <=30日=warning、職員資格/役割未入力で warning or info', () => {
     const users: User[] = [
-      { id: 10, userId: '10', name: 'U1', certExpiry: '2025-03-15' },
-      { id: 11, userId: '11', name: 'U2', certExpiry: '2025-04-05' },
+      { Id: 10, UserID: '10', FullName: 'U1', RecipientCertExpiry: '2025-03-15', lifecycleStatus: 'active' },
+      { Id: 11, UserID: '11', FullName: 'U2', RecipientCertExpiry: '2025-04-05', lifecycleStatus: 'active' },
     ];
     const staff: Staff[] = [
       { id: 1, name: '佐藤', certifications: ['要更新: 2025/03'], role: '常勤' },

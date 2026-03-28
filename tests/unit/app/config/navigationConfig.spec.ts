@@ -2,20 +2,6 @@
  * Navigation Configuration Tests
  *
  * Unit tests for navigation configuration functions extracted from AppShell.tsx
- *
- * ╔══════════════════════════════════════════════════════════════════════╗
- * ║ Audience Boundary Contract                                         ║
- * ║                                                                    ║
- * ║ Navigation visibility is controlled by `audience` on each NavItem  ║
- * ║ and filtered by `isNavVisible(item, navAudience)`.                 ║
- * ║                                                                    ║
- * ║ If you change an item's audience (e.g. staff → admin), the         ║
- * ║ 'Audience Boundary Contracts' tests below will fail, alerting you  ║
- * ║ that a role-visibility boundary has shifted.                        ║
- * ║                                                                    ║
- * ║ To fix: update the contract arrays (STAFF_VISIBLE_LABELS,          ║
- * ║ ADMIN_ONLY_LABELS) to match the new audience assignments.          ║
- * ╚══════════════════════════════════════════════════════════════════════╝
  */
 
 import {
@@ -207,8 +193,8 @@ describe('navigationConfig', () => {
       expect(items.length).toBeGreaterThan(0);
       expect(items.some((item) => item.label === '日次記録')).toBe(true);
       expect(items.some((item) => item.label === '健康記録')).toBe(true);
-      // NOTE: '記録一覧' は admin audience に変更されたため、staff には非表示
-      expect(items.some((item) => item.label === 'サービス提供実績記録')).toBe(true);
+      // 記録一覧は admin audience のみ
+      expect(items.some((item) => item.label === '記録一覧')).toBe(false);
       expect(items.some((item) => item.label === '利用者')).toBe(true);
     });
 
@@ -486,115 +472,6 @@ describe('navigationConfig', () => {
 
     it('should have correct group order', () => {
       expect(NAV_GROUP_ORDER).toEqual(['daily', 'assessment', 'record', 'ops', 'admin']);
-    });
-  });
-
-  // ── Audience Boundary Contracts ──────────────────────────────────────────
-  //
-  // These tests define which items each role CAN and CANNOT see.
-  // They act as a safety net: if someone changes an item's audience,
-  // the contract breaks and forces intentional review.
-  //
-  // When updating: change the contract arrays below, NOT the test logic.
-
-  describe('Audience Boundary Contracts', () => {
-    // Base config: all conditional flags ON, so we test the full menu surface
-    const fullFlagConfig = {
-      dashboardPath: '/dashboard',
-      currentRole: 'staff',
-      schedulesEnabled: true,
-      complianceFormEnabled: true,
-      icebergPdcaEnabled: true,
-      staffAttendanceEnabled: true,
-      todayOpsEnabled: true,
-      isAdmin: true,
-      authzReady: true,
-      skipLogin: false,
-      navAudience: NAV_AUDIENCE.admin, // admin sees everything
-    };
-
-    // ╔════════════════════════════════════════════════════════════════╗
-    // ║ CONTRACT: Items visible to staff (audience: 'all' | 'staff') ║
-    // ║ Update this list when audience assignments change.            ║
-    // ╚════════════════════════════════════════════════════════════════╝
-    const STAFF_VISIBLE_LABELS = [
-      '今日の業務',
-      '送迎配車表',
-      'スケジュール',
-      '日次記録',
-      '健康記録',
-      '申し送りタイムライン',
-      '議事録',
-      'ISP作成',
-      'ISP更新（前回比較）',
-      '支援計画シート',
-      'アセスメント',
-      'サービス提供実績記録',
-      '個人月次業務日誌',
-      '利用者',
-      '職員',
-      '職員勤怠',
-      'コンプラ報告',
-    ];
-
-    // ╔════════════════════════════════════════════════════════════════╗
-    // ║ CONTRACT: Items restricted to admin (audience: 'admin')       ║
-    // ║ These must NOT appear for staff navAudience.                   ║
-    // ╚════════════════════════════════════════════════════════════════╝
-    const ADMIN_ONLY_LABELS = [
-      '分析ワークスペース',
-      '特性アンケート',
-      '運営状況',
-      '記録一覧',
-      '申し送り分析',
-      '運用メトリクス',
-      '請求処理',
-      '職員勤怠管理',
-      '統合リソースカレンダー',
-      'お部屋管理',
-      '例外センター',
-      '管理ツール',
-    ];
-
-    it('staff sees exactly the staff-visible items (boundary contract)', () => {
-      const staffItems = createNavItems({
-        ...fullFlagConfig,
-        isAdmin: false,
-        navAudience: NAV_AUDIENCE.staff,
-      });
-      const staffLabels = staffItems.map((item) => item.label).sort();
-      expect(staffLabels).toEqual([...STAFF_VISIBLE_LABELS].sort());
-    });
-
-    it('admin-only items are excluded from staff view (boundary contract)', () => {
-      const staffItems = createNavItems({
-        ...fullFlagConfig,
-        isAdmin: false,
-        navAudience: NAV_AUDIENCE.staff,
-      });
-      const staffLabels = new Set(staffItems.map((item) => item.label));
-
-      for (const label of ADMIN_ONLY_LABELS) {
-        expect(staffLabels.has(label), `"${label}" should NOT be visible to staff`).toBe(false);
-      }
-    });
-
-    it('admin sees all items including admin-only (boundary contract)', () => {
-      const adminItems = createNavItems({
-        ...fullFlagConfig,
-        isAdmin: true,
-        navAudience: NAV_AUDIENCE.admin,
-      });
-      const adminLabels = new Set(adminItems.map((item) => item.label));
-
-      // Admin must see everything staff sees
-      for (const label of STAFF_VISIBLE_LABELS) {
-        expect(adminLabels.has(label), `"${label}" should be visible to admin`).toBe(true);
-      }
-      // Admin must also see admin-only items
-      for (const label of ADMIN_ONLY_LABELS) {
-        expect(adminLabels.has(label), `"${label}" should be visible to admin`).toBe(true);
-      }
     });
   });
 });

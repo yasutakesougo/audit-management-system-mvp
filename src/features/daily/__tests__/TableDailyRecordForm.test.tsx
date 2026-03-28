@@ -3,8 +3,11 @@ import { TextField } from '@mui/material';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import toast from 'react-hot-toast';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TableDailyRecordForm } from '../components/forms/TableDailyRecordForm';
-import { useTableDailyRecordForm } from '../hooks/view-models/useTableDailyRecordForm';
+import { TableDailyRecordForm } from '../forms/TableDailyRecordForm';
+import {
+    useTableDailyRecordForm,
+    type TableDailyRecordData,
+} from '../hooks/useTableDailyRecordForm';
 
 // Mock react-hot-toast
 vi.mock('react-hot-toast', () => ({
@@ -18,28 +21,28 @@ vi.mock('react-hot-toast', () => ({
 // Mock useUsers hook
 const mockUsers = [
   {
-    id: 1,
-    userId: 'U001',
-    name: '田中 太郎',
-    furigana: 'たなか たろう',
-    attendanceDays: ['月', '水', '金'], // 月水金通所
-    UsageStatus: '利用中',
+    Id: 1,
+    UserID: 'U001',
+    FullName: '田中 太郎',
+    Furigana: 'たなか たろう',
+    IsActive: true,
+    AttendanceDays: ['月', '水', '金'] // 月水金通所
   },
   {
-    id: 2,
-    userId: 'U002',
-    name: '佐藤 花子',
-    furigana: 'さとう はなこ',
-    attendanceDays: ['火', '木'], // 火木通所
-    UsageStatus: '利用中',
+    Id: 2,
+    UserID: 'U002',
+    FullName: '佐藤 花子',
+    Furigana: 'さとう はなこ',
+    IsActive: true,
+    AttendanceDays: ['火', '木'] // 火木通所
   },
   {
-    id: 3,
-    userId: 'U003',
-    name: '山田 一郎',
-    furigana: 'やまだ いちろう',
-    // attendanceDays未設定（毎日通所）
-    UsageStatus: '利用中',
+    Id: 3,
+    UserID: 'U003',
+    FullName: '山田 一郎',
+    Furigana: 'やまだ いちろう',
+    IsActive: true,
+    // AttendanceDays未設定（毎日通所）
   }
 ];
 
@@ -52,8 +55,6 @@ vi.mock('@/stores/useUsers', () => ({
 const FIXED_DATE = '2024-01-01';
 const FIXED_DATE_SELECTION_COUNT = 2; // Deterministic expected auto-selection count for FIXED_DATE
 
-import type { DailyRecordRepository } from '../domain/legacy/DailyRecordRepository';
-
 /**
  * テスト用ラッパー:
  * AppBarに移動した date / reporter フィールドをテスト内に再構成
@@ -61,8 +62,7 @@ import type { DailyRecordRepository } from '../domain/legacy/DailyRecordReposito
 function TableDailyRecordFormTestWrapper(props: {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
-  repository: DailyRecordRepository;
+  onSave: (data: TableDailyRecordData) => Promise<void>;
 }) {
   const formState = useTableDailyRecordForm(props);
 
@@ -95,10 +95,9 @@ function TableDailyRecordFormTestWrapper(props: {
 
       <TableDailyRecordForm
         open={props.open}
-        variant="content"
         onClose={props.onClose}
-        onSuccess={props.onSuccess}
-        repository={props.repository}
+        onSave={props.onSave}
+        variant="content"
         controlledState={formState}
       />
 
@@ -116,15 +115,10 @@ function TableDailyRecordFormTestWrapper(props: {
 describe('TableDailyRecordForm', () => {
   vi.setConfig({ testTimeout: 30000 });
 
-  const mockSave = vi.fn().mockResolvedValue(undefined);
-  const mockLoad = vi.fn().mockResolvedValue(null);
-  const mockRepository = { save: mockSave, load: mockLoad } as unknown as DailyRecordRepository;
-
   const defaultProps = {
     open: true,
     onClose: vi.fn(),
-    onSuccess: vi.fn(),
-    repository: mockRepository,
+    onSave: vi.fn()
   };
 
   const renderForm = (overrideProps: Partial<typeof defaultProps> = {}) =>
@@ -340,10 +334,10 @@ describe('TableDailyRecordForm', () => {
     });
   });
 
-  it('should call repository.save with correct data when saved', async () => {
-    mockSave.mockClear();
+  it('should call onSave with correct data when saved', async () => {
+    const mockOnSave = vi.fn().mockResolvedValue(undefined);
 
-    renderForm();
+    renderForm({ onSave: mockOnSave });
 
     await setRecordDate(FIXED_DATE);
     await waitForSelectionInfo(FIXED_DATE_SELECTION_COUNT);
@@ -366,7 +360,7 @@ describe('TableDailyRecordForm', () => {
 
     await waitFor(
       () => {
-        expect(mockSave).toHaveBeenCalledWith(
+        expect(mockOnSave).toHaveBeenCalledWith(
           expect.objectContaining({
             reporter: expect.objectContaining({ name: '支援員A' }),
             userRows: expect.arrayContaining([
@@ -383,9 +377,9 @@ describe('TableDailyRecordForm', () => {
   });
 
   it('should prevent saving without selected users', async () => {
-    mockSave.mockClear();
+    const mockOnSave = vi.fn();
 
-    renderForm();
+    renderForm({ onSave: mockOnSave });
 
     await waitForTable();
 
@@ -398,15 +392,15 @@ describe('TableDailyRecordForm', () => {
     const saveButton = await screen.findByRole('button', { name: '0人分保存' }, { timeout: 5000 });
     expect(saveButton).toBeDisabled();
 
-    expect(mockSave).not.toHaveBeenCalled();
+    expect(mockOnSave).not.toHaveBeenCalled();
   });
 
   it(
     'should prevent saving without reporter name',
     async () => {
-      mockSave.mockClear();
+      const mockOnSave = vi.fn();
 
-      renderForm();
+      renderForm({ onSave: mockOnSave });
 
       await setRecordDate(FIXED_DATE);
       await waitForTable();
@@ -416,7 +410,7 @@ describe('TableDailyRecordForm', () => {
       fireEvent.click(saveButton);
 
       expect(vi.mocked(toast.error)).toHaveBeenCalledWith('記録者名を入力してください', { duration: 4000 });
-      expect(mockSave).not.toHaveBeenCalled();
+      expect(mockOnSave).not.toHaveBeenCalled();
     }
   );
 

@@ -11,6 +11,7 @@
 import { ChangeEvent, createRef, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseTransportCourse } from '../today/transport/transportCourse';
 import type { IUserMaster } from '../../sharepoint/fields';
+import { canEditUser } from './domain/userLifecycle';
 import { useUsersStore } from './store';
 import { CLEARED_VALUES } from './useUserFormConstants';
 import { parseTransportSchedule, toCreateDto } from './useUserFormHelpers';
@@ -223,7 +224,6 @@ export function useUserForm(
   // handleClose
   // --------------------------------
   const handleClose = useCallback(() => {
-    blurActiveElement();
     if (isDirty) {
       if (confirmDialogTimer.current !== null) {
         window.clearTimeout(confirmDialogTimer.current);
@@ -232,6 +232,7 @@ export function useUserForm(
         setShowConfirmDialog(true);
       }, 0);
     } else {
+      blurActiveElement();
       onClose?.();
     }
   }, [blurActiveElement, isDirty, onClose]);
@@ -318,6 +319,9 @@ export function useUserForm(
           setValues(CLEARED_VALUES);
           initialJson.current = JSON.stringify(CLEARED_VALUES);
         } else if (mode === 'update' && user) {
+          if (!canEditUser(user)) {
+            throw new Error('契約終了の利用者は編集できません。');
+          }
           if (user.Id == null) {
             throw new Error('更新対象の利用者IDが指定されていません。');
           }

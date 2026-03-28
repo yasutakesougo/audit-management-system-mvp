@@ -74,6 +74,23 @@ export function UserForm({
 
   const systemAssignedCode =
     mode === 'create' ? '保存後に自動採番されます' : (user?.UserID ?? '未採番');
+  const formIdPrefix =
+    mode === 'create'
+      ? 'user-form-create'
+      : `user-form-update-${String(user?.Id ?? 'unknown')}`;
+
+  const blurActiveElement = () => {
+    if (typeof document === 'undefined') return;
+    const active = document.activeElement;
+    if (active instanceof HTMLElement) {
+      active.blur();
+    }
+  };
+
+  const handleConfirmDialogClose = () => {
+    blurActiveElement();
+    setShowConfirmDialog(false);
+  };
 
   return (
     <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
@@ -120,6 +137,7 @@ export function UserForm({
 
         {/* 基本情報 */}
         <BasicInfoSection
+          formIdPrefix={formIdPrefix}
           values={values}
           errors={errors}
           setField={setField}
@@ -130,6 +148,7 @@ export function UserForm({
 
         {/* 契約・サービス情報 + 支給決定情報 */}
         <ContractSection
+          formIdPrefix={formIdPrefix}
           values={values}
           errors={errors}
           setField={setField}
@@ -138,6 +157,7 @@ export function UserForm({
 
         {/* 受給者証・負担情報（請求セクションの一部） */}
         <BillingSection
+          formIdPrefix={formIdPrefix}
           values={values}
           errors={errors}
           setField={setField}
@@ -147,6 +167,7 @@ export function UserForm({
 
         {/* 送迎・通所情報 + 支援区分 + 加算情報 */}
         <TransportAdditionSection
+          formIdPrefix={formIdPrefix}
           values={values}
           errors={errors}
           setField={setField}
@@ -203,7 +224,7 @@ export function UserForm({
         {/* 未保存変更の確認ダイアログ */}
         <Dialog
           open={showConfirmDialog}
-          onClose={() => setShowConfirmDialog(false)}
+          onClose={handleConfirmDialogClose}
           maxWidth="sm"
         >
           <DialogTitle>未保存の変更があります</DialogTitle>
@@ -213,9 +234,10 @@ export function UserForm({
             </DialogContentText>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setShowConfirmDialog(false)}>キャンセル</Button>
+            <Button onClick={handleConfirmDialogClose}>キャンセル</Button>
             <Button
               onClick={() => {
+                blurActiveElement();
                 setShowConfirmDialog(false);
                 onClose?.();
               }}

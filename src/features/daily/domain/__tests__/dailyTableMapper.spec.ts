@@ -5,16 +5,16 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { UserRowData } from '../../hooks/view-models/useTableDailyRecordForm';
-import type { DailyTableRecord } from '../../repositories/sharepoint/dailyTableRepository';
+import type { UserRowData } from '../../hooks/useTableDailyRecordForm';
+import type { DailyTableRecord } from '../../infra/dailyTableRepository';
 import {
   toDailyTableRecord,
   fromDailyTableRecord,
   toLunchIntake,
   toProblemBehaviorTypes,
   fromProblemBehaviorTypes,
-} from '../mappers/dailyTableMapper';
-import type { SaveContext } from '../mappers/dailyTableMapper';
+} from '../dailyTableMapper';
+import type { SaveContext } from '../dailyTableMapper';
 
 // ─── helpers ────────────────────────────────────────────
 

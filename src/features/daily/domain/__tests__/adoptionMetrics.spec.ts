@@ -5,15 +5,15 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { SuggestionAction } from '../legacy/suggestionAction';
-import type { SuggestionCategory } from '../behavior/behaviorPatternSuggestions';
+import type { SuggestionAction } from '../suggestionAction';
+import type { SuggestionCategory } from '../behaviorPatternSuggestions';
 import {
   computeAdoptionMetrics,
   countISPImports,
   extractRulePrefix,
   getRulePrefixLabel,
   safeRate,
-} from '../legacy/adoptionMetrics';
+} from '../adoptionMetrics';
 
 // ─── ヘルパー ────────────────────────────────────────────
 

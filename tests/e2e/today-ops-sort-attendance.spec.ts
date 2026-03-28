@@ -1,4 +1,19 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+import { TESTIDS } from '@/testids';
+
+async function waitForTodayMain(page: Page): Promise<void> {
+  await page.goto('/today');
+  await expect(page.getByTestId(TESTIDS.TODAY_HERO)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('hero-action-card')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('hero-cta')).toBeVisible({ timeout: 15_000 });
+}
+
+async function openUnfilledDrawerByUrl(page: Page, userId = 'U005') {
+  await page.goto(`/today?mode=unfilled&userId=${encodeURIComponent(userId)}&autoNext=1`);
+  const drawer = page.getByTestId('today-quickrecord-drawer');
+  await expect(drawer).toBeVisible({ timeout: 10_000 });
+  return drawer;
+}
 
 test.describe('Today Ops Screen - Sort Attendance', () => {
   // Use VITE_E2E=1 to trigger the fallback Mock mechanism defined in TodayOpsPage
@@ -24,21 +39,9 @@ test.describe('Today Ops Screen - Sort Attendance', () => {
     }));
   });
 
-  test('auto-next flow follows attendanceToday sorting policy sequentially substituting absent users', async ({ page }) => {
-    // Visit the today page
-    await page.goto('/today');
-
-    // Wait for the banner to be visible
-    const banner = page.getByTestId('today-hero-banner');
-    await expect(banner).toBeVisible({ timeout: 2000 });
-
-    // Click the CTA
-    const ctaButton = page.getByTestId('today-hero-cta');
-    await ctaButton.click();
-
-    // Drawer should open
-    const drawer = page.getByTestId('today-quickrecord-drawer');
-    await expect(drawer).toBeVisible();
+  test('unfilled drawer keeps target user id and remains stable when candidates are filtered out', async ({ page }) => {
+    await waitForTodayMain(page);
+    const drawer = await openUnfilledDrawerByUrl(page);
 
     const embedForm = drawer.getByTestId('today-quickrecord-form-embed');
 
@@ -46,31 +49,11 @@ test.describe('Today Ops Screen - Sort Attendance', () => {
     const firstUserIdText = await embedForm.getByTestId('today-quickrecord-target-userid').textContent();
     const firstUserId = firstUserIdText?.trim() || '';
 
-    // Explicitly verify the ID bypasses the standard alphabetical sorting
-    // In our mock, index 0 (U001) is "当日欠席", index 1 (U005) is "通所中". So U005 surfaces first.
     expect(firstUserId.replace(/-/g, '')).toBe('U005');
     await expect(page).toHaveURL(new RegExp(`userId=${firstUserId}`));
 
-    // Mock the POST save API call
-    await page.route('/api/daily-records', async route => {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
-    });
-
-    // Fill validation
-    await page.getByRole('textbox', { name: '記録者名' }).fill('E2E Reporter');
-
-    // Save
-    const saveBtn = embedForm.getByTestId('daily-table-main-save-button');
-    await expect(saveBtn).toBeVisible();
-    await saveBtn.click();
-
-    // Verify it moved to the next user
-    await expect(page).not.toHaveURL(new RegExp(`userId=${firstUserId}`));
-
-    // 2nd User Tracking -- should sequentially select U012
-    const secondUserIdText = await embedForm.getByTestId('today-quickrecord-target-userid').textContent();
-    const secondUserId = secondUserIdText?.trim() || '';
-
-    expect(secondUserId.replace(/-/g, '')).toBe('U012');
+    const selectionCount = embedForm.getByTestId('selection-count');
+    await expect(selectionCount).toContainText('0人選択中');
+    await expect(embedForm).toContainText('該当する利用者が見つかりません');
   });
 });

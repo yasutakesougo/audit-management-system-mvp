@@ -49,6 +49,7 @@ const UsersCreateForm: FC<UsersCreateFormProps> = ({ isSubmitting, onCreate, onO
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'flex-end' }}>
         <Stack spacing={0.5} sx={{ flex: 1 }}>
           <TextField
+            id="users-create-full-name"
             label="氏名"
             placeholder="山田太郎"
             size="small"

@@ -1,6 +1,11 @@
+<<<<<<< HEAD:src/features/daily/hooks/view-models/useTableDailyRecordForm.ts
 import { useUsers } from '@/stores/useUsers';
 import type { User } from '@/types';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+=======
+import { emitDailySubmissionEvents } from '@/features/ibd/analysis/pdca/dailyMetricsAdapter';
+import { useUsers, type StoreUser } from '@/stores/useUsers';
+>>>>>>> origin/main:src/features/daily/hooks/useTableDailyRecordForm.ts
 import type { Dispatch, SetStateAction } from 'react';
 import { useHandoffNotesForTable } from '../../repositories/adapters/useHandoffNotesForTable';
 import type { TableDailyRecordFormStructured, TableDailyRecordViewModel } from './tableDailyRecordFormTypes';
@@ -70,8 +75,8 @@ export type UseTableDailyRecordFormResult = {
   setSearchQuery: Dispatch<SetStateAction<string>>;
   showTodayOnly: boolean;
   setShowTodayOnly: Dispatch<SetStateAction<boolean>>;
-  filteredUsers: User[];
-  selectedUsers: User[];
+  filteredUsers: StoreUser[];
+  selectedUsers: StoreUser[];
   selectedUserIds: string[];
   handleUserToggle: (userId: string) => void;
   handleSelectAll: () => void;

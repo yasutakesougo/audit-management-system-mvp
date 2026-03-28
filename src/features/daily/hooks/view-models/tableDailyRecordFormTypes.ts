@@ -10,7 +10,7 @@
  */
 
 import type { Dispatch, SetStateAction } from 'react';
-import type { User } from '@/types';
+import type { StoreUser } from '@/stores/useUsers';
 import type {
   TableDailyRecordData,
   TableDailyRecordValidationErrors,
@@ -37,8 +37,8 @@ export interface FormPicker {
   setSearchQuery: Dispatch<SetStateAction<string>>;
   showTodayOnly: boolean;
   setShowTodayOnly: Dispatch<SetStateAction<boolean>>;
-  filteredUsers: User[];
-  selectedUsers: User[];
+  filteredUsers: StoreUser[];
+  selectedUsers: StoreUser[];
   selectedUserIds: string[];
   handleUserToggle: (userId: string) => void;
   handleSelectAll: () => void;

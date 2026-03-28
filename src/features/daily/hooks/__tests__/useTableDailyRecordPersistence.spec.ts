@@ -9,9 +9,9 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { TableDailyRecordData } from '../view-models/useTableDailyRecordForm';
-import type { DraftInput, TableDailyRecordDraft } from '../mutations/useTableDailyRecordPersistence';
-import { useTableDailyRecordPersistence } from '../mutations/useTableDailyRecordPersistence';
+import type { TableDailyRecordData } from '../useTableDailyRecordForm';
+import type { DraftInput, TableDailyRecordDraft } from '../useTableDailyRecordPersistence';
+import { useTableDailyRecordPersistence } from '../useTableDailyRecordPersistence';
 
 // ── Helpers ─────────────────────────────────────────
 

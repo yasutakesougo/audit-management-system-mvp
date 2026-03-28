@@ -1,5 +1,6 @@
 import type { Schedule } from '@/lib/mappers';
-import type { Staff, User } from '@/types';
+import type { StoreUser } from '@/stores/useUsers';
+import type { Staff } from '@/types';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -13,7 +14,7 @@ type StoreResult<T> = {
 const { mockUseSchedules, mockUseUsers, mockUseStaff, mockUseSP, mockEnsureOperationHubLists, mockUseEnsureOperationHubLists, mockGetNow } = vi.hoisted(() => {
   return {
     mockUseSchedules: vi.fn<() => StoreResult<Schedule[]>>(),
-    mockUseUsers: vi.fn<() => StoreResult<User[]>>(),
+    mockUseUsers: vi.fn<() => StoreResult<StoreUser[]>>(),
     mockUseStaff: vi.fn<() => StoreResult<Staff[]>>(),
     mockUseSP: vi.fn(() => ({})),
     mockEnsureOperationHubLists: vi.fn(async () => {}),
@@ -95,14 +96,15 @@ const baseSchedule = (overrides: Partial<Schedule>): Schedule => ({
   statusLabel: overrides.statusLabel,
 });
 
-const baseUser = (overrides: Partial<User>): User => ({
-  id: overrides.id ?? 1,
-  userId: overrides.userId ?? String(overrides.id ?? 1),
-  name: overrides.name ?? '利用者A',
-  toDays: overrides.toDays ?? [],
-  fromDays: overrides.fromDays ?? [],
-  attendanceDays: overrides.attendanceDays ?? [],
-  certExpiry: overrides.certExpiry,
+const baseUser = (overrides: Partial<StoreUser>): StoreUser => ({
+  Id: overrides.Id ?? 1,
+  UserID: overrides.UserID ?? String(overrides.Id ?? 1),
+  FullName: overrides.FullName ?? '利用者A',
+  TransportToDays: overrides.TransportToDays ?? [],
+  TransportFromDays: overrides.TransportFromDays ?? [],
+  AttendanceDays: overrides.AttendanceDays ?? [],
+  RecipientCertExpiry: overrides.RecipientCertExpiry,
+  lifecycleStatus: overrides.lifecycleStatus ?? 'active',
   ...overrides,
 });
 
@@ -163,8 +165,8 @@ describe('useOperationHubData branch coverage', () => {
       baseSchedule({ id: 17, staffId: 4, startLocal: '2025-03-09T10:00:00+09:00', endLocal: '2025-03-09T11:00:00+09:00', startUtc: '2025-03-09T01:00:00.000Z', endUtc: '2025-03-09T02:00:00.000Z', title: '派遣支援', notes: '派遣対応' }),
     ];
 
-    const users: User[] = [
-      baseUser({ id: 20, userId: 'U-20', name: '田中 花子', certExpiry: '2025-03-14' }),
+    const users: StoreUser[] = [
+      baseUser({ Id: 20, UserID: 'U-20', FullName: '田中 花子', RecipientCertExpiry: '2025-03-14' }),
     ];
 
     const reloadSchedules = resolvedReload();

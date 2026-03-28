@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import type { SuggestionAction } from '../legacy/suggestionAction';
+import type { SuggestionAction } from '../suggestionAction';
 import {
   mapAcceptedToCandidate,
   collectISPCandidates,
@@ -15,7 +15,7 @@ import {
   isAlreadyCandidated,
   isAlreadyInImprovementIdeas,
   type ISPCandidate,
-} from '../mappers/ispCandidateMapper';
+} from '../ispCandidateMapper';
 
 // ─── ヘルパー ─────────────────────────────────────────────
 

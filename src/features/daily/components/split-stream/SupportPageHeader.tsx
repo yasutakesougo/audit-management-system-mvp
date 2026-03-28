@@ -4,7 +4,7 @@
  * TimeBasedSupportRecordPage から抽出 (#766)
  */
 import type { ABCRecord } from '@/domain/behavior';
-import type { DailySupportUserFilter } from '@/features/daily/hooks/legacy/useDailySupportUserFilter';
+import type { DailySupportUserFilter } from '@/features/daily/hooks/useDailySupportUserFilter';
 import type { IUserMaster } from '@/features/users/types';
 import { DISABILITY_SUPPORT_LEVEL_OPTIONS } from '@/features/users/typesExtended';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';

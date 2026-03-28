@@ -18,7 +18,7 @@ describe('UsersPanel smoke test', () => {
     return router;
   };
 
-  it('allows creating and deleting a user with list refresh', async () => {
+  it('allows creating and terminating a user with list refresh', async () => {
     render(
       <MemoryRouter>
         <UsersPanel />
@@ -38,19 +38,19 @@ describe('UsersPanel smoke test', () => {
     expect(await screen.findByText('テスト太郎')).toBeInTheDocument();
     expect(screen.getByText('LOCAL-U-0001')).toBeInTheDocument();
 
-    // テスト太郎の行を取得して削除ボタンをクリック
+    // テスト太郎の行を取得して契約終了ボタンをクリック
     const testUserRow = screen.getByText('テスト太郎').closest('tr');
-    const deleteButton = testUserRow?.querySelector('button[title="削除"]');
-    expect(deleteButton).toBeInTheDocument();
-    fireEvent.click(deleteButton!);
+    const terminateButton = testUserRow?.querySelector('button[title="契約終了"]');
+    expect(terminateButton).toBeInTheDocument();
+    fireEvent.click(terminateButton!);
 
-    // MUI Dialog の確認ボタンをクリック
-    const confirmButton = await screen.findByRole('button', { name: '削除する' });
+    const confirmButton = await screen.findByRole('button', { name: '契約終了にする' });
     fireEvent.click(confirmButton);
 
     await waitFor(() => {
-      expect(screen.queryByText('テスト太郎')).toBeNull();
-      expect(screen.queryByText('LOCAL-U-0001')).toBeNull();
+      expect(screen.getByText('テスト太郎')).toBeInTheDocument();
+      expect(screen.getByText('LOCAL-U-0001')).toBeInTheDocument();
+      expect(screen.getByText('終了')).toBeInTheDocument();
     });
   });
 

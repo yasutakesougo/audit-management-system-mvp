@@ -1,4 +1,4 @@
-import { deriveDefaultStrategies } from '../validation/deriveDefaultStrategies';
+import { deriveDefaultStrategies } from '../deriveDefaultStrategies';
 import type { ABCRecord } from '@/domain/behavior/abc';
 
 // ── ヘルパー ──────────────────────────────────────────────────

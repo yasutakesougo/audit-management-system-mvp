@@ -1,7 +1,5 @@
 /**
- * useUsersPanelCrud — 削除確認フロー (requestDelete / confirmDelete / cancelDelete)
- *
- * window.confirm を MUI Dialog に置き換えた際の state-driven フローをテスト。
+ * useUsersPanelCrud — 削除確認フロー (UI契約は delete、実処理は terminate)
  */
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
-const mockRemove = vi.fn().mockResolvedValue(undefined);
+const mockTerminate = vi.fn().mockResolvedValue(undefined);
 const mockRefresh = vi.fn().mockResolvedValue(undefined);
 const mockCreate = vi.fn().mockResolvedValue({ Id: 99 });
 
@@ -22,7 +20,8 @@ vi.mock('@/features/users/store', () => ({
     status: 'success',
     error: null,
     create: mockCreate,
-    remove: mockRemove,
+    terminate: mockTerminate,
+    remove: vi.fn(),
     refresh: mockRefresh,
   }),
 }));
@@ -71,7 +70,7 @@ describe('useUsersPanelCrud — delete confirmation flow', () => {
     });
   });
 
-  it('cancelDelete clears deleteTarget without calling remove', () => {
+  it('cancelDelete clears deleteTarget without calling terminate', () => {
     const { result } = renderCrudHook();
 
     act(() => {
@@ -84,10 +83,10 @@ describe('useUsersPanelCrud — delete confirmation flow', () => {
     });
 
     expect(result.current.deleteTarget).toBeNull();
-    expect(mockRemove).not.toHaveBeenCalled();
+    expect(mockTerminate).not.toHaveBeenCalled();
   });
 
-  it('confirmDelete calls remove with the target id and clears state', async () => {
+  it('confirmDelete calls terminate with the target id and clears state', async () => {
     const { result } = renderCrudHook();
 
     act(() => {
@@ -99,7 +98,7 @@ describe('useUsersPanelCrud — delete confirmation flow', () => {
       await result.current.confirmDelete();
     });
 
-    expect(mockRemove).toHaveBeenCalledWith(2);
+    expect(mockTerminate).toHaveBeenCalledWith(2);
     expect(result.current.deleteTarget).toBeNull();
     expect(result.current.busyId).toBeNull();
   });
@@ -111,7 +110,7 @@ describe('useUsersPanelCrud — delete confirmation flow', () => {
       await result.current.confirmDelete();
     });
 
-    expect(mockRemove).not.toHaveBeenCalled();
+    expect(mockTerminate).not.toHaveBeenCalled();
   });
 
   it('requestDelete overwrites previous target', () => {
@@ -129,10 +128,9 @@ describe('useUsersPanelCrud — delete confirmation flow', () => {
   });
 
   it('busyId is set during confirmDelete and cleared afterwards', async () => {
-    // Make remove take some time
-    let resolveRemove: () => void;
-    mockRemove.mockImplementationOnce(
-      () => new Promise<void>((resolve) => { resolveRemove = resolve; }),
+    let resolveTerminate: () => void;
+    mockTerminate.mockImplementationOnce(
+      () => new Promise<void>((resolve) => { resolveTerminate = resolve; }),
     );
 
     const { result } = renderCrudHook();
@@ -141,18 +139,15 @@ describe('useUsersPanelCrud — delete confirmation flow', () => {
       result.current.requestDelete(1, '田中 太郎');
     });
 
-    // Start confirm (won't finish yet)
     let confirmPromise: Promise<void>;
     act(() => {
       confirmPromise = result.current.confirmDelete();
     });
 
-    // busyId should be set to 1 during the operation
     expect(result.current.busyId).toBe(1);
 
-    // Resolve remove
     await act(async () => {
-      resolveRemove!();
+      resolveTerminate!();
       await confirmPromise!;
     });
 
