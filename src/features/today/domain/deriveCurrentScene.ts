@@ -36,6 +36,39 @@ export type SceneEntryWithState = SceneEntry & {
   sceneState: SceneState;
 };
 
+/**
+ * Scene-based scoring context.
+ * currentMinutes: current time as minutes since midnight.
+ * hasOverdueEntries: whether any entry is overdue in the current candidate set.
+ * now: wall-clock timestamp for startedAt age calculation (test-injectable).
+ */
+export type SceneScoringContext = {
+  currentMinutes: number;
+  hasOverdueEntries: boolean;
+  now?: Date;
+};
+
+const SCENE_BASE_SCORE: Record<SceneState, number> = {
+  done: -9999,
+  active: 3000,
+  overdue: 2000,
+  pending: 1000,
+};
+
+const OPS_STEP_ORDER: Record<string, number> = {
+  intake: 0,
+  temperature: 1,
+  amRecord: 2,
+  lunchCheck: 3,
+  pmRecord: 4,
+  discharge: 5,
+};
+
+const MAX_OVERDUE_BONUS = 240;
+const PENDING_NEAR_WINDOW = 120;
+const ACTIVE_STALE_THRESHOLD_MINUTES = 120;
+const ACTIVE_STALE_PENALTY = 1400;
+
 // ---------------------------------------------------------------------------
 // Scene State Derivation
 // ---------------------------------------------------------------------------
@@ -64,40 +97,107 @@ export function deriveSceneState(
 // Scene Selection
 // ---------------------------------------------------------------------------
 
+function getOpsStepBonus(step: string | undefined): number {
+  if (!step) return 0;
+  const order = OPS_STEP_ORDER[step];
+  if (order == null) return 0;
+  return (6 - order) * 5;
+}
+
+function getElapsedStartedMinutes(
+  progress: NextActionProgress | null,
+  now: Date,
+): number | null {
+  const startedAt = progress?.startedAt;
+  if (!startedAt) return null;
+  const startedMs = Date.parse(startedAt);
+  if (Number.isNaN(startedMs)) return null;
+  return Math.floor((now.getTime() - startedMs) / 60000);
+}
+
+/**
+ * スコアで場面優先度を数値化する。
+ *
+ * 誤判定しやすいケースに対応:
+ * 1. stale active が overdue を塞ぐ（長時間 active は減点）
+ * 2. overdue 同士の優先度（遅延分を加点）
+ * 3. pending 同士の曖昧さ（直近予定を加点）
+ * 4. 同時刻の曖昧さ（opsStep で微差をつける）
+ */
+export function scoreSceneEntry(
+  entry: SceneEntryWithState,
+  context: SceneScoringContext,
+): number {
+  const baseScore = SCENE_BASE_SCORE[entry.sceneState];
+  if (entry.sceneState === 'done') return baseScore;
+
+  const stepBonus = getOpsStepBonus(entry.item.opsStep);
+
+  if (entry.sceneState === 'overdue') {
+    const overdueMinutes = Math.max(0, context.currentMinutes - entry.scheduledMinutes);
+    return baseScore + Math.min(overdueMinutes, MAX_OVERDUE_BONUS) + stepBonus;
+  }
+
+  if (entry.sceneState === 'pending') {
+    const minutesUntil = Math.max(0, entry.scheduledMinutes - context.currentMinutes);
+    const proximityBonus = Math.max(0, PENDING_NEAR_WINDOW - minutesUntil);
+    return baseScore + proximityBonus + stepBonus;
+  }
+
+  // active
+  let stalePenalty = 0;
+  if (context.hasOverdueEntries) {
+    const elapsed = getElapsedStartedMinutes(entry.progress, context.now ?? new Date());
+    if (elapsed != null && elapsed > ACTIVE_STALE_THRESHOLD_MINUTES) {
+      stalePenalty = ACTIVE_STALE_PENALTY;
+    }
+  }
+
+  return baseScore + stepBonus - stalePenalty;
+}
+
+function compareByOpsStep(
+  a: SceneEntryWithState,
+  b: SceneEntryWithState,
+): number {
+  const orderA = a.item.opsStep ? OPS_STEP_ORDER[a.item.opsStep] ?? 99 : 99;
+  const orderB = b.item.opsStep ? OPS_STEP_ORDER[b.item.opsStep] ?? 99 : 99;
+  return orderA - orderB;
+}
+
 /**
  * 場面ベースで「次にやるべきアイテム」を選択する。
  *
- * 選択優先度:
- * 1. active — いま実行中のものがあればそれを表示
- * 2. overdue — 遅れているもの（opsStep 順で最も早いもの）
- * 3. pending — 次にやるべきもの（opsStep 順で最も早いもの）
- * 4. すべて done → null
- *
- * 同一状態内のソート: scheduledMinutes 昇順（時刻順）
+ * スコア優先度:
+ * - sceneState の基本重み: active > overdue > pending
+ * - 状態内加点: overdue 遅延分, pending 直近性
+ * - 補正: stale active（長時間 started）は overdue 存在時に減点
+ * - 同点時: scheduledMinutes → opsStep → id で安定化
  */
 export function selectNextScene(
   entries: SceneEntryWithState[],
+  currentMinutes: number,
+  now: Date = new Date(),
 ): SceneEntryWithState | null {
-  // 1. active — 作業中のものを最優先
-  const activeEntries = entries.filter(e => e.sceneState === 'active');
-  if (activeEntries.length > 0) {
-    return activeEntries.sort((a, b) => a.scheduledMinutes - b.scheduledMinutes)[0];
-  }
+  const actionable = entries.filter(e => e.sceneState !== 'done');
+  if (actionable.length === 0) return null;
 
-  // 2. overdue — 遅れているもの（時刻順で最も早いもの）
-  const overdueEntries = entries.filter(e => e.sceneState === 'overdue');
-  if (overdueEntries.length > 0) {
-    return overdueEntries.sort((a, b) => a.scheduledMinutes - b.scheduledMinutes)[0];
-  }
+  const hasOverdueEntries = actionable.some(e => e.sceneState === 'overdue');
 
-  // 3. pending — 次にやるべきもの（時刻順で最も早いもの）
-  const pendingEntries = entries.filter(e => e.sceneState === 'pending');
-  if (pendingEntries.length > 0) {
-    return pendingEntries.sort((a, b) => a.scheduledMinutes - b.scheduledMinutes)[0];
-  }
-
-  // 4. すべて done
-  return null;
+  return actionable
+    .map(entry => ({
+      entry,
+      score: scoreSceneEntry(entry, { currentMinutes, hasOverdueEntries, now }),
+    }))
+    .sort((a, b) => {
+      if (a.score !== b.score) return b.score - a.score;
+      if (a.entry.scheduledMinutes !== b.entry.scheduledMinutes) {
+        return a.entry.scheduledMinutes - b.entry.scheduledMinutes;
+      }
+      const stepDiff = compareByOpsStep(a.entry, b.entry);
+      if (stepDiff !== 0) return stepDiff;
+      return a.entry.item.id.localeCompare(b.entry.item.id);
+    })[0]?.entry ?? null;
 }
 
 // ---------------------------------------------------------------------------
