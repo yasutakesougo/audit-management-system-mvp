@@ -13,7 +13,12 @@ vi.mock('@/app/LayoutContext', () => ({
 
 // ── Mock: Auth ──────────────────────────────────────────────────────────────
 vi.mock('@/auth/useAuth', () => ({
-  useAuth: () => ({ account: { username: 'test@example.com' }, login: vi.fn(), logout: vi.fn() }),
+  useAuth: () => ({
+    account: { username: 'test@example.com' },
+    login: vi.fn(),
+    logout: vi.fn(),
+    acquireToken: vi.fn(async () => 'mock-token'),
+  }),
 }));
 
 vi.mock('@/auth/useUserAuthz', () => ({
@@ -89,12 +94,12 @@ const mockPageState = {
   weekAnnouncement: '2026年1月26日〜2月1日の週を表示',
 };
 
-vi.mock('@/features/schedules/hooks/useSchedulesPageState', () => ({
+vi.mock('@/features/schedules/hooks/view-models/useSchedulesPageState', () => ({
   useSchedulesPageState: () => mockPageState,
 }));
 
 // ── Mock: useWeekPageOrchestrator ───────────────────────────────────────────
-vi.mock('@/features/schedules/hooks/useWeekPageOrchestrator', () => ({
+vi.mock('@/features/schedules/hooks/orchestrators/useWeekPageOrchestrator', () => ({
   useWeekPageOrchestrator: () => ({
     viewItem: null,
     setViewItem: vi.fn(),
@@ -133,7 +138,7 @@ vi.mock('@/features/schedules/hooks/useWeekPageOrchestrator', () => ({
 }));
 
 // ── Mock: useWeekPageUiState ────────────────────────────────────────────────
-vi.mock('@/features/schedules/hooks/useWeekPageUiState', () => ({
+vi.mock('@/features/schedules/hooks/view-models/useWeekPageUiState', () => ({
   useWeekPageUiState: () => ({
     snack: { open: false, severity: 'success', message: '' },
     setSnack: vi.fn(),

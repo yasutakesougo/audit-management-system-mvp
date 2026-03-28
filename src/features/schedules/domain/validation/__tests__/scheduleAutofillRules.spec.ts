@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { AutofillContext } from '../scheduleAutofillRules';
 import { computeAutofill } from '../scheduleAutofillRules';
-import type { ScheduleItemForTemplate } from '../scheduleQuickTemplates';
+import type { ScheduleItemForTemplate } from '../../builders/scheduleQuickTemplates';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────
 

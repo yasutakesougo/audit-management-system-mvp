@@ -1,1 +1,1 @@
-export * from '../hooks/useSchedulesCrud';
+export * from '../hooks/legacy/useSchedulesCrud';

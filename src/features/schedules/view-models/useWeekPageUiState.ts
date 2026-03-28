@@ -1,1 +1,1 @@
-export * from '../hooks/useWeekPageUiState';
+export * from '../hooks/view-models/useWeekPageUiState';

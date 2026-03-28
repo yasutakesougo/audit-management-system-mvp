@@ -1,1 +1,1 @@
-export * from '../hooks/useSchedulesPageState';
+export * from '../hooks/view-models/useSchedulesPageState';

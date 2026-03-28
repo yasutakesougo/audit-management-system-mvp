@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { tid } from '@/testids';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';

@@ -1,4 +1,4 @@
-import ScheduleCreateDialog from './ScheduleCreateDialog';
+import ScheduleCreateDialog from '../components/dialogs/ScheduleCreateDialog';
 import type { CreateScheduleEventInput } from '../data';
 import type { ScheduleUserOption } from '@/features/schedules/domain';
 import { TESTIDS } from '@/testids';

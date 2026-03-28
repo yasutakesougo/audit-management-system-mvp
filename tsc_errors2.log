@@ -1,1 +1,0 @@
-src/features/daily/hooks/__tests__/useTableDailyRecordFiltering.spec.ts(10,15): error TS2305: Module '"@/stores/useUsers"' has no exported member 'StoreUser'.

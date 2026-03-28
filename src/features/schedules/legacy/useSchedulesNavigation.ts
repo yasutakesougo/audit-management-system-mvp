@@ -1,1 +1,1 @@
-export * from '../hooks/useSchedulesNavigation';
+export * from '../hooks/legacy/useSchedulesNavigation';
