@@ -14,6 +14,7 @@ const mockRepo: {
   getById: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
+  terminate: vi.fn(),
   remove: vi.fn(),
 };
 
@@ -91,5 +92,16 @@ describe('useUsersApi (repository-backed)', () => {
     await result.current.deleteUser(12);
 
     expect(mockRepo.remove).toHaveBeenCalledWith(12);
+  });
+
+  it('terminateUser delegates to repo.terminate', async () => {
+    const terminated = { Id: 7, FullName: 'Terminated User' } as IUserMaster;
+    mockRepo.terminate.mockResolvedValueOnce(terminated);
+    const { result } = renderHook(() => useUsersApi());
+
+    const res = await result.current.terminateUser(7);
+
+    expect(mockRepo.terminate).toHaveBeenCalledWith(7);
+    expect(res).toEqual(terminated);
   });
 });

@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import type { User } from '@/types';
+import type { StoreUser } from '@/stores/useUsers';
 import { isUserScheduledForDate } from '@/utils/attendanceUtils';
 
 export type UseTableDailyRecordSelectionParams = {
@@ -16,13 +16,13 @@ export type UseTableDailyRecordSelectionParams = {
   /** 出席予定のみ表示するかどうか */
   showTodayOnly: boolean;
   /** フィルタリングされたユーザーリスト（検索フィルタ適用後） */
-  filteredUsers: User[];
+  filteredUsers: StoreUser[];
   /** 出席フィルタリングされたユーザーリスト */
-  attendanceFilteredUsers: User[];
+  attendanceFilteredUsers: StoreUser[];
   /** 対象日付 */
   targetDate: Date;
   /** 全ユーザーリスト */
-  users: User[];
+  users: StoreUser[];
   /** 復元された下書きの選択状態（下書き復元時のみ） */
   loadedDraftSelectedUserIds?: string[] | null;
 };
@@ -31,7 +31,7 @@ export type UseTableDailyRecordSelectionReturn = {
   /** 選択されたユーザーIDリスト */
   selectedUserIds: string[];
   /** 選択されたユーザーオブジェクトリスト */
-  selectedUsers: User[];
+  selectedUsers: StoreUser[];
   /** 選択数 */
   selectedCount: number;
   /** 全選択されているかどうか */
@@ -96,8 +96,8 @@ export function useTableDailyRecordSelection({
    */
   const selectedUsers = useMemo(() => {
     return selectedUserIds
-      .map((id) => users.find((user) => user.userId === id))
-      .filter((user): user is User => Boolean(user));
+      .map((id) => users.find((user) => user.UserID === id))
+      .filter((user): user is StoreUser => Boolean(user));
   }, [users, selectedUserIds]);
 
   /**
@@ -115,7 +115,7 @@ export function useTableDailyRecordSelection({
       return false;
     }
     const allFilteredIds = filteredUsers
-      .map((user) => user.userId || '')
+      .map((user) => user.UserID || '')
       .filter((id): id is string => Boolean(id));
     return allFilteredIds.length === selectedUserIds.length &&
       allFilteredIds.every((id) => selectedUserIds.includes(id));
@@ -137,16 +137,16 @@ export function useTableDailyRecordSelection({
   useEffect(() => {
     if (showTodayOnly && selectedUserIds.length > 0) {
       const validUserIds = selectedUserIds.filter((userId) => {
-        const user = users.find((u) => u.userId === userId);
-        if (!user || !user.attendanceDays || !Array.isArray(user.attendanceDays)) {
+        const user = users.find((u) => u.UserID === userId);
+        if (!user || !user.AttendanceDays || !Array.isArray(user.AttendanceDays)) {
           return true; // Fail-safe: データがない場合は残す
         }
 
         return isUserScheduledForDate({
-          Id: parseInt(userId),
+          Id: user.Id,
           UserID: userId,
-          FullName: user.name || '',
-          AttendanceDays: user.attendanceDays,
+          FullName: user.FullName || '',
+          AttendanceDays: user.AttendanceDays,
         }, targetDate);
       });
 
@@ -166,7 +166,7 @@ export function useTableDailyRecordSelection({
     }
 
     const todayUserIds = attendanceFilteredUsers
-      .map((user) => user.userId)
+      .map((user) => user.UserID ?? '')
       .filter((id): id is string => Boolean(id));
 
     if (todayUserIds.length === 0) {
@@ -208,7 +208,7 @@ export function useTableDailyRecordSelection({
    */
   const handleSelectAll = () => {
     const allIds = filteredUsers
-      .map((user) => user.userId || '')
+      .map((user) => user.UserID || '')
       .filter((id): id is string => Boolean(id));
     setSelectionManuallyEdited(true);
     setSelectedUserIds(allIds);

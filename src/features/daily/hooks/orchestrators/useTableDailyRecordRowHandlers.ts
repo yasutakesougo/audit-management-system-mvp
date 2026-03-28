@@ -10,7 +10,7 @@
  * この hook は「effect → state 接続」のみを担う。
  */
 
-import type { User } from '@/types';
+import type { StoreUser } from '@/stores/useUsers';
 import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { getLastActivitiesForUser } from '../legacy/useLastActivities';
@@ -27,7 +27,7 @@ export type UseTableDailyRecordRowHandlersParams = {
   /** formData の setter（親が所有する state） */
   setFormData: Dispatch<SetStateAction<TableDailyRecordData>>;
   /** 選択されたユーザーオブジェクト（行同期に使用） */
-  selectedUsers: User[];
+  selectedUsers: StoreUser[];
   /** 選択されたユーザーID一覧（行同期に使用） */
   selectedUserIds: string[];
   /** 未送信のみ表示フラグ */
@@ -82,7 +82,10 @@ export function useTableDailyRecordRowHandlers({
     setFormData((prev) => {
       const nextRows = syncRowsWithSelectedUsers(
         prev.userRows,
-        selectedUsers,
+        selectedUsers.map((user) => ({
+          userId: user.UserID ?? '',
+          name: user.FullName ?? '',
+        })),
         selectedUserIds,
         handoffNotesByUser,
         { getLastActivities: getLastActivitiesForUser },

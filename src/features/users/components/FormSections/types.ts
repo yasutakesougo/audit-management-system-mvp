@@ -9,6 +9,7 @@ export type { DayField, FormErrors, FormValues };
 
 /** 全セクション共通の props */
 export type FormSectionProps = {
+  formIdPrefix: string;
   values: FormValues;
   errors: FormErrors;
   setField: <K extends keyof FormValues>(key: K, value: FormValues[K]) => void;

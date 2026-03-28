@@ -1,5 +1,7 @@
 import { normalizeAttendanceDays } from '../attendance';
+import { canEditUser, toDomainUser } from '../domain/userLifecycle';
 import { DEMO_USERS } from '../constants';
+import { USAGE_STATUS_VALUES } from '../typesExtended';
 import type {
   UserRepository,
   UserRepositoryGetParams,
@@ -17,21 +19,25 @@ const coerceId = (id: number | string): number => {
   return numeric;
 };
 
+const getTodayIsoDate = (): string => new Date().toISOString().slice(0, 10);
+
 const cloneUser = (user: IUserMaster): IUserMaster => ({
-  ...user,
+  ...toDomainUser(user),
   AttendanceDays: normalizeAttendanceDays(user.AttendanceDays),
 });
 
 const fromDto = (dto: IUserMasterCreateDto, nextId: number): IUserMaster => ({
-  Id: nextId,
-  UserID: ensureUserId(dto.UserID, nextId),
-  FullName: dto.FullName,
-  ContractDate: dto.ContractDate ?? undefined,
-  IsHighIntensitySupportTarget: dto.IsHighIntensitySupportTarget ?? false,
-  IsSupportProcedureTarget: dto.IsSupportProcedureTarget ?? false,
-  ServiceStartDate: dto.ServiceStartDate ?? undefined,
-  ServiceEndDate: dto.ServiceEndDate ?? null,
-  AttendanceDays: normalizeAttendanceDays(dto.AttendanceDays),
+  ...toDomainUser({
+    Id: nextId,
+    UserID: ensureUserId(dto.UserID, nextId),
+    FullName: dto.FullName,
+    ContractDate: dto.ContractDate ?? undefined,
+    IsHighIntensitySupportTarget: dto.IsHighIntensitySupportTarget ?? false,
+    IsSupportProcedureTarget: dto.IsSupportProcedureTarget ?? false,
+    ServiceStartDate: dto.ServiceStartDate ?? undefined,
+    ServiceEndDate: dto.ServiceEndDate ?? null,
+    AttendanceDays: normalizeAttendanceDays(dto.AttendanceDays),
+  }),
 });
 
 export class InMemoryUserRepository implements UserRepository {
@@ -110,12 +116,15 @@ export class InMemoryUserRepository implements UserRepository {
       if (user.Id !== numericId) {
         return user;
       }
-      updated = {
+      updated = toDomainUser({
         ...user,
         ...payload,
-      } as IUserMaster;
+      } as IUserMaster);
       if (payload.AttendanceDays !== undefined) {
         updated.AttendanceDays = normalizeAttendanceDays(payload.AttendanceDays);
+      }
+      if (!canEditUser(user)) {
+        throw new Error('契約終了の利用者は編集できません。');
       }
       return updated;
     });
@@ -134,6 +143,29 @@ export class InMemoryUserRepository implements UserRepository {
     const numericId = coerceId(id);
     this.users = this.users.filter((user) => user.Id !== numericId);
     this.emit();
+  }
+
+  public async terminate(id: number | string): Promise<IUserMaster> {
+    const numericId = coerceId(id);
+    const current = this.users.find((user) => user.Id === numericId);
+    if (!current) {
+      throw new Error(`User with id ${numericId} not found`);
+    }
+
+    if (current.lifecycleStatus === 'terminated') {
+      return current;
+    }
+
+    const terminated = toDomainUser({
+      ...current,
+      UsageStatus: USAGE_STATUS_VALUES.TERMINATED,
+      ServiceEndDate: current.ServiceEndDate ?? getTodayIsoDate(),
+      IsActive: false,
+    });
+
+    this.users = this.users.map((user) => (user.Id === numericId ? terminated : user));
+    this.emit();
+    return terminated;
   }
 
   private emit(): void {

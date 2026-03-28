@@ -1,5 +1,5 @@
 import { TESTIDS } from '@/testids';
-import type { User } from '@/types';
+import type { StoreUser } from '@/stores/useUsers';
 import {
     ClearAll as ClearAllIcon,
     ExpandLess as ExpandLessIcon,
@@ -32,7 +32,7 @@ type TableDailyRecordUserPickerProps = {
   onToggleShowToday: () => void;
   onSelectAll: () => void;
   onClearAll: () => void;
-  filteredUsers: User[];
+  filteredUsers: StoreUser[];
   selectedUserIds: string[];
   onUserToggle: (userId: string) => void;
   defaultExpanded?: boolean;
@@ -165,7 +165,7 @@ export const TableDailyRecordUserPicker: React.FC<TableDailyRecordUserPickerProp
           >
             {filteredUsers.map((user) => (
               <Box
-                key={user.userId}
+                key={user.UserID ?? String(user.Id)}
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
@@ -175,14 +175,14 @@ export const TableDailyRecordUserPicker: React.FC<TableDailyRecordUserPickerProp
                 }}
               >
                 <Checkbox
-                  checked={selectedUserIds.includes(user.userId || '')}
-                  onChange={() => onUserToggle(user.userId || '')}
+                  checked={selectedUserIds.includes(user.UserID || '')}
+                  onChange={() => onUserToggle(user.UserID || '')}
                   size="small"
                   sx={{ p: 0.5 }}
-                  inputProps={{ 'aria-label': `${user.name} (${user.userId || 'ID未設定'})` }}
+                  inputProps={{ 'aria-label': `${user.FullName} (${user.UserID || 'ID未設定'})` }}
                 />
                 <Typography variant="body2" sx={{ ml: 0.5, fontSize: '0.8rem' }}>
-                  {user.name} ({user.userId})
+                  {user.FullName} ({user.UserID})
                 </Typography>
               </Box>
             ))}

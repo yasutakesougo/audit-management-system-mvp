@@ -1,5 +1,6 @@
 import type { Schedule } from '@/lib/mappers';
-import type { Staff, User } from '@/types';
+import type { StoreUser } from '@/stores/useUsers';
+import type { Staff } from '@/types';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -124,28 +125,30 @@ const staffMembers: Staff[] = [
   },
 ];
 
-const users: User[] = [
+const users: StoreUser[] = [
   {
-    id: 20,
-    userId: 'U20',
-    name: '利用者A',
-    toDays: [],
-    fromDays: [],
-    attendanceDays: [],
-    contractDate: '2024-05-25',
-    certExpiry: '2025-05-05',
-    active: true,
+    Id: 20,
+    UserID: 'U20',
+    FullName: '利用者A',
+    TransportToDays: [],
+    TransportFromDays: [],
+    AttendanceDays: [],
+    ContractDate: '2024-05-25',
+    RecipientCertExpiry: '2025-05-05',
+    IsActive: true,
+    lifecycleStatus: 'active',
   },
   {
-    id: 21,
-    userId: 'U21',
-    name: '利用者B',
-    toDays: [],
-    fromDays: [],
-    attendanceDays: [],
-    contractDate: '2024-04-01',
-    certExpiry: undefined,
-    active: true,
+    Id: 21,
+    UserID: 'U21',
+    FullName: '利用者B',
+    TransportToDays: [],
+    TransportFromDays: [],
+    AttendanceDays: [],
+    ContractDate: '2024-04-01',
+    RecipientCertExpiry: undefined,
+    IsActive: true,
+    lifecycleStatus: 'active',
   },
 ];
 

@@ -13,7 +13,13 @@ type Props = FormSectionProps & {
   certNumberRef: RefObject<HTMLInputElement | null>;
 };
 
-export function BillingSection({ values, errors, setField, certNumberRef }: Props) {
+export function BillingSection({
+  formIdPrefix,
+  values,
+  errors,
+  setField,
+  certNumberRef,
+}: Props) {
   return (
     <Box sx={{ mb: 3 }}>
       <Typography
@@ -25,6 +31,8 @@ export function BillingSection({ values, errors, setField, certNumberRef }: Prop
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <TextField
+          id={`${formIdPrefix}-user-copay-limit`}
+          name="UserCopayLimit"
           fullWidth
           label="利用者負担上限月額（円）"
           value={values.UserCopayLimit}
@@ -36,6 +44,8 @@ export function BillingSection({ values, errors, setField, certNumberRef }: Prop
         />
 
         <TextField
+          id={`${formIdPrefix}-recipient-cert-number`}
+          name="RecipientCertNumber"
           fullWidth
           label="受給者証番号"
           inputRef={certNumberRef}
@@ -49,6 +59,8 @@ export function BillingSection({ values, errors, setField, certNumberRef }: Prop
         />
 
         <TextField
+          id={`${formIdPrefix}-recipient-cert-expiry`}
+          name="RecipientCertExpiry"
           fullWidth
           label="受給者証有効期限"
           type="date"
