@@ -8,6 +8,7 @@
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import type { CallLog, CreateCallLogInput } from '@/domain/callLogs/schema';
 import type { CallLogRepository, ListCallLogsOptions } from '@/domain/callLogs/repository';
+import { applyCallLogStatusTransition } from '@/domain/callLogs/statusTransition';
 import { CALL_LOG_LIST_TITLE, CALL_LOG_FIELDS } from './callLogFieldMap';
 import { mapItemToCallLog } from './mapItemToCallLog';
 import { buildCallLogCreateBody } from './buildCallLogCreateBody';
@@ -95,13 +96,20 @@ export const makeSharePointCallLogRepository = (
     },
 
     async updateStatus(id: string, status: CallLog['status']): Promise<void> {
-      const payload: Record<string, unknown> = {
-        [f.status]: status,
-      };
+      const nowDate = new Date();
+      const transitioned = applyCallLogStatusTransition(
+        {
+          status: 'new',
+          completedAt: undefined,
+        },
+        status,
+        nowDate,
+      );
 
-      if (status === 'done') {
-        payload[f.completedAt] = new Date().toISOString();
-      }
+      const payload: Record<string, unknown> = {
+        [f.status]: transitioned.status,
+        [f.completedAt]: transitioned.completedAt ?? null,
+      };
 
       await client.updateItemByTitle(CALL_LOG_LIST_TITLE, Number(id), payload);
     },

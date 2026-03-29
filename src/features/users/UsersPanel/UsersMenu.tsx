@@ -10,12 +10,14 @@ type UsersMenuProps = {
   onNavigateToList: () => void;
   onNavigateToCreate: () => void;
   onExportMonthlySummary?: () => void;
+  canNavigateToCreate?: boolean;
 };
 
 const UsersMenu: FC<UsersMenuProps> = ({
   onNavigateToList,
   onNavigateToCreate,
-  onExportMonthlySummary
+  onExportMonthlySummary,
+  canNavigateToCreate = true,
 }) => (
   <Stack spacing={2.5}>
     <BoxHeading />
@@ -32,11 +34,17 @@ const UsersMenu: FC<UsersMenuProps> = ({
         fullWidth
         variant="contained"
         startIcon={<PersonAddRoundedIcon />}
+        disabled={!canNavigateToCreate}
         onClick={onNavigateToCreate}
       >
         新規利用者登録
       </Button>
     </Stack>
+    {!canNavigateToCreate && (
+      <Typography variant="caption" color="text.secondary">
+        新規利用者登録には編集モードが必要です。
+      </Typography>
+    )}
 
     <Stack spacing={1.5}>
       <Typography variant="subtitle2" component="h4" sx={{ fontWeight: 600 }}>

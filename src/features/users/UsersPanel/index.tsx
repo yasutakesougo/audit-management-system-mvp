@@ -32,7 +32,7 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import UserForm from '../UserForm';
 import UsersCreateForm from './UsersCreateForm';
 import UsersList from './UsersList';
@@ -79,6 +79,13 @@ const UsersPanel = () => {
   // 管理者承認による一時的な編集権限
   const { isOverrideActive, requestOverride, revokeOverride, remainingMs } = useAdminOverride();
   const canEdit = isAdmin || isOverrideActive;
+  const safeActiveTab: UsersTab = activeTab === 'create' && !canEdit ? 'list' : activeTab;
+
+  useEffect(() => {
+    if (activeTab === 'create' && !canEdit) {
+      setActiveTab('list');
+    }
+  }, [activeTab, canEdit, setActiveTab]);
 
   // PIN 入力ダイアログ
   const [pinDialogOpen, setPinDialogOpen] = useState(false);
@@ -140,8 +147,15 @@ const UsersPanel = () => {
 
       <Paper variant="outlined" sx={{ mb: 3 }}>
         <Tabs
-          value={activeTab}
-          onChange={(_, value) => setActiveTab(value as UsersTab)}
+          value={safeActiveTab}
+          onChange={(_, value) => {
+            const nextTab = value as UsersTab;
+            if (nextTab === 'create' && !canEdit) {
+              setActiveTab('list');
+              return;
+            }
+            setActiveTab(nextTab);
+          }}
           variant="scrollable"
           scrollButtons="auto"
           aria-label="利用者タブメニュー"
@@ -165,14 +179,21 @@ const UsersPanel = () => {
         </Tabs>
         <Divider />
         <Box sx={{ p: { xs: 2.5, md: 3 } }}>
-          {activeTab === 'menu' && (
+          {safeActiveTab === 'menu' && (
             <UsersMenu
               onNavigateToList={() => setActiveTab('list')}
-              onNavigateToCreate={() => setActiveTab('create')}
+              onNavigateToCreate={() => {
+                if (!canEdit) {
+                  setActiveTab('list');
+                  return;
+                }
+                setActiveTab('create');
+              }}
               onExportMonthlySummary={handleExportMonthlySummary}
+              canNavigateToCreate={canEdit}
             />
           )}
-          {activeTab === 'list' && (
+          {safeActiveTab === 'list' && (
             <>
               <UsersList
                 users={data}
@@ -210,7 +231,7 @@ const UsersPanel = () => {
               )}
             </>
           )}
-          {canEdit && activeTab === 'create' && (
+          {canEdit && safeActiveTab === 'create' && (
             <UsersCreateForm
               isSubmitting={isCreatePending}
               onCreate={handleCreate}

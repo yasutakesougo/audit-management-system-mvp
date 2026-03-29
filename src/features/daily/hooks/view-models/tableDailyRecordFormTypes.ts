@@ -206,4 +206,3 @@ export interface TableDailyRecordViewModel {
     };
   };
 }
-

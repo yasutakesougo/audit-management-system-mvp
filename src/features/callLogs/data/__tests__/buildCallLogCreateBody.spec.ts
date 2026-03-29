@@ -5,7 +5,7 @@
  *   - buildCallLogCreateBody  CreateCallLogInput → SP ペイロード変換
  *
  * 観点:
- *   - status が常に 'new' になること
+ *   - status が折返し要件に応じて決まること
  *   - receivedByName が正しく注入されること
  *   - receivedAt の省略時にデフォルト日時が使われること
  *   - urgency 省略時に 'normal' になること
@@ -35,11 +35,35 @@ function makeInput(overrides?: Partial<CreateCallLogInput>): CreateCallLogInput 
 
 const FIXED_NOW = new Date('2026-03-18T09:00:00.000Z');
 
-// ─── status 固定 ──────────────────────────────────────────────────────────────
+// ─── status 決定 ──────────────────────────────────────────────────────────────
 
 describe('buildCallLogCreateBody — status', () => {
-  it('should always set status to "new" regardless of input', () => {
+  it('should set status to "callback_pending" when needCallback=true', () => {
     const body = buildCallLogCreateBody(makeInput(), '受付者', FIXED_NOW);
+    expect(body[F.status]).toBe('callback_pending');
+  });
+
+  it('should set status to "callback_pending" when callbackDueAt exists', () => {
+    const body = buildCallLogCreateBody(
+      makeInput({
+        needCallback: false,
+        callbackDueAt: '2026-03-18T17:00:00.000Z',
+      }),
+      '受付者',
+      FIXED_NOW,
+    );
+    expect(body[F.status]).toBe('callback_pending');
+  });
+
+  it('should set status to "new" when callback requirement is absent', () => {
+    const body = buildCallLogCreateBody(
+      makeInput({
+        needCallback: false,
+        callbackDueAt: undefined,
+      }),
+      '受付者',
+      FIXED_NOW,
+    );
     expect(body[F.status]).toBe('new');
   });
 });

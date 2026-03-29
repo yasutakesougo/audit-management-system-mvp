@@ -29,7 +29,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSP } from '@/lib/spClient';
 import { useToast } from '@/hooks/useToast';
-import { useSchedules } from '@/features/schedules/hooks/useSchedules';
+import { useSchedules } from '@/features/schedules/hooks/legacy/useSchedules';
 import { useStaffStore } from '@/features/staff/store';
 import { resolveOperationFailureFeedback } from '../feedback/operationFeedback';
 import { useTodaySummary } from '../domain';

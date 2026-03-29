@@ -11,7 +11,7 @@ import { useMemo } from 'react';
 
 import { DEFAULT_OPS_CAPACITY, type OpsCapacity } from '../domain/scheduleOps';
 import { toDateKey } from '../lib/dateKey';
-import { type DateRange } from './useSchedules';
+import { type DateRange } from './legacy/useSchedules';
 import { useScheduleOpsData } from './useScheduleOpsData';
 import { useScheduleOpsFilter } from './useScheduleOpsFilter';
 import { useScheduleOpsPageState } from './useScheduleOpsPageState';

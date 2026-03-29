@@ -1,4 +1,4 @@
-import { scheduleFacilityEmptyCopy } from '@/features/schedules/domain/categoryLabels';
+import { scheduleFacilityEmptyCopy } from '@/features/schedules/domain/mappers/categoryLabels';
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
 import { TESTIDS } from '@/testids';
 import AddIcon from '@mui/icons-material/Add';

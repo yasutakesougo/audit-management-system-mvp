@@ -13,7 +13,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { SchedulesHeader } from '../SchedulesHeader';
+import { SchedulesHeader } from '../sections/SchedulesHeader';
 
 // Mock useNavigate
 vi.mock('react-router-dom', async (importOriginal) => {

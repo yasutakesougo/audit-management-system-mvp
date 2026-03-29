@@ -2,7 +2,7 @@ import { motionTokens } from '@/app/theme';
 import type { AbcCountBySlot } from '@/domain/abc/buildAbcCountBySlot';
 import type { BehaviorInterventionPlan } from '@/features/analysis/domain/interventionTypes';
 import BipSummaryPopover from '@/features/daily/components/procedure/BipSummaryPopover';
-import { getScheduleKey } from '@/features/daily/domain/builders/getScheduleKey';
+import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import EditIcon from '@mui/icons-material/Edit';
 import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 import ShieldIcon from '@mui/icons-material/Shield';
@@ -21,7 +21,7 @@ import type { ReactNode } from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 
-import type { ProcedureSource } from '@/features/daily/domain/legacy/ProcedureRepository';
+import type { ProcedureSource } from '@/features/daily/domain/ProcedureRepository';
 
 export type ScheduleItem = {
   id?: string;

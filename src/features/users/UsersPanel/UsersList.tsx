@@ -86,7 +86,7 @@ const UsersList: FC<UsersListProps> = ({
 
   const isRefreshing = busyId === -2;
   const [search, setSearch] = useState('');
-  const [onlyActive, setOnlyActive] = useState(false);
+  const [onlyActive, setOnlyActive] = useState(true);
   const [onlySevere, setOnlySevere] = useState(false);
   const [prioritySort, setPrioritySort] = useState(false);
 
@@ -316,12 +316,19 @@ const UsersList: FC<UsersListProps> = ({
             minWidth: { lg: 0 },
             borderRadius: 2,
             maxHeight: { lg: 'calc(100vh - 280px)' },
-            overflow: 'auto',
+            overflowX: 'auto',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
           }}
           data-testid={TESTIDS['users-list-table']}
         >
           {/* ── ③ dense table ── */}
-          <Table stickyHeader size="small" aria-label="利用者一覧テーブル">
+          <Table
+            stickyHeader
+            size="small"
+            aria-label="利用者一覧テーブル"
+            sx={{ minWidth: { xs: 560, sm: 640 } }}
+          >
             <TableHead>
               <TableRow>
                 <TableCell
@@ -330,20 +337,47 @@ const UsersList: FC<UsersListProps> = ({
                     whiteSpace: 'nowrap',
                     fontWeight: 700,
                     fontSize: '0.8rem',
-                    bgcolor: 'grey.50',
+                    bgcolor: (theme) =>
+                      theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'grey.50',
                   }}
                 >
                   状態
                 </TableCell>
-                <TableCell sx={{ fontWeight: 700, fontSize: '0.8rem', bgcolor: 'grey.50' }}>
+                <TableCell
+                  sx={{
+                    minWidth: 96,
+                    whiteSpace: 'nowrap',
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                    bgcolor: (theme) =>
+                      theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'grey.50',
+                  }}
+                >
                   ユーザーID
                 </TableCell>
-                <TableCell sx={{ fontWeight: 700, fontSize: '0.8rem', bgcolor: 'grey.50' }}>
+                <TableCell
+                  sx={{
+                    minWidth: 120,
+                    whiteSpace: 'nowrap',
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                    bgcolor: (theme) =>
+                      theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'grey.50',
+                  }}
+                >
                   氏名
                 </TableCell>
                 <TableCell
                   align="center"
-                  sx={{ fontWeight: 700, fontSize: '0.8rem', bgcolor: 'grey.50', width: 120 }}
+                  sx={{
+                    minWidth: 120,
+                    width: 120,
+                    whiteSpace: 'nowrap',
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                    bgcolor: (theme) =>
+                      theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'grey.50',
+                  }}
                 >
                   操作
                 </TableCell>
@@ -393,7 +427,7 @@ const UsersList: FC<UsersListProps> = ({
                         )}
                       </Stack>
                     </TableCell>
-                    <TableCell sx={{ py: 0.75, fontSize: '0.85rem' }}>
+                    <TableCell sx={{ py: 0.75, fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                       {user.UserID}
                     </TableCell>
                     <TableCell
@@ -517,7 +551,8 @@ const UsersList: FC<UsersListProps> = ({
                 alignItems: 'center',
                 justifyContent: 'center',
                 minHeight: 200,
-                bgcolor: 'grey.50',
+                bgcolor: (theme) =>
+                  theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'grey.50',
               }}
             >
               <PersonSearchRoundedIcon
@@ -526,10 +561,10 @@ const UsersList: FC<UsersListProps> = ({
               <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 600 }}>
                 利用者が未選択です
               </Typography>
-              <Typography variant="body2" color="text.disabled" textAlign="center" sx={{ mt: 0.5 }}>
+              <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ mt: 0.5 }}>
                 一覧から利用者を選択すると、ここに詳細が表示されます
               </Typography>
-              <Typography variant="caption" color="text.disabled" sx={{ mt: 1 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
                 ⌘/Ctrl + クリックで新しいタブに開きます
               </Typography>
             </Paper>

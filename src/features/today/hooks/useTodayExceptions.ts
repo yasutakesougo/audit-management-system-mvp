@@ -12,6 +12,7 @@ import {
   type TodayExceptionAction,
 } from '@/features/exceptions/domain/buildTodayExceptions';
 import { useActiveExceptionPreferences } from '@/features/exceptions/hooks/useExceptionPreferences';
+import { rankTodayExceptionActionsByPriority } from '@/features/today/domain/selectTopExceptionAttentionCandidate';
 
 export type UseTodayExceptionsOptions = {
   /** 支援手順記録が未入力のユーザー一覧（todayRecordCompletion から取得） */
@@ -20,6 +21,7 @@ export type UseTodayExceptionsOptions = {
 
 export type UseTodayExceptionsResult = {
   items: TodayExceptionAction[];
+  topPriorityItem: TodayExceptionAction | null;
   heroItem: TodayExceptionAction | null;
   queueItems: TodayExceptionAction[];
   isLoading: boolean;
@@ -121,27 +123,53 @@ export function useTodayExceptions(
     return merged;
   }, [exceptions, dismissedStableIds, snoozedStableIds]);
 
+  const { orderedItems, topPriorityItem } = useMemo(() => {
+    const ranked = rankTodayExceptionActionsByPriority({
+      actions: items,
+      sourceExceptions: exceptions,
+    });
+    if (ranked.length === 0) {
+      return {
+        orderedItems: items,
+        topPriorityItem: items[0] ?? null,
+      };
+    }
+
+    return {
+      orderedItems: ranked.map((entry) => entry.action),
+      topPriorityItem: ranked[0]?.action ?? null,
+    };
+  }, [exceptions, items]);
+
   const { heroItem, queueItems } = useMemo(() => {
     // critical が1件でもあれば Hero に昇格。なければ null (通常のProgressHeroを出す)
-    const hero = items.find((i) => i.priority === 'critical') ?? null;
-    
+    const hero = orderedItems.find((i) => i.priority === 'critical') ?? null;
+
     // Hero で表示するものを除いて、最大3件を補助カードへ出力
-    const remaining = items.filter((i) => i.id !== hero?.id);
+    const remaining = orderedItems.filter((i) => i.id !== hero?.id);
     const queue = remaining.slice(0, 3);
 
     return { heroItem: hero, queueItems: queue };
-  }, [items]);
+  }, [orderedItems]);
 
   return useMemo(
     () => ({
       items,
+      topPriorityItem,
       heroItem,
       queueItems,
       isLoading: dataSources.status === 'loading',
       error: dataSources.error,
       refetchDailyRecords: dataSources.refetchDailyRecords,
     }),
-    [items, heroItem, queueItems, dataSources.status, dataSources.error, dataSources.refetchDailyRecords]
+    [
+      items,
+      topPriorityItem,
+      heroItem,
+      queueItems,
+      dataSources.status,
+      dataSources.error,
+      dataSources.refetchDailyRecords,
+    ],
   );
 }
-

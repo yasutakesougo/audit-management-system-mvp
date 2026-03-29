@@ -6,7 +6,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { TimelineItem } from '../TimelineItem';
+import { TimelineItem } from '../timeline/TimelineItem';
 
 // ---------------------------------------------------------------------------
 // Helpers

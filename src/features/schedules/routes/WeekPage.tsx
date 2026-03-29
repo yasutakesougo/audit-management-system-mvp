@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useId, useMemo } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -5,12 +6,12 @@ import { useBreakpointFlags, useOrientation } from '@/app/LayoutContext';
 import { canAccess } from '@/auth/roles';
 import { useAuth } from '@/auth/useAuth';
 import { useUserAuthz } from '@/auth/useUserAuthz';
-import { ScheduleDialogManager } from '@/features/schedules/components/ScheduleDialogManager';
+import { ScheduleDialogManager } from '@/features/schedules/components/dialogs/ScheduleDialogManager';
 import { ScheduleFAB } from '@/features/schedules/components/ScheduleFAB';
-import { ScheduleFilterBar } from '@/features/schedules/components/ScheduleFilterBar';
+import { ScheduleFilterBar } from '@/features/schedules/components/sections/ScheduleFilterBar';
 import { ScheduleReadOnlyAlert } from '@/features/schedules/components/ScheduleReadOnlyAlert';
-import { ScheduleViewContainer } from '@/features/schedules/components/ScheduleViewContainer';
-import SchedulesHeader from '@/features/schedules/components/SchedulesHeader';
+import { ScheduleViewContainer } from '@/features/schedules/components/pages/ScheduleViewContainer';
+import SchedulesHeader from '@/features/schedules/components/sections/SchedulesHeader';
 import { OpsFilterBar } from '@/features/schedules/components/ops/OpsFilterBar';
 import { OpsHighLoadWarningBanner } from '@/features/schedules/components/ops/OpsHighLoadWarningBanner';
 import { OpsLeaveSuggestionPanel } from '@/features/schedules/components/ops/OpsLeaveSuggestionPanel';
@@ -21,14 +22,17 @@ import { OpsWeekBoard } from '@/features/schedules/components/ops/OpsWeekBoard';
 import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedules/constants';
 import { TESTIDS } from '@/testids';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
+import { alpha, useTheme } from '@mui/material/styles';
 import { useScheduleOps } from '../hooks/useScheduleOps';
 import { useScheduleUserOptions } from '../hooks/useScheduleUserOptions';
-import { buildCreateDialogIntent, buildNextSlot, useSchedulesPageState } from '../hooks/useSchedulesPageState';
-import { useWeekPageOrchestrator } from '../hooks/useWeekPageOrchestrator';
-import { useWeekPageUiState } from '../hooks/useWeekPageUiState';
+import { buildCreateDialogIntent, buildNextSlot, useSchedulesPageState } from '../hooks/view-models/useSchedulesPageState';
+import { useWeekPageOrchestrator } from '../hooks/orchestrators/useWeekPageOrchestrator';
+import { useWeekPageUiState } from '../hooks/view-models/useWeekPageUiState';
 
 
 export default function WeekPage() {
+  const theme = useTheme();
+
   // Layout & Auth
   const { isDesktopSize, isTabletSize } = useBreakpointFlags();
   const { isLandscape } = useOrientation();
@@ -201,6 +205,14 @@ export default function WeekPage() {
   const navPrev = mode === 'month' ? handlePrevMonth : handlePrevWeek;
   const navNext = mode === 'month' ? handleNextMonth : handleNextWeek;
   const navToday = mode === 'month' ? handleTodayMonth : handleTodayWeek;
+  const stickyHeaderBackground =
+    theme.palette.mode === 'dark'
+      ? alpha(theme.palette.background.paper, 0.96)
+      : 'rgba(255,255,255,0.96)';
+  const stickyHeaderBorderColor =
+    theme.palette.mode === 'dark'
+      ? alpha(theme.palette.common.white, 0.12)
+      : 'rgba(0,0,0,0.08)';
 
   return (
     <section
@@ -218,11 +230,11 @@ export default function WeekPage() {
             position: 'sticky',
             top: 0,
             zIndex: 2,
-            background: 'rgba(255,255,255,0.96)',
+            background: stickyHeaderBackground,
             backdropFilter: 'blur(6px)',
             paddingTop: 0,
             paddingBottom: 4,
-            borderBottom: '1px solid rgba(0,0,0,0.08)',
+            borderBottom: `1px solid ${stickyHeaderBorderColor}`,
           }}
         >
           <span hidden>週間スケジュール</span>

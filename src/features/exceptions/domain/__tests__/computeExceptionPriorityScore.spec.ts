@@ -4,6 +4,7 @@ import {
   buildChildCountByParentId,
   computeExceptionPriorityBreakdown,
   computeExceptionPriorityScore,
+  extractExceptionPriorityMaterials,
 } from '../computeExceptionPriorityScore';
 
 function makeItem(overrides: Partial<ExceptionItem> & { id: string }): ExceptionItem {
@@ -148,5 +149,119 @@ describe('computeExceptionPriorityScore', () => {
 
     expect(result.age).toBe(0);
     expect(result.total).toBeGreaterThan(0);
+  });
+
+  it('期限超過日数が大きいほど優先度が上がる', () => {
+    const now = new Date('2026-03-28T12:00:00.000Z');
+    const oneDay = makeItem({
+      id: 'one-day',
+      category: 'overdue-plan',
+      targetDate: '2026-03-27',
+      updatedAt: '2026-03-27T09:00:00.000Z',
+    });
+    const fiveDays = makeItem({
+      id: 'five-day',
+      category: 'overdue-plan',
+      targetDate: '2026-03-23',
+      updatedAt: '2026-03-23T09:00:00.000Z',
+    });
+
+    const oneBreakdown = computeExceptionPriorityBreakdown(oneDay, { now });
+    const fiveBreakdown = computeExceptionPriorityBreakdown(fiveDays, { now });
+
+    expect(fiveBreakdown.materials.isOverdue).toBe(true);
+    expect(fiveBreakdown.materials.overdueDays).toBeGreaterThan(oneBreakdown.materials.overdueDays);
+    expect(fiveBreakdown.overdue).toBeGreaterThan(oneBreakdown.overdue);
+    expect(fiveBreakdown.total).toBeGreaterThan(oneBreakdown.total);
+  });
+
+  it('corrective-action カテゴリは是正要否加点される', () => {
+    const now = new Date('2026-03-25T12:00:00.000Z');
+    const corrective = makeItem({
+      id: 'corrective',
+      category: 'corrective-action',
+      severity: 'high',
+    });
+    const nonCorrective = makeItem({
+      id: 'non-corrective',
+      category: 'missing-record',
+      severity: 'high',
+      title: '記録未入力',
+      description: '日次記録が未入力です',
+    });
+
+    const correctiveBreakdown = computeExceptionPriorityBreakdown(corrective, { now });
+    const nonCorrectiveBreakdown = computeExceptionPriorityBreakdown(nonCorrective, { now });
+
+    expect(correctiveBreakdown.materials.requiresCorrectiveAction).toBe(true);
+    expect(correctiveBreakdown.correctiveAction).toBeGreaterThan(nonCorrectiveBreakdown.correctiveAction);
+    expect(correctiveBreakdown.total).toBeGreaterThan(nonCorrectiveBreakdown.total);
+  });
+
+  it('重大カテゴリ（critical-handoff）はカテゴリ加点される', () => {
+    const now = new Date('2026-03-25T12:00:00.000Z');
+    const criticalCategory = makeItem({
+      id: 'critical-category',
+      category: 'critical-handoff',
+      severity: 'high',
+    });
+    const nonCriticalCategory = makeItem({
+      id: 'non-critical-category',
+      category: 'attention-user',
+      severity: 'high',
+    });
+
+    const criticalBreakdown = computeExceptionPriorityBreakdown(criticalCategory, { now });
+    const normalBreakdown = computeExceptionPriorityBreakdown(nonCriticalCategory, { now });
+
+    expect(criticalBreakdown.materials.isCriticalCategory).toBe(true);
+    expect(criticalBreakdown.criticalCategory).toBeGreaterThan(normalBreakdown.criticalCategory);
+    expect(criticalBreakdown.total).toBeGreaterThan(normalBreakdown.total);
+  });
+
+  it('利用者単位の件数が多い parent は userCount 加点される', () => {
+    const now = new Date('2026-03-25T12:00:00.000Z');
+    const parentSparse = makeItem({
+      id: 'parent-sparse',
+      category: 'corrective-action',
+      severity: 'high',
+    });
+    const parentDense = makeItem({
+      id: 'parent-dense',
+      category: 'corrective-action',
+      severity: 'high',
+    });
+
+    const childCounts = buildChildCountByParentId([
+      parentSparse,
+      parentDense,
+      makeItem({ id: 'child-s-1', parentId: 'parent-sparse' }),
+      makeItem({ id: 'child-d-1', parentId: 'parent-dense' }),
+      makeItem({ id: 'child-d-2', parentId: 'parent-dense' }),
+      makeItem({ id: 'child-d-3', parentId: 'parent-dense' }),
+      makeItem({ id: 'child-d-4', parentId: 'parent-dense' }),
+    ]);
+
+    const sparse = computeExceptionPriorityBreakdown(parentSparse, { now, childCountByParentId: childCounts });
+    const dense = computeExceptionPriorityBreakdown(parentDense, { now, childCountByParentId: childCounts });
+
+    expect(dense.materials.userExceptionCount).toBeGreaterThan(sparse.materials.userExceptionCount);
+    expect(dense.userCount).toBeGreaterThan(sparse.userCount);
+    expect(dense.total).toBeGreaterThan(sparse.total);
+  });
+
+  it('priority 材料抽出は公開ヘルパーで取得できる', () => {
+    const materials = extractExceptionPriorityMaterials(
+      makeItem({
+        id: 'materials',
+        category: 'critical-handoff',
+        targetDate: '2026-03-23',
+      }),
+      { now: new Date('2026-03-28T12:00:00.000Z') },
+    );
+
+    expect(materials.isOverdue).toBe(true);
+    expect(materials.overdueDays).toBeGreaterThan(0);
+    expect(materials.isCriticalCategory).toBe(true);
   });
 });

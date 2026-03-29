@@ -15,7 +15,7 @@ import {
 import { resolveUserFixedTransportCourse } from '@/features/transport-assignments/domain/userTransportCourse';
 import type { UpdateScheduleEventInput } from '@/features/schedules/data/port';
 import { useTransportAssignmentSave } from '@/features/transport-assignments/hooks/useTransportAssignmentSave';
-import { useSchedules } from '@/features/schedules/hooks/useSchedules';
+import { useSchedules } from '@/features/schedules/hooks/legacy/useSchedules';
 import { useStaffStore } from '@/features/staff/store';
 import { getTransportCourseLabel, parseTransportCourse } from '@/features/today/transport/transportCourse';
 import { DEFAULT_TRANSPORT_VEHICLE_IDS } from '@/features/today/transport/transportAssignments';

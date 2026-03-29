@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { getNextIncompleteRecord } from '../validation/nextIncompleteRecord';
+import { getNextIncompleteRecord } from '../nextIncompleteRecord';
 import type { PersonDaily } from '@/domain/daily/types';
 
 /** 最小限のPersonDailyファクトリ */

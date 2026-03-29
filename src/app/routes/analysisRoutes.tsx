@@ -15,7 +15,14 @@ import {
 } from './lazyPages';
 
 export const analysisRoutes: RouteObject[] = [
-  { path: 'analysis', element: <Navigate to="/analysis/dashboard" replace /> },
+  {
+    path: 'analysis',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <Navigate to="/analysis/dashboard" replace />
+      </RequireAudience>
+    ),
+  },
   {
     path: 'analysis/dashboard',
     element: (

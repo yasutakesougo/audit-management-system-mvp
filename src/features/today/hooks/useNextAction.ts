@@ -7,7 +7,8 @@
  *   nowMinutes() - itemTime > 0 → skip → 遅延タスクが消える
  *
  * 場面ベース (新):
- *   active > overdue > pending の優先度で NextAction を選択。
+ *   sceneState を基本重みとしてスコア選択（active / overdue / pending）。
+ *   遅延度・近接度・opsStep を加点し、stale active を補正する。
  *   遅延タスクは消えずに残り、urgency=high で強調表示。
  *
  * ナビゲーション型 UI:
@@ -16,7 +17,6 @@
  *
  * @see #852
  */
-import { OPS_FLOW_ORDER } from '@/features/dashboard/selectors/useScheduleLanes';
 import { toLocalDateISO } from '@/utils/getNow';
 import { useMemo } from 'react';
 import {
@@ -171,18 +171,9 @@ export function useNextAction(
       };
     });
 
-    // Tie-break within same scheduledMinutes: opsStep items by flow order
-    const sortedEntries = entries.sort((a, b) => {
-      const timeDiff = a.scheduledMinutes - b.scheduledMinutes;
-      if (timeDiff !== 0) return timeDiff;
-      const orderA = a.item.opsStep != null ? (OPS_FLOW_ORDER[a.item.opsStep as keyof typeof OPS_FLOW_ORDER] ?? 99) : 99;
-      const orderB = b.item.opsStep != null ? (OPS_FLOW_ORDER[b.item.opsStep as keyof typeof OPS_FLOW_ORDER] ?? 99) : 99;
-      return orderA - orderB;
-    });
-
-    const selected = selectNextScene(sortedEntries);
+    const selected = selectNextScene(entries, current);
     const selectedWithLane = selected
-      ? sortedEntries.find(e => e === selected) ?? null
+      ? entries.find(e => e === selected) ?? null
       : null;
     const minutesUntil = selected
       ? selected.scheduledMinutes - current

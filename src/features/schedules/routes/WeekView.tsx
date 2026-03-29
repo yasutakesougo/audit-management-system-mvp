@@ -14,7 +14,7 @@ import {
 import type { SchedItem } from '../data';
 import { type DateRange } from '../data';
 import { SCHEDULES_DEBUG } from '../debug';
-import { useSchedules } from '../hooks/useSchedules';
+import { useSchedules } from '../hooks/legacy/useSchedules';
 import { useWeekViewTokens } from '../hooks/useWeekViewTokens';
 import { toDateKey } from '../lib/dateKey';
 import { SERVICE_TYPE_META, normalizeServiceType } from '../serviceTypeMetadata';

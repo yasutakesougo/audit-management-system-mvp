@@ -4,7 +4,7 @@
  * RecordPanel から抽出。スケジュールの時間帯チップ選択 + Activity/Instruction 表示。
  */
 import { motionTokens } from '@/app/theme';
-import { getScheduleKey } from '@/features/daily/domain/builders/getScheduleKey';
+import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';

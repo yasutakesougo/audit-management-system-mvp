@@ -4,6 +4,8 @@ import {
   isForceDemoEnabled,
   isTestMode,
   shouldSkipLogin,
+  shouldSkipSharePoint,
+  readBool,
 } from '@/lib/env';
 import { hasSpfxContext } from '@/lib/runtime';
 
@@ -28,14 +30,26 @@ let overrideRepository: AttendanceRepository | null = null;
 let overrideKind: AttendanceRepositoryKind | null = null;
 
 const shouldUseDemoRepository = (): boolean => {
-  const { isDev } = getAppConfig();
-  const spfxContextAvailable = hasSpfxContext();
-  return (
-    isDev ||
+  if (
     isTestMode() ||
     isForceDemoEnabled() ||
     isDemoModeEnabled() ||
     shouldSkipLogin() ||
+    shouldSkipSharePoint()
+  ) {
+    return true;
+  }
+
+  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
+  const spEnabled = readBool('VITE_SP_ENABLED', false);
+  if (forceSharePoint || spEnabled) {
+    return false;
+  }
+
+  const { isDev } = getAppConfig();
+  const spfxContextAvailable = hasSpfxContext();
+  return (
+    isDev ||
     !spfxContextAvailable
   );
 };

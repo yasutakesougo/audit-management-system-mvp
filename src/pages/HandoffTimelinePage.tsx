@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { PageHeader } from '@/components/PageHeader';
 import { TESTIDS, tid } from '@/testids';
 import {
@@ -25,10 +26,10 @@ import {
   HandoffWeekViewSection,
 } from '../features/handoff/views';
 import type { HandoffRecord } from '../features/handoff/handoffTypes';
-import { suggestStatusFromHandoffCategory } from '../features/schedules/domain/userStatus';
-import type { UserStatusType } from '../features/schedules/domain/userStatus';
+import { suggestStatusFromHandoffCategory } from '../features/schedules/domain/mappers/userStatus';
+import type { UserStatusType } from '../features/schedules/domain/mappers/userStatus';
 import { useUserStatusActions } from '../features/schedules/hooks/useUserStatusActions';
-import { UserStatusQuickDialog } from '../features/schedules/components/UserStatusQuickDialog';
+import { UserStatusQuickDialog } from '../features/schedules/components/dialogs/UserStatusQuickDialog';
 
 /**
  * 申し送りタイムラインページ（薄いオーケストレーター）

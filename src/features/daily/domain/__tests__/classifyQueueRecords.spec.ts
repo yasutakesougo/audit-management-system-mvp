@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { PersonDaily } from '@/domain/daily/types';
-import { classifyQueueRecords } from '../legacy/classifyQueueRecords';
+import { classifyQueueRecords } from '../classifyQueueRecords';
 
 // ─── Factory ────────────────────────────────────────────────────
 

@@ -39,8 +39,8 @@ import {
   toScheduleDraft,
   toUserStatusRecord,
   USER_STATUS_LABELS,
-} from '../domain/userStatus';
-import { makeRange, useSchedules } from './useSchedules';
+} from '../domain/mappers/userStatus';
+import { makeRange, useSchedules } from './legacy/useSchedules';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Types

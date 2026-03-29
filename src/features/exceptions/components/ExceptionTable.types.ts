@@ -55,6 +55,7 @@ export type ExceptionTableProps = {
   items: ExceptionItem[];
   title?: string;
   showFilters?: boolean;
+  initialSortMode?: ExceptionTableSortMode;
   categoryFilter?: ExceptionCategory | 'all';
   onCategoryFilterChange?: (category: ExceptionCategory | 'all') => void;
   severityFilter?: ExceptionSeverity | 'all';

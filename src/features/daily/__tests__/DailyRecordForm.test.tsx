@@ -2,8 +2,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { PersonDaily } from '../../../domain/daily/types';
-import { DailyRecordForm } from '../components/forms/DailyRecordForm';
-import type { DailyUserOption } from '../components/forms/useDailyUserOptions';
+import { DailyRecordForm } from '../forms/DailyRecordForm';
+import type { DailyUserOption } from '../forms/useDailyUserOptions';
 import { toLocalDateISO } from '@/utils/getNow';
 
 // @/features/handoff バレルをモックして QueryClient/useAuth 依存を断つ
@@ -33,7 +33,7 @@ const dailyUserOptions: DailyUserOption[] = [
   },
 ];
 
-vi.mock('@/features/daily/components/forms/useDailyUserOptions', () => ({
+vi.mock('../forms/useDailyUserOptions', () => ({
   useDailyUserOptions: () => ({
     options: dailyUserOptions,
     findByUserId: (userId?: string | null) =>

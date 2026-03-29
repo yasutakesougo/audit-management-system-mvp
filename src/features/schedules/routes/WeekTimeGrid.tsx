@@ -81,6 +81,7 @@ export function WeekTimeGrid({
             textAlign: 'center',
             fontSize: 12,
             fontWeight: 700,
+            color: 'rgba(15,23,42,0.88)',
             borderRight: dayIndex < 6 ? '1px solid rgba(15,23,42,0.08)' : 'none',
             borderBottom: '1px solid rgba(15,23,42,0.08)',
             backgroundColor: day.iso === todayIso ? '#E8F0E4' : '#fff',

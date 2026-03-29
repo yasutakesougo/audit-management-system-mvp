@@ -122,6 +122,7 @@ const CountBadge: React.FC<CountBadgeProps> = ({ valueText, colorKey }) => {
     if (colorKey === 'warning') return theme.palette.warning.main;
     return theme.palette.grey[400];
   })();
+  const countTextColor = theme.palette.mode === 'dark' ? theme.palette.grey[800] : paletteColor;
 
   return (
     <Box
@@ -138,7 +139,7 @@ const CountBadge: React.FC<CountBadgeProps> = ({ valueText, colorKey }) => {
     >
       <Typography
         variant="body1"
-        sx={{ fontWeight: 700, color: paletteColor, lineHeight: 1 }}
+        sx={{ fontWeight: 700, color: countTextColor, lineHeight: 1 }}
       >
         {valueText}
       </Typography>
@@ -149,9 +150,12 @@ const CountBadge: React.FC<CountBadgeProps> = ({ valueText, colorKey }) => {
 // ─── Single Ring Item ────────────────────────────────────────
 
 const RingItemView: React.FC<{ item: ProgressRingItem }> = ({ item }) => {
+  const theme = useTheme();
   const colorKey = STATUS_COLOR_MAP[item.status];
   const statusLabel = STATUS_LABEL_MAP[item.status];
   const hasRing = item.progress != null;
+  const ringLabelColor = theme.palette.mode === 'dark' ? theme.palette.grey[700] : theme.palette.text.secondary;
+  const statusTextColor = theme.palette.mode === 'dark' ? theme.palette.grey[800] : `${colorKey}.main`;
 
   const content = (
     <Box
@@ -172,7 +176,7 @@ const RingItemView: React.FC<{ item: ProgressRingItem }> = ({ item }) => {
         sx={{
           fontWeight: 600,
           fontSize: '0.7rem',
-          color: 'text.secondary',
+          color: ringLabelColor,
           letterSpacing: '0.04em',
         }}
       >
@@ -216,7 +220,7 @@ const RingItemView: React.FC<{ item: ProgressRingItem }> = ({ item }) => {
         sx={{
           fontWeight: 600,
           fontSize: '0.65rem',
-          color: `${colorKey}.main`,
+          color: statusTextColor,
         }}
       >
         {statusLabel}

@@ -12,8 +12,8 @@ import type { ReferencedStrategy, StrategyCategory } from '@/domain/behavior';
 import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 import { RecordPanel, type RecordPanelLockState } from '@/features/daily/components/split-stream/RecordPanel';
 import type { ABCRecord } from '@/domain/behavior';
-import { getScheduleKey } from '@/features/daily/domain/builders/getScheduleKey';
-import { useLinkedStrategies } from '@/features/daily/hooks/legacy/useLinkedStrategies';
+import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
+import { useLinkedStrategies } from '@/features/daily/hooks/useLinkedStrategies';
 import {
   StrategyChipBar,
   type StrategyChipKey,
@@ -25,7 +25,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
-import { useDefaultStrategies } from '@/features/daily/hooks/legacy/useDefaultStrategies';
+import { useDefaultStrategies } from '@/features/daily/hooks/useDefaultStrategies';
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 export type RecordInputStepProps = {

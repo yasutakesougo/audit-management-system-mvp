@@ -56,9 +56,9 @@ import { buildCallLogFilterUrl, type CallLogFilterPreset } from '@/features/call
 import { useAuth } from '@/auth/useAuth';
 import type { ProgressRingItem } from '@/features/today/components/ProgressRings';
 // Phase 8-A: 利用者状態登録
-import type { UserStatusType } from '@/features/schedules/domain/userStatus';
+import type { UserStatusType } from '@/features/schedules/domain/mappers/userStatus';
 import { useUserStatusActions } from '@/features/schedules/hooks/useUserStatusActions';
-import { UserStatusQuickDialog } from '@/features/schedules/components/UserStatusQuickDialog';
+import { UserStatusQuickDialog } from '@/features/schedules/components/dialogs/UserStatusQuickDialog';
 // Phase 9: Today → Schedule Ops 高負荷タイル連携
 import { useWeeklyHighLoadStatus } from '@/features/today/hooks/useWeeklyHighLoadStatus';
 import { useTodayExceptions } from '@/features/today/hooks/useTodayExceptions';

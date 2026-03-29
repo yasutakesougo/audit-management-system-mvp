@@ -5,6 +5,8 @@ import {
   isForceDemoEnabled,
   isTestMode,
   shouldSkipLogin,
+  shouldSkipSharePoint,
+  readBool,
 } from '@/lib/env';
 import { hasSpfxContext } from '@/lib/runtime';
 // contract:allow-sp-direct — ファクトリ層: DI 組み立てで spClient を注入する正当な用途
@@ -40,14 +42,26 @@ let overrideKind: DailyRecordRepositoryKind | null = null;
  * - No SPFx context (Workers/Pages runtime)
  */
 const shouldUseDemoRepository = (): boolean => {
-  const { isDev } = getAppConfig();
-  const spfxContextAvailable = hasSpfxContext();
-  return (
-    isDev ||
+  if (
     isTestMode() ||
     isForceDemoEnabled() ||
     isDemoModeEnabled() ||
     shouldSkipLogin() ||
+    shouldSkipSharePoint()
+  ) {
+    return true;
+  }
+
+  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
+  const spEnabled = readBool('VITE_SP_ENABLED', false);
+  if (forceSharePoint || spEnabled) {
+    return false;
+  }
+
+  const { isDev } = getAppConfig();
+  const spfxContextAvailable = hasSpfxContext();
+  return (
+    isDev ||
     !spfxContextAvailable
   );
 };

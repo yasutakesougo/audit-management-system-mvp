@@ -1,0 +1,117 @@
+name: "♿ A11y Backlog"
+description: "a11y/usability 残件を backlog 単位で管理します（画面×系統×最小修正単位）"
+labels:
+  - Backlog
+  - ui
+  - accessibility
+title: "[A11y] <screen>: <short-summary>"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        改修時は [`docs/checklists/a11y-usability-rollout-checklist.md`](../../docs/checklists/a11y-usability-rollout-checklist.md) に従ってください。
+
+  - type: input
+    id: screen
+    attributes:
+      label: Screen
+      description: 例: /today, /schedules/week, /users
+      placeholder: /today
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      options:
+        - light
+        - dark
+        - both
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: system
+    attributes:
+      label: System
+      description: 問題の系統
+      options:
+        - State Integrity
+        - Contrast
+        - Keyboard Navigation
+        - Mobile Readability
+        - Copy / Feedback
+        - Other
+      default: 0
+    validations:
+      required: true
+
+  - type: input
+    id: axe_target
+    attributes:
+      label: Axe target / selector
+      description: 例: .MuiTypography-caption, #schedules-week-heading
+      placeholder: .MuiTypography-caption
+    validations:
+      required: true
+
+  - type: input
+    id: likely_source
+    attributes:
+      label: Likely source file
+      description: 例: src/features/today/components/ProgressRings.tsx
+      placeholder: src/features/xxx/Example.tsx
+    validations:
+      required: true
+
+  - type: textarea
+    id: minimum_fix
+    attributes:
+      label: Suggested fix (smallest unit)
+      description: 最小修正単位で記述
+      placeholder: dark 時のみ caption 色を high-contrast token へ変更
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0
+        - P1
+        - P2
+        - P3
+      default: 1
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: verification
+    attributes:
+      label: Verification plan
+      options:
+        - label: light/dark の再スキャンを実施する
+        - label: backlog を更新する
+        - label: 該当 smoke gate の再有効化を判定する
+        - label: Playwright/Vitest の回帰テストを追加または更新する
+
+  - type: textarea
+    id: done_criteria
+    attributes:
+      label: Definition of Done
+      description: 完了条件
+      value: |
+        - [ ] 対象違反が再現しない
+        - [ ] 既存 gate が green
+        - [ ] 影響画面のスモーク確認完了
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: 補足リンク、スクリーンショット、関連PR

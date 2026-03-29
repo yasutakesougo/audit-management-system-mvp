@@ -13,18 +13,18 @@ export {
 export { default as DayView } from './routes/DayView';
 export { default as DevScheduleCreateDialogPage } from './routes/DevScheduleCreateDialogPage';
 export { default as MonthPage } from './routes/MonthPage';
-export { default as ScheduleCreateDialog } from './routes/ScheduleCreateDialog';
+export { default as ScheduleCreateDialog } from './components/dialogs/ScheduleCreateDialog';
 export { default as WeekPage } from './routes/WeekPage';
 export { default as WeekView } from './routes/WeekView';
 
 // Hooks
-export { useSchedules } from './hooks/useSchedules';
+export { useSchedules } from './hooks/legacy/useSchedules';
 export { useScheduleUserOptions } from './hooks/useScheduleUserOptions';
-export { useWeekPageRouteState } from './hooks/useWeekPageRouteState';
+export { useWeekPageRouteState } from './hooks/view-models/useWeekPageRouteState';
 
 // Components
 export { ScheduleEmptyHint } from './components/ScheduleEmptyHint';
-export { SchedulesHeader } from './components/SchedulesHeader';
+export { SchedulesHeader } from './components/sections/SchedulesHeader';
 
 // Domain types (SSOT)
 export type { CreateScheduleEventInput, InlineScheduleDraft, SchedItem } from './domain';

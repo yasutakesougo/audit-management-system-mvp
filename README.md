@@ -119,6 +119,8 @@ Support Operations OS is built on **10 design principles** that ensure human-in-
 
 - 📖 **設計原則・標準構造を確認したい (憲法)** → [`welfare-os-development-framework.md`](docs/architecture/welfare-os-development-framework.md)
 - ✅ **新機能を始める前・完了前 (点検)** → [`module-starter-checklist.md`](docs/checklists/module-starter-checklist.md)
+- 🧭 **UI 改修時の品質運用 (a11y/usability)** → [`a11y-usability-rollout-checklist.md`](docs/checklists/a11y-usability-rollout-checklist.md)
+- 📊 **UI品質カバレッジ（適用状況）** → [`a11y-usability-gate-coverage-2026-03-28.md`](docs/qa/a11y-usability-gate-coverage-2026-03-28.md)
 - 🪄 **AI に初期実装を作らせる (生成)** → [`sharepoint-module-generator.md`](docs/prompts/sharepoint-module-generator.md)
 
 ---

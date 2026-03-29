@@ -48,6 +48,7 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
   items,
   title = '例外一覧',
   showFilters = true,
+  initialSortMode = 'default',
   categoryFilter: externalCategoryFilter,
   onCategoryFilterChange,
   severityFilter: externalSeverityFilter,
@@ -61,7 +62,7 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
   const [internalSeverityFilter, setInternalSeverityFilter] = useState<
     ExceptionSeverity | 'all'
   >('all');
-  const [sortMode, setSortMode] = useState<ExceptionTableSortMode>('default');
+  const [sortMode, setSortMode] = useState<ExceptionTableSortMode>(initialSortMode);
   const [sortOrder, setSortOrder] = useState<ExceptionTableSortOrder>('severity');
   const [displayMode, setDisplayMode] =
     useState<ExceptionTableDisplayMode>('flat');

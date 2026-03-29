@@ -3,7 +3,9 @@ import {
     isDemoModeEnabled,
     isForceDemoEnabled,
     isTestMode,
+    readBool,
     shouldSkipLogin,
+    shouldSkipSharePoint,
 } from '@/lib/env';
 import { isE2E } from '@/env';
 import { hasSpfxContext } from '@/lib/runtime';
@@ -46,18 +48,31 @@ let overrideKind: ScheduleRepositoryKind | null = null;
  * - No SPFx context (Workers/Pages runtime)
  */
 const shouldUseDemoRepository = (): boolean => {
-  const { isDev } = getAppConfig();
-  const spfxContextAvailable = hasSpfxContext();
   const e2eActive = isE2E;
 
   if (e2eActive) return false;
 
-  return (
-    isDev ||
+  if (
     isTestMode() ||
     isForceDemoEnabled() ||
     isDemoModeEnabled() ||
     shouldSkipLogin() ||
+    shouldSkipSharePoint()
+  ) {
+    return true;
+  }
+
+  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
+  const spEnabled = readBool('VITE_SP_ENABLED', false);
+  if (forceSharePoint || spEnabled) {
+    return false;
+  }
+
+  const { isDev } = getAppConfig();
+  const spfxContextAvailable = hasSpfxContext();
+
+  return (
+    isDev ||
     !spfxContextAvailable
   );
 };

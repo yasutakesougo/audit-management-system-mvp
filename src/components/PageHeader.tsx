@@ -19,6 +19,8 @@ export type PageHeaderProps = {
   title: string;
   /** サブタイトル（1行の説明文） */
   subtitle?: string;
+  /** サブタイトル色（未指定時は従来値） */
+  subtitleColor?: string;
   /** 左端のアイコン（MUI Icon を推奨） */
   icon?: React.ReactNode;
   /** 右側に配置するアクション要素（ボタン群・セレクト等） */
@@ -32,6 +34,7 @@ export type PageHeaderProps = {
 export const PageHeader: React.FC<PageHeaderProps> = ({
   title,
   subtitle,
+  subtitleColor = 'text.disabled',
   icon,
   actions,
   testId,
@@ -76,7 +79,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         {title}
       </Typography>
       {subtitle && (
-        <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem' }}>
+        <Typography variant="caption" color={subtitleColor} sx={{ fontSize: '0.7rem' }}>
           {"— "}{subtitle}
         </Typography>
       )}

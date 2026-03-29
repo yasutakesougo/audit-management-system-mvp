@@ -22,6 +22,8 @@ const { mockEnv, mockRuntime } = vi.hoisted(() => {
       isForceDemoEnabled: vi.fn().mockReturnValue(false),
       isTestMode: vi.fn().mockReturnValue(false),
       shouldSkipLogin: vi.fn().mockReturnValue(false),
+      shouldSkipSharePoint: vi.fn().mockReturnValue(false),
+      readBool: vi.fn().mockReturnValue(false),
       getConfiguredMsalScopes: vi.fn().mockReturnValue([]),
       isWriteEnabled: true,
       isE2eForceSchedulesWrite: false,
@@ -58,16 +60,16 @@ vi.mock('@/lib/spClient', () => ({
   ensureConfig: vi.fn().mockReturnValue({ baseUrl: 'https://test.sharepoint.com/sites/test' }),
   createSpClient: vi.fn().mockReturnValue({ spFetch: mockSpFetch }),
 }));
-vi.mock('@/features/daily/repositories/sharepoint/SharePointDailyRecordRepository', () => ({
+vi.mock('@/features/daily/infra/SharePointDailyRecordRepository', () => ({
   SharePointDailyRecordRepository: MockSPRepo,
 }));
 
-import { inMemoryDailyRecordRepository } from '@/features/daily/repositories/sharepoint/InMemoryDailyRecordRepository';
+import { inMemoryDailyRecordRepository } from '@/features/daily/infra/InMemoryDailyRecordRepository';
 import {
     getCurrentDailyRecordRepositoryKind,
     getDailyRecordRepository,
     resetDailyRecordRepository,
-} from '@/features/daily/repositories/repositoryFactory';
+} from '@/features/daily/repositoryFactory';
 
 describe('Daily repositoryFactory', () => {
   beforeEach(() => {
