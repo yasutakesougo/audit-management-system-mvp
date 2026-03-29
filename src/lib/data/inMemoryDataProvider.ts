@@ -4,6 +4,7 @@ import type {
   UpdateOptions 
 } from '@/lib/data/dataProvider.interface';
 import type { SpFieldDef } from '@/lib/sp/types';
+import { DataProviderItemNotFoundError } from '@/lib/errors';
 
 /**
  * テストやオフライン開発用の InMemory 実装
@@ -13,10 +14,19 @@ export class InMemoryDataProvider implements IDataProvider {
   private nextId = 1;
 
   async listItems<T>(resourceName: string, options?: DataProviderOptions): Promise<T[]> {
+    options?.signal?.throwIfAborted();
     const items = this.storage.get(resourceName) || [];
     let result = [...items];
 
-    // 簡易的なフィルタリング
+    // 簡易的なフィルタリング ($filter: UserID eq '...' のみ対応)
+    if (options?.filter && options.filter.includes('UserID eq')) {
+      const match = options.filter.match(/UserID eq '([^']+)'/);
+      const targetId = match?.[1];
+      if (targetId) {
+        result = result.filter(i => String(i.UserID) === targetId);
+      }
+    }
+
     if (options?.top) {
       result = result.slice(0, options.top);
     }
@@ -24,14 +34,16 @@ export class InMemoryDataProvider implements IDataProvider {
     return result as unknown as T[];
   }
 
-  async getItemById<T>(resourceName: string, id: string | number): Promise<T> {
+  async getItemById<T>(resourceName: string, id: string | number, options?: DataProviderOptions): Promise<T> {
+    options?.signal?.throwIfAborted();
     const items = this.storage.get(resourceName) || [];
-    const item = items.find(i => String(i.Id || i.id) === String(id));
-    if (!item) throw new Error(`Item ${id} not found in ${resourceName}`);
+    const item = items.find(i => String(i.Id || i.id || i.ID) === String(id));
+    if (!item) throw new DataProviderItemNotFoundError(resourceName, id);
     return item as unknown as T;
   }
 
-  async createItem<T>(resourceName: string, payload: Record<string, unknown>, _options?: { signal?: AbortSignal }): Promise<T> {
+  async createItem<T>(resourceName: string, payload: Record<string, unknown>, options?: { signal?: AbortSignal }): Promise<T> {
+    options?.signal?.throwIfAborted();
     const items = this.storage.get(resourceName) || [];
     const newItem = {
       Id: this.nextId++,
@@ -47,11 +59,12 @@ export class InMemoryDataProvider implements IDataProvider {
     resourceName: string, 
     id: string | number, 
     payload: Record<string, unknown>,
-    _options?: UpdateOptions
+    options?: UpdateOptions
   ): Promise<T> {
+    options?.signal?.throwIfAborted();
     const items = this.storage.get(resourceName) || [];
     const index = items.findIndex(i => String(i.Id || i.id || i.ID) === String(id));
-    if (index === -1) throw new Error(`Item ${id} not found in ${resourceName}`);
+    if (index === -1) throw new DataProviderItemNotFoundError(resourceName, id);
 
     const updatedItem = { ...items[index], ...payload, UpdatedAt: new Date().toISOString() };
     const newItems = [...items];
@@ -60,7 +73,8 @@ export class InMemoryDataProvider implements IDataProvider {
     return updatedItem as unknown as T;
   }
 
-  async deleteItem(resourceName: string, id: string | number, _options?: { signal?: AbortSignal }): Promise<void> {
+  async deleteItem(resourceName: string, id: string | number, options?: { signal?: AbortSignal }): Promise<void> {
+    options?.signal?.throwIfAborted();
     const items = this.storage.get(resourceName) || [];
     const filtered = items.filter(i => String(i.Id || i.id || i.ID) !== String(id));
     this.storage.set(resourceName, filtered);
@@ -68,14 +82,19 @@ export class InMemoryDataProvider implements IDataProvider {
 
   async getFieldInternalNames(resourceName: string): Promise<Set<string>> {
     const items = this.storage.get(resourceName) || [];
-    if (items.length === 0) return new Set();
+    if (items.length === 0) return new Set(['Id', 'Created', 'Modified']);
     const allKeys = new Set<string>();
     items.forEach(item => Object.keys(item).forEach(key => allKeys.add(key)));
     return allKeys;
   }
 
   async getMetadata(resourceName: string): Promise<Record<string, unknown>> {
-    return { Title: resourceName, InMemory: true };
+    const items = this.storage.get(resourceName) || [];
+    return { 
+      Title: resourceName, 
+      ItemCount: items.length,
+      InMemory: true 
+    };
   }
 
   /**

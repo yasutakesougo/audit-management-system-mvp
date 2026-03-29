@@ -11,6 +11,7 @@ import React, { useEffect, useRef } from 'react';
 import { useSP } from '@/lib/spClient';
 import { loadHolidaysFromSharePoint } from '@/sharepoint/holidayLoader';
 import { SharePointProvisioningCoordinator } from '@/sharepoint/spProvisioningCoordinator';
+import { useDataProvider } from '@/lib/data/useDataProvider';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { useToast } from '@/hooks/useToast';
 
@@ -24,6 +25,7 @@ import { useToast } from '@/hooks/useToast';
  */
 export const SpInitBridge: React.FC = () => {
   const sp = useSP();
+  useDataProvider(); // 🚀 Data OS Readiness: Trigger initial singleton creation
   const { role } = useUserAuthz();
   const { show } = useToast();
   const initialized = useRef(false);

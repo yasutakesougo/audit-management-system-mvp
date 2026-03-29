@@ -19,16 +19,17 @@ vi.mock('@/lib/spClient', () => ({
   ensureConfig: vi.fn(() => ({ baseUrl: 'https://example.sharepoint.com/_api/web' })),
 }));
 
+import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { shouldSkipSharePoint } from '@/lib/env';
 import { createDailyOpsSignalsPort } from '../dailyOpsSignalsFactory';
 
-const dummyAcquireToken = async (): Promise<string | null> => null;
+const dummyProvider = {} as IDataProvider;
 
 describe('createDailyOpsSignalsPort', () => {
   it('should return demo port (listByDate → []) when shouldSkipSharePoint is true', async () => {
     vi.mocked(shouldSkipSharePoint).mockReturnValue(true);
 
-    const port = createDailyOpsSignalsPort(dummyAcquireToken);
+    const port = createDailyOpsSignalsPort(dummyProvider);
     const result = await port.listByDate('2026-03-18');
 
     expect(result).toEqual([]);
@@ -37,7 +38,7 @@ describe('createDailyOpsSignalsPort', () => {
   it('should return demo port (setStatus → void) when shouldSkipSharePoint is true', async () => {
     vi.mocked(shouldSkipSharePoint).mockReturnValue(true);
 
-    const port = createDailyOpsSignalsPort(dummyAcquireToken);
+    const port = createDailyOpsSignalsPort(dummyProvider);
     // demo port は何も投げない
     await expect(port.setStatus(1, 'Resolved')).resolves.toBeUndefined();
   });
@@ -45,7 +46,7 @@ describe('createDailyOpsSignalsPort', () => {
   it('should return SP-backed port when shouldSkipSharePoint is false', () => {
     vi.mocked(shouldSkipSharePoint).mockReturnValue(false);
 
-    const port = createDailyOpsSignalsPort(dummyAcquireToken);
+    const port = createDailyOpsSignalsPort(dummyProvider);
 
     // SP port は listByDate / upsert / setStatus を持つ
     expect(typeof port.listByDate).toBe('function');

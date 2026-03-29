@@ -78,11 +78,16 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_USERS', fromConfig(ListKeys.UsersMaster)),
     operations: ['R', 'W'],
     category: 'master',
-    lifecycle: 'required',
+    lifecycle: 'optional',
     essentialFields: [
       'UserID', 'FullName', 'Furigana', 'FullNameKana', 
       'ContractDate', 'ServiceStartDate', 'ServiceEndDate',
-      'IsActive', 'severeFlag', 'IsHighIntensitySupportTarget', 'IsSupportProcedureTarget'
+      'IsActive', 'SevereFlag', 'IsHighIntensitySupportTarget', 'IsSupportProcedureTarget',
+      'TransportToDays', 'TransportFromDays', 'TransportCourse', 'TransportSchedule', 'AttendanceDays',
+      'RecipientCertNumber', 'RecipientCertExpiry', 'UsageStatus', 'GrantMunicipality',
+      'GrantPeriodStart', 'GrantPeriodEnd', 'DisabilitySupportLevel', 'GrantedDaysPerMonth',
+      'UserCopayLimit', 'LastAssessmentDate', 'BehaviorScore', 'ChildBehaviorScore',
+      'ServiceTypesJson', 'EligibilityCheckedAt'
     ],
     provisioningFields: [
       { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true },
@@ -93,15 +98,45 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
       { internalName: 'ServiceStartDate', type: 'DateTime', displayName: 'Service Start Date', dateTimeFormat: 'DateOnly' },
       { internalName: 'ServiceEndDate', type: 'DateTime', displayName: 'Service End Date', dateTimeFormat: 'DateOnly' },
       { internalName: 'IsActive', type: 'Boolean', displayName: 'Is Active', default: true },
-      { internalName: 'severeFlag', type: 'Boolean', displayName: 'Severe Flag', default: false },
-      { internalName: 'IsHighIntensitySupportTarget', type: 'Boolean', displayName: 'High Intensity Support', default: false },
-      { internalName: 'IsSupportProcedureTarget', type: 'Boolean', displayName: 'Support Procedure Target', default: false },
+      { internalName: 'UsageStatus', type: 'Text', displayName: 'Usage Status' },
+      // Note: Other fields (Transport, Benefit) are moved to separate lists to avoid column limit.
+    ],
+  },
+  {
+    key: 'user_transport_settings',
+    displayName: '利用者送迎設定',
+    resolve: () => envOr('VITE_SP_LIST_USER_TRANSPORT', fromConfig(ListKeys.UserTransportSettings)),
+    operations: ['R', 'W'],
+    category: 'master',
+    lifecycle: 'required',
+    provisioningFields: [
+      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true },
       { internalName: 'TransportToDays', type: 'MultiChoice', displayName: 'Transport To Days', choices: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
       { internalName: 'TransportFromDays', type: 'MultiChoice', displayName: 'Transport From Days', choices: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
+      { internalName: 'TransportCourse', type: 'Text', displayName: 'Transport Course' },
+      { internalName: 'TransportSchedule', type: 'Note', displayName: 'Transport Schedule', richText: false },
+      { internalName: 'TransportAdditionType', type: 'Text', displayName: 'Transport Addition Type' },
+    ],
+  },
+  {
+    key: 'user_benefit_profile',
+    displayName: '利用者支給量プロファイル',
+    resolve: () => envOr('VITE_SP_LIST_USER_BENEFIT', fromConfig(ListKeys.UserBenefitProfile)),
+    operations: ['R', 'W'],
+    category: 'master',
+    lifecycle: 'required',
+    provisioningFields: [
+      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true },
       { internalName: 'RecipientCertNumber', type: 'Text', displayName: 'Recipient Cert Number' },
       { internalName: 'RecipientCertExpiry', type: 'DateTime', displayName: 'Recipient Cert Expiry', dateTimeFormat: 'DateOnly' },
-      { internalName: 'UsageStatus', type: 'Text', displayName: 'Usage Status' },
-      { internalName: 'LastAssessmentDate', type: 'DateTime', displayName: 'Last Assessment Date', dateTimeFormat: 'DateOnly' },
+      { internalName: 'GrantMunicipality', type: 'Text', displayName: 'Grant Municipality' },
+      { internalName: 'GrantPeriodStart', type: 'DateTime', displayName: 'Grant Period Start', dateTimeFormat: 'DateOnly' },
+      { internalName: 'GrantPeriodEnd', type: 'DateTime', displayName: 'Grant Period End', dateTimeFormat: 'DateOnly' },
+      { internalName: 'DisabilitySupportLevel', type: 'Text', displayName: 'Disability Support Level' },
+      { internalName: 'GrantedDaysPerMonth', type: 'Text', displayName: 'Granted Days Per Month' },
+      { internalName: 'UserCopayLimit', type: 'Text', displayName: 'User Copay Limit' },
+      { internalName: 'MealAddition', type: 'Text', displayName: 'Meal Addition' },
+      { internalName: 'CopayPaymentMethod', type: 'Text', displayName: 'Copay Payment Method' },
     ],
   },
   {
@@ -373,14 +408,6 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     category: 'handoff',
     lifecycle: 'required',
   },
-  {
-    key: 'procedure_record_daily',
-    displayName: '支援手順書兼記録（日次）',
-    resolve: () => envOr('VITE_SP_LIST_PROCEDURE_RECORD', fromConfig(ListKeys.ProcedureRecordDaily)),
-    operations: ['R', 'W'],
-    category: 'daily',
-    lifecycle: 'required',
-  },
 
   // ── 7. コンプライアンス・診断系 ────────────────────────
   {
@@ -389,7 +416,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_COMPLIANCE', fromConfig(ListKeys.ComplianceCheckRules)),
     operations: ['R'],
     category: 'compliance',
-    lifecycle: 'required',
+    lifecycle: 'optional',
   },
   {
     key: 'diagnostics_reports',
@@ -397,7 +424,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_DIAGNOSTICS_REPORTS', fromConfig(ListKeys.DiagnosticsReports)),
     operations: ['R', 'W'],
     category: 'compliance',
-    lifecycle: 'required',
+    lifecycle: 'optional',
   },
 
   // ── 8. その他 ─────────────────────────────────────────

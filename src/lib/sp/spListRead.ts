@@ -101,6 +101,7 @@ export async function listItems<TRow = JsonRecord>(
 
   try {
     while (nextPath && pages < maxPages) {
+      signal?.throwIfAborted();
       if (AUDIT_DEBUG) {
         auditLog.debug('sp:read', 'list_items_page', { path: nextPath });
       }

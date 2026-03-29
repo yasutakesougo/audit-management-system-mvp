@@ -130,3 +130,44 @@ export const generateRowKey = (input?: string): string => {
   return `${date}${random}`;
 };
 
+// ─── Field name resolution ────────────────────────────────────────────────────
+
+import { readEnv } from '@/lib/env';
+
+type ScheduleFieldNames = {
+  start: string;
+  end: string;
+  serviceType: string;
+  locationName: string;
+  notes: string;
+};
+
+type ScheduleFieldVariant = { start: string; end: string };
+
+export function resolveScheduleFieldNames(): ScheduleFieldNames {
+  const listTitle = readEnv('VITE_SCHEDULES_LIST_TITLE', '').trim().toLowerCase();
+  if (listTitle === 'scheduleevents') {
+    return { start: 'EventDate', end: 'EndDate', serviceType: 'ServiceType', locationName: 'Location', notes: 'Notes' };
+  }
+  return { start: 'Start', end: 'End', serviceType: 'ServiceType', locationName: 'LocationName', notes: 'Note' };
+}
+
+export function resolveScheduleFieldVariants(): ScheduleFieldVariant[] {
+  return [
+    { start: 'Start', end: 'End' },
+    { start: 'EventDate', end: 'EndDate' },
+  ];
+}
+
+type SelectSets = {
+  selectVariants: string[][];
+  eventSafe: string[];
+};
+
+export function buildSelectSets(): SelectSets {
+  const fields = resolveScheduleFieldNames();
+  const base = ['Id', 'Title', fields.start, fields.end, fields.serviceType, fields.locationName, fields.notes];
+  const eventSafe = ['Id', 'Title', 'EventDate', 'EndDate', 'ServiceType', 'Location', 'Notes'];
+  return { selectVariants: [base], eventSafe };
+}
+

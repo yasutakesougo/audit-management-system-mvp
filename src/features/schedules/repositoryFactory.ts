@@ -1,19 +1,9 @@
-import {
-    getAppConfig,
-    isDemoModeEnabled,
-    isForceDemoEnabled,
-    isTestMode,
-    readBool,
-    shouldSkipLogin,
-    shouldSkipSharePoint,
-} from '@/lib/env';
 import { isE2E } from '@/env';
-import { hasSpfxContext } from '@/lib/runtime';
 // contract:allow-sp-direct — factory creates spClient for DI — EXCEPT in DataProvider mode
-import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { useMemo } from 'react';
 import { useDataProvider } from '@/lib/data/useDataProvider';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
+import { resolveProvider, getActiveProviderType, isDataProviderReady } from '@/lib/data/createDataProvider';
 
 /** Debug-only window extension for tracking repository changes in E2E */
 interface WindowWithDebug extends Window {
@@ -24,9 +14,6 @@ import type { ScheduleRepository } from './domain/ScheduleRepository';
 import {
     DataProviderScheduleRepository,
 } from './infra/DataProviderScheduleRepository';
-import {
-    SharePointScheduleRepository
-} from './infra/Legacy/SharePointScheduleRepository';
 
 export type ScheduleRepositoryKind = 'demo' | 'sharepoint';
 
@@ -43,89 +30,25 @@ let cachedKind: ScheduleRepositoryKind | null = null;
 let overrideRepository: ScheduleRepository | null = null;
 let overrideKind: ScheduleRepositoryKind | null = null;
 
-/**
- * Determine if demo repository should be used
- * Returns true for:
- * - Development mode
- * - Test mode
- * - Demo mode enabled
- * - Skip login mode
- * - No SPFx context (Workers/Pages runtime)
- */
-const shouldUseDemoRepository = (): boolean => {
-  const e2eActive = isE2E;
-
-  if (e2eActive) return false;
-
-  if (
-    isTestMode() ||
-    isForceDemoEnabled() ||
-    isDemoModeEnabled() ||
-    shouldSkipLogin() ||
-    shouldSkipSharePoint()
-  ) {
-    return true;
-  }
-
-  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
-  const spEnabled = readBool('VITE_SP_ENABLED', false);
-  if (forceSharePoint || spEnabled) {
-    return false;
-  }
-
-  const { isDev } = getAppConfig();
-  const spfxContextAvailable = hasSpfxContext();
-
-  return (
-    isDev ||
-    !spfxContextAvailable
-  );
-};
+// ... (deleted shouldUseDemoRepository)
 
 /**
  * Resolve repository kind based on environment or forced value
  */
 const resolveKind = (forced?: ScheduleRepositoryKind): ScheduleRepositoryKind =>
-  forced ?? (shouldUseDemoRepository() ? 'demo' : 'sharepoint');
+  forced ?? (getActiveProviderType() === 'sharepoint' ? 'sharepoint' : 'demo');
 
 /**
  * Create repository instance based on kind
  */
 const createRepository = (
-  kind: ScheduleRepositoryKind,
+  _kind: ScheduleRepositoryKind,
   options?: ScheduleRepositoryFactoryOptions,
 ): ScheduleRepository => {
-  // if kind === sharepoint but no provider, error
-  const provider = options?.provider;
-  if (kind === 'sharepoint' && !provider) {
-    throw new Error(
-      '[ScheduleRepositoryFactory] Provider is required for SharePoint repository.',
-    );
-  }
+  const provider = resolveProvider(options?.provider);
 
-  // provider-based repository for SharePoint
-  if (provider) {
-    return new DataProviderScheduleRepository({
-      provider,
-      listTitle: options?.listTitle,
-      currentOwnerUserId: options?.currentOwnerUserId,
-    });
-  }
-
-  // legacy SharePoint fallback (if somehow still needed - should eventually be removed)
-  const acquireToken = options?.acquireToken;
-  if (!acquireToken) {
-    throw new Error(
-      '[ScheduleRepositoryFactory] acquireToken is required for legacy SharePoint repository.',
-    );
-  }
-
-  const { baseUrl } = ensureConfig();
-  const { spFetch } = createSpClient(acquireToken, baseUrl);
-
-  return new SharePointScheduleRepository({
-    acquireToken,
-    spFetch,
+  return new DataProviderScheduleRepository({
+    provider,
     listTitle: options?.listTitle,
     currentOwnerUserId: options?.currentOwnerUserId,
   });
@@ -172,21 +95,22 @@ const shouldCacheRepository = (options?: ScheduleRepositoryFactoryOptions): bool
 
 /**
  * Get schedule repository instance
- *
- * Returns appropriate repository based on environment:
- * - Demo mode: InMemoryScheduleRepository (no SharePoint dependency)
- * - Production: SharePointScheduleRepository (requires acquireToken)
- *
- * Caching:
- * - Repository instances are cached when no custom options are provided
- * - Override mechanism available for testing
- *
- * @param options - Factory options including acquireToken and configuration
+ * 
+ * @deprecated Use useScheduleRepository() in React components to ensure proper Data OS lifecycle management.
+ * This function may throw DataProviderNotInitializedError if called before authentication.
+ * 
+ * @param options - Factory options including configuration
  * @returns ScheduleRepository instance
  */
 export const getScheduleRepository = (
   options?: ScheduleRepositoryFactoryOptions,
 ): ScheduleRepository => {
+  if (import.meta.env.DEV && !options?.provider && !isDataProviderReady()) {
+    console.warn(
+      '[DataOS] getScheduleRepository called before initialization. ' +
+      'Ensure you are in a test context or use useScheduleRepository() hook instead.'
+    );
+  }
   if (overrideRepository) {
     return overrideRepository;
   }

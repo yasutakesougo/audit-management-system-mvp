@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { pushAudit } from '@/lib/audit';
 import { useDataProvider } from '@/lib/data/useDataProvider';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
+import { resolveProvider, getActiveProviderType, isDataProviderReady } from '@/lib/data/createDataProvider';
 
 import type { UserRepository } from './domain/UserRepository';
 import { DataProviderUserRepository } from './infra/DataProviderUserRepository';
@@ -39,11 +40,21 @@ export const useUserRepository = (options?: UserRepositoryFactoryOptions): UserR
 
 /**
  * Legacy support / Non-React context getter.
- * Note: This requires an explicit provider to be passed if not using the hook.
+ * @deprecated Use useUserRepository() in React components to ensure proper Data OS lifecycle management.
+ * This function may throw DataProviderNotInitializedError if called before authentication.
  */
-export const getUserRepository = (provider: IDataProvider): UserRepository => {
+export const getUserRepository = (
+  provider?: IDataProvider | Record<string, unknown>,
+): UserRepository => {
+  if (import.meta.env.DEV && !provider && !isDataProviderReady()) {
+    console.warn(
+      '[DataOS] getUserRepository called before initialization. ' +
+      'Ensure you are in a test context or use useUserRepository() hook instead.'
+    );
+  }
   if (overrideRepository) return overrideRepository;
-  return createUserRepository(provider);
+  const actualProvider = resolveProvider(provider);
+  return createUserRepository(actualProvider);
 };
 
 export const overrideUserRepository = (repository: UserRepository | null): void => {
@@ -59,13 +70,6 @@ export const resetUserRepository = (): void => {
  * Used by UI hooks to determine if seeding is needed.
  */
 export const getCurrentUserRepositoryKind = (): 'sharepoint' | 'demo' => {
-  // We check the same logic as createDataProvider to determine if we are in memory mode
-  if (typeof window === 'undefined') return 'sharepoint';
-  
-  const urlParams = new URLSearchParams(window.location.search);
-  const providerParam = urlParams.get('provider');
-  const envProvider = import.meta.env.VITE_DATA_PROVIDER;
-
-  const isMemory = providerParam === 'memory' || envProvider === 'memory';
-  return isMemory ? 'demo' : 'sharepoint';
+  const type = getActiveProviderType();
+  return type === 'sharepoint' ? 'sharepoint' : 'demo';
 };

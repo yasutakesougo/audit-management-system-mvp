@@ -23,7 +23,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildFilter,
   escapeODataString,
-} from '../sharepointRepository';
+} from '../../infra/Legacy/sharepointRepository';
 
 // フィールド名の定数（実装と同期を保つためインポート）
 import { MeetingMinutesFields as F } from '../sharepoint';

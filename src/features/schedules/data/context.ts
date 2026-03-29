@@ -3,7 +3,7 @@ import { isDemoModeEnabled, isSchedulesFeatureEnabled, shouldSkipSharePoint } fr
 import { createContext, useContext } from 'react';
 import { demoSchedulesPort } from './demoAdapter';
 import type { SchedulesPort } from './port';
-import { makeSharePointSchedulesPort } from './sharePointAdapter';
+import { sharePointSchedulesPort } from './sharePointAdapter';
 
 // Demo mode or SharePoint disabled: use demo adapter
 // Otherwise: use SharePoint adapter
@@ -13,9 +13,7 @@ const useSharePoint =
   (!shouldSkipSharePoint() || isE2E) &&
   !isE2eForceSchedulesWrite;
 
-const schedulesPort = useSharePoint
-  ? makeSharePointSchedulesPort()
-  : demoSchedulesPort;
+const schedulesPort = useSharePoint ? sharePointSchedulesPort : demoSchedulesPort;
 
 const SchedulesPortContext = createContext<SchedulesPort>(schedulesPort);
 

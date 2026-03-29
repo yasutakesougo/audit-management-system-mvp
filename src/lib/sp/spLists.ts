@@ -28,6 +28,7 @@ import {
     fetchExistingFields as _fetchExistingFields,
     getListFieldInternalNames as _getListFieldInternalNames,
     tryGetListMetadata as _tryGetListMetadata,
+    getExistingListTitlesAndIds as _getExistingListTitlesAndIds,
 } from './spListSchema';
 import {
     addListItemByTitle as _addListItemByTitle,
@@ -107,15 +108,17 @@ export function createListOperations(
   function addListItemByTitle<TBody extends object, TResult = unknown>(
     listTitle: string,
     body: TBody,
+    options?: { signal?: AbortSignal },
   ): Promise<TResult> {
-    return _addListItemByTitle<TBody, TResult>(spFetch, listTitle, body);
+    return _addListItemByTitle<TBody, TResult>(spFetch, listTitle, body, options);
   }
 
   function createItem<TBody extends object, TResult = unknown>(
     listTitle: string,
     body: TBody,
+    options?: { signal?: AbortSignal },
   ): Promise<TResult> {
-    return _createItem<TBody, TResult>(spFetch, listTitle, body);
+    return _createItem<TBody, TResult>(spFetch, listTitle, body, options);
   }
 
   // ── Update ────────────────────────────────────────────────────────────
@@ -133,7 +136,7 @@ export function createListOperations(
     listTitle: string,
     id: number,
     body: TBody,
-    options?: { ifMatch?: string },
+    options?: { ifMatch?: string; signal?: AbortSignal },
   ): Promise<TResult> {
     return _updateItemByTitle<TBody, TResult>(spFetch, listTitle, id, body, options);
   }
@@ -142,25 +145,37 @@ export function createListOperations(
     listIdentifier: string,
     id: number,
     body: TBody,
-    options?: { ifMatch?: string },
+    options?: { ifMatch?: string; signal?: AbortSignal },
   ): Promise<TResult> {
     return _updateItem<TBody, TResult>(spFetch, listIdentifier, id, body, options);
   }
 
   // ── Delete ────────────────────────────────────────────────────────────
 
-  function deleteItemByTitle(listTitle: string, id: number): Promise<void> {
-    return _deleteItemByTitle(spFetch, listTitle, id);
+  function deleteItemByTitle(
+    listTitle: string, 
+    id: number, 
+    options?: { signal?: AbortSignal }
+  ): Promise<void> {
+    return _deleteItemByTitle(spFetch, listTitle, id, options);
   }
 
-  function deleteItem(listIdentifier: string, id: number): Promise<void> {
-    return _deleteItem(spFetch, listIdentifier, id);
+  function deleteItem(
+    listIdentifier: string, 
+    id: number, 
+    options?: { signal?: AbortSignal }
+  ): Promise<void> {
+    return _deleteItem(spFetch, listIdentifier, id, options);
   }
 
   // ── List schema / metadata ────────────────────────────────────────────
 
   function tryGetListMetadata(listTitle: string, spOptions?: SpRequestOptions) {
     return _tryGetListMetadata(spFetch, listTitle, spOptions);
+  }
+
+  function getExistingListTitlesAndIds() {
+    return _getExistingListTitlesAndIds(spFetch);
   }
 
   function fetchExistingFields(listTitle: string) {
@@ -205,6 +220,7 @@ export function createListOperations(
     deleteItem,
     // List schema / metadata
     tryGetListMetadata,
+    getExistingListTitlesAndIds,
     fetchExistingFields,
     getListFieldInternalNames,
     addFieldToList,

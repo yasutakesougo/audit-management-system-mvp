@@ -23,15 +23,12 @@ import type {
   UserRepositoryListParams,
   UserRepositoryUpdateDto,
 } from '../domain/UserRepository';
-import { userMasterCreateSchema, userMasterSchema } from '../schema';
+import { userMasterCreateSchema } from '../schema';
 import { USAGE_STATUS_VALUES } from '../typesExtended';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
 
 const DEFAULT_TOP = 500;
 const MAX_WRITE_RETRY = 8;
-const TRANSPORT_SCHEDULE_FIELD = FIELD_MAP.Users_Master.transportSchedule;
-const MISSING_TRANSPORT_SCHEDULE_COLUMN_ERROR =
-  'Users_Master に TransportSchedule 列がないため、送迎手段を保存できません。管理者に列追加を依頼してください。';
 const getTodayIsoDate = (): string => new Date().toISOString().slice(0, 10);
 
 export type DataProviderUserRepositoryOptions = {
@@ -63,7 +60,13 @@ export class DataProviderUserRepository implements UserRepository {
     this.listTitle =
       sanitizeEnvValue(readEnv('VITE_SP_LIST_USERS', '')) ||
       DEFAULT_USERS_LIST_TITLE;
+    
+    this.transportListTitle = sanitizeEnvValue(readEnv('VITE_SP_LIST_USER_TRANSPORT', '')) || 'UserTransport_Settings';
+    this.benefitListTitle = sanitizeEnvValue(readEnv('VITE_SP_LIST_USER_BENEFIT', '')) || 'UserBenefit_Profile';
   }
+
+  private readonly transportListTitle: string;
+  private readonly benefitListTitle: string;
 
   public async getAll(params?: UserRepositoryListParams): Promise<IUserMaster[]> {
     if (params?.signal?.aborted) return [];
@@ -87,6 +90,28 @@ export class DataProviderUserRepository implements UserRepository {
       });
 
       let domainItems = items.map(item => this.toDomain(item, requestedMode));
+
+      // ── 分離先リストからの Join ──
+      if (requestedMode === 'detail' || requestedMode === 'full') {
+        try {
+          const [transportRows, benefitRows] = await Promise.all([
+            this.provider.listItems<Record<string, unknown>>(this.transportListTitle),
+            this.provider.listItems<Record<string, unknown>>(this.benefitListTitle)
+          ]);
+
+          const transportMap = new Map(transportRows.map(r => [String(r.UserID), r]));
+          const benefitMap = new Map(benefitRows.map(r => [String(r.UserID), r]));
+
+          domainItems = domainItems.map(user => {
+            const tRow = transportMap.get(user.UserID);
+            const bRow = benefitMap.get(user.UserID);
+            if (!tRow && !bRow) return user;
+            return this.mergeExtraData(user, tRow, bRow);
+          });
+        } catch (je) {
+          auditLog.warn('users', 'DataProviderUserRepository.lazy_join_failed', { error: String(je) });
+        }
+      }
 
       if (filters?.keyword) {
         const keyword = filters.keyword.trim().toLowerCase();
@@ -153,7 +178,22 @@ export class DataProviderUserRepository implements UserRepository {
       });
 
       if (!items.length) return null;
-      return this.toDomain(items[0], requestedMode);
+      let domain = this.toDomain(items[0], requestedMode);
+
+      // ── 分離先リストからの Join (Single) ──
+      if (requestedMode === 'detail' || requestedMode === 'full') {
+        try {
+          const [tItems, bItems] = await Promise.all([
+            this.provider.listItems<Record<string, unknown>>(this.transportListTitle, { filter: `UserID eq '${domain.UserID}'`, top: 1 }),
+            this.provider.listItems<Record<string, unknown>>(this.benefitListTitle, { filter: `UserID eq '${domain.UserID}'`, top: 1 })
+          ]);
+          domain = this.mergeExtraData(domain, tItems[0], bItems[0]);
+        } catch (je) {
+          auditLog.warn('users', 'DataProviderUserRepository.getById_join_failed', { id, error: String(je) });
+        }
+      }
+
+      return domain;
     } catch (e) {
       auditLog.warn('users', 'DataProviderUserRepository.getById_fallback', { id, error: String(e) });
       const items = await this.provider.listItems<UserRow>(this.listTitle, {
@@ -167,45 +207,27 @@ export class DataProviderUserRepository implements UserRepository {
 
   public async create(payload: IUserMasterCreateDto): Promise<IUserMaster> {
     userMasterCreateSchema.parse(payload);
-    const requiresTransportSchedule = payload.TransportSchedule !== undefined;
-    let request = this.toRequest(payload);
-    request = this.filterUnsupportedFields(request);
+    
+    // Core リストへの書き込み
+    const created = await this.writeToMainList(this.listTitle, payload, 'create');
+    const domain = this.toDomain(created, 'full');
 
-    if (requiresTransportSchedule && !(TRANSPORT_SCHEDULE_FIELD in request)) {
-      throw new Error(MISSING_TRANSPORT_SCHEDULE_COLUMN_ERROR);
-    }
+    // 分離先リストへの書き込み (非同期・非ブロッキングでも可能だが、整合性のために待機)
+    await Promise.all([
+      this.syncAccessoryList(this.transportListTitle, domain.UserID, payload),
+      this.syncAccessoryList(this.benefitListTitle, domain.UserID, payload)
+    ]);
 
-    for (let attempt = 0; attempt < MAX_WRITE_RETRY; attempt++) {
-      try {
-        const created = await this.provider.createItem<UserRow>(this.listTitle, request);
-        const domain = this.toDomain(created, 'full');
+    this.audit?.({
+      actor: 'user',
+      entity: 'Users_Master_Split',
+      action: 'create',
+      entity_id: String(domain.Id),
+      channel: 'UI',
+      after: { item: domain },
+    });
 
-        this.audit?.({
-          actor: 'user',
-          entity: 'Users_Master',
-          action: 'create',
-          entity_id: String(domain.Id),
-          channel: 'UI',
-          after: { item: domain },
-        });
-
-        return domain;
-      } catch (error) {
-        const retryField = this.resolveRetryField(error, request);
-        if (!retryField) throw error;
-
-        if (retryField === TRANSPORT_SCHEDULE_FIELD) {
-          throw new Error(MISSING_TRANSPORT_SCHEDULE_COLUMN_ERROR);
-        }
-
-        this.unsupportedWriteFields.add(retryField);
-        request = { ...request };
-        delete request[retryField];
-
-        auditLog.warn('users', 'DataProviderUserRepository.create_retry', { field: retryField, attempt });
-      }
-    }
-    throw new Error('Create failed after retries');
+    return domain;
   }
 
   public async update(id: number | string, payload: UserRepositoryUpdateDto): Promise<IUserMaster> {
@@ -214,46 +236,102 @@ export class DataProviderUserRepository implements UserRepository {
     if (!existing) throw new Error('Not found');
     if (!canEditUser(existing)) throw new Error('Cannot edit terminated user');
 
-    const requiresTransportSchedule = payload.TransportSchedule !== undefined;
+    // Core リストへの書き込み
+    await this.writeToMainList(this.listTitle, payload, 'update', numericId);
+
+    // 分離先リストへの同期 (UserID 紐付け)
+    await Promise.all([
+      this.syncAccessoryList(this.transportListTitle, existing.UserID, payload),
+      this.syncAccessoryList(this.benefitListTitle, existing.UserID, payload)
+    ]);
+
+    const updated = await this.getById(numericId);
+    if (!updated) throw new Error('Failed to reload after update');
+
+    this.audit?.({
+      actor: 'user',
+      entity: 'Users_Master_Split',
+      action: 'update',
+      entity_id: String(numericId),
+      channel: 'UI',
+      after: { patch: payload },
+    });
+
+    return updated;
+  }
+
+  /** メインリストへの書き込み（リトライロジック付き） */
+  private async writeToMainList(listTitle: string, payload: Partial<IUserMasterCreateDto>, op: 'create' | 'update', id?: number): Promise<UserRow> {
     let request = this.toRequest(payload);
     request = this.filterUnsupportedFields(request);
 
-    if (requiresTransportSchedule && !(TRANSPORT_SCHEDULE_FIELD in request)) {
-      throw new Error(MISSING_TRANSPORT_SCHEDULE_COLUMN_ERROR);
-    }
-
     for (let attempt = 0; attempt < MAX_WRITE_RETRY; attempt++) {
       try {
-        await this.provider.updateItem(this.listTitle, numericId, request);
-        const updated = await this.getById(numericId);
-        if (!updated) throw new Error('Failed to reload after update');
-
-        this.audit?.({
-          actor: 'user',
-          entity: 'Users_Master',
-          action: 'update',
-          entity_id: String(numericId),
-          channel: 'UI',
-          after: { patch: payload },
-        });
-
-        return updated;
+        if (op === 'create') {
+          return await this.provider.createItem<UserRow>(listTitle, request);
+        } else {
+          return await this.provider.updateItem<UserRow>(listTitle, id!, request);
+        }
       } catch (error) {
         const retryField = this.resolveRetryField(error, request);
         if (!retryField) throw error;
-
-        if (retryField === TRANSPORT_SCHEDULE_FIELD) {
-          throw new Error(MISSING_TRANSPORT_SCHEDULE_COLUMN_ERROR);
-        }
-
+        
         this.unsupportedWriteFields.add(retryField);
         request = { ...request };
         delete request[retryField];
-
-        auditLog.warn('users', 'DataProviderUserRepository.update_retry', { id: numericId, field: retryField, attempt });
+        auditLog.warn('users', `DataProviderUserRepository.${op}_retry`, { field: retryField, attempt });
       }
     }
-    throw new Error('Update failed after retries');
+    throw new Error(`${op} failed after retries`);
+  }
+
+  /** 分離先リストへの同期（Upsert ロジック） */
+  private async syncAccessoryList(listTitle: string, userId: string, payload: Partial<IUserMasterCreateDto>): Promise<void> {
+    const request = this.toRequest(payload);
+    
+    // このリストに該当するフィールドがあるかチェック (UserID は必須で含める)
+    const listFields = this.resolveListFields(listTitle);
+    const filteredRequest: Record<string, unknown> = { UserID: userId };
+    let hasData = false;
+    for (const f of listFields) {
+      if (f in request) {
+        filteredRequest[f] = request[f];
+        hasData = true;
+      }
+    }
+
+    if (!hasData) return; // 更新対象フィールドがない場合はスキップ
+
+    try {
+      // UserID で既存レコードを検索
+      const existing = await this.provider.listItems<Record<string, unknown>>(listTitle, {
+        filter: `UserID eq '${userId}'`,
+        top: 1
+      });
+
+      if (existing.length > 0) {
+        await this.provider.updateItem(listTitle, Number(existing[0].Id), filteredRequest);
+      } else {
+        await this.provider.createItem(listTitle, filteredRequest);
+      }
+    } catch (e) {
+      auditLog.warn('users', 'DataProviderUserRepository.sync_accessory_failed', { listTitle, userId, error: String(e) });
+    }
+  }
+
+  private resolveListFields(listTitle: string): string[] {
+    const fields = FIELD_MAP.Users_Master;
+    if (listTitle === this.transportListTitle) {
+      return [fields.transportToDays, fields.transportFromDays, fields.transportCourse, fields.transportSchedule, fields.transportAdditionType];
+    }
+    if (listTitle === this.benefitListTitle) {
+      return [
+        fields.recipientCertNumber, fields.recipientCertExpiry, fields.grantMunicipality, 
+        fields.grantPeriodStart, fields.grantPeriodEnd, fields.disabilitySupportLevel, 
+        fields.grantedDaysPerMonth, fields.userCopayLimit, fields.mealAddition, fields.copayPaymentMethod
+      ];
+    }
+    return [];
   }
 
   public async terminate(id: number | string): Promise<IUserMaster> {
@@ -395,11 +473,33 @@ export class DataProviderUserRepository implements UserRepository {
     };
 
     const normalized = toDomainUser(domain);
-    try {
-      userMasterSchema.parse(normalized);
-    } catch (error) {
-      auditLog.warn('users', 'DataProviderUserRepository.validation_failed', { id: normalized.Id, error: String(error) });
-    }
     return normalized;
+  }
+
+  private mergeExtraData(domain: IUserMaster, transport?: Record<string, unknown>, benefit?: Record<string, unknown>): IUserMaster {
+    const next = { ...domain };
+    
+    if (transport) {
+      if (transport.TransportToDays !== undefined) next.TransportToDays = normalizeAttendanceDays(transport.TransportToDays);
+      if (transport.TransportFromDays !== undefined) next.TransportFromDays = normalizeAttendanceDays(transport.TransportFromDays);
+      if (transport.TransportCourse !== undefined) next.TransportCourse = transport.TransportCourse as string;
+      if (transport.TransportSchedule !== undefined) next.TransportSchedule = transport.TransportSchedule as string;
+      if (transport.TransportAdditionType !== undefined) next.TransportAdditionType = transport.TransportAdditionType as string;
+    }
+
+    if (benefit) {
+      if (benefit.RecipientCertNumber !== undefined) next.RecipientCertNumber = benefit.RecipientCertNumber as string;
+      if (benefit.RecipientCertExpiry !== undefined) next.RecipientCertExpiry = benefit.RecipientCertExpiry as string;
+      if (benefit.GrantMunicipality !== undefined) next.GrantMunicipality = benefit.GrantMunicipality as string;
+      if (benefit.GrantPeriodStart !== undefined) next.GrantPeriodStart = benefit.GrantPeriodStart as string;
+      if (benefit.GrantPeriodEnd !== undefined) next.GrantPeriodEnd = benefit.GrantPeriodEnd as string;
+      if (benefit.DisabilitySupportLevel !== undefined) next.DisabilitySupportLevel = benefit.DisabilitySupportLevel as string;
+      if (benefit.GrantedDaysPerMonth !== undefined) next.GrantedDaysPerMonth = benefit.GrantedDaysPerMonth as string;
+      if (benefit.UserCopayLimit !== undefined) next.UserCopayLimit = benefit.UserCopayLimit as string;
+      if (benefit.MealAddition !== undefined) next.MealAddition = benefit.MealAddition as string;
+      if (benefit.CopayPaymentMethod !== undefined) next.CopayPaymentMethod = benefit.CopayPaymentMethod as string;
+    }
+
+    return next;
   }
 }

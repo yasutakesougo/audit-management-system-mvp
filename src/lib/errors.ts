@@ -8,9 +8,24 @@ export class AuthRequiredError extends Error {
   }
 }
 
-export class SharePointItemNotFoundError extends Error {
+export class DataProviderItemNotFoundError extends Error {
+  constructor(public resourceName: string, public id: string | number) {
+    super(`Item not found in ${resourceName}: ${id}`);
+    this.name = 'DataProviderItemNotFoundError';
+  }
+}
+
+export class DataProviderNotInitializedError extends Error {
+  constructor(public providerType: string) {
+    super(`DataProvider [${providerType}] has not been initialized. Ensure <DataLayerProvider> or <SpProvider> is mounted.`);
+    this.name = 'DataProviderNotInitializedError';
+  }
+}
+
+export class SharePointItemNotFoundError extends DataProviderItemNotFoundError {
   constructor(message: string = 'SharePoint item was not found') {
-    super(message);
+    super('SharePoint', 'unknown');
+    this.message = message;
     this.name = 'SharePointItemNotFoundError';
   }
 }

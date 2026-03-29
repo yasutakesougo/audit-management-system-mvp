@@ -93,12 +93,10 @@ export function createSpClient(
     addListItemByTitle, getItemById, getItemByIdWithEtag,
     createItem, updateItemByTitle, updateItem,
     deleteItemByTitle, deleteItem,
-    tryGetListMetadata: _tryGetListMetadata, getListFieldInternalNames, ensureListExists,
+    tryGetListMetadata, getListFieldInternalNames, ensureListExists,
+    getExistingListTitlesAndIds,
   } = listOps;
 
-  function tryGetListMetadata(listTitle: string, spOptions?: import('@/lib/sp/types').SpRequestOptions) {
-    return _tryGetListMetadata(listTitle, spOptions);
-  }
   /** @deprecated Use `addListItemByTitle`. Kept for backward compatibility. */
   const addItemByTitle = addListItemByTitle;
 
@@ -130,6 +128,7 @@ export function createSpClient(
     createItem, updateItem, deleteItem,
     batch, postBatch,
     ensureListExists, tryGetListMetadata, getListFieldInternalNames,
+    getExistingListTitlesAndIds,
   };
 }
 

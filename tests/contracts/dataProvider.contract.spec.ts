@@ -81,8 +81,27 @@ function runProviderContractTests(setupProvider: () => IDataProvider, providerNa
 
 import type { UseSP } from '@/lib/spClient';
 
+import { LocalStorageDataProvider } from '@/lib/data/LocalStorageDataProvider';
+
+// ... other imports ...
+
 // 1. InMemoryDataProvider のテスト
 runProviderContractTests(() => new InMemoryDataProvider(), 'InMemoryDataProvider');
+
+// 2. LocalStorageDataProvider のテスト
+runProviderContractTests(() => {
+  // Mock localStorage for node environment in tests
+  const mockStorage: Record<string, string> = {};
+  vi.stubGlobal('localStorage', {
+    getItem: (key: string) => mockStorage[key] || null,
+    setItem: (key: string, value: string) => { mockStorage[key] = value; },
+    removeItem: (key: string) => { delete mockStorage[key]; },
+    clear: () => { Object.keys(mockStorage).forEach(k => delete mockStorage[k]); },
+    key: (index: number) => Object.keys(mockStorage)[index] || null,
+    get length() { return Object.keys(mockStorage).length; }
+  });
+  return new LocalStorageDataProvider();
+}, 'LocalStorageDataProvider');
 
 // 2. SharePointDataProvider のテスト (Mock Client 経由)
 const mockSpClient = {

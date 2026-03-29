@@ -33,3 +33,8 @@ export const useCallLogRepository = (): CallLogRepository => {
 export const getCallLogRepository = (provider: IDataProvider): CallLogRepository => {
   return createCallLogRepository(provider);
 };
+
+/** @internal テスト用リセット（新ファクトリはシングルトン状態を持たないが後方互換のため提供） */
+export const __resetCallLogRepositoryFactoryForTests = (): void => {
+  // no-op: DataProvider-based factory has no singleton state
+};

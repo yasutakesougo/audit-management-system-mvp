@@ -3,6 +3,7 @@ import { useDataProvider } from '@/lib/data/useDataProvider';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { sanitizeEnvValue } from '@/lib/sp/helpers';
 import { readEnv } from '@/lib/env';
+import { resolveProvider, getActiveProviderType, isDataProviderReady } from '@/lib/data/createDataProvider';
 
 import type { DailyRecordRepository } from './domain/DailyRecordRepository';
 import { DataProviderDailyRecordRepository } from './infra/DataProviderDailyRecordRepository';
@@ -48,14 +49,22 @@ export const useDailyRecordRepository = (options?: DailyRecordRepositoryFactoryO
 
 /**
  * Non-React context getter.
- * Requires an explicit provider.
+ * @deprecated Use useDailyRecordRepository() in React hooks to ensure proper Data OS lifecycle management.
+ * This function may throw DataProviderNotInitializedError if called before authentication.
  */
 export const getDailyRecordRepository = (
-  provider: IDataProvider,
+  provider?: IDataProvider | Record<string, unknown>,
   options?: { listTitle?: string }
 ): DailyRecordRepository => {
+  if (import.meta.env.DEV && !provider && !isDataProviderReady()) {
+    console.warn(
+      '[DataOS] getDailyRecordRepository called before initialization. ' +
+      'Ensure you are in a test context or use useDailyRecordRepository() hook instead.'
+    );
+  }
   if (overrideRepository) return overrideRepository;
-  return createDailyRecordRepository(provider, options);
+  const actualProvider = resolveProvider(provider);
+  return createDailyRecordRepository(actualProvider, options);
 };
 
 export const overrideDailyRecordRepository = (
@@ -66,4 +75,10 @@ export const overrideDailyRecordRepository = (
 
 export const resetDailyRecordRepository = (): void => {
   overrideRepository = null;
+};
+
+/** @internal compat stub — returns 'demo' in all contexts (new factory uses IDataProvider directly) */
+export const getCurrentDailyRecordRepositoryKind = (): 'sharepoint' | 'demo' => {
+  const type = getActiveProviderType();
+  return type === 'sharepoint' ? 'sharepoint' : 'demo';
 };

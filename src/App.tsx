@@ -15,6 +15,7 @@ import { MsalProvider } from './auth/MsalProvider';
 import { ToastProvider, useToast } from './hooks/useToast';
 import { readBool } from './lib/env';
 import { registerNotifier } from './lib/notice';
+import { DataLayerGuard } from './components/DataLayerGuard';
 
 const hydrationHudEnabled = readBool('VITE_FEATURE_HYDRATION_HUD', false);
 
@@ -70,7 +71,9 @@ function App() {
                    All schedule hooks use useScheduleRepository() directly via repositoryFactory. */}
               <ToastNotifierBridge />
 
-              <RouterProvider router={router} future={routerFutureFlags} />
+              <DataLayerGuard>
+                <RouterProvider router={router} future={routerFutureFlags} />
+              </DataLayerGuard>
             </ToastProvider>
             {/* 🔍 開発/検証用 HUD（本番では非表示可能） */}
             {hydrationHudEnabled && <HydrationHud />}

@@ -178,13 +178,8 @@ export const USERS_SELECT_FIELDS_CORE = [
   USERS_MASTER_FIELD_MAP.isSupportProcedureTarget,
   USERS_MASTER_FIELD_MAP.severeFlag,
   USERS_MASTER_FIELD_MAP.isActive,
-  USERS_MASTER_FIELD_MAP.transportToDays,
-  USERS_MASTER_FIELD_MAP.transportFromDays,
-  USERS_MASTER_FIELD_MAP.transportCourse,
-  USERS_MASTER_FIELD_MAP.transportSchedule,
+  USERS_MASTER_FIELD_MAP.usageStatus,
   USERS_MASTER_FIELD_MAP.attendanceDays,
-  USERS_MASTER_FIELD_MAP.recipientCertNumber,
-  USERS_MASTER_FIELD_MAP.recipientCertExpiry,
   USERS_MASTER_FIELD_MAP.modified,
   USERS_MASTER_FIELD_MAP.created,
   USERS_MASTER_FIELD_MAP.lastAssessmentDate,
@@ -193,22 +188,12 @@ export const USERS_SELECT_FIELDS_CORE = [
 // ── DETAIL: 詳細画面用（CORE + 支給決定情報） ──
 export const USERS_SELECT_FIELDS_DETAIL = [
   ...USERS_SELECT_FIELDS_CORE,
-  USERS_MASTER_FIELD_MAP.usageStatus,
-  USERS_MASTER_FIELD_MAP.grantMunicipality,
-  USERS_MASTER_FIELD_MAP.grantPeriodStart,
-  USERS_MASTER_FIELD_MAP.grantPeriodEnd,
-  USERS_MASTER_FIELD_MAP.disabilitySupportLevel,
-  USERS_MASTER_FIELD_MAP.grantedDaysPerMonth,
-  USERS_MASTER_FIELD_MAP.userCopayLimit,
 ] as const;
 
 // ── FULL: 請求・監査用（DETAIL + 加算情報） ──
 export const USERS_SELECT_FIELDS_FULL = [
   ...USERS_SELECT_FIELDS_DETAIL,
-  USERS_MASTER_FIELD_MAP.transportAdditionType,
-  USERS_MASTER_FIELD_MAP.mealAddition,
-  USERS_MASTER_FIELD_MAP.copayPaymentMethod,
-  // 制度判定属性
+  // 制度判定属性 (Core に残す)
   USERS_MASTER_FIELD_MAP.behaviorScore,
   USERS_MASTER_FIELD_MAP.childBehaviorScore,
   USERS_MASTER_FIELD_MAP.serviceTypesJson,

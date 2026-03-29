@@ -45,7 +45,7 @@ export class SharePointDataProvider implements IDataProvider {
     const promise = (async () => {
       const entry = findListEntry(name) || SP_LIST_REGISTRY.find(e => e.key.toLowerCase() === name.toLowerCase());
       if (entry?.provisioningFields && entry.provisioningFields.length > 0) {
-        if (entry.key === 'users_master' || entry.lifecycle === 'required') {
+        if (entry.lifecycle === 'required') {
           const listName = entry.resolve();
           try {
             await this.client.ensureListExists(listName, [...entry.provisioningFields]);

@@ -4,6 +4,7 @@ import type {
   UpdateOptions 
 } from '@/lib/data/dataProvider.interface';
 import { auditLog } from '@/lib/debugLogger';
+import { DataProviderItemNotFoundError } from '@/lib/errors';
 import type { SpFieldDef } from '@/lib/sp/types';
 
 /**
@@ -17,9 +18,51 @@ export class LocalStorageDataProvider implements IDataProvider {
   private readonly dataKey = (name: string) => `${this.prefix}data:${name}`;
   private readonly fieldsKey = (name: string) => `${this.prefix}fields:${name}`;
 
+  // In-Memory Cache to avoid redundant JSON.parse/localStorage.getItem calls
+  private dataCache: Map<string, Array<Record<string, unknown>>> = new Map();
+  private fieldsCache: Map<string, Set<string>> = new Map();
+
   constructor() {
-    // 初期化時に現在のシリアル化に異常がないか等のセルフチェックを行うことも可能
-    auditLog.info('data:local', 'LocalStorageDataProvider initialized');
+    auditLog.info('data:local', 'LocalStorageDataProvider initialized with caching');
+    this.setupStorageListener();
+  }
+
+  private setupStorageListener(): void {
+    if (typeof window === 'undefined') return;
+    window.addEventListener('storage', (event) => {
+      // If our keys changed in another tab, clear the cache to force reload
+      if (event.key?.startsWith(this.prefix)) {
+        auditLog.info('data:local', 'External storage change detected. Invalidating cache.');
+        this.dataCache.clear();
+        this.fieldsCache.clear();
+      }
+    });
+  }
+
+  /**
+   * Internal helper to load resource data ensuring cache usage.
+   * This is the "Lazy Load" point.
+   */
+  private async ensureLoaded(resourceName: string): Promise<Array<Record<string, unknown>>> {
+    if (this.dataCache.has(resourceName)) {
+      return this.dataCache.get(resourceName)!;
+    }
+
+    const raw = localStorage.getItem(this.dataKey(resourceName));
+    const items = raw ? (JSON.parse(raw) as Array<Record<string, unknown>>) : [];
+    this.dataCache.set(resourceName, items);
+    return items;
+  }
+
+  /**
+   * Internal helper to persist data to localStorage and update cache.
+   */
+  private saveToDisk(resourceName: string, items: Array<Record<string, unknown>>): void {
+    this.dataCache.set(resourceName, items);
+    localStorage.setItem(this.dataKey(resourceName), JSON.stringify(items));
+    
+    // Invalidate fields cache as the data shape might have changed
+    this.fieldsCache.delete(resourceName);
   }
 
   /**
@@ -32,15 +75,15 @@ export class LocalStorageDataProvider implements IDataProvider {
         localStorage.removeItem(key);
       }
     });
+    this.dataCache.clear();
+    this.fieldsCache.clear();
     auditLog.warn('data:local', 'All local data cleared');
   }
 
   async listItems<T>(resourceName: string, options?: DataProviderOptions): Promise<T[]> {
+    options?.signal?.throwIfAborted();
     try {
-      const raw = localStorage.getItem(this.dataKey(resourceName));
-      if (!raw) return [];
-
-      let items = JSON.parse(raw) as Array<Record<string, unknown>>;
+      let items = await this.ensureLoaded(resourceName);
 
       // 簡易的な OData フィルタリングの実装 (eq のみ対応)
       if (options?.filter) {
@@ -64,15 +107,17 @@ export class LocalStorageDataProvider implements IDataProvider {
     }
   }
 
-  async getItemById<T>(resourceName: string, id: string | number): Promise<T> {
-    const items = await this.listItems<Record<string, unknown>>(resourceName);
+  async getItemById<T>(resourceName: string, id: string | number, options?: DataProviderOptions): Promise<T> {
+    options?.signal?.throwIfAborted();
+    const items = await this.ensureLoaded(resourceName);
     const item = items.find(i => String(i.Id || i.id || i.ID) === String(id));
-    if (!item) throw new Error(`Item ${id} not found in ${resourceName} (Local)`);
+    if (!item) throw new DataProviderItemNotFoundError(resourceName, id);
     return item as unknown as T;
   }
 
-  async createItem<T>(resourceName: string, payload: Record<string, unknown>): Promise<T> {
-    const items = await this.listItems<Record<string, unknown>>(resourceName);
+  async createItem<T>(resourceName: string, payload: Record<string, unknown>, options?: { signal?: AbortSignal }): Promise<T> {
+    options?.signal?.throwIfAborted();
+    const items = await this.ensureLoaded(resourceName);
     
     // ID 生成
     const maxId = items.reduce((max, i) => Math.max(max, Number(i.Id || i.id || i.ID || 0)), 0);
@@ -84,21 +129,8 @@ export class LocalStorageDataProvider implements IDataProvider {
     };
 
     const newItems = [...items, newItem];
-    localStorage.setItem(this.dataKey(resourceName), JSON.stringify(newItems));
+    this.saveToDisk(resourceName, newItems);
     
-    // スキーマの動的拡張
-    const fields = await this.getFieldInternalNames(resourceName);
-    let extended = false;
-    Object.keys(payload).forEach(key => {
-      if (!fields.has(key)) {
-        fields.add(key);
-        extended = true;
-      }
-    });
-    if (extended) {
-      localStorage.setItem(this.fieldsKey(resourceName), JSON.stringify(Array.from(fields)));
-    }
-
     return newItem as unknown as T;
   }
 
@@ -106,11 +138,12 @@ export class LocalStorageDataProvider implements IDataProvider {
     resourceName: string, 
     id: string | number, 
     payload: Record<string, unknown>,
-    _options?: UpdateOptions
+    options?: UpdateOptions
   ): Promise<T> {
-    const items = await this.listItems<Record<string, unknown>>(resourceName);
+    options?.signal?.throwIfAborted();
+    const items = await this.ensureLoaded(resourceName);
     const index = items.findIndex(i => String(i.Id || i.id || i.ID) === String(id));
-    if (index === -1) throw new Error(`Item ${id} not found in ${resourceName} (Local)`);
+    if (index === -1) throw new DataProviderItemNotFoundError(resourceName, id);
 
     const updatedItem = {
       ...items[index],
@@ -120,19 +153,20 @@ export class LocalStorageDataProvider implements IDataProvider {
     
     const newItems = [...items];
     newItems[index] = updatedItem;
-    localStorage.setItem(this.dataKey(resourceName), JSON.stringify(newItems));
+    this.saveToDisk(resourceName, newItems);
     
     return updatedItem as unknown as T;
   }
 
-  async deleteItem(resourceName: string, id: string | number): Promise<void> {
-    const items = await this.listItems<Record<string, unknown>>(resourceName);
+  async deleteItem(resourceName: string, id: string | number, options?: { signal?: AbortSignal }): Promise<void> {
+    options?.signal?.throwIfAborted();
+    const items = await this.ensureLoaded(resourceName);
     const newItems = items.filter(i => String(i.Id || i.id || i.ID) !== String(id));
-    localStorage.setItem(this.dataKey(resourceName), JSON.stringify(newItems));
+    this.saveToDisk(resourceName, newItems);
   }
 
   async getMetadata(resourceName: string): Promise<Record<string, unknown>> {
-    const data = await this.listItems<Record<string, unknown>>(resourceName);
+    const data = await this.ensureLoaded(resourceName);
     return {
       Title: resourceName,
       ItemCount: data.length,
@@ -141,14 +175,23 @@ export class LocalStorageDataProvider implements IDataProvider {
   }
 
   async getFieldInternalNames(resourceName: string): Promise<Set<string>> {
+    if (this.fieldsCache.has(resourceName)) {
+      return this.fieldsCache.get(resourceName)!;
+    }
+
     const rawFields = localStorage.getItem(this.fieldsKey(resourceName));
     if (rawFields) {
-      return new Set(JSON.parse(rawFields));
+      const fields = new Set<string>(JSON.parse(rawFields));
+      this.fieldsCache.set(resourceName, fields);
+      return fields;
     }
+
     // 未設定の場合はデータから推論
-    const items = await this.listItems<Record<string, unknown>>(resourceName);
+    const items = await this.ensureLoaded(resourceName);
     const names = new Set<string>(['Id', 'Created', 'Modified']);
     items.forEach(item => Object.keys(item).forEach(k => names.add(k)));
+    
+    this.fieldsCache.set(resourceName, names);
     return names;
   }
 
@@ -158,19 +201,21 @@ export class LocalStorageDataProvider implements IDataProvider {
     internalNames.forEach(name => existing.add(name));
     
     localStorage.setItem(this.fieldsKey(resourceName), JSON.stringify(Array.from(existing)));
+    this.fieldsCache.set(resourceName, existing);
     
     if (localStorage.getItem(this.dataKey(resourceName)) === null) {
-      localStorage.setItem(this.dataKey(resourceName), JSON.stringify([]));
+      this.saveToDisk(resourceName, []);
     }
   }
 
   async seed(resourceName: string, items: Array<Record<string, unknown>>): Promise<void> {
-    localStorage.setItem(this.dataKey(resourceName), JSON.stringify(items));
+    this.saveToDisk(resourceName, items);
     
     // スキーマも更新
     const names = new Set<string>(['Id', 'Created', 'Modified']);
     items.forEach(item => Object.keys(item).forEach(k => names.add(k)));
     localStorage.setItem(this.fieldsKey(resourceName), JSON.stringify(Array.from(names)));
+    this.fieldsCache.set(resourceName, names);
     
     auditLog.info('data:local', `Seeded ${items.length} items into ${resourceName}`);
   }

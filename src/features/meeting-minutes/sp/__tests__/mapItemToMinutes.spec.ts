@@ -15,7 +15,7 @@
  * 9. 不正型への耐性（null, number, object など）
  */
 import { describe, expect, it } from 'vitest';
-import { mapItemToMinutes } from '../sharepointRepository';
+import { mapItemToMinutes } from '../../infra/Legacy/sharepointRepository';
 import { MeetingMinutesFields as F } from '../sharepoint';
 
 // フル正常アイテムのベース

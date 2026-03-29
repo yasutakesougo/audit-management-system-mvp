@@ -252,14 +252,13 @@ export async function addFieldToList(
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
       // 500 error often means XML error or field already exists but hidden
-      console.warn(
-        `[addFieldToList] Failed to add "${field.internalName}" to "${listTitle}" (${res.status}): ${errText.slice(0, 500)}`,
-      );
+      const isLimit = errText.includes('maximum for this list') || errText.includes('reached the limit');
       if (res.status === 500) {
-        auditLog.warn('sp:fields', 'create_field_500_debug', { 
+        auditLog.warn('sp:fields', isLimit ? 'schema_limit_exceeded' : 'create_field_500_debug', { 
           listTitle, 
           field: field.internalName, 
-          schemaXml: schema 
+          isLimit,
+          errText: errText.slice(0, 200)
         });
       }
       return;

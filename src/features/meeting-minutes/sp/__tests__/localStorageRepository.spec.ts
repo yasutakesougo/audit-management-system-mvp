@@ -23,7 +23,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { MeetingMinutes } from '../../types';
-import { createLocalStorageMeetingMinutesRepository } from '../localStorageRepository';
+import { createLocalStorageMeetingMinutesRepository } from '../../infra/Legacy/localStorageRepository';
 
 // ─── テスト用フィクスチャ ───────────────────────────────────
 

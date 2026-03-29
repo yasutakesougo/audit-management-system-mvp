@@ -20,12 +20,11 @@ export {
 
 // Repository Factory
 export type {
-    DailyRecordRepositoryFactoryOptions, DailyRecordRepositoryKind
+    DailyRecordRepositoryFactoryOptions
 } from './repositoryFactory';
 
 export {
-    getCurrentDailyRecordRepositoryKind, getDailyRecordRepository, overrideDailyRecordRepository,
-    resetDailyRecordRepository, useDailyRecordRepository
+    getDailyRecordRepository, useDailyRecordRepository
 } from './repositoryFactory';
 
 // Components & Hooks

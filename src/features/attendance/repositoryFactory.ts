@@ -29,3 +29,11 @@ export const getAttendanceRepository = (): AttendanceRepository => {
   if (overrideRepository) return overrideRepository;
   throw new Error('Static getAttendanceRepository is deprecated. Use useAttendanceRepository hook instead.');
 };
+
+export const resetAttendanceRepository = (): void => {
+  overrideRepository = null;
+};
+
+export const getCurrentAttendanceRepositoryKind = (): 'sharepoint' | 'demo' => {
+  return 'demo';
+};
