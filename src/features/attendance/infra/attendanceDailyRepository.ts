@@ -62,7 +62,9 @@ const getNumber = (value: unknown): number | undefined =>
 const getBool = (value: unknown): boolean => Boolean(value);
 
 const toAttendanceDaily = (row: SharePointDailyRow): AttendanceDailyItem | null => {
-  const key = getString(row[ATTENDANCE_DAILY_FIELDS.key]);
+  const key =
+    getString(row[ATTENDANCE_DAILY_FIELDS.key]) ??
+    getString(row[ATTENDANCE_DAILY_FIELDS.legacyKey]);
   const userCode = getString(row[ATTENDANCE_DAILY_FIELDS.userCode]);
   const recordDate = getString(row[ATTENDANCE_DAILY_FIELDS.recordDate]);
   const status = getString(row[ATTENDANCE_DAILY_FIELDS.status]);
@@ -112,6 +114,7 @@ const omitUndefined = (record: Record<string, unknown>): Record<string, unknown>
 
 const toSpPayload = (item: AttendanceDailyItem): Record<string, unknown> => {
   return omitUndefined({
+    // Cross-environment key is stored in Title.
     [ATTENDANCE_DAILY_FIELDS.key]: item.Key,
     [ATTENDANCE_DAILY_FIELDS.userCode]: item.UserCode,
     [ATTENDANCE_DAILY_FIELDS.recordDate]: item.RecordDate,

@@ -92,7 +92,10 @@ export const ATTENDANCE_DAILY_LIST_TITLE = 'AttendanceDaily' as const;
 
 export const ATTENDANCE_DAILY_FIELDS = {
   id: 'Id',
-  key: 'Key',
+  // SharePoint の既定テキスト列（一部環境で "Key" 列が存在しないため Title を正本にする）
+  key: 'Title',
+  // 旧スキーマ互換（読み取りのみ）
+  legacyKey: 'Key',
   userCode: 'UserCode',
   recordDate: 'RecordDate',
   status: 'Status',
