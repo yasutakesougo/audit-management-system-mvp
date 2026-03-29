@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * UserStatusQuickDialog — 利用者状態の Quick 入力ダイアログ
  *
@@ -308,7 +307,7 @@ export const UserStatusQuickDialog: React.FC<UserStatusQuickDialogProps> = ({
             size="small"
             data-testid="user-status-type-selector"
           >
-            {USER_STATUS_TYPES.map((type: any) => (
+            {USER_STATUS_TYPES.map((type: UserStatusType) => (
               <ToggleButton
                 key={type}
                 value={type}

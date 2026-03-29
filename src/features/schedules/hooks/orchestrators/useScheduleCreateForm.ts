@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { SelectChangeEvent } from '@mui/material/Select';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -107,7 +106,7 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
   const resolvedDefaultTitle = useMemo(() => {
     if (initialOverride?.title?.trim()) return initialOverride.title;
     const candidateUserId = initialOverride?.userId ?? defaultUser?.id;
-    const matchedUser = candidateUserId ? users.find((candidate: any) => candidate.id === candidateUserId) : undefined;
+    const matchedUser = candidateUserId ? users.find((candidate) => candidate.id === candidateUserId) : undefined;
     if (mode === 'edit') {
       return matchedUser
         ? buildAutoTitle({
@@ -181,7 +180,7 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
     if (!form.assignedStaffId) return null;
     const numeric = Number(form.assignedStaffId);
     if (!Number.isFinite(numeric)) return null;
-    return staffOptions.find((option: any) => option.id === numeric) ?? null;
+    return staffOptions.find((option) => option.id === numeric) ?? null;
   }, [form.assignedStaffId, staffOptions]);
 
   const selectedUser = useMemo(
@@ -201,7 +200,7 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
 
   const selectedOrgOption = useMemo(() => {
     if (!form.locationName) return null;
-    return orgOptions.find((option: any) => option.label === form.locationName) ?? null;
+    return orgOptions.find((option) => option.label === form.locationName) ?? null;
   }, [form.locationName, orgOptions]);
 
   // ── Derived labels ──────────────────────────────────────────────────────
@@ -220,7 +219,7 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
   // Reset form when dialog opens
   useEffect(() => {
     if (open) {
-      setForm((prev: any) => {
+      setForm((prev) => {
         const next = createInitialScheduleFormState({
           initialDate,
           initialStartTime,
@@ -256,7 +255,7 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
 
   // Auto-title sync
   useEffect(() => {
-    setForm((prev: any) => {
+    setForm((prev) => {
       if (prev.title.trim()) return prev;
       return { ...prev, title: autoTitleFromForm };
     });
@@ -313,7 +312,7 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
   // ── Handlers ────────────────────────────────────────────────────────────
 
   const handleUserChange = (_event: unknown, value: ScheduleUserOption | null) => {
-    setForm((prev: any) => {
+    setForm((prev) => {
       const prevUserName = users.find((u) => u.id === prev.userId)?.name ?? '';
       const prevAutoTitle = buildAutoTitle({
         userName: prevUserName,
@@ -345,7 +344,7 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
 
   const handleCategoryChange = (event: SelectChangeEvent<ScheduleCategory>) => {
     const nextCategory = event.target.value as ScheduleCategory;
-    setForm((prev: any) => {
+    setForm((prev) => {
       if (prev.category === nextCategory) return prev;
 
       // Build current auto-title to detect if title was auto-generated
@@ -386,7 +385,7 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
   };
 
   const handleStaffChange = (_event: unknown, option: StaffOption | null) => {
-    setForm((prev: any) => {
+    setForm((prev) => {
       const currentUserName = users.find((u) => u.id === prev.userId)?.name ?? '';
       const prevAutoTitle = buildAutoTitle({
         userName: currentUserName,

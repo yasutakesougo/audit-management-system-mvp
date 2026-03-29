@@ -7,15 +7,16 @@ import {
 } from '../ExceptionTable.logic';
 
 function makeItem(overrides: Partial<ExceptionItem> & { id: string }): ExceptionItem {
+  const { id, ...rest } = overrides;
   return {
-    id: overrides.id,
+    id,
     category: 'missing-record',
     severity: 'high',
     title: '同点テスト',
     description: '同点テスト',
     targetDate: '2026-03-28',
     updatedAt: '2026-03-28T09:00:00.000Z',
-    ...overrides,
+    ...rest,
   };
 }
 

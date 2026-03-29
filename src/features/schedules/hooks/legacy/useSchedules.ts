@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useAuth } from '@/auth/useAuth';
 import { isE2eForceSchedulesWrite, isWriteEnabled } from '@/env';
 import { authDiagnostics } from '@/features/auth/diagnostics';
@@ -193,7 +192,7 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
 
       setLastError(null);
       lastMutationTsRef.current = Date.now();
-      setItems((prev: any) => [...prev, created]);
+      setItems((prev) => [...prev, created]);
 
       // E2E: Persist to localStorage for test fixtures
       if (isE2eForceSchedulesWrite && typeof window !== 'undefined') {
@@ -253,8 +252,8 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
 
       setLastError(null);
       lastMutationTsRef.current = Date.now();
-      setItems((prev: any) =>
-        prev.map((item: any) => {
+      setItems((prev) =>
+        prev.map((item) => {
           if (item.id !== updated.id) return item;
           const nextServiceType = (updated.serviceType ?? input.serviceType ?? item.serviceType) ?? undefined;
           return {
@@ -286,7 +285,7 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
       await repository.remove(eventId);
       setLastError(null);
       lastMutationTsRef.current = Date.now();
-      setItems((prev: any) => prev.filter((item: any) => item.id !== eventId));
+      setItems((prev) => prev.filter((item) => item.id !== eventId));
     } catch (error) {
       const safeError = toSafeError(error);
       const resultError: ResultError = { kind: 'unknown', message: safeError.message, cause: safeError };

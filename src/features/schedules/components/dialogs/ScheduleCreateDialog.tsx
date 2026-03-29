@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
     Close as CloseIcon,
     DeleteOutline as DeleteOutlineIcon,
@@ -248,7 +247,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
               onChange={vm.handleCategoryChange}
               data-testid={TESTIDS['schedule-create-category-select']}
             >
-              {CATEGORY_OPTIONS.map((option: any) => (
+              {CATEGORY_OPTIONS.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
                   <Stack spacing={0.25}>
                     <span>{option.label}</span>
@@ -328,7 +327,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                 {(vm.form.category === 'LivingSupport'
                   ? LIVING_SUPPORT_SERVICE_TYPE_OPTIONS
                   : SERVICE_TYPE_OPTIONS
-                ).map((opt: any) => (
+                ).map((opt) => (
                   <MenuItem key={opt.value} value={opt.value}>
                     {opt.label}
                   </MenuItem>
@@ -360,7 +359,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                   vm.handleFieldChange('locationName', '');
                 }
               }}
-              getOptionLabel={(option: any) => (typeof option === 'string' ? option : option.label)}
+              getOptionLabel={(option) => (typeof option === 'string' ? option : option.label)}
               isOptionEqualToValue={(option, value) =>
                 typeof value === 'string' ? option.label === value : option.id === value.id
               }
@@ -409,7 +408,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                 options={vm.staffOptions}
                 value={vm.selectedStaffOption}
                 onChange={vm.handleStaffChange}
-                getOptionLabel={(option: any) => option.label}
+                getOptionLabel={(option) => option.label}
                 isOptionEqualToValue={(option, value) => option.id === value?.id}
                 fullWidth
                 renderInput={(params) => (
@@ -468,7 +467,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                 onChange={(e) => vm.handleFieldChange('status', e.target.value as ScheduleStatus)}
                 aria-label="ステータス選択"
               >
-                {SCHEDULE_STATUS_OPTIONS.map((option: any) => (
+                {SCHEDULE_STATUS_OPTIONS.map((option) => (
                   <FormControlLabel
                     key={option.value}
                     value={option.value}
