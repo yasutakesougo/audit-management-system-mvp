@@ -10,6 +10,7 @@ import {
   SERVICE_PROVISION_LIST_TITLE,
   SERVICE_PROVISION_SELECT_FIELDS,
 } from '@/sharepoint/fields';
+import { auditLog } from '@/lib/debugLogger';
 
 import type { ServiceProvisionRepository } from '../domain/ServiceProvisionRepository';
 import type {
@@ -47,6 +48,18 @@ const getNumber = (value: unknown): number | undefined =>
   typeof value === 'number' ? value : undefined;
 
 const getBool = (value: unknown): boolean => Boolean(value);
+
+const isListNotFoundError = (error: unknown, listTitle: string): boolean => {
+  if (typeof error === 'object' && error !== null) {
+    const status = (error as { status?: unknown }).status;
+    if (typeof status === 'number' && status === 404) {
+      return true;
+    }
+  }
+  if (!(error instanceof Error)) return false;
+  const msg = (error.message ?? '').toLowerCase();
+  return msg.includes('404') || (msg.includes('リスト') && msg.includes(listTitle.toLowerCase()));
+};
 
 // ─── SP → ドメイン変換 ──────────────────────────────────────
 
@@ -129,13 +142,25 @@ export async function getByEntryKey(
   const select = [...SERVICE_PROVISION_SELECT_FIELDS];
   const filter = `${SERVICE_PROVISION_FIELDS.entryKey} eq '${escapeODataString(entryKey)}'`;
 
-  const rows = await client.getListItemsByTitle<SharePointRow>(
-    listTitle,
-    select,
-    filter,
-    undefined,
-    1,
-  );
+  let rows: SharePointRow[] = [];
+  try {
+    rows = await client.getListItemsByTitle<SharePointRow>(
+      listTitle,
+      select,
+      filter,
+      undefined,
+      1,
+    );
+  } catch (error) {
+    if (isListNotFoundError(error, listTitle)) {
+      auditLog.warn('service-provision', 'sp_list_missing_get_by_entry_key', {
+        listTitle,
+        entryKey,
+      });
+      return null;
+    }
+    throw error;
+  }
 
   const first = rows?.[0];
   return first ? toRecord(first) : null;
@@ -152,11 +177,23 @@ export async function listByDate(
   const select = [...SERVICE_PROVISION_SELECT_FIELDS];
   const filter = `${SERVICE_PROVISION_FIELDS.recordDate} eq '${escapeODataString(recordDateISO)}'`;
 
-  const rows = await client.getListItemsByTitle<SharePointRow>(
-    listTitle,
-    select,
-    filter,
-  );
+  let rows: SharePointRow[] = [];
+  try {
+    rows = await client.getListItemsByTitle<SharePointRow>(
+      listTitle,
+      select,
+      filter,
+    );
+  } catch (error) {
+    if (isListNotFoundError(error, listTitle)) {
+      auditLog.warn('service-provision', 'sp_list_missing_list_by_date', {
+        listTitle,
+        recordDateISO,
+      });
+      return [];
+    }
+    throw error;
+  }
 
   return (rows ?? [])
     .map(toRecord)
@@ -181,11 +218,23 @@ export async function listByMonth(
   const select = [...SERVICE_PROVISION_SELECT_FIELDS];
   const filter = `${SERVICE_PROVISION_FIELDS.recordDate} ge '${startDate}' and ${SERVICE_PROVISION_FIELDS.recordDate} lt '${endDate}'`;
 
-  const rows = await client.getListItemsByTitle<SharePointRow>(
-    listTitle,
-    select,
-    filter,
-  );
+  let rows: SharePointRow[] = [];
+  try {
+    rows = await client.getListItemsByTitle<SharePointRow>(
+      listTitle,
+      select,
+      filter,
+    );
+  } catch (error) {
+    if (isListNotFoundError(error, listTitle)) {
+      auditLog.warn('service-provision', 'sp_list_missing_list_by_month', {
+        listTitle,
+        monthISO,
+      });
+      return [];
+    }
+    throw error;
+  }
 
   return (rows ?? [])
     .map(toRecord)
