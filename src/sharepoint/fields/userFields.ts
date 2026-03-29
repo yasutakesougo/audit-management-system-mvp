@@ -10,7 +10,6 @@ import { joinSelect } from './fieldUtils';
 export type UserRow = SpUserItem;
 
 // ── セレクトモード型 & リゾルバ ──
-export type UserSelectMode = 'core' | 'detail' | 'full';
 export type UserLifecycleStatus = 'active' | 'suspended' | 'terminated' | 'unknown';
 
 export interface IUserMaster {
@@ -126,7 +125,7 @@ export const USERS_MASTER_FIELD_MAP = {
   serviceEndDate: 'ServiceEndDate',
   isHighIntensitySupportTarget: 'IsHighIntensitySupportTarget',
   isSupportProcedureTarget: 'IsSupportProcedureTarget',
-  severeFlag: 'severeFlag',
+  severeFlag: 'SevereFlag',
   isActive: 'IsActive',
   transportToDays: 'TransportToDays',
   transportFromDays: 'TransportFromDays',
@@ -155,6 +154,14 @@ export const USERS_MASTER_FIELD_MAP = {
   serviceTypesJson: 'ServiceTypesJson',
   eligibilityCheckedAt: 'EligibilityCheckedAt',
 } as const;
+
+// ── MINIMAL: 緊急フォールバック用（400エラー回避 / 4列） ──
+export const USERS_SELECT_FIELDS_MINIMAL = [
+  USERS_MASTER_FIELD_MAP.id,
+  USERS_MASTER_FIELD_MAP.title,
+  USERS_MASTER_FIELD_MAP.userId,
+  USERS_MASTER_FIELD_MAP.fullName,
+] as const;
 
 // ── CORE: 一覧表示用（軽量 / 20列） ──
 export const USERS_SELECT_FIELDS_CORE = [
@@ -208,11 +215,14 @@ export const USERS_SELECT_FIELDS_FULL = [
   USERS_MASTER_FIELD_MAP.eligibilityCheckedAt,
 ] as const;
 
+export type UserSelectMode = 'minimal' | 'core' | 'detail' | 'full';
+
 export function resolveUserSelectFields(mode: UserSelectMode = 'core'): readonly string[] {
   switch (mode) {
-    case 'full':   return USERS_SELECT_FIELDS_FULL;
-    case 'detail': return USERS_SELECT_FIELDS_DETAIL;
-    default:       return USERS_SELECT_FIELDS_CORE;
+    case 'full':    return USERS_SELECT_FIELDS_FULL;
+    case 'detail':  return USERS_SELECT_FIELDS_DETAIL;
+    case 'minimal': return USERS_SELECT_FIELDS_MINIMAL;
+    default:        return USERS_SELECT_FIELDS_CORE;
   }
 }
 

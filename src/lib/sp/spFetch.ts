@@ -71,12 +71,38 @@ export function createNormalizePath(
   };
 }
 
+// ─── Concurrency Limiter (Singleton) ────────────────────────────────────────
+class ConcurrencyLimiter {
+  private activeCount = 0;
+  private queue: (() => void)[] = [];
+  constructor(private maxConcurrent: number) {}
+
+  async run<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.activeCount >= this.maxConcurrent) {
+      await new Promise<void>(resolve => this.queue.push(resolve));
+    }
+    this.activeCount++;
+    try {
+      return await fn();
+    } finally {
+      this.activeCount--;
+      if (this.queue.length > 0) {
+        const next = this.queue.shift();
+        if (next) next();
+      }
+    }
+  }
+}
+
+const globalLimiter = new ConcurrencyLimiter(3);
+
 // ─── Retry classifier (delegates to helpers.ts SSOT) ────────────────────────
 
-function classifyRetry(status: number): RetryReason | null {
+function classifyRetry(status: number, url?: string): RetryReason | null {
   if (status === 408) return 'timeout';
   if (status === 429) return 'throttle';
   if ([500, 502, 503, 504].includes(status)) return 'server';
+  if (url?.includes('Throttle.htm')) return 'throttle';
   return null;
 }
 
@@ -121,7 +147,10 @@ function computeDelay(attempt: number, res: Response, baseDelay: number, capDela
     const ts = Date.parse(ra);
     if (!Number.isNaN(ts)) return Math.max(0, ts - Date.now());
   }
-  const expo = Math.min(capDelay, baseDelay * Math.pow(2, attempt - 1));
+  // Increase delay more aggressively on throttle
+  const isThrottle = res.status === 429 || res.url.includes('Throttle.htm');
+  const multiplier = isThrottle ? 3 : 2;
+  const expo = Math.min(capDelay, baseDelay * Math.pow(multiplier, attempt - 1));
   const jitter = Math.random() * expo;
   return Math.max(0, Math.round(jitter));
 }
@@ -135,8 +164,12 @@ export function createSpFetch(deps: SpFetchDeps) {
 
   const dbg = (event: string, data?: Record<string, unknown>) => { auditLog.debug('sp', event, data); };
 
-  const resolveUrl = (targetPath: string) =>
-    /^https?:\/\//i.test(targetPath) ? targetPath : `${baseUrl}${targetPath}`;
+  const resolveUrl = (targetPath: string) => {
+    if (/^https?:\/\//i.test(targetPath)) return targetPath;
+    const base = baseUrl.replace(/\/+$/, '');
+    const path = targetPath.startsWith('/') ? targetPath : `/${targetPath}`;
+    return `${base}${path}`;
+  };
 
   return async function spFetch(path: string, init: import('./types').SpRequestInit = {}): Promise<Response> {
     const spOptions = init.spOptions;
@@ -197,49 +230,37 @@ export function createSpFetch(deps: SpFetchDeps) {
     if (!token1 && !skipAuthCheck) throw new AuthRequiredError();
 
     const doFetch = async (token: string | null) => {
-      const url = resolveUrl(resolvedPath);
-      const headers = toHeaders(init.headers);
-      if (token) headers.set('Authorization', `Bearer ${token}`);
-      const method = (init.method ?? 'GET').toUpperCase();
+      return globalLimiter.run(async () => {
+        const url = resolveUrl(resolvedPath);
+        const headers = toHeaders(init.headers);
+        if (token) headers.set('Authorization', `Bearer ${token}`);
+        const method = (init.method ?? 'GET').toUpperCase();
 
-      if (AUDIT_DEBUG) {
-        auditLog.debug('sp:fetch', 'reached', { method, url: url.split('?')[0] });
-      }
+        if (AUDIT_DEBUG) {
+          auditLog.debug('sp:fetch', 'reached', { method, url: url.split('?')[0] });
+        }
 
-      if (['POST', 'PUT', 'PATCH', 'MERGE'].includes(method)) {
-        const accept = headers.get('Accept');
-        if (!accept || !accept.trim() || accept.trim().toLowerCase() === 'undefined') {
-          headers.set('Accept', 'application/json;odata=nometadata');
+        if (['POST', 'PUT', 'PATCH', 'MERGE'].includes(method)) {
+          const accept = headers.get('Accept');
+          if (!accept || !accept.trim() || accept.trim().toLowerCase() === 'undefined') {
+            headers.set('Accept', 'application/json;odata=nometadata');
+          }
+          const contentType = headers.get('Content-Type');
+          if (!contentType || !contentType.trim() || contentType.trim().toLowerCase() === 'undefined') {
+            headers.set('Content-Type', 'application/json;odata=nometadata');
+          }
+        } else {
+          const currentAccept = headers.get('Accept');
+          if (!currentAccept || currentAccept.trim() === '' || currentAccept.trim() === '*/*') {
+            headers.set('Accept', 'application/json;odata=nometadata');
+          }
         }
-        const contentType = headers.get('Content-Type');
-        if (!contentType || !contentType.trim() || contentType.trim().toLowerCase() === 'undefined') {
-          headers.set('Content-Type', 'application/json;odata=nometadata');
-        }
-        if (process.env.NODE_ENV === 'development') {
-          auditLog.debug('sp:fetch', 'write_headers', {
-            method,
-            Accept: headers.get('Accept'),
-            ContentType: headers.get('Content-Type'),
-            url: url.split('?')[0],
-          });
-        }
-      } else {
-        const currentAccept = headers.get('Accept');
-        if (!currentAccept || currentAccept.trim() === '' || currentAccept.trim() === '*/*') {
-          headers.set('Accept', 'application/json;odata=nometadata');
-        }
-      }
 
-      if (AUDIT_DEBUG) {
-        auditLog.debug('sp:fetch', 'outbound', {
-          method, url: url.split('?')[0],
-          Accept: headers.get('Accept'), ContentType: headers.get('Content-Type'),
+        // eslint-disable-next-line no-restricted-globals
+        return fetch(url, { ...init, headers }).catch((e: unknown) => {
+          if (isAbortError(e)) throw e;
+          throw e;
         });
-      }
-      // eslint-disable-next-line no-restricted-globals -- SP基盤 SSOT: fetch はこの最下層でのみ許可
-      return fetch(url, { ...init, headers }).catch((e: unknown) => {
-        if (isAbortError(e)) throw e;
-        throw e;
       });
     };
 
@@ -257,17 +278,14 @@ export function createSpFetch(deps: SpFetchDeps) {
     const { maxAttempts, baseDelay, capDelay } = retrySettings;
     let attempt = 1;
     while (!response.ok && attempt < maxAttempts) {
-      const reason = classifyRetry(response.status);
+      const reason = classifyRetry(response.status, response.url);
       if (!reason) break;
       const delayMs = computeDelay(attempt, response, baseDelay, capDelay);
       if (onRetry) {
         try { onRetry(response, { attempt, status: response.status, reason, delayMs }); }
-        catch (error) { auditLog.debug('sp:retry', 'callback_failed', { error: error instanceof Error ? (error as Error).message : String(error) }); }
+        catch (error) { auditLog.debug('sp:retry', 'callback_failed', { error: String(error) }); }
       }
       auditLog.debug('sp:retry', { attempt, status: response.status, reason, delayMs });
-      if (debugEnabled) {
-        auditLog.debug('sp:retry', 'single', { status: response.status, nextAttempt: attempt + 1, waitMs: delayMs });
-      }
       if (delayMs > 0) { await sleep(delayMs); } else { await Promise.resolve(); }
       attempt += 1;
       try { response = await doFetch(token1); } catch (e) {

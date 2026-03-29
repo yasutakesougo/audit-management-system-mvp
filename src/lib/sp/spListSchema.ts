@@ -80,6 +80,30 @@ export async function tryGetListMetadata(
   }
 }
 
+/**
+ * Fetch all existing list titles and IDs once to avoid redundant 404 probes.
+ */
+export async function getExistingListTitlesAndIds(
+  spFetch: SpFetchFn,
+): Promise<Set<string>> {
+  const path = `lists?$select=Title,Id`;
+  try {
+    const res = await spFetch(path);
+    const json = (await res.json().catch(() => ({ value: [] }))) as {
+      value?: { Title: string; Id: string }[];
+    };
+    const identifiers = new Set<string>();
+    for (const list of json.value ?? []) {
+      if (list.Title) identifiers.add(list.Title);
+      if (list.Id) identifiers.add(trimGuidBraces(list.Id));
+    }
+    return identifiers;
+  } catch (error) {
+    auditLog.warn('sp:metadata', 'bulk_check_failed', { error });
+    return new Set();
+  }
+}
+
 // ── Field schema ────────────────────────────────────────────────────────────
 
 /**
@@ -216,21 +240,32 @@ export async function addFieldToList(
       Options: field.addToDefaultView ? 8 : 0,
     },
   };
-  const res = await spFetch(`${base}/fields/createfieldasxml`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json;odata=verbose',
-      Accept: 'application/json;odata=verbose',
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '');
-    console.warn(
-      `[addFieldToList] Failed to add "${field.internalName}" to "${listTitle}" (${res.status}): ${errText.slice(0, 300)}`,
-    );
-    // Do not throw — continue adding remaining fields
-    return;
+  try {
+    const res = await spFetch(`${base}/fields/createfieldasxml`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json;odata=verbose',
+        Accept: 'application/json;odata=verbose',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      // 500 error often means XML error or field already exists but hidden
+      console.warn(
+        `[addFieldToList] Failed to add "${field.internalName}" to "${listTitle}" (${res.status}): ${errText.slice(0, 500)}`,
+      );
+      if (res.status === 500) {
+        auditLog.warn('sp:fields', 'create_field_500_debug', { 
+          listTitle, 
+          field: field.internalName, 
+          schemaXml: schema 
+        });
+      }
+      return;
+    }
+  } catch (error) {
+    console.error(`[addFieldToList] Unexpected error adding field "${field.internalName}":`, error);
   }
 }
 

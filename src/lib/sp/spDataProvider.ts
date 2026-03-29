@@ -5,6 +5,13 @@ import type {
 } from '@/lib/data/dataProvider.interface';
 import type { createSpClient } from '@/lib/spClient';
 import type { SpFieldDef } from '@/lib/sp/types';
+import { 
+  DataProviderItemNotFoundError,
+  SharePointItemNotFoundError 
+} from '@/lib/errors';
+import { SP_LIST_REGISTRY, findListEntry } from '@/sharepoint/spListRegistry';
+
+const ensuredPromises = new Map<string, Promise<void>>();
 
 /**
  * SharePoint 実装の DataProvider
@@ -13,10 +20,58 @@ import type { SpFieldDef } from '@/lib/sp/types';
  * インターフェースを提供します。
  */
 export class SharePointDataProvider implements IDataProvider {
-  constructor(private client: ReturnType<typeof createSpClient>) {}
+  private client: ReturnType<typeof createSpClient>;
+
+  constructor(client: ReturnType<typeof createSpClient>) {
+    this.client = client;
+  }
+
+  /**
+   * リソース名から実際の SharePoint リスト名を解決する。
+   * (Users_Master など、プログラム上のキーを実環境名に変換)
+   */
+  private resolveResource(name: string): string {
+    const entry = findListEntry(name) || SP_LIST_REGISTRY.find(e => e.key.toLowerCase() === name.toLowerCase());
+    return entry ? entry.resolve() : name;
+  }
+
+  /**
+   * 必要に応じてリストのプロビジョニングを実行する (Self-healing)。
+   */
+  private async ensureResource(name: string): Promise<void> {
+    const existing = ensuredPromises.get(name);
+    if (existing) return existing;
+
+    const promise = (async () => {
+      const entry = findListEntry(name) || SP_LIST_REGISTRY.find(e => e.key.toLowerCase() === name.toLowerCase());
+      if (entry?.provisioningFields && entry.provisioningFields.length > 0) {
+        if (entry.key === 'users_master' || entry.lifecycle === 'required') {
+          const listName = entry.resolve();
+          try {
+            await this.client.ensureListExists(listName, [...entry.provisioningFields]);
+          } catch (e) {
+            console.warn(`[DataProvider] Self-healing failed for ${name}:`, e);
+          }
+        }
+      }
+    })();
+
+    ensuredPromises.set(name, promise);
+    return promise;
+  }
+
+  /**
+   * クライアントを更新する（再認証や設定変更時に呼び出し）
+   */
+  setClient(client: ReturnType<typeof createSpClient>): void {
+    this.client = client;
+  }
 
   async listItems<T>(resourceName: string, options?: DataProviderOptions): Promise<T[]> {
-    return this.client.listItems<T>(resourceName, {
+    await this.ensureResource(resourceName);
+    const actualName = this.resolveResource(resourceName);
+
+    return this.client.listItems<T>(actualName, {
       select: options?.select,
       filter: options?.filter,
       orderby: options?.orderby,
@@ -28,20 +83,39 @@ export class SharePointDataProvider implements IDataProvider {
   }
 
   async getItemById<T>(resourceName: string, id: string | number, options?: DataProviderOptions): Promise<T> {
+    await this.ensureResource(resourceName);
+    const actualName = this.resolveResource(resourceName);
+    
     // SharePoint は数値 ID が基本
     const numericId = typeof id === 'number' ? id : parseInt(id, 10);
     
-    return this.client.getItemById<T>(
-      resourceName, 
-      numericId, 
-      options?.select || [], 
-      options?.signal
-    );
+    try {
+      return await this.client.getItemById<T>(
+        actualName, 
+        numericId, 
+        options?.select || [], 
+        options?.signal
+      );
+    } catch (err) {
+      if (err instanceof SharePointItemNotFoundError) throw err;
+      
+      const errorStr = String(err);
+      const statusCode = (err as Record<string, unknown>)?.status ?? (err as Record<string, unknown>)?.statusCode;
+      const is404 = statusCode === 404 || errorStr.includes('404');
+      
+      if (is404) {
+        throw new DataProviderItemNotFoundError(resourceName, id);
+      }
+      throw err;
+    }
   }
 
-  async createItem<T>(resourceName: string, payload: Record<string, unknown>): Promise<T> {
+  async createItem<T>(resourceName: string, payload: Record<string, unknown>, options?: { signal?: AbortSignal }): Promise<T> {
+    await this.ensureResource(resourceName);
+    const actualName = this.resolveResource(resourceName);
+
     // SharePoint の addListItemByTitle は Promise<any> を返す
-    return this.client.addListItemByTitle(resourceName, payload) as Promise<T>;
+    return this.client.addListItemByTitle(actualName, payload, { signal: options?.signal }) as Promise<T>;
   }
 
   async updateItem<T>(
@@ -50,29 +124,39 @@ export class SharePointDataProvider implements IDataProvider {
     payload: Record<string, unknown>, 
     options?: UpdateOptions
   ): Promise<T> {
+    await this.ensureResource(resourceName);
+    const actualName = this.resolveResource(resourceName);
+
     const numericId = typeof id === 'number' ? id : parseInt(id, 10);
     
-    return this.client.updateItem(resourceName, numericId, payload, { 
-      ifMatch: options?.etag 
+    return this.client.updateItem(actualName, numericId, payload, { 
+      ifMatch: options?.etag,
+      signal: options?.signal
     }) as Promise<T>;
   }
 
-  async deleteItem(resourceName: string, id: string | number): Promise<void> {
+  async deleteItem(resourceName: string, id: string | number, options?: { signal?: AbortSignal }): Promise<void> {
+    await this.ensureResource(resourceName);
+    const actualName = this.resolveResource(resourceName);
+
     const numericId = typeof id === 'number' ? id : parseInt(id, 10);
-    return this.client.deleteItem(resourceName, numericId);
+    return this.client.deleteItem(actualName, numericId, { signal: options?.signal });
   }
 
   async getMetadata(resourceName: string): Promise<Record<string, unknown>> {
-    const meta = await this.client.tryGetListMetadata(resourceName);
+    const actualName = this.resolveResource(resourceName);
+    const meta = await this.client.tryGetListMetadata(actualName);
     return (meta as unknown as Record<string, unknown>) || {};
   }
 
   async getFieldInternalNames(resourceName: string): Promise<Set<string>> {
-    return this.client.getListFieldInternalNames(resourceName);
+    const actualName = this.resolveResource(resourceName);
+    return this.client.getListFieldInternalNames(actualName);
   }
 
   async ensureListExists(resourceName: string, fields: SpFieldDef[]): Promise<void> {
-    await this.client.ensureListExists(resourceName, fields);
+    const actualName = this.resolveResource(resourceName);
+    await this.client.ensureListExists(actualName, fields);
   }
 
   /**
