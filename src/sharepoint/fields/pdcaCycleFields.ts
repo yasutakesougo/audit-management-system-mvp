@@ -118,6 +118,53 @@ export type SpPlanningSheetReassessmentRow = {
   Modified?: string;
 } & Record<string, unknown>;
 
+/** Dynamic Schema Resolution 用候補定義: BehaviorMonitoringRecord_Master */
+export const BEHAVIOR_MONITORING_CANDIDATES = {
+  id: ['Id'],
+  userId: ['UserId', 'UserCode'],
+  planningSheetId: ['PlanningSheetId'],
+  periodStart: ['PeriodStart'],
+  periodEnd: ['PeriodEnd'],
+  supportEvaluationsJson: ['SupportEvaluationsJson'],
+  environmentFindingsJson: ['EnvironmentFindingsJson'],
+  effectiveSupports: ['EffectiveSupports'],
+  difficultiesObserved: ['DifficultiesObserved'],
+  newTriggersJson: ['NewTriggersJson'],
+  medicalSafetyNotes: ['MedicalSafetyNotes'],
+  userFeedback: ['UserFeedback'],
+  familyFeedback: ['FamilyFeedback'],
+  recommendedChangesJson: ['RecommendedChangesJson'],
+  summary: ['Summary'],
+  recordedBy: ['RecordedBy'],
+  recordedAt: ['RecordedAt'],
+} as const;
+
+export const BEHAVIOR_MONITORING_ESSENTIALS: (keyof typeof BEHAVIOR_MONITORING_CANDIDATES)[] = [
+  'userId', 'planningSheetId', 'periodEnd'
+];
+
+/** Dynamic Schema Resolution 用候補定義: PlanningSheetReassessment_Master */
+export const REASSESSMENT_CANDIDATES = {
+  id: ['Id'],
+  planningSheetId: ['PlanningSheetId'],
+  userId: ['UserId', 'UserCode'],
+  reassessmentTrigger: ['ReassessmentTrigger'],
+  reassessmentDate: ['ReassessmentDate'],
+  summary: ['Summary'],
+  planChangeDecision: ['PlanChangeDecision'],
+  abcSummary: ['AbcSummary'],
+  hypothesisReview: ['HypothesisReview'],
+  procedureEffectiveness: ['ProcedureEffectiveness'],
+  environmentChange: ['EnvironmentChange'],
+  nextReassessmentAt: ['NextReassessmentAt'],
+  notes: ['Notes'],
+  reassessedBy: ['ReassessedBy'],
+} as const;
+
+export const REASSESSMENT_ESSENTIALS: (keyof typeof REASSESSMENT_CANDIDATES)[] = [
+  'planningSheetId', 'reassessmentDate'
+];
+
 // ---------------------------------------------------------------------------
 // JSON parser
 // ---------------------------------------------------------------------------

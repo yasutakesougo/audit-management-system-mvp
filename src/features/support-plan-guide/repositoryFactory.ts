@@ -17,7 +17,7 @@ import {
 } from './infra/InMemorySupportPlanDraftRepository';
 import {
     SharePointSupportPlanDraftRepository,
-} from './infra/SharePointSupportPlanDraftRepository';
+} from './infra/Legacy/SharePointSupportPlanDraftRepository';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Factory Options

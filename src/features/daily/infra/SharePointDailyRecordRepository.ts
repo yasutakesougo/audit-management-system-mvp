@@ -1,4 +1,5 @@
 import { get as getEnv } from '@/env';
+import { fromSpItem, type SpDailyItem } from '@/domain/daily/spMap';
 import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { toSafeError } from '@/lib/errors';
 import type { SpFetchFn } from '@/lib/sp/spLists';
@@ -12,29 +13,31 @@ import type {
 } from '../domain/DailyRecordRepository';
 import { DailyRecordItemSchema } from '../schema';
 
+import { 
+    DAILY_RECORD_CANONICAL_CANDIDATES,
+    DAILY_RECORD_CANONICAL_ESSENTIALS,
+    DAILY_RECORD_ROW_AGGREGATE_CANDIDATES,
+    DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS,
+    DAILY_RECORD_CANONICAL_ENSURE_FIELDS
+} from '@/sharepoint/fields/dailyFields';
+import { resolveInternalNames, areEssentialFieldsResolved } from '@/lib/sp/resolveInternalNames';
+import { getListFieldInternalNames, ensureListExists } from '@/lib/sp/spListSchema';
+import { ensureConfig } from '@/lib/spClient';
+
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 
-/**
- * SharePoint List Name for Daily Records
- * Can be overridden via environment variable
- */
-const getListTitle = (): string => {
-  return getEnv('VITE_SP_DAILY_RECORDS_LIST', 'TableDailyRecords');
+const readNonEmptyEnv = (key: string): string | undefined => {
+  const value = getEnv(key, '').trim();
+  return value.length > 0 ? value : undefined;
 };
 
-/**
- * SharePoint field names for daily records
- */
-const DAILY_RECORD_FIELDS = {
-  title: 'Title',              // YYYY-MM-DD
-  recordDate: 'RecordDate',    // Date type
-  reporterName: 'ReporterName', // Text
-  reporterRole: 'ReporterRole', // Text
-  userRowsJSON: 'UserRowsJSON', // Multi-line text
-  userCount: 'UserCount',       // Number
-  created: 'Created',
-  modified: 'Modified',
-} as const;
+const getListTitle = (): string => {
+  return (
+    readNonEmptyEnv('VITE_SP_DAILY_RECORDS_LIST') ??
+    readNonEmptyEnv('VITE_SP_LIST_DAILY') ??
+    'SupportRecord_Daily'
+  );
+};
 
 /**
  * SharePoint response type
@@ -43,46 +46,133 @@ type SharePointResponse<T> = {
   value?: T[];
 };
 
-/**
- * Minimal interface for SharePoint items during save/update operations
- */
-interface SharePointItem {
-  Id: number;
-  __metadata?: {
-    etag?: string;
-  };
-}
+type CanonicalResolvedFields = {
+  title: string;
+  recordDate: string;
+  reporterName?: string;
+  reporterRole?: string;
+  userRowsJSON: string;
+  userCount?: string;
+  approvalStatus?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  select: string[];
+};
 
-// readSpErrorMessage 削除: spFetch (throwOnError: true) が自動 throw する
+type RowAggregateResolvedFields = {
+  title: string;
+  userId: string;
+  recordDate: string;
+  status?: string;
+  reporterName?: string;
+  payload?: string;
+  kind?: string;
+  group?: string;
+  specialNote?: string;
+  select: string[];
+};
+
+type RowAggregateSource = {
+  listPath: string;
+  listTitle: string;
+  fields: RowAggregateResolvedFields;
+};
+
+const getString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : (typeof value === 'number' ? String(value) : undefined);
+
+const getNumber = (value: unknown): number | undefined =>
+  typeof value === 'number' ? value : undefined;
+
+const getBool = (value: unknown): boolean => Boolean(value);
+
+const canonicalFieldCache = new Map<string, CanonicalResolvedFields | null>();
+const rowAggregateFieldCache = new Map<string, RowAggregateResolvedFields | null>();
+const provisioningLatch = new Set<string>();
+
+const buildSelect = (fields: Record<string, string | undefined>): string[] => {
+  return [
+    'Id',
+    ...Object.values(fields).filter((v): v is string => typeof v === 'string')
+  ].filter((v, i, a) => a.indexOf(v) === i);
+};
 
 /**
- * Parse SharePoint item to DailyRecordItem using Zod schema
+ * Build list path for API requests
  */
-const parseSpItem = (item: unknown): DailyRecordItem | null => {
-  const result = DailyRecordItemSchema.safeParse(item);
-  if (!result.success) {
-    console.error('[SharePointDailyRecordRepository] Failed to validate item', {
-      itemId: (item && typeof item === 'object' && 'Id' in item) ? (item as Record<string, unknown>).Id : 'unknown',
-      errors: result.error.flatten().fieldErrors,
-    });
+const buildListPath = (listTitle: string): string => {
+  const escaped = listTitle.replace(/'/g, "''");
+  return `lists/getbytitle('${escaped}')`;
+};
+
+const DAILY_RECORD_LIST_FALLBACKS = [
+  'SupportRecord_Daily',
+  'SupportProcedureRecord_Daily',
+  'DailyActivityRecords',
+  'TableDailyRecords',
+  'TableDailyRecord',
+  'DailyRecords',
+  '日次記録',
+  '支援記録',
+] as const;
+
+const normalizeListKey = (value: string): string =>
+  value
+    .toLowerCase()
+    .replace(/[\s_\-\u3000]+/gu, '');
+
+const buildListTitleCandidates = (primary: string): string[] => {
+  const normalizedPrimary = primary.trim();
+  const values = [
+    normalizedPrimary,
+    ...DAILY_RECORD_LIST_FALLBACKS,
+  ]
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  return [...new Set(values)];
+};
+
+const getHttpStatus = (error: unknown): number | undefined => {
+  if (!error || typeof error !== 'object') return undefined;
+  const obj = error as Record<string, unknown>;
+  if (typeof obj.status === 'number') return obj.status;
+  if (obj.cause && typeof obj.cause === 'object') {
+    const cause = obj.cause as Record<string, unknown>;
+    if (typeof cause.status === 'number') return cause.status;
+  }
+  return undefined;
+};
+
+const normalizeDateToYmd = (raw: unknown): string | null => {
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/u.test(trimmed)) return trimmed;
+    const parsed = new Date(trimmed);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString().slice(0, 10);
+    }
     return null;
   }
-  return result.data;
+  if (raw instanceof Date && !Number.isNaN(raw.getTime())) {
+    return raw.toISOString().slice(0, 10);
+  }
+  return null;
 };
 
-/**
- * Build list path for API requests (relative path — baseUrl は spFetch が付与)
- */
-const buildListPath = (): string => {
-  const listTitle = getListTitle();
-  return `/_api/web/lists/GetByTitle('${encodeURIComponent(listTitle)}')`;
+const EMPTY_PROBLEM_BEHAVIOR = {
+  selfHarm: false,
+  otherInjury: false,
+  loudVoice: false,
+  pica: false,
+  other: false,
 };
 
-/**
- * Build OData filter for date range
- */
-const buildDateRangeFilter = (startDate: string, endDate: string): string => {
-  return `Title ge '${startDate}' and Title le '${endDate}'`;
+const mergeSpecialNotes = (current: string, incoming: string): string => {
+  if (!incoming.trim()) return current;
+  if (!current.trim()) return incoming;
+  if (current.includes(incoming)) return current;
+  return `${current}\n${incoming}`;
 };
 
 /**
@@ -91,29 +181,18 @@ const buildDateRangeFilter = (startDate: string, endDate: string): string => {
 type SharePointDailyRecordRepositoryOptions = {
   acquireToken?: () => Promise<string | null>;
   listTitle?: string;
-  /** DI: spFetch (createSpClient 経由で生成) */
   spFetch?: SpFetchFn;
 };
 
 /**
  * SharePoint implementation of DailyRecordRepository
- *
- * Uses "Single Item" strategy:
- * - One SharePoint item per day
- * - Multiple user rows stored as JSON in UserRowsJSON field
- * - Provides better transaction consistency and performance
- *
- * SharePoint List Schema:
- * - Title (Single line text): YYYY-MM-DD format date
- * - RecordDate (Date): Date field for filtering
- * - ReporterName (Single line text): Name of reporter
- * - ReporterRole (Single line text): Role of reporter
- * - UserRowsJSON (Multiple lines text): JSON array of UserRowData
- * - UserCount (Number): Count of users for quick filtering
  */
 export class SharePointDailyRecordRepository implements DailyRecordRepository {
   private readonly spFetch: SpFetchFn;
   private readonly listTitle: string;
+  private readonly listTitleCandidates: string[];
+  private resolvedListPath: string | null = null;
+  private resolvedRowAggregateSource: RowAggregateSource | null = null;
 
   constructor(options: SharePointDailyRecordRepositoryOptions = {}) {
     if (!options.spFetch) {
@@ -123,12 +202,250 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
     }
     this.spFetch = options.spFetch;
     this.listTitle = options.listTitle ?? getListTitle();
+    this.listTitleCandidates = buildListTitleCandidates(this.listTitle);
   }
 
-  /**
-   * Save a daily record
-   * Updates existing item or creates new one
-   */
+  private async getAvailableListTitles(): Promise<string[] | null> {
+    try {
+      const response = await this.spFetch("lists?$select=Title&$top=5000");
+      const payload = (await response.json()) as SharePointResponse<{ Title?: string }>;
+      const titles = (payload.value ?? [])
+        .map((item) => item.Title?.trim())
+        .filter((title): title is string => Boolean(title));
+      return titles;
+    } catch (error) {
+      const status = getHttpStatus(error);
+      if (status === 404) return null;
+      throw error;
+    }
+  }
+
+  private async resolveCanonicalFields(listTitle: string): Promise<CanonicalResolvedFields | null> {
+    const cacheKey = listTitle.toLowerCase();
+    if (canonicalFieldCache.has(cacheKey)) return canonicalFieldCache.get(cacheKey)!;
+
+    const available = await getListFieldInternalNames(this.spFetch, ensureConfig().baseUrl, listTitle).catch(() => null);
+    if (!available) return null;
+
+    const resolved = resolveInternalNames(available, DAILY_RECORD_CANONICAL_CANDIDATES as any) as any;
+    if (!areEssentialFieldsResolved(resolved, DAILY_RECORD_CANONICAL_ESSENTIALS)) return null;
+
+    resolved.select = buildSelect(resolved);
+    canonicalFieldCache.set(cacheKey, resolved);
+    return resolved as CanonicalResolvedFields;
+  }
+
+  private async resolveAggregatedFields(listTitle: string): Promise<RowAggregateResolvedFields | null> {
+    const cacheKey = listTitle.toLowerCase();
+    if (rowAggregateFieldCache.has(cacheKey)) return rowAggregateFieldCache.get(cacheKey)!;
+
+    const available = await getListFieldInternalNames(this.spFetch, ensureConfig().baseUrl, listTitle).catch(() => null);
+    if (!available) return null;
+
+    const resolved = resolveInternalNames(available, DAILY_RECORD_ROW_AGGREGATE_CANDIDATES as any) as any;
+    if (!areEssentialFieldsResolved(resolved, DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS)) return null;
+
+    resolved.select = buildSelect(resolved);
+    rowAggregateFieldCache.set(cacheKey, resolved);
+    return resolved as RowAggregateResolvedFields;
+  }
+
+  private async resolveSource(): Promise<{
+    canonical?: { listPath: string; fields: CanonicalResolvedFields };
+    rowAggregate?: RowAggregateSource;
+  }> {
+    if (this.resolvedListPath) {
+      const fields = await this.resolveCanonicalFields(this.listTitle);
+      if (fields) return { canonical: { listPath: this.resolvedListPath, fields } };
+    }
+    if (this.resolvedRowAggregateSource) {
+      return { rowAggregate: this.resolvedRowAggregateSource };
+    }
+
+    const availableTitles = await this.getAvailableListTitles();
+    if (!availableTitles) return {};
+
+    const titleLookup = new Map(availableTitles.map(t => [t.toLowerCase(), t]));
+    const candidates = [...new Set([this.listTitle, ...this.listTitleCandidates])];
+
+    // Priority 1: Canonical structure
+    for (const title of candidates) {
+      const matched = titleLookup.get(title.toLowerCase());
+      if (!matched) continue;
+
+      const fields = await this.resolveCanonicalFields(matched);
+      if (fields) {
+        this.resolvedListPath = buildListPath(matched);
+        return { canonical: { listPath: this.resolvedListPath, fields } };
+      }
+    }
+
+    // Priority 2: Row-aggregate structure
+    const aggFallbacks = [
+      'SupportRecord_Daily',
+      'DailyActivityRecords',
+      'SupportProcedureRecord_Daily',
+      'DailyBehaviorRecords（DO）',
+    ];
+    for (const title of [...candidates, ...aggFallbacks]) {
+      const matched = titleLookup.get(title.toLowerCase());
+      if (!matched) continue;
+
+      const fields = await this.resolveAggregatedFields(matched);
+      if (fields) {
+         this.resolvedRowAggregateSource = {
+           listPath: buildListPath(matched),
+           listTitle: matched,
+           fields
+         };
+         return { rowAggregate: this.resolvedRowAggregateSource };
+      }
+    }
+
+    // Priority 3: Auto-provisioning (if canonical requested but missing)
+    if (!provisioningLatch.has(this.listTitle.toLowerCase())) {
+      provisioningLatch.add(this.listTitle.toLowerCase());
+      try {
+        await ensureListExists(this.spFetch, this.listTitle, DAILY_RECORD_CANONICAL_ENSURE_FIELDS);
+        const fields = await this.resolveCanonicalFields(this.listTitle);
+        if (fields) {
+          this.resolvedListPath = buildListPath(this.listTitle);
+          return { canonical: { listPath: this.resolvedListPath, fields } };
+        }
+      } catch (e) {
+        console.warn('[SharePointDailyRecordRepository] Auto-provision failed', e);
+      }
+    }
+
+    return {};
+  }
+
+  private async listFromRowAggregate(
+    source: RowAggregateSource,
+    params: DailyRecordRepositoryListParams & { limit?: number },
+  ): Promise<DailyRecordItem[]> {
+    const queryParams = new URLSearchParams();
+    const limit = params.limit ?? SP_QUERY_LIMITS.default;
+    const safeLimit = Math.min(Math.max(1, limit), SP_QUERY_LIMITS.hardMax);
+    queryParams.set('$top', String(safeLimit));
+    queryParams.set('$orderby', 'Id desc');
+    queryParams.set('$select', source.fields.select.join(','));
+
+    const response = await this.spFetch(`${source.listPath}/items?${queryParams.toString()}`);
+    const payload = (await response.json()) as SharePointResponse<Record<string, unknown>>;
+    const rows = payload.value ?? [];
+
+    const grouped = new Map<string, DailyRecordItem>();
+    const userRowIndexByDate = new Map<string, Map<string, number>>();
+
+    for (const row of rows) {
+      const normalized = this.normalizeRowForDailyMap(row);
+      const rowDate = normalizeDateToYmd(row[source.fields.recordDate]);
+      const rowUserId = getString(row[source.fields.userId]);
+
+      if (!rowDate || !rowUserId) continue;
+      
+      let parsed;
+      try {
+        parsed = fromSpItem(normalized as any, 'A');
+      } catch {
+        continue;
+      }
+      
+      const date = rowDate;
+      if (date < params.range.startDate || date > params.range.endDate) continue;
+
+      const reporterName = parsed.reporter?.name?.trim() || '記録者不明';
+      const reporterRole = parsed.kind === 'A' ? (parsed.data.specialNotes ? '記録' : '担当') : '担当';
+      const specialNotes =
+        parsed.kind === 'A'
+          ? parsed.data.specialNotes ?? ''
+          : parsed.data.notes ?? '';
+      
+      const userId = rowUserId;
+      const userName = parsed.userName?.trim() || userId;
+
+      const rowData = {
+        userId,
+        userName,
+        amActivity: parsed.kind === 'A' ? (parsed.data.amActivities[0] ?? '') : '',
+        pmActivity: parsed.kind === 'A' ? (parsed.data.pmActivities[0] ?? '') : '',
+        lunchAmount: parsed.kind === 'A' ? (parsed.data.mealAmount ?? '') : '',
+        problemBehavior: (parsed.kind === 'A' && parsed.data.problemBehavior) ? parsed.data.problemBehavior : EMPTY_PROBLEM_BEHAVIOR,
+        specialNotes,
+        behaviorTags: (parsed.kind === 'A' && parsed.data.behaviorTags) ? parsed.data.behaviorTags : [],
+      };
+
+      if (!grouped.has(date)) {
+        grouped.set(date, {
+          id: `row-aggregate-${date}`,
+          date,
+          reporter: { name: reporterName, role: reporterRole },
+          userRows: [rowData],
+        });
+        userRowIndexByDate.set(date, new Map([[userId, 0]]));
+        continue;
+      }
+
+      const record = grouped.get(date)!;
+      const rowIndex = userRowIndexByDate.get(date)!;
+      const existingIndex = rowIndex.get(userId);
+      if (existingIndex === undefined) {
+        rowIndex.set(userId, record.userRows.length);
+        record.userRows.push(rowData);
+      } else {
+        const existing = record.userRows[existingIndex];
+        existing.amActivity = existing.amActivity || rowData.amActivity;
+        existing.pmActivity = existing.pmActivity || rowData.pmActivity;
+        existing.lunchAmount = existing.lunchAmount || rowData.lunchAmount;
+        existing.specialNotes = mergeSpecialNotes(existing.specialNotes, rowData.specialNotes);
+      }
+    }
+
+    return Array.from(grouped.values()).sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  private normalizeRowForDailyMap(row: Record<string, unknown>): any {
+    return {
+      ...row,
+      Id: row.Id,
+      Title: row.Title,
+      cr013_date: row[DAILY_RECORD_ROW_AGGREGATE_CANDIDATES.recordDate.find(c => c in row) || ''],
+      cr013_status: row[DAILY_RECORD_ROW_AGGREGATE_CANDIDATES.status.find(c => c in row) || ''],
+      cr013_payload: row[DAILY_RECORD_ROW_AGGREGATE_CANDIDATES.payload.find(c => c in row) || ''],
+      cr013_kind: row[DAILY_RECORD_ROW_AGGREGATE_CANDIDATES.kind.find(c => c in row) || ''],
+    };
+  }
+
+  private parseSpItemWithFields(item: Record<string, unknown>, fields: CanonicalResolvedFields): DailyRecordItem | null {
+    try {
+      const rawUserRows = getString(item[fields.userRowsJSON]);
+      if (!rawUserRows) return null;
+
+      const userRows = JSON.parse(rawUserRows);
+      const record: any = {
+        id: String(item.Id),
+        date: normalizeDateToYmd(item[fields.title]) || '',
+        reporter: {
+          name: getString(item[fields.reporterName ?? '']) || '',
+          role: getString(item[fields.reporterRole ?? '']) || '',
+        },
+        userRows: Array.isArray(userRows) ? userRows : [],
+        userCount: getNumber(item[fields.userCount ?? '']) || 0,
+        createdAt: getString(item.Created),
+        modifiedAt: getString(item.Modified),
+        approvalStatus: getString(item[fields.approvalStatus ?? '']) as any,
+        approvedBy: getString(item[fields.approvedBy ?? '']),
+        approvedAt: getString(item[fields.approvedAt ?? '']),
+      };
+
+      return DailyRecordItemSchema.parse(record);
+    } catch (e) {
+      console.warn('[SharePointDailyRecordRepository] Failed to parse item', item.Id, e);
+      return null;
+    }
+  }
+
   async save(
     input: SaveDailyRecordInput,
     params?: DailyRecordRepositoryMutationParams,
@@ -142,27 +459,27 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
       userCount: input.userRows.length,
     });
     try {
-      const listPath = buildListPath();
-
-      // Check if item exists for this date
-      const existingItem = await this.findItemByDate(input.date, params?.signal) as SharePointItem | null;
+      const source = await this.resolveSource();
+      if (!source.canonical) {
+        throw new Error(`Canonical Daily records list not found (requested: ${this.listTitle})`);
+      }
+      const { listPath, fields } = source.canonical;
+      const existingItem = await this.findItemByDate(input.date);
       const mode = existingItem ? 'update' : 'create';
 
-      // Prepare item data
       const userRowsJSON = JSON.stringify(input.userRows);
-      const itemData = {
-        Title: input.date,
-        RecordDate: new Date(input.date).toISOString(),
-        ReporterName: input.reporter.name,
-        ReporterRole: input.reporter.role,
-        UserRowsJSON: userRowsJSON,
-        UserCount: input.userRows.length,
+      const itemData: Record<string, unknown> = {
+        [fields.title]: input.date,
+        [fields.recordDate]: new Date(input.date).toISOString(),
+        [fields.userRowsJSON]: userRowsJSON,
       };
 
+      if (fields.reporterName) itemData[fields.reporterName] = input.reporter.name;
+      if (fields.reporterRole) itemData[fields.reporterRole] = input.reporter.role;
+      if (fields.userCount) itemData[fields.userCount] = input.userRows.length;
+
       if (existingItem) {
-        // Update existing item — throwOnError: true
-        const updateUrl = `${listPath}/items(${existingItem.Id})`;
-        await this.spFetch(updateUrl, {
+        await this.spFetch(`${listPath}/items(${existingItem.Id})`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json;odata=verbose',
@@ -173,9 +490,7 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
           body: JSON.stringify(itemData),
         });
       } else {
-        // Create new item — throwOnError: true
-        const createUrl = `${listPath}/items`;
-        await this.spFetch(createUrl, {
+        await this.spFetch(`${listPath}/items`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json;odata=verbose',
@@ -188,228 +503,150 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
     } catch (error) {
       const safeError = toSafeError(error);
       finishSpan({ meta: { status: 'error' }, error: safeError.message });
-      console.error('[SharePointDailyRecordRepository] Save failed', {
-        date: input.date,
-        userCount: input.userRows.length,
-        error: safeError.message,
-      });
       throw safeError;
     }
   }
 
-  /**
-   * Load a daily record for a specific date
-   */
   async load(date: string): Promise<DailyRecordItem | null> {
-    const finishSpan = startFeatureSpan(HYDRATION_FEATURES.daily.load, { date });
     try {
-      const item = await this.findItemByDate(date);
-      const result = item ? parseSpItem(item) : null;
-      finishSpan({ meta: { status: 'ok', found: result !== null } });
-      return result;
-    } catch (error) {
-      const safeError = toSafeError(error);
-      finishSpan({ meta: { status: 'error' }, error: safeError.message });
-      console.error('[SharePointDailyRecordRepository] Load failed', {
-        date,
-        error: safeError.message,
-      });
-      throw safeError;
-    }
-  }
+      const source = await this.resolveSource();
+      
+      if (source.canonical) {
+        const { listPath, fields } = source.canonical;
+        const queryParams = new URLSearchParams();
+        queryParams.set('$filter', `${fields.title} eq '${date}'`);
+        queryParams.set('$top', '1');
+        queryParams.set('$select', fields.select.join(','));
 
-  /**
-   * List daily records within date range
-   */
-  async list(params: DailyRecordRepositoryListParams & { limit?: number }): Promise<DailyRecordItem[]> {
-    if (params.signal?.aborted) {
-      return [];
-    }
-
-    const finishSpan = startFeatureSpan(HYDRATION_FEATURES.daily.list, {
-      range: params.range,
-    });
-    try {
-      const listPath = buildListPath();
-
-      const { startDate, endDate } = params.range;
-      const filter = buildDateRangeFilter(startDate, endDate);
-
-      const queryParams = new URLSearchParams();
-      queryParams.set('$filter', filter);
-      queryParams.set('$orderby', 'Title desc'); // Newest first
-
-      const limit = params.limit ?? SP_QUERY_LIMITS.default;
-      const safeLimit = Math.min(Math.max(1, limit), SP_QUERY_LIMITS.hardMax);
-      queryParams.set('$top', String(safeLimit));
-      queryParams.set('$select', [
-        'Id',
-        DAILY_RECORD_FIELDS.title,
-        DAILY_RECORD_FIELDS.recordDate,
-        DAILY_RECORD_FIELDS.reporterName,
-        DAILY_RECORD_FIELDS.reporterRole,
-        DAILY_RECORD_FIELDS.userRowsJSON,
-        DAILY_RECORD_FIELDS.userCount,
-        DAILY_RECORD_FIELDS.created,
-        DAILY_RECORD_FIELDS.modified,
-      ].join(','));
-
-      const url = `${listPath}/items?${queryParams.toString()}`;
-      // throwOnError: true — エラーは自動 throw
-      const response = await this.spFetch(url);
-
-      const payload = (await response.json()) as SharePointResponse<unknown>;
-      const items = payload.value ?? [];
-
-      // Parse and filter out invalid items
-      const results: DailyRecordItem[] = [];
-      for (const item of items) {
-        const parsed = parseSpItem(item);
-        if (parsed) {
-          results.push(parsed);
+        const response = await this.spFetch(`${listPath}/items?${queryParams.toString()}`);
+        const payload = (await response.json()) as SharePointResponse<Record<string, unknown>>;
+        const items = payload.value ?? [];
+        if (items.length > 0) {
+          return this.parseSpItemWithFields(items[0], fields);
         }
       }
 
-      finishSpan({ meta: { status: 'ok', itemCount: results.length } });
-      return results;
+      if (source.rowAggregate) {
+        const items = await this.listFromRowAggregate(source.rowAggregate, {
+          range: { startDate: date, endDate: date }
+        });
+        return items.length > 0 ? items[0] : null;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('[SharePointDailyRecordRepository] Load failed', { date, error: toSafeError(error).message });
+      return null;
+    }
+  }
+
+  async list(params: DailyRecordRepositoryListParams & { limit?: number }): Promise<DailyRecordItem[]> {
+    if (params.signal?.aborted) return [];
+
+    const finishSpan = startFeatureSpan(HYDRATION_FEATURES.daily.list, { range: params.range });
+    try {
+      const source = await this.resolveSource();
+      
+      if (source.canonical) {
+        const { listPath, fields } = source.canonical;
+        const { startDate, endDate } = params.range;
+        const filter = `${fields.title} ge '${startDate}' and ${fields.title} le '${endDate}'`;
+
+        const queryParams = new URLSearchParams();
+        queryParams.set('$filter', filter);
+        queryParams.set('$orderby', `${fields.title} desc`);
+
+        const limit = params.limit ?? SP_QUERY_LIMITS.default;
+        queryParams.set('$top', String(Math.min(limit, SP_QUERY_LIMITS.hardMax)));
+        queryParams.set('$select', fields.select.join(','));
+
+        const response = await this.spFetch(`${listPath}/items?${queryParams.toString()}`);
+        const payload = (await response.json()) as SharePointResponse<Record<string, unknown>>;
+        
+        const results = (payload.value ?? [])
+          .map(item => this.parseSpItemWithFields(item, fields))
+          .filter((item): item is DailyRecordItem => item !== null);
+          
+        finishSpan({ meta: { status: 'ok', itemCount: results.length } });
+        return results;
+      }
+
+      if (source.rowAggregate) {
+        const aggregated = await this.listFromRowAggregate(source.rowAggregate, params);
+        finishSpan({ meta: { status: 'ok', itemCount: aggregated.length, mode: 'row-aggregate' } });
+        return aggregated;
+      }
+
+      finishSpan({ meta: { status: 'ok', itemCount: 0, missing: true } });
+      return [];
     } catch (error) {
       const safeError = toSafeError(error);
       finishSpan({ meta: { status: 'error' }, error: safeError.message });
-      console.error('[SharePointDailyRecordRepository] List failed', {
-        range: params.range,
-        error: safeError.message,
-      });
       throw safeError;
     }
   }
 
-  /**
-   * Approve a daily record for a specific date
-   * Updates approval metadata on existing SharePoint item
-   */
   async approve(
     input: ApproveRecordInput,
     params?: DailyRecordRepositoryMutationParams,
   ): Promise<DailyRecordItem> {
-    if (params?.signal?.aborted) {
-      throw new Error('Operation aborted');
+    const source = await this.resolveSource();
+    if (!source.canonical) {
+      throw new Error(`Canonical list not found for approval (requested: ${this.listTitle})`);
     }
 
-    const finishSpan = startFeatureSpan(HYDRATION_FEATURES.daily.save, {
-      date: input.date,
-      operation: 'approve',
+    const { listPath, fields } = source.canonical;
+    const existing = await this.findItemByDate(input.date);
+    if (!existing) throw new Error(`Record not found for approval: ${input.date}`);
+
+    const approvalStatusField = fields.approvalStatus || 'ApprovalStatus';
+    const approvedByField = fields.approvedBy || 'ApprovedBy';
+    const approvedAtField = fields.approvedAt || 'ApprovedAt';
+
+    const patchData = {
+      [approvalStatusField]: 'approved',
+      [approvedByField]: input.approverName,
+      [approvedAtField]: new Date().toISOString(),
+    };
+
+    await this.spFetch(`${listPath}/items(${existing.Id})`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json;odata=verbose',
+        'Accept': 'application/json;odata=verbose',
+        'X-HTTP-Method': 'MERGE',
+        'IF-MATCH': existing.__metadata?.etag ?? '*',
+      },
+      body: JSON.stringify(patchData),
     });
-    try {
-      const listPath = buildListPath();
 
-      const existingItem = await this.findItemByDate(input.date, params?.signal) as SharePointItem | null;
-      if (!existingItem) {
-        throw new Error(`Record not found for date: ${input.date}`);
-      }
-
-      // PATCH approval metadata — throwOnError: true
-      const updateUrl = `${listPath}/items(${existingItem.Id})`;
-      const approvalData = {
-        ApprovalStatus: 'approved',
-        ApprovedBy: input.approverName,
-        ApprovedAt: new Date().toISOString(),
-      };
-
-      await this.spFetch(updateUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json;odata=verbose',
-          'Accept': 'application/json;odata=verbose',
-          'IF-MATCH': existingItem.__metadata?.etag ?? '*',
-          'X-HTTP-Method': 'MERGE',
-        },
-        body: JSON.stringify(approvalData),
-      });
-
-      // Re-fetch to get the updated record
-      const updated = await this.load(input.date);
-      if (!updated) {
-        throw new Error('Failed to re-fetch approved record');
-      }
-
-      finishSpan({ meta: { status: 'ok' } });
-      return { ...updated, approvalStatus: 'approved', approvedBy: input.approverName, approvedAt: approvalData.ApprovedAt };
-    } catch (error) {
-      const safeError = toSafeError(error);
-      finishSpan({ meta: { status: 'error' }, error: safeError.message });
-      console.error('[SharePointDailyRecordRepository] Approve failed', {
-        date: input.date,
-        error: safeError.message,
-      });
-      throw safeError;
-    }
+    const updated = await this.load(input.date);
+    if (!updated) throw new Error('Failed to reload approved record');
+    return updated;
   }
 
-  /**
-   * Find SharePoint item by date
-   * @private
-   */
-  private async findItemByDate(
-    date: string,
-    signal?: AbortSignal
-  ): Promise<SharePointItem | null> {
-    if (signal?.aborted) {
-      return null;
-    }
+  private async findItemByDate(date: string): Promise<Record<string, any> | null> {
+    const source = await this.resolveSource();
+    if (!source.canonical) return null;
+
+    const { listPath, fields } = source.canonical;
+    const queryParams = new URLSearchParams();
+    queryParams.set('$filter', `${fields.title} eq '${date}'`);
+    queryParams.set('$top', '1');
+    queryParams.set('$select', 'Id,__metadata');
 
     try {
-      const listPath = buildListPath();
-
-      const queryParams = new URLSearchParams();
-      queryParams.set('$filter', `Title eq '${date}'`);
-      queryParams.set('$top', '1');
-      queryParams.set('$select', [
-        'Id',
-        DAILY_RECORD_FIELDS.title,
-        DAILY_RECORD_FIELDS.recordDate,
-        DAILY_RECORD_FIELDS.reporterName,
-        DAILY_RECORD_FIELDS.reporterRole,
-        DAILY_RECORD_FIELDS.userRowsJSON,
-        DAILY_RECORD_FIELDS.userCount,
-        DAILY_RECORD_FIELDS.created,
-        DAILY_RECORD_FIELDS.modified,
-      ].join(','));
-
-      const url = `${listPath}/items?${queryParams.toString()}`;
-
-      try {
-        const response = await this.spFetch(url);
-        const payload = (await response.json()) as SharePointResponse<unknown>;
-        const items = payload.value ?? [];
-        return items.length > 0 ? (items[0] as SharePointItem) : null;
-      } catch (fetchError) {
-        // findItemByDate はルックアップ用途 — HTTP エラーは null に変換
-        console.warn('[SharePointDailyRecordRepository] Find by date failed', {
-          date,
-          error: toSafeError(fetchError).message,
-        });
-        return null;
-      }
-    } catch (error) {
-      console.warn('[SharePointDailyRecordRepository] Find by date error', {
-        date,
-        error: toSafeError(error).message,
-      });
+      const response = await this.spFetch(`${listPath}/items?${queryParams.toString()}`);
+      const payload = (await response.json()) as SharePointResponse<Record<string, any>>;
+      const items = payload.value ?? [];
+      return items.length > 0 ? items[0] : null;
+    } catch {
       return null;
     }
   }
 
-  /**
-   * Check if list exists (for diagnostics)
-   */
   async checkListExists(): Promise<boolean> {
-    try {
-      const listPath = buildListPath();
-      await this.spFetch(`${listPath}?$select=Id`);
-      return true;
-    } catch (error) {
-      console.error('[SharePointDailyRecordRepository] List existence check failed:', error);
-      return false;
-    }
+    const source = await this.resolveSource();
+    return Boolean(source.canonical || source.rowAggregate);
   }
 }

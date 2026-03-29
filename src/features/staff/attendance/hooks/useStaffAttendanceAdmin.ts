@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useAuth } from '@/auth/useAuth';
+import { useDataProvider } from '@/lib/data/useDataProvider';
 import { skipSharePoint } from '@/lib/env';
 import { result } from '@/shared/result';
 import { createSharePointStaffAttendanceAdapter } from '../adapters';
@@ -34,9 +35,10 @@ const createBlockedPort = (message: string): StaffAttendancePort => ({
 });
 
 export function useStaffAttendanceAdmin(recordDate: string) {
+  const { provider } = useDataProvider();
   const storageKind = React.useMemo(() => getStaffAttendanceStorageKind(), []);
   const writeEnabledEnv = React.useMemo(() => getStaffAttendanceWriteEnabled(), []);
-  const { acquireToken, account } = useAuth();
+  const { account } = useAuth();
   const [readOnlyReason, setReadOnlyReason] = React.useState<string | null>(null);
   const [spReady, setSpReady] = React.useState<boolean>(storageKind !== 'sharepoint');
   const [spCheckState, setSpCheckState] = React.useState<SpCheckState>(storageKind !== 'sharepoint' ? 'connected' : 'idle');
@@ -75,7 +77,7 @@ export function useStaffAttendanceAdmin(recordDate: string) {
     let alive = true;
 
     const run = async () => {
-      const result = await preflightStaffAttendanceList({ acquireToken, listTitle });
+      const result = await preflightStaffAttendanceList({ provider, listTitle });
       if (!alive) return;
 
       if (result.status === 'connected') {
@@ -95,13 +97,13 @@ export function useStaffAttendanceAdmin(recordDate: string) {
     return () => {
       alive = false;
     };
-  }, [acquireToken, listTitle, spCheckState, storageKind]);
+  }, [provider, listTitle, spCheckState, storageKind]);
 
   const port = React.useMemo(() => {
-    if (storageKind !== 'sharepoint') return getStaffAttendancePort();
+    if (storageKind !== 'sharepoint') return getStaffAttendancePort(provider);
     if (!spReady) return createBlockedPort(readOnlyReason ?? 'SharePoint 接続が無効です。');
-    return createSharePointStaffAttendanceAdapter({ acquireToken });
-  }, [acquireToken, readOnlyReason, spReady, storageKind]);
+    return createSharePointStaffAttendanceAdapter({ client: provider });
+  }, [provider, readOnlyReason, spReady, storageKind]);
 
   const effectiveReadOnlyReason = readOnlyReason ?? (!writeEnabledEnv ? '書き込みが無効です（設定）。' : null);
   const writeEnabled = writeEnabledEnv && !readOnlyReason;

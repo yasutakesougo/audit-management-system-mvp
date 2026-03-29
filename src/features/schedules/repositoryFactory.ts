@@ -9,28 +9,33 @@ import {
 } from '@/lib/env';
 import { isE2E } from '@/env';
 import { hasSpfxContext } from '@/lib/runtime';
-// contract:allow-sp-direct — factory creates spClient for DI
+// contract:allow-sp-direct — factory creates spClient for DI — EXCEPT in DataProvider mode
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { useMemo } from 'react';
+import { useDataProvider } from '@/lib/data/useDataProvider';
+import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 
 /** Debug-only window extension for tracking repository changes in E2E */
 interface WindowWithDebug extends Window {
   __LAST_REPO__?: unknown;
 }
 
-import { useAuth } from '@/auth/useAuth';
 import type { ScheduleRepository } from './domain/ScheduleRepository';
-import { inMemoryScheduleRepository } from './infra/InMemoryScheduleRepository';
 import {
-    SharePointScheduleRepository,
-    type SharePointScheduleRepositoryOptions,
-} from './infra/SharePointScheduleRepository';
+    DataProviderScheduleRepository,
+} from './infra/DataProviderScheduleRepository';
+import {
+    SharePointScheduleRepository
+} from './infra/Legacy/SharePointScheduleRepository';
 
 export type ScheduleRepositoryKind = 'demo' | 'sharepoint';
 
-export type ScheduleRepositoryFactoryOptions = SharePointScheduleRepositoryOptions & {
+export type ScheduleRepositoryFactoryOptions = {
   forceKind?: ScheduleRepositoryKind;
   acquireToken?: () => Promise<string | null>;
+  currentOwnerUserId?: string;
+  provider?: IDataProvider;
+  listTitle?: string;
 };
 
 let cachedRepository: ScheduleRepository | null = null;
@@ -90,18 +95,31 @@ const createRepository = (
   kind: ScheduleRepositoryKind,
   options?: ScheduleRepositoryFactoryOptions,
 ): ScheduleRepository => {
-  if (kind === 'demo') {
-    return inMemoryScheduleRepository;
-  }
-
-  const acquireToken = options?.acquireToken;
-  if (!acquireToken) {
+  // if kind === sharepoint but no provider, error
+  const provider = options?.provider;
+  if (kind === 'sharepoint' && !provider) {
     throw new Error(
-      '[ScheduleRepositoryFactory] acquireToken is required for SharePoint repository.',
+      '[ScheduleRepositoryFactory] Provider is required for SharePoint repository.',
     );
   }
 
-  // contract:allow-sp-direct — factory creates spClient for DI
+  // provider-based repository for SharePoint
+  if (provider) {
+    return new DataProviderScheduleRepository({
+      provider,
+      listTitle: options?.listTitle,
+      currentOwnerUserId: options?.currentOwnerUserId,
+    });
+  }
+
+  // legacy SharePoint fallback (if somehow still needed - should eventually be removed)
+  const acquireToken = options?.acquireToken;
+  if (!acquireToken) {
+    throw new Error(
+      '[ScheduleRepositoryFactory] acquireToken is required for legacy SharePoint repository.',
+    );
+  }
+
   const { baseUrl } = ensureConfig();
   const { spFetch } = createSpClient(acquireToken, baseUrl);
 
@@ -142,12 +160,13 @@ const shouldCacheRepository = (options?: ScheduleRepositoryFactoryOptions): bool
   if (!options) {
     return true;
   }
-  const { forceKind, acquireToken, listTitle, currentOwnerUserId } = options;
+  const { forceKind, acquireToken, listTitle, currentOwnerUserId, provider } = options;
   return (
     forceKind === undefined &&
     acquireToken === undefined &&
     listTitle === undefined &&
-    currentOwnerUserId === undefined
+    currentOwnerUserId === undefined &&
+    provider === undefined
   );
 };
 
@@ -203,11 +222,11 @@ export const getScheduleRepository = (
  * @returns ScheduleRepository instance
  */
 export const useScheduleRepository = (): ScheduleRepository => {
-  const { acquireToken } = useAuth();
+  const { provider } = useDataProvider();
 
   const repo = useMemo(() => {
-    return getScheduleRepository({ acquireToken });
-  }, [acquireToken]);
+    return getScheduleRepository({ provider });
+  }, [provider]);
 
   if (typeof window !== 'undefined' && isE2E) {
     const w = window as WindowWithDebug;

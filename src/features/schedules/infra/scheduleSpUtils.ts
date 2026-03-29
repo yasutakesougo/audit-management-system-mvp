@@ -4,7 +4,6 @@
  * Extracted from sharePointAdapter.ts and SharePointScheduleRepository.ts
  * to eliminate code duplication (~400 lines of shared utilities).
  */
-import { getSchedulesListTitle, SCHEDULES_FIELDS } from '../data/spSchema';
 import type { DateRange } from '../domain/ScheduleRepository';
 
 // ─── Timezone helpers ────────────────────────────────────────────────────────
@@ -89,87 +88,11 @@ export type SharePointResponse<T> = {
   value?: T[];
 };
 
-export type ScheduleFieldNames = {
-  title: string;
-  start: string;
-  end: string;
-  serviceType?: string;
-  locationName?: string;
-  notes?: string;
-};
-
-// ─── Field resolution ────────────────────────────────────────────────────────
-
-export const resolveScheduleFieldNames = (): ScheduleFieldNames => {
-  const listTitle = getSchedulesListTitle().trim().toLowerCase();
-  const isEventList = listTitle === 'scheduleevents';
-  if (listTitle === 'dailyopssignals') {
-    return {
-      title: 'Title',
-      start: 'date',
-      end: 'date',
-    };
-  }
-
-  return {
-    title: SCHEDULES_FIELDS.title,
-    start: SCHEDULES_FIELDS.start,
-    end: SCHEDULES_FIELDS.end,
-    serviceType: SCHEDULES_FIELDS.serviceType,
-    locationName: SCHEDULES_FIELDS.locationName,
-    notes: isEventList ? 'Notes' : 'Note',
-  };
-};
-
-export const compact = (values: Array<string | undefined>): string[] =>
-  values.filter((value): value is string => Boolean(value));
-
-export const buildSelectSets = () => {
-  const fields = resolveScheduleFieldNames();
-  const required = compact(['Id', fields.title, fields.start, fields.end]);
-  const optional = compact([
-    fields.serviceType,
-    fields.locationName,
-    fields.notes,
-    'AssignedStaff',
-    'AssignedStaffId',
-    'Vehicle',
-    'VehicleId',
-    'Created',
-    'Modified',
-  ]);
-  const eventSafe = compact([
-    'Id',
-    fields.title,
-    fields.start,
-    fields.end,
-    fields.locationName,
-    fields.notes,
-    fields.serviceType,
-    'AssignedStaff',
-    'AssignedStaffId',
-    'Vehicle',
-    'VehicleId',
-  ]);
-  const mergeSelectFields = (fallbackOnly: boolean): readonly string[] =>
-    fallbackOnly ? [...required] : [...new Set([...required, ...optional])];
-  const essentialService = compact([...required, fields.serviceType]);
-  const selectVariants = [mergeSelectFields(false), essentialService, mergeSelectFields(true)] as const;
-
-  return {
-    fields,
-    required,
-    eventSafe,
-    selectVariants,
-  };
-};
-
 // ─── Date encoding ───────────────────────────────────────────────────────────
 
-/** Strip 'Z' suffix so SharePoint interprets as site timezone (JST) not UTC */
+/** SharePoint-safe UTC ISO8601 literal (no milliseconds, with trailing Z). */
 export const toIsoWithoutZ = (date: Date): string => {
-  const iso = date.toISOString();
-  return iso.endsWith('Z') ? iso.slice(0, -1) : iso;
+  return date.toISOString().replace(/\.\d{3}Z$/u, 'Z');
 };
 
 export const encodeDateLiteral = (value: string): string => {
@@ -177,12 +100,14 @@ export const encodeDateLiteral = (value: string): string => {
   if (Number.isNaN(parsed)) {
     throw new Error(`Invalid date value: ${value}`);
   }
-  const iso = new Date(parsed).toISOString();
-  const withoutZ = iso.endsWith('Z') ? iso.slice(0, -1) : iso;
-  return `datetime'${withoutZ}'`;
+  const isoUtc = toIsoWithoutZ(new Date(parsed));
+  return `datetime'${isoUtc}'`;
 };
 
-export const buildRangeFilter = (range: DateRange, fields: ScheduleFieldNames): string => {
+export const buildRangeFilter = (
+  range: DateRange,
+  fields: { start: string; end: string }
+): string => {
   // Add ±1 day buffer for timezone/all-day event safety
   const fromBuffer = toIsoWithoutZ(new Date(new Date(range.from).getTime() - 24 * 60 * 60 * 1000));
   const toBuffer = toIsoWithoutZ(new Date(new Date(range.to).getTime() + 24 * 60 * 60 * 1000));
@@ -204,3 +129,4 @@ export const generateRowKey = (input?: string): string => {
   const random = Math.random().toString(36).slice(2, 8);
   return `${date}${random}`;
 };
+

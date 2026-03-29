@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@/auth/useAuth';
+import { useDataProvider } from '@/lib/data/useDataProvider';
 import type { DailyOpsStatus, UpsertDailyOpsSignalInput } from './port';
 import { createDailyOpsSignalsPort } from './dailyOpsSignalsFactory';
 
@@ -9,11 +9,11 @@ const QK = {
 };
 
 export const useDailyOpsSignals = (date: string, opts?: { status?: DailyOpsStatus }) => {
-  const { acquireToken } = useAuth();
+  const { provider } = useDataProvider();
 
   const port = useMemo(
-    () => createDailyOpsSignalsPort(acquireToken),
-    [acquireToken]
+    () => createDailyOpsSignalsPort(provider),
+    [provider]
   );
   
   const qc = useQueryClient();

@@ -1,22 +1,18 @@
-import { getSharePointBaseUrl, shouldSkipSharePoint } from '@/lib/env';
-import { useAuth } from '@/auth/useAuth';
 import { useMemo } from 'react';
-import { createSpClient } from '@/lib/spClient';
 
 import { MeetingMinutesDetailPage } from './pages/MeetingMinutesDetailPage';
 import { MeetingMinutesEditPage } from './pages/MeetingMinutesEditPage';
 import { MeetingMinutesListPage } from './pages/MeetingMinutesListPage';
 import { MeetingMinutesNewPage } from './pages/MeetingMinutesNewPage';
-import { createLocalStorageMeetingMinutesRepository } from './sp/localStorageRepository';
-import { createSharePointMeetingMinutesRepository } from './sp/sharepointRepository';
+
+import { useDataProvider } from '@/lib/data/useDataProvider';
+import { DataProviderMeetingMinutesRepository } from './infra/DataProviderMeetingMinutesRepository';
 
 function useMeetingMinutesRepo() {
-  const { acquireToken } = useAuth();
+  const { provider } = useDataProvider();
   return useMemo(() => {
-    if (shouldSkipSharePoint()) return createLocalStorageMeetingMinutesRepository();
-    const client = createSpClient(acquireToken, getSharePointBaseUrl());
-    return createSharePointMeetingMinutesRepository(client.spFetch);
-  }, [acquireToken]);
+    return new DataProviderMeetingMinutesRepository(provider);
+  }, [provider]);
 }
 
 const ListRoute = () => {

@@ -1,6 +1,6 @@
+import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { readOptionalEnv } from '@/lib/env';
 import { toSafeError } from '@/lib/errors';
-import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { STAFF_ATTENDANCE_LIST_TITLE } from '@/sharepoint/fields';
 
 export type StaffAttendancePreflightResult = {
@@ -17,24 +17,15 @@ export const resolveStaffAttendanceListTitle = (): string =>
   readOptionalEnv('VITE_SP_LIST_STAFF_ATTENDANCE') ?? STAFF_ATTENDANCE_LIST_TITLE;
 
 export async function preflightStaffAttendanceList(args: {
-  acquireToken: () => Promise<string | null>;
+  provider: IDataProvider;
   listTitle?: string;
 }): Promise<StaffAttendancePreflightResult> {
   const listTitle = args.listTitle ?? resolveStaffAttendanceListTitle();
 
   try {
-    const { baseUrl } = ensureConfig();
-    if (!baseUrl) {
-      return {
-        status: 'blocked',
-        reason: 'SharePoint 接続が無効です（デモ/スキップ設定）。',
-      };
-    }
+    const metadata = await args.provider.getMetadata(listTitle);
 
-    const client = createSpClient(args.acquireToken, baseUrl);
-    const metadata = await client.tryGetListMetadata(listTitle);
-
-    if (metadata) {
+    if (metadata && metadata.Id) {
       return { status: 'connected', reason: null };
     }
 
@@ -46,6 +37,9 @@ export async function preflightStaffAttendanceList(args: {
     }
     if (status === 403) {
       return { status: 'blocked', reason: 'SharePoint 権限がありません（403）。' };
+    }
+    if (status === 404) {
+      return { status: 'blocked', reason: 'Staff_Attendance list が存在しません（404）。' };
     }
 
     const safe = toSafeError(err);

@@ -34,3 +34,26 @@ export const SUPPORT_PLANS_SELECT_FIELDS = [
   SUPPORT_PLANS_FIELDS.created,
   SUPPORT_PLANS_FIELDS.modified,
 ] as const;
+
+/** Dynamic schema candidates for Support Plans. */
+export const SUPPORT_PLANS_CANDIDATES = {
+  draftId: ['DraftId', 'cr013_draftid'],
+  userCode: ['UserCode', 'cr013_usercode', 'UserID'],
+  draftName: ['DraftName', 'cr013_draftname', 'Title'],
+  formDataJson: ['FormDataJson', 'cr013_formdatajson'],
+  status: ['Status', 'cr013_status'],
+  schemaVersion: ['SchemaVersion', 'cr013_schemaversion'],
+} as const;
+
+/** Essential fields for Support Plans list. */
+export const SUPPORT_PLANS_ESSENTIALS = ['draftId', 'userCode', 'formDataJson'] as const;
+
+/** Fields to ensure for modern Support Plans list. */
+export const SUPPORT_PLANS_ENSURE_FIELDS = [
+  { internalName: 'DraftId', displayName: 'DraftId', type: 'Text' },
+  { internalName: 'UserCode', displayName: 'UserCode', type: 'Text' },
+  { internalName: 'DraftName', displayName: 'DraftName', type: 'Text' },
+  { internalName: 'FormDataJson', displayName: 'FormDataJson', type: 'Note' },
+  { internalName: 'Status', displayName: 'Status', type: 'Text' },
+  { internalName: 'SchemaVersion', displayName: 'SchemaVersion', type: 'Number' },
+] as const;

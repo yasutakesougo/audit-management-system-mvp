@@ -13,7 +13,7 @@
  *                      addFieldToList, ensureListExists
  */
 
-import type { EnsureListOptions, JsonRecord, ListItemsOptions, SpFieldDef } from './types';
+import type { EnsureListOptions, JsonRecord, ListItemsOptions, SpFieldDef, SpRequestInit, SpRequestOptions } from './types';
 
 // Sub-module imports
 import {
@@ -43,7 +43,7 @@ import {
 // These thin signatures decouple list operations from the full spClient.
 
 /** Authenticated fetch wrapper returned by `createSpClient`. */
-export type SpFetchFn = (path: string, init?: RequestInit) => Promise<Response>;
+export type SpFetchFn = (path: string, init?: SpRequestInit) => Promise<Response>;
 
 /** Path normalizer from spClient core. */
 export type NormalizePathFn = (value: string) => string;
@@ -159,8 +159,8 @@ export function createListOperations(
 
   // ── List schema / metadata ────────────────────────────────────────────
 
-  function tryGetListMetadata(listTitle: string) {
-    return _tryGetListMetadata(spFetch, listTitle);
+  function tryGetListMetadata(listTitle: string, spOptions?: SpRequestOptions) {
+    return _tryGetListMetadata(spFetch, listTitle, spOptions);
   }
 
   function fetchExistingFields(listTitle: string) {

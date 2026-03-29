@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SharePoint Client — Orchestrator
  *
  * Thin factory that assembles spFetch, postBatch, listOps, and batch
@@ -93,8 +93,12 @@ export function createSpClient(
     addListItemByTitle, getItemById, getItemByIdWithEtag,
     createItem, updateItemByTitle, updateItem,
     deleteItemByTitle, deleteItem,
-    tryGetListMetadata, getListFieldInternalNames, ensureListExists,
+    tryGetListMetadata: _tryGetListMetadata, getListFieldInternalNames, ensureListExists,
   } = listOps;
+
+  function tryGetListMetadata(listTitle: string, spOptions?: import('@/lib/sp/types').SpRequestOptions) {
+    return _tryGetListMetadata(listTitle, spOptions);
+  }
   /** @deprecated Use `addListItemByTitle`. Kept for backward compatibility. */
   const addItemByTitle = addListItemByTitle;
 

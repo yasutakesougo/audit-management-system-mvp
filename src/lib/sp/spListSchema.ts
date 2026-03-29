@@ -12,9 +12,11 @@ import {
     FIELDS_CACHE_TTL_MS,
     makeFieldsCacheKey,
     nowMs,
+    resolveListPath,
     safeJsonParse,
     safeJsonStringify
 } from './helpers';
+import { trackGuidResolution } from '@/lib/telemetry/spTelemetry';
 import type { SpFetchFn } from './spLists';
 import { buildFieldSchema, trimGuidBraces } from './spSchema';
 import type {
@@ -38,11 +40,13 @@ const DEFAULT_LIST_TEMPLATE = 100;
 export async function tryGetListMetadata(
   spFetch: SpFetchFn,
   listTitle: string,
+  spOptions?: import('./types').SpRequestOptions,
 ): Promise<EnsureListResult | null> {
-  const encoded = encodeURIComponent(listTitle);
-  const path = `/lists/getbytitle('${encoded}')?$select=Id,Title`;
+  const base = resolveListPath(listTitle);
+  trackGuidResolution(listTitle, base);
+  const path = `${base}?$select=Id,Title`;
   try {
-    const res = await spFetch(path);
+    const res = await spFetch(path, { spOptions });
     const json = (await res.json().catch(() => ({}))) as SharePointListMetadata;
     const nested = json.d ?? {};
     const rawId =
@@ -85,8 +89,8 @@ export async function fetchExistingFields(
   spFetch: SpFetchFn,
   listTitle: string,
 ): Promise<Map<string, ExistingFieldShape>> {
-  const encoded = encodeURIComponent(listTitle);
-  const path = `/lists/getbytitle('${encoded}')/fields?$select=InternalName,TypeAsString,Required`;
+  const base = resolveListPath(listTitle);
+  const path = `${base}/fields?$select=InternalName,TypeAsString,Required`;
   const res = await spFetch(path);
   const json = (await res.json().catch(() => ({ value: [] }))) as {
     value?: ExistingFieldShape[];
@@ -147,8 +151,8 @@ export async function getListFieldInternalNames(
   }
 
   // 2) Network fetch
-  const encoded = encodeURIComponent(listTitle);
-  const path = `/lists/getbytitle('${encoded}')/fields?$select=InternalName&$top=500`;
+  const base = resolveListPath(listTitle);
+  const path = `${base}/fields?$select=InternalName&$top=500`;
 
   try {
     const res = await spFetch(path);
@@ -203,7 +207,7 @@ export async function addFieldToList(
   listTitle: string,
   field: SpFieldDef,
 ): Promise<void> {
-  const encoded = encodeURIComponent(listTitle);
+  const base = resolveListPath(listTitle);
   const schema = buildFieldSchema(field);
   const body = {
     parameters: {
@@ -212,7 +216,7 @@ export async function addFieldToList(
       Options: field.addToDefaultView ? 8 : 0,
     },
   };
-  const res = await spFetch(`/lists/getbytitle('${encoded}')/fields/createfieldasxml`, {
+  const res = await spFetch(`${base}/fields/createfieldasxml`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json;odata=verbose',

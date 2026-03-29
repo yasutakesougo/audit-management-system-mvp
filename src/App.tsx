@@ -1,4 +1,5 @@
 import { WriteDisabledBanner } from '@/components/WriteDisabledBanner';
+import { DataLayerStatusBanner } from '@/components/dev/DataLayerStatusBanner';
 import { HydrationHud } from '@/debug/HydrationHud';
 import { SettingsProvider } from '@/features/settings';
 import { hydrateStaffAttendanceFromStorage, saveStaffAttendanceToStorage } from '@/features/staff/attendance/persist';
@@ -55,14 +56,15 @@ function App() {
     <MsalProvider>
       {/* 🔐 認証コンテキスト */}
       <QueryClientProvider client={queryClient}>
-        <SpInitBridge />
         <SettingsProvider>
           {/* ⚙️ ユーザー表示設定 — ThemeRootより外側に配置し、density/fontSize をテーマに反映 */}
           <ThemeRoot>
             <CssBaseline />
+            <DataLayerStatusBanner />
             <WriteDisabledBanner />
             {/* 🎨 MUIテーマ + グローバルスタイル */}
             <ToastProvider>
+              <SpInitBridge />
               {/* 📢 グローバルトースト通知 */}
               {/* 📅 SchedulesProviderBridge removed: Port/Adapter layer was dead code.
                    All schedule hooks use useScheduleRepository() directly via repositoryFactory. */}

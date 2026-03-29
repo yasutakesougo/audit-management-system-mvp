@@ -21,6 +21,7 @@ import { useHandoffData } from '@/features/handoff/hooks/useHandoffData';
 import type { HandoffRecord } from '@/features/handoff/handoffTypes';
 import { useUsersQuery } from '@/features/users/hooks/useUsersQuery';
 import { useIspRepositories } from '@/features/support-plan-guide/hooks/useIspRepositories';
+import { useDataProviderObservabilityStore } from '@/lib/data/dataProviderObservabilityStore';
 import type { DailyRecordSummary, HandoffSummaryItem, UserSummary } from '../domain/exceptionLogic';
 
 // ── 型定義 ──
@@ -43,6 +44,13 @@ export type ExceptionDataSources = {
   status: DataSourceStatus;
   /** エラー時のメッセージ */
   error: string | null;
+  /** Data OS の解決状況 (detectDataLayerExceptions 用) */
+  dataOSResolutions: Record<string, {
+    resourceName: string;
+    status: 'resolved' | 'missing_optional' | 'missing_required' | 'fallback_triggered' | 'schema_mismatch' | 'pending';
+    resolvedTitle: string;
+    error?: string;
+  }>;
   /** 日次記録の再取得を要求する（保存後の即時同期用） */
   refetchDailyRecords: () => void;
 };
@@ -54,6 +62,7 @@ export function useExceptionDataSources(): ExceptionDataSources {
   const dailyRepo = useDailyRecordRepository();
   const { repo: handoffRepo } = useHandoffData();
   const { ispRepo } = useIspRepositories();
+  const { resolutions } = useDataProviderObservabilityStore();
 
   const [todayRecords, setTodayRecords] = useState<DailyRecordItem[]>([]);
   const [handoffRecords, setHandoffRecords] = useState<HandoffRecord[]>([]);
@@ -213,6 +222,7 @@ export function useExceptionDataSources(): ExceptionDataSources {
       todayRecords: dailyRecordSummaries,
       criticalHandoffs,
       userSummaries,
+      dataOSResolutions: resolutions,
       status,
       error: errorMsg,
       refetchDailyRecords,
@@ -229,5 +239,6 @@ export function useExceptionDataSources(): ExceptionDataSources {
     dailyError,
     handoffError,
     ispError,
+    resolutions,
   ]);
 }

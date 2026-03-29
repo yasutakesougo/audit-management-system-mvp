@@ -13,6 +13,15 @@ export const getSchedulesListTitle = (): string => {
   return 'Schedules';
 };
 
+export type SchedulesListKind = 'schedules' | 'scheduleEvents' | 'dailyOpsSignals';
+
+export const resolveSchedulesListKind = (): SchedulesListKind => {
+  const normalized = getSchedulesListTitle().trim().toLowerCase();
+  if (normalized === 'scheduleevents') return 'scheduleEvents';
+  if (normalized === 'dailyopssignals') return 'dailyOpsSignals';
+  return 'schedules';
+};
+
 const normalizeGuid = (raw: string): string => raw.replace(/^guid:/i, '').replace(/[{}]/g, '').trim();
 
 export const resolveSchedulesListIdentifier = (): { type: 'guid' | 'title'; value: string } => {

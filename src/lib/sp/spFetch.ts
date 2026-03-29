@@ -138,7 +138,8 @@ export function createSpFetch(deps: SpFetchDeps) {
   const resolveUrl = (targetPath: string) =>
     /^https?:\/\//i.test(targetPath) ? targetPath : `${baseUrl}${targetPath}`;
 
-  return async function spFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  return async function spFetch(path: string, init: import('./types').SpRequestInit = {}): Promise<Response> {
+    const spOptions = init.spOptions;
     const resolvedPath = path; // normalizePath is applied BEFORE calling spFetch by createSpClient
     const method = (init.method ?? 'GET').toUpperCase();
 
@@ -297,7 +298,7 @@ export function createSpFetch(deps: SpFetchDeps) {
     }
 
     if (!response.ok && throwOnError) {
-      await raiseHttpError(response, { url: resolveUrl(resolvedPath), method });
+      await raiseHttpError(response, { url: resolveUrl(resolvedPath), method, spOptions });
     }
     return response;
   };

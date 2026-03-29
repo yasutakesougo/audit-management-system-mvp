@@ -10,22 +10,20 @@
  * @module features/schedules/data/scheduleSpHelpers
  */
 
-import type { SpFetchFn } from '@/lib/sp';
+import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 
 import type { DateRange, SchedItem } from './port';
 import { mapSpRowToSchedule, parseSpScheduleRows } from './spRowSchema';
 import {
-    buildSchedulesRelativeListPath,
     getSchedulesListTitle,
-    resolveSchedulesListIdentifier,
 } from './spSchema';
 
 import {
     buildSelectSets,
+    resolveScheduleFieldVariants,
     sortByStart,
     type ListFieldMeta,
     type ScheduleFieldNames,
-    type SharePointResponse,
 } from './scheduleSpMappers';
 
 import { SCHEDULES_DEBUG } from '../debug';
@@ -67,12 +65,10 @@ export function monthKeyInTz(date: Date, timeZone: string = SCHEDULES_TZ): strin
 // ============================================================================
 
 /**
- * Strip 'Z' suffix so SharePoint interprets as site timezone (JST) not UTC
- * Prevents 9-hour offset causing week boundary mismatches
+ * SharePoint-safe UTC ISO8601 literal (no milliseconds, with trailing Z).
  */
 export const toIsoWithoutZ = (date: Date): string => {
-  const iso = date.toISOString();
-  return iso.endsWith('Z') ? iso.slice(0, -1) : iso;
+  return date.toISOString().replace(/\.\d{3}Z$/u, 'Z');
 };
 
 export const buildRangeFilter = (range: DateRange, fields: ScheduleFieldNames): string => {
@@ -89,10 +85,8 @@ export const encodeDateLiteral = (value: string): string => {
   if (Number.isNaN(parsed)) {
     throw new Error(`Invalid date value: ${value}`);
   }
-  // Remove 'Z' so SharePoint interprets as site timezone (JST)
-  const iso = new Date(parsed).toISOString();
-  const withoutZ = iso.endsWith('Z') ? iso.slice(0, -1) : iso;
-  return `datetime'${withoutZ}'`;
+  const isoUtc = toIsoWithoutZ(new Date(parsed));
+  return `datetime'${isoUtc}'`;
 };
 
 // ============================================================================
@@ -149,35 +143,28 @@ export const getHttpStatus = (e: unknown): number | undefined => {
  * Uses spFetch (DI) with relative paths.
  */
 export const fetchRange = async (
-  spFetch: SpFetchFn,
+  provider: IDataProvider,
   range: DateRange,
   select: readonly string[],
   fields: ScheduleFieldNames,
   options?: { includeOrderby?: boolean; includeFilter?: boolean; top?: number }
 ): Promise<ReturnType<typeof parseSpScheduleRows>> => {
-  const listPath = buildSchedulesRelativeListPath();
-  const params = new URLSearchParams();
-  params.set('$top', String(options?.top ?? 500));
-  if (options?.includeOrderby ?? true) {
-    params.set('$orderby', `${fields.start} asc,Id asc`);
-  }
-  if (options?.includeFilter ?? true) {
-    params.set('$filter', buildRangeFilter(range, fields));
-  }
-  params.set('$select', select.join(','));
+  const resourceName = getSchedulesListTitle();
+  
+  const rows = await provider.listItems<unknown>(resourceName, {
+    select: [...select],
+    filter: options?.includeFilter !== false ? buildRangeFilter(range, fields) : undefined,
+    orderby: options?.includeOrderby !== false ? `${fields.start} asc,Id asc` : undefined,
+    top: options?.top ?? 500,
+  });
 
-  const url = `${listPath}?${params.toString()}`;
-  // spFetch throws on non-2xx (throwOnError: true by default)
-  const response = await spFetch(url);
-
-  const payload = (await response.json()) as SharePointResponse<unknown>;
   try {
-    return parseSpScheduleRows(payload.value ?? []);
+    return parseSpScheduleRows(rows);
   } catch (parseError) {
-    // Dump raw payload on parse failure (helps diagnose field/shape issues)
+    // Dump diagnostic info on parse failure
     console.error('[schedules] fetchRange parse failed', {
-      url,
-      payloadPreview: JSON.stringify(payload).slice(0, 2000),
+      resourceName,
+      rowsCount: rows.length,
     });
     throw parseError;
   }
@@ -187,35 +174,30 @@ export const fetchRange = async (
  * List field metadata for diagnostics.
  * Uses spFetch (DI) with relative paths.
  */
-export const getListFieldsMeta = async (spFetch: SpFetchFn): Promise<ListFieldMeta[]> => {
-  const identifier = resolveSchedulesListIdentifier();
-  const listBase = identifier.type === 'guid'
-    ? `lists(guid'${identifier.value}')`
-    : `lists/getbytitle('${identifier.value.replace(/'/g, "''")}')`;
-  const url = `${listBase}/fields?$select=InternalName,TypeAsString,Required,Choices&$filter=Hidden eq false`;
+export const getListFieldsMeta = async (provider: IDataProvider): Promise<ListFieldMeta[]> => {
+  // getMetadata returns the resolved list metadata. 
+  // For granular field info, we might need a more specific provider method, 
+  // but for now we'll assume the provider provides this.
+  const resourceName = getSchedulesListTitle();
+  const meta = await provider.getMetadata?.(resourceName);
+  
+  if (!meta || !('value' in meta) || !Array.isArray(meta.value)) return [];
 
-  // spFetch throws on non-2xx (throwOnError: true by default)
-  const response = await spFetch(url);
-
-  const payload = (await response.json()) as SharePointResponse<{
-    InternalName?: string;
-    TypeAsString?: string;
-    Required?: boolean;
-    Choices?: { results?: string[] } | string[];
-  }>;
-
-  const fields = (payload.value ?? [])
+  const fields = (meta.value as unknown[])
     .map((field) => {
-      const internalName = field.InternalName ?? '';
+      if (!field || typeof field !== 'object') return null;
+      const f = field as Record<string, unknown>;
+      const internalName = (f.InternalName as string) ?? '';
       if (!internalName) return null;
-      const rawChoices = Array.isArray(field.Choices)
-        ? field.Choices
-        : field.Choices?.results;
+      
+      const rawChoices = Array.isArray(f.Choices)
+        ? (f.Choices as string[])
+        : (f.Choices as any)?.results as string[] | undefined;
 
       return {
         internalName,
-        type: field.TypeAsString ?? 'Unknown',
-        required: Boolean(field.Required),
+        type: (f.TypeAsString as string) ?? 'Unknown',
+        required: Boolean(f.Required),
         choices: rawChoices?.filter(Boolean),
       };
     })
@@ -227,7 +209,7 @@ export const getListFieldsMeta = async (spFetch: SpFetchFn): Promise<ListFieldMe
  * Default list range implementation with progressive fallback stages.
  * Accepts spFetch (DI) for all SharePoint communication.
  */
-export const defaultListRange = async (spFetch: SpFetchFn, range: DateRange): Promise<SchedItem[]> => {
+export const defaultListRange = async (provider: IDataProvider, range: DateRange): Promise<SchedItem[]> => {
   const listTitle = getSchedulesListTitle().trim().toLowerCase();
   if (listTitle === 'dailyopssignals') {
     if (SCHEDULES_DEBUG) {
@@ -237,43 +219,54 @@ export const defaultListRange = async (spFetch: SpFetchFn, range: DateRange): Pr
   }
 
   const isEventList = listTitle === 'scheduleevents';
-  const { fields, eventSafe, required, selectVariants } = buildSelectSets();
-  const selectFull = isEventList ? eventSafe : selectVariants[0];
-  const selectLite = isEventList ? eventSafe : selectVariants[1];
-  const selectMin = isEventList ? required : selectVariants[2];
-  const stages = [
-    { name: 'full', select: selectFull, keepOrderby: true, keepFilter: true, top: 500 },
-    { name: 'selectLite', select: selectLite, keepOrderby: true, keepFilter: true, top: 500 },
-    { name: 'noOrderby', select: selectLite, keepOrderby: false, keepFilter: true, top: 500 },
-    { name: 'noFilter', select: selectMin, keepOrderby: false, keepFilter: false, top: 1 },
-  ] as const;
+  const fieldVariants = resolveScheduleFieldVariants();
 
   const diagnostics: Array<{ stage: string; url: string; status?: number; body?: string }> = [];
 
-  for (const stage of stages) {
-    try {
-      const rows = await fetchRange(spFetch, range, stage.select, fields, {
-        includeOrderby: stage.keepOrderby,
-        includeFilter: stage.keepFilter,
-        top: stage.top,
-      });
-      if (SCHEDULES_DEBUG) {
-        console.info(`[schedules] ✅ stage=${stage.name} succeeded`);
-      }
-      return sortByStart(rows.map(mapSpRowToSchedule).filter((item): item is SchedItem => Boolean(item)));
-    } catch (error) {
-      const status = getHttpStatus(error);
-      const url = (error as { url?: string }).url ?? '';
-      const rawBody = (error as { body?: unknown }).body;
-      const body = typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody, null, 2);
-      diagnostics.push({ stage: stage.name, url, status, body });
+  for (let variantIndex = 0; variantIndex < fieldVariants.length; variantIndex += 1) {
+    const fields = fieldVariants[variantIndex];
+    const { eventSafe, required, selectVariants } = buildSelectSets(fields);
+    const selectFull = isEventList ? eventSafe : selectVariants[0];
+    const selectLite = isEventList ? eventSafe : selectVariants[1];
+    const selectMin = isEventList ? required : selectVariants[2];
+    const stages = [
+      { name: 'minimal', select: selectMin, keepOrderby: true, keepFilter: true, top: 500 },
+      { name: 'selectLite', select: selectLite, keepOrderby: true, keepFilter: true, top: 500 },
+      { name: 'full', select: selectFull, keepOrderby: true, keepFilter: true, top: 500 },
+      { name: 'noOrderby', select: selectLite, keepOrderby: false, keepFilter: true, top: 500 },
+      { name: 'probeNoFilter', select: selectMin, keepOrderby: false, keepFilter: false, top: 1 },
+    ] as const;
 
-      const shouldFallback = isMissingFieldError(error) || status === 400;
-      if (!shouldFallback) {
-        throw error;
-      }
-      if (SCHEDULES_DEBUG) {
-        console.warn('[schedules] SharePoint list fallback stage failed, retrying with alternate query.', stage, error);
+    for (const stage of stages) {
+      try {
+        const rows = await fetchRange(provider, range, stage.select, fields, {
+          includeOrderby: stage.keepOrderby,
+          includeFilter: stage.keepFilter,
+          top: stage.top,
+        });
+        if (SCHEDULES_DEBUG) {
+          console.info(`[schedules] ✅ stage=${stage.name} variant=${fields.start}/${fields.end} succeeded`);
+        }
+        return sortByStart(rows.map(mapSpRowToSchedule).filter((item): item is SchedItem => Boolean(item)));
+      } catch (error) {
+        const status = getHttpStatus(error);
+        const url = (error as { url?: string }).url ?? '';
+        const rawBody = (error as { body?: unknown }).body;
+        const body = typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody, null, 2);
+        diagnostics.push({
+          stage: `${stage.name}[${fields.start}/${fields.end}]`,
+          url,
+          status,
+          body,
+        });
+
+        const shouldFallback = isMissingFieldError(error) || status === 400;
+        if (!shouldFallback) {
+          throw error;
+        }
+        if (SCHEDULES_DEBUG) {
+          console.warn('[schedules] SharePoint list fallback stage failed, retrying with alternate query.', stage, error);
+        }
       }
     }
   }
@@ -285,18 +278,17 @@ export const defaultListRange = async (spFetch: SpFetchFn, range: DateRange): Pr
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const _fetchItemById = async (spFetch: SpFetchFn, id: number): Promise<SchedItem> => {
-  const listPath = buildSchedulesRelativeListPath();
+export const _fetchItemById = async (provider: IDataProvider, id: number): Promise<SchedItem> => {
+  const resourceName = getSchedulesListTitle();
   const { selectVariants } = buildSelectSets();
 
   for (let index = 0; index < selectVariants.length; index += 1) {
     const select = selectVariants[index];
-    const params = new URLSearchParams();
-    params.set('$select', select.join(','));
 
     try {
-      const response = await spFetch(`${listPath}(${id})?${params.toString()}`);
-      const row = (await response.json()) as unknown;
+      const row = await provider.getItemById<unknown>(resourceName, id, {
+        select: [...select],
+      });
       const mapped = mapSpRowToSchedule(row as never);
       if (!mapped) {
         throw new Error('更新後の予定データをマッピングできませんでした');

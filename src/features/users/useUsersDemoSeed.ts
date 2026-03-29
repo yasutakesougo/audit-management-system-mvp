@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { getAppConfig } from '@/lib/env';
+import { useDataProvider } from '@/lib/data/useDataProvider';
+import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import type { IUserMaster } from './types';
-import { seedInMemoryUsers } from './infra/InMemoryUserRepository';
 
 export const USERS_MASTER_STORAGE_KEY = 'users.master.dev.v1';
 
@@ -26,7 +27,7 @@ const normalizeUsers = (payload: unknown): IUserMaster[] | null => {
 let lastSeedSnapshot: string | null = null;
 const { isDev: isDevEnv } = getAppConfig();
 
-const seedUsersFromStorage = (): void => {
+const seedUsersFromStorage = async (provider: IDataProvider): Promise<void> => {
   if (!isDevEnv) return;
   if (typeof window === 'undefined') return;
 
@@ -47,20 +48,26 @@ const seedUsersFromStorage = (): void => {
     const users = normalizeUsers(parsed);
     if (!users) return;
 
-    seedInMemoryUsers(users);
-    lastSeedSnapshot = raw;
+    // provider が seed メソッドを持っている場合（InMemoryDataProvider 等）のみ実行
+    if (provider.seed) {
+      await provider.seed('Users_Master', users as unknown as Record<string, unknown>[]);
+      lastSeedSnapshot = raw;
+    }
   } catch (error) {
     console.warn('[useUsersDemoSeed] Failed to parse users master seed', error);
   }
 };
 
 export function useUsersDemoSeed(enabled = true): void {
-  if (enabled) {
-    seedUsersFromStorage();
-  }
-  useEffect(() => {
+  const { provider } = useDataProvider();
+
+  const performSeed = useCallback(async () => {
     if (enabled) {
-      seedUsersFromStorage();
+      await seedUsersFromStorage(provider);
     }
-  }, [enabled]);
+  }, [enabled, provider]);
+
+  useEffect(() => {
+    performSeed();
+  }, [performSeed]);
 }

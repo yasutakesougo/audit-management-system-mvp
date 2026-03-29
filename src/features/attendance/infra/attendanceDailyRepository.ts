@@ -7,10 +7,11 @@
 
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import {
-    ATTENDANCE_DAILY_FIELDS,
     ATTENDANCE_DAILY_LIST_TITLE,
-    ATTENDANCE_DAILY_SELECT_FIELDS
-} from '@/sharepoint/fields';
+    ATTENDANCE_DAILY_CANDIDATES,
+    ATTENDANCE_DAILY_ENSURE_FIELDS
+} from '@/sharepoint/fields/attendanceFields';
+import { resolveInternalNames, areEssentialFieldsResolved } from '@/lib/sp/resolveInternalNames';
 import { methodImpliesShuttle, parseTransportMethod, type TransportMethod } from '../transportMethod';
 
 export type AttendanceDailyItem = {
@@ -50,24 +51,120 @@ export type AttendanceDailyItem = {
 };
 
 type SharePointDailyRow = Record<string, unknown> & { Id?: number };
+type AttendanceDailyClient = ReturnType<typeof createSpClient>;
+
+type AttendanceDailyResolvedFields = {
+  key: string;
+  legacyKey?: string;
+  userCode: string;
+  recordDate: string;
+  status: string;
+  checkInAt?: string;
+  checkOutAt?: string;
+  cntAttendIn?: string;
+  cntAttendOut?: string;
+  transportTo?: string;
+  transportFrom?: string;
+  providedMinutes?: string;
+  isEarlyLeave?: string;
+  userConfirmedAt?: string;
+  absentMorningContacted?: string;
+  absentMorningMethod?: string;
+  eveningChecked?: string;
+  eveningNote?: string;
+  isAbsenceAddonClaimable?: string;
+  transportToMethod?: string;
+  transportFromMethod?: string;
+  transportToNote?: string;
+  transportFromNote?: string;
+  absentContactTimestamp?: string;
+  absentReason?: string;
+  absentContactorType?: string;
+  absentSupportContent?: string;
+  nextScheduledDate?: string;
+  staffInChargeId?: string;
+  select: string[];
+};
+
+const attendanceDailyProvisioningLatch = new Set<string>();
 
 const escapeODataString = (value: string): string => value.replace(/'/g, "''");
 
 const getString = (value: unknown): string | undefined =>
-  typeof value === 'string' ? value : undefined;
+  typeof value === 'string' ? value : (typeof value === 'number' ? String(value) : undefined);
 
 const getNumber = (value: unknown): number | undefined =>
   typeof value === 'number' ? value : undefined;
 
 const getBool = (value: unknown): boolean => Boolean(value);
 
-const toAttendanceDaily = (row: SharePointDailyRow): AttendanceDailyItem | null => {
+const attendanceDailyFieldCache = new Map<string, AttendanceDailyResolvedFields>();
+
+const resolveAttendanceDailyFields = async (
+  client: AttendanceDailyClient,
+  listTitle: string,
+): Promise<AttendanceDailyResolvedFields | null> => {
+  const cacheKey = listTitle.toLowerCase();
+  if (attendanceDailyFieldCache.get(cacheKey)) {
+    return attendanceDailyFieldCache.get(cacheKey)!;
+  }
+
+  const resolve = async (): Promise<AttendanceDailyResolvedFields | null> => {
+    let available: Set<string>;
+    try {
+      available = await client.getListFieldInternalNames(listTitle);
+    } catch (error) {
+       console.warn('[AttendanceDailyRepository] failed to fetch field names', error);
+       return null;
+    }
+
+    const resolvedRaw = resolveInternalNames(available, ATTENDANCE_DAILY_CANDIDATES as any);
+    const resolved = resolvedRaw as unknown as AttendanceDailyResolvedFields;
+    
+    if (!areEssentialFieldsResolved(resolved, ['key', 'userCode', 'recordDate', 'status'])) {
+      return null;
+    }
+
+    // Build safe select fields
+    resolved.select = [
+      'Id',
+      ...Object.values(resolved).filter((v): v is string => typeof v === 'string')
+    ].filter((v, i, a) => a.indexOf(v) === i);
+
+    return resolved;
+  };
+
+  let resolved = await resolve();
+
+  // 必須列不足時の自動プロビジョニング
+  if (!resolved && !attendanceDailyProvisioningLatch.has(cacheKey)) {
+    console.info(`[AttendanceDailyRepository] schema mismatch for "${listTitle}". Attempting provision...`);
+    attendanceDailyProvisioningLatch.add(cacheKey);
+    try {
+      await client.ensureListExists(listTitle, ATTENDANCE_DAILY_ENSURE_FIELDS);
+      console.info(`[AttendanceDailyRepository] Provision successful. Re-resolving...`);
+      resolved = await resolve();
+    } catch (e) {
+      console.warn('[AttendanceDailyRepository] Autoprovision failed', e);
+    }
+  }
+
+  if (resolved) {
+    attendanceDailyFieldCache.set(cacheKey, resolved);
+  } else {
+    console.warn('[AttendanceDailyRepository] Could not resolve essential fields', { listTitle });
+  }
+
+  return resolved;
+};
+
+const toAttendanceDaily = (row: SharePointDailyRow, fields: AttendanceDailyResolvedFields): AttendanceDailyItem | null => {
   const key =
-    getString(row[ATTENDANCE_DAILY_FIELDS.key]) ??
-    getString(row[ATTENDANCE_DAILY_FIELDS.legacyKey]);
-  const userCode = getString(row[ATTENDANCE_DAILY_FIELDS.userCode]);
-  const recordDate = getString(row[ATTENDANCE_DAILY_FIELDS.recordDate]);
-  const status = getString(row[ATTENDANCE_DAILY_FIELDS.status]);
+    getString(row[fields.key]) ??
+    (fields.legacyKey ? getString(row[fields.legacyKey]) : undefined);
+  const userCode = getString(row[fields.userCode]);
+  const recordDate = getString(row[fields.recordDate]);
+  const status = getString(row[fields.status]);
 
   if (!key || !userCode || !recordDate || !status) return null;
 
@@ -77,34 +174,34 @@ const toAttendanceDaily = (row: SharePointDailyRow): AttendanceDailyItem | null 
     UserCode: userCode,
     RecordDate: recordDate,
     Status: status,
-    CheckInAt: getString(row[ATTENDANCE_DAILY_FIELDS.checkInAt]) ?? null,
-    CheckOutAt: getString(row[ATTENDANCE_DAILY_FIELDS.checkOutAt]) ?? null,
-    CntAttendIn: getNumber(row[ATTENDANCE_DAILY_FIELDS.cntAttendIn]) ?? 0,
-    CntAttendOut: getNumber(row[ATTENDANCE_DAILY_FIELDS.cntAttendOut]) ?? 0,
-    TransportTo: getBool(row[ATTENDANCE_DAILY_FIELDS.transportTo]),
-    TransportFrom: getBool(row[ATTENDANCE_DAILY_FIELDS.transportFrom]),
-    ProvidedMinutes: getNumber(row[ATTENDANCE_DAILY_FIELDS.providedMinutes]) ?? null,
-    IsEarlyLeave: getBool(row[ATTENDANCE_DAILY_FIELDS.isEarlyLeave]),
-    UserConfirmedAt: getString(row[ATTENDANCE_DAILY_FIELDS.userConfirmedAt]) ?? null,
-    AbsentMorningContacted: getBool(row[ATTENDANCE_DAILY_FIELDS.absentMorningContacted]),
-    AbsentMorningMethod: getString(row[ATTENDANCE_DAILY_FIELDS.absentMorningMethod]) ?? '',
-    EveningChecked: getBool(row[ATTENDANCE_DAILY_FIELDS.eveningChecked]),
-    EveningNote: getString(row[ATTENDANCE_DAILY_FIELDS.eveningNote]) ?? '',
-    IsAbsenceAddonClaimable: getBool(row[ATTENDANCE_DAILY_FIELDS.isAbsenceAddonClaimable]),
+    CheckInAt: fields.checkInAt ? (getString(row[fields.checkInAt]) ?? null) : null,
+    CheckOutAt: fields.checkOutAt ? (getString(row[fields.checkOutAt]) ?? null) : null,
+    CntAttendIn: fields.cntAttendIn ? (getNumber(row[fields.cntAttendIn]) ?? 0) : 0,
+    CntAttendOut: fields.cntAttendOut ? (getNumber(row[fields.cntAttendOut]) ?? 0) : 0,
+    TransportTo: fields.transportTo ? getBool(row[fields.transportTo]) : false,
+    TransportFrom: fields.transportFrom ? getBool(row[fields.transportFrom]) : false,
+    ProvidedMinutes: fields.providedMinutes ? (getNumber(row[fields.providedMinutes]) ?? null) : null,
+    IsEarlyLeave: fields.isEarlyLeave ? getBool(row[fields.isEarlyLeave]) : false,
+    UserConfirmedAt: fields.userConfirmedAt ? (getString(row[fields.userConfirmedAt]) ?? null) : null,
+    AbsentMorningContacted: fields.absentMorningContacted ? getBool(row[fields.absentMorningContacted]) : false,
+    AbsentMorningMethod: fields.absentMorningMethod ? (getString(row[fields.absentMorningMethod]) ?? '') : '',
+    EveningChecked: fields.eveningChecked ? getBool(row[fields.eveningChecked]) : false,
+    EveningNote: fields.eveningNote ? (getString(row[fields.eveningNote]) ?? '') : '',
+    IsAbsenceAddonClaimable: fields.isAbsenceAddonClaimable ? getBool(row[fields.isAbsenceAddonClaimable]) : false,
 
     // Transport method (optional - may not exist in SP yet)
-    TransportToMethod: parseTransportMethod(row[ATTENDANCE_DAILY_FIELDS.transportToMethod]),
-    TransportFromMethod: parseTransportMethod(row[ATTENDANCE_DAILY_FIELDS.transportFromMethod]),
-    TransportToNote: getString(row[ATTENDANCE_DAILY_FIELDS.transportToNote]) ?? undefined,
-    TransportFromNote: getString(row[ATTENDANCE_DAILY_FIELDS.transportFromNote]) ?? undefined,
+    TransportToMethod: fields.transportToMethod ? parseTransportMethod(row[fields.transportToMethod]) : undefined,
+    TransportFromMethod: fields.transportFromMethod ? parseTransportMethod(row[fields.transportFromMethod]) : undefined,
+    TransportToNote: fields.transportToNote ? (getString(row[fields.transportToNote]) ?? undefined) : undefined,
+    TransportFromNote: fields.transportFromNote ? (getString(row[fields.transportFromNote]) ?? undefined) : undefined,
 
     // Absent support (optional - may not exist in SP yet)
-    AbsentContactTimestamp: getString(row[ATTENDANCE_DAILY_FIELDS.absentContactTimestamp]) ?? undefined,
-    AbsentReason: getString(row[ATTENDANCE_DAILY_FIELDS.absentReason]) ?? undefined,
-    AbsentContactorType: getString(row[ATTENDANCE_DAILY_FIELDS.absentContactorType]) ?? undefined,
-    AbsentSupportContent: getString(row[ATTENDANCE_DAILY_FIELDS.absentSupportContent]) ?? undefined,
-    NextScheduledDate: getString(row[ATTENDANCE_DAILY_FIELDS.nextScheduledDate]) ?? undefined,
-    StaffInChargeId: getString(row[ATTENDANCE_DAILY_FIELDS.staffInChargeId]) ?? undefined,
+    AbsentContactTimestamp: fields.absentContactTimestamp ? (getString(row[fields.absentContactTimestamp]) ?? undefined) : undefined,
+    AbsentReason: fields.absentReason ? (getString(row[fields.absentReason]) ?? undefined) : undefined,
+    AbsentContactorType: fields.absentContactorType ? (getString(row[fields.absentContactorType]) ?? undefined) : undefined,
+    AbsentSupportContent: fields.absentSupportContent ? (getString(row[fields.absentSupportContent]) ?? undefined) : undefined,
+    NextScheduledDate: fields.nextScheduledDate ? (getString(row[fields.nextScheduledDate]) ?? undefined) : undefined,
+    StaffInChargeId: fields.staffInChargeId ? (getString(row[fields.staffInChargeId]) ?? undefined) : undefined,
   };
 };
 
@@ -112,48 +209,61 @@ const omitUndefined = (record: Record<string, unknown>): Record<string, unknown>
   return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined));
 };
 
-const toSpPayload = (item: AttendanceDailyItem): Record<string, unknown> => {
-  return omitUndefined({
-    // Cross-environment key is stored in Title.
-    [ATTENDANCE_DAILY_FIELDS.key]: item.Key,
-    [ATTENDANCE_DAILY_FIELDS.userCode]: item.UserCode,
-    [ATTENDANCE_DAILY_FIELDS.recordDate]: item.RecordDate,
-    [ATTENDANCE_DAILY_FIELDS.status]: item.Status,
-    [ATTENDANCE_DAILY_FIELDS.checkInAt]: item.CheckInAt,
-    [ATTENDANCE_DAILY_FIELDS.checkOutAt]: item.CheckOutAt,
-    [ATTENDANCE_DAILY_FIELDS.cntAttendIn]: item.CntAttendIn,
-    [ATTENDANCE_DAILY_FIELDS.cntAttendOut]: item.CntAttendOut,
-    [ATTENDANCE_DAILY_FIELDS.transportTo]:
-      item.TransportToMethod
-        ? methodImpliesShuttle(item.TransportToMethod)
-        : item.TransportTo,
-    [ATTENDANCE_DAILY_FIELDS.transportFrom]:
-      item.TransportFromMethod
-        ? methodImpliesShuttle(item.TransportFromMethod)
-        : item.TransportFrom,
-    [ATTENDANCE_DAILY_FIELDS.providedMinutes]: item.ProvidedMinutes,
-    [ATTENDANCE_DAILY_FIELDS.isEarlyLeave]: item.IsEarlyLeave,
-    [ATTENDANCE_DAILY_FIELDS.userConfirmedAt]: item.UserConfirmedAt,
-    [ATTENDANCE_DAILY_FIELDS.absentMorningContacted]: item.AbsentMorningContacted,
-    [ATTENDANCE_DAILY_FIELDS.absentMorningMethod]: item.AbsentMorningMethod,
-    [ATTENDANCE_DAILY_FIELDS.eveningChecked]: item.EveningChecked,
-    [ATTENDANCE_DAILY_FIELDS.eveningNote]: item.EveningNote,
-    [ATTENDANCE_DAILY_FIELDS.isAbsenceAddonClaimable]: item.IsAbsenceAddonClaimable,
+const assignIfFieldPresent = (
+  target: Record<string, unknown>,
+  fieldName: string | undefined,
+  value: unknown,
+): void => {
+  if (!fieldName || value === undefined) return;
+  target[fieldName] = value;
+};
 
-    // Transport method (written to SP only when present)
-    [ATTENDANCE_DAILY_FIELDS.transportToMethod]: item.TransportToMethod,
-    [ATTENDANCE_DAILY_FIELDS.transportFromMethod]: item.TransportFromMethod,
-    [ATTENDANCE_DAILY_FIELDS.transportToNote]: item.TransportToNote,
-    [ATTENDANCE_DAILY_FIELDS.transportFromNote]: item.TransportFromNote,
+const toSpPayload = (
+  item: AttendanceDailyItem,
+  fields: AttendanceDailyResolvedFields,
+): Record<string, unknown> => {
+  const payload: Record<string, unknown> = {
+    // Required mapping resolved from the target list schema.
+    [fields.key]: item.Key,
+    [fields.userCode]: item.UserCode,
+    [fields.recordDate]: item.RecordDate,
+    [fields.status]: item.Status,
+  };
 
-    // Absent support (written to SP only when present)
-    [ATTENDANCE_DAILY_FIELDS.absentContactTimestamp]: item.AbsentContactTimestamp,
-    [ATTENDANCE_DAILY_FIELDS.absentReason]: item.AbsentReason,
-    [ATTENDANCE_DAILY_FIELDS.absentContactorType]: item.AbsentContactorType,
-    [ATTENDANCE_DAILY_FIELDS.absentSupportContent]: item.AbsentSupportContent,
-    [ATTENDANCE_DAILY_FIELDS.nextScheduledDate]: item.NextScheduledDate,
-    [ATTENDANCE_DAILY_FIELDS.staffInChargeId]: item.StaffInChargeId,
-  });
+  assignIfFieldPresent(payload, fields.checkInAt, item.CheckInAt);
+  assignIfFieldPresent(payload, fields.checkOutAt, item.CheckOutAt);
+  assignIfFieldPresent(payload, fields.cntAttendIn, item.CntAttendIn);
+  assignIfFieldPresent(payload, fields.cntAttendOut, item.CntAttendOut);
+  assignIfFieldPresent(
+    payload,
+    fields.transportTo,
+    item.TransportToMethod ? methodImpliesShuttle(item.TransportToMethod) : item.TransportTo,
+  );
+  assignIfFieldPresent(
+    payload,
+    fields.transportFrom,
+    item.TransportFromMethod ? methodImpliesShuttle(item.TransportFromMethod) : item.TransportFrom,
+  );
+  assignIfFieldPresent(payload, fields.providedMinutes, item.ProvidedMinutes);
+  assignIfFieldPresent(payload, fields.isEarlyLeave, item.IsEarlyLeave);
+  assignIfFieldPresent(payload, fields.userConfirmedAt, item.UserConfirmedAt);
+  assignIfFieldPresent(payload, fields.absentMorningContacted, item.AbsentMorningContacted);
+  assignIfFieldPresent(payload, fields.absentMorningMethod, item.AbsentMorningMethod);
+  assignIfFieldPresent(payload, fields.eveningChecked, item.EveningChecked);
+  assignIfFieldPresent(payload, fields.eveningNote, item.EveningNote);
+  assignIfFieldPresent(payload, fields.isAbsenceAddonClaimable, item.IsAbsenceAddonClaimable);
+  assignIfFieldPresent(payload, fields.transportToMethod, item.TransportToMethod);
+  assignIfFieldPresent(payload, fields.transportFromMethod, item.TransportFromMethod);
+  assignIfFieldPresent(payload, fields.transportToNote, item.TransportToNote);
+  assignIfFieldPresent(payload, fields.transportFromNote, item.TransportFromNote);
+  assignIfFieldPresent(payload, fields.absentContactTimestamp, item.AbsentContactTimestamp);
+  assignIfFieldPresent(payload, fields.absentReason, item.AbsentReason);
+  assignIfFieldPresent(payload, fields.absentContactorType, item.AbsentContactorType);
+  assignIfFieldPresent(payload, fields.absentSupportContent, item.AbsentSupportContent);
+  assignIfFieldPresent(payload, fields.nextScheduledDate, item.NextScheduledDate);
+  assignIfFieldPresent(payload, fields.staffInChargeId, item.StaffInChargeId);
+
+  return omitUndefined(payload);
 };
 
 /**
@@ -167,8 +277,12 @@ export async function getDailyByDate(
   recordDate: string,
   listTitle: string = ATTENDANCE_DAILY_LIST_TITLE
 ): Promise<AttendanceDailyItem[]> {
-  const select = [...ATTENDANCE_DAILY_SELECT_FIELDS];
-  const filter = `${ATTENDANCE_DAILY_FIELDS.recordDate} eq '${escapeODataString(recordDate)}'`;
+  const resolvedFields = await resolveAttendanceDailyFields(client, listTitle);
+  if (!resolvedFields) {
+    return [];
+  }
+  const select = resolvedFields.select;
+  const filter = `${resolvedFields.recordDate} eq '${escapeODataString(recordDate)}'`;
 
   const rows = await client.getListItemsByTitle<SharePointDailyRow>(
     listTitle,
@@ -177,7 +291,7 @@ export async function getDailyByDate(
   );
 
   return (rows ?? [])
-    .map(toAttendanceDaily)
+    .map((row) => toAttendanceDaily(row, resolvedFields))
     .filter((item): item is AttendanceDailyItem => item !== null);
 }
 
@@ -196,8 +310,13 @@ export async function upsertDailyByKey(
   item: AttendanceDailyItem,
   listTitle: string = ATTENDANCE_DAILY_LIST_TITLE
 ): Promise<void> {
-  const select = [...ATTENDANCE_DAILY_SELECT_FIELDS];
-  const filter = `${ATTENDANCE_DAILY_FIELDS.key} eq '${escapeODataString(item.Key)}'`;
+  const resolvedFields = await resolveAttendanceDailyFields(client, listTitle);
+  if (!resolvedFields) {
+    throw new Error(`[AttendanceDailyRepository] list schema not compatible: ${listTitle}`);
+  }
+
+  const select = resolvedFields.select;
+  const filter = `${resolvedFields.key} eq '${escapeODataString(item.Key)}'`;
 
   // 1) GET by Key (top 1)
   const existing = await client.getListItemsByTitle<SharePointDailyRow>(
@@ -208,7 +327,7 @@ export async function upsertDailyByKey(
     1
   );
 
-  const payload = toSpPayload(item);
+  const payload = toSpPayload(item, resolvedFields);
 
   // 2) if found -> PATCH by Id
   if (existing && existing.length > 0 && typeof existing[0].Id === 'number') {

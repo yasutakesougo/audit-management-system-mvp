@@ -1,6 +1,7 @@
 import { readOptionalEnv } from '@/lib/env';
+import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import type { StaffAttendancePort } from './port';
-import { localStorageStaffAttendanceAdapter, sharePointStaffAttendanceAdapter } from './adapters';
+import { localStorageStaffAttendanceAdapter, createSharePointStaffAttendanceAdapter } from './adapters';
 
 export type StaffAttendanceStorageKind = 'local' | 'sharepoint';
 
@@ -23,10 +24,10 @@ export const getStaffAttendanceWriteEnabled = (): boolean => {
   return parseBoolean(globalWrite, true);
 };
 
-export const getStaffAttendancePort = (): StaffAttendancePort => {
+export const getStaffAttendancePort = (client?: IDataProvider): StaffAttendancePort => {
   const kind = getStaffAttendanceStorageKind();
   if (kind === 'sharepoint') {
-    return sharePointStaffAttendanceAdapter;
+    return createSharePointStaffAttendanceAdapter({ client });
   }
   return localStorageStaffAttendanceAdapter;
 };

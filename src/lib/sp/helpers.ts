@@ -218,28 +218,37 @@ export const readErrorPayload = async (res: Response): Promise<string> => {
 
 export const raiseHttpError = async (
   res: Response,
-  ctx?: { url?: string; method?: string },
+  options: { 
+    url?: string; 
+    method?: string; 
+    spOptions?: { quietStatuses?: number[]; silent?: boolean };
+  } = {},
 ): Promise<never> => {
   const detail = await readErrorPayload(res);
   const AUDIT_DEBUG = getAppConfig().VITE_AUDIT_DEBUG;
+  const { quietStatuses, silent } = options.spOptions || {};
 
-  // 必ず1行はエラーとして残す（詳細なし）
-  auditLog.error('sp', 'http_error', {
-    status: res.status,
-    statusText: res.statusText,
-    method: ctx?.method,
-    url: ctx?.url ? ctx.url.split('?')[0] : undefined,
-  });
+  // Skip logging if silent or quiet status match
+  const shouldLog = !silent && !(quietStatuses && quietStatuses.includes(res.status));
 
-  // 詳細は AUDIT_DEBUG 時のみ
-  if (AUDIT_DEBUG) {
-    auditLog.debug('sp', 'http_error_detail', {
+  if (shouldLog) {
+    // 重要なエラーのみログに残す
+    auditLog.error('sp', 'http_error', {
       status: res.status,
       statusText: res.statusText,
-      method: ctx?.method,
-      url: ctx?.url,
-      detailPreview: typeof detail === 'string' ? detail.slice(0, 800) : detail,
+      method: options.method,
+      url: options.url ? options.url.split('?')[0] : undefined,
     });
+
+    if (AUDIT_DEBUG) {
+      auditLog.debug('sp', 'http_error_detail', {
+        status: res.status,
+        statusText: res.statusText,
+        method: options.method,
+        url: options.url,
+        detailPreview: typeof detail === 'string' ? detail.slice(0, 800) : detail,
+      });
+    }
   }
 
   const base = `APIリクエストに失敗しました (${res.status} ${res.statusText ?? ''})`;
@@ -284,4 +293,31 @@ export function clearAllFieldsCache(): void {
     }
   }
   auditLog.info('sp:fields', 'cache_cleared_all', { count });
+}
+/**
+ * SharePoint 内部名の動的解決ユーティリティ
+ */
+export function resolveInternalNames<T extends string>(
+  available: Set<string>,
+  candidates: Record<T, string[]>
+): Record<T, string | undefined> {
+  const result = {} as Record<T, string | undefined>;
+  
+  for (const key in candidates) {
+    if (Object.prototype.hasOwnProperty.call(candidates, key)) {
+      result[key] = candidates[key].find(f => available.has(f));
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * 必須フィールドがすべて解決されているかチェックする
+ */
+export function areEssentialFieldsResolved<T extends string>(
+  resolved: Record<T, string | undefined>,
+  essentials: T[]
+): boolean {
+  return essentials.every(key => !!resolved[key]);
 }

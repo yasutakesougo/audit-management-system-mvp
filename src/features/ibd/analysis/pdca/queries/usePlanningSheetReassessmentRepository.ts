@@ -1,13 +1,13 @@
-import { createSharePointPlanningSheetReassessmentRepository } from '@/data/isp/sharepoint';
-import type { PlanningSheetReassessmentRepository } from '@/domain/isp/port';
-import { useSP } from '@/lib/spClient';
 import { useMemo } from 'react';
+import { useDataProvider } from '@/lib/data/useDataProvider';
+import { DataProviderPlanningSheetReassessmentRepository } from '@/data/isp/infra/DataProviderPlanningSheetReassessmentRepository';
+import type { PlanningSheetReassessmentRepository } from '@/domain/isp/port';
 
 export function usePlanningSheetReassessmentRepository(): PlanningSheetReassessmentRepository {
-  const client = useSP();
+  const { provider } = useDataProvider();
 
   return useMemo(
-    () => createSharePointPlanningSheetReassessmentRepository(client),
-    [client],
+    () => new DataProviderPlanningSheetReassessmentRepository(provider),
+    [provider],
   );
 }

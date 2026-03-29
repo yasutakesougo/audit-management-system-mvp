@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useDataProvider } from '@/lib/data/useDataProvider';
 import { getStaffAttendancePort, getStaffAttendanceStorageKind } from '../storage';
 import type { StaffAttendance } from '../types';
 
@@ -31,13 +32,14 @@ export type UseStaffAttendanceDayReturn = {
 /**
  * Read-only hook: fetch staff attendance records for a given date.
  *
- * Uses `getStaffAttendancePort().listByDate()` — the storage factory
+ * Uses `getStaffAttendancePort(provider).listByDate()` — the storage factory
  * delegates to local or SharePoint adapter based on
  * `VITE_STAFF_ATTENDANCE_STORAGE` env var.
  *
  * This hook does NOT call any write operations (upsert / remove / finalize).
  */
 export function useStaffAttendanceDay(date: string): UseStaffAttendanceDayReturn {
+  const { provider } = useDataProvider();
   const storageKind = getStaffAttendanceStorageKind();
   const [items, setItems] = useState<StaffAttendance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,7 +50,7 @@ export function useStaffAttendanceDay(date: string): UseStaffAttendanceDayReturn
     setError(null);
 
     try {
-      const port = getStaffAttendancePort();
+      const port = getStaffAttendancePort(provider);
       const res = await port.listByDate(date);
 
       if (res.isOk) {
@@ -63,7 +65,7 @@ export function useStaffAttendanceDay(date: string): UseStaffAttendanceDayReturn
     } finally {
       setIsLoading(false);
     }
-  }, [date]);
+  }, [date, provider]);
 
   useEffect(() => {
     void fetchData();

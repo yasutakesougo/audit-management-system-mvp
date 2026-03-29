@@ -26,6 +26,7 @@ import {
   buildDisplayRows,
   buildPriorityTopItems,
 } from './ExceptionTable.logic';
+import { useDataProviderObservabilityStore } from '@/lib/data/dataProviderObservabilityStore';
 import { ExceptionTableControls } from './ExceptionTableControls';
 import { ExceptionTablePriorityTop } from './ExceptionTablePriorityTop';
 import { ExceptionTableRows } from './ExceptionTableRows';
@@ -154,15 +155,32 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
     suggestionActions.onPriorityTopShown(unseen);
   }, [priorityTopItems, sortMode, suggestionActions]);
 
+  const { openPanel } = useDataProviderObservabilityStore();
+
+  const handleCommand = useCallback((path: string): boolean => {
+    if (path.startsWith('command:open-obs-panel')) {
+      const url = new URL(path.replace('command:', 'http://localhost/'));
+      const resourceName = url.searchParams.get('resource') || undefined;
+      openPanel({ tab: 'obs', resourceName });
+      return true;
+    }
+    return false;
+  }, [openPanel]);
+
+  const handleNavigate = useCallback((path: string) => {
+    if (handleCommand(path)) return;
+    navigate(path);
+  }, [navigate, handleCommand]);
+
   const handlePriorityTopAction = useCallback(
     (item: PriorityTopItem) => {
       if (!item.actionPath) return;
       if (item.category === 'corrective-action' && item.stableId) {
         suggestionActions?.onCtaClick?.(item.stableId, item.actionPath, 'priority-top3');
       }
-      navigate(item.actionPath);
+      handleNavigate(item.actionPath);
     },
-    [navigate, suggestionActions],
+    [handleNavigate, suggestionActions],
   );
 
   const toggleGroup = useCallback((groupId: string) => {
@@ -282,7 +300,7 @@ export const ExceptionTable: React.FC<ExceptionTableProps> = ({
         onToggleParent={handleToggleParent}
         expandedGroups={expandedGroups}
         onToggleGroup={toggleGroup}
-        onNavigate={navigate}
+        onNavigate={handleNavigate}
         suggestionActions={suggestionActions}
       />
     </Box>

@@ -20,7 +20,8 @@ export type ExceptionCategory =
   | 'critical-handoff'
   | 'attention-user'
   | 'corrective-action'
-  | 'transport-alert';
+  | 'transport-alert'
+  | 'data-os-alert';
 
 export type ExceptionSeverity = 'low' | 'medium' | 'high' | 'critical';
 
@@ -60,6 +61,7 @@ export const EXCEPTION_CATEGORIES: Record<ExceptionCategory, CategoryMeta> = {
   'attention-user': { label: '注意対象', icon: '⚠️', color: '#ed6c02' },
   'corrective-action': { label: '改善提案', icon: '🔧', color: '#1565c0' },
   'transport-alert': { label: '送迎異常', icon: '🚐', color: '#7b1fa2' },
+  'data-os-alert': { label: 'システム基礎データ', icon: '📡', color: '#00bcd4' },
 };
 
 export const SEVERITY_ORDER: Record<ExceptionSeverity, number> = {
@@ -208,6 +210,58 @@ export function detectAttentionUsers(
 }
 
 /**
+ * データプロバイダーの解決状況から例外を検出する (Data OS)
+ */
+export function detectDataLayerExceptions(
+  resolutions: Record<string, {
+    resourceName: string;
+    status: 'resolved' | 'missing_optional' | 'missing_required' | 'fallback_triggered' | 'schema_mismatch' | 'pending';
+    resolvedTitle: string;
+    error?: string;
+  }>
+): ExceptionItem[] {
+  return Object.values(resolutions)
+    .filter(r => r.status !== 'resolved' && r.status !== 'pending' && r.status !== 'missing_optional')
+    .map(r => {
+      let severity: ExceptionSeverity = 'medium';
+      let title = '';
+      let description = '';
+
+      switch (r.status) {
+        case 'missing_required':
+          severity = 'critical';
+          title = `[不達] ${r.resourceName} リストが見つかりません`;
+          description = `SharePoint上に必須リスト ${r.resolvedTitle} が存在しません。データの表示や保存ができません。`;
+          break;
+        case 'schema_mismatch':
+          severity = 'high';
+          title = `[スキーマ不整合] ${r.resourceName} の列が不足`;
+          description = `${r.resolvedTitle} に必要な内部列が不足しています。一部のデータが保存されない可能性があります。`;
+          break;
+        case 'fallback_triggered':
+          severity = 'medium';
+          title = `[フォールバック] ${r.resourceName} は代替データを使用中`;
+          description = `正式なリストが見つからないため、旧形式または代替リスト ${r.resolvedTitle} を使用しています。`;
+          break;
+      }
+
+      const actionLabel = r.status === 'missing_required' ? 'プロバイダー切替' : '詳細確認・修復';
+      const actionPath = `command:open-obs-panel?resource=${r.resourceName}`;
+
+      return {
+        id: `data-os-${r.resourceName}`,
+        category: 'data-os-alert' as const,
+        severity,
+        title,
+        description,
+        updatedAt: new Date().toISOString(),
+        actionLabel,
+        actionPath,
+      };
+    });
+}
+
+/**
  * 全カテゴリの例外を集約してソートする
  */
 export function aggregateExceptions(
@@ -232,7 +286,15 @@ export function computeExceptionStats(items: ExceptionItem[]): ExceptionStats {
   const stats: ExceptionStats = {
     total: items.length,
     bySeverity: { critical: 0, high: 0, medium: 0, low: 0 },
-    byCategory: { 'missing-record': 0, 'overdue-plan': 0, 'critical-handoff': 0, 'attention-user': 0, 'corrective-action': 0, 'transport-alert': 0 },
+    byCategory: { 
+      'missing-record': 0, 
+      'overdue-plan': 0, 
+      'critical-handoff': 0, 
+      'attention-user': 0, 
+      'corrective-action': 0, 
+      'transport-alert': 0,
+      'data-os-alert': 0 
+    },
   };
 
   for (const item of items) {
