@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import React from 'react';
 import type { UserRowData } from '../../hooks/view-models/useTableDailyRecordForm';
+import type { TableDailyRecordRow } from '../../table/models/tableDailyRecordRow';
 import { BehaviorTagChips } from './BehaviorTagChips';
 
 const LUNCH_OPTIONS = ['完食', '8割', '半分', '少量', 'なし'];
@@ -32,7 +33,7 @@ const PROBLEM_BEHAVIOR_LABELS: Record<keyof UserRowData['problemBehavior'], stri
 };
 
 type TableDailyRecordTableProps = {
-  rows: UserRowData[];
+  rows: TableDailyRecordRow[];
   onRowDataChange: (userId: string, field: string, value: string | boolean) => void;
   onProblemBehaviorChange: (userId: string, behaviorType: string, checked: boolean) => void;
   onBehaviorTagToggle: (userId: string, tagKey: string) => void;
@@ -130,15 +131,15 @@ export const TableDailyRecordTable: React.FC<TableDailyRecordTableProps> = ({
                         key={type}
                         label={PROBLEM_BEHAVIOR_LABELS[type]}
                         size="small"
-                        variant={row.problemBehavior[type] ? 'filled' : 'outlined'}
+                        variant={row.problemBehaviorVariants[type]}
                         clickable
                         onClick={() => onProblemBehaviorChange(row.userId, type, !row.problemBehavior[type])}
-                        color={row.problemBehavior[type] ? 'warning' : 'default'}
+                        color={row.problemBehaviorColors[type]}
                         sx={{ height: 20, fontSize: '0.65rem', '& .MuiChip-label': { px: 0.5 } }}
                       />
                     ))}
                     <BehaviorTagChips
-                      selectedTags={row.behaviorTags ?? []}
+                      selectedTags={row.behaviorTags}
                       onToggleTag={(tagKey) => onBehaviorTagToggle(row.userId, tagKey)}
                       inline
                     />
