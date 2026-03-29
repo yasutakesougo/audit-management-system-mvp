@@ -14,8 +14,8 @@ import type { StoreUser } from '@/stores/useUsers';
 import type {
   TableDailyRecordData,
   TableDailyRecordValidationErrors,
-  UserRowData,
 } from './useTableDailyRecordForm';
+import type { TableDailyRecordRow } from '../../table/models/tableDailyRecordRow';
 
 // ────────────────────────────────────────────────────────────
 // 1. Header — フォームのメタデータ（日付・記録者・バリデーション）
@@ -54,7 +54,7 @@ export interface FormTable {
   handleProblemBehaviorChange: (userId: string, behaviorType: string, checked: boolean) => void;
   handleBehaviorTagToggle: (userId: string, tagKey: string) => void;
   handleClearRow: (userId: string) => void;
-  visibleRows: UserRowData[];
+  visibleRows: TableDailyRecordRow[];
   showUnsentOnly: boolean;
   setShowUnsentOnly: Dispatch<SetStateAction<boolean>>;
   unsentRowCount: number;
@@ -126,7 +126,7 @@ export interface TableDailyRecordViewModel {
     targetDate: string;
     selectedUserIds: string[];
     filteredUsers: StoreUser[];
-    visibleRows: UserRowData[];
+    visibleRows: TableDailyRecordRow[];
     searchQuery: string;
     showTodayOnly: boolean;
     validationErrors: TableDailyRecordValidationErrors;
@@ -186,14 +186,14 @@ export interface TableDailyRecordViewModel {
       onUserToggle: (userId: string) => void;
     };
     table: {
-      rows: UserRowData[];
+      rows: TableDailyRecordRow[];
       onRowDataChange: (userId: string, field: string, value: string | boolean) => void;
       onProblemBehaviorChange: (userId: string, behaviorType: string, checked: boolean) => void;
       onBehaviorTagToggle: (userId: string, tagKey: string) => void;
       onClearRow: (userId: string) => void;
     };
     suggestion: {
-      visibleRows: UserRowData[];
+      visibleRows: TableDailyRecordRow[];
       acceptSuggestion: (userId: string, suggestion: import('../../domain/behavior/behaviorPatternSuggestions').PatternSuggestion) => void;
       dismissSuggestion: (userId: string, suggestion: import('../../domain/behavior/behaviorPatternSuggestions').PatternSuggestion) => void;
     };

@@ -1,5 +1,6 @@
-import { TableDailyRecordTable } from '@/features/daily/components/TableDailyRecordTable';
-import type { UserRowData } from '@/features/daily/hooks/useTableDailyRecordForm';
+import { TableDailyRecordTable } from '@/features/daily/components/sections/TableDailyRecordTable';
+import type { TableDailyRecordRow } from '@/features/daily/table/models/tableDailyRecordRow';
+import { buildTableDailyRecordRows } from '@/features/daily/table/models/buildTableDailyRecordRows';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -16,7 +17,7 @@ vi.mock('@/features/daily/hooks/useSupportPlanHints', () => ({
 }));
 
 describe('TableDailyRecordTable Support Hints', () => {
-  const mockRows: UserRowData[] = [
+  const mockRows: TableDailyRecordRow[] = buildTableDailyRecordRows([
     {
       userId: 'U001',
       userName: 'User A',
@@ -33,7 +34,7 @@ describe('TableDailyRecordTable Support Hints', () => {
       specialNotes: '',
       behaviorTags: [],
     }
-  ];
+  ]);
 
   const onRowDataChange = vi.fn();
   const onProblemBehaviorChange = vi.fn();
