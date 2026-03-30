@@ -12,12 +12,12 @@ import { filterAuditHistoryRecords } from '@/features/planning-sheet/domain/filt
 import { useLatestBehaviorMonitoring } from '@/features/planning-sheet/hooks/useLatestBehaviorMonitoring';
 import { createMonitoringMeetingRepository } from '@/features/monitoring/repositories/createMonitoringMeetingRepository';
 import { useStrategyUsageCounts } from '@/features/planning-sheet/hooks/useStrategyUsageCounts';
-import { useStrategyUsageTrend } from '@/features/planning-sheet/hooks/useStrategyUsageTrend';
+import { useStrategyUsageTrend, type TrendDays } from '@/features/planning-sheet/hooks/useStrategyUsageTrend';
 import { useUsers } from '@/features/users/useUsers';
 import { SP_ENABLED } from '@/lib/env';
 import { useSP } from '@/lib/spClient';
 import { usePdcaCycleState } from '@/features/ibd/analysis/pdca/queries/usePdcaCycleState';
-import { mapMonitoringToPlanningBridge } from '@/domain/isp/bridgeMapper';
+import { mapMonitoringToPlanningBridge, mapMonitoringMeetingToMonitoringRecord } from '@/domain/isp/bridgeMapper';
 import type { MonitoringRecord } from '@/domain/isp/types';
 import type { IUserMaster } from '@/features/users/types';
 import type { UseAuth } from '@/auth/useAuth';
@@ -109,7 +109,9 @@ export function useSupportPlanningSheetOrchestrator(): {
   const [monitoringMeetings, setMonitoringMeetings] = React.useState<MonitoringRecord[]>([]);
   React.useEffect(() => {
     if (!sheet?.userId) return;
-    monitoringRepo.listByUser(String(sheet.userId)).then(setMonitoringMeetings as any);
+    monitoringRepo.listByUser(String(sheet.userId))
+      .then(records => records.map(mapMonitoringMeetingToMonitoringRecord))
+      .then(setMonitoringMeetings);
   }, [sheet?.userId, monitoringRepo]);
 
   const { state: pdcaState } = usePdcaCycleState({
@@ -170,7 +172,7 @@ export function useSupportPlanningSheetOrchestrator(): {
       error,
       uiState,
       targetUser,
-      currentAssessment,
+      currentAssessment: currentAssessment ?? null,
       persistedProvenance,
       auditRecords,
       filteredAuditRecords,
@@ -183,7 +185,7 @@ export function useSupportPlanningSheetOrchestrator(): {
       strategyUsage,
       strategyUsageLoading,
       trendResult,
-      trendDays: trendDays as any,
+      trendDays: trendDays as TrendDays,
       trendLoading,
       contextUserName,
       contextData,

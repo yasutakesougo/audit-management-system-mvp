@@ -122,6 +122,7 @@ export function mapToSupportPlanningSheetViewModel(input: MapperInput): SupportP
     currentPhase: workflowResult.phase,
     targetUserName: targetUser?.FullName,
     hasAssessment: !!currentAssessment,
+    currentAssessment,
     hasMonitoringRecord: !!latestMonitoringRecord,
     icebergEvidence,
     allProvenanceEntries,

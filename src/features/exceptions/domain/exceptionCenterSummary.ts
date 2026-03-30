@@ -112,7 +112,7 @@ export function buildExceptionCenterSummary(items: ExceptionItem[]): ExceptionCe
     groups,
     stats: {
       bySeverity: statsBySeverity,
-      byCategory: statsByCategory as any // type cast for Record<ExceptionCategory, number>
+      byCategory: statsByCategory as Record<ExceptionCategory, number>
     },
     highRiskUserIds
   };

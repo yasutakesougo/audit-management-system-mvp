@@ -52,11 +52,11 @@ export function useDailyRecordUiState(initialRecords: PersonDaily[]) {
   const [activeHighlightUserId, setActiveHighlightUserId] = useState<string | null>(null);
 
   const updateRecord = useCallback((id: string, updated: Partial<PersonDaily>) => {
-    setRecords(prev => prev.map(r => r.id === id ? { ...r, ...updated } : r));
+    setRecords(prev => prev.map(r => String(r.id) === id ? { ...r, ...updated } : r));
   }, []);
 
   const removeRecord = useCallback((id: string) => {
-    setRecords(prev => prev.filter(r => r.id !== id));
+    setRecords(prev => prev.filter(r => String(r.id) !== id));
   }, []);
 
   const state: DailyRecordUiState = useMemo(() => ({

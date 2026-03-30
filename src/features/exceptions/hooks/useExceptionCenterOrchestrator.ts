@@ -16,7 +16,7 @@ import {
 } from '../domain/exceptionLogic';
 import { buildExceptionCenterSummary } from '../domain/exceptionCenterSummary';
 import { useUsersQuery } from '@/features/users/hooks/useUsersQuery';
-import type { IUserMaster } from '@/sharepoint/fields';
+import type { IUserMaster } from '@/features/users/types';
 
 export function useExceptionCenterOrchestrator() {
   const dataSources = useExceptionDataSources();

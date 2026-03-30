@@ -218,10 +218,10 @@ export function detectAttentionUsers(
  */
 export function mapTriggeredToExceptionItems(
   triggered: import('@/domain/isp/exceptionBridge').TriggeredException[],
-  users: import('@/sharepoint/fields').IUserMaster[]
+  users: import('@/features/users/types').IUserMaster[]
 ): ExceptionItem[] {
   return triggered.map((t) => {
-    const user = users.find((u) => u.UserID === t.provenance.userId);
+    const user = users.find((u) => String(u.UserID) === t.provenance.userId);
     const categoryMap: Record<string, ExceptionCategory> = {
       unperformed: 'procedure-unperformed',
       risk_detected: 'risk-deviation',

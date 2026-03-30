@@ -95,7 +95,7 @@ export function useSchedulesToday(max: number = 5) {
 	const abortRef = useRef<AbortController | null>(null);
 
 	const source = useMemo<ScheduleSource>(
-		() => getCurrentScheduleRepositoryKind(),
+		() => getCurrentScheduleRepositoryKind() as ScheduleSource,
 		[repository],
 	);
 

@@ -45,7 +45,7 @@ export function useIndividualSupportOrchestrator(): {
   );
 
   const selectedUser = useMemo(
-    () => ibdUsers.find((u) => u.UserID === userCode) ?? null,
+    () => ibdUsers.find((u) => String(u.UserID) === userCode) ?? null,
     [ibdUsers, userCode],
   );
 
@@ -57,7 +57,7 @@ export function useIndividualSupportOrchestrator(): {
   const targetPlanningSheetId = currentSheet?.id ?? null;
 
   const { data: behaviorMonitoringRecords } = usePdcaBehaviorMonitoringRecords({
-    userCode: selectedUser?.UserID ?? null,
+    userCode: selectedUser?.UserID ? String(selectedUser.UserID) : null,
     supervisionUserId: selectedUser?.Id ?? null,
     planningSheetId: targetPlanningSheetId,
   });
@@ -67,7 +67,7 @@ export function useIndividualSupportOrchestrator(): {
   });
 
   const { state: pdcaState, isLoading: isPdcaLoading, error: pdcaError } = usePdcaCycleState({
-    userId: selectedUser?.UserID ?? null,
+    userId: selectedUser?.UserID ? String(selectedUser.UserID) : null,
     planningSheetId: targetPlanningSheetId,
     behaviorMonitoringRecords: behaviorMonitoringRecords ?? [],
     planningSheetReassessments: planningSheetReassessments ?? [],

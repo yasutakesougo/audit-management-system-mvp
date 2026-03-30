@@ -107,7 +107,7 @@ export function summarizeTriggeredExceptions(exceptions: TriggeredException[]) {
   };
 }
 
-import type { IUserMaster } from '@/sharepoint/fields';
+import type { IUserMaster } from '@/features/users/types';
 
 /**
  * 【MVP/デモ用】全利用者の実績から例外を一括生成する。
@@ -137,7 +137,7 @@ export function simulateAllTodayExceptions(
     }
 
     // 2. リスクが高い利用者での記録不備 (特定のモック条件)
-    const user = users.find(u => u.UserID === record.userId);
+    const user = users.find(u => String(u.UserID) === record.userId);
     if (user?.IsSupportProcedureTarget && record.status === '完了') {
       // 記述が極端に短い場合など
       if ((record.data.specialNotes || '').length < 10) {

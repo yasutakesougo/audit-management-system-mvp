@@ -47,6 +47,7 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
     currentPhase,
     targetUserName,
     hasAssessment,
+    currentAssessment,
     hasMonitoringRecord,
     icebergEvidence,
     allProvenanceEntries,
@@ -170,7 +171,7 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
         <ImportDialogsSection
           toast={toast}
           onCloseToast={handlers.onCloseToast}
-          currentAssessment={hasAssessment ? sheet.assessment : null}
+          currentAssessment={currentAssessment}
           importDialogOpen={importDialogOpen}
           onCloseImportDialog={handlers.onCloseImportDialog}
           targetUserName={targetUserName}

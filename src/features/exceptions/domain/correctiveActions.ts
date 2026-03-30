@@ -199,6 +199,39 @@ const CORRECTIVE_ACTION_MAP: Record<
       reason: 'テレメトリダッシュボードで詳細な状況を確認できます。',
     },
   ],
+  'procedure-unperformed': (item) => [
+    {
+      key: `${item.id}-procedure`,
+      label: '実施記録を入力',
+      route: item.actionPath ?? '/daily/activity',
+      variant: 'primary',
+      severity: 'high',
+      icon: '⚡',
+      reason: '配備された支援手順の実施記録が未完了です。',
+    },
+  ],
+  'risk-deviation': (item) => [
+    {
+      key: `${item.id}-risk`,
+      label: 'リスク状況を確認',
+      route: item.actionPath ?? '/daily/activity',
+      variant: 'primary',
+      severity: 'critical',
+      icon: '🚨',
+      reason: '計画されたリスク回避手順からの逸脱が検出されました。',
+    },
+  ],
+  'focus-missing': (item) => [
+    {
+      key: `${item.id}-focus`,
+      label: '観察記述を追記',
+      route: item.actionPath ?? '/daily/activity',
+      variant: 'primary',
+      severity: 'high',
+      icon: '✍️',
+      reason: '重点観察項目に対する具体的な記述が不足しています。',
+    },
+  ],
 };
 
 // ─── ユーティリティ ───────────────────────────────────────────

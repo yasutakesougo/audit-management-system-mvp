@@ -15,6 +15,30 @@ import type {
   ReassessmentSignal 
 } from './bridge';
 import type { BehaviorMonitoringRecord } from './behaviorMonitoring';
+import type { MonitoringMeetingRecord } from './monitoringMeeting';
+
+/**
+ * モニタリング会議記録をモニタリング事実レコードへ変換する
+ */
+export function mapMonitoringMeetingToMonitoringRecord(
+  meeting: MonitoringMeetingRecord
+): MonitoringRecord {
+  return {
+    id: meeting.id,
+    monitoringDate: meeting.meetingDate,
+    monitoredBy: 0, // TODO: 記録者IDの数値化が必要な場合は適宜変換
+    goalAchievements: meeting.goalEvaluations.map((g, idx) => ({
+      goalId: `goal-${idx}`, // IDがない場合はインデックスで仮生成
+      achievementLevel: g.achievementLevel,
+      comment: g.comment
+    })),
+    overallAssessment: meeting.overallAssessment,
+    planChangeRequired: meeting.planChangeDecision !== 'no_change',
+    changeReason: meeting.changeReason,
+    nextMonitoringDate: meeting.nextMonitoringDate
+  };
+}
+
 
 /**
  * モニタリング結果と PDCA 状態から、計画シート用の候補を生成する。

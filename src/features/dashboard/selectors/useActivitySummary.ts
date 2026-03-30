@@ -2,7 +2,7 @@ import type { PersonDaily } from '@/domain/daily/types';
 import { calculateUsageFromDailyRecords } from '@/features/users/userMasterDashboardUtils';
 import { estimatePayloadSize, HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { normalizeUserId } from '@/lib/normalizeUserId';
-import type { IUserMaster } from '@/sharepoint/fields';
+import type { IUserMaster } from '@/features/users/types';
 import { useMemo } from 'react';
 import { getPendingUserOrder } from './getPendingUserOrder';
 

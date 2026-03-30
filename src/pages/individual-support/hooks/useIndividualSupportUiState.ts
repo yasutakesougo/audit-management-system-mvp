@@ -14,7 +14,7 @@ export type IndividualSupportUiState = {
   recordedSlotIds: Set<string>;
   showOnlyUnrecorded: boolean;
   snackbar: {
-    active: boolean;
+    open: boolean;
     message: string;
     severity: 'success' | 'error';
   };
@@ -46,7 +46,7 @@ export function useIndividualSupportUiState() {
   const [recordedSlotIds, setRecordedSlotIds] = useState<Set<string>>(new Set());
   const [showOnlyUnrecorded, setShowOnlyUnrecorded] = useState(false);
   const [snackbar, setSnackbar] = useState<IndividualSupportUiState['snackbar']>({
-    active: false,
+    open: false,
     message: '',
     severity: 'success',
   });
@@ -55,11 +55,11 @@ export function useIndividualSupportUiState() {
   const [activeSPSHistory, setActiveSPSHistory] = useState<SPSHistoryEntry[]>([]);
 
   const showSnackbar = useCallback((message: string, severity: 'success' | 'error' = 'success') => {
-    setSnackbar({ active: true, message, severity });
+    setSnackbar({ open: true, message, severity });
   }, []);
 
   const hideSnackbar = useCallback(() => {
-    setSnackbar(prev => ({ ...prev, active: false }));
+    setSnackbar(prev => ({ ...prev, open: false }));
   }, []);
 
   const resetRecordingState = useCallback((initialFormState: Record<string, SlotFormState>) => {

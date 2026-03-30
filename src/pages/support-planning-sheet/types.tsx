@@ -5,6 +5,7 @@ import React from 'react';
 import Box from '@mui/material/Box';
 import type { PlanningSheetStatus } from '@/domain/isp/schema';
 import { MonitoringToPlanningBridge } from '@/domain/isp/bridge';
+import type { UserAssessment } from '@/features/assessment/domain/types';
 
 // ─────────────────────────────────────────────
 // Types
@@ -96,6 +97,7 @@ export interface SupportPlanningSheetViewModel {
   currentPhase: WorkflowPhase | null;
   targetUserName?: string;
   hasAssessment: boolean;
+  currentAssessment: UserAssessment | null;
   hasMonitoringRecord: boolean;
   icebergEvidence: IcebergEvidenceBySheet | null;
   allProvenanceEntries: ProvenanceEntry[];

@@ -80,7 +80,7 @@ export function mapToIndividualSupportViewModel(input: MapperInput): IndividualS
     activeSPSHistory: uiState.activeSPSHistory,
     
     snackbar: {
-      open: uiState.snackbar.active,
+      open: uiState.snackbar.open,
       message: uiState.snackbar.message,
       severity: uiState.snackbar.severity,
     },

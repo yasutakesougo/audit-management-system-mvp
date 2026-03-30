@@ -1,29 +1,17 @@
 /**
  * @fileoverview ISP 三層モデル整合性例外の取得 Hook
+ *
+ * 📌 Wave 2 refactor: useDashboardSummary の直接利用を廃止し、
+ * useTodaySummary ファサードを利用するように変更。
  */
-import { useMemo } from 'react';
-import { useDashboardSummary } from '@/features/dashboard/useDashboardSummary';
-import { useUsersQuery } from '@/features/users/hooks/useUsersQuery';
-import { simulateAllTodayExceptions } from '@/domain/isp/exceptionDetector';
-import type { TriggeredException } from '@/domain/isp/exceptionBridge';
-import type { IUserMaster } from '@/sharepoint/fields';
+import { useTodaySummary } from '@/features/today/domain/useTodaySummary';
 
 export function useBridgeExceptions() {
-  const { data: users } = useUsersQuery();
-  const summary = useDashboardSummary({
-    targetDate: new Date()
-  });
-
-  const exceptions: TriggeredException[] = useMemo(() => {
-    if (!users || !summary.full.activityRecords) return [];
-    
-    // 実績記録と利用者マスタを突き合わせて例外をシミュレート/検知
-    return simulateAllTodayExceptions(summary.full.activityRecords, users as IUserMaster[]);
-  }, [users, summary.full.activityRecords]);
+  const { todayExceptions } = useTodaySummary();
 
   return {
-    exceptions,
-    isLoading: summary.status === 'loading',
-    refetch: summary.refresh
+    exceptions: todayExceptions,
+    isLoading: false, // useTodaySummary は Query 同期済み
+    refetch: () => { /* useTodaySummary 側の invalidate に委譲 */ }
   };
 }

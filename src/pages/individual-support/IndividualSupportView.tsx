@@ -167,7 +167,7 @@ export const IndividualSupportView: React.FC<IndividualSupportViewProps> = ({
             <PdcaCyclePanel
               state={pdcaState}
               loading={isPdcaLoading}
-              error={pdcaError as any}
+              error={pdcaError as Error}
             />
           </Box>
         )}
@@ -189,7 +189,7 @@ export const IndividualSupportView: React.FC<IndividualSupportViewProps> = ({
         onClose={handlers.onCloseMonitoring}
         currentSPS={activeSPS}
         history={activeSPSHistory}
-        onRevise={handlers.onReviseSPS as any}
+        onRevise={handlers.onReviseSPS}
         userName={selectedUser.FullName}
       />
     </Box>

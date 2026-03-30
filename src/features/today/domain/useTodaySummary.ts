@@ -20,7 +20,7 @@ import type { SupportRecordCompletionSummary } from '../hooks/useSupportRecordCo
 import type { ServiceStructure } from './serviceStructure.types';
 import { buildServiceStructure } from './buildServiceStructure';
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
-import type { IUserMaster } from '@/sharepoint/fields';
+import type { IUserMaster } from '@/features/users/types';
 import type { AttendanceVisitSnapshot } from '@/features/dashboard/selectors/useAttendanceAnalytics';
 import type { RawActionSource } from '../domain/models/queue.types';
 import type { TriggeredException } from '@/domain/isp/exceptionBridge';
@@ -116,7 +116,7 @@ export function useTodaySummary(): TodaySummary {
     () => users
       .filter((u) => u.IsHighIntensitySupportTarget === true)
       .map((u) => {
-        const uid = (u.UserID ?? '').trim();
+        const uid = String(u.UserID ?? '').trim();
         return uid || `U${String(u.Id ?? 0).padStart(3, '0')}`;
       }),
     [users],

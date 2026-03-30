@@ -1,41 +1,7 @@
+C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\features\exceptions\domain\exceptionCenterSummary.ts: line 115, col 38, Warning - Unexpected any. Specify a different type. (@typescript-eslint/no-explicit-any)
+C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\pages\individual-support\IndividualSupportView.tsx: line 170, col 35, Warning - Unexpected any. Specify a different type. (@typescript-eslint/no-explicit-any)
+C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\pages\individual-support\IndividualSupportView.tsx: line 192, col 43, Warning - Unexpected any. Specify a different type. (@typescript-eslint/no-explicit-any)
+C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\pages\support-planning-sheet\hooks\useSupportPlanningSheetOrchestrator.ts: line 112, col 83, Warning - Unexpected any. Specify a different type. (@typescript-eslint/no-explicit-any)
+C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\pages\support-planning-sheet\hooks\useSupportPlanningSheetOrchestrator.ts: line 186, col 31, Warning - Unexpected any. Specify a different type. (@typescript-eslint/no-explicit-any)
 
-> audit-management-system-mvp@0.1.0 lint
-> eslint --ext .ts,.tsx src --max-warnings=0
-
-
-C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\domain\isp\bridge.ts
-  7:15  error  'PdcaCycleState' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
-
-C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\features\exceptions\domain\escalationTypes.ts
-  4:15  error  'ExceptionItem' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
-
-C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\features\exceptions\domain\exceptionCenterSummary.ts
-  115:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-
-C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\features\exceptions\domain\notificationAuditLogger.ts
-  6:3  error  'NotificationAuditStatus' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
-
-C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\features\exceptions\hooks\useBridgeExceptions.ts
-  5:37  error  Unable to resolve path to module '@/features/dashboard/selectors/useDashboardSummary'  import/no-unresolved
-
-C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\pages\TodayOpsPage.tsx
-  264:7  warning  Unexpected console statement  no-console
-
-C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\pages\individual-support\IndividualSupportView.tsx
-  170:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  192:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-
-C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\pages\individual-support\hooks\useIndividualSupportOrchestrator.ts
-   1:8  error  'React' is defined but never used. Allowed unused vars must match /^_/u         @typescript-eslint/no-unused-vars
-  24:8  error  'ABCSelection' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
-
-C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\pages\individual-support\hooks\useIndividualSupportUiState.ts
-  6:3  error  'ScheduleSlot' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
-  7:3  error  'ABCSelection' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
-
-C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\pages\support-planning-sheet\hooks\useSupportPlanningSheetOrchestrator.ts
-  112:83  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  186:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-
-笨・14 problems (8 errors, 6 warnings)
-
+5 problems

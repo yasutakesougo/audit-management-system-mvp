@@ -71,7 +71,12 @@ export interface IndividualSupportActionHandlers {
   // モニタリング
   onOpenMonitoring: () => void;
   onCloseMonitoring: () => void;
-  onReviseSPS: (id: string, version: string, payload: unknown) => Promise<void>;
+  onReviseSPS: (
+    spsId: string,
+    revisedBy: number | null,
+    revisionReason: string,
+    changesSummary: string,
+  ) => boolean;
   
   // その他
   onCloseSnackbar: () => void;
