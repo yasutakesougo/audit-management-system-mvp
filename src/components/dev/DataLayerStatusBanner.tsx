@@ -15,6 +15,9 @@ export const DataLayerStatusBanner: React.FC = () => {
   const fallbacks = resList.filter(r => r.status === 'fallback_triggered');
   const mismatches = resList.filter(r => r.status === 'schema_mismatch');
 
+  // InMemory/Local プロバイダーでは空リストが正常なため、フィールド欠損は誤検知となる
+  if (currentProvider !== 'sharepoint') return null;
+
   if (criticals.length === 0 && fallbacks.length === 0 && mismatches.length === 0) {
     return null;
   }
