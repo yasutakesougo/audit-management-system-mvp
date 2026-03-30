@@ -23,7 +23,12 @@ export type SpEventName =
   | 'provider_contract_violation'
   | 'sp:row_skipped'
   | 'sp:fetch_fallback_success'
-  | 'provisioning_executed';
+  | 'provisioning_executed'
+  | 'sp:approval_log_created'
+  | 'sp:approval_log_skipped'
+  | 'sp:approval_log_failed'
+  | 'sp:child_lists_provision_success'
+  | 'sp:child_lists_provision_failed';
 
 export interface SpEventPayload {
   key?: string;

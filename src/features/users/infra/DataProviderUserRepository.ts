@@ -40,10 +40,12 @@ const getTodayIsoDate = (): string => new Date().toISOString().slice(0, 10);
 export class DataProviderUserRepository implements UserRepository {
   private readonly provider: IDataProvider;
   private readonly listTitle: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private readonly audit?: (log: any) => void;
   private readonly defaultTop: number = 200;
 
   private resolvedFields: Record<string, string | undefined> | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private fieldStatus: any = null;
   private unsupportedWriteFields = new Set<string>();
 
@@ -53,6 +55,7 @@ export class DataProviderUserRepository implements UserRepository {
   constructor(options: {
     provider: IDataProvider;
     listTitle?: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     audit?: (log: any) => void;
     defaultTop?: number;
   }) {
@@ -91,12 +94,15 @@ export class DataProviderUserRepository implements UserRepository {
 
       // 必須フィールド判定（極限まで緩和: id さえあれば ok とする）
       const essentials: (keyof typeof USERS_MASTER_FIELD_MAP)[] = ['id'];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const isHealthy = areEssentialFieldsResolved(resolved, essentials as any);
 
       reportResourceResolution({
         resourceName: 'Users_Master',
         resolvedTitle: this.listTitle,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         fieldStatus: fieldStatus as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         essentials: essentials as any,
       });
 

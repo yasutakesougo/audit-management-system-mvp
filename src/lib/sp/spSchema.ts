@@ -32,6 +32,7 @@ export const buildFieldSchema = (def: SpFieldDef): string => {
   addAttr('DisplayName', def.displayName ?? def.internalName);
   addAttr('Type', def.type);
   if (def.required) addAttr('Required', 'TRUE');
+  if (def.indexed) addAttr('Indexed', 'TRUE');
   if (def.richText) addAttr('RichText', 'TRUE');
   if (def.dateTimeFormat) addAttr('Format', def.dateTimeFormat);
   if (def.type === 'Lookup') {

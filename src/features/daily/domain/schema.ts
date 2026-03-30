@@ -56,7 +56,7 @@ export const DailyRecordDomainSchema = z.object({
  */
 export const SharePointDailyRecordItemSchema = z.object({
   Id: z.number(),
-  Title: z.string(), // YYYY-MM-DD
+  Title: z.string().nullish(), // YYYY-MM-DD; 実テナントでは null の場合がある
   RecordDate: z.string().nullish(),
   ReporterName: z.string().nullish().transform(val => val ?? ''),
   ReporterRole: z.string().nullish().transform(val => val ?? ''),
@@ -83,7 +83,7 @@ export const SharePointDailyRecordItemSchema = z.object({
 export const DailyRecordItemSchema = SharePointDailyRecordItemSchema.transform((sp): z.infer<typeof DailyRecordDomainSchema> & { id: string; createdAt?: string; modifiedAt?: string } => {
   return {
     id: String(sp.Id),
-    date: sp.Title,
+    date: sp.Title ?? '',
     reporter: {
       name: sp.ReporterName,
       role: sp.ReporterRole,

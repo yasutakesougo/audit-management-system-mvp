@@ -123,6 +123,22 @@ export class SharePointProvisioningCoordinator {
       summaries,
     };
 
+    // ── Phase 1: Child Lists (Results/ApprovalLogs/UserFlags) ──
+    // 既存のメインリスト provision の後に実行。fail-open (非ブロッキング) 構成。
+    try {
+      const provisioner = createProvisioningService(client.spFetch);
+      await provisioner.ensureChildLists();
+      trackSpEvent('sp:child_lists_provision_success');
+    } catch (err) {
+      // 子リストの失敗はメイン機能（L0/L1）を止めないため、警告に留める
+      auditLog.warn('sp:provisioning', 'Child lists provisioning failed (fail-open)', { 
+          error: err instanceof Error ? err.message : String(err) 
+      });
+      trackSpEvent('sp:child_lists_provision_failed', { 
+          error: err instanceof Error ? err.message : String(err) 
+      });
+    }
+
     const duration = Date.now() - startTime;
     trackSpEvent('sp:bootstrap_complete', { durationMs: duration, details: { healthy: result.healthy, unhealthy: result.unhealthy } });
 

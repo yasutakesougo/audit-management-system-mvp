@@ -28,7 +28,7 @@ export const SpUserMasterItemSchema = z.object({
   // Checkboxes / Flags
   IsHighIntensitySupportTarget: z.boolean().nullish().default(false),
   IsSupportProcedureTarget: z.boolean().nullish().default(false),
-  severeFlag: z.boolean().nullish().default(false),
+  SevereFlag: z.boolean().nullish().default(false),
   IsActive: z.boolean().nullish().default(true),
   // Arrays (normalized from string or unknown)
   TransportToDays: z.unknown().transform(normalizeAttendanceDays),
@@ -76,7 +76,7 @@ export const UserMasterDomainSchema = SpUserMasterItemSchema.transform((sp) => (
   RecipientCertExpiry: sp.RecipientCertExpiry ?? null,
   IsHighIntensitySupportTarget: !!sp.IsHighIntensitySupportTarget,
   IsSupportProcedureTarget: sp.IsSupportProcedureTarget ?? null,
-  severeFlag: !!sp.severeFlag,
+  severeFlag: !!sp.SevereFlag,
   IsActive: sp.IsActive !== false,
   TransportToDays: sp.TransportToDays,
   TransportFromDays: sp.TransportFromDays,

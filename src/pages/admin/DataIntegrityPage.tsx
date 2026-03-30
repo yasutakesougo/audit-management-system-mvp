@@ -23,12 +23,14 @@ import Typography from '@mui/material/Typography';
 import React, { useCallback, useMemo, useState } from 'react';
 
 import { SharePointDailyRecordItemSchema } from '@/features/daily/domain/schema';
+import { SpScheduleRowSchema } from '@/features/schedules/data/spRowSchema';
 import { SpUserMasterItemSchema } from '@/features/users/schema';
 import { useDataIntegrityScan } from '@/hooks/useDataIntegrityScan';
-import { formatScanSummary, type ScanResult, type ScanTarget } from '@/lib/dataIntegrityScanner';
+import { formatScanSummary, type ScanResult, type ScanTarget, type TargetData } from '@/lib/dataIntegrityScanner';
 import { auditLog } from '@/lib/debugLogger';
 import { useSP } from '@/lib/spClient';
-import { USERS_SELECT_FIELDS_SAFE } from '@/sharepoint/fields';
+import { SCHEDULES_SELECT_FIELDS } from '@/sharepoint/fields/scheduleFields';
+import { USERS_SELECT_FIELDS_MINIMAL } from '@/sharepoint/fields/userFields';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Pre-defined scan targets
@@ -39,18 +41,28 @@ const SCAN_TARGETS: ScanTarget[] = [
     name: 'users',
     listTitle: 'Users_Master',
     schema: SpUserMasterItemSchema,
-    selectFields: USERS_SELECT_FIELDS_SAFE,
+    // MINIMAL: IsSupportProcedureTarget 等の未プロビジョニング列を避けて確実に取得できる4列
+    selectFields: USERS_SELECT_FIELDS_MINIMAL,
+  },
+  {
+    name: 'schedules',
+    listTitle: 'Schedules',
+    schema: SpScheduleRowSchema,
+    // SCHEDULES_SELECT_FIELDS = ['Id','Title','EventDate','EndDate','Status','TargetUserId','AssignedStaffId']
+    // UserCode は SCHEDULE_ENSURE_FIELDS に存在しない → TargetUserId が正しい内部名
+    selectFields: SCHEDULES_SELECT_FIELDS,
   },
   {
     name: 'daily',
     listTitle: 'DailyActivityRecords',
     schema: SharePointDailyRecordItemSchema,
-    selectFields: ['Id', 'Title', 'RecordDate', 'ReporterName', 'ReporterRole', 'UserRowsJSON', 'UserCount', 'Created', 'Modified'],
+    // Pruned: UserRowsJSON / UserCount to ensure fetch reliability across all tenants
+    selectFields: ['Id', 'Title', 'RecordDate', 'Created', 'Modified'],
   },
 ];
 
 const MAX_ITEMS_PER_REQUEST = 500;
-const MAX_PAGES = 4; // Safety limit: 500 × 4 = 2000 items max
+const MAX_PAGES = 20; // 500 × 20 = 10,000 items max
 
 /**
  * Fetch all raw items from a SharePoint list via REST API.
@@ -61,16 +73,20 @@ async function fetchRawItems(
   listTitle: string,
   selectFields: readonly string[],
   signal?: AbortSignal,
-): Promise<unknown[]> {
+): Promise<{ items: unknown[]; isTruncated: boolean }> {
   const allItems: unknown[] = [];
   const select = selectFields.join(',');
   let path: string | null =
-    `/_api/web/lists/GetByTitle('${encodeURIComponent(listTitle)}')/items?$select=${select}&$top=${MAX_ITEMS_PER_REQUEST}`;
+    `/lists/GetByTitle('${encodeURIComponent(listTitle)}')/items?$select=${select}&$top=${MAX_ITEMS_PER_REQUEST}`;
 
   for (let page = 0; page < MAX_PAGES && path; page++) {
     if (signal?.aborted) break;
 
     const response = await spFetch(path);
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      throw new Error(`HTTP ${response.status}: ${errText.slice(0, 300)}`);
+    }
     const payload = (await response.json()) as {
       value?: unknown[];
       'odata.nextLink'?: string;
@@ -80,17 +96,16 @@ async function fetchRawItems(
       allItems.push(...payload.value);
     }
 
-    // odata.nextLink は絶対 URL で返るため、baseUrl 以降のパスを抽出
-    const nextLink = payload['odata.nextLink'] ?? null;
-    if (nextLink) {
-      const idx = nextLink.indexOf('/_api/');
-      path = idx >= 0 ? nextLink.slice(idx) : nextLink;
-    } else {
-      path = null;
+    // odata.nextLink は絶対 URL で返るため、そのまま spFetch に渡す（内部で正規化される）
+    const next = payload['odata.nextLink'] ?? null;
+    if (next && page === MAX_PAGES - 1) {
+      // 最終ページかつ次がある場合は打ち切り
+      return { items: allItems, isTruncated: true };
     }
+    path = next;
   }
 
-  return allItems;
+  return { items: allItems, isTruncated: false };
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -105,28 +120,43 @@ async function fetchRawItems(
  */
 const DataIntegrityPage: React.FC = () => {
   const { spFetch } = useSP();
-  const { status, progress, results, error, startScan, cancelScan } = useDataIntegrityScan();
+  const { status, progress, results, error: scanError, startScan, cancelScan } = useDataIntegrityScan();
   const [copied, setCopied] = useState(false);
   const [fetchingData, setFetchingData] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const handleStartScan = useCallback(async () => {
     try {
       setFetchingData(true);
+      setFetchError(null);
 
       // Fetch raw data from SharePoint for each target
-      const data = new Map<string, unknown[]>();
+      const data = new Map<string, TargetData>();
       for (const target of SCAN_TARGETS) {
-        const items = await fetchRawItems(spFetch, target.listTitle, target.selectFields);
-        data.set(target.name, items);
+        try {
+          const { items, isTruncated } = await fetchRawItems(spFetch, target.listTitle, target.selectFields);
+          data.set(target.name, {
+            items,
+            fetchStatus: 'success',
+            isTruncated,
+          });
+        } catch (fetchErr) {
+          console.warn(`[data-integrity] Failed to fetch ${target.listTitle}:`, fetchErr);
+          data.set(target.name, {
+            items: [],
+            fetchStatus: 'failed',
+            fetchError: fetchErr instanceof Error ? fetchErr.message : String(fetchErr),
+          });
+        }
       }
 
       setFetchingData(false);
       startScan(SCAN_TARGETS, data);
     } catch (err) {
       setFetchingData(false);
-      auditLog.error('data-integrity', 'fetch_scan_data_failed', {
-        error: err instanceof Error ? err.message : String(err),
-      });
+      const msg = err instanceof Error ? err.message : String(err);
+      setFetchError(msg);
+      auditLog.error('data-integrity', 'fetch_scan_data_failed', { error: msg });
     }
   }, [spFetch, startScan]);
 
@@ -150,6 +180,8 @@ const DataIntegrityPage: React.FC = () => {
       valid: results.reduce((s, r) => s + r.valid, 0),
       invalid: results.reduce((s, r) => s + r.invalid, 0),
       duration: results.reduce((s, r) => s + r.durationMs, 0),
+      // fetchStatus === 'failed' のリスト数。0件成功を「正常」と誤判定しないための必須フラグ
+      fetchFailures: results.filter(r => r.fetchStatus === 'failed').length,
     };
   }, [results]);
 
@@ -201,26 +233,47 @@ const DataIntegrityPage: React.FC = () => {
       )}
 
       {/* ── Error ──────────────────────── */}
-      {status === 'error' && error && (
+      {(fetchError || (status === 'error' && scanError)) && (
         <Alert severity="error" sx={{ mb: 3 }} data-testid="scan-error">
           <AlertTitle>スキャンエラー</AlertTitle>
-          {error}
+          {fetchError || scanError}
         </Alert>
       )}
 
       {/* ── Summary ──────────────────────── */}
       {status === 'done' && totalStats && (
-        <Alert
-          severity={totalStats.invalid === 0 ? 'success' : 'warning'}
-          icon={totalStats.invalid === 0 ? <CheckCircleIcon /> : <ErrorIcon />}
-          sx={{ mb: 3 }}
-          data-testid="scan-summary"
-        >
-          <AlertTitle>
-            {totalStats.invalid === 0 ? '✅ すべてのデータが正常です' : `⚠ ${totalStats.invalid}件の不整合が検出されました`}
-          </AlertTitle>
-          {totalStats.total}件検証 / {totalStats.valid}件 OK / {totalStats.invalid}件 エラー ({totalStats.duration}ms)
-        </Alert>
+        <>
+          <Alert
+            severity={totalStats.invalid === 0 && totalStats.fetchFailures === 0 ? 'success' : 'warning'}
+            icon={totalStats.invalid === 0 && totalStats.fetchFailures === 0 ? <CheckCircleIcon /> : <ErrorIcon />}
+            sx={{ mb: 2 }}
+            data-testid="scan-summary"
+          >
+            <AlertTitle sx={{ fontWeight: 700 }}>
+              {totalStats.fetchFailures > 0
+                ? `⚠ ${totalStats.fetchFailures}件のリストで取得エラー（検証未完了）`
+                : totalStats.invalid === 0
+                  ? '✅ すべてのデータが正常です'
+                  : `⚠ ${totalStats.invalid}件の不整合が検出されました`}
+            </AlertTitle>
+            {totalStats.total}件検証 / {totalStats.valid}件 OK / {totalStats.invalid}件 エラー ({totalStats.duration}ms)
+            {results.some(r => r.isTruncated) && (
+              <Typography variant="caption" display="block" sx={{ mt: 0.5, fontWeight: 700 }}>
+                ※ 一部のリストで取得上限（10,000件）に到達したため、全件を検証できていない可能性があります。
+              </Typography>
+            )}
+          </Alert>
+
+          {/* SharePoint 8KB Limit Alert (Specific to welfare context) */}
+          <Alert severity="info" sx={{ mb: 3 }}>
+            <AlertTitle sx={{ fontWeight: 700, fontSize: '0.85rem' }}>ℹ️ SharePoint 行サイズ制限 (8KB) に関する注意</AlertTitle>
+            <Typography variant="caption">
+              Users_Master 等のフィールド数が多いリストでは、SharePoint の内部制限により一部の列が保存されない、
+              あるいは「列の合計サイズが制限を超えている」エラーが発生する場合があります。
+              本ツールで「取得エラー」や「必須欠落」が頻発する場合、不要な列の削除や統合を検討してください。
+            </Typography>
+          </Alert>
+        </>
       )}
 
       {/* ── Results Table ──────────────────────── */}
@@ -229,37 +282,57 @@ const DataIntegrityPage: React.FC = () => {
           <TableContainer>
             <Table size="small" data-testid="scan-results-table">
               <TableHead>
-                <TableRow>
-                  <TableCell>対象</TableCell>
-                  <TableCell align="right">件数</TableCell>
-                  <TableCell align="right">OK</TableCell>
-                  <TableCell align="right">エラー</TableCell>
-                  <TableCell align="right">時間</TableCell>
+                <TableRow sx={{ bgcolor: 'action.hover' }}>
+                  <TableCell sx={{ fontWeight: 700 }}>対象リスト</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>取得状況</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>取得数</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>検証OK</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>検証NG</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>時間</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {results.map((r: ScanResult) => (
-                  <TableRow key={r.target}>
+                  <TableRow key={r.target} hover>
                     <TableCell>
-                      <Chip
-                        label={r.target}
-                        size="small"
-                        color={r.invalid === 0 ? 'success' : 'warning'}
-                        variant="outlined"
-                      />
+                      <Stack spacing={0.5}>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{r.target}</Typography>
+                        <Typography variant="caption" color="text.secondary">{r.listTitle}</Typography>
+                      </Stack>
                     </TableCell>
-                    <TableCell align="right">{r.total}</TableCell>
-                    <TableCell align="right">{r.valid}</TableCell>
+                    <TableCell>
+                      {r.fetchStatus === 'success' ? (
+                        <Chip
+                          label={r.isTruncated ? "上限到達" : "成功"}
+                          size="small"
+                          color={r.isTruncated ? "warning" : "success"}
+                          variant="filled"
+                          sx={{ height: 20, fontSize: '0.7rem' }}
+                        />
+                      ) : (
+                        <Chip
+                          label="失敗"
+                          size="small"
+                          color="error"
+                          variant="filled"
+                          sx={{ height: 20, fontSize: '0.7rem' }}
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell align="right">{r.total.toLocaleString()}件</TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" color="success.main">{r.valid.toLocaleString()}</Typography>
+                    </TableCell>
                     <TableCell align="right">
                       {r.invalid > 0 ? (
                         <Typography color="error.main" variant="body2" fontWeight={700}>
-                          {r.invalid}
+                          {r.invalid.toLocaleString()}
                         </Typography>
                       ) : (
-                        '0'
+                        '-'
                       )}
                     </TableCell>
-                    <TableCell align="right">{r.durationMs}ms</TableCell>
+                    <TableCell align="right" color="text.secondary">{r.durationMs}ms</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -285,12 +358,20 @@ const DataIntegrityPage: React.FC = () => {
                 <TableContainer component={Paper} variant="outlined">
                   <Table size="small" data-testid={`issues-${r.target}`}>
                     <TableHead>
-                      <TableRow>
-                        <TableCell width={100}>ID</TableCell>
-                        <TableCell>エラー内容</TableCell>
+                      <TableRow sx={{ bgcolor: 'error.light', opacity: 0.1 }}>
+                        <TableCell width={100} sx={{ fontWeight: 700 }}>ID</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>内容</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
+                      {r.fetchStatus === 'failed' && (
+                        <TableRow>
+                          <TableCell sx={{ color: 'error.main' }}>Fetch Error</TableCell>
+                          <TableCell sx={{ color: 'error.main', fontWeight: 600 }}>
+                            {r.fetchError} (リストが存在しないか、アクセス権限がありません)
+                          </TableCell>
+                        </TableRow>
+                      )}
                       {r.issues.map((issue, idx) => (
                         <TableRow key={idx}>
                           <TableCell>

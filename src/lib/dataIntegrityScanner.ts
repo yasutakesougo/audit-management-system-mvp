@@ -29,14 +29,20 @@ export interface ScanIssue {
   zodIssues: z.ZodIssue[];
 }
 
-/** Result summary for one scan target */
 export interface ScanResult {
   target: string;
+  listTitle: string;
   total: number;
   valid: number;
   invalid: number;
   issues: ScanIssue[];
   durationMs: number;
+  /** Phase 1 result */
+  fetchStatus: 'success' | 'failed' | 'skipped';
+  /** Truncation flag (hit MAX_PAGES) */
+  isTruncated?: boolean;
+  /** Specific fetch error (e.g. 404, 403) */
+  fetchError?: string;
 }
 
 /** Progress callback payload */
@@ -45,6 +51,14 @@ export interface ScanProgress {
   scanned: number;
   total: number;
   phase: 'fetching' | 'validating' | 'done';
+  message?: string;
+}
+
+export interface TargetData {
+  items: unknown[];
+  fetchStatus: 'success' | 'failed' | 'skipped';
+  fetchError?: string;
+  isTruncated?: boolean;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -105,7 +119,7 @@ export function validateItems(
  */
 export function scanAll(
   targets: ScanTarget[],
-  data: Map<string, unknown[]>,
+  dataMap: Map<string, TargetData>,
   onProgress?: (progress: ScanProgress) => void,
   signal?: AbortSignal,
 ): ScanResult[] {
@@ -114,7 +128,8 @@ export function scanAll(
   for (const target of targets) {
     if (signal?.aborted) break;
 
-    const items = data.get(target.name) ?? [];
+    const entry = dataMap.get(target.name) || { items: [], fetchStatus: 'skipped' as const };
+    const items = entry.items;
     const total = items.length;
 
     onProgress?.({
@@ -130,11 +145,15 @@ export function scanAll(
 
     results.push({
       target: target.name,
+      listTitle: target.listTitle,
       total,
       valid,
       invalid,
       issues,
       durationMs,
+      fetchStatus: entry.fetchStatus,
+      fetchError: entry.fetchError,
+      isTruncated: entry.isTruncated,
     });
 
     onProgress?.({
@@ -157,7 +176,11 @@ export function formatScanSummary(results: ScanResult[]): string {
   const lines: string[] = ['--- データ整合性スキャンレポート ---', ''];
 
   for (const r of results) {
-    lines.push(`【${r.target}】 ${r.total}件中 ${r.valid}件 OK / ${r.invalid}件 エラー (${r.durationMs}ms)`);
+    const fetchSuffix = r.isTruncated ? ' (上限到達)' : '';
+    lines.push(`【${r.target}】 ${r.total}件中 ${r.valid}件 OK / ${r.invalid}件 エラー${fetchSuffix} (${r.durationMs}ms)`);
+    if (r.fetchStatus === 'failed') {
+      lines.push(`  ⚠ 取得エラー: ${r.fetchError}`);
+    }
     for (const issue of r.issues) {
       lines.push(`  ▸ ID ${issue.recordId}: ${issue.messages.join('; ')}`);
     }
@@ -165,9 +188,15 @@ export function formatScanSummary(results: ScanResult[]): string {
   }
 
   const totalInvalid = results.reduce((sum, r) => sum + r.invalid, 0);
-  lines.push(totalInvalid === 0
+  const fetchFailures = results.filter(r => r.fetchStatus === 'failed').length;
+  if (fetchFailures > 0) {
+    lines.push(`⚠ ${fetchFailures}件のリストで取得エラーがありました（未検証）。`);
+  }
+  lines.push(totalInvalid === 0 && fetchFailures === 0
     ? '✅ すべてのデータが正常です。'
-    : `⚠ ${totalInvalid}件の不整合データが見つかりました。`);
+    : totalInvalid > 0
+      ? `⚠ ${totalInvalid}件の不整合データが見つかりました。`
+      : '');
 
   return lines.join('\n');
 }
