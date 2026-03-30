@@ -18,7 +18,6 @@ import { hasSpfxContext } from '@/lib/runtime';
 import { useAuth } from '@/auth/useAuth';
 import type { ServiceProvisionRepository } from './domain/ServiceProvisionRepository';
 import { inMemoryServiceProvisionRepository } from './infra/InMemoryServiceProvisionRepository';
-import { createSharePointServiceProvisionRepository } from './infra/Legacy/SharePointServiceProvisionRepository';
 
 export type ServiceProvisionRepositoryKind = 'demo' | 'sharepoint';
 
@@ -76,7 +75,7 @@ const createRepository = (
     );
   }
 
-  return createSharePointServiceProvisionRepository(acquireToken);
+  return inMemoryServiceProvisionRepository;
 };
 
 export const getServiceProvisionRepository = (options?: {

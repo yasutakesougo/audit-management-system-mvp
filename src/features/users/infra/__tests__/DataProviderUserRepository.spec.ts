@@ -1,12 +1,12 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { DataProviderUserRepository } from '../DataProviderUserRepository';
 import { InMemoryDataProvider } from '@/lib/data/inMemoryDataProvider';
-import { FIELD_MAP } from '@/sharepoint/fields';
+import type { IUserMasterCreateDto } from '../../types';
+
 
 describe('DataProviderUserRepository Split Logic', () => {
   let provider: InMemoryDataProvider;
   let repo: DataProviderUserRepository;
-  const fields = FIELD_MAP.Users_Master;
 
   beforeEach(() => {
     provider = new InMemoryDataProvider();
@@ -53,14 +53,16 @@ describe('DataProviderUserRepository Split Logic', () => {
       RecipientCertNumber: 'BEN-456'
     };
 
-    const created = await repo.create(payload as any);
+    const created = await repo.create(payload as unknown as IUserMasterCreateDto);
+
     
     expect(created.UserID).toBe('U-NEW');
     
     // 各リストの中身を確認
-    const core = await provider.listItems<any>('Users_Master');
-    const transport = await provider.listItems<any>('UserTransport_Settings');
-    const benefit = await provider.listItems<any>('UserBenefit_Profile');
+    const core = await provider.listItems<Record<string, unknown>>('Users_Master');
+    const transport = await provider.listItems<Record<string, unknown>>('UserTransport_Settings');
+    const benefit = await provider.listItems<Record<string, unknown>>('UserBenefit_Profile');
+
     
     expect(core[0].FullName).toBe('New User');
     expect(transport[0].TransportCourse).toBe('B-Course');
@@ -77,17 +79,19 @@ describe('DataProviderUserRepository Split Logic', () => {
     ]);
 
     // 2. Transport 情報を追加更新
-    await repo.update(1, { TransportCourse: 'Updated-Course' } as any);
+    await repo.update(1, { TransportCourse: 'Updated-Course' } as unknown as Record<string, unknown>);
+
 
     // 3. 分離先リストにレコードが作成されたか確認
-    const transport = await provider.listItems<any>('UserTransport_Settings');
+    const transport = await provider.listItems<Record<string, unknown>>('UserTransport_Settings');
     expect(transport).toHaveLength(1);
     expect(transport[0].UserID).toBe('U-001');
     expect(transport[0].TransportCourse).toBe('Updated-Course');
 
     // 4. 重複作成されないか、既存レコードを更新するか確認
-    await repo.update(1, { TransportCourse: 'Final-Course' } as any);
-    const transport2 = await provider.listItems<any>('UserTransport_Settings');
+    await repo.update(1, { TransportCourse: 'Final-Course' } as unknown as Record<string, unknown>);
+    const transport2 = await provider.listItems<Record<string, unknown>>('UserTransport_Settings');
+
     expect(transport2).toHaveLength(1);
     expect(transport2[0].TransportCourse).toBe('Final-Course');
   });

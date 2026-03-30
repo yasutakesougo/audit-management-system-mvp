@@ -2,8 +2,8 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AttendanceRepository, ObservationTemperatureItem } from '../../domain/AttendanceRepository';
-import type { AttendanceDailyItem } from '../../infra/attendanceDailyRepository';
-import type { AttendanceUserItem } from '../../infra/attendanceUsersRepository';
+import type { AttendanceDailyItem } from '../../infra/Legacy/attendanceDailyRepository';
+import type { AttendanceUserItem } from '../../infra/Legacy/attendanceUsersRepository';
 
 const repository = {
   getActiveUsers: vi.fn<() => Promise<AttendanceUserItem[]>>(),
