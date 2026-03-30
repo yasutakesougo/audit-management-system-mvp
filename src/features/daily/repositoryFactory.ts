@@ -7,6 +7,8 @@ import { resolveProvider, getActiveProviderType, isDataProviderReady } from '@/l
 
 import type { DailyRecordRepository } from './domain/DailyRecordRepository';
 import { DataProviderDailyRecordRepository } from './infra/DataProviderDailyRecordRepository';
+import { inMemoryDailyRecordRepository } from './infra/InMemoryDailyRecordRepository';
+
 
 export type DailyRecordRepositoryFactoryOptions = {
   provider?: IDataProvider;
@@ -63,9 +65,16 @@ export const getDailyRecordRepository = (
     );
   }
   if (overrideRepository) return overrideRepository;
+
+  const type = getActiveProviderType();
+  if (!provider && (type === 'memory' || type === 'local')) {
+    return inMemoryDailyRecordRepository;
+  }
+
   const actualProvider = resolveProvider(provider);
   return createDailyRecordRepository(actualProvider, options);
 };
+
 
 export const overrideDailyRecordRepository = (
   repository: DailyRecordRepository | null,

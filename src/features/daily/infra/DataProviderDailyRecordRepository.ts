@@ -1,7 +1,5 @@
-import { formatDateIso } from '@/lib/dateFormat';
-import { fromSpItem, type SpDailyItem } from '@/domain/daily/spMap';
+import { fromSpItem } from '@/domain/daily/spMap';
 import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
-import { toSafeError } from '@/lib/errors';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { auditLog } from '@/lib/debugLogger';
 
@@ -20,15 +18,12 @@ import {
   DAILY_RECORD_CANONICAL_ESSENTIALS,
   DAILY_RECORD_ROW_AGGREGATE_CANDIDATES,
   DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS,
-  DAILY_RECORD_CANONICAL_ENSURE_FIELDS
 } from '@/sharepoint/fields/dailyFields';
-import { resolveInternalNames, areEssentialFieldsResolved } from '@/lib/sp/resolveInternalNames';
+import { resolveInternalNames, areEssentialFieldsResolved } from '@/lib/sp/helpers';
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 
-const getHttpStatus = (error: unknown): number | undefined => {
-  if (error && typeof error === 'object' && 'status' in (error as any)) return (error as any).status;
-  return undefined;
-};
+// Unused function removed (getHttpStatus)
+
 
 const normalizeDateToYmd = (raw: unknown): string | null => {
   if (typeof raw === 'string') {
@@ -89,7 +84,8 @@ type SourceResolution = {
   rowAggregate?: { title: string; fields: RowAggregateResolvedFields };
 };
 
-const fieldCache = new Map<string, any>();
+// Unused fieldCache removed
+
 
 /**
  * DataProviderDailyRecordRepository
@@ -159,7 +155,8 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
       const source = await this.resolveSource();
       if (source.canonical) {
         const { title, fields } = source.canonical;
-        const items = await this.provider.listItems<any>(title, {
+        const items = await this.provider.listItems<Record<string, unknown>>(title, {
+
           filter: `${fields.title} eq '${date}'`,
           top: 1,
           select: fields.select,
@@ -188,7 +185,8 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
       if (source.canonical) {
         const { title, fields } = source.canonical;
         const filter = `${fields.title} ge '${params.range.startDate}' and ${fields.title} le '${params.range.endDate}'`;
-        const items = await this.provider.listItems<any>(title, {
+        const items = await this.provider.listItems<Record<string, unknown>>(title, {
+
           filter,
           orderby: `${fields.title} desc`,
           top: SP_QUERY_LIMITS.default,
@@ -210,7 +208,8 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
     }
   }
 
-  public async approve(input: ApproveRecordInput, params?: DailyRecordRepositoryMutationParams): Promise<DailyRecordItem> {
+  public async approve(input: ApproveRecordInput, _params?: DailyRecordRepositoryMutationParams): Promise<DailyRecordItem> {
+
     const source = await this.resolveSource();
     if (!source.canonical) throw new Error('Canonical list not found for approval.');
 
@@ -247,8 +246,9 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
       const available = await this.provider.getFieldInternalNames(title).catch(() => null);
       if (!available) continue;
 
-      const resolved = resolveInternalNames(available, DAILY_RECORD_CANONICAL_CANDIDATES as any) as any;
-      if (areEssentialFieldsResolved(resolved, DAILY_RECORD_CANONICAL_ESSENTIALS)) {
+      const resolved = resolveInternalNames(available, DAILY_RECORD_CANONICAL_CANDIDATES as unknown as Record<string, string[]>) as unknown as CanonicalResolvedFields;
+      if (areEssentialFieldsResolved(resolved as unknown as Record<string, string | undefined>, DAILY_RECORD_CANONICAL_ESSENTIALS as unknown as string[])) {
+
         resolved.select = ['Id', 'Created', 'Modified', ...Object.values(resolved).filter((v): v is string => typeof v === 'string')];
         this.resolution = { canonical: { title, fields: resolved as CanonicalResolvedFields } };
         return this.resolution;
@@ -260,8 +260,9 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
       const available = await this.provider.getFieldInternalNames(title).catch(() => null);
       if (!available) continue;
 
-      const resolved = resolveInternalNames(available, DAILY_RECORD_ROW_AGGREGATE_CANDIDATES as any) as any;
-      if (areEssentialFieldsResolved(resolved, DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS)) {
+      const resolved = resolveInternalNames(available, DAILY_RECORD_ROW_AGGREGATE_CANDIDATES as unknown as Record<string, string[]>) as unknown as RowAggregateResolvedFields;
+      if (areEssentialFieldsResolved(resolved as unknown as Record<string, string | undefined>, DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS as unknown as string[])) {
+
         resolved.select = ['Id', 'Title', ...Object.values(resolved).filter((v): v is string => typeof v === 'string')];
         this.resolution = { rowAggregate: { title, fields: resolved as RowAggregateResolvedFields } };
         return this.resolution;
@@ -275,7 +276,8 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
     source: { title: string; fields: RowAggregateResolvedFields },
     params: DailyRecordRepositoryListParams
   ): Promise<DailyRecordItem[]> {
-    const items = await this.provider.listItems<any>(source.title, {
+    const items = await this.provider.listItems<Record<string, unknown>>(source.title, {
+
       select: source.fields.select,
       orderby: 'Id desc', // Or recordDate desc
       top: 200,
@@ -301,7 +303,8 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
       };
 
       try {
-        const parsed = fromSpItem(normalizedRow as any, 'A');
+        const parsed = fromSpItem(normalizedRow as Record<string, unknown>, 'A');
+
         const reporterName = parsed.reporter?.name?.trim() || '記録者不明';
         
         const rowData = {
@@ -335,7 +338,9 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
             existing.specialNotes = mergeSpecialNotes(existing.specialNotes, rowData.specialNotes);
           }
         }
-      } catch (e) {
+      } catch {
+
+
         // Skip invalid rows
       }
     }
@@ -343,10 +348,12 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
     return Array.from(grouped.values()).sort((a, b) => b.date.localeCompare(a.date));
   }
 
-  private parseCanonical(item: any, fields: CanonicalResolvedFields): DailyRecordItem | null {
+  private parseCanonical(item: Record<string, unknown>, fields: CanonicalResolvedFields): DailyRecordItem | null {
+
     try {
-      const userRows = JSON.parse(item[fields.userRowsJSON] || '[]');
-      const record: any = {
+      const userRows = JSON.parse(item[fields.userRowsJSON] as string || '[]');
+      const record: Record<string, unknown> = {
+
         id: String(item.Id),
         date: normalizeDateToYmd(item[fields.title]) || '',
         reporter: {

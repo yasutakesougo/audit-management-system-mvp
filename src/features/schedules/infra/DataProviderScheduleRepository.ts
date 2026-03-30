@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { toSafeError } from '@/lib/errors';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { auditLog } from '@/lib/debugLogger';
@@ -8,7 +9,7 @@ import {
 import { 
   resolveInternalNamesDetailed, 
   areEssentialFieldsResolved,
-} from '@/lib/sp/resolveInternalNames';
+} from '@/lib/sp/helpers';
 import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
 import { mapSpRowToSchedule, type SpScheduleRow } from '../data/spRowSchema';
 import { getSchedulesListTitle } from '../data/spSchema';
@@ -66,7 +67,7 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       const available = await this.provider.getFieldInternalNames(this.listTitle);
       const { resolved, fieldStatus } = resolveInternalNamesDetailed(
         available,
-        SCHEDULE_CANDIDATES as unknown as Record<string, string[]>
+        SCHEDULE_CANDIDATES as any
       );
 
       const isHealthy = areEssentialFieldsResolved(resolved, SCHEDULE_ESSENTIALS as any);

@@ -44,7 +44,7 @@ import {
     type TransportVisitInfo,
 } from './transportStatusLogic';
 import { loadTransportLogs, saveTransportLog, syncToAttendanceDaily } from './transportRepo';
-import { getActiveUsers, type AttendanceUserItem } from '@/features/attendance/infra/attendanceUsersRepository';
+import { getActiveUsers, type AttendanceUserItem } from '@/features/attendance/infra/Legacy/attendanceUsersRepository';
 import {
     getTransportStaleDedupKey,
     trackTransportEvent,

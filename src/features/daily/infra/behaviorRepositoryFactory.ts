@@ -9,7 +9,7 @@ import {
 } from '@/lib/env';
 import type { BehaviorRepository } from '../domain/BehaviorRepository';
 import { InMemoryBehaviorRepository } from './InMemoryBehaviorRepository';
-import { SharePointBehaviorRepository } from './SharePointBehaviorRepository';
+import { SharePointBehaviorRepository } from './Legacy/SharePointBehaviorRepository';
 
 let cachedRepository: BehaviorRepository | null = null;
 

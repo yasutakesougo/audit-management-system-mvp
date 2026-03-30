@@ -127,7 +127,7 @@ export const createDailyOpsSignalsPort = (
           top: 1,
         });
 
-        return updated?.[0] ? mapFromSp(updated[0]) : (mapFromSp({ Id: id, ...payload } as SpItem) as DailyOpsSignal);
+        return updated?.[0] ? mapFromSp(updated[0]) : mapFromSp({ Id: id, ...payload } as SpItem);
       }
 
       // CREATE
@@ -136,9 +136,10 @@ export const createDailyOpsSignalsPort = (
         payload,
       );
 
-      const createdId = Number((created as SpItem)?.Id ?? (created as any)?.d?.Id ?? (created as any)?.data?.Id);
+      const createdId = Number((created as SpItem)?.Id ?? (created as { d?: { Id: number } })?.d?.Id ?? (created as { data?: { Id: number } })?.data?.Id);
+
       if (!createdId) {
-        return mapFromSp({ Id: -1, ...payload } as SpItem) as DailyOpsSignal;
+        return mapFromSp({ Id: -1, ...payload } as SpItem);
       }
 
       const fetched = await client.listItems<SpItem>(DAILY_OPS_LIST_TITLE, {
@@ -149,7 +150,7 @@ export const createDailyOpsSignalsPort = (
 
       return fetched?.[0]
         ? mapFromSp(fetched[0])
-        : (mapFromSp({ Id: createdId, ...payload } as SpItem) as DailyOpsSignal);
+        : mapFromSp({ Id: createdId, ...payload } as SpItem);
     },
 
     async setStatus(itemId, status) {

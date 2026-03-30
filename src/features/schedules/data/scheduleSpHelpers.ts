@@ -192,7 +192,7 @@ export const getListFieldsMeta = async (provider: IDataProvider): Promise<ListFi
       
       const rawChoices = Array.isArray(f.Choices)
         ? (f.Choices as string[])
-        : (f.Choices as any)?.results as string[] | undefined;
+        : (f.Choices as unknown as Record<string, unknown>)?.results as string[] | undefined;
 
       return {
         internalName,

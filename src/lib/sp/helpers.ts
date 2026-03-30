@@ -6,8 +6,20 @@
  */
 import { auditLog } from '@/lib/debugLogger';
 import { getAppConfig } from '@/lib/env';
+export interface ResolutionResult<T extends string> {
+  resolved: Record<T, string | undefined>;
+  missing: T[];
+  fieldStatus: Record<T, { resolvedName?: string; candidates: string[] }>;
+}
+
+export type RetryReason = 'timeout' | 'throttle' | 'server' | 'auth';
+
+export interface StaffIdentifier {
+  type: 'guid' | 'title';
+  value: string;
+}
+
 import { trimGuidBraces } from './spSchema';
-import type { RetryReason, StaffIdentifier } from './types';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -295,21 +307,41 @@ export function clearAllFieldsCache(): void {
   auditLog.info('sp:fields', 'cache_cleared_all', { count });
 }
 /**
+ * 実在するフィールド名 (available) の中から、候補 (candidates) に合致するものを詳細に解決する
+ */
+export function resolveInternalNamesDetailed<T extends string>(
+  available: Set<string>,
+  candidates: Record<T, string[]>
+): ResolutionResult<T> {
+  const resolved = {} as Record<T, string | undefined>;
+  const fieldStatus = {} as Record<T, { resolvedName?: string; candidates: string[] }>;
+  const missing: T[] = [];
+  
+  for (const key in candidates) {
+    if (Object.prototype.hasOwnProperty.call(candidates, key)) {
+      const found = candidates[key].find(f => available.has(f));
+      resolved[key] = found;
+      fieldStatus[key] = {
+        resolvedName: found,
+        candidates: candidates[key]
+      };
+      if (!found) {
+        missing.push(key);
+      }
+    }
+  }
+  
+  return { resolved, missing, fieldStatus };
+}
+
+/**
  * SharePoint 内部名の動的解決ユーティリティ
  */
 export function resolveInternalNames<T extends string>(
   available: Set<string>,
   candidates: Record<T, string[]>
 ): Record<T, string | undefined> {
-  const result = {} as Record<T, string | undefined>;
-  
-  for (const key in candidates) {
-    if (Object.prototype.hasOwnProperty.call(candidates, key)) {
-      result[key] = candidates[key].find(f => available.has(f));
-    }
-  }
-  
-  return result;
+  return resolveInternalNamesDetailed(available, candidates).resolved;
 }
 
 /**

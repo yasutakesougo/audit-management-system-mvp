@@ -11,6 +11,10 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createDataProvider, __clearProviderCache } from '@/lib/data/createDataProvider';
+
+
+
 
 const mockAcquireToken = vi.fn().mockResolvedValue('mock-token');
 
@@ -25,7 +29,12 @@ const { mockEnv, mockRuntime } = vi.hoisted(() => {
       shouldSkipSharePoint: vi.fn().mockReturnValue(false),
       readBool: vi.fn().mockReturnValue(false),
       getConfiguredMsalScopes: vi.fn().mockReturnValue([]),
+      readOptionalEnv: vi.fn().mockReturnValue(undefined),
+      isDevMode: vi.fn().mockReturnValue(true),
+      readEnv: vi.fn().mockReturnValue(''),
       isWriteEnabled: true,
+
+
       isE2eForceSchedulesWrite: false,
       isDev: true,
       isE2E: false,
@@ -60,9 +69,10 @@ vi.mock('@/lib/spClient', () => ({
   ensureConfig: vi.fn().mockReturnValue({ baseUrl: 'https://test.sharepoint.com/sites/test' }),
   createSpClient: vi.fn().mockReturnValue({ spFetch: mockSpFetch }),
 }));
-vi.mock('@/features/daily/infra/SharePointDailyRecordRepository', () => ({
-  SharePointDailyRecordRepository: MockSPRepo,
+vi.mock('@/features/daily/infra/DataProviderDailyRecordRepository', () => ({
+  DataProviderDailyRecordRepository: MockSPRepo,
 }));
+
 
 import { inMemoryDailyRecordRepository } from '@/features/daily/infra/InMemoryDailyRecordRepository';
 import {
@@ -74,8 +84,11 @@ import {
 describe('Daily repositoryFactory', () => {
   beforeEach(() => {
     resetDailyRecordRepository();
+    __clearProviderCache();
     vi.clearAllMocks();
-    // Default: isDev=true → demo mode
+    // Default: isDev=true → memory mode
+
+
     mockEnv.getAppConfig.mockReturnValue({ isDev: true });
     mockEnv.isDemoModeEnabled.mockReturnValue(false);
     mockEnv.isForceDemoEnabled.mockReturnValue(false);
@@ -122,21 +135,31 @@ describe('Daily repositoryFactory', () => {
 
   describe('SharePoint path', () => {
     it('returns SharePoint repo when forceKind=sharepoint with acquireToken', () => {
+      createDataProvider({ spFetch: mockSpFetch } as any, { type: 'sharepoint' });
       const repo = getDailyRecordRepository({
         forceKind: 'sharepoint',
         acquireToken: mockAcquireToken,
       });
+
       expect(repo).toBe(mockSpInstance);
       // forceKind with custom options is not cached, so MockSPRepo was called
       expect(MockSPRepo).toHaveBeenCalledWith(
-        expect.objectContaining({ spFetch: mockSpFetch }),
+        expect.objectContaining({
+          provider: expect.objectContaining({
+            client: expect.objectContaining({
+              spFetch: mockSpFetch
+            })
+          })
+        }),
       );
+
     });
 
     it('throws when forceKind=sharepoint without acquireToken', () => {
       expect(() =>
         getDailyRecordRepository({ forceKind: 'sharepoint' }),
-      ).toThrow('acquireToken is required');
+      ).toThrow('has not been initialized');
+
     });
   });
 

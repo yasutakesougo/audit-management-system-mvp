@@ -7,9 +7,12 @@ import {
   DataProviderNotInitializedError 
 } from '@/lib/errors';
 
+import { isDevMode, isDemoModeEnabled } from '@/lib/env';
+
 export type ProviderType = 'sharepoint' | 'memory' | 'local';
 
 const providerInstances: Record<string, IDataProvider> = {};
+
 
 /** @internal - For testing only */
 export function __clearProviderCache(): void {
@@ -32,14 +35,16 @@ export function resolveProvider(provider?: unknown): IDataProvider {
     return provider as IDataProvider;
   }
 
-  const type = getActiveProviderType();
+  // forceKind オプションを考慮
+  const forcedType = (provider as { forceKind?: ProviderType } | undefined)?.forceKind;
+  const type = forcedType || getActiveProviderType();
   const cacheKey = type;
 
   if (!providerInstances[cacheKey]) {
     switch (type) {
       case 'memory': providerInstances[cacheKey] = new InMemoryDataProvider(); break;
       case 'local': providerInstances[cacheKey] = new LocalStorageDataProvider(); break;
-      default: 
+      case 'sharepoint':
         throw new DataProviderNotInitializedError(type);
     }
   }
@@ -47,24 +52,28 @@ export function resolveProvider(provider?: unknown): IDataProvider {
   return providerInstances[cacheKey];
 }
 
+
 /**
  * DataProvider を生成または更新する。
  */
-export function createDataProvider(spClient: UseSP): { provider: IDataProvider; type: ProviderType } {
-  const type = getActiveProviderType();
+export function createDataProvider(
+  spClient: UseSP,
+  options?: { type?: ProviderType }
+): { provider: IDataProvider; type: ProviderType } {
+  const type = options?.type || getActiveProviderType();
   const cacheKey = type;
 
   if (!providerInstances[cacheKey]) {
     switch (type) {
       case 'memory': providerInstances[cacheKey] = new InMemoryDataProvider(); break;
       case 'local': providerInstances[cacheKey] = new LocalStorageDataProvider(); break;
-      default: 
+      case 'sharepoint':
         providerInstances[cacheKey] = new SharePointDataProvider(spClient); 
         break;
     }
   } else if (type === 'sharepoint') {
-    // 既存の SharePoint インスタンスがある場合はクライアントのみ更新する
-    (providerInstances[cacheKey] as SharePointDataProvider).setClient(spClient);
+    // SharePoint の場合はクライアントを更新する可能性があるため再生成
+    providerInstances[cacheKey] = new SharePointDataProvider(spClient);
   }
 
   console.info(`[DataProvider] Active backend: ${type}`);
@@ -83,5 +92,13 @@ export function getActiveProviderType(): ProviderType {
 
   if (selected === 'memory') return 'memory';
   if (selected === 'local') return 'local';
+  if (selected === 'sharepoint') return 'sharepoint';
+
+  // フォールバック: デモモードや開発環境ならメモリモードを優先
+  if (isDemoModeEnabled() || isDevMode()) {
+    return 'memory';
+  }
+
   return 'sharepoint';
 }
+

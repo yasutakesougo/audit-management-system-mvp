@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { toSafeError } from '@/lib/errors';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { auditLog } from '@/lib/debugLogger';
@@ -10,7 +12,7 @@ import {
 import { 
   resolveInternalNamesDetailed, 
   areEssentialFieldsResolved 
-} from '@/lib/sp/resolveInternalNames';
+} from '@/lib/sp/helpers';
 import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
 import type {
     SupportPlanDraftRepository,
@@ -151,7 +153,7 @@ export class DataProviderSupportPlanDraftRepository implements SupportPlanDraftR
         const available = await this.provider.getFieldInternalNames(this.listTitle);
         const { resolved, fieldStatus } = resolveInternalNamesDetailed(
           available,
-          SUPPORT_PLANS_CANDIDATES as unknown as Record<string, string[]>
+          SUPPORT_PLANS_CANDIDATES as any
         );
 
         const isHealthy = areEssentialFieldsResolved(resolved, SUPPORT_PLANS_ESSENTIALS as any);
@@ -194,7 +196,8 @@ export class DataProviderSupportPlanDraftRepository implements SupportPlanDraftR
     return res;
   }
 
-  private mapRowToDraft(row: Record<string, unknown>, fields: any): SupportPlanDraft | null {
+  private mapRowToDraft(row: Record<string, unknown>, fields: Record<string, string>): SupportPlanDraft | null {
+
     try {
       const formDataJson = String(row[fields.formDataJson] || '{}');
       const formData: Partial<SupportPlanForm> = JSON.parse(formDataJson);

@@ -2,7 +2,7 @@ import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { 
   resolveInternalNamesDetailed, 
   areEssentialFieldsResolved 
-} from '@/lib/sp/resolveInternalNames';
+} from '@/lib/sp/helpers';
 import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
 import type { 
   BehaviorMonitoringRecord, 

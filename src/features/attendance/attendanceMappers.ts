@@ -15,7 +15,7 @@ import type { IUserMaster } from '@/features/users/types';
 
 import { toLocalDateISO } from '@/utils/getNow';
 import type { ObservationTemperatureItem } from './domain/AttendanceRepository';
-import type { AttendanceDailyItem } from './infra/attendanceDailyRepository';
+import type { AttendanceDailyItem } from './infra/Legacy/attendanceDailyRepository';
 import { methodImpliesShuttle } from './transportMethod';
 import type { AttendanceRowVM } from './types';
 

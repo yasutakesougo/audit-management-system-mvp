@@ -4,8 +4,8 @@ import type {
     AttendanceRepositoryUpsertParams,
     ObservationTemperatureItem,
 } from '../domain/AttendanceRepository';
-import type { AttendanceDailyItem } from './attendanceDailyRepository';
-import type { AttendanceUserItem } from './attendanceUsersRepository';
+import type { AttendanceDailyItem } from './Legacy/attendanceDailyRepository';
+import type { AttendanceUserItem } from './Legacy/attendanceUsersRepository';
 
 type InMemoryAttendanceSeed = {
   users?: AttendanceUserItem[];

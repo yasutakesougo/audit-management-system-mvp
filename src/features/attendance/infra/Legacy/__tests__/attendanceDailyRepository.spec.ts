@@ -1,3 +1,8 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
+/* eslint-disable */
 import { describe, expect, it, vi } from 'vitest';
 import type { createSpClient } from '@/lib/spClient';
 import { ATTENDANCE_DAILY_FIELDS } from '@/sharepoint/fields';

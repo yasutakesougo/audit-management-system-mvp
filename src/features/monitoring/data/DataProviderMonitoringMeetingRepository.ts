@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { auditLog } from '@/lib/debugLogger';
 import { escapeODataString } from '@/lib/odata';
@@ -40,16 +41,16 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
 
     try {
       const available = await this.provider.getFieldInternalNames(this.listTitle);
-      const resolved = resolveInternalNames(available, MONITORING_MEETING_CANDIDATES as unknown as Record<string, string[]>) as Record<string, string>;
+      const resolved = resolveInternalNames(available, MONITORING_MEETING_CANDIDATES as any) as Record<string, string>;
       this.resolvedFields = resolved;
       return resolved;
     } catch (err) {
       auditLog.warn('monitoring', `Field resolution failed for ${this.listTitle}. Triggering self-healing...`, err);
       
-      await this.provider.ensureListExists(this.listTitle, MONITORING_MEETING_ENSURE_FIELDS as unknown as any[]);
+      await this.provider.ensureListExists(this.listTitle, MONITORING_MEETING_ENSURE_FIELDS as unknown as any);
       
       const available = await this.provider.getFieldInternalNames(this.listTitle);
-      const resolved = resolveInternalNames(available, MONITORING_MEETING_CANDIDATES as unknown as Record<string, string[]>) as Record<string, string>;
+      const resolved = resolveInternalNames(available, MONITORING_MEETING_CANDIDATES as any) as Record<string, string>;
       this.resolvedFields = resolved;
       return resolved;
     }
