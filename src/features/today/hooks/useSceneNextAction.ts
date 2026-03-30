@@ -14,6 +14,7 @@
  */
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
 import type { SupportRecordCompletionSummary } from './useSupportRecordCompletion';
+import type { TriggeredException } from '@/domain/isp/exceptionBridge';
 import { useMemo } from 'react';
 import { buildSceneNextAction, type SceneNextAction } from '../domain/buildSceneNextAction';
 import { inferTodayScene } from '../domain/inferTodayScene';
@@ -38,6 +39,8 @@ type SceneNextActionInput = {
   users: { UserID?: string; FullName?: string; Id?: number }[];
   /** Scheduled users count */
   scheduledCount: number;
+  /** ISP 三層モデルの整合性不備 */
+  todayExceptions?: TriggeredException[];
 };
 
 export type SceneNextActionViewModel = SceneNextAction & {
@@ -85,6 +88,7 @@ export function useSceneNextAction(input: SceneNextActionInput): SceneNextAction
       pendingAttendance,
       pendingDailyRecords,
       alertUsers,
+      pendingExceptions: input.todayExceptions,
     });
 
     return { ...action, sceneLabel };

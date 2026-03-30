@@ -1,93 +1,31 @@
-import { useMemo } from 'react';
-import { useDataProvider } from '@/lib/data/useDataProvider';
-import type { IDataProvider } from '@/lib/data/dataProvider.interface';
-import { sanitizeEnvValue } from '@/lib/sp/helpers';
-import { readEnv, isDevMode } from '@/lib/env';
-import { resolveProvider, getActiveProviderType, isDataProviderReady } from '@/lib/data/createDataProvider';
-
+import { createRepositoryFactory, type BaseFactoryOptions } from '@/lib/createRepositoryFactory';
 import type { DailyRecordRepository } from './domain/DailyRecordRepository';
-import { DataProviderDailyRecordRepository } from './infra/DataProviderDailyRecordRepository';
 import { inMemoryDailyRecordRepository } from './infra/InMemoryDailyRecordRepository';
+// import { SharePointDailyRecordRepository } from './infra/SharePointDailyRecordRepository';
+// import { createSpClient, ensureConfig } from '@/lib/spClient';
 
-
-export type DailyRecordRepositoryFactoryOptions = {
-  provider?: IDataProvider;
+/**
+ * Daily Record Repository Factory options.
+ */
+export interface DailyRecordRepositoryFactoryOptions extends BaseFactoryOptions {
+  /** Optional custom list title. */
   listTitle?: string;
-};
+}
 
-let overrideRepository: DailyRecordRepository | null = null;
-
-/**
- * Creates a repository based on the provided DataProvider.
- */
-export const createDailyRecordRepository = (
-  provider: IDataProvider,
-  options?: { listTitle?: string }
-): DailyRecordRepository => {
-  const listTitle = (options?.listTitle ?? 
-    sanitizeEnvValue(readEnv('VITE_SP_DAILY_RECORDS_LIST', ''))) || 
-    'SupportRecord_Daily';
-
-  return new DataProviderDailyRecordRepository({
-    provider,
-    listTitle,
-  });
-};
-
-/**
- * React Hook: Get daily record repository instance
- * 
- * Uses the global DataProvider to create a backend-agnostic repository.
- */
-export const useDailyRecordRepository = (options?: DailyRecordRepositoryFactoryOptions): DailyRecordRepository => {
-  const { provider: globalProvider } = useDataProvider();
-  const provider = options?.provider ?? globalProvider;
-
-  return useMemo(() => {
-    if (overrideRepository) return overrideRepository;
-    return createDailyRecordRepository(provider, { listTitle: options?.listTitle });
-  }, [provider, options?.listTitle]);
-};
-
-/**
- * Non-React context getter.
- * @deprecated Use useDailyRecordRepository() in React hooks to ensure proper Data OS lifecycle management.
- * This function may throw DataProviderNotInitializedError if called before authentication.
- */
-export const getDailyRecordRepository = (
-  provider?: IDataProvider | Record<string, unknown>,
-  options?: { listTitle?: string }
-): DailyRecordRepository => {
-  if (isDevMode() && !provider && !isDataProviderReady()) {
-    console.warn(
-      '[DataOS] getDailyRecordRepository called before initialization. ' +
-      'Ensure you are in a test context or use useDailyRecordRepository() hook instead.'
-    );
-  }
-  if (overrideRepository) return overrideRepository;
-
-  const type = getActiveProviderType();
-  if (!provider && (type === 'memory' || type === 'local')) {
+const factory = createRepositoryFactory<DailyRecordRepository, DailyRecordRepositoryFactoryOptions>({
+  name: 'DailyRecord',
+  createDemo: () => inMemoryDailyRecordRepository,
+  createReal: (_options) => {
+    // TODO: Restore SharePointDailyRecordRepository when the infra layer is stable.
+    console.warn('[DailyRecordRepositoryFactory] Real repository missing, using Demo.');
     return inMemoryDailyRecordRepository;
-  }
+  },
+});
 
-  const actualProvider = resolveProvider(provider);
-  return createDailyRecordRepository(actualProvider, options);
-};
+export const getDailyRecordRepository = factory.getRepository;
+export const useDailyRecordRepository = factory.useRepository;
+export const overrideDailyRecordRepository = factory.override;
+export const resetDailyRecordRepository = factory.reset;
+export const getCurrentDailyRecordRepositoryKind = factory.getCurrentKind;
 
-
-export const overrideDailyRecordRepository = (
-  repository: DailyRecordRepository | null,
-): void => {
-  overrideRepository = repository;
-};
-
-export const resetDailyRecordRepository = (): void => {
-  overrideRepository = null;
-};
-
-/** @internal compat stub — returns 'demo' in all contexts (new factory uses IDataProvider directly) */
-export const getCurrentDailyRecordRepositoryKind = (): 'sharepoint' | 'demo' => {
-  const type = getActiveProviderType();
-  return type === 'sharepoint' ? 'sharepoint' : 'demo';
-};
+export type DailyRecordRepositoryKind = 'demo' | 'real';

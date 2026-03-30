@@ -17,6 +17,8 @@ interface UseTodayActionQueueOptions {
   correctiveActions?: ActionSuggestion[];
   /** dismiss/snooze 状態マップ（省略可） */
   suggestionStates?: Record<string, ActionSuggestionState>;
+  /** Exception Bridge から注入する例外アクション（省略可） */
+  exceptionActions?: RawActionSource[];
 }
 
 interface UseTodayActionQueueReturn {
@@ -95,8 +97,8 @@ export function useTodayActionQueue(
     // 4b. ActionSuggestion → RawActionSource に変換
     const correctiveSources = visibleActions.map(mapSuggestionToActionSource);
 
-    // 4c. 既存 sources と corrective sources を合流させてキュー構築
-    const allSources = [...sources, ...correctiveSources];
+    // 4c. 既存 sources と corrective sources、および例外 sources を合流させてキュー構築
+    const allSources = [...sources, ...correctiveSources, ...(options.exceptionActions ?? [])];
     if (allSources.length === 0) return [];
     return buildTodayActionQueue(allSources, now, currentStaffId);
   }, [sources, now, currentStaffId, timedCorrectiveActions, suggestionStates]);

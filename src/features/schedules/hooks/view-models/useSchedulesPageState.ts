@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { formatInTimeZone } from 'date-fns-tz';
 import { useMemo } from 'react';
 
@@ -235,7 +234,7 @@ export const useSchedulesPageState = ({ myUpn, canEditByRole, ready }: Schedules
 
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return items.filter((item: any) => {
+    return items.filter((item) => {
       if (categoryFilter !== 'All' && item.category !== categoryFilter) return false;
       if (!needle) return true;
       const haystack = [
@@ -262,7 +261,7 @@ export const useSchedulesPageState = ({ myUpn, canEditByRole, ready }: Schedules
     if (!isEditMode || !dialogEventId) {
       return null;
     }
-    return items.find((candidate: any) => candidate.id === dialogEventId) ?? null;
+    return items.find((candidate) => candidate.id === dialogEventId) ?? null;
   }, [dialogEventId, isEditMode, items]);
 
   const createDialogOverride: Partial<ScheduleFormState> | null = useMemo(() => {

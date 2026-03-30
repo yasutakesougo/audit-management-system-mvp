@@ -132,6 +132,14 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
     });
   }, [isKioskMode, location.pathname, telemetryRole]);
 
+  // ── Execution Loop State ──
+  const [activeActionEffort, setActiveActionEffort] = useState<{
+    type: 'exception' | 'suggestion' | 'regular';
+    id?: string;
+    label?: string;
+  } | null>(null);
+  const [resolutionToastMsg, setResolutionToastMsg] = useState<string | null>(null);
+
   // ── Data Fetching (Facade) ──
   const summary = useTodaySummary();
 
@@ -169,6 +177,7 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
     todayRecordCompletion: summary.todayRecordCompletion,
     users: summary.users ?? [],
     scheduledCount: summary.users?.length ?? 0,
+    todayExceptions: summary.todayExceptions,
   });
   const transport = useTransportStatus();
   const transportHighlight = useTransportHighlight();
@@ -198,6 +207,7 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
     currentStaffId: 'staff-a', // 仮: ログインユーザーのIDを連携できるとベター
     correctiveActions,
     suggestionStates,
+    exceptionActions: summary.todayExceptionActions,
   });
   const suggestionByStableId = useMemo(() => {
     return new Map(correctiveActions.map((s) => [s.stableId, s]));
@@ -206,11 +216,21 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
   const handleActionClick = React.useCallback(
     (action: ActionCard) => {
       if (action.actionType === 'OPEN_DRAWER') {
-        quickRecord.openUnfilled();
+        if (action.id.startsWith('exc-')) {
+          setActiveActionEffort({ type: 'exception', id: action.id, label: action.title });
+        }
+        const payload = action.payload as { userId?: string } | undefined;
+        quickRecord.openUnfilled(payload?.userId);
       } else if (action.actionType === 'NAVIGATE') {
         const payload = action.payload as { path?: string; suggestion?: ActionSuggestion } | undefined;
         const suggestion = payload?.suggestion;
         const targetUrl = payload?.path ?? suggestion?.cta?.route;
+
+        // 例外キューからの遷移
+        if (action.id.startsWith('exc-')) {
+          setActiveActionEffort({ type: 'exception', id: action.id, label: action.title });
+        }
+
         if (suggestion) {
           recordSuggestionTelemetry(
             buildSuggestionTelemetryEvent({
@@ -232,6 +252,18 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
     },
     [quickRecord.openUnfilled, navigate]
   );
+
+  const handleSceneAction = useCallback((target: string, userId?: string) => {
+    if (target === 'exception-action') {
+      const exc = summary.todayExceptions.find(e => e.provenance.userId === userId);
+      setActiveActionEffort({ type: 'exception', id: exc?.id, label: exc?.title });
+      quickRecord.openUnfilled(userId);
+    } else if (target === 'quick-record') {
+      quickRecord.openUnfilled(userId);
+    } else {
+      // fallback: analytics 等への通知
+    }
+  }, [summary.todayExceptions, quickRecord]);
 
   const handleDismissSuggestion = useCallback((stableId: string) => {
     const suggestion = suggestionByStableId.get(stableId);
@@ -603,9 +635,10 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
       },
     } : undefined,
     exceptionsQueue,
+    onSceneAction: handleSceneAction,
     onQuickLinkNavigate: (href: string) => navigate(href),
     };
-  }, [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, handleDismissSuggestion, handleSnoozeSuggestion, callLogsSummary, handleOpenUserStatus, userStatusActions.todayStatusRecords, highLoadStatus, role, exceptionsQueue]);
+  }, [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, handleDismissSuggestion, handleSnoozeSuggestion, callLogsSummary, handleOpenUserStatus, userStatusActions.todayStatusRecords, highLoadStatus, role, exceptionsQueue, handleSceneAction]);
 
   // ── Save Success Handler (Quick Record auto-next) ──
   const [showCompletionToast, setShowCompletionToast] = React.useState(false);
@@ -615,6 +648,12 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
     // 保存成功したら SP から最新の日次記録を再取得し、
     // 「未入力」アラートを即時に更新する
     exceptionsQueue.refetchDailyRecords();
+
+    // 例外解決フィードバック
+    if (activeActionEffort?.type === 'exception') {
+      setResolutionToastMsg(`✅ ${activeActionEffort.label} を解消しました`);
+      setActiveActionEffort(null);
+    }
 
     if (isKioskMode && quickRecordSessionRef.current) {
       const session = quickRecordSessionRef.current;
@@ -742,19 +781,25 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
 
       {/* Phase 8-A: 利用者状態成功トースト */}
       <Snackbar
-        open={!!userStatusSuccessMsg}
+        open={!!userStatusSuccessMsg || !!resolutionToastMsg}
         autoHideDuration={3000}
-        onClose={() => setUserStatusSuccessMsg(null)}
+        onClose={() => {
+          setUserStatusSuccessMsg(null);
+          setResolutionToastMsg(null);
+        }}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        data-testid="user-status-success-toast"
+        data-testid="success-toast"
       >
         <Alert
-          onClose={() => setUserStatusSuccessMsg(null)}
+          onClose={() => {
+            setUserStatusSuccessMsg(null);
+            setResolutionToastMsg(null);
+          }}
           severity="success"
           variant="filled"
           sx={{ width: '100%', fontWeight: 'bold' }}
         >
-          {userStatusSuccessMsg}
+          {userStatusSuccessMsg || resolutionToastMsg}
         </Alert>
       </Snackbar>
     </>

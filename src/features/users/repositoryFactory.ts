@@ -1,76 +1,52 @@
-import { useMemo } from 'react';
-import { pushAudit } from '@/lib/audit';
-import { useDataProvider } from '@/lib/data/useDataProvider';
-import type { IDataProvider } from '@/lib/data/dataProvider.interface';
-import { resolveProvider, getActiveProviderType, isDataProviderReady } from '@/lib/data/createDataProvider';
-import { isDevMode } from '@/lib/env';
-
+import { createRepositoryFactory, type BaseFactoryOptions } from '@/lib/createRepositoryFactory';
 import type { UserRepository } from './domain/UserRepository';
-import { DataProviderUserRepository } from './infra/DataProviderUserRepository';
-
-export type UserRepositoryFactoryOptions = {
-  provider?: IDataProvider;
-};
-
-let overrideRepository: UserRepository | null = null;
+import { inMemoryUserRepository } from './infra/InMemoryUserRepository';
+import { RestApiUserRepository } from './infra/RestApiUserRepository';
+import { SharePointUserRepository } from './infra/SharePointUserRepository';
+import { pushAudit } from '@/lib/audit';
+import { hasSpfxContext } from '@/lib/runtime';
 
 /**
- * Creates a repository based on the provided DataProvider.
+ * User Repository Factory options.
  */
-export const createUserRepository = (provider: IDataProvider): UserRepository => {
-  return new DataProviderUserRepository({
-    provider,
-    audit: pushAudit,
-  });
-};
+export interface UserRepositoryFactoryOptions extends BaseFactoryOptions {
+  /** Optional custom fetching function (for REST API mode). */
+  spFetch?: (path: string, init?: RequestInit) => Promise<Response>;
+  /** Optional top value for queries. */
+  defaultTop?: number;
+}
 
-/**
- * React Hook: Get user repository instance
- * 
- * Uses the global DataProvider to create a backend-agnostic repository.
- */
-export const useUserRepository = (options?: UserRepositoryFactoryOptions): UserRepository => {
-  const { provider: globalProvider } = useDataProvider();
-  const provider = options?.provider ?? globalProvider;
+const factory = createRepositoryFactory<UserRepository, UserRepositoryFactoryOptions>({
+  name: 'User',
+  createDemo: () => inMemoryUserRepository,
+  createReal: (options) => {
+    // 1. If spFetch is provided, prioritize RestApiUserRepository
+    if (options.spFetch) {
+      return new RestApiUserRepository({
+        spFetch: options.spFetch,
+        audit: pushAudit,
+      });
+    }
 
-  return useMemo(() => {
-    if (overrideRepository) return overrideRepository;
-    return createUserRepository(provider);
-  }, [provider]);
-};
+    // 2. If in SPFx context, use the SharePoint-pnpjs implementation
+    if (hasSpfxContext()) {
+      return new SharePointUserRepository({
+        ...options,
+        audit: pushAudit,
+      });
+    }
 
-/**
- * Legacy support / Non-React context getter.
- * @deprecated Use useUserRepository() in React components to ensure proper Data OS lifecycle management.
- * This function may throw DataProviderNotInitializedError if called before authentication.
- */
-export const getUserRepository = (
-  provider?: IDataProvider | Record<string, unknown>,
-): UserRepository => {
-  if (isDevMode() && !provider && !isDataProviderReady()) {
-    console.warn(
-      '[DataOS] getUserRepository called before initialization. ' +
-      'Ensure you are in a test context or use useUserRepository() hook instead.'
+    // 3. Fallback/Error
+    throw new Error(
+      '[UserRepositoryFactory] spFetch or SPFx context is required for SharePoint repository.',
     );
-  }
-  if (overrideRepository) return overrideRepository;
-  const actualProvider = resolveProvider(provider);
-  return createUserRepository(actualProvider);
-};
+  },
+});
 
-export const overrideUserRepository = (repository: UserRepository | null): void => {
-  overrideRepository = repository;
-};
+export const getUserRepository = factory.getRepository;
+export const useUserRepository = factory.useRepository;
+export const overrideUserRepository = factory.override;
+export const resetUserRepository = factory.reset;
+export const getCurrentUserRepositoryKind = factory.getCurrentKind;
 
-export const resetUserRepository = (): void => {
-  overrideRepository = null;
-};
-
-/**
- * Returns the kind of the current repository ('sharepoint' | 'demo')
- * Used by UI hooks to determine if seeding is needed.
- */
-export const getCurrentUserRepositoryKind = (): 'sharepoint' | 'demo' => {
-  const type = getActiveProviderType();
-  return type === 'sharepoint' ? 'sharepoint' : 'demo';
-};
+export type UserRepositoryKind = 'demo' | 'real';

@@ -19,6 +19,7 @@ function resolveActionType(item: ScoredActionItem): ActionType {
     case 'schedule':
       return 'OPEN_DRAWER';
     case 'handoff':
+    case 'exception':
       return 'OPEN_DRAWER';
     default: {
       const _exhaustive: never = item.sourceType;

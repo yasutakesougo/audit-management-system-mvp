@@ -1,264 +1,28 @@
 /**
- * PlanningSheetListPage — 支援計画シート一覧画面
+ * PlanningSheetListPage — 支援計画シート一覧 (L2 Planning サブ画面)
  *
- * ISP 画面から「他 N シート」チップ経由、
- * または直接 /planning-sheet-list?userId=xxx でアクセス。
+ * アーキテクチャ更新 (ADR-006 準拠):
+ * 1. Page (this file): Thin Facade
+ * 2. Orchestrator: usePlanningSheetListOrchestrator
+ * 3. ViewModel Mapper: planningSheetListViewModelMapper
+ * 4. View: PlanningSheetListView
  *
- * 利用者ごとの支援計画シートを一覧し、
- * 現行 / 下書き / 改訂待ち をステータスチップで区別する。
+ * @see docs/adr/006-screen-responsibility-boundaries.md
+ * @see docs/architecture/isp-three-layer-rules.md
  */
-import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
-import {
-  PLANNING_SHEET_STATUS_DISPLAY,
-  type PlanningSheetListItem,
-  type PlanningSheetStatus,
-} from '@/domain/isp/schema';
-import type { PlanningSheetRepository } from '@/domain/isp/port';
-import { UserSelectionGrid } from '@/features/users/components/UserSelectionGrid';
-import { useUsers } from '@/features/users/useUsers';
-import AddRoundedIcon from '@mui/icons-material/AddRounded';
-import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
-import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
-import Alert from '@mui/material/Alert';
-import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
-import CircularProgress from '@mui/material/CircularProgress';
-import Paper from '@mui/material/Paper';
-import Stack from '@mui/material/Stack';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
-import Typography from '@mui/material/Typography';
-import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-
-// ─────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────
-
-function statusColor(status: PlanningSheetStatus): 'default' | 'info' | 'success' | 'warning' {
-  switch (status) {
-    case 'draft': return 'default';
-    case 'review': return 'info';
-    case 'active': return 'success';
-    case 'revision_pending': return 'warning';
-    case 'archived': return 'default';
-    default: return 'default';
-  }
-}
-
-// ─────────────────────────────────────────────
-// Data fetching hook (inline, page-specific)
-// ─────────────────────────────────────────────
-
-function usePlanningSheetList(userId: string | null, repo: PlanningSheetRepository | null) {
-  const [sheets, setSheets] = useState<PlanningSheetListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetch = useCallback(async () => {
-    if (!userId || !repo) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const items = await repo.listCurrentByUser(userId);
-      setSheets(items);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userId, repo]);
-
-  useEffect(() => { fetch(); }, [fetch]);
-
-  return { sheets, isLoading, error };
-}
-
-// ─────────────────────────────────────────────
-// Page Component
-// ─────────────────────────────────────────────
+import React from 'react';
+import { usePlanningSheetListOrchestrator } from './planning-sheet-list/hooks/usePlanningSheetListOrchestrator';
+import { PlanningSheetListView } from './planning-sheet-list/PlanningSheetListView';
 
 export default function PlanningSheetListPage() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const userId = searchParams.get('userId');
-  const repo = usePlanningSheetRepositories();
-  const { sheets, isLoading, error } = usePlanningSheetList(userId, repo);
-  const { data: allUsers } = useUsers();
+  const { viewModel, handlers } = usePlanningSheetListOrchestrator();
 
-  // ---------- 利用者未選択 → グリッド表示 ----------
-  if (!userId) {
-    return (
-      <Box sx={{ p: { xs: 2, md: 3 }, pb: 4 }}>
-        <Stack spacing={3}>
-          <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <DescriptionRoundedIcon color="primary" />
-              <Typography variant="h5" fontWeight={700}>支援計画シート一覧</Typography>
-            </Stack>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              利用者を選択して、支援計画シートを表示します。
-            </Typography>
-          </Paper>
-          <Paper elevation={1}>
-            <UserSelectionGrid
-              users={allUsers}
-              onSelect={(code) => navigate(`/planning-sheet-list?userId=${code}`)}
-              title="対象利用者を選択してください"
-              subtitle="支援計画シートの一覧を表示する利用者を選択します。"
-            />
-          </Paper>
-        </Stack>
-      </Box>
-    );
-  }
+  if (!viewModel) return null;
 
   return (
-    <Box sx={{ p: { xs: 2, md: 3 }, pb: 4 }}>
-      <Stack spacing={3}>
-        {/* Header */}
-        <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
-          <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <DescriptionRoundedIcon color="primary" />
-              <Typography variant="h5" fontWeight={700}>支援計画シート一覧</Typography>
-              <Chip size="small" variant="outlined" label={`利用者: ${userId}`} />
-            </Stack>
-            <Stack direction="row" spacing={1}>
-              {sheets.length > 0 && (
-                <Button
-                  size="small"
-                  variant="contained"
-                  startIcon={<AddRoundedIcon />}
-                  onClick={() => navigate(userId ? `/support-planning-sheet/new?userId=${userId}` : '/support-planning-sheet/new')}
-                >
-                  新規作成
-                </Button>
-              )}
-              <Button
-                size="small"
-                startIcon={<ArrowBackRoundedIcon />}
-                onClick={() => navigate('/support-plan-guide')}
-              >
-                ISP 画面に戻る
-              </Button>
-            </Stack>
-          </Stack>
-        </Paper>
-
-        {/* Loading / Error / Empty */}
-        {isLoading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress />
-          </Box>
-        )}
-
-        {error && <Alert severity="error">{error}</Alert>}
-
-        {!isLoading && !error && sheets.length === 0 && (
-          <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
-            <Stack spacing={2} alignItems="center">
-              <DescriptionRoundedIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
-              <Typography color="text.secondary">
-                この利用者の支援計画シートはまだ作成されていません。
-              </Typography>
-              <Button
-                variant="contained"
-                startIcon={<AddRoundedIcon />}
-                onClick={() => navigate(userId ? `/support-planning-sheet/new?userId=${userId}` : '/support-planning-sheet/new')}
-              >
-                新規作成
-              </Button>
-            </Stack>
-          </Paper>
-        )}
-
-        {/* Sheet List */}
-        {sheets.length > 0 && (
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>タイトル</TableCell>
-                  <TableCell>対象場面</TableCell>
-                  <TableCell>ステータス</TableCell>
-                  <TableCell>サービス</TableCell>
-                  <TableCell>次回見直し</TableCell>
-                  <TableCell align="right">操作</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {sheets.map((sheet) => (
-                  <TableRow
-                    key={sheet.id}
-                    hover
-                    sx={{ cursor: 'pointer' }}
-                    onClick={() => navigate(`/support-planning-sheet/${sheet.id}`)}
-                  >
-                    <TableCell>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="body2" fontWeight={500}>
-                          {sheet.title || '（無題）'}
-                        </Typography>
-                        {sheet.isCurrent && (
-                          <Chip size="small" label="現行" color="success" variant="outlined" />
-                        )}
-                      </Stack>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="text.secondary">
-                        {sheet.targetScene || '—'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        label={PLANNING_SHEET_STATUS_DISPLAY[sheet.status]}
-                        color={statusColor(sheet.status)}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="caption">{sheet.applicableServiceType}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="caption" color="text.secondary">
-                        {sheet.nextReviewAt || '—'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Button size="small" variant="outlined">
-                        開く
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-
-        {/* Summary */}
-        {sheets.length > 0 && (
-          <Stack direction="row" spacing={2}>
-            <Chip
-              size="small"
-              variant="outlined"
-              label={`${sheets.filter(s => s.isCurrent).length} 件現行`}
-              color="success"
-            />
-            <Chip
-              size="small"
-              variant="outlined"
-              label={`${sheets.length} 件合計`}
-            />
-          </Stack>
-        )}
-      </Stack>
-    </Box>
+    <PlanningSheetListView 
+      viewModel={viewModel}
+      handlers={handlers} 
+    />
   );
 }

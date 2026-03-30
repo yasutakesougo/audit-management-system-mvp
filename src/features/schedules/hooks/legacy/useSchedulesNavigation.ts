@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * useSchedulesNavigation
  *
@@ -58,7 +57,7 @@ export function useSchedulesNavigation(deps: NavigationDeps): NavigationReturn {
   // Sync active date with focus date changes
   useEffect(() => {
     const nextIso = toDateIso(focusDate);
-    setActiveDateIso((prev: any) => (prev === nextIso ? prev : nextIso));
+    setActiveDateIso((prev) => (prev === nextIso ? prev : nextIso));
   }, [focusDate]);
 
   // Clear day lane on mode change

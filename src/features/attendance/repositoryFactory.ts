@@ -1,39 +1,30 @@
-import { useMemo } from 'react';
-import { useDataProvider } from '@/lib/data/useDataProvider';
+import { createRepositoryFactory, type BaseFactoryOptions } from '@/lib/createRepositoryFactory';
 import type { AttendanceRepository } from './domain/AttendanceRepository';
-import { DataProviderAttendanceRepository } from './infra/DataProviderAttendanceRepository';
+import { inMemoryAttendanceRepository } from './infra/InMemoryAttendanceRepository';
+// import { SharePointAttendanceRepository, type SharePointAttendanceRepositoryOptions } from './infra/SharePointAttendanceRepository';
 
 /**
- * AttendanceRepositoryFactory
- * 
- * 従来の getAttendanceRepository (static) から useAttendanceRepository (hook) へ移行。
- * IDataProvider を利用することで、SharePoint / InMemory の切り替えを
- * レポジトリ層が意識せずに実行できる。
+ * Attendance Repository Factory options.
  */
-export const useAttendanceRepository = (): AttendanceRepository => {
-  const { provider } = useDataProvider();
-  
-  return useMemo(() => {
-    return new DataProviderAttendanceRepository({ provider });
-  }, [provider]);
-};
+export interface AttendanceRepositoryFactoryOptions extends BaseFactoryOptions {
+  listTitleUsers?: string;
+  listTitleDaily?: string;
+}
 
-// --- Test Overrides ---
-let overrideRepository: AttendanceRepository | null = null;
+const factory = createRepositoryFactory<AttendanceRepository, AttendanceRepositoryFactoryOptions>({
+  name: 'Attendance',
+  createDemo: () => inMemoryAttendanceRepository,
+  createReal: (_options) => {
+    // TODO: Restore SharePointAttendanceRepository when the infra layer is stable.
+    console.warn('[AttendanceRepositoryFactory] Real repository missing, using Demo.');
+    return inMemoryAttendanceRepository;
+  },
+});
 
-export const overrideAttendanceRepository = (repo: AttendanceRepository | null) => {
-  overrideRepository = repo;
-};
+export const getAttendanceRepository = factory.getRepository;
+export const useAttendanceRepository = factory.useRepository;
+export const overrideAttendanceRepository = factory.override;
+export const resetAttendanceRepository = factory.reset;
+export const getCurrentAttendanceRepositoryKind = factory.getCurrentKind;
 
-export const getAttendanceRepository = (): AttendanceRepository => {
-  if (overrideRepository) return overrideRepository;
-  throw new Error('Static getAttendanceRepository is deprecated. Use useAttendanceRepository hook instead.');
-};
-
-export const resetAttendanceRepository = (): void => {
-  overrideRepository = null;
-};
-
-export const getCurrentAttendanceRepositoryKind = (): 'sharepoint' | 'demo' => {
-  return 'demo';
-};
+export type AttendanceRepositoryKind = 'demo' | 'real';
