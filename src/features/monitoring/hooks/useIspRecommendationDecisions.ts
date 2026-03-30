@@ -20,7 +20,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { DecisionStatus, IspRecommendationDecision } from '../domain/ispRecommendationDecisionTypes';
 import type { IspRecommendationSummary } from '../domain/ispRecommendationTypes';
-import { createIspDecisionRepository } from '../data/createIspDecisionRepository';
+import { useIspDecisionRepository } from '../data/createIspDecisionRepository';
 import type { DecisionInput } from '../components/IspRecommendationCard';
 import { createRecommendationSnapshot } from '../domain/ispRecommendationDecisionUtils';
 
@@ -68,7 +68,7 @@ export function useIspRecommendationDecisions(
   const mountedRef = useRef(true);
 
   // ─── リポジトリ取得 ─────────────────────────────────
-  const repository = useMemo(() => createIspDecisionRepository(), []);
+  const repository = useIspDecisionRepository();
 
   // ─── 初回ロード ─────────────────────────────────────
   useEffect(() => {
