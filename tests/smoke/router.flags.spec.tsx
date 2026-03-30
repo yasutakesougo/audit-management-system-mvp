@@ -10,7 +10,10 @@ vi.mock('@/lib/spClient', async () => {
   const actual = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
   return {
     ...actual,
-    useSP: () => ({ spFetch: spFetchMock }),
+    useSP: () => ({
+      spFetch: spFetchMock,
+      getExistingListTitlesAndIds: vi.fn(async () => new Set<string>()),
+    }),
   };
 });
 
