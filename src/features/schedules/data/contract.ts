@@ -21,7 +21,7 @@ const REQUIRED_FIELDS: readonly string[] = [
   SCHEDULES_FIELDS.locationName,
 ];
 
-const REQUIRED_CATEGORY_CHOICES: readonly string[] = [];
+const REQUIRED_CATEGORY_CHOICES: readonly string[] = ['User', 'Facility', 'Other', 'Org', 'Staff'];
 
 const normalizeChoices = (choices?: string[]): string[] =>
   (choices ?? []).map((value) => value.trim()).filter(Boolean);
