@@ -16,16 +16,15 @@ export {
 
 export {
     SharePointDailyRecordRepository,
-} from './infra/SharePointDailyRecordRepository';
+} from './infra/Legacy/SharePointDailyRecordRepository';
 
 // Repository Factory
 export type {
-    DailyRecordRepositoryFactoryOptions, DailyRecordRepositoryKind
+    DailyRecordRepositoryFactoryOptions
 } from './repositoryFactory';
 
 export {
-    getCurrentDailyRecordRepositoryKind, getDailyRecordRepository, overrideDailyRecordRepository,
-    resetDailyRecordRepository, useDailyRecordRepository
+    getDailyRecordRepository, useDailyRecordRepository
 } from './repositoryFactory';
 
 // Components & Hooks

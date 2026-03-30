@@ -3,7 +3,7 @@ import { isDemoModeEnabled } from '@/lib/env';
 
 import type { PdcaRepository } from './domain/pdcaRepository';
 import { InMemoryPdcaRepository } from './infra/inMemoryPdcaRepository';
-import { SharePointPdcaRepository } from './infra/SharePointPdcaRepository';
+import { SharePointPdcaRepository } from './infra/Legacy/SharePointPdcaRepository';
 
 type PdcaRepositoryKind = 'in-memory' | 'sharepoint';
 

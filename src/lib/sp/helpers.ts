@@ -6,8 +6,20 @@
  */
 import { auditLog } from '@/lib/debugLogger';
 import { getAppConfig } from '@/lib/env';
+export interface ResolutionResult<T extends string> {
+  resolved: Record<T, string | undefined>;
+  missing: T[];
+  fieldStatus: Record<T, { resolvedName?: string; candidates: string[] }>;
+}
+
+export type RetryReason = 'timeout' | 'throttle' | 'server' | 'auth';
+
+export interface StaffIdentifier {
+  type: 'guid' | 'title';
+  value: string;
+}
+
 import { trimGuidBraces } from './spSchema';
-import type { RetryReason, StaffIdentifier } from './types';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -218,28 +230,37 @@ export const readErrorPayload = async (res: Response): Promise<string> => {
 
 export const raiseHttpError = async (
   res: Response,
-  ctx?: { url?: string; method?: string },
+  options: { 
+    url?: string; 
+    method?: string; 
+    spOptions?: { quietStatuses?: number[]; silent?: boolean };
+  } = {},
 ): Promise<never> => {
   const detail = await readErrorPayload(res);
   const AUDIT_DEBUG = getAppConfig().VITE_AUDIT_DEBUG;
+  const { quietStatuses, silent } = options.spOptions || {};
 
-  // 必ず1行はエラーとして残す（詳細なし）
-  auditLog.error('sp', 'http_error', {
-    status: res.status,
-    statusText: res.statusText,
-    method: ctx?.method,
-    url: ctx?.url ? ctx.url.split('?')[0] : undefined,
-  });
+  // Skip logging if silent or quiet status match
+  const shouldLog = !silent && !(quietStatuses && quietStatuses.includes(res.status));
 
-  // 詳細は AUDIT_DEBUG 時のみ
-  if (AUDIT_DEBUG) {
-    auditLog.debug('sp', 'http_error_detail', {
+  if (shouldLog) {
+    // 重要なエラーのみログに残す
+    auditLog.error('sp', 'http_error', {
       status: res.status,
       statusText: res.statusText,
-      method: ctx?.method,
-      url: ctx?.url,
-      detailPreview: typeof detail === 'string' ? detail.slice(0, 800) : detail,
+      method: options.method,
+      url: options.url ? options.url.split('?')[0] : undefined,
     });
+
+    if (AUDIT_DEBUG) {
+      auditLog.debug('sp', 'http_error_detail', {
+        status: res.status,
+        statusText: res.statusText,
+        method: options.method,
+        url: options.url,
+        detailPreview: typeof detail === 'string' ? detail.slice(0, 800) : detail,
+      });
+    }
   }
 
   const base = `APIリクエストに失敗しました (${res.status} ${res.statusText ?? ''})`;
@@ -284,4 +305,51 @@ export function clearAllFieldsCache(): void {
     }
   }
   auditLog.info('sp:fields', 'cache_cleared_all', { count });
+}
+/**
+ * 実在するフィールド名 (available) の中から、候補 (candidates) に合致するものを詳細に解決する
+ */
+export function resolveInternalNamesDetailed<T extends string>(
+  available: Set<string>,
+  candidates: Record<T, string[]>
+): ResolutionResult<T> {
+  const resolved = {} as Record<T, string | undefined>;
+  const fieldStatus = {} as Record<T, { resolvedName?: string; candidates: string[] }>;
+  const missing: T[] = [];
+  
+  for (const key in candidates) {
+    if (Object.prototype.hasOwnProperty.call(candidates, key)) {
+      const found = candidates[key].find(f => available.has(f));
+      resolved[key] = found;
+      fieldStatus[key] = {
+        resolvedName: found,
+        candidates: candidates[key]
+      };
+      if (!found) {
+        missing.push(key);
+      }
+    }
+  }
+  
+  return { resolved, missing, fieldStatus };
+}
+
+/**
+ * SharePoint 内部名の動的解決ユーティリティ
+ */
+export function resolveInternalNames<T extends string>(
+  available: Set<string>,
+  candidates: Record<T, string[]>
+): Record<T, string | undefined> {
+  return resolveInternalNamesDetailed(available, candidates).resolved;
+}
+
+/**
+ * 必須フィールドがすべて解決されているかチェックする
+ */
+export function areEssentialFieldsResolved<T extends string>(
+  resolved: Record<T, string | undefined>,
+  essentials: T[]
+): boolean {
+  return essentials.every(key => !!resolved[key]);
 }

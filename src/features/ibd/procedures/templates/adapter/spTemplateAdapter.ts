@@ -13,7 +13,7 @@
  */
 import type { SupportStepTemplate, TimeSlot } from '@/domain/support/step-templates';
 import { standardTimeSlotValues } from '@/domain/support/step-templates';
-import type { SupportTemplateItem } from '../infra/SharePointProcedureTemplateRepository';
+import type { SupportTemplateItem } from '../infra/Legacy/SharePointProcedureTemplateRepository';
 
 /**
  * SP の自由書式時間帯 (e.g., "9:30頃", "10:20〜12:00") を

@@ -1,251 +1,93 @@
 import { useMemo } from 'react';
-import {
-  getAppConfig,
-  isDemoModeEnabled,
-  isForceDemoEnabled,
-  isTestMode,
-  shouldSkipLogin,
-  shouldSkipSharePoint,
-  readBool,
-} from '@/lib/env';
-import { hasSpfxContext } from '@/lib/runtime';
-// contract:allow-sp-direct — ファクトリ層: DI 組み立てで spClient を注入する正当な用途
-import { createSpClient, ensureConfig } from '@/lib/spClient';
+import { useDataProvider } from '@/lib/data/useDataProvider';
+import type { IDataProvider } from '@/lib/data/dataProvider.interface';
+import { sanitizeEnvValue } from '@/lib/sp/helpers';
+import { readEnv, isDevMode } from '@/lib/env';
+import { resolveProvider, getActiveProviderType, isDataProviderReady } from '@/lib/data/createDataProvider';
 
-import { useAuth } from '@/auth/useAuth';
 import type { DailyRecordRepository } from './domain/DailyRecordRepository';
+import { DataProviderDailyRecordRepository } from './infra/DataProviderDailyRecordRepository';
 import { inMemoryDailyRecordRepository } from './infra/InMemoryDailyRecordRepository';
-import {
-  SharePointDailyRecordRepository,
-} from './infra/SharePointDailyRecordRepository';
 
-export type DailyRecordRepositoryKind = 'demo' | 'sharepoint';
 
 export type DailyRecordRepositoryFactoryOptions = {
-  forceKind?: DailyRecordRepositoryKind;
-  acquireToken?: () => Promise<string | null>;
+  provider?: IDataProvider;
   listTitle?: string;
 };
 
-let cachedRepository: DailyRecordRepository | null = null;
-let cachedKind: DailyRecordRepositoryKind | null = null;
 let overrideRepository: DailyRecordRepository | null = null;
-let overrideKind: DailyRecordRepositoryKind | null = null;
 
 /**
- * Determine if demo repository should be used
- * Returns true for:
- * - Development mode
- * - Test mode
- * - Demo mode enabled
- * - Skip login mode
- * - No SPFx context (Workers/Pages runtime)
+ * Creates a repository based on the provided DataProvider.
  */
-const shouldUseDemoRepository = (): boolean => {
-  if (
-    isTestMode() ||
-    isForceDemoEnabled() ||
-    isDemoModeEnabled() ||
-    shouldSkipLogin() ||
-    shouldSkipSharePoint()
-  ) {
-    return true;
-  }
-
-  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
-  const spEnabled = readBool('VITE_SP_ENABLED', false);
-  if (forceSharePoint || spEnabled) {
-    return false;
-  }
-
-  const { isDev } = getAppConfig();
-  const spfxContextAvailable = hasSpfxContext();
-  return (
-    isDev ||
-    !spfxContextAvailable
-  );
-};
-
-/**
- * Resolve repository kind based on environment or forced value
- */
-const resolveKind = (forced?: DailyRecordRepositoryKind): DailyRecordRepositoryKind =>
-  forced ?? (shouldUseDemoRepository() ? 'demo' : 'sharepoint');
-
-/**
- * Create repository instance based on kind
- */
-const createRepository = (
-  kind: DailyRecordRepositoryKind,
-  options?: DailyRecordRepositoryFactoryOptions,
+export const createDailyRecordRepository = (
+  provider: IDataProvider,
+  options?: { listTitle?: string }
 ): DailyRecordRepository => {
-  if (kind === 'demo') {
-    return inMemoryDailyRecordRepository;
-  }
+  const listTitle = (options?.listTitle ?? 
+    sanitizeEnvValue(readEnv('VITE_SP_DAILY_RECORDS_LIST', ''))) || 
+    'SupportRecord_Daily';
 
-  const acquireToken = options?.acquireToken;
-  if (!acquireToken) {
-    throw new Error(
-      '[DailyRecordRepositoryFactory] acquireToken is required for SharePoint repository.',
-    );
-  }
-
-  const { baseUrl } = ensureConfig();
-  const { spFetch } = createSpClient(acquireToken, baseUrl);
-
-  return new SharePointDailyRecordRepository({
-    spFetch,
-    listTitle: options?.listTitle,
+  return new DataProviderDailyRecordRepository({
+    provider,
+    listTitle,
   });
-};
-
-/**
- * Check if cached repository can be reused
- */
-const shouldUseCache = (
-  kind: DailyRecordRepositoryKind,
-  options?: DailyRecordRepositoryFactoryOptions,
-): boolean => {
-  if (!cachedRepository || cachedKind !== kind) {
-    return false;
-  }
-  if (!options) {
-    return true;
-  }
-  const { forceKind, acquireToken, listTitle } = options;
-  return (
-    forceKind === undefined &&
-    acquireToken === undefined &&
-    listTitle === undefined
-  );
-};
-
-/**
- * Check if repository should be cached
- */
-const shouldCacheRepository = (options?: DailyRecordRepositoryFactoryOptions): boolean => {
-  if (!options) {
-    return true;
-  }
-  const { forceKind, acquireToken, listTitle } = options;
-  return (
-    forceKind === undefined &&
-    acquireToken === undefined &&
-    listTitle === undefined
-  );
-};
-
-/**
- * Get daily record repository instance
- * 
- * Returns appropriate repository based on environment:
- * - Demo mode: InMemoryDailyRecordRepository (no SharePoint dependency)
- * - Production: SharePointDailyRecordRepository (requires acquireToken)
- * 
- * Caching:
- * - Repository instances are cached when no custom options are provided
- * - Override mechanism available for testing
- * 
- * @param options - Factory options including acquireToken and configuration
- * @returns DailyRecordRepository instance
- */
-export const getDailyRecordRepository = (
-  options?: DailyRecordRepositoryFactoryOptions,
-): DailyRecordRepository => {
-  if (overrideRepository) {
-    return overrideRepository;
-  }
-
-  const kind = resolveKind(options?.forceKind);
-
-  if (shouldUseCache(kind, options)) {
-    return cachedRepository as DailyRecordRepository;
-  }
-
-  const repository = createRepository(kind, options);
-
-  if (shouldCacheRepository(options)) {
-    cachedRepository = repository;
-    cachedKind = kind;
-  }
-
-  return repository;
 };
 
 /**
  * React Hook: Get daily record repository instance
  * 
- * Automatically provides acquireToken from auth context.
- * Repository is memoized to prevent unnecessary re-instantiation.
- * 
- * Usage:
- * ```tsx
- * const repository = useDailyRecordRepository();
- * const record = await repository.load('2026-02-24');
- * await repository.save(recordData);
- * ```
- * 
- * @returns DailyRecordRepository instance
+ * Uses the global DataProvider to create a backend-agnostic repository.
  */
-export const useDailyRecordRepository = (): DailyRecordRepository => {
-  const { acquireToken } = useAuth();
-  
+export const useDailyRecordRepository = (options?: DailyRecordRepositoryFactoryOptions): DailyRecordRepository => {
+  const { provider: globalProvider } = useDataProvider();
+  const provider = options?.provider ?? globalProvider;
+
   return useMemo(() => {
-    return getDailyRecordRepository({ acquireToken });
-  }, [acquireToken]);
+    if (overrideRepository) return overrideRepository;
+    return createDailyRecordRepository(provider, { listTitle: options?.listTitle });
+  }, [provider, options?.listTitle]);
 };
 
 /**
- * Override daily record repository for testing
- * 
- * Useful for:
- * - Unit testing with mock repositories
- * - Integration testing with custom implementations
- * - Temporary runtime overrides
- * 
- * @param repository - Repository instance to use (null to clear override)
- * @param kind - Optional repository kind for tracking
+ * Non-React context getter.
+ * @deprecated Use useDailyRecordRepository() in React hooks to ensure proper Data OS lifecycle management.
+ * This function may throw DataProviderNotInitializedError if called before authentication.
  */
+export const getDailyRecordRepository = (
+  provider?: IDataProvider | Record<string, unknown>,
+  options?: { listTitle?: string }
+): DailyRecordRepository => {
+  if (isDevMode() && !provider && !isDataProviderReady()) {
+    console.warn(
+      '[DataOS] getDailyRecordRepository called before initialization. ' +
+      'Ensure you are in a test context or use useDailyRecordRepository() hook instead.'
+    );
+  }
+  if (overrideRepository) return overrideRepository;
+
+  const type = getActiveProviderType();
+  if (!provider && (type === 'memory' || type === 'local')) {
+    return inMemoryDailyRecordRepository;
+  }
+
+  const actualProvider = resolveProvider(provider);
+  return createDailyRecordRepository(actualProvider, options);
+};
+
+
 export const overrideDailyRecordRepository = (
   repository: DailyRecordRepository | null,
-  kind?: DailyRecordRepositoryKind,
 ): void => {
   overrideRepository = repository;
-  if (repository) {
-    overrideKind = kind ?? cachedKind ?? resolveKind();
-  } else {
-    overrideKind = null;
-  }
 };
 
-/**
- * Reset daily record repository cache and overrides
- * 
- * Use when:
- * - Environment changes (demo ↔ production)
- * - Need to force repository re-instantiation
- * - Testing cleanup
- */
 export const resetDailyRecordRepository = (): void => {
-  cachedRepository = null;
-  cachedKind = null;
   overrideRepository = null;
-  overrideKind = null;
 };
 
-/**
- * Get current daily record repository kind
- * 
- * Returns:
- * - Override kind if repository is overridden
- * - Cached kind if repository is cached
- * - Resolved kind based on environment
- * 
- * @returns Current repository kind
- */
-export const getCurrentDailyRecordRepositoryKind = (): DailyRecordRepositoryKind => {
-  if (overrideRepository) {
-    return overrideKind ?? cachedKind ?? resolveKind();
-  }
-  return cachedKind ?? resolveKind();
+/** @internal compat stub — returns 'demo' in all contexts (new factory uses IDataProvider directly) */
+export const getCurrentDailyRecordRepositoryKind = (): 'sharepoint' | 'demo' => {
+  const type = getActiveProviderType();
+  return type === 'sharepoint' ? 'sharepoint' : 'demo';
 };

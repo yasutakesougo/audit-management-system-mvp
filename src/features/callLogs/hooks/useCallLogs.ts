@@ -12,11 +12,11 @@
  * - "all" は UI-only の値。repository には流さない。
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/useAuth';
 import type { CallLogStatus, CreateCallLogInput } from '@/domain/callLogs/schema';
-import { createCallLogRepository } from '../data/callLogRepositoryFactory';
+import { useCallLogRepository } from '../data/callLogRepositoryFactory';
 
 // ─── タブ値型 ─────────────────────────────────────────────────────────────────
 
@@ -44,13 +44,10 @@ export type UseCallLogsOptions = {
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 export const useCallLogs = (options: UseCallLogsOptions = {}) => {
-  const { acquireToken, account } = useAuth();
+  const { account } = useAuth();
   const qc = useQueryClient();
 
-  const repository = useMemo(
-    () => createCallLogRepository(acquireToken),
-    [acquireToken],
-  );
+  const repository = useCallLogRepository();
 
   // "all" → undefined の変換はここだけで行う
   const statusFilter: CallLogStatus | undefined =

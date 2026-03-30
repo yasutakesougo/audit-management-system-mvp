@@ -22,7 +22,7 @@
  * - SharePoint Internal Name に対応していること（F.xxx と一致）
  */
 import { describe, expect, it } from 'vitest';
-import { buildPatchBody } from '../sharepointRepository';
+import { buildPatchBody } from '../../infra/Legacy/sharepointRepository';
 import { MeetingMinutesFields as F } from '../sharepoint';
 import type { MeetingMinutesUpdateDto } from '../repository';
 

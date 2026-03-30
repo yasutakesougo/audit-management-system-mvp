@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SharePoint Client — Orchestrator
  *
  * Thin factory that assembles spFetch, postBatch, listOps, and batch
@@ -94,7 +94,9 @@ export function createSpClient(
     createItem, updateItemByTitle, updateItem,
     deleteItemByTitle, deleteItem,
     tryGetListMetadata, getListFieldInternalNames, ensureListExists,
+    getExistingListTitlesAndIds,
   } = listOps;
+
   /** @deprecated Use `addListItemByTitle`. Kept for backward compatibility. */
   const addItemByTitle = addListItemByTitle;
 
@@ -126,6 +128,7 @@ export function createSpClient(
     createItem, updateItem, deleteItem,
     batch, postBatch,
     ensureListExists, tryGetListMetadata, getListFieldInternalNames,
+    getExistingListTitlesAndIds,
   };
 }
 

@@ -52,6 +52,13 @@
     "src/**/*.spec.ts",
     "src/**/*.spec.tsx",
     "src/**/*.stories.tsx",
-    "tests/**/*"
+    "tests/**/*",
+    "src/features/attendance/infra/Legacy",
+    "src/features/meeting-minutes/infra/Legacy",
+    "src/features/callLogs/data/Legacy",
+    "src/features/daily/infra/Legacy",
+    "src/features/ibd/procedures/templates/infra/Legacy",
+    "src/features/ibd/analysis/pdca/infra/Legacy"
   ]
 }
+

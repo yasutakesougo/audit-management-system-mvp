@@ -12,9 +12,11 @@ import {
     FIELDS_CACHE_TTL_MS,
     makeFieldsCacheKey,
     nowMs,
+    resolveListPath,
     safeJsonParse,
     safeJsonStringify
 } from './helpers';
+import { trackGuidResolution } from '@/lib/telemetry/spTelemetry';
 import type { SpFetchFn } from './spLists';
 import { buildFieldSchema, trimGuidBraces } from './spSchema';
 import type {
@@ -38,11 +40,13 @@ const DEFAULT_LIST_TEMPLATE = 100;
 export async function tryGetListMetadata(
   spFetch: SpFetchFn,
   listTitle: string,
+  spOptions?: import('./types').SpRequestOptions,
 ): Promise<EnsureListResult | null> {
-  const encoded = encodeURIComponent(listTitle);
-  const path = `/lists/getbytitle('${encoded}')?$select=Id,Title`;
+  const base = resolveListPath(listTitle);
+  trackGuidResolution(listTitle, base);
+  const path = `${base}?$select=Id,Title`;
   try {
-    const res = await spFetch(path);
+    const res = await spFetch(path, { spOptions });
     const json = (await res.json().catch(() => ({}))) as SharePointListMetadata;
     const nested = json.d ?? {};
     const rawId =
@@ -76,6 +80,30 @@ export async function tryGetListMetadata(
   }
 }
 
+/**
+ * Fetch all existing list titles and IDs once to avoid redundant 404 probes.
+ */
+export async function getExistingListTitlesAndIds(
+  spFetch: SpFetchFn,
+): Promise<Set<string>> {
+  const path = `lists?$select=Title,Id`;
+  try {
+    const res = await spFetch(path);
+    const json = (await res.json().catch(() => ({ value: [] }))) as {
+      value?: { Title: string; Id: string }[];
+    };
+    const identifiers = new Set<string>();
+    for (const list of json.value ?? []) {
+      if (list.Title) identifiers.add(list.Title);
+      if (list.Id) identifiers.add(trimGuidBraces(list.Id));
+    }
+    return identifiers;
+  } catch (error) {
+    auditLog.warn('sp:metadata', 'bulk_check_failed', { error });
+    return new Set();
+  }
+}
+
 // ── Field schema ────────────────────────────────────────────────────────────
 
 /**
@@ -85,8 +113,8 @@ export async function fetchExistingFields(
   spFetch: SpFetchFn,
   listTitle: string,
 ): Promise<Map<string, ExistingFieldShape>> {
-  const encoded = encodeURIComponent(listTitle);
-  const path = `/lists/getbytitle('${encoded}')/fields?$select=InternalName,TypeAsString,Required`;
+  const base = resolveListPath(listTitle);
+  const path = `${base}/fields?$select=InternalName,TypeAsString,Required`;
   const res = await spFetch(path);
   const json = (await res.json().catch(() => ({ value: [] }))) as {
     value?: ExistingFieldShape[];
@@ -147,8 +175,8 @@ export async function getListFieldInternalNames(
   }
 
   // 2) Network fetch
-  const encoded = encodeURIComponent(listTitle);
-  const path = `/lists/getbytitle('${encoded}')/fields?$select=InternalName&$top=500`;
+  const base = resolveListPath(listTitle);
+  const path = `${base}/fields?$select=InternalName&$top=500`;
 
   try {
     const res = await spFetch(path);
@@ -203,7 +231,7 @@ export async function addFieldToList(
   listTitle: string,
   field: SpFieldDef,
 ): Promise<void> {
-  const encoded = encodeURIComponent(listTitle);
+  const base = resolveListPath(listTitle);
   const schema = buildFieldSchema(field);
   const body = {
     parameters: {
@@ -212,21 +240,31 @@ export async function addFieldToList(
       Options: field.addToDefaultView ? 8 : 0,
     },
   };
-  const res = await spFetch(`/lists/getbytitle('${encoded}')/fields/createfieldasxml`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json;odata=verbose',
-      Accept: 'application/json;odata=verbose',
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '');
-    console.warn(
-      `[addFieldToList] Failed to add "${field.internalName}" to "${listTitle}" (${res.status}): ${errText.slice(0, 300)}`,
-    );
-    // Do not throw — continue adding remaining fields
-    return;
+  try {
+    const res = await spFetch(`${base}/fields/createfieldasxml`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json;odata=verbose',
+        Accept: 'application/json;odata=verbose',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      // 500 error often means XML error or field already exists but hidden
+      const isLimit = errText.includes('maximum for this list') || errText.includes('reached the limit');
+      if (res.status === 500) {
+        auditLog.warn('sp:fields', isLimit ? 'schema_limit_exceeded' : 'create_field_500_debug', { 
+          listTitle, 
+          field: field.internalName, 
+          isLimit,
+          errText: errText.slice(0, 200)
+        });
+      }
+      return;
+    }
+  } catch (error) {
+    console.error(`[addFieldToList] Unexpected error adding field "${field.internalName}":`, error);
   }
 }
 

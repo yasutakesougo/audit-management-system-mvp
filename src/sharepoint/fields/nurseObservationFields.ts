@@ -53,3 +53,44 @@ export const NURSE_OBSERVATIONS_SELECT_FIELDS = [
   NURSE_OBSERVATIONS_FIELDS.created,
   NURSE_OBSERVATIONS_FIELDS.modified,
 ] as const;
+
+import type { SpFieldDef } from '@/lib/sp/types';
+
+/**
+ * NurseObservations フィールド候補 (環境差異吸収用)
+ */
+export const NURSE_OBS_CANDIDATES = {
+  temperature: ['Temperature', 'Temp', 'BodyTemperature', 'BodyTemp'],
+  observedAt: ['ObservedAt', 'ObsDate', 'RecordDate', 'Created'],
+  userLookupId: ['UserLookupId', 'UserLookup', 'User_LookupId', 'UserId', 'cr013_usercode'],
+  pulse: ['Pulse'],
+  spo2: ['SpO2', 'SPO2'],
+  systolic: ['Systolic'],
+  diastolic: ['Diastolic', 'Distolic'],
+  weight: ['Weight'],
+  memo: ['Memo', 'Notes', 'Note'],
+  tags: ['Tags'],
+  idempotencyKey: ['IdempotencyKey'],
+} as const;
+
+/**
+ * 自動プロビジョニング用フィールド定義 (ensureListExists 用)
+ */
+export const NURSE_OBSERVATIONS_ENSURE_FIELDS: SpFieldDef[] = [
+  { internalName: 'UserLookupId', type: 'Number', displayName: 'User Lookup ID', required: true },
+  { internalName: 'ObservedAt', type: 'DateTime', displayName: 'Observed At', required: true, dateTimeFormat: 'DateTime' },
+  { internalName: 'Temperature', type: 'Number', displayName: 'Temperature', required: true },
+  { internalName: 'Pulse', type: 'Number', displayName: 'Pulse' },
+  { internalName: 'Systolic', type: 'Number', displayName: 'Systolic BP' },
+  { internalName: 'Diastolic', type: 'Number', displayName: 'Diastolic BP' },
+  { internalName: 'SpO2', type: 'Number', displayName: 'SpO2' },
+  { internalName: 'Weight', type: 'Number', displayName: 'Weight' },
+  { internalName: 'Memo', type: 'Note', displayName: 'Memo' },
+  { internalName: 'Tags', type: 'Text', displayName: 'Tags' },
+  { internalName: 'IdempotencyKey', type: 'Text', displayName: 'Idempotency Key' },
+  { internalName: 'Source', type: 'Text', displayName: 'Source' },
+  { internalName: 'LocalTimeZone', type: 'Text', displayName: 'Local Time Zone' },
+  { internalName: 'CreatedBy', type: 'Text', displayName: 'Created By' },
+  { internalName: 'DeviceId', type: 'Text', displayName: 'Device ID' },
+  { internalName: 'VitalsJson', type: 'Note', displayName: 'Vitals JSON' },
+];

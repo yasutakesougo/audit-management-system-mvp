@@ -1,67 +1,53 @@
 /**
- * @fileoverview SupportPlanningSheet Repository ファクトリ
- * @description
- * 呼び出し側が具体実装を知らなくても Repository を取得できる。
- *
- * 切替ロジック:
- * - shouldSkipSharePoint() が true → InMemorySupportPlanningSheetRepository
- * - それ以外（本番）→ SharePointSupportPlanningSheetRepository
- *
- * テスト時は __setSupportPlanningSheetRepositoryForTesting() で任意の実装を注入可能。
+ * @fileoverview 個別支援計画シート Repository ファクトリ
  */
-import { acquireSpAccessToken, getSharePointScopes } from '@/lib/msal';
-import { createSpClient } from '@/lib/spClient';
-import { ensureConfig } from '@/lib/sp/config';
-import { shouldSkipSharePoint } from '@/lib/sharepoint/skipSharePoint';
-import { InMemorySupportPlanningSheetRepository } from './InMemorySupportPlanningSheetRepository';
+import { useMemo } from 'react';
+import { useDataProvider } from '@/lib/data/useDataProvider';
+import type { IDataProvider } from '@/lib/data/dataProvider.interface';
+import { DataProviderSupportPlanningSheetRepository } from './DataProviderSupportPlanningSheetRepository';
 import type { SupportPlanningSheetRepository } from './SupportPlanningSheetRepository';
-import { SharePointSupportPlanningSheetRepository } from './SharePointSupportPlanningSheetRepository';
 
-/** シングルトンインスタンス */
-let instance: SupportPlanningSheetRepository | null = null;
+let overrideInstance: SupportPlanningSheetRepository | null = null;
 
 /**
  * Repository インスタンスを取得する
- *
- * 初回呼び出し時に環境判定して生成し、以降は同一インスタンスを返す。
- * - 本番: SharePointSupportPlanningSheetRepository
- * - dev/demo/test: InMemorySupportPlanningSheetRepository
  */
-export function createSupportPlanningSheetRepository(): SupportPlanningSheetRepository {
-  if (!instance) {
-    const skip = shouldSkipSharePoint();
-    if (skip) {
-      instance = new InMemorySupportPlanningSheetRepository();
-    } else {
-      const { baseUrl } = ensureConfig();
-      const scopes = getSharePointScopes();
-      const acquireToken = async (): Promise<string | null> => {
-        try {
-          return await acquireSpAccessToken(scopes.length ? scopes : getSharePointScopes());
-        } catch {
-          return null;
-        }
-      };
-      const client = createSpClient(acquireToken, baseUrl);
-      instance = new SharePointSupportPlanningSheetRepository(client.spFetch);
-      console.info('[SupportPlanningSheetRepository] Using SharePoint backend');
-    }
-  }
-  return instance;
+export function getSupportPlanningSheetRepository(provider: IDataProvider): SupportPlanningSheetRepository {
+  if (overrideInstance) return overrideInstance;
+  return new DataProviderSupportPlanningSheetRepository(provider);
 }
 
 /**
- * テスト用: シングルトンをリセットする
- * @internal テストでのみ使用
+ * React Hook: 個別支援計画シート Repository を取得する
+ */
+export function useSupportPlanningSheetRepository(): SupportPlanningSheetRepository {
+  const { provider } = useDataProvider();
+
+  return useMemo(() => {
+    return getSupportPlanningSheetRepository(provider);
+  }, [provider]);
+}
+
+/**
+ * Legacy support: createSupportPlanningSheetRepository (non-hook)
+ */
+export function createSupportPlanningSheetRepository(provider?: IDataProvider): SupportPlanningSheetRepository {
+  if (!provider) {
+    throw new Error('[SupportPlanningSheetRepository] provider is required for createSupportPlanningSheetRepository');
+  }
+  return getSupportPlanningSheetRepository(provider);
+}
+
+/**
+ * テスト用
  */
 export function __resetSupportPlanningSheetRepositoryForTesting(): void {
-  instance = null;
+  overrideInstance = null;
 }
 
 /**
- * テスト用: カスタム Repository を注入する
- * @internal テストでのみ使用
+ * テスト用
  */
 export function __setSupportPlanningSheetRepositoryForTesting(repo: SupportPlanningSheetRepository): void {
-  instance = repo;
+  overrideInstance = repo;
 }

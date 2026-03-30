@@ -1,29 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { preflightStaffAttendanceList } from '@/features/staff/attendance/preflight';
 
-const spClientMocks = vi.hoisted(() => ({
-  tryGetListMetadata: vi.fn(),
-  ensureConfig: vi.fn(() => ({ baseUrl: 'https://contoso.sharepoint.com/sites/demo/_api/web' })),
-}));
-
-vi.mock('@/lib/spClient', () => ({
-  ensureConfig: spClientMocks.ensureConfig,
-  createSpClient: vi.fn(() => ({
-    tryGetListMetadata: spClientMocks.tryGetListMetadata,
-  })),
-}));
+function makeProvider(getMetadata: IDataProvider['getMetadata']): IDataProvider {
+  return { getMetadata } as unknown as IDataProvider;
+}
 
 describe('staff attendance preflight', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    spClientMocks.ensureConfig.mockReturnValue({ baseUrl: 'https://contoso.sharepoint.com/sites/demo/_api/web' });
   });
 
   it('sets read-only when SharePoint returns 401', async () => {
-    spClientMocks.tryGetListMetadata.mockRejectedValueOnce({ status: 401 });
+    const provider = makeProvider(vi.fn().mockRejectedValueOnce({ status: 401 }));
 
     const result = await preflightStaffAttendanceList({
-      acquireToken: async () => 'token',
+      provider,
       listTitle: 'Staff_Attendance',
     });
 
@@ -32,10 +24,10 @@ describe('staff attendance preflight', () => {
   });
 
   it('sets read-only when SharePoint returns 403', async () => {
-    spClientMocks.tryGetListMetadata.mockRejectedValueOnce({ response: { status: 403 } });
+    const provider = makeProvider(vi.fn().mockRejectedValueOnce({ response: { status: 403 } }));
 
     const result = await preflightStaffAttendanceList({
-      acquireToken: async () => 'token',
+      provider,
       listTitle: 'Staff_Attendance',
     });
 
@@ -44,10 +36,10 @@ describe('staff attendance preflight', () => {
   });
 
   it('sets read-only when list is missing', async () => {
-    spClientMocks.tryGetListMetadata.mockResolvedValueOnce(null);
+    const provider = makeProvider(vi.fn().mockResolvedValueOnce(null));
 
     const result = await preflightStaffAttendanceList({
-      acquireToken: async () => 'token',
+      provider,
       listTitle: 'Staff_Attendance',
     });
 
@@ -56,10 +48,10 @@ describe('staff attendance preflight', () => {
   });
 
   it('becomes SharePoint-ready when preflight succeeds', async () => {
-    spClientMocks.tryGetListMetadata.mockResolvedValueOnce({ listId: 'list-id', title: 'Staff_Attendance' });
+    const provider = makeProvider(vi.fn().mockResolvedValueOnce({ Id: 'list-id', Title: 'Staff_Attendance' }));
 
     const result = await preflightStaffAttendanceList({
-      acquireToken: async () => 'token',
+      provider,
       listTitle: 'Staff_Attendance',
     });
 

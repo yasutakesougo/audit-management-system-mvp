@@ -1,4 +1,5 @@
 import { WriteDisabledBanner } from '@/components/WriteDisabledBanner';
+import { DataLayerStatusBanner } from '@/components/dev/DataLayerStatusBanner';
 import { HydrationHud } from '@/debug/HydrationHud';
 import { SettingsProvider } from '@/features/settings';
 import { hydrateStaffAttendanceFromStorage, saveStaffAttendanceToStorage } from '@/features/staff/attendance/persist';
@@ -14,6 +15,7 @@ import { MsalProvider } from './auth/MsalProvider';
 import { ToastProvider, useToast } from './hooks/useToast';
 import { readBool } from './lib/env';
 import { registerNotifier } from './lib/notice';
+import { DataLayerGuard } from './components/DataLayerGuard';
 
 const hydrationHudEnabled = readBool('VITE_FEATURE_HYDRATION_HUD', false);
 
@@ -55,20 +57,23 @@ function App() {
     <MsalProvider>
       {/* 🔐 認証コンテキスト */}
       <QueryClientProvider client={queryClient}>
-        <SpInitBridge />
         <SettingsProvider>
           {/* ⚙️ ユーザー表示設定 — ThemeRootより外側に配置し、density/fontSize をテーマに反映 */}
           <ThemeRoot>
             <CssBaseline />
+            <DataLayerStatusBanner />
             <WriteDisabledBanner />
             {/* 🎨 MUIテーマ + グローバルスタイル */}
             <ToastProvider>
+              <SpInitBridge />
               {/* 📢 グローバルトースト通知 */}
               {/* 📅 SchedulesProviderBridge removed: Port/Adapter layer was dead code.
                    All schedule hooks use useScheduleRepository() directly via repositoryFactory. */}
               <ToastNotifierBridge />
 
-              <RouterProvider router={router} future={routerFutureFlags} />
+              <DataLayerGuard>
+                <RouterProvider router={router} future={routerFutureFlags} />
+              </DataLayerGuard>
             </ToastProvider>
             {/* 🔍 開発/検証用 HUD（本番では非表示可能） */}
             {hydrationHudEnabled && <HydrationHud />}

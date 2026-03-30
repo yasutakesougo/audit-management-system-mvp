@@ -1,4 +1,4 @@
-import { createSpClient, ensureConfig } from '@/lib/spClient';
+import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import type { DailyOpsSignalsPort, DailyOpsSignal, UpsertDailyOpsSignalInput } from './port';
 import { DAILY_OPS_FIELDS, DAILY_OPS_LIST_TITLE } from './spSchema';
 
@@ -47,18 +47,17 @@ export const mapFromSp = (item: SpItem): DailyOpsSignal => {
     summary: item[f.summary] ? String(item[f.summary]) : undefined,
     status: String(item[f.status] ?? 'Active') as DailyOpsSignal['status'],
     source: String(item[f.source] ?? 'Other') as DailyOpsSignal['source'],
-    createdAt: item.Created ? String(item.Created) : undefined,
-    updatedAt: item.Modified ? String(item.Modified) : undefined,
+    createdAt: item.Created ? String(item.Created) : (item.CreatedAt ? String(item.CreatedAt) : undefined),
+    updatedAt: item.Modified ? String(item.Modified) : (item.UpdatedAt ? String(item.UpdatedAt) : undefined),
   };
 };
 
-export const makeSharePointDailyOpsSignalsPort = (
-  acquireToken: () => Promise<string | null>,
+/**
+ * Provider-agnostic DailyOpsSignalsPort implementation.
+ */
+export const createDailyOpsSignalsPort = (
+  client: IDataProvider,
 ): DailyOpsSignalsPort => {
-  const { baseUrl } = ensureConfig();
-  // ✅ schedules と同じ形式に完全一致
-  const client = createSpClient(acquireToken, baseUrl);
-
   const selectFields = [
     'Id',
     DAILY_OPS_FIELDS.title,
@@ -72,7 +71,9 @@ export const makeSharePointDailyOpsSignalsPort = (
     DAILY_OPS_FIELDS.source,
     'Created',
     'Modified',
-  ] as const;
+    'CreatedAt',
+    'UpdatedAt',
+  ];
 
   return {
     async listByDate(date, opts) {
@@ -82,13 +83,12 @@ export const makeSharePointDailyOpsSignalsPort = (
       const filter =
         `${f.date} eq '${iso}'` + (opts?.status ? ` and ${f.status} eq '${opts.status}'` : '');
 
-      const items = await client.getListItemsByTitle<SpItem>(
-        DAILY_OPS_LIST_TITLE,
-        [...selectFields],
+      const items = await client.listItems<SpItem>(DAILY_OPS_LIST_TITLE, {
+        select: [...selectFields],
         filter,
-        'Modified desc',
-        500,
-      );
+        orderby: 'Modified desc',
+        top: 500,
+      });
 
       return (items ?? []).map(mapFromSp);
     },
@@ -111,55 +111,50 @@ export const makeSharePointDailyOpsSignalsPort = (
 
       // 既存チェック
       const filter = buildCompositeFilter({ ...input, date: iso });
-      const existing = await client.getListItemsByTitle<SpItem>(
-        DAILY_OPS_LIST_TITLE,
-        ['Id'],
+      const existing = await client.listItems<SpItem>(DAILY_OPS_LIST_TITLE, {
+        select: ['Id'],
         filter,
-        undefined,
-        1,
-      );
+        top: 1,
+      });
 
       if (existing?.length) {
         const id = Number(existing[0].Id);
-        await client.updateItemByTitle(DAILY_OPS_LIST_TITLE, id, payload);
+        await client.updateItem(DAILY_OPS_LIST_TITLE, id, payload);
 
-        const updated = await client.getListItemsByTitle<SpItem>(
-          DAILY_OPS_LIST_TITLE,
-          [...selectFields],
-          `Id eq ${id}`,
-          undefined,
-          1,
-        );
+        const updated = await client.listItems<SpItem>(DAILY_OPS_LIST_TITLE, {
+          select: [...selectFields],
+          filter: `Id eq ${id}`,
+          top: 1,
+        });
 
-        return updated?.[0] ? mapFromSp(updated[0]) : (mapFromSp({ Id: id, ...payload } as SpItem) as DailyOpsSignal);
+        return updated?.[0] ? mapFromSp(updated[0]) : mapFromSp({ Id: id, ...payload } as SpItem);
       }
 
-      // CREATE：schedules と同じ addListItemByTitle
-      const created = await client.addListItemByTitle<Record<string, unknown>, SpItem>(
+      // CREATE
+      const created = await client.createItem<SpItem>(
         DAILY_OPS_LIST_TITLE,
         payload,
       );
 
-      const createdId = created?.Id ? Number(created.Id) : undefined;
+      const createdId = Number((created as SpItem)?.Id ?? (created as { d?: { Id: number } })?.d?.Id ?? (created as { data?: { Id: number } })?.data?.Id);
+
       if (!createdId) {
-        return mapFromSp({ Id: -1, ...payload } as SpItem) as DailyOpsSignal;
+        return mapFromSp({ Id: -1, ...payload } as SpItem);
       }
 
-      const fetched = await client.getListItemsByTitle<SpItem>(
-        DAILY_OPS_LIST_TITLE,
-        [...selectFields],
-        `Id eq ${createdId}`,
-        undefined,
-        1,
-      );
+      const fetched = await client.listItems<SpItem>(DAILY_OPS_LIST_TITLE, {
+        select: [...selectFields],
+        filter: `Id eq ${createdId}`,
+        top: 1,
+      });
 
       return fetched?.[0]
         ? mapFromSp(fetched[0])
-        : (mapFromSp({ Id: createdId, ...payload } as SpItem) as DailyOpsSignal);
+        : mapFromSp({ Id: createdId, ...payload } as SpItem);
     },
 
     async setStatus(itemId, status) {
-      await client.updateItemByTitle(DAILY_OPS_LIST_TITLE, itemId, { [DAILY_OPS_FIELDS.status]: status });
+      await client.updateItem(DAILY_OPS_LIST_TITLE, itemId, { [DAILY_OPS_FIELDS.status]: status });
     },
   };
 };

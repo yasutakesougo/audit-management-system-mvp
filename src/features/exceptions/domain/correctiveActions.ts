@@ -199,6 +199,18 @@ const CORRECTIVE_ACTION_MAP: Record<
       reason: 'テレメトリダッシュボードで詳細な状況を確認できます。',
     },
   ],
+
+  'data-os-alert': (item) => [
+    {
+      key: `${item.id}-repair`,
+      label: item.actionLabel ?? 'データ層を診断・修復',
+      route: item.actionPath ?? '/admin/dev',
+      variant: 'primary' as CorrectiveActionVariant,
+      severity: item.severity,
+      icon: '📡',
+      reason: item.description || 'システム基礎データに問題が検出されました。管理パネルから修復を試みてください。',
+    },
+  ],
 };
 
 // ─── ユーティリティ ───────────────────────────────────────────

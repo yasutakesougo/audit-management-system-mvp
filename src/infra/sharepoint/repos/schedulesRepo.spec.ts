@@ -1,4 +1,4 @@
-import { useSP } from '@/lib/spClient';
+import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { describe, expect, it, vi } from 'vitest';
 import type { CreateScheduleInput, UpdateScheduleInput } from './schedulesRepo';
 
@@ -12,7 +12,7 @@ vi.mock('@/env', () => ({
 const { createSchedule, updateSchedule, removeSchedule, WriteDisabledError } = await import('./schedulesRepo');
 
 describe('schedulesRepo write gate', () => {
-  const mockClient = {} as ReturnType<typeof useSP>;
+  const mockClient = {} as unknown as IDataProvider;
   const mockInput: CreateScheduleInput = {
     title: 'test',
     start: new Date().toISOString(),

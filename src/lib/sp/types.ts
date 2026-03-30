@@ -204,6 +204,20 @@ export function parseSpListResponse<T extends z.ZodTypeAny>(
   return validItems;
 }
 
+// ─── Request types ───────────────────────────────────────────────
+
+export interface SpRequestOptions {
+  /** Suppress error logging for these status codes. Error will still be thrown if throwOnError is true. */
+  quietStatuses?: number[];
+  /** If true, do not log any errors to auditLog. */
+  silent?: boolean;
+}
+
+/** Extended RequestInit with SharePoint-specific steering options */
+export type SpRequestInit = RequestInit & {
+  spOptions?: SpRequestOptions;
+};
+
 // ─── XML / GUID helpers (re-exported from spSchema for backward compat) ──
 
 export { escapeXml, trimGuidBraces, withGuidBraces } from './spSchema';

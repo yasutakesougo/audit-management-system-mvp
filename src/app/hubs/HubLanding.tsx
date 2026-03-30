@@ -6,9 +6,10 @@ import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { HUB_DEFINITIONS, resolveHubVisibleEntries } from './hubDefinitions';
+import { HUB_TELEMETRY_EVENTS, recordHubTelemetry } from './hubTelemetry';
 import type { HubEntryCard, HubId } from './hubTypes';
 
 type HubLandingProps = {
@@ -36,10 +37,89 @@ export const HubLanding: React.FC<HubLandingProps> = ({
   const isKiosk = hideCardsWhenKiosk && isKioskSearch(location.search);
 
   const entries = useMemo(() => resolveHubVisibleEntries(hubId, role), [hubId, role]);
+  const seenHubImpressionsRef = useRef<Set<string>>(new Set());
+  const seenCardImpressionsRef = useRef<Set<string>>(new Set());
+
+  const sectionedEntries = useMemo(
+    () => ({
+      primary: entries.primary.map((entry, index) => ({
+        entry,
+        section: 'primary' as const,
+        position: index + 1,
+      })),
+      secondary: entries.secondary.map((entry, index) => ({
+        entry,
+        section: 'secondary' as const,
+        position: index + 1,
+      })),
+      comingSoon: entries.comingSoon.map((entry, index) => ({
+        entry,
+        section: 'comingSoon' as const,
+        position: index + 1,
+      })),
+    }),
+    [entries],
+  );
+
+  const flatVisibleEntries = useMemo(
+    () => [...sectionedEntries.primary, ...sectionedEntries.secondary, ...sectionedEntries.comingSoon],
+    [sectionedEntries],
+  );
+
+  useEffect(() => {
+    if (isKiosk) return;
+    const visibilityKey = [
+      hubId,
+      role,
+      flatVisibleEntries.map(({ entry, section, position }) => `${entry.id}:${section}:${position}`).join(','),
+    ].join('|');
+    if (seenHubImpressionsRef.current.has(visibilityKey)) {
+      return;
+    }
+    seenHubImpressionsRef.current.add(visibilityKey);
+    recordHubTelemetry({
+      eventName: HUB_TELEMETRY_EVENTS.HUB_VIEWED,
+      hubId,
+      role,
+      telemetryName: definition.telemetryName,
+      pathname: location.pathname,
+      search: location.search,
+      section: 'hub',
+      visibleEntryCount: flatVisibleEntries.length,
+    });
+  }, [definition.telemetryName, flatVisibleEntries, hubId, isKiosk, location.pathname, location.search, role]);
+
+  useEffect(() => {
+    if (isKiosk) return;
+    for (const { entry, section, position } of flatVisibleEntries) {
+      const key = [hubId, role, entry.id, section, position].join('|');
+      if (seenCardImpressionsRef.current.has(key)) {
+        continue;
+      }
+      seenCardImpressionsRef.current.add(key);
+      recordHubTelemetry({
+        eventName: HUB_TELEMETRY_EVENTS.CARD_VIEWED,
+        hubId,
+        role,
+        telemetryName: definition.telemetryName,
+        pathname: location.pathname,
+        search: location.search,
+        entryId: entry.id,
+        section,
+        position,
+        targetUrl: entry.to,
+      });
+    }
+  }, [definition.telemetryName, flatVisibleEntries, hubId, isKiosk, location.pathname, location.search, role]);
+
   const hasVisibleEntries =
     entries.primary.length > 0 || entries.secondary.length > 0 || entries.comingSoon.length > 0;
 
-  const renderEntry = (entry: HubEntryCard) => {
+  const renderEntry = (
+    entry: HubEntryCard,
+    section: 'primary' | 'secondary' | 'comingSoon',
+    position: number,
+  ) => {
     const isComingSoon = entry.status === 'comingSoon' || !entry.to;
     const openLabel =
       entry.ctaLabel ??
@@ -84,6 +164,18 @@ export const HubLanding: React.FC<HubLandingProps> = ({
                 variant={entry.status === 'primary' ? 'contained' : 'outlined'}
                 disabled={isComingSoon}
                 onClick={() => {
+                  recordHubTelemetry({
+                    eventName: HUB_TELEMETRY_EVENTS.CARD_CLICKED,
+                    hubId,
+                    role,
+                    telemetryName: definition.telemetryName,
+                    pathname: location.pathname,
+                    search: location.search,
+                    entryId: entry.id,
+                    section,
+                    position,
+                    targetUrl: entry.to,
+                  });
                   if (entry.to) navigate(entry.to);
                 }}
               >
@@ -98,6 +190,20 @@ export const HubLanding: React.FC<HubLandingProps> = ({
                   href={entry.helpLink}
                   target="_blank"
                   rel="noreferrer"
+                  onClick={() =>
+                    recordHubTelemetry({
+                      eventName: HUB_TELEMETRY_EVENTS.HELP_LINK_CLICKED,
+                      hubId,
+                      role,
+                      telemetryName: definition.telemetryName,
+                      pathname: location.pathname,
+                      search: location.search,
+                      entryId: entry.id,
+                      section,
+                      position,
+                      helpLink: entry.helpLink,
+                    })
+                  }
                 >
                   ヘルプ
                 </Button>
@@ -112,7 +218,11 @@ export const HubLanding: React.FC<HubLandingProps> = ({
   const renderSection = (
     section: 'primary' | 'secondary' | 'comingSoon',
     title: string,
-    sectionEntries: HubEntryCard[],
+    sectionEntries: Array<{
+      entry: HubEntryCard;
+      section: 'primary' | 'secondary' | 'comingSoon';
+      position: number;
+    }>,
   ) => {
     if (sectionEntries.length === 0) return null;
     return (
@@ -131,7 +241,7 @@ export const HubLanding: React.FC<HubLandingProps> = ({
             },
           }}
         >
-          {sectionEntries.map(renderEntry)}
+          {sectionEntries.map(({ entry, position }) => renderEntry(entry, section, position))}
         </Box>
       </Box>
     );
@@ -152,9 +262,9 @@ export const HubLanding: React.FC<HubLandingProps> = ({
           </Typography>
           {hasVisibleEntries ? (
             <Box sx={{ display: 'grid', gap: 1.5 }}>
-              {renderSection('primary', '主導線', entries.primary)}
-              {renderSection('secondary', '補助導線', entries.secondary)}
-              {renderSection('comingSoon', 'Coming Soon', entries.comingSoon)}
+              {renderSection('primary', '主導線', sectionedEntries.primary)}
+              {renderSection('secondary', '補助導線', sectionedEntries.secondary)}
+              {renderSection('comingSoon', 'Coming Soon', sectionedEntries.comingSoon)}
             </Box>
           ) : (
             <Card
@@ -171,6 +281,7 @@ export const HubLanding: React.FC<HubLandingProps> = ({
                 </Typography>
                 {definition.helpLink ? (
                   <Button
+                    data-testid={`hub-empty-cta-${hubId}`}
                     size="small"
                     variant="text"
                     component="a"
@@ -178,6 +289,30 @@ export const HubLanding: React.FC<HubLandingProps> = ({
                     target="_blank"
                     rel="noreferrer"
                     sx={{ justifyContent: 'flex-start', px: 0 }}
+                    onClick={() => {
+                      recordHubTelemetry({
+                        eventName: HUB_TELEMETRY_EVENTS.EMPTY_STATE_CTA_CLICKED,
+                        hubId,
+                        role,
+                        telemetryName: definition.telemetryName,
+                        pathname: location.pathname,
+                        search: location.search,
+                        section: 'emptyState',
+                        position: 1,
+                        helpLink: definition.helpLink,
+                      });
+                      recordHubTelemetry({
+                        eventName: HUB_TELEMETRY_EVENTS.HELP_LINK_CLICKED,
+                        hubId,
+                        role,
+                        telemetryName: definition.telemetryName,
+                        pathname: location.pathname,
+                        search: location.search,
+                        section: 'emptyState',
+                        position: 1,
+                        helpLink: definition.helpLink,
+                      });
+                    }}
                   >
                     ヘルプを開く
                   </Button>

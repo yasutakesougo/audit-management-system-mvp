@@ -1,5 +1,5 @@
 import { readOptionalEnv } from '@/lib/env';
-import { createSpClient, ensureConfig } from '@/lib/spClient';
+import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { result, type Result, type ResultError } from '@/shared/result';
 import { STAFF_ATTENDANCE_FIELDS, STAFF_ATTENDANCE_LIST_TITLE, STAFF_ATTENDANCE_SELECT_FIELDS } from '@/sharepoint/fields';
 import type { AttendanceCounts, StaffAttendancePort } from '../port';
@@ -8,9 +8,8 @@ import type { RecordDate, StaffAttendance, StaffAttendanceStatus } from '../type
 type SharePointAttendanceRow = Record<string, unknown> & { Id?: number };
 
 type SharePointAdapterOptions = {
-  acquireToken?: () => Promise<string | null>;
   listTitle?: string;
-  client?: ReturnType<typeof createSpClient>;
+  client?: IDataProvider;
 };
 
 const getHttpStatus = (e: unknown): number | undefined => {
@@ -105,48 +104,60 @@ const selectWithOptionalAudit = [
 
 export const createSharePointStaffAttendanceAdapter = (options: SharePointAdapterOptions = {}): StaffAttendancePort => {
   const listTitle = getListTitle(options.listTitle);
-  const client = options.client ?? (options.acquireToken
-    ? createSpClient(options.acquireToken, ensureConfig().baseUrl)
-    : null);
+  const client = options.client;
 
-  const assertClient = (): ReturnType<typeof createSpClient> => {
+  const assertClient = (): IDataProvider => {
     if (!client) {
-      throw new Error('SharePoint client not configured');
+      throw new Error('StaffAttendance DataProvider not configured. Please provide IDataProvider via options.');
     }
     return client;
   };
 
   const findByKey = async (key: string): Promise<SharePointAttendanceRow | null> => {
-    const sp = assertClient();
+    const provider = assertClient();
     const filter = `${STAFF_ATTENDANCE_FIELDS.title} eq '${escapeODataString(key)}'`;
     try {
-      const rows = await sp.getListItemsByTitle<SharePointAttendanceRow>(listTitle, selectWithOptionalAudit, filter, undefined, 1);
+      const rows = await provider.listItems<SharePointAttendanceRow>(listTitle, {
+        select: selectWithOptionalAudit,
+        filter,
+        top: 1,
+      });
       return rows?.[0] ?? null;
     } catch (error) {
       if (!isValidationError(error)) throw error;
-      const rows = await sp.getListItemsByTitle<SharePointAttendanceRow>(listTitle, defaultSelect, filter, undefined, 1);
+      const rows = await provider.listItems<SharePointAttendanceRow>(listTitle, {
+        select: defaultSelect,
+        filter,
+        top: 1,
+      });
       return rows?.[0] ?? null;
     }
   };
 
   const listByDateRows = async (date: string): Promise<SharePointAttendanceRow[]> => {
-    const sp = assertClient();
+    const provider = assertClient();
     const filter = `${STAFF_ATTENDANCE_FIELDS.recordDate} eq '${escapeODataString(date)}'`;
     try {
-      return await sp.getListItemsByTitle<SharePointAttendanceRow>(listTitle, selectWithOptionalAudit, filter);
+      return await provider.listItems<SharePointAttendanceRow>(listTitle, {
+        select: selectWithOptionalAudit,
+        filter,
+      });
     } catch (error) {
       if (!isValidationError(error)) throw error;
-      return await sp.getListItemsByTitle<SharePointAttendanceRow>(listTitle, defaultSelect, filter);
+      return await provider.listItems<SharePointAttendanceRow>(listTitle, {
+        select: defaultSelect,
+        filter,
+      });
     }
   };
 
   const listByDateRangeRows = async (from: string, to: string, top: number): Promise<SharePointAttendanceRow[]> => {
-    const sp = assertClient();
+    const provider = assertClient();
     const filter = `${STAFF_ATTENDANCE_FIELDS.recordDate} ge '${escapeODataString(from)}' and ${STAFF_ATTENDANCE_FIELDS.recordDate} le '${escapeODataString(to)}'`;
     const orderby = `${STAFF_ATTENDANCE_FIELDS.recordDate} desc, ${STAFF_ATTENDANCE_FIELDS.staffId} asc`;
     const maxPages = 10;
     try {
-      return await sp.listItems<SharePointAttendanceRow>(listTitle, {
+      return await provider.listItems<SharePointAttendanceRow>(listTitle, {
         select: selectWithOptionalAudit,
         filter,
         orderby,
@@ -155,7 +166,7 @@ export const createSharePointStaffAttendanceAdapter = (options: SharePointAdapte
       });
     } catch (error) {
       if (!isValidationError(error)) throw error;
-      return await sp.listItems<SharePointAttendanceRow>(listTitle, {
+      return await provider.listItems<SharePointAttendanceRow>(listTitle, {
         select: defaultSelect,
         filter,
         orderby,
@@ -168,20 +179,20 @@ export const createSharePointStaffAttendanceAdapter = (options: SharePointAdapte
   const upsertWithFallback = async (attendance: StaffAttendance): Promise<Result<void>> => {
     let op: 'create' | 'update' = 'create';
     try {
-      const sp = assertClient();
+      const provider = assertClient();
       const key = buildKey(attendance.recordDate, attendance.staffId);
       const existing = await findByKey(key);
       const payload = toSpPayload(attendance, key, true);
 
       if (existing && typeof existing.Id === 'number') {
         op = 'update';
-        const { etag } = await sp.getItemByIdWithEtag(listTitle, existing.Id, defaultSelect);
-        await sp.updateItemByTitle(listTitle, existing.Id, payload, { ifMatch: etag ?? '*' });
+        // ETag handling - fallback to '*' if missing but ideally retrieved via getItemById
+        await provider.updateItem(listTitle, existing.Id, payload, { etag: '*' });
         return result.ok(undefined);
       }
 
       op = 'create';
-      await sp.addListItemByTitle(listTitle, payload);
+      await provider.createItem(listTitle, payload);
       return result.ok(undefined);
     } catch (error) {
       if (!isValidationError(error)) {
@@ -189,18 +200,17 @@ export const createSharePointStaffAttendanceAdapter = (options: SharePointAdapte
       }
 
       try {
-        const sp = assertClient();
+        const provider = assertClient();
         const key = buildKey(attendance.recordDate, attendance.staffId);
         const existing = await findByKey(key);
         const payload = toSpPayload(attendance, key, false);
 
         if (existing && typeof existing.Id === 'number') {
-          const { etag } = await sp.getItemByIdWithEtag(listTitle, existing.Id, defaultSelect);
-          await sp.updateItemByTitle(listTitle, existing.Id, payload, { ifMatch: etag ?? '*' });
+          await provider.updateItem(listTitle, existing.Id, payload, { etag: '*' });
           return result.ok(undefined);
         }
 
-        await sp.addListItemByTitle(listTitle, payload);
+        await provider.createItem(listTitle, payload);
         return result.ok(undefined);
       } catch (fallbackError) {
         return result.err(toResultError(fallbackError, op));
@@ -215,12 +225,12 @@ export const createSharePointStaffAttendanceAdapter = (options: SharePointAdapte
 
     async remove(key: string): Promise<Result<void>> {
       try {
-        const sp = assertClient();
+        const provider = assertClient();
         const existing = await findByKey(key);
         if (!existing || typeof existing.Id !== 'number') {
           return result.notFound('StaffAttendance not found');
         }
-        await sp.deleteItemByTitle(listTitle, existing.Id);
+        await provider.deleteItem(listTitle, existing.Id);
         return result.ok(undefined);
       } catch (error) {
         return result.err(toResultError(error, 'remove'));
@@ -370,4 +380,4 @@ export const createSharePointStaffAttendanceAdapter = (options: SharePointAdapte
   };
 };
 
-export const sharePointStaffAttendanceAdapter = createSharePointStaffAttendanceAdapter();
+// Singleton removed - use createSharePointStaffAttendanceAdapter(client) instead.

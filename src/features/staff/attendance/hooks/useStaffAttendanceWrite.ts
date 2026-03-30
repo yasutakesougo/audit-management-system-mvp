@@ -1,13 +1,5 @@
-/**
- * useStaffAttendanceWrite
- *
- * Read + Write façade for staff attendance.
- * - Read side: port.listByDate() (same pattern as useStaffAttendanceDay)
- * - Write side: port.upsert() → auto-reload
- *
- * UI は port を直接触らず、この hook 経由で全 CRUD を行う。
- */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useDataProvider } from '@/lib/data/useDataProvider';
 
 import type { StaffAttendancePort } from '../port';
 import { getStaffAttendancePort, getStaffAttendanceStorageKind, getStaffAttendanceWriteEnabled } from '../storage';
@@ -49,8 +41,9 @@ const classifyError = (error: { kind: string; message?: string }): string => {
 };
 
 export function useStaffAttendanceWrite(date: string): UseStaffAttendanceWriteReturn {
+  const { provider } = useDataProvider();
   const storageKind = getStaffAttendanceStorageKind();
-  const port = useMemo(() => getStaffAttendancePort(), []);
+  const port = useMemo(() => getStaffAttendancePort(provider), [provider]);
 
   const writeEnabled = useMemo(() => getStaffAttendanceWriteEnabled(), []);
   const readOnlyReason = useMemo(() => {

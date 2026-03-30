@@ -98,6 +98,58 @@ export type SpMonitoringMeetingRow = {
 } & Record<string, unknown>;
 
 // ---------------------------------------------------------------------------
+// Resilient Field Resolution & Provisioning
+// ---------------------------------------------------------------------------
+
+/**
+ * 列解決候補 (Dynamic Schema Resolution 用)
+ */
+export const MONITORING_MEETING_CANDIDATES = {
+  recordId: [MONITORING_MEETING_FIELDS.recordId, 'RecordId', 'Title'],
+  userId: [MONITORING_MEETING_FIELDS.userId, 'UserId', 'UserCode'],
+  ispId: [MONITORING_MEETING_FIELDS.ispId, 'IspId'],
+  planningSheetId: [MONITORING_MEETING_FIELDS.planningSheetId, 'PlanningSheetId'],
+  meetingType: [MONITORING_MEETING_FIELDS.meetingType, 'MeetingType'],
+  meetingDate: [MONITORING_MEETING_FIELDS.meetingDate, 'MeetingDate'],
+  venue: [MONITORING_MEETING_FIELDS.venue, 'Venue'],
+  attendeesJson: [MONITORING_MEETING_FIELDS.attendeesJson, 'AttendeesJson', 'Attendees'],
+  goalEvaluationsJson: [MONITORING_MEETING_FIELDS.goalEvaluationsJson, 'GoalEvaluationsJson', 'GoalEvaluations'],
+  overallAssessment: [MONITORING_MEETING_FIELDS.overallAssessment, 'OverallAssessment'],
+  userFeedback: [MONITORING_MEETING_FIELDS.userFeedback, 'UserFeedback'],
+  familyFeedback: [MONITORING_MEETING_FIELDS.familyFeedback, 'FamilyFeedback'],
+  planChangeDecision: [MONITORING_MEETING_FIELDS.planChangeDecision, 'PlanChangeDecision'],
+  changeReason: [MONITORING_MEETING_FIELDS.changeReason, 'ChangeReason'],
+  decisionsJson: [MONITORING_MEETING_FIELDS.decisionsJson, 'DecisionsJson', 'Decisions'],
+  nextMonitoringDate: [MONITORING_MEETING_FIELDS.nextMonitoringDate, 'NextMonitoringDate'],
+  recordedBy: [MONITORING_MEETING_FIELDS.recordedBy, 'RecordedBy'],
+  recordedAt: [MONITORING_MEETING_FIELDS.recordedAt, 'RecordedAt'],
+};
+
+/**
+ * 自己修復 (Self-Healing) 用の列定義
+ */
+export const MONITORING_MEETING_ENSURE_FIELDS = [
+  { name: MONITORING_MEETING_FIELDS.recordId, type: 'Text', required: true },
+  { name: MONITORING_MEETING_FIELDS.userId, type: 'Text', required: true },
+  { name: MONITORING_MEETING_FIELDS.ispId, type: 'Text', required: true },
+  { name: MONITORING_MEETING_FIELDS.planningSheetId, type: 'Text', required: false },
+  { name: MONITORING_MEETING_FIELDS.meetingType, type: 'Text', required: false },
+  { name: MONITORING_MEETING_FIELDS.meetingDate, type: 'Text', required: true },
+  { name: MONITORING_MEETING_FIELDS.venue, type: 'Text', required: false },
+  { name: MONITORING_MEETING_FIELDS.attendeesJson, type: 'Note', required: false },
+  { name: MONITORING_MEETING_FIELDS.goalEvaluationsJson, type: 'Note', required: false },
+  { name: MONITORING_MEETING_FIELDS.overallAssessment, type: 'Note', required: false },
+  { name: MONITORING_MEETING_FIELDS.userFeedback, type: 'Note', required: false },
+  { name: MONITORING_MEETING_FIELDS.familyFeedback, type: 'Note', required: false },
+  { name: MONITORING_MEETING_FIELDS.planChangeDecision, type: 'Text', required: false },
+  { name: MONITORING_MEETING_FIELDS.changeReason, type: 'Note', required: false },
+  { name: MONITORING_MEETING_FIELDS.decisionsJson, type: 'Note', required: false },
+  { name: MONITORING_MEETING_FIELDS.nextMonitoringDate, type: 'Text', required: false },
+  { name: MONITORING_MEETING_FIELDS.recordedBy, type: 'Text', required: false },
+  { name: MONITORING_MEETING_FIELDS.recordedAt, type: 'Text', required: false },
+] as const;
+
+// ---------------------------------------------------------------------------
 // JSON パース用ユーティリティ
 // ---------------------------------------------------------------------------
 

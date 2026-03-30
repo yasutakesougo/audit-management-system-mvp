@@ -33,6 +33,7 @@ import {
   aggregateExceptions,
   computeExceptionStats,
   detectAttentionUsers,
+  detectDataLayerExceptions,
   type ExceptionCategory,
 } from '@/features/exceptions/domain/exceptionLogic';
 import { parseExceptionCenterDeepLinkParams } from '@/features/exceptions/domain/exceptionCenterDeepLink';
@@ -198,6 +199,7 @@ export default function ExceptionCenterPage() {
   // ── 例外検出（実データ） ──
   const exceptions = useMemo(() => {
     const attentionUsers = detectAttentionUsers(dataSources.userSummaries);
+    const dataOSItems = detectDataLayerExceptions(dataSources.dataOSResolutions);
 
     const aggregated = aggregateExceptions(
       dailyRecordItems,
@@ -205,6 +207,7 @@ export default function ExceptionCenterPage() {
       attentionUsers,
       correctiveItems,
       transportItems,
+      dataOSItems,
     );
     return applyExceptionPreferences(aggregated, dismissedStableIds, snoozedStableIds);
   }, [dailyRecordItems, dataSources, handoffItems, correctiveItems, transportItems, dismissedStableIds, snoozedStableIds]);
@@ -252,6 +255,13 @@ export default function ExceptionCenterPage() {
       count: stats.byCategory['transport-alert'],
       icon: '🚐',
       color: '#7b1fa2',
+    },
+    {
+      key: 'data-os-alert',
+      label: 'システム異常',
+      count: stats.byCategory['data-os-alert'],
+      icon: '📡',
+      color: '#00bcd4',
     },
     {
       key: 'total',

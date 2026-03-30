@@ -1,6 +1,6 @@
 // contract:allow-interface — Repository interfaces define behavior contracts, not data shapes (SSOT = schema.ts)
-import type { AttendanceDailyItem } from '../infra/attendanceDailyRepository';
-import type { AttendanceUserItem } from '../infra/attendanceUsersRepository';
+import type { AttendanceDailyItem } from '../infra/Legacy/attendanceDailyRepository';
+import type { AttendanceUserItem } from '../infra/Legacy/attendanceUsersRepository';
 
 export type AttendanceRepositoryListParams = {
   recordDate: string;

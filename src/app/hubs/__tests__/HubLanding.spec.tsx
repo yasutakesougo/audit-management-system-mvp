@@ -61,6 +61,7 @@ describe('HubLanding', () => {
     expect(screen.getByTestId('hub-landing-empty-billing')).toBeInTheDocument();
     expect(screen.getByText('請求関連の導線がありません')).toBeInTheDocument();
     expect(screen.getByText('請求機能は受付または管理者ロールで利用できます。')).toBeInTheDocument();
+    expect(screen.getByTestId('hub-empty-cta-billing')).toBeInTheDocument();
   });
 
   it('hides cards in kiosk query mode for today hub', () => {

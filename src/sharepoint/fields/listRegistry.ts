@@ -41,6 +41,9 @@ export enum ListKeys {
   Schedules = 'Schedules',
   // ── 電話受付ログ ──
   CallLogs = 'CallLogs',
+  // ── 分離先リスト ──
+  UserTransportSettings = 'UserTransport_Settings',
+  UserBenefitProfile = 'UserBenefit_Profile',
 }
 
 export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
@@ -79,4 +82,7 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.Schedules]: { title: 'Schedules' },
   // ── 電話受付ログ ──
   [ListKeys.CallLogs]: { title: 'CallLogs' },
+  // ── 分離先リスト ──
+  [ListKeys.UserTransportSettings]: { title: 'UserTransport_Settings' },
+  [ListKeys.UserBenefitProfile]: { title: 'UserBenefit_Profile' },
 };

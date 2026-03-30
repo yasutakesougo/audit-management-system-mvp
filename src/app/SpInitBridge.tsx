@@ -10,29 +10,49 @@
 import React, { useEffect, useRef } from 'react';
 import { useSP } from '@/lib/spClient';
 import { loadHolidaysFromSharePoint } from '@/sharepoint/holidayLoader';
+import { SharePointProvisioningCoordinator } from '@/sharepoint/spProvisioningCoordinator';
+import { useDataProvider } from '@/lib/data/useDataProvider';
+import { useUserAuthz } from '@/auth/useUserAuthz';
+import { useToast } from '@/hooks/useToast';
 
 /**
  * SP 初期化ブリッジ — レンダーなし、副作用のみ
  *
  * useSP() で SP クライアントを取得し、起動時に1回だけ
- * Holiday_Master リストからの祝日読み込みを実行する。
- *
- * エラー時は静的テーブルにフォールバックするため、
- * このコンポーネントがクラッシュすることはない。
+ * 以下の初期化タスクを実行する。
+ * 1. SharePoint リストのプロビジョニング・安定性確認 (Coordinator)
+ * 2. 祝日の読み込み (Holiday_Master)
  */
 export const SpInitBridge: React.FC = () => {
   const sp = useSP();
+  const { type: providerType } = useDataProvider(); // 🚀 Data OS Readiness: Trigger initial singleton creation
+  const { role } = useUserAuthz();
+  const { show } = useToast();
   const initialized = useRef(false);
 
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
 
-    // Holiday_Master の読み込み（非同期、失敗しても問題なし）
-    loadHolidaysFromSharePoint(sp).catch((err) => {
-      console.warn('[SpInitBridge] Holiday load failed (non-fatal):', err);
-    });
-  }, [sp]);
+    const bootstrap = async () => {
+      // 1. SharePoint リストの一括プロビジョニング・検証（SharePoint モードのみ）
+      if (providerType !== 'sharepoint') return;
+      const result = await SharePointProvisioningCoordinator.bootstrap(sp);
+      
+      // 管理者の場合のみ、不具合のあるリストを通知
+      if (role === 'admin' && result.unhealthy > 0) {
+        const message = `SharePoint Schema Warning: ${result.unhealthy} lists may need attention. Check logs for details.`;
+        show('warning', message);
+      }
+
+      // 2. Holiday_Master の読み込み（非同期、失敗しても問題なし）
+      await loadHolidaysFromSharePoint(sp).catch((err) => {
+        console.warn('[SpInitBridge] Holiday load failed (non-fatal):', err);
+      });
+    };
+
+    bootstrap();
+  }, [sp, role, show]);
 
   return null;
 };

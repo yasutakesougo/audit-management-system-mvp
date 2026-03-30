@@ -67,6 +67,7 @@ import { Alert, Snackbar } from '@mui/material';
 import { useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useDataProvider } from '@/lib/data/useDataProvider';
 
 export type TodayOpsPageProps = {
   correctiveActions?: ActionSuggestion[];
@@ -652,10 +653,36 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
     }
   }, [summary?.dailyRecordStatus?.pendingUserIds, quickRecord, exceptionsQueue, isKioskMode, telemetryRole]);
 
+  const { type: providerType } = useDataProvider();
+
   // ── Render ──
   return (
     <>
       <TodayBentoLayout {...layoutProps} />
+      
+      {providerType === 'memory' && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            bottom: '20px', 
+            left: '20px', 
+            background: '#ffc107', 
+            color: '#000', 
+            padding: '4px 12px', 
+            borderRadius: '20px', 
+            fontWeight: 700,
+            fontSize: '12px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+          data-testid="mock-mode-badge"
+        >
+          ⚠️ Mock Data Mode Active
+        </div>
+      )}
 
       <QuickRecordDrawer
         open={quickRecord.isOpen}

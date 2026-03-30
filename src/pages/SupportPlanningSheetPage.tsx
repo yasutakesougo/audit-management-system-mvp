@@ -18,7 +18,8 @@ import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { useAuth } from '@/auth/useAuth';
-import { createSharePointIspRepository } from '@/data/isp/sharepoint/SharePointIspRepository';
+import { useDataProvider } from '@/lib/data/useDataProvider';
+import { DataProviderIspRepository } from '@/data/isp/infra/DataProviderIspRepository';
 import { determineWorkflowPhase, type WorkflowPhase } from '@/domain/bridge/workflowPhase';
 import { useHandoffData } from '@/features/handoff/hooks/useHandoffData';
 import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIcebergEvidence';
@@ -31,12 +32,10 @@ import { useAssessmentStore } from '@/features/assessment/stores/assessmentStore
 import { useImportAuditStore } from '@/features/planning-sheet/stores/importAuditStore';
 import { filterAuditHistoryRecords, type AuditHistoryFilter } from '@/features/planning-sheet/domain/filterAuditHistory';
 import { useLatestBehaviorMonitoring } from '@/features/planning-sheet/hooks/useLatestBehaviorMonitoring';
-import { createMonitoringMeetingRepository } from '@/features/monitoring/repositories/createMonitoringMeetingRepository';
+import { useMonitoringMeetingRepository } from '@/features/monitoring/data/useMonitoringMeetingRepository';
 import { useStrategyUsageCounts } from '@/features/planning-sheet/hooks/useStrategyUsageCounts';
 import { useStrategyUsageTrend } from '@/features/planning-sheet/hooks/useStrategyUsageTrend';
 import { useUsers } from '@/features/users/useUsers';
-import { SP_ENABLED } from '@/lib/env';
-import { useSP } from '@/lib/spClient';
 import { TESTIDS, tid } from '@/testids';
 
 // ── Local (split) ──
@@ -72,8 +71,8 @@ export default function SupportPlanningSheetPage() {
   const [historyFilter, setHistoryFilter] = React.useState<AuditHistoryFilter>('all');
 
   const planningSheetRepo = usePlanningSheetRepositories();
-  const spClient = useSP();
-  const ispRepo = React.useMemo(() => createSharePointIspRepository(spClient), [spClient]);
+  const { provider } = useDataProvider();
+  const ispRepo = React.useMemo(() => new DataProviderIspRepository(provider), [provider]);
 
   const { data: sheet, isLoading, error, refetch } = usePlanningSheetData(planningSheetId, planningSheetRepo);
   const form = usePlanningSheetForm(sheet, planningSheetRepo, (updated) => {
@@ -128,12 +127,7 @@ export default function SupportPlanningSheetPage() {
     [auditRecords, historyFilter],
   );
 
-  const monitoringRepo = React.useMemo(
-    () => SP_ENABLED
-      ? createMonitoringMeetingRepository('sharepoint', { spClient })
-      : createMonitoringMeetingRepository('local'),
-    [spClient],
-  );
+  const monitoringRepo = useMonitoringMeetingRepository();
   const { record: latestMonitoringRecord } = useLatestBehaviorMonitoring(sheet?.userId ?? null, {
     repository: monitoringRepo,
     planningSheetId: planningSheetId ?? 'new',

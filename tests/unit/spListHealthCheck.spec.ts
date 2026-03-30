@@ -79,6 +79,7 @@ const makeEntry = (overrides?: Partial<SpListEntry>): SpListEntry => ({
   resolve: () => 'TestList',
   operations: ['R'],
   category: 'master',
+  lifecycle: 'optional',
   ...overrides,
 });
 

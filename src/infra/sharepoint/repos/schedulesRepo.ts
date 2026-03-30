@@ -12,7 +12,7 @@
  */
 
 import { isWriteEnabled } from '@/env';
-import { useSP } from '@/lib/spClient';
+import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { FIELD_MAP } from '@/sharepoint/fields';
 import type { ScheduleStatus, ScheduleServiceType, ScheduleVisibility } from '@/features/schedules/domain/types';
 import { getSchedulesListTitle } from '@/features/schedules/data/spSchema';
@@ -225,7 +225,7 @@ export function mapSpToRepoSchedule(sp: SpScheduleRow, etag?: string): RepoSched
  */
 export async function querySchedules(
   args: QuerySchedulesArgs,
-  client: ReturnType<typeof useSP>
+  client: IDataProvider
 ): Promise<RepoSchedule[]> {
   const listIdentifier = FIELD_MAP.Schedules.title;
   const notesField = resolveNotesFieldName();
@@ -415,7 +415,7 @@ const buildUpdateBody = (input: UpdateScheduleInput) => {
 };
 
 export async function createSchedule(
-  client: ReturnType<typeof useSP>,
+  client: IDataProvider,
   input: CreateScheduleInput
 ): Promise<RepoSchedule> {
   assertWriteEnabled('createSchedule');
@@ -424,7 +424,7 @@ export async function createSchedule(
   const payload = buildCreateBody(input);
 
   // Step 1: POST to create item (may return incomplete data)
-  const created = await client.addListItemByTitle(listId, payload) as SpScheduleRow | undefined;
+  const created = await client.createItem<SpScheduleRow>(listId, payload);
   
   // Step 2: Extract ID from response
   const createdId = Number(created?.Id ?? created?.d?.Id ?? created?.data?.Id);
@@ -497,7 +497,7 @@ export async function createSchedule(
 }
 
 export async function updateSchedule(
-  client: ReturnType<typeof useSP>,
+  client: IDataProvider,
   id: number,
   etag: string,
   input: UpdateScheduleInput
@@ -507,8 +507,8 @@ export async function updateSchedule(
   // Use ScheduleEvents list (event list, not custom Schedules list)
   const listId = getSchedulesListTitle();
 
-  // NOTE: spClient.updateItem(listId, id, body, { ifMatch }) 前提
-  const updated = await client.updateItem(listId, id, buildUpdateBody(input), { ifMatch: etag }) as SpScheduleRow | undefined;
+  // NOTE: client.updateItem(listId, id, body, { etag }) 前提
+  const updated = await client.updateItem<SpScheduleRow>(listId, id, buildUpdateBody(input), { etag });
 
   const nextEtag = pickEtag(updated) ?? etag;
   const row = (updated?.data ?? updated) as SpScheduleRow | undefined;
@@ -536,7 +536,7 @@ export async function updateSchedule(
   }
 }
 
-export async function removeSchedule(client: ReturnType<typeof useSP>, id: number): Promise<void> {
+export async function removeSchedule(client: IDataProvider, id: number): Promise<void> {
   assertWriteEnabled('removeSchedule');
 
   // Use ScheduleEvents list (event list, not custom Schedules list)

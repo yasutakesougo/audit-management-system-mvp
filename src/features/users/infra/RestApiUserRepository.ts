@@ -36,6 +36,7 @@ import type { IUserMaster, IUserMasterCreateDto } from '../types';
 const DEFAULT_TOP = 500;
 const usersSelectDisabledByEnv = readEnv('VITE_USERS_DISABLE_SELECT', '0') === '1';
 let usersSelectSupported = !usersSelectDisabledByEnv;
+const USERS_SELECT_DISABLE_CACHE_KEY_PREFIX = 'users:select-disabled:v1:';
 const usersUnsupportedWriteFields = new Set<string>();
 let usersWritableFieldSet: Set<string> | null = null;
 let usersWritableFieldSetLoaded = false;
@@ -91,6 +92,10 @@ export class RestApiUserRepository implements UserRepository {
     this.listTitle =
       sanitizeEnvValue(readEnv('VITE_SP_LIST_USERS', '')) ||
       DEFAULT_USERS_LIST_TITLE;
+
+    if (!usersSelectDisabledByEnv && this.isSelectDisabledByCache()) {
+      usersSelectSupported = false;
+    }
   }
 
   // ── Public CRUD ──────────────────────────────────────────────
@@ -123,7 +128,7 @@ export class RestApiUserRepository implements UserRepository {
     } catch (e) {
       const shouldRetryWithoutSelect = path.includes('$select=');
       if (this.isSelectError(e) || this.isLikelySelectQueryFailure(e, path) || shouldRetryWithoutSelect) {
-        usersSelectSupported = false;
+        this.disableSelectOptimization();
         // Fallback: $select を外して全列取得（存在しないフィールドを含んでいても安全）
         auditLog.warn('users', 'rest_api_repo.select_error_retry', { error: String(e) });
         const fallbackParts: string[] = [];
@@ -179,7 +184,7 @@ export class RestApiUserRepository implements UserRepository {
       }
       const shouldRetryWithoutSelect = path.includes('$select=');
       if (this.isSelectError(error) || this.isLikelySelectQueryFailure(error, path) || shouldRetryWithoutSelect) {
-        usersSelectSupported = false;
+        this.disableSelectOptimization();
         auditLog.warn('users', 'rest_api_repo.select_error_getbyid_retry', { error: String(error) });
         try {
           const fallbackRes = await this.spFetch(baseItemPath);
@@ -605,6 +610,37 @@ export class RestApiUserRepository implements UserRepository {
       });
       return null;
     }
+  }
+
+  private selectDisableCacheKey(): string {
+    return `${USERS_SELECT_DISABLE_CACHE_KEY_PREFIX}${this.listTitle}`;
+  }
+
+  private isSelectDisabledByCache(): boolean {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return false;
+    }
+    try {
+      return window.localStorage.getItem(this.selectDisableCacheKey()) === '1';
+    } catch {
+      return false;
+    }
+  }
+
+  private persistSelectDisabled(): void {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return;
+    }
+    try {
+      window.localStorage.setItem(this.selectDisableCacheKey(), '1');
+    } catch {
+      // ignore cache write errors
+    }
+  }
+
+  private disableSelectOptimization(): void {
+    usersSelectSupported = false;
+    this.persistSelectDisabled();
   }
 
   private filterUnsupportedWriteFields(

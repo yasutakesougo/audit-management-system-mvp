@@ -8,7 +8,6 @@ import {
 
 function makeItem(overrides: Partial<ExceptionItem> & { id: string }): ExceptionItem {
   return {
-    id: overrides.id,
     category: 'missing-record',
     severity: 'high',
     title: '同点テスト',

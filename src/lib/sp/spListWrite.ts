@@ -43,9 +43,10 @@ export async function addListItemByTitle<TBody extends object, TResult = unknown
   spFetch: SpFetchFn,
   listTitle: string,
   body: TBody,
+  options?: { signal?: AbortSignal },
 ): Promise<TResult> {
   const path = `/lists/getbytitle('${encodeURIComponent(listTitle)}')/items`;
-  const res = await spFetch(path, { method: 'POST', body: JSON.stringify(body) });
+  const res = await spFetch(path, { method: 'POST', body: JSON.stringify(body), signal: options?.signal });
   return (await res.json()) as TResult;
 }
 
@@ -56,11 +57,13 @@ export async function createItem<TBody extends object, TResult = unknown>(
   spFetch: SpFetchFn,
   listTitle: string,
   body: TBody,
+  options?: { signal?: AbortSignal },
 ): Promise<TResult> {
   const path = buildItemPath(listTitle);
   const res = await spFetch(path, {
     method: 'POST',
     body: JSON.stringify(body),
+    signal: options?.signal,
   });
   return coerceResult<TResult>(res);
 }
@@ -77,6 +80,7 @@ export async function patchListItem<TBody extends object>(
   id: number,
   body: TBody,
   ifMatch?: string,
+  signal?: AbortSignal,
 ): Promise<Response> {
   const itemPath = buildItemPath(listIdentifier, id);
   const payload = JSON.stringify(body);
@@ -93,6 +97,7 @@ export async function patchListItem<TBody extends object>(
           'Content-Type': 'application/json;odata=nometadata',
         },
         body: payload,
+        signal,
       });
     } catch (error) {
       if ((error as { status?: number }).status === 412) {
@@ -108,7 +113,7 @@ export async function patchListItem<TBody extends object>(
   // 412 Precondition Failed — refresh ETag and retry once
   let latest: Response;
   try {
-    latest = await spFetch(buildItemPath(listIdentifier, id, ['Id']), { method: 'GET' });
+    latest = await spFetch(buildItemPath(listIdentifier, id, ['Id']), { method: 'GET', signal });
   } catch (error) {
     if ((error as { status?: number }).status === 404) {
       throw new SharePointItemNotFoundError();
@@ -133,9 +138,9 @@ export async function updateItemByTitle<TBody extends object, TResult = unknown>
   listTitle: string,
   id: number,
   body: TBody,
-  options?: { ifMatch?: string },
+  options?: { ifMatch?: string; signal?: AbortSignal },
 ): Promise<TResult> {
-  const res = await patchListItem<TBody>(spFetch, listTitle, id, body, options?.ifMatch);
+  const res = await patchListItem<TBody>(spFetch, listTitle, id, body, options?.ifMatch, options?.signal);
   return coerceResult<TResult>(res);
 }
 
@@ -147,9 +152,9 @@ export async function updateItem<TBody extends object, TResult = unknown>(
   listIdentifier: string,
   id: number,
   body: TBody,
-  options?: { ifMatch?: string },
+  options?: { ifMatch?: string; signal?: AbortSignal },
 ): Promise<TResult> {
-  const res = await patchListItem<TBody>(spFetch, listIdentifier, id, body, options?.ifMatch);
+  const res = await patchListItem<TBody>(spFetch, listIdentifier, id, body, options?.ifMatch, options?.signal);
   return coerceResult<TResult>(res);
 }
 
@@ -162,11 +167,13 @@ export async function deleteItemByTitle(
   spFetch: SpFetchFn,
   listTitle: string,
   id: number,
+  options?: { signal?: AbortSignal },
 ): Promise<void> {
   const path = buildItemPath(listTitle, id);
   await spFetch(path, {
     method: 'DELETE',
     headers: { 'If-Match': '*' },
+    signal: options?.signal,
   });
 }
 
@@ -177,10 +184,12 @@ export async function deleteItem(
   spFetch: SpFetchFn,
   listIdentifier: string,
   id: number,
+  options?: { signal?: AbortSignal },
 ): Promise<void> {
   const path = buildItemPath(listIdentifier, id);
   await spFetch(path, {
     method: 'DELETE',
     headers: { 'If-Match': '*' },
+    signal: options?.signal,
   });
 }

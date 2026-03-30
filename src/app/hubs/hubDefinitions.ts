@@ -156,6 +156,8 @@ export const HUB_DEFINITIONS: Record<HubId, HubDefinition> = {
     emptyStateDescription: '計画機能の権限設定を確認してください。',
     primaryCtaLabel: '計画を開く',
     telemetryName: 'hub_planning_view',
+    helpLink:
+      'https://github.com/yasutakesougo/audit-management-system-mvp/blob/main/docs/ai-isp-three-layer-protocol.md',
     requiredRole: 'viewer',
     standaloneRoute: true,
     pageTitle: 'Planning',
@@ -240,6 +242,8 @@ export const HUB_DEFINITIONS: Record<HubId, HubDefinition> = {
     emptyStateDescription: '運営機能の権限設定を確認してください。',
     primaryCtaLabel: '運営画面を開く',
     telemetryName: 'hub_operations_view',
+    helpLink:
+      'https://github.com/yasutakesougo/audit-management-system-mvp/blob/main/docs/ops/ops-dashboard-observability-layer.md',
     requiredRole: 'viewer',
     standaloneRoute: true,
     pageTitle: 'Operations',
@@ -336,6 +340,8 @@ export const HUB_DEFINITIONS: Record<HubId, HubDefinition> = {
     emptyStateDescription: '請求機能は受付または管理者ロールで利用できます。',
     primaryCtaLabel: '請求画面を開く',
     telemetryName: 'hub_billing_view',
+    helpLink:
+      'https://github.com/yasutakesougo/audit-management-system-mvp/blob/main/docs/authorization/reception-migration-plan.md',
     requiredRole: 'reception',
     pageTitle: 'Billing',
     breadcrumbLabel: 'Billing',

@@ -125,6 +125,25 @@ export function buildIspMasterSelectFields(existingInternalNames?: readonly stri
   });
 }
 
+/** Dynamic Schema Resolution 用候補定義: ISP_Master */
+export const ISP_MASTER_CANDIDATES = {
+  id: ['Id'],
+  title: ['Title'],
+  userCode: ['UserCode', 'UserID', 'User_ID'],
+  planStartDate: ['PlanStartDate'],
+  planEndDate: ['PlanEndDate'],
+  userIntent: ['UserIntent'],
+  status: ['Status'],
+  versionNo: ['VersionNo'],
+  isCurrent: ['IsCurrent'],
+  formDataJson: ['FormDataJson'],
+  userSnapshotJson: ['UserSnapshotJson'],
+} as const;
+
+export const ISP_MASTER_ESSENTIALS: (keyof typeof ISP_MASTER_CANDIDATES)[] = [
+  'title', 'userCode', 'planStartDate', 'status'
+];
+
 // ═════════════════════════════════════════════
 // B. SupportPlanningSheet_Master — 支援計画シート
 // ═════════════════════════════════════════════
@@ -290,6 +309,26 @@ export function buildPlanningSheetSelectFields(existingInternalNames?: readonly 
   });
 }
 
+/** Dynamic Schema Resolution 用候補定義: SupportPlanningSheet_Master */
+export const PLANNING_SHEET_CANDIDATES = {
+  id: ['Id'],
+  title: ['Title'],
+  userCode: ['UserCode', 'UserID', 'User_ID'],
+  ispId: ['ISPId', 'ISPLookupId'],
+  targetScene: ['TargetScene'],
+  status: ['Status'],
+  versionNo: ['VersionNo'],
+  isCurrent: ['IsCurrent'],
+  formDataJson: ['FormDataJson'],
+  intakeJson: ['IntakeJson'],
+  assessmentJson: ['AssessmentJson'],
+  planningJson: ['PlanningJson'],
+} as const;
+
+export const PLANNING_SHEET_ESSENTIALS: (keyof typeof PLANNING_SHEET_CANDIDATES)[] = [
+  'title', 'userCode', 'status'
+];
+
 // ═════════════════════════════════════════════
 // C. SupportProcedureRecord_Daily — 支援手順書兼記録
 // ═════════════════════════════════════════════
@@ -388,3 +427,22 @@ export function buildProcedureRecordSelectFields(existingInternalNames?: readonl
     fallback: [...PROCEDURE_RECORD_SELECT_FIELDS],
   });
 }
+
+/** Dynamic Schema Resolution 用候補定義: SupportProcedureRecord_Daily */
+export const PROCEDURE_RECORD_CANDIDATES = {
+  id: ['Id'],
+  title: ['Title'],
+  userCode: ['UserCode', 'UserID', 'User_ID'],
+  planningSheetId: ['PlanningSheetId', 'PlanningSheetLookupId'],
+  recordDate: ['RecordDate'],
+  timeSlot: ['TimeSlot'],
+  activity: ['Activity'],
+  procedureText: ['ProcedureText'],
+  executionStatus: ['ExecutionStatus'],
+  performedBy: ['PerformedBy'],
+  performedAt: ['PerformedAt'],
+} as const;
+
+export const PROCEDURE_RECORD_ESSENTIALS: (keyof typeof PROCEDURE_RECORD_CANDIDATES)[] = [
+  'title', 'userCode', 'planningSheetId', 'recordDate'
+];

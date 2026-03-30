@@ -11,7 +11,7 @@ import type { ScheduleCategory, ScheduleStatus } from '@/features/schedules/doma
 import type { RepoSchedule } from '@/infra/sharepoint/repos/schedulesRepo';
 
 import type { SchedItem, SchedulesPort } from './port';
-import { getSchedulesListTitle, SCHEDULES_FIELDS } from './spSchema';
+import { resolveSchedulesListKind, SCHEDULES_FIELDS, type SchedulesListKind } from './spSchema';
 
 // ============================================================================
 // Type Definitions
@@ -52,42 +52,72 @@ export type ListFieldMeta = {
 // Field Resolution
 // ============================================================================
 
-export const resolveScheduleFieldNames = (): ScheduleFieldNames => {
-  const listTitle = getSchedulesListTitle().trim().toLowerCase();
-  if (listTitle === 'dailyopssignals') {
-    return {
+export const resolveScheduleFieldVariants = (): ScheduleFieldNames[] => {
+  const listKind = resolveSchedulesListKind();
+  if (listKind === 'dailyOpsSignals') {
+    return [{
       title: 'Title',
       start: 'date',
       end: 'date',
-    };
+    }];
   }
 
-  return {
-    title: SCHEDULES_FIELDS.title,
-    start: SCHEDULES_FIELDS.start,
-    end: SCHEDULES_FIELDS.end,
-    serviceType: SCHEDULES_FIELDS.serviceType,
-    locationName: SCHEDULES_FIELDS.locationName,
-  };
+  if (listKind === 'scheduleEvents') {
+    return [{
+      title: SCHEDULES_FIELDS.title,
+      start: SCHEDULES_FIELDS.start,
+      end: SCHEDULES_FIELDS.end,
+      serviceType: 'ServiceType',
+      locationName: 'Location',
+    }];
+  }
+
+  return [
+    {
+      title: SCHEDULES_FIELDS.title,
+      start: 'Start',
+      end: 'End',
+      serviceType: 'ServiceType',
+      locationName: 'LocationName',
+    },
+    {
+      title: SCHEDULES_FIELDS.title,
+      start: SCHEDULES_FIELDS.start,
+      end: SCHEDULES_FIELDS.end,
+      serviceType: 'ServiceType',
+      locationName: 'LocationName',
+    },
+  ];
+};
+
+export const resolveScheduleFieldNames = (): ScheduleFieldNames => {
+  return resolveScheduleFieldVariants()[0];
 };
 
 export const compact = (values: Array<string | undefined>): string[] =>
   values.filter((value): value is string => Boolean(value));
 
-export const buildSelectSets = () => {
-  const fields = resolveScheduleFieldNames();
-  const required = compact(['Id', fields.title, fields.start, fields.end]);
-  // ScheduleEvents (BaseTemplate=106) only has basic event fields
-  const optional = compact([
-    fields.serviceType,
-    fields.locationName,
-    'AssignedStaff',
-    'AssignedStaffId',
-    'Vehicle',
-    'VehicleId',
-    'Created',
-    'Modified',
-  ]);
+export const buildSelectSets = (
+  fieldsInput?: ScheduleFieldNames,
+  listKindInput?: SchedulesListKind,
+) => {
+  const listKind = listKindInput ?? resolveSchedulesListKind();
+  const fields = fieldsInput ?? resolveScheduleFieldNames();
+  const required = [...new Set(compact(['Id', fields.title, fields.start, fields.end]))];
+  // Keep optional fields list-title aware to avoid 400 on tenants with narrow schema.
+  const optional = listKind === 'scheduleEvents'
+    ? compact([
+      fields.serviceType,
+      fields.locationName,
+      'Created',
+      'Modified',
+    ])
+    : compact([
+      fields.serviceType,
+      fields.locationName,
+      'Created',
+      'Modified',
+    ]);
   const eventSafe = compact([
     'Id',
     fields.title,
@@ -95,10 +125,8 @@ export const buildSelectSets = () => {
     fields.end,
     fields.locationName,
     fields.serviceType,
-    'AssignedStaff',
-    'AssignedStaffId',
-    'Vehicle',
-    'VehicleId',
+    'Created',
+    'Modified',
   ]);
   const mergeSelectFields = (fallbackOnly: boolean): readonly string[] =>
     fallbackOnly ? [...required] : [...new Set([...required, ...optional])];

@@ -28,7 +28,7 @@ import {
   isSchedulesConflictError,
   resolveOperationFailureFeedback,
 } from '@/features/today/feedback/operationFeedback';
-import type { AttendanceDailyItem } from '@/features/attendance/infra/attendanceDailyRepository';
+import type { AttendanceDailyItem } from '@/features/attendance/infra/Legacy/attendanceDailyRepository';
 import type { SchedItem } from '../data/port';
 import {
   type UserStatusRecord,

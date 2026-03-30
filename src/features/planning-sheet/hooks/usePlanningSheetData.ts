@@ -6,7 +6,7 @@
  *  - ISP は読まない（支援計画シート画面の責務外）
  *
  * @see src/domain/isp/port.ts — PlanningSheetRepository Port
- * @see src/data/isp/sharepoint/SharePointPlanningSheetRepository.ts
+ * @see src/data/isp/infra/DataProviderPlanningSheetRepository.ts
  */
 import { useEffect, useState } from 'react';
 import type { SupportPlanningSheet } from '@/domain/isp/schema';

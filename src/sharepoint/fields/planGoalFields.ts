@@ -88,3 +88,32 @@ export function buildPlanGoalsSelectFields(existingInternalNames?: readonly stri
     fallback: [...PLAN_GOALS_SELECT_FIELDS],
   });
 }
+
+/** Dynamic schema candidates for PlanGoals. */
+export const PLAN_GOALS_CANDIDATES = {
+  userCode: ['UserCode', 'cr013_usercode', 'UserID'],
+  goalType: ['GoalType', 'cr013_goaltype'],
+  goalLabel: ['GoalLabel', 'cr013_goallabel', 'Title'],
+  goalText: ['GoalText', 'cr013_goaltext'],
+  domains: ['Domains', 'cr013_domains'],
+  planPeriod: ['PlanPeriod', 'cr013_planperiod'],
+  planStatus: ['PlanStatus', 'cr013_planstatus'],
+  certExpiry: ['CertExpiry', 'cr013_certexpiry'],
+  sortOrder: ['SortOrder', 'cr013_sortorder'],
+} as const;
+
+/** Essential fields for PlanGoals list. */
+export const PLAN_GOALS_ESSENTIALS = ['userCode', 'goalType', 'goalText', 'planStatus'] as const;
+
+/** Fields to ensure for modern PlanGoals list. */
+export const PLAN_GOALS_ENSURE_FIELDS = [
+  { internalName: 'UserCode', displayName: 'UserCode', type: 'Text' },
+  { internalName: 'GoalType', displayName: 'GoalType', type: 'Text' },
+  { internalName: 'GoalLabel', displayName: 'GoalLabel', type: 'Text' },
+  { internalName: 'GoalText', displayName: 'GoalText', type: 'Note' },
+  { internalName: 'Domains', displayName: 'Domains', type: 'Text' },
+  { internalName: 'PlanPeriod', displayName: 'PlanPeriod', type: 'Text' },
+  { internalName: 'PlanStatus', displayName: 'PlanStatus', type: 'Text' },
+  { internalName: 'CertExpiry', displayName: 'CertExpiry', type: 'Text' },
+  { internalName: 'SortOrder', displayName: 'SortOrder', type: 'Number' },
+] as const;

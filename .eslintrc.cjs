@@ -307,6 +307,54 @@ module.exports = {
           }
         ]
       }
+    },
+    {
+      // Provider Contract Guard: Repository 層における SharePoint 直依存を禁止
+      // 短期的な移行猶予のため、Legacy フォルダ配下はチェック対象外とする
+      files: ['src/features/**/infra/**', 'src/features/**/data/**', 'src/infra/sharepoint/repos/**'],
+      excludedFiles: ['**/Legacy/**', '**/legacy/**'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            paths: [
+              {
+                name: '@/lib/spClient',
+                message: 'Repository 層で spClient を直接使用しないでください。IDataProvider を使用してください。'
+              },
+              {
+                name: '@/lib/sp/spLists',
+                message: 'Repository 層で spLists を直接使用しないでください。IDataProvider を使用してください。'
+              }
+            ],
+            patterns: [
+              {
+                group: ['@/lib/sp/*', '!@/lib/sp/helpers'],
+                message: 'Repository 層で SharePoint 実装詳細 (@/lib/sp/*) を直接参照しないでください。'
+              }
+            ]
+          }
+        ],
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: "Literal[value=/\\/_api\\/web\\/lists/]",
+            message: 'SharePoint REST API のエンドポイントを直書きしないでください。IDataProvider を使用してください。'
+          },
+          {
+            selector: "Identifier[name='isSharePoint']",
+            message: 'Repository 層で backend 分岐（isSharePoint）を行わないでください。'
+          },
+          {
+            selector: "MemberExpression[property.name='getListItemsByTitle']",
+            message: 'spClient.getListItemsByTitle を直接使用しないでください。IDataProvider.listItems を使用してください。'
+          },
+          {
+            selector: "MemberExpression[property.name='addListItemByTitle']",
+            message: 'spClient.addListItemByTitle を直接使用しないでください。IDataProvider.createItem を使用してください。'
+          }
+        ]
+      }
     }
   ]
 };

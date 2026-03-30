@@ -1,68 +1,58 @@
 /**
  * @fileoverview ISP 判断記録 Repository ファクトリ
- * @description
- * 呼び出し側が具体実装を知らなくても Repository を取得できる。
- *
- * 切替ロジック:
- * - shouldSkipSharePoint() が true → InMemoryIspDecisionRepository
- * - それ以外（本番）→ SharePointIspDecisionRepository
- *
- * テスト時は __setIspDecisionRepositoryForTesting() で任意の実装を注入可能。
  */
-import { acquireSpAccessToken, getSharePointScopes } from '@/lib/msal';
-import { createSpClient } from '@/lib/spClient';
-import { ensureConfig } from '@/lib/sp/config';
-import { shouldSkipSharePoint } from '@/lib/sharepoint/skipSharePoint';
-import { InMemoryIspDecisionRepository } from './InMemoryIspDecisionRepository';
+import { useMemo } from 'react';
+import { useDataProvider } from '@/lib/data/useDataProvider';
+import type { IDataProvider } from '@/lib/data/dataProvider.interface';
+import { DataProviderIspDecisionRepository } from './DataProviderIspDecisionRepository';
 import type { IspDecisionRepository } from './IspDecisionRepository';
-import { SharePointIspDecisionRepository } from './SharePointIspDecisionRepository';
 
-/** シングルトンインスタンス */
-let instance: IspDecisionRepository | null = null;
+let overrideInstance: IspDecisionRepository | null = null;
 
 /**
  * Repository インスタンスを取得する
- *
- * 初回呼び出し時に環境判定して生成し、以降は同一インスタンスを返す。
- * - 本番: SharePointIspDecisionRepository
- * - dev/demo/test: InMemoryIspDecisionRepository
  */
-export function createIspDecisionRepository(): IspDecisionRepository {
-  if (!instance) {
-    const skip = shouldSkipSharePoint();
-    if (skip) {
-      instance = new InMemoryIspDecisionRepository();
-    } else {
-      const { baseUrl } = ensureConfig();
-      const scopes = getSharePointScopes();
-      const acquireToken = async (): Promise<string | null> => {
-        try {
-          return await acquireSpAccessToken(scopes.length ? scopes : getSharePointScopes());
-        } catch {
-          return null;
-        }
-      };
-      const client = createSpClient(acquireToken, baseUrl);
-      instance = new SharePointIspDecisionRepository(client.spFetch);
-      console.info('[IspDecisionRepository] Using SharePoint backend');
-    }
-  }
-  return instance;
+export function getIspDecisionRepository(provider: IDataProvider): IspDecisionRepository {
+  if (overrideInstance) return overrideInstance;
+  return new DataProviderIspDecisionRepository(provider);
 }
 
 /**
- * テスト用: シングルトンをリセットする
- * @internal テストでのみ使用
+ * React Hook: ISP 判断記録 Repository を取得する
+ */
+export function useIspDecisionRepository(): IspDecisionRepository {
+  const { provider } = useDataProvider();
+
+  return useMemo(() => {
+    return getIspDecisionRepository(provider);
+  }, [provider]);
+}
+
+/**
+ * Legacy support: createIspDecisionRepository (non-hook)
+ * NOTE: Provider を明示的に渡せない場合は警告が出る設計にすべきだが、
+ * 既存の呼び出し箇所との互換性のために、必要ならここからシングルトンを返す等の調整が必要。
+ */
+export function createIspDecisionRepository(provider?: IDataProvider): IspDecisionRepository {
+  // 以前の createIspDecisionRepository は引数なしでシングルトンを返していた。
+  // 新設計では provider が必須。
+  if (!provider) {
+    throw new Error('[IspDecisionRepository] provider is required for createIspDecisionRepository');
+  }
+  return getIspDecisionRepository(provider);
+}
+
+/**
+ * テスト用
  */
 export function __resetIspDecisionRepositoryForTesting(): void {
-  instance = null;
+  overrideInstance = null;
 }
 
 /**
- * テスト用: カスタム Repository を注入する
- * @internal テストでのみ使用
+ * テスト用
  */
 export function __setIspDecisionRepositoryForTesting(repo: IspDecisionRepository): void {
-  instance = repo;
+  overrideInstance = repo;
 }
 
