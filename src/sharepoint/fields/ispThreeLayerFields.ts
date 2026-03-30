@@ -127,7 +127,7 @@ export function buildIspMasterSelectFields(existingInternalNames?: readonly stri
 
 /** Dynamic Schema Resolution 用候補定義: ISP_Master */
 export const ISP_MASTER_CANDIDATES = {
-  id: ['Id'],
+  id: ['ID', 'Id'],
   title: ['Title'],
   userCode: ['UserCode', 'UserID', 'User_ID'],
   planStartDate: ['PlanStartDate'],
@@ -311,7 +311,7 @@ export function buildPlanningSheetSelectFields(existingInternalNames?: readonly 
 
 /** Dynamic Schema Resolution 用候補定義: SupportPlanningSheet_Master */
 export const PLANNING_SHEET_CANDIDATES = {
-  id: ['Id'],
+  id: ['ID', 'Id'],
   title: ['Title'],
   userCode: ['UserCode', 'UserID', 'User_ID'],
   ispId: ['ISPId', 'ISPLookupId'],
@@ -430,7 +430,7 @@ export function buildProcedureRecordSelectFields(existingInternalNames?: readonl
 
 /** Dynamic Schema Resolution 用候補定義: SupportProcedureRecord_Daily */
 export const PROCEDURE_RECORD_CANDIDATES = {
-  id: ['Id'],
+  id: ['ID', 'Id'],
   title: ['Title'],
   userCode: ['UserCode', 'UserID', 'User_ID'],
   planningSheetId: ['PlanningSheetId', 'PlanningSheetLookupId'],

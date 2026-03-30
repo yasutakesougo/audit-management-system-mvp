@@ -180,8 +180,7 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       if (fields.assignedStaffId && input.assignedStaffId) payload[fields.assignedStaffId] = input.assignedStaffId;
       if (fields.notes && input.notes) payload[fields.notes] = input.notes;
       if (fields.locationName && input.locationName) payload[fields.locationName] = input.locationName;
-      if (fields.vehicleId && input.vehicleId) payload[fields.vehicleId] = input.vehicleId;
-      
+
       // インフラ管理用フィールド
       if (fields.rowKey) payload[fields.rowKey] = generateRowKey();
       if (fields.dayKey) payload[fields.dayKey] = dayKeyInTz(startDate);
@@ -219,8 +218,7 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       if (fields.assignedStaffId && input.assignedStaffId) payload[fields.assignedStaffId] = input.assignedStaffId;
       if (fields.notes && input.notes) payload[fields.notes] = input.notes;
       if (fields.locationName && input.locationName) payload[fields.locationName] = input.locationName;
-      if (fields.vehicleId && input.vehicleId) payload[fields.vehicleId] = input.vehicleId;
-      
+
       if (fields.dayKey) payload[fields.dayKey] = dayKeyInTz(startDate);
       if (fields.monthKey) payload[fields.monthKey] = monthKeyInTz(startDate);
       if (fields.fiscalYear) payload[fields.fiscalYear] = String(startDate.getFullYear());
