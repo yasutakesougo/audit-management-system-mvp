@@ -149,6 +149,7 @@ export function mapSpCategoryToDomain(raw?: SpScheduleCategoryRaw | null): 'Org'
   if (normalized === '職員' || normalized === 'スタッフ' || normalized === '担当') return 'Staff';
   if (normalized === '施設' || normalized === 'その他' || normalized === '法人' || normalized === '事業所' || normalized === '事業') return 'Org';
 
+  console.warn(`[schedules] Unknown category value "${raw}" — defaulting to Org`);
   return 'Org';
 }
 
