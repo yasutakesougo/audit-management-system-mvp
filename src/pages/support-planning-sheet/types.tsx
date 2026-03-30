@@ -4,6 +4,7 @@
 import React from 'react';
 import Box from '@mui/material/Box';
 import type { PlanningSheetStatus } from '@/domain/isp/schema';
+import { MonitoringToPlanningBridge } from '@/domain/isp/bridge';
 
 // ─────────────────────────────────────────────
 // Types
@@ -18,6 +19,8 @@ export const TAB_SECTIONS: { key: SheetTabKey; label: string }[] = [
   { key: 'planning', label: '支援設計' },
   { key: 'regulatory', label: '制度項目' },
 ];
+
+export const VALID_TABS: string[] = TAB_SECTIONS.map((s) => s.key);
 
 // ─────────────────────────────────────────────
 // Status helpers
@@ -53,3 +56,101 @@ export const TabPanel: React.FC<{
     {current === value ? children : null}
   </Box>
 );
+
+// ─────────────────────────────────────────────
+// ViewModel & ActionHandlers
+// ─────────────────────────────────────────────
+
+import type { SupportPlanningSheet } from '@/domain/isp/schema';
+import type { WorkflowPhase } from '@/domain/bridge/workflowPhase';
+import type { IcebergEvidenceBySheet } from '@/domain/regulatory/findingEvidenceSummary';
+import type { UsePlanningSheetFormReturn } from '@/features/planning-sheet/hooks/usePlanningSheetForm';
+import type { ProvenanceEntry, AssessmentBridgeResult } from '@/features/planning-sheet/assessmentBridge';
+import type { MonitoringToPlanningResult } from '@/features/planning-sheet/monitoringToPlanningBridge';
+import type { ImportAuditRecord } from '@/features/planning-sheet/stores/importAuditStore';
+import type { AuditHistoryFilter } from '@/features/planning-sheet/domain/filterAuditHistory';
+import type { EvidenceLinkMap, EvidenceLinkType } from '@/domain/isp/evidenceLink';
+import type { AbcRecord } from '@/domain/abc/abcRecord';
+import type { IcebergPdcaItem } from '@/features/ibd/analysis/pdca/types';
+import type { StrategyUsageSummary, StrategyUsageTrendResult } from '@/domain/isp/aggregateStrategyUsage';
+import type { BehaviorMonitoringRecord } from '@/domain/isp/behaviorMonitoring';
+import type { ContextPanelData } from '@/features/context/domain/contextPanelLogic';
+import type { TrendDays } from '@/features/planning-sheet/hooks/useStrategyUsageTrend';
+
+export interface SupportPlanningSheetViewModel {
+  planningSheetId: string;
+  sheet: SupportPlanningSheet;
+  isLoading: boolean;
+  error: string | null;
+  isEditing: boolean;
+  activeTab: SheetTabKey;
+  
+  // UI States
+  toast: { open: boolean; message: string; severity: 'success' | 'error' };
+  importDialogOpen: boolean;
+  monitoringDialogOpen: boolean;
+  contextOpen: boolean;
+  historyFilter: AuditHistoryFilter;
+
+  // Domain derived data (ViewModel)
+  currentPhase: WorkflowPhase | null;
+  targetUserName?: string;
+  hasAssessment: boolean;
+  hasMonitoringRecord: boolean;
+  icebergEvidence: IcebergEvidenceBySheet | null;
+  allProvenanceEntries: ProvenanceEntry[];
+  auditRecords: ImportAuditRecord[];
+  filteredAuditRecords: ImportAuditRecord[];
+  latestMonitoringRecord: BehaviorMonitoringRecord | null;
+  
+  // Planning Evidence
+  evidenceLinks: EvidenceLinkMap;
+  abcRecords: AbcRecord[];
+  pdcaItems: IcebergPdcaItem[];
+  
+  // Strategy Analytics
+  strategyUsage: StrategyUsageSummary | null;
+  strategyUsageLoading: boolean;
+  trendResult: StrategyUsageTrendResult | null;
+  trendDays: TrendDays;
+  trendLoading: boolean;
+
+  // Context Panel
+  contextUserName: string;
+  contextData: ContextPanelData;
+  
+  // Bridge
+  monitoringBridge: MonitoringToPlanningBridge | null;
+  
+  // Form
+  form: UsePlanningSheetFormReturn;
+}
+
+export interface SupportPlanningSheetActionHandlers {
+  onBack: () => void;
+  onEdit: () => void;
+  onReset: () => void;
+  onSave: () => void;
+  onImportAssessment: () => void;
+  onImportMonitoring: () => void;
+  onCloseImportDialog: () => void;
+  onCloseMonitoringDialog: () => void;
+  onPerformAssessmentImport: (result: AssessmentBridgeResult) => void;
+  onPerformMonitoringImport: (result: MonitoringToPlanningResult, selectedCandidateIds: string[]) => void;
+  onCloseToast: () => void;
+  onTabChange: (tab: SheetTabKey) => void;
+  onBannerNavigate: (href: string) => void;
+  onJumpToMonitoringHistory: () => void;
+  onJumpToPlanningTab: () => void;
+  onTrendDaysChange: (days: TrendDays) => void;
+  onHistoryFilterChange: (filter: AuditHistoryFilter) => void;
+  onToggleContext: () => void;
+  onCloseContext: () => void;
+  onEvidenceLinksChange: (links: EvidenceLinkMap) => void;
+  onEvidenceClick: (type: EvidenceLinkType, referenceId: string) => void;
+}
+
+export interface SupportPlanningSheetViewProps {
+  viewModel: SupportPlanningSheetViewModel | null;
+  handlers: SupportPlanningSheetActionHandlers;
+}
