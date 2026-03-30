@@ -5,60 +5,42 @@
  * Extracted from DailyRecordPage.tsx for single-responsibility.
  */
 
-import type { PersonDaily } from '@/domain/daily/types';
-import { toLocalDateISO } from '@/utils/getNow';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { useMemo } from 'react';
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
 interface DailyRecordStatsPanelProps {
-  records: PersonDaily[];
   expectedCount: number;
   attendanceRate: number;
-  absentUserIds?: string[];
+  absentUserIds: string[];
+  totalCount: number;
+  completedCount: number;
+  inProgressCount: number;
+  notStartedCount: number;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export function DailyRecordStatsPanel({
-  records,
   expectedCount,
   attendanceRate,
   absentUserIds,
+  totalCount,
+  completedCount,
+  inProgressCount,
+  notStartedCount,
 }: DailyRecordStatsPanelProps) {
-  const todayStr = useMemo(() => toLocalDateISO(), []);
-  const todayRecords = useMemo(
-    () => records.filter((r) => r.date === todayStr),
-    [records, todayStr],
-  );
-
-  const completedCount = useMemo(
-    () => todayRecords.filter((r) => r.status === '完了').length,
-    [todayRecords],
-  );
-
-  const inProgressCount = useMemo(
-    () => todayRecords.filter((r) => r.status === '作成中').length,
-    [todayRecords],
-  );
-
-  const notStartedCount = useMemo(
-    () => todayRecords.filter((r) => r.status === '未作成').length,
-    [todayRecords],
-  );
-
   return (
     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }} data-testid="daily-stats-panel">
       <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }} data-testid="total-records-stat">
         <Typography variant="h6" color="primary">
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
             <span data-testid="total-records-count">
-              {todayRecords.length} / {expectedCount}
+              {totalCount} / {expectedCount}
             </span>
             <Chip
               size="small"
@@ -109,7 +91,7 @@ export function DailyRecordStatsPanel({
 
       <Paper sx={{ p: 2, textAlign: 'center', flex: 1 }} data-testid="absent-records-stat">
         <Typography variant="h6" color="info.main" data-testid="absent-count">
-          {absentUserIds?.length || 0}
+          {absentUserIds.length || 0}
         </Typography>
         <Typography variant="body2" color="text.secondary">
           欠席予定者

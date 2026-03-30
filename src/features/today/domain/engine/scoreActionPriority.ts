@@ -21,6 +21,8 @@ export function scoreActionPriority(source: RawActionSource): ActionPriority {
       return 'P2';
     case 'handoff':
       return 'P3';
+    case 'exception':
+      return 'P1';
     default: {
       const _exhaustive: never = source.sourceType;
       return _exhaustive;

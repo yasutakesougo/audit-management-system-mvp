@@ -20,8 +20,12 @@ import type { SupportRecordCompletionSummary } from '../hooks/useSupportRecordCo
 import type { ServiceStructure } from './serviceStructure.types';
 import { buildServiceStructure } from './buildServiceStructure';
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
-import type { IUserMaster } from '@/sharepoint/fields';
+import type { IUserMaster } from '@/features/users/types';
 import type { AttendanceVisitSnapshot } from '@/features/dashboard/selectors/useAttendanceAnalytics';
+import type { RawActionSource } from '../domain/models/queue.types';
+import type { TriggeredException } from '@/domain/isp/exceptionBridge';
+import { simulateAllTodayExceptions } from '@/domain/isp/exceptionDetector';
+import { mapExceptionsToTodayActionSources } from '@/domain/today/exceptionToTodayActionMapper';
 
 // ─── Explicit TodaySummary contract ─────────────────────────────────────
 // Defined explicitly (not via ReturnType) so IDE type servers always
@@ -54,6 +58,8 @@ export type TodaySummary = {
   serviceStructure: ServiceStructure;
   users: IUserMaster[];
   visits: Record<string, AttendanceVisitSnapshot>;
+  todayExceptions: TriggeredException[];
+  todayExceptionActions: RawActionSource[];
 };
 
 // ─── Internal: Dashboard-irrelevant defaults ────────────────────────────
@@ -110,12 +116,21 @@ export function useTodaySummary(): TodaySummary {
     () => users
       .filter((u) => u.IsHighIntensitySupportTarget === true)
       .map((u) => {
-        const uid = (u.UserID ?? '').trim();
+        const uid = String(u.UserID ?? '').trim();
         return uid || `U${String(u.Id ?? 0).padStart(3, '0')}`;
       }),
     [users],
   );
   const todayRecordCompletion = useSupportRecordCompletion(today, supportTargetUserIds);
+
+  const { todayExceptions, todayExceptionActions } = useMemo(() => {
+    // 計画と実績のズレを検知してアクションソースへ変換
+    const exceptions = simulateAllTodayExceptions(full.activityRecords, users);
+    return {
+      todayExceptions: exceptions,
+      todayExceptionActions: mapExceptionsToTodayActionSources(exceptions)
+    };
+  }, [full.activityRecords, users]);
 
   // ─── 4. Pick-only: Today のデータ契約 ───
   // ⚠ このリストを拡張する場合は ADR-002 を参照し、
@@ -139,6 +154,8 @@ export function useTodaySummary(): TodaySummary {
       // ─── Passthrough: TodayOpsPage の UI マッピングで必要 ───
       users,
       visits,
+      todayExceptions,
+      todayExceptionActions,
     }),
     [
       full.attendanceSummary,
@@ -149,6 +166,8 @@ export function useTodaySummary(): TodaySummary {
       serviceStructure,
       users,
       visits,
+      todayExceptions,
+      todayExceptionActions,
     ],
   );
 }

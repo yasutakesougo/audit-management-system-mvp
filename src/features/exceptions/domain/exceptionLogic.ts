@@ -21,7 +21,10 @@ export type ExceptionCategory =
   | 'attention-user'
   | 'corrective-action'
   | 'transport-alert'
-  | 'data-os-alert';
+  | 'data-os-alert'
+  | 'procedure-unperformed'
+  | 'risk-deviation'
+  | 'focus-missing';
 
 export type ExceptionSeverity = 'low' | 'medium' | 'high' | 'critical';
 
@@ -62,6 +65,9 @@ export const EXCEPTION_CATEGORIES: Record<ExceptionCategory, CategoryMeta> = {
   'corrective-action': { label: '改善提案', icon: '🔧', color: '#1565c0' },
   'transport-alert': { label: '送迎異常', icon: '🚐', color: '#7b1fa2' },
   'data-os-alert': { label: 'システム基礎データ', icon: '📡', color: '#00bcd4' },
+  'procedure-unperformed': { label: '手順未実施', icon: '⚡', color: '#c62828' },
+  'risk-deviation': { label: 'リスク逸脱', icon: '🚨', color: '#b71c1c' },
+  'focus-missing': { label: '記述不足', icon: '✍️', color: '#ef6c00' },
 };
 
 export const SEVERITY_ORDER: Record<ExceptionSeverity, number> = {
@@ -262,6 +268,38 @@ export function detectDataLayerExceptions(
 }
 
 /**
+ * Exception Bridge から取得した TriggeredException を Exception Center 用の形式に変換する
+ */
+export function mapTriggeredToExceptionItems(
+  triggered: import('@/domain/isp/exceptionBridge').TriggeredException[],
+  users: import('@/features/users/types').IUserMaster[]
+): ExceptionItem[] {
+  return triggered.map((t) => {
+    const user = users.find((u) => String(u.UserID) === t.provenance.userId);
+    const categoryMap: Record<string, ExceptionCategory> = {
+      unperformed: 'procedure-unperformed',
+      risk_detected: 'risk-deviation',
+      missing_focus: 'focus-missing',
+    };
+
+    return {
+      id: t.id,
+      category: categoryMap[t.category] || 'attention-user',
+      severity: t.severity as ExceptionSeverity,
+      title: t.title,
+      description: t.reason,
+      targetUser: user?.FullName,
+      targetUserId: t.provenance.userId,
+      updatedAt: t.provenance.detectedAt,
+      actionLabel: '対応する',
+      actionPath: `/daily/activity?userId=${encodeURIComponent(t.provenance.userId)}`,
+      secondaryActionLabel: '詳細を確認',
+      secondaryActionPath: `/individual-support/monitoring/${encodeURIComponent(t.provenance.userId)}`,
+    };
+  });
+}
+
+/**
  * 全カテゴリの例外を集約してソートする
  */
 export function aggregateExceptions(
@@ -286,14 +324,17 @@ export function computeExceptionStats(items: ExceptionItem[]): ExceptionStats {
   const stats: ExceptionStats = {
     total: items.length,
     bySeverity: { critical: 0, high: 0, medium: 0, low: 0 },
-    byCategory: { 
-      'missing-record': 0, 
-      'overdue-plan': 0, 
-      'critical-handoff': 0, 
-      'attention-user': 0, 
-      'corrective-action': 0, 
+    byCategory: {
+      'missing-record': 0,
+      'overdue-plan': 0,
+      'critical-handoff': 0,
+      'attention-user': 0,
+      'corrective-action': 0,
       'transport-alert': 0,
-      'data-os-alert': 0 
+      'data-os-alert': 0,
+      'procedure-unperformed': 0,
+      'risk-deviation': 0,
+      'focus-missing': 0
     },
   };
 

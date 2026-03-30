@@ -1,4 +1,4 @@
-import type { IUserMaster } from '@/sharepoint/fields';
+import type { IUserMaster } from '@/features/users/types';
 import { useMemo } from 'react';
 
 export type OpsFlowStep =

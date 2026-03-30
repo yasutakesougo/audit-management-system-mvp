@@ -22,7 +22,8 @@ export type SceneNextActionTarget =
   | 'quick-record'
   | 'user'
   | 'transport'
-  | 'service-structure';
+  | 'service-structure'
+  | 'exception-action';
 
 export type SceneNextAction = {
   scene: TodayScene;
@@ -41,12 +42,30 @@ export type SceneNextActionInput = {
   pendingAttendance: number;
   pendingDailyRecords: number;
   alertUsers: { id: string; name: string }[];
+  /** ISP 三層モデルの整合性不備 (Exception Bridge) */
+  pendingExceptions?: import('@/domain/isp/exceptionBridge').TriggeredException[];
 };
 
 export function buildSceneNextAction(input: SceneNextActionInput): SceneNextAction {
   const criticalUser = input.alertUsers[0];
 
-  // ── P1: 注意アラート（欠席・発熱等）→ 最優先（場面を問わない）
+  // ── P0: 重大な例外 (ISP 整合性エラー: Exception Bridge) → 最優先
+  // 計画された支援が行われていない、またはリスク確認が漏れている場合に介入する。
+  if (input.pendingExceptions && input.pendingExceptions.length > 0) {
+    const first = input.pendingExceptions.find(e => e.severity === 'critical') || input.pendingExceptions[0];
+    return {
+      scene: input.scene,
+      title: first.title,
+      description: first.suggestedAction,
+      reasons: [`支援不備 ${input.pendingExceptions.length}件`, first.category],
+      ctaLabel: '今すぐ対応',
+      ctaTarget: 'exception-action',
+      userId: first.provenance.userId,
+      priority: first.severity === 'critical' ? 'critical' : 'high',
+    };
+  }
+
+  // ── P1: 注意アラート（欠席・発熱等）→ 次点（場面を問わない）
   // briefingAlerts は出席系アラートであり、HandoffPanel の「申し送り」とは別概念。
   if (input.pendingBriefings > 0) {
     return {

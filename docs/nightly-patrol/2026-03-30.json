@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "date": "2026-03-30",
+  "summary": {
+    "sourceFiles": 2092,
+    "testFiles": 548,
+    "testRatio": 26.2,
+    "lastCommit": "6e682fa1 feat(safety): implement exception center, escalation mechanism and notification audit loop",
+    "commitCount7d": 248
+  },
+  "metrics": {
+    "largeFiles": [
+      {
+        "file": "src/features/users/infra/RestApiUserRepository.ts",
+        "lines": 837
+      },
+      {
+        "file": "src/pages/TodayOpsPage.tsx",
+        "lines": 783
+      },
+      {
+        "file": "src/features/transport-assignments/domain/transportAssignmentDraft.ts",
+        "lines": 768
+      },
+      {
+        "file": "src/features/today/transport/TransportStatusCard.tsx",
+        "lines": 719
+      },
+      {
+        "file": "src/app/hubs/hubDefinitions.ts",
+        "lines": 672
+      },
+      {
+        "file": "src/debug/HydrationHud.tsx",
+        "lines": 626
+      },
+      {
+        "file": "src/features/planning-sheet/tokuseiBridgeBuilders.ts",
+        "lines": 610
+      }
+    ],
+    "anyCount": 0,
+    "anyFiles": [],
+    "todoCount": 9,
+    "untestedFeatures": []
+  },
+  "gates": {
+    "unitTest": null,
+    "typeCheck": null
+  }
+}

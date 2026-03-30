@@ -9,7 +9,7 @@
 import type { PersonDaily } from '@/domain/daily/types';
 import type { AttendanceCounts } from '@/features/staff/attendance/port';
 import { isSchedulesSpEnabled } from '@/lib/env';
-import type { IUserMaster } from '@/sharepoint/fields';
+import type { IUserMaster } from '@/features/users/types';
 import type { Staff } from '@/types';
 import { useMemo } from 'react';
 import { useActivitySummary } from './selectors/useActivitySummary';

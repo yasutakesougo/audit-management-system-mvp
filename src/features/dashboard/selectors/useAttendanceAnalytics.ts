@@ -1,6 +1,6 @@
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
 import type { AttendanceCounts } from '@/features/staff/attendance/port';
-import type { IUserMaster } from '@/sharepoint/fields';
+import type { IUserMaster } from '@/features/users/types';
 import type { Staff } from '@/types';
 import { useMemo } from 'react';
 
@@ -31,7 +31,7 @@ export function useAttendanceAnalytics(
     const userCodeMap = new Map<string, string>();
 
     users.forEach((user, index) => {
-      const userCode = (user.UserID ?? '').trim() || `U${String(user.Id ?? index + 1).padStart(3, '0')}`;
+      const userCode = String(user.UserID ?? '').trim() || `U${String(user.Id ?? index + 1).padStart(3, '0')}`;
       const displayName = user.FullName ?? `利用者${index + 1}`;
       userCodeMap.set(userCode, displayName);
     });

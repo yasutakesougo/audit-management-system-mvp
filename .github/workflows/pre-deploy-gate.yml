@@ -1,0 +1,97 @@
+name: pre-deploy-gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  predeploy-gate:
+    runs-on: ubuntu-latest
+
+    env:
+      VITE_SP_ENABLED: ${{ secrets.VITE_SP_ENABLED }}
+      VITE_APP_ENV: ${{ secrets.VITE_APP_ENV }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint -- --max-warnings 0
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Validate production env
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${VITE_SP_ENABLED:-}" != "1" ]; then
+            echo "❌ CRITICAL: VITE_SP_ENABLED must be 1"
+            exit 1
+          fi
+
+          if [ "${VITE_APP_ENV:-}" != "production" ]; then
+            echo "❌ CRITICAL: VITE_APP_ENV must be production"
+            exit 1
+          fi
+
+          echo "✅ production env looks valid"
+
+      - name: Check hardcoded demo mode in repository factories
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Search for potential hardcoded demo mode
+          if grep -R "forceKind: 'demo'" src/features --include="*repositoryFactory.ts"; then
+            echo "❌ CRITICAL: Hardcoded demo mode found in repositoryFactory"
+            exit 1
+          fi
+
+          if grep -R 'forceKind: "demo"' src/features --include="*repositoryFactory.ts"; then
+            echo "❌ CRITICAL: Hardcoded demo mode found in repositoryFactory"
+            exit 1
+          fi
+
+          echo "✅ no hardcoded demo mode found"
+
+      - name: Run Nightly Patrol
+        run: node scripts/ops/nightly-patrol.mjs
+
+      - name: Check fresh Nightly artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TODAY="$(date +%F)"
+
+          test -f "docs/nightly-patrol/${TODAY}.md" || {
+            echo "❌ CRITICAL: missing docs/nightly-patrol/${TODAY}.md"
+            exit 1
+          }
+
+          test -f "docs/nightly-patrol/${TODAY}.json" || {
+            echo "❌ CRITICAL: missing docs/nightly-patrol/${TODAY}.json"
+            exit 1
+          }
+
+          echo "✅ fresh nightly artifacts found"
+
+      - name: Upload Nightly artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-patrol-${{ github.run_id }}
+          path: docs/nightly-patrol/
