@@ -10,12 +10,15 @@ vi.mock('@/lib/spClient', async () => {
   const actual = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
   return {
     ...actual,
-    useSP: () => ({
-      spFetch: spFetchMock,
-      getExistingListTitlesAndIds: vi.fn(async () => new Set<string>()),
-    }),
+    useSP: () => ({ spFetch: spFetchMock }),
   };
 });
+
+vi.mock('@/sharepoint/spProvisioningCoordinator', () => ({
+  SharePointProvisioningCoordinator: {
+    bootstrap: vi.fn(async () => ({ healthy: 0, unhealthy: 0, summaries: [] })),
+  },
+}));
 
 vi.mock('@/auth/useAuth', () => ({
   useAuth: () => ({
