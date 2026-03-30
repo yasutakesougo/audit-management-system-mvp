@@ -8,30 +8,24 @@ export const SCHEDULE_CANDIDATES = {
   start: ['EventDate', 'Start', 'StartDate', 'StartTime', 'Begin', 'Date', 'date'],
   end: ['EndDate', 'End', 'EndDate', 'EndDateTime', 'EndTime', 'Finish', 'Date', 'date'],
   status: ['Status', 'cr014_status'],
-  statusReason: ['StatusReason', 'cr014_statusReason'],
   serviceType: ['ServiceType', 'Category', 'cr014_serviceType'],
-  category: ['cr014_category', 'Category', 'PersonType', 'cr014_personType'],
-  userId: ['TargetUserId', 'UserCode', 'cr013_usercode', 'cr013_personId', 'UserId', 'UserID'],
+  userId: ['TargetUserId', 'TargetUser', 'UserCode', 'cr013_usercode', 'cr013_personId', 'UserId', 'UserID'],
   userName: ['cr014_personName', 'UserName', 'PersonName'],
-  userLookupId: ['TargetUser', 'UserLookup'],
-  assignedStaffId: ['AssignedStaffId', 'cr014_staffIds'],
-  assignedStaff: ['AssignedStaff'],
+  assignedStaffId: ['AssignedStaffId', 'AssignedTo', 'AssignedStaff', 'cr014_staffIds'],
   locationName: ['LocationName', 'Location', 'cr014_locationName'],
   notes: ['Note', 'Notes', 'cr014_note'],
-  vehicleId: ['VehicleId', 'cr014_vehicleId'],
-  vehicle: ['Vehicle'],
-  acceptedOn: ['AcceptedOn', 'cr014_acceptedOn'],
-  acceptedBy: ['AcceptedBy', 'AcceptedById', 'cr014_acceptedBy'],
-  acceptedNote: ['AcceptedNote', 'cr014_acceptedNote'],
-  entryHash: ['EntryHash', 'cr014_entryHash'],
-  ownerUserId: ['OwnerUserId', 'cr014_ownerUserId'],
-  visibility: ['Visibility', 'cr014_visibility'],
   rowKey: ['RowKey', 'cr014_rowKey'],
   dayKey: ['cr014_dayKey', 'DayKey'],
   monthKey: ['MonthKey', 'cr014_monthKey'],
   fiscalYear: ['cr014_fiscalYear', 'FiscalYear'],
+} as const;
+
+/**
+ * 予定表の「拡張」フィールド（存在すれば使用するが、無くても警告バッチを出さないもの）
+ */
+export const SCHEDULE_EXTENSIONS = {
+  visibility: ['Visibility', 'cr014_visibility'],
   orgAudience: ['cr014_orgAudience', 'OrgAudience'],
-  subType: ['SubType', 'cr014_subType'],
 } as const;
 
 export const SCHEDULE_ESSENTIALS: (keyof typeof SCHEDULE_CANDIDATES)[] = [

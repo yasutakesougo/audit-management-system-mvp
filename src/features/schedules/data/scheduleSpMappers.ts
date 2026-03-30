@@ -11,7 +11,7 @@ import type { ScheduleCategory, ScheduleStatus } from '@/features/schedules/doma
 import type { RepoSchedule } from '@/infra/sharepoint/repos/schedulesRepo';
 
 import type { SchedItem, SchedulesPort } from './port';
-import { resolveSchedulesListKind, SCHEDULES_FIELDS, type SchedulesListKind } from './spSchema';
+import { resolveSchedulesListKind, type SchedulesListKind } from './spSchema';
 
 // ============================================================================
 // Type Definitions
@@ -62,31 +62,33 @@ export const resolveScheduleFieldVariants = (): ScheduleFieldNames[] => {
     }];
   }
 
-  if (listKind === 'scheduleEvents') {
-    return [{
-      title: SCHEDULES_FIELDS.title,
-      start: SCHEDULES_FIELDS.start,
-      end: SCHEDULES_FIELDS.end,
-      serviceType: 'ServiceType',
-      locationName: 'Location',
-    }];
-  }
-
+  // Standard variants to try for any list.
+  // Order matters: most modern/preferred first.
   return [
     {
-      title: SCHEDULES_FIELDS.title,
+      title: 'Title',
+      start: 'EventDate',
+      end: 'EndDate',
+      serviceType: 'ServiceType',
+      locationName: 'Location',
+    },
+    {
+      title: 'Title',
       start: 'Start',
       end: 'End',
-      serviceType: 'ServiceType',
+      serviceType: 'Category',
       locationName: 'LocationName',
     },
     {
-      title: SCHEDULES_FIELDS.title,
-      start: SCHEDULES_FIELDS.start,
-      end: SCHEDULES_FIELDS.end,
-      serviceType: 'ServiceType',
-      locationName: 'LocationName',
+      title: 'Title',
+      start: 'date',
+      end: 'date',
     },
+    {
+      title: 'Subject', // Legacy Outlook-style
+      start: 'StartDate',
+      end: 'EndDate',
+    }
   ];
 };
 

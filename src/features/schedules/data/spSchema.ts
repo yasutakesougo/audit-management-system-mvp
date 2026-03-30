@@ -86,3 +86,19 @@ export const DEFAULT_SCHEDULE_VISIBILITY: ScheduleVisibility = 'org';
 
 // Special value resolved at runtime to current user's staffCode
 export const OWNER_USER_ID_ME = 'staff:me';
+
+// ── 子リスト移行フラグ ────────────────────────────────────────────────────────
+
+/**
+ * Phase 3: 新子リスト（Approval_Logs 等）への二重書き込みを有効化。
+ * VITE_CHILD_LISTS_WRITE_ENABLED=1 で有効。デフォルト無効（既存動作に影響なし）。
+ */
+export const isChildListsWriteEnabled = (): boolean =>
+  String(readEnv('VITE_CHILD_LISTS_WRITE_ENABLED', '0')).trim() === '1';
+
+/**
+ * Phase 5: 旧承認フィールド（AcceptedOn / AcceptedBy / AcceptedNote）の読み取り制御。
+ * VITE_LEGACY_APPROVAL_READ=0 で無効化。デフォルト有効（移行期間中は旧フィールドを読む）。
+ */
+export const isLegacyApprovalReadEnabled = (): boolean =>
+  String(readEnv('VITE_LEGACY_APPROVAL_READ', '1')).trim() !== '0';

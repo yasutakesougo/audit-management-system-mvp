@@ -71,7 +71,10 @@ export function createPostBatch(deps: PostBatchDeps) {
       const skipAuthCheck = shouldSkipLogin(config) || isE2eMsalMockEnabled(config);
       if (!token && !skipAuthCheck) throw new AuthRequiredError();
 
-      const headers = new Headers({ 'Content-Type': `multipart/mixed; boundary=${boundary}` });
+      const headers = new Headers({ 
+        'Content-Type': `multipart/mixed; boundary=${boundary}`,
+        'Accept': 'application/json;odata=nometadata'
+      });
       if (token) headers.set('Authorization', `Bearer ${token}`);
 
       // eslint-disable-next-line no-restricted-globals -- SP $batch SSOT: fetch はこの最下層でのみ許可

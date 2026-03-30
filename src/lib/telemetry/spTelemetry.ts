@@ -21,8 +21,14 @@ export type SpEventName =
   | 'provider_fallback_triggered'
   | 'provider_error'
   | 'provider_contract_violation'
-  | 'repository_direct_sp_access_detected'
-  | 'provisioning_executed';
+  | 'sp:row_skipped'
+  | 'sp:fetch_fallback_success'
+  | 'provisioning_executed'
+  | 'sp:approval_log_created'
+  | 'sp:approval_log_skipped'
+  | 'sp:approval_log_failed'
+  | 'sp:child_lists_provision_success'
+  | 'sp:child_lists_provision_failed';
 
 export interface SpEventPayload {
   key?: string;

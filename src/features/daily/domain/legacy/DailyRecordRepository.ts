@@ -1,5 +1,6 @@
 // contract:allow-interface — Repository interfaces define behavior contracts, not data shapes (SSOT = schema.ts)
 import type { DailyRecordDomain } from '../schema';
+import type { DailyIntegrityException } from '../integrity/dailyIntegrityChecker';
 
 /**
  * DateRange for daily record queries
@@ -125,4 +126,13 @@ export interface DailyRecordRepository {
    * - Throws if the record for the given date does not exist
    */
   approve(input: ApproveRecordInput, params?: DailyRecordRepositoryMutationParams): Promise<DailyRecordItem>;
+
+  /**
+   * Scan integrity for a range of dates
+   *
+   * @param dates - Array of dates in YYYY-MM-DD format (Asia/Tokyo)
+   * @param signal - Optional abort signal
+   * @returns Promise of integrity exceptions detected
+   */
+  scanIntegrity(dates: string[], signal?: AbortSignal): Promise<DailyIntegrityException[]>;
 }

@@ -80,17 +80,10 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     category: 'master',
     lifecycle: 'optional',
     essentialFields: [
-      'UserID', 'FullName', 'Furigana', 'FullNameKana', 
-      'ContractDate', 'ServiceStartDate', 'ServiceEndDate',
-      'IsActive', 'SevereFlag', 'IsHighIntensitySupportTarget', 'IsSupportProcedureTarget',
-      'TransportToDays', 'TransportFromDays', 'TransportCourse', 'TransportSchedule', 'AttendanceDays',
-      'RecipientCertNumber', 'RecipientCertExpiry', 'UsageStatus', 'GrantMunicipality',
-      'GrantPeriodStart', 'GrantPeriodEnd', 'DisabilitySupportLevel', 'GrantedDaysPerMonth',
-      'UserCopayLimit', 'LastAssessmentDate', 'BehaviorScore', 'ChildBehaviorScore',
-      'ServiceTypesJson', 'EligibilityCheckedAt'
+      'UserID', 'FullName', 'ContractDate', 'IsActive', 'UsageStatus'
     ],
     provisioningFields: [
-      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true },
+      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true },
       { internalName: 'FullName', type: 'Text', displayName: 'Full Name', required: true },
       { internalName: 'Furigana', type: 'Text', displayName: 'Furigana' },
       { internalName: 'FullNameKana', type: 'Text', displayName: 'Full Name Kana' },
@@ -99,7 +92,15 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
       { internalName: 'ServiceEndDate', type: 'DateTime', displayName: 'Service End Date', dateTimeFormat: 'DateOnly' },
       { internalName: 'IsActive', type: 'Boolean', displayName: 'Is Active', default: true },
       { internalName: 'UsageStatus', type: 'Text', displayName: 'Usage Status' },
-      // Note: Other fields (Transport, Benefit) are moved to separate lists to avoid column limit.
+      // Core status flags
+      { internalName: 'IsHighIntensitySupportTarget', type: 'Boolean', displayName: 'High Intensity Target' },
+      { internalName: 'IsSupportProcedureTarget', type: 'Boolean', displayName: 'Support Procedure Target' },
+      { internalName: 'LastAssessmentDate', type: 'DateTime', displayName: 'Last Assessment Date', dateTimeFormat: 'DateOnly' },
+      // Regulatory scores
+      { internalName: 'BehaviorScore', type: 'Number', displayName: 'Behavior Score' },
+      { internalName: 'ChildBehaviorScore', type: 'Number', displayName: 'Child Behavior Score' },
+      { internalName: 'ServiceTypesJson', type: 'Note', displayName: 'Service Types JSON', richText: false },
+      { internalName: 'EligibilityCheckedAt', type: 'DateTime', displayName: 'Eligibility Checked At' },
     ],
   },
   {
@@ -110,7 +111,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     category: 'master',
     lifecycle: 'required',
     provisioningFields: [
-      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true },
+      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true },
       { internalName: 'TransportToDays', type: 'MultiChoice', displayName: 'Transport To Days', choices: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
       { internalName: 'TransportFromDays', type: 'MultiChoice', displayName: 'Transport From Days', choices: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
       { internalName: 'TransportCourse', type: 'Text', displayName: 'Transport Course' },
@@ -126,7 +127,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     category: 'master',
     lifecycle: 'required',
     provisioningFields: [
-      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true },
+      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true },
       { internalName: 'RecipientCertNumber', type: 'Text', displayName: 'Recipient Cert Number' },
       { internalName: 'RecipientCertExpiry', type: 'DateTime', displayName: 'Recipient Cert Expiry', dateTimeFormat: 'DateOnly' },
       { internalName: 'GrantMunicipality', type: 'Text', displayName: 'Grant Municipality' },
@@ -200,18 +201,57 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
   // ── 2. 日々の記録系 ─────────────────────────────────────
   {
     key: 'support_record_daily',
-    displayName: '日次支援記録 (支援手順書兼記録)',
-    resolve: () => envOr('VITE_SP_LIST_PROCEDURE_RECORD', fromConfig(ListKeys.ProcedureRecordDaily)),
+    displayName: '日次支援記録 (親/統括)',
+    resolve: () => envOr('VITE_SP_LIST_DAILY_RECORD', fromConfig(ListKeys.DailyRecordParent)),
     operations: ['R', 'W'],
     category: 'daily',
     lifecycle: 'required',
     essentialFields: ['Title', 'RecordDate', 'ReporterName'],
     provisioningFields: [
-      { internalName: 'RecordDate', type: 'DateTime', displayName: 'Record Date', required: true, dateTimeFormat: 'DateOnly' },
+      { internalName: 'RecordDate', type: 'DateTime', displayName: 'Record Date', required: true, dateTimeFormat: 'DateOnly', indexed: true },
       { internalName: 'ReporterName', type: 'Text', displayName: 'Reporter Name' },
       { internalName: 'ReporterRole', type: 'Text', displayName: 'Reporter Role' },
-      { internalName: 'UserRowsJSON', type: 'Note', displayName: 'User Rows JSON', required: true },
+      { internalName: 'UserCount', type: 'Number', displayName: 'User Count' },
+      { internalName: 'LatestVersion', type: 'Number', displayName: 'Latest Version', default: 1 },
+      { internalName: 'IsDeleted', type: 'Boolean', displayName: 'Is Deleted', default: false },
       { internalName: 'ApprovalStatus', type: 'Text', displayName: 'Approval Status' },
+    ],
+  },
+  {
+    key: 'support_procedure_record_daily',
+    displayName: '支援手順記録 (ISP詳細)',
+    resolve: () => envOr('VITE_SP_LIST_PROCEDURE_RECORD', fromConfig(ListKeys.ProcedureRecordDaily)),
+    operations: ['R', 'W'],
+    category: 'daily',
+    lifecycle: 'optional',
+    provisioningFields: [
+      { internalName: 'UserCode', type: 'Text', displayName: 'User Code', required: true, indexed: true },
+      { internalName: 'RecordDate', type: 'DateTime', displayName: 'Record Date', required: true, dateTimeFormat: 'DateOnly', indexed: true },
+      { internalName: 'PlanningSheetId', type: 'Text', displayName: 'Planning Sheet ID' },
+      { internalName: 'ProcedureText', type: 'Note', displayName: 'Procedure Text', richText: false },
+      { internalName: 'ExecutionStatus', type: 'Text', displayName: 'Execution Status' },
+      { internalName: 'TimeSlot', type: 'Text', displayName: 'Time Slot' },
+      { internalName: 'Activity', type: 'Text', displayName: 'Activity' },
+      { internalName: 'PerformedBy', type: 'Text', displayName: 'Performed By' },
+      { internalName: 'PerformedAt', type: 'DateTime', displayName: 'Performed At' },
+      { internalName: 'UserResponse', type: 'Note', displayName: 'User Response', richText: false },
+      { internalName: 'SpecialNotes', type: 'Note', displayName: 'Special Notes', richText: false },
+    ],
+  },
+  {
+    key: 'support_record_rows',
+    displayName: '日次支援記録 (詳細行)',
+    resolve: () => envOr('VITE_SP_LIST_PROCEDURE_RECORD_ROWS', 'DailyRecordRows'),
+    operations: ['R', 'W'],
+    category: 'daily',
+    lifecycle: 'required',
+    provisioningFields: [
+      { internalName: 'ParentID', type: 'Number', displayName: 'Parent ID', required: true, indexed: true },
+      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true },
+      { internalName: 'Version', type: 'Number', displayName: 'Version', default: 1, indexed: true },
+      { internalName: 'Status', type: 'Text', displayName: 'Status' },
+      { internalName: 'Payload', type: 'Note', displayName: 'Row Data JSON', richText: false },
+      { internalName: 'RecordedAt', type: 'DateTime', displayName: 'Recorded At' },
     ],
   },
   {
@@ -366,7 +406,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_PLAN_GOAL', fromConfig(ListKeys.PlanGoals)),
     operations: ['R', 'W'],
     category: 'handoff',
-    lifecycle: 'required',
+    lifecycle: 'optional',
   },
   {
     key: 'support_plans',
@@ -374,7 +414,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_SUPPORT_PLANS', fromConfig(ListKeys.SupportPlans)),
     operations: ['R', 'W', 'D'],
     category: 'handoff',
-    lifecycle: 'required',
+    lifecycle: 'optional',
   },
   {
     key: 'iceberg_pdca',
@@ -398,7 +438,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_ISP_MASTER', fromConfig(ListKeys.IspMaster)),
     operations: ['R', 'W'],
     category: 'handoff',
-    lifecycle: 'required',
+    lifecycle: 'optional',
   },
   {
     key: 'planning_sheet_master',
@@ -406,7 +446,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_PLANNING_SHEET', fromConfig(ListKeys.PlanningSheetMaster)),
     operations: ['R', 'W'],
     category: 'handoff',
-    lifecycle: 'required',
+    lifecycle: 'optional',
   },
 
   // ── 7. コンプライアンス・診断系 ────────────────────────
@@ -469,7 +509,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_PDF_OUTPUT_LOG', fromConfig(ListKeys.PdfOutputLog)),
     operations: ['R', 'W'],
     category: 'other',
-    lifecycle: 'required',
+    lifecycle: 'optional',
   },
 ];
 

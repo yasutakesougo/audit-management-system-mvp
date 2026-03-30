@@ -120,7 +120,7 @@ export type SpPlanningSheetReassessmentRow = {
 
 /** Dynamic Schema Resolution 用候補定義: BehaviorMonitoringRecord_Master */
 export const BEHAVIOR_MONITORING_CANDIDATES = {
-  id: ['Id'],
+  id: ['ID', 'Id'],
   userId: ['UserId', 'UserCode'],
   planningSheetId: ['PlanningSheetId'],
   periodStart: ['PeriodStart'],
@@ -145,7 +145,7 @@ export const BEHAVIOR_MONITORING_ESSENTIALS: (keyof typeof BEHAVIOR_MONITORING_C
 
 /** Dynamic Schema Resolution 用候補定義: PlanningSheetReassessment_Master */
 export const REASSESSMENT_CANDIDATES = {
-  id: ['Id'],
+  id: ['ID', 'Id'],
   planningSheetId: ['PlanningSheetId'],
   userId: ['UserId', 'UserCode'],
   reassessmentTrigger: ['ReassessmentTrigger'],

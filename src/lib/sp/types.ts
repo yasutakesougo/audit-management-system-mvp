@@ -85,6 +85,8 @@ export interface SpFieldDef {
   dateTimeFormat?: 'DateOnly' | 'DateTime';
   richText?: boolean;
   addToDefaultView?: boolean;
+  /** インデックスを付与する（5000件制限回避のため、フィルター対象フィールドに必須） */
+  indexed?: boolean;
 }
 
 export interface EnsureListOptions {

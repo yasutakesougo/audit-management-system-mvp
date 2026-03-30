@@ -310,7 +310,8 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
       }
     }
 
-    // Priority 3: Auto-provisioning (if canonical requested but missing)
+    // Priority 3: Auto-provisioning DISABLED (Issue: SharePoint column limit 8KB)
+    /*
     if (!provisioningLatch.has(this.listTitle.toLowerCase())) {
       provisioningLatch.add(this.listTitle.toLowerCase());
       try {
@@ -324,6 +325,7 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
         console.warn('[SharePointDailyRecordRepository] Auto-provision failed', e);
       }
     }
+    */
 
     return {};
   }

@@ -1,4 +1,4 @@
-import type { SpFieldDef, UseSP } from './spClient';
+import type { UseSP } from './spClient';
 import { spWriteResilient } from './spWrite';
 
 export type ActivityDiaryMealAmount = '完食' | '多め' | '半分' | '少なめ' | 'なし';
@@ -49,7 +49,7 @@ const normalizeGuid = (value: string | null | undefined): string => (value ?? ''
 let cachedUserListId: string | null = null;
 let ensureActivityDiaryPromise: Promise<void> | null = null;
 
-const MEAL_CHOICES = ['完食', '多め', '半分', '少なめ', 'なし'] as const;
+const _MEAL_CHOICES = ['完食', '多め', '半分', '少なめ', 'なし'] as const;
 
 const LUNCH_AMOUNT_MAP: Record<ActivityDiaryMealAmount, '完食' | '8割' | '半分' | '少量' | 'なし'> = {
   '完食': '完食',
@@ -60,10 +60,10 @@ const LUNCH_AMOUNT_MAP: Record<ActivityDiaryMealAmount, '完食' | '8割' | '半
 };
 
 const BEHAVIOR_TYPE_CHOICES = new Set(['暴言', '離席', 'その他']);
-const CATEGORY_CHOICES: readonly ActivityDiaryCategory[] = ['請負', '個別', '外活動', '余暇'];
-const SHIFT_CHOICES = ['AM', 'PM', '1日'] as const;
-const LUNCH_CHOICES = ['完食', '8割', '半分', '少量', 'なし'] as const;
-const BEHAVIOR_CHOICES = ['暴言', '離席', 'その他'] as const;
+const _CATEGORY_CHOICES: readonly ActivityDiaryCategory[] = ['請負', '個別', '外活動', '余暇'];
+const _SHIFT_CHOICES = ['AM', 'PM', '1日'] as const;
+const _LUNCH_CHOICES = ['完食', '8割', '半分', '少量', 'なし'] as const;
+const _BEHAVIOR_CHOICES = ['暴言', '離席', 'その他'] as const;
 
 async function fetchListIdByTitle(sp: Pick<UseSP, 'spFetch'>, listTitle: string): Promise<string> {
   const encoded = encodeURIComponent(listTitle);
@@ -78,7 +78,7 @@ async function fetchListIdByTitle(sp: Pick<UseSP, 'spFetch'>, listTitle: string)
   return normalized;
 }
 
-async function resolveUserListId(sp: Pick<UseSP, 'spFetch'>): Promise<string> {
+async function _resolveUserListId(sp: Pick<UseSP, 'spFetch'>): Promise<string> {
   if (cachedUserListId) {
     return cachedUserListId;
   }
@@ -92,8 +92,9 @@ async function resolveUserListId(sp: Pick<UseSP, 'spFetch'>): Promise<string> {
   }
 }
 
-async function ensureActivityDiaryList(sp: Pick<UseSP, 'spFetch' | 'ensureListExists'>): Promise<void> {
+async function ensureActivityDiaryList(_sp: Pick<UseSP, 'spFetch' | 'ensureListExists'>): Promise<void> {
   if (!ensureActivityDiaryPromise) {
+    /*
     ensureActivityDiaryPromise = (async () => {
       const userListId = await resolveUserListId(sp);
       const fields: SpFieldDef[] = [
@@ -120,6 +121,8 @@ async function ensureActivityDiaryList(sp: Pick<UseSP, 'spFetch' | 'ensureListEx
         throw new Error(`支援記録（ケース記録）リストの作成に失敗しました: ${message}`);
       }
     })();
+    */
+    ensureActivityDiaryPromise = Promise.resolve();
   }
 
   try {

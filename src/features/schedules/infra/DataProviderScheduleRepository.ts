@@ -3,8 +3,9 @@ import { toSafeError } from '@/lib/errors';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { auditLog } from '@/lib/debugLogger';
 import {
-    SCHEDULE_CANDIDATES,
-    SCHEDULE_ESSENTIALS,
+  SCHEDULE_CANDIDATES,
+  SCHEDULE_ESSENTIALS,
+  SCHEDULE_EXTENSIONS,
 } from '@/sharepoint/fields/scheduleFields';
 import { 
   resolveInternalNamesDetailed, 
@@ -31,7 +32,10 @@ import {
     sortByStart,
 } from './scheduleSpUtils';
 
-type ResolvedScheduleFields = Record<keyof typeof SCHEDULE_CANDIDATES, string | undefined>;
+type ResolvedScheduleFields = Record<keyof typeof SCHEDULE_CANDIDATES, string | undefined> & {
+  visibility?: string;
+  orgAudience?: string;
+};
 
 /**
  * DataProviderScheduleRepository
@@ -65,17 +69,26 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
 
     try {
       const available = await this.provider.getFieldInternalNames(this.listTitle);
+
+      // 基本候補 + 拡張（Visibility等）を合体して解決
+      const allCandidates = { ...SCHEDULE_CANDIDATES, ...SCHEDULE_EXTENSIONS };
       const { resolved, fieldStatus } = resolveInternalNamesDetailed(
         available,
-        SCHEDULE_CANDIDATES as any
+        allCandidates as any
       );
 
+      // 健康診断は SCHEDULE_CANDIDATES 分のみで行う
       const isHealthy = areEssentialFieldsResolved(resolved, SCHEDULE_ESSENTIALS as any);
       
+      // Observability への報告（バナーのトリガー）から拡張分を除去し、バナーをクリアする
+      const stableFieldStatus = Object.fromEntries(
+        Object.keys(SCHEDULE_CANDIDATES).map(k => [k, fieldStatus[k]])
+      );
+
       reportResourceResolution({
         resourceName: 'Schedule',
         resolvedTitle: this.listTitle,
-        fieldStatus: fieldStatus as any,
+        fieldStatus: stableFieldStatus as any,
         essentials: SCHEDULE_ESSENTIALS as any,
       });
 
@@ -132,7 +145,8 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
         signal
       });
 
-      const allItems = sortByStart(items.map(mapSpRowToSchedule).filter((item): item is ScheduleItem => !!item));
+      const mapped = items.map(row => mapSpRowToSchedule(row)).filter((item): item is ScheduleItem => !!item);
+      const allItems = sortByStart(mapped);
 
       // Domain filtering (Visibility)
       return this.applyVisibilityFilter(allItems);
@@ -180,8 +194,7 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       if (fields.assignedStaffId && input.assignedStaffId) payload[fields.assignedStaffId] = input.assignedStaffId;
       if (fields.notes && input.notes) payload[fields.notes] = input.notes;
       if (fields.locationName && input.locationName) payload[fields.locationName] = input.locationName;
-      if (fields.vehicleId && input.vehicleId) payload[fields.vehicleId] = input.vehicleId;
-      
+
       // インフラ管理用フィールド
       if (fields.rowKey) payload[fields.rowKey] = generateRowKey();
       if (fields.dayKey) payload[fields.dayKey] = dayKeyInTz(startDate);
@@ -215,12 +228,11 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       if (fields.status && input.status) payload[fields.status] = input.status;
       if (fields.serviceType && input.serviceType) payload[fields.serviceType] = input.serviceType;
       if (fields.userId && input.userId) payload[fields.userId] = input.userId;
-      if (fields.userName && input.userName) payload[fields.userName] = input.userName;
+      if (fields.userName) payload[fields.userName] = input.userName;
       if (fields.assignedStaffId && input.assignedStaffId) payload[fields.assignedStaffId] = input.assignedStaffId;
       if (fields.notes && input.notes) payload[fields.notes] = input.notes;
       if (fields.locationName && input.locationName) payload[fields.locationName] = input.locationName;
-      if (fields.vehicleId && input.vehicleId) payload[fields.vehicleId] = input.vehicleId;
-      
+
       if (fields.dayKey) payload[fields.dayKey] = dayKeyInTz(startDate);
       if (fields.monthKey) payload[fields.monthKey] = monthKeyInTz(startDate);
       if (fields.fiscalYear) payload[fields.fiscalYear] = String(startDate.getFullYear());
@@ -253,19 +265,9 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
     }
   }
 
-  private handleError(err: unknown, _userMessage: string): never {
-    const safe = toSafeError(err instanceof Error ? err : new Error(String(err)));
-    // IDataProvider 自体が 401/403 などの適切なエラークラスを投げることが期待されるが、
-    // ここでは従来の try/catch 互換性を重視。
-    throw safe;
-  }
-
-  async checkListExists(): Promise<boolean> {
-    try {
-      const meta = await this.provider.getMetadata(this.listTitle);
-      return !!meta;
-    } catch {
-      return false;
-    }
+  private handleError(err: unknown, userMessage: string): never {
+    const error = toSafeError(err);
+    auditLog.error('schedule:repo', userMessage, { error });
+    throw new Error(`${userMessage} (${error.message})`);
   }
 }

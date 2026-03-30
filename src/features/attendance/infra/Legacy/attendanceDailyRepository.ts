@@ -141,7 +141,8 @@ const resolveAttendanceDailyFields = async (
 
   let resolved = await resolve();
 
-  // 必須列不足時の自動プロビジョニング
+  // 必須列不足時の自動プロビジョニング DISABLED (Issue: SharePoint column limit 8KB)
+  /*
   if (!resolved && !attendanceDailyProvisioningLatch.has(cacheKey)) {
     console.info(`[AttendanceDailyRepository] schema mismatch for "${listTitle}". Attempting provision...`);
     attendanceDailyProvisioningLatch.add(cacheKey);
@@ -153,6 +154,7 @@ const resolveAttendanceDailyFields = async (
       console.warn('[AttendanceDailyRepository] Autoprovision failed', e);
     }
   }
+  */
 
   if (resolved) {
     attendanceDailyFieldCache.set(cacheKey, resolved);

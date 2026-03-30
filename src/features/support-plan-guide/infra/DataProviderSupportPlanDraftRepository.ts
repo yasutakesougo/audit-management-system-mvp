@@ -7,7 +7,6 @@ import {
     SUPPORT_PLANS_LIST_TITLE,
     SUPPORT_PLANS_CANDIDATES,
     SUPPORT_PLANS_ESSENTIALS,
-    SUPPORT_PLANS_ENSURE_FIELDS,
 } from '@/sharepoint/fields/supportPlanFields';
 import { 
   resolveInternalNamesDetailed, 
@@ -148,52 +147,48 @@ export class DataProviderSupportPlanDraftRepository implements SupportPlanDraftR
   private async resolveFields(): Promise<any> {
     if (this.resolvedFields) return this.resolvedFields;
 
-    const resolve = async () => {
-      try {
-        const available = await this.provider.getFieldInternalNames(this.listTitle);
-        const { resolved, fieldStatus } = resolveInternalNamesDetailed(
-          available,
-          SUPPORT_PLANS_CANDIDATES as any
-        );
+    try {
+      const available = await this.provider.getFieldInternalNames(this.listTitle);
+      const { resolved, fieldStatus } = resolveInternalNamesDetailed(
+        available,
+        SUPPORT_PLANS_CANDIDATES as any
+      );
 
-        const isHealthy = areEssentialFieldsResolved(resolved, SUPPORT_PLANS_ESSENTIALS as any);
-        
-        reportResourceResolution({
-          resourceName: 'SupportPlans',
-          resolvedTitle: this.listTitle,
-          fieldStatus: fieldStatus as any,
-          essentials: SUPPORT_PLANS_ESSENTIALS as any,
-        });
+      const isHealthy = areEssentialFieldsResolved(resolved, SUPPORT_PLANS_ESSENTIALS as any);
+      
+      reportResourceResolution({
+        resourceName: 'SupportPlans',
+        resolvedTitle: this.listTitle,
+        fieldStatus: fieldStatus as any,
+        essentials: SUPPORT_PLANS_ESSENTIALS as any,
+      });
 
-        if (!isHealthy) return null;
-
+      if (isHealthy) {
         const select = [
           'Id', 'Created', 'Modified',
           ...Object.values(resolved).filter((v): v is string => typeof v === 'string')
         ].filter((v, i, a) => a.indexOf(v) === i);
 
-        return { ...resolved, select };
-      } catch (err) {
-        reportResourceResolution({
-          resourceName: 'SupportPlans',
-          resolvedTitle: this.listTitle,
-          fieldStatus: {} as any,
-          essentials: SUPPORT_PLANS_ESSENTIALS as any,
-          error: String(err)
-        });
-        return null;
+        this.resolvedFields = { ...resolved, select };
+        return this.resolvedFields;
       }
-    };
 
-    let res = await resolve();
-    if (!res) {
-      auditLog.info('support-plan:repo', 'SupportPlans mismatch. Attempting self-healing...');
-      await this.provider.ensureListExists(this.listTitle, SUPPORT_PLANS_ENSURE_FIELDS as any);
-      res = await resolve();
+      auditLog.warn('support-plan:repo', 'Essential fields missing for SupportPlans.', { 
+        list: this.listTitle, 
+        resolved 
+      });
+      return null;
+    } catch (err) {
+      reportResourceResolution({
+        resourceName: 'SupportPlans',
+        resolvedTitle: this.listTitle,
+        fieldStatus: {} as any,
+        essentials: SUPPORT_PLANS_ESSENTIALS as any,
+        error: String(err)
+      });
+      auditLog.error('support-plan:repo', 'Field resolution failed:', err);
+      return null;
     }
-
-    if (res) this.resolvedFields = res;
-    return res;
   }
 
   private mapRowToDraft(row: Record<string, unknown>, fields: Record<string, string>): SupportPlanDraft | null {

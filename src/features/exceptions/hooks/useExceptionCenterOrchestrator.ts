@@ -46,7 +46,8 @@ export function useExceptionCenterOrchestrator() {
       criticalHandoffs, 
       attentionUsers,
       dataOSItems,
-      bridgeItems
+      bridgeItems,
+      dataSources.integrityExceptions
     );
   }, [dataSources, bridge.exceptions, users]);
 

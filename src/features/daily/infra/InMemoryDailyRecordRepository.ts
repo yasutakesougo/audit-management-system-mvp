@@ -249,6 +249,15 @@ export class InMemoryDailyRecordRepository implements DailyRecordRepository {
   }
 
   /**
+   * Scan daily records for integrity issues (mismatches, missing keys, etc.)
+   */
+  async scanIntegrity(_dates: string[], _signal?: AbortSignal): Promise<import('../domain/integrity/dailyIntegrityChecker').DailyIntegrityException[]> {
+    // InMemory 版は常に最新状態であり、アトミック性が保証されているため、
+    // 基本的に整合性エラーは発生しないものとして空配列を返す。
+    return [];
+  }
+
+  /**
    * Clear all records (for testing)
    */
   clear(): void {

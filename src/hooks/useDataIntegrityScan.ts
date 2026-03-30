@@ -1,4 +1,4 @@
-import type { ScanProgress, ScanResult, ScanTarget } from '@/lib/dataIntegrityScanner';
+import type { ScanProgress, ScanResult, ScanTarget, TargetData } from '@/lib/dataIntegrityScanner';
 import { scanAll } from '@/lib/dataIntegrityScanner';
 import { useCallback, useRef, useState } from 'react';
 
@@ -36,7 +36,7 @@ export function useDataIntegrityScan() {
   const abortRef = useRef<AbortController | null>(null);
 
   const startScan = useCallback(
-    (targets: ScanTarget[], data: Map<string, unknown[]>) => {
+    (targets: ScanTarget[], data: Map<string, TargetData>) => {
       // Cancel any existing scan
       abortRef.current?.abort();
       const controller = new AbortController();

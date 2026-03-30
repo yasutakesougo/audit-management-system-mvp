@@ -113,7 +113,8 @@ export interface IUserMasterCreateDto {
   EligibilityCheckedAt?: string | null;
 }
 
-export const USERS_MASTER_FIELD_MAP = {
+// ── 1. Users_Master (Core) ──
+export const USERS_MASTER_CORE_FIELD_MAP = {
   id: 'Id',
   title: 'Title',
   userId: 'UserID',
@@ -125,34 +126,49 @@ export const USERS_MASTER_FIELD_MAP = {
   serviceEndDate: 'ServiceEndDate',
   isHighIntensitySupportTarget: 'IsHighIntensitySupportTarget',
   isSupportProcedureTarget: 'IsSupportProcedureTarget',
-  severeFlag: 'SevereFlag',
+  severeFlag: 'SevereFlag', // Deprecated/Legacy fallback
   isActive: 'IsActive',
-  transportToDays: 'TransportToDays',
-  transportFromDays: 'TransportFromDays',
-  transportCourse: 'TransportCourse',
-  transportSchedule: 'TransportSchedule',
+  usageStatus: 'UsageStatus',
   attendanceDays: 'AttendanceDays',
-  recipientCertNumber: 'RecipientCertNumber',
-  recipientCertExpiry: 'RecipientCertExpiry',
   modified: 'Modified',
   created: 'Created',
-  // ── 支給決定・請求加算（DETAIL/FULL モード用） ──
-  usageStatus: 'UsageStatus',
-  grantMunicipality: 'GrantMunicipality',
-  grantPeriodStart: 'GrantPeriodStart',
-  grantPeriodEnd: 'GrantPeriodEnd',
-  disabilitySupportLevel: 'DisabilitySupportLevel',
-  grantedDaysPerMonth: 'GrantedDaysPerMonth',
-  userCopayLimit: 'UserCopayLimit',
-  transportAdditionType: 'TransportAdditionType',
-  mealAddition: 'MealAddition',
-  copayPaymentMethod: 'CopayPaymentMethod',
   lastAssessmentDate: 'LastAssessmentDate',
   // ── 制度判定属性 (Issue 4-3) ──
   behaviorScore: 'BehaviorScore',
   childBehaviorScore: 'ChildBehaviorScore',
   serviceTypesJson: 'ServiceTypesJson',
   eligibilityCheckedAt: 'EligibilityCheckedAt',
+} as const;
+
+// ── 2. Accessory Lists (Transport/Benefit) ──
+// NOTE: These fields are now managed in separate SharePoint lists to avoid row size limits.
+// Joined by UserID into the domain model.
+export const USERS_TRANSPORT_FIELD_MAP = {
+  transportToDays: 'TransportToDays',
+  transportFromDays: 'TransportFromDays',
+  transportCourse: 'TransportCourse',
+  transportSchedule: 'TransportSchedule',
+  transportAdditionType: 'TransportAdditionType',
+} as const;
+
+export const USERS_BENEFIT_FIELD_MAP = {
+  recipientCertNumber: 'RecipientCertNumber',
+  recipientCertExpiry: 'RecipientCertExpiry',
+  grantMunicipality: 'GrantMunicipality',
+  grantPeriodStart: 'GrantPeriodStart',
+  grantPeriodEnd: 'GrantPeriodEnd',
+  disabilitySupportLevel: 'DisabilitySupportLevel',
+  grantedDaysPerMonth: 'GrantedDaysPerMonth',
+  userCopayLimit: 'UserCopayLimit',
+  mealAddition: 'MealAddition',
+  copayPaymentMethod: 'CopayPaymentMethod',
+} as const;
+
+/** 統合 FIELD_MAP (後方互換用) */
+export const USERS_MASTER_FIELD_MAP = {
+  ...USERS_MASTER_CORE_FIELD_MAP,
+  ...USERS_TRANSPORT_FIELD_MAP,
+  ...USERS_BENEFIT_FIELD_MAP,
 } as const;
 
 // ── MINIMAL: 緊急フォールバック用（400エラー回避 / 4列） ──

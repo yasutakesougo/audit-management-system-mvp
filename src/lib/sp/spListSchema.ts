@@ -224,6 +224,19 @@ export async function getListFieldInternalNames(
 }
 
 /**
+ * Detects SharePoint 8KB row size limit errors.
+ * Includes both English and Japanese error strings seen in production.
+ */
+function isRowSizeLimitError(errText: string): boolean {
+  return (
+    errText.includes('maximum for this list') ||
+    errText.includes('reached the limit') ||
+    errText.includes('合計サイズが制限を超えている') ||
+    errText.includes('制限を超えているので、列を追加できません')
+  );
+}
+
+/**
  * Add a single field to a list using the CreateFieldAsXml endpoint.
  */
 export async function addFieldToList(
@@ -251,13 +264,23 @@ export async function addFieldToList(
     });
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
-      // 500 error often means XML error or field already exists but hidden
-      const isLimit = errText.includes('maximum for this list') || errText.includes('reached the limit');
-      if (res.status === 500) {
-        auditLog.warn('sp:fields', isLimit ? 'schema_limit_exceeded' : 'create_field_500_debug', { 
+      const isLimit = isRowSizeLimitError(errText);
+      
+      if (isLimit) {
+        auditLog.warn('sp:fields', 'schema_limit_exceeded_skipping', { 
+          listTitle, 
+          field: field.internalName,
+          reason: 'SharePoint row size limit reached'
+        });
+        // 物理的限界なので、これ以上の列追加を断念して「成功」として扱う（ループ防止）
+        return;
+      }
+
+      if (res.status === 500 || res.status === 400) {
+        auditLog.warn('sp:fields', 'create_field_error_debug', { 
           listTitle, 
           field: field.internalName, 
-          isLimit,
+          status: res.status,
           errText: errText.slice(0, 200)
         });
       }

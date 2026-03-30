@@ -14,6 +14,12 @@ vi.mock('@/lib/spClient', async () => {
   };
 });
 
+vi.mock('@/sharepoint/spProvisioningCoordinator', () => ({
+  SharePointProvisioningCoordinator: {
+    bootstrap: vi.fn(async () => ({ healthy: 0, unhealthy: 0, summaries: [] })),
+  },
+}));
+
 vi.mock('@/auth/useAuth', () => ({
   useAuth: () => ({
     signIn: signInMock,

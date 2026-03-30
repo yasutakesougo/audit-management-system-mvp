@@ -8,6 +8,11 @@ import { trackSpEvent } from '@/lib/telemetry/spTelemetry';
 import type { SpFetchFn } from './spLists';
 import { addFieldToList as _addFieldToList, ensureListExists as _ensureListExists } from './spListSchema';
 import type { EnsureListOptions, EnsureListResult, SpFieldDef } from './types';
+import {
+  RESULTS_LIST_TITLE, RESULTS_FIELDS,
+  APPROVAL_LOGS_LIST_TITLE, APPROVAL_LOG_FIELDS,
+  USER_FLAGS_LIST_TITLE, USER_FLAG_FIELDS,
+} from '@/sharepoint/fields/childListSchemas';
 
 export class SpProvisioningService {
   constructor(private spFetch: SpFetchFn) {}
@@ -39,6 +44,18 @@ export class SpProvisioningService {
       
       throw error;
     }
+  }
+
+  /**
+   * Phase 1: 子リスト（Results / ApprovalLogs / UserFlags）をまとめて保証する。
+   * 並列実行で高速化。各リストが既に存在する場合はフィールド差分のみ追加。
+   */
+  async ensureChildLists(): Promise<void> {
+    await Promise.all([
+      this.ensureList(RESULTS_LIST_TITLE, RESULTS_FIELDS),
+      this.ensureList(APPROVAL_LOGS_LIST_TITLE, APPROVAL_LOG_FIELDS),
+      this.ensureList(USER_FLAGS_LIST_TITLE, USER_FLAG_FIELDS),
+    ]);
   }
 
   /**

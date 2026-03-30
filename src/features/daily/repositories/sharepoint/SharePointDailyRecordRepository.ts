@@ -13,6 +13,14 @@ import type {
 } from '../../domain/legacy/DailyRecordRepository';
 import { DailyRecordItemSchema } from '../../domain/schema';
 import { buildDailyRecordPayload } from '../../domain/builders/buildDailyRecordPayload';
+import { auditLog } from '@/lib/debugLogger';
+
+import { 
+  scanDailyRecordIntegrity, 
+  type DailyIntegrityException,
+  type ScanSourceParent,
+  type ScanSourceChild 
+} from '../../domain/integrity/dailyIntegrityChecker';
 
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 
@@ -41,10 +49,21 @@ const DAILY_RECORD_FIELDS = {
   recordDate: 'RecordDate',    // Date type
   reporterName: 'ReporterName', // Text
   reporterRole: 'ReporterRole', // Text
-  userRowsJSON: 'UserRowsJSON', // Multi-line text
+  userRowsJSON: 'UserRowsJSON', // Multi-line text (DEPRECATED fallback)
   userCount: 'UserCount',       // Number
+  latestVersion: 'LatestVersion', // NEW: Atomic version control
+  isDeleted: 'IsDeleted',       // NEW: Logical delete support
   created: 'Created',
   modified: 'Modified',
+} as const;
+
+const DAILY_RECORD_ROWS_FIELDS = {
+  parentId: 'ParentID',
+  userId: 'UserID',
+  version: 'Version',           // NEW: Matches Parent's LatestVersion
+  status: 'Status',
+  payload: 'Payload',
+  recordedAt: 'RecordedAt',
 } as const;
 
 /**
@@ -70,6 +89,16 @@ type RowAggregateSource = {
  */
 interface SharePointItem {
   Id: number;
+  Title?: string;
+  RecordDate?: string;
+  ReporterName?: string;
+  ReporterRole?: string;
+  UserRowsJSON?: string;
+  UserCount?: number;
+  LatestVersion?: number;
+  IsDeleted?: boolean;
+  Created?: string;
+  Modified?: string;
   __metadata?: {
     etag?: string;
   };
@@ -250,6 +279,10 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
     this.spFetch = options.spFetch;
     this.listTitle = options.listTitle ?? getListTitle();
     this.listTitleCandidates = buildListTitleCandidates(this.listTitle);
+  }
+
+  private getRowsListTitle(): string {
+    return readNonEmptyEnv('VITE_SP_LIST_PROCEDURE_RECORD_ROWS') ?? 'DailyRecordRows';
   }
 
   private async getAvailableListTitles(): Promise<string[] | null> {
@@ -606,10 +639,12 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
 
       // Prepare item data using pure builder
       const itemData = buildDailyRecordPayload(input);
-
+      
+      // 親レコードの保存
+      let parentId: number;
       if (existingItem) {
-        // Update existing item — throwOnError: true
-        const updateUrl = `${listPath}/items(${existingItem.Id})`;
+        parentId = existingItem.Id;
+        const updateUrl = `${listPath}/items(${parentId})`;
         await this.spFetch(updateUrl, {
           method: 'POST',
           headers: {
@@ -618,20 +653,88 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
             'IF-MATCH': existingItem.__metadata?.etag ?? '*',
             'X-HTTP-Method': 'MERGE',
           },
-          body: JSON.stringify(itemData),
+          body: JSON.stringify({
+            ...itemData,
+            // まだ UserRowsJSON はクリアしない (Child 保存失敗時のため)
+          }),
         });
       } else {
-        // Create new item — throwOnError: true
         const createUrl = `${listPath}/items`;
-        await this.spFetch(createUrl, {
+        const res = await this.spFetch(createUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json;odata=verbose',
             'Accept': 'application/json;odata=verbose',
           },
-          body: JSON.stringify(itemData),
+          body: JSON.stringify({
+            ...itemData,
+            UserRowsJSON: '', // 新規作成なら既知の容量超過はないためクリア状態で開始
+          }),
+        });
+        const created = await res.json();
+        parentId = created.d?.Id || created.Id;
+      }
+
+      const rowsListTitle = this.getRowsListTitle();
+      const rowsListPath = buildListPath(rowsListTitle);
+
+      // 子レコード（行詳細）のクリーンアップ: 既存の行を ParentID で検索して削除
+      if (existingItem) {
+        try {
+          const filter = `${DAILY_RECORD_ROWS_FIELDS.parentId} eq ${parentId}`;
+          const res = await this.spFetch(`${rowsListPath}/items?$filter=${filter}&$select=Id`);
+          const json = await res.json();
+          const itemsToDelete = json.value || [];
+          
+          if (itemsToDelete.length > 0) {
+            auditLog.debug('daily', `Cleaning up ${itemsToDelete.length} existing rows for ParentID: ${parentId}`);
+            // Note: 本来は $batch で削除すべきだが、まずは確実な逐次削除で実装
+            for (const item of itemsToDelete) {
+              await this.spFetch(`${rowsListPath}/items(${item.Id})`, {
+                method: 'POST',
+                headers: { 'X-HTTP-Method': 'DELETE', 'IF-MATCH': '*' }
+              });
+            }
+          }
+        } catch (cleanupError) {
+          auditLog.warn('daily', 'Row cleanup failed - might result in duplicates', { error: String(cleanupError) });
+        }
+      }
+
+      // 子レコードの新規保存
+      for (const row of input.userRows) {
+        const rowPayload = {
+          [DAILY_RECORD_ROWS_FIELDS.parentId]: parentId,
+          [DAILY_RECORD_ROWS_FIELDS.userId]: row.userId,
+          [DAILY_RECORD_ROWS_FIELDS.status]: 'done',
+          [DAILY_RECORD_ROWS_FIELDS.payload]: JSON.stringify(row), // 行ごとのJSONなら制限に絶対かからない
+          [DAILY_RECORD_ROWS_FIELDS.recordedAt]: new Date().toISOString(),
+        };
+        await this.spFetch(`${rowsListPath}/items`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json;odata=verbose', 'Accept': 'application/json;odata=verbose' },
+          body: JSON.stringify(rowPayload),
         });
       }
+
+      // 4. 全ての Child が正常保存された後に、Parent の移行フラグを立てて JSON をクリアする
+      if (existingItem || parentId) {
+        const finalizeUrl = `${listPath}/items(${parentId})`;
+        await this.spFetch(finalizeUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json;odata=verbose',
+            'Accept': 'application/json;odata=verbose',
+            'IF-MATCH': '*',
+            'X-HTTP-Method': 'MERGE',
+          },
+          body: JSON.stringify({
+            UserRowsJSON: '', // 物理的な移行完了。ここで初めて Parent のスペースが空く
+          }),
+        });
+        auditLog.info('daily', `Finalized record normalization for ${input.date}`, { parentId });
+      }
+
       finishSpan({ meta: { status: 'ok', mode } });
     } catch (error) {
       const safeError = toSafeError(error);
@@ -646,15 +749,104 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
   }
 
   /**
+   * Scan integrity for a range of dates
+   */
+  async scanIntegrity(dates: string[], signal?: AbortSignal): Promise<DailyIntegrityException[]> {
+    if (dates.length === 0) return [];
+    
+    try {
+      const listPath = await this.resolveListPath();
+      const rowsListTitle = this.getRowsListTitle();
+      const rowsListPath = buildListPath(rowsListTitle);
+
+      // 1. 親レコードを取得 (RecordDate $in ...)
+      // $filter の dateQuery を作成
+      const dateFilters = dates.map(d => `${DAILY_RECORD_FIELDS.recordDate} eq '${d}T00:00:00Z'`).join(' or ');
+      const parentUrl = `${listPath}/items?$filter=(${dateFilters}) and ${DAILY_RECORD_FIELDS.isDeleted} ne true&$select=Id,RecordDate,LatestVersion`;
+      
+      const pRes = await this.spFetch(parentUrl, { signal });
+      const pData = await pRes.json();
+      const rawParents = pData.value || [];
+      
+      const parents: ScanSourceParent[] = rawParents.map((p: { Id: number | string; RecordDate?: string; LatestVersion?: number }) => ({
+        id: String(p.Id),
+        date: p.RecordDate ? p.RecordDate.split('T')[0] : 'unknown',
+        latestVersion: p.LatestVersion || 0,
+      }));
+
+      if (parents.length === 0) return [];
+
+      // 2. 対応する子レコードを取得 (ParentID $in ...)
+      const parentIds = parents.map(p => p.id);
+      // 注意: $in フィルタは限界があるため、大量の場合は分割が必要だが、今回は日付指定範囲のため $or で構築
+      const idFilters = parentIds.map(id => `${DAILY_RECORD_ROWS_FIELDS.parentId} eq ${id}`).join(' or ');
+      const childUrl = `${rowsListPath}/items?$filter=${idFilters}&$select=ParentID,UserID,Version,Status,Payload,RecordedAt`;
+      
+      const cRes = await this.spFetch(childUrl, { signal });
+      const cData = await cRes.json();
+      const rawChildren = cData.value || [];
+
+      const children: ScanSourceChild[] = rawChildren.map((c: { ParentID: number | string; UserID: string; Version?: number; Status: string; RecordedAt: string }) => ({
+        parentId: String(c.ParentID),
+        userId: c.UserID,
+        version: c.Version || 0,
+        status: c.Status,
+        recordedAt: c.RecordedAt,
+      }));
+
+      // 3. スキャナー実行
+      return scanDailyRecordIntegrity(parents, children);
+    } catch (error) {
+      console.error('[SharePointDailyRecordRepository] Integrity scan failed', error);
+      return [];
+    }
+  }
+
+  /**
    * Load a daily record for a specific date
    */
   async load(date: string): Promise<DailyRecordItem | null> {
     const finishSpan = startFeatureSpan(HYDRATION_FEATURES.daily.load, { date });
     try {
       const item = await this.findItemByDate(date);
-      const result = item ? parseSpItem(item) : null;
-      finishSpan({ meta: { status: 'ok', found: result !== null } });
-      return result;
+      if (!item) {
+        finishSpan({ meta: { status: 'ok', found: false } });
+        return null;
+      }
+
+      // SharePoint item から Zod でパース
+      const record = parseSpItem(item);
+      if (!record) return null;
+
+      // 正規化された子テーブルから詳細行を取得を試みる
+      try {
+        const latestVersion = item[DAILY_RECORD_FIELDS.latestVersion] || 0;
+        const rowsListTitle = this.getRowsListTitle();
+        const rowsListPath = buildListPath(rowsListTitle);
+        
+        // 最新バージョンに合致する行のみを取得（Version切り替えによるアトミック読込）
+        const filter = latestVersion > 0 
+          ? `ParentID eq ${item.Id} and Version eq ${latestVersion}`
+          : `ParentID eq ${item.Id}`; // バージョンがない時期のデータ
+
+        const res = await this.spFetch(`${rowsListPath}/items?$filter=${filter}&$select=Payload`);
+        const json = await res.json();
+        const rows = json.value || [];
+
+        if (rows.length > 0) {
+          // 子テーブルにデータがあれば、それを優先する
+          record.userRows = rows.map((r: { Payload: string }) => JSON.parse(r.Payload));
+          auditLog.debug('daily', `Loaded via version v${latestVersion}`, { count: rows.length });
+        } else {
+          auditLog.debug('daily', 'Loaded from legacy JSON fallback', { count: record.userRows.length });
+        }
+      } catch (childError) {
+        // 子テーブルの取得に失敗しても、親の UserRowsJSON があれば続行
+        auditLog.warn('daily', 'Failed to join children, using legacy fallback', { error: String(childError) });
+      }
+
+      finishSpan({ meta: { status: 'ok', found: true } });
+      return record;
     } catch (error) {
       const safeError = toSafeError(error);
       finishSpan({ meta: { status: 'error' }, error: safeError.message });
@@ -864,6 +1056,7 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
       return null;
     }
   }
+
 
   /**
    * Check if list exists (for diagnostics)

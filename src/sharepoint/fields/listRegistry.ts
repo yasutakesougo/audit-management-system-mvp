@@ -44,6 +44,7 @@ export enum ListKeys {
   // ── 分離先リスト ──
   UserTransportSettings = 'UserTransport_Settings',
   UserBenefitProfile = 'UserBenefit_Profile',
+  DailyRecordParent = 'SupportRecord_Daily',
 }
 
 export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
@@ -85,4 +86,5 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   // ── 分離先リスト ──
   [ListKeys.UserTransportSettings]: { title: 'UserTransport_Settings' },
   [ListKeys.UserBenefitProfile]: { title: 'UserBenefit_Profile' },
+  [ListKeys.DailyRecordParent]: { title: 'SupportRecord_Daily' },
 };
