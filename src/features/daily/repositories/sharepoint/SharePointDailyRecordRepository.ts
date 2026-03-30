@@ -19,7 +19,8 @@ import {
   scanDailyRecordIntegrity, 
   type DailyIntegrityException,
   type ScanSourceParent,
-  type ScanSourceChild 
+  type ScanSourceChild,
+  type ScanSourceAccessory
 } from '../../domain/integrity/dailyIntegrityChecker';
 
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
@@ -794,8 +795,42 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
         recordedAt: c.RecordedAt,
       }));
 
-      // 3. スキャナー実行
-      return scanDailyRecordIntegrity(parents, children);
+      // 3. 付随データ (Accessories) の取得: UserTransport_Settings
+      // 子レコードに含まれる全ユーザーIDを抽出
+      const userIds = [...new Set(children.map(c => c.userId))];
+      const accessories: ScanSourceAccessory[] = [];
+
+      if (userIds.length > 0) {
+        try {
+          const transportListTitle = readNonEmptyEnv('VITE_SP_LIST_USER_TRANSPORT') ?? 'UserTransport_Settings';
+          const transportListPath = buildListPath(transportListTitle);
+          // 注意: UserID フィルタを構築。数が極端に多い場合は分割が必要だが、今回は日付指定範囲のため許容
+          const chunkedUserIds = [];
+          for (let i = 0; i < userIds.length; i += 20) {
+            chunkedUserIds.push(userIds.slice(i, i + 20));
+          }
+
+          for (const chunk of chunkedUserIds) {
+            const userFilters = chunk.map(uid => `UserID eq '${uid}'`).join(' or ');
+            const transportUrl = `${transportListPath}/items?$filter=${userFilters}&$select=UserID`;
+            
+            const tRes = await this.spFetch(transportUrl, { signal });
+            const tData = await tRes.json();
+            const rawTransport = tData.value || [];
+            
+            accessories.push(...rawTransport.map((t: { UserID: string }) => ({
+              type: 'transport' as const,
+              userId: t.UserID,
+            })));
+          }
+        } catch (accError) {
+          console.warn('[SharePointDailyRecordRepository] Failed to fetch accessories for integrity scan', accError);
+          // アクセサリ取得に失敗しても既存の整合性チェックは継続する
+        }
+      }
+
+      // 4. スキャナー実行
+      return scanDailyRecordIntegrity(parents, children, accessories);
     } catch (error) {
       console.error('[SharePointDailyRecordRepository] Integrity scan failed', error);
       return [];

@@ -1,10 +1,10 @@
 import { createRepositoryFactory, type BaseFactoryOptions } from '@/lib/createRepositoryFactory';
 import type { UserRepository } from './domain/UserRepository';
 import { inMemoryUserRepository } from './infra/InMemoryUserRepository';
-import { RestApiUserRepository } from './infra/RestApiUserRepository';
-import { SharePointUserRepository } from './infra/SharePointUserRepository';
+import { DataProviderUserRepository } from './infra/DataProviderUserRepository';
+import { createDataProvider } from '@/lib/data/createDataProvider';
+import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { pushAudit } from '@/lib/audit';
-import { hasSpfxContext } from '@/lib/runtime';
 
 /**
  * User Repository Factory options.
@@ -20,26 +20,18 @@ const factory = createRepositoryFactory<UserRepository, UserRepositoryFactoryOpt
   name: 'User',
   createDemo: () => inMemoryUserRepository,
   createReal: (options) => {
-    // 1. If spFetch is provided, prioritize RestApiUserRepository
-    if (options.spFetch) {
-      return new RestApiUserRepository({
-        spFetch: options.spFetch,
-        audit: pushAudit,
-      });
+    // 1. DataProvider 版を使用 (Split Write / Lazy Join 対応の本番用実装)
+    const { acquireToken } = options;
+    if (!acquireToken) {
+      throw new Error('[UserRepositoryFactory] acquireToken is required for real repository.');
     }
-
-    // 2. If in SPFx context, use the SharePoint-pnpjs implementation
-    if (hasSpfxContext()) {
-      return new SharePointUserRepository({
-        ...options,
-        audit: pushAudit,
-      });
-    }
-
-    // 3. Fallback/Error
-    throw new Error(
-      '[UserRepositoryFactory] spFetch or SPFx context is required for SharePoint repository.',
-    );
+    const { baseUrl } = ensureConfig();
+    const { provider } = createDataProvider(createSpClient(acquireToken, baseUrl));
+    
+    return new DataProviderUserRepository({
+      provider,
+      audit: pushAudit,
+    });
   },
 });
 

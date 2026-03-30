@@ -114,6 +114,7 @@ export interface IUserMasterCreateDto {
 }
 
 // ── 1. Users_Master (Core) ──
+/** 氏名・ID・有効フラグ等、アプリ動作に必須または基本となるフィールド */
 export const USERS_MASTER_CORE_FIELD_MAP = {
   id: 'Id',
   title: 'Title',
@@ -132,8 +133,11 @@ export const USERS_MASTER_CORE_FIELD_MAP = {
   attendanceDays: 'AttendanceDays',
   modified: 'Modified',
   created: 'Created',
+} as const;
+
+/** アセスメント日や制度判定スコア等、特定の機能（監査・請求等）でのみ使用する拡張フィールド */
+export const USERS_MASTER_COMPLIANCE_FIELD_MAP = {
   lastAssessmentDate: 'LastAssessmentDate',
-  // ── 制度判定属性 (Issue 4-3) ──
   behaviorScore: 'BehaviorScore',
   childBehaviorScore: 'ChildBehaviorScore',
   serviceTypesJson: 'ServiceTypesJson',
@@ -167,6 +171,7 @@ export const USERS_BENEFIT_FIELD_MAP = {
 /** 統合 FIELD_MAP (後方互換用) */
 export const USERS_MASTER_FIELD_MAP = {
   ...USERS_MASTER_CORE_FIELD_MAP,
+  ...USERS_MASTER_COMPLIANCE_FIELD_MAP,
   ...USERS_TRANSPORT_FIELD_MAP,
   ...USERS_BENEFIT_FIELD_MAP,
 } as const;
