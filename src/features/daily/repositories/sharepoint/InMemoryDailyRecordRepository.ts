@@ -6,6 +6,7 @@ import type {
     DailyRecordRepositoryMutationParams,
     SaveDailyRecordInput
 } from '../../domain/legacy/DailyRecordRepository';
+import { DailyIntegrityException } from '../../domain/integrity/dailyIntegrityChecker';
 import type { UserRowData } from '../../hooks/view-models/useTableDailyRecordForm';
 import { formatDateIso } from '@/lib/dateFormat';
 
@@ -246,6 +247,15 @@ export class InMemoryDailyRecordRepository implements DailyRecordRepository {
 
     this.data.set(input.date, approved);
     return { ...approved };
+  }
+
+  /**
+   * Scan integrity for a range of dates
+   * (In-memory implementation is always clean)
+   */
+  async scanIntegrity(_dates: string[], _signal?: AbortSignal): Promise<DailyIntegrityException[]> {
+    // InMemory は同期・アトミックに保存されるため、不整合は発生しない前提
+    return [];
   }
 
   /**

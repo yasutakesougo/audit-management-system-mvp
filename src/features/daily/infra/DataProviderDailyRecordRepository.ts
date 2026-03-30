@@ -229,6 +229,13 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
     return updated;
   }
 
+  public async scanIntegrity(_dates: string[], _signal?: AbortSignal): Promise<import('../domain/integrity/dailyIntegrityChecker').DailyIntegrityException[]> {
+    // DataProvider 版は現在 Canonical (単一JSON) または RowAggregate の抽象化を提供
+    // 物理的な Parent/Child 分離スキャンは現在 SharePoint 直接実装に委ねられているため、
+    // DataProvider 実装レベルでは将来の共通ロジックのために空配列を返す。
+    return [];
+  }
+
   public async checkListExists(): Promise<boolean> {
     const source = await this.resolveSource();
     return Boolean(source.canonical || source.rowAggregate);

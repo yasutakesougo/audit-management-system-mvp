@@ -22,7 +22,8 @@ import type { HandoffRecord } from '@/features/handoff/handoffTypes';
 import { useUsersQuery } from '@/features/users/hooks/useUsersQuery';
 import { useIspRepositories } from '@/features/support-plan-guide/hooks/useIspRepositories';
 import { useDataProviderObservabilityStore } from '@/lib/data/dataProviderObservabilityStore';
-import type { DailyRecordSummary, HandoffSummaryItem, UserSummary } from '../domain/exceptionLogic';
+import type { DailyRecordSummary, ExceptionItem, HandoffSummaryItem, UserSummary } from '../domain/exceptionLogic';
+import { useDailyIntegrityExceptions } from '@/features/daily/hooks/useDailyIntegrityExceptions';
 
 // ── 型定義 ──
 
@@ -40,6 +41,8 @@ export type ExceptionDataSources = {
   criticalHandoffs: HandoffSummaryItem[];
   /** ユーザーサマリー (detectAttentionUsers 用) */
   userSummaries: UserSummary[];
+  /** 整合性異常 (scanIntegrity 用) */
+  integrityExceptions: ExceptionItem[];
   /** 4状態契約: loading → ready/empty/error */
   status: DataSourceStatus;
   /** エラー時のメッセージ */
@@ -78,11 +81,15 @@ export function useExceptionDataSources(): ExceptionDataSources {
 
   /** Increment to re-trigger the dailyRecord useEffect */
   const [dailyRefreshTrigger, setDailyRefreshTrigger] = useState(0);
+
+  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+
+  // 整合性異常 (Hook violation 修正: useMemo の外に移動)
+  const { items: integrityExceptions, isLoading: integrityLoading } = useDailyIntegrityExceptions(today);
+
   const refetchDailyRecords = useCallback(() => {
     setDailyRefreshTrigger((prev) => prev + 1);
   }, []);
-
-  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   // DailyRecord 取得
   useEffect(() => {
@@ -178,7 +185,7 @@ export function useExceptionDataSources(): ExceptionDataSources {
     );
 
     // Handoff → 重要 × 未完了をフィルタして HandoffSummaryItem に変換
-    const criticalHandoffs: HandoffSummaryItem[] = handoffRecords
+    const criticalHandoffsSummary: HandoffSummaryItem[] = handoffRecords
       .filter((h) => h.severity === '重要' && h.status !== '完了' && h.status !== '確認済')
       .map((h) => ({
         id: String(h.id),
@@ -205,14 +212,14 @@ export function useExceptionDataSources(): ExceptionDataSources {
 
     // 4状態契約
     // ISPエラー時は安全側にフォールバックするため全体の error 画面にはしない
-    const isLoading = dailyLoading || handoffLoading || ispLoading;
+    const isLoading = dailyLoading || handoffLoading || ispLoading || integrityLoading;
     const isFatalError = dailyError ?? handoffError;
     const errorMsg = dailyError ?? handoffError ?? ispError;
     const status: DataSourceStatus = isLoading
       ? 'loading'
       : isFatalError
         ? 'error'
-        : (dailyRecordSummaries.length === 0 && criticalHandoffs.length === 0)
+        : (dailyRecordSummaries.length === 0 && criticalHandoffsSummary.length === 0 && integrityExceptions.length === 0)
           ? 'empty'
           : 'ready';
 
@@ -220,8 +227,9 @@ export function useExceptionDataSources(): ExceptionDataSources {
       today,
       expectedUsers,
       todayRecords: dailyRecordSummaries,
-      criticalHandoffs,
+      criticalHandoffs: criticalHandoffsSummary,
       userSummaries,
+      integrityExceptions,
       dataOSResolutions: resolutions,
       status,
       error: errorMsg,
@@ -239,6 +247,9 @@ export function useExceptionDataSources(): ExceptionDataSources {
     dailyError,
     handoffError,
     ispError,
+    integrityExceptions,
+    integrityLoading,
     resolutions,
+    refetchDailyRecords,
   ]);
 }

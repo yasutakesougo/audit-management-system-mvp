@@ -265,18 +265,22 @@ export async function addFieldToList(
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
       const isLimit = isRowSizeLimitError(errText);
-      if (res.status === 500) {
-        if (isLimit) {
-          auditLog.warn('sp:fields', 'schema_limit_exceeded_skipping', { 
-            listTitle, 
-            field: field.internalName
-          });
-          // Gracefully skip - we can't add more anyway
-          return;
-        }
-        auditLog.warn('sp:fields', 'create_field_500_debug', { 
+      
+      if (isLimit) {
+        auditLog.warn('sp:fields', 'schema_limit_exceeded_skipping', { 
+          listTitle, 
+          field: field.internalName,
+          reason: 'SharePoint row size limit reached'
+        });
+        // 物理的限界なので、これ以上の列追加を断念して「成功」として扱う（ループ防止）
+        return;
+      }
+
+      if (res.status === 500 || res.status === 400) {
+        auditLog.warn('sp:fields', 'create_field_error_debug', { 
           listTitle, 
           field: field.internalName, 
+          status: res.status,
           errText: errText.slice(0, 200)
         });
       }

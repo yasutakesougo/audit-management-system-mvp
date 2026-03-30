@@ -6,6 +6,7 @@ import {
 import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
 import {
   FIELD_MAP,
+  USERS_MASTER_CORE_FIELD_MAP,
   USERS_MASTER_FIELD_MAP,
   type UserRow,
   type UserSelectMode,
@@ -80,7 +81,7 @@ export class DataProviderUserRepository implements UserRepository {
       
       // USERS_MASTER_FIELD_MAP (flat string map) -> candidates (string[] map) に変換
       const candidates = Object.fromEntries(
-        Object.entries(USERS_MASTER_FIELD_MAP).map(([key, value]) => {
+        Object.entries(USERS_MASTER_CORE_FIELD_MAP).map(([key, value]) => {
           if (key === 'userId') return [key, ['UserID', 'cr013_usercode', 'Title']];
           if (key === 'fullName') return [key, ['FullName', 'cr013_fullname', 'Title']];
           return [key, [value]];
@@ -285,8 +286,26 @@ export class DataProviderUserRepository implements UserRepository {
 
   /** メインリストへの書き込み（リトライロジック付き） */
   private async writeToMainList(listTitle: string, payload: Partial<IUserMasterCreateDto>, op: 'create' | 'update', id?: number): Promise<UserRow> {
+    // スキーマ情報の最新化
+    await this.resolveFields();
+    
+    // 送信データの構築
     let request = this.toRequest(payload);
-    request = this.filterUnsupportedFields(request);
+    
+    // 分離先リストのフィールドをメインリストへの送信から除外する
+    const transportFields = this.resolveListFields(this.transportListTitle);
+    const benefitFields = this.resolveListFields(this.benefitListTitle);
+    const accessoryFields = new Set([...transportFields, ...benefitFields]);
+
+    const filteredRequest: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(request)) {
+      if (!accessoryFields.has(key)) {
+        filteredRequest[key] = value;
+      }
+    }
+
+    // 最終的な未サポートフィールドと動的スキーマによるフィルタ
+    request = this.filterUnsupportedFields(filteredRequest);
 
     for (let attempt = 0; attempt < MAX_WRITE_RETRY; attempt++) {
       try {
@@ -393,10 +412,19 @@ export class DataProviderUserRepository implements UserRepository {
 
   private filterUnsupportedFields(request: Record<string, unknown>): Record<string, unknown> {
     const next: Record<string, unknown> = {};
+    const validFieldsForSchema = this.resolvedFields ? new Set(Object.values(this.resolvedFields).filter((v): v is string => !!v)) : null;
+
     for (const [key, value] of Object.entries(request)) {
-      if (!this.unsupportedWriteFields.has(key)) {
-        next[key] = value;
+      if (this.unsupportedWriteFields.has(key)) continue;
+
+      // Schema filtering: If schema is resolved, only allow known fields.
+      // This immediately filters out 'Transport' or 'Benefit' fields that were moved to other lists.
+      if (validFieldsForSchema && !validFieldsForSchema.has(key)) {
+        // Special case: Id and Title are almost always valid base fields.
+        if (key !== 'Id' && key !== 'Title') continue;
       }
+      
+      next[key] = value;
     }
     return next;
   }
@@ -427,11 +455,11 @@ export class DataProviderUserRepository implements UserRepository {
     if (dto.IsSupportProcedureTarget !== undefined) req[fields.isSupportProcedureTarget] = dto.IsSupportProcedureTarget;
     if (dto.severeFlag !== undefined) req[fields.severeFlag] = dto.severeFlag;
     if (dto.IsActive !== undefined) req[fields.isActive] = dto.IsActive;
-    if (dto.TransportToDays !== undefined) req[fields.transportToDays] = JSON.stringify(dto.TransportToDays);
-    if (dto.TransportFromDays !== undefined) req[fields.transportFromDays] = JSON.stringify(dto.TransportFromDays);
+    if (dto.TransportToDays !== undefined) req[fields.transportToDays] = dto.TransportToDays ?? [];
+    if (dto.TransportFromDays !== undefined) req[fields.transportFromDays] = dto.TransportFromDays ?? [];
     if (dto.TransportCourse !== undefined) req[fields.transportCourse] = dto.TransportCourse;
     if (dto.TransportSchedule !== undefined) req[fields.transportSchedule] = dto.TransportSchedule;
-    if (dto.AttendanceDays !== undefined) req[fields.attendanceDays] = JSON.stringify(dto.AttendanceDays);
+    if (dto.AttendanceDays !== undefined) req[fields.attendanceDays] = dto.AttendanceDays ?? [];
     if (dto.RecipientCertNumber !== undefined) req[fields.recipientCertNumber] = dto.RecipientCertNumber;
     if (dto.RecipientCertExpiry !== undefined) req[fields.recipientCertExpiry] = dto.RecipientCertExpiry;
     

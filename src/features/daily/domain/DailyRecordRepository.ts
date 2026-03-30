@@ -125,4 +125,13 @@ export interface DailyRecordRepository {
    * - Throws if the record for the given date does not exist
    */
   approve(input: ApproveRecordInput, params?: DailyRecordRepositoryMutationParams): Promise<DailyRecordItem>;
+
+  /**
+   * Scan daily records for integrity issues (mismatches, missing keys, etc.)
+   *
+   * @param dates - Target dates to scale in YYYY-MM-DD
+   * @param signal - Optional abort signal
+   * @returns Promise of an array of integrity exceptions
+   */
+  scanIntegrity(dates: string[], signal?: AbortSignal): Promise<import('./integrity/dailyIntegrityChecker').DailyIntegrityException[]>;
 }
