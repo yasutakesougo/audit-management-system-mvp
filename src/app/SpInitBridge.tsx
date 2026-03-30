@@ -25,7 +25,7 @@ import { useToast } from '@/hooks/useToast';
  */
 export const SpInitBridge: React.FC = () => {
   const sp = useSP();
-  useDataProvider(); // 🚀 Data OS Readiness: Trigger initial singleton creation
+  const { type: providerType } = useDataProvider(); // 🚀 Data OS Readiness: Trigger initial singleton creation
   const { role } = useUserAuthz();
   const { show } = useToast();
   const initialized = useRef(false);
@@ -35,7 +35,8 @@ export const SpInitBridge: React.FC = () => {
     initialized.current = true;
 
     const bootstrap = async () => {
-      // 1. SharePoint リストの一括プロビジョニング・検証
+      // 1. SharePoint リストの一括プロビジョニング・検証（SharePoint モードのみ）
+      if (providerType !== 'sharepoint') return;
       const result = await SharePointProvisioningCoordinator.bootstrap(sp);
       
       // 管理者の場合のみ、不具合のあるリストを通知
