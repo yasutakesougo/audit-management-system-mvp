@@ -4,6 +4,7 @@ import {
     validateItems,
     type ScanProgress,
     type ScanTarget,
+    type TargetData,
 } from '@/lib/dataIntegrityScanner';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -92,9 +93,9 @@ describe('scanAll', () => {
       selectFields: ['Id', 'Date'],
     };
 
-    const data = new Map<string, unknown[]>([
-      ['test-users', [validItem, invalidItem]],
-      ['test-daily', [{ Id: 10, Date: '2026-01-01' }]],
+    const data = new Map<string, TargetData>([
+      ['test-users', { items: [validItem, invalidItem], fetchStatus: 'success' }],
+      ['test-daily', { items: [{ Id: 10, Date: '2026-01-01' }], fetchStatus: 'success' }],
     ]);
 
     const results = scanAll([testTarget, target2], data);
@@ -110,8 +111,8 @@ describe('scanAll', () => {
 
   it('calls onProgress callback', () => {
     const progressLog: ScanProgress[] = [];
-    const data = new Map<string, unknown[]>([
-      ['test-users', [validItem]],
+    const data = new Map<string, TargetData>([
+      ['test-users', { items: [validItem], fetchStatus: 'success' }],
     ]);
 
     scanAll([testTarget], data, (p) => progressLog.push({ ...p }));
@@ -125,8 +126,8 @@ describe('scanAll', () => {
     const controller = new AbortController();
     controller.abort();
 
-    const data = new Map<string, unknown[]>([
-      ['test-users', [validItem]],
+    const data = new Map<string, TargetData>([
+      ['test-users', { items: [validItem], fetchStatus: 'success' }],
     ]);
 
     const results = scanAll([testTarget], data, undefined, controller.signal);
@@ -134,7 +135,7 @@ describe('scanAll', () => {
   });
 
   it('handles missing data for a target', () => {
-    const data = new Map<string, unknown[]>(); // empty map
+    const data = new Map<string, TargetData>(); // empty map
 
     const results = scanAll([testTarget], data);
 
@@ -153,7 +154,7 @@ describe('formatScanSummary', () => {
   it('generates clean report for all-valid data', () => {
     const results = scanAll(
       [testTarget],
-      new Map([['test-users', [validItem]]]),
+      new Map<string, TargetData>([['test-users', { items: [validItem], fetchStatus: 'success' }]]),
     );
 
     const summary = formatScanSummary(results);
@@ -164,7 +165,7 @@ describe('formatScanSummary', () => {
   it('generates report with error details for invalid data', () => {
     const results = scanAll(
       [testTarget],
-      new Map([['test-users', [validItem, invalidItem]]]),
+      new Map<string, TargetData>([['test-users', { items: [validItem, invalidItem], fetchStatus: 'success' }]]),
     );
 
     const summary = formatScanSummary(results);

@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { buildContractErrorMessage, validateSchedulesListContract, type ListFieldMeta } from './contract';
-import { SpScheduleCategoryRaw } from './spRowSchema';
 import { SCHEDULES_FIELDS } from './spSchema';
+
+const CATEGORY_CHOICES = ['User', 'Facility', 'Other', 'Org', 'Staff'] as const;
 
 const baseFields: ListFieldMeta[] = [
   { internalName: SCHEDULES_FIELDS.title, type: 'Text', required: true },
@@ -12,7 +13,7 @@ const baseFields: ListFieldMeta[] = [
     internalName: SCHEDULES_FIELDS.serviceType,
     type: 'Choice',
     required: true,
-    choices: [...SpScheduleCategoryRaw.options],
+    choices: [...CATEGORY_CHOICES],
   },
   { internalName: SCHEDULES_FIELDS.locationName, type: 'Text', required: false },
 ];
