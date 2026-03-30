@@ -1,15 +1,16 @@
-import type { 
-  IDataProvider, 
-  DataProviderOptions, 
-  UpdateOptions 
+import type {
+  IDataProvider,
+  DataProviderOptions,
+  UpdateOptions
 } from '@/lib/data/dataProvider.interface';
 import type { createSpClient } from '@/lib/spClient';
 import type { SpFieldDef } from '@/lib/sp/types';
-import { 
+import {
   DataProviderItemNotFoundError,
-  SharePointItemNotFoundError 
+  SharePointItemNotFoundError
 } from '@/lib/errors';
 import { SP_LIST_REGISTRY, findListEntry } from '@/sharepoint/spListRegistry';
+import { getFlag } from '@/env';
 
 const ensuredPromises = new Map<string, Promise<void>>();
 
@@ -44,8 +45,7 @@ export class SharePointDataProvider implements IDataProvider {
 
     const promise = (async () => {
       // MASTER SWITCH: Skip provisioning if requested via env
-      const skipProvisioning = import.meta.env.VITE_SKIP_PROVISIONING === '1' || 
-                               import.meta.env.VITE_SKIP_PROVISIONING === 'true';
+      const skipProvisioning = getFlag('VITE_SKIP_PROVISIONING', false);
       if (skipProvisioning) {
         return;
       }
