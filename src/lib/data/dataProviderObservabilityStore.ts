@@ -86,38 +86,44 @@ export const useDataProviderObservabilityStore = create<ObservabilityState>((set
 /**
  * リソース解決結果をストアに報告する便利なラッパー
  */
-export function reportResourceResolution<T extends string>(params: {
+export interface ResourceResolutionReport {
   resourceName: string;
+  lifecycle?: 'required' | 'optional';
   resolvedTitle: string;
-  fieldStatus: Record<T, { resolvedName?: string; candidates: string[] }>;
-  essentials: T[];
+  fieldStatus: Record<string, { resolvedName?: string; candidates: string[] }>;
+  essentials: string[];
   error?: string;
   fallbackFrom?: string;
-}) {
-  const { resourceName, resolvedTitle, fieldStatus, essentials, error, fallbackFrom } = params;
-  
-  const fields = Object.entries(fieldStatus).map(([key, info]) => {
-    const i = info as { resolvedName?: string; candidates: string[] };
-    return {
-      key,
-      resolvedName: i.resolvedName,
-      candidates: i.candidates,
-      isEssential: essentials.includes(key as T),
-      isResolved: !!i.resolvedName
-    };
-  });
+}
+
+/**
+ * Report a resolution attempt to the observability store
+ */
+export function reportResourceResolution({
+  resourceName,
+  lifecycle = 'required',
+  resolvedTitle,
+  fieldStatus,
+  essentials,
+  error,
+  fallbackFrom,
+}: ResourceResolutionReport): void {
+  const fields: FieldResolutionInfo[] = Object.entries(fieldStatus).map(([key, info]) => ({
+    key,
+    candidates: info.candidates,
+    resolvedName: info.resolvedName,
+    isResolved: !!info.resolvedName,
+    isEssential: essentials.includes(key)
+  }));
 
   const missingEssentials = fields.filter(f => f.isEssential && !f.isResolved);
-  const hasSchemaMismatch = fields.some(f => !f.isResolved && !f.isEssential);
 
   let status: ResourceStatus = 'resolved';
-  if (error) {
-    status = 'missing_required';
-  } else if (missingEssentials.length > 0) {
-    status = 'missing_required'; // 必須フィールド欠損も実質 required missing
+  if (error || missingEssentials.length > 0) {
+    status = lifecycle === 'required' ? 'missing_required' : 'schema_mismatch';
   } else if (fallbackFrom) {
     status = 'fallback_triggered';
-  } else if (hasSchemaMismatch) {
+  } else if (fields.some(f => !f.isResolved)) {
     status = 'schema_mismatch';
   }
 

@@ -204,7 +204,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_PROCEDURE_RECORD', fromConfig(ListKeys.ProcedureRecordDaily)),
     operations: ['R', 'W'],
     category: 'daily',
-    lifecycle: 'required',
+    lifecycle: 'optional',
     essentialFields: ['Title', 'RecordDate', 'ReporterName'],
     provisioningFields: [
       { internalName: 'RecordDate', type: 'DateTime', displayName: 'Record Date', required: true, dateTimeFormat: 'DateOnly' },
@@ -366,7 +366,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_PLAN_GOAL', fromConfig(ListKeys.PlanGoals)),
     operations: ['R', 'W'],
     category: 'handoff',
-    lifecycle: 'required',
+    lifecycle: 'optional',
   },
   {
     key: 'support_plans',
@@ -374,7 +374,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_SUPPORT_PLANS', fromConfig(ListKeys.SupportPlans)),
     operations: ['R', 'W', 'D'],
     category: 'handoff',
-    lifecycle: 'required',
+    lifecycle: 'optional',
   },
   {
     key: 'iceberg_pdca',
@@ -398,7 +398,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_ISP_MASTER', fromConfig(ListKeys.IspMaster)),
     operations: ['R', 'W'],
     category: 'handoff',
-    lifecycle: 'required',
+    lifecycle: 'optional',
   },
   {
     key: 'planning_sheet_master',
@@ -406,7 +406,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_PLANNING_SHEET', fromConfig(ListKeys.PlanningSheetMaster)),
     operations: ['R', 'W'],
     category: 'handoff',
-    lifecycle: 'required',
+    lifecycle: 'optional',
   },
 
   // ── 7. コンプライアンス・診断系 ────────────────────────
@@ -469,7 +469,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_PDF_OUTPUT_LOG', fromConfig(ListKeys.PdfOutputLog)),
     operations: ['R', 'W'],
     category: 'other',
-    lifecycle: 'required',
+    lifecycle: 'optional',
   },
 ];
 

@@ -317,15 +317,24 @@ export function resolveInternalNamesDetailed<T extends string>(
   const fieldStatus = {} as Record<T, { resolvedName?: string; candidates: string[] }>;
   const missing: T[] = [];
   
+  // Case-insensitive lookup map for available fields
+  const availableMap = new Map<string, string>();
+  for (const name of available) {
+    availableMap.set(name.toLowerCase(), name);
+  }
+  
   for (const key in candidates) {
     if (Object.prototype.hasOwnProperty.call(candidates, key)) {
-      const found = candidates[key].find(f => available.has(f));
-      resolved[key] = found;
+      // Find the first candidate that exists in available fields (case-insensitive)
+      const foundCandidate = candidates[key].find(f => availableMap.has(f.toLowerCase()));
+      const resolvedName = foundCandidate ? availableMap.get(foundCandidate.toLowerCase()) : undefined;
+      
+      resolved[key] = resolvedName;
       fieldStatus[key] = {
-        resolvedName: found,
+        resolvedName: resolvedName,
         candidates: candidates[key]
       };
-      if (!found) {
+      if (!resolvedName) {
         missing.push(key);
       }
     }

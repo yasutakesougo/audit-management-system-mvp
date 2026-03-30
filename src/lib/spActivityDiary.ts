@@ -94,6 +94,7 @@ async function resolveUserListId(sp: Pick<UseSP, 'spFetch'>): Promise<string> {
 
 async function ensureActivityDiaryList(sp: Pick<UseSP, 'spFetch' | 'ensureListExists'>): Promise<void> {
   if (!ensureActivityDiaryPromise) {
+    /*
     ensureActivityDiaryPromise = (async () => {
       const userListId = await resolveUserListId(sp);
       const fields: SpFieldDef[] = [
@@ -120,6 +121,8 @@ async function ensureActivityDiaryList(sp: Pick<UseSP, 'spFetch' | 'ensureListEx
         throw new Error(`支援記録（ケース記録）リストの作成に失敗しました: ${message}`);
       }
     })();
+    */
+    ensureActivityDiaryPromise = Promise.resolve();
   }
 
   try {

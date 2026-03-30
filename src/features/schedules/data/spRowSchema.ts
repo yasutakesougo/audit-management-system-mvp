@@ -3,12 +3,8 @@ import { z } from 'zod';
 import type { SchedItem, ScheduleStatus } from './port';
 import { normalizeServiceType } from '../serviceTypeMetadata';
 
-/**
- * SharePoint raw category values (legacy / optional).
- * Some lists may still store a category choice in cr014_category / Category.
- * Older tenants renamed choices to "Org" / "Staff", so we accept those too.
- */
-export const SpScheduleCategoryRaw = z.enum(['User', 'Facility', 'Other', 'Org', 'Staff']);
+// SharePoint raw category values (legacy / optional).
+export const SpScheduleCategoryRaw = z.string();
 export type SpScheduleCategoryRaw = z.infer<typeof SpScheduleCategoryRaw>;
 
 /**
@@ -21,45 +17,77 @@ export type SpScheduleCategoryRaw = z.infer<typeof SpScheduleCategoryRaw>;
 export const SpScheduleRowSchema = z
   .object({
     Id: z.union([z.number(), z.string()]),
-    Title: z.string().optional().nullable(),
-    Start: z.string().optional().nullable(),
-    End: z.string().optional().nullable(),
-    EventDate: z.string().optional().nullable(),
-    EndDate: z.string().optional().nullable(),
-    date: z.string().optional().nullable(),
+    // Candidates for core fields
+    Title: z.unknown().optional().nullable(),
+    Subject: z.unknown().optional().nullable(),
 
-    UserCode: z.string().optional().nullable(),
+    Start: z.unknown().optional().nullable(),
+    EventDate: z.unknown().optional().nullable(),
+    StartDate: z.unknown().optional().nullable(),
+    date: z.unknown().optional().nullable(),
+
+    End: z.unknown().optional().nullable(),
+    EndDate: z.unknown().optional().nullable(),
+
+    UserCode: z.unknown().optional().nullable(),
+    TargetUserCode: z.unknown().optional().nullable(),
+    ExternalId: z.unknown().optional().nullable(),
+
     TargetUserId: z.unknown().optional().nullable(),
+    TargetUser: z.unknown().optional().nullable(),
+    UserLookupId: z.unknown().optional().nullable(),
 
-    AssignedStaff: z.union([z.number(), z.string()]).optional().nullable(),
-    AssignedStaffId: z.union([z.number(), z.string()]).optional().nullable(),
-    ServiceType: z.string().optional().nullable(),
-    cr014_serviceType: z.string().optional().nullable(),
-    LocationName: z.string().optional().nullable(),
-    Location: z.string().optional().nullable(), // Event list uses Location instead of LocationName
-    Notes: z.string().optional().nullable(),
-    Note: z.string().optional().nullable(),
-    AcceptedOn: z.string().optional().nullable(),
-    AcceptedBy: z.string().optional().nullable(),
-    AcceptedNote: z.string().optional().nullable(),
-    Vehicle: z.union([z.number(), z.string()]).optional().nullable(),
-    VehicleId: z.union([z.number(), z.string()]).optional().nullable(),
-    Status: z.string().optional().nullable(),
-    StatusReason: z.string().optional().nullable(),
+    AssignedStaff: z.unknown().optional().nullable(),
+    AssignedStaffId: z.unknown().optional().nullable(),
+    StaffID: z.unknown().optional().nullable(),
+    StaffId: z.unknown().optional().nullable(),
+
+    ServiceType: z.unknown().optional().nullable(),
+    cr014_serviceType: z.unknown().optional().nullable(),
+    Category: z.unknown().optional().nullable(),
+
+    LocationName: z.unknown().optional().nullable(),
+    Location: z.unknown().optional().nullable(),
+    Place: z.unknown().optional().nullable(),
+
+    Notes: z.unknown().optional().nullable(),
+    Note: z.unknown().optional().nullable(),
+    Description: z.unknown().optional().nullable(),
+    Comment: z.unknown().optional().nullable(),
+
+    AcceptedOn: z.unknown().optional().nullable(),
+    ApprovalDate: z.unknown().optional().nullable(),
+    AcceptedBy: z.unknown().optional().nullable(),
+    Approver: z.unknown().optional().nullable(),
+    AcceptedNote: z.unknown().optional().nullable(),
+    ApprovalNote: z.unknown().optional().nullable(),
+
+    Vehicle: z.unknown().optional().nullable(),
+    VehicleId: z.unknown().optional().nullable(),
+    CarId: z.unknown().optional().nullable(),
+
+    Status: z.unknown().optional().nullable(),
+    ScheduleStatus: z.unknown().optional().nullable(),
+    State: z.unknown().optional().nullable(),
+
+    StatusReason: z.unknown().optional().nullable(),
+    CancelReason: z.unknown().optional().nullable(),
+    Reason: z.unknown().optional().nullable(),
+
+    OwnerUserId: z.unknown().optional().nullable(),
+    OwnerId: z.unknown().optional().nullable(),
+    AuthorId: z.unknown().optional().nullable(),
+
+    Visibility: z.unknown().optional().nullable(),
+    AccessLevel: z.unknown().optional().nullable(),
+
+    Created: z.unknown().optional().nullable(),
+    AuthoringDate: z.unknown().optional().nullable(),
+    Modified: z.unknown().optional().nullable(),
+    EditorDate: z.unknown().optional().nullable(),
+
     EntryHash: z.string().optional().nullable(),
 
-    // Phase 1: owner/visibility
-    OwnerUserId: z.string().optional().nullable(),
-    Visibility: z.string().optional().nullable(),
-
-    Created: z.string().optional().nullable(),
-    Modified: z.string().optional().nullable(),
-
-    // optional legacy category columns
-    cr014_category: SpScheduleCategoryRaw.optional().nullable(),
-    Category: SpScheduleCategoryRaw.optional().nullable(),
-
-    // Phase 2-0: etag for conflict detection
     __metadata: z
       .object({
         id: z.string().optional(),
@@ -71,56 +99,57 @@ export const SpScheduleRowSchema = z
 
 export type SpScheduleRow = z.infer<typeof SpScheduleRowSchema>;
 
-/**
- * Summarize payload shape for diagnostics (avoid PII exposure)
- */
-function summarizeShape(x: unknown) {
-  if (!x || typeof x !== 'object') return { type: typeof x };
-  const o = x as Record<string, unknown>;
-  return {
-    keys: Object.keys(o).slice(0, 40),
-    hasValue: 'value' in o,
-    valueType: typeof o.value,
-    valueLen: Array.isArray(o.value) ? o.value.length : undefined,
-    hasDResults: !!(o?.d as Record<string, unknown>)?.results,
-    dResultsLen: Array.isArray((o?.d as Record<string, unknown>)?.results)
-      ? ((o.d as Record<string, unknown>).results as unknown[]).length
-      : undefined,
-  };
-}
 
 export const parseSpScheduleRows = (input: unknown): SpScheduleRow[] => {
-  try {
-    return SpScheduleRowSchema.array().parse(input);
-  } catch (e) {
-    // Log shape details to diagnose OData format variance
-    console.error('[schedules] parseSpScheduleRows failed', {
-      shape: summarizeShape(input),
-      err: e instanceof z.ZodError ? e.issues?.slice(0, 6) : String(e),
-    });
-    throw e;
+  if (!input) return [];
+
+  // Handle OData D results wrapper
+  let rawItems: unknown[] = [];
+  if (Array.isArray(input)) {
+    rawItems = input;
+  } else if (input && typeof input === 'object') {
+    const o = input as Record<string, unknown>;
+    if (Array.isArray(o.value)) {
+      rawItems = o.value;
+    } else if (o.d && typeof o.d === 'object' && Array.isArray((o.d as Record<string, unknown>).results)) {
+      rawItems = (o.d as Record<string, unknown>).results as unknown[];
+    }
   }
+
+  const rows: SpScheduleRow[] = [];
+  for (const item of rawItems) {
+    const result = SpScheduleRowSchema.safeParse(item);
+    if (result.success) {
+      rows.push(result.data);
+    } else {
+      // Absorb partial row corruption - log but don't fail the whole array
+      console.warn('[schedules] Invalid row skipped:', {
+        id: (item as Record<string, unknown>)?.Id,
+        issues: result.error.issues.slice(0, 3)
+      });
+    }
+  }
+  return rows;
 };
 
 /** Facility/Other/Org -> Org, User stays User, Staff stays Staff. */
 export function mapSpCategoryToDomain(raw?: SpScheduleCategoryRaw | null): 'Org' | 'User' | 'Staff' {
   if (!raw) {
-    console.warn('[schedules] category missing; defaulting to Org');
     return 'Org';
   }
-  switch (raw) {
-    case 'User':
-      return 'User';
-    case 'Staff':
-      return 'Staff';
-    case 'Facility':
-    case 'Other':
-    case 'Org':
-      return 'Org';
-    default:
-      console.warn('[schedules] category unknown; defaulting to Org', raw);
-      return 'Org';
-  }
+  const normalized = String(raw).trim().toLowerCase();
+
+  // Primary: English
+  if (normalized === 'user' || normalized === 'client' || normalized === 'resident') return 'User';
+  if (normalized === 'staff' || normalized === 'employee' || normalized === 'member') return 'Staff';
+  if (normalized === 'org' || normalized === 'facility' || normalized === 'other' || normalized === 'office') return 'Org';
+
+  // Fallback: Japanese (Common in localized tenants)
+  if (normalized === '利用者' || normalized === '利用' || normalized === '入居者') return 'User';
+  if (normalized === '職員' || normalized === 'スタッフ' || normalized === '担当') return 'Staff';
+  if (normalized === '施設' || normalized === 'その他' || normalized === '法人' || normalized === '事業所' || normalized === '事業') return 'Org';
+
+  return 'Org';
 }
 
 const coerceIso = (value: unknown): string | undefined => {
@@ -175,61 +204,31 @@ export const normalizeUserId = (raw?: string | null): string | undefined => {
   return cleaned || undefined;
 };
 
-// Prefer EventDate/EndDate so we keep the original local time (with offset)
-// when both legacy and modern columns are present. Start/End are fallback.
-const pickStart = (row: SpScheduleRow): string | undefined =>
-  coerceIso(row.EventDate ?? row.Start ?? row.date);
-
-const pickEnd = (row: SpScheduleRow): string | undefined =>
-  coerceIso(row.EndDate ?? row.End ?? row.date);
-
-const pickUserCode = (row: SpScheduleRow): string | undefined =>
-  coerceString(row.UserCode);
-
-const inferCategory = (row: SpScheduleRow): 'Org' | 'User' | 'Staff' => {
-  const rawCategory = (row.cr014_category ?? row.Category) as SpScheduleCategoryRaw | undefined;
-  if (rawCategory) {
-    return mapSpCategoryToDomain(rawCategory);
+const pickFirstValue = (row: SpScheduleRow, candidates: string[]): unknown => {
+  for (const key of candidates) {
+    const val = (row as Record<string, unknown>)[key];
+    if (val !== undefined && val !== null) return val;
   }
+  return undefined;
+}
 
-  const userCode = pickUserCode(row);
-  if (userCode) return 'User';
-
-  const staffId = coerceIdString(row.AssignedStaff);
-  if (staffId) return 'Staff';
-
-  return 'Org';
-};
-
-const normalizeStatusFromSp = (raw: unknown): ScheduleStatus => {
-  const value = typeof raw === 'string' ? raw.trim() : raw == null ? '' : String(raw).trim();
-  if (!value) {
-    return 'Planned';
-  }
+export const normalizeStatusFromSp = (raw: unknown): ScheduleStatus => {
+  if (raw == null) return 'Planned';
+  const value = String(raw).trim();
+  if (!value) return 'Planned';
 
   const normalized = value.toLowerCase();
 
-  if (value === 'Planned' || normalized === 'planned' || value === '予定どおり' || value === '予定') {
-    return 'Planned';
-  }
-  if (value === 'Scheduled' || normalized === 'scheduled') {
-    return 'Planned';
-  }
-  if (value === 'Postponed' || normalized === 'postponed' || value === '延期') {
-    return 'Postponed';
-  }
-  if (
-    value === 'Cancelled' ||
-    normalized === 'cancelled' ||
-    normalized === 'canceled' ||
-    value === '中止' ||
-    value === 'キャンセル'
-  ) {
-    return 'Cancelled';
-  }
+  // English
+  if (normalized === 'planned' || normalized === 'scheduled' || normalized === 'open') return 'Planned';
+  if (normalized === 'postponed' || normalized === 'onhold') return 'Postponed';
+  if (normalized === 'cancelled' || normalized === 'canceled' || normalized === 'none' || normalized === 'void') return 'Cancelled';
 
-  // eslint-disable-next-line no-console
-  console.warn('[schedules] Unknown SharePoint Status value:', value);
+  // Japanese
+  if (value === '予定どおり' || value === '予定' || value === '実施') return 'Planned';
+  if (value === '延期' || value === '保留' || value === '調整中') return 'Postponed';
+  if (value === '中止' || value === 'キャンセル' || value === 'なし' || value === '実施せず') return 'Cancelled';
+
   return 'Planned';
 };
 
@@ -239,44 +238,37 @@ const normalizeStatusFromSp = (raw: unknown): ScheduleStatus => {
  */
 export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
   try {
-    const start = pickStart(row);
-    const end = pickEnd(row);
+    const start = coerceIso(pickFirstValue(row, ['Start', 'EventDate', 'StartDate', 'date']));
+    const end = coerceIso(pickFirstValue(row, ['End', 'EndDate', 'date']));
     if (!start || !end) return null;
 
     const idRaw = row.Id;
-    const id =
-      typeof idRaw === 'number'
-        ? String(idRaw)
-        : typeof idRaw === 'string' && idRaw.trim()
-          ? idRaw.trim()
-          : `${start}-${end}`;
+    const id = coerceIdString(idRaw) ?? `${start}-${end}`;
 
     // Phase 2-0: extract etag from __metadata.id or generate fallback
     const etagValue = row.__metadata?.id ? `"${row.__metadata.id}"` : `"sp-${id}"`;
 
-    const titleField = row.Title;
-    const providedTitle = typeof titleField === 'string' && titleField.trim() ? titleField.trim() : undefined;
-    const title = providedTitle ?? '予定';
-    const userCodeCandidates = [pickUserCode(row)];
-    let normalizedUserId: string | undefined;
-    for (const candidate of userCodeCandidates) {
-      const normalized = normalizeUserId(candidate);
-      if (normalized) {
-        normalizedUserId = normalized;
-        break;
-      }
-    }
-    const userLookupIds = coerceLookupIds(row.TargetUserId);
-    if (!normalizedUserId && userLookupIds.length) {
-      normalizedUserId = normalizeUserId(userLookupIds[0]);
-    }
-    const assignedStaffId = coerceIdString(row.AssignedStaff ?? row.AssignedStaffId);
-    const vehicleId = coerceIdString(row.Vehicle ?? row.VehicleId);
+    const titleCandidate = coerceString(pickFirstValue(row, ['Title', 'Subject']));
+    const title = titleCandidate ?? '予定';
 
-    const category = inferCategory(row);
+    const userCodeRaw = coerceString(pickFirstValue(row, ['UserCode', 'TargetUserCode', 'ExternalId']));
+    const normalizedUserId = normalizeUserId(userCodeRaw);
 
-    const rawServiceType = coerceString(row.ServiceType) ?? coerceString((row as { cr014_serviceType?: unknown }).cr014_serviceType);
+    const userLookupIdValue = pickFirstValue(row, ['TargetUserId', 'TargetUser', 'UserLookupId', 'PersonId']);
+    const userLookupIds = coerceLookupIds(userLookupIdValue);
+
+    const assignedStaffId = coerceIdString(pickFirstValue(row, ['AssignedStaffId', 'AssignedStaff', 'StaffID', 'StaffId']));
+    const vehicleId = coerceIdString(pickFirstValue(row, ['VehicleId', 'Vehicle', 'CarId']));
+
+    // Category inference
+    const rawCategory = pickFirstValue(row, ['Category', 'cr014_category', 'PersonType']);
+    const category = rawCategory
+      ? mapSpCategoryToDomain(rawCategory as SpScheduleCategoryRaw)
+      : (normalizedUserId ? 'User' : (assignedStaffId ? 'Staff' : 'Org'));
+
+    const rawServiceType = coerceString(pickFirstValue(row, ['ServiceType', 'cr014_serviceType', 'Category']));
     const serviceTypeKey = normalizeServiceType(rawServiceType);
+
     const item: SchedItem = {
       id,
       title,
@@ -284,39 +276,34 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
       end,
       category,
       allDay: false,
-      userId: normalizedUserId,
+      userId: normalizedUserId || (userLookupIds.length ? normalizeUserId(userLookupIds[0]) : undefined),
       serviceType: serviceTypeKey === 'unset' ? undefined : serviceTypeKey,
-      locationName: coerceString(row.LocationName) ?? coerceString(row.Location), // Support both LocationName and Location
-      notes: coerceString(row.Notes) ?? coerceString((row as { Note?: unknown }).Note),
-      acceptedOn: coerceIso(row.AcceptedOn),
-      acceptedBy: coerceString(row.AcceptedBy),
-      acceptedNote: coerceString(row.AcceptedNote) ?? null,
+      locationName: coerceString(pickFirstValue(row, ['LocationName', 'Location', 'Place'])),
+      notes: coerceString(pickFirstValue(row, ['Notes', 'Note', 'Description', 'Comment'])),
+      acceptedOn: coerceIso(pickFirstValue(row, ['AcceptedOn', 'ApprovalDate'])),
+      acceptedBy: coerceString(pickFirstValue(row, ['AcceptedBy', 'Approver'])),
+      acceptedNote: coerceString(pickFirstValue(row, ['AcceptedNote', 'ApprovalNote'])) ?? null,
       userName: undefined,
       userLookupId: userLookupIds[0],
       assignedStaffId: assignedStaffId ?? undefined,
       vehicleId: vehicleId ?? undefined,
-      status: normalizeStatusFromSp(row.Status),
-      statusReason: coerceString(row.StatusReason) ?? null,
-      entryHash: coerceString(row.EntryHash),
-      createdAt: coerceIso(row.Created),
-      updatedAt: coerceIso(row.Modified),
-      // Phase 1: owner/visibility
-      ownerUserId: coerceString(row.OwnerUserId),
-      visibility: coerceString(row.Visibility) as SchedItem['visibility'],
-      // Phase 2-0: etag for conflict detection
+      status: normalizeStatusFromSp(pickFirstValue(row, ['Status', 'ScheduleStatus', 'State'])),
+      statusReason: coerceString(pickFirstValue(row, ['StatusReason', 'CancelReason', 'Reason'])) ?? null,
+      entryHash: row.EntryHash ?? undefined,
+      createdAt: coerceIso(pickFirstValue(row, ['Created', 'AuthoringDate'])),
+      updatedAt: coerceIso(pickFirstValue(row, ['Modified', 'EditorDate'])),
+      ownerUserId: coerceString(pickFirstValue(row, ['OwnerUserId', 'OwnerId', 'AuthorId'])),
+      visibility: coerceString(pickFirstValue(row, ['Visibility', 'AccessLevel'])) as SchedItem['visibility'],
       etag: etagValue,
     } satisfies SchedItem;
 
-    // Keep the original SharePoint title when provided; fall back to person name if missing.
-
     return item;
   } catch (err) {
-    console.error('[mapSpRowToSchedule] 🔴 MAPPER_FAILED', {
-      error: err instanceof Error ? { message: err.message, stack: err.stack } : err,
-      rowId: row?.Id,
-      rowKeys: Object.keys(row ?? {}),
-      rowJson: JSON.stringify(row, null, 2),
+    // Absorb mapper error per item - log but don't fail the whole request
+    console.error('[mapSpRowToSchedule] 🔴 MAPPER_FAILED_SKIPPING_ITEM', {
+      id: row?.Id,
+      error: err instanceof Error ? err.message : String(err),
     });
-    throw err;
+    return null;
   }
 }

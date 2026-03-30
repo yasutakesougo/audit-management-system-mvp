@@ -43,6 +43,13 @@ export class SharePointDataProvider implements IDataProvider {
     if (existing) return existing;
 
     const promise = (async () => {
+      // MASTER SWITCH: Skip provisioning if requested via env
+      const skipProvisioning = import.meta.env.VITE_SKIP_PROVISIONING === '1' || 
+                               import.meta.env.VITE_SKIP_PROVISIONING === 'true';
+      if (skipProvisioning) {
+        return;
+      }
+
       const entry = findListEntry(name) || SP_LIST_REGISTRY.find(e => e.key.toLowerCase() === name.toLowerCase());
       if (entry?.provisioningFields && entry.provisioningFields.length > 0) {
         if (entry.lifecycle === 'required') {

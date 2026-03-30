@@ -1,19 +1,17 @@
-import type { AuditEvent } from '@/lib/audit';
-import type { IDataProvider } from '@/lib/data/dataProvider.interface';
-import { readEnv } from '@/lib/env';
-import {
-  DEFAULT_USERS_LIST_TITLE,
-  sanitizeEnvValue,
+import { 
+  resolveInternalNamesDetailed, 
+  areEssentialFieldsResolved,
+  sanitizeEnvValue
 } from '@/lib/sp/helpers';
+import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
 import {
   FIELD_MAP,
-  resolveUserSelectFields,
-  USERS_SELECT_FIELDS_CORE,
-  USERS_SELECT_FIELDS_MINIMAL,
+  USERS_MASTER_FIELD_MAP,
   type UserRow,
   type UserSelectMode,
 } from '@/sharepoint/fields';
 import { auditLog } from '@/lib/debugLogger';
+import { readEnv } from '@/lib/env';
 
 import { normalizeAttendanceDays } from '../attendance';
 import { canEditUser, resolveUserLifecycleStatus, toDomainUser } from '../domain/userLifecycle';
@@ -26,60 +24,117 @@ import type {
 import { userMasterCreateSchema } from '../schema';
 import { USAGE_STATUS_VALUES } from '../typesExtended';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
+import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 
-const DEFAULT_TOP = 500;
+const DEFAULT_USERS_LIST_TITLE = 'Users_Master';
 const MAX_WRITE_RETRY = 8;
 const getTodayIsoDate = (): string => new Date().toISOString().slice(0, 10);
-
-export type DataProviderUserRepositoryOptions = {
-  provider: IDataProvider;
-  defaultTop?: number;
-  audit?: (event: Omit<AuditEvent, 'ts'>) => void;
-};
 
 /**
  * DataProviderUserRepository
  * 
  * IDataProvider ベースの UserRepository 実装。
- * SharePoint / InMemory / Dataverse のバックエンド差異を隠蔽しつつ、
- * Users_Master 特有のフィールド不備リトライロジックを保持する。
+ * Users_Master の巨大なカラム数（300+）とリスト分割（Split Write / Lazy Join）を管理しつつ、
+ * Dynamic Schema Resolution によって 400 Bad Request (Missing Column) を防ぐ。
  */
 export class DataProviderUserRepository implements UserRepository {
   private readonly provider: IDataProvider;
   private readonly listTitle: string;
-  private readonly defaultTop: number;
-  private readonly audit?: (event: Omit<AuditEvent, 'ts'>) => void;
+  private readonly audit?: (log: any) => void;
+  private readonly defaultTop: number = 200;
 
+  private resolvedFields: Record<string, string | undefined> | null = null;
+  private fieldStatus: any = null;
   private unsupportedWriteFields = new Set<string>();
 
-  constructor(options: DataProviderUserRepositoryOptions) {
-    this.provider = options.provider;
-    this.defaultTop = options.defaultTop ?? DEFAULT_TOP;
-    this.audit = options.audit;
+  private readonly transportListTitle: string;
+  private readonly benefitListTitle: string;
 
-    this.listTitle =
-      sanitizeEnvValue(readEnv('VITE_SP_LIST_USERS', '')) ||
-      DEFAULT_USERS_LIST_TITLE;
+  constructor(options: {
+    provider: IDataProvider;
+    listTitle?: string;
+    audit?: (log: any) => void;
+    defaultTop?: number;
+  }) {
+    this.provider = options.provider;
+    this.listTitle = options.listTitle || (sanitizeEnvValue(readEnv('VITE_SP_LIST_USERS', '')) || DEFAULT_USERS_LIST_TITLE);
+    this.audit = options.audit;
+    this.defaultTop = options.defaultTop ?? 200;
     
     this.transportListTitle = sanitizeEnvValue(readEnv('VITE_SP_LIST_USER_TRANSPORT', '')) || 'UserTransport_Settings';
     this.benefitListTitle = sanitizeEnvValue(readEnv('VITE_SP_LIST_USER_BENEFIT', '')) || 'UserBenefit_Profile';
   }
 
-  private readonly transportListTitle: string;
-  private readonly benefitListTitle: string;
+  /**
+   * フィールド解決（Dynamic Schema Resolution）
+   * 400 Bad Request を防ぐための最重要ガードレール
+   */
+  private async resolveFields(): Promise<Record<string, string | undefined> | null> {
+    if (this.resolvedFields) return this.resolvedFields;
+
+    try {
+      const available = await this.provider.getFieldInternalNames(this.listTitle);
+      
+      // USERS_MASTER_FIELD_MAP (flat string map) -> candidates (string[] map) に変換
+      const candidates = Object.fromEntries(
+        Object.entries(USERS_MASTER_FIELD_MAP).map(([key, value]) => {
+          if (key === 'userId') return [key, ['UserID', 'cr013_usercode', 'Title']];
+          if (key === 'fullName') return [key, ['FullName', 'cr013_fullname', 'Title']];
+          return [key, [value]];
+        })
+      ) as Record<keyof typeof USERS_MASTER_FIELD_MAP, string[]>;
+
+      const { resolved, fieldStatus } = resolveInternalNamesDetailed(
+        available,
+        candidates
+      );
+
+      // 必須フィールド判定（極限まで緩和: id さえあれば ok とする）
+      const essentials: (keyof typeof USERS_MASTER_FIELD_MAP)[] = ['id'];
+      const isHealthy = areEssentialFieldsResolved(resolved, essentials as any);
+
+      reportResourceResolution({
+        resourceName: 'Users_Master',
+        resolvedTitle: this.listTitle,
+        fieldStatus: fieldStatus as any,
+        essentials: essentials as any,
+      });
+
+      if (isHealthy) {
+        this.resolvedFields = resolved as Record<string, string | undefined>;
+        this.fieldStatus = fieldStatus;
+        return this.resolvedFields;
+      }
+
+      auditLog.warn('users', 'Essential fields missing for Users_Master.', { 
+        list: this.listTitle, 
+        resolved 
+      });
+      return null;
+    } catch (err) {
+      auditLog.error('users', 'Field resolution failed:', err);
+      return null;
+    }
+  }
 
   public async getAll(params?: UserRepositoryListParams): Promise<IUserMaster[]> {
     if (params?.signal?.aborted) return [];
 
-    const filters = params?.filters;
     const top = params?.top ?? this.defaultTop;
     const requestedMode = params?.selectMode ?? 'detail';
     
-    // IDataProvider.listItems を使用
-    const selectFields = [...resolveUserSelectFields(requestedMode)];
+    const fields = await this.resolveFields();
+    if (!fields) return [];
+
+    // OData $select に含めるフィールドを、実際に存在する列のみに絞り込む
+    const selectFields = [
+      'Id', 'Title', 'Modified', 'Created',
+      ...Object.values(fields).filter((f): f is string => !!f)
+    ].filter((v, i, a) => a.indexOf(v) === i);
+
     const filterParts: string[] = [];
-    if (filters?.isActive !== undefined) {
-      filterParts.push(`${FIELD_MAP.Users_Master.isActive} eq ${filters.isActive ? 1 : 0}`);
+    if (params?.filters?.isActive !== undefined && fields.isActive) {
+      filterParts.push(`${fields.isActive} eq ${params.filters.isActive ? 1 : 0}`);
     }
 
     try {
@@ -95,12 +150,12 @@ export class DataProviderUserRepository implements UserRepository {
       if (requestedMode === 'detail' || requestedMode === 'full') {
         try {
           const [transportRows, benefitRows] = await Promise.all([
-            this.provider.listItems<Record<string, unknown>>(this.transportListTitle),
-            this.provider.listItems<Record<string, unknown>>(this.benefitListTitle)
+            this.provider.listItems<Record<string, unknown>>(this.transportListTitle).catch(() => []),
+            this.provider.listItems<Record<string, unknown>>(this.benefitListTitle).catch(() => [])
           ]);
 
-          const transportMap = new Map(transportRows.map(r => [String(r.UserID), r]));
-          const benefitMap = new Map(benefitRows.map(r => [String(r.UserID), r]));
+          const transportMap = new Map(transportRows.map(r => [String(r.UserID || ''), r]));
+          const benefitMap = new Map(benefitRows.map(r => [String(r.UserID || ''), r]));
 
           domainItems = domainItems.map(user => {
             const tRow = transportMap.get(user.UserID);
@@ -113,8 +168,8 @@ export class DataProviderUserRepository implements UserRepository {
         }
       }
 
-      if (filters?.keyword) {
-        const keyword = filters.keyword.trim().toLowerCase();
+      if (params?.filters?.keyword) {
+        const keyword = params.filters.keyword.trim().toLowerCase();
         if (keyword) {
           domainItems = domainItems.filter((row) => this.matchesKeyword(row, keyword));
         }
@@ -122,86 +177,48 @@ export class DataProviderUserRepository implements UserRepository {
 
       return domainItems;
     } catch (e) {
-      // Fallback 1: CORE (基本的な20列) でリトライ
-      auditLog.warn('users', 'DataProviderUserRepository.getAll_fallback_core', { error: String(e) });
-      try {
-        const fallbackItems = await this.provider.listItems<UserRow>(this.listTitle, {
-          select: USERS_SELECT_FIELDS_CORE as unknown as string[],
-          filter: filterParts.join(' and ') || undefined,
-          top: top > 0 ? top : undefined,
-        });
-        let domainItems = fallbackItems.map(item => this.toDomain(item, 'core'));
-        if (filters?.keyword) {
-          const keyword = filters.keyword.trim().toLowerCase();
-          if (keyword) {
-            domainItems = domainItems.filter((row) => this.matchesKeyword(row, keyword));
-          }
-        }
-        return domainItems;
-      } catch (e2) {
-        // Fallback 2: MINIMAL (絶対にある Id, Title, FullName) でリトライ
-        auditLog.error('users', 'DataProviderUserRepository.getAll_fallback_minimal', { error: String(e2) });
-        const minimalItems = await this.provider.listItems<UserRow>(this.listTitle, {
-          select: USERS_SELECT_FIELDS_MINIMAL as unknown as string[],
-          filter: filterParts.join(' and ') || undefined,
-          top: top > 0 ? top : undefined,
-        });
-        let domainItems = minimalItems.map(item => this.toDomain(item, 'minimal'));
-        if (filters?.keyword) {
-          const keyword = filters.keyword.trim().toLowerCase();
-          if (keyword) {
-            domainItems = domainItems.filter((row) => this.matchesKeyword(row, keyword));
-          }
-        }
-        return domainItems;
-      }
+      auditLog.error('users', 'DataProviderUserRepository.getAll_failed', { error: String(e) });
+      return [];
     }
   }
 
-  public async getById(id: number | string, params?: UserRepositoryGetParams): Promise<IUserMaster | null> {
-    if (params?.signal?.aborted) return null;
-
+  public async getById(id: number | string, options?: UserRepositoryGetParams): Promise<IUserMaster | null> {
     const numericId = Number(id);
-    if (!Number.isFinite(numericId)) throw new Error(`Invalid id: ${id}`);
+    const requestedMode = options?.selectMode ?? 'detail';
 
-    const requestedMode = params?.selectMode ?? 'detail';
-    const selectFields = [...resolveUserSelectFields(requestedMode)];
+    const fields = await this.resolveFields();
+    if (!fields) return null;
+
+    const selectFields = [
+      'Id', 'Title', 'Modified', 'Created',
+      ...Object.values(fields).filter((f): f is string => !!f)
+    ].filter((v, i, a) => a.indexOf(v) === i);
 
     try {
-      // IDataProvider.getItem は現在無いので、listItems を $filter=Id eq ... で代用するか、provider にメソッド追加が必要
-      // DataProvider.interface には getItem は無いが、将来的に追加されるべき。
-      // 現在の実装状況では listItems を使う。
-      const items = await this.provider.listItems<UserRow>(this.listTitle, {
+      const row = await this.provider.getItemById<UserRow>(this.listTitle, numericId, {
         select: selectFields,
-        filter: `Id eq ${numericId}`,
-        top: 1,
+        signal: options?.signal,
       });
 
-      if (!items.length) return null;
-      let domain = this.toDomain(items[0], requestedMode);
+      const domain = this.toDomain(row, requestedMode);
 
-      // ── 分離先リストからの Join (Single) ──
       if (requestedMode === 'detail' || requestedMode === 'full') {
         try {
-          const [tItems, bItems] = await Promise.all([
-            this.provider.listItems<Record<string, unknown>>(this.transportListTitle, { filter: `UserID eq '${domain.UserID}'`, top: 1 }),
-            this.provider.listItems<Record<string, unknown>>(this.benefitListTitle, { filter: `UserID eq '${domain.UserID}'`, top: 1 })
+          const filter = `UserID eq '${domain.UserID}'`;
+          const [tRows, bRows] = await Promise.all([
+            this.provider.listItems<Record<string, unknown>>(this.transportListTitle, { filter, top: 1 }).catch(() => []),
+            this.provider.listItems<Record<string, unknown>>(this.benefitListTitle, { filter, top: 1 }).catch(() => [])
           ]);
-          domain = this.mergeExtraData(domain, tItems[0], bItems[0]);
+          return this.mergeExtraData(domain, tRows[0], bRows[0]);
         } catch (je) {
-          auditLog.warn('users', 'DataProviderUserRepository.getById_join_failed', { id, error: String(je) });
+          auditLog.warn('users', 'DataProviderUserRepository.getById_join_failed', { error: String(je) });
         }
       }
 
       return domain;
     } catch (e) {
-      auditLog.warn('users', 'DataProviderUserRepository.getById_fallback', { id, error: String(e) });
-      const items = await this.provider.listItems<UserRow>(this.listTitle, {
-        filter: `Id eq ${numericId}`,
-        top: 1,
-      });
-      if (!items.length) return null;
-      return this.toDomain(items[0], 'core');
+      auditLog.error('users', 'DataProviderUserRepository.getById_failed', { id, error: String(e) });
+      return null;
     }
   }
 
