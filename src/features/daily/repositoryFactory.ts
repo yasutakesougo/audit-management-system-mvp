@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useDataProvider } from '@/lib/data/useDataProvider';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { sanitizeEnvValue } from '@/lib/sp/helpers';
-import { readEnv } from '@/lib/env';
+import { readEnv, isDevMode } from '@/lib/env';
 import { resolveProvider, getActiveProviderType, isDataProviderReady } from '@/lib/data/createDataProvider';
 
 import type { DailyRecordRepository } from './domain/DailyRecordRepository';
@@ -58,7 +58,7 @@ export const getDailyRecordRepository = (
   provider?: IDataProvider | Record<string, unknown>,
   options?: { listTitle?: string }
 ): DailyRecordRepository => {
-  if (import.meta.env.DEV && !provider && !isDataProviderReady()) {
+  if (isDevMode() && !provider && !isDataProviderReady()) {
     console.warn(
       '[DataOS] getDailyRecordRepository called before initialization. ' +
       'Ensure you are in a test context or use useDailyRecordRepository() hook instead.'

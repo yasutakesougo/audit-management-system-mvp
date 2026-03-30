@@ -5,6 +5,7 @@
  * Firebase が設定されていなくても auditLog 経由で動作する。
  */
 import { auditLog } from '@/lib/debugLogger';
+import { isDevMode } from '@/lib/env';
 
 export type SpEventName =
   | 'sp:list_resolved'
@@ -51,7 +52,7 @@ export function trackSpEvent(event: SpEventName, payload: SpEventPayload = {}) {
   });
 
   // 3. コンソール出力 (デバッグ用)
-  if (import.meta.env.DEV) {
+  if (isDevMode()) {
     const icon = level === 'error' ? '❌' : level === 'warn' ? '⚠️' : '✅';
     // eslint-disable-next-line no-console
     console.log(`${icon} [SP Telemetry] ${event}`, payload);

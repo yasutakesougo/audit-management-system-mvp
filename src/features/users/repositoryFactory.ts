@@ -3,6 +3,7 @@ import { pushAudit } from '@/lib/audit';
 import { useDataProvider } from '@/lib/data/useDataProvider';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { resolveProvider, getActiveProviderType, isDataProviderReady } from '@/lib/data/createDataProvider';
+import { isDevMode } from '@/lib/env';
 
 import type { UserRepository } from './domain/UserRepository';
 import { DataProviderUserRepository } from './infra/DataProviderUserRepository';
@@ -46,7 +47,7 @@ export const useUserRepository = (options?: UserRepositoryFactoryOptions): UserR
 export const getUserRepository = (
   provider?: IDataProvider | Record<string, unknown>,
 ): UserRepository => {
-  if (import.meta.env.DEV && !provider && !isDataProviderReady()) {
+  if (isDevMode() && !provider && !isDataProviderReady()) {
     console.warn(
       '[DataOS] getUserRepository called before initialization. ' +
       'Ensure you are in a test context or use useUserRepository() hook instead.'

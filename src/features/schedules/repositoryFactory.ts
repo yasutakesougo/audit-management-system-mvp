@@ -1,4 +1,5 @@
 import { isE2E } from '@/env';
+import { isDevMode } from '@/lib/env';
 // contract:allow-sp-direct — factory creates spClient for DI — EXCEPT in DataProvider mode
 import { useMemo } from 'react';
 import { useDataProvider } from '@/lib/data/useDataProvider';
@@ -105,7 +106,7 @@ const shouldCacheRepository = (options?: ScheduleRepositoryFactoryOptions): bool
 export const getScheduleRepository = (
   options?: ScheduleRepositoryFactoryOptions,
 ): ScheduleRepository => {
-  if (import.meta.env.DEV && !options?.provider && !isDataProviderReady()) {
+  if (isDevMode() && !options?.provider && !isDataProviderReady()) {
     console.warn(
       '[DataOS] getScheduleRepository called before initialization. ' +
       'Ensure you are in a test context or use useScheduleRepository() hook instead.'
