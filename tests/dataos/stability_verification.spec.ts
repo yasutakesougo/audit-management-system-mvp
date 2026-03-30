@@ -12,7 +12,7 @@ import {
   DataProviderItemNotFoundError,
   DataProviderNotInitializedError
 } from '@/lib/errors';
-import type { UseSP } from '@/lib/spClient';
+import type { UseSP, createSpClient } from '@/lib/spClient';
 import { getUserRepository } from '@/features/users/repositoryFactory';
 
 // Mock Telemetry and Observability to avoid side effects in tests
@@ -125,7 +125,7 @@ describe('Data OS Stability Verification', () => {
       }},
       { name: 'SharePoint', setup: () => {
           const client = { ...mockSpClient, getItemById: vi.fn().mockRejectedValue(new Error('404')) };
-          return new SharePointDataProvider(client as any);
+          return new SharePointDataProvider(client as unknown as ReturnType<typeof createSpClient>);
       }}
     ];
 
@@ -191,8 +191,8 @@ describe('Data OS Stability Verification', () => {
     it('createDataProvider should update client on existing sharepoint instance', () => {
       vi.stubGlobal('location', { search: '?provider=sharepoint' });
       
-      const client1 = { ...mockSpClient, baseUrl: 'site1' } as any;
-      const client2 = { ...mockSpClient, baseUrl: 'site2' } as any;
+      const client1 = { ...mockSpClient, baseUrl: 'site1' } as unknown as UseSP;
+      const client2 = { ...mockSpClient, baseUrl: 'site2' } as unknown as UseSP;
       
       const { provider: p1 } = createDataProvider(client1);
       const setClientSpy = vi.spyOn(p1 as SharePointDataProvider, 'setClient');

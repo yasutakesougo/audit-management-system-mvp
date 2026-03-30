@@ -9,6 +9,8 @@ vi.mock('@/lib/data/dataProviderObservabilityStore', () => ({
   useDataProviderObservabilityStore: vi.fn(),
 }));
 
+type StoreState = Parameters<Parameters<typeof useDataProviderObservabilityStore>[0]>[0];
+
 describe('DataLayerGuard Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -16,9 +18,9 @@ describe('DataLayerGuard Component', () => {
 
   it('should render connecting UI when provider is not ready (null)', () => {
     // Stage: currentProvider = null
-    (useDataProviderObservabilityStore as any).mockImplementation((selector: any) => selector({
-      currentProvider: null
-    }));
+    vi.mocked(useDataProviderObservabilityStore).mockImplementation((selector) =>
+      selector({ currentProvider: null } as unknown as StoreState)
+    );
 
     render(
       <DataLayerGuard>
@@ -34,9 +36,9 @@ describe('DataLayerGuard Component', () => {
 
   it('should render children when provider is ready', () => {
     // Stage: currentProvider = 'local'
-    (useDataProviderObservabilityStore as any).mockImplementation((selector: any) => selector({
-      currentProvider: 'local'
-    }));
+    vi.mocked(useDataProviderObservabilityStore).mockImplementation((selector) =>
+      selector({ currentProvider: 'local' } as unknown as StoreState)
+    );
 
     render(
       <DataLayerGuard>

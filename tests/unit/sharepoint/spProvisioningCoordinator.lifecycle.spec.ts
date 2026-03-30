@@ -2,6 +2,7 @@ import { SharePointProvisioningCoordinator } from '@/sharepoint/spProvisioningCo
 import { trackSpEvent } from '@/lib/telemetry/spTelemetry';
 import { readBool } from '@/lib/env';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import type { useSP } from '@/lib/spClient';
 
 vi.mock('@/lib/telemetry/spTelemetry', () => ({
   trackSpEvent: vi.fn(),
@@ -9,7 +10,7 @@ vi.mock('@/lib/telemetry/spTelemetry', () => ({
 }));
 
 vi.mock('@/lib/env', async (importOriginal) => {
-  const actual = await importOriginal<any>();
+  const actual = await importOriginal<typeof import('@/lib/env')>();
   return {
     ...actual,
     getAppConfig: vi.fn(() => ({})),
@@ -19,7 +20,7 @@ vi.mock('@/lib/env', async (importOriginal) => {
 
 // Mocking the registry to test specific lifecycles
 vi.mock('@/sharepoint/spListRegistry', async (importOriginal) => {
-    const actual = await importOriginal<any>();
+    const actual = await importOriginal<typeof import('@/sharepoint/spListRegistry')>();
     return {
         ...actual,
         SP_LIST_REGISTRY: [
@@ -32,17 +33,17 @@ vi.mock('@/sharepoint/spListRegistry', async (importOriginal) => {
 });
 
 describe('SharePointProvisioningCoordinator - Lifecycle Support', () => {
-  let mockClient: any;
+  let mockClient: ReturnType<typeof useSP>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     sessionStorage.clear();
-    
+
     mockClient = {
       spFetch: vi.fn(),
-      tryGetListMetadata: vi.fn().mockResolvedValue({ Title: 'SomeList' }),
+      tryGetListMetadata: vi.fn().mockResolvedValue({ listId: '', title: 'SomeList' }),
       getListFieldInternalNames: vi.fn().mockResolvedValue(new Set()),
-    };
+    } as unknown as ReturnType<typeof useSP>;
   });
 
   it('Experimental: should SKIP when feature flag is OFF', async () => {
@@ -57,7 +58,7 @@ describe('SharePointProvisioningCoordinator - Lifecycle Support', () => {
 
   it('Experimental: should PROCEED when feature flag is ON', async () => {
     vi.mocked(readBool).mockImplementation((key) => key === 'VITE_FEATURE_EXP'); // Flag ON for 'exp'
-    mockClient.tryGetListMetadata.mockResolvedValue({ Title: 'ExperimentalList' });
+    vi.mocked(mockClient.tryGetListMetadata).mockResolvedValue({ listId: '', title: 'ExperimentalList' });
 
     const result = await SharePointProvisioningCoordinator.bootstrap(mockClient);
     const expResult = result.summaries.find(s => s.key === 'exp');
@@ -76,26 +77,26 @@ describe('SharePointProvisioningCoordinator - Lifecycle Support', () => {
   });
 
   it('Required: should trigger error telemetry on 404', async () => {
-    mockClient.tryGetListMetadata.mockImplementation((name: string) => {
+    vi.mocked(mockClient.tryGetListMetadata).mockImplementation((name: string) => {
         if (name === 'RequiredList') return Promise.resolve(null);
-        return Promise.resolve({ Title: name });
+        return Promise.resolve({ listId: '', title: name });
     });
-    
+
     await SharePointProvisioningCoordinator.bootstrap(mockClient);
-    
+
     expect(trackSpEvent).toHaveBeenCalledWith('sp:list_missing_required', expect.objectContaining({
       key: 'req'
     }));
   });
 
   it('Optional: should trigger info telemetry on 404', async () => {
-    mockClient.tryGetListMetadata.mockImplementation((name: string) => {
+    vi.mocked(mockClient.tryGetListMetadata).mockImplementation((name: string) => {
         if (name === 'OptionalList') return Promise.resolve(null);
-        return Promise.resolve({ Title: name });
+        return Promise.resolve({ listId: '', title: name });
     });
-    
+
     await SharePointProvisioningCoordinator.bootstrap(mockClient);
-    
+
     expect(trackSpEvent).toHaveBeenCalledWith('sp:list_missing_optional', expect.objectContaining({
       key: 'opt'
     }));

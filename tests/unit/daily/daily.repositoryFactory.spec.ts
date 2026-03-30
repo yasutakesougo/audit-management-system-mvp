@@ -12,6 +12,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDataProvider, __clearProviderCache } from '@/lib/data/createDataProvider';
+import type { UseSP } from '@/lib/spClient';
 
 
 
@@ -135,7 +136,7 @@ describe('Daily repositoryFactory', () => {
 
   describe('SharePoint path', () => {
     it('returns SharePoint repo when forceKind=sharepoint with acquireToken', () => {
-      createDataProvider({ spFetch: mockSpFetch } as any, { type: 'sharepoint' });
+      createDataProvider({ spFetch: mockSpFetch } as unknown as UseSP, { type: 'sharepoint' });
       const repo = getDailyRecordRepository({
         forceKind: 'sharepoint',
         acquireToken: mockAcquireToken,
