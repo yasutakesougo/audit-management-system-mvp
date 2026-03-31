@@ -33,9 +33,10 @@ const TICK_INTERVAL_MS = 50;
 
 interface KioskExitFabProps {
   onExit: () => void;
+  disablePortal?: boolean;
 }
 
-export const KioskExitFab: React.FC<KioskExitFabProps> = ({ onExit }) => {
+export const KioskExitFab: React.FC<KioskExitFabProps> = ({ onExit, disablePortal }) => {
   const [progress, setProgress] = React.useState(0);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const timerRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
@@ -136,6 +137,7 @@ export const KioskExitFab: React.FC<KioskExitFabProps> = ({ onExit }) => {
       <Dialog
         open={sheetOpen}
         onClose={handleCancel}
+        disablePortal={disablePortal}
         data-testid="kiosk-action-sheet"
         PaperProps={{
           sx: {

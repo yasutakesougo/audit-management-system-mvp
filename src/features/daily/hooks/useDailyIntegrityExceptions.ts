@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ExceptionItem } from '@/features/exceptions/domain/exceptionLogic';
 import { useDailyRecordRepository } from '@/features/daily/repositoryFactory';
 import { mapIntegrityToExceptionItem } from '@/features/daily/domain/integrity/dailyIntegrityChecker';
@@ -51,9 +51,12 @@ export function useDailyIntegrityExceptions(targetDate: string) {
     };
   }, [repository, targetDate]);
 
-  return {
-    items,
-    isLoading,
-    error,
-  };
+  return useMemo(
+    () => ({
+      items,
+      isLoading,
+      error,
+    }),
+    [items, isLoading, error],
+  );
 }

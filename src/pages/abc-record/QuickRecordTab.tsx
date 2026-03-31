@@ -129,6 +129,7 @@ const QuickRecordTab: React.FC<QuickRecordTabProps> = ({ users, recorderName, on
       {/* ── 利用者 + 日時 ── */}
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
         <Autocomplete
+          disablePortal
           options={users}
           value={selectedUser}
           onChange={(_, v) => setSelectedUser(v)}

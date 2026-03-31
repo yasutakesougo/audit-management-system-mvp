@@ -376,29 +376,71 @@ type RouteHydrationErrorBoundaryState = {
   hasError: boolean;
   error?: unknown;
   zodIssues?: ActionableErrorInfo[];
+  recoveryKey: number;
+  recoveryCount: number;
 };
 
 type RouteHydrationErrorBoundaryInnerProps = RouteHydrationErrorBoundaryProps & {
   onError: HydrationErrorHandler;
+  resetKey: string;
 };
 
 class RouteHydrationErrorBoundaryInner extends React.Component<
   RouteHydrationErrorBoundaryInnerProps,
   RouteHydrationErrorBoundaryState
 > {
-  state: RouteHydrationErrorBoundaryState = { hasError: false };
+  state: RouteHydrationErrorBoundaryState = {
+    hasError: false,
+    recoveryKey: 0,
+    recoveryCount: 0,
+  };
 
-  static getDerivedStateFromError(error: unknown): RouteHydrationErrorBoundaryState {
+  static getDerivedStateFromError(error: unknown): Partial<RouteHydrationErrorBoundaryState> {
     let zodIssues: ActionableErrorInfo[] | undefined;
     if (isZodError(error)) {
       zodIssues = formatZodError(error);
     }
-    return { hasError: true, error, zodIssues };
+    return { hasError: true, error: error as Error, zodIssues };
   }
 
   componentDidCatch(error: unknown): void {
+    const msg = String((error as Error)?.message || '');
+    const isDomError = msg.includes('removeChild') || msg.includes('parentNode');
+
+    // DOM 関連のエラー（removeChild / parentNode）は、開発中にブラウザ拡張や
+    // Google Translate 等により引き起こされることが多い。
+    // 自律回復（Self-healing）を試みるため、recoveryKey を更新して全子要素をリセットする。
+    if (isDomError && this.state.recoveryCount < 3) {
+      console.warn(
+        `[RouteHydration] Caught ${msg}. Attempting self-healing recovery (Attempt ${this.state.recoveryCount + 1})...`
+      );
+      this.setState((s) => ({
+        hasError: false,
+        error: null,
+        recoveryKey: s.recoveryKey + 1,
+        recoveryCount: s.recoveryCount + 1,
+      }));
+      return;
+    }
+
     this.props.onError(error);
-    persistentLogger.error(error, 'RouteHydrationErrorBoundary');
+    persistentLogger.error(error as Error, 'RouteHydrationErrorBoundary');
+  }
+
+  componentDidUpdate(prevProps: RouteHydrationErrorBoundaryInnerProps) {
+    // 外部からの resetKey (URL変更) に同期して、エラー状態をクリアし
+    // 子要素を再レンダリング可能にする。
+    // これにより key による強制アンマウント（チラつきの原因）を回避する。
+    if (prevProps.resetKey !== this.props.resetKey) {
+      if (this.state.hasError || this.state.recoveryCount > 0) {
+        this.setState({
+          hasError: false,
+          error: null,
+          zodIssues: undefined,
+          recoveryCount: 0, // 正常な遷移でリカバリカウントをリセット
+        });
+      }
+    }
   }
 
   render(): React.ReactNode {
@@ -462,7 +504,11 @@ class RouteHydrationErrorBoundaryInner extends React.Component<
         </div>
       );
     }
-    return this.props.children;
+    return (
+      <div key={this.state.recoveryKey} style={{ display: 'contents' }} data-recovery={this.state.recoveryCount || undefined}>
+        {this.props.children}
+      </div>
+    );
   }
 }
 
@@ -485,7 +531,7 @@ export const RouteHydrationErrorBoundary: React.FC<RouteHydrationErrorBoundaryPr
   }
 
   return (
-    <RouteHydrationErrorBoundaryInner key={resetKey} onError={handleError} fallback={fallback}>
+    <RouteHydrationErrorBoundaryInner resetKey={resetKey} onError={handleError} fallback={fallback}>
       {children}
     </RouteHydrationErrorBoundaryInner>
   );

@@ -59,6 +59,11 @@ const ensureActiveAccount = (instance: IPublicClientApplication) => {
 };
 
 
+let totalRequestsInWindow = 0;
+let lastWindowEpoch = 0;
+const RATE_LIMIT_WINDOW_MS = 1000;
+const MAX_REQUESTS_PER_WINDOW = 5;
+
 export const useAuth = () => {
   // ── Determine mode ONCE (these are stable across renders) ──
   const isE2eMock = isE2eMsalMockEnabled();
@@ -70,6 +75,18 @@ export const useAuth = () => {
   // ── Always call useMsalContext (hooks must be unconditional) ──
   // When in mock/skip mode, the context values won't be used but hooks must be called.
   const { instance, accounts, inProgress, authReady } = useMsalContext();
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Stable Identity Bridge for MSAL Context (The Loop Breaker)
+  // ══════════════════════════════════════════════════════════════════════════
+  
+  // Use a ref to hold the volatile MSAL context values so our functions (acquireToken, etc)
+  // can access the LATEST state without needing to change their OWN identity.
+  // This breaks the lethal loop: fetch -> msal updates -> component re-renders -> fetch...
+  const msalStateRef = useRef({ instance, accounts, inProgress, authReady });
+  useEffect(() => {
+    msalStateRef.current = { instance, accounts, inProgress, authReady };
+  }, [instance, accounts, inProgress, authReady]);
 
   const signInSessionKey = useMemo(
     () => typeof window === 'undefined' ? null : `__msal_signin_attempted__${window.location.origin}`,
@@ -140,13 +157,32 @@ export const useAuth = () => {
   const loginScopes = useMemo(() => [...LOGIN_SCOPES], []);
 
   const realAcquireToken = useCallback(async (resource?: string): Promise<string | null> => {
+    // 🛑 Synchronous Loop Guard (The Kill Switch)
+    const now = Date.now();
+    if (now - lastWindowEpoch > RATE_LIMIT_WINDOW_MS) {
+      lastWindowEpoch = now;
+      totalRequestsInWindow = 0;
+    }
+    totalRequestsInWindow += 1;
+    if (totalRequestsInWindow > MAX_REQUESTS_PER_WINDOW) {
+      console.warn('[auth] Rate limit exceeded! Throttling token acquisition to break infinite loop.');
+      return null;
+    }
+
+    // 🛡️ LATEST context access via stable ref bridge
+    const current = { 
+      ...msalStateRef.current, 
+      loginScopes, 
+      authConfig 
+    };
+
     // Get fresh account list from instance to avoid stale closure
-    const allAccounts = instance.getAllAccounts() as BasicAccountInfo[];
-    const activeAccount = ensureActiveAccount(instance) ?? (allAccounts[0] as BasicAccountInfo | undefined) ?? null;
+    const allAccounts = current.instance.getAllAccounts() as BasicAccountInfo[];
+    const activeAccount = ensureActiveAccount(current.instance) ?? (allAccounts[0] as BasicAccountInfo | undefined) ?? null;
     if (!activeAccount) return null;
 
     // しきい値（秒）。既定 5 分。
-    const thresholdSec = Number(authConfig.VITE_MSAL_TOKEN_REFRESH_MIN || '300') || 300;
+    const thresholdSec = Number(current.authConfig.VITE_MSAL_TOKEN_REFRESH_MIN || '300') || 300;
     const targetResource = ensureResource(resource);
     const scopes = targetResource === GRAPH_RESOURCE
       ? [...GRAPH_SCOPES]
@@ -154,7 +190,7 @@ export const useAuth = () => {
 
     try {
       // 1回目: 通常のサイレント取得
-      const first = await instance.acquireTokenSilent({
+      const first = await current.instance.acquireTokenSilent({
         scopes,
         account: activeAccount,
         forceRefresh: false,
@@ -171,7 +207,7 @@ export const useAuth = () => {
       // 有効期限が近い場合だけ 2回目: 強制リフレッシュ
       if (secondsLeft > 0 && secondsLeft < thresholdSec) {
         debugLog('soft refresh triggered', { secondsLeft, thresholdSec });
-        const refreshed = await instance.acquireTokenSilent({
+        const refreshed = await current.instance.acquireTokenSilent({
           scopes,
           account: activeAccount,
           forceRefresh: true,
@@ -230,11 +266,14 @@ export const useAuth = () => {
       }
       return null;
     }
-  }, [instance, ensureResource]);
+  }, [ensureResource]); // 🚀 Stable identity decoupled from instance/inProgress/accounts
 
   // --- signIn (real) ---
 
   const signIn = useCallback(async (): Promise<SignInResult> => {
+    // 🛡️ LATEST context access via stable ref bridge to ensure function identity stability
+    const current = msalStateRef.current;
+    
     if (signInSessionKey) {
       const alreadyAttempted = window.sessionStorage.getItem(signInSessionKey) === 'true';
       if (alreadyAttempted) {
@@ -243,7 +282,8 @@ export const useAuth = () => {
       }
       window.sessionStorage.setItem(signInSessionKey, 'true');
     }
-    const canInteract = inProgress === InteractionStatus.None || inProgress === 'none';
+
+    const canInteract = current.inProgress === InteractionStatus.None || current.inProgress === 'none';
     if (!canInteract) {
       debugLog('login skipped (interaction in progress)');
       return signInInFlight ?? { success: false };
@@ -272,7 +312,7 @@ export const useAuth = () => {
 
     signInInFlight = (async () => {
       try {
-        await instance.loginRedirect({ scopes: loginScopes, prompt: 'select_account' });
+        await current.instance.loginRedirect({ scopes: loginScopes, prompt: 'select_account' });
         return { success: true };
       } catch (error: unknown) {
         const msalError = error as { name?: string; errorCode?: string };
@@ -288,29 +328,35 @@ export const useAuth = () => {
     })();
 
     return signInInFlight;
-  }, [instance, inProgress, loginScopes, signInSessionKey]);
+  }, [loginScopes, signInSessionKey]); // decoupled from instance/inProgress
 
   // --- signOut ---
 
   const signOut = useCallback(() => {
+    const current = msalStateRef.current;
     if (typeof window !== 'undefined') {
       window.sessionStorage.removeItem('__listReady');
     }
     clearRuntimeListReady('schedules');
-    return instance.logoutRedirect();
-  }, [instance]);
+    return current.instance.logoutRedirect();
+  }, []); // decoupled from instance
 
   // ══════════════════════════════════════════════════════════════════════════
   // Return based on mode — all hooks have already been called above
   // ══════════════════════════════════════════════════════════════════════════
 
-  if (isE2eMock) {
+  // ══════════════════════════════════════════════════════════════════════════
+  // Return based on mode — all hooks have already been called above
+  // ══════════════════════════════════════════════════════════════════════════
+
+  const e2eResult = useMemo(() => {
+    if (!isE2eMock) return undefined;
     const account = createE2EMsalAccount();
     return {
       isAuthenticated: true,
       account,
-      signIn: () => Promise.resolve({ success: false }),
-      signOut: () => Promise.resolve(),
+      signIn: NOOP_SIGN_IN,
+      signOut: NOOP_SIGN_OUT,
       acquireToken: e2eMockAcquireToken,
       loading: false,
       shouldSkipLogin: true,
@@ -318,12 +364,13 @@ export const useAuth = () => {
       setListReadyState,
       tokenReady: true,
     };
-  }
+  }, [isE2eMock, e2eMockAcquireToken, getListReadyState, setListReadyState]);
 
-  if (skipLogin) {
+  const skipLoginResult = useMemo(() => {
+    if (!skipLogin) return undefined;
     return {
       isAuthenticated: true,
-      account: null,
+      account: null as BasicAccountInfo | null,
       signIn: NOOP_SIGN_IN,
       signOut: NOOP_SIGN_OUT,
       acquireToken: NOOP_ACQUIRE_TOKEN,
@@ -333,26 +380,40 @@ export const useAuth = () => {
       setListReadyState,
       tokenReady: true,
     };
-  }
+  }, [skipLogin, getListReadyState, setListReadyState]);
 
   const resolvedAccount = instance.getActiveAccount() ?? accounts[0] ?? null;
   const isAuthenticated = !!resolvedAccount;
-
-  // Token ready: account exists AND not in pending interaction
   const tokenReady = isAuthenticated && (inProgress === InteractionStatus.None || inProgress === 'none');
 
-  return {
+  const authFunctions = useMemo(() => ({
+    signIn,
+    signOut,
+    acquireToken: realAcquireToken,
+  }), [signIn, signOut, realAcquireToken]);
+
+  const realResult = useMemo(() => ({
     isAuthenticated,
     account: resolvedAccount,
     tokenReady,
     getListReadyState,
     setListReadyState,
-    signIn,
-    signOut,
-    acquireToken: realAcquireToken,
+    ...authFunctions,
     loading: inProgress !== 'none',
     shouldSkipLogin: false,
-  };
+  }), [
+    isAuthenticated,
+    resolvedAccount,
+    tokenReady,
+    getListReadyState,
+    setListReadyState,
+    authFunctions,
+    inProgress
+  ]);
+
+  if (isE2eMock) return e2eResult!;
+  if (skipLogin) return skipLoginResult!;
+  return realResult;
 };
 
 // IDE 補完用に公開フック型を輸出

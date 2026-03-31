@@ -44,5 +44,5 @@ export function useHandoffData(): {
   const repo = useMemo(() => createHandoffRepository(hooks), [hooks]);
   const auditRepo = useMemo(() => createHandoffAuditRepository(hooks), [hooks]);
 
-  return { repo, auditRepo };
+  return useMemo(() => ({ repo, auditRepo }), [repo, auditRepo]);
 }

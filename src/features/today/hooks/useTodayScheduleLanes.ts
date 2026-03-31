@@ -55,11 +55,14 @@ export function useTodayScheduleLanes(): UseTodayScheduleLanesResult {
     [data],
   );
 
-  return {
-    lanes,
-    isLoading: loading,
-    error,
-    source,
-    refetch,
-  };
+  return useMemo(
+    () => ({
+      lanes,
+      isLoading: loading,
+      error,
+      source,
+      refetch,
+    }),
+    [lanes, loading, error, source, refetch],
+  );
 }

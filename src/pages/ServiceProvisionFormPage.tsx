@@ -245,6 +245,7 @@ const ServiceProvisionFormPage: React.FC = () => {
         <Stack spacing={2.5}>
           {/* ── 利用者選択 ───────────────────────────── */}
           <Autocomplete
+            disablePortal
             options={userOptions}
             getOptionLabel={(option) =>
               `${option.label}（${option.id}）`

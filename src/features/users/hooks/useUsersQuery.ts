@@ -24,6 +24,8 @@ export type UseUsersQueryReturn = {
   refresh: () => Promise<void>;
 };
 
+const EMPTY_ARRAY: IUserMaster[] = [];
+
 /**
  * useUsersQuery — users 読み取り専用の共有 Query Hook
  *
@@ -62,7 +64,7 @@ export function useUsersQuery(params?: UsersHookParams): UseUsersQueryReturn {
 
   return useMemo(
     () => ({
-      data: query.data ?? [],
+      data: query.data ?? EMPTY_ARRAY,
       status,
       error: query.error,
       refresh,

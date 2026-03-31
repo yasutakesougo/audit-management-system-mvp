@@ -515,16 +515,30 @@ export function useTransportStatus(): UseTransportStatusReturn {
 
   const isReady = legs.length > 0;
 
-  return {
-    status,
-    activeDirection,
-    setActiveDirection: handleSetActiveDirection,
-    transition,
-    markInProgress,
-    markArrived,
-    markAbsent,
-    currentTime,
-    isReady,
-    refresh,
-  };
+  return useMemo(
+    () => ({
+      status,
+      activeDirection,
+      setActiveDirection: handleSetActiveDirection,
+      transition,
+      markInProgress,
+      markArrived,
+      markAbsent,
+      currentTime,
+      isReady,
+      refresh,
+    }),
+    [
+      status,
+      activeDirection,
+      handleSetActiveDirection,
+      transition,
+      markInProgress,
+      markArrived,
+      markAbsent,
+      currentTime,
+      isReady,
+      refresh,
+    ],
+  );
 }

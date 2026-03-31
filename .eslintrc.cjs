@@ -107,19 +107,34 @@ module.exports = {
         ]
       }
     ],
-    // a11y: subtitle1/subtitle2 はデフォルトで <h6> を出力するため、
-    // component prop なしでの使用を禁止し heading-order 違反を防ぐ
-    // NOTE: 現在 ~180箇所が未修正のため off で待機。全修正後に warn → error へ段階昇格
-    // NOTE: personId / personName ガードは overrides で domain / features 限定で有効化
+    // Zustand selector stability guard
+    // useStore((s) => ({ ... })) や useStore((s) => [...]) はセレクターが毎回新しい参照を返すため
+    // useSyncExternalStore の Object.is 比較が常に「変更あり」と判定 → forceStoreRerender 無限ループ。
+    // 修正: プロパティを個別に取得する。
+    //   ❌ const { a, b } = useStore(s => ({ a: s.a, b: s.b }));
+    //   ✅ const a = useStore(s => s.a);  const b = useStore(s => s.b);
+    // See: docs/adr/ADR-003-zustand-selector-stability.md (or commit b7328192 for root cause)
     'no-restricted-syntax': [
-      'off',
+      'error',
       {
         selector:
-          "JSXOpeningElement[name.name='Typography'][attributes.length>0]:has(JSXAttribute[name.name='variant'][value.value=/^subtitle[12]$/]):not(:has(JSXAttribute[name.name='component']))",
+          "CallExpression[callee.name=/^use[A-Z]\\w*(Store|Preferences|State)$/] > ArrowFunctionExpression[body.type='ObjectExpression']",
         message:
-          'Typography variant="subtitle1/2" はデフォルトで <h6> を出力します。component="span" / "p" / "h3" 等を明示してください（a11y heading-order 対策）。'
-      }
+          'Zustand セレクターでオブジェクトリテラルを返さないでください（無限ループ原因）。' +
+          'プロパティを個別に購読してください: const x = useStore(s => s.x); const y = useStore(s => s.y);',
+      },
+      {
+        selector:
+          "CallExpression[callee.name=/^use[A-Z]\\w*(Store|Preferences|State)$/] > ArrowFunctionExpression[body.type='ArrayExpression']",
+        message:
+          'Zustand セレクターで配列リテラルを返さないでください（無限ループ原因）。' +
+          'プロパティを個別に購読してください: const x = useStore(s => s.x); const y = useStore(s => s.y);',
+      },
     ],
+    // a11y: subtitle1/subtitle2 はデフォルトで <h6> を出力するため、
+    // component prop なしでの使用を禁止し heading-order 違反を防ぐ
+    // NOTE: 現在 ~180箇所が未修正のため no-restricted-syntax とは別管理。
+    // 全修正後に上記ブロックへ統合し warn → error へ昇格予定。
     // Phase 1: boundaries (off) - Temporarily disabled to unblock PR1-3 commit
     'boundaries/element-types': 'off'
   },
@@ -167,12 +182,25 @@ module.exports = {
         ],
         'no-restricted-syntax': [
           'error',
+          // ── Zustand selector stability (inherited from top-level) ──
+          {
+            selector:
+              "CallExpression[callee.name=/^use[A-Z]\\w*(Store|Preferences|State)$/] > ArrowFunctionExpression[body.type='ObjectExpression']",
+            message:
+              'Zustand セレクターでオブジェクトリテラルを返さないでください（無限ループ原因）。プロパティを個別に購読してください。',
+          },
+          {
+            selector:
+              "CallExpression[callee.name=/^use[A-Z]\\w*(Store|Preferences|State)$/] > ArrowFunctionExpression[body.type='ArrayExpression']",
+            message:
+              'Zustand セレクターで配列リテラルを返さないでください（無限ループ原因）。プロパティを個別に購読してください。',
+          },
           {
             selector:
               "NewExpression[callee.name='Date'] > :matches(Literal, TemplateLiteral):first-child",
             message:
               '文字列から Date を直接作らないでください（TZ安全な dateutils 経由で）'
-          }
+          },
         ]
       }
     },
@@ -261,6 +289,19 @@ module.exports = {
       rules: {
         'no-restricted-syntax': [
           'warn',
+          // ── Zustand selector stability (inherited from top-level) ──
+          {
+            selector:
+              "CallExpression[callee.name=/^use[A-Z]\\w*(Store|Preferences|State)$/] > ArrowFunctionExpression[body.type='ObjectExpression']",
+            message:
+              'Zustand セレクターでオブジェクトリテラルを返さないでください（無限ループ原因）。プロパティを個別に購読してください。',
+          },
+          {
+            selector:
+              "CallExpression[callee.name=/^use[A-Z]\\w*(Store|Preferences|State)$/] > ArrowFunctionExpression[body.type='ArrayExpression']",
+            message:
+              'Zustand セレクターで配列リテラルを返さないでください（無限ループ原因）。プロパティを個別に購読してください。',
+          },
           {
             selector: "TSPropertySignature > Identifier[name='personId']",
             message:
@@ -337,6 +378,19 @@ module.exports = {
         ],
         'no-restricted-syntax': [
           'error',
+          // ── Zustand selector stability (inherited from top-level) ──
+          {
+            selector:
+              "CallExpression[callee.name=/^use[A-Z]\\w*(Store|Preferences|State)$/] > ArrowFunctionExpression[body.type='ObjectExpression']",
+            message:
+              'Zustand セレクターでオブジェクトリテラルを返さないでください（無限ループ原因）。プロパティを個別に購読してください。',
+          },
+          {
+            selector:
+              "CallExpression[callee.name=/^use[A-Z]\\w*(Store|Preferences|State)$/] > ArrowFunctionExpression[body.type='ArrayExpression']",
+            message:
+              'Zustand セレクターで配列リテラルを返さないでください（無限ループ原因）。プロパティを個別に購読してください。',
+          },
           {
             selector: "Literal[value=/\\/_api\\/web\\/lists/]",
             message: 'SharePoint REST API のエンドポイントを直書きしないでください。IDataProvider を使用してください。'

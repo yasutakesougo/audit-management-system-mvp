@@ -55,9 +55,9 @@ export function useMonitoringHub(
   const presenceLane = useMemo(() => buildHubLaneModel('利用者入退室', true, presenceSyncStatus), [presenceSyncStatus]);
   const dailyLane = useMemo(() => buildHubLaneModel('日次ケア記録', true, dailySyncStatus), [dailySyncStatus]);
 
-  return {
+  return useMemo(() => ({
     spLane,
     presenceLane,
     dailyLane,
-  };
+  }), [spLane, presenceLane, dailyLane]);
 }

@@ -122,15 +122,13 @@ export const useExceptionPreferences = create<ExceptionPreferencesStore>((set, g
 }));
 
 export function useActiveExceptionPreferences() {
-  const preferences = useExceptionPreferences((s) => ({
-    dismissed: s.dismissed,
-    snoozed: s.snoozed
-  }));
-  
+  // Subscribe to each field separately to avoid returning a new object literal
+  // on every call (which would cause useSyncExternalStore to loop via forceStoreRerender).
+  const dismissed = useExceptionPreferences((s) => s.dismissed);
+  const snoozed = useExceptionPreferences((s) => s.snoozed);
+
   return useMemo(() => {
     const now = new Date().getTime();
-    const dismissed = preferences.dismissed || {};
-    const snoozed = preferences.snoozed || {};
     
     const dismissedStableIds = new Set(
       Object.entries(dismissed)
@@ -151,5 +149,5 @@ export function useActiveExceptionPreferences() {
     );
 
     return { dismissedStableIds, snoozedStableIds };
-  }, [preferences.dismissed, preferences.snoozed]);
+  }, [dismissed, snoozed]);
 }

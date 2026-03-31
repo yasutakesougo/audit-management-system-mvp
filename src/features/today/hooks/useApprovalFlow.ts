@@ -11,7 +11,7 @@
 import { useDailyRecordRepository } from '@/features/daily/repositories/repositoryFactory';
 import { useStaffStore } from '@/features/staff';
 import { toLocalDateISO } from '@/utils/getNow';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 export type ApprovalFlowState = {
   /** モーダル表示状態 */
@@ -79,13 +79,16 @@ export function useApprovalFlow(): UseApprovalFlowReturn {
     }
   }, [repository, today, currentStaff]);
 
-  return {
-    isOpen,
-    isApproving,
-    error,
-    targetDate: today,
-    open,
-    close,
-    approve,
-  };
+  return useMemo(
+    () => ({
+      isOpen,
+      isApproving,
+      error,
+      targetDate: today,
+      open,
+      close,
+      approve,
+    }),
+    [isOpen, isApproving, error, today, open, close, approve]
+  );
 }

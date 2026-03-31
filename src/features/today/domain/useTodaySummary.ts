@@ -69,6 +69,9 @@ const mockSpSyncStatus = { loading: false, error: null, itemCount: 0, source: 'd
 
 // buildMockServiceStructure は削除 → buildServiceStructure.ts に移行済み
 
+// ─── Constants ───
+const USERS_QUERY_PARAMS = { selectMode: 'detail' as const };
+
 /**
  * Today Summary Facade
  *
@@ -79,7 +82,7 @@ const mockSpSyncStatus = { loading: false, error: null, itemCount: 0, source: 'd
  */
 export function useTodaySummary(): TodaySummary {
   // ─── 1. Data Fetching (internalized from TodayOpsPage) ───
-  const { data: queriedUsers } = useUsersQuery({ selectMode: 'detail' });
+  const { data: queriedUsers } = useUsersQuery(USERS_QUERY_PARAMS);
   const users = useMemo(
     () => filterActiveUsers(queriedUsers),
     [queriedUsers],

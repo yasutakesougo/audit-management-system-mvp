@@ -141,22 +141,34 @@ export function useDashboardSummary({
 
   perfMeasure('useDashboardSummary-start');
 
-  return {
-    activityRecords,
-    usageMap,
-    intensiveSupportUsers,
-    stats,
-    attendanceSummary,
-    dailyRecordStatus,
-    scheduleLanesToday,
-    scheduleLanesTomorrow,
-    prioritizedUsers,
-    briefingAlerts,
-    staffAvailability,
-    monitoringHub,
-    // ✅ Phase 9: handoff デモ値を除去
-    // handoffTotal / handoffStatus / handoffCritical は
-    // useDashboardPage が useHandoffSummary（TanStack Query）から直接取得する。
-    // ここでの二重化はデータ不整合の原因だったため削除。
-  };
+  return useMemo(
+    () => ({
+      activityRecords,
+      usageMap,
+      intensiveSupportUsers,
+      stats,
+      attendanceSummary,
+      dailyRecordStatus,
+      scheduleLanesToday,
+      scheduleLanesTomorrow,
+      prioritizedUsers,
+      briefingAlerts,
+      staffAvailability,
+      monitoringHub,
+    }),
+    [
+      activityRecords,
+      usageMap,
+      intensiveSupportUsers,
+      stats,
+      attendanceSummary,
+      dailyRecordStatus,
+      scheduleLanesToday,
+      scheduleLanesTomorrow,
+      prioritizedUsers,
+      briefingAlerts,
+      staffAvailability,
+      monitoringHub,
+    ],
+  );
 }

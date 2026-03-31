@@ -228,6 +228,7 @@ export const UserStatusQuickDialog: React.FC<UserStatusQuickDialogProps> = ({
       onClose={handleCloseWithFocusRelease}
       maxWidth="xs"
       fullWidth
+      disablePortal
       data-testid="user-status-quick-dialog"
     >
       <DialogTitle

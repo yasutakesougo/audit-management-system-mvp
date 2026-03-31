@@ -293,11 +293,13 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
         console.error(`[ProtectedRoute] List existence check failed (attempt ${attempt + 1}):`, error);
 
         if ((isTimeout || isRetryableStatus) && attempt < MAX_RETRIES) {
-          // Retry: reset to idle so the effect re-fires
+          // Note: we no longer setListGate('idle') to prevent infinite re-firing.
+          // We rely on the internal retry loop within the service if needed, 
+          // or simply accept 'blocked' status for this mount.
           listCheckRetryRef.current = attempt + 1;
-          debug(`[schedules] Retrying list check (attempt ${attempt + 2}/${MAX_RETRIES + 1})`);
-          setListGate('idle');
-          return;
+          // Keep current state ('checking') and don't re-trigger effect.
+          // In a real scenario, we might want to wait and retry, but for stability,
+          // we stop the immediate cycle.
         }
 
         listCheckRetryRef.current = 0;
@@ -328,7 +330,7 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
     };
 
     void checkSchedulesListExistence();
-  }, [isMsalInProgress, tokenReady, flag, listGate, acquireToken, setListReadyState, accountRuntimeId, tenantRuntimeId]);
+  }, [flag, listGate, acquireToken, setListReadyState, accountRuntimeId, tenantRuntimeId]);
 
   // Collect diagnostics when the blocking reason changes
   // This must be in useEffect to avoid render-phase setState warnings

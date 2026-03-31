@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { ActionCard, RawActionSource } from '../domain/models/queue.types';
+
+const EMPTY_EXCEPTION_ACTIONS: RawActionSource[] = [];
 import { buildTodayActionQueue } from '../domain/engine/buildTodayActionQueue';
 import { fetchMockActionSources } from '../domain/repositories/mockActionSources';
 import { summarizeTodayQueue } from '../telemetry/summarizeTodayQueue';
@@ -98,10 +100,11 @@ export function useTodayActionQueue(
     const correctiveSources = visibleActions.map(mapSuggestionToActionSource);
 
     // 4c. 既存 sources と corrective sources、および例外 sources を合流させてキュー構築
-    const allSources = [...sources, ...correctiveSources, ...(options.exceptionActions ?? [])];
+    const exceptionActions = options.exceptionActions ?? EMPTY_EXCEPTION_ACTIONS;
+    const allSources = [...sources, ...correctiveSources, ...exceptionActions];
     if (allSources.length === 0) return [];
     return buildTodayActionQueue(allSources, now, currentStaffId);
-  }, [sources, now, currentStaffId, timedCorrectiveActions, suggestionStates]);
+  }, [sources, now, currentStaffId, timedCorrectiveActions, suggestionStates, options.exceptionActions]);
 
   // 5. Telemetry 観測と送信
   const pushSample = useTodayQueueTelemetryStore((s) => s.pushSample);
@@ -127,10 +130,13 @@ export function useTodayActionQueue(
     pushSample(sample);
   }, [actionQueue, isLoading, pushSample, sources.length]);
 
-  return {
-    actionQueue,
-    isLoading,
-    error,
-    refresh,
-  };
+  return useMemo(
+    () => ({
+      actionQueue,
+      isLoading,
+      error,
+      refresh,
+    }),
+    [actionQueue, isLoading, error, refresh],
+  );
 }
