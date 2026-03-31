@@ -16,6 +16,7 @@ import {
     fromSpMeetingSessionFields,
     MEETING_LIST_NAMES,
     MEETING_SELECT_FIELDS,
+    MEETING_SESSION_FILTER_FIELDS,
     toSpMeetingSessionFields,
 } from '../meetingDataTypes';
 
@@ -101,7 +102,7 @@ export function createMeetingSessionApi(deps: MeetingApiDeps) {
       await getListItemsByTitle<SpMeetingSessionItem>(
         SESSIONS_LIST,
         [MEETING_SELECT_FIELDS.SESSIONS],
-        `Id eq ${sessionId}`,
+        `${MEETING_SESSION_FILTER_FIELDS.id} eq ${sessionId}`,
       );
 
     if (currentSessions.length === 0) {
@@ -138,7 +139,7 @@ export function createMeetingSessionApi(deps: MeetingApiDeps) {
     const sessions = await getListItemsByTitle<SpMeetingSessionItem>(
       SESSIONS_LIST,
       [MEETING_SELECT_FIELDS.SESSIONS],
-      `Id eq ${sessionId}`,
+      `${MEETING_SESSION_FILTER_FIELDS.id} eq ${sessionId}`,
     );
     return sessions.length === 0 ? null : fromSpMeetingSessionFields(sessions[0]);
   };
@@ -148,7 +149,7 @@ export function createMeetingSessionApi(deps: MeetingApiDeps) {
     const sessions = await getListItemsByTitle<SpMeetingSessionItem>(
       SESSIONS_LIST,
       [MEETING_SELECT_FIELDS.SESSIONS],
-      `SessionKey eq '${sessionKey}'`,
+      `${MEETING_SESSION_FILTER_FIELDS.sessionKey} eq '${sessionKey}'`,
     );
     return sessions.length === 0 ? null : fromSpMeetingSessionFields(sessions[0]);
   };
@@ -160,9 +161,9 @@ export function createMeetingSessionApi(deps: MeetingApiDeps) {
     kind?: MeetingKind,
   ): Promise<MeetingSession[]> => {
     const filterParts: string[] = [];
-    if (dateFrom) filterParts.push(`Date ge '${dateFrom}'`);
-    if (dateTo) filterParts.push(`Date le '${dateTo}'`);
-    if (kind) filterParts.push(`MeetingKind eq '${kind}'`);
+    if (dateFrom) filterParts.push(`${MEETING_SESSION_FILTER_FIELDS.date} ge '${dateFrom}'`);
+    if (dateTo) filterParts.push(`${MEETING_SESSION_FILTER_FIELDS.date} le '${dateTo}'`);
+    if (kind) filterParts.push(`${MEETING_SESSION_FILTER_FIELDS.meetingKind} eq '${kind}'`);
     const filterString = filterParts.join(' and ');
 
     const sessions = await getListItemsByTitle<SpMeetingSessionItem>(

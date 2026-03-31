@@ -128,7 +128,7 @@ describe('pdfOutputLogRepository', () => {
 
       expect(mockListItems).toHaveBeenCalledWith('PdfOutput_Log', {
         select: expect.arrayContaining(['Id', 'Title', 'OutputType']),
-        filter: "TargetPeriod eq '2026-03'",
+        filter: `${PDF_OUTPUT_LOG_FIELDS.targetPeriod} eq '2026-03'`,
         orderby: 'OutputDate desc',
         top: 500,
       });

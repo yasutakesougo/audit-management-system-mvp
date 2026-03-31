@@ -123,7 +123,7 @@ export const createDailyOpsSignalsPort = (
 
         const updated = await client.listItems<SpItem>(DAILY_OPS_LIST_TITLE, {
           select: [...selectFields],
-          filter: `Id eq ${id}`,
+          filter: `${DAILY_OPS_FIELDS.id} eq ${id}`,
           top: 1,
         });
 
@@ -144,7 +144,7 @@ export const createDailyOpsSignalsPort = (
 
       const fetched = await client.listItems<SpItem>(DAILY_OPS_LIST_TITLE, {
         select: [...selectFields],
-        filter: `Id eq ${createdId}`,
+        filter: `${DAILY_OPS_FIELDS.id} eq ${createdId}`,
         top: 1,
       });
 

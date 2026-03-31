@@ -233,7 +233,7 @@ const mergeSpecialNotes = (current: string, incoming: string): string => {
  * Build OData filter for date range
  */
 const buildDateRangeFilter = (startDate: string, endDate: string): string => {
-  return `Title ge '${startDate}' and Title le '${endDate}'`;
+  return `${DAILY_RECORD_FIELDS.title} ge '${startDate}' and ${DAILY_RECORD_FIELDS.title} le '${endDate}'`;
 };
 
 /**

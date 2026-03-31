@@ -17,6 +17,8 @@ import {
     fromSpMeetingStepFields,
     MEETING_LIST_NAMES,
     MEETING_SELECT_FIELDS,
+    MEETING_SESSION_FILTER_FIELDS,
+    MEETING_STEP_FILTER_FIELDS,
     toSpMeetingStepFields,
 } from '../meetingDataTypes';
 import type { MeetingApiDeps } from './meetingSessionApi';
@@ -46,7 +48,7 @@ export function createMeetingStepApi(deps: MeetingApiDeps) {
     const existingSteps = await getListItemsByTitle<SpMeetingStepItem>(
       STEPS_LIST,
       [MEETING_SELECT_FIELDS.STEPS],
-      `SessionId eq ${sessionId} and StepId eq ${stepId}`,
+      `${MEETING_STEP_FILTER_FIELDS.sessionId} eq ${sessionId} and ${MEETING_STEP_FILTER_FIELDS.stepId} eq ${stepId}`,
     );
 
     let stepRecord: MeetingStepRecord;
@@ -74,7 +76,7 @@ export function createMeetingStepApi(deps: MeetingApiDeps) {
       const sessionItems = await getListItemsByTitle<SpMeetingSessionItem>(
         SESSIONS_LIST,
         [MEETING_SELECT_FIELDS.SESSIONS],
-        `Id eq ${sessionId}`,
+        `${MEETING_SESSION_FILTER_FIELDS.id} eq ${sessionId}`,
       );
       if (sessionItems.length === 0) {
         throw new Error(`Session ${sessionId} not found`);
@@ -105,7 +107,7 @@ export function createMeetingStepApi(deps: MeetingApiDeps) {
     const steps = await getListItemsByTitle<SpMeetingStepItem>(
       STEPS_LIST,
       [MEETING_SELECT_FIELDS.STEPS],
-      `SessionId eq ${sessionId}`,
+      `${MEETING_STEP_FILTER_FIELDS.sessionId} eq ${sessionId}`,
       'StepId',
     );
     return steps.map(fromSpMeetingStepFields);
@@ -129,7 +131,7 @@ export function createMeetingStepApi(deps: MeetingApiDeps) {
     const [sessionItem] = await getListItemsByTitle<SpMeetingSessionItem>(
       SESSIONS_LIST,
       [MEETING_SELECT_FIELDS.SESSIONS],
-      `Id eq ${sessionId}`,
+      `${MEETING_SESSION_FILTER_FIELDS.id} eq ${sessionId}`,
     );
 
     if (!sessionItem) {

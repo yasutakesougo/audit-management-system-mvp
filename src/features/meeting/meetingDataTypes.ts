@@ -385,11 +385,32 @@ export function generateMeetingSessionKey(date: string, kind: MeetingKind): stri
 }
 
 /** MeetingSessions リストのフィールド定義 (OData フィルタ SSOT) */
-const MEETING_SESSION_FILTER_FIELDS = {
+export const MEETING_SESSION_FILTER_FIELDS = {
+  id: 'Id',
+  sessionKey: 'SessionKey',
   date: 'Date',
   meetingKind: 'MeetingKind',
   status: 'Status',
   chairpersonUserId: 'ChairpersonUserId',
+  sessionId: 'SessionId',
+} as const;
+
+/** MeetingStepRecords リストのフィールド定義 (OData フィルタ SSOT) */
+export const MEETING_STEP_FILTER_FIELDS = {
+  id: 'Id',
+  sessionId: 'SessionId',
+  stepId: 'StepId',
+} as const;
+
+/** MeetingParticipation リストのフィールド定義 (OData フィルタ SSOT) */
+export const MEETING_PARTICIPATION_FILTER_FIELDS = {
+  id: 'Id',
+  sessionId: 'SessionId',
+} as const;
+
+/** MeetingPriorityRecords リストのフィールド定義 (OData フィルタ SSOT) */
+export const MEETING_PRIORITY_FILTER_FIELDS = {
+  id: 'Id',
   sessionId: 'SessionId',
 } as const;
 

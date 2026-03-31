@@ -181,7 +181,7 @@ describe('HandoffApi', () => {
       await api.getHandoffRecords('today', 'morning');
 
       const call = mockSP.spFetch.mock.calls[0][0];
-      expect(call).toContain("TimeBand eq 'morning'");
+      expect(call).toContain(`${FIELD_MAP_HANDOFF.timeBand} eq 'morning'`);
     });
 
     it('空の応答が安全に処理される', async () => {
@@ -611,7 +611,7 @@ describe('HandoffApi', () => {
       await api.getUserHandoffRecords('U001', 'today', 'morning');
 
       const call = mockSP.spFetch.mock.calls[0][0];
-      expect(call).toContain("TimeBand eq 'morning'");
+      expect(call).toContain(`${FIELD_MAP_HANDOFF.timeBand} eq 'morning'`);
     });
 
     it('API エラー時に日本語エラーをスローする', async () => {
@@ -649,7 +649,7 @@ describe('HandoffApi', () => {
       expect(records).toHaveLength(2);
 
       const call = mockSP.spFetch.mock.calls[0][0];
-      expect(call).toContain("MeetingSessionKey eq '2026-03-04_morning'");
+      expect(call).toContain(`${FIELD_MAP_HANDOFF.meetingSessionKey} eq '2026-03-04_morning'`);
     });
 
     it('結果が CreatedAt desc で並べ替えられる', async () => {

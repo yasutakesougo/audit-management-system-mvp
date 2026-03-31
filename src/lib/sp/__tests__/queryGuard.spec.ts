@@ -67,12 +67,14 @@ describe('queryGuard - evaluateQueryRisk', () => {
     expect(res1.riskLevel).toBe('medium');
     expect(res1.warnings.some(w => w.includes('$filter'))).toBe(true);
 
+    // eslint-disable-next-line no-restricted-syntax -- Generic test data, not a real SP filter
     const res2 = evaluateQueryRisk({ top: 100, select: ['Id'], orderBy: 'Id', filter: "Date ge '2023-01-01'" });
     expect(res2.flags.filterMayNeedIndex).toBe(true);
   });
 
   test('filter: no match on simple string without keywords', () => {
     // Highly simplistic heuristic test
+    // eslint-disable-next-line no-restricted-syntax -- Generic test data, not a real SP filter
     const res = evaluateQueryRisk({ top: 100, select: ['Id'], orderBy: 'Id', filter: "Status eq 'Active'" });
     // "eq" is in the pattern " eq "
     expect(res.flags.filterMayNeedIndex).toBe(true);

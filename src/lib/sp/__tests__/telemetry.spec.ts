@@ -14,6 +14,7 @@ describe('spQueryTelemetry', () => {
       queryKind: 'list',
       top: 100,
       select: ['Id', 'Title'],
+      // eslint-disable-next-line no-restricted-syntax -- Generic test data, not a real SP filter
       filter: "Active eq true"
     };
 
