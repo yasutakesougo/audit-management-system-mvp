@@ -326,13 +326,15 @@ export function resolveInternalNamesDetailed<T extends string>(
   for (const key in candidates) {
     if (Object.prototype.hasOwnProperty.call(candidates, key)) {
       // 1. First Pass: Exact match (case-insensitive)
-      let foundCandidate = candidates[key].find(f => availableMap.has(f.toLowerCase()));
+      const exactMatch = candidates[key].find(f => availableMap.has(f.toLowerCase()));
+      let foundCandidate = exactMatch ? availableMap.get(exactMatch.toLowerCase()) : undefined;
       
-      // 2. Second Pass: Fuzzy match (handle SharePoint automatic suffix like '0', '1', etc.)
+      // 2. Second Pass: Fuzzy match (handle SharePoint automatic suffix like '0', '1', etc. & _x0020_ encoding)
       if (!foundCandidate) {
         for (const base of candidates[key]) {
           const lowerBase = base.toLowerCase();
-          // Check for common SharePoint suffixes (0-9)
+          
+          // Strategy A: Suffix check (0-9)
           for (let i = 0; i < 10; i++) {
             const suffixCandidate = `${lowerBase}${i}`;
             if (availableMap.has(suffixCandidate)) {
@@ -341,10 +343,27 @@ export function resolveInternalNamesDetailed<T extends string>(
             }
           }
           if (foundCandidate) break;
+
+          // Strategy B: Encode space to _x0020_
+          const encoded = lowerBase.replace(/ /g, '_x0020_');
+          if (availableMap.has(encoded)) {
+            foundCandidate = availableMap.get(encoded);
+            break;
+          }
+
+          // Strategy C: Check all available names by stripping _x0020_ and suffixes
+          for (const [availableLow, actual] of availableMap.entries()) {
+            const stripped = availableLow.replace(/_x0020_/g, '').replace(/[0-9]+$/, '');
+            if (stripped === lowerBase) {
+              foundCandidate = actual;
+              break;
+            }
+          }
+          if (foundCandidate) break;
         }
       }
 
-      const resolvedName = foundCandidate ? availableMap.get(foundCandidate.toLowerCase()) : undefined;
+      const resolvedName = foundCandidate;
       
       resolved[key] = resolvedName;
       fieldStatus[key] = {

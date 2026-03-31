@@ -517,47 +517,52 @@ export class DataProviderUserRepository implements UserRepository {
   }
 
   private toDomain(raw: UserRow, effectiveMode: UserSelectMode): IUserMaster {
-    const fields = FIELD_MAP.Users_Master;
+    const fields = this.resolvedFields || FIELD_MAP.Users_Master;
     const record = raw as Record<string, unknown>;
-    const get = <T = unknown>(field: string): T | undefined => record[field] as T | undefined;
+    
+    // 解決された内部名を使用して値を取得するユーティリティ
+    const get = <T = unknown>(mappedKey: string, fallbackKey?: string): T | undefined => {
+      const internalName = (fields as Record<string, string | undefined>)[mappedKey] || fallbackKey;
+      return internalName ? (record[internalName] as T) : undefined;
+    };
 
-    const attendance = normalizeAttendanceDays(get(fields.attendanceDays));
-    const transportTo = normalizeAttendanceDays(get(fields.transportToDays));
-    const transportFrom = normalizeAttendanceDays(get(fields.transportFromDays));
+    const attendance = normalizeAttendanceDays(get('attendanceDays'));
+    const transportTo = normalizeAttendanceDays(get('transportToDays'));
+    const transportFrom = normalizeAttendanceDays(get('transportFromDays'));
 
     const domain: IUserMaster = {
-      Id: Number(get(fields.id) ?? raw.Id),
-      Title: get(fields.title) ?? raw.Title ?? null,
-      UserID: get(fields.userId) ?? raw.UserID ?? '',
-      FullName: get(fields.fullName) ?? raw.FullName ?? '',
-      Furigana: get(fields.furigana) ?? raw.Furigana ?? null,
-      FullNameKana: get(fields.fullNameKana) ?? raw.FullNameKana ?? null,
-      ContractDate: get(fields.contractDate) ?? raw.ContractDate ?? null,
-      ServiceStartDate: get(fields.serviceStartDate) ?? raw.ServiceStartDate ?? null,
-      ServiceEndDate: get(fields.serviceEndDate) ?? raw.ServiceEndDate ?? null,
-      IsHighIntensitySupportTarget: get(fields.isHighIntensitySupportTarget) ?? null,
-      IsSupportProcedureTarget: get(fields.isSupportProcedureTarget) ?? null,
-      severeFlag: get(fields.severeFlag) ?? null,
-      IsActive: get(fields.isActive) ?? raw.IsActive ?? null,
+      Id: Number(get('id') ?? raw.Id),
+      Title: get('title') ?? raw.Title ?? null,
+      UserID: get('userId') ?? raw.UserID ?? '',
+      FullName: get('fullName') ?? raw.FullName ?? '',
+      Furigana: get('furigana') ?? raw.Furigana ?? null,
+      FullNameKana: get('fullNameKana') ?? raw.FullNameKana ?? null,
+      ContractDate: get('contractDate') ?? raw.ContractDate ?? null,
+      ServiceStartDate: get('serviceStartDate') ?? raw.ServiceStartDate ?? null,
+      ServiceEndDate: get('serviceEndDate') ?? raw.ServiceEndDate ?? null,
+      IsHighIntensitySupportTarget: get('isHighIntensitySupportTarget') ?? null,
+      IsSupportProcedureTarget: get('isSupportProcedureTarget') ?? null,
+      severeFlag: get('severeFlag') ?? null,
+      IsActive: get('isActive') ?? raw.IsActive ?? null,
       TransportToDays: transportTo,
       TransportFromDays: transportFrom,
-      TransportCourse: get(fields.transportCourse) ?? null,
-      TransportSchedule: get(fields.transportSchedule) ?? null,
+      TransportCourse: get('transportCourse') ?? null,
+      TransportSchedule: get('transportSchedule') ?? null,
       AttendanceDays: attendance,
-      RecipientCertNumber: get(fields.recipientCertNumber) ?? raw.RecipientCertNumber ?? null,
-      RecipientCertExpiry: get(fields.recipientCertExpiry) ?? raw.RecipientCertExpiry ?? null,
-      Modified: get(fields.modified) ?? raw.Modified ?? null,
-      Created: get(fields.created) ?? raw.Created ?? null,
-      UsageStatus: get(fields.usageStatus) ?? null,
-      GrantMunicipality: get(fields.grantMunicipality) ?? null,
-      GrantPeriodStart: get(fields.grantPeriodStart) ?? null,
-      GrantPeriodEnd: get(fields.grantPeriodEnd) ?? null,
-      DisabilitySupportLevel: get(fields.disabilitySupportLevel) ?? null,
-      GrantedDaysPerMonth: get(fields.grantedDaysPerMonth) ?? null,
-      UserCopayLimit: get(fields.userCopayLimit) ?? null,
-      TransportAdditionType: get(fields.transportAdditionType) ?? null,
-      MealAddition: get(fields.mealAddition) ?? null,
-      CopayPaymentMethod: get(fields.copayPaymentMethod) ?? null,
+      RecipientCertNumber: get('recipientCertNumber') ?? raw.RecipientCertNumber ?? null,
+      RecipientCertExpiry: get('recipientCertExpiry') ?? raw.RecipientCertExpiry ?? null,
+      Modified: get('modified') ?? raw.Modified ?? null,
+      Created: get('created') ?? raw.Created ?? null,
+      UsageStatus: get('usageStatus') ?? null,
+      GrantMunicipality: get('grantMunicipality') ?? null,
+      GrantPeriodStart: get('grantPeriodStart') ?? null,
+      GrantPeriodEnd: get('grantPeriodEnd') ?? null,
+      DisabilitySupportLevel: get('disabilitySupportLevel') ?? null,
+      GrantedDaysPerMonth: get('grantedDaysPerMonth') ?? null,
+      UserCopayLimit: get('userCopayLimit') ?? null,
+      TransportAdditionType: get('transportAdditionType') ?? null,
+      MealAddition: get('mealAddition') ?? null,
+      CopayPaymentMethod: get('copayPaymentMethod') ?? null,
       __selectMode: effectiveMode,
     };
 
