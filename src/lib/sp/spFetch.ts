@@ -94,7 +94,7 @@ class ConcurrencyLimiter {
   }
 }
 
-const globalLimiter = new ConcurrencyLimiter(3);
+const globalLimiter = new ConcurrencyLimiter(5);
 
 // ─── Retry classifier (delegates to helpers.ts SSOT) ────────────────────────
 

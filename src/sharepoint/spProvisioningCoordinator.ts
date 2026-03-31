@@ -13,6 +13,7 @@ import { readBool } from '@/lib/env';
 import { auditLog } from '@/lib/debugLogger';
 import type { useSP } from '@/lib/spClient';
 import { SP_LIST_REGISTRY, type SpListEntry } from './spListRegistry';
+import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 
 // ---------------------------------------------------------------------------
 // Types & Constants
@@ -216,19 +217,26 @@ export class SharePointProvisioningCoordinator {
       // 3. Schema Check (if essentialFields defined)
       if (entry.essentialFields && entry.essentialFields.length > 0) {
         const available = await client.getListFieldInternalNames(listName);
-        const missingFields = entry.essentialFields.filter(f => !available.has(f));
+        
+        // Use fuzzy resolution to handle SharePoint suffixes (e.g., FullName0)
+        const candidates = Object.fromEntries(entry.essentialFields.map(f => [f, [f]]));
+        const { missing: missingFields } = resolveInternalNamesDetailed(available, candidates);
 
         if (missingFields.length > 0) {
-          trackSpEvent('sp:schema_mismatch', { key: entry.key, listName, details: { missingFields } });
-          
+          auditLog.warn('sp:provisioning', `Essential fields missing in "${listName}".`, { 
+            key: entry.key, 
+            missingFields,
+            found: Array.from(available).filter(f => entry.essentialFields?.some(ef => f.toLowerCase().includes(ef.toLowerCase())))
+          });
+
           // Attempt self-healing if provisioning fields match missing ones
           if (entry.provisioningFields) {
-            auditLog.warn('sp:provisioning', `Essential fields missing in "${listName}". Healing...`, { missingFields });
+            auditLog.warn('sp:provisioning', `Healing ${listName}...`, { missingFields });
             await provisioner.ensureList(listName, entry.provisioningFields as import('@/lib/sp/types').SpFieldDef[]);
             
             // Re-verify after healing
             const reAvailable = await client.getListFieldInternalNames(listName);
-            const stillMissing = entry.essentialFields.filter(f => !reAvailable.has(f));
+            const { missing: stillMissing } = resolveInternalNamesDetailed(reAvailable, candidates);
             if (stillMissing.length === 0) {
               saveStability(entry.key, 'provisioned');
               return { key: entry.key, displayName: entry.displayName, listName, status: 'provisioned' };
