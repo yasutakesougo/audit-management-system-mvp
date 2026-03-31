@@ -188,3 +188,5 @@ const TransportAssignmentPage = React.lazy(() => import('@/pages/TransportAssign
 export const SuspendedTransportAssignmentPage = createSuspended(TransportAssignmentPage, '送迎配車表を読み込んでいます…');
 const TelemetryDashboardPage = React.lazy(() => import('@/pages/admin/TelemetryDashboardPage'));
 export const SuspendedTelemetryDashboardPage = createSuspended(TelemetryDashboardPage, 'テレメトリダッシュボードを読み込んでいます…');
+const HealthPage = React.lazy(() => import('@/pages/HealthPage'));
+export const SuspendedHealthPage = createSuspended(HealthPage, '環境診断を読み込んでいます…');

@@ -186,6 +186,16 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
         )}
 
         {/* ─────────────────────────────────────────────────────────────
+            ローカル stub モード注記
+            ───────────────────────────────────────────────────────────── */}
+        {!props.ctx.isProductionLike && (
+          <Alert severity="info" data-testid="diagnostics-stub-notice">
+            ローカル／stub モードで実行中です。auth・connectivity・lists の FAIL は SharePoint に接続していないため期待どおりです。
+            実テナント接続環境（<code>VITE_SP_*</code> 設定済みの dev/stg）で再実行すると、これらの項目が評価されます。
+          </Alert>
+        )}
+
+        {/* ─────────────────────────────────────────────────────────────
             総合判定パネル（実行中/エラー情報）
             ───────────────────────────────────────────────────────────── */}
         <Paper variant="outlined" sx={{ p: 2 }}>

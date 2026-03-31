@@ -2,6 +2,7 @@ import { readOptionalEnv } from '@/lib/env';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { result, type Result, type ResultError } from '@/shared/result';
 import { STAFF_ATTENDANCE_FIELDS, STAFF_ATTENDANCE_LIST_TITLE, STAFF_ATTENDANCE_SELECT_FIELDS } from '@/sharepoint/fields';
+import { buildEq, buildGe, buildLe, joinAnd } from '@/sharepoint/query/builders';
 import type { AttendanceCounts, StaffAttendancePort } from '../port';
 import type { RecordDate, StaffAttendance, StaffAttendanceStatus } from '../types';
 
@@ -17,7 +18,6 @@ const getHttpStatus = (e: unknown): number | undefined => {
   return anyErr?.status ?? anyErr?.response?.status;
 };
 
-const escapeODataString = (value: string): string => value.replace(/'/g, "''");
 
 const buildKey = (recordDate: RecordDate, staffId: string): string => `${recordDate}#${staffId}`;
 
@@ -115,7 +115,7 @@ export const createSharePointStaffAttendanceAdapter = (options: SharePointAdapte
 
   const findByKey = async (key: string): Promise<SharePointAttendanceRow | null> => {
     const provider = assertClient();
-    const filter = `${STAFF_ATTENDANCE_FIELDS.title} eq '${escapeODataString(key)}'`;
+    const filter = buildEq(STAFF_ATTENDANCE_FIELDS.title, key);
     try {
       const rows = await provider.listItems<SharePointAttendanceRow>(listTitle, {
         select: selectWithOptionalAudit,
@@ -136,7 +136,7 @@ export const createSharePointStaffAttendanceAdapter = (options: SharePointAdapte
 
   const listByDateRows = async (date: string): Promise<SharePointAttendanceRow[]> => {
     const provider = assertClient();
-    const filter = `${STAFF_ATTENDANCE_FIELDS.recordDate} eq '${escapeODataString(date)}'`;
+    const filter = buildEq(STAFF_ATTENDANCE_FIELDS.recordDate, date);
     try {
       return await provider.listItems<SharePointAttendanceRow>(listTitle, {
         select: selectWithOptionalAudit,
@@ -153,7 +153,10 @@ export const createSharePointStaffAttendanceAdapter = (options: SharePointAdapte
 
   const listByDateRangeRows = async (from: string, to: string, top: number): Promise<SharePointAttendanceRow[]> => {
     const provider = assertClient();
-    const filter = `${STAFF_ATTENDANCE_FIELDS.recordDate} ge '${escapeODataString(from)}' and ${STAFF_ATTENDANCE_FIELDS.recordDate} le '${escapeODataString(to)}'`;
+    const filter = joinAnd([
+      buildGe(STAFF_ATTENDANCE_FIELDS.recordDate, from),
+      buildLe(STAFF_ATTENDANCE_FIELDS.recordDate, to),
+    ]);
     const orderby = `${STAFF_ATTENDANCE_FIELDS.recordDate} desc, ${STAFF_ATTENDANCE_FIELDS.staffId} asc`;
     const maxPages = 10;
     try {

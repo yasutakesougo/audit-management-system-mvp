@@ -9,6 +9,7 @@ import type { RouteObject } from 'react-router-dom';
 
 import {
     SuspendedAdminDashboardPage,
+    SuspendedHealthPage,
     SuspendedAdminHubPage,
     SuspendedAuditPanel,
     SuspendedChecklistPage,
@@ -243,6 +244,14 @@ export const adminRoutes: RouteObject[] = [
     element: (
       <RequireAudience requiredRole="admin">
         <SuspendedTelemetryDashboardPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'admin/status',
+    element: (
+      <RequireAudience requiredRole="admin">
+        <SuspendedHealthPage />
       </RequireAudience>
     ),
   },
