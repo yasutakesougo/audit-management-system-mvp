@@ -330,11 +330,10 @@ describe('transportRepo', () => {
 
       await syncToAttendanceDaily(client, baseSync);
 
-      // ATTENDANCE_DAILY_FIELDS.key maps to 'Title' (SP default column, for envs without 'Key')
       expect(client.listItems).toHaveBeenCalledWith(
         'AttendanceDaily',
         expect.objectContaining({
-          filter: expect.stringContaining("Title eq 'U001_2026-03-13'"),
+          filter: expect.stringContaining(`${ATTENDANCE_DAILY_FIELDS.key} eq 'U001_2026-03-13'`),
         }),
       );
     });
