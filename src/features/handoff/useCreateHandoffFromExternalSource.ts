@@ -3,6 +3,7 @@ import { useCallback, useRef } from 'react';
 import { useAuth } from '@/auth/useAuth';
 import { useSP } from '@/lib/spClient';
 import { buildHandoffSelectFields, FIELD_MAP_HANDOFF } from '@/sharepoint/fields';
+import { buildEq } from '@/sharepoint/query/builders';
 
 import { generateTitleFromMessage } from './generateTitleFromMessage';
 import { handoffConfig } from './handoffConfig';
@@ -40,7 +41,6 @@ export type CreateHandoffFromExternalSourceResult = {
   itemId: number;
 };
 
-const escapeODataString = (value: string): string => value.replace(/'/g, "''");
 
 export const useCreateHandoffFromExternalSource = () => {
   const sp = useSP();
@@ -98,7 +98,7 @@ export const useCreateHandoffFromExternalSource = () => {
       const hasSourceKey = existingFields.has(sourceKeyField);
 
       if (hasSourceKey) {
-        const filter = `${sourceKeyField} eq '${escapeODataString(source.sourceKey)}'`;
+        const filter = buildEq(sourceKeyField, source.sourceKey);
         const query = `?$select=${encodeURIComponent(selectFields)}&$filter=${encodeURIComponent(filter)}&$top=1`;
         const response = await currentSp.spFetch(
           `lists/getbytitle('${handoffConfig.listTitle}')/items${query}`,

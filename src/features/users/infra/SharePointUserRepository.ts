@@ -23,6 +23,7 @@ import { USAGE_STATUS_VALUES } from '../typesExtended';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
 
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
+import { buildEq } from '@/sharepoint/query/builders';
 
 type SpContextCarrier = {
   __SPFX_CONTEXT__?: ISPFXContext;
@@ -95,7 +96,7 @@ export class SharePointUserRepository implements UserRepository {
 
       if (filters?.isActive !== undefined) {
         const fieldName = FIELD_MAP.Users_Master.isActive;
-        query = query.filter(`${fieldName} eq ${filters.isActive ? 1 : 0}`);
+        query = query.filter(buildEq(fieldName, filters.isActive ? 1 : 0));
       }
 
       const rawItems = await query();

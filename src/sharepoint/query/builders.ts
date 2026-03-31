@@ -12,11 +12,15 @@
 
 import { escapeODataString } from '@/lib/odata';
 
-type ODataPrimitive = string | number | boolean;
+type ODataPrimitive = string | number | boolean | null;
 
 // eslint-disable-next-line no-restricted-syntax
 const fmt = (v: ODataPrimitive): string => {
-  if (typeof v === 'string') return `'${escapeODataString(v)}'`;
+  if (typeof v === 'string') {
+    // If it's already an OData datetime literal, don't wrap it in extra quotes
+    if (v.startsWith("datetime'")) return v;
+    return `'${escapeODataString(v)}'`;
+  }
   return String(v);
 };
 
@@ -45,6 +49,23 @@ export const buildGt = (field: string, value: string | number): string =>
 // eslint-disable-next-line no-restricted-syntax
 export const buildLt = (field: string, value: string | number): string =>
   `${field} lt ${fmt(value)}`;
+
+// ── Search & Functions ───────────────────────────────────────────────────────
+
+/** substringof('value', field) */
+// eslint-disable-next-line no-restricted-syntax
+export const buildSubstringOf = (field: string, value: string): string =>
+  `substringof('${escapeODataString(value)}', ${field})`;
+
+/** startswith(field, 'value') */
+// eslint-disable-next-line no-restricted-syntax
+export const buildStartsWith = (field: string, value: string): string =>
+  `startswith(${field}, '${escapeODataString(value)}')`;
+
+/** OData datetime literal: datetime'YYYY-MM-DDTHH:mm:ssZ' */
+// eslint-disable-next-line no-restricted-syntax
+export const buildDateTime = (isoDate: string): string =>
+  `datetime'${isoDate}'`;
 
 // ── Logical combinators ──────────────────────────────────────────────────────
 

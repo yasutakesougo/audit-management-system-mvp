@@ -1,6 +1,19 @@
-/* eslint-disable no-restricted-syntax -- Expected output strings in builder contract tests; not real SP filter construction */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-restricted-syntax */
 import { describe, it, expect } from 'vitest';
-import { buildEq, buildNe, buildGe, buildLe, buildGt, buildLt, joinAnd, joinOr } from '../builders';
+import {
+  buildEq,
+  buildNe,
+  buildGe,
+  buildLe,
+  buildGt,
+  buildLt,
+  buildSubstringOf,
+  buildStartsWith,
+  buildDateTime,
+  joinAnd,
+  joinOr,
+} from '../builders';
 
 describe('OData query builders', () => {
   describe('buildEq', () => {
@@ -43,6 +56,24 @@ describe('OData query builders', () => {
 
     it('builds lt filter', () => {
       expect(buildLt('Score', 100)).toBe('Score lt 100');
+    });
+  });
+
+  describe('buildSubstringOf', () => {
+    it('wraps value in single quotes and escapes them', () => {
+      expect(buildSubstringOf('Title', "O'Brien")).toBe("substringof('O''Brien', Title)");
+    });
+  });
+
+  describe('buildStartsWith', () => {
+    it('wraps value in single quotes and escapes them', () => {
+      expect(buildStartsWith('SessionKey', '2026-03_')).toBe("startswith(SessionKey, '2026-03_')");
+    });
+  });
+
+  describe('buildDateTime', () => {
+    it('emits datetime literal', () => {
+      expect(buildDateTime('2026-03-31T00:00:00Z')).toBe("datetime'2026-03-31T00:00:00Z'");
     });
   });
 

@@ -21,6 +21,7 @@ import {
 } from '@/sharepoint/fields/dailyFields';
 import { resolveInternalNames, areEssentialFieldsResolved } from '@/lib/sp/helpers';
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
+import { buildEq, buildGe, buildLe, joinAnd } from '@/sharepoint/query/builders';
 
 // Unused function removed (getHttpStatus)
 
@@ -156,8 +157,7 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
       if (source.canonical) {
         const { title, fields } = source.canonical;
         const items = await this.provider.listItems<Record<string, unknown>>(title, {
-
-          filter: `${fields.title} eq '${date}'`,
+          filter: buildEq(fields.title, date),
           top: 1,
           select: fields.select,
         });
@@ -184,9 +184,11 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
       const source = await this.resolveSource();
       if (source.canonical) {
         const { title, fields } = source.canonical;
-        const filter = `${fields.title} ge '${params.range.startDate}' and ${fields.title} le '${params.range.endDate}'`;
+        const filter = joinAnd([
+          buildGe(fields.title, params.range.startDate),
+          buildLe(fields.title, params.range.endDate),
+        ]);
         const items = await this.provider.listItems<Record<string, unknown>>(title, {
-
           filter,
           orderby: `${fields.title} desc`,
           top: SP_QUERY_LIMITS.default,

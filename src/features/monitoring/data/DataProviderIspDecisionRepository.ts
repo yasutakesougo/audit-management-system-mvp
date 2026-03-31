@@ -7,6 +7,7 @@ import type {
   SaveDecisionInput,
 } from './IspDecisionRepository';
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
+import { buildEq } from '@/sharepoint/query/builders';
 
 const DEFAULT_LIST_TITLE = 'IspRecommendationDecisions';
 
@@ -87,15 +88,15 @@ export class DataProviderIspDecisionRepository implements IspDecisionRepository 
     if (filter.signal?.aborted) return [];
 
     try {
-      const filters: string[] = [`${SP_FIELDS.userId} eq '${filter.userId}'`];
+      const filters: string[] = [buildEq(SP_FIELDS.userId, filter.userId)];
 
       if (filter.goalId) {
-        filters.push(`${SP_FIELDS.goalId} eq '${filter.goalId}'`);
+        filters.push(buildEq(SP_FIELDS.goalId, filter.goalId));
       }
 
       if (filter.monitoringPeriod) {
-        filters.push(`${SP_FIELDS.monitoringFrom} eq '${filter.monitoringPeriod.from}'`);
-        filters.push(`${SP_FIELDS.monitoringTo} eq '${filter.monitoringPeriod.to}'`);
+        filters.push(buildEq(SP_FIELDS.monitoringFrom, filter.monitoringPeriod.from));
+        filters.push(buildEq(SP_FIELDS.monitoringTo, filter.monitoringPeriod.to));
       }
 
       const limit = filter.limit ?? SP_QUERY_LIMITS.default;

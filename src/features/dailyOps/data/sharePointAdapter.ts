@@ -1,6 +1,7 @@
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import type { DailyOpsSignalsPort, DailyOpsSignal, UpsertDailyOpsSignalInput } from './port';
 import { DAILY_OPS_FIELDS, DAILY_OPS_LIST_TITLE } from './spSchema';
+import { buildEq, joinAnd, joinOr } from '@/sharepoint/query/builders';
 
 type SpItem = Record<string, unknown>;
 
@@ -20,16 +21,16 @@ export const buildCompositeFilter = (
   const iso = toIsoDateOnly(input.date);
 
   const timeFilter = input.time
-    ? `${f.time} eq '${input.time}'`
-    : `(${f.time} eq null or ${f.time} eq '')`;
+    ? buildEq(f.time, input.time)
+    : joinOr([buildEq(f.time, null), buildEq(f.time, '')]);
 
-  return [
-    `${f.date} eq '${iso}'`,
-    `${f.targetType} eq '${input.targetType}'`,
-    `${f.targetId} eq '${input.targetId}'`,
-    `${f.kind} eq '${input.kind}'`,
+  return joinAnd([
+    buildEq(f.date, iso),
+    buildEq(f.targetType, input.targetType),
+    buildEq(f.targetId, input.targetId),
+    buildEq(f.kind, input.kind),
     timeFilter,
-  ].join(' and ');
+  ]);
 };
 
 /** @internal テスト用に公開。プロダクションコードからは直接使わないこと。 */
@@ -80,8 +81,10 @@ export const createDailyOpsSignalsPort = (
       const f = DAILY_OPS_FIELDS;
       const iso = toIsoDateOnly(date);
 
-      const filter =
-        `${f.date} eq '${iso}'` + (opts?.status ? ` and ${f.status} eq '${opts.status}'` : '');
+      const filter = joinAnd([
+        buildEq(f.date, iso),
+        opts?.status ? buildEq(f.status, opts.status) : undefined,
+      ]);
 
       const items = await client.listItems<SpItem>(DAILY_OPS_LIST_TITLE, {
         select: [...selectFields],
@@ -123,7 +126,7 @@ export const createDailyOpsSignalsPort = (
 
         const updated = await client.listItems<SpItem>(DAILY_OPS_LIST_TITLE, {
           select: [...selectFields],
-          filter: `${DAILY_OPS_FIELDS.id} eq ${id}`,
+          filter: buildEq(DAILY_OPS_FIELDS.id, id),
           top: 1,
         });
 
@@ -144,7 +147,7 @@ export const createDailyOpsSignalsPort = (
 
       const fetched = await client.listItems<SpItem>(DAILY_OPS_LIST_TITLE, {
         select: [...selectFields],
-        filter: `${DAILY_OPS_FIELDS.id} eq ${createdId}`,
+        filter: buildEq(DAILY_OPS_FIELDS.id, createdId),
         top: 1,
       });
 

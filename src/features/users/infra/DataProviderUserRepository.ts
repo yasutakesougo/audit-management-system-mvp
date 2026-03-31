@@ -26,6 +26,7 @@ import { userMasterCreateSchema } from '../schema';
 import { USAGE_STATUS_VALUES } from '../typesExtended';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
+import { buildEq, joinAnd } from '@/sharepoint/query/builders';
 
 const DEFAULT_USERS_LIST_TITLE = 'Users_Master';
 const MAX_WRITE_RETRY = 8;
@@ -179,15 +180,16 @@ export class DataProviderUserRepository implements UserRepository {
       ...Object.values(fields).filter((f): f is string => !!f)
     ].filter((v, i, a) => a.indexOf(v) === i);
 
-    const filterParts: string[] = [];
+    const filterParts: (string | undefined)[] = [];
     if (params?.filters?.isActive !== undefined && fields.isActive) {
-      filterParts.push(`${fields.isActive} eq ${params.filters.isActive ? 1 : 0}`);
+      // SharePoint Yes/No fields can be filtered by true/false or 1/0
+      filterParts.push(buildEq(fields.isActive, params.filters.isActive ? 1 : 0));
     }
 
     try {
       const items = await this.provider.listItems<UserRow>(this.listTitle, {
         select: selectFields,
-        filter: filterParts.join(' and ') || undefined,
+        filter: joinAnd(filterParts) || undefined,
         top: top > 0 ? top : undefined,
       });
 
@@ -252,7 +254,7 @@ export class DataProviderUserRepository implements UserRepository {
 
       if (requestedMode === 'detail' || requestedMode === 'full') {
         try {
-          const filter = `${ACCESSORY_LIST_JOIN_FIELD} eq '${domain.UserID}'`;
+          const filter = buildEq(ACCESSORY_LIST_JOIN_FIELD, domain.UserID);
           const [tRows, bRows] = await Promise.all([
             this.provider.listItems<Record<string, unknown>>(this.transportListTitle, { filter, top: 1 }).catch(() => []),
             this.provider.listItems<Record<string, unknown>>(this.benefitListTitle, { filter, top: 1 }).catch(() => [])
@@ -388,8 +390,9 @@ export class DataProviderUserRepository implements UserRepository {
 
     try {
       // UserID で既存レコードを検索
+      const filter = buildEq(ACCESSORY_LIST_JOIN_FIELD, userId);
       const existing = await this.provider.listItems<Record<string, unknown>>(listTitle, {
-        filter: `${ACCESSORY_LIST_JOIN_FIELD} eq '${userId}'`,
+        filter,
         top: 1
       });
 

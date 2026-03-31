@@ -5,6 +5,7 @@
  * to eliminate code duplication (~400 lines of shared utilities).
  */
 import type { DateRange } from '../domain/ScheduleRepository';
+import { buildDateTime, buildGe, buildLt, joinAnd } from '@/sharepoint/query/builders';
 
 // ─── Timezone helpers ────────────────────────────────────────────────────────
 
@@ -101,7 +102,7 @@ export const encodeDateLiteral = (value: string): string => {
     throw new Error(`Invalid date value: ${value}`);
   }
   const isoUtc = toIsoWithoutZ(new Date(parsed));
-  return `datetime'${isoUtc}'`;
+  return buildDateTime(isoUtc);
 };
 
 export const buildRangeFilter = (
@@ -113,7 +114,11 @@ export const buildRangeFilter = (
   const toBuffer = toIsoWithoutZ(new Date(new Date(range.to).getTime() + 24 * 60 * 60 * 1000));
   const fromLiteral = encodeDateLiteral(fromBuffer);
   const toLiteral = encodeDateLiteral(toBuffer);
-  return `(${fields.start} lt ${toLiteral}) and (${fields.end} ge ${fromLiteral})`;
+  
+  return joinAnd([
+    buildLt(fields.start, toLiteral),
+    buildGe(fields.end, fromLiteral)
+  ]);
 };
 
 // ─── Sorting & key generation ────────────────────────────────────────────────

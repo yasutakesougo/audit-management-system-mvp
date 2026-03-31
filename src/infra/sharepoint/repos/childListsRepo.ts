@@ -11,6 +11,7 @@
 
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { trackSpEvent } from '@/lib/telemetry/spTelemetry';
+import { buildEq, buildDateTime, joinAnd } from '@/sharepoint/query/builders';
 import {
   APPROVAL_LOG_FIELD_MAP,
   APPROVAL_LOGS_LIST_TITLE,
@@ -37,7 +38,7 @@ export async function queryResults(
   parentScheduleId: number,
 ): Promise<SpResultRow[]> {
   const raw = await dp.listItems<unknown>(RESULTS_LIST_TITLE, {
-    filter: `${RESULTS_FIELD_MAP.parentScheduleId} eq ${parentScheduleId}`,
+    filter: buildEq(RESULTS_FIELD_MAP.parentScheduleId, parentScheduleId),
     select: ['Id', 'ParentScheduleId', 'ResultDate', 'ResultStatus', 'ResultNote', 'StaffCode', 'Created', 'Modified'],
     orderby: 'ResultDate desc',
   });
@@ -61,7 +62,7 @@ export async function queryApprovalLogs(
   parentScheduleId: number,
 ): Promise<SpApprovalLogRow[]> {
   const raw = await dp.listItems<unknown>(APPROVAL_LOGS_LIST_TITLE, {
-    filter: `${APPROVAL_LOG_FIELD_MAP.parentScheduleId} eq ${parentScheduleId}`,
+    filter: buildEq(APPROVAL_LOG_FIELD_MAP.parentScheduleId, parentScheduleId),
     select: ['Id', 'ParentScheduleId', 'ApprovedBy', 'ApprovedAt', 'ApprovalNote', 'ApprovalAction', 'Created'],
     orderby: 'ApprovedAt desc',
   });
@@ -96,7 +97,10 @@ async function checkApprovalLogExists(
 ): Promise<boolean> {
   try {
     const rows = await dp.listItems<{ Id: number }>(APPROVAL_LOGS_LIST_TITLE, {
-      filter: `${APPROVAL_LOG_FIELD_MAP.parentScheduleId} eq ${parentScheduleId} and ${APPROVAL_LOG_FIELD_MAP.approvedAt} eq datetime'${approvedAt}'`,
+      filter: joinAnd([
+        buildEq(APPROVAL_LOG_FIELD_MAP.parentScheduleId, parentScheduleId),
+        buildEq(APPROVAL_LOG_FIELD_MAP.approvedAt, buildDateTime(approvedAt)),
+      ]),
       select: ['Id'],
       top: 1,
     });

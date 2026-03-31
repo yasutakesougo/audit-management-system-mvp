@@ -16,6 +16,7 @@ import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { FIELD_MAP, SCHEDULE_FIELD_CR014_PERSON_ID, SCHEDULE_FIELD_CR014_PERSON_TYPE, SCHEDULE_FIELD_START } from '@/sharepoint/fields';
 import type { ScheduleStatus, ScheduleServiceType, ScheduleVisibility } from '@/features/schedules/domain/types';
 import { getSchedulesListTitle } from '@/features/schedules/data/spSchema';
+import { buildDateTime, buildEq, buildGe, buildLt, joinAnd } from '@/sharepoint/query/builders';
 
 // ────────────────────────────────────────────────────────────────
 // Write Gate: Repo レベルで mutation を確実に遮断
@@ -100,7 +101,7 @@ const toIso = (d: Date) => {
   return iso.endsWith('Z') ? iso.slice(0, -1) : iso;
 };
 
-const escapeOData = (s: string) => s.replace(/'/g, "''");
+// Unused function removed (escapeOData)
 
 const isEventScheduleList = (): boolean =>
   getSchedulesListTitle().trim().toLowerCase() === 'scheduleevents';
@@ -109,19 +110,19 @@ const resolveNotesFieldName = (): 'Note' | 'Notes' =>
   isEventScheduleList() ? 'Notes' : 'Note';
 
 export function buildSchedulesFilter(args: QuerySchedulesArgs) {
-  const clauses: string[] = [];
+  const clauses: (string | undefined)[] = [];
 
-  clauses.push(`${SCHEDULE_FIELD_START} ge datetime'${toIso(args.from)}'`);
-  clauses.push(`${SCHEDULE_FIELD_START} lt datetime'${toIso(args.to)}'`);
+  clauses.push(buildGe(SCHEDULE_FIELD_START, buildDateTime(toIso(args.from))));
+  clauses.push(buildLt(SCHEDULE_FIELD_START, buildDateTime(toIso(args.to))));
 
   if (args.personType) {
-    clauses.push(`${SCHEDULE_FIELD_CR014_PERSON_TYPE} eq '${escapeOData(args.personType)}'`);
+    clauses.push(buildEq(SCHEDULE_FIELD_CR014_PERSON_TYPE, args.personType));
   }
   if (args.personId) {
-    clauses.push(`${SCHEDULE_FIELD_CR014_PERSON_ID} eq '${escapeOData(args.personId)}'`);
+    clauses.push(buildEq(SCHEDULE_FIELD_CR014_PERSON_ID, args.personId));
   }
 
-  return clauses.join(' and ');
+  return joinAnd(clauses);
 }
 
 export type RepoSchedule = {
@@ -465,7 +466,7 @@ export async function createSchedule(
 
   const items = await client.listItems<SpScheduleRow>(listId, {
     select,
-    filter: `${FIELD_MAP.Schedules.id} eq ${createdId}`,
+    filter: buildEq(FIELD_MAP.Schedules.id, createdId),
     top: 1,
   });
 
