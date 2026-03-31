@@ -205,8 +205,9 @@ export class DataProviderUserRepository implements UserRepository {
           domainItems = domainItems.map(user => {
             const tRow = transportMap.get(user.UserID);
             const bRow = benefitMap.get(user.UserID);
-            if (!tRow && !bRow) return user;
-            return this.mergeExtraData(user, tRow, bRow);
+            const joined = this.mergeExtraData(user, tRow, bRow);
+            // Apply Virtual Fix if we have accessory data
+            return this.sanitizeDomainRecord(joined, !!tRow, !!bRow);
           });
         } catch (je) {
           auditLog.warn('users', 'DataProviderUserRepository.lazy_join_failed', { error: String(je) });
@@ -254,7 +255,8 @@ export class DataProviderUserRepository implements UserRepository {
             this.provider.listItems<Record<string, unknown>>(this.transportListTitle, { filter, top: 1 }).catch(() => []),
             this.provider.listItems<Record<string, unknown>>(this.benefitListTitle, { filter, top: 1 }).catch(() => [])
           ]);
-          return this.mergeExtraData(domain, tRows[0], bRows[0]);
+          const joined = this.mergeExtraData(domain, tRows[0], bRows[0]);
+          return this.sanitizeDomainRecord(joined, !!tRows[0], !!bRows[0]);
         } catch (je) {
           auditLog.warn('users', 'DataProviderUserRepository.getById_join_failed', { error: String(je) });
         }
@@ -513,6 +515,13 @@ export class DataProviderUserRepository implements UserRepository {
     if (dto.MealAddition !== undefined) req[fields.mealAddition] = dto.MealAddition;
     if (dto.CopayPaymentMethod !== undefined) req[fields.copayPaymentMethod] = dto.CopayPaymentMethod;
 
+    // Compliance fields
+    if (dto.LastAssessmentDate !== undefined) req[fields.lastAssessmentDate] = dto.LastAssessmentDate;
+    if (dto.BehaviorScore !== undefined) req[fields.behaviorScore] = dto.BehaviorScore;
+    if (dto.ChildBehaviorScore !== undefined) req[fields.childBehaviorScore] = dto.ChildBehaviorScore;
+    if (dto.ServiceTypesJson !== undefined) req[fields.serviceTypesJson] = dto.ServiceTypesJson;
+    if (dto.EligibilityCheckedAt !== undefined) req[fields.eligibilityCheckedAt] = dto.EligibilityCheckedAt;
+
     return req;
   }
 
@@ -563,6 +572,11 @@ export class DataProviderUserRepository implements UserRepository {
       TransportAdditionType: get('transportAdditionType') ?? null,
       MealAddition: get('mealAddition') ?? null,
       CopayPaymentMethod: get('copayPaymentMethod') ?? null,
+      LastAssessmentDate: get('lastAssessmentDate') ?? null,
+      BehaviorScore: get<number>('behaviorScore') ?? null,
+      ChildBehaviorScore: get<number>('childBehaviorScore') ?? null,
+      ServiceTypesJson: get('serviceTypesJson') ?? null,
+      EligibilityCheckedAt: get('eligibilityCheckedAt') ?? null,
       __selectMode: effectiveMode,
     };
 
@@ -595,5 +609,44 @@ export class DataProviderUserRepository implements UserRepository {
     }
 
     return next;
+  }
+
+  /**
+   * ── Hardened Sanitization (FixUp) ──
+   * 
+   * スキャナと分類に基づき、不整合（LEGACY_LEFTOVER）を仮想的に解消する。
+   * 分離先リストにデータが存在する場合、メインリスト側の残存フィールドを無効化する。
+   */
+  private sanitizeDomainRecord(user: IUserMaster, hasTransport: boolean, hasBenefit: boolean): IUserMaster {
+    if (!hasTransport && !hasBenefit) return user;
+    
+    // Virtual Fix: 分離先データが存在するカテゴリの、メイン側の残存フィールドをクリアする。
+    // これにより、万が一 mergeExtraData が動作しない環境でも、古いデータが混入するのを防ぐ。
+    const sanitized = { ...user };
+
+    if (hasTransport) {
+      // These are now strictly managed by UserTransport_Settings
+      sanitized.TransportToDays = [];
+      sanitized.TransportFromDays = [];
+      sanitized.TransportCourse = null;
+      sanitized.TransportSchedule = null;
+      sanitized.TransportAdditionType = null;
+    }
+
+    if (hasBenefit) {
+      // These are now strictly managed by UserBenefit_Profile
+      sanitized.RecipientCertNumber = null;
+      sanitized.RecipientCertExpiry = null;
+      sanitized.GrantMunicipality = null;
+      sanitized.GrantPeriodStart = null;
+      sanitized.GrantPeriodEnd = null;
+      sanitized.DisabilitySupportLevel = null;
+      sanitized.GrantedDaysPerMonth = null;
+      sanitized.UserCopayLimit = null;
+      sanitized.MealAddition = null;
+      sanitized.CopayPaymentMethod = null;
+    }
+    
+    return sanitized;
   }
 }
