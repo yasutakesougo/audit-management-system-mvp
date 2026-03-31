@@ -200,10 +200,13 @@ export function useNextAction(
     ? deriveSceneUrgency(sceneState, nextItem.minutesUntil)
     : 'low';
 
-  return {
-    item: nextItem,
-    urgency,
-    sceneState,
-    sourceLane: sceneResult.sourceLane,
-  };
+  return useMemo(
+    () => ({
+      item: nextItem,
+      urgency,
+      sceneState,
+      sourceLane: sceneResult.sourceLane,
+    }),
+    [nextItem, urgency, sceneState, sceneResult.sourceLane],
+  );
 }

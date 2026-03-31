@@ -64,6 +64,37 @@ describe('useUsersQuery', () => {
     expect(getAll).toHaveBeenCalledTimes(1);
   });
 
+  it('returns stable object reference when data has not changed', async () => {
+    getAll.mockResolvedValue([
+      { Id: 1, UserID: 'U-001', FullName: '山田 太郎', IsActive: true },
+    ]);
+
+    const wrapper = makeWrapper(createTestQueryClient());
+    const { result, rerender } = renderHook(() => useUsersQuery(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('success');
+    });
+
+    const first = result.current;
+    rerender();
+
+    expect(result.current).toBe(first);
+  });
+
+  it('returns EMPTY_ARRAY constant (not new []) when data is undefined', () => {
+    getAll.mockReturnValue(new Promise(() => {})); // never resolves
+
+    const wrapper = makeWrapper(createTestQueryClient());
+    const { result, rerender } = renderHook(() => useUsersQuery(), { wrapper });
+
+    const first = result.current.data;
+    rerender();
+
+    expect(result.current.data).toBe(first);
+    expect(first).toEqual([]);
+  });
+
   it('fetches independently when query params differ', async () => {
     getAll.mockResolvedValue([
       { Id: 1, UserID: 'U-001', FullName: '山田 太郎', IsActive: true },

@@ -5,7 +5,7 @@
 // プロアクティブなアラートを生成する。
 // ---------------------------------------------------------------------------
 import { useMemo } from 'react';
-
+import { useIbdStore } from './ibdStore';
 import { getLatestSPS } from './ibdStore';
 import { daysUntilSPSReview } from './ibdTypes';
 import {
@@ -93,6 +93,8 @@ export function useProactiveSPSAlerts(
   behaviorRecordsByUser: Record<string, BehaviorLike[]> = {},
   thresholds: AlertThresholds = DEFAULT_THRESHOLDS,
 ): ProactiveSPSAlertsSummary {
+  const spsSheets = useIbdStore((s) => s.spsSheets);
+
   return useMemo(() => {
     const summaries: IncidentSummary[] = ibdUsers.map((user) => {
       const records = behaviorRecordsByUser[user.UserID] ?? [];
@@ -128,5 +130,5 @@ export function useProactiveSPSAlerts(
       watchCount: alerts.filter((a) => a.level === 'watch').length,
       hasAlerts: alerts.length > 0,
     };
-  }, [ibdUsers, behaviorRecordsByUser, thresholds]);
+  }, [ibdUsers, behaviorRecordsByUser, spsSheets, thresholds.lookbackDays, thresholds.intensityThreshold]);
 }

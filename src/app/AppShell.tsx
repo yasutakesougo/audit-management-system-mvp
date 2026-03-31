@@ -216,6 +216,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     <RouteHydrationListener>
       <LiveAnnouncer>
         <div
+          className="notranslate"
+          translate="no"
           data-testid="app-shell"
           data-kiosk={isKioskMode ? 'true' : undefined}
           data-current-hub={hubRouteMeta?.hubId}
@@ -300,9 +302,17 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
           {/* Kiosk Mode: 長押しで解除可能なFAB（誤操作防止） */}
           {isKioskMode && (
-            <KioskExitFab onExit={() => updateSettings({ layoutMode: 'normal' })} />
+            <KioskExitFab
+              onExit={() => updateSettings({ layoutMode: 'normal' })}
+              disablePortal
+            />
           )}
-          <SettingsDialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} navItems={navItems} />
+          <SettingsDialog
+            open={settingsDialogOpen}
+            onClose={() => setSettingsDialogOpen(false)}
+            navItems={navItems}
+            disablePortal
+          />
           {LazySpDevPanel && (
             <React.Suspense fallback={null}>
               <LazySpDevPanel />

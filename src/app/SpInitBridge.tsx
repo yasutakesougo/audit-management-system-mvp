@@ -7,7 +7,7 @@
  * 現在の初期化タスク:
  * - Holiday_Master からの祝日読み込み
  */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { useSP } from '@/lib/spClient';
 import { loadHolidaysFromSharePoint } from '@/sharepoint/holidayLoader';
 import { SharePointProvisioningCoordinator } from '@/sharepoint/spProvisioningCoordinator';
@@ -23,26 +23,34 @@ import { useToast } from '@/hooks/useToast';
  * 1. SharePoint リストのプロビジョニング・安定性確認 (Coordinator)
  * 2. 祝日の読み込み (Holiday_Master)
  */
+// 🛑 Module-level global guard to survive re-mounts (React 18 StrictMode or parent re-renders)
+let globalSpBootstrapStarted = false;
+let globalAdminWarningShown = false;
+
 export const SpInitBridge: React.FC = () => {
   const sp = useSP();
   const { type: providerType } = useDataProvider(); // 🚀 Data OS Readiness: Trigger initial singleton creation
   const { role } = useUserAuthz();
   const { show } = useToast();
-  const initialized = useRef(false);
-
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
+    if (globalSpBootstrapStarted) return;
+    globalSpBootstrapStarted = true;
 
     const bootstrap = async () => {
       // 1. SharePoint リストの一括プロビジョニング・検証（SharePoint モードのみ）
       if (providerType !== 'sharepoint') return;
-      const result = await SharePointProvisioningCoordinator.bootstrap(sp);
       
-      // 管理者の場合のみ、不具合のあるリストを通知
-      if (role === 'admin' && result.unhealthy > 0) {
-        const message = `SharePoint Schema Warning: ${result.unhealthy} lists may need attention. Check logs for details.`;
-        show('warning', message);
+      try {
+        const result = await SharePointProvisioningCoordinator.bootstrap(sp);
+
+        // 管理者の場合のみ、不具合のあるリストを通知（一度だけ表示）
+        if (role === 'admin' && result.unhealthy > 0 && !globalAdminWarningShown) {
+          globalAdminWarningShown = true;
+          const message = `SharePoint Schema Warning: ${result.unhealthy} lists may need attention. Check logs for details.`;
+          show('warning', message);
+        }
+      } catch (err) {
+        console.error('[SpInitBridge] Provisioning bootstrap critical failure:', err);
       }
 
       // 2. Holiday_Master の読み込み（非同期、失敗しても問題なし）
@@ -52,7 +60,7 @@ export const SpInitBridge: React.FC = () => {
     };
 
     bootstrap();
-  }, [sp, role, show]);
+  }, [sp, role, show, providerType]);
 
   return null;
 };

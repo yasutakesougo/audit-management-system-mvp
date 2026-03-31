@@ -21,9 +21,10 @@ interface SettingsDialogProps {
   onClose: () => void;
   /** All nav items (unfiltered) for individual menu visibility controls */
   navItems?: NavItem[];
+  disablePortal?: boolean;
 }
 
-export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose, navItems = [] }) => {
+export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose, navItems = [], disablePortal }) => {
   const { mode, toggle } = useContext(ColorModeContext);
   const { settings, updateSettings } = useSettingsContext();
 
@@ -48,7 +49,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose, n
   }, [updateSettings]);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth disablePortal={disablePortal}>
       <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         表示設定
         <IconButton onClick={onClose} size="small" sx={{ ml: 2 }}>

@@ -183,7 +183,7 @@ export function useSupportStepTemplates(userCode: string | null): SupportStepTem
     [spTemplates],
   );
 
-  return {
+  return useMemo(() => ({
     templates,
     spTemplates,
     defaultTemplates: defaultTemplatesWithIds,
@@ -194,5 +194,16 @@ export function useSupportStepTemplates(userCode: string | null): SupportStepTem
     createTemplate,
     updateTemplate,
     deleteTemplate,
-  };
+  }), [
+    templates,
+    spTemplates,
+    defaultTemplatesWithIds,
+    isLoading,
+    isMutating,
+    error,
+    refetch,
+    createTemplate,
+    updateTemplate,
+    deleteTemplate
+  ]);
 }

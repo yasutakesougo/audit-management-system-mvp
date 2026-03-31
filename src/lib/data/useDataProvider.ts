@@ -17,9 +17,14 @@ export function useDataProvider(): { provider: IDataProvider; type: ProviderType
   // 副作用（テレメトリ、ストア更新）はレンダリングフェーズ外で行う
   useEffect(() => {
     const { type } = result;
-    useDataProviderObservabilityStore.getState().setProvider(type);
-    trackSpEvent('provider_selected', { providerName: type });
-  }, [result]);
+    const store = useDataProviderObservabilityStore.getState();
+    
+    // 値が実際に変化している場合のみ、ストア更新とテレメトリ発火を行う
+    if (store.currentProvider !== type) {
+      store.setProvider(type);
+      trackSpEvent('provider_selected', { providerName: type });
+    }
+  }, [result.type]);
 
   return result;
 }

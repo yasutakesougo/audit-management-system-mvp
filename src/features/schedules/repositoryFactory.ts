@@ -2,8 +2,9 @@ import { createRepositoryFactory, type BaseFactoryOptions, defaultShouldUseDemo 
 import { isE2E } from '@/env';
 import type { ScheduleRepository } from './domain/ScheduleRepository';
 import { inMemoryScheduleRepository } from './infra/InMemoryScheduleRepository';
-// import { SharePointScheduleRepository, type SharePointScheduleRepositoryOptions } from './infra/SharePointScheduleRepository';
-// import { createSpClient, ensureConfig } from '@/lib/spClient';
+import { DataProviderScheduleRepository } from './infra/DataProviderScheduleRepository';
+import { createDataProvider } from '@/lib/data/createDataProvider';
+import { createSpClient, ensureConfig } from '@/lib/spClient';
 
 /**
  * Schedule Repository Factory options.
@@ -16,14 +17,23 @@ export interface ScheduleRepositoryFactoryOptions extends BaseFactoryOptions {
 const factory = createRepositoryFactory<ScheduleRepository, ScheduleRepositoryFactoryOptions>({
   name: 'Schedule',
   createDemo: () => inMemoryScheduleRepository,
-  createReal: (_options) => {
-    // TODO: Restore SharePointScheduleRepository when the infra layer is stable.
-    console.warn('[ScheduleRepositoryFactory] Real repository missing, using Demo.');
-    return inMemoryScheduleRepository;
+  createReal: (options) => {
+    const { acquireToken } = options;
+    if (!acquireToken) {
+      throw new Error('[ScheduleRepositoryFactory] acquireToken is required for real repository.');
+    }
+    const { baseUrl } = ensureConfig();
+    const { provider } = createDataProvider(createSpClient(acquireToken, baseUrl));
+
+    return new DataProviderScheduleRepository({
+      provider,
+      listTitle: options.listTitle,
+      currentOwnerUserId: options.currentOwnerUserId,
+    });
   },
   shouldUseDemo: () => {
-    // E2E environment would use real, but currently falling back until infra restored.
-    if (isE2E) return true; // Temporary
+    // E2E environment should use real if possible
+    if (isE2E) return false;
     return defaultShouldUseDemo();
   },
 });

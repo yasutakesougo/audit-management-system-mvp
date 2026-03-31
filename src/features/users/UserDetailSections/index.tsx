@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState, useTransition, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MuiRouterLink } from '@/lib/muiLink';
 
@@ -51,6 +51,15 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
   const [activeTab, setActiveTab] = useState<MenuSection['key']>(DEFAULT_TAB_KEY);
   const tabPanelRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
+  const [_isPending, startTransition] = useTransition();
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   // ── タイムラインイベント件数（タブバッジ表示用） ──
   const [timelineCount, setTimelineCount] = useState<number | null>(null);
@@ -75,10 +84,13 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
       }
 
       if (TAB_SECTION_KEYS.includes(section.key)) {
-        setActiveTab(section.key);
+        startTransition(() => {
+          setActiveTab(section.key);
+        });
+
         if (typeof window !== 'undefined') {
           window.requestAnimationFrame(() => {
-            if (tabPanelRef.current) {
+            if (isMounted.current && tabPanelRef.current) {
               tabPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
           });
@@ -87,10 +99,13 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
       }
 
       if (typeof document !== 'undefined') {
-        const target = document.getElementById(section.anchor);
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        window.requestAnimationFrame(() => {
+          if (!isMounted.current) return;
+          const target = document.getElementById(section.anchor!); // section.anchor is checked by caller or is string
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
       }
     },
     [navigate],
@@ -183,7 +198,11 @@ const UserDetailSections: React.FC<UserDetailSectionsProps> = ({ user, backLink,
             {/* ── Tab Bar ── */}
             <Tabs
               value={activeTab}
-              onChange={(_, value) => setActiveTab(value as MenuSection['key'])}
+              onChange={(_, value) => {
+                startTransition(() => {
+                  setActiveTab(value as MenuSection['key']);
+                });
+              }}
               variant="scrollable"
               scrollButtons="auto"
               aria-label="利用者メニュータブ"

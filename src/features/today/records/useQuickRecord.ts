@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 const AUTO_NEXT_STORAGE_KEY = 'ams_quick_auto_next';
@@ -106,14 +106,25 @@ export const useQuickRecord = (): QuickRecordState => {
     );
   }, [setSearchParams]);
 
-  return {
-    isOpen: mode !== null,
-    mode,
-    userId,
-    openUnfilled,
-    openUser,
-    close,
-    autoNextEnabled: effectiveAutoNext,
-    setAutoNextEnabled,
-  };
+  return useMemo(
+    () => ({
+      isOpen: mode !== null,
+      mode,
+      userId,
+      openUnfilled,
+      openUser,
+      close,
+      autoNextEnabled: effectiveAutoNext,
+      setAutoNextEnabled,
+    }),
+    [
+      mode,
+      userId,
+      openUnfilled,
+      openUser,
+      close,
+      effectiveAutoNext,
+      setAutoNextEnabled,
+    ],
+  );
 };

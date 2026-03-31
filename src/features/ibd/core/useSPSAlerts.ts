@@ -2,7 +2,7 @@
 // useSPSAlerts — ダッシュボード用 SPS 更新アラートフック
 // ---------------------------------------------------------------------------
 import { useMemo } from 'react';
-
+import { useIbdStore } from './ibdStore';
 import type { SPSAlert } from './ibdStore';
 import { getExpiringSPSAlerts, getSupervisionCounter } from './ibdStore';
 
@@ -26,6 +26,8 @@ export interface SPSAlertsSummary {
  * @param today テスト用の日付指定
  */
 export function useSPSAlerts(daysThreshold = 30, today?: string): SPSAlertsSummary {
+  const spsSheets = useIbdStore((s) => s.spsSheets);
+  
   return useMemo(() => {
     const alerts = getExpiringSPSAlerts(daysThreshold, today);
     const overdueCount = alerts.filter((a) => a.level === 'error').length;
@@ -42,7 +44,7 @@ export function useSPSAlerts(daysThreshold = 30, today?: string): SPSAlertsSumma
       hasAlerts: alerts.length > 0,
       worstLevel,
     };
-  }, [daysThreshold, today]);
+  }, [spsSheets, daysThreshold, today]);
 }
 
 /**

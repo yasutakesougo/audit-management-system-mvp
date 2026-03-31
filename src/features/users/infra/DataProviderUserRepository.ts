@@ -69,89 +69,97 @@ export class DataProviderUserRepository implements UserRepository {
     this.benefitListTitle = sanitizeEnvValue(readEnv('VITE_SP_LIST_USER_BENEFIT', '')) || 'UserBenefit_Profile';
   }
 
+  private resolvingPromise: Promise<Record<string, string | undefined> | null> | null = null;
+
   /**
    * フィールド解決（Dynamic Schema Resolution）
    * 400 Bad Request を防ぐための最重要ガードレール
    */
   private async resolveFields(): Promise<Record<string, string | undefined> | null> {
     if (this.resolvedFields) return this.resolvedFields;
+    if (this.resolvingPromise) return this.resolvingPromise;
 
-    try {
-      const available = await this.provider.getFieldInternalNames(this.listTitle);
-      
-      // フィールド解決用の候補定義型
-      interface CandidateDef {
-        candidates: string[];
-        isSilent: boolean;
-      }
+    this.resolvingPromise = (async () => {
+      try {
+        const available = await this.provider.getFieldInternalNames(this.listTitle);
+        
+        // フィールド解決用の候補定義型
+        interface CandidateDef {
+          candidates: string[];
+          isSilent: boolean;
+        }
 
-      // 1. コンプライアンス・拡張候補 (UI警告不要)
-      const extCandidates: Record<string, CandidateDef> = Object.fromEntries(
-        Object.entries(USERS_MASTER_COMPLIANCE_FIELD_MAP).map(([key, value]) => [
-          key, 
-          { candidates: [value], isSilent: true }
-        ])
-      );
+        // 1. コンプライアンス・拡張候補 (UI警告不要)
+        const extCandidates: Record<string, CandidateDef> = Object.fromEntries(
+          Object.entries(USERS_MASTER_COMPLIANCE_FIELD_MAP).map(([key, value]) => [
+            key, 
+            { candidates: [value], isSilent: true }
+          ])
+        );
 
-      // 2. コア基本候補 (UI警告対象)
-      const coreCandidates: Record<string, CandidateDef> = Object.fromEntries(
-        Object.entries(USERS_MASTER_CORE_FIELD_MAP).map(([key, value]) => {
-          let candidates: string[] = [value];
-          if (key === 'userId') candidates = ['UserID', 'cr013_usercode', 'Title'];
-          if (key === 'fullName') candidates = ['FullName', 'cr013_fullname', 'Title'];
-          return [key, { candidates, isSilent: false }];
-        })
-      );
+        // 2. コア基本候補 (UI警告対象)
+        const coreCandidates: Record<string, CandidateDef> = Object.fromEntries(
+          Object.entries(USERS_MASTER_CORE_FIELD_MAP).map(([key, value]) => {
+            let candidates: string[] = [value];
+            if (key === 'userId') candidates = ['UserID', 'cr013_usercode', 'Title'];
+            if (key === 'fullName') candidates = ['FullName', 'cr013_fullname', 'Title'];
+            return [key, { candidates, isSilent: false }];
+          })
+        );
 
-      // 統合して解決を実行
-      const allCandidates: Record<string, CandidateDef> = { ...coreCandidates, ...extCandidates };
-      const candidateNamesOnly = Object.fromEntries(
-        Object.entries(allCandidates).map(([k, v]) => [k, v.candidates])
-      );
+        // 統合して解決を実行
+        const allCandidates: Record<string, CandidateDef> = { ...coreCandidates, ...extCandidates };
+        const candidateNamesOnly = Object.fromEntries(
+          Object.entries(allCandidates).map(([k, v]) => [k, v.candidates])
+        );
 
-      const { resolved, fieldStatus: rawFieldStatus } = resolveInternalNamesDetailed(
-        available,
-        candidateNamesOnly as Record<string, string[]>
-      );
+        const { resolved, fieldStatus: rawFieldStatus } = resolveInternalNamesDetailed(
+          available,
+          candidateNamesOnly as Record<string, string[]>
+        );
 
-      // isSilent フラグを保持した最終的な fieldStatus を作成
-      const fieldStatusWithSilent = Object.fromEntries(
-        Object.entries(rawFieldStatus).map(([key, status]) => [
-          key,
-          { 
-            ...status, 
-            isSilent: allCandidates[key]?.isSilent ?? false,
-            isEssential: coreCandidates[key] !== undefined
-          }
-        ])
-      );
+        // isSilent フラグを保持した最終的な fieldStatus を作成
+        const fieldStatusWithSilent = Object.fromEntries(
+          Object.entries(rawFieldStatus).map(([key, status]) => [
+            key,
+            { 
+              ...status, 
+              isSilent: allCandidates[key]?.isSilent ?? false,
+              isEssential: coreCandidates[key] !== undefined
+            }
+          ])
+        );
 
-      // 必須フィールド判定（これらが欠けるとシステム警告の対象にする）
-      const essentials: string[] = ['id', 'userId', 'fullName', 'isActive'];
-      const isHealthy = areEssentialFieldsResolved(resolved as Record<string, string | undefined>, essentials);
+        // 必須フィールド判定（これらが欠けるとシステム警告の対象にする）
+        const essentials: string[] = ['id', 'userId', 'fullName', 'isActive'];
+        const isHealthy = areEssentialFieldsResolved(resolved as Record<string, string | undefined>, essentials);
 
-      reportResourceResolution({
-        resourceName: 'Users_Master',
-        resolvedTitle: this.listTitle,
-        fieldStatus: fieldStatusWithSilent as Record<string, { resolvedName?: string; candidates: string[]; isSilent?: boolean }>,
-        essentials: essentials,
-      });
+        reportResourceResolution({
+          resourceName: 'Users_Master',
+          resolvedTitle: this.listTitle,
+          fieldStatus: fieldStatusWithSilent as Record<string, { resolvedName?: string; candidates: string[]; isSilent?: boolean }>,
+          essentials: essentials,
+        });
 
-      if (isHealthy) {
+        // 健全性にかかわらずキャッシュし、再解決（および再ループ）を防ぐ
         this.resolvedFields = resolved as Record<string, string | undefined>;
         this.fieldStatus = fieldStatusWithSilent;
-        return this.resolvedFields;
-      }
 
-      auditLog.warn('users', 'Essential fields missing for Users_Master.', { 
-        list: this.listTitle, 
-        resolved 
-      });
-      return null;
-    } catch (err) {
-      auditLog.error('users', 'Field resolution failed:', err);
-      return null;
-    }
+        if (!isHealthy) {
+          auditLog.warn('users', 'Essential fields missing for Users_Master.', { 
+            list: this.listTitle, 
+            resolved 
+          });
+        }
+
+        return this.resolvedFields;
+      } catch (err) {
+        auditLog.error('users', 'Field resolution failed:', err);
+        return null;
+      }
+    })();
+
+    return this.resolvingPromise;
   }
 
   public async getAll(params?: UserRepositoryListParams): Promise<IUserMaster[]> {

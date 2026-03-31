@@ -199,7 +199,17 @@ const LogTab: React.FC<LogTabProps> = ({ records, users, onRefresh, focusedRecor
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Stack spacing={2}>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-              <Autocomplete options={users} value={filterUser} onChange={(_, v) => setFilterUser(v)} getOptionLabel={o => o.label} isOptionEqualToValue={(o, v) => o.id === v.id} renderInput={params => <TextField {...params} label="利用者" size="small" />} sx={{ flex: 2 }} noOptionsText="該当なし" />
+              <Autocomplete
+                disablePortal
+                options={users}
+                value={filterUser}
+                onChange={(_, v) => setFilterUser(v)}
+                getOptionLabel={o => o.label}
+                isOptionEqualToValue={(o, v) => o.id === v.id}
+                renderInput={params => <TextField {...params} label="利用者" size="small" />}
+                sx={{ flex: 2 }}
+                noOptionsText="該当なし"
+              />
               <TextField select label="強度" value={filterIntensity} onChange={e => setFilterIntensity(e.target.value as AbcIntensity | '')} size="small" sx={{ minWidth: 100 }}>
                 <MenuItem value="">すべて</MenuItem>
                 {ABC_INTENSITY_VALUES.map(v => <MenuItem key={v} value={v}>{ABC_INTENSITY_DISPLAY[v]}</MenuItem>)}

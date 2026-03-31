@@ -65,7 +65,7 @@ export function useExceptionDataSources(): ExceptionDataSources {
   const dailyRepo = useDailyRecordRepository();
   const { repo: handoffRepo } = useHandoffData();
   const { ispRepo } = useIspRepositories();
-  const { resolutions } = useDataProviderObservabilityStore();
+  const resolutions = useDataProviderObservabilityStore(s => s.resolutions);
 
   const [todayRecords, setTodayRecords] = useState<DailyRecordItem[]>([]);
   const [handoffRecords, setHandoffRecords] = useState<HandoffRecord[]>([]);

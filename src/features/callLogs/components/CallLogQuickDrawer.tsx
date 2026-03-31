@@ -184,6 +184,7 @@ export const CallLogQuickDrawer: React.FC<CallLogQuickDrawerProps> = ({ open, on
           fullScreen
           open={open}
           onClose={handleCloseRequest}
+          disablePortal
           data-testid="call-log-quick-dialog"
         >
           {content}
@@ -201,6 +202,7 @@ export const CallLogQuickDrawer: React.FC<CallLogQuickDrawerProps> = ({ open, on
         anchor="right"
         open={open}
         onClose={handleCloseRequest}
+        disablePortal
         data-testid="call-log-quick-drawer-root"
       >
         {content}

@@ -260,6 +260,7 @@ export class SharePointProvisioningCoordinator {
         trackSpEvent('sp:provision_failed', { key: entry.key, listName, error: err instanceof Error ? err.message : String(err) });
       }
 
+      saveStability(entry.key, isOptional ? 'missing' : 'mismatch');
       return { 
         key: entry.key, 
         displayName: entry.displayName, 

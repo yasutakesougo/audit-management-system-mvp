@@ -89,7 +89,7 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
   const { settings } = useSettingsContext();
   const isKioskMode = settings.layoutMode === 'kiosk';
   const role = useAuthStore((s) => s.currentUserRole);
-  const telemetryRole = role === 'admin' || role === 'staff' ? role : 'unknown';
+  const telemetryRole = useMemo(() => (role === 'admin' || role === 'staff' ? role : 'unknown'), [role]);
   const suggestionStates = useSuggestionStateStore((s) => s.states);
   const dismissSuggestion = useSuggestionStateStore((s) => s.dismiss);
   const snoozeSuggestion = useSuggestionStateStore((s) => s.snooze);
@@ -140,6 +140,7 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
   } | null>(null);
   const [resolutionToastMsg, setResolutionToastMsg] = useState<string | null>(null);
 
+
   // ── Data Fetching (Facade) ──
   const summary = useTodaySummary();
 
@@ -163,10 +164,13 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
     realSchedule.lanes.staffLane.length > 0 ||
     realSchedule.lanes.userLane.length > 0 ||
     realSchedule.lanes.organizationLane.length > 0;
-  const effectiveLanes =
-    !realSchedule.isLoading && hasRealLanes
-      ? realSchedule.lanes
-      : summary.scheduleLanesToday;
+  const effectiveLanes = useMemo(
+    () =>
+      !realSchedule.isLoading && hasRealLanes
+        ? realSchedule.lanes
+        : summary.scheduleLanesToday,
+    [realSchedule.isLoading, hasRealLanes, realSchedule.lanes, summary.scheduleLanesToday]
+  );
 
   // ── Derived Hooks ──
   const nextAction = useNextAction(effectiveLanes);
@@ -308,6 +312,9 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
   const myName = (account as { name?: string } | null)?.name ?? '';
   const callLogsSummary = useCallLogsSummary({ myName });
   const [callLogDrawerOpen, setCallLogDrawerOpen] = useState(false);
+  const handleCallLogDrawerClose = useCallback(() => {
+    setCallLogDrawerOpen(false);
+  }, []);
 
   const refreshTodayKioskSources = useCallback(async () => {
     const tasks: Array<Promise<unknown>> = [
@@ -445,6 +452,14 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
     return `/schedules/week?${params.toString()}`;
   }, [nextAction.sourceLane]);
 
+  // ── HandoffPanel: memoized to avoid new JSX element on every layoutProps recompute ──
+  const handoffPanelElement = useMemo(
+    () => <HandoffPanel targetDate={toLocalDateISO()} />,
+    // toLocalDateISO() returns a stable YYYY-MM-DD string within a calendar day;
+    // empty deps is intentional — this element is recreated only on mount/HMR.
+    [],
+  );
+
   // ── Layout Props (extracted to dedicated hook) ──
   const baseLayoutProps = useTodayLayoutProps({
     summary,
@@ -579,7 +594,7 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
           onNavigate: (href: string) => navigate(href),
         }
       : undefined,
-    handoffPanel: <HandoffPanel targetDate={toLocalDateISO()} />,
+    handoffPanel: handoffPanelElement,
     callLogSummary: {
       openCount: callLogsSummary.openCount,
       urgentCount: callLogsSummary.urgentCount,
@@ -736,7 +751,7 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
       {/* 電話ログ Quick Drawer (Today 内専用インスタンス) */}
       <CallLogQuickDrawer
         open={callLogDrawerOpen}
-        onClose={() => setCallLogDrawerOpen(false)}
+        onClose={handleCallLogDrawerClose}
       />
 
       <Snackbar

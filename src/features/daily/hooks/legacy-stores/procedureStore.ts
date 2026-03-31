@@ -5,7 +5,7 @@
 // CSVインポートで登録されたデータがリロード後も維持される。
 // ---------------------------------------------------------------------------
 import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { create } from 'zustand';
 
 export type ProcedureItem = ScheduleItem;
@@ -149,10 +149,13 @@ export function useProcedureStore() {
     return Object.keys(snapshot);
   }, [snapshot]);
 
-  return {
-    getByUser,
-    save,
-    hasUserData,
-    registeredUserIds,
-  } as const;
+  return useMemo(
+    () => ({
+      getByUser,
+      save,
+      hasUserData,
+      registeredUserIds,
+    } as const),
+    [getByUser, save, hasUserData, registeredUserIds]
+  );
 }

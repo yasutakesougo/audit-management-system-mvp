@@ -53,6 +53,7 @@ export const ApprovalDialog: React.FC<ApprovalDialogProps> = ({
       onClose={isApproving ? undefined : handleCloseWithFocusRelease}
       maxWidth="xs"
       fullWidth
+      disablePortal
       data-testid="approval-dialog"
     >
       <DialogTitle sx={{ fontWeight: 'bold' }}>

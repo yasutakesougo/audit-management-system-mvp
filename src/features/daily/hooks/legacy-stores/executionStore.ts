@@ -4,7 +4,7 @@
 // Zustand ベースのリアクティブストア + localStorage 永続化
 // デバイスローカル永続化（MVP段階）
 // ---------------------------------------------------------------------------
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { create } from 'zustand';
 
 import {
@@ -150,10 +150,13 @@ export function useExecutionStore() {
     [getRecords],
   );
 
-  return {
-    getRecords,
-    getRecord,
-    upsertRecord,
-    getCompletionRate,
-  } as const;
+  return useMemo(
+    () => ({
+      getRecords,
+      getRecord,
+      upsertRecord,
+      getCompletionRate,
+    } as const),
+    [getRecords, getRecord, upsertRecord, getCompletionRate]
+  );
 }

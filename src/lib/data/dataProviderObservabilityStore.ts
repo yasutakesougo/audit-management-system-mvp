@@ -62,14 +62,38 @@ export const useDataProviderObservabilityStore = create<ObservabilityState>((set
   activeTab: 'obs',
   focusResourceName: undefined,
 
-  setProvider: (type) => set({ currentProvider: type }),
+  setProvider: (type) => set((state) => {
+    if (state.currentProvider === type) return state;
+    return { currentProvider: type };
+  }),
 
-  reportResolution: (state) => set((prev) => ({
-    resolutions: {
-      ...prev.resolutions,
-      [state.resourceName]: state
+  reportResolution: (state) => set((prev) => {
+    const existing = prev.resolutions[state.resourceName];
+    if (existing) {
+      // 致命的な差異がある場合のみ更新
+      const isSameStatus = existing.status === state.status;
+      const isSameError = (existing.error ?? '') === (state.error ?? '');
+      const isSameFallback = (existing.fallbackFrom ?? '') === (state.fallbackFrom ?? '');
+      
+      // フィールドリストの比較 (順序に依存しないようにソートして比較)
+      const getFieldsSig = (fs: FieldResolutionInfo[]) => 
+        fs.map(f => `${f.key}:${f.resolvedName}:${f.isResolved}`).sort().join('|');
+      
+      const isSameFields = getFieldsSig(existing.fields) === getFieldsSig(state.fields);
+
+      if (isSameStatus && isSameError && isSameFallback && isSameFields) {
+        // 変化がない場合は、時刻更新のためだけに全体を再描画させない
+        return prev;
+      }
     }
-  })),
+
+    return {
+      resolutions: {
+        ...prev.resolutions,
+        [state.resourceName]: state
+      }
+    };
+  }),
 
   clearResolutions: () => set({ resolutions: {} }),
 
@@ -100,15 +124,20 @@ export interface ResourceResolutionReport {
 /**
  * Report a resolution attempt to the observability store
  */
-export function reportResourceResolution({
-  resourceName,
-  lifecycle = 'required',
-  resolvedTitle,
-  fieldStatus,
-  essentials,
-  error,
-  fallbackFrom,
-}: ResourceResolutionReport): void {
+/**
+ * Report a resolution attempt to the observability store
+ */
+export function reportResourceResolution(report: ResourceResolutionReport): void {
+  const {
+    resourceName,
+    lifecycle = 'required',
+    resolvedTitle,
+    fieldStatus,
+    essentials,
+    error,
+    fallbackFrom,
+  } = report;
+
   const fields: FieldResolutionInfo[] = Object.entries(fieldStatus).map(([key, info]) => ({
     key,
     candidates: info.candidates,
@@ -126,17 +155,38 @@ export function reportResourceResolution({
   } else if (fallbackFrom) {
     status = 'fallback_triggered';
   } else if (fields.some(f => !f.isResolved && !f.isSilent)) {
-    // サイレントでない列が足りない場合のみ mismatch 警告を出す
     status = 'schema_mismatch';
   }
 
-  useDataProviderObservabilityStore.getState().reportResolution({
-    resourceName,
-    status,
-    resolvedTitle,
-    fields,
-    lastAccessedAt: new Date().toISOString(),
-    error,
-    fallbackFrom
-  });
+  // 1. 同一性の判定用シグネチャ生成
+  // key, resolvedName, isResolved, isSilent, isEssential すべてを網羅
+  const getFieldsSig = (fs: FieldResolutionInfo[]) => 
+    fs.map(f => `${f.key}:${f.resolvedName}:${f.isResolved}:${f.isSilent}:${f.isEssential}`).sort().join('|');
+  const nextSig = getFieldsSig(fields);
+
+  // 2. 現在のストアの状態を確認し、機能的な変化がない場合は早期リターン（setTimeoutすら発行しない）
+  const existing = useDataProviderObservabilityStore.getState().resolutions[resourceName];
+  if (existing) {
+    const isSameStatus = existing.status === status;
+    const isSameError = (existing.error ?? '') === (error ?? '');
+    const isSameFallback = (existing.fallbackFrom ?? '') === (fallbackFrom ?? '');
+    const isSameFields = getFieldsSig(existing.fields) === nextSig;
+    
+    if (isSameStatus && isSameFields && isSameError && isSameFallback) {
+      return; 
+    }
+  }
+
+  // 3. 変化がある場合のみ、非同期（レンダリングサイクル外）で更新を予約
+  setTimeout(() => {
+    useDataProviderObservabilityStore.getState().reportResolution({
+      resourceName,
+      status,
+      resolvedTitle,
+      fields,
+      lastAccessedAt: new Date().toISOString(),
+      error,
+      fallbackFrom
+    });
+  }, 0);
 }

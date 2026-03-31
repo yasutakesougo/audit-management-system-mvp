@@ -115,15 +115,15 @@ export const QuickRecordDrawer: React.FC<QuickRecordDrawerProps> = ({
 
   if (isMobile) {
     return (
-      <Dialog fullScreen open={open} onClose={handleCloseWithFocusRelease}>
+      <Dialog fullScreen open={open} onClose={handleCloseWithFocusRelease} disablePortal>
         {content}
       </Dialog>
     );
   }
 
   return (
-    <Drawer anchor="right" open={open} onClose={handleCloseWithFocusRelease}>
+    <Drawer anchor="right" open={open} onClose={handleCloseWithFocusRelease} disablePortal>
       {content}
     </Drawer>
   );
-};
+}

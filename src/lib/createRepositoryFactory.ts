@@ -200,15 +200,29 @@ export function createRepositoryFactory<
 
     const kind = resolveKind(options?.forceKind);
 
-    // Reuse cache when no custom options are provided
-    if (cachedRepo && cachedKind === kind && !options) {
-      return cachedRepo;
+    // 内部的なメモ化用の型
+    interface RepositoryMetadata {
+      __acquireToken?: () => Promise<string | null>;
+    }
+
+    // acquireToken が同一であれば既存のインスタンスを再利用する（無限ループ防止の最重要ガード）
+    const canReuseCache = cachedRepo && 
+      cachedKind === kind && 
+      (!options || (cachedRepo as RepositoryMetadata).__acquireToken === options.acquireToken);
+
+    if (canReuseCache) {
+      return cachedRepo!;
     }
 
     const repo = createInstance(kind, options);
+    
+    // インスタンスにトークン取得関数を紐付けて、次回比較できるようにする
+    if (options?.acquireToken) {
+      (repo as RepositoryMetadata).__acquireToken = options.acquireToken;
+    }
 
-    // Cache only when no custom options (default behavior)
-    if (!options) {
+    // 初回または安定したインスタンスとしてキャッシュ
+    if (!cachedRepo || (!options?.forceKind)) {
       cachedRepo = repo;
       cachedKind = kind;
     }

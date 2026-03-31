@@ -358,7 +358,7 @@ const IBDHubPage: React.FC = () => {
   const { data: allUsers } = useUsers();
   const [drilldownOpen, setDrilldownOpen] = useState(false);
 
-  // 行動分析対象者のみ
+  // 行動分析対象者のみ (allUsers の内容が変わっていないなら参照を維持)
   const ibdUsers = useMemo(
     () => allUsers.filter((u) => u.IsHighIntensitySupportTarget),
     [allUsers],
