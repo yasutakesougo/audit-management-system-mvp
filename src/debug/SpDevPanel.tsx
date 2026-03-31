@@ -415,10 +415,14 @@ function ObservabilityTab({ confirmDialog }: { confirmDialog: ReturnType<typeof 
              <div style={{ color: '#e0e0e0', fontSize: '10px', fontWeight: 700 }}>{r.resourceName} ({r.resolvedTitle})</div>
              {r.fields.map(f => (
                <div key={f.key} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', padding: '1px 4px' }}>
-                 <span style={{ color: f.isEssential ? '#ff6b6b' : '#888' }}>
-                   {f.isEssential ? '*' : ''}{f.key}
+                 <span style={{ 
+                   color: f.isEssential ? '#ff6b6b' : (f.isSilent ? '#888' : '#aaa'),
+                   fontStyle: f.isSilent ? 'italic' : 'normal'
+                 }}>
+                   {f.isEssential ? '★ ' : (f.isSilent ? '⚑ ' : '• ')}{f.key}
+                   {f.isSilent && <span style={{ fontSize: '8px', marginLeft: '4px' }}>(silent)</span>}
                  </span>
-                 <span style={{ color: f.isResolved ? '#4caf50' : '#888' }}>
+                 <span style={{ color: f.isResolved ? '#4caf50' : (f.isSilent ? '#555' : '#888') }}>
                    {f.isResolved ? f.resolvedName : 'Missing'}
                  </span>
                </div>

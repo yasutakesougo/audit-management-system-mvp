@@ -22,6 +22,7 @@ export interface FieldResolutionInfo {
   candidates: string[];
   isEssential: boolean;
   isResolved: boolean;
+  isSilent: boolean;
 }
 
 export interface ResourceResolutionState {
@@ -90,7 +91,7 @@ export interface ResourceResolutionReport {
   resourceName: string;
   lifecycle?: 'required' | 'optional';
   resolvedTitle: string;
-  fieldStatus: Record<string, { resolvedName?: string; candidates: string[] }>;
+  fieldStatus: Record<string, { resolvedName?: string; candidates: string[]; isSilent?: boolean }>;
   essentials: string[];
   error?: string;
   fallbackFrom?: string;
@@ -113,7 +114,8 @@ export function reportResourceResolution({
     candidates: info.candidates,
     resolvedName: info.resolvedName,
     isResolved: !!info.resolvedName,
-    isEssential: essentials.includes(key)
+    isEssential: essentials.includes(key),
+    isSilent: !!info.isSilent
   }));
 
   const missingEssentials = fields.filter(f => f.isEssential && !f.isResolved);
@@ -123,7 +125,8 @@ export function reportResourceResolution({
     status = lifecycle === 'required' ? 'missing_required' : 'schema_mismatch';
   } else if (fallbackFrom) {
     status = 'fallback_triggered';
-  } else if (fields.some(f => !f.isResolved)) {
+  } else if (fields.some(f => !f.isResolved && !f.isSilent)) {
+    // サイレントでない列が足りない場合のみ mismatch 警告を出す
     status = 'schema_mismatch';
   }
 

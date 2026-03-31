@@ -6,7 +6,8 @@ import { ExceptionItem } from '@/features/exceptions/domain/exceptionLogic';
 export type DailyIntegrityExceptionType = 
   | 'orphan_parent'    // 親があるが対応するバージョンの子が0件
   | 'version_mismatch' // 親のバージョンと一致しない子が混在（不整合）
-  | 'stale_pending';   // 書き込み中のまま一定時間経過
+  | 'stale_pending'    // 書き込み中のまま一定時間経過
+  | 'missing_accessory'; // 必要な付随データ（送迎設定等）が欠落
 
 /**
  * 日次記録の不整合データ（内部表現）
@@ -38,12 +39,18 @@ export interface ScanSourceChild {
   recordedAt: string;
 }
 
+export interface ScanSourceAccessory {
+  type: 'transport';
+  userId: string;
+}
+
 /**
  * 日次記録の不整合をスキャンする Pure Function
  */
 export function scanDailyRecordIntegrity(
   parents: ScanSourceParent[],
   children: ScanSourceChild[],
+  accessories: ScanSourceAccessory[] = [],
   now: Date = new Date()
 ): DailyIntegrityException[] {
   const exceptions: DailyIntegrityException[] = [];
@@ -97,6 +104,27 @@ export function scanDailyRecordIntegrity(
     }
   });
 
+  // 4. missing_accessory: 子レコード（利用者行）があるが、必要な付随データが存在しない
+  // 現在は transport (UserTransport_Settings) のみを対象とする
+  const transportUserIds = new Set(accessories.filter(a => a.type === 'transport').map(a => a.userId));
+  
+  children.forEach(child => {
+    // 削除済みや無効な ID はスキップ（親が見つからない場合は orphan 側で処理される可能性があるが、ここでは子起点）
+    const parent = parents.find(p => p.id === child.parentId);
+    if (!parent) return;
+
+    if (!transportUserIds.has(child.userId)) {
+      exceptions.push({
+        type: 'missing_accessory',
+        date: parent.date,
+        parentId: child.parentId,
+        details: `Accessory data missing: User ${child.userName || child.userId} has no Transport settings record.`,
+        severity: 'warning',
+        detectedAt: now.toISOString(),
+      });
+    }
+  });
+
   return exceptions;
 }
 
@@ -110,12 +138,14 @@ export function mapIntegrityToExceptionItem(
     orphan_parent: 'high',
     version_mismatch: 'medium',
     stale_pending: 'low',
+    missing_accessory: 'medium',
   };
 
   const titleMap: Record<DailyIntegrityExceptionType, string> = {
     orphan_parent: '[整合性異常] データの保存不全',
     version_mismatch: '[データ不整合] 重複書き込み警告',
     stale_pending: '[システム遅延] 保存未完了レコード発生',
+    missing_accessory: '[マスタ不整合] 付随データの欠落',
   };
 
   return {

@@ -122,11 +122,15 @@ export const useExceptionPreferences = create<ExceptionPreferencesStore>((set, g
 }));
 
 export function useActiveExceptionPreferences() {
-  const dismissed = useExceptionPreferences((s) => s.dismissed);
-  const snoozed = useExceptionPreferences((s) => s.snoozed);
+  const preferences = useExceptionPreferences((s) => ({
+    dismissed: s.dismissed,
+    snoozed: s.snoozed
+  }));
   
   return useMemo(() => {
     const now = new Date().getTime();
+    const dismissed = preferences.dismissed || {};
+    const snoozed = preferences.snoozed || {};
     
     const dismissedStableIds = new Set(
       Object.entries(dismissed)
@@ -136,10 +140,16 @@ export function useActiveExceptionPreferences() {
     
     const snoozedStableIds = new Set(
       Object.entries(snoozed)
-        .filter(([, until]) => new Date(until).getTime() > now)
+        .filter(([, until]) => {
+          try {
+            return until && new Date(until).getTime() > now;
+          } catch {
+            return false;
+          }
+        })
         .map(([id]) => id)
     );
 
     return { dismissedStableIds, snoozedStableIds };
-  }, [dismissed, snoozed]);
+  }, [preferences.dismissed, preferences.snoozed]);
 }
