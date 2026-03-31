@@ -3,6 +3,7 @@ import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import type { MeetingMinutes, MeetingCategory } from '../types';
 import type { MeetingMinutesRepository, MinutesSearchParams, MeetingMinutesCreateDto, MeetingMinutesUpdateDto } from '../sp/repository';
 import { MeetingMinutesFields as F, MEETING_MINUTES_LIST_TITLE } from '../sp/sharepoint';
+import { buildEq, buildGe, buildLe, joinAnd } from '@/sharepoint/query/builders';
 
 /**
  * DataProviderMeetingMinutesRepository
@@ -166,22 +167,21 @@ export class DataProviderMeetingMinutesRepository implements MeetingMinutesRepos
   }
 
   private buildFilter(params: MinutesSearchParams): string {
-    const filters: string[] = [];
-    const escape = (s: string) => s.replace(/'/g, "''");
+    const filters: (string | undefined)[] = [];
 
     if (params.publishedOnly) {
-      filters.push(`${F.isPublished} eq true`);
+      filters.push(buildEq(F.isPublished, true));
     }
     if (params.category && params.category !== 'ALL') {
-      filters.push(`${F.category} eq '${escape(params.category)}'`);
+      filters.push(buildEq(F.category, params.category));
     }
     if (params.from) {
-      filters.push(`${F.meetingDate} ge '${params.from}'`);
+      filters.push(buildGe(F.meetingDate, params.from));
     }
     if (params.to) {
-      filters.push(`${F.meetingDate} le '${params.to}'`);
+      filters.push(buildLe(F.meetingDate, params.to));
     }
-    return filters.join(' and ');
+    return joinAnd(filters);
   }
 
   private buildPatchBody(patch: MeetingMinutesUpdateDto): Record<string, unknown> {
