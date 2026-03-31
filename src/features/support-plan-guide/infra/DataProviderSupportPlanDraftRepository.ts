@@ -13,6 +13,7 @@ import {
   areEssentialFieldsResolved 
 } from '@/lib/sp/helpers';
 import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
+import { buildEq } from '@/sharepoint/query/builders';
 import type {
     SupportPlanDraftRepository,
     SupportPlanListParams,
@@ -46,15 +47,15 @@ export class DataProviderSupportPlanDraftRepository implements SupportPlanDraftR
 
       const filters: string[] = [];
       if (params?.userCode) {
-        filters.push(`${fields.userCode} eq '${params.userCode}'`);
+        filters.push(buildEq(fields.userCode, params.userCode));
       }
       if (params?.status) {
         const statuses = Array.isArray(params.status) ? params.status : [params.status];
         if (statuses.length === 1) {
-          filters.push(`${fields.status} eq '${statuses[0]}'`);
+          filters.push(buildEq(fields.status, statuses[0]));
         } else {
           const statusFilter = statuses
-            .map((s) => `${fields.status} eq '${s}'`)
+            .map((s) => buildEq(fields.status, s))
             .join(' or ');
           filters.push(`(${statusFilter})`);
         }
@@ -96,7 +97,7 @@ export class DataProviderSupportPlanDraftRepository implements SupportPlanDraftR
       // Find existing
       const existing = await this.provider.listItems<Record<string, unknown>>(this.listTitle, {
         select: ['Id'],
-        filter: `${fields.draftId} eq '${draft.id}'`,
+        filter: buildEq(fields.draftId, draft.id),
         top: 1
       });
 
@@ -122,7 +123,7 @@ export class DataProviderSupportPlanDraftRepository implements SupportPlanDraftR
 
       const existing = await this.provider.listItems<Record<string, unknown>>(this.listTitle, {
         select: ['Id'],
-        filter: `${fields.draftId} eq '${draftId}'`,
+        filter: buildEq(fields.draftId, draftId),
         top: 1
       });
 

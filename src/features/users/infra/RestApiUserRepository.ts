@@ -20,6 +20,7 @@ import {
   type UserSelectMode,
 } from '@/sharepoint/fields';
 import { auditLog } from '@/lib/debugLogger';
+import { buildEq } from '@/sharepoint/query/builders';
 
 import { normalizeAttendanceDays } from '../attendance';
 import { canEditUser, resolveUserLifecycleStatus, toDomainUser } from '../domain/userLifecycle';
@@ -112,7 +113,7 @@ export class RestApiUserRepository implements UserRepository {
     const filterParts: string[] = [];
     if (filters?.isActive !== undefined) {
       const fieldName = FIELD_MAP.Users_Master.isActive;
-      filterParts.push(`${fieldName} eq ${filters.isActive ? 1 : 0}`);
+      filterParts.push(buildEq(fieldName, filters.isActive ? 1 : 0));
     }
 
     const queryParts: string[] = [];

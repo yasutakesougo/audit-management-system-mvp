@@ -7,6 +7,7 @@ import type {
 } from '../domain/supportPlanningSheetTypes';
 import type { SupportPlanningSheetRepository } from './SupportPlanningSheetRepository';
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
+import { buildEq } from '@/sharepoint/query/builders';
 
 const DEFAULT_LIST_TITLE = 'SupportPlanningSheet_Master';
 
@@ -67,9 +68,9 @@ export class DataProviderSupportPlanningSheetRepository implements SupportPlanni
   async list(filter: SupportPlanningSheetFilter): Promise<SupportPlanningSheetRecord[]> {
     if (filter.signal?.aborted) return [];
     try {
-      const filters: string[] = [`${SP_FIELDS.userId} eq '${filter.userId}'`];
+      const filters: string[] = [buildEq(SP_FIELDS.userId, filter.userId)];
       if (filter.goalId) {
-        filters.push(`${SP_FIELDS.goalId} eq '${filter.goalId}'`);
+        filters.push(buildEq(SP_FIELDS.goalId, filter.goalId));
       }
 
       const items = await this.provider.listItems<Record<string, unknown>>(this.listTitle, {

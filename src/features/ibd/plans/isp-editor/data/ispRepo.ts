@@ -7,6 +7,7 @@
 import type { GoalItem } from '@/features/shared/goal/goalTypes';
 import { PLAN_GOALS_FIELDS, PLAN_GOALS_SELECT_FIELDS } from '@/sharepoint/fields';
 import { resolveListTitle } from '@/sharepoint/spListConfig';
+import { buildEq } from '@/sharepoint/query/builders';
 
 /* ─── 共有型定義 (goalTypes.ts から re-export) ─── */
 
@@ -237,7 +238,7 @@ export async function fetchISPPlans(
 
   const rows = await client.listItems<SpPlanGoalRow>(listTitle, {
     select: [...PLAN_GOALS_SELECT_FIELDS],
-    filter: `${F.userCode} eq '${userCode}'`,
+    filter: buildEq(F.userCode, userCode),
     orderby: `${F.sortOrder} asc`,
     top: 100,
     signal,

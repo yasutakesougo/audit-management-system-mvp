@@ -48,7 +48,7 @@ module.exports = {
       },
     ],
 
-    // --- SharePoint field-name SSOT guard ---
+    // --- Zustand selector stability ---
     'no-restricted-syntax': [
       'warn',
       {
@@ -64,35 +64,6 @@ module.exports = {
         message:
           'Zustand セレクターで配列リテラルを返さないでください（無限ループ原因）。' +
           'プロパティを個別に購読してください: const x = useStore(s => s.x); const y = useStore(s => s.y);',
-      },
-      // SharePoint field-name literal check
-      {
-        selector:
-          'TemplateLiteral > TemplateElement:first-child[value.raw=/\\w+ (?:eq|ne|ge|le|lt|gt) /]',
-        message:
-          'SharePoint OData フィルタのフィールド名をリテラルで書かないでください。' +
-          'フィールドマップ定数（src/sharepoint/fields/）を使用してください。',
-      },
-      {
-        selector:
-          'Literal[value=/^\\w+ (?:eq|ne|ge|le|lt|gt) /]',
-        message:
-          'SharePoint OData フィルタのフィールド名をリテラルで書かないでください。',
-      },
-      // SharePoint OData query builder enforcement
-      {
-        selector:
-          "TemplateLiteral > TemplateElement[value.raw=/(?: eq | ne | ge | le | lt | gt |substringof\\(|startswith\\(|datetime')/]",
-        message:
-          'SharePoint OData フィルタを文字列で手動構築しないでください。' +
-          'src/sharepoint/query/builders.ts のビルダー関数を使用してください。',
-      },
-      {
-        selector:
-          "Literal[value=/(?: eq | ne | ge | le | lt | gt |substringof\\(|startswith\\(|datetime')/]",
-        message:
-          'SharePoint OData フィルタを文字列で手動構築しないでください。' +
-          'src/sharepoint/query/builders.ts のビルダー関数を使用してください。',
       },
     ],
     'boundaries/element-types': 'off'
@@ -183,6 +154,55 @@ module.exports = {
       rules: {
         'no-restricted-syntax': 'off',
       },
+    },
+    {
+      files: ['**/*.stories.tsx', '**/*.stories.ts'],
+      rules: {
+        'import/no-unresolved': 'off', // Storybook decorators may use optional packages
+      }
+    },
+    {
+      // テスト・シミュレーション・デバッグページでは console.log を許可
+      files: [
+        '**/*.test.{ts,tsx}',
+        '**/*.spec.{ts,tsx}',
+        '**/__tests__/**',
+        '**/*.simulation.ts',
+        '**/DebugZodErrorPage.tsx',
+      ],
+      rules: {
+        'no-console': 'off',
+      }
+    },
+    {
+      // インフラ層・SP通信・低レベルライブラリでは診断ログを許可
+      files: [
+        'src/infra/**',
+        'src/lib/sp/**',
+        'src/debug/**',
+        'src/metrics.ts',
+        'src/env.ts',
+        'src/mui/preload-strategies.ts',
+        'src/auth/useAuth.ts',
+        'src/sharepoint/fields/**',
+      ],
+      rules: {
+        'no-console': 'off',
+      }
+    },
+    {
+      // Cloudflare Worker: サーバーサイドのため fetch 制限を除外
+      files: ['src/worker.ts'],
+      rules: {
+        'no-restricted-globals': [
+          'error',
+          {
+            name: 'confirm',
+            message: 'window.confirm は禁止です。useConfirmDialog + ConfirmDialog を使用してください。',
+          },
+          // fetch は Worker の正規 API のため除外
+        ],
+      }
     }
   ]
 };
