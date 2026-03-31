@@ -21,6 +21,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SpHandoffItem } from '../handoffTypes';
+import { FIELD_MAP_HANDOFF } from '@/sharepoint/fields/handoffFields';
 
 // ────────────────────────────────────────────────────────────
 // Mocks — 依存モジュール
@@ -577,7 +578,7 @@ describe('HandoffApi', () => {
       expect(records[0].userCode).toBe('U001');
 
       const call = mockSP.spFetch.mock.calls[0][0];
-      expect(call).toContain("UserCode eq 'U001'");
+      expect(call).toContain(`${FIELD_MAP_HANDOFF.userCode} eq 'U001'`);
     });
 
     it('today スコープで日付フィルタが追加される', async () => {
@@ -587,7 +588,7 @@ describe('HandoffApi', () => {
       await api.getUserHandoffRecords('U001', 'today');
 
       const call = mockSP.spFetch.mock.calls[0][0];
-      expect(call).toContain("UserCode eq 'U001'");
+      expect(call).toContain(`${FIELD_MAP_HANDOFF.userCode} eq 'U001'`);
       expect(call).toContain('CreatedAt ge');
       expect(call).toContain('CreatedAt le');
     });

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { loadHolidaysFromSharePoint, __test__ } from '../holidayLoader';
 import { getHolidayLabel, resetDynamicHolidays } from '../holidays';
+import { HOLIDAY_MASTER_FIELDS } from '@/sharepoint/fields/holidayFields';
 
 import type { UseSP } from '@/lib/spClient';
 
@@ -64,7 +65,7 @@ describe('holidayLoader', () => {
 
       expect(mockListItems).toHaveBeenCalledWith('Holiday_Master', {
         select: expect.arrayContaining(['Id']),
-        filter: "IsActive eq true and FiscalYear eq '2026'",
+        filter: `${HOLIDAY_MASTER_FIELDS.isActive} eq true and ${HOLIDAY_MASTER_FIELDS.fiscalYear} eq '2026'`,
         top: 500,
       });
     });

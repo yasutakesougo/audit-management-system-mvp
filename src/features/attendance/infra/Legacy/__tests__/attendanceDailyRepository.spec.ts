@@ -48,7 +48,7 @@ describe('attendanceDailyRepository', () => {
     expect(calledListTitle).toBe(listTitle);
     expect(select).toContain(ATTENDANCE_DAILY_FIELDS.key);
     expect(select).not.toContain(ATTENDANCE_DAILY_FIELDS.legacyKey);
-    expect(filter).toBe("RecordDate eq '2026-03-29'");
+    expect(filter).toBe(`${ATTENDANCE_DAILY_FIELDS.recordDate} eq '2026-03-29'`);
     expect(rows[0]?.Key).toBe('U001|2026-03-29');
   });
 
@@ -102,7 +102,7 @@ describe('attendanceDailyRepository', () => {
     );
 
     const [, , filter] = client.getListItemsByTitle.mock.calls[0];
-    expect(filter).toBe("Title eq 'U003|2026-03-29'");
+    expect(filter).toBe(`${ATTENDANCE_DAILY_FIELDS.key} eq 'U003|2026-03-29'`);
     expect(client.addListItemByTitle).toHaveBeenCalledWith(
       listTitle,
       expect.objectContaining({

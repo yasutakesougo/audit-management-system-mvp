@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { UseSP } from '@/lib/spClient';
+import { PDF_OUTPUT_LOG_FIELDS } from '@/sharepoint/fields/pdfOutputLogFields';
 import {
   createPdfOutputLogRepository,
   __test__,
@@ -144,7 +145,7 @@ describe('pdfOutputLogRepository', () => {
 
       expect(mockListItems).toHaveBeenCalledWith('PdfOutput_Log', {
         select: expect.any(Array),
-        filter: "UserCode eq 'U001'",
+        filter: `${PDF_OUTPUT_LOG_FIELDS.userCode} eq 'U001'`,
         orderby: 'OutputDate desc',
         top: 50,
       });
