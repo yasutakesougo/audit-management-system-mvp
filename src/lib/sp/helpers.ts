@@ -325,8 +325,25 @@ export function resolveInternalNamesDetailed<T extends string>(
   
   for (const key in candidates) {
     if (Object.prototype.hasOwnProperty.call(candidates, key)) {
-      // Find the first candidate that exists in available fields (case-insensitive)
-      const foundCandidate = candidates[key].find(f => availableMap.has(f.toLowerCase()));
+      // 1. First Pass: Exact match (case-insensitive)
+      let foundCandidate = candidates[key].find(f => availableMap.has(f.toLowerCase()));
+      
+      // 2. Second Pass: Fuzzy match (handle SharePoint automatic suffix like '0', '1', etc.)
+      if (!foundCandidate) {
+        for (const base of candidates[key]) {
+          const lowerBase = base.toLowerCase();
+          // Check for common SharePoint suffixes (0-9)
+          for (let i = 0; i < 10; i++) {
+            const suffixCandidate = `${lowerBase}${i}`;
+            if (availableMap.has(suffixCandidate)) {
+              foundCandidate = availableMap.get(suffixCandidate);
+              break;
+            }
+          }
+          if (foundCandidate) break;
+        }
+      }
+
       const resolvedName = foundCandidate ? availableMap.get(foundCandidate.toLowerCase()) : undefined;
       
       resolved[key] = resolvedName;
