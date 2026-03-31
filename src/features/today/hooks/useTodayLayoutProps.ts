@@ -116,13 +116,15 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
 
     // ── Progress ──
     const recordCompletion = summary?.todayRecordCompletion;
-    const realPendingCount = recordCompletion
+    // recordCompletion がある場合でも total=0（高強度支援対象者なし）なら
+    // dailyRecordStatus にフォールバックして正しい pending 件数を使う。
+    const realPendingCount = (recordCompletion && recordCompletion.total > 0)
       ? recordCompletion.pending
       : Math.max(0, summary?.dailyRecordStatus?.pending ?? 0);
     const pendingRecordCount = isE2EEnv ? 3 : realPendingCount;
-    const totalRecordCount = recordCompletion
-      ? recordCompletion.total
-      : (summary.users?.length ?? 0);
+    // recordCompletion.total は IsHighIntensitySupportTarget=true の利用者数のみ。
+    // 0 の場合（該当者なし）は全利用者数にフォールバックして分母が 1 になるのを防ぐ。
+    const totalRecordCount = recordCompletion?.total || (summary.users?.length ?? 0);
 
     const facilityAttendees = summary?.attendanceSummary?.facilityAttendees ?? 0;
     const pendingAttendanceCount = isE2EEnv
@@ -137,7 +139,7 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
 
     // ── User List ──
     const pendingUserIds = new Set(
-      recordCompletion
+      (recordCompletion && recordCompletion.total > 0)
         ? recordCompletion.pendingUserIds
         : (summary?.dailyRecordStatus?.pendingUserIds ?? []),
     );
