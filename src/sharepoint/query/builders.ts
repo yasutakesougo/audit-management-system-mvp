@@ -12,11 +12,15 @@
 
 import { escapeODataString } from '@/lib/odata';
 
-type ODataPrimitive = string | number | boolean;
+type ODataPrimitive = string | number | boolean | null;
 
 // eslint-disable-next-line no-restricted-syntax
 const fmt = (v: ODataPrimitive): string => {
-  if (typeof v === 'string') return `'${escapeODataString(v)}'`;
+  if (typeof v === 'string') {
+    // If it's already an OData datetime literal, don't wrap it in extra quotes
+    if (v.startsWith("datetime'")) return v;
+    return `'${escapeODataString(v)}'`;
+  }
   return String(v);
 };
 

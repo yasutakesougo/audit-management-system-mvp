@@ -13,6 +13,7 @@ import type { HandoffComment, NewCommentInput, SpHandoffCommentItem } from './ha
 import { fromSpCommentItem, toSpCommentCreatePayload } from './handoffCommentTypes';
 import { handoffConfig } from './handoffConfig';
 import { toErrorMessage } from './handoffLoggerUtils';
+import { buildEq, joinOr } from '@/sharepoint/query/builders';
 
 // ────────────────────────────────────────────────────────────
 // Handoff Comment sub-list field SSOT
@@ -152,7 +153,7 @@ class HandoffCommentApi {
   // ── SharePoint 実装 ──
 
   private async getCommentsSP(handoffId: number): Promise<HandoffComment[]> {
-    const filter = `${SP_COMMENT_FIELDS.handoffId} eq ${handoffId}`;
+    const filter = buildEq(SP_COMMENT_FIELDS.handoffId, handoffId);
     const query = `?$filter=${encodeURIComponent(filter)}&$orderby=Created asc`;
     const response = await this.sp.spFetch(
       `lists/getbytitle('${SP_COMMENT_LIST_TITLE}')/items${query}`
@@ -204,8 +205,8 @@ class HandoffCommentApi {
 
     if (handoffIds.length === 0) return result;
 
-    const filterParts = handoffIds.map(id => `${SP_COMMENT_FIELDS.handoffId} eq ${id}`);
-    const filter = filterParts.join(' or ');
+    const filterParts = handoffIds.map(id => buildEq(SP_COMMENT_FIELDS.handoffId, id));
+    const filter = joinOr(filterParts);
     const PAGE_SIZE = 200;
     let nextUrl: string | null =
       `lists/getbytitle('${SP_COMMENT_LIST_TITLE}')/items?$select=Id,HandoffId&$filter=${encodeURIComponent(filter)}&$top=${PAGE_SIZE}`;

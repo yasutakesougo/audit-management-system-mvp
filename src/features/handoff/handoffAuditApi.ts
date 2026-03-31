@@ -17,6 +17,7 @@ import type {
 } from './handoffAuditTypes';
 import { fromSpAuditLogItem, toSpAuditLogCreatePayload } from './handoffAuditTypes';
 import { handoffConfig } from './handoffConfig';
+import { buildEq } from '@/sharepoint/query/builders';
 
 // ────────────────────────────────────────────────────────────
 // Handoff Audit sub-list field SSOT
@@ -198,7 +199,7 @@ class HandoffAuditApi {
   // ── SharePoint 実装 ──
 
   private async getAuditLogsSP(handoffId: number): Promise<HandoffAuditLog[]> {
-    const filter = `${SP_AUDIT_FIELDS.handoffId} eq ${handoffId}`;
+    const filter = buildEq(SP_AUDIT_FIELDS.handoffId, handoffId);
     const query = `?$filter=${encodeURIComponent(filter)}&$orderby=Created desc`;
     const response = await this.sp.spFetch(
       `lists/getbytitle('${SP_AUDIT_LIST_TITLE}')/items${query}`

@@ -5,6 +5,7 @@ import { applyCallLogStatusTransition } from '@/domain/callLogs/statusTransition
 import { CALL_LOG_LIST_TITLE, CALL_LOG_FIELDS } from './callLogFieldMap';
 import { mapItemToCallLog } from './mapItemToCallLog';
 import { buildCallLogCreateBody } from './buildCallLogCreateBody';
+import { buildEq, joinAnd } from '@/sharepoint/query/builders';
 
 type SpItem = Record<string, unknown>;
 
@@ -47,14 +48,14 @@ export class DataProviderCallLogRepository implements CallLogRepository {
     const clauses: string[] = [];
 
     if (options?.status) {
-      clauses.push(`${f.status} eq '${options.status}'`);
+      clauses.push(buildEq(f.status, options.status));
     }
 
     if (options?.targetStaffName) {
-      clauses.push(`${f.targetStaffName} eq '${options.targetStaffName}'`);
+      clauses.push(buildEq(f.targetStaffName, options.targetStaffName));
     }
 
-    const filter = clauses.length > 0 ? clauses.join(' and ') : undefined;
+    const filter = joinAnd(clauses) || undefined;
 
     const items = await this.provider.listItems<SpItem>(this.listTitle, {
       select: Array.from(SELECT_FIELDS),
@@ -80,7 +81,7 @@ export class DataProviderCallLogRepository implements CallLogRepository {
     try {
       const fetched = await this.provider.listItems<SpItem>(this.listTitle, {
         select: Array.from(SELECT_FIELDS),
-        filter: `${CALL_LOG_FIELDS.id} eq ${createdId}`,
+        filter: buildEq(CALL_LOG_FIELDS.id, createdId),
         top: 1,
       });
 

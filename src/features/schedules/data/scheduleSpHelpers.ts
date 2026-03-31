@@ -14,6 +14,7 @@ import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 
 import type { DateRange, SchedItem } from './port';
 import { mapSpRowToSchedule, parseSpScheduleRows } from './spRowSchema';
+import { buildDateTime, buildGe, buildLt, joinAnd } from '@/sharepoint/query/builders';
 import {
     getSchedulesListTitle,
 } from './spSchema';
@@ -77,7 +78,11 @@ export const buildRangeFilter = (range: DateRange, fields: ScheduleFieldNames): 
   const toBuffer = toIsoWithoutZ(new Date(new Date(range.to).getTime() + 24 * 60 * 60 * 1000));
   const fromLiteral = encodeDateLiteral(fromBuffer);
   const toLiteral = encodeDateLiteral(toBuffer);
-  return `(${fields.start} lt ${toLiteral}) and (${fields.end} ge ${fromLiteral})`;
+  
+  return joinAnd([
+    buildLt(fields.start, toLiteral),
+    buildGe(fields.end, fromLiteral)
+  ]);
 };
 
 export const encodeDateLiteral = (value: string): string => {
@@ -86,7 +91,7 @@ export const encodeDateLiteral = (value: string): string => {
     throw new Error(`Invalid date value: ${value}`);
   }
   const isoUtc = toIsoWithoutZ(new Date(parsed));
-  return `datetime'${isoUtc}'`;
+  return buildDateTime(isoUtc);
 };
 
 // ============================================================================

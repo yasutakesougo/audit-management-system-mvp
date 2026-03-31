@@ -14,6 +14,7 @@ import {
   HOLIDAY_MASTER_SELECT_FIELDS,
 } from '@/sharepoint/fields/holidayFields';
 import { setDynamicHolidays } from '@/sharepoint/holidays';
+import { buildEq, joinAnd } from '@/sharepoint/query/builders';
 
 /** SP リストから返される行の型 */
 export interface SpHolidayRow {
@@ -55,15 +56,17 @@ export async function loadHolidaysFromSharePoint(
     // OData フィルター構築
     const filters: string[] = [];
     if (activeOnly) {
-      filters.push(`${HOLIDAY_MASTER_FIELDS.isActive} eq true`);
+      filters.push(buildEq(HOLIDAY_MASTER_FIELDS.isActive, true));
     }
     if (fiscalYear) {
-      filters.push(`${HOLIDAY_MASTER_FIELDS.fiscalYear} eq '${fiscalYear}'`);
+      filters.push(buildEq(HOLIDAY_MASTER_FIELDS.fiscalYear, fiscalYear));
     }
+
+    const filter = joinAnd(filters) || undefined;
 
     const rows = await sp.listItems<SpHolidayRow>(HOLIDAY_MASTER_LIST_TITLE, {
       select: [...HOLIDAY_MASTER_SELECT_FIELDS] as string[],
-      filter: filters.length > 0 ? filters.join(' and ') : undefined,
+      filter,
       top: 500, // 年間最大でも100件程度なので余裕
     });
 
