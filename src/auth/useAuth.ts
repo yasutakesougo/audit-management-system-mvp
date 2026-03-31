@@ -62,7 +62,7 @@ const ensureActiveAccount = (instance: IPublicClientApplication) => {
 let totalRequestsInWindow = 0;
 let lastWindowEpoch = 0;
 const RATE_LIMIT_WINDOW_MS = 1000;
-const MAX_REQUESTS_PER_WINDOW = 5;
+const MAX_REQUESTS_PER_WINDOW = 50;
 
 export const useAuth = () => {
   // ── Determine mode ONCE (these are stable across renders) ──

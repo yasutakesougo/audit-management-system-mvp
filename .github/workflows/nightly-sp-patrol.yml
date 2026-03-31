@@ -1,0 +1,29 @@
+name: Nightly SharePoint Schema Patrol
+
+on:
+  schedule:
+    - cron: '0 18 * * *' # 毎日日本時間 3:00 (JST = UTC+9)
+  workflow_dispatch:      # 手動実行用
+
+jobs:
+  patrol:
+    name: Schema Stability Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Schema Patrol
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          LOG_FILE: './logs/today.auto.log'
+        run: |
+          # 開発環境・本番環境に応じてログファイルを取得・マウントする想定
+          # 本MVPでは、実行ログがアーティファクト等で残っている前提で動作
+          node scripts/ops/sp-schema-patrol.mjs
