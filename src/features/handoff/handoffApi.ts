@@ -14,6 +14,7 @@
 import { auditLog } from '@/lib/debugLogger';
 import { buildHandoffSelectFields } from '@/sharepoint/fields';
 import { FIELD_MAP_HANDOFF } from '@/sharepoint/fields/handoffFields';
+import { buildEq, buildGe, buildLe, joinAnd } from '@/sharepoint/query/builders';
 import { useMemo } from 'react';
 import type { UseSP } from '../../lib/spClient';
 import { useSP } from '../../lib/spClient';
@@ -132,7 +133,10 @@ class HandoffApi {
         startOfDay.setHours(0, 0, 0, 0);
         const endOfDay = new Date(now);
         endOfDay.setHours(23, 59, 59, 999);
-        filterQuery = `${FIELD_MAP_HANDOFF.createdAt} ge '${startOfDay.toISOString()}' and ${FIELD_MAP_HANDOFF.createdAt} le '${endOfDay.toISOString()}'`;
+        filterQuery = joinAnd([
+          buildGe(FIELD_MAP_HANDOFF.createdAt, startOfDay.toISOString()),
+          buildLe(FIELD_MAP_HANDOFF.createdAt, endOfDay.toISOString()),
+        ]);
       } else if (dayScope === 'yesterday') {
         const yesterday = new Date(now);
         yesterday.setDate(yesterday.getDate() - 1);
@@ -140,19 +144,20 @@ class HandoffApi {
         startOfYesterday.setHours(0, 0, 0, 0);
         const endOfYesterday = new Date(yesterday);
         endOfYesterday.setHours(23, 59, 59, 999);
-        filterQuery = `${FIELD_MAP_HANDOFF.createdAt} ge '${startOfYesterday.toISOString()}' and ${FIELD_MAP_HANDOFF.createdAt} le '${endOfYesterday.toISOString()}'`;
+        filterQuery = joinAnd([
+          buildGe(FIELD_MAP_HANDOFF.createdAt, startOfYesterday.toISOString()),
+          buildLe(FIELD_MAP_HANDOFF.createdAt, endOfYesterday.toISOString()),
+        ]);
       } else if (dayScope === 'week') {
         const weekAgo = new Date(now);
         weekAgo.setDate(weekAgo.getDate() - 7);
         weekAgo.setHours(0, 0, 0, 0);
-        filterQuery = `${FIELD_MAP_HANDOFF.createdAt} ge '${weekAgo.toISOString()}'`;
+        filterQuery = buildGe(FIELD_MAP_HANDOFF.createdAt, weekAgo.toISOString());
       }
 
       // 時間帯フィルタリングを追加
-      if (timeFilter !== 'all' && filterQuery) {
-        filterQuery += ` and ${FIELD_MAP_HANDOFF.timeBand} eq '${timeFilter}'`;
-      } else if (timeFilter !== 'all') {
-        filterQuery = `${FIELD_MAP_HANDOFF.timeBand} eq '${timeFilter}'`;
+      if (timeFilter !== 'all') {
+        filterQuery = joinAnd([filterQuery, buildEq(FIELD_MAP_HANDOFF.timeBand, timeFilter)]);
       }
 
       // 🔥 動的フィールド取得：テナント差分に完全対応
@@ -327,15 +332,18 @@ class HandoffApi {
     timeFilter: HandoffTimeFilter = 'all'
   ): Promise<HandoffRecord[]> {
     try {
-      let filterQuery = `${FIELD_MAP_HANDOFF.userCode} eq '${userCode}'`;
       const now = new Date();
+      let datePart: string | false = false;
 
       if (dayScope === 'today') {
         const startOfDay = new Date(now);
         startOfDay.setHours(0, 0, 0, 0);
         const endOfDay = new Date(now);
         endOfDay.setHours(23, 59, 59, 999);
-        filterQuery += ` and ${FIELD_MAP_HANDOFF.createdAt} ge '${startOfDay.toISOString()}' and ${FIELD_MAP_HANDOFF.createdAt} le '${endOfDay.toISOString()}'`;
+        datePart = joinAnd([
+          buildGe(FIELD_MAP_HANDOFF.createdAt, startOfDay.toISOString()),
+          buildLe(FIELD_MAP_HANDOFF.createdAt, endOfDay.toISOString()),
+        ]);
       } else if (dayScope === 'yesterday') {
         const yesterday = new Date(now);
         yesterday.setDate(yesterday.getDate() - 1);
@@ -343,12 +351,17 @@ class HandoffApi {
         startOfYesterday.setHours(0, 0, 0, 0);
         const endOfYesterday = new Date(yesterday);
         endOfYesterday.setHours(23, 59, 59, 999);
-        filterQuery += ` and ${FIELD_MAP_HANDOFF.createdAt} ge '${startOfYesterday.toISOString()}' and ${FIELD_MAP_HANDOFF.createdAt} le '${endOfYesterday.toISOString()}'`;
+        datePart = joinAnd([
+          buildGe(FIELD_MAP_HANDOFF.createdAt, startOfYesterday.toISOString()),
+          buildLe(FIELD_MAP_HANDOFF.createdAt, endOfYesterday.toISOString()),
+        ]);
       }
 
-      if (timeFilter !== 'all') {
-        filterQuery += ` and ${FIELD_MAP_HANDOFF.timeBand} eq '${timeFilter}'`;
-      }
+      const filterQuery = joinAnd([
+        buildEq(FIELD_MAP_HANDOFF.userCode, userCode),
+        datePart,
+        timeFilter !== 'all' && buildEq(FIELD_MAP_HANDOFF.timeBand, timeFilter),
+      ]);
 
       const selectFields = await this.resolveSelectFields('getUserHandoffRecords');
       const query = `?$select=${selectFields}&$filter=${filterQuery}&$orderby=CreatedAt desc`;
@@ -371,7 +384,7 @@ class HandoffApi {
    */
   async getMeetingHandoffRecords(meetingSessionKey: string): Promise<HandoffRecord[]> {
     try {
-      const filterQuery = `${FIELD_MAP_HANDOFF.meetingSessionKey} eq '${meetingSessionKey}'`;
+      const filterQuery = buildEq(FIELD_MAP_HANDOFF.meetingSessionKey, meetingSessionKey);
       const selectFields = await this.resolveSelectFields('getMeetingHandoffRecords');
       const query = `?$select=${selectFields}&$filter=${filterQuery}&$orderby=CreatedAt desc`;
 
@@ -440,7 +453,7 @@ class HandoffApi {
       cutoff.setDate(cutoff.getDate() - periodDays);
       cutoff.setHours(0, 0, 0, 0);
 
-      const filterQuery = `${FIELD_MAP_HANDOFF.createdAt} ge '${cutoff.toISOString()}'`;
+      const filterQuery = buildGe(FIELD_MAP_HANDOFF.createdAt, cutoff.toISOString());
 
       const selectFields = await this.resolveSelectFields('getHandoffRecordsForAnalysis');
       const query = `?$select=${selectFields}&$filter=${filterQuery}&$orderby=CreatedAt desc&$top=5000`;
