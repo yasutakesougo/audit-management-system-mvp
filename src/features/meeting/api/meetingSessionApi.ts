@@ -7,18 +7,23 @@
 
 import { readOptionalEnv } from '@/lib/env';
 import { meetingLogger } from '../logging/meetingLogger';
-import type {
-    MeetingKind,
-    MeetingSession,
-    SpMeetingSessionItem,
-} from '../meetingDataTypes';
 import {
     fromSpMeetingSessionFields,
+    type MeetingKind,
     MEETING_LIST_NAMES,
     MEETING_SELECT_FIELDS,
     MEETING_SESSION_FILTER_FIELDS,
+    type MeetingSession,
+    type SpMeetingSessionItem,
     toSpMeetingSessionFields,
 } from '../meetingDataTypes';
+import {
+  buildEq,
+  buildGe,
+  buildLe,
+  buildStartsWith,
+  joinAnd,
+} from '@/sharepoint/query/builders';
 
 // Environment-driven list configuration
 const SESSIONS_LIST =
@@ -102,7 +107,7 @@ export function createMeetingSessionApi(deps: MeetingApiDeps) {
       await getListItemsByTitle<SpMeetingSessionItem>(
         SESSIONS_LIST,
         [MEETING_SELECT_FIELDS.SESSIONS],
-        `${MEETING_SESSION_FILTER_FIELDS.id} eq ${sessionId}`,
+        buildEq(MEETING_SESSION_FILTER_FIELDS.id, sessionId),
       );
 
     if (currentSessions.length === 0) {
@@ -139,7 +144,7 @@ export function createMeetingSessionApi(deps: MeetingApiDeps) {
     const sessions = await getListItemsByTitle<SpMeetingSessionItem>(
       SESSIONS_LIST,
       [MEETING_SELECT_FIELDS.SESSIONS],
-      `${MEETING_SESSION_FILTER_FIELDS.id} eq ${sessionId}`,
+      buildEq(MEETING_SESSION_FILTER_FIELDS.id, sessionId),
     );
     return sessions.length === 0 ? null : fromSpMeetingSessionFields(sessions[0]);
   };
@@ -149,7 +154,7 @@ export function createMeetingSessionApi(deps: MeetingApiDeps) {
     const sessions = await getListItemsByTitle<SpMeetingSessionItem>(
       SESSIONS_LIST,
       [MEETING_SELECT_FIELDS.SESSIONS],
-      `${MEETING_SESSION_FILTER_FIELDS.sessionKey} eq '${sessionKey}'`,
+      buildEq(MEETING_SESSION_FILTER_FIELDS.sessionKey, sessionKey),
     );
     return sessions.length === 0 ? null : fromSpMeetingSessionFields(sessions[0]);
   };
@@ -160,11 +165,11 @@ export function createMeetingSessionApi(deps: MeetingApiDeps) {
     dateTo?: string,
     kind?: MeetingKind,
   ): Promise<MeetingSession[]> => {
-    const filterParts: string[] = [];
-    if (dateFrom) filterParts.push(`${MEETING_SESSION_FILTER_FIELDS.date} ge '${dateFrom}'`);
-    if (dateTo) filterParts.push(`${MEETING_SESSION_FILTER_FIELDS.date} le '${dateTo}'`);
-    if (kind) filterParts.push(`${MEETING_SESSION_FILTER_FIELDS.meetingKind} eq '${kind}'`);
-    const filterString = filterParts.join(' and ');
+    const filterParts: (string | undefined)[] = [];
+    if (dateFrom) filterParts.push(buildGe(MEETING_SESSION_FILTER_FIELDS.date, dateFrom));
+    if (dateTo) filterParts.push(buildLe(MEETING_SESSION_FILTER_FIELDS.date, dateTo));
+    if (kind) filterParts.push(buildEq(MEETING_SESSION_FILTER_FIELDS.meetingKind, kind));
+    const filterString = joinAnd(filterParts);
 
     const sessions = await getListItemsByTitle<SpMeetingSessionItem>(
       SESSIONS_LIST,
@@ -178,7 +183,7 @@ export function createMeetingSessionApi(deps: MeetingApiDeps) {
 
   /** Get sessions by date (YYYY-MM-DD format) */
   const getByDate = async (date: string): Promise<MeetingSession[]> => {
-    const filter = `startswith(SessionKey,'${date}_')`;
+    const filter = buildStartsWith(MEETING_SESSION_FILTER_FIELDS.sessionKey, `${date}_`);
     const sessions = await getListItemsByTitle<SpMeetingSessionItem>(
       SESSIONS_LIST,
       [MEETING_SELECT_FIELDS.SESSIONS],

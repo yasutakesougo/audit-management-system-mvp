@@ -17,7 +17,7 @@ import {
   resolveInternalNamesDetailed, 
   areEssentialFieldsResolved 
 } from '@/lib/sp/helpers';
-// Removed unused reportResourceResolution
+import { buildEq, buildSubstringOf, joinAnd, joinOr } from '@/sharepoint/query/builders';
 
 import { 
   ATTENDANCE_DAILY_LIST_TITLE,
@@ -67,7 +67,7 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
     try {
       const rows = await this.provider.listItems<Record<string, unknown>>(this.listTitleUsers, {
         select: ATTENDANCE_USERS_SELECT_FIELDS as unknown as string[],
-        filter: `${ATTENDANCE_USERS_FIELDS.isActive} eq true`,
+        filter: buildEq(ATTENDANCE_USERS_FIELDS.isActive as string, true),
         orderby: ATTENDANCE_USERS_FIELDS.userCode as string,
         signal
       });
@@ -89,7 +89,7 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
 
       const rows = await this.provider.listItems<Record<string, unknown>>(this.listTitleDaily, {
         select: fields.select as string[],
-        filter: `${fields.recordDate as string} eq '${params.recordDate}'`,
+        filter: buildEq(fields.recordDate as string, params.recordDate),
 
         signal: params.signal
       });
@@ -111,9 +111,17 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
       const { UserCode, RecordDate } = item;
       const key = `${UserCode}_${RecordDate}`;
 
+      const filter = joinOr([
+        buildEq(fields.key as string, key),
+        `(${joinAnd([
+          buildEq(fields.userCode as string, UserCode),
+          buildEq(fields.recordDate as string, RecordDate),
+        ])})`,
+      ]);
+
       const existing = await this.provider.listItems<Record<string, unknown>>(this.listTitleDaily, {
         select: ['Id'],
-        filter: `${fields.key} eq '${key}' or (${fields.userCode} eq '${UserCode}' and ${fields.recordDate} eq '${RecordDate}')`,
+        filter,
         top: 1,
         signal: params?.signal
       });
@@ -156,7 +164,7 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
 
       const rows = await this.provider.listItems<Record<string, unknown>>(this.listTitleNurse, {
         select: fields.select as string[],
-        filter: `substringof('${recordDate}', ${fields.dateField as string})`, // Simple match for demo/compat
+        filter: buildSubstringOf(fields.dateField as string, recordDate),
 
       });
 

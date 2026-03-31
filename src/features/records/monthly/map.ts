@@ -2,6 +2,14 @@
 // Power AutomateとTypeScriptで共通利用
 
 import type { IsoDate, MonthlyRecordKey, MonthlySummary, MonthlySummaryId, YearMonth } from './types';
+import {
+  buildDateTime,
+  buildEq,
+  buildGe,
+  buildLt,
+  joinAnd,
+  joinOr,
+} from '@/sharepoint/query/builders';
 
 /** MonthlyRecord_Summary リストのフィールド定義 (OData フィルタ SSOT) */
 const MONTHLY_RECORD_FIELDS = {
@@ -187,28 +195,28 @@ export function buildMonthlyRecordFilter(options: {
   userIds?: string[];
   minCompletionRate?: number;
 }): string {
-  const filters: string[] = [];
+  const filters: (string | undefined)[] = [];
 
   if (options.yearMonth) {
-    filters.push(`${MONTHLY_RECORD_FIELDS.yearMonth} eq '${options.yearMonth}'`);
+    filters.push(buildEq(MONTHLY_RECORD_FIELDS.yearMonth, options.yearMonth));
   }
 
   if (options.userId) {
-    filters.push(`${MONTHLY_RECORD_FIELDS.userCode} eq '${options.userId}'`);
+    filters.push(buildEq(MONTHLY_RECORD_FIELDS.userCode, options.userId));
   }
 
   if (options.userIds && options.userIds.length > 0) {
-    const userFilter = options.userIds
-      .map(id => `${MONTHLY_RECORD_FIELDS.userCode} eq '${id}'`)
-      .join(' or ');
-    filters.push(`(${userFilter})`);
+    const userFilters = options.userIds.map(id =>
+      buildEq(MONTHLY_RECORD_FIELDS.userCode, id)
+    );
+    filters.push(`(${joinOr(userFilters)})`);
   }
 
   if (typeof options.minCompletionRate === 'number') {
-    filters.push(`${MONTHLY_RECORD_FIELDS.completionRate} ge ${options.minCompletionRate}`);
+    filters.push(buildGe(MONTHLY_RECORD_FIELDS.completionRate, options.minCompletionRate));
   }
 
-  return filters.length > 0 ? filters.join(' and ') : '';
+  return joinAnd(filters);
 }
 
 /**
@@ -220,25 +228,25 @@ export function buildDailyRecordFilter(options: {
   userIds?: string[];
 }): string {
   const { startISO, endISO } = getMonthRange(options.yearMonth);
-  const filters: string[] = [];
+  const filters: (string | undefined)[] = [];
 
   // 日付範囲
-  filters.push(`(${DAILY_RECORD_FILTER_FIELDS.recordDate} ge datetime'${startISO}')`);
-  filters.push(`(${DAILY_RECORD_FILTER_FIELDS.recordDate} lt datetime'${endISO}')`);
+  filters.push(buildGe(DAILY_RECORD_FILTER_FIELDS.recordDate, buildDateTime(startISO)));
+  filters.push(buildLt(DAILY_RECORD_FILTER_FIELDS.recordDate, buildDateTime(endISO)));
 
   // ユーザー指定
   if (options.userId) {
-    filters.push(`(${DAILY_RECORD_FILTER_FIELDS.userLookupCode} eq '${options.userId}')`);
+    filters.push(buildEq(DAILY_RECORD_FILTER_FIELDS.userLookupCode, options.userId));
   }
 
   if (options.userIds && options.userIds.length > 0) {
-    const userFilter = options.userIds
-      .map(id => `${DAILY_RECORD_FILTER_FIELDS.userLookupCode} eq '${id}'`)
-      .join(' or ');
-    filters.push(`(${userFilter})`);
+    const userFilters = options.userIds.map(id =>
+      buildEq(DAILY_RECORD_FILTER_FIELDS.userLookupCode, id)
+    );
+    filters.push(`(${joinOr(userFilters)})`);
   }
 
-  return filters.join(' and ');
+  return joinAnd(filters);
 }
 
 /**

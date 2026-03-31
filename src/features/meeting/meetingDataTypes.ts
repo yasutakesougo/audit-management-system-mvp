@@ -11,6 +11,12 @@
  */
 
 import type { MeetingKind, MeetingStepId } from './meetingSteps';
+import {
+  buildEq,
+  buildGe,
+  buildLe,
+  joinAnd,
+} from '@/sharepoint/query/builders';
 
 // Re-export types for external use
 export type { MeetingKind, MeetingStepId };
@@ -424,36 +430,24 @@ export function buildMeetingSessionFilter(options: {
   status?: MeetingSessionStatus;
   chairpersonUserId?: string;
 }): string {
-  const filters: string[] = [];
-
-  if (options.dateFrom) {
-    filters.push(`${MEETING_SESSION_FILTER_FIELDS.date} ge '${options.dateFrom}'`);
-  }
-
-  if (options.dateTo) {
-    filters.push(`${MEETING_SESSION_FILTER_FIELDS.date} le '${options.dateTo}'`);
-  }
-
-  if (options.meetingKind) {
-    filters.push(`${MEETING_SESSION_FILTER_FIELDS.meetingKind} eq '${options.meetingKind}'`);
-  }
-
-  if (options.status) {
-    filters.push(`${MEETING_SESSION_FILTER_FIELDS.status} eq '${options.status}'`);
-  }
-
+  const filters: (string | undefined)[] = [];
+  if (options.dateFrom) filters.push(buildGe(MEETING_SESSION_FILTER_FIELDS.date, options.dateFrom));
+  if (options.dateTo) filters.push(buildLe(MEETING_SESSION_FILTER_FIELDS.date, options.dateTo));
+  if (options.meetingKind) filters.push(buildEq(MEETING_SESSION_FILTER_FIELDS.meetingKind, options.meetingKind));
+  if (options.status) filters.push(buildEq(MEETING_SESSION_FILTER_FIELDS.status, options.status));
   if (options.chairpersonUserId) {
-    filters.push(`${MEETING_SESSION_FILTER_FIELDS.chairpersonUserId} eq '${options.chairpersonUserId}'`);
+    filters.push(buildEq(MEETING_SESSION_FILTER_FIELDS.chairpersonUserId, options.chairpersonUserId));
   }
 
-  return filters.length > 0 ? `$filter=${filters.join(' and ')}` : '';
+  const filterString = joinAnd(filters);
+  return filterString ? `$filter=${filterString}` : '';
 }
 
 /**
  * Build OData filter for meeting steps by session
  */
 export function buildMeetingStepsFilter(sessionId: number): string {
-  return `$filter=${MEETING_SESSION_FILTER_FIELDS.sessionId} eq ${sessionId}`;
+  return `$filter=${buildEq(MEETING_SESSION_FILTER_FIELDS.sessionId, sessionId)}`;
 }
 
 /**

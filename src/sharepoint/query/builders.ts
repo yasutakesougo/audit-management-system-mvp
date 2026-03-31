@@ -46,6 +46,23 @@ export const buildGt = (field: string, value: string | number): string =>
 export const buildLt = (field: string, value: string | number): string =>
   `${field} lt ${fmt(value)}`;
 
+// ── Search & Functions ───────────────────────────────────────────────────────
+
+/** substringof('value', field) */
+// eslint-disable-next-line no-restricted-syntax
+export const buildSubstringOf = (field: string, value: string): string =>
+  `substringof('${escapeODataString(value)}', ${field})`;
+
+/** startswith(field, 'value') */
+// eslint-disable-next-line no-restricted-syntax
+export const buildStartsWith = (field: string, value: string): string =>
+  `startswith(${field}, '${escapeODataString(value)}')`;
+
+/** OData datetime literal: datetime'YYYY-MM-DDTHH:mm:ssZ' */
+// eslint-disable-next-line no-restricted-syntax
+export const buildDateTime = (isoDate: string): string =>
+  `datetime'${isoDate}'`;
+
 // ── Logical combinators ──────────────────────────────────────────────────────
 
 /** Join non-empty filter strings with ' and '. */

@@ -28,6 +28,7 @@ import {
   ATTENDANCE_DAILY_LIST_TITLE,
 } from '@/sharepoint/fields/attendanceFields';
 import { LIST_CONFIG, ListKeys } from '@/sharepoint/fields/listRegistry';
+import { buildEq } from '@/sharepoint/query/builders';
 import { methodImpliesShuttle } from '@/features/attendance/transportMethod';
 import type { TransportLogEntry } from './transportStatusLogic';
 import type { TransportDirection, TransportLegStatus } from './transportTypes';
@@ -134,7 +135,7 @@ export async function loadTransportLogs(
   try {
     const rows = await client.listItems<SpTransportLogRow>(listTitle, {
       select: [...TRANSPORT_LOG_SELECT_FIELDS],
-      filter: `${TRANSPORT_LOG_FIELDS.recordDate} eq '${recordDate}'`,
+      filter: buildEq(TRANSPORT_LOG_FIELDS.recordDate, recordDate),
       top: 200, // max expected per day (users × 2 directions)
     });
 
@@ -185,7 +186,7 @@ export async function saveTransportLog(
     // Step 1: Check if item already exists
     const existing = await client.listItems<SpTransportLogRow>(listTitle, {
       select: ['Id'],
-      filter: `${TRANSPORT_LOG_FIELDS.title} eq '${titleKey}'`,
+      filter: buildEq(TRANSPORT_LOG_FIELDS.title, titleKey),
       top: 1,
     });
 
@@ -272,7 +273,7 @@ export async function syncToAttendanceDaily(
     // Look up existing daily record by Key
     const existing = await client.listItems<{ Id: number }>(listTitle, {
       select: ['Id'],
-      filter: `${ATTENDANCE_DAILY_FIELDS.key} eq '${dailyKey}'`,
+      filter: buildEq(ATTENDANCE_DAILY_FIELDS.key, dailyKey),
       top: 1,
     });
 
