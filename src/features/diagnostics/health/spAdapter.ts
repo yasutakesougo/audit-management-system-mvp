@@ -10,6 +10,7 @@ export type SpListInfo = {
 
 export type SpFieldInfo = {
   internalName: string;
+  staticName: string;
   typeAsString?: string;
 };
 
@@ -54,7 +55,7 @@ export function createSpAdapterWithAuth(acquireToken: () => Promise<string | nul
     async getCurrentUser() {
       // ✅ SharePoint 標準 /web/currentuser を使用（業務リストとは切り離す）
       const res = await callSp(() =>
-        client.spFetch("/web/currentuser?$select=Id,Title,Email")
+        client.spFetch("/currentuser?$select=Id,Title,Email")
       );
       const json = (await res.json()) as Record<string, number | string | undefined>;
       return {
@@ -67,7 +68,7 @@ export function createSpAdapterWithAuth(acquireToken: () => Promise<string | nul
     async getWebTitle() {
       // Use spFetch to GET /web with Title select
       const res = await callSp(() =>
-        client.spFetch("/web?$select=Title")
+        client.spFetch("/?$select=Title")
       );
       const json = (await res.json()) as Record<string, string | undefined>;
       return typeof json.Title === "string" ? json.Title : "(untitled)";
@@ -77,7 +78,7 @@ export function createSpAdapterWithAuth(acquireToken: () => Promise<string | nul
       // Query list metadata via spFetch
       const res = await callSp(() =>
         client.spFetch(
-          `/web/lists/GetByTitle('${encodeURIComponent(listTitle)}')?$select=Id,Title`
+          `/lists/GetByTitle('${encodeURIComponent(listTitle)}')?$select=Id,Title`
         )
       );
       const json = (await res.json()) as Record<string, string>;
@@ -91,13 +92,14 @@ export function createSpAdapterWithAuth(acquireToken: () => Promise<string | nul
       // Query fields via spFetch
       const res = await callSp(() =>
         client.spFetch(
-          `/web/lists/GetByTitle('${encodeURIComponent(listTitle)}')/fields?$select=InternalName,TypeAsString`
+          `/lists/GetByTitle('${encodeURIComponent(listTitle)}')/fields?$select=InternalName,StaticName,TypeAsString`
         )
       );
       const data = (await res.json()) as Record<string, unknown>;
       const fieldArray = Array.isArray(data?.value) ? (data.value as Array<Record<string, unknown>>) : [];
       return fieldArray.map((f) => ({
         internalName: typeof f.InternalName === "string" ? f.InternalName : "",
+        staticName: typeof f.StaticName === "string" ? f.StaticName : "",
         typeAsString: typeof f.TypeAsString === "string" ? f.TypeAsString : undefined,
       }));
     },
