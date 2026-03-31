@@ -233,7 +233,7 @@ const mergeSpecialNotes = (current: string, incoming: string): string => {
  * Build OData filter for date range
  */
 const buildDateRangeFilter = (startDate: string, endDate: string): string => {
-  return `Title ge '${startDate}' and Title le '${endDate}'`;
+  return `${DAILY_RECORD_FIELDS.title} ge '${startDate}' and ${DAILY_RECORD_FIELDS.title} le '${endDate}'`;
 };
 
 /**
@@ -811,7 +811,7 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
           }
 
           for (const chunk of chunkedUserIds) {
-            const userFilters = chunk.map(uid => `UserID eq '${uid}'`).join(' or ');
+            const userFilters = chunk.map(uid => `${DAILY_RECORD_ROWS_FIELDS.userId} eq '${uid}'`).join(' or ');
             const transportUrl = `${transportListPath}/items?$filter=${userFilters}&$select=UserID`;
             
             const tRes = await this.spFetch(transportUrl, { signal });
@@ -860,9 +860,9 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
         const rowsListPath = buildListPath(rowsListTitle);
         
         // 最新バージョンに合致する行のみを取得（Version切り替えによるアトミック読込）
-        const filter = latestVersion > 0 
-          ? `ParentID eq ${item.Id} and Version eq ${latestVersion}`
-          : `ParentID eq ${item.Id}`; // バージョンがない時期のデータ
+        const filter = latestVersion > 0
+          ? `${DAILY_RECORD_ROWS_FIELDS.parentId} eq ${item.Id} and ${DAILY_RECORD_ROWS_FIELDS.version} eq ${latestVersion}`
+          : `${DAILY_RECORD_ROWS_FIELDS.parentId} eq ${item.Id}`; // バージョンがない時期のデータ
 
         const res = await this.spFetch(`${rowsListPath}/items?$filter=${filter}&$select=Payload`);
         const json = await res.json();
@@ -1054,7 +1054,7 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
       }
 
       const queryParams = new URLSearchParams();
-      queryParams.set('$filter', `Title eq '${date}'`);
+      queryParams.set('$filter', `${DAILY_RECORD_FIELDS.title} eq '${date}'`);
       queryParams.set('$top', '1');
       queryParams.set('$select', [
         'Id',

@@ -19,6 +19,15 @@ import { fromSpAuditLogItem, toSpAuditLogCreatePayload } from './handoffAuditTyp
 import { handoffConfig } from './handoffConfig';
 
 // ────────────────────────────────────────────────────────────
+// Handoff Audit sub-list field SSOT
+// ────────────────────────────────────────────────────────────
+
+/** Field names for the Handoff Audit Log sub-list (separate from main Handoff list) */
+const SP_AUDIT_FIELDS = {
+  handoffId: 'HandoffId',
+} as const;
+
+// ────────────────────────────────────────────────────────────
 // localStorage ストレージ
 // ────────────────────────────────────────────────────────────
 
@@ -189,7 +198,7 @@ class HandoffAuditApi {
   // ── SharePoint 実装 ──
 
   private async getAuditLogsSP(handoffId: number): Promise<HandoffAuditLog[]> {
-    const filter = `HandoffId eq ${handoffId}`;
+    const filter = `${SP_AUDIT_FIELDS.handoffId} eq ${handoffId}`;
     const query = `?$filter=${encodeURIComponent(filter)}&$orderby=Created desc`;
     const response = await this.sp.spFetch(
       `lists/getbytitle('${SP_AUDIT_LIST_TITLE}')/items${query}`

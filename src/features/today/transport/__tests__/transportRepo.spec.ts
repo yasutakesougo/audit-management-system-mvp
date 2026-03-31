@@ -95,7 +95,7 @@ describe('transportRepo', () => {
       expect(client.listItems).toHaveBeenCalledWith(
         'Transport_Log',
         expect.objectContaining({
-          filter: "RecordDate eq '2026-03-13'",
+          filter: `${TRANSPORT_LOG_FIELDS.recordDate} eq '2026-03-13'`,
         }),
       );
     });
@@ -333,7 +333,7 @@ describe('transportRepo', () => {
       expect(client.listItems).toHaveBeenCalledWith(
         'AttendanceDaily',
         expect.objectContaining({
-          filter: expect.stringContaining("Key eq 'U001_2026-03-13'"),
+          filter: expect.stringContaining(`${ATTENDANCE_DAILY_FIELDS.key} eq 'U001_2026-03-13'`),
         }),
       );
     });

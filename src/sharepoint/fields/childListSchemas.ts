@@ -10,6 +10,26 @@ export const RESULTS_LIST_TITLE      = 'SupportProcedure_Results';
 export const APPROVAL_LOGS_LIST_TITLE = 'Approval_Logs';
 export const USER_FLAGS_LIST_TITLE   = 'User_Feature_Flags';
 
+// ── Field map constants (OData filter SSOT) ─────────────────────────────────
+
+/** SupportProcedure_Results フィールドマップ */
+export const RESULTS_FIELD_MAP = {
+  parentScheduleId: 'ParentScheduleId',
+  resultDate: 'ResultDate',
+  resultStatus: 'ResultStatus',
+  resultNote: 'ResultNote',
+  staffCode: 'StaffCode',
+} as const;
+
+/** Approval_Logs フィールドマップ */
+export const APPROVAL_LOG_FIELD_MAP = {
+  parentScheduleId: 'ParentScheduleId',
+  approvedBy: 'ApprovedBy',
+  approvedAt: 'ApprovedAt',
+  approvalNote: 'ApprovalNote',
+  approvalAction: 'ApprovalAction',
+} as const;
+
 // ── SupportProcedure_Results ─────────────────────────────────────────────────
 
 export const RESULTS_FIELDS: SpFieldDef[] = [

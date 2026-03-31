@@ -14,6 +14,7 @@ import type {
 import {
     fromSpMeetingParticipationFields,
     MEETING_LIST_NAMES,
+    MEETING_PARTICIPATION_FILTER_FIELDS,
     MEETING_SELECT_FIELDS,
     toSpMeetingParticipationFields,
 } from '../meetingDataTypes';
@@ -74,7 +75,7 @@ export function createMeetingParticipationApi(deps: MeetingApiDeps) {
     const existing = await getListItemsByTitle<SpMeetingParticipationItem>(
       PARTICIPATION_LIST,
       [MEETING_SELECT_FIELDS.PARTICIPATION],
-      `Id eq ${participationId}`,
+      `${MEETING_PARTICIPATION_FILTER_FIELDS.id} eq ${participationId}`,
     );
 
     if (existing.length === 0) {
@@ -110,7 +111,7 @@ export function createMeetingParticipationApi(deps: MeetingApiDeps) {
     const items = await getListItemsByTitle<SpMeetingParticipationItem>(
       PARTICIPATION_LIST,
       [MEETING_SELECT_FIELDS.PARTICIPATION],
-      `SessionId eq ${sessionId}`,
+      `${MEETING_PARTICIPATION_FILTER_FIELDS.sessionId} eq ${sessionId}`,
       'ParticipantName',
     );
     return items.map(fromSpMeetingParticipationFields);

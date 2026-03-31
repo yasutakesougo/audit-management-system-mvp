@@ -3,6 +3,19 @@
 
 import type { IsoDate, MonthlyRecordKey, MonthlySummary, MonthlySummaryId, YearMonth } from './types';
 
+/** MonthlyRecord_Summary リストのフィールド定義 (OData フィルタ SSOT) */
+const MONTHLY_RECORD_FIELDS = {
+  yearMonth: 'YearMonth',
+  userCode: 'UserCode',
+  completionRate: 'CompletionRate',
+} as const;
+
+/** DailyRecord リストのフィールド定義 (OData フィルタ SSOT) */
+const DAILY_RECORD_FILTER_FIELDS = {
+  recordDate: 'RecordDate',
+  userLookupCode: 'UserLookup/UserCode',
+} as const;
+
 /**
  * 文字列が YearMonth 形式（YYYY-MM, 月01〜12）かを検証
  */
@@ -177,22 +190,22 @@ export function buildMonthlyRecordFilter(options: {
   const filters: string[] = [];
 
   if (options.yearMonth) {
-    filters.push(`YearMonth eq '${options.yearMonth}'`);
+    filters.push(`${MONTHLY_RECORD_FIELDS.yearMonth} eq '${options.yearMonth}'`);
   }
 
   if (options.userId) {
-    filters.push(`UserCode eq '${options.userId}'`);
+    filters.push(`${MONTHLY_RECORD_FIELDS.userCode} eq '${options.userId}'`);
   }
 
   if (options.userIds && options.userIds.length > 0) {
     const userFilter = options.userIds
-      .map(id => `UserCode eq '${id}'`)
+      .map(id => `${MONTHLY_RECORD_FIELDS.userCode} eq '${id}'`)
       .join(' or ');
     filters.push(`(${userFilter})`);
   }
 
   if (typeof options.minCompletionRate === 'number') {
-    filters.push(`CompletionRate ge ${options.minCompletionRate}`);
+    filters.push(`${MONTHLY_RECORD_FIELDS.completionRate} ge ${options.minCompletionRate}`);
   }
 
   return filters.length > 0 ? filters.join(' and ') : '';
@@ -210,17 +223,17 @@ export function buildDailyRecordFilter(options: {
   const filters: string[] = [];
 
   // 日付範囲
-  filters.push(`(RecordDate ge datetime'${startISO}')`);
-  filters.push(`(RecordDate lt datetime'${endISO}')`);
+  filters.push(`(${DAILY_RECORD_FILTER_FIELDS.recordDate} ge datetime'${startISO}')`);
+  filters.push(`(${DAILY_RECORD_FILTER_FIELDS.recordDate} lt datetime'${endISO}')`);
 
   // ユーザー指定
   if (options.userId) {
-    filters.push(`(UserLookup/UserCode eq '${options.userId}')`);
+    filters.push(`(${DAILY_RECORD_FILTER_FIELDS.userLookupCode} eq '${options.userId}')`);
   }
 
   if (options.userIds && options.userIds.length > 0) {
     const userFilter = options.userIds
-      .map(id => `UserLookup/UserCode eq '${id}'`)
+      .map(id => `${DAILY_RECORD_FILTER_FIELDS.userLookupCode} eq '${id}'`)
       .join(' or ');
     filters.push(`(${userFilter})`);
   }

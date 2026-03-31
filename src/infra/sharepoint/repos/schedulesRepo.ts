@@ -13,7 +13,7 @@
 
 import { isWriteEnabled } from '@/env';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
-import { FIELD_MAP } from '@/sharepoint/fields';
+import { FIELD_MAP, SCHEDULE_FIELD_CR014_PERSON_ID, SCHEDULE_FIELD_CR014_PERSON_TYPE, SCHEDULE_FIELD_START } from '@/sharepoint/fields';
 import type { ScheduleStatus, ScheduleServiceType, ScheduleVisibility } from '@/features/schedules/domain/types';
 import { getSchedulesListTitle } from '@/features/schedules/data/spSchema';
 
@@ -111,14 +111,14 @@ const resolveNotesFieldName = (): 'Note' | 'Notes' =>
 export function buildSchedulesFilter(args: QuerySchedulesArgs) {
   const clauses: string[] = [];
 
-  clauses.push(`EventDate ge datetime'${toIso(args.from)}'`);
-  clauses.push(`EventDate lt datetime'${toIso(args.to)}'`);
+  clauses.push(`${SCHEDULE_FIELD_START} ge datetime'${toIso(args.from)}'`);
+  clauses.push(`${SCHEDULE_FIELD_START} lt datetime'${toIso(args.to)}'`);
 
   if (args.personType) {
-    clauses.push(`cr014_personType eq '${escapeOData(args.personType)}'`);
+    clauses.push(`${SCHEDULE_FIELD_CR014_PERSON_TYPE} eq '${escapeOData(args.personType)}'`);
   }
   if (args.personId) {
-    clauses.push(`cr014_personId eq '${escapeOData(args.personId)}'`);
+    clauses.push(`${SCHEDULE_FIELD_CR014_PERSON_ID} eq '${escapeOData(args.personId)}'`);
   }
 
   return clauses.join(' and ');
@@ -465,7 +465,7 @@ export async function createSchedule(
 
   const items = await client.listItems<SpScheduleRow>(listId, {
     select,
-    filter: `Id eq ${createdId}`,
+    filter: `${FIELD_MAP.Schedules.id} eq ${createdId}`,
     top: 1,
   });
 

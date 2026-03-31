@@ -130,6 +130,24 @@ module.exports = {
           'Zustand セレクターで配列リテラルを返さないでください（無限ループ原因）。' +
           'プロパティを個別に購読してください: const x = useStore(s => s.x); const y = useStore(s => s.y);',
       },
+      // ── SharePoint field-name SSOT guard ──
+      // フィールド名をリテラルで OData フィルタに埋め込まないでください。
+      // 例: `UserCode eq '${uid}'`  →  `${SOME_FIELDS.userCode} eq '${uid}'`
+      // 参考: src/sharepoint/fields/
+      {
+        selector:
+          'TemplateLiteral > TemplateElement:first-child[value.raw=/\\w+ (?:eq|ne|ge|le|lt|gt) /]',
+        message:
+          'SharePoint OData フィルタのフィールド名をリテラルで書かないでください（例: `UserCode eq ...`）。' +
+          'フィールドマップ定数（src/sharepoint/fields/）を使用してください: `${SOME_FIELDS.fieldName} eq ...`',
+      },
+      {
+        selector:
+          'Literal[value=/^\\w+ (?:eq|ne|ge|le|lt|gt) /]',
+        message:
+          'SharePoint OData フィルタのフィールド名をリテラルで書かないでください（例: "UserCode eq ..."）。' +
+          'フィールドマップ定数（src/sharepoint/fields/）を使用してください。',
+      },
     ],
     // a11y: subtitle1/subtitle2 はデフォルトで <h6> を出力するため、
     // component prop なしでの使用を禁止し heading-order 違反を防ぐ
@@ -200,6 +218,19 @@ module.exports = {
               "NewExpression[callee.name='Date'] > :matches(Literal, TemplateLiteral):first-child",
             message:
               '文字列から Date を直接作らないでください（TZ安全な dateutils 経由で）'
+          },
+          // ── SharePoint field-name SSOT guard ──
+          {
+            selector:
+              'TemplateLiteral > TemplateElement:first-child[value.raw=/\\w+ (?:eq|ne|ge|le|lt|gt) /]',
+            message:
+              'SharePoint OData フィルタのフィールド名をリテラルで書かないでください。フィールドマップ定数（src/sharepoint/fields/）を使用してください。',
+          },
+          {
+            selector:
+              'Literal[value=/^\\w+ (?:eq|ne|ge|le|lt|gt) /]',
+            message:
+              'SharePoint OData フィルタのフィールド名をリテラルで書かないでください。フィールドマップ定数（src/sharepoint/fields/）を使用してください。',
           },
         ]
       }
@@ -322,6 +353,19 @@ module.exports = {
             message:
               'personName は廃止されました。userName を使用してください。(Phase 5 命名統一)',
           },
+          // ── SharePoint field-name SSOT guard ──
+          {
+            selector:
+              'TemplateLiteral > TemplateElement:first-child[value.raw=/\\w+ (?:eq|ne|ge|le|lt|gt) /]',
+            message:
+              'SharePoint OData フィルタのフィールド名をリテラルで書かないでください。フィールドマップ定数（src/sharepoint/fields/）を使用してください。',
+          },
+          {
+            selector:
+              'Literal[value=/^\\w+ (?:eq|ne|ge|le|lt|gt) /]',
+            message:
+              'SharePoint OData フィルタのフィールド名をリテラルで書かないでください。フィールドマップ定数（src/sharepoint/fields/）を使用してください。',
+          },
         ],
       },
     },
@@ -406,7 +450,20 @@ module.exports = {
           {
             selector: "MemberExpression[property.name='addListItemByTitle']",
             message: 'spClient.addListItemByTitle を直接使用しないでください。IDataProvider.createItem を使用してください。'
-          }
+          },
+          // ── SharePoint field-name SSOT guard ──
+          {
+            selector:
+              'TemplateLiteral > TemplateElement:first-child[value.raw=/\\w+ (?:eq|ne|ge|le|lt|gt) /]',
+            message:
+              'SharePoint OData フィルタのフィールド名をリテラルで書かないでください。フィールドマップ定数（src/sharepoint/fields/）を使用してください。',
+          },
+          {
+            selector:
+              'Literal[value=/^\\w+ (?:eq|ne|ge|le|lt|gt) /]',
+            message:
+              'SharePoint OData フィルタのフィールド名をリテラルで書かないでください。フィールドマップ定数（src/sharepoint/fields/）を使用してください。',
+          },
         ]
       }
     }

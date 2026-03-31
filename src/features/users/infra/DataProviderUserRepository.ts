@@ -30,6 +30,8 @@ import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 const DEFAULT_USERS_LIST_TITLE = 'Users_Master';
 const MAX_WRITE_RETRY = 8;
 const getTodayIsoDate = (): string => new Date().toISOString().slice(0, 10);
+/** UserTransport_Settings / UserBenefit_Profile 双方の join キー列名 */
+const ACCESSORY_LIST_JOIN_FIELD = 'UserID';
 
 /**
  * DataProviderUserRepository
@@ -250,7 +252,7 @@ export class DataProviderUserRepository implements UserRepository {
 
       if (requestedMode === 'detail' || requestedMode === 'full') {
         try {
-          const filter = `UserID eq '${domain.UserID}'`;
+          const filter = `${ACCESSORY_LIST_JOIN_FIELD} eq '${domain.UserID}'`;
           const [tRows, bRows] = await Promise.all([
             this.provider.listItems<Record<string, unknown>>(this.transportListTitle, { filter, top: 1 }).catch(() => []),
             this.provider.listItems<Record<string, unknown>>(this.benefitListTitle, { filter, top: 1 }).catch(() => [])
@@ -387,7 +389,7 @@ export class DataProviderUserRepository implements UserRepository {
     try {
       // UserID で既存レコードを検索
       const existing = await this.provider.listItems<Record<string, unknown>>(listTitle, {
-        filter: `UserID eq '${userId}'`,
+        filter: `${ACCESSORY_LIST_JOIN_FIELD} eq '${userId}'`,
         top: 1
       });
 

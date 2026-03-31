@@ -384,6 +384,36 @@ export function generateMeetingSessionKey(date: string, kind: MeetingKind): stri
   return `${date}#${kind}`;
 }
 
+/** MeetingSessions リストのフィールド定義 (OData フィルタ SSOT) */
+export const MEETING_SESSION_FILTER_FIELDS = {
+  id: 'Id',
+  sessionKey: 'SessionKey',
+  date: 'Date',
+  meetingKind: 'MeetingKind',
+  status: 'Status',
+  chairpersonUserId: 'ChairpersonUserId',
+  sessionId: 'SessionId',
+} as const;
+
+/** MeetingStepRecords リストのフィールド定義 (OData フィルタ SSOT) */
+export const MEETING_STEP_FILTER_FIELDS = {
+  id: 'Id',
+  sessionId: 'SessionId',
+  stepId: 'StepId',
+} as const;
+
+/** MeetingParticipation リストのフィールド定義 (OData フィルタ SSOT) */
+export const MEETING_PARTICIPATION_FILTER_FIELDS = {
+  id: 'Id',
+  sessionId: 'SessionId',
+} as const;
+
+/** MeetingPriorityRecords リストのフィールド定義 (OData フィルタ SSOT) */
+export const MEETING_PRIORITY_FILTER_FIELDS = {
+  id: 'Id',
+  sessionId: 'SessionId',
+} as const;
+
 /**
  * Build OData filter for meeting sessions by date range
  */
@@ -397,23 +427,23 @@ export function buildMeetingSessionFilter(options: {
   const filters: string[] = [];
 
   if (options.dateFrom) {
-    filters.push(`Date ge '${options.dateFrom}'`);
+    filters.push(`${MEETING_SESSION_FILTER_FIELDS.date} ge '${options.dateFrom}'`);
   }
 
   if (options.dateTo) {
-    filters.push(`Date le '${options.dateTo}'`);
+    filters.push(`${MEETING_SESSION_FILTER_FIELDS.date} le '${options.dateTo}'`);
   }
 
   if (options.meetingKind) {
-    filters.push(`MeetingKind eq '${options.meetingKind}'`);
+    filters.push(`${MEETING_SESSION_FILTER_FIELDS.meetingKind} eq '${options.meetingKind}'`);
   }
 
   if (options.status) {
-    filters.push(`Status eq '${options.status}'`);
+    filters.push(`${MEETING_SESSION_FILTER_FIELDS.status} eq '${options.status}'`);
   }
 
   if (options.chairpersonUserId) {
-    filters.push(`ChairpersonUserId eq '${options.chairpersonUserId}'`);
+    filters.push(`${MEETING_SESSION_FILTER_FIELDS.chairpersonUserId} eq '${options.chairpersonUserId}'`);
   }
 
   return filters.length > 0 ? `$filter=${filters.join(' and ')}` : '';
@@ -423,7 +453,7 @@ export function buildMeetingSessionFilter(options: {
  * Build OData filter for meeting steps by session
  */
 export function buildMeetingStepsFilter(sessionId: number): string {
-  return `$filter=SessionId eq ${sessionId}`;
+  return `$filter=${MEETING_SESSION_FILTER_FIELDS.sessionId} eq ${sessionId}`;
 }
 
 /**

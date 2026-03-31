@@ -15,6 +15,15 @@ import { handoffConfig } from './handoffConfig';
 import { toErrorMessage } from './handoffLoggerUtils';
 
 // ────────────────────────────────────────────────────────────
+// Handoff Comment sub-list field SSOT
+// ────────────────────────────────────────────────────────────
+
+/** Field names for the Handoff Comment sub-list (separate from main Handoff list) */
+const SP_COMMENT_FIELDS = {
+  handoffId: 'HandoffId',
+} as const;
+
+// ────────────────────────────────────────────────────────────
 // localStorage ストレージ
 // ────────────────────────────────────────────────────────────
 
@@ -143,7 +152,7 @@ class HandoffCommentApi {
   // ── SharePoint 実装 ──
 
   private async getCommentsSP(handoffId: number): Promise<HandoffComment[]> {
-    const filter = `HandoffId eq ${handoffId}`;
+    const filter = `${SP_COMMENT_FIELDS.handoffId} eq ${handoffId}`;
     const query = `?$filter=${encodeURIComponent(filter)}&$orderby=Created asc`;
     const response = await this.sp.spFetch(
       `lists/getbytitle('${SP_COMMENT_LIST_TITLE}')/items${query}`
@@ -195,7 +204,7 @@ class HandoffCommentApi {
 
     if (handoffIds.length === 0) return result;
 
-    const filterParts = handoffIds.map(id => `HandoffId eq ${id}`);
+    const filterParts = handoffIds.map(id => `${SP_COMMENT_FIELDS.handoffId} eq ${id}`);
     const filter = filterParts.join(' or ');
     const PAGE_SIZE = 200;
     let nextUrl: string | null =

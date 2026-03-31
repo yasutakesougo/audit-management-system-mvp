@@ -1,6 +1,7 @@
 import pLimit from 'p-limit';
 import type { HttpishError, SharePointListApi } from './client';
 import type { ObservationListItem } from './map';
+import { NURSE_OBSERVATIONS_FIELDS } from '@/sharepoint/fields/nurseObservationFields';
 
 const BATCH_MAX = 100;
 const PARALLEL_LIMIT = 3;
@@ -22,7 +23,7 @@ export type ObservationUpsertResult = {
 
 const escapeFilterValue = (value: string) => value.replace(/'/g, "''");
 
-const buildFilter = (key: string) => `IdempotencyKey eq '${escapeFilterValue(key)}'`;
+const buildFilter = (key: string) => `${NURSE_OBSERVATIONS_FIELDS.idempotencyKey} eq '${escapeFilterValue(key)}'`;
 
 const chunk = <T>(items: readonly T[], size: number): T[][] => {
   if (items.length === 0) return [];

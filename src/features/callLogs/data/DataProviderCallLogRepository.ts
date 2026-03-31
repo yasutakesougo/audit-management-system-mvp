@@ -80,7 +80,7 @@ export class DataProviderCallLogRepository implements CallLogRepository {
     try {
       const fetched = await this.provider.listItems<SpItem>(this.listTitle, {
         select: Array.from(SELECT_FIELDS),
-        filter: `Id eq ${createdId}`,
+        filter: `${CALL_LOG_FIELDS.id} eq ${createdId}`,
         top: 1,
       });
 

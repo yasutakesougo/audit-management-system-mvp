@@ -14,6 +14,7 @@ import type {
 import {
     fromSpMeetingPriorityFields,
     MEETING_LIST_NAMES,
+    MEETING_PRIORITY_FILTER_FIELDS,
     MEETING_SELECT_FIELDS,
     toSpMeetingPriorityFields,
 } from '../meetingDataTypes';
@@ -74,7 +75,7 @@ export function createMeetingPriorityApi(deps: MeetingApiDeps) {
     const existing = await getListItemsByTitle<SpMeetingPriorityItem>(
       PRIORITY_LIST,
       [MEETING_SELECT_FIELDS.PRIORITY_RECORDS],
-      `Id eq ${priorityId}`,
+      `${MEETING_PRIORITY_FILTER_FIELDS.id} eq ${priorityId}`,
     );
 
     if (existing.length === 0) {
@@ -110,7 +111,7 @@ export function createMeetingPriorityApi(deps: MeetingApiDeps) {
     const items = await getListItemsByTitle<SpMeetingPriorityItem>(
       PRIORITY_LIST,
       [MEETING_SELECT_FIELDS.PRIORITY_RECORDS],
-      `SessionId eq ${sessionId}`,
+      `${MEETING_PRIORITY_FILTER_FIELDS.sessionId} eq ${sessionId}`,
       'Priority',
     );
     return items.map(fromSpMeetingPriorityFields);

@@ -8,6 +8,9 @@
 export const CALL_LOG_LIST_TITLE = 'CallLogs' as const;
 
 export const CALL_LOG_FIELDS = {
+  /** SP standard: Id */
+  id: 'Id',
+
   /** Title (タイトル列: 件名 + 発信者の複合) */
   title: 'Title',
 
