@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { auditLog } from '@/lib/debugLogger';
-import { escapeODataString } from '@/lib/odata';
+import { buildEq } from '@/sharepoint/query/builders';
 import { resolveInternalNames } from '@/lib/sp/helpers';
 import type { 
   MonitoringMeetingRepository 
@@ -76,7 +76,7 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
     try {
       const rows = await this.provider.listItems<SpMonitoringMeetingRow>(this.listTitle, {
         select: ['Id', 'Title', ...Object.values(fields)],
-        filter: `${fields.recordId} eq '${escapeODataString(id)}'`,
+        filter: buildEq(fields.recordId, id),
         top: 1,
       });
       return rows[0] ? this.mapSpRowToRecord(rows[0], fields) : null;
@@ -91,7 +91,7 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
     try {
       const rows = await this.provider.listItems<SpMonitoringMeetingRow>(this.listTitle, {
         select: ['Id', 'Title', ...Object.values(fields)],
-        filter: `${fields.userId} eq '${escapeODataString(userId)}'`,
+        filter: buildEq(fields.userId, userId),
         orderby: `${fields.meetingDate} desc`,
       });
       return rows.map(r => this.mapSpRowToRecord(r, fields));
@@ -106,7 +106,7 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
     try {
       const rows = await this.provider.listItems<SpMonitoringMeetingRow>(this.listTitle, {
         select: ['Id', 'Title', ...Object.values(fields)],
-        filter: `${fields.ispId} eq '${escapeODataString(ispId)}'`,
+        filter: buildEq(fields.ispId, ispId),
         orderby: `${fields.meetingDate} desc`,
       });
       return rows.map(r => this.mapSpRowToRecord(r, fields));
@@ -154,7 +154,7 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
   private async findSpItemIdByRecordId(recordId: string, fields: Record<string, string>): Promise<number | null> {
     const rows = await this.provider.listItems<SpMonitoringMeetingRow>(this.listTitle, {
       select: ['Id'],
-      filter: `${fields.recordId} eq '${escapeODataString(recordId)}'`,
+      filter: buildEq(fields.recordId, recordId),
       top: 1,
     });
     const spId = rows[0]?.Id;
