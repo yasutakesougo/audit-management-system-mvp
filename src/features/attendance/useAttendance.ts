@@ -75,7 +75,7 @@ export function useAttendance(): UseAttendanceReturn {
     setStatus('loading');
     try {
       const [users, dailyItems] = await Promise.all([
-        repository.getActiveUsers(),
+        repository.getActiveUsers(filters.date),
         repository.getDailyByDate({ recordDate: filters.date }),
       ]);
       const merged = mergeRows(users, dailyItems, filters.date);

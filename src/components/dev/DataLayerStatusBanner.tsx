@@ -11,14 +11,14 @@ export const DataLayerStatusBanner: React.FC = () => {
   const { resolutions, currentProvider } = useDataProviderObservabilityStore();
   
   const resList = Object.values(resolutions);
-  const criticals = resList.filter(r => r.status === 'missing_required');
+  const criticals = resList.filter(r => r.status === 'missing_required' || r.status === 'schema_mismatch');
   const fallbacks = resList.filter(r => r.status === 'fallback_triggered');
-  const mismatches = resList.filter(r => r.status === 'schema_mismatch');
+  const warnings = resList.filter(r => r.status === 'schema_warning');
 
   // InMemory/Local プロバイダーでは空リストが正常なため、フィールド欠損は誤検知となる
   if (currentProvider !== 'sharepoint') return null;
 
-  if (criticals.length === 0 && fallbacks.length === 0 && mismatches.length === 0) {
+  if (criticals.length === 0 && fallbacks.length === 0 && warnings.length === 0) {
     return null;
   }
 
@@ -49,9 +49,9 @@ export const DataLayerStatusBanner: React.FC = () => {
             {r.resourceName}代替使用中
           </span>
         ))}
-        {mismatches.map(r => (
+        {warnings.map(r => (
           <span key={r.resourceName} style={{ color: '#d48806' }}>
-            {r.resourceName}列不足
+            {r.resourceName}一部列名不一致
           </span>
         ))}
       </div>

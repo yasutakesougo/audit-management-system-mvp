@@ -4,52 +4,67 @@ import { HealthContext, ListSpec } from "../features/diagnostics/health/types";
 import { getRuntimeEnv } from "@/env";
 
 /**
- * ✅ 診断対象リスト（3つのメインリスト + 必須フィールドチェック）
+ * ✅ 診断対象リスト（SSOT から自動生成）
  * 
- * 各リストの必須フィールドは src/sharepoint/fields.ts の定義に基づく
- * - Users_Master: Title, UserID, FullName
- * - Staff_Master: Title, StaffID, FullName  
- * - SupportRecord_Daily: Title, cr013_userId, cr013_date, cr013_reporterId
+ * 運用に必要な全リストを対象とし、必須フィールドは registry の essentialFields を使用する。
  */
-const listSpecs: ListSpec[] = [
-  {
-    key: "Users_Master",
-    displayName: "Users_Master",
-    requiredFields: [
-      { internalName: "Title", typeHint: "Text" },
-      { internalName: "UserID", typeHint: "Text" },
-      { internalName: "FullName", typeHint: "Text" },
-    ],
-    createItem: { Title: "healthcheck-user", UserID: "user-health-test", FullName: "健康診断テスト用" },
-    updateItem: { Title: "healthcheck-user-updated" },
-  },
-  {
-    key: "Staff_Master",
-    displayName: "Staff_Master",
-    requiredFields: [
-      { internalName: "Title", typeHint: "Text" },
-      { internalName: "StaffID", typeHint: "Text" },
-      { internalName: "FullName", typeHint: "Text" },
-    ],
-    createItem: { Title: "healthcheck-staff", StaffID: "staff-health-test", FullName: "スタッフ健康診断テスト用" },
-    updateItem: { Title: "healthcheck-staff-updated" },
-  },
-  {
-    key: "SupportRecord_Daily",
-    displayName: "SupportRecord_Daily",
-    requiredFields: [
-      { internalName: "Title", typeHint: "Text" },
-      { internalName: "RecordDate", typeHint: "DateTime" },
-      { internalName: "ReporterName", typeHint: "Text" },
-    ],
-    createItem: {
-      Title: "healthcheck-record",
-      RecordDate: new Date().toISOString(),
-      ReporterName: "healthcheck"
-    },
-    updateItem: { Title: "healthcheck-record-updated" },
-  },
-];
+import { SP_LIST_REGISTRY } from "@/sharepoint/spListRegistry";
+import { SpFieldSpec } from "../features/diagnostics/health/types";
+
+const listSpecs: ListSpec[] = SP_LIST_REGISTRY.map((entry) => {
+  // 1. All fields from provisioning (default: optional)
+  const provisionFields: SpFieldSpec[] = (entry.provisioningFields || []).map((f) => ({
+    internalName: f.internalName,
+    isEssential: (entry.essentialFields || []).includes(f.internalName),
+    typeHint: f.type,
+  }));
+
+  // 2. Ensure essentials (ID, etc.) are present
+  const essentials = ["Id", "Title", ...(entry.essentialFields || [])];
+  const combined: SpFieldSpec[] = [...provisionFields];
+
+  for (const name of essentials) {
+    const existing = combined.find(
+      (f) => f.internalName.toLowerCase() === name.toLowerCase()
+    );
+    if (!existing) {
+      combined.push({
+        internalName: name,
+        isEssential: true,
+        typeHint: "Core",
+      });
+    } else if (
+      (entry.essentialFields || []).some(
+        (e) => e.toLowerCase() === existing.internalName.toLowerCase()
+      ) ||
+      name.toLowerCase() === "id"
+    ) {
+      existing.isEssential = true;
+    }
+  }
+
+  return {
+    key: entry.key,
+    displayName: entry.displayName,
+    resolvedTitle: entry.resolve(),
+    requiredFields: combined,
+    createItem:
+      entry.key === "users_master"
+        ? {
+            Title: "healthcheck-user",
+            UserID: "user-health-test",
+            FullName: "健康診断テスト用",
+          }
+        : entry.key === "staff_master"
+        ? {
+            Title: "healthcheck-staff",
+            StaffID: "staff-health-test",
+            StaffName: "健康診断テスト用",
+          }
+        : { Title: "healthcheck-root" },
+    updateItem: { Title: "healthcheck-updated" },
+  };
+});
 
 export default function HealthPage() {
   const env = getRuntimeEnv() as Record<string, unknown>;

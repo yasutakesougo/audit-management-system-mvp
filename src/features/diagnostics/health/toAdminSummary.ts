@@ -27,8 +27,11 @@ export function toAdminSummary(report: HealthReport): string {
     .map((r) => {
       const summary = r.summary || "";
       const action = r.nextActions?.[0]?.label || "";
-      const body = action && action !== summary ? `${summary} → ${action}` : summary;
-      return `- ${r.status.toUpperCase()} [${r.category}] ${body}`;
+      let body = action && action !== summary ? `${summary} → ${action}` : summary;
+      if (r.status === "fail" && r.detail) {
+        body = `${body} (${r.detail})`;
+      }
+      return `- ${r.status.toUpperCase()} [${r.category}] ${body.slice(0, 150)}`;
     });
 
   const headerLine =

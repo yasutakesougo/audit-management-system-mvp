@@ -63,7 +63,7 @@ describe('DataIntegrityPage', () => {
       status: 'done',
       progress: null,
       results: [
-        { target: 'users', total: 100, valid: 100, invalid: 0, issues: [], durationMs: 42 },
+        { target: 'users', listTitle: 'Users_Master', total: 100, valid: 100, invalid: 0, issues: [], durationMs: 42, fetchStatus: 'success' },
       ],
       error: null,
       startScan: vi.fn(),
@@ -92,6 +92,8 @@ describe('DataIntegrityPage', () => {
             { target: 'users', recordId: 205, messages: ['想定外の値'], zodIssues: [] },
           ],
           durationMs: 15,
+          fetchStatus: 'success',
+          listTitle: 'Users_Master',
         },
       ],
       error: null,

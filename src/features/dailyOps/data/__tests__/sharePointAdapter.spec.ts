@@ -64,7 +64,8 @@ describe('buildCompositeFilter', () => {
   describe('date の正規化', () => {
     it('should use iso date-only form in the filter even when DateTime is given', () => {
       const filter = buildCompositeFilter(makeFilterInput({ date: '2026-03-18T09:00:00Z' }));
-      expect(filter).toContain(`${F.date} eq '2026-03-18'`);
+      expect(filter).toContain(`${F.date} ge '2026-03-18'`);
+      expect(filter).toContain(`${F.date} le '2026-03-18'`);
       expect(filter).not.toContain('T09:00');
     });
   });
@@ -73,7 +74,7 @@ describe('buildCompositeFilter', () => {
     it('should contain all five clauses joined by " and "', () => {
       const filter = buildCompositeFilter(makeFilterInput({ time: '10:00' }));
       const clauses = filter.split(' and ');
-      expect(clauses).toHaveLength(5);
+      expect(clauses).toHaveLength(6);
     });
 
     it('should include date, targetType, targetId, kind in the filter', () => {
@@ -83,7 +84,8 @@ describe('buildCompositeFilter', () => {
         targetId: 'S999',
         kind: 'Late',
       }));
-      expect(filter).toContain(`${F.date} eq '2026-01-01'`);
+      expect(filter).toContain(`${F.date} ge '2026-01-01'`);
+      expect(filter).toContain(`${F.date} le '2026-01-01'`);
       expect(filter).toContain(`${F.targetType} eq 'Staff'`);
       expect(filter).toContain(`${F.targetId} eq 'S999'`);
       expect(filter).toContain(`${F.kind} eq 'Late'`);

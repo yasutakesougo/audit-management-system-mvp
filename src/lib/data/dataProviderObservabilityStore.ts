@@ -13,7 +13,8 @@ export type ResourceStatus =
   | 'missing_optional'  // 任意リストが不在
   | 'missing_required'  // 必須リストが不在（エラー）
   | 'fallback_triggered' // 他のリストで代用中
-  | 'schema_mismatch'   // スキーマ（列）が不足している
+  | 'schema_mismatch'   // スキーマ（必須列）が不足している
+  | 'schema_warning'    // 一部非必須列（optional）の名前解決ができていない
   | 'pending';          // 未解決（初期状態）
 
 export interface FieldResolutionInfo {
@@ -155,7 +156,7 @@ export function reportResourceResolution(report: ResourceResolutionReport): void
   } else if (fallbackFrom) {
     status = 'fallback_triggered';
   } else if (fields.some(f => !f.isResolved && !f.isSilent)) {
-    status = 'schema_mismatch';
+    status = 'schema_warning';
   }
 
   // 1. 同一性の判定用シグネチャ生成

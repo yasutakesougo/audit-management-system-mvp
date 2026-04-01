@@ -176,7 +176,7 @@ export async function getListFieldInternalNames(
 
   // 2) Network fetch
   const base = resolveListPath(listTitle);
-  const path = `${base}/fields?$select=InternalName&$top=500`;
+  const path = `${base}/fields?$select=InternalName&$top=5000`;
 
   try {
     const res = await spFetch(path);

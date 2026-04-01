@@ -91,6 +91,7 @@ export async function patchListItem<TBody extends object>(
         method: 'POST',
         headers: {
           Accept: 'application/json;odata=nometadata',
+          'OData-Version': '3.0',
           'X-HTTP-Method': 'MERGE',
           'If-Match': etag ?? '*',
           'Content-Type': 'application/json;odata=nometadata',
