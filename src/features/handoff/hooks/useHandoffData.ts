@@ -10,15 +10,8 @@
  * @see infra/handoffRepositoryFactory.ts — Factory + Adapter
  */
 
-import { useMemo } from 'react';
 import type { HandoffAuditRepository, HandoffRepository } from '../domain/HandoffRepository';
-import { useHandoffApi } from '../handoffApi';
-import { useHandoffAuditApi } from '../handoffAuditApi';
-import {
-    createHandoffAuditRepository,
-    createHandoffRepository,
-    type HandoffApiHooks,
-} from '../infra/handoffRepositoryFactory';
+import { useHandoffRepository } from '../infra/handoffRepositoryFactory';
 
 /**
  * Factory-aware hook for HandoffRepository + HandoffAuditRepository
@@ -26,23 +19,11 @@ import {
  * 使い方:
  * ```ts
  * const { repo, auditRepo } = useHandoffData();
- * const records = await repo.getRecords('today', 'all');
  * ```
  */
 export function useHandoffData(): {
   repo: HandoffRepository;
   auditRepo: HandoffAuditRepository;
 } {
-  const handoffApi = useHandoffApi();
-  const auditApi = useHandoffAuditApi();
-
-  const hooks: HandoffApiHooks = useMemo(
-    () => ({ handoffApi, auditApi }),
-    [handoffApi, auditApi],
-  );
-
-  const repo = useMemo(() => createHandoffRepository(hooks), [hooks]);
-  const auditRepo = useMemo(() => createHandoffAuditRepository(hooks), [hooks]);
-
-  return useMemo(() => ({ repo, auditRepo }), [repo, auditRepo]);
+  return useHandoffRepository();
 }

@@ -27,3 +27,20 @@ export function createMonitoringMeetingRepository(
   const provider = new SharePointDataProvider(options.spClient);
   return new DataProviderMonitoringMeetingRepository(provider);
 }
+
+import { useMemo } from 'react';
+import { useSP } from '@/lib/spClient';
+import { SP_ENABLED } from '@/lib/env';
+
+/**
+ * React Hook: MonitoringMeetingRepository を取得する
+ */
+export function useMonitoringMeetingRepository(): MonitoringMeetingRepository {
+  const spClient = useSP();
+  return useMemo(() => {
+    // SharePoint が有効かつクライアントが存在する場合のみ SharePoint モード
+    const mode = (SP_ENABLED && spClient) ? 'sharepoint' : 'local';
+    return createMonitoringMeetingRepository(mode, { spClient });
+  }, [spClient]);
+}
+

@@ -1,16 +1,14 @@
-import { useAuth } from '@/auth/useAuth';
 import { sensoryToAssessmentItems } from '@/features/analysis/domain/sensoryToAssessmentItems';
 import type { AssessmentItem } from '@/features/assessment/domain/types';
 import { useAssessmentStore } from '@/features/assessment/stores/assessmentStore';
 import type { ABCRecord } from '@/domain/behavior';
 import { IcebergCanvas } from '@/features/ibd/analysis/iceberg/IcebergCanvas';
-import { createIcebergRepository } from '@/features/ibd/analysis/iceberg/SharePointIcebergRepository';
+import { useIcebergRepository } from '@/features/ibd/analysis/iceberg/SharePointIcebergRepository';
 import { useIcebergStore } from '@/features/ibd/analysis/iceberg/icebergStore';
 import type { EnvironmentFactor } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import { IBDPageHeader } from '@/features/ibd/core/components/IBDPageHeader';
 import { useUsers } from '@/features/users/useUsers';
 import { auditLog } from '@/lib/debugLogger';
-import { getAppConfig } from '@/lib/env';
 import AddLinkIcon from '@mui/icons-material/AddLink';
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
 import SaveIcon from '@mui/icons-material/Save';
@@ -26,7 +24,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Select, { type SelectChangeEvent } from '@mui/material/Select';
 import Snackbar from '@mui/material/Snackbar';
 import Typography from '@mui/material/Typography';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 const createDemoBehaviors = (userId: string): ABCRecord[] => [
   {
@@ -79,31 +77,7 @@ const createDemoEnvironmentFactors = (): EnvironmentFactor[] => [
 ];
 
 const IcebergAnalysisPage: React.FC = () => {
-  const { acquireToken } = useAuth();
-  // Ref で acquireToken を安定化（参照が毎レンダーで変わっても useEffect が再発火しない）
-  const acquireTokenRef = React.useRef(acquireToken);
-  acquireTokenRef.current = acquireToken;
-
-  // Get baseUrl from config (spClient uses this internally)
-  const config = useMemo(() => getAppConfig(), []);
-  const spSiteUrl = config.VITE_SP_SITE_URL || '';
-
-  // Repository 初期化（一度だけ）
-  const [repository, setRepository] = useState<Awaited<ReturnType<typeof createIcebergRepository>> | null>(null);
-  const repoInitRef = React.useRef(false);
-
-  useEffect(() => {
-    if (repoInitRef.current) return;
-    repoInitRef.current = true;
-    const init = async () => {
-      const repo = await createIcebergRepository(
-        (...args: Parameters<typeof acquireToken>) => acquireTokenRef.current(...args),
-        spSiteUrl,
-      );
-      setRepository(repo);
-    };
-    init();
-  }, [spSiteUrl]);
+  const repository = useIcebergRepository();
 
   const { currentSession, initSession, moveNode, addNodeFromData, linkNodes, saveState, lastSaveError, savePersistent } = useIcebergStore(repository ?? undefined);
   const { getByUserId, seedDemoData } = useAssessmentStore();
@@ -130,9 +104,6 @@ const IcebergAnalysisPage: React.FC = () => {
       return;
     }
 
-    // 取込前のノード数を記録し、取込後の差分で追加件数を算出
-    const _nodeCountBefore = currentSession.nodes.length;
-
     combinedItems.forEach((item, index) => {
       const autoPos = {
         x: 120 + (index % 3) * 240,
@@ -141,8 +112,6 @@ const IcebergAnalysisPage: React.FC = () => {
       addNodeFromData(item, 'assessment', autoPos);
     });
 
-    // addNodeFromData は重複を無視するので差分で判定
-    // currentSession は immutable snapshot なのでここでは combinedItems.length を使う
     const potentialAdded = combinedItems.length;
     const skipped = currentSession.nodes.filter(
       (n) => n.type === 'assessment' && combinedItems.some((item) => n.sourceId === item.id),

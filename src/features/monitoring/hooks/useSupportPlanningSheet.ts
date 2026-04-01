@@ -22,7 +22,7 @@ import type {
   SaveSupportPlanningSheetInput,
   SupportPlanningSheetRecord,
 } from '../domain/supportPlanningSheetTypes';
-import { createSupportPlanningSheetRepository } from '../data/createSupportPlanningSheetRepository';
+import { useSupportPlanningSheetRepository } from '../data/createSupportPlanningSheetRepository';
 
 // ────────────────────────────────────────────────────────
 
@@ -61,7 +61,7 @@ export function useSupportPlanningSheet(
   const mountedRef = useRef(true);
 
   // ─── リポジトリ取得 ─────────────────────────────────
-  const repository = useMemo(() => createSupportPlanningSheetRepository(), []);
+  const repository = useSupportPlanningSheetRepository();
 
   // ─── マウント管理 ─────────────────────────────────────
   useEffect(() => {

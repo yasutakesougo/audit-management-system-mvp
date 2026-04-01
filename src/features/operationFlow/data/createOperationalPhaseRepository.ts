@@ -7,23 +7,9 @@
  *
  * 現在の実装:
  *   - InMemoryOperationalPhaseRepository を返す
- *
- * 将来の拡張イメージ:
- *   ```ts
- *   export function createOperationalPhaseRepository(
- *     backend: 'inmemory' | 'sharepoint' = 'inmemory',
- *   ): OperationalPhaseRepository {
- *     switch (backend) {
- *       case 'sharepoint':
- *         return new SharePointOperationalPhaseRepository(graphClient);
- *       case 'inmemory':
- *       default:
- *         return new InMemoryOperationalPhaseRepository();
- *     }
- *   }
- *   ```
  */
 
+import { useMemo } from 'react';
 import { InMemoryOperationalPhaseRepository } from './InMemoryOperationalPhaseRepository';
 import type { OperationalPhaseRepository } from './OperationalPhaseRepository';
 
@@ -43,6 +29,13 @@ export function createOperationalPhaseRepository(): OperationalPhaseRepository {
     instance = new InMemoryOperationalPhaseRepository();
   }
   return instance;
+}
+
+/**
+ * React Hook: OperationalPhaseRepository を取得する
+ */
+export function useOperationalPhaseRepository(): OperationalPhaseRepository {
+  return useMemo(() => createOperationalPhaseRepository(), []);
 }
 
 /**

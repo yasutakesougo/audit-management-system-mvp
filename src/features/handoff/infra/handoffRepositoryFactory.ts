@@ -2,28 +2,18 @@
  * handoffRepositoryFactory — Factory + Adapters
  *
  * 環境に応じた HandoffRepository / HandoffAuditRepository の生成。
- *
- * Adapter 一覧:
- * - localStorage: 開発用（デフォルト）
- * - sharepoint:   本番用（handoffConfig.storage === 'sharepoint'）
- *
- * ADR 準拠:
- * - Plain Object Adapter (ADR-1: class の this 問題回避)
- * - シングルトンキャッシュなし (ADR-2: React レンダサイクルとの整合)
- * - 環境検出は handoffConfig.storage のまま利用
  */
 
+import { useMemo } from 'react';
 import type { HandoffAuditRepository, HandoffRepository } from '../domain/HandoffRepository';
 import type { HandoffDayScope, HandoffRecord, HandoffStatus, HandoffTimeFilter, NewHandoffInput } from '../handoffTypes';
+import { useHandoffApi } from '../handoffApi';
+import { useHandoffAuditApi } from '../handoffAuditApi';
 
 // ────────────────────────────────────────────────────────────
-// Adapter 依存の型（Hook 呼び出し時に注入）
+// Adapter 依存の型
 // ────────────────────────────────────────────────────────────
 
-/**
- * SharePoint API フック群のインターフェース
- * useHandoffApi() / useHandoffAuditApi() の戻り値を抽象化
- */
 export type HandoffApiHooks = {
   handoffApi: {
     getHandoffRecords: (dayScope: HandoffDayScope, timeFilter: HandoffTimeFilter) => Promise<HandoffRecord[]>;
@@ -53,7 +43,7 @@ import {
 
 function createLocalStorageHandoffAdapter(): HandoffRepository {
   return {
-    async getRecords(dayScope, timeFilter) {
+    async getRecords(dayScope: HandoffDayScope, timeFilter: HandoffTimeFilter) {
       const store = loadStorage();
       const sourceLists = dayScope === 'week'
         ? getRecentDateKeys(7).map(key => store[key] ?? [])
@@ -64,7 +54,6 @@ function createLocalStorageHandoffAdapter(): HandoffRepository {
         .slice()
         .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 
-      // 時間帯フィルタ適用
       if (timeFilter !== 'all') {
         const allowed = HANDOFF_TIME_FILTER_PRESETS[timeFilter];
         list = list.filter(h => allowed.includes(h.timeBand));
@@ -73,7 +62,7 @@ function createLocalStorageHandoffAdapter(): HandoffRepository {
       return list;
     },
 
-    async createRecord(input) {
+    async createRecord(input: NewHandoffInput) {
       const id = generateId();
       const newRecord: HandoffRecord = {
         id,
@@ -105,9 +94,10 @@ function createLocalStorageHandoffAdapter(): HandoffRepository {
       return newRecord;
     },
 
-    async updateStatus(id, newStatus, dayScope, carryOverDate) {
+    async updateStatus(id: string | number, newStatus: HandoffStatus, dayScope: HandoffDayScope, carryOverDate?: string) {
       const store = loadStorage();
       const dateKey = getDateKeyForScope(dayScope);
+      const targetId = typeof id === 'string' ? parseInt(id, 10) : id;
 
       if (dayScope === 'week') {
         for (const key of Object.keys(store)) {
@@ -115,7 +105,7 @@ function createLocalStorageHandoffAdapter(): HandoffRepository {
           if (!Array.isArray(bucket)) continue;
           let bucketUpdated = false;
           const nextBucket = bucket.map(item => {
-            if (item.id !== id) return item;
+            if (item.id !== targetId) return item;
             bucketUpdated = true;
             return {
               ...item,
@@ -130,7 +120,7 @@ function createLocalStorageHandoffAdapter(): HandoffRepository {
       } else if (dateKey) {
         const existing = store[dateKey] ?? [];
         store[dateKey] = existing.map(item =>
-          item.id === id
+          item.id === targetId
             ? { ...item, status: newStatus, ...(carryOverDate ? { carryOverDate } : {}) }
             : item,
         );
@@ -146,15 +136,15 @@ function createLocalStorageHandoffAdapter(): HandoffRepository {
 
 function createSharePointHandoffAdapter(hooks: HandoffApiHooks): HandoffRepository {
   return {
-    async getRecords(dayScope, timeFilter) {
+    async getRecords(dayScope: HandoffDayScope, timeFilter: HandoffTimeFilter) {
       return hooks.handoffApi.getHandoffRecords(dayScope, timeFilter);
     },
 
-    async createRecord(input) {
+    async createRecord(input: NewHandoffInput) {
       return hooks.handoffApi.createHandoffRecord(input);
     },
 
-    async updateStatus(id, newStatus, _dayScope, carryOverDate) {
+    async updateStatus(id: string | number, newStatus: HandoffStatus, _dayScope: HandoffDayScope, carryOverDate?: string) {
       await hooks.handoffApi.updateHandoffRecord(id.toString(), {
         status: newStatus,
         ...(carryOverDate ? { carryOverDate } : {}),
@@ -164,15 +154,15 @@ function createSharePointHandoffAdapter(hooks: HandoffApiHooks): HandoffReposito
 }
 
 // ────────────────────────────────────────────────────────────
-// Audit Adapter（共通: SP API ラッパー）
+// Audit Adapter
 // ────────────────────────────────────────────────────────────
 
 function createHandoffAuditAdapter(hooks: HandoffApiHooks): HandoffAuditRepository {
   return {
-    async recordStatusChange(handoffId, oldStatus, newStatus, changedBy, changedByAccount) {
+    async recordStatusChange(handoffId: number, oldStatus: string, newStatus: string, changedBy: string, changedByAccount: string) {
       await hooks.auditApi.recordStatusChange(handoffId, oldStatus, newStatus, changedBy, changedByAccount);
     },
-    async recordCreation(handoffId, createdBy, createdByAccount) {
+    async recordCreation(handoffId: number, createdBy: string, createdByAccount: string) {
       await hooks.auditApi.recordCreation(handoffId, createdBy, createdByAccount);
     },
   };
@@ -190,12 +180,6 @@ function resolveKind(): HandoffRepositoryKind {
   return handoffConfig.storage === 'sharepoint' ? 'sharepoint' : 'local';
 }
 
-/**
- * HandoffRepository を生成する Factory 関数
- *
- * @param hooks - SharePoint 使用時に必要な API フック群
- *                localStorage モードではダミーを渡して OK
- */
 export function createHandoffRepository(hooks: HandoffApiHooks): HandoffRepository {
   const kind = resolveKind();
   switch (kind) {
@@ -207,9 +191,27 @@ export function createHandoffRepository(hooks: HandoffApiHooks): HandoffReposito
   }
 }
 
-/**
- * HandoffAuditRepository を生成する Factory 関数
- */
 export function createHandoffAuditRepository(hooks: HandoffApiHooks): HandoffAuditRepository {
   return createHandoffAuditAdapter(hooks);
+}
+
+/**
+ * React Hook: HandoffRepositories を取得する
+ */
+export function useHandoffRepository(): {
+  repo: HandoffRepository;
+  auditRepo: HandoffAuditRepository;
+} {
+  const handoffApi = useHandoffApi();
+  const auditApi = useHandoffAuditApi();
+
+  const hooks: HandoffApiHooks = useMemo(
+    () => ({ handoffApi, auditApi }),
+    [handoffApi, auditApi],
+  );
+
+  return useMemo(() => ({
+    repo: createHandoffRepository(hooks),
+    auditRepo: createHandoffAuditRepository(hooks),
+  }), [hooks]);
 }

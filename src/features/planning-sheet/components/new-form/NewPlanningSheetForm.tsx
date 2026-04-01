@@ -55,9 +55,7 @@ import type { ImportPreviewResult } from '../../buildImportPreview';
 import { ImportPreviewDialog } from '../ImportPreviewDialog';
 import { ImportMonitoringDialog } from '../ImportMonitoringDialog';
 import { useLatestBehaviorMonitoring } from '../../hooks/useLatestBehaviorMonitoring';
-import { createMonitoringMeetingRepository } from '@/features/monitoring/repositories/createMonitoringMeetingRepository';
-import { useSP } from '@/lib/spClient';
-import { SP_ENABLED } from '@/lib/env';
+import { useMonitoringMeetingRepository } from '@/features/monitoring/repositories/createMonitoringMeetingRepository';
 
 // ── Local (split) ──
 import type { NewPlanningSheetFormProps, UserOption, FormState } from './types';
@@ -107,19 +105,14 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   // ── 特性アンケートセクション ref ──
   const tokuseiSectionRef = React.useRef<HTMLDivElement>(null);
 
-  const spClient = useSP();
+
 
   // ── モニタリング読込 ──
   // NOTE:
   // Repository is resolved via createMonitoringMeetingRepository factory.
   // Do not import localMonitoringMeetingRepository directly in UI components.
   // SP_ENABLED のときは sharepoint モードで SP リストから取得する。
-  const monitoringRepo = React.useMemo(
-    () => SP_ENABLED
-      ? createMonitoringMeetingRepository('sharepoint', { spClient })
-      : createMonitoringMeetingRepository('local'),
-    [spClient],
-  );
+  const monitoringRepo = useMonitoringMeetingRepository();
   const {
     record: latestMonitoringRecord,
     isLoading: isMonitoringLoading,

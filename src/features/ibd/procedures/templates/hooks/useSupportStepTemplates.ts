@@ -8,8 +8,7 @@
  * Mutation (create/update/delete) は SP に書き込み後、自動 refetch。
  */
 import { SupportStepTemplate, defaultSupportStepTemplates } from '@/domain/support/step-templates';
-import { createSupportTemplateRepository } from '@/features/ibd/procedures/templates/infra/Legacy/SharePointProcedureTemplateRepository';
-import { acquireSpAccessToken } from '@/lib/msal';
+import { useSupportTemplateRepository } from '@/features/ibd/procedures/templates/infra/Legacy/SharePointProcedureTemplateRepository';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { mapSpTemplatesToStepTemplates, mapStepTemplateToSpItem } from '../adapter/spTemplateAdapter';
 
@@ -60,6 +59,8 @@ export function useSupportStepTemplates(userCode: string | null): SupportStepTem
 
   const refetch = useCallback(() => setFetchKey((k) => k + 1), []);
 
+  const repo = useSupportTemplateRepository();
+
   // ── Read ──
   useEffect(() => {
     if (!userCode) {
@@ -75,7 +76,6 @@ export function useSupportStepTemplates(userCode: string | null): SupportStepTem
       setError(null);
 
       try {
-        const repo = createSupportTemplateRepository(acquireSpAccessToken);
         const items = await repo.getTemplatesByUser(userCode);
 
         if (!cancelled) {
@@ -97,7 +97,7 @@ export function useSupportStepTemplates(userCode: string | null): SupportStepTem
     return () => {
       cancelled = true;
     };
-  }, [userCode, fetchKey]);
+  }, [userCode, fetchKey, repo]);
 
   // ── Create ──
   const createTemplate = useCallback(
@@ -106,7 +106,6 @@ export function useSupportStepTemplates(userCode: string | null): SupportStepTem
       setIsMutating(true);
       setError(null);
       try {
-        const repo = createSupportTemplateRepository(acquireSpAccessToken);
         const nextRowNo = spTemplates.length + 1;
         const spItem = mapStepTemplateToSpItem(template, userCode, nextRowNo);
         await repo.createTemplate(spItem);
@@ -121,7 +120,7 @@ export function useSupportStepTemplates(userCode: string | null): SupportStepTem
         setIsMutating(false);
       }
     },
-    [userCode, spTemplates.length, refetch]
+    [userCode, spTemplates.length, refetch, repo]
   );
 
   // ── Update ──
@@ -133,7 +132,6 @@ export function useSupportStepTemplates(userCode: string | null): SupportStepTem
       setIsMutating(true);
       setError(null);
       try {
-        const repo = createSupportTemplateRepository(acquireSpAccessToken);
         const existing = spTemplates.find((t) => t.id === template.id);
         const rowNo = existing ? spTemplates.indexOf(existing) + 1 : 1;
         const spItem = mapStepTemplateToSpItem(template, userCode, rowNo);
@@ -149,7 +147,7 @@ export function useSupportStepTemplates(userCode: string | null): SupportStepTem
         setIsMutating(false);
       }
     },
-    [userCode, spTemplates, refetch]
+    [userCode, spTemplates, refetch, repo]
   );
 
   // ── Delete ──
@@ -160,7 +158,6 @@ export function useSupportStepTemplates(userCode: string | null): SupportStepTem
       setIsMutating(true);
       setError(null);
       try {
-        const repo = createSupportTemplateRepository(acquireSpAccessToken);
         await repo.deleteTemplate(spId);
         refetch();
         return true;
@@ -173,7 +170,7 @@ export function useSupportStepTemplates(userCode: string | null): SupportStepTem
         setIsMutating(false);
       }
     },
-    [refetch]
+    [refetch, repo]
   );
 
   // templates を useMemo で安定化
