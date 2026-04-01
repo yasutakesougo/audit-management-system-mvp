@@ -18,7 +18,7 @@ export type ObservationTemperatureItem = {
 };
 
 export interface AttendanceRepository {
-  getActiveUsers(signal?: AbortSignal): Promise<AttendanceUserItem[]>;
+  getActiveUsers(date?: string, signal?: AbortSignal): Promise<AttendanceUserItem[]>;
   getDailyByDate(params: AttendanceRepositoryListParams): Promise<AttendanceDailyItem[]>;
   upsertDailyByKey(item: AttendanceDailyItem, params?: AttendanceRepositoryUpsertParams): Promise<void>;
   getObservationsByDate(recordDate: string): Promise<ObservationTemperatureItem[]>;

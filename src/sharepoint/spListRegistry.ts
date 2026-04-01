@@ -80,7 +80,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     category: 'master',
     lifecycle: 'optional',
     essentialFields: [
-      'UserID', 'FullName', 'ContractDate', 'IsActive', 'UsageStatus'
+      'UserID', 'FullName', 'ContractDate', 'IsActive', 'UsageStatus', 'ServiceEndDate'
     ],
     provisioningFields: [
       { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true },
@@ -110,6 +110,9 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'master',
     lifecycle: 'required',
+    essentialFields: [
+      'UserID', 'TransportToDays', 'TransportFromDays'
+    ],
     provisioningFields: [
       { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true },
       { internalName: 'TransportToDays', type: 'MultiChoice', displayName: 'Transport To Days', choices: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
@@ -126,6 +129,9 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'master',
     lifecycle: 'required',
+    essentialFields: [
+      'UserID', 'RecipientCertNumber'
+    ],
     provisioningFields: [
       { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true },
       { internalName: 'RecipientCertNumber', type: 'Text', displayName: 'Recipient Cert Number' },
@@ -224,6 +230,9 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'daily',
     lifecycle: 'optional',
+    essentialFields: [
+      'UserCode', 'RecordDate', 'ExecutionStatus'
+    ],
     provisioningFields: [
       { internalName: 'UserCode', type: 'Text', displayName: 'User Code', required: true, indexed: true },
       { internalName: 'RecordDate', type: 'DateTime', displayName: 'Record Date', required: true, dateTimeFormat: 'DateOnly', indexed: true },
@@ -245,6 +254,9 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'daily',
     lifecycle: 'required',
+    essentialFields: [
+      'ParentID', 'UserID'
+    ],
     provisioningFields: [
       { internalName: 'ParentID', type: 'Number', displayName: 'Parent ID', required: true, indexed: true },
       { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true },
@@ -309,6 +321,17 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R'],
     category: 'attendance',
     lifecycle: 'required',
+    essentialFields: [
+      'UserCode', 'IsActive', 'UsageStatus', 'ServiceEndDate'
+    ],
+    provisioningFields: [
+      { internalName: 'UserCode', type: 'Text', displayName: 'User Code', required: true, indexed: true },
+      { internalName: 'IsActive', type: 'Boolean', displayName: 'Is Active', default: true },
+      { internalName: 'UsageStatus', type: 'Text', displayName: 'Usage Status' },
+      { internalName: 'ServiceEndDate', type: 'DateTime', displayName: 'Service End Date', dateTimeFormat: 'DateOnly' },
+      { internalName: 'IsTransportTarget', type: 'Boolean', displayName: 'Is Transport Target' },
+      { internalName: 'StandardMinutes', type: 'Number', displayName: 'Standard Minutes' },
+    ],
   },
   {
     key: 'attendance_daily',

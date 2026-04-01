@@ -53,6 +53,9 @@ describe('DataProviderUserRepository Split Logic', () => {
       RecipientCertNumber: 'BEN-456'
     };
 
+    // Schema Resolution を正しく機能させるために、予めフィールドヒントをシードする
+    await provider.seed('Users_Master', [{ Id: 0, UserID: '', FullName: '', IsActive: true }]);
+
     const created = await repo.create(payload as unknown as IUserMasterCreateDto);
 
     
@@ -64,7 +67,7 @@ describe('DataProviderUserRepository Split Logic', () => {
     const benefit = await provider.listItems<Record<string, unknown>>('UserBenefit_Profile');
 
     
-    expect(core[0].FullName).toBe('New User');
+    expect(core[1].FullName).toBe('New User');
     expect(transport[0].TransportCourse).toBe('B-Course');
     expect(benefit[0].RecipientCertNumber).toBe('BEN-456');
     

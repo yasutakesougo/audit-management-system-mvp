@@ -278,7 +278,7 @@ export function useTransportStatus(): UseTransportStatusReturn {
         console.warn('[useTransportStatus] Failed to load SP logs, starting fresh', err);
         return [] as TransportLogEntry[];
       }),
-      getActiveUsers(sp).catch((err) => {
+      getActiveUsers(sp, undefined, todayKey).catch((err) => {
         console.warn('[useTransportStatus] Failed to load AttendanceUsers, showing all users', err);
         fallbackActivated = true;
         return [] as AttendanceUserItem[];

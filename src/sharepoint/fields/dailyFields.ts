@@ -94,14 +94,14 @@ import type { SpFieldDef } from '@/lib/sp/types';
  */
 export const DAILY_RECORD_CANONICAL_CANDIDATES = {
   title: ['Title'], // YYYY-MM-DD
-  recordDate: ['RecordDate', 'Date', 'cr013_date'],
-  reporterName: ['ReporterName', 'cr013_reporterName'],
-  reporterRole: ['ReporterRole', 'cr013_reporterRole'],
-  userRowsJSON: ['UserRowsJSON', 'cr013_userRowsJSON'],
-  userCount: ['UserCount', 'cr013_userCount'],
-  approvalStatus: ['ApprovalStatus', 'cr013_approvalStatus'],
-  approvedBy: ['ApprovedBy', 'cr013_approvedBy'],
-  approvedAt: ['ApprovedAt', 'cr013_approvedAt'],
+  recordDate: ['RecordDate', 'Date', 'recordDate', 'cr013_date', 'record_date'],
+  reporterName: ['ReporterName', 'reporterName', 'cr013_reporterName', 'StaffName'],
+  reporterRole: ['ReporterRole', 'reporterRole', 'cr013_reporterRole'],
+  userRowsJSON: ['UserRowsJSON', 'userRowsJSON', 'cr013_userRowsJSON'],
+  userCount: ['UserCount', 'userCount', 'cr013_userCount'],
+  approvalStatus: ['ApprovalStatus', 'approvalStatus', 'cr013_approvalStatus'],
+  approvedBy: ['ApprovedBy', 'approvedBy', 'cr013_approvedBy'],
+  approvedAt: ['ApprovedAt', 'approvedAt', 'cr013_approvedAt'],
 } as const;
 
 export const DAILY_RECORD_CANONICAL_ESSENTIALS: (keyof typeof DAILY_RECORD_CANONICAL_CANDIDATES)[] = [
@@ -113,14 +113,14 @@ export const DAILY_RECORD_CANONICAL_ESSENTIALS: (keyof typeof DAILY_RECORD_CANON
  */
 export const DAILY_RECORD_ROW_AGGREGATE_CANDIDATES = {
   title: ['Title'],
-  userId: ['UserCode', 'cr013_usercode', 'cr013_personId', 'UserId', 'UserID'],
-  recordDate: ['RecordDate', 'cr013_date', 'cr013_recorddate', 'Date'],
-  status: ['Status', 'cr013_status'],
-  reporterName: ['ReporterName', 'cr013_reporterName'],
-  payload: ['Payload', 'cr013_payload', 'cr013_draftJson'],
-  kind: ['Kind', 'cr013_kind'],
-  group: ['Group', 'cr013_group'],
-  specialNote: ['SpecialNote', 'cr013_specialnote'],
+  userId: ['UserCode', 'cr013_usercode', 'cr013_personId', 'UserId', 'UserID', 'userId'],
+  recordDate: ['RecordDate', 'cr013_date', 'cr013_recorddate', 'Date', 'recordDate'],
+  status: ['Status', 'status', 'cr013_status'],
+  reporterName: ['ReporterName', 'reporterName', 'cr013_reporterName'],
+  payload: ['Payload', 'payload', 'cr013_payload', 'cr013_draftJson'],
+  kind: ['Kind', 'kind', 'cr013_kind'],
+  group: ['Group', 'group', 'cr013_group'],
+  specialNote: ['SpecialNote', 'specialNote', 'cr013_specialnote'],
 } as const;
 
 export const DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS: (keyof typeof DAILY_RECORD_ROW_AGGREGATE_CANDIDATES)[] = [

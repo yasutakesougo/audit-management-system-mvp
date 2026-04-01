@@ -113,6 +113,12 @@ export class DataProviderUserRepository implements UserRepository {
             let candidates: string[] = [String(value)];
             if (key === 'userId') candidates = ['UserID', 'cr013_usercode', 'Title'];
             if (key === 'fullName') candidates = ['FullName', 'cr013_fullname', 'Title'];
+            
+            // Task 1: 大文字小文字や一般的バリアントを網羅
+            if (key === 'id') candidates = ['Id', 'ID', 'id'];
+            if (key === 'attendanceDays') candidates = ['AttendanceDays', 'attendanceDays', 'Attendance_x0020_Days'];
+            if (key === 'severeFlag') candidates = ['SevereFlag', 'severeFlag', 'Severe_x0020_Flag'];
+
             return [key, { candidates, isSilent: false }];
           })
         );
@@ -220,9 +226,8 @@ export class DataProviderUserRepository implements UserRepository {
           domainItems = domainItems.map(user => {
             const tRow = transportMap.get(user.UserID);
             const bRow = benefitMap.get(user.UserID);
-            const joined = this.mergeExtraData(user, tRow, bRow);
-            // Apply Virtual Fix if we have accessory data
-            return this.sanitizeDomainRecord(joined, !!tRow, !!bRow);
+            const sanitized = this.sanitizeDomainRecord(user, !!tRow, !!bRow);
+            return this.mergeExtraData(sanitized, tRow, bRow);
           });
         } catch (je) {
           auditLog.warn('users', 'DataProviderUserRepository.lazy_join_failed', { error: String(je) });
@@ -270,8 +275,8 @@ export class DataProviderUserRepository implements UserRepository {
             this.provider.listItems<Record<string, unknown>>(this.transportListTitle, { filter, top: 1 }).catch(() => []),
             this.provider.listItems<Record<string, unknown>>(this.benefitListTitle, { filter, top: 1 }).catch(() => [])
           ]);
-          const joined = this.mergeExtraData(domain, tRows[0], bRows[0]);
-          return this.sanitizeDomainRecord(joined, !!tRows[0], !!bRows[0]);
+          const sanitized = this.sanitizeDomainRecord(domain, !!tRows[0], !!bRows[0]);
+          return this.mergeExtraData(sanitized, tRows[0], bRows[0]);
         } catch (je) {
           auditLog.warn('users', 'DataProviderUserRepository.getById_join_failed', { error: String(je) });
         }

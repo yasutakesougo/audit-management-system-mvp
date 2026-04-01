@@ -32,7 +32,8 @@ describe('dailyIntegrityChecker', () => {
         { parentId: '1', userId: 'U1', version: 2, status: 'committed', recordedAt: '2026-03-30T09:05:00Z' } // ゴースト！
       ];
 
-      const results = scanDailyRecordIntegrity(parents, children, [], now);
+      const accessories = [{ type: 'transport' as const, userId: 'U1' }];
+      const results = scanDailyRecordIntegrity(parents, children, accessories, now);
       
       expect(results).toHaveLength(1);
       expect(results[0].type).toBe('version_mismatch');
@@ -51,7 +52,8 @@ describe('dailyIntegrityChecker', () => {
         }
       ];
 
-      const results = scanDailyRecordIntegrity(parents, children, [], now);
+      const accessories = [{ type: 'transport' as const, userId: 'U1' }];
+      const results = scanDailyRecordIntegrity(parents, children, accessories, now);
       
       expect(results).toHaveLength(1);
       expect(results[0].type).toBe('stale_pending');
@@ -66,7 +68,8 @@ describe('dailyIntegrityChecker', () => {
         { parentId: '1', userId: 'U1', version: 1, status: 'committed', recordedAt: '2026-03-30T09:55:00Z' }
       ];
 
-      const results = scanDailyRecordIntegrity(parents, children, [], now);
+      const accessories = [{ type: 'transport' as const, userId: 'U1' }];
+      const results = scanDailyRecordIntegrity(parents, children, accessories, now);
       
       expect(results).toHaveLength(0);
     });

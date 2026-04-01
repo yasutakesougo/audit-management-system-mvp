@@ -68,4 +68,28 @@ export const STAFF_SELECT_FIELDS_CANONICAL = [
   STAFF_MASTER_FIELD_MAP.certificationCheckedAt,
 ] as const;
 
+/**
+ * Staff_Master フィールド候補マップ
+ * 動的解決 (SchemaResolver) で使用し、内部名揺れ (Space, Case, Legacy) を吸収する
+ */
+export const STAFF_MASTER_CANDIDATES: Record<string, string[]> = {
+  StaffID: ['StaffID', 'Staff_x0020_ID', 'UserCode', 'Title'],
+  FullName: ['FullName', 'Full_x0020_Name', 'StaffName', 'Name', 'Title'],
+  Furigana: ['Furigana', 'FuriganaKana'],
+  FullNameKana: ['FullNameKana', 'FullName_x0020_Kana'],
+  JobTitle: ['JobTitle', 'Role', 'Rank'],
+  Role: ['Role', 'JobTitle', 'Position'],
+  RBACRole: ['RBACRole', 'PermissionRole'],
+  IsActive: ['IsActive', 'Active', 'Status'],
+  Department: ['Department', 'Group', 'Branch'],
+  HireDate: ['HireDate', 'JoinDate'],
+  ResignDate: ['ResignDate', 'LeaveDate'],
+  Email: ['Email', 'MailAddress'],
+  Phone: ['Phone', 'Tel', 'Contact'],
+  WorkDays: ['WorkDays', 'BaseWorkDays'],
+  BaseShiftStartTime: ['BaseShiftStartTime', 'StartTime', 'Start_x0020_Time'],
+  BaseShiftEndTime: ['BaseShiftEndTime', 'EndTime', 'End_x0020_Time'],
+  Certifications: ['Certifications', 'Qualification', 'License'],
+};
+
 export const STAFF_SELECT = joinSelect(STAFF_SELECT_FIELDS_CANONICAL as readonly string[]);

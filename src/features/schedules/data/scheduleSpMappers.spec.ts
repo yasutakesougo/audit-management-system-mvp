@@ -17,10 +17,10 @@ describe('scheduleSpMappers', () => {
     const { selectVariants } = mod.buildSelectSets();
 
     expect(fields).toMatchObject({
-      start: 'Start',
-      end: 'End',
+      start: 'EventDate',
+      end: 'EndDate',
       serviceType: 'ServiceType',
-      locationName: 'LocationName',
+      locationName: 'Location',
     });
     expect(variants).toEqual(
       expect.arrayContaining([
@@ -29,9 +29,9 @@ describe('scheduleSpMappers', () => {
       ]),
     );
     expect(selectVariants[0]).toContain('ServiceType');
-    expect(selectVariants[0]).toContain('LocationName');
+    expect(selectVariants[0]).toContain('Location');
     expect(selectVariants[0]).not.toContain('Category');
-    expect(selectVariants[0]).not.toContain('Location');
+    expect(selectVariants[0]).not.toContain('LocationName');
     expect(selectVariants[0]).not.toContain('Vehicle');
     expect(selectVariants[0]).not.toContain('VehicleId');
   });
