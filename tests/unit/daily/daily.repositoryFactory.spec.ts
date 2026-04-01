@@ -138,7 +138,7 @@ describe('Daily repositoryFactory', () => {
     it('returns SharePoint repo when forceKind=sharepoint with acquireToken', () => {
       createDataProvider({ spFetch: mockSpFetch } as unknown as UseSP, { type: 'sharepoint' });
       const repo = getDailyRecordRepository({
-        forceKind: 'sharepoint',
+        forceKind: 'real',
         acquireToken: mockAcquireToken,
       });
 
@@ -158,8 +158,8 @@ describe('Daily repositoryFactory', () => {
 
     it('throws when forceKind=sharepoint without acquireToken', () => {
       expect(() =>
-        getDailyRecordRepository({ forceKind: 'sharepoint' }),
-      ).toThrow('has not been initialized');
+        getDailyRecordRepository({ forceKind: 'real' }),
+      ).toThrow('acquireToken is required for real');
 
     });
   });

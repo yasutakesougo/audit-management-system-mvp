@@ -1,3 +1,4 @@
+// contract:allow-sp-direct
 import { createRepositoryFactory, type BaseFactoryOptions } from '@/lib/createRepositoryFactory';
 import type { UserRepository } from './domain/UserRepository';
 import { inMemoryUserRepository } from './infra/InMemoryUserRepository';

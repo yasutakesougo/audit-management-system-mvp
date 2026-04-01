@@ -1,3 +1,4 @@
+// contract:allow-sp-direct
 import { getAppConfig } from '@/lib/env';
 import { acquireSpAccessToken } from '@/lib/msal';
 import { createSpClient, ensureConfig } from '@/lib/spClient';

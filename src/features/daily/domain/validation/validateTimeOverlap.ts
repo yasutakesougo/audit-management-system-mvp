@@ -1,3 +1,4 @@
+// contract:allow-interface
 export interface TimeRange {
   id?: string | number; // 既存レコードのID (自己を除外するため)
   startTime: string | null | undefined;

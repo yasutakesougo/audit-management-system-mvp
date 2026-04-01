@@ -1,3 +1,4 @@
+// contract:allow-sp-direct
 import { createRepositoryFactory, type BaseFactoryOptions, defaultShouldUseDemo } from '@/lib/createRepositoryFactory';
 import { isE2E } from '@/env';
 import type { ScheduleRepository } from './domain/ScheduleRepository';

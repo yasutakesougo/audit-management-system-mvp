@@ -19,13 +19,20 @@ const { spClientSpy, mockList } = vi.hoisted(() => ({
 
 vi.mock('@/lib/spClient', () => spClientSpy);
 
-vi.mock('@/lib/env', () => ({
-  getAppConfig: vi.fn(() => ({ isDev: true })),
-  isDemoModeEnabled: vi.fn(() => true),
-  isForceDemoEnabled: vi.fn(() => true),
-  isTestMode: vi.fn(() => true),
-  shouldSkipLogin: vi.fn(() => true),
-}));
+vi.mock('@/lib/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/env')>();
+  return {
+    ...actual,
+    getAppConfig: vi.fn(() => ({ isDev: true })),
+    isDemoModeEnabled: vi.fn(() => true),
+    isForceDemoEnabled: vi.fn(() => true),
+    isTestMode: vi.fn(() => true),
+    shouldSkipLogin: vi.fn(() => true),
+    readBool: vi.fn(() => false),
+    readEnv: vi.fn(() => ''),
+    readOptionalEnv: vi.fn(() => undefined),
+  };
+});
 
 vi.mock('@/lib/runtime', () => ({
   hasSpfxContext: vi.fn(() => false),
