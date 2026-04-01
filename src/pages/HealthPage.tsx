@@ -39,15 +39,13 @@ const listSpecs: ListSpec[] = [
     displayName: "SupportRecord_Daily",
     requiredFields: [
       { internalName: "Title", typeHint: "Text" },
-      { internalName: "cr013_personId", typeHint: "Number" },
-      { internalName: "cr013_date", typeHint: "DateTime" },
-      { internalName: "cr013_reporterId", typeHint: "Text" },
+      { internalName: "RecordDate", typeHint: "DateTime" },
+      { internalName: "ReporterName", typeHint: "Text" },
     ],
-    createItem: { 
-      Title: "healthcheck-record", 
-      cr013_userId: "1",
-      cr013_date: new Date().toISOString(),
-      cr013_reporterId: "healthcheck"
+    createItem: {
+      Title: "healthcheck-record",
+      RecordDate: new Date().toISOString(),
+      ReporterName: "healthcheck"
     },
     updateItem: { Title: "healthcheck-record-updated" },
   },

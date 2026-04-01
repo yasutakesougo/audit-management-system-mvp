@@ -93,7 +93,6 @@ export async function patchListItem<TBody extends object>(
           Accept: 'application/json;odata=nometadata',
           'X-HTTP-Method': 'MERGE',
           'If-Match': etag ?? '*',
-          'OData-Version': '4.0',
           'Content-Type': 'application/json;odata=nometadata',
         },
         body: payload,

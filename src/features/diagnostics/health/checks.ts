@@ -317,7 +317,10 @@ async function runListChecks(
       })
     );
   } else {
-    const present = new Set(fields.v.map((f) => f.internalName));
+    const present = new Set([
+      ...fields.v.map((f) => f.internalName),
+      ...fields.v.map((f) => f.staticName),
+    ]);
     const missing = spec.requiredFields.filter(
       (f) => !present.has(f.internalName)
     );
@@ -419,6 +422,9 @@ async function runListChecks(
       })
     );
   }
+
+  // Allow some time for SharePoint to sync the new item
+  await new Promise((r) => setTimeout(r, 500));
 
   const updated = await safe(() =>
     sp.updateItem(spec.displayName, created.v.id, spec.updateItem)
