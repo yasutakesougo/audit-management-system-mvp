@@ -228,7 +228,7 @@ describe('repositoryFactory: users (forceKind)', () => {
       pageContext: { web: { absoluteUrl: 'https://example.sharepoint.com/sites/test' } },
     };
     resetUserRepository();
-    const repo = getUserRepository({ forceKind: 'sharepoint' });
+    const repo = getUserRepository({ forceKind: 'real', acquireToken: vi.fn().mockResolvedValue('mock-token') });
     expect(repo).not.toBeInstanceOf(InMemoryUserRepository);
     delete (globalThis as Record<string, unknown>).__SPFX_CONTEXT__;
   });

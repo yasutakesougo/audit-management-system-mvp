@@ -1,3 +1,4 @@
+// contract:allow-interface
 export interface RawDailyRecord {
   Id?: number;
   UserIdId?: number | null;

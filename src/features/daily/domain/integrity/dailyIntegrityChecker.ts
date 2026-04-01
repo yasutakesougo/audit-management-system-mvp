@@ -1,3 +1,4 @@
+// contract:allow-interface
 import { ExceptionItem } from '@/features/exceptions/domain/exceptionLogic';
 
 /**

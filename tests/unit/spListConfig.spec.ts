@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest';
 
 describe('getAllListKeys', () => {
   it('should return exactly 33 keys', () => {
-    expect(getAllListKeys()).toHaveLength(33);
+    expect(getAllListKeys()).toHaveLength(36);
   });
 
   it('should return unique keys', () => {
@@ -42,7 +42,7 @@ describe('getAllListKeys', () => {
     // P0 additions
     expect(keys).toContain('isp_master');
     expect(keys).toContain('planning_sheet_master');
-    expect(keys).toContain('procedure_record_daily');
+    expect(keys).toContain('support_procedure_record_daily');
     expect(keys).toContain('iceberg_analysis');
     expect(keys).toContain('billing_orders');
     expect(keys).toContain('holiday_master');

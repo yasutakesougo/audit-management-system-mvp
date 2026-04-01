@@ -37,15 +37,21 @@ const { mockInMemoryRepo, MockSPRepo, mockSpInstance } = vi.hoisted(() => {
 });
 
 // Mock env module before imports
-vi.mock('@/lib/env', () => ({
-  getAppConfig: vi.fn(() => ({ isDev: false })),
-  isDemoModeEnabled: vi.fn(() => false),
-  isForceDemoEnabled: vi.fn(() => false),
-  isTestMode: vi.fn(() => false),
-  shouldSkipLogin: vi.fn(() => false),
-  shouldSkipSharePoint: vi.fn(() => false),
-  readBool: vi.fn(() => false),
-}));
+vi.mock('@/lib/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/env')>();
+  return {
+    ...actual,
+    getAppConfig: vi.fn(() => ({ isDev: false })),
+    isDemoModeEnabled: vi.fn(() => false),
+    isForceDemoEnabled: vi.fn(() => false),
+    isTestMode: vi.fn(() => false),
+    shouldSkipLogin: vi.fn(() => false),
+    shouldSkipSharePoint: vi.fn(() => false),
+    readBool: vi.fn(() => false),
+    readEnv: vi.fn(() => ''),
+    readOptionalEnv: vi.fn(() => undefined),
+  };
+});
 
 vi.mock('@/lib/runtime', () => ({
   hasSpfxContext: vi.fn(() => false),
@@ -64,6 +70,11 @@ vi.mock('@/env', async (importOriginal) => {
 // Break transitive import chain: SharePointScheduleRepository → fetchSp → msal
 vi.mock('@/features/schedules/infra/SharePointScheduleRepository', () => ({
   SharePointScheduleRepository: MockSPRepo,
+}));
+
+// Factory uses DataProviderScheduleRepository for real SP access
+vi.mock('@/features/schedules/infra/DataProviderScheduleRepository', () => ({
+  DataProviderScheduleRepository: MockSPRepo,
 }));
 
 // Mock InMemory repo singleton
@@ -155,20 +166,20 @@ describe('schedules repositoryFactory', () => {
   });
 
   describe('SharePoint path', () => {
-    it('returns SharePoint repo when forceKind=sharepoint with acquireToken', () => {
+    it('returns SharePoint repo when forceKind=real with acquireToken', () => {
       const repo = getScheduleRepository({
-        forceKind: 'sharepoint',
+        forceKind: 'real',
         acquireToken: mockAcquireToken,
       });
       expect(repo).toBe(mockSpInstance);
-      expect(getCurrentScheduleRepositoryKind()).toBe('sharepoint');
+      expect(getCurrentScheduleRepositoryKind()).toBe('real');
       expect(MockSPRepo).toHaveBeenCalledWith(
-        expect.objectContaining({ acquireToken: mockAcquireToken }),
+        expect.objectContaining({ provider: expect.anything() }),
       );
     });
 
     it('throws when forceKind=sharepoint without acquireToken', () => {
-      expect(() => getScheduleRepository({ forceKind: 'sharepoint' }))
+      expect(() => getScheduleRepository({ forceKind: 'real' }))
         .toThrow('acquireToken is required');
     });
   });

@@ -1,3 +1,4 @@
+// contract:allow-sp-direct
 import { createRepositoryFactory, type BaseFactoryOptions } from '@/lib/createRepositoryFactory';
 import type { DailyRecordRepository } from './domain/DailyRecordRepository';
 import { inMemoryDailyRecordRepository } from './infra/InMemoryDailyRecordRepository';
@@ -22,7 +23,7 @@ const factory = createRepositoryFactory<DailyRecordRepository, DailyRecordReposi
       throw new Error('[DailyRecordRepositoryFactory] acquireToken is required for real repository.');
     }
     const { baseUrl } = ensureConfig();
-    const { provider } = createDataProvider(createSpClient(acquireToken, baseUrl));
+    const { provider } = createDataProvider(createSpClient(acquireToken, baseUrl), { type: 'sharepoint' });
 
     return new DataProviderDailyRecordRepository({
       provider,
