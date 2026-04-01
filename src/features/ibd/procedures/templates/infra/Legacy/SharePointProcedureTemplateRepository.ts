@@ -225,3 +225,14 @@ export function createSupportTemplateRepository(
     },
   };
 }
+
+import { useMemo } from 'react';
+import { acquireSpAccessToken } from '@/lib/msal';
+
+/**
+ * React Hook: SupportTemplateRepository を取得する
+ */
+export function useSupportTemplateRepository() {
+  return useMemo(() => createSupportTemplateRepository(acquireSpAccessToken), []);
+}
+

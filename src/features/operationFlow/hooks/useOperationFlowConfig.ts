@@ -11,7 +11,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { createOperationalPhaseRepository } from '../data/createOperationalPhaseRepository';
+import { useOperationalPhaseRepository } from '../data/createOperationalPhaseRepository';
 import { DEFAULT_PHASE_CONFIG } from '../domain/defaultPhaseConfig';
 import type { OperationFlowPhaseConfig } from '../domain/operationFlowTypes';
 import { PHASE_EVENTS, recordPhaseEvent } from '../telemetry/recordPhaseEvent';
@@ -40,9 +40,10 @@ export function useOperationFlowConfig(): OperationFlowConfigResult {
   const [error, setError] = useState<Error | null>(null);
   const [revision, setRevision] = useState(0);
 
+  const repo = useOperationalPhaseRepository();
   useEffect(() => {
     let cancelled = false;
-    const repo = createOperationalPhaseRepository();
+    // repo はフックで取得済み
 
     repo
       .getAll()

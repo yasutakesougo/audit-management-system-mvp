@@ -296,3 +296,33 @@ export async function createIcebergRepository(acquireToken: () => Promise<string
 }
 
 export type IcebergRepository = Awaited<ReturnType<typeof createIcebergRepository>>;
+
+import { useMemo, useState, useEffect } from 'react';
+import { useAuth } from '@/auth/useAuth';
+
+/**
+ * React Hook: IcebergRepository を取得する
+ * 非同期初期化が必要なため、Promise ではなく解決されたインスタンスまたは null を返す
+ */
+export function useIcebergRepository() {
+  const { acquireToken } = useAuth();
+  const config = useMemo(() => getAppConfig(), []);
+  const spSiteUrl = config.VITE_SP_SITE_URL || '';
+
+  const [repository, setRepository] = useState<IcebergRepository | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const init = async () => {
+      const repo = await createIcebergRepository(acquireToken, spSiteUrl);
+      if (!cancelled) {
+        setRepository(repo);
+      }
+    };
+    init();
+    return () => { cancelled = true; };
+  }, [acquireToken, spSiteUrl]);
+
+  return repository;
+}
+

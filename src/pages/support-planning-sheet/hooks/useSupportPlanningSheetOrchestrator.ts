@@ -10,12 +10,10 @@ import { useAssessmentStore } from '@/features/assessment/stores/assessmentStore
 import { useImportAuditStore } from '@/features/planning-sheet/stores/importAuditStore';
 import { filterAuditHistoryRecords } from '@/features/planning-sheet/domain/filterAuditHistory';
 import { useLatestBehaviorMonitoring } from '@/features/planning-sheet/hooks/useLatestBehaviorMonitoring';
-import { createMonitoringMeetingRepository } from '@/features/monitoring/repositories/createMonitoringMeetingRepository';
+import { useMonitoringMeetingRepository } from '@/features/monitoring/repositories/createMonitoringMeetingRepository';
 import { useStrategyUsageCounts } from '@/features/planning-sheet/hooks/useStrategyUsageCounts';
 import { useStrategyUsageTrend, type TrendDays } from '@/features/planning-sheet/hooks/useStrategyUsageTrend';
 import { useUsers } from '@/features/users/useUsers';
-import { SP_ENABLED } from '@/lib/env';
-import { useSP } from '@/lib/spClient';
 import { usePdcaCycleState } from '@/features/ibd/analysis/pdca/queries/usePdcaCycleState';
 import { mapMonitoringToPlanningBridge, mapMonitoringMeetingToMonitoringRecord } from '@/domain/isp/bridgeMapper';
 import type { MonitoringRecord } from '@/domain/isp/types';
@@ -42,7 +40,8 @@ export function useSupportPlanningSheetOrchestrator(): {
   const { state: uiState, actions: uiActions } = useSupportPlanningSheetUiState();
 
   const planningSheetRepo = usePlanningSheetRepositories();
-  const spClient = useSP();
+  // spClient は repository hooks 内に隠蔽されました
+
 
   // 1. データフェッチ
   const { data: sheet, isLoading, error, refetch } = usePlanningSheetData(planningSheetId, planningSheetRepo);
@@ -94,12 +93,7 @@ export function useSupportPlanningSheetOrchestrator(): {
     [auditRecords, uiState.historyFilter],
   );
 
-  const monitoringRepo = React.useMemo(
-    () => SP_ENABLED
-      ? createMonitoringMeetingRepository('sharepoint', { spClient })
-      : createMonitoringMeetingRepository('local'),
-    [spClient],
-  );
+  const monitoringRepo = useMonitoringMeetingRepository();
   const { record: latestMonitoringRecord } = useLatestBehaviorMonitoring(sheet?.userId ?? null, {
     repository: monitoringRepo,
     planningSheetId: planningSheetId ?? 'new',
