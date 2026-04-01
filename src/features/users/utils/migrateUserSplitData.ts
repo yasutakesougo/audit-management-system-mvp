@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { auditLog } from '@/lib/debugLogger';
 import { FIELD_MAP } from '@/sharepoint/fields';
@@ -27,11 +26,11 @@ export async function migrateUserSplitData(provider: IDataProvider, options: { d
     try {
         // 1. Users_Master から全データを取得 (現在、すべての列が SharePoint には残っている)
         const fields = FIELD_MAP.Users_Master;
-        const allLegacyUsers = await provider.listItems<Record<string, any>>('Users_Master', { top: 1000 });
+        const allLegacyUsers = await provider.listItems<Record<string, unknown>>('Users_Master', { top: 1000 });
         stats.processed = allLegacyUsers.length;
 
         for (const user of allLegacyUsers) {
-            const userId = user[fields.userId];
+            const userId = user[fields.userId] as string | undefined;
             if (!userId) {
                 stats.errors.push(`User ID missing for record with Internal ID: ${user.Id}`);
                 continue;

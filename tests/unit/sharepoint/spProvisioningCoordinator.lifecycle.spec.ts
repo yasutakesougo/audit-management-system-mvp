@@ -43,6 +43,9 @@ describe('SharePointProvisioningCoordinator - Lifecycle Support', () => {
       spFetch: vi.fn(),
       tryGetListMetadata: vi.fn().mockResolvedValue({ listId: '', title: 'SomeList' }),
       getListFieldInternalNames: vi.fn().mockResolvedValue(new Set()),
+      getExistingListTitlesAndIds: vi.fn().mockResolvedValue(
+        new Set(['RequiredList', 'OptionalList', 'DeprecatedList', 'ExperimentalList'])
+      ),
     } as unknown as ReturnType<typeof useSP>;
   });
 

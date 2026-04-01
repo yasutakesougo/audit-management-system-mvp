@@ -16,7 +16,7 @@ describe('dailyIntegrityChecker', () => {
       ];
       const children: ScanSourceChild[] = []; // v1の子がいない
 
-      const results = scanDailyRecordIntegrity(parents, children, now);
+      const results = scanDailyRecordIntegrity(parents, children, [], now);
       
       expect(results).toHaveLength(1);
       expect(results[0].type).toBe('orphan_parent');
@@ -32,7 +32,7 @@ describe('dailyIntegrityChecker', () => {
         { parentId: '1', userId: 'U1', version: 2, status: 'committed', recordedAt: '2026-03-30T09:05:00Z' } // ゴースト！
       ];
 
-      const results = scanDailyRecordIntegrity(parents, children, now);
+      const results = scanDailyRecordIntegrity(parents, children, [], now);
       
       expect(results).toHaveLength(1);
       expect(results[0].type).toBe('version_mismatch');
@@ -51,7 +51,7 @@ describe('dailyIntegrityChecker', () => {
         }
       ];
 
-      const results = scanDailyRecordIntegrity(parents, children, now);
+      const results = scanDailyRecordIntegrity(parents, children, [], now);
       
       expect(results).toHaveLength(1);
       expect(results[0].type).toBe('stale_pending');
@@ -66,7 +66,7 @@ describe('dailyIntegrityChecker', () => {
         { parentId: '1', userId: 'U1', version: 1, status: 'committed', recordedAt: '2026-03-30T09:55:00Z' }
       ];
 
-      const results = scanDailyRecordIntegrity(parents, children, now);
+      const results = scanDailyRecordIntegrity(parents, children, [], now);
       
       expect(results).toHaveLength(0);
     });

@@ -13,6 +13,7 @@ import {
 } from '@/sharepoint/fields';
 import { auditLog } from '@/lib/debugLogger';
 import { readEnv } from '@/lib/env';
+import type { AuditEvent } from '@/lib/audit';
 
 import { normalizeAttendanceDays } from '../attendance';
 import { canEditUser, resolveUserLifecycleStatus, toDomainUser } from '../domain/userLifecycle';
@@ -34,6 +35,15 @@ const getTodayIsoDate = (): string => new Date().toISOString().slice(0, 10);
 /** UserTransport_Settings / UserBenefit_Profile 双方の join キー列名 */
 const ACCESSORY_LIST_JOIN_FIELD = 'UserID';
 
+type AuditLogEntry = Omit<AuditEvent, 'ts'>;
+
+interface UserFieldStatus {
+  resolvedName?: string;
+  candidates: string[];
+  isSilent?: boolean;
+  isEssential?: boolean;
+}
+
 /**
  * DataProviderUserRepository
  * 
@@ -44,13 +54,11 @@ const ACCESSORY_LIST_JOIN_FIELD = 'UserID';
 export class DataProviderUserRepository implements UserRepository {
   private readonly provider: IDataProvider;
   private readonly listTitle: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private readonly audit?: (log: any) => void;
+  private readonly audit?: (log: AuditLogEntry) => void;
   private readonly defaultTop: number = 200;
 
   private resolvedFields: Record<string, string | undefined> | null = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private fieldStatus: any = null;
+  private fieldStatus: Record<string, UserFieldStatus> | null = null;
   private unsupportedWriteFields = new Set<string>();
 
   private readonly transportListTitle: string;
@@ -59,8 +67,7 @@ export class DataProviderUserRepository implements UserRepository {
   constructor(options: {
     provider: IDataProvider;
     listTitle?: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    audit?: (log: any) => void;
+    audit?: (log: AuditLogEntry) => void;
     defaultTop?: number;
   }) {
     this.provider = options.provider;
@@ -96,14 +103,14 @@ export class DataProviderUserRepository implements UserRepository {
         const extCandidates: Record<string, CandidateDef> = Object.fromEntries(
           Object.entries(USERS_MASTER_COMPLIANCE_FIELD_MAP).map(([key, value]) => [
             key, 
-            { candidates: [value], isSilent: true }
+            { candidates: [String(value)], isSilent: true }
           ])
         );
 
         // 2. コア基本候補 (UI警告対象)
         const coreCandidates: Record<string, CandidateDef> = Object.fromEntries(
           Object.entries(USERS_MASTER_CORE_FIELD_MAP).map(([key, value]) => {
-            let candidates: string[] = [value];
+            let candidates: string[] = [String(value)];
             if (key === 'userId') candidates = ['UserID', 'cr013_usercode', 'Title'];
             if (key === 'fullName') candidates = ['FullName', 'cr013_fullname', 'Title'];
             return [key, { candidates, isSilent: false }];
@@ -126,12 +133,12 @@ export class DataProviderUserRepository implements UserRepository {
           Object.entries(rawFieldStatus).map(([key, status]) => [
             key,
             { 
-              ...status, 
+              ...(status as { resolvedName?: string; candidates: string[] }), 
               isSilent: allCandidates[key]?.isSilent ?? false,
               isEssential: coreCandidates[key] !== undefined
             }
           ])
-        );
+        ) as Record<string, UserFieldStatus>;
 
         // 必須フィールド判定（これらが欠けるとシステム警告の対象にする）
         const essentials: string[] = ['id', 'userId', 'fullName', 'isActive'];
@@ -140,7 +147,7 @@ export class DataProviderUserRepository implements UserRepository {
         reportResourceResolution({
           resourceName: 'Users_Master',
           resolvedTitle: this.listTitle,
-          fieldStatus: fieldStatusWithSilent as Record<string, { resolvedName?: string; candidates: string[]; isSilent?: boolean }>,
+          fieldStatus: fieldStatusWithSilent,
           essentials: essentials,
         });
 
@@ -203,8 +210,12 @@ export class DataProviderUserRepository implements UserRepository {
             this.provider.listItems<Record<string, unknown>>(this.benefitListTitle).catch(() => [])
           ]);
 
-          const transportMap = new Map(transportRows.map(r => [String(r.UserID || ''), r]));
-          const benefitMap = new Map(benefitRows.map(r => [String(r.UserID || ''), r]));
+          const transportMap = new Map<string, Record<string, unknown>>(
+            transportRows.map(r => [String(r.UserID || ''), r])
+          );
+          const benefitMap = new Map<string, Record<string, unknown>>(
+            benefitRows.map(r => [String(r.UserID || ''), r])
+          );
 
           domainItems = domainItems.map(user => {
             const tRow = transportMap.get(user.UserID);
@@ -292,7 +303,7 @@ export class DataProviderUserRepository implements UserRepository {
       action: 'create',
       entity_id: String(domain.Id),
       channel: 'UI',
-      after: { item: domain },
+      after: domain as unknown as Record<string, unknown>,
     });
 
     return domain;
@@ -322,7 +333,7 @@ export class DataProviderUserRepository implements UserRepository {
       action: 'update',
       entity_id: String(numericId),
       channel: 'UI',
-      after: { patch: payload },
+      after: payload as Record<string, unknown>,
     });
 
     return updated;
@@ -655,3 +666,4 @@ export class DataProviderUserRepository implements UserRepository {
     return sanitized;
   }
 }
+

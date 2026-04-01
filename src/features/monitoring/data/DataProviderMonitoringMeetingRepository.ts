@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { auditLog } from '@/lib/debugLogger';
 import { buildEq } from '@/sharepoint/query/builders';
@@ -20,6 +19,9 @@ import {
   type SpMonitoringMeetingRow,
 } from '@/sharepoint/fields/monitoringMeetingFields';
 
+type MonitoringMeetingCandidateKeys = keyof typeof MONITORING_MEETING_CANDIDATES;
+type MonitoringMeetingResolvedFields = Record<MonitoringMeetingCandidateKeys, string>;
+
 /**
  * DataProviderMonitoringMeetingRepository
  * 
@@ -29,28 +31,35 @@ import {
 export class DataProviderMonitoringMeetingRepository implements MonitoringMeetingRepository {
   private readonly provider: IDataProvider;
   private readonly listTitle: string;
-  private resolvedFields: Record<string, string> | null = null;
+  private resolvedFields: MonitoringMeetingResolvedFields | null = null;
 
   constructor(provider: IDataProvider, listTitle: string = 'MonitoringMeetings') {
     this.provider = provider;
     this.listTitle = listTitle;
   }
 
-  private async ensureResolved(): Promise<Record<string, string>> {
+  private async ensureResolved(): Promise<MonitoringMeetingResolvedFields> {
     if (this.resolvedFields) return this.resolvedFields;
 
     try {
       const available = await this.provider.getFieldInternalNames(this.listTitle);
-      const resolved = resolveInternalNames(available, MONITORING_MEETING_CANDIDATES as any) as Record<string, string>;
+      const resolved = resolveInternalNames(
+        available, 
+        MONITORING_MEETING_CANDIDATES as unknown as Record<MonitoringMeetingCandidateKeys, string[]>
+      ) as MonitoringMeetingResolvedFields;
       this.resolvedFields = resolved;
       return resolved;
     } catch (err) {
       auditLog.warn('monitoring', `Field resolution failed for ${this.listTitle}. Triggering self-healing...`, err);
       
-      await this.provider.ensureListExists(this.listTitle, MONITORING_MEETING_ENSURE_FIELDS as unknown as any);
+      type FieldsType = Parameters<IDataProvider['ensureListExists']>[1];
+      await this.provider.ensureListExists(this.listTitle, [...MONITORING_MEETING_ENSURE_FIELDS] as unknown as FieldsType);
       
       const available = await this.provider.getFieldInternalNames(this.listTitle);
-      const resolved = resolveInternalNames(available, MONITORING_MEETING_CANDIDATES as any) as Record<string, string>;
+      const resolved = resolveInternalNames(
+        available, 
+        MONITORING_MEETING_CANDIDATES as unknown as Record<MonitoringMeetingCandidateKeys, string[]>
+      ) as MonitoringMeetingResolvedFields;
       this.resolvedFields = resolved;
       return resolved;
     }
@@ -124,7 +133,7 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
       const spId = await this.findSpItemIdByRecordId(record.id, fields);
 
       if (spId !== null) {
-        await this.provider.updateItem(this.listTitle, spId, body, { etag: '*' });
+        await this.provider.updateItem(this.listTitle, String(spId), body, { etag: '*' });
       } else {
         await this.provider.createItem<Record<string, unknown>>(this.listTitle, body);
       }
@@ -143,7 +152,7 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
     try {
       const spId = await this.findSpItemIdByRecordId(id, fields);
       if (spId !== null) {
-        await this.provider.deleteItem(this.listTitle, spId);
+        await this.provider.deleteItem(this.listTitle, String(spId));
       }
     } catch (err) {
       auditLog.error('monitoring', `Failed to delete meeting: ${id}`, err);
@@ -151,7 +160,7 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
     }
   }
 
-  private async findSpItemIdByRecordId(recordId: string, fields: Record<string, string>): Promise<number | null> {
+  private async findSpItemIdByRecordId(recordId: string, fields: MonitoringMeetingResolvedFields): Promise<number | null> {
     const rows = await this.provider.listItems<SpMonitoringMeetingRow>(this.listTitle, {
       select: ['Id'],
       filter: buildEq(fields.recordId, recordId),
@@ -161,7 +170,7 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
     return typeof spId === 'number' && spId > 0 ? spId : null;
   }
 
-  private mapSpRowToRecord(row: SpMonitoringMeetingRow, fields: Record<string, string>): MonitoringMeetingRecord {
+  private mapSpRowToRecord(row: SpMonitoringMeetingRow, fields: MonitoringMeetingResolvedFields): MonitoringMeetingRecord {
     return {
       id: String(row[fields.recordId] ?? ''),
       userId: String(row[fields.userId] ?? ''),
@@ -184,7 +193,7 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
     };
   }
 
-  private buildPatchBody(record: MonitoringMeetingRecord, fields: Record<string, string>): Record<string, unknown> {
+  private buildPatchBody(record: MonitoringMeetingRecord, fields: MonitoringMeetingResolvedFields): Record<string, unknown> {
     const meetingDate = record.meetingDate?.slice(0, 10) ?? '';
     const nextMonitoringDate = record.nextMonitoringDate?.slice(0, 10) ?? '';
 

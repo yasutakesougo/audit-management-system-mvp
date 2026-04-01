@@ -20,14 +20,19 @@ import type { SupportPlanningSheetRepository } from '@/features/monitoring/data/
 
 // ── mock をファクトリで差し替え ────────────────────────────
 
-const mockList = vi.fn<SupportPlanningSheetRepository['list']>();
-const mockSave = vi.fn<SupportPlanningSheetRepository['save']>();
+const { mockList, mockSave, mockRepo } = vi.hoisted(() => {
+  const list = vi.fn<SupportPlanningSheetRepository['list']>();
+  const save = vi.fn<SupportPlanningSheetRepository['save']>();
+  return {
+    mockList: list,
+    mockSave: save,
+    mockRepo: { list, save },
+  };
+});
 
 vi.mock('@/features/monitoring/data/createSupportPlanningSheetRepository', () => ({
-  createSupportPlanningSheetRepository: () => ({
-    list: mockList,
-    save: mockSave,
-  }),
+  useSupportPlanningSheetRepository: () => mockRepo,
+  createSupportPlanningSheetRepository: () => mockRepo,
 }));
 
 // hook import は mock 定義の後

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { toSafeError } from '@/lib/errors';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { auditLog } from '@/lib/debugLogger';
@@ -21,13 +19,24 @@ import type {
 import type { SupportPlanDraft, SupportPlanForm } from '../types';
 import { sanitizeForm } from '../utils/helpers';
 
+type SupportPlanCandidateKeys = keyof typeof SUPPORT_PLANS_CANDIDATES;
+
+interface SupportPlanResolvedFields extends Record<SupportPlanCandidateKeys, string | undefined> {
+  draftId: string;
+  userCode: string;
+  formDataJson: string;
+  select: string[];
+  created?: string;
+  modified?: string;
+}
+
 /**
  * DataProvider implementation of SupportPlanDraftRepository.
  */
 export class DataProviderSupportPlanDraftRepository implements SupportPlanDraftRepository {
   private readonly provider: IDataProvider;
   private readonly listTitle: string;
-  private resolvedFields: any = null;
+  private resolvedFields: SupportPlanResolvedFields | null = null;
 
   constructor(options: {
     provider: IDataProvider;
@@ -49,13 +58,13 @@ export class DataProviderSupportPlanDraftRepository implements SupportPlanDraftR
       if (params?.userCode) {
         filters.push(buildEq(fields.userCode, params.userCode));
       }
-      if (params?.status) {
+      if (params?.status && fields.status) {
         const statuses = Array.isArray(params.status) ? params.status : [params.status];
         if (statuses.length === 1) {
           filters.push(buildEq(fields.status, statuses[0]));
         } else {
           const statusFilter = statuses
-            .map((s) => buildEq(fields.status, s))
+            .map((s) => buildEq(fields.status!, s))
             .join(' or ');
           filters.push(`(${statusFilter})`);
         }
@@ -88,10 +97,10 @@ export class DataProviderSupportPlanDraftRepository implements SupportPlanDraftR
         Title: compositeKey,
         [fields.draftId]: draft.id,
         [fields.userCode]: draft.userCode ?? '',
-        [fields.draftName]: draft.name,
+        [fields.draftName || 'DraftName']: draft.name,
         [fields.formDataJson]: JSON.stringify(draft.data),
-        [fields.status]: 'draft',
-        [fields.schemaVersion]: 2,
+        [fields.status || 'Status']: 'draft',
+        [fields.schemaVersion || 'SchemaVersion']: 2,
       };
 
       // Find existing
@@ -145,23 +154,23 @@ export class DataProviderSupportPlanDraftRepository implements SupportPlanDraftR
     }
   }
 
-  private async resolveFields(): Promise<any> {
+  private async resolveFields(): Promise<SupportPlanResolvedFields | null> {
     if (this.resolvedFields) return this.resolvedFields;
 
     try {
       const available = await this.provider.getFieldInternalNames(this.listTitle);
       const { resolved, fieldStatus } = resolveInternalNamesDetailed(
         available,
-        SUPPORT_PLANS_CANDIDATES as any
+        SUPPORT_PLANS_CANDIDATES as unknown as Record<SupportPlanCandidateKeys, string[]>
       );
 
-      const isHealthy = areEssentialFieldsResolved(resolved, SUPPORT_PLANS_ESSENTIALS as any);
+      const isHealthy = areEssentialFieldsResolved(resolved, [...SUPPORT_PLANS_ESSENTIALS] as SupportPlanCandidateKeys[]);
       
       reportResourceResolution({
         resourceName: 'SupportPlans',
         resolvedTitle: this.listTitle,
-        fieldStatus: fieldStatus as any,
-        essentials: SUPPORT_PLANS_ESSENTIALS as any,
+        fieldStatus: fieldStatus as Record<string, { resolvedName?: string; candidates: string[] }>,
+        essentials: [...SUPPORT_PLANS_ESSENTIALS] as string[],
       });
 
       if (isHealthy) {
@@ -170,7 +179,13 @@ export class DataProviderSupportPlanDraftRepository implements SupportPlanDraftR
           ...Object.values(resolved).filter((v): v is string => typeof v === 'string')
         ].filter((v, i, a) => a.indexOf(v) === i);
 
-        this.resolvedFields = { ...resolved, select };
+        this.resolvedFields = { 
+          ...resolved, 
+          select,
+          draftId: resolved.draftId!,
+          userCode: resolved.userCode!,
+          formDataJson: resolved.formDataJson!,
+        } as SupportPlanResolvedFields;
         return this.resolvedFields;
       }
 
@@ -183,8 +198,8 @@ export class DataProviderSupportPlanDraftRepository implements SupportPlanDraftR
       reportResourceResolution({
         resourceName: 'SupportPlans',
         resolvedTitle: this.listTitle,
-        fieldStatus: {} as any,
-        essentials: SUPPORT_PLANS_ESSENTIALS as any,
+        fieldStatus: {},
+        essentials: [...SUPPORT_PLANS_ESSENTIALS],
         error: String(err)
       });
       auditLog.error('support-plan:repo', 'Field resolution failed:', err);
@@ -192,19 +207,19 @@ export class DataProviderSupportPlanDraftRepository implements SupportPlanDraftR
     }
   }
 
-  private mapRowToDraft(row: Record<string, unknown>, fields: Record<string, string>): SupportPlanDraft | null {
+  private mapRowToDraft(row: Record<string, unknown>, fields: SupportPlanResolvedFields): SupportPlanDraft | null {
 
     try {
-      const formDataJson = String(row[fields.formDataJson] || '{}');
+      const formDataJson = String(fields.formDataJson ? row[fields.formDataJson] : '{}');
       const formData: Partial<SupportPlanForm> = JSON.parse(formDataJson);
       
       return {
-        id: String(row[fields.draftId] || ''),
-        name: String(row[fields.draftName] || ''),
-        createdAt: String(row.Created || row[fields.created] || new Date().toISOString()),
-        updatedAt: String(row.Modified || row[fields.modified] || new Date().toISOString()),
+        id: String(fields.draftId ? row[fields.draftId] : ''),
+        name: String(fields.draftName ? row[fields.draftName] : ''),
+        createdAt: String(row.Created || (fields.created ? row[fields.created] : '') || new Date().toISOString()),
+        updatedAt: String(row.Modified || (fields.modified ? row[fields.modified] : '') || new Date().toISOString()),
         userId: null,
-        userCode: String(row[fields.userCode] || ''),
+        userCode: String(fields.userCode ? row[fields.userCode] : ''),
         data: sanitizeForm(formData),
       };
     } catch (err) {
@@ -213,3 +228,4 @@ export class DataProviderSupportPlanDraftRepository implements SupportPlanDraftR
     }
   }
 }
+

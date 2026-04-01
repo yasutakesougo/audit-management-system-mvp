@@ -46,3 +46,20 @@ declare module "@azure/msal-browser" {
 
   export type IPublicClientApplication = PublicClientApplication;
 }
+
+declare global {
+  interface Window {
+    __AUDIT_BATCH_METRICS__?: {
+      total: number;
+      success: number;
+      duplicates: number;
+      newItems: number;
+      failed: number;
+      retryMax: number;
+      categories: Record<string, number>;
+      durationMs: number;
+      timestamp: string;
+      parserFallbackCount: number;
+    };
+  }
+}

@@ -6,6 +6,7 @@ vi.mock('@/lib/env', async () => {
     ...actual,
     skipSharePoint: vi.fn(() => false),
     shouldSkipLogin: vi.fn(() => false),
+    getAppConfig: vi.fn(() => ({ VITE_SP_RETRY_MAX: 1 })),
   };
 });
 
@@ -15,8 +16,9 @@ const mockFetchResponse = (body: unknown, status = 500): Response => ({
   ok: false,
   status,
   statusText: 'Internal Server Error',
+  url: '',
   headers: {
-    get: () => 'application/json',
+    get: (key: string) => (key.toLowerCase() === 'content-type' ? 'application/json' : null),
   } as unknown as Headers,
   text: async () => JSON.stringify(body),
   json: async () => body,

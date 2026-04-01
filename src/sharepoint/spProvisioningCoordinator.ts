@@ -286,4 +286,54 @@ export class SharePointProvisioningCoordinator {
     const s = getStability(listKey);
     return s === 'ok' || s === 'provisioned';
   }
+
+  /**
+   * 単一リストの整合性チェック (外部・テスト用)
+   */
+  async checkFieldIntegrity(
+    client: ReturnType<typeof useSP>,
+    listKey: string
+  ): Promise<{ 
+    isValid: boolean; 
+    missingFields: string[]; 
+    details?: string;
+    entry?: SpListEntry;
+  }> {
+    const entry = SP_LIST_REGISTRY.find(e => e.key === listKey);
+    if (!entry) {
+      return { 
+        isValid: false, 
+        missingFields: [], 
+        details: `List key "${listKey}" is not registered in SP_LIST_REGISTRY.` 
+      };
+    }
+
+    // verifyAndProvision を呼び出して現在の状態を確認
+    // Bootstrap 結果とは異なり、既存リスト一覧は個別に fetch する
+    const summary = await (this.constructor as typeof SharePointProvisioningCoordinator).verifyAndProvision(
+      client, 
+      entry, 
+      new Set([entry.resolve()]), // 存在前提でチェック開始
+      true // キャッシュを無視して最新を取得
+    );
+
+    const isHealthy = summary.status === 'ok' || summary.status === 'provisioned';
+    
+    // Status 'mismatch' の場合に details から不足列を取り出す
+    const missing = summary.details?.startsWith('Missing:') 
+      ? summary.details.replace('Missing: ', '').split(', ') 
+      : [];
+
+    return {
+      isValid: isHealthy,
+      missingFields: missing,
+      details: summary.details,
+      entry
+    };
+  }
 }
+
+/**
+ * Singleton instance for UI/Granular checks
+ */
+export const spProvisioningCoordinator = new SharePointProvisioningCoordinator();

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { toSafeError } from '@/lib/errors';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { auditLog } from '@/lib/debugLogger';
@@ -32,10 +31,15 @@ import {
     sortByStart,
 } from './scheduleSpUtils';
 
-type ResolvedScheduleFields = Record<keyof typeof SCHEDULE_CANDIDATES, string | undefined> & {
-  visibility?: string;
-  orgAudience?: string;
-};
+type ScheduleCandidateKeys = keyof typeof SCHEDULE_CANDIDATES;
+type ScheduleExtensionKeys = keyof typeof SCHEDULE_EXTENSIONS;
+type AllScheduleKeys = ScheduleCandidateKeys | ScheduleExtensionKeys;
+
+interface ResolvedScheduleFields extends Record<AllScheduleKeys, string | undefined> {
+  title: string;
+  start: string;
+  end: string;
+}
 
 /**
  * DataProviderScheduleRepository
@@ -74,26 +78,31 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       const allCandidates = { ...SCHEDULE_CANDIDATES, ...SCHEDULE_EXTENSIONS };
       const { resolved, fieldStatus } = resolveInternalNamesDetailed(
         available,
-        allCandidates as any
+        allCandidates as unknown as Record<string, string[]>
       );
 
       // 健康診断は SCHEDULE_CANDIDATES 分のみで行う
-      const isHealthy = areEssentialFieldsResolved(resolved, SCHEDULE_ESSENTIALS as any);
+      const isHealthy = areEssentialFieldsResolved(resolved, [...SCHEDULE_ESSENTIALS] as string[]);
       
       // Observability への報告（バナーのトリガー）から拡張分を除去し、バナーをクリアする
       const stableFieldStatus = Object.fromEntries(
-        Object.keys(SCHEDULE_CANDIDATES).map(k => [k, fieldStatus[k]])
+        (Object.keys(SCHEDULE_CANDIDATES) as ScheduleCandidateKeys[]).map(k => [k, fieldStatus[k]])
       );
 
       reportResourceResolution({
         resourceName: 'Schedule',
         resolvedTitle: this.listTitle,
-        fieldStatus: stableFieldStatus as any,
-        essentials: SCHEDULE_ESSENTIALS as any,
+        fieldStatus: stableFieldStatus as Record<string, { resolvedName?: string; candidates: string[] }>,
+        essentials: [...SCHEDULE_ESSENTIALS] as string[],
       });
 
       if (isHealthy) {
-        this.resolvedFields = resolved as ResolvedScheduleFields;
+        this.resolvedFields = {
+          ...resolved,
+          title: resolved.title!,
+          start: resolved.start!,
+          end: resolved.end!,
+        } as ResolvedScheduleFields;
         return this.resolvedFields;
       }
 
@@ -106,8 +115,8 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       reportResourceResolution({
         resourceName: 'Schedule',
         resolvedTitle: this.listTitle,
-        fieldStatus: {} as any,
-        essentials: SCHEDULE_ESSENTIALS as any,
+        fieldStatus: {},
+        essentials: [...SCHEDULE_ESSENTIALS] as string[],
         error: String(err)
       });
       auditLog.error('schedule:repo', 'Field resolution failed:', err);
@@ -128,13 +137,13 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       // 動的 $select 生成
       const selectFields = [
         'Id', 'Created', 'Modified',
-        ...Object.values(fields).filter((f): f is string => !!f)
+        ...Object.values(fields).filter((f): f is string | string[] => !!f && typeof f === 'string') as string[]
       ].filter((v, i, a) => a.indexOf(v) === i);
 
       // 動的 $filter 追加 (日付範囲)
       const rangeFilter = buildRangeFilter(range, {
-        start: fields.start!,
-        end: fields.end!
+        start: fields.start,
+        end: fields.end
       });
 
       const items = await this.provider.listItems<SpScheduleRow>(this.listTitle, {
@@ -181,9 +190,9 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
 
       // ペイロード構築
       const payload: Record<string, unknown> = {
-        [fields.title!]: input.title,
-        [fields.start!]: startIso,
-        [fields.end!]: endIso,
+        [fields.title]: input.title,
+        [fields.start]: startIso,
+        [fields.end]: endIso,
       };
 
       if (fields.status && input.status) payload[fields.status] = input.status;
@@ -271,3 +280,4 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
     throw new Error(`${userMessage} (${error.message})`);
   }
 }
+

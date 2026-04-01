@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { PageHeader } from '@/components/PageHeader';
 import { TESTIDS, tid } from '@/testids';
 import {
