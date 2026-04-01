@@ -1,17 +1,16 @@
 import { toSafeError } from '@/lib/errors';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { auditLog } from '@/lib/debugLogger';
+import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
 import { 
   ATTENDANCE_DAILY_CANDIDATES, 
-// Removed unused ATTENDANCE_DAILY_ENSURE_FIELDS
+  ATTENDANCE_USERS_CANDIDATES,
 } from '@/sharepoint/fields/attendanceFields';
 import { 
   NURSE_OBS_CANDIDATES
 } from '@/sharepoint/fields/nurseObservationFields';
 import {
-    ATTENDANCE_USERS_FIELDS,
     ATTENDANCE_USERS_LIST_TITLE,
-    ATTENDANCE_USERS_SELECT_FIELDS,
 } from '@/sharepoint/fields/attendanceFields';
 import { 
   resolveInternalNamesDetailed, 
@@ -44,6 +43,7 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
   private readonly listTitleUsers: string;
   private readonly listTitleNurse: string;
 
+  private resolvedUsers: Record<string, string | string[] | undefined> | null = null;
   private resolvedDaily: Record<string, string | string[] | undefined> | null = null;
   private resolvedNurse: Record<string, string | string[] | undefined> | null = null;
 
@@ -65,14 +65,17 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
    */
   async getActiveUsers(signal?: AbortSignal): Promise<AttendanceUserItem[]> {
     try {
+      const fields = await this.resolveUserFields();
+      if (!fields) return [];
+
       const rows = await this.provider.listItems<Record<string, unknown>>(this.listTitleUsers, {
-        select: ATTENDANCE_USERS_SELECT_FIELDS as unknown as string[],
-        filter: buildEq(ATTENDANCE_USERS_FIELDS.isActive as string, true),
-        orderby: ATTENDANCE_USERS_FIELDS.userCode as string,
+        select: fields.select as string[],
+        filter: fields.isActive ? buildEq(fields.isActive as string, true) : undefined,
+        orderby: fields.userCode ? (fields.userCode as string) : undefined,
         signal
       });
 
-      return rows.map(r => this.toAttendanceUser(r)).filter((u): u is AttendanceUserItem => !!u);
+      return rows.map(r => this.toAttendanceUser(r, fields)).filter((u): u is AttendanceUserItem => !!u);
     } catch (err) {
       auditLog.warn('attendance:repo', 'Failed to load active users. Returning empty.', err);
       return [];
@@ -175,19 +178,60 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
     }
   }
 
+  private async resolveUserFields(): Promise<Record<string, string | string[] | undefined> | null> {
+    if (this.resolvedUsers) return this.resolvedUsers;
+    const available = await this.provider.getFieldInternalNames(this.listTitleUsers).catch(() => null);
+    if (!available) return null;
+
+    const result = resolveInternalNamesDetailed(available, ATTENDANCE_USERS_CANDIDATES as unknown as Record<string, string[]>);
+    
+    const essentials = ['userCode', 'title'];
+    const isHealthy = areEssentialFieldsResolved(result.resolved as Record<string, string | undefined>, essentials);
+
+    reportResourceResolution({
+      resourceName: `Attendance:${this.listTitleUsers}`,
+      resolvedTitle: this.listTitleUsers,
+      fieldStatus: result.fieldStatus,
+      essentials,
+      lifecycle: 'required'
+    });
+
+    if (!isHealthy) {
+        auditLog.warn('attendance:repo', 'Essential user fields missing', { list: this.listTitleUsers, missing: result.missing });
+        // Minimum attempt: if at least we have 'id', try to limp along
+        if (!available.has('Id') && !available.has('ID')) return null;
+    }
+
+    const resolved = result.resolved as Record<string, string | string[] | undefined>;
+    resolved.select = ['Id', ...Object.values(resolved).filter((v): v is string => typeof v === 'string')].filter((v, i, a) => a.indexOf(v) === i);
+    
+    this.resolvedUsers = resolved;
+    return resolved;
+  }
+
   private async resolveDailyFields(): Promise<Record<string, string | string[] | undefined> | null> {
     if (this.resolvedDaily) return this.resolvedDaily;
     const available = await this.provider.getFieldInternalNames(this.listTitleDaily).catch(() => null);
     if (!available) return null;
     const result = resolveInternalNamesDetailed(available, ATTENDANCE_DAILY_CANDIDATES as unknown as Record<string, string[]>);
-    if (!areEssentialFieldsResolved(result.resolved as Record<string, string | undefined>, ['key', 'userCode', 'recordDate', 'status'])) {
-      return null;
-    }
+    
+    const essentials = ['key', 'userCode', 'recordDate', 'status'];
+    const isHealthy = areEssentialFieldsResolved(result.resolved as Record<string, string | undefined>, essentials);
+
+    reportResourceResolution({
+        resourceName: `Attendance:${this.listTitleDaily}`,
+        resolvedTitle: this.listTitleDaily,
+        fieldStatus: result.fieldStatus,
+        essentials,
+        lifecycle: 'required'
+      });
+
+    if (!isHealthy) return null;
+
     const resolved = result.resolved as Record<string, string | string[] | undefined>;
-    resolved.select = ['Id', ...Object.values(resolved).filter((v): v is string => typeof v === 'string')];
+    resolved.select = ['Id', ...Object.values(resolved).filter((v): v is string => typeof v === 'string')].filter((v, i, a) => a.indexOf(v) === i);
     this.resolvedDaily = resolved;
     return resolved;
-
   }
 
   private async resolveNurseFields(): Promise<Record<string, string | string[] | undefined> | null> {
@@ -213,22 +257,22 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
   }
 
 
-  private toAttendanceUser(row: Record<string, unknown>): AttendanceUserItem | null {
-    const userCode = String(row[ATTENDANCE_USERS_FIELDS.userCode as string] || '');
-    const title = String(row[ATTENDANCE_USERS_FIELDS.title as string] || '');
+  private toAttendanceUser(row: Record<string, unknown>, fields: Record<string, string | string[] | undefined>): AttendanceUserItem | null {
+    const userCode = String(row[fields.userCode as string] || '');
+    const title = String(row[fields.title as string] || '');
     if (!userCode || !title) return null;
 
     return {
       Id: Number(row.Id),
       Title: title,
       UserCode: userCode,
-      IsTransportTarget: Boolean(row[ATTENDANCE_USERS_FIELDS.isTransportTarget as string]),
-      StandardMinutes: Number(row[ATTENDANCE_USERS_FIELDS.standardMinutes as string] || 0),
-      IsActive: Boolean(row[ATTENDANCE_USERS_FIELDS.isActive as string]),
-      DefaultTransportToMethod: parseTransportMethod(row[ATTENDANCE_USERS_FIELDS.defaultTransportToMethod as string]),
-      DefaultTransportFromMethod: parseTransportMethod(row[ATTENDANCE_USERS_FIELDS.defaultTransportFromMethod as string]),
-      DefaultTransportToNote: row[ATTENDANCE_USERS_FIELDS.defaultTransportToNote as string] as string | undefined,
-      DefaultTransportFromNote: row[ATTENDANCE_USERS_FIELDS.defaultTransportFromNote as string] as string | undefined,
+      IsTransportTarget: fields.isTransportTarget ? Boolean(row[fields.isTransportTarget as string]) : false,
+      StandardMinutes: fields.standardMinutes ? Number(row[fields.standardMinutes as string] || 0) : 0,
+      IsActive: fields.isActive ? Boolean(row[fields.isActive as string]) : true,
+      DefaultTransportToMethod: fields.defaultTransportToMethod ? parseTransportMethod(row[fields.defaultTransportToMethod as string]) : undefined,
+      DefaultTransportFromMethod: fields.defaultTransportFromMethod ? parseTransportMethod(row[fields.defaultTransportFromMethod as string]) : undefined,
+      DefaultTransportToNote: fields.defaultTransportToNote ? (row[fields.defaultTransportToNote as string] as string | undefined) : undefined,
+      DefaultTransportFromNote: fields.defaultTransportFromNote ? (row[fields.defaultTransportFromNote as string] as string | undefined) : undefined,
     };
   }
 

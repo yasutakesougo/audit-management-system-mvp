@@ -203,6 +203,33 @@ module.exports = {
           // fetch は Worker の正規 API のため除外
         ],
       }
-    }
+    },
+    {
+      // UI / Hooks Layer: Prohibit direct Factory calls for Repositories
+      // Use useXXXRepository() hooks instead to ensure DI (DataProvider) stability.
+      files: [
+        'src/pages/**',
+        'src/features/**/components/**',
+        'src/features/**/hooks/**',
+        'src/app/**',
+      ],
+      excludedFiles: [
+        'src/features/**/data/**',
+        'src/features/**/infra/**',
+        '**/create*Repository.ts', // Factory-defining files are allowed to call themselves for recursion/wrappers if needed
+      ],
+      rules: {
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: "CallExpression[callee.name=/^create.*Repository$/]",
+            message:
+              'UI層や一般的なHookで Repository Factory を直接呼び出さないでください。' +
+              'useXXXRepository() フックを使用してください。' +
+              'Factory直呼びは DataProvider (DI) の未注入バグ (#1353) の原因になります。',
+          },
+        ],
+      },
+    },
   ]
 };

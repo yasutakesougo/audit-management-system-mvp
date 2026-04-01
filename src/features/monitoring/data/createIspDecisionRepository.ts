@@ -34,6 +34,8 @@ export function useIspDecisionRepository(): IspDecisionRepository {
  * 既存の呼び出し箇所との互換性のために、必要ならここからシングルトンを返す等の調整が必要。
  */
 export function createIspDecisionRepository(provider?: IDataProvider): IspDecisionRepository {
+  if (overrideInstance) return overrideInstance;
+
   // 以前の createIspDecisionRepository は引数なしでシングルトンを返していた。
   // 新設計では provider が必須。
   if (!provider) {

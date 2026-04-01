@@ -35,7 +35,43 @@ if [[ "$LOCAL" != "$REMOTE" ]]; then
   exit 1
 fi
 
-echo -e "${GREEN}✅ deploy-guard: OK${NC}"
-echo "   - Working tree clean"
-echo "   - On main branch"
-echo "   - HEAD matches origin/main ($LOCAL)"
+# Check 4: Structural Clean (lint)
+echo -ne "...Checking structural integrity (npm run lint)... "
+if npm run lint >/dev/null 2>&1; then
+  echo -e "${GREEN}PASSED${NC}"
+else
+  echo -e "${RED}FAILED${NC}"
+  echo "❌ Error: Repository DI consistency is broken. Fix lint errors before deploy."
+  exit 1
+fi
+
+# Check 5: Contract Consistency (typecheck)
+echo -ne "...Checking type safety (npm run typecheck)... "
+if npm run typecheck >/dev/null 2>&1; then
+  echo -e "${GREEN}PASSED${NC}"
+else
+  echo -e "${RED}FAILED${NC}"
+  echo "❌ Error: Type safety contracts are broken. Fix TS errors before deploy."
+  exit 1
+fi
+
+# Check 6: Regression Safety (test)
+# Using 'test:ci:required' for a balanced speed/coverage check
+echo -ne "...Checking core regressions (npm run test:ci:required)... "
+if npm run test:ci:required >/dev/null 2>&1; then
+  echo -e "${GREEN}PASSED${NC}"
+else
+  echo -e "${RED}FAILED${NC}"
+  echo "❌ Error: Core regression tests failed. Fix tests before deploy."
+  exit 1
+fi
+
+echo ""
+echo -e "${GREEN}🏆 Deployment Ready: Go Signals Finalized${NC}"
+echo "   - [Structural Clean]   : PASSED"
+echo "   - [Contract Consistent]: PASSED"
+echo "   - [Regression Safe]    : PASSED"
+echo "   - [Sync Status]        : synced with origin/main ($LOCAL)"
+echo ""
+
+
