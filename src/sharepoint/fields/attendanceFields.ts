@@ -84,6 +84,21 @@ export const ATTENDANCE_USERS_SELECT_FIELDS = [
   ATTENDANCE_USERS_FIELDS.isActive,
 ] as const;
 
+/**
+ * AttendanceUsers フィールド候補
+ */
+export const ATTENDANCE_USERS_CANDIDATES = {
+  userCode: ['UserID', 'UserCode', 'cr013_usercode', 'Title'],
+  title: ['FullName', 'FullNameKana', 'Title'],
+  isTransportTarget: ['IsTransportTarget'],
+  standardMinutes: ['StandardMinutes'],
+  isActive: ['IsActive', 'Active'],
+  defaultTransportToMethod: ['DefaultTransportToMethod'],
+  defaultTransportFromMethod: ['DefaultTransportFromMethod'],
+  defaultTransportToNote: ['DefaultTransportToNote'],
+  defaultTransportFromNote: ['DefaultTransportFromNote'],
+} as const;
+
 // ──────────────────────────────────────────────────────────────
 // User Attendance Daily (SharePoint list: AttendanceDaily)
 // ──────────────────────────────────────────────────────────────
