@@ -1,15 +1,32 @@
 {
   "version": 1,
   "date": "2026-03-30",
-  "overall": "monitor",
+  "overall": "needs-review",
   "classifications": [
+    {
+      "kind": "any-regression",
+      "severity": "high",
+      "classification": "needs-review",
+      "errorCount": 20,
+      "affectedFiles": [
+        "src/features/attendance/infra/Legacy/attendanceDailyRepository.ts",
+        "src/features/monitoring/data/DataProviderMonitoringMeetingRepository.ts",
+        "src/features/schedules/infra/DataProviderScheduleRepository.ts",
+        "src/features/support-plan-guide/infra/DataProviderSupportPlanDraftRepository.ts",
+        "src/features/users/utils/migrateUserSplitData.ts"
+      ],
+      "isTestOnly": false,
+      "action": "draft-issue"
+    },
     {
       "kind": "large-file-critical",
       "severity": "high",
       "classification": "monitor",
-      "errorCount": 1,
+      "errorCount": 3,
       "affectedFiles": [
-        "src/features/users/infra/RestApiUserRepository.ts"
+        "src/features/daily/repositories/sharepoint/SharePointDailyRecordRepository.ts",
+        "src/features/users/infra/RestApiUserRepository.ts",
+        "src/pages/TodayOpsPage.tsx"
       ],
       "isTestOnly": false,
       "action": "log-only"
@@ -17,10 +34,16 @@
   ],
   "actions": [
     {
+      "kind": "any-regression",
+      "action": "draft-issue",
+      "priority": "high",
+      "fileCount": 5
+    },
+    {
       "kind": "large-file-critical",
       "action": "log-only",
       "priority": "high",
-      "fileCount": 1
+      "fileCount": 3
     }
   ]
 }
