@@ -82,7 +82,17 @@ jobs:
           ACT_WARNING_SUMMARY_PATH: /tmp/act-warnings-nightly.json
           ACT_WARNING_OPEN_ISSUE_COUNT: ${{ steps.act_issue.outputs.open_count }}
           ACT_WARNING_OPEN_ISSUE_URL: ${{ steps.act_issue.outputs.open_url }}
+          # SP_TELEMETRY_PATH should be provided by the environment if available
+          SP_TELEMETRY_PATH: ${{ env.SP_TELEMETRY_PATH }} 
         run: node scripts/ops/nightly-patrol.mjs
+
+      - name: Assert Telemetry Lanes
+        if: ${{ always() }}
+        env:
+          SP_TELEMETRY_PATH: ${{ env.SP_TELEMETRY_PATH }}
+          CI_READ_QUEUE_THRESHOLD: 1000
+          CI_STRICT: "true"
+        run: npm run patrol:assert
 
       - name: Generate metrics dashboard
         run: node scripts/ops/os-metrics.mjs
@@ -96,6 +106,14 @@ jobs:
             /tmp/act-warnings-nightly.json
             /tmp/vitest-nightly-act.log
           if-no-files-found: warn
+
+      - name: Upload lane assertion result
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: lane-assertion-result-${{ github.run_number }}
+          path: docs/nightly-patrol/lane-assertion-result.json
+          if-no-files-found: ignore
 
       - name: Nightly act warning summary
         if: ${{ always() }}
