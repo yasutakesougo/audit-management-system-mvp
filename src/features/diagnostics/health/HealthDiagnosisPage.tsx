@@ -124,7 +124,23 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
           alignItems="center"
           justifyContent="space-between"
         >
-          <Typography variant="h5">環境診断（/diagnostics/health）</Typography>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="h5">環境診断</Typography>
+            <Typography
+              variant="caption"
+              sx={{
+                px: 1,
+                py: 0.25,
+                borderRadius: 1,
+                bgcolor: "warning.main",
+                color: "warning.contrastText",
+                fontWeight: 600,
+                lineHeight: 1.6,
+              }}
+            >
+              管理者専用
+            </Typography>
+          </Stack>
           <Stack direction="row" spacing={1}>
             <Button variant="outlined" onClick={run} disabled={loading} data-testid="diagnostics-run">
               {loading ? (
@@ -518,13 +534,15 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
 
         {/* 注記 */}
         <Paper variant="outlined" sx={{ p: 2, bgcolor: "action.hover" }}>
-          <Typography variant="subtitle2">【ご注意】</Typography>
+          <Typography variant="subtitle2">【管理者向け注意事項】</Typography>
           <Typography variant="body2" sx={{ mt: 1 }}>
+            • このページは管理者専用です。FAIL は管理者が対処すべき問題を示します
+            <br />
+            • 権限不足の FAIL は SharePoint 管理者による権限付与が必要です（アプリ側で回避手段は提供しません）
+            <br />
             • 大量データの全文検索は保証しません（SharePoint検索/ビュー設計に依存）
             <br />
             • 同時編集の競合は発生しうる（ETag/412 で検知し、案内します）
-            <br />
-            • 権限は SharePoint が正（アプリ側で"抜け道"は作りません）
           </Typography>
         </Paper>
       </Stack>

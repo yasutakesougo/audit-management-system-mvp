@@ -197,7 +197,11 @@ export class SharePointProvisioningCoordinator {
         // If absent, check if we should provision
         if (entry.provisioningFields) {
           auditLog.warn('sp:provisioning', `List "${listName}" missing. Provisioning...`, { key: entry.key });
-          await provisioner.ensureList(listName, entry.provisioningFields as import('@/lib/sp/types').SpFieldDef[]);
+          await provisioner.ensureList(
+              listName, 
+              entry.provisioningFields as import('@/lib/sp/types').SpFieldDef[],
+              { baseTemplate: entry.baseTemplate }
+          );
           saveStability(entry.key, 'provisioned');
           return { key: entry.key, displayName: entry.displayName, listName, status: 'provisioned' };
         }

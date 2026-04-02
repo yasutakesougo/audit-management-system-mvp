@@ -13,7 +13,8 @@ import {
     ATTENDANCE_USERS_LIST_TITLE,
 } from '@/sharepoint/fields/attendanceFields';
 import { 
-  resolveInternalNamesDetailed 
+  resolveInternalNamesDetailed, 
+  areEssentialFieldsResolved 
 } from '@/lib/sp/helpers';
 import { buildEq, buildSubstringOf, joinAnd, joinOr } from '@/sharepoint/query/builders';
 
@@ -29,6 +30,7 @@ import type {
   AttendanceRepositoryUpsertParams,
   ObservationTemperatureItem
 } from '../domain/AttendanceRepository';
+import { normalizeAttendanceDays } from '../../users/attendance';
 import type { AttendanceDailyItem } from './Legacy/attendanceDailyRepository';
 import type { AttendanceUserItem } from './Legacy/attendanceUsersRepository';
 import { parseTransportMethod } from '../transportMethod';
@@ -69,9 +71,13 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
 
       const rows = await this.provider.listItems<Record<string, unknown>>(this.listTitleUsers, {
         select: fields.select as string[],
-        filter: fields.isActive ? buildEq(fields.isActive as string, true) : undefined,
+        filter: fields.isActive ? buildEq(fields.isActive as string, 1) : undefined,
         orderby: fields.userCode ? (fields.userCode as string) : undefined,
         signal
+      });
+
+      auditLog.info('attendance:repo', `Fetched ${rows.length} rows from ${this.listTitleUsers}`, {
+        resolvedFields: fields,
       });
 
       const refDate = date || new Date().toISOString().split('T')[0];
@@ -142,12 +148,11 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
         signal: params?.signal
       });
 
-      const payload: Record<string, unknown> = {
-        [fields.key as string]: key,
-        [fields.userCode as string]: UserCode,
-        [fields.recordDate as string]: RecordDate,
-        [fields.status as string]: item.Status,
-      };
+      const payload: Record<string, unknown> = {};
+      if (fields.key) payload[fields.key as string] = key;
+      if (fields.userCode) payload[fields.userCode as string] = UserCode;
+      if (fields.recordDate) payload[fields.recordDate as string] = RecordDate;
+      if (fields.status) payload[fields.status as string] = item.Status;
 
       if (fields.checkInAt && item.CheckInAt) payload[fields.checkInAt as string] = item.CheckInAt;
       if (fields.checkOutAt && item.CheckOutAt) payload[fields.checkOutAt as string] = item.CheckOutAt;
@@ -221,6 +226,13 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
     const result = resolveInternalNamesDetailed(available, ATTENDANCE_DAILY_CANDIDATES as unknown as Record<string, string[]>);
     
     const essentials = ['key', 'userCode', 'recordDate', 'status'];
+    if (!areEssentialFieldsResolved(result.resolved as Record<string, string | undefined>, essentials)) {
+      auditLog.warn('attendance:repo', 'Essential fields missing for daily attendance list.', {
+        list: this.listTitleDaily,
+        missing: result.missing,
+      });
+      return null;
+    }
 
     reportResourceResolution({
         resourceName: `Attendance:${this.listTitleDaily}`,
@@ -276,6 +288,7 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
       IsActive: fields.isActive ? Boolean(row[fields.isActive as string]) : true,
       ServiceEndDate: fields.serviceEndDate ? (row[fields.serviceEndDate as string] as string | undefined) : undefined,
       UsageStatus: fields.usageStatus ? (row[fields.usageStatus as string] as string | undefined) : '利用中', // 欠落時は「利用中」
+      AttendanceDays: fields.attendanceDays ? normalizeAttendanceDays(row[fields.attendanceDays as string]) : [],
       DefaultTransportToMethod: fields.defaultTransportToMethod ? parseTransportMethod(row[fields.defaultTransportToMethod as string]) : undefined,
       DefaultTransportFromMethod: fields.defaultTransportFromMethod ? parseTransportMethod(row[fields.defaultTransportFromMethod as string]) : undefined,
       DefaultTransportToNote: fields.defaultTransportToNote ? (row[fields.defaultTransportToNote as string] as string | undefined) : undefined,
