@@ -391,9 +391,16 @@ async function runListChecks(
         key: `permissions.read.${spec.key}`,
         label: `権限：Read（${spec.displayName}）`,
         category: "permissions",
-        summary: "閲覧（Read）に失敗しました。",
+        summary: "閲覧（Read）権限がありません。【要管理者対応】",
         detail: read.err,
         evidence: { listTitle: spec.resolvedTitle },
+        nextActions: [
+          {
+            kind: "copy",
+            label: "管理者対応: SharePoint で Read 権限を付与",
+            value: `リスト「${spec.resolvedTitle}」に対する Read 権限を SharePoint 管理者が付与してください。`,
+          },
+        ],
       })
     );
   } else {
@@ -439,9 +446,16 @@ async function runListChecks(
         key: `permissions.create.${spec.key}`,
         label: `権限：Create（${spec.displayName}）`,
         category: "permissions",
-        summary: "作成（Create）に失敗しました。",
+        summary: "作成（Create）権限がありません。【要管理者対応】",
         detail: created.err,
         evidence: { listTitle: spec.resolvedTitle },
+        nextActions: [
+          {
+            kind: "copy",
+            label: "管理者対応: SharePoint で Create 権限を付与",
+            value: `リスト「${spec.resolvedTitle}」に対する Create 権限を SharePoint 管理者が付与してください。`,
+          },
+        ],
       })
     );
     return;
@@ -469,9 +483,16 @@ async function runListChecks(
         key: `permissions.update.${spec.key}`,
         label: `権限：Update（${spec.displayName}）`,
         category: "permissions",
-        summary: "更新（Update）に失敗しました。",
+        summary: "更新（Update）権限がありません。【要管理者対応】",
         detail: updated.err,
         evidence: { id: created.v.id, listTitle: spec.resolvedTitle },
+        nextActions: [
+          {
+            kind: "copy",
+            label: "管理者対応: SharePoint で Update 権限を付与",
+            value: `リスト「${spec.resolvedTitle}」に対する Update 権限を SharePoint 管理者が付与してください。`,
+          },
+        ],
       })
     );
   } else {
