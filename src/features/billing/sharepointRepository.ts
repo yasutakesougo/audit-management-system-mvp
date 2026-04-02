@@ -3,7 +3,7 @@ import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { BILLING_ORDERS_LIST_ID, BILLING_ORDERS_CANDIDATES } from '@/sharepoint/fields';
 import type { BillingOrderRepository } from './repository';
 import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
-
+import { isDev } from '@/env';
 import { mapToBillingOrder } from './domain/billingLogic';
 
 /**
@@ -40,7 +40,7 @@ export function createSharePointBillingOrderRepository(): BillingOrderRepository
         const query = selectFields ? `&$select=${selectFields}` : '';
         const url = `/lists/GetById('${listId}')/items?$top=500${query}`;
 
-        if (import.meta.env.DEV) {
+        if (isDev) {
           // eslint-disable-next-line no-console
           console.log('[Billing] fetching via spClient:', billingBaseUrl + url);
         }
