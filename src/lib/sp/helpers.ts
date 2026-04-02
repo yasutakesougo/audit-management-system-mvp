@@ -9,7 +9,7 @@ import { getAppConfig } from '@/lib/env';
 export interface ResolutionResult<T extends string> {
   resolved: Record<T, string | undefined>;
   missing: T[];
-  fieldStatus: Record<T, { resolvedName?: string; candidates: string[] }>;
+  fieldStatus: Record<T, { resolvedName?: string; candidates: string[]; isDrifted: boolean }>;
 }
 
 export type RetryReason = 'timeout' | 'throttle' | 'server' | 'auth';
@@ -314,7 +314,7 @@ export function resolveInternalNamesDetailed<T extends string>(
   candidates: Record<T, string[]>
 ): ResolutionResult<T> {
   const resolved = {} as Record<T, string | undefined>;
-  const fieldStatus = {} as Record<T, { resolvedName?: string; candidates: string[] }>;
+  const fieldStatus = {} as Record<T, { resolvedName?: string; candidates: string[]; isDrifted: boolean }>;
   const missing: T[] = [];
   
   // Case-insensitive lookup map for available fields
@@ -364,11 +364,14 @@ export function resolveInternalNamesDetailed<T extends string>(
       }
 
       const resolvedName = foundCandidate;
+      const isExactMatch = !!exactMatch && foundCandidate === availableMap.get(exactMatch.toLowerCase());
+      const isDrifted = !!resolvedName && !isExactMatch;
       
       resolved[key] = resolvedName;
       fieldStatus[key] = {
         resolvedName: resolvedName,
-        candidates: candidates[key]
+        candidates: candidates[key],
+        isDrifted
       };
       if (!resolvedName) {
         missing.push(key);

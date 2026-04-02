@@ -58,6 +58,7 @@ export type ListSpec = {
   // （安全：専用列が無い場合でも動くように Title を基本にする）
   createItem: Record<string, unknown>;
   updateItem: Record<string, unknown>;
+  isReadOnly?: boolean;
 };
 
 export type HealthContext = {

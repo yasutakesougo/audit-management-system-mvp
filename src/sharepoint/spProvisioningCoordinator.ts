@@ -19,7 +19,7 @@ import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 // Types & Constants
 // ---------------------------------------------------------------------------
 
-export type StabilityStatus = 'ok' | 'missing' | 'mismatch' | 'provisioned' | 'skipped' | 'deprecated';
+export type StabilityStatus = 'ok' | 'drifted' | 'missing' | 'mismatch' | 'provisioned' | 'skipped' | 'deprecated';
 
 export interface StabilitySummary {
   key: string;
@@ -119,7 +119,7 @@ export class SharePointProvisioningCoordinator {
 
     const result: BootstrapResult = {
       total: summaries.length,
-      healthy: summaries.filter(s => s.status === 'ok' || s.status === 'provisioned').length,
+      healthy: summaries.filter(s => s.status === 'ok' || s.status === 'provisioned' || s.status === 'drifted').length,
       unhealthy: summaries.filter(s => s.status === 'missing' || s.status === 'mismatch').length,
       summaries,
     };
@@ -220,7 +220,8 @@ export class SharePointProvisioningCoordinator {
         
         // Use fuzzy resolution to handle SharePoint suffixes (e.g., FullName0)
         const candidates = Object.fromEntries(entry.essentialFields.map(f => [f, [f]]));
-        const { missing: missingFields } = resolveInternalNamesDetailed(available, candidates);
+        const resolution = resolveInternalNamesDetailed(available, candidates);
+        const { missing: missingFields, fieldStatus } = resolution;
 
         if (missingFields.length > 0) {
           auditLog.warn('sp:provisioning', `Essential fields missing in "${listName}".`, { 
@@ -250,6 +251,23 @@ export class SharePointProvisioningCoordinator {
             listName, 
             status: 'mismatch', 
             details: `Missing: ${missingFields.join(', ')}` 
+          };
+        }
+
+        // Check for Drift (resolved but not exactly as expected)
+        const driftDetails = Object.entries(fieldStatus)
+          .filter(([, status]) => status.isDrifted)
+          .map(([key, status]) => `${key} -> ${status.resolvedName}`);
+
+        if (driftDetails.length > 0) {
+          auditLog.warn('sp:provisioning', `List "${listName}" has schema drift.`, { drift: driftDetails });
+          saveStability(entry.key, 'drifted');
+          return { 
+            key: entry.key, 
+            displayName: entry.displayName, 
+            listName, 
+            status: 'drifted',
+            details: `Drift: ${driftDetails.join(', ')}`
           };
         }
       }
@@ -284,7 +302,7 @@ export class SharePointProvisioningCoordinator {
    */
   static isStable(listKey: string): boolean {
     const s = getStability(listKey);
-    return s === 'ok' || s === 'provisioned';
+    return s === 'ok' || s === 'provisioned' || s === 'drifted';
   }
 
   /**
@@ -317,7 +335,7 @@ export class SharePointProvisioningCoordinator {
       true // キャッシュを無視して最新を取得
     );
 
-    const isHealthy = summary.status === 'ok' || summary.status === 'provisioned';
+    const isHealthy = summary.status === 'ok' || summary.status === 'provisioned' || summary.status === 'drifted';
     
     // Status 'mismatch' の場合に details から不足列を取り出す
     const missing = summary.details?.startsWith('Missing:') 

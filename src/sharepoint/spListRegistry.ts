@@ -78,9 +78,9 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_USERS', fromConfig(ListKeys.UsersMaster)),
     operations: ['R', 'W'],
     category: 'master',
-    lifecycle: 'optional',
+    lifecycle: 'required', // 制度管理の基盤となるため required
     essentialFields: [
-      'UserID', 'FullName', 'ContractDate', 'IsActive', 'UsageStatus', 'ServiceEndDate'
+      'UserID', 'FullName', 'IsActive', 'UsageStatus'
     ],
     provisioningFields: [
       { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true },
@@ -92,11 +92,9 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
       { internalName: 'ServiceEndDate', type: 'DateTime', displayName: 'Service End Date', dateTimeFormat: 'DateOnly' },
       { internalName: 'IsActive', type: 'Boolean', displayName: 'Is Active', default: true },
       { internalName: 'UsageStatus', type: 'Text', displayName: 'Usage Status' },
-      // Core status flags
       { internalName: 'IsHighIntensitySupportTarget', type: 'Boolean', displayName: 'High Intensity Target' },
       { internalName: 'IsSupportProcedureTarget', type: 'Boolean', displayName: 'Support Procedure Target' },
       { internalName: 'LastAssessmentDate', type: 'DateTime', displayName: 'Last Assessment Date', dateTimeFormat: 'DateOnly' },
-      // Regulatory scores
       { internalName: 'BehaviorScore', type: 'Number', displayName: 'Behavior Score' },
       { internalName: 'ChildBehaviorScore', type: 'Number', displayName: 'Child Behavior Score' },
       { internalName: 'ServiceTypesJson', type: 'Note', displayName: 'Service Types JSON', richText: false },
@@ -217,10 +215,11 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
       { internalName: 'RecordDate', type: 'DateTime', displayName: 'Record Date', required: true, dateTimeFormat: 'DateOnly', indexed: true },
       { internalName: 'ReporterName', type: 'Text', displayName: 'Reporter Name' },
       { internalName: 'ReporterRole', type: 'Text', displayName: 'Reporter Role' },
+      { internalName: 'UserRowsJSON', type: 'Note', displayName: 'User Rows JSON', required: true, richText: false },
       { internalName: 'UserCount', type: 'Number', displayName: 'User Count' },
-      { internalName: 'LatestVersion', type: 'Number', displayName: 'Latest Version', default: 1 },
-      { internalName: 'IsDeleted', type: 'Boolean', displayName: 'Is Deleted', default: false },
       { internalName: 'ApprovalStatus', type: 'Text', displayName: 'Approval Status' },
+      { internalName: 'ApprovedBy', type: 'Text', displayName: 'Approved By' },
+      { internalName: 'ApprovedAt', type: 'DateTime', displayName: 'Approved At', dateTimeFormat: 'DateTime' },
     ],
   },
   {
@@ -229,14 +228,15 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_PROCEDURE_RECORD', fromConfig(ListKeys.ProcedureRecordDaily)),
     operations: ['R', 'W'],
     category: 'daily',
-    lifecycle: 'optional',
+    lifecycle: 'required', // 三層モデルの核となるため required
     essentialFields: [
-      'UserCode', 'RecordDate', 'ExecutionStatus'
+      'UserCode', 'RecordDate', 'ExecutionStatus', 'PlanningSheetId'
     ],
     provisioningFields: [
       { internalName: 'UserCode', type: 'Text', displayName: 'User Code', required: true, indexed: true },
       { internalName: 'RecordDate', type: 'DateTime', displayName: 'Record Date', required: true, dateTimeFormat: 'DateOnly', indexed: true },
-      { internalName: 'PlanningSheetId', type: 'Text', displayName: 'Planning Sheet ID' },
+      { internalName: 'ISPId', type: 'Text', displayName: 'ISP ID' },
+      { internalName: 'PlanningSheetId', type: 'Text', displayName: 'Planning Sheet ID', required: true },
       { internalName: 'ProcedureText', type: 'Note', displayName: 'Procedure Text', richText: false },
       { internalName: 'ExecutionStatus', type: 'Text', displayName: 'Execution Status' },
       { internalName: 'TimeSlot', type: 'Text', displayName: 'Time Slot' },
@@ -245,6 +245,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
       { internalName: 'PerformedAt', type: 'DateTime', displayName: 'Performed At' },
       { internalName: 'UserResponse', type: 'Note', displayName: 'User Response', richText: false },
       { internalName: 'SpecialNotes', type: 'Note', displayName: 'Special Notes', richText: false },
+      { internalName: 'HandoffNotes', type: 'Note', displayName: 'Handoff Notes', richText: false },
     ],
   },
   {
@@ -294,7 +295,28 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_SERVICE_PROVISION', 'ServiceProvisionRecords'),
     operations: ['R', 'W'],
     category: 'daily',
-    lifecycle: 'optional',
+    lifecycle: 'required', // 業務継続に不可欠なため required へ昇格
+    essentialFields: [
+      'EntryKey', 'UserCode', 'RecordDate', 'Status', 'StartHHMM', 'EndHHMM'
+    ],
+    provisioningFields: [
+      { internalName: 'EntryKey', type: 'Text', displayName: 'Entry Key', required: true, indexed: true },
+      { internalName: 'UserCode', type: 'Text', displayName: 'User Code', required: true, indexed: true },
+      { internalName: 'RecordDate', type: 'DateTime', displayName: 'Record Date', required: true, dateTimeFormat: 'DateOnly', indexed: true },
+      { internalName: 'Status', type: 'Text', displayName: 'Status' },
+      { internalName: 'StartHHMM', type: 'Text', displayName: 'Start Time (HHMM)' },
+      { internalName: 'EndHHMM', type: 'Text', displayName: 'End Time (HHMM)' },
+      { internalName: 'HasTransport', type: 'Boolean', displayName: 'Has Transport' },
+      { internalName: 'HasTransportPickup', type: 'Boolean', displayName: 'Has Transport Pickup' },
+      { internalName: 'HasTransportDropoff', type: 'Boolean', displayName: 'Has Transport Dropoff' },
+      { internalName: 'HasMeal', type: 'Boolean', displayName: 'Has Meal' },
+      { internalName: 'HasBath', type: 'Boolean', displayName: 'Has Bath' },
+      { internalName: 'HasExtended', type: 'Boolean', displayName: 'Has Extended' },
+      { internalName: 'HasAbsentSupport', type: 'Boolean', displayName: 'Has Absent Support' },
+      { internalName: 'Note', type: 'Note', displayName: 'Note', richText: false },
+      { internalName: 'Source', type: 'Text', displayName: 'Source' },
+      { internalName: 'UpdatedByUPN', type: 'Text', displayName: 'UpdatedByUPN' },
+    ],
   },
   {
     key: 'activity_diary',
@@ -302,7 +324,19 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_ACTIVITY_DIARY', 'ActivityDiary'),
     operations: ['R', 'W'],
     category: 'daily',
-    lifecycle: 'optional',
+    lifecycle: 'required', // 業務継続に不可欠なため required へ昇格
+    essentialFields: ['UserIdId', 'Date', 'Shift', 'Category'],
+    provisioningFields: [
+      { internalName: 'UserIdId', type: 'Text', displayName: 'User ID', required: true },
+      { internalName: 'Date', type: 'DateTime', displayName: 'Date', required: true, dateTimeFormat: 'DateOnly', indexed: true },
+      { internalName: 'Shift', type: 'Choice', displayName: 'Shift', choices: ['AM', 'PM', '1日'], required: true },
+      { internalName: 'Category', type: 'Choice', displayName: 'Category', choices: ['請負', '個別', '外活動', '余暇'], required: true },
+      { internalName: 'LunchAmount', type: 'Choice', displayName: 'Lunch Amount', choices: ['完食', '8割', '半分', '少量', 'なし'] },
+      { internalName: 'ProblemBehavior', type: 'Boolean', displayName: 'Problem Behavior' },
+      { internalName: 'Seizure', type: 'Boolean', displayName: 'Seizure' },
+      { internalName: 'Goals', type: 'Note', displayName: 'Goals JSON', richText: false },
+      { internalName: 'Notes', type: 'Note', displayName: 'Notes', richText: false },
+    ],
   },
 
   // ── 3. 出席管理系 ──────────────────────────────────────
@@ -310,9 +344,17 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     key: 'daily_attendance',
     displayName: '日次出欠',
     resolve: () => envOr('VITE_SP_LIST_ATTENDANCE', fromConfig(ListKeys.DailyAttendance)),
-    operations: ['R'],
+    operations: ['R', 'W'],
     category: 'attendance',
     lifecycle: 'required',
+    essentialFields: ['UserIdId', 'Date', 'Status'],
+    provisioningFields: [
+      { internalName: 'UserIdId', type: 'Text', displayName: 'User ID', required: true },
+      { internalName: 'Date', type: 'DateTime', displayName: 'Date', required: true, dateTimeFormat: 'DateOnly', indexed: true },
+      { internalName: 'Status', type: 'Choice', displayName: 'Status', choices: ['通常', '欠席', '振替', '休止'], required: true },
+      { internalName: 'IsTrial', type: 'Boolean', displayName: 'Trial' },
+      { internalName: 'Notes', type: 'Note', displayName: 'Notes', richText: false },
+    ],
   },
   {
     key: 'attendance_users',
@@ -340,6 +382,26 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'attendance',
     lifecycle: 'required',
+    essentialFields: ['UserCode', 'RecordDate', 'Status'],
+    provisioningFields: [
+      { internalName: 'UserCode', type: 'Text', displayName: 'User Code', required: true, indexed: true },
+      { internalName: 'RecordDate', type: 'DateTime', displayName: 'Record Date', required: true, dateTimeFormat: 'DateOnly', indexed: true },
+      { internalName: 'Status', type: 'Text', displayName: 'Status', required: true },
+      { internalName: 'CheckInAt', type: 'DateTime', displayName: 'Check-in Time', dateTimeFormat: 'DateTime' },
+      { internalName: 'CheckOutAt', type: 'DateTime', displayName: 'Check-out Time', dateTimeFormat: 'DateTime' },
+      { internalName: 'CntAttendIn', type: 'Number', displayName: 'Attendance In Count' },
+      { internalName: 'CntAttendOut', type: 'Number', displayName: 'Attendance Out Count' },
+      { internalName: 'TransportTo', type: 'Boolean', displayName: 'Transport To' },
+      { internalName: 'TransportFrom', type: 'Boolean', displayName: 'Transport From' },
+      { internalName: 'ProvidedMinutes', type: 'Number', displayName: 'Provided Minutes' },
+      { internalName: 'IsEarlyLeave', type: 'Boolean', displayName: 'Early Leave' },
+      { internalName: 'UserConfirmedAt', type: 'DateTime', displayName: 'User Confirmed Time', dateTimeFormat: 'DateTime' },
+      { internalName: 'AbsentMorningContacted', type: 'Boolean', displayName: 'Absent Morning Contacted' },
+      { internalName: 'AbsentMorningMethod', type: 'Text', displayName: 'Absent Morning Method' },
+      { internalName: 'EveningChecked', type: 'Boolean', displayName: 'Evening Checked' },
+      { internalName: 'EveningNote', type: 'Note', displayName: 'Evening Note' },
+      { internalName: 'IsAbsenceAddonClaimable', type: 'Boolean', displayName: 'Absence Add-on Claimable' },
+    ],
   },
   {
     key: 'staff_attendance',
@@ -348,6 +410,16 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'attendance',
     lifecycle: 'required',
+    essentialFields: ['StaffId', 'RecordDate', 'Status'],
+    provisioningFields: [
+      { internalName: 'StaffId', type: 'Text', displayName: 'Staff ID', required: true, indexed: true },
+      { internalName: 'RecordDate', type: 'DateTime', displayName: 'Record Date', required: true, dateTimeFormat: 'DateOnly', indexed: true },
+      { internalName: 'Status', type: 'Text', displayName: 'Status', required: true },
+      { internalName: 'CheckInAt', type: 'DateTime', displayName: 'Check-in', dateTimeFormat: 'DateTime' },
+      { internalName: 'CheckOutAt', type: 'DateTime', displayName: 'Check-out', dateTimeFormat: 'DateTime' },
+      { internalName: 'IsFinalized', type: 'Boolean', displayName: 'Finalized', default: false },
+      { internalName: 'Note', type: 'Note', displayName: 'Note' },
+    ],
   },
   {
     key: 'transport_log',
@@ -356,6 +428,18 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'attendance',
     lifecycle: 'required',
+    essentialFields: ['UserCode', 'RecordDate', 'Direction', 'Status'],
+    provisioningFields: [
+      { internalName: 'UserCode', type: 'Text', displayName: 'User Code', required: true, indexed: true },
+      { internalName: 'RecordDate', type: 'DateTime', displayName: 'Record Date', required: true, dateTimeFormat: 'DateOnly', indexed: true },
+      { internalName: 'Direction', type: 'Choice', displayName: 'Direction', choices: ['to', 'from'], required: true },
+      { internalName: 'Status', type: 'Choice', displayName: 'Status', choices: ['pending', 'in-progress', 'arrived', 'absent', 'self'], required: true },
+      { internalName: 'Method', type: 'Choice', displayName: 'Method', choices: ['facility-vehicle', 'family', 'taxi', 'walk', 'self', 'other'] },
+      { internalName: 'ScheduledTime', type: 'Text', displayName: 'Scheduled Time' },
+      { internalName: 'ActualTime', type: 'Text', displayName: 'Actual Time' },
+      { internalName: 'DriverName', type: 'Text', displayName: 'Driver Name' },
+      { internalName: 'Notes', type: 'Note', displayName: 'Notes' },
+    ],
   },
 
   // ── 4. スケジュール系 ──────────────────────────────────
@@ -388,6 +472,18 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W', 'D'],
     category: 'meeting',
     lifecycle: 'optional',
+    essentialFields: ['SessionKey', 'MeetingKind', 'Date'],
+    provisioningFields: [
+      { internalName: 'SessionKey', type: 'Text', displayName: 'Session Key', required: true, indexed: true },
+      { internalName: 'MeetingKind', type: 'Choice', displayName: 'Meeting Kind', choices: ['morning', 'evening'], required: true },
+      { internalName: 'Date', type: 'DateTime', displayName: 'Meeting Date', required: true, dateTimeFormat: 'DateOnly' },
+      { internalName: 'StartTime', type: 'Text', displayName: 'Start Time' },
+      { internalName: 'EndTime', type: 'Text', displayName: 'End Time' },
+      { internalName: 'ChairpersonUserId', type: 'Text', displayName: 'Chairperson ID' },
+      { internalName: 'ChairpersonName', type: 'Text', displayName: 'Chairperson Name' },
+      { internalName: 'Status', type: 'Choice', displayName: 'Status', choices: ['scheduled', 'in-progress', 'completed', 'cancelled'] },
+      { internalName: 'TotalParticipants', type: 'Number', displayName: 'Total Participants' },
+    ],
   },
   {
     key: 'meeting_steps',
@@ -396,6 +492,16 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W', 'D'],
     category: 'meeting',
     lifecycle: 'optional',
+    essentialFields: ['SessionId', 'StepId', 'StepTitle'],
+    provisioningFields: [
+      { internalName: 'SessionId', type: 'Number', displayName: 'Session ID', required: true, indexed: true },
+      { internalName: 'SessionKey', type: 'Text', displayName: 'Session Key', required: true },
+      { internalName: 'StepId', type: 'Number', displayName: 'Step ID', required: true },
+      { internalName: 'StepTitle', type: 'Text', displayName: 'Step Title', required: true },
+      { internalName: 'Completed', type: 'Boolean', displayName: 'Completed', default: false },
+      { internalName: 'TimeSpentMinutes', type: 'Number', displayName: 'Minutes Spent' },
+      { internalName: 'StepNotes', type: 'Note', displayName: 'Step Notes', richText: false },
+    ],
   },
   {
     key: 'meeting_minutes',
@@ -404,6 +510,17 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W', 'D'],
     category: 'meeting',
     lifecycle: 'required',
+    essentialFields: ['MeetingDate', 'Category'],
+    provisioningFields: [
+      { internalName: 'MeetingDate', type: 'DateTime', displayName: 'Meeting Date', required: true, dateTimeFormat: 'DateOnly', indexed: true },
+      { internalName: 'Category', type: 'Text', displayName: 'Category', required: true },
+      { internalName: 'Summary', type: 'Note', displayName: 'Summary' },
+      { internalName: 'Decisions', type: 'Note', displayName: 'Decisions' },
+      { internalName: 'Actions', type: 'Note', displayName: 'Actions' },
+      { internalName: 'Attendees', type: 'Note', displayName: 'Attendees' },
+      { internalName: 'StaffAttendance', type: 'Note', displayName: 'Staff Attendance' },
+      { internalName: 'IsPublished', type: 'Boolean', displayName: 'Published', default: false },
+    ],
   },
 
   // ── 6. 引き継ぎ・支援計画系 ────────────────────────────
@@ -414,6 +531,17 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W', 'D'],
     category: 'handoff',
     lifecycle: 'required',
+    essentialFields: ['Message', 'UserCode', 'Category'],
+    provisioningFields: [
+      { internalName: 'Message', type: 'Note', displayName: 'Message', required: true },
+      { internalName: 'UserCode', type: 'Text', displayName: 'User Code', required: true, indexed: true },
+      { internalName: 'Category', type: 'Text', displayName: 'Category', required: true },
+      { internalName: 'Severity', type: 'Text', displayName: 'Severity' },
+      { internalName: 'Status', type: 'Text', displayName: 'Status' },
+      { internalName: 'TimeBand', type: 'Text', displayName: 'Time Band' },
+      { internalName: 'SourceType', type: 'Text', displayName: 'Source Type' },
+      { internalName: 'SourceKey', type: 'Text', displayName: 'Source Key' },
+    ],
   },
   {
     key: 'support_templates',
@@ -437,7 +565,16 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_SUPPORT_PLANS', fromConfig(ListKeys.SupportPlans)),
     operations: ['R', 'W', 'D'],
     category: 'handoff',
-    lifecycle: 'optional',
+    lifecycle: 'required', // 制度上必須のため required
+    essentialFields: ['DraftId', 'UserCode', 'FormDataJson'],
+    provisioningFields: [
+      { internalName: 'DraftId', type: 'Text', displayName: 'Draft ID', required: true, indexed: true },
+      { internalName: 'UserCode', type: 'Text', displayName: 'User Code', required: true, indexed: true },
+      { internalName: 'DraftName', type: 'Text', displayName: 'Draft Name' },
+      { internalName: 'FormDataJson', type: 'Note', displayName: 'Form Data (JSON)', required: true, richText: false },
+      { internalName: 'Status', type: 'Text', displayName: 'Status' },
+      { internalName: 'SchemaVersion', type: 'Number', displayName: 'Schema Version', default: 2 },
+    ],
   },
   {
     key: 'iceberg_pdca',
@@ -461,7 +598,18 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_ISP_MASTER', fromConfig(ListKeys.IspMaster)),
     operations: ['R', 'W'],
     category: 'handoff',
-    lifecycle: 'optional',
+    lifecycle: 'required', // 三層モデルの核となるため required
+    essentialFields: ['UserCode', 'PlanStartDate', 'Status'],
+    provisioningFields: [
+      { internalName: 'UserCode', type: 'Text', displayName: 'User Code', required: true, indexed: true },
+      { internalName: 'PlanStartDate', type: 'DateTime', displayName: 'Plan Start Date', required: true, dateTimeFormat: 'DateOnly' },
+      { internalName: 'PlanEndDate', type: 'DateTime', displayName: 'Plan End Date', dateTimeFormat: 'DateOnly' },
+      { internalName: 'Status', type: 'Text', displayName: 'Status', required: true },
+      { internalName: 'VersionNo', type: 'Number', displayName: 'Version No', default: 1 },
+      { internalName: 'IsCurrent', type: 'Boolean', displayName: 'Is Current', default: true },
+      { internalName: 'FormDataJson', type: 'Note', displayName: 'Form Data (JSON)', richText: false },
+      { internalName: 'UserSnapshotJson', type: 'Note', displayName: 'User Snapshot (JSON)', richText: false },
+    ],
   },
   {
     key: 'planning_sheet_master',
@@ -480,6 +628,14 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R'],
     category: 'compliance',
     lifecycle: 'optional',
+    provisioningFields: [
+      { internalName: 'RuleID', type: 'Text', displayName: 'Rule ID', required: true, indexed: true },
+      { internalName: 'Checkpoint', type: 'Text', displayName: 'Checkpoint', required: true },
+      { internalName: 'Criteria', type: 'Note', displayName: 'Criteria', richText: false },
+      { internalName: 'EvidenceRequired', type: 'Note', displayName: 'Evidence Required', richText: false },
+      { internalName: 'SortOrder', type: 'Number', displayName: 'Sort Order' },
+      { internalName: 'IsActive', type: 'Boolean', displayName: 'Active', default: true },
+    ],
   },
   {
     key: 'diagnostics_reports',
@@ -533,6 +689,35 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'other',
     lifecycle: 'optional',
+  },
+  {
+    key: 'monitoring_meetings',
+    displayName: 'モニタリング会議',
+    resolve: () => envOr('VITE_SP_LIST_MONITORING_MEETINGS', 'MonitoringMeetings'),
+    operations: ['R', 'W', 'D'],
+    category: 'meeting',
+    lifecycle: 'required',
+    essentialFields: ['cr014_recordId', 'cr014_userId', 'cr014_meetingDate'],
+    provisioningFields: [
+      { internalName: 'cr014_recordId', type: 'Text', displayName: 'Record ID', required: true, indexed: true },
+      { internalName: 'cr014_userId', type: 'Text', displayName: 'User ID', required: true, indexed: true },
+      { internalName: 'cr014_ispId', type: 'Text', displayName: 'ISP ID', required: true },
+      { internalName: 'cr014_planningSheetId', type: 'Text', displayName: 'Planning Sheet ID' },
+      { internalName: 'cr014_meetingType', type: 'Text', displayName: 'Meeting Type' },
+      { internalName: 'cr014_meetingDate', type: 'DateTime', displayName: 'Meeting Date', required: true, dateTimeFormat: 'DateOnly' },
+      { internalName: 'cr014_venue', type: 'Text', displayName: 'Venue' },
+      { internalName: 'cr014_attendeesJson', type: 'Note', displayName: 'Attendees (JSON)', richText: false },
+      { internalName: 'cr014_goalEvaluationsJson', type: 'Note', displayName: 'Goal Evaluations (JSON)', richText: false },
+      { internalName: 'cr014_overallAssessment', type: 'Note', displayName: 'Overall Assessment', richText: false },
+      { internalName: 'cr014_userFeedback', type: 'Note', displayName: 'User Feedback', richText: false },
+      { internalName: 'cr014_familyFeedback', type: 'Note', displayName: 'Family Feedback', richText: false },
+      { internalName: 'cr014_planChangeDecision', type: 'Text', displayName: 'Plan Change Decision' },
+      { internalName: 'cr014_changeReason', type: 'Note', displayName: 'Change Reason', richText: false },
+      { internalName: 'cr014_decisionsJson', type: 'Note', displayName: 'Decisions (JSON)', richText: false },
+      { internalName: 'cr014_nextMonitoringDate', type: 'DateTime', displayName: 'Next Monitoring Date', dateTimeFormat: 'DateOnly' },
+      { internalName: 'cr014_recordedBy', type: 'Text', displayName: 'Recorded By' },
+      { internalName: 'cr014_recordedAt', type: 'DateTime', displayName: 'Recorded At' },
+    ],
   },
 ];
 
