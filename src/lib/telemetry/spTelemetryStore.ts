@@ -10,6 +10,7 @@ export interface SpMetric {
   event: SpFetchTelemetryEvent;
   url: string;
   method: string;
+  lane?: string;
   status?: number;
   attempt?: number;
   durationMs?: number;
@@ -49,28 +50,51 @@ export const spTelemetryStore = {
     let throttledCount = 0;
     let retryCount = 0;
     let failedCount = 0;
-    
+
     let totalDurationMs = 0;
     const durations: number[] = [];
-    
+
     let totalQueuedMs = 0;
     let maxQueuedMs = 0;
     let queueCount = 0;
 
+    const lanes: Record<string, { requests: number; failed: number; retries: number; maxQueue: number; totalQueue: number; totalDur: number; durCount: number }> = {
+      read: { requests: 0, failed: 0, retries: 0, maxQueue: 0, totalQueue: 0, totalDur: 0, durCount: 0 },
+      write: { requests: 0, failed: 0, retries: 0, maxQueue: 0, totalQueue: 0, totalDur: 0, durCount: 0 },
+      provisioning: { requests: 0, failed: 0, retries: 0, maxQueue: 0, totalQueue: 0, totalDur: 0, durCount: 0 }
+    };
+
     for (const e of events) {
+      const lane = e.lane && lanes[e.lane] ? e.lane : 'read';
+
+      if (e.event === 'sp:request_start') {
+        lanes[lane].requests++;
+        if (e.queuedMs !== undefined) {
+          totalQueuedMs += e.queuedMs;
+          queueCount++;
+          maxQueuedMs = Math.max(maxQueuedMs, e.queuedMs);
+
+          lanes[lane].totalQueue += e.queuedMs;
+          lanes[lane].maxQueue = Math.max(lanes[lane].maxQueue, e.queuedMs);
+        }
+      }
+
       if (e.event === 'sp:throttled') throttledCount++;
-      if (e.event === 'sp:retry') retryCount++;
-      if (e.event === 'sp:request_failed') failedCount++;
-      
+      if (e.event === 'sp:retry') {
+        retryCount++;
+        lanes[lane].retries++;
+      }
+      if (e.event === 'sp:request_failed') {
+        failedCount++;
+        lanes[lane].failed++;
+      }
+
       if (e.event === 'sp:request_end' && e.durationMs !== undefined) {
         totalDurationMs += e.durationMs;
         durations.push(e.durationMs);
-      }
-      
-      if (e.event === 'sp:request_start' && e.queuedMs !== undefined) {
-        totalQueuedMs += e.queuedMs;
-        queueCount++;
-        maxQueuedMs = Math.max(maxQueuedMs, e.queuedMs);
+
+        lanes[lane].totalDur += e.durationMs;
+        lanes[lane].durCount++;
       }
     }
 
@@ -80,6 +104,19 @@ export const spTelemetryStore = {
     const avgDurationMs = durations.length > 0 ? Math.round(totalDurationMs / durations.length) : 0;
     const avgQueuedMs = queueCount > 0 ? Math.round(totalQueuedMs / queueCount) : 0;
 
+    type LaneMetrics = { requests: number; failed: number; retries: number; maxQueuedMs: number; avgQueuedMs: number; avgDurationMs: number };
+    const laneMetrics: Record<string, LaneMetrics> = {};
+    for (const [lane, data] of Object.entries(lanes)) {
+      laneMetrics[lane] = {
+        requests: data.requests,
+        failed: data.failed,
+        retries: data.retries,
+        maxQueuedMs: data.maxQueue,
+        avgQueuedMs: data.requests > 0 ? Math.round(data.totalQueue / data.requests) : 0,
+        avgDurationMs: data.durCount > 0 ? Math.round(data.totalDur / data.durCount) : 0,
+      };
+    }
+
     return {
       throttledCount,
       retryCount,
@@ -88,6 +125,7 @@ export const spTelemetryStore = {
       p95DurationMs,
       avgQueuedMs,
       maxQueuedMs,
+      lanes: laneMetrics,
     };
   },
 
@@ -120,7 +158,15 @@ export const spTelemetryStore = {
   getSnapshot() {
     return {
       summary: this.getSummary(),
-      topEndpoints: this.getTopEndpoints()
+      metrics: this.getSummary(), // Added for compatibility with Nightly
+      topEndpoints: this.getTopEndpoints(),
+      generatedAt: new Date().toISOString(),
     };
   }
 };
+
+if (typeof window !== 'undefined') {
+  (window as unknown as { spTelemetryStore: typeof spTelemetryStore }).spTelemetryStore = spTelemetryStore;
+}
+
+import './dumpSpTelemetry';

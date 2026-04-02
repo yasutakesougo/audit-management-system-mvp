@@ -340,12 +340,24 @@ async function runListChecks(
     // 4. Report Results
     if (missingEssential.length > 0) {
       results.push(
-        fail({
+        warn({
           key: `schema.fields.${spec.key}`,
-          label: `スキーマ（必須）：${spec.displayName}`,
+          label: `スキーマ（Blocked）：${spec.displayName}`,
           category: "schema",
-          summary: `必須列が不足しています（${missingEssential.map(f => f.internalName).join(", ")}）。`,
-          evidence: { listTitle: spec.resolvedTitle, missing: missingEssential.map(f => f.internalName) },
+          summary: `必須列が不足していますが、Provisioning は意図的にブロックされています（Blocked Provisioning）。`,
+          detail: `物理制限またはポリシーにより自己修復を停止しました。代替ロジックで稼働を継続します。\n不足列: ${missingEssential.map(f => f.internalName).join(", ")}`,
+          evidence: {
+            listTitle: spec.resolvedTitle,
+            missing: missingEssential.map(f => f.internalName),
+            disabledProvisioning: true
+          },
+          nextActions: [
+            {
+              kind: "copy",
+              label: "インフラ管理者に確認: 不要列の大掃除",
+              value: "対象リストの不要な旧列をSharePoint管理画面から削除し、列サイズ上限を解放してください"
+            }
+          ]
         })
       );
     } else if (drifted.length > 0) {
