@@ -10,13 +10,299 @@ import { getRuntimeEnv } from "@/env";
  */
 import { SP_LIST_REGISTRY } from "@/sharepoint/spListRegistry";
 import { SpFieldSpec } from "../features/diagnostics/health/types";
+import {
+  DAILY_RECORD_CANONICAL_CANDIDATES,
+  DAILY_RECORD_ROW_AGGREGATE_CANDIDATES,
+  ACTIVITY_DIARY_CANDIDATES,
+  DAILY_ACTIVITY_RECORDS_CANDIDATES,
+} from "@/sharepoint/fields/dailyFields";
+import {
+  USERS_MASTER_CANDIDATES,
+  USER_BENEFIT_PROFILE_CANDIDATES,
+} from "@/sharepoint/fields/userFields";
+import { DAILY_ATTENDANCE_CANDIDATES } from "@/sharepoint/fields/dailyAttendanceFields";
+import { STAFF_MASTER_CANDIDATES as STAFF_CANDIDATES_ORIGINAL } from "@/sharepoint/fields/staffFields";
+import { MONITORING_MEETING_CANDIDATES } from "@/sharepoint/fields/monitoringMeetingFields";
+import { SERVICE_PROVISION_CANDIDATES } from "@/sharepoint/fields/serviceProvisionFields";
+import {
+  STAFF_ATTENDANCE_CANDIDATES,
+  ATTENDANCE_USERS_CANDIDATES,
+  ATTENDANCE_DAILY_CANDIDATES,
+} from "@/sharepoint/fields/attendanceFields";
+import { PROCEDURE_RECORD_CANDIDATES, ISP_MASTER_CANDIDATES } from "@/sharepoint/fields/ispThreeLayerFields";
+import {
+  TRANSPORT_LOG_CANDIDATES,
+  TRANSPORT_SETTING_CANDIDATES,
+} from "@/sharepoint/fields/transportFields";
+import { BILLING_SUMMARY_CANDIDATES } from "@/sharepoint/fields/billingFields";
+import { SURVEY_TOKUSEI_CANDIDATES } from "@/sharepoint/fields/surveyTokuseiFields";
+import { PLAN_GOALS_CANDIDATES } from "@/sharepoint/fields/planGoalFields";
+import { SCHEDULE_EVENTS_CANDIDATES } from "@/sharepoint/fields/scheduleFields";
+import { SUPPORT_PLANS_CANDIDATES } from "@/sharepoint/fields/supportPlanFields";
+import { MEETING_MINUTES_CANDIDATES } from "@/sharepoint/fields/meetingMinutesFields";
+import { HANDOFF_CANDIDATES } from "@/sharepoint/fields/handoffFields";
+import { MEETING_SESSIONS_CANDIDATES } from "@/sharepoint/fields/meetingSessionFields";
+import { NURSE_OBS_CANDIDATES } from "@/sharepoint/fields/nurseObservationFields";
+
+
+
+/**
+ * リストキー → フィールド内部名 → drift 候補名[] のオーバーライドマップ
+ * provisioningFields の internalName をキーとして、代替内部名を提供する。
+ */
+const DRIFT_CANDIDATES_BY_KEY: Record<string, Record<string, string[]>> = {
+  users_master: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(USERS_MASTER_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  staff_master: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(STAFF_CANDIDATES_ORIGINAL) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  monitoring_meetings: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(MONITORING_MEETING_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  support_record_daily: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(DAILY_RECORD_CANONICAL_CANDIDATES) as unknown as string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    for (const cands of Object.values(DAILY_RECORD_ROW_AGGREGATE_CANDIDATES) as unknown as string[][]) {
+      const primary = cands[0];
+      if (!map[primary]) {
+        map[primary] = [...cands];
+      }
+    }
+    return map;
+  })(),
+
+  activity_diary: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(ACTIVITY_DIARY_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  service_provision_records: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(SERVICE_PROVISION_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  staff_attendance: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(STAFF_ATTENDANCE_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  attendance_users: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(ATTENDANCE_USERS_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  attendance_daily: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(ATTENDANCE_DAILY_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  support_procedure_record_daily: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(PROCEDURE_RECORD_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  support_record_rows: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(DAILY_RECORD_ROW_AGGREGATE_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+  
+  transport_log: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(TRANSPORT_LOG_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  user_transport_settings: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(TRANSPORT_SETTING_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  billing_summary: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(BILLING_SUMMARY_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  survey_tokusei: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(SURVEY_TOKUSEI_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+  
+  plan_goals: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(PLAN_GOALS_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  user_benefit_profile: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(USER_BENEFIT_PROFILE_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  daily_attendance: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(DAILY_ATTENDANCE_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  schedule_events: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(SCHEDULE_EVENTS_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  support_plans: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(SUPPORT_PLANS_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  daily_activity_records: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(DAILY_ACTIVITY_RECORDS_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  isp_master: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(ISP_MASTER_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  meeting_minutes: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(MEETING_MINUTES_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  handoff: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(HANDOFF_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  meeting_sessions: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(MEETING_SESSIONS_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  nurse_observations: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(NURSE_OBS_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+};
+
+
+
 
 const listSpecs: ListSpec[] = SP_LIST_REGISTRY.map((entry) => {
   // 1. All fields from provisioning (default: optional)
+  const driftOverride = DRIFT_CANDIDATES_BY_KEY[entry.key];
   const provisionFields: SpFieldSpec[] = (entry.provisioningFields || []).map((f) => ({
     internalName: f.internalName,
     isEssential: (entry.essentialFields || []).includes(f.internalName),
     typeHint: f.type,
+    candidates: driftOverride?.[f.internalName],
   }));
 
   // 2. Ensure essentials (ID, etc.) are present
@@ -43,6 +329,7 @@ const listSpecs: ListSpec[] = SP_LIST_REGISTRY.map((entry) => {
     }
   }
 
+  const stamp = Date.now().toString().slice(-6);
   return {
     key: entry.key,
     displayName: entry.displayName,
@@ -51,18 +338,18 @@ const listSpecs: ListSpec[] = SP_LIST_REGISTRY.map((entry) => {
     createItem:
       entry.key === "users_master"
         ? {
-            Title: "healthcheck-user",
-            UserID: "user-health-test",
+            Title: `healthcheck-user-${stamp}`,
+            UserID: `user-health-${stamp}`,
             FullName: "健康診断テスト用",
           }
         : entry.key === "staff_master"
         ? {
-            Title: "healthcheck-staff",
-            StaffID: "staff-health-test",
+            Title: `healthcheck-staff-${stamp}`,
+            StaffID: `staff-health-${stamp}`,
             StaffName: "健康診断テスト用",
           }
-        : { Title: "healthcheck-root" },
-    updateItem: { Title: "healthcheck-updated" },
+        : { Title: `healthcheck-root-${stamp}` },
+    updateItem: { Title: `healthcheck-updated-${stamp}` },
     isReadOnly: !entry.operations.includes("W"),
   };
 });

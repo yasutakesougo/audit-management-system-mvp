@@ -1,7 +1,9 @@
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { 
   resolveInternalNamesDetailed, 
-  areEssentialFieldsResolved 
+  areEssentialFieldsResolved,
+  washRow,
+  washRows
 } from '@/lib/sp/helpers';
 import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
 import type { 
@@ -35,7 +37,11 @@ import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
  * 動的フィールド解決と SharePoint 互換の query 行を行います。
  */
 export class DataProviderIspRepository implements IspRepository {
-  private resolution: { title: string; fields: Record<string, string | undefined> } | null = null;
+  private resolution: { 
+    title: string; 
+    fields: Record<string, string | undefined>;
+    candidates: Record<string, string[]>;
+  } | null = null;
 
   constructor(
     private readonly provider: IDataProvider,
@@ -47,7 +53,8 @@ export class DataProviderIspRepository implements IspRepository {
 
     try {
       const available = await this.provider.getFieldInternalNames(this.listTitle);
-      const { resolved, fieldStatus } = resolveInternalNamesDetailed(available, ISP_MASTER_CANDIDATES as unknown as Record<string, string[]>);
+      const candidates = ISP_MASTER_CANDIDATES as unknown as Record<string, string[]>;
+      const { resolved, fieldStatus } = resolveInternalNamesDetailed(available, candidates);
 
       const isHealthy = areEssentialFieldsResolved(resolved, ISP_MASTER_ESSENTIALS as unknown as string[]);
       
@@ -65,7 +72,8 @@ export class DataProviderIspRepository implements IspRepository {
 
       this.resolution = { 
         title: this.listTitle, 
-        fields: resolved as Record<string, string | undefined> 
+        fields: resolved as Record<string, string | undefined>,
+        candidates
       };
       return this.resolution;
     } catch (error) {
@@ -84,11 +92,14 @@ export class DataProviderIspRepository implements IspRepository {
     const numericId = extractSpId(id);
     if (numericId === null) return null;
 
-    const { title } = await this.resolveSource();
+    const { title, fields, candidates } = await this.resolveSource();
     try {
-      // DataProvider の getItemById を使用
       const row = await this.provider.getItemById<SpIspMasterRow>(title, numericId);
-      return row ? mapIspRowToDomain(row) : null;
+      if (!row) return null;
+      
+      // ドリフト対策: row を洗浄してから map する
+      const washed = washRow(row as unknown as Record<string, unknown>, candidates, fields) as unknown as SpIspMasterRow;
+      return mapIspRowToDomain(washed);
     } catch (error) {
       console.error(`[DataProviderIspRepository] Failed to getById: ${id}`, error);
       return null;
@@ -96,7 +107,7 @@ export class DataProviderIspRepository implements IspRepository {
   }
 
   async listByUser(userId: string): Promise<IspListItem[]> {
-    const { title, fields } = await this.resolveSource();
+    const { title, fields, candidates } = await this.resolveSource();
     const userField = fields.userCode || 'UserCode';
     
     const rows = await this.provider.listItems<SpIspMasterRow>(title, {
@@ -105,11 +116,12 @@ export class DataProviderIspRepository implements IspRepository {
       top: SP_QUERY_LIMITS.default,
     });
 
-    return rows.map(mapIspRowToListItem);
+    const washed = washRows(rows as unknown as Record<string, unknown>[], candidates, fields) as unknown as SpIspMasterRow[];
+    return washed.map(mapIspRowToListItem);
   }
 
   async getCurrentByUser(userId: string): Promise<IndividualSupportPlan | null> {
-    const { title, fields } = await this.resolveSource();
+    const { title, fields, candidates } = await this.resolveSource();
     const userField = fields.userCode || 'UserCode';
     const isCurrentField = fields.isCurrent || 'IsCurrent';
 
@@ -118,11 +130,13 @@ export class DataProviderIspRepository implements IspRepository {
       top: 1,
     });
 
-    return rows[0] ? mapIspRowToDomain(rows[0]) : null;
+    if (!rows[0]) return null;
+    const washed = washRow(rows[0] as unknown as Record<string, unknown>, candidates, fields) as unknown as SpIspMasterRow;
+    return mapIspRowToDomain(washed);
   }
 
   async listAllCurrent(): Promise<IndividualSupportPlan[]> {
-    const { title, fields } = await this.resolveSource();
+    const { title, fields, candidates } = await this.resolveSource();
     const isCurrentField = fields.isCurrent || 'IsCurrent';
 
     const rows = await this.provider.listItems<SpIspMasterRow>(title, {
@@ -130,17 +144,15 @@ export class DataProviderIspRepository implements IspRepository {
       top: SP_QUERY_LIMITS.recommended,
     });
 
-    return rows.map(mapIspRowToDomain);
+    const washed = washRows(rows as unknown as Record<string, unknown>[], candidates, fields) as unknown as SpIspMasterRow[];
+    return washed.map(mapIspRowToDomain);
   }
 
   async create(input: IspCreateInput): Promise<IndividualSupportPlan> {
     const { title } = await this.resolveSource();
     const payload = mapIspCreateInputToPayload(input);
     
-    // createItem は作成されたアイテムを返す
     const created = await this.provider.createItem<SpIspMasterRow>(title, payload as unknown as Record<string, unknown>);
-    
-    // 作成後のリフレッシュ（Id 等の付与を確認するため）
     return this.getById(`sp-${created.Id}`) as Promise<IndividualSupportPlan>;
   }
 

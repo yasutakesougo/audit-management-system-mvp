@@ -1,7 +1,9 @@
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { 
   resolveInternalNamesDetailed, 
-  areEssentialFieldsResolved 
+  areEssentialFieldsResolved,
+  washRow,
+  washRows
 } from '@/lib/sp/helpers';
 import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
 import type { 
@@ -32,7 +34,11 @@ import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
  * DataProviderPlanningSheetRepository — 第2層 SupportPlanningSheet_Master
  */
 export class DataProviderPlanningSheetRepository implements PlanningSheetRepository {
-  private resolution: { title: string; fields: Record<string, string | undefined> } | null = null;
+  private resolution: { 
+    title: string; 
+    fields: Record<string, string | undefined>;
+    candidates: Record<string, string[]>;
+  } | null = null;
 
   constructor(
     private readonly provider: IDataProvider,
@@ -44,7 +50,8 @@ export class DataProviderPlanningSheetRepository implements PlanningSheetReposit
 
     try {
       const available = await this.provider.getFieldInternalNames(this.listTitle);
-      const { resolved, fieldStatus } = resolveInternalNamesDetailed(available, PLANNING_SHEET_CANDIDATES as unknown as Record<string, string[]>);
+      const candidates = PLANNING_SHEET_CANDIDATES as unknown as Record<string, string[]>;
+      const { resolved, fieldStatus } = resolveInternalNamesDetailed(available, candidates);
 
       const isHealthy = areEssentialFieldsResolved(resolved, PLANNING_SHEET_ESSENTIALS as unknown as string[]);
       
@@ -61,7 +68,8 @@ export class DataProviderPlanningSheetRepository implements PlanningSheetReposit
 
       this.resolution = { 
         title: this.listTitle, 
-        fields: resolved as Record<string, string | undefined> 
+        fields: resolved as Record<string, string | undefined>,
+        candidates
       };
       return this.resolution;
     } catch (error) {
@@ -80,10 +88,13 @@ export class DataProviderPlanningSheetRepository implements PlanningSheetReposit
     const numericId = extractSpId(id);
     if (numericId === null) return null;
 
-    const { title } = await this.resolveSource();
+    const { title, fields, candidates } = await this.resolveSource();
     try {
       const row = await this.provider.getItemById<SpPlanningSheetRow>(title, numericId);
-      return row ? mapPlanningSheetRowToDomain(row) : null;
+      if (!row) return null;
+      
+      const washed = washRow(row as unknown as Record<string, unknown>, candidates, fields) as unknown as SpPlanningSheetRow;
+      return mapPlanningSheetRowToDomain(washed);
     } catch (error) {
       console.error(`[DataProviderPlanningSheetRepository] Failed to getById: ${id}`, error);
       return null;
@@ -91,7 +102,7 @@ export class DataProviderPlanningSheetRepository implements PlanningSheetReposit
   }
 
   async listByIsp(ispId: string): Promise<PlanningSheetListItem[]> {
-    const { title, fields } = await this.resolveSource();
+    const { title, fields, candidates } = await this.resolveSource();
     const ispField = fields.ispId || 'ISPId';
     
     // OData 文字列のエスケープ処理
@@ -103,11 +114,12 @@ export class DataProviderPlanningSheetRepository implements PlanningSheetReposit
       top: SP_QUERY_LIMITS.default,
     });
 
-    return rows.map(mapPlanningSheetRowToListItem);
+    const washed = washRows(rows as unknown as Record<string, unknown>[], candidates, fields) as unknown as SpPlanningSheetRow[];
+    return washed.map(mapPlanningSheetRowToListItem);
   }
 
   async listCurrentByUser(userId: string): Promise<PlanningSheetListItem[]> {
-    const { title, fields } = await this.resolveSource();
+    const { title, fields, candidates } = await this.resolveSource();
     const userField = fields.userCode || 'UserCode';
     const isCurrentField = fields.isCurrent || 'IsCurrent';
 
@@ -117,7 +129,8 @@ export class DataProviderPlanningSheetRepository implements PlanningSheetReposit
       top: SP_QUERY_LIMITS.default,
     });
 
-    return rows.map(mapPlanningSheetRowToListItem);
+    const washed = washRows(rows as unknown as Record<string, unknown>[], candidates, fields) as unknown as SpPlanningSheetRow[];
+    return washed.map(mapPlanningSheetRowToListItem);
   }
 
   async create(input: PlanningSheetCreateInput): Promise<SupportPlanningSheet> {

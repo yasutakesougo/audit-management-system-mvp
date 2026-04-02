@@ -126,6 +126,22 @@ export const MONITORING_MEETING_CANDIDATES = {
 };
 
 /**
+ * 必須フィールド — この3点が解決できない場合は FAIL。
+ *
+ * - recordId: レコードの一意キー（検索・更新・削除に必須）
+ * - userId: 誰のモニタリングか（一覧フィルタに必須）
+ * - meetingDate: いつの会議か（時系列表示に必須）
+ *
+ * ispId は provisioning では required だが、ISP 紐付けなしでも会議情報を
+ * 表示継続できるため essentials から除外（WARN 水準）。
+ */
+export const MONITORING_MEETING_ESSENTIALS: (keyof typeof MONITORING_MEETING_CANDIDATES)[] = [
+  'recordId',
+  'userId',
+  'meetingDate',
+];
+
+/**
  * 自己修復 (Self-Healing) 用の列定義
  */
 export const MONITORING_MEETING_ENSURE_FIELDS = [

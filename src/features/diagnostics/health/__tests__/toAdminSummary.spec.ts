@@ -129,7 +129,7 @@ describe('toAdminSummary — FAIL', () => {
       overall: 'fail',
       counts: { pass: 8, warn: 0, fail: 2 },
     }));
-    expect(summary).toContain('まず管理者がやること');
+    expect(summary).toContain('【管理者対応手順】');
   });
 
   it('shows FAIL issues first', () => {

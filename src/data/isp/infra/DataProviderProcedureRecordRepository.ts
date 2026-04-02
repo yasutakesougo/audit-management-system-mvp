@@ -1,7 +1,9 @@
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { 
   resolveInternalNamesDetailed, 
-  areEssentialFieldsResolved 
+  areEssentialFieldsResolved,
+  washRow,
+  washRows
 } from '@/lib/sp/helpers';
 import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
 import type { 
@@ -32,7 +34,11 @@ import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
  * DataProviderProcedureRecordRepository — 第3層 SupportProcedureRecord_Daily
  */
 export class DataProviderProcedureRecordRepository implements ProcedureRecordRepository {
-  private resolution: { title: string; fields: Record<string, string | undefined> } | null = null;
+  private resolution: { 
+    title: string; 
+    fields: Record<string, string | undefined>;
+    candidates: Record<string, string[]>;
+  } | null = null;
 
   constructor(
     private readonly provider: IDataProvider,
@@ -44,7 +50,8 @@ export class DataProviderProcedureRecordRepository implements ProcedureRecordRep
 
     try {
       const available = await this.provider.getFieldInternalNames(this.listTitle);
-      const { resolved, fieldStatus } = resolveInternalNamesDetailed(available, PROCEDURE_RECORD_CANDIDATES as unknown as Record<string, string[]>);
+      const candidates = PROCEDURE_RECORD_CANDIDATES as unknown as Record<string, string[]>;
+      const { resolved, fieldStatus } = resolveInternalNamesDetailed(available, candidates);
 
       const isHealthy = areEssentialFieldsResolved(resolved, PROCEDURE_RECORD_ESSENTIALS as unknown as string[]);
       
@@ -61,7 +68,8 @@ export class DataProviderProcedureRecordRepository implements ProcedureRecordRep
 
       this.resolution = { 
         title: this.listTitle, 
-        fields: resolved as Record<string, string | undefined> 
+        fields: resolved as Record<string, string | undefined>,
+        candidates
       };
       return this.resolution;
     } catch (error) {
@@ -80,10 +88,13 @@ export class DataProviderProcedureRecordRepository implements ProcedureRecordRep
     const numericId = extractSpId(id);
     if (numericId === null) return null;
 
-    const { title } = await this.resolveSource();
+    const { title, fields, candidates } = await this.resolveSource();
     try {
       const row = await this.provider.getItemById<SpProcedureRecordRow>(title, numericId);
-      return row ? mapProcedureRecordRowToDomain(row) : null;
+      if (!row) return null;
+
+      const washed = washRow(row as unknown as Record<string, unknown>, candidates, fields) as unknown as SpProcedureRecordRow;
+      return mapProcedureRecordRowToDomain(washed);
     } catch (error) {
       console.error(`[DataProviderProcedureRecordRepository] Failed to getById: ${id}`, error);
       return null;
@@ -91,7 +102,7 @@ export class DataProviderProcedureRecordRepository implements ProcedureRecordRep
   }
 
   async listByPlanningSheet(planningSheetId: string): Promise<ProcedureRecordListItem[]> {
-    const { title, fields } = await this.resolveSource();
+    const { title, fields, candidates } = await this.resolveSource();
     const sheetField = fields.planningSheetId || 'PlanningSheetId';
     
     // OData 文字列のエスケープ処理
@@ -103,11 +114,12 @@ export class DataProviderProcedureRecordRepository implements ProcedureRecordRep
       top: SP_QUERY_LIMITS.default,
     });
 
-    return rows.map(mapProcedureRecordRowToListItem);
+    const washed = washRows(rows as unknown as Record<string, unknown>[], candidates, fields) as unknown as SpProcedureRecordRow[];
+    return washed.map(mapProcedureRecordRowToListItem);
   }
 
   async listByUserAndDate(userId: string, recordDate: string): Promise<ProcedureRecordListItem[]> {
-    const { title, fields } = await this.resolveSource();
+    const { title, fields, candidates } = await this.resolveSource();
     const userField = fields.userCode || 'UserCode';
     const dateField = fields.recordDate || 'RecordDate';
 
@@ -117,7 +129,8 @@ export class DataProviderProcedureRecordRepository implements ProcedureRecordRep
       top: SP_QUERY_LIMITS.default,
     });
 
-    return rows.map(mapProcedureRecordRowToListItem);
+    const washed = washRows(rows as unknown as Record<string, unknown>[], candidates, fields) as unknown as SpProcedureRecordRow[];
+    return washed.map(mapProcedureRecordRowToListItem);
   }
 
   async create(input: ProcedureRecordCreateInput): Promise<SupportProcedureRecord> {

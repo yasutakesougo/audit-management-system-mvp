@@ -1,9 +1,9 @@
 import { acquireSpAccessToken } from '@/lib/msal';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
-import { BILLING_ORDERS_LIST_ID } from '@/sharepoint/fields';
+import { BILLING_ORDERS_LIST_ID, BILLING_ORDERS_CANDIDATES } from '@/sharepoint/fields';
 import type { BillingOrderRepository } from './repository';
-
-
+import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
+import { isDev } from '@/env';
 import { mapToBillingOrder } from './domain/billingLogic';
 
 /**
@@ -22,13 +22,29 @@ export function createSharePointBillingOrderRepository(): BillingOrderRepository
 
   return {
     async list() {
-      const url = `/lists/GetById('${listId}')/items?$top=500`;
-
-      if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.log('[Billing] fetching via spClient:', billingBaseUrl + url);
-      }
+      // 1. 動的な列名解決
       try {
+        const schemaUrl = `/lists/GetById('${listId}')/fields?$select=InternalName`;
+        const schemaRes = await sp.spFetch(schemaUrl, { method: 'GET' });
+        const schemaJson = await schemaRes.json();
+        const availableFields = new Set<string>((schemaJson.value || []).map((f: { InternalName: string }) => f.InternalName));
+
+        const { resolved } = resolveInternalNamesDetailed(
+          availableFields,
+          BILLING_ORDERS_CANDIDATES as unknown as Record<string, string[]>
+        );
+        const mapping = resolved as Record<string, string | undefined>;
+
+        // 2. クエリの構築 (ドリフトした列名を反映)
+        const selectFields = Object.values(mapping).filter(Boolean).join(',');
+        const query = selectFields ? `&$select=${selectFields}` : '';
+        const url = `/lists/GetById('${listId}')/items?$top=500${query}`;
+
+        if (isDev) {
+          // eslint-disable-next-line no-console
+          console.log('[Billing] fetching via spClient:', billingBaseUrl + url);
+        }
+
         const res = await sp.spFetch(url, { method: 'GET' });
         const json = (await res.json().catch(() => ({ value: [] }))) as { value?: Record<string, unknown>[] };
         const items = json.value ?? [];
@@ -36,18 +52,13 @@ export function createSharePointBillingOrderRepository(): BillingOrderRepository
         if (import.meta.env.DEV && items.length > 0) {
           // eslint-disable-next-line no-console
           console.log('[Billing] Sample item keys:', Object.keys(items[0]));
-          // eslint-disable-next-line no-console
-          console.log('[Billing] First item:', items[0]);
-        } else if (items.length === 0) {
-          console.warn('[Billing] No items returned from List3');
         }
 
-        return items.map(mapToBillingOrder);
+        // 3. マッピング
+        return items.map(item => mapToBillingOrder(item, mapping));
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
-        const status = (err as Record<string, unknown>)?.['status'];
         console.error('[Billing] Fetch error:', message);
-        console.error('[Billing] Status:', status, 'URL:', billingBaseUrl + url);
         throw err;
       }
     },

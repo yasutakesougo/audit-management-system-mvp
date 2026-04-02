@@ -3,7 +3,10 @@ import type { SpFieldDef } from '@/lib/sp/types';
 /**
  * 1. Schedules Field Candidates
  */
-export const SCHEDULE_CANDIDATES = {
+/**
+ * schedule_events リストのフィールド解決候補マップ (Drift Resistance)
+ */
+export const SCHEDULE_EVENTS_CANDIDATES = {
   title: ['Title'],
   start: ['EventDate', 'Start', 'StartDate', 'StartTime', 'Begin', 'Date', 'date'],
   end: ['EndDate', 'End', 'EndDate', 'EndDateTime', 'EndTime', 'Finish', 'Date', 'date'],
@@ -28,7 +31,7 @@ export const SCHEDULE_EXTENSIONS = {
   orgAudience: ['cr014_orgAudience', 'OrgAudience'],
 } as const;
 
-export const SCHEDULE_ESSENTIALS: (keyof typeof SCHEDULE_CANDIDATES)[] = [
+export const SCHEDULE_EVENTS_ESSENTIALS: (keyof typeof SCHEDULE_EVENTS_CANDIDATES)[] = [
   'title', 'start', 'end'
 ];
 
@@ -51,28 +54,28 @@ export const SCHEDULE_ENSURE_FIELDS: SpFieldDef[] = [
 // 3. Legacy Compatibility (for index.ts / FIELD_MAP)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** @deprecated Use SCHEDULE_CANDIDATES or dynamic resolution */
-export const SCHEDULE_FIELD_START = SCHEDULE_CANDIDATES.start[0];
-/** @deprecated Use SCHEDULE_CANDIDATES or dynamic resolution */
-export const SCHEDULE_FIELD_END = SCHEDULE_CANDIDATES.end[0];
-/** @deprecated Use SCHEDULE_CANDIDATES or dynamic resolution */
-export const SCHEDULE_FIELD_STATUS = SCHEDULE_CANDIDATES.status[0];
-/** @deprecated Use SCHEDULE_CANDIDATES or dynamic resolution */
-export const SCHEDULE_FIELD_SERVICE_TYPE = SCHEDULE_CANDIDATES.serviceType[0];
-/** @deprecated Use SCHEDULE_CANDIDATES or dynamic resolution */
-export const SCHEDULE_FIELD_TARGET_USER_ID = SCHEDULE_CANDIDATES.userId[0];
-/** @deprecated Use SCHEDULE_CANDIDATES or dynamic resolution */
-export const SCHEDULE_FIELD_ASSIGNED_STAFF_ID = SCHEDULE_CANDIDATES.assignedStaffId[0];
-/** @deprecated Use SCHEDULE_CANDIDATES or dynamic resolution */
-export const SCHEDULE_FIELD_NOTE = SCHEDULE_CANDIDATES.notes[0];
-/** @deprecated Use SCHEDULE_CANDIDATES or dynamic resolution */
-export const SCHEDULE_FIELD_ROW_KEY = SCHEDULE_CANDIDATES.rowKey[0];
-/** @deprecated Use SCHEDULE_CANDIDATES or dynamic resolution */
-export const SCHEDULE_FIELD_DAY_KEY = SCHEDULE_CANDIDATES.dayKey[0];
-/** @deprecated Use SCHEDULE_CANDIDATES or dynamic resolution */
-export const SCHEDULE_FIELD_MONTH_KEY = SCHEDULE_CANDIDATES.monthKey[0];
-/** @deprecated Use SCHEDULE_CANDIDATES or dynamic resolution */
-export const SCHEDULE_FIELD_FISCAL_YEAR = SCHEDULE_CANDIDATES.fiscalYear[0];
+/** @deprecated Use SCHEDULE_EVENTS_CANDIDATES or dynamic resolution */
+export const SCHEDULE_FIELD_START = SCHEDULE_EVENTS_CANDIDATES.start[0];
+/** @deprecated Use SCHEDULE_EVENTS_CANDIDATES or dynamic resolution */
+export const SCHEDULE_FIELD_END = SCHEDULE_EVENTS_CANDIDATES.end[0];
+/** @deprecated Use SCHEDULE_EVENTS_CANDIDATES or dynamic resolution */
+export const SCHEDULE_FIELD_STATUS = SCHEDULE_EVENTS_CANDIDATES.status[0];
+/** @deprecated Use SCHEDULE_EVENTS_CANDIDATES or dynamic resolution */
+export const SCHEDULE_FIELD_SERVICE_TYPE = SCHEDULE_EVENTS_CANDIDATES.serviceType[0];
+/** @deprecated Use SCHEDULE_EVENTS_CANDIDATES or dynamic resolution */
+export const SCHEDULE_FIELD_TARGET_USER_ID = SCHEDULE_EVENTS_CANDIDATES.userId[0];
+/** @deprecated Use SCHEDULE_EVENTS_CANDIDATES or dynamic resolution */
+export const SCHEDULE_FIELD_ASSIGNED_STAFF_ID = SCHEDULE_EVENTS_CANDIDATES.assignedStaffId[0];
+/** @deprecated Use SCHEDULE_EVENTS_CANDIDATES or dynamic resolution */
+export const SCHEDULE_FIELD_NOTE = SCHEDULE_EVENTS_CANDIDATES.notes[0];
+/** @deprecated Use SCHEDULE_EVENTS_CANDIDATES or dynamic resolution */
+export const SCHEDULE_FIELD_ROW_KEY = SCHEDULE_EVENTS_CANDIDATES.rowKey[0];
+/** @deprecated Use SCHEDULE_EVENTS_CANDIDATES or dynamic resolution */
+export const SCHEDULE_FIELD_DAY_KEY = SCHEDULE_EVENTS_CANDIDATES.dayKey[0];
+/** @deprecated Use SCHEDULE_EVENTS_CANDIDATES or dynamic resolution */
+export const SCHEDULE_FIELD_MONTH_KEY = SCHEDULE_EVENTS_CANDIDATES.monthKey[0];
+/** @deprecated Use SCHEDULE_EVENTS_CANDIDATES or dynamic resolution */
+export const SCHEDULE_FIELD_FISCAL_YEAR = SCHEDULE_EVENTS_CANDIDATES.fiscalYear[0];
 
 // Additional constants common in index.ts
 export const SCHEDULE_FIELD_ASSIGNED_STAFF = 'AssignedStaff';
@@ -104,16 +107,16 @@ export const SCHEDULE_FIELD_UPDATED_AT = 'Modified';
 export const SCHEDULES_FIELD_MAP = {
   id: 'Id',
   title: 'Title',
-  start: SCHEDULE_FIELD_START,
-  end: SCHEDULE_FIELD_END,
-  status: SCHEDULE_FIELD_STATUS,
-  userId: SCHEDULE_FIELD_TARGET_USER_ID,
-  assignedStaffId: SCHEDULE_FIELD_ASSIGNED_STAFF_ID,
-  notes: SCHEDULE_FIELD_NOTE,
-  rowKey: SCHEDULE_FIELD_ROW_KEY,
-  dayKey: SCHEDULE_FIELD_DAY_KEY,
-  monthKey: SCHEDULE_FIELD_MONTH_KEY,
-  fiscalYear: SCHEDULE_FIELD_FISCAL_YEAR,
+  start: SCHEDULE_EVENTS_CANDIDATES.start[0],
+  end: SCHEDULE_EVENTS_CANDIDATES.end[0],
+  status: SCHEDULE_EVENTS_CANDIDATES.status[0],
+  userId: SCHEDULE_EVENTS_CANDIDATES.userId[0],
+  assignedStaffId: SCHEDULE_EVENTS_CANDIDATES.assignedStaffId[0],
+  notes: SCHEDULE_EVENTS_CANDIDATES.notes[0],
+  rowKey: SCHEDULE_EVENTS_CANDIDATES.rowKey[0],
+  dayKey: SCHEDULE_EVENTS_CANDIDATES.dayKey[0],
+  monthKey: SCHEDULE_EVENTS_CANDIDATES.monthKey[0],
+  fiscalYear: SCHEDULE_EVENTS_CANDIDATES.fiscalYear[0],
 } as const;
 
 export const SCHEDULES_BASE_FIELDS = ['Id', 'Title', SCHEDULE_FIELD_START, SCHEDULE_FIELD_END];

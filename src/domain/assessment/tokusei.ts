@@ -173,64 +173,67 @@ export const parseAggregatedFeatures = (value: string | undefined): FeatureEntry
 
 /**
  * SP の細分化列をドメインモデルの集約フィールドに変換する。
- *
- * 変換ルール:
- * - personality: RelationalDifficulties + SituationalUnderstanding を集約
- * - sensoryFeatures: 5感別列 + SensoryMultiSelect + SensoryFreeText を集約
- * - behaviorFeatures:
- *     こだわり (DifficultyWithChanges, InterestInParts, RepetitiveBehaviors, FixedHabits)
- *   + コミュニケーション (ComprehensionDifficulty, ExpressionDifficulty, InteractionDifficulty)
- *   + 行動 (BehaviorMultiSelect, BehaviorEpisodes)
- *   を集約
+ * mapping が提供されている場合は、そのマッピングを優先して使用する。
  */
-export const mapSpRowToTokuseiResponse = (row: SpTokuseiRawRow): TokuseiSurveyResponse => {
+export const mapSpRowToTokuseiResponse = (
+  row: SpTokuseiRawRow,
+  mapping?: Record<string, string | undefined>
+): TokuseiSurveyResponse => {
   const idRaw = row.Id;
   const id = typeof idRaw === 'number' && Number.isFinite(idRaw) ? idRaw : 0;
 
+  // 動的なキー解決ヘルパー
+  const get = (key: string, fallback?: string): unknown => {
+    const physical = mapping ? mapping[key] : fallback;
+    if (physical) return (row as Record<string, unknown>)[physical];
+    // Fallback: mapping がないか物理名が解決されない場合は、fallback (または key そのもの) でアクセス
+    return (row as Record<string, unknown>)[fallback || key];
+  };
+
   return {
     id,
-    responseId: str(row.ResponseId),
-    responderName: str(row.ResponderName),
-    responderEmail: optStr(row.ResponderEmail),
-    fillDate: str(row.FillDate ?? row.Created ?? ''),
-    targetUserName: str(row.TargetUserName),
-    guardianName: optStr(row.GuardianName),
-    relation: optStr(row.Relation),
-    heightCm: parseNumeric(row.HeightCm),
-    weightKg: parseNumeric(row.WeightKg),
+    responseId: str(get('responseId', 'ResponseId')),
+    responderName: str(get('responderName', 'ResponderName')),
+    responderEmail: optStr(get('responderEmail', 'ResponderEmail')),
+    fillDate: str(get('fillDate', 'FillDate') ?? row.Created ?? ''),
+    targetUserName: str(get('targetUserName', 'TargetUserName')),
+    guardianName: optStr(get('guardianName', 'GuardianName')),
+    relation: optStr(get('relation', 'Relation')),
+    heightCm: parseNumeric(get('heightCm', 'HeightCm') as string | number),
+    weightKg: parseNumeric(get('weightKg', 'WeightKg') as string | number),
 
     // 集約: 対人関係 → personality
     personality: aggregateLabeled([
-      ['対人関係の難しさ', row.RelationalDifficulties],
-      ['状況理解の難しさ', row.SituationalUnderstanding],
+      ['対人関係の難しさ', get('relationalDifficulties', 'RelationalDifficulties')],
+      ['状況理解の難しさ', get('situationalUnderstanding', 'SituationalUnderstanding')],
     ]),
 
     // 集約: 5感別 + 自由記述 → sensoryFeatures
     sensoryFeatures: aggregateLabeled([
-      ['聴覚', row.Hearing],
-      ['視覚', row.Vision],
-      ['触覚', row.Touch],
-      ['嗅覚', row.Smell],
-      ['味覚', row.Taste],
-      ['該当する感覚', row.SensoryMultiSelect],
-      ['感覚の詳細', row.SensoryFreeText],
+      ['聴覚', get('hearing', 'Hearing')],
+      ['視覚', get('vision', 'Vision')],
+      ['触覚', get('touch', 'Touch')],
+      ['嗅覚', get('smell', 'Smell')],
+      ['味覚', get('taste', 'Taste')],
+      ['該当する感覚', get('sensoryMultiSelect', 'SensoryMultiSelect')],
+      ['感覚の詳細', get('sensoryFreeText', 'SensoryFreeText')],
     ]),
 
     // 集約: こだわり + コミュニケーション + 行動 → behaviorFeatures
     behaviorFeatures: aggregateLabeled([
-      ['変化への対応困難', row.DifficultyWithChanges],
-      ['物の一部への興味', row.InterestInParts],
-      ['繰り返し行動', row.RepetitiveBehaviors],
-      ['習慣への固執', row.FixedHabits],
-      ['理解の困難', row.ComprehensionDifficulty],
-      ['発信の困難', row.ExpressionDifficulty],
-      ['やり取りの困難', row.InteractionDifficulty],
-      ['該当する行動', row.BehaviorMultiSelect],
-      ['行動エピソード', row.BehaviorEpisodes],
+      ['変化への対応困難', get('difficultyWithChanges', 'DifficultyWithChanges')],
+      ['物の一部への興味', get('interestInParts', 'InterestInParts')],
+      ['繰り返し行動', get('repetitiveBehaviors', 'RepetitiveBehaviors')],
+      ['習慣への固執', get('fixedHabits', 'FixedHabits')],
+      ['理解の困難', get('comprehensionDifficulty', 'ComprehensionDifficulty')],
+      ['発信の困難', get('expressionDifficulty', 'ExpressionDifficulty')],
+      ['やり取りの困難', get('interactionDifficulty', 'InteractionDifficulty')],
+      ['該当する行動', get('behaviorMultiSelect', 'BehaviorMultiSelect')],
+      ['行動エピソード', get('behaviorEpisodes', 'BehaviorEpisodes')],
     ]),
 
-    strengths: optStr(row.Strengths),
-    notes: optStr(row.Notes),
+    strengths: optStr(get('strengths', 'Strengths')),
+    notes: optStr(get('notes', 'Notes')),
     createdAt: str(row.Created),
   };
 };

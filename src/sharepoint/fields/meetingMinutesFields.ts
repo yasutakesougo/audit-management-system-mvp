@@ -43,3 +43,21 @@ export const MEETING_MINUTES_SELECT_FIELDS = [
   MEETING_MINUTES_FIELDS.created,
   MEETING_MINUTES_FIELDS.modified,
 ] as const;
+
+/**
+ * 0. MeetingMinutes リストのフィールド候補
+ */
+export const MEETING_MINUTES_CANDIDATES = {
+  meetingDate:     ['MeetingDate', 'meetingDate', 'cr013_meetingDate', 'Date'],
+  category:        ['Category', 'category', 'cr013_category', 'MeetingCategory'],
+  summary:         ['Summary', 'summary', 'cr013_summary', 'Notes'],
+  decisions:       ['Decisions', 'decisions', 'cr013_decisions', 'DecisionSummary'],
+  actions:         ['Actions', 'actions', 'cr013_actions', 'ActionItems'],
+  attendees:       ['Attendees', 'attendees', 'cr013_attendees'],
+  staffAttendance: ['StaffAttendance', 'staffAttendance', 'cr013_staffAttendance'],
+  isPublished:     ['IsPublished', 'isPublished', 'cr013_isPublished', 'Published'],
+} as const;
+
+export const MEETING_MINUTES_ESSENTIALS: (keyof typeof MEETING_MINUTES_CANDIDATES)[] = [
+  'meetingDate', 'category'
+];

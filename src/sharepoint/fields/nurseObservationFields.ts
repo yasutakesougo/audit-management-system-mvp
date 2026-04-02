@@ -73,6 +73,10 @@ export const NURSE_OBS_CANDIDATES = {
   idempotencyKey: ['IdempotencyKey'],
 } as const;
 
+export const NURSE_OBS_ESSENTIALS: (keyof typeof NURSE_OBS_CANDIDATES)[] = [
+  'observedAt', 'userLookupId', 'temperature'
+];
+
 /**
  * 自動プロビジョニング用フィールド定義 (ensureListExists 用)
  */

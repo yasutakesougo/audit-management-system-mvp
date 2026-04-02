@@ -43,7 +43,7 @@ export class DataProviderServiceProvisionRepository implements ServiceProvisionR
         const available = await this.provider.getFieldInternalNames(this.listTitle);
         const { resolved, fieldStatus } = resolveInternalNamesDetailed(
           available,
-          SERVICE_PROVISION_CANDIDATES
+          SERVICE_PROVISION_CANDIDATES as unknown as Record<string, string[]>
         );
 
         const essentials = ['entryKey', 'userCode', 'recordDate'];

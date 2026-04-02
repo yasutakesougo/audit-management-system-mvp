@@ -28,27 +28,27 @@ export function useTokuseiSurveyResponses() {
     try {
       const currentSp = spRef.current;
       // Build select dynamically from available fields; fallback to static safe list if method missing or fails
-      const selectFields = demoMode
-        ? (SURVEY_TOKUSEI_SELECT_FIELDS as string[])
+      const resolved = demoMode
+        ? { select: SURVEY_TOKUSEI_SELECT_FIELDS as string[], mapping: FIELD_MAP_SURVEY_TOKUSEI }
         : await (async () => {
-            const { buildSurveyTokuseiSelectFields } = await import('../../../sharepoint/fields');
+            const { resolveSurveyTokuseiFields } = await import('../../../sharepoint/fields/surveyTokuseiFields');
             const getListFieldInternalNames = (currentSp as Partial<UseSP> & {
               getListFieldInternalNames?: (listTitle: string) => Promise<Set<string>>;
             }).getListFieldInternalNames;
             if (typeof getListFieldInternalNames !== 'function') {
-              return SURVEY_TOKUSEI_SELECT_FIELDS as string[];
+              return { select: SURVEY_TOKUSEI_SELECT_FIELDS as string[], mapping: FIELD_MAP_SURVEY_TOKUSEI };
             }
-            return buildSurveyTokuseiSelectFields(() => getListFieldInternalNames(SURVEY_LIST_TITLE));
+            return resolveSurveyTokuseiFields(() => getListFieldInternalNames(SURVEY_LIST_TITLE));
           })();
 
       const responses = demoMode
         ? createTokuseiDemoResponses()
         : await currentSp.listItems<SpTokuseiRawRow>(SURVEY_LIST_TITLE, {
-            select: selectFields,
-            orderby: `${FIELD_MAP_SURVEY_TOKUSEI.created} desc`,
+            select: resolved.select,
+            orderby: `Created desc`,
             top: 200,
             signal,
-          }).then((rows) => rows.map(mapSpRowToTokuseiResponse));
+          }).then((rows) => rows.map((row) => mapSpRowToTokuseiResponse(row, resolved.mapping)));
 
       if (signal?.aborted) return;
       setState({ data: responses, status: 'success', error: null });

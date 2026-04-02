@@ -63,3 +63,44 @@ export function buildTransportLogTitle(
 ): string {
   return `${userCode}_${recordDate}_${direction}`;
 }
+
+// ──────────────────────────────────────────────────────────────
+// Drift Candidates & Essentials
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * 1. Transport Log リスト用のフィールド候補
+ */
+export const TRANSPORT_LOG_CANDIDATES = {
+  userCode:      ['UserCode', 'UserID', 'cr013_userCode', 'User_x0020_Code'],
+  recordDate:    ['RecordDate', 'Date', 'cr013_date', 'Record_x0020_Date'],
+  direction:     ['Direction', 'cr013_direction', 'to_from'],
+  status:        ['Status', 'cr013_status', 'TransportStatus', 'cr013_transportStatus'],
+  method:        ['Method', 'cr013_method', 'TransportMethod', 'cr013_transportMethod'],
+  scheduledTime: ['ScheduledTime', 'Scheduled_x0020_Time', 'cr013_scheduledTime'],
+  actualTime:    ['ActualTime', 'Actual_x0020_Time', 'cr013_actualTime'],
+  driverName:    ['DriverName', 'Driver_x0020_Name', 'cr013_driverName'],
+  notes:         ['Notes', 'Note', 'cr013_notes'],
+  updatedBy:     ['UpdatedBy', 'cr013_updatedBy'],
+  updatedAt:     ['UpdatedAt', 'cr013_updatedAt', 'Modified'],
+} as const;
+
+export const TRANSPORT_LOG_ESSENTIALS: (keyof typeof TRANSPORT_LOG_CANDIDATES)[] = [
+  'userCode', 'recordDate', 'direction', 'status'
+];
+
+/**
+ * 2. User Transport Settings リスト用のフィールド候補
+ */
+export const TRANSPORT_SETTING_CANDIDATES = {
+  userId:           ['UserID', 'UserCode', 'cr013_userId', 'User_x0020_ID'],
+  transportToDays:  ['TransportToDays', 'ToDays', 'To_x0020_Days', 'cr013_transportToDays'],
+  transportFromDays: ['TransportFromDays', 'FromDays', 'From_x0020_Days', 'cr013_transportFromDays'],
+  transportCourse:  ['TransportCourse', 'Course', 'cr013_transportCourse'],
+  transportSchedule: ['TransportSchedule', 'Schedule', 'cr013_transportSchedule'],
+  transportAdditionType: ['TransportAdditionType', 'AdditionType', 'cr013_additionType'],
+} as const;
+
+export const TRANSPORT_SETTING_ESSENTIALS: (keyof typeof TRANSPORT_SETTING_CANDIDATES)[] = [
+  'userId', 'transportToDays', 'transportFromDays'
+];

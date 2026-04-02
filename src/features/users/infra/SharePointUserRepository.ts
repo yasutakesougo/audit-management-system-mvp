@@ -11,6 +11,7 @@ import {
     LIST_CONFIG,
     ListKeys,
     resolveUserSelectFields,
+    USERS_MASTER_CANDIDATES,
     type UserRow,
     type UserSelectMode,
 } from '@/sharepoint/fields';
@@ -24,6 +25,7 @@ import type { IUserMaster, IUserMasterCreateDto } from '../types';
 
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 import { buildEq } from '@/sharepoint/query/builders';
+import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 
 type SpContextCarrier = {
   __SPFX_CONTEXT__?: ISPFXContext;
@@ -66,17 +68,36 @@ function isSharePointSelect400(error: unknown): boolean {
 
 const getTodayIsoDate = (): string => new Date().toISOString().slice(0, 10);
 
+type UserFieldMapping = Record<keyof typeof USERS_MASTER_CANDIDATES, string>;
+
 export class SharePointUserRepository implements UserRepository {
   private readonly sp: SPFI;
   private readonly listTitle = LIST_CONFIG[ListKeys.UsersMaster].title;
   private readonly defaultTop: number;
   private readonly audit?: (event: Omit<AuditEvent, 'ts'>) => void;
+  private resolvedFields: UserFieldMapping | null = null;
 
   constructor(options: SharePointUserRepositoryOptions = {}) {
     this.ensureSharePointConfig();
     this.defaultTop = options.defaultTop ?? SP_QUERY_LIMITS.default;
     this.audit = options.audit;
     this.sp = options.sp ?? this.createSpInstance(options.spfxContext);
+  }
+
+  private async ensureResolved(): Promise<UserFieldMapping> {
+    if (this.resolvedFields) return this.resolvedFields;
+
+    // Use unknown cast to bypass IList type discrepancies in v3/v4
+    const listObj = this.list as unknown as { fields: () => Promise<Array<{ InternalName: string }>> };
+    const fields = await listObj.fields();
+    const available = new Set(fields.map(f => f.InternalName));
+    
+    const { resolved } = resolveInternalNamesDetailed(
+      available,
+      USERS_MASTER_CANDIDATES as unknown as Record<string, string[]>
+    );
+    this.resolvedFields = resolved as UserFieldMapping;
+    return this.resolvedFields;
   }
 
   // ── Public CRUD ──────────────────────────────────────────────
@@ -86,21 +107,24 @@ export class SharePointUserRepository implements UserRepository {
       return [];
     }
 
+    const mapping = await this.ensureResolved();
     const filters = params?.filters;
     const top = params?.top ?? this.defaultTop;
     const requestedMode = params?.selectMode ?? 'detail';
     const safeTop = Math.min(Math.max(1, top), SP_QUERY_LIMITS.hardMax);
 
     const items = await this.runWithSelectFallback(requestedMode, async (selectFields, mode) => {
-      let query = this.list.items.select(...selectFields).top(safeTop);
+      // mapping を使って selectFields を物理名に置換
+      const physicalSelects = this.resolvePhysicalSelects(selectFields, mapping);
+      let query = this.list.items.select(...physicalSelects).top(safeTop);
 
       if (filters?.isActive !== undefined) {
-        const fieldName = FIELD_MAP.Users_Master.isActive;
+        const fieldName = mapping.isActive || 'IsActive';
         query = query.filter(buildEq(fieldName, filters.isActive ? 1 : 0));
       }
 
       const rawItems = await query();
-      return rawItems.map((item) => this.toDomain(item as UserRow, mode));
+      return rawItems.map((item) => this.toDomain(item as UserRow, mode, mapping));
     });
 
     if (filters?.keyword) {
@@ -121,11 +145,13 @@ export class SharePointUserRepository implements UserRepository {
     if (!Number.isFinite(numericId)) {
       throw new Error(`Invalid id passed to SharePointUserRepository.getById: ${String(id)}`);
     }
+    const mapping = await this.ensureResolved();
     const requestedMode = params?.selectMode ?? 'detail';
     try {
       return await this.runWithSelectFallback(requestedMode, async (selectFields, mode) => {
-        const item = await this.list.items.getById(numericId).select(...selectFields)();
-        return item ? this.toDomain(item as UserRow, mode) : null;
+        const physicalSelects = this.resolvePhysicalSelects(selectFields, mapping);
+        const item = await this.list.items.getById(numericId).select(...physicalSelects)();
+        return item ? this.toDomain(item as UserRow, mode, mapping) : null;
       });
     } catch (error) {
       console.error('SharePointUserRepository.getById failed', error);
@@ -137,9 +163,10 @@ export class SharePointUserRepository implements UserRepository {
     // Validate request payload
     userMasterCreateSchema.parse(payload);
 
-    const request = this.toRequest(payload);
+    const mapping = await this.ensureResolved();
+    const request = this.toRequest(payload, mapping);
     const result = await this.list.items.add(request);
-    const created = this.toDomain(result.data as UserRow, 'full');
+    const created = this.toDomain(result.data as UserRow, 'full', mapping);
     this.audit?.({
       actor: 'user', entity: 'Users_Master', action: 'create',
       entity_id: String(created.Id), channel: 'UI',
@@ -153,6 +180,7 @@ export class SharePointUserRepository implements UserRepository {
     if (!Number.isFinite(numericId)) {
       throw new Error(`Invalid id passed to SharePointUserRepository.update: ${String(id)}`);
     }
+    const mapping = await this.ensureResolved();
     const current = await this.getById(numericId, { selectMode: 'detail' });
     if (!current) {
       throw new Error(`Unable to load record for id ${numericId}`);
@@ -160,7 +188,7 @@ export class SharePointUserRepository implements UserRepository {
     if (!canEditUser(current)) {
       throw new Error('契約終了の利用者は編集できません。');
     }
-    const request = this.toRequest(payload);
+    const request = this.toRequest(payload, mapping);
     await this.list.items.getById(numericId).update(request);
     const updated = await this.getById(numericId, { selectMode: 'detail' });
     if (!updated) {
@@ -180,6 +208,7 @@ export class SharePointUserRepository implements UserRepository {
       throw new Error(`Invalid id passed to SharePointUserRepository.terminate: ${String(id)}`);
     }
 
+    const mapping = await this.ensureResolved();
     const current = await this.getById(numericId, { selectMode: 'detail' });
     if (!current) {
       throw new Error(`Unable to load record for id ${numericId}`);
@@ -195,7 +224,7 @@ export class SharePointUserRepository implements UserRepository {
       IsActive: false,
     };
 
-    await this.list.items.getById(numericId).update(this.toRequest(patch));
+    await this.list.items.getById(numericId).update(this.toRequest(patch, mapping));
 
     const updated = await this.getById(numericId, { selectMode: 'detail' });
     if (!updated) {
@@ -310,12 +339,35 @@ export class SharePointUserRepository implements UserRepository {
   }
 
   /**
+   * resolveUserSelectFields が返す論理名を、mapping を使って物理名に置換する。
+   * mapping に存在しないものはそのまま返す（Id 等）。
+   */
+  private resolvePhysicalSelects(selects: string[], mapping: UserFieldMapping): string[] {
+    // 逆引き用の FIELD_MAP キー特定（ちょっと面倒）
+    // 本来は resolveUserSelectFields がキーを返すべきだが、一旦 FIELD_MAP の値と candidiates の基準名を一致させている前提。
+    const result: string[] = [];
+    const fieldMapValues = Object.entries(FIELD_MAP.Users_Master);
+    
+    for (const s of selects) {
+      // s が FIELD_MAP.Users_Master のどれかの値である場合、そのキーを mapping で引く
+      const entry = fieldMapValues.find(([_, val]) => val === s);
+      if (entry) {
+        const key = entry[0] as keyof UserFieldMapping;
+        result.push(mapping[key] || s);
+      } else {
+        result.push(s);
+      }
+    }
+    return [...new Set(result)];
+  }
+
+  /**
    * SharePoint 生データ → ドメインオブジェクト変換。
    * effectiveMode を __selectMode としてマーキングし、
    * 上位レイヤーで「どのレベルまで取得済みか」を判別可能にする。
    */
-  private toDomain(raw: UserRow, effectiveMode: UserSelectMode = 'core'): IUserMaster {
-    const fields = FIELD_MAP.Users_Master;
+  private toDomain(raw: UserRow, effectiveMode: UserSelectMode = 'core', mapping: UserFieldMapping): IUserMaster {
+    const fields = mapping;
     const record = raw as Record<string, unknown>;
     const get = <T = unknown>(field: string): T | undefined => record[field] as T | undefined;
     const attendance = normalizeAttendanceDays(get(fields.attendanceDays));
@@ -323,8 +375,8 @@ export class SharePointUserRepository implements UserRepository {
     const transportFrom = normalizeAttendanceDays(get(fields.transportFromDays));
 
     const domain: IUserMaster = {
-      Id: Number(get<number>(fields.id) ?? raw.Id),
-      Title: get<string | null>(fields.title) ?? raw.Title ?? null,
+      Id: Number(get<number>('Id') ?? get<number>('ID') ?? raw.Id),
+      Title: get<string | null>('Title') ?? get<string | null>('title') ?? raw.Title ?? null,
       UserID: (get<string>(fields.userId) ?? raw.UserID) ?? '',
       FullName: (get<string>(fields.fullName) ?? raw.FullName) ?? '',
       Furigana: get<string | null>(fields.furigana) ?? raw.Furigana ?? null,
@@ -336,7 +388,7 @@ export class SharePointUserRepository implements UserRepository {
         get<boolean | null>(fields.isHighIntensitySupportTarget) ?? null,
       IsSupportProcedureTarget:
         get<boolean | null>(fields.isSupportProcedureTarget) ?? null,
-      severeFlag: get<boolean | null>(fields.severeFlag) ?? null,
+      severeFlag: get<boolean | null>('SevereFlag') ?? get<boolean | null>('severeFlag') ?? null,
       IsActive: get<boolean | null>(fields.isActive) ?? raw.IsActive ?? null,
       TransportToDays: transportTo,
       TransportFromDays: transportFrom,
@@ -345,8 +397,8 @@ export class SharePointUserRepository implements UserRepository {
       AttendanceDays: attendance,
       RecipientCertNumber: get<string | null>(fields.recipientCertNumber) ?? raw.RecipientCertNumber ?? null,
       RecipientCertExpiry: get<string | null>(fields.recipientCertExpiry) ?? raw.RecipientCertExpiry ?? null,
-      Modified: get<string | null>(fields.modified) ?? raw.Modified ?? null,
-      Created: get<string | null>(fields.created) ?? raw.Created ?? null,
+      Modified: get<string | null>('Modified') ?? get<string | null>('modified') ?? raw.Modified ?? null,
+      Created: get<string | null>('Created') ?? get<string | null>('created') ?? raw.Created ?? null,
       // ── 支給決定・請求加算（DETAIL/FULL モード時のみ値あり） ──
       UsageStatus: get<string | null>(fields.usageStatus) ?? null,
       GrantMunicipality: get<string | null>(fields.grantMunicipality) ?? null,
@@ -374,11 +426,11 @@ export class SharePointUserRepository implements UserRepository {
     return normalized;
   }
 
-  private toRequest(dto: Partial<IUserMasterCreateDto>): Record<string, unknown> {
-    const fields = FIELD_MAP.Users_Master;
+  private toRequest(dto: Partial<IUserMasterCreateDto>, mapping: UserFieldMapping): Record<string, unknown> {
+    const fields = mapping;
     const payload: Record<string, unknown> = {};
 
-    const assign = (key: keyof typeof fields, value: unknown): void => {
+    const assign = (key: keyof UserFieldMapping, value: unknown): void => {
       payload[fields[key]] = value;
     };
 
@@ -395,7 +447,6 @@ export class SharePointUserRepository implements UserRepository {
     if (dto.IsSupportProcedureTarget !== undefined) {
       assign('isSupportProcedureTarget', dto.IsSupportProcedureTarget);
     }
-    if (dto.severeFlag !== undefined) assign('severeFlag', dto.severeFlag);
     if (dto.IsActive !== undefined) assign('isActive', dto.IsActive);
     if (dto.AttendanceDays !== undefined) assign('attendanceDays', normalizeAttendanceDays(dto.AttendanceDays));
     if (dto.TransportToDays !== undefined) assign('transportToDays', normalizeAttendanceDays(dto.TransportToDays));

@@ -31,6 +31,24 @@ export const FIELD_MAP_HANDOFF = {
 } as const;
 
 /**
+ * 0. Handoff リストのフィールド候補
+ */
+export const HANDOFF_CANDIDATES = {
+  message:    ['Message', 'message', 'cr013_message', 'Body'],
+  userCode:   ['UserCode', 'userCode', 'cr013_userCode', 'UserID', 'cr013_usercode'],
+  category:   ['Category', 'category', 'cr013_category', 'HandoffCategory'],
+  severity:   ['Severity', 'severity', 'cr013_severity'],
+  status:     ['Status', 'status', 'cr013_status'],
+  timeBand:   ['TimeBand', 'timeBand', 'cr013_timeBand'],
+  sourceType: ['SourceType', 'sourceType', 'cr013_sourceType'],
+  sourceKey:  ['SourceKey', 'sourceKey', 'cr013_sourceKey'],
+} as const;
+
+export const HANDOFF_ESSENTIALS: (keyof typeof HANDOFF_CANDIDATES)[] = [
+  'message', 'userCode', 'category'
+];
+
+/**
  * Handoff リスト用の動的 $select ビルダー
  */
 export function buildHandoffSelectFields(existingInternalNames?: readonly string[]): readonly string[] {

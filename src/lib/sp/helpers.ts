@@ -26,6 +26,8 @@ import { trimGuidBraces } from './spSchema';
 export const DEFAULT_LIST_TEMPLATE = 100;
 export const FIELDS_CACHE_TTL_MS = 20 * 60 * 1000; // 20分
 
+
+// SharePoint Internal List Titles (Defaults) - SSOT is spListRegistry.ts
 export const DEFAULT_USERS_LIST_TITLE = 'Users_Master';
 export const DEFAULT_STAFF_LIST_TITLE = 'Staff_Master';
 
@@ -230,9 +232,9 @@ export const readErrorPayload = async (res: Response): Promise<string> => {
 
 export const raiseHttpError = async (
   res: Response,
-  options: { 
-    url?: string; 
-    method?: string; 
+  options: {
+    url?: string;
+    method?: string;
     spOptions?: { quietStatuses?: number[]; silent?: boolean };
   } = {},
 ): Promise<never> => {
@@ -316,24 +318,24 @@ export function resolveInternalNamesDetailed<T extends string>(
   const resolved = {} as Record<T, string | undefined>;
   const fieldStatus = {} as Record<T, { resolvedName?: string; candidates: string[]; isDrifted: boolean }>;
   const missing: T[] = [];
-  
+
   // Case-insensitive lookup map for available fields
   const availableMap = new Map<string, string>();
   for (const name of available) {
     availableMap.set(name.toLowerCase(), name);
   }
-  
+
   for (const key in candidates) {
     if (Object.prototype.hasOwnProperty.call(candidates, key)) {
       // 1. First Pass: Exact match (case-insensitive)
       const exactMatch = candidates[key].find(f => availableMap.has(f.toLowerCase()));
       let foundCandidate = exactMatch ? availableMap.get(exactMatch.toLowerCase()) : undefined;
-      
+
       // 2. Second Pass: Fuzzy match (handle SharePoint automatic suffix like '0', '1', etc. & _x0020_ encoding)
       if (!foundCandidate) {
         for (const base of candidates[key]) {
           const lowerBase = base.toLowerCase();
-          
+
           // Strategy A: Suffix check (0-9)
           for (let i = 0; i < 10; i++) {
             const suffixCandidate = `${lowerBase}${i}`;
@@ -375,9 +377,12 @@ export function resolveInternalNamesDetailed<T extends string>(
       }
 
       const resolvedName = foundCandidate;
-      const isExactMatch = !!exactMatch && foundCandidate === availableMap.get(exactMatch.toLowerCase());
-      const isDrifted = !!resolvedName && !isExactMatch;
-      
+      // Drift if it's not exactly the primary candidate (first in the list)
+      // Note: Case sensitivity matters in SharePoint internal names.
+      const primaryCandidate = candidates[key][0];
+      const isPrimaryMatch = !!resolvedName && resolvedName === primaryCandidate;
+      const isDrifted = !!resolvedName && !isPrimaryMatch;
+
       resolved[key] = resolvedName;
       fieldStatus[key] = {
         resolvedName: resolvedName,
@@ -389,7 +394,7 @@ export function resolveInternalNamesDetailed<T extends string>(
       }
     }
   }
-  
+
   return { resolved, missing, fieldStatus };
 }
 
@@ -411,4 +416,42 @@ export function areEssentialFieldsResolved<T extends string>(
   essentials: T[]
 ): boolean {
   return essentials.every(key => !!resolved[key]);
+}
+
+/**
+ * SharePoint の生データを「洗浄」し、Mappers が期待する第一候補名に値を詰め替える。
+ * これにより、Mappers を大幅に変更することなく Schema Drift (0-9サフィックス等) に対応できる。
+ * 
+ * @param row SharePoint の生アイテム
+ * @param candidates フィールド候補定義 (各レコードの最初の要素がプライマリ名)
+ * @param resolved 解決された内部名のマッピング (key: candidates のキー, value: 実際の内部名)
+ */
+export function washRow<T extends Record<string, unknown>>(
+  row: T,
+  candidates: Record<string, string[]>,
+  resolved: Record<string, string | undefined>
+): T {
+  const washed = { ...row };
+  for (const [key, resName] of Object.entries(resolved)) {
+    const primary = (candidates[key] as string[])?.[0];
+    if (resName && primary && resName !== primary) {
+      // 実際の内部名(StartDate0等)の値を、第1候補名(StartDate)にコピーする
+      const value = row[resName];
+      if (value !== undefined) {
+        (washed as Record<string, unknown>)[primary] = value;
+      }
+    }
+  }
+  return washed;
+}
+
+/**
+ * 複数の行を洗浄する (washRow の配列版)
+ */
+export function washRows<T extends Record<string, unknown>>(
+  rows: T[],
+  candidates: Record<string, string[]>,
+  resolved: Record<string, string | undefined>
+): T[] {
+  return rows.map(row => washRow(row, candidates, resolved));
 }

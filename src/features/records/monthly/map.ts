@@ -11,12 +11,8 @@ import {
   joinOr,
 } from '@/sharepoint/query/builders';
 
-/** MonthlyRecord_Summary リストのフィールド定義 (OData フィルタ SSOT) */
-const MONTHLY_RECORD_FIELDS = {
-  yearMonth: 'YearMonth',
-  userCode: 'UserCode',
-  completionRate: 'CompletionRate',
-} as const;
+import { BILLING_SUMMARY_CANDIDATES } from '@/sharepoint/fields/billingFields';
+import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 
 /** DailyRecord リストのフィールド定義 (OData フィルタ SSOT) */
 const DAILY_RECORD_FILTER_FIELDS = {
@@ -104,24 +100,30 @@ export function getMonthRange(yearMonth: YearMonth): {
 
 /**
  * MonthlySummaryをSharePointフィールド形式に変換
+ * mapping が提供されている場合は動的な列名を使用する
  */
-export function toSharePointFields(summary: MonthlySummary) {
+export function toSharePointFields(
+  summary: MonthlySummary,
+  mapping?: Record<string, string | undefined>
+) {
+  const get = (key: string, fallback: string) => mapping?.[key] || fallback;
+
   return {
-    UserCode: summary.userId,
-    YearMonth: summary.yearMonth,
-    DisplayName: summary.displayName,
-    LastUpdated: summary.lastUpdatedUtc,
-    KPI_TotalDays: summary.kpi.totalDays,
-    KPI_PlannedRows: summary.kpi.plannedRows,
-    KPI_CompletedRows: summary.kpi.completedRows,
-    KPI_InProgressRows: summary.kpi.inProgressRows,
-    KPI_EmptyRows: summary.kpi.emptyRows,
-    KPI_SpecialNotes: summary.kpi.specialNotes,
-    KPI_Incidents: summary.kpi.incidents,
-    CompletionRate: summary.completionRate,
-    FirstEntryDate: summary.firstEntryDate || undefined,
-    LastEntryDate: summary.lastEntryDate || undefined,
-    IdempotencyKey: `${summary.userId}#${summary.yearMonth}`,
+    [get('userId', 'UserCode')]: summary.userId,
+    [get('yearMonth', 'YearMonth')]: summary.yearMonth,
+    [get('displayName', 'DisplayName')]: summary.displayName,
+    [get('lastUpdated', 'LastUpdated')]: summary.lastUpdatedUtc,
+    [get('totalDays', 'KPI_TotalDays')]: summary.kpi.totalDays,
+    [get('plannedRows', 'KPI_PlannedRows')]: summary.kpi.plannedRows,
+    [get('completedRows', 'KPI_CompletedRows')]: summary.kpi.completedRows,
+    [get('inProgressRows', 'KPI_InProgressRows')]: summary.kpi.inProgressRows,
+    [get('emptyRows', 'KPI_EmptyRows')]: summary.kpi.emptyRows,
+    [get('specialNotes', 'KPI_SpecialNotes')]: summary.kpi.specialNotes,
+    [get('incidents', 'KPI_Incidents')]: summary.kpi.incidents,
+    [get('completionRate', 'CompletionRate')]: summary.completionRate,
+    [get('firstEntryDate', 'FirstEntryDate')]: summary.firstEntryDate || undefined,
+    [get('lastEntryDate', 'LastEntryDate')]: summary.lastEntryDate || undefined,
+    [get('idempotencyKey', 'IdempotencyKey')]: `${summary.userId}#${summary.yearMonth}`,
   };
 }
 
@@ -148,32 +150,42 @@ export interface SharePointMonthlyItem {
 /**
  * SharePointフィールドからMonthlySummaryに変換（型検証付き）
  */
-export function fromSharePointFields(fields: SharePointMonthlyItem): MonthlySummary {
+export function fromSharePointFields(
+  fields: Record<string, unknown>,
+  mapping?: Record<string, string | undefined>
+): MonthlySummary {
+  const get = (key: string, fallback: string) => fields[mapping?.[key] || fallback];
+  const str = (val: unknown) => (val != null ? String(val) : '');
+  const num = (val: unknown) => (val != null ? Number(val) : 0);
+
   // YearMonth 検証
-  const yearMonth = parseYearMonth(fields.YearMonth);
+  const ymValue = str(get('yearMonth', 'YearMonth'));
+  const yearMonth = parseYearMonth(ymValue);
   if (!yearMonth) {
-    throw new Error(`Invalid YearMonth format: ${fields.YearMonth}`);
+    throw new Error(`Invalid YearMonth format: ${ymValue}`);
   }
 
-  // IsoDate 検証（optional なので null も許可）
-  const firstEntryDate = fields.FirstEntryDate ? parseIsoDate(fields.FirstEntryDate) ?? undefined : undefined;
-  const lastEntryDate = fields.LastEntryDate ? parseIsoDate(fields.LastEntryDate) ?? undefined : undefined;
+  // IsoDate 検証
+  const fed = str(get('firstEntryDate', 'FirstEntryDate'));
+  const led = str(get('lastEntryDate', 'LastEntryDate'));
+  const firstEntryDate = fed ? parseIsoDate(fed) ?? undefined : undefined;
+  const lastEntryDate = led ? parseIsoDate(led) ?? undefined : undefined;
 
   return {
-    userId: fields.UserCode,
+    userId: str(get('userId', 'UserCode')),
     yearMonth,
-    displayName: fields.DisplayName,
-    lastUpdatedUtc: fields.LastUpdated,
+    displayName: str(get('displayName', 'DisplayName')),
+    lastUpdatedUtc: str(get('lastUpdated', 'LastUpdated')),
     kpi: {
-      totalDays: fields.KPI_TotalDays || 0,
-      plannedRows: fields.KPI_PlannedRows || 0,
-      completedRows: fields.KPI_CompletedRows || 0,
-      inProgressRows: fields.KPI_InProgressRows || 0,
-      emptyRows: fields.KPI_EmptyRows || 0,
-      specialNotes: fields.KPI_SpecialNotes || 0,
-      incidents: fields.KPI_Incidents || 0,
+      totalDays: num(get('totalDays', 'KPI_TotalDays')),
+      plannedRows: num(get('plannedRows', 'KPI_PlannedRows')),
+      completedRows: num(get('completedRows', 'KPI_CompletedRows')),
+      inProgressRows: num(get('inProgressRows', 'KPI_InProgressRows')),
+      emptyRows: num(get('emptyRows', 'KPI_EmptyRows')),
+      specialNotes: num(get('specialNotes', 'KPI_SpecialNotes')),
+      incidents: num(get('incidents', 'KPI_Incidents')),
     },
-    completionRate: fields.CompletionRate || 0,
+    completionRate: num(get('completionRate', 'CompletionRate')),
     firstEntryDate,
     lastEntryDate,
   };
@@ -189,31 +201,35 @@ export function generateIdempotencyKey(key: MonthlyRecordKey): string {
 /**
  * ODataフィルター文字列を生成（月次データ取得用）
  */
-export function buildMonthlyRecordFilter(options: {
-  yearMonth?: YearMonth;
-  userId?: string;
-  userIds?: string[];
-  minCompletionRate?: number;
-}): string {
+export function buildMonthlyRecordFilter(
+  options: {
+    yearMonth?: YearMonth;
+    userId?: string;
+    userIds?: string[];
+    minCompletionRate?: number;
+  },
+  mapping?: Record<string, string | undefined>
+): string {
   const filters: (string | undefined)[] = [];
+  const f = (key: string, fallback: string) => mapping?.[key] || fallback;
 
   if (options.yearMonth) {
-    filters.push(buildEq(MONTHLY_RECORD_FIELDS.yearMonth, options.yearMonth));
+    filters.push(buildEq(f('yearMonth', 'YearMonth'), options.yearMonth));
   }
 
   if (options.userId) {
-    filters.push(buildEq(MONTHLY_RECORD_FIELDS.userCode, options.userId));
+    filters.push(buildEq(f('userId', 'UserCode'), options.userId));
   }
 
   if (options.userIds && options.userIds.length > 0) {
     const userFilters = options.userIds.map(id =>
-      buildEq(MONTHLY_RECORD_FIELDS.userCode, id)
+      buildEq(f('userId', 'UserCode'), id)
     );
     filters.push(`(${joinOr(userFilters)})`);
   }
 
   if (typeof options.minCompletionRate === 'number') {
-    filters.push(buildGe(MONTHLY_RECORD_FIELDS.completionRate, options.minCompletionRate));
+    filters.push(buildGe(f('completionRate', 'CompletionRate'), options.minCompletionRate));
   }
 
   return joinAnd(filters);
@@ -251,43 +267,56 @@ export function buildDailyRecordFilter(options: {
 
 /**
  * Upsert用のSharePoint操作インターフェース
- * 実装は各環境（Power Automate / TypeScript + Graph API）で対応
  */
 export interface SharePointClient {
-  findByIdempotencyKey(listName: string, key: string): Promise<SharePointMonthlyItem | null>;
-  create(listName: string, fields: Partial<SharePointMonthlyItem>): Promise<SharePointMonthlyItem>;
-  update(listName: string, itemId: number, fields: Partial<SharePointMonthlyItem>): Promise<SharePointMonthlyItem>;
+  getListFieldInternalNames(listName: string): Promise<Set<string>>;
+  findByIdempotencyKey(listName: string, keyFieldName: string, key: string): Promise<Record<string, unknown> | null>;
+  create(listName: string, fields: Record<string, unknown>): Promise<Record<string, unknown>>;
+  update(listName: string, itemId: number, fields: Record<string, unknown>): Promise<Record<string, unknown>>;
 }
 
 /**
- * 月次サマリーのUpsert処理（冪等性保証）
+ * 月次サマリーのUpsert処理（冪等性保証 + ドリフト耐性）
  */
 export async function upsertMonthlySummary(
   client: SharePointClient,
   summary: MonthlySummary
 ): Promise<{ action: 'created' | 'updated' | 'skipped'; itemId?: number }> {
-  const fields = toSharePointFields(summary);
-  const key = fields.IdempotencyKey;
+  const listName = 'MonthlyRecord_Summary';
+  
+  // 動的列名解決
+  const availableFields = await client.getListFieldInternalNames(listName);
+  const { resolved } = resolveInternalNamesDetailed(
+    availableFields,
+    BILLING_SUMMARY_CANDIDATES as unknown as Record<string, string[]>
+  );
+  const mapping = resolved as Record<string, string | undefined>;
+
+  const fields = toSharePointFields(summary, mapping);
+  const idempotencyFieldName = mapping.idempotencyKey || 'IdempotencyKey';
+  const lastUpdatedFieldName = mapping.lastUpdated || 'LastUpdated';
+  const key = `${summary.userId}#${summary.yearMonth}`;
 
   try {
     // 既存レコード検索
-    const existing = await client.findByIdempotencyKey('MonthlyRecord_Summary', key);
+    const existing = await client.findByIdempotencyKey(listName, idempotencyFieldName, key);
 
     if (existing) {
-      // 更新が必要かチェック（簡易版：LastUpdated比較）
-      const existingDate = new Date(existing.LastUpdated);
+      // 更新が必要かチェック
+      const existingDateValue = existing[lastUpdatedFieldName];
+      const existingDate = new Date(typeof existingDateValue === 'string' || typeof existingDateValue === 'number' ? existingDateValue : 0);
       const newDate = new Date(summary.lastUpdatedUtc);
 
       if (newDate > existingDate && existing.Id != null) {
-        const result = await client.update('MonthlyRecord_Summary', existing.Id, fields);
-        return { action: 'updated', itemId: result.Id };
+        const result = await client.update(listName, Number(existing.Id), fields);
+        return { action: 'updated', itemId: result.Id as number | undefined };
       } else {
-        return { action: 'skipped', itemId: existing.Id };
+        return { action: 'skipped', itemId: existing.Id as number | undefined };
       }
     } else {
       // 新規作成
-      const result = await client.create('MonthlyRecord_Summary', fields);
-      return { action: 'created', itemId: result.Id };
+      const result = await client.create(listName, fields);
+      return { action: 'created', itemId: result.Id as number | undefined };
     }
   } catch (error) {
     console.error('Upsert failed:', error);

@@ -52,6 +52,50 @@ export const FIELD_MAP_SURVEY_TOKUSEI = {
 } as const;
 
 /**
+ * FormsResponses_Tokusei (特性アンケート) のドリフト耐性定義
+ */
+export const SURVEY_TOKUSEI_CANDIDATES = {
+  responseId: ['ResponseId', 'Response_x0020_Id'],
+  responderEmail: ['ResponderEmail', 'Responder_x0020_Email'],
+  responderName: ['ResponderName', 'Responder_x0020_Name'],
+  fillDate: ['FillDate', 'Fill_x0020_Date'],
+  targetUserName: ['TargetUserName', 'Target_x0020_User_x0020_Name'],
+  guardianName: ['GuardianName', 'Guardian_x0020_Name'],
+  relation: ['Relation', 'Relation_x0020_to_x0020_User'],
+  heightCm: ['HeightCm', 'Height_x0020_cm'],
+  weightKg: ['WeightKg', 'Weight_x0020_kg'],
+  strengths: ['Strengths', 'UserStrengths'],
+  notes: ['Notes', 'General_x0020_Notes'],
+  formRowId: ['FormRowId', 'Form_x0020_Row_x0020_Id'],
+  startTime: ['StartTime', 'Start_x0020_Time'],
+  endTime: ['EndTime', 'End_x0020_Time'],
+  relationalDifficulties: ['RelationalDifficulties', 'Relational_x0020_Difficulties'],
+  situationalUnderstanding: ['SituationalUnderstanding', 'Situational_x0020_Understanding'],
+  hearing: ['Hearing', 'Sensory_x0020_Hearing'],
+  vision: ['Vision', 'Sensory_x0020_Vision'],
+  touch: ['Touch', 'Sensory_x0020_Touch'],
+  smell: ['Smell', 'Sensory_x0020_Smell'],
+  taste: ['Taste', 'Sensory_x0020_Taste'],
+  sensoryMultiSelect: ['SensoryMultiSelect', 'Sensory_x0020_Multiple'],
+  sensoryFreeText: ['SensoryFreeText', 'Sensory_x0020_Notes'],
+  difficultyWithChanges: ['DifficultyWithChanges', 'Change_x0020_Difficulties'],
+  interestInParts: ['InterestInParts', 'Part_x0020_Interests'],
+  repetitiveBehaviors: ['RepetitiveBehaviors', 'Repetitive_x0020_Actions'],
+  fixedHabits: ['FixedHabits', 'Fixed_x0020_Routines'],
+  comprehensionDifficulty: ['ComprehensionDifficulty', 'Comprehension_x0020_Issues'],
+  expressionDifficulty: ['ExpressionDifficulty', 'Expression_x0020_Issues'],
+  interactionDifficulty: ['InteractionDifficulty', 'Interaction_x0020_Issues'],
+  behaviorMultiSelect: ['BehaviorMultiSelect', 'Behavior_x0020_Multiple'],
+  behaviorEpisodes: ['BehaviorEpisodes', 'Behavior_x0020_Details'],
+} as const;
+
+export const SURVEY_TOKUSEI_ESSENTIALS: (keyof typeof SURVEY_TOKUSEI_CANDIDATES)[] = [
+  'responderName',
+];
+
+
+
+/**
  * Tokusei の派生フィールド（SP 物理列なし）
  *
  * ⚠️ OData $select には使用不可 — 400 エラーの原因になる。
@@ -83,29 +127,40 @@ export const SURVEY_TOKUSEI_SELECT_FIELDS: readonly string[] = Object.entries(FI
   )
   .map(([, value]) => value);
 
+import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
+
 /**
  * 動的に "存在する列だけ" を select フィールドに含める
- * テナント列差分・列削除・列名変更に対応
+ * テナント列差分・列削除・列名変更（Drift）に対応
  */
-export async function buildSurveyTokuseiSelectFields(
+export async function resolveSurveyTokuseiFields(
   getFieldNames: () => Promise<Set<string>>
-): Promise<string[]> {
+): Promise<{ 
+  select: string[]; 
+  mapping: Record<string, string | undefined>;
+  fieldStatus: Record<string, { resolvedName?: string; candidates: string[]; isDrifted: boolean }>;
+}> {
   try {
     const availableFields = await getFieldNames();
-    const availableLower = new Set(Array.from(availableFields).map((name) => name.toLowerCase()));
-    const allCandidates = Object.values(FIELD_MAP_SURVEY_TOKUSEI);
-    const selected = allCandidates.filter((fieldName) => fieldName === 'Id' || availableLower.has(fieldName.toLowerCase()));
+    const { resolved, fieldStatus } = resolveInternalNamesDetailed(
+      availableFields,
+      SURVEY_TOKUSEI_CANDIDATES as unknown as Record<string, string[]>
+    );
 
-    // 🔍 デバッグ出力：何が存在して何が除外されたか可視化
-    console.debug('[TokuseiSelect] 📊 Fields API から取得した内部名（最初の50個）:', Array.from(availableFields).slice(0, 50));
-    console.debug('[TokuseiSelect] 📋 FIELD_MAP から candidate（全数）:', allCandidates);
-    console.debug('[TokuseiSelect] ✅ selected（存在する列）:', selected);
-    console.debug('[TokuseiSelect] ❌ dropped（見つからない列）:', allCandidates.filter(x => !selected.includes(x)));
+    const mapping = resolved as Record<string, string | undefined>;
+    const select = [
+      'Id', 
+      'Created',
+      ...Object.values(mapping).filter((v): v is string => !!v)
+    ].filter((v, i, a) => a.indexOf(v) === i);
 
-    return selected;
+    return { select, mapping, fieldStatus };
   } catch (error) {
-    // Fallback: エラー時は既知フィールドの除外版を使う
-    console.warn('[buildSurveyTokuseiSelectFields] Fields API 取得失敗、fallback を使用:', error);
-    return Array.from(SURVEY_TOKUSEI_SELECT_FIELDS);
+    console.warn('[resolveSurveyTokuseiFields] Fields API 取得失敗、fallback を使用:', error);
+    return {
+      select: Array.from(SURVEY_TOKUSEI_SELECT_FIELDS),
+      mapping: FIELD_MAP_SURVEY_TOKUSEI,
+      fieldStatus: {},
+    };
   }
 }

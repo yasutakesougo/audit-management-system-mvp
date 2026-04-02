@@ -2,13 +2,15 @@ import { toSafeError } from '@/lib/errors';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { auditLog } from '@/lib/debugLogger';
 import {
-  SCHEDULE_CANDIDATES,
-  SCHEDULE_ESSENTIALS,
+  SCHEDULE_EVENTS_CANDIDATES,
+  SCHEDULE_EVENTS_ESSENTIALS,
   SCHEDULE_EXTENSIONS,
 } from '@/sharepoint/fields/scheduleFields';
 import { 
   resolveInternalNamesDetailed, 
   areEssentialFieldsResolved,
+  washRow,
+  washRows
 } from '@/lib/sp/helpers';
 import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
 import { mapSpRowToSchedule, type SpScheduleRow } from '../data/spRowSchema';
@@ -31,7 +33,7 @@ import {
     sortByStart,
 } from './scheduleSpUtils';
 
-type ScheduleCandidateKeys = keyof typeof SCHEDULE_CANDIDATES;
+type ScheduleCandidateKeys = keyof typeof SCHEDULE_EVENTS_CANDIDATES;
 type ScheduleExtensionKeys = keyof typeof SCHEDULE_EXTENSIONS;
 type AllScheduleKeys = ScheduleCandidateKeys | ScheduleExtensionKeys;
 
@@ -54,6 +56,7 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
   private readonly currentOwnerUserId?: string;
   
   private resolvedFields: ResolvedScheduleFields | null = null;
+  private allCandidates: Record<string, string[]> = { ...SCHEDULE_EVENTS_CANDIDATES, ...SCHEDULE_EXTENSIONS } as unknown as Record<string, string[]>;
 
   constructor(options: {
     provider: IDataProvider;
@@ -75,25 +78,24 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       const available = await this.provider.getFieldInternalNames(this.listTitle);
 
       // 基本候補 + 拡張（Visibility等）を合体して解決
-      const allCandidates = { ...SCHEDULE_CANDIDATES, ...SCHEDULE_EXTENSIONS };
       const { resolved, fieldStatus } = resolveInternalNamesDetailed(
         available,
-        allCandidates as unknown as Record<string, string[]>
+        this.allCandidates
       );
 
-      // 健康診断は SCHEDULE_CANDIDATES 分のみで行う
-      const isHealthy = areEssentialFieldsResolved(resolved, [...SCHEDULE_ESSENTIALS] as string[]);
+      // 健康診断は SCHEDULE_EVENTS_CANDIDATES 分のみで行う
+      const isHealthy = areEssentialFieldsResolved(resolved, [...SCHEDULE_EVENTS_ESSENTIALS] as string[]);
       
       // Observability への報告（バナーのトリガー）から拡張分を除去し、バナーをクリアする
       const stableFieldStatus = Object.fromEntries(
-        (Object.keys(SCHEDULE_CANDIDATES) as ScheduleCandidateKeys[]).map(k => [k, fieldStatus[k]])
+        (Object.keys(SCHEDULE_EVENTS_CANDIDATES) as ScheduleCandidateKeys[]).map(k => [k, fieldStatus[k]])
       );
 
       reportResourceResolution({
         resourceName: 'Schedule',
         resolvedTitle: this.listTitle,
         fieldStatus: stableFieldStatus as Record<string, { resolvedName?: string; candidates: string[] }>,
-        essentials: [...SCHEDULE_ESSENTIALS] as string[],
+        essentials: [...SCHEDULE_EVENTS_ESSENTIALS] as string[],
       });
 
       if (isHealthy) {
@@ -116,7 +118,7 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
         resourceName: 'Schedule',
         resolvedTitle: this.listTitle,
         fieldStatus: {},
-        essentials: [...SCHEDULE_ESSENTIALS] as string[],
+        essentials: [...SCHEDULE_EVENTS_ESSENTIALS] as string[],
         error: String(err)
       });
       auditLog.error('schedule:repo', 'Field resolution failed:', err);
@@ -137,7 +139,7 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       // 動的 $select 生成
       const selectFields = [
         'Id', 'Created', 'Modified',
-        ...Object.values(fields).filter((f): f is string | string[] => !!f && typeof f === 'string') as string[]
+        ...Object.values(fields).filter((f): f is string => typeof f === 'string')
       ].filter((v, i, a) => a.indexOf(v) === i);
 
       // 動的 $filter 追加 (日付範囲)
@@ -149,16 +151,41 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       const items = await this.provider.listItems<SpScheduleRow>(this.listTitle, {
         select: selectFields,
         filter: rangeFilter,
-        top: 5000, // Explicitly large for schedules
+        top: 5000, 
         orderby: `${fields.start} asc,Id asc`,
         signal
       });
 
-      const mapped = items.map(row => mapSpRowToSchedule(row)).filter((item): item is ScheduleItem => !!item);
+      // ドリフト対策: row を洗浄してから map する
+      const washed = washRows(
+        items as unknown as Record<string, unknown>[], 
+        this.allCandidates, 
+        fields as unknown as Record<string, string | undefined>
+      ) as unknown as SpScheduleRow[];
+      const mapped = washed.map(row => mapSpRowToSchedule(row)).filter((item): item is ScheduleItem => !!item);
       const allItems = sortByStart(mapped);
 
       // Domain filtering (Visibility)
       return this.applyVisibilityFilter(allItems);
+    } catch (err) {
+      return this.handleError(err, '予定の取得に失敗しました。');
+    }
+  }
+
+  async getById(id: string): Promise<ScheduleItem | null> {
+    try {
+      const fields = await this.resolveFields();
+      if (!fields) return null;
+
+      const row = await this.provider.getItemById<SpScheduleRow>(this.listTitle, id);
+      if (!row) return null;
+
+      const washed = washRow(
+        row as unknown as Record<string, unknown>, 
+        this.allCandidates, 
+        fields as unknown as Record<string, string | undefined>
+      ) as unknown as SpScheduleRow;
+      return mapSpRowToSchedule(washed);
     } catch (err) {
       return this.handleError(err, '予定の取得に失敗しました。');
     }

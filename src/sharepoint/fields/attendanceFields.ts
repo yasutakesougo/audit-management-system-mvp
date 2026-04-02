@@ -54,6 +54,24 @@ export const STAFF_ATTENDANCE_FIELD_MAP = {
   modified: 'Modified',
 } as const;
 
+/**
+ * Staff_Attendance フィールド候補マップ (Drift Resistance)
+ */
+export const STAFF_ATTENDANCE_CANDIDATES = {
+  staffId: ['StaffId', 'StaffID', 'UserCode', 'cr013_staffId'],
+  recordDate: ['RecordDate', 'Date', 'cr013_recordDate'],
+  status: ['Status', 'UsageStatus', 'cr013_status'],
+  checkInAt: ['CheckInAt', 'CheckIn', 'cr013_checkInAt'],
+  checkOutAt: ['CheckOutAt', 'CheckOut', 'cr013_checkOutAt'],
+  lateMinutes: ['LateMinutes', 'Late', 'cr013_lateMinutes'],
+  note: ['Note', 'Notes', 'cr013_note'],
+  isFinalized: ['IsFinalized', 'Finalized', 'cr013_isFinalized'],
+} as const;
+
+export const STAFF_ATTENDANCE_ESSENTIALS: (keyof typeof STAFF_ATTENDANCE_CANDIDATES)[] = [
+  'staffId', 'recordDate', 'status'
+];
+
 // ──────────────────────────────────────────────────────────────
 // User Attendance Users (SharePoint list: AttendanceUsers)
 // ──────────────────────────────────────────────────────────────
@@ -92,19 +110,23 @@ export const ATTENDANCE_USERS_SELECT_FIELDS = [
  * AttendanceUsers フィールド候補
  */
 export const ATTENDANCE_USERS_CANDIDATES = {
-  userCode: ['UserID', 'UserCode', 'cr013_usercode', 'Title', 'userCode'],
-  title: ['FullName', 'cr013_fullname', 'FullNameKana', 'Title', 'fullName', 'fullname'],
-  isTransportTarget: ['IsTransportTarget', 'cr013_istransporttarget', 'isTransportTarget'],
-  standardMinutes: ['StandardMinutes', 'cr013_standardminutes', 'standardMinutes'],
-  isActive: ['IsActive', 'Active', 'isActive', 'cr013_isactive'],
-  serviceEndDate: ['ServiceEndDate', 'ServiceEnd', 'UsageEndDate', 'serviceEndDate', 'cr013_serviceenddate'],
-  usageStatus: ['UsageStatus', 'Status', 'usageStatus', 'cr013_usagestatus'],
-  attendanceDays: ['AttendanceDays', 'attendanceDays', 'Attendance_x0020_Days', 'PlanDays'],
-  defaultTransportToMethod: ['DefaultTransportToMethod', 'defaultTransportToMethod'],
-  defaultTransportFromMethod: ['DefaultTransportFromMethod', 'defaultTransportFromMethod'],
-  defaultTransportToNote: ['DefaultTransportToNote', 'defaultTransportToNote'],
-  defaultTransportFromNote: ['DefaultTransportFromNote', 'defaultTransportFromNote'],
+  userCode: ['UserCode', 'UserID', 'userId', 'cr013_userCode', 'Title'],
+  title: ['Title', 'FullName', 'DisplayName', 'cr013_fullName'],
+  isTransportTarget: ['IsTransportTarget', 'TransportTarget', 'cr013_isTransportTarget'],
+  standardMinutes: ['StandardMinutes', 'StdMinutes', 'cr013_standardMinutes'],
+  isActive: ['IsActive', 'Active', 'cr013_isActive'],
+  serviceEndDate: ['ServiceEndDate', 'EndDate', 'cr013_serviceEndDate'],
+  usageStatus: ['UsageStatus', 'Status', 'cr013_usageStatus'],
+  attendanceDays: ['AttendanceDays', 'WorkDays', 'cr013_attendanceDays'],
+  defaultTransportToMethod: ['DefaultTransportToMethod', 'cr013_defTransTo'],
+  defaultTransportFromMethod: ['DefaultTransportFromMethod', 'cr013_defTransFrom'],
+  defaultTransportToNote: ['DefaultTransportToNote', 'cr013_defTransToNote'],
+  defaultTransportFromNote: ['DefaultTransportFromNote', 'cr013_defTransFromNote'],
 } as const;
+
+export const ATTENDANCE_USERS_ESSENTIALS: (keyof typeof ATTENDANCE_USERS_CANDIDATES)[] = [
+  'userCode', 'isActive'
+];
 
 // ──────────────────────────────────────────────────────────────
 // User Attendance Daily (SharePoint list: AttendanceDaily)
@@ -180,35 +202,41 @@ import type { SpFieldDef } from '@/lib/sp/types';
  * AttendanceDaily フィールド候補 (環境差異吸収用)
  */
 export const ATTENDANCE_DAILY_CANDIDATES = {
-  key: ['Title', 'Key', 'key'],
-  userCode: ['UserCode', 'cr013_usercode', 'cr013_personId', 'UserId', 'UserID', 'userCode'],
-  recordDate: ['RecordDate', 'cr013_date', 'cr013_recorddate', 'Date', 'recordDate'],
-  status: ['Status', 'status', 'cr013_status', 'AttendanceStatus', 'RecordStatus', 'ItemStatus'],
-  checkInAt: ['CheckInAt', 'checkInAt'],
-  checkOutAt: ['CheckOutAt', 'checkOutAt'],
-  cntAttendIn: ['CntAttendIn', 'cntAttendIn'],
-  cntAttendOut: ['CntAttendOut', 'cntAttendOut'],
-  transportTo: ['TransportTo', 'transportTo'],
-  transportFrom: ['TransportFrom', 'transportFrom'],
-  providedMinutes: ['ProvidedMinutes', 'providedMinutes'],
-  isEarlyLeave: ['IsEarlyLeave', 'isEarlyLeave'],
-  userConfirmedAt: ['UserConfirmedAt', 'userConfirmedAt'],
-  absentMorningContacted: ['AbsentMorningContacted', 'absentMorningContacted'],
-  absentMorningMethod: ['AbsentMorningMethod', 'absentMorningMethod'],
-  eveningChecked: ['EveningChecked', 'eveningChecked'],
-  eveningNote: ['EveningNote', 'eveningNote'],
-  isAbsenceAddonClaimable: ['IsAbsenceAddonClaimable', 'AbsenceAddonClaimable', 'isAbsenceAddonClaimable'],
-  transportToMethod: ['TransportToMethod', 'transportToMethod'],
-  transportFromMethod: ['TransportFromMethod', 'transportFromMethod'],
-  transportToNote: ['TransportToNote', 'transportToNote'],
-  transportFromNote: ['TransportFromNote', 'transportFromNote'],
-  absentContactTimestamp: ['AbsentContactTimestamp', 'absentContactTimestamp'],
-  absentReason: ['AbsentReason', 'absentReason'],
-  absentContactorType: ['AbsentContactorType', 'absentContactorType'],
-  absentSupportContent: ['AbsentSupportContent', 'absentSupportContent'],
-  nextScheduledDate: ['NextScheduledDate', 'nextScheduledDate'],
-  staffInChargeId: ['StaffInChargeId', 'staffInChargeId'],
+  key: ['Title', 'Key', 'key', 'cr013_key'],
+  userCode: ['UserCode', 'UserID', 'userId', 'cr013_userCode', 'cr013_personId'],
+  recordDate: ['RecordDate', 'Date', 'cr013_recordDate'],
+  status: ['Status', 'AttendanceStatus', 'cr013_status'],
+  checkInAt: ['CheckInAt', 'CheckIn', 'cr013_checkInAt'],
+  checkOutAt: ['CheckOutAt', 'CheckOut', 'cr013_checkOutAt'],
+  cntAttendIn: ['CntAttendIn', 'cr013_cntAttendIn'],
+  cntAttendOut: ['CntAttendOut', 'cr013_cntAttendOut'],
+  transportTo: ['TransportTo', 'cr013_transportTo'],
+  transportFrom: ['TransportFrom', 'cr013_transportFrom'],
+  providedMinutes: ['ProvidedMinutes', 'cr013_providedMinutes'],
+  isEarlyLeave: ['IsEarlyLeave', 'cr013_isEarlyLeave'],
+  userConfirmedAt: ['UserConfirmedAt', 'cr013_userConfirmedAt'],
+  absentMorningContacted: ['AbsentMorningContacted', 'cr013_absentMorningContacted'],
+  absentMorningMethod: ['AbsentMorningMethod', 'cr013_absentMorningMethod'],
+  eveningChecked: ['EveningChecked', 'cr013_eveningChecked'],
+  eveningNote: ['EveningNote', 'cr013_eveningNote'],
+  isAbsenceAddonClaimable: ['IsAbsenceAddonClaimable', 'cr013_isAbsenceAddonClaimable'],
+  transportToMethod: ['TransportToMethod', 'cr013_transportToMethod'],
+  transportFromMethod: ['TransportFromMethod', 'cr013_transportFromMethod'],
+  transportToNote: ['TransportToNote', 'cr013_transportToNote'],
+  transportFromNote: ['TransportFromNote', 'cr013_transportFromNote'],
+  absentContactTimestamp: ['AbsentContactTimestamp', 'cr013_absentContactTimestamp'],
+  absentReason: ['AbsentReason', 'cr013_absentReason'],
+  absentContactorType: ['AbsentContactorType', 'cr013_absentContactorType'],
+  absentSupportContent: ['AbsentSupportContent', 'cr013_absentSupportContent'],
+  nextScheduledDate: ['NextScheduledDate', 'cr013_nextScheduledDate'],
+  staffInChargeId: ['StaffInChargeId', 'cr013_staffInChargeId'],
 } as const;
+
+export const ATTENDANCE_DAILY_ESSENTIALS: (keyof typeof ATTENDANCE_DAILY_CANDIDATES)[] = [
+  'userCode',
+  'recordDate',
+  'status',
+];
 
 /**
  * AttendanceDaily プロビジョニング用定義 (ensureListExists 用)

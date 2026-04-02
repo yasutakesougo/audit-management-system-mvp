@@ -3,6 +3,7 @@ import {
   HealthContext,
   HealthStatus,
   ListSpec,
+  SpFieldSpec,
 } from "./types";
 import { resolveInternalNamesDetailed } from "@/lib/sp/helpers";
 import { SpAdapter } from "./spAdapter";
@@ -285,7 +286,7 @@ async function runListChecks(
         nextActions: [
           {
             kind: "doc",
-            label: "provision 手順",
+            label: "【カテゴリ: リスト不存在】Provision 手順を確認し、リストを作成する",
             value: "provision/README.md",
           },
         ],
@@ -319,7 +320,10 @@ async function runListChecks(
     );
   } else {
     // 1. Resolve fields with drift detection
-    const candidates = Object.fromEntries(spec.requiredFields.map(f => [f.internalName, [f.internalName]]));
+    // f.candidates があればそれを使い、なければ internalName 単独で解決
+    const candidates = Object.fromEntries(
+      spec.requiredFields.map(f => [f.internalName, (f as SpFieldSpec).candidates ?? [f.internalName]])
+    );
     const available = new Set(fields.v.map(f => f.internalName));
     const resolution = resolveInternalNamesDetailed(available, candidates);
     const { missing, fieldStatus } = resolution;
@@ -369,6 +373,13 @@ async function runListChecks(
           summary: `列名にサフィックスが付与されています（${drifted.map(f => `${f.internalName} -> ${fieldStatus[f.internalName].resolvedName}`).join(", ")}）。`,
           detail: "SharePoint により列名が重複回避のためリネームされています（例: FullName0）。物理的な削除またはビューの詳細名確認を推奨しますが、アプリの基本動作は継続可能です。",
           evidence: { listTitle: spec.resolvedTitle, drifted: drifted.map(f => ({ expected: f.internalName, actual: fieldStatus[f.internalName].resolvedName })) },
+          nextActions: [
+            {
+              kind: "copy",
+              label: "【カテゴリ: ドリフト】管理者: ドリフト列の確認と重複列削除を検討",
+              value: `リスト「${spec.resolvedTitle}」で数字サフィックス付き列（例: FieldName0）を確認し、旧列の削除を検討してください。アプリの動作は継続可能です。`,
+            },
+          ],
         })
       );
     } else if (missingOptional.length > 0) {
@@ -380,6 +391,13 @@ async function runListChecks(
           summary: `一部のオプション列名が物理名と一致しません（${missingOptional.map(f => f.internalName).join(", ")}）。`,
           detail: "case の差異や自動付与サフィックスの可能性があります。業務データ取得には代替解決ロジックが適用されます。",
           evidence: { listTitle: spec.resolvedTitle, missing: missingOptional.map(f => f.internalName) },
+          nextActions: [
+            {
+              kind: "doc",
+              label: "【カテゴリ: スキーマ（任意）】Provision を再実行してオプション列を追加する",
+              value: "provision/README.md",
+            },
+          ],
         })
       );
     } else {
@@ -409,8 +427,8 @@ async function runListChecks(
         nextActions: [
           {
             kind: "copy",
-            label: "管理者対応: SharePoint で Read 権限を付与",
-            value: `リスト「${spec.resolvedTitle}」に対する Read 権限を SharePoint 管理者が付与してください。`,
+            label: "【カテゴリ: Read】管理者に閲覧権限を付与するよう依頼する",
+            value: `リスト「${spec.resolvedTitle}」に対する「閲覧」以上の権限を SharePoint 管理者が付与してください。`,
           },
         ],
       })
@@ -464,8 +482,8 @@ async function runListChecks(
         nextActions: [
           {
             kind: "copy",
-            label: "管理者対応: SharePoint で Create 権限を付与",
-            value: `リスト「${spec.resolvedTitle}」に対する Create 権限を SharePoint 管理者が付与してください。`,
+            label: "【カテゴリ: Create】管理者に作成権限を付与するよう依頼する",
+            value: `リスト「${spec.resolvedTitle}」に対する「投稿」以上の権限を SharePoint 管理者が付与してください。`,
           },
         ],
       })
@@ -501,8 +519,8 @@ async function runListChecks(
         nextActions: [
           {
             kind: "copy",
-            label: "管理者対応: SharePoint で Update 権限を付与",
-            value: `リスト「${spec.resolvedTitle}」に対する Update 権限を SharePoint 管理者が付与してください。`,
+            label: "【カテゴリ: Update】管理者に更新権限を付与するよう依頼する",
+            value: `リスト「${spec.resolvedTitle}」に対する「投稿」以上の権限を SharePoint 管理者が付与してください。`,
           },
         ],
       })
