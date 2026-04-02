@@ -166,7 +166,7 @@ export type SpPlanGoalRow = Record<string, unknown>;
  * SP クライアント型（useSP() の戻り値互換）
  */
 export type ISPSpClient = {
-  getFieldInternalNames: (listName: string) => Promise<Set<string>>;
+  getListFieldInternalNames: (listName: string) => Promise<Set<string>>;
   listItems: <T>(
     listTitle: string,
     options: {
@@ -242,7 +242,7 @@ export async function fetchISPPlans(
   const listTitle = resolveListTitle('plan_goals');
   
   // 動的列名解決
-  const available = await client.getFieldInternalNames(listTitle);
+  const available = await client.getListFieldInternalNames(listTitle);
   const { resolved } = resolveInternalNamesDetailed(
     available,
     PLAN_GOALS_CANDIDATES as unknown as Record<string, string[]>
@@ -277,7 +277,7 @@ export async function upsertGoal(
   const listTitle = resolveListTitle('plan_goals');
 
   // 動的列名解決
-  const available = await client.getFieldInternalNames(listTitle);
+  const available = await client.getListFieldInternalNames(listTitle);
   const { resolved } = resolveInternalNamesDetailed(
     available,
     PLAN_GOALS_CANDIDATES as unknown as Record<string, string[]>

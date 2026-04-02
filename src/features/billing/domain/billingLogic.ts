@@ -27,18 +27,20 @@ export const safeParseNumber = (v: unknown): number => {
  * @param mapping 解決された内部名のマッピング
  */
 export function mapToBillingOrder(
-  item: Record<string, unknown>
+  item: Record<string, unknown>,
+  mapping: Record<string, string | undefined>
 ): BillingOrder {
+  const F = mapping;
   return {
     id: safeParseNumber(item['Id'] ?? item['id'] ?? 0),
-    orderDate: safeParseString(item['Title'] ?? item['orderDate'] ?? ''),
-    ordererCode: safeParseString(item['OrdererCode'] ?? item['ordererCode'] ?? ''),
-    ordererName: safeParseString(item['OrdererName'] ?? item['ordererName'] ?? ''),
-    orderCount: safeParseNumber(item['OrderCount'] ?? item['orderCount'] ?? 0),
-    served: safeParseString(item['Served'] ?? item['served'] ?? ''),
-    item: safeParseString(item['Item'] ?? item['item'] ?? ''),
-    sugar: safeParseString(item['Sugar'] ?? item['sugar'] ?? ''),
-    milk: safeParseString(item['Milk'] ?? item['milk'] ?? ''),
-    drinkPrice: safeParseNumber(item['DrinkPrice'] ?? item['drinkPrice'] ?? 0),
+    orderDate: safeParseString(item[F.orderDate ?? 'Title'] ?? item['orderDate'] ?? ''),
+    ordererCode: safeParseString(item[F.ordererCode ?? 'OrdererCode'] ?? item['ordererCode'] ?? ''),
+    ordererName: safeParseString(item[F.ordererName ?? 'OrdererName'] ?? item['ordererName'] ?? ''),
+    orderCount: safeParseNumber(item[F.orderCount ?? 'OrderCount'] ?? item['orderCount'] ?? 0),
+    served: safeParseString(item[F.served ?? 'Served'] ?? item['served'] ?? ''),
+    item: safeParseString(item[F.item ?? 'Item'] ?? item['item'] ?? ''),
+    sugar: safeParseString(item[F.sugar ?? 'Sugar'] ?? item['sugar'] ?? ''),
+    milk: safeParseString(item[F.milk ?? 'Milk'] ?? item['milk'] ?? ''),
+    drinkPrice: safeParseNumber(item[F.drinkPrice ?? 'DrinkPrice'] ?? item['drinkPrice'] ?? 0),
   };
 }

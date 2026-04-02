@@ -81,7 +81,7 @@ export class DataProviderBillingOrderRepository implements BillingOrderRepositor
       const candidates = BILLING_ORDERS_CANDIDATES as unknown as Record<string, string[]>;
       const washed = washRows(items, candidates, mapping);
 
-      return washed.map(item => mapToBillingOrder(item));
+      return washed.map(item => mapToBillingOrder(item, mapping));
     } catch (err: unknown) {
       console.error('[BillingOrderRepository] Fetch error:', err);
       throw err;
