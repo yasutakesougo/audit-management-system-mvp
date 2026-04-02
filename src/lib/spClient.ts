@@ -102,9 +102,8 @@ export function createSpClient(
 
   // ── Batch ($batch POST + payload assemble) ──
   const postBatch = createPostBatch({
-    acquireToken, baseUrl,
+    spFetch, baseUrl,
     config: envRecord,
-    retrySettings, debugEnabled,
   });
 
   const batch = async (operations: SharePointBatchOperation[]): Promise<SharePointBatchResult[]> => {
