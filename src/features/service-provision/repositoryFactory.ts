@@ -1,123 +1,48 @@
 /**
  * ServiceProvision Repository Factory
- *
+ * 
  * demo / sharepoint 切り替え。
- * 既存の attendanceRepositoryFactory.ts と同一パターン。
+ * createRepositoryFactory を使用した共通パターン。
  */
-import {
-  getAppConfig,
-  isDemoModeEnabled,
-  isForceDemoEnabled,
-  isTestMode,
-  readBool,
-  shouldSkipLogin,
-  shouldSkipSharePoint,
-} from '@/lib/env';
-import { hasSpfxContext } from '@/lib/runtime';
+import { createRepositoryFactory, type BaseFactoryOptions } from '@/lib/createRepositoryFactory';
+import { createDataProvider } from '@/lib/data/createDataProvider';
+import { createSpClient, ensureConfig } from '@/lib/spClient';
 
-import { useAuth } from '@/auth/useAuth';
 import type { ServiceProvisionRepository } from './domain/ServiceProvisionRepository';
 import { inMemoryServiceProvisionRepository } from './infra/InMemoryServiceProvisionRepository';
+import { DataProviderServiceProvisionRepository } from './infra/DataProviderServiceProvisionRepository';
 
-export type ServiceProvisionRepositoryKind = 'demo' | 'sharepoint';
+/**
+ * ServiceProvision Repository Factory options.
+ */
+export interface ServiceProvisionRepositoryFactoryOptions extends BaseFactoryOptions {
+  /** Optional custom list title. */
+  listTitle?: string;
+}
 
-// ─── 内部状態 ────────────────────────────────────────────────
+const factory = createRepositoryFactory<ServiceProvisionRepository, ServiceProvisionRepositoryFactoryOptions>({
+  name: 'ServiceProvision',
+  createDemo: () => inMemoryServiceProvisionRepository,
+  createReal: (options) => {
+    const { acquireToken } = options;
+    if (!acquireToken) {
+      throw new Error('[ServiceProvisionRepositoryFactory] acquireToken is required for real repository.');
+    }
+    
+    const { baseUrl } = ensureConfig();
+    const { provider } = createDataProvider(createSpClient(acquireToken, baseUrl), { type: 'sharepoint' });
 
-let cachedRepository: ServiceProvisionRepository | null = null;
-let cachedKind: ServiceProvisionRepositoryKind | null = null;
-let overrideRepository: ServiceProvisionRepository | null = null;
+    return new DataProviderServiceProvisionRepository({
+      provider,
+      listTitle: options.listTitle || 'ServiceProvisionRecords',
+    });
+  },
+});
 
-// ─── 判定 ────────────────────────────────────────────────────
+export const getServiceProvisionRepository = factory.getRepository;
+export const useServiceProvisionRepository = factory.useRepository;
+export const overrideServiceProvisionRepository = factory.override;
+export const resetServiceProvisionRepository = factory.reset;
+export const getCurrentServiceProvisionRepositoryKind = factory.getCurrentKind;
 
-const shouldUseDemoRepository = (): boolean => {
-  if (
-    isTestMode() ||
-    isForceDemoEnabled() ||
-    isDemoModeEnabled() ||
-    shouldSkipLogin() ||
-    shouldSkipSharePoint()
-  ) {
-    return true;
-  }
-
-  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
-  const spEnabled = readBool('VITE_SP_ENABLED', false);
-  if (forceSharePoint || spEnabled) {
-    return false;
-  }
-
-  const { isDev } = getAppConfig();
-  const spfxContextAvailable = hasSpfxContext();
-  return (
-    isDev ||
-    !spfxContextAvailable
-  );
-};
-
-const resolveKind = (
-  forced?: ServiceProvisionRepositoryKind,
-): ServiceProvisionRepositoryKind =>
-  forced ?? (shouldUseDemoRepository() ? 'demo' : 'sharepoint');
-
-// ─── ファクトリ ──────────────────────────────────────────────
-
-const createRepository = (
-  kind: ServiceProvisionRepositoryKind,
-  acquireToken?: () => Promise<string | null>,
-): ServiceProvisionRepository => {
-  if (kind === 'demo') {
-    return inMemoryServiceProvisionRepository;
-  }
-
-  if (!acquireToken) {
-    throw new Error(
-      '[ServiceProvisionRepositoryFactory] acquireToken is required for SharePoint repository.',
-    );
-  }
-
-  return inMemoryServiceProvisionRepository;
-};
-
-export const getServiceProvisionRepository = (options?: {
-  forceKind?: ServiceProvisionRepositoryKind;
-  acquireToken?: () => Promise<string | null>;
-}): ServiceProvisionRepository => {
-  if (overrideRepository) {
-    return overrideRepository;
-  }
-
-  const kind = resolveKind(options?.forceKind);
-
-  if (cachedRepository && cachedKind === kind) {
-    return cachedRepository;
-  }
-
-  const repository = createRepository(kind, options?.acquireToken);
-  cachedRepository = repository;
-  cachedKind = kind;
-  return repository;
-};
-
-/** React Hook 版 */
-export const useServiceProvisionRepository =
-  (): ServiceProvisionRepository => {
-    const { acquireToken } = useAuth();
-    return getServiceProvisionRepository({ acquireToken });
-  };
-
-// ─── テスト用 ────────────────────────────────────────────────
-
-export const overrideServiceProvisionRepository = (
-  repository: ServiceProvisionRepository | null,
-): void => {
-  overrideRepository = repository;
-};
-
-export const resetServiceProvisionRepository = (): void => {
-  cachedRepository = null;
-  cachedKind = null;
-  overrideRepository = null;
-};
-
-export const getCurrentServiceProvisionRepositoryKind =
-  (): ServiceProvisionRepositoryKind => cachedKind ?? resolveKind();
+export type ServiceProvisionRepositoryKind = 'demo' | 'real';

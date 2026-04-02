@@ -49,3 +49,21 @@ export const SERVICE_PROVISION_SELECT_FIELDS = [
   SERVICE_PROVISION_FIELDS.created,
   SERVICE_PROVISION_FIELDS.modified,
 ] as const;
+export const SERVICE_PROVISION_CANDIDATES = {
+  entryKey: ['EntryKey'],
+  userCode: ['UserCode'],
+  recordDate: ['RecordDate'],
+  status: ['Status'],
+  startHHMM: ['StartHHMM'],
+  endHHMM: ['EndHHMM'],
+  hasTransport: ['HasTransport'],
+  hasTransportPickup: ['HasTransportPickup'],
+  hasTransportDropoff: ['HasTransportDropoff'],
+  hasMeal: ['HasMeal'],
+  hasBath: ['HasBath'],
+  hasExtended: ['HasExtended'],
+  hasAbsentSupport: ['HasAbsentSupport'],
+  note: ['Note'],
+  source: ['Source'],
+  updatedByUPN: ['UpdatedByUPN'],
+};

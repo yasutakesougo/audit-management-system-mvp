@@ -13,6 +13,7 @@ import {
     makeFieldsCacheKey,
     nowMs,
     resolveListPath,
+    resolveInternalNamesDetailed,
     safeJsonParse,
     safeJsonStringify
 } from './helpers';
@@ -342,7 +343,10 @@ export async function ensureListExists(
 
   if (fields.length) {
     const existing = await fetchExistingFields(spFetch, listTitle);
+    const available = new Set(existing.keys());
+
     for (const field of fields) {
+      // 1. Exact match check
       const current = existing.get(field.internalName);
       if (current) {
         if (field.required && current.Required === false) {
@@ -350,6 +354,24 @@ export async function ensureListExists(
         }
         continue;
       }
+
+      // 2. Drift detection (Fuzzy check)
+      const resolution = resolveInternalNamesDetailed(available, {
+        [field.internalName]: [field.internalName]
+      });
+
+      const fieldResult = resolution.fieldStatus[field.internalName];
+      if (fieldResult?.resolvedName) {
+        // Drift detected! Use existing suffixed column instead of proliferating
+        auditLog.warn('sp:fields', 'schema_drift_detected', { 
+          listTitle, 
+          expected: field.internalName, 
+          actual: fieldResult.resolvedName 
+        });
+        continue;
+      }
+
+      // 3. Physical creation (Only if truly missing)
       await addFieldToList(spFetch, listTitle, field);
     }
   }

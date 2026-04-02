@@ -63,6 +63,7 @@ const listSpecs: ListSpec[] = SP_LIST_REGISTRY.map((entry) => {
           }
         : { Title: "healthcheck-root" },
     updateItem: { Title: "healthcheck-updated" },
+    isReadOnly: !entry.operations.includes("W"),
   };
 });
 

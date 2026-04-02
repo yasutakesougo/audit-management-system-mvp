@@ -4,6 +4,7 @@ import {
   HealthStatus,
   ListSpec,
 } from "./types";
+import { resolveInternalNamesDetailed } from "@/lib/sp/helpers";
 import { SpAdapter } from "./spAdapter";
 import { getRuntimeEnv } from "@/env";
 
@@ -317,22 +318,26 @@ async function runListChecks(
       })
     );
   } else {
-    // 1. Case-insensitive lookup map
-    const presentMap = new Map<string, string>();
-    for (const f of fields.v) {
-      presentMap.set(f.internalName.toLowerCase(), f.internalName);
-      if (f.staticName) presentMap.set(f.staticName.toLowerCase(), f.staticName);
-    }
-    
-    // 2. Classify missing fields
+    // 1. Resolve fields with drift detection
+    const candidates = Object.fromEntries(spec.requiredFields.map(f => [f.internalName, [f.internalName]]));
+    const available = new Set(fields.v.map(f => f.internalName));
+    const resolution = resolveInternalNamesDetailed(available, candidates);
+    const { missing, fieldStatus } = resolution;
+
+    // 2. Classify missing by essentiality
     const missingEssential = spec.requiredFields.filter(
-      (f) => f.isEssential && !presentMap.has(f.internalName.toLowerCase())
+      (f) => f.isEssential && missing.includes(f.internalName)
     );
     const missingOptional = spec.requiredFields.filter(
-      (f) => !f.isEssential && !presentMap.has(f.internalName.toLowerCase())
+      (f) => !f.isEssential && missing.includes(f.internalName)
     );
 
-    // 3. Report Results
+    // 3. Detect Drift
+    const drifted = spec.requiredFields.filter(
+      (f) => fieldStatus[f.internalName]?.isDrifted
+    );
+
+    // 4. Report Results
     if (missingEssential.length > 0) {
       results.push(
         fail({
@@ -341,6 +346,17 @@ async function runListChecks(
           category: "schema",
           summary: `必須列が不足しています（${missingEssential.map(f => f.internalName).join(", ")}）。`,
           evidence: { listTitle: spec.resolvedTitle, missing: missingEssential.map(f => f.internalName) },
+        })
+      );
+    } else if (drifted.length > 0) {
+      results.push(
+        warn({
+          key: `schema.fields.${spec.key}`,
+          label: `スキーマ（ドリフト）：${spec.displayName}`,
+          category: "schema",
+          summary: `列名にサフィックスが付与されています（${drifted.map(f => `${f.internalName} -> ${fieldStatus[f.internalName].resolvedName}`).join(", ")}）。`,
+          detail: "SharePoint により列名が重複回避のためリネームされています（例: FullName0）。物理的な削除またはビューの詳細名確認を推奨しますが、アプリの基本動作は継続可能です。",
+          evidence: { listTitle: spec.resolvedTitle, drifted: drifted.map(f => ({ expected: f.internalName, actual: fieldStatus[f.internalName].resolvedName })) },
         })
       );
     } else if (missingOptional.length > 0) {
@@ -393,6 +409,18 @@ async function runListChecks(
   }
 
   // Permissions: Create/Update/Delete (safe test item)
+  if (spec.isReadOnly) {
+    results.push(
+      pass({
+        key: `permissions.write.skipped.${spec.key}`,
+        label: `権限：Write（${spec.displayName}）`,
+        category: "permissions",
+        summary: "このリストは、アプリ側設定で「読み取り専用」として定義されています（書き込みテストをスキップ）。",
+      })
+    );
+    return;
+  }
+
   // 事故防止：healthcheck 用の識別フラグを body に混ぜる
   const stamp = new Date().toISOString();
   const createBody = { ...spec.createItem };
