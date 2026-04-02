@@ -360,6 +360,17 @@ export function resolveInternalNamesDetailed<T extends string>(
             }
           }
           if (foundCandidate) break;
+
+          // Strategy D: Handle SharePoint specialized suffixes (like 'Id' for Person/Lookup or 'Text' for Note)
+          const lowerBaseNoId = lowerBase.replace(/id$/, '');
+          for (const [availableLow, actual] of availableMap.entries()) {
+            const availNoId = availableLow.replace(/id$/, '');
+            if (availNoId === lowerBaseNoId) {
+              foundCandidate = actual;
+              break;
+            }
+          }
+          if (foundCandidate) break;
         }
       }
 
