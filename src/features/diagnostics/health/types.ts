@@ -47,6 +47,8 @@ export type SpFieldSpec = {
   internalName: string;
   isEssential?: boolean; // 必須列かどうか（欠落時にFAILにするかWARNにするか）
   typeHint?: string; // "Text" | "DateTime" | "Number" | "Choice" | "Lookup" など（表示用）
+  /** drift 吸収用の候補名リスト。未指定時は [internalName] のみで解決 */
+  candidates?: string[];
 };
 
 export type ListSpec = {

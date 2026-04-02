@@ -47,6 +47,27 @@ export const DAILY_ACTIVITY_SELECT_FIELDS = [
 ] as const;
 
 /**
+ * 0. DailyActivityRecords リストのフィールド候補
+ */
+export const DAILY_ACTIVITY_RECORDS_CANDIDATES = {
+  userId: ['UserCode', 'userId', 'cr013_usercode', 'cr013_personId', 'UserId', 'UserID'],
+  recordDate: ['RecordDate', 'recordDate', 'cr013_recorddate', 'Date', 'record_date', 'cr013_date'],
+  timeSlot: ['TimeSlot', 'timeSlot', 'cr013_timeSlot'],
+  planSlotKey: ['PlanSlotKey', 'planSlotKey', 'cr013_planSlotKey'],
+  plannedActivity: ['PlannedActivity', 'plannedActivity', 'cr013_plannedActivity'],
+  recordedAtText: ['RecordedAtText', 'recordedAtText', 'cr013_recordedAtText'],
+  observation: ['Observation', 'observation', 'cr013_observation', 'Notes'],
+  behavior: ['Behavior', 'behavior', 'cr013_behavior'],
+  intensity: ['version', 'intensity', 'cr013_version', 'Intensity'],
+  duration: ['duration', 'Duration', 'cr013_duration'],
+  order: ['Order', 'order', 'cr013_order'],
+} as const;
+
+export const DAILY_ACTIVITY_RECORDS_ESSENTIALS: (keyof typeof DAILY_ACTIVITY_RECORDS_CANDIDATES)[] = [
+  'userId', 'recordDate', 'timeSlot', 'observation'
+];
+
+/**
  * DailyActivityRecords リスト用の動的 $select ビルダー
  */
 export function buildDailyActivitySelectFields(existingInternalNames?: readonly string[]): readonly string[] {
@@ -97,7 +118,7 @@ export const DAILY_RECORD_CANONICAL_CANDIDATES = {
   recordDate: ['RecordDate', 'Date', 'recordDate', 'cr013_date', 'record_date'],
   reporterName: ['ReporterName', 'reporterName', 'cr013_reporterName', 'StaffName'],
   reporterRole: ['ReporterRole', 'reporterRole', 'cr013_reporterRole'],
-  userRowsJSON: ['UserRowsJSON', 'userRowsJSON', 'cr013_userRowsJSON'],
+  userRowsJSON: ['UserRowsJSON', 'userRowsJSON', 'User_x0020_Rows_x0020_JSON', 'cr013_userRowsJSON'],
   userCount: ['UserCount', 'userCount', 'cr013_userCount'],
   approvalStatus: ['ApprovalStatus', 'approvalStatus', 'cr013_approvalStatus'],
   approvedBy: ['ApprovedBy', 'approvedBy', 'cr013_approvedBy'],
@@ -125,6 +146,58 @@ export const DAILY_RECORD_ROW_AGGREGATE_CANDIDATES = {
 
 export const DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS: (keyof typeof DAILY_RECORD_ROW_AGGREGATE_CANDIDATES)[] = [
   'userId', 'recordDate'
+];
+
+// ──────────────────────────────────────────────────────────────
+// ActivityDiary フィールド定義
+//
+// spActivityDiary.ts が実際に書き込むフィールドから導出。
+// UserID (Text) と UserIdId (Lookup) の両スキーマを candidates で吸収する。
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * ActivityDiary リストのフィールド候補マップ
+ *
+ * 各候補配列の先頭が「provisioningFields に記載されている基準名」。
+ * 以降は SharePoint がリネームした可能性のある代替名。
+ */
+export const ACTIVITY_DIARY_CANDIDATES = {
+  /** ユーザー識別子。Text 型の UserID と Lookup 型 UserId/UserIdId の両方を吸収 */
+  userId:          ['UserID', 'UserId', 'UserIdId', 'user_id', 'cr013_userId'],
+  /** 記録日 */
+  date:            ['Date', 'date', 'RecordDate', 'EntryDate', 'cr013_date'],
+  /** 時間帯 (AM / PM / 1日) */
+  shift:           ['Shift', 'shift', 'Period', 'TimeSlot', 'cr013_shift'],
+  /** 活動カテゴリ */
+  category:        ['Category', 'category', 'ActivityCategory', 'cr013_category'],
+  /** 昼食量 */
+  lunchAmount:     ['LunchAmount', 'lunchAmount', 'Lunch', 'cr013_lunchAmount'],
+  /** 主食量 */
+  mealMain:        ['MealMain', 'mealMain', 'cr013_mealMain'],
+  /** 副食量 */
+  mealSide:        ['MealSide', 'mealSide', 'cr013_mealSide'],
+  /** 問題行動あり/なし */
+  problemBehavior: ['ProblemBehavior', 'problemBehavior', 'cr013_problemBehavior'],
+  /** 問題行動種別 */
+  behaviorType:    ['BehaviorType', 'behaviorType', 'cr013_behaviorType'],
+  /** 問題行動メモ */
+  behaviorNote:    ['BehaviorNote', 'behaviorNote', 'cr013_behaviorNote'],
+  /** てんかん発作あり/なし */
+  seizure:         ['Seizure', 'seizure', 'cr013_seizure'],
+  /** てんかん発作時刻 */
+  seizureAt:       ['SeizureAt', 'seizureAt', 'cr013_seizureAt'],
+  /** 目標ID列 (カンマ区切り) */
+  goals:           ['Goals', 'goals', 'GoalIds', 'cr013_goals'],
+  /** 備考 */
+  notes:           ['Notes', 'notes', 'cr013_notes'],
+} as const;
+
+/**
+ * ActivityDiary の必須フィールド。
+ * この 4 つが解決できない場合、リストをソースとして使えない。
+ */
+export const ACTIVITY_DIARY_ESSENTIALS: (keyof typeof ACTIVITY_DIARY_CANDIDATES)[] = [
+  'userId', 'date', 'shift', 'category',
 ];
 
 /**

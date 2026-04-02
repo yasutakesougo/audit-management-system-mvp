@@ -11,7 +11,7 @@ describe('Drift Detection (helpers.ts)', () => {
     };
 
     const result = resolveInternalNamesDetailed(available, candidates);
-    
+
     expect(result.resolved.fullName).toBe('FullName');
     expect(result.fieldStatus.fullName.isDrifted).toBe(false);
     expect(result.resolved.score).toBe('Compliance_x0020_Score');
@@ -26,7 +26,7 @@ describe('Drift Detection (helpers.ts)', () => {
     };
 
     const result = resolveInternalNamesDetailed(available, candidates);
-    
+
     expect(result.resolved.fullName).toBe('FullName0');
     expect(result.fieldStatus.fullName.isDrifted).toBe(true);
     expect(result.resolved.userId).toBe('UserID1');
@@ -40,7 +40,7 @@ describe('Drift Detection (helpers.ts)', () => {
     };
 
     const result = resolveInternalNamesDetailed(available, candidates);
-    
+
     expect(result.resolved.fullName).toBeUndefined();
   });
 });

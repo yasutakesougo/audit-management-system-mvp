@@ -1,11 +1,12 @@
 import { 
   resolveInternalNamesDetailed, 
   areEssentialFieldsResolved,
-  sanitizeEnvValue
+  sanitizeEnvValue,
+  washRow,
+  washRows
 } from '@/lib/sp/helpers';
 import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
 import {
-  STAFF_MASTER_FIELD_MAP,
   STAFF_MASTER_CANDIDATES,
   type StaffRow,
 } from '@/sharepoint/fields/staffFields';
@@ -53,7 +54,7 @@ export class DataProviderStaffRepository implements StaffRepository {
         
         const { resolved, fieldStatus } = resolveInternalNamesDetailed(
           available,
-          STAFF_MASTER_CANDIDATES
+          STAFF_MASTER_CANDIDATES as unknown as Record<string, string[]>
         );
 
         const essentials: string[] = ['id', 'staffId', 'fullName', 'isActive'];
@@ -102,7 +103,10 @@ export class DataProviderStaffRepository implements StaffRepository {
         top: top > 0 ? top : undefined,
       });
 
-      return items.map(item => this.toDomain(item));
+      const candidates = STAFF_MASTER_CANDIDATES as unknown as Record<string, string[]>;
+      const washed = washRows(items as unknown as Record<string, unknown>[], candidates, fields as Record<string, string | undefined>);
+
+      return washed.map(item => this.toDomain(item as unknown as StaffRow));
     } catch (e) {
       auditLog.error('staff', 'DataProviderStaffRepository.getAll_failed', { error: String(e) });
       return [];
@@ -124,7 +128,11 @@ export class DataProviderStaffRepository implements StaffRepository {
         select: selectFields,
         signal: options?.signal,
       });
-      return this.toDomain(row);
+
+      const candidates = STAFF_MASTER_CANDIDATES as unknown as Record<string, string[]>;
+      const washed = washRow(row as unknown as Record<string, unknown>, candidates, fields as Record<string, string | undefined>);
+
+      return this.toDomain(washed as unknown as StaffRow);
     } catch (e) {
       auditLog.error('staff', 'DataProviderStaffRepository.getById_failed', { id, error: String(e) });
       return null;
@@ -152,12 +160,11 @@ export class DataProviderStaffRepository implements StaffRepository {
   }
 
   private toDomain(raw: StaffRow): Staff {
-    const fields = this.resolvedFields || STAFF_MASTER_FIELD_MAP;
-    const record = raw as Record<string, unknown>;
+    const record = raw as unknown as Record<string, unknown>;
     
-    const get = (mappedKey: string, fallbackKey?: string): unknown => {
-      const internalName = (fields as Record<string, string | undefined>)[mappedKey] || fallbackKey;
-      return internalName ? record[internalName] : undefined;
+    const get = (key: string): unknown => {
+      // washRow will have moved the value to the primary key (logical name)
+      return record[key];
     };
 
     const parseArray = (val: unknown): string[] => {

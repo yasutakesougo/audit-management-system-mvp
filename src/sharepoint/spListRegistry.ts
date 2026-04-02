@@ -212,7 +212,10 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'daily',
     lifecycle: 'required',
-    essentialFields: ['Title', 'RecordDate', 'ReporterName'],
+    // DAILY_RECORD_CANONICAL_ESSENTIALS と一致させる:
+    //   Title / RecordDate / UserRowsJSON が必須。
+    //   ReporterName は欠落時でも記録者不明として継続可能なためオプション。
+    essentialFields: ['Title', 'RecordDate', 'UserRowsJSON'],
     provisioningFields: [
       { internalName: 'RecordDate', type: 'DateTime', displayName: 'Record Date', required: true, dateTimeFormat: 'DateOnly', indexed: true },
       { internalName: 'ReporterName', type: 'Text', displayName: 'Reporter Name' },
@@ -697,6 +700,33 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
       { internalName: 'Item', type: 'Text', displayName: 'Item' },
     ],
   },
+  {
+    key: 'billing_summary',
+    displayName: '月次請求サマリー',
+    resolve: () => envOr('VITE_SP_LIST_BILLING_SUMMARY', fromConfig(ListKeys.MonthlyRecordSummary)),
+    operations: ['R', 'W'],
+    category: 'other',
+    lifecycle: 'optional',
+    essentialFields: ['UserId', 'YearMonth', 'KPI_TotalDays'],
+    provisioningFields: [
+      { internalName: 'UserId', type: 'Text', displayName: 'User ID', required: true, indexed: true },
+      { internalName: 'YearMonth', type: 'Text', displayName: 'Year Month', required: true, indexed: true },
+      { internalName: 'DisplayName', type: 'Text', displayName: 'Display Name' },
+      { internalName: 'LastUpdated', type: 'DateTime', displayName: 'Last Updated' },
+      { internalName: 'KPI_TotalDays', type: 'Number', displayName: 'Total Days' },
+      { internalName: 'KPI_PlannedRows', type: 'Number', displayName: 'Planned Rows' },
+      { internalName: 'KPI_CompletedRows', type: 'Number', displayName: 'Completed Rows' },
+      { internalName: 'KPI_InProgressRows', type: 'Number', displayName: 'In Progress Rows' },
+      { internalName: 'KPI_EmptyRows', type: 'Number', displayName: 'Empty Rows' },
+      { internalName: 'KPI_SpecialNotes', type: 'Number', displayName: 'Special Notes' },
+      { internalName: 'KPI_Incidents', type: 'Number', displayName: 'Incidents' },
+      { internalName: 'CompletionRate', type: 'Number', displayName: 'Completion Rate' },
+      { internalName: 'FirstEntryDate', type: 'DateTime', displayName: 'First Entry Date', dateTimeFormat: 'DateOnly' },
+      { internalName: 'LastEntryDate', type: 'DateTime', displayName: 'Last Entry Date', dateTimeFormat: 'DateOnly' },
+      { internalName: 'IdempotencyKey', type: 'Text', displayName: 'Idempotency Key', indexed: true },
+    ],
+  },
+
   {
     key: 'pdf_output_log',
     displayName: '帳票出力ログ',

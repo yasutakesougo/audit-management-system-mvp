@@ -1,13 +1,18 @@
 import { 
   resolveInternalNamesDetailed, 
   areEssentialFieldsResolved,
-  sanitizeEnvValue
+  sanitizeEnvValue,
+  washRow,
+  washRows
 } from '@/lib/sp/helpers';
 import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
 import {
   FIELD_MAP,
   USERS_MASTER_CORE_FIELD_MAP,
   USERS_MASTER_COMPLIANCE_FIELD_MAP,
+  USERS_MASTER_CANDIDATES,
+  USER_TRANSPORT_SETTINGS_CANDIDATES,
+  USER_BENEFIT_PROFILE_CANDIDATES,
   type UserRow,
   type UserSelectMode,
 } from '@/sharepoint/fields';
@@ -178,6 +183,20 @@ export class DataProviderUserRepository implements UserRepository {
     return this.resolvingPromise;
   }
 
+  /**
+   * 分離先リストのフィールド解決（Lazy Resolution）
+   */
+  private async resolveAccessoryFields(listTitle: string, candidates: Record<string, string[]>): Promise<Record<string, string | undefined>> {
+    try {
+      const available = await this.provider.getFieldInternalNames(listTitle);
+      const { resolved } = resolveInternalNamesDetailed(available, candidates);
+      return resolved;
+    } catch (e) {
+      auditLog.warn('users', `DataProviderUserRepository.resolveAccessoryFields_failed for ${listTitle}`, { error: String(e) });
+      return {};
+    }
+  }
+
   public async getAll(params?: UserRepositoryListParams): Promise<IUserMaster[]> {
     if (params?.signal?.aborted) return [];
 
@@ -211,16 +230,21 @@ export class DataProviderUserRepository implements UserRepository {
       // ── 分離先リストからの Join ──
       if (requestedMode === 'detail' || requestedMode === 'full') {
         try {
-          const [transportRows, benefitRows] = await Promise.all([
+          const transportCandidatesMap = USER_TRANSPORT_SETTINGS_CANDIDATES as unknown as Record<string, string[]>;
+          const benefitCandidatesMap = USER_BENEFIT_PROFILE_CANDIDATES as unknown as Record<string, string[]>;
+
+          const [transportRows, benefitRows, transportResolved, benefitResolved] = await Promise.all([
             this.provider.listItems<Record<string, unknown>>(this.transportListTitle).catch(() => []),
-            this.provider.listItems<Record<string, unknown>>(this.benefitListTitle).catch(() => [])
+            this.provider.listItems<Record<string, unknown>>(this.benefitListTitle).catch(() => []),
+            this.resolveAccessoryFields(this.transportListTitle, transportCandidatesMap),
+            this.resolveAccessoryFields(this.benefitListTitle, benefitCandidatesMap)
           ]);
 
           const transportMap = new Map<string, Record<string, unknown>>(
-            transportRows.map(r => [String(r.UserID || ''), r])
+            washRows(transportRows, transportCandidatesMap, transportResolved).map(r => [String(r.userID || ''), r])
           );
           const benefitMap = new Map<string, Record<string, unknown>>(
-            benefitRows.map(r => [String(r.UserID || ''), r])
+            washRows(benefitRows, benefitCandidatesMap, benefitResolved).map(r => [String(r.userID || ''), r])
           );
 
           domainItems = domainItems.map(user => {
@@ -271,12 +295,21 @@ export class DataProviderUserRepository implements UserRepository {
       if (requestedMode === 'detail' || requestedMode === 'full') {
         try {
           const filter = buildEq(ACCESSORY_LIST_JOIN_FIELD, domain.UserID);
-          const [tRows, bRows] = await Promise.all([
+          const transportCandidatesMap = USER_TRANSPORT_SETTINGS_CANDIDATES as unknown as Record<string, string[]>;
+          const benefitCandidatesMap = USER_BENEFIT_PROFILE_CANDIDATES as unknown as Record<string, string[]>;
+
+          const [tRowsRaw, bRowsRaw, transportResolved, benefitResolved] = await Promise.all([
             this.provider.listItems<Record<string, unknown>>(this.transportListTitle, { filter, top: 1 }).catch(() => []),
-            this.provider.listItems<Record<string, unknown>>(this.benefitListTitle, { filter, top: 1 }).catch(() => [])
+            this.provider.listItems<Record<string, unknown>>(this.benefitListTitle, { filter, top: 1 }).catch(() => []),
+            this.resolveAccessoryFields(this.transportListTitle, transportCandidatesMap),
+            this.resolveAccessoryFields(this.benefitListTitle, benefitCandidatesMap)
           ]);
-          const sanitized = this.sanitizeDomainRecord(domain, !!tRows[0], !!bRows[0]);
-          return this.mergeExtraData(sanitized, tRows[0], bRows[0]);
+
+          const tRow = tRowsRaw[0] ? washRow(tRowsRaw[0], transportCandidatesMap, transportResolved) : undefined;
+          const bRow = bRowsRaw[0] ? washRow(bRowsRaw[0], benefitCandidatesMap, benefitResolved) : undefined;
+          
+          const sanitized = this.sanitizeDomainRecord(domain, !!tRow, !!bRow);
+          return this.mergeExtraData(sanitized, tRow, bRow);
         } catch (je) {
           auditLog.warn('users', 'DataProviderUserRepository.getById_join_failed', { error: String(je) });
         }
@@ -548,56 +581,53 @@ export class DataProviderUserRepository implements UserRepository {
 
   private toDomain(raw: UserRow, effectiveMode: UserSelectMode): IUserMaster {
     const fields = this.resolvedFields || FIELD_MAP.Users_Master;
-    const record = raw as Record<string, unknown>;
+    const candidates = USERS_MASTER_CANDIDATES as unknown as Record<string, string[]>;
     
-    // 解決された内部名を使用して値を取得するユーティリティ
-    const get = <T = unknown>(mappedKey: string, fallbackKey?: string): T | undefined => {
-      const internalName = (fields as Record<string, string | undefined>)[mappedKey] || fallbackKey;
-      return internalName ? (record[internalName] as T) : undefined;
-    };
+    // ドリフトを正規化
+    const record = washRow(raw as unknown as Record<string, unknown>, candidates, fields as Record<string, string | undefined>);
 
-    const attendance = normalizeAttendanceDays(get('attendanceDays'));
-    const transportTo = normalizeAttendanceDays(get('transportToDays'));
-    const transportFrom = normalizeAttendanceDays(get('transportFromDays'));
+    const attendance = normalizeAttendanceDays(record.attendanceDays);
+    const transportTo = normalizeAttendanceDays(record.transportToDays);
+    const transportFrom = normalizeAttendanceDays(record.transportFromDays);
 
     const domain: IUserMaster = {
-      Id: Number(get('id') ?? raw.Id),
-      Title: get('title') ?? raw.Title ?? null,
-      UserID: get('userId') ?? raw.UserID ?? '',
-      FullName: get('fullName') ?? raw.FullName ?? '',
-      Furigana: get('furigana') ?? raw.Furigana ?? null,
-      FullNameKana: get('fullNameKana') ?? raw.FullNameKana ?? null,
-      ContractDate: get('contractDate') ?? raw.ContractDate ?? null,
-      ServiceStartDate: get('serviceStartDate') ?? raw.ServiceStartDate ?? null,
-      ServiceEndDate: get('serviceEndDate') ?? raw.ServiceEndDate ?? null,
-      IsHighIntensitySupportTarget: get('isHighIntensitySupportTarget') ?? null,
-      IsSupportProcedureTarget: get('isSupportProcedureTarget') ?? null,
-      severeFlag: get('severeFlag') ?? null,
-      IsActive: get('isActive') ?? raw.IsActive ?? null,
+      Id: Number(record.id ?? raw.Id),
+      Title: (record.title as string) ?? raw.Title ?? null,
+      UserID: (record.userId as string) ?? raw.UserID ?? '',
+      FullName: (record.fullName as string) ?? raw.FullName ?? '',
+      Furigana: (record.furigana as string) ?? raw.Furigana ?? null,
+      FullNameKana: (record.fullNameKana as string) ?? raw.FullNameKana ?? null,
+      ContractDate: (record.contractDate as string) ?? raw.ContractDate ?? null,
+      ServiceStartDate: (record.serviceStartDate as string) ?? raw.ServiceStartDate ?? null,
+      ServiceEndDate: (record.serviceEndDate as string) ?? raw.ServiceEndDate ?? null,
+      IsHighIntensitySupportTarget: Boolean(record.isHighIntensitySupportTarget ?? null),
+      IsSupportProcedureTarget: Boolean(record.isSupportProcedureTarget ?? null),
+      severeFlag: Boolean(record.severeFlag ?? null),
+      IsActive: record.isActive !== undefined ? Boolean(record.isActive) : (raw.IsActive ?? null),
       TransportToDays: transportTo,
       TransportFromDays: transportFrom,
-      TransportCourse: get('transportCourse') ?? null,
-      TransportSchedule: get('transportSchedule') ?? null,
+      TransportCourse: (record.transportCourse as string) ?? null,
+      TransportSchedule: (record.transportSchedule as string) ?? null,
       AttendanceDays: attendance,
-      RecipientCertNumber: get('recipientCertNumber') ?? raw.RecipientCertNumber ?? null,
-      RecipientCertExpiry: get('recipientCertExpiry') ?? raw.RecipientCertExpiry ?? null,
-      Modified: get('modified') ?? raw.Modified ?? null,
-      Created: get('created') ?? raw.Created ?? null,
-      UsageStatus: get('usageStatus') ?? null,
-      GrantMunicipality: get('grantMunicipality') ?? null,
-      GrantPeriodStart: get('grantPeriodStart') ?? null,
-      GrantPeriodEnd: get('grantPeriodEnd') ?? null,
-      DisabilitySupportLevel: get('disabilitySupportLevel') ?? null,
-      GrantedDaysPerMonth: get('grantedDaysPerMonth') ?? null,
-      UserCopayLimit: get('userCopayLimit') ?? null,
-      TransportAdditionType: get('transportAdditionType') ?? null,
-      MealAddition: get('mealAddition') ?? null,
-      CopayPaymentMethod: get('copayPaymentMethod') ?? null,
-      LastAssessmentDate: get('lastAssessmentDate') ?? null,
-      BehaviorScore: get<number>('behaviorScore') ?? null,
-      ChildBehaviorScore: get<number>('childBehaviorScore') ?? null,
-      ServiceTypesJson: get('serviceTypesJson') ?? null,
-      EligibilityCheckedAt: get('eligibilityCheckedAt') ?? null,
+      RecipientCertNumber: (record.recipientCertNumber as string) ?? (raw.RecipientCertNumber as string) ?? null,
+      RecipientCertExpiry: (record.recipientCertExpiry as string) ?? (raw.RecipientCertExpiry as string) ?? null,
+      Modified: (record.modified as string) ?? raw.Modified ?? null,
+      Created: (record.created as string) ?? raw.Created ?? null,
+      UsageStatus: (record.usageStatus as string) ?? null,
+      GrantMunicipality: (record.grantMunicipality as string) ?? null,
+      GrantPeriodStart: (record.grantPeriodStart as string) ?? null,
+      GrantPeriodEnd: (record.grantPeriodEnd as string) ?? null,
+      DisabilitySupportLevel: (record.disabilitySupportLevel as string) ?? null,
+      GrantedDaysPerMonth: (record.grantedDaysPerMonth as string) ?? null,
+      UserCopayLimit: (record.userCopayLimit as string) ?? null,
+      TransportAdditionType: (record.transportAdditionType as string) ?? null,
+      MealAddition: (record.mealAddition as string) ?? null,
+      CopayPaymentMethod: (record.copayPaymentMethod as string) ?? null,
+      LastAssessmentDate: (record.lastAssessmentDate as string) ?? null,
+      BehaviorScore: (record.behaviorScore as number) ?? null,
+      ChildBehaviorScore: (record.childBehaviorScore as number) ?? null,
+      ServiceTypesJson: (record.serviceTypesJson as string) ?? null,
+      EligibilityCheckedAt: (record.eligibilityCheckedAt as string) ?? null,
       __selectMode: effectiveMode,
     };
 

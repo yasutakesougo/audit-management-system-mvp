@@ -20,6 +20,9 @@ export {
     USERS_SELECT_FIELDS_MINIMAL,
     USERS_SELECT_SAFE, type IUserMaster,
     type IUserMasterCreateDto,
+    USERS_MASTER_CANDIDATES, USERS_MASTER_ESSENTIALS,
+    USER_TRANSPORT_SETTINGS_CANDIDATES,
+    USER_BENEFIT_PROFILE_CANDIDATES,
     type UserLifecycleStatus,
     type UserSelectMode
 } from './userFields';
@@ -65,7 +68,9 @@ export {
 
 // ── PlanGoals (ISP) ──
 export {
-    buildPlanGoalsSelectFields, PLAN_GOALS_FIELDS, PLAN_GOALS_LIST_TITLE, PLAN_GOALS_SELECT_FIELDS, type PlanGoalPayload, type SpPlanGoalItem
+    buildPlanGoalsSelectFields, PLAN_GOALS_FIELDS, PLAN_GOALS_LIST_TITLE, PLAN_GOALS_SELECT_FIELDS,
+    PLAN_GOALS_CANDIDATES, PLAN_GOALS_ESSENTIALS,
+    type PlanGoalPayload, type SpPlanGoalItem
 } from './planGoalFields';
 
 // ── MeetingMinutes ──
@@ -97,7 +102,7 @@ export {
 
 // ── Survey/Tokusei ──
 export {
-    buildSurveyTokuseiSelectFields, FIELD_DERIVED_TOKUSEI, FIELD_MAP_SURVEY_TOKUSEI, FIELD_MAP_SURVEY_TOKUSEI_ALL,
+    resolveSurveyTokuseiFields, FIELD_DERIVED_TOKUSEI, FIELD_MAP_SURVEY_TOKUSEI, FIELD_MAP_SURVEY_TOKUSEI_ALL,
     SURVEY_TOKUSEI_SELECT_FIELDS
 } from './surveyTokuseiFields';
 
@@ -119,7 +124,11 @@ export {
 // ── BillingOrders ──
 export {
     BILLING_ORDERS_LIST_ID,
-    FIELD_MAP_BILLING_ORDERS
+    FIELD_MAP_BILLING_ORDERS,
+    BILLING_ORDERS_CANDIDATES,
+    BILLING_ORDERS_ESSENTIALS,
+    BILLING_SUMMARY_CANDIDATES,
+    BILLING_SUMMARY_ESSENTIALS,
 } from './billingFields';
 
 // ── SupportPlans ──

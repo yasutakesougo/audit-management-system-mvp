@@ -19,7 +19,12 @@ import {
   DAILY_RECORD_ROW_AGGREGATE_CANDIDATES,
   DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS,
 } from '@/sharepoint/fields/dailyFields';
-import { resolveInternalNamesDetailed, areEssentialFieldsResolved } from '@/lib/sp/helpers';
+import { 
+  resolveInternalNamesDetailed, 
+  areEssentialFieldsResolved,
+  washRow,
+  washRows
+} from '@/lib/sp/helpers';
 import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 import { buildEq, buildGe, buildLe, joinAnd } from '@/sharepoint/query/builders';
@@ -162,7 +167,11 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
           top: 1,
           select: fields.select,
         });
-        if (items.length > 0) return this.parseCanonical(items[0], fields);
+        if (items.length > 0) {
+          const candidates = DAILY_RECORD_CANONICAL_CANDIDATES as unknown as Record<string, string[]>;
+          const washed = washRow(items[0], candidates, fields as unknown as Record<string, string | undefined>);
+          return this.parseCanonical(washed, fields);
+        }
       }
       if (source.rowAggregate) {
         const items = await this.listFromRowAggregate(source.rowAggregate, {
@@ -195,7 +204,11 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
           top: SP_QUERY_LIMITS.default,
           select: fields.select,
         });
-        const results = items.map(it => this.parseCanonical(it, fields)).filter((it): it is DailyRecordItem => it !== null);
+
+        const candidates = DAILY_RECORD_CANONICAL_CANDIDATES as unknown as Record<string, string[]>;
+        const washedRowsList = washRows(items, candidates, fields as unknown as Record<string, string | undefined>);
+
+        const results = washedRowsList.map(it => this.parseCanonical(it, fields)).filter((it): it is DailyRecordItem => it !== null);
         finishSpan({ meta: { status: 'ok', count: results.length } });
         return results;
       }
@@ -321,9 +334,12 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
       top: 200,
     });
 
+    const candidates = DAILY_RECORD_ROW_AGGREGATE_CANDIDATES as unknown as Record<string, string[]>;
+    const washed = washRows(items, candidates, source.fields as unknown as Record<string, string | undefined>);
+
     const grouped = new Map<string, DailyRecordItem>();
 
-    for (const row of items) {
+    for (const row of washed) {
       const rowDate = normalizeDateToYmd(row[source.fields.recordDate]);
       if (!rowDate || rowDate < params.range.startDate || rowDate > params.range.endDate) continue;
 

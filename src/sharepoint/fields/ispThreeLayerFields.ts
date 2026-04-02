@@ -127,21 +127,21 @@ export function buildIspMasterSelectFields(existingInternalNames?: readonly stri
 
 /** Dynamic Schema Resolution 用候補定義: ISP_Master */
 export const ISP_MASTER_CANDIDATES = {
-  id: ['ID', 'Id'],
+  id: ['Id', 'ID'],
   title: ['Title'],
-  userCode: ['UserCode', 'UserID', 'User_ID'],
-  planStartDate: ['PlanStartDate'],
-  planEndDate: ['PlanEndDate'],
-  userIntent: ['UserIntent'],
-  status: ['Status'],
-  versionNo: ['VersionNo'],
-  isCurrent: ['IsCurrent'],
-  formDataJson: ['FormDataJson'],
-  userSnapshotJson: ['UserSnapshotJson'],
+  userCode: ['UserCode', 'UserID', 'User_ID', 'cr013_userCode'],
+  planStartDate: ['PlanStartDate', 'StartDate', 'cr013_planStartDate'],
+  planEndDate: ['PlanEndDate', 'EndDate', 'cr013_planEndDate'],
+  userIntent: ['UserIntent', 'Intent', 'cr013_userIntent'],
+  status: ['Status', 'UsageStatus', 'cr013_status'],
+  versionNo: ['VersionNo', 'Version', 'cr013_versionNo'],
+  isCurrent: ['IsCurrent', 'Current', 'cr013_isCurrent'],
+  formDataJson: ['FormDataJson', 'cr013_formDataJson'],
+  userSnapshotJson: ['UserSnapshotJson', 'cr013_userSnapshotJson'],
 } as const;
 
 export const ISP_MASTER_ESSENTIALS: (keyof typeof ISP_MASTER_CANDIDATES)[] = [
-  'title', 'userCode', 'planStartDate', 'status'
+  'userCode', 'planStartDate', 'status'
 ];
 
 // ═════════════════════════════════════════════
@@ -311,22 +311,22 @@ export function buildPlanningSheetSelectFields(existingInternalNames?: readonly 
 
 /** Dynamic Schema Resolution 用候補定義: SupportPlanningSheet_Master */
 export const PLANNING_SHEET_CANDIDATES = {
-  id: ['ID', 'Id'],
+  id: ['Id', 'ID'],
   title: ['Title'],
-  userCode: ['UserCode', 'UserID', 'User_ID'],
-  ispId: ['ISPId', 'ISPLookupId'],
-  targetScene: ['TargetScene'],
-  status: ['Status'],
-  versionNo: ['VersionNo'],
-  isCurrent: ['IsCurrent'],
-  formDataJson: ['FormDataJson'],
-  intakeJson: ['IntakeJson'],
-  assessmentJson: ['AssessmentJson'],
-  planningJson: ['PlanningJson'],
+  userCode: ['UserCode', 'UserID', 'User_ID', 'cr013_userCode'],
+  ispId: ['ISPId', 'ISPLookupId', 'cr013_ispId'],
+  targetScene: ['TargetScene', 'Scene', 'cr013_targetScene'],
+  status: ['Status', 'UsageStatus', 'cr013_status'],
+  versionNo: ['VersionNo', 'Version', 'cr013_versionNo'],
+  isCurrent: ['IsCurrent', 'Current', 'cr013_isCurrent'],
+  formDataJson: ['FormDataJson', 'cr013_formDataJson'],
+  intakeJson: ['IntakeJson', 'cr013_intakeJson'],
+  assessmentJson: ['AssessmentJson', 'cr013_assessmentJson'],
+  planningJson: ['PlanningJson', 'cr013_planningJson'],
 } as const;
 
 export const PLANNING_SHEET_ESSENTIALS: (keyof typeof PLANNING_SHEET_CANDIDATES)[] = [
-  'title', 'userCode', 'status'
+  'userCode', 'status'
 ];
 
 // ═════════════════════════════════════════════
@@ -430,19 +430,19 @@ export function buildProcedureRecordSelectFields(existingInternalNames?: readonl
 
 /** Dynamic Schema Resolution 用候補定義: SupportProcedureRecord_Daily */
 export const PROCEDURE_RECORD_CANDIDATES = {
-  id: ['ID', 'Id'],
+  id: ['Id', 'ID'],
   title: ['Title'],
-  userCode: ['UserCode', 'UserID', 'User_ID'],
-  planningSheetId: ['PlanningSheetId', 'PlanningSheetLookupId'],
-  recordDate: ['RecordDate'],
-  timeSlot: ['TimeSlot'],
-  activity: ['Activity'],
-  procedureText: ['ProcedureText'],
-  executionStatus: ['ExecutionStatus'],
-  performedBy: ['PerformedBy'],
-  performedAt: ['PerformedAt'],
+  userCode: ['UserCode', 'UserID', 'User_ID', 'cr013_userCode'],
+  planningSheetId: ['PlanningSheetId', 'PlanningSheetLookupId', 'cr013_planningSheetId'],
+  recordDate: ['RecordDate', 'Date', 'cr013_recordDate'],
+  timeSlot: ['TimeSlot', 'Time', 'cr013_timeSlot'],
+  activity: ['Activity', 'Action', 'cr013_activity'],
+  procedureText: ['ProcedureText', 'Procedure', 'cr013_procedureText'],
+  executionStatus: ['ExecutionStatus', 'Status', 'cr013_executionStatus'],
+  performedBy: ['PerformedBy', 'Staff', 'cr013_performedBy'],
+  performedAt: ['PerformedAt', 'Time', 'cr013_performedAt'],
 } as const;
 
 export const PROCEDURE_RECORD_ESSENTIALS: (keyof typeof PROCEDURE_RECORD_CANDIDATES)[] = [
-  'title', 'userCode', 'planningSheetId', 'recordDate'
+  'userCode', 'planningSheetId', 'recordDate'
 ];

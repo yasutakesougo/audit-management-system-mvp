@@ -144,6 +144,94 @@ export const USERS_MASTER_COMPLIANCE_FIELD_MAP = {
   eligibilityCheckedAt: 'EligibilityCheckedAt',
 } as const;
 
+/**
+ * Users_Master リストのフィールド解除候補マップ (Drift Resistance)
+ * 1番目の候補（基準名）以外は drift (WARN) と見なされる。
+ */
+export const USERS_MASTER_CANDIDATES = {
+  userId: [
+    'UserID', 'UserCode', 'userId', 'cr013_userId', 'PersonID', 'Title'
+  ],
+  fullName: [
+    'FullName', 'Name', 'DisplayName', 'FullName0', 'cr013_fullName'
+  ],
+  furigana: [
+    'Furigana', 'Kana', 'FullNameFurigana', 'cr013_furigana'
+  ],
+  fullNameKana: [
+    'FullNameKana', 'FullName_Kana', 'cr013_fullNameKana'
+  ],
+  contractDate: [
+    'ContractDate', 'Contract_Date', 'cr013_contractDate'
+  ],
+  serviceStartDate: [
+    'ServiceStartDate', 'StartDate', 'cr013_serviceStartDate'
+  ],
+  serviceEndDate: [
+    'ServiceEndDate', 'EndDate', 'cr013_serviceEndDate'
+  ],
+  isHighIntensitySupportTarget: [
+    'IsHighIntensitySupportTarget', 'IntensityTarget', 'cr013_isHighIntensity'
+  ],
+  isSupportProcedureTarget: [
+    'IsSupportProcedureTarget', 'ProcedureTarget', 'cr013_isSupportProcedure'
+  ],
+  isActive: [
+    'IsActive', 'Active', 'IsEnabled', 'cr013_isActive'
+  ],
+  usageStatus: [
+    'UsageStatus', 'Status', 'Usage_Status', 'cr013_usageStatus'
+  ],
+  attendanceDays: [
+    'AttendanceDays', 'WorkDays', 'cr013_attendanceDays'
+  ],
+  // Accessory: Transport
+  transportToDays: ['TransportToDays', 'cr013_transportToDays'],
+  transportFromDays: ['TransportFromDays', 'cr013_transportFromDays'],
+  transportCourse: ['TransportCourse', 'cr013_transportCourse'],
+  transportSchedule: ['TransportSchedule', 'cr013_transportSchedule'],
+  transportAdditionType: ['TransportAdditionType', 'cr013_transportAdditionType'],
+  // Accessory: Benefit
+  recipientCertNumber: [
+    'RecipientCertNumber', 'CertNumber', 'RecipientCert',
+    'RecipientCertNo', 'BenefitCertNumber', 'RecipientCertificateNumber',
+    'RecipientCertNumber0', 'cr013_recipientCertNumber',
+  ],
+  recipientCertExpiry: ['RecipientCertExpiry', 'CertExpiry', 'RecipientCertExpiry0', 'cr013_recipientCertExpiry'],
+  grantMunicipality: ['GrantMunicipality', 'Municipality', 'GrantMunicipality0', 'cr013_grantMunicipality'],
+  grantPeriodStart: ['GrantPeriodStart', 'PeriodStart', 'GrantPeriodStart0', 'cr013_grantPeriodStart'],
+  grantPeriodEnd: ['GrantPeriodEnd', 'PeriodEnd', 'GrantPeriodEnd0', 'cr013_grantPeriodEnd'],
+  disabilitySupportLevel: ['DisabilitySupportLevel', 'SupportLevel', 'DisabilitySupportLevel0', 'cr013_disabilitySupportLevel'],
+  grantedDaysPerMonth: ['GrantedDaysPerMonth', 'DaysPerMonth', 'GrantedDaysPerMonth0', 'cr013_grantedDaysPerMonth'],
+  userCopayLimit: ['UserCopayLimit', 'CopayLimit', 'UserCopayLimit0', 'cr013_userCopayLimit'],
+  mealAddition: ['MealAddition', 'Meal', 'MealAddition0', 'cr013_mealAddition'],
+  copayPaymentMethod: ['CopayPaymentMethod', 'PaymentMethod', 'CopayPaymentMethod0', 'cr013_copayPaymentMethod'],
+  // Compliance
+  lastAssessmentDate: [
+    'LastAssessmentDate', 'AssessmentDate', 'cr013_lastAssessmentDate'
+  ],
+  behaviorScore: [
+    'BehaviorScore', 'ScoreBehavior', 'cr013_behaviorScore'
+  ],
+  childBehaviorScore: [
+    'ChildBehaviorScore', 'ScoreChildBehavior', 'cr013_childBehaviorScore'
+  ],
+  serviceTypesJson: [
+    'ServiceTypesJson', 'ServiceTypes', 'cr013_serviceTypesJson'
+  ],
+  eligibilityCheckedAt: [
+    'EligibilityCheckedAt', 'EligibilityChecked', 'cr013_eligibilityCheckedAt'
+  ],
+} as const;
+
+export const USERS_MASTER_ESSENTIALS: (keyof typeof USERS_MASTER_CANDIDATES)[] = [
+  'userId',
+  'fullName',
+  'isActive',
+  'usageStatus',
+];
+
+
 // ── 2. Accessory Lists (Transport/Benefit) ──
 // NOTE: These fields are now managed in separate SharePoint lists to avoid row size limits.
 // Joined by UserID into the domain model.
@@ -240,6 +328,82 @@ export function resolveUserSelectFields(mode: UserSelectMode = 'core'): readonly
     default:        return USERS_SELECT_FIELDS_CORE;
   }
 }
+
+// ── User Benefit Profile (user_benefit_profile) — Drift Resistance ──────────
+
+/**
+ * user_benefit_profile リストのフィールド解決候補マップ (Drift Resistance)
+ * 1番目の候補（基準名）以外は drift (WARN) と見なされる。
+ *
+ * essentialFields (registry): ['UserID', 'RecipientCertNumber']
+ */
+export const USER_BENEFIT_PROFILE_CANDIDATES = {
+  userID: [
+    'UserID', 'UserCode', 'userId', 'cr013_userId',
+  ],
+  recipientCertNumber: [
+    'RecipientCertNumber', 'CertNumber', 'RecipientCert',
+    'RecipientCertNo', 'BenefitCertNumber', 'RecipientCertificateNumber',
+    'RecipientCertNumber0', 'cr013_recipientCertNumber',
+  ],
+  recipientCertExpiry: [
+    'RecipientCertExpiry', 'CertExpiry', 'RecipientCertExpiry0', 'cr013_recipientCertExpiry',
+  ],
+  grantMunicipality: [
+    'GrantMunicipality', 'Municipality', 'GrantMunicipality0', 'cr013_grantMunicipality',
+  ],
+  grantPeriodStart: [
+    'GrantPeriodStart', 'PeriodStart', 'GrantPeriodStart0', 'cr013_grantPeriodStart',
+  ],
+  grantPeriodEnd: [
+    'GrantPeriodEnd', 'PeriodEnd', 'GrantPeriodEnd0', 'cr013_grantPeriodEnd',
+  ],
+  disabilitySupportLevel: [
+    'DisabilitySupportLevel', 'SupportLevel', 'DisabilitySupportLevel0', 'cr013_disabilitySupportLevel',
+  ],
+  grantedDaysPerMonth: [
+    'GrantedDaysPerMonth', 'DaysPerMonth', 'GrantedDaysPerMonth0', 'cr013_grantedDaysPerMonth',
+  ],
+  userCopayLimit: [
+    'UserCopayLimit', 'CopayLimit', 'UserCopayLimit0', 'cr013_userCopayLimit',
+  ],
+  mealAddition: [
+    'MealAddition', 'Meal', 'MealAddition0', 'cr013_mealAddition',
+  ],
+  copayPaymentMethod: [
+    'CopayPaymentMethod', 'PaymentMethod', 'CopayPaymentMethod0', 'cr013_copayPaymentMethod',
+  ],
+} as const;
+
+/**
+ * user_benefit_profile の必須フィールドキー。
+ * これらが欠落した場合は FAIL（リスト読み書き不能）。
+ * UserID: 利用者を特定できない。RecipientCertNumber: 受給者証番号なしでは制度請求不可。
+ */
+export const USER_BENEFIT_PROFILE_ESSENTIALS: (keyof typeof USER_BENEFIT_PROFILE_CANDIDATES)[] = [
+  'userID',
+  'recipientCertNumber',
+];
+
+// ── User Transport Settings (user_transport_settings) — Drift Resistance ──────────
+
+/**
+ * user_transport_settings リストのフィールド解決候補マップ (Drift Resistance)
+ */
+export const USER_TRANSPORT_SETTINGS_CANDIDATES = {
+  userID: [
+    'UserID', 'UserCode', 'userId', 'cr013_userId',
+  ],
+  transportToDays: ['TransportToDays', 'cr013_transportToDays'],
+  transportFromDays: ['TransportFromDays', 'cr013_transportFromDays'],
+  transportCourse: ['TransportCourse', 'cr013_transportCourse'],
+  transportSchedule: ['TransportSchedule', 'cr013_transportSchedule'],
+  transportAdditionType: ['TransportAdditionType', 'cr013_transportAdditionType'],
+} as const;
+
+export const USER_TRANSPORT_SETTINGS_ESSENTIALS: (keyof typeof USER_TRANSPORT_SETTINGS_CANDIDATES)[] = [
+  'userID',
+];
 
 /** @deprecated Use USERS_SELECT_FIELDS_CORE instead */
 export const USERS_SELECT_FIELDS_SAFE = USERS_SELECT_FIELDS_CORE;

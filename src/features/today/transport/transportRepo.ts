@@ -17,17 +17,18 @@
  */
 
 import { isWriteEnabled } from '@/env';
-import type { useSP } from '@/lib/spClient';
+import type { useSP, UseSP } from '@/lib/spClient';
 import {
   buildTransportLogTitle,
-  TRANSPORT_LOG_FIELDS,
+  TRANSPORT_LOG_CANDIDATES,
   TRANSPORT_LOG_SELECT_FIELDS,
 } from '@/sharepoint/fields/transportFields';
 import {
-  ATTENDANCE_DAILY_FIELDS,
+  ATTENDANCE_DAILY_CANDIDATES,
   ATTENDANCE_DAILY_LIST_TITLE,
 } from '@/sharepoint/fields/attendanceFields';
 import { LIST_CONFIG, ListKeys } from '@/sharepoint/fields/listRegistry';
+import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 import { buildEq } from '@/sharepoint/query/builders';
 import { methodImpliesShuttle } from '@/features/attendance/transportMethod';
 import type { TransportLogEntry } from './transportStatusLogic';
@@ -77,44 +78,79 @@ function getListTitle(): string {
   return LIST_CONFIG[ListKeys.TransportLog].title;
 }
 
-function mapSpRowToLogEntry(row: SpTransportLogRow): TransportLogEntry {
+// ─── Field Resolution ───────────────────────────────────────────────────────
+
+let transportFieldsCache: Record<string, string | undefined> | null = null;
+let attendanceFieldsCache: Record<string, string | undefined> | null = null;
+
+async function resolveTransportFields(client: ReturnType<typeof useSP>): Promise<Record<string, string | undefined> | null> {
+  if (transportFieldsCache) return transportFieldsCache;
+  const listTitle = getListTitle();
+  try {
+    const available = await (client as unknown as UseSP).getListFieldInternalNames(listTitle);
+    const { resolved } = resolveInternalNamesDetailed(available, TRANSPORT_LOG_CANDIDATES as unknown as Record<string, string[]>);
+    transportFieldsCache = resolved as Record<string, string | undefined>;
+    return transportFieldsCache;
+  } catch (err) {
+    console.warn(`${LOG} Failed to resolve transport fields, using fallback.`, err);
+    return null;
+  }
+}
+
+async function resolveAttendanceFields(client: ReturnType<typeof useSP>): Promise<Record<string, string | undefined> | null> {
+  if (attendanceFieldsCache) return attendanceFieldsCache;
+  const listTitle = ATTENDANCE_DAILY_LIST_TITLE;
+  try {
+    const available = await (client as unknown as UseSP).getListFieldInternalNames(listTitle);
+    const { resolved } = resolveInternalNamesDetailed(available, ATTENDANCE_DAILY_CANDIDATES as unknown as Record<string, string[]>);
+    attendanceFieldsCache = resolved as Record<string, string | undefined>;
+    return attendanceFieldsCache;
+  } catch (err) {
+    console.warn(`${LOG} Failed to resolve attendance fields, using fallback.`, err);
+    return null;
+  }
+}
+
+function mapSpRowToLogEntry(row: SpTransportLogRow, fields: Record<string, string | undefined>): TransportLogEntry {
+  const get = (key: string, fallback: string) => String(row[fields[key] || fallback] ?? '');
+  
   return {
-    userId: String(row[TRANSPORT_LOG_FIELDS.userCode] ?? ''),
-    direction: (row[TRANSPORT_LOG_FIELDS.direction] ?? 'to') as TransportDirection,
-    status: (row[TRANSPORT_LOG_FIELDS.status] ?? 'pending') as TransportLegStatus,
-    actualTime: row[TRANSPORT_LOG_FIELDS.actualTime]
-      ? String(row[TRANSPORT_LOG_FIELDS.actualTime])
-      : undefined,
-    driverName: row[TRANSPORT_LOG_FIELDS.driverName]
-      ? String(row[TRANSPORT_LOG_FIELDS.driverName])
-      : undefined,
-    notes: row[TRANSPORT_LOG_FIELDS.notes]
-      ? String(row[TRANSPORT_LOG_FIELDS.notes])
-      : undefined,
+    userId: get('userCode', 'UserCode'),
+    direction: (get('direction', 'Direction') || 'to') as TransportDirection,
+    status: (get('status', 'Status') || 'pending') as TransportLegStatus,
+    actualTime: row[fields.actualTime || 'ActualTime'] ? String(row[fields.actualTime || 'ActualTime']) : undefined,
+    driverName: row[fields.driverName || 'DriverName'] ? String(row[fields.driverName || 'DriverName']) : undefined,
+    notes: row[fields.notes || 'Notes'] ? String(row[fields.notes || 'Notes']) : undefined,
   };
 }
 
-function buildSaveBody(input: SaveTransportLogInput): Record<string, unknown> {
+function buildSaveBody(input: SaveTransportLogInput, fields: Record<string, string | undefined>): Record<string, unknown> {
   const title = buildTransportLogTitle(input.userCode, input.recordDate, input.direction);
 
   const body: Record<string, unknown> = {
-    [TRANSPORT_LOG_FIELDS.title]: title,
-    [TRANSPORT_LOG_FIELDS.userCode]: input.userCode,
-    [TRANSPORT_LOG_FIELDS.recordDate]: input.recordDate,
-    [TRANSPORT_LOG_FIELDS.direction]: input.direction,
-    [TRANSPORT_LOG_FIELDS.status]: input.status,
+    Title: title, // Title is essential, usually fixed
   };
 
-  // Optional fields — only set if provided
-  if (input.method !== undefined) body[TRANSPORT_LOG_FIELDS.method] = input.method;
-  if (input.scheduledTime !== undefined) body[TRANSPORT_LOG_FIELDS.scheduledTime] = input.scheduledTime;
-  if (input.actualTime !== undefined) body[TRANSPORT_LOG_FIELDS.actualTime] = input.actualTime;
-  if (input.driverName !== undefined) body[TRANSPORT_LOG_FIELDS.driverName] = input.driverName;
-  if (input.notes !== undefined) body[TRANSPORT_LOG_FIELDS.notes] = input.notes;
-  if (input.updatedBy !== undefined) body[TRANSPORT_LOG_FIELDS.updatedBy] = input.updatedBy;
+  const mapping: Record<string, unknown> = {
+    userCode: input.userCode,
+    recordDate: input.recordDate,
+    direction: input.direction,
+    status: input.status,
+    method: input.method,
+    scheduledTime: input.scheduledTime,
+    actualTime: input.actualTime,
+    driverName: input.driverName,
+    notes: input.notes,
+    updatedBy: input.updatedBy,
+    updatedAt: new Date().toISOString(),
+  };
 
-  // Always set updatedAt to current ISO timestamp
-  body[TRANSPORT_LOG_FIELDS.updatedAt] = new Date().toISOString();
+  for (const [key, value] of Object.entries(mapping)) {
+    if (value !== undefined) {
+      const physical = fields[key] || key.charAt(0).toUpperCase() + key.slice(1);
+      body[physical] = value;
+    }
+  }
 
   return body;
 }
@@ -131,15 +167,18 @@ export async function loadTransportLogs(
   recordDate: string, // yyyy-MM-dd
 ): Promise<TransportLogEntry[]> {
   const listTitle = getListTitle();
+  const fields = await resolveTransportFields(client);
 
   try {
     const rows = await client.listItems<SpTransportLogRow>(listTitle, {
-      select: [...TRANSPORT_LOG_SELECT_FIELDS],
-      filter: buildEq(TRANSPORT_LOG_FIELDS.recordDate, recordDate),
+      select: fields 
+        ? ['Id', 'Created', ...Object.values(fields).filter((v): v is string => !!v)] 
+        : [...TRANSPORT_LOG_SELECT_FIELDS],
+      filter: buildEq(fields?.recordDate || 'RecordDate', recordDate),
       top: 200, // max expected per day (users × 2 directions)
     });
 
-    return rows.map(mapSpRowToLogEntry);
+    return rows.map(r => mapSpRowToLogEntry(r, fields || {}));
   } catch (err: unknown) {
     // Graceful degradation: list not found (404) or field not found (400) → empty
     const status = (err as { status?: number })?.status;
@@ -180,13 +219,14 @@ export async function saveTransportLog(
 
   const listTitle = getListTitle();
   const titleKey = buildTransportLogTitle(input.userCode, input.recordDate, input.direction);
-  const body = buildSaveBody(input);
+  const fields = await resolveTransportFields(client);
+  const body = buildSaveBody(input, fields || {});
 
   try {
     // Step 1: Check if item already exists
     const existing = await client.listItems<SpTransportLogRow>(listTitle, {
       select: ['Id'],
-      filter: buildEq(TRANSPORT_LOG_FIELDS.title, titleKey),
+      filter: buildEq(fields?.title || 'Title', titleKey),
       top: 1,
     });
 
@@ -259,21 +299,27 @@ export async function syncToAttendanceDaily(
   const dailyKey = `${input.userCode}_${input.recordDate}`;
   const isShuttle = input.method ? methodImpliesShuttle(input.method) : false;
 
+  const fields = await resolveAttendanceFields(client);
+  if (!fields) {
+    console.warn(`${LOG} Skipping sync to AttendanceDaily because fields could not be resolved.`);
+    return;
+  }
+
   // Build partial patch payload (only transport fields for this direction)
   const patch: Record<string, unknown> = {};
   if (input.direction === 'to') {
-    patch[ATTENDANCE_DAILY_FIELDS.transportTo] = isShuttle;
-    if (input.method) patch[ATTENDANCE_DAILY_FIELDS.transportToMethod] = input.method;
+    if (fields.transportTo) patch[fields.transportTo] = isShuttle;
+    if (input.method && fields.transportToMethod) patch[fields.transportToMethod] = input.method;
   } else {
-    patch[ATTENDANCE_DAILY_FIELDS.transportFrom] = isShuttle;
-    if (input.method) patch[ATTENDANCE_DAILY_FIELDS.transportFromMethod] = input.method;
+    if (fields.transportFrom) patch[fields.transportFrom] = isShuttle;
+    if (input.method && fields.transportFromMethod) patch[fields.transportFromMethod] = input.method;
   }
 
   try {
     // Look up existing daily record by Key
     const existing = await client.listItems<{ Id: number }>(listTitle, {
       select: ['Id'],
-      filter: buildEq(ATTENDANCE_DAILY_FIELDS.key, dailyKey),
+      filter: buildEq(fields.key || 'Title', dailyKey),
       top: 1,
     });
 

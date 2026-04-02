@@ -69,27 +69,41 @@ export const STAFF_SELECT_FIELDS_CANONICAL = [
 ] as const;
 
 /**
- * Staff_Master フィールド候補マップ
- * 動的解決 (SchemaResolver) で使用し、内部名揺れ (Space, Case, Legacy) を吸収する
+ * Staff_Master フィールド候補マップ (Drift Resistance)
+ * 動的解決 (SchemaResolver) で使用し、内部名揺れを吸収する。
+ * 各配列の 0 番目が「基準名」であり、それ以外は drift (WARN) と見なされる。
  */
-export const STAFF_MASTER_CANDIDATES: Record<string, string[]> = {
-  StaffID: ['StaffID', 'Staff_x0020_ID', 'UserCode', 'Title'],
-  FullName: ['FullName', 'Full_x0020_Name', 'StaffName', 'Name', 'Title'],
-  Furigana: ['Furigana', 'FuriganaKana'],
-  FullNameKana: ['FullNameKana', 'FullName_x0020_Kana'],
-  JobTitle: ['JobTitle', 'Role', 'Rank'],
-  Role: ['Role', 'JobTitle', 'Position'],
-  RBACRole: ['RBACRole', 'PermissionRole'],
-  IsActive: ['IsActive', 'Active', 'Status'],
-  Department: ['Department', 'Group', 'Branch'],
-  HireDate: ['HireDate', 'JoinDate'],
-  ResignDate: ['ResignDate', 'LeaveDate'],
-  Email: ['Email', 'MailAddress'],
-  Phone: ['Phone', 'Tel', 'Contact'],
-  WorkDays: ['WorkDays', 'BaseWorkDays'],
-  BaseShiftStartTime: ['BaseShiftStartTime', 'StartTime', 'Start_x0020_Time'],
-  BaseShiftEndTime: ['BaseShiftEndTime', 'EndTime', 'End_x0020_Time'],
-  Certifications: ['Certifications', 'Qualification', 'License'],
-};
+export const STAFF_MASTER_CANDIDATES = {
+  staffId: ['StaffID', 'Staff_x0020_ID', 'UserCode', 'Title'],
+  fullName: ['FullName', 'Full_x0020_Name', 'StaffName', 'Name', 'DisplayName', 'Title'],
+  furigana: ['Furigana', 'FuriganaKana', 'Kana'],
+  fullNameKana: ['FullNameKana', 'FullName_x0020_Kana'],
+  jobTitle: ['JobTitle', 'Role', 'Rank'],
+  role: ['Role', 'JobTitle', 'Position'],
+  rbacRole: ['RBACRole', 'PermissionRole'],
+  isActive: ['IsActive', 'Active', 'Status'],
+  department: ['Department', 'Group', 'Branch'],
+  hireDate: ['HireDate', 'JoinDate'],
+  resignDate: ['ResignDate', 'LeaveDate'],
+  email: ['Email', 'MailAddress'],
+  phone: ['Phone', 'Tel', 'Contact'],
+  workDays: ['WorkDays', 'BaseWorkDays', 'Work_x0020_Days'],
+  baseShiftStartTime: ['BaseShiftStartTime', 'StartTime', 'Start_x0020_Time'],
+  baseShiftEndTime: ['BaseShiftEndTime', 'EndTime', 'End_x0020_Time'],
+  certifications: ['Certifications', 'Qualification', 'License'],
+  // Compliance
+  hasPracticalTraining: ['HasPracticalTraining', 'PracticalTraining'],
+  hasBasicTraining: ['HasBasicTraining', 'BasicTraining'],
+  hasBehaviorGuidanceTraining: ['HasBehaviorGuidanceTraining', 'BehaviorGuidanceTraining'],
+  hasCorePersonTraining: ['HasCorePersonTraining', 'CorePersonTraining'],
+  certificationCheckedAt: ['CertificationCheckedAt', 'CertChecked'],
+} as const;
+
+export const STAFF_MASTER_ESSENTIALS: (keyof typeof STAFF_MASTER_CANDIDATES)[] = [
+  'staffId',
+  'fullName',
+  'rbacRole',
+  'isActive',
+];
 
 export const STAFF_SELECT = joinSelect(STAFF_SELECT_FIELDS_CANONICAL as readonly string[]);

@@ -4,11 +4,13 @@
  * SharePoint PlanGoals リストから ISP 目標データを取得/更新する。
  * 開発モード（SP バイパス時）はモックデータにフォールバック。
  */
-import type { GoalItem } from '@/features/shared/goal/goalTypes';
-import { PLAN_GOALS_FIELDS, PLAN_GOALS_SELECT_FIELDS } from '@/sharepoint/fields';
+import { 
+  PLAN_GOALS_CANDIDATES 
+} from '@/sharepoint/fields/planGoalFields';
 import { resolveListTitle } from '@/sharepoint/spListConfig';
 import { buildEq } from '@/sharepoint/query/builders';
-import { buildItemPath, buildListItemsPath } from '@/lib/sp/helpers';
+import { buildItemPath, buildListItemsPath, resolveInternalNamesDetailed } from '@/lib/sp/helpers';
+import type { GoalItem } from '@/features/shared/goal/goalTypes';
 
 /* ─── 共有型定義 (goalTypes.ts から re-export) ─── */
 
@@ -157,7 +159,6 @@ export function computeDiff(oldText: string, newText: string): DiffSegment[] {
 
 /**
  * SharePoint PlanGoals リストの生行データ型
- * fields.ts の PLAN_GOALS_FIELDS と 1:1 対応
  */
 export type SpPlanGoalRow = Record<string, unknown>;
 
@@ -165,6 +166,7 @@ export type SpPlanGoalRow = Record<string, unknown>;
  * SP クライアント型（useSP() の戻り値互換）
  */
 export type ISPSpClient = {
+  getFieldInternalNames: (listName: string) => Promise<Set<string>>;
   listItems: <T>(
     listTitle: string,
     options: {
@@ -178,14 +180,16 @@ export type ISPSpClient = {
   spFetch: (path: string, init?: RequestInit) => Promise<Response>;
 };
 
+type PlanGoalMapping = Record<keyof typeof PLAN_GOALS_CANDIDATES, string>;
+
 /**
  * SP 行 → GoalItem ドメインモデルへ変換
  */
-export function mapSpRowToGoalItem(row: SpPlanGoalRow): GoalItem {
-  const F = PLAN_GOALS_FIELDS;
+export function mapSpRowToGoalItem(row: SpPlanGoalRow, mapping: PlanGoalMapping): GoalItem {
+  const F = mapping;
   const domainsRaw = (row[F.domains] as string) ?? '';
   return {
-    id: `sp-${row[F.id] ?? row.Id ?? 0}`,
+    id: `sp-${row['Id'] ?? row['ID'] ?? 0}`,
     type: (row[F.goalType] as GoalItem['type']) ?? 'support',
     label: (row[F.goalLabel] as string) ?? '',
     text: (row[F.goalText] as string) ?? '',
@@ -199,8 +203,9 @@ export function mapSpRowToGoalItem(row: SpPlanGoalRow): GoalItem {
 export function groupRowsIntoPlans(
   rows: SpPlanGoalRow[],
   userName: string,
+  mapping: PlanGoalMapping,
 ): { previous: ISPPlan | null; current: ISPPlan | null } {
-  const F = PLAN_GOALS_FIELDS;
+  const F = mapping;
 
   // planStatus で confirmed / draft に分ける
   const confirmedRows = rows.filter((r) => r[F.planStatus] === 'confirmed');
@@ -214,7 +219,7 @@ export function groupRowsIntoPlans(
       certExpiry: (first[F.certExpiry] as string) ?? '',
       planPeriod: (first[F.planPeriod] as string) ?? '',
       status,
-      goals: subset.map(mapSpRowToGoalItem),
+      goals: subset.map(r => mapSpRowToGoalItem(r, mapping)),
     };
   };
 
@@ -235,28 +240,33 @@ export async function fetchISPPlans(
   signal?: AbortSignal,
 ): Promise<{ previous: ISPPlan | null; current: ISPPlan | null }> {
   const listTitle = resolveListTitle('plan_goals');
-  const F = PLAN_GOALS_FIELDS;
+  
+  // 動的列名解決
+  const available = await client.getFieldInternalNames(listTitle);
+  const { resolved } = resolveInternalNamesDetailed(
+    available,
+    PLAN_GOALS_CANDIDATES as unknown as Record<string, string[]>
+  );
+  const mapping = resolved as PlanGoalMapping;
 
   const rows = await client.listItems<SpPlanGoalRow>(listTitle, {
-    select: [...PLAN_GOALS_SELECT_FIELDS],
-    filter: buildEq(F.userCode, userCode),
-    orderby: `${F.sortOrder} asc`,
+    select: ['Id', ...Object.values(mapping)],
+    filter: buildEq(mapping.userCode, userCode),
+    orderby: `${mapping.sortOrder ?? 'SortOrder'} asc`,
     top: 100,
     signal,
   });
 
   // userName は利用者マスタから別途取得が本来望ましいが、
   // 最初の行の Title or 空文字で暫定対応
-  const userName = rows.length > 0 ? ((rows[0].Title as string) ?? '') : '';
+  const firstRow = rows[0] as Record<string, unknown> | undefined;
+  const userName = firstRow ? ((firstRow.Title as string) ?? (firstRow.title as string) ?? '') : '';
 
-  return groupRowsIntoPlans(rows, userName);
+  return groupRowsIntoPlans(rows, userName, mapping);
 }
 
 /**
  * 単一の目標を PlanGoals リストへ upsert する
- *
- * - SP Id が sp- 接頭辞付きの場合 → 既存アイテム更新 (PATCH)
- * - それ以外 → 新規作成 (POST)
  */
 export async function upsertGoal(
   client: ISPSpClient,
@@ -265,17 +275,24 @@ export async function upsertGoal(
   meta: { planPeriod: string; planStatus: ISPPlan['status']; certExpiry: string },
 ): Promise<void> {
   const listTitle = resolveListTitle('plan_goals');
-  const F = PLAN_GOALS_FIELDS;
+
+  // 動的列名解決
+  const available = await client.getFieldInternalNames(listTitle);
+  const { resolved } = resolveInternalNamesDetailed(
+    available,
+    PLAN_GOALS_CANDIDATES as unknown as Record<string, string[]>
+  );
+  const mapping = resolved as PlanGoalMapping;
 
   const body: Record<string, unknown> = {
-    [F.userCode]: userCode,
-    [F.goalType]: goal.type,
-    [F.goalLabel]: goal.label,
-    [F.goalText]: goal.text,
-    [F.domains]: goal.domains.join(','),
-    [F.planPeriod]: meta.planPeriod,
-    [F.planStatus]: meta.planStatus,
-    [F.certExpiry]: meta.certExpiry,
+    [mapping.userCode]: userCode,
+    [mapping.goalType]: goal.type,
+    [mapping.goalLabel]: goal.label,
+    [mapping.goalText]: goal.text,
+    [mapping.domains]: goal.domains.join(','),
+    [mapping.planPeriod]: meta.planPeriod,
+    [mapping.planStatus]: meta.planStatus,
+    [mapping.certExpiry]: meta.certExpiry,
   };
 
   const spIdMatch = goal.id.match(/^sp-(\d+)$/);

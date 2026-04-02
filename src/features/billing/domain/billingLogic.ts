@@ -1,4 +1,3 @@
-import { FIELD_MAP_BILLING_ORDERS as F } from '@/sharepoint/fields';
 import type { BillingOrder } from '../types';
 
 /**
@@ -25,18 +24,21 @@ export const safeParseNumber = (v: unknown): number => {
 /**
  * SharePointの生アイテム(辞書)をアプリケーション内部のBillingOrderモデルに安全に変換する
  * @param item SharePointの行データ（DTO）
+ * @param mapping 解決された内部名のマッピング
  */
-export function mapToBillingOrder(item: Record<string, unknown>): BillingOrder {
+export function mapToBillingOrder(
+  item: Record<string, unknown>
+): BillingOrder {
   return {
-    id: safeParseNumber(item[F.id] ?? item['Id'] ?? item['ID']),
-    orderDate: safeParseString(item[F.orderDate] ?? item['Title'] ?? ''),
-    ordererCode: safeParseString(item[F.ordererCode] ?? ''),
-    ordererName: safeParseString(item[F.ordererName] ?? ''),
-    orderCount: safeParseNumber(item[F.orderCount] ?? 0),
-    served: safeParseString(item[F.served] ?? ''),
-    item: safeParseString(item[F.item] ?? ''),
-    sugar: safeParseString(item[F.sugar] ?? ''),
-    milk: safeParseString(item[F.milk] ?? ''),
-    drinkPrice: safeParseNumber(item[F.drinkPrice] ?? 0),
+    id: safeParseNumber(item['Id'] ?? item['id'] ?? 0),
+    orderDate: safeParseString(item['Title'] ?? item['orderDate'] ?? ''),
+    ordererCode: safeParseString(item['OrdererCode'] ?? item['ordererCode'] ?? ''),
+    ordererName: safeParseString(item['OrdererName'] ?? item['ordererName'] ?? ''),
+    orderCount: safeParseNumber(item['OrderCount'] ?? item['orderCount'] ?? 0),
+    served: safeParseString(item['Served'] ?? item['served'] ?? ''),
+    item: safeParseString(item['Item'] ?? item['item'] ?? ''),
+    sugar: safeParseString(item['Sugar'] ?? item['sugar'] ?? ''),
+    milk: safeParseString(item['Milk'] ?? item['milk'] ?? ''),
+    drinkPrice: safeParseNumber(item['DrinkPrice'] ?? item['drinkPrice'] ?? 0),
   };
 }
