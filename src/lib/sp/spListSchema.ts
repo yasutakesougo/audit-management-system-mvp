@@ -244,7 +244,7 @@ export async function addFieldToList(
   spFetch: SpFetchFn,
   listTitle: string,
   field: SpFieldDef,
-): Promise<void> {
+): Promise<"success" | "limit_reached" | "error"> {
   const base = resolveListPath(listTitle);
   const schema = buildFieldSchema(field);
   const body = {
@@ -262,33 +262,27 @@ export async function addFieldToList(
         Accept: 'application/json;odata=verbose',
       },
       body: JSON.stringify(body),
+      spOptions: { retries: 0 },
     });
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
       const isLimit = isRowSizeLimitError(errText);
       
-      if (isLimit) {
-        auditLog.warn('sp:fields', 'schema_limit_exceeded_skipping', { 
+      if (isLimit || res.status === 400 || res.status === 500) {
+        auditLog.warn('sp:fields', 'schema_limit_reached', { 
           listTitle, 
           field: field.internalName,
-          reason: 'SharePoint row size limit reached'
+          reason: isLimit ? 'SharePoint row size limit reached' : `HTTP ${res.status}`
         });
-        // 物理的限界なので、これ以上の列追加を断念して「成功」として扱う（ループ防止）
-        return;
+        return "limit_reached";
       }
 
-      if (res.status === 500 || res.status === 400) {
-        auditLog.warn('sp:fields', 'create_field_error_debug', { 
-          listTitle, 
-          field: field.internalName, 
-          status: res.status,
-          errText: errText.slice(0, 200)
-        });
-      }
-      return;
+      return "error";
     }
+    return "success";
   } catch (error) {
     console.error(`[addFieldToList] Unexpected error adding field "${field.internalName}":`, error);
+    return "error";
   }
 }
 
@@ -305,6 +299,12 @@ export async function ensureListExists(
   options: EnsureListOptions = {},
 ): Promise<EnsureListResult> {
   const baseTemplate = options.baseTemplate ?? DEFAULT_LIST_TEMPLATE;
+
+  const BLOCKED_LISTS = ["UserBenefit_Profile"];
+  if (BLOCKED_LISTS.includes(listTitle)) {
+    options.preventPhysicalCreation = true;
+  }
+
 
   let ensured = await tryGetListMetadata(spFetch, listTitle);
   if (!ensured) {
@@ -341,7 +341,14 @@ export async function ensureListExists(
     };
   }
 
-  if (fields.length) {
+  if (options.preventPhysicalCreation === true && fields.length) {
+    auditLog.warn('sp:fields', 'provisioning_blocked', { listTitle, reason: 'policy' });
+    // Proceed to return ensuring list exists without adding fields
+  }
+
+  let isLimitReached = false;
+
+  if (fields.length && !options.preventPhysicalCreation) {
     const existing = await fetchExistingFields(spFetch, listTitle);
     const available = new Set(existing.keys());
 
@@ -372,7 +379,20 @@ export async function ensureListExists(
       }
 
       // 3. Physical creation (Only if truly missing)
-      await addFieldToList(spFetch, listTitle, field);
+      if (!field.required || isLimitReached) {
+        auditLog.warn('sp:fields', 'provisioning_blocked', { 
+          listTitle, 
+          field: field.internalName,
+          blocked: true,
+          cause: isLimitReached ? "row_limit" : "optional_field"
+        });
+        continue;
+      }
+
+      const result = await addFieldToList(spFetch, listTitle, field);
+      if (result === "limit_reached") {
+        isLimitReached = true;
+      }
     }
   }
 

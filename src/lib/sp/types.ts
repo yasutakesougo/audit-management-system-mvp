@@ -91,6 +91,11 @@ export interface SpFieldDef {
 
 export interface EnsureListOptions {
   baseTemplate?: number;
+  /**
+   * If true, prevents addFieldToList from being called for any field.
+   * Useful for split architecture or when reaching SharePoint row limits.
+   */
+  preventPhysicalCreation?: boolean;
 }
 
 export interface ExistingFieldShape {
@@ -217,6 +222,8 @@ export interface SpRequestOptions {
   skipRetry?: boolean;
   /** Custom timeout in ms to replace the default 30s timeout. */
   timeoutMs?: number;
+  /** Explicitly set the number of retries for this request */
+  retries?: number;
 }
 
 /** Extended RequestInit with SharePoint-specific steering options */

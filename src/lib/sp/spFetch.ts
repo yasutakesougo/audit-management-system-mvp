@@ -14,6 +14,27 @@ import { raiseHttpError } from './helpers';
 import type { SpClientOptions } from './types';
 import { spTelemetryStore, type SpFetchTelemetryEvent, type SpMetric } from '@/lib/telemetry/spTelemetryStore';
 
+export type SpLane = 'read' | 'write' | 'provisioning';
+
+export function resolveLane(path: string, method: string): SpLane {
+  const upperMethod = method.toUpperCase();
+  const normalized = path.toLowerCase();
+
+  const isProvisioning =
+    normalized.includes('/fields/createfieldasxml') ||
+    (normalized.endsWith('/lists') && upperMethod === 'POST') ||
+    normalized.includes('/fields/addfield') ||
+    normalized.includes('/contenttypes');
+
+  if (isProvisioning) return 'provisioning';
+
+  const isWrite =
+    ['POST', 'PUT', 'PATCH', 'MERGE', 'DELETE'].includes(upperMethod) ||
+    normalized.includes('/$batch');
+
+  return isWrite ? 'write' : 'read';
+}
+
 // ─── Dependencies injected from createSpClient ──────────────────────────────
 
 export type SpFetchDeps = {
@@ -242,8 +263,9 @@ export function createSpFetch(deps: SpFetchDeps) {
     spTelemetryStore.record(event, payload);
   };
 
-  // Factory scope semaphore, limit to 5
-  const semaphore = new Semaphore(5);
+  const readLane = new Semaphore(5);
+  const writeLane = new Semaphore(2);
+  const provisionLane = new Semaphore(1);
 
   const resolveUrl = (targetPath: string) => {
     if (/^https?:\/\//i.test(targetPath)) return targetPath;
@@ -319,23 +341,34 @@ export function createSpFetch(deps: SpFetchDeps) {
     // Observability span
     const span = startFetchSpan({ layer: 'sp', method, path: resolvedPath });
 
-    const maxRetries = retrySettings.maxAttempts - 1;
+    const isUpdate = ['POST', 'PUT', 'PATCH', 'MERGE', 'DELETE'].includes(method);
+    const skipRetry = spOptions.skipRetry ?? false;
+    
+    const lane = resolveLane(url, method);
+    const effectiveRetries =
+      lane === 'provisioning'
+        ? 0
+        : (spOptions.retries ?? retrySettings.maxAttempts - 1);
+    
+    const maxRetries = effectiveRetries;
     const baseDelay = retrySettings.baseDelay;
     const capDelay = retrySettings.capDelay;
     
     // Default 30s timeout if none provided explicitly
     const mergedSignal = withTimeout(init.signal ?? undefined, spOptions.timeoutMs ?? 30000);
 
-    const isUpdate = ['POST', 'PUT', 'PATCH', 'MERGE', 'DELETE'].includes(method);
-    const skipRetry = spOptions.skipRetry ?? false;
-
-    const release = await semaphore.acquire();
+    const release =
+      lane === 'provisioning'
+        ? await provisionLane.acquire()
+        : lane === 'write'
+        ? await writeLane.acquire()
+        : await readLane.acquire();
 
     try {
       const startedAt = Date.now();
       const queuedMs = startedAt - queuedAt;
 
-      recordTelemetry('sp:request_start', { url: url.split('?')[0], method, queuedMs });
+      recordTelemetry('sp:request_start', { url: url.split('?')[0], method, lane, queuedMs });
 
       for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
         const attemptStartedAt = Date.now();
@@ -378,6 +411,7 @@ export function createSpFetch(deps: SpFetchDeps) {
             recordTelemetry('sp:request_end', {
               url: url.split('?')[0],
               method,
+              lane,
               status: response.status,
               attempt,
               queuedMs,
@@ -401,6 +435,7 @@ export function createSpFetch(deps: SpFetchDeps) {
               recordTelemetry('sp:throttled', {
                 url: url.split('?')[0],
                 method,
+                lane,
                 status: response.status,
                 attempt,
                 retryAfterMs: delayMs,
@@ -411,6 +446,7 @@ export function createSpFetch(deps: SpFetchDeps) {
             recordTelemetry('sp:retry', {
               url: url.split('?')[0],
               method,
+              lane,
               status: response.status,
               attempt,
               retryAfterMs: delayMs,
@@ -442,6 +478,7 @@ export function createSpFetch(deps: SpFetchDeps) {
           recordTelemetry('sp:request_failed', {
             url: url.split('?')[0],
             method,
+            lane,
             status: response.status,
             attempt,
             durationMs: Date.now() - attemptStartedAt,
@@ -458,6 +495,7 @@ export function createSpFetch(deps: SpFetchDeps) {
             recordTelemetry('sp:request_failed', {
               url: url.split('?')[0],
               method,
+              lane,
               attempt,
               durationMs: Date.now() - attemptStartedAt,
               message: 'aborted',
@@ -472,6 +510,7 @@ export function createSpFetch(deps: SpFetchDeps) {
             recordTelemetry('sp:retry', {
               url: url.split('?')[0],
               method,
+              lane,
               attempt,
               retryAfterMs: delayMs,
               durationMs: Date.now() - attemptStartedAt,
@@ -484,6 +523,7 @@ export function createSpFetch(deps: SpFetchDeps) {
           recordTelemetry('sp:request_failed', {
             url: url.split('?')[0],
             method,
+            lane,
             attempt,
             durationMs: Date.now() - attemptStartedAt,
             message: error instanceof Error ? error.message : 'NetworkError',
