@@ -49,6 +49,7 @@ export const DailyRecordDomainSchema = z.object({
     role: z.string().default(''),
   }),
   userRows: z.array(DailyRecordUserRowSchema).default([]),
+  userCount: z.number().default(0),
 });
 
 /**
@@ -90,6 +91,7 @@ export const DailyRecordItemSchema = SharePointDailyRecordItemSchema.transform((
     },
     // We re-validate the parsed JSON here
     userRows: z.array(DailyRecordUserRowSchema).parse(sp.UserRowsJSON),
+    userCount: sp.UserCount,
     createdAt: sp.Created ?? undefined,
     modifiedAt: sp.Modified ?? undefined,
   };

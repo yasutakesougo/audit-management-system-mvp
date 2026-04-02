@@ -73,6 +73,7 @@ export class RowAggregateAccess {
                     date,
                     reporter: { name: reporterName, role: reporterRole },
                     userRows: [rowData],
+                    userCount: 1, // Will be finalized in the return mapping
                 });
                 userRowIndexByDate.set(date, new Map([[userId, 0]]));
                 continue;
@@ -94,6 +95,11 @@ export class RowAggregateAccess {
             }
         }
 
-        return Array.from(grouped.values()).sort((a, b) => b.date.localeCompare(a.date));
+        return Array.from(grouped.values())
+            .map(item => ({
+                ...item,
+                userCount: item.userRows.length
+            }))
+            .sort((a, b) => b.date.localeCompare(a.date));
     }
 }

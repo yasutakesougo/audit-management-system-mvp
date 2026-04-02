@@ -113,10 +113,10 @@ export const DAILY_RECORD_CANONICAL_ESSENTIALS: (keyof typeof DAILY_RECORD_CANON
  */
 export const DAILY_RECORD_ROW_AGGREGATE_CANDIDATES = {
   title: ['Title'],
-  userId: ['UserCode', 'cr013_usercode', 'cr013_personId', 'UserId', 'UserID', 'userId'],
+  userId: ['UserCode', 'cr013_usercode', 'cr013_personId', 'cr013_userid', 'UserId', 'UserID', 'userId'],
   recordDate: ['RecordDate', 'cr013_date', 'cr013_recorddate', 'Date', 'recordDate'],
   status: ['Status', 'status', 'cr013_status'],
-  reporterName: ['ReporterName', 'reporterName', 'cr013_reporterName'],
+  reporterName: ['ReporterName', 'reporterName', 'cr013_reporterName', 'cr013_fullname'],
   payload: ['Payload', 'payload', 'cr013_payload', 'cr013_draftJson'],
   kind: ['Kind', 'kind', 'cr013_kind'],
   group: ['Group', 'group', 'cr013_group'],

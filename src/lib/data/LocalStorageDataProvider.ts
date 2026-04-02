@@ -5,7 +5,7 @@ import type {
 } from '@/lib/data/dataProvider.interface';
 import { auditLog } from '@/lib/debugLogger';
 import { DataProviderItemNotFoundError } from '@/lib/errors';
-import type { SpFieldDef } from '@/lib/sp/types';
+import type { SpFieldDef, ExistingFieldShape } from '@/lib/sp/types';
 
 /**
  * LocalStorageDataProvider
@@ -193,6 +193,15 @@ export class LocalStorageDataProvider implements IDataProvider {
     
     this.fieldsCache.set(resourceName, names);
     return names;
+  }
+
+  async getFieldDetails(resourceName: string): Promise<Map<string, ExistingFieldShape>> {
+    const names = await this.getFieldInternalNames(resourceName);
+    const map = new Map<string, ExistingFieldShape>();
+    names.forEach(name => {
+      map.set(name, { InternalName: name, TypeAsString: 'Text' });
+    });
+    return map;
   }
 
   async ensureListExists(resourceName: string, fields: SpFieldDef[]): Promise<void> {

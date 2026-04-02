@@ -11,8 +11,6 @@ import type {
   DailyRecordRepositoryMutationParams,
   SaveDailyRecordInput,
 } from '../domain/DailyRecordRepository';
-import { DailyRecordItemSchema } from '../schema';
-
 import { 
   DAILY_RECORD_CANONICAL_CANDIDATES,
   DAILY_RECORD_CANONICAL_ESSENTIALS,
@@ -124,7 +122,9 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
     const finishSpan = startFeatureSpan(HYDRATION_FEATURES.daily.save, { date: input.date });
     try {
       const source = await this.resolveSource();
-      if (!source.canonical) throw new Error('Canonical Daily records list not found or unavailable for write.');
+      if (!source.canonical) {
+        throw new Error(`Daily records canonical source not found for write. (Lists tried: ${this.candidates.join(', ')})`);
+      }
 
       const { title, fields } = source.canonical;
       const existing = await this.load(input.date);
@@ -163,8 +163,7 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
           select: fields.select,
         });
         if (items.length > 0) return this.parseCanonical(items[0], fields);
-      }
-      if (source.rowAggregate) {
+      } else if (source.rowAggregate) {
         const items = await this.listFromRowAggregate(source.rowAggregate, {
           range: { startDate: date, endDate: date },
         });
@@ -198,12 +197,13 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
         const results = items.map(it => this.parseCanonical(it, fields)).filter((it): it is DailyRecordItem => it !== null);
         finishSpan({ meta: { status: 'ok', count: results.length } });
         return results;
-      }
-      if (source.rowAggregate) {
+      } else if (source.rowAggregate) {
         const items = await this.listFromRowAggregate(source.rowAggregate, params);
         finishSpan({ meta: { status: 'ok', count: items.length, mode: 'row-aggregate' } });
         return items;
       }
+      
+      auditLog.error('daily', 'source_resolution_failed', { primary: this.primaryTitle, candidates: this.candidates });
       return [];
     } catch (e) {
       finishSpan({ meta: { status: 'error' }, error: String(e) });
@@ -324,20 +324,25 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
     const grouped = new Map<string, DailyRecordItem>();
 
     for (const row of items) {
-      const rowDate = normalizeDateToYmd(row[source.fields.recordDate]);
+      const rawDate = row[source.fields.recordDate];
+      const rowDate = typeof rawDate === 'string' ? rawDate.substring(0, 10) : '';
       if (!rowDate || rowDate < params.range.startDate || rowDate > params.range.endDate) continue;
 
       const userId = String(row[source.fields.userId] || '');
       if (!userId) continue;
 
       // Mock normalization for `fromSpItem` which expects specific keys
-      const normalizedRow = {
+      const normalizedRow: Record<string, unknown> = {
         ...row,
         Id: row.Id,
         Title: row.Title,
+        cr013_personId: row[source.fields.userId],
         cr013_date: row[source.fields.recordDate],
+        cr013_status: row[source.fields.status || ''],
+        cr013_reporterName: row[source.fields.reporterName || ''],
         cr013_payload: row[source.fields.payload || ''],
         cr013_kind: row[source.fields.kind || ''],
+        cr013_group: row[source.fields.group || ''],
       };
 
       try {
@@ -362,12 +367,14 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
             date: rowDate,
             reporter: { name: reporterName, role: '担当' },
             userRows: [rowData],
+            userCount: 1,
           });
         } else {
           const rec = grouped.get(rowDate)!;
           const existingIdx = rec.userRows.findIndex(u => u.userId === userId);
           if (existingIdx === -1) {
             rec.userRows.push(rowData);
+            rec.userCount = (rec.userCount || 0) + 1;
           } else {
             const existing = rec.userRows[existingIdx];
             existing.amActivity = existing.amActivity || rowData.amActivity;
@@ -387,11 +394,9 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
   }
 
   private parseCanonical(item: Record<string, unknown>, fields: CanonicalResolvedFields): DailyRecordItem | null {
-
     try {
       const userRows = JSON.parse(item[fields.userRowsJSON] as string || '[]');
-      const record: Record<string, unknown> = {
-
+      return {
         id: String(item.Id),
         date: normalizeDateToYmd(item[fields.title]) || '',
         reporter: {
@@ -402,12 +407,12 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
         userCount: Number(item[fields.userCount ?? ''] || 0),
         createdAt: String(item.Created || ''),
         modifiedAt: String(item.Modified || ''),
-        approvalStatus: item[fields.approvalStatus ?? ''],
-        approvedBy: item[fields.approvedBy ?? ''],
-        approvedAt: item[fields.approvedAt ?? ''],
+        approvalStatus: item[fields.approvalStatus ?? ''] as 'pending' | 'approved' | undefined,
+        approvedBy: item[fields.approvedBy ?? ''] as string | undefined,
+        approvedAt: item[fields.approvedAt ?? ''] as string | undefined,
       };
-      return DailyRecordItemSchema.parse(record);
-    } catch {
+    } catch (e) {
+      auditLog.warn('daily', 'canonical_parse_failed', { error: String(e) });
       return null;
     }
   }
