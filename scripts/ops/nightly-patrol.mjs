@@ -321,23 +321,54 @@ const actWarningSection = actTotalWarnings === null
 ${actCountsEntries.map((x) => `| ${x.count} | \`${x.file}\` |`).join('\n')}`,
   ].join('\n');
 
-const spHealthSection = spTelemetrySummary === null
-  ? 'ℹ️ SP通信状況は未提供です（SP_TELEMETRY_PATH 入力未設定または読み取り失敗）。'
-  : [
-      `- Throttled: **${spTelemetrySummary.summary?.throttledCount || 0}**`,
-      `- Retry: **${spTelemetrySummary.summary?.retryCount || 0}**`,
-      `- Failed: **${spTelemetrySummary.summary?.failedCount || 0}**`,
-      '',
-      `- Avg Duration: **${spTelemetrySummary.summary?.avgDurationMs || 0}ms**`,
-      `- P95 Duration: **${spTelemetrySummary.summary?.p95DurationMs || 0}ms**`,
-      '',
-      `- Avg Queue: **${spTelemetrySummary.summary?.avgQueuedMs || 0}ms**`,
-      `- Max Queue: **${spTelemetrySummary.summary?.maxQueuedMs || 0}ms**`,
-      '',
-      '### Top Failing Endpoints',
-      ...(spTelemetrySummary.topEndpoints || []).map((ep, i) => `${i + 1}. \`${ep.endpoint}\` → ${ep.failures} failures (retries: ${ep.retries})`),
-      spTelemetrySummary.topEndpoints?.length ? '' : '✅ なし'
+let spHealthSection = 'ℹ️ SP通信状況は未提供です（SP_TELEMETRY_PATH 入力未設定または読み取り失敗）。';
+if (spTelemetrySummary && spTelemetrySummary.metrics) {
+  const m = spTelemetrySummary.metrics;
+  spHealthSection = [
+    `- Throttled: **${m.throttledCount}**`,
+    `- Retry: **${m.retryCount}**`,
+    `- Failed: **${m.failedCount}**`,
+    '',
+    `- Avg Duration: **${m.avgDurationMs}ms**`,
+    `- P95 Duration: **${m.p95DurationMs}ms**`,
+    '',
+    `- Avg Queue: **${m.avgQueuedMs}ms**`,
+    `- Max Queue: **${m.maxQueuedMs}ms**`,
+    '',
+    '### 🚦 Lane 別の通信状況',
+    ...(m.lanes ? [
+      '| Lane | 実行数 | Failed | Retry | Max Queue | Avg Duration |',
+      '|------|:---:|:---:|:---:|:---:|:---:|',
+      `| 🟢 Read | ${m.lanes.read?.requests || 0} | ${m.lanes.read?.failed || 0} | ${m.lanes.read?.retries || 0} | ${m.lanes.read?.maxQueuedMs || 0}ms | ${m.lanes.read?.avgDurationMs || 0}ms |`,
+      `| 🟡 Write | ${m.lanes.write?.requests || 0} | ${m.lanes.write?.failed || 0} | ${m.lanes.write?.retries || 0} | ${m.lanes.write?.maxQueuedMs || 0}ms | ${m.lanes.write?.avgDurationMs || 0}ms |`,
+      `| 🛡️ Provision | ${m.lanes.provisioning?.requests || 0} | ${m.lanes.provisioning?.failed || 0} | ${m.lanes.provisioning?.retries || 0} | ${m.lanes.provisioning?.maxQueuedMs || 0}ms | ${m.lanes.provisioning?.avgDurationMs || 0}ms |`,
+    ] : ['ℹ️ レーン情報は提供されていません']),
+    '',
+    '### Top Failing Endpoints',
+    ...(spTelemetrySummary.topEndpoints && spTelemetrySummary.topEndpoints.length > 0
+        ? spTelemetrySummary.topEndpoints.map((ep, i) => `${i + 1}. \`${ep.endpoint}\` → ${ep.failures} failures (retries: ${ep.retries})`)
+        : ['✅ なし'])
   ].join('\n');
+} else if (spTelemetrySummary && spTelemetrySummary.summary) {
+  // Fallback if older payload format was used
+  const m = spTelemetrySummary.summary;
+  spHealthSection = [
+    `- Throttled: **${m.throttledCount}**`,
+    `- Retry: **${m.retryCount}**`,
+    `- Failed: **${m.failedCount}**`,
+    '',
+    `- Avg Duration: **${m.avgDurationMs}ms**`,
+    `- P95 Duration: **${m.p95DurationMs}ms**`,
+    '',
+    `- Avg Queue: **${m.avgQueuedMs}ms**`,
+    `- Max Queue: **${m.maxQueuedMs}ms**`,
+    '',
+    '### Top Failing Endpoints',
+    ...(spTelemetrySummary.topEndpoints && spTelemetrySummary.topEndpoints.length > 0
+        ? spTelemetrySummary.topEndpoints.map((ep, i) => `${i + 1}. \`${ep.endpoint}\` → ${ep.failures} failures (retries: ${ep.retries})`)
+        : ['✅ なし'])
+  ].join('\n');
+}
 
 // --- Report Generation ---
 
