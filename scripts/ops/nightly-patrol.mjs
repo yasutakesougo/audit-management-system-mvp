@@ -58,6 +58,16 @@ if (ACT_WARNING_SUMMARY_PATH && fs.existsSync(ACT_WARNING_SUMMARY_PATH)) {
   }
 }
 
+const SP_TELEMETRY_PATH = process.env.SP_TELEMETRY_PATH || '';
+let spTelemetrySummary = null;
+if (SP_TELEMETRY_PATH && fs.existsSync(SP_TELEMETRY_PATH)) {
+  try {
+    spTelemetrySummary = JSON.parse(fs.readFileSync(SP_TELEMETRY_PATH, 'utf8'));
+  } catch {
+    spTelemetrySummary = null;
+  }
+}
+
 // --- File Walking ---
 
 const IGNORED_DIRS = new Set([
@@ -311,6 +321,24 @@ const actWarningSection = actTotalWarnings === null
 ${actCountsEntries.map((x) => `| ${x.count} | \`${x.file}\` |`).join('\n')}`,
   ].join('\n');
 
+const spHealthSection = spTelemetrySummary === null
+  ? 'ℹ️ SP通信状況は未提供です（SP_TELEMETRY_PATH 入力未設定または読み取り失敗）。'
+  : [
+      `- Throttled: **${spTelemetrySummary.summary?.throttledCount || 0}**`,
+      `- Retry: **${spTelemetrySummary.summary?.retryCount || 0}**`,
+      `- Failed: **${spTelemetrySummary.summary?.failedCount || 0}**`,
+      '',
+      `- Avg Duration: **${spTelemetrySummary.summary?.avgDurationMs || 0}ms**`,
+      `- P95 Duration: **${spTelemetrySummary.summary?.p95DurationMs || 0}ms**`,
+      '',
+      `- Avg Queue: **${spTelemetrySummary.summary?.avgQueuedMs || 0}ms**`,
+      `- Max Queue: **${spTelemetrySummary.summary?.maxQueuedMs || 0}ms**`,
+      '',
+      '### Top Failing Endpoints',
+      ...(spTelemetrySummary.topEndpoints || []).map((ep, i) => `${i + 1}. \`${ep.endpoint}\` → ${ep.failures} failures (retries: ${ep.retries})`),
+      spTelemetrySummary.topEndpoints?.length ? '' : '✅ なし'
+  ].join('\n');
+
 // --- Report Generation ---
 
 console.log('  Generating report...');
@@ -394,7 +422,13 @@ ${lastHandoffInfo}
 
 ---
 
-## 6. act(...) warning monitor
+## 6. 🌐 SharePoint通信状況
+
+${spHealthSection}
+
+---
+
+## 7. act(...) warning monitor
 
 ${actWarningSection}
 

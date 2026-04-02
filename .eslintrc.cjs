@@ -133,8 +133,12 @@ module.exports = {
               'src/sharepoint/query/builders.ts を使用してください。',
           },
           {
-            selector: "Literal[value=/\\/_api\\/web\\/lists/]",
-            message: 'SharePoint REST API のエンドポイントを直書きしないでください。IDataProvider を使用してください。'
+            selector: "Literal[value=/\\/_api\\//]",
+            message: 'SharePoint REST API のエンドポイントを直書きしないでください。spFetch または IDataProvider を使用してください。'
+          },
+          {
+            selector: "TemplateLiteral > TemplateElement[value.raw=/\\/_api\\//]",
+            message: 'SharePoint REST API のエンドポイントを直書きしないでください。spFetch または IDataProvider を使用してください。'
           },
         ]
       }

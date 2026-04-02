@@ -8,6 +8,7 @@ import type { GoalItem } from '@/features/shared/goal/goalTypes';
 import { PLAN_GOALS_FIELDS, PLAN_GOALS_SELECT_FIELDS } from '@/sharepoint/fields';
 import { resolveListTitle } from '@/sharepoint/spListConfig';
 import { buildEq } from '@/sharepoint/query/builders';
+import { buildItemPath, buildListItemsPath } from '@/lib/sp/helpers';
 
 /* ─── 共有型定義 (goalTypes.ts から re-export) ─── */
 
@@ -282,7 +283,7 @@ export async function upsertGoal(
   if (spIdMatch) {
     // 既存アイテム更新
     const itemId = Number(spIdMatch[1]);
-    const path = `/_api/web/lists/getbytitle('${encodeURIComponent(listTitle)}')/items(${itemId})`;
+    const path = buildItemPath(listTitle, itemId);
     await client.spFetch(path, {
       method: 'PATCH',
       headers: {
@@ -294,7 +295,7 @@ export async function upsertGoal(
     });
   } else {
     // 新規作成
-    const path = `/_api/web/lists/getbytitle('${encodeURIComponent(listTitle)}')/items`;
+    const path = buildListItemsPath(listTitle, [], 0);
     await client.spFetch(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json;odata=verbose' },
