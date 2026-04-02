@@ -50,6 +50,8 @@ export interface SpListEntry {
   essentialFields?: readonly string[];
   /** 自己修復用のフィールド定義リスト */
   provisioningFields?: readonly import('@/lib/sp/types').SpFieldDef[];
+  /** SharePoint リストテンプレート ID (100: List, 101: DocumentLibrary) */
+  baseTemplate?: number;
   /** ライフサイクル段階。不在時の挙動やログレベルを決定する */
   lifecycle: SpListLifecycle;
 }
@@ -132,7 +134,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     ],
     provisioningFields: [
       { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true },
-      { internalName: 'RecipientCertNumber', type: 'Text', displayName: 'Recipient Cert Number' },
+      { internalName: 'RecipientCertNumber', type: 'Text', displayName: 'Recipient Cert Number', required: true },
       { internalName: 'RecipientCertExpiry', type: 'DateTime', displayName: 'Recipient Cert Expiry', dateTimeFormat: 'DateOnly' },
       { internalName: 'GrantMunicipality', type: 'Text', displayName: 'Grant Municipality' },
       { internalName: 'GrantPeriodStart', type: 'DateTime', displayName: 'Grant Period Start', dateTimeFormat: 'DateOnly' },
@@ -325,9 +327,9 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'daily',
     lifecycle: 'required', // 業務継続に不可欠なため required へ昇格
-    essentialFields: ['UserIdId', 'Date', 'Shift', 'Category'],
+    essentialFields: ['UserID', 'Date', 'Shift', 'Category'],
     provisioningFields: [
-      { internalName: 'UserIdId', type: 'Text', displayName: 'User ID', required: true },
+      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true },
       { internalName: 'Date', type: 'DateTime', displayName: 'Date', required: true, dateTimeFormat: 'DateOnly', indexed: true },
       { internalName: 'Shift', type: 'Choice', displayName: 'Shift', choices: ['AM', 'PM', '1日'], required: true },
       { internalName: 'Category', type: 'Choice', displayName: 'Category', choices: ['請負', '個別', '外活動', '余暇'], required: true },
@@ -347,9 +349,9 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'attendance',
     lifecycle: 'required',
-    essentialFields: ['UserIdId', 'Date', 'Status'],
+    essentialFields: ['UserID', 'Date', 'Status'],
     provisioningFields: [
-      { internalName: 'UserIdId', type: 'Text', displayName: 'User ID', required: true },
+      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true },
       { internalName: 'Date', type: 'DateTime', displayName: 'Date', required: true, dateTimeFormat: 'DateOnly', indexed: true },
       { internalName: 'Status', type: 'Choice', displayName: 'Status', choices: ['通常', '欠席', '振替', '休止'], required: true },
       { internalName: 'IsTrial', type: 'Boolean', displayName: 'Trial' },
@@ -472,11 +474,11 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W', 'D'],
     category: 'meeting',
     lifecycle: 'optional',
-    essentialFields: ['SessionKey', 'MeetingKind', 'Date'],
+    essentialFields: ['SessionKey', 'MeetingKind', 'MeetingDate'],
     provisioningFields: [
       { internalName: 'SessionKey', type: 'Text', displayName: 'Session Key', required: true, indexed: true },
       { internalName: 'MeetingKind', type: 'Choice', displayName: 'Meeting Kind', choices: ['morning', 'evening'], required: true },
-      { internalName: 'Date', type: 'DateTime', displayName: 'Meeting Date', required: true, dateTimeFormat: 'DateOnly' },
+      { internalName: 'MeetingDate', type: 'DateTime', displayName: 'Meeting Date', required: true, dateTimeFormat: 'DateOnly' },
       { internalName: 'StartTime', type: 'Text', displayName: 'Start Time' },
       { internalName: 'EndTime', type: 'Text', displayName: 'End Time' },
       { internalName: 'ChairpersonUserId', type: 'Text', displayName: 'Chairperson ID' },
@@ -670,17 +672,30 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['W'],
     category: 'other',
     lifecycle: 'optional',
+    baseTemplate: 101, // Document Library
+    provisioningFields: [
+      { internalName: 'Title', type: 'Text', displayName: 'Title' },
+      { internalName: 'TemplateName', type: 'Text', displayName: 'Template Name' },
+      { internalName: 'GeneratedAt', type: 'DateTime', displayName: 'Generated At' },
+    ],
   },
   {
     key: 'billing_orders',
     displayName: '請求オーダー',
     resolve: () => {
       const envVal = readOptionalEnv('VITE_SP_LIST_BILLING_ORDERS');
-      return envVal ? `guid:${envVal}` : 'guid:00000000-0000-0000-0000-000000000003';
+      return envVal ? `guid:${envVal}` : 'BillingOrders';
     },
     operations: ['R'],
     category: 'other',
     lifecycle: 'optional',
+    provisioningFields: [
+      { internalName: 'Title', type: 'Text', displayName: 'Order Date' },
+      { internalName: 'OrdererCode', type: 'Text', displayName: 'Orderer Code', required: true },
+      { internalName: 'OrdererName', type: 'Text', displayName: 'Orderer Name' },
+      { internalName: 'OrderCount', type: 'Number', displayName: 'Order Count' },
+      { internalName: 'Item', type: 'Text', displayName: 'Item' },
+    ],
   },
   {
     key: 'pdf_output_log',
