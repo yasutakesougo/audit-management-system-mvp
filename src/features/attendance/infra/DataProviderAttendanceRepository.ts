@@ -13,8 +13,7 @@ import {
     ATTENDANCE_USERS_LIST_TITLE,
 } from '@/sharepoint/fields/attendanceFields';
 import { 
-  resolveInternalNamesDetailed, 
-  areEssentialFieldsResolved 
+  resolveInternalNamesDetailed 
 } from '@/lib/sp/helpers';
 import { buildEq, buildSubstringOf, joinAnd, joinOr } from '@/sharepoint/query/builders';
 
@@ -63,7 +62,7 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
   /**
    * 有効な通所ユーザーマスタ取得
    */
-  async getActiveUsers(signal?: AbortSignal): Promise<AttendanceUserItem[]> {
+  async getActiveUsers(date?: string, signal?: AbortSignal): Promise<AttendanceUserItem[]> {
     try {
       const fields = await this.resolveUserFields();
       if (!fields) return [];
@@ -75,7 +74,21 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
         signal
       });
 
-      return rows.map(r => this.toAttendanceUser(r, fields)).filter((u): u is AttendanceUserItem => !!u);
+      const refDate = date || new Date().toISOString().split('T')[0];
+      return rows.map(r => this.toAttendanceUser(r, fields))
+        .filter((u): u is AttendanceUserItem => {
+          if (!u) return false;
+          // 1. 基本の有効フラグ (列がない場合は true とみなす)
+          if (fields.isActive && !u.IsActive) return false;
+          
+          // 2. 利用ステータスによる除外（欠落時は「利用中」として表示を優先）
+          if (u.UsageStatus && (u.UsageStatus.includes('終了') || u.UsageStatus.includes('退会'))) return false;
+          
+          // 3. 契約終了日による除外（基準日より前の日付なら非表示）
+          if (u.ServiceEndDate && u.ServiceEndDate < refDate) return false;
+          
+          return true;
+        });
     } catch (err) {
       auditLog.warn('attendance:repo', 'Failed to load active users. Returning empty.', err);
       return [];
@@ -186,8 +199,6 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
     const result = resolveInternalNamesDetailed(available, ATTENDANCE_USERS_CANDIDATES as unknown as Record<string, string[]>);
     
     const essentials = ['userCode', 'title'];
-    const isHealthy = areEssentialFieldsResolved(result.resolved as Record<string, string | undefined>, essentials);
-
     reportResourceResolution({
       resourceName: `Attendance:${this.listTitleUsers}`,
       resolvedTitle: this.listTitleUsers,
@@ -195,12 +206,6 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
       essentials,
       lifecycle: 'required'
     });
-
-    if (!isHealthy) {
-        auditLog.warn('attendance:repo', 'Essential user fields missing', { list: this.listTitleUsers, missing: result.missing });
-        // Minimum attempt: if at least we have 'id', try to limp along
-        if (!available.has('Id') && !available.has('ID')) return null;
-    }
 
     const resolved = result.resolved as Record<string, string | string[] | undefined>;
     resolved.select = ['Id', ...Object.values(resolved).filter((v): v is string => typeof v === 'string')].filter((v, i, a) => a.indexOf(v) === i);
@@ -216,7 +221,6 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
     const result = resolveInternalNamesDetailed(available, ATTENDANCE_DAILY_CANDIDATES as unknown as Record<string, string[]>);
     
     const essentials = ['key', 'userCode', 'recordDate', 'status'];
-    const isHealthy = areEssentialFieldsResolved(result.resolved as Record<string, string | undefined>, essentials);
 
     reportResourceResolution({
         resourceName: `Attendance:${this.listTitleDaily}`,
@@ -225,8 +229,6 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
         essentials,
         lifecycle: 'required'
       });
-
-    if (!isHealthy) return null;
 
     const resolved = result.resolved as Record<string, string | string[] | undefined>;
     resolved.select = ['Id', ...Object.values(resolved).filter((v): v is string => typeof v === 'string')].filter((v, i, a) => a.indexOf(v) === i);
@@ -258,8 +260,11 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
 
 
   private toAttendanceUser(row: Record<string, unknown>, fields: Record<string, string | string[] | undefined>): AttendanceUserItem | null {
-    const userCode = String(row[fields.userCode as string] || '');
-    const title = String(row[fields.title as string] || '');
+    const userCodeKey = fields.userCode as string || 'Title';
+    const titleKey = fields.title as string || 'Title';
+
+    const userCode = String(row[userCodeKey] || '');
+    const title = String(row[titleKey] || '');
     if (!userCode || !title) return null;
 
     return {
@@ -269,6 +274,8 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
       IsTransportTarget: fields.isTransportTarget ? Boolean(row[fields.isTransportTarget as string]) : false,
       StandardMinutes: fields.standardMinutes ? Number(row[fields.standardMinutes as string] || 0) : 0,
       IsActive: fields.isActive ? Boolean(row[fields.isActive as string]) : true,
+      ServiceEndDate: fields.serviceEndDate ? (row[fields.serviceEndDate as string] as string | undefined) : undefined,
+      UsageStatus: fields.usageStatus ? (row[fields.usageStatus as string] as string | undefined) : '利用中', // 欠落時は「利用中」
       DefaultTransportToMethod: fields.defaultTransportToMethod ? parseTransportMethod(row[fields.defaultTransportToMethod as string]) : undefined,
       DefaultTransportFromMethod: fields.defaultTransportFromMethod ? parseTransportMethod(row[fields.defaultTransportFromMethod as string]) : undefined,
       DefaultTransportToNote: fields.defaultTransportToNote ? (row[fields.defaultTransportToNote as string] as string | undefined) : undefined,
@@ -277,16 +284,21 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
   }
 
   private toAttendanceDaily(row: Record<string, unknown>, fields: Record<string, string | string[] | undefined>): AttendanceDailyItem | null {
-    const userCode = String(row[fields.userCode as string] || '');
-    const recordDate = String(row[fields.recordDate as string] || '');
+    const userCodeKey = (fields.userCode as string) || 'UserCode';
+    const recordDateKey = (fields.recordDate as string) || 'RecordDate';
+    const keyKey = (fields.key as string) || 'Title';
+    const statusKey = (fields.status as string) || 'Status';
+
+    const userCode = String(row[userCodeKey] || '');
+    const recordDate = String(row[recordDateKey] || '');
     if (!userCode || !recordDate) return null;
 
     return {
       Id: Number(row.Id),
-      Key: String(row[fields.key as string] || ''),
+      Key: String(row[keyKey] || ''),
       UserCode: userCode,
       RecordDate: recordDate,
-      Status: String(row[fields.status as string] || ''),
+      Status: String(row[statusKey] || ''),
       CheckInAt: row[fields.checkInAt as string] as string | null,
       CheckOutAt: row[fields.checkOutAt as string] as string | null,
       ProvidedMinutes: typeof row[fields.providedMinutes as string] === 'number' ? (row[fields.providedMinutes as string] as number) : null,

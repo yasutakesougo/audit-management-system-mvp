@@ -50,7 +50,7 @@ export type ExceptionDataSources = {
   /** Data OS の解決状況 (detectDataLayerExceptions 用) */
   dataOSResolutions: Record<string, {
     resourceName: string;
-    status: 'resolved' | 'missing_optional' | 'missing_required' | 'fallback_triggered' | 'schema_mismatch' | 'pending';
+    status: 'resolved' | 'missing_optional' | 'missing_required' | 'fallback_triggered' | 'schema_mismatch' | 'schema_warning' | 'pending';
     resolvedTitle: string;
     error?: string;
   }>;

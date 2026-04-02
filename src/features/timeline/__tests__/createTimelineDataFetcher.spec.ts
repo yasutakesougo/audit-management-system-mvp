@@ -129,6 +129,7 @@ describe('createTimelineDataFetcher', () => {
         load: vi.fn(),
         save: vi.fn(),
         approve: vi.fn(),
+        scanIntegrity: vi.fn().mockResolvedValue([]),
       };
 
       const fetcher = createTimelineDataFetcher({ dailyRepo });
@@ -147,6 +148,7 @@ describe('createTimelineDataFetcher', () => {
         load: vi.fn(),
         save: vi.fn(),
         approve: vi.fn(),
+        scanIntegrity: vi.fn().mockResolvedValue([]),
       };
 
       const fetcher = createTimelineDataFetcher({ dailyRepo });
@@ -167,6 +169,7 @@ describe('createTimelineDataFetcher', () => {
         load: vi.fn(),
         save: vi.fn(),
         approve: vi.fn(),
+        scanIntegrity: vi.fn().mockResolvedValue([]),
       };
 
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -290,6 +293,7 @@ describe('createTimelineDataFetcher', () => {
         load: vi.fn(),
         save: vi.fn(),
         approve: vi.fn(),
+        scanIntegrity: vi.fn().mockResolvedValue([]),
       };
 
       const incidentRepo: IncidentRepository = {
@@ -334,6 +338,7 @@ describe('createTimelineDataFetcher', () => {
         load: vi.fn(),
         save: vi.fn(),
         approve: vi.fn(),
+        scanIntegrity: vi.fn(),
       };
 
       const incidentRepo: IncidentRepository = {

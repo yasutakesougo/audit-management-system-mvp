@@ -45,12 +45,14 @@ export type CrudCapability = {
 
 export type SpFieldSpec = {
   internalName: string;
+  isEssential?: boolean; // 必須列かどうか（欠落時にFAILにするかWARNにするか）
   typeHint?: string; // "Text" | "DateTime" | "Number" | "Choice" | "Lookup" など（表示用）
 };
 
 export type ListSpec = {
   key: string;             // "Users_Master" 等（あなたの ListKeys に合わせる）
   displayName: string;     // UI 表示名（SharePoint 上のリストタイトル）
+  resolvedTitle: string;   // 解決済みの物理リスト名
   requiredFields: SpFieldSpec[];
   // CRUD チェックに使う "テスト用 minimal item"
   // （安全：専用列が無い場合でも動くように Title を基本にする）

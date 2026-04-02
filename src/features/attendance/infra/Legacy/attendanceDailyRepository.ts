@@ -1,8 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
-/* eslint-disable */
 /**
  * AttendanceDaily SharePoint Repository
  *
@@ -13,8 +8,7 @@
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import {
     ATTENDANCE_DAILY_LIST_TITLE,
-    ATTENDANCE_DAILY_CANDIDATES,
-    ATTENDANCE_DAILY_ENSURE_FIELDS
+    ATTENDANCE_DAILY_CANDIDATES
 } from '@/sharepoint/fields/attendanceFields';
 import { resolveInternalNames, areEssentialFieldsResolved } from '@/lib/sp/helpers';
 import { methodImpliesShuttle, parseTransportMethod, type TransportMethod } from '../../transportMethod';
@@ -91,7 +85,7 @@ type AttendanceDailyResolvedFields = {
   select: string[];
 };
 
-const attendanceDailyProvisioningLatch = new Set<string>();
+type AttendanceDailyCandidateKeys = keyof typeof ATTENDANCE_DAILY_CANDIDATES;
 
 const escapeODataString = (value: string): string => value.replace(/'/g, "''");
 
@@ -110,8 +104,9 @@ const resolveAttendanceDailyFields = async (
   listTitle: string,
 ): Promise<AttendanceDailyResolvedFields | null> => {
   const cacheKey = listTitle.toLowerCase();
-  if (attendanceDailyFieldCache.get(cacheKey)) {
-    return attendanceDailyFieldCache.get(cacheKey)!;
+  const cached = attendanceDailyFieldCache.get(cacheKey);
+  if (cached) {
+    return cached;
   }
 
   const resolve = async (): Promise<AttendanceDailyResolvedFields | null> => {
@@ -123,7 +118,10 @@ const resolveAttendanceDailyFields = async (
        return null;
     }
 
-    const resolvedRaw = resolveInternalNames(available, ATTENDANCE_DAILY_CANDIDATES as any);
+    const resolvedRaw = resolveInternalNames(
+      available, 
+      ATTENDANCE_DAILY_CANDIDATES as unknown as Record<AttendanceDailyCandidateKeys, string[]>
+    );
     const resolved = resolvedRaw as unknown as AttendanceDailyResolvedFields;
     
     if (!areEssentialFieldsResolved(resolved, ['key', 'userCode', 'recordDate', 'status'])) {
@@ -139,22 +137,7 @@ const resolveAttendanceDailyFields = async (
     return resolved;
   };
 
-  let resolved = await resolve();
-
-  // 必須列不足時の自動プロビジョニング DISABLED (Issue: SharePoint column limit 8KB)
-  /*
-  if (!resolved && !attendanceDailyProvisioningLatch.has(cacheKey)) {
-    console.info(`[AttendanceDailyRepository] schema mismatch for "${listTitle}". Attempting provision...`);
-    attendanceDailyProvisioningLatch.add(cacheKey);
-    try {
-      await client.ensureListExists(listTitle, ATTENDANCE_DAILY_ENSURE_FIELDS);
-      console.info(`[AttendanceDailyRepository] Provision successful. Re-resolving...`);
-      resolved = await resolve();
-    } catch (e) {
-      console.warn('[AttendanceDailyRepository] Autoprovision failed', e);
-    }
-  }
-  */
+  const resolved = await resolve();
 
   if (resolved) {
     attendanceDailyFieldCache.set(cacheKey, resolved);

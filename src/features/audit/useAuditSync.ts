@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback } from 'react';
 import { clearAudit, getAuditLogs } from '../../lib/audit';
 import { canonicalJSONStringify, computeEntryHash } from '../../lib/hashUtil';

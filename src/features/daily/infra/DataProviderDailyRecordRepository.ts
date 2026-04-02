@@ -19,7 +19,8 @@ import {
   DAILY_RECORD_ROW_AGGREGATE_CANDIDATES,
   DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS,
 } from '@/sharepoint/fields/dailyFields';
-import { resolveInternalNames, areEssentialFieldsResolved } from '@/lib/sp/helpers';
+import { resolveInternalNamesDetailed, areEssentialFieldsResolved } from '@/lib/sp/helpers';
+import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 import { buildEq, buildGe, buildLe, joinAnd } from '@/sharepoint/query/builders';
 
@@ -255,11 +256,25 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
       const available = await this.provider.getFieldInternalNames(title).catch(() => null);
       if (!available) continue;
 
-      const resolved = resolveInternalNames(available, DAILY_RECORD_CANONICAL_CANDIDATES as unknown as Record<string, string[]>) as unknown as CanonicalResolvedFields;
-      if (areEssentialFieldsResolved(resolved as unknown as Record<string, string | undefined>, DAILY_RECORD_CANONICAL_ESSENTIALS as unknown as string[])) {
+      const { resolved, fieldStatus } = resolveInternalNamesDetailed(
+        available,
+        DAILY_RECORD_CANONICAL_CANDIDATES as unknown as Record<string, string[]>
+      );
+      
+      const essentials = DAILY_RECORD_CANONICAL_ESSENTIALS as unknown as string[];
+      const isHealthy = areEssentialFieldsResolved(resolved as Record<string, string | undefined>, essentials);
 
-        resolved.select = ['Id', 'Created', 'Modified', ...Object.values(resolved).filter((v): v is string => typeof v === 'string')];
-        this.resolution = { canonical: { title, fields: resolved as CanonicalResolvedFields } };
+      reportResourceResolution({
+        resourceName: title,
+        resolvedTitle: title,
+        fieldStatus: fieldStatus as Record<string, { resolvedName?: string; candidates: string[] }>,
+        essentials,
+      });
+
+      if (isHealthy) {
+        const res = resolved as unknown as CanonicalResolvedFields;
+        res.select = ['Id', 'Created', 'Modified', ...Object.values(resolved).filter((v): v is string => typeof v === 'string')];
+        this.resolution = { canonical: { title, fields: res } };
         return this.resolution;
       }
     }
@@ -269,11 +284,25 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
       const available = await this.provider.getFieldInternalNames(title).catch(() => null);
       if (!available) continue;
 
-      const resolved = resolveInternalNames(available, DAILY_RECORD_ROW_AGGREGATE_CANDIDATES as unknown as Record<string, string[]>) as unknown as RowAggregateResolvedFields;
-      if (areEssentialFieldsResolved(resolved as unknown as Record<string, string | undefined>, DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS as unknown as string[])) {
+      const { resolved, fieldStatus } = resolveInternalNamesDetailed(
+        available,
+        DAILY_RECORD_ROW_AGGREGATE_CANDIDATES as unknown as Record<string, string[]>
+      );
 
-        resolved.select = ['Id', 'Title', ...Object.values(resolved).filter((v): v is string => typeof v === 'string')];
-        this.resolution = { rowAggregate: { title, fields: resolved as RowAggregateResolvedFields } };
+      const essentials = DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS as unknown as string[];
+      const isHealthy = areEssentialFieldsResolved(resolved as Record<string, string | undefined>, essentials);
+
+      reportResourceResolution({
+        resourceName: title,
+        resolvedTitle: title,
+        fieldStatus: fieldStatus as Record<string, { resolvedName?: string; candidates: string[] }>,
+        essentials,
+      });
+
+      if (isHealthy) {
+        const res = resolved as unknown as RowAggregateResolvedFields;
+        res.select = ['Id', 'Title', ...Object.values(resolved).filter((v): v is string => typeof v === 'string')];
+        this.resolution = { rowAggregate: { title, fields: res } };
         return this.resolution;
       }
     }

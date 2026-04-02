@@ -172,6 +172,7 @@ const STATUS_COLORS: Record<ResourceStatus, string> = {
   missing_required: '#ff6b6b',
   fallback_triggered: '#00bcd4',
   schema_mismatch: '#ff9800',
+  schema_warning: '#ff9800',
   pending: '#888',
 };
 

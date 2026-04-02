@@ -271,16 +271,16 @@ async function runListChecks(
   spec: ListSpec
 ) {
   // List existence
-  const listInfo = await safe(() => sp.getListByTitle(spec.displayName));
+  const listInfo = await safe(() => sp.getListByTitle(spec.resolvedTitle));
   if (!listInfo.ok) {
     results.push(
       fail({
         key: `lists.exists.${spec.key}`,
         label: `リスト存在：${spec.displayName}`,
         category: "lists",
-        summary: `リストが見つかりません（${spec.displayName}）。`,
+        summary: `リストが見つかりません（${spec.resolvedTitle}）。`,
         detail: listInfo.err,
-        evidence: { listKey: spec.key, listTitle: spec.displayName },
+        evidence: { listKey: spec.key, listTitle: spec.resolvedTitle, label: spec.displayName },
         nextActions: [
           {
             kind: "doc",
@@ -304,7 +304,7 @@ async function runListChecks(
   }
 
   // Schema fields
-  const fields = await safe(() => sp.getFields(spec.displayName));
+  const fields = await safe(() => sp.getFields(spec.resolvedTitle));
   if (!fields.ok) {
     results.push(
       fail({
@@ -313,56 +313,62 @@ async function runListChecks(
         category: "schema",
         summary: "列（フィールド）情報の取得に失敗しました。",
         detail: fields.err,
-        evidence: { listTitle: spec.displayName },
+        evidence: { listTitle: spec.resolvedTitle },
       })
     );
   } else {
-    const present = new Set([
-      ...fields.v.map((f) => f.internalName),
-      ...fields.v.map((f) => f.staticName),
-    ]);
-    const missing = spec.requiredFields.filter(
-      (f) => !present.has(f.internalName)
+    // 1. Case-insensitive lookup map
+    const presentMap = new Map<string, string>();
+    for (const f of fields.v) {
+      presentMap.set(f.internalName.toLowerCase(), f.internalName);
+      if (f.staticName) presentMap.set(f.staticName.toLowerCase(), f.staticName);
+    }
+    
+    // 2. Classify missing fields
+    const missingEssential = spec.requiredFields.filter(
+      (f) => f.isEssential && !presentMap.has(f.internalName.toLowerCase())
     );
-    if (missing.length === 0) {
+    const missingOptional = spec.requiredFields.filter(
+      (f) => !f.isEssential && !presentMap.has(f.internalName.toLowerCase())
+    );
+
+    // 3. Report Results
+    if (missingEssential.length > 0) {
+      results.push(
+        fail({
+          key: `schema.fields.${spec.key}`,
+          label: `スキーマ（必須）：${spec.displayName}`,
+          category: "schema",
+          summary: `必須列が不足しています（${missingEssential.map(f => f.internalName).join(", ")}）。`,
+          evidence: { listTitle: spec.resolvedTitle, missing: missingEssential.map(f => f.internalName) },
+        })
+      );
+    } else if (missingOptional.length > 0) {
+      results.push(
+        warn({
+          key: `schema.fields.${spec.key}`,
+          label: `スキーマ（一部）：${spec.displayName}`,
+          category: "schema",
+          summary: `一部のオプション列名が物理名と一致しません（${missingOptional.map(f => f.internalName).join(", ")}）。`,
+          detail: "case の差異や自動付与サフィックスの可能性があります。業務データ取得には代替解決ロジックが適用されます。",
+          evidence: { listTitle: spec.resolvedTitle, missing: missingOptional.map(f => f.internalName) },
+        })
+      );
+    } else {
       results.push(
         pass({
           key: `schema.fields.${spec.key}`,
           label: `スキーマ：${spec.displayName}`,
           category: "schema",
-          summary: "必須列は揃っています。",
-          evidence: {
-            required: spec.requiredFields,
-            totalFields: fields.v.length,
-          },
-        })
-      );
-    } else {
-      results.push(
-        fail({
-          key: `schema.fields.${spec.key}`,
-          label: `スキーマ：${spec.displayName}`,
-          category: "schema",
-          summary: `必須列が不足しています：${missing
-            .map((m) => m.internalName)
-            .join(", ")}`,
-          detail:
-            "列の追加・型違いが疑われます（手動編集や旧スキーマ）。",
-          evidence: { missing, totalFields: fields.v.length },
-          nextActions: [
-            {
-              kind: "doc",
-              label: "スキーマ更新（provision apply）",
-              value: "provision/README.md",
-            },
-          ],
+          summary: "すべての期待列が物理名と一致しています。",
+          evidence: { listTitle: spec.resolvedTitle },
         })
       );
     }
   }
 
   // Permissions: Read
-  const read = await safe(() => sp.getItemsTop1(spec.displayName));
+  const read = await safe(() => sp.getItemsTop1(spec.resolvedTitle));
   if (!read.ok) {
     results.push(
       fail({
@@ -371,7 +377,7 @@ async function runListChecks(
         category: "permissions",
         summary: "閲覧（Read）に失敗しました。",
         detail: read.err,
-        evidence: { listTitle: spec.displayName },
+        evidence: { listTitle: spec.resolvedTitle },
       })
     );
   } else {
@@ -397,7 +403,7 @@ async function runListChecks(
   }
 
   const created = await safe(() =>
-    sp.createItem(spec.displayName, createBody)
+    sp.createItem(spec.resolvedTitle, createBody)
   );
   if (!created.ok) {
     results.push(
@@ -407,7 +413,7 @@ async function runListChecks(
         category: "permissions",
         summary: "作成（Create）に失敗しました。",
         detail: created.err,
-        evidence: { listTitle: spec.displayName },
+        evidence: { listTitle: spec.resolvedTitle },
       })
     );
     return;
@@ -427,7 +433,7 @@ async function runListChecks(
   await new Promise((r) => setTimeout(r, 500));
 
   const updated = await safe(() =>
-    sp.updateItem(spec.displayName, created.v.id, spec.updateItem)
+    sp.updateItem(spec.resolvedTitle, created.v.id, spec.updateItem)
   );
   if (!updated.ok) {
     results.push(
@@ -437,7 +443,7 @@ async function runListChecks(
         category: "permissions",
         summary: "更新（Update）に失敗しました。",
         detail: updated.err,
-        evidence: { id: created.v.id },
+        evidence: { id: created.v.id, listTitle: spec.resolvedTitle },
       })
     );
   } else {
@@ -453,7 +459,7 @@ async function runListChecks(
   }
 
   const deleted = await safe(() =>
-    sp.deleteItem(spec.displayName, created.v.id)
+    sp.deleteItem(spec.resolvedTitle, created.v.id)
   );
   if (!deleted.ok) {
     // ⚠️ Delete は運用上 NGの組織もあり得るため WARN とする（FAIL ではなく）
@@ -465,7 +471,7 @@ async function runListChecks(
         summary:
           "削除（Delete）に失敗しました（運用上これが許容される場合もあります）。",
         detail: deleted.err,
-        evidence: { id: created.v.id },
+        evidence: { id: created.v.id, listTitle: spec.resolvedTitle },
         nextActions: [
           {
             kind: "copy",

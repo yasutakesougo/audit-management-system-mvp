@@ -21,9 +21,15 @@ class InMemoryAttendanceRepository implements AttendanceRepository {
     this.dailyItems = [...(seed.dailyItems ?? [])];
   }
 
-  public async getActiveUsers(signal?: AbortSignal): Promise<AttendanceUserItem[]> {
+  public async getActiveUsers(date?: string, signal?: AbortSignal): Promise<AttendanceUserItem[]> {
     if (signal?.aborted) return [];
-    return [...this.users];
+    const refDate = date || new Date().toISOString().split('T')[0];
+    return this.users.filter((u) => {
+      if (!u.IsActive) return false;
+      if (u.UsageStatus && (u.UsageStatus.includes('終了') || u.UsageStatus.includes('退会'))) return false;
+      if (u.ServiceEndDate && u.ServiceEndDate < refDate) return false;
+      return true;
+    });
   }
 
   public async getDailyByDate(params: AttendanceRepositoryListParams): Promise<AttendanceDailyItem[]> {

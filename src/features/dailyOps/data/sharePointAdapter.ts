@@ -1,7 +1,7 @@
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import type { DailyOpsSignalsPort, DailyOpsSignal, UpsertDailyOpsSignalInput } from './port';
 import { DAILY_OPS_FIELDS, DAILY_OPS_LIST_TITLE } from './spSchema';
-import { buildEq, joinAnd, joinOr } from '@/sharepoint/query/builders';
+import { buildEq, buildGe, buildLe, joinAnd, joinOr } from '@/sharepoint/query/builders';
 
 type SpItem = Record<string, unknown>;
 
@@ -22,10 +22,11 @@ export const buildCompositeFilter = (
 
   const timeFilter = input.time
     ? buildEq(f.time, input.time)
-    : joinOr([buildEq(f.time, null), buildEq(f.time, '')]);
+    : `(${joinOr([buildEq(f.time, null), buildEq(f.time, '')])})`;
 
   return joinAnd([
-    buildEq(f.date, iso),
+    buildGe(f.date, iso),
+    buildLe(f.date, iso),
     buildEq(f.targetType, input.targetType),
     buildEq(f.targetId, input.targetId),
     buildEq(f.kind, input.kind),
