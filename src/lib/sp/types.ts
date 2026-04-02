@@ -213,6 +213,10 @@ export interface SpRequestOptions {
   quietStatuses?: number[];
   /** If true, do not log any errors to auditLog. */
   silent?: boolean;
+  /** Disable automatic retry for this specific request. */
+  skipRetry?: boolean;
+  /** Custom timeout in ms to replace the default 30s timeout. */
+  timeoutMs?: number;
 }
 
 /** Extended RequestInit with SharePoint-specific steering options */

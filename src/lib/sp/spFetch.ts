@@ -11,7 +11,8 @@ import { isE2eMsalMockEnabled, shouldSkipLogin, skipSharePoint } from '@/lib/env
 import { AuthRequiredError } from '@/lib/errors';
 import { startFetchSpan } from '@/telemetry/fetchSpan';
 import { raiseHttpError } from './helpers';
-import type { RetryReason, SpClientOptions } from './types';
+import type { SpClientOptions } from './types';
+import { spTelemetryStore, type SpFetchTelemetryEvent, type SpMetric } from '@/lib/telemetry/spTelemetryStore';
 
 // ─── Dependencies injected from createSpClient ──────────────────────────────
 
@@ -71,39 +72,32 @@ export function createNormalizePath(
   };
 }
 
-// ─── Concurrency Limiter (Singleton) ────────────────────────────────────────
-class ConcurrencyLimiter {
-  private activeCount = 0;
-  private queue: (() => void)[] = [];
-  constructor(private maxConcurrent: number) {}
+// ─── Concurrency Limiter (Semaphore) ────────────────────────────────────────
+class Semaphore {
+  private active = 0;
+  private readonly queue: Array<() => void> = [];
 
-  async run<T>(fn: () => Promise<T>): Promise<T> {
-    if (this.activeCount >= this.maxConcurrent) {
-      await new Promise<void>(resolve => this.queue.push(resolve));
+  constructor(private readonly limit: number) {}
+
+  async acquire(): Promise<() => void> {
+    if (this.active < this.limit) {
+      this.active += 1;
+      return () => this.release();
     }
-    this.activeCount++;
-    try {
-      return await fn();
-    } finally {
-      this.activeCount--;
-      if (this.queue.length > 0) {
-        const next = this.queue.shift();
-        if (next) next();
-      }
-    }
+
+    return new Promise<() => void>((resolve) => {
+      this.queue.push(() => {
+        this.active += 1;
+        resolve(() => this.release());
+      });
+    });
   }
-}
 
-const globalLimiter = new ConcurrencyLimiter(5);
-
-// ─── Retry classifier (delegates to helpers.ts SSOT) ────────────────────────
-
-function classifyRetry(status: number, url?: string): RetryReason | null {
-  if (status === 408) return 'timeout';
-  if (status === 429) return 'throttle';
-  if ([500, 502, 503, 504].includes(status)) return 'server';
-  if (url?.includes('Throttle.htm')) return 'throttle';
-  return null;
+  private release(): void {
+    this.active = Math.max(0, this.active - 1);
+    const next = this.queue.shift();
+    if (next) next();
+  }
 }
 
 // ─── Internal helpers ───────────────────────────────────────────────────────
@@ -137,22 +131,101 @@ function toHeaders(input?: HeadersInit): Headers {
   return h;
 }
 
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+function parseRetryAfterMs(response: Response): number | undefined {
+  const raw = response.headers.get('Retry-After');
+  if (!raw) return undefined;
 
-function computeDelay(attempt: number, res: Response, baseDelay: number, capDelay: number): number {
-  const ra = res.headers.get('Retry-After');
-  if (ra) {
-    const sec = Number(ra);
-    if (!Number.isNaN(sec) && sec > 0) return Math.max(0, Math.round(sec * 1000));
-    const ts = Date.parse(ra);
-    if (!Number.isNaN(ts)) return Math.max(0, ts - Date.now());
+  const seconds = Number(raw);
+  if (!Number.isNaN(seconds)) {
+    return Math.max(0, seconds * 1000);
   }
-  // Increase delay more aggressively on throttle
-  const isThrottle = res.status === 429 || res.url.includes('Throttle.htm');
-  const multiplier = isThrottle ? 3 : 2;
-  const expo = Math.min(capDelay, baseDelay * Math.pow(multiplier, attempt - 1));
-  const jitter = Math.random() * expo;
-  return Math.max(0, Math.round(jitter));
+
+  const date = Date.parse(raw);
+  if (!Number.isNaN(date)) {
+    return Math.max(0, date - Date.now());
+  }
+
+  return undefined;
+}
+
+function jitter(ms: number): number {
+  const ratio = 0.2; // ±20%
+  const delta = ms * ratio;
+  return Math.max(0, Math.round(ms - delta + Math.random() * delta * 2));
+}
+
+function computeBackoffMs(
+  attempt: number,
+  baseRetryDelayMs: number,
+  maxRetryDelayMs: number,
+  retryAfterMs?: number,
+): number {
+  if (retryAfterMs && retryAfterMs > 0) {
+    return Math.min(retryAfterMs, maxRetryDelayMs);
+  }
+
+  const exp = baseRetryDelayMs * 2 ** Math.max(0, attempt - 1);
+  return Math.min(jitter(exp), maxRetryDelayMs);
+}
+
+function isRetryableStatus(status: number): boolean {
+  return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  if (ms <= 0) return Promise.resolve();
+
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve();
+    }, ms);
+
+    const onAbort = () => {
+      clearTimeout(timer);
+      cleanup();
+      reject(new DOMException('The operation was aborted.', 'AbortError'));
+    };
+
+    const cleanup = () => {
+      if (signal) signal.removeEventListener('abort', onAbort);
+    };
+
+    if (signal) {
+      if (signal.aborted) {
+        onAbort();
+        return;
+      }
+      signal.addEventListener('abort', onAbort, { once: true });
+    }
+  });
+}
+
+function withTimeout(signal: AbortSignal | undefined, timeoutMs?: number): AbortSignal | undefined {
+  if (!timeoutMs || timeoutMs <= 0) return signal;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  const cleanup = () => clearTimeout(timer);
+
+  if (signal) {
+    if (signal.aborted) {
+      controller.abort();
+    } else {
+      signal.addEventListener(
+        'abort',
+        () => {
+          controller.abort();
+          cleanup();
+        },
+        { once: true },
+      );
+    }
+  }
+
+  controller.signal.addEventListener('abort', cleanup, { once: true });
+  return controller.signal;
 }
 
 // ─── Factory ────────────────────────────────────────────────────────────────
@@ -164,6 +237,14 @@ export function createSpFetch(deps: SpFetchDeps) {
 
   const dbg = (event: string, data?: Record<string, unknown>) => { auditLog.debug('sp', event, data); };
 
+  const recordTelemetry = (event: SpFetchTelemetryEvent, payload: Omit<SpMetric, 'timestamp' | 'event'>) => {
+    auditLog.debug(event, payload);
+    spTelemetryStore.record(event, payload);
+  };
+
+  // Factory scope semaphore, limit to 5
+  const semaphore = new Semaphore(5);
+
   const resolveUrl = (targetPath: string) => {
     if (/^https?:\/\//i.test(targetPath)) return targetPath;
     const base = baseUrl.replace(/\/+$/, '');
@@ -172,7 +253,7 @@ export function createSpFetch(deps: SpFetchDeps) {
   };
 
   return async function spFetch(path: string, init: import('./types').SpRequestInit = {}): Promise<Response> {
-    const spOptions = init.spOptions;
+    const spOptions = init.spOptions || {};
     const resolvedPath = path; // normalizePath is applied BEFORE calling spFetch by createSpClient
     const method = (init.method ?? 'GET').toUpperCase();
 
@@ -184,7 +265,7 @@ export function createSpFetch(deps: SpFetchDeps) {
     if (AUDIT_DEBUG || isE2EWithMsalMock) {
       auditLog.debug('sp:fetch', 'request', {
         path: resolvedPath.substring(0, 80),
-        method: init.method || 'GET',
+        method: method,
         isE2EWithMsalMock,
         shouldMock,
         baseUrl: baseUrl ? `${baseUrl.substring(0, 40)}...` : '(empty)',
@@ -194,7 +275,7 @@ export function createSpFetch(deps: SpFetchDeps) {
     // Dev / demo / skip-login mock responses (スパン不要)
     if (shouldMock) {
       if (AUDIT_DEBUG) {
-        auditLog.debug('sp:mock', 'mock_response', { method: init.method || 'GET', path: resolvedPath });
+        auditLog.debug('sp:mock', 'mock_response', { method: method, path: resolvedPath });
       }
       const mockResponse = (data: unknown, status = 200) => {
         const response = new Response(JSON.stringify(data), {
@@ -221,26 +302,54 @@ export function createSpFetch(deps: SpFetchDeps) {
     }
 
     // ── Real fetch ──
-    const token1 = await acquireToken();
+    const skipAuthCheck = shouldSkipLogin(config) || isE2eMsalMockEnabled(config);
+    let initialToken: string | null = null;
+    if (!skipAuthCheck) {
+      initialToken = await acquireToken();
+      if (!initialToken) throw new AuthRequiredError();
+    }
+    
     if (debugEnabled && tokenMetricsCarrier.__TOKEN_METRICS__) {
       dbg('token metrics snapshot', tokenMetricsCarrier.__TOKEN_METRICS__);
     }
 
-    const skipAuthCheck = shouldSkipLogin(config) || isE2eMsalMockEnabled(config);
-    if (!token1 && !skipAuthCheck) throw new AuthRequiredError();
+    const url = resolveUrl(resolvedPath);
+    const queuedAt = Date.now();
 
-    const doFetch = async (token: string | null) => {
-      return globalLimiter.run(async () => {
-        const url = resolveUrl(resolvedPath);
-        const headers = toHeaders(init.headers);
-        if (token) headers.set('Authorization', `Bearer ${token}`);
-        const method = (init.method ?? 'GET').toUpperCase();
+    // Observability span
+    const span = startFetchSpan({ layer: 'sp', method, path: resolvedPath });
 
-        if (AUDIT_DEBUG) {
-          auditLog.debug('sp:fetch', 'reached', { method, url: url.split('?')[0] });
+    const maxRetries = retrySettings.maxAttempts - 1;
+    const baseDelay = retrySettings.baseDelay;
+    const capDelay = retrySettings.capDelay;
+    
+    // Default 30s timeout if none provided explicitly
+    const mergedSignal = withTimeout(init.signal ?? undefined, spOptions.timeoutMs ?? 30000);
+
+    const isUpdate = ['POST', 'PUT', 'PATCH', 'MERGE', 'DELETE'].includes(method);
+    const skipRetry = spOptions.skipRetry ?? false;
+
+    const release = await semaphore.acquire();
+
+    try {
+      const startedAt = Date.now();
+      const queuedMs = startedAt - queuedAt;
+
+      recordTelemetry('sp:request_start', { url: url.split('?')[0], method, queuedMs });
+
+      for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+        const attemptStartedAt = Date.now();
+        
+        let token = initialToken;
+        if (!token && !skipAuthCheck) {
+          token = await acquireToken();
+          if (!token) throw new AuthRequiredError();
         }
 
-        if (['POST', 'PUT', 'PATCH', 'MERGE'].includes(method)) {
+        const headers = toHeaders(init.headers);
+        if (token) headers.set('Authorization', `Bearer ${token}`);
+
+        if (isUpdate) {
           const accept = headers.get('Accept');
           if (!accept || !accept.trim() || accept.trim().toLowerCase() === 'undefined') {
             headers.set('Accept', 'application/json;odata=nometadata');
@@ -249,6 +358,10 @@ export function createSpFetch(deps: SpFetchDeps) {
           if (!contentType || !contentType.trim() || contentType.trim().toLowerCase() === 'undefined') {
             headers.set('Content-Type', 'application/json;odata=nometadata');
           }
+          // Force OData 3.0 to avoid issues per user's strict instruction
+          if (!headers.has('OData-Version')) {
+            headers.set('OData-Version', '3.0');
+          }
         } else {
           const currentAccept = headers.get('Accept');
           if (!currentAccept || currentAccept.trim() === '' || currentAccept.trim() === '*/*') {
@@ -256,68 +369,133 @@ export function createSpFetch(deps: SpFetchDeps) {
           }
         }
 
-        // eslint-disable-next-line no-restricted-globals
-        return fetch(url, { ...init, headers }).catch((e: unknown) => {
-          if (isAbortError(e)) throw e;
-          throw e;
-        });
-      });
-    };
+        try {
+          // eslint-disable-next-line no-restricted-globals
+          const response = await fetch(url, { ...init, headers, signal: mergedSignal });
+          const retryAfterMs = parseRetryAfterMs(response);
 
-    // ── Observability span ──
-    const span = startFetchSpan({ layer: 'sp', method, path: resolvedPath });
-
-    // ── Retry loop ──
-    let response: Response;
-    try { response = await doFetch(token1); } catch (e) {
-      span.error(e instanceof Error ? e.name : 'NetworkError');
-      if (isAbortError(e)) throw e;
-      throw e;
-    }
-
-    const { maxAttempts, baseDelay, capDelay } = retrySettings;
-    let attempt = 1;
-    while (!response.ok && attempt < maxAttempts) {
-      const reason = classifyRetry(response.status, response.url);
-      if (!reason) break;
-      const delayMs = computeDelay(attempt, response, baseDelay, capDelay);
-      if (onRetry) {
-        try { onRetry(response, { attempt, status: response.status, reason, delayMs }); }
-        catch (error) { auditLog.debug('sp:retry', 'callback_failed', { error: String(error) }); }
-      }
-      auditLog.debug('sp:retry', { attempt, status: response.status, reason, delayMs });
-      if (delayMs > 0) { await sleep(delayMs); } else { await Promise.resolve(); }
-      attempt += 1;
-      try { response = await doFetch(token1); } catch (e) {
-        span.error(e instanceof Error ? e.name : 'NetworkError', attempt);
-        if (isAbortError(e)) throw e;
-        throw e;
-      }
-    }
-
-    // ── Auth refresh on 401/403 ──
-    if (!response.ok && (response.status === 401 || response.status === 403)) {
-      if (!skipAuthCheck) {
-        const token2 = await acquireToken();
-        if (token2 && token2 !== token1) {
-          try { response = await doFetch(token2); } catch (e) {
-            if (isAbortError(e)) throw e;
-            throw e;
+          if (response.ok) {
+            recordTelemetry('sp:request_end', {
+              url: url.split('?')[0],
+              method,
+              status: response.status,
+              attempt,
+              queuedMs,
+              durationMs: Date.now() - attemptStartedAt,
+            });
+            span.succeed(response.status, attempt - 1);
+            return response;
           }
-        } else if (!token2) { throw new AuthRequiredError(); }
+
+          let retryable = !skipRetry && isRetryableStatus(response.status);
+          
+          if (isUpdate && retryable && response.status !== 429 && response.status !== 503) {
+             // For update methods, be conservative: only retry 429 and 503 by default unless explicitly skipping
+             retryable = false;
+          }
+
+          if (retryable && attempt <= maxRetries) {
+            const delayMs = computeBackoffMs(attempt, baseDelay, capDelay, retryAfterMs);
+
+            if (response.status === 429) {
+              recordTelemetry('sp:throttled', {
+                url: url.split('?')[0],
+                method,
+                status: response.status,
+                attempt,
+                retryAfterMs: delayMs,
+                durationMs: Date.now() - attemptStartedAt,
+              });
+            }
+
+            recordTelemetry('sp:retry', {
+              url: url.split('?')[0],
+              method,
+              status: response.status,
+              attempt,
+              retryAfterMs: delayMs,
+              durationMs: Date.now() - attemptStartedAt,
+            });
+
+            if (onRetry) {
+              const reason = response.status === 429 ? 'throttle' : 'server';
+              try { onRetry(response, { attempt, status: response.status, reason, delayMs }); }
+              catch (e) { auditLog.debug('sp:retry', 'callback_failed', { error: String(e) }); }
+            }
+
+            await sleep(delayMs, mergedSignal);
+            continue;
+          }
+
+          // 401/403 Token Refresh logic from original code
+          if (!response.ok && (response.status === 401 || response.status === 403)) {
+            if (!skipAuthCheck) {
+              const token2 = await acquireToken();
+              if (token2 && token2 !== initialToken) {
+                initialToken = token2; // Set for next loop, immediately retry
+                continue;
+              }
+            }
+          }
+
+          // Fall through: max retries reached or non-retryable response
+          recordTelemetry('sp:request_failed', {
+            url: url.split('?')[0],
+            method,
+            status: response.status,
+            attempt,
+            durationMs: Date.now() - attemptStartedAt,
+          });
+          span.fail(response.status, 'SpHttpError', attempt - 1);
+
+          if (throwOnError) {
+             await raiseHttpError(response, { url, method, spOptions });
+          }
+          return response;
+
+        } catch (error) {
+          if (isAbortError(error)) {
+            recordTelemetry('sp:request_failed', {
+              url: url.split('?')[0],
+              method,
+              attempt,
+              durationMs: Date.now() - attemptStartedAt,
+              message: 'aborted',
+            });
+            span.error('AbortError', attempt - 1);
+            throw error;
+          }
+
+          const retryable = !skipRetry && attempt <= maxRetries;
+          if (retryable) {
+            const delayMs = computeBackoffMs(attempt, baseDelay, capDelay);
+            recordTelemetry('sp:retry', {
+              url: url.split('?')[0],
+              method,
+              attempt,
+              retryAfterMs: delayMs,
+              durationMs: Date.now() - attemptStartedAt,
+              message: error instanceof Error ? error.message : 'NetworkError',
+            });
+            await sleep(delayMs, mergedSignal);
+            continue;
+          }
+
+          recordTelemetry('sp:request_failed', {
+            url: url.split('?')[0],
+            method,
+            attempt,
+            durationMs: Date.now() - attemptStartedAt,
+            message: error instanceof Error ? error.message : 'NetworkError',
+          });
+          span.error('NetworkError', attempt - 1);
+          throw error;
+        }
       }
-    }
 
-    // ── Span completion ──
-    if (response.ok) {
-      span.succeed(response.status, attempt - 1);
-    } else {
-      span.fail(response.status, 'SpHttpError', attempt - 1);
+      throw new Error(`Unreachable retry loop exit: ${url}`);
+    } finally {
+      release();
     }
-
-    if (!response.ok && throwOnError) {
-      await raiseHttpError(response, { url: resolveUrl(resolvedPath), method, spOptions });
-    }
-    return response;
   };
 }

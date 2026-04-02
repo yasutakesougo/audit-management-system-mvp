@@ -27,88 +27,6 @@ export type UserItem = {
 const SITE = `${readOptionalEnv('VITE_SP_SITE_URL') ?? 'https://contoso.sharepoint.com/sites/wf'}/_api/web`;
 const USERS_LIST = "lists/getbytitle('Users')/items";
 
-// @see Issue #767: createUsersClient() ファクトリパターンへの完全移行を検討（下記 L122）
-// eslint-disable-next-line no-restricted-globals -- spWriteResilient の DI（Phase 3 で createUsersClient に移行予定）
-const fetcher = (path: string, init?: RequestInit) => fetch(path, init);
-
-const buildUsersUrl = (_list: string, itemId?: number) =>
-  typeof itemId === "number" ? `${SITE}/${USERS_LIST}(${itemId})` : `${SITE}/${USERS_LIST}`;
-
-const isFailure = <T>(result: SpWriteResult<T>): result is FailedResult<T> => !result.ok;
-
-function assertOk<T>(result: SpWriteResult<T>): T {
-  if (isFailure(result)) {
-    const status = result.status ?? result.error.status;
-    const error: WithStatusError = Object.assign(
-      result.error ?? new Error(`Write failed${status ? ` (${status})` : ""}`),
-      {
-        status,
-        code: result.error.code ?? (status ? String(status) : undefined),
-        response: result.raw,
-      },
-    );
-    throw error;
-  }
-
-  return result.data as T;
-}
-
-/**
- * Create a new user in SharePoint Users list.
- * @param input User data to create
- * @returns Created user item with SharePoint metadata
- */
-export async function createUser(input: CreateUserInput): Promise<UserItem> {
-  const result = await spWriteResilient<UserItem>({
-    list: USERS_LIST,
-    method: "POST",
-    body: input,
-    fetcher,
-    urlBuilder: buildUsersUrl,
-    retries: 1,
-  });
-  return assertOk(result);
-}
-
-/**
- * Update an existing user in SharePoint Users list.
- * @param id SharePoint item ID
- * @param input Partial user data to update
- * @param etag Optional ETag for optimistic concurrency
- * @returns Updated user item with SharePoint metadata
- */
-export async function updateUser(id: number, input: UpdateUserInput, etag?: string): Promise<UserItem> {
-  const result = await spWriteResilient<UserItem>({
-    list: USERS_LIST,
-    itemId: id,
-    method: "PATCH",
-    body: input,
-    ifMatch: etag,
-    fetcher,
-    urlBuilder: buildUsersUrl,
-    retries: 1,
-  });
-  return assertOk(result);
-}
-
-/**
- * Delete a user from SharePoint Users list.
- * @param id SharePoint item ID
- * @param etag ETag for optimistic concurrency (defaults to "*" for force delete)
- */
-export async function deleteUser(id: number, etag: string = "*"): Promise<void> {
-  const result = await spWriteResilient<void>({
-    list: USERS_LIST,
-    itemId: id,
-    method: "DELETE",
-    ifMatch: etag,
-    fetcher,
-    urlBuilder: buildUsersUrl,
-    retries: 0, // No retries for DELETE to avoid accidental double deletion
-  });
-  return assertOk(result);
-}
-
 /**
  * Factory function for creating Users adapter with custom spFetch.
  * Useful for dependency injection and testing with authenticated clients.
@@ -123,6 +41,28 @@ export async function deleteUser(id: number, etag: string = "*"): Promise<void> 
 // eslint-disable-next-line no-restricted-globals -- 型参照のみ（DI パラメータ）
 export function createUsersClient(spFetch: typeof fetch) {
   const clientFetcher = (path: string, init?: RequestInit) => spFetch(path, init);
+
+  const buildUsersUrl = (_list: string, itemId?: number) =>
+    typeof itemId === "number" ? `${SITE}/${USERS_LIST}(${itemId})` : `${SITE}/${USERS_LIST}`;
+
+  const isFailure = <T>(result: SpWriteResult<T>): result is FailedResult<T> => !result.ok;
+
+  function assertOk<T>(result: SpWriteResult<T>): T {
+    if (isFailure(result)) {
+      const status = result.status ?? result.error.status;
+      const error: WithStatusError = Object.assign(
+        result.error ?? new Error(`Write failed${status ? ` (${status})` : ""}`),
+        {
+          status,
+          code: result.error.code ?? (status ? String(status) : undefined),
+          response: result.raw,
+        },
+      );
+      throw error;
+    }
+
+    return result.data as T;
+  }
 
   return {
     async createUser(input: CreateUserInput): Promise<UserItem> {
