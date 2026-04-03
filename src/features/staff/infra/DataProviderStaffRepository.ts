@@ -5,6 +5,7 @@ import {
   washRow,
   washRows
 } from '@/lib/sp/helpers';
+import { emitDriftRecord, type DriftResolutionType, type DriftType } from '@/features/diagnostics/drift/domain/driftLogic';
 import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
 import {
   STAFF_MASTER_CANDIDATES,
@@ -54,7 +55,12 @@ export class DataProviderStaffRepository implements StaffRepository {
         
         const { resolved, fieldStatus } = resolveInternalNamesDetailed(
           available,
-          STAFF_MASTER_CANDIDATES as unknown as Record<string, string[]>
+          STAFF_MASTER_CANDIDATES as unknown as Record<string, string[]>,
+          {
+            onDrift: (fieldName, resolutionType, driftType) => {
+              emitDriftRecord(this.listTitle, fieldName, resolutionType as DriftResolutionType, driftType as DriftType);
+            }
+          }
         );
 
         const essentials: string[] = ['id', 'staffId', 'fullName', 'isActive'];

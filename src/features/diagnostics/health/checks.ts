@@ -5,9 +5,10 @@ import {
   ListSpec,
   SpFieldSpec,
 } from "./types";
-import { resolveInternalNamesDetailed } from "@/lib/sp/helpers";
+import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 import { SpAdapter } from "./spAdapter";
 import { getRuntimeEnv } from "@/env";
+import { emitDriftRecord, type DriftResolutionType, type DriftType } from '@/features/diagnostics/drift/domain/driftLogic';
 
 // statusRank is retained for potential future worst-of aggregation.
 const _statusRank: Record<HealthStatus, number> = { pass: 0, warn: 1, fail: 2 };
@@ -325,7 +326,12 @@ async function runListChecks(
       spec.requiredFields.map(f => [f.internalName, (f as SpFieldSpec).candidates ?? [f.internalName]])
     );
     const available = new Set(fields.v.map(f => f.internalName));
-    const resolution = resolveInternalNamesDetailed(available, candidates);
+    const resolution = resolveInternalNamesDetailed(available, candidates, {
+      onDrift: (fieldName, resolutionType, driftType) => {
+        // 診断ツール実行時も、ドリフトを正規のイベントとして記録する
+        emitDriftRecord(spec.resolvedTitle, fieldName, resolutionType as DriftResolutionType, driftType as DriftType);
+      }
+    });
     const { missing, fieldStatus } = resolution;
 
     // 2. Classify missing by essentiality

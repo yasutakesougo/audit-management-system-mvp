@@ -92,8 +92,10 @@ export function createSpClient(
     getListItemsByTitle, listItems,
     addListItemByTitle, getItemById, getItemByIdWithEtag,
     createItem, updateItemByTitle, updateItem,
+    patchListItem,
     deleteItemByTitle, deleteItem,
     tryGetListMetadata, getListFieldInternalNames, ensureListExists,
+    fetchExistingFields, addFieldToList,
     getExistingListTitlesAndIds,
   } = listOps;
 
@@ -125,8 +127,10 @@ export function createSpClient(
     updateItemByTitle, deleteItemByTitle,
     getItemById, getItemByIdWithEtag,
     createItem, updateItem, deleteItem,
+    patchListItem,
     batch, postBatch,
     ensureListExists, tryGetListMetadata, getListFieldInternalNames,
+    fetchExistingFields, addFieldToList,
     getExistingListTitlesAndIds,
   };
 }

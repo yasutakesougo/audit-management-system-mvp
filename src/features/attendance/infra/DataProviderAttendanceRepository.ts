@@ -16,6 +16,7 @@ import {
   resolveInternalNamesDetailed, 
   areEssentialFieldsResolved 
 } from '@/lib/sp/helpers';
+import { emitDriftRecord, type DriftResolutionType, type DriftType } from '@/features/diagnostics/drift/domain/driftLogic';
 import { buildEq, buildSubstringOf, joinAnd, joinOr } from '@/sharepoint/query/builders';
 
 import { 
@@ -201,7 +202,15 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
     const available = await this.provider.getFieldInternalNames(this.listTitleUsers).catch(() => null);
     if (!available) return null;
 
-    const result = resolveInternalNamesDetailed(available, ATTENDANCE_USERS_CANDIDATES as unknown as Record<string, string[]>);
+    const result = resolveInternalNamesDetailed(
+      available,
+      ATTENDANCE_USERS_CANDIDATES as unknown as Record<string, string[]>,
+      {
+        onDrift: (fieldName, resolutionType, driftType) => {
+          emitDriftRecord(this.listTitleUsers, fieldName, resolutionType as DriftResolutionType, driftType as DriftType);
+        }
+      }
+    );
     
     const essentials = ['userCode', 'title'];
     reportResourceResolution({
@@ -223,7 +232,15 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
     if (this.resolvedDaily) return this.resolvedDaily;
     const available = await this.provider.getFieldInternalNames(this.listTitleDaily).catch(() => null);
     if (!available) return null;
-    const result = resolveInternalNamesDetailed(available, ATTENDANCE_DAILY_CANDIDATES as unknown as Record<string, string[]>);
+    const result = resolveInternalNamesDetailed(
+      available,
+      ATTENDANCE_DAILY_CANDIDATES as unknown as Record<string, string[]>,
+      {
+        onDrift: (fieldName, resolutionType, driftType) => {
+          emitDriftRecord(this.listTitleDaily, fieldName, resolutionType as DriftResolutionType, driftType as DriftType);
+        }
+      }
+    );
     
     const essentials = ['key', 'userCode', 'recordDate', 'status'];
     if (!areEssentialFieldsResolved(result.resolved as Record<string, string | undefined>, essentials)) {
@@ -252,7 +269,15 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
     if (this.resolvedNurse) return this.resolvedNurse;
     const available = await this.provider.getFieldInternalNames(this.listTitleNurse).catch(() => null);
     if (!available) return null;
-    const result = resolveInternalNamesDetailed(available, NURSE_OBS_CANDIDATES as unknown as Record<string, string[]>);
+    const result = resolveInternalNamesDetailed(
+      available,
+      NURSE_OBS_CANDIDATES as unknown as Record<string, string[]>,
+      {
+        onDrift: (fieldName, resolutionType, driftType) => {
+          emitDriftRecord(this.listTitleNurse, fieldName, resolutionType as DriftResolutionType, driftType as DriftType);
+        }
+      }
+    );
     
     const userField = ['UserLookupId', 'UserLookup', 'UserId'].find(f => available.has(f));
     const dateField = ['ObservedAt', 'ObsDate', 'RecordDate', 'Created'].find(f => available.has(f));
