@@ -4,12 +4,9 @@ import type { AssessmentBridgeResult, ProvenanceEntry } from '@/features/plannin
 import type { MonitoringToPlanningResult } from '@/features/planning-sheet/monitoringToPlanningBridge';
 import type { ImportAuditRecord } from '@/features/planning-sheet/stores/importAuditStore';
 import type { UsePlanningSheetFormReturn } from '@/features/planning-sheet/hooks/usePlanningSheetForm';
-
-type ToastState = {
-  open: boolean;
-  message: string;
-  severity: 'success' | 'error';
-};
+import type { MonitoringToPlanningBridge } from '@/domain/isp/bridge';
+import type { PlanningSheetFormValues } from '@/domain/isp/schema';
+import type { ToastState } from './useSupportPlanningSheetUiState';
 
 type SaveAuditRecordFn = (params: Omit<ImportAuditRecord, 'id'>) => ImportAuditRecord;
 
@@ -119,8 +116,44 @@ export function useImportHandlers({
     }
   }, [account?.name, form, planningSheetId, saveAuditRecord, setSessionProvenance, setToast]);
 
+  const handleReflectCandidate = React.useCallback((
+    bridge: MonitoringToPlanningBridge,
+    candidateId: string,
+  ) => {
+    const candidate = bridge.candidates.find((c) => c.id === candidateId);
+    if (!candidate) return;
+
+    // Mapping bridge candidate type to form field
+    const fieldMap: Record<string, keyof PlanningSheetFormValues> = {
+      observation: 'observationFacts',
+      hypothesis: 'collectedInformation',
+      environmental: 'environmentalAdjustments',
+      strategy: 'concreteApproaches',
+      risk: 'observationFacts',
+    };
+
+    const targetField = fieldMap[candidate.type] ?? 'concreteApproaches';
+    
+    const current = form.values[targetField] ?? '';
+    const currentStr = typeof current === 'string' ? current : String(current);
+
+    // Simple deduplication check
+    if (currentStr.includes(candidate.content.slice(0, 30))) {
+      setToast({ open: true, message: 'この内容は既に反映されています', severity: 'info' });
+      return;
+    }
+
+    const updated = currentStr ? `${currentStr}\n\n${candidate.content}` : candidate.content;
+    form.setFieldValue(targetField as keyof PlanningSheetFormValues, updated);
+
+    setToast({ open: true, message: `「${candidate.type}」の提案を反映しました`, severity: 'success' });
+
+    // Optional: Record persistent audit if needed
+  }, [form, setToast]);
+
   return {
     handleAssessmentImport,
     handleMonitoringImport,
+    handleReflectCandidate,
   };
 }

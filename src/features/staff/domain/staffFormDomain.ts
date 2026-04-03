@@ -111,11 +111,11 @@ export function toStaffStorePayload(values: FormValues): Partial<Staff> {
     email: sanitize(values.Email),
     phone: sanitize(values.Phone),
     role: sanitize(values.Role),
-    workDays: values.WorkDays.length ? [...values.WorkDays] : undefined,
-    certifications: values.Certifications.length ? [...values.Certifications] : undefined,
+    workDays: [...values.WorkDays],
+    certifications: [...values.Certifications],
     active: values.IsActive,
     baseShiftStartTime: baseStart ? baseStart : undefined,
     baseShiftEndTime: baseEnd ? baseEnd : undefined,
-    baseWorkingDays: workingDays.length ? [...workingDays] : undefined,
+    baseWorkingDays: [...workingDays],
   };
 }

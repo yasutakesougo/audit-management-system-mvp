@@ -374,16 +374,16 @@ async function runListChecks(
       results.push(
         warn({
           key: `schema.fields.${spec.key}`,
-          label: `スキーマ（ドリフト）：${spec.displayName}`,
+          label: `スキーマ（内部名乖離）：${spec.displayName}`,
           category: "schema",
-          summary: `列名にサフィックスが付与されています（${drifted.map(f => `${f.internalName} -> ${fieldStatus[f.internalName].resolvedName}`).join(", ")}）。`,
-          detail: "SharePoint により列名が重複回避のためリネームされています（例: FullName0）。物理的な削除またはビューの詳細名確認を推奨しますが、アプリの基本動作は継続可能です。",
+          summary: `${drifted.length}個の列で内部名の乖離（Drift）を検出しました。`,
+          detail: `SharePoint上の内部名にサフィックス（例: _x0030_）が付与されていますが、アプリ側で自動吸収しています。\n乖離項目: ${drifted.map(f => `${f.internalName} → ${fieldStatus[f.internalName].resolvedName}`).join(", ")}`,
           evidence: { listTitle: spec.resolvedTitle, drifted: drifted.map(f => ({ expected: f.internalName, actual: fieldStatus[f.internalName].resolvedName })) },
           nextActions: [
             {
               kind: "copy",
-              label: "【カテゴリ: ドリフト】管理者: ドリフト列の確認と重複列削除を検討",
-              value: `リスト「${spec.resolvedTitle}」で数字サフィックス付き列（例: FieldName0）を確認し、旧列の削除を検討してください。アプリの動作は継続可能です。`,
+              label: "乖離列の確認依頼",
+              value: `リスト「${spec.resolvedTitle}」の「${drifted[0].internalName}」が「${fieldStatus[drifted[0].internalName].resolvedName}」として解決されています。不要な重複列がないか確認してください。`,
             },
           ],
         })

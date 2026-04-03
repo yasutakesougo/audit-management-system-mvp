@@ -11,8 +11,13 @@ import {
     Divider,
     Paper,
     Stack,
+    Tab,
+    Tabs,
     Typography,
 } from "@mui/material";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import LaunchIcon from "@mui/icons-material/Launch";
+import DescriptionIcon from "@mui/icons-material/Description";
 import React from "react";
 import { StatusChip, statusColor } from "./components/StatusChip";
 import { toAdminSummary } from "./toAdminSummary";
@@ -54,6 +59,7 @@ async function copyToClipboard(text: string): Promise<void> {
 export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
   const { report, loading, error, run } = useHealthChecks(props.ctx);
   const [openKeys, setOpenKeys] = React.useState<Record<string, boolean>>({});
+  const [activeTab, setActiveTab] = React.useState<string | "all">("all");
   const sp = useSP();
 
   // Save state management
@@ -112,6 +118,22 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
       console.error('[HealthDiagnosisPage] Failed to record to SharePoint:', err);
     }
   };
+
+  const categoryLabels: Record<string, string> = {
+    all: "すべて",
+    config: "設定",
+    auth: "認証",
+    connectivity: "通信",
+    lists: "リスト",
+    schema: "構造整合性",
+    permissions: "権限",
+  };
+
+  const filteredResults = React.useMemo(() => {
+    if (!report) return [];
+    if (activeTab === "all") return report.results;
+    return report.results.filter((r) => (r.category as string) === activeTab);
+  }, [report, activeTab]);
 
   return (
     <Box sx={{ p: 2 }}>
@@ -355,28 +377,22 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
                     overflow: "auto",
                   }}
                 >
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-word",
-                      fontSize: "0.85rem",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {Object.entries(report.byCategory)
-                      .filter(([, cat]) => cat.overall !== "pass")
-                      .map(
-                        ([name, cat]) =>
-                          `[${name.toUpperCase()}] PASS: ${cat.counts.pass}, WARN: ${cat.counts.warn}, FAIL: ${cat.counts.fail}`
-                      )
-                      .join("\n")}
-                  </Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {Object.entries(report.byCategory).map(([name, cat]) => (
+                      <Chip
+                        key={name}
+                        size="small"
+                        label={`${categoryLabels[name] || name}: ${cat.counts.fail}/${cat.counts.warn}/${cat.counts.pass}`}
+                        color={statusColor(cat.overall)}
+                        variant={cat.overall === "pass" ? "outlined" : "filled"}
+                        sx={{ fontSize: '0.75rem', height: 24 }}
+                      />
+                    ))}
+                  </Stack>
                 </Box>
               </Stack>
             </Stack>
 
-            <Divider sx={{ my: 1.5 }} />
             <Typography variant="caption" color="text.secondary">
               💾 ボタン「SharePoint に保存」でこの情報を記録します
             </Typography>
@@ -384,30 +400,50 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
         )}
 
         {/* ─────────────────────────────────────────────────────────────
-            カテゴリ別
+            カテゴリ別フィルタ (Tabs)
             ───────────────────────────────────────────────────────────── */}
         {report && (
-          <Paper variant="outlined" sx={{ p: 2 }}>
-            <Typography variant="subtitle1" sx={{ mb: 1 }}>
-              カテゴリ別
-            </Typography>
-            <Stack
-              direction="row"
-              spacing={1}
-              flexWrap="wrap"
-              useFlexGap
-              sx={{ mt: 1 }}
-            >
-              {Object.entries(report.byCategory).map(([cat, v]) => (
-                <Chip
-                  key={cat}
-                  label={`${cat}: ${v.overall.toUpperCase()} (P${v.counts.pass}/W${v.counts.warn}/F${v.counts.fail})`}
-                  color={statusColor(v.overall)}
-                  variant="outlined"
-                />
-              ))}
-            </Stack>
-          </Paper>
+           <Paper variant="outlined" sx={{ bgcolor: 'background.paper' }}>
+             <Tabs
+               value={activeTab}
+               onChange={(_, v) => setActiveTab(v)}
+               variant="scrollable"
+               scrollButtons="auto"
+               sx={{ borderBottom: 1, borderColor: 'divider' }}
+             >
+               <Tab 
+                 value="all"
+                 label={
+                   <Stack direction="row" spacing={1} alignItems="center">
+                     <span>すべて</span>
+                     <Chip 
+                       size="small" 
+                       label={report.results.length} 
+                       variant="outlined"
+                       sx={{ height: 20, fontSize: '0.65rem' }} 
+                     />
+                   </Stack>
+                 } 
+               />
+               {(Object.entries(report.byCategory) as [string, any][]).map(([cat, v]) => (
+                 <Tab 
+                   key={cat} 
+                   value={cat}
+                   label={
+                     <Stack direction="row" spacing={1} alignItems="center">
+                       <span>{categoryLabels[cat] || cat}</span>
+                       <Chip 
+                         size="small" 
+                         label={v.counts.fail > 0 ? v.counts.fail : v.counts.warn > 0 ? v.counts.warn : v.counts.pass}
+                         color={statusColor(v.overall)}
+                         sx={{ height: 20, fontSize: '0.65rem' }}
+                       />
+                     </Stack>
+                   }
+                 />
+               ))}
+             </Tabs>
+           </Paper>
         )}
 
         {/* ─────────────────────────────────────────────────────────────
@@ -415,11 +451,13 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
             ───────────────────────────────────────────────────────────── */}
         {report && (
           <Paper variant="outlined" sx={{ p: 2 }}>
-            <Typography variant="subtitle1">個別チェック</Typography>
+            <Typography variant="subtitle1" sx={{ mb: 1 }}>
+              個別チェック ({categoryLabels[activeTab] || activeTab})
+            </Typography>
             <Divider sx={{ my: 1 }} />
 
             <Stack spacing={1}>
-              {report.results.map((r) => {
+              {filteredResults.map((r) => {
                 const open = Boolean(openKeys[r.key]);
                 return (
                   <Paper key={r.key} variant="outlined" sx={{ p: 1.5 }}>
@@ -485,16 +523,38 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
                           >
                             証跡（evidence）
                           </Typography>
-                          <pre
-                            style={{
-                              margin: 0,
-                              whiteSpace: "pre-wrap",
-                              overflow: "auto",
-                              maxHeight: "200px",
-                            }}
-                          >
-                            {JSON.stringify(r.evidence, null, 2)}
-                          </pre>
+                          
+                          {/* 構造整合性（ドリフト）情報の特別表示 */}
+                          {r.category === "schema" && Array.isArray(r.evidence.drifted) ? (
+                            <Box sx={{ mt: 0.5, p: 1, bgcolor: "background.paper", borderRadius: 1, border: "1px dashed", borderColor: "warning.main" }}>
+                              <Typography variant="body2" sx={{ mb: 1, fontWeight: 600, color: "warning.main" }}>
+                                ⚠️ 内部名マッピングの自動調整（整合性）を検出しました
+                              </Typography>
+                              <Stack spacing={0.5}>
+                                {(r.evidence.drifted as { expected: string; actual: string }[]).map((d, i) => (
+                                  <Stack key={i} direction="row" spacing={1} alignItems="center">
+                                    <Chip size="small" label={d.expected} variant="outlined" />
+                                    <Typography variant="caption">→</Typography>
+                                    <Chip size="small" label={d.actual} color="warning" variant="filled" />
+                                  </Stack>
+                                ))}
+                              </Stack>
+                            </Box>
+                          ) : (
+                            <pre
+                              style={{
+                                margin: 0,
+                                whiteSpace: "pre-wrap",
+                                overflow: "auto",
+                                maxHeight: "200px",
+                                padding: "8px",
+                                backgroundColor: "rgba(0,0,0,0.04)",
+                                borderRadius: "4px"
+                              }}
+                            >
+                              {JSON.stringify(r.evidence, null, 2)}
+                            </pre>
+                          )}
                         </Box>
                       )}
 
@@ -506,19 +566,49 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
                           >
                             次にやること
                           </Typography>
-                          <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+                          <Stack spacing={0.75} sx={{ mt: 0.75 }}>
                             {r.nextActions.map((a, idx) => (
-                              <Paper key={idx} variant="outlined" sx={{ p: 1 }}>
-                                <Typography variant="body2">
-                                  {a.label}
-                                </Typography>
-                                <Typography
-                                  variant="caption"
-                                  color="text.secondary"
-                                  sx={{ whiteSpace: "pre-wrap" }}
-                                >
-                                  {a.value}
-                                </Typography>
+                              <Paper key={idx} variant="outlined" sx={{ p: 1.25, bgcolor: "action.selected" }}>
+                                <Stack direction="row" spacing={1.25} alignItems="center">
+                                  <Box sx={{ color: "primary.main", flexShrink: 0 }}>
+                                    {a.kind === "copy" ? (
+                                      <ContentCopyIcon sx={{ fontSize: 18 }} />
+                                    ) : a.kind === "link" ? (
+                                      <LaunchIcon sx={{ fontSize: 18 }} />
+                                    ) : (
+                                      <DescriptionIcon sx={{ fontSize: 18 }} />
+                                    )}
+                                  </Box>
+                                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                                      {a.label}
+                                    </Typography>
+                                    <Typography
+                                      variant="caption"
+                                      color="text.secondary"
+                                      sx={{ 
+                                        display: 'block',
+                                        mt: 0.25,
+                                        whiteSpace: "pre-wrap",
+                                        fontFamily: a.kind === "copy" ? "monospace" : "inherit"
+                                      }}
+                                    >
+                                      {a.value}
+                                    </Typography>
+                                  </Box>
+                                  {a.kind === "copy" && (
+                                    <Button 
+                                      size="small" 
+                                      onClick={() => {
+                                        copyToClipboard(a.value);
+                                        alert("コピーしました");
+                                      }}
+                                      sx={{ fontSize: '0.65rem', py: 0 }}
+                                    >
+                                      コピー
+                                    </Button>
+                                  )}
+                                </Stack>
                               </Paper>
                             ))}
                           </Stack>

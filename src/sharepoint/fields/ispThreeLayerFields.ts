@@ -446,3 +446,26 @@ export const PROCEDURE_RECORD_CANDIDATES = {
 export const PROCEDURE_RECORD_ESSENTIALS: (keyof typeof PROCEDURE_RECORD_CANDIDATES)[] = [
   'userCode', 'planningSheetId', 'recordDate'
 ];
+// ═════════════════════════════════════════════
+// D. IspRecommendationDecisions — 計画書への採用判断
+// ═════════════════════════════════════════════
+
+export const ISP_DECISION_LIST_TITLE = 'IspRecommendationDecisions' as const;
+
+export const ISP_DECISION_CANDIDATES = {
+  id: ['Id', 'ID'],
+  title: ['Title'],
+  userId: ['UserId', 'UserCode', 'cr013_userId'],
+  goalId: ['GoalId', 'cr013_goalId'],
+  status: ['Status', 'DecisionStatus', 'cr013_status'],
+  decidedBy: ['DecidedBy', 'Staff', 'cr013_decidedBy'],
+  decidedAt: ['DecidedAt', 'Time', 'cr013_decidedAt'],
+  note: ['Note', 'Comment', 'cr013_note'],
+  monitoringFrom: ['MonitoringFrom', 'cr013_monitoringFrom'],
+  monitoringTo: ['MonitoringTo', 'cr013_monitoringTo'],
+  snapshotJson: ['SnapshotJson', 'cr013_snapshotJson'],
+} as const;
+
+export const ISP_DECISION_ESSENTIALS: (keyof typeof ISP_DECISION_CANDIDATES)[] = [
+  'userId', 'goalId', 'status'
+];

@@ -16,6 +16,7 @@ import { useStrategyUsageTrend, type TrendDays } from '@/features/planning-sheet
 import { useUsers } from '@/features/users/useUsers';
 import { usePdcaCycleState } from '@/features/ibd/analysis/pdca/queries/usePdcaCycleState';
 import { mapMonitoringToPlanningBridge, mapMonitoringMeetingToMonitoringRecord } from '@/domain/isp/bridgeMapper';
+import type { SupportPlanningSheet } from '@/domain/isp/schema';
 import type { MonitoringRecord } from '@/domain/isp/types';
 import type { IUserMaster } from '@/features/users/types';
 import type { UseAuth } from '@/auth/useAuth';
@@ -67,25 +68,47 @@ export function useSupportPlanningSheetOrchestrator(): {
 
   const { getByUserId: getAssessment } = useAssessmentStore();
   const { data: users } = useUsers();
+  const userIdParam = new URLSearchParams(window.location.search).get('userId');
+
   const { account } = useAuth();
   const { saveAuditRecord, getAllProvenance, getBySheetId } = useImportAuditStore();
 
   const targetUser = React.useMemo(
-    () => users.find((user: IUserMaster) => user.UserID === sheet?.userId),
-    [users, sheet?.userId],
+    () => users.find((user: IUserMaster) => user.UserID === (sheet?.userId || userIdParam)),
+    [users, sheet?.userId, userIdParam],
   );
+
+  // 新規作成時の仮想シート生成
+  const effectiveSheet = React.useMemo(() => {
+    if (sheet) return sheet;
+    if (planningSheetId === 'new') {
+      return {
+        id: 'new',
+        userId: userIdParam || '',
+        title: targetUser?.FullName || '新規支援計画',
+        status: 'draft' as const,
+        planning: {
+          procedureSteps: [],
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as unknown as SupportPlanningSheet;
+    }
+    return null;
+  }, [sheet, planningSheetId, userIdParam, targetUser]);
+
   const currentAssessment = React.useMemo(
-    () => (sheet?.userId ? getAssessment(sheet.userId) : null),
-    [sheet?.userId, getAssessment],
+    () => (effectiveSheet?.userId ? getAssessment(effectiveSheet.userId) : null),
+    [effectiveSheet?.userId, getAssessment],
   );
 
   const persistedProvenance = React.useMemo(
-    () => (planningSheetId ? getAllProvenance(planningSheetId) : []),
+    () => (planningSheetId && planningSheetId !== 'new' ? getAllProvenance(planningSheetId) : []),
     [planningSheetId, getAllProvenance],
   );
 
   const auditRecords = React.useMemo(
-    () => (planningSheetId ? getBySheetId(planningSheetId) : []),
+    () => (planningSheetId && planningSheetId !== 'new' ? getBySheetId(planningSheetId) : []),
     [planningSheetId, getBySheetId],
   );
   const filteredAuditRecords = React.useMemo(
@@ -94,7 +117,7 @@ export function useSupportPlanningSheetOrchestrator(): {
   );
 
   const monitoringRepo = useMonitoringMeetingRepository();
-  const { record: latestMonitoringRecord } = useLatestBehaviorMonitoring(sheet?.userId ?? null, {
+  const { record: latestMonitoringRecord } = useLatestBehaviorMonitoring(effectiveSheet?.userId ?? null, {
     repository: monitoringRepo,
     planningSheetId: planningSheetId ?? 'new',
   });
@@ -102,14 +125,14 @@ export function useSupportPlanningSheetOrchestrator(): {
   // Monitoring Bridge Logic
   const [monitoringMeetings, setMonitoringMeetings] = React.useState<MonitoringRecord[]>([]);
   React.useEffect(() => {
-    if (!sheet?.userId) return;
-    monitoringRepo.listByUser(String(sheet.userId))
+    if (!effectiveSheet?.userId) return;
+    monitoringRepo.listByUser(String(effectiveSheet.userId))
       .then(records => records.map(mapMonitoringMeetingToMonitoringRecord))
       .then(setMonitoringMeetings);
-  }, [sheet?.userId, monitoringRepo]);
+  }, [effectiveSheet?.userId, monitoringRepo]);
 
   const { state: pdcaState } = usePdcaCycleState({
-    userId: sheet?.userId ?? null,
+    userId: effectiveSheet?.userId ?? null,
     planningSheetId: planningSheetId ?? 'new',
     behaviorMonitoringRecords: latestMonitoringRecord ? [latestMonitoringRecord] : [],
     planningSheetReassessments: [], // 可動域として空配列
@@ -124,7 +147,7 @@ export function useSupportPlanningSheetOrchestrator(): {
     );
   }, [planningSheetId, monitoringMeetings, latestMonitoringRecord, pdcaState]);
 
-  const { handleAssessmentImport, handleMonitoringImport } = useImportHandlers({
+  const { handleAssessmentImport, handleMonitoringImport, handleReflectCandidate } = useImportHandlers({
     form,
     planningSheetId,
     currentAssessment,
@@ -143,7 +166,7 @@ export function useSupportPlanningSheetOrchestrator(): {
   } = useSupportPlanningPageHandlers({
     navigate,
     setActiveTab: uiActions.setActiveTab,
-    sheetUserId: sheet?.userId,
+    sheetUserId: effectiveSheet?.userId,
     form,
     setIsEditing: uiActions.setIsEditing,
     setToast: uiActions.setToast,
@@ -151,17 +174,17 @@ export function useSupportPlanningSheetOrchestrator(): {
 
   const { repo: handoffRepo } = useHandoffData();
   const { contextData, contextUserName } = useSupportPlanningContextPanel({
-    userId: sheet?.userId,
+    userId: effectiveSheet?.userId,
     targetUser,
     handoffRepo,
   });
 
   // 2. ViewModel の構築
   const viewModel: SupportPlanningSheetViewModel | null = React.useMemo(() => {
-    if (!sheet) return null;
+    if (!effectiveSheet) return null;
     return mapToSupportPlanningSheetViewModel({
       planningSheetId: planningSheetId!,
-      sheet,
+      sheet: effectiveSheet,
       isLoading,
       error,
       uiState,
@@ -217,6 +240,10 @@ export function useSupportPlanningSheetOrchestrator(): {
     onCloseContext: () => uiActions.setContextOpen(false),
     onEvidenceLinksChange: setEvidenceLinks,
     onEvidenceClick: handleEvidenceClick,
+    onReflectCandidate: (candidateId: string) => {
+      if (!monitoringBridge) return;
+      handleReflectCandidate(monitoringBridge, candidateId);
+    },
   };
 
   return { viewModel, handlers };

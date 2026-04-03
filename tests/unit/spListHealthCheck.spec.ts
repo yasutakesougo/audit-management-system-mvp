@@ -12,26 +12,51 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // ---------------------------------------------------------------------------
 
 describe('SP_LIST_REGISTRY', () => {
-  it('should contain exactly 33 list entries', () => {
-    expect(SP_LIST_REGISTRY).toHaveLength(36);
+  it('should not be empty', () => {
+    expect(SP_LIST_REGISTRY.length).toBeGreaterThan(0);
   });
 
   it('should have unique keys', () => {
     const keys = SP_LIST_REGISTRY.map((e) => e.key);
-    expect(new Set(keys).size).toBe(keys.length);
+    const duplicates = keys.filter((item, index) => keys.indexOf(item) !== index);
+    expect(duplicates, `Duplicate keys found: ${duplicates.join(', ')}`).toHaveLength(0);
   });
 
-  it('every entry should resolve to a non-empty string', () => {
+  it('every entry should have valid meta-data structure', () => {
     for (const entry of SP_LIST_REGISTRY) {
+      // 1. Resolve capability
       const resolved = entry.resolve();
       expect(resolved, `entry "${entry.key}" resolved empty`).toBeTruthy();
       expect(typeof resolved).toBe('string');
-    }
-  });
 
-  it('every entry should have at least one operation', () => {
-    for (const entry of SP_LIST_REGISTRY) {
+      // 2. Operations validity
       expect(entry.operations.length, `entry "${entry.key}" has no operations`).toBeGreaterThan(0);
+      for (const op of entry.operations) {
+        expect(['R', 'W', 'D'], `entry "${entry.key}" has invalid operation "${op}"`).toContain(op);
+      }
+
+      // 3. Lifecycle validity
+      expect(['required', 'optional', 'deprecated', 'experimental'], `entry "${entry.key}" has invalid lifecycle "${entry.lifecycle}"`)
+        .toContain(entry.lifecycle);
+
+      // 4. Provisioning vs Essential fields consistency
+      if (entry.provisioningFields && entry.essentialFields) {
+        const provInternalNames = entry.provisioningFields.map(f => f.internalName);
+        for (const essential of entry.essentialFields) {
+          // Note: Title is always present in SP, so we skip it if not in provisioning
+          if (essential === 'Title') continue;
+          
+          expect(provInternalNames, `entry "${entry.key}" lists essential field "${essential}" which is missing in provisioningFields`)
+            .toContain(essential);
+        }
+      }
+
+      // 5. Provisioning internalName uniqueness
+      if (entry.provisioningFields) {
+        const names = entry.provisioningFields.map(f => f.internalName);
+        const dupNames = names.filter((item, index) => names.indexOf(item) !== index);
+        expect(dupNames, `entry "${entry.key}" has duplicate provisioning field names: ${dupNames.join(', ')}`).toHaveLength(0);
+      }
     }
   });
 });

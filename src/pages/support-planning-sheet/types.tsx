@@ -87,7 +87,7 @@ export interface SupportPlanningSheetViewModel {
   activeTab: SheetTabKey;
   
   // UI States
-  toast: { open: boolean; message: string; severity: 'success' | 'error' };
+  toast: { open: boolean; message: string; severity: 'success' | 'warning' | 'error' | 'info' };
   importDialogOpen: boolean;
   monitoringDialogOpen: boolean;
   contextOpen: boolean;
@@ -150,6 +150,7 @@ export interface SupportPlanningSheetActionHandlers {
   onCloseContext: () => void;
   onEvidenceLinksChange: (links: EvidenceLinkMap) => void;
   onEvidenceClick: (type: EvidenceLinkType, referenceId: string) => void;
+  onReflectCandidate: (candidateId: string) => void;
 }
 
 export interface SupportPlanningSheetViewProps {

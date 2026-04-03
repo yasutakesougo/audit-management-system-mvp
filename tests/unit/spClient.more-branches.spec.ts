@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-globals */
 import type { AppConfig } from '@/lib/env';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mergeTestConfig, setTestConfigOverride } from '../helpers/mockEnv';

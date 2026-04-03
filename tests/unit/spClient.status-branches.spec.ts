@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-globals */
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { configGetter } = vi.hoisted(() => {
