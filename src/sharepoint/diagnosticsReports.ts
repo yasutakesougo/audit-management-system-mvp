@@ -8,10 +8,10 @@
 
 import type { UseSP } from '@/lib/spClient';
 import {
-    DIAGNOSTICS_REPORTS_LIST_TITLE,
-    DIAGNOSTICS_REPORTS_SELECT_FIELDS,
-    FIELD_MAP_DIAGNOSTICS_REPORTS,
+    DIAGNOSTICS_REPORTS_LIST_TITLE, DIAGNOSTICS_REPORTS_SELECT_FIELDS, FIELD_MAP_DIAGNOSTICS_REPORTS,
+    DIAGNOSTICS_REPORTS_CANDIDATES,
 } from '@/sharepoint/fields';
+import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 
 export type DiagnosticsReportStatus = 'pass' | 'warn' | 'fail';
 
@@ -161,12 +161,34 @@ export async function upsertDiagnosticsReport(
   const listTitle = DIAGNOSTICS_REPORTS_LIST_TITLE;
 
   // ──────────────────────────────────────────
+  // Step 0: 実環境の内部名を解決 (Drift 対応)
+  // ──────────────────────────────────────────
+  const availableFields = await sp.getListFieldInternalNames(listTitle).catch(() => [] as string[]);
+  const { resolved } = resolveInternalNamesDetailed(
+    availableFields,
+    DIAGNOSTICS_REPORTS_CANDIDATES as unknown as Record<string, string[]>
+  );
+  
+  // 物理名の取得ファンクション
+  const pName = (logical: keyof typeof DIAGNOSTICS_REPORTS_CANDIDATES): string => {
+    return (resolved[logical] as string | undefined) || FIELD_MAP_DIAGNOSTICS_REPORTS[logical];
+  };
+
+  const pTitle = pName('title');
+  const pId = pName('id');
+  const pOverall = pName('overall');
+  const pNotified = pName('notified');
+  const pTopIssue = pName('topIssue');
+  const pSummaryText = pName('summaryText');
+  const pReportLink = pName('reportLink');
+
+  // ──────────────────────────────────────────
   // Step 1: Title で既存アイテムを検索
   // ──────────────────────────────────────────
-  const filter = `${FIELD_MAP_DIAGNOSTICS_REPORTS.title} eq '${input.title.replace(/'/g, "''")}'`;
+  const filter = `${pTitle} eq '${input.title.replace(/'/g, "''")}'`;
   const existing = await sp.getListItemsByTitle<{ Id: number }>(
     listTitle,
-    [...DIAGNOSTICS_REPORTS_SELECT_FIELDS],
+    [pId, pTitle, pOverall, pTopIssue, pSummaryText, pReportLink, pNotified],
     filter,
     undefined,
     1
@@ -175,39 +197,30 @@ export async function upsertDiagnosticsReport(
   // ──────────────────────────────────────────
   // Step 2: 送信ペイロード構築
   // ──────────────────────────────────────────
-  // ✅ Field map を使用してキー名を統一
   const payload: Record<string, unknown> = {
-    [FIELD_MAP_DIAGNOSTICS_REPORTS.title]: input.title,
-    // Choice は { Value: '...' } 形式で送信
-    [FIELD_MAP_DIAGNOSTICS_REPORTS.overall]: { Value: input.overall },
+    [pTitle]: input.title,
+    // Choice は文字列、または環境によっては { Value: '...' } 形式
+    // PrimitiveValue node エラーが出る場合は単一の文字列を期待されている
+    [pOverall]: input.overall,
   };
 
-  // Notified フラグの制御（Power Automate取得フィルター対応）:
-  // Power Automate: Get items filter "Notified ne true" で未通知を拾う
-  // - 初回作成の warn/fail → false（Flow が拾う）
-  // - 初回作成の pass → true（Flow が拾わない）
-  // - 更新で内容変更の warn/fail → false（再通知）
-  // - 更新で内容変更の pass → true（通知不要）
-  // - 更新で内容変更なし → 既存値保持
   const notifiedValue = shouldResetNotified(
     existing?.length ? (existing[0] as DiagnosticsReportItem) : null,
     input
   );
 
-  // undefined の場合は payload に含めない（既存値を保持）
   if (notifiedValue !== undefined) {
-    payload[FIELD_MAP_DIAGNOSTICS_REPORTS.notified] = notifiedValue;
+    payload[pNotified] = notifiedValue;
   }
 
-  // Optional: null/undefined チェック
   if (input.topIssue != null) {
-    payload[FIELD_MAP_DIAGNOSTICS_REPORTS.topIssue] = input.topIssue;
+    payload[pTopIssue] = input.topIssue;
   }
   if (input.summaryText != null) {
-    payload[FIELD_MAP_DIAGNOSTICS_REPORTS.summaryText] = input.summaryText;
+    payload[pSummaryText] = input.summaryText;
   }
   if (input.reportLink != null) {
-    payload[FIELD_MAP_DIAGNOSTICS_REPORTS.reportLink] = input.reportLink;
+    payload[pReportLink] = input.reportLink;
   }
 
   // ──────────────────────────────────────────

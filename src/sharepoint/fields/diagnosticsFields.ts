@@ -56,3 +56,21 @@ export const DIAGNOSTICS_REPORTS_SELECT_FIELDS = [
   FIELD_MAP_DIAGNOSTICS_REPORTS.created,
   FIELD_MAP_DIAGNOSTICS_REPORTS.modified,
 ] as const;
+
+/**
+ * 内部名の乖離（Drift）に対応するための候補リスト
+ */
+export const DIAGNOSTICS_REPORTS_CANDIDATES = {
+  id:          ['Id', 'ID'],
+  title:       ['Title', 'title'],
+  overall:     ['Overall', 'overall', 'Status'],
+  topIssue:    ['TopIssue', 'Top_x0020_Issue', 'topIssue', 'Top_Issue'],
+  summaryText: ['SummaryText', 'Summary_x0020_Text', 'summaryText', 'Summary_Text', 'Summary'],
+  reportLink:  ['ReportLink', 'Report_x0020_Link', 'reportLink', 'Report_Link'],
+  notified:    ['Notified', 'notified'],
+  notifiedAt:  ['NotifiedAt', 'Notified_x0020_At', 'notifiedAt', 'Notified_At', 'RecordDate'],
+} as const;
+
+export const DIAGNOSTICS_REPORTS_ESSENTIALS: (keyof typeof DIAGNOSTICS_REPORTS_CANDIDATES)[] = [
+  'title', 'overall'
+];
