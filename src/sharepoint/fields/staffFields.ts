@@ -69,14 +69,13 @@ export const STAFF_SELECT_FIELDS_CANONICAL = [
 ] as const;
 
 /**
- * Staff_Master フィールド候補マップ (Drift Resistance)
- * 動的解決 (SchemaResolver) で使用し、内部名揺れを吸収する。
- * 各配列の 0 番目が「基準名」であり、それ以外は drift (WARN) と見なされる。
+ * Staff_Master フィールド候補マップ
+ * 動的解決 (SchemaResolver) で使用し、内部名揺れ (Space, Case, Legacy) を吸収する
  */
-export const STAFF_MASTER_CANDIDATES = {
+export const STAFF_MASTER_CANDIDATES: Record<string, string[]> = {
   staffId: ['StaffID', 'Staff_x0020_ID', 'UserCode', 'Title'],
-  fullName: ['FullName', 'Full_x0020_Name', 'StaffName', 'Name', 'DisplayName', 'Title'],
-  furigana: ['Furigana', 'FuriganaKana', 'Kana'],
+  fullName: ['FullName', 'Full_x0020_Name', 'StaffName', 'Name', 'Title'],
+  furigana: ['Furigana', 'FuriganaKana'],
   fullNameKana: ['FullNameKana', 'FullName_x0020_Kana'],
   jobTitle: ['JobTitle', 'Role', 'Rank'],
   role: ['Role', 'JobTitle', 'Position'],
@@ -87,23 +86,11 @@ export const STAFF_MASTER_CANDIDATES = {
   resignDate: ['ResignDate', 'LeaveDate'],
   email: ['Email', 'MailAddress'],
   phone: ['Phone', 'Tel', 'Contact'],
-  workDays: ['WorkDays', 'BaseWorkDays', 'Work_x0020_Days'],
+  workDays: ['WorkDays', 'BaseWorkDays'],
+  baseWorkingDays: ['BaseWorkingDays', 'StandardWorkingDays'],
   baseShiftStartTime: ['BaseShiftStartTime', 'StartTime', 'Start_x0020_Time'],
   baseShiftEndTime: ['BaseShiftEndTime', 'EndTime', 'End_x0020_Time'],
   certifications: ['Certifications', 'Qualification', 'License'],
-  // Compliance
-  hasPracticalTraining: ['HasPracticalTraining', 'PracticalTraining'],
-  hasBasicTraining: ['HasBasicTraining', 'BasicTraining'],
-  hasBehaviorGuidanceTraining: ['HasBehaviorGuidanceTraining', 'BehaviorGuidanceTraining'],
-  hasCorePersonTraining: ['HasCorePersonTraining', 'CorePersonTraining'],
-  certificationCheckedAt: ['CertificationCheckedAt', 'CertChecked'],
-} as const;
-
-export const STAFF_MASTER_ESSENTIALS: (keyof typeof STAFF_MASTER_CANDIDATES)[] = [
-  'staffId',
-  'fullName',
-  'rbacRole',
-  'isActive',
-];
+};
 
 export const STAFF_SELECT = joinSelect(STAFF_SELECT_FIELDS_CANONICAL as readonly string[]);

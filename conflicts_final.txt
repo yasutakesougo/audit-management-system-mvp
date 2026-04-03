@@ -1,0 +1,5 @@
+src/features/billing/domain/billingLogic.ts
+src/features/billing/infra/DataProviderBillingOrderRepository.ts
+src/features/billing/sharepointRepository.ts
+src/features/diagnostics/health/checks.ts
+src/features/ibd/plans/isp-editor/data/ispRepo.ts
