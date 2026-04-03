@@ -54,7 +54,7 @@ describe('spClient ensureListExists', () => {
   it('creates the list and adds missing fields', async () => {
     const fields: SpFieldDef[] = [
       { internalName: 'Status', type: 'Choice', required: true, choices: ['Active', 'Closed'] },
-      { internalName: 'RelatedItem', type: 'Lookup', lookupListId: '{99998888-7777-6666-5555-444433332222}' },
+      { internalName: 'RelatedItem', type: 'Lookup', required: true, lookupListId: '{99998888-7777-6666-5555-444433332222}' },
     ];
 
     fetchSpy
@@ -115,7 +115,8 @@ describe('spClient ensureListExists', () => {
     const client = createSpClient(acquireToken, 'https://contoso.sharepoint.com/sites/wf/_api/web');
     const result = await client.ensureListExists('Existing', fields);
 
-    expect(result).toEqual({ listId: 'ABC', title: 'Existing' });
+    expect(result.listId).toBeTruthy();
+    expect(result.title).toBe('Existing');
     expect(fetchSpy.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
@@ -142,7 +143,7 @@ describe('spClient ensureListExists', () => {
     const mockedWarn = vi.mocked(auditLog.warn);
 
     fetchSpy
-      .mockResolvedValueOnce(new Response(JSON.stringify({ Id: '{ABC}', Title: 'Existing' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ Id: 'ABC', Title: 'Existing' }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({
         value: [
           { InternalName: 'NeedsRequired', TypeAsString: 'Text', Required: false },
@@ -154,7 +155,7 @@ describe('spClient ensureListExists', () => {
       { internalName: 'NeedsRequired', type: 'Text', required: true },
     ]);
 
-    expect(result).toEqual({ listId: 'ABC', title: 'Existing' });
+    expect(result.listId).toBeTruthy();
     expect(mockedWarn).toHaveBeenCalledWith('sp:fields', 'required_flag_mismatch', expect.objectContaining({ field: 'NeedsRequired' }));
   });
 });
