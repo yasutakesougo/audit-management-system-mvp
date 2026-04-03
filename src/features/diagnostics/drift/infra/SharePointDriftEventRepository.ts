@@ -2,6 +2,8 @@ import { DriftEvent, DriftResolutionType, DriftType, getDriftEventDedupeKey } fr
 import { IDriftEventRepository } from '../domain/DriftEventRepository';
 import { findListEntry } from '@/sharepoint/spListRegistry';
 import { buildEq, joinAnd } from '@/sharepoint/query/builders';
+import { DRIFT_LOG_CANDIDATES } from '@/sharepoint/fields/diagnosticsFields';
+import { resolveInternalNamesDetailed, washRow } from '@/lib/sp/helpers';
 
 /**
  * 依存関係の境界遵守のためのローカルインターフェース
@@ -21,7 +23,32 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
   /** 同一セッション内での重複ログ抑制用のキャッシュ ( dedupeKey -> 1 ) */
   private sessionCache = new Set<string>();
 
-  constructor(private spClient: ISpOperations) {}
+  /** 本番リストで使用されている物理内部名のキャッシュ */
+  private resolvedFields: Record<string, string | undefined> = {};
+  private initializationPromise: Promise<void> | null = null;
+
+  constructor(private spClient: ISpOperations & { 
+    getSchema?: (listTitle: string) => Promise<string[]> 
+  }) {}
+
+  private async initializeResolvedFields(listTitle: string): Promise<void> {
+    if (Object.keys(this.resolvedFields).length > 0) return;
+    if (this.initializationPromise) return this.initializationPromise;
+
+    this.initializationPromise = (async () => {
+      try {
+        const availableFields = await this.spClient.getSchema?.(listTitle) || [];
+        if (availableFields.length === 0) return;
+
+        const res = resolveInternalNamesDetailed(new Set(availableFields), DRIFT_LOG_CANDIDATES as unknown as Record<string, string[]>);
+        this.resolvedFields = res.resolved;
+      } catch (err) {
+        console.error('DriftEventRepository: Initialization failed.', err);
+      }
+    })();
+
+    return this.initializationPromise;
+  }
 
   async logEvent(event: DriftEvent): Promise<void> {
     const dedupeKey = getDriftEventDedupeKey(event);
@@ -39,17 +66,20 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       }
 
       const listTitle = entry.resolve();
+      await this.initializeResolvedFields(listTitle);
 
-      await this.spClient.createItem(listTitle, {
-        Title: `${event.listName}:${event.fieldName}`, // デバッグ用キー
-        ListName: event.listName,
-        FieldName: event.fieldName,
-        DetectedAt: event.detectedAt,
-        Severity: event.severity,
-        ResolutionType: event.resolutionType,
-        DriftType: event.driftType || 'unknown',
-        Resolved: event.resolved
-      });
+      const payload: Record<string, unknown> = {
+        Title: `${event.listName}:${event.fieldName}`,
+        [this.resolvedFields.listName || 'ListName']: event.listName,
+        [this.resolvedFields.fieldName || 'FieldName']: event.fieldName,
+        [this.resolvedFields.detectedAt || 'DetectedAt']: event.detectedAt,
+        [this.resolvedFields.severity || 'Severity']: event.severity,
+        [this.resolvedFields.resolutionType || 'ResolutionType']: event.resolutionType,
+        [this.resolvedFields.driftType || 'DriftType']: event.driftType || 'unknown',
+        [this.resolvedFields.resolved || 'Resolved']: event.resolved
+      };
+
+      await this.spClient.createItem(listTitle, washRow(payload));
 
       this.sessionCache.add(dedupeKey);
     } catch (err) {
@@ -68,23 +98,27 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       if (!entry) return [];
 
       const listTitle = entry.resolve();
+      await this.initializeResolvedFields(listTitle);
       
       // クエリビルド
       const filters: string[] = [];
+      const listNameField = this.resolvedFields.listName || 'ListName';
+      const resolvedField = this.resolvedFields.resolved || 'Resolved';
+
       if (filter?.listName) {
-        filters.push(buildEq('ListName', filter.listName));
+        filters.push(buildEq(listNameField, filter.listName));
       }
       if (filter?.resolved !== undefined) {
-        filters.push(buildEq('Resolved', filter.resolved));
+        filters.push(buildEq(resolvedField, filter.resolved));
       }
 
       const items = await this.spClient.getListItemsByTitle<Record<string, unknown>>(listTitle, undefined, joinAnd(filters) || undefined, 'DetectedAt desc', 100);
 
       return items.map(item => ({
         id: String(item.ID),
-        listName: String(item.ListName),
-        fieldName: String(item.FieldName),
-        detectedAt: String(item.DetectedAt),
+        listName: String(item.ListName || item.NameOfList || ''),
+        fieldName: String(item.FieldName || item.InternalName || ''),
+        detectedAt: String(item.DetectedAt || item.OccurredAt || ''),
         severity: (item.Severity as 'warn' | 'info') || 'info',
         resolutionType: (item.ResolutionType as DriftResolutionType) || 'fuzzy_match',
         driftType: (item.DriftType as DriftType) || 'unknown',

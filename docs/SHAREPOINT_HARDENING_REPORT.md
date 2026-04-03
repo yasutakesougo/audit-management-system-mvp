@@ -22,7 +22,12 @@
 `ensureListExists` 内でフィールド追加前にドリフトチェックを行い、既存の類似列がある場合は `addFieldToList` をバイパスします。これにより、SharePoint 上での列無制限増殖を物理的に遮断します。
 
 ### 3. 動的マッピング (Repository)
-`DataProviderServiceProvisionRepository` は、実行時に `resolveFields()` を呼び出し、物理名をキャッシュします。これにより、コード上は `RecordDate` と記述していても、バックエンドでは `RecordDate0` に対してクエリを投げ、結果を表示します。
+`DataProviderScheduleRepository` 等の各レポジトリは、実行時に `resolveFields()` を呼び出し、物理名をキャッシュします。これにより、コード上は `EventDate` と記述していても、バックエンドでは `EventDate0` に対してクエリを投げ、結果を表示します。
+
+### 4. Request Digest 回復 (Connectivity)
+2026-04-03 のアップデートにより、SharePoint REST API での POST/MERGE 時に必須となる `X-RequestDigest` の自動取得・更新機能を `spHttp.ts` に実装しました。
+- **症状**: 統合テスト中にランダムに 403 Forbidden が発生（Digest 期限切れ）。
+- **解決**: `/_api/contextinfo` から Digest を取得し、ヘッダーに自動付与。これにより、長期実行される統合テストの安定性が劇的に向上しました。
 
 ## 🧪 テスト結果
 - `src/lib/sp/__tests__/drift.spec.ts`: **PASS**
