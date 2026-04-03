@@ -8,7 +8,7 @@
 
 import type { UseSP } from '@/lib/spClient';
 import {
-    DIAGNOSTICS_REPORTS_LIST_TITLE, DIAGNOSTICS_REPORTS_SELECT_FIELDS, FIELD_MAP_DIAGNOSTICS_REPORTS,
+    DIAGNOSTICS_REPORTS_LIST_TITLE, FIELD_MAP_DIAGNOSTICS_REPORTS,
     DIAGNOSTICS_REPORTS_CANDIDATES,
 } from '@/sharepoint/fields';
 import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
@@ -163,9 +163,9 @@ export async function upsertDiagnosticsReport(
   // ──────────────────────────────────────────
   // Step 0: 実環境の内部名を解決 (Drift 対応)
   // ──────────────────────────────────────────
-  const availableFields = await sp.getListFieldInternalNames(listTitle).catch(() => [] as string[]);
+  const rawFields = await sp.getListFieldInternalNames(listTitle).catch(() => [] as string[]);
   const { resolved } = resolveInternalNamesDetailed(
-    availableFields,
+    new Set(rawFields),
     DIAGNOSTICS_REPORTS_CANDIDATES as unknown as Record<string, string[]>
   );
   
@@ -199,8 +199,7 @@ export async function upsertDiagnosticsReport(
   // ──────────────────────────────────────────
   const payload: Record<string, unknown> = {
     [pTitle]: input.title,
-    // Choice は文字列、または環境によっては { Value: '...' } 形式
-    // PrimitiveValue node エラーが出る場合は単一の文字列を期待されている
+    // Choice は文字列（JSON reader 'StartObject' エラー対策で primitive で送信）
     [pOverall]: input.overall,
   };
 
@@ -228,7 +227,14 @@ export async function upsertDiagnosticsReport(
   // ──────────────────────────────────────────
   if (existing?.length) {
     // UPDATE: 既存レコード
-    const id = Number(existing[0].Id);
+    // ✅ 動的に解決された ID フィールドから数値型 ID を抽出
+    const rawItem = existing[0] as any;
+    const id = Number(rawItem[pId] ?? rawItem.Id ?? rawItem.ID);
+    
+    if (Number.isNaN(id)) {
+      throw new Error(`[diagnosticsReports] Failed to resolve numeric ID from ${pId}`);
+    }
+
     try {
       await sp.updateItemByTitle(listTitle, id, payload);
       console.info('[diagnosticsReports] updated', { id, title: input.title });
@@ -236,8 +242,8 @@ export async function upsertDiagnosticsReport(
       // 更新後のアイテムを取得して返す
       const updated = await sp.getListItemsByTitle<DiagnosticsReportItem>(
         listTitle,
-        [...DIAGNOSTICS_REPORTS_SELECT_FIELDS],
-        `${FIELD_MAP_DIAGNOSTICS_REPORTS.id} eq ${id}`,
+        [pId, pTitle, pOverall, pTopIssue, pSummaryText, pReportLink, pNotified],
+        `${pId} eq ${id}`,
         undefined,
         1
       );
