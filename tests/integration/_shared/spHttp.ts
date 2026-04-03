@@ -72,6 +72,7 @@ export function makeListApi(client: SpClient) {
       });
       // Debug: log headers
       if (process.env.DEBUG_INTEGRATION) {
+        // eslint-disable-next-line no-console
         console.log(`[${op}] GET headers:`, res.headers());
       }
       await ensureOk(res, { op, url });
