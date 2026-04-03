@@ -14,11 +14,13 @@ import type { MonitoringToPlanningBridge, PlanningCandidate } from '@/domain/isp
 interface BridgeSuggestionsSectionProps {
   bridge: MonitoringToPlanningBridge | null;
   isEditing: boolean;
+  onReflectCandidate: (candidateId: string) => void;
 }
 
 export const BridgeSuggestionsSection: React.FC<BridgeSuggestionsSectionProps> = ({
   bridge,
   isEditing,
+  onReflectCandidate,
 }) => {
   if (!bridge || bridge.candidates.length === 0) return null;
 
@@ -40,16 +42,26 @@ export const BridgeSuggestionsSection: React.FC<BridgeSuggestionsSectionProps> =
 
       <Stack spacing={1}>
         {candidates.map((candidate) => (
-          <CandidateCard key={candidate.id} candidate={candidate} isEditing={isEditing} />
+          <CandidateCard 
+            key={candidate.id} 
+            candidate={candidate} 
+            isEditing={isEditing} 
+            onReflect={() => onReflectCandidate(candidate.id)} 
+          />
         ))}
       </Stack>
     </Box>
   );
 };
 
-const CandidateCard: React.FC<{ candidate: PlanningCandidate; isEditing: boolean }> = ({ 
+const CandidateCard: React.FC<{ 
+  candidate: PlanningCandidate; 
+  isEditing: boolean;
+  onReflect: () => void;
+}> = ({ 
   candidate, 
-  isEditing 
+  isEditing,
+  onReflect
 }) => {
   const typeLabel = {
     observation: '行動観察',
@@ -91,7 +103,15 @@ const CandidateCard: React.FC<{ candidate: PlanningCandidate; isEditing: boolean
 
         {isEditing && (
           <Box sx={{ mt: 1, textAlign: 'right' }}>
-            <Typography variant="caption" color="primary" sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}>
+            <Typography 
+              variant="caption" 
+              color="primary" 
+              onClick={(e) => {
+                e.stopPropagation();
+                onReflect();
+              }}
+              sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+            >
               この提案を反映する
             </Typography>
           </Box>

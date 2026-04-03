@@ -124,7 +124,7 @@ export function useSupportPlanningSheetOrchestrator(): {
     );
   }, [planningSheetId, monitoringMeetings, latestMonitoringRecord, pdcaState]);
 
-  const { handleAssessmentImport, handleMonitoringImport } = useImportHandlers({
+  const { handleAssessmentImport, handleMonitoringImport, handleReflectCandidate } = useImportHandlers({
     form,
     planningSheetId,
     currentAssessment,
@@ -217,6 +217,10 @@ export function useSupportPlanningSheetOrchestrator(): {
     onCloseContext: () => uiActions.setContextOpen(false),
     onEvidenceLinksChange: setEvidenceLinks,
     onEvidenceClick: handleEvidenceClick,
+    onReflectCandidate: (candidateId: string) => {
+      if (!monitoringBridge) return;
+      handleReflectCandidate(monitoringBridge, candidateId);
+    },
   };
 
   return { viewModel, handlers };

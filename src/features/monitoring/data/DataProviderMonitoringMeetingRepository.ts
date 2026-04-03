@@ -1,7 +1,11 @@
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { auditLog } from '@/lib/debugLogger';
 import { buildEq } from '@/sharepoint/query/builders';
-import { resolveInternalNames } from '@/lib/sp/helpers';
+import { 
+  resolveInternalNamesDetailed, 
+  areEssentialFieldsResolved 
+} from '@/lib/sp/helpers';
+import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
 import type { 
   MonitoringMeetingRepository 
 } from '@/domain/isp/monitoringMeetingRepository';
@@ -14,6 +18,7 @@ import type {
 } from '@/domain/isp/monitoringMeeting';
 import {
   MONITORING_MEETING_CANDIDATES,
+  MONITORING_MEETING_ESSENTIALS,
   MONITORING_MEETING_ENSURE_FIELDS,
   safeJsonParse,
   type SpMonitoringMeetingRow,
@@ -43,12 +48,29 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
 
     try {
       const available = await this.provider.getFieldInternalNames(this.listTitle);
-      const resolved = resolveInternalNames(
+      const { resolved, fieldStatus } = resolveInternalNamesDetailed(
         available, 
         MONITORING_MEETING_CANDIDATES as unknown as Record<MonitoringMeetingCandidateKeys, string[]>
-      ) as MonitoringMeetingResolvedFields;
-      this.resolvedFields = resolved;
-      return resolved;
+      );
+      
+      const essentials = MONITORING_MEETING_ESSENTIALS as unknown as MonitoringMeetingCandidateKeys[];
+      const isHealthy = areEssentialFieldsResolved(resolved as Record<string, string | undefined>, essentials);
+
+      // Report to observability store for diagnostics (HealthPage etc)
+      reportResourceResolution({
+        resourceName: this.listTitle,
+        resolvedTitle: this.listTitle,
+        fieldStatus: fieldStatus as Record<string, { resolvedName?: string; candidates: string[] }>,
+        essentials: essentials as unknown as string[],
+      });
+
+      if (!isHealthy) {
+        const missing = essentials.filter(k => !resolved[k]);
+        throw new Error(`MonitoringMeetings essential fields missing: ${missing.join(', ')}`);
+      }
+
+      this.resolvedFields = resolved as MonitoringMeetingResolvedFields;
+      return this.resolvedFields;
     } catch (err) {
       auditLog.warn('monitoring', `Field resolution failed for ${this.listTitle}. Triggering self-healing...`, err);
       
@@ -56,12 +78,21 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
       await this.provider.ensureListExists(this.listTitle, [...MONITORING_MEETING_ENSURE_FIELDS] as unknown as FieldsType);
       
       const available = await this.provider.getFieldInternalNames(this.listTitle);
-      const resolved = resolveInternalNames(
+      const { resolved, fieldStatus } = resolveInternalNamesDetailed(
         available, 
         MONITORING_MEETING_CANDIDATES as unknown as Record<MonitoringMeetingCandidateKeys, string[]>
-      ) as MonitoringMeetingResolvedFields;
-      this.resolvedFields = resolved;
-      return resolved;
+      );
+
+      const essentials = MONITORING_MEETING_ESSENTIALS as unknown as MonitoringMeetingCandidateKeys[];
+      reportResourceResolution({
+        resourceName: this.listTitle,
+        resolvedTitle: this.listTitle,
+        fieldStatus: fieldStatus as Record<string, { resolvedName?: string; candidates: string[] }>,
+        essentials: essentials as unknown as string[],
+      });
+
+      this.resolvedFields = resolved as MonitoringMeetingResolvedFields;
+      return this.resolvedFields;
     }
   }
 

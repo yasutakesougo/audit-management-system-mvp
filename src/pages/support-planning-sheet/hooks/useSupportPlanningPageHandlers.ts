@@ -5,11 +5,7 @@ import type { EvidenceLinkType } from '@/domain/isp/evidenceLink';
 import type { UsePlanningSheetFormReturn } from '@/features/planning-sheet/hooks/usePlanningSheetForm';
 import type { SheetTabKey } from '../types';
 
-type ToastState = {
-  open: boolean;
-  message: string;
-  severity: 'success' | 'error';
-};
+import type { ToastState } from './useSupportPlanningSheetUiState';
 
 type UseSupportPlanningPageHandlersParams = {
   navigate: NavigateFunction;
