@@ -16,6 +16,7 @@ import { ToastProvider, useToast } from './hooks/useToast';
 import { readBool } from './lib/env';
 import { registerNotifier } from './lib/notice';
 import { DataLayerGuard } from './components/DataLayerGuard';
+import { DriftMonitor } from '@/features/diagnostics/drift/ui/DriftMonitor';
 
 const hydrationHudEnabled = readBool('VITE_FEATURE_HYDRATION_HUD', false);
 
@@ -65,6 +66,7 @@ function App() {
             <WriteDisabledBanner />
             {/* 🎨 MUIテーマ + グローバルスタイル */}
             <ToastProvider>
+              <DriftMonitor />
               <SpInitBridge />
               {/* 📢 グローバルトースト通知 */}
               {/* 📅 SchedulesProviderBridge removed: Port/Adapter layer was dead code.

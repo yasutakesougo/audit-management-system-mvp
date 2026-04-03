@@ -22,6 +22,7 @@ import type { AuditEvent } from '@/lib/audit';
 
 import { normalizeAttendanceDays } from '../attendance';
 import { canEditUser, resolveUserLifecycleStatus, toDomainUser } from '../domain/userLifecycle';
+import { emitDriftRecord, type DriftResolutionType, type DriftType } from '@/features/diagnostics/drift/domain/driftLogic';
 import type {
   UserRepository,
   UserRepositoryGetParams,
@@ -136,7 +137,12 @@ export class DataProviderUserRepository implements UserRepository {
 
         const { resolved, fieldStatus: rawFieldStatus } = resolveInternalNamesDetailed(
           available,
-          candidateNamesOnly as Record<string, string[]>
+          candidateNamesOnly as Record<string, string[]>,
+          {
+            onDrift: (fieldName, resolutionType, driftType) => {
+              emitDriftRecord(this.listTitle, fieldName, resolutionType as DriftResolutionType, driftType as DriftType);
+            }
+          }
         );
 
         // isSilent フラグを保持した最終的な fieldStatus を作成

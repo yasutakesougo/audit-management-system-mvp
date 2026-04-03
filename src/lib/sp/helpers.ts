@@ -313,7 +313,10 @@ export function clearAllFieldsCache(): void {
  */
 export function resolveInternalNamesDetailed<T extends string>(
   available: Set<string>,
-  candidates: Record<T, string[]>
+  candidates: Record<T, string[]>,
+  options?: { 
+    onDrift?: (fieldName: T, resolutionType: string, driftType: string) => void 
+  }
 ): ResolutionResult<T> {
   const resolved = {} as Record<T, string | undefined>;
   const fieldStatus = {} as Record<T, { resolvedName?: string; candidates: string[]; isDrifted: boolean }>;
@@ -327,9 +330,20 @@ export function resolveInternalNamesDetailed<T extends string>(
 
   for (const key in candidates) {
     if (Object.prototype.hasOwnProperty.call(candidates, key)) {
+      let driftType: string | undefined = undefined;
+
       // 1. First Pass: Exact match (case-insensitive)
-      const exactMatch = candidates[key].find(f => availableMap.has(f.toLowerCase()));
-      let foundCandidate = exactMatch ? availableMap.get(exactMatch.toLowerCase()) : undefined;
+      const exactMatchName = candidates[key].find(f => availableMap.has(f.toLowerCase()));
+      let foundCandidate = exactMatchName ? availableMap.get(exactMatchName.toLowerCase()) : undefined;
+      
+      if (foundCandidate && foundCandidate !== candidates[key][0]) {
+        // It matched one of the candidates, but maybe not the primary one, or case is different
+        if (foundCandidate.toLowerCase() === candidates[key][0].toLowerCase()) {
+          driftType = 'case_mismatch';
+        } else {
+          driftType = 'fuzzy_match'; // Matched a secondary candidate or complex fuzzy
+        }
+      }
 
       // 2. Second Pass: Fuzzy match (handle SharePoint automatic suffix like '0', '1', etc. & _x0020_ encoding)
       if (!foundCandidate) {
@@ -341,6 +355,7 @@ export function resolveInternalNamesDetailed<T extends string>(
             const suffixCandidate = `${lowerBase}${i}`;
             if (availableMap.has(suffixCandidate)) {
               foundCandidate = availableMap.get(suffixCandidate);
+              driftType = 'suffix_mismatch';
               break;
             }
           }
@@ -350,6 +365,7 @@ export function resolveInternalNamesDetailed<T extends string>(
           const encoded = lowerBase.replace(/ /g, '_x0020_');
           if (availableMap.has(encoded)) {
             foundCandidate = availableMap.get(encoded);
+            driftType = 'fuzzy_match';
             break;
           }
 
@@ -358,6 +374,7 @@ export function resolveInternalNamesDetailed<T extends string>(
             const stripped = availableLow.replace(/_x0020_/g, '').replace(/[0-9]+$/, '');
             if (stripped === lowerBase) {
               foundCandidate = actual;
+              driftType = 'fuzzy_match';
               break;
             }
           }
@@ -369,6 +386,7 @@ export function resolveInternalNamesDetailed<T extends string>(
             const availNoId = availableLow.replace(/id$/, '');
             if (availNoId === lowerBaseNoId) {
               foundCandidate = actual;
+              driftType = 'fuzzy_match';
               break;
             }
           }
@@ -378,10 +396,13 @@ export function resolveInternalNamesDetailed<T extends string>(
 
       const resolvedName = foundCandidate;
       // Drift if it's not exactly the primary candidate (first in the list)
-      // Note: Case sensitivity matters in SharePoint internal names.
       const primaryCandidate = candidates[key][0];
       const isPrimaryMatch = !!resolvedName && resolvedName === primaryCandidate;
       const isDrifted = !!resolvedName && !isPrimaryMatch;
+
+      if (isDrifted && options?.onDrift) {
+        options.onDrift(key as T, 'fuzzy_match', driftType || 'unknown');
+      }
 
       resolved[key] = resolvedName;
       fieldStatus[key] = {

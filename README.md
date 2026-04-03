@@ -94,6 +94,8 @@ graph LR
 | **段階的自動化** | AI が提案し、人が判断する。裁量は常に人にある |
 
 > 📖 詳細: **[1ページ概要](docs/architecture/support-pdca-engine-overview.md)** ｜ [完全アーキテクチャ図](docs/architecture/system-architecture-complete.md) ｜ [業務モデル・運用設計](docs/operations/operating-model.md)
+>
+> 🛡️ **[SharePoint Resilience Architecture](docs/architecture/sharepoint-resilience.md)** — ドリフト耐性と自己修復の設計思想
 
 ---
 
