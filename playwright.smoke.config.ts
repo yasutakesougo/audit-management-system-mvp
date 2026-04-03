@@ -51,6 +51,7 @@ const webServerEnvVarsSmoke = {
   VITE_SCHEDULES_SAVE_MODE: 'mock',
   VITE_AUDIT_DEBUG: process.env.VITE_AUDIT_DEBUG ?? '0',
   E2E_SAVE_MODE: 'mock',
+  VITE_DATA_PROVIDER: 'memory',
 };
 
 const envPairs = Object.entries(webServerEnvVarsSmoke)

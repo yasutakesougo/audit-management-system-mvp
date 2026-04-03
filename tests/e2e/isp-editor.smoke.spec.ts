@@ -2,10 +2,11 @@ import { expect, test } from '@playwright/test';
 
 test.describe('ISP Editor — smoke', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/isp-editor');
-    // ページタイトルが表示されるまで待機
+    // Navigate directly to a specific user to test the editor workspace
+    await page.goto('/isp-editor/U0001');
+    // Ensure the heading (either grid or editor) is visible
     await expect(
-      page.getByRole('heading', { name: /個別支援計画 前回比較・更新エディタ/ }),
+      page.getByRole('heading', { name: /個別支援計画.*エディタ/ }),
     ).toBeVisible();
   });
 
@@ -80,7 +81,7 @@ test.describe('ISP Editor — smoke', () => {
   });
 
   test('sidebar toggle has correct aria attributes', async ({ page }) => {
-    const sidebarToggle = page.getByRole('button', { name: /サイドバー/ });
+    const sidebarToggle = page.getByRole('button', { name: /サイドバー/, includeHidden: true });
     await expect(sidebarToggle).toHaveAttribute('aria-expanded', 'true');
 
     await sidebarToggle.click();

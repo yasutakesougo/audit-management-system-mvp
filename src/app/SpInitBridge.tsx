@@ -38,7 +38,9 @@ export const SpInitBridge: React.FC = () => {
 
     const bootstrap = async () => {
       // 1. SharePoint リストの一括プロビジョニング・検証（SharePoint モードのみ）
-      if (providerType !== 'sharepoint') return;
+      // Demo/Smoke モード（VITE_SKIP_SHAREPOINT=1）ではプロビジョニングをスキップして 404 を回避する
+      const { shouldSkipSharePoint } = await import('@/lib/env');
+      if (providerType !== 'sharepoint' || shouldSkipSharePoint()) return;
       
       try {
         const result = await SharePointProvisioningCoordinator.bootstrap(sp);

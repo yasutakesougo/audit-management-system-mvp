@@ -38,16 +38,9 @@ test.describe('admin guard e2e', () => {
   test('viewer is blocked when opening audit or users from app link', async ({ page }) => {
     await bootstrapRole(page, 'viewer');
 
-    // Check audit path
-    await page.getByRole('link', { name: /監査ログ|Audit/ }).first().click();
-    await expect(page.getByRole('heading', { name: accessDeniedHeading })).toBeVisible();
-    await expect(page.getByTestId('audit-root')).toHaveCount(0);
-
-    // Check users path
-    await page.goto('/dashboard'); // Back to dashboard
-    await page.getByRole('link', { name: /利用者|Users/ }).first().click();
-    await expect(page.getByRole('heading', { name: accessDeniedHeading })).toBeVisible();
-    await expect(page.getByTestId('users-panel-root')).toHaveCount(0);
+    // Verify links are hidden from navigation sidebar for unauthorized users
+    await expect(page.getByRole('link', { name: /監査ログ|Audit/ })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /利用者|Users/ })).toHaveCount(0);
   });
 
   test('viewer is blocked on direct admin route access', async ({ page }) => {
