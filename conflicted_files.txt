@@ -1,0 +1,2 @@
+src/features/daily/infra/DataProviderDailyRecordRepository.ts
+src/features/daily/schema.ts
