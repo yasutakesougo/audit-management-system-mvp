@@ -1,0 +1,6 @@
+preflight (0)
+TypeCheck & Test
+typecheck
+quality
+fast
+preflight (1)

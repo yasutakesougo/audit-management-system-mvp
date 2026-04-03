@@ -395,21 +395,25 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
 
   private parseCanonical(item: Record<string, unknown>, fields: CanonicalResolvedFields): DailyRecordItem | null {
     try {
-      const userRows = JSON.parse(item[fields.userRowsJSON] as string || '[]');
+      const rawUserRows = JSON.parse(item[fields.userRowsJSON] as string || '[]');
+      const userRows = Array.isArray(rawUserRows) ? rawUserRows : [];
+
       return {
-        id: String(item.Id),
+        id: String(item.Id || ''),
         date: normalizeDateToYmd(item[fields.title]) || '',
         reporter: {
-          name: String(item[fields.reporterName ?? ''] || ''),
-          role: String(item[fields.reporterRole ?? ''] || ''),
+          name: fields.reporterName ? String(item[fields.reporterName] || '') : '',
+          role: fields.reporterRole ? String(item[fields.reporterRole] || '') : '',
         },
-        userRows: Array.isArray(userRows) ? userRows : [],
-        userCount: Number(item[fields.userCount ?? ''] || 0),
-        createdAt: String(item.Created || ''),
-        modifiedAt: String(item.Modified || ''),
-        approvalStatus: item[fields.approvalStatus ?? ''] as 'pending' | 'approved' | undefined,
-        approvedBy: item[fields.approvedBy ?? ''] as string | undefined,
-        approvedAt: item[fields.approvedAt ?? ''] as string | undefined,
+        userRows,
+        userCount: Number(item[fields.userCount ?? ''] || userRows.length),
+        createdAt: item.Created ? String(item.Created) : undefined,
+        modifiedAt: item.Modified ? String(item.Modified) : undefined,
+        approvalStatus: fields.approvalStatus && item[fields.approvalStatus] 
+          ? (item[fields.approvalStatus] as 'pending' | 'approved') 
+          : undefined,
+        approvedBy: fields.approvedBy ? String(item[fields.approvedBy] || '') : undefined,
+        approvedAt: fields.approvedAt ? String(item[fields.approvedAt] || '') : undefined,
       };
     } catch (e) {
       auditLog.warn('daily', 'canonical_parse_failed', { error: String(e) });

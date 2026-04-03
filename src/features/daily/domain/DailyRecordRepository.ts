@@ -33,6 +33,7 @@ export type SaveDailyRecordInput = DailyRecordDomain;
  * Saved daily record item — SSOT derived from schema.ts + server metadata
  */
 export type DailyRecordItem = DailyRecordDomain & {
+  userCount?: number;          // Total number of users in the record
   id?: string;                 // SharePoint item ID (if persisted)
   createdAt?: string;          // ISO 8601 timestamp
   modifiedAt?: string;         // ISO 8601 timestamp
