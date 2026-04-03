@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-globals */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SharePointItemNotFoundError, SharePointMissingEtagError } from '@/lib/errors';
 

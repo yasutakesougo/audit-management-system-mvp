@@ -1,0 +1,7 @@
+PR_BODY.md
+src/features/daily/domain/schema.ts
+src/features/daily/infra/DataProviderDailyRecordRepository.ts
+src/features/daily/repositories/sharepoint/modules/RowAggregateAccess.ts
+src/features/daily/schema.ts
+src/lib/spClient.ts
+src/sharepoint/fields/dailyFields.ts

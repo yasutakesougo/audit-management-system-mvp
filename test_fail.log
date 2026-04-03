@@ -1,0 +1,38 @@
+
+Running 1 test using 1 worker
+
+  笨・ 1 [chromium] 窶ｺ tests\e2e\daily.records-flow.spec.ts:5:7 窶ｺ Daily 窶・Records flow 窶ｺ navigates to /daily/activity, shows list, and opens a record (16.0s)
+
+
+  1) [chromium] 窶ｺ tests\e2e\daily.records-flow.spec.ts:5:7 窶ｺ Daily 窶・Records flow 窶ｺ navigates to /daily/activity, shows list, and opens a record 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByText('逕ｰ荳ｭ螟ｪ驛・)
+    Expected: visible
+    Error: strict mode violation: getByText('逕ｰ荳ｭ螟ｪ驛・) resolved to 2 elements:
+        1) <p class="MuiTypography-root MuiTypography-body2 css-1e52b87-MuiTypography-root">逕ｰ荳ｭ螟ｪ驛・/p> aka getByTestId('queue-completed-list').getByText('逕ｰ荳ｭ螟ｪ驛・)
+        2) <h6 data-testid="person-name-1" class="MuiTypography-root MuiTypography-subtitle1 css-or3kzz-MuiTypography-root">逕ｰ荳ｭ螟ｪ驛・/h6> aka getByTestId('person-name-1')
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByText('逕ｰ荳ｭ螟ｪ驛・)[22m
+
+
+      20 |
+      21 |     // Wait for record cards to be visible
+    > 22 |     await expect(page.getByText('逕ｰ荳ｭ螟ｪ驛・, { exact: false })).toBeVisible();
+         |                                                            ^
+      23 |     await expect(page.getByText('菴占陸闃ｱ蟄・, { exact: false })).toBeVisible();
+      24 |     await expect(page.getByText('驤ｴ譛ｨ谺｡驛・, { exact: false })).toBeVisible();
+      25 |
+        at C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\tests\e2e\daily.records-flow.spec.ts:22:60
+
+    attachment #1: screenshot (image/png) 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+    test-results\daily.records-flow-Daily-窶・a174b-ows-list-and-opens-a-record-chromium\test-failed-1.png
+    笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+
+    Error Context: test-results\daily.records-flow-Daily-窶・a174b-ows-list-and-opens-a-record-chromium\error-context.md
+
+  1 failed
+    [chromium] 窶ｺ tests\e2e\daily.records-flow.spec.ts:5:7 窶ｺ Daily 窶・Records flow 窶ｺ navigates to /daily/activity, shows list, and opens a record 
