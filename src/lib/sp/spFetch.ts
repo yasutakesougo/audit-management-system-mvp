@@ -281,7 +281,8 @@ export function createSpFetch(deps: SpFetchDeps) {
 
     // Mock decision
     const isE2EWithMsalMock = isE2eMsalMockEnabled(config);
-    const shouldMock = !isE2EWithMsalMock && (!baseUrl || baseUrl === '' || skipSharePoint(config) || shouldSkipLogin(config));
+    // VITE_SKIP_SHAREPOINT=1 (skipSharePoint) should always trigger mock, even in E2E
+    const shouldMock = skipSharePoint(config) || (!isE2EWithMsalMock && (!baseUrl || baseUrl === '' || shouldSkipLogin(config)));
     const AUDIT_DEBUG = config.VITE_AUDIT_DEBUG;
 
     if (AUDIT_DEBUG || isE2EWithMsalMock) {

@@ -23,6 +23,7 @@ import React from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { canAccess } from '../auth/roles';
 import { useUserAuthz } from '../auth/useUserAuthz';
+import RequireAudience from '../components/RequireAudience';
 import { MonthlySummaryTable } from '../features/records/monthly/MonthlySummaryTable';
 import { UserKpiCards } from '../features/records/monthly/UserKpiCards';
 import { UserProgressChart } from '../features/records/monthly/UserProgressChart';
@@ -433,7 +434,8 @@ export default function MonthlyRecordPage() {
 
         {/* 月次PDFタブ */}
         <Box role="tabpanel" hidden={tab !== 'pdf'} id="monthly-tabpanel-pdf" aria-labelledby="monthly-tab-pdf">
-          <Box component="section" aria-label="月次PDF出力">
+          <RequireAudience requiredRole="reception">
+            <Box component="section" aria-label="月次PDF出力">
             <Typography component="p" sx={srOnly}>
               月次記録をPDF形式で出力・ダウンロードできます。
             </Typography>
@@ -497,8 +499,9 @@ export default function MonthlyRecordPage() {
               </Stack>
             </Box>
           </Box>
-        </Box>
+        </RequireAudience>
       </Box>
+    </Box>
     </Container>
   );
 }

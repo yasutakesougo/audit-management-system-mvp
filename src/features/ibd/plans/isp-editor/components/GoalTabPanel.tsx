@@ -165,6 +165,7 @@ export const GoalTabPanel: React.FC<GoalTabPanelProps> = ({
                 {/* Text Editor */}
                 <TextField
                   id={`goal-textarea-${activeGoal.id}`}
+                  label={activeGoal.label}
                   value={activeGoal.text}
                   onChange={(e) => updateGoalText(activeGoal.id, e.target.value)}
                   placeholder="目標・支援内容を入力してください…"

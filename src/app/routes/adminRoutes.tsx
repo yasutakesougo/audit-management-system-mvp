@@ -100,7 +100,7 @@ export const adminRoutes: RouteObject[] = [
   {
     path: 'users',
     element: (
-      <RequireAudience requiredRole="viewer">
+      <RequireAudience requiredRole="reception">
         <SuspendedUsersPanel />
       </RequireAudience>
     ),
@@ -108,7 +108,7 @@ export const adminRoutes: RouteObject[] = [
   {
     path: 'users/:userId',
     element: (
-      <RequireAudience requiredRole="viewer">
+      <RequireAudience requiredRole="reception">
         <SuspendedUserDetailPage />
       </RequireAudience>
     ),

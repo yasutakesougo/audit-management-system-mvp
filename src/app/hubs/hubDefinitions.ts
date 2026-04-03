@@ -394,7 +394,7 @@ export const HUB_DEFINITIONS: Record<HubId, HubDefinition> = {
     emptyStateDescription: 'マスタ機能の権限設定を確認してください。',
     primaryCtaLabel: 'マスタを開く',
     telemetryName: 'hub_master_view',
-    requiredRole: 'viewer',
+    requiredRole: 'reception',
     standaloneRoute: true,
     pageTitle: 'Master',
     breadcrumbLabel: 'Master',
