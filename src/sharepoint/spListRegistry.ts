@@ -650,6 +650,22 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     category: 'compliance',
     lifecycle: 'optional',
   },
+  {
+    key: 'drift_events_log',
+    displayName: 'ドリフトイベント記録',
+    resolve: () => envOr('VITE_SP_LIST_DRIFT_LOG', 'DriftEventsLog'),
+    operations: ['R', 'W'],
+    category: 'compliance',
+    lifecycle: 'optional',
+    provisioningFields: [
+      { internalName: 'ListName', type: 'Text', displayName: 'List Name', required: true, indexed: true },
+      { internalName: 'FieldName', type: 'Text', displayName: 'Field Name', required: true, indexed: true },
+      { internalName: 'DetectedAt', type: 'DateTime', displayName: 'Detected At', required: true },
+      { internalName: 'Severity', type: 'Text', displayName: 'Severity' },
+      { internalName: 'ResolutionType', type: 'Text', displayName: 'Resolution Type' },
+      { internalName: 'Resolved', type: 'Boolean', displayName: 'Resolved', default: false },
+    ],
+  },
 
   // ── 8. その他 ─────────────────────────────────────────
   {

@@ -13,6 +13,8 @@ import type { ExceptionSeverity } from '@/features/exceptions/domain/exceptionLo
 import { useEscalationEvaluation } from '@/features/exceptions/hooks/useEscalationEvaluation';
 import { EscalationAlertBanner } from '@/features/exceptions/components/EscalationAlertBanner';
 import { useNotificationDispatcher } from '@/features/exceptions/hooks/useNotificationDispatcher';
+import { DriftEventTable } from '@/features/diagnostics/drift/ui/DriftEventTable';
+import { Tabs, Tab } from '@mui/material';
 
 const SEVERITY_LABELS: Record<ExceptionSeverity, string> = {
   critical: '致命的',
@@ -31,6 +33,7 @@ const SEVERITY_COLORS: Record<ExceptionSeverity, 'error' | 'warning' | 'primary'
 export const ExceptionCenterPage: React.FC = () => {
   const { items, summary, isLoading, error } = useExceptionCenterOrchestrator();
   const { activeEscalations } = useEscalationEvaluation(items, summary);
+  const [activeTab, setActiveTab] = React.useState(0);
   
   // 重要例外を外部チャネルへ配送
   const { historyCount } = useNotificationDispatcher(activeEscalations);
@@ -70,96 +73,112 @@ export const ExceptionCenterPage: React.FC = () => {
           </Box>
         </Box>
 
-        {/* Stats Summary */}
-        <Box
-          sx={{
-            display: 'grid',
-            gap: 2,
-            gridTemplateColumns: { xs: '1fr', md: 'repeat(4, 1fr)' },
-          }}
-        >
-          <StatCard 
-            title="未解消例外 合計" 
-            value={summary.totalCount} 
-            color="primary"
-            description="現在検知されている全例外数"
-          />
-          <StatCard 
-            title="致命的例外 (Critical)" 
-            value={summary.stats.bySeverity.critical} 
-            color="error"
-            description="即時の介入が必要な異常"
-          />
-          <StatCard 
-            title="重点監視利用者" 
-            value={summary.highRiskUserIds.length} 
-            color="warning"
-            description="重大な不備が集中している利用者"
-          />
-          <StatCard 
-            title="計画乖離 (Bridge)" 
-            value={(summary.stats.byCategory['procedure-unperformed'] ?? 0) + (summary.stats.byCategory['risk-deviation'] ?? 0)} 
-            color="info"
-            description="計画と実績の不整合"
-          />
+        {/* Navigation Tabs */}
+        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs value={activeTab} onChange={(_e, newValue) => setActiveTab(newValue)}>
+            <Tab label="例外監視ボード" sx={{ fontWeight: 700 }} />
+            <Tab label="SharePoint ドリフト履歴" sx={{ fontWeight: 700 }} />
+          </Tabs>
         </Box>
 
-        {/* Main Monitoring Board */}
-        <Box
-          sx={{
-            display: 'grid',
-            gap: 3,
-            gridTemplateColumns: { xs: '1fr', lg: '1fr 2fr' },
-          }}
-        >
-          {/* User Groups Breakdown */}
-          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: 'background.default' }}>
-            <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
-              利用者別ステータス
-            </Typography>
-            <Stack spacing={1.5}>
-              {summary.groups.map(group => (
-                <Paper 
-                  key={group.userId} 
-                  variant="outlined" 
-                  sx={{ 
-                    p: 1.5, 
-                    borderRadius: 1.5,
-                    borderLeft: 4,
-                    borderLeftColor: `${SEVERITY_COLORS[group.maxSeverity] || 'primary'}.main`
-                  }}
-                >
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Box>
-                      <Typography variant="subtitle2" fontWeight={700}>
-                        {group.userName}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        例外 {group.items.length}件 
-                        {group.criticalCount > 0 && ` (致命的 ${group.criticalCount}件)`}
-                      </Typography>
-                    </Box>
-                    <Chip 
-                      label={SEVERITY_LABELS[group.maxSeverity]} 
-                      size="small" 
-                      color={SEVERITY_COLORS[group.maxSeverity] || 'primary'}
-                      variant="outlined"
-                      sx={{ fontWeight: 700 }}
-                    />
-                  </Stack>
-                </Paper>
-              ))}
-            </Stack>
-          </Paper>
+        {activeTab === 0 ? (
+          <Stack spacing={4}>
+            {/* Stats Summary */}
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 2,
+                gridTemplateColumns: { xs: '1fr', md: 'repeat(4, 1fr)' },
+              }}
+            >
+              <StatCard 
+                title="未解消例外 合計" 
+                value={summary.totalCount} 
+                color="primary"
+                description="現在検知されている全例外数"
+              />
+              <StatCard 
+                title="致命的例外 (Critical)" 
+                value={summary.stats.bySeverity.critical} 
+                color="error"
+                description="即時の介入が必要な異常"
+              />
+              <StatCard 
+                title="重点監視利用者" 
+                value={summary.highRiskUserIds.length} 
+                color="warning"
+                description="重大な不備が集中している利用者"
+              />
+              <StatCard 
+                title="計画乖離 (Bridge)" 
+                value={(summary.stats.byCategory['procedure-unperformed'] ?? 0) + (summary.stats.byCategory['risk-deviation'] ?? 0)} 
+                color="info"
+                description="計画と実績の不整合"
+              />
+            </Box>
 
-          {/* Detailed Exception Table */}
-          <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-            <ExceptionTable 
-              items={items} 
-              title="全例外詳細（横断表示）"
-            />
+            {/* Main Monitoring Board */}
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 3,
+                gridTemplateColumns: { xs: '1fr', lg: '1fr 2fr' },
+              }}
+            >
+              {/* User Groups Breakdown */}
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: 'background.default' }}>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
+                  利用者別ステータス
+                </Typography>
+                <Stack spacing={1.5}>
+                  {summary.groups.map(group => (
+                    <Paper 
+                      key={group.userId} 
+                      variant="outlined" 
+                      sx={{ 
+                        p: 1.5, 
+                        borderRadius: 1.5,
+                        borderLeft: 4,
+                        borderLeftColor: `${SEVERITY_COLORS[group.maxSeverity] || 'primary'}.main`
+                      }}
+                    >
+                      <Stack direction="row" justifyContent="space-between" alignItems="center">
+                        <Box>
+                          <Typography variant="subtitle2" fontWeight={700}>
+                            {group.userName}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            例外 {group.items.length}件 
+                            {group.criticalCount > 0 && ` (致命的 ${group.criticalCount}件)`}
+                          </Typography>
+                        </Box>
+                        <Chip 
+                          label={SEVERITY_LABELS[group.maxSeverity]} 
+                          size="small" 
+                          color={SEVERITY_COLORS[group.maxSeverity] || 'primary'}
+                          variant="outlined"
+                          sx={{ fontWeight: 700 }}
+                        />
+                      </Stack>
+                    </Paper>
+                  ))}
+                </Stack>
+              </Paper>
+
+              {/* Detailed Exception Table */}
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                <ExceptionTable 
+                  items={items} 
+                  title="全例外詳細（横断表示）"
+                />
+              </Paper>
+            </Box>
+          </Stack>
+        ) : (
+          <Paper variant="outlined" sx={{ p: 4, borderRadius: 2 }}>
+            <DriftEventTable />
           </Paper>
-        </Box>
+        )}
       </Stack>
     </Container>
   );
