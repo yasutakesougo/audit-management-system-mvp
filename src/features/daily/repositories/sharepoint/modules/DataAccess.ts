@@ -2,7 +2,7 @@ import type { SpFetchFn } from '@/lib/sp/spLists';
 import { 
     DAILY_RECORD_FIELDS, 
     DAILY_RECORD_ROWS_FIELDS, 
-    type SharePointItem, 
+    type RawSharePointItem,
     type SharePointResponse 
 } from '../constants';
 import { 
@@ -25,7 +25,7 @@ export class DailyRecordDataAccess {
         if (!record) return null;
 
         try {
-            const latestVersion = item[DAILY_RECORD_FIELDS.latestVersion] || 0;
+            const latestVersion = (item as unknown as Record<string, number>)[DAILY_RECORD_FIELDS.latestVersion] || 0;
             const rowsListPath = buildListPath(rowsListTitle);
             const filter = latestVersion > 0
                 ? `${DAILY_RECORD_ROWS_FIELDS.parentId} eq ${item.Id} and ${DAILY_RECORD_ROWS_FIELDS.version} eq ${latestVersion}`
@@ -68,13 +68,13 @@ export class DailyRecordDataAccess {
         ].join(','));
 
         const response = await this.spFetch(`${listPath}/items?${queryParams.toString()}`);
-        const payload = (await response.json()) as SharePointResponse<unknown>;
+        const payload = (await response.json()) as SharePointResponse<RawSharePointItem>;
         return (payload.value ?? [])
             .map(item => parseSpItem(item))
             .filter((p): p is DailyRecordItem => Boolean(p));
     }
 
-    public async findItemByDate(date: string, listPath: string, signal?: AbortSignal): Promise<SharePointItem | null> {
+    public async findItemByDate(date: string, listPath: string, signal?: AbortSignal): Promise<RawSharePointItem | null> {
         const queryParams = new URLSearchParams();
         queryParams.set('$filter', `${DAILY_RECORD_FIELDS.title} eq '${date}'`);
         queryParams.set('$top', '1');
@@ -82,13 +82,12 @@ export class DailyRecordDataAccess {
             'Id', DAILY_RECORD_FIELDS.title, DAILY_RECORD_FIELDS.recordDate, 
             DAILY_RECORD_FIELDS.reporterName, DAILY_RECORD_FIELDS.reporterRole, 
             DAILY_RECORD_FIELDS.userRowsJSON, DAILY_RECORD_FIELDS.userCount, 
-            DAILY_RECORD_FIELDS.created, DAILY_RECORD_FIELDS.modified,
-            DAILY_RECORD_FIELDS.latestVersion
+            DAILY_RECORD_FIELDS.created, DAILY_RECORD_FIELDS.modified
         ].join(','));
 
         try {
             const response = await this.spFetch(`${listPath}/items?${queryParams.toString()}`, { signal });
-            const payload = (await response.json()) as SharePointResponse<SharePointItem>;
+            const payload = (await response.json()) as SharePointResponse<RawSharePointItem>;
             const items = payload.value ?? [];
             return items.length > 0 ? items[0] : null;
         } catch (error) {

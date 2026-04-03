@@ -1,5 +1,6 @@
 import type { SpFetchFn } from '@/lib/sp/spLists';
 import { 
+    DAILY_RECORD_FIELDS,
     DAILY_RECORD_ROWS_FIELDS, 
     type SharePointItem 
 } from '../constants';
@@ -9,7 +10,10 @@ import {
     DailyRecordItem,
     ApproveRecordInput
 } from '../../../domain/legacy/DailyRecordRepository';
-import { buildDailyRecordPayload } from '../../../domain/builders/buildDailyRecordPayload';
+import { 
+    buildDailyRecordPayload, 
+    type SharePointDailyRecordPayload 
+} from '../../../domain/builders/buildDailyRecordPayload';
 import { auditLog } from '@/lib/debugLogger';
 import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { toSafeError } from '@/lib/errors';
@@ -31,7 +35,15 @@ export class DailyRecordSaver {
 
         try {
             const mode = existingItem ? 'update' : 'create';
-            const itemData = buildDailyRecordPayload(input);
+            const itemData: SharePointDailyRecordPayload = buildDailyRecordPayload(input);
+            const spPayload = {
+                [DAILY_RECORD_FIELDS.title]: itemData.Title,
+                [DAILY_RECORD_FIELDS.recordDate]: itemData.RecordDate,
+                [DAILY_RECORD_FIELDS.reporterName]: itemData.ReporterName,
+                [DAILY_RECORD_FIELDS.reporterRole]: itemData.ReporterRole,
+                [DAILY_RECORD_FIELDS.userRowsJSON]: itemData.UserRowsJSON,
+                [DAILY_RECORD_FIELDS.userCount]: itemData.UserCount,
+            };
             
             let parentId: number;
             if (existingItem) {
@@ -40,26 +52,24 @@ export class DailyRecordSaver {
                 await this.spFetch(updateUrl, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json;odata=verbose',
-                        'Accept': 'application/json;odata=verbose',
+                        'Content-Type': 'application/json;odata=nometadata',
+                        'Accept': 'application/json;odata=nometadata',
                         'IF-MATCH': existingItem.__metadata?.etag ?? '*',
                         'X-HTTP-Method': 'MERGE',
                     },
-                    body: JSON.stringify({
-                        ...itemData,
-                    }),
+                    body: JSON.stringify(spPayload),
                 });
             } else {
                 const createUrl = `${listPath}/items`;
                 const res = await this.spFetch(createUrl, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json;odata=verbose',
-                        'Accept': 'application/json;odata=verbose',
+                        'Content-Type': 'application/json;odata=nometadata',
+                        'Accept': 'application/json;odata=nometadata',
                     },
                     body: JSON.stringify({
-                        ...itemData,
-                        UserRowsJSON: '', 
+                        ...spPayload,
+                        [DAILY_RECORD_FIELDS.userRowsJSON]: '', 
                     }),
                 });
                 const created = await res.json();
@@ -98,7 +108,7 @@ export class DailyRecordSaver {
                 };
                 await this.spFetch(`${rowsListPath}/items`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json;odata=verbose', 'Accept': 'application/json;odata=verbose' },
+                    headers: { 'Content-Type': 'application/json;odata=nometadata', 'Accept': 'application/json;odata=nometadata' },
                     body: JSON.stringify(rowPayload),
                 });
             }
@@ -108,13 +118,13 @@ export class DailyRecordSaver {
             await this.spFetch(finalizeUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json;odata=verbose',
-                    'Accept': 'application/json;odata=verbose',
+                    'Content-Type': 'application/json;odata=nometadata',
+                    'Accept': 'application/json;odata=nometadata',
                     'IF-MATCH': '*',
                     'X-HTTP-Method': 'MERGE',
                 },
                 body: JSON.stringify({
-                    UserRowsJSON: '', 
+                    [DAILY_RECORD_FIELDS.userRowsJSON]: '', 
                 }),
             });
 
@@ -122,6 +132,7 @@ export class DailyRecordSaver {
         } catch (error) {
             const safeError = toSafeError(error);
             finishSpan({ meta: { status: 'error' }, error: safeError.message });
+            throw safeError;
         }
     }
 

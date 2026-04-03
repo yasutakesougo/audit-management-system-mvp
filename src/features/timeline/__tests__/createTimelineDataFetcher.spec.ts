@@ -55,6 +55,7 @@ function makeDailyItem(overrides: Partial<DailyRecordItem> = {}): DailyRecordIte
         behaviorTags: [],
       },
     ],
+    userCount: overrides.userRows?.length ?? 2,
     ...overrides,
   };
 }

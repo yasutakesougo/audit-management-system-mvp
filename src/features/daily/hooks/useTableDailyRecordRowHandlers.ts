@@ -94,6 +94,7 @@ export function useTableDailyRecordRowHandlers({
       return {
         ...prev,
         userRows: nextRows,
+        userCount: nextRows.length,
       };
     });
   }, [selectedUsers, selectedUserIds, setFormData, handoffNotesByUser]);

@@ -1,7 +1,10 @@
-// Repository Pattern - Domain Layer
 export type {
-    DailyRecordDateRange, DailyRecordItem, DailyRecordRepository, DailyRecordRepositoryListParams,
-    DailyRecordRepositoryMutationParams, SaveDailyRecordInput
+    DailyRecordDomain, DailyRecordItem, SaveDailyRecordInput, DailyRecordUserRow
+} from './schema';
+
+export type {
+    DailyRecordDateRange, DailyRecordRepository, DailyRecordRepositoryListParams,
+    DailyRecordRepositoryMutationParams
 } from './domain/DailyRecordRepository';
 
 // Behavior / Procedure / Execution Repository Interfaces

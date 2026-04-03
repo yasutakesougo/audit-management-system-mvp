@@ -13,34 +13,10 @@ import { useTableDailyRecordRouting } from './useTableDailyRecordRouting';
 import { useTableDailyRecordRowHandlers } from './useTableDailyRecordRowHandlers';
 import { useTableDailyRecordSelection } from './useTableDailyRecordSelection';
 import { toLocalDateISO } from '@/utils/getNow';
+import type { DailyRecordDomain, DailyRecordUserRow } from '../domain/schema';
 
-export type UserRowData = {
-  userId: string;
-  userName: string;
-  amActivity: string;
-  pmActivity: string;
-  lunchAmount: string;
-  problemBehavior: {
-    selfHarm: boolean;
-    otherInjury: boolean;
-    loudVoice: boolean;
-    pica: boolean;
-    other: boolean;
-  };
-  specialNotes: string;
-  behaviorTags: string[];
-  /** 提案に対するアクション記録（Issue #9） */
-  acceptedSuggestions?: import('../domain/suggestionAction').SuggestionAction[];
-};
-
-export type TableDailyRecordData = {
-  date: string;
-  reporter: {
-    name: string;
-    role: string;
-  };
-  userRows: UserRowData[];
-};
+export type UserRowData = DailyRecordUserRow;
+export type TableDailyRecordData = DailyRecordDomain;
 
 /** バリデーションエラー構造 */
 export type TableDailyRecordValidationErrors = {
@@ -113,6 +89,7 @@ const createInitialFormData = (initialDate?: string | null): TableDailyRecordDat
     role: '生活支援員',
   },
   userRows: [],
+  userCount: 0,
 });
 
 /** YYYY-MM-DD 形式の日付バリデーション */

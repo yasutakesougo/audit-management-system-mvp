@@ -21,6 +21,7 @@ const createTestFormData = (overrides?: Partial<TableDailyRecordData>): TableDai
   date: '2026-03-03',
   reporter: { name: 'テスト担当者', role: '生活支援員' },
   userRows: [],
+  userCount: 0,
   ...overrides,
 });
 

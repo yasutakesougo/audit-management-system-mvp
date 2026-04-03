@@ -15,33 +15,10 @@ import { buildTableDailyRecordRows } from '../../table/models/buildTableDailyRec
 import { appendSuggestionMemo, createSuggestionAction } from '../../domain/legacy/suggestionAction';
 import type { PatternSuggestion } from '../../domain/behavior/behaviorPatternSuggestions';
 
-export type UserRowData = {
-  userId: string;
-  userName: string;
-  amActivity: string;
-  pmActivity: string;
-  lunchAmount: string;
-  problemBehavior: {
-    selfHarm: boolean;
-    otherInjury: boolean;
-    loudVoice: boolean;
-    pica: boolean;
-    other: boolean;
-  };
-  specialNotes: string;
-  behaviorTags: string[];
-  /** 提案に対するアクション記録（Issue #9） */
-  acceptedSuggestions?: import('../../domain/legacy/suggestionAction').SuggestionAction[];
-};
+import type { DailyRecordDomain, DailyRecordUserRow } from '../../domain/schema';
 
-export type TableDailyRecordData = {
-  date: string;
-  reporter: {
-    name: string;
-    role: string;
-  };
-  userRows: UserRowData[];
-};
+export type UserRowData = DailyRecordUserRow;
+export type TableDailyRecordData = DailyRecordDomain;
 
 /** バリデーションエラー構造 */
 export type TableDailyRecordValidationErrors = {
@@ -319,11 +296,16 @@ export const useTableDailyRecordForm = ({
           if (!row) return prev;
           const newNotes = appendSuggestionMemo(row.specialNotes, suggestion, prev.date);
           const action = createSuggestionAction(suggestion, 'accept', userId);
+          // Explicitly cast to the SSOT structure to satisfy the row update
+          const domainAction = {
+            ...action,
+            category: action.category as import('../../domain/behavior/behaviorPatternSuggestions').SuggestionCategory
+          };
           return {
             ...prev,
             userRows: prev.userRows.map(r =>
               r.userId === userId
-                ? { ...r, specialNotes: newNotes, acceptedSuggestions: [...(r.acceptedSuggestions ?? []), action] }
+                ? { ...r, specialNotes: newNotes, acceptedSuggestions: [...(r.acceptedSuggestions ?? []), domainAction] }
                 : r,
             ),
           };
@@ -332,11 +314,16 @@ export const useTableDailyRecordForm = ({
       dismissSuggestion: useCallback((userId: string, suggestion: PatternSuggestion) => {
         setFormData(prev => {
           const action = createSuggestionAction(suggestion, 'dismiss', userId);
+          // Explicitly cast to the SSOT structure to satisfy the row update
+          const domainAction = {
+            ...action,
+            category: action.category as import('../../domain/behavior/behaviorPatternSuggestions').SuggestionCategory
+          };
           return {
             ...prev,
             userRows: prev.userRows.map(r =>
               r.userId === userId
-                ? { ...r, acceptedSuggestions: [...(r.acceptedSuggestions ?? []), action] }
+                ? { ...r, acceptedSuggestions: [...(r.acceptedSuggestions ?? []), domainAction] }
                 : r,
             ),
           };

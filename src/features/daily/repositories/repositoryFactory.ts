@@ -13,7 +13,7 @@ import { hasSpfxContext } from '@/lib/runtime';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 
 import { useAuth } from '@/auth/useAuth';
-import type { DailyRecordRepository } from '../domain/legacy/DailyRecordRepository';
+import type { DailyRecordRepository } from '../domain/DailyRecordRepository';
 import { inMemoryDailyRecordRepository } from './sharepoint/InMemoryDailyRecordRepository';
 import {
   SharePointDailyRecordRepository,

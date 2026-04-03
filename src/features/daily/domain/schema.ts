@@ -49,14 +49,16 @@ export const DailyRecordDomainSchema = z.object({
     role: z.string().default(''),
   }),
   userRows: z.array(DailyRecordUserRowSchema).default([]),
+  userCount: z.number().default(0),
 });
 
 /**
  * Schema for raw SharePoint item before transformation.
+ * Note: Uses logical names for consistency across the domain layer.
  */
 export const SharePointDailyRecordItemSchema = z.object({
   Id: z.number(),
-  Title: z.string().nullish(), // YYYY-MM-DD; 実テナントでは null の場合がある
+  Title: z.string().nullish(), // YYYY-MM-DD
   RecordDate: z.string().nullish(),
   ReporterName: z.string().nullish().transform(val => val ?? ''),
   ReporterRole: z.string().nullish().transform(val => val ?? ''),
@@ -88,8 +90,9 @@ export const DailyRecordItemSchema = SharePointDailyRecordItemSchema.transform((
       name: sp.ReporterName,
       role: sp.ReporterRole,
     },
-    // We re-validate the parsed JSON here
+    // Map UserRowsJSON back to userRows
     userRows: z.array(DailyRecordUserRowSchema).parse(sp.UserRowsJSON),
+    userCount: sp.UserCount ?? 0,
     createdAt: sp.Created ?? undefined,
     modifiedAt: sp.Modified ?? undefined,
   };
