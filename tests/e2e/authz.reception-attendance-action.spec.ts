@@ -51,9 +51,9 @@ test.describe('reception attendance action guard e2e', () => {
     await bootstrapRole(page, 'admin', '/staff/attendance');
 
     await expect(page.getByTestId('staff-attendance-input-root')).toBeVisible();
-    const awayButton = page.getByTestId('staff-attendance-status-STF001-away');
-    await expect(awayButton).toBeVisible();
-    await awayButton.click();
-    await expect(awayButton).toHaveAttribute('aria-pressed', 'true');
+    const attendedButton = page.getByTestId('staff-attendance-status-STF001-attended');
+    await expect(attendedButton).toBeVisible();
+    await attendedButton.click();
+    await expect(attendedButton).toHaveAttribute('aria-pressed', 'true');
   });
 });

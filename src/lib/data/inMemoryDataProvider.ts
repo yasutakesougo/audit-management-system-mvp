@@ -13,6 +13,37 @@ export class InMemoryDataProvider implements IDataProvider {
   private storage: Map<string, Array<Record<string, unknown>>> = new Map();
   private nextId = 1;
 
+  constructor() {
+    // 統合テスト・スモークテスト用の最小限のシードデータ
+    this.storage.set('Staff_Master', [
+      { Id: 1, StaffID: 'STF001', FullName: 'Staff One', Role: 'reception', IsActive: true },
+      { Id: 2, StaffID: 'STF002', FullName: 'Staff Two', Role: 'admin', IsActive: true },
+    ]);
+    this.storage.set('Users_Master', [
+      { Id: 1, UserID: 'USR001', FullName: 'User One', Status: 'active', IsActive: true },
+    ]);
+    // スケジュール解決用のダミー (resolveFields が失敗しないため)
+    this.storage.set('Schedules', [
+      { 
+        Id: 1, 
+        Title: 'Dummy Event', 
+        EventDate: new Date().toISOString(), 
+        EndDate: new Date().toISOString(),
+        Status: 'Planned'
+      }
+    ]);
+    // 職員出勤解決用
+    this.storage.set('Staff_Attendance', [
+      {
+        Id: 1,
+        StaffId: 'STF001',
+        RecordDate: new Date().toISOString().split('T')[0],
+        Status: 'attended'
+      }
+    ]);
+    this.nextId = 100; // IDの重複防止
+  }
+
   async listItems<T>(resourceName: string, options?: DataProviderOptions): Promise<T[]> {
     options?.signal?.throwIfAborted();
     const items = this.storage.get(resourceName) || [];

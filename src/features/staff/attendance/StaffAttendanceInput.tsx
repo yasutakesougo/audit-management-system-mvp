@@ -251,7 +251,12 @@ export const StaffAttendanceInput: React.FC = () => {
                       data-testid={`staff-attendance-toggle-${row.staffId}`}
                     >
                       {STATUS_OPTIONS.map((opt) => (
-                        <ToggleButton key={opt} value={opt} aria-label={opt}>
+                        <ToggleButton 
+                          key={opt} 
+                          value={opt} 
+                          aria-label={opt}
+                          data-testid={`staff-attendance-status-${row.staffId}-${opt === '出勤' ? 'attended' : 'absent'}`}
+                        >
                           {opt}
                         </ToggleButton>
                       ))}

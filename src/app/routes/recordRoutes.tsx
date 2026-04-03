@@ -33,7 +33,7 @@ export const recordRoutes: RouteObject[] = [
   {
     path: 'records/monthly',
     element: (
-      <RequireAudience requiredRole="viewer">
+      <RequireAudience requiredRole="reception">
         <SuspendedMonthlyRecordPage />
       </RequireAudience>
     ),
@@ -41,7 +41,7 @@ export const recordRoutes: RouteObject[] = [
   {
     path: 'records/journal',
     element: (
-      <RequireAudience requiredRole="viewer">
+      <RequireAudience requiredRole="reception">
         <SuspendedBusinessJournalPreviewPage />
       </RequireAudience>
     ),
@@ -49,7 +49,7 @@ export const recordRoutes: RouteObject[] = [
   {
     path: 'records/journal/personal',
     element: (
-      <RequireAudience requiredRole="viewer">
+      <RequireAudience requiredRole="reception">
         <SuspendedPersonalJournalPage />
       </RequireAudience>
     ),
@@ -57,7 +57,7 @@ export const recordRoutes: RouteObject[] = [
   {
     path: 'records/service-provision',
     element: (
-      <RequireAudience requiredRole="viewer">
+      <RequireAudience requiredRole="reception">
         <SuspendedServiceProvisionFormPage />
       </RequireAudience>
     ),
