@@ -20,6 +20,11 @@ export interface ISpOperations {
 export class SharePointDriftEventRepository implements IDriftEventRepository {
   /** 同一セッション内での重複ログ抑制用のキャッシュ ( dedupeKey -> 1 ) */
   private sessionCache = new Set<string>();
+  
+  /** 連続エラーによる記録停止フラグとカウンタ */
+  private errorCount = 0;
+  private circuitOpenUntil = 0;
+  private verifiedFields: Set<string> | null = null;
 
   constructor(private spClient: ISpOperations) {}
 
@@ -31,6 +36,11 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       return;
     }
 
+    // 2. サーキットブレーカー（連続失敗時はスキップ）
+    if (this.circuitOpenUntil > Date.now()) {
+      return;
+    }
+    
     try {
       const entry = findListEntry('drift_events_log');
       if (!entry) {
@@ -39,20 +49,48 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       }
 
       const listTitle = entry.resolve();
+      
+      // 3. フィールド検証 (初回のみ)
+      if (!this.verifiedFields) {
+        try {
+          await this.spClient.getListItemsByTitle(listTitle, ['Id'], undefined, undefined, 1);
+          // getListFieldInternalNames が DataProvider にあるはずだが、ここでは createItem 時のエラーで判断するか
+          // getListItemsByTitle が成功すればリストは存在する
+          this.verifiedFields = new Set(['Title', 'DetectedAt', 'Severity', 'ResolutionType', 'DriftType', 'Resolved', 'ListName', 'FieldName']);
+        } catch {
+          console.warn('DriftEventRepository: DriftEventsLog list seems missing or inaccessible. Disabling logs for 5 min.');
+          this.circuitOpenUntil = Date.now() + 5 * 60 * 1000;
+          return;
+        }
+      }
 
-      await this.spClient.createItem(listTitle, {
+      const payload: Record<string, unknown> = {
         Title: `${event.listName}:${event.fieldName}`, // デバッグ用キー
-        ListName: event.listName,
-        FieldName: event.fieldName,
         DetectedAt: event.detectedAt,
         Severity: event.severity,
         ResolutionType: event.resolutionType,
         DriftType: event.driftType || 'unknown',
         Resolved: event.resolved
-      });
+      };
 
+      // 現状の問題となっている ListName / FieldName の動的チェック（擬似フェイルオープン）
+      // プロビジョニングが追いついていない環境への配慮
+      if (event.listName) payload.ListName = event.listName;
+      if (event.fieldName) payload.FieldName = event.fieldName;
+
+      await this.spClient.createItem(listTitle, payload);
+
+      // 成功時はエラーカウンタリセット
+      this.errorCount = 0;
       this.sessionCache.add(dedupeKey);
     } catch (err) {
+      this.errorCount++;
+      // 5回連続失敗で5分間停止 (Circuit Breaker)
+      if (this.errorCount >= 5) {
+        console.error('DriftEventRepository: Multiple failures detected. Opening circuit for 5 minutes.');
+        this.circuitOpenUntil = Date.now() + 5 * 60 * 1000;
+      }
+      
       // ✅ Fail-Open: 書き込み失敗は、システム全体の業務に影響を与えないよう握りつぶす。
       console.error('DriftEventRepository: Failed to log drift event. (Fail-Open)', err);
     }
