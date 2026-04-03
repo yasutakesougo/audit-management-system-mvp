@@ -36,33 +36,70 @@ export type SpClient = {
   listTitle: string;
 };
 
+export async function fetchRequestDigest(request: APIRequestContext, url: string): Promise<string> {
+  const siteUrl = url.split('/_api')[0];
+  const contextUrl = `${siteUrl}/_api/contextinfo`;
+
+  const res = await request.post(contextUrl, {
+    headers: { 'Accept': 'application/json;odata=verbose' },
+  });
+
+  if (!res.ok()) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Failed to fetch X-RequestDigest from ${contextUrl}: ${res.status()}\n${body}`);
+  }
+
+  const json = await res.json();
+  const digest = json?.d?.GetContextWebInformation?.FormDigestValue;
+
+  if (!digest) {
+    throw new Error(`Invalid contextinfo response from ${contextUrl}: digest missing`);
+  }
+
+  return digest;
+}
+
 export function makeListApi(client: SpClient) {
-  // NOTE: your app already knows tenant/site; most projects use a proxy endpoint or direct _api.
-  // Here we assume direct SharePoint REST path is built by env in spec (as you do today).
-  // You'll pass `siteUrl` (absolute) into spec, not Vite dev base.
+  const commonHeaders = {
+    'Accept': 'application/json;odata=nometadata',
+    'Content-Type': 'application/json;odata=nometadata',
+  };
+
   return {
     async get(url: string, op: string) {
-      const res = await client.request.get(url);
+      const res = await client.request.get(url, {
+        headers: commonHeaders,
+      });
       // Debug: log headers
       if (process.env.DEBUG_INTEGRATION) {
+        // eslint-disable-next-line no-console
         console.log(`[${op}] GET headers:`, res.headers());
       }
       await ensureOk(res, { op, url });
       return res;
     },
     async post(url: string, data: unknown, op: string, headers?: Record<string, string>) {
+      const digest = await fetchRequestDigest(client.request, url);
+
       const res = await client.request.post(url, {
         data,
-        headers: { 'Content-Type': 'application/json;odata=verbose', ...(headers ?? {}) },
+        headers: {
+          ...commonHeaders,
+          'X-RequestDigest': digest,
+          ...(headers ?? {}),
+        },
       });
       await ensureOk(res, { op, url });
       return res;
     },
     async merge(url: string, data: unknown, op: string) {
+      const digest = await fetchRequestDigest(client.request, url);
+
       const res = await client.request.post(url, {
         data,
         headers: {
-          'Content-Type': 'application/json;odata=verbose',
+          ...commonHeaders,
+          'X-RequestDigest': digest,
           'IF-MATCH': '*',
           'X-HTTP-Method': 'MERGE',
         },
