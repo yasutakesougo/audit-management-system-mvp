@@ -128,6 +128,7 @@ const createDefaultRecords = (): DailyRecordItem[] => {
         role: i % 2 === 0 ? '生活支援員' : 'サービス管理責任者',
       },
       userRows,
+      userCount: userRows.length,
       createdAt: new Date(recordDate + 'T17:30:00+09:00').toISOString(),
       modifiedAt: new Date(recordDate + 'T17:30:00+09:00').toISOString(),
     });

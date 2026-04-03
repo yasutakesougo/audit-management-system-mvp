@@ -21,7 +21,8 @@ export type SuggestionCategory =
   | 'co-occurrence'
   | 'slot-bias'
   | 'tag-density'
-  | 'positive-signal';
+  | 'positive-signal'
+  | string; // Allow for extensibility (e.g. from support-plan-guide)
 
 export type PatternSuggestion = {
   /** ルール識別子（テスト・ログ用） */

@@ -12,6 +12,7 @@ export const createInitialFormData = (initialDate?: string | null): TableDailyRe
     role: '生活支援員',
   },
   userRows: [],
+  userCount: 0,
 });
 
 export interface UseTableDailyRecordHydrationOrchestratorParams {
@@ -116,7 +117,8 @@ export function useTableDailyRecordHydrationOrchestrator({
           setFormData({
             date: existingRecord.date,
             reporter: existingRecord.reporter,
-            userRows: existingRecord.userRows as UserRowData[],
+            userRows: (existingRecord.userRows as UserRowData[]) ?? [],
+            userCount: existingRecord.userCount ?? existingRecord.userRows?.length ?? 0,
           });
           setInitialSelectedUserIds(existingRecord.userRows.map(row => row.userId));
         } else {

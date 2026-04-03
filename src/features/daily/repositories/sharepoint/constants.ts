@@ -8,7 +8,7 @@ export const DAILY_RECORD_FIELDS = {
   recordDate: 'RecordDate',    // Date type
   reporterName: 'ReporterName', // Text
   reporterRole: 'ReporterRole', // Text
-  userRowsJSON: 'UserRowsJSON', // Multi-line text (DEPRECATED fallback)
+  userRowsJSON: 'User_x0020_Rows_x0020_JSON', // Multi-line text (DEPRECATED fallback)
   userCount: 'UserCount',       // Number
   latestVersion: 'LatestVersion', // Atomic version control
   isDeleted: 'IsDeleted',       // Logical delete support
@@ -20,12 +20,12 @@ export const DAILY_RECORD_FIELDS = {
  * SharePoint field names for daily records (Child Rows)
  */
 export const DAILY_RECORD_ROWS_FIELDS = {
-  parentId: 'ParentID',
-  userId: 'UserID',
+  parentId: 'Parent_x0020_ID',
+  userId: 'User_x0020_ID',
   version: 'Version',           // Matches Parent's LatestVersion
   status: 'Status',
   payload: 'Payload',
-  recordedAt: 'RecordedAt',
+  recordedAt: 'Recorded_x0020_At',
 } as const;
 
 export type SharePointResponse<T> = {
@@ -43,13 +43,38 @@ export type RowAggregateSource = {
   selectFields: string[];
 };
 
+/**
+ * Raw item as it comes directly from SharePoint response.
+ * Uses physical internal names.
+ */
+export interface RawSharePointItem {
+  Id: number;
+  Title?: string;
+  RecordDate?: string;
+  ReporterName?: string;
+  ReporterRole?: string;
+  User_x0020_Rows_x0020_JSON?: string; // Physical name
+  UserCount?: number;
+  LatestVersion?: number;
+  IsDeleted?: boolean;
+  Created?: string;
+  Modified?: string;
+  __metadata?: {
+    etag?: string;
+  };
+}
+
+/**
+ * Normalized item used within the repository layer.
+ * Uses human-readable logical names.
+ */
 export interface SharePointItem {
   Id: number;
   Title?: string;
   RecordDate?: string;
   ReporterName?: string;
   ReporterRole?: string;
-  UserRowsJSON?: string;
+  UserRowsJSON?: string; // Logical name
   UserCount?: number;
   LatestVersion?: number;
   IsDeleted?: boolean;
