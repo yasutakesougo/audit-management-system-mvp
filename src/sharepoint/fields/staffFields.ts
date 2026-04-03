@@ -88,6 +88,7 @@ export const STAFF_MASTER_CANDIDATES = {
   email: ['Email', 'MailAddress'],
   phone: ['Phone', 'Tel', 'Contact'],
   workDays: ['WorkDays', 'BaseWorkDays', 'Work_x0020_Days'],
+  baseWorkingDays: ['BaseWorkingDays', 'StandardWorkingDays'],
   baseShiftStartTime: ['BaseShiftStartTime', 'StartTime', 'Start_x0020_Time'],
   baseShiftEndTime: ['BaseShiftEndTime', 'EndTime', 'End_x0020_Time'],
   certifications: ['Certifications', 'Qualification', 'License'],

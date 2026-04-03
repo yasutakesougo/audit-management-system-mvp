@@ -4,7 +4,7 @@ import type {
   UpdateOptions
 } from '@/lib/data/dataProvider.interface';
 import type { createSpClient } from '@/lib/spClient';
-import type { SpFieldDef } from '@/lib/sp/types';
+import type { SpFieldDef, ExistingFieldShape } from '@/lib/sp/types';
 import {
   DataProviderItemNotFoundError,
   SharePointItemNotFoundError
@@ -159,6 +159,11 @@ export class SharePointDataProvider implements IDataProvider {
   async getFieldInternalNames(resourceName: string): Promise<Set<string>> {
     const actualName = this.resolveResource(resourceName);
     return this.client.getListFieldInternalNames(actualName);
+  }
+
+  async getFieldDetails(resourceName: string): Promise<Map<string, ExistingFieldShape>> {
+    const actualName = this.resolveResource(resourceName);
+    return this.client.fetchExistingFields(actualName);
   }
 
   async ensureListExists(resourceName: string, fields: SpFieldDef[]): Promise<void> {
