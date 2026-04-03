@@ -70,6 +70,7 @@ const makeInitialFormData = (userRows: UserRowData[] = []): TableDailyRecordData
   date: '2026-03-15',
   reporter: { name: '記録者A', role: '生活支援員' },
   userRows,
+  userCount: userRows.length,
 });
 
 /**

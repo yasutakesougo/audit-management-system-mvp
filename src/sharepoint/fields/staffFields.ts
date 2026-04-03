@@ -93,4 +93,8 @@ export const STAFF_MASTER_CANDIDATES: Record<string, string[]> = {
   certifications: ['Certifications', 'Qualification', 'License'],
 };
 
+export const STAFF_MASTER_ESSENTIALS = [
+  'staffId', 'fullName', 'rbacRole', 'isActive', 'role', 'department'
+] as const;
+
 export const STAFF_SELECT = joinSelect(STAFF_SELECT_FIELDS_CANONICAL as readonly string[]);

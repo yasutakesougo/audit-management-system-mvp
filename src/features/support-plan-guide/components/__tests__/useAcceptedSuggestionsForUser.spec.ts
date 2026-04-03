@@ -41,6 +41,7 @@ function makeDailyRecord(
     date,
     reporter: { name: 'テスト太郎', role: '支援員' },
     userRows,
+    userCount: userRows.length,
   };
 }
 

@@ -12,7 +12,7 @@ describe('STAFF_MASTER_CANDIDATES drift', () => {
     const available = new Set([
       'Id', 'Title', 'StaffID', 'FullName', 'RBACRole', 'IsActive',
       'Furigana', 'FullNameKana', 'JobTitle', 'Role', 'Department',
-      'HireDate', 'ResignDate', 'Email', 'Phone', 'WorkDays',
+      'HireDate', 'ResignDate', 'Email', 'Phone', 'WorkDays', 'BaseWorkingDays',
       'BaseShiftStartTime', 'BaseShiftEndTime', 'Certifications',
       'HasPracticalTraining', 'HasBasicTraining', 'HasBehaviorGuidanceTraining',
       'HasCorePersonTraining', 'CertificationCheckedAt'
@@ -50,7 +50,7 @@ describe('STAFF_MASTER_CANDIDATES drift', () => {
 
   it('必須フィールド (staffId, fullName, rbacRole, isActive) が揃えば isHealthy=true', () => {
     const available = new Set([
-      'StaffID', 'FullName', 'RBACRole', 'IsActive'
+      'StaffID', 'FullName', 'Role', 'RBACRole', 'IsActive', 'Department'
     ]);
     const { resolved } = resolveInternalNamesDetailed(
       available,

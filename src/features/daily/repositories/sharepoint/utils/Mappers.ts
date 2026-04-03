@@ -1,15 +1,24 @@
 import type { SpDailyItem } from '@/domain/daily/spMap';
 import type { DailyRecordItem } from '@/features/daily/domain/legacy/DailyRecordRepository';
 import { DailyRecordItemSchema } from '@/features/daily/domain/schema';
+import { DAILY_RECORD_FIELDS, type RawSharePointItem } from '../constants';
 
 /**
  * Zod based parse of SharePoint item
  */
-export const parseSpItem = (item: unknown): DailyRecordItem | null => {
-  const result = DailyRecordItemSchema.safeParse(item);
+export const parseSpItem = (item: RawSharePointItem | null): DailyRecordItem | null => {
+  if (!item) return null;
+
+  // Map physical SharePoint names to logical names before validation
+  const logicalItem = {
+    ...item,
+    UserRowsJSON: item[DAILY_RECORD_FIELDS.userRowsJSON as keyof RawSharePointItem],
+  };
+
+  const result = DailyRecordItemSchema.safeParse(logicalItem);
   if (!result.success) {
     console.error('[SharePointDailyRecordRepository] Failed to validate item', {
-      itemId: (item && typeof item === 'object' && 'Id' in item) ? (item as Record<string, unknown>).Id : 'unknown',
+      itemId: item.Id,
       errors: result.error.flatten().fieldErrors,
     });
     return null;

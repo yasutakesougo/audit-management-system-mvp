@@ -28,6 +28,7 @@ describe('buildDailyRecordPayload', () => {
           behaviorTags: ['集中'],
         },
       ],
+      userCount: 1,
     };
 
     const payload = buildDailyRecordPayload(input);
@@ -68,6 +69,7 @@ describe('buildDailyRecordPayload', () => {
           behaviorTags: [],
         },
       ],
+      userCount: 1,
     };
 
     const payload = buildDailyRecordPayload(input);
@@ -85,6 +87,7 @@ describe('buildDailyRecordPayload', () => {
       date: 'invalid-date',
       reporter: { name: 'テスト', role: 'テスト' },
       userRows: [],
+      userCount: 0,
     };
 
     const payload = buildDailyRecordPayload(input);

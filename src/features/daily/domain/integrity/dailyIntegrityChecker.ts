@@ -8,7 +8,8 @@ export type DailyIntegrityExceptionType =
   | 'orphan_parent'    // 親があるが対応するバージョンの子が0件
   | 'version_mismatch' // 親のバージョンと一致しない子が混在（不整合）
   | 'stale_pending'    // 書き込み中のまま一定時間経過
-  | 'missing_accessory'; // 必要な付随データ（送迎設定等）が欠落
+  | 'missing_accessory' // 必要な付随データ（送迎設定等）が欠落
+  | 'count_mismatch';   // 親の userCount と実際の子レコード数が不一致
 
 /**
  * 日次記録の不整合データ（内部表現）
@@ -29,6 +30,7 @@ export interface ScanSourceParent {
   id: string;
   date: string;
   latestVersion: number;
+  userCount?: number; // 親レコードに保存されている統計的な利用者数
 }
 
 export interface ScanSourceChild {
@@ -88,6 +90,21 @@ export function scanDailyRecordIntegrity(
     }
   });
 
+  // count_mismatch: 親が保持している userCount と、実際の子レコード数（ユニークユーザー数）が合わない
+  parents.forEach(parent => {
+    const parentChildren = children.filter(c => c.parentId === parent.id);
+    if (parent.userCount !== undefined && parent.userCount !== parentChildren.length) {
+      exceptions.push({
+        type: 'count_mismatch',
+        date: parent.date,
+        parentId: parent.id,
+        details: `Count mismatch: Parent indicates ${parent.userCount} users, but found ${parentChildren.length} row(s).`,
+        severity: 'warning',
+        detectedAt: now.toISOString(),
+      });
+    }
+  });
+
   // 3. stale_pending: 10分以上経っても committed にならない孤立行（全子レコードを直接走査）
   children.forEach(child => {
     if (child.status !== 'committed' && child.status !== 'done') {
@@ -140,6 +157,7 @@ export function mapIntegrityToExceptionItem(
     version_mismatch: 'medium',
     stale_pending: 'low',
     missing_accessory: 'medium',
+    count_mismatch: 'medium',
   };
 
   const titleMap: Record<DailyIntegrityExceptionType, string> = {
@@ -147,6 +165,7 @@ export function mapIntegrityToExceptionItem(
     version_mismatch: '[データ不整合] 重複書き込み警告',
     stale_pending: '[システム遅延] 保存未完了レコード発生',
     missing_accessory: '[マスタ不整合] 付随データの欠落',
+    count_mismatch: '[データ不整合] 利用者数カウント不一致',
   };
 
   return {

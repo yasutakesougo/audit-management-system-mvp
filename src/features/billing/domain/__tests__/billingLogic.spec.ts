@@ -59,7 +59,7 @@ describe('billingLogic', () => {
         [F.drinkPrice]: 100,
       };
 
-      const result = mapToBillingOrder(mockItem);
+      const result = mapToBillingOrder(mockItem, {});
 
       expect(result.id).toBe(99);
       expect(result.orderDate).toBe('2026-03-25');
@@ -77,18 +77,18 @@ describe('billingLogic', () => {
       const mockItem1 = { 'Id': 100, 'Title': '日付1' };
       const mockItem2 = { 'ID': 101 };
 
-      const result1 = mapToBillingOrder(mockItem1);
+      const result1 = mapToBillingOrder(mockItem1, {});
       expect(result1.id).toBe(100);
       expect(result1.orderDate).toBe('日付1'); // Title が orderDate へ落ちる仕様
 
-      const result2 = mapToBillingOrder(mockItem2);
+      const result2 = mapToBillingOrder(mockItem2, {});
       expect(result2.id).toBe(101);
       expect(result2.orderDate).toBe(''); // TitleもF.orderDateも無い場合は空文字
     });
 
     it('完全欠損(空オブジェクト)からの防衛: 後続計算がクラッシュしない安全な初期値が生成されること', () => {
       const emptyItem = {};
-      const result = mapToBillingOrder(emptyItem);
+      const result = mapToBillingOrder(emptyItem, {});
 
       expect(result.id).toBe(0);
       expect(result.orderCount).toBe(0);

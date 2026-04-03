@@ -70,6 +70,7 @@ describe('useTableDailyRecordViewModel', () => {
           behaviorTags: [],
         },
       ],
+      userCount: 1,
     };
 
     await act(async () => {
@@ -91,6 +92,7 @@ describe('useTableDailyRecordViewModel', () => {
           date: '2026-02-07',
           reporter: { name: 'テスト担当者', role: '生活支援員' },
           userRows: [],
+          userCount: 0,
         });
       }),
     ).rejects.toThrow('Save failed');
