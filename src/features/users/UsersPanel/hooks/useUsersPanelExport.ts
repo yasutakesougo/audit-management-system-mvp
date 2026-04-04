@@ -78,7 +78,7 @@ export function useUsersPanelExport(
           id: u.Id,
           userId: u.UserID || String(u.Id),
           name: u.FullName,
-          severe: u.severeFlag || false,
+          severe: Boolean(u.severeFlag || u.IsHighIntensitySupportTarget),
           active: u.IsActive || false,
           toDays: u.TransportToDays || [],
           fromDays: u.TransportFromDays || [],

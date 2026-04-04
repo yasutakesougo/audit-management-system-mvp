@@ -14,7 +14,7 @@ import { USAGE_STATUS_VALUES } from '../typesExtended';
 // 型定義
 // ---------------------------------------------------------------------------
 
-export type ChipColor = 'success' | 'error' | 'warning' | 'info' | 'default';
+export type ChipColor = 'primary' | 'secondary' | 'success' | 'error' | 'warning' | 'info' | 'default';
 
 export type StatusChip = {
   label: string;
@@ -91,9 +91,18 @@ export function getUserStatusChips(
   const usage = resolveUsageLabel(user);
   chips.push({ label: usage.label, color: usage.color, priority: 1 });
 
-  // 2) 重度フラグ
-  if (user.severeFlag) {
+  // 2) 重度フラグ / 強度行動障害
+  const isIbd = Boolean(user.IsHighIntensitySupportTarget);
+  const isSevere = Boolean(user.severeFlag);
+  if (isIbd) {
+    chips.push({ label: '強度行動', color: 'error', priority: 2 });
+  } else if (isSevere) {
     chips.push({ label: '重度', color: 'error', priority: 2 });
+  }
+
+  // 2.5) 支援手順対象
+  if (user.IsSupportProcedureTarget) {
+    chips.push({ label: '支援手順', color: 'secondary', priority: 3.5 });
   }
 
   // 3) 支給決定期限
@@ -174,9 +183,9 @@ export function sortUsersByPriority(users: IUserMaster[], now: Date = new Date()
     const mb = SELECT_MODE_ORDER[b.__selectMode ?? 'full'] ?? 2;
     if (ma !== mb) return ma - mb;
 
-    // 3. severeFlag (true first)
-    const sa = a.severeFlag ? 0 : 1;
-    const sb = b.severeFlag ? 0 : 1;
+    // 3. severeFlag / IsHighIntensitySupportTarget (true first)
+    const sa = (a.IsHighIntensitySupportTarget || a.severeFlag) ? 0 : 1;
+    const sb = (b.IsHighIntensitySupportTarget || b.severeFlag) ? 0 : 1;
     if (sa !== sb) return sa - sb;
 
     // 4. active (inactive last)

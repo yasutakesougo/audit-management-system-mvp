@@ -8,7 +8,7 @@ describe('DataProviderUserRepository Split Logic', () => {
   let provider: InMemoryDataProvider;
   let repo: DataProviderUserRepository;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     provider = new InMemoryDataProvider();
     repo = new DataProviderUserRepository({ provider });
   });
@@ -110,5 +110,53 @@ describe('DataProviderUserRepository Split Logic', () => {
     expect(user).not.toBeNull();
     expect(user?.FullName).toBe('Partial');
     expect(user?.TransportCourse).toBeNull(); // エラーにならず null で返る
+  });
+  
+  describe('Schema Drift Write Resilience', () => {
+    it('correctly updates drifted columns (Status instead of UsageStatus)', async () => {
+      // 1. 'Status' というキーを持つ既存レコード（ドリフト環境のシミュレート）
+      await provider.seed('Users_Master', [
+        { Id: 1, UserID: 'U-001', FullName: 'Drift User', Status: 'old-status' }
+      ]);
+
+      // 2. Repository 経由で 'UsageStatus' を更新
+      await repo.update(1, { UsageStatus: 'new-status' });
+
+      // 3. プロバイダー側の 'Status' 列が更新されていることを確認
+      const core = await provider.listItems<Record<string, unknown>>('Users_Master');
+      expect(core[0].Status).toBe('new-status');
+      expect(core[0].UsageStatus).toBeUndefined(); // 元々の正しい名前の列は作成されていない
+    });
+
+    it('correctly updates drifted core flags (IntensityTarget instead of IsHighIntensitySupportTarget)', async () => {
+      // 1. 'IntensityTarget' というキーを持つ既存レコード
+      await provider.seed('Users_Master', [
+        { Id: 1, UserID: 'U-001', FullName: 'Flag User', IntensityTarget: false }
+      ]);
+
+      // 2. Repository 経由で 'IsHighIntensitySupportTarget' を更新
+      await repo.update(1, { IsHighIntensitySupportTarget: true });
+
+      // 3. プロバイダー側の 'IntensityTarget' 列が更新されていることを確認
+      const core = await provider.listItems<Record<string, unknown>>('Users_Master');
+      expect(core[0].IntensityTarget).toBe(true);
+      expect(core[0].IsHighIntensitySupportTarget).toBeUndefined();
+    });
+
+    it('syncAccessoryList also respects drift (DisabilitySupportLevel0 in benefit list)', async () => {
+      // 1. メインリストと、ドリフトした分離先リストをシード
+      await provider.seed('Users_Master', [{ Id: 1, UserID: 'U-001', FullName: 'Benefit User' }]);
+      await provider.seed('UserBenefit_Profile', [
+        { UserID: 'U-001', RecipientCertNumber: 'B-001', DisabilitySupportLevel0: 'Level 1' }
+      ]);
+
+      // 2. 'DisabilitySupportLevel' を更新
+      await repo.update(1, { DisabilitySupportLevel: 'Level 3' });
+
+      // 3. 分離先リストの 'DisabilitySupportLevel0' が更新されたか確認
+      const benefit = await provider.listItems<Record<string, unknown>>('UserBenefit_Profile');
+      expect(benefit[0].DisabilitySupportLevel0).toBe('Level 3');
+      expect(benefit[0].DisabilitySupportLevel).toBeUndefined();
+    });
   });
 });
