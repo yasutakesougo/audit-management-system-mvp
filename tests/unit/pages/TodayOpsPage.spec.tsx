@@ -422,6 +422,66 @@ describe('TodayOpsPage (ActionQueueTimeline integration)', () => {
     );
   });
 
+  it('passes viewer audience to legacy Today layout when authz role is viewer', () => {
+    mockAuthzRole = 'viewer';
+    vi.mocked(useTodayActionQueue).mockReturnValue({
+      actionQueue: [],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <SettingsProvider>
+            <MemoryRouter>
+              <TodayOpsPage correctiveActions={[]} />
+            </MemoryRouter>
+          </SettingsProvider>
+        </ToastProvider>
+      </QueryClientProvider>
+    );
+
+    const mockCalls = vi.mocked(TodayBentoLayout).mock.calls;
+    const props = mockCalls.length > 0 ? (mockCalls[mockCalls.length - 1]?.[0] as Record<string, unknown>) : {};
+    expect(props.audience).toBe('viewer');
+  });
+
+  it('passes admin audience to legacy Today layout when authz role is admin', () => {
+    mockAuthzRole = 'admin';
+    vi.mocked(useTodayActionQueue).mockReturnValue({
+      actionQueue: [],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <SettingsProvider>
+            <MemoryRouter>
+              <TodayOpsPage correctiveActions={[]} />
+            </MemoryRouter>
+          </SettingsProvider>
+        </ToastProvider>
+      </QueryClientProvider>
+    );
+
+    const mockCalls = vi.mocked(TodayBentoLayout).mock.calls;
+    const props = mockCalls.length > 0 ? (mockCalls[mockCalls.length - 1]?.[0] as Record<string, unknown>) : {};
+    expect(props.audience).toBe('admin');
+  });
+
   it('records kiosk session start telemetry when /today is opened in kiosk mode', async () => {
     vi.useRealTimers();
     localStorage.setItem(
