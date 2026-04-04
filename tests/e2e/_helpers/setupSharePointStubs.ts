@@ -440,22 +440,6 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
         }
       }
 
-      if (/\/fields\/?$/i.test(remainder)) {
-        if (method === 'GET') {
-          const items = isSchedule ? scheduleStore : state.items;
-          const sample = items[0] || {};
-          const keys = new Set([
-            'Id', 'Title', 'Created', 'Modified', 'Author', 'Editor',
-            'cr013_personId', 'cr013_date', 'cr013_status', 'cr013_payload', 'cr013_kind',
-            'cr013_userid', 'cr013_fullname', 'cr013_user_count', 'cr013_recorddate', // E2E specifics
-            ...Object.keys(sample)
-          ]);
-          const value = Array.from(keys).map(name => ({ InternalName: name, TypeAsString: 'Text', Required: false }));
-          await fulfill(route, { status: 200, body: { value } });
-          return;
-        }
-      }
-
       if (!remainder || remainder === '/') {
         await fulfill(route, {
           status: 200,

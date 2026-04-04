@@ -5,7 +5,7 @@ import type {
 } from '@/lib/data/dataProvider.interface';
 import { auditLog } from '@/lib/debugLogger';
 import { DataProviderItemNotFoundError } from '@/lib/errors';
-import type { SpFieldDef, ExistingFieldShape } from '@/lib/sp/types';
+import type { SpFieldDef } from '@/lib/sp/types';
 
 /**
  * LocalStorageDataProvider
@@ -174,6 +174,22 @@ export class LocalStorageDataProvider implements IDataProvider {
     };
   }
 
+  async getResourceNames(): Promise<string[]> {
+    const names = new Set<string>(this.dataCache.keys());
+    const dataPrefix = this.dataKey('');
+
+    if (typeof localStorage !== 'undefined') {
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith(dataPrefix)) continue;
+        const resourceName = key.slice(dataPrefix.length);
+        if (resourceName) names.add(resourceName);
+      }
+    }
+
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }
+
   async getFieldInternalNames(resourceName: string): Promise<Set<string>> {
     if (this.fieldsCache.has(resourceName)) {
       return this.fieldsCache.get(resourceName)!;
@@ -193,15 +209,6 @@ export class LocalStorageDataProvider implements IDataProvider {
     
     this.fieldsCache.set(resourceName, names);
     return names;
-  }
-
-  async getFieldDetails(resourceName: string): Promise<Map<string, ExistingFieldShape>> {
-    const names = await this.getFieldInternalNames(resourceName);
-    const map = new Map<string, ExistingFieldShape>();
-    names.forEach(name => {
-      map.set(name, { InternalName: name, TypeAsString: 'Text' });
-    });
-    return map;
   }
 
   async ensureListExists(resourceName: string, fields: SpFieldDef[]): Promise<void> {

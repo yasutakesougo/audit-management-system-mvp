@@ -65,5 +65,5 @@ export function getAuthGuardState() {
  * This ensures consistency across outer guards (ProtectedRoute) and inner access controls (RequireAudience).
  */
 export const shouldBypassAuthGuard = (): boolean => {
-  return true; // TEMPORARY BYPASS FOR INFRA VERIFICATION
+  return getAuthGuardState().shouldBypass;
 };

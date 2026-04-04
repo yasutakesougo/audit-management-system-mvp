@@ -92,7 +92,7 @@ export const DailyRecordItemSchema = SharePointDailyRecordItemSchema.transform((
     },
     // Map UserRowsJSON back to userRows
     userRows: z.array(DailyRecordUserRowSchema).parse(sp.UserRowsJSON),
-    userCount: sp.UserCount,
+    userCount: sp.UserCount ?? 0,
     createdAt: sp.Created ?? undefined,
     modifiedAt: sp.Modified ?? undefined,
   };

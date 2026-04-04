@@ -112,6 +112,7 @@ describe('feature toggles backed by env/localStorage', () => {
 
     expect(env.shouldSkipLogin({ VITE_DEMO_MODE: true })).toBe(true);
     expect(env.shouldSkipLogin({ VITE_SKIP_LOGIN: 'true' })).toBe(true);
+    expect(env.shouldSkipLogin({ VITE_SKIP_LOGIN: 'true', VITE_FORCE_SHAREPOINT: 'true' })).toBe(false);
 
     localStorage.setItem('skipLogin', 'yes');
     expect(env.shouldSkipLogin()).toBe(true);

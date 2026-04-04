@@ -395,23 +395,16 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
 
   private parseCanonical(item: Record<string, unknown>, fields: CanonicalResolvedFields): DailyRecordItem | null {
     try {
-<<<<<<< HEAD
       const rawUserRows = JSON.parse(item[fields.userRowsJSON] as string || '[]');
       const userRows = Array.isArray(rawUserRows) ? rawUserRows : [];
 
       return {
         id: String(item.Id || ''),
-=======
-      const userRows = JSON.parse(item[fields.userRowsJSON] as string || '[]');
-      return {
-        id: String(item.Id),
->>>>>>> main
         date: normalizeDateToYmd(item[fields.title]) || '',
         reporter: {
           name: fields.reporterName ? String(item[fields.reporterName] || '') : '',
           role: fields.reporterRole ? String(item[fields.reporterRole] || '') : '',
         },
-<<<<<<< HEAD
         userRows,
         userCount: Number(item[fields.userCount ?? ''] || userRows.length),
         createdAt: item.Created ? String(item.Created) : undefined,
@@ -421,15 +414,6 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
           : undefined,
         approvedBy: fields.approvedBy ? String(item[fields.approvedBy] || '') : undefined,
         approvedAt: fields.approvedAt ? String(item[fields.approvedAt] || '') : undefined,
-=======
-        userRows: Array.isArray(userRows) ? userRows : [],
-        userCount: Number(item[fields.userCount ?? ''] || 0),
-        createdAt: String(item.Created || ''),
-        modifiedAt: String(item.Modified || ''),
-        approvalStatus: item[fields.approvalStatus ?? ''] as 'pending' | 'approved' | undefined,
-        approvedBy: item[fields.approvedBy ?? ''] as string | undefined,
-        approvedAt: item[fields.approvedAt ?? ''] as string | undefined,
->>>>>>> main
       };
     } catch (e) {
       auditLog.warn('daily', 'canonical_parse_failed', { error: String(e) });

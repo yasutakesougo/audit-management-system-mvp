@@ -4,7 +4,7 @@
  * バックエンド（SharePoint, Dataverse, InMemory, etc.）を抽象化するための最小インターフェース。
  */
 
-import type { SpFieldDef, ExistingFieldShape } from '@/lib/sp/types';
+import type { SpFieldDef } from '@/lib/sp/types';
 
 /** クエリ用オプション。OData ベースの構文を標準とする（SP/Dataverse 互換） */
 export interface DataProviderOptions {
@@ -62,16 +62,17 @@ export interface IDataProvider {
    * メタデータ（GUID 解決後の情報など）の取得 
    */
   getMetadata(resourceName: string): Promise<Record<string, unknown>>;
+
+  /**
+   * 利用可能なリソース（リスト/テーブル）名を列挙する。
+   * Dynamic Schema Resolution の catalog 解決に使用する。
+   */
+  getResourceNames(): Promise<string[]>;
   
   /**
    * フィールド（列）の内部名一覧を取得（Dynamic Schema Resolution 用）
    */
   getFieldInternalNames(resourceName: string): Promise<Set<string>>;
-
-  /**
-   * フィールド（列）の詳細な型情報を含めて取得（Schema Diagnostics 用）
-   */
-  getFieldDetails(resourceName: string): Promise<Map<string, ExistingFieldShape>>;
 
   /**
    * 自己修復 (Self-Healing) 用: リソース（リスト）の存在と、指定された列定義を確認し、

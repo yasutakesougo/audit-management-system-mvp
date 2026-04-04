@@ -24,6 +24,7 @@ describe('DataProviderAttendanceRepository - Regression / Hardening', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockProvider = {
+      getResourceNames: vi.fn().mockResolvedValue(['Users_Master', 'Daily_Attendance']),
       getFieldInternalNames: vi.fn(),
       listItems: vi.fn(),
       createItem: vi.fn(),
@@ -47,9 +48,12 @@ describe('DataProviderAttendanceRepository - Regression / Hardening', () => {
       expect(users[0].UserCode).toBe('U001');
       expect(users[0].Title).toBe('Test User');
       // Verify listItems was called with resolved field names
-      expect(mockProvider.listItems).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
-        select: expect.stringMatching(/UserID/)
-      }));
+      expect(mockProvider.listItems).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          select: expect.arrayContaining(['UserID']),
+        }),
+      );
       const callOptions = mockProvider.listItems.mock.calls[0][1];
       expect(callOptions.select).toContain('Id');
       expect(callOptions.select).toContain('UserID');
@@ -73,8 +77,8 @@ describe('DataProviderAttendanceRepository - Regression / Hardening', () => {
       // Verify $select does NOT include missing optional fields
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const call = mockProvider.listItems.mock.calls[0][1] as any;
-      expect(call.select).not.toMatch(/StandardMinutes/);
-      expect(call.select).not.toMatch(/IsTransportTarget/);
+      expect(call.select).not.toContain('StandardMinutes');
+      expect(call.select).not.toContain('IsTransportTarget');
     });
 
     it('fails gracefully when essential fields are missing (AttendanceDaily)', async () => {
@@ -84,7 +88,11 @@ describe('DataProviderAttendanceRepository - Regression / Hardening', () => {
       const daily = await repository.getDailyByDate({ recordDate: '2024-03-01' });
 
       expect(daily).toEqual([]);
-      expect(auditLog.warn).not.toHaveBeenCalled(); // Daily resolution failure is silent-ish by design if isHealthy is false
+      expect(auditLog.warn).toHaveBeenCalledWith(
+        'attendance:repo',
+        expect.stringContaining('AttendanceDaily list not found in catalog or essentials are missing'),
+        expect.any(Object),
+      );
     });
   });
 

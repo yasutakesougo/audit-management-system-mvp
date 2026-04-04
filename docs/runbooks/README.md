@@ -12,6 +12,7 @@
 ## Template
 
 - [Page Touchpoints Template](./page-touchpoints-template.md)
+- [SharePoint SSOT Drift PR Template (v1.1)](./sharepoint-ssot-drift-pr-template.md)
 - [TransportCourse Fallback Tracking CSV](./templates/transport-course-fallback-tracking.csv)
 - [TransportCourse Fallback Removal PR Template](./templates/transport-course-fallback-removal-pr-template.md)
 - [Transport Week1 Ops Review Template](./templates/transport-week1-ops-review-template.md)

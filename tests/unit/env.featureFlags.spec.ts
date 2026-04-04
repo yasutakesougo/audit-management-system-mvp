@@ -18,6 +18,7 @@ describe('env feature toggles', () => {
     VITE_E2E: 'false',
     VITE_E2E_MSAL_MOCK: 'false',
     VITE_DEMO_MODE: 'false',
+    VITE_FORCE_SHAREPOINT: 'false',
     ...overrides,
   });
 
@@ -37,6 +38,9 @@ describe('env feature toggles', () => {
   it('shouldSkipLogin respects env toggles and localStorage overrides', () => {
     expect(shouldSkipLogin(baseEnv())).toBe(false);
     expect(shouldSkipLogin(baseEnv({ VITE_SKIP_LOGIN: 'true' }))).toBe(true);
+    expect(
+      shouldSkipLogin(baseEnv({ VITE_SKIP_LOGIN: 'true', VITE_FORCE_SHAREPOINT: 'true' })),
+    ).toBe(false);
 
     localStorage.setItem('skipLogin', 'YES');
     expect(shouldSkipLogin(baseEnv())).toBe(true);

@@ -11,24 +11,21 @@ export const DataLayerStatusBanner: React.FC = () => {
   const { resolutions, currentProvider } = useDataProviderObservabilityStore();
   
   const resList = Object.values(resolutions);
-  const criticals = resList.filter(r => r.status === 'missing_required');
-  const mismatches = resList.filter(r => r.status === 'schema_mismatch');
+  const criticals = resList.filter(r => r.status === 'missing_required' || r.status === 'schema_mismatch');
   const fallbacks = resList.filter(r => r.status === 'fallback_triggered');
   const warnings = resList.filter(r => r.status === 'schema_warning');
 
   // InMemory/Local プロバイダーでは空リストが正常なため、フィールド欠損は誤検知となる
   if (currentProvider !== 'sharepoint') return null;
 
-  if (criticals.length === 0 && mismatches.length === 0 && fallbacks.length === 0 && warnings.length === 0) {
+  if (criticals.length === 0 && fallbacks.length === 0 && warnings.length === 0) {
     return null;
   }
 
-  const hasError = criticals.length > 0 || mismatches.length > 0;
-
   return (
     <div style={{
-      background: hasError ? '#fff1f0' : '#fffbe6',
-      borderBottom: `1px solid ${hasError ? '#ffa39e' : '#ffe58f'}`,
+      background: criticals.length > 0 ? '#fff1f0' : '#fffbe6',
+      borderBottom: `1px solid ${criticals.length > 0 ? '#ffa39e' : '#ffe58f'}`,
       padding: '4px 12px',
       fontSize: '12px',
       display: 'flex',
@@ -38,23 +35,13 @@ export const DataLayerStatusBanner: React.FC = () => {
       position: 'relative'
     }}>
       <span style={{ fontWeight: 700 }}>
-        {hasError ? '❌ データ接続エラー' : '⚠️ データ警告'}
+        {criticals.length > 0 ? '❌ データ接続エラー' : '⚠️ データ警告'}
       </span>
       
       <div style={{ flex: 1, display: 'flex', gap: '8px', overflow: 'hidden', whiteSpace: 'nowrap' }}>
         {criticals.map(r => (
           <span key={r.resourceName} style={{ color: '#cf1322' }}>
             {r.resourceName}不達
-          </span>
-        ))}
-        {mismatches.map(r => (
-          <span key={r.resourceName} style={{ color: '#cf1322' }}>
-            {r.resourceName}設定不一致
-            {r.resourceName === 'Staff_Master' && (
-              <span style={{ fontSize: '10px', marginLeft: '4px', fontStyle: 'italic' }}>
-                (勤務日/資格の列設定を確認してください)
-              </span>
-            )}
           </span>
         ))}
         {fallbacks.map(r => (

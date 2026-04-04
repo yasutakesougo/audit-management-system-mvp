@@ -3,7 +3,7 @@ import type {
   DataProviderOptions, 
   UpdateOptions 
 } from '@/lib/data/dataProvider.interface';
-import type { SpFieldDef, ExistingFieldShape } from '@/lib/sp/types';
+import type { SpFieldDef } from '@/lib/sp/types';
 import { DataProviderItemNotFoundError } from '@/lib/errors';
 
 /**
@@ -119,15 +119,6 @@ export class InMemoryDataProvider implements IDataProvider {
     return allKeys;
   }
 
-  async getFieldDetails(resourceName: string): Promise<Map<string, ExistingFieldShape>> {
-    const names = await this.getFieldInternalNames(resourceName);
-    const map = new Map<string, ExistingFieldShape>();
-    names.forEach(name => {
-      map.set(name, { InternalName: name, TypeAsString: 'Text' });
-    });
-    return map;
-  }
-
   async getMetadata(resourceName: string): Promise<Record<string, unknown>> {
     const items = this.storage.get(resourceName) || [];
     return { 
@@ -135,6 +126,10 @@ export class InMemoryDataProvider implements IDataProvider {
       ItemCount: items.length,
       InMemory: true 
     };
+  }
+
+  async getResourceNames(): Promise<string[]> {
+    return Array.from(this.storage.keys()).sort((a, b) => a.localeCompare(b));
   }
 
   /**
@@ -150,8 +145,18 @@ export class InMemoryDataProvider implements IDataProvider {
    * シードデータの注入（テスト・デモ用）
    */
   async seed(resourceName: string, items: Array<Record<string, unknown>>): Promise<void> {
-    const nextId = items.length > 0 ? Math.max(...items.map(i => Number(i.Id || i.id || i.ID || 0))) + 1 : this.nextId;
-    this.nextId = Math.max(this.nextId, nextId);
-    this.storage.set(resourceName, items);
+    const normalized = items.map((item) => {
+      const explicitId = item.Id ?? item.id ?? item.ID;
+      if (explicitId !== undefined && explicitId !== null && Number.isFinite(Number(explicitId))) {
+        return { ...item, Id: Number(explicitId) };
+      }
+      return { Id: this.nextId++, ...item };
+    });
+
+    const maxId = normalized.length > 0
+      ? Math.max(...normalized.map((item) => Number(item.Id ?? 0)))
+      : 0;
+    this.nextId = Math.max(this.nextId, maxId + 1);
+    this.storage.set(resourceName, normalized);
   }
 }

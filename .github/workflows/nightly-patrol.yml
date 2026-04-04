@@ -86,12 +86,6 @@ jobs:
           SP_TELEMETRY_PATH: ${{ env.SP_TELEMETRY_PATH }} 
         run: node scripts/ops/nightly-patrol.mjs
 
-      - name: Sync nightly patrol results to GitHub Issues
-        if: ${{ github.ref == 'refs/heads/main' }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/ops/nightly-issue-sync.mjs
-
       - name: Assert Telemetry Lanes
         if: ${{ always() }}
         env:

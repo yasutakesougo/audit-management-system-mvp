@@ -9,10 +9,12 @@
  *  2. cr014_ プレフィックスが落ちてキャメルケース名に移行した場合を吸収
  *  3. userId が UserId / UserCode に drift した場合を吸収
  *  4. meetingDate が MeetingDate / Date に drift した場合を吸収
- *  5. suffix 付き列名 (cr014_meetingDate0) を drift として解決
- *  6. 必須3フィールドが揃えば areEssentialFieldsResolved=true
- *  7. 必須フィールド欠落で areEssentialFieldsResolved=false
- *  8. ispId 欠落は FAIL にならない（optional 確認）
+ *  5. _x0020_ エンコード列名 (Meeting_x0020_Date) を drift として解決
+ *  6. suffix 付き列名 (cr014_meetingDate0) を drift として解決
+ *  7. 必須3フィールドが揃えば areEssentialFieldsResolved=true
+ *  8. 必須フィールド欠落で areEssentialFieldsResolved=false
+ *  9. unresolved キーが missing として検知される（silent drop しない）
+ * 10. ispId 欠落は FAIL にならない（optional 確認）
  */
 import { describe, it, expect } from 'vitest';
 import { resolveInternalNamesDetailed, areEssentialFieldsResolved } from '@/lib/sp/helpers';
@@ -123,6 +125,14 @@ describe('MONITORING_MEETING_CANDIDATES — meetingDate drift', () => {
     expect(resolved.meetingDate).toBe('MeetingDate');
   });
 
+  it('Meeting_x0020_Date (_x0020_ drift) が meetingDate として解決される', () => {
+    const available = new Set(['cr014_recordId', 'cr014_userId', 'Meeting_x0020_Date']);
+    const { resolved, fieldStatus } = resolve(available);
+    expect(resolved.meetingDate).toBe('Meeting_x0020_Date');
+    expect(fieldStatus.meetingDate.isDrifted).toBe(true);
+    expect(isHealthy(resolved as Record<string, string | undefined>)).toBe(true);
+  });
+
   it('cr014_meetingDate0 (suffix drift) が meetingDate として解決される', () => {
     const available = new Set(['cr014_recordId', 'cr014_userId', 'cr014_meetingDate0']);
     const { resolved, fieldStatus } = resolve(available);
@@ -176,5 +186,14 @@ describe('MONITORING_MEETING_ESSENTIALS FAIL/WARN 境界', () => {
     const available = new Set(['cr014_recordId', 'cr014_userId', 'cr014_meetingDate']);
     const { resolved } = resolve(available);
     expect(isHealthy(resolved as Record<string, string | undefined>)).toBe(true);
+  });
+
+  it('unresolved フィールドは missing に残る（silent drop しない）', () => {
+    const available = new Set(['SomeUnknownFieldOnly']);
+    const { missing } = resolve(available);
+    expect(missing).toContain('recordId');
+    expect(missing).toContain('userId');
+    expect(missing).toContain('meetingDate');
+    expect(missing).toContain('goalEvaluationsJson');
   });
 });

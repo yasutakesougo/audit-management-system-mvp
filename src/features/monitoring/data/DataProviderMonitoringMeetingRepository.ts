@@ -1,11 +1,6 @@
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { auditLog } from '@/lib/debugLogger';
 import { buildEq } from '@/sharepoint/query/builders';
-import { 
-  resolveInternalNamesDetailed, 
-  areEssentialFieldsResolved 
-} from '@/lib/sp/helpers';
-import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
 import type { 
   MonitoringMeetingRepository 
 } from '@/domain/isp/monitoringMeetingRepository';
@@ -18,14 +13,13 @@ import type {
 } from '@/domain/isp/monitoringMeeting';
 import {
   MONITORING_MEETING_CANDIDATES,
-  MONITORING_MEETING_ESSENTIALS,
   MONITORING_MEETING_ENSURE_FIELDS,
   safeJsonParse,
+  type MonitoringMeetingCandidateKey,
+  type MonitoringMeetingFieldMapping,
   type SpMonitoringMeetingRow,
 } from '@/sharepoint/fields/monitoringMeetingFields';
-
-type MonitoringMeetingCandidateKeys = keyof typeof MONITORING_MEETING_CANDIDATES;
-type MonitoringMeetingResolvedFields = Record<MonitoringMeetingCandidateKeys, string>;
+import { MonitoringMeetingSchemaResolver } from './modules/MonitoringMeetingSchemaResolver';
 
 /**
  * DataProviderMonitoringMeetingRepository
@@ -36,75 +30,43 @@ type MonitoringMeetingResolvedFields = Record<MonitoringMeetingCandidateKeys, st
 export class DataProviderMonitoringMeetingRepository implements MonitoringMeetingRepository {
   private readonly provider: IDataProvider;
   private readonly listTitle: string;
-  private resolvedFields: MonitoringMeetingResolvedFields | null = null;
+  private readonly schemaResolver: MonitoringMeetingSchemaResolver;
 
   constructor(provider: IDataProvider, listTitle: string = 'MonitoringMeetings') {
     this.provider = provider;
     this.listTitle = listTitle;
+    this.schemaResolver = new MonitoringMeetingSchemaResolver(provider, listTitle);
   }
 
-  private async ensureResolved(): Promise<MonitoringMeetingResolvedFields> {
-    if (this.resolvedFields) return this.resolvedFields;
+  private mf(mapping: MonitoringMeetingFieldMapping, key: MonitoringMeetingCandidateKey): string {
+    return mapping[key] ?? MONITORING_MEETING_CANDIDATES[key][0];
+  }
 
-    try {
-      const available = await this.provider.getFieldInternalNames(this.listTitle);
-      const { resolved, fieldStatus } = resolveInternalNamesDetailed(
-        available, 
-        MONITORING_MEETING_CANDIDATES as unknown as Record<MonitoringMeetingCandidateKeys, string[]>
-      );
-      
-      const essentials = MONITORING_MEETING_ESSENTIALS as unknown as MonitoringMeetingCandidateKeys[];
-      const isHealthy = areEssentialFieldsResolved(resolved as Record<string, string | undefined>, essentials);
+  private async ensureResolvedSchema(): Promise<{ listTitle: string; mapping: MonitoringMeetingFieldMapping; select: readonly string[] }> {
+    const resolved = await this.schemaResolver.resolve();
+    if (resolved) return resolved;
 
-      // Report to observability store for diagnostics (HealthPage etc)
-      reportResourceResolution({
-        resourceName: this.listTitle,
-        resolvedTitle: this.listTitle,
-        fieldStatus: fieldStatus as Record<string, { resolvedName?: string; candidates: string[] }>,
-        essentials: essentials as unknown as string[],
-      });
+    // Fail-open with self-healing: ensure list and reprobe once.
+    auditLog.warn('monitoring', `Schema resolution failed for ${this.listTitle}. Triggering self-healing...`);
+    type FieldsType = Parameters<IDataProvider['ensureListExists']>[1];
+    await this.provider.ensureListExists(this.listTitle, [...MONITORING_MEETING_ENSURE_FIELDS] as unknown as FieldsType);
+    this.schemaResolver.reset();
 
-      if (!isHealthy) {
-        const missing = essentials.filter(k => !resolved[k]);
-        throw new Error(`MonitoringMeetings essential fields missing: ${missing.join(', ')}`);
-      }
+    const healed = await this.schemaResolver.resolve();
+    if (healed) return healed;
 
-      this.resolvedFields = resolved as MonitoringMeetingResolvedFields;
-      return this.resolvedFields;
-    } catch (err) {
-      auditLog.warn('monitoring', `Field resolution failed for ${this.listTitle}. Triggering self-healing...`, err);
-      
-      type FieldsType = Parameters<IDataProvider['ensureListExists']>[1];
-      await this.provider.ensureListExists(this.listTitle, [...MONITORING_MEETING_ENSURE_FIELDS] as unknown as FieldsType);
-      
-      const available = await this.provider.getFieldInternalNames(this.listTitle);
-      const { resolved, fieldStatus } = resolveInternalNamesDetailed(
-        available, 
-        MONITORING_MEETING_CANDIDATES as unknown as Record<MonitoringMeetingCandidateKeys, string[]>
-      );
-
-      const essentials = MONITORING_MEETING_ESSENTIALS as unknown as MonitoringMeetingCandidateKeys[];
-      reportResourceResolution({
-        resourceName: this.listTitle,
-        resolvedTitle: this.listTitle,
-        fieldStatus: fieldStatus as Record<string, { resolvedName?: string; candidates: string[] }>,
-        essentials: essentials as unknown as string[],
-      });
-
-      this.resolvedFields = resolved as MonitoringMeetingResolvedFields;
-      return this.resolvedFields;
-    }
+    throw new Error(`MonitoringMeeting schema could not be resolved: ${this.listTitle}`);
   }
 
   async getAll(): Promise<MonitoringMeetingRecord[]> {
-    const fields = await this.ensureResolved();
+    const { listTitle, mapping, select } = await this.ensureResolvedSchema();
     try {
-      const rows = await this.provider.listItems<SpMonitoringMeetingRow>(this.listTitle, {
-        select: ['Id', 'Title', ...Object.values(fields)],
-        orderby: `${fields.meetingDate} desc`,
+      const rows = await this.provider.listItems<SpMonitoringMeetingRow>(listTitle, {
+        select: [...select],
+        orderby: `${this.mf(mapping, 'meetingDate')} desc`,
         top: 500,
       });
-      return rows.map(r => this.mapSpRowToRecord(r, fields));
+      return rows.map((row) => this.mapSpRowToRecord(row, mapping));
     } catch (err) {
       auditLog.error('monitoring', 'Failed to list all meetings', err);
       return [];
@@ -112,14 +74,14 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
   }
 
   async getById(id: string): Promise<MonitoringMeetingRecord | null> {
-    const fields = await this.ensureResolved();
+    const { listTitle, mapping, select } = await this.ensureResolvedSchema();
     try {
-      const rows = await this.provider.listItems<SpMonitoringMeetingRow>(this.listTitle, {
-        select: ['Id', 'Title', ...Object.values(fields)],
-        filter: buildEq(fields.recordId, id),
+      const rows = await this.provider.listItems<SpMonitoringMeetingRow>(listTitle, {
+        select: [...select],
+        filter: buildEq(this.mf(mapping, 'recordId'), id),
         top: 1,
       });
-      return rows[0] ? this.mapSpRowToRecord(rows[0], fields) : null;
+      return rows[0] ? this.mapSpRowToRecord(rows[0], mapping) : null;
     } catch (err) {
       auditLog.error('monitoring', `Failed to get meeting by id: ${id}`, err);
       return null;
@@ -127,14 +89,14 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
   }
 
   async listByUser(userId: string): Promise<MonitoringMeetingRecord[]> {
-    const fields = await this.ensureResolved();
+    const { listTitle, mapping, select } = await this.ensureResolvedSchema();
     try {
-      const rows = await this.provider.listItems<SpMonitoringMeetingRow>(this.listTitle, {
-        select: ['Id', 'Title', ...Object.values(fields)],
-        filter: buildEq(fields.userId, userId),
-        orderby: `${fields.meetingDate} desc`,
+      const rows = await this.provider.listItems<SpMonitoringMeetingRow>(listTitle, {
+        select: [...select],
+        filter: buildEq(this.mf(mapping, 'userId'), userId),
+        orderby: `${this.mf(mapping, 'meetingDate')} desc`,
       });
-      return rows.map(r => this.mapSpRowToRecord(r, fields));
+      return rows.map((row) => this.mapSpRowToRecord(row, mapping));
     } catch (err) {
       auditLog.error('monitoring', `Failed to list meetings for user: ${userId}`, err);
       return [];
@@ -142,14 +104,14 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
   }
 
   async listByIsp(ispId: string): Promise<MonitoringMeetingRecord[]> {
-    const fields = await this.ensureResolved();
+    const { listTitle, mapping, select } = await this.ensureResolvedSchema();
     try {
-      const rows = await this.provider.listItems<SpMonitoringMeetingRow>(this.listTitle, {
-        select: ['Id', 'Title', ...Object.values(fields)],
-        filter: buildEq(fields.ispId, ispId),
-        orderby: `${fields.meetingDate} desc`,
+      const rows = await this.provider.listItems<SpMonitoringMeetingRow>(listTitle, {
+        select: [...select],
+        filter: buildEq(this.mf(mapping, 'ispId'), ispId),
+        orderby: `${this.mf(mapping, 'meetingDate')} desc`,
       });
-      return rows.map(r => this.mapSpRowToRecord(r, fields));
+      return rows.map((row) => this.mapSpRowToRecord(row, mapping));
     } catch (err) {
       auditLog.error('monitoring', `Failed to list meetings for isp: ${ispId}`, err);
       return [];
@@ -157,16 +119,16 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
   }
 
   async save(record: MonitoringMeetingRecord): Promise<MonitoringMeetingRecord> {
-    const fields = await this.ensureResolved();
-    const body = this.buildPatchBody(record, fields);
+    const { listTitle, mapping } = await this.ensureResolvedSchema();
+    const body = this.buildPatchBody(record, mapping);
     
     try {
-      const spId = await this.findSpItemIdByRecordId(record.id, fields);
+      const spId = await this.findSpItemIdByRecordId(record.id, listTitle, mapping);
 
       if (spId !== null) {
-        await this.provider.updateItem(this.listTitle, String(spId), body, { etag: '*' });
+        await this.provider.updateItem(listTitle, String(spId), body, { etag: '*' });
       } else {
-        await this.provider.createItem<Record<string, unknown>>(this.listTitle, body);
+        await this.provider.createItem<Record<string, unknown>>(listTitle, body);
       }
 
       const updated = await this.getById(record.id);
@@ -179,11 +141,11 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
   }
 
   async delete(id: string): Promise<void> {
-    const fields = await this.ensureResolved();
+    const { listTitle, mapping } = await this.ensureResolvedSchema();
     try {
-      const spId = await this.findSpItemIdByRecordId(id, fields);
+      const spId = await this.findSpItemIdByRecordId(id, listTitle, mapping);
       if (spId !== null) {
-        await this.provider.deleteItem(this.listTitle, String(spId));
+        await this.provider.deleteItem(listTitle, String(spId));
       }
     } catch (err) {
       auditLog.error('monitoring', `Failed to delete meeting: ${id}`, err);
@@ -191,63 +153,67 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
     }
   }
 
-  private async findSpItemIdByRecordId(recordId: string, fields: MonitoringMeetingResolvedFields): Promise<number | null> {
-    const rows = await this.provider.listItems<SpMonitoringMeetingRow>(this.listTitle, {
+  private async findSpItemIdByRecordId(
+    recordId: string,
+    listTitle: string,
+    mapping: MonitoringMeetingFieldMapping,
+  ): Promise<number | null> {
+    const rows = await this.provider.listItems<SpMonitoringMeetingRow>(listTitle, {
       select: ['Id'],
-      filter: buildEq(fields.recordId, recordId),
+      filter: buildEq(this.mf(mapping, 'recordId'), recordId),
       top: 1,
     });
     const spId = rows[0]?.Id;
     return typeof spId === 'number' && spId > 0 ? spId : null;
   }
 
-  private mapSpRowToRecord(row: SpMonitoringMeetingRow, fields: MonitoringMeetingResolvedFields): MonitoringMeetingRecord {
+  private mapSpRowToRecord(row: SpMonitoringMeetingRow, mapping: MonitoringMeetingFieldMapping): MonitoringMeetingRecord {
     return {
-      id: String(row[fields.recordId] ?? ''),
-      userId: String(row[fields.userId] ?? ''),
-      ispId: String(row[fields.ispId] ?? ''),
-      planningSheetId: row[fields.planningSheetId] as string || undefined,
-      meetingType: (row[fields.meetingType] as string || 'regular') as MeetingType,
-      meetingDate: row[fields.meetingDate] as string || '',
-      venue: row[fields.venue] as string || '',
-      attendees: safeJsonParse<MeetingAttendee[]>(row[fields.attendeesJson], []),
-      goalEvaluations: safeJsonParse<GoalEvaluation[]>(row[fields.goalEvaluationsJson], []),
-      overallAssessment: row[fields.overallAssessment] as string || '',
-      userFeedback: row[fields.userFeedback] as string || '',
-      familyFeedback: row[fields.familyFeedback] as string || '',
-      planChangeDecision: (row[fields.planChangeDecision] as string || 'no_change') as PlanChangeDecision,
-      changeReason: row[fields.changeReason] as string || '',
-      decisions: safeJsonParse<string[]>(row[fields.decisionsJson], []),
-      nextMonitoringDate: row[fields.nextMonitoringDate] as string || '',
-      recordedBy: row[fields.recordedBy] as string || '',
-      recordedAt: row[fields.recordedAt] as string || '',
+      id: String(row[this.mf(mapping, 'recordId')] ?? ''),
+      userId: String(row[this.mf(mapping, 'userId')] ?? ''),
+      ispId: String(row[this.mf(mapping, 'ispId')] ?? ''),
+      planningSheetId: (row[this.mf(mapping, 'planningSheetId')] as string | undefined) || undefined,
+      meetingType: ((row[this.mf(mapping, 'meetingType')] as string | undefined) || 'regular') as MeetingType,
+      meetingDate: (row[this.mf(mapping, 'meetingDate')] as string | undefined) || '',
+      venue: (row[this.mf(mapping, 'venue')] as string | undefined) || '',
+      attendees: safeJsonParse<MeetingAttendee[]>(row[this.mf(mapping, 'attendeesJson')], []),
+      goalEvaluations: safeJsonParse<GoalEvaluation[]>(row[this.mf(mapping, 'goalEvaluationsJson')], []),
+      overallAssessment: (row[this.mf(mapping, 'overallAssessment')] as string | undefined) || '',
+      userFeedback: (row[this.mf(mapping, 'userFeedback')] as string | undefined) || '',
+      familyFeedback: (row[this.mf(mapping, 'familyFeedback')] as string | undefined) || '',
+      planChangeDecision: ((row[this.mf(mapping, 'planChangeDecision')] as string | undefined) || 'no_change') as PlanChangeDecision,
+      changeReason: (row[this.mf(mapping, 'changeReason')] as string | undefined) || '',
+      decisions: safeJsonParse<string[]>(row[this.mf(mapping, 'decisionsJson')], []),
+      nextMonitoringDate: (row[this.mf(mapping, 'nextMonitoringDate')] as string | undefined) || '',
+      recordedBy: (row[this.mf(mapping, 'recordedBy')] as string | undefined) || '',
+      recordedAt: (row[this.mf(mapping, 'recordedAt')] as string | undefined) || '',
     };
   }
 
-  private buildPatchBody(record: MonitoringMeetingRecord, fields: MonitoringMeetingResolvedFields): Record<string, unknown> {
+  private buildPatchBody(record: MonitoringMeetingRecord, mapping: MonitoringMeetingFieldMapping): Record<string, unknown> {
     const meetingDate = record.meetingDate?.slice(0, 10) ?? '';
     const nextMonitoringDate = record.nextMonitoringDate?.slice(0, 10) ?? '';
 
     return {
       Title: `${record.userId}_${meetingDate}`,
-      [fields.recordId]: record.id,
-      [fields.userId]: record.userId,
-      [fields.ispId]: record.ispId,
-      [fields.planningSheetId]: record.planningSheetId ?? '',
-      [fields.meetingType]: record.meetingType,
-      [fields.meetingDate]: meetingDate,
-      [fields.venue]: record.venue,
-      [fields.attendeesJson]: JSON.stringify(record.attendees),
-      [fields.goalEvaluationsJson]: JSON.stringify(record.goalEvaluations),
-      [fields.overallAssessment]: record.overallAssessment,
-      [fields.userFeedback]: record.userFeedback,
-      [fields.familyFeedback]: record.familyFeedback ?? '',
-      [fields.planChangeDecision]: record.planChangeDecision,
-      [fields.changeReason]: record.changeReason ?? '',
-      [fields.decisionsJson]: JSON.stringify(record.decisions ?? []),
-      [fields.nextMonitoringDate]: nextMonitoringDate,
-      [fields.recordedBy]: record.recordedBy,
-      [fields.recordedAt]: record.recordedAt,
+      [this.mf(mapping, 'recordId')]: record.id,
+      [this.mf(mapping, 'userId')]: record.userId,
+      [this.mf(mapping, 'ispId')]: record.ispId,
+      [this.mf(mapping, 'planningSheetId')]: record.planningSheetId ?? '',
+      [this.mf(mapping, 'meetingType')]: record.meetingType,
+      [this.mf(mapping, 'meetingDate')]: meetingDate,
+      [this.mf(mapping, 'venue')]: record.venue,
+      [this.mf(mapping, 'attendeesJson')]: JSON.stringify(record.attendees),
+      [this.mf(mapping, 'goalEvaluationsJson')]: JSON.stringify(record.goalEvaluations),
+      [this.mf(mapping, 'overallAssessment')]: record.overallAssessment,
+      [this.mf(mapping, 'userFeedback')]: record.userFeedback,
+      [this.mf(mapping, 'familyFeedback')]: record.familyFeedback ?? '',
+      [this.mf(mapping, 'planChangeDecision')]: record.planChangeDecision,
+      [this.mf(mapping, 'changeReason')]: record.changeReason ?? '',
+      [this.mf(mapping, 'decisionsJson')]: JSON.stringify(record.decisions ?? []),
+      [this.mf(mapping, 'nextMonitoringDate')]: nextMonitoringDate,
+      [this.mf(mapping, 'recordedBy')]: record.recordedBy,
+      [this.mf(mapping, 'recordedAt')]: record.recordedAt,
     };
   }
 }

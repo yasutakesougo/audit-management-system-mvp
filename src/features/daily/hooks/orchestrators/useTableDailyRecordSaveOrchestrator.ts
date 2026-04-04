@@ -92,11 +92,7 @@ export function useTableDailyRecordSaveOrchestrator({
     setSaving(true);
     try {
       // 2. Repository（保存）呼び出し
-      // Inject userCount derived from userRows count to satisfy DailyRecordDomain schema
-      await repository.save({
-        ...formData,
-        userCount: formData.userRows.length,
-      });
+      await repository.save(formData);
 
       // 3. PDCA トラッキング (IBD Metrics / Telemetry)
       const submittedAt = new Date().toISOString();

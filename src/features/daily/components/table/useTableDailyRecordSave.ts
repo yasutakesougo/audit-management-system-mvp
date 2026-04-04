@@ -7,11 +7,7 @@ export const useTableDailyRecordSave = () => {
 
   const save = useCallback(async (data: TableDailyRecordData) => {
     // Pure save only, no UI side effects (alert/navigate)
-    // Inject userCount derived from userRows count to satisfy DailyRecordDomain schema
-    await repository.save({
-      ...data,
-      userCount: data.userRows.length,
-    });
+    await repository.save(data);
   }, [repository]);
 
   return { save };

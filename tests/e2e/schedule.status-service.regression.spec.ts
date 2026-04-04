@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-globals */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck -- Playwright e2e specs live outside the primary tsconfig include path.
 import '@/test/captureSp400';

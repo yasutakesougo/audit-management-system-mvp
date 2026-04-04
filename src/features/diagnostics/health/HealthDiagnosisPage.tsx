@@ -24,6 +24,7 @@ import { toAdminSummary } from "./toAdminSummary";
 import { HealthContext } from "./types";
 import { useHealthChecks } from "./useHealthChecks";
 import { spTelemetryStore } from "@/lib/telemetry/spTelemetryStore";
+import { DriftObservabilityPanel } from "../drift/observability/DriftObservabilityPanel";
 
 // ──────────────────────────────────────────────────────────────
 // Clipboard helper
@@ -293,7 +294,7 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
                 Top Failing Endpoints:
               </Typography>
               <Box component="ul" sx={{ m: 0, pl: 2, typography: "body2" }}>
-                {spSnapshot.topEndpoints.map((ep, i) => (
+                {spSnapshot.topEndpoints.map((ep: { endpoint: string; failures: number; retries: number }, i: number) => (
                   <li key={i}>
                     <code>{ep.endpoint}</code> (Fail: {ep.failures}, Retry: {ep.retries})
                   </li>
@@ -302,6 +303,8 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
             </Box>
           )}
         </Paper>
+
+        <DriftObservabilityPanel />
 
         {/* ─────────────────────────────────────────────────────────────
             診断結果表示パネル
@@ -425,6 +428,8 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
                    </Stack>
                  } 
                />
+               <Tab value="drift" label="Drift" />
+               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                {(Object.entries(report.byCategory) as [string, any][]).map(([cat, v]) => (
                  <Tab 
                    key={cat} 
@@ -449,7 +454,7 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
         {/* ─────────────────────────────────────────────────────────────
             個別チェック
             ───────────────────────────────────────────────────────────── */}
-        {report && (
+        {report && activeTab !== "drift" && (
           <Paper variant="outlined" sx={{ p: 2 }}>
             <Typography variant="subtitle1" sx={{ mb: 1 }}>
               個別チェック ({categoryLabels[activeTab] || activeTab})
@@ -468,27 +473,12 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
                       justifyContent="space-between"
                     >
                       <Stack spacing={0.25} sx={{ minWidth: 0, flex: 1 }}>
-                        <Stack
-                          direction="row"
-                          spacing={1}
-                          alignItems="center"
-                          flexWrap="wrap"
-                          useFlexGap
-                        >
+                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                           <StatusChip status={r.status} />
-                          <Typography
-                            variant="subtitle2"
-                            noWrap
-                            title={r.label}
-                            sx={{ flex: 1, minWidth: 0 }}
-                          >
+                          <Typography variant="subtitle2" noWrap title={r.label} sx={{ flex: 1, minWidth: 0 }}>
                             {r.label}
                           </Typography>
-                          <Chip
-                            size="small"
-                            variant="outlined"
-                            label={r.category}
-                          />
+                          <Chip size="small" variant="outlined" label={r.category} />
                         </Stack>
                         <Typography variant="body2" color="text.secondary">
                           {r.summary}
@@ -507,31 +497,25 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
                     <Collapse in={open} unmountOnExit>
                       <Divider sx={{ my: 1 }} />
                       {r.detail && (
-                        <Typography
-                          variant="body2"
-                          sx={{ whiteSpace: "pre-wrap" }}
-                        >
+                        <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
                           {r.detail}
                         </Typography>
                       )}
 
                       {r.evidence && (
                         <Box sx={{ mt: 1 }}>
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                          >
+                          <Typography variant="caption" color="text.secondary">
                             証跡（evidence）
                           </Typography>
                           
                           {/* 構造整合性（ドリフト）情報の特別表示 */}
-                          {r.category === "schema" && Array.isArray(r.evidence.drifted) ? (
+                          {r.category === "schema" && Array.isArray((r.evidence as Record<string, unknown>).drifted) ? (
                             <Box sx={{ mt: 0.5, p: 1, bgcolor: "background.paper", borderRadius: 1, border: "1px dashed", borderColor: "warning.main" }}>
                               <Typography variant="body2" sx={{ mb: 1, fontWeight: 600, color: "warning.main" }}>
                                 ⚠️ 内部名マッピングの自動調整（整合性）を検出しました
                               </Typography>
                               <Stack spacing={0.5}>
-                                {(r.evidence.drifted as { expected: string; actual: string }[]).map((d, i) => (
+                                {((r.evidence as Record<string, unknown>).drifted as Record<string, string>[]).map((d: Record<string, string>, i: number) => (
                                   <Stack key={i} direction="row" spacing={1} alignItems="center">
                                     <Chip size="small" label={d.expected} variant="outlined" />
                                     <Typography variant="caption">→</Typography>
@@ -541,17 +525,7 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
                               </Stack>
                             </Box>
                           ) : (
-                            <pre
-                              style={{
-                                margin: 0,
-                                whiteSpace: "pre-wrap",
-                                overflow: "auto",
-                                maxHeight: "200px",
-                                padding: "8px",
-                                backgroundColor: "rgba(0,0,0,0.04)",
-                                borderRadius: "4px"
-                              }}
-                            >
+                            <pre style={{ margin: 0, whiteSpace: "pre-wrap", overflow: "auto", maxHeight: "200px", padding: "8px", backgroundColor: "rgba(0,0,0,0.04)", borderRadius: "4px" }}>
                               {JSON.stringify(r.evidence, null, 2)}
                             </pre>
                           )}
@@ -560,10 +534,7 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
 
                       {r.nextActions.length > 0 && (
                         <Box sx={{ mt: 1 }}>
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                          >
+                          <Typography variant="caption" color="text.secondary">
                             次にやること
                           </Typography>
                           <Stack spacing={0.75} sx={{ mt: 0.75 }}>
@@ -571,40 +542,18 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
                               <Paper key={idx} variant="outlined" sx={{ p: 1.25, bgcolor: "action.selected" }}>
                                 <Stack direction="row" spacing={1.25} alignItems="center">
                                   <Box sx={{ color: "primary.main", flexShrink: 0 }}>
-                                    {a.kind === "copy" ? (
-                                      <ContentCopyIcon sx={{ fontSize: 18 }} />
-                                    ) : a.kind === "link" ? (
-                                      <LaunchIcon sx={{ fontSize: 18 }} />
-                                    ) : (
-                                      <DescriptionIcon sx={{ fontSize: 18 }} />
-                                    )}
+                                    {a.kind === "copy" ? <ContentCopyIcon sx={{ fontSize: 18 }} /> :
+                                     a.kind === "link" ? <LaunchIcon sx={{ fontSize: 18 }} /> :
+                                     <DescriptionIcon sx={{ fontSize: 18 }} />}
                                   </Box>
                                   <Box sx={{ flex: 1, minWidth: 0 }}>
-                                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                                      {a.label}
-                                    </Typography>
-                                    <Typography
-                                      variant="caption"
-                                      color="text.secondary"
-                                      sx={{ 
-                                        display: 'block',
-                                        mt: 0.25,
-                                        whiteSpace: "pre-wrap",
-                                        fontFamily: a.kind === "copy" ? "monospace" : "inherit"
-                                      }}
-                                    >
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>{a.label}</Typography>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25, whiteSpace: "pre-wrap", fontFamily: a.kind === "copy" ? "monospace" : "inherit" }}>
                                       {a.value}
                                     </Typography>
                                   </Box>
                                   {a.kind === "copy" && (
-                                    <Button 
-                                      size="small" 
-                                      onClick={() => {
-                                        copyToClipboard(a.value);
-                                        alert("コピーしました");
-                                      }}
-                                      sx={{ fontSize: '0.65rem', py: 0 }}
-                                    >
+                                    <Button size="small" onClick={() => { copyToClipboard(a.value); alert("コピーしました"); }} sx={{ fontSize: '0.65rem', py: 0 }}>
                                       コピー
                                     </Button>
                                   )}

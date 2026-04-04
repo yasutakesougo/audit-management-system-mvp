@@ -99,7 +99,7 @@ const UsersList: FC<UsersListProps> = ({
             .some((value) => value.includes(needle))
         : true;
       const isActive = resolveUserLifecycleStatus(user) === 'active';
-      const isSevere = Boolean(user.severeFlag ?? user.IsHighIntensitySupportTarget);
+      const isSevere = Boolean(user.severeFlag || user.IsHighIntensitySupportTarget);
       if (onlyActive && !isActive) {
         return false;
       }
@@ -284,7 +284,7 @@ const UsersList: FC<UsersListProps> = ({
           {...tid(TESTIDS['users-panel-filter-active'])}
         />
         <Chip
-          label="重度対象"
+          label="重度・強度"
           clickable
           color={onlySevere ? 'error' : 'default'}
           variant={onlySevere ? 'filled' : 'outlined'}

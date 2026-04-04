@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-globals */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mergeTestConfig, setTestConfigOverride } from '../helpers/mockEnv';
 import { installTestResets } from '../helpers/reset';

@@ -11,8 +11,10 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      VITE_SP_ENABLED: ${{ secrets.VITE_SP_ENABLED }}
-      VITE_APP_ENV: ${{ secrets.VITE_APP_ENV }}
+      VITE_SP_ENABLED: '1'
+      VITE_APP_ENV: 'production'
+      VITE_MSAL_CLIENT_ID: ${{ secrets.VITE_MSAL_CLIENT_ID != '' && secrets.VITE_MSAL_CLIENT_ID || secrets.AAD_APP_ID }}
+      VITE_MSAL_TENANT_ID: ${{ secrets.VITE_MSAL_TENANT_ID != '' && secrets.VITE_MSAL_TENANT_ID || secrets.AAD_TENANT_ID }}
 
     steps:
       - name: Checkout
@@ -49,6 +51,36 @@ jobs:
           fi
 
           echo "✅ production env looks valid"
+
+      - name: Validate MSAL configuration (auth guard safety)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Without MSAL config, guardResolution.ts sets shouldBypass=true
+          # which disables ALL authentication guards (ProtectedRoute, AdminGate, RequireAudience)
+
+          if [ -z "${VITE_MSAL_CLIENT_ID:-}" ]; then
+            echo "❌ CRITICAL: VITE_MSAL_CLIENT_ID is required (auth guards disabled without it)"
+            exit 1
+          fi
+
+          if echo "${VITE_MSAL_CLIENT_ID}" | grep -qi 'dummy'; then
+            echo "❌ CRITICAL: VITE_MSAL_CLIENT_ID contains 'dummy' — not a real AAD app"
+            exit 1
+          fi
+
+          if [ -z "${VITE_MSAL_TENANT_ID:-}" ]; then
+            echo "❌ CRITICAL: VITE_MSAL_TENANT_ID is required (auth guards disabled without it)"
+            exit 1
+          fi
+
+          if echo "${VITE_MSAL_TENANT_ID}" | grep -qi 'dummy'; then
+            echo "❌ CRITICAL: VITE_MSAL_TENANT_ID contains 'dummy' — not a real AAD tenant"
+            exit 1
+          fi
+
+          echo "✅ MSAL configuration validated — auth guards will enforce properly"
 
       - name: Check hardcoded demo mode in repository factories
         shell: bash

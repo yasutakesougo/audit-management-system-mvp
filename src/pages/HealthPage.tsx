@@ -13,23 +13,27 @@ import { SpFieldSpec } from "../features/diagnostics/health/types";
 import {
   DAILY_RECORD_CANONICAL_CANDIDATES,
   DAILY_RECORD_ROW_AGGREGATE_CANDIDATES,
-  ACTIVITY_DIARY_CANDIDATES,
   DAILY_ACTIVITY_RECORDS_CANDIDATES,
 } from "@/sharepoint/fields/dailyFields";
+import { ACTIVITY_DIARY_CANDIDATES } from "@/sharepoint/fields/activityDiaryFields";
 import {
   USERS_MASTER_CANDIDATES,
   USER_BENEFIT_PROFILE_CANDIDATES,
 } from "@/sharepoint/fields/userFields";
-import { DAILY_ATTENDANCE_CANDIDATES } from "@/sharepoint/fields/dailyAttendanceFields";
 import { STAFF_MASTER_CANDIDATES as STAFF_CANDIDATES_ORIGINAL } from "@/sharepoint/fields/staffFields";
-import { MONITORING_MEETING_CANDIDATES } from "@/sharepoint/fields/monitoringMeetingFields";
+import {
+  MONITORING_MEETING_CANDIDATES,
+  MONITORING_MEETING_ESSENTIALS,
+} from "@/sharepoint/fields/monitoringMeetingFields";
 import { SERVICE_PROVISION_CANDIDATES } from "@/sharepoint/fields/serviceProvisionFields";
 import {
+  ATTENDANCE_CANDIDATES,
+  ATTENDANCE_ESSENTIALS,
   STAFF_ATTENDANCE_CANDIDATES,
   ATTENDANCE_USERS_CANDIDATES,
   ATTENDANCE_DAILY_CANDIDATES,
 } from "@/sharepoint/fields/attendanceFields";
-import { PROCEDURE_RECORD_CANDIDATES, ISP_MASTER_CANDIDATES, PLANNING_SHEET_CANDIDATES, ISP_DECISION_CANDIDATES } from "@/sharepoint/fields/ispThreeLayerFields";
+import { PROCEDURE_RECORD_CANDIDATES, ISP_MASTER_CANDIDATES } from "@/sharepoint/fields/ispThreeLayerFields";
 import {
   TRANSPORT_LOG_CANDIDATES,
   TRANSPORT_SETTING_CANDIDATES,
@@ -212,7 +216,7 @@ const DRIFT_CANDIDATES_BY_KEY: Record<string, Record<string, string[]>> = {
 
   daily_attendance: (() => {
     const map: Record<string, string[]> = {};
-    for (const cands of Object.values(DAILY_ATTENDANCE_CANDIDATES) as unknown as readonly string[][]) {
+    for (const cands of Object.values(ATTENDANCE_CANDIDATES) as unknown as readonly string[][]) {
       const primary = cands[0];
       map[primary] = [...cands];
     }
@@ -249,24 +253,6 @@ const DRIFT_CANDIDATES_BY_KEY: Record<string, Record<string, string[]>> = {
   isp_master: (() => {
     const map: Record<string, string[]> = {};
     for (const cands of Object.values(ISP_MASTER_CANDIDATES) as unknown as readonly string[][]) {
-      const primary = cands[0];
-      map[primary] = [...cands];
-    }
-    return map;
-  })(),
-
-  planning_sheet_master: (() => {
-    const map: Record<string, string[]> = {};
-    for (const cands of Object.values(PLANNING_SHEET_CANDIDATES) as unknown as readonly string[][]) {
-      const primary = cands[0];
-      map[primary] = [...cands];
-    }
-    return map;
-  })(),
-
-  isp_recommendation_decisions: (() => {
-    const map: Record<string, string[]> = {};
-    for (const cands of Object.values(ISP_DECISION_CANDIDATES) as unknown as readonly string[][]) {
       const primary = cands[0];
       map[primary] = [...cands];
     }
@@ -310,21 +296,32 @@ const DRIFT_CANDIDATES_BY_KEY: Record<string, Record<string, string[]>> = {
   })(),
 };
 
+const DRIFT_ESSENTIALS_BY_KEY: Record<string, readonly string[]> = {
+  monitoring_meetings: MONITORING_MEETING_ESSENTIALS.map(
+    (key) => MONITORING_MEETING_CANDIDATES[key][0],
+  ),
+  daily_attendance: ATTENDANCE_ESSENTIALS.map(
+    (key) => ATTENDANCE_CANDIDATES[key][0],
+  ),
+};
+
 
 
 
 const listSpecs: ListSpec[] = SP_LIST_REGISTRY.map((entry) => {
+  const effectiveEssentials = DRIFT_ESSENTIALS_BY_KEY[entry.key] ?? (entry.essentialFields || []);
+
   // 1. All fields from provisioning (default: optional)
   const driftOverride = DRIFT_CANDIDATES_BY_KEY[entry.key];
   const provisionFields: SpFieldSpec[] = (entry.provisioningFields || []).map((f) => ({
     internalName: f.internalName,
-    isEssential: (entry.essentialFields || []).includes(f.internalName),
+    isEssential: effectiveEssentials.includes(f.internalName),
     typeHint: f.type,
     candidates: driftOverride?.[f.internalName],
   }));
 
   // 2. Ensure essentials (ID, etc.) are present
-  const essentials = ["Id", "Title", ...(entry.essentialFields || [])];
+  const essentials = ["Id", "Title", ...effectiveEssentials];
   const combined: SpFieldSpec[] = [...provisionFields];
 
   for (const name of essentials) {
@@ -338,7 +335,7 @@ const listSpecs: ListSpec[] = SP_LIST_REGISTRY.map((entry) => {
         typeHint: "Core",
       });
     } else if (
-      (entry.essentialFields || []).some(
+      effectiveEssentials.some(
         (e) => e.toLowerCase() === existing.internalName.toLowerCase()
       ) ||
       name.toLowerCase() === "id"

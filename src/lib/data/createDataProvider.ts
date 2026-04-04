@@ -7,7 +7,7 @@ import {
   DataProviderNotInitializedError 
 } from '@/lib/errors';
 
-import { isDevMode, isDemoModeEnabled, readOptionalEnv } from '@/lib/env';
+import { isDevMode, isDemoModeEnabled, readBool, readOptionalEnv } from '@/lib/env';
 
 export type ProviderType = 'sharepoint' | 'memory' | 'local';
 
@@ -87,6 +87,9 @@ export function getActiveProviderType(): ProviderType {
   const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const providerParam = urlParams?.get('provider');
   const envProvider = readOptionalEnv('VITE_DATA_PROVIDER');
+  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
+
+  if (forceSharePoint) return 'sharepoint';
 
   const selected = providerParam || envProvider;
 
@@ -101,4 +104,3 @@ export function getActiveProviderType(): ProviderType {
 
   return 'sharepoint';
 }
-
