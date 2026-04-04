@@ -19,6 +19,7 @@ import { toAdminSummary } from "./toAdminSummary";
 import { HealthContext } from "./types";
 import { useHealthChecks } from "./useHealthChecks";
 import { spTelemetryStore } from "@/lib/telemetry/spTelemetryStore";
+import { DriftObservabilityPanel } from "../drift/observability/DriftObservabilityPanel";
 
 // ──────────────────────────────────────────────────────────────
 // Clipboard helper
@@ -280,6 +281,8 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
             </Box>
           )}
         </Paper>
+
+        <DriftObservabilityPanel />
 
         {/* ─────────────────────────────────────────────────────────────
             診断結果表示パネル
