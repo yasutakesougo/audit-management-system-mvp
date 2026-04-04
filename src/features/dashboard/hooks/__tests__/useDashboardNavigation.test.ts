@@ -27,7 +27,15 @@ vi.mock('@/features/dashboard/hooks/useDashboardLayoutMode', () => ({
 
 let mockSchedulesEnabled = true;
 vi.mock('@/config/featureFlags', () => ({
-  useFeatureFlags: () => ({ schedules: mockSchedulesEnabled }),
+  useFeatureFlags: () => ({
+    schedules: mockSchedulesEnabled,
+    complianceForm: false,
+    schedulesWeekV2: false,
+    icebergPdca: false,
+    staffAttendance: false,
+    todayOps: false,
+    todayLiteUi: false,
+  }),
 }));
 
 // SUT (mock 後に dynamic import)

@@ -16,6 +16,7 @@ interface ImportMetaEnv {
   readonly VITE_DEMO_MODE?: string;
   readonly VITE_E2E_MSAL_MOCK?: string;
   readonly VITE_FEATURE_COMPLIANCE_FORM?: string;
+  readonly VITE_FEATURE_TODAY_LITE_UI?: string;
   readonly VITE_FEATURE_SCHEDULES_GRAPH?: string;
   readonly VITE_FEATURE_SCHEDULES_SP?: string;
   readonly VITE_FEATURE_SCHEDULES?: string;

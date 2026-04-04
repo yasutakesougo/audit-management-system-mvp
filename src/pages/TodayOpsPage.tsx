@@ -15,8 +15,10 @@
  * @see docs/adr/ADR-002-today-execution-layer-guardrails.md
  */
 import { useAuthStore } from '@/features/auth/store';
+import { useFeatureFlag } from '@/config/featureFlags';
 import { useSettingsContext } from '@/features/settings/SettingsContext';
 import { useTodaySummary } from '@/features/today/domain';
+import { TodayLitePage } from '@/features/today/lightweight/TodayLitePage';
 import { useApprovalFlow } from '@/features/today/hooks/useApprovalFlow';
 import { useNextAction } from '@/features/today/hooks/useNextAction';
 import { useSceneNextAction } from '@/features/today/hooks/useSceneNextAction';
@@ -80,7 +82,7 @@ function createKioskSessionId(): string {
   return `kiosk-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
+const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
   correctiveActions = [],
 }) => {
   const navigate = useNavigate();
@@ -486,22 +488,35 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
 
     if (progressData?.summary && attendanceData) {
       const { summary: progressSummary, onChipClick } = progressData;
+      const calcProgressPct = (completed: number, total: number): number => {
+        if (total <= 0) return 100;
+        return Math.round((completed / total) * 100);
+      };
 
       // ── 支援手順記録 (todayRecordCompletion 起点) ──
-      const recordTotal = progressSummary.totalRecordCount || 1;
-      const recordCompleted = Math.max(0, recordTotal - progressSummary.pendingRecordCount);
-      const recordPct = Math.round((recordCompleted / recordTotal) * 100);
+      const recordTotal = Math.max(0, progressSummary.totalRecordCount ?? 0);
+      const recordCompleted = Math.min(
+        recordTotal,
+        Math.max(0, recordTotal - (progressSummary.pendingRecordCount ?? 0)),
+      );
+      const recordPct = calcProgressPct(recordCompleted, recordTotal);
 
       // ── ケース記録 (dailyRecordStatus — Dashboard 起点) ──
       const caseRecordStatus = summary.dailyRecordStatus;
-      const caseTotal = caseRecordStatus?.total || (summary.users?.length ?? 0) || 1;
-      const caseCompleted = caseRecordStatus?.completed ?? 0;
-      const casePct = Math.round((caseCompleted / caseTotal) * 100);
+      const caseTotal = Math.max(0, caseRecordStatus?.total ?? (summary.users?.length ?? 0));
+      const caseCompleted = Math.min(
+        caseTotal,
+        Math.max(0, caseRecordStatus?.completed ?? 0),
+      );
+      const casePct = calcProgressPct(caseCompleted, caseTotal);
 
       // ── 出欠 ──
-      const attScheduled = attendanceData.scheduledCount || 1;
-      const attPresent = attendanceData.facilityAttendees || 0;
-      const attPct = Math.round((attPresent / attScheduled) * 100);
+      const attScheduled = Math.max(0, attendanceData.scheduledCount ?? 0);
+      const attPresent = Math.min(
+        attScheduled,
+        Math.max(0, attendanceData.facilityAttendees ?? 0),
+      );
+      const attPct = calcProgressPct(attPresent, attScheduled);
 
       const contactCount = callLogsSummary.openCount + callLogsSummary.callbackPendingCount;
 
@@ -511,7 +526,7 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
           label: '支援手順',
           valueText: `${recordCompleted}/${recordTotal}`,
           progress: recordPct,
-          status: recordPct >= 100 ? 'complete' : recordPct >= 50 ? 'in_progress' : 'attention',
+          status: recordTotal === 0 || recordPct >= 100 ? 'complete' : recordPct >= 50 ? 'in_progress' : 'attention',
           onClick: () => {
             recordCtaClick({
               ctaId: CTA_EVENTS.PROGRESS_RING_RECORDS,
@@ -527,7 +542,7 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
           label: 'ケース記録',
           valueText: `${caseCompleted}/${caseTotal}`,
           progress: casePct,
-          status: casePct >= 100 ? 'complete' : casePct >= 50 ? 'in_progress' : 'attention',
+          status: caseTotal === 0 || casePct >= 100 ? 'complete' : casePct >= 50 ? 'in_progress' : 'attention',
           onClick: () => {
             recordCtaClick({
               ctaId: CTA_EVENTS.PROGRESS_RING_CASE_RECORD,
@@ -544,7 +559,7 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
           label: '出欠',
           valueText: `${attPresent}/${attScheduled}`,
           progress: attPct,
-          status: attPct >= 100 ? 'complete' : attPct >= 50 ? 'in_progress' : 'attention',
+          status: attScheduled === 0 || attPct >= 100 ? 'complete' : attPct >= 50 ? 'in_progress' : 'attention',
           onClick: () => {
             recordCtaClick({
               ctaId: CTA_EVENTS.PROGRESS_RING_ATTENDANCE,
@@ -819,6 +834,34 @@ export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({
       </Snackbar>
     </>
   );
+};
+
+const TodayLiteOpsPage: React.FC = () => {
+  const navigate = useNavigate();
+  const role = useAuthStore((s) => s.currentUserRole);
+  const summary = useTodaySummary();
+
+  const handleNavigate = useCallback((to: string) => {
+    navigate(to);
+  }, [navigate]);
+
+  return (
+    <TodayLitePage
+      summary={summary}
+      role={role}
+      onNavigate={handleNavigate}
+    />
+  );
+};
+
+export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({ correctiveActions = [] }) => {
+  const todayLiteUiEnabled = useFeatureFlag('todayLiteUi');
+
+  if (todayLiteUiEnabled) {
+    return <TodayLiteOpsPage />;
+  }
+
+  return <LegacyTodayOpsPage correctiveActions={correctiveActions} />;
 };
 
 export default TodayOpsPage;

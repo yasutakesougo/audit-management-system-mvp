@@ -14,6 +14,7 @@ import {
     isSchedulesWeekV2Enabled,
     isStaffAttendanceEnabled,
     isTestMode,
+    isTodayLiteUiFeatureEnabled,
     isTodayOpsFeatureEnabled,
     readBool,
     readOptionalEnv,
@@ -32,6 +33,7 @@ const FLAG_RESOLVER_MAP: Record<keyof FeatureFlagSnapshot, (envOverride?: EnvRec
   staffAttendance: isStaffAttendanceEnabled,
 
   todayOps: isTodayOpsFeatureEnabled,
+  todayLiteUi: isTodayLiteUiFeatureEnabled,
 };
 
 describe('env ↔ featureFlags export sync', () => {
