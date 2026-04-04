@@ -14,13 +14,26 @@ export type TodayActionCardsProps = {
 };
 
 export const TodayActionCards: React.FC<TodayActionCardsProps> = ({ cards }) => {
-  const safeCards = cards.slice(0, 4);
+  const CARD_ORDER: Record<string, number> = {
+    attendance: 0,
+    record: 1,
+    handoff: 2,
+    meeting: 3,
+  };
+  const safeCards = [...cards]
+    .sort((a, b) => {
+      const orderA = CARD_ORDER[a.key] ?? Number.MAX_SAFE_INTEGER;
+      const orderB = CARD_ORDER[b.key] ?? Number.MAX_SAFE_INTEGER;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.title.localeCompare(b.title, 'ja');
+    })
+    .slice(0, 4);
 
   return (
     <Grid container spacing={1.5} data-testid="today-lite-action-cards">
       {safeCards.map((card) => (
         <Grid size={{ xs: 12, sm: 6 }} key={card.key}>
-          <Card variant="outlined">
+          <Card variant="outlined" data-testid={`today-lite-action-card-${card.key}`}>
             <CardContent>
               <Stack spacing={0.5}>
                 <Typography variant="subtitle1" fontWeight={700}>{card.title}</Typography>

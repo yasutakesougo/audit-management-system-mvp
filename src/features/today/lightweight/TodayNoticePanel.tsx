@@ -3,9 +3,11 @@ import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
+  Chip,
   List,
   ListItem,
   ListItemText,
+  Stack,
   Typography,
 } from '@mui/material';
 import React from 'react';
@@ -16,11 +18,31 @@ export type TodayNoticePanelProps = {
 
 export const TodayNoticePanel: React.FC<TodayNoticePanelProps> = ({ notices }) => {
   const visibleNotices = notices.slice(0, 3);
+  const firstNotice = visibleNotices[0] ?? 'お知らせはありません';
 
   return (
     <Accordion defaultExpanded={false} data-testid="today-lite-notice-panel">
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Typography variant="subtitle2" fontWeight={700}>注意事項・お知らせ</Typography>
+        <Stack spacing={0.5} sx={{ width: '100%', minWidth: 0 }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="subtitle2" fontWeight={700}>注意事項・お知らせ</Typography>
+            <Chip
+              size="small"
+              variant="outlined"
+              color={visibleNotices.length > 0 ? 'warning' : 'default'}
+              label={`${visibleNotices.length}件`}
+              data-testid="today-lite-notice-count"
+            />
+          </Stack>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            noWrap
+            data-testid="today-lite-notice-headline"
+          >
+            {firstNotice}
+          </Typography>
+        </Stack>
       </AccordionSummary>
       <AccordionDetails>
         {visibleNotices.length === 0 ? (

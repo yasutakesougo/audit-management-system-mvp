@@ -34,36 +34,53 @@ export const TodayLitePage: React.FC<TodayLitePageProps> = ({ summary, role, onN
   const handoffPending = (summary.briefingAlerts ?? []).filter(
     (alert) => alert.severity === 'error' || alert.severity === 'warning',
   ).length;
+  const meetingCount = (summary.scheduleLanesToday?.staffLane ?? []).filter((lane) =>
+    /会議|ミーティング|meeting/i.test(lane.title),
+  ).length;
 
   const handleNavigate = useCallback((to: string) => {
     onNavigate(to);
   }, [onNavigate]);
 
   const cards = useMemo<TodayActionCardItem[]>(
-    () => [
-      {
-        key: 'attendance',
-        title: '出欠確認',
-        count: attendancePending,
-        primaryLabel: '出欠を確認する',
-        onPrimaryClick: () => handleNavigate('/daily/attendance'),
-      },
-      {
-        key: 'record',
-        title: '記録入力',
-        count: recordPending,
-        primaryLabel: '記録を入力する',
-        onPrimaryClick: () => handleNavigate('/daily/table'),
-      },
-      {
-        key: 'handoff',
-        title: '申し送り',
-        count: handoffPending,
-        primaryLabel: '申し送りを見る',
-        onPrimaryClick: () => handleNavigate('/handoff-timeline'),
-      },
-    ],
-    [attendancePending, handoffPending, recordPending, handleNavigate],
+    () => {
+      const baseCards: TodayActionCardItem[] = [
+        {
+          key: 'attendance',
+          title: '出欠確認',
+          count: attendancePending,
+          primaryLabel: '出欠を確認する',
+          onPrimaryClick: () => handleNavigate('/daily/attendance'),
+        },
+        {
+          key: 'record',
+          title: '記録入力',
+          count: recordPending,
+          primaryLabel: '記録を入力する',
+          onPrimaryClick: () => handleNavigate('/daily/table'),
+        },
+        {
+          key: 'handoff',
+          title: '申し送り',
+          count: handoffPending,
+          primaryLabel: '申し送りを見る',
+          onPrimaryClick: () => handleNavigate('/handoff-timeline'),
+        },
+      ];
+
+      if (meetingCount > 0) {
+        baseCards.push({
+          key: 'meeting',
+          title: '会議記録',
+          count: meetingCount,
+          primaryLabel: '会議記録を開く',
+          onPrimaryClick: () => handleNavigate('/meeting-minutes'),
+        });
+      }
+
+      return baseCards;
+    },
+    [attendancePending, handoffPending, recordPending, meetingCount, handleNavigate],
   );
 
   const notices = useMemo(() => {
