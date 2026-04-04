@@ -20,6 +20,7 @@ import {
 import { auditLog } from '@/lib/debugLogger';
 import { readEnv } from '@/lib/env';
 import type { AuditEvent } from '@/lib/audit';
+import { AuthRequiredError } from '@/lib/errors';
 
 import { normalizeAttendanceDays } from '../attendance';
 import { canEditUser, resolveUserLifecycleStatus, toDomainUser } from '../domain/userLifecycle';
@@ -41,6 +42,17 @@ const MAX_WRITE_RETRY = 8;
 const getTodayIsoDate = (): string => new Date().toISOString().slice(0, 10);
 /** UserTransport_Settings / UserBenefit_Profile 双方の join キー列名 */
 const ACCESSORY_LIST_JOIN_FIELD = 'UserID';
+
+const isAuthRequiredLike = (error: unknown): boolean => {
+  if (error instanceof AuthRequiredError) return true;
+  if (!(error instanceof Error)) return false;
+  const code = (error as { code?: unknown }).code;
+  return (
+    error.name === 'AuthRequiredError' ||
+    error.message === 'AUTH_REQUIRED' ||
+    code === 'AUTH_REQUIRED'
+  );
+};
 
 type AuditLogEntry = Omit<AuditEvent, 'ts'>;
 
@@ -152,10 +164,28 @@ export class DataProviderUserRepository implements UserRepository {
         });
 
         // 健全性にかかわらずキャッシュし、再解決（および再ループ）を防ぐ
-        // 開発・初期環境での空リスト対策として、未解決フィールドには候補群の第1要素をフォールバックとして割り当てる
+        // 未解決フィールドは原則 undefined のまま保持し、存在しない内部名を $select に流さない。
+        // 例外として、フィールドメタデータ自体を取得できないケース（available が空）だけは
+        // 従来どおり第1候補へフォールバックして初期環境での書き込みを可能にする。
+        const availableLower = new Set(Array.from(available, (name) => name.toLowerCase()));
+        const hasFieldMetadata = availableLower.size > 0;
         const bestEffort: Record<string, string | undefined> = {};
         for (const [key, cands] of Object.entries(candidatesMap)) {
-          bestEffort[key] = (resolved[key] as string | undefined) || (cands as string[])[0];
+          const resolvedName = resolved[key] as string | undefined;
+          if (resolvedName) {
+            bestEffort[key] = resolvedName;
+            continue;
+          }
+
+          const primaryCandidate = (cands as string[])[0];
+          if (!primaryCandidate) {
+            bestEffort[key] = undefined;
+            continue;
+          }
+
+          bestEffort[key] = !hasFieldMetadata
+            ? primaryCandidate
+            : (availableLower.has(primaryCandidate.toLowerCase()) ? primaryCandidate : undefined);
         }
 
         this.resolvedFields = bestEffort;
@@ -170,6 +200,9 @@ export class DataProviderUserRepository implements UserRepository {
 
         return this.resolvedFields;
       } catch (err) {
+        if (isAuthRequiredLike(err)) {
+          throw err;
+        }
         auditLog.error('users', 'Field resolution failed:', err);
         return null;
       }
@@ -209,7 +242,9 @@ export class DataProviderUserRepository implements UserRepository {
     const requestedMode = params?.selectMode ?? 'detail';
     
     const fields = await this.resolveFields();
-    if (!fields) return [];
+    if (!fields) {
+      throw new Error(`Users schema resolution failed: ${this.listTitle}`);
+    }
 
     // OData $select に含めるフィールドを、実際に存在する列のみに絞り込む
     const selectFields = [
@@ -278,8 +313,11 @@ export class DataProviderUserRepository implements UserRepository {
 
       return domainItems;
     } catch (e) {
+      if (isAuthRequiredLike(e)) {
+        throw e;
+      }
       auditLog.error('users', 'DataProviderUserRepository.getAll_failed', { error: String(e) });
-      return [];
+      throw e;
     }
   }
 
@@ -460,7 +498,6 @@ export class DataProviderUserRepository implements UserRepository {
       hasData,
       filteredRequest,
     });
-
     if (!hasData) return; // 更新対象フィールドがない場合はスキップ
 
     try {
