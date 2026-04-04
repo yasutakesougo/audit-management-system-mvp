@@ -145,8 +145,18 @@ export class InMemoryDataProvider implements IDataProvider {
    * シードデータの注入（テスト・デモ用）
    */
   async seed(resourceName: string, items: Array<Record<string, unknown>>): Promise<void> {
-    const nextId = items.length > 0 ? Math.max(...items.map(i => Number(i.Id || i.id || i.ID || 0))) + 1 : this.nextId;
-    this.nextId = Math.max(this.nextId, nextId);
-    this.storage.set(resourceName, items);
+    const normalized = items.map((item) => {
+      const explicitId = item.Id ?? item.id ?? item.ID;
+      if (explicitId !== undefined && explicitId !== null && Number.isFinite(Number(explicitId))) {
+        return { ...item, Id: Number(explicitId) };
+      }
+      return { Id: this.nextId++, ...item };
+    });
+
+    const maxId = normalized.length > 0
+      ? Math.max(...normalized.map((item) => Number(item.Id ?? 0)))
+      : 0;
+    this.nextId = Math.max(this.nextId, maxId + 1);
+    this.storage.set(resourceName, normalized);
   }
 }

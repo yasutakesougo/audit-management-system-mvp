@@ -156,19 +156,14 @@ export class SharePointDataProvider implements IDataProvider {
     return (meta as unknown as Record<string, unknown>) || {};
   }
 
-  async getResourceNames(): Promise<string[]> {
-    const names = new Set<string>();
-    for (const entry of SP_LIST_REGISTRY) {
-      const resolved = entry.resolve().trim();
-      if (resolved.length > 0) names.add(resolved);
-      if (entry.key.trim().length > 0) names.add(entry.key.trim());
-    }
-    return Array.from(names).sort((a, b) => a.localeCompare(b));
-  }
-
   async getFieldInternalNames(resourceName: string): Promise<Set<string>> {
     const actualName = this.resolveResource(resourceName);
     return this.client.getListFieldInternalNames(actualName);
+  }
+
+  async getResourceNames(): Promise<string[]> {
+    const identifiers = await this.client.getExistingListTitlesAndIds();
+    return Array.from(identifiers);
   }
 
   async ensureListExists(resourceName: string, fields: SpFieldDef[]): Promise<void> {

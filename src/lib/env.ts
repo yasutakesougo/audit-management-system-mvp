@@ -345,12 +345,17 @@ export const isTodayOpsFeatureEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_FEATURE_TODAY_OPS', false, envOverride);
 
 export const shouldSkipLogin = (envOverride?: EnvRecord): boolean =>
-  isDemoModeEnabled(envOverride) ||
-  readBool('VITE_SKIP_LOGIN', false, envOverride) ||
-  readBool('VITE_E2E', false, envOverride) ||
-  readBool('VITE_E2E_MSAL_MOCK', false, envOverride) ||
-  readLocalStorageFlag('skipLogin') ||
-  false;
+  // Force SharePoint mode must never bypass login.
+  readBool('VITE_FORCE_SHAREPOINT', false, envOverride)
+    ? false
+    : (
+        isDemoModeEnabled(envOverride) ||
+        readBool('VITE_SKIP_LOGIN', false, envOverride) ||
+        readBool('VITE_E2E', false, envOverride) ||
+        readBool('VITE_E2E_MSAL_MOCK', false, envOverride) ||
+        readLocalStorageFlag('skipLogin') ||
+        false
+      );
 
 export const shouldSkipSharePoint = (envOverride?: EnvRecord): boolean => {
   return readBool('VITE_SKIP_SHAREPOINT', false, envOverride);
