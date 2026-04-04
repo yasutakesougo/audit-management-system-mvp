@@ -164,11 +164,17 @@ export function syncRowsWithSelectedUsers(
   const existingMap = new Map(existingRows.map((row) => [row.userId, row]));
   const getLastActs = options?.getLastActivities;
 
+  const normalizeName = (name: string): string => name.trim();
+
   // 1. 解決済みユーザーから行を構築
   const rowsFromResolvedUsers: UserRowData[] = selectedUsers.map((user) => {
     const userId = user.userId || '';
     const existing = existingMap.get(userId);
     if (existing) {
+      const resolvedName = normalizeName(user.name || '');
+      if (resolvedName.length > 0 && existing.userName !== resolvedName) {
+        return { ...existing, userName: resolvedName };
+      }
       return existing;
     }
     return createEmptyRow(userId, user.name || '', {
