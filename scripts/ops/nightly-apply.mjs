@@ -152,9 +152,24 @@ function uniqueStrings(values) {
   return out;
 }
 
+function resolveReasonMeta(code) {
+  const watchStreakMatch = /^WATCH_STREAK_(\d+)D::(.+)$/.exec(code);
+  if (watchStreakMatch) {
+    const days = watchStreakMatch[1];
+    const sourceCode = watchStreakMatch[2];
+    return {
+      domain: 'operations',
+      signal: `${days}日連続 Watch (${sourceCode})`,
+      action: `慢性化した warn code (${sourceCode}) の根本対応を実施`,
+      suggestedLabel: 'kind:operations',
+    };
+  }
+  return REASON_CODE_META[code] || REASON_CODE_META.default;
+}
+
 function buildReasonRows(codes, level) {
   return (Array.isArray(codes) ? codes : []).map((code) => {
-    const meta = REASON_CODE_META[code] || REASON_CODE_META.default;
+    const meta = resolveReasonMeta(code);
     return {
       code,
       level,

@@ -44,6 +44,14 @@ const FINAL_META = {
   action_required: { emoji: '🔴', line: '🔴 Action Required（明日対応必須）' },
 };
 
+const DEFAULT_WATCH_STREAK_CODES = [
+  'ADMIN_STATUS_SUMMARY_MISSING',
+  'EXCEPTION_CENTER_SUMMARY_MISSING',
+  'EXCEPTION_OVERDUE_PRESENT',
+  'ADMIN_STATUS_WARN',
+  'ADMIN_STATUS_WARN_PRESENT',
+];
+
 function parseArgs(argv) {
   const out = {
     date: null,
@@ -252,6 +260,96 @@ function parseHealthScore(dashboardMarkdown) {
   };
 }
 
+function uniqueStrings(values) {
+  const out = [];
+  const seen = new Set();
+  for (const value of values) {
+    if (typeof value !== 'string') continue;
+    const normalized = value.trim();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    out.push(normalized);
+  }
+  return out;
+}
+
+function parseCsvList(value, fallback = []) {
+  if (typeof value !== 'string' || value.trim().length === 0) return uniqueStrings(fallback);
+  const parsed = value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return parsed.length > 0 ? uniqueStrings(parsed) : uniqueStrings(fallback);
+}
+
+function shiftDateStamp(dateStamp, daysDelta) {
+  if (!isDateStamp(dateStamp)) return null;
+  const base = new Date(`${dateStamp}T00:00:00Z`);
+  if (Number.isNaN(base.getTime())) return null;
+  base.setUTCDate(base.getUTCDate() + daysDelta);
+  const y = base.getUTCFullYear();
+  const m = String(base.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(base.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function loadDecisionSnapshot(dateStamp) {
+  const decisionPath = path.join(REPORT_DIR, `decision-${dateStamp}.json`);
+  const decision = readJsonIfExists(decisionPath);
+  if (!decision.exists || decision.error || !decision.data || typeof decision.data !== 'object') {
+    return {
+      date: dateStamp,
+      path: decisionPath,
+      exists: false,
+      finalLabel: null,
+      warnCodes: [],
+    };
+  }
+  const finalLabel = typeof decision.data?.final?.label === 'string'
+    ? decision.data.final.label
+    : null;
+  const warnCodes = uniqueStrings(Array.isArray(decision.data?.reasonCodes?.warn) ? decision.data.reasonCodes.warn : []);
+  return {
+    date: dateStamp,
+    path: decisionPath,
+    exists: true,
+    finalLabel,
+    warnCodes,
+  };
+}
+
+function collectWatchStreakEscalations({ date, warnCodes, days, codeAllowList }) {
+  if (!isDateStamp(date) || days < 2) return [];
+  const allowed = new Set(uniqueStrings(codeAllowList));
+  if (allowed.size === 0) return [];
+
+  const currentCodes = uniqueStrings(warnCodes).filter((code) => allowed.has(code));
+  if (currentCodes.length === 0) return [];
+
+  const previousDays = [];
+  for (let offset = 1; offset < days; offset += 1) {
+    const prevDate = shiftDateStamp(date, -offset);
+    if (!prevDate) return [];
+    previousDays.push(loadDecisionSnapshot(prevDate));
+  }
+
+  const escalations = [];
+  for (const code of currentCodes) {
+    const streakMatched = previousDays.every(
+      (snapshot) => snapshot.exists && snapshot.finalLabel === 'watch' && snapshot.warnCodes.includes(code),
+    );
+    if (streakMatched) {
+      escalations.push({
+        type: 'watch_streak',
+        days,
+        code,
+      });
+    }
+  }
+
+  return escalations;
+}
+
 function pushReason(list, message, codeList = null, code = null) {
   if (!list.includes(message)) list.push(message);
   if (Array.isArray(codeList) && typeof code === 'string' && code.trim().length > 0) {
@@ -291,6 +389,8 @@ function main() {
     recurringExceptionsWarn: envNumber('RECURRING_EXCEPTIONS_WARN', 1),
     actWarningWarn: envNumber('ACT_WARNING_WARN', 1),
   };
+  const watchStreakDays = Math.max(2, Math.trunc(envNumber('WATCH_STREAK_DAYS', 3)));
+  const watchStreakCodes = parseCsvList(process.env.WATCH_STREAK_CODES, DEFAULT_WATCH_STREAK_CODES);
 
   const inputPaths = {
     patrolJson: path.join(REPORT_DIR, `${date}.json`),
@@ -794,11 +894,37 @@ function main() {
     pushReason(warnReasons, `再発例外が ${recurringExceptions} 件`, warnReasonCodes, 'EXCEPTION_RECURRING_PRESENT');
   }
 
-  const finalLabel = failReasons.length > 0
+  let finalLabel = failReasons.length > 0
     ? 'action_required'
     : warnReasons.length > 0
       ? 'watch'
       : 'stable';
+  const escalations = [];
+
+  if (finalLabel === 'watch') {
+    const watchStreakEscalations = collectWatchStreakEscalations({
+      date,
+      warnCodes: warnReasonCodes,
+      days: watchStreakDays,
+      codeAllowList: watchStreakCodes,
+    });
+
+    for (const escalation of watchStreakEscalations) {
+      const streakCode = `WATCH_STREAK_${escalation.days}D::${escalation.code}`;
+      pushReason(
+        failReasons,
+        `Watch reason code ${escalation.code} が ${escalation.days} 日連続のため Action Required に昇格`,
+        failReasonCodes,
+        streakCode,
+      );
+      escalations.push(escalation);
+    }
+
+    if (watchStreakEscalations.length > 0) {
+      finalLabel = 'action_required';
+    }
+  }
+
   const final = FINAL_META[finalLabel];
 
   const result = {
@@ -810,6 +936,10 @@ function main() {
       line: final.line,
     },
     thresholds,
+    escalationPolicy: {
+      watchStreakDays,
+      watchStreakCodes,
+    },
     inputs: {
       patrolJson: patrol.path,
       classificationJson: classification.path,
@@ -854,6 +984,7 @@ function main() {
       fail: failReasonCodes,
       warn: warnReasonCodes,
     },
+    escalations,
   };
 
   const markdown = `# 🛰 Nightly Patrol Decision — ${date}
@@ -882,6 +1013,12 @@ ${warnReasons.length > 0 ? warnReasons.map((x) => `- ${x}`).join('\n') : '- な�
 
 - fail: ${failReasonCodes.length > 0 ? `\`${failReasonCodes.join(', ')}\`` : 'なし'}
 - warn: ${warnReasonCodes.length > 0 ? `\`${warnReasonCodes.join(', ')}\`` : 'なし'}
+
+### ⬆ Escalations
+
+${escalations.length > 0
+    ? escalations.map((e) => `- watch_streak (${e.days}d): \`${e.code}\` が連続発生し Action Required へ昇格`).join('\n')
+    : '- なし'}
 
 ---
 
