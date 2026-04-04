@@ -30,16 +30,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 describe('featureFlags config', () => {
   beforeEach(() => {
     delete (process.env as Record<string, string | undefined>).VITE_FEATURE_SCHEDULES;
+    delete (process.env as Record<string, string | undefined>).VITE_FEATURE_TODAY_LITE_UI;
 
     if (typeof window !== 'undefined') {
       try {
         window.localStorage.removeItem('feature:schedules');
+        window.localStorage.removeItem('feature:todayLiteUi');
       } catch {
         // ignore storage access issues in test env
       }
       const env = (window as unknown as { __ENV__?: Record<string, unknown> }).__ENV__;
       if (env) {
         delete env.VITE_FEATURE_SCHEDULES;
+        delete env.VITE_FEATURE_TODAY_LITE_UI;
       }
     }
   });
@@ -69,6 +72,7 @@ describe('featureFlags config', () => {
       staffAttendance: true,
 
       todayOps: true,
+      todayLiteUi: false,
     });
 
     // env override を使った場合、helper 関数にも override が渡される
@@ -93,6 +97,7 @@ describe('featureFlags config', () => {
       staffAttendance: true,
 
       todayOps: true,
+      todayLiteUi: false,
     });
   });
 
@@ -118,6 +123,7 @@ describe('featureFlags config', () => {
       staffAttendance: true,
 
       todayOps: true,
+      todayLiteUi: false,
     });
   });
 
@@ -137,7 +143,16 @@ describe('featureFlags config', () => {
       staffAttendance: true,
 
       todayOps: true,
+      todayLiteUi: false,
     });
+  });
+
+  it('respects explicit true for todayLiteUi in automation', () => {
+    const override = {
+      VITE_FEATURE_TODAY_LITE_UI: '1',
+    };
+
+    expect(getFeatureFlags(override).todayLiteUi).toBe(true);
   });
 
   it('updates cached snapshot when provider value changes', () => {
@@ -157,6 +172,7 @@ describe('featureFlags config', () => {
       staffAttendance: true,
 
       todayOps: false,
+      todayLiteUi: false,
     } satisfies FeatureFlagSnapshot;
 
     render(

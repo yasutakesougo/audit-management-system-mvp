@@ -20,7 +20,7 @@ export {
     // Feature toggles
     isSchedulesFeatureEnabled,
     isSchedulesSpEnabled,
-    isSchedulesWeekV2Enabled, isStaffAttendanceEnabled, isTestMode, isTodayOpsFeatureEnabled,
+    isSchedulesWeekV2Enabled, isStaffAttendanceEnabled, isTestMode, isTodayLiteUiFeatureEnabled, isTodayOpsFeatureEnabled,
     isUsersCrudEnabled, isWriteEnabled, shouldSkipLogin, shouldSkipSharePoint,
     // SharePoint flags
     skipSharePoint, type ScheduleSaveMode

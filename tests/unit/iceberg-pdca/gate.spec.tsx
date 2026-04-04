@@ -4,7 +4,15 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
 vi.mock('@/config/featureFlags', () => ({
-  useFeatureFlags: () => ({ icebergPdca: true }),
+  useFeatureFlags: () => ({
+    schedules: false,
+    complianceForm: false,
+    schedulesWeekV2: false,
+    icebergPdca: true,
+    staffAttendance: false,
+    todayOps: false,
+    todayLiteUi: false,
+  }),
   useFeatureFlag: () => true,
 }));
 

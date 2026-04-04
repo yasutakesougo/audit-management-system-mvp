@@ -109,6 +109,7 @@ export const envSchema = z.object({
   VITE_FEATURE_STAFF_ATTENDANCE: zBoolFromString.optional().default(false),
   VITE_FEATURE_ICEBERG_PDCA: zBoolFromString.optional().default(false),
   VITE_FEATURE_COMPLIANCE_FORM: zBoolFromString.optional().default(false),
+  VITE_FEATURE_TODAY_LITE_UI: zBoolFromString.optional().default(false),
   VITE_FEATURE_HYDRATION_HUD: zBoolFromString.optional().default(false),
   VITE_FEATURE_APPSHELL_VSCODE: zBoolFromString.optional().default(false),
   VITE_HANDOFF_STORAGE: z.string().optional().default('local'),

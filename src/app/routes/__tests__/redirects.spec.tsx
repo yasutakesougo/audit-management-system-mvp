@@ -28,7 +28,7 @@ vi.mock('@/config/featureFlags', () => ({
     if (flag === 'todayOps') return mockTodayOpsFlag;
     return false;
   },
-  useFeatureFlags: () => ({ todayOps: mockTodayOpsFlag }),
+  useFeatureFlags: () => ({ todayOps: mockTodayOpsFlag, todayLiteUi: false }),
   FeatureFlagsProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 

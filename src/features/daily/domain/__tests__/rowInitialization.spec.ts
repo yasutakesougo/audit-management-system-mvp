@@ -225,6 +225,22 @@ describe('syncRowsWithSelectedUsers', () => {
     expect(result[0].amActivity).toBe('入力済み');
   });
 
+  it('既存行の利用者名がコードの場合は解決済み氏名で更新される', () => {
+    const existingRows = [makeRow({ userId: 'u1', userName: 'u1', amActivity: '入力済み' })];
+    const selectedUsers = [{ userId: 'u1', name: '太郎' }];
+    const selectedUserIds = ['u1'];
+
+    const result = syncRowsWithSelectedUsers(
+      existingRows,
+      selectedUsers,
+      selectedUserIds,
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].userName).toBe('太郎');
+    expect(result[0].amActivity).toBe('入力済み');
+  });
+
   it('未選択のユーザーの行は除外される', () => {
     const existingRows = [
       makeRow({ userId: 'u1' }),

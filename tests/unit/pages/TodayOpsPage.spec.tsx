@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -12,6 +12,22 @@ import { useTodayActionQueue } from '../../../src/features/today/hooks/useTodayA
 
 import type { ActionCard as IActionCard } from '../../../src/features/today/domain/models/queue.types';
 import type { ActionSuggestion } from '../../../src/features/action-engine/domain/types';
+
+let mockTodayLiteUiFlag = false;
+vi.mock('../../../src/config/featureFlags', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/config/featureFlags')>();
+  return {
+    ...actual,
+    useFeatureFlag: (flag: string) => {
+      if (flag === 'todayLiteUi') return mockTodayLiteUiFlag;
+      return false;
+    },
+  };
+});
+
+vi.mock('../../../src/features/today/lightweight/TodayLitePage', () => ({
+  TodayLitePage: vi.fn(() => <div data-testid="today-lite-page" />),
+}));
 
 // Mocks for all the dependencies the page relies on
 const mockNavigate = vi.fn();
@@ -187,6 +203,7 @@ describe('TodayOpsPage (ActionQueueTimeline integration)', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-21T10:00:00Z'));
     vi.clearAllMocks();
+    mockTodayLiteUiFlag = false;
     localStorage.clear();
   });
   afterEach(() => {
@@ -257,6 +274,29 @@ describe('TodayOpsPage (ActionQueueTimeline integration)', () => {
       payload: { suggestion: correctiveSuggestion },
     },
   ];
+
+  it('renders lightweight UI when todayLiteUi flag is ON', () => {
+    mockTodayLiteUiFlag = true;
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <SettingsProvider>
+            <MemoryRouter>
+              <TodayOpsPage correctiveActions={[]} />
+            </MemoryRouter>
+          </SettingsProvider>
+        </ToastProvider>
+      </QueryClientProvider>
+    );
+
+    expect(screen.getByTestId('today-lite-page')).toBeInTheDocument();
+    expect(TodayBentoLayout).not.toHaveBeenCalled();
+  });
 
   it('passes actionQueue and correct click handlers to TodayBentoLayout', () => {
     // Arrange

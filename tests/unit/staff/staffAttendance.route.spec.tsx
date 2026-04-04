@@ -32,6 +32,7 @@ const baseFlags: FeatureFlagSnapshot = {
   icebergPdca: false,
   staffAttendance: false,
   todayOps: false,
+  todayLiteUi: false,
 };
 
 const renderRoute = (flags: FeatureFlagSnapshot) =>
