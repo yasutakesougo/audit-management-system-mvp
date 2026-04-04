@@ -58,6 +58,7 @@ export const DIAGNOSTICS_REPORTS_SELECT_FIELDS = [
 ] as const;
 
 /**
+/**
  * 内部名の乖離（Drift）に対応するための候補リスト
  */
 export const DIAGNOSTICS_REPORTS_CANDIDATES = {
@@ -74,3 +75,19 @@ export const DIAGNOSTICS_REPORTS_CANDIDATES = {
 export const DIAGNOSTICS_REPORTS_ESSENTIALS: (keyof typeof DIAGNOSTICS_REPORTS_CANDIDATES)[] = [
   'title', 'overall'
 ];
+
+/**
+ * ── DriftEventsLog (Drift Logging) ──────────────────────────
+ */
+
+export const DRIFT_LOG_LIST_TITLE = 'DriftEventsLog' as const;
+
+export const DRIFT_LOG_CANDIDATES = {
+  listName: ['ListName', 'NameOfList', 'ListTitle', 'ListName0'],
+  fieldName: ['FieldName', 'InternalName', 'ColumnName', 'FieldName0'],
+  detectedAt: ['DetectedAt', 'OccurredAt', 'Detected_At', 'DetectedAt0'],
+  severity: ['Severity', 'Level', 'Status', 'Severity0'],
+  resolutionType: ['ResolutionType', 'Resolution', 'Type', 'ResolutionType0'],
+  resolved: ['Resolved', 'IsResolved', 'Fixed', 'Resolved0'],
+  driftType: ['DriftType', 'Type', 'Category', 'DriftType0'],
+} as const;

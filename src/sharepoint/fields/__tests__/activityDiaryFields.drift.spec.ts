@@ -1,26 +1,9 @@
-/**
- * ActivityDiary drift 耐性テスト
- *
- * ACTIVITY_DIARY_CANDIDATES が resolveInternalNamesDetailed を通して
- * 各種 drift シナリオを正しく吸収できることを確認する。
- *
- * シナリオ:
- *  1. 標準名がそのまま解決される（drift なし）
- *  2. UserIdId (Lookup 形式) が userId として解決される
- *  3. date → RecordDate / EntryDate へのリネームを吸収
- *  4. Shift → Period へのリネームを吸収
- *  5. suffixed 列名 (Date0) を drift として解決
- *  6. 必須 4 フィールドが揃えば areEssentialFieldsResolved=true
- *  7. 必須フィールド欠落で areEssentialFieldsResolved=false
- */
 import { describe, it, expect } from 'vitest';
 import { resolveInternalNamesDetailed, areEssentialFieldsResolved } from '@/lib/sp/helpers';
 import {
   ACTIVITY_DIARY_CANDIDATES,
   ACTIVITY_DIARY_ESSENTIALS,
-} from '../dailyFields';
-
-
+} from '../activityDiaryFields';
 
 function resolve(available: Set<string>) {
   return resolveInternalNamesDetailed(
@@ -33,8 +16,6 @@ function isHealthy(resolved: Record<string, string | undefined>) {
   const essentials = ACTIVITY_DIARY_ESSENTIALS as unknown as string[];
   return areEssentialFieldsResolved(resolved as Record<string, string | undefined>, essentials);
 }
-
-// ── 1. 標準名 ────────────────────────────────────────────────────────────────
 
 describe('ACTIVITY_DIARY_CANDIDATES — 標準名', () => {
   const available = new Set([
@@ -67,31 +48,28 @@ describe('ACTIVITY_DIARY_CANDIDATES — 標準名', () => {
   });
 });
 
-// ── 2. UserIdId (Lookup 形式) ────────────────────────────────────────────────
-
 describe('ACTIVITY_DIARY_CANDIDATES — UserIdId drift', () => {
   it('UserIdId が userId として解決される', () => {
     const available = new Set(['UserIdId', 'Date', 'Shift', 'Category']);
     const { resolved, fieldStatus } = resolve(available);
     expect(resolved.userId).toBe('UserIdId');
-    // UserIdId は 3 番目の候補であるため isDrifted=true (WARN)
     expect(fieldStatus.userId.isDrifted).toBe(true);
   });
 
   it('UserId が userId として解決される', () => {
     const available = new Set(['UserId', 'Date', 'Shift', 'Category']);
-    const { resolved } = resolve(available);
+    const { resolved, fieldStatus } = resolve(available);
     expect(resolved.userId).toBe('UserId');
+    expect(fieldStatus.userId.isDrifted).toBe(true);
   });
 
   it('cr013_userId が userId として解決される', () => {
     const available = new Set(['cr013_userId', 'Date', 'Shift', 'Category']);
-    const { resolved } = resolve(available);
+    const { resolved, fieldStatus } = resolve(available);
     expect(resolved.userId).toBe('cr013_userId');
+    expect(fieldStatus.userId.isDrifted).toBe(true);
   });
 });
-
-// ── 3. Date → RecordDate リネーム ────────────────────────────────────────────
 
 describe('ACTIVITY_DIARY_CANDIDATES — date drift', () => {
   it('RecordDate が date として解決される', () => {
@@ -103,8 +81,9 @@ describe('ACTIVITY_DIARY_CANDIDATES — date drift', () => {
 
   it('EntryDate が date として解決される', () => {
     const available = new Set(['UserID', 'EntryDate', 'Shift', 'Category']);
-    const { resolved } = resolve(available);
+    const { resolved, fieldStatus } = resolve(available);
     expect(resolved.date).toBe('EntryDate');
+    expect(fieldStatus.date.isDrifted).toBe(true);
   });
 
   it('Date0 (suffix drift) が date として解決される', () => {
@@ -115,8 +94,6 @@ describe('ACTIVITY_DIARY_CANDIDATES — date drift', () => {
   });
 });
 
-// ── 4. Shift → Period リネーム ───────────────────────────────────────────────
-
 describe('ACTIVITY_DIARY_CANDIDATES — shift drift', () => {
   it('Period が shift として解決される', () => {
     const available = new Set(['UserID', 'Date', 'Period', 'Category']);
@@ -126,8 +103,9 @@ describe('ACTIVITY_DIARY_CANDIDATES — shift drift', () => {
 
   it('TimeSlot が shift として解決される', () => {
     const available = new Set(['UserID', 'Date', 'TimeSlot', 'Category']);
-    const { resolved } = resolve(available);
+    const { resolved, fieldStatus } = resolve(available);
     expect(resolved.shift).toBe('TimeSlot');
+    expect(fieldStatus.shift.isDrifted).toBe(true);
   });
 
   it('Shift0 (suffix drift) が shift として解決される', () => {
@@ -138,32 +116,37 @@ describe('ACTIVITY_DIARY_CANDIDATES — shift drift', () => {
   });
 });
 
-// ── 5. isHealthy 境界 ────────────────────────────────────────────────────────
-
 describe('ACTIVITY_DIARY_ESSENTIALS 境界', () => {
   it('必須 4 フィールドが揃えば isHealthy=true', () => {
-    // userId=cr013_userId, date=EntryDate, shift=Period, category=ActivityCategory
     const available = new Set(['cr013_userId', 'EntryDate', 'Period', 'ActivityCategory']);
     const { resolved } = resolve(available);
     expect(isHealthy(resolved as Record<string, string | undefined>)).toBe(true);
   });
 
   it('shift が欠落すれば isHealthy=false', () => {
-    const available = new Set(['UserID', 'Date', 'Category']); // Shift なし
+    const available = new Set(['UserID', 'Date', 'Category']);
     const { resolved } = resolve(available);
     expect(isHealthy(resolved as Record<string, string | undefined>)).toBe(false);
   });
 
-  it('userId が完全欠落すれば isHealthy=false', () => {
-    const available = new Set(['Date', 'Shift', 'Category']); // UserID 系なし
+  it('userId が欠落すれば isHealthy=false', () => {
+    const available = new Set(['Date', 'Shift', 'Category']);
     const { resolved } = resolve(available);
     expect(isHealthy(resolved as Record<string, string | undefined>)).toBe(false);
   });
 
-  it('オプション列が欠落しても isHealthy=true', () => {
-    // Goals, Notes, LunchAmount 等が全くない最小構成
+  it('オプション列が欠落していても essentials が満たされれば true', () => {
     const available = new Set(['UserID', 'Date', 'Shift', 'Category']);
     const { resolved } = resolve(available);
     expect(isHealthy(resolved as Record<string, string | undefined>)).toBe(true);
+  });
+
+  it('候補未一致時に missing に記録される', () => {
+    const available = new Set(['SomeUnknownField']);
+    const { missing } = resolve(available);
+    expect(missing).toContain('userId');
+    expect(missing).toContain('date');
+    expect(missing).toContain('shift');
+    expect(missing).toContain('category');
   });
 });

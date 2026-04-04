@@ -13,8 +13,33 @@ npx playwright test --config=playwright.smoke.config.ts --reporter=line
 
 **期待動作：**
 - Vite dev server が起動（既に起動済みなら再利用）
-- baseURL に対して疎通が取れてからテスト開始
-- smoke suite が実行される
+- **Hermetic Mode**: `VITE_DATA_PROVIDER: 'memory'` が強制され、本番 SharePoint への通信が遮断される。
+- readiness wait（baseURL 疎通）を経て、 smoke suite が実行される。
+
+---
+
+## データ・アイソレーション戦略（重要）
+
+2026-04-03 以降、Smoke テストは **完全密閉型（Hermetic）** をデフォルトとしています。
+
+### なぜ密閉型か
+- **環境ノイズの排除**: SharePoint の 404/403 や、他ユーザーによるデータ変更でテストが落ちるのを防ぐ。
+- **爆速実行**: API 通信がメモリ内で完結するため、ネットワーク遅延がない。
+
+### テストデータの準備 (InMemoryDataProvider)
+テストに必要なデータは、`src/lib/data/inMemoryDataProvider.ts` の `constructor` でシード（Seed）します。
+
+```ts
+// 例: staff-attendance テスト用のデータ
+this.storage.set('Staff_Master', [
+  { Id: 1, StaffID: 'STF001', FullName: 'Staff One', Role: 'reception', IsActive: true },
+]);
+```
+
+### 統合テスト（Integration）との使い分け
+- **Smoke**: `memory` プロバイダー使用。UI 仕様とコードの整合性を担保。
+- **Integration**: リアル SharePoint 使用。認証・REST API 契約・Digest 権限を担保。
+  - 実行: `npx playwright test --config=playwright.config.ts` (デフォルト)
 
 ---
 

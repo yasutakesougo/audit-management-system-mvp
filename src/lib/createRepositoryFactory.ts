@@ -109,7 +109,13 @@ export interface RepositoryFactory<
  * Default predicate that * Higher priority given to URL parameters to match getActiveProviderType.
  */
 export const defaultShouldUseDemo = (): boolean => {
-  // 0. URL parameter check (highest priority after explicit forceKind)
+  // 0. Explicit force SharePoint must win over any local/demo shortcuts.
+  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
+  if (forceSharePoint) {
+    return false;
+  }
+
+  // 0.1 URL parameter check (highest priority after explicit forceKind)
   if (typeof window !== 'undefined' && window.location) {
     const urlParams = new URLSearchParams(window.location.search);
     const providerParam = urlParams.get('provider');
@@ -128,13 +134,7 @@ export const defaultShouldUseDemo = (): boolean => {
     return true;
   }
 
-  // 2. Explicit force SharePoint (for E2E or manual testing)
-  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
-  if (forceSharePoint) {
-    return false;
-  }
-
-  // 3. SharePoint Enablement Logic
+  // 2. SharePoint Enablement Logic
   // We use readEnv directly here to match the strict 'true' check used in env.ts
   // while also supporting readBool for broader compatibility if needed.
   const spEnabled = readEnv('VITE_SP_ENABLED', '') === 'true' || readBool('VITE_SP_ENABLED', false);
@@ -152,7 +152,7 @@ export const defaultShouldUseDemo = (): boolean => {
     return false;
   }
 
-  // 4. Default: Use demo in dev or when context is missing
+  // 3. Default: Use demo in dev or when context is missing
   return isDev || !spfxContextAvailable;
 };
 

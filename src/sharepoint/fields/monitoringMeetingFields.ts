@@ -6,6 +6,7 @@
  * @see /docs/monitoring-meetings-sp-schema.md (設計書)
  * @see src/domain/isp/monitoringMeeting.ts (Domain 型)
  */
+import { buildSelectFieldsFromMap } from './fieldUtils';
 
 // ---------------------------------------------------------------------------
 // Field Map
@@ -58,6 +59,16 @@ export const MONITORING_MEETING_SELECT = [
   ...Object.values(MONITORING_MEETING_FIELDS),
 ] as const;
 
+/**
+ * MonitoringMeetings リスト用の動的 $select ビルダー
+ */
+export function buildMonitoringMeetingSelectFields(existingInternalNames?: readonly string[]): readonly string[] {
+  return buildSelectFieldsFromMap(MONITORING_MEETING_FIELDS, existingInternalNames, {
+    alwaysInclude: ['Id', 'Title'],
+    fallback: [...MONITORING_MEETING_SELECT],
+  });
+}
+
 // ---------------------------------------------------------------------------
 // SP Row 型（REST API レスポンス）
 // ---------------------------------------------------------------------------
@@ -105,25 +116,28 @@ export type SpMonitoringMeetingRow = {
  * 列解決候補 (Dynamic Schema Resolution 用)
  */
 export const MONITORING_MEETING_CANDIDATES = {
-  recordId:           [MONITORING_MEETING_FIELDS.recordId, 'RecordId', 'Record_x0020_Id', 'RecordId0', 'Title'],
-  userId:             [MONITORING_MEETING_FIELDS.userId, 'UserId', 'User_x0020_Id', 'UserId0', 'UserCode'],
-  ispId:              [MONITORING_MEETING_FIELDS.ispId, 'IspId', 'Isp_x0020_Id', 'IspId0'],
-  planningSheetId:    [MONITORING_MEETING_FIELDS.planningSheetId, 'PlanningSheetId', 'Planning_x0020_Sheet_x0020_Id', 'PlanningSheetId0'],
-  meetingType:        [MONITORING_MEETING_FIELDS.meetingType, 'MeetingType', 'Meeting_x0020_Type', 'MeetingType0'],
-  meetingDate:        [MONITORING_MEETING_FIELDS.meetingDate, 'MeetingDate', 'Meeting_x0020_Date', 'MeetingDate0'],
-  venue:              [MONITORING_MEETING_FIELDS.venue, 'Venue', 'Venue0'],
-  attendeesJson:      [MONITORING_MEETING_FIELDS.attendeesJson, 'AttendeesJson', 'Attendees_x0020_JSON', 'AttendeesJson0', 'Attendees'],
-  goalEvaluationsJson: [MONITORING_MEETING_FIELDS.goalEvaluationsJson, 'GoalEvaluationsJson', 'GoalEvaluations_x0020_JSON', 'GoalEvaluationsJson0', 'GoalEvaluations'],
-  overallAssessment:  [MONITORING_MEETING_FIELDS.overallAssessment, 'OverallAssessment', 'Overall_x0020_Assessment', 'OverallAssessment0'],
-  userFeedback:       [MONITORING_MEETING_FIELDS.userFeedback, 'UserFeedback', 'User_x0020_Feedback', 'UserFeedback0'],
-  familyFeedback:     [MONITORING_MEETING_FIELDS.familyFeedback, 'FamilyFeedback', 'Family_x0020_Feedback', 'FamilyFeedback0'],
-  planChangeDecision: [MONITORING_MEETING_FIELDS.planChangeDecision, 'PlanChangeDecision', 'Plan_x0020_Change_x0020_Decision', 'PlanChangeDecision0'],
-  changeReason:       [MONITORING_MEETING_FIELDS.changeReason, 'ChangeReason', 'Change_x0020_Reason', 'ChangeReason0'],
-  decisionsJson:      [MONITORING_MEETING_FIELDS.decisionsJson, 'DecisionsJson', 'Decisions_x0020_JSON', 'DecisionsJson0', 'Decisions'],
-  nextMonitoringDate: [MONITORING_MEETING_FIELDS.nextMonitoringDate, 'NextMonitoringDate', 'Next_x0020_Monitoring_x0020_Date', 'NextMonitoringDate0'],
-  recordedBy:         [MONITORING_MEETING_FIELDS.recordedBy, 'RecordedBy', 'Recorded_x0020_By', 'RecordedBy0'],
-  recordedAt:         [MONITORING_MEETING_FIELDS.recordedAt, 'RecordedAt', 'Recorded_x0020_At', 'RecordedAt0'],
-};
+  recordId:           [MONITORING_MEETING_FIELDS.recordId, 'RecordId', 'recordId', 'Record_x0020_Id', 'RecordId0', 'Title'],
+  userId:             [MONITORING_MEETING_FIELDS.userId, 'UserId', 'UserID', 'UserCode', 'userId', 'User_x0020_Id', 'UserId0', 'cr013_userId'],
+  ispId:              [MONITORING_MEETING_FIELDS.ispId, 'IspId', 'ISPId', 'ispId', 'Isp_x0020_Id', 'IspId0'],
+  planningSheetId:    [MONITORING_MEETING_FIELDS.planningSheetId, 'PlanningSheetId', 'planningSheetId', 'Planning_x0020_Sheet_x0020_Id', 'PlanningSheetId0'],
+  meetingType:        [MONITORING_MEETING_FIELDS.meetingType, 'MeetingType', 'meetingType', 'Meeting_x0020_Type', 'MeetingType0'],
+  meetingDate:        [MONITORING_MEETING_FIELDS.meetingDate, 'MeetingDate', 'Meeting_x0020_Date', 'meetingDate', 'Date', 'RecordDate', 'cr013_date', 'MeetingDate0'],
+  venue:              [MONITORING_MEETING_FIELDS.venue, 'Venue', 'venue', 'Venue0'],
+  attendeesJson:      [MONITORING_MEETING_FIELDS.attendeesJson, 'AttendeesJson', 'Attendees', 'attendeesJson', 'Attendees_x0020_JSON', 'AttendeesJson0'],
+  goalEvaluationsJson: [MONITORING_MEETING_FIELDS.goalEvaluationsJson, 'GoalEvaluationsJson', 'GoalEvaluations', 'goalEvaluationsJson', 'GoalEvaluations_x0020_JSON', 'GoalEvaluationsJson0'],
+  overallAssessment:  [MONITORING_MEETING_FIELDS.overallAssessment, 'OverallAssessment', 'overallAssessment', 'Overall_x0020_Assessment', 'OverallAssessment0'],
+  userFeedback:       [MONITORING_MEETING_FIELDS.userFeedback, 'UserFeedback', 'userFeedback', 'User_x0020_Feedback', 'UserFeedback0'],
+  familyFeedback:     [MONITORING_MEETING_FIELDS.familyFeedback, 'FamilyFeedback', 'familyFeedback', 'Family_x0020_Feedback', 'FamilyFeedback0'],
+  planChangeDecision: [MONITORING_MEETING_FIELDS.planChangeDecision, 'PlanChangeDecision', 'planChangeDecision', 'Plan_x0020_Change_x0020_Decision', 'PlanChangeDecision0'],
+  changeReason:       [MONITORING_MEETING_FIELDS.changeReason, 'ChangeReason', 'changeReason', 'Change_x0020_Reason', 'ChangeReason0'],
+  decisionsJson:      [MONITORING_MEETING_FIELDS.decisionsJson, 'DecisionsJson', 'Decisions', 'decisionsJson', 'Decisions_x0020_JSON', 'DecisionsJson0'],
+  nextMonitoringDate: [MONITORING_MEETING_FIELDS.nextMonitoringDate, 'NextMonitoringDate', 'Next_x0020_Monitoring_x0020_Date', 'nextMonitoringDate', 'NextMonitoringDate0'],
+  recordedBy:         [MONITORING_MEETING_FIELDS.recordedBy, 'RecordedBy', 'recordedBy', 'Recorded_x0020_By', 'RecordedBy0'],
+  recordedAt:         [MONITORING_MEETING_FIELDS.recordedAt, 'RecordedAt', 'recordedAt', 'Recorded_x0020_At', 'RecordedAt0'],
+} as const;
+
+export type MonitoringMeetingCandidateKey = keyof typeof MONITORING_MEETING_CANDIDATES;
+export type MonitoringMeetingFieldMapping = Partial<Record<MonitoringMeetingCandidateKey, string>>;
 
 
 /**
@@ -141,6 +155,13 @@ export const MONITORING_MEETING_ESSENTIALS: (keyof typeof MONITORING_MEETING_CAN
   'userId',
   'meetingDate',
 ];
+
+/**
+ * optional フィールドキー一覧（診断/警告用途）
+ */
+export const MONITORING_MEETING_OPTIONALS: MonitoringMeetingCandidateKey[] =
+  (Object.keys(MONITORING_MEETING_CANDIDATES) as MonitoringMeetingCandidateKey[])
+    .filter((key) => !MONITORING_MEETING_ESSENTIALS.includes(key));
 
 /**
  * 自己修復 (Self-Healing) 用の列定義

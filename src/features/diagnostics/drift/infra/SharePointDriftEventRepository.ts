@@ -1,8 +1,9 @@
 import { DriftEvent, DriftResolutionType, DriftType, getDriftEventDedupeKey } from '../domain/driftLogic';
 import { IDriftEventRepository } from '../domain/DriftEventRepository';
 import { findListEntry } from '@/sharepoint/spListRegistry';
-import { buildEq, joinAnd } from '@/sharepoint/query/builders';
+import { buildDateTime, buildEq, buildGe, joinAnd } from '@/sharepoint/query/builders';
 import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
+import { auditLog } from '@/lib/debugLogger';
 
 /**
  * 依存関係の境界遵守のためのローカルインターフェース
@@ -43,7 +44,63 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
   private circuitOpenUntil = 0;
   private resolvedFieldsByList = new Map<string, Record<string, string | undefined>>();
 
-  constructor(private spClient: ISpOperations) {}
+  /** 本番リストで使用されている物理内部名のキャッシュ */
+  private resolvedFields: Record<string, string | undefined> = {};
+  private initializationPromise: Promise<void> | null = null;
+
+  constructor(private spClient: ISpOperations & { 
+    getSchema?: (listTitle: string) => Promise<string[]> 
+  }) {}
+
+  private rf(key: keyof typeof DRIFT_LOG_CANDIDATES): string {
+    return this.resolvedFields[key] || DRIFT_LOG_CANDIDATES[key][0];
+  }
+
+  private readRowValue<T = unknown>(
+    row: Record<string, unknown>,
+    key: keyof typeof DRIFT_LOG_CANDIDATES,
+  ): T | undefined {
+    const probe = [this.rf(key), ...DRIFT_LOG_CANDIDATES[key]];
+    const candidates = Array.from(new Set(probe));
+    for (const candidate of candidates) {
+      if (Object.prototype.hasOwnProperty.call(row, candidate)) {
+        return row[candidate] as T;
+      }
+    }
+    return undefined;
+  }
+
+  private parseResolved(raw: unknown): boolean {
+    if (typeof raw === 'boolean') return raw;
+    if (typeof raw === 'number') return raw !== 0;
+    if (typeof raw === 'string') {
+      const normalized = raw.trim().toLowerCase();
+      return normalized === 'true' || normalized === '1' || normalized === 'yes';
+    }
+    return false;
+  }
+
+  private async initializeResolvedFields(listTitle: string): Promise<void> {
+    if (Object.keys(this.resolvedFields).length > 0) return;
+    if (this.initializationPromise) return this.initializationPromise;
+
+    this.initializationPromise = (async () => {
+      try {
+        const availableFields = await this.spClient.getSchema?.(listTitle) || [];
+        if (availableFields.length === 0) return;
+
+        const res = resolveInternalNamesDetailed(
+          new Set(availableFields),
+          DRIFT_LOG_CANDIDATES as unknown as Record<string, string[]>,
+        );
+        this.resolvedFields = res.resolved;
+      } catch (err) {
+        auditLog.warn('diagnostics:drift', 'DriftEventRepository initialization failed.', err);
+      }
+    })();
+
+    return this.initializationPromise;
+  }
 
   private async resolveFields(listTitle: string): Promise<Record<string, string | undefined> | null> {
     const cached = this.resolvedFieldsByList.get(listTitle);
@@ -107,7 +164,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       if (this.errorCount >= 5) {
         this.circuitOpenUntil = Date.now() + 5 * 60 * 1000;
       }
-      console.error('DriftEventRepository: Failed to log drift event. (Fail-Open)', err);
+      auditLog.error('diagnostics:drift', 'DriftEventRepository failed to log drift event (fail-open).', err);
     }
   }
 
@@ -131,6 +188,9 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       if (filter?.resolved !== undefined && fields.resolved) {
         filters.push(buildEq(fields.resolved, filter.resolved));
       }
+      if (filter?.since && fields.detectedAt) {
+        filters.push(buildGe(fields.detectedAt, buildDateTime(filter.since)));
+      }
 
       const select = Object.values(fields).filter((v): v is string => !!v);
       const items = await this.spClient.getListItemsByTitle<Record<string, unknown>>(listTitle, select, joinAnd(filters) || undefined, `${fields.detectedAt || 'DetectedAt'} desc`, 100);
@@ -147,7 +207,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       }));
 
     } catch (err) {
-      console.error('DriftEventRepository: Failed to fetch events.', err);
+      auditLog.warn('diagnostics:drift', 'DriftEventRepository failed to fetch events (fail-open).', err);
       return [];
     }
   }
@@ -165,7 +225,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         [fields.resolved]: true
       });
     } catch (err) {
-      console.error('DriftEventRepository: Failed to mark as resolved.', err);
+      auditLog.warn('diagnostics:drift', 'DriftEventRepository failed to mark event as resolved (fail-open).', err);
     }
   }
 }

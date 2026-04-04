@@ -166,6 +166,11 @@ export class SharePointDataProvider implements IDataProvider {
     return this.client.fetchExistingFields(actualName);
   }
 
+  async getResourceNames(): Promise<string[]> {
+    const identifiers = await this.client.getExistingListTitlesAndIds();
+    return Array.from(identifiers);
+  }
+
   async ensureListExists(resourceName: string, fields: SpFieldDef[]): Promise<void> {
     const actualName = this.resolveResource(resourceName);
     await this.client.ensureListExists(actualName, fields);

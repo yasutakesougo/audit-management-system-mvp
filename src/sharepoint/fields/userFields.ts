@@ -144,68 +144,77 @@ export const USERS_MASTER_COMPLIANCE_FIELD_MAP = {
   eligibilityCheckedAt: 'EligibilityCheckedAt',
 } as const;
 
+// ── Common Candidates (SSOT) ──
+const CANDIDATE_USER_ID = ['UserID', 'UserCode', 'userId', 'cr013_userId', 'PersonID', 'Title'];
+const CANDIDATE_FULL_NAME = ['FullName', 'Name', 'DisplayName', 'FullName0', 'cr013_fullName'];
+const CANDIDATE_FURIGANA = ['Furigana', 'Kana', 'FullNameFurigana', 'cr013_furigana'];
+const CANDIDATE_FULL_NAME_KANA = ['FullNameKana', 'FullName_Kana', 'cr013_fullNameKana'];
+const CANDIDATE_CONTRACT_DATE = ['ContractDate', 'Contract_Date', 'cr013_contractDate'];
+const CANDIDATE_SERVICE_START_DATE = ['ServiceStartDate', 'StartDate', 'cr013_serviceStartDate'];
+const CANDIDATE_SERVICE_END_DATE = ['ServiceEndDate', 'EndDate', 'cr013_serviceEndDate'];
+const CANDIDATE_IS_HIGH_INTENSITY = ['IsHighIntensitySupportTarget', 'IntensityTarget', 'IsHighIntensitySupportTarget0', 'cr013_isHighIntensity'];
+const CANDIDATE_IS_SUPPORT_PROCEDURE = ['IsSupportProcedureTarget', 'ProcedureTarget', 'cr013_isSupportProcedure'];
+const CANDIDATE_IS_ACTIVE = ['IsActive', 'Active', 'IsEnabled', 'cr013_isActive'];
+const CANDIDATE_USAGE_STATUS = ['UsageStatus', 'Status', 'UsageStatus0', 'cr013_usageStatus'];
+const CANDIDATE_ATTENDANCE_DAYS = ['AttendanceDays', 'WorkDays', 'cr013_attendanceDays'];
+
+// Transport candidates
+const CANDIDATE_TRANSPORT_TO_DAYS = ['TransportToDays', 'cr013_transportToDays'];
+const CANDIDATE_TRANSPORT_FROM_DAYS = ['TransportFromDays', 'cr013_transportFromDays'];
+const CANDIDATE_TRANSPORT_COURSE = ['TransportCourse', 'cr013_transportCourse'];
+const CANDIDATE_TRANSPORT_SCHEDULE = ['TransportSchedule', 'cr013_transportSchedule'];
+const CANDIDATE_TRANSPORT_ADDITION_TYPE = ['TransportAdditionType', 'cr013_transportAdditionType'];
+
+// Benefit candidates
+const CANDIDATE_RECIPIENT_CERT_NUMBER = [
+  'RecipientCertNumber', 'CertNumber', 'RecipientCert',
+  'RecipientCertNo', 'BenefitCertNumber', 'RecipientCertificateNumber',
+  'RecipientCertNumber0', 'cr013_recipientCertNumber',
+];
+const CANDIDATE_RECIPIENT_CERT_EXPIRY = ['RecipientCertExpiry', 'CertExpiry', 'RecipientCertExpiry0', 'cr013_recipientCertExpiry'];
+const CANDIDATE_GRANT_MUNICIPALITY = ['GrantMunicipality', 'Municipality', 'GrantMunicipality0', 'cr013_grantMunicipality'];
+const CANDIDATE_GRANT_PERIOD_START = ['GrantPeriodStart', 'PeriodStart', 'GrantPeriodStart0', 'cr013_grantPeriodStart'];
+const CANDIDATE_GRANT_PERIOD_END = ['GrantPeriodEnd', 'PeriodEnd', 'GrantPeriodEnd0', 'cr013_grantPeriodEnd'];
+const CANDIDATE_DISABILITY_SUPPORT_LEVEL = ['DisabilitySupportLevel', 'SupportLevel', 'DisabilitySupportLevel0', 'cr013_disabilitySupportLevel'];
+const CANDIDATE_GRANTED_DAYS_PER_MONTH = ['GrantedDaysPerMonth', 'DaysPerMonth', 'GrantedDaysPerMonth0', 'cr013_grantedDaysPerMonth'];
+const CANDIDATE_USER_COPAY_LIMIT = ['UserCopayLimit', 'CopayLimit', 'UserCopayLimit0', 'cr013_userCopayLimit'];
+const CANDIDATE_MEAL_ADDITION = ['MealAddition', 'Meal', 'MealAddition0', 'cr013_mealAddition'];
+const CANDIDATE_COPAY_PAYMENT_METHOD = ['CopayPaymentMethod', 'PaymentMethod', 'CopayPaymentMethod0', 'cr013_copayPaymentMethod'];
+
 /**
  * Users_Master リストのフィールド解除候補マップ (Drift Resistance)
  * 1番目の候補（基準名）以外は drift (WARN) と見なされる。
  */
 export const USERS_MASTER_CANDIDATES = {
-  userId: [
-    'UserID', 'UserCode', 'userId', 'cr013_userId', 'PersonID', 'Title'
-  ],
-  fullName: [
-    'FullName', 'Name', 'DisplayName', 'FullName0', 'cr013_fullName'
-  ],
-  furigana: [
-    'Furigana', 'Kana', 'FullNameFurigana', 'cr013_furigana'
-  ],
-  fullNameKana: [
-    'FullNameKana', 'FullName_Kana', 'cr013_fullNameKana'
-  ],
-  contractDate: [
-    'ContractDate', 'Contract_Date', 'cr013_contractDate'
-  ],
-  serviceStartDate: [
-    'ServiceStartDate', 'StartDate', 'cr013_serviceStartDate'
-  ],
-  serviceEndDate: [
-    'ServiceEndDate', 'EndDate', 'cr013_serviceEndDate', 'ServiceEndDate0'
-  ],
-  isHighIntensitySupportTarget: [
-    'IsHighIntensitySupportTarget', 'IntensityTarget', 'cr013_isHighIntensity'
-  ],
-  isSupportProcedureTarget: [
-    'IsSupportProcedureTarget', 'ProcedureTarget', 'cr013_isSupportProcedure'
-  ],
-  isActive: [
-    'IsActive', 'Active', 'IsEnabled', 'cr013_isActive'
-  ],
-  usageStatus: [
-    'UsageStatus', 'Status', 'Usage_Status', 'cr013_usageStatus'
-  ],
-  attendanceDays: [
-    'AttendanceDays', 'WorkDays', 'cr013_attendanceDays'
-  ],
+  userId: CANDIDATE_USER_ID,
+  fullName: CANDIDATE_FULL_NAME,
+  furigana: CANDIDATE_FURIGANA,
+  fullNameKana: CANDIDATE_FULL_NAME_KANA,
+  contractDate: CANDIDATE_CONTRACT_DATE,
+  serviceStartDate: CANDIDATE_SERVICE_START_DATE,
+  serviceEndDate: CANDIDATE_SERVICE_END_DATE,
+  isHighIntensitySupportTarget: CANDIDATE_IS_HIGH_INTENSITY,
+  isSupportProcedureTarget: CANDIDATE_IS_SUPPORT_PROCEDURE,
+  isActive: CANDIDATE_IS_ACTIVE,
+  usageStatus: CANDIDATE_USAGE_STATUS,
+  attendanceDays: CANDIDATE_ATTENDANCE_DAYS,
   // Accessory: Transport
-  transportToDays: ['TransportToDays', 'cr013_transportToDays'],
-  transportFromDays: ['TransportFromDays', 'cr013_transportFromDays'],
-  transportCourse: ['TransportCourse', 'cr013_transportCourse'],
-  transportSchedule: ['TransportSchedule', 'cr013_transportSchedule'],
-  transportAdditionType: ['TransportAdditionType', 'cr013_transportAdditionType'],
+  transportToDays: CANDIDATE_TRANSPORT_TO_DAYS,
+  transportFromDays: CANDIDATE_TRANSPORT_FROM_DAYS,
+  transportCourse: CANDIDATE_TRANSPORT_COURSE,
+  transportSchedule: CANDIDATE_TRANSPORT_SCHEDULE,
+  transportAdditionType: CANDIDATE_TRANSPORT_ADDITION_TYPE,
   // Accessory: Benefit
-  recipientCertNumber: [
-    'RecipientCertNumber', 'CertNumber', 'RecipientCert',
-    'RecipientCertNo', 'BenefitCertNumber', 'RecipientCertificateNumber',
-    'RecipientCertNumber0', 'cr013_recipientCertNumber',
-  ],
-  recipientCertExpiry: ['RecipientCertExpiry', 'CertExpiry', 'RecipientCertExpiry0', 'cr013_recipientCertExpiry'],
-  grantMunicipality: ['GrantMunicipality', 'Municipality', 'GrantMunicipality0', 'cr013_grantMunicipality'],
-  grantPeriodStart: ['GrantPeriodStart', 'PeriodStart', 'GrantPeriodStart0', 'cr013_grantPeriodStart'],
-  grantPeriodEnd: ['GrantPeriodEnd', 'PeriodEnd', 'GrantPeriodEnd0', 'cr013_grantPeriodEnd'],
-  disabilitySupportLevel: ['DisabilitySupportLevel', 'SupportLevel', 'DisabilitySupportLevel0', 'cr013_disabilitySupportLevel'],
-  grantedDaysPerMonth: ['GrantedDaysPerMonth', 'DaysPerMonth', 'GrantedDaysPerMonth0', 'cr013_grantedDaysPerMonth'],
-  userCopayLimit: ['UserCopayLimit', 'CopayLimit', 'UserCopayLimit0', 'cr013_userCopayLimit'],
-  mealAddition: ['MealAddition', 'Meal', 'MealAddition0', 'cr013_mealAddition'],
-  copayPaymentMethod: ['CopayPaymentMethod', 'PaymentMethod', 'CopayPaymentMethod0', 'cr013_copayPaymentMethod'],
+  recipientCertNumber: CANDIDATE_RECIPIENT_CERT_NUMBER,
+  recipientCertExpiry: CANDIDATE_RECIPIENT_CERT_EXPIRY,
+  grantMunicipality: CANDIDATE_GRANT_MUNICIPALITY,
+  grantPeriodStart: CANDIDATE_GRANT_PERIOD_START,
+  grantPeriodEnd: CANDIDATE_GRANT_PERIOD_END,
+  disabilitySupportLevel: CANDIDATE_DISABILITY_SUPPORT_LEVEL,
+  grantedDaysPerMonth: CANDIDATE_GRANTED_DAYS_PER_MONTH,
+  userCopayLimit: CANDIDATE_USER_COPAY_LIMIT,
+  mealAddition: CANDIDATE_MEAL_ADDITION,
+  copayPaymentMethod: CANDIDATE_COPAY_PAYMENT_METHOD,
   // Compliance
   lastAssessmentDate: [
     'LastAssessmentDate', 'AssessmentDate', 'cr013_lastAssessmentDate'
@@ -339,41 +348,17 @@ export function resolveUserSelectFields(mode: UserSelectMode = 'core'): readonly
  * essentialFields (registry): ['UserID', 'RecipientCertNumber']
  */
 export const USER_BENEFIT_PROFILE_CANDIDATES = {
-  userID: [
-    'UserID', 'UserCode', 'userId', 'cr013_userId',
-  ],
-  recipientCertNumber: [
-    'RecipientCertNumber', 'CertNumber', 'RecipientCert',
-    'RecipientCertNo', 'BenefitCertNumber', 'RecipientCertificateNumber',
-    'RecipientCertNumber0', 'cr013_recipientCertNumber',
-  ],
-  recipientCertExpiry: [
-    'RecipientCertExpiry', 'CertExpiry', 'RecipientCertExpiry0', 'cr013_recipientCertExpiry',
-  ],
-  grantMunicipality: [
-    'GrantMunicipality', 'Municipality', 'GrantMunicipality0', 'cr013_grantMunicipality',
-  ],
-  grantPeriodStart: [
-    'GrantPeriodStart', 'PeriodStart', 'GrantPeriodStart0', 'cr013_grantPeriodStart',
-  ],
-  grantPeriodEnd: [
-    'GrantPeriodEnd', 'PeriodEnd', 'GrantPeriodEnd0', 'cr013_grantPeriodEnd',
-  ],
-  disabilitySupportLevel: [
-    'DisabilitySupportLevel', 'SupportLevel', 'DisabilitySupportLevel0', 'cr013_disabilitySupportLevel',
-  ],
-  grantedDaysPerMonth: [
-    'GrantedDaysPerMonth', 'DaysPerMonth', 'GrantedDaysPerMonth0', 'cr013_grantedDaysPerMonth',
-  ],
-  userCopayLimit: [
-    'UserCopayLimit', 'CopayLimit', 'UserCopayLimit0', 'cr013_userCopayLimit',
-  ],
-  mealAddition: [
-    'MealAddition', 'Meal', 'MealAddition0', 'cr013_mealAddition',
-  ],
-  copayPaymentMethod: [
-    'CopayPaymentMethod', 'PaymentMethod', 'CopayPaymentMethod0', 'cr013_copayPaymentMethod',
-  ],
+  userId: CANDIDATE_USER_ID,
+  recipientCertNumber: CANDIDATE_RECIPIENT_CERT_NUMBER,
+  recipientCertExpiry: CANDIDATE_RECIPIENT_CERT_EXPIRY,
+  grantMunicipality: CANDIDATE_GRANT_MUNICIPALITY,
+  grantPeriodStart: CANDIDATE_GRANT_PERIOD_START,
+  grantPeriodEnd: CANDIDATE_GRANT_PERIOD_END,
+  disabilitySupportLevel: CANDIDATE_DISABILITY_SUPPORT_LEVEL,
+  grantedDaysPerMonth: CANDIDATE_GRANTED_DAYS_PER_MONTH,
+  userCopayLimit: CANDIDATE_USER_COPAY_LIMIT,
+  mealAddition: CANDIDATE_MEAL_ADDITION,
+  copayPaymentMethod: CANDIDATE_COPAY_PAYMENT_METHOD,
 } as const;
 
 /**
@@ -382,7 +367,7 @@ export const USER_BENEFIT_PROFILE_CANDIDATES = {
  * UserID: 利用者を特定できない。RecipientCertNumber: 受給者証番号なしでは制度請求不可。
  */
 export const USER_BENEFIT_PROFILE_ESSENTIALS: (keyof typeof USER_BENEFIT_PROFILE_CANDIDATES)[] = [
-  'userID',
+  'userId',
   'recipientCertNumber',
 ];
 
@@ -392,18 +377,16 @@ export const USER_BENEFIT_PROFILE_ESSENTIALS: (keyof typeof USER_BENEFIT_PROFILE
  * user_transport_settings リストのフィールド解決候補マップ (Drift Resistance)
  */
 export const USER_TRANSPORT_SETTINGS_CANDIDATES = {
-  userID: [
-    'UserID', 'UserCode', 'userId', 'cr013_userId',
-  ],
-  transportToDays: ['TransportToDays', 'cr013_transportToDays'],
-  transportFromDays: ['TransportFromDays', 'cr013_transportFromDays'],
-  transportCourse: ['TransportCourse', 'cr013_transportCourse'],
-  transportSchedule: ['TransportSchedule', 'cr013_transportSchedule'],
-  transportAdditionType: ['TransportAdditionType', 'cr013_transportAdditionType'],
+  userId: CANDIDATE_USER_ID,
+  transportToDays: CANDIDATE_TRANSPORT_TO_DAYS,
+  transportFromDays: CANDIDATE_TRANSPORT_FROM_DAYS,
+  transportCourse: CANDIDATE_TRANSPORT_COURSE,
+  transportSchedule: CANDIDATE_TRANSPORT_SCHEDULE,
+  transportAdditionType: CANDIDATE_TRANSPORT_ADDITION_TYPE,
 } as const;
 
 export const USER_TRANSPORT_SETTINGS_ESSENTIALS: (keyof typeof USER_TRANSPORT_SETTINGS_CANDIDATES)[] = [
-  'userID',
+  'userId',
 ];
 
 /** @deprecated Use USERS_SELECT_FIELDS_CORE instead */

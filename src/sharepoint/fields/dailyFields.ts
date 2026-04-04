@@ -152,7 +152,6 @@ export const DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS: (keyof typeof DAILY_RECORD_R
 // ──────────────────────────────────────────────────────────────
 export * from './activityDiaryFields';
 
-
 /**
  * Canonical Daily Record リストのプロビジョニング定義
  */

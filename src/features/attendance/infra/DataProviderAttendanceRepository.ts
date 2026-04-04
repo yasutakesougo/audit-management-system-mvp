@@ -2,39 +2,38 @@ import { toSafeError } from '@/lib/errors';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { auditLog } from '@/lib/debugLogger';
 import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
-import { 
-  ATTENDANCE_DAILY_CANDIDATES, 
-  ATTENDANCE_USERS_CANDIDATES,
-} from '@/sharepoint/fields/attendanceFields';
-import { 
-  NURSE_OBS_CANDIDATES
-} from '@/sharepoint/fields/nurseObservationFields';
 import {
-    ATTENDANCE_USERS_LIST_TITLE,
+  ATTENDANCE_DAILY_CANDIDATES,
+  ATTENDANCE_DAILY_ENSURE_FIELDS,
+  ATTENDANCE_DAILY_ESSENTIALS,
+  ATTENDANCE_DAILY_LIST_TITLE,
+  ATTENDANCE_USERS_CANDIDATES,
+  ATTENDANCE_USERS_ESSENTIALS,
+  ATTENDANCE_USERS_LIST_TITLE,
+  type AttendanceDailyCandidateKey,
+  type AttendanceDailyFieldMapping,
+  type AttendanceUsersCandidateKey,
+  type AttendanceUsersFieldMapping,
 } from '@/sharepoint/fields/attendanceFields';
-import { 
-  resolveInternalNamesDetailed, 
-  areEssentialFieldsResolved 
-} from '@/lib/sp/helpers';
+import { NURSE_OBS_CANDIDATES } from '@/sharepoint/fields/nurseObservationFields';
+import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 import { emitDriftRecord, type DriftResolutionType, type DriftType } from '@/features/diagnostics/drift/domain/driftLogic';
 import { buildEq, buildSubstringOf, joinAnd, joinOr } from '@/sharepoint/query/builders';
-
-import { 
-  ATTENDANCE_DAILY_LIST_TITLE,
-} from '@/sharepoint/fields/attendanceFields';
-import {
-  NURSE_OBSERVATIONS_LIST_TITLE,
-} from '@/sharepoint/fields/nurseObservationFields';
-import type { 
-  AttendanceRepository, 
+import { NURSE_OBSERVATIONS_LIST_TITLE } from '@/sharepoint/fields/nurseObservationFields';
+import type {
+  AttendanceRepository,
   AttendanceRepositoryListParams,
   AttendanceRepositoryUpsertParams,
-  ObservationTemperatureItem
+  ObservationTemperatureItem,
 } from '../domain/AttendanceRepository';
 import { normalizeAttendanceDays } from '../../users/attendance';
 import type { AttendanceDailyItem } from './Legacy/attendanceDailyRepository';
 import type { AttendanceUserItem } from './Legacy/attendanceUsersRepository';
 import { parseTransportMethod } from '../transportMethod';
+import {
+  AttendanceSchemaResolver,
+  type AttendanceResolvedSchema,
+} from './modules/AttendanceSchemaResolver';
 
 /**
  * DataProviderAttendanceRepository
@@ -45,10 +44,12 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
   private readonly listTitleUsers: string;
   private readonly listTitleNurse: string;
 
-  private resolvedUsers: Record<string, string | string[] | undefined> | null = null;
-  private resolvedDaily: Record<string, string | string[] | undefined> | null = null;
-  private resolvedNurse: Record<string, string | string[] | undefined> | null = null;
+  private readonly usersResolver: AttendanceSchemaResolver<AttendanceUsersCandidateKey>;
+  private readonly dailyResolver: AttendanceSchemaResolver<AttendanceDailyCandidateKey>;
 
+  private usersResolutionReported = false;
+  private dailyResolutionReported = false;
+  private resolvedNurse: Record<string, string | string[] | undefined> | null = null;
 
   constructor(options: {
     provider: IDataProvider;
@@ -60,6 +61,50 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
     this.listTitleDaily = options.listTitleDaily ?? ATTENDANCE_DAILY_LIST_TITLE;
     this.listTitleUsers = options.listTitleUsers ?? ATTENDANCE_USERS_LIST_TITLE;
     this.listTitleNurse = options.listTitleNurse ?? NURSE_OBSERVATIONS_LIST_TITLE;
+
+    this.usersResolver = new AttendanceSchemaResolver<AttendanceUsersCandidateKey>({
+      provider: this.provider,
+      listTitle: this.listTitleUsers,
+      listTitleFallbacks: ['Users_Master', 'AttendanceUsers', 'UsersMaster'],
+      candidates: ATTENDANCE_USERS_CANDIDATES,
+      essentials: ATTENDANCE_USERS_ESSENTIALS,
+      logCategory: 'attendance:repo',
+      schemaName: 'AttendanceUsers',
+      onDrift: (listTitle, fieldName, resolutionType, driftType) => {
+        emitDriftRecord(
+          listTitle,
+          fieldName,
+          resolutionType as DriftResolutionType,
+          driftType as DriftType,
+        );
+      },
+    });
+
+    this.dailyResolver = new AttendanceSchemaResolver<AttendanceDailyCandidateKey>({
+      provider: this.provider,
+      listTitle: this.listTitleDaily,
+      listTitleFallbacks: ['AttendanceDaily', 'Daily_Attendance', 'SupportRecord_Daily'],
+      candidates: ATTENDANCE_DAILY_CANDIDATES,
+      essentials: ATTENDANCE_DAILY_ESSENTIALS,
+      logCategory: 'attendance:repo',
+      schemaName: 'AttendanceDaily',
+      onDrift: (listTitle, fieldName, resolutionType, driftType) => {
+        emitDriftRecord(
+          listTitle,
+          fieldName,
+          resolutionType as DriftResolutionType,
+          driftType as DriftType,
+        );
+      },
+    });
+  }
+
+  private uf(mapping: AttendanceUsersFieldMapping, key: AttendanceUsersCandidateKey): string {
+    return mapping[key] ?? ATTENDANCE_USERS_CANDIDATES[key][0];
+  }
+
+  private df(mapping: AttendanceDailyFieldMapping, key: AttendanceDailyCandidateKey): string {
+    return mapping[key] ?? ATTENDANCE_DAILY_CANDIDATES[key][0];
   }
 
   /**
@@ -67,33 +112,27 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
    */
   async getActiveUsers(date?: string, signal?: AbortSignal): Promise<AttendanceUserItem[]> {
     try {
-      const fields = await this.resolveUserFields();
-      if (!fields) return [];
+      const schema = await this.resolveUsersSchema();
+      if (!schema) return [];
 
-      const rows = await this.provider.listItems<Record<string, unknown>>(this.listTitleUsers, {
-        select: fields.select as string[],
-        filter: fields.isActive ? buildEq(fields.isActive as string, 1) : undefined,
-        orderby: fields.userCode ? (fields.userCode as string) : undefined,
-        signal
-      });
-
-      auditLog.info('attendance:repo', `Fetched ${rows.length} rows from ${this.listTitleUsers}`, {
-        resolvedFields: fields,
+      const isActiveResolved = !schema.missing.includes('isActive');
+      const rows = await this.provider.listItems<Record<string, unknown>>(schema.listTitle, {
+        select: [...schema.select],
+        filter: isActiveResolved ? buildEq(this.uf(schema.mapping, 'isActive'), 1) : undefined,
+        orderby: this.uf(schema.mapping, 'userCode'),
+        signal,
       });
 
       const refDate = date || new Date().toISOString().split('T')[0];
-      return rows.map(r => this.toAttendanceUser(r, fields))
-        .filter((u): u is AttendanceUserItem => {
-          if (!u) return false;
-          // 1. 基本の有効フラグ (列がない場合は true とみなす)
-          if (fields.isActive && !u.IsActive) return false;
-          
-          // 2. 利用ステータスによる除外（欠落時は「利用中」として表示を優先）
-          if (u.UsageStatus && (u.UsageStatus.includes('終了') || u.UsageStatus.includes('退会'))) return false;
-          
-          // 3. 契約終了日による除外（基準日より前の日付なら非表示）
-          if (u.ServiceEndDate && u.ServiceEndDate < refDate) return false;
-          
+      return rows
+        .map((row) => this.toAttendanceUser(row, schema.mapping))
+        .filter((user): user is AttendanceUserItem => {
+          if (!user) return false;
+          if (isActiveResolved && !user.IsActive) return false;
+          if (user.UsageStatus && (user.UsageStatus.includes('終了') || user.UsageStatus.includes('退会'))) {
+            return false;
+          }
+          if (user.ServiceEndDate && user.ServiceEndDate < refDate) return false;
           return true;
         });
     } catch (err) {
@@ -107,17 +146,18 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
    */
   async getDailyByDate(params: AttendanceRepositoryListParams): Promise<AttendanceDailyItem[]> {
     try {
-      const fields = await this.resolveDailyFields();
-      if (!fields) return [];
+      const schema = await this.resolveDailySchema();
+      if (!schema) return [];
 
-      const rows = await this.provider.listItems<Record<string, unknown>>(this.listTitleDaily, {
-        select: fields.select as string[],
-        filter: buildEq(fields.recordDate as string, params.recordDate),
-
-        signal: params.signal
+      const rows = await this.provider.listItems<Record<string, unknown>>(schema.listTitle, {
+        select: [...schema.select],
+        filter: buildEq(this.df(schema.mapping, 'recordDate'), params.recordDate),
+        signal: params.signal,
       });
 
-      return rows.map(r => this.toAttendanceDaily(r, fields)).filter((i): i is AttendanceDailyItem => !!i);
+      return rows
+        .map((row) => this.toAttendanceDaily(row, schema.mapping))
+        .filter((item): item is AttendanceDailyItem => Boolean(item));
     } catch (err) {
       return this.handleError(err, '日次勤怠の取得に失敗しました。');
     }
@@ -128,57 +168,72 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
    */
   async upsertDailyByKey(item: AttendanceDailyItem, params?: AttendanceRepositoryUpsertParams): Promise<void> {
     try {
-      const fields = await this.resolveDailyFields();
-      if (!fields) throw new Error('Cannot resolve fields for daily attendance');
+      const schema = await this.ensureDailySchemaForWrite();
 
       const { UserCode, RecordDate } = item;
       const key = `${UserCode}_${RecordDate}`;
 
       const filter = joinOr([
-        buildEq(fields.key as string, key),
+        buildEq(this.df(schema.mapping, 'key'), key),
         `(${joinAnd([
-          buildEq(fields.userCode as string, UserCode),
-          buildEq(fields.recordDate as string, RecordDate),
+          buildEq(this.df(schema.mapping, 'userCode'), UserCode),
+          buildEq(this.df(schema.mapping, 'recordDate'), RecordDate),
         ])})`,
       ]);
 
-      const existing = await this.provider.listItems<Record<string, unknown>>(this.listTitleDaily, {
+      const existing = await this.provider.listItems<Record<string, unknown>>(schema.listTitle, {
         select: ['Id'],
         filter,
         top: 1,
-        signal: params?.signal
+        signal: params?.signal,
       });
 
       const payload: Record<string, unknown> = {};
-      if (fields.key) payload[fields.key as string] = key;
-      if (fields.userCode) payload[fields.userCode as string] = UserCode;
-      if (fields.recordDate) payload[fields.recordDate as string] = RecordDate;
-      if (fields.status) payload[fields.status as string] = item.Status;
+      const assign = (
+        field: AttendanceDailyCandidateKey,
+        value: unknown,
+        options?: { allowEmptyString?: boolean },
+      ): void => {
+        if (value === undefined) return;
+        if (!options?.allowEmptyString && typeof value === 'string' && value.length === 0) return;
+        payload[this.df(schema.mapping, field)] = value;
+      };
 
-      if (fields.checkInAt && item.CheckInAt) payload[fields.checkInAt as string] = item.CheckInAt;
-      if (fields.checkOutAt && item.CheckOutAt) payload[fields.checkOutAt as string] = item.CheckOutAt;
-      if (fields.providedMinutes && item.ProvidedMinutes !== undefined) payload[fields.providedMinutes as string] = item.ProvidedMinutes;
-      if (fields.eveningNote && item.EveningNote) payload[fields.eveningNote as string] = item.EveningNote;
-      if (fields.isEarlyLeave && item.IsEarlyLeave !== undefined) payload[fields.isEarlyLeave as string] = item.IsEarlyLeave;
-      if (fields.staffInChargeId && item.StaffInChargeId) payload[fields.staffInChargeId as string] = item.StaffInChargeId;
+      assign('key', key, { allowEmptyString: true });
+      assign('userCode', UserCode, { allowEmptyString: true });
+      assign('recordDate', RecordDate, { allowEmptyString: true });
+      assign('status', item.Status, { allowEmptyString: true });
 
+      assign('checkInAt', item.CheckInAt ?? undefined, { allowEmptyString: true });
+      assign('checkOutAt', item.CheckOutAt ?? undefined, { allowEmptyString: true });
+      assign('providedMinutes', item.ProvidedMinutes);
+      assign('eveningNote', item.EveningNote);
+      assign('isEarlyLeave', item.IsEarlyLeave);
+      assign('staffInChargeId', item.StaffInChargeId);
 
       if (existing.length > 0 && typeof existing[0].Id === 'number') {
         const id = existing[0].Id;
-        await this.provider.updateItem(this.listTitleDaily, String(id), payload, { etag: '*', signal: params?.signal });
+        await this.provider.updateItem(schema.listTitle, String(id), payload, {
+          etag: '*',
+          signal: params?.signal,
+        });
       } else {
-        await this.provider.createItem(this.listTitleDaily, payload, { signal: params?.signal });
+        await this.provider.createItem(schema.listTitle, payload, { signal: params?.signal });
       }
 
-      auditLog.info('attendance:repo', 'Daily record upserted', { UserCode, RecordDate });
+      auditLog.info('attendance:repo', 'Daily record upserted', {
+        list: schema.listTitle,
+        UserCode,
+        RecordDate,
+      });
     } catch (err) {
       return this.handleError(err, '勤怠記録の保存に失敗しました。');
     }
   }
 
   /**
-    * 看護師所見取得
-    */
+   * 看護師所見取得
+   */
   async getObservationsByDate(recordDate: string): Promise<ObservationTemperatureItem[]> {
     try {
       const fields = await this.resolveNurseFields();
@@ -187,166 +242,172 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
       const rows = await this.provider.listItems<Record<string, unknown>>(this.listTitleNurse, {
         select: fields.select as string[],
         filter: buildSubstringOf(fields.dateField as string, recordDate),
-
       });
 
-      return rows.map(r => this.toObservationTemperature(r, fields)).filter((i): i is ObservationTemperatureItem => !!i);
+      return rows
+        .map((row) => this.toObservationTemperature(row, fields))
+        .filter((item): item is ObservationTemperatureItem => Boolean(item));
     } catch (err) {
       auditLog.error('attendance:repo', 'Failed to load nurse observations.', err);
       return [];
     }
   }
 
-  private async resolveUserFields(): Promise<Record<string, string | string[] | undefined> | null> {
-    if (this.resolvedUsers) return this.resolvedUsers;
-    const available = await this.provider.getFieldInternalNames(this.listTitleUsers).catch(() => null);
-    if (!available) return null;
+  private async resolveUsersSchema(): Promise<AttendanceResolvedSchema<AttendanceUsersCandidateKey> | null> {
+    const schema = await this.usersResolver.resolve();
+    if (!schema) return null;
 
-    const result = resolveInternalNamesDetailed(
-      available,
-      ATTENDANCE_USERS_CANDIDATES as unknown as Record<string, string[]>,
-      {
-        onDrift: (fieldName, resolutionType, driftType) => {
-          emitDriftRecord(this.listTitleUsers, fieldName, resolutionType as DriftResolutionType, driftType as DriftType);
-        }
-      }
-    );
-    
-    const essentials = ['userCode', 'title'];
-    reportResourceResolution({
-      resourceName: `Attendance:${this.listTitleUsers}`,
-      resolvedTitle: this.listTitleUsers,
-      fieldStatus: result.fieldStatus,
-      essentials,
-      lifecycle: 'required'
-    });
-
-    const resolved = result.resolved as Record<string, string | string[] | undefined>;
-    resolved.select = ['Id', ...Object.values(resolved).filter((v): v is string => typeof v === 'string')].filter((v, i, a) => a.indexOf(v) === i);
-    
-    this.resolvedUsers = resolved;
-    return resolved;
+    if (!this.usersResolutionReported) {
+      reportResourceResolution({
+        resourceName: `Attendance:${schema.listTitle}`,
+        resolvedTitle: schema.listTitle,
+        fieldStatus: schema.fieldStatus as Record<string, { resolvedName?: string; candidates: string[]; isDrifted: boolean }>,
+        essentials: [...ATTENDANCE_USERS_ESSENTIALS],
+        lifecycle: 'required',
+      });
+      this.usersResolutionReported = true;
+    }
+    return schema;
   }
 
-  private async resolveDailyFields(): Promise<Record<string, string | string[] | undefined> | null> {
-    if (this.resolvedDaily) return this.resolvedDaily;
-    const available = await this.provider.getFieldInternalNames(this.listTitleDaily).catch(() => null);
-    if (!available) return null;
-    const result = resolveInternalNamesDetailed(
-      available,
-      ATTENDANCE_DAILY_CANDIDATES as unknown as Record<string, string[]>,
-      {
-        onDrift: (fieldName, resolutionType, driftType) => {
-          emitDriftRecord(this.listTitleDaily, fieldName, resolutionType as DriftResolutionType, driftType as DriftType);
-        }
-      }
-    );
-    
-    const essentials = ['key', 'userCode', 'recordDate', 'status'];
-    if (!areEssentialFieldsResolved(result.resolved as Record<string, string | undefined>, essentials)) {
-      auditLog.warn('attendance:repo', 'Essential fields missing for daily attendance list.', {
-        list: this.listTitleDaily,
-        missing: result.missing,
+  private async resolveDailySchema(): Promise<AttendanceResolvedSchema<AttendanceDailyCandidateKey> | null> {
+    const schema = await this.dailyResolver.resolve();
+    if (!schema) return null;
+
+    if (!this.dailyResolutionReported) {
+      reportResourceResolution({
+        resourceName: `Attendance:${schema.listTitle}`,
+        resolvedTitle: schema.listTitle,
+        fieldStatus: schema.fieldStatus as Record<string, { resolvedName?: string; candidates: string[]; isDrifted: boolean }>,
+        essentials: [...ATTENDANCE_DAILY_ESSENTIALS],
+        lifecycle: 'required',
       });
-      return null;
+      this.dailyResolutionReported = true;
     }
+    return schema;
+  }
 
-    reportResourceResolution({
-        resourceName: `Attendance:${this.listTitleDaily}`,
-        resolvedTitle: this.listTitleDaily,
-        fieldStatus: result.fieldStatus,
-        essentials,
-        lifecycle: 'required'
-      });
+  private async ensureDailySchemaForWrite(): Promise<AttendanceResolvedSchema<AttendanceDailyCandidateKey>> {
+    const resolved = await this.resolveDailySchema();
+    if (resolved) return resolved;
 
-    const resolved = result.resolved as Record<string, string | string[] | undefined>;
-    resolved.select = ['Id', ...Object.values(resolved).filter((v): v is string => typeof v === 'string')].filter((v, i, a) => a.indexOf(v) === i);
-    this.resolvedDaily = resolved;
-    return resolved;
+    // Fail-open with self-healing: ensure list/fields and retry once.
+    auditLog.warn(
+      'attendance:repo',
+      `Schema resolution failed for ${this.listTitleDaily}. Triggering self-healing...`,
+    );
+    type FieldsType = Parameters<IDataProvider['ensureListExists']>[1];
+    await this.provider.ensureListExists(
+      this.listTitleDaily,
+      [...ATTENDANCE_DAILY_ENSURE_FIELDS] as unknown as FieldsType,
+    );
+
+    this.dailyResolver.reset();
+    this.dailyResolutionReported = false;
+    const healed = await this.resolveDailySchema();
+    if (healed) return healed;
+
+    throw new Error(`Cannot resolve fields for daily attendance: ${this.listTitleDaily}`);
   }
 
   private async resolveNurseFields(): Promise<Record<string, string | string[] | undefined> | null> {
     if (this.resolvedNurse) return this.resolvedNurse;
+
     const available = await this.provider.getFieldInternalNames(this.listTitleNurse).catch(() => null);
     if (!available) return null;
+
     const result = resolveInternalNamesDetailed(
       available,
       NURSE_OBS_CANDIDATES as unknown as Record<string, string[]>,
       {
         onDrift: (fieldName, resolutionType, driftType) => {
-          emitDriftRecord(this.listTitleNurse, fieldName, resolutionType as DriftResolutionType, driftType as DriftType);
-        }
-      }
+          emitDriftRecord(
+            this.listTitleNurse,
+            fieldName,
+            resolutionType as DriftResolutionType,
+            driftType as DriftType,
+          );
+        },
+      },
     );
-    
-    const userField = ['UserLookupId', 'UserLookup', 'UserId'].find(f => available.has(f));
-    const dateField = ['ObservedAt', 'ObsDate', 'RecordDate', 'Created'].find(f => available.has(f));
-    const tempField = ['Temperature', 'Temp', 'BodyTemperature'].find(f => available.has(f));
+
+    const userField = ['UserLookupId', 'UserLookup', 'UserId'].find((field) => available.has(field));
+    const dateField = ['ObservedAt', 'ObsDate', 'RecordDate', 'Created'].find((field) => available.has(field));
+    const tempField = ['Temperature', 'Temp', 'BodyTemperature'].find((field) => available.has(field));
 
     if (!userField || !dateField || !tempField) return null;
-    
+
     const resolved = result.resolved as Record<string, string | string[] | undefined>;
     resolved.userField = userField;
     resolved.dateField = dateField;
     resolved.tempField = tempField;
     resolved.select = ['Id', userField, dateField, tempField];
-    
+
     this.resolvedNurse = resolved;
     return resolved;
   }
 
-
-  private toAttendanceUser(row: Record<string, unknown>, fields: Record<string, string | string[] | undefined>): AttendanceUserItem | null {
-    const userCodeKey = fields.userCode as string || 'Title';
-    const titleKey = fields.title as string || 'Title';
-
-    const userCode = String(row[userCodeKey] || '');
-    const title = String(row[titleKey] || '');
+  private toAttendanceUser(
+    row: Record<string, unknown>,
+    mapping: AttendanceUsersFieldMapping,
+  ): AttendanceUserItem | null {
+    const userCode = String(row[this.uf(mapping, 'userCode')] ?? '');
+    const title = String(row[this.uf(mapping, 'title')] ?? '');
     if (!userCode || !title) return null;
 
     return {
       Id: Number(row.Id),
       Title: title,
       UserCode: userCode,
-      IsTransportTarget: fields.isTransportTarget ? Boolean(row[fields.isTransportTarget as string]) : false,
-      StandardMinutes: fields.standardMinutes ? Number(row[fields.standardMinutes as string] || 0) : 0,
-      IsActive: fields.isActive ? Boolean(row[fields.isActive as string]) : true,
-      ServiceEndDate: fields.serviceEndDate ? (row[fields.serviceEndDate as string] as string | undefined) : undefined,
-      UsageStatus: fields.usageStatus ? (row[fields.usageStatus as string] as string | undefined) : '利用中', // 欠落時は「利用中」
-      AttendanceDays: fields.attendanceDays ? normalizeAttendanceDays(row[fields.attendanceDays as string]) : [],
-      DefaultTransportToMethod: fields.defaultTransportToMethod ? parseTransportMethod(row[fields.defaultTransportToMethod as string]) : undefined,
-      DefaultTransportFromMethod: fields.defaultTransportFromMethod ? parseTransportMethod(row[fields.defaultTransportFromMethod as string]) : undefined,
-      DefaultTransportToNote: fields.defaultTransportToNote ? (row[fields.defaultTransportToNote as string] as string | undefined) : undefined,
-      DefaultTransportFromNote: fields.defaultTransportFromNote ? (row[fields.defaultTransportFromNote as string] as string | undefined) : undefined,
+      IsTransportTarget: Boolean(row[this.uf(mapping, 'isTransportTarget')]),
+      StandardMinutes: Number(row[this.uf(mapping, 'standardMinutes')] ?? 0),
+      IsActive: Boolean(row[this.uf(mapping, 'isActive')] ?? true),
+      ServiceEndDate:
+        (row[this.uf(mapping, 'serviceEndDate')] as string | undefined) ?? undefined,
+      UsageStatus:
+        (row[this.uf(mapping, 'usageStatus')] as string | undefined) ?? '利用中',
+      AttendanceDays: normalizeAttendanceDays(row[this.uf(mapping, 'attendanceDays')]),
+      DefaultTransportToMethod: parseTransportMethod(row[this.uf(mapping, 'defaultTransportToMethod')]),
+      DefaultTransportFromMethod: parseTransportMethod(
+        row[this.uf(mapping, 'defaultTransportFromMethod')],
+      ),
+      DefaultTransportToNote:
+        (row[this.uf(mapping, 'defaultTransportToNote')] as string | undefined) ?? undefined,
+      DefaultTransportFromNote:
+        (row[this.uf(mapping, 'defaultTransportFromNote')] as string | undefined) ?? undefined,
     };
   }
 
-  private toAttendanceDaily(row: Record<string, unknown>, fields: Record<string, string | string[] | undefined>): AttendanceDailyItem | null {
-    const userCodeKey = (fields.userCode as string) || 'UserCode';
-    const recordDateKey = (fields.recordDate as string) || 'RecordDate';
-    const keyKey = (fields.key as string) || 'Title';
-    const statusKey = (fields.status as string) || 'Status';
-
-    const userCode = String(row[userCodeKey] || '');
-    const recordDate = String(row[recordDateKey] || '');
+  private toAttendanceDaily(
+    row: Record<string, unknown>,
+    mapping: AttendanceDailyFieldMapping,
+  ): AttendanceDailyItem | null {
+    const userCode = String(row[this.df(mapping, 'userCode')] ?? '');
+    const recordDate = String(row[this.df(mapping, 'recordDate')] ?? '');
     if (!userCode || !recordDate) return null;
 
     return {
       Id: Number(row.Id),
-      Key: String(row[keyKey] || ''),
+      Key: String(row[this.df(mapping, 'key')] ?? ''),
       UserCode: userCode,
       RecordDate: recordDate,
-      Status: String(row[statusKey] || ''),
-      CheckInAt: row[fields.checkInAt as string] as string | null,
-      CheckOutAt: row[fields.checkOutAt as string] as string | null,
-      ProvidedMinutes: typeof row[fields.providedMinutes as string] === 'number' ? (row[fields.providedMinutes as string] as number) : null,
-      IsEarlyLeave: !!row[fields.isEarlyLeave as string],
-      EveningNote: String(row[fields.eveningNote as string] || ''),
-      StaffInChargeId: String(row[fields.staffInChargeId as string] || ''),
+      Status: String(row[this.df(mapping, 'status')] ?? ''),
+      CheckInAt: row[this.df(mapping, 'checkInAt')] as string | null,
+      CheckOutAt: row[this.df(mapping, 'checkOutAt')] as string | null,
+      ProvidedMinutes:
+        typeof row[this.df(mapping, 'providedMinutes')] === 'number'
+          ? (row[this.df(mapping, 'providedMinutes')] as number)
+          : null,
+      IsEarlyLeave: Boolean(row[this.df(mapping, 'isEarlyLeave')]),
+      EveningNote: String(row[this.df(mapping, 'eveningNote')] ?? ''),
+      StaffInChargeId: String(row[this.df(mapping, 'staffInChargeId')] ?? ''),
     };
   }
 
-  private toObservationTemperature(row: Record<string, unknown>, fields: Record<string, string | string[] | undefined>): ObservationTemperatureItem | null {
+  private toObservationTemperature(
+    row: Record<string, unknown>,
+    fields: Record<string, string | string[] | undefined>,
+  ): ObservationTemperatureItem | null {
     const uId = row[fields.userField as string];
     const temp = row[fields.tempField as string];
     const at = row[fields.dateField as string];

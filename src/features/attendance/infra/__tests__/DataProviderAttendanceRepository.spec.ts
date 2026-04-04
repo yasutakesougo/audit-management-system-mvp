@@ -10,6 +10,7 @@ vi.mock('@/lib/debugLogger', () => ({
     debug: vi.fn(),
   },
 }));
+import { auditLog } from '@/lib/debugLogger';
 
 vi.mock('@/lib/data/dataProviderObservabilityStore', () => ({
   reportResourceResolution: vi.fn(),
@@ -23,6 +24,7 @@ describe('DataProviderAttendanceRepository - Regression / Hardening', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockProvider = {
+      getResourceNames: vi.fn().mockResolvedValue(['Users_Master', 'Daily_Attendance']),
       getFieldInternalNames: vi.fn(),
       listItems: vi.fn(),
       createItem: vi.fn(),
@@ -47,6 +49,12 @@ describe('DataProviderAttendanceRepository - Regression / Hardening', () => {
       expect(users[0].Title).toBe('Test User');
       
       // Verify listItems was called with resolved field names
+      expect(mockProvider.listItems).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          select: expect.arrayContaining(['UserID']),
+        }),
+      );
       const callOptions = mockProvider.listItems.mock.calls[0][1];
       expect(callOptions.select).toContain('Id');
       expect(callOptions.select).toContain('UserID');
@@ -81,7 +89,11 @@ describe('DataProviderAttendanceRepository - Regression / Hardening', () => {
       const daily = await repository.getDailyByDate({ recordDate: '2024-03-01' });
 
       expect(daily).toEqual([]);
-
+      expect(auditLog.warn).toHaveBeenCalledWith(
+        'attendance:repo',
+        expect.stringContaining('AttendanceDaily list not found in catalog or essentials are missing'),
+        expect.any(Object),
+      );
     });
   });
 

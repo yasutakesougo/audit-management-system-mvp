@@ -1,7 +1,7 @@
 /**
  * ActivityDiary フィールド定義
  */
-
+import { buildSelectFieldsFromMap } from './fieldUtils';
 
 /**
  * ActivityDiary リストのフィールド候補マップ
@@ -9,7 +9,7 @@
 export const ACTIVITY_DIARY_CANDIDATES = {
   /** タイトル (標準列) */
   title:           ['Title', 'title', 'RecordTitle'],
-  /** ユーザー識別子。Text 型の UserID と Lookup 型 UserId/UserIdId の両方、およびドリフトを吸収 */
+  /** ユーザー識別子。Text 型の UserID と Lookup 型 UserId/UserIdId の両方を吸収 */
   userId:          ['UserID', 'UserId', 'UserIdId', 'user_id', 'cr013_userId', 'UserID0', 'UserId0', 'User_x0020_ID'],
   /** 記録日 */
   date:            ['Date', 'date', 'RecordDate', 'EntryDate', 'cr013_date', 'Date0', 'RecordDate0', 'Record_x0020_Date'],
@@ -33,7 +33,7 @@ export const ACTIVITY_DIARY_CANDIDATES = {
   seizure:         ['Seizure', 'seizure', 'cr013_seizure', 'Seizure0', 'HasSeizure'],
   /** てんかん発作時刻 */
   seizureAt:       ['SeizureAt', 'seizureAt', 'cr013_seizureAt', 'SeizureAt0'],
-  /** 目標ID列 (カンマ区切り、またはJSON) */
+  /** 目標ID列 (カンマ区切り) */
   goals:           ['Goals', 'goals', 'GoalIds', 'cr013_goals', 'Goals0', 'Goal_x0020_Ids', 'GoalIdsJSON'],
   /** 備考 */
   notes:           ['Notes', 'notes', 'cr013_notes', 'Notes0', 'Remarks'],
@@ -66,3 +66,37 @@ export const ACTIVITY_DIARY_ENSURE_FIELDS = [
   { internalName: 'Goals', type: 'Note', required: false, displayName: 'Goal IDs' },
   { internalName: 'Notes', type: 'Note', required: false, displayName: 'Notes' },
 ] as const;
+
+/**
+ * ActivityDiary リスト用の動的 $select ビルダー
+ */
+export function buildActivityDiarySelectFields(existingInternalNames?: readonly string[]): readonly string[] {
+  const baseMap: Record<string, string> = {};
+  for (const [key, candidates] of Object.entries(ACTIVITY_DIARY_CANDIDATES)) {
+    baseMap[key] = candidates[0];
+  }
+
+  return buildSelectFieldsFromMap(baseMap, existingInternalNames, {
+    alwaysInclude: ['Id', 'Created', 'Modified', 'Title'],
+    fallback: [
+      'Id',
+      'Title',
+      'UserID',
+      'Date',
+      'Shift',
+      'Category',
+      'LunchAmount',
+      'MealMain',
+      'MealSide',
+      'ProblemBehavior',
+      'BehaviorType',
+      'BehaviorNote',
+      'Seizure',
+      'SeizureAt',
+      'Goals',
+      'Notes',
+      'Created',
+      'Modified',
+    ],
+  });
+}

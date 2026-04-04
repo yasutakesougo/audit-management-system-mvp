@@ -1,0 +1,847 @@
+diff --cc src/features/attendance/infra/__tests__/DataProviderAttendanceRepository.spec.ts
+index 4f838530,13623a9d..00000000
+--- a/src/features/attendance/infra/__tests__/DataProviderAttendanceRepository.spec.ts
++++ b/src/features/attendance/infra/__tests__/DataProviderAttendanceRepository.spec.ts
+@@@ -45,8 -47,13 +46,17 @@@ describe('DataProviderAttendanceReposit
+        expect(users.length).toBe(1);
+        expect(users[0].UserCode).toBe('U001');
+        expect(users[0].Title).toBe('Test User');
+ +      
+        // Verify listItems was called with resolved field names
+++<<<<<<< HEAD
+++=======
++       expect(mockProvider.listItems).toHaveBeenCalledWith(
++         expect.any(String),
++         expect.objectContaining({
++           select: expect.arrayContaining(['UserID']),
++         }),
++       );
+++>>>>>>> origin/main
+        const callOptions = mockProvider.listItems.mock.calls[0][1];
+        expect(callOptions.select).toContain('Id');
+        expect(callOptions.select).toContain('UserID');
+@@@ -81,7 -88,11 +91,15 @@@
+        const daily = await repository.getDailyByDate({ recordDate: '2024-03-01' });
+  
+        expect(daily).toEqual([]);
+- 
+++<<<<<<< HEAD
+++
+++=======
++       expect(auditLog.warn).toHaveBeenCalledWith(
++         'attendance:repo',
++         expect.stringContaining('AttendanceDaily list not found in catalog or essentials are missing'),
++         expect.any(Object),
++       );
+++>>>>>>> origin/main
+      });
+    });
+  
+diff --cc src/features/diagnostics/drift/infra/SharePointDriftEventRepository.ts
+index 8086a867,1c4f91b9..00000000
+--- a/src/features/diagnostics/drift/infra/SharePointDriftEventRepository.ts
++++ b/src/features/diagnostics/drift/infra/SharePointDriftEventRepository.ts
+@@@ -1,8 -1,10 +1,15 @@@
+  import { DriftEvent, DriftResolutionType, DriftType, getDriftEventDedupeKey } from '../domain/driftLogic';
+  import { IDriftEventRepository } from '../domain/DriftEventRepository';
+  import { findListEntry } from '@/sharepoint/spListRegistry';
+++<<<<<<< HEAD
+ +import { buildEq, joinAnd } from '@/sharepoint/query/builders';
+ +import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
+++=======
++ import { buildDateTime, buildEq, buildGe, joinAnd } from '@/sharepoint/query/builders';
++ import { DRIFT_LOG_CANDIDATES } from '@/sharepoint/fields/diagnosticsFields';
++ import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
++ import { auditLog } from '@/lib/debugLogger';
+++>>>>>>> origin/main
+  
+  /**
+   * 依存関係の境界遵守のためのローカルインターフェース
+@@@ -37,77 -23,100 +44,156 @@@ export const DRIFT_LOG_CANDIDATES = 
+  export class SharePointDriftEventRepository implements IDriftEventRepository {
+    /** 同一セッション内での重複ログ抑制用のキャッシュ ( dedupeKey -> 1 ) */
+    private sessionCache = new Set<string>();
+ +  
+ +  /** 連続エラーによる記録停止フラグとカウンタ */
+ +  private errorCount = 0;
+ +  private circuitOpenUntil = 0;
+ +  private resolvedFieldsByList = new Map<string, Record<string, string | undefined>>();
+  
+-   constructor(private spClient: ISpOperations) {}
++   /** 本番リストで使用されている物理内部名のキャッシュ */
++   private resolvedFields: Record<string, string | undefined> = {};
++   private initializationPromise: Promise<void> | null = null;
++ 
++   constructor(private spClient: ISpOperations & { 
++     getSchema?: (listTitle: string) => Promise<string[]> 
++   }) {}
++ 
++   private rf(key: keyof typeof DRIFT_LOG_CANDIDATES): string {
++     return this.resolvedFields[key] || DRIFT_LOG_CANDIDATES[key][0];
++   }
++ 
++   private readRowValue<T = unknown>(
++     row: Record<string, unknown>,
++     key: keyof typeof DRIFT_LOG_CANDIDATES,
++   ): T | undefined {
++     const probe = [this.rf(key), ...DRIFT_LOG_CANDIDATES[key]];
++     const candidates = Array.from(new Set(probe));
++     for (const candidate of candidates) {
++       if (Object.prototype.hasOwnProperty.call(row, candidate)) {
++         return row[candidate] as T;
++       }
++     }
++     return undefined;
++   }
++ 
++   private parseResolved(raw: unknown): boolean {
++     if (typeof raw === 'boolean') return raw;
++     if (typeof raw === 'number') return raw !== 0;
++     if (typeof raw === 'string') {
++       const normalized = raw.trim().toLowerCase();
++       return normalized === 'true' || normalized === '1' || normalized === 'yes';
++     }
++     return false;
++   }
++ 
++   private async initializeResolvedFields(listTitle: string): Promise<void> {
++     if (Object.keys(this.resolvedFields).length > 0) return;
++     if (this.initializationPromise) return this.initializationPromise;
++ 
++     this.initializationPromise = (async () => {
++       try {
++         const availableFields = await this.spClient.getSchema?.(listTitle) || [];
++         if (availableFields.length === 0) return;
++ 
++         const res = resolveInternalNamesDetailed(
++           new Set(availableFields),
++           DRIFT_LOG_CANDIDATES as unknown as Record<string, string[]>,
++         );
++         this.resolvedFields = res.resolved;
++       } catch (err) {
++         auditLog.warn('diagnostics:drift', 'DriftEventRepository initialization failed.', err);
++       }
++     })();
++ 
++     return this.initializationPromise;
++   }
+  
+ -  async logEvent(event: DriftEvent): Promise<void> {
+ -    const dedupeKey = getDriftEventDedupeKey(event);
+ +  private async resolveFields(listTitle: string): Promise<Record<string, string | undefined> | null> {
+ +    const cached = this.resolvedFieldsByList.get(listTitle);
+ +    if (cached) return cached;
+  
+ -    // 1. 同一セッション内で本日既に記録済みであればスキップ
+ -    if (this.sessionCache.has(dedupeKey)) {
+ -      return;
+ +    try {
+ +      const raw = await this.spClient.getListFieldInternalNames(listTitle);
+ +      const { resolved } = resolveInternalNamesDetailed(
+ +        new Set(raw),
+ +        DRIFT_LOG_CANDIDATES as unknown as Record<string, string[]>
+ +      );
+ +      const result = resolved as Record<string, string | undefined>;
+ +      this.resolvedFieldsByList.set(listTitle, result);
+ +      return result;
+ +    } catch {
+ +      return null;
+      }
+ +  }
+  
+ +  async logEvent(event: DriftEvent): Promise<void> {
+ +    const dedupeKey = getDriftEventDedupeKey(event);
+ +
+ +    if (this.sessionCache.has(dedupeKey)) return;
+ +    if (this.circuitOpenUntil > Date.now()) return;
+ +    
+      try {
+        const entry = findListEntry('drift_events_log');
+ -      if (!entry) {
+ -        console.warn('DriftEventRepository: drift_events_log list not found in registry.');
+ +      if (!entry) return;
+ +
+ +      const listTitle = entry.resolve();
+ +      const fields = await this.resolveFields(listTitle);
+ +      if (!fields) {
+ +        console.warn('DriftEventRepository: Could not resolve fields for DriftEventsLog. Fail-Open.');
+          return;
+        }
+  
+++<<<<<<< HEAD
+ +      // 動的に解決されたフィールド名のみを使用してペイロードを構築
+ +      // 解決できなかったフィールドは含めないことで、400 Bad Request を回避する
+ +      const payload: Record<string, unknown> = {};
+ +
+ +      if (fields.title) {
+ +        payload[fields.title] = `${event.listName}:${event.fieldName}`;
+ +      } else {
+ +        // Title はリストの基本列なので、解決できなくても Title を試みる
+ +        payload['Title'] = `${event.listName}:${event.fieldName}`;
+ +      }
+++=======
++       const listTitle = entry.resolve();
++       await this.initializeResolvedFields(listTitle);
++ 
++       const payload: Record<string, unknown> = {
++         Title: `${event.listName}:${event.fieldName}`,
++         [this.rf('listName')]: event.listName,
++         [this.rf('fieldName')]: event.fieldName,
++         [this.rf('detectedAt')]: event.detectedAt,
++         [this.rf('severity')]: event.severity,
++         [this.rf('resolutionType')]: event.resolutionType,
++         [this.rf('driftType')]: event.driftType || 'unknown',
++         [this.rf('resolved')]: event.resolved
++       };
++ 
++       await this.spClient.createItem(listTitle, payload);
+++>>>>>>> origin/main
+ +
+ +      if (fields.detectedAt) payload[fields.detectedAt] = event.detectedAt;
+ +      if (fields.severity) payload[fields.severity] = event.severity;
+ +      if (fields.resolutionType) payload[fields.resolutionType] = event.resolutionType;
+ +      if (fields.driftType) payload[fields.driftType] = event.driftType || 'unknown';
+ +      if (fields.resolved !== undefined) payload[fields.resolved] = event.resolved;
+ +      if (event.listName && fields.listName) payload[fields.listName] = event.listName;
+ +      if (event.fieldName && fields.fieldName) payload[fields.fieldName] = event.fieldName;
+  
+ +      await this.spClient.createItem(listTitle, payload);
+ +      this.errorCount = 0;
+        this.sessionCache.add(dedupeKey);
+      } catch (err) {
+++<<<<<<< HEAD
+ +      this.errorCount++;
+ +      if (this.errorCount >= 5) {
+ +        this.circuitOpenUntil = Date.now() + 5 * 60 * 1000;
+ +      }
+ +      console.error('DriftEventRepository: Failed to log drift event. (Fail-Open)', err);
+++=======
++       // ✅ Fail-Open: 書き込み失敗は、システム全体の業務に影響を与えないよう握りつぶす。
++       auditLog.error('diagnostics:drift', 'DriftEventRepository failed to log drift event (fail-open).', err);
+++>>>>>>> origin/main
+      }
+    }
+  
+@@@ -121,29 -130,55 +207,81 @@@
+        if (!entry) return [];
+  
+        const listTitle = entry.resolve();
+++<<<<<<< HEAD
+ +      const fields = await this.resolveFields(listTitle);
+ +      if (!fields) return [];
+++=======
++       await this.initializeResolvedFields(listTitle);
+++>>>>>>> origin/main
+        
+ -      // クエリビルド
+        const filters: string[] = [];
+++<<<<<<< HEAD
+ +      if (filter?.listName && fields.listName) {
+ +        filters.push(buildEq(fields.listName, filter.listName));
+ +      }
+ +      if (filter?.resolved !== undefined && fields.resolved) {
+ +        filters.push(buildEq(fields.resolved, filter.resolved));
+ +      }
+ +
+ +      const select = Object.values(fields).filter((v): v is string => !!v);
+ +      const items = await this.spClient.getListItemsByTitle<Record<string, unknown>>(listTitle, select, joinAnd(filters) || undefined, `${fields.detectedAt || 'DetectedAt'} desc`, 100);
+ +
+ +      return items.map(item => ({
+ +        id: String(item[fields.id || 'Id'] || item.ID || item.Id),
+ +        listName: String(item[fields.listName || 'ListName'] || ''),
+ +        fieldName: String(item[fields.fieldName || 'FieldName'] || ''),
+ +        detectedAt: String(item[fields.detectedAt || 'DetectedAt'] || ''),
+ +        severity: (item[fields.severity || 'Severity'] as 'warn' | 'info') || 'info',
+ +        resolutionType: (item[fields.resolutionType || 'ResolutionType'] as DriftResolutionType) || 'fuzzy_match',
+ +        driftType: (item[fields.driftType || 'DriftType'] as DriftType) || 'unknown',
+ +        resolved: !!item[fields.resolved || 'Resolved']
+++=======
++       const listNameField = this.rf('listName');
++       const resolvedField = this.rf('resolved');
++       const detectedAtField = this.rf('detectedAt');
++ 
++       if (filter?.listName) {
++         filters.push(buildEq(listNameField, filter.listName));
++       }
++       if (filter?.resolved !== undefined) {
++         filters.push(buildEq(resolvedField, filter.resolved));
++       }
++       if (filter?.since) {
++         filters.push(buildGe(detectedAtField, buildDateTime(filter.since)));
++       }
++ 
++       const select = Array.from(
++         new Set([
++           'Id',
++           'ID',
++           this.rf('listName'),
++           this.rf('fieldName'),
++           this.rf('detectedAt'),
++           this.rf('severity'),
++           this.rf('resolutionType'),
++           this.rf('driftType'),
++           this.rf('resolved'),
++         ]),
++       );
++ 
++       const items = await this.spClient.getListItemsByTitle<Record<string, unknown>>(
++         listTitle,
++         select,
++         joinAnd(filters) || undefined,
++         `${detectedAtField} desc`,
++         100,
++       );
++ 
++       return items.map(item => ({
++         id: String(item.Id ?? item.ID ?? ''),
++         listName: String(this.readRowValue(item, 'listName') ?? ''),
++         fieldName: String(this.readRowValue(item, 'fieldName') ?? ''),
++         detectedAt: String(this.readRowValue(item, 'detectedAt') ?? ''),
++         severity: (this.readRowValue(item, 'severity') as 'warn' | 'info') || 'info',
++         resolutionType: (this.readRowValue(item, 'resolutionType') as DriftResolutionType) || 'fuzzy_match',
++         driftType: (this.readRowValue(item, 'driftType') as DriftType) || 'unknown',
++         resolved: this.parseResolved(this.readRowValue(item, 'resolved')),
+++>>>>>>> origin/main
+        }));
+  
+      } catch (err) {
+@@@ -158,14 -193,12 +296,20 @@@
+        if (!entry) return;
+  
+        const listTitle = entry.resolve();
+++<<<<<<< HEAD
+ +      const fields = await this.resolveFields(listTitle);
+ +      if (!fields || !fields.resolved) return;
+ +
+ +      await this.spClient.updateItemByTitle(listTitle, Number(id), {
+ +        [fields.resolved]: true
+++=======
++       await this.initializeResolvedFields(listTitle);
++       await this.spClient.updateItemByTitle(listTitle, Number(id), {
++         [this.rf('resolved')]: true
+++>>>>>>> origin/main
+        });
+      } catch (err) {
+-       console.error('DriftEventRepository: Failed to mark as resolved.', err);
++       auditLog.warn('diagnostics:drift', 'DriftEventRepository failed to mark event as resolved (fail-open).', err);
+      }
+    }
+  }
+diff --cc src/features/diagnostics/health/HealthDiagnosisPage.tsx
+index b7027614,44b108ef..00000000
+--- a/src/features/diagnostics/health/HealthDiagnosisPage.tsx
++++ b/src/features/diagnostics/health/HealthDiagnosisPage.tsx
+@@@ -24,7 -19,7 +24,11 @@@ import { toAdminSummary } from "./toAdm
+  import { HealthContext } from "./types";
+  import { useHealthChecks } from "./useHealthChecks";
+  import { spTelemetryStore } from "@/lib/telemetry/spTelemetryStore";
+++<<<<<<< HEAD
+ +import { DriftActionPanel } from "./components/DriftActionPanel";
+++=======
++ import { DriftObservabilityPanel } from "../drift/observability/DriftObservabilityPanel";
+++>>>>>>> origin/main
+  
+  // ──────────────────────────────────────────────────────────────
+  // Clipboard helper
+diff --cc src/lib/createRepositoryFactory.ts
+index 41dd73f5,d8df48ce..00000000
+--- a/src/lib/createRepositoryFactory.ts
++++ b/src/lib/createRepositoryFactory.ts
+@@@ -106,15 -105,17 +106,22 @@@ export interface RepositoryFactory
+  // ────────────────────────────────────────────────────────────────────────────
+  
+  /**
+ - * Default predicate that matches the existing `shouldUseDemoRepository`
+ - * logic shared across all 5 factory files.
+ - *
+ - * Returns `true` for: dev mode, test mode, force-demo, demo-mode,
+ - * skip-login, or missing SPFx context.
+ + * Default predicate that * Higher priority given to URL parameters to match getActiveProviderType.
+   */
+  export const defaultShouldUseDemo = (): boolean => {
+++<<<<<<< HEAD
+ +  // 0. URL parameter check (highest priority after explicit forceKind)
+ +  if (typeof window !== 'undefined' && window.location) {
+ +    const urlParams = new URLSearchParams(window.location.search);
+ +    const providerParam = urlParams.get('provider');
+ +    if (providerParam === 'sharepoint') return false;
+ +    if (providerParam === 'memory' || providerParam === 'local') return true;
+++=======
++   // 0. Explicit force SharePoint must win over any local/demo shortcuts.
++   const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
++   if (forceSharePoint) {
++     return false;
+++>>>>>>> origin/main
+    }
+  
+    // 1. Priority overrides for forcing demo
+diff --cc src/lib/sp/helpers.ts
+index ee0cd80f,6b375789..00000000
+--- a/src/lib/sp/helpers.ts
++++ b/src/lib/sp/helpers.ts
+@@@ -449,21 -449,16 +449,29 @@@ export function areEssentialFieldsResol
+   */
+  export function washRow<T extends Record<string, unknown>>(
+    row: T,
+-   candidates: Record<string, string[]>,
++   _candidates: Record<string, string[]>,
+    resolved: Record<string, string | undefined>
+  ): T {
+ -  const washed = { ...row };
+ +  const washed = { ...row } as Record<string, unknown>;
+    for (const [key, resName] of Object.entries(resolved)) {
+++<<<<<<< HEAD
+ +    const primary = (candidates[key] as string[])?.[0];
+ +    if (resName) {
+ +      const value = row[resName];
+ +      if (value !== undefined) {
+ +        // 1. Copy to logical key (e.g. 'workDays')
+ +        washed[key] = value;
+ +        // 2. Copy to primary candidate name (e.g. 'WorkDays') if different
+ +        if (primary && resName !== primary) {
+ +          washed[primary] = value;
+ +        }
+++=======
++     if (resName && resName !== key) {
++       // 実際の内部名(StartDate0等)の値を、マッピング用キー(startDate等)にコピーする
++       const value = row[resName];
++       if (value !== undefined) {
++         (washed as Record<string, unknown>)[key] = value;
+++>>>>>>> origin/main
+        }
+      }
+    }
+diff --cc src/lib/sp/spDataProvider.ts
+index 450ec581,0dceb6aa..00000000
+--- a/src/lib/sp/spDataProvider.ts
++++ b/src/lib/sp/spDataProvider.ts
+@@@ -161,9 -161,9 +161,15 @@@ export class SharePointDataProvider imp
+      return this.client.getListFieldInternalNames(actualName);
+    }
+  
+++<<<<<<< HEAD
+ +  async getFieldDetails(resourceName: string): Promise<Map<string, ExistingFieldShape>> {
+ +    const actualName = this.resolveResource(resourceName);
+ +    return this.client.fetchExistingFields(actualName);
+++=======
++   async getResourceNames(): Promise<string[]> {
++     const identifiers = await this.client.getExistingListTitlesAndIds();
++     return Array.from(identifiers);
+++>>>>>>> origin/main
+    }
+  
+    async ensureListExists(resourceName: string, fields: SpFieldDef[]): Promise<void> {
+diff --cc src/sharepoint/fields/activityDiaryFields.ts
+index 9cef5ab0,173acac8..00000000
+--- a/src/sharepoint/fields/activityDiaryFields.ts
++++ b/src/sharepoint/fields/activityDiaryFields.ts
+@@@ -1,68 -1,84 +1,150 @@@
+  /**
+++<<<<<<< HEAD
+ + * ActivityDiary フィールド定義
+ + */
+ +
+ +
+ +/**
+ + * ActivityDiary リストのフィールド候補マップ
+ + */
+ +export const ACTIVITY_DIARY_CANDIDATES = {
+ +  /** タイトル (標準列) */
+ +  title:           ['Title', 'title', 'RecordTitle'],
+ +  /** ユーザー識別子。Text 型の UserID と Lookup 型 UserId/UserIdId の両方、およびドリフトを吸収 */
+ +  userId:          ['UserID', 'UserId', 'UserIdId', 'user_id', 'cr013_userId', 'UserID0', 'UserId0', 'User_x0020_ID'],
+ +  /** 記録日 */
+ +  date:            ['Date', 'date', 'RecordDate', 'EntryDate', 'cr013_date', 'Date0', 'RecordDate0', 'Record_x0020_Date'],
+ +  /** 時間帯 (AM / PM / 1日) */
+ +  shift:           ['Shift', 'shift', 'Period', 'TimeSlot', 'cr013_shift', 'Shift0'],
+ +  /** 活動カテゴリ */
+ +  category:        ['Category', 'category', 'ActivityCategory', 'cr013_category', 'Category0'],
+ +  /** 昼食量 */
+ +  lunchAmount:     ['LunchAmount', 'lunchAmount', 'Lunch', 'cr013_lunchAmount', 'LunchAmount0', 'Lunch_x0020_Amount'],
+ +  /** 主食量 */
+ +  mealMain:        ['MealMain', 'mealMain', 'cr013_mealMain', 'MealMain0'],
+ +  /** 副食量 */
+ +  mealSide:        ['MealSide', 'mealSide', 'cr013_mealSide', 'MealSide0'],
+ +  /** 問題行動あり/なし */
+ +  problemBehavior: ['ProblemBehavior', 'problemBehavior', 'cr013_problemBehavior', 'ProblemBehavior0', 'HasProblemBehavior'],
+ +  /** 問題行動種別 */
+ +  behaviorType:    ['BehaviorType', 'behaviorType', 'cr013_behaviorType', 'BehaviorType0'],
+ +  /** 問題行動メモ */
+ +  behaviorNote:    ['BehaviorNote', 'behaviorNote', 'cr013_behaviorNote', 'BehaviorNote0'],
+ +  /** てんかん発作あり/なし */
+ +  seizure:         ['Seizure', 'seizure', 'cr013_seizure', 'Seizure0', 'HasSeizure'],
+ +  /** てんかん発作時刻 */
+ +  seizureAt:       ['SeizureAt', 'seizureAt', 'cr013_seizureAt', 'SeizureAt0'],
+ +  /** 目標ID列 (カンマ区切り、またはJSON) */
+ +  goals:           ['Goals', 'goals', 'GoalIds', 'cr013_goals', 'Goals0', 'Goal_x0020_Ids', 'GoalIdsJSON'],
+ +  /** 備考 */
+ +  notes:           ['Notes', 'notes', 'cr013_notes', 'Notes0', 'Remarks'],
+++=======
++  * SharePoint フィールド定義 — ActivityDiary (支援記録/ケース記録)
++  */
++ import { buildSelectFieldsFromMap } from './fieldUtils';
++ 
++ /**
++  * ActivityDiary リストのフィールド候補マップ
++  *
++  * 各候補配列の先頭が「provisioningFields に記載されている基準名」。
++  * 以降は SharePoint がリネームした可能性のある代替名。
++  * UserID (Text) と UserIdId (Lookup) の両スキーマを candidates で吸収する。
++  */
++ export const ACTIVITY_DIARY_CANDIDATES = {
++   /** ユーザー識別子。Text 型の UserID と Lookup 型 UserId/UserIdId の両方を吸収 */
++   userId:          ['UserID', 'UserId', 'UserIdId', 'user_id', 'cr013_userId'],
++   /** 記録日 */
++   date:            ['Date', 'date', 'RecordDate', 'EntryDate', 'cr013_date'],
++   /** 時間帯 (AM / PM / 1日) */
++   shift:           ['Shift', 'shift', 'Period', 'TimeSlot', 'cr013_shift'],
++   /** 活動カテゴリ */
++   category:        ['Category', 'category', 'ActivityCategory', 'cr013_category'],
++   /** 昼食量 */
++   lunchAmount:     ['LunchAmount', 'lunchAmount', 'Lunch', 'cr013_lunchAmount'],
++   /** 主食量 */
++   mealMain:        ['MealMain', 'mealMain', 'cr013_mealMain'],
++   /** 副食量 */
++   mealSide:        ['MealSide', 'mealSide', 'cr013_mealSide'],
++   /** 問題行動あり/なし */
++   problemBehavior: ['ProblemBehavior', 'problemBehavior', 'cr013_problemBehavior'],
++   /** 問題行動種別 */
++   behaviorType:    ['BehaviorType', 'behaviorType', 'cr013_behaviorType'],
++   /** 問題行動メモ */
++   behaviorNote:    ['BehaviorNote', 'behaviorNote', 'cr013_behaviorNote'],
++   /** てんかん発作あり/なし */
++   seizure:         ['Seizure', 'seizure', 'cr013_seizure'],
++   /** てんかん発作時刻 */
++   seizureAt:       ['SeizureAt', 'seizureAt', 'cr013_seizureAt'],
++   /** 目標ID列 (カンマ区切り) */
++   goals:           ['Goals', 'goals', 'GoalIds', 'cr013_goals'],
++   /** 備考 */
++   notes:           ['Notes', 'notes', 'cr013_notes'],
+++>>>>>>> origin/main
+  } as const;
+  
+  /**
+   * ActivityDiary の必須フィールド。
+++<<<<<<< HEAD
+ + * 欠落時、信頼できるドメインモデルを構築できないため FAIL 判定。
+++=======
++  * この 4 つが解決できない場合、リストをソースとして使えない。
+++>>>>>>> origin/main
+   */
+  export const ACTIVITY_DIARY_ESSENTIALS: (keyof typeof ACTIVITY_DIARY_CANDIDATES)[] = [
+    'userId', 'date', 'shift', 'category',
+  ];
+  
+  /**
+++<<<<<<< HEAD
+ + * 自己修復 (Self-Healing) 用の列定義
+ + */
+ +export const ACTIVITY_DIARY_ENSURE_FIELDS = [
+ +  { internalName: 'UserID', type: 'Text', required: true, displayName: 'User ID' },
+ +  { internalName: 'Date', type: 'DateTime', required: true, displayName: 'Date', dateTimeFormat: 'DateOnly' },
+ +  { internalName: 'Shift', type: 'Text', required: true, displayName: 'Shift' },
+ +  { internalName: 'Category', type: 'Text', required: true, displayName: 'Category' },
+ +  { internalName: 'LunchAmount', type: 'Text', required: false, displayName: 'Lunch Amount' },
+ +  { internalName: 'MealMain', type: 'Text', required: false, displayName: 'Meal Main' },
+ +  { internalName: 'MealSide', type: 'Text', required: false, displayName: 'Meal Side' },
+ +  { internalName: 'ProblemBehavior', type: 'Boolean', required: false, displayName: 'Problem Behavior' },
+ +  { internalName: 'BehaviorType', type: 'Text', required: false, displayName: 'Behavior Type' },
+ +  { internalName: 'BehaviorNote', type: 'Note', required: false, displayName: 'Behavior Note' },
+ +  { internalName: 'Seizure', type: 'Boolean', required: false, displayName: 'Seizure' },
+ +  { internalName: 'SeizureAt', type: 'Text', required: false, displayName: 'Seizure At' },
+ +  { internalName: 'Goals', type: 'Note', required: false, displayName: 'Goal IDs' },
+ +  { internalName: 'Notes', type: 'Note', required: false, displayName: 'Notes' },
+ +] as const;
+++=======
++  * ActivityDiary リスト用の動的 $select ビルダー
++  */
++ export function buildActivityDiarySelectFields(existingInternalNames?: readonly string[]): readonly string[] {
++   const baseMap: Record<string, string> = {};
++   for (const [key, candidates] of Object.entries(ACTIVITY_DIARY_CANDIDATES)) {
++     baseMap[key] = candidates[0];
++   }
++ 
++   return buildSelectFieldsFromMap(baseMap, existingInternalNames, {
++     alwaysInclude: ['Id', 'Created', 'Modified', 'Title'],
++     fallback: [
++       'Id',
++       'Title',
++       'UserID',
++       'Date',
++       'Shift',
++       'Category',
++       'LunchAmount',
++       'MealMain',
++       'MealSide',
++       'ProblemBehavior',
++       'BehaviorType',
++       'BehaviorNote',
++       'Seizure',
++       'SeizureAt',
++       'Goals',
++       'Notes',
++       'Created',
++       'Modified',
++     ],
++   });
++ }
+++>>>>>>> origin/main
+diff --cc src/sharepoint/fields/dailyFields.ts
+index ff94b141,189fe62a..00000000
+--- a/src/sharepoint/fields/dailyFields.ts
++++ b/src/sharepoint/fields/dailyFields.ts
+@@@ -146,12 -146,10 +146,16 @@@ export const DAILY_RECORD_ROW_AGGREGATE
+  } as const;
+  
+  export const DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS: (keyof typeof DAILY_RECORD_ROW_AGGREGATE_CANDIDATES)[] = [
+ -  'UserID', 'recordDate'
+ +  'userId', 'recordDate'
+  ];
+  
+++<<<<<<< HEAD
+ +// ──────────────────────────────────────────────────────────────
+ +export * from './activityDiaryFields';
+ +
+++=======
++ // ActivityDiary フィールド定義は activityDiaryFields.ts に移動しました。
+++>>>>>>> origin/main
+  
+  /**
+   * Canonical Daily Record リストのプロビジョニング定義
+diff --cc src/sharepoint/fields/diagnosticsFields.ts
+index 1397c4b5,59622762..00000000
+--- a/src/sharepoint/fields/diagnosticsFields.ts
++++ b/src/sharepoint/fields/diagnosticsFields.ts
+@@@ -58,19 -58,17 +58,36 @@@ export const DIAGNOSTICS_REPORTS_SELECT
+  ] as const;
+  
+  /**
+++<<<<<<< HEAD
+ + * 内部名の乖離（Drift）に対応するための候補リスト
+ + */
+ +export const DIAGNOSTICS_REPORTS_CANDIDATES = {
+ +  id:          ['Id', 'ID'],
+ +  title:       ['Title', 'title'],
+ +  overall:     ['Overall', 'overall', 'Status'],
+ +  topIssue:    ['TopIssue', 'Top_x0020_Issue', 'topIssue', 'Top_Issue'],
+ +  summaryText: ['SummaryText', 'Summary_x0020_Text', 'summaryText', 'Summary_Text', 'Summary'],
+ +  reportLink:  ['ReportLink', 'Report_x0020_Link', 'reportLink', 'Report_Link'],
+ +  notified:    ['Notified', 'notified'],
+ +  notifiedAt:  ['NotifiedAt', 'Notified_x0020_At', 'notifiedAt', 'Notified_At', 'RecordDate'],
+ +} as const;
+ +
+ +export const DIAGNOSTICS_REPORTS_ESSENTIALS: (keyof typeof DIAGNOSTICS_REPORTS_CANDIDATES)[] = [
+ +  'title', 'overall'
+ +];
+++=======
++  * ── DriftEventsLog (Drift Logging) ──────────────────────────
++  */
++ 
++ export const DRIFT_LOG_LIST_TITLE = 'DriftEventsLog' as const;
++ 
++ export const DRIFT_LOG_CANDIDATES = {
++   listName: ['ListName', 'NameOfList', 'ListTitle', 'ListName0'],
++   fieldName: ['FieldName', 'InternalName', 'ColumnName', 'FieldName0'],
++   detectedAt: ['DetectedAt', 'OccurredAt', 'Detected_At', 'DetectedAt0'],
++   severity: ['Severity', 'Level', 'Status', 'Severity0'],
++   resolutionType: ['ResolutionType', 'Resolution', 'Type', 'ResolutionType0'],
++   resolved: ['Resolved', 'IsResolved', 'Fixed', 'Resolved0'],
++   driftType: ['DriftType', 'Type', 'Category', 'DriftType0'],
++ } as const;
+++>>>>>>> origin/main
+diff --cc src/sharepoint/fields/index.ts
+index 28a7e6a4,42690e85..00000000
+--- a/src/sharepoint/fields/index.ts
++++ b/src/sharepoint/fields/index.ts
+@@@ -90,8 -95,11 +95,16 @@@ export 
+  
+  // ── Diagnostics_Reports ──
+  export {
+++<<<<<<< HEAD
+ +    DIAGNOSTICS_REPORTS_LIST_TITLE, DIAGNOSTICS_REPORTS_SELECT_FIELDS, FIELD_MAP_DIAGNOSTICS_REPORTS,
+ +    DIAGNOSTICS_REPORTS_CANDIDATES, DIAGNOSTICS_REPORTS_ESSENTIALS,
+++=======
++     DIAGNOSTICS_REPORTS_LIST_TITLE,
++     DIAGNOSTICS_REPORTS_SELECT_FIELDS,
++     FIELD_MAP_DIAGNOSTICS_REPORTS,
++     DRIFT_LOG_LIST_TITLE,
++     DRIFT_LOG_CANDIDATES,
+++>>>>>>> origin/main
+  } from './diagnosticsFields';
+  
+  // ── Iceberg ──
+diff --cc src/sharepoint/fields/monitoringMeetingFields.ts
+index 8613d699,d44ad59c..00000000
+--- a/src/sharepoint/fields/monitoringMeetingFields.ts
++++ b/src/sharepoint/fields/monitoringMeetingFields.ts
+@@@ -105,26 -116,28 +116,51 @@@ export type SpMonitoringMeetingRow = 
+   * 列解決候補 (Dynamic Schema Resolution 用)
+   */
+  export const MONITORING_MEETING_CANDIDATES = {
+++<<<<<<< HEAD
+ +  recordId:           [MONITORING_MEETING_FIELDS.recordId, 'RecordId', 'Record_x0020_Id', 'RecordId0', 'Title'],
+ +  userId:             [MONITORING_MEETING_FIELDS.userId, 'UserId', 'User_x0020_Id', 'UserId0', 'UserCode'],
+ +  ispId:              [MONITORING_MEETING_FIELDS.ispId, 'IspId', 'Isp_x0020_Id', 'IspId0'],
+ +  planningSheetId:    [MONITORING_MEETING_FIELDS.planningSheetId, 'PlanningSheetId', 'Planning_x0020_Sheet_x0020_Id', 'PlanningSheetId0'],
+ +  meetingType:        [MONITORING_MEETING_FIELDS.meetingType, 'MeetingType', 'Meeting_x0020_Type', 'MeetingType0'],
+ +  meetingDate:        [MONITORING_MEETING_FIELDS.meetingDate, 'MeetingDate', 'Meeting_x0020_Date', 'MeetingDate0'],
+ +  venue:              [MONITORING_MEETING_FIELDS.venue, 'Venue', 'Venue0'],
+ +  attendeesJson:      [MONITORING_MEETING_FIELDS.attendeesJson, 'AttendeesJson', 'Attendees_x0020_JSON', 'AttendeesJson0', 'Attendees'],
+ +  goalEvaluationsJson: [MONITORING_MEETING_FIELDS.goalEvaluationsJson, 'GoalEvaluationsJson', 'GoalEvaluations_x0020_JSON', 'GoalEvaluationsJson0', 'GoalEvaluations'],
+ +  overallAssessment:  [MONITORING_MEETING_FIELDS.overallAssessment, 'OverallAssessment', 'Overall_x0020_Assessment', 'OverallAssessment0'],
+ +  userFeedback:       [MONITORING_MEETING_FIELDS.userFeedback, 'UserFeedback', 'User_x0020_Feedback', 'UserFeedback0'],
+ +  familyFeedback:     [MONITORING_MEETING_FIELDS.familyFeedback, 'FamilyFeedback', 'Family_x0020_Feedback', 'FamilyFeedback0'],
+ +  planChangeDecision: [MONITORING_MEETING_FIELDS.planChangeDecision, 'PlanChangeDecision', 'Plan_x0020_Change_x0020_Decision', 'PlanChangeDecision0'],
+ +  changeReason:       [MONITORING_MEETING_FIELDS.changeReason, 'ChangeReason', 'Change_x0020_Reason', 'ChangeReason0'],
+ +  decisionsJson:      [MONITORING_MEETING_FIELDS.decisionsJson, 'DecisionsJson', 'Decisions_x0020_JSON', 'DecisionsJson0', 'Decisions'],
+ +  nextMonitoringDate: [MONITORING_MEETING_FIELDS.nextMonitoringDate, 'NextMonitoringDate', 'Next_x0020_Monitoring_x0020_Date', 'NextMonitoringDate0'],
+ +  recordedBy:         [MONITORING_MEETING_FIELDS.recordedBy, 'RecordedBy', 'Recorded_x0020_By', 'RecordedBy0'],
+ +  recordedAt:         [MONITORING_MEETING_FIELDS.recordedAt, 'RecordedAt', 'Recorded_x0020_At', 'RecordedAt0'],
+ +};
+++=======
++   recordId: [MONITORING_MEETING_FIELDS.recordId, 'RecordId', 'recordId', 'Record_x0020_Id', 'Title'],
++   userId: [MONITORING_MEETING_FIELDS.userId, 'UserId', 'UserID', 'UserCode', 'userId', 'User_x0020_Id', 'cr013_userId'],
++   ispId: [MONITORING_MEETING_FIELDS.ispId, 'IspId', 'ISPId', 'ispId'],
++   planningSheetId: [MONITORING_MEETING_FIELDS.planningSheetId, 'PlanningSheetId', 'planningSheetId'],
++   meetingType: [MONITORING_MEETING_FIELDS.meetingType, 'MeetingType', 'meetingType'],
++   meetingDate: [MONITORING_MEETING_FIELDS.meetingDate, 'MeetingDate', 'Meeting_x0020_Date', 'meetingDate', 'Date', 'RecordDate', 'cr013_date'],
++   venue: [MONITORING_MEETING_FIELDS.venue, 'Venue', 'venue'],
++   attendeesJson: [MONITORING_MEETING_FIELDS.attendeesJson, 'AttendeesJson', 'Attendees', 'attendeesJson'],
++   goalEvaluationsJson: [MONITORING_MEETING_FIELDS.goalEvaluationsJson, 'GoalEvaluationsJson', 'GoalEvaluations', 'goalEvaluationsJson'],
++   overallAssessment: [MONITORING_MEETING_FIELDS.overallAssessment, 'OverallAssessment', 'overallAssessment'],
++   userFeedback: [MONITORING_MEETING_FIELDS.userFeedback, 'UserFeedback', 'userFeedback'],
++   familyFeedback: [MONITORING_MEETING_FIELDS.familyFeedback, 'FamilyFeedback', 'familyFeedback'],
++   planChangeDecision: [MONITORING_MEETING_FIELDS.planChangeDecision, 'PlanChangeDecision', 'planChangeDecision'],
++   changeReason: [MONITORING_MEETING_FIELDS.changeReason, 'ChangeReason', 'changeReason'],
++   decisionsJson: [MONITORING_MEETING_FIELDS.decisionsJson, 'DecisionsJson', 'Decisions', 'decisionsJson'],
++   nextMonitoringDate: [MONITORING_MEETING_FIELDS.nextMonitoringDate, 'NextMonitoringDate', 'Next_x0020_Monitoring_x0020_Date', 'nextMonitoringDate'],
++   recordedBy: [MONITORING_MEETING_FIELDS.recordedBy, 'RecordedBy', 'recordedBy'],
++   recordedAt: [MONITORING_MEETING_FIELDS.recordedAt, 'RecordedAt', 'recordedAt'],
++ } as const;
++ 
++ export type MonitoringMeetingCandidateKey = keyof typeof MONITORING_MEETING_CANDIDATES;
++ export type MonitoringMeetingFieldMapping = Partial<Record<MonitoringMeetingCandidateKey, string>>;
+++>>>>>>> origin/main
+ +
+  
+  /**
+   * 必須フィールド — この3点が解決できない場合は FAIL。
+diff --cc src/sharepoint/fields/userFields.ts
+index 1f406966,b5b28c48..00000000
+--- a/src/sharepoint/fields/userFields.ts
++++ b/src/sharepoint/fields/userFields.ts
+@@@ -149,63 -186,35 +186,74 @@@ const CANDIDATE_COPAY_PAYMENT_METHOD = 
+   * 1番目の候補（基準名）以外は drift (WARN) と見なされる。
+   */
+  export const USERS_MASTER_CANDIDATES = {
+++<<<<<<< HEAD
+ +  userId: [
+ +    'UserID', 'UserCode', 'userId', 'cr013_userId', 'PersonID', 'Title'
+ +  ],
+ +  fullName: [
+ +    'FullName', 'Name', 'DisplayName', 'FullName0', 'cr013_fullName'
+ +  ],
+ +  furigana: [
+ +    'Furigana', 'Kana', 'FullNameFurigana', 'cr013_furigana'
+ +  ],
+ +  fullNameKana: [
+ +    'FullNameKana', 'FullName_Kana', 'cr013_fullNameKana'
+ +  ],
+ +  contractDate: [
+ +    'ContractDate', 'Contract_Date', 'cr013_contractDate'
+ +  ],
+ +  serviceStartDate: [
+ +    'ServiceStartDate', 'StartDate', 'cr013_serviceStartDate'
+ +  ],
+ +  serviceEndDate: [
+ +    'ServiceEndDate', 'EndDate', 'cr013_serviceEndDate', 'ServiceEndDate0'
+ +  ],
+ +  isHighIntensitySupportTarget: [
+ +    'IsHighIntensitySupportTarget', 'IntensityTarget', 'cr013_isHighIntensity'
+ +  ],
+ +  isSupportProcedureTarget: [
+ +    'IsSupportProcedureTarget', 'ProcedureTarget', 'cr013_isSupportProcedure'
+ +  ],
+ +  isActive: [
+ +    'IsActive', 'Active', 'IsEnabled', 'cr013_isActive'
+ +  ],
+ +  usageStatus: [
+ +    'UsageStatus', 'Status', 'Usage_Status', 'cr013_usageStatus'
+ +  ],
+ +  attendanceDays: [
+ +    'AttendanceDays', 'WorkDays', 'cr013_attendanceDays'
+ +  ],
+++=======
++   userId: CANDIDATE_USER_ID,
++   fullName: CANDIDATE_FULL_NAME,
++   furigana: CANDIDATE_FURIGANA,
++   fullNameKana: CANDIDATE_FULL_NAME_KANA,
++   contractDate: CANDIDATE_CONTRACT_DATE,
++   serviceStartDate: CANDIDATE_SERVICE_START_DATE,
++   serviceEndDate: CANDIDATE_SERVICE_END_DATE,
++   isHighIntensitySupportTarget: CANDIDATE_IS_HIGH_INTENSITY,
++   isSupportProcedureTarget: CANDIDATE_IS_SUPPORT_PROCEDURE,
++   isActive: CANDIDATE_IS_ACTIVE,
++   usageStatus: CANDIDATE_USAGE_STATUS,
++   attendanceDays: CANDIDATE_ATTENDANCE_DAYS,
+++>>>>>>> origin/main
+    // Accessory: Transport
+-   transportToDays: ['TransportToDays', 'cr013_transportToDays'],
+-   transportFromDays: ['TransportFromDays', 'cr013_transportFromDays'],
+-   transportCourse: ['TransportCourse', 'cr013_transportCourse'],
+-   transportSchedule: ['TransportSchedule', 'cr013_transportSchedule'],
+-   transportAdditionType: ['TransportAdditionType', 'cr013_transportAdditionType'],
++   transportToDays: CANDIDATE_TRANSPORT_TO_DAYS,
++   transportFromDays: CANDIDATE_TRANSPORT_FROM_DAYS,
++   transportCourse: CANDIDATE_TRANSPORT_COURSE,
++   transportSchedule: CANDIDATE_TRANSPORT_SCHEDULE,
++   transportAdditionType: CANDIDATE_TRANSPORT_ADDITION_TYPE,
+    // Accessory: Benefit
+-   recipientCertNumber: [
+-     'RecipientCertNumber', 'CertNumber', 'RecipientCert',
+-     'RecipientCertNo', 'BenefitCertNumber', 'RecipientCertificateNumber',
+-     'RecipientCertNumber0', 'cr013_recipientCertNumber',
+-   ],
+-   recipientCertExpiry: ['RecipientCertExpiry', 'CertExpiry', 'RecipientCertExpiry0', 'cr013_recipientCertExpiry'],
+-   grantMunicipality: ['GrantMunicipality', 'Municipality', 'GrantMunicipality0', 'cr013_grantMunicipality'],
+-   grantPeriodStart: ['GrantPeriodStart', 'PeriodStart', 'GrantPeriodStart0', 'cr013_grantPeriodStart'],
+-   grantPeriodEnd: ['GrantPeriodEnd', 'PeriodEnd', 'GrantPeriodEnd0', 'cr013_grantPeriodEnd'],
+-   disabilitySupportLevel: ['DisabilitySupportLevel', 'SupportLevel', 'DisabilitySupportLevel0', 'cr013_disabilitySupportLevel'],
+-   grantedDaysPerMonth: ['GrantedDaysPerMonth', 'DaysPerMonth', 'GrantedDaysPerMonth0', 'cr013_grantedDaysPerMonth'],
+-   userCopayLimit: ['UserCopayLimit', 'CopayLimit', 'UserCopayLimit0', 'cr013_userCopayLimit'],
+-   mealAddition: ['MealAddition', 'Meal', 'MealAddition0', 'cr013_mealAddition'],
+-   copayPaymentMethod: ['CopayPaymentMethod', 'PaymentMethod', 'CopayPaymentMethod0', 'cr013_copayPaymentMethod'],
++   recipientCertNumber: CANDIDATE_RECIPIENT_CERT_NUMBER,
++   recipientCertExpiry: CANDIDATE_RECIPIENT_CERT_EXPIRY,
++   grantMunicipality: CANDIDATE_GRANT_MUNICIPALITY,
++   grantPeriodStart: CANDIDATE_GRANT_PERIOD_START,
++   grantPeriodEnd: CANDIDATE_GRANT_PERIOD_END,
++   disabilitySupportLevel: CANDIDATE_DISABILITY_SUPPORT_LEVEL,
++   grantedDaysPerMonth: CANDIDATE_GRANTED_DAYS_PER_MONTH,
++   userCopayLimit: CANDIDATE_USER_COPAY_LIMIT,
++   mealAddition: CANDIDATE_MEAL_ADDITION,
++   copayPaymentMethod: CANDIDATE_COPAY_PAYMENT_METHOD,
+    // Compliance
+    lastAssessmentDate: [
+      'LastAssessmentDate', 'AssessmentDate', 'cr013_lastAssessmentDate'
+* Unmerged path PR_BODY.md
+diff --git a/conflicts.txt b/conflicts.txt
+index e69de29b..8da3f0cc 100644
+--- a/conflicts.txt
++++ b/conflicts.txt
+@@ -0,0 +1,14 @@
++PR_BODY.md
++src/features/attendance/infra/__tests__/DataProviderAttendanceRepository.spec.ts
++src/features/diagnostics/drift/infra/SharePointDriftEventRepository.ts
++src/features/diagnostics/health/HealthDiagnosisPage.tsx
++src/features/monitoring/data/DataProviderMonitoringMeetingRepository.ts
++src/lib/createRepositoryFactory.ts
++src/lib/sp/helpers.ts
++src/lib/sp/spDataProvider.ts
++src/sharepoint/fields/activityDiaryFields.ts
++src/sharepoint/fields/dailyFields.ts
++src/sharepoint/fields/diagnosticsFields.ts
++src/sharepoint/fields/index.ts
++src/sharepoint/fields/monitoringMeetingFields.ts
++src/sharepoint/fields/userFields.ts
+* Unmerged path src/features/monitoring/data/DataProviderMonitoringMeetingRepository.ts
