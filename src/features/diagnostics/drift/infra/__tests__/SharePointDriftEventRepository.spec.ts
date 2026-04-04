@@ -30,7 +30,8 @@ describe('SharePointDriftEventRepository', () => {
     const repo = new SharePointDriftEventRepository({
       createItem: vi.fn(async () => ({})),
       updateItemByTitle: vi.fn(async () => ({})),
-      getListItemsByTitle,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getListItemsByTitle: getListItemsByTitle as any,
       getSchema: vi.fn(async () => [
         'NameOfList',
         'InternalName',
@@ -50,7 +51,8 @@ describe('SharePointDriftEventRepository', () => {
     });
 
     expect(getListItemsByTitle).toHaveBeenCalledTimes(1);
-    const [listTitle, select, filter, orderby] = getListItemsByTitle.mock.calls[0];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [listTitle, select, filter, orderby] = (getListItemsByTitle as any).mock.calls[0];
     expect(listTitle).toBe('DriftEventsLog');
     expect(select).toEqual(
       expect.arrayContaining(['NameOfList', 'InternalName', 'OccurredAt', 'IsResolved']),

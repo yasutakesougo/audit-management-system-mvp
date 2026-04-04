@@ -1,15 +1,25 @@
 import { auditLog } from '@/lib/debugLogger';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
-import type { MeetingMinutes, MeetingCategory } from '../types';
+import type { MeetingMinutes, MeetingCategory, MeetingMinuteBlock } from '../types';
 import type { MeetingMinutesRepository, MinutesSearchParams, MeetingMinutesCreateDto, MeetingMinutesUpdateDto } from '../sp/repository';
 import { MeetingMinutesFields as F, MEETING_MINUTES_LIST_TITLE } from '../sp/sharepoint';
 import { buildEq, buildGe, buildLe, joinAnd } from '@/sharepoint/query/builders';
+import {
+  buildSummaryText,
+  buildDecisionsText,
+  buildActionsText,
+  buildFallbackBlocksFromLegacyFields,
+} from '../editor/blockMappers';
 
 /**
  * DataProviderMeetingMinutesRepository
  *
  * IDataProvider ベースの MeetingMinutesRepository 実装。
  * 職員会議記録の CRUD を担当する。
+ *
+ * Phase 1: contentBlocks を ContentBlocksJson として JSON 文字列で永続化し、
+ * 読み込み時に parse する。legacy データ（contentBlocksJson が欠損）の場合は
+ * summary/decisions/actions からブロックを再構成する。
  */
 export class DataProviderMeetingMinutesRepository implements MeetingMinutesRepository {
   private readonly provider: IDataProvider;
@@ -39,6 +49,7 @@ export class DataProviderMeetingMinutesRepository implements MeetingMinutesRepos
       F.attendees,
       F.staffAttendance,
       F.userHealthNotes,
+      F.contentBlocksJson,
     ];
 
     const filter = this.buildFilter(params);
@@ -94,6 +105,7 @@ export class DataProviderMeetingMinutesRepository implements MeetingMinutesRepos
       F.attendees,
       F.staffAttendance,
       F.userHealthNotes,
+      F.contentBlocksJson,
     ];
 
     try {
@@ -145,14 +157,35 @@ export class DataProviderMeetingMinutesRepository implements MeetingMinutesRepos
       }
     }
 
+    // ContentBlocks: JSON string → MeetingMinuteBlock[]
+    const rawContentBlocks = item[F.contentBlocksJson] as string | undefined;
+    let contentBlocks: MeetingMinuteBlock[] | undefined;
+    if (rawContentBlocks) {
+      try {
+        const parsed = JSON.parse(rawContentBlocks);
+        contentBlocks = Array.isArray(parsed) ? (parsed as MeetingMinuteBlock[]) : undefined;
+      } catch {
+        contentBlocks = undefined;
+      }
+    }
+
+    const summary = (item[F.summary] as string) ?? '';
+    const decisions = (item[F.decisions] as string) ?? '';
+    const actions = (item[F.actions] as string) ?? '';
+
+    // Legacy fallback: contentBlocks が存在しない場合は既存テキストからブロックを生成
+    if (!contentBlocks && (summary || decisions || actions)) {
+      contentBlocks = buildFallbackBlocksFromLegacyFields({ summary, decisions, actions });
+    }
+
     return {
       id: Number.isFinite(id) ? id : 0,
       title: (item[F.title] as string) ?? '',
       meetingDate: meetingDate?.slice(0, 10) ?? '',
       category: (category ?? '職員会議') as MeetingCategory,
-      summary: (item[F.summary] as string) ?? '',
-      decisions: (item[F.decisions] as string) ?? '',
-      actions: (item[F.actions] as string) ?? '',
+      summary,
+      decisions,
+      actions,
       tags: (item[F.tags] as string) ?? '',
       relatedLinks: (item[F.relatedLinks] as string) ?? '',
       isPublished: !!item[F.isPublished],
@@ -161,6 +194,7 @@ export class DataProviderMeetingMinutesRepository implements MeetingMinutesRepos
       attendees,
       staffAttendance: (item[F.staffAttendance] as string) ?? '',
       userHealthNotes: (item[F.userHealthNotes] as string) ?? '',
+      contentBlocks,
       created: typeof item[F.created] === 'string' ? (item[F.created] as string) : undefined,
       modified: typeof item[F.modified] === 'string' ? (item[F.modified] as string) : undefined,
     };
@@ -200,6 +234,27 @@ export class DataProviderMeetingMinutesRepository implements MeetingMinutesRepos
 
     if (patch.attendees !== undefined) {
       body[F.attendees] = JSON.stringify(patch.attendees);
+    }
+
+    // ── contentBlocks の永続化 ──
+    if (patch.contentBlocks !== undefined) {
+      const blocks = patch.contentBlocks;
+
+      // JSON文字列としてSharePointに保存
+      body[F.contentBlocksJson] = JSON.stringify(blocks);
+
+      // ブロックから legacy テキストフィールドを再生成
+      // （handoff連携、一覧検索、旧クライアント互換のため）
+      if (blocks.length > 0) {
+        const summaryFromBlocks = buildSummaryText(blocks);
+        const decisionsFromBlocks = buildDecisionsText(blocks);
+        const actionsFromBlocks = buildActionsText(blocks);
+
+        // ブロックからテキストが抽出できた場合のみ legacy を上書き
+        if (summaryFromBlocks) body[F.summary] = summaryFromBlocks;
+        if (decisionsFromBlocks) body[F.decisions] = decisionsFromBlocks;
+        if (actionsFromBlocks) body[F.actions] = actionsFromBlocks;
+      }
     }
 
     return body;
