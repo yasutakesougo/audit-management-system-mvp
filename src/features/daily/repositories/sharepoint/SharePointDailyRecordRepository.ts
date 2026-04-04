@@ -48,8 +48,8 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
     this.listTitle = options.listTitle ?? getListTitle();
 
     this.schema = new DailyRecordSchemaResolver(this.spFetch, this.listTitle);
-    this.data = new DailyRecordDataAccess(this.spFetch);
-    this.saver = new DailyRecordSaver(this.spFetch);
+    this.data = new DailyRecordDataAccess(this.spFetch, this.schema);
+    this.saver = new DailyRecordSaver(this.spFetch, this.schema);
     this.integrity = new DailyRecordIntegrityScanner(this.spFetch);
     this.rowAggregate = new RowAggregateAccess(this.spFetch);
   }

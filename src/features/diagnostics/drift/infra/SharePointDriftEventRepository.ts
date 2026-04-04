@@ -11,7 +11,7 @@ export interface ISpOperations {
   createItem: (listTitle: string, payload: Record<string, unknown>) => Promise<unknown>;
   updateItemByTitle: (listTitle: string, id: number, payload: Record<string, unknown>) => Promise<unknown>;
   getListItemsByTitle: <T>(listTitle: string, select?: string[], filter?: string, orderby?: string, top?: number) => Promise<T[]>;
-  getListFieldInternalNames: (listTitle: string) => Promise<string[]>;
+  getListFieldInternalNames: (listTitle: string) => Promise<Set<string>>;
 }
 
 /**

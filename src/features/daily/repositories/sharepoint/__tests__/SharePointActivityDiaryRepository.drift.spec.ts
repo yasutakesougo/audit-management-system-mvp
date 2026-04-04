@@ -2,20 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SharePointActivityDiaryRepository } from '../SharePointActivityDiaryRepository';
 import { ACTIVITY_DIARY_CANDIDATES } from '@/sharepoint/fields/activityDiaryFields';
 import { auditLog } from '@/lib/debugLogger';
+import { createDriftMock } from '@/test-utils/sp/createDriftMock';
 
 describe('SharePointActivityDiaryRepository (Drift Immunity)', () => {
-    const mockSpFetch = vi.fn();
-    const mockSpClient = {
-        spFetch: mockSpFetch,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any;
-
-    let repo: SharePointActivityDiaryRepository;
-
     beforeEach(() => {
         vi.clearAllMocks();
-        repo = new SharePointActivityDiaryRepository({ sp: mockSpClient });
-        
         // Mock auditLog to avoid noise in tests
         vi.spyOn(auditLog, 'info').mockImplementation(() => {});
         vi.spyOn(auditLog, 'warn').mockImplementation(() => {});
@@ -23,35 +14,21 @@ describe('SharePointActivityDiaryRepository (Drift Immunity)', () => {
     });
 
     it('should resolve schema drift (suffix) and save successfully', async () => {
-        // 1. Mock list discovery
-        mockSpFetch.mockResolvedValueOnce({
-            ok: true,
-            json: async () => ({ value: [{ Title: 'ActivityDiary' }] })
+        const mockSpFetch = createDriftMock({
+            listTitle: 'ActivityDiary',
+            fields: [
+                { InternalName: 'Id' },
+                { InternalName: 'UserID' },
+                { InternalName: 'Date0' },      // Drifted
+                { InternalName: 'Shift0' },     // Drifted
+                { InternalName: 'Category' },
+                { InternalName: 'Notes0' },     // Drifted
+            ],
+            saveResponse: { Id: 123 },
         });
 
-        // 2. Mock field discovery (probe) with drifting names
-        const driftingFieldsResponse = {
-            ok: true,
-            json: async () => ({
-                value: [
-                    { InternalName: 'Id' },
-                    { InternalName: 'UserID' },
-                    { InternalName: 'Date0' },
-                    { InternalName: 'Shift0' },
-                    { InternalName: 'Category' },
-                    { InternalName: 'Notes0' },
-                ]
-            })
-        };
-        // probe + getResolvedCanonicalNames both call fields
-        mockSpFetch.mockResolvedValueOnce(driftingFieldsResponse);
-        mockSpFetch.mockResolvedValueOnce(driftingFieldsResponse);
-
-        // 3. Mock POST response
-        mockSpFetch.mockResolvedValueOnce({
-            ok: true,
-            json: async () => ({ Id: 123 })
-        });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const repo = new SharePointActivityDiaryRepository({ sp: { spFetch: mockSpFetch } as any });
 
         const upsert = {
             userId: 'user123',
@@ -65,7 +42,7 @@ describe('SharePointActivityDiaryRepository (Drift Immunity)', () => {
 
         // Verify the payload used the DRIFTING names
         const lastCall = mockSpFetch.mock.calls.find(call => call[1]?.method === 'POST');
-        const payload = JSON.parse(lastCall[1].body);
+        const payload = JSON.parse(lastCall![1]!.body as string);
 
         expect(payload).toHaveProperty('UserID', 'user123');
         expect(payload).toHaveProperty('Date0', '2024-04-04');
@@ -80,35 +57,21 @@ describe('SharePointActivityDiaryRepository (Drift Immunity)', () => {
     });
 
     it('should fail-open (skip) when optional fields are missing', async () => {
-        // 1. Mock list discovery
-        mockSpFetch.mockResolvedValueOnce({
-            ok: true,
-            json: async () => ({ value: [{ Title: 'ActivityDiary' }] })
+        const mockSpFetch = createDriftMock({
+            listTitle: 'ActivityDiary',
+            fields: [
+                { InternalName: 'Id' },
+                { InternalName: 'UserID' },
+                { InternalName: 'Date' },
+                { InternalName: 'Shift' },
+                { InternalName: 'Category' },
+                // Notes is missing!
+            ],
+            saveResponse: { Id: 124 },
         });
 
-        // 2. Mock field discovery missing optional 'notes'
-        const missingNotesResponse = {
-            ok: true,
-            json: async () => ({
-                value: [
-                    { InternalName: 'Id' },
-                    { InternalName: 'UserID' },
-                    { InternalName: 'Date' },
-                    { InternalName: 'Shift' },
-                    { InternalName: 'Category' },
-                    // Notes is missing!
-                ]
-            })
-        };
-        // probe + getResolvedCanonicalNames both call fields
-        mockSpFetch.mockResolvedValueOnce(missingNotesResponse);
-        mockSpFetch.mockResolvedValueOnce(missingNotesResponse);
-
-        // 3. Mock POST response
-        mockSpFetch.mockResolvedValueOnce({
-            ok: true,
-            json: async () => ({ Id: 124 })
-        });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const repo = new SharePointActivityDiaryRepository({ sp: { spFetch: mockSpFetch } as any });
 
         const upsert = {
             userId: 'user123',
@@ -121,7 +84,7 @@ describe('SharePointActivityDiaryRepository (Drift Immunity)', () => {
         await repo.add(upsert);
 
         const lastCall = mockSpFetch.mock.calls.find(call => call[1]?.method === 'POST');
-        const payload = JSON.parse(lastCall[1].body);
+        const payload = JSON.parse(lastCall![1]!.body as string);
 
         // Essential fields should be there
         expect(payload).toHaveProperty('UserID');
@@ -139,23 +102,18 @@ describe('SharePointActivityDiaryRepository (Drift Immunity)', () => {
     });
 
     it('should throw error when essential fields are missing', async () => {
-        // 1. Mock list discovery
-        mockSpFetch.mockResolvedValueOnce({
-            ok: true,
-            json: async () => ({ value: [{ Title: 'ActivityDiary' }] })
+        const mockSpFetch = createDriftMock({
+            listTitle: 'ActivityDiary',
+            fields: [
+                { InternalName: 'Date' },
+                { InternalName: 'Shift' },
+                { InternalName: 'Category' },
+                // userId is missing!
+            ],
         });
 
-        // 2. Mock field discovery missing essential 'userId' (probe fails → no match)
-        mockSpFetch.mockResolvedValueOnce({
-            ok: true,
-            json: async () => ({
-                value: [
-                    { InternalName: 'Date' },
-                    { InternalName: 'Shift' },
-                    { InternalName: 'Category' },
-                ]
-            })
-        });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const repo = new SharePointActivityDiaryRepository({ sp: { spFetch: mockSpFetch } as any });
 
         const upsert = {
             userId: 'user123',

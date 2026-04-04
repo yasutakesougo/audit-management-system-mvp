@@ -62,6 +62,7 @@ export interface RawSharePointItem {
   __metadata?: {
     etag?: string;
   };
+  [key: string]: unknown; // Allow dynamic field access
 }
 
 /**

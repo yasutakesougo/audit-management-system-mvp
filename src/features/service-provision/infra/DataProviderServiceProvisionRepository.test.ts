@@ -45,6 +45,7 @@ describe('DataProviderServiceProvisionRepository', () => {
       deleteItem: vi.fn(),
       getMetadata: vi.fn(),
       getFieldInternalNames: vi.fn(),
+      getFieldDetails: vi.fn(),
       ensureListExists: vi.fn(),
       seed: vi.fn(),
     } as Mocked<IDataProvider>;

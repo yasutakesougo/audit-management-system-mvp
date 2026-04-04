@@ -168,7 +168,7 @@ export const USERS_MASTER_CANDIDATES = {
     'ServiceStartDate', 'StartDate', 'cr013_serviceStartDate'
   ],
   serviceEndDate: [
-    'ServiceEndDate', 'EndDate', 'cr013_serviceEndDate'
+    'ServiceEndDate', 'EndDate', 'cr013_serviceEndDate', 'ServiceEndDate0'
   ],
   isHighIntensitySupportTarget: [
     'IsHighIntensitySupportTarget', 'IntensityTarget', 'cr013_isHighIntensity'
@@ -229,6 +229,7 @@ export const USERS_MASTER_ESSENTIALS: (keyof typeof USERS_MASTER_CANDIDATES)[] =
   'fullName',
   'isActive',
   'usageStatus',
+  'serviceEndDate',
 ];
 
 

@@ -425,6 +425,7 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
                    </Stack>
                  } 
                />
+               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                {(Object.entries(report.byCategory) as [string, any][]).map(([cat, v]) => (
                  <Tab 
                    key={cat} 
