@@ -11,10 +11,10 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      VITE_SP_ENABLED: ${{ secrets.VITE_SP_ENABLED }}
-      VITE_APP_ENV: ${{ secrets.VITE_APP_ENV }}
-      VITE_MSAL_CLIENT_ID: ${{ secrets.VITE_MSAL_CLIENT_ID }}
-      VITE_MSAL_TENANT_ID: ${{ secrets.VITE_MSAL_TENANT_ID }}
+      VITE_SP_ENABLED: '1'
+      VITE_APP_ENV: 'production'
+      VITE_MSAL_CLIENT_ID: ${{ secrets.VITE_MSAL_CLIENT_ID != '' && secrets.VITE_MSAL_CLIENT_ID || secrets.AAD_APP_ID }}
+      VITE_MSAL_TENANT_ID: ${{ secrets.VITE_MSAL_TENANT_ID != '' && secrets.VITE_MSAL_TENANT_ID || secrets.AAD_TENANT_ID }}
 
     steps:
       - name: Checkout
