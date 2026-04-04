@@ -62,6 +62,12 @@ export interface IDataProvider {
    * メタデータ（GUID 解決後の情報など）の取得 
    */
   getMetadata(resourceName: string): Promise<Record<string, unknown>>;
+
+  /**
+   * 利用可能なリソース（リスト/テーブル）名を列挙する。
+   * Dynamic Schema Resolution の catalog 解決に使用する。
+   */
+  getResourceNames(): Promise<string[]>;
   
   /**
    * フィールド（列）の内部名一覧を取得（Dynamic Schema Resolution 用）

@@ -6,6 +6,7 @@
  * @see /docs/monitoring-meetings-sp-schema.md (設計書)
  * @see src/domain/isp/monitoringMeeting.ts (Domain 型)
  */
+import { buildSelectFieldsFromMap } from './fieldUtils';
 
 // ---------------------------------------------------------------------------
 // Field Map
@@ -57,6 +58,16 @@ export const MONITORING_MEETING_SELECT = [
   'Title',
   ...Object.values(MONITORING_MEETING_FIELDS),
 ] as const;
+
+/**
+ * MonitoringMeetings リスト用の動的 $select ビルダー
+ */
+export function buildMonitoringMeetingSelectFields(existingInternalNames?: readonly string[]): readonly string[] {
+  return buildSelectFieldsFromMap(MONITORING_MEETING_FIELDS, existingInternalNames, {
+    alwaysInclude: ['Id', 'Title'],
+    fallback: [...MONITORING_MEETING_SELECT],
+  });
+}
 
 // ---------------------------------------------------------------------------
 // SP Row 型（REST API レスポンス）
@@ -123,7 +134,10 @@ export const MONITORING_MEETING_CANDIDATES = {
   nextMonitoringDate: [MONITORING_MEETING_FIELDS.nextMonitoringDate, 'NextMonitoringDate'],
   recordedBy: [MONITORING_MEETING_FIELDS.recordedBy, 'RecordedBy'],
   recordedAt: [MONITORING_MEETING_FIELDS.recordedAt, 'RecordedAt'],
-};
+} as const;
+
+export type MonitoringMeetingCandidateKey = keyof typeof MONITORING_MEETING_CANDIDATES;
+export type MonitoringMeetingFieldMapping = Partial<Record<MonitoringMeetingCandidateKey, string>>;
 
 /**
  * 必須フィールド — この3点が解決できない場合は FAIL。
@@ -140,6 +154,13 @@ export const MONITORING_MEETING_ESSENTIALS: (keyof typeof MONITORING_MEETING_CAN
   'userId',
   'meetingDate',
 ];
+
+/**
+ * optional フィールドキー一覧（診断/警告用途）
+ */
+export const MONITORING_MEETING_OPTIONALS: MonitoringMeetingCandidateKey[] =
+  (Object.keys(MONITORING_MEETING_CANDIDATES) as MonitoringMeetingCandidateKey[])
+    .filter((key) => !MONITORING_MEETING_ESSENTIALS.includes(key));
 
 /**
  * 自己修復 (Self-Healing) 用の列定義

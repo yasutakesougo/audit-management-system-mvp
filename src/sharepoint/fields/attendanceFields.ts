@@ -5,6 +5,83 @@
  */
 
 // ──────────────────────────────────────────────────────────────
+// Attendance parent (SharePoint list: Daily_Attendance)
+// ──────────────────────────────────────────────────────────────
+
+export const ATTENDANCE_LIST_TITLE = 'Daily_Attendance' as const;
+
+/**
+ * Daily_Attendance フィールド候補マップ (SSOT / Drift Resistance)
+ *
+ * read / write / diagnostics 共通で参照する候補定義。
+ */
+export const ATTENDANCE_CANDIDATES = {
+  userId: [
+    'UserID',
+    'UserId',
+    'userId',
+    'User',
+    'User_x0020_Id',
+    'UserCode',
+    'UserIdId',
+    'cr013_userId',
+  ],
+  attendanceDate: [
+    'Date',
+    'AttendanceDate',
+    'Attendance_x0020_Date',
+    'AttendanceDate0',
+    'RecordDate',
+    'EntryDate',
+    'cr013_date',
+  ],
+  status: [
+    'Status',
+    'AttendanceStatus',
+    'UsageStatus',
+    'Status0',
+    'cr013_status',
+  ],
+  checkInTime: [
+    'CheckInTime',
+    'CheckInAt',
+    'StartTime',
+    'CheckIn_x0020_Time',
+    'CheckInTime0',
+  ],
+  checkOutTime: [
+    'CheckOutTime',
+    'CheckOutAt',
+    'EndTime',
+    'CheckOut_x0020_Time',
+    'CheckOutTime0',
+  ],
+  isTrial: [
+    'IsTrial',
+    'Trial',
+    'Is_x0020_Trial',
+    'IsTrial0',
+    'cr013_isTrial',
+  ],
+  notes: [
+    'Notes',
+    'Note',
+    'Memo',
+    'Notes0',
+    'cr013_notes',
+  ],
+} as const;
+
+export const ATTENDANCE_ESSENTIALS: (keyof typeof ATTENDANCE_CANDIDATES)[] = [
+  'userId',
+  'attendanceDate',
+  'status',
+];
+
+export type AttendanceCandidateKey = keyof typeof ATTENDANCE_CANDIDATES;
+export type AttendanceFieldMapping = Partial<Record<AttendanceCandidateKey, string>>;
+
+// ──────────────────────────────────────────────────────────────
 // Staff attendance (SharePoint list: Staff_Attendance)
 // ──────────────────────────────────────────────────────────────
 
@@ -110,13 +187,13 @@ export const ATTENDANCE_USERS_SELECT_FIELDS = [
  * AttendanceUsers フィールド候補
  */
 export const ATTENDANCE_USERS_CANDIDATES = {
-  userCode: ['UserCode', 'UserID', 'userId', 'cr013_userCode', 'Title'],
-  title: ['Title', 'FullName', 'DisplayName', 'cr013_fullName'],
+  userCode: ['UserCode', 'UserID', 'UserId', 'userId', 'User_x0020_Id', 'UserIdId', 'cr013_userCode', 'Title'],
+  title: ['Title', 'FullName', 'DisplayName', 'UserName', 'Full_x0020_Name', 'cr013_fullName'],
   isTransportTarget: ['IsTransportTarget', 'TransportTarget', 'cr013_isTransportTarget'],
   standardMinutes: ['StandardMinutes', 'StdMinutes', 'cr013_standardMinutes'],
-  isActive: ['IsActive', 'Active', 'cr013_isActive'],
-  serviceEndDate: ['ServiceEndDate', 'EndDate', 'cr013_serviceEndDate'],
-  usageStatus: ['UsageStatus', 'Status', 'cr013_usageStatus'],
+  isActive: ['IsActive', 'Active', 'Is_x0020_Active', 'IsActive0', 'cr013_isActive'],
+  serviceEndDate: ['ServiceEndDate', 'EndDate', 'Service_x0020_End_x0020_Date', 'ServiceEndDate0', 'cr013_serviceEndDate'],
+  usageStatus: ['UsageStatus', 'Status', 'Usage_x0020_Status', 'Status0', 'cr013_usageStatus'],
   attendanceDays: ['AttendanceDays', 'WorkDays', 'cr013_attendanceDays'],
   defaultTransportToMethod: ['DefaultTransportToMethod', 'cr013_defTransTo'],
   defaultTransportFromMethod: ['DefaultTransportFromMethod', 'cr013_defTransFrom'],
@@ -125,8 +202,11 @@ export const ATTENDANCE_USERS_CANDIDATES = {
 } as const;
 
 export const ATTENDANCE_USERS_ESSENTIALS: (keyof typeof ATTENDANCE_USERS_CANDIDATES)[] = [
-  'userCode', 'isActive'
+  'userCode', 'title'
 ];
+
+export type AttendanceUsersCandidateKey = keyof typeof ATTENDANCE_USERS_CANDIDATES;
+export type AttendanceUsersFieldMapping = Partial<Record<AttendanceUsersCandidateKey, string>>;
 
 // ──────────────────────────────────────────────────────────────
 // User Attendance Daily (SharePoint list: AttendanceDaily)
@@ -202,12 +282,12 @@ import type { SpFieldDef } from '@/lib/sp/types';
  * AttendanceDaily フィールド候補 (環境差異吸収用)
  */
 export const ATTENDANCE_DAILY_CANDIDATES = {
-  key: ['Title', 'Key', 'key', 'cr013_key'],
-  userCode: ['UserCode', 'UserID', 'userId', 'cr013_userCode', 'cr013_personId'],
-  recordDate: ['RecordDate', 'Date', 'cr013_recordDate'],
-  status: ['Status', 'AttendanceStatus', 'cr013_status'],
-  checkInAt: ['CheckInAt', 'CheckIn', 'cr013_checkInAt'],
-  checkOutAt: ['CheckOutAt', 'CheckOut', 'cr013_checkOutAt'],
+  key: ['Title', 'Key', 'key', 'AttendanceKey', 'Attendance_x0020_Key', 'Key0', 'cr013_key'],
+  userCode: ['UserCode', 'UserID', 'UserId', 'userId', 'User_x0020_Id', 'UserIdId', 'cr013_userCode', 'cr013_personId'],
+  recordDate: ['RecordDate', 'AttendanceDate', 'Attendance_x0020_Date', 'AttendanceDate0', 'Date', 'EntryDate', 'RecordDate0', 'cr013_recordDate'],
+  status: ['Status', 'AttendanceStatus', 'UsageStatus', 'Status0', 'cr013_status'],
+  checkInAt: ['CheckInAt', 'CheckInTime', 'StartTime', 'CheckIn_x0020_Time', 'CheckInAt0', 'CheckIn', 'cr013_checkInAt'],
+  checkOutAt: ['CheckOutAt', 'CheckOutTime', 'EndTime', 'CheckOut_x0020_Time', 'CheckOutAt0', 'CheckOut', 'cr013_checkOutAt'],
   cntAttendIn: ['CntAttendIn', 'cr013_cntAttendIn'],
   cntAttendOut: ['CntAttendOut', 'cr013_cntAttendOut'],
   transportTo: ['TransportTo', 'cr013_transportTo'],
@@ -237,6 +317,9 @@ export const ATTENDANCE_DAILY_ESSENTIALS: (keyof typeof ATTENDANCE_DAILY_CANDIDA
   'recordDate',
   'status',
 ];
+
+export type AttendanceDailyCandidateKey = keyof typeof ATTENDANCE_DAILY_CANDIDATES;
+export type AttendanceDailyFieldMapping = Partial<Record<AttendanceDailyCandidateKey, string>>;
 
 /**
  * AttendanceDaily プロビジョニング用定義 (ensureListExists 用)
