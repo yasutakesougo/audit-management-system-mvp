@@ -5,7 +5,6 @@ import { ACTIVITY_DIARY_CANDIDATES } from '@/sharepoint/fields/activityDiaryFiel
  * SharePoint field names for ActivityDiary
  */
 export const AD_FIELDS = {
-  title:           ACTIVITY_DIARY_CANDIDATES.title[0],
   userId:          ACTIVITY_DIARY_CANDIDATES.userId[0],
   date:            ACTIVITY_DIARY_CANDIDATES.date[0],
   shift:           ACTIVITY_DIARY_CANDIDATES.shift[0],

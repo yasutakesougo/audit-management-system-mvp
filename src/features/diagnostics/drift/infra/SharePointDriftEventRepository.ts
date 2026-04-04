@@ -2,6 +2,7 @@ import { DriftEvent, DriftResolutionType, DriftType, getDriftEventDedupeKey } fr
 import { IDriftEventRepository } from '../domain/DriftEventRepository';
 import { findListEntry } from '@/sharepoint/spListRegistry';
 import { buildDateTime, buildEq, buildGe, joinAnd } from '@/sharepoint/query/builders';
+import { DRIFT_LOG_CANDIDATES } from '@/sharepoint/fields/diagnosticsFields';
 import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 import { auditLog } from '@/lib/debugLogger';
 
@@ -12,23 +13,7 @@ export interface ISpOperations {
   createItem: (listTitle: string, payload: Record<string, unknown>) => Promise<unknown>;
   updateItemByTitle: (listTitle: string, id: number, payload: Record<string, unknown>) => Promise<unknown>;
   getListItemsByTitle: <T>(listTitle: string, select?: string[], filter?: string, orderby?: string, top?: number) => Promise<T[]>;
-  getListFieldInternalNames: (listTitle: string) => Promise<Set<string>>;
 }
-
-/**
- * 各環境間の物理列名差異を吸収するための候補定義
- */
-export const DRIFT_LOG_CANDIDATES = {
-  id: ['Id', 'ID'],
-  title: ['Title', 'title'],
-  listName: ['ListName', 'List_x0020_Name', 'listName', 'List_Name'],
-  fieldName: ['FieldName', 'Field_x0020_Name', 'fieldName', 'Field_Name'],
-  detectedAt: ['DetectedAt', 'Detected_x0020_At', 'detectedAt', 'Detected_At'],
-  severity: ['Severity', 'Severity0', 'DriftSeverity', 'Severity_x0020_Level', 'severity'],
-  resolutionType: ['ResolutionType', 'Resolution_x0020_Type', 'resolutionType', 'ResolutionType0'],
-  driftType: ['DriftType', 'driftType', 'DriftType0'],
-  resolved: ['Resolved', 'resolved', 'IsResolved', 'Resolved0'],
-} as const;
 
 /**
  * SharePointDriftEventRepository — SharePoint リストを使用したドリフト履歴リポジトリ
@@ -38,11 +23,6 @@ export const DRIFT_LOG_CANDIDATES = {
 export class SharePointDriftEventRepository implements IDriftEventRepository {
   /** 同一セッション内での重複ログ抑制用のキャッシュ ( dedupeKey -> 1 ) */
   private sessionCache = new Set<string>();
-  
-  /** 連続エラーによる記録停止フラグとカウンタ */
-  private errorCount = 0;
-  private circuitOpenUntil = 0;
-  private resolvedFieldsByList = new Map<string, Record<string, string | undefined>>();
 
   /** 本番リストで使用されている物理内部名のキャッシュ */
   private resolvedFields: Record<string, string | undefined> = {};
@@ -102,68 +82,40 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
     return this.initializationPromise;
   }
 
-  private async resolveFields(listTitle: string): Promise<Record<string, string | undefined> | null> {
-    const cached = this.resolvedFieldsByList.get(listTitle);
-    if (cached) return cached;
-
-    try {
-      const raw = await this.spClient.getListFieldInternalNames(listTitle);
-      const { resolved } = resolveInternalNamesDetailed(
-        new Set(raw),
-        DRIFT_LOG_CANDIDATES as unknown as Record<string, string[]>
-      );
-      const result = resolved as Record<string, string | undefined>;
-      this.resolvedFieldsByList.set(listTitle, result);
-      return result;
-    } catch {
-      return null;
-    }
-  }
-
   async logEvent(event: DriftEvent): Promise<void> {
     const dedupeKey = getDriftEventDedupeKey(event);
 
-    if (this.sessionCache.has(dedupeKey)) return;
-    if (this.circuitOpenUntil > Date.now()) return;
-    
+    // 1. 同一セッション内で本日既に記録済みであればスキップ
+    if (this.sessionCache.has(dedupeKey)) {
+      return;
+    }
+
     try {
       const entry = findListEntry('drift_events_log');
-      if (!entry) return;
-
-      const listTitle = entry.resolve();
-      const fields = await this.resolveFields(listTitle);
-      if (!fields) {
-        console.warn('DriftEventRepository: Could not resolve fields for DriftEventsLog. Fail-Open.');
+      if (!entry) {
+        console.warn('DriftEventRepository: drift_events_log list not found in registry.');
         return;
       }
 
-      // 動的に解決されたフィールド名のみを使用してペイロードを構築
-      // 解決できなかったフィールドは含めないことで、400 Bad Request を回避する
-      const payload: Record<string, unknown> = {};
+      const listTitle = entry.resolve();
+      await this.initializeResolvedFields(listTitle);
 
-      if (fields.title) {
-        payload[fields.title] = `${event.listName}:${event.fieldName}`;
-      } else {
-        // Title はリストの基本列なので、解決できなくても Title を試みる
-        payload['Title'] = `${event.listName}:${event.fieldName}`;
-      }
-
-      if (fields.detectedAt) payload[fields.detectedAt] = event.detectedAt;
-      if (fields.severity) payload[fields.severity] = event.severity;
-      if (fields.resolutionType) payload[fields.resolutionType] = event.resolutionType;
-      if (fields.driftType) payload[fields.driftType] = event.driftType || 'unknown';
-      if (fields.resolved !== undefined) payload[fields.resolved] = event.resolved;
-      if (event.listName && fields.listName) payload[fields.listName] = event.listName;
-      if (event.fieldName && fields.fieldName) payload[fields.fieldName] = event.fieldName;
+      const payload: Record<string, unknown> = {
+        Title: `${event.listName}:${event.fieldName}`,
+        [this.rf('listName')]: event.listName,
+        [this.rf('fieldName')]: event.fieldName,
+        [this.rf('detectedAt')]: event.detectedAt,
+        [this.rf('severity')]: event.severity,
+        [this.rf('resolutionType')]: event.resolutionType,
+        [this.rf('driftType')]: event.driftType || 'unknown',
+        [this.rf('resolved')]: event.resolved
+      };
 
       await this.spClient.createItem(listTitle, payload);
-      this.errorCount = 0;
+
       this.sessionCache.add(dedupeKey);
     } catch (err) {
-      this.errorCount++;
-      if (this.errorCount >= 5) {
-        this.circuitOpenUntil = Date.now() + 5 * 60 * 1000;
-      }
+      // ✅ Fail-Open: 書き込み失敗は、システム全体の業務に影響を与えないよう握りつぶす。
       auditLog.error('diagnostics:drift', 'DriftEventRepository failed to log drift event (fail-open).', err);
     }
   }
@@ -178,32 +130,55 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       if (!entry) return [];
 
       const listTitle = entry.resolve();
-      const fields = await this.resolveFields(listTitle);
-      if (!fields) return [];
+      await this.initializeResolvedFields(listTitle);
       
+      // クエリビルド
       const filters: string[] = [];
-      if (filter?.listName && fields.listName) {
-        filters.push(buildEq(fields.listName, filter.listName));
+      const listNameField = this.rf('listName');
+      const resolvedField = this.rf('resolved');
+      const detectedAtField = this.rf('detectedAt');
+
+      if (filter?.listName) {
+        filters.push(buildEq(listNameField, filter.listName));
       }
-      if (filter?.resolved !== undefined && fields.resolved) {
-        filters.push(buildEq(fields.resolved, filter.resolved));
+      if (filter?.resolved !== undefined) {
+        filters.push(buildEq(resolvedField, filter.resolved));
       }
-      if (filter?.since && fields.detectedAt) {
-        filters.push(buildGe(fields.detectedAt, buildDateTime(filter.since)));
+      if (filter?.since) {
+        filters.push(buildGe(detectedAtField, buildDateTime(filter.since)));
       }
 
-      const select = Object.values(fields).filter((v): v is string => !!v);
-      const items = await this.spClient.getListItemsByTitle<Record<string, unknown>>(listTitle, select, joinAnd(filters) || undefined, `${fields.detectedAt || 'DetectedAt'} desc`, 100);
+      const select = Array.from(
+        new Set([
+          'Id',
+          'ID',
+          this.rf('listName'),
+          this.rf('fieldName'),
+          this.rf('detectedAt'),
+          this.rf('severity'),
+          this.rf('resolutionType'),
+          this.rf('driftType'),
+          this.rf('resolved'),
+        ]),
+      );
+
+      const items = await this.spClient.getListItemsByTitle<Record<string, unknown>>(
+        listTitle,
+        select,
+        joinAnd(filters) || undefined,
+        `${detectedAtField} desc`,
+        100,
+      );
 
       return items.map(item => ({
-        id: String(item[fields.id || 'Id'] || item.ID || item.Id),
-        listName: String(item[fields.listName || 'ListName'] || ''),
-        fieldName: String(item[fields.fieldName || 'FieldName'] || ''),
-        detectedAt: String(item[fields.detectedAt || 'DetectedAt'] || ''),
-        severity: (item[fields.severity || 'Severity'] as 'warn' | 'info') || 'info',
-        resolutionType: (item[fields.resolutionType || 'ResolutionType'] as DriftResolutionType) || 'fuzzy_match',
-        driftType: (item[fields.driftType || 'DriftType'] as DriftType) || 'unknown',
-        resolved: !!item[fields.resolved || 'Resolved']
+        id: String(item.Id ?? item.ID ?? ''),
+        listName: String(this.readRowValue(item, 'listName') ?? ''),
+        fieldName: String(this.readRowValue(item, 'fieldName') ?? ''),
+        detectedAt: String(this.readRowValue(item, 'detectedAt') ?? ''),
+        severity: (this.readRowValue(item, 'severity') as 'warn' | 'info') || 'info',
+        resolutionType: (this.readRowValue(item, 'resolutionType') as DriftResolutionType) || 'fuzzy_match',
+        driftType: (this.readRowValue(item, 'driftType') as DriftType) || 'unknown',
+        resolved: this.parseResolved(this.readRowValue(item, 'resolved')),
       }));
 
     } catch (err) {
@@ -218,11 +193,9 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       if (!entry) return;
 
       const listTitle = entry.resolve();
-      const fields = await this.resolveFields(listTitle);
-      if (!fields || !fields.resolved) return;
-
+      await this.initializeResolvedFields(listTitle);
       await this.spClient.updateItemByTitle(listTitle, Number(id), {
-        [fields.resolved]: true
+        [this.rf('resolved')]: true
       });
     } catch (err) {
       auditLog.warn('diagnostics:drift', 'DriftEventRepository failed to mark event as resolved (fail-open).', err);

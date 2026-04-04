@@ -21,19 +21,9 @@ import type { ReactNode } from 'react';
 // ── モック ──────────────────────────────────────────────────────────────────
 
 // shouldSkipSharePoint → true にして InMemory を使わせる
-vi.mock('@/lib/env', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/env')>();
-  return {
-    ...actual,
-    shouldSkipSharePoint: vi.fn(() => true),
-    isDevMode: vi.fn(() => true),
-    isDemoModeEnabled: vi.fn(() => true),
-    readOptionalEnv: vi.fn((key: string) => {
-      if (key === 'VITE_DATA_PROVIDER') return 'memory';
-      return actual.readOptionalEnv(key);
-    }),
-  };
-});
+vi.mock('@/lib/env', () => ({
+  shouldSkipSharePoint: vi.fn(() => true),
+}));
 
 // useAuth モック
 vi.mock('@/auth/useAuth', () => ({
@@ -48,7 +38,6 @@ vi.mock('@/auth/useAuth', () => ({
 import { useCallLogs } from '../useCallLogs';
 import { __resetCallLogRepositoryFactoryForTests } from '../../data/callLogRepositoryFactory';
 import { __resetInMemoryCallLogStoreForTests } from '../../data/InMemoryCallLogRepository';
-import { __clearProviderCache } from '@/lib/data/createDataProvider';
 
 // ── ヘルパー ─────────────────────────────────────────────────────────────────
 
@@ -66,8 +55,6 @@ describe('useCallLogs', () => {
   let qc: QueryClient;
 
   beforeEach(() => {
-    vi.stubEnv('VITE_DATA_PROVIDER', 'memory');
-    __clearProviderCache();
     __resetCallLogRepositoryFactoryForTests();
     __resetInMemoryCallLogStoreForTests();
     qc = new QueryClient({
@@ -105,7 +92,7 @@ describe('useCallLogs', () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    await result.current.createLog.mutateAsync({
+    result.current.createLog.mutate({
       callerName: '田中太郎',
       targetStaffName: '山田スタッフ',
       subject: 'テスト件名',
@@ -124,7 +111,7 @@ describe('useCallLogs', () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    await result.current.createLog.mutateAsync({
+    result.current.createLog.mutate({
       callerName: '佐藤花子',
       targetStaffName: '山田スタッフ',
       subject: '折返し依頼',

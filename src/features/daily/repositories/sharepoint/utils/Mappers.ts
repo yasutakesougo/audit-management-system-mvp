@@ -1,7 +1,7 @@
 import type { SpDailyItem } from '@/domain/daily/spMap';
 import type { DailyRecordItem } from '@/features/daily/domain/legacy/DailyRecordRepository';
 import { DailyRecordItemSchema } from '@/features/daily/domain/schema';
-import { type RawSharePointItem } from '../constants';
+import { DAILY_RECORD_FIELDS, type RawSharePointItem } from '../constants';
 
 /**
  * Zod based parse of SharePoint item
@@ -9,10 +9,10 @@ import { type RawSharePointItem } from '../constants';
 export const parseSpItem = (item: RawSharePointItem | null): DailyRecordItem | null => {
   if (!item) return null;
 
-  // Use logical names (already washed in repository layer)
+  // Map physical SharePoint names to logical names before validation
   const logicalItem = {
     ...item,
-    UserRowsJSON: item.UserRowsJSON ?? item.User_x0020_Rows_x0020_JSON,
+    UserRowsJSON: item[DAILY_RECORD_FIELDS.userRowsJSON as keyof RawSharePointItem],
   };
 
   const result = DailyRecordItemSchema.safeParse(logicalItem);

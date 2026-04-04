@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-globals */
 // Lightweight SharePoint fetch mock for unit tests.
 // Provides deterministic responses for common _api endpoints used by spClient tests.
 // Unknown endpoints fall back to { value: [] } to keep tests stable and offline.

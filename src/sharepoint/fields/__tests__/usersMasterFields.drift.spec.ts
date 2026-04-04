@@ -40,7 +40,7 @@ describe('USERS_MASTER_CANDIDATES drift', () => {
 
   it('cr013_ プレフィックス付き内部名が解決される', () => {
     const available = new Set([
-      'Id', 'Title', 'cr013_userId', 'cr013_fullName', 'cr013_isActive', 'cr013_usageStatus', 'ServiceEndDate'
+      'Id', 'Title', 'cr013_userId', 'cr013_fullName', 'cr013_isActive', 'cr013_usageStatus'
     ]);
     const { resolved, missing, fieldStatus } = resolveInternalNamesDetailed(
       available,
@@ -86,7 +86,7 @@ describe('USERS_MASTER_CANDIDATES drift', () => {
 
   it('必須フィールド (userId, fullName, isActive, usageStatus) が揃えば isHealthy=true', () => {
     const available = new Set([
-      'UserID', 'FullName', 'IsActive', 'UsageStatus', 'ServiceEndDate'
+      'UserID', 'FullName', 'IsActive', 'UsageStatus'
     ]);
     const { resolved } = resolveInternalNamesDetailed(
       available,
@@ -110,7 +110,7 @@ describe('USERS_MASTER_CANDIDATES drift', () => {
 
   it('optional なフィールドの欠落は isHealthy に影響しない', () => {
     const available = new Set([
-      'UserID', 'FullName', 'IsActive', 'UsageStatus', 'ServiceEndDate'
+      'UserID', 'FullName', 'IsActive', 'UsageStatus'
       // Furigana なし
     ]);
     const { resolved } = resolveInternalNamesDetailed(

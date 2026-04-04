@@ -22,8 +22,12 @@ const factory = createRepositoryFactory<UserRepository, UserRepositoryFactoryOpt
   createDemo: () => inMemoryUserRepository,
   createReal: (options) => {
     // 1. DataProvider 版を使用 (Split Write / Lazy Join 対応の本番用実装)
+    const { acquireToken } = options;
+    if (!acquireToken) {
+      throw new Error('[UserRepositoryFactory] acquireToken is required for real repository.');
+    }
     const { baseUrl } = ensureConfig();
-    const { provider } = createDataProvider(createSpClient(options.acquireToken!, baseUrl));
+    const { provider } = createDataProvider(createSpClient(acquireToken, baseUrl));
     
     return new DataProviderUserRepository({
       provider,

@@ -51,8 +51,7 @@ export class DataProviderStaffRepository implements StaffRepository {
 
     this.resolvingPromise = (async () => {
       try {
-        const fieldDetails = await this.provider.getFieldDetails(this.listTitle);
-        const available = new Set(fieldDetails.keys());
+        const available = await this.provider.getFieldInternalNames(this.listTitle);
         
         const { resolved, fieldStatus } = resolveInternalNamesDetailed(
           available,
@@ -64,36 +63,14 @@ export class DataProviderStaffRepository implements StaffRepository {
           }
         );
 
-        // Attach resolved type information and detect type mismatches
-        const multiChoiceKeys = ['workDays', 'baseWorkingDays', 'certifications'];
-        const detailedStatus: Record<string, { resolvedName?: string; resolvedType?: string; candidates: string[]; isSilent?: boolean }> = {};
-        let hasTypeMismatch = false;
-
-        for (const [key, status] of Object.entries(fieldStatus)) {
-          const actualType = status.resolvedName ? fieldDetails.get(status.resolvedName)?.TypeAsString : undefined;
-          detailedStatus[key] = {
-            ...status,
-            resolvedType: actualType
-          };
-
-          // Check for MultiChoice mismatch (if we expect MultiChoice but got Text/Note)
-          if (multiChoiceKeys.includes(key) && status.resolvedName && actualType && actualType !== 'MultiChoice') {
-            hasTypeMismatch = true;
-            auditLog.warn('staff', `Type mismatch detected for ${key}. Expected MultiChoice, got ${actualType}`, { 
-              field: status.resolvedName 
-            });
-          }
-        }
-
         const essentials: string[] = ['id', 'staffId', 'fullName', 'isActive'];
         const isHealthy = areEssentialFieldsResolved(resolved as Record<string, string | undefined>, essentials);
 
         reportResourceResolution({
           resourceName: 'Staff_Master',
           resolvedTitle: this.listTitle,
-          fieldStatus: detailedStatus,
+          fieldStatus: fieldStatus,
           essentials: essentials,
-          statusOverride: hasTypeMismatch ? 'schema_mismatch' : undefined
         });
 
         this.resolvedFields = resolved as Record<string, string | undefined>;
@@ -239,7 +216,7 @@ export class DataProviderStaffRepository implements StaffRepository {
     if (!fields) throw new Error('Cannot write without schema resolution');
 
     const req: Record<string, unknown> = {};
-    const map: Record<string, string | undefined> = {
+    const map = {
       staffId: fields.staffId,
       name: fields.fullName,
       furigana: fields.furigana,
@@ -254,29 +231,24 @@ export class DataProviderStaffRepository implements StaffRepository {
       active: fields.isActive,
       hireDate: fields.hireDate,
       resignDate: fields.resignDate,
+      certifications: fields.certifications,
+      workDays: fields.workDays || fields.workDaysText,
       baseShiftStartTime: fields.baseShiftStartTime,
       baseShiftEndTime: fields.baseShiftEndTime,
+      baseWorkingDays: fields.baseWorkingDays,
     };
 
-    // 1. Process standard fields
     for (const [key, field] of Object.entries(map)) {
       if (field && (payload as Record<string, unknown>)[key] !== undefined) {
-        req[field] = (payload as Record<string, unknown>)[key];
-      }
-    }
-
-    // 2. Forced hardening for MultiChoice fields (Issue: Ensure [] even if missing/null/empty)
-    const multiChoiceSpec = [
-      { key: 'workDays', field: fields.workDays || fields.workDaysText },
-      { key: 'baseWorkingDays', field: fields.baseWorkingDays },
-      { key: 'certifications', field: fields.certifications },
-    ];
-
-    for (const spec of multiChoiceSpec) {
-      if (spec.field) {
-        const val = (payload as Record<string, unknown>)[spec.key];
-        // Ensure [] at minimum, even if the key is missing from payload
-        req[spec.field] = val ?? [];
+        const val = (payload as Record<string, unknown>)[key];
+        if (Array.isArray(val)) {
+          // Check if the field is Multi-Select or Text (Note)
+          // For simplicity in this project, we usually store as JSON or comma-separated if it's a Note field.
+          // IProvider's updateItem/createItem usually handles arrays for Multi-Choice fields.
+          req[field] = val;
+        } else {
+          req[field] = val;
+        }
       }
     }
 

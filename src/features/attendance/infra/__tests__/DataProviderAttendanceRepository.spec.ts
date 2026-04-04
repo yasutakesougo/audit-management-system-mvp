@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { DataProviderAttendanceRepository } from '../DataProviderAttendanceRepository';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
+import { auditLog } from '@/lib/debugLogger';
 
 vi.mock('@/lib/debugLogger', () => ({
   auditLog: {
@@ -10,7 +11,6 @@ vi.mock('@/lib/debugLogger', () => ({
     debug: vi.fn(),
   },
 }));
-import { auditLog } from '@/lib/debugLogger';
 
 vi.mock('@/lib/data/dataProviderObservabilityStore', () => ({
   reportResourceResolution: vi.fn(),
@@ -47,7 +47,6 @@ describe('DataProviderAttendanceRepository - Regression / Hardening', () => {
       expect(users.length).toBe(1);
       expect(users[0].UserCode).toBe('U001');
       expect(users[0].Title).toBe('Test User');
-      
       // Verify listItems was called with resolved field names
       expect(mockProvider.listItems).toHaveBeenCalledWith(
         expect.any(String),

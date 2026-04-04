@@ -20,7 +20,6 @@ export type ResourceStatus =
 export interface FieldResolutionInfo {
   key: string;
   resolvedName?: string;
-  resolvedType?: string;
   candidates: string[];
   isEssential: boolean;
   isResolved: boolean;
@@ -117,11 +116,10 @@ export interface ResourceResolutionReport {
   resourceName: string;
   lifecycle?: 'required' | 'optional';
   resolvedTitle: string;
-  fieldStatus: Record<string, { resolvedName?: string; resolvedType?: string; candidates: string[]; isSilent?: boolean }>;
+  fieldStatus: Record<string, { resolvedName?: string; candidates: string[]; isSilent?: boolean }>;
   essentials: string[];
   error?: string;
   fallbackFrom?: string;
-  statusOverride?: ResourceStatus;
 }
 
 /**
@@ -139,14 +137,12 @@ export function reportResourceResolution(report: ResourceResolutionReport): void
     essentials,
     error,
     fallbackFrom,
-    statusOverride,
   } = report;
 
   const fields: FieldResolutionInfo[] = Object.entries(fieldStatus).map(([key, info]) => ({
     key,
     candidates: info.candidates,
     resolvedName: info.resolvedName,
-    resolvedType: info.resolvedType,
     isResolved: !!info.resolvedName,
     isEssential: essentials.includes(key),
     isSilent: !!info.isSilent
@@ -154,15 +150,13 @@ export function reportResourceResolution(report: ResourceResolutionReport): void
 
   const missingEssentials = fields.filter(f => f.isEssential && !f.isResolved);
 
-  let status: ResourceStatus = statusOverride || 'resolved';
-  if (!statusOverride) {
-    if (error || missingEssentials.length > 0) {
-      status = lifecycle === 'required' ? 'missing_required' : 'schema_mismatch';
-    } else if (fallbackFrom) {
-      status = 'fallback_triggered';
-    } else if (fields.some(f => !f.isResolved && !f.isSilent)) {
-      status = 'schema_warning';
-    }
+  let status: ResourceStatus = 'resolved';
+  if (error || missingEssentials.length > 0) {
+    status = lifecycle === 'required' ? 'missing_required' : 'schema_mismatch';
+  } else if (fallbackFrom) {
+    status = 'fallback_triggered';
+  } else if (fields.some(f => !f.isResolved && !f.isSilent)) {
+    status = 'schema_warning';
   }
 
   // 1. 同一性の判定用シグネチャ生成

@@ -588,12 +588,6 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W', 'D'],
     category: 'handoff',
     lifecycle: 'optional',
-    provisioningFields: [
-      { internalName: 'UserID0', type: 'Text', displayName: 'User ID' },
-      { internalName: 'Summary0', type: 'Note', displayName: 'Summary' },
-      { internalName: 'Phase0', type: 'Text', displayName: 'Phase' },
-      { internalName: 'SchemaVersion', type: 'Number', displayName: 'Schema Version', default: 1 },
-    ],
   },
   {
     key: 'iceberg_analysis',
@@ -602,13 +596,6 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'handoff',
     lifecycle: 'optional',
-    provisioningFields: [
-      { internalName: 'EntryHash', type: 'Text', displayName: 'Entry Hash' },
-      { internalName: 'SessionId', type: 'Text', displayName: 'Session ID' },
-      { internalName: 'UserId', type: 'Text', displayName: 'User ID' },
-      { internalName: 'PayloadJson', type: 'Note', displayName: 'Payload JSON', required: true },
-      { internalName: 'SchemaVersion', type: 'Number', displayName: 'Schema Version', default: 1 },
-    ],
   },
   {
     key: 'isp_master',
@@ -662,14 +649,6 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'compliance',
     lifecycle: 'optional',
-    provisioningFields: [
-      { internalName: 'Overall', type: 'Choice', displayName: 'Overall', choices: ['pass', 'warn', 'fail'], required: true },
-      { internalName: 'TopIssue', type: 'Note', displayName: 'Top Issue' },
-      { internalName: 'SummaryText', type: 'Note', displayName: 'Summary Text' },
-      { internalName: 'ReportLink', type: 'Text', displayName: 'Report Link' },
-      { internalName: 'Notified', type: 'Boolean', displayName: 'Notified', default: false },
-      { internalName: 'NotifiedAt', type: 'DateTime', displayName: 'Notified At' },
-    ],
   },
   {
     key: 'drift_events_log',

@@ -8,11 +8,10 @@
 
 import type { UseSP } from '@/lib/spClient';
 import {
-    DIAGNOSTICS_REPORTS_LIST_TITLE, FIELD_MAP_DIAGNOSTICS_REPORTS,
-    DIAGNOSTICS_REPORTS_CANDIDATES,
+    DIAGNOSTICS_REPORTS_LIST_TITLE,
+    DIAGNOSTICS_REPORTS_SELECT_FIELDS,
+    FIELD_MAP_DIAGNOSTICS_REPORTS,
 } from '@/sharepoint/fields';
-import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
-import { findListEntry } from '@/sharepoint/spListRegistry';
 
 export type DiagnosticsReportStatus = 'pass' | 'warn' | 'fail';
 
@@ -159,41 +158,15 @@ export async function upsertDiagnosticsReport(
     throw new Error(`[diagnosticsReports] overall must be pass|warn|fail, got: ${input.overall}`);
   }
 
-  const entry = findListEntry('diagnostics_reports');
-  const listTitle = entry?.resolve() || DIAGNOSTICS_REPORTS_LIST_TITLE;
-
-  // ──────────────────────────────────────────
-  // Step 0: 実環境の内部名を解決 (Drift 対応)
-  // ──────────────────────────────────────────
-  const rawFields = await sp.getListFieldInternalNames(listTitle).catch((err) => {
-    console.warn(`[diagnosticsReports] Failed to fetch fields for list: ${listTitle}. This list may be missing or inaccessible.`, err);
-    return [] as string[];
-  });
-  const { resolved } = resolveInternalNamesDetailed(
-    new Set(rawFields),
-    DIAGNOSTICS_REPORTS_CANDIDATES as unknown as Record<string, string[]>
-  );
-  
-  // 物理名の取得ファンクション
-  const pName = (logical: keyof typeof DIAGNOSTICS_REPORTS_CANDIDATES): string => {
-    return (resolved[logical] as string | undefined) || FIELD_MAP_DIAGNOSTICS_REPORTS[logical];
-  };
-
-  const pTitle = pName('title');
-  const pId = pName('id');
-  const pOverall = pName('overall');
-  const pNotified = pName('notified');
-  const pTopIssue = pName('topIssue');
-  const pSummaryText = pName('summaryText');
-  const pReportLink = pName('reportLink');
+  const listTitle = DIAGNOSTICS_REPORTS_LIST_TITLE;
 
   // ──────────────────────────────────────────
   // Step 1: Title で既存アイテムを検索
   // ──────────────────────────────────────────
-  const filter = `${pTitle} eq '${input.title.replace(/'/g, "''")}'`;
+  const filter = `${FIELD_MAP_DIAGNOSTICS_REPORTS.title} eq '${input.title.replace(/'/g, "''")}'`;
   const existing = await sp.getListItemsByTitle<{ Id: number }>(
     listTitle,
-    [pId, pTitle, pOverall, pTopIssue, pSummaryText, pReportLink, pNotified],
+    [...DIAGNOSTICS_REPORTS_SELECT_FIELDS],
     filter,
     undefined,
     1
@@ -202,29 +175,39 @@ export async function upsertDiagnosticsReport(
   // ──────────────────────────────────────────
   // Step 2: 送信ペイロード構築
   // ──────────────────────────────────────────
+  // ✅ Field map を使用してキー名を統一
   const payload: Record<string, unknown> = {
-    [pTitle]: input.title,
-    // Choice は文字列（JSON reader 'StartObject' エラー対策で primitive で送信）
-    [pOverall]: input.overall,
+    [FIELD_MAP_DIAGNOSTICS_REPORTS.title]: input.title,
+    // Choice は { Value: '...' } 形式で送信
+    [FIELD_MAP_DIAGNOSTICS_REPORTS.overall]: { Value: input.overall },
   };
 
+  // Notified フラグの制御（Power Automate取得フィルター対応）:
+  // Power Automate: Get items filter "Notified ne true" で未通知を拾う
+  // - 初回作成の warn/fail → false（Flow が拾う）
+  // - 初回作成の pass → true（Flow が拾わない）
+  // - 更新で内容変更の warn/fail → false（再通知）
+  // - 更新で内容変更の pass → true（通知不要）
+  // - 更新で内容変更なし → 既存値保持
   const notifiedValue = shouldResetNotified(
     existing?.length ? (existing[0] as DiagnosticsReportItem) : null,
     input
   );
 
+  // undefined の場合は payload に含めない（既存値を保持）
   if (notifiedValue !== undefined) {
-    payload[pNotified] = notifiedValue;
+    payload[FIELD_MAP_DIAGNOSTICS_REPORTS.notified] = notifiedValue;
   }
 
+  // Optional: null/undefined チェック
   if (input.topIssue != null) {
-    payload[pTopIssue] = input.topIssue;
+    payload[FIELD_MAP_DIAGNOSTICS_REPORTS.topIssue] = input.topIssue;
   }
   if (input.summaryText != null) {
-    payload[pSummaryText] = input.summaryText;
+    payload[FIELD_MAP_DIAGNOSTICS_REPORTS.summaryText] = input.summaryText;
   }
   if (input.reportLink != null) {
-    payload[pReportLink] = input.reportLink;
+    payload[FIELD_MAP_DIAGNOSTICS_REPORTS.reportLink] = input.reportLink;
   }
 
   // ──────────────────────────────────────────
@@ -232,14 +215,7 @@ export async function upsertDiagnosticsReport(
   // ──────────────────────────────────────────
   if (existing?.length) {
     // UPDATE: 既存レコード
-    // ✅ 動的に解決された ID フィールドから数値型 ID を抽出
-    const rawItem = existing[0] as Record<string, unknown>;
-    const id = Number(rawItem[pId] ?? rawItem.Id ?? rawItem.ID);
-    
-    if (Number.isNaN(id)) {
-      throw new Error(`[diagnosticsReports] Failed to resolve numeric ID from ${pId}`);
-    }
-
+    const id = Number(existing[0].Id);
     try {
       await sp.updateItemByTitle(listTitle, id, payload);
       console.info('[diagnosticsReports] updated', { id, title: input.title });
@@ -247,8 +223,8 @@ export async function upsertDiagnosticsReport(
       // 更新後のアイテムを取得して返す
       const updated = await sp.getListItemsByTitle<DiagnosticsReportItem>(
         listTitle,
-        [pId, pTitle, pOverall, pTopIssue, pSummaryText, pReportLink, pNotified],
-        `${pId} eq ${id}`,
+        [...DIAGNOSTICS_REPORTS_SELECT_FIELDS],
+        `${FIELD_MAP_DIAGNOSTICS_REPORTS.id} eq ${id}`,
         undefined,
         1
       );

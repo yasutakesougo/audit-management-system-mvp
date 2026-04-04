@@ -8,7 +8,8 @@
 import type { MonitoringMeetingRepository } from '@/domain/isp/monitoringMeetingRepository';
 import type { UseSP } from '@/lib/spClient';
 import { localMonitoringMeetingRepository } from '@/infra/localStorage/localMonitoringMeetingRepository';
-import { SharePointMonitoringMeetingRepository } from './sharepoint/SharePointMonitoringMeetingRepository';
+import { SharePointDataProvider } from '@/lib/sp/spDataProvider';
+import { DataProviderMonitoringMeetingRepository } from '../data/DataProviderMonitoringMeetingRepository';
 
 type Mode = 'local' | 'sharepoint';
 type Options = { spClient?: UseSP };
@@ -23,12 +24,9 @@ export function createMonitoringMeetingRepository(
   if (!options?.spClient) {
     throw new Error('sharepoint mode requires options.spClient');
   }
-  return new SharePointMonitoringMeetingRepository({ 
-      sp: options.spClient,
-      listTitle: 'MonitoringMeetings'
-  });
+  const provider = new SharePointDataProvider(options.spClient);
+  return new DataProviderMonitoringMeetingRepository(provider);
 }
-
 
 import { useMemo } from 'react';
 import { useSP } from '@/lib/spClient';

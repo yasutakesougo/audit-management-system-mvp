@@ -22,9 +22,6 @@ import { buildBatchPayload, parseBatchResponse } from '@/lib/sp/spBatch';
 import { createNormalizePath, createSpFetch } from '@/lib/sp/spFetch';
 import { createListOperations } from '@/lib/sp/spLists';
 import { createPostBatch } from '@/lib/sp/spPostBatch';
-import { SpProvisioningService } from '@/lib/sp/spProvisioningService';
-import { initDriftActionDispatcher } from '@/lib/sp/DriftActionDispatcher';
-import { initDriftNotificationHandler } from '@/lib/sp/DriftNotificationHandler';
 
 // ─── Re-exports for backward compatibility ──────────────────────────────────
 
@@ -50,7 +47,6 @@ import type {
 
 // ─── createSpClient ─────────────────────────────────────────────────────────
 
-import { DataProviderNotInitializedError } from '@/lib/errors';
 /**
  * テスト可能なクライアントファクトリ（React Hook に依存しない）
  * - acquireToken: トークン取得関数（MSAL由来を想定）
@@ -61,10 +57,6 @@ export function createSpClient(
   baseUrl: string,
   options: SpClientOptions = {}
 ) {
-  if (!baseUrl || baseUrl.trim() === '') {
-    // This happens in bypass/demo mode if the factory still tries to create a 'real' client
-    throw new DataProviderNotInitializedError('SharePoint baseUrl is missing. Please check your .env configuration.');
-  }
   const config = getAppConfig();
   // Derive a typed EnvRecord from AppConfig without unsafe double-cast.
   // AppConfig values are all Primitive (string | number | boolean | null | undefined),
@@ -93,14 +85,6 @@ export function createSpClient(
   const spFetch = async (path: string, init: RequestInit = {}): Promise<Response> => {
     return rawSpFetch(normalizePath(path), init);
   };
-
-  // ── Provisioning & Auto-Heal & Notifications ──
-  const provisioningService = new SpProvisioningService(spFetch);
-  // Unit tests should not auto-initialize these shared singletons to avoid mock pollution
-  if (typeof process !== 'undefined' && !process.env.VITEST) {
-    initDriftActionDispatcher(provisioningService);
-    initDriftNotificationHandler();
-  }
 
   // ── List CRUD (delegated to spLists.ts) ──
   const listOps = createListOperations(spFetch, normalizePath, baseUrl);

@@ -355,8 +355,8 @@ export function createSpFetch(deps: SpFetchDeps) {
     const baseDelay = retrySettings.baseDelay;
     const capDelay = retrySettings.capDelay;
     
-    // Default timeout if none provided explicitly (respects spOptions if present)
-    const mergedSignal = withTimeout(init.signal ?? undefined, spOptions.timeoutMs);
+    // Default 30s timeout if none provided explicitly
+    const mergedSignal = withTimeout(init.signal ?? undefined, spOptions.timeoutMs ?? 30000);
 
     const release =
       lane === 'provisioning'

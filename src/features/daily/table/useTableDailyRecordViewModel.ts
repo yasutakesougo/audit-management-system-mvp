@@ -30,11 +30,7 @@ export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
   const handleTableSave = useCallback(async (data: TableDailyRecordPayload) => {
     try {
       // Save to repository (SharePoint in production, InMemory in demo mode)
-      // Inject userCount derived from userRows count to satisfy DailyRecordDomain schema
-      await repository.save({
-        ...data,
-        userCount: data.userRows.length,
-      });
+      await repository.save(data);
       navigateBackToMenu();
     } catch (error) {
       console.error('日報保存に失敗しました:', error);

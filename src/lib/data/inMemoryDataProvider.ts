@@ -3,7 +3,7 @@ import type {
   DataProviderOptions, 
   UpdateOptions 
 } from '@/lib/data/dataProvider.interface';
-import type { SpFieldDef, ExistingFieldShape } from '@/lib/sp/types';
+import type { SpFieldDef } from '@/lib/sp/types';
 import { DataProviderItemNotFoundError } from '@/lib/errors';
 
 /**
@@ -117,15 +117,6 @@ export class InMemoryDataProvider implements IDataProvider {
     const allKeys = new Set<string>();
     items.forEach(item => Object.keys(item).forEach(key => allKeys.add(key)));
     return allKeys;
-  }
-
-  async getFieldDetails(resourceName: string): Promise<Map<string, ExistingFieldShape>> {
-    const names = await this.getFieldInternalNames(resourceName);
-    const map = new Map<string, ExistingFieldShape>();
-    names.forEach(name => {
-      map.set(name, { InternalName: name, TypeAsString: 'Text' });
-    });
-    return map;
   }
 
   async getMetadata(resourceName: string): Promise<Record<string, unknown>> {

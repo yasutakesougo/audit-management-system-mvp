@@ -8,21 +8,39 @@ import type {
 } from './IspDecisionRepository';
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 import { buildEq } from '@/sharepoint/query/builders';
-import { 
-  ISP_DECISION_LIST_TITLE, 
-  ISP_DECISION_CANDIDATES, 
-  ISP_DECISION_ESSENTIALS 
-} from '@/sharepoint/fields/ispThreeLayerFields';
-import { 
-  resolveInternalNamesDetailed, 
-  areEssentialFieldsResolved,
-  washRows
-} from '@/lib/sp/helpers';
-import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
 
-const DEFAULT_LIST_TITLE = ISP_DECISION_LIST_TITLE;
+const DEFAULT_LIST_TITLE = 'IspRecommendationDecisions';
 
-// SELECT_FIELDS is now dynamic during resolveFields
+const SP_FIELDS = {
+  title: 'Title',
+  goalId: 'GoalId',
+  userId: 'UserId',
+  status: 'Status',
+  decidedBy: 'DecidedBy',
+  decidedAt: 'DecidedAt',
+  note: 'Note',
+  monitoringFrom: 'MonitoringFrom',
+  monitoringTo: 'MonitoringTo',
+  snapshotJson: 'SnapshotJson',
+  created: 'Created',
+  modified: 'Modified',
+} as const;
+
+const SELECT_FIELDS = [
+  'Id',
+  SP_FIELDS.title,
+  SP_FIELDS.goalId,
+  SP_FIELDS.userId,
+  SP_FIELDS.status,
+  SP_FIELDS.decidedBy,
+  SP_FIELDS.decidedAt,
+  SP_FIELDS.note,
+  SP_FIELDS.monitoringFrom,
+  SP_FIELDS.monitoringTo,
+  SP_FIELDS.snapshotJson,
+  SP_FIELDS.created,
+  SP_FIELDS.modified,
+];
 
 /**
  * DataProviderIspDecisionRepository
@@ -33,69 +51,25 @@ export class DataProviderIspDecisionRepository implements IspDecisionRepository 
   private readonly provider: IDataProvider;
   private readonly listTitle: string;
 
-  private resolvedFields: Record<string, string | undefined> | null = null;
-
   constructor(provider: IDataProvider, listTitle: string = DEFAULT_LIST_TITLE) {
     this.provider = provider;
     this.listTitle = listTitle;
   }
 
-  /**
-   * フィールド解決 (Dynamic Schema Resolution)
-   */
-  private async resolveFields(): Promise<Record<string, string | undefined>> {
-    if (this.resolvedFields) return this.resolvedFields;
-
-    try {
-      const available = await this.provider.getFieldInternalNames(this.listTitle);
-      const { resolved, fieldStatus } = resolveInternalNamesDetailed(
-        new Set(available),
-        (ISP_DECISION_CANDIDATES as unknown) as Record<string, string[]>
-      );
-
-      const isHealthy = areEssentialFieldsResolved(resolved, ISP_DECISION_ESSENTIALS as unknown as string[]);
-
-      // Observability への報告
-      reportResourceResolution({
-        resourceName: `IspDecisions:${this.listTitle}`,
-        resolvedTitle: this.listTitle,
-        fieldStatus: fieldStatus as Record<string, { resolvedName?: string; candidates: string[] }>,
-        essentials: ISP_DECISION_ESSENTIALS as unknown as string[],
-      });
-
-      if (!isHealthy) {
-        console.warn(`[IspDecisionRepository] Essential fields missing in list ${this.listTitle}.`);
-      }
-
-      this.resolvedFields = resolved as Record<string, string | undefined>;
-      return this.resolvedFields;
-    } catch (err) {
-      console.error('[IspDecisionRepository] Field resolution failed:', err);
-      // フォールバック
-      const fallback: Record<string, string> = {};
-      for (const [key, cands] of Object.entries((ISP_DECISION_CANDIDATES as unknown) as Record<string, string[]>)) {
-        fallback[key] = (cands as string[])[0];
-      }
-      return fallback;
-    }
-  }
-
   async save(input: SaveDecisionInput): Promise<IspRecommendationDecision> {
     const id = this.generateId();
     try {
-      const mapping = await this.resolveFields();
-      
       const itemData: Record<string, unknown> = {
-        [mapping.title || 'Title']: id,
-        [mapping.goalId || 'GoalId']: input.goalId,
-        [mapping.userId || 'UserId']: input.userId,
-        [mapping.status || 'Status']: input.status,
-        [mapping.decidedBy || 'DecidedBy']: input.decidedBy,
-        [mapping.decidedAt || 'DecidedAt']: input.decidedAt,
-        [mapping.note || 'Note']: input.note,
-        [mapping.monitoringFrom || 'MonitoringFrom']: input.monitoringPeriodFrom,
-        [mapping.monitoringTo || 'MonitoringTo']: input.monitoringPeriodTo,
-        [mapping.snapshotJson || 'SnapshotJson']: JSON.stringify(input.snapshot),
+        [SP_FIELDS.title]: id,
+        [SP_FIELDS.goalId]: input.goalId,
+        [SP_FIELDS.userId]: input.userId,
+        [SP_FIELDS.status]: input.status,
+        [SP_FIELDS.decidedBy]: input.decidedBy,
+        [SP_FIELDS.decidedAt]: input.decidedAt,
+        [SP_FIELDS.note]: input.note,
+        [SP_FIELDS.monitoringFrom]: input.monitoringPeriodFrom,
+        [SP_FIELDS.monitoringTo]: input.monitoringPeriodTo,
+        [SP_FIELDS.snapshotJson]: JSON.stringify(input.snapshot),
       };
 
       await this.provider.createItem(this.listTitle, itemData);
@@ -114,32 +88,28 @@ export class DataProviderIspDecisionRepository implements IspDecisionRepository 
     if (filter.signal?.aborted) return [];
 
     try {
-      const mapping = await this.resolveFields();
-      const filters: string[] = [buildEq(mapping.userId || 'UserId', filter.userId)];
+      const filters: string[] = [buildEq(SP_FIELDS.userId, filter.userId)];
 
       if (filter.goalId) {
-        filters.push(buildEq(mapping.goalId || 'GoalId', filter.goalId));
+        filters.push(buildEq(SP_FIELDS.goalId, filter.goalId));
       }
 
       if (filter.monitoringPeriod) {
-        filters.push(buildEq(mapping.monitoringFrom || 'MonitoringFrom', filter.monitoringPeriod.from));
-        filters.push(buildEq(mapping.monitoringTo || 'MonitoringTo', filter.monitoringPeriod.to));
+        filters.push(buildEq(SP_FIELDS.monitoringFrom, filter.monitoringPeriod.from));
+        filters.push(buildEq(SP_FIELDS.monitoringTo, filter.monitoringPeriod.to));
       }
 
       const limit = filter.limit ?? SP_QUERY_LIMITS.default;
       const safeLimit = Math.min(Math.max(1, limit), SP_QUERY_LIMITS.hardMax);
 
-      const selectFields = Object.values(mapping).filter((v): v is string => !!v);
-
       const items = await this.provider.listItems<Record<string, unknown>>(this.listTitle, {
         filter: filters.join(' and '),
-        orderby: `${mapping.decidedAt || 'DecidedAt'} desc`,
+        orderby: `${SP_FIELDS.decidedAt} desc`,
         top: safeLimit,
-        select: selectFields.length > 0 ? ['Id', ...selectFields] : undefined,
+        select: SELECT_FIELDS,
       });
 
-      const washed = washRows(items, (ISP_DECISION_CANDIDATES as unknown) as Record<string, string[]>, mapping);
-      return washed.map(item => this.toDecision(item)).filter((d): d is IspRecommendationDecision => d !== null);
+      return items.map(item => this.toDecision(item)).filter((d): d is IspRecommendationDecision => d !== null);
     } catch (error) {
       const safeError = toSafeError(error);
       console.error('[DataProviderIspDecisionRepository] List failed', {
@@ -152,23 +122,20 @@ export class DataProviderIspDecisionRepository implements IspDecisionRepository 
 
   private toDecision(item: Record<string, unknown>): IspRecommendationDecision | null {
     try {
-      // washRow により、item[candidates[key][0]] に値が入っていることが保証される
-      const primary = (ISP_DECISION_CANDIDATES as unknown) as Record<string, string[]>;
-      
-      const snapshotRaw = item[primary.snapshotJson[0]];
+      const snapshotRaw = item[SP_FIELDS.snapshotJson];
       const snapshot = typeof snapshotRaw === 'string' ? JSON.parse(snapshotRaw) : null;
       if (!snapshot) return null;
 
       return {
-        id: String(item[primary.title[0]] ?? ''),
-        goalId: String(item[primary.goalId[0]] ?? ''),
-        userId: String(item[primary.userId[0]] ?? ''),
-        status: String(item[primary.status[0]] ?? 'pending') as IspRecommendationDecision['status'],
-        decidedBy: String(item[primary.decidedBy[0]] ?? ''),
-        decidedAt: String(item[primary.decidedAt[0]] ?? ''),
-        note: String(item[primary.note[0]] ?? ''),
-        monitoringPeriodFrom: String(item[primary.monitoringFrom[0]] ?? ''),
-        monitoringPeriodTo: String(item[primary.monitoringTo[0]] ?? ''),
+        id: String(item[SP_FIELDS.title] ?? ''),
+        goalId: String(item[SP_FIELDS.goalId] ?? ''),
+        userId: String(item[SP_FIELDS.userId] ?? ''),
+        status: String(item[SP_FIELDS.status] ?? 'pending') as IspRecommendationDecision['status'],
+        decidedBy: String(item[SP_FIELDS.decidedBy] ?? ''),
+        decidedAt: String(item[SP_FIELDS.decidedAt] ?? ''),
+        note: String(item[SP_FIELDS.note] ?? ''),
+        monitoringPeriodFrom: String(item[SP_FIELDS.monitoringFrom] ?? ''),
+        monitoringPeriodTo: String(item[SP_FIELDS.monitoringTo] ?? ''),
         snapshot,
       };
     } catch {

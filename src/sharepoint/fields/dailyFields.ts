@@ -114,15 +114,15 @@ import type { SpFieldDef } from '@/lib/sp/types';
  * 1. Canonical Daily Record (日次集約済 1日1レコード形式) のフィールド候補
  */
 export const DAILY_RECORD_CANONICAL_CANDIDATES = {
-  title: ['Title', 'title'], // YYYY-MM-DD
-  recordDate: ['RecordDate', 'Date', 'recordDate', 'Record_x0020_Date', 'RecordDate0', 'cr013_date', 'record_date'],
-  reporterName: ['ReporterName', 'reporterName', 'ReporterName0', 'cr013_reporterName', 'StaffName'],
-  reporterRole: ['ReporterRole', 'reporterRole', 'ReporterRole0', 'cr013_reporterRole'],
-  userRowsJSON: ['UserRowsJSON', 'userRowsJSON', 'UserRowsJSON0', 'User_x0020_Rows_x0020_JSON', 'cr013_userRowsJSON'],
-  userCount: ['UserCount', 'userCount', 'UserCount0', 'cr013_userCount'],
-  approvalStatus: ['ApprovalStatus', 'approvalStatus', 'ApprovalStatus0', 'cr013_approvalStatus'],
-  approvedBy: ['ApprovedBy', 'approvedBy', 'ApprovedBy0', 'cr013_approvedBy'],
-  approvedAt: ['ApprovedAt', 'approvedAt', 'ApprovedAt0', 'cr013_approvedAt'],
+  title: ['Title'], // YYYY-MM-DD
+  recordDate: ['RecordDate', 'Date', 'recordDate', 'cr013_date', 'record_date'],
+  reporterName: ['ReporterName', 'reporterName', 'cr013_reporterName', 'StaffName'],
+  reporterRole: ['ReporterRole', 'reporterRole', 'cr013_reporterRole'],
+  userRowsJSON: ['UserRowsJSON', 'userRowsJSON', 'User_x0020_Rows_x0020_JSON', 'cr013_userRowsJSON'],
+  userCount: ['UserCount', 'userCount', 'cr013_userCount'],
+  approvalStatus: ['ApprovalStatus', 'approvalStatus', 'cr013_approvalStatus'],
+  approvedBy: ['ApprovedBy', 'approvedBy', 'cr013_approvedBy'],
+  approvedAt: ['ApprovedAt', 'approvedAt', 'cr013_approvedAt'],
 } as const;
 
 export const DAILY_RECORD_CANONICAL_ESSENTIALS: (keyof typeof DAILY_RECORD_CANONICAL_CANDIDATES)[] = [
@@ -135,10 +135,10 @@ export const DAILY_RECORD_CANONICAL_ESSENTIALS: (keyof typeof DAILY_RECORD_CANON
 export const DAILY_RECORD_ROW_AGGREGATE_CANDIDATES = {
   title: ['Title'],
   ParentID: ['ParentID', 'Parent_x0020_ID', 'cr013_parentid'],
-  userId: ['UserCode', 'cr013_usercode', 'cr013_personId', 'cr013_userid', 'UserId', 'UserID', 'userId'],
+  UserID: ['UserID', 'UserCode', 'cr013_usercode', 'cr013_personId', 'userId', 'User_x0020_ID'],
   recordDate: ['RecordDate', 'cr013_date', 'cr013_recorddate', 'Date', 'recordDate'],
   status: ['Status', 'status', 'cr013_status'],
-  reporterName: ['ReporterName', 'reporterName', 'cr013_reporterName', 'cr013_fullname'],
+  reporterName: ['ReporterName', 'reporterName', 'cr013_reporterName'],
   payload: ['Payload', 'payload', 'cr013_payload', 'cr013_draftJson'],
   kind: ['Kind', 'kind', 'cr013_kind'],
   group: ['Group', 'group', 'cr013_group'],
@@ -146,11 +146,10 @@ export const DAILY_RECORD_ROW_AGGREGATE_CANDIDATES = {
 } as const;
 
 export const DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS: (keyof typeof DAILY_RECORD_ROW_AGGREGATE_CANDIDATES)[] = [
-  'userId', 'recordDate'
+  'UserID', 'recordDate'
 ];
 
-// ──────────────────────────────────────────────────────────────
-export * from './activityDiaryFields';
+// ActivityDiary フィールド定義は activityDiaryFields.ts に移動しました。
 
 /**
  * Canonical Daily Record リストのプロビジョニング定義

@@ -206,7 +206,10 @@ describe('Data OS Stability Verification', () => {
     it('getUserRepository should throw DataProviderNotInitializedError if uninitialized and in sharepoint mode', () => {
       vi.stubGlobal('location', { search: '?provider=sharepoint' });
       
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       expect(() => getUserRepository()).toThrow(DataProviderNotInitializedError);
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
     });
 
     it('isDataProviderReady should return correct state', () => {

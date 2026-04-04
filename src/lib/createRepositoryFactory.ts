@@ -42,7 +42,6 @@ import {
 } from '@/lib/env';
 import { hasSpfxContext } from '@/lib/runtime';
 import { useMemo } from 'react';
-import { DataProviderNotInitializedError } from '@/lib/errors';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -106,21 +105,17 @@ export interface RepositoryFactory<
 // ────────────────────────────────────────────────────────────────────────────
 
 /**
- * Default predicate that * Higher priority given to URL parameters to match getActiveProviderType.
+ * Default predicate that matches the existing `shouldUseDemoRepository`
+ * logic shared across all 5 factory files.
+ *
+ * Returns `true` for: dev mode, test mode, force-demo, demo-mode,
+ * skip-login, or missing SPFx context.
  */
 export const defaultShouldUseDemo = (): boolean => {
   // 0. Explicit force SharePoint must win over any local/demo shortcuts.
   const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
   if (forceSharePoint) {
     return false;
-  }
-
-  // 0.1 URL parameter check (highest priority after explicit forceKind)
-  if (typeof window !== 'undefined' && window.location) {
-    const urlParams = new URLSearchParams(window.location.search);
-    const providerParam = urlParams.get('provider');
-    if (providerParam === 'sharepoint') return false;
-    if (providerParam === 'memory' || providerParam === 'local') return true;
   }
 
   // 1. Priority overrides for forcing demo
@@ -189,7 +184,7 @@ export function createRepositoryFactory<
 
     const acquireToken = options?.acquireToken;
     if (!acquireToken && useAuthInHook) {
-      throw new DataProviderNotInitializedError(
+      throw new Error(
         `[${name}RepositoryFactory] acquireToken is required for real repository.`,
       );
     }

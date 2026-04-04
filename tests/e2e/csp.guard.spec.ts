@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-globals */
 import { expect, test } from '@playwright/test';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';

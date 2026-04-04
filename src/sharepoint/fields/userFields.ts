@@ -238,7 +238,6 @@ export const USERS_MASTER_ESSENTIALS: (keyof typeof USERS_MASTER_CANDIDATES)[] =
   'fullName',
   'isActive',
   'usageStatus',
-  'serviceEndDate',
 ];
 
 

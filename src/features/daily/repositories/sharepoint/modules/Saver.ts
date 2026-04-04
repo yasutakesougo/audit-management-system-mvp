@@ -1,36 +1,25 @@
 import type { SpFetchFn } from '@/lib/sp/spLists';
-import {
-    type SharePointItem
+import { 
+    DAILY_RECORD_FIELDS,
+    DAILY_RECORD_ROWS_FIELDS, 
+    type SharePointItem 
 } from '../constants';
-import {
-    SaveDailyRecordInput,
+import { 
+    SaveDailyRecordInput, 
     DailyRecordRepositoryMutationParams,
     DailyRecordItem,
     ApproveRecordInput
 } from '../../../domain/legacy/DailyRecordRepository';
-import {
-    buildDailyRecordPayload,
-    type SharePointDailyRecordPayload
+import { 
+    buildDailyRecordPayload, 
+    type SharePointDailyRecordPayload 
 } from '../../../domain/builders/buildDailyRecordPayload';
 import { auditLog } from '@/lib/debugLogger';
 import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { toSafeError } from '@/lib/errors';
-import { DailyRecordSchemaResolver } from './SchemaResolver';
-import { resolveInternalNames } from '@/lib/sp/helpers';
-import { DAILY_RECORD_ROW_AGGREGATE_CANDIDATES } from '@/sharepoint/fields/dailyFields';
-import {
-    buildFailOpenPayload,
-    spCreate,
-    spUpdate,
-    spDelete,
-    type FieldMapping,
-} from '@/lib/sp/GenericSaver';
 
 export class DailyRecordSaver {
-    constructor(
-        private readonly spFetch: SpFetchFn,
-        private readonly schema: DailyRecordSchemaResolver
-    ) {}
+    constructor(private readonly spFetch: SpFetchFn) {}
 
     public async save(
         input: SaveDailyRecordInput, 
@@ -47,65 +36,61 @@ export class DailyRecordSaver {
         try {
             const mode = existingItem ? 'update' : 'create';
             const itemData: SharePointDailyRecordPayload = buildDailyRecordPayload(input);
-            const resolved = await this.schema.getResolvedCanonicalNames();
-
-            // Build dynamic parent payload via GenericSaver
-            const fieldMappings: FieldMapping[] = [
-                [itemData.Title, 'title'],
-                [itemData.RecordDate, 'recordDate'],
-                [itemData.ReporterName, 'reporterName'],
-                [itemData.ReporterRole, 'reporterRole'],
-                [itemData.UserRowsJSON, 'userRowsJSON'],
-                [itemData.UserCount, 'userCount'],
-            ];
-
-            const { payload: spPayload } = buildFailOpenPayload(
-                resolved,
-                fieldMappings,
-                'Daily',
-            );
+            const spPayload = {
+                [DAILY_RECORD_FIELDS.title]: itemData.Title,
+                [DAILY_RECORD_FIELDS.recordDate]: itemData.RecordDate,
+                [DAILY_RECORD_FIELDS.reporterName]: itemData.ReporterName,
+                [DAILY_RECORD_FIELDS.reporterRole]: itemData.ReporterRole,
+                [DAILY_RECORD_FIELDS.userRowsJSON]: itemData.UserRowsJSON,
+                [DAILY_RECORD_FIELDS.userCount]: itemData.UserCount,
+            };
             
             let parentId: number;
             if (existingItem) {
                 parentId = existingItem.Id;
-                await spUpdate(
-                    this.spFetch, listPath, parentId,
-                    spPayload,
-                    existingItem.__metadata?.etag,
-                );
+                const updateUrl = `${listPath}/items(${parentId})`;
+                await this.spFetch(updateUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json;odata=nometadata',
+                        'Accept': 'application/json;odata=nometadata',
+                        'IF-MATCH': existingItem.__metadata?.etag ?? '*',
+                        'X-HTTP-Method': 'MERGE',
+                    },
+                    body: JSON.stringify(spPayload),
+                });
             } else {
-                // For initial creation, ensure we don't send huge JSON in the first request
-                const initialPayload = { ...spPayload };
-                const userRowsFieldName = resolved.userRowsJSON;
-                if (userRowsFieldName) {
-                    initialPayload[userRowsFieldName] = '';
-                }
-                parentId = await spCreate(this.spFetch, listPath, initialPayload);
+                const createUrl = `${listPath}/items`;
+                const res = await this.spFetch(createUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json;odata=nometadata',
+                        'Accept': 'application/json;odata=nometadata',
+                    },
+                    body: JSON.stringify({
+                        ...spPayload,
+                        [DAILY_RECORD_FIELDS.userRowsJSON]: '', 
+                    }),
+                });
+                const created = await res.json();
+                parentId = created.d?.Id || created.Id;
             }
-
-            // Cleanup and Save children logic...
-            // For children, we also need to resolve their names
-            const rowsFieldsRes = await this.spFetch(`${rowsListPath}/fields?$select=InternalName`);
-            const rowsFieldsJson = await rowsFieldsRes.json();
-            const availableRowFields = new Set<string>((rowsFieldsJson.value || []).map((f: { InternalName: string }) => f.InternalName));
-            const resolvedRows = resolveInternalNames(availableRowFields, DAILY_RECORD_ROW_AGGREGATE_CANDIDATES as unknown as Record<string, string[]>);
-
-            const parentIdField = resolvedRows.ParentID || 'Parent_x0020_ID';
-            const userIdField = resolvedRows.userId || 'User_x0020_ID';
-            const statusField = resolvedRows.status || 'Status';
-            const payloadField = resolvedRows.payload || 'Payload';
-            const recordedAtField = resolvedRows.recordedAt || 'Recorded_x0020_At';
 
             // Cleanup existing children if update
             if (existingItem) {
                 try {
-                    const filter = `${parentIdField} eq ${parentId}`;
+                    const filter = `${DAILY_RECORD_ROWS_FIELDS.parentId} eq ${parentId}`;
                     const res = await this.spFetch(`${rowsListPath}/items?$filter=${filter}&$select=Id`);
                     const json = await res.json();
                     const itemsToDelete = json.value || [];
                     
-                    for (const item of itemsToDelete) {
-                        await spDelete(this.spFetch, rowsListPath, item.Id);
+                    if (itemsToDelete.length > 0) {
+                        for (const item of itemsToDelete) {
+                            await this.spFetch(`${rowsListPath}/items(${item.Id})`, {
+                                method: 'POST',
+                                headers: { 'X-HTTP-Method': 'DELETE', 'IF-MATCH': '*' }
+                            });
+                        }
                     }
                 } catch (cleanupError) {
                     auditLog.warn('daily', 'Row cleanup failed', { error: String(cleanupError) });
@@ -114,14 +99,13 @@ export class DailyRecordSaver {
 
             // Save new children
             for (const row of input.userRows) {
-                const rowPayload: Record<string, unknown> = {
-                    [parentIdField]: parentId,
-                    [userIdField]: row.userId,
-                    [statusField]: 'done',
-                    [payloadField]: JSON.stringify(row),
-                    [recordedAtField]: new Date().toISOString(),
+                const rowPayload = {
+                    [DAILY_RECORD_ROWS_FIELDS.parentId]: parentId,
+                    [DAILY_RECORD_ROWS_FIELDS.userId]: row.userId,
+                    [DAILY_RECORD_ROWS_FIELDS.status]: 'done',
+                    [DAILY_RECORD_ROWS_FIELDS.payload]: JSON.stringify(row),
+                    [DAILY_RECORD_ROWS_FIELDS.recordedAt]: new Date().toISOString(),
                 };
-                
                 await this.spFetch(`${rowsListPath}/items`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json;odata=nometadata', 'Accept': 'application/json;odata=nometadata' },
@@ -129,12 +113,20 @@ export class DailyRecordSaver {
                 });
             }
 
-            // Finalize parent (large JSON field update)
-            if (resolved.userRowsJSON) {
-                await spUpdate(this.spFetch, listPath, parentId, {
-                    [resolved.userRowsJSON]: '',
-                });
-            }
+            // Finalize parent
+            const finalizeUrl = `${listPath}/items(${parentId})`;
+            await this.spFetch(finalizeUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json;odata=nometadata',
+                    'Accept': 'application/json;odata=nometadata',
+                    'IF-MATCH': '*',
+                    'X-HTTP-Method': 'MERGE',
+                },
+                body: JSON.stringify({
+                    [DAILY_RECORD_FIELDS.userRowsJSON]: '', 
+                }),
+            });
 
             finishSpan({ meta: { status: 'ok', mode } });
         } catch (error) {
@@ -160,33 +152,30 @@ export class DailyRecordSaver {
         });
 
         try {
-            const resolved = await this.schema.getResolvedCanonicalNames();
-            const approvedAt = new Date().toISOString();
+            const updateUrl = `${listPath}/items(${existingItem.Id})`;
+            const approvalData = {
+                ApprovalStatus: 'approved',
+                ApprovedBy: input.approverName,
+                ApprovedAt: new Date().toISOString(),
+            };
 
-            const approvalMappings: FieldMapping[] = [
-                ['approved', 'approvalStatus'],
-                [input.approverName, 'approvedBy'],
-                [approvedAt, 'approvedAt'],
-            ];
-
-            const { payload: approvalData } = buildFailOpenPayload(
-                resolved,
-                approvalMappings,
-                'Daily',
-            );
-
-            await spUpdate(
-                this.spFetch, listPath, existingItem.Id,
-                approvalData,
-                existingItem.__metadata?.etag,
-            );
+            await this.spFetch(updateUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json;odata=verbose',
+                    'Accept': 'application/json;odata=verbose',
+                    'IF-MATCH': existingItem.__metadata?.etag ?? '*',
+                    'X-HTTP-Method': 'MERGE',
+                },
+                body: JSON.stringify(approvalData),
+            });
 
             finishSpan({ meta: { status: 'ok' } });
             return { 
                 date: input.date, 
                 approvalStatus: 'approved', 
                 approvedBy: input.approverName, 
-                approvedAt: approvedAt 
+                approvedAt: approvalData.ApprovedAt 
             } as DailyRecordItem;
         } catch (error) {
             const safeError = toSafeError(error);

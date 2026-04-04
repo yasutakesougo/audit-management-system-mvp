@@ -36,12 +36,6 @@ const createMockSp = () => ({
   web: {
     lists: {
       getByTitle: () => ({
-        fields: () =>
-          Promise.resolve([
-            { InternalName: 'UserID' },
-            { InternalName: 'FullName' },
-            { InternalName: 'IsActive' },
-          ]),
         items: {
           select: (..._fields: string[]) => ({
             top: (_n: number) => {
