@@ -63,7 +63,7 @@ describe('TodayExceptionAlerts', () => {
 
     render(
       <MemoryRouter>
-        <TodayExceptionAlerts exceptionsQueue={queue} />
+        <TodayExceptionAlerts exceptionsQueue={queue} audience="admin" />
       </MemoryRouter>,
     );
 
@@ -78,7 +78,7 @@ describe('TodayExceptionAlerts', () => {
 
     render(
       <MemoryRouter>
-        <TodayExceptionAlerts exceptionsQueue={queue} />
+        <TodayExceptionAlerts exceptionsQueue={queue} audience="admin" />
       </MemoryRouter>,
     );
 
@@ -96,7 +96,7 @@ describe('TodayExceptionAlerts', () => {
 
     render(
       <MemoryRouter>
-        <TodayExceptionAlerts exceptionsQueue={queue} />
+        <TodayExceptionAlerts exceptionsQueue={queue} audience="admin" />
       </MemoryRouter>,
     );
 
@@ -116,7 +116,7 @@ describe('TodayExceptionAlerts', () => {
 
     render(
       <MemoryRouter>
-        <TodayExceptionAlerts exceptionsQueue={queue} />
+        <TodayExceptionAlerts exceptionsQueue={queue} audience="admin" />
       </MemoryRouter>,
     );
 
@@ -127,5 +127,41 @@ describe('TodayExceptionAlerts', () => {
       'today-exception-alert-item-2',
     ]);
     expect(screen.queryByText('司令塔優先')).not.toBeInTheDocument();
+  });
+
+  it('staff は要約表示になり管理導線の優先チップを出さない', () => {
+    const queue = makeQueue({
+      queueItems: [makeItem('item-a', { kind: 'attention-user', userId: 'U-001' })],
+      topPriorityItem: makeItem('item-a', { kind: 'attention-user', userId: 'U-001' }),
+    });
+
+    render(
+      <MemoryRouter>
+        <TodayExceptionAlerts exceptionsQueue={queue} audience="reception" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('today-exception-alert-compact-summary')).toBeInTheDocument();
+    expect(screen.getByTestId('today-exception-alert-compact-action')).toBeInTheDocument();
+    expect(screen.queryByText('司令塔優先')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(/today-exception-alert-item-/)).not.toBeInTheDocument();
+  });
+
+  it('viewer でも要約表示になり管理導線を出さない', () => {
+    const queue = makeQueue({
+      queueItems: [makeItem('item-a', { kind: 'attention-user', userId: 'U-001' })],
+      topPriorityItem: makeItem('item-a', { kind: 'attention-user', userId: 'U-001' }),
+    });
+
+    render(
+      <MemoryRouter>
+        <TodayExceptionAlerts exceptionsQueue={queue} audience="viewer" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('today-exception-alert-compact-summary')).toBeInTheDocument();
+    expect(screen.getByTestId('today-exception-alert-compact-action')).toBeInTheDocument();
+    expect(screen.queryByText('司令塔優先')).not.toBeInTheDocument();
+    expect(screen.queryByTestId(/today-exception-alert-item-/)).not.toBeInTheDocument();
   });
 });

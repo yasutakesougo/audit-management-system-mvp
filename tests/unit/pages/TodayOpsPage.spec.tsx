@@ -9,11 +9,13 @@ import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from '../../../src/features/se
 import TodayOpsPage from '../../../src/pages/TodayOpsPage';
 import { TodayBentoLayout } from '../../../src/features/today/layouts/TodayBentoLayout';
 import { useTodayActionQueue } from '../../../src/features/today/hooks/useTodayActionQueue';
+import { TodayLitePage } from '../../../src/features/today/lightweight/TodayLitePage';
 
 import type { ActionCard as IActionCard } from '../../../src/features/today/domain/models/queue.types';
 import type { ActionSuggestion } from '../../../src/features/action-engine/domain/types';
 
 let mockTodayLiteUiFlag = false;
+let mockAuthzRole: 'viewer' | 'reception' | 'admin' = 'reception';
 vi.mock('../../../src/config/featureFlags', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../src/config/featureFlags')>();
   return {
@@ -27,6 +29,13 @@ vi.mock('../../../src/config/featureFlags', async (importOriginal) => {
 
 vi.mock('../../../src/features/today/lightweight/TodayLitePage', () => ({
   TodayLitePage: vi.fn(() => <div data-testid="today-lite-page" />),
+}));
+
+vi.mock('../../../src/auth/useUserAuthz', () => ({
+  useUserAuthz: vi.fn(() => ({
+    role: mockAuthzRole,
+    ready: true,
+  })),
 }));
 
 // Mocks for all the dependencies the page relies on
@@ -204,6 +213,7 @@ describe('TodayOpsPage (ActionQueueTimeline integration)', () => {
     vi.setSystemTime(new Date('2026-03-21T10:00:00Z'));
     vi.clearAllMocks();
     mockTodayLiteUiFlag = false;
+    mockAuthzRole = 'reception';
     localStorage.clear();
   });
   afterEach(() => {
@@ -296,6 +306,34 @@ describe('TodayOpsPage (ActionQueueTimeline integration)', () => {
 
     expect(screen.getByTestId('today-lite-page')).toBeInTheDocument();
     expect(TodayBentoLayout).not.toHaveBeenCalled();
+    const liteCalls = vi.mocked(TodayLitePage).mock.calls;
+    const liteProps = liteCalls[liteCalls.length - 1]?.[0] as { role?: string };
+    expect(liteProps.role).toBe('staff');
+  });
+
+  it('passes admin role to lightweight UI when authz role is admin', () => {
+    mockTodayLiteUiFlag = true;
+    mockAuthzRole = 'admin';
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <SettingsProvider>
+            <MemoryRouter>
+              <TodayOpsPage correctiveActions={[]} />
+            </MemoryRouter>
+          </SettingsProvider>
+        </ToastProvider>
+      </QueryClientProvider>
+    );
+
+    const liteCalls = vi.mocked(TodayLitePage).mock.calls;
+    const liteProps = liteCalls[liteCalls.length - 1]?.[0] as { role?: string };
+    expect(liteProps.role).toBe('admin');
   });
 
   it('passes actionQueue and correct click handlers to TodayBentoLayout', () => {
@@ -329,6 +367,7 @@ describe('TodayOpsPage (ActionQueueTimeline integration)', () => {
     const props = mockCalls.length > 0 ? (mockCalls[mockCalls.length - 1]?.[0] as Record<string, unknown>) : {};
     
     expect(props.actionQueueTimeline).toBeDefined();
+    expect(props.audience).toBe('reception');
     
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const timelineProps = props.actionQueueTimeline as any;
@@ -381,6 +420,66 @@ describe('TodayOpsPage (ActionQueueTimeline integration)', () => {
         snoozePreset: 'tomorrow',
       }),
     );
+  });
+
+  it('passes viewer audience to legacy Today layout when authz role is viewer', () => {
+    mockAuthzRole = 'viewer';
+    vi.mocked(useTodayActionQueue).mockReturnValue({
+      actionQueue: [],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <SettingsProvider>
+            <MemoryRouter>
+              <TodayOpsPage correctiveActions={[]} />
+            </MemoryRouter>
+          </SettingsProvider>
+        </ToastProvider>
+      </QueryClientProvider>
+    );
+
+    const mockCalls = vi.mocked(TodayBentoLayout).mock.calls;
+    const props = mockCalls.length > 0 ? (mockCalls[mockCalls.length - 1]?.[0] as Record<string, unknown>) : {};
+    expect(props.audience).toBe('viewer');
+  });
+
+  it('passes admin audience to legacy Today layout when authz role is admin', () => {
+    mockAuthzRole = 'admin';
+    vi.mocked(useTodayActionQueue).mockReturnValue({
+      actionQueue: [],
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <SettingsProvider>
+            <MemoryRouter>
+              <TodayOpsPage correctiveActions={[]} />
+            </MemoryRouter>
+          </SettingsProvider>
+        </ToastProvider>
+      </QueryClientProvider>
+    );
+
+    const mockCalls = vi.mocked(TodayBentoLayout).mock.calls;
+    const props = mockCalls.length > 0 ? (mockCalls[mockCalls.length - 1]?.[0] as Record<string, unknown>) : {};
+    expect(props.audience).toBe('admin');
   });
 
   it('records kiosk session start telemetry when /today is opened in kiosk mode', async () => {

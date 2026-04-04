@@ -35,7 +35,7 @@ export const RECORD_ROUTES_BASE: NavItem[] = [
     to: '/records/service-provision',
     isActive: (pathname) => pathname.startsWith('/records/service-provision'),
     icon: undefined,
-    audience: NAV_AUDIENCE.staff,
+    audience: NAV_AUDIENCE.reception,
     group: 'record' as NavGroupKey,
   },
   {
@@ -43,7 +43,7 @@ export const RECORD_ROUTES_BASE: NavItem[] = [
     to: '/records/journal/personal',
     isActive: (pathname) => pathname.startsWith('/records/journal/personal'),
     icon: undefined,
-    audience: NAV_AUDIENCE.staff,
+    audience: NAV_AUDIENCE.reception,
     group: 'record' as NavGroupKey,
   },
 ];

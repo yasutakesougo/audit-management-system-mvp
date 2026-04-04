@@ -66,6 +66,7 @@ import { KioskStatusBar, type KioskStatusMetrics } from '../components/KioskStat
 import { KioskHeroBlock } from '../components/KioskHeroBlock';
 import type { UseTodayExceptionsResult } from '../hooks/useTodayExceptions';
 import { useSettingsContext } from '@/features/settings/SettingsContext';
+import type { Role } from '@/auth/roles';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -120,6 +121,8 @@ export type TodayBentoProps = {
   contactPendingCount?: number;
   /** キオスクモードでのクイックリンク遷移ハンドラ */
   onQuickLinkNavigate?: (href: string) => void;
+  /** 権限オーディエンス（TodayExceptionAlerts の表示制御に使用） */
+  audience?: Role;
 };
 
 // ─── Compact Section Title ───────────────────────────────────
@@ -180,6 +183,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   exceptionsQueue,
   contactPendingCount,
   onQuickLinkNavigate,
+  audience = 'viewer',
 }) => {
   const { settings } = useSettingsContext();
   const isKiosk = settings.layoutMode === 'kiosk';
@@ -279,7 +283,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
            *  通常モード: 既存のレイアウト（変更なし）
            *  ════════════════════════════════════════════════════ */
           <>
-            <TodayExceptionAlerts exceptionsQueue={exceptionsQueue} />
+            <TodayExceptionAlerts exceptionsQueue={exceptionsQueue} audience={audience} />
 
             <BentoCard
               colSpan={{ xs: 1, sm: 2, md: 4 }}
