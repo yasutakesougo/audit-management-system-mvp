@@ -1,4 +1,5 @@
 import { BentoCard } from '@/components/ui/BentoGrid';
+import type { Role } from '@/auth/roles';
 import type { UseTodayExceptionsResult } from '@/features/today/hooks/useTodayExceptions';
 import { useExceptionPreferences } from '@/features/exceptions/hooks/useExceptionPreferences';
 import { buildExceptionCenterDeepLinkPath } from '@/features/exceptions/domain/exceptionCenterDeepLink';
@@ -28,13 +29,16 @@ function SectionLabel({ emoji, text }: { emoji: string; text: string }) {
 
 export type TodayExceptionAlertsProps = {
   exceptionsQueue?: UseTodayExceptionsResult;
+  audience?: Role;
 };
 
 export const TodayExceptionAlerts: React.FC<TodayExceptionAlertsProps> = ({
   exceptionsQueue,
+  audience = 'viewer',
 }) => {
   const navigate = useNavigate();
   const pref = useExceptionPreferences();
+  const isAdminAudience = audience === 'admin';
 
   const handleSnooze = (stableId?: string) => {
     if (!stableId) return;
@@ -51,6 +55,43 @@ export const TodayExceptionAlerts: React.FC<TodayExceptionAlertsProps> = ({
 
   if (!exceptionsQueue || exceptionsQueue.isLoading) return null;
   if (!exceptionsQueue.heroItem && exceptionsQueue.queueItems.length === 0) return null;
+
+  const actionableItems = [exceptionsQueue.heroItem, ...exceptionsQueue.queueItems].filter(
+    (item): item is NonNullable<typeof item> => Boolean(item),
+  );
+  const criticalCount = actionableItems.filter((item) => item.priority === 'critical').length;
+  const highCount = actionableItems.length - criticalCount;
+
+  const frontlineActionPath =
+    actionableItems.find((item) => !item.actionPath.startsWith('/admin/') && !item.actionPath.startsWith('/analysis'))?.actionPath
+    ?? '/daily/table';
+
+  if (!isAdminAudience) {
+    return (
+      <BentoCard colSpan={{ xs: 1, sm: 2, md: 4 }} variant="default" data-testid="today-exception-alerts-compact">
+        <SectionLabel emoji="⚠️" text="確認が必要な項目（要約）" />
+        <Alert severity={criticalCount > 0 ? 'warning' : 'info'} data-testid="today-exception-alert-compact-summary">
+          <AlertTitle>確認が必要な項目があります</AlertTitle>
+          <Typography variant="body2">
+            要対応 {actionableItems.length}件（緊急 {criticalCount}件 / 通常 {Math.max(highCount, 0)}件）
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            詳細診断は管理者画面に集約されています。
+          </Typography>
+        </Alert>
+        <Box sx={{ mt: 1.5 }}>
+          <Button
+            size="small"
+            variant="contained"
+            onClick={() => navigate(frontlineActionPath)}
+            data-testid="today-exception-alert-compact-action"
+          >
+            対応画面を開く
+          </Button>
+        </Box>
+      </BentoCard>
+    );
+  }
 
   const criticalHeroItem =
     exceptionsQueue.heroItem?.priority === 'critical'
