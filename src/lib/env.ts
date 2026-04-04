@@ -344,6 +344,9 @@ export const isIcebergPdcaEnabled = (envOverride?: EnvRecord): boolean =>
 export const isTodayOpsFeatureEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_FEATURE_TODAY_OPS', false, envOverride);
 
+export const isTodayLiteUiFeatureEnabled = (envOverride?: EnvRecord): boolean =>
+  readBool('VITE_FEATURE_TODAY_LITE_UI', false, envOverride) || readLocalStorageFlag('feature:todayLiteUi') || false;
+
 export const shouldSkipLogin = (envOverride?: EnvRecord): boolean =>
   // Force SharePoint mode must never bypass login.
   readBool('VITE_FORCE_SHAREPOINT', false, envOverride)

@@ -66,6 +66,7 @@ const RUNTIME_ENV_ALLOWLIST = new Set([
   'VITE_AAD_ADMIN_GROUP_ID',
   'VITE_ADMIN_GROUP_ID',
   'VITE_FEATURE_TODAY_OPS',
+  'VITE_FEATURE_TODAY_LITE_UI',
 ]);
 
 const pickRuntimeEnvFromBindings = (env: Env): Record<string, string> => {
