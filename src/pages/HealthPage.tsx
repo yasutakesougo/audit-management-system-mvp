@@ -33,7 +33,7 @@ import {
   ATTENDANCE_USERS_CANDIDATES,
   ATTENDANCE_DAILY_CANDIDATES,
 } from "@/sharepoint/fields/attendanceFields";
-import { PROCEDURE_RECORD_CANDIDATES, ISP_MASTER_CANDIDATES, PLANNING_SHEET_CANDIDATES, ISP_DECISION_CANDIDATES } from "@/sharepoint/fields/ispThreeLayerFields";
+import { PROCEDURE_RECORD_CANDIDATES, ISP_MASTER_CANDIDATES } from "@/sharepoint/fields/ispThreeLayerFields";
 import {
   TRANSPORT_LOG_CANDIDATES,
   TRANSPORT_SETTING_CANDIDATES,
@@ -253,24 +253,6 @@ const DRIFT_CANDIDATES_BY_KEY: Record<string, Record<string, string[]>> = {
   isp_master: (() => {
     const map: Record<string, string[]> = {};
     for (const cands of Object.values(ISP_MASTER_CANDIDATES) as unknown as readonly string[][]) {
-      const primary = cands[0];
-      map[primary] = [...cands];
-    }
-    return map;
-  })(),
-
-  planning_sheet_master: (() => {
-    const map: Record<string, string[]> = {};
-    for (const cands of Object.values(PLANNING_SHEET_CANDIDATES) as unknown as readonly string[][]) {
-      const primary = cands[0];
-      map[primary] = [...cands];
-    }
-    return map;
-  })(),
-
-  isp_recommendation_decisions: (() => {
-    const map: Record<string, string[]> = {};
-    for (const cands of Object.values(ISP_DECISION_CANDIDATES) as unknown as readonly string[][]) {
       const primary = cands[0];
       map[primary] = [...cands];
     }

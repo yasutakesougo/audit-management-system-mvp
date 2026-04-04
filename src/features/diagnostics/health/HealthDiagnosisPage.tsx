@@ -24,7 +24,6 @@ import { toAdminSummary } from "./toAdminSummary";
 import { HealthContext } from "./types";
 import { useHealthChecks } from "./useHealthChecks";
 import { spTelemetryStore } from "@/lib/telemetry/spTelemetryStore";
-import { DriftActionPanel } from "./components/DriftActionPanel";
 import { DriftObservabilityPanel } from "../drift/observability/DriftObservabilityPanel";
 
 // ──────────────────────────────────────────────────────────────
@@ -295,7 +294,7 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
                 Top Failing Endpoints:
               </Typography>
               <Box component="ul" sx={{ m: 0, pl: 2, typography: "body2" }}>
-                {spSnapshot.topEndpoints.map((ep, i) => (
+                {spSnapshot.topEndpoints.map((ep: { endpoint: string; failures: number; retries: number }, i: number) => (
                   <li key={i}>
                     <code>{ep.endpoint}</code> (Fail: {ep.failures}, Retry: {ep.retries})
                   </li>
@@ -455,10 +454,6 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
         {/* ─────────────────────────────────────────────────────────────
             個別チェック
             ───────────────────────────────────────────────────────────── */}
-        {report && activeTab === "drift" && (
-          <DriftActionPanel />
-        )}
-
         {report && activeTab !== "drift" && (
           <Paper variant="outlined" sx={{ p: 2 }}>
             <Typography variant="subtitle1" sx={{ mb: 1 }}>
