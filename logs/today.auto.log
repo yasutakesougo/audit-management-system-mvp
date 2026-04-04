@@ -1,0 +1,345 @@
+▶ Audit MVP — 今日の自動ドライバを起動します
+== Node/npm
+v20.19.5
+/opt/homebrew/opt/node@20/bin/node
+10.8.2
+/opt/homebrew/opt/node@20/bin/npm
+== npm ci
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated @humanwhocodes/config-array@0.13.0: Use @eslint/config-array instead
+npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+npm warn deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+
+> audit-management-system-mvp@0.1.0 prepare
+> husky install
+
+husky - install command is DEPRECATED
+
+added 566 packages, and audited 567 packages in 11s
+
+164 packages are looking for funding
+  run `npm fund` for details
+
+6 moderate severity vulnerabilities
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+== Vite 起動
+== Vitest watch 起動
+== 重点テスト（WeekPage + ensureList）
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /Users/yasutakesougo/audit-management-system-mvp
+
+stdout | tests/unit/spClient.ensureList.spec.ts > spClient ensureListExists > returns existing list metadata when the list is already provisioned
+[SPFetch] URL: https://contoso.sharepoint.com/sites/wf/_api/web/lists/getbytitle('Existing%20List')?$select=Id,Title
+
+stdout | tests/unit/spClient.ensureList.spec.ts > spClient ensureListExists > creates the list and adds missing fields
+[SPFetch] URL: https://contoso.sharepoint.com/sites/wf/_api/web/lists/getbytitle('New%20List')?$select=Id,Title
+[SPFetch] URL: https://contoso.sharepoint.com/sites/wf/_api/web/lists
+[SPFetch] URL: https://contoso.sharepoint.com/sites/wf/_api/web/lists/getbytitle('New%20List')/fields?$select=InternalName,TypeAsString,Required
+[SPFetch] URL: https://contoso.sharepoint.com/sites/wf/_api/web/lists/getbytitle('New%20List')/fields/createfieldasxml
+[SPFetch] URL: https://contoso.sharepoint.com/sites/wf/_api/web/lists/getbytitle('New%20List')/fields/createfieldasxml
+
+stdout | tests/unit/spClient.ensureList.spec.ts > spClient ensureListExists > skips adding fields that already exist on the target list
+[SPFetch] URL: https://contoso.sharepoint.com/sites/wf/_api/web/lists/getbytitle('Existing')?$select=Id,Title
+[SPFetch] URL: https://contoso.sharepoint.com/sites/wf/_api/web/lists/getbytitle('Existing')/fields?$select=InternalName,TypeAsString,Required
+
+stdout | tests/unit/spClient.ensureList.spec.ts > spClient ensureListExists > warns when an existing field misses the required flag
+[SPFetch] URL: https://contoso.sharepoint.com/sites/wf/_api/web/lists/getbytitle('Existing')?$select=Id,Title
+[SPFetch] URL: https://contoso.sharepoint.com/sites/wf/_api/web/lists/getbytitle('Existing')/fields?$select=InternalName,TypeAsString,Required
+
+ ❯ tests/unit/spClient.ensureList.spec.ts (5 tests | 1 failed) 12ms
+   × spClient ensureListExists > warns when an existing field misses the required flag 5ms
+     → expected false to be true // Object.is equality
+ ✓ src/features/schedule/__tests__/WeekPage.smoke.test.tsx (1 test) 236ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/spClient.ensureList.spec.ts > spClient ensureListExists > warns when an existing field misses the required flag
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/unit/spClient.ensureList.spec.ts:133:26
+    131|         return typeof message === 'string' && message.includes('requir…
+    132|       });
+    133|       expect(sawWarning).toBe(true);
+       |                          ^
+    134|     } finally {
+    135|       warnSpy.mockRestore();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 5 passed (6)
+   Start at  09:23:39
+   Duration  1.39s (transform 177ms, setup 293ms, collect 320ms, tests 247ms, environment 1.03s, prepare 339ms)
+
+== tsc --noEmit（型チェック：失敗しても続行）
+src/adapters/schedules/sharepoint.ts(13,2): error TS2322: Type 'Schedule' is not assignable to type 'void'.
+src/adapters/users/write.ts(1,34): error TS2307: Cannot find module '@/lib/spWrite' or its corresponding type declarations.
+src/components/DailyForm.tsx(7,26): error TS2307: Cannot find module '@/stores/useUsers' or its corresponding type declarations.
+src/components/DailyForm.tsx(118,13): error TS7006: Parameter 'user' implicitly has an 'any' type.
+src/components/DailyForm.tsx(131,16): error TS7006: Parameter 'option' implicitly has an 'any' type.
+src/components/DailyForm.tsx(243,7): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/components/DailyForm.tsx(244,7): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/components/DailyForm.tsx(245,7): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/components/DailyForm.tsx(246,7): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/components/DailyForm.tsx(249,7): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/components/DailyForm.tsx(250,7): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/components/DailyForm.tsx(251,7): error TS2322: Type 'string | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/features/operation-hub/useOperationHubData.ts(7,26): error TS2307: Cannot find module '@/stores/useUsers' or its corresponding type declarations.
+src/features/operation-hub/useOperationHubData.ts(8,26): error TS2307: Cannot find module '@/stores/useStaff' or its corresponding type declarations.
+src/features/operation-hub/useOperationHubData.ts(9,24): error TS2307: Cannot find module '@/utils/getNow' or its corresponding type declarations.
+src/features/operation-hub/useOperationHubData.ts(10,34): error TS2307: Cannot find module '@/utils/datetime' or its corresponding type declarations.
+src/features/operation-hub/useOperationHubData.ts(416,37): error TS7006: Parameter 'member' implicitly has an 'any' type.
+src/features/operation-hub/useOperationHubData.ts(510,28): error TS7006: Parameter 'member' implicitly has an 'any' type.
+src/features/schedule/__tests__/spClient.usercare.spec.ts(110,7): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(predicate: (value: any[], index: number, obj: any[][]) => value is any[], thisArg?: any): any[] | undefined', gave the following error.
+    Argument of type '(call: [string, RequestInit | undefined]) => boolean' is not assignable to parameter of type '(value: any[], index: number, obj: any[][]) => value is any[]'.
+      Types of parameters 'call' and 'value' are incompatible.
+        Type 'any[]' is not assignable to type '[string, RequestInit | undefined]'.
+          Target requires 2 element(s) but source may have fewer.
+  Overload 2 of 2, '(predicate: (value: any[], index: number, obj: any[][]) => unknown, thisArg?: any): any[] | undefined', gave the following error.
+    Argument of type '(call: [string, RequestInit | undefined]) => boolean' is not assignable to parameter of type '(value: any[], index: number, obj: any[][]) => unknown'.
+      Types of parameters 'call' and 'value' are incompatible.
+        Type 'any[]' is not assignable to type '[string, RequestInit | undefined]'.
+          Target requires 2 element(s) but source may have fewer.
+src/features/schedule/__tests__/spClient.usercare.spec.ts(114,7): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(predicate: (value: any[], index: number, array: any[][]) => value is any[], thisArg?: any): any[][]', gave the following error.
+    Argument of type '(call: [string, RequestInit | undefined]) => boolean' is not assignable to parameter of type '(value: any[], index: number, array: any[][]) => value is any[]'.
+      Types of parameters 'call' and 'value' are incompatible.
+        Type 'any[]' is not assignable to type '[string, RequestInit | undefined]'.
+          Target requires 2 element(s) but source may have fewer.
+  Overload 2 of 2, '(predicate: (value: any[], index: number, array: any[][]) => unknown, thisArg?: any): any[][]', gave the following error.
+    Argument of type '(call: [string, RequestInit | undefined]) => boolean' is not assignable to parameter of type '(value: any[], index: number, array: any[][]) => unknown'.
+      Types of parameters 'call' and 'value' are incompatible.
+        Type 'any[]' is not assignable to type '[string, RequestInit | undefined]'.
+          Target requires 2 element(s) but source may have fewer.
+src/features/schedule/clone.ts(3,34): error TS2307: Cannot find module '@/utils/datetime' or its corresponding type declarations.
+src/features/schedule/clone.ts(5,32): error TS2307: Cannot find module './statusDictionary' or its corresponding type declarations.
+src/features/schedule/SchedulePage.tsx(4,34): error TS2307: Cannot find module '@/utils/datetime' or its corresponding type declarations.
+src/features/schedule/SchedulePage.tsx(5,20): error TS2307: Cannot find module '@/utils/cn' or its corresponding type declarations.
+src/features/schedule/SchedulePage.tsx(6,21): error TS2307: Cannot find module '@/features/schedule/views/UserTab' or its corresponding type declarations.
+src/features/schedule/SchedulePage.tsx(7,20): error TS2307: Cannot find module '@/features/schedule/views/OrgTab' or its corresponding type declarations.
+src/features/schedule/SchedulePage.tsx(8,22): error TS2307: Cannot find module '@/features/schedule/views/StaffTab' or its corresponding type declarations.
+src/features/schedule/SchedulePage.tsx(9,27): error TS2307: Cannot find module '@/features/schedule/components/BriefingPanel' or its corresponding type declarations.
+src/features/schedule/SchedulePage.tsx(15,36): error TS2307: Cannot find module '@/features/schedule/dateutils.local' or its corresponding type declarations.
+src/features/schedule/SchedulePage.tsx(16,35): error TS2307: Cannot find module '@/features/schedule/move' or its corresponding type declarations.
+src/features/schedule/SchedulePage.tsx(21,26): error TS2307: Cannot find module '@/stores/useStaff' or its corresponding type declarations.
+src/features/schedule/SchedulePage.tsx(22,66): error TS2307: Cannot find module './workPattern' or its corresponding type declarations.
+src/features/schedule/spClient.briefing.ts(2,10): error TS2724: '"@/sharepoint/fields"' has no exported member named 'SCHEDULE_FIELD_CATEGORY'. Did you mean 'SCHEDULE_FIELD_NOTE'?
+src/features/schedule/spClient.briefing.ts(2,35): error TS2724: '"@/sharepoint/fields"' has no exported member named 'SCHEDULE_FIELD_DAY_PART'. Did you mean 'SCHEDULE_FIELD_START'?
+src/features/schedule/spClient.briefing.ts(171,75): error TS2533: Object is possibly 'null' or 'undefined'.
+src/features/schedule/spClient.schedule.org.ts(4,32): error TS2307: Cannot find module './statusDictionary' or its corresponding type declarations.
+src/features/schedule/spClient.schedule.org.ts(5,10): error TS2724: '"@/sharepoint/fields"' has no exported member named 'SCHEDULE_FIELD_CATEGORY'. Did you mean 'SCHEDULE_FIELD_NOTE'?
+src/features/schedule/spClient.schedule.org.ts(8,34): error TS2307: Cannot find module '@/lib/spWrite' or its corresponding type declarations.
+src/features/schedule/spClient.schedule.staff.ts(4,32): error TS2307: Cannot find module './statusDictionary' or its corresponding type declarations.
+src/features/schedule/spClient.schedule.staff.ts(5,10): error TS2724: '"@/sharepoint/fields"' has no exported member named 'SCHEDULE_FIELD_CATEGORY'. Did you mean 'SCHEDULE_FIELD_NOTE'?
+src/features/schedule/spClient.schedule.staff.ts(8,34): error TS2307: Cannot find module '@/lib/spWrite' or its corresponding type declarations.
+src/features/schedule/spClient.schedule.ts(4,32): error TS2307: Cannot find module './statusDictionary' or its corresponding type declarations.
+src/features/schedule/spClient.schedule.ts(7,3): error TS2724: '"@/sharepoint/fields"' has no exported member named 'SCHEDULE_FIELD_CATEGORY'. Did you mean 'SCHEDULE_FIELD_NOTE'?
+src/features/schedule/spClient.schedule.ts(9,3): error TS2724: '"@/sharepoint/fields"' has no exported member named 'SCHEDULE_FIELD_PERSON_TYPE'. Did you mean 'SCHEDULE_FIELD_SERVICE_TYPE'?
+src/features/schedule/spClient.schedule.ts(13,34): error TS2307: Cannot find module '@/lib/spWrite' or its corresponding type declarations.
+src/features/schedule/spMap.ts(4,3): error TS2724: '"@/sharepoint/fields"' has no exported member named 'SCHEDULE_FIELD_CATEGORY'. Did you mean 'SCHEDULE_FIELD_NOTE'?
+src/features/schedule/spMap.ts(6,3): error TS2724: '"@/sharepoint/fields"' has no exported member named 'SCHEDULE_FIELD_PERSON_TYPE'. Did you mean 'SCHEDULE_FIELD_SERVICE_TYPE'?
+src/features/schedule/spMap.ts(7,3): error TS2724: '"@/sharepoint/fields"' has no exported member named 'SCHEDULE_FIELD_PERSON_ID'. Did you mean 'SCHEDULE_FIELD_END'?
+src/features/schedule/spMap.ts(8,3): error TS2724: '"@/sharepoint/fields"' has no exported member named 'SCHEDULE_FIELD_PERSON_NAME'. Did you mean 'SCHEDULE_FIELD_END'?
+src/features/schedule/spMap.ts(9,3): error TS2305: Module '"@/sharepoint/fields"' has no exported member 'SCHEDULE_FIELD_EXTERNAL_NAME'.
+src/features/schedule/spMap.ts(10,3): error TS2305: Module '"@/sharepoint/fields"' has no exported member 'SCHEDULE_FIELD_EXTERNAL_ORG'.
+src/features/schedule/spMap.ts(11,3): error TS2305: Module '"@/sharepoint/fields"' has no exported member 'SCHEDULE_FIELD_EXTERNAL_CONTACT'.
+src/features/schedule/spMap.ts(12,3): error TS2724: '"@/sharepoint/fields"' has no exported member named 'SCHEDULE_FIELD_STAFF_IDS'. Did you mean 'SCHEDULE_FIELD_STATUS'?
+src/features/schedule/spMap.ts(13,3): error TS2724: '"@/sharepoint/fields"' has no exported member named 'SCHEDULE_FIELD_STAFF_NAMES'. Did you mean 'SCHEDULE_FIELD_STATUS'?
+src/features/schedule/spMap.ts(15,3): error TS2724: '"@/sharepoint/fields"' has no exported member named 'SCHEDULE_FIELD_FISCAL_YEAR'. Did you mean 'SCHEDULE_FIELD_START'?
+src/features/schedule/spMap.ts(16,3): error TS2724: '"@/sharepoint/fields"' has no exported member named 'SCHEDULE_FIELD_SUB_TYPE'. Did you mean 'SCHEDULE_FIELD_SERVICE_TYPE'?
+src/features/schedule/spMap.ts(17,3): error TS2305: Module '"@/sharepoint/fields"' has no exported member 'SCHEDULE_FIELD_ORG_AUDIENCE'.
+src/features/schedule/spMap.ts(18,3): error TS2724: '"@/sharepoint/fields"' has no exported member named 'SCHEDULE_FIELD_ORG_RESOURCE_ID'. Did you mean 'SCHEDULE_FIELD_RELATED_RESOURCE_ID'?
+src/features/schedule/spMap.ts(19,3): error TS2305: Module '"@/sharepoint/fields"' has no exported member 'SCHEDULE_FIELD_ORG_EXTERNAL_NAME'.
+src/features/schedule/spMap.ts(20,3): error TS2724: '"@/sharepoint/fields"' has no exported member named 'SCHEDULE_FIELD_DAY_PART'. Did you mean 'SCHEDULE_FIELD_START'?
+src/features/schedule/spMap.ts(36,53): error TS2307: Cannot find module './statusDictionary' or its corresponding type declarations.
+src/features/schedule/spMap.ts(373,3): error TS2322: Type 'Partial<ScheduleUserCare>' is not assignable to type 'ScheduleUserCare'.
+  Types of property 'category' are incompatible.
+    Type '"User" | undefined' is not assignable to type '"User"'.
+      Type 'undefined' is not assignable to type '"User"'.
+src/features/schedule/views/ListView.tsx(15,29): error TS2307: Cannot find module '@/utils/formatCount' or its corresponding type declarations.
+src/features/schedule/views/ListView.tsx(16,24): error TS2307: Cannot find module '@/utils/getNow' or its corresponding type declarations.
+src/features/schedule/views/ListView.tsx(17,28): error TS2307: Cannot find module '@/features/schedule/AllDayChip' or its corresponding type declarations.
+src/features/schedule/views/ListView.tsx(18,53): error TS2307: Cannot find module '@/ui/components/RecurrenceChip' or its corresponding type declarations.
+src/features/schedule/views/ListView.tsx(20,34): error TS2307: Cannot find module '@/utils/datetime' or its corresponding type declarations.
+src/features/schedule/views/ListView.tsx(23,64): error TS2307: Cannot find module '@/features/schedule/statusDictionary' or its corresponding type declarations.
+src/features/schedule/views/ListView.tsx(24,20): error TS2307: Cannot find module '@/i18n/ui' or its corresponding type declarations.
+src/features/schedule/views/ListView.tsx(26,32): error TS2307: Cannot find module '@/features/schedule/write' or its corresponding type declarations.
+src/features/schedule/views/ListView.tsx(439,21): error TS2322: Type '() => Promise<void>' is not assignable to type '() => Promise<Schedule[] | null | undefined>'.
+  Type 'Promise<void>' is not assignable to type 'Promise<Schedule[] | null | undefined>'.
+    Type 'void' is not assignable to type 'Schedule[] | null | undefined'.
+src/features/schedule/views/TimelineDay.tsx(7,45): error TS2307: Cannot find module '../dateutils.local' or its corresponding type declarations.
+src/features/schedule/views/TimelineDay.tsx(8,20): error TS2307: Cannot find module '@/utils/cn' or its corresponding type declarations.
+src/features/schedule/views/TimelineEventCard.tsx(5,28): error TS2307: Cannot find module '@/features/schedule/AllDayChip' or its corresponding type declarations.
+src/features/schedule/views/TimelineEventCard.tsx(6,32): error TS2307: Cannot find module '@/ui/components/RecurrenceChip' or its corresponding type declarations.
+src/features/schedule/views/TimelineEventCard.tsx(7,20): error TS2307: Cannot find module '@/ui/cn' or its corresponding type declarations.
+src/features/schedule/views/TimelineEventCard.tsx(9,44): error TS2307: Cannot find module '../workPattern' or its corresponding type declarations.
+src/features/schedule/views/TimelineWeek.tsx(8,35): error TS2307: Cannot find module '../presenters/format' or its corresponding type declarations.
+src/features/schedule/views/TimelineWeek.tsx(9,45): error TS2307: Cannot find module '../dateutils.local' or its corresponding type declarations.
+src/features/schedule/views/TimelineWeek.tsx(10,20): error TS2307: Cannot find module '@/utils/cn' or its corresponding type declarations.
+src/features/staff/StaffForm.tsx(2,26): error TS2307: Cannot find module '@/stores/useStaff' or its corresponding type declarations.
+src/features/users/api.ts(70,39): error TS2554: Expected 1 arguments, but got 4.
+src/features/users/api.ts(84,79): error TS2345: Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'IUserMaster'.
+  Type 'Record<string, unknown>' is missing the following properties from type 'IUserMaster': Id, UserID, FullName
+src/features/users/api.ts(86,39): error TS2554: Expected 1 arguments, but got 4.
+src/features/users/api.ts(93,39): error TS2554: Expected 1 arguments, but got 4.
+src/features/users/UsersPanel.a11y.test.tsx(3,21): error TS7016: Could not find a declaration file for module 'jest-axe'. '/Users/yasutakesougo/audit-management-system-mvp/node_modules/jest-axe/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/jest-axe` if it exists or add a new declaration (.d.ts) file containing `declare module 'jest-axe';`
+src/features/users/UsersPanel.a11y.test.tsx(22,21): error TS2339: Property 'toHaveNoViolations' does not exist on type 'Assertion<any>'.
+src/features/users/usersStoreDemo.ts(5,41): error TS2307: Cannot find module './attendance' or its corresponding type declarations.
+src/features/users/useUsers.ts(103,26): error TS2322: Type 'unknown[]' is not assignable to type 'IUserMaster[]'.
+  Type 'unknown' is not assignable to type 'IUserMaster'.
+src/features/users/useUsers.ts(132,3): error TS2322: Type '{ data: IUserMaster[]; status: AsyncStatus; error: unknown; refresh: () => Promise<void>; create: (payload: IUserMasterCreateDto) => Promise<IUserMaster>; update: (id: number | string, payload: IUserMasterUpdateDto) => Promise<...>; remove: (id: number | string) => Promise<...>; }' is not assignable to type 'UsersHookReturn'.
+  The types returned by 'update(...)' are incompatible between these types.
+    Type 'Promise<unknown>' is not assignable to type 'Promise<IUserMaster>'.
+      Type 'unknown' is not assignable to type 'IUserMaster'.
+src/features/users/useUsers.ts(176,13): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<IUserMaster | null>'.
+src/features/users/useUsers.ts(180,3): error TS2322: Type '{ data: IUserMaster | null; status: AsyncStatus; error: unknown; refresh: () => Promise<void>; update: (payload: IUserMasterUpdateDto) => Promise<unknown>; }' is not assignable to type 'UserHookReturn'.
+  The types returned by 'update(...)' are incompatible between these types.
+    Type 'Promise<unknown>' is not assignable to type 'Promise<IUserMaster>'.
+      Type 'unknown' is not assignable to type 'IUserMaster'.
+src/lib/msal.ts(4,33): error TS2307: Cannot find module '../e2e/hooks' or its corresponding type declarations.
+src/lib/msal.ts(5,51): error TS2307: Cannot find module '../auth/msalMock' or its corresponding type declarations.
+src/lib/spActivityDiary.ts(2,34): error TS2307: Cannot find module './spWrite' or its corresponding type declarations.
+src/lib/spActivityDiary.ts(188,18): error TS7006: Parameter '_list' implicitly has an 'any' type.
+src/lib/spActivityDiary.ts(188,25): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/pages/DailyPage.tsx(8,26): error TS2307: Cannot find module '@/stores/useDaily' or its corresponding type declarations.
+src/pages/DailyPage.tsx(9,26): error TS2307: Cannot find module '@/stores/useStaff' or its corresponding type declarations.
+src/pages/DailyPage.tsx(10,26): error TS2307: Cannot find module '@/stores/useUsers' or its corresponding type declarations.
+src/pages/DailyPage.tsx(12,29): error TS2307: Cannot find module '@/utils/formatCount' or its corresponding type declarations.
+src/pages/DailyPage.tsx(13,24): error TS2307: Cannot find module '@/utils/getNow' or its corresponding type declarations.
+src/pages/DailyPage.tsx(16,32): error TS2307: Cannot find module '@/hooks/useFiltersSync' or its corresponding type declarations.
+src/pages/DailyPage.tsx(17,102): error TS2307: Cannot find module '@/utils/filters' or its corresponding type declarations.
+src/pages/DailyPage.tsx(18,32): error TS2307: Cannot find module '@/utils/range' or its corresponding type declarations.
+src/pages/DailyPage.tsx(221,28): error TS7006: Parameter 'member' implicitly has an 'any' type.
+src/pages/DailyPage.tsx(232,28): error TS7006: Parameter 'user' implicitly has an 'any' type.
+src/pages/DailyPage.tsx(319,23): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/pages/Home.tsx(12,26): error TS2307: Cannot find module '@/stores/useUsers' or its corresponding type declarations.
+src/pages/Home.tsx(13,26): error TS2307: Cannot find module '@/stores/useStaff' or its corresponding type declarations.
+src/pages/Home.tsx(165,43): error TS7006: Parameter 'user' implicitly has an 'any' type.
+src/pages/Home.tsx(188,44): error TS7006: Parameter 'member' implicitly has an 'any' type.
+src/pages/ScheduleCreatePage.tsx(22,34): error TS2307: Cannot find module '@/utils/datetime' or its corresponding type declarations.
+src/pages/ScheduleCreatePage.tsx(24,10): error TS2305: Module '"@/lib/spClient"' has no exported member 'createSchedule'.
+src/pages/ScheduleCreatePage.tsx(26,64): error TS2307: Cannot find module '@/features/schedule/statusDictionary' or its corresponding type declarations.
+src/pages/ScheduleCreatePage.tsx(27,26): error TS2307: Cannot find module '@/stores/useStaff' or its corresponding type declarations.
+src/pages/ScheduleCreatePage.tsx(29,44): error TS2307: Cannot find module '@fluentui/react' or its corresponding type declarations.
+src/pages/ScheduleCreatePage.tsx(31,43): error TS2307: Cannot find module '@/stores/useUsers' or its corresponding type declarations.
+src/pages/ScheduleCreatePage.tsx(349,56): error TS7006: Parameter 'cert' implicitly has an 'any' type.
+src/types/staff.ts(88,39): error TS2339: Property 'role' does not exist on type '{ readonly id: "Id"; readonly title: "Title"; readonly staffId: "StaffID"; readonly fullName: "FullName"; readonly furigana: "Furigana"; readonly fullNameKana: "FullNameKana"; readonly jobTitle: "JobTitle"; ... 8 more ...; readonly certifications: "Certifications"; }'.
+src/types/staff.ts(93,49): error TS2339: Property 'isActive' does not exist on type '{ readonly id: "Id"; readonly title: "Title"; readonly staffId: "StaffID"; readonly fullName: "FullName"; readonly furigana: "Furigana"; readonly fullNameKana: "FullNameKana"; readonly jobTitle: "JobTitle"; ... 8 more ...; readonly certifications: "Certifications"; }'.
+src/types/staff.ts(103,17): error TS2339: Property 'workDays' does not exist on type '{ readonly id: "Id"; readonly title: "Title"; readonly staffId: "StaffID"; readonly fullName: "FullName"; readonly furigana: "Furigana"; readonly fullNameKana: "FullNameKana"; readonly jobTitle: "JobTitle"; ... 8 more ...; readonly certifications: "Certifications"; }'.
+src/types/staff.ts(107,17): error TS2339: Property 'baseShiftStartTime' does not exist on type '{ readonly id: "Id"; readonly title: "Title"; readonly staffId: "StaffID"; readonly fullName: "FullName"; readonly furigana: "Furigana"; readonly fullNameKana: "FullNameKana"; readonly jobTitle: "JobTitle"; ... 8 more ...; readonly certifications: "Certifications"; }'.
+src/types/staff.ts(111,17): error TS2339: Property 'baseShiftEndTime' does not exist on type '{ readonly id: "Id"; readonly title: "Title"; readonly staffId: "StaffID"; readonly fullName: "FullName"; readonly furigana: "Furigana"; readonly fullNameKana: "FullNameKana"; readonly jobTitle: "JobTitle"; ... 8 more ...; readonly certifications: "Certifications"; }'.
+src/types/staff.ts(115,17): error TS2339: Property 'baseWorkingDays' does not exist on type '{ readonly id: "Id"; readonly title: "Title"; readonly staffId: "StaffID"; readonly fullName: "FullName"; readonly furigana: "Furigana"; readonly fullNameKana: "FullNameKana"; readonly jobTitle: "JobTitle"; ... 8 more ...; readonly certifications: "Certifications"; }'.
+tests/unit/a11y.records-users.composite.spec.tsx(3,21): error TS7016: Could not find a declaration file for module 'jest-axe'. '/Users/yasutakesougo/audit-management-system-mvp/node_modules/jest-axe/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/jest-axe` if it exists or add a new declaration (.d.ts) file containing `declare module 'jest-axe';`
+tests/unit/a11y.records-users.composite.spec.tsx(102,21): error TS2339: Property 'toHaveNoViolations' does not exist on type 'Assertion<any>'.
+tests/unit/App.notifier.spec.tsx(4,10): error TS2614: Module '"@/App"' has no exported member 'ToastNotifierBridge'. Did you mean to use 'import ToastNotifierBridge from "@/App"' instead?
+tests/unit/App.notifier.spec.tsx(12,42): error TS2345: Argument of type '"registerNotifier"' is not assignable to parameter of type '"withUserMessage" | "showDemoWriteDisabled"'.
+tests/unit/App.notifier.spec.tsx(12,81): error TS2345: Argument of type '(fn: ((msg: string) => void) | null) => void' is not assignable to parameter of type 'NormalizedPrecedure<() => "更新が完了しました。">'.
+  Target signature provides too few arguments. Expected 1 or more, but got 0.
+tests/unit/AppShell.nav.spec.tsx(66,74): error TS2353: Object literal may only specify known properties, and 'sticky' does not exist in type '{ mode: "light" | "dark"; toggle: () => void; }'.
+tests/unit/AppShell.nav.spec.tsx(128,80): error TS2353: Object literal may only specify known properties, and 'sticky' does not exist in type '{ mode: "light" | "dark"; toggle: () => void; }'.
+== eslint（警告は許容・失敗しても続行）
+
+/Users/yasutakesougo/audit-management-system-mvp/src/app/ConfigErrorBoundary.tsx
+  12:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  19:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  19:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yasutakesougo/audit-management-system-mvp/src/auth/useAuth.ts
+  25:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  52:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yasutakesougo/audit-management-system-mvp/src/features/audit/batchUtil.ts
+  83:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  83:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yasutakesougo/audit-management-system-mvp/src/features/audit/useAuditSync.ts
+  44:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yasutakesougo/audit-management-system-mvp/src/features/audit/useAuditSyncBatch.ts
+  119:61  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  121:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  134:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  189:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  190:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  223:16  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  227:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yasutakesougo/audit-management-system-mvp/src/features/records/RecordList.tsx
+  23:17  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  53:17  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yasutakesougo/audit-management-system-mvp/src/hooks/useDaily.ts
+  16:67  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yasutakesougo/audit-management-system-mvp/src/hooks/usePersistedFilters.ts
+    3:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   55:62  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  158:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  179:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yasutakesougo/audit-management-system-mvp/src/lib/debugLogger.ts
+  8:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yasutakesougo/audit-management-system-mvp/src/lib/spActivityDiary.ts
+  37:37   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  41:59   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  68:71   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  68:104  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yasutakesougo/audit-management-system-mvp/src/lib/spClient.ts
+  4:10  error  'SharePointItemNotFoundError' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  4:39  error  'SharePointMissingEtagError' is defined but never used. Allowed unused vars must match /^_/u   @typescript-eslint/no-unused-vars
+
+✖ 29 problems (2 errors, 27 warnings)
+
+== Vite OK → 週表示を開きます
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ 自動起動済み
+- Vite        : LOG → /Users/yasutakesougo/audit-management-system-mvp/logs/vite.out.log
+- Vitest watch: LOG → /Users/yasutakesougo/audit-management-system-mvp/logs/vitest.watch.log
+
+🧪 ふだんの操作（VS Code から）
+- ⌘⇧D : Dev: web + tests（並列）
+- ⌘⇧W : Test (vitest watch)
+- ⌘⇧T : Test (all once)
+- ⌘⇧Y : Typecheck
+- ⌘⇧L : Lint
+
+🛑 停止したい時
+  kill 7226 2>/dev/null || true
+  kill 7224 2>/dev/null || true
+  rm -f .vitest.pid .vite.pid
+
+🔎 ログ追従
+  tail -f "/Users/yasutakesougo/audit-management-system-mvp/logs/vite.out.log" "/Users/yasutakesougo/audit-management-system-mvp/logs/vitest.watch.log"
+
+💡 1日の流れ（推奨）
+  1) 週表示の Create/Edit 完走
+  2) mapper の statusLabel 統一（旧 statusDictionary 参照を削減）
+  3) validation.ts を Zod 実装へ差し替え
+  4) 必要最小の a11y テストを緑化（jest-axe matcher 拡張済）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

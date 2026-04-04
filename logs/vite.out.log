@@ -1,0 +1,119 @@
+
+  VITE v4.5.14  ready in 418 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.1.87:5173/
+9:26:39 [vite] page reload src/lib/spClient.ts
+9:26:49 [vite] page reload src/lib/spClient.ts
+9:27:03 [vite] page reload src/lib/spClient.ts
+9:27:48 [vite] page reload src/lib/spClient.ts
+9:28:19 [vite] hmr update /src/features/schedule/WeekPage.tsx
+9:29:31 [vite] page reload src/lib/spClient.ts
+9:29:39 [vite] page reload src/lib/spClient.ts
+9:29:56 [vite] page reload src/lib/spClient.ts
+9:40:18 [vite] page reload src/lib/spClient.ts
+9:41:11 [vite] page reload src/lib/spClient.ts
+9:43:18 [vite] page reload src/lib/spClient.ts
+9:43:54 [vite] page reload src/lib/spClient.ts
+9:44:02 [vite] page reload src/lib/spClient.ts
+9:54:14 [vite] hmr update /src/features/schedule/WeekPage.tsx
+9:54:33 [vite] hmr update /src/App.tsx
+9:54:33 [vite] hmr update /src/app/AppShell.tsx
+9:54:33 [vite] hmr update /src/app/ConfigErrorBoundary.tsx
+9:54:33 [vite] hmr update /src/app/router.tsx
+9:54:33 [vite] hmr update /src/app/theme.tsx
+9:54:33 [vite] hmr update /src/auth/MsalProvider.tsx
+9:54:33 [vite] hmr update /src/features/audit/AuditPanel.tsx
+9:54:33 [vite] hmr update /src/features/compliance-checklist/ChecklistPage.tsx
+9:54:33 [vite] hmr update /src/features/records/RecordList.tsx
+9:54:33 [vite] hmr update /src/features/users/UsersPanel.tsx
+9:54:33 [vite] page reload src/main.tsx
+9:54:33 [vite] hmr update /src/ui/components/ErrorState.tsx
+9:54:33 [vite] hmr update /src/ui/components/Loading.tsx
+9:54:33 [vite] hmr invalidate /src/app/theme.tsx Could not Fast Refresh ("ColorModeContext" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+9:54:33 [vite] hmr update /src/App.tsx
+9:54:56 [vite] page reload src/lib/spClient.ts
+10:31:25 [vite] page reload src/lib/spClient.ts
+10:31:25 [vite] hmr update /src/App.tsx
+10:31:25 [vite] hmr update /src/app/AppShell.tsx
+10:31:25 [vite] hmr update /src/app/ConfigErrorBoundary.tsx
+10:31:25 [vite] hmr update /src/app/router.tsx
+10:31:25 [vite] hmr update /src/app/theme.tsx
+10:31:25 [vite] hmr update /src/auth/MsalProvider.tsx
+10:31:25 [vite] hmr update /src/features/audit/AuditPanel.tsx
+10:31:25 [vite] hmr update /src/features/compliance-checklist/ChecklistPage.tsx
+10:31:25 [vite] hmr update /src/features/records/RecordList.tsx
+10:31:25 [vite] hmr update /src/features/users/UsersPanel.tsx
+10:31:25 [vite] page reload src/main.tsx
+10:31:25 [vite] hmr update /src/ui/components/ErrorState.tsx
+10:31:25 [vite] hmr update /src/ui/components/Loading.tsx
+10:48:03 [vite] hmr update /src/features/schedule/WeekPage.tsx
+10:50:58 [vite] hmr update /src/app/router.tsx, /src/features/users/UsersPanel.tsx, /src/features/schedule/WeekPage.tsx
+10:57:01 [vite] hmr update /src/features/schedule/WeekPage.tsx
+10:57:25 [vite] hmr update /src/app/AppShell.tsx
+10:58:01 [vite] hmr update /src/app/AppShell.tsx
+10:58:59 [vite] hmr update /src/App.tsx
+11:48:44 [vite] hmr update /src/app/ConfigErrorBoundary.tsx
+11:48:52 [vite] page reload src/auth/useAuth.ts
+11:49:11 [vite] page reload src/features/audit/batchUtil.ts
+11:49:21 [vite] hmr update /src/features/audit/AuditPanel.tsx
+11:49:37 [vite] page reload src/features/audit/useAuditSyncBatch.ts
+11:49:49 [vite] hmr update /src/features/records/RecordList.tsx
+11:50:40 [vite] page reload src/lib/debugLogger.ts
+12:06:39 [vite] hmr update /src/features/schedule/WeekPage.tsx
+12:07:42 [vite] hmr update /src/features/schedule/WeekPage.tsx
+12:08:35 [vite] hmr update /src/app/router.tsx, /src/features/users/UsersPanel.tsx
+12:08:47 [vite] hmr update /src/app/router.tsx, /src/features/users/UsersPanel.tsx, /src/features/schedule/WeekPage.tsx
+12:11:52 [vite] hmr update /src/features/schedule/WeekPage.tsx
+12:12:04 [vite] hmr update /src/app/theme.tsx
+12:12:23 [vite] hmr update /src/app/theme.tsx
+12:12:56 [vite] page reload src/lib/spClient.ts
+12:16:55 [vite] hmr update /src/features/schedule/WeekPage.tsx
+12:17:27 [vite] hmr update /src/features/schedule/WeekPage.tsx
+12:24:07 [vite] hmr update /src/features/schedule/WeekPage.tsx
+12:28:59 [vite] hmr update /src/features/schedule/WeekPage.tsx
+12:29:10 [vite] hmr update /src/features/schedule/WeekPage.tsx
+12:38:22 [vite] hmr update /src/features/schedule/WeekPage.tsx
+12:38:52 [vite] hmr update /src/features/schedule/WeekPage.tsx
+12:38:59 [vite] hmr update /src/features/schedule/WeekPage.tsx
+12:39:30 [vite] hmr update /src/features/schedule/WeekPage.tsx
+13:01:34 [vite] hmr update /src/app/router.tsx
+13:02:18 [vite] hmr update /src/app/router.tsx
+13:02:33 [vite] hmr update /src/App.tsx
+13:19:04 [vite] ✨ new dependencies optimized: @mui/material/Tooltip, @mui/icons-material/Brightness4, @mui/icons-material/Brightness7, @mui/material/Box
+13:19:04 [vite] ✨ optimized dependencies changed. reloading
+13:25:08 [vite] hmr update /src/app/router.tsx
+13:25:15 [vite] hmr update /src/app/AppShell.tsx
+13:29:39 [vite] ✨ new dependencies optimized: @mui/material/Alert, @mui/material/Skeleton, date-fns, date-fns/locale, zod
+13:29:39 [vite] ✨ optimized dependencies changed. reloading
+13:43:03 [vite] page reload src/main.tsx
+13:48:16 [vite] page reload src/lib/spClient.ts
+13:49:34 [vite] page reload src/lib/spClient.ts
+13:49:43 [vite] page reload dist/index.html
+13:50:04 [vite] page reload .lighthouseci/lhr-1759985404413.html
+14:00:54 [vite] page reload .lighthouseci/lhr-1759986054350.html
+14:01:12 [vite] page reload dist/index.html
+14:01:29 [vite] page reload .lighthouseci/lhr-1759986089019.html
+14:14:43 [vite] hmr update /src/app/AppShell.tsx
+14:14:55 [vite] hmr update /src/app/router.tsx
+14:26:42 [vite] hmr update /src/App.tsx
+14:26:50 [vite] page reload src/main.tsx
+14:27:02 [vite] hmr update /src/app/AppShell.tsx
+14:28:11 [vite] hmr update /src/app/router.tsx
+14:38:55 [vite] ✨ new dependencies optimized: web-vitals
+14:38:55 [vite] ✨ optimized dependencies changed. reloading
+14:43:25 [vite] vite.config.ts changed, restarting server...
+14:43:25 [vite] server restarted.
+14:43:37 [vite] vite.config.ts changed, restarting server...
+14:43:37 [vite] server restarted.
+14:47:20 [vite] page reload dist/index.html
+14:47:20 [vite] page reload dist/index.html
+14:47:38 [vite] page reload .lighthouseci/lhr-1759988857980.html
+15:06:04 [vite] .env.example changed, restarting server...
+15:06:04 [vite] server restarted.
+15:23:44 [vite] .env changed, restarting server...
+15:23:44 [vite] server restarted.
+15:32:13 [vite] .env changed, restarting server...
+15:32:13 [vite] server restarted.
+15:32:27 [vite] .env.local changed, restarting server...
+15:32:27 [vite] server restarted.
