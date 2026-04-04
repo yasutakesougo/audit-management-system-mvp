@@ -60,9 +60,14 @@ export type { DailyRow } from './dailyFields';
 
 // ── Attendance (Staff, Users, Daily) ──
 export {
+    ATTENDANCE_CANDIDATES,
+    ATTENDANCE_ESSENTIALS,
+    ATTENDANCE_LIST_TITLE,
     ATTENDANCE_DAILY_CANDIDATES,
+    ATTENDANCE_DAILY_ESSENTIALS,
     ATTENDANCE_DAILY_FIELDS, ATTENDANCE_DAILY_LIST_TITLE, ATTENDANCE_DAILY_SELECT_FIELDS,
     ATTENDANCE_USERS_CANDIDATES,
+    ATTENDANCE_USERS_ESSENTIALS,
     ATTENDANCE_USERS_FIELDS, ATTENDANCE_USERS_LIST_TITLE, ATTENDANCE_USERS_SELECT_FIELDS, STAFF_ATTENDANCE_FIELD_MAP, STAFF_ATTENDANCE_FIELDS, STAFF_ATTENDANCE_LIST_TITLE, STAFF_ATTENDANCE_SELECT_FIELDS
 } from './attendanceFields';
 
@@ -159,8 +164,11 @@ export {
 // ── MonitoringMeetings (P3 追加) ──
 export {
     MONITORING_MEETING_FIELDS, MONITORING_MEETING_SELECT,
+    MONITORING_MEETING_CANDIDATES, MONITORING_MEETING_ESSENTIALS, MONITORING_MEETING_OPTIONALS,
+    buildMonitoringMeetingSelectFields,
     safeJsonParse,
     type MonitoringMeetingFieldKey, type MonitoringMeetingSPField,
+    type MonitoringMeetingCandidateKey, type MonitoringMeetingFieldMapping,
     type SpMonitoringMeetingRow
 } from './monitoringMeetingFields';
 

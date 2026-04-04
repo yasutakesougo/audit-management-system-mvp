@@ -47,9 +47,12 @@ describe('DataProviderAttendanceRepository - Regression / Hardening', () => {
       expect(users[0].UserCode).toBe('U001');
       expect(users[0].Title).toBe('Test User');
       // Verify listItems was called with resolved field names
-      expect(mockProvider.listItems).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
-        select: expect.stringMatching(/UserID/)
-      }));
+      expect(mockProvider.listItems).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          select: expect.arrayContaining(['UserID']),
+        }),
+      );
       const callOptions = mockProvider.listItems.mock.calls[0][1];
       expect(callOptions.select).toContain('Id');
       expect(callOptions.select).toContain('UserID');
@@ -73,8 +76,8 @@ describe('DataProviderAttendanceRepository - Regression / Hardening', () => {
       // Verify $select does NOT include missing optional fields
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const call = mockProvider.listItems.mock.calls[0][1] as any;
-      expect(call.select).not.toMatch(/StandardMinutes/);
-      expect(call.select).not.toMatch(/IsTransportTarget/);
+      expect(call.select).not.toContain('StandardMinutes');
+      expect(call.select).not.toContain('IsTransportTarget');
     });
 
     it('fails gracefully when essential fields are missing (AttendanceDaily)', async () => {
