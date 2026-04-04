@@ -25,7 +25,7 @@ export const ISP_ROUTES: NavItem[] = [
     isActive: (pathname) => pathname.startsWith('/isp-editor'),
     icon: undefined,
     testId: TESTIDS.nav.ispEditor,
-    audience: NAV_AUDIENCE.all as NavAudience,
+    audience: NAV_AUDIENCE.admin as NavAudience,
     group: 'isp' as NavGroupKey,
   },
   {

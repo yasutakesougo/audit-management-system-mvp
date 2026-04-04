@@ -56,6 +56,7 @@ import { useCallLogsSummary } from '@/features/callLogs/hooks/useCallLogsSummary
 import { CallLogQuickDrawer } from '@/features/callLogs/components/CallLogQuickDrawer';
 import { buildCallLogFilterUrl, type CallLogFilterPreset } from '@/features/callLogs/domain/callLogFilterPresets';
 import { useAuth } from '@/auth/useAuth';
+import { useUserAuthz } from '@/auth/useUserAuthz';
 import type { ProgressRingItem } from '@/features/today/components/ProgressRings';
 // Phase 8-A: 利用者状態登録
 import type { UserStatusType } from '@/features/schedules/domain/mappers/userStatus';
@@ -91,7 +92,9 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
   const { settings } = useSettingsContext();
   const isKioskMode = settings.layoutMode === 'kiosk';
   const role = useAuthStore((s) => s.currentUserRole);
-  const telemetryRole = useMemo(() => (role === 'admin' || role === 'staff' ? role : 'unknown'), [role]);
+  const { role: authzRole } = useUserAuthz();
+  const isAdminAudience = authzRole === 'admin';
+  const telemetryRole = useMemo(() => (isAdminAudience ? 'admin' : 'staff'), [isAdminAudience]);
   const suggestionStates = useSuggestionStateStore((s) => s.states);
   const dismissSuggestion = useSuggestionStateStore((s) => s.dismiss);
   const snoozeSuggestion = useSuggestionStateStore((s) => s.snooze);
@@ -201,7 +204,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
   }, [transportHighlight.direction, transport.setActiveDirection]);
 
   // ── Workflow Phases (Phase 2) ──
-  const isServiceManager = role === 'admin';
+  const isServiceManager = isAdminAudience;
   const planningSheetRepo = usePlanningSheetRepositories();
   const workflowPhases = useWorkflowPhases(
     summary.users ?? [],
@@ -471,7 +474,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
     transportHighlightUserId: transportHighlight.userId,
     quickRecord,
     navigate,
-    role,
+    role: authzRole,
     scheduleDetailHref,
     alertsByUser,
     onOpenUserStatus: handleOpenUserStatus,
@@ -532,7 +535,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
               ctaId: CTA_EVENTS.PROGRESS_RING_RECORDS,
               sourceComponent: 'ProgressRings',
               stateType: 'navigation',
-              userRole: role,
+              userRole: authzRole,
             });
             onChipClick?.('record');
           },
@@ -549,7 +552,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
               sourceComponent: 'ProgressRings',
               stateType: 'navigation',
               targetUrl: '/daily/table',
-              userRole: role,
+              userRole: authzRole,
             });
             navigate('/daily/table');
           },
@@ -565,7 +568,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
               ctaId: CTA_EVENTS.PROGRESS_RING_ATTENDANCE,
               sourceComponent: 'ProgressRings',
               stateType: 'navigation',
-              userRole: role,
+              userRole: authzRole,
             });
             onChipClick?.('attendance');
           },
@@ -582,7 +585,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
               sourceComponent: 'ProgressRings',
               stateType: 'navigation',
               targetUrl: '/call-logs',
-              userRole: role,
+              userRole: authzRole,
             });
             navigate('/call-logs');
           },
@@ -623,7 +626,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
           sourceComponent: 'CallLogSummaryCard',
           stateType: 'navigation',
           targetUrl: '/call-logs',
-          userRole: role,
+          userRole: authzRole,
         });
         navigate('/call-logs');
       },
@@ -635,7 +638,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
           stateType: 'navigation',
           scene: preset,
           targetUrl,
-          userRole: role,
+          userRole: authzRole,
         });
         navigate(targetUrl);
       },
@@ -644,7 +647,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
           ctaId: CTA_EVENTS.CALLLOG_SUMMARY_NEW_CLICKED,
           sourceComponent: 'CallLogSummaryCard',
           stateType: 'widget-action',
-          userRole: role,
+          userRole: authzRole,
         });
         setCallLogDrawerOpen(true);
       },
@@ -659,7 +662,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
           sourceComponent: 'ScheduleOpsHighLoadTile',
           stateType: 'navigation',
           targetUrl: `/schedule-ops?focusDate=${focusDate}`,
-          userRole: role,
+          userRole: authzRole,
         });
         navigate(`/schedule-ops?focusDate=${focusDate}`);
       },
@@ -668,7 +671,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
     onSceneAction: handleSceneAction,
     onQuickLinkNavigate: (href: string) => navigate(href),
     };
-  }, [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, handleDismissSuggestion, handleSnoozeSuggestion, callLogsSummary, handleOpenUserStatus, userStatusActions.todayStatusRecords, highLoadStatus, role, exceptionsQueue, handleSceneAction]);
+  }, [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, handleDismissSuggestion, handleSnoozeSuggestion, callLogsSummary, handleOpenUserStatus, userStatusActions.todayStatusRecords, highLoadStatus, authzRole, exceptionsQueue, handleSceneAction]);
 
   // ── Save Success Handler (Quick Record auto-next) ──
   const [showCompletionToast, setShowCompletionToast] = React.useState(false);
@@ -727,7 +730,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
   // ── Render ──
   return (
     <>
-      <TodayBentoLayout {...layoutProps} />
+      <TodayBentoLayout {...layoutProps} audience={authzRole} />
       
       {providerType === 'memory' && (
         <div 
@@ -838,8 +841,10 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
 
 const TodayLiteOpsPage: React.FC = () => {
   const navigate = useNavigate();
-  const role = useAuthStore((s) => s.currentUserRole);
+  const { role: authzRole } = useUserAuthz();
   const summary = useTodaySummary();
+
+  const liteRole = authzRole === 'admin' ? 'admin' : 'staff';
 
   const handleNavigate = useCallback((to: string) => {
     navigate(to);
@@ -848,7 +853,7 @@ const TodayLiteOpsPage: React.FC = () => {
   return (
     <TodayLitePage
       summary={summary}
-      role={role}
+      role={liteRole}
       onNavigate={handleNavigate}
     />
   );

@@ -30,10 +30,12 @@ const makeFlags = (overrides: Partial<FeatureFlagSnapshot> = {}): FeatureFlagSna
 });
 
 const defaultFlags: FeatureFlagSnapshot = makeFlags();
+let mockAuthzRole: 'viewer' | 'reception' | 'admin' = 'viewer';
 
 beforeEach(() => {
   spFetchMock.mockReset();
   spFetchMock.mockImplementation(() => Promise.resolve({ ok: true }));
+  mockAuthzRole = 'viewer';
 });
 
 afterEach(() => {
@@ -86,7 +88,7 @@ vi.mock('@/auth/useAuth', () => ({
 
 vi.mock('@/auth/useUserAuthz', () => ({
   useUserAuthz: () => ({
-    role: 'viewer',
+    role: mockAuthzRole,
     ready: true,
   }),
 }));
@@ -257,7 +259,42 @@ describe('AppShell navigation', () => {
       expect(hasIcebergPdcaLink).toBe(false);
     });
 
-    it('shows staff attendance when feature flag is enabled', async () => {
+    it('hides staff attendance for viewer even when feature flag is enabled', async () => {
+      const toggleMock = vi.fn();
+      const theme = createTheme();
+      const initialEntries = ['/'];
+      const flagsWithStaffAttendance = { ...defaultFlags, staffAttendance: true };
+
+      const getShell = () => (
+        <ThemeProvider theme={theme}>
+          <FeatureFlagsProvider value={flagsWithStaffAttendance}>
+            <ColorModeContext.Provider value={{ mode: 'light', toggle: toggleMock, sticky: false }}>
+              <AppShell>
+                <div />
+              </AppShell>
+            </ColorModeContext.Provider>
+          </FeatureFlagsProvider>
+        </ThemeProvider>
+      );
+
+      renderWithAppProviders(getShell(), {
+        initialEntries,
+        future: routerFutureFlags,
+        routeChildren: Array.from(new Set([...initialEntries])).map((path) => ({ path, element: getShell() })),
+      });
+
+      ensureDesktopNavOpen();
+
+      const navRoot = screen.getByRole('navigation', { name: /主要ナビゲーション/i });
+      const nav = within(navRoot);
+      const links = nav.queryAllByRole('link');
+
+      const hasStaffAttendanceLink = links.some(link => link.textContent?.includes('職員勤怠'));
+      expect(hasStaffAttendanceLink).toBe(false);
+    });
+
+    it('shows staff attendance for reception when feature flag is enabled', async () => {
+      mockAuthzRole = 'reception';
       const toggleMock = vi.fn();
       const theme = createTheme();
       const initialEntries = ['/'];
