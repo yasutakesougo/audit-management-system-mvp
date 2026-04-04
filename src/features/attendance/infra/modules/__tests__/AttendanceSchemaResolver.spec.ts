@@ -17,6 +17,7 @@ const defaultCreateItem: IDataProvider['createItem'] = async () => unsupported('
 const defaultUpdateItem: IDataProvider['updateItem'] = async () => unsupported('updateItem');
 const defaultDeleteItem: IDataProvider['deleteItem'] = async () => unsupported('deleteItem');
 const defaultGetMetadata: IDataProvider['getMetadata'] = async () => ({});
+const defaultGetResourceNames: IDataProvider['getResourceNames'] = async () => [];
 const defaultGetFieldInternalNames: IDataProvider['getFieldInternalNames'] = async () =>
   new Set<string>();
 const defaultEnsureListExists: IDataProvider['ensureListExists'] = async () => {};
@@ -28,8 +29,8 @@ const createProvider = (overrides: Partial<IDataProvider> = {}): IDataProvider =
   updateItem: overrides.updateItem ?? defaultUpdateItem,
   deleteItem: overrides.deleteItem ?? defaultDeleteItem,
   getMetadata: overrides.getMetadata ?? defaultGetMetadata,
+  getResourceNames: overrides.getResourceNames ?? defaultGetResourceNames,
   getFieldInternalNames: overrides.getFieldInternalNames ?? defaultGetFieldInternalNames,
-  getResourceNames: overrides.getResourceNames,
   ensureListExists: overrides.ensureListExists ?? defaultEnsureListExists,
   seed: overrides.seed,
 });

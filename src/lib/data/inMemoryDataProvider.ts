@@ -128,6 +128,10 @@ export class InMemoryDataProvider implements IDataProvider {
     };
   }
 
+  async getResourceNames(): Promise<string[]> {
+    return Array.from(this.storage.keys()).sort((a, b) => a.localeCompare(b));
+  }
+
   /**
    * 自己修復（メモリ内実装ではリスト構造を強制しないため、メタデータのみ記録）
    */

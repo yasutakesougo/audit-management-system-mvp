@@ -24,6 +24,7 @@ describe('DataProviderAttendanceRepository - Regression / Hardening', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockProvider = {
+      getResourceNames: vi.fn().mockResolvedValue(['Users_Master', 'Daily_Attendance']),
       getFieldInternalNames: vi.fn(),
       listItems: vi.fn(),
       createItem: vi.fn(),
@@ -87,7 +88,11 @@ describe('DataProviderAttendanceRepository - Regression / Hardening', () => {
       const daily = await repository.getDailyByDate({ recordDate: '2024-03-01' });
 
       expect(daily).toEqual([]);
-      expect(auditLog.warn).not.toHaveBeenCalled(); // Daily resolution failure is silent-ish by design if isHealthy is false
+      expect(auditLog.warn).toHaveBeenCalledWith(
+        'attendance:repo',
+        expect.stringContaining('AttendanceDaily list not found in catalog or essentials are missing'),
+        expect.any(Object),
+      );
     });
   });
 

@@ -187,8 +187,6 @@ export class AttendanceSchemaResolver<TKey extends string> {
   }
 
   private async getAvailableListTitles(): Promise<string[] | null> {
-    if (!this.provider.getResourceNames) return null;
-
     try {
       const raw = await this.provider.getResourceNames();
       const normalized = raw
