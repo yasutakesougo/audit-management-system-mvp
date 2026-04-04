@@ -13,9 +13,9 @@ import { SpFieldSpec } from "../features/diagnostics/health/types";
 import {
   DAILY_RECORD_CANONICAL_CANDIDATES,
   DAILY_RECORD_ROW_AGGREGATE_CANDIDATES,
-  ACTIVITY_DIARY_CANDIDATES,
   DAILY_ACTIVITY_RECORDS_CANDIDATES,
 } from "@/sharepoint/fields/dailyFields";
+import { ACTIVITY_DIARY_CANDIDATES } from "@/sharepoint/fields/activityDiaryFields";
 import {
   USERS_MASTER_CANDIDATES,
   USER_BENEFIT_PROFILE_CANDIDATES,

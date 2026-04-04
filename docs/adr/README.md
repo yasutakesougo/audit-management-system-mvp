@@ -20,6 +20,7 @@
 | [ADR-008](ADR-008-workflow-phase-navigation-engine.md) | Workflow Phase Navigation Engine — 全画面巡回型ナビゲーション | Accepted | — |
 | [ADR-009](ADR-009-support-operations-os-principles.md) | Support Operations OS 設計原則の採用 | Accepted | 2026-03-16 |
 | [ADR-010](ADR-010-proposal-integration-layer.md) | 提案統合レイヤー（Proposal Integration Layer） | Accepted | 2026-03-16 |
+| [ADR-014](ADR-014-sharepoint-ssot-drift-contract.md) | SharePoint SSOT Drift Contract（4層統一契約） | Accepted | 2026-04-04 |
 
 ---
 
@@ -60,6 +61,7 @@
 | ADR | 内容 |
 |-----|------|
 | ADR-001 | アーカイブ戦略 |
+| ADR-014 | SharePoint SSOT Drift Contract（fields/resolver/repository/diagnostics） |
 
 ---
 
