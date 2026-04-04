@@ -63,6 +63,169 @@ console.log(`   Actions: ${classification.actions.length}`);
 console.log(`   Mode: ${isDryRun ? '🔒 DRY-RUN' : '🚀 APPLY'}`);
 console.log('');
 
+// ─── Load Decision (optional) ───────────────────────────────────────────────
+
+const decisionPath = path.join(REPORT_DIR, `decision-${stamp}.json`);
+const decision = fs.existsSync(decisionPath)
+  ? JSON.parse(fs.readFileSync(decisionPath, 'utf8'))
+  : null;
+
+const REASON_CODE_META = {
+  ADMIN_STATUS_FAIL: {
+    domain: 'health',
+    signal: '/admin/status が FAIL',
+    action: '/admin/status を優先修復',
+    suggestedLabel: 'kind:health',
+  },
+  ADMIN_STATUS_WARN: {
+    domain: 'health',
+    signal: '/admin/status が WARN',
+    action: '/admin/status の WARN を監視',
+    suggestedLabel: 'kind:health',
+  },
+  ADMIN_STATUS_SUMMARY_MISSING: {
+    domain: 'observability',
+    signal: '/admin/status summary 欠損',
+    action: 'raw JSON 供給経路を復旧',
+    suggestedLabel: 'kind:observability',
+  },
+  EXCEPTION_HIGH_SEVERITY: {
+    domain: 'exception',
+    signal: 'high severity 例外あり',
+    action: '/admin/exception-center の high severity を解消',
+    suggestedLabel: 'kind:exception',
+  },
+  EXCEPTION_OVERDUE_PRESENT: {
+    domain: 'exception',
+    signal: '期限超過例外あり',
+    action: 'overdue 例外の解消計画を実施',
+    suggestedLabel: 'kind:exception',
+  },
+  EXCEPTION_STALE_PRESENT: {
+    domain: 'exception',
+    signal: '放置例外あり',
+    action: '放置時間の長い例外を優先解消',
+    suggestedLabel: 'kind:exception',
+  },
+  EXCEPTION_RECURRING_PRESENT: {
+    domain: 'exception',
+    signal: '再発例外あり',
+    action: '再発キーの恒久対策を実施',
+    suggestedLabel: 'kind:exception',
+  },
+  EXCEPTION_CENTER_SUMMARY_MISSING: {
+    domain: 'observability',
+    signal: 'ExceptionCenter summary 欠損',
+    action: 'raw JSON 供給経路を復旧',
+    suggestedLabel: 'kind:observability',
+  },
+  CI_GATE_FAILURE: {
+    domain: 'quality',
+    signal: 'CI gate failure',
+    action: '失敗ゲートを解消',
+    suggestedLabel: 'kind:quality',
+  },
+  PATROL_NEEDS_REVIEW: {
+    domain: 'quality',
+    signal: 'Nightly Patrol needs-review',
+    action: '分類対象を人手で確認',
+    suggestedLabel: 'kind:quality',
+  },
+  default: {
+    domain: 'operations',
+    signal: 'Nightly 判定シグナル',
+    action: '判定理由を確認',
+    suggestedLabel: 'kind:operations',
+  },
+};
+
+function uniqueStrings(values) {
+  const out = [];
+  const seen = new Set();
+  for (const value of values) {
+    if (typeof value !== 'string') continue;
+    const normalized = value.trim();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    out.push(normalized);
+  }
+  return out;
+}
+
+function resolveReasonMeta(code) {
+  const watchStreakMatch = /^WATCH_STREAK_(\d+)D::(.+)$/.exec(code);
+  if (watchStreakMatch) {
+    const days = watchStreakMatch[1];
+    const sourceCode = watchStreakMatch[2];
+    return {
+      domain: 'operations',
+      signal: `${days}日連続 Watch (${sourceCode})`,
+      action: `慢性化した warn code (${sourceCode}) の根本対応を実施`,
+      suggestedLabel: 'kind:operations',
+    };
+  }
+  return REASON_CODE_META[code] || REASON_CODE_META.default;
+}
+
+function buildReasonRows(codes, level) {
+  return (Array.isArray(codes) ? codes : []).map((code) => {
+    const meta = resolveReasonMeta(code);
+    return {
+      code,
+      level,
+      domain: meta.domain,
+      signal: meta.signal,
+      action: meta.action,
+      suggestedLabel: meta.suggestedLabel,
+    };
+  });
+}
+
+function buildDecisionContext(decisionJson) {
+  if (!decisionJson || typeof decisionJson !== 'object') {
+    return {
+      exists: false,
+      finalLabel: null,
+      finalLine: null,
+      failCodes: [],
+      warnCodes: [],
+      rows: [],
+      suggestedLabels: [],
+    };
+  }
+
+  const failCodes = uniqueStrings(decisionJson?.reasonCodes?.fail || []);
+  const warnCodes = uniqueStrings(decisionJson?.reasonCodes?.warn || []);
+  const rows = [
+    ...buildReasonRows(failCodes, 'fail'),
+    ...buildReasonRows(warnCodes, 'warn'),
+  ];
+  const suggestedLabels = uniqueStrings(rows.map((row) => row.suggestedLabel));
+
+  return {
+    exists: true,
+    finalLabel: decisionJson?.final?.label || null,
+    finalLine: decisionJson?.final?.line || null,
+    failCodes,
+    warnCodes,
+    rows,
+    suggestedLabels,
+  };
+}
+
+const decisionContext = buildDecisionContext(decision);
+if (decisionContext.exists) {
+  console.log(`🧾 Loaded decision context: ${decisionPath}`);
+  console.log(`   Final: ${decisionContext.finalLabel || 'n/a'}`);
+  if (decisionContext.failCodes.length > 0) {
+    console.log(`   Fail codes: ${decisionContext.failCodes.join(', ')}`);
+  }
+  if (decisionContext.warnCodes.length > 0) {
+    console.log(`   Warn codes: ${decisionContext.warnCodes.join(', ')}`);
+  }
+  console.log('');
+}
+
 // ─── Issue Body Builders ────────────────────────────────────────────────────
 
 const SEVERITY_EMOJI = {
@@ -86,9 +249,11 @@ const ACTION_LABELS = {
  * @param {string} date - patrol date
  * @returns {{ title: string, body: string, labels: string[] }}
  */
-function buildIssueContent(entry, date) {
+function buildIssueContent(entry, date, context = null) {
   const emoji = SEVERITY_EMOJI[entry.severity] || '⚪';
-  const kindLabel = entry.kind.replace(/-/g, ' ');
+  const kindLabel = entry.kind === 'nightly-decision-control'
+    ? 'nightly decision control'
+    : entry.kind.replace(/-/g, ' ');
 
   const title = `[nightly-patrol] ${emoji} ${entry.severity}: ${kindLabel} (${date})`;
 
@@ -127,7 +292,14 @@ function buildIssueContent(entry, date) {
   lines.push('### Suggested Action');
   lines.push('');
 
-  if (entry.classification === 'auto-fixable') {
+  if (entry.kind === 'nightly-decision-control') {
+    lines.push('This issue is generated from **nightly decision reason codes**.');
+    lines.push('');
+    lines.push('Steps:');
+    lines.push('1. `decision-<date>.json` の fail reason codes を優先順で対応');
+    lines.push('2. 欠損コード (`*_MISSING`) は観測経路を復旧');
+    lines.push('3. 例外系コードは `/admin/exception-center` で未解消項目を解消');
+  } else if (entry.classification === 'auto-fixable') {
     lines.push('This issue is classified as **auto-fixable** (test/stub files only).');
     lines.push('');
     lines.push('Suggested fix:');
@@ -147,6 +319,26 @@ function buildIssueContent(entry, date) {
     lines.push('This is a **monitoring** item — no immediate action required.');
     lines.push('');
     lines.push('Review during next refactoring cycle or when files are modified.');
+  }
+
+  if (context?.exists) {
+    lines.push('');
+    lines.push('### Nightly Decision Context');
+    lines.push('');
+    lines.push(`- Final verdict: ${context.finalLine || context.finalLabel || 'n/a'}`);
+    lines.push(`- Fail reason codes: ${context.failCodes.length > 0 ? `\`${context.failCodes.join(', ')}\`` : 'なし'}`);
+    lines.push(`- Watch reason codes: ${context.warnCodes.length > 0 ? `\`${context.warnCodes.join(', ')}\`` : 'なし'}`);
+    lines.push('');
+
+    if (context.rows.length > 0) {
+      lines.push('| Code | Level | Domain | Signal | Suggested Action |');
+      lines.push('|------|:-----:|--------|--------|------------------|');
+      for (const row of context.rows) {
+        lines.push(`| \`${row.code}\` | ${row.level} | ${row.domain} | ${row.signal} | ${row.action} |`);
+      }
+      lines.push('');
+      lines.push(`- Suggested labels from reason codes: ${context.suggestedLabels.length > 0 ? context.suggestedLabels.map((x) => `\`${x}\``).join(', ') : 'なし'}`);
+    }
   }
 
   lines.push('');
@@ -188,6 +380,18 @@ const actionableEntries = classification.classifications.filter(
 const issueDraftsPath = path.join(REPORT_DIR, `issue-drafts-${stamp}.md`);
 const hasIssueDrafts = fs.existsSync(issueDraftsPath);
 
+if (actionableEntries.length === 0 && decisionContext.failCodes.length > 0) {
+  actionableEntries.push({
+    kind: 'nightly-decision-control',
+    severity: 'critical',
+    classification: 'needs-review',
+    action: 'draft-issue',
+    errorCount: decisionContext.failCodes.length,
+    isTestOnly: false,
+    affectedFiles: [],
+  });
+}
+
 if (actionableEntries.length === 0) {
   console.log('✅ No actionable items. System is stable.');
   console.log('');
@@ -211,7 +415,7 @@ for (const entry of actionableEntries) {
     continue;
   }
 
-  const issue = buildIssueContent(entry, classification.date);
+  const issue = buildIssueContent(entry, classification.date, decisionContext);
 
   console.log(`   ${SEVERITY_EMOJI[entry.severity] || '⚪'} ${entry.kind}`);
   console.log(`      Title:  ${issue.title}`);
@@ -232,7 +436,13 @@ for (const entry of actionableEntries) {
     }
     console.log('      ---');
     console.log('');
-    results.push({ kind: entry.kind, status: 'dry-run', title: issue.title });
+    results.push({
+      kind: entry.kind,
+      status: 'dry-run',
+      title: issue.title,
+      decisionFailCodes: decisionContext.failCodes,
+      decisionWarnCodes: decisionContext.warnCodes,
+    });
   } else {
     // ╔═══════════════════════════════════════════════════════╗
     // ║ APPLY: Create GitHub Issue via gh CLI                 ║
@@ -252,10 +462,24 @@ for (const entry of actionableEntries) {
       // Cleanup
       fs.unlinkSync(tmpBodyPath);
 
-      results.push({ kind: entry.kind, status: 'created', url: output, title: issue.title });
+      results.push({
+        kind: entry.kind,
+        status: 'created',
+        url: output,
+        title: issue.title,
+        decisionFailCodes: decisionContext.failCodes,
+        decisionWarnCodes: decisionContext.warnCodes,
+      });
     } catch (err) {
       console.error(`      ❌ Failed to create issue: ${err.message}`);
-      results.push({ kind: entry.kind, status: 'failed', error: err.message, title: issue.title });
+      results.push({
+        kind: entry.kind,
+        status: 'failed',
+        error: err.message,
+        title: issue.title,
+        decisionFailCodes: decisionContext.failCodes,
+        decisionWarnCodes: decisionContext.warnCodes,
+      });
     }
     console.log('');
   }
@@ -298,6 +522,14 @@ fs.writeFileSync(applyResultsPath, JSON.stringify({
   version: 1,
   date: stamp,
   mode: isDryRun ? 'dry-run' : 'apply',
+  decision: {
+    exists: decisionContext.exists,
+    finalLabel: decisionContext.finalLabel,
+    finalLine: decisionContext.finalLine,
+    failCodes: decisionContext.failCodes,
+    warnCodes: decisionContext.warnCodes,
+    suggestedLabels: decisionContext.suggestedLabels,
+  },
   summary: applySummary,
   results,
 }, null, 2), 'utf8');

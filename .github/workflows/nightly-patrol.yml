@@ -97,6 +97,120 @@ jobs:
       - name: Generate metrics dashboard
         run: node scripts/ops/os-metrics.mjs
 
+      - name: Fetch raw summaries
+        id: raw_fetch
+        if: ${{ always() }}
+        env:
+          ADMIN_STATUS_RAW_URL: ${{ vars.ADMIN_STATUS_RAW_URL }}
+          EXCEPTION_CENTER_RAW_URL: ${{ vars.EXCEPTION_CENTER_RAW_URL }}
+          NIGHTLY_RAW_BEARER_TOKEN: ${{ secrets.NIGHTLY_RAW_BEARER_TOKEN }}
+          NIGHTLY_RAW_EXTRA_HEADERS_JSON: ${{ secrets.NIGHTLY_RAW_EXTRA_HEADERS_JSON }}
+          NIGHTLY_RAW_TIMEOUT_MS: "15000"
+          NIGHTLY_RAW_FETCH_STRICT: "false"
+        run: node scripts/ops/fetch-nightly-raw-summaries.mjs
+
+      - name: Export /admin/status summary
+        id: admin_status
+        if: ${{ always() }}
+        env:
+          ADMIN_STATUS_RAW_PATH: ${{ steps.raw_fetch.outputs.admin_raw_path || env.ADMIN_STATUS_RAW_PATH }}
+        run: |
+          TODAY=$(date -u +%F)
+          OUT="docs/nightly-patrol/admin-status-summary-${TODAY}.json"
+          if [ -n "${ADMIN_STATUS_RAW_PATH}" ]; then
+            node scripts/ops/export-admin-status-summary.mjs --date "$TODAY" --input "${ADMIN_STATUS_RAW_PATH}" --output "$OUT"
+          else
+            node scripts/ops/export-admin-status-summary.mjs --date "$TODAY" --output "$OUT"
+          fi
+          echo "summary_path=${OUT}" >> "$GITHUB_OUTPUT"
+
+      - name: Export ExceptionCenter summary
+        id: exception_center
+        if: ${{ always() }}
+        env:
+          EXCEPTION_CENTER_RAW_PATH: ${{ steps.raw_fetch.outputs.exception_raw_path || env.EXCEPTION_CENTER_RAW_PATH }}
+        run: |
+          TODAY=$(date -u +%F)
+          OUT="docs/nightly-patrol/exception-center-summary-${TODAY}.json"
+          if [ -n "${EXCEPTION_CENTER_RAW_PATH}" ]; then
+            node scripts/ops/export-exception-center-summary.mjs --date "$TODAY" --input "${EXCEPTION_CENTER_RAW_PATH}" --output "$OUT"
+          else
+            node scripts/ops/export-exception-center-summary.mjs --date "$TODAY" --output "$OUT"
+          fi
+          echo "summary_path=${OUT}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate nightly decision
+        id: decision
+        env:
+          ACT_WARNING_SUMMARY_PATH: /tmp/act-warnings-nightly.json
+          LANE_ASSERTION_RESULT_PATH: docs/nightly-patrol/lane-assertion-result.json
+          ADMIN_STATUS_SUMMARY_PATH: ${{ steps.admin_status.outputs.summary_path }}
+          EXCEPTION_CENTER_SUMMARY_PATH: ${{ steps.exception_center.outputs.summary_path }}
+          LOG_FILE: /tmp/vitest-nightly-act.log
+          NIGHTLY_FAIL_ON_ACTION_REQUIRED: "false"
+        run: |
+          node scripts/ops/nightly-decision.mjs
+          TODAY=$(date -u +%F)
+          verdict=$(node -e "const fs=require('node:fs');const p=process.argv[1];const j=JSON.parse(fs.readFileSync(p,'utf8'));console.log(j.final.label);" "docs/nightly-patrol/decision-${TODAY}.json")
+          echo "verdict=${verdict}" >> "$GITHUB_OUTPUT"
+          echo "decision_md=docs/nightly-patrol/decision-${TODAY}.md" >> "$GITHUB_OUTPUT"
+
+      - name: Nightly decision summary
+        if: ${{ always() }}
+        run: |
+          TODAY=$(date -u +%F)
+          FILE="docs/nightly-patrol/decision-${TODAY}.json"
+          echo "## Nightly Patrol Decision" >> "$GITHUB_STEP_SUMMARY"
+          if [ ! -f "$FILE" ]; then
+            echo "- decision: unavailable" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          node - "$FILE" <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+          const fs = require('node:fs');
+          const file = process.argv[2];
+          const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+          console.log(`- verdict: **${data.final?.line ?? 'n/a'}**`);
+          if (Array.isArray(data.reasons?.fail) && data.reasons.fail.length > 0) {
+            console.log(`- failTriggers: ${data.reasons.fail.length}`);
+          } else {
+            console.log('- failTriggers: 0');
+          }
+          if (Array.isArray(data.reasons?.warn) && data.reasons.warn.length > 0) {
+            console.log(`- watchTriggers: ${data.reasons.warn.length}`);
+          } else {
+            console.log('- watchTriggers: 0');
+          }
+          if (Array.isArray(data.reasonCodes?.fail) && data.reasonCodes.fail.length > 0) {
+            console.log(`- failCodes: \`${data.reasonCodes.fail.join(', ')}\``);
+          }
+          if (Array.isArray(data.reasonCodes?.warn) && data.reasonCodes.warn.length > 0) {
+            console.log(`- watchCodes: \`${data.reasonCodes.warn.join(', ')}\``);
+          }
+          if (Array.isArray(data.escalations) && data.escalations.length > 0) {
+            const rows = data.escalations.map((x) => {
+              const type = x?.type || 'unknown';
+              const days = Number.isFinite(x?.days) ? x.days : 'n/a';
+              const code = x?.code || 'n/a';
+              return `${type}:${code} (${days}d)`;
+            });
+            console.log(`- escalations: \`${rows.join(', ')}\``);
+          }
+          NODE
+
+      - name: Auto-create nightly issues
+        if: ${{ always() && steps.decision.outputs.verdict == 'action_required' && vars.NIGHTLY_AUTO_ISSUE == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/ops/nightly-apply.mjs --apply
+
+      - name: Notify on action required
+        if: ${{ always() && steps.decision.outputs.verdict == 'action_required' }}
+        env:
+          NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
+        run: |
+          TODAY=$(date -u +%F)
+          node scripts/notify.mjs --title "🔴 Nightly Patrol: Action Required" --files "docs/nightly-patrol/decision-${TODAY}.md"
+
       - name: Upload nightly act warning artifacts
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
