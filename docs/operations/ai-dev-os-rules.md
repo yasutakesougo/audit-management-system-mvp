@@ -140,14 +140,54 @@ docs/handoff/
 
 ### ルール
 
-```
-Nightly Patrol のルール:
-
 1. 毎朝 docs/nightly-patrol/ の最新レポートを確認する
 2. 🔴 があれば `/debug` `/refactor` `/issue` に繋ぐ
 3. 🟡 は次スプリントのバックログに入れるか判断する
 4. 🟢 は対応不要
+
+Nightly 判定コマンド（手動実行時）:
+
+```bash
+npm run patrol
+npm run patrol:assert
+npm run patrol:dashboard
+npm run patrol:raw-fetch
+npm run patrol:admin-status
+npm run patrol:exception-center
+npm run patrol:decision
 ```
+
+判定 1 行（decision レポート）:
+
+```text
+🟢 Stable（問題なし）
+🟡 Watch（軽微な懸念あり）
+🔴 Action Required（明日対応必須）
+```
+
+自動化オプション（Nightly workflow）:
+
+- `NOTIFY_WEBHOOK_URL` を設定すると `Action Required` 時に通知
+- リポジトリ変数 `NIGHTLY_AUTO_ISSUE=true` で `Action Required` 時に `nightly-apply --apply` を実行
+- `ADMIN_STATUS_RAW_URL` / `EXCEPTION_CENTER_RAW_URL` を設定すると nightly が生JSONを自動取得（`fetch-nightly-raw-summaries.mjs`）
+- `NIGHTLY_RAW_BEARER_TOKEN` で取得時認証（任意）
+- `NIGHTLY_RAW_FETCH_STRICT=false`（デフォルト）では raw 取得失敗時も workflow は継続し、summary 欠損を `Watch` 理由として扱う
+- `ADMIN_STATUS_RAW_PATH` を指定すると `/admin/status` 生JSONを取り込み、`docs/nightly-patrol/admin-status-summary-<date>.json` を生成
+- `EXCEPTION_CENTER_RAW_PATH` を指定すると `ExceptionCenter` 生JSONを取り込み、`docs/nightly-patrol/exception-center-summary-<date>.json` を生成
+- decision は `ADMIN_STATUS_SUMMARY_PATH` / `EXCEPTION_CENTER_SUMMARY_PATH` を読み、入力欠損時は `Watch` に倒す
+
+decision の reason code（JSON）:
+
+- `ADMIN_STATUS_FAIL`
+- `ADMIN_STATUS_SUMMARY_MISSING`
+- `EXCEPTION_HIGH_SEVERITY`
+- `EXCEPTION_OVERDUE_PRESENT`
+- `EXCEPTION_CENTER_SUMMARY_MISSING`
+
+自動Issue（`nightly-apply`）:
+
+- `decision-<date>.json` の reason code を本文に展開
+- actionable classification が 0 件でも fail reason code があれば `nightly-decision-control` Issue を作成
 
 ### レポート → コマンド対応表
 
