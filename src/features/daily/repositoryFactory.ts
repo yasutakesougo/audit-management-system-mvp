@@ -18,12 +18,8 @@ const factory = createRepositoryFactory<DailyRecordRepository, DailyRecordReposi
   name: 'DailyRecord',
   createDemo: () => inMemoryDailyRecordRepository,
   createReal: (options) => {
-    const { acquireToken } = options;
-    if (!acquireToken) {
-      throw new Error('[DailyRecordRepositoryFactory] acquireToken is required for real repository.');
-    }
     const { baseUrl } = ensureConfig();
-    const { provider } = createDataProvider(createSpClient(acquireToken, baseUrl), { type: 'sharepoint' });
+    const { provider } = createDataProvider(createSpClient(options.acquireToken!, baseUrl), { type: 'sharepoint' });
 
     return new DataProviderDailyRecordRepository({
       provider,

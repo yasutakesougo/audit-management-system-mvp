@@ -1,0 +1,84 @@
+
+ RUN  v4.0.18 C:/Users/螳画ｭｦ/.vscode/workspace/audit-management-system
+
+ 笶ｯ tests/unit/contracts/contract.spec.ts (20 tests | 2 failed) 74ms
+     笨・users/ 窶・no spClient or @pnp/sp import outside infra/ 11ms
+     笨・schedules/ 窶・no spClient or @pnp/sp import outside infra/ 11ms
+     ﾃ・daily/ 窶・no spClient or @pnp/sp import outside infra/ 33ms
+     笨・attendance/ 窶・no spClient or @pnp/sp import outside infra/ 4ms
+     笨・users/domain/ 窶・no export interface outside schema.ts 1ms
+     笨・schedules/domain/ 窶・no export interface outside schema.ts 2ms
+     ﾃ・daily/domain/ 窶・no export interface outside schema.ts 5ms
+     笨・attendance/domain/ 窶・no export interface outside schema.ts 1ms
+     笨・users\UserForm.tsx 竕､ 600 lines 0ms
+     笨・users\UsersPanel\UsersCreateForm.tsx 竕､ 600 lines 0ms
+     笨・schedules\hooks\orchestrators\useScheduleActionOrchestrator.ts 竕､ 600 lines 0ms
+     笨・schedules\hooks\orchestrators\useWeekPageOrchestrator.ts 竕､ 600 lines 0ms
+     笨・daily\components\forms\BulkDailyRecordForm.tsx 竕､ 600 lines 0ms
+     笨・daily\components\forms\DailyRecordForm.tsx 竕､ 600 lines 0ms
+     笨・daily\components\forms\TableDailyRecordForm.tsx 竕､ 600 lines 0ms
+     笨・daily\forms\BulkDailyRecordForm.tsx 竕､ 600 lines 0ms
+     笨・daily\forms\DailyRecordForm.tsx 竕､ 600 lines 0ms
+     笨・daily\forms\TableDailyRecordForm.tsx 竕､ 600 lines 0ms
+     笨・daily\hooks\orchestrators\useTableDailyRecordHydrationOrchestrator.ts 竕､ 600 lines 0ms
+     笨・daily\hooks\orchestrators\useTableDailyRecordSaveOrchestrator.ts 竕､ 600 lines 0ms
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ Failed Tests 2 竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ
+
+ FAIL  tests/unit/contracts/contract.spec.ts > Contract: SP Direct Access Prevention > daily/ 窶・no spClient or @pnp/sp import outside infra/
+AssertionError: SP direct access found outside infra/ in daily/:
+daily\repositories\sharepoint\SharePointActivityDiaryRepository.ts:2 竊・import { createSpClient, ensureConfig } from '@/lib/spClient';: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "daily\\repositories\\sharepoint\\SharePointActivityDiaryRepository.ts:2 竊・import { createSpClient, ensureConfig } from '@/lib/spClient';",
++ ]
+
+ 笶ｯ tests/unit/contracts/contract.spec.ts:115:9
+    113|         violations,
+    114|         `SP direct access found outside infra/ in ${mod}/:\n${violatio窶ｦ
+    115|       ).toEqual([]);
+       |         ^
+    116|     });
+    117|   }
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ[1/2]竡ｯ
+
+ FAIL  tests/unit/contracts/contract.spec.ts > Contract: Domain SSOT 窶・schema.ts is the only type source > daily/domain/ 窶・no export interface outside schema.ts
+AssertionError: Interface/type definitions found outside schema.ts in daily/domain/.
+Move to schema.ts and use z.infer, or add "// contract:allow-interface":
+daily\domain\builders\buildDailyRecordPayload.ts:3 竊・export interface SharePointDailyRecordPayload {
+daily\domain\legacy\ActivityDiaryRepository.ts:5 竊・export interface ActivityDiaryRecord {
+daily\domain\legacy\ActivityDiaryRepository.ts:23 竊・export interface ActivityDiaryUpsert {
+daily\domain\legacy\ActivityDiaryRepository.ts:42 竊・export interface ActivityDiaryRepository {: expected [ 窶ｦ(4) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "daily\\domain\\builders\\buildDailyRecordPayload.ts:3 竊・export interface SharePointDailyRecordPayload {",
++   "daily\\domain\\legacy\\ActivityDiaryRepository.ts:5 竊・export interface ActivityDiaryRecord {",
++   "daily\\domain\\legacy\\ActivityDiaryRepository.ts:23 竊・export interface ActivityDiaryUpsert {",
++   "daily\\domain\\legacy\\ActivityDiaryRepository.ts:42 竊・export interface ActivityDiaryRepository {",
++ ]
+
+ 笶ｯ tests/unit/contracts/contract.spec.ts:153:9
+    151|           `Move to schema.ts and use z.infer, or add "${ALLOW_INTERFAC窶ｦ
+    152|           violations.join('\n'),
+    153|       ).toEqual([]);
+       |         ^
+    154|     });
+    155|   }
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ[2/2]竡ｯ
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 18 passed (20)
+   Start at  14:04:05
+   Duration  1.06s (transform 132ms, setup 495ms, import 18ms, tests 74ms, environment 349ms)
+

@@ -46,3 +46,23 @@ export const ACTIVITY_DIARY_CANDIDATES = {
 export const ACTIVITY_DIARY_ESSENTIALS: (keyof typeof ACTIVITY_DIARY_CANDIDATES)[] = [
   'userId', 'date', 'shift', 'category',
 ];
+
+/**
+ * 自己修復 (Self-Healing) 用の列定義
+ */
+export const ACTIVITY_DIARY_ENSURE_FIELDS = [
+  { internalName: 'UserID', type: 'Text', required: true, displayName: 'User ID' },
+  { internalName: 'Date', type: 'DateTime', required: true, displayName: 'Date', dateTimeFormat: 'DateOnly' },
+  { internalName: 'Shift', type: 'Text', required: true, displayName: 'Shift' },
+  { internalName: 'Category', type: 'Text', required: true, displayName: 'Category' },
+  { internalName: 'LunchAmount', type: 'Text', required: false, displayName: 'Lunch Amount' },
+  { internalName: 'MealMain', type: 'Text', required: false, displayName: 'Meal Main' },
+  { internalName: 'MealSide', type: 'Text', required: false, displayName: 'Meal Side' },
+  { internalName: 'ProblemBehavior', type: 'Boolean', required: false, displayName: 'Problem Behavior' },
+  { internalName: 'BehaviorType', type: 'Text', required: false, displayName: 'Behavior Type' },
+  { internalName: 'BehaviorNote', type: 'Note', required: false, displayName: 'Behavior Note' },
+  { internalName: 'Seizure', type: 'Boolean', required: false, displayName: 'Seizure' },
+  { internalName: 'SeizureAt', type: 'Text', required: false, displayName: 'Seizure At' },
+  { internalName: 'Goals', type: 'Note', required: false, displayName: 'Goal IDs' },
+  { internalName: 'Notes', type: 'Note', required: false, displayName: 'Notes' },
+] as const;

@@ -28,6 +28,7 @@ import {
   resolveInternalNamesDetailed,
   areEssentialFieldsResolved,
 } from '@/lib/sp/helpers';
+import { defaultDriftEventHandler } from '@/lib/sp/onDriftEvent';
 
 // 旧 Helpers.ts から移行。Daily 固有のフォールバックリスト。
 const DAILY_RECORD_LIST_FALLBACKS = [
@@ -59,6 +60,7 @@ export class DailyRecordSchemaResolver {
       candidates: DAILY_RECORD_CANONICAL_CANDIDATES as unknown as Record<string, string[]>,
       essentials: DAILY_RECORD_CANONICAL_ESSENTIALS as unknown as string[],
       telemetryLabel: 'Daily',
+      onDriftEvent: defaultDriftEventHandler,
     });
   }
 

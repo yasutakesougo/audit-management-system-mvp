@@ -13,6 +13,7 @@ import {
   ACTIVITY_DIARY_CANDIDATES,
   ACTIVITY_DIARY_ESSENTIALS,
 } from '@/sharepoint/fields/activityDiaryFields';
+import { defaultDriftEventHandler } from '@/lib/sp/onDriftEvent';
 
 export class ActivityDiarySchemaResolver {
   private readonly generic: GenericSchemaResolver;
@@ -23,6 +24,7 @@ export class ActivityDiarySchemaResolver {
       candidates: ACTIVITY_DIARY_CANDIDATES as unknown as Record<string, string[]>,
       essentials: ACTIVITY_DIARY_ESSENTIALS as unknown as string[],
       telemetryLabel: 'ActivityDiary',
+      onDriftEvent: defaultDriftEventHandler,
     });
   }
 

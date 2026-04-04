@@ -42,6 +42,7 @@ import {
 } from '@/lib/env';
 import { hasSpfxContext } from '@/lib/runtime';
 import { useMemo } from 'react';
+import { DataProviderNotInitializedError } from '@/lib/errors';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Types
@@ -105,13 +106,17 @@ export interface RepositoryFactory<
 // ────────────────────────────────────────────────────────────────────────────
 
 /**
- * Default predicate that matches the existing `shouldUseDemoRepository`
- * logic shared across all 5 factory files.
- *
- * Returns `true` for: dev mode, test mode, force-demo, demo-mode,
- * skip-login, or missing SPFx context.
+ * Default predicate that * Higher priority given to URL parameters to match getActiveProviderType.
  */
 export const defaultShouldUseDemo = (): boolean => {
+  // 0. URL parameter check (highest priority after explicit forceKind)
+  if (typeof window !== 'undefined' && window.location) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const providerParam = urlParams.get('provider');
+    if (providerParam === 'sharepoint') return false;
+    if (providerParam === 'memory' || providerParam === 'local') return true;
+  }
+
   // 1. Priority overrides for forcing demo
   if (
     isTestMode() ||
@@ -184,7 +189,7 @@ export function createRepositoryFactory<
 
     const acquireToken = options?.acquireToken;
     if (!acquireToken && useAuthInHook) {
-      throw new Error(
+      throw new DataProviderNotInitializedError(
         `[${name}RepositoryFactory] acquireToken is required for real repository.`,
       );
     }

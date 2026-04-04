@@ -10,6 +10,7 @@ import {
   MONITORING_MEETING_CANDIDATES,
   MONITORING_MEETING_ESSENTIALS,
 } from '@/sharepoint/fields/monitoringMeetingFields';
+import { defaultDriftEventHandler } from '@/lib/sp/onDriftEvent';
 
 export class MonitoringMeetingSchemaResolver {
   private readonly generic: GenericSchemaResolver;
@@ -20,6 +21,7 @@ export class MonitoringMeetingSchemaResolver {
       candidates: MONITORING_MEETING_CANDIDATES as unknown as Record<string, string[]>,
       essentials: MONITORING_MEETING_ESSENTIALS as unknown as string[],
       telemetryLabel: 'MonitoringMeetings',
+      onDriftEvent: defaultDriftEventHandler,
     });
   }
 

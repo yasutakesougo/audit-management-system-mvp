@@ -315,7 +315,7 @@ export function resolveInternalNamesDetailed<T extends string>(
   available: Set<string>,
   candidates: Record<T, string[]>,
   options?: { 
-    onDrift?: (fieldName: T, resolutionType: string, driftType: string) => void 
+    onDrift?: (fieldName: T, resolutionType: string, driftType: string, resolvedName: string) => void 
   }
 ): ResolutionResult<T> {
   const resolved = {} as Record<T, string | undefined>;
@@ -401,7 +401,7 @@ export function resolveInternalNamesDetailed<T extends string>(
       const isDrifted = !!resolvedName && !isPrimaryMatch;
 
       if (isDrifted && options?.onDrift) {
-        options.onDrift(key as T, 'fuzzy_match', driftType || 'unknown');
+        options.onDrift(key as T, 'fuzzy_match', driftType || 'unknown', resolvedName);
       }
 
       resolved[key] = resolvedName;
@@ -452,18 +452,22 @@ export function washRow<T extends Record<string, unknown>>(
   candidates: Record<string, string[]>,
   resolved: Record<string, string | undefined>
 ): T {
-  const washed = { ...row };
+  const washed = { ...row } as Record<string, unknown>;
   for (const [key, resName] of Object.entries(resolved)) {
     const primary = (candidates[key] as string[])?.[0];
-    if (resName && primary && resName !== primary) {
-      // 実際の内部名(StartDate0等)の値を、第1候補名(StartDate)にコピーする
+    if (resName) {
       const value = row[resName];
       if (value !== undefined) {
-        (washed as Record<string, unknown>)[primary] = value;
+        // 1. Copy to logical key (e.g. 'workDays')
+        washed[key] = value;
+        // 2. Copy to primary candidate name (e.g. 'WorkDays') if different
+        if (primary && resName !== primary) {
+          washed[primary] = value;
+        }
       }
     }
   }
-  return washed;
+  return washed as T;
 }
 
 /**

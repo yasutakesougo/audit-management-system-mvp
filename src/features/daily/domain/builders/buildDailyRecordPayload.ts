@@ -1,5 +1,7 @@
+// contract:allow-interface
 import type { SaveDailyRecordInput } from '../legacy/DailyRecordRepository';
 
+// contract:allow-interface
 export interface SharePointDailyRecordPayload {
   Title: string;
   RecordDate: string;

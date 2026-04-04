@@ -1,0 +1,86 @@
+
+ RUN  v4.0.18 C:/Users/螳画ｭｦ/.vscode/workspace/audit-management-system
+
+stdout | tests/dataos/stability_verification.spec.ts
+[MSAL ENV] Validated successfully
+
+stdout | tests/dataos/stability_verification.spec.ts > Data OS Stability Verification > 1. Singleton Equality & Provider Isolation > should return the same instance for multiple calls (Singleton)
+[DataProvider] Active backend: memory
+[DataProvider] Active backend: memory
+
+stdout | tests/dataos/stability_verification.spec.ts > Data OS Stability Verification > 1. Singleton Equality & Provider Isolation > should return different instances for different provider types (Isolation)
+[DataProvider] Active backend: memory
+[DataProvider] Active backend: local
+
+stdout | tests/dataos/stability_verification.spec.ts > Data OS Stability Verification > 1. Singleton Equality & Provider Isolation > resolveProvider should return the same instance as createDataProvider (Bridge Consistency)
+[DataProvider] Active backend: local
+
+stdout | tests/dataos/stability_verification.spec.ts > Data OS Stability Verification > 5. Hardening & Readiness > createDataProvider should update client on existing sharepoint instance
+[DataProvider] Active backend: sharepoint
+[DataProvider] Active backend: sharepoint
+
+stdout | tests/dataos/stability_verification.spec.ts > Data OS Stability Verification > 5. Hardening & Readiness > isDataProviderReady should return correct state
+[DataProvider] Active backend: sharepoint
+
+ 笶ｯ tests/dataos/stability_verification.spec.ts (12 tests | 2 failed) 24ms
+       笨・should return the same instance for multiple calls (Singleton) 7ms
+       笨・should return different instances for different provider types (Isolation) 1ms
+       笨・resolveProvider should return the same instance as createDataProvider (Bridge Consistency) 1ms
+       笨・should invalidate cache and reload on StorageEvent 1ms
+       笨・'InMemory' should throw DataProviderItemNotFoundError on miss 1ms
+       笨・'LocalStorage' should throw DataProviderItemNotFoundError on miss 0ms
+       笨・'SharePoint' should throw DataProviderItemNotFoundError on miss 1ms
+       笨・LocalStorageDataProvider should handle basic CRUD correctly 1ms
+       笨・resolveProvider should throw DataProviderNotInitializedError if uninitialized and in sharepoint mode 1ms
+       ﾃ・createDataProvider should update client on existing sharepoint instance 6ms
+       ﾃ・getUserRepository should throw DataProviderNotInitializedError if uninitialized and in sharepoint mode 1ms
+       笨・isDataProviderReady should return correct state 1ms
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ Failed Tests 2 竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ
+
+ FAIL  tests/dataos/stability_verification.spec.ts > Data OS Stability Verification > 5. Hardening & Readiness > createDataProvider should update client on existing sharepoint instance
+AssertionError: expected SharePointDataProvider{ 窶ｦ(2) } to be SharePointDataProvider{ 窶ｦ(1) } // Object.is equality
+
+- Expected
++ Received
+
+@@ -1,9 +1,9 @@
+  SharePointDataProvider {
+    "client": {
+      "addListItemByTitle": [Function Mock],
+-     "baseUrl": "site2",
++     "baseUrl": "site1",
+      "deleteItem": [Function Mock],
+      "getItemById": [Function Mock],
+      "listItems": [Function Mock],
+      "updateItem": [Function Mock],
+    },
+
+ 笶ｯ tests/dataos/stability_verification.spec.ts:202:18
+    200|       const { provider: p2 } = createDataProvider(client2);
+    201|       
+    202|       expect(p1).toBe(p2); // Same instance
+       |                  ^
+    203|       expect(setClientSpy).toHaveBeenCalledWith(client2);
+    204|     });
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ[1/2]竡ｯ
+
+ FAIL  tests/dataos/stability_verification.spec.ts > Data OS Stability Verification > 5. Hardening & Readiness > getUserRepository should throw DataProviderNotInitializedError if uninitialized and in sharepoint mode
+AssertionError: expected function to throw an error, but it didn't
+ 笶ｯ tests/dataos/stability_verification.spec.ts:210:41
+    208|       
+    209|       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() 窶ｦ
+    210|       expect(() => getUserRepository()).toThrow(DataProviderNotInitial窶ｦ
+       |                                         ^
+    211|       expect(warnSpy).toHaveBeenCalled();
+    212|       warnSpy.mockRestore();
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ[2/2]竡ｯ
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 10 passed (12)
+   Start at  14:01:55
+   Duration  2.21s (transform 671ms, setup 505ms, import 1.18s, tests 24ms, environment 359ms)
+

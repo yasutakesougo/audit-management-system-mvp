@@ -1,0 +1,133 @@
+
+ RUN  v4.0.18 C:/Users/螳画ｭｦ/.vscode/workspace/audit-management-system
+
+stderr | src/features/today/transport/__tests__/transportRepo.spec.ts > transportRepo > loadTransportLogs > should return empty array when list does not exist (404)
+[transportRepo] Transport_Log list not found, returning empty. Create the list to enable persistence.
+
+stderr | src/features/today/transport/__tests__/transportRepo.spec.ts > transportRepo > loadTransportLogs > should return empty array when list name error occurs
+[transportRepo] Transport_Log list not found, returning empty. Create the list to enable persistence.
+
+stderr | src/features/today/transport/__tests__/transportRepo.spec.ts > transportRepo > loadTransportLogs > should rethrow non-404 errors
+[transportRepo] Failed to load transport logs: Error: Internal Server Error
+    at C:/Users/螳画ｭｦ/.vscode/workspace/audit-management-system/src/features/today/transport/__tests__/transportRepo.spec.ts:128:24
+    at file:///C:/Users/%E5%AE%89%E6%AD%A6/.vscode/workspace/audit-management-system/node_modules/@vitest/runner/dist/index.js:145:11
+    at file:///C:/Users/%E5%AE%89%E6%AD%A6/.vscode/workspace/audit-management-system/node_modules/@vitest/runner/dist/index.js:915:26
+    at file:///C:/Users/%E5%AE%89%E6%AD%A6/.vscode/workspace/audit-management-system/node_modules/@vitest/runner/dist/index.js:1243:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///C:/Users/%E5%AE%89%E6%AD%A6/.vscode/workspace/audit-management-system/node_modules/@vitest/runner/dist/index.js:1209:10)
+    at file:///C:/Users/%E5%AE%89%E6%AD%A6/.vscode/workspace/audit-management-system/node_modules/@vitest/runner/dist/index.js:1653:37
+    at Traces.$ (file:///C:/Users/%E5%AE%89%E6%AD%A6/.vscode/workspace/audit-management-system/node_modules/vitest/dist/chunks/traces.CCmnQaNT.js:142:27)
+    at trace (file:///C:/Users/%E5%AE%89%E6%AD%A6/.vscode/workspace/audit-management-system/node_modules/vitest/dist/chunks/test.B8ej_ZHS.js:239:21)
+    at runTest (file:///C:/Users/%E5%AE%89%E6%AD%A6/.vscode/workspace/audit-management-system/node_modules/@vitest/runner/dist/index.js:1653:12) {
+  status: 500
+}
+
+stdout | src/features/today/transport/__tests__/transportRepo.spec.ts > transportRepo > saveTransportLog > should create a new item when no existing item found
+[transportRepo] Created transport log: U001_2026-03-13_to
+
+stdout | src/features/today/transport/__tests__/transportRepo.spec.ts > transportRepo > saveTransportLog > should update existing item when found
+[transportRepo] Updated transport log: U001_2026-03-13_to (id=42)
+
+stdout | src/features/today/transport/__tests__/transportRepo.spec.ts > transportRepo > saveTransportLog > should include optional fields when provided
+[transportRepo] Created transport log: U001_2026-03-13_to
+
+stderr | src/features/today/transport/__tests__/transportRepo.spec.ts > transportRepo > saveTransportLog > should silently skip when list does not exist (404)
+[transportRepo] Transport_Log list not found, skipping save. Create the list to enable persistence.
+
+stdout | src/features/today/transport/__tests__/transportRepo.spec.ts > transportRepo > saveTransportLog > should always set UpdatedAt timestamp
+[transportRepo] Created transport log: U001_2026-03-13_to
+
+stdout | src/features/today/transport/__tests__/transportRepo.spec.ts > transportRepo > syncToAttendanceDaily > should patch TransportTo + TransportToMethod for direction=to
+[transportRepo] Synced transport to to AttendanceDaily: key=U001_2026-03-13
+
+stdout | src/features/today/transport/__tests__/transportRepo.spec.ts > transportRepo > syncToAttendanceDaily > should patch TransportFrom + TransportFromMethod for direction=from
+[transportRepo] Synced transport from to AttendanceDaily: key=U001_2026-03-13
+
+stdout | src/features/today/transport/__tests__/transportRepo.spec.ts > transportRepo > syncToAttendanceDaily > should set transport boolean to false for non-shuttle methods
+[transportRepo] Synced transport to to AttendanceDaily: key=U001_2026-03-13
+
+stdout | src/features/today/transport/__tests__/transportRepo.spec.ts > transportRepo > syncToAttendanceDaily > should skip when no AttendanceDaily record exists
+[transportRepo] AttendanceDaily not found for key=U001_2026-03-13, skipping sync
+
+stderr | src/features/today/transport/__tests__/transportRepo.spec.ts > transportRepo > syncToAttendanceDaily > should handle 404 when AttendanceDaily list does not exist
+[transportRepo] AttendanceDaily list not found, skipping sync.
+
+stderr | src/features/today/transport/__tests__/transportRepo.spec.ts > transportRepo > syncToAttendanceDaily > should not throw on non-404 errors (logs but swallows)
+[transportRepo] Failed to sync to AttendanceDaily (key=U001_2026-03-13): Error: Server Error
+    at C:/Users/螳画ｭｦ/.vscode/workspace/audit-management-system/src/features/today/transport/__tests__/transportRepo.spec.ts:325:24
+    at file:///C:/Users/%E5%AE%89%E6%AD%A6/.vscode/workspace/audit-management-system/node_modules/@vitest/runner/dist/index.js:145:11
+    at file:///C:/Users/%E5%AE%89%E6%AD%A6/.vscode/workspace/audit-management-system/node_modules/@vitest/runner/dist/index.js:915:26
+    at file:///C:/Users/%E5%AE%89%E6%AD%A6/.vscode/workspace/audit-management-system/node_modules/@vitest/runner/dist/index.js:1243:20
+    at new Promise (<anonymous>)
+    at runWithTimeout (file:///C:/Users/%E5%AE%89%E6%AD%A6/.vscode/workspace/audit-management-system/node_modules/@vitest/runner/dist/index.js:1209:10)
+    at file:///C:/Users/%E5%AE%89%E6%AD%A6/.vscode/workspace/audit-management-system/node_modules/@vitest/runner/dist/index.js:1653:37
+    at Traces.$ (file:///C:/Users/%E5%AE%89%E6%AD%A6/.vscode/workspace/audit-management-system/node_modules/vitest/dist/chunks/traces.CCmnQaNT.js:142:27)
+    at trace (file:///C:/Users/%E5%AE%89%E6%AD%A6/.vscode/workspace/audit-management-system/node_modules/vitest/dist/chunks/test.B8ej_ZHS.js:239:21)
+    at runTest (file:///C:/Users/%E5%AE%89%E6%AD%A6/.vscode/workspace/audit-management-system/node_modules/@vitest/runner/dist/index.js:1653:12) {
+  status: 500
+}
+
+stdout | src/features/today/transport/__tests__/transportRepo.spec.ts > transportRepo > syncToAttendanceDaily > should use correct Key format: {UserCode}_{Date}
+[transportRepo] AttendanceDaily not found for key=U001_2026-03-13, skipping sync
+
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ Failed Tests 1 竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ
+
+ FAIL  src/features/today/transport/__tests__/transportRepo.spec.ts > transportRepo > syncToAttendanceDaily > should use correct Key format: {UserCode}_{Date}
+ 笶ｯ src/features/today/transport/__tests__/transportRepo.spec.ts (18 tests | 1 failed) 28ms
+       笨・should return mapped log entries for a given date 4ms
+       笨・should return empty array when list does not exist (404) 1ms
+       笨・should return empty array when list name error occurs 1ms
+       笨・should rethrow non-404 errors 4ms
+       笨・should create a new item when no existing item found 2ms
+       笨・should update existing item when found 1ms
+       笨・should include optional fields when provided 1ms
+       笨・should silently skip when list does not exist (404) 1ms
+       笨・should always set UpdatedAt timestamp 1ms
+       笨・should throw WriteDisabledError when writes are disabled 1ms
+       笨・should patch TransportTo + TransportToMethod for direction=to 1ms
+       笨・should patch TransportFrom + TransportFromMethod for direction=from 1ms
+       笨・should set transport boolean to false for non-shuttle methods 1ms
+       笨・should skip sync for non-arrived statuses 0ms
+       笨・should skip when no AttendanceDaily record exists 1ms
+       笨・should handle 404 when AttendanceDaily list does not exist 1ms
+       笨・should not throw on non-404 errors (logs but swallows) 1ms
+       ﾃ・should use correct Key format: {UserCode}_{Date} 4ms
+AssertionError: expected "vi.fn()" to be called with arguments: [ 'AttendanceDaily', 窶ｦ(1) ]
+
+Received: 
+
+  1st vi.fn() call:
+
+  [
+    "AttendanceDaily",
+-   ObjectContaining {
+-     "filter": StringContaining "Title eq 'U001_2026-03-13'",
++   {
++     "filter": "Key eq 'U001_2026-03-13'",
++     "select": [
++       "Id",
++     ],
++     "top": 1,
+    },
+  ]
+
+
+Number of calls: 1
+
+ 笶ｯ src/features/today/transport/__tests__/transportRepo.spec.ts:338:32
+    336|       await syncToAttendanceDaily(client, baseSync);
+    337| 
+    338|       expect(client.listItems).toHaveBeenCalledWith(
+       |                                ^
+    339|         'AttendanceDaily',
+    340|         expect.objectContaining({
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ[1/1]竡ｯ
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 17 passed (18)
+   Start at  13:11:54
+   Duration  1.08s (transform 197ms, setup 513ms, import 77ms, tests 28ms, environment 335ms)
+

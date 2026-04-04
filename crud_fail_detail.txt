@@ -1,0 +1,68 @@
+
+ RUN  v4.0.18 C:/Users/螳画ｭｦ/.vscode/workspace/audit-management-system
+
+stdout | tests/unit/spClient.crud.spec.ts
+[MSAL ENV] Validated successfully
+
+ 笶ｯ tests/unit/spClient.crud.spec.ts (20 tests | 1 failed) 43ms
+     笨・updateItemByTitle returns parsed JSON payload 5ms
+     笨・deleteItemByTitle issues DELETE with wildcard If-Match 1ms
+     ﾃ・getItemById passes through optional AbortSignal 6ms
+     笨・getItemByIdWithEtag returns data and ETag header 1ms
+     笨・createItem serialises body and unwraps JSON response 1ms
+     笨・updateItem delegates to patchListItem for generic identifiers 1ms
+     笨・deleteItem removes SharePoint items by generic identifier 1ms
+     笨・listItems accepts absolute list paths without double encoding 1ms
+     笨・listItems normalizes SharePoint list identifiers lacking a leading slash 1ms
+     笨・listItems resolves GUID style identifiers into lists(guid) 1ms
+     笨・listItems rejects blank identifiers with a descriptive error 1ms
+     笨・listItems follows continuation links until the page cap is reached 1ms
+     笨・normalisePath handles relative, same-origin, and external URLs 1ms
+     笨・normalisePath returns base-relative paths for same-origin URLs outside the API root 1ms
+     笨・normalisePath falls back to the original string when URL parsing fails 1ms
+     笨・throws a descriptive error when token acquisition fails 1ms
+     笨・retries without delay when jitter computes to zero milliseconds 15ms
+     笨・coerceResult yields undefined for empty or non-JSON responses 1ms
+     笨・logs token metrics snapshot when debug mode is enabled 1ms
+     笨・createSchedule resolves without touching SharePoint 1ms
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ Failed Tests 1 竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ
+
+ FAIL  tests/unit/spClient.crud.spec.ts > createSpClient CRUD helpers > getItemById passes through optional AbortSignal
+AssertionError: expected AbortSignal { aborted: false } to be AbortSignal { aborted: false } // Object.is equality
+
+- Expected
++ Received
+
+@@ -1,12 +1,12 @@
+  AbortSignal {
+    Symbol(kEvents): Map {
+      "abort" => {
+        "next": Listener {
+-         "callback": [Function anonymous],
++         "callback": [Function cleanup],
+          "flags": 1,
+-         "listener": [Function anonymous],
++         "listener": [Function cleanup],
+          "next": undefined,
+          "previous": [Circular],
+        },
+        "resistStopPropagation": false,
+        "size": 1,
+
+ 笶ｯ tests/unit/spClient.crud.spec.ts:114:42
+    112|     const [, init] = fetchMock.mock.calls[0] ?? [];
+    113|     expect(init).toBeDefined();
+    114|     expect((init as RequestInit).signal).toBe(controller.signal);
+       |                                          ^
+    115|   });
+    116| 
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ[1/1]竡ｯ
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 19 passed (20)
+   Start at  14:04:31
+   Duration  1.85s (transform 370ms, setup 508ms, import 828ms, tests 43ms, environment 343ms)
+

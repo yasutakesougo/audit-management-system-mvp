@@ -23,6 +23,7 @@ import {
 } from './schemaUtils';
 import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 import { auditLog } from '@/lib/debugLogger';
+import type { DriftActionEvent, DriftEventHandler, DriftActionKind, DriftActionSeverity } from './driftEvents';
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
@@ -41,6 +42,9 @@ export interface SchemaResolverConfig {
 
   /** テレメトリ用ラベル (例: 'Daily', 'ActivityDiary', 'MonitoringMeetings') */
   telemetryLabel: string;
+
+  /** ドリフトイベントのハンドラ (上位層への通知用) */
+  onDriftEvent?: DriftEventHandler;
 }
 
 // ── Class ───────────────────────────────────────────────────────────────────
@@ -88,10 +92,16 @@ export class GenericSchemaResolver {
         if (!schemaProbe.matches) continue;
 
         this.resolvedListPath = listPath;
+        this.emitEvent('list_resolved', 'info', {
+          message: `List matched: ${matched}`,
+        });
         return listPath;
       }
 
       this.listPathResolutionFailed = true;
+      this.emitEvent('list_not_found', 'error', {
+        message: `None of the candidates matched in available titles: ${candidates.join(', ')}`,
+      });
       return null;
     }
 
@@ -102,6 +112,9 @@ export class GenericSchemaResolver {
         const schemaProbe = await this.probeSchema(listPath);
         if (schemaProbe.matches) {
           this.resolvedListPath = listPath;
+          this.emitEvent('list_resolved', 'info', {
+            message: `List inferred from probe: ${candidate}`,
+          });
           return listPath;
         }
       } catch (error) {
@@ -111,6 +124,9 @@ export class GenericSchemaResolver {
     }
 
     this.listPathResolutionFailed = true;
+    this.emitEvent('list_not_found', 'error', {
+      message: `Failed to probe any candidate list paths: ${candidates.join(', ')}`,
+    });
     return null;
   }
 
@@ -134,11 +150,17 @@ export class GenericSchemaResolver {
       names,
       candidates,
       {
-        onDrift: (field, _resType, driftType) => {
+        onDrift: (field: string, _resType: string, driftType: string, resolvedName: string) => {
           auditLog.info('sp', 'sp:fetch_fallback_success', {
             list: telemetryLabel,
             field,
             driftType,
+          });
+          this.emitEvent('fallback_success', 'warn', {
+            canonicalField: field,
+            resolvedField: resolvedName,
+            driftType,
+            message: `Field drift resolved: ${field} -> ${resolvedName} (${driftType})`,
           });
         },
       }
@@ -150,10 +172,18 @@ export class GenericSchemaResolver {
           list: telemetryLabel,
           field: missing,
         });
+        this.emitEvent('essential_missing', 'error', {
+          canonicalField: missing,
+          message: `Essential field missing: ${missing}`,
+        });
       } else {
         auditLog.warn('sp', 'sp:field_missing_optional', {
           list: telemetryLabel,
           field: missing,
+        });
+        this.emitEvent('optional_missing', 'warn', {
+          canonicalField: missing,
+          message: `Optional field missing: ${missing}`,
         });
       }
     }
@@ -222,8 +252,35 @@ export class GenericSchemaResolver {
         listPath,
         missingFields,
       });
+      this.emitEvent('essential_missing', 'error', {
+        message: `Probe failed for ${listPath}. Missing essentials: ${missingFields.join(', ')}`,
+      });
     }
 
     return { matches: missingFields.length === 0, missingFields };
+  }
+
+  private emitEvent(
+    kind: DriftActionKind,
+    severity: DriftActionSeverity,
+    payload: {
+      message: string;
+      canonicalField?: string;
+      resolvedField?: string;
+      driftType?: string;
+    }
+  ): void {
+    if (!this.config.onDriftEvent) return;
+
+    const event: DriftActionEvent = {
+      domain: this.config.telemetryLabel.toLowerCase(),
+      listKey: this.config.listTitle,
+      kind,
+      severity,
+      ...payload,
+      timestamp: new Date().toISOString(),
+    };
+
+    this.config.onDriftEvent(event);
   }
 }

@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { loadTransportLogs, saveTransportLog, syncToAttendanceDaily, type SaveTransportLogInput, type SyncToAttendanceDailyInput } from '../transportRepo';
+import { loadTransportLogs, saveTransportLog, syncToAttendanceDaily, type SaveTransportLogInput, type SyncToAttendanceDailyInput, __test__ } from '../transportRepo';
 import { TRANSPORT_LOG_FIELDS } from '@/sharepoint/fields/transportFields';
 import { ATTENDANCE_DAILY_FIELDS } from '@/sharepoint/fields/attendanceFields';
 
@@ -22,6 +22,10 @@ function createMockClient() {
     deleteItem: vi.fn().mockResolvedValue(undefined),
     getItemById: vi.fn(),
     getItemByIdWithEtag: vi.fn(),
+    getListFieldInternalNames: vi.fn().mockResolvedValue(new Set([
+      'UserCode', 'RecordDate', 'Direction', 'Status', 'ActualTime', 'DriverName', 'Notes',
+      'Attachment', 'TransportTo', 'TransportFrom', 'TransportToMethod', 'TransportFromMethod', 'Title'
+    ])),
   } as unknown as ReturnType<typeof import('@/lib/spClient').useSP>;
 }
 
@@ -41,6 +45,7 @@ describe('transportRepo', () => {
   let client: ReturnType<typeof createMockClient>;
 
   beforeEach(() => {
+    __test__.resetCaches();
     client = createMockClient();
     vi.clearAllMocks();
   });

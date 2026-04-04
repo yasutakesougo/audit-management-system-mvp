@@ -1,0 +1,9 @@
+
+ RUN  v4.0.18 C:/Users/螳画ｭｦ/.vscode/workspace/audit-management-system
+
+No test files found, exiting with code 1
+
+filter: src/features/schedules/infra/__tests__/SharePointSchedulesRepository.spec.ts
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/node_modules/**, **/dist/**, tests/e2e/**, tests/integration/**, tests/regression/**, tests/unit/briefing.edge.spec.ts, tests/unit/spClient.schedule.spec.ts, tests/unit/schedule/briefing.user.spec.ts, tests/unit/schedule/month.spec.ts, tests/unit/schedule.spMap*.spec.ts, playwright.config.ts, playwright.*.config.ts
+

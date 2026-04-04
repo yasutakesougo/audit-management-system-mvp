@@ -1,0 +1,26 @@
+
+C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\features\daily\repositories\sharepoint\SharePointActivityDiaryRepository.ts
+  10:10  error    'getHttpStatus' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  57:45  warning  Unexpected any. Specify a different type                                         @typescript-eslint/no-explicit-any
+
+C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\features\daily\repositories\sharepoint\__tests__\SharePointDailyRecordRepository.drift.spec.ts
+   18:59  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   62:59  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  102:59  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  131:59  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\features\diagnostics\health\HealthDiagnosisPage.tsx
+  428:64  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\features\monitoring\data\useMonitoringMeetingRepository.ts
+  3:57  error  Unable to resolve path to module './DataProviderMonitoringMeetingRepository'  import/no-unresolved
+
+C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\features\monitoring\repositories\sharepoint\SharePointMonitoringMeetingRepository.ts
+  41:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\sharepoint\fields\activityDiaryFields.ts
+  4:10  error  'buildSelectFieldsFromMap' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+笨・10 problems (3 errors, 7 warnings)
+
+EXIT: 1

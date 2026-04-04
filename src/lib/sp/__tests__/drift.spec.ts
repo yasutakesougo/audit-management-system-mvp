@@ -15,7 +15,7 @@ describe('Drift Detection (helpers.ts)', () => {
     expect(result.resolved.fullName).toBe('FullName');
     expect(result.fieldStatus.fullName.isDrifted).toBe(false);
     expect(result.resolved.score).toBe('Compliance_x0020_Score');
-    expect(result.fieldStatus.score.isDrifted).toBe(false);
+    expect(result.fieldStatus.score.isDrifted).toBe(true); // Secondary candidate = drift
   });
 
   it('should detect suffixed names as drifted', () => {

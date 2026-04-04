@@ -72,8 +72,14 @@ export function createDataProvider(
         break;
     }
   } else if (type === 'sharepoint') {
-    // SharePoint の場合はクライアントを更新する可能性があるため再生成
-    providerInstances[cacheKey] = new SharePointDataProvider(spClient);
+    // SharePoint の場合はクライアントを更新する可能性があるため、
+    // インスタンスが既にあれば setClient を呼び出し、なければ生成する。
+    const existing = providerInstances[cacheKey];
+    if (existing instanceof SharePointDataProvider) {
+      existing.setClient(spClient);
+    } else {
+      providerInstances[cacheKey] = new SharePointDataProvider(spClient);
+    }
   }
 
   console.info(`[DataProvider] Active backend: ${type}`);
@@ -101,4 +107,3 @@ export function getActiveProviderType(): ProviderType {
 
   return 'sharepoint';
 }
-

@@ -348,3 +348,12 @@ export async function syncToAttendanceDaily(
     console.error(`${LOG} Failed to sync to AttendanceDaily (key=${dailyKey}):`, err);
   }
 }
+
+// ─── Test / Internal ────────────────────────────────────────────────────────
+
+export const __test__ = {
+  resetCaches: () => {
+    transportFieldsCache = null;
+    attendanceFieldsCache = null;
+  }
+};

@@ -1,0 +1,40 @@
+
+ RUN  v4.0.18 C:/Users/螳画ｭｦ/.vscode/workspace/audit-management-system
+
+ 笶ｯ src/features/staff/infra/__tests__/DataProviderStaffRepository.spec.ts (4 tests | 1 failed) 10ms
+       笨・sends empty arrays for MultiChoice fields if they are missing/null in payload 3ms
+       笨・preserves existing arrays if provided 1ms
+       ﾃ・correctly parses various string formats into arrays 5ms
+       笨・handles empty or null values 0ms
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ Failed Tests 1 竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ
+
+ FAIL  src/features/staff/infra/__tests__/DataProviderStaffRepository.spec.ts > DataProviderStaffRepository > toDomain Mapping > correctly parses various string formats into arrays
+AssertionError: expected [] to deeply equal [ 'Mon', 'Tue', 'Wed' ]
+
+- Expected
++ Received
+
+- [
+-   "Mon",
+-   "Tue",
+-   "Wed",
+- ]
++ []
+
+ 笶ｯ src/features/staff/infra/__tests__/DataProviderStaffRepository.spec.ts:84:31
+     82|       const domain = (repository as unknown as { toDomain: (raw: unkno窶ｦ
+     83| 
+     84|       expect(domain.workDays).toEqual(['Mon', 'Tue', 'Wed']);
+       |                               ^
+     85|       expect(domain.baseWorkingDays).toEqual(['Mon', 'Fri']);
+     86|       expect(domain.certifications).toEqual(['遉ｾ莨夂ｦ冗･牙｣ｫ']);
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ[1/1]竡ｯ
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  13:19:45
+   Duration  1.11s (transform 192ms, setup 518ms, import 69ms, tests 10ms, environment 390ms)
+

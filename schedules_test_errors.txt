@@ -1,0 +1,302 @@
+
+ RUN  v4.0.18 C:/Users/螳画ｭｦ/.vscode/workspace/audit-management-system
+
+ 笨・src/features/schedules/domain/mappers/__tests__/userStatus.spec.ts (68 tests) 26ms
+stderr | src/features/schedules/data/spRowSchema.spec.ts > spRowSchema - Robust Mapping > parseSpScheduleRows > absorbs field-level corruption in an array
+[schedules] Invalid row skipped: {
+  id: undefined,
+  issues: [
+    {
+      code: 'invalid_union',
+      errors: [Array],
+      path: [Array],
+      message: 'Invalid input'
+    }
+  ]
+}
+
+stderr | src/features/schedules/data/spRowSchema.spec.ts > spRowSchema - Robust Mapping > parseSpScheduleRows > emits telemetry when a row is skipped
+[schedules] Invalid row skipped: {
+  id: undefined,
+  issues: [
+    {
+      code: 'invalid_union',
+      errors: [Array],
+      path: [Array],
+      message: 'Invalid input'
+    }
+  ]
+}
+
+ 笶ｯ src/features/schedules/data/spRowSchema.spec.ts (8 tests | 2 failed) 28ms
+       笨・handles Japanese categories and statuses 5ms
+       笨・handles legacy Outlook format (Subject, StartDate, EndDate) 1ms
+       ﾃ・handles mixed userId formats (Lookup ID vs raw string) 8ms
+       笨・skips item if core dates are missing (null start/end) 1ms
+       笨・absorbs partial metadata corruption 1ms
+       笨・absorbs field-level corruption in an array 5ms
+       ﾃ・emits telemetry when a row is skipped 4ms
+       笨・handles various OData wrapper formats 1ms
+stdout | src/features/schedules/routes/__tests__/WeekTimeGrid.spec.tsx
+[MSAL ENV] Validated successfully
+
+ 笨・src/features/schedules/hooks/__tests__/useSchedulesToday.spec.ts (4 tests) 324ms
+stdout | src/features/schedules/components/ops/__tests__/OpsSchedulePage.spec.tsx
+[MSAL ENV] Validated successfully
+
+ 笨・src/features/schedules/data/scheduleSpMappers.spec.ts (2 tests) 795ms
+     笨・builds select set without event-only fields for default Schedules list  779ms
+ 笨・src/features/schedules/data/contract.spec.ts (3 tests) 229ms
+stderr | src/features/schedules/components/__tests__/SchedulesHeaderFilterIsolation.spec.tsx > SchedulesHeader filter isolation > calendar竊弛ps: clears calendar params (cat, q, lane)
+笞・・React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+笞・・React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+ 笨・src/features/schedules/components/__tests__/TimelineItem.spec.tsx (26 tests) 585ms
+     笨・renders the title  341ms
+ 笨・src/features/schedules/components/__tests__/SchedulesHeaderFilterIsolation.spec.tsx (5 tests) 446ms
+     笨・calendar竊弛ps: clears calendar params (cat, q, lane)  324ms
+ 笶ｯ src/features/schedules/data/createAdapters.spec.ts (4 tests | 4 failed) 18ms
+     ﾃ・serializes naive startLocal/endLocal using the configured schedules time zone 9ms
+     ﾃ・keeps assignedStaffId as a string for Staff schedules 4ms
+     ﾃ・normalizes userId for User schedules 1ms
+     ﾃ・allows Org schedules without user or staff IDs 1ms
+ 笨・src/features/schedules/components/__tests__/SchedulesSpLane.spec.tsx (10 tests) 634ms
+ 笨・src/features/schedules/domain/__tests__/scheduleOpsLoadScore.spec.ts (66 tests) 42ms
+ 笨・src/features/schedules/routes/__tests__/dayViewHelpers.spec.ts (26 tests) 24ms
+ 笨・src/features/schedules/infra/scheduleSpUtils.spec.ts (3 tests) 21ms
+stderr | src/features/schedules/errors.spec.ts > classifySchedulesError > classifies WriteDisabledError as WRITE_DISABLED
+[schedules] [classify] error message info: {
+  message: 'Write operation "createSchedule" is disabled. Set VITE_WRITE_ENABLED=1 to enable.',
+  lowerMessage: 'write operation "createschedule" is disabled. set vite_write_enabled=1 to enable.',
+  onLine: true
+}
+
+stderr | src/features/schedules/errors.spec.ts > classifySchedulesError > classifies HTTP 401 as AUTH_REQUIRED
+[schedules] [classify] error message info: { message: 'Unauthorized', lowerMessage: 'unauthorized', onLine: true }
+
+stderr | src/features/schedules/errors.spec.ts > classifySchedulesError > classifies HTTP 403 as AUTH_REQUIRED
+[schedules] [classify] error message info: { message: 'Forbidden', lowerMessage: 'forbidden', onLine: true }
+
+stderr | src/features/schedules/errors.spec.ts > classifySchedulesError > classifies HTTP 404 as LIST_MISSING
+[schedules] [classify] error message info: { message: 'Not Found', lowerMessage: 'not found', onLine: true }
+
+stderr | src/features/schedules/errors.spec.ts > classifySchedulesError > classifies HTTP 429 as THROTTLED
+[schedules] [classify] error message info: {
+  message: 'Too Many Requests',
+  lowerMessage: 'too many requests',
+  onLine: true
+}
+
+stderr | src/features/schedules/errors.spec.ts > classifySchedulesError > classifies HTTP 503 as THROTTLED
+[schedules] [classify] error message info: {
+  message: 'Service Unavailable',
+  lowerMessage: 'service unavailable',
+  onLine: true
+}
+
+stderr | src/features/schedules/errors.spec.ts > classifySchedulesError > classifies "list-not-found" message as LIST_MISSING
+[schedules] [classify] error message info: {
+  message: 'SharePoint list-not-found',
+  lowerMessage: 'sharepoint list-not-found',
+  onLine: true
+}
+
+stderr | src/features/schedules/errors.spec.ts > classifySchedulesError > classifies unknown errors as UNKNOWN
+[schedules] [classify] error message info: {
+  message: 'Something went wrong',
+  lowerMessage: 'something went wrong',
+  onLine: true
+}
+
+stderr | src/features/schedules/errors.spec.ts > classifySchedulesError > classifies offline state as NETWORK_ERROR
+[schedules] [classify] error message info: { message: 'Any error', lowerMessage: 'any error', onLine: false }
+
+stderr | src/features/schedules/errors.spec.ts > classifySchedulesError > classifies "failed to fetch" as NETWORK_ERROR
+[schedules] [classify] error message info: {
+  message: 'Failed to fetch',
+  lowerMessage: 'failed to fetch',
+  onLine: false
+}
+
+stderr | src/features/schedules/errors.spec.ts > shouldFallbackToReadOnly > returns true for WRITE_DISABLED
+[schedules] [classify] error message info: {
+  message: 'Write operation "createSchedule" is disabled. Set VITE_WRITE_ENABLED=1 to enable.',
+  lowerMessage: 'write operation "createschedule" is disabled. set vite_write_enabled=1 to enable.',
+  onLine: true
+}
+
+stderr | src/features/schedules/errors.spec.ts > shouldFallbackToReadOnly > returns true for AUTH_REQUIRED
+[schedules] [classify] error message info: {
+  message: '[object Object]',
+  lowerMessage: '[object object]',
+  onLine: true
+}
+
+stderr | src/features/schedules/errors.spec.ts > shouldFallbackToReadOnly > returns true for LIST_MISSING
+[schedules] [classify] error message info: {
+  message: '[object Object]',
+  lowerMessage: '[object object]',
+  onLine: true
+}
+
+stderr | src/features/schedules/errors.spec.ts > shouldFallbackToReadOnly > returns false for THROTTLED (transient)
+[schedules] [classify] error message info: {
+  message: '[object Object]',
+  lowerMessage: '[object object]',
+  onLine: true
+}
+
+stderr | src/features/schedules/errors.spec.ts > shouldFallbackToReadOnly > returns false for UNKNOWN (transient)
+[schedules] [classify] error message info: { message: 'Random error', lowerMessage: 'random error', onLine: true }
+
+ 笨・src/features/schedules/errors.spec.ts (15 tests) 24ms
+ 笨・src/features/schedules/hooks/__tests__/useScheduleUserOptions.spec.ts (1 test) 19ms
+ 笨・src/features/schedules/domain/builders/__tests__/scheduleQuickTemplates.spec.ts (13 tests) 17ms
+ 笨・src/features/schedules/domain/validation/__tests__/scheduleAutofillRules.spec.ts (16 tests) 19ms
+ 笨・src/features/schedules/__tests__/monthpage-fixed-layout-guardrails.test.ts (13 tests) 13ms
+ 笨・src/features/schedules/domain/validation/__tests__/scheduleNextGap.spec.ts (12 tests) 12ms
+ 笨・src/features/schedules/__tests__/ui-density-tokens.test.ts (14 tests) 10ms
+ 笨・src/features/schedules/lib/dateKey.test.ts (5 tests) 11ms
+ 笨・src/features/schedules/components/ops/__tests__/OpsSchedulePage.spec.tsx (10 tests) 1991ms
+     笨・Case 1: 蛻晄悄謠冗判 窶・Header, Summary, Filter, Table 縺後Ξ繝ｳ繝繝ｪ繝ｳ繧ｰ縺輔ｌ繧・ 772ms
+stderr | src/features/schedules/routes/__tests__/WeekTimeGrid.spec.tsx > WeekTimeGrid 窶・schedule items > renders a schedule item title/personName in the correct time slot
+Warning: validateDOMNesting(...): <button> cannot appear as a descendant of <button>.
+    at button
+    at div
+    at button
+    at div
+    at WeekTimeGrid (C:/Users/螳画ｭｦ/.vscode/workspace/audit-management-system/src/features/schedules/routes/WeekTimeGrid.tsx:11:3)
+
+ 笨・src/features/schedules/utils/__tests__/scheduleAnnouncements.test.ts (4 tests) 9ms
+ 笨・src/features/schedules/__tests__/weekview-density-guardrails.test.ts (15 tests | 14 skipped) 4ms
+stderr | src/features/schedules/__tests__/errors.conflict-feedback.spec.ts > classifySchedulesError conflict feedback > uses the shared operation feedback contract for 412 conflicts
+[schedules] [classify] error message info: {
+  message: 'Precondition Failed',
+  lowerMessage: 'precondition failed',
+  onLine: true
+}
+
+stderr | src/features/schedules/__tests__/errors.conflict-feedback.spec.ts > classifySchedulesError conflict feedback > classifies conflict keyword errors with the same contract
+[schedules] [classify] error message info: {
+  message: 'The version of the item has changed (conflict)',
+  lowerMessage: 'the version of the item has changed (conflict)',
+  onLine: true
+}
+
+ 笨・src/features/schedules/__tests__/errors.conflict-feedback.spec.ts (2 tests) 5ms
+ 笨・src/features/schedules/routes/__tests__/WeekTimeGrid.spec.tsx (17 tests) 1731ms
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ Failed Tests 6 竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ
+
+ FAIL  src/features/schedules/data/createAdapters.spec.ts > createAdapters helpers > serializes naive startLocal/endLocal using the configured schedules time zone
+RangeError: Invalid time value
+ 笶ｯ format ../../../../%E5%AE%89%E6%AD%A6/.vscode/workspace/audit-management-system/node_modules/date-fns/format.js:350:11
+ 笶ｯ format ../../../../%E5%AE%89%E6%AD%A6/.vscode/workspace/audit-management-system/node_modules/date-fns-tz/dist/esm/format/index.js:337:12
+ 笶ｯ Module.formatInTimeZone ../../../../%E5%AE%89%E6%AD%A6/.vscode/workspace/audit-management-system/node_modules/date-fns-tz/dist/esm/formatInTimeZone/index.js:30:12
+ 笶ｯ src/features/schedules/data/createAdapters.spec.ts:35:14
+     33|       const payload = toSharePointPayloadWithTz({ ...baseInput, catego窶ｦ
+     34| 
+     35|       expect(formatInTimeZone(new Date(payload.startIso), tz, "yyyy-MM窶ｦ
+       |              ^
+     36|       expect(formatInTimeZone(new Date(payload.endIso), tz, "yyyy-MM-d窶ｦ
+     37|     }
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ[1/6]竡ｯ
+
+ FAIL  src/features/schedules/data/createAdapters.spec.ts > createAdapters helpers > keeps assignedStaffId as a string for Staff schedules
+AssertionError: expected undefined to be '12' // Object.is equality
+
+- Expected: 
+"12"
+
++ Received: 
+undefined
+
+ 笶ｯ src/features/schedules/data/createAdapters.spec.ts:48:58
+     46| 
+     47|     const payload = toSharePointPayload(input);
+     48|     expect(payload.body[SCHEDULES_FIELDS.assignedStaff]).toBe('12');
+       |                                                          ^
+     49|   });
+     50| 
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ[2/6]竡ｯ
+
+ FAIL  src/features/schedules/data/createAdapters.spec.ts > createAdapters helpers > normalizes userId for User schedules
+AssertionError: expected undefined to be '42' // Object.is equality
+
+- Expected: 
+"42"
+
++ Received: 
+undefined
+
+ 笶ｯ src/features/schedules/data/createAdapters.spec.ts:63:57
+     61| 
+     62|     const payload = toSharePointPayload(input);
+     63|     expect(payload.body[SCHEDULES_FIELDS.targetUserId]).toBe('42');
+       |                                                         ^
+     64|     expect(payload.body[SCHEDULES_FIELDS.assignedStaff]).toBeNull();
+     65|     expect(payload.body).not.toHaveProperty('cr014_personId');
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ[3/6]竡ｯ
+
+ FAIL  src/features/schedules/data/createAdapters.spec.ts > createAdapters helpers > allows Org schedules without user or staff IDs
+AssertionError: expected undefined to be null
+
+- Expected: 
+null
+
++ Received: 
+undefined
+
+ 笶ｯ src/features/schedules/data/createAdapters.spec.ts:77:57
+     75| 
+     76|     const payload = toSharePointPayload(input);
+     77|     expect(payload.body[SCHEDULES_FIELDS.targetUserId]).toBeNull();
+       |                                                         ^
+     78|     expect(payload.body[SCHEDULES_FIELDS.assignedStaff]).toBeUndefined窶ｦ
+     79|   });
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ[4/6]竡ｯ
+
+ FAIL  src/features/schedules/data/spRowSchema.spec.ts > spRowSchema - Robust Mapping > mapSpRowToSchedule > handles mixed userId formats (Lookup ID vs raw string)
+AssertionError: expected undefined to be '101' // Object.is equality
+
+- Expected: 
+"101"
+
++ Received: 
+undefined
+
+ 笶ｯ src/features/schedules/data/spRowSchema.spec.ts:58:31
+     56|       } as unknown as SpScheduleRow;
+     57|       const mapped2 = mapSpRowToSchedule(row2);
+     58|       expect(mapped2?.userId).toBe('101');
+       |                               ^
+     59|     });
+     60| 
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ[5/6]竡ｯ
+
+ FAIL  src/features/schedules/data/spRowSchema.spec.ts > spRowSchema - Robust Mapping > parseSpScheduleRows > emits telemetry when a row is skipped
+AssertionError: expected "vi.fn()" to be called with arguments: [ 'sp:row_skipped', 窶ｦ(1) ]
+
+Number of calls: 0
+
+ 笶ｯ src/features/schedules/data/spRowSchema.spec.ts:102:28
+    100|       
+    101|       parseSpScheduleRows(rows);
+    102|       expect(trackSpEvent).toHaveBeenCalledWith('sp:row_skipped', expe窶ｦ
+       |                            ^
+    103|         key: 'unknown'
+    104|       }));
+
+竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ竡ｯ[6/6]竡ｯ
+
+
+ Test Files  2 failed | 23 passed (25)
+      Tests  6 failed | 342 passed | 14 skipped (362)
+   Start at  13:31:14
+   Duration  7.20s (transform 5.95s, setup 24.05s, import 11.91s, tests 7.04s, environment 21.40s)
+

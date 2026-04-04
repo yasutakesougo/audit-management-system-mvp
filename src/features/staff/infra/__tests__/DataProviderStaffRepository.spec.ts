@@ -71,12 +71,13 @@ describe('DataProviderStaffRepository', () => {
 
   describe('toDomain Mapping', () => {
     it('correctly parses various string formats into arrays', () => {
+      // simulate a "washed" row where logical keys are present
       const raw = {
-        Id: 1,
-        FullName: 'Test',
-        WorkDays: 'Mon, Tue, Wed', // Comma-separated
-        BaseWorkingDays: '["Mon", "Fri"]', // JSON string
-        Certifications: '社会福祉士', // Single value
+        id: 1,
+        fullName: 'Test',
+        workDays: 'Mon, Tue, Wed', // Comma-separated
+        baseWorkingDays: '["Mon", "Fri"]', // JSON string
+        certifications: '社会福祉士', // Single value
       };
 
       const domain = (repository as unknown as { toDomain: (raw: unknown) => Staff }).toDomain(raw);
@@ -88,10 +89,10 @@ describe('DataProviderStaffRepository', () => {
 
     it('handles empty or null values', () => {
       const raw = {
-        Id: 2,
-        FullName: 'Test Empty',
-        WorkDays: null,
-        Certifications: '',
+        id: 2,
+        fullName: 'Test Empty',
+        workDays: null,
+        certifications: '',
       };
 
       const domain = (repository as unknown as { toDomain: (raw: unknown) => Staff }).toDomain(raw);
