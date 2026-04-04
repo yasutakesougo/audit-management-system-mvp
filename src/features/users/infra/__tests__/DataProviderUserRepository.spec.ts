@@ -2,6 +2,8 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { DataProviderUserRepository } from '../DataProviderUserRepository';
 import { InMemoryDataProvider } from '@/lib/data/inMemoryDataProvider';
 import type { IUserMasterCreateDto } from '../../types';
+import type { IDataProvider } from '@/lib/data/dataProvider.interface';
+import { AuthRequiredError } from '@/lib/errors';
 
 
 describe('DataProviderUserRepository Split Logic', () => {
@@ -158,5 +160,59 @@ describe('DataProviderUserRepository Split Logic', () => {
       expect(benefit[0].DisabilitySupportLevel0).toBe('Level 3');
       expect(benefit[0].DisabilitySupportLevel).toBeUndefined();
     });
+  });
+
+  it('propagates AUTH_REQUIRED on getAll (instead of silently returning empty)', async () => {
+    const authError = new AuthRequiredError();
+    const throwingProvider = {
+      getFieldInternalNames: async () => {
+        throw authError;
+      },
+      listItems: async () => [],
+    } as unknown as IDataProvider;
+
+    const authRepo = new DataProviderUserRepository({ provider: throwingProvider });
+
+    await expect(authRepo.getAll({ selectMode: 'core' })).rejects.toBe(authError);
+  });
+
+  it('propagates non-auth failures on getAll (instead of returning empty)', async () => {
+    const listError = new Error('SP_LIST_READ_FAILED');
+    const throwingProvider = {
+      getFieldInternalNames: async () => ['Id', 'UserID', 'FullName', 'IsActive'],
+      listItems: async () => {
+        throw listError;
+      },
+    } as unknown as IDataProvider;
+
+    const errorRepo = new DataProviderUserRepository({ provider: throwingProvider });
+
+    await expect(errorRepo.getAll({ selectMode: 'core' })).rejects.toBe(listError);
+  });
+
+  it('does not include unresolved fields in $select', async () => {
+    let capturedSelect: string[] | undefined;
+    const provider = {
+      getFieldInternalNames: async () => new Set([
+        'Id',
+        'Title',
+        'Created',
+        'Modified',
+        'UserID',
+        'FullName',
+        'IsActive',
+      ]),
+      listItems: async (_resource: string, options?: { select?: string[] }) => {
+        capturedSelect = options?.select;
+        return [{ Id: 1, UserID: 'U-001', FullName: 'User One', IsActive: true }];
+      },
+    } as unknown as IDataProvider;
+
+    const testRepo = new DataProviderUserRepository({ provider });
+    const users = await testRepo.getAll({ selectMode: 'core' });
+
+    expect(users).toHaveLength(1);
+    expect(capturedSelect).toBeDefined();
+    expect(capturedSelect).not.toContain('IsSupportProcedureTarget');
   });
 });
