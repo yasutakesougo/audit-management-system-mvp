@@ -186,6 +186,15 @@ jobs:
           if (Array.isArray(data.reasonCodes?.warn) && data.reasonCodes.warn.length > 0) {
             console.log(`- watchCodes: \`${data.reasonCodes.warn.join(', ')}\``);
           }
+          if (Array.isArray(data.escalations) && data.escalations.length > 0) {
+            const rows = data.escalations.map((x) => {
+              const type = x?.type || 'unknown';
+              const days = Number.isFinite(x?.days) ? x.days : 'n/a';
+              const code = x?.code || 'n/a';
+              return `${type}:${code} (${days}d)`;
+            });
+            console.log(`- escalations: \`${rows.join(', ')}\``);
+          }
           NODE
 
       - name: Auto-create nightly issues
