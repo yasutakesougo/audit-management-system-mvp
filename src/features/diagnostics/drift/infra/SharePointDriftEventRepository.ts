@@ -3,7 +3,7 @@ import { IDriftEventRepository } from '../domain/DriftEventRepository';
 import { findListEntry } from '@/sharepoint/spListRegistry';
 import { buildEq, joinAnd } from '@/sharepoint/query/builders';
 import { DRIFT_LOG_CANDIDATES } from '@/sharepoint/fields/diagnosticsFields';
-import { resolveInternalNamesDetailed, washRow } from '@/lib/sp/helpers';
+import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 
 /**
  * 依存関係の境界遵守のためのローカルインターフェース
@@ -79,7 +79,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         [this.resolvedFields.resolved || 'Resolved']: event.resolved
       };
 
-      await this.spClient.createItem(listTitle, washRow(payload));
+      await this.spClient.createItem(listTitle, payload);
 
       this.sessionCache.add(dedupeKey);
     } catch (err) {
