@@ -449,17 +449,16 @@ export function areEssentialFieldsResolved<T extends string>(
  */
 export function washRow<T extends Record<string, unknown>>(
   row: T,
-  candidates: Record<string, string[]>,
+  _candidates: Record<string, string[]>,
   resolved: Record<string, string | undefined>
 ): T {
   const washed = { ...row };
   for (const [key, resName] of Object.entries(resolved)) {
-    const primary = (candidates[key] as string[])?.[0];
-    if (resName && primary && resName !== primary) {
-      // 実際の内部名(StartDate0等)の値を、第1候補名(StartDate)にコピーする
+    if (resName && resName !== key) {
+      // 実際の内部名(StartDate0等)の値を、マッピング用キー(startDate等)にコピーする
       const value = row[resName];
       if (value !== undefined) {
-        (washed as Record<string, unknown>)[primary] = value;
+        (washed as Record<string, unknown>)[key] = value;
       }
     }
   }

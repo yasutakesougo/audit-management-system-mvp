@@ -56,3 +56,19 @@ export const DIAGNOSTICS_REPORTS_SELECT_FIELDS = [
   FIELD_MAP_DIAGNOSTICS_REPORTS.created,
   FIELD_MAP_DIAGNOSTICS_REPORTS.modified,
 ] as const;
+
+/**
+ * ── DriftEventsLog (Drift Logging) ──────────────────────────
+ */
+
+export const DRIFT_LOG_LIST_TITLE = 'DriftEventsLog' as const;
+
+export const DRIFT_LOG_CANDIDATES = {
+  listName: ['ListName', 'NameOfList', 'ListTitle', 'ListName0'],
+  fieldName: ['FieldName', 'InternalName', 'ColumnName', 'FieldName0'],
+  detectedAt: ['DetectedAt', 'OccurredAt', 'Detected_At', 'DetectedAt0'],
+  severity: ['Severity', 'Level', 'Status', 'Severity0'],
+  resolutionType: ['ResolutionType', 'Resolution', 'Type', 'ResolutionType0'],
+  resolved: ['Resolved', 'IsResolved', 'Fixed', 'Resolved0'],
+  driftType: ['DriftType', 'Type', 'Category', 'DriftType0'],
+} as const;
