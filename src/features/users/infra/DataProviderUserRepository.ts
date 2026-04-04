@@ -104,7 +104,9 @@ export class DataProviderUserRepository implements UserRepository {
         const available = await this.provider.getFieldInternalNames(this.listTitle);
         
         // 1. 統合候補マップを構築 (USERS_MASTER_CANDIDATES を活用して Drift 耐性を高める)
-        const candidatesMap: Record<string, string[]> = { ...(USERS_MASTER_CANDIDATES as any) };
+        const candidatesMap: Record<string, string[]> = {
+          ...(USERS_MASTER_CANDIDATES as unknown as Record<string, string[]>),
+        };
         
         // CORE/COMPLIANCE マップから候補が漏れている場合に備えて補完 (safe guard)
         Object.entries(USERS_MASTER_CORE_FIELD_MAP).forEach(([key, val]) => {
@@ -446,8 +448,12 @@ export class DataProviderUserRepository implements UserRepository {
       }
     }
 
-    
-    console.log('syncAccessoryList', { listTitle, userId, hasData, filteredRequest });
+    auditLog.debug('users', 'DataProviderUserRepository.sync_accessory_prepare', {
+      listTitle,
+      userId,
+      hasData,
+      filteredRequest,
+    });
 
     if (!hasData) return; // 更新対象フィールドがない場合はスキップ
 
@@ -460,10 +466,15 @@ export class DataProviderUserRepository implements UserRepository {
         top: 1
       });
 
-      console.log('syncAccessoryList findResult', { existing: existing.length, joinField, filter });
+      auditLog.debug('users', 'DataProviderUserRepository.sync_accessory_find', {
+        existing: existing.length,
+        joinField,
+        filter,
+      });
 
       if (existing.length > 0) {
-        const idValue = existing[0].Id || existing[0].id || (existing[0] as any).ID;
+        const existingItem = existing[0];
+        const idValue = existingItem.Id ?? existingItem.id ?? existingItem.ID;
         await this.provider.updateItem(listTitle, Number(idValue), filteredRequest);
       } else {
         await this.provider.createItem(listTitle, filteredRequest);
@@ -635,6 +646,7 @@ export class DataProviderUserRepository implements UserRepository {
   private toDomain(raw: UserRow, effectiveMode: UserSelectMode): IUserMaster {
     const fields = this.resolvedFields || FIELD_MAP.Users_Master;
     const candidates = USERS_MASTER_CANDIDATES as unknown as Record<string, string[]>;
+    const rawRecord = raw as unknown as Record<string, unknown>;
     
     // ドリフトを正規化
     const record = washRow(raw as unknown as Record<string, unknown>, candidates, fields as Record<string, string | undefined>);
@@ -644,28 +656,102 @@ export class DataProviderUserRepository implements UserRepository {
     const transportFrom = normalizeAttendanceDays(record.transportFromDays);
 
     const domain: IUserMaster = {
-      Id: Number(record['id'] ?? record['Id'] ?? raw['Id'] ?? raw['id']),
-      Title: (record['title'] as string) ?? (record['Title'] as string) ?? raw['Title'] ?? raw['title'] ?? null,
-      UserID: (record['userId'] as string) ?? (record['UserID'] as string) ?? raw['UserID'] ?? raw['userId'] ?? '',
-      FullName: (record['fullName'] as string) ?? (record['FullName'] as string) ?? raw['FullName'] ?? raw['fullName'] ?? '',
-      Furigana: (record['furigana'] as string) ?? (record['Furigana'] as string) ?? raw['Furigana'] ?? raw['furigana'] ?? null,
-      FullNameKana: (record['fullNameKana'] as string) ?? (record['FullNameKana'] as string) ?? raw['FullNameKana'] ?? raw['fullNameKana'] ?? null,
-      ContractDate: (record['contractDate'] as string) ?? (record['ContractDate'] as string) ?? raw['ContractDate'] ?? raw['contractDate'] ?? null,
-      ServiceStartDate: (record['serviceStartDate'] as string) ?? (record['ServiceStartDate'] as string) ?? raw['ServiceStartDate'] ?? raw['serviceStartDate'] ?? null,
-      ServiceEndDate: (record['serviceEndDate'] as string) ?? (record['ServiceEndDate'] as string) ?? raw['ServiceEndDate'] ?? raw['serviceEndDate'] ?? null,
-      IsHighIntensitySupportTarget: Boolean(record['isHighIntensitySupportTarget'] ?? record['IsHighIntensitySupportTarget'] ?? raw['IsHighIntensitySupportTarget'] ?? raw['isHighIntensitySupportTarget'] ?? null),
-      IsSupportProcedureTarget: Boolean(record['isSupportProcedureTarget'] ?? record['IsSupportProcedureTarget'] ?? raw['IsSupportProcedureTarget'] ?? raw['isSupportProcedureTarget'] ?? null),
-      severeFlag: Boolean(record['severeFlag'] ?? record['SevereFlag'] ?? raw['SevereFlag'] ?? raw['severeFlag'] ?? null),
-      IsActive: record['isActive'] !== undefined ? Boolean(record['isActive']) : (raw['IsActive'] ?? null),
+      Id: Number(record['id'] ?? record['Id'] ?? rawRecord['Id'] ?? rawRecord['id']),
+      Title:
+        (record['title'] as string) ??
+        (record['Title'] as string) ??
+        (rawRecord['Title'] as string | undefined) ??
+        (rawRecord['title'] as string | undefined) ??
+        null,
+      UserID:
+        (record['userId'] as string) ??
+        (record['UserID'] as string) ??
+        (rawRecord['UserID'] as string | undefined) ??
+        (rawRecord['userId'] as string | undefined) ??
+        '',
+      FullName:
+        (record['fullName'] as string) ??
+        (record['FullName'] as string) ??
+        (rawRecord['FullName'] as string | undefined) ??
+        (rawRecord['fullName'] as string | undefined) ??
+        '',
+      Furigana:
+        (record['furigana'] as string) ??
+        (record['Furigana'] as string) ??
+        (rawRecord['Furigana'] as string | undefined) ??
+        (rawRecord['furigana'] as string | undefined) ??
+        null,
+      FullNameKana:
+        (record['fullNameKana'] as string) ??
+        (record['FullNameKana'] as string) ??
+        (rawRecord['FullNameKana'] as string | undefined) ??
+        (rawRecord['fullNameKana'] as string | undefined) ??
+        null,
+      ContractDate:
+        (record['contractDate'] as string) ??
+        (record['ContractDate'] as string) ??
+        (rawRecord['ContractDate'] as string | undefined) ??
+        (rawRecord['contractDate'] as string | undefined) ??
+        null,
+      ServiceStartDate:
+        (record['serviceStartDate'] as string) ??
+        (record['ServiceStartDate'] as string) ??
+        (rawRecord['ServiceStartDate'] as string | undefined) ??
+        (rawRecord['serviceStartDate'] as string | undefined) ??
+        null,
+      ServiceEndDate:
+        (record['serviceEndDate'] as string) ??
+        (record['ServiceEndDate'] as string) ??
+        (rawRecord['ServiceEndDate'] as string | undefined) ??
+        (rawRecord['serviceEndDate'] as string | undefined) ??
+        null,
+      IsHighIntensitySupportTarget: Boolean(
+        record['isHighIntensitySupportTarget'] ??
+          record['IsHighIntensitySupportTarget'] ??
+          rawRecord['IsHighIntensitySupportTarget'] ??
+          rawRecord['isHighIntensitySupportTarget'] ??
+          null,
+      ),
+      IsSupportProcedureTarget: Boolean(
+        record['isSupportProcedureTarget'] ??
+          record['IsSupportProcedureTarget'] ??
+          rawRecord['IsSupportProcedureTarget'] ??
+          rawRecord['isSupportProcedureTarget'] ??
+          null,
+      ),
+      severeFlag: Boolean(
+        record['severeFlag'] ?? record['SevereFlag'] ?? rawRecord['SevereFlag'] ?? rawRecord['severeFlag'] ?? null,
+      ),
+      IsActive: record['isActive'] !== undefined ? Boolean(record['isActive']) : ((rawRecord['IsActive'] as boolean | null | undefined) ?? null),
       TransportToDays: transportTo,
       TransportFromDays: transportFrom,
       TransportCourse: (record['transportCourse'] as string) ?? (record['TransportCourse'] as string) ?? null,
       TransportSchedule: (record['transportSchedule'] as string) ?? (record['TransportSchedule'] as string) ?? null,
       AttendanceDays: attendance,
-      RecipientCertNumber: (record['recipientCertNumber'] as string) ?? (record['RecipientCertNumber'] as string) ?? raw['RecipientCertNumber'] ?? raw['recipientCertNumber'] ?? null,
-      RecipientCertExpiry: (record['recipientCertExpiry'] as string) ?? (record['RecipientCertExpiry'] as string) ?? raw['RecipientCertExpiry'] ?? raw['recipientCertExpiry'] ?? null,
-      Modified: (record['modified'] as string) ?? (record['Modified'] as string) ?? raw['Modified'] ?? raw['modified'] ?? null,
-      Created: (record['created'] as string) ?? (record['Created'] as string) ?? raw['Created'] ?? raw['created'] ?? null,
+      RecipientCertNumber:
+        (record['recipientCertNumber'] as string) ??
+        (record['RecipientCertNumber'] as string) ??
+        (rawRecord['RecipientCertNumber'] as string | undefined) ??
+        (rawRecord['recipientCertNumber'] as string | undefined) ??
+        null,
+      RecipientCertExpiry:
+        (record['recipientCertExpiry'] as string) ??
+        (record['RecipientCertExpiry'] as string) ??
+        (rawRecord['RecipientCertExpiry'] as string | undefined) ??
+        (rawRecord['recipientCertExpiry'] as string | undefined) ??
+        null,
+      Modified:
+        (record['modified'] as string) ??
+        (record['Modified'] as string) ??
+        (rawRecord['Modified'] as string | undefined) ??
+        (rawRecord['modified'] as string | undefined) ??
+        null,
+      Created:
+        (record['created'] as string) ??
+        (record['Created'] as string) ??
+        (rawRecord['Created'] as string | undefined) ??
+        (rawRecord['created'] as string | undefined) ??
+        null,
       UsageStatus: (record['usageStatus'] as string) ?? (record['UsageStatus'] as string) ?? null,
       GrantMunicipality: (record['grantMunicipality'] as string) ?? (record['GrantMunicipality'] as string) ?? null,
       GrantPeriodStart: (record['grantPeriodStart'] as string) ?? (record['GrantPeriodStart'] as string) ?? null,
@@ -754,4 +840,3 @@ export class DataProviderUserRepository implements UserRepository {
     return sanitized;
   }
 }
-

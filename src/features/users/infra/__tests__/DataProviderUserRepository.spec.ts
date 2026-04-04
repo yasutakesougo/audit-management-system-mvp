@@ -120,7 +120,7 @@ describe('DataProviderUserRepository Split Logic', () => {
       ]);
 
       // 2. Repository 経由で 'UsageStatus' を更新
-      await repo.update(1, { UsageStatus: 'new-status' } as any);
+      await repo.update(1, { UsageStatus: 'new-status' });
 
       // 3. プロバイダー側の 'Status' 列が更新されていることを確認
       const core = await provider.listItems<Record<string, unknown>>('Users_Master');
@@ -135,7 +135,7 @@ describe('DataProviderUserRepository Split Logic', () => {
       ]);
 
       // 2. Repository 経由で 'IsHighIntensitySupportTarget' を更新
-      await repo.update(1, { IsHighIntensitySupportTarget: true } as any);
+      await repo.update(1, { IsHighIntensitySupportTarget: true });
 
       // 3. プロバイダー側の 'IntensityTarget' 列が更新されていることを確認
       const core = await provider.listItems<Record<string, unknown>>('Users_Master');
@@ -151,7 +151,7 @@ describe('DataProviderUserRepository Split Logic', () => {
       ]);
 
       // 2. 'DisabilitySupportLevel' を更新
-      await repo.update(1, { DisabilitySupportLevel: 'Level 3' } as any);
+      await repo.update(1, { DisabilitySupportLevel: 'Level 3' });
 
       // 3. 分離先リストの 'DisabilitySupportLevel0' が更新されたか確認
       const benefit = await provider.listItems<Record<string, unknown>>('UserBenefit_Profile');
