@@ -23,6 +23,8 @@ import { useToast } from '@/hooks/useToast';
 import { useMeetingMinutesDetail } from '../hooks/useMeetingMinutes';
 import type { MeetingMinutesRepository } from '../sp/repository';
 import { auditLog } from '@/lib/debugLogger';
+import { MeetingMinutesBlockViewer } from '../components/MeetingMinutesBlockViewer';
+import { buildHandoffSections } from '../editor/blockHandoffExtractor';
 
 const renderMultiline = (value?: string) =>
   (value ?? '')
@@ -80,6 +82,7 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
   const minutes = query.data;
   const defaultTimeBand = minutes.category === '朝会' ? '朝' : minutes.category === '夕会' ? '夕方' : '午前';
   const isDailyMeeting = minutes.category === '朝会' || minutes.category === '夕会';
+  const hasBlocks = (minutes.contentBlocks ?? []).length > 0;
 
   const buildHandoffPayload = (options: {
     includeSummary: boolean;
@@ -87,13 +90,35 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
     includeActions: boolean;
     extraText?: string;
   }) => {
+    // block ベース抽出 + legacy fallback
+    const sections = buildHandoffSections(
+      minutes.contentBlocks,
+      { summary: minutes.summary, decisions: minutes.decisions, actions: minutes.actions }
+    );
+
     const lines: string[] = [];
     const label = `${minutes.category}（${minutes.meetingDate}）`;
     lines.push(`【${label}】`);
-    if (options.includeSummary && minutes.summary) lines.push(`\n■要点\n${minutes.summary}`);
-    if (options.includeDecisions && minutes.decisions) lines.push(`\n■決定事項\n${minutes.decisions}`);
-    if (options.includeActions && minutes.actions) lines.push(`\n■アクション\n${minutes.actions}`);
-    if (options.extraText?.trim()) lines.push(`\n■追記\n${options.extraText.trim()}`);
+
+    if (options.includeSummary && sections.summary) {
+      lines.push(`\n■要点\n${sections.summary}`);
+    }
+    if (options.includeDecisions && sections.decisions) {
+      lines.push(`\n■決定事項\n${sections.decisions}`);
+    }
+    if (options.includeActions && sections.actions) {
+      lines.push(`\n■アクション\n${sections.actions}`);
+    }
+    // block 抽出で得られた追加セクション
+    if (sections.reports) {
+      lines.push(`\n■報告\n${sections.reports}`);
+    }
+    if (sections.notifications) {
+      lines.push(`\n■連絡事項\n${sections.notifications}`);
+    }
+    if (options.extraText?.trim()) {
+      lines.push(`\n■追記\n${options.extraText.trim()}`);
+    }
 
     const sourceUrl = `/meeting-minutes/${minutes.id}`;
     lines.push(`\n---\n元議事録: ${sourceUrl}`);
@@ -230,20 +255,30 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
 
             <Divider />
 
-            <Box>
-              <Typography variant="subtitle2">要点（Summary）</Typography>
-              {renderMultiline(minutes.summary || '未入力')}
-            </Box>
+            {/* ── 本文: contentBlocks があればブロック表示、なければ legacy ── */}
+            {hasBlocks ? (
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>議事録本文</Typography>
+                <MeetingMinutesBlockViewer blocks={minutes.contentBlocks!} />
+              </Box>
+            ) : (
+              <>
+                <Box>
+                  <Typography variant="subtitle2">要点（Summary）</Typography>
+                  {renderMultiline(minutes.summary || '未入力')}
+                </Box>
 
-            <Box>
-              <Typography variant="subtitle2">決定事項（Decisions）</Typography>
-              {renderMultiline(minutes.decisions || '未入力')}
-            </Box>
+                <Box>
+                  <Typography variant="subtitle2">決定事項（Decisions）</Typography>
+                  {renderMultiline(minutes.decisions || '未入力')}
+                </Box>
 
-            <Box>
-              <Typography variant="subtitle2">アクション（Actions）</Typography>
-              {renderMultiline(minutes.actions || '未入力')}
-            </Box>
+                <Box>
+                  <Typography variant="subtitle2">アクション（Actions）</Typography>
+                  {renderMultiline(minutes.actions || '未入力')}
+                </Box>
+              </>
+            )}
 
             <Box>
               <Typography variant="subtitle2">タグ</Typography>
