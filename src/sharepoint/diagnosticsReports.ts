@@ -12,6 +12,7 @@ import {
     DIAGNOSTICS_REPORTS_CANDIDATES,
 } from '@/sharepoint/fields';
 import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
+import { findListEntry } from '@/sharepoint/spListRegistry';
 
 export type DiagnosticsReportStatus = 'pass' | 'warn' | 'fail';
 
@@ -158,12 +159,16 @@ export async function upsertDiagnosticsReport(
     throw new Error(`[diagnosticsReports] overall must be pass|warn|fail, got: ${input.overall}`);
   }
 
-  const listTitle = DIAGNOSTICS_REPORTS_LIST_TITLE;
+  const entry = findListEntry('diagnostics_reports');
+  const listTitle = entry?.resolve() || DIAGNOSTICS_REPORTS_LIST_TITLE;
 
   // ──────────────────────────────────────────
   // Step 0: 実環境の内部名を解決 (Drift 対応)
   // ──────────────────────────────────────────
-  const rawFields = await sp.getListFieldInternalNames(listTitle).catch(() => [] as string[]);
+  const rawFields = await sp.getListFieldInternalNames(listTitle).catch((err) => {
+    console.warn(`[diagnosticsReports] Failed to fetch fields for list: ${listTitle}. This list may be missing or inaccessible.`, err);
+    return [] as string[];
+  });
   const { resolved } = resolveInternalNamesDetailed(
     new Set(rawFields),
     DIAGNOSTICS_REPORTS_CANDIDATES as unknown as Record<string, string[]>
@@ -228,7 +233,7 @@ export async function upsertDiagnosticsReport(
   if (existing?.length) {
     // UPDATE: 既存レコード
     // ✅ 動的に解決された ID フィールドから数値型 ID を抽出
-    const rawItem = existing[0] as any;
+    const rawItem = existing[0] as Record<string, unknown>;
     const id = Number(rawItem[pId] ?? rawItem.Id ?? rawItem.ID);
     
     if (Number.isNaN(id)) {
