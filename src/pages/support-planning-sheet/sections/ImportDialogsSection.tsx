@@ -13,11 +13,7 @@ import type { AssessmentBridgeResult } from '@/features/planning-sheet/assessmen
 import type { MonitoringToPlanningResult } from '@/features/planning-sheet/monitoringToPlanningBridge';
 import { TOAST_AUTO_HIDE_DURATION_MS } from '../constants';
 
-type ToastState = {
-  open: boolean;
-  message: string;
-  severity: 'success' | 'error';
-};
+import type { ToastState } from '../hooks/useSupportPlanningSheetUiState';
 
 type ImportDialogsSectionProps = {
   toast: ToastState;

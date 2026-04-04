@@ -139,6 +139,7 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
           bridgeSuggestionsProps={{
             bridge: monitoringBridge,
             isEditing,
+            onReflectCandidate: handlers.onReflectCandidate,
           }}
           importHistoryProps={{
             auditRecords,

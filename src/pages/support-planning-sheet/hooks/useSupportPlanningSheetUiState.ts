@@ -4,10 +4,12 @@ import type { AuditHistoryFilter } from '@/features/planning-sheet/domain/filter
 import type { ProvenanceEntry } from '@/features/planning-sheet/assessmentBridge';
 import { type SheetTabKey, VALID_TABS } from '../types';
 
+export type ToastState = { open: boolean; message: string; severity: 'success' | 'warning' | 'error' | 'info' };
+
 export interface SupportPlanningSheetUiState {
   activeTab: SheetTabKey;
   isEditing: boolean;
-  toast: { open: boolean; message: string; severity: 'success' | 'error' };
+  toast: ToastState;
   importDialogOpen: boolean;
   monitoringDialogOpen: boolean;
   sessionProvenance: ProvenanceEntry[];
@@ -18,7 +20,7 @@ export interface SupportPlanningSheetUiState {
 export type SupportPlanningSheetUiActions = {
   setActiveTab: React.Dispatch<React.SetStateAction<SheetTabKey>>;
   setIsEditing: React.Dispatch<React.SetStateAction<boolean>>;
-  setToast: React.Dispatch<React.SetStateAction<SupportPlanningSheetUiState['toast']>>;
+  setToast: React.Dispatch<React.SetStateAction<ToastState>>;
   setImportDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setMonitoringDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setSessionProvenance: React.Dispatch<React.SetStateAction<ProvenanceEntry[]>>;
