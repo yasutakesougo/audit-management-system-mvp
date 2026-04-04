@@ -174,6 +174,22 @@ export class LocalStorageDataProvider implements IDataProvider {
     };
   }
 
+  async getResourceNames(): Promise<string[]> {
+    const names = new Set<string>(this.dataCache.keys());
+    const dataPrefix = this.dataKey('');
+
+    if (typeof localStorage !== 'undefined') {
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith(dataPrefix)) continue;
+        const resourceName = key.slice(dataPrefix.length);
+        if (resourceName) names.add(resourceName);
+      }
+    }
+
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }
+
   async getFieldInternalNames(resourceName: string): Promise<Set<string>> {
     if (this.fieldsCache.has(resourceName)) {
       return this.fieldsCache.get(resourceName)!;
