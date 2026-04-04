@@ -247,10 +247,10 @@ export class DataProviderUserRepository implements UserRepository {
           ]);
 
           const transportMap = new Map<string, Record<string, unknown>>(
-            washRows(transportRows, transportCandidatesMap, transportResolved).map(r => [String(r.userID || ''), r])
+            washRows(transportRows, transportCandidatesMap, transportResolved).map((r) => [String(r.userId || r.UserID || ''), r])
           );
           const benefitMap = new Map<string, Record<string, unknown>>(
-            washRows(benefitRows, benefitCandidatesMap, benefitResolved).map(r => [String(r.userID || ''), r])
+            washRows(benefitRows, benefitCandidatesMap, benefitResolved).map((r) => [String(r.userId || r.UserID || ''), r])
           );
 
           domainItems = domainItems.map(user => {
