@@ -1,4 +1,0 @@
-src/features/diagnostics/health/components/DriftActionPanel.tsx(24,42): error TS2709: Cannot use namespace 'DriftKpi' as a type.
-src/features/diagnostics/health/components/DriftActionPanel.tsx(109,27): error TS7006: Parameter 'e' implicitly has an 'any' type.
-src/features/diagnostics/health/components/DriftActionPanel.tsx(109,30): error TS7006: Parameter 'idx' implicitly has an 'any' type.
-src/pages/HealthPage.tsx(36,89): error TS2305: Module '"@/sharepoint/fields/ispThreeLayerFields"' has no exported member 'ISP_DECISION_CANDIDATES'.
