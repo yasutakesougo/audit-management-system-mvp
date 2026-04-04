@@ -1,4 +1,0 @@
-src/features/daily/repositories/sharepoint/__tests__/SharePointActivityDiaryRepository.drift.spec.ts(44,54): error TS7006: Parameter 'call' implicitly has an 'any' type.
-src/features/daily/repositories/sharepoint/__tests__/SharePointActivityDiaryRepository.drift.spec.ts(86,54): error TS7006: Parameter 'call' implicitly has an 'any' type.
-src/features/daily/repositories/sharepoint/__tests__/SharePointDailyRecordRepository.drift.spec.ts(119,50): error TS7006: Parameter 'c' implicitly has an 'any' type.
-src/test-utils/sp/createDriftMock.ts(30,27): error TS2707: Generic type 'Mock' requires between 0 and 1 type arguments.
