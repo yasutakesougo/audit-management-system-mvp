@@ -88,6 +88,20 @@ export const useAuth = () => {
     msalStateRef.current = { instance, accounts, inProgress, authReady };
   }, [instance, accounts, inProgress, authReady]);
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // 🔒 Stable Account Reference (The Second Loop Breaker)
+  // ══════════════════════════════════════════════════════════════════════════
+  // MSAL returns new object references for account on every context change (even if same user).
+  // We stabilize by comparing homeAccountId so downstream useMemo deps don't thrash.
+  const stableAccountRef = useRef<BasicAccountInfo | null>(null);
+  const rawAccount = (instance.getActiveAccount() ?? accounts[0] ?? null) as BasicAccountInfo | null;
+  const rawAccountId = rawAccount?.homeAccountId ?? rawAccount?.username ?? null;
+  const prevAccountId = stableAccountRef.current?.homeAccountId ?? stableAccountRef.current?.username ?? null;
+  if (rawAccountId !== prevAccountId) {
+    stableAccountRef.current = rawAccount;
+  }
+  const resolvedAccount = stableAccountRef.current;
+
   const signInSessionKey = useMemo(
     () => typeof window === 'undefined' ? null : `__msal_signin_attempted__${window.location.origin}`,
     [],
@@ -164,6 +178,14 @@ export const useAuth = () => {
       totalRequestsInWindow = 0;
     }
     totalRequestsInWindow += 1;
+
+    // 🔍 Debug logging (always emit for first few calls, then only on debug)
+    console.log('[auth-debug] acquireToken called', {
+      callNumber: totalRequestsInWindow,
+      inProgress: msalStateRef.current.inProgress,
+      hasAccount: !!msalStateRef.current.instance.getActiveAccount(),
+    });
+
     if (totalRequestsInWindow > MAX_REQUESTS_PER_WINDOW) {
       console.warn('[auth] Rate limit exceeded! Throttling token acquisition to break infinite loop.');
       return null;
@@ -176,10 +198,20 @@ export const useAuth = () => {
       authConfig 
     };
 
+    // 🛡️ inProgress guard — never attempt token acquisition while MSAL is busy
+    const currentInProgress = current.inProgress;
+    if (currentInProgress !== InteractionStatus.None && currentInProgress !== 'none') {
+      console.log('[auth-debug] acquireToken skipped: inProgress =', currentInProgress);
+      return null;
+    }
+
     // Get fresh account list from instance to avoid stale closure
     const allAccounts = current.instance.getAllAccounts() as BasicAccountInfo[];
     const activeAccount = ensureActiveAccount(current.instance) ?? (allAccounts[0] as BasicAccountInfo | undefined) ?? null;
-    if (!activeAccount) return null;
+    if (!activeAccount) {
+      console.log('[auth-debug] acquireToken skipped: no account');
+      return null;
+    }
 
     // しきい値（秒）。既定 5 分。
     const thresholdSec = Number(current.authConfig.VITE_MSAL_TOKEN_REFRESH_MIN || '300') || 300;
@@ -266,7 +298,7 @@ export const useAuth = () => {
       }
       return null;
     }
-  }, [ensureResource]); // 🚀 Stable identity decoupled from instance/inProgress/accounts
+  }, [ensureResource, loginScopes]); // 🚀 Stable identity decoupled from instance/inProgress/accounts
 
   // --- signIn (real) ---
 
@@ -345,10 +377,6 @@ export const useAuth = () => {
   // Return based on mode — all hooks have already been called above
   // ══════════════════════════════════════════════════════════════════════════
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // Return based on mode — all hooks have already been called above
-  // ══════════════════════════════════════════════════════════════════════════
-
   const e2eResult = useMemo(() => {
     if (!isE2eMock) return undefined;
     const account = createE2EMsalAccount();
@@ -382,9 +410,11 @@ export const useAuth = () => {
     };
   }, [skipLogin, getListReadyState, setListReadyState]);
 
-  const resolvedAccount = instance.getActiveAccount() ?? accounts[0] ?? null;
+  // 🔒 Use stable primitives for memoization (NOT object references)
   const isAuthenticated = !!resolvedAccount;
-  const tokenReady = isAuthenticated && (inProgress === InteractionStatus.None || inProgress === 'none');
+  const isInProgressNone = inProgress === InteractionStatus.None || inProgress === 'none';
+  const tokenReady = isAuthenticated && isInProgressNone;
+  const accountId = resolvedAccount?.homeAccountId ?? resolvedAccount?.username ?? null;
 
   const authFunctions = useMemo(() => ({
     signIn,
@@ -399,16 +429,16 @@ export const useAuth = () => {
     getListReadyState,
     setListReadyState,
     ...authFunctions,
-    loading: inProgress !== 'none',
+    loading: !isInProgressNone,
     shouldSkipLogin: false,
   }), [
     isAuthenticated,
-    resolvedAccount,
+    accountId,  // 🔒 primitive string, NOT object reference — prevents re-render loops
     tokenReady,
     getListReadyState,
     setListReadyState,
     authFunctions,
-    inProgress
+    isInProgressNone,
   ]);
 
   if (isE2eMock) return e2eResult!;
