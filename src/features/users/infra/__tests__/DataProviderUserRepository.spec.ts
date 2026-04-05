@@ -36,6 +36,9 @@ describe('DataProviderUserRepository Split Logic', () => {
       { UserID: 'U-001', TransportCourse: 'A-Course' }
     ]);
     await provider.seed('UserBenefit_Profile', [
+      { UserID: 'U-001', RecipientCertExpiry: '2025-12-31' }
+    ]);
+    await provider.seed('UserBenefit_Profile_Ext', [
       { UserID: 'U-001', RecipientCertNumber: 'BEN-123' }
     ]);
 
@@ -67,11 +70,12 @@ describe('DataProviderUserRepository Split Logic', () => {
     const core = await provider.listItems<Record<string, unknown>>('Users_Master');
     const transport = await provider.listItems<Record<string, unknown>>('UserTransport_Settings');
     const benefit = await provider.listItems<Record<string, unknown>>('UserBenefit_Profile');
+    const benefitExt = await provider.listItems<Record<string, unknown>>('UserBenefit_Profile_Ext');
 
     
     expect(core[1].FullName).toBe('New User');
     expect(transport[0].TransportCourse).toBe('B-Course');
-    expect(benefit[0].RecipientCertNumber).toBe('BEN-456');
+    expect(benefitExt[0].RecipientCertNumber).toBe('BEN-456');
     
     expect(transport[0].UserID).toBe('U-NEW');
     expect(benefit[0].UserID).toBe('U-NEW');
@@ -149,7 +153,7 @@ describe('DataProviderUserRepository Split Logic', () => {
       // 1. メインリストと、ドリフトした分離先リストをシード
       await provider.seed('Users_Master', [{ Id: 1, UserID: 'U-001', FullName: 'Benefit User' }]);
       await provider.seed('UserBenefit_Profile', [
-        { UserID: 'U-001', RecipientCertNumber: 'B-001', DisabilitySupportLevel0: 'Level 1' }
+        { UserID: 'U-001', RecipientCertExpiry: '2025-12-31', DisabilitySupportLevel0: 'Level 1' }
       ]);
 
       // 2. 'DisabilitySupportLevel' を更新
@@ -159,6 +163,22 @@ describe('DataProviderUserRepository Split Logic', () => {
       const benefit = await provider.listItems<Record<string, unknown>>('UserBenefit_Profile');
       expect(benefit[0].DisabilitySupportLevel0).toBe('Level 3');
       expect(benefit[0].DisabilitySupportLevel).toBeUndefined();
+    });
+
+    it('syncAccessoryList also respects truncation drift (Recipient_x0020_Cert_x0020_Numbe in benefit_ext)', async () => {
+      // 1. シード (32文字で切り詰められた列名を受容)
+      await provider.seed('Users_Master', [{ Id: 1, UserID: 'U-001', FullName: 'Ext User' }]);
+      await provider.seed('UserBenefit_Profile_Ext', [
+        { UserID: 'U-001', Recipient_x0020_Cert_x0020_Numbe: 'OLD-CERT' }
+      ]);
+
+      // 2. RecipientCertNumber を更新
+      await repo.update(1, { RecipientCertNumber: 'NEW-CERT' });
+
+      // 3. 切り詰められた列が更新されたか確認
+      const ext = await provider.listItems<Record<string, unknown>>('UserBenefit_Profile_Ext');
+      expect(ext[0].Recipient_x0020_Cert_x0020_Numbe).toBe('NEW-CERT');
+      expect(ext[0].RecipientCertNumber).toBeUndefined();
     });
   });
 

@@ -235,14 +235,7 @@ export const useAuth = () => {
       authConfig 
     };
 
-    // 🛡️ inProgress guard — never attempt token acquisition while MSAL is busy
-    const currentInProgress = current.inProgress;
-    if (currentInProgress !== InteractionStatus.None && currentInProgress !== 'none') {
-      if (debugEnabled) console.log('[auth-debug] acquireToken skipped: inProgress =', currentInProgress);
-      return null;
-    }
-
-    // Get fresh account list from instance to avoid stale closure
+    // 🛡️ Get fresh account list from instance to avoid stale closure
     const allAccounts = current.instance.getAllAccounts() as BasicAccountInfo[];
     const activeAccount = ensureActiveAccount(current.instance) ?? (allAccounts[0] as BasicAccountInfo | undefined) ?? null;
     if (!activeAccount) {
