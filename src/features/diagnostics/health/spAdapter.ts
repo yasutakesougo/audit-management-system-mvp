@@ -1,5 +1,6 @@
 import { createSpClient } from "../../../lib/spClient";
 import { ensureConfig } from "../../../lib/spClient";
+import { resolveListPath } from '@/lib/sp/helpers';
 
 export type SpUser = { id?: number; title?: string; email?: string };
 
@@ -75,10 +76,11 @@ export function createSpAdapterWithAuth(acquireToken: () => Promise<string | nul
     },
 
     async getListByTitle(listTitle: string) {
-      // Query list metadata via spFetch
+      // Query list metadata via GUID/Title-aware path
+      const listPath = resolveListPath(listTitle);
       const res = await callSp(() =>
         client.spFetch(
-          `/lists/GetByTitle('${encodeURIComponent(listTitle)}')?$select=Id,Title`
+          `${listPath}?$select=Id,Title`
         )
       );
       const json = (await res.json()) as Record<string, string>;
@@ -89,10 +91,11 @@ export function createSpAdapterWithAuth(acquireToken: () => Promise<string | nul
     },
 
     async getFields(listTitle: string) {
-      // Query fields via spFetch
+      // Query fields via GUID/Title-aware path
+      const listPath = resolveListPath(listTitle);
       const res = await callSp(() =>
         client.spFetch(
-          `/lists/GetByTitle('${encodeURIComponent(listTitle)}')/fields?$select=InternalName,StaticName,TypeAsString`
+          `${listPath}/fields?$select=InternalName,StaticName,TypeAsString`
         )
       );
       const data = (await res.json()) as Record<string, unknown>;
