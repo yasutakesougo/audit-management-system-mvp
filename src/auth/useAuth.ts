@@ -64,6 +64,28 @@ let lastWindowEpoch = 0;
 const RATE_LIMIT_WINDOW_MS = 1000;
 const MAX_REQUESTS_PER_WINDOW = 50;
 
+// ══════════════════════════════════════════════════════════════════════════
+// 🔒 Singleflight + TTL Token Cache (The Third Loop Breaker)
+// ══════════════════════════════════════════════════════════════════════════
+// spFetch calls acquireToken on EVERY HTTP request. During bootstrap,
+// 50+ concurrent SP requests all call acquireToken simultaneously.
+// Without caching, each call hits MSAL acquireTokenSilent → rate limit → cascade failure.
+//
+// Solution: Cache the token for TOKEN_CACHE_TTL_MS and share in-flight Promises.
+const TOKEN_CACHE_TTL_MS = 4 * 60 * 1000; // 4 minutes (tokens typically valid for 60-90 min)
+let cachedToken: { token: string; expiresAt: number; resource: string } | null = null;
+let inFlightPromise: Promise<string | null> | null = null;
+let inFlightResource: string | null = null;
+
+/** Reset all token cache state — for tests only. */
+export function __resetTokenCache() {
+  cachedToken = null;
+  inFlightPromise = null;
+  inFlightResource = null;
+  totalRequestsInWindow = 0;
+  lastWindowEpoch = 0;
+}
+
 export const useAuth = () => {
   // ── Determine mode ONCE (these are stable across renders) ──
   const isE2eMock = isE2eMsalMockEnabled();
@@ -171,7 +193,19 @@ export const useAuth = () => {
   const loginScopes = useMemo(() => [...LOGIN_SCOPES], []);
 
   const realAcquireToken = useCallback(async (resource?: string): Promise<string | null> => {
-    // 🛑 Synchronous Loop Guard (The Kill Switch)
+    const targetResource = ensureResource(resource);
+
+    // 🔒 1. Cache hit — return immediately without touching MSAL
+    if (cachedToken && cachedToken.resource === targetResource && Date.now() < cachedToken.expiresAt) {
+      return cachedToken.token;
+    }
+
+    // 🔒 2. Singleflight — if another call is already fetching for the same resource, piggyback
+    if (inFlightPromise && inFlightResource === targetResource) {
+      return inFlightPromise;
+    }
+
+    // 🛑 3. Synchronous Loop Guard (The Kill Switch)
     const now = Date.now();
     if (now - lastWindowEpoch > RATE_LIMIT_WINDOW_MS) {
       lastWindowEpoch = now;
@@ -179,12 +213,15 @@ export const useAuth = () => {
     }
     totalRequestsInWindow += 1;
 
-    // 🔍 Debug logging (always emit for first few calls, then only on debug)
-    console.log('[auth-debug] acquireToken called', {
-      callNumber: totalRequestsInWindow,
-      inProgress: msalStateRef.current.inProgress,
-      hasAccount: !!msalStateRef.current.instance.getActiveAccount(),
-    });
+    // 🔍 Debug logging
+    if (totalRequestsInWindow <= 5 || debugEnabled) {
+      console.log('[auth-debug] acquireToken MSAL call', {
+        callNumber: totalRequestsInWindow,
+        resource: targetResource.slice(-30),
+        inProgress: msalStateRef.current.inProgress,
+        hasAccount: !!msalStateRef.current.instance.getActiveAccount(),
+      });
+    }
 
     if (totalRequestsInWindow > MAX_REQUESTS_PER_WINDOW) {
       console.warn('[auth] Rate limit exceeded! Throttling token acquisition to break infinite loop.');
@@ -201,7 +238,7 @@ export const useAuth = () => {
     // 🛡️ inProgress guard — never attempt token acquisition while MSAL is busy
     const currentInProgress = current.inProgress;
     if (currentInProgress !== InteractionStatus.None && currentInProgress !== 'none') {
-      console.log('[auth-debug] acquireToken skipped: inProgress =', currentInProgress);
+      if (debugEnabled) console.log('[auth-debug] acquireToken skipped: inProgress =', currentInProgress);
       return null;
     }
 
@@ -215,11 +252,12 @@ export const useAuth = () => {
 
     // しきい値（秒）。既定 5 分。
     const thresholdSec = Number(current.authConfig.VITE_MSAL_TOKEN_REFRESH_MIN || '300') || 300;
-    const targetResource = ensureResource(resource);
     const scopes = targetResource === GRAPH_RESOURCE
       ? [...GRAPH_SCOPES]
       : [`${targetResource}/.default`];
 
+    // 🔒 Wrap in singleflight
+    const doAcquire = async (): Promise<string | null> => {
     try {
       // 1回目: 通常のサイレント取得
       const first = await current.instance.acquireTokenSilent({
@@ -255,6 +293,7 @@ export const useAuth = () => {
         }
 
         sessionStorage.setItem('spToken', refreshed.accessToken);
+        cachedToken = { token: refreshed.accessToken, expiresAt: Date.now() + TOKEN_CACHE_TTL_MS, resource: targetResource };
         return refreshed.accessToken;
       }
 
@@ -265,6 +304,8 @@ export const useAuth = () => {
       }
 
       sessionStorage.setItem('spToken', first.accessToken);
+      // 🔒 Cache the token
+      cachedToken = { token: first.accessToken, expiresAt: Date.now() + TOKEN_CACHE_TTL_MS, resource: targetResource };
       return first.accessToken;
     } catch (error: unknown) {
       // MSAL エラーの詳細な処理
@@ -276,6 +317,7 @@ export const useAuth = () => {
       });
 
       sessionStorage.removeItem('spToken');
+      cachedToken = null;
 
       console.warn('[auth] acquireTokenSilent failed', error);
 
@@ -298,6 +340,15 @@ export const useAuth = () => {
       }
       return null;
     }
+    }; // end doAcquire
+
+    // 🔒 Execute with singleflight
+    inFlightResource = targetResource;
+    inFlightPromise = doAcquire().finally(() => {
+      inFlightPromise = null;
+      inFlightResource = null;
+    });
+    return inFlightPromise;
   }, [ensureResource, loginScopes]); // 🚀 Stable identity decoupled from instance/inProgress/accounts
 
   // --- signIn (real) ---
