@@ -10,6 +10,16 @@ import type { Dispatch, SetStateAction } from 'react';
 import type { StoreUser } from '@/stores/useUsers';
 import { isUserScheduledForDate } from '@/utils/attendanceUtils';
 
+const userSortCollator = new Intl.Collator('ja-JP');
+
+const toUserSortKey = (user: StoreUser): string => (
+  user.Furigana
+  ?? user.FullNameKana
+  ?? user.FullName
+  ?? user.UserID
+  ?? ''
+).trim().normalize('NFKC');
+
 export type UseTableDailyRecordSelectionParams = {
   /** ダイアログが開かれているか */
   open: boolean;
@@ -97,7 +107,14 @@ export function useTableDailyRecordSelection({
   const selectedUsers = useMemo(() => {
     return selectedUserIds
       .map((id) => users.find((user) => user.UserID === id))
-      .filter((user): user is StoreUser => Boolean(user));
+      .filter((user): user is StoreUser => Boolean(user))
+      .sort((a, b) => {
+        const kanaDiff = userSortCollator.compare(toUserSortKey(a), toUserSortKey(b));
+        if (kanaDiff !== 0) return kanaDiff;
+        const nameDiff = userSortCollator.compare((a.FullName ?? '').trim(), (b.FullName ?? '').trim());
+        if (nameDiff !== 0) return nameDiff;
+        return userSortCollator.compare((a.UserID ?? '').trim(), (b.UserID ?? '').trim());
+      });
   }, [users, selectedUserIds]);
 
   /**

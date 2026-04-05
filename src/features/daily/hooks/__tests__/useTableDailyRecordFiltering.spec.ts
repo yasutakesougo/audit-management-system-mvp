@@ -92,6 +92,15 @@ describe('useTableDailyRecordFiltering', () => {
       expect(userIds).toContain('3');
       expect(userIds).toContain('4');
     });
+
+    it('showTodayOnly=false のとき、ふりがな順で並ぶ', () => {
+      const { result } = renderHook(() =>
+        useTableDailyRecordFiltering({ users: testUsers, targetDate: tuesday, showTodayOnly: false }),
+      );
+
+      const userIds = result.current.filteredUsers.map((u) => u.UserID);
+      expect(userIds).toEqual(['2', '4', '1', '3']);
+    });
   });
 
   // ── 出席フィルタ ─────────────────────────────
