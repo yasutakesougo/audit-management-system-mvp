@@ -85,7 +85,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
       'UserID', 'FullName', 'IsActive', 'UsageStatus'
     ],
     provisioningFields: [
-      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true },
+      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'UserCode', 'User_x0020_ID'] },
       { internalName: 'FullName', type: 'Text', displayName: 'Full Name', required: true },
       { internalName: 'Furigana', type: 'Text', displayName: 'Furigana' },
       { internalName: 'FullNameKana', type: 'Text', displayName: 'Full Name Kana' },
@@ -114,7 +114,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
       'UserID', 'TransportToDays', 'TransportFromDays'
     ],
     provisioningFields: [
-      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true },
+      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'User_x0020_ID'] },
       { internalName: 'TransportToDays', type: 'MultiChoice', displayName: 'Transport To Days', choices: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
       { internalName: 'TransportFromDays', type: 'MultiChoice', displayName: 'Transport From Days', choices: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
       { internalName: 'TransportCourse', type: 'Text', displayName: 'Transport Course' },
@@ -130,11 +130,11 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     category: 'master',
     lifecycle: 'required',
     essentialFields: [
-      'UserID', 'RecipientCertNumber'
+      'UserID'
     ],
     provisioningFields: [
-      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true },
-      { internalName: 'RecipientCertNumber', type: 'Text', displayName: 'Recipient Cert Number', required: true },
+      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'User_x0020_ID'] },
+      // RecipientCertNumber moved to _Ext to avoid 8KB limit
       { internalName: 'RecipientCertExpiry', type: 'DateTime', displayName: 'Recipient Cert Expiry', dateTimeFormat: 'DateOnly' },
       { internalName: 'GrantMunicipality', type: 'Text', displayName: 'Grant Municipality' },
       { internalName: 'GrantPeriodStart', type: 'DateTime', displayName: 'Grant Period Start', dateTimeFormat: 'DateOnly' },
@@ -144,6 +144,21 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
       { internalName: 'UserCopayLimit', type: 'Text', displayName: 'User Copay Limit' },
       { internalName: 'MealAddition', type: 'Text', displayName: 'Meal Addition' },
       { internalName: 'CopayPaymentMethod', type: 'Text', displayName: 'Copay Payment Method' },
+    ],
+  },
+  {
+    key: 'user_benefit_profile_ext',
+    displayName: '利用者支給量プロファイル (拡充)',
+    resolve: () => envOr('VITE_SP_LIST_USER_BENEFIT_EXT', fromConfig(ListKeys.UserBenefitProfileExt)),
+    operations: ['R', 'W'],
+    category: 'master',
+    lifecycle: 'required',
+    essentialFields: [
+      'UserID', 'RecipientCertNumber'
+    ],
+    provisioningFields: [
+      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'User_x0020_ID'] },
+      { internalName: 'RecipientCertNumber', type: 'Text', displayName: 'Recipient Cert Number', required: true, candidates: ['RecipientCertNumber', 'RecipientCertNumber0', 'Recipient_x0020_Cert_x0020_Numbe'] },
     ],
   },
   {
@@ -387,7 +402,8 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'attendance',
     lifecycle: 'required',
-    essentialFields: ['UserCode', 'RecordDate', 'Status'],
+    // ATTENDANCE_DAILY_ESSENTIALS と同期
+    essentialFields: ['UserCode', 'RecordDate', 'Status', 'CheckInAt'],
     provisioningFields: [
       { internalName: 'UserCode', type: 'Text', displayName: 'User Code', required: true, indexed: true },
       { internalName: 'RecordDate', type: 'DateTime', displayName: 'Record Date', required: true, dateTimeFormat: 'DateOnly', indexed: true },
@@ -588,6 +604,13 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W', 'D'],
     category: 'handoff',
     lifecycle: 'optional',
+    essentialFields: ['Title', 'UserID0', 'Phase0'],
+    provisioningFields: [
+      { internalName: 'Title', type: 'Text', displayName: 'Title', required: true },
+      { internalName: 'UserID0', type: 'Text', displayName: 'User ID', required: true, indexed: true },
+      { internalName: 'Summary0', type: 'Note', displayName: 'Summary', richText: false },
+      { internalName: 'Phase0', type: 'Text', displayName: 'Phase' },
+    ],
   },
   {
     key: 'iceberg_analysis',
@@ -596,6 +619,15 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'handoff',
     lifecycle: 'optional',
+    essentialFields: ['Title', 'EntryHash', 'UserId', 'PayloadJson'],
+    provisioningFields: [
+      { internalName: 'Title', type: 'Text', displayName: 'Title', required: true },
+      { internalName: 'EntryHash', type: 'Text', displayName: 'Entry Hash', required: true, indexed: true },
+      { internalName: 'SessionId', type: 'Text', displayName: 'Session ID' },
+      { internalName: 'UserId', type: 'Text', displayName: 'User ID' },
+      { internalName: 'PayloadJson', type: 'Note', displayName: 'Payload JSON', required: true, richText: false },
+      { internalName: 'SchemaVersion', type: 'Number', displayName: 'Schema Version' },
+    ],
   },
   {
     key: 'isp_master',
@@ -657,6 +689,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'compliance',
     lifecycle: 'optional',
+    essentialFields: ['ListName', 'FieldName', 'DetectedAt', 'Severity'],
     provisioningFields: [
       { internalName: 'ListName', type: 'Text', displayName: 'List Name', required: true, indexed: true },
       { internalName: 'FieldName', type: 'Text', displayName: 'Field Name', required: true, indexed: true },

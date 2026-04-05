@@ -82,3 +82,6 @@ nightly-report.md
 *.bak
 *.improved.tsx
 *.legacy.tsx
+
+# Nightly Patrol artifacts
+.nightly/

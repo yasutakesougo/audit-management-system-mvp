@@ -267,14 +267,18 @@ export async function addFieldToList(
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
       const isLimit = isRowSizeLimitError(errText);
+      const isConflict = errText.includes('already exists') || errText.includes('in use');
       
       if (isLimit || res.status === 400 || res.status === 500) {
-        auditLog.warn('sp:fields', 'schema_limit_reached', { 
+        auditLog.warn('sp:fields', 'schema_provision_failed', { 
           listTitle, 
           field: field.internalName,
-          reason: isLimit ? 'SharePoint row size limit reached' : `HTTP ${res.status}`
+          status: res.status,
+          isLimit,
+          isConflict,
+          detail: errText.slice(0, 500)
         });
-        return "limit_reached";
+        return isLimit ? "limit_reached" : "error";
       }
 
       return "error";
@@ -285,6 +289,8 @@ export async function addFieldToList(
     return "error";
   }
 }
+
+// ── Ensure list ─────────────────────────────────────────────────────────────
 
 // ── Ensure list ─────────────────────────────────────────────────────────────
 
@@ -299,12 +305,6 @@ export async function ensureListExists(
   options: EnsureListOptions = {},
 ): Promise<EnsureListResult> {
   const baseTemplate = options.baseTemplate ?? DEFAULT_LIST_TEMPLATE;
-
-  const BLOCKED_LISTS = ["UserBenefit_Profile"];
-  if (BLOCKED_LISTS.includes(listTitle)) {
-    options.preventPhysicalCreation = true;
-  }
-
 
   let ensured = await tryGetListMetadata(spFetch, listTitle);
   if (!ensured) {
@@ -362,28 +362,28 @@ export async function ensureListExists(
         continue;
       }
 
-      // 2. Drift detection (Fuzzy check)
+      // 2. Drift detection (Fuzzy check using candidates)
       const resolution = resolveInternalNamesDetailed(available, {
-        [field.internalName]: [field.internalName]
+        [field.internalName]: field.candidates ? [...field.candidates] : [field.internalName]
       });
 
       const fieldResult = resolution.fieldStatus[field.internalName];
       if (fieldResult?.resolvedName) {
-        // Drift detected! Use existing suffixed column instead of proliferating
+        // Drift detected! Use existing suffixed or truncated column instead of proliferating
         auditLog.warn('sp:fields', 'schema_drift_detected', { 
           listTitle, 
           expected: field.internalName, 
-          actual: fieldResult.resolvedName 
+          actual: fieldResult.resolvedName,
+          driftType: fieldResult.driftType
         });
         continue;
       }
 
-      // 3. Physical creation (Only if truly missing)
+      // 3. Physical creation (Only if truly unknown after drift check)
       if ((!field.required && !field.forceCreate) || isLimitReached) {
         auditLog.warn('sp:fields', 'provisioning_blocked', { 
           listTitle, 
           field: field.internalName,
-          blocked: true,
           cause: isLimitReached ? "row_limit" : "optional_field"
         });
         continue;

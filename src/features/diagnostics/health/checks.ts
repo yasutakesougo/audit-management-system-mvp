@@ -350,22 +350,21 @@ async function runListChecks(
     // 4. Report Results
     if (missingEssential.length > 0) {
       results.push(
-        warn({
+        fail({
           key: `schema.fields.${spec.key}`,
-          label: `スキーマ（Blocked）：${spec.displayName}`,
+          label: `スキーマ構成違反：${spec.displayName}`,
           category: "schema",
-          summary: `必須列が不足していますが、Provisioning は意図的にブロックされています（Blocked Provisioning）。`,
-          detail: `物理制限またはポリシーにより自己修復を停止しました。代替ロジックで稼働を継続します。\n不足列: ${missingEssential.map(f => f.internalName).join(", ")}`,
+          summary: `致命的エラー：アプリ稼働に必須な列が存在しません。システムは正常に稼働できません。`,
+          detail: `以下の必須列が見つかりません: ${missingEssential.map(f => f.internalName).join(", ")}\nインフラ管理者に連絡し、列を追加してください。`,
           evidence: {
             listTitle: spec.resolvedTitle,
             missing: missingEssential.map(f => f.internalName),
-            disabledProvisioning: true
           },
           nextActions: [
             {
               kind: "copy",
-              label: "インフラ管理者に確認: 不要列の大掃除",
-              value: "対象リストの不要な旧列をSharePoint管理画面から削除し、列サイズ上限を解放してください"
+              label: "インフラ管理者に連絡",
+              value: `リスト「${spec.resolvedTitle}」に必須列が不足しており、システムが異常終了します。不足列: ${missingEssential.map(f => f.internalName).join(", ")}`
             }
           ]
         })
@@ -378,7 +377,14 @@ async function runListChecks(
           category: "schema",
           summary: `${drifted.length}個の列で内部名の乖離（Drift）を検出しました。`,
           detail: `SharePoint上の内部名にサフィックス（例: _x0030_）が付与されていますが、アプリ側で自動吸収しています。\n乖離項目: ${drifted.map(f => `${f.internalName} → ${fieldStatus[f.internalName].resolvedName}`).join(", ")}`,
-          evidence: { listTitle: spec.resolvedTitle, drifted: drifted.map(f => ({ expected: f.internalName, actual: fieldStatus[f.internalName].resolvedName })) },
+          evidence: {
+            listTitle: spec.resolvedTitle,
+            drifted: drifted.map(f => ({
+              expected: f.internalName,
+              actual: fieldStatus[f.internalName].resolvedName,
+              driftType: fieldStatus[f.internalName].driftType
+            }))
+          },
           nextActions: [
             {
               kind: "copy",
