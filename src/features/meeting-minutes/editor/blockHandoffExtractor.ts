@@ -13,6 +13,7 @@
  * - 両者は独立して進化できるよう分離している
  */
 import type { MeetingMinuteBlock } from '../types';
+import { normalizeMeetingMinuteBlocks } from './blockNormalizer';
 import { MEETING_PREFIX } from './slashMenuItems';
 
 // ──────────────────────────────────────────────────────────────
@@ -77,8 +78,10 @@ function stripPrefix(text: string, prefix: string): string | null {
  *
  * 分類ルール（優先順位順）:
  * 1. formal block type マッチ (最優先):
- *    - type: 'decision' → decisions
- *    - type: 'action'   → actions
+ *    - type: 'decision'     → decisions
+ *    - type: 'action'       → actions
+ *    - type: 'report'       → reports
+ *    - type: 'notification' → notifications
  * 2. prefix マッチ:
  *    - 【決定事項】 → decisions
  *    - 【報告】     → reports
@@ -93,8 +96,9 @@ function stripPrefix(text: string, prefix: string): string | null {
  *    - 分類不能な paragraph → summary
  */
 export function extractFromBlocks(
-  blocks: MeetingMinuteBlock[]
+  rawBlocks: MeetingMinuteBlock[]
 ): ExtractedSections {
+  const blocks = normalizeMeetingMinuteBlocks(rawBlocks);
   const result: ExtractedSections = {
     summary: '',
     decisions: '',
@@ -114,7 +118,7 @@ export function extractFromBlocks(
 
   for (const block of blocks) {
     const text = blockToText(block).trim();
-    if (!text && block.type !== 'checkListItem' && block.type !== 'action' && block.type !== 'decision') continue;
+    if (!text && block.type !== 'checkListItem' && block.type !== 'action' && block.type !== 'decision' && block.type !== 'report' && block.type !== 'notification' && block.type !== 'nextSchedule' && block.type !== 'continuingDiscussion') continue;
 
     // ── 1. formal block type (最優先) ──
     if (block.type === 'decision') {
@@ -123,6 +127,22 @@ export function extractFromBlocks(
     }
     if (block.type === 'action') {
       actionLines.push(text);
+      continue;
+    }
+    if (block.type === 'report') {
+      reportLines.push(text);
+      continue;
+    }
+    if (block.type === 'notification') {
+      notificationLines.push(text);
+      continue;
+    }
+    if (block.type === 'nextSchedule') {
+      notificationLines.push(text ? `[次回] ${text}` : '[次回]');
+      continue;
+    }
+    if (block.type === 'continuingDiscussion') {
+      summaryLines.push(text ? `[継続検討] ${text}` : '[継続検討]');
       continue;
     }
 
@@ -253,6 +273,7 @@ export function buildHandoffSections(
     };
   }
 
+  // extractFromBlocks 内部で正規化されるためここでは不要
   const extracted = extractFromBlocks(contentBlocks);
 
   // ハイブリッド: block 抽出が空なら legacy で補完

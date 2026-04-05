@@ -26,6 +26,7 @@ import { useCallback, useMemo, useRef } from 'react';
 
 import type { MeetingCategory, MeetingMinuteBlock } from '../types';
 import { meetingMinutesSchema } from '../editor/blockKinds';
+import { normalizeMeetingMinuteBlocks } from '../editor/blockNormalizer';
 import { getMeetingMinutesSlashMenuItems } from '../editor/slashMenuItems';
 
 export type MeetingMinutesBlockEditorProps = {
@@ -61,10 +62,11 @@ export function MeetingMinutesBlockEditor(
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
-  // 初期コンテンツ: value が空なら undefined (BlockNote のデフォルト)
-  const initialContent = value.length > 0
+  // 初期コンテンツ: 正規化してから BlockNote へ渡す
+  const normalized = normalizeMeetingMinuteBlocks(value);
+  const initialContent = normalized.length > 0
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ? (value as any[])
+    ? (normalized as any[])
     : undefined;
 
   // カスタムスキーマ付きエディタを生成

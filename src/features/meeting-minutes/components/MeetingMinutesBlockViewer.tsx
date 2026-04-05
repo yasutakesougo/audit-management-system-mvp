@@ -14,6 +14,7 @@
 import { Box, Checkbox, Stack, Typography } from '@mui/material';
 
 import type { MeetingMinuteBlock } from '../types';
+import { normalizeMeetingMinuteBlocks } from '../editor/blockNormalizer';
 
 // ──────────────────────────────────────────────────────────────
 // Content 抽出ヘルパー
@@ -285,9 +286,153 @@ function ActionBlock(props: { block: MeetingMinuteBlock }) {
   );
 }
 
+function ReportBlock(props: { block: MeetingMinuteBlock }) {
+  const { block } = props;
+  const inlines = extractInlineContent(block.content);
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'stretch',
+        gap: 1,
+        borderLeft: '4px solid',
+        borderColor: 'success.dark', // #2e7d32 in MUI
+        pl: 1.5,
+        py: 0.5,
+        my: 0.5,
+        minHeight: '1.5em',
+      }}
+    >
+      <Typography
+        variant="caption"
+        sx={{
+          fontWeight: 700,
+          color: 'success.dark',
+          whiteSpace: 'nowrap',
+          lineHeight: 1.8,
+        }}
+      >
+        報告
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
+        <InlineRenderer content={inlines} />
+      </Typography>
+    </Box>
+  );
+}
+
+function NotificationBlock(props: { block: MeetingMinuteBlock }) {
+  const { block } = props;
+  const inlines = extractInlineContent(block.content);
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'stretch',
+        gap: 1,
+        borderLeft: '4px solid',
+        borderColor: '#7b1fa2', // MUI secondary.dark
+        pl: 1.5,
+        py: 0.5,
+        my: 0.5,
+        minHeight: '1.5em',
+      }}
+    >
+      <Typography
+        variant="caption"
+        sx={{
+          fontWeight: 700,
+          color: '#7b1fa2',
+          whiteSpace: 'nowrap',
+          lineHeight: 1.8,
+        }}
+      >
+        連絡
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
+        <InlineRenderer content={inlines} />
+      </Typography>
+    </Box>
+  );
+}
+
 // ──────────────────────────────────────────────────────────────
 // Block Router
 // ──────────────────────────────────────────────────────────────
+
+function NextScheduleBlock(props: { block: MeetingMinuteBlock }) {
+  const { block } = props;
+  const inlines = extractInlineContent(block.content);
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'stretch',
+        gap: 1,
+        borderLeft: '4px solid',
+        borderColor: '#009688', // teal
+        pl: 1.5,
+        py: 0.5,
+        my: 0.5,
+        minHeight: '1.5em',
+      }}
+    >
+      <Typography
+        variant="caption"
+        sx={{
+          fontWeight: 700,
+          color: '#009688',
+          whiteSpace: 'nowrap',
+          lineHeight: 1.8,
+        }}
+      >
+        次回予定
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
+        <InlineRenderer content={inlines} />
+      </Typography>
+    </Box>
+  );
+}
+
+function ContinuingDiscussionBlock(props: { block: MeetingMinuteBlock }) {
+  const { block } = props;
+  const inlines = extractInlineContent(block.content);
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'stretch',
+        gap: 1,
+        borderLeft: '4px solid',
+        borderColor: '#fbc02d', // yellow darken-2
+        pl: 1.5,
+        py: 0.5,
+        my: 0.5,
+        minHeight: '1.5em',
+      }}
+    >
+      <Typography
+        variant="caption"
+        sx={{
+          fontWeight: 700,
+          color: '#fbc02d',
+          whiteSpace: 'nowrap',
+          lineHeight: 1.8,
+        }}
+      >
+        継続検討
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
+        <InlineRenderer content={inlines} />
+      </Typography>
+    </Box>
+  );
+}
 
 function BlockRenderer(props: { block: MeetingMinuteBlock }) {
   const { block } = props;
@@ -307,6 +452,14 @@ function BlockRenderer(props: { block: MeetingMinuteBlock }) {
       return <DecisionBlock block={block} />;
     case 'action':
       return <ActionBlock block={block} />;
+    case 'report':
+      return <ReportBlock block={block} />;
+    case 'notification':
+      return <NotificationBlock block={block} />;
+    case 'nextSchedule':
+      return <NextScheduleBlock block={block} />;
+    case 'continuingDiscussion':
+      return <ContinuingDiscussionBlock block={block} />;
     default:
       // 未知のブロックタイプはパラグラフとして表示
       return <ParagraphBlock block={block} />;
@@ -326,9 +479,12 @@ export type MeetingMinutesBlockViewerProps = {
  * 空の場合は null を返す（呼び出し側で fallback 表示を制御する）。
  */
 export function MeetingMinutesBlockViewer(props: MeetingMinutesBlockViewerProps) {
-  const { blocks } = props;
+  const { blocks: rawBlocks } = props;
 
-  if (!blocks || blocks.length === 0) return null;
+  // 旧データ互換: 正規化してから描画する
+  const blocks = normalizeMeetingMinuteBlocks(rawBlocks);
+
+  if (blocks.length === 0) return null;
 
   return (
     <Stack spacing={0.5}>
