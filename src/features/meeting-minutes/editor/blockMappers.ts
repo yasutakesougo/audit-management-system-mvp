@@ -110,6 +110,11 @@ function extractTextFromBlocks(blocks: MeetingMinuteBlock[]): string {
             .map((c) => c.text)
             .join('')
         : '';
+
+      if (contentTexts) {
+        if (block.type === 'nextSchedule') return `[次回] ${contentTexts}`;
+        if (block.type === 'continuingDiscussion') return `[継続検討] ${contentTexts}`;
+      }
       return contentTexts;
     })
     .join('\n');
@@ -231,6 +236,42 @@ export function buildActionsText(blocks: MeetingMinuteBlock[]): string {
     .filter((t) => t.length > 0);
   if (checkItems.length > 0) return checkItems.join('\n');
   return '';
+}
+
+/**
+ * ブロック配列から reports テキストを抽出する。
+ */
+export function buildReportsText(blocks: MeetingMinuteBlock[]): string {
+  // formal block type base:
+  const typeBase = blocks
+    .filter((b) => b.type === 'report')
+    .map((b) => extractTextFromBlocks([b]).trim())
+    .filter((t) => t.length > 0);
+  if (typeBase.length > 0) return typeBase.join('\n');
+
+  // 1. セクション見出しベース
+  const fromSection = extractSectionText(blocks, ['報告', 'Reports']);
+  if (fromSection) return fromSection;
+  // 2. prefix ベース
+  return extractPrefixedText(blocks, [MEETING_PREFIX.report]);
+}
+
+/**
+ * ブロック配列から notifications テキストを抽出する。
+ */
+export function buildNotificationsText(blocks: MeetingMinuteBlock[]): string {
+  // formal block type base:
+  const typeBase = blocks
+    .filter((b) => b.type === 'notification')
+    .map((b) => extractTextFromBlocks([b]).trim())
+    .filter((t) => t.length > 0);
+  if (typeBase.length > 0) return typeBase.join('\n');
+
+  // 1. セクション見出しベース
+  const fromSection = extractSectionText(blocks, ['連絡事項', '連絡', 'Notifications']);
+  if (fromSection) return fromSection;
+  // 2. prefix ベース
+  return extractPrefixedText(blocks, [MEETING_PREFIX.notice]);
 }
 
 /**

@@ -92,15 +92,13 @@ function getPrimaryItems(
       title: '報告',
       onItemClick: () => {
         insertOrUpdateBlockForSlashMenu(editor, {
-          type: 'paragraph',
-          content: [
-            { type: 'text', text: MEETING_PREFIX.report, styles: { bold: true } },
-          ],
+          type: 'report',
+          content: [],
         } as any);
       },
       aliases: ['houkoku', 'report', '状況報告', '共有'],
       group: GROUP_PRIMARY,
-      subtext: '報告セクション（prefix付き段落）を挿入',
+      subtext: '報告事項（report ブロック）を挿入',
     },
 
     // ── 決定事項 ──
@@ -136,15 +134,13 @@ function getPrimaryItems(
       title: '連絡事項',
       onItemClick: () => {
         insertOrUpdateBlockForSlashMenu(editor, {
-          type: 'bulletListItem',
-          content: [
-            { type: 'text', text: MEETING_PREFIX.notice, styles: { bold: true } },
-          ],
+          type: 'notification',
+          content: [],
         } as any);
       },
       aliases: ['renraku', 'notice', 'info', '周知', '連絡'],
       group: GROUP_PRIMARY,
-      subtext: '周知事項（prefix付き箇条書き）を追加',
+      subtext: '連絡事項（notification ブロック）を追加',
     },
   ];
 }
@@ -163,15 +159,13 @@ function getSecondaryItems(
       title: '継続検討',
       onItemClick: () => {
         insertOrUpdateBlockForSlashMenu(editor, {
-          type: 'paragraph',
-          content: [
-            { type: 'text', text: MEETING_PREFIX.pending, styles: { bold: true } },
-          ],
+          type: 'continuingDiscussion',
+          content: [],
         } as any);
       },
       aliases: ['keizoku', 'pending', '保留', '未確定', '検討中'],
       group: GROUP_SECONDARY,
-      subtext: '未確定事項（prefix付き段落）を挿入',
+      subtext: '未確定事項（continuingDiscussion ブロック）を挿入',
     },
 
     // ── 次回予定 ──
@@ -179,15 +173,13 @@ function getSecondaryItems(
       title: '次回予定',
       onItemClick: () => {
         insertOrUpdateBlockForSlashMenu(editor, {
-          type: 'bulletListItem',
-          content: [
-            { type: 'text', text: MEETING_PREFIX.nextSchedule, styles: { bold: true } },
-          ],
+          type: 'nextSchedule',
+          content: [],
         } as any);
       },
       aliases: ['jikai', 'next', 'schedule', '日程', '予定'],
       group: GROUP_SECONDARY,
-      subtext: '次回の日程・予定（箇条書き）を追加',
+      subtext: '次回の日程・予定（nextSchedule ブロック）を追加',
     },
 
     // ── 箇条書き ──
