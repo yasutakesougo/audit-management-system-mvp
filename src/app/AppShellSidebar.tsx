@@ -228,7 +228,7 @@ export const AppShellSidebar: React.FC<Props> = ({
       role="navigation"
       aria-label="主要ナビゲーション"
       data-testid="nav-drawer"
-      sx={{ pt: 2, pb: 2, height: '100%', overflow: 'auto' }}
+      sx={{ pt: 2, pb: 2 }}
     >
       {!navCollapsed && (
         <Box sx={{ px: 1.5, py: 1, pb: 1.5 }} key="nav-search">
@@ -315,7 +315,7 @@ export const MobileNavContent: React.FC<{
       role="navigation"
       aria-label="主要ナビゲーション"
       data-testid="nav-items"
-      sx={{ pt: 2, overflowY: 'auto', height: '100vh' }}
+      sx={{ pt: 2, pb: 2 }}
     >
       <Box sx={{ px: 1.5, pb: 1.5 }}>
         <TextField
