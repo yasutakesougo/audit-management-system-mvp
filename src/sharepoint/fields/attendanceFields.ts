@@ -316,6 +316,7 @@ export const ATTENDANCE_DAILY_ESSENTIALS: (keyof typeof ATTENDANCE_DAILY_CANDIDA
   'userCode',
   'recordDate',
   'status',
+  'checkInAt',
 ];
 
 export type AttendanceDailyCandidateKey = keyof typeof ATTENDANCE_DAILY_CANDIDATES;

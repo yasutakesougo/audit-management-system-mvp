@@ -169,6 +169,7 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
   async upsertDailyByKey(item: AttendanceDailyItem, params?: AttendanceRepositoryUpsertParams): Promise<void> {
     try {
       const schema = await this.ensureDailySchemaForWrite();
+      const missingFields = new Set<AttendanceDailyCandidateKey>(schema.missing);
 
       const { UserCode, RecordDate } = item;
       const key = `${UserCode}_${RecordDate}`;
@@ -194,6 +195,7 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
         value: unknown,
         options?: { allowEmptyString?: boolean },
       ): void => {
+        if (missingFields.has(field)) return;
         if (value === undefined) return;
         if (!options?.allowEmptyString && typeof value === 'string' && value.length === 0) return;
         payload[this.df(schema.mapping, field)] = value;

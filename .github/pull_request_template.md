@@ -11,6 +11,12 @@
 - [ ] Required checks are green
 - [ ] (If relevant) Smoke E2E passed
 - [ ] (If relevant) Artifacts confirmed (trace/screenshot/log)
+- [ ] Manual field verification completed: [docs/checklists/field-verification-30min.md](docs/checklists/field-verification-30min.md)
+
+### 30-Min Field Verification Gate（UI/導線変更があるPRで必須）
+- [ ] 実行順を `viewer -> reception -> admin` で実施した
+- [ ] 判定基準を適用した（`A/B/C Fail = 即修正`, `D/E Fail = 軽微なら次PR可`）
+- [ ] 最終Gateを満たした（`viewerが迷わない` / `adminが困らない` / `回帰なし`）
 
 ---
 
