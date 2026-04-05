@@ -369,9 +369,9 @@ export function resolveInternalNamesDetailed<T extends string>(
             break;
           }
 
-          // Strategy C: Check all available names by stripping _x0020_ and suffixes
+          // Strategy C: Check all available names by stripping _x00XX_ encoded chars and trailing suffixes
           for (const [availableLow, actual] of availableMap.entries()) {
-            const stripped = availableLow.replace(/_x0020_/g, '').replace(/[0-9]+$/, '');
+            const stripped = availableLow.replace(/_x[0-9a-f]{4}_/gi, '').replace(/[0-9]+$/, '');
             if (stripped === lowerBase) {
               foundCandidate = actual;
               driftType = 'fuzzy_match';
@@ -379,6 +379,20 @@ export function resolveInternalNamesDetailed<T extends string>(
             }
           }
           if (foundCandidate) break;
+
+          // Strategy C2: Also try stripping from the candidate side for bidirectional matching
+          const candidateStripped = lowerBase.replace(/_x[0-9a-f]{4}_/gi, '').replace(/[0-9]+$/, '');
+          if (candidateStripped !== lowerBase) {
+            for (const [availableLow, actual] of availableMap.entries()) {
+              const availStripped = availableLow.replace(/_x[0-9a-f]{4}_/gi, '').replace(/[0-9]+$/, '');
+              if (availStripped === candidateStripped) {
+                foundCandidate = actual;
+                driftType = 'fuzzy_match';
+                break;
+              }
+            }
+            if (foundCandidate) break;
+          }
 
           // Strategy D: Handle SharePoint specialized suffixes (like 'Id' for Person/Lookup or 'Text' for Note)
           const lowerBaseNoId = lowerBase.replace(/id$/, '');
