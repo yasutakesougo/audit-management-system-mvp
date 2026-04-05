@@ -19,12 +19,33 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import LaunchIcon from "@mui/icons-material/Launch";
 import DescriptionIcon from "@mui/icons-material/Description";
 import React from "react";
+import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { StatusChip, statusColor } from "./components/StatusChip";
 import { toAdminSummary } from "./toAdminSummary";
 import { HealthContext } from "./types";
 import { useHealthChecks } from "./useHealthChecks";
 import { spTelemetryStore } from "@/lib/telemetry/spTelemetryStore";
 import { DriftObservabilityPanel } from "../drift/observability/DriftObservabilityPanel";
+import { HealthFilterBar, type HealthFilterState } from "./components/HealthFilterBar";
+import { getSpHealthSignal } from "@/features/sp/health/spHealthSignalStore";
+import type { SpHealthReasonCode } from "@/features/sp/health/spHealthSignalStore";
+
+// ─── highlight: reasonCode → category ─────────────────────────────────────────
+const HIGHLIGHT_CATEGORY: Partial<Record<SpHealthReasonCode, string>> = {
+  sp_limit_reached:     'schema',
+  sp_index_pressure:    'schema',
+  sp_bootstrap_blocked: 'lists',
+  sp_auth_failed:       'auth',
+  sp_list_unreachable:  'lists',
+};
+
+const HIGHLIGHT_STATUS_LABEL: Partial<Record<SpHealthReasonCode, string>> = {
+  sp_limit_reached:     '容量上限到達',
+  sp_index_pressure:    'インデックス逼迫',
+  sp_bootstrap_blocked: 'プロビジョニング停止',
+  sp_auth_failed:       '認証エラー',
+  sp_list_unreachable:  'リスト到達不能',
+};
 
 // ──────────────────────────────────────────────────────────────
 // Clipboard helper
@@ -61,7 +82,31 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
   const { report, loading, error, run } = useHealthChecks(props.ctx);
   const [openKeys, setOpenKeys] = React.useState<Record<string, boolean>>({});
   const [activeTab, setActiveTab] = React.useState<string | "all">("all");
+  const [filterState, setFilterState] = React.useState<HealthFilterState>({ level: 'all', resource: '' });
+  const [searchParams] = useSearchParams();
   const sp = useSP();
+
+  // ── highlight / filter クエリパラメータ ──────────────────────────────────
+  const highlightCode = (searchParams.get('highlight') ?? '') as SpHealthReasonCode | '';
+  const highlightCategory = highlightCode ? (HIGHLIGHT_CATEGORY[highlightCode] ?? '') : '';
+
+  // highlight クエリがあれば対応カテゴリへ自動切替（初回のみ）
+  React.useEffect(() => {
+    if (highlightCategory) {
+      setActiveTab(highlightCategory);
+    }
+  }, [highlightCategory]);
+
+  // ?filter=fail などで level フィルタの初期値を指定できる
+  React.useEffect(() => {
+    const levelParam = searchParams.get('filter');
+    if (levelParam === 'fail' || levelParam === 'warn' || levelParam === 'pass') {
+      setFilterState((p) => ({ ...p, level: levelParam }));
+    }
+  }, []);
+
+  // ── Signal バナー ──────────────────────────────────────────────────────────
+  const currentSignal = getSpHealthSignal();
 
   // Save state management
   const [savingState, setSavingState] = React.useState<{
@@ -130,15 +175,80 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
     permissions: "権限",
   };
 
+  // カテゴリ絞り込み → level + resource 絞り込み
   const filteredResults = React.useMemo(() => {
     if (!report) return [];
-    if (activeTab === "all") return report.results;
-    return report.results.filter((r) => (r.category as string) === activeTab);
-  }, [report, activeTab]);
+    let results = activeTab === "all"
+      ? report.results
+      : report.results.filter((r) => (r.category as string) === activeTab);
+
+    if (filterState.level !== 'all') {
+      results = results.filter((r) => r.status === filterState.level);
+    }
+    if (filterState.resource.trim()) {
+      const q = filterState.resource.trim().toLowerCase();
+      results = results.filter(
+        (r) => r.label.toLowerCase().includes(q) || r.summary.toLowerCase().includes(q),
+      );
+    }
+    return results;
+  }, [report, activeTab, filterState]);
+
+  // highlight: このカテゴリ + fail/warn のアイテムを強調
+  const isHighlighted = React.useCallback(
+    (r: { category: string; status: string }) =>
+      Boolean(highlightCategory) &&
+      r.category === highlightCategory &&
+      r.status !== 'pass',
+    [highlightCategory],
+  );
 
   return (
     <Box sx={{ p: 2 }}>
       <Stack spacing={2}>
+        {/* ─────────────────────────────────────────────────────────────
+            Signal バナー（現在のシグナルがある場合のみ表示）
+            ───────────────────────────────────────────────────────────── */}
+        {currentSignal && (
+          <Alert
+            severity={currentSignal.severity === 'critical' ? 'error' : 'warning'}
+            action={
+              currentSignal.actionUrl ? (
+                <Button
+                  size="small"
+                  component={currentSignal.actionType === 'internal' ? RouterLink : 'a'}
+                  {...(currentSignal.actionType === 'internal'
+                    ? { to: currentSignal.actionUrl }
+                    : { href: currentSignal.actionUrl, target: '_blank', rel: 'noopener noreferrer' })}
+                >
+                  詳細 →
+                </Button>
+              ) : undefined
+            }
+          >
+            <strong>
+              {HIGHLIGHT_STATUS_LABEL[currentSignal.reasonCode] ?? currentSignal.reasonCode}
+              {currentSignal.occurrenceCount >= 2 ? ` ×${currentSignal.occurrenceCount}` : ''}
+            </strong>
+            {currentSignal.listName ? ` [${currentSignal.listName}]` : ''}
+            {' '}
+            <Typography component="span" variant="caption" color="inherit">
+              ({currentSignal.source === 'realtime' ? 'Realtime' : 'Nightly'} /{' '}
+              {currentSignal.occurredAt.slice(0, 16).replace('T', ' ')})
+            </Typography>
+          </Alert>
+        )}
+
+        {/* ─────────────────────────────────────────────────────────────
+            highlight バナー（?highlight= クエリがある場合）
+            ───────────────────────────────────────────────────────────── */}
+        {highlightCode && (
+          <Alert severity="info" onClose={() => {}}>
+            <strong>{HIGHLIGHT_STATUS_LABEL[highlightCode] ?? highlightCode}</strong>
+            {' '}に関連する項目を強調表示中
+          </Alert>
+        )}
+
         {/* ─────────────────────────────────────────────────────────────
             ヘッダー: タイトル + アクションボタン
             ───────────────────────────────────────────────────────────── */}
@@ -452,6 +562,17 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
         )}
 
         {/* ─────────────────────────────────────────────────────────────
+            フィルタバー（level / resource）
+            ───────────────────────────────────────────────────────────── */}
+        {report && activeTab !== "drift" && (
+          <HealthFilterBar
+            results={report.results}
+            filter={filterState}
+            onChange={(next) => setFilterState((p) => ({ ...p, ...next }))}
+          />
+        )}
+
+        {/* ─────────────────────────────────────────────────────────────
             個別チェック
             ───────────────────────────────────────────────────────────── */}
         {report && activeTab !== "drift" && (
@@ -464,8 +585,18 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
             <Stack spacing={1}>
               {filteredResults.map((r) => {
                 const open = Boolean(openKeys[r.key]);
+                const highlighted = isHighlighted(r);
                 return (
-                  <Paper key={r.key} variant="outlined" sx={{ p: 1.5 }}>
+                  <Paper
+                    key={r.key}
+                    variant="outlined"
+                    sx={{
+                      p: 1.5,
+                      ...(highlighted
+                        ? { border: '2px solid', borderColor: 'warning.main', bgcolor: 'warning.50' }
+                        : {}),
+                    }}
+                  >
                     <Stack
                       direction="row"
                       spacing={1}

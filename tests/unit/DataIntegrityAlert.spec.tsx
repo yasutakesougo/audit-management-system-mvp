@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
 // Mock env module
-vi.mock('@/lib/env', () => ({
+vi.mock('@/lib/env', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/env')>()),
   env: { VITE_AUDIT_DEBUG: false },
 }));
 
