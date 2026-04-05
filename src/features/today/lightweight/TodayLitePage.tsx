@@ -1,4 +1,5 @@
 import type { DashboardAudience } from '@/features/auth/store';
+import { getTodayPrimaryFlowSteps } from '@/features/today/config/todayCoreFlow';
 import type { TodaySummary } from '@/features/today/domain/useTodaySummary';
 import { toLocalDateISO } from '@/utils/getNow';
 import { Stack } from '@mui/material';
@@ -40,30 +41,27 @@ export const TodayLitePage: React.FC<TodayLitePageProps> = ({ summary, role, onN
   }, [onNavigate]);
 
   const cards = useMemo<TodayActionCardItem[]>(
-    () => [
-      {
-        key: 'attendance',
-        title: '出欠確認',
-        count: attendancePending,
-        primaryLabel: '出欠を確認する',
-        onPrimaryClick: () => handleNavigate('/daily/attendance'),
-      },
-      {
-        key: 'record',
-        title: '記録入力',
-        count: recordPending,
-        primaryLabel: '記録を入力する',
-        onPrimaryClick: () => handleNavigate('/daily/table'),
-      },
-      {
-        key: 'handoff',
-        title: '申し送り',
-        count: handoffPending,
-        primaryLabel: '申し送りを見る',
-        onPrimaryClick: () => handleNavigate('/handoff-timeline'),
-      },
-    ],
-    [attendancePending, handoffPending, recordPending, handleNavigate],
+    () => {
+      const countByFlowKey: Record<string, number> = {
+        attendance: attendancePending,
+        'daily-table': recordPending,
+        'handoff-timeline': handoffPending,
+      };
+      const titleByFlowKey: Record<string, string> = {
+        attendance: '出欠確認',
+        'daily-table': 'ケース記録',
+        'handoff-timeline': '申し送り',
+      };
+
+      return getTodayPrimaryFlowSteps(role).map<TodayActionCardItem>((step) => ({
+        key: step.key,
+        title: titleByFlowKey[step.key] ?? step.label,
+        count: countByFlowKey[step.key] ?? 0,
+        primaryLabel: step.label,
+        onPrimaryClick: () => handleNavigate(step.route),
+      }));
+    },
+    [attendancePending, handoffPending, recordPending, handleNavigate, role],
   );
 
   const notices = useMemo(() => {

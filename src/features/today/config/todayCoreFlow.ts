@@ -1,0 +1,51 @@
+import type { DashboardAudience } from '@/features/auth/store';
+
+export type TodayCoreFlowStep = {
+  key: 'today-overview' | 'attendance' | 'daily-table' | 'handoff-timeline';
+  label: string;
+  route: string;
+  order: number;
+  audience: DashboardAudience[];
+  primary: boolean;
+};
+
+export const TODAY_CORE_FLOW: readonly TodayCoreFlowStep[] = [
+  {
+    key: 'today-overview',
+    label: '今日の業務',
+    route: '/today',
+    order: 0,
+    audience: ['staff', 'admin'],
+    primary: false,
+  },
+  {
+    key: 'attendance',
+    label: '出欠を確認する',
+    route: '/daily/attendance',
+    order: 1,
+    audience: ['staff', 'admin'],
+    primary: true,
+  },
+  {
+    key: 'daily-table',
+    label: 'ケース記録を入力する',
+    route: '/daily/table',
+    order: 2,
+    audience: ['staff', 'admin'],
+    primary: true,
+  },
+  {
+    key: 'handoff-timeline',
+    label: '申し送りを確認する',
+    route: '/handoff-timeline',
+    order: 3,
+    audience: ['staff', 'admin'],
+    primary: true,
+  },
+] as const;
+
+export const getTodayPrimaryFlowSteps = (role: DashboardAudience): TodayCoreFlowStep[] =>
+  TODAY_CORE_FLOW
+    .filter((step) => step.primary && step.audience.includes(role))
+    .sort((a, b) => a.order - b.order);
+
