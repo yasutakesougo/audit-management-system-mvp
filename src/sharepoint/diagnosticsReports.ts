@@ -7,9 +7,10 @@
  */
 
 import type { UseSP } from '@/lib/spClient';
+import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 import {
+    DIAGNOSTICS_REPORTS_CANDIDATES,
     DIAGNOSTICS_REPORTS_LIST_TITLE,
-    DIAGNOSTICS_REPORTS_SELECT_FIELDS,
     FIELD_MAP_DIAGNOSTICS_REPORTS,
 } from '@/sharepoint/fields';
 
@@ -35,6 +36,129 @@ export interface DiagnosticsReportItem {
   Created: string;
   Modified: string;
 }
+
+type DiagnosticsFieldKey = keyof typeof DIAGNOSTICS_REPORTS_CANDIDATES;
+type DiagnosticsResolvedFields = Record<DiagnosticsFieldKey, string | undefined>;
+
+const DEFAULT_DIAGNOSTICS_RESOLVED_FIELDS: DiagnosticsResolvedFields = {
+  id: FIELD_MAP_DIAGNOSTICS_REPORTS.id,
+  title: FIELD_MAP_DIAGNOSTICS_REPORTS.title,
+  overall: FIELD_MAP_DIAGNOSTICS_REPORTS.overall,
+  topIssue: FIELD_MAP_DIAGNOSTICS_REPORTS.topIssue,
+  summaryText: FIELD_MAP_DIAGNOSTICS_REPORTS.summaryText,
+  reportLink: FIELD_MAP_DIAGNOSTICS_REPORTS.reportLink,
+  notified: FIELD_MAP_DIAGNOSTICS_REPORTS.notified,
+  notifiedAt: FIELD_MAP_DIAGNOSTICS_REPORTS.notifiedAt,
+  created: FIELD_MAP_DIAGNOSTICS_REPORTS.created,
+  modified: FIELD_MAP_DIAGNOSTICS_REPORTS.modified,
+};
+
+let diagnosticsResolvedFieldsCache: DiagnosticsResolvedFields | null = null;
+
+const toNullableString = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  return value;
+};
+
+const toBoolean = (value: unknown): boolean => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    return normalized === 'true' || normalized === '1' || normalized === 'yes';
+  }
+  return false;
+};
+
+const toNumber = (value: unknown): number => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+};
+
+const buildDiagnosticsSelectFields = (resolved: DiagnosticsResolvedFields): string[] => {
+  const seen = new Set<string>();
+  const fields: string[] = [];
+  for (const key of Object.keys(resolved) as DiagnosticsFieldKey[]) {
+    const value = resolved[key];
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    fields.push(value);
+  }
+  return fields;
+};
+
+const pickRawField = (
+  row: Record<string, unknown>,
+  resolvedName: string | undefined,
+  fallbackName: string,
+): unknown => {
+  if (resolvedName && resolvedName in row) return row[resolvedName];
+  if (fallbackName in row) return row[fallbackName];
+  return undefined;
+};
+
+const normalizeDiagnosticsReportItem = (
+  row: Record<string, unknown>,
+  resolved: DiagnosticsResolvedFields,
+): DiagnosticsReportItem => {
+  return {
+    Id: toNumber(pickRawField(row, resolved.id, FIELD_MAP_DIAGNOSTICS_REPORTS.id)),
+    Title: String(pickRawField(row, resolved.title, FIELD_MAP_DIAGNOSTICS_REPORTS.title) ?? ''),
+    Overall:
+      (pickRawField(row, resolved.overall, FIELD_MAP_DIAGNOSTICS_REPORTS.overall) as DiagnosticsReportItem['Overall']) ??
+      'pass',
+    TopIssue: toNullableString(pickRawField(row, resolved.topIssue, FIELD_MAP_DIAGNOSTICS_REPORTS.topIssue)),
+    SummaryText: toNullableString(
+      pickRawField(row, resolved.summaryText, FIELD_MAP_DIAGNOSTICS_REPORTS.summaryText),
+    ),
+    ReportLink: toNullableString(
+      pickRawField(row, resolved.reportLink, FIELD_MAP_DIAGNOSTICS_REPORTS.reportLink),
+    ),
+    Notified: toBoolean(pickRawField(row, resolved.notified, FIELD_MAP_DIAGNOSTICS_REPORTS.notified)),
+    Created: String(pickRawField(row, resolved.created, FIELD_MAP_DIAGNOSTICS_REPORTS.created) ?? ''),
+    Modified: String(pickRawField(row, resolved.modified, FIELD_MAP_DIAGNOSTICS_REPORTS.modified) ?? ''),
+  };
+};
+
+const resolveDiagnosticsFields = async (sp: UseSP): Promise<DiagnosticsResolvedFields> => {
+  if (diagnosticsResolvedFieldsCache) {
+    return diagnosticsResolvedFieldsCache;
+  }
+
+  try {
+    let available: Set<string> | null = null;
+
+    const fetchExistingFields = (sp as Partial<UseSP>).fetchExistingFields;
+    if (typeof fetchExistingFields === 'function') {
+      const fields = await fetchExistingFields(DIAGNOSTICS_REPORTS_LIST_TITLE);
+      available = new Set(Array.from(fields.keys()));
+    }
+
+    if (!available) {
+      available = await sp.getListFieldInternalNames(DIAGNOSTICS_REPORTS_LIST_TITLE);
+    }
+
+    const { resolved } = resolveInternalNamesDetailed(
+      available,
+      DIAGNOSTICS_REPORTS_CANDIDATES as unknown as Record<DiagnosticsFieldKey, string[]>,
+    );
+    diagnosticsResolvedFieldsCache = {
+      ...DEFAULT_DIAGNOSTICS_RESOLVED_FIELDS,
+      ...resolved,
+    };
+    return diagnosticsResolvedFieldsCache;
+  } catch (error) {
+    console.warn('[diagnosticsReports] failed to resolve field drift, fallback to defaults', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    diagnosticsResolvedFieldsCache = { ...DEFAULT_DIAGNOSTICS_RESOLVED_FIELDS };
+    return diagnosticsResolvedFieldsCache;
+  }
+};
 
 // ─────────────────────────────────────────────────────────────
 // フィールドマッピング
@@ -159,27 +283,34 @@ export async function upsertDiagnosticsReport(
   }
 
   const listTitle = DIAGNOSTICS_REPORTS_LIST_TITLE;
+  const resolvedFields = await resolveDiagnosticsFields(sp);
+  const selectFields = buildDiagnosticsSelectFields(resolvedFields);
+  const titleFieldName = resolvedFields.title ?? FIELD_MAP_DIAGNOSTICS_REPORTS.title;
+  const idFieldName = resolvedFields.id ?? FIELD_MAP_DIAGNOSTICS_REPORTS.id;
 
   // ──────────────────────────────────────────
   // Step 1: Title で既存アイテムを検索
   // ──────────────────────────────────────────
-  const filter = `${FIELD_MAP_DIAGNOSTICS_REPORTS.title} eq '${input.title.replace(/'/g, "''")}'`;
-  const existing = await sp.getListItemsByTitle<{ Id: number }>(
+  const filter = `${titleFieldName} eq '${input.title.replace(/'/g, "''")}'`;
+  const existing = await sp.getListItemsByTitle<Record<string, unknown>>(
     listTitle,
-    [...DIAGNOSTICS_REPORTS_SELECT_FIELDS],
+    selectFields,
     filter,
     undefined,
     1
   );
+  const existingItem = existing.length > 0
+    ? normalizeDiagnosticsReportItem(existing[0], resolvedFields)
+    : null;
 
   // ──────────────────────────────────────────
   // Step 2: 送信ペイロード構築
   // ──────────────────────────────────────────
   // ✅ Field map を使用してキー名を統一
   const payload: Record<string, unknown> = {
-    [FIELD_MAP_DIAGNOSTICS_REPORTS.title]: input.title,
-    // Choice は { Value: '...' } 形式で送信
-    [FIELD_MAP_DIAGNOSTICS_REPORTS.overall]: { Value: input.overall },
+    [titleFieldName]: input.title,
+    // Choice/Text ともに互換性が高い primitive 文字列で送信する。
+    [(resolvedFields.overall ?? FIELD_MAP_DIAGNOSTICS_REPORTS.overall)]: input.overall,
   };
 
   // Notified フラグの制御（Power Automate取得フィルター対応）:
@@ -190,24 +321,28 @@ export async function upsertDiagnosticsReport(
   // - 更新で内容変更の pass → true（通知不要）
   // - 更新で内容変更なし → 既存値保持
   const notifiedValue = shouldResetNotified(
-    existing?.length ? (existing[0] as DiagnosticsReportItem) : null,
+    existingItem,
     input
   );
 
   // undefined の場合は payload に含めない（既存値を保持）
   if (notifiedValue !== undefined) {
-    payload[FIELD_MAP_DIAGNOSTICS_REPORTS.notified] = notifiedValue;
+    payload[(resolvedFields.notified ?? FIELD_MAP_DIAGNOSTICS_REPORTS.notified)] = notifiedValue;
   }
 
   // Optional: null/undefined チェック
-  if (input.topIssue != null) {
-    payload[FIELD_MAP_DIAGNOSTICS_REPORTS.topIssue] = input.topIssue;
+  if (input.topIssue != null && resolvedFields.topIssue) {
+    payload[resolvedFields.topIssue] = input.topIssue;
+  } else if (input.topIssue != null && !resolvedFields.topIssue) {
+    console.warn('[diagnosticsReports] topIssue field is missing in tenant schema; skipping field', {
+      title: input.title,
+    });
   }
   if (input.summaryText != null) {
-    payload[FIELD_MAP_DIAGNOSTICS_REPORTS.summaryText] = input.summaryText;
+    payload[(resolvedFields.summaryText ?? FIELD_MAP_DIAGNOSTICS_REPORTS.summaryText)] = input.summaryText;
   }
   if (input.reportLink != null) {
-    payload[FIELD_MAP_DIAGNOSTICS_REPORTS.reportLink] = input.reportLink;
+    payload[(resolvedFields.reportLink ?? FIELD_MAP_DIAGNOSTICS_REPORTS.reportLink)] = input.reportLink;
   }
 
   // ──────────────────────────────────────────
@@ -215,20 +350,20 @@ export async function upsertDiagnosticsReport(
   // ──────────────────────────────────────────
   if (existing?.length) {
     // UPDATE: 既存レコード
-    const id = Number(existing[0].Id);
+    const id = existingItem?.Id ?? toNumber(existing[0][idFieldName]);
     try {
       await sp.updateItemByTitle(listTitle, id, payload);
       console.info('[diagnosticsReports] updated', { id, title: input.title });
 
       // 更新後のアイテムを取得して返す
-      const updated = await sp.getListItemsByTitle<DiagnosticsReportItem>(
+      const updated = await sp.getListItemsByTitle<Record<string, unknown>>(
         listTitle,
-        [...DIAGNOSTICS_REPORTS_SELECT_FIELDS],
-        `${FIELD_MAP_DIAGNOSTICS_REPORTS.id} eq ${id}`,
+        selectFields,
+        `${idFieldName} eq ${id}`,
         undefined,
         1
       );
-      return updated?.[0] ?? null;
+      return updated?.[0] ? normalizeDiagnosticsReportItem(updated[0], resolvedFields) : null;
     } catch (error) {
       console.error('[diagnosticsReports] update failed', {
         id,
@@ -239,13 +374,27 @@ export async function upsertDiagnosticsReport(
   } else {
     // CREATE: 新規レコード
     try {
-      const created = await sp.addListItemByTitle<Record<string, unknown>, DiagnosticsReportItem>(
+      const created = await sp.addListItemByTitle<Record<string, unknown>, Record<string, unknown>>(
         listTitle,
         payload
       );
-      const newId = created?.Id ?? -1;
+      const newId = toNumber(pickRawField(created ?? {}, resolvedFields.id, FIELD_MAP_DIAGNOSTICS_REPORTS.id));
       console.info('[diagnosticsReports] created', { id: newId, title: input.title });
-      return created ?? null;
+      if (!newId) {
+        return created ? normalizeDiagnosticsReportItem(created, resolvedFields) : null;
+      }
+
+      const inserted = await sp.getListItemsByTitle<Record<string, unknown>>(
+        listTitle,
+        selectFields,
+        `${idFieldName} eq ${newId}`,
+        undefined,
+        1,
+      );
+      if (inserted[0]) {
+        return normalizeDiagnosticsReportItem(inserted[0], resolvedFields);
+      }
+      return created ? normalizeDiagnosticsReportItem(created, resolvedFields) : null;
     } catch (error) {
       console.error('[diagnosticsReports] create failed', {
         error: error instanceof Error ? error.message : String(error),
@@ -306,3 +455,10 @@ export async function resetNotificationFlag(sp: UseSP, reportId: number): Promis
     throw error;
   }
 }
+
+/**
+ * テスト用: フィールド解決キャッシュをクリア
+ */
+export const __resetDiagnosticsReportFieldResolutionForTest = (): void => {
+  diagnosticsResolvedFieldsCache = null;
+};

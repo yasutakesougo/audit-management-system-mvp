@@ -3,7 +3,7 @@ import { IDriftEventRepository } from '../domain/DriftEventRepository';
 import { findListEntry } from '@/sharepoint/spListRegistry';
 import { buildDateTime, buildEq, buildGe, joinAnd } from '@/sharepoint/query/builders';
 import { DRIFT_LOG_CANDIDATES } from '@/sharepoint/fields/diagnosticsFields';
-import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
+import { extractMissingField, resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 import { auditLog } from '@/lib/debugLogger';
 
 /**
@@ -13,6 +13,7 @@ export interface ISpOperations {
   createItem: (listTitle: string, payload: Record<string, unknown>) => Promise<unknown>;
   updateItemByTitle: (listTitle: string, id: number, payload: Record<string, unknown>) => Promise<unknown>;
   getListItemsByTitle: <T>(listTitle: string, select?: string[], filter?: string, orderby?: string, top?: number) => Promise<T[]>;
+  getListFieldInternalNames?: (listTitle: string) => Promise<Set<string>>;
 }
 
 /**
@@ -26,6 +27,9 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
 
   /** 本番リストで使用されている物理内部名のキャッシュ */
   private resolvedFields: Record<string, string | undefined> = {};
+  private missingLogicalFields = new Set<keyof typeof DRIFT_LOG_CANDIDATES>();
+  private blockedPhysicalFields = new Set<string>();
+  private writeDisabled = false;
   private initializationPromise: Promise<void> | null = null;
 
   constructor(private spClient: ISpOperations & { 
@@ -60,13 +64,79 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
     return false;
   }
 
+  private isHttp400(err: unknown): boolean {
+    return typeof err === 'object' && err !== null && 'status' in err && (err as { status?: number }).status === 400;
+  }
+
+  private isRequiredFieldKey(key: keyof typeof DRIFT_LOG_CANDIDATES): boolean {
+    return key === 'listName' || key === 'fieldName' || key === 'detectedAt';
+  }
+
+  private isRequiredPhysicalField(fieldName: string): boolean {
+    return [this.rf('listName'), this.rf('fieldName'), this.rf('detectedAt')].includes(fieldName);
+  }
+
+  private buildCreatePayload(event: DriftEvent, includeOptional: boolean): Record<string, unknown> | null {
+    const payload: Record<string, unknown> = {
+      Title: `${event.listName}:${event.fieldName}`,
+    };
+
+    const pushField = (
+      key: keyof typeof DRIFT_LOG_CANDIDATES,
+      value: unknown,
+    ): boolean => {
+      const physicalName = this.rf(key);
+      if (!physicalName || this.blockedPhysicalFields.has(physicalName)) {
+        return !this.isRequiredFieldKey(key);
+      }
+      if (this.missingLogicalFields.has(key)) {
+        return !this.isRequiredFieldKey(key);
+      }
+      payload[physicalName] = value;
+      return true;
+    };
+
+    const requiredOk =
+      pushField('listName', String(event.listName)) &&
+      pushField('fieldName', String(event.fieldName)) &&
+      pushField('detectedAt', String(event.detectedAt));
+
+    if (!requiredOk) {
+      return null;
+    }
+
+    if (includeOptional) {
+      pushField('severity', String(event.severity));
+      pushField('resolutionType', String(event.resolutionType));
+      pushField('driftType', String(event.driftType || 'unknown'));
+      pushField('resolved', Boolean(event.resolved));
+    }
+
+    return payload;
+  }
+
   private async initializeResolvedFields(listTitle: string): Promise<void> {
     if (Object.keys(this.resolvedFields).length > 0) return;
     if (this.initializationPromise) return this.initializationPromise;
 
     this.initializationPromise = (async () => {
       try {
-        const availableFields = await this.spClient.getSchema?.(listTitle) || [];
+        let availableFields: string[] = [];
+        try {
+          availableFields = await this.spClient.getSchema?.(listTitle) || [];
+        } catch (err) {
+          auditLog.warn('diagnostics:drift', 'DriftEventRepository getSchema failed.', err);
+        }
+
+        if (availableFields.length === 0) {
+          try {
+            const fieldSet = await this.spClient.getListFieldInternalNames?.(listTitle);
+            availableFields = fieldSet ? Array.from(fieldSet) : [];
+          } catch (err) {
+            auditLog.warn('diagnostics:drift', 'DriftEventRepository getListFieldInternalNames failed.', err);
+          }
+        }
+
         if (availableFields.length === 0) return;
 
         const res = resolveInternalNamesDetailed(
@@ -74,6 +144,9 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
           DRIFT_LOG_CANDIDATES as unknown as Record<string, string[]>,
         );
         this.resolvedFields = res.resolved;
+        this.missingLogicalFields = new Set(
+          res.missing as Array<keyof typeof DRIFT_LOG_CANDIDATES>,
+        );
       } catch (err) {
         auditLog.warn('diagnostics:drift', 'DriftEventRepository initialization failed.', err);
       }
@@ -84,6 +157,10 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
 
   async logEvent(event: DriftEvent): Promise<void> {
     const dedupeKey = getDriftEventDedupeKey(event);
+
+    if (this.writeDisabled) {
+      return;
+    }
 
     // 1. 同一セッション内で本日既に記録済みであればスキップ
     if (this.sessionCache.has(dedupeKey)) {
@@ -100,20 +177,58 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       const listTitle = entry.resolve();
       await this.initializeResolvedFields(listTitle);
 
-      const payload: Record<string, unknown> = {
-        Title: `${event.listName}:${event.fieldName}`,
-        [this.rf('listName')]: event.listName,
-        [this.rf('fieldName')]: event.fieldName,
-        [this.rf('detectedAt')]: event.detectedAt,
-        [this.rf('severity')]: event.severity,
-        [this.rf('resolutionType')]: event.resolutionType,
-        [this.rf('driftType')]: event.driftType || 'unknown',
-        [this.rf('resolved')]: event.resolved
-      };
+      const payload = this.buildCreatePayload(event, true);
+      if (!payload) {
+        this.writeDisabled = true;
+        auditLog.warn('diagnostics:drift', 'DriftEventRepository disabled writing due to missing required drift-log fields.');
+        return;
+      }
+      let activePayload: Record<string, unknown> = payload;
 
-      await this.spClient.createItem(listTitle, payload);
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          await this.spClient.createItem(listTitle, activePayload);
+          this.sessionCache.add(dedupeKey);
+          return;
+        } catch (err) {
+          if (!this.isHttp400(err)) throw err;
 
-      this.sessionCache.add(dedupeKey);
+          const missingPhysicalField = extractMissingField(
+            err instanceof Error ? err.message : String(err),
+          );
+
+          if (missingPhysicalField && Object.prototype.hasOwnProperty.call(activePayload, missingPhysicalField)) {
+            const nextPayload: Record<string, unknown> = { ...activePayload };
+            delete nextPayload[missingPhysicalField];
+            activePayload = nextPayload;
+            this.blockedPhysicalFields.add(missingPhysicalField);
+
+            if (this.isRequiredPhysicalField(missingPhysicalField)) {
+              this.writeDisabled = true;
+              auditLog.warn('diagnostics:drift', 'DriftEventRepository disabled writing: required field missing.', {
+                missingPhysicalField,
+              });
+              return;
+            }
+            continue;
+          }
+
+          // フィールド名が特定できない 400 は、任意列を外した最小ペイロードで 1 回だけ再試行する
+          if (attempt === 0) {
+            const minimalPayload = this.buildCreatePayload(event, false);
+            if (!minimalPayload) {
+              this.writeDisabled = true;
+              return;
+            }
+            activePayload = minimalPayload;
+            continue;
+          }
+
+          throw err;
+        }
+      }
+
+      throw new Error('DriftEventRepository failed to log drift event after fallback retries.');
     } catch (err) {
       // ✅ Fail-Open: 書き込み失敗は、システム全体の業務に影響を与えないよう握りつぶす。
       auditLog.error('diagnostics:drift', 'DriftEventRepository failed to log drift event (fail-open).', err);
