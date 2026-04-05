@@ -117,17 +117,76 @@ describe('extractFromBlocks — formal block type', () => {
     expect(result.actions).toBe('田中: 資料作成');
   });
 
+  it('should extract report block into reports', () => {
+    const blocks = [makeBlock('report', '進捗は順調です')];
+    const result = extractFromBlocks(blocks);
+    expect(result.reports).toBe('進捗は順調です');
+  });
+
+  it('should extract notification block into notifications', () => {
+    const blocks = [makeBlock('notification', '来週月曜は休日です')];
+    const result = extractFromBlocks(blocks);
+    expect(result.notifications).toBe('来週月曜は休日です');
+  });
+
+  it('should extract multiple report blocks', () => {
+    const blocks = [
+      makeBlock('report', '売上報告'),
+      makeBlock('report', '在庫報告'),
+    ];
+    const result = extractFromBlocks(blocks);
+    expect(result.reports).toBe('売上報告\n在庫報告');
+  });
+
+  it('should extract multiple notification blocks', () => {
+    const blocks = [
+      makeBlock('notification', 'GW休業のお知らせ'),
+      makeBlock('notification', '社内研修の案内'),
+    ];
+    const result = extractFromBlocks(blocks);
+    expect(result.notifications).toBe('GW休業のお知らせ\n社内研修の案内');
+  });
+
+  it('should extract nextSchedule block into notifications with tag', () => {
+    const blocks = [makeBlock('nextSchedule', '次回は5/1')];
+    const result = extractFromBlocks(blocks);
+    expect(result.notifications).toBe('[次回] 次回は5/1');
+  });
+
+  it('should extract continuingDiscussion block into summary with tag', () => {
+    const blocks = [makeBlock('continuingDiscussion', '予算の件')];
+    const result = extractFromBlocks(blocks);
+    expect(result.summary).toBe('[継続検討] 予算の件');
+  });
+
   it('formal block type should override prefix if both exist for same category', () => {
     const blocks = [
       p('【決定事項】古い決定'),
       makeBlock('decision', '新しい決定'),
     ];
-    // extractor appends them all for now, in order of blocks, but priority rules
-    // dictate what happens if mixed. But wait, in extractFromBlocks it iterates sequentially.
-    // So both will be extracted
     const result = extractFromBlocks(blocks);
     expect(result.decisions).toContain('古い決定');
     expect(result.decisions).toContain('新しい決定');
+  });
+
+  it('formal report block and prefix report should coexist', () => {
+    const blocks = [
+      p('【報告】prefix報告'),
+      makeBlock('report', 'formal報告'),
+    ];
+    const result = extractFromBlocks(blocks);
+    expect(result.reports).toContain('prefix報告');
+    expect(result.reports).toContain('formal報告');
+  });
+
+  it('formal notification block and prefix notice should coexist', () => {
+    const blocks = [
+      p('【連絡事項】prefix連絡'),
+      makeBlock('notification', 'formal連絡'),
+    ];
+    const result = extractFromBlocks(blocks);
+    expect(result.notifications).toContain('prefix連絡');
+    expect(result.notifications).toContain('formal連絡');
   });
 });
 
