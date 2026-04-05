@@ -27,8 +27,9 @@ import { useHealthChecks } from "./useHealthChecks";
 import { spTelemetryStore } from "@/lib/telemetry/spTelemetryStore";
 import { DriftObservabilityPanel } from "../drift/observability/DriftObservabilityPanel";
 import { HealthFilterBar, type HealthFilterState } from "./components/HealthFilterBar";
-import { getSpHealthSignal } from "@/features/sp/health/spHealthSignalStore";
+import { useSpHealthSignal } from "@/features/sp/health/hooks/useSpHealthSignal";
 import type { SpHealthReasonCode } from "@/features/sp/health/spHealthSignalStore";
+import { SpIndexPressurePanel } from "@/features/sp/health/indexAdvisor/SpIndexPressurePanel";
 
 // ─── highlight: reasonCode → category ─────────────────────────────────────────
 const HIGHLIGHT_CATEGORY: Partial<Record<SpHealthReasonCode, string>> = {
@@ -106,7 +107,7 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
   }, []);
 
   // ── Signal バナー ──────────────────────────────────────────────────────────
-  const currentSignal = getSpHealthSignal();
+  const currentSignal = useSpHealthSignal();
 
   // Save state management
   const [savingState, setSavingState] = React.useState<{
@@ -238,6 +239,11 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
             </Typography>
           </Alert>
         )}
+
+        {/* ─────────────────────────────────────────────────────────────
+            Self-Healing 候補パネル（sp_index_pressure 時のみ表示）
+            ───────────────────────────────────────────────────────────── */}
+        <SpIndexPressurePanel signal={currentSignal} />
 
         {/* ─────────────────────────────────────────────────────────────
             highlight バナー（?highlight= クエリがある場合）
