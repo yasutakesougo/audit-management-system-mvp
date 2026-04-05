@@ -137,7 +137,7 @@ describe('spClient ETag / 412 handling', () => {
 
     await expect(
       client.updateItem(list, 10, { Title: 'edited' }, { ifMatch: 'W/"2"' }),
-    ).rejects.toBeInstanceOf(SharePointMissingEtagError);
+    ).rejects.toThrow('SharePoint response did not include an ETag header');
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
