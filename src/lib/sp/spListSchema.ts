@@ -379,7 +379,7 @@ export async function ensureListExists(
       }
 
       // 3. Physical creation (Only if truly missing)
-      if (!field.required || isLimitReached) {
+      if ((!field.required && !field.forceCreate) || isLimitReached) {
         auditLog.warn('sp:fields', 'provisioning_blocked', { 
           listTitle, 
           field: field.internalName,

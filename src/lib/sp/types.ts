@@ -77,6 +77,8 @@ export interface SpFieldDef {
   displayName?: string;
   description?: string;
   required?: boolean;
+  /** SharePoint restrictions bypass: True ensures column is always created even if not marked required */
+  forceCreate?: boolean;
   choices?: readonly string[];
   default?: string | number | boolean;
   lookupListId?: string;
