@@ -13,6 +13,115 @@ describe('SharePointDriftEventRepository', () => {
     vi.clearAllMocks();
   });
 
+  it('omits optional fields missing from schema when logging', async () => {
+    const createItem = vi.fn(async () => ({}));
+    const repo = new SharePointDriftEventRepository({
+      createItem,
+      updateItemByTitle: vi.fn(async () => ({})),
+      getListItemsByTitle: vi.fn(async () => []),
+      getSchema: vi.fn(async () => [
+        'ListName',
+        'FieldName',
+        'DetectedAt',
+        'Severity',
+        'ResolutionType',
+        'Resolved',
+      ]),
+    });
+
+    await repo.logEvent({
+      listName: 'Daily_Attendance',
+      fieldName: 'Status',
+      detectedAt: '2026-04-05T00:00:00.000Z',
+      severity: 'warn',
+      resolutionType: 'fallback',
+      driftType: 'suffix_mismatch',
+      resolved: false,
+    });
+
+    expect(createItem).toHaveBeenCalledTimes(1);
+    const [, payload] = createItem.mock.calls[0];
+    expect(payload).toMatchObject({
+      Title: 'Daily_Attendance:Status',
+      ListName: 'Daily_Attendance',
+      FieldName: 'Status',
+      DetectedAt: '2026-04-05T00:00:00.000Z',
+      Severity: 'warn',
+      ResolutionType: 'fallback',
+      Resolved: false,
+    });
+    expect(payload).not.toHaveProperty('DriftType');
+  });
+
+  it('retries create after removing missing field returned by 400 error', async () => {
+    const badRequest = Object.assign(
+      new Error("フィールドまたはプロパティ 'DriftType' は存在しません。"),
+      { status: 400 },
+    );
+    const createItem = vi
+      .fn()
+      .mockRejectedValueOnce(badRequest)
+      .mockResolvedValueOnce({});
+
+    const repo = new SharePointDriftEventRepository({
+      createItem,
+      updateItemByTitle: vi.fn(async () => ({})),
+      getListItemsByTitle: vi.fn(async () => []),
+    });
+
+    await repo.logEvent({
+      listName: 'Daily_Attendance',
+      fieldName: 'Status',
+      detectedAt: '2026-04-05T00:00:00.000Z',
+      severity: 'warn',
+      resolutionType: 'fallback',
+      driftType: 'suffix_mismatch',
+      resolved: false,
+    });
+
+    expect(createItem).toHaveBeenCalledTimes(2);
+    const firstPayload = createItem.mock.calls[0][1];
+    const secondPayload = createItem.mock.calls[1][1];
+    expect(firstPayload).toHaveProperty('DriftType', 'suffix_mismatch');
+    expect(secondPayload).not.toHaveProperty('DriftType');
+  });
+
+  it('retries once with minimal payload when 400 does not identify a field', async () => {
+    const badRequest = Object.assign(
+      new Error("JSON リーダーから読み取り中に予期しない 'StartObject' ノードが見つかりました。"),
+      { status: 400 },
+    );
+    const createItem = vi
+      .fn()
+      .mockRejectedValueOnce(badRequest)
+      .mockResolvedValueOnce({});
+
+    const repo = new SharePointDriftEventRepository({
+      createItem,
+      updateItemByTitle: vi.fn(async () => ({})),
+      getListItemsByTitle: vi.fn(async () => []),
+    });
+
+    await repo.logEvent({
+      listName: 'Daily_Attendance',
+      fieldName: 'Status',
+      detectedAt: '2026-04-05T00:00:00.000Z',
+      severity: 'warn',
+      resolutionType: 'fallback',
+      driftType: 'suffix_mismatch',
+      resolved: false,
+    });
+
+    expect(createItem).toHaveBeenCalledTimes(2);
+    const secondPayload = createItem.mock.calls[1][1];
+    expect(secondPayload).toEqual({
+      Title: 'Daily_Attendance:Status',
+      ListName: 'Daily_Attendance',
+      FieldName: 'Status',
+      DetectedAt: '2026-04-05T00:00:00.000Z',
+    });
+  });
+
   it('applies since/resolved/list filters and maps drifted physical names', async () => {
     const getListItemsByTitle = vi.fn(async () => [
       {
