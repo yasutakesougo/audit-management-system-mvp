@@ -430,9 +430,13 @@ export function createSpFetch(deps: SpFetchDeps) {
           }
 
           if (retryable && attempt <= maxRetries) {
-            const delayMs = computeBackoffMs(attempt, baseDelay, capDelay, retryAfterMs);
+            let delayMs = computeBackoffMs(attempt, baseDelay, capDelay, retryAfterMs);
 
             if (response.status === 429) {
+              // Forced backoff for 429 incidents as requested (1s per retry count)
+              const forcedDelay = 1000 * attempt;
+              delayMs = Math.max(delayMs, forcedDelay);
+
               recordTelemetry('sp:throttled', {
                 url: url.split('?')[0],
                 method,

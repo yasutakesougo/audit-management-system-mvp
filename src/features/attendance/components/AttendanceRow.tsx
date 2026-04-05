@@ -158,7 +158,7 @@ export function AttendanceRow({
           startIcon={checkInDone ? <CheckIcon /> : undefined}
         >
           {checkInDone
-            ? '通所済'
+            ? visit.checkInAtText ? `通所済 ${visit.checkInAtText}` : '通所済'
             : visit.checkInAtText && !canCheckIn
               ? `通所 ${visit.checkInAtText}`
               : '通所'}

@@ -77,6 +77,8 @@ export interface SpFieldDef {
   displayName?: string;
   description?: string;
   required?: boolean;
+  /** SharePoint restrictions bypass: True ensures column is always created even if not marked required */
+  forceCreate?: boolean;
   choices?: readonly string[];
   default?: string | number | boolean;
   lookupListId?: string;
@@ -87,6 +89,11 @@ export interface SpFieldDef {
   addToDefaultView?: boolean;
   /** インデックスを付与する（5000件制限回避のため、フィルター対象フィールドに必須） */
   indexed?: boolean;
+  /**
+   * フィールド解決の候補名リスト。
+   * 指定されている場合、既存フィールドのチェック時にこれらも含めて検索し、二重作成を防止する。
+   */
+  candidates?: readonly string[];
 }
 
 export interface EnsureListOptions {

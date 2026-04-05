@@ -2,6 +2,7 @@
  * Analysis domain routes: /analysis/*, /assessment, /survey/tokusei
  */
 import RequireAudience from '@/components/RequireAudience';
+import AdminSurfaceRouteGuard from '@/components/AdminSurfaceRouteGuard';
 import { IcebergPdcaGate } from '@/features/ibd/analysis/pdca/IcebergPdcaGate';
 import { Navigate, type RouteObject } from 'react-router-dom';
 
@@ -19,7 +20,9 @@ export const analysisRoutes: RouteObject[] = [
     path: 'analysis',
     element: (
       <RequireAudience requiredRole="viewer">
-        <Navigate to="/analysis/dashboard" replace />
+        <AdminSurfaceRouteGuard>
+          <Navigate to="/analysis/dashboard" replace />
+        </AdminSurfaceRouteGuard>
       </RequireAudience>
     ),
   },
@@ -27,7 +30,9 @@ export const analysisRoutes: RouteObject[] = [
     path: 'analysis/dashboard',
     element: (
       <RequireAudience requiredRole="viewer">
-        <SuspendedAnalysisDashboardPage />
+        <AdminSurfaceRouteGuard>
+          <SuspendedAnalysisDashboardPage />
+        </AdminSurfaceRouteGuard>
       </RequireAudience>
     ),
   },
@@ -35,9 +40,11 @@ export const analysisRoutes: RouteObject[] = [
     path: 'analysis/iceberg-pdca',
     element: (
       <RequireAudience requiredRole="viewer">
-        <IcebergPdcaGate>
-          <SuspendedIcebergPdcaPage />
-        </IcebergPdcaGate>
+        <AdminSurfaceRouteGuard>
+          <IcebergPdcaGate>
+            <SuspendedIcebergPdcaPage />
+          </IcebergPdcaGate>
+        </AdminSurfaceRouteGuard>
       </RequireAudience>
     ),
   },
@@ -45,9 +52,11 @@ export const analysisRoutes: RouteObject[] = [
     path: 'analysis/iceberg-pdca/edit',
     element: (
       <RequireAudience requiredRole="viewer">
-        <IcebergPdcaGate requireEdit>
-          <SuspendedIcebergPdcaPage />
-        </IcebergPdcaGate>
+        <AdminSurfaceRouteGuard>
+          <IcebergPdcaGate requireEdit>
+            <SuspendedIcebergPdcaPage />
+          </IcebergPdcaGate>
+        </AdminSurfaceRouteGuard>
       </RequireAudience>
     ),
   },
@@ -55,7 +64,9 @@ export const analysisRoutes: RouteObject[] = [
     path: 'analysis/iceberg',
     element: (
       <RequireAudience requiredRole="viewer">
-        <SuspendedIcebergAnalysisPage />
+        <AdminSurfaceRouteGuard>
+          <SuspendedIcebergAnalysisPage />
+        </AdminSurfaceRouteGuard>
       </RequireAudience>
     ),
   },
@@ -63,7 +74,9 @@ export const analysisRoutes: RouteObject[] = [
     path: 'analysis/intervention',
     element: (
       <RequireAudience requiredRole="viewer">
-        <SuspendedInterventionDashboardPage />
+        <AdminSurfaceRouteGuard>
+          <SuspendedInterventionDashboardPage />
+        </AdminSurfaceRouteGuard>
       </RequireAudience>
     ),
   },

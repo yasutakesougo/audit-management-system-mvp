@@ -40,9 +40,10 @@ export function AttendanceList({
   return (
     <Stack spacing={0.75}>
       {rows.map((row) => {
-        const rangeText = row.checkInAt && row.checkOutAt
-          ? `${formatTime(row.checkInAt)}〜${formatTime(row.checkOutAt)}`
-          : '—';
+        let rangeText = '—';
+        if (row.checkInAt) {
+          rangeText = `${formatTime(row.checkInAt)}〜${row.checkOutAt ? formatTime(row.checkOutAt) : ''}`;
+        }
 
         return (
           <Card key={row.userCode} variant="outlined" data-usercode={row.userCode}>

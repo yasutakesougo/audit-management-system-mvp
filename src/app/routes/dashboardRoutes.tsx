@@ -5,6 +5,7 @@ import HubLanding from '@/app/hubs/HubLanding';
 import { withHubAudienceGuard } from '@/app/hubs/hubRouting';
 import ProtectedRoute from '@/app/ProtectedRoute';
 import { AuthCallbackRoute } from '@/auth/AuthCallbackRoute';
+import AdminSurfaceRouteGuard from '@/components/AdminSurfaceRouteGuard';
 import RequireAudience from '@/components/RequireAudience';
 import type { RouteObject } from 'react-router-dom';
 
@@ -85,7 +86,9 @@ export const dashboardRoutes: RouteObject[] = [
     path: 'ops',
     element: (
       <RequireAudience requiredRole="viewer">
-        <SuspendedOpsMetricsPage />
+        <AdminSurfaceRouteGuard>
+          <SuspendedOpsMetricsPage />
+        </AdminSurfaceRouteGuard>
       </RequireAudience>
     ),
   },
