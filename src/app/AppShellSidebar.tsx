@@ -38,6 +38,10 @@ type Props = {
   onToggleNavCollapse: () => void;
   filteredNavItems: NavItem[];
   groupedNavItems: GroupedNavItems;
+  showMoreNavItems: boolean;
+  hasMoreNavItems: boolean;
+  todayLiteNavV2: boolean;
+  onToggleMoreNavItems: () => void;
   isAdmin: boolean;
   onNavigate?: () => void;
 };
@@ -51,7 +55,7 @@ const NavItemRow: React.FC<{
   currentSearch: string;
   onNavigate?: () => void;
 }> = React.memo(({ item, navCollapsed, currentPathname, currentSearch, onNavigate }) => {
-  const { label, to, isActive, testId, icon: IconComponent, prefetchKey, prefetchKeys } = item;
+  const { label, to, isActive, testId, icon: IconComponent, prefetchKey, prefetchKeys, tier = 'core' } = item;
   const active = isActive(currentPathname, currentSearch);
   const isRecordSection = label.includes('運営状況') || label.includes('記録一覧');
   const showLabel = !navCollapsed;
@@ -65,7 +69,7 @@ const NavItemRow: React.FC<{
 
   const commonProps = {
     selected: active,
-    'data-testid': testId,
+    'data-testid': testId ?? `${tier}-nav-item-${label}`,
     'aria-current': active ? ('page' as const) : undefined,
     onClick: handleClick,
     sx: {
@@ -208,6 +212,10 @@ export const AppShellSidebar: React.FC<Props> = ({
   onToggleNavCollapse,
   filteredNavItems,
   groupedNavItems,
+  showMoreNavItems,
+  hasMoreNavItems,
+  todayLiteNavV2,
+  onToggleMoreNavItems,
   onNavigate,
 }) => {
   const handleSearchKeyDown = useCallback(
@@ -244,6 +252,17 @@ export const AppShellSidebar: React.FC<Props> = ({
         </Box>
       )}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: navCollapsed ? 'center' : 'flex-end', px: 1, py: 0.5 }}>
+        {todayLiteNavV2 && !navCollapsed && hasMoreNavItems && (
+          <Box sx={{ mr: 1 }}>
+            <IconButton
+              onClick={onToggleMoreNavItems}
+              aria-label={showMoreNavItems ? 'Moreを閉じる' : 'Moreを開く'}
+              size="small"
+            >
+              {showMoreNavItems ? '−' : '+'}
+            </IconButton>
+          </Box>
+        )}
         <Tooltip title={navCollapsed ? 'ナビを展開' : 'ナビを折りたたみ'} placement="right" enterDelay={100}>
           <IconButton
             onClick={onToggleNavCollapse}
@@ -273,8 +292,24 @@ export const MobileNavContent: React.FC<{
   filteredNavItems: NavItem[];
   groupedNavItems: GroupedNavItems;
   navCollapsed: boolean;
+  showMoreNavItems: boolean;
+  hasMoreNavItems: boolean;
+  todayLiteNavV2: boolean;
+  onToggleMoreNavItems: () => void;
   onNavigate: () => void;
-}> = ({ navQuery, onNavQueryChange, onNavSearchKeyDown, filteredNavItems, groupedNavItems, navCollapsed, onNavigate }) => {
+}> = ({
+  navQuery,
+  onNavQueryChange,
+  onNavSearchKeyDown,
+  filteredNavItems,
+  groupedNavItems,
+  navCollapsed,
+  showMoreNavItems,
+  hasMoreNavItems,
+  todayLiteNavV2,
+  onToggleMoreNavItems,
+  onNavigate,
+}) => {
   return (
     <Box
       role="navigation"
@@ -300,6 +335,17 @@ export const MobileNavContent: React.FC<{
           }}
         />
       </Box>
+      {todayLiteNavV2 && hasMoreNavItems && (
+        <Box sx={{ px: 1.5, pb: 1 }}>
+          <IconButton
+            onClick={onToggleMoreNavItems}
+            aria-label={showMoreNavItems ? 'Moreを閉じる' : 'Moreを開く'}
+            size="small"
+          >
+            {showMoreNavItems ? '−' : '+'}
+          </IconButton>
+        </Box>
+      )}
       <GroupedNavList
         filteredNavItems={filteredNavItems}
         groupedNavItems={groupedNavItems}

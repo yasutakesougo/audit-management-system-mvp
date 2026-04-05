@@ -16,6 +16,7 @@ import type React from 'react';
 // ============================================================================
 
 export type NavAudience = 'all' | 'staff' | 'admin' | 'reception';
+export type NavTier = 'core' | 'more' | 'admin';
 
 export type NavItem = {
   label: string;
@@ -26,6 +27,8 @@ export type NavItem = {
   prefetchKey?: PrefetchKey;
   prefetchKeys?: PrefetchKey[];
   audience?: NavAudience | NavAudience[];
+  tier?: NavTier;
+  featureFlag?: 'todayLiteNavV2';
   /** 
    * 紐づくナビゲーショングループのキー。
    * 新画面追加時、どの業務フロー/目的に沿うかを必ず指定します。

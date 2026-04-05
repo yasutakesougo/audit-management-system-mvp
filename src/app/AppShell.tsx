@@ -168,10 +168,14 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     navItems,
     filteredNavItems,
     groupedNavItems,
+    showMoreNavItems,
+    hasMoreNavItems,
+    todayLiteNavV2,
     isAdmin,
     handleNavSearchKeyDown,
     handleMobileNavigate,
     handleToggleNavCollapse,
+    handleToggleMoreNavItems,
   } = useAppShellState();
 
   // ── Wake Lock（キオスクモード時のみ） ───────────────────────────────
@@ -204,6 +208,10 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       onToggleNavCollapse={handleToggleNavCollapse}
       filteredNavItems={filteredNavItems}
       groupedNavItems={groupedNavItems}
+      showMoreNavItems={showMoreNavItems}
+      hasMoreNavItems={hasMoreNavItems}
+      todayLiteNavV2={todayLiteNavV2}
+      onToggleMoreNavItems={handleToggleMoreNavItems}
       isAdmin={isAdmin}
     />
   ) : null;
@@ -283,6 +291,10 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 filteredNavItems={filteredNavItems}
                 groupedNavItems={groupedNavItems}
                 navCollapsed={navCollapsed}
+                showMoreNavItems={showMoreNavItems}
+                hasMoreNavItems={hasMoreNavItems}
+                todayLiteNavV2={todayLiteNavV2}
+                onToggleMoreNavItems={handleToggleMoreNavItems}
                 onNavigate={handleMobileNavigate}
               />
             </Drawer>

@@ -3,10 +3,12 @@
  * Extracted from AppShell.tsx for cleaner separation of concerns.
  */
 import {
+    buildVisibleNavItems,
     createNavItems,
     filterNavItems,
     groupNavItems,
     roleToNavAudience,
+    splitNavItemsByTier,
     type NavAudience,
 } from '@/app/config/navigationConfig';
 import { resolveHubRouteMetadata } from '@/app/hubs/hubDefinitions';
@@ -39,7 +41,7 @@ function parseKioskRouteMode(search: string): KioskRouteMode {
 export function useAppShellState() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { schedules, complianceForm, icebergPdca, staffAttendance, todayOps } = useFeatureFlags();
+  const { schedules, complianceForm, icebergPdca, staffAttendance, todayOps, todayLiteNavV2 } = useFeatureFlags();
   const dashboardPath = useDashboardPath();
   const currentRole = useAuthStore((s) => s.currentUserRole);
   const setCurrentUserRole = useAuthStore((s) => s.setCurrentUserRole);
@@ -74,6 +76,7 @@ export function useAppShellState() {
   const [desktopNavOpen, setDesktopNavOpen] = useState(true);
   const [navQuery, setNavQuery] = useState('');
   const [navCollapsed, setNavCollapsed] = useState(false);
+  const [showMoreNavItems, setShowMoreNavItems] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const drawerWidth = 240;
   const drawerMiniWidth = 64;
@@ -165,8 +168,15 @@ export function useAppShellState() {
 
   const isKiosk = settings.layoutMode === 'kiosk';
 
+  const visibleNavItems = useMemo(
+    () => buildVisibleNavItems(navItems, navAudience, { showMore: showMoreNavItems, todayLiteNavV2 }),
+    [navItems, navAudience, showMoreNavItems, todayLiteNavV2],
+  );
+
+  const navItemsByTier = useMemo(() => splitNavItemsByTier(navItems), [navItems]);
+
   const filteredNavItems = useMemo(() => {
-    const searched = filterNavItems(navItems, navQuery);
+    const searched = filterNavItems(visibleNavItems, navQuery);
 
     // ── Kiosk mode: 現場で使う導線だけに絞る ──────────────────────────
     // Today → 進捗 → 各記録に直接飛べるため「日次記録」「健康記録」は非表示。
@@ -189,7 +199,7 @@ export function useAppShellState() {
       if (hiddenItems.includes(item.to)) return false;
       return true;
     });
-  }, [navItems, navQuery, settings.hiddenNavGroups, settings.hiddenNavItems, isKiosk]);
+  }, [visibleNavItems, navQuery, settings.hiddenNavGroups, settings.hiddenNavItems, isKiosk]);
   const groupedNavItems = useMemo(() => groupNavItems(filteredNavItems, isAdmin), [filteredNavItems, isAdmin]);
 
   // ── Callbacks ──────────────────────────────────────────────────────────────
@@ -219,6 +229,10 @@ export function useAppShellState() {
   const handleToggleNavCollapse = useCallback(() => {
     setNavCollapsed((v) => !v);
     setNavQuery('');
+  }, []);
+
+  const handleToggleMoreNavItems = useCallback(() => {
+    setShowMoreNavItems((v) => !v);
   }, []);
 
   const showDesktopSidebar = !isFullscreenMode && isDesktop && desktopNavOpen;
@@ -256,10 +270,14 @@ export function useAppShellState() {
     navItems,
     filteredNavItems,
     groupedNavItems,
+    showMoreNavItems,
+    hasMoreNavItems: todayLiteNavV2 && navItemsByTier.more.length > 0,
+    todayLiteNavV2,
     isAdmin,
     // Handlers
     handleNavSearchKeyDown,
     handleMobileNavigate,
     handleToggleNavCollapse,
+    handleToggleMoreNavItems,
   };
 }
