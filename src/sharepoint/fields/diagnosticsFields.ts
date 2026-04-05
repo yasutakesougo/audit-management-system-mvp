@@ -36,6 +36,25 @@ export const FIELD_MAP_DIAGNOSTICS_REPORTS = {
 } as const;
 
 /**
+ * Diagnostics_Reports の drift 耐性候補
+ *
+ * `TopIssue` は既存テナントで `TopIssue0` に自動サフィックスされる事例があるため、
+ * 保存時に動的解決する。
+ */
+export const DIAGNOSTICS_REPORTS_CANDIDATES = {
+  id: [FIELD_MAP_DIAGNOSTICS_REPORTS.id],
+  title: [FIELD_MAP_DIAGNOSTICS_REPORTS.title],
+  overall: [FIELD_MAP_DIAGNOSTICS_REPORTS.overall],
+  topIssue: [FIELD_MAP_DIAGNOSTICS_REPORTS.topIssue, 'TopIssue0', 'Top_x0020_Issue'],
+  summaryText: [FIELD_MAP_DIAGNOSTICS_REPORTS.summaryText],
+  reportLink: [FIELD_MAP_DIAGNOSTICS_REPORTS.reportLink],
+  notified: [FIELD_MAP_DIAGNOSTICS_REPORTS.notified],
+  notifiedAt: [FIELD_MAP_DIAGNOSTICS_REPORTS.notifiedAt],
+  created: [FIELD_MAP_DIAGNOSTICS_REPORTS.created],
+  modified: [FIELD_MAP_DIAGNOSTICS_REPORTS.modified],
+} as const;
+
+/**
  * Diagnostics_Reports の select フィールド（固定）
  *
  * Power Automate/SharePoint は環境で返却形式が微妙に異なるため、
