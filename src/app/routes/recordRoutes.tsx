@@ -3,6 +3,7 @@
  */
 import HubLanding from '@/app/hubs/HubLanding';
 import { withHubAudienceGuard } from '@/app/hubs/hubRouting';
+import AdminSurfaceRouteGuard from '@/components/AdminSurfaceRouteGuard';
 import RequireAudience from '@/components/RequireAudience';
 import { MeetingMinutesRoutes } from '@/features/meeting-minutes/routes';
 import type { RouteObject } from 'react-router-dom';
@@ -85,7 +86,9 @@ export const recordRoutes: RouteObject[] = [
     path: 'handoff-analysis',
     element: (
       <RequireAudience requiredRole="viewer">
-        <SuspendedHandoffAnalysisPage />
+        <AdminSurfaceRouteGuard>
+          <SuspendedHandoffAnalysisPage />
+        </AdminSurfaceRouteGuard>
       </RequireAudience>
     ),
   },
