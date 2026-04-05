@@ -16,6 +16,7 @@ import {
     type NavAudience,
     type NavGroupKey,
     type NavItem,
+    type NavTier,
 } from './navigationConfig.types';
 
 const NAV_AUDIENCE_LEVEL: Record<NavAudience, number> = {
@@ -54,6 +55,46 @@ export function requiredRoleToNavAudience(requiredRole: Role = 'viewer'): NavAud
 export function isNavVisible(item: NavItem, navAudience: NavAudience): boolean {
   const audienceList = Array.isArray(item.audience) ? item.audience : [item.audience ?? 'all'];
   return audienceList.some((audience) => NAV_AUDIENCE_LEVEL[navAudience] >= NAV_AUDIENCE_LEVEL[audience]);
+}
+
+export type BuildVisibleNavItemsOptions = {
+  showMore: boolean;
+  todayLiteNavV2: boolean;
+};
+
+const DEFAULT_TIER: NavTier = 'core';
+
+const roleToStrictAudience = (audience: NavAudience): 'viewer' | 'reception' | 'admin' => {
+  if (audience === 'admin') return 'admin';
+  if (audience === 'reception') return 'reception';
+  return 'viewer';
+};
+
+export function buildVisibleNavItems(
+  items: NavItem[],
+  navAudience: NavAudience,
+  opts: BuildVisibleNavItemsOptions,
+): NavItem[] {
+  const role = roleToStrictAudience(navAudience);
+  if (!opts.todayLiteNavV2) return items;
+
+  return items.filter((item) => {
+    const tier = item.tier ?? DEFAULT_TIER;
+    if (tier === 'admin' && role !== 'admin') return false;
+    if (tier === 'more' && !opts.showMore) return false;
+    return true;
+  });
+}
+
+export function splitNavItemsByTier(items: NavItem[]): Record<NavTier, NavItem[]> {
+  return items.reduce<Record<NavTier, NavItem[]>>(
+    (acc, item) => {
+      const tier = item.tier ?? DEFAULT_TIER;
+      acc[tier].push(item);
+      return acc;
+    },
+    { core: [], more: [], admin: [] },
+  );
 }
 
 // ============================================================================
