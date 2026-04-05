@@ -22,6 +22,19 @@ export interface SpMetric {
 const MAX_EVENTS = 1000;
 let events: SpMetric[] = [];
 
+// ─── Throttle pub/sub (for 429 realtime detection) ──────────────────────────
+type ThrottleCallback = () => void;
+const _throttleCallbacks: Set<ThrottleCallback> = new Set();
+
+/**
+ * 429 発生時に呼ばれるコールバックを登録する。
+ * @returns unsubscribe 関数
+ */
+export function subscribeToThrottle(cb: ThrottleCallback): () => void {
+  _throttleCallbacks.add(cb);
+  return () => { _throttleCallbacks.delete(cb); };
+}
+
 export const spTelemetryStore = {
   record(event: SpFetchTelemetryEvent, payload: Omit<SpMetric, 'timestamp' | 'event'>) {
     if (events.length >= MAX_EVENTS) {
@@ -44,6 +57,10 @@ export const spTelemetryStore = {
       ...payload,
       url: endpointPath, // Store normalized endpoint for easier group by
     });
+
+    if (event === 'sp:throttled') {
+      _throttleCallbacks.forEach((cb) => { try { cb(); } catch { /* fail-open */ } });
+    }
   },
 
   getSummary() {
