@@ -94,6 +94,33 @@ describe('DataProviderAttendanceRepository - Regression / Hardening', () => {
         expect.any(Object),
       );
     });
+
+    it('skips unresolved optional fields on write (AttendanceDaily)', async () => {
+      mockProvider.getResourceNames.mockResolvedValue(['AttendanceDaily']);
+      mockProvider.getFieldInternalNames.mockResolvedValue(
+        new Set(['Id', 'Title', 'UserCode', 'RecordDate', 'Status']),
+      );
+      mockProvider.listItems.mockResolvedValue([]);
+
+      await repository.upsertDailyByKey({
+        UserCode: 'U001',
+        RecordDate: '2026-04-05',
+        Status: 'present',
+        CheckInAt: '2026-04-05T09:00:00+09:00',
+        CheckOutAt: '2026-04-05T15:00:00+09:00',
+      });
+
+      expect(mockProvider.createItem).toHaveBeenCalledTimes(1);
+      const payload = mockProvider.createItem.mock.calls[0][1] as Record<string, unknown>;
+      expect(payload).not.toHaveProperty('CheckInAt');
+      expect(payload).not.toHaveProperty('CheckOutAt');
+      expect(payload).toMatchObject({
+        Title: 'U001_2026-04-05',
+        UserCode: 'U001',
+        RecordDate: '2026-04-05',
+        Status: 'present',
+      });
+    });
   });
 
   describe('Mapping Logic (toAttendanceUser / toAttendanceDaily)', () => {
