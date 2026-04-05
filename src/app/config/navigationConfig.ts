@@ -27,6 +27,7 @@ import {
     type CreateNavItemsConfig,
     type NavGroupKey,
     type NavItem,
+    type NavTier,
 } from './navigationConfig.types';
 
 // Re-export all types and constants for public API parity
@@ -39,17 +40,20 @@ export type {
     CreateNavItemsConfig,
     NavAudience,
     NavGroupKey,
-    NavItem
+    NavItem,
+    NavTier,
 } from './navigationConfig.types';
 
 // Re-export all helper functions for public API parity
 export {
+    buildVisibleNavItems,
     filterNavItems,
     groupNavItems,
     isNavVisible,
     pickGroup,
     requiredRoleToNavAudience,
     roleToNavAudience,
+    splitNavItemsByTier,
 } from './navigationConfig.helpers';
 
 // ============================================================================
@@ -61,6 +65,7 @@ type HubNavItemOverrides = {
   testId?: string;
   prefetchKey?: NavItem['prefetchKey'];
   prefetchKeys?: NavItem['prefetchKeys'];
+  tier?: NavTier;
 };
 
 const createHubNavItem = (hubId: HubId, overrides: HubNavItemOverrides = {}): NavItem => ({
@@ -73,6 +78,7 @@ const createHubNavItem = (hubId: HubId, overrides: HubNavItemOverrides = {}): Na
   prefetchKeys: overrides.prefetchKeys,
   audience: requiredRoleToNavAudience(getHubRequiredRole(hubId)),
   group: hubId as NavGroupKey,
+  tier: overrides.tier,
 });
 
 /**
@@ -156,6 +162,8 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       audience: NAV_AUDIENCE.all,
       group: 'today' as NavGroupKey,
+      tier: 'more',
+      featureFlag: 'todayLiteNavV2',
     },
     {
       label: '申し送りタイムライン',
@@ -173,6 +181,8 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       audience: NAV_AUDIENCE.all,
       group: 'today' as NavGroupKey,
+      tier: 'more',
+      featureFlag: 'todayLiteNavV2',
     },
 
     // --- 2. 支援計画・アセスメント (assessment) ---
@@ -225,6 +235,8 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       testId: TESTIDS.nav.analysis,
       audience: NAV_AUDIENCE.admin,
       group: 'planning' as NavGroupKey,
+      tier: 'admin',
+      featureFlag: 'todayLiteNavV2',
     },
     {
       // Tier C: Mock依存。管理者のみ表示。
@@ -234,6 +246,8 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       audience: NAV_AUDIENCE.admin,
       group: 'planning' as NavGroupKey,
+      tier: 'admin',
+      featureFlag: 'todayLiteNavV2',
     },
 
     // --- 3. 記録・振り返り (record) ---
@@ -247,6 +261,8 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       testId: TESTIDS.nav.dashboard,
       audience: NAV_AUDIENCE.admin,
       group: 'records' as NavGroupKey,
+      tier: 'admin',
+      featureFlag: 'todayLiteNavV2',
     },
     createHubNavItem('records'),
     {
@@ -274,13 +290,15 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       audience: NAV_AUDIENCE.admin,
       group: 'records' as NavGroupKey,
+      tier: 'admin',
+      featureFlag: 'todayLiteNavV2',
     },
 
     // --- 4. 拠点運営 (ops) ---
     // 順序: 運用メトリクス → 請求処理 → (以下条件付で追加) 職員勤怠 → 統合カレンダー等 → コンプライアンス監査
     // NOTE: 「運営スケジュール」は /schedules/week?tab=ops に統合済み（PR #1121）。
     //       独立ナビ項目は削除し、「スケジュール」タブから到達する。
-    createHubNavItem('operations'),
+    createHubNavItem('operations', { tier: 'admin' }),
     {
       // Tier C: Mock依存。管理者のみ表示。
       label: '運用メトリクス',
@@ -289,6 +307,8 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       audience: NAV_AUDIENCE.admin,
       group: 'operations' as NavGroupKey,
+      tier: 'admin',
+      featureFlag: 'todayLiteNavV2',
     },
     createHubNavItem('billing', { testId: TESTIDS.nav.billing }),
 
@@ -387,6 +407,8 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       testId: TESTIDS.nav.exceptionCenter,
       audience: NAV_AUDIENCE.admin,
       group: 'operations' as NavGroupKey,
+      tier: 'admin',
+      featureFlag: 'todayLiteNavV2',
     });
 
     // --- マスタ・管理 (admin) ---

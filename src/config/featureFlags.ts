@@ -6,6 +6,7 @@ import {
     isSchedulesFeatureEnabled,
     isSchedulesWeekV2Enabled,
     isStaffAttendanceEnabled,
+    isTodayLiteNavV2FeatureEnabled,
     isTestMode,
     isTodayLiteUiFeatureEnabled,
     isTodayOpsFeatureEnabled,
@@ -23,6 +24,7 @@ export type FeatureFlagSnapshot = {
 
   todayOps: boolean;
   todayLiteUi: boolean;
+  todayLiteNavV2: boolean;
 };
 
 const _hasExplicitOverride = (storageKey: string, envKey: string, envOverride?: EnvRecord): boolean => {
@@ -107,6 +109,7 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
 
     todayOps: isTodayOpsFeatureEnabled(envOverride),
     todayLiteUi: isTodayLiteUiFeatureEnabled(envOverride),
+    todayLiteNavV2: isTodayLiteNavV2FeatureEnabled(envOverride),
   };
 
   const explicitSchedules = hasExplicitBoolEnv('VITE_FEATURE_SCHEDULES', envOverride);
@@ -121,6 +124,8 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
     const todayOps = explicitTodayOps ? readBool('VITE_FEATURE_TODAY_OPS', false, envOverride) : true;
     const explicitTodayLiteUi = hasExplicitBoolEnv('VITE_FEATURE_TODAY_LITE_UI', envOverride);
     const todayLiteUi = explicitTodayLiteUi ? readBool('VITE_FEATURE_TODAY_LITE_UI', false, envOverride) : false;
+    const explicitTodayLiteNavV2 = hasExplicitBoolEnv('VITE_FEATURE_TODAY_LITE_NAV_V2', envOverride);
+    const todayLiteNavV2 = explicitTodayLiteNavV2 ? readBool('VITE_FEATURE_TODAY_LITE_NAV_V2', false, envOverride) : false;
 
     return {
       ...baseSnapshot,
@@ -128,6 +133,7 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
       icebergPdca,
       todayOps,
       todayLiteUi,
+      todayLiteNavV2,
     };
   }
 
@@ -180,6 +186,7 @@ export const FeatureFlagsProvider: FC<FeatureFlagsProviderProps> = ({ value, chi
 
     snapshot.todayOps,
     snapshot.todayLiteUi,
+    snapshot.todayLiteNavV2,
   ]);
 
   return createElement(FeatureFlagsContext.Provider, { value: memoized }, children);

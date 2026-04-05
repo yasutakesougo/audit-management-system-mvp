@@ -347,6 +347,9 @@ export const isTodayOpsFeatureEnabled = (envOverride?: EnvRecord): boolean =>
 export const isTodayLiteUiFeatureEnabled = (envOverride?: EnvRecord): boolean =>
   readBool('VITE_FEATURE_TODAY_LITE_UI', false, envOverride) || readLocalStorageFlag('feature:todayLiteUi') || false;
 
+export const isTodayLiteNavV2FeatureEnabled = (envOverride?: EnvRecord): boolean =>
+  readBool('VITE_FEATURE_TODAY_LITE_NAV_V2', false, envOverride) || readLocalStorageFlag('feature:todayLiteNavV2') || false;
+
 export const shouldSkipLogin = (envOverride?: EnvRecord): boolean =>
   // Force SharePoint mode must never bypass login.
   readBool('VITE_FORCE_SHAREPOINT', false, envOverride)
