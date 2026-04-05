@@ -119,6 +119,26 @@ describe('MeetingMinutesBlockViewer', () => {
     expect(screen.getByText('フォールバックテキスト')).toBeInTheDocument();
   });
 
+  it('should render report blocks with 報告 label', () => {
+    const blocks: MeetingMinuteBlock[] = [
+      makeBlock('report', '進捗は順調です'),
+    ];
+
+    render(<MeetingMinutesBlockViewer blocks={blocks} />);
+    expect(screen.getByText('報告')).toBeInTheDocument();
+    expect(screen.getByText('進捗は順調です')).toBeInTheDocument();
+  });
+
+  it('should render notification blocks with 連絡 label', () => {
+    const blocks: MeetingMinuteBlock[] = [
+      makeBlock('notification', '来週月曜は休日です'),
+    ];
+
+    render(<MeetingMinutesBlockViewer blocks={blocks} />);
+    expect(screen.getByText('連絡')).toBeInTheDocument();
+    expect(screen.getByText('来週月曜は休日です')).toBeInTheDocument();
+  });
+
   it('should handle blocks with empty content', () => {
     const blocks: MeetingMinuteBlock[] = [{
       id: 'empty-block',

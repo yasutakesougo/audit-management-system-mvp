@@ -13,6 +13,8 @@ import {
     Paper,
     Stack,
     TextField,
+    ToggleButton,
+    ToggleButtonGroup,
     Typography,
 } from '@mui/material';
 import * as React from 'react';
@@ -24,7 +26,14 @@ import { useMeetingMinutesDetail } from '../hooks/useMeetingMinutes';
 import type { MeetingMinutesRepository } from '../sp/repository';
 import { auditLog } from '@/lib/debugLogger';
 import { MeetingMinutesBlockViewer } from '../components/MeetingMinutesBlockViewer';
-import { buildHandoffSections } from '../editor/blockHandoffExtractor';
+import { buildHandoffPayload } from '../editor/buildHandoffPayload';
+import { HANDOFF_TEMPLATES, type HandoffAudience } from '../editor/handoffTemplates';
+import { MeetingMinutesPrintPreview } from '../export/components/MeetingMinutesPrintPreview';
+import { buildMeetingMinutesExportModel } from '../export/buildMeetingMinutesExportModel';
+import { useMeetingMinutesPdfExport } from '../export/pdf/useMeetingMinutesPdfExport';
+import { buildMeetingMinutesPdfFileName } from '../export/pdf/buildMeetingMinutesPdfFileName';
+import { useMeetingMinutesSharePointExport } from '../export/sharepoint/useMeetingMinutesSharePointExport';
+import { SharePointSaveResultActions } from '../export/sharepoint/SharePointSaveResultActions';
 
 const renderMultiline = (value?: string) =>
   (value ?? '')
@@ -45,15 +54,22 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
   const createHandoff = useCreateHandoffFromExternalSource();
   const { show } = useToast();
   const [openSend, setOpenSend] = React.useState(false);
-  const [sendSummary, setSendSummary] = React.useState(true);
-  const [sendDecisions, setSendDecisions] = React.useState(true);
-  const [sendActions, setSendActions] = React.useState(true);
+  const [audience, setAudience] = React.useState<HandoffAudience>('field');
+  const [sendSummary, setSendSummary] = React.useState(HANDOFF_TEMPLATES.field.defaultSelection.includeSummary);
+  const [sendDecisions, setSendDecisions] = React.useState(HANDOFF_TEMPLATES.field.defaultSelection.includeDecisions);
+  const [sendActions, setSendActions] = React.useState(HANDOFF_TEMPLATES.field.defaultSelection.includeActions);
+  const [sendReports, setSendReports] = React.useState(HANDOFF_TEMPLATES.field.defaultSelection.includeReports);
+  const [sendNotifications, setSendNotifications] = React.useState(HANDOFF_TEMPLATES.field.defaultSelection.includeNotifications);
   const [extra, setExtra] = React.useState('');
   const [sending, setSending] = React.useState(false);
   const [sendError, setSendError] = React.useState<string | null>(null);
   const [quickSending, setQuickSending] = React.useState(false);
   const [quickError, setQuickError] = React.useState<string | null>(null);
   const [quickSent, setQuickSent] = React.useState(false);
+  const [openPreview, setOpenPreview] = React.useState(false);
+
+  const { exportAsPdf } = useMeetingMinutesPdfExport();
+  const { saveToSharePoint, isSaving: isSavingToSP, error: saveErrorSP, lastSavedFile, clearLastSavedFile } = useMeetingMinutesSharePointExport();
 
   if (!Number.isFinite(id) || id <= 0) {
     return (
@@ -84,51 +100,6 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
   const isDailyMeeting = minutes.category === '朝会' || minutes.category === '夕会';
   const hasBlocks = (minutes.contentBlocks ?? []).length > 0;
 
-  const buildHandoffPayload = (options: {
-    includeSummary: boolean;
-    includeDecisions: boolean;
-    includeActions: boolean;
-    extraText?: string;
-  }) => {
-    // block ベース抽出 + legacy fallback
-    const sections = buildHandoffSections(
-      minutes.contentBlocks,
-      { summary: minutes.summary, decisions: minutes.decisions, actions: minutes.actions }
-    );
-
-    const lines: string[] = [];
-    const label = `${minutes.category}（${minutes.meetingDate}）`;
-    lines.push(`【${label}】`);
-
-    if (options.includeSummary && sections.summary) {
-      lines.push(`\n■要点\n${sections.summary}`);
-    }
-    if (options.includeDecisions && sections.decisions) {
-      lines.push(`\n■決定事項\n${sections.decisions}`);
-    }
-    if (options.includeActions && sections.actions) {
-      lines.push(`\n■アクション\n${sections.actions}`);
-    }
-    // block 抽出で得られた追加セクション
-    if (sections.reports) {
-      lines.push(`\n■報告\n${sections.reports}`);
-    }
-    if (sections.notifications) {
-      lines.push(`\n■連絡事項\n${sections.notifications}`);
-    }
-    if (options.extraText?.trim()) {
-      lines.push(`\n■追記\n${options.extraText.trim()}`);
-    }
-
-    const sourceUrl = `/meeting-minutes/${minutes.id}`;
-    lines.push(`\n---\n元議事録: ${sourceUrl}`);
-
-    const title = `【${minutes.category}】${minutes.meetingDate}`;
-    const body = lines.join('\n');
-
-    return { title, body, sourceUrl };
-  };
-
   return (
     <Box sx={{ p: 2 }}>
       <Stack spacing={2}>
@@ -152,10 +123,11 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
                   setQuickSending(true);
                   setQuickError(null);
                   try {
-                    const { title, body, sourceUrl } = buildHandoffPayload({
-                      includeSummary: true,
-                      includeDecisions: true,
-                      includeActions: true,
+                    const template = HANDOFF_TEMPLATES.field;
+                    const { title, body, sourceUrl } = buildHandoffPayload(minutes, {
+                      ...template.defaultSelection,
+                      sectionOrder: template.sectionOrder,
+                      audience: 'field',
                     });
                     const result = await createHandoff({
                       title,
@@ -191,6 +163,12 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
             )}
             <Button variant="outlined" onClick={() => setOpenSend(true)}>
               申し送りに送る
+            </Button>
+            <Button variant="outlined" onClick={() => {
+              clearLastSavedFile();
+              setOpenPreview(true);
+            }}>
+              印刷 / PDF保存
             </Button>
             <Button variant="outlined" onClick={() => nav(-1)}>
               戻る
@@ -298,9 +276,40 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
       <Dialog open={openSend} onClose={() => (!sending ? setOpenSend(false) : undefined)} maxWidth="sm" fullWidth>
         <DialogTitle>申し送りに送る</DialogTitle>
         <DialogContent dividers>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>送信先テンプレート（順序と初期項目の提案）</Typography>
+            <ToggleButtonGroup
+              color="primary"
+              value={audience}
+              exclusive
+              onChange={(e, newValue: HandoffAudience | null) => {
+                if (newValue !== null) {
+                  setAudience(newValue);
+                  const template = HANDOFF_TEMPLATES[newValue];
+                  setSendSummary(template.defaultSelection.includeSummary);
+                  setSendReports(template.defaultSelection.includeReports);
+                  setSendDecisions(template.defaultSelection.includeDecisions);
+                  setSendActions(template.defaultSelection.includeActions);
+                  setSendNotifications(template.defaultSelection.includeNotifications);
+                }
+              }}
+              fullWidth
+              size="small"
+            >
+              <ToggleButton value="field">現場申し送り</ToggleButton>
+              <ToggleButton value="admin">管理者共有</ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>セクションの個別調整（手動で変更可能）</Typography>
+          <Stack>
           <FormControlLabel
             control={<Checkbox checked={sendSummary} onChange={(e) => setSendSummary(e.target.checked)} />}
             label="要点（Summary）"
+          />
+          <FormControlLabel
+            control={<Checkbox checked={sendReports} onChange={(e) => setSendReports(e.target.checked)} />}
+            label="報告（Reports）"
           />
           <FormControlLabel
             control={<Checkbox checked={sendDecisions} onChange={(e) => setSendDecisions(e.target.checked)} />}
@@ -310,6 +319,11 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
             control={<Checkbox checked={sendActions} onChange={(e) => setSendActions(e.target.checked)} />}
             label="アクション（Actions）"
           />
+          <FormControlLabel
+            control={<Checkbox checked={sendNotifications} onChange={(e) => setSendNotifications(e.target.checked)} />}
+            label="連絡事項（Notifications）"
+          />
+          </Stack>
           <TextField
             label="追記（任意）"
             value={extra}
@@ -331,17 +345,21 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
           </Button>
           <Button
             variant="contained"
-            disabled={sending || (!sendSummary && !sendDecisions && !sendActions)}
+            disabled={sending || (!sendSummary && !sendDecisions && !sendActions && !sendReports && !sendNotifications)}
             startIcon={sending ? <CircularProgress size={16} color="inherit" /> : undefined}
             onClick={async () => {
               setSending(true);
               setSendError(null);
               try {
-                const { title, body, sourceUrl } = buildHandoffPayload({
+                const { title, body, sourceUrl } = buildHandoffPayload(minutes, {
                   includeSummary: sendSummary,
                   includeDecisions: sendDecisions,
                   includeActions: sendActions,
+                  includeReports: sendReports,
+                  includeNotifications: sendNotifications,
                   extraText: extra,
+                  sectionOrder: HANDOFF_TEMPLATES[audience].sectionOrder,
+                  audience,
                 });
 
                 const result = await createHandoff({
@@ -377,6 +395,116 @@ export function MeetingMinutesDetailPage(props: { repo: MeetingMinutesRepository
             }}
           >
             {sending ? '送信中…' : '送信'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Print Preview Dialog */}
+      <Dialog
+        open={openPreview}
+        onClose={() => setOpenPreview(false)}
+        maxWidth="md"
+        fullWidth
+        sx={{
+          '@media print': {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            m: 0,
+            p: 0,
+            boxShadow: 'none',
+            '& .MuiDialog-container': {
+              height: 'auto',
+            },
+            '& .MuiPaper-root': {
+              boxShadow: 'none',
+              m: 0,
+              p: 0,
+              maxWidth: '100%',
+              width: '100%',
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ '@media print': { display: 'none' } }}>
+          印刷 / PDF保存
+        </DialogTitle>
+        <DialogContent dividers sx={{ '@media print': { border: 'none', p: 0, overflow: 'visible' } }}>
+          <Box sx={{ mb: 2, '@media print': { display: 'none' } }}>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              <strong>出力ファイル名:</strong> {buildMeetingMinutesPdfFileName({
+                title: minutes.title,
+                meetingDate: minutes.meetingDate,
+                audience,
+              })}
+            </Typography>
+            {saveErrorSP && (
+              <Typography variant="body2" color="error" sx={{ mb: 1 }}>
+                保存エラー: {saveErrorSP}
+              </Typography>
+            )}
+            <ToggleButtonGroup
+              color="primary"
+              value={audience}
+              exclusive
+              onChange={(e, newValue: HandoffAudience | null) => {
+                if (newValue !== null) setAudience(newValue);
+              }}
+              size="small"
+            >
+              <ToggleButton value="field">現場向け</ToggleButton>
+              <ToggleButton value="admin">管理者向け</ToggleButton>
+            </ToggleButtonGroup>
+            {lastSavedFile && (
+              <SharePointSaveResultActions 
+                result={lastSavedFile} 
+                onClear={clearLastSavedFile} 
+                title={minutes.title}
+                meetingDate={minutes.meetingDate}
+                audience={audience}
+              />
+            )}
+          </Box>
+          <Box className="print-content" sx={{ p: 2 }}>
+            <MeetingMinutesPrintPreview
+              model={buildMeetingMinutesExportModel({ minutes, audience })}
+              audience={audience}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ '@media print': { display: 'none' } }}>
+          <Button onClick={() => setOpenPreview(false)} disabled={isSavingToSP}>閉じる</Button>
+          <Button 
+            variant="outlined" 
+            disabled={isSavingToSP}
+            startIcon={isSavingToSP ? <CircularProgress size={16} /> : undefined}
+            onClick={async () => {
+              try {
+                const res = await saveToSharePoint({
+                  model: buildMeetingMinutesExportModel({ minutes, audience }),
+                  audience,
+                });
+                if (res) {
+                  show('success', `SharePoint に保存しました: ${res.fileName}`);
+                }
+              } catch {
+                // error is handled by hook and shown in UI
+              }
+            }}
+          >
+            SharePointに保存
+          </Button>
+          <Button 
+            variant="contained" 
+            disabled={isSavingToSP}
+            onClick={() => exportAsPdf({
+              model: buildMeetingMinutesExportModel({ minutes, audience }),
+              audience,
+            })}
+          >
+            PDFとして保存 (印刷)
           </Button>
         </DialogActions>
       </Dialog>
