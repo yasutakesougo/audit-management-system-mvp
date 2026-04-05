@@ -14,6 +14,8 @@ import {
   USERS_MASTER_ESSENTIALS,
   USER_TRANSPORT_SETTINGS_CANDIDATES,
   USER_BENEFIT_PROFILE_CANDIDATES,
+  USER_BENEFIT_PROFILE_EXT_CANDIDATES,
+  USERS_BENEFIT_EXT_FIELD_MAP,
   type UserRow,
   type UserSelectMode,
 } from '@/sharepoint/fields';
@@ -82,9 +84,10 @@ export class DataProviderUserRepository implements UserRepository {
 
   private transportResolvedFields: Record<string, string | undefined> | null = null;
   private benefitResolvedFields: Record<string, string | undefined> | null = null;
-
+  private benefitExtResolvedFields: Record<string, string | undefined> | null = null;
   private readonly transportListTitle: string;
   private readonly benefitListTitle: string;
+  private readonly benefitExtListTitle: string;
 
   constructor(options: {
     provider: IDataProvider;
@@ -99,6 +102,7 @@ export class DataProviderUserRepository implements UserRepository {
     
     this.transportListTitle = sanitizeEnvValue(readEnv('VITE_SP_LIST_USER_TRANSPORT', '')) || 'UserTransport_Settings';
     this.benefitListTitle = sanitizeEnvValue(readEnv('VITE_SP_LIST_USER_BENEFIT', '')) || 'UserBenefit_Profile';
+    this.benefitExtListTitle = sanitizeEnvValue(readEnv('VITE_SP_LIST_USER_BENEFIT_EXT', '')) || 'UserBenefit_Profile_Ext';
   }
 
   private resolvingPromise: Promise<Record<string, string | undefined> | null> | null = null;
@@ -272,12 +276,15 @@ export class DataProviderUserRepository implements UserRepository {
         try {
           const transportCandidatesMap = USER_TRANSPORT_SETTINGS_CANDIDATES as unknown as Record<string, string[]>;
           const benefitCandidatesMap = USER_BENEFIT_PROFILE_CANDIDATES as unknown as Record<string, string[]>;
+          const benefitExtCandidatesMap = USER_BENEFIT_PROFILE_EXT_CANDIDATES as unknown as Record<string, string[]>;
 
-          const [transportRows, benefitRows, transportResolved, benefitResolved] = await Promise.all([
+          const [transportRows, benefitRows, benefitExtRows, transportResolved, benefitResolved, benefitExtResolved] = await Promise.all([
             this.provider.listItems<Record<string, unknown>>(this.transportListTitle).catch(() => []),
             this.provider.listItems<Record<string, unknown>>(this.benefitListTitle).catch(() => []),
+            this.provider.listItems<Record<string, unknown>>(this.benefitExtListTitle).catch(() => []),
             this.resolveAccessoryFields(this.transportListTitle, transportCandidatesMap),
-            this.resolveAccessoryFields(this.benefitListTitle, benefitCandidatesMap)
+            this.resolveAccessoryFields(this.benefitListTitle, benefitCandidatesMap),
+            this.resolveAccessoryFields(this.benefitExtListTitle, benefitExtCandidatesMap)
           ]);
 
           const transportMap = new Map<string, Record<string, unknown>>(
@@ -292,12 +299,19 @@ export class DataProviderUserRepository implements UserRepository {
               r,
             ]),
           );
+          const benefitExtMap = new Map<string, Record<string, unknown>>(
+            washRows(benefitExtRows, benefitExtCandidatesMap, benefitExtResolved).map((r) => [
+              String(r.userId || r.UserID || r.userID || ''),
+              r,
+            ]),
+          );
 
           domainItems = domainItems.map(user => {
             const tRow = transportMap.get(user.UserID);
             const bRow = benefitMap.get(user.UserID);
-            const sanitized = this.sanitizeDomainRecord(user, !!tRow, !!bRow);
-            return this.mergeExtraData(sanitized, tRow, bRow);
+            const beRow = benefitExtMap.get(user.UserID);
+            const sanitized = this.sanitizeDomainRecord(user, !!tRow, !!bRow, !!beRow);
+            return this.mergeExtraData(sanitized, tRow, bRow, beRow);
           });
         } catch (je) {
           auditLog.warn('users', 'DataProviderUserRepository.lazy_join_failed', { error: String(je) });
@@ -346,19 +360,23 @@ export class DataProviderUserRepository implements UserRepository {
           const filter = buildEq(ACCESSORY_LIST_JOIN_FIELD, domain.UserID);
           const transportCandidatesMap = USER_TRANSPORT_SETTINGS_CANDIDATES as unknown as Record<string, string[]>;
           const benefitCandidatesMap = USER_BENEFIT_PROFILE_CANDIDATES as unknown as Record<string, string[]>;
+          const benefitExtCandidatesMap = USER_BENEFIT_PROFILE_EXT_CANDIDATES as unknown as Record<string, string[]>;
 
-          const [tRowsRaw, bRowsRaw, transportResolved, benefitResolved] = await Promise.all([
+          const [tRowsRaw, bRowsRaw, beRowsRaw, transportResolved, benefitResolved, benefitExtResolved] = await Promise.all([
             this.provider.listItems<Record<string, unknown>>(this.transportListTitle, { filter, top: 1 }).catch(() => []),
             this.provider.listItems<Record<string, unknown>>(this.benefitListTitle, { filter, top: 1 }).catch(() => []),
+            this.provider.listItems<Record<string, unknown>>(this.benefitExtListTitle, { filter, top: 1 }).catch(() => []),
             this.resolveAccessoryFields(this.transportListTitle, transportCandidatesMap),
-            this.resolveAccessoryFields(this.benefitListTitle, benefitCandidatesMap)
+            this.resolveAccessoryFields(this.benefitListTitle, benefitCandidatesMap),
+            this.resolveAccessoryFields(this.benefitExtListTitle, benefitExtCandidatesMap),
           ]);
 
           const tRow = tRowsRaw[0] ? washRow(tRowsRaw[0], transportCandidatesMap, transportResolved) : undefined;
           const bRow = bRowsRaw[0] ? washRow(bRowsRaw[0], benefitCandidatesMap, benefitResolved) : undefined;
+          const beRow = beRowsRaw[0] ? washRow(beRowsRaw[0], benefitExtCandidatesMap, benefitExtResolved) : undefined;
           
-          const sanitized = this.sanitizeDomainRecord(domain, !!tRow, !!bRow);
-          return this.mergeExtraData(sanitized, tRow, bRow);
+          const sanitized = this.sanitizeDomainRecord(domain, !!tRow, !!bRow, !!beRow);
+          return this.mergeExtraData(sanitized, tRow, bRow, beRow);
         } catch (je) {
           auditLog.warn('users', 'DataProviderUserRepository.getById_join_failed', { error: String(je) });
         }
@@ -381,7 +399,8 @@ export class DataProviderUserRepository implements UserRepository {
     // 分離先リストへの書き込み (UserID 紐付け)
     await Promise.all([
       this.syncAccessoryList(this.transportListTitle, domain.UserID, payload, 'transport'),
-      this.syncAccessoryList(this.benefitListTitle, domain.UserID, payload, 'benefit')
+      this.syncAccessoryList(this.benefitListTitle, domain.UserID, payload, 'benefit'),
+      this.syncAccessoryList(this.benefitExtListTitle, domain.UserID, payload, 'benefit_ext')
     ]);
 
     this.audit?.({
@@ -408,7 +427,8 @@ export class DataProviderUserRepository implements UserRepository {
     // 分離先リストへの同期 (UserID 紐付け)
     await Promise.all([
       this.syncAccessoryList(this.transportListTitle, existing.UserID, payload, 'transport'),
-      this.syncAccessoryList(this.benefitListTitle, existing.UserID, payload, 'benefit')
+      this.syncAccessoryList(this.benefitListTitle, existing.UserID, payload, 'benefit'),
+      this.syncAccessoryList(this.benefitExtListTitle, existing.UserID, payload, 'benefit_ext')
     ]);
 
     const updated = await this.getById(numericId);
@@ -438,9 +458,11 @@ export class DataProviderUserRepository implements UserRepository {
     // 分離先リストのフィールドをメインリストへの送信から除外する
     const transportMapping = await this.getAccessoryMapping('transport');
     const benefitMapping = await this.getAccessoryMapping('benefit');
+    const benefitExtMapping = await this.getAccessoryMapping('benefit_ext');
     const accessoryPhysicalFields = new Set([
       ...Object.values(transportMapping).filter((v): v is string => !!v),
-      ...Object.values(benefitMapping).filter((v): v is string => !!v)
+      ...Object.values(benefitMapping).filter((v): v is string => !!v),
+      ...Object.values(benefitExtMapping).filter((v): v is string => !!v)
     ]);
 
     const filteredRequest: Record<string, unknown> = {};
@@ -475,7 +497,7 @@ export class DataProviderUserRepository implements UserRepository {
   }
 
   /** 分離先リストへの同期（Upsert ロジック） */
-  private async syncAccessoryList(listTitle: string, userId: string, payload: Partial<IUserMasterCreateDto>, type: 'transport' | 'benefit'): Promise<void> {
+  private async syncAccessoryList(listTitle: string, userId: string, payload: Partial<IUserMasterCreateDto>, type: 'transport' | 'benefit' | 'benefit_ext'): Promise<void> {
     const mapping = await this.getAccessoryMapping(type);
     const request = this.toRequest(payload, mapping);
 
@@ -537,17 +559,22 @@ export class DataProviderUserRepository implements UserRepository {
     }
   }
 
-  private async getAccessoryMapping(type: 'transport' | 'benefit'): Promise<Record<string, string | undefined>> {
+  private async getAccessoryMapping(type: 'transport' | 'benefit' | 'benefit_ext'): Promise<Record<string, string | undefined>> {
     if (type === 'transport') {
       if (this.transportResolvedFields) return this.transportResolvedFields;
       const candidates = USER_TRANSPORT_SETTINGS_CANDIDATES as unknown as Record<string, string[]>;
       this.transportResolvedFields = await this.resolveAccessoryFields(this.transportListTitle, candidates);
       return this.transportResolvedFields;
-    } else {
+    } else if (type === 'benefit') {
       if (this.benefitResolvedFields) return this.benefitResolvedFields;
       const candidates = USER_BENEFIT_PROFILE_CANDIDATES as unknown as Record<string, string[]>;
       this.benefitResolvedFields = await this.resolveAccessoryFields(this.benefitListTitle, candidates);
       return this.benefitResolvedFields;
+    } else {
+      if (this.benefitExtResolvedFields) return this.benefitExtResolvedFields;
+      const candidates = USER_BENEFIT_PROFILE_EXT_CANDIDATES as unknown as Record<string, string[]>;
+      this.benefitExtResolvedFields = await this.resolveAccessoryFields(this.benefitExtListTitle, candidates);
+      return this.benefitExtResolvedFields;
     }
   }
 
@@ -558,9 +585,15 @@ export class DataProviderUserRepository implements UserRepository {
     }
     if (listTitle === this.benefitListTitle) {
       return [
-        fields.recipientCertNumber, fields.recipientCertExpiry, fields.grantMunicipality, 
+        // recipientCertNumber moved to benefitExt
+        fields.recipientCertExpiry, fields.grantMunicipality, 
         fields.grantPeriodStart, fields.grantPeriodEnd, fields.disabilitySupportLevel, 
         fields.grantedDaysPerMonth, fields.userCopayLimit, fields.mealAddition, fields.copayPaymentMethod
+      ];
+    }
+    if (listTitle === this.benefitExtListTitle) {
+      return [
+        USERS_BENEFIT_EXT_FIELD_MAP.recipientCertNumber
       ];
     }
     return [];
@@ -827,7 +860,7 @@ export class DataProviderUserRepository implements UserRepository {
     return normalized;
   }
 
-  private mergeExtraData(domain: IUserMaster, transport?: Record<string, unknown>, benefit?: Record<string, unknown>): IUserMaster {
+  private mergeExtraData(domain: IUserMaster, transport?: Record<string, unknown>, benefit?: Record<string, unknown>, benefitExt?: Record<string, unknown>): IUserMaster {
     const next = { ...domain };
     
     if (transport) {
@@ -839,7 +872,7 @@ export class DataProviderUserRepository implements UserRepository {
     }
 
     if (benefit) {
-      if (benefit.recipientCertNumber !== undefined) next.RecipientCertNumber = benefit.recipientCertNumber as string;
+      // recipientCertNumber is now handled by benefitExt
       if (benefit.recipientCertExpiry !== undefined) next.RecipientCertExpiry = benefit.recipientCertExpiry as string;
       if (benefit.grantMunicipality !== undefined) next.GrantMunicipality = benefit.grantMunicipality as string;
       if (benefit.grantPeriodStart !== undefined) next.GrantPeriodStart = benefit.grantPeriodStart as string;
@@ -851,6 +884,10 @@ export class DataProviderUserRepository implements UserRepository {
       if (benefit.copayPaymentMethod !== undefined) next.CopayPaymentMethod = benefit.copayPaymentMethod as string;
     }
 
+    if (benefitExt) {
+      if (benefitExt.recipientCertNumber !== undefined) next.RecipientCertNumber = benefitExt.recipientCertNumber as string;
+    }
+
     return next;
   }
 
@@ -860,8 +897,8 @@ export class DataProviderUserRepository implements UserRepository {
    * スキャナと分類に基づき、不整合（LEGACY_LEFTOVER）を仮想的に解消する。
    * 分離先リストにデータが存在する場合、メインリスト側の残存フィールドを無効化する。
    */
-  private sanitizeDomainRecord(user: IUserMaster, hasTransport: boolean, hasBenefit: boolean): IUserMaster {
-    if (!hasTransport && !hasBenefit) return user;
+  private sanitizeDomainRecord(user: IUserMaster, hasTransport: boolean, hasBenefit: boolean, hasBenefitExt: boolean): IUserMaster {
+    if (!hasTransport && !hasBenefit && !hasBenefitExt) return user;
     
     // Virtual Fix: 分離先データが存在するカテゴリの、メイン側の残存フィールドをクリアする。
     // これにより、万が一 mergeExtraData が動作しない環境でも、古いデータが混入するのを防ぐ。
@@ -878,7 +915,7 @@ export class DataProviderUserRepository implements UserRepository {
 
     if (hasBenefit) {
       // These are now strictly managed by UserBenefit_Profile
-      sanitized.RecipientCertNumber = null;
+      // Note: RecipientCertNumber is special (moved further to EXT)
       sanitized.RecipientCertExpiry = null;
       sanitized.GrantMunicipality = null;
       sanitized.GrantPeriodStart = null;
@@ -888,6 +925,10 @@ export class DataProviderUserRepository implements UserRepository {
       sanitized.UserCopayLimit = null;
       sanitized.MealAddition = null;
       sanitized.CopayPaymentMethod = null;
+    }
+
+    if (hasBenefitExt) {
+      sanitized.RecipientCertNumber = null;
     }
     
     return sanitized;

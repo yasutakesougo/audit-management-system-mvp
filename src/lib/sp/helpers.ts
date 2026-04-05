@@ -6,11 +6,16 @@
  */
 import { auditLog } from '@/lib/debugLogger';
 import { getAppConfig } from '@/lib/env';
-export interface ResolutionResult<T extends string> {
+export type ResolutionResult<T extends string> = {
   resolved: Record<T, string | undefined>;
   missing: T[];
-  fieldStatus: Record<T, { resolvedName?: string; candidates: string[]; isDrifted: boolean }>;
-}
+  fieldStatus: Record<T, {
+    resolvedName?: string;
+    candidates: string[];
+    isDrifted: boolean;
+    driftType?: string;
+  }>;
+};
 
 export type RetryReason = 'timeout' | 'throttle' | 'server' | 'auth';
 
@@ -319,7 +324,7 @@ export function resolveInternalNamesDetailed<T extends string>(
   }
 ): ResolutionResult<T> {
   const resolved = {} as Record<T, string | undefined>;
-  const fieldStatus = {} as Record<T, { resolvedName?: string; candidates: string[]; isDrifted: boolean }>;
+  const fieldStatus = {} as Record<T, { resolvedName?: string; candidates: string[]; isDrifted: boolean; driftType?: string }>;
   const missing: T[] = [];
 
   // Case-insensitive lookup map for available fields
@@ -341,7 +346,7 @@ export function resolveInternalNamesDetailed<T extends string>(
         if (foundCandidate.toLowerCase() === candidates[key][0].toLowerCase()) {
           driftType = 'case_mismatch';
         } else {
-          driftType = 'fuzzy_match'; // Matched a secondary candidate or complex fuzzy
+          driftType = 'fallback'; // Matched a secondary candidate directly
         }
       }
 
@@ -369,9 +374,9 @@ export function resolveInternalNamesDetailed<T extends string>(
             break;
           }
 
-          // Strategy C: Check all available names by stripping _x0020_ and suffixes
+          // Strategy C: Check all available names by stripping _x00XX_ encoded chars and trailing suffixes
           for (const [availableLow, actual] of availableMap.entries()) {
-            const stripped = availableLow.replace(/_x0020_/g, '').replace(/[0-9]+$/, '');
+            const stripped = availableLow.replace(/_x[0-9a-f]{4}_/gi, '').replace(/[0-9]+$/, '');
             if (stripped === lowerBase) {
               foundCandidate = actual;
               driftType = 'fuzzy_match';
@@ -379,6 +384,34 @@ export function resolveInternalNamesDetailed<T extends string>(
             }
           }
           if (foundCandidate) break;
+
+          // Strategy C2: Also try stripping from the candidate side for bidirectional matching
+          const candidateStripped = lowerBase.replace(/_x[0-9a-f]{4}_/gi, '').replace(/[0-9]+$/, '');
+          if (candidateStripped !== lowerBase) {
+            for (const [availableLow, actual] of availableMap.entries()) {
+              const availStripped = availableLow.replace(/_x[0-9a-f]{4}_/gi, '').replace(/[0-9]+$/, '');
+              if (availStripped === candidateStripped) {
+                foundCandidate = actual;
+                driftType = 'fuzzy_match';
+                break;
+              }
+            }
+            if (foundCandidate) break;
+          }
+
+          // Strategy E: SharePoint 32-character truncation check
+          // If the internal name is exactly 32 chars and is a prefix of our candidate (after encoding), it's likely a match.
+          if (lowerBase.length > 32 || lowerBase.includes(' ')) {
+            const encodedBase = lowerBase.replace(/ /g, '_x0020_');
+            if (encodedBase.length >= 32) {
+              const truncated = encodedBase.slice(0, 32);
+              if (availableMap.has(truncated)) {
+                foundCandidate = availableMap.get(truncated);
+                driftType = 'truncation';
+                break;
+              }
+            }
+          }
 
           // Strategy D: Handle SharePoint specialized suffixes (like 'Id' for Person/Lookup or 'Text' for Note)
           const lowerBaseNoId = lowerBase.replace(/id$/, '');
@@ -408,10 +441,11 @@ export function resolveInternalNamesDetailed<T extends string>(
       fieldStatus[key] = {
         resolvedName: resolvedName,
         candidates: candidates[key],
-        isDrifted
+        isDrifted,
+        driftType
       };
       if (!resolvedName) {
-        missing.push(key);
+        missing.push(key as T);
       }
     }
   }

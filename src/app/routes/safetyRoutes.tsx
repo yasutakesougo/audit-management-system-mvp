@@ -2,6 +2,7 @@
  * Safety domain routes: /incidents
  */
 import RequireAudience from '@/components/RequireAudience';
+import AdminSurfaceRouteGuard from '@/components/AdminSurfaceRouteGuard';
 import type { RouteObject } from 'react-router-dom';
 
 import { SuspendedExceptionCenterPage, SuspendedIncidentListPage, SuspendedNotificationAuditLogPage } from './lazyPages';
@@ -19,7 +20,9 @@ export const safetyRoutes: RouteObject[] = [
     path: 'exceptions',
     element: (
       <RequireAudience requiredRole="viewer">
-        <SuspendedExceptionCenterPage />
+        <AdminSurfaceRouteGuard>
+          <SuspendedExceptionCenterPage />
+        </AdminSurfaceRouteGuard>
       </RequireAudience>
     ),
   },
@@ -27,7 +30,9 @@ export const safetyRoutes: RouteObject[] = [
     path: 'exceptions/audit',
     element: (
       <RequireAudience requiredRole="viewer">
-        <SuspendedNotificationAuditLogPage />
+        <AdminSurfaceRouteGuard>
+          <SuspendedNotificationAuditLogPage />
+        </AdminSurfaceRouteGuard>
       </RequireAudience>
     ),
   },

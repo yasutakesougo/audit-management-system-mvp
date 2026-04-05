@@ -520,6 +520,9 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
                                     <Chip size="small" label={d.expected} variant="outlined" />
                                     <Typography variant="caption">→</Typography>
                                     <Chip size="small" label={d.actual} color="warning" variant="filled" />
+                                    {d.driftType && (
+                                      <Chip size="small" label={d.driftType} variant="outlined" sx={{ fontSize: '0.65rem', height: 20 }} />
+                                    )}
                                   </Stack>
                                 ))}
                               </Stack>

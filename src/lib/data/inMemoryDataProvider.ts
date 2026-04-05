@@ -11,6 +11,7 @@ import { DataProviderItemNotFoundError } from '@/lib/errors';
  */
 export class InMemoryDataProvider implements IDataProvider {
   private storage: Map<string, Array<Record<string, unknown>>> = new Map();
+  private schemaStorage: Map<string, Set<string>> = new Map();
   private nextId = 1;
 
   constructor() {
@@ -113,8 +114,13 @@ export class InMemoryDataProvider implements IDataProvider {
 
   async getFieldInternalNames(resourceName: string): Promise<Set<string>> {
     const items = this.storage.get(resourceName) || [];
-    if (items.length === 0) return new Set(['Id', 'Created', 'Modified']);
-    const allKeys = new Set<string>();
+    const allKeys = new Set<string>(['Id', 'Created', 'Modified']);
+    
+    const schemaFields = this.schemaStorage.get(resourceName);
+    if (schemaFields) {
+      schemaFields.forEach(f => allKeys.add(f));
+    }
+    
     items.forEach(item => Object.keys(item).forEach(key => allKeys.add(key)));
     return allKeys;
   }
@@ -135,10 +141,13 @@ export class InMemoryDataProvider implements IDataProvider {
   /**
    * 自己修復（メモリ内実装ではリスト構造を強制しないため、メタデータのみ記録）
    */
-  async ensureListExists(resourceName: string, _fields: SpFieldDef[]): Promise<void> {
+  async ensureListExists(resourceName: string, fields: SpFieldDef[]): Promise<void> {
     if (!this.storage.has(resourceName)) {
       this.storage.set(resourceName, []);
     }
+    const schemaFields = this.schemaStorage.get(resourceName) || new Set<string>();
+    fields.forEach(f => schemaFields.add(f.internalName));
+    this.schemaStorage.set(resourceName, schemaFields);
   }
 
   /**

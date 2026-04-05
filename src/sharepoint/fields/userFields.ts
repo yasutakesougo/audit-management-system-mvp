@@ -145,7 +145,7 @@ export const USERS_MASTER_COMPLIANCE_FIELD_MAP = {
 } as const;
 
 // ── Common Candidates (SSOT) ──
-const CANDIDATE_USER_ID = ['UserID', 'UserCode', 'userId', 'cr013_userId', 'PersonID', 'Title'];
+const CANDIDATE_USER_ID = ['UserID', 'User ID', 'UserCode', 'userId', 'cr013_userId', 'PersonID', 'Title'];
 const CANDIDATE_FULL_NAME = ['FullName', 'Name', 'DisplayName', 'FullName0', 'cr013_fullName'];
 const CANDIDATE_FURIGANA = ['Furigana', 'Kana', 'FullNameFurigana', 'cr013_furigana'];
 const CANDIDATE_FULL_NAME_KANA = ['FullNameKana', 'FullName_Kana', 'cr013_fullNameKana'];
@@ -167,7 +167,7 @@ const CANDIDATE_TRANSPORT_ADDITION_TYPE = ['TransportAdditionType', 'cr013_trans
 
 // Benefit candidates
 const CANDIDATE_RECIPIENT_CERT_NUMBER = [
-  'RecipientCertNumber', 'CertNumber', 'RecipientCert',
+  'RecipientCertNumber', 'Recipient Cert Number', 'CertNumber', 'RecipientCert',
   'RecipientCertNo', 'BenefitCertNumber', 'RecipientCertificateNumber',
   'RecipientCertNumber0', 'cr013_recipientCertNumber',
 ];
@@ -253,7 +253,7 @@ export const USERS_TRANSPORT_FIELD_MAP = {
 } as const;
 
 export const USERS_BENEFIT_FIELD_MAP = {
-  recipientCertNumber: 'RecipientCertNumber',
+  // recipientCertNumber moved to USERS_BENEFIT_EXT_FIELD_MAP due to 8KB limit
   recipientCertExpiry: 'RecipientCertExpiry',
   grantMunicipality: 'GrantMunicipality',
   grantPeriodStart: 'GrantPeriodStart',
@@ -265,12 +265,17 @@ export const USERS_BENEFIT_FIELD_MAP = {
   copayPaymentMethod: 'CopayPaymentMethod',
 } as const;
 
+export const USERS_BENEFIT_EXT_FIELD_MAP = {
+  recipientCertNumber: 'RecipientCertNumber',
+} as const;
+
 /** 統合 FIELD_MAP (後方互換用) */
 export const USERS_MASTER_FIELD_MAP = {
   ...USERS_MASTER_CORE_FIELD_MAP,
   ...USERS_MASTER_COMPLIANCE_FIELD_MAP,
   ...USERS_TRANSPORT_FIELD_MAP,
   ...USERS_BENEFIT_FIELD_MAP,
+  ...USERS_BENEFIT_EXT_FIELD_MAP,
 } as const;
 
 // ── MINIMAL: 緊急フォールバック用（400エラー回避 / 4列） ──
@@ -386,6 +391,17 @@ export const USER_TRANSPORT_SETTINGS_CANDIDATES = {
 
 export const USER_TRANSPORT_SETTINGS_ESSENTIALS: (keyof typeof USER_TRANSPORT_SETTINGS_CANDIDATES)[] = [
   'userId',
+];
+
+// ── User Benefit Profile EXT (user_benefit_profile_ext) ──
+export const USER_BENEFIT_PROFILE_EXT_CANDIDATES = {
+  userId: CANDIDATE_USER_ID,
+  recipientCertNumber: CANDIDATE_RECIPIENT_CERT_NUMBER,
+} as const;
+
+export const USER_BENEFIT_PROFILE_EXT_ESSENTIALS: (keyof typeof USER_BENEFIT_PROFILE_EXT_CANDIDATES)[] = [
+  'userId',
+  'recipientCertNumber',
 ];
 
 /** @deprecated Use USERS_SELECT_FIELDS_CORE instead */
