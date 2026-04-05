@@ -232,6 +232,15 @@ export default defineConfig(({ mode }) => {
             if (normalized.includes('/@tanstack/')) {
               return 'tanstack';
             }
+            // ── Rich editor ──
+            if (
+              normalized.includes('/@blocknote/') ||
+              normalized.includes('/@mantine/') ||
+              normalized.includes('/prosemirror') ||
+              normalized.includes('/@tiptap/')
+            ) {
+              return 'vendor-blocknote';
+            }
             // ── Catch-all: let Rollup tree-shake into importing chunks ──
             return undefined;
           },

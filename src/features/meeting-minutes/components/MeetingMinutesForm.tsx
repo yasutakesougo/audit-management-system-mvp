@@ -1,10 +1,14 @@
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-import { Box, Button, Chip, IconButton, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Box, Button, Chip, CircularProgress, IconButton, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import * as React from 'react';
 
 import type { MeetingCategory, MeetingMinuteBlock, MeetingMinutes } from '../types';
 import { DailyMeetingExtension } from './DailyMeetingExtension';
-import { MeetingMinutesBlockEditor } from './MeetingMinutesBlockEditor';
+
+// Lazy-load BlockNote editor to keep @blocknote out of the App chunk (~500kB reduction)
+const MeetingMinutesBlockEditor = React.lazy(
+  () => import('./MeetingMinutesBlockEditor').then((m) => ({ default: m.MeetingMinutesBlockEditor }))
+);
 
 const CATEGORIES: MeetingCategory[] = ['職員会議', '朝会', '夕会', 'ケース会議', '委員会', 'その他'];
 
@@ -206,11 +210,19 @@ export function MeetingMinutesForm(props: {
         )}
 
         {/* ── ブロックエディタ（本文） ── */}
-        <MeetingMinutesBlockEditor
-          value={value.contentBlocks ?? []}
-          onChange={handleBlocksChange}
-          category={value.category}
-        />
+        <React.Suspense
+          fallback={
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress size={28} />
+            </Box>
+          }
+        >
+          <MeetingMinutesBlockEditor
+            value={value.contentBlocks ?? []}
+            onChange={handleBlocksChange}
+            category={value.category}
+          />
+        </React.Suspense>
 
         {/* ── レガシー: summary / decisions / actions は隠しフィールドとして維持 ── */}
         <Box
