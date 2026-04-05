@@ -20,6 +20,7 @@ export const MEETING_MINUTES_FIELDS = {
   attendees: 'Attendees',
   staffAttendance: 'StaffAttendance',
   userHealthNotes: 'UserHealthNotes',
+  contentBlocksJson: 'ContentBlocksJson',
   created: 'Created',
   modified: 'Modified',
 } as const;
@@ -40,6 +41,7 @@ export const MEETING_MINUTES_SELECT_FIELDS = [
   MEETING_MINUTES_FIELDS.attendees,
   MEETING_MINUTES_FIELDS.staffAttendance,
   MEETING_MINUTES_FIELDS.userHealthNotes,
+  MEETING_MINUTES_FIELDS.contentBlocksJson,
   MEETING_MINUTES_FIELDS.created,
   MEETING_MINUTES_FIELDS.modified,
 ] as const;

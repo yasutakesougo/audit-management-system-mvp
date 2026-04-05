@@ -11,7 +11,8 @@ describe('DriftObservabilityPanel', () => {
   it('renders empty-state labels and unresolved=0 when no events exist', async () => {
     const repository = {
       logEvent: vi.fn(async () => {}),
-      getEvents: vi.fn(async () => []),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getEvents: vi.fn(async () => []) as any,
       markResolved: vi.fn(async () => {}),
     };
 
@@ -40,15 +41,16 @@ describe('DriftObservabilityPanel', () => {
       getEvents: vi.fn(async (filter?: { since?: string }) => {
         if (filter?.since === dailySince) {
           return [
-            { listName: 'Daily_Attendance', fieldName: 'UserID', resolved: false },
+            { id: '1', listName: 'Daily_Attendance', fieldName: 'UserID', resolved: false, driftType: 'missing', severity: 'warn', detectedAt: '2026-04-04', resolutionType: 'fallback' },
           ];
         }
         return [
-          { listName: 'Daily_Attendance', fieldName: 'Status0', resolved: false },
-          { listName: 'Daily_Attendance', fieldName: 'Status0', resolved: false },
-          { listName: 'Users_Master', fieldName: 'UserID', resolved: true },
+          { id: '2', listName: 'Daily_Attendance', fieldName: 'Status0', resolved: false, driftType: 'missing', severity: 'warn', detectedAt: '2026-04-04', resolutionType: 'fallback' },
+          { id: '3', listName: 'Daily_Attendance', fieldName: 'Status0', resolved: false, driftType: 'missing', severity: 'warn', detectedAt: '2026-04-04', resolutionType: 'fallback' },
+          { id: '4', listName: 'Users_Master', fieldName: 'UserID', resolved: true, driftType: 'missing', severity: 'warn', detectedAt: '2026-04-04', resolutionType: 'fallback' },
         ];
-      }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      }) as any,
       markResolved: vi.fn(async () => {}),
     };
 

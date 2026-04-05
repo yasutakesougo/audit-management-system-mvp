@@ -38,6 +38,7 @@ export function MeetingMinutesEditPage(props: { repo: MeetingMinutesRepository }
         modified: m.modified,
         staffAttendance: m.staffAttendance ?? '',
         userHealthNotes: m.userHealthNotes ?? '',
+        contentBlocks: m.contentBlocks ?? [],
       });
     }
   }, [q.data, draft]);

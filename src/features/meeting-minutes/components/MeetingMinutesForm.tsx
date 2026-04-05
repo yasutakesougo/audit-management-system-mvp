@@ -1,9 +1,14 @@
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-import { Box, Button, Chip, IconButton, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Box, Button, Chip, CircularProgress, IconButton, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import * as React from 'react';
 
-import type { MeetingCategory, MeetingMinutes } from '../types';
+import type { MeetingCategory, MeetingMinuteBlock, MeetingMinutes } from '../types';
 import { DailyMeetingExtension } from './DailyMeetingExtension';
+
+// Lazy-load BlockNote editor to keep @blocknote out of the App chunk (~500kB reduction)
+const MeetingMinutesBlockEditor = React.lazy(
+  () => import('./MeetingMinutesBlockEditor').then((m) => ({ default: m.MeetingMinutesBlockEditor }))
+);
 
 const CATEGORIES: MeetingCategory[] = ['職員会議', '朝会', '夕会', 'ケース会議', '委員会', 'その他'];
 
@@ -36,6 +41,7 @@ export function createDefaultDraft(): MeetingMinutesDraft {
     modified: undefined,
     staffAttendance: '',
     userHealthNotes: '',
+    contentBlocks: [],
   };
 }
 
@@ -125,6 +131,13 @@ export function MeetingMinutesForm(props: {
 
   const isDailyMeeting = value.category === '朝会' || value.category === '夕会';
 
+  const handleBlocksChange = React.useCallback(
+    (blocks: MeetingMinuteBlock[]) => {
+      onChange({ ...value, contentBlocks: blocks });
+    },
+    [onChange]
+  );
+
   return (
     <Box sx={{ p: 2 }}>
       <Stack spacing={2}>
@@ -196,35 +209,66 @@ export function MeetingMinutesForm(props: {
           />
         )}
 
-        <TextField
-          label="要点（Summary）"
-          value={value.summary}
-          onChange={(e) => set('summary', e.target.value)}
-          fullWidth
-          multiline
-          minRows={4}
-          placeholder="会議の要点を短く。後で検索される“主役”です。"
-        />
+        {/* ── ブロックエディタ（本文） ── */}
+        <React.Suspense
+          fallback={
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress size={28} />
+            </Box>
+          }
+        >
+          <MeetingMinutesBlockEditor
+            value={value.contentBlocks ?? []}
+            onChange={handleBlocksChange}
+            category={value.category}
+          />
+        </React.Suspense>
 
-        <TextField
-          label="決定事項（Decisions）"
-          value={value.decisions}
-          onChange={(e) => set('decisions', e.target.value)}
-          fullWidth
-          multiline
-          minRows={4}
-          placeholder="例）・○○を来週から開始する\n・△△は中止する"
-        />
+        {/* ── レガシー: summary / decisions / actions は隠しフィールドとして維持 ── */}
+        <Box
+          sx={{
+            border: '1px solid',
+            borderColor: 'grey.300',
+            borderRadius: 1,
+            p: 2,
+            bgcolor: 'grey.50',
+          }}
+        >
+          <Typography variant="subtitle2" sx={{ mb: 1 }} color="text.secondary">
+            📝 テキストフィールド（従来形式・ブロックエディタ未入力時のフォールバック）
+          </Typography>
+          <Stack spacing={2}>
+            <TextField
+              label="要点（Summary）"
+              value={value.summary}
+              onChange={(e) => set('summary', e.target.value)}
+              fullWidth
+              multiline
+              minRows={3}
+              placeholder={'会議の要点を短く。後で検索される"主役"です。'}
+            />
 
-        <TextField
-          label="アクション（Actions）"
-          value={value.actions}
-          onChange={(e) => set('actions', e.target.value)}
-          fullWidth
-          multiline
-          minRows={4}
-          placeholder="例）・担当：山田 / 期限：2/20 / 内容：…"
-        />
+            <TextField
+              label="決定事項（Decisions）"
+              value={value.decisions}
+              onChange={(e) => set('decisions', e.target.value)}
+              fullWidth
+              multiline
+              minRows={3}
+              placeholder="例）・○○を来週から開始する&#10;・△△は中止する"
+            />
+
+            <TextField
+              label="アクション（Actions）"
+              value={value.actions}
+              onChange={(e) => set('actions', e.target.value)}
+              fullWidth
+              multiline
+              minRows={3}
+              placeholder="例）・担当：山田 / 期限：2/20 / 内容：…"
+            />
+          </Stack>
+        </Box>
 
         <TextField
           label="タグ（半角/全角スペース区切り）"

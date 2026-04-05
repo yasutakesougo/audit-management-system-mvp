@@ -44,7 +44,8 @@ describe('DataProviderServiceProvisionRepository', () => {
       updateItem: vi.fn(),
       deleteItem: vi.fn(),
       getMetadata: vi.fn(),
-      getFieldInternalNames: vi.fn(),
+      getFieldInternalNames: vi.fn().mockResolvedValue(new Set(Object.values(SERVICE_PROVISION_FIELDS))),
+      getResourceNames: vi.fn().mockResolvedValue(['ServiceProvisionRecords']),
       ensureListExists: vi.fn(),
       seed: vi.fn(),
     } as Mocked<IDataProvider>;
