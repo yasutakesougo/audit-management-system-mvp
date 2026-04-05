@@ -19,6 +19,7 @@ import { ACTIVITY_DIARY_CANDIDATES } from "@/sharepoint/fields/activityDiaryFiel
 import {
   USERS_MASTER_CANDIDATES,
   USER_BENEFIT_PROFILE_CANDIDATES,
+  USER_BENEFIT_PROFILE_EXT_CANDIDATES,
 } from "@/sharepoint/fields/userFields";
 import { STAFF_MASTER_CANDIDATES as STAFF_CANDIDATES_ORIGINAL } from "@/sharepoint/fields/staffFields";
 import {
@@ -208,6 +209,15 @@ const DRIFT_CANDIDATES_BY_KEY: Record<string, Record<string, string[]>> = {
   user_benefit_profile: (() => {
     const map: Record<string, string[]> = {};
     for (const cands of Object.values(USER_BENEFIT_PROFILE_CANDIDATES) as unknown as readonly string[][]) {
+      const primary = cands[0];
+      map[primary] = [...cands];
+    }
+    return map;
+  })(),
+
+  user_benefit_profile_ext: (() => {
+    const map: Record<string, string[]> = {};
+    for (const cands of Object.values(USER_BENEFIT_PROFILE_EXT_CANDIDATES) as unknown as readonly string[][]) {
       const primary = cands[0];
       map[primary] = [...cands];
     }
