@@ -191,7 +191,7 @@ describe('useTableDailyRecordSelection', () => {
 
       expect(result.current.selectedUsers).toHaveLength(2);
       expect(result.current.selectedUsers.map((u) => u.FullName)).toEqual([
-        '田中太郎', '山田一郎',
+        '山田一郎', '田中太郎',
       ]);
     });
 

@@ -21,6 +21,16 @@ type UseTableDailyRecordFilteringParams = {
   showTodayOnly?: boolean;
 };
 
+const userSortCollator = new Intl.Collator('ja-JP');
+
+const toUserSortKey = (user: StoreUser): string => (
+  user.Furigana
+  ?? user.FullNameKana
+  ?? user.FullName
+  ?? user.UserID
+  ?? ''
+).trim().normalize('NFKC');
+
 /**
  * Custom hook for filtering daily record users
  * 
@@ -44,7 +54,13 @@ export const useTableDailyRecordFiltering = ({
   showTodayOnly = true,
 }: UseTableDailyRecordFilteringParams): TableDailyRecordFilteringResult => {
   const candidateUsers = useMemo(
-    () => filterActiveUsers(users),
+    () => [...filterActiveUsers(users)].sort((a, b) => {
+      const kanaDiff = userSortCollator.compare(toUserSortKey(a), toUserSortKey(b));
+      if (kanaDiff !== 0) return kanaDiff;
+      const nameDiff = userSortCollator.compare((a.FullName ?? '').trim(), (b.FullName ?? '').trim());
+      if (nameDiff !== 0) return nameDiff;
+      return userSortCollator.compare((a.UserID ?? '').trim(), (b.UserID ?? '').trim());
+    }),
     [users],
   );
 
