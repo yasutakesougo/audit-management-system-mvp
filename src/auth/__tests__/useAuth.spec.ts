@@ -53,7 +53,7 @@ vi.mock('@/auth/MsalProvider', () => ({
 import { useMsalContext } from '@/auth/MsalProvider';
 import { isE2eMsalMockEnabled, shouldSkipLogin } from '@/lib/env';
 import { createE2EMsalAccount, persistMsalToken } from '@/lib/msal';
-import { useAuth } from '../useAuth';
+import { useAuth, __resetTokenCache } from '../useAuth';
 
 // ── typesafe mock refs ─────────────────────────────────────────────
 const mockIsE2e = vi.mocked(isE2eMsalMockEnabled);
@@ -103,6 +103,7 @@ const setupMsalContext = (overrides: {
 // ── test lifecycle ─────────────────────────────────────────────────
 describe('useAuth', () => {
   beforeEach(() => {
+    __resetTokenCache();
     mockIsE2e.mockReturnValue(false);
     mockSkipLogin.mockReturnValue(false);
     setupMsalContext();
