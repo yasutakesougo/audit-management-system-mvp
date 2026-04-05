@@ -412,7 +412,6 @@ export function resolveInternalNamesDetailed<T extends string>(
               }
             }
           }
-
           // Strategy D: Handle SharePoint specialized suffixes (like 'Id' for Person/Lookup or 'Text' for Note)
           const lowerBaseNoId = lowerBase.replace(/id$/, '');
           for (const [availableLow, actual] of availableMap.entries()) {

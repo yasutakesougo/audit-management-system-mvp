@@ -1,0 +1,85 @@
+{
+  "reportDate": "2026-04-05",
+  "totalEvents": 7,
+  "bundledCount": 6,
+  "countsBySeverity": {
+    "critical": 1,
+    "action_required": 1,
+    "watch": 2,
+    "silent": 2
+  },
+  "events": [
+    {
+      "fingerprint": "327f2280",
+      "severity": "critical",
+      "eventType": "http_429",
+      "area": "Platform",
+      "resourceKey": "SharePoint_API",
+      "occurrences": 1,
+      "firstSeen": "2026-04-05T11:38:24.750Z",
+      "lastSeen": "2026-04-05T11:38:24.750Z",
+      "nextAction": "【至急】運用管理者にエスカレーションし、システム全体の利用可否を確認してください。",
+      "sampleMessage": "SharePoint Throttle occurred."
+    },
+    {
+      "fingerprint": "2ff10a86",
+      "severity": "action_required",
+      "eventType": "http_500",
+      "area": "StaffAttendance",
+      "resourceKey": "Staff_Attendance",
+      "occurrences": 1,
+      "firstSeen": "2026-04-05T11:38:24.750Z",
+      "lastSeen": "2026-04-05T11:38:24.750Z",
+      "nextAction": "[Staff_Attendance] の保存フローに関するログを確認し、SharePointのリスト設定と実データの整合性を調査してください。",
+      "sampleMessage": "Transient 500 error on update."
+    },
+    {
+      "fingerprint": "c52ff402",
+      "severity": "watch",
+      "eventType": "health_fail",
+      "area": "Platform",
+      "resourceKey": "Users_Master",
+      "occurrences": 1,
+      "firstSeen": "2026-04-05T11:38:24.750Z",
+      "lastSeen": "2026-04-05T11:38:24.750Z",
+      "nextAction": "次回のNightly Patrolまで傾向を様子見（継続監視）",
+      "sampleMessage": "Users_Master list does not exist."
+    },
+    {
+      "fingerprint": "1485a11e",
+      "severity": "watch",
+      "eventType": "drift",
+      "area": "Daily",
+      "resourceKey": "support_record_daily",
+      "occurrences": 1,
+      "firstSeen": "2026-04-05T11:38:24.750Z",
+      "lastSeen": "2026-04-05T11:38:24.750Z",
+      "nextAction": "[support_record_daily] に誰かがフィールドを直接追加・削除した可能性を調査してください。",
+      "sampleMessage": "New field encountered."
+    },
+    {
+      "fingerprint": "f4a385a4",
+      "severity": "silent",
+      "eventType": "provision_skipped:block",
+      "area": "UserBenefit",
+      "resourceKey": "UserBenefit_Profile",
+      "occurrences": 2,
+      "firstSeen": "2026-04-05T11:38:24.750Z",
+      "lastSeen": "2026-04-05T11:38:24.750Z",
+      "nextAction": "（対応不要・本システムで安全に吸収済み）",
+      "sampleMessage": "Prevented creation to avoid 8KB limits."
+    },
+    {
+      "fingerprint": "0dacad70",
+      "severity": "silent",
+      "eventType": "drift",
+      "area": "UserBenefit",
+      "resourceKey": "UserBenefit_Profile",
+      "occurrences": 1,
+      "firstSeen": "2026-04-05T11:38:24.750Z",
+      "lastSeen": "2026-04-05T11:38:24.750Z",
+      "nextAction": "[UserBenefit_Profile] に誰かがフィールドを直接追加・削除した可能性を調査してください。",
+      "sampleMessage": "Strategy E absorbed it."
+    }
+  ]
+}
