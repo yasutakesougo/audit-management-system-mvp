@@ -36,8 +36,11 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import BuildIcon from '@mui/icons-material/Build';
 import type { SpHealthSignal } from '../spHealthSignalStore';
 import { useSpIndexCandidates, type SpIndexedField } from './useSpIndexCandidates';
+import { useSP } from '@/lib/spClient';
+import { executeIndexRemediation, type RemediationResult } from './spIndexRemediationService';
 
 interface Props {
   signal: SpHealthSignal | null;
@@ -145,11 +148,34 @@ function buildDiffLines(diff: ReloadDiff): DiffLine[] {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+// ── Remediation code → user message ──────────────────────────────────────────
+
+const REMEDIATION_CODE_MESSAGES: Record<string, string> = {
+  daily_limit_exceeded: '本日の自動修復上限（5件）に達しました。翌日以降に再試行してください。',
+  duplicate_action: 'このフィールドはこのセッションですでに修復済みです。',
+  delete_disabled: '削除操作はこのフェーズでは無効です。',
+  update_failed: 'SharePoint 側で更新に失敗しました。管理センターを確認してください。',
+  registry_not_found: 'リストがレジストリで見つかりません。設定を確認してください。',
+  validation_error: 'リストまたはフィールド名が不正です。',
+};
+
+function remediationMessage(result: RemediationResult): string {
+  if (result.ok) return `✅ ${result.internalName} のインデックスを追加しました。`;
+  return REMEDIATION_CODE_MESSAGES[result.code] ?? result.message;
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export function SpIndexPressurePanel({ signal }: Props) {
+  const sp = useSP();
   const [expanded, setExpanded] = React.useState(true);
   const [reloadKey, setReloadKey] = React.useState(0);
   const [copied, setCopied] = React.useState(false);
   const [reloadDiff, setReloadDiff] = React.useState<ReloadDiff | null>(null);
+
+  // 修復アクション状態
+  const [runningKey, setRunningKey] = React.useState<string | null>(null);
+  const [resultMap, setResultMap] = React.useState<Record<string, RemediationResult>>({});
 
   // 再チェック前のスナップショット
   const prevSnapshotRef = React.useRef<IndexSnapshot | null>(null);
@@ -203,6 +229,20 @@ export function SpIndexPressurePanel({ signal }: Props) {
     await copyText(template);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleRemediate = async (internalName: string) => {
+    if (!listName || !sp) return;
+    const key = `${listName}:${internalName}:add`;
+    setRunningKey(key);
+    const result = await executeIndexRemediation(sp, {
+      listTitle: listName,
+      internalName,
+      action: 'create',
+    });
+    setResultMap((prev) => ({ ...prev, [key]: result }));
+    setRunningKey(null);
+    if (result.ok) handleReload();
   };
 
   const diffLines = reloadDiff ? buildDiffLines(reloadDiff) : [];
@@ -439,26 +479,62 @@ export function SpIndexPressurePanel({ signal }: Props) {
                             <TableCell sx={{ fontWeight: 600, fontSize: '0.72rem' }}>
                               必要な理由（クエリ/機能）
                             </TableCell>
+                            <TableCell sx={{ fontWeight: 600, fontSize: '0.72rem', width: '110px' }}>
+                              修復
+                            </TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {additionCandidates.map((f) => (
-                            <TableRow key={f.internalName}>
-                              <TableCell>
-                                <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.78rem' }}>
-                                  {f.internalName}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                                  {f.displayName}
-                                </Typography>
-                              </TableCell>
-                              <TableCell>
-                                <Typography variant="caption" color="text.secondary">
-                                  {f.reason}
-                                </Typography>
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                          {additionCandidates.map((f) => {
+                            const rowKey = `${listName}:${f.internalName}:add`;
+                            const rowResult = resultMap[rowKey];
+                            const isRunning = runningKey === rowKey;
+                            return (
+                              <TableRow key={f.internalName}>
+                                <TableCell>
+                                  <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.78rem' }}>
+                                    {f.internalName}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                    {f.displayName}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {f.reason}
+                                  </Typography>
+                                  {rowResult && (
+                                    <Typography
+                                      variant="caption"
+                                      sx={{ display: 'block', mt: 0.5, fontWeight: 600,
+                                        color: rowResult.ok ? 'success.dark' : 'error.main' }}
+                                    >
+                                      {remediationMessage(rowResult)}
+                                    </Typography>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <Tooltip title={rowResult?.ok ? '修復済み' : 'インデックスを追加'}>
+                                    <span>
+                                      <Button
+                                        size="small"
+                                        variant="outlined"
+                                        color={rowResult?.ok ? 'success' : 'primary'}
+                                        disabled={!!runningKey || rowResult?.ok === true || !listName}
+                                        onClick={() => handleRemediate(f.internalName)}
+                                        startIcon={isRunning
+                                          ? <CircularProgress size={12} color="inherit" />
+                                          : <BuildIcon fontSize="inherit" />}
+                                        sx={{ fontSize: '0.7rem', py: 0.25, minWidth: 0 }}
+                                      >
+                                        {rowResult?.ok ? '完了' : 'インデックス追加'}
+                                      </Button>
+                                    </span>
+                                  </Tooltip>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     )}
