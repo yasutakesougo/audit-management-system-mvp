@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -46,25 +48,32 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($env:SPO_CERT_BASE64)) {
             throw "SPO_CERT_BASE64 secret is missing."
           }
-          
-          # 証明書のインポート (Linux 互換性のためのコンストラクタ形式)
-          $certBytes = [Convert]::FromBase64String($env:SPO_CERT_BASE64)
-          $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
-            $certBytes,
-            $env:SPO_CERT_PASSWORD,
-            [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable -bor
-            [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::PersistKeySet
-          )
+          if ([string]::IsNullOrWhiteSpace($env:SPO_CERT_PASSWORD)) {
+            throw "SPO_CERT_PASSWORD secret is missing."
+          }
 
-          # 接続
+          # パスワードを SecureString に変換
+          $securePassword = ConvertTo-SecureString $env:SPO_CERT_PASSWORD -AsPlainText -Force
+
+          # 証明書オブジェクトを自作せず、Base64文字列をそのまま PnP に渡す (最も安全な方法)
           Connect-PnPOnline `
             -Url $env:SHAREPOINT_SITE `
             -ClientId $env:AAD_APP_ID `
             -Tenant $env:AAD_TENANT_ID `
-            -Certificate $cert
+            -CertificateBase64Encoded $env:SPO_CERT_BASE64 `
+            -CertificatePassword $securePassword
+
+          # 接続確認
+          $connection = Get-PnPConnection
+          if (-not $connection) {
+            throw "PnP connection was not established."
+          }
 
           # トークン取得
           $token = Get-PnPAccessToken
+          if ([string]::IsNullOrWhiteSpace($token)) {
+            throw "Failed to acquire SharePoint access token."
+          }
           
           # ✅ セキュリティ対策: トークンをログからマスク
           Write-Output "::add-mask::$token"
