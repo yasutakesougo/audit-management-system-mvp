@@ -1,8 +1,9 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll, type MockInstance } from 'vitest';
 import { screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { renderWithRouter } from './_helpers/renderWithRouter';
 import AuditPanel from '../../src/features/audit/AuditPanel';
+import type { AuditEvent } from '../../src/lib/audit';
 
 // Mocks for hooks
 const syncAllMock = vi.fn();
@@ -12,17 +13,17 @@ vi.mock('../../src/features/audit/useAuditSync', () => ({ useAuditSync: () => ({
 vi.mock('../../src/features/audit/useAuditSyncBatch', () => ({ useAuditSyncBatch: () => ({ syncAllBatch: syncAllBatchMock }) }));
 
 // Mutable audit store
-let _logs: any[] = [];
+let _logs: AuditEvent[] = [];
 vi.mock('../../src/lib/audit', () => ({
   readAudit: () => _logs,
   getAuditLogs: () => _logs,
   clearAudit: () => { _logs = []; },
-  retainAuditWhere: (pred: (l: any) => boolean) => { _logs = _logs.filter(pred); }
+  retainAuditWhere: (pred: (l: AuditEvent) => boolean) => { _logs = _logs.filter(pred); }
 }));
 
 // hash util minimal mock
 vi.mock('../../src/lib/hashUtil', () => ({
-  canonicalJSONStringify: (o: any) => JSON.stringify(o),
+  canonicalJSONStringify: (o: unknown) => JSON.stringify(o),
   computeEntryHash: async () => 'hash'
 }));
 
@@ -31,15 +32,15 @@ vi.mock('../../src/lib/debugLogger', () => ({ auditLog: { debug: () => {}, error
 
 // Silence jsdom navigation warning (anchor clicks) that surfaces from implicit a.click()
 beforeAll(() => {
-  if (!(HTMLAnchorElement.prototype as any)._origClick) {
-    (HTMLAnchorElement.prototype as any)._origClick = HTMLAnchorElement.prototype.click;
+  if (!(HTMLAnchorElement.prototype as unknown as Record<string, unknown>)._origClick) {
+    (HTMLAnchorElement.prototype as unknown as Record<string, unknown>)._origClick = HTMLAnchorElement.prototype.click;
   }
-  HTMLAnchorElement.prototype.click = function() { /* no-op in tests */ } as any;
+  HTMLAnchorElement.prototype.click = function() { /* no-op in tests */ } as unknown as () => void;
 });
 
 afterAll(() => {
-  if ((HTMLAnchorElement.prototype as any)._origClick) {
-    HTMLAnchorElement.prototype.click = (HTMLAnchorElement.prototype as any)._origClick;
+  if ((HTMLAnchorElement.prototype as unknown as Record<string, unknown>)._origClick) {
+    HTMLAnchorElement.prototype.click = (HTMLAnchorElement.prototype as unknown as Record<string, unknown>)._origClick as () => void;
   }
 });
 
@@ -57,17 +58,17 @@ function seedLogs(n: number) {
 }
 
 describe('AuditPanel action handlers', () => {
-  let createUrlSpy: any;
+  let createUrlSpy: MockInstance;
   beforeEach(() => {
     _logs = [];
     syncAllMock.mockReset();
     syncAllBatchMock.mockReset();
     // jsdom may not implement createObjectURL; provide stub if absent
-    if (!(URL as any).createObjectURL) {
-      (URL as any).createObjectURL = () => 'blob://stub';
+    if (!(URL as unknown as Record<string, unknown>).createObjectURL) {
+      (URL as unknown as Record<string, unknown>).createObjectURL = () => 'blob://stub';
     }
-    if (!(URL as any).revokeObjectURL) {
-      (URL as any).revokeObjectURL = () => {};
+    if (!(URL as unknown as Record<string, unknown>).revokeObjectURL) {
+      (URL as unknown as Record<string, unknown>).revokeObjectURL = () => {};
     }
     createUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob://x');
   });

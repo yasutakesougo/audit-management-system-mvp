@@ -77,6 +77,7 @@ module.exports = {
       { type: 'app', pattern: 'src/*' },
     ],
     'import/resolver': {
+      node: true,
       typescript: {
         project: ['./tsconfig.json'],
         alwaysTryTypes: true,
@@ -173,9 +174,12 @@ module.exports = {
         '**/__tests__/**',
         '**/*.simulation.ts',
         '**/DebugZodErrorPage.tsx',
+        'scripts/**',
+        'tests/**',
       ],
       rules: {
         'no-console': 'off',
+        '@typescript-eslint/no-explicit-any': 'off',
       }
     },
     {
@@ -234,6 +238,24 @@ module.exports = {
           },
         ],
       },
+    },
+    {
+      // テスト・スクリプトでは fetch モック / CLI用 fetch を許可
+      files: [
+        'tests/**',
+        'scripts/**',
+      ],
+      rules: {
+        'no-restricted-globals': [
+          'error',
+          {
+            name: 'confirm',
+            message: 'window.confirm は禁止です。useConfirmDialog + ConfirmDialog を使用してください。',
+          },
+          // fetch はテストモック・CLIスクリプトの正規用途のため除外
+        ],
+        'import/no-unresolved': 'off',
+      }
     },
   ]
 };

@@ -3,6 +3,7 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { renderWithRouter } from './_helpers/renderWithRouter';
 import AuditPanel from '../../src/features/audit/AuditPanel';
+import type { AuditEvent } from '../../src/lib/audit';
 
 // Mocks
 vi.mock('../../src/features/audit/useAuditSync', () => ({ useAuditSync: () => ({ syncAll: vi.fn() }) }));
@@ -12,19 +13,19 @@ const syncAllBatchMock = vi.fn();
 vi.mock('../../src/features/audit/useAuditSyncBatch', () => ({ useAuditSyncBatch: () => ({ syncAllBatch: syncAllBatchMock }) }));
 
 // Mutable audit log data store for tests
-let _logs: any[] = [];
+let _logs: AuditEvent[] = [];
 vi.mock('../../src/lib/audit', async () => {
   return {
     readAudit: () => _logs,
     getAuditLogs: () => _logs,
     clearAudit: () => { _logs = []; },
-    retainAuditWhere: (pred: (l: any, idx: number) => boolean) => { _logs = _logs.filter(pred); },
-  } as any;
+    retainAuditWhere: (pred: (l: AuditEvent, idx: number) => boolean) => { _logs = _logs.filter(pred); },
+  };
 });
 
 // Hash util computeEntryHash is invoked indirectly; provide fast stable mock
 vi.mock('../../src/lib/hashUtil', () => ({
-  canonicalJSONStringify: (o: any) => JSON.stringify(o),
+  canonicalJSONStringify: (o: unknown) => JSON.stringify(o),
   computeEntryHash: async () => 'hash',
 }));
 

@@ -217,10 +217,8 @@ describe('Schedules Repository Unit Tests', () => {
   describe('Conflict Detection', () => {
     it('should identify 412 Precondition Failed error', () => {
       const error = new Error('412 Precondition Failed');
-      (error as any).status = 412;
-
-      // Adapter should catch this and map to result.conflict()
-      expect((error as any).status).toBe(412);
+      (error as unknown as Record<string, unknown>).status = 412;
+      expect((error as unknown as Record<string, unknown>).status).toBe(412);
     });
 
     it('should distinguish 412 from other HTTP errors', () => {

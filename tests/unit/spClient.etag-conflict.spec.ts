@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { SharePointItemNotFoundError, SharePointMissingEtagError } from '@/lib/errors';
+import { SharePointItemNotFoundError } from '@/lib/errors';
 
 vi.mock('@/lib/env', async () => {
   const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
@@ -15,7 +15,7 @@ import { createSpClient } from '@/lib/spClient';
 const baseUrl = 'https://contoso.sharepoint.com/sites/wf/_api/web';
 const acquireToken = async () => 'tok';
 
-const jsonRes = (status: number, body: any = {}, headers: Record<string, string> = {}) =>
+const jsonRes = (status: number, body: unknown = {}, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { 'content-type': 'application/json;odata=nometadata', ...headers },

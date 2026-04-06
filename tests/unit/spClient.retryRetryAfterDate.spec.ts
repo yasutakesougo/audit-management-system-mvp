@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 
 // Covers Retry-After header path when value is an HTTP-date (not numeric seconds)
 
@@ -14,10 +14,10 @@ vi.mock('@/lib/env', async () => {
 import { createSpClient } from '../../src/lib/spClient';
 
 describe('spClient retry with HTTP-date Retry-After header', () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn>;
-  let acquireToken: any;
+  let fetchSpy: Mock;
+  let acquireToken: Mock<() => Promise<string>>;
   beforeEach(() => {
-    fetchSpy = vi.spyOn(global, 'fetch' as any);
+    fetchSpy = vi.spyOn(globalThis, 'fetch') as unknown as Mock;
     acquireToken = vi.fn().mockResolvedValue('tok');
   });
   afterEach(() => { vi.restoreAllMocks(); });

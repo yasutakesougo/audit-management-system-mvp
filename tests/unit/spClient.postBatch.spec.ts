@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 
 vi.mock('@/lib/env', async () => {
   const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
@@ -14,11 +14,11 @@ import { createSpClient } from '@/lib/spClient';
 // Additional coverage for createSpClient helper functions: getListItemsByTitle, addListItemByTitle, postBatch
 
 describe('spClient additional coverage (postBatch + list/add)', () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn>;
-  let acquireToken: any;
+  let fetchSpy: Mock;
+  let acquireToken: Mock<() => Promise<string>>;
 
   beforeEach(() => {
-    fetchSpy = vi.spyOn(global, 'fetch' as any);
+    fetchSpy = vi.spyOn(global, 'fetch') as unknown as Mock;
     acquireToken = vi.fn().mockResolvedValue('tok');
   });
 
@@ -43,9 +43,9 @@ describe('spClient additional coverage (postBatch + list/add)', () => {
   it('addListItemByTitle returns created item', async () => {
     fetchSpy.mockResolvedValueOnce(new Response(JSON.stringify({ Id: 99, Title: 'Created' }), { status: 200 }));
     const client = createSpClient(acquireToken, 'https://contoso.sharepoint.com/sites/wf/_api/web');
-    const created: any = await client.addListItemByTitle('X', { Title: 'Created' });
+    const created = await client.addListItemByTitle('X', { Title: 'Created' }) as Record<string, unknown>;
     expect(created.Id).toBe(99);
-    const body = (fetchSpy.mock.calls[0][1] as any).body;
+    const body = (fetchSpy.mock.calls[0][1] as unknown as Record<string, unknown>).body as string;
     expect(body).toContain('Created');
   });
 
