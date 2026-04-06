@@ -7,11 +7,14 @@
  * Fail-open: 例外を外部に投げない。
  */
 
+import type { DiagnosticsReportItem } from '@/sharepoint/diagnosticsReports';
+import type { JsonRecord } from '@/lib/sp/types';
 import type {
   SpHealthReasonCode,
   SpHealthSeverity,
   SpHealthSignal,
 } from './spHealthSignalStore';
+import { reportSpHealthEvent } from './spHealthSignalStore';
 
 /** mapping.ts が返す型: Store が occurrenceCount を付与するため除外 */
 type PatrolSignal = Omit<SpHealthSignal, 'occurrenceCount'>;
@@ -109,5 +112,39 @@ export function mapPatrolEventToSignal(event: PatrolEvent): PatrolSignal | null 
     };
   } catch {
     return null;
+  }
+}
+
+/**
+ * 診断レポート（DiagnosticsReportItem）を健康シグナルに変換
+ * - Overall が fail/warn の場合にのみシグナルを生成
+ */
+export function mapDiagnosticsReportToSignal(report: DiagnosticsReportItem): PatrolSignal | null {
+  const rawOverall = (report.Overall as JsonRecord)?.Value || report.Overall;
+  const overall = typeof rawOverall === 'string' ? rawOverall : 'pass';
+
+  if (overall === 'pass') return null;
+
+  const severity = overall === 'fail' ? 'critical' : 'warning';
+  const displayTitle = report.TopIssue || 'System Health Issue Detected';
+  const displaySummary = report.SummaryText || 'Details are available in the health diagnosis page.';
+
+  return {
+    severity,
+    reasonCode: overall === 'fail' ? 'sp_list_unreachable' : 'sp_index_pressure',
+    message: `${displayTitle}: ${displaySummary}`,
+    actionGuide: 'Check the Health Diagnosis page for more details.',
+    source: 'nightly_patrol',
+    occurredAt: report.Modified || report.Created || new Date().toISOString(),
+  };
+}
+
+/**
+ * 診断レポートをストアに報告
+ */
+export function reportDiagnosticsReport(report: DiagnosticsReportItem): void {
+  const signal = mapDiagnosticsReportToSignal(report);
+  if (signal) {
+    reportSpHealthEvent(signal);
   }
 }

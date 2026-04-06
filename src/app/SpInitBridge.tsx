@@ -14,6 +14,7 @@ import { SharePointProvisioningCoordinator } from '@/sharepoint/spProvisioningCo
 import { useDataProvider } from '@/lib/data/useDataProvider';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { useToast } from '@/hooks/useToast';
+import { useNightlySignalIngestion } from '@/features/sp/health/hooks/useNightlySignalIngestion';
 
 /**
  * SP 初期化ブリッジ — レンダーなし、副作用のみ
@@ -32,6 +33,10 @@ export const SpInitBridge: React.FC = () => {
   const { type: providerType } = useDataProvider(); // 🚀 Data OS Readiness: Trigger initial singleton creation
   const { role } = useUserAuthz();
   const { show } = useToast();
+  
+  // 🩺 Nightly Patrol 結果の自動インジェクション
+  useNightlySignalIngestion();
+
   useEffect(() => {
     if (globalSpBootstrapStarted) return;
     globalSpBootstrapStarted = true;

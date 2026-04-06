@@ -9,7 +9,8 @@
 import { describe, it, expect, vi } from 'vitest';
 
 // shouldSkipSharePoint をモック（hoisting 対応: ファイル先頭で宣言）
-vi.mock('@/lib/env', () => ({
+vi.mock('@/lib/env', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/env')>()),
   shouldSkipSharePoint: vi.fn(),
 }));
 

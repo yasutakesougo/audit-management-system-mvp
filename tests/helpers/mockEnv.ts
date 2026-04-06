@@ -143,3 +143,22 @@ export function resetTestConfigOverride(): void {
   delete (globalThis as any).__TEST_ENV__;
   /* eslint-enable @typescript-eslint/no-explicit-any */
 }
+ 
+export const isDevMode = vi.fn().mockReturnValue(false);
+export const isDemoModeEnabled = vi.fn().mockReturnValue(false);
+export const isForceDemoEnabled = vi.fn().mockReturnValue(false);
+export const isTestMode = vi.fn().mockReturnValue(false);
+export const shouldSkipLogin = vi.fn().mockReturnValue(false);
+export const shouldSkipSharePoint = vi.fn().mockReturnValue(false);
+export const getConfiguredMsalScopes = vi.fn().mockReturnValue([]);
+export const readBool = vi.fn().mockImplementation((_k, fallback) => fallback);
+export const readEnv = vi.fn().mockReturnValue('');
+export const readOptionalEnv = vi.fn().mockReturnValue(undefined);
+
+// Legacy objects
+export const env = {
+  VITE_AUDIT_DEBUG: false,
+  VITE_DEMO_MODE: false,
+};
+export const SP_ENABLED = false;
+export const WRITE_ENABLED = true;

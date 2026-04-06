@@ -21,7 +21,8 @@ import type { ReactNode } from 'react';
 // ── モック ──────────────────────────────────────────────────────────────────
 
 // shouldSkipSharePoint → true にして InMemory を使わせる
-vi.mock('@/lib/env', () => ({
+vi.mock('@/lib/env', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/env')>()),
   shouldSkipSharePoint: vi.fn(() => true),
 }));
 
