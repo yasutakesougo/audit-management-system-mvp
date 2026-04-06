@@ -24,12 +24,13 @@ If you need to run the patrol manually (e.g., after a production fix or during m
 ## Required Configuration (GitHub Secrets)
 The following secrets must be configured in the repository settings for the workflow to operate correctly:
 
-| Secret Name | Description | Mandatory? |
-| --- | --- | --- |
-| `SP_ACCESS_TOKEN` | Bearer token for SharePoint access. | **Yes** |
-| `SP_SITE_URL` | The full URL of the target SharePoint site. | **Yes** |
-| `TEAMS_WEBHOOK_URL` | The Incoming Webhook URL for the Teams channel. | No (Notification will be skipped if absent) |
-| `TEAMS_MENTION_UPN` | Teams UPN for responsible person (e.g. employee@company.com). | No (Mention skipped if absent) |
+| `AAD_APP_ID`       | Azure AD Application (Client) ID. | **Yes** |
+| `AAD_TENANT_ID`    | Azure AD Tenant ID. | **Yes** |
+| `SPO_CERT_BASE64`  | Base64 encoded PFX certificate. | **Yes** |
+| `SPO_CERT_PASSWORD`| Password for the certificate. | **Yes** |
+| `SHAREPOINT_SITE`  | The full URL of the target SharePoint site. | **Yes** |
+| `TEAMS_WEBHOOK_URL`| The Incoming Webhook URL for the Teams channel. | No |
+| `TEAMS_MENTION_UPN`| Teams UPN for responsible person. | No |
 
 ## Outputs and Artifacts
 - **Teams Notification**: A summary card is sent to the configured Teams channel.
