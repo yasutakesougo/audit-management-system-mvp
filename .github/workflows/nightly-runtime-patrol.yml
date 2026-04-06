@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -61,8 +63,17 @@ jobs:
             -CertificateBase64Encoded $env:SPO_CERT_BASE64 `
             -CertificatePassword $securePassword
 
+          # 接続確認
+          $connection = Get-PnPConnection
+          if (-not $connection) {
+            throw "PnP connection was not established."
+          }
+
           # トークン取得
           $token = Get-PnPAccessToken
+          if ([string]::IsNullOrWhiteSpace($token)) {
+            throw "Failed to acquire SharePoint access token."
+          }
           
           # ✅ セキュリティ対策: トークンをログからマスク
           Write-Output "::add-mask::$token"
