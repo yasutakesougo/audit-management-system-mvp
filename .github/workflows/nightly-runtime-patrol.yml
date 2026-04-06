@@ -47,12 +47,16 @@ jobs:
             throw "SPO_CERT_BASE64 secret is missing."
           }
           
-          # 証明書のインポート
+          # 証明書のインポート (Linux 互換性のためのコンストラクタ形式)
           $certBytes = [Convert]::FromBase64String($env:SPO_CERT_BASE64)
-          $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
-          $cert.Import($certBytes, $env:SPO_CERT_PASSWORD, "Exportable,PersistKeySet")
+          $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
+            $certBytes,
+            $env:SPO_CERT_PASSWORD,
+            [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable -bor
+            [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::PersistKeySet
+          )
 
-          # 認証と接続
+          # 接続
           Connect-PnPOnline `
             -Url $env:SHAREPOINT_SITE `
             -ClientId $env:AAD_APP_ID `
