@@ -28,10 +28,50 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install PnP.PowerShell
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module PnP.PowerShell -Scope CurrentUser -Force
+
+      - name: Get SharePoint Access Token
+        shell: pwsh
+        env:
+          SPO_CERT_BASE64: ${{ secrets.SPO_CERT_BASE64 }}
+          SPO_CERT_PASSWORD: ${{ secrets.SPO_CERT_PASSWORD }}
+          AAD_APP_ID: ${{ secrets.AAD_APP_ID }}
+          AAD_TENANT_ID: ${{ secrets.AAD_TENANT_ID }}
+          SHAREPOINT_SITE: ${{ secrets.SHAREPOINT_SITE }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SPO_CERT_BASE64)) {
+            throw "SPO_CERT_BASE64 secret is missing."
+          }
+          
+          # 証明書のインポート
+          $certBytes = [Convert]::FromBase64String($env:SPO_CERT_BASE64)
+          $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
+          $cert.Import($certBytes, $env:SPO_CERT_PASSWORD, "Exportable,PersistKeySet")
+
+          # 認証と接続
+          Connect-PnPOnline `
+            -Url $env:SHAREPOINT_SITE `
+            -ClientId $env:AAD_APP_ID `
+            -Tenant $env:AAD_TENANT_ID `
+            -Certificate $cert
+
+          # トークン取得
+          $token = Get-PnPAccessToken
+          
+          # ✅ セキュリティ対策: トークンをログからマスク
+          Write-Output "::add-mask::$token"
+          
+          # ✅ 実行環境への書き出し
+          "VITE_SP_TOKEN=$token" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "✅ Token acquired and masked in VITE_SP_TOKEN"
+
       - name: Run Nightly Runtime Patrol
         env:
-          VITE_SP_TOKEN: ${{ secrets.SP_ACCESS_TOKEN }}
-          VITE_SP_SITE_URL: ${{ secrets.SP_SITE_URL }}
+          VITE_SP_SITE_URL: ${{ secrets.SHAREPOINT_SITE }}
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
           TEAMS_MENTION_UPN: ${{ secrets.TEAMS_MENTION_UPN }}
         run: npx tsx scripts/ops/nightly-runtime-patrol.ts
