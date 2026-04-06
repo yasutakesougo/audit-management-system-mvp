@@ -32,7 +32,22 @@ This PR is split across four layers:
 - deletion candidates remain read-only — no button exposed
 - add `SpIndexPressurePanel.spec.tsx` (7 cases): success, duplicate, limit, running-state disable
 
+### 5. Nightly Patrol integration — Mode B: guarded add only
+- add `nightly-index-remediation.ts`: Node.js-compatible remediation module
+  - allowlist only (`KNOWN_REQUIRED_INDEXED_FIELDS` — no unknown lists)
+  - `add` only (delete remains sealed)
+  - per-run limit (`NIGHTLY_RUN_LIMIT=3`, overridable via `config.runLimit`)
+  - in-memory executed-set (no sessionStorage — Node.js compatible)
+  - fail-soft: field-level and list-level errors are caught independently
+  - all results carry `source: 'nightly'`
+- integrate into `nightly-runtime-patrol.ts`: runs after SP event fetch, before aggregation
+  - results converted to `RawEvent[]` (type `'remediation'`) and merged into nightly summary
+  - skips gracefully if `VITE_SP_TOKEN` / `VITE_SP_SITE_URL` not set
+- add `nightly-index-remediation.spec.ts` (6 cases, `@vitest-environment node`):
+  - add missing fields, skip already-indexed, runLimit + skipped_limit, fail-soft PATCH,
+    fail-soft list fetch, source: nightly on all results
+
 ## Verification
 - [x] `npm run typecheck` pass
 - [x] `npm run lint` pass
-- [x] 15 tests pass across guard service and panel interaction specs
+- [x] 22 tests pass across guard service, panel interaction, and nightly remediation specs
