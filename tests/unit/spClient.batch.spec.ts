@@ -46,7 +46,7 @@ describe('$batch retry + parse', () => {
     );
 
     const fetchSpy = vi
-      .spyOn(global, 'fetch' as any)
+      .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(new Response('svc down', { status: 503 }))
       .mockResolvedValueOnce(okRes);
 

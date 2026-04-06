@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 
 vi.mock('@/lib/env', async () => {
   const actual = await vi.importActual<typeof import('@/lib/env')>('@/lib/env');
@@ -14,11 +14,11 @@ import { createSpClient } from '@/lib/spClient';
 const baseUrl = 'https://contoso.sharepoint.com/sites/wf/_api/web';
 
 describe('spClient retry for 504 Gateway Timeout', () => {
-  let fetchSpy: ReturnType<typeof vi.spyOn>;
-  let acquireToken: any;
+  let fetchSpy: Mock;
+  let acquireToken: Mock<() => Promise<string>>;
 
   beforeEach(() => {
-    fetchSpy = vi.spyOn(global, 'fetch' as any);
+    fetchSpy = vi.spyOn(globalThis, 'fetch') as unknown as Mock;
     acquireToken = vi.fn().mockResolvedValue('token1');
   });
   afterEach(() => { vi.restoreAllMocks(); });
