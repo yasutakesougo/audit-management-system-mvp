@@ -62,7 +62,7 @@ describe('SpIndexPressurePanel — remediation action button', () => {
     expect(screen.getByRole('button', { name: /インデックス追加/ })).toBeTruthy();
   });
 
-  it('calls executeIndexRemediation with correct args on button click', async () => {
+  it('calls executeIndexRemediation with correct args including source: ui', async () => {
     mockExecute.mockResolvedValue({ ok: true, message: 'done', action: 'create', listTitle: 'AttendanceDaily', internalName: 'RecordDate', timestamp: '' });
 
     render(<SpIndexPressurePanel signal={SIGNAL} />);
@@ -71,7 +71,7 @@ describe('SpIndexPressurePanel — remediation action button', () => {
     await waitFor(() => expect(mockExecute).toHaveBeenCalledTimes(1));
     expect(mockExecute).toHaveBeenCalledWith(
       expect.anything(),
-      { listTitle: 'AttendanceDaily', internalName: 'RecordDate', action: 'create' },
+      { listTitle: 'AttendanceDaily', internalName: 'RecordDate', action: 'create', source: 'ui' },
     );
   });
 

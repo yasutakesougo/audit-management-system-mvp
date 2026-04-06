@@ -125,7 +125,7 @@ describe('spIndexRemediationService — guards', () => {
 
   // ── 正常実行 ──────────────────────────────────────────────────────────────
 
-  it('successfully creates an index and emits audit log', async () => {
+  it('successfully creates an index and emits audit log with source: ui by default', async () => {
     const result = await executeIndexRemediation(mockSp as unknown as UseSP, {
       listTitle: 'AttendanceDaily',
       internalName: 'RecordDate',
@@ -144,7 +144,21 @@ describe('spIndexRemediationService — guards', () => {
         listName: 'AttendanceDaily',
         resolved: true,
         severity: 'info',
+        remediationSource: 'ui',
       }),
+    );
+  });
+
+  it('emits remediationSource: nightly when source is nightly', async () => {
+    await executeIndexRemediation(mockSp as unknown as UseSP, {
+      listTitle: 'AttendanceDaily',
+      internalName: 'RecordDate',
+      action: 'create',
+      source: 'nightly',
+    });
+
+    expect(driftEventBus.emit).toHaveBeenCalledWith(
+      expect.objectContaining({ remediationSource: 'nightly' }),
     );
   });
 

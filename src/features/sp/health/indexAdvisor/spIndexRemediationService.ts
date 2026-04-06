@@ -4,10 +4,15 @@ import { findListEntry } from '@/sharepoint/spListRegistry';
 
 export type IndexRemediationAction = 'create' | 'delete';
 
+/** 修復実行元の識別子 */
+export type RemediationSource = 'ui' | 'nightly';
+
 export interface IndexRemediationInput {
   listTitle: string;
   internalName: string;
   action: IndexRemediationAction;
+  /** 実行元。省略時は 'ui' */
+  source?: RemediationSource;
 }
 
 export type RemediationResult =
@@ -111,7 +116,7 @@ export async function executeIndexRemediation(
   sp: ReturnType<typeof useSP>,
   input: IndexRemediationInput,
 ): Promise<RemediationResult> {
-  const { listTitle, internalName, action } = input;
+  const { listTitle, internalName, action, source = 'ui' } = input;
   const timestamp = new Date().toISOString();
   const base = { action, listTitle, internalName, timestamp };
 
@@ -139,7 +144,7 @@ export async function executeIndexRemediation(
   const entry = findListEntry(listTitle);
   if (!entry) {
     const message = `リスト "${listTitle}" はレジストリで見つかりません。`;
-    emitIndexRemediationRecord(listTitle, internalName, action, 'error', message);
+    emitIndexRemediationRecord(listTitle, internalName, action, 'error', message, source);
     return { ok: false, code: 'registry_not_found', message, ...base };
   }
 
@@ -175,7 +180,7 @@ export async function executeIndexRemediation(
     // 成功後にのみカウント・実行済みセットを更新
     incrementDailyCount();
     addToExecutedSet(execKey);
-    emitIndexRemediationRecord(listTitle, internalName, action, 'success');
+    emitIndexRemediationRecord(listTitle, internalName, action, 'success', undefined, source);
 
     return {
       ok: true,
@@ -184,7 +189,7 @@ export async function executeIndexRemediation(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    emitIndexRemediationRecord(listTitle, internalName, action, 'error', message);
+    emitIndexRemediationRecord(listTitle, internalName, action, 'error', message, source);
     return {
       ok: false,
       code: 'update_failed',

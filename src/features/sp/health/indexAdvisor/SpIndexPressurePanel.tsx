@@ -239,6 +239,7 @@ export function SpIndexPressurePanel({ signal }: Props) {
       listTitle: listName,
       internalName,
       action: 'create',
+      source: 'ui',
     });
     setResultMap((prev) => ({ ...prev, [key]: result }));
     setRunningKey(null);
