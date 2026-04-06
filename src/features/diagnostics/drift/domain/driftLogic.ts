@@ -66,3 +66,25 @@ export const getDriftEventDedupeKey = (event: Omit<DriftEvent, 'id'>): string =>
   const dateStr = event.detectedAt.split('T')[0]; // YYYY-MM-DD
   return `${event.listName}:${event.fieldName}:${dateStr}`;
 };
+
+/**
+ * インデックス修復イベントの発火
+ */
+export const emitIndexRemediationRecord = (
+  listName: string,
+  fieldName: string,
+  action: 'create' | 'delete',
+  status: 'success' | 'error',
+  _message?: string
+) => {
+  // DriftEventBus を流用して監査ログとする
+  driftEventBus.emit({
+    listName,
+    fieldName,
+    detectedAt: new Date().toISOString(),
+    severity: status === 'success' ? 'info' : 'warn',
+    resolutionType: 'manual', // 手動実行（スクリプトまたはUI）
+    driftType: 'unknown',
+    resolved: status === 'success'
+  });
+};
