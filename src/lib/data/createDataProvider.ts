@@ -71,9 +71,9 @@ export function createDataProvider(
         providerInstances[cacheKey] = new SharePointDataProvider(spClient); 
         break;
     }
-  } else if (type === 'sharepoint') {
-    // SharePoint の場合はクライアントを更新する可能性があるため再生成
-    providerInstances[cacheKey] = new SharePointDataProvider(spClient);
+  } else if (type === 'sharepoint' && providerInstances[cacheKey] instanceof SharePointDataProvider) {
+    // SharePoint の場合はクライアントを更新する可能性があるため、インスタンスを再生成せず内容を更新して同一性を保つ
+    providerInstances[cacheKey].setClient(spClient);
   }
 
   console.info(`[DataProvider] Active backend: ${type}`);
@@ -89,13 +89,12 @@ export function getActiveProviderType(): ProviderType {
   const envProvider = readOptionalEnv('VITE_DATA_PROVIDER');
   const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
 
-  if (forceSharePoint) return 'sharepoint';
-
   const selected = providerParam || envProvider;
-
   if (selected === 'memory') return 'memory';
   if (selected === 'local') return 'local';
   if (selected === 'sharepoint') return 'sharepoint';
+
+  if (forceSharePoint) return 'sharepoint';
 
   // フォールバック: デモモードや開発環境ならメモリモードを優先
   if (isDemoModeEnabled() || isDevMode()) {

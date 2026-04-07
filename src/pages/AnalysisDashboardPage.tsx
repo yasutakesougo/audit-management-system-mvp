@@ -85,15 +85,27 @@ const AnalysisDashboardPage: React.FC = () => {
   const procedureStore = useProcedureStore();
   const interventionStore = useInterventionStore();
 
-  const executionStats = useMemo(() => {
-    if (!targetUserId) return { completed: 0, triggered: 0, skipped: 0, total: 0 };
-    const today = toLocalDateISO();
-    const procedures = procedureStore.getByUser(targetUserId);
-    const records = executionStore.getRecords(today, targetUserId);
-    const completed = records.filter((r) => r.status === 'completed').length;
-    const triggered = records.filter((r) => r.status === 'triggered').length;
-    const skipped = records.filter((r) => r.status === 'skipped').length;
-    return { completed, triggered, skipped, total: procedures.length };
+  const [executionStats, setExecutionStats] = useState({ completed: 0, triggered: 0, skipped: 0, total: 0 });
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      if (!targetUserId) {
+        if (active) setExecutionStats({ completed: 0, triggered: 0, skipped: 0, total: 0 });
+        return;
+      }
+      const today = toLocalDateISO();
+      const procedures = procedureStore.getByUser(targetUserId);
+      const records = await executionStore.getRecords(today, targetUserId);
+      
+      if (!active) return;
+      const completed = records.filter((r) => r.status === 'completed').length;
+      const triggered = records.filter((r) => r.status === 'triggered').length;
+      const skipped = records.filter((r) => r.status === 'skipped').length;
+      setExecutionStats({ completed, triggered, skipped, total: procedures.length });
+    };
+    void load();
+    return () => { active = false; };
   }, [targetUserId, executionStore, procedureStore]);
 
   const activeBipCount = useMemo(() => {
@@ -104,6 +116,7 @@ const AnalysisDashboardPage: React.FC = () => {
   // --- ViewModel ---
   const { visits: attendanceVisits } = useAttendanceStore();
   const vm = useAnalysisDashboardViewModel(analysisData, dailyStats, executionStats, activeBipCount, attendanceVisits, ibdUserCodes);
+
 
   // Fetch analysis data when user or period changes
   useEffect(() => {

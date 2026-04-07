@@ -47,6 +47,11 @@ const createResolver = (provider: IDataProvider, listTitle = 'Daily_Attendance')
   });
 
 describe('AttendanceSchemaResolver', () => {
+  if (typeof sessionStorage !== 'undefined') {
+    beforeEach(() => {
+      sessionStorage.clear();
+    });
+  }
   it('resolves by list catalog and absorbs alias/suffix drift', async () => {
     const getFieldInternalNames = vi.fn(async (resourceName: string) => {
       if (resourceName !== 'Daily_Attendance') throw new Error(`Unexpected list: ${resourceName}`);
@@ -54,7 +59,7 @@ describe('AttendanceSchemaResolver', () => {
         'Id',
         'Title',
         'User_x0020_Id',
-        'AttendanceDate1',
+        'AttendanceDate0',
         'Status0',
         'CheckInTime',
       ]);
@@ -71,17 +76,22 @@ describe('AttendanceSchemaResolver', () => {
     expect(result).toBeTruthy();
     expect(result?.listTitle).toBe('Daily_Attendance');
     expect(result?.mapping.userCode).toBe('User_x0020_Id');
-    expect(result?.mapping.recordDate).toBe('AttendanceDate1');
+    expect(result?.mapping.recordDate).toBe('AttendanceDate0');
     expect(result?.mapping.status).toBe('Status0');
     expect(result?.missing).toContain('staffInChargeId');
-    expect(result?.select).toContain('AttendanceDate1');
+    expect(result?.select).toContain('AttendanceDate0');
     expect(getFieldInternalNames).toHaveBeenCalledWith('Daily_Attendance');
   });
 
   it('falls back to direct probes when catalog lookup fails', async () => {
     const getFieldInternalNames = vi.fn(async (resourceName: string) => {
       if (resourceName === 'SupportRecord_Daily') {
-        return new Set(['cr013_userCode', 'cr013_recordDate', 'cr013_status']);
+        return new Set([
+          'cr013_userCode',
+          'cr013_recordDate',
+          'cr013_status',
+          'cr013_checkInAt',
+        ]);
       }
       throw new Error(`Not found: ${resourceName}`);
     }) as IDataProvider['getFieldInternalNames'];

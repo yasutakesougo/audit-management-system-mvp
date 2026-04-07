@@ -17,12 +17,15 @@ import { useMemo } from 'react';
 import type { ExecutionRecordRepository } from '../domain/ExecutionRecordRepository';
 import { getExecutionRepository } from '../infra/executionRepositoryFactory';
 import { useExecutionStore } from '../stores/executionStore';
+import { useSP } from '@/lib/spClient';
 
 export function useExecutionData(): ExecutionRecordRepository {
   const storeHooks = useExecutionStore();
+  const { spFetch } = useSP();
 
   return useMemo(
-    () => getExecutionRepository(storeHooks),
-    [storeHooks],
+    () => getExecutionRepository(storeHooks, spFetch),
+    [storeHooks, spFetch],
   );
 }
+

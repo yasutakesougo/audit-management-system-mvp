@@ -182,13 +182,6 @@ export function createRepositoryFactory<
       return createDemo(options);
     }
 
-    const acquireToken = options?.acquireToken;
-    if (!acquireToken && useAuthInHook) {
-      throw new Error(
-        `[${name}RepositoryFactory] acquireToken is required for real repository.`,
-      );
-    }
-
     return createReal(options as TOptions);
   };
 

@@ -196,7 +196,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   const _handleCopyReport = useCallback(async () => {
     const uid = wizard.wizardUserId || targetUserId;
     if (!uid || !selectedUser) return;
-    const records = executionStore.getRecords(targetDate, uid);
+    const records = await executionStore.getRecords(targetDate, uid);
     const report = generateDailyReport({
       date: targetDate,
       userName: selectedUser.FullName,
@@ -210,6 +210,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         return m;
       })(),
     });
+
     try {
       await navigator.clipboard.writeText(report);
     } catch {

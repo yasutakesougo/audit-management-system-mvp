@@ -63,7 +63,7 @@ export function useSupportRecordSubmit({
       if (slotKey) {
         const hasBehaviorIncident = payload.behavior !== '日常記録' && payload.behavior !== '';
         const autoStatus = hasBehaviorIncident ? 'triggered' as const : 'completed' as const;
-        executionStore.upsertRecord({
+        await executionStore.upsertRecord({
           id: `${targetDate}-${targetUserId}-${slotKey}`,
           date: targetDate,
           userId: targetUserId,
@@ -74,6 +74,7 @@ export function useSupportRecordSubmit({
           recordedBy: '',
           recordedAt: new Date().toISOString(),
         });
+
       }
 
       if (typeof window !== 'undefined') {
