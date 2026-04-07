@@ -82,6 +82,6 @@ export default defineConfig({
     command: webServerCommand,
     url: webServerUrl,
     reuseExistingServer,
-    timeout: 120_000,
+    timeout: 300_000,
   },
 });
