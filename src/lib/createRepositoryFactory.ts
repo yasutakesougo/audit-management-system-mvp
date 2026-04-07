@@ -160,7 +160,6 @@ export function createRepositoryFactory<
   TOptions extends BaseFactoryOptions = BaseFactoryOptions,
 >(config: RepositoryFactoryConfig<TRepo, TOptions>): RepositoryFactory<TRepo, TOptions> {
   const {
-    name,
     createDemo,
     createReal,
     shouldUseDemo = defaultShouldUseDemo,

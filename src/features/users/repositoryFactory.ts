@@ -6,7 +6,7 @@ import { DataProviderUserRepository } from './infra/DataProviderUserRepository';
 import { createDataProvider, resolveProvider } from '@/lib/data/createDataProvider';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { pushAudit } from '@/lib/audit';
-import { DataProviderNotInitializedError } from '@/lib/errors';
+
 
 /**
  * User Repository Factory options.
