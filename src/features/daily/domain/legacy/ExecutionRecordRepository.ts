@@ -24,13 +24,13 @@ export interface ExecutionRecordRepository {
   /**
    * Get all execution records for a given date × user.
    */
-  getRecords(date: string, userId: string): ExecutionRecord[];
+  getRecords(date: string, userId: string): Promise<ExecutionRecord[]>;
 
   /**
    * Get a single execution record by date × user × scheduleItemId.
    * Returns undefined if not found.
    */
-  getRecord(date: string, userId: string, scheduleItemId: string): ExecutionRecord | undefined;
+  getRecord(date: string, userId: string, scheduleItemId: string): Promise<ExecutionRecord | undefined>;
 
   /**
    * Insert or update an execution record.
@@ -38,7 +38,7 @@ export interface ExecutionRecordRepository {
    * If a record with the same (date, userId, scheduleItemId) exists, it is replaced.
    * Otherwise a new record is appended.
    */
-  upsertRecord(record: ExecutionRecord): void;
+  upsertRecord(record: ExecutionRecord): Promise<void>;
 
   /**
    * Calculate completion rate for a date × user.
@@ -50,5 +50,6 @@ export interface ExecutionRecordRepository {
     date: string,
     userId: string,
     totalSlots: number,
-  ): { completed: number; triggered: number; rate: number };
+  ): Promise<{ completed: number; triggered: number; rate: number }>;
 }
+

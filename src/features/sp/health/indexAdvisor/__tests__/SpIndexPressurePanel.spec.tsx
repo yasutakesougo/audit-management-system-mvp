@@ -1,154 +1,168 @@
-
+import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SpIndexPressurePanel } from '../SpIndexPressurePanel';
-import type { SpHealthSignal } from '../../spHealthSignalStore';
+import * as hooks from '../useSpIndexCandidates';
+import * as repairHooks from '../useSpIndexRepair';
+import * as confirmHooks from '@/components/ui/useConfirmDialog';
 
-// ── Mocks ─────────────────────────────────────────────────────────────────────
-
-const mockExecute = vi.fn();
-
-vi.mock('@/lib/spClient', () => ({
-  useSP: () => ({}),
-}));
-
-vi.mock('../spIndexRemediationService', () => ({
-  executeIndexRemediation: (...args: unknown[]) => mockExecute(...args),
-}));
-
-// Default: 1 addition candidate, 0 deletion candidates
-const mockCandidates = {
-  currentIndexed: [{ internalName: 'RecordDate', displayName: 'Record Date', typeAsString: 'DateTime', deletionReason: '' }],
-  deletionCandidates: [],
-  additionCandidates: [{ internalName: 'RecordDate', displayName: 'Record Date', reason: '$filter=RecordDate' }],
-  hasKnownConfig: true,
-  loading: false,
-  error: null,
-};
+// ── Mocks ────────────────────────────────────────────────────────────────────
 
 vi.mock('../useSpIndexCandidates', () => ({
-  useSpIndexCandidates: () => mockCandidates,
+  useSpIndexCandidates: vi.fn(),
 }));
 
-// ── Fixture ───────────────────────────────────────────────────────────────────
+vi.mock('../useSpIndexRepair', () => ({
+  useSpIndexRepair: vi.fn(),
+}));
 
-const SIGNAL: SpHealthSignal = {
-  severity: 'warning',
-  reasonCode: 'sp_index_pressure',
-  listName: 'AttendanceDaily',
-  message: 'インデックス逼迫',
-  occurrenceCount: 1,
-  occurredAt: '2026-04-06T00:00:00.000Z',
-  source: 'nightly_patrol',
-};
+vi.mock('@/components/ui/useConfirmDialog', () => ({
+  useConfirmDialog: vi.fn(),
+}));
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
-
-describe('SpIndexPressurePanel — remediation action button', () => {
+describe('SpIndexPressurePanel: UI Contract', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  it('renders panel only when signal is sp_index_pressure', () => {
-    const { rerender } = render(<SpIndexPressurePanel signal={null} />);
-    expect(screen.queryByText(/Self-Healing 候補/)).toBeNull();
-
-    rerender(<SpIndexPressurePanel signal={SIGNAL} />);
-    expect(screen.getByText(/Self-Healing 候補/)).toBeTruthy();
-  });
-
-  it('shows remediation button for addition candidates', () => {
-    render(<SpIndexPressurePanel signal={SIGNAL} />);
-    expect(screen.getByRole('button', { name: /インデックス追加/ })).toBeTruthy();
-  });
-
-  it('calls executeIndexRemediation with correct args including source: ui', async () => {
-    mockExecute.mockResolvedValue({ ok: true, message: 'done', action: 'create', listTitle: 'AttendanceDaily', internalName: 'RecordDate', timestamp: '' });
-
-    render(<SpIndexPressurePanel signal={SIGNAL} />);
-    fireEvent.click(screen.getByRole('button', { name: /インデックス追加/ }));
-
-    await waitFor(() => expect(mockExecute).toHaveBeenCalledTimes(1));
-    expect(mockExecute).toHaveBeenCalledWith(
-      expect.anything(),
-      { listTitle: 'AttendanceDaily', internalName: 'RecordDate', action: 'create', source: 'ui' },
-    );
-  });
-
-  it('disables button and shows success message after successful remediation', async () => {
-    mockExecute.mockResolvedValue({ ok: true, message: 'done', action: 'create', listTitle: 'AttendanceDaily', internalName: 'RecordDate', timestamp: '' });
-
-    render(<SpIndexPressurePanel signal={SIGNAL} />);
-    fireEvent.click(screen.getByRole('button', { name: /インデックス追加/ }));
-
-    await waitFor(() => expect(screen.getByRole('button', { name: /完了/ })).toBeTruthy());
-    expect(screen.getByRole('button', { name: /完了/ })).toBeDisabled();
-    expect(screen.getByText(/インデックスを追加しました/)).toBeTruthy();
-  });
-
-  it('shows duplicate_action message without disabling permanently', async () => {
-    mockExecute.mockResolvedValue({
-      ok: false,
-      code: 'duplicate_action',
-      message: 'already done',
-      action: 'create',
-      listTitle: 'AttendanceDaily',
-      internalName: 'RecordDate',
-      timestamp: '',
+    
+    // Default mocks
+    vi.mocked(repairHooks.useSpIndexRepair).mockReturnValue({
+      generatePlan: vi.fn(),
+      executeRepair: vi.fn(),
+      plan: null,
+      results: [],
+      isExecuting: false,
+      isConfirmed: false,
+      setConfirmed: vi.fn(),
+      reset: vi.fn(),
     });
 
-    render(<SpIndexPressurePanel signal={SIGNAL} />);
-    fireEvent.click(screen.getByRole('button', { name: /インデックス追加/ }));
-
-    await waitFor(() =>
-      expect(screen.getByText(/このフィールドはこのセッションですでに修復済みです/)).toBeTruthy()
-    );
-    // button should remain enabled (user can retry tomorrow or after refresh)
-    expect(screen.getByRole('button', { name: /インデックス追加/ })).not.toBeDisabled();
+    vi.mocked(confirmHooks.useConfirmDialog).mockReturnValue({
+      open: vi.fn(),
+      close: vi.fn(),
+      dialogProps: {
+        open: false,
+        title: '',
+        message: '',
+        warningText: undefined,
+        severity: 'warning',
+        confirmLabel: 'OK',
+        cancelLabel: 'キャンセル',
+        onConfirm: vi.fn(),
+        onCancel: vi.fn(),
+        busy: false,
+      },
+    });
   });
 
-  it('shows daily_limit_exceeded message', async () => {
-    mockExecute.mockResolvedValue({
-      ok: false,
-      code: 'daily_limit_exceeded',
-      message: 'over limit',
-      action: 'create',
-      listTitle: 'AttendanceDaily',
-      internalName: 'RecordDate',
-      timestamp: '',
+  it('should render nothing when there are no candidates (Healthy state)', () => {
+    vi.mocked(hooks.useSpIndexCandidates).mockReturnValue({
+      currentIndexed: [],
+      deletionCandidates: [],
+      additionCandidates: [],
+      hasKnownConfig: true,
+      loading: false,
+      error: null,
     });
 
-    render(<SpIndexPressurePanel signal={SIGNAL} />);
-    fireEvent.click(screen.getByRole('button', { name: /インデックス追加/ }));
-
-    await waitFor(() =>
-      expect(screen.getByText(/本日の自動修復上限/)).toBeTruthy()
-    );
+    const { container } = render(<SpIndexPressurePanel listName="HealthyList" />);
+    expect(container.firstChild).toBeNull();
   });
 
-  it('disables all row buttons while one is in flight', async () => {
-    // simulate slow async
-    const successResult = { ok: true as const, message: 'done', action: 'create' as const, listTitle: 'AttendanceDaily', internalName: 'RecordDate', timestamp: '' };
-    let resolve!: (value: typeof successResult) => void;
-    mockExecute.mockReturnValue(new Promise<typeof successResult>((r) => { resolve = r; }));
+  it('should render Urgent section when additionCandidates exist', () => {
+    vi.mocked(hooks.useSpIndexCandidates).mockReturnValue({
+      currentIndexed: [],
+      deletionCandidates: [],
+      additionCandidates: [
+        { internalName: 'UrgentField', displayName: '至急列', reason: '5000件エラー回避' },
+      ],
+      hasKnownConfig: true,
+      loading: false,
+      error: null,
+    });
 
-    // Use two candidates
-    const origCandidates = mockCandidates.additionCandidates;
-    mockCandidates.additionCandidates = [
-      { internalName: 'RecordDate', displayName: 'Record Date', reason: 'x' },
-      { internalName: 'Status', displayName: 'Status', reason: 'y' },
-    ];
+    render(<SpIndexPressurePanel listName="AlertList" />);
 
-    render(<SpIndexPressurePanel signal={SIGNAL} />);
-    const buttons = screen.getAllByRole('button', { name: /インデックス追加/ });
-    expect(buttons).toHaveLength(2);
+    // Check for Urgent header and "Repair Now" button (newly added)
+    expect(screen.getByText(/至急対応が必要/)).toBeTruthy();
+    expect(screen.getByText(/至急列/)).toBeTruthy();
+    expect(screen.getByText(/5000件エラー回避/)).toBeTruthy();
+    expect(screen.getByText(/今すぐ修復/)).toBeTruthy();
+  });
 
-    fireEvent.click(buttons[0]);
-    // While in-flight, the other button should also be disabled
-    await waitFor(() => expect(buttons[1]).toBeDisabled());
+  it('should trigger repair confirmation flow when "Repair Now" is clicked', () => {
+    const mockGeneratePlan = vi.fn();
+    const mockOpen = vi.fn();
 
-    await waitFor(() => resolve(successResult));
-    // Restore
-    mockCandidates.additionCandidates = origCandidates;
+    vi.mocked(repairHooks.useSpIndexRepair).mockReturnValue({
+      ...vi.mocked(repairHooks.useSpIndexRepair)(),
+      generatePlan: mockGeneratePlan,
+    });
+
+    vi.mocked(confirmHooks.useConfirmDialog).mockReturnValue({
+      ...vi.mocked(confirmHooks.useConfirmDialog)(),
+      open: mockOpen,
+    });
+
+    vi.mocked(hooks.useSpIndexCandidates).mockReturnValue({
+      currentIndexed: [],
+      deletionCandidates: [],
+      additionCandidates: [
+        { internalName: 'FieldA', displayName: '列A', reason: 'R1' },
+      ],
+      hasKnownConfig: true,
+      loading: false,
+      error: null,
+    });
+
+    render(<SpIndexPressurePanel listName="RepairTestList" />);
+
+    const repairBtn = screen.getByText(/今すぐ修復/);
+    fireEvent.click(repairBtn);
+
+    expect(mockGeneratePlan).toHaveBeenCalledWith('RepairTestList', expect.any(Array), expect.any(Array));
+    expect(mockOpen).toHaveBeenCalled();
+  });
+
+  it('should render results section when results exist', () => {
+    vi.mocked(repairHooks.useSpIndexRepair).mockReturnValue({
+      ...vi.mocked(repairHooks.useSpIndexRepair)(),
+      results: [
+        { 
+          action: { type: 'create', listName: 'L', internalName: 'F', displayName: '表示名', reason: 'R' }, 
+          status: 'success', 
+          timestamp: 'now' 
+        },
+      ],
+    });
+
+    vi.mocked(hooks.useSpIndexCandidates).mockReturnValue({
+      currentIndexed: [],
+      deletionCandidates: [],
+      additionCandidates: [],
+      hasKnownConfig: true,
+      loading: false,
+      error: null,
+    });
+
+    render(<SpIndexPressurePanel listName="ResultList" />);
+
+    expect(screen.getByText(/修復が完了しました/)).toBeTruthy();
+    expect(screen.getAllByText(/OK/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/表示名/).length).toBeGreaterThan(0);
+  });
+
+  it('should handle error state gracefully', () => {
+    vi.mocked(hooks.useSpIndexCandidates).mockReturnValue({
+      currentIndexed: [],
+      deletionCandidates: [],
+      additionCandidates: [],
+      hasKnownConfig: true,
+      loading: false,
+      error: 'API Timeout',
+    });
+
+    render(<SpIndexPressurePanel listName="ErrorList" />);
+    expect(screen.getByText(/インデックス解析に失敗しました/)).toBeTruthy();
+    expect(screen.getByText(/API Timeout/)).toBeTruthy();
   });
 });

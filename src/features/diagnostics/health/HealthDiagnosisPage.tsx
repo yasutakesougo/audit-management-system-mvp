@@ -243,7 +243,12 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
         {/* ─────────────────────────────────────────────────────────────
             Self-Healing 候補パネル（sp_index_pressure 時のみ表示）
             ───────────────────────────────────────────────────────────── */}
-        <SpIndexPressurePanel signal={currentSignal} />
+        {currentSignal?.reasonCode === 'sp_index_pressure' && currentSignal.listName && (
+          <SpIndexPressurePanel 
+            listName={currentSignal.listName} 
+            onRefresh={run}
+          />
+        )}
 
         {/* ─────────────────────────────────────────────────────────────
             highlight バナー（?highlight= クエリがある場合）

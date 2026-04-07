@@ -160,7 +160,6 @@ export function createRepositoryFactory<
   TOptions extends BaseFactoryOptions = BaseFactoryOptions,
 >(config: RepositoryFactoryConfig<TRepo, TOptions>): RepositoryFactory<TRepo, TOptions> {
   const {
-    name,
     createDemo,
     createReal,
     shouldUseDemo = defaultShouldUseDemo,
@@ -180,13 +179,6 @@ export function createRepositoryFactory<
   const createInstance = (kind: RepositoryKind, options?: TOptions): TRepo => {
     if (kind === 'demo') {
       return createDemo(options);
-    }
-
-    const acquireToken = options?.acquireToken;
-    if (!acquireToken && useAuthInHook) {
-      throw new Error(
-        `[${name}RepositoryFactory] acquireToken is required for real repository.`,
-      );
     }
 
     return createReal(options as TOptions);

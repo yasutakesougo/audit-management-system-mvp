@@ -20,6 +20,12 @@ import {
 } from '@/lib/env';
 import type { ExecutionRecordRepository } from '../../domain/legacy/ExecutionRecordRepository';
 import type { ExecutionRecord } from '../../domain/legacy/executionRecordTypes';
+import { SharePointExecutionRecordRepository } from './SharePointExecutionRecordRepository';
+import type { SpFetchFn } from '@/lib/sp/spLists';
+
+
+
+
 
 // ────────────────────────────────────────────────────────────
 // Types
@@ -38,10 +44,11 @@ const shouldUseLocalRepository = (): boolean => {
     isTestMode() ||
     isForceDemoEnabled() ||
     isDemoModeEnabled() ||
-    shouldSkipLogin() ||
-    true // fallback: localStorage is the only adapter for now
+    shouldSkipLogin()
+    // false // Removed force local fallback
   );
 };
+
 
 const resolveKind = (forced?: ExecutionRepositoryKind): ExecutionRepositoryKind =>
   forced ?? (shouldUseLocalRepository() ? 'local' : 'sharepoint');
@@ -73,16 +80,17 @@ function createLocalStorageExecutionAdapter(
   store: ExecutionStoreHooks,
 ): ExecutionRecordRepository {
   return {
-    getRecords: (date: string, userId: string) =>
+    getRecords: async (date: string, userId: string) =>
       store.getRecords(date, userId),
-    getRecord: (date: string, userId: string, scheduleItemId: string) =>
+    getRecord: async (date: string, userId: string, scheduleItemId: string) =>
       store.getRecord(date, userId, scheduleItemId),
-    upsertRecord: (record: ExecutionRecord) =>
+    upsertRecord: async (record: ExecutionRecord) =>
       store.upsertRecord(record),
-    getCompletionRate: (date: string, userId: string, totalSlots: number) =>
+    getCompletionRate: async (date: string, userId: string, totalSlots: number) =>
       store.getCompletionRate(date, userId, totalSlots),
   };
 }
+
 
 // ────────────────────────────────────────────────────────────
 // Public API
@@ -104,7 +112,9 @@ function createLocalStorageExecutionAdapter(
  */
 export const getExecutionRepository = (
   storeHooks?: ExecutionStoreHooks,
+  spFetch?: SpFetchFn,
 ): ExecutionRecordRepository => {
+
   const kind = resolveKind();
 
   switch (kind) {
@@ -116,11 +126,18 @@ export const getExecutionRepository = (
       }
       return createLocalStorageExecutionAdapter(storeHooks);
     }
-    case 'sharepoint':
-      // Future: return new SharePointExecutionRepository(options);
-      throw new Error(
-        '[ExecutionRepositoryFactory] SharePoint adapter not yet implemented.',
-      );
+    case 'sharepoint': {
+      if (!spFetch) {
+        throw new Error(
+          '[ExecutionRepositoryFactory] spFetch is required for sharepoint repository.',
+        );
+      }
+      return new SharePointExecutionRecordRepository({
+        spFetch,
+      });
+    }
+
+
     default: {
       const _exhaustive: never = kind;
       throw new Error(`[ExecutionRepositoryFactory] Unknown kind: ${_exhaustive}`);

@@ -40,6 +40,15 @@
 - [ ] 再発防止テストが追加されている
 - [ ] ADR or Runbook が更新されている
 
+## 🎨 Design Review (Principles)
+
+> 💡 判断補助 OS としての設計思想（[Principles](docs/product/principles.md)）に沿っているか
+
+- [ ] **現場で自然に使われるか**: 業務導線（Today/Daily等）を壊さず、即座に次アクションが取れるか
+- [ ] **判断の質を上げるか**: 単なる情報提示ではなく、根拠（参考記録・比較）を添えた提案であるか
+- [ ] **組織知として残るか**: 誰がなぜその判断をしたかの履歴が残り、監査・教育に利用できるか
+- [ ] 重要/大規模変更時は **[詳細チェックリスト](docs/product/design-review-checklist.md)** を実施・転記した
+
 ---
 
 ## ✅ Pre-Merge Checklist

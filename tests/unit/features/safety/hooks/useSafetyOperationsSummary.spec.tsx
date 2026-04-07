@@ -22,21 +22,21 @@ describe('useSafetyOperationsSummary', () => {
   it('🟢 正常系: すべてのリポジトリに正常なデータが存在する場合、適切に結合され summary が構築されること', async () => {
     // 擬似データをモック返却
     vi.mocked(localIncidentRepository.getAll).mockResolvedValue([
-      { id: '1', date: '2026-03-01', level: 'Level 1', title: 'Test', reporter: 'User A', status: 'closed', type: '転倒', createdAt: '', updatedAt: '' } as any
+      { id: '1', date: '2026-04-01', level: 'Level 1', title: 'Test', reporter: 'User A', status: 'closed', type: '転倒', createdAt: '', updatedAt: '' } as any
     ]);
     vi.mocked(localRestraintRepository.getAll).mockResolvedValue([
-      { id: '1', userId: 'u1', performed: true, restraintType: 'その他', startedAt: '2026-03-02', endedAt: '2026-03-02', durationMinutes: 60, threeRequirements: { immediacy: true, immediacyReason: 'x', nonSubstitutability: true, nonSubstitutabilityReason: 'y', temporariness: true, temporarinessReason: 'z' }, reason: '危険防止', physicalMentalCondition: '', surroundingCondition: '', recordedBy: 'User B', recordedAt: '', status: 'approved' }
+      { id: '1', userId: 'u1', performed: true, restraintType: 'その他', startedAt: '2026-04-02', endedAt: '2026-04-02', durationMinutes: 60, threeRequirements: { immediacy: true, immediacyReason: 'x', nonSubstitutability: true, nonSubstitutabilityReason: 'y', temporariness: true, temporarinessReason: 'z' }, reason: '危険防止', physicalMentalCondition: '', surroundingCondition: '', recordedBy: 'User B', recordedAt: '', status: 'approved' }
     ]);
     vi.mocked(localCommitteeRepository.getAll).mockResolvedValue(
       // 四半期要件を満たすために直近1年間に4回以上必要
-      Array(4).fill({ id: '1', meetingDate: '2026-03-03', committeeType: '定期開催', agenda: '', attendees: [], summary: '', decisions: '', issues: '', restraintDiscussed: false, restraintDiscussionDetail: '', recordedBy: '', recordedAt: '', status: 'finalized' })
+      Array(4).fill({ id: '1', meetingDate: '2026-04-03', committeeType: '定期開催', agenda: '', attendees: [], summary: '', decisions: '', issues: '', restraintDiscussed: false, restraintDiscussionDetail: '', recordedBy: '', recordedAt: '', status: 'finalized' })
     );
     vi.mocked(localGuidelineRepository.getAll).mockResolvedValue([
-      { id: '1', version: '1.0', title: '安全指針', content: '', changeType: '定期見直し', changeReason: '', requiredItems: { procedureForRestraint: true, organizationalStructure: true, staffTrainingPolicy: true, reportingProcedure: true, threeRequirementsVerification: true, userExplanationMethod: true, reviewReleaseProcess: true }, effectiveDate: '2026-03-01', status: 'active', createdBy: '', createdAt: '' }
+      { id: '1', version: '1.0', title: '安全指針', content: '', changeType: '定期見直し', changeReason: '', requiredItems: { procedureForRestraint: true, organizationalStructure: true, staffTrainingPolicy: true, reportingProcedure: true, threeRequirementsVerification: true, userExplanationMethod: true, reviewReleaseProcess: true }, effectiveDate: '2026-04-01', status: 'active', createdBy: '', createdAt: '' }
     ]);
     vi.mocked(localTrainingRepository.getAll).mockResolvedValue(
       // 年2回要件
-      Array(2).fill({ id: '1', title: '安全研修', trainingType: '身体拘束等適正化研修', format: '集合研修', trainingDate: '2026-03-05', durationMinutes: 60, description: '', materials: '', instructor: '', participants: [], achievementNotes: '', improvementNotes: '', recordedBy: '', recordedAt: '', status: 'completed' })
+      Array(2).fill({ id: '1', title: '安全研修', trainingType: '身体拘束等適正化研修', format: '集合研修', trainingDate: '2026-04-05', durationMinutes: 60, description: '', materials: '', instructor: '', participants: [], achievementNotes: '', improvementNotes: '', recordedBy: '', recordedAt: '', status: 'completed' })
     );
 
     const { result } = renderHook(() => useSafetyOperationsSummary());
@@ -74,7 +74,7 @@ describe('useSafetyOperationsSummary', () => {
   it('🟡 境界条件: 身体拘束の要件未充足影響で overallLevel が critical に倒れること（既存実装固定）', async () => {
     vi.mocked(localIncidentRepository.getAll).mockResolvedValue([]);
     vi.mocked(localRestraintRepository.getAll).mockResolvedValue([
-      { id: '1', userId: 'u1', performed: true, restraintType: 'その他', startedAt: '2026-03-02', endedAt: '2026-03-02', durationMinutes: 60, threeRequirements: { immediacy: false, immediacyReason: '', nonSubstitutability: false, nonSubstitutabilityReason: '', temporariness: false, temporarinessReason: '' }, reason: '危険防止', physicalMentalCondition: '', surroundingCondition: '', recordedBy: 'User B', recordedAt: '', status: 'approved' } // 三要件未充足
+      { id: '1', userId: 'u1', performed: true, restraintType: 'その他', startedAt: '2026-04-02', endedAt: '2026-04-02', durationMinutes: 60, threeRequirements: { immediacy: false, immediacyReason: '', nonSubstitutability: false, nonSubstitutabilityReason: '', temporariness: false, temporarinessReason: '' }, reason: '危険防止', physicalMentalCondition: '', surroundingCondition: '', recordedBy: 'User B', recordedAt: '', status: 'approved' } // 三要件未充足
     ]);
     vi.mocked(localCommitteeRepository.getAll).mockResolvedValue([]);
     vi.mocked(localGuidelineRepository.getAll).mockResolvedValue([]);

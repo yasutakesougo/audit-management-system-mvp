@@ -436,7 +436,9 @@ export async function ensureListExists(
         continue;
       }
 
+      console.error('[DEBUG] ensureListExists: about to add field', field.internalName);
       const result = await addFieldToList(spFetch, listTitle, field);
+      console.error('[DEBUG] ensureListExists: addFieldToList result', result);
       if (result === "limit_reached") {
         isLimitReached = true;
       }
