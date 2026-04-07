@@ -98,8 +98,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Commit report to docs
-        if: false # Disable auto-push to main due to branch protection
-        if: success()
+        if: false && success() # Disable auto-push to main due to branch protection
         run: |
           mkdir -p docs/nightly-patrol
           # UTC 21:00 は日本時間の翌日 06:00 なので、日付を +9h して JST に合わせる

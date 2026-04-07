@@ -3,6 +3,7 @@
 import { createHash } from 'crypto';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { runNightlyIndexRemediation, type NightlyRemediationResult } from './nightly-index-remediation';
 
 // --- Domain Types ---
 
@@ -343,6 +344,21 @@ async function fetchRealEvents(fallbackMock: RawEvent[]): Promise<RawEvent[]> {
   return events;
 }
 
+// --- Remediation Result → RawEvent conversion ---
+
+function remediationToRawEvents(results: NightlyRemediationResult[]): RawEvent[] {
+  return results.map((r, i) => ({
+    id: `nightly-remediation-${Date.now()}-${i}`,
+    timestamp: new Date().toISOString(),
+    eventType: 'remediation' as const,
+    area: 'IndexAdvisor',
+    resourceKey: r.listTitle,
+    fieldKey: r.internalName,
+    reasonCode: r.outcome,
+    message: r.message,
+  }));
+}
+
 // --- execution block for local testing ---
 async function run() {
   // モック生データ: 様々なケースを想定
@@ -436,7 +452,31 @@ async function run() {
 
   // 実データの取得（失敗時や設定がない場合はモックへフォールバック）
   const rawEvents = await fetchRealEvents(mockRawEvents);
-  
+
+  // ── Nightly Index Remediation (Mode B: guarded add only) ──────────────────
+  const token = process.env.VITE_SP_TOKEN;
+  const siteUrl = process.env.VITE_SP_SITE_URL;
+
+  if (token && siteUrl) {
+    console.log('🔧 Running nightly index remediation...');
+    try {
+      const remediationResults = await runNightlyIndexRemediation({ token, siteUrl });
+      const remediationEvents = remediationToRawEvents(remediationResults);
+      rawEvents.push(...remediationEvents);
+
+      const added = remediationResults.filter((r) => r.outcome === 'added').length;
+      const failed = remediationResults.filter((r) => r.outcome === 'failed').length;
+      const skipped = remediationResults.filter((r) => r.outcome === 'skipped_limit').length;
+      console.log(`  └ Remediation: added=${added}, failed=${failed}, skipped=${skipped}`);
+    } catch (err) {
+      // remediation 全体が失敗しても patrol を止めない (fail-soft)
+      console.warn(`  ⚠️ Nightly index remediation error: ${err instanceof Error ? err.message : err}`);
+    }
+  } else {
+    console.warn('⚠️ Skipping nightly index remediation: VITE_SP_TOKEN or VITE_SP_SITE_URL not set.');
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   const summary = aggregateEvents(rawEvents);
   
   // JSON出力

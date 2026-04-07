@@ -19,8 +19,8 @@ import { describe, expect, it } from 'vitest';
 // ---------------------------------------------------------------------------
 
 describe('getAllListKeys', () => {
-  it('should return exactly 33 keys', () => {
-    expect(getAllListKeys()).toHaveLength(36);
+  it('should return exactly 40 keys', () => {
+    expect(getAllListKeys()).toHaveLength(40);
   });
 
   it('should return unique keys', () => {

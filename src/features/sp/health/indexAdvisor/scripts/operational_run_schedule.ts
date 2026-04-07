@@ -29,7 +29,7 @@ async function main() {
   const result = await executeIndexRemediation(sp, params);
 
   // 3. Output results
-  if (result.success) {
+  if (result.ok) {
     console.log('✅ SUCCESS: Remediation completed.');
     console.log(`📝 Message: ${result.message}`);
   } else {
