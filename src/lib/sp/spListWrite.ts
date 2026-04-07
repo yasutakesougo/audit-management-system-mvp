@@ -1,78 +1,10 @@
-/**
- * SharePoint List — Write Operations (Create / Update / Delete)
- *
- * All functions accept `SpFetchFn` via explicit parameter injection.
- */
-
+import { buildItemPath, coerceResult, resolveListPath } from './helpers';
 import { SharePointItemNotFoundError, SharePointMissingEtagError } from '@/lib/errors';
-
-import { buildItemPath } from './helpers';
 import type { SpFetchFn } from './spLists';
 
-// ── Private helper: coerce Response to typed JSON ───────────────────────────
-
-async function coerceResult<TResult>(res: Response): Promise<TResult> {
-  if (res.status === 204) {
-    return undefined as unknown as TResult;
-  }
-  const contentLength = res.headers.get('Content-Length');
-  if (contentLength === '0') {
-    return undefined as unknown as TResult;
-  }
-  const contentType = res.headers.get('Content-Type') ?? '';
-  if (!/json/i.test(contentType)) {
-    return undefined as unknown as TResult;
-  }
-  const text = await res.text();
-  if (!text) {
-    return undefined as unknown as TResult;
-  }
-  try {
-    return JSON.parse(text) as TResult;
-  } catch {
-    return undefined as unknown as TResult;
-  }
-}
-
-// ── Create ──────────────────────────────────────────────────────────────────
-
 /**
- * Create a new item by list title (legacy name kept for backward compat).
- */
-export async function addListItemByTitle<TBody extends object, TResult = unknown>(
-  spFetch: SpFetchFn,
-  listTitle: string,
-  body: TBody,
-  options?: { signal?: AbortSignal },
-): Promise<TResult> {
-  const path = `/lists/getbytitle('${encodeURIComponent(listTitle)}')/items`;
-  const res = await spFetch(path, { method: 'POST', body: JSON.stringify(body), signal: options?.signal });
-  return (await res.json()) as TResult;
-}
-
-/**
- * Create a new item (generic — resolves list by title or GUID).
- */
-export async function createItem<TBody extends object, TResult = unknown>(
-  spFetch: SpFetchFn,
-  listTitle: string,
-  body: TBody,
-  options?: { signal?: AbortSignal },
-): Promise<TResult> {
-  const path = buildItemPath(listTitle);
-  const res = await spFetch(path, {
-    method: 'POST',
-    body: JSON.stringify(body),
-    signal: options?.signal,
-  });
-  return coerceResult<TResult>(res);
-}
-
-// ── Update ──────────────────────────────────────────────────────────────────
-
-/**
- * Low-level PATCH (actually POST + X-HTTP-Method: MERGE for SPO stability).
- * Handles ETag conflict retry automatically.
+ * Patch an item (MERGE) — returns the Response.
+ * Implements a single retry on 412 Precondition Failed to handle ETag conflicts.
  */
 export async function patchListItem<TBody extends object>(
   spFetch: SpFetchFn,
@@ -85,7 +17,42 @@ export async function patchListItem<TBody extends object>(
   const itemPath = buildItemPath(listIdentifier, id);
   const payload = JSON.stringify(body);
 
-  const attempt = async (etag: string | undefined): Promise<Response | null> => {
+  try {
+    // Attempt 1: Try with provided (or star) ETag
+    return await spFetch(itemPath, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json;odata=nometadata',
+        'OData-Version': '3.0',
+        'X-HTTP-Method': 'MERGE',
+        'If-Match': ifMatch ?? '*',
+        'Content-Type': 'application/json;odata=nometadata',
+      },
+      body: payload,
+      signal,
+      spOptions: { skipRetry: true },
+    });
+  } catch (err) {
+    // If NOT a 412 conflict, rethrow immediately
+    const error = err as { status?: number };
+    if (error.status !== 412) throw err;
+
+    // Conflict detected: Refresh the ETag via GET
+    let latestResponse: Response;
+    try {
+      latestResponse = await spFetch(buildItemPath(listIdentifier, id, ['Id']), { method: 'GET', signal });
+    } catch (refreshErr) {
+      // If item was deleted between Attempt 1 and refresh, 404 is valid
+      if ((refreshErr as { status?: number }).status === 404) throw new SharePointItemNotFoundError();
+      throw refreshErr;
+    }
+
+    const refreshedEtag = latestResponse.headers.get('ETag');
+    if (!refreshedEtag) {
+      throw new SharePointMissingEtagError();
+    }
+
+    // Attempt 2: Retry with the fresh ETag
     try {
       return await spFetch(itemPath, {
         method: 'POST',
@@ -93,41 +60,20 @@ export async function patchListItem<TBody extends object>(
           Accept: 'application/json;odata=nometadata',
           'OData-Version': '3.0',
           'X-HTTP-Method': 'MERGE',
-          'If-Match': etag ?? '*',
+          'If-Match': refreshedEtag,
           'Content-Type': 'application/json;odata=nometadata',
         },
         body: payload,
         signal,
       });
-    } catch (error) {
-      if ((error as { status?: number }).status === 412) {
-        return null;
+    } catch (secondErr) {
+      // If it STILL fails with 412, don't infinite retry — throw specialized error
+      if ((secondErr as { status?: number }).status === 412) {
+        throw new SharePointMissingEtagError('SharePoint returned 412 after refreshing ETag');
       }
-      throw error;
+      throw secondErr;
     }
-  };
-
-  const first = await attempt(ifMatch);
-  if (first) return first;
-
-  // 412 Precondition Failed — refresh ETag and retry once
-  let latest: Response;
-  try {
-    latest = await spFetch(buildItemPath(listIdentifier, id, ['Id']), { method: 'GET', signal });
-  } catch (error) {
-    if ((error as { status?: number }).status === 404) {
-      throw new SharePointItemNotFoundError();
-    }
-    throw error;
   }
-  const refreshedEtag = latest.headers.get('ETag');
-  if (!refreshedEtag) {
-    throw new SharePointMissingEtagError();
-  }
-
-  const second = await attempt(refreshedEtag);
-  if (second) return second;
-  throw new SharePointMissingEtagError('SharePoint returned 412 after refreshing ETag');
 }
 
 /**
@@ -158,11 +104,30 @@ export async function updateItem<TBody extends object, TResult = unknown>(
   return coerceResult<TResult>(res);
 }
 
+/**
+ * Update a field metadata (e.g. for Indexing).
+ */
+export async function updateField(
+  spFetch: SpFetchFn,
+  listTitle: string,
+  fieldInternalName: string,
+  properties: Record<string, unknown>,
+  options?: { signal?: AbortSignal }
+): Promise<void> {
+  const path = `${resolveListPath(listTitle)}/fields/getbyinternalnameortitle('${fieldInternalName}')`;
+  await spFetch(path, {
+    method: 'POST',
+    headers: {
+      'X-HTTP-Method': 'MERGE',
+      'Content-Type': 'application/json;odata=nometadata',
+    },
+    body: JSON.stringify(properties),
+    signal: options?.signal,
+  });
+}
+
 // ── Delete ──────────────────────────────────────────────────────────────────
 
-/**
- * Delete an item by list title.
- */
 export async function deleteItemByTitle(
   spFetch: SpFetchFn,
   listTitle: string,
@@ -177,9 +142,6 @@ export async function deleteItemByTitle(
   });
 }
 
-/**
- * Delete an item (generic — resolves list by title or GUID).
- */
 export async function deleteItem(
   spFetch: SpFetchFn,
   listIdentifier: string,
@@ -192,4 +154,42 @@ export async function deleteItem(
     headers: { 'If-Match': '*' },
     signal: options?.signal,
   });
+}
+
+// ── Create ──────────────────────────────────────────────────────────────────
+
+export async function addListItemByTitle<TBody extends object, TResult = unknown>(
+  spFetch: SpFetchFn,
+  listTitle: string,
+  body: TBody,
+  options?: { signal?: AbortSignal },
+): Promise<TResult> {
+  const path = `/lists/getbytitle('${listTitle}')/items`;
+  const res = await spFetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json;odata=nometadata',
+    },
+    body: JSON.stringify(body),
+    signal: options?.signal,
+  });
+  return coerceResult<TResult>(res);
+}
+
+export async function createItem<TBody extends object, TResult = unknown>(
+  spFetch: SpFetchFn,
+  listIdentifier: string,
+  body: TBody,
+  options?: { signal?: AbortSignal },
+): Promise<TResult> {
+  const path = `${resolveListPath(listIdentifier)}/items`;
+  const res = await spFetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json;odata=nometadata',
+    },
+    body: JSON.stringify(body),
+    signal: options?.signal,
+  });
+  return coerceResult<TResult>(res);
 }
