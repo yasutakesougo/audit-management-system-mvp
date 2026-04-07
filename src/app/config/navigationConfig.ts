@@ -322,7 +322,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname: string) => pathname.startsWith('/users'),
       icon: undefined,
       prefetchKey: PREFETCH_KEYS.users,
-      audience: NAV_AUDIENCE.reception,
+      audience: NAV_AUDIENCE.staff,
       group: 'master' as NavGroupKey,
     },
     {
@@ -350,7 +350,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       prefetchKey: PREFETCH_KEYS.staff,
       testId: TESTIDS.nav.staffAttendance,
-      audience: NAV_AUDIENCE.reception,
+      audience: NAV_AUDIENCE.staff,
       group: 'operations' as NavGroupKey,
     });
   }
