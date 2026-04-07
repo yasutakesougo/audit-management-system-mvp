@@ -29,7 +29,7 @@ import { DriftObservabilityPanel } from "../drift/observability/DriftObservabili
 import { HealthFilterBar, type HealthFilterState } from "./components/HealthFilterBar";
 import { useSpHealthSignal } from "@/features/sp/health/hooks/useSpHealthSignal";
 import type { SpHealthReasonCode } from "@/features/sp/health/spHealthSignalStore";
-// import { SpIndexPressurePanel } from "@/features/sp/health/indexAdvisor/SpIndexPressurePanel";
+import { SpIndexPressurePanel } from "@/features/sp/health/indexAdvisor/SpIndexPressurePanel";
 
 // ─── highlight: reasonCode → category ─────────────────────────────────────────
 const HIGHLIGHT_CATEGORY: Partial<Record<SpHealthReasonCode, string>> = {
@@ -243,7 +243,9 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
         {/* ─────────────────────────────────────────────────────────────
             Self-Healing 候補パネル（sp_index_pressure 時のみ表示）
             ───────────────────────────────────────────────────────────── */}
-{/* <SpIndexPressurePanel signal={currentSignal} /> */}
+        {currentSignal?.reasonCode === 'sp_index_pressure' && currentSignal.listName && (
+          <SpIndexPressurePanel listName={currentSignal.listName} />
+        )}
 
         {/* ─────────────────────────────────────────────────────────────
             highlight バナー（?highlight= クエリがある場合）
