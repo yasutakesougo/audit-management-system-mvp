@@ -7,6 +7,7 @@ vi.mock('@/lib/env', async () => {
     ...actual,
     skipSharePoint: vi.fn(() => false),
     shouldSkipLogin: vi.fn(() => false),
+    isE2eMsalMockEnabled: vi.fn(() => false),
   };
 });
 
@@ -56,25 +57,31 @@ describe('spClient ETag / 412 handling', () => {
   const url1Obj = new URL(String(url1));
   expect(url1Obj.pathname.endsWith('/items(10)')).toBe(true);
   expect(url1Obj.pathname).toContain('SupportRecord_Daily');
-    const headers1 = Object.fromEntries((init1!.headers as Headers).entries());
+    const headers1 = Object.fromEntries(
+      Array.from((init1!.headers as Headers).entries()).map(([k, v]) => [k.toLowerCase(), v])
+    );
     expect(headers1['authorization']).toBe('Bearer tok');
     expect(headers1['if-match']).toBe('W/"2"');
     expect(headers1['x-http-method']).toBe('MERGE'); // SharePoint MERGE operation via POST
     expect(headers1['content-type']).toBe('application/json;odata=nometadata');
-    expect(headers1['odata-version']).toBe('4.0');
+    expect(headers1['odata-version']).toBe('3.0');
 
   const [url2, init2] = fetchMock.mock.calls[1]!;
   expect(init2?.method).toBe('GET');
   const url2Obj = new URL(String(url2));
   expect(url2Obj.pathname.endsWith('/items(10)')).toBe(true);
   expect(url2Obj.searchParams.get('$select')).toBe('Id');
-    const headers2 = Object.fromEntries((init2!.headers as Headers).entries());
+    const headers2 = Object.fromEntries(
+      Array.from((init2!.headers as Headers).entries()).map(([k, v]) => [k.toLowerCase(), v])
+    );
     expect(headers2['authorization']).toBe('Bearer tok');
     expect(headers2['accept']).toBe('application/json;odata=nometadata');
 
     const [, init3] = fetchMock.mock.calls[2]!;
     expect(init3?.method).toBe('POST'); // Second attempt also uses POST+X-HTTP-Method:MERGE
-    const headers3 = Object.fromEntries((init3!.headers as Headers).entries());
+    const headers3 = Object.fromEntries(
+      Array.from((init3!.headers as Headers).entries()).map(([k, v]) => [k.toLowerCase(), v])
+    );
     expect(headers3['authorization']).toBe('Bearer tok');
     expect(headers3['if-match']).toBe('W/"3"');
   });

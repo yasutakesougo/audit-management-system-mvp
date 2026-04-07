@@ -235,6 +235,19 @@ export const readErrorPayload = async (res: Response): Promise<string> => {
   }
 };
 
+/**
+ * Coerce a Response to a JSON object of type T, or null if 204 No Content.
+ * Also handles non-json responses (e.g. text/plain from some SP endpoints).
+ */
+export const coerceResult = async <T>(res: Response): Promise<T> => {
+  if (res.status === 204) return undefined as unknown as T;
+  const contentType = res.headers.get('Content-Type');
+  if (contentType?.includes('application/json')) {
+    return (await res.json()) as T;
+  }
+  return (await res.text()) as unknown as T;
+};
+
 export const raiseHttpError = async (
   res: Response,
   options: {
