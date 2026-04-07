@@ -1,4 +1,5 @@
 import React from 'react';
+import { useSP } from '@/lib/spClient';
 
 export interface FieldSkipStreakResult {
   reasonKey: string;
@@ -16,31 +17,42 @@ export function usePersistentDrift() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  const { spFetch } = useSP();
+
   const fetchSummary = React.useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      // ユーザー推奨の (a) runtime-summary.json を API/Fetch 経由で取得
-      // ローカルJSONの取得のため、SP認証不要の window.fetch を使用
-      const res = await window.fetch('/.nightly/runtime-summary.json');
+      // 1. SharePoint の Diagnostics_Reports リストから Title='runtime-summary' の最新レコードを取得
+      const siteUrl = `/lists/getbytitle('Diagnostics_Reports')/items?$filter=Title eq 'runtime-summary'&$orderby=Created desc&$top=1`;
+      const res = await spFetch(siteUrl);
+      
       if (!res.ok) {
-        // ファイルがない場合は単にデータなしとして扱う（新環境など）
         setPersistentDrifts([]);
         return;
       }
-      const data = (await res.json()) as NightlySummary;
+
+      const payload = (await res.json()) as { value: { SummaryText: string }[] };
+      if (payload.value.length === 0) {
+        setPersistentDrifts([]);
+        return;
+      }
+
+      // 2. SummaryText (PayloadJson) をシリアライズしてパース
+      const rawJson = payload.value[0].SummaryText;
+      const data = JSON.parse(rawJson) as NightlySummary;
+      
       const drifts = (data.fieldSkipStreaks ?? []).filter(
         (s) => s.status === 'persistent_drift'
       );
       setPersistentDrifts(drifts);
     } catch (err) {
-      console.warn('Failed to fetch persistent drift summary:', err);
-      // Fail-soft: 取得失敗で UI を壊さない
+      console.warn('Failed to fetch persistent drift summary from SP:', err);
       setError('履歴データの取得に失敗しました');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [spFetch]);
 
   React.useEffect(() => {
     fetchSummary();

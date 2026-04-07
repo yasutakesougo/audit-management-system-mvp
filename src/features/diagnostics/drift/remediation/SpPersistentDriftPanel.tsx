@@ -66,7 +66,7 @@ export const SpPersistentDriftPanel: React.FC = () => {
 対象フィールド: ${fieldName}
 ----------------------------------
 ・このフィールドは取得時に連続 ${entry.streak} 日間エラー（400スキップ）されています。
-・このフィールドにインデックスを強制付与し、取得エラーの解消を試みます。
+・このフィールドの構成（列の作成またはインデックス付与）を修復し、取得エラーの解消を試みます。
 
 【影響】
 ・SharePoint 上でインデックスが作成されます。
@@ -156,7 +156,7 @@ export const SpPersistentDriftPanel: React.FC = () => {
 
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Nightly Patrol により ${persistentDrifts.length} 件のデータ取得失敗（スキップ）が継続して記録されています。<br />
-        この不整合を解消するため、対象フィールドにインデックスを付与することを推奨します。
+        システムの整合性を保つため、対象フィールドの構成（列の作成またはインデックス設定）を修復することを推奨します。
       </Typography>
 
       {error && (
@@ -214,7 +214,7 @@ export const SpPersistentDriftPanel: React.FC = () => {
                       修復済み
                     </Typography>
                   ) : (
-                    <Tooltip title="列の作成またはインデックス付与を実行し、400スキップを解消します">
+                    <Tooltip title="列の構成（作成またはインデックス付与）を修復し、取得エラーを解消します">
                       <span>
                         <Button 
                           variant="contained" 
@@ -257,7 +257,7 @@ export const SpPersistentDriftPanel: React.FC = () => {
 
       <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
         <Typography variant="caption" color="text.disabled">
-          Data source: .nightly/runtime-summary.json
+          Data source: Diagnostics_Reports (SharePoint)
         </Typography>
       </Box>
 

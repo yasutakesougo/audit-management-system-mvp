@@ -601,6 +601,31 @@ async function run() {
   await fs.writeFile(path.join('.nightly', 'runtime-summary.json'), jsonOutput, 'utf-8');
   await fs.writeFile(path.join('.nightly', 'runtime-summary.md'), mdOutput, 'utf-8');
 
+  // --- Phase D: SharePoint への永続化 (基盤統合) ---
+  if (token && siteUrl) {
+    try {
+      console.log('💾 Saving runtime summary to SharePoint...');
+      const saveUrl = `${siteUrl}/_api/web/lists/getbytitle('Diagnostics_Reports')/items`;
+      await globalThis.fetch(saveUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json;odata=nometadata',
+          'Content-Type': 'application/json;odata=nometadata',
+        },
+        body: JSON.stringify({
+          Title: 'runtime-summary',
+          Overall: summary.countsBySeverity.critical > 0 ? 'fail' : (summary.countsBySeverity.action_required > 0 ? 'warn' : 'pass'),
+          TopIssue: summary.countsBySeverity.critical > 0 ? 'Critical failures detected' : (summary.fieldSkipStreaks?.length ? 'Persistent drifts detected' : 'Healthy'),
+          SummaryText: jsonOutput, // PayloadJson として使用
+        }),
+      });
+      console.log('  └ Successfully saved to Diagnostics_Reports.');
+    } catch (err) {
+      console.warn('  ⚠️ Failed to save summary to SharePoint:', err);
+    }
+  }
+
   console.log('✅ Nightly Runtime Patrol executed.');
   console.log(`  - Fetch count : ${summary.totalEvents}`);
   console.log(`  - Bundle count: ${summary.bundledCount}`);

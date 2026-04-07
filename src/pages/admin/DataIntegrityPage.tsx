@@ -29,7 +29,9 @@ import { useDataIntegrityScan } from '@/hooks/useDataIntegrityScan';
 import { emitSkippedFieldTelemetry } from '@/lib/dataIntegrity/skippedFieldTelemetry';
 import { formatScanSummary, type ScanResult, type ScanTarget, type TargetData } from '@/lib/dataIntegrityScanner';
 import { auditLog } from '@/lib/debugLogger';
-import { extractMissingField } from '@/lib/sp/helpers';
+import { 
+  fetchRawItemsWithFieldFallback 
+} from '@/lib/sp/helpers';
 import { useSP } from '@/lib/spClient';
 import { SCHEDULES_SELECT_FIELDS } from '@/sharepoint/fields/scheduleFields';
 import { USERS_SELECT_FIELDS_MINIMAL } from '@/sharepoint/fields/userFields';
@@ -43,111 +45,22 @@ const SCAN_TARGETS: ScanTarget[] = [
     name: 'users',
     listTitle: 'Users_Master',
     schema: SpUserMasterItemSchema,
-    // MINIMAL: IsSupportProcedureTarget 等の未プロビジョニング列を避けて確実に取得できる4列
     selectFields: USERS_SELECT_FIELDS_MINIMAL,
   },
   {
     name: 'schedules',
     listTitle: 'Schedules',
     schema: SpScheduleRowSchema,
-    // SCHEDULES_SELECT_FIELDS = ['Id','Title','EventDate','EndDate','Status','TargetUserId','AssignedStaffId']
-    // UserCode は SCHEDULE_ENSURE_FIELDS に存在しない → TargetUserId が正しい内部名
     selectFields: SCHEDULES_SELECT_FIELDS,
   },
   {
     name: 'daily',
     listTitle: 'DailyActivityRecords',
     schema: SharePointDailyRecordItemSchema,
-    // Pruned: UserRowsJSON / UserCount to ensure fetch reliability across all tenants
     selectFields: ['Id', 'Title', 'RecordDate', 'Created', 'Modified'],
   },
 ];
 
-const MAX_ITEMS_PER_REQUEST = 500;
-const MAX_PAGES = 20; // 500 × 20 = 10,000 items max
-
-type SpFetch = (path: string, init?: RequestInit) => Promise<Response>;
-
-/**
- * Fetch all raw items from a SharePoint list via REST API.
- * Uses pagination ($skiptoken / odata.nextLink) to collect all items.
- */
-async function fetchRawItems(
-  spFetch: SpFetch,
-  listTitle: string,
-  selectFields: readonly string[],
-  signal?: AbortSignal,
-): Promise<{ items: unknown[]; isTruncated: boolean }> {
-  const allItems: unknown[] = [];
-  const select = selectFields.join(',');
-  let path: string | null =
-    `/lists/GetByTitle('${encodeURIComponent(listTitle)}')/items?$select=${select}&$top=${MAX_ITEMS_PER_REQUEST}`;
-
-  for (let page = 0; page < MAX_PAGES && path; page++) {
-    if (signal?.aborted) break;
-
-    const response = await spFetch(path);
-    if (!response.ok) {
-      const errText = await response.text().catch(() => '');
-      throw new Error(`HTTP ${response.status}: ${errText.slice(0, 300)}`);
-    }
-    const payload = (await response.json()) as {
-      value?: unknown[];
-      'odata.nextLink'?: string;
-    };
-
-    if (payload.value) {
-      allItems.push(...payload.value);
-    }
-
-    // odata.nextLink は絶対 URL で返るため、そのまま spFetch に渡す（内部で正規化される）
-    const next = payload['odata.nextLink'] ?? null;
-    if (next && page === MAX_PAGES - 1) {
-      // 最終ページかつ次がある場合は打ち切り
-      return { items: allItems, isTruncated: true };
-    }
-    path = next;
-  }
-
-  return { items: allItems, isTruncated: false };
-}
-
-/**
- * Wraps fetchRawItems with $select fallback:
- * if SP returns HTTP 400 (unknown column), extract the offending field name,
- * remove it from the select list, and retry. Skipped fields are returned
- * so callers can surface them as warnings and emit telemetry.
- */
-async function fetchRawItemsWithFieldFallback(
-  spFetch: SpFetch,
-  listTitle: string,
-  selectFields: readonly string[],
-  signal?: AbortSignal,
-): Promise<{ items: unknown[]; isTruncated: boolean; skippedFields: string[] }> {
-  const skippedFields: string[] = [];
-  let fields = Array.from(selectFields);
-
-  for (;;) {
-    try {
-      const result = await fetchRawItems(spFetch, listTitle, fields, signal);
-      if (skippedFields.length > 0) {
-        // eslint-disable-next-line no-console
-        console.warn(`[data-integrity] ${listTitle}: skipped fields [${skippedFields.join(', ')}]`);
-      }
-      return { ...result, skippedFields };
-    } catch (err) {
-      if (err instanceof Error && err.message.startsWith('HTTP 400:') && fields.length > 1) {
-        const missing = extractMissingField(err.message);
-        if (missing && fields.includes(missing)) {
-          skippedFields.push(missing);
-          fields = fields.filter((f) => f !== missing);
-          continue;
-        }
-      }
-      throw err;
-    }
-  }
-}
 
 // ────────────────────────────────────────────────────────────────────────────
 // Component
