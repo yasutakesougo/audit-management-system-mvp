@@ -102,4 +102,19 @@ describe('spIndexLogic: Pure Logic Engine', () => {
       expect(result.additionCandidates).toEqual([]);
     });
   });
+
+  describe('Architectural Contracts', () => {
+    it('should be pure and side-effect free (Static Analysis)', async () => {
+      // 外部依存を文字列レベルで検知し、Contract（憲章）を守らせる
+      const fs = await import('fs');
+      const path = await import('path');
+      const logicSource = fs.readFileSync(path.resolve(__dirname, '../spIndexLogic.ts'), 'utf8');
+      
+      const prohibitedKeywords = ['fetch', 'spClient', 'window', 'document', 'localStorage'];
+      prohibitedKeywords.forEach(keyword => {
+        const regex = new RegExp(`\\b${keyword}\\b`);
+        expect(logicSource).not.toMatch(regex);
+      });
+    });
+  });
 });
