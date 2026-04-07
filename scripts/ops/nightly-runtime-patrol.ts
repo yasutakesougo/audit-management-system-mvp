@@ -4,6 +4,15 @@ import { createHash } from 'crypto';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { runNightlyIndexRemediation, type NightlyRemediationResult } from './nightly-index-remediation';
+import {
+  buildStreakResults,
+  loadStreakStore,
+  saveStreakStore,
+  toJstDateString,
+  updateStreakStore,
+  STREAK_STORE_PATH,
+  type FieldSkipStreakResult,
+} from './fieldSkipStreak';
 
 // --- Domain Types ---
 
@@ -47,6 +56,8 @@ export interface NightlySummary {
   bundledCount: number;
   countsBySeverity: Record<SeverityLevel, number>;
   events: BundledEvent[];
+  /** Phase B: sp:field_skipped streak results. Only entries with streak > 0 are included. */
+  fieldSkipStreaks?: FieldSkipStreakResult[];
 }
 
 // --- Engine Logic ---
@@ -359,6 +370,79 @@ function remediationToRawEvents(results: NightlyRemediationResult[]): RawEvent[]
   }));
 }
 
+// --- Field Skip Probe ---
+
+/**
+ * Probe each Data Integrity scan target for $select field errors.
+ * Uses the same 400-fallback loop as fetchRawItemsWithFieldFallback in the UI.
+ * Returns a Set of reasonKeys (listKey:fieldName) that were skipped today.
+ *
+ * This function is self-contained (no @/ imports) so it runs cleanly in Node.js.
+ * The telemetry transport pattern is satisfied: collected events stay in-process
+ * and the store is updated before run() exits (transport stays null — no side effects).
+ */
+async function runFieldSkipProbe(token: string, siteUrl: string): Promise<Set<string>> {
+  const PROBE_TARGETS = [
+    { name: 'users',     listTitle: 'Users_Master',          selectFields: ['Id', 'Title', 'UserID', 'FullName'] },
+    { name: 'schedules', listTitle: 'Schedules',             selectFields: ['Id', 'Title', 'EventDate', 'EndDate', 'Status', 'TargetUserId', 'AssignedStaffId'] },
+    { name: 'daily',     listTitle: 'DailyActivityRecords',  selectFields: ['Id', 'Title', 'RecordDate', 'Created', 'Modified'] },
+  ] as const;
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/json;odata=nometadata',
+  };
+
+  const seenTodayKeys = new Set<string>();
+
+  for (const target of PROBE_TARGETS) {
+    try {
+      const skippedFields: string[] = [];
+      let fields: string[] = [...target.selectFields];
+
+      // Field-fallback loop: on HTTP 400 extract the offending field, remove, retry
+      for (;;) {
+        const select = fields.join(',');
+        const url = `${siteUrl}/_api/web/lists/getbytitle('${encodeURIComponent(target.listTitle)}')/items?$select=${select}&$top=1`;
+        const res = await globalThis.fetch(url, { headers });
+
+        if (res.ok) break;
+
+        if (res.status === 400 && fields.length > 1) {
+          const errText = await res.text().catch(() => '');
+          const match = errText.match(/'([^']+)'/);
+          const missing = match?.[1] ?? null;
+          if (missing && fields.includes(missing)) {
+            skippedFields.push(missing);
+            fields = fields.filter((f) => f !== missing);
+            continue;
+          }
+        }
+
+        console.warn(`  ⚠️ Field skip probe: ${target.listTitle} HTTP ${res.status} (non-recoverable)`);
+        break;
+      }
+
+      // Dedupe within this run and build reason keys
+      const seenFields = new Set<string>();
+      for (const fieldName of skippedFields) {
+        if (seenFields.has(fieldName)) continue;
+        seenFields.add(fieldName);
+        seenTodayKeys.add(`${target.name}:${fieldName}`);
+      }
+
+      if (skippedFields.length > 0) {
+        console.log(`  └ Field skip probe [${target.name}]: skipped [${[...seenFields].join(', ')}]`);
+      }
+    } catch (err) {
+      // Fail-soft: probe error must not stop patrol
+      console.warn(`  ⚠️ Field skip probe error [${target.listTitle}]:`, err instanceof Error ? err.message : err);
+    }
+  }
+
+  return seenTodayKeys;
+}
+
 // --- execution block for local testing ---
 async function run() {
   // モック生データ: 様々なケースを想定
@@ -478,7 +562,34 @@ async function run() {
   // ─────────────────────────────────────────────────────────────────────────
 
   const summary = aggregateEvents(rawEvents);
-  
+
+  // ── Phase B: sp:field_skipped streak集計 ─────────────────────────────────
+  if (token && siteUrl) {
+    console.log('🔍 Running field skip probe...');
+    try {
+      const today = toJstDateString(new Date());
+      const seenTodayKeys = await runFieldSkipProbe(token, siteUrl);
+
+      const streakStore = await loadStreakStore(STREAK_STORE_PATH);
+      const updatedStore = updateStreakStore(streakStore, seenTodayKeys, today);
+      await saveStreakStore(STREAK_STORE_PATH, updatedStore);
+
+      summary.fieldSkipStreaks = buildStreakResults(updatedStore);
+
+      const persistent = summary.fieldSkipStreaks.filter((e) => e.status === 'persistent_drift');
+      console.log(`  └ Streak updated: keys=${Object.keys(updatedStore).length}, persistent_drift=${persistent.length}`);
+      if (persistent.length > 0) {
+        console.warn(`  ⚠️ persistent_drift detected: ${persistent.map((e) => e.reasonKey).join(', ')}`);
+      }
+    } catch (err) {
+      // Fail-soft: streak error must not stop patrol
+      console.warn(`  ⚠️ Field skip streak error: ${err instanceof Error ? err.message : err}`);
+    }
+  } else {
+    console.warn('⚠️ Skipping field skip probe: VITE_SP_TOKEN or VITE_SP_SITE_URL not set.');
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   // JSON出力
   const jsonOutput = JSON.stringify(summary, null, 2);
   
@@ -489,6 +600,31 @@ async function run() {
   await fs.mkdir('.nightly', { recursive: true });
   await fs.writeFile(path.join('.nightly', 'runtime-summary.json'), jsonOutput, 'utf-8');
   await fs.writeFile(path.join('.nightly', 'runtime-summary.md'), mdOutput, 'utf-8');
+
+  // --- Phase D: SharePoint への永続化 (基盤統合) ---
+  if (token && siteUrl) {
+    try {
+      console.log('💾 Saving runtime summary to SharePoint...');
+      const saveUrl = `${siteUrl}/_api/web/lists/getbytitle('Diagnostics_Reports')/items`;
+      await globalThis.fetch(saveUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json;odata=nometadata',
+          'Content-Type': 'application/json;odata=nometadata',
+        },
+        body: JSON.stringify({
+          Title: 'runtime-summary',
+          Overall: summary.countsBySeverity.critical > 0 ? 'fail' : (summary.countsBySeverity.action_required > 0 ? 'warn' : 'pass'),
+          TopIssue: summary.countsBySeverity.critical > 0 ? 'Critical failures detected' : (summary.fieldSkipStreaks?.length ? 'Persistent drifts detected' : 'Healthy'),
+          SummaryText: jsonOutput, // PayloadJson として使用
+        }),
+      });
+      console.log('  └ Successfully saved to Diagnostics_Reports.');
+    } catch (err) {
+      console.warn('  ⚠️ Failed to save summary to SharePoint:', err);
+    }
+  }
 
   console.log('✅ Nightly Runtime Patrol executed.');
   console.log(`  - Fetch count : ${summary.totalEvents}`);
@@ -514,8 +650,10 @@ export async function sendTeamsNotification(summary: NightlySummary, webhookUrl?
 
   const hasCritical = summary.countsBySeverity.critical > 0;
   const hasAction = summary.countsBySeverity.action_required > 0;
+  const persistentDrifts = (summary.fieldSkipStreaks ?? []).filter((e) => e.status === 'persistent_drift');
+  const hasPersistentDrift = persistentDrifts.length > 0;
 
-  const statusColor = hasCritical ? 'Attention' : (hasAction ? 'Warning' : 'Good');
+  const statusColor = (hasCritical || hasPersistentDrift) ? 'Attention' : (hasAction ? 'Warning' : 'Good');
   const statusEmoji = hasCritical ? '🔴 CRITICAL' : (hasAction ? '🟠 Action Required' : '✅ Healthy');
 
   // 重要度の高いイベントのみを抽出（Adaptive Card の制限内に収める）
@@ -586,6 +724,28 @@ export async function sendTeamsNotification(summary: NightlySummary, webhookUrl?
       wrap: true
     });
   }
+
+  // ── Persistent Field Drift section (Phase C) ─────────────────────────────
+  if (hasPersistentDrift) {
+    cardItems.push({
+      type: 'TextBlock',
+      text: '⚠️ **Persistent Field Drift Detected**',
+      separator: true,
+      wrap: true,
+      weight: 'Bolder',
+      color: 'Attention',
+    });
+    persistentDrifts.forEach((e) => {
+      cardItems.push({
+        type: 'TextBlock',
+        text: `**${e.reasonKey}** — ${e.streak}日連続スキップ → ensureField を検討してください`,
+        wrap: true,
+        size: 'Small',
+        color: 'Attention',
+      });
+    });
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   cardItems.push({
     type: 'TextBlock',

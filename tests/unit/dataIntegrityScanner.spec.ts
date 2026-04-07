@@ -147,6 +147,42 @@ describe('scanAll', () => {
 });
 
 // ────────────────────────────────────────────────────────────────────────────
+// skippedFields propagation
+// ────────────────────────────────────────────────────────────────────────────
+
+describe('skippedFields propagation in scanAll', () => {
+  it('passes skippedFields from TargetData to ScanResult', () => {
+    const data = new Map<string, TargetData>([
+      ['test-users', { items: [validItem], fetchStatus: 'success', skippedFields: ['UserID'] }],
+    ]);
+
+    const [result] = scanAll([testTarget], data);
+
+    expect(result.skippedFields).toEqual(['UserID']);
+  });
+
+  it('ScanResult.skippedFields is undefined when TargetData has no skippedFields', () => {
+    const data = new Map<string, TargetData>([
+      ['test-users', { items: [validItem], fetchStatus: 'success' }],
+    ]);
+
+    const [result] = scanAll([testTarget], data);
+
+    expect(result.skippedFields).toBeUndefined();
+  });
+
+  it('preserves empty skippedFields array as-is', () => {
+    const data = new Map<string, TargetData>([
+      ['test-users', { items: [validItem], fetchStatus: 'success', skippedFields: [] }],
+    ]);
+
+    const [result] = scanAll([testTarget], data);
+
+    expect(result.skippedFields).toEqual([]);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
 // formatScanSummary
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -172,5 +208,27 @@ describe('formatScanSummary', () => {
     expect(summary).toContain('2件中 1件 OK / 1件 エラー');
     expect(summary).toContain('ID 2');
     expect(summary).toContain('不整合データが見つかりました');
+  });
+
+  it('includes ⚠ 列スキップ line when skippedFields are present', () => {
+    const results = scanAll(
+      [testTarget],
+      new Map<string, TargetData>([
+        ['test-users', { items: [validItem], fetchStatus: 'success', skippedFields: ['UserID', 'Email'] }],
+      ]),
+    );
+
+    const summary = formatScanSummary(results);
+    expect(summary).toContain('⚠ 列スキップ: UserID, Email');
+  });
+
+  it('omits ⚠ 列スキップ line when skippedFields is absent', () => {
+    const results = scanAll(
+      [testTarget],
+      new Map<string, TargetData>([['test-users', { items: [validItem], fetchStatus: 'success' }]]),
+    );
+
+    const summary = formatScanSummary(results);
+    expect(summary).not.toContain('列スキップ');
   });
 });

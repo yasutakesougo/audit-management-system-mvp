@@ -7,7 +7,7 @@ import {
   DataProviderNotInitializedError 
 } from '@/lib/errors';
 
-import { isDevMode, isDemoModeEnabled, readBool, readOptionalEnv } from '@/lib/env';
+import { isDevMode, isDemoModeEnabled, readBool, readOptionalEnv, shouldSkipSharePoint } from '@/lib/env';
 
 export type ProviderType = 'sharepoint' | 'memory' | 'local';
 
@@ -84,22 +84,30 @@ export function createDataProvider(
  * 現在の動作モード（URL/環境変数）を React Hook 以外の場所から取得する。
  */
 export function getActiveProviderType(): ProviderType {
+  const isDev = isDevMode();
+  const isDemo = isDemoModeEnabled();
+  const skipSp = shouldSkipSharePoint();
+  const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
+
+  // 1. テストでのスキップ指定（最優先）
+  if (skipSp) return 'memory';
+
+  // 2. 明示的なバックエンド指定 (URL/環境変数)
   const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const providerParam = urlParams?.get('provider');
   const envProvider = readOptionalEnv('VITE_DATA_PROVIDER');
-  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
-
   const selected = providerParam || envProvider;
+
   if (selected === 'memory') return 'memory';
   if (selected === 'local') return 'local';
   if (selected === 'sharepoint') return 'sharepoint';
 
+  // 3. 強制SharePoint指定 (統合テスト等で使用)
   if (forceSharePoint) return 'sharepoint';
 
-  // フォールバック: デモモードや開発環境ならメモリモードを優先
-  if (isDemoModeEnabled() || isDevMode()) {
-    return 'memory';
-  }
+  // 4. フォールバック: テモ、開発、インフラテスト環境ならメモリをデフォルトに
+  if (isDemo || isDev || isTest) return 'memory';
 
   return 'sharepoint';
 }

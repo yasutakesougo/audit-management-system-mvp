@@ -141,4 +141,74 @@ describe('DataIntegrityPage', () => {
     fireEvent.click(screen.getByTestId('scan-action-btn'));
     expect(cancelScan).toHaveBeenCalledOnce();
   });
+
+  it('shows skipped-fields warning banner when any result has skippedFields', () => {
+    mockUseDataIntegrityScan.mockReturnValue({
+      status: 'done',
+      progress: null,
+      results: [
+        {
+          target: 'users', listTitle: 'Users_Master', total: 33, valid: 33, invalid: 0,
+          issues: [], durationMs: 10, fetchStatus: 'success', skippedFields: ['UserID'],
+        },
+      ],
+      error: null,
+      startScan: vi.fn(),
+      cancelScan: vi.fn(),
+    });
+
+    render(<DataIntegrityPage />);
+
+    expect(screen.getByTestId('skipped-fields-banner')).toBeDefined();
+    expect(screen.getByText(/列スキップが検出されました/)).toBeDefined();
+    expect(screen.getByText(/persistent_drift/)).toBeDefined();
+  });
+
+  it('does not show skipped-fields warning banner when no result has skippedFields', () => {
+    mockUseDataIntegrityScan.mockReturnValue({
+      status: 'done',
+      progress: null,
+      results: [
+        {
+          target: 'users', listTitle: 'Users_Master', total: 100, valid: 100, invalid: 0,
+          issues: [], durationMs: 10, fetchStatus: 'success',
+        },
+      ],
+      error: null,
+      startScan: vi.fn(),
+      cancelScan: vi.fn(),
+    });
+
+    render(<DataIntegrityPage />);
+
+    expect(screen.queryByTestId('skipped-fields-banner')).toBeNull();
+  });
+
+  it('shows repair link for rows with skippedFields and not for rows without', () => {
+    mockUseDataIntegrityScan.mockReturnValue({
+      status: 'done',
+      progress: null,
+      results: [
+        {
+          target: 'users', listTitle: 'Users_Master', total: 33, valid: 33, invalid: 0,
+          issues: [], durationMs: 10, fetchStatus: 'success', skippedFields: ['UserID'],
+        },
+        {
+          target: 'daily', listTitle: 'DailyActivityRecords', total: 10, valid: 10, invalid: 0,
+          issues: [], durationMs: 5, fetchStatus: 'success',
+        },
+      ],
+      error: null,
+      startScan: vi.fn(),
+      cancelScan: vi.fn(),
+    });
+
+    render(<DataIntegrityPage />);
+
+    // users has skippedFields → link appears
+    expect(screen.getByTestId('skipped-fields-link-users')).toBeDefined();
+    expect(screen.getByText('構成診断を確認する →')).toBeDefined();
+    // daily has no skippedFields → no link
+    expect(screen.queryByTestId('skipped-fields-link-daily')).toBeNull();
+  });
 });
