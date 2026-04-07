@@ -3,7 +3,8 @@ import { create } from 'zustand';
 export type NurseTelemetryEvent =
   | 'nurse_queue_flushed_total'
   | 'nurse_queue_failed_total'
-  | 'nurse_seizure_saved_total';
+  | 'nurse_seizure_saved_total'
+  | 'sp:field_skipped';
 
 export type TelemetryPayload = Record<string, unknown>;
 

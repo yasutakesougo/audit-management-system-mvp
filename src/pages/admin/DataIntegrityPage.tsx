@@ -26,8 +26,10 @@ import { SharePointDailyRecordItemSchema } from '@/features/daily/domain/schema'
 import { SpScheduleRowSchema } from '@/features/schedules/data/spRowSchema';
 import { SpUserMasterItemSchema } from '@/features/users/schema';
 import { useDataIntegrityScan } from '@/hooks/useDataIntegrityScan';
+import { emitSkippedFieldTelemetry } from '@/lib/dataIntegrity/skippedFieldTelemetry';
 import { formatScanSummary, type ScanResult, type ScanTarget, type TargetData } from '@/lib/dataIntegrityScanner';
 import { auditLog } from '@/lib/debugLogger';
+import { extractMissingField } from '@/lib/sp/helpers';
 import { useSP } from '@/lib/spClient';
 import { SCHEDULES_SELECT_FIELDS } from '@/sharepoint/fields/scheduleFields';
 import { USERS_SELECT_FIELDS_MINIMAL } from '@/sharepoint/fields/userFields';
@@ -64,12 +66,14 @@ const SCAN_TARGETS: ScanTarget[] = [
 const MAX_ITEMS_PER_REQUEST = 500;
 const MAX_PAGES = 20; // 500 × 20 = 10,000 items max
 
+type SpFetch = (path: string, init?: RequestInit) => Promise<Response>;
+
 /**
  * Fetch all raw items from a SharePoint list via REST API.
  * Uses pagination ($skiptoken / odata.nextLink) to collect all items.
  */
 async function fetchRawItems(
-  spFetch: (path: string, init?: RequestInit) => Promise<Response>,
+  spFetch: SpFetch,
   listTitle: string,
   selectFields: readonly string[],
   signal?: AbortSignal,
@@ -108,6 +112,43 @@ async function fetchRawItems(
   return { items: allItems, isTruncated: false };
 }
 
+/**
+ * Wraps fetchRawItems with $select fallback:
+ * if SP returns HTTP 400 (unknown column), extract the offending field name,
+ * remove it from the select list, and retry. Skipped fields are returned
+ * so callers can surface them as warnings and emit telemetry.
+ */
+async function fetchRawItemsWithFieldFallback(
+  spFetch: SpFetch,
+  listTitle: string,
+  selectFields: readonly string[],
+  signal?: AbortSignal,
+): Promise<{ items: unknown[]; isTruncated: boolean; skippedFields: string[] }> {
+  const skippedFields: string[] = [];
+  let fields = Array.from(selectFields);
+
+  for (;;) {
+    try {
+      const result = await fetchRawItems(spFetch, listTitle, fields, signal);
+      if (skippedFields.length > 0) {
+        // eslint-disable-next-line no-console
+        console.warn(`[data-integrity] ${listTitle}: skipped fields [${skippedFields.join(', ')}]`);
+      }
+      return { ...result, skippedFields };
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith('HTTP 400:') && fields.length > 1) {
+        const missing = extractMissingField(err.message);
+        if (missing && fields.includes(missing)) {
+          skippedFields.push(missing);
+          fields = fields.filter((f) => f !== missing);
+          continue;
+        }
+      }
+      throw err;
+    }
+  }
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // Component
 // ────────────────────────────────────────────────────────────────────────────
@@ -126,6 +167,7 @@ const DataIntegrityPage: React.FC = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const handleStartScan = useCallback(async () => {
+    const requestId = `di-${Date.now().toString(36)}`;
     try {
       setFetchingData(true);
       setFetchError(null);
@@ -134,13 +176,18 @@ const DataIntegrityPage: React.FC = () => {
       const data = new Map<string, TargetData>();
       for (const target of SCAN_TARGETS) {
         try {
-          const { items, isTruncated } = await fetchRawItems(spFetch, target.listTitle, target.selectFields);
-          data.set(target.name, {
-            items,
-            fetchStatus: 'success',
-            isTruncated,
-          });
+          const { items, isTruncated, skippedFields } = await fetchRawItemsWithFieldFallback(
+            spFetch,
+            target.listTitle,
+            target.selectFields,
+          );
+          data.set(target.name, { items, fetchStatus: 'success', isTruncated, skippedFields });
+
+          if (skippedFields.length > 0) {
+            emitSkippedFieldTelemetry({ listKey: target.name, skippedFields, count: items.length, requestId });
+          }
         } catch (fetchErr) {
+          // eslint-disable-next-line no-console
           console.warn(`[data-integrity] Failed to fetch ${target.listTitle}:`, fetchErr);
           data.set(target.name, {
             items: [],
@@ -273,6 +320,14 @@ const DataIntegrityPage: React.FC = () => {
               本ツールで「取得エラー」や「必須欠落」が頻発する場合、不要な列の削除や統合を検討してください。
             </Typography>
           </Alert>
+
+          {/* ── Skipped Fields Warning Banner (Phase C) ── */}
+          {results.some((r) => (r.skippedFields ?? []).length > 0) && (
+            <Alert severity="warning" sx={{ mb: 3 }} data-testid="skipped-fields-banner">
+              <AlertTitle sx={{ fontWeight: 700 }}>⚠ 列スキップが検出されました</AlertTitle>
+              Nightly Patrol レポートで persistent_drift の有無を確認してください。
+            </Alert>
+          )}
         </>
       )}
 
@@ -301,23 +356,43 @@ const DataIntegrityPage: React.FC = () => {
                       </Stack>
                     </TableCell>
                     <TableCell>
-                      {r.fetchStatus === 'success' ? (
-                        <Chip
-                          label={r.isTruncated ? "上限到達" : "成功"}
-                          size="small"
-                          color={r.isTruncated ? "warning" : "success"}
-                          variant="filled"
-                          sx={{ height: 20, fontSize: '0.7rem' }}
-                        />
-                      ) : (
-                        <Chip
-                          label="失敗"
-                          size="small"
-                          color="error"
-                          variant="filled"
-                          sx={{ height: 20, fontSize: '0.7rem' }}
-                        />
-                      )}
+                      <Stack spacing={0.5} alignItems="flex-start">
+                        {r.fetchStatus === 'success' ? (
+                          <Chip
+                            label={r.isTruncated ? "上限到達" : "成功"}
+                            size="small"
+                            color={r.isTruncated ? "warning" : "success"}
+                            variant="filled"
+                            sx={{ height: 20, fontSize: '0.7rem' }}
+                          />
+                        ) : (
+                          <Chip
+                            label="失敗"
+                            size="small"
+                            color="error"
+                            variant="filled"
+                            sx={{ height: 20, fontSize: '0.7rem' }}
+                          />
+                        )}
+                        {r.skippedFields && r.skippedFields.length > 0 && (
+                          <>
+                            <Typography variant="caption" color="warning.main">
+                              ⚠ 列スキップ: {r.skippedFields.join(', ')}
+                            </Typography>
+                            <Button
+                              component="a"
+                              href="/admin/status"
+                              size="small"
+                              variant="text"
+                              color="warning"
+                              sx={{ fontSize: '0.65rem', p: 0, minWidth: 0, textTransform: 'none', lineHeight: 1.4 }}
+                              data-testid={`skipped-fields-link-${r.target}`}
+                            >
+                              構成診断を確認する →
+                            </Button>
+                          </>
+                        )}
+                      </Stack>
                     </TableCell>
                     <TableCell align="right">{r.total.toLocaleString()}件</TableCell>
                     <TableCell align="right">
