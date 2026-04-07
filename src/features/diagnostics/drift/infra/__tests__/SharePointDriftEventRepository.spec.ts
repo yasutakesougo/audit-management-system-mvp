@@ -14,7 +14,7 @@ describe('SharePointDriftEventRepository', () => {
   });
 
   it('omits optional fields missing from schema when logging', async () => {
-    const createItem = vi.fn(async () => ({}));
+    const createItem = vi.fn<(listTitle: string, payload: any) => Promise<any>>(async () => ({}));
     const repo = new SharePointDriftEventRepository({
       createItem,
       updateItemByTitle: vi.fn(async () => ({})),
@@ -59,7 +59,7 @@ describe('SharePointDriftEventRepository', () => {
       { status: 400 },
     );
     const createItem = vi
-      .fn()
+      .fn<(listTitle: string, payload: any) => Promise<any>>()
       .mockRejectedValueOnce(badRequest)
       .mockResolvedValueOnce({});
 
@@ -92,7 +92,7 @@ describe('SharePointDriftEventRepository', () => {
       { status: 400 },
     );
     const createItem = vi
-      .fn()
+      .fn<(listTitle: string, payload: any) => Promise<any>>()
       .mockRejectedValueOnce(badRequest)
       .mockResolvedValueOnce({});
 
@@ -137,7 +137,7 @@ describe('SharePointDriftEventRepository', () => {
     ]);
 
     const repo = new SharePointDriftEventRepository({
-      createItem: vi.fn(async () => ({})),
+      createItem: vi.fn<(listTitle: string, payload: any) => Promise<any>>(async () => ({})),
       updateItemByTitle: vi.fn(async () => ({})),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       getListItemsByTitle: getListItemsByTitle as any,
@@ -187,7 +187,7 @@ describe('SharePointDriftEventRepository', () => {
 
   it('returns empty array on fetch failure (fail-open)', async () => {
     const repo = new SharePointDriftEventRepository({
-      createItem: vi.fn(async () => ({})),
+      createItem: vi.fn<(listTitle: string, payload: any) => Promise<any>>(async () => ({})),
       updateItemByTitle: vi.fn(async () => ({})),
       getListItemsByTitle: vi.fn(async () => {
         throw new Error('boom');
@@ -202,7 +202,7 @@ describe('SharePointDriftEventRepository', () => {
     const updateItemByTitle = vi.fn(async () => ({}));
 
     const repo = new SharePointDriftEventRepository({
-      createItem: vi.fn(async () => ({})),
+      createItem: vi.fn<(listTitle: string, payload: any) => Promise<any>>(async () => ({})),
       updateItemByTitle,
       getListItemsByTitle: vi.fn(async () => []),
       getSchema: vi.fn(async () => ['IsResolved']),

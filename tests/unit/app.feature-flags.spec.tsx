@@ -5,10 +5,12 @@ import { screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithAppProviders } from '../helpers/renderWithAppProviders';
 
+const mockSpClient = {
+  spFetch: vi.fn(() => Promise.resolve({ ok: true })),
+};
+
 vi.mock('@/lib/spClient', () => ({
-  useSP: () => ({
-    spFetch: vi.fn(() => Promise.resolve({ ok: true })),
-  }),
+  useSP: () => mockSpClient,
 }));
 
 vi.mock('@/app/components/FooterQuickActions', () => ({
@@ -28,12 +30,12 @@ const renderWithFlags = (flags: FeatureFlagSnapshot) =>
 
 describe('AppShell schedule flag', () => {
   it('hides schedule nav when flag is disabled', () => {
-    renderWithFlags({ schedules: false, complianceForm: false, schedulesWeekV2: false, icebergPdca: false, staffAttendance: false, todayOps: false, todayLiteUi: false });
+    renderWithFlags({ schedules: false, complianceForm: false, schedulesWeekV2: false, icebergPdca: false, staffAttendance: false, todayOps: false, todayLiteUi: false, todayLiteNavV2: false });
     expect(screen.queryByTestId('nav-schedules')).toBeNull();
   });
 
   it('shows schedule nav when flag is enabled', async () => {
-    renderWithFlags({ schedules: true, complianceForm: false, schedulesWeekV2: true, icebergPdca: false, staffAttendance: false, todayOps: false, todayLiteUi: false });
+    renderWithFlags({ schedules: true, complianceForm: false, schedulesWeekV2: true, icebergPdca: false, staffAttendance: false, todayOps: false, todayLiteUi: false, todayLiteNavV2: false });
     expect(await screen.findByTestId('nav-schedules')).toBeInTheDocument();
   });
 });

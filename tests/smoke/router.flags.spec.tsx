@@ -6,11 +6,15 @@ const spFetchMock = vi.fn(async () => ({ ok: true }));
 const signInMock = vi.fn(async () => undefined);
 const signOutMock = vi.fn(async () => undefined);
 
+const mockSpClientLocal = {
+  spFetch: spFetchMock,
+};
+
 vi.mock('@/lib/spClient', async () => {
   const actual = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
   return {
     ...actual,
-    useSP: () => ({ spFetch: spFetchMock }),
+    useSP: () => mockSpClientLocal,
   };
 });
 
@@ -20,19 +24,21 @@ vi.mock('@/sharepoint/spProvisioningCoordinator', () => ({
   },
 }));
 
+const mockAuth = {
+  signIn: signInMock,
+  signOut: signOutMock,
+  isAuthenticated: false,
+  account: null,
+  shouldSkipLogin: true,
+  loading: false,
+  tokenReady: true,
+  getListReadyState: () => true,
+  setListReadyState: vi.fn(),
+  acquireToken: vi.fn(async () => 'mock-token'),
+};
+
 vi.mock('@/auth/useAuth', () => ({
-  useAuth: () => ({
-    signIn: signInMock,
-    signOut: signOutMock,
-    isAuthenticated: false,
-    account: null,
-    shouldSkipLogin: true,
-    loading: false,
-    tokenReady: true,
-    getListReadyState: () => true,
-    setListReadyState: vi.fn(),
-    acquireToken: vi.fn(async () => 'mock-token'),
-  }),
+  useAuth: () => mockAuth,
 }));
 
 vi.mock('@/features/records/RecordList', () => ({
@@ -55,12 +61,14 @@ vi.mock('@/features/users', () => ({
   UsersPanel: () => <h1>利用者ビュー</h1>,
 }));
 
+const mockUserAuthz = {
+  role: 'admin' as const,
+  ready: true,
+  reason: undefined,
+};
+
 vi.mock('@/auth/useUserAuthz', () => ({
-  useUserAuthz: () => ({
-    role: 'admin',
-    ready: true,
-    reason: undefined,
-  }),
+  useUserAuthz: () => mockUserAuthz,
 }));
 
 vi.mock('@/lib/env', async () => {

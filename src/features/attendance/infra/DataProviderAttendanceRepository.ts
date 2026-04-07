@@ -299,10 +299,12 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
       `Schema resolution failed for ${this.listTitleDaily}. Triggering self-healing...`,
     );
     type FieldsType = Parameters<IDataProvider['ensureListExists']>[1];
-    await this.provider.ensureListExists(
-      this.listTitleDaily,
-      [...ATTENDANCE_DAILY_ENSURE_FIELDS] as unknown as FieldsType,
-    );
+    if (typeof this.provider.ensureListExists === 'function') {
+      await this.provider.ensureListExists(
+        this.listTitleDaily,
+        [...ATTENDANCE_DAILY_ENSURE_FIELDS] as unknown as FieldsType,
+      );
+    }
 
     this.dailyResolver.reset();
     this.dailyResolutionReported = false;

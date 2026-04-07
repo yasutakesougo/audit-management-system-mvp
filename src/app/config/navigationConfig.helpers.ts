@@ -29,6 +29,7 @@ const NAV_AUDIENCE_LEVEL: Record<NavAudience, number> = {
 export function roleToNavAudience(role: Role): NavAudience {
   if (role === 'admin') return 'admin';
   if (role === 'reception') return 'reception';
+  if (role === 'viewer') return 'all';
   return 'staff';
 }
 

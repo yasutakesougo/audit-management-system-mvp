@@ -6,19 +6,20 @@ import {
   Stack, 
   Divider, 
   Button, 
-  Alert, 
   CircularProgress,
   List,
   ListItem,
   ListItemText,
   ListItemIcon,
   Tooltip,
+  Alert
 } from '@mui/material';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import BuildCircleIcon from '@mui/icons-material/BuildCircle';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import { usePersistentDrift, type FieldSkipStreakResult } from '../hooks/usePersistentDrift';
+import { usePersistentDrift } from '../hooks/usePersistentDrift';
+import type { DriftEvent } from '../domain/driftLogic';
 import { useSP } from '@/lib/spClient';
 import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -33,10 +34,6 @@ const REASON_KEY_TO_TITLE: Record<string, string> = {
   'daily': 'DailyActivityRecords',
 };
 
-/**
- * Phase D.1: 整合性ドリフト解消のための「真の ensureField」用定義
- * 列が存在しない場合に作成するための型情報を持つ。
- */
 const DRIFT_FIELD_DEFINITIONS: Record<string, SpFieldDef> = {
   'users:UserID': { internalName: 'UserID', displayName: 'ユーザーID', type: 'Text', indexed: true },
   'users:FullName': { internalName: 'FullName', displayName: '氏名', type: 'Text', indexed: true },
@@ -49,15 +46,17 @@ const DRIFT_FIELD_DEFINITIONS: Record<string, SpFieldDef> = {
 };
 
 export const SpPersistentDriftPanel: React.FC = () => {
-  const { persistentDrifts, loading, error } = usePersistentDrift();
+  const { items: persistentDrifts, isLoading: loading, error } = usePersistentDrift(3);
   const sp = useSP();
   const confirm = useConfirmDialog();
   const [executingKeys, setExecutingKeys] = React.useState<Set<string>>(new Set());
   const [results, setResults] = React.useState<Record<string, 'success' | 'error' | null>>({});
 
-  const handleRepair = async (entry: FieldSkipStreakResult) => {
-    const [listKey, fieldName] = entry.reasonKey.split(':');
+  const handleRepair = async (entry: DriftEvent & { agingDays: number }) => {
+    const listKey = entry.listName;
+    const fieldName = entry.fieldName;
     const listTitle = REASON_KEY_TO_TITLE[listKey] ?? listKey;
+    const reasonKey = `${listKey}:${fieldName}`;
 
     confirm.open({
       title: 'フィールド・ドリフトの修復',
@@ -65,7 +64,7 @@ export const SpPersistentDriftPanel: React.FC = () => {
 対象リスト: ${listTitle}
 対象フィールド: ${fieldName}
 ----------------------------------
-・このフィールドは取得時に連続 ${entry.streak} 日間エラー（400スキップ）されています。
+・このフィールドは取得時に連続 ${entry.agingDays} 日間エラー（スキップ）されています。
 ・このフィールドにインデックスを強制付与し、取得エラーの解消を試みます。
 
 【影響】
@@ -77,11 +76,11 @@ export const SpPersistentDriftPanel: React.FC = () => {
       onConfirm: async () => {
         if (!sp) return;
 
-        setExecutingKeys(prev => new Set(prev).add(entry.reasonKey));
-        setResults(prev => ({ ...prev, [entry.reasonKey]: null }));
+        setExecutingKeys(prev => new Set(prev).add(reasonKey));
+        setResults(prev => ({ ...prev, [reasonKey]: null }));
 
         try {
-          auditLog.info('diagnostics:drift', `Executing persistent drift repair for ${entry.reasonKey}`, { listTitle, fieldName });
+          auditLog.info('diagnostics:drift', `Executing persistent drift repair for ${reasonKey}`, { listTitle, fieldName });
           
           // 1. 既存フィールドの存在確認
           const existingFields = await sp.getListFieldInternalNames(listTitle);
@@ -89,7 +88,7 @@ export const SpPersistentDriftPanel: React.FC = () => {
 
           if (!exists) {
             // A. 列が存在しない場合 -> 新規作成 (Field Existence Repair)
-            const fieldDef = DRIFT_FIELD_DEFINITIONS[entry.reasonKey];
+            const fieldDef = DRIFT_FIELD_DEFINITIONS[reasonKey];
             if (fieldDef) {
               auditLog.info('diagnostics:drift', `Field ${fieldName} is missing. Creating...`, { listTitle });
               await sp.addFieldToList(listTitle, fieldDef);
@@ -104,15 +103,15 @@ export const SpPersistentDriftPanel: React.FC = () => {
             toast.success(`インデックスを付与しました: ${fieldName} (${listTitle})`);
           }
           
-          setResults(prev => ({ ...prev, [entry.reasonKey]: 'success' }));
+          setResults(prev => ({ ...prev, [reasonKey]: 'success' }));
         } catch (err) {
-          auditLog.error('diagnostics:drift', `Repair failed for ${entry.reasonKey}`, err);
-          setResults(prev => ({ ...prev, [entry.reasonKey]: 'error' }));
+          auditLog.error('diagnostics:drift', `Repair failed for ${reasonKey}`, err);
+          setResults(prev => ({ ...prev, [reasonKey]: 'error' }));
           toast.error(`修復失敗: ${err instanceof Error ? err.message : String(err)}`);
         } finally {
           setExecutingKeys(prev => {
             const next = new Set(prev);
-            next.delete(entry.reasonKey);
+            next.delete(reasonKey);
             return next;
           });
         }
@@ -128,7 +127,6 @@ export const SpPersistentDriftPanel: React.FC = () => {
     );
   }
 
-  // 永続ドリフトが存在しない場合は表示しない（健康な状態）
   if (persistentDrifts.length === 0) {
     return null;
   }
@@ -142,9 +140,8 @@ export const SpPersistentDriftPanel: React.FC = () => {
         p: 3, 
         my: 4, 
         borderColor: 'warning.light', 
-        bgcolor: '#fffbf0', // 薄い警告背景
+        bgcolor: '#fffbf0',
         borderRadius: 2,
-        animation: 'fadeIn 0.5s ease-out'
       }}
     >
       <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
@@ -155,8 +152,8 @@ export const SpPersistentDriftPanel: React.FC = () => {
       </Stack>
 
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Nightly Patrol により ${persistentDrifts.length} 件のデータ取得失敗（スキップ）が継続して記録されています。<br />
-        この不整合を解消するため、対象フィールドにインデックスを付与することを推奨します。
+        {persistentDrifts.length} 件のデータ取得失敗（スキップ）が継続して記録されています。<br />
+        この不整合を解消するため、対象フィールドの修復を推奨します。
       </Typography>
 
       {error && (
@@ -167,13 +164,13 @@ export const SpPersistentDriftPanel: React.FC = () => {
 
       <List sx={{ bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
         {persistentDrifts.map((entry, idx) => {
-          const isExecuting = executingKeys.has(entry.reasonKey);
-          const result = results[entry.reasonKey];
-          const [listKey, fieldName] = entry.reasonKey.split(':');
-          const listTitle = REASON_KEY_TO_TITLE[listKey] ?? listKey;
+          const reasonKey = `${entry.listName}:${entry.fieldName}`;
+          const isExecuting = executingKeys.has(reasonKey);
+          const result = results[reasonKey];
+          const listTitle = REASON_KEY_TO_TITLE[entry.listName] ?? entry.listName;
 
           return (
-            <React.Fragment key={entry.reasonKey}>
+            <React.Fragment key={reasonKey}>
               {idx > 0 && <Divider />}
               <ListItem 
                 sx={{ 
@@ -194,7 +191,7 @@ export const SpPersistentDriftPanel: React.FC = () => {
                   primary={
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Typography variant="subtitle2" fontWeight="bold">
-                        {fieldName}
+                        {entry.fieldName}
                       </Typography>
                       <Typography variant="caption" color="text.secondary" sx={{ bgcolor: 'action.selected', px: 1, borderRadius: 0.5 }}>
                         {listTitle}
@@ -203,7 +200,7 @@ export const SpPersistentDriftPanel: React.FC = () => {
                   }
                   secondary={
                     <Typography variant="caption" color="error.main" sx={{ display: 'block', mt: 0.5 }}>
-                      ⚠ ${entry.streak}日連続でスキップされています
+                      ⚠ {entry.agingDays}日連続でスキップされています
                     </Typography>
                   }
                 />
@@ -214,7 +211,7 @@ export const SpPersistentDriftPanel: React.FC = () => {
                       修復済み
                     </Typography>
                   ) : (
-                    <Tooltip title="列の作成またはインデックス付与を実行し、400スキップを解消します">
+                    <Tooltip title="修復を実行し、スキップを解消します">
                       <span>
                         <Button 
                           variant="contained" 
@@ -240,7 +237,7 @@ export const SpPersistentDriftPanel: React.FC = () => {
       {hasAnySuccess && (
         <Alert severity="success" sx={{ mt: 3 }}>
           <Typography variant="body2" sx={{ mb: 1 }}>
-            修復が完了しました。整合性を再確認するためにデータ整合性ダッシュボードで「スキャンを再実行」してください。
+            修復が完了しました。整合性ダッシュボードで確認してください。
           </Typography>
           <Button 
             component={Link} 
@@ -250,16 +247,10 @@ export const SpPersistentDriftPanel: React.FC = () => {
             color="success"
             sx={{ fontWeight: 'bold' }}
           >
-            データ整合性 Dashboard へ
+            Dashboard へ
           </Button>
         </Alert>
       )}
-
-      <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-        <Typography variant="caption" color="text.disabled">
-          Data source: .nightly/runtime-summary.json
-        </Typography>
-      </Box>
 
       <ConfirmDialog {...confirm.dialogProps} />
     </Paper>

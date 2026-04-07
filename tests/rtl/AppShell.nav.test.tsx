@@ -12,11 +12,15 @@ import { SettingsProvider } from '@/features/settings';
 import { ToastProvider } from '@/hooks/useToast';
 import { TESTIDS } from '@/testids';
 
+const mockSpClient = {
+  spFetch: vi.fn().mockResolvedValue({ ok: true }),
+};
+
 vi.mock('@/lib/spClient', async () => {
   const actual = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
   return {
     ...actual,
-    useSP: () => ({ spFetch: vi.fn().mockResolvedValue({ ok: true }) }),
+    useSP: () => mockSpClient,
   };
 });
 
@@ -93,6 +97,7 @@ describe('AppShell navigation smoke test', () => {
     staffAttendance: false,
     todayOps: false,
     todayLiteUi: false,
+    todayLiteNavV2: false,
   };
 
   const colorMode = { mode: 'light' as const, toggle: vi.fn(), sticky: false };

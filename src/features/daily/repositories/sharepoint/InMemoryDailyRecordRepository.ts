@@ -131,6 +131,9 @@ const createDefaultRecords = (): DailyRecordItem[] => {
       userCount: userRows.length,
       createdAt: new Date(recordDate + 'T17:30:00+09:00').toISOString(),
       modifiedAt: new Date(recordDate + 'T17:30:00+09:00').toISOString(),
+      approvalStatus: undefined,
+      approvedBy: undefined,
+      approvedAt: undefined,
     });
   }
 
@@ -182,6 +185,9 @@ export class InMemoryDailyRecordRepository implements DailyRecordRepository {
       id: existingRecord?.id ?? `inmem-daily-${this.nextId++}`,
       createdAt: existingRecord?.createdAt ?? now,
       modifiedAt: now,
+      approvalStatus: existingRecord?.approvalStatus,
+      approvedBy: existingRecord?.approvedBy,
+      approvedAt: existingRecord?.approvedAt,
     };
 
     this.data.set(input.date, record);

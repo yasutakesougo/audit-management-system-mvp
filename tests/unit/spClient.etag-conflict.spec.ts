@@ -48,7 +48,7 @@ describe('spClient ETag / 412 handling', () => {
     const client = createSpClient(acquireToken, baseUrl);
     const list = "lists/getbytitle('SupportRecord_Daily')";
 
-    await expect(client.updateItem(list, 10, { Title: 'edited' }, { ifMatch: 'W/"2"' })).resolves.toBeUndefined();
+    await expect(client.updateItem(list, 10, { Title: 'edited' }, { ifMatch: 'W/"2"' })).resolves.toBeNull();
 
     expect(fetchMock).toHaveBeenCalledTimes(3);
 

@@ -98,7 +98,7 @@ describe('DataProviderAttendanceRepository - Regression / Hardening', () => {
     it('skips unresolved optional fields on write (AttendanceDaily)', async () => {
       mockProvider.getResourceNames.mockResolvedValue(['AttendanceDaily']);
       mockProvider.getFieldInternalNames.mockResolvedValue(
-        new Set(['Id', 'Title', 'UserCode', 'RecordDate', 'Status']),
+        new Set(['Id', 'Title', 'UserCode', 'RecordDate', 'Status', 'CheckInAt']),
       );
       mockProvider.listItems.mockResolvedValue([]);
 

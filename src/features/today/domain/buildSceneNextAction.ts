@@ -12,6 +12,7 @@
  * 4. すべて完了していれば対応済み
  */
 import type { TodayScene } from './todayScene';
+import { MANDATORY_TASK_MESSAGES, type MandatoryTaskCategory } from '@/features/exceptions/domain/mandatoryTaskMessages';
 
 export type SceneNextActionPriority = 'critical' | 'high' | 'medium' | 'low';
 
@@ -42,15 +43,41 @@ export type SceneNextActionInput = {
   pendingAttendance: number;
   pendingDailyRecords: number;
   alertUsers: { id: string; name: string }[];
-  /** ISP 三層モデルの整合性不備 (Exception Bridge) */
+  /** 必須業務 (Mandatory Tasks) - 対応強制対象 */
+  mandatoryTasks?: Array<{
+    id: string;
+    title: string;
+    description: string;
+    priority: SceneNextActionPriority;
+    category?: MandatoryTaskCategory;
+    reason?: string;
+  }>;
+  /** ISP 三層モデルの整合性不備 (Exception Bridge) - 旧定義の互換用 */
   pendingExceptions?: import('@/domain/isp/exceptionBridge').TriggeredException[];
 };
 
 export function buildSceneNextAction(input: SceneNextActionInput): SceneNextAction {
   const criticalUser = input.alertUsers[0];
 
-  // ── P0: 重大な例外 (ISP 整合性エラー: Exception Bridge) → 最優先
-  // 計画された支援が行われていない、またはリスク確認が漏れている場合に介入する。
+  // ── P0: 必須業務 (Action Enforcement OS) → 最優先
+  // 致命的な不備があり、システムが「今すぐ対応」を求めている項目。
+  if (input.mandatoryTasks && input.mandatoryTasks.length > 0) {
+    const topTask = input.mandatoryTasks.find(t => t.priority === 'critical') || input.mandatoryTasks[0];
+    const category = topTask.category || 'DEFAULT';
+    const messages = MANDATORY_TASK_MESSAGES[category];
+
+    return {
+      scene: input.scene,
+      title: messages.heroTitle,
+      description: messages.heroDescription,
+      reasons: [`必須業務 ${input.mandatoryTasks.length}件`, topTask.reason || '運用ルール遵守'],
+      ctaLabel: '今すぐ対応する',
+      ctaTarget: 'exception-action',
+      priority: topTask.priority,
+    };
+  }
+
+  // ── P0.5: 旧例外 (ISP 整合性エラー) → 互換性維持
   if (input.pendingExceptions && input.pendingExceptions.length > 0) {
     const first = input.pendingExceptions.find(e => e.severity === 'critical') || input.pendingExceptions[0];
     return {

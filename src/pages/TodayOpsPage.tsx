@@ -177,6 +177,19 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
     [realSchedule.isLoading, hasRealLanes, realSchedule.lanes, summary.scheduleLanesToday]
   );
 
+  const quickRecord = useQuickRecord();
+  const approvalFlow = useApprovalFlow();
+
+  const mandatoryTasksForHero = useMemo(() => {
+    return (exceptionsQueue.items || []).map(i => ({
+      id: i.id,
+      title: i.title,
+      description: i.description,
+      priority: i.priority as 'critical' | 'high' | 'medium' | 'low',
+      reason: i.kind,
+    }));
+  }, [exceptionsQueue.items]);
+
   // ── Derived Hooks ──
   const nextAction = useNextAction(effectiveLanes);
   const sceneAction = useSceneNextAction({
@@ -187,11 +200,10 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
     users: summary.users ?? [],
     scheduledCount: summary.users?.length ?? 0,
     todayExceptions: summary.todayExceptions,
+    mandatoryTasks: mandatoryTasksForHero,
   });
   const transport = useTransportStatus();
   const transportHighlight = useTransportHighlight();
-  const quickRecord = useQuickRecord();
-  const approvalFlow = useApprovalFlow();
 
   // ExceptionCenter deep link: direction 自動切り替え
   // isReady を待たずに即時反映し、初期 auto-switch に負けないようにする。

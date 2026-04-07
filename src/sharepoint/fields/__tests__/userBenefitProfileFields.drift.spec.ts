@@ -44,14 +44,14 @@ describe('USER_BENEFIT_PROFILE_CANDIDATES — 標準名', () => {
 
   it('必須 2 フィールドがすべて解決される', () => {
     const { resolved, missing } = resolve(available);
-    expect(resolved.userID).toBe('UserID');
+    expect(resolved.userId).toBe('UserID');
     expect(resolved.recipientCertNumber).toBe('RecipientCertNumber');
     expect(missing).toHaveLength(0);
   });
 
   it('drift フラグが false（完全一致）', () => {
     const { fieldStatus } = resolve(available);
-    expect(fieldStatus.userID.isDrifted).toBe(false);
+    expect(fieldStatus.userId.isDrifted).toBe(false);
     expect(fieldStatus.recipientCertNumber.isDrifted).toBe(false);
   });
 
@@ -64,24 +64,24 @@ describe('USER_BENEFIT_PROFILE_CANDIDATES — 標準名', () => {
 // ── 2. UserID → UserCode リネーム ─────────────────────────────────────────────
 
 describe('USER_BENEFIT_PROFILE_CANDIDATES — userID drift', () => {
-  it('UserCode が userID として解決される (WARN)', () => {
+  it('UserCode が userId として解決される (WARN)', () => {
     const available = new Set(['UserCode', 'RecipientCertNumber']);
     const { resolved, fieldStatus } = resolve(available);
-    expect(resolved.userID).toBe('UserCode');
-    expect(fieldStatus.userID.isDrifted).toBe(true);
+    expect(resolved.userId).toBe('UserCode');
+    expect(fieldStatus.userId.isDrifted).toBe(true);
   });
 
-  it('userId (小文字) が userID として解決される', () => {
+  it('userId (小文字) が userId として解決される', () => {
     const available = new Set(['userId', 'RecipientCertNumber']);
     const { resolved } = resolve(available);
-    expect(resolved.userID).toBe('userId');
+    expect(resolved.userId).toBe('userId');
   });
 
-  it('cr013_userId が userID として解決される (WARN)', () => {
+  it('cr013_userId が userId として解決される (WARN)', () => {
     const available = new Set(['cr013_userId', 'RecipientCertNumber']);
     const { resolved, fieldStatus } = resolve(available);
-    expect(resolved.userID).toBe('cr013_userId');
-    expect(fieldStatus.userID.isDrifted).toBe(true);
+    expect(resolved.userId).toBe('cr013_userId');
+    expect(fieldStatus.userId.isDrifted).toBe(true);
   });
 });
 

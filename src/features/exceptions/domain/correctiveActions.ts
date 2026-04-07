@@ -243,6 +243,17 @@ const CORRECTIVE_ACTION_MAP: Record<
       reason: 'データレイヤーの異常を修正または確認してください。',
     },
   ],
+  'integrity': (item) => [
+    {
+      key: `${item.id}-repair`,
+      label: item.remediationProposal?.actionLabel ?? '不整合を修復',
+      route: item.actionPath ?? '/admin/data-integrity',
+      variant: 'primary',
+      severity: 'high',
+      icon: '🔧',
+      reason: item.description,
+    },
+  ],
 };
 
 // ─── ユーティリティ ───────────────────────────────────────────

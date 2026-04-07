@@ -1,4 +1,4 @@
-import { getRuntimeEnv, isDev as runtimeIsDev } from '@/env';
+import { getRuntimeEnv, isDev as runtimeIsDev, clearEnvCache as clearRuntimeEnvCache } from '@/env';
 import { z } from 'zod';
 import { envSchema as AppEnvSchema } from './env.schema';
 
@@ -243,6 +243,7 @@ export const __resetAppConfigForTests = (): void => {
 };
 
 export const clearEnvCache = (): void => {
+  clearRuntimeEnvCache();
   __resetAppConfigForTests();
 };
 
@@ -386,7 +387,7 @@ export const getScheduleSaveMode = (envOverride?: EnvRecord): ScheduleSaveMode =
 export const isScheduleSaveMocked = (envOverride?: EnvRecord): boolean =>
   getScheduleSaveMode(envOverride) === 'mock';
 
-// E2E/Demo逕ｨ繝輔Λ繧ｰ繝倥Ν繝代・
+// E2E/Demo用フラグヘルパー
 export const getFlag = (name: string, envOverride?: EnvRecord): boolean => {
   const value = readEnv(name, '', envOverride);
   return value === '1' || value === 'true';

@@ -1,11 +1,12 @@
 // contract:allow-sp-direct
 import { createRepositoryFactory, type BaseFactoryOptions, defaultShouldUseDemo } from '@/lib/createRepositoryFactory';
 import { isE2E } from '@/env';
+import { isTestMode } from '@/lib/env';
 import type { ScheduleRepository } from './domain/ScheduleRepository';
 import { inMemoryScheduleRepository } from './infra/InMemoryScheduleRepository';
 import { DataProviderScheduleRepository } from './infra/DataProviderScheduleRepository';
 import { createDataProvider } from '@/lib/data/createDataProvider';
-import { createSpClient, ensureConfig } from '@/lib/spClient';
+import {  createSpClient, ensureConfig } from '@/lib/spClient';
 
 /**
  * Schedule Repository Factory options.
@@ -19,8 +20,16 @@ const factory = createRepositoryFactory<ScheduleRepository, ScheduleRepositoryFa
   name: 'Schedule',
   createDemo: () => inMemoryScheduleRepository,
   createReal: (options) => {
-    const { acquireToken } = options;
+    const acquireToken = options?.acquireToken;
     if (!acquireToken) {
+      if (isTestMode()) {
+        const { provider } = createDataProvider(null, { type: 'memory' });
+        return new DataProviderScheduleRepository({
+          provider,
+          listTitle: options?.listTitle,
+          currentOwnerUserId: options?.currentOwnerUserId,
+        });
+      }
       throw new Error('[ScheduleRepositoryFactory] acquireToken is required for real repository.');
     }
     const { baseUrl } = ensureConfig();

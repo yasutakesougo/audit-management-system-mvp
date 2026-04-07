@@ -8,7 +8,7 @@
 import type { BaseFactoryOptions } from '@/lib/createRepositoryFactory';
 import { createRepositoryFactory } from '@/lib/createRepositoryFactory';
 import { ensureConfig } from '@/lib/sp/config';
-import { createSpClient } from '@/lib/spClient';
+import {  createSpClient } from '@/lib/spClient';
 import { createDataProvider } from '@/lib/data/createDataProvider';
 
 import type { SupportPlanDraftRepository } from './domain/SupportPlanDraftRepository';

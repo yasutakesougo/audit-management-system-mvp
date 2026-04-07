@@ -26,6 +26,7 @@ const makeFlags = (overrides: Partial<FeatureFlagSnapshot> = {}): FeatureFlagSna
   staffAttendance: false,
   todayOps: false,
   todayLiteUi: false,
+  todayLiteNavV2: false,
   ...overrides,
 });
 
@@ -35,17 +36,19 @@ let mockAuthzRole: 'viewer' | 'reception' | 'admin' = 'viewer';
 beforeEach(() => {
   spFetchMock.mockReset();
   spFetchMock.mockImplementation(() => Promise.resolve({ ok: true }));
-  mockAuthzRole = 'viewer';
+  mockAuthzRole = 'reception'; // Default to reception to see standard staff items
 });
 
 afterEach(() => {
   cleanup();
 });
 
+const mockSpClientLocal = {
+  spFetch: spFetchMock,
+};
+
 vi.mock('@/lib/spClient', () => ({
-  useSP: () => ({
-    spFetch: spFetchMock,
-  }),
+  useSP: () => mockSpClientLocal,
 }));
 
 vi.mock('@/features/compliance-checklist/api', () => ({
@@ -76,14 +79,16 @@ vi.mock('@/lib/env', async () => {
   };
 });
 
+const mockAuth = {
+  signIn: vi.fn(),
+  signOut: vi.fn(),
+  acquireToken: vi.fn(),
+  isAuthenticated: true,
+  account: { username: 'tester' },
+};
+
 vi.mock('@/auth/useAuth', () => ({
-  useAuth: () => ({
-    signIn: vi.fn(),
-    signOut: vi.fn(),
-    acquireToken: vi.fn(),
-    isAuthenticated: true,
-    account: { username: 'tester' },
-  }),
+  useAuth: () => mockAuth,
 }));
 
 vi.mock('@/auth/useUserAuthz', () => ({
@@ -260,6 +265,7 @@ describe('AppShell navigation', () => {
     });
 
     it('hides staff attendance for viewer even when feature flag is enabled', async () => {
+      mockAuthzRole = 'viewer';
       const toggleMock = vi.fn();
       const theme = createTheme();
       const initialEntries = ['/'];

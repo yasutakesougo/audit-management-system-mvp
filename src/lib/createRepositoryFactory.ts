@@ -113,7 +113,11 @@ export interface RepositoryFactory<
  */
 export const defaultShouldUseDemo = (): boolean => {
   // 0. Explicit force SharePoint must win over any local/demo shortcuts.
-  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
+  // CRITICAL: We restrict this to non-test environments or explicit E2E mode 
+  // to avoid environment leakage (from .env.local) during unit tests.
+  const isE2E = readBool('VITE_E2E', false);
+  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false) && (!isTestMode() || isE2E);
+
   if (forceSharePoint) {
     return false;
   }
@@ -132,7 +136,7 @@ export const defaultShouldUseDemo = (): boolean => {
   // 2. SharePoint Enablement Logic
   // We use readEnv directly here to match the strict 'true' check used in env.ts
   // while also supporting readBool for broader compatibility if needed.
-  const spEnabled = readEnv('VITE_SP_ENABLED', '') === 'true' || readBool('VITE_SP_ENABLED', false);
+  const spEnabled = (readEnv('VITE_SP_ENABLED', '') === 'true' || readBool('VITE_SP_ENABLED', false)) && (!isTestMode() || isE2E);
   const spfxContextAvailable = hasSpfxContext();
   const { isDev } = getAppConfig();
 
@@ -148,6 +152,11 @@ export const defaultShouldUseDemo = (): boolean => {
   }
 
   // 3. Default: Use demo in dev or when context is missing
+  // CRITICAL: We MUST default to true (demo mode) in unit tests if no other trigger matched.
+  if (isTestMode() && !isE2E) {
+    return true;
+  }
+
   return isDev || !spfxContextAvailable;
 };
 
@@ -173,12 +182,22 @@ export function createRepositoryFactory<
   let overrideKind: RepositoryKind | null = null;
 
   // ── Internal helpers ────────────────────────────────────────────────────
-  const resolveKind = (forced?: RepositoryKind): RepositoryKind =>
-    forced ?? (shouldUseDemo() ? 'demo' : 'real');
+  const resolveKind = (forced?: RepositoryKind): RepositoryKind => {
+    const kind = forced ?? (shouldUseDemo() ? 'demo' : 'real');
+    // resolveKind debug removed
+    return kind;
+  };
 
   const createInstance = (kind: RepositoryKind, options?: TOptions): TRepo => {
     if (kind === 'demo') {
       return createDemo(options);
+    }
+
+    // SharePoint repository requires acquireToken unless login is skipped (e.g. testing with mock fetch)
+    if (!options?.acquireToken && !shouldSkipLogin()) {
+      const msg = `[RepoFactory] ${config.name}: acquireToken is required for SharePoint repository.`;
+      console.warn(msg);
+      throw new Error(msg);
     }
 
     return createReal(options as TOptions);
@@ -192,28 +211,28 @@ export function createRepositoryFactory<
 
     const kind = resolveKind(options?.forceKind);
 
-    // 内部的なメモ化用の型
-    interface RepositoryMetadata {
-      __acquireToken?: () => Promise<string | null>;
-    }
-
     // acquireToken が同一であれば既存のインスタンスを再利用する（無限ループ防止の最重要ガード）
-    const canReuseCache = cachedRepo && 
-      cachedKind === kind && 
-      (!options || (cachedRepo as RepositoryMetadata).__acquireToken === options.acquireToken);
+    // Reuse existing instance if kind and critical options (token, forceKind) are functionally identical.
+    // This is the most important guard against infinite re-render loops in React when 
+    // developers pass unstable objects (like {}) to the hook.
+    const canReuseCache = cachedRepo &&
+      cachedKind === kind &&
+      (cachedRepo as Record<string, unknown>).__acquireToken === options?.acquireToken &&
+      (cachedRepo as Record<string, unknown>).__forceKind === options?.forceKind;
 
     if (canReuseCache) {
-      return cachedRepo!;
+      return cachedRepo as TRepo;
     }
 
     const repo = createInstance(kind, options);
     
-    // インスタンスにトークン取得関数を紐付けて、次回比較できるようにする
-    if (options?.acquireToken) {
-      (repo as RepositoryMetadata).__acquireToken = options.acquireToken;
-    }
+    // Tag the instance with options for functional cache comparison
+    const repoAny = repo as unknown as Record<string, unknown>;
+    repoAny.__acquireToken = options?.acquireToken;
+    repoAny.__forceKind = options?.forceKind;
 
-    // 初回または安定したインスタンスとしてキャッシュ
+    // We update the singleton cache if no specific overrides are requested (primary case)
+    // or if this is the first requested instance.
     if (!cachedRepo || (!options?.forceKind)) {
       cachedRepo = repo;
       cachedKind = kind;

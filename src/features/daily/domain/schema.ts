@@ -72,6 +72,9 @@ export const SharePointDailyRecordItemSchema = z.object({
     }
   }),
   UserCount: z.number().nullish().transform(val => val ?? 0),
+  ApprovalStatus: z.string().nullish(),
+  ApprovedBy: z.string().nullish(),
+  ApprovedAt: z.string().nullish(),
   Created: z.string().nullish(),
   Modified: z.string().nullish(),
   __metadata: z.object({
@@ -80,9 +83,26 @@ export const SharePointDailyRecordItemSchema = z.object({
 });
 
 /**
+ * Date range for daily record queries.
+ */
+export const DailyRecordDateRangeSchema = z.object({
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+});
+
+/**
+ * Input for approving a daily record.
+ */
+export const ApproveRecordInputSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
+  approverName: z.string(),
+  approverRole: z.string(),
+});
+
+/**
  * Comprehensive schema that transforms SharePoint raw data into the Domain model.
  */
-export const DailyRecordItemSchema = SharePointDailyRecordItemSchema.transform((sp): z.infer<typeof DailyRecordDomainSchema> & { id: string; createdAt?: string; modifiedAt?: string } => {
+export const DailyRecordItemSchema = SharePointDailyRecordItemSchema.transform((sp) => {
   return {
     id: String(sp.Id),
     date: sp.Title ?? '',
@@ -95,9 +115,15 @@ export const DailyRecordItemSchema = SharePointDailyRecordItemSchema.transform((
     userCount: sp.UserCount ?? 0,
     createdAt: sp.Created ?? undefined,
     modifiedAt: sp.Modified ?? undefined,
+    approvalStatus: (sp.ApprovalStatus === 'approved' ? 'approved' : (sp.ApprovalStatus === 'pending' ? 'pending' : undefined)) as 'pending' | 'approved' | undefined,
+    approvedBy: sp.ApprovedBy ?? undefined,
+    approvedAt: sp.ApprovedAt ?? undefined,
   };
 });
 
 export type SpDailyRecordRaw = z.infer<typeof SharePointDailyRecordItemSchema>;
 export type DailyRecordUserRow = z.infer<typeof DailyRecordUserRowSchema>;
 export type DailyRecordDomain = z.infer<typeof DailyRecordDomainSchema>;
+export type DailyRecordItem = z.infer<typeof DailyRecordItemSchema>;
+export type DailyRecordDateRange = z.infer<typeof DailyRecordDateRangeSchema>;
+export type ApproveRecordInput = z.infer<typeof ApproveRecordInputSchema>;

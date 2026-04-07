@@ -19,6 +19,12 @@
  *    evaluated or lazy-loaded. Use `mockRestore()` on specific spies instead.
  */
 
+// ✅ Enforce memory provider for unit tests (Must be before any imports to avoid caching)
+process.env.VITE_FORCE_SHAREPOINT = '0';
+process.env.VITE_SP_ENABLED = '0';
+process.env.VITE_DATA_PROVIDER = 'memory';
+process.env.TZ = 'Asia/Tokyo';
+
 import { clearEnvCache } from '@/lib/env';
 import { resetParsedEnvForTests } from '@/lib/env.schema';
 import { __clearProviderCache } from '@/lib/data/createDataProvider';
@@ -96,7 +102,6 @@ const ENV_KEYS_TO_CLEAR = [
 	'VITE_MSAL_LOGIN_SCOPES',
 	'VITE_SKIP_LOGIN',
 	'VITE_SKIP_SHAREPOINT',
-	'VITE_FORCE_SHAREPOINT',
 	'VITE_FORCE_DEMO',
 	'VITE_DEMO_MODE',
 	'VITE_E2E_MSAL_MOCK',
@@ -104,7 +109,16 @@ const ENV_KEYS_TO_CLEAR = [
 	'VITE_FEATURE_SCHEDULES_SP',
 ];
 
-const ENV_KEYS_TO_RESTORE = ['TZ', 'VITE_SCHEDULES_TZ', 'VITE_MSAL_CLIENT_ID', 'VITE_MSAL_TENANT_ID', 'VITE_MSAL_REDIRECT_URI'] as const;
+const ENV_KEYS_TO_RESTORE = [
+	'TZ',
+	'VITE_SCHEDULES_TZ',
+	'VITE_MSAL_CLIENT_ID',
+	'VITE_MSAL_TENANT_ID',
+	'VITE_MSAL_REDIRECT_URI',
+	'VITE_FORCE_SHAREPOINT',
+	'VITE_SP_ENABLED',
+	'VITE_DATA_PROVIDER',
+] as const;
 const CLEAN_ENV = Object.fromEntries(ENV_KEYS_TO_RESTORE.map((k) => [k, process.env[k]]));
 
 // Consolidated environment and browser API setup

@@ -27,10 +27,10 @@ import type { SnoozePreset } from '@/features/action-engine/domain/computeSnooze
 import type { SuggestionCtaSurface } from '@/features/exceptions/components/ExceptionTable.types';
 
 const SEVERITY_LABELS: Record<ExceptionSeverity, string> = {
-  critical: '致命的',
-  high: '高',
-  medium: '中',
-  low: '低'
+  critical: '即時対応必須',
+  high: '本日中対応',
+  medium: '対応推奨',
+  low: '確認推奨'
 };
 
 const SEVERITY_COLORS: Record<ExceptionSeverity, 'error' | 'warning' | 'primary' | 'success'> = {
@@ -142,16 +142,16 @@ export const ExceptionCenterPage: React.FC = () => {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Box>
             <Typography variant="h4" fontWeight={800} gutterBottom>
-              🛡️ Exception Center
+              🛡️ Action Enforcement Console
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              施設全体の支援不備・リスク逸脱・計画乖離をリアルタイムに監視しています
+              施設全体の必須業務・不備・安全リスクを監視・強制しています
             </Typography>
           </Box>
           <Box sx={{ textAlign: 'right' }}>
             <Chip 
               icon={<NotificationsActiveIcon sx={{ fontSize: '1rem !important' }} />}
-              label={`通知チャネル稼働中 (${historyCount}件 送信済)`}
+              label={`通知フロー稼働中 (${historyCount}件 送信済)`}
               color="success"
               variant="outlined"
               size="small"
@@ -163,8 +163,8 @@ export const ExceptionCenterPage: React.FC = () => {
         {/* Navigation Tabs */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={activeTab} onChange={(_e, newValue) => setActiveTab(newValue)}>
-            <Tab label="例外監視ボード" sx={{ fontWeight: 700 }} />
-            <Tab label="SharePoint ドリフト履歴" sx={{ fontWeight: 700 }} />
+            <Tab label="業務遵守ボード" sx={{ fontWeight: 700 }} />
+            <Tab label="システムドリフト履歴" sx={{ fontWeight: 700 }} />
           </Tabs>
         </Box>
 
@@ -175,32 +175,38 @@ export const ExceptionCenterPage: React.FC = () => {
               sx={{
                 display: 'grid',
                 gap: 2,
-                gridTemplateColumns: { xs: '1fr', md: 'repeat(4, 1fr)' },
+                gridTemplateColumns: { xs: '1fr', md: 'repeat(5, 1fr)' },
               }}
             >
               <StatCard 
-                title="未解消例外 合計" 
+                title="未解消 必須業務" 
                 value={summary.totalCount} 
                 color="primary"
-                description="現在検知されている全例外数"
+                description="現在検知されている全業務不備数"
               />
               <StatCard 
-                title="致命的例外 (Critical)" 
+                title="最優先業務 (Critical)" 
                 value={summary.stats.bySeverity.critical} 
                 color="error"
                 description="即時の介入が必要な異常"
               />
               <StatCard 
-                title="重点監視利用者" 
-                value={summary.highRiskUserIds.length} 
-                color="warning"
-                description="重大な不備が集中している利用者"
+                title="持続的システム不備" 
+                value={items.filter(i => i.id.startsWith('drift-')).length} 
+                color="secondary"
+                description="3日以上放置されたスキーマ不整合"
               />
               <StatCard 
-                title="計画乖離 (Bridge)" 
+                title="重点対応利用者" 
+                value={summary.highRiskUserIds.length} 
+                color="warning"
+                description="不備が集中している支援対象者"
+              />
+              <StatCard 
+                title="計画/実績 乖離" 
                 value={(summary.stats.byCategory['procedure-unperformed'] ?? 0) + (summary.stats.byCategory['risk-deviation'] ?? 0)} 
                 color="info"
-                description="計画と実績の不整合"
+                description="個別支援計画との整合性"
               />
             </Box>
 

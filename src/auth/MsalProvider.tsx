@@ -22,16 +22,26 @@ const isVitest = typeof process !== 'undefined' && process.env.VITEST === 'true'
 type ViCarrier = typeof globalThis & { vi?: typeof import('vitest')['vi'] };
 const viMock = isVitest ? (globalThis as ViCarrier).vi : undefined;
 
-const createDefaultMsalContextMock = (): MsalContextValue => ({
-  instance: {
-    getAllAccounts: () => [],
-    getActiveAccount: () => null,
-    setActiveAccount: () => undefined,
-  } as unknown as MsalInstance,
-  accounts: [],
-  inProgress: 'none',
-  authReady: true,
-});
+const stableMockInstance = {
+  getAllAccounts: () => [],
+  getActiveAccount: () => null,
+  setActiveAccount: () => undefined,
+  loginPopup: async () => ({ account: null } as never),
+  acquireTokenPopup: async () => ({ accessToken: '' } as never),
+} as unknown as MsalInstance;
+
+let memoizedMockResult: MsalContextValue | null = null;
+const createDefaultMsalContextMock = (): MsalContextValue => {
+  if (!memoizedMockResult) {
+    memoizedMockResult = {
+      instance: stableMockInstance,
+      accounts: [],
+      inProgress: 'none',
+      authReady: true,
+    };
+  }
+  return memoizedMockResult;
+};
 
 export const __msalContextMock = viMock
   ? {

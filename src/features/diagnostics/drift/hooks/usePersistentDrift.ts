@@ -1,55 +1,82 @@
-import React from 'react';
+import { useMemo, useEffect, useState, useCallback } from 'react';
+import { useSP } from '@/lib/spClient';
+import { SharePointDriftEventRepository } from '../infra/SharePointDriftEventRepository';
+import type { DriftEvent } from '../domain/driftLogic';
 
-export interface FieldSkipStreakResult {
-  reasonKey: string;
-  streak: number;
-  status: 'watching' | 'persistent_drift';
-}
+export type PersistentDriftItem = DriftEvent & {
+  agingDays: number;
+};
 
-export interface NightlySummary {
-  reportDate: string;
-  fieldSkipStreaks?: FieldSkipStreakResult[];
-}
+/**
+ * usePersistentDrift — 未解消かつ一定期間経過した「持続的ドリフト」を抽出する
+ * 
+ * @param thresholdDays アラート対象とする経過日数 (デフォルト 3日)
+ */
+export function usePersistentDrift(thresholdDays: number = 3) {
+  const sp = useSP();
+  const [events, setEvents] = useState<DriftEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-export function usePersistentDrift() {
-  const [persistentDrifts, setPersistentDrifts] = React.useState<FieldSkipStreakResult[]>([]);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const fetchSummary = React.useCallback(async () => {
-    setLoading(true);
+  const refetch = useCallback(async () => {
+    if (!sp) return;
+    setIsLoading(true);
     setError(null);
     try {
-      // ユーザー推奨の (a) runtime-summary.json を API/Fetch 経由で取得
-      // ローカルJSONの取得のため、SP認証不要の window.fetch を使用
-      const res = await window.fetch('/.nightly/runtime-summary.json');
-      if (!res.ok) {
-        // ファイルがない場合は単にデータなしとして扱う（新環境など）
-        setPersistentDrifts([]);
-        return;
-      }
-      const data = (await res.json()) as NightlySummary;
-      const drifts = (data.fieldSkipStreaks ?? []).filter(
-        (s) => s.status === 'persistent_drift'
-      );
-      setPersistentDrifts(drifts);
+      const repo = new SharePointDriftEventRepository(sp);
+      const data = await repo.getEvents({ resolved: false });
+      setEvents(data);
     } catch (err) {
-      console.warn('Failed to fetch persistent drift summary:', err);
-      // Fail-soft: 取得失敗で UI を壊さない
-      setError('履歴データの取得に失敗しました');
+      console.warn('[usePersistentDrift] Refetch failed:', err);
+      setError('データの再取得に失敗しました');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  }, []);
+  }, [sp]);
 
-  React.useEffect(() => {
-    fetchSummary();
-  }, [fetchSummary]);
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!sp) return;
+      setIsLoading(true);
+      setError(null);
+      try {
+        const repo = new SharePointDriftEventRepository(sp);
+        const data = await repo.getEvents({ resolved: false });
+        if (!cancelled) setEvents(data);
+      } catch (err) {
+        console.warn('[usePersistentDrift] Failed to load drift events:', err);
+        if (!cancelled) setError('ドリフト情報の読み込みに失敗しました');
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [sp]);
+
+  const persistentDrifts = useMemo(() => {
+    const now = new Date();
+    return events
+      .map(event => {
+        const detectedAt = new Date(event.detectedAt);
+        const diffMs = now.getTime() - detectedAt.getTime();
+        const agingDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        
+        return {
+          ...event,
+          agingDays
+        };
+      })
+      .filter(item => item.agingDays >= thresholdDays)
+      .sort((a, b) => b.agingDays - a.agingDays);
+  }, [events, thresholdDays]);
 
   return {
-    persistentDrifts,
-    loading,
+    items: persistentDrifts,
+    isLoading,
+    totalCount: persistentDrifts.length,
     error,
-    refresh: fetchSummary,
+    refetch,
   };
 }

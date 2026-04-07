@@ -477,7 +477,7 @@ describe('navigationConfig', () => {
     });
 
     it('should map RBAC role to nav audience hierarchy', () => {
-      expect(roleToNavAudience('viewer')).toBe('staff');
+      expect(roleToNavAudience('viewer')).toBe('all');
       expect(roleToNavAudience('reception')).toBe('reception');
       expect(roleToNavAudience('admin')).toBe('admin');
     });

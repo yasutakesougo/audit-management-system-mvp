@@ -8,7 +8,9 @@ import SignInButton from '@/ui/components/SignInButton';
 import HistoryIcon from '@mui/icons-material/History';
 import MenuIcon from '@mui/icons-material/Menu';
 import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded';
+import AssignmentLateIcon from '@mui/icons-material/AssignmentLate';
 import AppBar from '@mui/material/AppBar';
+import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import Toolbar from '@mui/material/Toolbar';
@@ -24,6 +26,11 @@ type Props = {
   onMobileMenuOpen: () => void;
   onDesktopNavToggle: () => void;
   onSettingsOpen: () => void;
+  enforcement?: {
+    isBlocked: boolean;
+    criticalTasks: unknown[];
+    totalCriticalCount: number;
+  };
 };
 
 export const AppShellHeader: React.FC<Props> = ({
@@ -34,7 +41,10 @@ export const AppShellHeader: React.FC<Props> = ({
   onMobileMenuOpen,
   onDesktopNavToggle,
   onSettingsOpen,
+  enforcement,
 }) => {
+
+  const taskCount = enforcement?.totalCriticalCount ?? 0;
 
   return (
     <AppBar
@@ -144,6 +154,21 @@ export const AppShellHeader: React.FC<Props> = ({
         <Box sx={{ flex: 1 }} />
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          {taskCount > 0 && (
+            <Tooltip title={`${taskCount}件の最優先業務があります`}>
+              <IconButton
+                component={RouterLink}
+                to="/today"
+                color="inherit"
+                size="small"
+                sx={{ p: 0.5 }}
+              >
+                <Badge badgeContent={taskCount} color="error" sx={{ '& .MuiBadge-badge': { fontWeight: 700 } }}>
+                  <AssignmentLateIcon fontSize="small" />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+          )}
           <ConnectionStatus />
           <Tooltip title="表示設定">
             <IconButton

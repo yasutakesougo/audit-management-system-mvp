@@ -17,6 +17,7 @@ import { useMemo } from 'react';
 import type { ExecutionRecordRepository } from '../../domain/legacy/ExecutionRecordRepository';
 import { getExecutionRepository } from '../../repositories/sharepoint/executionRepositoryFactory';
 import { useExecutionStore } from '../legacy-stores/executionStore';
+// contract:allow-sp-direct
 import { useSP } from '@/lib/spClient';
 
 export function useExecutionData(): ExecutionRecordRepository {

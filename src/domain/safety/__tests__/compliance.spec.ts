@@ -2,13 +2,25 @@
 // P0-3 適正化運用 — Domain 型のユニットテスト
 // ---------------------------------------------------------------------------
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   computeCommitteeSummary,
   fromDraftToCommitteeRecord,
   createEmptyCommitteeDraft,
   type CommitteeMeetingRecord,
 } from '../complianceCommittee';
+
+// Mock system time to a fixed date to ensure stable fiscal year calculations
+const MOCK_NOW = new Date('2026-01-30T10:00:00Z');
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(MOCK_NOW);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 import {
   computeGuidelineSummary,
   fromDraftToGuidelineVersion,

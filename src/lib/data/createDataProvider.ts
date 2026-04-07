@@ -7,7 +7,7 @@ import {
   DataProviderNotInitializedError 
 } from '@/lib/errors';
 
-import { isDevMode, isDemoModeEnabled, readBool, readOptionalEnv } from '@/lib/env';
+import { isDevMode, isDemoModeEnabled, readBool, readOptionalEnv, isTestMode } from '@/lib/env';
 
 export type ProviderType = 'sharepoint' | 'memory' | 'local';
 
@@ -57,7 +57,7 @@ export function resolveProvider(provider?: unknown): IDataProvider {
  * DataProvider を生成または更新する。
  */
 export function createDataProvider(
-  spClient: UseSP,
+  spClient: UseSP | null,
   options?: { type?: ProviderType }
 ): { provider: IDataProvider; type: ProviderType } {
   const type = options?.type || getActiveProviderType();
@@ -68,12 +68,17 @@ export function createDataProvider(
       case 'memory': providerInstances[cacheKey] = new InMemoryDataProvider(); break;
       case 'local': providerInstances[cacheKey] = new LocalStorageDataProvider(); break;
       case 'sharepoint':
+        if (!spClient) {
+          throw new DataProviderNotInitializedError(type);
+        }
         providerInstances[cacheKey] = new SharePointDataProvider(spClient); 
         break;
     }
   } else if (type === 'sharepoint' && providerInstances[cacheKey] instanceof SharePointDataProvider) {
     // SharePoint の場合はクライアントを更新する可能性があるため、インスタンスを再生成せず内容を更新して同一性を保つ
-    providerInstances[cacheKey].setClient(spClient);
+    if (spClient) {
+      providerInstances[cacheKey].setClient(spClient);
+    }
   }
 
   console.info(`[DataProvider] Active backend: ${type}`);
@@ -87,7 +92,7 @@ export function getActiveProviderType(): ProviderType {
   const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const providerParam = urlParams?.get('provider');
   const envProvider = readOptionalEnv('VITE_DATA_PROVIDER');
-  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
+  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false) && !isTestMode();
 
   const selected = providerParam || envProvider;
   if (selected === 'memory') return 'memory';
@@ -96,8 +101,8 @@ export function getActiveProviderType(): ProviderType {
 
   if (forceSharePoint) return 'sharepoint';
 
-  // フォールバック: デモモードや開発環境ならメモリモードを優先
-  if (isDemoModeEnabled() || isDevMode()) {
+  // フォールバック: テスト、デモモード、開発環境ならメモリモードを優先
+  if (isTestMode() || isDemoModeEnabled() || isDevMode()) {
     return 'memory';
   }
 

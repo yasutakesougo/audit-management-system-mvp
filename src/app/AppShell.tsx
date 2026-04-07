@@ -23,6 +23,7 @@ import RouteHydrationListener from '@/hydration/RouteHydrationListener';
 import CloseFullscreenRoundedIcon from '@mui/icons-material/CloseFullscreenRounded';
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
+import { ActionEnforcementGuard } from '@/features/exceptions/components/ActionEnforcementGuard';
 import Fab from '@mui/material/Fab';
 import React from 'react';
 import { AppShellHeader } from './AppShellHeader';
@@ -176,6 +177,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     handleMobileNavigate,
     handleToggleNavCollapse,
     handleToggleMoreNavItems,
+    enforcement,
   } = useAppShellState();
 
   // ── Wake Lock（キオスクモード時のみ） ───────────────────────────────
@@ -196,6 +198,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       onMobileMenuOpen={() => setMobileOpen(true)}
       onDesktopNavToggle={() => setDesktopNavOpen((prev) => !prev)}
       onSettingsOpen={() => setSettingsDialogOpen(true)}
+      enforcement={enforcement}
     />
   );
 
@@ -269,6 +272,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           >
             <OfflineBanner />
             <DataSourceBanner />
+            <ActionEnforcementGuard />
             <KioskBackToToday />
             {children}
           </AppShellV2>

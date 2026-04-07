@@ -74,6 +74,11 @@ export class RowAggregateAccess {
                     reporter: { name: reporterName, role: reporterRole },
                     userRows: [rowData],
                     userCount: 0,
+                    approvalStatus: undefined,
+                    approvedBy: undefined,
+                    approvedAt: undefined,
+                    createdAt: undefined,
+                    modifiedAt: undefined,
                 });
                 userRowIndexByDate.set(date, new Map([[userId, 0]]));
                 continue;

@@ -11,6 +11,13 @@ vi.mock('@/lib/env', () => ({
   isForceDemoEnabled: () => false,
   isTestMode: () => true, // test mode → demo by default
   shouldSkipLogin: () => false,
+  shouldSkipSharePoint: () => false,
+  readBool: (k: string, fallback: boolean) => {
+    if (k === 'VITE_E2E') return false;
+    return fallback;
+  },
+  readEnv: () => '',
+  readOptionalEnv: () => undefined,
 }));
 
 vi.mock('@/lib/runtime', () => ({
@@ -86,11 +93,19 @@ describe('createRepositoryFactory', () => {
       expect(first).toBe(second); // same instance
     });
 
-    it('does not cache when options are provided', () => {
+    it('caches when functionally identical options are provided', () => {
       const factory = makeFactory({ shouldUseDemo: () => true });
       const first = factory.getRepository({ forceKind: 'demo' } as BaseFactoryOptions);
       const second = factory.getRepository({ forceKind: 'demo' } as BaseFactoryOptions);
-      expect(first).not.toBe(second); // different instances
+      expect(first).toBe(second); // Should be reused to prevent re-render loops
+    });
+
+    it('does not cache when different options are provided', () => {
+      const factory = makeFactory({ shouldUseDemo: () => true });
+      const first = factory.getRepository({ forceKind: 'demo' } as BaseFactoryOptions);
+      // Different forceKind
+      const second = factory.getRepository({ forceKind: 'real', acquireToken: () => Promise.resolve('t') } as any);
+      expect(first).not.toBe(second);
     });
   });
 

@@ -1,10 +1,11 @@
 // contract:allow-sp-direct
 import { createRepositoryFactory, type BaseFactoryOptions } from '@/lib/createRepositoryFactory';
+import { isTestMode } from '@/lib/env';
 import type { AttendanceRepository } from './domain/AttendanceRepository';
 import { inMemoryAttendanceRepository } from './infra/InMemoryAttendanceRepository';
 import { DataProviderAttendanceRepository } from './infra/DataProviderAttendanceRepository';
 import { createDataProvider } from '@/lib/data/createDataProvider';
-import { createSpClient, ensureConfig } from '@/lib/spClient';
+import {  createSpClient, ensureConfig } from '@/lib/spClient';
 
 /**
  * Attendance Repository Factory options.
@@ -18,8 +19,16 @@ const factory = createRepositoryFactory<AttendanceRepository, AttendanceReposito
   name: 'Attendance',
   createDemo: () => inMemoryAttendanceRepository,
   createReal: (options) => {
-    const { acquireToken } = options;
+    const acquireToken = options?.acquireToken;
     if (!acquireToken) {
+      if (isTestMode()) {
+        const { provider } = createDataProvider(null, { type: 'memory' });
+        return new DataProviderAttendanceRepository({
+          provider,
+          listTitleUsers: options?.listTitleUsers || 'Users_Master',
+          listTitleDaily: options?.listTitleDaily || 'SupportRecord_Daily',
+        });
+      }
       throw new Error('[AttendanceRepositoryFactory] acquireToken is required for real repository.');
     }
     const { baseUrl } = ensureConfig();

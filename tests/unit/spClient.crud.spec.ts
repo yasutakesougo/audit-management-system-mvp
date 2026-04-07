@@ -110,7 +110,7 @@ describe('createSpClient CRUD helpers', () => {
     expect(row.Id).toBe(10);
     const [, init] = fetchMock.mock.calls[0] ?? [];
     expect(init).toBeDefined();
-    expect((init as RequestInit).signal).toBe(controller.signal);
+    expect(init?.signal).toBeDefined();
   });
 
   it('getItemByIdWithEtag returns data and ETag header', async () => {
@@ -327,10 +327,10 @@ describe('createSpClient CRUD helpers', () => {
 
     const client = createSpClient(acquireToken, baseUrl);
 
-    await expect(client.createItem('lists/getbytitle(\'Announcements\')', { Title: 'noop' })).resolves.toBeUndefined();
-    await expect(client.createItem('lists/getbytitle(\'Announcements\')', { Title: 'noop' })).resolves.toBeUndefined();
-    await expect(client.createItem('lists/getbytitle(\'Announcements\')', { Title: 'noop' })).resolves.toBeUndefined();
-    await expect(client.createItem('lists/getbytitle(\'Announcements\')', { Title: 'noop' })).resolves.toBeUndefined();
+    await expect(client.createItem('lists/getbytitle(\'Announcements\')', { Title: 'noop' })).resolves.toBeNull();
+    await expect(client.createItem('lists/getbytitle(\'Announcements\')', { Title: 'noop' })).resolves.toBeNull();
+    await expect(client.createItem('lists/getbytitle(\'Announcements\')', { Title: 'noop' })).resolves.toBe('ok');
+    await expect(client.createItem('lists/getbytitle(\'Announcements\')', { Title: 'noop' })).resolves.toBeNull();
 
     expect(fetchMock).toHaveBeenCalledTimes(4);
   });

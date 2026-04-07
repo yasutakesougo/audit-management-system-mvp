@@ -170,9 +170,23 @@ const FlatItemRow: React.FC<{
             />
           )}
         </Stack>
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
           {item.description}
         </Typography>
+        {item.remediationProposal && (
+          <Box sx={{ 
+            mt: 0.5, 
+            p: 0.75, 
+            bgcolor: 'primary.50', 
+            borderRadius: 0.5, 
+            borderLeft: '2px solid', 
+            borderColor: 'primary.main' 
+          }}>
+            <Typography variant="caption" sx={{ fontWeight: 600, display: 'block', color: 'primary.dark', lineHeight: 1.2 }}>
+              💡 推奨修復: {item.remediationProposal.impact}
+            </Typography>
+          </Box>
+        )}
       </TableCell>
       <TableCell>
         {item.targetUserId ? (

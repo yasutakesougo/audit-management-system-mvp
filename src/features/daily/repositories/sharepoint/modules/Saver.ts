@@ -172,10 +172,19 @@ export class DailyRecordSaver {
 
             finishSpan({ meta: { status: 'ok' } });
             return { 
+                id: String(existingItem.Id),
                 date: input.date, 
+                reporter: {
+                    name: String(existingItem.ReporterName || ''),
+                    role: String(existingItem.ReporterRole || ''),
+                },
+                userRows: [], // Minimal return, consumer should refetch if rows needed
+                userCount: Number(existingItem.UserCount || 0),
                 approvalStatus: 'approved', 
                 approvedBy: input.approverName, 
-                approvedAt: approvalData.ApprovedAt 
+                approvedAt: approvalData.ApprovedAt,
+                createdAt: existingItem.Created,
+                modifiedAt: approvalData.ApprovedAt,
             } as DailyRecordItem;
         } catch (error) {
             const safeError = toSafeError(error);

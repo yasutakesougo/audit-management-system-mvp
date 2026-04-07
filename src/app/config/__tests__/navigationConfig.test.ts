@@ -47,7 +47,7 @@ describe("Navigation Configuration", () => {
     expect(todayItems.some((i) => i.label === "送迎配車表")).toBe(true);
 
     const masterItems = map.get("master") || [];
-    expect(masterItems.some((i) => i.label === "利用者")).toBe(false);
+    expect(masterItems.some((i) => i.label === "利用者")).toBe(true);
   });
 
   it("hides admin items when feature flag/permissions omit them", () => {

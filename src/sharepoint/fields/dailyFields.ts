@@ -135,7 +135,7 @@ export const DAILY_RECORD_CANONICAL_ESSENTIALS: (keyof typeof DAILY_RECORD_CANON
 export const DAILY_RECORD_ROW_AGGREGATE_CANDIDATES = {
   title: ['Title'],
   ParentID: ['ParentID', 'Parent_x0020_ID', 'cr013_parentid'],
-  UserID: ['UserID', 'UserCode', 'cr013_usercode', 'cr013_personId', 'userId', 'User_x0020_ID'],
+  userId: ['UserID', 'UserCode', 'cr013_usercode', 'cr013_personId', 'userId', 'User_x0020_ID'],
   recordDate: ['RecordDate', 'cr013_date', 'cr013_recorddate', 'Date', 'recordDate'],
   status: ['Status', 'status', 'cr013_status'],
   reporterName: ['ReporterName', 'reporterName', 'cr013_reporterName'],
@@ -146,7 +146,7 @@ export const DAILY_RECORD_ROW_AGGREGATE_CANDIDATES = {
 } as const;
 
 export const DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS: (keyof typeof DAILY_RECORD_ROW_AGGREGATE_CANDIDATES)[] = [
-  'UserID', 'recordDate'
+  'userId', 'recordDate'
 ];
 
 // ActivityDiary フィールド定義は activityDiaryFields.ts に移動しました。

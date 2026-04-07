@@ -13,7 +13,8 @@ import {
   DataProviderNotInitializedError
 } from '@/lib/errors';
 import type { UseSP, createSpClient } from '@/lib/spClient';
-import { getUserRepository } from '@/features/users/repositoryFactory';
+import { getUserRepository, resetUserRepository } from '@/features/users/repositoryFactory';
+import * as envModule from '@/lib/env';
 
 // Mock Telemetry and Observability to avoid side effects in tests
 vi.mock('@/lib/telemetry/spTelemetry', () => ({ trackSpEvent: vi.fn() }));
@@ -35,6 +36,7 @@ const mockSpClient = {
 describe('Data OS Stability Verification', () => {
   beforeEach(() => {
     __clearProviderCache();
+    resetUserRepository();
     vi.stubGlobal('location', { search: '' });
     vi.stubGlobal('localStorage', {
         getItem: vi.fn(),
@@ -206,10 +208,17 @@ describe('Data OS Stability Verification', () => {
     it('getUserRepository should throw DataProviderNotInitializedError if uninitialized and in sharepoint mode', () => {
       vi.stubGlobal('location', { search: '?provider=sharepoint' });
       
+      // Mock environment flags to trigger the real implementation guard
+      const isTestSpy = vi.spyOn(envModule, 'isTestMode').mockReturnValue(false);
+      const skipLoginSpy = vi.spyOn(envModule, 'shouldSkipLogin').mockReturnValue(false);
+      
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      expect(() => getUserRepository()).toThrow(DataProviderNotInitializedError);
+      expect(() => getUserRepository({ forceKind: 'real' })).toThrow(/acquireToken is required/);
       expect(warnSpy).toHaveBeenCalled();
+      
       warnSpy.mockRestore();
+      skipLoginSpy.mockRestore();
+      isTestSpy.mockRestore();
     });
 
     it('isDataProviderReady should return correct state', () => {

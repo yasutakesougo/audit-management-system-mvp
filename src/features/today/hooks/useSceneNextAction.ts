@@ -20,6 +20,7 @@ import { buildSceneNextAction, type SceneNextAction } from '../domain/buildScene
 import { inferTodayScene } from '../domain/inferTodayScene';
 import type { TodayScene } from '../domain/todayScene';
 import { sceneLabelMap } from '../domain/todayScene';
+import { MandatoryTaskCategory } from '@/features/exceptions/domain/mandatoryTaskMessages';
 
 type SceneNextActionInput = {
   /** BriefingAlerts from useTodaySummary */
@@ -41,6 +42,15 @@ type SceneNextActionInput = {
   scheduledCount: number;
   /** ISP 三層モデルの整合性不備 */
   todayExceptions?: TriggeredException[];
+  /** 必須業務 (Mandatory Tasks) */
+  mandatoryTasks?: Array<{
+    id: string;
+    title: string;
+    description: string;
+    priority: 'critical' | 'high' | 'medium' | 'low';
+    category?: MandatoryTaskCategory;
+    reason?: string;
+  }>;
 };
 
 export type SceneNextActionViewModel = SceneNextAction & {
@@ -52,25 +62,20 @@ export function useSceneNextAction(input: SceneNextActionInput): SceneNextAction
     const scene: TodayScene = inferTodayScene(new Date());
     const sceneLabel = sceneLabelMap[scene];
 
-    // Pending briefings: count error/warning severity alerts as actionable
+    // Pending briefings
     const pendingBriefings = input.briefingAlerts.filter(
       (a) => a.severity === 'error' || a.severity === 'warning',
     ).length;
 
-    // Pending attendance: scheduledCount - facilityAttendees (those not yet confirmed)
+    // Pending attendance
     const facilityAttendees = input.attendanceSummary?.facilityAttendees ?? 0;
     const pendingAttendance = Math.max(0, input.scheduledCount - facilityAttendees);
 
-    // ── 記録漏れ件数: todayRecordCompletion (ExecutionStore) 優先 ──
-    // todayRecordCompletion が提供されている場合、
-    // /daily/support で記録した時間別記録を反映した正確な値を使用。
-    // 未提供の場合は Dashboard 起点の dailyRecordStatus にフォールバック。
     const completion = input.todayRecordCompletion;
     const pendingDailyRecords = completion
       ? completion.pending
       : (input.dailyRecordStatus?.pending ?? 0);
 
-    // Resolve alert users from pending user IDs
     const pendingUserIds = completion
       ? completion.pendingUserIds
       : (input.dailyRecordStatus?.pendingUserIds ?? []);
@@ -89,6 +94,7 @@ export function useSceneNextAction(input: SceneNextActionInput): SceneNextAction
       pendingDailyRecords,
       alertUsers,
       pendingExceptions: input.todayExceptions,
+      mandatoryTasks: input.mandatoryTasks,
     });
 
     return { ...action, sceneLabel };
@@ -99,5 +105,7 @@ export function useSceneNextAction(input: SceneNextActionInput): SceneNextAction
     input.todayRecordCompletion,
     input.users,
     input.scheduledCount,
+    input.todayExceptions,
+    input.mandatoryTasks,
   ]);
 }

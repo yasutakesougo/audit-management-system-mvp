@@ -182,7 +182,9 @@ function computeBackoffMs(
   retryAfterMs?: number,
 ): number {
   if (retryAfterMs && retryAfterMs > 0) {
-    return Math.min(retryAfterMs, maxRetryDelayMs);
+    // サーバーが Retry-After を指定している場合は、その時間を尊重する。
+    // SharePoint のスロットリングを回避するために重要。
+    return retryAfterMs;
   }
 
   const exp = baseRetryDelayMs * 2 ** Math.max(0, attempt - 1);
@@ -327,6 +329,7 @@ export function createSpFetch(deps: SpFetchDeps) {
     // ── Real fetch ──
     const skipAuthCheck = shouldSkipLogin(config) || isE2eMsalMockEnabled(config);
     let initialToken: string | null = null;
+    let hasRefreshedToken = false;
     if (!skipAuthCheck) {
       initialToken = await acquireToken();
       if (!initialToken) throw new AuthRequiredError();
@@ -377,8 +380,9 @@ export function createSpFetch(deps: SpFetchDeps) {
         let token = initialToken;
         if (!token && !skipAuthCheck) {
           token = await acquireToken();
-          if (!token) throw new AuthRequiredError();
+          initialToken = token;
         }
+        if (!token && !skipAuthCheck) throw new AuthRequiredError();
 
         const headers = toHeaders(init.headers);
         if (token) headers.set('Authorization', `Bearer ${token}`);
@@ -470,10 +474,11 @@ export function createSpFetch(deps: SpFetchDeps) {
 
           // 401/403 Token Refresh logic from original code
           if (!response.ok && (response.status === 401 || response.status === 403)) {
-            if (!skipAuthCheck) {
+            if (!skipAuthCheck && !hasRefreshedToken) {
               const token2 = await acquireToken();
               if (token2 && token2 !== initialToken) {
-                initialToken = token2; // Set for next loop, immediately retry
+                initialToken = token2; 
+                hasRefreshedToken = true;
                 continue;
               }
             }
@@ -491,7 +496,6 @@ export function createSpFetch(deps: SpFetchDeps) {
           span.fail(response.status, 'SpHttpError', attempt - 1);
 
           if (throwOnError) {
-             console.error('[DEBUG] spFetch DETECTED ERROR STATUS, THROWING...', response.status);
              await raiseHttpError(response, { url, method, spOptions });
           }
           console.error('[DEBUG] spFetch RETURNING WITHOUT THROWING', response.status);

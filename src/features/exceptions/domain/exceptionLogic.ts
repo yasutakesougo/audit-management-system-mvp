@@ -22,6 +22,7 @@ export type ExceptionCategory =
   | 'corrective-action'
   | 'transport-alert'
   | 'data-os-alert'
+  | 'integrity'
   | 'procedure-unperformed'
   | 'risk-deviation'
   | 'focus-missing';
@@ -40,6 +41,14 @@ export type ExceptionItem = {
   updatedAt: string;
   actionLabel?: string;
   actionPath?: string;
+  /** 担当責任者 (UserId or Role) */
+  assignedTo?: string;
+  /** 期限 */
+  dueAt?: string;
+  /** 責任範囲: 個人の行動不備か、システム的な構造不備か */
+  responsibilityScope?: 'individual' | 'system';
+  /** Action Enforcement 用の行動カテゴリー */
+  mandatoryCategory?: import('./mandatoryTaskMessages').MandatoryTaskCategory;
   /** セカンダリアクション（例: 支援記録確認用リンク） */
   secondaryActionLabel?: string;
   secondaryActionPath?: string;
@@ -47,6 +56,14 @@ export type ExceptionItem = {
   stableId?: string;
   /** 親 Exception の ID（per-user 子 Exception のグループ化用） */
   parentId?: string;
+  /** 修復提案 (Drift 等の自動/半自動修復検討用) */
+  remediationProposal?: {
+    actionLabel: string;
+    actionPath: string;
+    actionKind?: import('../../diagnostics/drift/domain/driftRepairProposal').RepairActionKind;
+    impact: string;
+    requiresReview: boolean;
+  };
 };
 
 // ─── カテゴリ表示情報 ────────────────────────────────────────
@@ -58,16 +75,17 @@ export type CategoryMeta = {
 };
 
 export const EXCEPTION_CATEGORIES: Record<ExceptionCategory, CategoryMeta> = {
-  'missing-record': { label: '未入力記録', icon: '📝', color: '#e53935' },
-  'overdue-plan': { label: '期限超過', icon: '⏰', color: '#f57c00' },
-  'critical-handoff': { label: '重要申し送り', icon: '🔴', color: '#d32f2f' },
-  'attention-user': { label: '注意対象', icon: '⚠️', color: '#ed6c02' },
-  'corrective-action': { label: '改善提案', icon: '🔧', color: '#1565c0' },
-  'transport-alert': { label: '送迎異常', icon: '🚐', color: '#7b1fa2' },
-  'data-os-alert': { label: 'システム基礎データ', icon: '📡', color: '#00bcd4' },
-  'procedure-unperformed': { label: '手順未実施', icon: '⚡', color: '#c62828' },
-  'risk-deviation': { label: 'リスク逸脱', icon: '🚨', color: '#b71c1c' },
-  'focus-missing': { label: '記述不足', icon: '✍️', color: '#ef6c00' },
+  'missing-record': { label: '未完了：ケース記録', icon: '📝', color: '#e53935' },
+  'overdue-plan': { label: '期限超過タスク', icon: '⏰', color: '#f57c00' },
+  'critical-handoff': { label: '未読重要申し送り', icon: '🔴', color: '#d32f2f' },
+  'attention-user': { label: '重点対応', icon: '⚠️', color: '#ed6c02' },
+  'corrective-action': { label: '是正措置案', icon: '🔧', color: '#1565c0' },
+  'transport-alert': { label: '送迎業務確認', icon: '🚐', color: '#7b1fa2' },
+  'data-os-alert': { label: 'システムOS', icon: '💻', color: '#6366f1' },
+  'integrity': { label: 'データ整合性', icon: '🧱', color: '#d946ef' },
+  'procedure-unperformed': { label: '未実施手順', icon: '📋', color: '#f59e0b' },
+  'risk-deviation': { label: '安全管理タスク', icon: '🚨', color: '#b71c1c' },
+  'focus-missing': { label: '記述不足の修正', icon: '✍️', color: '#ef6c00' },
 };
 
 export const SEVERITY_ORDER: Record<ExceptionSeverity, number> = {
@@ -124,7 +142,11 @@ export function detectMissingRecords(params: {
     .map((u) => ({
       id: `missing-${u.userId}-${targetDate}`,
       category: 'missing-record' as const,
+      mandatoryCategory: 'MISSING_RECORD' as const,
       severity: 'high' as const,
+      responsibilityScope: 'individual',
+      assignedTo: u.userName,
+      dueAt: '当日中 (18:00)',
       title: `${u.userName}のケース記録が未入力`,
       description: `${targetDate} のケース記録（日次記録）が作成されていません`,
       targetUser: u.userName,
@@ -150,7 +172,11 @@ export function detectMissingSupportLogs(params: {
   return pendingUsers.map((u) => ({
     id: `missing-support-${u.userId}-${targetDate}`,
     category: 'missing-record' as const,
+    mandatoryCategory: 'MISSING_RECORD' as const,
     severity: 'high' as const,
+    responsibilityScope: 'individual',
+    assignedTo: u.userName,
+    dueAt: '当日中 (18:00)',
     title: `${u.userName}の支援手順記録が未入力`,
     description: `${targetDate} の支援手順記録が作成されていません`,
     targetUser: u.userName,
@@ -332,6 +358,7 @@ export function computeExceptionStats(items: ExceptionItem[]): ExceptionStats {
       'corrective-action': 0,
       'transport-alert': 0,
       'data-os-alert': 0,
+      'integrity': 0,
       'procedure-unperformed': 0,
       'risk-deviation': 0,
       'focus-missing': 0

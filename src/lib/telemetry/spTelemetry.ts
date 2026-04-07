@@ -28,7 +28,9 @@ export type SpEventName =
   | 'sp:approval_log_skipped'
   | 'sp:approval_log_failed'
   | 'sp:child_lists_provision_success'
-  | 'sp:child_lists_provision_failed';
+  | 'sp:child_lists_provision_failed'
+  | 'drift:repair_success'
+  | 'drift:repair_failed';
 
 export interface SpEventPayload {
   key?: string;

@@ -1,8 +1,9 @@
 import { createRepositoryFactory, type BaseFactoryOptions } from '@/lib/createRepositoryFactory';
+import { isTestMode } from '@/lib/env';
 import type { StaffRepository } from './domain/StaffRepository';
 import { DataProviderStaffRepository } from './infra/DataProviderStaffRepository';
 import { createDataProvider } from '@/lib/data/createDataProvider';
-import { createSpClient, ensureConfig } from '@/lib/spClient';
+import {  createSpClient, ensureConfig } from '@/lib/spClient';
 
 import { inMemoryStaffRepository } from './infra/InMemoryStaffRepository';
 
@@ -14,8 +15,12 @@ const factory = createRepositoryFactory<StaffRepository, StaffRepositoryFactoryO
   name: 'Staff',
   createDemo: () => inMemoryStaffRepository,
   createReal: (options) => {
-    const { acquireToken } = options;
+    const acquireToken = options?.acquireToken;
     if (!acquireToken) {
+      if (isTestMode()) {
+        const { provider } = createDataProvider(null, { type: 'memory' });
+        return new DataProviderStaffRepository({ provider });
+      }
       throw new Error('[StaffRepositoryFactory] acquireToken is required for real repository.');
     }
     const { baseUrl } = ensureConfig();

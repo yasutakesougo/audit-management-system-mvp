@@ -38,7 +38,10 @@ function parseKioskRouteMode(search: string): KioskRouteMode {
   return null;
 }
 
+import { useActionEnforcement } from '@/features/exceptions/hooks/useActionEnforcement';
+
 export function useAppShellState() {
+  const enforcement = useActionEnforcement();
   const location = useLocation();
   const navigate = useNavigate();
   const { schedules, complianceForm, icebergPdca, staffAttendance, todayOps, todayLiteNavV2 } = useFeatureFlags();
@@ -279,5 +282,6 @@ export function useAppShellState() {
     handleMobileNavigate,
     handleToggleNavCollapse,
     handleToggleMoreNavItems,
+    enforcement,
   };
 }

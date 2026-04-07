@@ -176,7 +176,7 @@ export function useExceptionDataSources(): ExceptionDataSources {
     // DailyRecord → DailyRecordSummary に変換
     // DailyRecordDomain.userRows にユーザーごとの記録が格納されている
     const dailyRecordSummaries: DailyRecordSummary[] = todayRecords.flatMap((record) =>
-      (record.userRows ?? []).map((row) => ({
+      (record.userRows ?? []).map((row: import('@/features/daily/domain/schema').DailyRecordUserRow) => ({
         userId: String(row.userId ?? ''),
         userName: row.userName ?? '',
         date: record.date ?? today,

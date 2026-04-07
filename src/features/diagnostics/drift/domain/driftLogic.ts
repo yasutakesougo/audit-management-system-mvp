@@ -15,6 +15,7 @@ export type DriftType =
   | 'suffix_mismatch' // カラムサフィックスの付与 (例: Status -> Status0)
   | 'fuzzy_match'    // 文字列置換等による曖昧一致 (例: _x0020_ 変換)
   | 'fallback'       // 代替カラムの使用
+  | 'missing_index'  // インデックスの欠落
   | 'unknown';
 
 export type DriftEvent = {

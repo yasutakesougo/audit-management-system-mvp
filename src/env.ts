@@ -106,7 +106,10 @@ export function getRuntimeEnv(): EnvDict {
 
   if (cachedEnv) return cachedEnv;
 
-  const merged = { ...INLINE_ENV } as EnvDict;
+  const merged = { 
+    ...INLINE_ENV,
+    ...(typeof process !== 'undefined' && (process.env.NODE_ENV === 'test' || process.env.VITEST) ? process.env : {})
+  } as EnvDict;
   cachedEnv = merged;
   return merged;
 }

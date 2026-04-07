@@ -368,6 +368,11 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
             reporter: { name: reporterName, role: '担当' },
             userRows: [rowData],
             userCount: 1,
+            approvalStatus: undefined,
+            approvedBy: undefined,
+            approvedAt: undefined,
+            createdAt: undefined,
+            modifiedAt: undefined,
           });
         } else {
           const rec = grouped.get(rowDate)!;
