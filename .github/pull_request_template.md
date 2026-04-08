@@ -69,11 +69,13 @@
 - [ ] (詳細: [docs/ui-architecture.md](docs/ui-architecture.md))
 
 ### Navigation & UX Changes
+- [ ] **Navigation OS Contract Compliance**:
+  - [ ] [docs/navigation.md](docs/navigation.md) の **7-Group IA** 及び **5-Layer Filter** に準拠しているか
+  - [ ] 表示ロジックの変更が `buildVisibleNavItems` (pure helper) に集約されているか
 - [ ] **通常モード整理**: `group` や並び順が業務目的に沿っているか（権限ロックアウト防止含む）
 - [ ] **キオスクモード退行防止 (E2E Test Alignment)**:
   - [ ] E2E: `kiosk mode: 1-tap navigation to schedule and back to today` が保護されているか
   - [ ] E2E: `kiosk mode: FAB fallback menu can navigate back to normal mode` が保護されているか
-- [ ] (詳細: 過去の [nav-review-checklist.md] 録参照)
 
 ### CI/Infra Changes
 - [ ] Rollback Plan: 失敗時の戻し方を記述済み
