@@ -5,6 +5,10 @@ export interface FieldSkipStreakResult {
   reasonKey: string;
   streak: number;
   status: 'watching' | 'persistent_drift';
+  /** Parsed from reasonKey by getTopStreaks. Present in summaries written after Phase B+. */
+  listKey?: string;
+  fieldName?: string;
+  lastSeen?: string;
 }
 
 export interface NightlySummary {
