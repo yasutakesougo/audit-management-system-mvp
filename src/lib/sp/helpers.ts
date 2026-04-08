@@ -320,7 +320,7 @@ export const readErrorPayload = async (res: Response): Promise<string> => {
  * Coerce a Response to a JSON object of type T, or undefined if non-JSON, empty, or 204.
  */
 export const coerceResult = async <T>(res: Response): Promise<T> => {
-  if (res.status === 204) return null as unknown as T;
+  if (res.status === 204) return undefined as unknown as T;
   
   const text = await res.text().catch(() => '');
   const contentType = res.headers.get('Content-Type') || '';
@@ -331,7 +331,7 @@ export const coerceResult = async <T>(res: Response): Promise<T> => {
                        text.trim().startsWith('[');
 
   if (isLikelyJson) {
-    if (!text || text.trim() === '') return null as unknown as T;
+    if (!text || text.trim() === '') return undefined as unknown as T;
     try {
       return JSON.parse(text) as T;
     } catch {
@@ -341,8 +341,8 @@ export const coerceResult = async <T>(res: Response): Promise<T> => {
     }
   }
   
-  // Non-JSON response - return text if present, otherwise null
-  return (text || null) as unknown as T;
+  // Non-JSON response - return undefined per legacy contract
+  return undefined as unknown as T;
 };
 
 export const raiseHttpError = async (

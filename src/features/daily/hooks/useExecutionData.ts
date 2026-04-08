@@ -17,7 +17,7 @@ import { useMemo } from 'react';
 import type { ExecutionRecordRepository } from '../domain/ExecutionRecordRepository';
 import { getExecutionRepository } from '../infra/executionRepositoryFactory';
 import { useExecutionStore } from '../stores/executionStore';
-import { useSP } from '@/lib/spClient';
+import { useSP } from '@/lib/spClient'; // contract:allow-sp-direct
 
 export function useExecutionData(): ExecutionRecordRepository {
   const storeHooks = useExecutionStore();
