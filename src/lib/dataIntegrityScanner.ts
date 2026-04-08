@@ -7,8 +7,10 @@ import { translateZodIssue } from './zodErrorUtils';
 
 /** A single scan target (SharePoint list + Zod schema) */
 export interface ScanTarget {
-  /** Human-readable name (e.g. 'users', 'daily') */
+  /** Technical key (e.g. 'users_master', 'schedules') */
   name: string;
+  /** Human-readable name (e.g. '利用者マスタ', '勤務予定') */
+  displayName?: string;
   /** SharePoint list title */
   listTitle: string;
   /** Zod schema for raw SP items */
@@ -31,6 +33,7 @@ export interface ScanIssue {
 
 export interface ScanResult {
   target: string;
+  displayName?: string;
   listTitle: string;
   total: number;
   valid: number;
@@ -43,11 +46,14 @@ export interface ScanResult {
   isTruncated?: boolean;
   /** Specific fetch error (e.g. 404, 403) */
   fetchError?: string;
+  /** Fields excluded from $select due to 400 fallback retries */
+  skippedFields?: string[];
 }
 
 /** Progress callback payload */
 export interface ScanProgress {
   target: string;
+  displayName?: string;
   scanned: number;
   total: number;
   phase: 'fetching' | 'validating' | 'done';
@@ -59,6 +65,8 @@ export interface TargetData {
   fetchStatus: 'success' | 'failed' | 'skipped';
   fetchError?: string;
   isTruncated?: boolean;
+  /** Fields excluded from $select due to 400 fallback retries */
+  skippedFields?: string[];
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -134,6 +142,7 @@ export function scanAll(
 
     onProgress?.({
       target: target.name,
+      displayName: target.displayName,
       scanned: 0,
       total,
       phase: 'validating',
@@ -145,6 +154,7 @@ export function scanAll(
 
     results.push({
       target: target.name,
+      displayName: target.displayName,
       listTitle: target.listTitle,
       total,
       valid,
@@ -154,10 +164,12 @@ export function scanAll(
       fetchStatus: entry.fetchStatus,
       fetchError: entry.fetchError,
       isTruncated: entry.isTruncated,
+      skippedFields: entry.skippedFields,
     });
 
     onProgress?.({
       target: target.name,
+      displayName: target.displayName,
       scanned: total,
       total,
       phase: 'done',
@@ -180,6 +192,9 @@ export function formatScanSummary(results: ScanResult[]): string {
     lines.push(`【${r.target}】 ${r.total}件中 ${r.valid}件 OK / ${r.invalid}件 エラー${fetchSuffix} (${r.durationMs}ms)`);
     if (r.fetchStatus === 'failed') {
       lines.push(`  ⚠ 取得エラー: ${r.fetchError}`);
+    }
+    if (r.skippedFields && r.skippedFields.length > 0) {
+      lines.push(`  ⚠ 列スキップ: ${r.skippedFields.join(', ')}`);
     }
     for (const issue of r.issues) {
       lines.push(`  ▸ ID ${issue.recordId}: ${issue.messages.join('; ')}`);

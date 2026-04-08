@@ -21,6 +21,7 @@
 
 import { clearEnvCache } from '@/lib/env';
 import { resetParsedEnvForTests } from '@/lib/env.schema';
+import { __clearProviderCache } from '@/lib/data/createDataProvider';
 import '@formatjs/intl-datetimeformat/add-all-tz';
 import '@formatjs/intl-datetimeformat/polyfill';
 import '@formatjs/intl-getcanonicallocales';
@@ -112,6 +113,7 @@ beforeEach(() => {
 	vi.unstubAllEnvs?.();
 	clearEnvCache();
 	resetParsedEnvForTests();
+	__clearProviderCache();
 
 	// Clear browser storage mocks
 	mockLS.clear();
@@ -142,6 +144,7 @@ afterEach(() => {
 	vi.unstubAllEnvs?.();
 	clearEnvCache();
 	resetParsedEnvForTests();
+	__clearProviderCache();
 
 	// Clear test-specific vars: delete only keys we explicitly manage
 	for (const key of ENV_KEYS_TO_CLEAR) {

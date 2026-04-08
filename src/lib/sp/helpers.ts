@@ -168,6 +168,87 @@ export const extractMissingField = (message: string): string | null => {
   return match?.[1] ?? null;
 };
 
+// ── Pagination and Fallback Helpers ────────────────────────────────────────
+
+const MAX_ITEMS_PER_REQUEST = 500;
+const MAX_PAGES = 100; // Increase to allow more items in shared helper
+
+export type SpFetch = (path: string, init?: RequestInit) => Promise<Response>;
+
+/**
+ * Fetch all raw items from a SharePoint list via REST API with pagination.
+ */
+export async function fetchRawItems(
+  spFetch: SpFetch,
+  listTitle: string,
+  selectFields: readonly string[],
+  options: { top?: number; maxPages?: number, signal?: AbortSignal } = {}
+): Promise<{ items: unknown[]; isTruncated: boolean }> {
+  const allItems: unknown[] = [];
+  const select = selectFields.join(',');
+  const top = options.top || MAX_ITEMS_PER_REQUEST;
+  const maxPages = options.maxPages || MAX_PAGES;
+  
+  let path: string | null =
+    `/lists/getbytitle('${encodeURIComponent(listTitle)}')/items?$select=${select}&$top=${top}`;
+
+  for (let page = 0; page < maxPages && path; page++) {
+    if (options.signal?.aborted) break;
+
+    const response = await spFetch(path);
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      throw new Error(`HTTP ${response.status}: ${errText.slice(0, 300)}`);
+    }
+    const payload = (await response.json()) as {
+      value?: unknown[];
+      'odata.nextLink'?: string;
+    };
+
+    if (payload.value) {
+      allItems.push(...payload.value);
+    }
+
+    const next = payload['odata.nextLink'] ?? null;
+    if (next && page === maxPages - 1) {
+      return { items: allItems, isTruncated: true };
+    }
+    path = next;
+  }
+
+  return { items: allItems, isTruncated: false };
+}
+
+/**
+ * Fetch with $select fallback: retries request by removing the unknown field if 400 occurs.
+ */
+export async function fetchRawItemsWithFieldFallback(
+  spFetch: SpFetch,
+  listTitle: string,
+  selectFields: readonly string[],
+  options: { signal?: AbortSignal } = {}
+): Promise<{ items: unknown[]; isTruncated: boolean; skippedFields: string[] }> {
+  const skippedFields: string[] = [];
+  let fields = Array.from(selectFields);
+
+  for (;;) {
+    try {
+      const result = await fetchRawItems(spFetch, listTitle, fields, { signal: options.signal });
+      return { ...result, skippedFields };
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith('HTTP 400:') && fields.length > 1) {
+        const missing = extractMissingField(err.message);
+        if (missing && fields.includes(missing)) {
+          skippedFields.push(missing);
+          fields = fields.filter((f) => f !== missing);
+          continue;
+        }
+      }
+      throw err;
+    }
+  }
+}
+
 export const buildSelectFields = (
   baseFields: readonly string[],
   optionalFields: readonly string[],
@@ -233,6 +314,19 @@ export const readErrorPayload = async (res: Response): Promise<string> => {
   } catch {
     return text;
   }
+};
+
+/**
+ * Coerce a Response to a JSON object of type T, or null if 204 No Content.
+ * Also handles non-json responses (e.g. text/plain from some SP endpoints).
+ */
+export const coerceResult = async <T>(res: Response): Promise<T> => {
+  if (res.status === 204) return undefined as unknown as T;
+  const contentType = res.headers.get('Content-Type');
+  if (contentType?.includes('application/json')) {
+    return (await res.json()) as T;
+  }
+  return (await res.text()) as unknown as T;
 };
 
 export const raiseHttpError = async (

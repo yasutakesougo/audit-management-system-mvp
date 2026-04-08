@@ -20,93 +20,50 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
+import type { ZodTypeAny } from 'zod';
 import React, { useCallback, useMemo, useState } from 'react';
 
 import { SharePointDailyRecordItemSchema } from '@/features/daily/domain/schema';
 import { SpScheduleRowSchema } from '@/features/schedules/data/spRowSchema';
 import { SpUserMasterItemSchema } from '@/features/users/schema';
 import { useDataIntegrityScan } from '@/hooks/useDataIntegrityScan';
+import { emitSkippedFieldTelemetry } from '@/lib/dataIntegrity/skippedFieldTelemetry';
 import { formatScanSummary, type ScanResult, type ScanTarget, type TargetData } from '@/lib/dataIntegrityScanner';
 import { auditLog } from '@/lib/debugLogger';
+import { 
+  fetchRawItemsWithFieldFallback 
+} from '@/lib/sp/helpers';
 import { useSP } from '@/lib/spClient';
-import { SCHEDULES_SELECT_FIELDS } from '@/sharepoint/fields/scheduleFields';
-import { USERS_SELECT_FIELDS_MINIMAL } from '@/sharepoint/fields/userFields';
+import { getDriftProbeTargets } from '@/sharepoint/driftProbeRegistry';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Pre-defined scan targets
 // ────────────────────────────────────────────────────────────────────────────
 
-const SCAN_TARGETS: ScanTarget[] = [
-  {
-    name: 'users',
-    listTitle: 'Users_Master',
-    schema: SpUserMasterItemSchema,
-    // MINIMAL: IsSupportProcedureTarget 等の未プロビジョニング列を避けて確実に取得できる4列
-    selectFields: USERS_SELECT_FIELDS_MINIMAL,
-  },
-  {
-    name: 'schedules',
-    listTitle: 'Schedules',
-    schema: SpScheduleRowSchema,
-    // SCHEDULES_SELECT_FIELDS = ['Id','Title','EventDate','EndDate','Status','TargetUserId','AssignedStaffId']
-    // UserCode は SCHEDULE_ENSURE_FIELDS に存在しない → TargetUserId が正しい内部名
-    selectFields: SCHEDULES_SELECT_FIELDS,
-  },
-  {
-    name: 'daily',
-    listTitle: 'DailyActivityRecords',
-    schema: SharePointDailyRecordItemSchema,
-    // Pruned: UserRowsJSON / UserCount to ensure fetch reliability across all tenants
-    selectFields: ['Id', 'Title', 'RecordDate', 'Created', 'Modified'],
-  },
-];
-
-const MAX_ITEMS_PER_REQUEST = 500;
-const MAX_PAGES = 20; // 500 × 20 = 10,000 items max
+/** 
+ * Map technical registry keys to their corresponding validation schemas.
+ * This bridge connects the operational registry (SSOT) with UI-level Zod validation.
+ */
+const SCHEMA_MAP: Record<string, ZodTypeAny> = {
+  'users_master': SpUserMasterItemSchema,
+  'schedules': SpScheduleRowSchema,
+  'daily_activity_records': SharePointDailyRecordItemSchema,
+};
 
 /**
- * Fetch all raw items from a SharePoint list via REST API.
- * Uses pagination ($skiptoken / odata.nextLink) to collect all items.
+ * Derived scan targets for depth-validation.
+ * We only deep-scan a subset of all drift-probed lists which have defined schemas.
  */
-async function fetchRawItems(
-  spFetch: (path: string, init?: RequestInit) => Promise<Response>,
-  listTitle: string,
-  selectFields: readonly string[],
-  signal?: AbortSignal,
-): Promise<{ items: unknown[]; isTruncated: boolean }> {
-  const allItems: unknown[] = [];
-  const select = selectFields.join(',');
-  let path: string | null =
-    `/lists/GetByTitle('${encodeURIComponent(listTitle)}')/items?$select=${select}&$top=${MAX_ITEMS_PER_REQUEST}`;
+const SCAN_TARGETS: ScanTarget[] = getDriftProbeTargets()
+  .filter(t => t.key in SCHEMA_MAP)
+  .map(t => ({
+    name: t.key,
+    displayName: t.displayName,
+    listTitle: t.listTitle,
+    schema: SCHEMA_MAP[t.key],
+    selectFields: t.selectFields,
+  }));
 
-  for (let page = 0; page < MAX_PAGES && path; page++) {
-    if (signal?.aborted) break;
-
-    const response = await spFetch(path);
-    if (!response.ok) {
-      const errText = await response.text().catch(() => '');
-      throw new Error(`HTTP ${response.status}: ${errText.slice(0, 300)}`);
-    }
-    const payload = (await response.json()) as {
-      value?: unknown[];
-      'odata.nextLink'?: string;
-    };
-
-    if (payload.value) {
-      allItems.push(...payload.value);
-    }
-
-    // odata.nextLink は絶対 URL で返るため、そのまま spFetch に渡す（内部で正規化される）
-    const next = payload['odata.nextLink'] ?? null;
-    if (next && page === MAX_PAGES - 1) {
-      // 最終ページかつ次がある場合は打ち切り
-      return { items: allItems, isTruncated: true };
-    }
-    path = next;
-  }
-
-  return { items: allItems, isTruncated: false };
-}
 
 // ────────────────────────────────────────────────────────────────────────────
 // Component
@@ -126,6 +83,7 @@ const DataIntegrityPage: React.FC = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const handleStartScan = useCallback(async () => {
+    const requestId = `di-${Date.now().toString(36)}`;
     try {
       setFetchingData(true);
       setFetchError(null);
@@ -134,13 +92,18 @@ const DataIntegrityPage: React.FC = () => {
       const data = new Map<string, TargetData>();
       for (const target of SCAN_TARGETS) {
         try {
-          const { items, isTruncated } = await fetchRawItems(spFetch, target.listTitle, target.selectFields);
-          data.set(target.name, {
-            items,
-            fetchStatus: 'success',
-            isTruncated,
-          });
+          const { items, isTruncated, skippedFields } = await fetchRawItemsWithFieldFallback(
+            spFetch,
+            target.listTitle,
+            target.selectFields,
+          );
+          data.set(target.name, { items, fetchStatus: 'success', isTruncated, skippedFields });
+
+          if (skippedFields.length > 0) {
+            emitSkippedFieldTelemetry({ listKey: target.name, skippedFields, count: items.length, requestId });
+          }
         } catch (fetchErr) {
+          // eslint-disable-next-line no-console
           console.warn(`[data-integrity] Failed to fetch ${target.listTitle}:`, fetchErr);
           data.set(target.name, {
             items: [],
@@ -223,7 +186,7 @@ const DataIntegrityPage: React.FC = () => {
       {status === 'scanning' && progress && (
         <Paper sx={{ p: 2, mb: 3 }} data-testid="scan-progress">
           <Typography variant="body2" sx={{ mb: 1 }}>
-            {progress.target} をスキャン中... ({progress.scanned}/{progress.total})
+            {progress.displayName || progress.target} をスキャン中... ({progress.scanned}/{progress.total})
           </Typography>
           <LinearProgress
             variant={progress.total > 0 ? 'determinate' : 'indeterminate'}
@@ -273,6 +236,14 @@ const DataIntegrityPage: React.FC = () => {
               本ツールで「取得エラー」や「必須欠落」が頻発する場合、不要な列の削除や統合を検討してください。
             </Typography>
           </Alert>
+
+          {/* ── Skipped Fields Warning Banner (Phase C) ── */}
+          {results.some((r) => (r.skippedFields ?? []).length > 0) && (
+            <Alert severity="warning" sx={{ mb: 3 }} data-testid="skipped-fields-banner">
+              <AlertTitle sx={{ fontWeight: 700 }}>⚠ 列スキップが検出されました</AlertTitle>
+              Nightly Patrol レポートで persistent_drift の有無を確認してください。
+            </Alert>
+          )}
         </>
       )}
 
@@ -296,28 +267,50 @@ const DataIntegrityPage: React.FC = () => {
                   <TableRow key={r.target} hover>
                     <TableCell>
                       <Stack spacing={0.5}>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{r.target}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {r.displayName || r.target}
+                        </Typography>
                         <Typography variant="caption" color="text.secondary">{r.listTitle}</Typography>
                       </Stack>
                     </TableCell>
                     <TableCell>
-                      {r.fetchStatus === 'success' ? (
-                        <Chip
-                          label={r.isTruncated ? "上限到達" : "成功"}
-                          size="small"
-                          color={r.isTruncated ? "warning" : "success"}
-                          variant="filled"
-                          sx={{ height: 20, fontSize: '0.7rem' }}
-                        />
-                      ) : (
-                        <Chip
-                          label="失敗"
-                          size="small"
-                          color="error"
-                          variant="filled"
-                          sx={{ height: 20, fontSize: '0.7rem' }}
-                        />
-                      )}
+                      <Stack spacing={0.5} alignItems="flex-start">
+                        {r.fetchStatus === 'success' ? (
+                          <Chip
+                            label={r.isTruncated ? "上限到達" : "成功"}
+                            size="small"
+                            color={r.isTruncated ? "warning" : "success"}
+                            variant="filled"
+                            sx={{ height: 20, fontSize: '0.7rem' }}
+                          />
+                        ) : (
+                          <Chip
+                            label="失敗"
+                            size="small"
+                            color="error"
+                            variant="filled"
+                            sx={{ height: 20, fontSize: '0.7rem' }}
+                          />
+                        )}
+                        {r.skippedFields && r.skippedFields.length > 0 && (
+                          <>
+                            <Typography variant="caption" color="warning.main">
+                              ⚠ 列スキップ: {r.skippedFields.join(', ')}
+                            </Typography>
+                            <Button
+                              component="a"
+                              href="/admin/status"
+                              size="small"
+                              variant="text"
+                              color="warning"
+                              sx={{ fontSize: '0.65rem', p: 0, minWidth: 0, textTransform: 'none', lineHeight: 1.4 }}
+                              data-testid={`skipped-fields-link-${r.target}`}
+                            >
+                              構成診断を確認する →
+                            </Button>
+                          </>
+                        )}
+                      </Stack>
                     </TableCell>
                     <TableCell align="right">{r.total.toLocaleString()}件</TableCell>
                     <TableCell align="right">
@@ -353,7 +346,7 @@ const DataIntegrityPage: React.FC = () => {
             .map((r) => (
               <Box key={r.target} sx={{ mb: 3 }}>
                 <Typography variant="subtitle2" component="span" sx={{ mb: 1, color: 'warning.dark' }}>
-                  {r.target} — {r.issues.length}件
+                  {r.displayName || r.target} — {r.issues.length}件
                 </Typography>
                 <TableContainer component={Paper} variant="outlined">
                   <Table size="small" data-testid={`issues-${r.target}`}>

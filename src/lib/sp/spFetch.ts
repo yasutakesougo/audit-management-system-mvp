@@ -491,11 +491,19 @@ export function createSpFetch(deps: SpFetchDeps) {
           span.fail(response.status, 'SpHttpError', attempt - 1);
 
           if (throwOnError) {
+             console.error('[DEBUG] spFetch DETECTED ERROR STATUS, THROWING...', response.status);
              await raiseHttpError(response, { url, method, spOptions });
           }
+          console.error('[DEBUG] spFetch RETURNING WITHOUT THROWING', response.status);
           return response;
 
         } catch (error) {
+          // If the error already has a status, it was thrown by raiseHttpError
+          // and should NOT be retried here (as it would be treated as a network error).
+          if (error && typeof error === 'object' && 'status' in error) {
+            throw error;
+          }
+
           if (isAbortError(error)) {
             recordTelemetry('sp:request_failed', {
               url: url.split('?')[0],

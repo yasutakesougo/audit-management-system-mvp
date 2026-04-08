@@ -2,8 +2,8 @@ name: Nightly Runtime Patrol
 
 on:
   schedule:
-    # 毎日日本時間 4:00 (JST = UTC+9)
-    - cron: '0 19 * * *'
+    # 毎日日本時間 06:00 (JST = UTC+9) -> UTC 21:00 (前日)
+    - cron: '0 21 * * *'
   workflow_dispatch:
 
 permissions:
@@ -13,10 +13,13 @@ jobs:
   runtime-patrol:
     name: Telemetry & Drift Analysis
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -27,23 +30,92 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install PnP.PowerShell
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module PnP.PowerShell -Scope CurrentUser -Force
+
+      - name: Get SharePoint Access Token
+        shell: pwsh
+        env:
+          SPO_CERT_BASE64: ${{ secrets.SPO_CERT_BASE64 }}
+          SPO_CERT_PASSWORD: ${{ secrets.SPO_CERT_PASSWORD }}
+          AAD_APP_ID: ${{ secrets.AAD_APP_ID }}
+          AAD_TENANT_ID: ${{ secrets.AAD_TENANT_ID }}
+          SHAREPOINT_SITE: ${{ secrets.SHAREPOINT_SITE }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SPO_CERT_BASE64)) {
+            throw "SPO_CERT_BASE64 secret is missing."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:SPO_CERT_PASSWORD)) {
+            throw "SPO_CERT_PASSWORD secret is missing."
+          }
+
+          # パスワードを SecureString に変換
+          $securePassword = ConvertTo-SecureString $env:SPO_CERT_PASSWORD -AsPlainText -Force
+
+          # 証明書オブジェクトを自作せず、Base64文字列をそのまま PnP に渡す (最も安全な方法)
+          Connect-PnPOnline `
+            -Url $env:SHAREPOINT_SITE `
+            -ClientId $env:AAD_APP_ID `
+            -Tenant $env:AAD_TENANT_ID `
+            -CertificateBase64Encoded $env:SPO_CERT_BASE64 `
+            -CertificatePassword $securePassword
+
+          # 接続確認
+          $connection = Get-PnPConnection
+          if (-not $connection) {
+            throw "PnP connection was not established."
+          }
+
+          # トークン取得
+          $token = Get-PnPAccessToken
+          if ([string]::IsNullOrWhiteSpace($token)) {
+            throw "Failed to acquire SharePoint access token."
+          }
+          
+          # ✅ セキュリティ対策: トークンをログからマスク
+          Write-Output "::add-mask::$token"
+          
+          # ✅ 実行環境への書き出し
+          "VITE_SP_TOKEN=$token" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "✅ Token acquired and masked in VITE_SP_TOKEN"
+
       - name: Run Nightly Runtime Patrol
         env:
-          VITE_SP_TOKEN: ${{ secrets.SP_ACCESS_TOKEN }}
-          VITE_SP_SITE_URL: ${{ secrets.SP_SITE_URL }}
+          VITE_SP_SITE_URL: ${{ secrets.SHAREPOINT_SITE }}
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          TEAMS_MENTION_UPN: ${{ secrets.TEAMS_MENTION_UPN }}
         run: npx tsx scripts/ops/nightly-runtime-patrol.ts
 
       - name: Upload Patrol Artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: nightly-runtime-summary-${{ github.run_number }}
           path: .nightly/
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Commit report to docs
+        if: false && success() # Disable auto-push to main due to branch protection
         run: |
           mkdir -p docs/nightly-patrol
-          TODAY=$(date -u +%F)
+          # UTC 21:00 は日本時間の翌日 06:00 なので、日付を +9h して JST に合わせる
+          TODAY=$(date -d "+9 hours" +%F)
+          
+          # .nightly/ が存在しない場合はスキップ
+          if [ ! -d ".nightly" ]; then
+            echo "No .nightly directory found, skipping commit."
+            exit 0
+          fi
+          
+          # ファイルが存在しない場合はスキップ
+          if [ ! -f ".nightly/runtime-summary.md" ] || [ ! -f ".nightly/runtime-summary.json" ]; then
+            echo "Summary files not found, skipping commit."
+            exit 0
+          fi
+          
           cp .nightly/runtime-summary.md docs/nightly-patrol/runtime-summary-${TODAY}.md
           cp .nightly/runtime-summary.json docs/nightly-patrol/runtime-summary-${TODAY}.json
           
@@ -58,5 +130,5 @@ jobs:
             exit 0
           fi
           
-          git commit -m "chore(ops): nightly runtime patrol report for ${TODAY}"
+          git commit -m "chore(ops): nightly runtime patrol report for ${TODAY} (JST)"
           git push

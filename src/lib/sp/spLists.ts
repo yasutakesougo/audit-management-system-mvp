@@ -24,6 +24,7 @@ import {
 } from './spListRead';
 import {
     addFieldToList as _addFieldToList,
+    updateField as _updateField,
     ensureListExists as _ensureListExists,
     fetchExistingFields as _fetchExistingFields,
     getListFieldInternalNames as _getListFieldInternalNames,
@@ -190,6 +191,10 @@ export function createListOperations(
     return _addFieldToList(spFetch, listTitle, field);
   }
 
+  function updateField(listTitle: string, internalName: string, updates: { Indexed?: boolean }) {
+    return _updateField(spFetch, listTitle, internalName, updates);
+  }
+
   function ensureListExists(
     listTitle: string,
     fields: SpFieldDef[],
@@ -224,6 +229,7 @@ export function createListOperations(
     fetchExistingFields,
     getListFieldInternalNames,
     addFieldToList,
+    updateField,
     ensureListExists,
   };
 }

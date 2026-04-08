@@ -290,6 +290,53 @@ export async function addFieldToList(
   }
 }
 
+/**
+ * Update an existing field's properties (e.g., Indexed).
+ */
+export async function updateField(
+  spFetch: SpFetchFn,
+  listTitle: string,
+  internalName: string,
+  updates: { Indexed?: boolean }
+): Promise<"success" | "error"> {
+  const base = resolveListPath(listTitle);
+  const path = `${base}/fields/getbyinternalnameortitle('${encodeURIComponent(internalName)}')`;
+  
+  const body = {
+    __metadata: { type: 'SP.Field' },
+    ...updates
+  };
+
+  try {
+    const res = await spFetch(path, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json;odata=verbose',
+        Accept: 'application/json;odata=verbose',
+        'X-HTTP-Method': 'MERGE',
+        'If-Match': '*',
+      },
+      body: JSON.stringify(body),
+      spOptions: { retries: 0 },
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      auditLog.error('sp:fields', 'update_field_failed', { 
+        listTitle, 
+        internalName, 
+        status: res.status,
+        detail: errText.slice(0, 500)
+      });
+      return "error";
+    }
+    return "success";
+  } catch (error) {
+    console.error(`[updateField] Unexpected error updating field "${internalName}":`, error);
+    return "error";
+  }
+}
+
 // ── Ensure list ─────────────────────────────────────────────────────────────
 
 // ── Ensure list ─────────────────────────────────────────────────────────────
@@ -389,7 +436,9 @@ export async function ensureListExists(
         continue;
       }
 
+      console.error('[DEBUG] ensureListExists: about to add field', field.internalName);
       const result = await addFieldToList(spFetch, listTitle, field);
+      console.error('[DEBUG] ensureListExists: addFieldToList result', result);
       if (result === "limit_reached") {
         isLimitReached = true;
       }

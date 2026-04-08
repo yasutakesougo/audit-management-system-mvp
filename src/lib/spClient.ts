@@ -95,7 +95,7 @@ export function createSpClient(
     patchListItem,
     deleteItemByTitle, deleteItem,
     tryGetListMetadata, getListFieldInternalNames, ensureListExists,
-    fetchExistingFields, addFieldToList,
+    fetchExistingFields, addFieldToList, updateField,
     getExistingListTitlesAndIds,
   } = listOps;
 
@@ -130,7 +130,7 @@ export function createSpClient(
     patchListItem,
     batch, postBatch,
     ensureListExists, tryGetListMetadata, getListFieldInternalNames,
-    fetchExistingFields, addFieldToList,
+    fetchExistingFields, addFieldToList, updateField,
     getExistingListTitlesAndIds,
   };
 }

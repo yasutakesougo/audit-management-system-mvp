@@ -276,23 +276,43 @@ async function runListChecks(
   // List existence
   const listInfo = await safe(() => sp.getListByTitle(spec.resolvedTitle));
   if (!listInfo.ok) {
-    results.push(
-      fail({
-        key: `lists.exists.${spec.key}`,
-        label: `リスト存在：${spec.displayName}`,
-        category: "lists",
-        summary: `リストが見つかりません（${spec.resolvedTitle}）。`,
-        detail: listInfo.err,
-        evidence: { listKey: spec.key, listTitle: spec.resolvedTitle, label: spec.displayName },
-        nextActions: [
-          {
-            kind: "doc",
-            label: "【カテゴリ: リスト不存在】Provision 手順を確認し、リストを作成する",
-            value: "provision/README.md",
-          },
-        ],
-      })
-    );
+    if (spec.isOptional) {
+      results.push(
+        warn({
+          key: `lists.exists.${spec.key}`,
+          label: `リスト存在：${spec.displayName}`,
+          category: "lists",
+          summary: `任意リストが見つかりません（${spec.resolvedTitle}）。任意機能のため警告扱いとします。`,
+          detail: listInfo.err,
+          evidence: { listKey: spec.key, listTitle: spec.resolvedTitle, label: spec.displayName },
+          nextActions: [
+            {
+              kind: "doc",
+              label: "【カテゴリ: スキーマ（任意）】任意機能を利用する場合はリストを作成する",
+              value: "provision/README.md",
+            },
+          ],
+        })
+      );
+    } else {
+      results.push(
+        fail({
+          key: `lists.exists.${spec.key}`,
+          label: `リスト存在：${spec.displayName}`,
+          category: "lists",
+          summary: `リストが見つかりません（${spec.resolvedTitle}）。`,
+          detail: listInfo.err,
+          evidence: { listKey: spec.key, listTitle: spec.resolvedTitle, label: spec.displayName },
+          nextActions: [
+            {
+              kind: "doc",
+              label: "【カテゴリ: リスト不存在】Provision 手順を確認し、リストを作成する",
+              value: "provision/README.md",
+            },
+          ],
+        })
+      );
+    }
     return;
   } else {
     results.push(

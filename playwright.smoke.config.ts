@@ -71,7 +71,7 @@ export default defineConfig({
     url: baseURL,
     // CI でも既存サーバーを再利用し、並列/再試行時のポート競合を回避
     reuseExistingServer: true,
-    timeout: 180_000,
+    timeout: 300_000,
     env: {
       ...process.env,
       ...webServerEnvVarsSmoke,

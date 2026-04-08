@@ -3,9 +3,10 @@ import { createRepositoryFactory, type BaseFactoryOptions } from '@/lib/createRe
 import type { UserRepository } from './domain/UserRepository';
 import { inMemoryUserRepository } from './infra/InMemoryUserRepository';
 import { DataProviderUserRepository } from './infra/DataProviderUserRepository';
-import { createDataProvider } from '@/lib/data/createDataProvider';
+import { createDataProvider, resolveProvider } from '@/lib/data/createDataProvider';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import { pushAudit } from '@/lib/audit';
+
 
 /**
  * User Repository Factory options.
@@ -22,9 +23,22 @@ const factory = createRepositoryFactory<UserRepository, UserRepositoryFactoryOpt
   createDemo: () => inMemoryUserRepository,
   createReal: (options) => {
     // 1. DataProvider 版を使用 (Split Write / Lazy Join 対応の本番用実装)
-    const { acquireToken } = options;
+    const { acquireToken } = options || {};
     if (!acquireToken) {
-      throw new Error('[UserRepositoryFactory] acquireToken is required for real repository.');
+      try {
+        const provider = resolveProvider();
+        return new DataProviderUserRepository({
+          provider,
+          audit: pushAudit,
+        });
+      } catch (e) {
+        // Fallback to generic error if resolveProvider also failed or threw unexpected
+        if ((e as Error)?.name === 'DataProviderNotInitializedError') {
+          console.warn('[UserRepositoryFactory] Falling back to global provider (not initialized)');
+          throw e;
+        }
+        throw e;
+      }
     }
     const { baseUrl } = ensureConfig();
     const { provider } = createDataProvider(createSpClient(acquireToken, baseUrl));

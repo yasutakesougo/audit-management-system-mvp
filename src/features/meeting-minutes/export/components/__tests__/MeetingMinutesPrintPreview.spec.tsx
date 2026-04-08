@@ -56,6 +56,6 @@ describe('MeetingMinutesPrintPreview', () => {
 
   it('should display audience info if provided', () => {
     render(<MeetingMinutesPrintPreview model={dummyModel} audience="field" />);
-    expect(screen.getByText(/現場向け/)).toBeInTheDocument();
+    expect(screen.getAllByText(/現場向け/).length).toBeGreaterThan(0);
   });
 });

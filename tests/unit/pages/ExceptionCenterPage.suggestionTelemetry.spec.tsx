@@ -1,7 +1,4 @@
-import { render } from '@testing-library/react';
-import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { renderWithProviders } from '../_helpers/renderWithProviders';
 import ExceptionCenterPage from '../../../src/pages/admin/ExceptionCenterPage';
 import { ExceptionTable } from '../../../src/features/exceptions/components/ExceptionTable';
 import type { ActionSuggestion } from '../../../src/features/action-engine/domain/types';
@@ -23,6 +20,8 @@ vi.mock('../../../src/features/exceptions/hooks/useExceptionDataSources', () => 
     today: '2026-03-21',
     criticalHandoffs: [],
     userSummaries: [],
+    integrityExceptions: [],
+    dataOSResolutions: {},
     error: null,
   })),
 }));
@@ -145,10 +144,8 @@ describe('ExceptionCenterPage suggestion telemetry', () => {
     // useAllCorrectiveActions を通じてデータを注入
     mockAllSuggestions = [suggestion];
 
-    render(
-      <MemoryRouter>
-        <ExceptionCenterPage />
-      </MemoryRouter>,
+    renderWithProviders(
+      <ExceptionCenterPage />,
     );
 
     expect(ExceptionTable).toHaveBeenCalled();
@@ -157,7 +154,7 @@ describe('ExceptionCenterPage suggestion telemetry', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const actions = (props.suggestionActions as any);
 
-    actions.onCtaClick(stableId, '/assessment');
+    actions.onCtaClick(stableId, '/assessment', 'table');
     actions.onDismiss(stableId);
     actions.onSnooze(stableId, 'three-days');
 

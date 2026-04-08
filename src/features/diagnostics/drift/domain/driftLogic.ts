@@ -34,6 +34,12 @@ export type DriftEvent = {
   driftType?: DriftType;
   /** 解決済みフラグ（物理名が正規化されたら true） */
   resolved: boolean;
+  /**
+   * 修復実行元の識別子（インデックス修復イベントのみ）
+   * - 'ui'      : 管理者がUIボタンから手動実行
+   * - 'nightly' : Nightly Patrol による自動実行
+   */
+  remediationSource?: 'ui' | 'nightly';
 };
 
 import { driftEventBus } from './DriftEventBus';
@@ -65,4 +71,30 @@ export const emitDriftRecord = (
 export const getDriftEventDedupeKey = (event: Omit<DriftEvent, 'id'>): string => {
   const dateStr = event.detectedAt.split('T')[0]; // YYYY-MM-DD
   return `${event.listName}:${event.fieldName}:${dateStr}`;
+};
+
+/**
+ * インデックス修復イベントの発火
+ *
+ * @param source 実行元の識別子。'ui' = 管理者UIから手動実行、'nightly' = Nightly Patrol による自動実行
+ */
+export const emitIndexRemediationRecord = (
+  listName: string,
+  fieldName: string,
+  action: 'create' | 'delete',
+  status: 'success' | 'error',
+  _message?: string,
+  source: 'ui' | 'nightly' = 'ui'
+) => {
+  // DriftEventBus を流用して監査ログとする
+  driftEventBus.emit({
+    listName,
+    fieldName,
+    detectedAt: new Date().toISOString(),
+    severity: status === 'success' ? 'info' : 'warn',
+    resolutionType: 'manual',
+    driftType: 'unknown',
+    resolved: status === 'success',
+    remediationSource: source,
+  });
 };

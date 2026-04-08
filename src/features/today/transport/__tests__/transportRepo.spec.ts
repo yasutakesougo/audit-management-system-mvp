@@ -22,6 +22,7 @@ function createMockClient() {
     deleteItem: vi.fn().mockResolvedValue(undefined),
     getItemById: vi.fn(),
     getItemByIdWithEtag: vi.fn(),
+    getListFieldInternalNames: vi.fn().mockResolvedValue(['Title', 'UserCode', 'RecordDate', 'Direction', 'Status', 'ActualTime', 'DriverName', 'Notes', 'Key', 'TransportTo', 'TransportToMethod', 'TransportFrom', 'TransportFromMethod']),
   } as unknown as ReturnType<typeof import('@/lib/spClient').useSP>;
 }
 

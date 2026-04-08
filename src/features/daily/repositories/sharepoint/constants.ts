@@ -28,6 +28,23 @@ export const DAILY_RECORD_ROWS_FIELDS = {
   recordedAt: 'Recorded_x0020_At',
 } as const;
 
+/**
+ * SharePoint field names for granular execution records (19 rows)
+ */
+export const EXECUTION_RECORD_FIELDS = {
+  title: 'Title',                 // Composite Key: date-userId-slotId
+  rowKey: 'RowKey',               // Indexed Search Key: DailyKey-RowNo
+  parentId: 'Parent_x0020_ID',    // Lookup to SupportRecord_Daily
+  userId: 'User_x0020_ID',
+  rowNo: 'RowNo',                 // Slot ID / Sequence
+  status: 'Status',
+  memo: 'Memo',
+  recordedAt: 'Recorded_x0020_At',
+  staffName: 'StaffName',
+  bipsJSON: 'BipsJSON',           // JSON string for BIP IDs
+} as const;
+
+
 export type SharePointResponse<T> = {
   value?: T[];
 };
@@ -97,3 +114,11 @@ export const getListTitle = (): string => {
     'SupportRecord_Daily'
   );
 };
+
+export const getRowsListTitle = (): string => {
+  return (
+    readNonEmptyEnv('VITE_SP_LIST_DAILY_ROWS') ??
+    'SupportRecord_DailyRows'
+  );
+};
+

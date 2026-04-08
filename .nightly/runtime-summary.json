@@ -1,12 +1,12 @@
 {
-  "reportDate": "2026-04-05",
-  "totalEvents": 7,
-  "bundledCount": 6,
+  "reportDate": "2026-04-07",
+  "totalEvents": 9,
+  "bundledCount": 8,
   "countsBySeverity": {
-    "critical": 1,
+    "critical": 2,
     "action_required": 1,
     "watch": 2,
-    "silent": 2
+    "silent": 3
   },
   "events": [
     {
@@ -16,22 +16,34 @@
       "area": "Platform",
       "resourceKey": "SharePoint_API",
       "occurrences": 1,
-      "firstSeen": "2026-04-05T11:38:24.750Z",
-      "lastSeen": "2026-04-05T11:38:24.750Z",
+      "firstSeen": "2026-04-07T05:50:12.178Z",
+      "lastSeen": "2026-04-07T05:50:12.178Z",
       "nextAction": "【至急】運用管理者にエスカレーションし、システム全体の利用可否を確認してください。",
       "sampleMessage": "SharePoint Throttle occurred."
     },
     {
-      "fingerprint": "2ff10a86",
-      "severity": "action_required",
-      "eventType": "http_500",
-      "area": "StaffAttendance",
-      "resourceKey": "Staff_Attendance",
+      "fingerprint": "e9c83905",
+      "severity": "critical",
+      "eventType": "index_pressure",
+      "area": "Runtime",
+      "resourceKey": "iceberg_analysis",
       "occurrences": 1,
-      "firstSeen": "2026-04-05T11:38:24.750Z",
-      "lastSeen": "2026-04-05T11:38:24.750Z",
-      "nextAction": "[Staff_Attendance] の保存フローに関するログを確認し、SharePointのリスト設定と実データの整合性を調査してください。",
-      "sampleMessage": "Transient 500 error on update."
+      "firstSeen": "2026-04-07T05:50:12.178Z",
+      "lastSeen": "2026-04-07T05:50:12.178Z",
+      "nextAction": "【至急】[iceberg_analysis] で必須インデックスが不足しています。システム停止を防ぐため、Index Advisor で修復を実行してください。",
+      "sampleMessage": "(CRITICAL) Severity: critical. Index Count: 18 / 20. Essential indexes missing."
+    },
+    {
+      "fingerprint": "54d88c74",
+      "severity": "action_required",
+      "eventType": "remediation",
+      "area": "Runtime",
+      "resourceKey": "UserBenefit_Profile",
+      "occurrences": 1,
+      "firstSeen": "2026-04-07T05:50:12.178Z",
+      "lastSeen": "2026-04-07T05:50:12.178Z",
+      "nextAction": "【要確認】インデックス修復 (RecipientCertNumber) に失敗しました。ネットワーク状態や SharePoint 権限を確認してください。",
+      "sampleMessage": "RecipientCertNumber のインデックス作成に失敗しました: Network Error"
     },
     {
       "fingerprint": "c52ff402",
@@ -40,9 +52,9 @@
       "area": "Platform",
       "resourceKey": "Users_Master",
       "occurrences": 1,
-      "firstSeen": "2026-04-05T11:38:24.750Z",
-      "lastSeen": "2026-04-05T11:38:24.750Z",
-      "nextAction": "次回のNightly Patrolまで傾向を様子見（継続監視）",
+      "firstSeen": "2026-04-07T05:50:12.178Z",
+      "lastSeen": "2026-04-07T05:50:12.178Z",
+      "nextAction": "[Users_Master] の健全性チェックに失敗しました。SharePoint 管理画面でリストの存在・権限設定を確認してください。",
       "sampleMessage": "Users_Master list does not exist."
     },
     {
@@ -52,9 +64,9 @@
       "area": "Daily",
       "resourceKey": "support_record_daily",
       "occurrences": 1,
-      "firstSeen": "2026-04-05T11:38:24.750Z",
-      "lastSeen": "2026-04-05T11:38:24.750Z",
-      "nextAction": "[support_record_daily] に誰かがフィールドを直接追加・削除した可能性を調査してください。",
+      "firstSeen": "2026-04-07T05:50:12.178Z",
+      "lastSeen": "2026-04-07T05:50:12.178Z",
+      "nextAction": "[support_record_daily] に誰かがフィールドを直接追加・削除した可能性があるため、変更履歴を調査してください。",
       "sampleMessage": "New field encountered."
     },
     {
@@ -64,8 +76,8 @@
       "area": "UserBenefit",
       "resourceKey": "UserBenefit_Profile",
       "occurrences": 2,
-      "firstSeen": "2026-04-05T11:38:24.750Z",
-      "lastSeen": "2026-04-05T11:38:24.750Z",
+      "firstSeen": "2026-04-07T05:50:12.178Z",
+      "lastSeen": "2026-04-07T05:50:12.178Z",
       "nextAction": "（対応不要・本システムで安全に吸収済み）",
       "sampleMessage": "Prevented creation to avoid 8KB limits."
     },
@@ -76,10 +88,22 @@
       "area": "UserBenefit",
       "resourceKey": "UserBenefit_Profile",
       "occurrences": 1,
-      "firstSeen": "2026-04-05T11:38:24.750Z",
-      "lastSeen": "2026-04-05T11:38:24.750Z",
-      "nextAction": "[UserBenefit_Profile] に誰かがフィールドを直接追加・削除した可能性を調査してください。",
+      "firstSeen": "2026-04-07T05:50:12.178Z",
+      "lastSeen": "2026-04-07T05:50:12.178Z",
+      "nextAction": "[UserBenefit_Profile] に誰かがフィールドを直接追加・削除した可能性があるため、変更履歴を調査してください。",
       "sampleMessage": "Strategy E absorbed it."
+    },
+    {
+      "fingerprint": "40f1542a",
+      "severity": "silent",
+      "eventType": "remediation",
+      "area": "Runtime",
+      "resourceKey": "StaffAttendance",
+      "occurrences": 1,
+      "firstSeen": "2026-04-07T05:50:12.178Z",
+      "lastSeen": "2026-04-07T05:50:12.178Z",
+      "nextAction": "インデックス自動修復 (RecordDate) が正常に完了しました。",
+      "sampleMessage": "RecordDate のインデックスを作成しました（成功）。"
     }
   ]
 }

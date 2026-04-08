@@ -217,7 +217,7 @@ export function useTimeBasedSupportPage() {
         if (slotKey) {
           const hasBehaviorIncident = payload.behavior !== '日常記録' && payload.behavior !== '';
           const autoStatus = hasBehaviorIncident ? ('triggered' as const) : ('completed' as const);
-          executionStore.upsertRecord({
+          await executionStore.upsertRecord({
             id: `${targetDate}-${core.targetUserId}-${slotKey}`,
             date: targetDate,
             userId: core.targetUserId,
@@ -228,6 +228,7 @@ export function useTimeBasedSupportPage() {
             recordedBy: '',
             recordedAt: new Date().toISOString(),
           });
+
         }
 
         if (typeof window !== 'undefined') {
@@ -376,12 +377,13 @@ export function useTimeBasedSupportPage() {
 
   const handleCopyReport = useCallback(async () => {
     if (!core.targetUserId || !selectedUser) return;
-    const records = executionStore.getRecords(targetDate, core.targetUserId);
+    const records = await executionStore.getRecords(targetDate, core.targetUserId);
     const report = generateDailyReport({
       date: targetDate,
       userName: selectedUser.FullName,
       schedule: core.schedule,
       records,
+
       observations: (() => {
         const m = new Map<string, string>();
         core.recentObservations.forEach((o) => {

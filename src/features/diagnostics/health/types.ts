@@ -61,6 +61,7 @@ export type ListSpec = {
   createItem: Record<string, unknown>;
   updateItem: Record<string, unknown>;
   isReadOnly?: boolean;
+  isOptional?: boolean;
 };
 
 export type HealthContext = {

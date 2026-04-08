@@ -15,6 +15,16 @@ import { EscalationAlertBanner } from '@/features/exceptions/components/Escalati
 import { useNotificationDispatcher } from '@/features/exceptions/hooks/useNotificationDispatcher';
 import { DriftEventTable } from '@/features/diagnostics/drift/ui/DriftEventTable';
 import { Tabs, Tab } from '@mui/material';
+import { useSuggestionStateStore } from '@/features/action-engine/hooks/useSuggestionStateStore';
+import { useAllCorrectiveActions } from '@/features/action-engine/hooks/useAllCorrectiveActions';
+import { recordSuggestionTelemetry } from '@/features/action-engine/telemetry/recordSuggestionTelemetry';
+import { 
+  buildSuggestionTelemetryEvent, 
+  SUGGESTION_TELEMETRY_EVENTS 
+} from '@/features/action-engine/telemetry/buildSuggestionTelemetryEvent';
+import { computeSnoozeUntil } from '@/features/action-engine/domain/computeSnoozeUntil';
+import type { SnoozePreset } from '@/features/action-engine/domain/computeSnoozeUntil';
+import type { SuggestionCtaSurface } from '@/features/exceptions/components/ExceptionTable.types';
 
 const SEVERITY_LABELS: Record<ExceptionSeverity, string> = {
   critical: '致命的',
@@ -33,6 +43,83 @@ const SEVERITY_COLORS: Record<ExceptionSeverity, 'error' | 'warning' | 'primary'
 export const ExceptionCenterPage: React.FC = () => {
   const { items, summary, isLoading, error } = useExceptionCenterOrchestrator();
   const { activeEscalations } = useEscalationEvaluation(items, summary);
+  const { suggestions } = useAllCorrectiveActions();
+  const dismissSuggestion = useSuggestionStateStore((s) => s.dismiss);
+  const snoozeSuggestion = useSuggestionStateStore((s) => s.snooze);
+
+  const handleDismiss = React.useCallback((stableId: string) => {
+    const s = suggestions.find(x => x.stableId === stableId);
+    const ruleId = s?.ruleId || stableId.split(':')[0] || 'unknown';
+    const priority = s?.priority || 'P2';
+    const targetUserId = s?.targetUserId || stableId.split(':')[1];
+
+    recordSuggestionTelemetry(buildSuggestionTelemetryEvent({
+      event: SUGGESTION_TELEMETRY_EVENTS.DISMISSED,
+      sourceScreen: 'exception-center',
+      stableId,
+      ruleId,
+      priority,
+      targetUserId
+    }));
+    dismissSuggestion(stableId, { by: 'exception-center' });
+  }, [suggestions, dismissSuggestion]);
+
+  const handleSnooze = React.useCallback((stableId: string, preset: SnoozePreset) => {
+    const s = suggestions.find(x => x.stableId === stableId);
+    const ruleId = s?.ruleId || stableId.split(':')[0] || 'unknown';
+    const priority = s?.priority || 'P2';
+    const targetUserId = s?.targetUserId || stableId.split(':')[1];
+    const until = computeSnoozeUntil(preset, new Date());
+
+    recordSuggestionTelemetry(buildSuggestionTelemetryEvent({
+      event: SUGGESTION_TELEMETRY_EVENTS.SNOOZED,
+      sourceScreen: 'exception-center',
+      stableId,
+      ruleId,
+      priority,
+      targetUserId,
+      snoozePreset: preset,
+      snoozedUntil: until
+    }));
+    snoozeSuggestion(stableId, until, { by: 'exception-center' });
+  }, [suggestions, snoozeSuggestion]);
+
+  const handleCtaClick = React.useCallback((stableId: string, targetUrl: string, surface?: SuggestionCtaSurface) => {
+    const s = suggestions.find(x => x.stableId === stableId);
+    const ruleId = s?.ruleId || stableId.split(':')[0] || 'unknown';
+    const priority = s?.priority || 'P2';
+    const targetUserId = s?.targetUserId || stableId.split(':')[1];
+
+    recordSuggestionTelemetry(buildSuggestionTelemetryEvent({
+      event: SUGGESTION_TELEMETRY_EVENTS.CTA_CLICKED,
+      sourceScreen: 'exception-center',
+      stableId,
+      ruleId,
+      priority,
+      targetUserId,
+      targetUrl,
+      ctaSurface: surface
+    }));
+  }, [suggestions]);
+
+  const handlePriorityTopShown = React.useCallback((stableIds: string[]) => {
+    for (const sid of stableIds) {
+      const s = suggestions.find(x => x.stableId === sid);
+      const ruleId = s?.ruleId || sid.split(':')[0] || 'unknown';
+      const priority = s?.priority || 'P2';
+      const targetUserId = s?.targetUserId || sid.split(':')[1];
+
+      recordSuggestionTelemetry(buildSuggestionTelemetryEvent({
+        event: SUGGESTION_TELEMETRY_EVENTS.SHOWN,
+        sourceScreen: 'exception-center',
+        stableId: sid,
+        ruleId,
+        priority,
+        targetUserId,
+        ctaSurface: 'priority-top3'
+      }));
+    }
+  }, [suggestions]);
   const [activeTab, setActiveTab] = React.useState(0);
   
   // 重要例外を外部チャネルへ配送
@@ -170,6 +257,12 @@ export const ExceptionCenterPage: React.FC = () => {
                 <ExceptionTable 
                   items={items} 
                   title="全例外詳細（横断表示）"
+                  suggestionActions={{
+                    onDismiss: handleDismiss,
+                    onSnooze: handleSnooze,
+                    onCtaClick: handleCtaClick,
+                    onPriorityTopShown: handlePriorityTopShown
+                  }}
                 />
               </Paper>
             </Box>

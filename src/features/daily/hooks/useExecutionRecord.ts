@@ -3,44 +3,59 @@
 //
 // Storeへのアクセスを抽象化し、UI側が日付とタイムスタンプを意識せずに済む。
 // ---------------------------------------------------------------------------
-import { useCallback } from 'react';
-
-import { type RecordStatus, makeRecordId } from '../domain/executionRecordTypes';
+import { useCallback, useEffect, useState } from 'react';
+import { type RecordStatus, makeRecordId, type ExecutionRecord } from '../domain/executionRecordTypes';
 import { useExecutionData } from './useExecutionData';
+
 export function useExecutionRecord(date: string, userId: string, scheduleItemId: string) {
   const { getRecord, upsertRecord } = useExecutionData();
+  const [record, setRecord] = useState<ExecutionRecord | undefined>();
+  const [isLoading, setIsLoading] = useState(true);
 
-  const record = getRecord(date, userId, scheduleItemId);
+  const fetchRecord = useCallback(async () => {
+    setIsLoading(true);
+    const r = await getRecord(date, userId, scheduleItemId);
+    setRecord(r);
+    setIsLoading(false);
+  }, [getRecord, date, userId, scheduleItemId]);
+
+  useEffect(() => {
+    void fetchRecord();
+  }, [fetchRecord]);
 
   const setStatus = useCallback(
-    (status: RecordStatus) => {
-      upsertRecord({
+    async (status: RecordStatus) => {
+      const next: ExecutionRecord = {
         id: makeRecordId(date, userId, scheduleItemId),
         date,
         userId,
         scheduleItemId,
         status,
-        // 既存のメモや発動BIPを維持しつつ、タイムスタンプを更新
         memo: record?.memo ?? '',
         triggeredBipIds: record?.triggeredBipIds ?? [],
         recordedBy: record?.recordedBy ?? '',
         recordedAt: new Date().toISOString(),
-      });
+      };
+      setRecord(next);
+      await upsertRecord(next);
     },
     [date, userId, scheduleItemId, record, upsertRecord],
   );
 
   const setMemo = useCallback(
-    (memo: string) => {
+    async (memo: string) => {
       if (!record) return;
-      upsertRecord({
+      const next = {
         ...record,
         memo,
         recordedAt: new Date().toISOString(),
-      });
+      };
+      setRecord(next);
+      await upsertRecord(next);
     },
     [record, upsertRecord],
   );
 
-  return { record, setStatus, setMemo } as const;
+  return { record, setStatus, setMemo, isLoading, refresh: fetchRecord } as const;
 }
+
