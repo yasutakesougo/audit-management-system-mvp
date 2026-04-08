@@ -57,6 +57,8 @@ export interface FormTable {
   visibleRows: UserRowData[];
   showUnsentOnly: boolean;
   setShowUnsentOnly: Dispatch<SetStateAction<boolean>>;
+  showMissingOnly: boolean;
+  setShowMissingOnly: Dispatch<SetStateAction<boolean>>;
   unsentRowCount: number;
 }
 

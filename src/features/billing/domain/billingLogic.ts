@@ -32,7 +32,7 @@ export function mapToBillingOrder(
 ): BillingOrder {
   const F = mapping;
   return {
-    id: safeParseNumber(item['Id'] ?? item['id'] ?? 0),
+    id: safeParseNumber(item['Id'] ?? item['id'] ?? item['ID'] ?? 0),
     orderDate: safeParseString(item[F.orderDate ?? 'Title'] ?? item['orderDate'] ?? ''),
     ordererCode: safeParseString(item[F.ordererCode ?? 'OrdererCode'] ?? item['ordererCode'] ?? ''),
     ordererName: safeParseString(item[F.ordererName ?? 'OrdererName'] ?? item['ordererName'] ?? ''),

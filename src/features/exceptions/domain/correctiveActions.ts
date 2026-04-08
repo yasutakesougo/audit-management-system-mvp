@@ -243,6 +243,28 @@ const CORRECTIVE_ACTION_MAP: Record<
       reason: 'データレイヤーの異常を修正または確認してください。',
     },
   ],
+  'missing-vital': (item) => {
+    return [
+      {
+        key: `${item.id}-vital`,
+        label: 'バイタルを入力する',
+        route: item.actionPath ?? '/nurse/observation/bulk',
+        variant: 'primary',
+        severity: 'high',
+        icon: '🌡️',
+        reason: 'バイタル計測が未完了です。一括入力画面から登録できます。',
+      },
+      {
+        key: `${item.id}-list`,
+        label: '一括入力画面へ',
+        route: '/nurse/observation/bulk',
+        variant: 'ghost',
+        severity: 'medium',
+        icon: '📋',
+        reason: 'バイタル計測状況を一覧で確認できます。',
+      },
+    ];
+  },
 };
 
 // ─── ユーティリティ ───────────────────────────────────────────

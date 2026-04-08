@@ -35,6 +35,10 @@ export type UseTableDailyRecordSelectionParams = {
   users: StoreUser[];
   /** 復元された下書きの選択状態（下書き復元時のみ） */
   loadedDraftSelectedUserIds?: string[] | null;
+  /** すでに記録済みのユーザーIDリスト */
+  recordedUserIds: string[];
+  /** 未入力のみを対象にするか */
+  showMissingOnly: boolean;
 };
 
 export type UseTableDailyRecordSelectionReturn = {
@@ -97,6 +101,8 @@ export function useTableDailyRecordSelection({
   targetDate,
   users,
   loadedDraftSelectedUserIds,
+  recordedUserIds,
+  showMissingOnly,
 }: UseTableDailyRecordSelectionParams): UseTableDailyRecordSelectionReturn {
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [selectionManuallyEdited, setSelectionManuallyEdited] = useState(false);
@@ -174,10 +180,6 @@ export function useTableDailyRecordSelection({
     }
   }, [targetDate, showTodayOnly, selectedUserIds, users]);
 
-  /**
-   * 出席フィルタに基づく自動選択
-   * （ダイアログが開かれた時、showTodayOnly が true で、手動編集されていない場合）
-   */
   useEffect(() => {
     if (!open || !showTodayOnly || selectionManuallyEdited) {
       return;
@@ -191,13 +193,18 @@ export function useTableDailyRecordSelection({
       return;
     }
 
-    const hasSameSelection = todayUserIds.length === selectedUserIds.length &&
-      todayUserIds.every((id) => selectedUserIds.includes(id));
+    // 未入力のみフィルタが有効な場合、記録済みのユーザーを除外
+    const targetUserIds = showMissingOnly
+      ? todayUserIds.filter(id => !recordedUserIds.includes(id))
+      : todayUserIds;
+
+    const hasSameSelection = targetUserIds.length === selectedUserIds.length &&
+      targetUserIds.every((id) => selectedUserIds.includes(id));
 
     if (!hasSameSelection) {
-      setSelectedUserIds(todayUserIds);
+      setSelectedUserIds(targetUserIds);
     }
-  }, [open, showTodayOnly, attendanceFilteredUsers, selectionManuallyEdited, selectedUserIds]);
+  }, [open, showTodayOnly, showMissingOnly, recordedUserIds, attendanceFilteredUsers, selectionManuallyEdited, selectedUserIds]);
 
   /**
    * 下書き復元時に選択状態を復元する

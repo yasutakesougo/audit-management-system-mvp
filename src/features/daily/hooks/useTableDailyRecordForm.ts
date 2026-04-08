@@ -56,6 +56,8 @@ export type UseTableDailyRecordFormResult = {
   handleClearRow: (userId: string) => void;
   showUnsentOnly: boolean;
   setShowUnsentOnly: Dispatch<SetStateAction<boolean>>;
+  showMissingOnly: boolean;
+  setShowMissingOnly: Dispatch<SetStateAction<boolean>>;
   visibleRows: UserRowData[];
   unsentRowCount: number;
   hasDraft: boolean;
@@ -135,7 +137,7 @@ export const useTableDailyRecordForm = ({
   onSave,
 }: UseTableDailyRecordFormParams): UseTableDailyRecordFormResult => {
   // ── Routing ───────────────────────────────────────
-  const { initialDateFromUrl, showUnsentOnly, setShowUnsentOnly } = useTableDailyRecordRouting(open);
+  const { initialDateFromUrl, showUnsentOnly, setShowUnsentOnly, showMissingOnly, setShowMissingOnly } = useTableDailyRecordRouting(open);
 
   // ── Core state ────────────────────────────────────
   const [formData, setFormData] = useState<TableDailyRecordData>(() => createInitialFormData(initialDateFromUrl));
@@ -175,6 +177,8 @@ export const useTableDailyRecordForm = ({
     targetDate,
     users,
     loadedDraftSelectedUserIds: loadedDraft?.selectedUserIds,
+    recordedUserIds: useMemo(() => formData.userRows.map(r => r.userId), [formData.userRows]),
+    showMissingOnly,
   });
 
   // ── Handoff notes 連携 ─────────────────────────────
@@ -333,6 +337,8 @@ export const useTableDailyRecordForm = ({
     handleClearRow,
     showUnsentOnly,
     setShowUnsentOnly,
+    showMissingOnly,
+    setShowMissingOnly,
     visibleRows,
     unsentRowCount,
     hasDraft,
@@ -357,7 +363,9 @@ export const useTableDailyRecordForm = ({
     table: {
       handleRowDataChange, handleProblemBehaviorChange,
       handleBehaviorTagToggle, handleClearRow,
-      visibleRows, showUnsentOnly, setShowUnsentOnly, unsentRowCount,
+      visibleRows, showUnsentOnly, setShowUnsentOnly, 
+      showMissingOnly, setShowMissingOnly,
+      unsentRowCount,
     },
     draft: { hasDraft, draftSavedAt, handleSaveDraft },
     handoff: {

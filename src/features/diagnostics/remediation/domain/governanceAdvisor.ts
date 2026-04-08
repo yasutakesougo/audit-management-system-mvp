@@ -4,6 +4,7 @@ import { type SpFieldDef } from '@/lib/sp/types';
 
 export type GovernanceActionType = 'CREATE_FIELD' | 'ENSURE_INDEX' | 'DELETE_INDEX';
 export type GovernancePriorityLevel = 'P1_CRITICAL' | 'P2_HIGH' | 'P3_MEDIUM' | 'P4_LOW';
+export type RepairTier = 'silent' | 'suggested' | 'guarded';
 
 export interface GovernancePriority {
   level: GovernancePriorityLevel;
@@ -26,9 +27,12 @@ export interface GovernanceRecommendation {
     payload: SpFieldDef;
     confidence: 'high' | 'medium' | 'low'; // Decision certainty
     autoExecutable: boolean;               // Safety flag for batching/automation
+    tier: RepairTier;                      // Autonomy level (Phase F)
+    risk: 'low' | 'medium' | 'high';       // Technical risk weight
   };
   reason: string;
   sourceSignal: 'nightly' | 'realtime';
+  lastSeen?: string;
   priority: GovernancePriority;
 }
 
@@ -116,6 +120,70 @@ function computePriority(
 }
 
 /**
+ * classifyRepairTier — 修復レベルの判定 (Phase F: Autonomy Governance)
+ * 
+ * 安全性を最優先し、Silent 修復は「高確信度かつ低リスクな基盤資産」に限定する。
+ */
+export function classifyRepairTier(
+  actionType: GovernanceActionType,
+  confidence: 'high' | 'medium' | 'low',
+  priority: GovernancePriority,
+  isMaster: boolean
+): { tier: RepairTier; risk: 'low' | 'medium' | 'high' } {
+  // 1. リスク判定
+  // 新規作成やインデックス付与は非破壊的なため 'low'
+  // インデックス削除や型変更（将来）などは 'medium' 以上
+  const risk: 'low' | 'medium' | 'high' = 
+    actionType === 'DELETE_INDEX' ? 'medium' : 'low';
+
+  // 2. Tier 判定
+  // Silent: 高確信度、低リスク、かつ基盤マスタ（影響範囲が明確）
+  if (confidence === 'high' && risk === 'low' && isMaster) {
+    return { tier: 'silent', risk };
+  }
+
+  // Guarded: 低確信度 または テクニカルリスクが高い場合
+  if (confidence === 'low' || (risk as string) === 'high') {
+    return { tier: 'guarded', risk };
+  }
+
+  // Suggested: それ以外（通常の UI 経由修復）
+  return { tier: 'suggested', risk };
+}
+
+/**
+ * SilentRepairPolicy — 自律修復ポリシー定義 (Phase G: Controlled Self-Healing)
+ */
+export type SilentRepairPolicy = {
+  listKey: string;
+  fieldName: string;
+  enabled: boolean;
+  note?: string;
+};
+
+/**
+ * SILENT_REPAIR_ALLOWLIST — 自律修復・許可リスト
+ * システムに実行権限を渡す。最初は最重要かつ安全な UserID 1点から開始する。
+ */
+export const SILENT_REPAIR_ALLOWLIST: SilentRepairPolicy[] = [
+  {
+    listKey: 'users_master',
+    fieldName: 'UserID',
+    enabled: true,
+    note: '基盤ID。非破壊かつ必須フィールドのため自動修復。'
+  }
+];
+
+/**
+ * isSilentRepairApproved — 自律修復が承認されているかを判定。
+ */
+export function isSilentRepairApproved(listKey: string, fieldName: string): boolean {
+  return SILENT_REPAIR_ALLOWLIST.some(
+    p => p.enabled && p.listKey === listKey && p.fieldName === fieldName
+  );
+}
+
+/**
  * deriveGovernanceRecommendations — アドバイザー推論エンジン (v4.3 Operational Readiness)
  */
 export function deriveGovernanceRecommendations(
@@ -135,15 +203,21 @@ export function deriveGovernanceRecommendations(
     if (fieldDef) {
        const priority = computePriority('structural_drift', listKey, drift.streak);
        
-       // Confidence & Automation Logic v4.3
+       // Confidence & Automation Logic v4.3 (Phase F: Autonomy Ready)
        const isStructural = priority.risk === 'data_integrity';
        const isChronic = drift.streak >= 7;
        const isMaster = (LIST_IMPORTANCE[listKey] || 1.0) >= 2.0;
 
-       const confidence = isStructural && isChronic ? 'high' : 
-                         isStructural || isChronic ? 'medium' : 'low';
+       const confidence: 'high' | 'medium' | 'low' = 
+         isStructural && isChronic ? 'high' : 
+         isStructural || isChronic ? 'medium' : 'low';
                          
-       const autoExecutable = isStructural && isChronic && isMaster;
+       const { tier, risk } = classifyRepairTier(
+         'CREATE_FIELD',
+         confidence,
+         priority,
+         isMaster
+       );
 
        recommendations.push({
          id: `drift:${drift.reasonKey}`,
@@ -157,10 +231,13 @@ export function deriveGovernanceRecommendations(
            label: `不整合の修復: ${fieldInternalName}`,
            payload: fieldDef,
            confidence,
-           autoExecutable,
+           autoExecutable: tier === 'silent',
+           tier,
+           risk,
          },
          reason: `Nightly Patrol が長期に渡り ${listTitle} の不整合を検知しています。レジストリ契約に基づき、環境の健全性を回復させることをお勧めします。`,
          sourceSignal: 'nightly',
+         lastSeen: drift.lastSeen,
          priority
        });
     }

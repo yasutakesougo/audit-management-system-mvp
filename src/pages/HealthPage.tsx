@@ -391,6 +391,7 @@ export default function HealthPage() {
     isProductionLike:
       String(env.MODE ?? "").toLowerCase() === "production" ||
       String(env.VITE_APP_ENV ?? "").toLowerCase() === "production",
+    autonomyLevel: 'F', // デフォルトは提案ベース（Level F）
   };
 
   return <HealthDiagnosisPage ctx={ctx} />;

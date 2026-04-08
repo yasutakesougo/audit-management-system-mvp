@@ -35,6 +35,10 @@ export type UseTableDailyRecordSelectionParams = {
   users: StoreUser[];
   /** 復元された下書きの選択状態（下書き復元時のみ） */
   loadedDraftSelectedUserIds?: string[] | null;
+  /** すでに記録済みのユーザーIDリスト */
+  recordedUserIds: string[];
+  /** 未入力のみを対象にするか */
+  showMissingOnly: boolean;
 };
 
 export type UseTableDailyRecordSelectionReturn = {
@@ -97,6 +101,8 @@ export function useTableDailyRecordSelection({
   targetDate,
   users,
   loadedDraftSelectedUserIds,
+  recordedUserIds,
+  showMissingOnly,
 }: UseTableDailyRecordSelectionParams): UseTableDailyRecordSelectionReturn {
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [selectionManuallyEdited, setSelectionManuallyEdited] = useState(false);
@@ -174,29 +180,52 @@ export function useTableDailyRecordSelection({
   }, [targetDate, showTodayOnly, selectedUserIds, users]);
 
   /**
-   * 出席フィルタに基づく自動選択
-   * （ダイアログが開かれた時、showTodayOnly が true で、手動編集されていない場合）
+   * 自動選択ロジック
+   * - 出席フィルタに基づく自動選択
+   * - 未入力フィルタ (showMissingOnly) に基づく自動選択
+   * （ダイアログが開かれた時、手動編集されていない場合）
    */
   useEffect(() => {
-    if (!open || !showTodayOnly || selectionManuallyEdited) {
+    if (!open || selectionManuallyEdited || loadedDraftSelectedUserIds) {
       return;
     }
 
-    const todayUserIds = attendanceFilteredUsers
-      .map((user) => user.UserID ?? '')
-      .filter((id): id is string => Boolean(id));
-
-    if (todayUserIds.length === 0) {
+    if (showMissingOnly) {
+      // 未入力のみモード時: 予定があり、かつ記録がまだないユーザーを選択
+      const missingUserIds = (showTodayOnly ? attendanceFilteredUsers : users)
+        .filter(u => u.AttendanceDays && isUserScheduledForDate({ 
+          Id: u.Id,
+          UserID: u.UserID || '',
+          FullName: u.FullName || '',
+          AttendanceDays: u.AttendanceDays,
+          ServiceStartDate: u.ServiceStartDate ?? undefined,
+          ServiceEndDate: u.ServiceEndDate ?? undefined,
+        }, targetDate))
+        .filter(u => !recordedUserIds.includes(u.UserID || ''))
+        .map(u => u.UserID || '')
+        .filter(id => id !== '');
+      
+      setSelectedUserIds(missingUserIds);
       return;
     }
 
-    const hasSameSelection = todayUserIds.length === selectedUserIds.length &&
-      todayUserIds.every((id) => selectedUserIds.includes(id));
+    if (showTodayOnly) {
+      const todayUserIds = attendanceFilteredUsers
+        .map((user) => user.UserID ?? '')
+        .filter((id): id is string => Boolean(id));
 
-    if (!hasSameSelection) {
-      setSelectedUserIds(todayUserIds);
+      if (todayUserIds.length === 0) {
+        return;
+      }
+
+      const hasSameSelection = todayUserIds.length === selectedUserIds.length &&
+        todayUserIds.every((id) => selectedUserIds.includes(id));
+
+      if (!hasSameSelection) {
+        setSelectedUserIds(todayUserIds);
+      }
     }
-  }, [open, showTodayOnly, attendanceFilteredUsers, selectionManuallyEdited, selectedUserIds]);
+  }, [open, showTodayOnly, showMissingOnly, attendanceFilteredUsers, users, targetDate, selectionManuallyEdited, loadedDraftSelectedUserIds, recordedUserIds]);
 
   /**
    * 下書き復元時に選択状態を復元する

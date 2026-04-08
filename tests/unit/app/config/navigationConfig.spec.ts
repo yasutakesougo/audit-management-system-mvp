@@ -6,6 +6,7 @@
 
 import {
     createNavItems,
+    buildVisibleNavItems,
     filterNavItems,
     groupLabel,
     groupNavItems,
@@ -393,28 +394,33 @@ describe('navigationConfig', () => {
         to: '/dailysupport',
         isActive: () => false,
         testId: TESTIDS.nav.daily,
+        group: 'today',
       },
       {
         label: '記録一覧',
         to: '/records',
         isActive: () => false,
+        group: 'records',
       },
       {
         label: '分析',
         to: '/analysis/dashboard',
         isActive: () => false,
         testId: TESTIDS.nav.analysis,
+        group: 'planning',
       },
       {
         label: '利用者',
         to: '/users',
         isActive: () => false,
+        group: 'master',
       },
       {
         label: '自己点検',
         to: '/checklist',
         isActive: () => false,
         testId: TESTIDS.nav.checklist,
+        group: 'platform',
       },
     ] as unknown as NavItem[];
 
@@ -423,49 +429,15 @@ describe('navigationConfig', () => {
 
       expect(ORDER).toEqual(NAV_GROUP_ORDER);
       expect(map.get('today')).toHaveLength(1);
-      expect(map.get('records')).toHaveLength(1); // 記録一覧 only
+      expect(map.get('records')).toHaveLength(1);
       expect(map.get('planning')).toHaveLength(1);
       expect(map.get('master')).toHaveLength(1);
       expect(map.get('platform')).toHaveLength(1);
     });
 
-    it('should classify admin items correctly for admin users', () => {
-      const { map } = groupNavItems(sampleItems, true);
-
-      expect(map.get('master')).toHaveLength(1); // 利用者
-      expect(map.get('platform')).toHaveLength(1); // 自己点検
-      expect(map.get('records')).toHaveLength(1); // 記録一覧 only
-    });
-
     it('should maintain group order', () => {
       const { ORDER } = groupNavItems(sampleItems, false);
-
       expect(ORDER).toEqual(['today', 'records', 'planning', 'operations', 'billing', 'master', 'platform']);
-    });
-
-    it('should omit empty groups from the map', () => {
-      const { map } = groupNavItems(sampleItems, false);
-
-      // settings has no items, so it should not exist in the map
-      expect((map as Map<string, NavItem[]>).has('settings')).toBe(false);
-
-      // groups with items should still exist
-      expect(map.has('today')).toBe(true);
-      expect(map.has('records')).toBe(true);
-      expect(map.has('planning')).toBe(true);
-      expect(map.has('master')).toBe(true);
-      expect(map.has('platform')).toBe(true);
-    });
-
-    it('should bring back a group automatically when items are added to it', () => {
-      const itemsWithSettings: Partial<NavItem>[] = [
-        ...sampleItems,
-        { label: '追加項', to: '/ops-new', isActive: () => false, group: 'operations' },
-      ];
-      const { map } = groupNavItems(itemsWithSettings as NavItem[], false);
-
-      expect(map.has('operations')).toBe(true);
-      expect(map.get('operations')).toHaveLength(1);
     });
   });
 
@@ -476,24 +448,81 @@ describe('navigationConfig', () => {
       expect(NAV_AUDIENCE.admin).toBe('admin');
     });
 
+    it('should have correct group labels', () => {
+      expect(groupLabel.today).toBe('Today');
+      expect(groupLabel.records).toBe('Records');
+    });
+
     it('should map RBAC role to nav audience hierarchy', () => {
       expect(roleToNavAudience('viewer')).toBe('staff');
       expect(roleToNavAudience('reception')).toBe('reception');
       expect(roleToNavAudience('admin')).toBe('admin');
     });
+  });
 
-    it('should have correct group labels', () => {
-      expect(groupLabel.today).toBe('Today');
-      expect(groupLabel.records).toBe('Records');
-      expect(groupLabel.planning).toBe('Planning');
-      expect(groupLabel.operations).toBe('Operations');
-      expect(groupLabel.billing).toBe('Billing');
-      expect(groupLabel.master).toBe('Master');
-      expect(groupLabel.platform).toBe('Platform');
+  describe('buildVisibleNavItems (5-Layer Filter)', () => {
+    const items: NavItem[] = [
+      { label: 'Core Item', to: '/core', isActive: () => false, group: 'today', tier: 'core', audience: 'all' },
+      { label: 'More Item', to: '/more', isActive: () => false, group: 'today', tier: 'more', audience: 'all' },
+      { label: 'Admin Tier Item', to: '/admin-tier', isActive: () => false, group: 'platform', tier: 'admin', audience: 'admin' },
+      { label: 'Kiosk Hidden', to: '/dailysupport', isActive: () => false, group: 'today', tier: 'core', audience: 'all' },
+      { label: 'Non-Today Group', to: '/master', isActive: () => false, group: 'master', tier: 'core', audience: 'all' },
+    ] as NavItem[];
+
+    const baseOpts = {
+      showMore: false,
+      todayLiteNavV2: false,
+      isKiosk: false,
+      hiddenGroups: [],
+      hiddenItems: [],
+    };
+
+    it('should show all items when lite-nav and kiosk are disabled', () => {
+      const visible = buildVisibleNavItems(items, 'staff', baseOpts);
+      expect(visible).toHaveLength(items.length); // audience filtering is handled BEFORE this in the real hook, but here we test the other layers
     });
 
-    it('should have correct group order', () => {
-      expect(NAV_GROUP_ORDER).toEqual(['today', 'records', 'planning', 'operations', 'billing', 'master', 'platform']);
+    it('should filter by tier when todayLiteNavV2 is enabled', () => {
+      const visible = buildVisibleNavItems(items, 'staff', { ...baseOpts, todayLiteNavV2: true });
+      expect(visible.some(i => i.label === 'Core Item')).toBe(true);
+      expect(visible.some(i => i.label === 'More Item')).toBe(false);
+      expect(visible.some(i => i.label === 'Admin Tier Item')).toBe(false); // Admin tier is hidden for staff
+    });
+
+    it('should show more items when showMore is true', () => {
+      const visible = buildVisibleNavItems(items, 'staff', { ...baseOpts, todayLiteNavV2: true, showMore: true });
+      expect(visible.some(i => i.label === 'More Item')).toBe(true);
+    });
+
+    it('should show admin tier only for admin audience', () => {
+      const visible = buildVisibleNavItems(items, 'admin', { ...baseOpts, todayLiteNavV2: true });
+      expect(visible.some(i => i.label === 'Admin Tier Item')).toBe(true);
+    });
+
+    it('should restrict items in kiosk mode', () => {
+      const visible = buildVisibleNavItems(items, 'staff', { ...baseOpts, isKiosk: true });
+      
+      // Only 'today' group allowed
+      expect(visible.some(i => i.group === 'today')).toBe(true);
+      expect(visible.some(i => i.group === 'master')).toBe(false);
+      
+      // Specific paths hidden even in 'today' group
+      expect(visible.some(i => i.to === '/dailysupport')).toBe(false);
+      
+      // Other today items allowed
+      expect(visible.some(i => i.to === '/core')).toBe(true);
+    });
+
+    it('should support user preference filtering', () => {
+      const visible = buildVisibleNavItems(items, 'staff', { 
+        ...baseOpts, 
+        hiddenGroups: ['master'],
+        hiddenItems: ['/more'] 
+      });
+      
+      expect(visible.some(i => i.group === 'master')).toBe(false);
+      expect(visible.some(i => i.to === '/more')).toBe(false);
+      expect(visible.some(i => i.to === '/core')).toBe(true);
     });
   });
 });

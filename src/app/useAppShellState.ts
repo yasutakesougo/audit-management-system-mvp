@@ -166,40 +166,22 @@ export function useAppShellState() {
     }));
   }, [dashboardPath, currentRole, schedulesEnabled, complianceFormEnabled, icebergPdcaEnabled, staffAttendanceEnabled, todayOps, isAdmin, authzReady, navAudience]);
 
-  const isKiosk = settings.layoutMode === 'kiosk';
-
   const visibleNavItems = useMemo(
-    () => buildVisibleNavItems(navItems, navAudience, { showMore: showMoreNavItems, todayLiteNavV2 }),
-    [navItems, navAudience, showMoreNavItems, todayLiteNavV2],
+    () => buildVisibleNavItems(navItems, navAudience, {
+      showMore: showMoreNavItems,
+      todayLiteNavV2,
+      isKiosk: settings.layoutMode === 'kiosk',
+      hiddenGroups: settings.hiddenNavGroups,
+      hiddenItems: settings.hiddenNavItems,
+    }),
+    [navItems, navAudience, showMoreNavItems, todayLiteNavV2, settings.layoutMode, settings.hiddenNavGroups, settings.hiddenNavItems],
   );
 
   const navItemsByTier = useMemo(() => splitNavItemsByTier(navItems), [navItems]);
 
   const filteredNavItems = useMemo(() => {
-    const searched = filterNavItems(visibleNavItems, navQuery);
-
-    // ── Kiosk mode: 現場で使う導線だけに絞る ──────────────────────────
-    // Today → 進捗 → 各記録に直接飛べるため「日次記録」「健康記録」は非表示。
-    // daily 以外のグループ (assessment, record, ops, admin) もキオスクでは不要。
-    const KIOSK_HIDDEN_PATHS = ['/dailysupport', '/daily/health', '/transport/assignments'];
-    const KIOSK_ALLOWED_GROUPS = new Set(['today']);
-
-    // Hide groups that user has disabled in settings
-    const hiddenGroups = settings.hiddenNavGroups;
-    const hiddenItems = settings.hiddenNavItems;
-
-    return searched.filter((item) => {
-      // Kiosk filtering
-      if (isKiosk) {
-        if (item.group && !KIOSK_ALLOWED_GROUPS.has(item.group)) return false;
-        if (KIOSK_HIDDEN_PATHS.includes(item.to)) return false;
-      }
-      // User preference filtering
-      if (item.group && hiddenGroups.includes(item.group)) return false;
-      if (hiddenItems.includes(item.to)) return false;
-      return true;
-    });
-  }, [visibleNavItems, navQuery, settings.hiddenNavGroups, settings.hiddenNavItems, isKiosk]);
+    return filterNavItems(visibleNavItems, navQuery);
+  }, [visibleNavItems, navQuery]);
   const groupedNavItems = useMemo(() => groupNavItems(filteredNavItems, isAdmin), [filteredNavItems, isAdmin]);
 
   // ── Callbacks ──────────────────────────────────────────────────────────────

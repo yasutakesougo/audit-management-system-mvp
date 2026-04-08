@@ -140,8 +140,8 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
             icon: undefined,
             prefetchKey: PREFETCH_KEYS.schedulesWeek,
             prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
-            audience: NAV_AUDIENCE.staff,
-            group: 'today' as NavGroupKey,
+            audience: NAV_AUDIENCE.staff, // [Audience] 現場職員以上の権限で表示
+            group: 'today' as NavGroupKey, // [Group] 現場実行グループ
           },
         ]
       : []),
@@ -152,8 +152,8 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       prefetchKey: PREFETCH_KEYS.dailyMenu,
       testId: TESTIDS.nav.daily,
-      audience: NAV_AUDIENCE.all,
-      group: 'today' as NavGroupKey,
+      audience: NAV_AUDIENCE.all,      // [Audience] パート含め全ロールに露出（最重要アクション）
+      group: 'today' as NavGroupKey,   // [Group] 現場実行グループ
     },
     {
       label: '健康記録',
@@ -179,8 +179,8 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       audience: NAV_AUDIENCE.all,
       group: 'today' as NavGroupKey,
-      tier: 'more',
-      featureFlag: 'todayLiteNavV2',
+      tier: 'more',                   // [Tier] 頻度が低いため Lite Nav では隠蔽対象
+      featureFlag: 'todayLiteNavV2',  // [FF] Lite Nav 有効時のみティア制限を適用
     },
 
     // --- 2. 支援計画・アセスメント (assessment) ---
@@ -231,9 +231,9 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       prefetchKey: PREFETCH_KEYS.analysisDashboard,
       testId: TESTIDS.nav.analysis,
-      audience: NAV_AUDIENCE.admin,
+      audience: NAV_AUDIENCE.admin,   // [Audience] 施設長・管理者のみ（経営情報等）
       group: 'planning' as NavGroupKey,
-      tier: 'admin',
+      tier: 'admin',                  // [Tier] 管理者エリア
       featureFlag: 'todayLiteNavV2',
     },
     {
@@ -303,9 +303,9 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       to: '/ops',
       isActive: (pathname) => pathname === '/ops' || pathname.startsWith('/ops/'),
       icon: undefined,
-      audience: NAV_AUDIENCE.admin,
+      audience: NAV_AUDIENCE.admin,   // [Audience] 施設長のみ（収支・稼働率等）
       group: 'operations' as NavGroupKey,
-      tier: 'admin',
+      tier: 'admin',                  // [Tier] 管理エリア
       featureFlag: 'todayLiteNavV2',
     },
     createHubNavItem('billing', { testId: TESTIDS.nav.billing }),
@@ -403,9 +403,9 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname: string) => pathname.startsWith('/admin/exception-center'),
       icon: undefined,
       testId: TESTIDS.nav.exceptionCenter,
-      audience: NAV_AUDIENCE.admin,
+      audience: NAV_AUDIENCE.admin,   // [Audience] 管理者のみ（エラー・逸脱対応）
       group: 'operations' as NavGroupKey,
-      tier: 'admin',
+      tier: 'admin',                  // [Tier] 異常検知・リカバリ用
       featureFlag: 'todayLiteNavV2',
     });
 

@@ -1,3 +1,5 @@
+import { AutonomyLevel, GovernanceDecision } from '@/features/diagnostics/governance/governanceEngine';
+
 export type HealthStatus = "pass" | "warn" | "fail";
 
 export type HealthCheckCategory =
@@ -23,6 +25,7 @@ export type HealthCheckResult = {
   detail?: string;      // 技術詳細（折りたたみ）
   evidence?: Record<string, unknown>;
   nextActions: HealthNextAction[];
+  governance?: GovernanceDecision;
 };
 
 export type HealthReport = {
@@ -73,4 +76,5 @@ export type HealthContext = {
 
   // UI向け
   isProductionLike: boolean;
+  autonomyLevel: AutonomyLevel;
 };

@@ -34,6 +34,7 @@ export type SpClient = {
   baseUrl: string; // e.g. http://127.0.0.1:5173
   request: APIRequestContext;
   listTitle: string;
+  authHeaders?: Record<string, string>;
 };
 
 export async function fetchRequestDigest(request: APIRequestContext, url: string): Promise<string> {
@@ -63,6 +64,7 @@ export function makeListApi(client: SpClient) {
   const commonHeaders = {
     'Accept': 'application/json;odata=nometadata',
     'Content-Type': 'application/json;odata=nometadata',
+    ...(client.authHeaders ?? {}),
   };
 
   return {

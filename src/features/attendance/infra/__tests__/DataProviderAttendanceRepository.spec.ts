@@ -29,6 +29,7 @@ describe('DataProviderAttendanceRepository - Regression / Hardening', () => {
       listItems: vi.fn(),
       createItem: vi.fn(),
       updateItem: vi.fn(),
+      ensureListExists: vi.fn().mockResolvedValue(undefined),
     };
     repository = new DataProviderAttendanceRepository({ provider: mockProvider as unknown as IDataProvider });
   });
@@ -98,11 +99,12 @@ describe('DataProviderAttendanceRepository - Regression / Hardening', () => {
     it('skips unresolved optional fields on write (AttendanceDaily)', async () => {
       mockProvider.getResourceNames.mockResolvedValue(['AttendanceDaily']);
       mockProvider.getFieldInternalNames.mockResolvedValue(
-        new Set(['Id', 'Title', 'UserCode', 'RecordDate', 'Status']),
+        new Set(['Id', 'Title', 'UserCode', 'RecordDate', 'Status', 'CheckInAt']),
       );
       mockProvider.listItems.mockResolvedValue([]);
 
       await repository.upsertDailyByKey({
+        Key: 'U001_2026-04-05',
         UserCode: 'U001',
         RecordDate: '2026-04-05',
         Status: 'present',
@@ -112,7 +114,7 @@ describe('DataProviderAttendanceRepository - Regression / Hardening', () => {
 
       expect(mockProvider.createItem).toHaveBeenCalledTimes(1);
       const payload = mockProvider.createItem.mock.calls[0][1] as Record<string, unknown>;
-      expect(payload).not.toHaveProperty('CheckInAt');
+      expect(payload).toHaveProperty('CheckInAt');
       expect(payload).not.toHaveProperty('CheckOutAt');
       expect(payload).toMatchObject({
         Title: 'U001_2026-04-05',

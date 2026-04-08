@@ -7,7 +7,7 @@ import {
   DataProviderNotInitializedError 
 } from '@/lib/errors';
 
-import { isDevMode, isDemoModeEnabled, readBool, readOptionalEnv, shouldSkipSharePoint } from '@/lib/env';
+import { isDevMode, isDemoModeEnabled, readBool, readOptionalEnv, shouldSkipSharePoint, isTestMode } from '@/lib/env';
 
 export type ProviderType = 'sharepoint' | 'memory' | 'local';
 
@@ -87,7 +87,6 @@ export function getActiveProviderType(): ProviderType {
   const isDev = isDevMode();
   const isDemo = isDemoModeEnabled();
   const skipSp = shouldSkipSharePoint();
-  const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
   const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
 
   // 1. テストでのスキップ指定（最優先）
@@ -106,8 +105,8 @@ export function getActiveProviderType(): ProviderType {
   // 3. 強制SharePoint指定 (統合テスト等で使用)
   if (forceSharePoint) return 'sharepoint';
 
-  // 4. フォールバック: テモ、開発、インフラテスト環境ならメモリをデフォルトに
-  if (isDemo || isDev || isTest) return 'memory';
+  // 4. フォールバック: デモ、開発、インフラテスト環境ならメモリをデフォルトに
+  if (isDemo || isDev || isTestMode()) return 'memory';
 
   return 'sharepoint';
 }
