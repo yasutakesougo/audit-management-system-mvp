@@ -20,7 +20,7 @@ import { createEmptyStrategies } from '@/features/analysis/domain/interventionTy
  *
  * @returns 行動ノード数分の BIP Draft（strategies は空）
  */
-export function icebergToInterventionDrafts(session: IcebergSession): BehaviorInterventionPlan[] {
+export function icebergToInterventionDrafts(session: Pick<IcebergSession, 'nodes' | 'links' | 'targetUserId'>): BehaviorInterventionPlan[] {
   const now = new Date().toISOString();
   const nodeMap = new Map(session.nodes.map((n) => [n.id, n]));
 

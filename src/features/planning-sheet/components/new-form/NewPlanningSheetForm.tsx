@@ -102,7 +102,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   const [tokuseiImported, setTokuseiImported] = React.useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
   const [importPreview, setImportPreview] = React.useState<ImportPreviewResult | null>(null);
-  const [lastBridgeResult, setLastBridgeResult] = React.useState<ReturnType<typeof tokuseiToPlanningBridge> | null>(null);
+  const [lastBridgeResult, setLastBridgeResult] = React.useState<{ formPatches: Record<string, string> } | null>(null);
   const [tokuseiProvenance, setTokuseiProvenance] = React.useState<Map<string, { name: string; relation?: string; fillDate?: string }>>(new Map());
   const [toast, setToast] = React.useState<{ open: boolean; message: string; severity: 'success' | 'info' | 'warning' }>({
     open: false, message: '', severity: 'success',
@@ -235,13 +235,13 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
         return;
       }
 
-      const drafts = icebergToInterventionDrafts(latest as any);
+      const drafts = icebergToInterventionDrafts({ ...latest, targetUserId: latest.userId });
       const result = buildIcebergImportResult(drafts);
       
       const preview = buildImportPreview(result.formPatches as Record<string, string>, form as unknown as Record<string, unknown>);
       setImportPreview(preview);
       // 特性アンケートのブリッジ結果と構造が同じなので再利用
-      setLastBridgeResult({ formPatches: result.formPatches } as any);
+      setLastBridgeResult({ formPatches: result.formPatches as Record<string, string> });
       setImportSource('iceberg');
       setPreviewDialogOpen(true);
     } catch (err) {

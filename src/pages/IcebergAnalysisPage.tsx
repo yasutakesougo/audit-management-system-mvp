@@ -31,7 +31,7 @@ import DialogActions from '@mui/material/DialogActions';
 import HistoryIcon from '@mui/icons-material/History';
 import AddIcon from '@mui/icons-material/Add';
 import React, { useCallback, useEffect, useState } from 'react';
-import type { IcebergSnapshot, NodePosition } from '@/features/ibd/analysis/iceberg/icebergTypes';
+import type { EnvironmentFactor, IcebergSnapshot, NodePosition } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import { alpha } from '@mui/material/styles';
 import Stack from '@mui/material/Stack';
 import Paper from '@mui/material/Paper';
@@ -118,7 +118,7 @@ const IcebergAnalysisPage: React.FC = () => {
       behavior: '新規行動',
     };
 
-    addNodeFromData(newNodeData as any, type, position);
+    addNodeFromData(newNodeData as EnvironmentFactor, type, position);
     setSelectedNodeId(`node-${id}`);
     setSnackbar({ open: true, message: '新しい項目を追加しました。右側のパネルで編集してください。' });
   }, [currentSession, addNodeFromData]);
