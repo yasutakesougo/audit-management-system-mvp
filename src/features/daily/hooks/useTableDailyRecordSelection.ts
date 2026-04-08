@@ -194,10 +194,13 @@ export function useTableDailyRecordSelection({
       // 未入力のみモード時: 予定があり、かつ記録がまだないユーザーを選択
       const missingUserIds = (showTodayOnly ? attendanceFilteredUsers : users)
         .filter(u => u.AttendanceDays && isUserScheduledForDate({ 
+          Id: u.Id,
           UserID: u.UserID || '',
           FullName: u.FullName || '',
-          AttendanceDays: u.AttendanceDays 
-        } as any, targetDate))
+          AttendanceDays: u.AttendanceDays,
+          ServiceStartDate: u.ServiceStartDate ?? undefined,
+          ServiceEndDate: u.ServiceEndDate ?? undefined,
+        }, targetDate))
         .filter(u => !recordedUserIds.includes(u.UserID || ''))
         .map(u => u.UserID || '')
         .filter(id => id !== '');
