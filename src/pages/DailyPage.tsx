@@ -26,6 +26,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { japaneseNameCollator } from '@/lib/i18n/japaneseCollator';
 
 import { DailyPageCardView } from './DailyPageCardView';
 import {
@@ -153,7 +154,7 @@ export default function DailyPage() {
   }, [users]);
 
   const normalizedQuery = debouncedFilters.q.trim().toLowerCase();
-  const collator = useMemo(() => new Intl.Collator('ja-JP-u-co-unihan'), []);
+  const collator = japaneseNameCollator;
   const statusOptions: StatusOption[] = useMemo(
     () => FILTER_OPTIONS.map((option) => ({
       value: option,
