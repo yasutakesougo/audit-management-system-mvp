@@ -7,9 +7,13 @@ import { resolveSharePointSiteUrl } from './_shared/resolveSiteUrl';
  * Run: SHAREPOINT_SITE=https://... npm run ci:integration:diagnose
  */
 test.describe('SharePoint Diagnostics', () => {
+  test.use({
+    storageState: 'tests/.auth/storageState.json',
+  });
   const siteUrl = resolveSharePointSiteUrl();
 
-  test('1. Current user (who am I?)', async ({ request }) => {
+  test('1. Current user (who am I?)', async ({ context }) => {
+    const request = context.request;
     const url = `${siteUrl}/_api/web/currentuser`;
     console.log(`\n[診断1] Checking current user: ${url}`);
 
@@ -36,7 +40,8 @@ test.describe('SharePoint Diagnostics', () => {
     }
   });
 
-  test('2. Staff_Master list existence and permissions', async ({ request }) => {
+  test('2. Staff_Master list existence and permissions', async ({ context }) => {
+    const request = context.request;
     const url = `${siteUrl}/_api/web/lists/GetByTitle('Staff_Master')?$select=Title,Id,Hidden,HasUniqueRoleAssignments,BaseTemplate`;
     console.log(`\n[診断2] Checking Staff_Master list: ${url}`);
 
@@ -64,7 +69,8 @@ test.describe('SharePoint Diagnostics', () => {
     }
   });
 
-  test('3. Staff_Master items endpoint', async ({ request }) => {
+  test('3. Staff_Master items endpoint', async ({ context }) => {
+    const request = context.request;
     const url = `${siteUrl}/_api/web/lists/GetByTitle('Staff_Master')/items?$select=Id&$top=1`;
     console.log(`\n[診断3] Checking items endpoint: ${url}`);
 
