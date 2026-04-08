@@ -11,8 +11,10 @@ import Divider from '@mui/material/Divider';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, lazy, Suspense } from 'react';
 import { Navigate, Outlet, useSearchParams, type RouteObject } from 'react-router-dom';
+
+const BulkObservationList = lazy(() => import('../observation/BulkObservationList'));
 
 const pulseRange = { min: 40, max: 180 } as const;
 const sysRange = { min: 70, max: 220 } as const;
@@ -255,6 +257,16 @@ export const nurseRoutes = (): RouteObject => ({
       element: (
         <RequireAudience requiredRole="viewer">
           <NurseObservationPage />
+        </RequireAudience>
+      ),
+    },
+    {
+      path: 'observation/bulk',
+      element: (
+        <RequireAudience requiredRole="viewer">
+          <Suspense fallback={<div>Loading...</div>}>
+            <BulkObservationList />
+          </Suspense>
         </RequireAudience>
       ),
     },

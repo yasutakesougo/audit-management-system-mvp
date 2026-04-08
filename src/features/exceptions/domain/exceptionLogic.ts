@@ -24,7 +24,8 @@ export type ExceptionCategory =
   | 'data-os-alert'
   | 'procedure-unperformed'
   | 'risk-deviation'
-  | 'focus-missing';
+  | 'focus-missing'
+  | 'missing-vital';
 
 export type ExceptionSeverity = 'low' | 'medium' | 'high' | 'critical';
 
@@ -68,6 +69,7 @@ export const EXCEPTION_CATEGORIES: Record<ExceptionCategory, CategoryMeta> = {
   'procedure-unperformed': { label: '手順未実施', icon: '⚡', color: '#c62828' },
   'risk-deviation': { label: 'リスク逸脱', icon: '🚨', color: '#b71c1c' },
   'focus-missing': { label: '記述不足', icon: '✍️', color: '#ef6c00' },
+  'missing-vital': { label: '未計測バイタル', icon: '🌡️', color: '#d32f2f' },
 };
 
 export const SEVERITY_ORDER: Record<ExceptionSeverity, number> = {
@@ -135,6 +137,36 @@ export function detectMissingRecords(params: {
       actionPath: `/daily/activity?userId=${encodeURIComponent(u.userId)}`,
       secondaryActionLabel: '支援手順記録',
       secondaryActionPath: `/daily/support?wizard=plan&user=${encodeURIComponent(u.userId)}&userId=${encodeURIComponent(u.userId)}`,
+    }));
+}
+
+/**
+ * バイタル（健康記録）の未入力を検出する
+ */
+export function detectMissingVitals(params: {
+  expectedUsers: Array<{ userId: string; userName: string }>;
+  existingVitals: Array<{ userId: string }>;
+  targetDate: string;
+}): ExceptionItem[] {
+  const { expectedUsers, existingVitals, targetDate } = params;
+  const recordedUserIds = new Set(existingVitals.map((v) => v.userId));
+
+  return expectedUsers
+    .filter((u) => !recordedUserIds.has(u.userId))
+    .map((u) => ({
+      id: `missing-vital-${u.userId}-${targetDate}`,
+      category: 'missing-vital' as const,
+      severity: 'high' as const,
+      title: `${u.userName}のバイタルが未計測`,
+      description: `${targetDate} のバイタル（体温・血圧等）が記録されていません`,
+      targetUser: u.userName,
+      targetUserId: u.userId,
+      targetDate,
+      updatedAt: targetDate,
+      actionLabel: 'バイタル入力',
+      actionPath: `/nurse/observation?user=${encodeURIComponent(u.userId)}`,
+      secondaryActionLabel: '一覧入力',
+      secondaryActionPath: `/nurse/observation/bulk`, // 将来的にこのパスを有効にする
     }));
 }
 
@@ -334,7 +366,8 @@ export function computeExceptionStats(items: ExceptionItem[]): ExceptionStats {
       'data-os-alert': 0,
       'procedure-unperformed': 0,
       'risk-deviation': 0,
-      'focus-missing': 0
+      'focus-missing': 0,
+      'missing-vital': 0
     },
   };
 

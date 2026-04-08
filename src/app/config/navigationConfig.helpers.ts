@@ -60,6 +60,9 @@ export function isNavVisible(item: NavItem, navAudience: NavAudience): boolean {
 export type BuildVisibleNavItemsOptions = {
   showMore: boolean;
   todayLiteNavV2: boolean;
+  isKiosk: boolean;
+  hiddenGroups: string[];
+  hiddenItems: string[];
 };
 
 const DEFAULT_TIER: NavTier = 'core';
@@ -70,18 +73,40 @@ const roleToStrictAudience = (audience: NavAudience): 'viewer' | 'reception' | '
   return 'viewer';
 };
 
+/**
+ * Filter navigation items based on the current context (role, tier, kiosk mode, user preferences).
+ *
+ * Extracted filtering logic to ensure consistent behavior across AppShell and unit tests.
+ */
 export function buildVisibleNavItems(
   items: NavItem[],
   navAudience: NavAudience,
   opts: BuildVisibleNavItemsOptions,
 ): NavItem[] {
   const role = roleToStrictAudience(navAudience);
-  if (!opts.todayLiteNavV2) return items;
+
+  // Kiosk mode constraints
+  const KIOSK_HIDDEN_PATHS = ['/dailysupport', '/daily/health', '/transport/assignments'];
+  const KIOSK_ALLOWED_GROUPS = new Set(['today']);
 
   return items.filter((item) => {
-    const tier = item.tier ?? DEFAULT_TIER;
-    if (tier === 'admin' && role !== 'admin') return false;
-    if (tier === 'more' && !opts.showMore) return false;
+    // 1. Feature Tier/Lite Nav filtering
+    if (opts.todayLiteNavV2) {
+      const tier = item.tier ?? DEFAULT_TIER;
+      if (tier === 'admin' && role !== 'admin') return false;
+      if (tier === 'more' && !opts.showMore) return false;
+    }
+
+    // 2. Kiosk mode filtering
+    if (opts.isKiosk) {
+      if (item.group && !KIOSK_ALLOWED_GROUPS.has(item.group)) return false;
+      if (KIOSK_HIDDEN_PATHS.includes(item.to)) return false;
+    }
+
+    // 3. User preference filtering
+    if (item.group && opts.hiddenGroups.includes(item.group)) return false;
+    if (opts.hiddenItems.includes(item.to)) return false;
+
     return true;
   });
 }

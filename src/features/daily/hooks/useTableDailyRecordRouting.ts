@@ -5,7 +5,9 @@ import { useEffect, useState } from 'react';
  */
 export const TABLE_DAILY_DATE_QUERY_KEY = 'date';
 export const TABLE_DAILY_UNSENT_FILTER_QUERY_KEY = 'unsent';
+export const TABLE_DAILY_MISSING_FILTER_QUERY_KEY = 'missing';
 export const TABLE_DAILY_UNSENT_FILTER_STORAGE_KEY = 'daily-table-record:unsent-filter:v1';
+export const TABLE_DAILY_MISSING_FILTER_STORAGE_KEY = 'daily-table-record:missing-filter:v1';
 
 /**
  * Validate date string format (YYYY-MM-DD)
@@ -67,6 +69,41 @@ export const syncUnsentFilterToUrl = (enabled: boolean): void => {
 };
 
 /**
+ * Check if missing filter is enabled in URL
+ */
+export const isMissingFilterEnabledInUrl = (): boolean => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  return params.get(TABLE_DAILY_MISSING_FILTER_QUERY_KEY) === '1';
+};
+
+/**
+ * Sync missing filter state to URL
+ */
+export const syncMissingFilterToUrl = (enabled: boolean): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const nextUrl = new URL(window.location.href);
+  if (enabled) {
+    nextUrl.searchParams.set(TABLE_DAILY_MISSING_FILTER_QUERY_KEY, '1');
+  } else {
+    nextUrl.searchParams.delete(TABLE_DAILY_MISSING_FILTER_QUERY_KEY);
+  }
+
+  const nextRelative = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+  const currentRelative = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+  if (nextRelative !== currentRelative) {
+    window.history.replaceState({}, '', nextRelative);
+  }
+};
+
+/**
  * Custom hook for managing URL-based routing state
  * 
  * Responsibilities:
@@ -80,6 +117,7 @@ export const syncUnsentFilterToUrl = (enabled: boolean): void => {
 export const useTableDailyRecordRouting = (open: boolean) => {
   const [initialDateFromUrl] = useState<string | null>(() => getDateFromUrl());
   const [showUnsentOnly, setShowUnsentOnly] = useState<boolean>(false);
+  const [showMissingOnly, setShowMissingOnly] = useState<boolean>(false);
 
   // Initialize unsent filter from URL or localStorage when dialog opens
   useEffect(() => {
@@ -90,6 +128,10 @@ export const useTableDailyRecordRouting = (open: boolean) => {
     const fromQuery = isUnsentFilterEnabledInUrl();
     const fromStorage = localStorage.getItem(TABLE_DAILY_UNSENT_FILTER_STORAGE_KEY) === '1';
     setShowUnsentOnly(fromQuery || fromStorage);
+
+    const missingFromQuery = isMissingFilterEnabledInUrl();
+    const missingFromStorage = localStorage.getItem(TABLE_DAILY_MISSING_FILTER_STORAGE_KEY) === '1';
+    setShowMissingOnly(missingFromQuery || missingFromStorage);
   }, [open]);
 
   // Sync unsent filter to URL and localStorage
@@ -111,9 +153,30 @@ export const useTableDailyRecordRouting = (open: boolean) => {
     syncUnsentFilterToUrl(showUnsentOnly);
   }, [open, showUnsentOnly]);
 
+  // Sync missing filter to URL and localStorage
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    try {
+      if (showMissingOnly) {
+        localStorage.setItem(TABLE_DAILY_MISSING_FILTER_STORAGE_KEY, '1');
+      } else {
+        localStorage.removeItem(TABLE_DAILY_MISSING_FILTER_STORAGE_KEY);
+      }
+    } catch (error) {
+      console.error('未入力フィルタの保存に失敗しました:', error);
+    }
+
+    syncMissingFilterToUrl(showMissingOnly);
+  }, [open, showMissingOnly]);
+
   return {
     initialDateFromUrl,
     showUnsentOnly,
     setShowUnsentOnly,
+    showMissingOnly,
+    setShowMissingOnly,
   };
 };

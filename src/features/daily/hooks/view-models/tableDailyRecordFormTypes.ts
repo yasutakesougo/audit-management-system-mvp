@@ -57,6 +57,8 @@ export interface FormTable {
   visibleRows: TableDailyRecordRow[];
   showUnsentOnly: boolean;
   setShowUnsentOnly: Dispatch<SetStateAction<boolean>>;
+  showMissingOnly: boolean;
+  setShowMissingOnly: Dispatch<SetStateAction<boolean>>;
   unsentRowCount: number;
 }
 
@@ -129,6 +131,8 @@ export interface TableDailyRecordViewModel {
     visibleRows: TableDailyRecordRow[];
     searchQuery: string;
     showTodayOnly: boolean;
+    showMissingOnly: boolean;
+    showUnsentOnly: boolean;
     validationErrors: TableDailyRecordValidationErrors;
     handoff: {
       loading: boolean;
@@ -162,6 +166,8 @@ export interface TableDailyRecordViewModel {
     dismissSuggestion: (userId: string, suggestion: import('../../domain/behavior/behaviorPatternSuggestions').PatternSuggestion) => void;
     setSearchQuery: (query: string) => void;
     setShowTodayOnly: (show: boolean) => void;
+    setShowUnsentOnly: (show: boolean) => void;
+    setShowMissingOnly: (show: boolean) => void;
     toggleUser: (userId: string) => void;
     selectAllUsers: () => void;
     clearAllUsers: () => void;
@@ -191,6 +197,10 @@ export interface TableDailyRecordViewModel {
       onProblemBehaviorChange: (userId: string, behaviorType: string, checked: boolean) => void;
       onBehaviorTagToggle: (userId: string, tagKey: string) => void;
       onClearRow: (userId: string) => void;
+      showUnsentOnly: boolean;
+      onToggleUnsentOnly: () => void;
+      showMissingOnly: boolean;
+      onToggleMissingOnly: () => void;
     };
     suggestion: {
       visibleRows: TableDailyRecordRow[];

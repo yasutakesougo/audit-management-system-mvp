@@ -11,6 +11,7 @@ import {
   detectAttentionUsers,
   detectCriticalHandoffs,
   detectMissingRecords,
+  detectMissingVitals,
 } from '../exceptionLogic';
 
 describe('detectMissingRecords', () => {
@@ -57,6 +58,34 @@ describe('detectMissingRecords', () => {
     const result = detectMissingRecords({
       expectedUsers: [],
       existingRecords: [],
+      targetDate: '2026-03-17',
+    });
+    expect(result).toHaveLength(0);
+  });
+});
+
+describe('detectMissingVitals', () => {
+  it('バイタル未計測のユーザーを検出する', () => {
+    const result = detectMissingVitals({
+      expectedUsers: [
+        { userId: 'U-001', userName: '山田太郎' },
+        { userId: 'U-002', userName: '佐藤花子' },
+      ],
+      existingVitals: [
+        { userId: 'U-001' },
+      ],
+      targetDate: '2026-03-17',
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0].targetUser).toBe('佐藤花子');
+    expect(result[0].category).toBe('missing-vital');
+    expect(result[0].actionPath).toContain('/nurse/observation');
+  });
+
+  it('全員計測済みなら空配列', () => {
+    const result = detectMissingVitals({
+      expectedUsers: [{ userId: 'U-001', userName: '山田太郎' }],
+      existingVitals: [{ userId: 'U-001' }],
       targetDate: '2026-03-17',
     });
     expect(result).toHaveLength(0);

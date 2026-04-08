@@ -1,25 +1,48 @@
-# ナビゲーション変更手順
+# ナビゲーションOS設計書 (Navigation IA)
 
-サイドバーにルートやメニューを追加・変更するときの手順です。
+本システムのサイドメニューは、単なるリンク集ではなく、ユーザーの役割や業務状況（キオスク、フォーカスなど）に応じて最適な業務面を提示する「ナビゲーションOS」として設計されています。
 
-## 新しいルートを追加する
+## 1. 情報設計 (7-Group IA)
 
-1. **ルーター登録**: `src/app/router.tsx` に `{ path: '...', element: <Page /> }` を追加
-2. **ナビ登録**: `src/app/config/navigationConfig.ts` の `createNavItems()` にエントリ追加
-   - `group`: 必須（`daily` / `record` / `review` / `master` / `admin` / `settings`）
-   - `audience`: `all` / `staff` / `admin` / `reception`
-   - feature flag がある場合は `CreateNavItemsConfig` にフラグを追加し、`if (flagEnabled)` で囲む
-3. **testid 追加**: `src/testids.ts` の `NAV_TESTIDS` にエントリ追加
+ナビゲーション項目は必ず以下の7つのグループのいずれかに属します。順番は業務フローに沿っています。
 
-## feature flag を追加する
+| グループキー | 表示名 | 設計意図・対象業務 |
+| :--- | :--- | :--- |
+| `today` | Today | **現場の当日実行**: スケジュール確認、送迎、日中の記録、申し送り等 |
+| `records` | Records | **記録・振り返り**: 過去の記録の閲覧、サマリー確認、月次業務日誌等 |
+| `planning` | Planning | **支援計画・評価**: アセスメント、ISP（個別支援計画）の作成・更新、分析等 |
+| `operations` | Operations | **拠点運営**: 請求、勤怠管理、コンプライアンス報告、リソース管理等 |
+| `billing` | Billing | **請求**: 請求処理に特化したワークスペース |
+| `master` | Master | **マスタ管理**: 利用者マスタ、職員マスタ等 |
+| `platform` | Platform | **管理基盤**: システム設定、自己点検、ログ確認等の管理機能 |
 
-1. `src/lib/env.ts` に `is*Enabled()` 関数を追加
-2. `src/config/featureFlags.ts` の `FeatureFlagSnapshot` と `resolveFeatureFlags()` にキーを追加
-3. `tests/unit/env-featureFlags-sync.spec.ts` の `FLAG_RESOLVER_MAP` と `NAV_CONFIG_TO_SNAPSHOT` を更新
+## 2. 表示制御のエントリポイント (Navigation Contract)
 
-## チェックリスト
+ナビゲーションの表示判定は、UIコンポーネント内で行わず、必ず `src/app/config/navigationConfig.helpers.ts` の **`buildVisibleNavItems`** を通すこと。これが Navigation OS の唯一の実行契約（Contract）である。
 
-- [ ] `group` を明示指定した（DEV 警告が出ないことを確認）
-- [ ] `audience` を適切に設定した
-- [ ] E2E テスト通過（`npx playwright test tests/e2e/app-shell.*.spec.ts tests/e2e/nav.smoke.spec.ts`）
-- [ ] Unit テスト通過（`npx vitest run tests/unit/env-featureFlags-sync.spec.ts tests/unit/app/config/navigationConfig.spec.ts`）
+## 3. 表示制御の5層フィルター
+
+サイドメニューの項目は、以下の順序でフィルタリング（`buildVisibleNavItems` 内で実行）され、最終的な露出が決定されます。
+
+1. **Role フィルター (`audience`)**: 利用者の権限（Admin, Staff, Reception）に基づいて項目を絞り込む。
+2. **Feature Tier (`tier`)**: `Core` (常時), `More` (トグル内), `Admin` (管理者エリア) に分類。
+3. **Kiosk モード**: 現場端末（キオスク）では `today` グループ以外を非表示にし、誤操作を防止する。
+4. **Focus モード**: 全画面表示が必要な場合、サイドメニュー全体を一時的に隠蔽する。
+5. **User Preference**: ユーザーが設定画面から特定のグループや項目を個別に非表示にできる。
+
+## 3. 変更・追加ルール
+
+新規画面を追加する際は、以下のチェックリストを遵守してください。
+
+- [ ] **グループの選定**: 上記7グループのどこに属すべきか？（「とりあえず末尾」は禁止）
+- [ ] **権限の設定**: 誰が見るべきか？ (`all`, `staff`, `admin`, `reception`)
+- [ ] **ティアの選定**: 頻繁に使う `core` か、たまに使う `more` か？
+- [ ] **検索性の確保**: `label` が直感的か？（メニュー検索でヒットするか）
+- [ ] **回帰テストの更新**: `tests/unit/app/config/navigationConfig.spec.ts` にテストを追加したか。
+
+## 開発フロー
+
+1. **ルーター登録**: `src/app/router.tsx`
+2. **ナビ構成登録**: `src/app/config/navigationConfig.ts` の `createNavItems()`
+3. **アイコン対応**: `src/app/navIconMap.ts`
+4. **テスト作成**: `tests/unit/app/config/navigationConfig.spec.ts`

@@ -1,3 +1,4 @@
+import WarningIcon from '@mui/icons-material/Warning';
 import { TESTIDS } from '@/testids';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import FilterListOffIcon from '@mui/icons-material/FilterListOff';
@@ -93,6 +94,21 @@ export const TableDailyRecordPage: React.FC = () => {
             onClick={() => table.setShowUnsentOnly((prev) => !prev)}
             sx={{ height: 24, fontSize: '0.7rem', cursor: 'pointer' }}
             data-testid={TESTIDS['daily-table-unsent-count-chip']}
+          />
+        </Tooltip>
+      )}
+
+      {/* ── Missing filter status ── */}
+      {table.showMissingOnly && (
+        <Tooltip title="全件表示に戻す（未入力フィルタ解除）">
+          <Chip
+            icon={<WarningIcon sx={{ fontSize: 14 }} />}
+            label="未入力のみ"
+            size="small"
+            color="error"
+            variant="filled"
+            onDelete={() => table.setShowMissingOnly(false)}
+            sx={{ height: 24, fontSize: '0.7rem', cursor: 'pointer' }}
           />
         </Tooltip>
       )}
