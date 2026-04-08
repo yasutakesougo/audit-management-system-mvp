@@ -7,8 +7,10 @@ import { translateZodIssue } from './zodErrorUtils';
 
 /** A single scan target (SharePoint list + Zod schema) */
 export interface ScanTarget {
-  /** Human-readable name (e.g. 'users', 'daily') */
+  /** Technical key (e.g. 'users_master', 'schedules') */
   name: string;
+  /** Human-readable name (e.g. '利用者マスタ', '勤務予定') */
+  displayName?: string;
   /** SharePoint list title */
   listTitle: string;
   /** Zod schema for raw SP items */
@@ -31,6 +33,7 @@ export interface ScanIssue {
 
 export interface ScanResult {
   target: string;
+  displayName?: string;
   listTitle: string;
   total: number;
   valid: number;
@@ -50,6 +53,7 @@ export interface ScanResult {
 /** Progress callback payload */
 export interface ScanProgress {
   target: string;
+  displayName?: string;
   scanned: number;
   total: number;
   phase: 'fetching' | 'validating' | 'done';
@@ -138,6 +142,7 @@ export function scanAll(
 
     onProgress?.({
       target: target.name,
+      displayName: target.displayName,
       scanned: 0,
       total,
       phase: 'validating',
@@ -149,6 +154,7 @@ export function scanAll(
 
     results.push({
       target: target.name,
+      displayName: target.displayName,
       listTitle: target.listTitle,
       total,
       valid,
@@ -163,6 +169,7 @@ export function scanAll(
 
     onProgress?.({
       target: target.name,
+      displayName: target.displayName,
       scanned: total,
       total,
       phase: 'done',
