@@ -1,6 +1,7 @@
 import type { TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
 import { useTokuseiSurveyResponses } from '@/features/assessment/hooks/useTokuseiSurveyResponses';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
@@ -37,10 +38,13 @@ export const ImportSurveyDialog: React.FC<Props> = ({
     if (!targetUserName) return responses;
     const normalize = (value: string) => value.replace(/\s+/g, '').toLowerCase();
     const normalizedTarget = normalize(targetUserName);
-    return responses.filter((response) => normalize(response.targetUserName).includes(normalizedTarget));
+    const matched = responses.filter((response) => normalize(response.targetUserName).includes(normalizedTarget));
+    return matched;
   }, [responses, targetUserName]);
 
-  const displayList = targetUserName ? filteredResponses : responses;
+  const hasMatch = filteredResponses.length > 0;
+  const displayList = (targetUserName && hasMatch) ? filteredResponses : responses;
+  const showMatchError = targetUserName && !hasMatch && responses.length > 0;
   const isLoading = status === 'loading';
   const hasError = status === 'error';
 
@@ -61,16 +65,25 @@ export const ImportSurveyDialog: React.FC<Props> = ({
         {!isLoading && hasError && (
           <Typography color="error">アンケートの取得に失敗しました。通信環境を確認して再度お試しください。</Typography>
         )}
+        
+        {showMatchError && (
+          <Box sx={{ mb: 2 }}>
+            <Alert severity="warning" variant="outlined">
+              <Typography variant="body2" fontWeight={600}>
+                「{targetUserName}」と一致する結果が見つかりませんでした。
+              </Typography>
+              <Typography variant="caption">
+                名前の表記（空欄や漢字）が異なる可能性があります。全回答を表示していますので、正しいものを選択してください。
+              </Typography>
+            </Alert>
+          </Box>
+        )}
+
         {!isLoading && !hasError && displayList.length === 0 && (
           <Box textAlign="center" py={2}>
             <Typography color="text.secondary">
-              一致するアンケート結果が見つかりません。
+              登録されているアンケート結果がありません。
             </Typography>
-            {targetUserName && (
-              <Typography variant="caption" color="text.secondary">
-                ※名前が完全一致しない場合は Forms の回答内容をご確認ください。
-              </Typography>
-            )}
           </Box>
         )}
         {!isLoading && !hasError && displayList.length > 0 && (

@@ -24,7 +24,7 @@ export type FeatureFlagSnapshot = {
 
   todayOps: boolean;
   todayLiteUi: boolean;
-  todayLiteNavV2: boolean;
+  todayLiteNavV2?: boolean;
 };
 
 const _hasExplicitOverride = (storageKey: string, envKey: string, envOverride?: EnvRecord): boolean => {

@@ -10,6 +10,8 @@ const createSession = (overrides: Partial<IcebergSession> = {}): IcebergSession 
   updatedAt: '2025-01-01T00:00:00Z',
   nodes: [],
   links: [],
+  logs: [],
+  status: 'active',
   ...overrides,
 });
 

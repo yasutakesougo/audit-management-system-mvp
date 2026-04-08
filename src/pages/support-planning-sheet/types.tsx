@@ -126,6 +126,9 @@ export interface SupportPlanningSheetViewModel {
   
   // Form
   form: UsePlanningSheetFormReturn;
+  
+  // Handoff / Audit
+  diffSummary: string | null;
 }
 
 export interface SupportPlanningSheetActionHandlers {
