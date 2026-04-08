@@ -89,8 +89,8 @@ export function getActiveProviderType(): ProviderType {
   const skipSp = shouldSkipSharePoint();
   const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
 
-  // 1. テストでのスキップ指定（最優先）
-  if (skipSp) return 'memory';
+  // 1. テストでのスキップ指定、またはテストモード時（最優先）
+  if (skipSp || isTestMode()) return 'memory';
 
   // 2. 明示的なバックエンド指定 (URL/環境変数)
   const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
@@ -105,8 +105,8 @@ export function getActiveProviderType(): ProviderType {
   // 3. 強制SharePoint指定 (統合テスト等で使用)
   if (forceSharePoint) return 'sharepoint';
 
-  // 4. フォールバック: デモ、開発、インフラテスト環境ならメモリをデフォルトに
-  if (isDemo || isDev || isTestMode()) return 'memory';
+  // 4. フォールバック: デモ、開発環境ならメモリをデフォルトに
+  if (isDemo || isDev) return 'memory';
 
   return 'sharepoint';
 }

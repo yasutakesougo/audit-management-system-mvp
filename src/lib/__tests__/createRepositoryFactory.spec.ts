@@ -42,7 +42,12 @@ describe('createRepositoryFactory', () => {
     return createRepositoryFactory<TestRepo, BaseFactoryOptions>({
       name: 'Test',
       createDemo: () => ({ ...demoRepo }),
-      createReal: () => ({ ...realRepo }),
+      createReal: (options) => {
+        if (!options?.acquireToken) {
+          throw new Error('acquireToken is required');
+        }
+        return { ...realRepo };
+      },
       ...overrides,
     });
   }
