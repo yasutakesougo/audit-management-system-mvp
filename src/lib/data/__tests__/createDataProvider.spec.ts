@@ -1,70 +1,104 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { getActiveProviderType } from '../createDataProvider';
-import { isDevMode, shouldSkipSharePoint, readBool, readOptionalEnv } from '@/lib/env';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock the environment helpers
 vi.mock('@/lib/env', () => ({
   isDevMode: vi.fn(),
   isDemoModeEnabled: vi.fn(),
   shouldSkipSharePoint: vi.fn(),
   readBool: vi.fn(),
   readOptionalEnv: vi.fn(),
+  isTestMode: vi.fn(),
 }));
 
-describe('getActiveProviderType Priority Logic (Regression Guard)', () => {
+import * as envModule from '@/lib/env';
+
+describe('getActiveProviderType Priority Contract', () => {
   beforeEach(() => {
-    vi.resetAllMocks();
-    vi.mocked(readOptionalEnv).mockReturnValue(undefined);
+    vi.resetModules();
+    vi.clearAllMocks();
+
+    // Default mock behavior
+    vi.mocked(envModule.isDevMode).mockReturnValue(false);
+    vi.mocked(envModule.isDemoModeEnabled).mockReturnValue(false);
+    vi.mocked(envModule.shouldSkipSharePoint).mockReturnValue(false);
+    vi.mocked(envModule.readBool).mockReturnValue(false);
+    vi.mocked(envModule.readOptionalEnv).mockReturnValue(undefined);
+    vi.mocked(envModule.isTestMode).mockReturnValue(false);
   });
 
-  it('CASE 1: should ALWAYS select "memory" if shouldSkipSharePoint is true (Highest Priority)', () => {
-    // GIVEN: Both skip and force are set
-    vi.mocked(shouldSkipSharePoint).mockReturnValue(true);
-    // VITE_FORCE_SHAREPOINT が true でも skipSp が優先されることを確認
-    vi.mocked(readBool).mockImplementation((key) => key === 'VITE_FORCE_SHAREPOINT');
-    
-    // WHEN
-    const result = getActiveProviderType();
-    
-    // THEN: Memory should win over the force flag
-    expect(result).toBe('memory');
+  it('CASE: VITE_DATA_PROVIDER=local should return local', async () => {
+    vi.mocked(envModule.readOptionalEnv).mockImplementation((key: string) =>
+      key === 'VITE_DATA_PROVIDER' ? 'local' : undefined,
+    );
+
+    const { getActiveProviderType } = await import('../createDataProvider');
+
+    expect(getActiveProviderType()).toBe('local');
+    expect(envModule.readOptionalEnv).toHaveBeenCalledWith('VITE_DATA_PROVIDER');
   });
 
-  it('CASE 2: should select "sharepoint" if VITE_FORCE_SHAREPOINT is true and skip is false', () => {
-    // GIVEN: Skip is false, but force is true
-    vi.mocked(shouldSkipSharePoint).mockReturnValue(false);
-    vi.mocked(readBool).mockImplementation((key) => key === 'VITE_FORCE_SHAREPOINT');
-    
-    // WHEN
-    const result = getActiveProviderType();
+  it('CASE: VITE_FORCE_SHAREPOINT=true should return sharepoint', async () => {
+    vi.mocked(envModule.readBool).mockImplementation((key: string, defaultValue?: boolean) =>
+      key === 'VITE_FORCE_SHAREPOINT' ? true : defaultValue ?? false,
+    );
 
-    // THEN: SharePoint is selected
-    expect(result).toBe('sharepoint');
+    const { getActiveProviderType } = await import('../createDataProvider');
+
+    expect(getActiveProviderType()).toBe('sharepoint');
+    expect(envModule.readBool).toHaveBeenCalledWith('VITE_FORCE_SHAREPOINT', false);
   });
 
-  it('CASE 3: should fallback to "memory" in Dev mode if no force is set', () => {
-    // GIVEN: Normal Dev environment
-    vi.mocked(shouldSkipSharePoint).mockReturnValue(false);
-    vi.mocked(readBool).mockReturnValue(false);
-    vi.mocked(isDevMode).mockReturnValue(true);
-    
-    // WHEN
-    const result = getActiveProviderType();
+  it('CASE: should return memory in test mode if no other flags', async () => {
+    vi.mocked(envModule.isTestMode).mockReturnValue(true);
 
-    // THEN: Dev mode defaults to memory
-    expect(result).toBe('memory');
+    const { getActiveProviderType } = await import('../createDataProvider');
+
+    expect(getActiveProviderType()).toBe('memory');
+    expect(envModule.isTestMode).toHaveBeenCalled();
   });
 
-  it('CASE 4: should prioritize explicit VITE_DATA_PROVIDER over Dev/Demo defaults', () => {
-    // GIVEN: Dev mode is on, but env var explicitly sets sharepoint
-    vi.mocked(shouldSkipSharePoint).mockReturnValue(false);
-    vi.mocked(isDevMode).mockReturnValue(true);
-    vi.mocked(readOptionalEnv).mockImplementation((key) => key === 'VITE_DATA_PROVIDER' ? 'sharepoint' : undefined);
-    
-    // WHEN
-    const result = getActiveProviderType();
+  it('CASE: should return memory in demo mode', async () => {
+    vi.mocked(envModule.isDemoModeEnabled).mockReturnValue(true);
 
-    // THEN: Explicit env var wins over the Dev default
-    expect(result).toBe('sharepoint');
+    const { getActiveProviderType } = await import('../createDataProvider');
+
+    expect(getActiveProviderType()).toBe('memory');
+  });
+
+  it('CASE: should return memory in dev mode', async () => {
+    vi.mocked(envModule.isDevMode).mockReturnValue(true);
+
+    const { getActiveProviderType } = await import('../createDataProvider');
+
+    expect(getActiveProviderType()).toBe('memory');
+  });
+
+  it('CASE: should return sharepoint as final fallback', async () => {
+    const { getActiveProviderType } = await import('../createDataProvider');
+
+    expect(getActiveProviderType()).toBe('sharepoint');
+  });
+
+  describe('Priority Rules', () => {
+    it('rule: VITE_FORCE_SHAREPOINT should override test fallback', async () => {
+      vi.mocked(envModule.isTestMode).mockReturnValue(true);
+      vi.mocked(envModule.readBool).mockImplementation((key: string, defaultValue?: boolean) =>
+        key === 'VITE_FORCE_SHAREPOINT' ? true : defaultValue ?? false,
+      );
+
+      const { getActiveProviderType } = await import('../createDataProvider');
+
+      expect(getActiveProviderType()).toBe('sharepoint');
+    });
+
+    it('rule: shouldSkipSharePoint should override force flags (Highest Priority)', async () => {
+      vi.mocked(envModule.shouldSkipSharePoint).mockReturnValue(true);
+      vi.mocked(envModule.readBool).mockImplementation((key: string, defaultValue?: boolean) =>
+        key === 'VITE_FORCE_SHAREPOINT' ? true : defaultValue ?? false,
+      );
+
+      const { getActiveProviderType } = await import('../createDataProvider');
+
+      expect(getActiveProviderType()).toBe('memory');
+    });
   });
 });
