@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildMeetingMinutesExportModel } from '../buildMeetingMinutesExportModel';
-import type { MeetingMinutes, MeetingMinuteBlock } from '../../../types';
+import type { MeetingMinutes, MeetingMinuteBlock } from '../../types';
 
 function makeBlock(
   type: string,

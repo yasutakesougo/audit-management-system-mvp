@@ -93,6 +93,7 @@ describe('AppShell navigation smoke test', () => {
     staffAttendance: false,
     todayOps: false,
     todayLiteUi: false,
+    todayLiteNavV2: false,
   };
 
   const colorMode = { mode: 'light' as const, toggle: vi.fn(), sticky: false };

@@ -348,7 +348,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       prefetchKey: PREFETCH_KEYS.staff,
       testId: TESTIDS.nav.staffAttendance,
-      audience: NAV_AUDIENCE.staff,
+      audience: NAV_AUDIENCE.reception,
       group: 'operations' as NavGroupKey,
     });
   }

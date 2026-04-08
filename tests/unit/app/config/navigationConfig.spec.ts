@@ -238,13 +238,24 @@ describe('navigationConfig', () => {
       expect(items.some((item) => item.testId === TESTIDS.nav.icebergPdca)).toBe(false);
     });
 
-    it('should include staff attendance when flag is enabled', () => {
+    it('should include staff attendance for reception audience when flag is enabled', () => {
       const items = createNavItems({
         ...baseConfig,
         staffAttendanceEnabled: true,
+        navAudience: NAV_AUDIENCE.reception,
       });
 
       expect(items.some((item) => item.testId === TESTIDS.nav.staffAttendance)).toBe(true);
+    });
+
+    it('should exclude staff attendance for staff audience even if flag is enabled', () => {
+      const items = createNavItems({
+        ...baseConfig,
+        staffAttendanceEnabled: true,
+        navAudience: NAV_AUDIENCE.staff,
+      });
+
+      expect(items.some((item) => item.testId === TESTIDS.nav.staffAttendance)).toBe(false);
     });
 
     it('should include admin items for admin users', () => {

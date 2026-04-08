@@ -112,15 +112,20 @@ export interface RepositoryFactory<
  * skip-login, or missing SPFx context.
  */
 export const defaultShouldUseDemo = (): boolean => {
-  // 0. Explicit force SharePoint must win over any local/demo shortcuts.
+  // 0. Test mode should be isolated from environment-driven 'force sharepoint'
+  // to prevent .env.local from breaking unit tests in developer environments.
+  if (isTestMode()) {
+    return true;
+  }
+
+  // 1. Explicit force SharePoint wins in non-test codes.
   const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
   if (forceSharePoint) {
     return false;
   }
 
-  // 1. Priority overrides for forcing demo
+  // 2. Priority overrides for forcing demo
   if (
-    isTestMode() ||
     isForceDemoEnabled() ||
     isDemoModeEnabled() ||
     shouldSkipLogin() ||
@@ -197,9 +202,10 @@ export function createRepositoryFactory<
       __acquireToken?: () => Promise<string | null>;
     }
 
-    // acquireToken が同一であれば既存のインスタンスを再利用する（無限ループ防止の最重要ガード）
+    // acquireToken が同一であり、かつ明示的な forceKind 指定がない場合に限りキャッシュを再利用する
     const canReuseCache = cachedRepo && 
       cachedKind === kind && 
+      !options?.forceKind &&
       (!options || (cachedRepo as RepositoryMetadata).__acquireToken === options.acquireToken);
 
     if (canReuseCache) {

@@ -33,6 +33,7 @@ const baseFlags: FeatureFlagSnapshot = {
   staffAttendance: false,
   todayOps: false,
   todayLiteUi: false,
+  todayLiteNavV2: false,
 };
 
 const renderRoute = (flags: FeatureFlagSnapshot) =>

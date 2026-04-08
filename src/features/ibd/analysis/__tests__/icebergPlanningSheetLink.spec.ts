@@ -46,6 +46,7 @@ describe('6-A: IcebergSession planningSheetId', () => {
       nodes: [],
       links: [],
       logs: [],
+      status: 'active',
     };
     expect(session.planningSheetId).toBe('ps-001');
   });
@@ -60,6 +61,7 @@ describe('6-A: IcebergSession planningSheetId', () => {
       nodes: [],
       links: [],
       logs: [],
+      status: 'active',
     };
     expect(session.planningSheetId).toBeUndefined();
   });

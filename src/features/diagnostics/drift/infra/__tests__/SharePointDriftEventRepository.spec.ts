@@ -14,7 +14,7 @@ describe('SharePointDriftEventRepository', () => {
   });
 
   it('omits optional fields missing from schema when logging', async () => {
-    const createItem = vi.fn(async () => ({}));
+    const createItem = vi.fn(async (_listTitle: string, _payload: Record<string, unknown>) => ({}));
     const repo = new SharePointDriftEventRepository({
       createItem,
       updateItemByTitle: vi.fn(async () => ({})),

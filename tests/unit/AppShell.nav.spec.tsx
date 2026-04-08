@@ -26,6 +26,7 @@ const makeFlags = (overrides: Partial<FeatureFlagSnapshot> = {}): FeatureFlagSna
   staffAttendance: false,
   todayOps: false,
   todayLiteUi: false,
+  todayLiteNavV2: false,
   ...overrides,
 });
 

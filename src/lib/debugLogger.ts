@@ -5,9 +5,10 @@ type Level = 'debug' | 'info' | 'warn' | 'error';
 
 function log(level: Level, ns: string, ...args: unknown[]) {
   const isDebugEnabled = env.VITE_AUDIT_DEBUG;
+  const mode = getRuntimeEnv()?.MODE;
   // Production: only show errors
-  // Development: show all levels (respecting VITE_AUDIT_DEBUG for debug)
-  if (getRuntimeEnv()?.MODE !== 'development' && level !== 'error') return;
+  // Development/Test: show all levels (respecting VITE_AUDIT_DEBUG for debug)
+  if (mode !== 'development' && mode !== 'test' && level !== 'error') return;
   if (!isDebugEnabled && level === 'debug') return;
   (console as unknown as Record<Level, (message?: unknown, ...optionalParams: unknown[]) => void>)[level](`[audit:${ns}]`, ...args);
 }

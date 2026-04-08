@@ -42,6 +42,9 @@ describe('buildVisibleNavItems', () => {
     const result = buildVisibleNavItems(items, 'staff', {
       showMore: false,
       todayLiteNavV2: false,
+      isKiosk: false,
+      hiddenGroups: [],
+      hiddenItems: [],
     });
 
     expect(result.map((x) => x.label)).toEqual([
@@ -56,6 +59,9 @@ describe('buildVisibleNavItems', () => {
     const result = buildVisibleNavItems(items, 'staff', {
       showMore: false,
       todayLiteNavV2: true,
+      isKiosk: false,
+      hiddenGroups: [],
+      hiddenItems: [],
     });
 
     expect(result.map((x) => x.label)).toEqual(['Today', 'Daily Table']);
@@ -65,6 +71,9 @@ describe('buildVisibleNavItems', () => {
     const result = buildVisibleNavItems(items, 'staff', {
       showMore: true,
       todayLiteNavV2: true,
+      isKiosk: false,
+      hiddenGroups: [],
+      hiddenItems: [],
     });
 
     expect(result.map((x) => x.label)).toEqual([
@@ -78,6 +87,9 @@ describe('buildVisibleNavItems', () => {
     const result = buildVisibleNavItems(items, 'admin', {
       showMore: true,
       todayLiteNavV2: true,
+      isKiosk: false,
+      hiddenGroups: [],
+      hiddenItems: [],
     });
 
     expect(result.some((x) => x.label === 'Analysis')).toBe(true);
