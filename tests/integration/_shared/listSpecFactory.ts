@@ -1,5 +1,7 @@
 import { expect, type APIRequestContext } from '@playwright/test';
-import { assertHasFields, makeListApi, toSelectQuery } from './spHttp';
+import { assertHasFields, makeListApi, toSelectQuery, type SpClient } from './spHttp';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export type ListSpec<TCreate extends Record<string, unknown>> = {
   name: string;
@@ -39,7 +41,34 @@ export function createListRunner<TCreate extends Record<string, unknown>>(
   request: APIRequestContext,
   spec: ListSpec<TCreate>,
 ): ListRunner {
-  const api = makeListApi({ request, baseUrl: '', listTitle: spec.listTitle });
+  // Extract auth headers from storageState (Fallback for raw APIRequestContext)
+  const authHeaders: Record<string, string> = {};
+  const storageStatePath = path.resolve(process.cwd(), 'tests/.auth/storageState.json');
+
+  if (fs.existsSync(storageStatePath)) {
+    try {
+      const storageState = JSON.parse(fs.readFileSync(storageStatePath, 'utf-8'));
+      const cookies = storageState.cookies || [];
+      const cookieString = cookies
+        .map((c: any) => `${c.name}=${c.value}`)
+        .join('; ');
+
+      if (cookieString) {
+        authHeaders['Cookie'] = cookieString;
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('[integration] Failed to load auth from storageState:', e);
+    }
+  }
+
+  const client: SpClient = {
+    baseUrl: spec.siteUrl,
+    request,
+    listTitle: spec.listTitle,
+    authHeaders,
+  };
+  const api = makeListApi(client);
 
   const itemsUrl = buildListItemUrl(spec.siteUrl, spec.listTitle);
 
