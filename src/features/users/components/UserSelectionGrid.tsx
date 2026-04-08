@@ -1,9 +1,10 @@
-// ---------------------------------------------------------------------------
-// UserSelectionGrid — 共有利用者選択コンポーネント
-//
-// 利用者カードのグリッドを表示し、選択時にコールバックを呼ぶ。
-// ISPエディタ / 個別支援手順管理 など複数ページで再利用する。
-// ---------------------------------------------------------------------------
+/**
+ * UserSelectionGrid — Generic User Selection Component
+ *
+ * Displays a grid of user cards and calls onSelect callback.
+ * Reused in ISP Editor, Support Procedure Management, etc.
+ * Now using unified Japanese sorting logic.
+ */
 import PersonIcon from '@mui/icons-material/Person';
 import StarIcon from '@mui/icons-material/Star';
 import Box from '@mui/material/Box';
@@ -13,7 +14,8 @@ import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
-import React from 'react';
+import React, { useMemo } from 'react';
+import { compareUsersByJapaneseOrder } from '@/lib/i18n/japaneseCollator';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -23,19 +25,21 @@ export interface UserSelectionItem {
   Id: number;
   UserID: string;
   FullName: string;
+  Furigana?: string | null;
+  FullNameKana?: string | null;
   IsHighIntensitySupportTarget?: boolean | null;
 }
 
 export interface UserSelectionGridProps {
-  /** 表示する利用者リスト */
+  /** List of users to display */
   users: UserSelectionItem[];
-  /** カード選択時のコールバック（UserID を返す） */
+  /** Callback when card is selected (returns UserID) */
   onSelect: (userCode: string) => void;
-  /** グリッド上部のタイトル（省略時はデフォルト） */
+  /** Grid title (optional) */
   title?: string;
-  /** グリッド上部のサブタイトル（省略時はデフォルト） */
+  /** Grid subtitle (optional) */
   subtitle?: string;
-  /** 行動分析対象者を優先表示するか（デフォルト: true） */
+  /** Whether to prioritize High Intensity Support Targets (default: true) */
   prioritizeIBD?: boolean;
 }
 
@@ -50,13 +54,15 @@ export const UserSelectionGrid: React.FC<UserSelectionGridProps> = ({
   subtitle,
   prioritizeIBD = true,
 }) => {
-  // 行動分析対象者を先頭に表示
-  const sortedUsers = React.useMemo(() => {
-    if (!prioritizeIBD) return users;
+  // Sort by High Intensity Support Target first, then by common Japanese order
+  const sortedUsers = useMemo(() => {
     return [...users].sort((a, b) => {
-      const aIBD = a.IsHighIntensitySupportTarget ? 1 : 0;
-      const bIBD = b.IsHighIntensitySupportTarget ? 1 : 0;
-      return bIBD - aIBD; // 行動分析対象者が先
+      if (prioritizeIBD) {
+        const aIBD = a.IsHighIntensitySupportTarget ? 1 : 0;
+        const bIBD = b.IsHighIntensitySupportTarget ? 1 : 0;
+        if (aIBD !== bIBD) return bIBD - aIBD;
+      }
+      return compareUsersByJapaneseOrder(a, b);
     });
   }, [users, prioritizeIBD]);
 
