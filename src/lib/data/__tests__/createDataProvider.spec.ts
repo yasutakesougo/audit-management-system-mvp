@@ -90,15 +90,41 @@ describe('getActiveProviderType Priority Contract', () => {
       expect(getActiveProviderType()).toBe('sharepoint');
     });
 
-    it('rule: shouldSkipSharePoint should override force flags (Highest Priority)', async () => {
-      vi.mocked(envModule.shouldSkipSharePoint).mockReturnValue(true);
-      vi.mocked(envModule.readBool).mockImplementation((key: string, defaultValue?: boolean) =>
-        key === 'VITE_FORCE_SHAREPOINT' ? true : defaultValue ?? false,
+    it('rule: VITE_DATA_PROVIDER should override fallback modes', async () => {
+      vi.mocked(envModule.isDevMode).mockReturnValue(true);
+      vi.mocked(envModule.readOptionalEnv).mockImplementation((key: string) =>
+        key === 'VITE_DATA_PROVIDER' ? 'sharepoint' : undefined,
       );
 
       const { getActiveProviderType } = await import('../createDataProvider');
 
+      // VITE_DATA_PROVIDER (explicit) > isDev fallback
+      expect(getActiveProviderType()).toBe('sharepoint');
+    });
+
+    it('rule: shouldSkipSharePoint should override everything including URL params (Safety First)', async () => {
+      vi.mocked(envModule.shouldSkipSharePoint).mockReturnValue(true);
+      
+      // Mock window.location for URL params
+      const mockLocation = { search: '?provider=sharepoint' };
+      vi.stubGlobal('window', { location: mockLocation });
+
+      const { getActiveProviderType } = await import('../createDataProvider');
+
       expect(getActiveProviderType()).toBe('memory');
+    });
+
+    it('rule: URL param should override VITE_DATA_PROVIDER env', async () => {
+      vi.mocked(envModule.readOptionalEnv).mockImplementation((key: string) =>
+        key === 'VITE_DATA_PROVIDER' ? 'local' : undefined,
+      );
+      
+      const mockLocation = { search: '?provider=sharepoint' };
+      vi.stubGlobal('window', { location: mockLocation });
+
+      const { getActiveProviderType } = await import('../createDataProvider');
+
+      expect(getActiveProviderType()).toBe('sharepoint');
     });
   });
 });

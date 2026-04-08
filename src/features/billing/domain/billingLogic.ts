@@ -1,3 +1,4 @@
+import { normalizeId } from '@/lib/data/dataHelpers';
 import type { BillingOrder } from '../types';
 
 /**
@@ -32,7 +33,7 @@ export function mapToBillingOrder(
 ): BillingOrder {
   const F = mapping;
   return {
-    id: safeParseNumber(item['Id'] ?? item['id'] ?? 0),
+    id: normalizeId(item),
     orderDate: safeParseString(item[F.orderDate ?? 'Title'] ?? item['orderDate'] ?? ''),
     ordererCode: safeParseString(item[F.ordererCode ?? 'OrdererCode'] ?? item['ordererCode'] ?? ''),
     ordererName: safeParseString(item[F.ordererName ?? 'OrdererName'] ?? item['ordererName'] ?? ''),

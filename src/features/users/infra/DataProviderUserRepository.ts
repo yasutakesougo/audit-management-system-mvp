@@ -27,6 +27,7 @@ import { AuthRequiredError } from '@/lib/errors';
 import { normalizeAttendanceDays } from '../attendance';
 import { canEditUser, resolveUserLifecycleStatus, toDomainUser } from '../domain/userLifecycle';
 import { emitDriftRecord, type DriftResolutionType, type DriftType } from '@/features/diagnostics/drift/domain/driftLogic';
+import { normalizeId } from '@/lib/data/dataHelpers';
 import type {
   UserRepository,
   UserRepositoryGetParams,
@@ -742,7 +743,7 @@ export class DataProviderUserRepository implements UserRepository {
     const transportFrom = normalizeAttendanceDays(record.transportFromDays);
 
     const domain: IUserMaster = {
-      Id: Number(record['id'] ?? record['Id'] ?? rawRecord['Id'] ?? rawRecord['id']),
+      Id: normalizeId(record) || normalizeId(rawRecord),
       Title:
         (record['title'] as string) ??
         (record['Title'] as string) ??
