@@ -68,7 +68,9 @@ export function useSupportPlanningSheetOrchestrator(): {
 
   const { getByUserId: getAssessment } = useAssessmentStore();
   const { data: users } = useUsers();
-  const userIdParam = new URLSearchParams(window.location.search).get('userId');
+  const searchParams = new URLSearchParams(window.location.search);
+  const userIdParam = searchParams.get('userId');
+  const diffSummary = searchParams.get('diffSummary');
 
   const { account } = useAuth();
   const { saveAuditRecord, getAllProvenance, getBySheetId } = useImportAuditStore();
@@ -207,6 +209,7 @@ export function useSupportPlanningSheetOrchestrator(): {
       contextUserName,
       contextData,
       form,
+      diffSummary,
     });
   }, [
     planningSheetId, sheet, isLoading, error, uiState, 
@@ -214,8 +217,25 @@ export function useSupportPlanningSheetOrchestrator(): {
     auditRecords, filteredAuditRecords, latestMonitoringRecord, 
     icebergEvidence, evidenceLinks, abcRecords, pdcaItems, 
     strategyUsage, strategyUsageLoading, trendResult, trendDays, 
-    trendLoading, contextUserName, contextData, form
+    trendLoading, contextUserName, contextData, form, diffSummary
   ]);
+
+  // 差分引き継ぎの監査ログ記録
+  React.useEffect(() => {
+    if (planningSheetId === 'new' && diffSummary && account) {
+      saveAuditRecord({
+        planningSheetId: 'new',
+        importedAt: new Date().toISOString(),
+        importedBy: account.name ?? 'unknown',
+        assessmentId: null,
+        tokuseiResponseId: null,
+        mode: 'behavior-monitoring',
+        affectedFields: ['iceberg_differential_initialization'],
+        provenance: [],
+        summaryText: `氷山分析の差分基づき初期化: ${diffSummary}`,
+      });
+    }
+  }, [planningSheetId, diffSummary, account, saveAuditRecord]);
 
   // 3. Handlers の合成
   const handlers: SupportPlanningSheetActionHandlers = {

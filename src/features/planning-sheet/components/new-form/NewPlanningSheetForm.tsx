@@ -40,6 +40,7 @@ import QuizRoundedIcon from '@mui/icons-material/QuizRounded';
 import PersonSearchRoundedIcon from '@mui/icons-material/PersonSearchRounded';
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded';
 import TimelineRoundedIcon from '@mui/icons-material/TimelineRounded';
+import WorkspacesIcon from '@mui/icons-material/Workspaces';
 
 // ── Domain ──
 import type { TokuseiSurveyResponse } from '@/domain/assessment/tokusei';
@@ -56,6 +57,10 @@ import { ImportPreviewDialog } from '../ImportPreviewDialog';
 import { ImportMonitoringDialog } from '../ImportMonitoringDialog';
 import { useLatestBehaviorMonitoring } from '../../hooks/useLatestBehaviorMonitoring';
 import { useMonitoringMeetingRepository } from '@/features/monitoring/repositories/createMonitoringMeetingRepository';
+import { useIcebergRepository } from '@/features/ibd/analysis/iceberg/SharePointIcebergRepository';
+import { icebergToInterventionDrafts } from '@/features/ibd/analysis/iceberg/icebergToIntervention';
+import { buildIcebergImportResult } from '../../icebergToPlanningBridge';
+import { useImportAuditStore } from '../../stores/importAuditStore';
 
 // ── Local (split) ──
 import type { NewPlanningSheetFormProps, UserOption, FormState } from './types';
@@ -71,6 +76,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   planningSheetRepo,
   ispRepo,
   initialUserId,
+  diffSummary,
 }) => {
   const navigate = useNavigate();
   const { data: users } = useUsers();
@@ -96,11 +102,17 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   const [tokuseiImported, setTokuseiImported] = React.useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = React.useState(false);
   const [importPreview, setImportPreview] = React.useState<ImportPreviewResult | null>(null);
-  const [lastBridgeResult, setLastBridgeResult] = React.useState<ReturnType<typeof tokuseiToPlanningBridge> | null>(null);
+  const [lastBridgeResult, setLastBridgeResult] = React.useState<{ formPatches: Record<string, string> } | null>(null);
   const [tokuseiProvenance, setTokuseiProvenance] = React.useState<Map<string, { name: string; relation?: string; fillDate?: string }>>(new Map());
   const [toast, setToast] = React.useState<{ open: boolean; message: string; severity: 'success' | 'info' | 'warning' }>({
     open: false, message: '', severity: 'success',
   });
+
+  // ── 氷山分析読込 ──
+  const icebergRepo = useIcebergRepository();
+  const [icebergImported, setIcebergImported] = React.useState(false);
+  const [isIcebergLoading, setIsIcebergLoading] = React.useState(false);
+  const [importSource, setImportSource] = React.useState<'tokusei' | 'iceberg' | null>(null);
 
   // ── 特性アンケートセクション ref ──
   const tokuseiSectionRef = React.useRef<HTMLDivElement>(null);
@@ -172,13 +184,24 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   }, [initialUserId, users, userOptions, selectedUser, handleUserSelect, ispLoading]);
 
   // ── 特性アンケート: 利用者に紐づく回答をフィルタ ──
-  const matchedTokuseiResponses = React.useMemo(() => {
-    if (!selectedUser || tokuseiResponses.length === 0) return [];
-    const userName = selectedUser.label.split(' (')[0]; // FullName を抽出
-    return tokuseiResponses.filter(r =>
-      r.targetUserName === userName ||
-      r.targetUserName === selectedUser.id,
+  const { matchedResponses, hasExactMatch } = React.useMemo(() => {
+    if (!selectedUser || tokuseiResponses.length === 0) return { matchedResponses: [], hasExactMatch: false };
+    
+    const normalize = (val: string) => val.replace(/\s+/g, '').toLowerCase();
+    const userName = selectedUser.label.split(' (')[0]; 
+    const normalizedTarget = normalize(userName);
+
+    const matches = tokuseiResponses.filter(r =>
+      normalize(r.targetUserName) === normalizedTarget ||
+      normalize(r.targetUserName).includes(normalizedTarget) ||
+      r.targetUserName === selectedUser.id
     );
+
+    const hasExactMatch = matches.length > 0;
+    return {
+      matchedResponses: hasExactMatch ? matches : tokuseiResponses,
+      hasExactMatch
+    };
   }, [selectedUser, tokuseiResponses]);
 
   // ── 特性アンケート: プレビュー表示 ──
@@ -196,12 +219,44 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
     const preview = buildImportPreview(result.formPatches, form as unknown as Record<string, unknown>);
     setImportPreview(preview);
     setLastBridgeResult(result);
+    setImportSource('tokusei');
     setPreviewDialogOpen(true);
   }, [selectedTokusei, form]);
 
+  // ── 氷山分析: インポート ──
+  const handleIcebergImport = React.useCallback(async () => {
+    if (!selectedUser || !icebergRepo) return;
+    
+    setIsIcebergLoading(true);
+    try {
+      const latest = await icebergRepo.getLatestByUser(selectedUser.id);
+      if (!latest) {
+        setToast({ open: true, message: 'この利用者の氷山分析データが見つかりません', severity: 'warning' });
+        return;
+      }
+
+      const drafts = icebergToInterventionDrafts({ ...latest, targetUserId: latest.userId });
+      const result = buildIcebergImportResult(drafts);
+      
+      const preview = buildImportPreview(result.formPatches as Record<string, string>, form as unknown as Record<string, unknown>);
+      setImportPreview(preview);
+      // 特性アンケートのブリッジ結果と構造が同じなので再利用
+      setLastBridgeResult({ formPatches: result.formPatches as Record<string, string> });
+      setImportSource('iceberg');
+      setPreviewDialogOpen(true);
+    } catch (err) {
+      setToast({ open: true, message: `氷山分析の取得に失敗しました: ${err}`, severity: 'warning' });
+    } finally {
+      setIsIcebergLoading(false);
+    }
+  }, [selectedUser, icebergRepo, form]);
+
   // ── 特性アンケート: プレビュー確定→反映 ──
   const handlePreviewConfirm = React.useCallback(() => {
-    if (!lastBridgeResult || !selectedTokusei) return;
+    if (!lastBridgeResult) return;
+    if (importSource === 'tokusei' && !selectedTokusei) return;
+
+    const sourceLabel = importSource === 'tokusei' ? '特性アンケート' : '氷山分析';
 
     // formPatches を FormState に反映
     setForm(prev => {
@@ -213,7 +268,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
           if (typeof current === 'string' && !current.trim()) {
             (next as Record<string, unknown>)[k] = value;
           } else if (typeof current === 'string' && current.trim()) {
-            (next as Record<string, unknown>)[k] = `${current}\n\n【特性アンケートより】\n${value}`;
+            (next as Record<string, unknown>)[k] = `${current}\n\n【${sourceLabel}より】\n${value}`;
           }
         }
       }
@@ -221,30 +276,44 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
     });
 
     // provenance を記録
-    setTokuseiProvenance(prev => {
-      const next = new Map(prev);
-      for (const key of Object.keys(lastBridgeResult.formPatches)) {
-        if (lastBridgeResult.formPatches[key]?.trim()) {
-          next.set(key, {
-            name: selectedTokusei.responderName || '不明',
-            relation: selectedTokusei.relation,
-            fillDate: selectedTokusei.fillDate,
-          });
+    if (importSource === 'tokusei' && selectedTokusei) {
+      setTokuseiProvenance(prev => {
+        const next = new Map(prev);
+        for (const key of Object.keys(lastBridgeResult.formPatches)) {
+          if (lastBridgeResult.formPatches[key]?.trim()) {
+            next.set(key, {
+              name: selectedTokusei.responderName || '不明',
+              relation: selectedTokusei.relation,
+              fillDate: selectedTokusei.fillDate,
+            });
+          }
         }
-      }
-      return next;
-    });
+        return next;
+      });
+    }
 
-    setTokuseiImported(true);
+    if (importSource === 'tokusei') {
+      setTokuseiImported(true);
+    } else if (importSource === 'iceberg') {
+      setIcebergImported(true);
+    }
+    
     setPreviewDialogOpen(false);
 
     // サマリーをトースト表示
     const s = importPreview?.summary;
-    const summaryText = s && s.totalAffected > 0
-      ? `特性アンケートから取込完了: 新規${s.newCount}項目 + 追記${s.appendCount}項目`
-      : '特性アンケートから取込完了（該当データなし）';
+    let summaryText = '取込完了';
+    if (importSource === 'tokusei') {
+      summaryText = s && s.totalAffected > 0
+        ? `特性アンケートから取込完了: 新規${s.newCount}項目 + 追記${s.appendCount}項目`
+        : '特性アンケートから取込完了（該当データなし）';
+    } else {
+      summaryText = s && s.totalAffected > 0
+        ? `氷山分析から取込完了: 新規${s.newCount}項目 + 追記${s.appendCount}項目`
+        : '氷山分析から取込完了';
+    }
     setToast({ open: true, message: summaryText, severity: 'success' });
-  }, [lastBridgeResult, selectedTokusei, importPreview]);
+  }, [lastBridgeResult, selectedTokusei, importPreview, importSource]);
 
   // ── Provenance バッジヘルパー ──
   const renderProvenanceBadge = React.useCallback((fieldKey: string) => {
@@ -300,6 +369,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   const handleFillSample = React.useCallback(() => setForm(SAMPLE_FORM), []);
 
   // ── Save ──
+  const { saveAuditRecord } = useImportAuditStore();
   const handleCreate = React.useCallback(async () => {
     if (!selectedUser || !ispId) return;
     setIsSaving(true);
@@ -308,6 +378,22 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
       const createdBy = (account as { name?: string })?.name ?? '不明';
       const input = buildCreateInput(form, selectedUser.id, ispId, createdBy);
       const created = await planningSheetRepo.create(input);
+      
+      // 差分基づく作成の確定をログに記録
+      if (diffSummary) {
+        saveAuditRecord({
+          planningSheetId: created.id,
+          importedAt: new Date().toISOString(),
+          importedBy: createdBy,
+          assessmentId: null,
+          tokuseiResponseId: null,
+          mode: 'behavior-monitoring',
+          affectedFields: ['iceberg_differential_completion'],
+          provenance: [],
+          summaryText: `氷山分析の差分基づき改訂を確定: ${diffSummary}`,
+        });
+      }
+
       navigate(`/support-planning-sheet/${created.id}`, { replace: true });
     } catch (err) {
       setSaveError(`作成に失敗しました: ${err instanceof Error ? err.message : String(err)}`);
@@ -322,6 +408,28 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, pb: 4, maxWidth: 960, mx: 'auto' }}>
       <Stack spacing={3}>
+        {/* ── 差分引き継ぎの表示 ── */}
+        {diffSummary && (
+          <Alert 
+            severity="info" 
+            variant="outlined" 
+            sx={{ 
+              bgcolor: 'info.50',
+              borderColor: 'info.main',
+              '& .MuiAlert-message': { width: '100%' }
+            }}
+          >
+            <Stack spacing={0.5}>
+              <Typography variant="caption" fontWeight={700} color="info.main" sx={{ letterSpacing: 1 }}>
+                【DIFFERENCE INSIGHT】 今回の改訂理由
+              </Typography>
+              <Typography variant="body2" fontWeight={600}>
+                {diffSummary}
+              </Typography>
+            </Stack>
+          </Alert>
+        )}
+
         {/* ── ヘッダー ── */}
         <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
           <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" flexWrap="wrap" useFlexGap>
@@ -340,7 +448,17 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
                 disabled={!canProceedToForm}
                 onClick={() => tokuseiSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               >
-                特性アンケートを読み込む
+                特性アンケート
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                color="primary"
+                startIcon={isIcebergLoading ? <CircularProgress size={16} /> : <WorkspacesIcon />}
+                disabled={!canProceedToForm || isIcebergLoading}
+                onClick={handleIcebergImport}
+              >
+                {icebergImported ? '氷山分析を再読込' : '氷山分析を読み込む'}
               </Button>
               <Button
                 size="small"
@@ -411,19 +529,29 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
                 </Stack>
               )}
 
-              {tokuseiStatus === 'success' && matchedTokuseiResponses.length === 0 && (
+              {tokuseiStatus === 'success' && matchedResponses.length === 0 && (
                 <Alert severity="info" variant="outlined">
                   この利用者に対応する特性アンケートの回答がありません。先に保護者・関係者にアンケートを依頼してください。
                 </Alert>
               )}
 
-              {matchedTokuseiResponses.length > 0 && (
+              {matchedResponses.length > 0 && (
                 <>
+                  {!hasExactMatch && selectedUser && (
+                    <Alert severity="warning" variant="outlined" sx={{ mb: 2 }}>
+                      <Typography variant="body2" fontWeight={600}>
+                        「{selectedUser.label.split(' (')[0]}」と一致する結果が見つかりませんでした。
+                      </Typography>
+                      <Typography variant="caption">
+                        名前の表記（空欄や漢字）が異なる可能性があります。全回答を表示していますので、正しいものを選択してください。
+                      </Typography>
+                    </Alert>
+                  )}
                   <Typography variant="body2" fontWeight={600}>
-                    {matchedTokuseiResponses.length}件の回答が見つかりました。取り込む回答を選択してください:
+                    {hasExactMatch ? `${matchedResponses.length}件の回答が見つかりました。` : '全回答を表示しています。'}取り込む回答を選択してください:
                   </Typography>
                   <Stack spacing={1}>
-                    {matchedTokuseiResponses.map((r) => (
+                    {matchedResponses.map((r: TokuseiSurveyResponse) => (
                       <Paper
                         key={r.id}
                         variant="outlined"

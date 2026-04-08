@@ -21,6 +21,10 @@ export type IcebergPdcaItem = {
   phase: IcebergPdcaPhase;
   createdAt: string;
   updatedAt: string;
+  /** 検証済みの知見か（分析ボードからの引継ぎ） */
+  isValidated?: boolean;
+  /** 検証理由・サマリ */
+  rationale?: string;
   /** フロントメモリ上のみ — 直近のフェーズ変更トレース */
   lastPhaseChange?: PhaseChangeTrace;
 };

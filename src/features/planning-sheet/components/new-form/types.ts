@@ -7,6 +7,7 @@ export interface NewPlanningSheetFormProps {
   planningSheetRepo: PlanningSheetRepository;
   ispRepo: IspRepository;
   initialUserId?: string;
+  diffSummary?: string;
 }
 
 export interface UserOption {

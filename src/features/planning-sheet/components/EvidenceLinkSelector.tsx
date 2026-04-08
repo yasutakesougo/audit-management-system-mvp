@@ -54,6 +54,7 @@ interface EvidenceOption {
   id: string;
   label: string;
   detail: string;
+  isValidated?: boolean;
 }
 
 // ── Constants ──
@@ -86,11 +87,17 @@ function buildOptions(abcRecords: AbcRecord[], pdcaItems: IcebergPdcaItem[]): Ev
       type: 'pdca',
       id: p.id,
       label: `[PDCA] ${p.title.slice(0, 25)}`,
-      detail: `Phase: ${p.phase}`,
+      detail: `Phase: ${p.phase}${p.isValidated ? ' (検証済み)' : ''}`,
+      isValidated: p.isValidated,
     });
   }
 
-  return opts;
+  // Sort: Validated first, then by type, then by label
+  return opts.sort((a, b) => {
+    if (a.isValidated && !b.isValidated) return -1;
+    if (!a.isValidated && b.isValidated) return 1;
+    return 0;
+  });
 }
 
 function getChipColor(type: EvidenceLinkType): 'success' | 'info' {
@@ -227,13 +234,20 @@ export const EvidenceLinkSelector: React.FC<EvidenceLinkSelectorProps> = ({
               groupBy={(opt) => opt.type === 'abc' ? 'ABC記録' : '氷山PDCA'}
               getOptionLabel={(opt) => opt.label}
               renderOption={(props, opt) => (
-                <Box component="li" {...props} key={opt.id}>
-                  <Stack>
-                    <Stack direction="row" spacing={0.5} alignItems="center">
-                      <Box sx={{ color: SECTION_LABELS[opt.type].color, display: 'flex', fontSize: 16 }}>
-                        {SECTION_LABELS[opt.type].icon}
-                      </Box>
-                      <Typography variant="body2">{opt.label}</Typography>
+                <Box component="li" {...props} key={opt.id} sx={{ borderLeft: opt.isValidated ? '3px solid' : 'none', borderLeftColor: 'primary.main' }}>
+                  <Stack sx={{ width: '100%' }}>
+                    <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="space-between">
+                      <Stack direction="row" spacing={0.5} alignItems="center">
+                        <Box sx={{ color: SECTION_LABELS[opt.type].color, display: 'flex', fontSize: 16 }}>
+                          {SECTION_LABELS[opt.type].icon}
+                        </Box>
+                        <Typography variant="body2" sx={{ fontWeight: opt.isValidated ? 700 : 400 }}>
+                          {opt.label}
+                        </Typography>
+                      </Stack>
+                      {opt.isValidated && (
+                        <Chip label="検証済み" size="small" color="primary" sx={{ height: 16, fontSize: '0.6rem' }} />
+                      )}
                     </Stack>
                     <Typography variant="caption" color="text.secondary" sx={{ pl: 2.5 }}>
                       {opt.detail}

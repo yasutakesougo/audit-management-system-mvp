@@ -25,6 +25,7 @@ function makeValidSnapshot(overrides: Record<string, unknown> = {}) {
     updatedAt: '2026-03-13T00:00:00Z',
     nodes: [],
     links: [],
+    logs: [],
     ...overrides,
   };
 }
@@ -44,6 +45,7 @@ describe('6-A: IcebergSession planningSheetId', () => {
       updatedAt: '2026-03-13T00:00:00Z',
       nodes: [],
       links: [],
+      logs: [],
     };
     expect(session.planningSheetId).toBe('ps-001');
   });
@@ -57,6 +59,7 @@ describe('6-A: IcebergSession planningSheetId', () => {
       updatedAt: '2026-01-01T00:00:00Z',
       nodes: [],
       links: [],
+      logs: [],
     };
     expect(session.planningSheetId).toBeUndefined();
   });

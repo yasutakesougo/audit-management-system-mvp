@@ -54,6 +54,9 @@ export interface MapperInput {
   
   // Form
   form: UsePlanningSheetFormReturn;
+  
+  // Handoff
+  diffSummary: string | null;
 }
 
 /**
@@ -86,6 +89,7 @@ export function mapToSupportPlanningSheetViewModel(input: MapperInput): SupportP
     contextUserName,
     contextData,
     form,
+    diffSummary,
   } = input;
 
   // 1. セッションと永続化された Provenance の統合
@@ -141,5 +145,6 @@ export function mapToSupportPlanningSheetViewModel(input: MapperInput): SupportP
     contextData,
     form,
     monitoringBridge,
+    diffSummary,
   };
 }

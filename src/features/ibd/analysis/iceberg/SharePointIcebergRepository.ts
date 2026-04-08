@@ -3,6 +3,8 @@ import { createSpClient } from '@/lib/spClient';
 import { FIELD_MAP_ICEBERG_ANALYSIS, LIST_CONFIG, ListKeys } from '@/sharepoint/fields';
 import { z } from 'zod';
 import { icebergSnapshotSchema, type IcebergSnapshot } from './icebergTypes';
+import { ensureConfig } from '@/lib/sp/config';
+import { resolveListPath } from '@/lib/sp/helpers';
 
 // ===== Error Classes =====
 
@@ -94,7 +96,8 @@ export async function createIcebergRepository(acquireToken: () => Promise<string
    * List items 取得（OData クエリ）
    */
   async function getListItems(query: string): Promise<SharePointItem[]> {
-    const url = `/${LIST_TITLE}/items?${query}`;
+    const basePath = resolveListPath(LIST_TITLE);
+    const url = `${basePath}/items?${query}`;
     dbg('[getListItems]', { url });
 
     const res = await client.spFetch(url);
@@ -110,7 +113,8 @@ export async function createIcebergRepository(acquireToken: () => Promise<string
    * List item 作成
    */
   async function postListItem(body: Record<string, unknown>): Promise<SharePointItem> {
-    const url = `/${LIST_TITLE}/items`;
+    const basePath = resolveListPath(LIST_TITLE);
+    const url = `${basePath}/items`;
     dbg('[postListItem]', { url, keys: Object.keys(body) });
 
     const res = await client.spFetch(url, {
@@ -141,7 +145,8 @@ export async function createIcebergRepository(acquireToken: () => Promise<string
     body: Record<string, unknown>,
     etag?: string
   ): Promise<void> {
-    const url = `/${LIST_TITLE}/items(${id})`;
+    const basePath = resolveListPath(LIST_TITLE);
+    const url = `${basePath}/items(${id})`;
     dbg('[patchListItem]', { url, etag: etag ? 'present' : 'absent' });
 
     const headers: Record<string, string> = {
@@ -280,7 +285,8 @@ export async function createIcebergRepository(acquireToken: () => Promise<string
         return;
       }
 
-      const url = `/${LIST_TITLE}/items(${item.Id})`;
+      const basePath = resolveListPath(LIST_TITLE);
+      const url = `${basePath}/items(${item.Id})`;
       const res = await client.spFetch(url, {
         method: 'DELETE',
         headers: { 'If-Match': '*' },
@@ -306,8 +312,8 @@ import { useAuth } from '@/auth/useAuth';
  */
 export function useIcebergRepository() {
   const { acquireToken } = useAuth();
-  const config = useMemo(() => getAppConfig(), []);
-  const spSiteUrl = config.VITE_SP_SITE_URL || '';
+  const config = useMemo(() => ensureConfig(), []);
+  const spSiteUrl = config.baseUrl || '';
 
   const [repository, setRepository] = useState<IcebergRepository | null>(null);
 
