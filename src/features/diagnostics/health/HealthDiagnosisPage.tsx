@@ -31,6 +31,7 @@ import { useSpHealthSignal } from "@/features/sp/health/hooks/useSpHealthSignal"
 import type { SpHealthReasonCode } from "@/features/sp/health/spHealthSignalStore";
 import { GovernanceAdvisePanel } from "../remediation/components/GovernanceAdvisePanel";
 import { SpIndexPressurePanel } from "@/features/sp/health/indexAdvisor/SpIndexPressurePanel";
+import { GovernanceBadge } from "./components/GovernanceBadge";
 
 // ─── highlight: reasonCode → category ─────────────────────────────────────────
 const HIGHLIGHT_CATEGORY: Partial<Record<SpHealthReasonCode, string>> = {
@@ -622,7 +623,8 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
                           <Typography variant="subtitle2" noWrap title={r.label} sx={{ flex: 1, minWidth: 0 }}>
                             {r.label}
                           </Typography>
-                          <Chip size="small" variant="outlined" label={r.category} />
+                          {r.governance && <GovernanceBadge decision={r.governance} />}
+                          <Chip size="small" variant="outlined" label={r.category} sx={{ height: 20, fontSize: '0.65rem' }} />
                         </Stack>
                         <Typography variant="body2" color="text.secondary">
                           {r.summary}

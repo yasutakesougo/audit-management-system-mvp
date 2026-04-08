@@ -9,6 +9,7 @@ import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 import { SpAdapter } from "./spAdapter";
 import { getRuntimeEnv } from "@/env";
 import { emitDriftRecord, type DriftResolutionType, type DriftType } from '@/features/diagnostics/drift/domain/driftLogic';
+import { decideGovernanceAction } from '@/features/diagnostics/governance/governanceEngine';
 
 // statusRank is retained for potential future worst-of aggregation.
 const _statusRank: Record<HealthStatus, number> = { pass: 0, warn: 1, fail: 2 };
@@ -262,7 +263,7 @@ export async function runHealthChecks(
 
   // --- D/E) Lists, Schema, Permissions (CRUD) ---
   for (const spec of ctx.listSpecs) {
-    await runListChecks(results, sp, spec);
+    await runListChecks(results, sp, spec, ctx);
   }
 
   return results;
@@ -271,7 +272,8 @@ export async function runHealthChecks(
 async function runListChecks(
   results: HealthCheckResult[],
   sp: SpAdapter,
-  spec: ListSpec
+  spec: ListSpec,
+  ctx: HealthContext
 ) {
   // List existence
   const listInfo = await safe(() => sp.getListByTitle(spec.resolvedTitle));
@@ -390,13 +392,20 @@ async function runListChecks(
         })
       );
     } else if (drifted.length > 0) {
+      // Execute governance decision logic
+      const primaryDrift = drifted[0];
+      const driftType = fieldStatus[primaryDrift.internalName].driftType as DriftType;
+      const isEssential = Boolean(primaryDrift.isEssential);
+      
+      const decision = decideGovernanceAction(driftType, ctx.autonomyLevel, isEssential);
+
       results.push(
         warn({
           key: `schema.fields.${spec.key}`,
           label: `スキーマ（内部名乖離）：${spec.displayName}`,
           category: "schema",
           summary: `${drifted.length}個の列で内部名の乖離（Drift）を検出しました。`,
-          detail: `SharePoint上の内部名にサフィックス（例: _x0030_）が付与されていますが、アプリ側で自動吸収しています。\n乖離項目: ${drifted.map(f => `${f.internalName} → ${fieldStatus[f.internalName].resolvedName}`).join(", ")}`,
+          detail: `SharePoint上の内部名にサフィックスが付与されていますが、アプリ側で自動吸収しています。\n乖離項目: ${drifted.map(f => `${f.internalName} → ${fieldStatus[f.internalName].resolvedName}`).join(", ")}`,
           evidence: {
             listTitle: spec.resolvedTitle,
             drifted: drifted.map(f => ({
@@ -405,11 +414,12 @@ async function runListChecks(
               driftType: fieldStatus[f.internalName].driftType
             }))
           },
+          governance: decision,
           nextActions: [
             {
               kind: "copy",
               label: "乖離列の確認依頼",
-              value: `リスト「${spec.resolvedTitle}」の「${drifted[0].internalName}」が「${fieldStatus[drifted[0].internalName].resolvedName}」として解決されています。不要な重複列がないか確認してください。`,
+              value: `リスト「${spec.resolvedTitle}」の「${drifted[0].internalName}」が「${fieldStatus[drifted[0].internalName].resolvedName}」として解決されています。`,
             },
           ],
         })
