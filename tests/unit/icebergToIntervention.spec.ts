@@ -1,5 +1,5 @@
 import { icebergToInterventionDrafts } from '@/features/ibd/analysis/iceberg/icebergToIntervention';
-import type { IcebergSession } from '@/features/ibd/analysis/iceberg/icebergTypes';
+import type { HypothesisLink, IcebergNode, IcebergSession } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import { describe, expect, it } from 'vitest';
 
 const createSession = (overrides: Partial<IcebergSession> = {}): IcebergSession => ({
@@ -15,6 +15,14 @@ const createSession = (overrides: Partial<IcebergSession> = {}): IcebergSession 
   ...overrides,
 });
 
+const n = (id: string, type: IcebergNode['type'], label: string, x = 0, y = 0): IcebergNode => ({
+  id, type, label, position: { x, y }, status: 'hypothesis',
+});
+
+const l = (id: string, sourceNodeId: string, targetNodeId: string, confidence: HypothesisLink['confidence']): HypothesisLink => ({
+  id, sourceNodeId, targetNodeId, confidence, status: 'hypothesis',
+});
+
 describe('icebergToInterventionDrafts', () => {
   it('ノードもリンクもない場合 → 空配列', () => {
     const session = createSession();
@@ -23,9 +31,7 @@ describe('icebergToInterventionDrafts', () => {
 
   it('行動ノードのみ（リンクなし）→ 空triggerFactorsのDraft', () => {
     const session = createSession({
-      nodes: [
-        { id: 'n-beh-1', type: 'behavior', label: '他害(叩く)', position: { x: 0, y: 0 } },
-      ],
+      nodes: [n('n-beh-1', 'behavior', '他害(叩く)')],
     });
     const result = icebergToInterventionDrafts(session);
 
@@ -43,13 +49,13 @@ describe('icebergToInterventionDrafts', () => {
   it('行動+要因がリンクされている → triggerFactorsにマッピング', () => {
     const session = createSession({
       nodes: [
-        { id: 'n-beh-1', type: 'behavior', label: '離席', position: { x: 0, y: 0 } },
-        { id: 'n-asm-1', type: 'assessment', label: '聴覚過敏', position: { x: 0, y: 300 } },
-        { id: 'n-env-1', type: 'environment', label: '工事騒音', position: { x: 100, y: 300 } },
+        n('n-beh-1', 'behavior', '離席'),
+        n('n-asm-1', 'assessment', '聴覚過敏', 0, 300),
+        n('n-env-1', 'environment', '工事騒音', 100, 300),
       ],
       links: [
-        { id: 'link-1', sourceNodeId: 'n-asm-1', targetNodeId: 'n-beh-1', confidence: 'high' },
-        { id: 'link-2', sourceNodeId: 'n-env-1', targetNodeId: 'n-beh-1', confidence: 'medium' },
+        l('link-1', 'n-asm-1', 'n-beh-1', 'high'),
+        l('link-2', 'n-env-1', 'n-beh-1', 'medium'),
       ],
     });
     const result = icebergToInterventionDrafts(session);
@@ -68,13 +74,13 @@ describe('icebergToInterventionDrafts', () => {
   it('複数の行動ノード → 行動ごとにグルーピングされたDraft', () => {
     const session = createSession({
       nodes: [
-        { id: 'n-beh-1', type: 'behavior', label: '他害', position: { x: 0, y: 0 } },
-        { id: 'n-beh-2', type: 'behavior', label: 'パニック', position: { x: 200, y: 0 } },
-        { id: 'n-asm-1', type: 'assessment', label: '触覚鈍麻', position: { x: 0, y: 300 } },
+        n('n-beh-1', 'behavior', '他害'),
+        n('n-beh-2', 'behavior', 'パニック', 200),
+        n('n-asm-1', 'assessment', '触覚鈍麻', 0, 300),
       ],
       links: [
-        { id: 'link-1', sourceNodeId: 'n-asm-1', targetNodeId: 'n-beh-1', confidence: 'high' },
-        { id: 'link-2', sourceNodeId: 'n-asm-1', targetNodeId: 'n-beh-2', confidence: 'low' },
+        l('link-1', 'n-asm-1', 'n-beh-1', 'high'),
+        l('link-2', 'n-asm-1', 'n-beh-2', 'low'),
       ],
     });
     const result = icebergToInterventionDrafts(session);
@@ -88,21 +94,15 @@ describe('icebergToInterventionDrafts', () => {
 
   it('要因のみノード（行動なし）→ 空配列', () => {
     const session = createSession({
-      nodes: [
-        { id: 'n-asm-1', type: 'assessment', label: '聴覚過敏', position: { x: 0, y: 300 } },
-      ],
+      nodes: [n('n-asm-1', 'assessment', '聴覚過敏', 0, 300)],
     });
     expect(icebergToInterventionDrafts(session)).toEqual([]);
   });
 
   it('リンク先ノードが存在しない → スキップされる', () => {
     const session = createSession({
-      nodes: [
-        { id: 'n-beh-1', type: 'behavior', label: '他害', position: { x: 0, y: 0 } },
-      ],
-      links: [
-        { id: 'link-1', sourceNodeId: 'n-missing', targetNodeId: 'n-beh-1', confidence: 'high' },
-      ],
+      nodes: [n('n-beh-1', 'behavior', '他害')],
+      links: [l('link-1', 'n-missing', 'n-beh-1', 'high')],
     });
     const result = icebergToInterventionDrafts(session);
 
@@ -113,12 +113,12 @@ describe('icebergToInterventionDrafts', () => {
   it('重複リンクは1つにまとめられる', () => {
     const session = createSession({
       nodes: [
-        { id: 'n-beh-1', type: 'behavior', label: '離席', position: { x: 0, y: 0 } },
-        { id: 'n-asm-1', type: 'assessment', label: '聴覚過敏', position: { x: 0, y: 300 } },
+        n('n-beh-1', 'behavior', '離席'),
+        n('n-asm-1', 'assessment', '聴覚過敏', 0, 300),
       ],
       links: [
-        { id: 'link-1', sourceNodeId: 'n-asm-1', targetNodeId: 'n-beh-1', confidence: 'high' },
-        { id: 'link-2', sourceNodeId: 'n-asm-1', targetNodeId: 'n-beh-1', confidence: 'medium' },
+        l('link-1', 'n-asm-1', 'n-beh-1', 'high'),
+        l('link-2', 'n-asm-1', 'n-beh-1', 'medium'),
       ],
     });
     const result = icebergToInterventionDrafts(session);
@@ -129,12 +129,10 @@ describe('icebergToInterventionDrafts', () => {
   it('逆方向リンク（行動→要因）も正しく処理される', () => {
     const session = createSession({
       nodes: [
-        { id: 'n-beh-1', type: 'behavior', label: '自傷', position: { x: 0, y: 0 } },
-        { id: 'n-env-1', type: 'environment', label: '予定変更', position: { x: 0, y: 300 } },
+        n('n-beh-1', 'behavior', '自傷'),
+        n('n-env-1', 'environment', '予定変更', 0, 300),
       ],
-      links: [
-        { id: 'link-1', sourceNodeId: 'n-beh-1', targetNodeId: 'n-env-1', confidence: 'high' },
-      ],
+      links: [l('link-1', 'n-beh-1', 'n-env-1', 'high')],
     });
     const result = icebergToInterventionDrafts(session);
 

@@ -8,12 +8,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { icebergSnapshotSchema, type IcebergNode, type HypothesisLink, type IcebergEvent } from '@/features/ibd/analysis/iceberg/icebergTypes';
 
 const mockNodes: IcebergNode[] = [
-  { id: 'node-1', type: 'behavior', label: '行動A', position: { x: 100, y: 100 } },
-  { id: 'node-2', type: 'assessment', label: '要因B', position: { x: 400, y: 100 } },
+  { id: 'node-1', type: 'behavior', label: '行動A', position: { x: 100, y: 100 }, status: 'hypothesis' },
+  { id: 'node-2', type: 'assessment', label: '要因B', position: { x: 400, y: 100 }, status: 'hypothesis' },
 ];
 
 const mockLinks: HypothesisLink[] = [
-  { id: 'link-1', sourceNodeId: 'node-2', targetNodeId: 'node-1', confidence: 'high' },
+  { id: 'link-1', sourceNodeId: 'node-2', targetNodeId: 'node-1', confidence: 'high', status: 'hypothesis' },
 ];
 
 const theme = createTheme();
@@ -67,7 +67,7 @@ describe('Iceberg Analysis UI Components', () => {
       );
 
       // high confidence link should show "実証済み" in Meeting Mode
-      expect(screen.getByText('実証済み')).toBeInTheDocument();
+      expect(screen.getByText(/実証済み/)).toBeInTheDocument();
     });
   });
 
@@ -84,7 +84,7 @@ describe('Iceberg Analysis UI Components', () => {
         </ThemeProvider>
       );
 
-      const card = screen.getByTestId(`iceberg-card-${mockNodes[0].id}`);
+      const card = screen.getByTestId(`iceberg-card-item${mockNodes[0].id}`);
       expect(card).toHaveClass('iceberg-card-selected');
     });
 
@@ -117,7 +117,7 @@ describe('Iceberg Analysis UI Components', () => {
         </ThemeProvider>
       );
 
-      const card = screen.getByTestId(`iceberg-card-${mockNodes[0].id}`);
+      const card = screen.getByTestId(`iceberg-card-item${mockNodes[0].id}`);
       const styles = window.getComputedStyle(card);
       // 'animation' property in JSDOM might be tricky, but we check if it includes the pulse name
       expect(styles.animation).toBeTruthy();
@@ -183,12 +183,12 @@ describe('Iceberg Analysis UI Components', () => {
         </ThemeProvider>
       );
 
-      expect(screen.getByText('因果関係の設定')).toBeInTheDocument();
+      expect(screen.getByText('因果関係の詳細')).toBeInTheDocument();
       expect(screen.getByText('FROM (要因):')).toBeInTheDocument();
       
       // Select (Confidence) should be disabled in ReadOnly mode
-      const select = screen.getByLabelText('仮説の確信度 / 合意段階');
-      expect(select).toBeDisabled();
+      const select = screen.getByTestId(TESTIDS['iceberg-confidence-select']);
+      expect(select).toHaveClass('Mui-disabled');
     });
 
     it('filters logs correctly for a target node', () => {
@@ -213,7 +213,6 @@ describe('Iceberg Analysis UI Components', () => {
 
       expect(screen.getByText('Session started')).toBeInTheDocument();
       expect(screen.getByText('Node A added')).toBeInTheDocument();
-      expect(screen.queryByText('Node B added')).not.toThrow(); // Re-checking query logic
       expect(screen.queryByText('Node B added')).toBeNull();
     });
   });

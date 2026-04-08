@@ -12,6 +12,7 @@ describe('IcebergDetailSidebar A11y', () => {
     label: 'テスト行動',
     details: '詳細な説明です',
     position: { x: 100, y: 100 },
+    status: 'hypothesis',
   };
 
   const mockLogs: IcebergEvent[] = [
@@ -74,8 +75,9 @@ describe('IcebergDetailSidebar A11y', () => {
 
     expect(getByRole('tablist')).toBeDefined();
     const tabs = getAllByRole('tab');
-    expect(tabs).toHaveLength(2);
+    expect(tabs).toHaveLength(3);
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
     expect(tabs[1]).toHaveAttribute('aria-selected', 'false');
+    expect(tabs[2]).toHaveAttribute('aria-selected', 'false');
   });
 });

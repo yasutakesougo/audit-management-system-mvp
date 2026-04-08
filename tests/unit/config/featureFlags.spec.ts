@@ -73,6 +73,7 @@ describe('featureFlags config', () => {
 
       todayOps: true,
       todayLiteUi: false,
+      todayLiteNavV2: false,
     });
 
     // env override を使った場合、helper 関数にも override が渡される
@@ -98,6 +99,7 @@ describe('featureFlags config', () => {
 
       todayOps: true,
       todayLiteUi: false,
+      todayLiteNavV2: false,
     });
   });
 
@@ -124,6 +126,7 @@ describe('featureFlags config', () => {
 
       todayOps: true,
       todayLiteUi: false,
+      todayLiteNavV2: false,
     });
   });
 
@@ -144,6 +147,7 @@ describe('featureFlags config', () => {
 
       todayOps: true,
       todayLiteUi: false,
+      todayLiteNavV2: false,
     });
   });
 
@@ -173,6 +177,7 @@ describe('featureFlags config', () => {
 
       todayOps: false,
       todayLiteUi: false,
+      todayLiteNavV2: false,
     } satisfies FeatureFlagSnapshot;
 
     render(

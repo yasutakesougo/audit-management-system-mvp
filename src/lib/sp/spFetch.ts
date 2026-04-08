@@ -327,6 +327,8 @@ export function createSpFetch(deps: SpFetchDeps) {
     // ── Real fetch ──
     const skipAuthCheck = shouldSkipLogin(config) || isE2eMsalMockEnabled(config);
     let initialToken: string | null = null;
+    let refreshed = false; // Track to prevent infinite refresh loops or multiple calls per request
+
     if (!skipAuthCheck) {
       initialToken = await acquireToken();
       if (!initialToken) throw new AuthRequiredError();
@@ -355,8 +357,9 @@ export function createSpFetch(deps: SpFetchDeps) {
     const baseDelay = retrySettings.baseDelay;
     const capDelay = retrySettings.capDelay;
     
-    // Default 30s timeout if none provided explicitly
-    const mergedSignal = withTimeout(init.signal ?? undefined, spOptions.timeoutMs ?? 30000);
+    // Default 30s timeout only if no signal is provided by the caller
+    const timeoutMs = spOptions.timeoutMs ?? (init.signal ? undefined : 30000);
+    const mergedSignal = withTimeout(init.signal ?? undefined, timeoutMs);
 
     const release =
       lane === 'provisioning'
@@ -469,9 +472,10 @@ export function createSpFetch(deps: SpFetchDeps) {
           }
 
           // 401/403 Token Refresh logic from original code
-          if (!response.ok && (response.status === 401 || response.status === 403)) {
+          if (!response.ok && (response.status === 401 || response.status === 403) && !refreshed) {
             if (!skipAuthCheck) {
               const token2 = await acquireToken();
+              refreshed = true;
               if (token2 && token2 !== initialToken) {
                 initialToken = token2; // Set for next loop, immediately retry
                 continue;

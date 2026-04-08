@@ -53,8 +53,12 @@ const DRAFT_IDS: string[] = ['2', '3'];
  * useRef で param を安定化させるラッパーフック。
  * renderHook のコールバック内で毎レンダー新しいオブジェクトを作るとeffectが無限発火するため。
  */
-function useStableSelection(initial: UseTableDailyRecordSelectionParams) {
-  const paramsRef = useRef(initial);
+function useStableSelection(initial: Omit<UseTableDailyRecordSelectionParams, 'recordedUserIds' | 'showMissingOnly'> & Partial<Pick<UseTableDailyRecordSelectionParams, 'recordedUserIds' | 'showMissingOnly'>>) {
+  const paramsRef = useRef<UseTableDailyRecordSelectionParams>({
+    recordedUserIds: [],
+    showMissingOnly: false,
+    ...initial,
+  });
   return useTableDailyRecordSelection(paramsRef.current);
 }
 

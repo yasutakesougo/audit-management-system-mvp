@@ -84,6 +84,7 @@ const defaultFlags: FeatureFlagSnapshot = {
   staffAttendance: false,
   todayOps: false,
   todayLiteUi: false,
+  todayLiteNavV2: false,
 };
 
 const LocationProbe: React.FC<{ testId: string }> = ({ testId }) => {

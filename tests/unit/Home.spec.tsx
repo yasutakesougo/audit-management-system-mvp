@@ -16,6 +16,7 @@ const featureFlagsState = vi.hoisted<FeatureFlagSnapshot>(() => ({
   staffAttendance: false,
   todayOps: false,
   todayLiteUi: false,
+  todayLiteNavV2: false,
 }));
 
 vi.mock('@/lib/env', async () => {

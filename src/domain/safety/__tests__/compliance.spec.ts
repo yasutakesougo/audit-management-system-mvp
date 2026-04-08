@@ -2,7 +2,7 @@
 // P0-3 適正化運用 — Domain 型のユニットテスト
 // ---------------------------------------------------------------------------
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   computeCommitteeSummary,
   fromDraftToCommitteeRecord,
@@ -125,6 +125,14 @@ describe('complianceCommittee', () => {
   });
 
   describe('computeCommitteeSummary', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-01'));
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     it('returns empty summary for no records', () => {
       const summary = computeCommitteeSummary([]);
       expect(summary.totalMeetings).toBe(0);
@@ -323,6 +331,14 @@ describe('trainingRecord', () => {
   });
 
   describe('computeTrainingSummary', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-01'));
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     it('returns empty summary for no records', () => {
       const summary = computeTrainingSummary([]);
       expect(summary.totalTrainings).toBe(0);
