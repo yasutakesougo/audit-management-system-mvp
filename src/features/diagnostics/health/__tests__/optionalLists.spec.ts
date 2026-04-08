@@ -13,7 +13,6 @@ describe('Health Checks — Optional List Contract', () => {
     createItem: vi.fn().mockResolvedValue({ id: 101 }),
     updateItem: vi.fn().mockResolvedValue(undefined),
     deleteItem: vi.fn().mockResolvedValue(undefined),
-    setFieldIndexed: vi.fn().mockResolvedValue(undefined),
   };
 
   const baseCtx: HealthContext = {
@@ -25,6 +24,7 @@ describe('Health Checks — Optional List Contract', () => {
     siteUrl: 'https://tenant.sharepoint.com/sites/test',
     listSpecs: [],
     isProductionLike: true,
+    autonomyLevel: 'F',
   };
 
   it('必須リストが不在の場合は FAIL を返す', async () => {
