@@ -7,7 +7,9 @@
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(''''State:'''', d[''''state'''']\\); print\\(''''Head:'''', d[''''headRefOid'''']\\); commits=d.get\\(''''commits'''',{}\\).get\\(''''nodes'''',[]\\); [print\\(c[''''commit''''][''''oid''''][:7], c[''''commit''''][''''message''''][:60]\\) for c in commits[-5:]]\")",
       "Bash(ls /Users/yasutakesougo/audit-management-system-mvp/.env*)",
       "Bash(git fetch:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(python3 -m json.tool)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(list\\(d.keys\\(\\)\\), indent=2\\)\\)\")"
     ]
   }
 }

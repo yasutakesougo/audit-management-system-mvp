@@ -91,6 +91,89 @@ export function buildStreakResults(store: StreakStore): FieldSkipStreakResult[] 
     } satisfies FieldSkipStreakResult));
 }
 
+// ── Analysis helpers ─────────────────────────────────────────────────────────
+
+/** Parsed representation of a reasonKey ("listKey:fieldName"). */
+export interface FieldSkipRankEntry {
+  listKey: string;
+  fieldName: string;
+  reasonKey: string;
+  streak: number;
+  lastSeen: string;
+  status: 'watching' | 'persistent_drift';
+}
+
+/**
+ * Parse a reasonKey of the form "listKey:fieldName" into its components.
+ * If no colon is present the entire string is treated as listKey.
+ */
+export function parseReasonKey(reasonKey: string): { listKey: string; fieldName: string } {
+  const idx = reasonKey.indexOf(':');
+  if (idx === -1) return { listKey: reasonKey, fieldName: '' };
+  return { listKey: reasonKey.slice(0, idx), fieldName: reasonKey.slice(idx + 1) };
+}
+
+/** Subtract `days` calendar days from a YYYY-MM-DD string, return YYYY-MM-DD. */
+function subtractDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr + 'T12:00:00Z'); // noon UTC avoids any DST issue
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Return entries that have an active streak (> 0) AND were last seen within
+ * the `windowDays`-day window ending on `today` (inclusive).
+ *
+ * e.g. today="2026-04-08", windowDays=7 → includes lastSeen >= "2026-04-02"
+ */
+export function filterActiveWindow(
+  store: StreakStore,
+  today: string,
+  windowDays: number,
+): StreakStore {
+  const cutoff = subtractDays(today, windowDays - 1);
+  const result: StreakStore = {};
+  for (const [key, entry] of Object.entries(store)) {
+    if (entry.streak > 0 && entry.lastSeen >= cutoff) {
+      result[key] = entry;
+    }
+  }
+  return result;
+}
+
+/**
+ * Return the top-N entries by streak count from the store, restricted to
+ * the active window.  Entries are sorted descending by streak.
+ *
+ * Default: windowDays=7, topN=5.
+ */
+export function getTopStreaks(
+  store: StreakStore,
+  today: string,
+  opts?: { windowDays?: number; topN?: number },
+): FieldSkipRankEntry[] {
+  const windowDays = opts?.windowDays ?? 7;
+  const topN = opts?.topN ?? 5;
+  const active = filterActiveWindow(store, today, windowDays);
+
+  return Object.entries(active)
+    .map(([reasonKey, entry]) => {
+      const { listKey, fieldName } = parseReasonKey(reasonKey);
+      return {
+        listKey,
+        fieldName,
+        reasonKey,
+        streak: entry.streak,
+        lastSeen: entry.lastSeen,
+        status: (entry.streak >= PERSISTENT_DRIFT_THRESHOLD
+          ? 'persistent_drift'
+          : 'watching') as FieldSkipRankEntry['status'],
+      };
+    })
+    .sort((a, b) => b.streak - a.streak)
+    .slice(0, topN);
+}
+
 // ── File I/O ─────────────────────────────────────────────────────────────────
 
 /** Load the streak store from disk. Returns {} when the file does not exist. */

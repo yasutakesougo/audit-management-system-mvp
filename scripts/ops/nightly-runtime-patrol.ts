@@ -5,13 +5,13 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { runNightlyIndexRemediation, type NightlyRemediationResult } from './nightly-index-remediation';
 import {
-  buildStreakResults,
+  getTopStreaks,
   loadStreakStore,
   saveStreakStore,
   toJstDateString,
   updateStreakStore,
   STREAK_STORE_PATH,
-  type FieldSkipStreakResult,
+  type FieldSkipRankEntry,
 } from './fieldSkipStreak';
 import { getDriftProbeTargets } from '../../src/sharepoint/driftProbeRegistry';
 
@@ -57,8 +57,8 @@ export interface NightlySummary {
   bundledCount: number;
   countsBySeverity: Record<SeverityLevel, number>;
   events: BundledEvent[];
-  /** Phase B: sp:field_skipped streak results. Only entries with streak > 0 are included. */
-  fieldSkipStreaks?: FieldSkipStreakResult[];
+  /** Phase B+: sp:field_skipped streak results. Top entries by streak, window-filtered. */
+  fieldSkipStreaks?: FieldSkipRankEntry[];
 }
 
 // --- Engine Logic ---
@@ -571,7 +571,7 @@ async function run() {
       const updatedStore = updateStreakStore(streakStore, seenTodayKeys, today);
       await saveStreakStore(STREAK_STORE_PATH, updatedStore);
 
-      summary.fieldSkipStreaks = buildStreakResults(updatedStore);
+      summary.fieldSkipStreaks = getTopStreaks(updatedStore, today, { windowDays: 7 });
 
       const persistent = summary.fieldSkipStreaks.filter((e) => e.status === 'persistent_drift');
       console.log(`  └ Streak updated: keys=${Object.keys(updatedStore).length}, persistent_drift=${persistent.length}`);
