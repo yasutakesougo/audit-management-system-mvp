@@ -20,6 +20,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
+import type { ZodTypeAny } from 'zod';
 import React, { useCallback, useMemo, useState } from 'react';
 
 import { SharePointDailyRecordItemSchema } from '@/features/daily/domain/schema';
@@ -33,33 +34,35 @@ import {
   fetchRawItemsWithFieldFallback 
 } from '@/lib/sp/helpers';
 import { useSP } from '@/lib/spClient';
-import { SCHEDULES_SELECT_FIELDS } from '@/sharepoint/fields/scheduleFields';
-import { USERS_SELECT_FIELDS_MINIMAL } from '@/sharepoint/fields/userFields';
+import { getDriftProbeTargets } from '@/sharepoint/driftProbeRegistry';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Pre-defined scan targets
 // ────────────────────────────────────────────────────────────────────────────
 
-const SCAN_TARGETS: ScanTarget[] = [
-  {
-    name: 'users',
-    listTitle: 'Users_Master',
-    schema: SpUserMasterItemSchema,
-    selectFields: USERS_SELECT_FIELDS_MINIMAL,
-  },
-  {
-    name: 'schedules',
-    listTitle: 'Schedules',
-    schema: SpScheduleRowSchema,
-    selectFields: SCHEDULES_SELECT_FIELDS,
-  },
-  {
-    name: 'daily',
-    listTitle: 'DailyActivityRecords',
-    schema: SharePointDailyRecordItemSchema,
-    selectFields: ['Id', 'Title', 'RecordDate', 'Created', 'Modified'],
-  },
-];
+/** 
+ * Map technical registry keys to their corresponding validation schemas.
+ * This bridge connects the operational registry (SSOT) with UI-level Zod validation.
+ */
+const SCHEMA_MAP: Record<string, ZodTypeAny> = {
+  'users_master': SpUserMasterItemSchema,
+  'schedules': SpScheduleRowSchema,
+  'daily_activity_records': SharePointDailyRecordItemSchema,
+};
+
+/**
+ * Derived scan targets for depth-validation.
+ * We only deep-scan a subset of all drift-probed lists which have defined schemas.
+ */
+const SCAN_TARGETS: ScanTarget[] = getDriftProbeTargets()
+  .filter(t => t.key in SCHEMA_MAP)
+  .map(t => ({
+    name: t.key,
+    displayName: t.displayName,
+    listTitle: t.listTitle,
+    schema: SCHEMA_MAP[t.key],
+    selectFields: t.selectFields,
+  }));
 
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -183,7 +186,7 @@ const DataIntegrityPage: React.FC = () => {
       {status === 'scanning' && progress && (
         <Paper sx={{ p: 2, mb: 3 }} data-testid="scan-progress">
           <Typography variant="body2" sx={{ mb: 1 }}>
-            {progress.target} をスキャン中... ({progress.scanned}/{progress.total})
+            {progress.displayName || progress.target} をスキャン中... ({progress.scanned}/{progress.total})
           </Typography>
           <LinearProgress
             variant={progress.total > 0 ? 'determinate' : 'indeterminate'}
@@ -264,7 +267,9 @@ const DataIntegrityPage: React.FC = () => {
                   <TableRow key={r.target} hover>
                     <TableCell>
                       <Stack spacing={0.5}>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{r.target}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {r.displayName || r.target}
+                        </Typography>
                         <Typography variant="caption" color="text.secondary">{r.listTitle}</Typography>
                       </Stack>
                     </TableCell>
@@ -341,7 +346,7 @@ const DataIntegrityPage: React.FC = () => {
             .map((r) => (
               <Box key={r.target} sx={{ mb: 3 }}>
                 <Typography variant="subtitle2" component="span" sx={{ mb: 1, color: 'warning.dark' }}>
-                  {r.target} — {r.issues.length}件
+                  {r.displayName || r.target} — {r.issues.length}件
                 </Typography>
                 <TableContainer component={Paper} variant="outlined">
                   <Table size="small" data-testid={`issues-${r.target}`}>

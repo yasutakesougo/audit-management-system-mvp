@@ -13,6 +13,7 @@ import {
   STREAK_STORE_PATH,
   type FieldSkipStreakResult,
 } from './fieldSkipStreak';
+import { getDriftProbeTargets } from '../../src/sharepoint/driftProbeRegistry';
 
 // --- Domain Types ---
 
@@ -382,11 +383,7 @@ function remediationToRawEvents(results: NightlyRemediationResult[]): RawEvent[]
  * and the store is updated before run() exits (transport stays null — no side effects).
  */
 async function runFieldSkipProbe(token: string, siteUrl: string): Promise<Set<string>> {
-  const PROBE_TARGETS = [
-    { name: 'users',     listTitle: 'Users_Master',          selectFields: ['Id', 'Title', 'UserID', 'FullName'] },
-    { name: 'schedules', listTitle: 'Schedules',             selectFields: ['Id', 'Title', 'EventDate', 'EndDate', 'Status', 'TargetUserId', 'AssignedStaffId'] },
-    { name: 'daily',     listTitle: 'DailyActivityRecords',  selectFields: ['Id', 'Title', 'RecordDate', 'Created', 'Modified'] },
-  ] as const;
+  const PROBE_TARGETS = getDriftProbeTargets();
 
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -419,7 +416,7 @@ async function runFieldSkipProbe(token: string, siteUrl: string): Promise<Set<st
           }
         }
 
-        console.warn(`  ⚠️ Field skip probe: ${target.listTitle} HTTP ${res.status} (non-recoverable)`);
+        console.warn(`  ⚠️ Field skip probe: ${target.displayName} (${target.listTitle}) HTTP ${res.status} (non-recoverable)`);
         break;
       }
 
@@ -428,11 +425,11 @@ async function runFieldSkipProbe(token: string, siteUrl: string): Promise<Set<st
       for (const fieldName of skippedFields) {
         if (seenFields.has(fieldName)) continue;
         seenFields.add(fieldName);
-        seenTodayKeys.add(`${target.name}:${fieldName}`);
+        seenTodayKeys.add(`${target.key}:${fieldName}`);
       }
 
       if (skippedFields.length > 0) {
-        console.log(`  └ Field skip probe [${target.name}]: skipped [${[...seenFields].join(', ')}]`);
+        console.log(`  └ Field skip probe [${target.key}]: skipped [${[...seenFields].join(', ')}]`);
       }
     } catch (err) {
       // Fail-soft: probe error must not stop patrol
@@ -757,7 +754,7 @@ export async function sendTeamsNotification(summary: NightlySummary, webhookUrl?
   });
 
   const mentionUpn = process.env.TEAMS_MENTION_UPN;
-  const shouldMention = (hasCritical || hasAction) && mentionUpn;
+  const shouldMention = (hasCritical || hasAction || hasPersistentDrift) && mentionUpn;
 
   if (shouldMention) {
     cardItems.push({

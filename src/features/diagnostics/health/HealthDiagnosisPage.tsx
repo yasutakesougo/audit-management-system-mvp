@@ -29,7 +29,7 @@ import { DriftObservabilityPanel } from "../drift/observability/DriftObservabili
 import { HealthFilterBar, type HealthFilterState } from "./components/HealthFilterBar";
 import { useSpHealthSignal } from "@/features/sp/health/hooks/useSpHealthSignal";
 import type { SpHealthReasonCode } from "@/features/sp/health/spHealthSignalStore";
-import { SpPersistentDriftPanel } from "../drift/remediation/SpPersistentDriftPanel";
+import { GovernanceAdvisePanel } from "../remediation/components/GovernanceAdvisePanel";
 import { SpIndexPressurePanel } from "@/features/sp/health/indexAdvisor/SpIndexPressurePanel";
 
 // ─── highlight: reasonCode → category ─────────────────────────────────────────
@@ -427,7 +427,7 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
         </Paper>
 
         <DriftObservabilityPanel />
-        <SpPersistentDriftPanel />
+        <GovernanceAdvisePanel />
 
         {/* ─────────────────────────────────────────────────────────────
             診断結果表示パネル

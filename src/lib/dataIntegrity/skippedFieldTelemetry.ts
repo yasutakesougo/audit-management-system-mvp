@@ -1,4 +1,4 @@
-import { emitTelemetry } from '@/features/nurse/telemetry/telemetry';
+import { emitTelemetry } from '@/lib/telemetry';
 
 export interface SkippedFieldTelemetryParams {
   listKey: string;
