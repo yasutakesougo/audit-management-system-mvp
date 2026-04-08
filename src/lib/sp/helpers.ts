@@ -320,18 +320,29 @@ export const readErrorPayload = async (res: Response): Promise<string> => {
  * Coerce a Response to a JSON object of type T, or undefined if non-JSON, empty, or 204.
  */
 export const coerceResult = async <T>(res: Response): Promise<T> => {
-  if (res.status === 204) return undefined as unknown as T;
-  const contentType = res.headers.get('Content-Type');
-  if (contentType?.includes('application/json')) {
-    const text = await res.text();
-    if (!text || text.trim() === '') return undefined as unknown as T;
+  if (res.status === 204) return null as unknown as T;
+  
+  const text = await res.text().catch(() => '');
+  const contentType = res.headers.get('Content-Type') || '';
+  
+  // Try to parse as JSON if explicitly told so, or if it looks like JSON
+  const isLikelyJson = contentType.includes('application/json') || 
+                       text.trim().startsWith('{') || 
+                       text.trim().startsWith('[');
+
+  if (isLikelyJson) {
+    if (!text || text.trim() === '') return null as unknown as T;
     try {
       return JSON.parse(text) as T;
     } catch {
-      return undefined as unknown as T;
+      // JSON parse failed: if we were TOLD it was JSON, return text as fallback, 
+      // otherwise fall through to text return.
+      if (contentType.includes('application/json')) return (text as unknown) as T;
     }
   }
-  return undefined as unknown as T;
+  
+  // Non-JSON response - return text if present, otherwise null
+  return (text || null) as unknown as T;
 };
 
 export const raiseHttpError = async (

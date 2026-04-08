@@ -182,7 +182,9 @@ function computeBackoffMs(
   retryAfterMs?: number,
 ): number {
   if (retryAfterMs && retryAfterMs > 0) {
-    return Math.min(retryAfterMs, maxRetryDelayMs);
+    // Respect server's Retry-After explicitly, don't cap it with maxRetryDelayMs
+    // unless it's extremely large (e.g. > 1 hour)
+    return Math.min(retryAfterMs, 3600 * 1000);
   }
 
   const exp = baseRetryDelayMs * 2 ** Math.max(0, attempt - 1);
@@ -222,32 +224,6 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
-function withTimeout(signal: AbortSignal | undefined, timeoutMs?: number): AbortSignal | undefined {
-  if (!timeoutMs || timeoutMs <= 0) return signal;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  const cleanup = () => clearTimeout(timer);
-
-  if (signal) {
-    if (signal.aborted) {
-      controller.abort();
-    } else {
-      signal.addEventListener(
-        'abort',
-        () => {
-          controller.abort();
-          cleanup();
-        },
-        { once: true },
-      );
-    }
-  }
-
-  controller.signal.addEventListener('abort', cleanup, { once: true });
-  return controller.signal;
-}
 
 // ─── Factory ────────────────────────────────────────────────────────────────
 
@@ -358,8 +334,9 @@ export function createSpFetch(deps: SpFetchDeps) {
     const capDelay = retrySettings.capDelay;
     
     // Default 30s timeout only if no signal is provided by the caller
-    const timeoutMs = spOptions.timeoutMs ?? (init.signal ? undefined : 30000);
-    const mergedSignal = withTimeout(init.signal ?? undefined, timeoutMs);
+    // Reverting to more stable version: only use signal if provided.
+    // If we want a default timeout, it should be handled by the caller or a higher layer.
+    const mergedSignal = init.signal ?? undefined;
 
     const release =
       lane === 'provisioning'
@@ -495,10 +472,8 @@ export function createSpFetch(deps: SpFetchDeps) {
           span.fail(response.status, 'SpHttpError', attempt - 1);
 
           if (throwOnError) {
-             console.error('[DEBUG] spFetch DETECTED ERROR STATUS, THROWING...', response.status);
              await raiseHttpError(response, { url, method, spOptions });
           }
-          console.error('[DEBUG] spFetch RETURNING WITHOUT THROWING', response.status);
           return response;
 
         } catch (error) {

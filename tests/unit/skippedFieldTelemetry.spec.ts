@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   setTelemetryTransport,
-} from '@/features/nurse/telemetry/telemetry';
+} from '@/lib/telemetry';
 import { emitSkippedFieldTelemetry } from '@/lib/dataIntegrity/skippedFieldTelemetry';
 
 describe('emitSkippedFieldTelemetry', () => {

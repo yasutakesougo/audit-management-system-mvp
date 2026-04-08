@@ -89,10 +89,10 @@ export function getActiveProviderType(): ProviderType {
   const skipSp = shouldSkipSharePoint();
   const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
 
-  // 1. テストでのスキップ指定、またはテストモード時（最優先）
-  if (skipSp || isTestMode()) return 'memory';
+  // 1. スキップ指定 (VITE_SKIP_SHAREPOINT)
+  if (skipSp) return 'memory';
 
-  // 2. 明示的なバックエンド指定 (URL/環境変数)
+  // 2. 明示的なバックエンド指定 (URL/環境変数 VITE_DATA_PROVIDER)
   const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const providerParam = urlParams?.get('provider');
   const envProvider = readOptionalEnv('VITE_DATA_PROVIDER');
@@ -102,10 +102,13 @@ export function getActiveProviderType(): ProviderType {
   if (selected === 'local') return 'local';
   if (selected === 'sharepoint') return 'sharepoint';
 
-  // 3. 強制SharePoint指定 (統合テスト等で使用)
+  // 3. 強制SharePoint指定 (統合テスト等で意図的に使用する場合。isTestMode より優先)
   if (forceSharePoint) return 'sharepoint';
 
-  // 4. フォールバック: デモ、開発環境ならメモリをデフォルトに
+  // 4. テストモード保護 (Vitest/Jest 実行時はモック不足によるクラッシュを防ぐため memory をデフォルトに)
+  if (isTestMode()) return 'memory';
+
+  // 5. フォールバック: デモ、開発環境ならメモリをデフォルトに
   if (isDemo || isDev) return 'memory';
 
   return 'sharepoint';

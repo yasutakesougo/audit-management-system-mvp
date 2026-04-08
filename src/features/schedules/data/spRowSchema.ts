@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import type { SchedItem, ScheduleStatus } from './port';
 import { normalizeServiceType } from '../serviceTypeMetadata';
+import { trackSpEvent } from '@/lib/telemetry/spTelemetry';
 
 // SharePoint raw category values (legacy / optional).
 export const SpScheduleCategoryRaw = z.string();
@@ -123,9 +124,18 @@ export const parseSpScheduleRows = (input: unknown): SpScheduleRow[] => {
       rows.push(result.data);
     } else {
       // Absorb partial row corruption - log but don't fail the whole array
+      const rowId = (item as Record<string, unknown>)?.Id;
       console.warn('[schedules] Invalid row skipped:', {
-        id: (item as Record<string, unknown>)?.Id,
+        id: rowId,
         issues: result.error.issues.slice(0, 3)
+      });
+      // Telemetry: report skipped row
+      trackSpEvent('sp:row_skipped', {
+        key: rowId ? 'invalid_schema' : 'unknown',
+        details: { 
+          rowId: String(rowId ?? 'unknown'),
+          context: 'parseSpScheduleRows'
+        }
       });
     }
   }
@@ -193,6 +203,11 @@ const coerceLookupIds = (value: unknown): string[] => {
     if (Array.isArray(results)) {
       return coerceLookupIds(results);
     }
+  }
+  // Single SharePoint Lookup Object (e.g. { Id: 101, Value: '...' })
+  if (value && typeof value === 'object' && 'Id' in (value as { Id?: unknown })) {
+    const id = coerceIdString((value as { Id?: unknown }).Id);
+    return id ? [id] : [];
   }
   const single = coerceIdString(value);
   return single ? [single] : [];
