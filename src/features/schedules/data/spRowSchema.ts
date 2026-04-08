@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import type { SchedItem, ScheduleStatus } from './port';
 import { normalizeServiceType } from '../serviceTypeMetadata';
+import { trackSpEvent } from '@/lib/telemetry/spTelemetry';
 
 // SharePoint raw category values (legacy / optional).
 export const SpScheduleCategoryRaw = z.string();
@@ -123,9 +124,17 @@ export const parseSpScheduleRows = (input: unknown): SpScheduleRow[] => {
       rows.push(result.data);
     } else {
       // Absorb partial row corruption - log but don't fail the whole array
+      const id = (item as Record<string, unknown>)?.Id;
       console.warn('[schedules] Invalid row skipped:', {
-        id: (item as Record<string, unknown>)?.Id,
+        id,
         issues: result.error.issues.slice(0, 3)
+      });
+      trackSpEvent('sp:row_skipped', {
+        key: 'unknown',
+        details: {
+          id: String(id ?? 'none'),
+          issues: result.error.issues.map(i => i.code).join(',')
+        }
       });
     }
   }
@@ -188,10 +197,17 @@ const coerceLookupIds = (value: unknown): string[] => {
       })
       .filter((entry): entry is string => Boolean(entry));
   }
-  if (value && typeof value === 'object' && 'results' in (value as { results?: unknown })) {
-    const results = (value as { results?: unknown }).results;
-    if (Array.isArray(results)) {
-      return coerceLookupIds(results);
+  if (value && typeof value === 'object') {
+    if ('results' in (value as { results?: unknown })) {
+      const results = (value as { results?: unknown }).results;
+      if (Array.isArray(results)) {
+        return coerceLookupIds(results);
+      }
+    }
+    // Handle expanded singleton lookup object { Id: number, Title: string }
+    if ('Id' in (value as { Id?: unknown })) {
+      const id = coerceIdString((value as { Id?: unknown }).Id);
+      return id ? [id] : [];
     }
   }
   const single = coerceIdString(value);
