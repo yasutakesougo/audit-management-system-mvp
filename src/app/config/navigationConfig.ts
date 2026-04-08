@@ -162,8 +162,6 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       audience: NAV_AUDIENCE.all,
       group: 'today' as NavGroupKey,
-      tier: 'more',
-      featureFlag: 'todayLiteNavV2',
     },
     {
       label: '申し送りタイムライン',

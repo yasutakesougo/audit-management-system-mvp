@@ -1,4 +1,3 @@
-import { NURSE_USERS } from '@/features/nurse/users';
 import { usePrefersReducedMotion } from '@/lib/a11y/usePrefersReducedMotion';
 import { notify } from '@/lib/notice';
 import { TESTIDS } from '@/testids';
@@ -6,6 +5,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
+import CircularProgress from '@mui/material/CircularProgress';
 import Collapse from '@mui/material/Collapse';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -17,6 +17,9 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useUsers } from '@/features/users/useUsers';
+import { compareUsersByJapaneseOrder } from '@/lib/i18n/japaneseCollator';
 import TagPills from '../components/TagPills';
 import { useToast } from '../components/ToastContext';
 import VitalCard from '../components/VitalCard';
@@ -86,14 +89,20 @@ const HealthObservationForm: React.FC<HealthObservationFormProps> = ({
   selectedDate,
 }) => {
   const toast = useToast();
+  const { data: users, status: userStatus } = useUsers({ selectMode: 'core' });
+  const isLoadingUsers = userStatus === 'loading' || userStatus === 'idle';
   const defaultUser = useMemo(() => {
     if (selectedUser) {
       return selectedUser;
     }
-    const firstActive = NURSE_USERS.find((u) => u.isActive);
-    return firstActive?.id ?? NURSE_USERS[0]?.id ?? '';
-  }, [selectedUser]);
+    const firstActive = users.find((u) => u.IsActive !== false);
+    return firstActive?.UserID ?? firstActive?.Id?.toString() ?? users[0]?.UserID ?? users[0]?.Id?.toString() ?? '';
+  }, [selectedUser, users]);
+
   const [user, setUser] = useState<string>(defaultUser);
+  const selectedUserName = useMemo(() => {
+    return users.find((u) => (u.UserID ?? u.Id?.toString()) === user)?.FullName ?? '';
+  }, [user, users]);
   const [memo, setMemo] = useState('');
   const [isMemoOpen, setMemoOpen] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
@@ -261,6 +270,10 @@ const HealthObservationForm: React.FC<HealthObservationFormProps> = ({
   };
 
   const handleSave = (force = false) => {
+    if (!user) {
+      toast.show('利用者が選択されていません。選択してから保存してください。', 'error');
+      return;
+    }
     const alerts = buildConfirmMessage();
     if (!force && alerts.length > 0) {
       setConfirmMsg(alerts.join('\n'));
@@ -271,15 +284,17 @@ const HealthObservationForm: React.FC<HealthObservationFormProps> = ({
   };
 
   const userOptions = useMemo(() => {
-    const options = NURSE_USERS.map((entry) => ({
-      value: entry.id,
-      label: `${entry.id} ${entry.name}`.trim(),
+    const sortedUsers = [...users].sort(compareUsersByJapaneseOrder);
+
+    const options = sortedUsers.map((entry) => ({
+      value: entry.UserID ?? entry.Id.toString(),
+      label: `${entry.UserID ?? entry.Id} ${entry.FullName}`.trim(),
     }));
     if (user && !options.some((option) => option.value === user)) {
       options.push({ value: user, label: user });
     }
     return options;
-  }, [user]);
+  }, [user, users]);
 
   const memoToggleId = TESTIDS.NURSE_MEMO_TOGGLE;
   const memoPanelId = TESTIDS.NURSE_MEMO_PANEL;
@@ -303,6 +318,7 @@ const HealthObservationForm: React.FC<HealthObservationFormProps> = ({
         <TextField
           select
           label="利用者"
+          disabled={isLoadingUsers}
           value={user}
           onChange={(event) => {
             const next = event.target.value;
@@ -314,6 +330,11 @@ const HealthObservationForm: React.FC<HealthObservationFormProps> = ({
             flex: { md: '1 1 220px' },
           }}
           data-testid={TESTIDS.NURSE_OBS_USER}
+          InputProps={{
+            startAdornment: isLoadingUsers ? (
+              <CircularProgress size={20} sx={{ mr: 1 }} />
+            ) : null,
+          }}
         >
           <MenuItem value="">利用者を選択</MenuItem>
           {userOptions.map((option) => (
@@ -481,20 +502,28 @@ const HealthObservationForm: React.FC<HealthObservationFormProps> = ({
         }}
       >
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ alignItems: { sm: 'center' } }}>
-          <Button variant="outlined">🎙️ 音声入力（デモ）</Button>
+          <Button variant="outlined" component={Link} to="/today">
+            ◀ Todayへ戻る
+          </Button>
+          <Button variant="outlined">🎙️ 音声入力</Button>
           <Box sx={{ flexGrow: 1, display: { xs: 'none', sm: 'block' } }} />
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-            <Button variant="contained" onClick={() => handleSave()} data-testid={TESTIDS.NURSE_OBS_SAVE}>
+            <Button
+              variant="contained"
+              onClick={() => handleSave()}
+              disabled={isLoadingUsers}
+              data-testid={TESTIDS.NURSE_OBS_SAVE}
+            >
               保存
             </Button>
-            <Button variant="outlined" onClick={() => handleSave(true)}>
+            <Button variant="outlined" onClick={() => handleSave(true)} disabled={isLoadingUsers}>
               保存して次へ ▶
             </Button>
           </Stack>
         </Stack>
       </Paper>
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
-        <DialogTitle>しきい値超過の確認</DialogTitle>
+        <DialogTitle>{selectedUserName ? `${selectedUserName} さんの確認` : 'しきい値超過の確認'}</DialogTitle>
         <DialogContent sx={{ whiteSpace: 'pre-wrap' }}>{confirmMsg}</DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirmOpen(false)}>戻る</Button>
