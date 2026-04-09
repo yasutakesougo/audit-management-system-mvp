@@ -43,27 +43,33 @@ export async function getListItemsByTitle<T>(
     const data = await res.json();
     return data.value || [];
   } catch (error) {
-    // 400 (Bad Request) の場合は列名のドリフトを疑い、select なしで再試行
+    // 400 (Bad Request) または 500 (Internal Server Error) の場合は列名のドリフトや行サイズ制限を疑い、再試行
     const spError = error as { status?: number; message?: string };
-    if (spError && spError.status === 400 && select && select.length > 0) {
-      auditLog.warn('sp:read', 'getListItemsByTitle fallback: retrying without $select due to 400', {
+    const status = spError?.status;
+    
+    if (status === 400 || status === 500) {
+      auditLog.warn('sp:read', `getListItemsByTitle fallback: retrying due to ${status}`, {
         listTitle,
         error: spError.message,
       });
+
       try {
+        // まずは $select なしで試行 (SharePoint 側の自動解決に期待)
         const retryRes = await spFetch(buildPath(undefined), signal ? { signal } : undefined);
         const retryData = await retryRes.json();
         return retryData.value || [];
       } catch (retryError) {
         const spRetryError = retryError as { status?: number; message?: string };
-        // 再試行も 400 なら、最小限のシステム列のみで試行
-        if (spRetryError && spRetryError.status === 400) {
-          auditLog.error('sp:read', 'getListItemsByTitle fallback: retrying with minimal fields', {
+        const retryStatus = spRetryError?.status;
+
+        // 再試行も失敗なら、絶対に必要な最小限のシステム列のみで試行
+        if (retryStatus === 400 || retryStatus === 500) {
+          auditLog.error('sp:read', `getListItemsByTitle fallback: second retry with minimal fields due to ${retryStatus}`, {
             listTitle,
             error: spRetryError.message,
           });
           const minimalRes = await spFetch(
-            buildPath(['Id', 'Title', 'Modified', 'Created']),
+            buildPath(['Id', 'Title']),
             signal ? { signal } : undefined,
           );
           const minimalData = await minimalRes.json();
@@ -142,7 +148,33 @@ export async function listItems<TRow = JsonRecord>(
         auditLog.debug('sp:read', 'list_items_page', { path: nextPath });
       }
       attemptCount += 1;
-      const res = await spFetch(nextPath, signal ? { signal } : {});
+      let res: Response;
+      try {
+        res = await spFetch(nextPath, signal ? { signal } : {});
+      } catch (error) {
+        // 400 (Bad Request) または 500 (Internal Server Error) の場合は列名のドリフトや行サイズ制限を疑う
+        const spError = error as { status?: number; message?: string };
+        const status = spError?.status;
+
+        // すでに最小限のフィールドを取得している場合は再試行しない
+        if ((status === 400 || status === 500) && (sanitized.select && sanitized.select.length > 2)) {
+          auditLog.warn('sp:read', `listItems fallback: retrying with minimal fields due to ${status}`, {
+            listIdentifier,
+            error: spError.message,
+          });
+
+          // 最小限のフィールドで再構築
+          const fallbackParams = new URLSearchParams();
+          fallbackParams.append('$select', 'Id,Title');
+          if (sanitized.filter) fallbackParams.append('$filter', sanitized.filter);
+          fallbackParams.append('$top', String(sanitized.top));
+          
+          const fallbackPath = `${basePath}/items?${fallbackParams.toString()}`;
+          res = await spFetch(fallbackPath, signal ? { signal } : {});
+        } else {
+          throw error;
+        }
+      }
       finalResponse = res;
       
       const payload = (await res.json().catch(() => ({}) as Record<string, unknown>)) as {

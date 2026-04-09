@@ -25,8 +25,8 @@ export function useNightlySignalIngestion() {
     ranRef.current = true;
 
     const ingest = async () => {
+      // 1. Diagnostics_Reports の取得
       try {
-        // 1. Diagnostics_Reports の取得（直近1回分）
         const diagReports = await sp.getListItemsByTitle(
           DIAGNOSTICS_REPORTS_LIST_TITLE,
           [...DIAGNOSTICS_REPORTS_SELECT_FIELDS],
@@ -37,9 +37,14 @@ export function useNightlySignalIngestion() {
 
         if (diagReports.length > 0) {
           reportDiagnosticsReport(diagReports[0] as unknown as DiagnosticsReportItem);
+          auditLog.debug('health:ingestion', 'Diagnostics report ingested.');
         }
+      } catch (error) {
+        auditLog.warn('health:ingestion', 'Failed to fetch diagnostics reports (skipping).', error);
+      }
 
-        // 2. DriftEventsLog の取得（直近10件、24時間以内）
+      // 2. DriftEventsLog の取得
+      try {
         const driftLogs = await sp.getListItemsByTitle(
           DRIFT_LOG_LIST_TITLE,
           ['Id', 'ListName', 'FieldName', 'DetectedAt', 'Severity', 'ResolutionType', 'ErrorMessage'],
@@ -77,12 +82,12 @@ export function useNightlySignalIngestion() {
             reportSpHealthEvent(signal);
           }
         }
-
-        auditLog.info('health:ingestion', 'Nightly signals ingested successfully.');
+        auditLog.debug('health:ingestion', 'Drift logs ingested.');
       } catch (error) {
-        // Fail-open
-        auditLog.warn('health:ingestion', 'Failed to ingest nightly signals (fail-open).', error);
+        auditLog.warn('health:ingestion', 'Failed to fetch drift logs (skipping).', error);
       }
+
+      auditLog.info('health:ingestion', 'Nightly signals ingestion process completed.');
     };
 
     ingest();
