@@ -18,7 +18,7 @@ import { execSync } from 'child_process';
  * node scripts/ops/zombie-column-purger.mjs --force  -- 実際に削除を実行
  */
 
-const M365_PATH = "/opt/homebrew/bin/m365";
+const M365_PATH = "npx -y --package @pnp/cli-microsoft365 m365";
 const WEB_URL = "https://isogokatudouhome.sharepoint.com/sites/welfare";
 const DRY_RUN = !process.argv.includes('--force');
 
@@ -34,7 +34,8 @@ const TARGETS = [
   {
     list: "Approval_Logs",
     patterns: [
-      "ApprovedBy", "Approved_x0020_By", "ApprovedAt", "Comment",
+      "ApprovedBy", "ApprovedAt", "ApprovalNote", "ApprovalAction", "ParentScheduleId",
+      "Approved_x0020_By", "Comment",
       "_x627f__x8a8d__x8005__x30b3__x30", // 承認者コード
       "_x627f__x8a8d__x8005__x540d_", // 承認者名
       "_x627f__x8a8d__x65e5__x6642_" // 承認日時
@@ -43,7 +44,7 @@ const TARGETS = [
   {
     list: "User_Feature_Flags",
     patterns: [
-      "FlagKey", "FlagValue", "ExpiresAt",
+      "UserCode", "FlagKey", "FlagValue", "ExpiresAt",
       "_x30d5__x30e9__x30b0__x30ad__x30", // フラグキー
       "_x30d5__x30e9__x30b0__x5024_",    // フラグ値
       "_x6709__x52b9__x671f__x9650_"     // 有効期限
@@ -51,7 +52,10 @@ const TARGETS = [
   },
   {
     list: "SupportProcedure_Results",
-    patterns: ["Status", "Comment", "CompletedAt", "ProcedureId"]
+    patterns: [
+      "ParentScheduleId", "ResultDate", "ResultStatus", "ResultNote", "StaffCode",
+      "Status", "Comment", "CompletedAt", "ProcedureId" // 互換性・旧名の後始末用
+    ]
   }
 ];
 
@@ -92,7 +96,9 @@ async function run() {
       });
       fields = JSON.parse(output);
     } catch (err) {
+      const message = err.stderr || err.message;
       console.error(`❌ リスト情報の取得に失敗: ${target.list}`);
+      console.error(`   詳細: ${message}`);
       continue;
     }
 
@@ -109,7 +115,7 @@ async function run() {
             execSync(`${M365_PATH} spo field remove --webUrl "${WEB_URL}" --listTitle "${target.list}" --id "${field.Id}" --force`, { stdio: 'ignore' });
             console.log('✅ 完了');
             successCount++;
-          } catch (err) {
+          } catch {
             console.log('❌ 失敗');
             failCount++;
           }

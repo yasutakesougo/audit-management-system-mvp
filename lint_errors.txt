@@ -1,4 +1,6 @@
 
-> audit-management-system-mvp@0.1.0 lint
-> eslint --ext .ts,.tsx src --max-warnings=0
+C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\scripts\ops\zombie-column-purger.mjs
+  118:20  error  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+笨・1 problem (1 error, 0 warnings)
 

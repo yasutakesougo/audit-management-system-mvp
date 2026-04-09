@@ -19,65 +19,49 @@ import { DataLayerGuard } from './components/DataLayerGuard';
 import { DriftMonitor } from '@/features/diagnostics/drift/ui/DriftMonitor';
 
 const hydrationHudEnabled = readBool('VITE_FEATURE_HYDRATION_HUD', false);
-
 const queryClient = new QueryClient();
 
 export const ToastNotifierBridge: React.FC = () => {
   const { show } = useToast();
-
   useEffect(() => {
     registerNotifier((message) => {
       if (typeof message === 'string' && message.trim().length > 0) {
         show('info', message);
       }
     });
-    return () => {
-      registerNotifier(null);
-    };
+    return () => registerNotifier(null);
   }, [show]);
-
   return null;
 };
 
 function App() {
-  // ✅ 起動時に hydrate（1回だけ）
   useEffect(() => {
     hydrateStaffAttendanceFromStorage();
   }, []);
 
-  // ✅ 変更時に自動保存（2秒ごと）
   useEffect(() => {
     const saveInterval = setInterval(() => {
       saveStaffAttendanceToStorage();
     }, 2000);
-
     return () => clearInterval(saveInterval);
   }, []);
 
   return (
     <MsalProvider>
-      {/* 🔐 認証コンテキスト */}
       <QueryClientProvider client={queryClient}>
         <SettingsProvider>
-          {/* ⚙️ ユーザー表示設定 — ThemeRootより外側に配置し、density/fontSize をテーマに反映 */}
           <ThemeRoot>
             <CssBaseline />
             <DataLayerStatusBanner />
             <WriteDisabledBanner />
-            {/* 🎨 MUIテーマ + グローバルスタイル */}
             <ToastProvider>
               <DriftMonitor />
               <SpInitBridge />
-              {/* 📢 グローバルトースト通知 */}
-              {/* 📅 SchedulesProviderBridge removed: Port/Adapter layer was dead code.
-                   All schedule hooks use useScheduleRepository() directly via repositoryFactory. */}
               <ToastNotifierBridge />
-
               <DataLayerGuard>
                 <RouterProvider router={router} future={routerFutureFlags} />
               </DataLayerGuard>
             </ToastProvider>
-            {/* 🔍 開発/検証用 HUD（本番では非表示可能） */}
             {hydrationHudEnabled && <HydrationHud />}
           </ThemeRoot>
         </SettingsProvider>

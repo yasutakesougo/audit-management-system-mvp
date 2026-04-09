@@ -29,15 +29,51 @@ export async function getListItemsByTitle<T>(
   top: number = 500,
   signal?: AbortSignal,
 ): Promise<T[]> {
-  const params = new URLSearchParams();
-  if (select?.length) params.append('$select', select.join(','));
-  if (filter) params.append('$filter', filter);
-  if (orderby) params.append('$orderby', orderby);
-  params.append('$top', String(top));
-  const path = `/lists/getbytitle('${encodeURIComponent(listTitle)}')/items?${params.toString()}`;
-  const res = await spFetch(path, signal ? { signal } : undefined);
-  const data = await res.json();
-  return data.value || [];
+  const buildPath = (sel?: string[]) => {
+    const params = new URLSearchParams();
+    if (sel?.length) params.append('$select', sel.join(','));
+    if (filter) params.append('$filter', filter);
+    if (orderby) params.append('$orderby', orderby);
+    params.append('$top', String(top));
+    return `/lists/getbytitle('${encodeURIComponent(listTitle)}')/items?${params.toString()}`;
+  };
+
+  try {
+    const res = await spFetch(buildPath(select), signal ? { signal } : undefined);
+    const data = await res.json();
+    return data.value || [];
+  } catch (error) {
+    // 400 (Bad Request) の場合は列名のドリフトを疑い、select なしで再試行
+    const spError = error as { status?: number; message?: string };
+    if (spError && spError.status === 400 && select && select.length > 0) {
+      auditLog.warn('sp:read', 'getListItemsByTitle fallback: retrying without $select due to 400', {
+        listTitle,
+        error: spError.message,
+      });
+      try {
+        const retryRes = await spFetch(buildPath(undefined), signal ? { signal } : undefined);
+        const retryData = await retryRes.json();
+        return retryData.value || [];
+      } catch (retryError) {
+        const spRetryError = retryError as { status?: number; message?: string };
+        // 再試行も 400 なら、最小限のシステム列のみで試行
+        if (spRetryError && spRetryError.status === 400) {
+          auditLog.error('sp:read', 'getListItemsByTitle fallback: retrying with minimal fields', {
+            listTitle,
+            error: spRetryError.message,
+          });
+          const minimalRes = await spFetch(
+            buildPath(['Id', 'Title', 'Modified', 'Created']),
+            signal ? { signal } : undefined,
+          );
+          const minimalData = await minimalRes.json();
+          return minimalData.value || [];
+        }
+        throw retryError;
+      }
+    }
+    throw error;
+  }
 }
 
 /**

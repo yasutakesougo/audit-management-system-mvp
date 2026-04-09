@@ -6,7 +6,7 @@ const project = new Project({ tsConfigFilePath: 'tsconfig.json' });
 const dailyRoot = path.join(process.cwd(), 'src/features/daily').replace(/\\/g, '/');
 
 // Mapping of OLD absolute paths (without src) to NEW absolute paths
-const oldToNewPaths: Record<string, string> = {
+const _oldToNewPaths: Record<string, string> = {
   // e.g. 'src/features/daily/hooks/useTableDailyRecordForm': 'src/features/daily/hooks/view-models/useTableDailyRecordForm'
 };
 
