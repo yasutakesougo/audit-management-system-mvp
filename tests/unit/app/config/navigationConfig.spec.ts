@@ -487,6 +487,7 @@ describe('navigationConfig', () => {
     const items: NavItem[] = [
       { label: 'Core Item', to: '/core', isActive: () => false, group: 'today', tier: 'core', audience: 'all' },
       { label: 'More Item', to: '/more', isActive: () => false, group: 'today', tier: 'more', audience: 'all' },
+      { label: 'Planning Item', to: '/planning-sheet-list', isActive: () => false, group: 'planning', tier: 'core', audience: 'staff' },
       { label: 'Admin Tier Item', to: '/admin-tier', isActive: () => false, group: 'platform', tier: 'admin', audience: 'admin' },
       { label: 'Kiosk Hidden', to: '/dailysupport', isActive: () => false, group: 'today', tier: 'core', audience: 'all' },
       { label: 'Non-Today Group', to: '/master', isActive: () => false, group: 'master', tier: 'core', audience: 'all' },
@@ -527,6 +528,7 @@ describe('navigationConfig', () => {
       
       // Only 'today' group allowed
       expect(visible.some(i => i.group === 'today')).toBe(true);
+      expect(visible.some(i => i.group === 'planning')).toBe(false);
       expect(visible.some(i => i.group === 'master')).toBe(false);
       
       // Specific paths hidden even in 'today' group
