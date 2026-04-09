@@ -115,7 +115,10 @@ export async function fetchExistingFields(
   listTitle: string,
 ): Promise<Map<string, ExistingFieldShape>> {
   const base = resolveListPath(listTitle);
-  const path = `${base}/fields?$select=InternalName,TypeAsString,Required`;
+  // SharePoint fields endpoint is paged; without $top large lists can hide existing fields,
+  // causing false negatives in ensureListExists() and duplicate-suffixed columns
+  // (e.g. ApprovedBy0, ApprovedBy1 regrowth on Approval_Logs).
+  const path = `${base}/fields?$select=InternalName,TypeAsString,Required&$top=5000`;
   const res = await spFetch(path);
   const json = (await res.json().catch(() => ({ value: [] }))) as {
     value?: ExistingFieldShape[];
