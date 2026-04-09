@@ -37,7 +37,8 @@ import Typography from '@mui/material/Typography';
 import { EmptyStateAction } from '@/components/ui/EmptyStateAction';
 import { useUsers } from '@/features/users/useUsers';
 import {
-  buildQuickActions,
+  buildCommonQuickActions,
+  buildIbdQuickActions,
   buildSummaryStats,
   buildRecentRecordPreview,
   buildRecentHandoffPreview,
@@ -84,10 +85,15 @@ const UserDetailPage: React.FC = () => {
     );
   }, [users, userId]);
 
-  // ── クイックアクション ──
-  const quickActions = useMemo(
-    () => (userId ? buildQuickActions(userId) : []),
+  // ── クイックアクション（共通 / IBD専用に分離）──
+  const isIbdTarget = user?.IsHighIntensitySupportTarget ?? false;
+  const commonActions = useMemo(
+    () => (userId ? buildCommonQuickActions(userId) : []),
     [userId],
+  );
+  const ibdActions = useMemo(
+    () => (userId && isIbdTarget ? buildIbdQuickActions(userId) : []),
+    [userId, isIbdTarget],
   );
 
   // Sprint-1 Phase B: 実データ接続
@@ -262,7 +268,7 @@ const UserDetailPage: React.FC = () => {
         )}
 
         {/* ════════════════════════════════════════════════════════════
-            Section 2: Quick Actions
+            Section 2: Quick Actions（共通 + IBD専用の2セクション）
            ════════════════════════════════════════════════════════════ */}
         <Box data-testid="user-detail-quick-actions">
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>
@@ -275,7 +281,7 @@ const UserDetailPage: React.FC = () => {
               gap: 1.5,
             }}
           >
-            {quickActions.map((action) => (
+            {commonActions.map((action) => (
               <QuickActionCard
                 key={action.key}
                 action={action}
@@ -283,6 +289,30 @@ const UserDetailPage: React.FC = () => {
               />
             ))}
           </Box>
+
+          {/* IBD対象者のみ: 強度行動障害支援導線 */}
+          {isIbdTarget && ibdActions.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontWeight: 600 }}>
+                強度行動障害支援
+              </Typography>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                  gap: 1.5,
+                }}
+              >
+                {ibdActions.map((action) => (
+                  <QuickActionCard
+                    key={action.key}
+                    action={action}
+                    onClick={() => navigate(action.path)}
+                  />
+                ))}
+              </Box>
+            </Box>
+          )}
         </Box>
 
         {/* ════════════════════════════════════════════════════════════
