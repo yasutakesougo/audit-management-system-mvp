@@ -8,6 +8,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     DEFAULT_SETTINGS,
+    NAV_POLICY_VERSION,
     loadSettingsFromStorage,
     mergeSettings,
     saveSettingsToStorage,
@@ -50,7 +51,9 @@ describe('settingsModel', () => {
         colorPreset: 'highContrast',
         layoutMode: 'normal',
         hiddenNavGroups: [],
+        navGroupVisibilityPrefs: {},
         hiddenNavItems: [],
+        navPolicyVersion: NAV_POLICY_VERSION,
         lastModified: 1234567890,
       };
       localVault.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
@@ -96,7 +99,9 @@ describe('settingsModel', () => {
         colorPreset: 'default',
         layoutMode: 'kiosk',
         hiddenNavGroups: [],
+        navGroupVisibilityPrefs: {},
         hiddenNavItems: [],
+        navPolicyVersion: NAV_POLICY_VERSION,
         lastModified: Date.now(),
       };
       localVault.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
@@ -118,6 +123,101 @@ describe('settingsModel', () => {
       const loaded = loadSettingsFromStorage();
       expect(loaded.layoutMode).toBe('normal');
     });
+
+    it('migrates unset planning visibility to initial ON once', () => {
+      const legacy = {
+        colorMode: 'light',
+        density: 'comfortable',
+        fontSize: 'medium',
+        colorPreset: 'default',
+        layoutMode: 'normal',
+        hiddenNavGroups: [],
+        hiddenNavItems: [],
+        lastModified: 1,
+      };
+      localVault.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(legacy));
+
+      const loaded = loadSettingsFromStorage();
+      expect(loaded.hiddenNavGroups).not.toContain('planning');
+      expect(loaded.navGroupVisibilityPrefs.planning).toBe('show');
+      expect(loaded.navPolicyVersion).toBe(NAV_POLICY_VERSION);
+
+      const saved = JSON.parse(localVault.getItem(SETTINGS_STORAGE_KEY)!);
+      expect(saved.navGroupVisibilityPrefs?.planning).toBe('show');
+      expect(saved.navPolicyVersion).toBe(NAV_POLICY_VERSION);
+    });
+
+    it('preserves explicit OFF state for planning on migration', () => {
+      const legacy = {
+        colorMode: 'light',
+        density: 'comfortable',
+        fontSize: 'medium',
+        colorPreset: 'default',
+        layoutMode: 'normal',
+        hiddenNavGroups: ['planning'],
+        hiddenNavItems: [],
+        lastModified: 1,
+      };
+      localVault.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(legacy));
+
+      const loaded = loadSettingsFromStorage();
+      expect(loaded.hiddenNavGroups).toContain('planning');
+      expect(loaded.navGroupVisibilityPrefs.planning).toBe('hide');
+      expect(loaded.navPolicyVersion).toBe(NAV_POLICY_VERSION);
+    });
+
+    it('respects explicit planning show/hide preferences over hiddenNavGroups inconsistencies', () => {
+      const inconsistentShow = {
+        colorMode: 'light',
+        density: 'comfortable',
+        fontSize: 'medium',
+        colorPreset: 'default',
+        layoutMode: 'normal',
+        hiddenNavGroups: ['planning'],
+        navGroupVisibilityPrefs: { planning: 'show' },
+        hiddenNavItems: [],
+        navPolicyVersion: NAV_POLICY_VERSION,
+        lastModified: 1,
+      };
+      localVault.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(inconsistentShow));
+      const loadedShow = loadSettingsFromStorage();
+      expect(loadedShow.hiddenNavGroups).not.toContain('planning');
+      expect(loadedShow.navGroupVisibilityPrefs.planning).toBe('show');
+
+      const inconsistentHide = {
+        ...inconsistentShow,
+        hiddenNavGroups: [],
+        navGroupVisibilityPrefs: { planning: 'hide' },
+      };
+      localVault.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(inconsistentHide));
+      const loadedHide = loadSettingsFromStorage();
+      expect(loadedHide.hiddenNavGroups).toContain('planning');
+      expect(loadedHide.navGroupVisibilityPrefs.planning).toBe('hide');
+    });
+
+    it('does not reapply planning migration when navPolicyVersion is current', () => {
+      const current = {
+        colorMode: 'light',
+        density: 'comfortable',
+        fontSize: 'medium',
+        colorPreset: 'default',
+        layoutMode: 'normal',
+        hiddenNavGroups: [],
+        navGroupVisibilityPrefs: {},
+        hiddenNavItems: [],
+        navPolicyVersion: NAV_POLICY_VERSION,
+        lastModified: 1234567890,
+      };
+      localVault.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(current));
+      const before = localVault.getItem(SETTINGS_STORAGE_KEY);
+
+      const loaded = loadSettingsFromStorage();
+
+      expect(loaded.navPolicyVersion).toBe(NAV_POLICY_VERSION);
+      expect(loaded.navGroupVisibilityPrefs.planning).toBeUndefined();
+      expect(loaded.lastModified).toBe(1234567890);
+      expect(localVault.getItem(SETTINGS_STORAGE_KEY)).toBe(before);
+    });
   });
 
   describe('saveSettingsToStorage', () => {
@@ -129,7 +229,9 @@ describe('settingsModel', () => {
         colorPreset: 'default',
         layoutMode: 'normal',
         hiddenNavGroups: [],
+        navGroupVisibilityPrefs: {},
         hiddenNavItems: [],
+        navPolicyVersion: NAV_POLICY_VERSION,
         lastModified: 1234567890,
       };
 

@@ -218,6 +218,18 @@ describe('navigationConfig', () => {
       expect(items.some((item) => item.testId === TESTIDS.nav.schedules)).toBe(false);
     });
 
+    it('should mark Planning hub as active only on /planning routes', () => {
+      const items = createNavItems(baseConfig);
+      const planningHub = items.find((item) => item.to === '/planning');
+
+      expect(planningHub).toBeDefined();
+      expect(planningHub?.isActive('/planning')).toBe(true);
+      expect(planningHub?.isActive('/planning/overview')).toBe(true);
+      expect(planningHub?.isActive('/support-plan-guide')).toBe(false);
+      expect(planningHub?.isActive('/assessment')).toBe(false);
+      expect(planningHub?.isActive('/analysis/dashboard')).toBe(false);
+    });
+
     it('should include compliance form when flag is enabled', () => {
       const items = createNavItems({
         ...baseConfig,

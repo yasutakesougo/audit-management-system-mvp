@@ -1,4 +1,9 @@
 import type { NavGroupKey, NavItem } from '@/app/config/navigationConfig.types';
+import {
+  PLANNING_NAV_TELEMETRY_EVENTS,
+  recordPlanningNavTelemetry,
+} from '@/app/navigation/planningNavTelemetry';
+import type { NavGroupVisibilityPreferences } from '@/features/settings/settingsModel';
 import { ColorModeContext } from '@/app/theme';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
@@ -13,6 +18,7 @@ import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useContext } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useSettingsContext } from './SettingsContext';
 import { ColorPresetControl, DensityControl, FontSizeControl, NavGroupVisibilityControl } from './components';
 
@@ -27,6 +33,7 @@ interface SettingsDialogProps {
 export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose, navItems = [], disablePortal }) => {
   const { mode, toggle } = useContext(ColorModeContext);
   const { settings, updateSettings } = useSettingsContext();
+  const location = useLocation();
 
   const handleDensityChange = useCallback((newDensity: 'compact' | 'comfortable' | 'spacious') => {
     updateSettings({ density: newDensity });
@@ -41,8 +48,41 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onClose, n
   }, [updateSettings]);
 
   const handleNavGroupVisibilityChange = useCallback((hiddenGroups: NavGroupKey[]) => {
-    updateSettings({ hiddenNavGroups: hiddenGroups });
-  }, [updateSettings]);
+    const wasPlanningHidden = settings.hiddenNavGroups.includes('planning');
+    const isPlanningHidden = hiddenGroups.includes('planning');
+    let nextNavGroupVisibilityPrefs: NavGroupVisibilityPreferences | undefined;
+    if (wasPlanningHidden !== isPlanningHidden) {
+      recordPlanningNavTelemetry({
+        eventName: PLANNING_NAV_TELEMETRY_EVENTS.SETTINGS_TOGGLED,
+        role: 'unknown',
+        mode: settings.layoutMode,
+        pathname: location.pathname,
+        search: location.search,
+        source: 'settings',
+        trigger: 'user_toggle',
+        visible: !isPlanningHidden,
+        action: isPlanningHidden ? 'hide' : 'show',
+        hiddenBySetting: isPlanningHidden,
+      });
+      nextNavGroupVisibilityPrefs = {
+        ...settings.navGroupVisibilityPrefs,
+        planning: isPlanningHidden ? 'hide' : 'show',
+      };
+    }
+    updateSettings({
+      hiddenNavGroups: hiddenGroups,
+      ...(nextNavGroupVisibilityPrefs
+        ? { navGroupVisibilityPrefs: nextNavGroupVisibilityPrefs }
+        : {}),
+    });
+  }, [
+    updateSettings,
+    settings.hiddenNavGroups,
+    settings.layoutMode,
+    settings.navGroupVisibilityPrefs,
+    location.pathname,
+    location.search,
+  ]);
 
   const handleNavItemVisibilityChange = useCallback((hiddenItems: string[]) => {
     updateSettings({ hiddenNavItems: hiddenItems });
