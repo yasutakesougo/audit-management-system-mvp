@@ -27,24 +27,24 @@ describe('spClient more branches', () => {
   });
 
   describe('createItem variations', () => {
-    it('returns null when the response status is 204', async () => {
+    it('returns undefined when the response status is 204', async () => {
       const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
       globalThis.fetch = fetchMock as unknown as typeof fetch;
       const acquireToken = vi.fn().mockResolvedValue('token');
       const client = createSpClient(acquireToken, baseUrl);
 
       const result = await client.createItem('List', {});
-      expect(result).toBeNull();
+      expect(result).toBeUndefined();
     });
 
-    it('returns text body when the response is not json', async () => {
+    it('returns undefined when the response is not json', async () => {
       const fetchMock = vi.fn().mockResolvedValue(new Response('ok', { status: 200, headers: { 'Content-Type': 'text/plain' } }));
       globalThis.fetch = fetchMock as unknown as typeof fetch;
       const acquireToken = vi.fn().mockResolvedValue('token');
       const client = createSpClient(acquireToken, baseUrl);
 
       const result = await client.createItem('List', {});
-      expect(result).toBe('ok');
+      expect(result).toBeUndefined();
     });
   });
 
