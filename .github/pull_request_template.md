@@ -61,6 +61,8 @@
 
 ### UI Changes
 - [ ] **a11y/usability checklist**: [docs/checklists/a11y-usability-rollout-checklist.md](docs/checklists/a11y-usability-rollout-checklist.md) を適用済み
+- [ ] **UI語彙チェック**: UI表示語が統一語彙（`個別支援計画` / `支援計画シート` / `支援手順の実施` / `日々の記録` / `見直し・PDCA`）に準拠している
+- [ ] **旧語混入チェック**: 新規・変更UIに旧語（`ISP` / `SPS` / `ケース記録` / `日次記録`）が含まれていない（識別子・技術コメントを除く）
 - [ ] **状態管理**: UIコンポーネントは状態を持ちすぎていない（hooksに逃がした）
 - [ ] **副作用の分離**: API/Storage/Telemetryがコンポーネントに漏れていない（adapter/clientへ）
 - [ ] **状態駆動**: 分岐は操作ではなく状態で表現されている

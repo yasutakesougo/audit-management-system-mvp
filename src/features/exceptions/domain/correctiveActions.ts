@@ -59,7 +59,7 @@ const CORRECTIVE_ACTION_MAP: Record<
         variant: 'primary',
         severity: 'high',
         icon: '📝',
-        reason: '日次記録が未入力です。すぐに入力してください。',
+        reason: '日々の記録が未作成です。すぐに作成してください。',
       },
       {
         key: `${item.id}-hub`,
@@ -120,7 +120,7 @@ const CORRECTIVE_ACTION_MAP: Record<
         variant: 'secondary',
         severity: 'high',
         icon: '📝',
-        reason: '対応内容を日次記録へ残しておくことを推奨します。',
+        reason: '対応内容を日々の記録へ残しておくことを推奨します。',
       },
     ];
   },
@@ -156,7 +156,7 @@ const CORRECTIVE_ACTION_MAP: Record<
     return [
       {
         key: `${item.id}-action`,
-        label: item.actionLabel ?? '改善アクションを実行',
+        label: item.actionLabel ?? '改善アクションを開始',
         route: item.actionPath ?? '/assessment',
         variant: 'primary',
         severity: item.severity,
@@ -265,6 +265,17 @@ const CORRECTIVE_ACTION_MAP: Record<
       },
     ];
   },
+  'setup-incomplete': (item) => [
+    {
+      key: `${item.id}-setup`,
+      label: item.actionLabel ?? '設定ガイドを確認',
+      route: item.actionPath ?? '/admin/status',
+      variant: 'primary',
+      severity: item.severity,
+      icon: '⚙️',
+      reason: item.description || '初期設定の不足が検出されました。ガイドに沿って設定を完了してください。',
+    },
+  ],
 };
 
 // ─── ユーティリティ ───────────────────────────────────────────

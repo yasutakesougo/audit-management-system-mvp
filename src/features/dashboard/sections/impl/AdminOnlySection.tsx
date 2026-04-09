@@ -65,7 +65,7 @@ const ADMIN_TABS = [
   { label: '利用状況', icon: '👥' },
   { label: '問題行動', icon: '⚠️' },
   { label: '医療・健康', icon: '🏥' },
-  { label: '支援手順記録', icon: '📋' },
+  { label: '支援手順の実施', icon: '📋' },
 ];
 
 export function AdminOnlySection({
@@ -170,7 +170,7 @@ export function AdminOnlySection({
             <CardContent sx={{ py: 1.25, px: 1.5 }}>
               <Typography variant="h6" gutterBottom>問題行動対応履歴</Typography>
               <Typography variant="body2" color="text.secondary">
-                詳細な対応記録と改善傾向の分析は個別の支援記録（ケース記録）をご確認ください。
+                詳細な対応記録と改善傾向の分析は個別の日々の記録をご確認ください。
               </Typography>
             </CardContent>
           </Card>
@@ -225,7 +225,7 @@ export function AdminOnlySection({
         <Stack spacing={2}>
           <Typography variant="h6" gutterBottom>
             <PersonIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
-            強度行動障害対象者 支援手順記録
+            強度行動障害対象者 支援手順の実施
           </Typography>
 
           {intensiveSupportUsers.map(user => (
@@ -237,14 +237,14 @@ export function AdminOnlySection({
                   </Typography>
                   <Stack direction="row" spacing={1}>
                     <Chip label="強度行動障害" color="warning" size="small" />
-                    <Chip label="支援手順記録対象" color="info" size="small" />
+                    <Chip label="支援手順の実施対象" color="info" size="small" />
                   </Stack>
                 </Box>
 
                 <Divider sx={{ my: 2 }} />
 
                 <Alert severity="info" icon={<InfoIcon />} sx={{ mb: 2 }}>
-                  支援手順記録の自動集計は準備中です。個別の支援記録は下のボタンからご確認ください。
+                  支援手順の実施の自動集計は準備中です。個別の日々の記録は下のボタンからご確認ください。
                 </Alert>
 
                 <Button
@@ -252,7 +252,7 @@ export function AdminOnlySection({
                   size="small"
                   onClick={() => window.open(`/daily/support?user=${user.UserID}`, '_blank')}
                 >
-                  支援記録を開く
+                  日々の記録を開く
                 </Button>
               </CardContent>
             </Card>
@@ -260,7 +260,7 @@ export function AdminOnlySection({
 
           {intensiveSupportUsers.length === 0 && (
             <Alert severity="info">
-              現在、支援手順記録の対象者はいません。
+              現在、支援手順の実施対象者はいません。
             </Alert>
           )}
         </Stack>

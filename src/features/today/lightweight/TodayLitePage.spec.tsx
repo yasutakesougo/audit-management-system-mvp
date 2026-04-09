@@ -27,7 +27,7 @@ describe('TodayLitePage core workflow', () => {
     ];
     expect(buttons.map((button) => button.textContent)).toEqual([
       '出欠を確認する',
-      'ケース記録を入力する',
+      '日々の記録を入力する',
       '申し送りを確認する',
     ]);
   });

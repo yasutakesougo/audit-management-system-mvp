@@ -1,5 +1,5 @@
 /**
- * DailyPhaseHintBanner — 日次記録画面の時間帯ヒントUI
+ * DailyPhaseHintBanner — 日々の記録画面の時間帯ヒントUI
  *
  * OperationalPhase 基盤を使い、現在時刻から
  * 「今やるべき記録作業」のヒントを表示する。
@@ -49,7 +49,7 @@ export interface DailyPhaseHint {
 }
 
 /**
- * 現在時刻から日次記録画面向けのヒントを返す
+ * 現在時刻から日々の記録画面向けのヒントを返す
  *
  * @param now    - 判定対象の日時（デフォルト: 現在時刻）
  * @param config - フェーズ設定配列（省略時は DEFAULT_PHASE_CONFIG）
@@ -95,7 +95,7 @@ export function getDailyPhaseHint(
         phase,
         phaseLabel,
         message: '午前活動の時間です。活動の様子を記録に残しましょう',
-        suggestedAction: '一覧形式ケース記録',
+        suggestedAction: '一覧形式の日々の記録',
         color: 'info',
       };
 
@@ -104,7 +104,7 @@ export function getDailyPhaseHint(
         phase,
         phaseLabel,
         message: '午後活動の時間です。午前分の記録がまだなら先に入力しましょう',
-        suggestedAction: '一覧形式ケース記録',
+        suggestedAction: '一覧形式の日々の記録',
         color: 'info',
       };
 
@@ -138,7 +138,7 @@ export interface DailyPhaseHintBannerProps {
 }
 
 /**
- * 日次記録ページ用の時間帯ヒントバナー
+ * 日々の記録ページ用の時間帯ヒントバナー
  *
  * 使い方:
  *   <DailyPhaseHintBanner />

@@ -25,7 +25,7 @@ const QuickActionToolbar: React.FC<QuickActionToolbarProps> = ({
   isComplete,
 }) => {
   const helperText = isComplete
-    ? '日次記録は完了済みです。必要に応じて記録を更新できます。'
+    ? '日々の記録は完了済みです。必要に応じて記録を更新できます。'
     : pendingCount === 0
       ? '全ての時間帯が記録済みです。内容を確認して完了を確定しましょう。'
       : `未記録の時間帯が ${pendingCount} 件あります。現場状況に合わせて追加入力してください。`;
@@ -65,7 +65,7 @@ const QuickActionToolbar: React.FC<QuickActionToolbarProps> = ({
               disabled={isComplete || pendingCount > 0}
               fullWidth
             >
-              日次記録を完了
+              日々の記録を完了
             </Button>
           </Stack>
         </Stack>

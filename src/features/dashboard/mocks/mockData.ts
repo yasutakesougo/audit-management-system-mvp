@@ -9,7 +9,7 @@ import type { PersonDaily, SeizureRecord } from '@/domain/daily/types';
 import type { IUserMaster } from '@/sharepoint/fields';
 
 /**
- * モック支援記録（ケース記録）データ生成
+ * モック日々の記録データ生成
  *
  * 利用者一覧から、ランダムな活動・問題行動・発作データを含む
  * PersonDaily 配列を生成する。

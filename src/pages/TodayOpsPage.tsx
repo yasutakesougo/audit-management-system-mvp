@@ -149,7 +149,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
   // ── Data Fetching (Facade) ──
   const summary = useTodaySummary();
 
-  // 支援手順記録の未入力ユーザーを算出（todayRecordCompletion.pendingUserIds 起点）
+  // 支援手順の実施の未入力ユーザーを算出（todayRecordCompletion.pendingUserIds 起点）
   const pendingSupportUsers = useMemo(() => {
     const completion = summary.todayRecordCompletion;
     const pendingIds = completion?.pendingUserIds ?? [];
@@ -161,7 +161,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
       .filter((u) => u.userName !== '');
   }, [summary.todayRecordCompletion?.pendingUserIds, summary.users]);
 
-  const exceptionsQueue = useTodayExceptions({ pendingSupportUsers });
+  const exceptionsQueue = useTodayExceptions({ pendingSupportUsers, role: authzRole });
 
   // ── Schedule Lanes (Real-data with fallback) ──
   const realSchedule = useTodayScheduleLanes();
@@ -496,7 +496,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
         return Math.round((completed / total) * 100);
       };
 
-      // ── 支援手順記録 (todayRecordCompletion 起点) ──
+      // ── 支援手順の実施 (todayRecordCompletion 起点) ──
       const recordTotal = Math.max(0, progressSummary.totalRecordCount ?? 0);
       const recordCompleted = Math.min(
         recordTotal,
@@ -504,7 +504,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
       );
       const recordPct = calcProgressPct(recordCompleted, recordTotal);
 
-      // ── ケース記録 (dailyRecordStatus — Dashboard 起点) ──
+      // ── 日々の記録 (dailyRecordStatus — Dashboard 起点) ──
       const caseRecordStatus = summary.dailyRecordStatus;
       const caseTotal = Math.max(0, caseRecordStatus?.total ?? (summary.users?.length ?? 0));
       const caseCompleted = Math.min(
@@ -542,7 +542,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
         },
         {
           key: 'caseRecords',
-          label: 'ケース記録',
+          label: '日々の記録',
           valueText: `${caseCompleted}/${caseTotal}`,
           progress: casePct,
           status: caseTotal === 0 || casePct >= 100 ? 'complete' : casePct >= 50 ? 'in_progress' : 'attention',
@@ -678,7 +678,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
 
   const handleSaveSuccess = React.useCallback(() => {
     // ── 司令塔アラートの再同期 ──
-    // 保存成功したら SP から最新の日次記録を再取得し、
+    // 保存成功したら SP から最新の日々の記録を再取得し、
     // 「未入力」アラートを即時に更新する
     exceptionsQueue.refetchDailyRecords();
 

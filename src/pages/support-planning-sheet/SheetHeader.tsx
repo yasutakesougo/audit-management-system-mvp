@@ -16,6 +16,8 @@ import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
 import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
+import LoopRoundedIcon from '@mui/icons-material/LoopRounded';
+import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
 import UndoRoundedIcon from '@mui/icons-material/UndoRounded';
 
@@ -45,6 +47,10 @@ interface SheetHeaderProps {
   onSave: () => void;
   onImportAssessment: () => void;
   onImportMonitoring: () => void;
+  /** 支援手順の実施ボタンのクリック（IBD対象者のみ表示） */
+  onNavigateToExecution?: () => void;
+  /** 見直し・PDCAボタンのクリック（IBD対象者のみ表示） */
+  onNavigateToPdca?: () => void;
 }
 
 // ─────────────────────────────────────────────
@@ -66,6 +72,8 @@ const SheetHeader: React.FC<SheetHeaderProps> = ({
   onSave,
   onImportAssessment,
   onImportMonitoring,
+  onNavigateToExecution,
+  onNavigateToPdca,
 }) => (
   <Paper
     variant="outlined"
@@ -79,8 +87,38 @@ const SheetHeader: React.FC<SheetHeaderProps> = ({
           startIcon={<ArrowBackRoundedIcon />}
           onClick={onBack}
         >
-          ISP 画面
+          個別支援計画画面
         </Button>
+
+        {/* ── IBD専用アクション: 支援手順の実施 / 見直し・PDCA ── */}
+        {(onNavigateToExecution || onNavigateToPdca) && (
+          <Stack direction="row" spacing={1}>
+            {onNavigateToExecution && (
+              <Button
+                size="small"
+                variant="contained"
+                color="primary"
+                startIcon={<PlayArrowRoundedIcon />}
+                onClick={onNavigateToExecution}
+                data-testid={TESTIDS['planning-sheet-go-to-execution']}
+              >
+                支援手順の実施
+              </Button>
+            )}
+            {onNavigateToPdca && (
+              <Button
+                size="small"
+                variant="outlined"
+                color="secondary"
+                startIcon={<LoopRoundedIcon />}
+                onClick={onNavigateToPdca}
+                data-testid={TESTIDS['planning-sheet-go-to-pdca']}
+              >
+                見直し・PDCA
+              </Button>
+            )}
+          </Stack>
+        )}
 
         {/* ── 編集ツールバー ── */}
         <Stack direction="row" spacing={1} alignItems="center">

@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// proactiveSPSAlerts — 行動データドリブンの SPS 改訂推奨ロジック
+// proactiveSPSAlerts — 行動データドリブンの 支援計画シート 改訂推奨ロジック
 //
 // React 非依存の純関数。テスト容易性のため、すべての入力をパラメータとして受け取る。
 // ---------------------------------------------------------------------------
@@ -18,7 +18,7 @@ export interface ProactiveAlert {
   incidentCount: number;
   /** intensity ≥ intensityThreshold の事象数 */
   highIntensityCount: number;
-  /** 次回SPS見直しまでの残日数（SPS未登録の場合 null） */
+  /** 次回支援計画シート見直しまでの残日数（未登録の場合 null） */
   daysUntilSPSReview: number | null;
   /** 表示用メッセージ */
   message: string;
@@ -87,11 +87,11 @@ export function buildAlertMessage(
 
   const reviewPart =
     daysUntilSPSReview !== null
-      ? `（SPS更新まで${daysUntilSPSReview}日）`
-      : '（SPS未登録）';
+      ? `（支援計画シート更新まで${daysUntilSPSReview}日）`
+      : '（支援計画シート未登録）';
 
   if (level === 'urgent') {
-    return `🔴 ${userName}さん: 直近7日で${incidentCount}件の事象（高強度${highIntensityCount}件）— SPS前倒し改訂を推奨${reviewPart}`;
+    return `🔴 ${userName}さん: 直近7日で${incidentCount}件の事象（高強度${highIntensityCount}件）— 支援計画シート前倒し改訂を推奨${reviewPart}`;
   }
   // watch
   return `🟠 ${userName}さん: 直近7日で${incidentCount}件の事象を検出 — 注意深い観察を推奨${reviewPart}`;

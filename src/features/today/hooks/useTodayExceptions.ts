@@ -1,10 +1,13 @@
 import { useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useExceptionDataSources } from '@/features/exceptions/hooks/useExceptionDataSources';
 import {
   detectMissingRecords,
   detectMissingSupportLogs,
   detectCriticalHandoffs,
   detectAttentionUsers,
+  detectAnalysisSetupExceptions,
+  detectTransportSetupExceptions,
   aggregateExceptions,
 } from '@/features/exceptions/domain/exceptionLogic';
 import {
@@ -17,6 +20,7 @@ import { rankTodayExceptionActionsByPriority } from '@/features/today/domain/sel
 export type UseTodayExceptionsOptions = {
   /** 支援手順記録が未入力のユーザー一覧（todayRecordCompletion から取得） */
   pendingSupportUsers?: Array<{ userId: string; userName: string }>;
+  role?: string;
 };
 
 export type UseTodayExceptionsResult = {
@@ -37,11 +41,16 @@ export type UseTodayExceptionsResult = {
 export function useTodayExceptions(
   options: UseTodayExceptionsOptions = {},
 ): UseTodayExceptionsResult {
-  const { pendingSupportUsers = [] } = options;
+  const { pendingSupportUsers = [], role } = options;
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
   const dataSources = useExceptionDataSources();
-  const { dismissedStableIds, snoozedStableIds } = useActiveExceptionPreferences();
+  const { dismissedStableIds, snoozedStableIds, acknowledgedMap, resolvedMap } = useActiveExceptionPreferences();
 
   const exceptions = useMemo(() => {
+    const isDemoMode = searchParams.get('demo') === '1';
+    const isAdminSession = role === 'admin';
+
     // まだ準備ができていない場合は計算しない
     if (dataSources.status !== 'ready' && dataSources.status !== 'empty') {
       return [];
@@ -61,13 +70,22 @@ export function useTodayExceptions(
     const criticalHandoffs = detectCriticalHandoffs(dataSources.criticalHandoffs);
     const attentionUsers = detectAttentionUsers(dataSources.userSummaries);
 
-    return aggregateExceptions(missingRecords, missingSupportLogs, criticalHandoffs, attentionUsers);
-  }, [dataSources, pendingSupportUsers]);
+    const setupIncomplete = (isDemoMode || !isAdminSession)
+      ? []
+      : detectAnalysisSetupExceptions(dataSources.userSummaries);
+    const transportSetup = (isDemoMode || !isAdminSession)
+      ? []
+      : detectTransportSetupExceptions(dataSources.userSummaries);
+
+    return aggregateExceptions(missingRecords, missingSupportLogs, criticalHandoffs, attentionUsers, setupIncomplete, transportSetup);
+  }, [dataSources, pendingSupportUsers, searchParams, role]);
 
   const items = useMemo(() => {
     const raw = buildTodayExceptions(exceptions, {
       dismissedStableIds,
       snoozedStableIds,
+      acknowledgedMap,
+      resolvedMap,
     });
 
     // ユーザー単位でマージ: 同一ユーザーの missing-record(ケース記録) と
@@ -121,7 +139,7 @@ export function useTodayExceptions(
     }
 
     return merged;
-  }, [exceptions, dismissedStableIds, snoozedStableIds]);
+  }, [exceptions, dismissedStableIds, snoozedStableIds, acknowledgedMap, resolvedMap]);
 
   const { orderedItems, topPriorityItem } = useMemo(() => {
     const ranked = rankTodayExceptionActionsByPriority({

@@ -226,7 +226,7 @@ const GoalProgressCard: React.FC<GoalProgressCardProps> = ({
           目標進捗
         </Typography>
         <Tooltip
-          title="ISP目標の5領域（健康・運動・認知・言語・社会性）と、日次記録に付与された行動タグを自動照合して進捗を判定しています。判定は記録データに基づく参考情報です。"
+          title="個別支援計画目標の5領域（健康・運動・認知・言語・社会性）と、日々の記録に付与された行動タグを自動照合して進捗を判定しています。判定は記録データに基づく参考情報です。"
           arrow
           placement="right"
         >
@@ -238,7 +238,7 @@ const GoalProgressCard: React.FC<GoalProgressCardProps> = ({
         color="text.secondary"
         sx={{ display: 'block', mb: 1, fontSize: '0.65rem' }}
       >
-        ※ ISP目標と日次記録の行動タグを自動照合した進捗判定です
+        ※ 個別支援計画目標と日々の記録の行動タグを自動照合した進捗判定です
       </Typography>
       <Stack spacing={1} sx={{ maxHeight: 400, overflowY: 'auto' }}>
         {goalProgress.map((gp) => (

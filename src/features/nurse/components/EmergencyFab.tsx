@@ -57,7 +57,7 @@ const EmergencyFab: React.FC = () => {
 
       <Dialog open={Boolean(confirm)} onClose={() => setConfirm(null)}>
         <DialogTitle>確認</DialogTitle>
-        <DialogContent>この操作を実行します。よろしいですか？</DialogContent>
+        <DialogContent>この操作を開始します。よろしいですか？</DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirm(null)}>キャンセル</Button>
           <Button

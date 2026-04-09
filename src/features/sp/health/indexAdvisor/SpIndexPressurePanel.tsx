@@ -53,8 +53,8 @@ export const SpIndexPressurePanel: React.FC<Props> = ({ listName, onRefresh }) =
 ・データ取得の高速化
 ・インデックス枠の節約
       `.trim(),
-      warningText: '修復実行中にページを閉じると、一部のインデックス設定が中途半端な状態で残る可能性があります。',
-      confirmLabel: '修復を実行する',
+      warningText: '修復中にページを閉じると、一部のインデックス設定が中途半端な状態で残る可能性があります。',
+      confirmLabel: '修復を開始する',
       onConfirm: async () => {
         setRecheckStatus('idle');
         await repair.executeRepair();
@@ -100,7 +100,7 @@ export const SpIndexPressurePanel: React.FC<Props> = ({ listName, onRefresh }) =
                 : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95'
             }`}
           >
-            {repair.isExecuting ? '⌛ 実行中...' : '⚡ 今すぐ修復'}
+            {repair.isExecuting ? '⌛ 修復中...' : '⚡ 今すぐ修復'}
           </button>
         </div>
       </div>

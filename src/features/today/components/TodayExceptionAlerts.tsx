@@ -53,6 +53,24 @@ export const TodayExceptionAlerts: React.FC<TodayExceptionAlertsProps> = ({
     pref.dismiss(stableId);
   };
 
+  const handleAcknowledge = (stableId?: string) => {
+    if (!stableId) return;
+    pref.acknowledge(stableId, { acknowledgedAt: new Date().toISOString() });
+  };
+
+  const handleUnacknowledge = (stableId?: string) => {
+    if (!stableId) return;
+    pref.unacknowledge(stableId);
+  };
+
+  const handleResolve = (stableId?: string) => {
+    if (!stableId) return;
+    pref.resolve(stableId, {
+      resolvedAt: new Date().toISOString(),
+      resolutionMode: 'manual',
+    });
+  };
+
   if (!exceptionsQueue || exceptionsQueue.isLoading) return null;
   if (!exceptionsQueue.heroItem && exceptionsQueue.queueItems.length === 0) return null;
 
@@ -120,9 +138,23 @@ export const TodayExceptionAlerts: React.FC<TodayExceptionAlertsProps> = ({
             severity="error"
             variant="filled"
             action={
-              <Box sx={{ display: 'flex', gap: 1 }}>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 {criticalHeroItem.stableId && (
                   <>
+                    {criticalHeroItem.acknowledgement ? (
+                      <>
+                        <Button color="inherit" size="small" onClick={() => handleResolve(criticalHeroItem.stableId)}>
+                          対応済みにする
+                        </Button>
+                        <Button color="inherit" size="small" onClick={() => handleUnacknowledge(criticalHeroItem.stableId)}>
+                          対応中を解除
+                        </Button>
+                      </>
+                    ) : (
+                      <Button color="inherit" size="small" onClick={() => handleAcknowledge(criticalHeroItem.stableId)}>
+                        対応中にする
+                      </Button>
+                    )}
                     <Button color="inherit" size="small" onClick={() => handleSnooze(criticalHeroItem.stableId)}>
                       あとで
                     </Button>
@@ -130,6 +162,11 @@ export const TodayExceptionAlerts: React.FC<TodayExceptionAlertsProps> = ({
                       今日は無視
                     </Button>
                   </>
+                )}
+                {criticalHeroItem.secondaryActionPath && (
+                  <Button color="inherit" size="small" onClick={() => navigate(criticalHeroItem.secondaryActionPath!)}>
+                    {criticalHeroItem.secondaryActionLabel ?? '詳細'}
+                  </Button>
                 )}
                 <Button
                   color="inherit"
@@ -158,9 +195,23 @@ export const TodayExceptionAlerts: React.FC<TodayExceptionAlertsProps> = ({
                 severity={item.priority === 'high' ? 'warning' : 'info'}
                 data-testid={`today-exception-alert-${item.id}`}
                 action={
-                  <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                     {item.stableId && (
                       <>
+                        {item.acknowledgement ? (
+                          <>
+                            <Button color="inherit" size="small" onClick={() => handleResolve(item.stableId)}>
+                              対応済みにする
+                            </Button>
+                            <Button color="inherit" size="small" onClick={() => handleUnacknowledge(item.stableId)}>
+                              対応中を解除
+                            </Button>
+                          </>
+                        ) : (
+                          <Button color="inherit" size="small" onClick={() => handleAcknowledge(item.stableId)}>
+                            対応中にする
+                          </Button>
+                        )}
                         <Button color="inherit" size="small" onClick={() => handleSnooze(item.stableId)}>
                           あとで
                         </Button>
@@ -169,6 +220,11 @@ export const TodayExceptionAlerts: React.FC<TodayExceptionAlertsProps> = ({
                         </Button>
                       </>
                     )}
+                    {item.secondaryActionPath && (
+                      <Button variant="text" size="small" onClick={() => navigate(item.secondaryActionPath!)}>
+                        {item.secondaryActionLabel ?? '詳細'}
+                      </Button>
+                    )}
                     <Button variant="outlined" size="small" onClick={() => navigate(item.actionPath)}>
                       {item.actionLabel ?? '対応'}
                     </Button>
@@ -176,6 +232,15 @@ export const TodayExceptionAlerts: React.FC<TodayExceptionAlertsProps> = ({
                 }
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  {item.acknowledgement && (
+                    <Chip
+                      label="対応中"
+                      size="small"
+                      color="info"
+                      variant="outlined"
+                      data-testid={`today-exception-acknowledged-chip-${item.id}`}
+                    />
+                  )}
                   {topPriorityItemId === item.id && (
                     <Chip
                       label="司令塔優先"

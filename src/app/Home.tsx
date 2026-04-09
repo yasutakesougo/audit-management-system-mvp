@@ -86,8 +86,8 @@ const baseTiles = (
   },
   {
     to: '/records',
-    label: '日次記録',
-    caption: '今日の記録入力を開始',
+    label: '日々の記録',
+    caption: '今日の記録を開始',
     Icon: AssignmentTurnedInRoundedIcon,
     tone: 'info',
   },
@@ -103,7 +103,7 @@ const baseTiles = (
 const tabletDemoTile: Tile = {
   to: '/tablet-demo',
   label: 'タブレット デモ',
-  caption: 'ログイン→ホーム→記録入力の流れを体験',
+  caption: 'ログイン→ホーム→記録の流れを体験',
   Icon: PhonelinkRoundedIcon,
   tone: 'success',
   ariaLabel: 'タブレットデモへ移動',
@@ -184,7 +184,7 @@ export default function Home() {
               {demoModeEnabled ? 'Audit Management MVP – Demo' : 'Audit Management MVP'}
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              SharePoint 接続や MSAL 認証を待たずに、利用者マスタと日次記録フローをすぐに体験できます。
+              SharePoint 接続や MSAL 認証を待たずに、利用者マスタと日々の記録フローをすぐに体験できます。
             </Typography>
           </div>
           <Stack direction="row" flexWrap="wrap" spacing={1.5} alignItems="center">

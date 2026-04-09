@@ -326,7 +326,7 @@ export const UserDetailDialog: React.FC<UserDetailDialogProps> = ({
           color="primary"
           sx={{ mr: 'auto', minHeight: 44 }}
         >
-          ISPを確認
+          個別支援計画を確認
         </Button>
         <Button onClick={onClose} variant="contained">
           閉じる

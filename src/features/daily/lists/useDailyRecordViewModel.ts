@@ -171,7 +171,7 @@ export function useDailyRecordViewModel<TRecord extends BaseRecord>(
       // 成功通知
       const operation = editingRecord ? '更新' : '新規作成';
       toast.success(
-        `日次記録の${operation}が完了しました\n\n利用者: ${record.userName}\n日付: ${record.date}`,
+        `日々の記録の${operation}が完了しました\n\n利用者: ${record.userName}\n日付: ${record.date}`,
         {
           duration: 4000,
           style: {

@@ -113,7 +113,7 @@ const AdoptionMetricsPanel: React.FC<AdoptionMetricsPanelProps> = ({
         <Stack direction="row" spacing={2} flexWrap="wrap" alignItems="center">
           <MetricChip label="採用" count={metrics.acceptCount} color="success" />
           <MetricChip label="却下" count={metrics.dismissCount} color="default" />
-          <MetricChip label="ISP反映" count={metrics.ispImportCount} color="primary" />
+          <MetricChip label="個別支援計画反映" count={metrics.ispImportCount} color="primary" />
         </Stack>
 
         {/* 採用率バー */}
@@ -134,12 +134,12 @@ const AdoptionMetricsPanel: React.FC<AdoptionMetricsPanelProps> = ({
           />
         </Box>
 
-        {/* ISP反映率バー */}
+        {/* 個別支援計画反映率バー */}
         {metrics.acceptCount > 0 && (
           <Box>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
               <Typography variant="caption" color="text.secondary">
-                ISP候補反映率
+                個別支援計画候補反映率
               </Typography>
               <Typography variant="caption" fontWeight={700}>
                 {metrics.ispImportRate}%

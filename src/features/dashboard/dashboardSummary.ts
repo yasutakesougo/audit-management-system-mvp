@@ -42,7 +42,7 @@ export function buildDashboardSummary(
     alerts.push(...result.alerts);
   }
 
-  // 支援記録（ケース記録）サマリー
+  // 日々の記録サマリー
   if (params.activity) {
     const result = buildActivitySummary(
       params.activity.records,

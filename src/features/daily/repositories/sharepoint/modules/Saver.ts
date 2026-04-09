@@ -10,10 +10,8 @@ import {
     DailyRecordItem,
     ApproveRecordInput
 } from '../../../domain/legacy/DailyRecordRepository';
-import { 
-    buildDailyRecordPayload, 
-    type SharePointDailyRecordPayload 
-} from '../../../domain/builders/buildDailyRecordPayload';
+import { buildDailyRecordPayload } from '../../../domain/builders/buildDailyRecordPayload';
+import type { SharePointDailyRecordPayload } from '../../../domain/schema';
 import { auditLog } from '@/lib/debugLogger';
 import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import { toSafeError } from '@/lib/errors';

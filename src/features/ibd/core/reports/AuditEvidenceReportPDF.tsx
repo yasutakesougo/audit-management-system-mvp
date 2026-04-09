@@ -166,7 +166,7 @@ export const AuditEvidenceReportPDF: React.FC<AuditEvidenceReportPDFProps> = ({ 
 
   return (
     <Document>
-      {/* ===== ページ1: SPS確定履歴 + 遵守サマリ ===== */}
+      {/* ===== ページ1: 支援計画シート確定履歴 + 遵守サマリ ===== */}
       <Page size="A4" style={styles.page}>
         {/* ヘッダー */}
         <View style={styles.header}>
@@ -197,7 +197,7 @@ export const AuditEvidenceReportPDF: React.FC<AuditEvidenceReportPDFProps> = ({ 
           </Text>
           <View style={styles.summaryGrid}>
             <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>SPS見直し充足率</Text>
+              <Text style={styles.summaryLabel}>支援計画シート見直し充足率</Text>
               <Text style={[
                 styles.summaryValue,
                 complianceSummary.spsComplianceRate >= 100 ? styles.badgeOk : styles.badgeNg,
@@ -234,16 +234,16 @@ export const AuditEvidenceReportPDF: React.FC<AuditEvidenceReportPDFProps> = ({ 
           </View>
         </View>
 
-        {/* SPS確定履歴 */}
+        {/* 支援計画シート確定履歴 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            支援計画シート（SPS）確定履歴
+            支援計画シート確定履歴
           </Text>
 
           <View style={styles.table}>
             {/* Header Row */}
             <View style={styles.tableRow}>
-              <View style={[styles.tableColHeader, { width: '15%' }]}><Text>SPS ID</Text></View>
+              <View style={[styles.tableColHeader, { width: '15%' }]}><Text>計画シートID</Text></View>
               <View style={[styles.tableColHeader, { width: '10%' }]}><Text>Ver.</Text></View>
               <View style={[styles.tableColHeader, { width: '15%' }]}><Text>作成日</Text></View>
               <View style={[styles.tableColHeader, { width: '15%' }]}><Text>確定日</Text></View>
@@ -272,7 +272,7 @@ export const AuditEvidenceReportPDF: React.FC<AuditEvidenceReportPDFProps> = ({ 
             ) : (
               <View style={styles.tableRow}>
                 <View style={[styles.tableCol, { width: '100%' }]}>
-                  <Text>SPS確定履歴なし</Text>
+                  <Text>支援計画シート確定履歴なし</Text>
                 </View>
               </View>
             )}

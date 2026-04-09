@@ -14,8 +14,11 @@ import { useUsers } from '@/features/users/useUsers';
 import { createUserNameResolver } from '@/domain/user';
 import { isDemoModeEnabled } from '@/lib/env';
 import { toLocalDateISO } from '@/utils/getNow';
+import { useNavigate } from 'react-router-dom';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import AnalyticsIcon from '@mui/icons-material/Analytics';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -53,7 +56,8 @@ import { CssBarChart, CssHeatmap, EventTimeline, KpiStatCard, SvgDonutChart } fr
 // ---------------------------------------------------------------------------
 
 const AnalysisDashboardPage: React.FC = () => {
-  const { data: users } = useUsers();
+  const navigate = useNavigate();
+  const { data: users, status: usersStatus, error: usersError, update: updateUser } = useUsers();
   const { analysisData, fetchForAnalysis } = useBehaviorStore();
   const demoModeEnabled = isDemoModeEnabled();
   const [targetUserId, setTargetUserId] = useState<string>('');
@@ -157,6 +161,25 @@ const AnalysisDashboardPage: React.FC = () => {
     [dailyStats],
   );
 
+  if (usersStatus === 'loading') {
+    return (
+      <Container maxWidth="xl" sx={{ py: 10, textAlign: 'center' }}>
+        <Typography variant="h6" color="text.secondary">利用データを読み込み中...</Typography>
+      </Container>
+    );
+  }
+
+  if (usersStatus === 'error') {
+    return (
+      <Container maxWidth="xl" sx={{ py: 10, textAlign: 'center' }}>
+        <Typography variant="h6" color="error" gutterBottom>利用データの取得に失敗しました</Typography>
+        <Typography variant="body2" color="text.secondary">
+          {String(usersError)}
+        </Typography>
+      </Container>
+    );
+  }
+
   return (
     <Container maxWidth="xl" sx={{ py: 3, minHeight: '100vh' }} data-testid="analysis-dashboard-page">
       <IBDPageHeader
@@ -176,6 +199,7 @@ const AnalysisDashboardPage: React.FC = () => {
                 label="分析対象者"
                 value={targetUserId}
                 onChange={(event) => setTargetUserId(event.target.value)}
+                disabled={ibdUsers.length === 0}
               >
                 <MenuItem value="">
                   <em>選択してください</em>
@@ -208,6 +232,36 @@ const AnalysisDashboardPage: React.FC = () => {
               <Button variant="outlined" startIcon={<RefreshIcon />} onClick={handleSeedData} size="small">
                 デモデータ生成
               </Button>
+            )}
+
+            {(demoModeEnabled || process.env.NODE_ENV === 'development') && users.length > 0 && ibdUsers.length === 0 && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5 }}>
+                <Tooltip title="全利用者を分析対象としてマークします（開発用の一括設定）">
+                  <Button 
+                    variant="contained" 
+                    color="warning" 
+                    size="small"
+                    onClick={async () => {
+                      if (!window.confirm('【開発用】全利用者の「分析対象」フラグを有効にしますか？\n（本番環境ではマスタから個別設定を推奨します）')) return;
+                      for (const user of users) {
+                        if (user.IsActive) {
+                          try {
+                            await updateUser(user.Id, { IsSupportProcedureTarget: true });
+                          } catch (e) {
+                            console.error('Failed to update user', user.UserID, e);
+                          }
+                        }
+                      }
+                      window.location.reload();
+                    }}
+                  >
+                    データ修復（全員対象）
+                  </Button>
+                </Tooltip>
+                <Typography variant="caption" color="warning.main" sx={{ fontSize: '10px' }}>
+                  ※ 開発・検証用の強制フラグON
+                </Typography>
+              </Box>
             )}
           </>
         }
@@ -298,9 +352,48 @@ const AnalysisDashboardPage: React.FC = () => {
         </Box>
       ) : (
         <Box sx={{ textAlign: 'center', mt: 10 }}>
-          <Typography variant="h6" color="text.secondary">
-            対象者を選択して分析を開始してください
-          </Typography>
+          {ibdUsers.length > 0 ? (
+            <Typography variant="h6" color="text.secondary">
+              対象者を選択して分析を開始してください
+            </Typography>
+          ) : (
+            <Box sx={{ maxWidth: 600, mx: 'auto', p: 5, bgcolor: 'action.hover', borderRadius: 3, border: '1px dashed', borderColor: 'divider' }}>
+              <Typography variant="h6" gutterBottom fontWeight={800} color="primary.main">
+                行動分析の対象者が未設定です
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
+                分析を開始するには、まず「利用者マスタ」で対象の方の分析フラグを有効にする必要があります。
+              </Typography>
+
+              <Button 
+                variant="contained" 
+                startIcon={<OpenInNewIcon />}
+                onClick={() => navigate('/users')}
+                sx={{ 
+                  px: 4,
+                  py: 1.5,
+                  borderRadius: 2,
+                  boxShadow: 3,
+                  fontWeight: 'bold'
+                }}
+              >
+                利用者マスタを開いて設定する
+              </Button>
+
+              <Typography variant="body2" sx={{ mt: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, color: 'text.secondary', opacity: 0.8 }}>
+                <AnalyticsIcon fontSize="small" />
+                対象者を設定すると、ここに活動傾向や強度の推移が可視化されます。
+              </Typography>
+
+              <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="caption" component="div" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>
+                  🛠 開発者・管理者向けヒント: <br />
+                  マスターデータの `IsSupportProcedureTarget` 列を true にするか、<br />
+                  URLに <code>?demo=1</code> を追加して強制的にデモデータを生成してください。
+                </Typography>
+              </Box>
+            </Box>
+          )}
         </Box>
       )}
     </Container>

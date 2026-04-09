@@ -58,7 +58,7 @@ export type OperationKpis = {
 export type RecordKpiInput = {
   /** 在籍者数（当日対象） */
   totalUsers: number;
-  /** 本日記録入力済み人数 */
+  /** 本日記録作成済み人数 */
   completedToday: number;
 };
 
@@ -132,12 +132,12 @@ export function computeRecordCompletionKpi(input: RecordKpiInput): KpiCard {
   const status = statusFromRate(rate, COMPLETION_THRESHOLDS, true);
   return {
     key: 'record-completion',
-    label: '記録入力率',
+    label: '記録作成率',
     value: rate,
     displayValue: `${rate}%`,
     status,
     icon: status === 'good' ? '✅' : status === 'warning' ? '⚠️' : '🔴',
-    description: `${input.totalUsers}人中 ${input.completedToday}人が入力済み`,
+    description: `${input.totalUsers}人中 ${input.completedToday}人が記録済み`,
     trend: 'up',
   };
 }

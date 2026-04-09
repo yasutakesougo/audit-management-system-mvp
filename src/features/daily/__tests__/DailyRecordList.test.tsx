@@ -60,7 +60,7 @@ describe('DailyRecordList', () => {
       render(<DailyRecordList {...mockProps} records={[]} loading={false} />);
 
       expect(screen.getByTestId('daily-record-list-empty')).toBeInTheDocument();
-      expect(screen.getByText('まだ日次記録がありません')).toBeInTheDocument();
+      expect(screen.getByText('まだ日々の記録がありません')).toBeInTheDocument();
     });
   });
 

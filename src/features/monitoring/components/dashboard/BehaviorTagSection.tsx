@@ -60,7 +60,7 @@ export const BehaviorTagSection: React.FC<{ tagSummary: BehaviorTagSummary }> = 
           {tagSummary.taggedRecords}件の記録にタグ付与あり（全{tagSummary.totalRecords}件中）、平均{tagSummary.avgTagsPerRecord}タグ/日
         </Typography>
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.65rem' }}>
-          ※ 日次記録で行動タグがどれだけ活用されているかの指標です
+          ※ 日々の記録で行動タグがどれだけ活用されているかの指標です
         </Typography>
       </Box>
 

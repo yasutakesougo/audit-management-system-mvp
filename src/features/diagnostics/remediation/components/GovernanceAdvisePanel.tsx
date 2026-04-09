@@ -79,7 +79,7 @@ export const GovernanceAdvisePanel: React.FC = () => {
 
   const handleRepairWithConfirm = (rec: GovernanceRecommendation) => {
     confirm.open({
-      title: '構成の修復実行',
+      title: '構成の修復',
       message: `
 対象リスト: ${rec.listTitle}
 アクション: ${rec.action.label}
@@ -91,8 +91,8 @@ ${rec.reason}
 ・実行後、不整合の解消が期待されます。
 ・修復後、データ整合性スキャンを再実行して結果をご確認ください。
       `.trim(),
-      confirmLabel: '修復を実行する',
-      warningText: '実行中にページを閉じないでください。',
+      confirmLabel: '修復を開始する',
+      warningText: '修復中にページを閉じないでください。',
       onConfirm: () => repair(rec),
     });
   };

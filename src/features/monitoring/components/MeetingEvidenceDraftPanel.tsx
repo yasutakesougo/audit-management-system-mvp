@@ -162,7 +162,7 @@ const MeetingEvidenceDraftPanel: React.FC<MeetingEvidenceDraftPanelProps> = ({
         <Stack direction="row" spacing={1} alignItems="center">
           <AssignmentRoundedIcon fontSize="small" color="disabled" />
           <Typography variant="body2" color="text.secondary">
-            会議ドラフトの元データがありません。日次記録や行動記録を入力すると自動生成されます。
+            会議ドラフトの元データがありません。日々の記録や行動記録を入力すると自動生成されます。
           </Typography>
         </Stack>
       </Paper>

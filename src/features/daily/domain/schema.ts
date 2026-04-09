@@ -101,3 +101,12 @@ export const DailyRecordItemSchema = SharePointDailyRecordItemSchema.transform((
 export type SpDailyRecordRaw = z.infer<typeof SharePointDailyRecordItemSchema>;
 export type DailyRecordUserRow = z.infer<typeof DailyRecordUserRowSchema>;
 export type DailyRecordDomain = z.infer<typeof DailyRecordDomainSchema>;
+
+export interface SharePointDailyRecordPayload {
+  Title: string;
+  RecordDate: string;
+  ReporterName: string;
+  ReporterRole: string;
+  UserRowsJSON: string;
+  UserCount: number;
+}

@@ -58,20 +58,20 @@ describe('buildAlertMessage', () => {
     expect(buildAlertMessage('田中', 'ok', 0, 0, 30)).toBe('');
   });
 
-  it('generates urgent message with SPS info', () => {
+  it('generates urgent message with planning sheet info', () => {
     const msg = buildAlertMessage('田中太郎', 'urgent', 6, 4, 45);
     expect(msg).toContain('田中太郎');
     expect(msg).toContain('6件');
     expect(msg).toContain('高強度4件');
-    expect(msg).toContain('SPS更新まで45日');
+    expect(msg).toContain('支援計画シート更新まで45日');
     expect(msg).toContain('🔴');
   });
 
-  it('generates watch message with SPS null', () => {
+  it('generates watch message with planning sheet null', () => {
     const msg = buildAlertMessage('鈴木', 'watch', 3, 1, null);
     expect(msg).toContain('鈴木');
     expect(msg).toContain('3件');
-    expect(msg).toContain('SPS未登録');
+    expect(msg).toContain('支援計画シート未登録');
     expect(msg).toContain('🟠');
   });
 });

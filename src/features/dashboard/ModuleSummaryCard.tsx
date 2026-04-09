@@ -15,7 +15,7 @@ interface ModuleSummaryCardProps {
 
 /**
  * モジュールサマリーカード
- * 各モジュール（通所管理・支援記録（ケース記録）・IRC）の進捗と状況を表示
+ * 各モジュール（通所管理・日々の記録・IRC）の進捗と状況を表示
  */
 export function ModuleSummaryCard({ summary, testid, onClick }: ModuleSummaryCardProps) {
   const getProgressColor = (rate: number) => {

@@ -188,9 +188,9 @@ export function useMonitoringTabState({
     }
 
     if (successCount === inputs.length) {
-      snackbar.show(`${successCount}件のISP下書きを保存しました`, 'success');
+      snackbar.show(`${successCount}件の個別支援計画下書きを保存しました`, 'success');
     } else if (draftError) {
-      snackbar.show('ISP下書きの保存に失敗しました', 'error');
+      snackbar.show('個別支援計画下書きの保存に失敗しました', 'error');
     } else {
       snackbar.show(`${successCount}/${inputs.length}件を保存しました`, 'success');
     }

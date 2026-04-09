@@ -46,7 +46,7 @@ export interface CommandBarProps {
   criticalAlerts: number;
   /** 出勤者数 / 総職員数 */
   attendanceRatio?: { present: number; total: number };
-  /** 日次記録完了数 / 総対象数 */
+  /** 日々の記録完了数 / 総対象数 */
   dailyRecordRatio?: { done: number; total: number };
   /** セクションクリック時のコールバック */
   onChipClick?: (section: string) => void;
@@ -114,7 +114,7 @@ export const CommandBar: React.FC<CommandBarProps> = ({
           {
             key: 'daily',
             icon: <EditNoteIcon fontSize="small" />,
-            label: `日次記録 ${dailyRecordRatio.done}/${dailyRecordRatio.total}`,
+            label: `日々の記録 ${dailyRecordRatio.done}/${dailyRecordRatio.total}`,
             color:
               dailyRecordRatio.done === dailyRecordRatio.total
                 ? theme.palette.success.main

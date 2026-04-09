@@ -20,7 +20,7 @@ export const analysisRoutes: RouteObject[] = [
     path: 'analysis',
     element: (
       <RequireAudience requiredRole="viewer">
-        <AdminSurfaceRouteGuard>
+        <AdminSurfaceRouteGuard minimumRole="viewer">
           <Navigate to="/analysis/dashboard" replace />
         </AdminSurfaceRouteGuard>
       </RequireAudience>
@@ -30,7 +30,7 @@ export const analysisRoutes: RouteObject[] = [
     path: 'analysis/dashboard',
     element: (
       <RequireAudience requiredRole="viewer">
-        <AdminSurfaceRouteGuard>
+        <AdminSurfaceRouteGuard minimumRole="viewer">
           <SuspendedAnalysisDashboardPage />
         </AdminSurfaceRouteGuard>
       </RequireAudience>
@@ -40,7 +40,7 @@ export const analysisRoutes: RouteObject[] = [
     path: 'analysis/iceberg-pdca',
     element: (
       <RequireAudience requiredRole="viewer">
-        <AdminSurfaceRouteGuard>
+        <AdminSurfaceRouteGuard minimumRole="viewer">
           <IcebergPdcaGate>
             <SuspendedIcebergPdcaPage />
           </IcebergPdcaGate>
@@ -52,7 +52,7 @@ export const analysisRoutes: RouteObject[] = [
     path: 'analysis/iceberg-pdca/edit',
     element: (
       <RequireAudience requiredRole="viewer">
-        <AdminSurfaceRouteGuard>
+        <AdminSurfaceRouteGuard minimumRole="viewer">
           <IcebergPdcaGate requireEdit>
             <SuspendedIcebergPdcaPage />
           </IcebergPdcaGate>
@@ -64,7 +64,7 @@ export const analysisRoutes: RouteObject[] = [
     path: 'analysis/iceberg',
     element: (
       <RequireAudience requiredRole="viewer">
-        <AdminSurfaceRouteGuard>
+        <AdminSurfaceRouteGuard minimumRole="viewer">
           <SuspendedIcebergAnalysisPage />
         </AdminSurfaceRouteGuard>
       </RequireAudience>
@@ -74,7 +74,7 @@ export const analysisRoutes: RouteObject[] = [
     path: 'analysis/intervention',
     element: (
       <RequireAudience requiredRole="viewer">
-        <AdminSurfaceRouteGuard>
+        <AdminSurfaceRouteGuard minimumRole="viewer">
           <SuspendedInterventionDashboardPage />
         </AdminSurfaceRouteGuard>
       </RequireAudience>

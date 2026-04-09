@@ -114,7 +114,7 @@ describe('detectMissingRecords — 境界値補完', () => {
     expect(item.targetUserId).toBe('U-001');
     expect(item.targetDate).toBe('2026-03-18');
     expect(item.updatedAt).toBe('2026-03-18');
-    expect(item.actionLabel).toBe('ケース記録');
+    expect(item.actionLabel).toBe('日々の記録');
   });
 });
 
@@ -192,31 +192,31 @@ describe('detectCriticalHandoffs — 境界値補完', () => {
 describe('detectAttentionUsers — 境界値補完', () => {
   it('should format id as attention-{userId}-no-plan', () => {
     const result = detectAttentionUsers([
-      { userId: 'U-010', userName: 'テスト', isHighIntensity: true, isSupportProcedureTarget: false, hasPlan: false },
+      { userId: 'U-010', userName: 'テスト', isHighIntensity: true, isSupportProcedureTarget: false, isTransportTarget: false, hasPlan: false },
     ]);
     expect(result[0].id).toBe('attention-U-010-no-plan');
   });
 
   it('should set actionPath to /isp-editor/{encodedUserId}', () => {
     const result = detectAttentionUsers([
-      { userId: 'U-010', userName: 'テスト', isHighIntensity: true, isSupportProcedureTarget: false, hasPlan: false },
+      { userId: 'U-010', userName: 'テスト', isHighIntensity: true, isSupportProcedureTarget: false, isTransportTarget: false, hasPlan: false },
     ]);
     expect(result[0].actionPath).toBe(`/isp-editor/${encodeURIComponent('U-010')}`);
   });
 
   it('should detect multiple high-intensity users without plans', () => {
     const result = detectAttentionUsers([
-      { userId: 'U-001', userName: 'A', isHighIntensity: true, isSupportProcedureTarget: false, hasPlan: false },
-      { userId: 'U-002', userName: 'B', isHighIntensity: true, isSupportProcedureTarget: false, hasPlan: false },
+      { userId: 'U-001', userName: 'A', isHighIntensity: true, isSupportProcedureTarget: false, isTransportTarget: false, hasPlan: false },
+      { userId: 'U-002', userName: 'B', isHighIntensity: true, isSupportProcedureTarget: false, isTransportTarget: false, hasPlan: false },
     ]);
     expect(result).toHaveLength(2);
   });
 
   it('should filter correctly in mixed user list', () => {
     const result = detectAttentionUsers([
-      { userId: 'U-001', userName: 'A', isHighIntensity: true, isSupportProcedureTarget: false, hasPlan: false },
-      { userId: 'U-002', userName: 'B', isHighIntensity: false, isSupportProcedureTarget: false, hasPlan: false },
-      { userId: 'U-003', userName: 'C', isHighIntensity: true, isSupportProcedureTarget: false, hasPlan: true },
+      { userId: 'U-001', userName: 'A', isHighIntensity: true, isSupportProcedureTarget: false, isTransportTarget: false, hasPlan: false },
+      { userId: 'U-002', userName: 'B', isHighIntensity: false, isSupportProcedureTarget: false, isTransportTarget: false, hasPlan: false },
+      { userId: 'U-003', userName: 'C', isHighIntensity: true, isSupportProcedureTarget: false, isTransportTarget: false, hasPlan: true },
     ]);
     // U-001 のみ検出
     expect(result).toHaveLength(1);
@@ -225,8 +225,8 @@ describe('detectAttentionUsers — 境界値補完', () => {
 
   it('should return empty array when all users have plans', () => {
     const result = detectAttentionUsers([
-      { userId: 'U-001', userName: 'A', isHighIntensity: true, isSupportProcedureTarget: false, hasPlan: true },
-      { userId: 'U-002', userName: 'B', isHighIntensity: true, isSupportProcedureTarget: false, hasPlan: true },
+      { userId: 'U-001', userName: 'A', isHighIntensity: true, isSupportProcedureTarget: false, isTransportTarget: false, hasPlan: true },
+      { userId: 'U-002', userName: 'B', isHighIntensity: true, isSupportProcedureTarget: false, isTransportTarget: false, hasPlan: true },
     ]);
     expect(result).toHaveLength(0);
   });
@@ -237,7 +237,7 @@ describe('detectAttentionUsers — 境界値補完', () => {
 
   it('should include required fields in result', () => {
     const result = detectAttentionUsers([
-      { userId: 'U-010', userName: '田中', isHighIntensity: true, isSupportProcedureTarget: false, hasPlan: false },
+      { userId: 'U-010', userName: '田中', isHighIntensity: true, isSupportProcedureTarget: false, isTransportTarget: false, hasPlan: false },
     ]);
     const item = result[0];
     expect(item.category).toBe('attention-user');

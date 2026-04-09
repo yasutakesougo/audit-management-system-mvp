@@ -154,6 +154,10 @@ export interface SupportPlanningSheetActionHandlers {
   onEvidenceLinksChange: (links: EvidenceLinkMap) => void;
   onEvidenceClick: (type: EvidenceLinkType, referenceId: string) => void;
   onReflectCandidate: (candidateId: string) => void;
+  /** 支援手順の実施ボタン: /daily/support へ planningSheetId 付きで遷移 */
+  onNavigateToExecution: () => void;
+  /** 見直し・PDCAボタン: /analysis/iceberg-pdca へ遷移 */
+  onNavigateToPdca: () => void;
 }
 
 export interface SupportPlanningSheetViewProps {

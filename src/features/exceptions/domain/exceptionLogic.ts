@@ -6,7 +6,7 @@
  * 管理者向けに「どこで詰まっているか」を可視化するための例外データモデル。
  *
  * 例外カテゴリ:
- * - missing-record: 日次記録の未入力
+ * - missing-record: 日々の記録の未作成
  * - overdue-plan: 支援計画の期限超過
  * - critical-handoff: 重要申し送りの未対応
  * - attention-user: 注意が必要な利用者
@@ -25,9 +25,37 @@ export type ExceptionCategory =
   | 'procedure-unperformed'
   | 'risk-deviation'
   | 'focus-missing'
-  | 'missing-vital';
+  | 'missing-vital'
+  | 'setup-incomplete';
 
 export type ExceptionSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+/**
+ * シグナルの acknowledgement 状態（ADR-019）
+ * 「対応着手」の意思表示。dismiss（個人的非表示）とは別概念。
+ */
+export type AcknowledgementState = {
+  acknowledgedAt: string;   // ISO 8601
+  acknowledgedBy?: string;  // Phase 2 で userId を入れる想定
+};
+
+/**
+ * 解消モード（ADR-019）
+ * - 'auto': 根本データが変わるとシグナルが自然消滅する（例: 日々の記録作成 → missing-record 消滅）
+ * - 'manual': データは変わらないが担当者が意図的に閉じる（例: 今日は記録免除と判断）
+ */
+export type ResolutionMode = 'auto' | 'manual';
+
+/**
+ * シグナルの resolved 状態（ADR-019）
+ * acknowledged（着手中）の次の段階。アクティブリストから除外される。
+ */
+export type ResolvedState = {
+  resolvedAt: string;                // ISO 8601
+  resolvedBy?: string;               // Phase 2 で userId を入れる想定
+  resolutionMode: ResolutionMode;
+  note?: string;                     // 例: 「家族対応済みのため免除」
+};
 
 export type ExceptionItem = {
   id: string;
@@ -41,7 +69,8 @@ export type ExceptionItem = {
   updatedAt: string;
   actionLabel?: string;
   actionPath?: string;
-  /** セカンダリアクション（例: 支援記録確認用リンク） */
+  ownerRole?: 'admin' | 'manager' | 'staff';
+  /** セカンダリアクション（例: 記録確認用リンク） */
   secondaryActionLabel?: string;
   secondaryActionPath?: string;
   /** Action Engine 提案の安定ID（dismiss/snooze 追跡用） */
@@ -70,6 +99,7 @@ export const EXCEPTION_CATEGORIES: Record<ExceptionCategory, CategoryMeta> = {
   'risk-deviation': { label: 'リスク逸脱', icon: '🚨', color: '#b71c1c' },
   'focus-missing': { label: '記述不足', icon: '✍️', color: '#ef6c00' },
   'missing-vital': { label: '未計測バイタル', icon: '🌡️', color: '#d32f2f' },
+  'setup-incomplete': { label: '設定不足', icon: '⚙️', color: '#00796b' },
 };
 
 export const SEVERITY_ORDER: Record<ExceptionSeverity, number> = {
@@ -103,11 +133,12 @@ export type UserSummary = {
   userName: string;
   isHighIntensity: boolean;
   isSupportProcedureTarget: boolean;
+  isTransportTarget: boolean;
   hasPlan: boolean;
 };
 
 /**
- * 日次記録の未入力を検出する
+ * 日々の記録の未作成を検出する
  */
 export function detectMissingRecords(params: {
   expectedUsers: Array<{ userId: string; userName: string }>;
@@ -127,16 +158,17 @@ export function detectMissingRecords(params: {
       id: `missing-${u.userId}-${targetDate}`,
       category: 'missing-record' as const,
       severity: 'high' as const,
-      title: `${u.userName}のケース記録が未入力`,
-      description: `${targetDate} のケース記録（日次記録）が作成されていません`,
+      title: `${u.userName}の日々の記録が未作成`,
+      description: `${targetDate} の日々の記録が作成されていません`,
       targetUser: u.userName,
       targetUserId: u.userId,
       targetDate,
       updatedAt: targetDate,
-      actionLabel: 'ケース記録',
+      actionLabel: '日々の記録',
       actionPath: `/daily/activity?userId=${encodeURIComponent(u.userId)}`,
-      secondaryActionLabel: '支援手順記録',
+      secondaryActionLabel: '支援手順の実施',
       secondaryActionPath: `/daily/support?wizard=plan&user=${encodeURIComponent(u.userId)}&userId=${encodeURIComponent(u.userId)}`,
+      ownerRole: 'staff',
     }));
 }
 
@@ -167,11 +199,12 @@ export function detectMissingVitals(params: {
       actionPath: `/nurse/observation?user=${encodeURIComponent(u.userId)}`,
       secondaryActionLabel: '一覧入力',
       secondaryActionPath: `/nurse/observation/bulk`, // 将来的にこのパスを有効にする
+      ownerRole: 'staff',
     }));
 }
 
 /**
- * 支援手順記録の未入力を検出する
+ * 支援手順の実施の未作成を検出する
  */
 export function detectMissingSupportLogs(params: {
   pendingUsers: Array<{ userId: string; userName: string }>;
@@ -183,14 +216,15 @@ export function detectMissingSupportLogs(params: {
     id: `missing-support-${u.userId}-${targetDate}`,
     category: 'missing-record' as const,
     severity: 'high' as const,
-    title: `${u.userName}の支援手順記録が未入力`,
-    description: `${targetDate} の支援手順記録が作成されていません`,
+    title: `${u.userName}の支援手順の実施が未作成`,
+    description: `${targetDate} の支援手順の実施が作成されていません`,
     targetUser: u.userName,
     targetUserId: u.userId,
     targetDate,
     updatedAt: targetDate,
-    actionLabel: '支援手順記録',
+    actionLabel: '支援手順の実施',
     actionPath: `/daily/support?wizard=plan&user=${encodeURIComponent(u.userId)}&userId=${encodeURIComponent(u.userId)}`,
+    ownerRole: 'staff',
   }));
 }
 
@@ -215,6 +249,7 @@ export function detectCriticalHandoffs(
         updatedAt: h.createdAt,
         actionLabel: '確認する',
         actionPath: `/handoff/timeline?date=${dateQuery}&handoffId=${h.id}`,
+        ownerRole: 'staff',
       };
     });
 }
@@ -240,11 +275,90 @@ export function detectAttentionUsers(
         updatedAt: new Date().toISOString().split('T')[0],
         actionLabel: '計画を作成',
         actionPath: `/isp-editor/${encodeURIComponent(u.userId)}`,
+        ownerRole: 'staff',
       });
     }
   }
 
   return exceptions;
+}
+
+/**
+ * 分析対象者が未設定であることを検出する
+ * ADR-020: 強度行動障害支援対象者は原則として分析対象として扱う。
+ */
+export function detectAnalysisSetupExceptions(
+  users: UserSummary[],
+): ExceptionItem[] {
+  // 1. 強度行動障害だが、分析対象になっていない人を抽出
+  const inconsistentUsers = users.filter((u) => u.isHighIntensity && !u.isSupportProcedureTarget);
+
+  if (inconsistentUsers.length > 0) {
+    const names = inconsistentUsers.length > 2
+      ? `${inconsistentUsers[0].userName}さん、他${inconsistentUsers.length - 1}名`
+      : inconsistentUsers.map((u) => u.userName).join('さん、') + 'さん';
+
+    return [{
+      id: 'analysis-setup-inconsistent',
+      category: 'setup-incomplete',
+      severity: 'high',
+      title: '分析対象者の設定漏れ',
+      description: `利用者マスタの「基本ステータス」で強度行動障害支援対象に設定されている ${names} を、分析対象者としても有効にしてください。`,
+      updatedAt: new Date().toISOString(),
+      actionLabel: '設定を開く',
+      actionPath: '/users',
+      secondaryActionLabel: '分析ワークスペース',
+      secondaryActionPath: '/analysis/dashboard',
+      stableId: 'analysis-setup-missing',
+      ownerRole: 'admin',
+    }];
+  }
+
+  // 2. 全体として誰も分析対象になっていない場合（既存のフォールバック）
+  const analysisTargets = users.filter((u) => u.isSupportProcedureTarget);
+  if (users.length > 0 && analysisTargets.length === 0) {
+    return [{
+      id: 'analysis-setup-missing',
+      category: 'setup-incomplete',
+      severity: 'high',
+      title: '分析対象者が未設定です',
+      description: '分析ワークスペースを使用するには、利用者マスタで分析対象者を設定してください。',
+      updatedAt: new Date().toISOString(),
+      actionLabel: '設定を開く',
+      actionPath: '/users',
+      secondaryActionLabel: '分析ワークスペース',
+      secondaryActionPath: '/analysis/dashboard',
+      stableId: 'analysis-setup-missing',
+      ownerRole: 'admin',
+    }];
+  }
+  return [];
+}
+
+/**
+ * 送迎対象者が未設定であることを検出する
+ */
+export function detectTransportSetupExceptions(
+  users: UserSummary[],
+): ExceptionItem[] {
+  const transportTargets = users.filter((u) => u.isTransportTarget);
+  if (users.length > 0 && transportTargets.length === 0) {
+    return [{
+      id: 'transport-setup-missing',
+      category: 'setup-incomplete',
+      severity: 'high',
+      title: '送迎対象者が未設定です',
+      description: '送迎管理を使用するには、利用者マスタで送迎（往路/復路）の設定を行ってください。',
+      updatedAt: new Date().toISOString(),
+      actionLabel: '設定を開く',
+      actionPath: '/users',
+      secondaryActionLabel: '送迎配車表',
+      secondaryActionPath: '/transport/schedules',
+      stableId: 'transport-setup-missing',
+      ownerRole: 'admin',
+    }];
+  }
+  return [];
 }
 
 /**
@@ -367,7 +481,8 @@ export function computeExceptionStats(items: ExceptionItem[]): ExceptionStats {
       'procedure-unperformed': 0,
       'risk-deviation': 0,
       'focus-missing': 0,
-      'missing-vital': 0
+      'missing-vital': 0,
+      'setup-incomplete': 0
     },
   };
 

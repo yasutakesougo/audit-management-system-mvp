@@ -36,13 +36,13 @@ export function BulkDailyRecordToolbar({
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ p: 2, gap: 2 }}>
         <Stack direction="row" spacing={2} alignItems="center">
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            支援記録（ケース記録）一覧入力
+            日々の記録一覧入力
           </Typography>
           {selectedDate && (
             <Chip label={selectedDate} variant="outlined" size="small" />
           )}
         </Stack>
-        <Tooltip title="Alt+S でも実行できます">
+        <Tooltip title="Alt+S でも保存できます">
           <span>
             <Button
               startIcon={<SyncRoundedIcon />}

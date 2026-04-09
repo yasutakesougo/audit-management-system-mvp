@@ -49,7 +49,7 @@ import type {
 const PRIMARY_SCREEN_OPTIONS: { value: PrimaryScreen; label: string }[] = [
   { value: '/today', label: '/today — 今日の運営' },
   { value: '/handoff-timeline', label: '/handoff — 申し送り' },
-  { value: '/daily', label: '/daily — 日次記録' },
+  { value: '/daily', label: '/daily — 日々の記録' },
   { value: '/daily/attendance', label: '/daily/attendance — 出欠' },
   { value: '/dashboard', label: '/dashboard — ダッシュボード' },
 ];

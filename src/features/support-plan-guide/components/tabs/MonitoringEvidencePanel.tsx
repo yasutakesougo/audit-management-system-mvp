@@ -52,7 +52,7 @@ const DailyEvidenceSection: React.FC<DailyEvidenceProps> = ({ userId, onAppend, 
             <Stack direction="row" spacing={1} alignItems="center">
               <AutoStoriesIcon fontSize="small" color="primary" />
               <Typography variant="subtitle2" component="span" color="primary">
-                日次記録エビデンス（過去60日: {evidence.count}件）
+                日々の記録エビデンス（過去60日: {evidence.count}件）
               </Typography>
             </Stack>
             <Button

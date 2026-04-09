@@ -35,7 +35,7 @@ export const DailyRecordView: React.FC<DailyRecordViewProps> = ({
   if (!viewModel) {
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
-        支援記録を読み込み中...
+        日々の記録を読み込み中...
       </Box>
     );
   }
@@ -58,14 +58,14 @@ export const DailyRecordView: React.FC<DailyRecordViewProps> = ({
 
   return (
     <FullScreenDailyDialogPage
-      title="支援記録（ケース記録）"
+      title="日々の記録"
       backTo="/daily/menu"
       testId="daily-activity-page"
     >
       <Container maxWidth="lg" data-testid="records-daily-root">
         <Box sx={{ py: 3 }}>
           <PageHeader
-            title="支援記録（ケース記録）"
+            title="日々の記録"
             subtitle="利用者全員の日々の活動状況、問題行動、発作記録を管理します"
           />
 

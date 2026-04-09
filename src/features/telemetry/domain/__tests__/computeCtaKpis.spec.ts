@@ -137,7 +137,7 @@ describe('computeCtaKpis', () => {
       ];
       const kpis = computeCtaKpis(records);
       expect(kpis.flowDistribution[0].label).toBe('申し送り'); // 3
-      expect(kpis.flowDistribution[1].label).toBe('日次記録'); // 2
+      expect(kpis.flowDistribution[1].label).toBe('日々の記録'); // 2
     });
   });
 

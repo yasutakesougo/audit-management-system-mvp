@@ -7,6 +7,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildQuickActions,
+  buildCommonQuickActions,
+  buildIbdQuickActions,
   buildSummaryStats,
   buildRecentRecordPreview,
   buildRecentHandoffPreview,
@@ -14,29 +16,69 @@ import {
   buildPlanHighlights,
 } from '../userDetailHubLogic';
 
-describe('buildQuickActions', () => {
-  it('4つのクイックアクションを返す', () => {
-    const actions = buildQuickActions('U-001');
-    expect(actions).toHaveLength(4);
+describe('buildCommonQuickActions', () => {
+  it('4つの共通アクションを返す', () => {
+    expect(buildCommonQuickActions('U-001')).toHaveLength(4);
   });
 
   it('各アクションにuserIdが含まれるパスを持つ', () => {
-    const actions = buildQuickActions('U-001');
-    actions.forEach((action) => {
+    buildCommonQuickActions('U-001').forEach((action) => {
       expect(action.path).toContain('U-001');
     });
   });
 
   it('キーが一意である', () => {
-    const actions = buildQuickActions('U-001');
-    const keys = actions.map((a) => a.key);
+    const keys = buildCommonQuickActions('U-001').map((a) => a.key);
     expect(new Set(keys).size).toBe(keys.length);
   });
 
   it('特殊文字を含むuserIdがエンコードされる', () => {
-    const actions = buildQuickActions('U 001');
-    const todayAction = actions.find((a) => a.key === 'today-record');
-    expect(todayAction?.path).toContain('U%20001');
+    const actions = buildCommonQuickActions('U 001');
+    expect(actions.find((a) => a.key === 'today-record')?.path).toContain('U%20001');
+  });
+
+  it('日々の記録は /daily/table へ遷移する', () => {
+    const actions = buildCommonQuickActions('U-001');
+    expect(actions.find((a) => a.key === 'today-record')?.path).toContain('/daily/table');
+  });
+});
+
+describe('buildIbdQuickActions', () => {
+  it('3つのIBD専用アクションを返す', () => {
+    expect(buildIbdQuickActions('U-001')).toHaveLength(3);
+  });
+
+  it('支援計画シート・支援手順の実施・見直しPDCAを含む', () => {
+    const keys = buildIbdQuickActions('U-001').map((a) => a.key);
+    expect(keys).toContain('ibd-planning-sheet');
+    expect(keys).toContain('ibd-support-execution');
+    expect(keys).toContain('ibd-pdca');
+  });
+
+  it('支援手順の実施は /daily/support へ遷移する', () => {
+    const actions = buildIbdQuickActions('U-001');
+    expect(actions.find((a) => a.key === 'ibd-support-execution')?.path).toContain('/daily/support');
+  });
+
+  it('特殊文字を含むuserIdがエンコードされる', () => {
+    buildIbdQuickActions('U 001').forEach((action) => {
+      expect(action.path).toContain('U%20001');
+    });
+  });
+});
+
+describe('buildQuickActions (後方互換)', () => {
+  it('isIbdTarget=false（デフォルト）なら4件', () => {
+    expect(buildQuickActions('U-001')).toHaveLength(4);
+  });
+
+  it('isIbdTarget=true なら共通4件+IBD3件=7件', () => {
+    expect(buildQuickActions('U-001', true)).toHaveLength(7);
+  });
+
+  it('全アクションのキーが一意である', () => {
+    const keys = buildQuickActions('U-001', true).map((a) => a.key);
+    expect(new Set(keys).size).toBe(keys.length);
   });
 });
 

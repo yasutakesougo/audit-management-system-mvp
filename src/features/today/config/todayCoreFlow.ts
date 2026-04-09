@@ -28,7 +28,7 @@ export const TODAY_CORE_FLOW: readonly TodayCoreFlowStep[] = [
   },
   {
     key: 'daily-table',
-    label: 'ケース記録を入力する',
+    label: '日々の記録を入力する',
     route: '/daily/table',
     order: 2,
     audience: ['staff', 'admin'],

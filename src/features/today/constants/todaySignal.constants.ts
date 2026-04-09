@@ -10,7 +10,7 @@ export interface SignalDisplayConfig {
 export const TODAY_SIGNAL_DISPLAY_CONFIG: Record<TodaySignalCode, SignalDisplayConfig> = {
   daily_record_missing: {
     prefix: '【未記録】',
-    defaultActionLabel: '日次記録へ',
+    defaultActionLabel: '日々の記録へ',
     priority: 'P0',
     audience: ['staff'],
   },

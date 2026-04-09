@@ -31,7 +31,7 @@ export const useTableDailyRecordViewModel = (): TableDailyRecordViewModel => {
 
   return {
     open,
-    title: '一覧形式ケース記録',
+    title: '一覧形式の日々の記録',
     backTo: '/today',
     testId: TESTIDS['daily-table-record-page'],
     onClose: navigateBackToMenu,

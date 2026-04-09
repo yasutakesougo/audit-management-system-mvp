@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// ProactiveAlertBanner — 行動データドリブンのプロアクティブ SPS アラートバナー
+// ProactiveAlertBanner — 行動データドリブンのプロアクティブ 支援計画シート アラートバナー
 //
 // IBDHubPage のステータスグリッド上部に配置し、urgent / watch レベルの
 // アラートを MUI Alert で表示する。Snooze 機能付き。
@@ -92,7 +92,7 @@ export function ProactiveAlertBanner({ alerts, onSelectUser }: ProactiveAlertBan
       >
         <AlertTitle sx={{ fontWeight: 700 }}>
           {severity === 'error'
-            ? `🔴 SPS前倒し改訂の推奨（${urgentAlerts.length}名）`
+            ? `🔴 支援計画シート前倒し改訂の推奨（${urgentAlerts.length}名）`
             : `🟠 行動事象の増加傾向を検出（${watchAlerts.length}名）`}
         </AlertTitle>
 
@@ -155,7 +155,7 @@ function AlertItem({
       </Typography>
       {alert.daysUntilSPSReview !== null && (
         <Chip
-          label={`SPS ${alert.daysUntilSPSReview > 0 ? `残${alert.daysUntilSPSReview}日` : '期限超過'}`}
+          label={`支援計画シート ${alert.daysUntilSPSReview > 0 ? `残${alert.daysUntilSPSReview}日` : '期限超過'}`}
           size="small"
           variant="outlined"
           color={alert.daysUntilSPSReview <= 0 ? 'error' : 'default'}

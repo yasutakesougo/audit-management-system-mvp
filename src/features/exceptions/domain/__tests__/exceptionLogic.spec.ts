@@ -119,7 +119,7 @@ describe('detectCriticalHandoffs', () => {
 describe('detectAttentionUsers', () => {
   it('強度行動障害対象で計画未作成を検出', () => {
     const result = detectAttentionUsers([
-      { userId: 'U-001', userName: '山田太郎', isHighIntensity: true, isSupportProcedureTarget: false, hasPlan: false },
+      { userId: 'U-001', userName: '山田太郎', isHighIntensity: true, isSupportProcedureTarget: false, isTransportTarget: false, hasPlan: false },
     ]);
     expect(result).toHaveLength(1);
     expect(result[0].category).toBe('attention-user');
@@ -128,14 +128,14 @@ describe('detectAttentionUsers', () => {
 
   it('計画ありなら検出しない', () => {
     const result = detectAttentionUsers([
-      { userId: 'U-001', userName: '山田太郎', isHighIntensity: true, isSupportProcedureTarget: false, hasPlan: true },
+      { userId: 'U-001', userName: '山田太郎', isHighIntensity: true, isSupportProcedureTarget: false, isTransportTarget: false, hasPlan: true },
     ]);
     expect(result).toHaveLength(0);
   });
 
   it('通常支援なら検出しない', () => {
     const result = detectAttentionUsers([
-      { userId: 'U-001', userName: '山田太郎', isHighIntensity: false, isSupportProcedureTarget: false, hasPlan: false },
+      { userId: 'U-001', userName: '山田太郎', isHighIntensity: false, isSupportProcedureTarget: false, isTransportTarget: false, hasPlan: false },
     ]);
     expect(result).toHaveLength(0);
   });

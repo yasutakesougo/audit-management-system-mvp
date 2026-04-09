@@ -173,7 +173,7 @@ const DailyRecordMenuPage: React.FC = () => {
                 </Button>
               )}
               <Typography variant="h6" component="h1" sx={{ fontWeight: 700 }}>
-                日次記録
+                日々の記録
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 {dateLabel}
@@ -197,7 +197,7 @@ const DailyRecordMenuPage: React.FC = () => {
           spacing={4}
           sx={{ mb: 4, flexWrap: 'wrap' }}
         >
-          {/* 一覧形式ケース記録 IMPROVED */}
+          {/* 一覧形式の日々の記録 IMPROVED */}
           <Card
             data-testid="daily-card-table-activity"
             sx={{
@@ -217,7 +217,7 @@ const DailyRecordMenuPage: React.FC = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                 <GroupIcon sx={{ fontSize: 32, color: 'primary.main', mr: 2 }} />
                 <Typography variant="h5" component="h2">
-                  一覧形式ケース記録
+                  一覧形式の日々の記録
                 </Typography>
                 <Chip
                   label="IMPROVED"
@@ -239,7 +239,7 @@ const DailyRecordMenuPage: React.FC = () => {
               )}
 
               <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-                利用者を行として表形式で並べて効率的に一覧入力できます
+                利用者を行として表形式で並べて効率的に記録できます
               </Typography>
 
               <Stack spacing={1}>
@@ -273,7 +273,7 @@ const DailyRecordMenuPage: React.FC = () => {
                 startIcon={<GroupIcon />}
                 data-testid="btn-open-table-activity"
               >
-                一覧形式で記録作成
+                一覧形式の日々の記録を開く
               </Button>
             </CardActions>
           </Card>
@@ -352,7 +352,7 @@ const DailyRecordMenuPage: React.FC = () => {
             </CardActions>
           </Card>
 
-          {/* 支援手順記録 */}
+          {/* 支援手順の実施 */}
           <Card
             data-testid="daily-card-support"
             sx={{
@@ -370,7 +370,7 @@ const DailyRecordMenuPage: React.FC = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                 <SupportIcon sx={{ fontSize: 32, color: 'secondary.main', mr: 2 }} />
                 <Typography variant="h5" component="h2">
-                  支援手順記録
+                  支援手順の実施
                 </Typography>
               </Box>
 
@@ -430,7 +430,7 @@ const DailyRecordMenuPage: React.FC = () => {
                 startIcon={<SupportIcon />}
                 data-testid="btn-open-support"
               >
-                支援手順記録を開く
+                支援手順の実施を開く
               </Button>
 
               <Button

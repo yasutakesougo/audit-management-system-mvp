@@ -66,7 +66,7 @@ export interface DailyUserSnapshot {
   // ========================================
   // Activity Module Data
   // ========================================
-  /** 支援記録（ケース記録）記録状況 */
+  /** 日々の記録の状態 */
   activityStatus?: ActivityStatus;
   /** 問題行動記録の有無 */
   hasProblemBehavior?: boolean;

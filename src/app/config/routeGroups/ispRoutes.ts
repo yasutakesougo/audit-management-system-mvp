@@ -11,7 +11,7 @@ import { NAV_AUDIENCE } from '../navigationConfig.types';
 /** Unconditional ISP group items */
 export const ISP_ROUTES: NavItem[] = [
   {
-    label: 'ISP作成',
+    label: '個別支援計画作成',
     to: '/support-plan-guide',
     isActive: (pathname) => pathname === '/support-plan-guide',
     icon: undefined,
@@ -20,7 +20,7 @@ export const ISP_ROUTES: NavItem[] = [
     group: 'isp' as NavGroupKey,
   },
   {
-    label: 'ISP更新（前回比較）',
+    label: '個別支援計画更新（前回比較）',
     to: '/isp-editor',
     isActive: (pathname) => pathname.startsWith('/isp-editor'),
     icon: undefined,

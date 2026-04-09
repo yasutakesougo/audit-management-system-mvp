@@ -32,6 +32,18 @@ Accepted — 2026-03-12
 
 本システムでは、以下の三層構造を採用する。
 
+> **⚠️ 適用対象の原則（変更禁止）**
+>
+> | 層 | 適用対象 | 日次記録画面 |
+> |---|---|---|
+> | 第1層: ISP + 日次記録 | **全利用者** | `/daily/table` |
+> | 第2層: 支援計画シート（SPS） | **IBD（強度行動障害）対象者のみ** | — |
+> | 第3層: 支援手順書兼記録 | **IBD対象者のみ** | `/daily/support?wizard=user` |
+>
+> - 第2層・第3層を全利用者に適用してはならない。
+> - IBD対象者の日次記録は `/daily/support`（手順ステップ単位の時間別記録）であり、`/daily/table`（全利用者共通）とは別画面である。
+> - この適用範囲はユーザーによる確定定義であり、実装・AI開発・レビュー時に必ず参照すること。
+
 ### 第1層: ISP（個別支援計画）
 
 法定の中核文書として、以下を保持する。
@@ -84,6 +96,130 @@ Accepted — 2026-03-12
 | 連絡事項 | 新設: `ProcedureExecutionRecord.communicationNotes` |
 | 実施者 | 新設: `ProcedureExecutionRecord.executedBy` |
 | 実施日時 | 新設: `ProcedureExecutionRecord.executedAt` |
+
+## 画面責務表（Screen Responsibility Matrix）
+
+> UI設計・実装・レビュー時の基準表。この分類を変えるには本ADRの改訂が必要。
+
+| 画面 | URL | 対象ユーザー | 役割 | 属する層 |
+|---|---|---|---|---|
+| ケース記録 | `/daily/table` | **全利用者** | 日々の一覧型記録・経過記録（Type A/B） | 第1層 |
+| 支援計画シート | `/isp/:userId/sps/:spsId` 等 | **IBD対象者のみ** | 行動特性分析・氷山分析・支援設計・手順スケジュール定義・3か月見直し基点 | 第2層 |
+| 支援手順の実施・記録 | `/daily/support?wizard=user` | **IBD対象者のみ** | SPSに紐づく手順を現場で実行しながら記録する（第2層→第3層ブリッジUI） | **第2層→第3層** |
+| PDCA・見直し | `/ibd/pdca/:id` 等 | **IBD対象者のみ** | 実施ログを第2層へフィードバック・再アセスメント・計画改訂 | 第2層・第3層 |
+
+### `/daily/support` の位置づけ（変更禁止）
+
+> `/daily/support` は、IBD対象者に対して、支援計画シートに定義された手順を実行しながら記録する実施ログ画面であり、第2層（支援設計）と第3層（実施記録）を接続するブリッジUIである。
+
+この画面を「単なる記録入力画面」として扱ってはならない。
+元データは第2層（SPS）、入力結果は第3層（実施ログ）であり、両層を跨ぐ実行ブリッジである。
+
+### ユーザーへの見せ方（UI上のラベル）
+
+設計層の名称（第1層・第2層・第3層）は現場UIには出さない。画面タイトル・メニューは以下に統一する。
+
+| 対象 | UIラベル |
+|---|---|
+| 全利用者 | 日々の記録 |
+| IBD対象者のみ | 支援計画シート |
+| IBD対象者のみ | 支援手順の実施 |
+| IBD対象者のみ | 見直し・PDCA |
+
+## Anti-Patterns（禁止事項）
+
+層の越境は設計崩壊の主因となる。以下を明示的に禁止する。
+
+| 禁止パターン | 理由 |
+|---|---|
+| 第2層（SPS）に日次記録を直接保持する | 第2層は設計文書。ログは第3層に属する |
+| 第3層（実施ログ）に分析ロジックを持ち込む | 分析は第2層の責務。第3層は記録のみ |
+| ISP（第1層）に実行手順・詳細ログを書き込む | ISPは制度文書。実行詳細は第2・3層に委譲する |
+| `/daily/support` で SPS を書き換える | この画面は第2層を read-only で参照し、第3層へ書き込む |
+| `/daily/table` を IBD 対象者の主記録として使う | IBD 対象者の実施記録は `/daily/support` が正。両方に分散させない |
+
+**原則：分析は第2層 / 実行は第3層 / 制度文書は第1層**
+
+---
+
+## Data Flow（循環構造）
+
+層をまたぐデータの流れは以下の通り。一方向ではなく循環する。
+
+```
+ISP（第1層）
+ ↓ ISPReference（スナップショット参照）
+SupportPlanSheet / SPS（第2層）
+ 氷山分析 / FBA / 仮説 / 支援設計 / 手順スケジュール定義
+ ↓ planningSheetId
+/daily/support（第2層→第3層 ブリッジUI）
+ ↓
+実施ログ / filledStepIds / step notes（第3層）
+ ↓
+MonitoringCountdown / PDCA（第2層へフィードバック）
+ ↓
+SPS 再アセスメント・改訂（第2層更新）
+ ↓
+ISP モニタリング・見直し（第1層更新）
+ ↑_______________________________↑
+```
+
+**ポイント：第3層の実施ログが第2層の改訂根拠となり、最終的に第1層ISPの見直しに繋がる。**
+
+---
+
+## `/daily/support` State Responsibility
+
+この画面の入出力と状態責務を明確に定義する。
+
+| 区分 | 内容 |
+|---|---|
+| **Input（第2層から）** | `planningSheetId`、`schedule`（手順定義）、`positiveConditions` |
+| **State（画面内）** | `filledStepIds`、step logs、notes、`unfilledStepsCount` |
+| **Output（第3層へ）** | 実施ログ（execution logs）、モニタリングシグナル（PDCA） |
+| **Rule** | 第2層（SPS）データは **read-only**。この画面から SPS を変更してはならない |
+
+---
+
+## IBD Mode（UI分岐定義）
+
+利用者が IBD 加算対象かどうかで UI を分岐する。判定は `evaluateSevereDisabilityAddOn()` の結果に従う。
+
+```
+if isSevereDisabilityAddonEligible(user):
+  enable:
+    - 支援計画シート（SPS）拡張フィールド
+    - /daily/support（支援手順の実施）
+    - MonitoringCountdown（3か月見直しカウントダウン）
+    - PDCA / IcebergPdca ナビゲーション
+else:
+  fallback:
+    - /daily/table のみ（ケース記録）
+```
+
+IBD モードの有効化判定をアドホックに行ってはならない。判定ロジックは `src/domain/regulatory/severeDisabilityAddon.ts` の `checkUserEligibility()` に一元化する。
+
+---
+
+## Testing Strategy
+
+設計を壊さないためのテスト観点。層の責務をテストが守る状態を維持する。
+
+### 層分離テスト
+- SPS（第2層）に日次ログが保存されないこと
+- `/daily/support` が SPS を書き換えないこと（read-only 遵守）
+- `PersonDaily`（Type A/B）が SPS フィールドを持ち込まないこと
+
+### ナビゲーションテスト
+- SPS 詳細 → `planningSheetId` 付き `/daily/support` への遷移
+- 実施完了後 → PDCA / IcebergPdca への導線
+- IBD 非対象者に `/daily/support` が表示されないこと
+
+### 加算判定テスト
+- `evaluateSevereDisabilityAddOn()` の全要件（区分・行動スコア・研修比率・見直し期限）の境界値
+- IBD モード有効化フラグと UI 分岐の整合性
+
+---
 
 ## Relationship Rules
 
@@ -184,3 +320,5 @@ stateDiagram-v2
 ## Changelog
 
 - 2026-03-12: 既存コードベースとの対応付けを含む形で Accepted
+- 2026-04-09: 適用対象の原則・画面責務表・`/daily/support` ブリッジUI定義・UIラベル統一指針を追記（ユーザー確定定義）
+- 2026-04-09: Anti-Patterns・Data Flow・`/daily/support` State定義・IBD Mode・Testing Strategy を追記（設計固定フェーズ完了）

@@ -23,7 +23,7 @@ const SupportRecordReviewList: React.FC<SupportRecordReviewListProps> = ({ daily
   if (recorded.length === 0) {
     return (
       <Alert severity="info">
-        まだ記録はありません。タブを「記録入力」に切り替えて記録を追加してください。
+        まだ記録はありません。タブを「記録」に切り替えて記録を追加してください。
       </Alert>
     );
   }

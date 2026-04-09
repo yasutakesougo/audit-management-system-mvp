@@ -67,7 +67,7 @@ describe('ApprovalSection', () => {
 
       const button = screen.getByTestId('approval-button');
       expect(button).not.toBeDisabled();
-      expect(button).toHaveTextContent('サビ管承認を実行');
+      expect(button).toHaveTextContent('サビ管承認を行う');
     });
 
     it('非管理者にはボタンが無効になる', () => {

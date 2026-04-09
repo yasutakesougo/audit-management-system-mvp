@@ -165,10 +165,13 @@ export function useSupportPlanningSheetOrchestrator(): {
     handleBannerNavigate,
     handleJumpToMonitoringHistory,
     handleEvidenceClick,
+    handleNavigateToExecution,
+    handleNavigateToPdca,
   } = useSupportPlanningPageHandlers({
     navigate,
     setActiveTab: uiActions.setActiveTab,
     sheetUserId: effectiveSheet?.userId,
+    planningSheetId,
     form,
     setIsEditing: uiActions.setIsEditing,
     setToast: uiActions.setToast,
@@ -264,6 +267,8 @@ export function useSupportPlanningSheetOrchestrator(): {
       if (!monitoringBridge) return;
       handleReflectCandidate(monitoringBridge, candidateId);
     },
+    onNavigateToExecution: handleNavigateToExecution,
+    onNavigateToPdca: handleNavigateToPdca,
   };
 
   return { viewModel, handlers };

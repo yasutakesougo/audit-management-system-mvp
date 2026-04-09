@@ -49,7 +49,7 @@ export const TodayLitePage: React.FC<TodayLitePageProps> = ({ summary, role, onN
       };
       const titleByFlowKey: Record<string, string> = {
         attendance: '出欠確認',
-        'daily-table': 'ケース記録',
+        'daily-table': '日々の記録',
         'handoff-timeline': '申し送り',
       };
 

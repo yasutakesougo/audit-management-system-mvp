@@ -12,6 +12,8 @@ import {
   detectCriticalHandoffs, 
   detectAttentionUsers, 
   detectDataLayerExceptions,
+  detectAnalysisSetupExceptions,
+  detectTransportSetupExceptions,
   aggregateExceptions,
   mapTriggeredToExceptionItems
 } from '../domain/exceptionLogic';
@@ -36,6 +38,8 @@ export function useExceptionCenterOrchestrator() {
     const criticalHandoffs = detectCriticalHandoffs(dataSources.criticalHandoffs);
     const attentionUsers = detectAttentionUsers(dataSources.userSummaries);
     const dataOSItems = detectDataLayerExceptions(dataSources.dataOSResolutions);
+    const setupIncomplete = detectAnalysisSetupExceptions(dataSources.userSummaries);
+    const transportSetup = detectTransportSetupExceptions(dataSources.userSummaries);
 
     // 2. 新規 Bridge 検出ロジック (L2-ISP Integration)
     const bridgeItems = mapTriggeredToExceptionItems(bridge.exceptions, users as IUserMaster[]);
@@ -47,7 +51,9 @@ export function useExceptionCenterOrchestrator() {
       attentionUsers,
       dataOSItems,
       bridgeItems,
-      dataSources.integrityExceptions
+      dataSources.integrityExceptions,
+      setupIncomplete,
+      transportSetup
     );
   }, [dataSources, bridge.exceptions, users]);
 

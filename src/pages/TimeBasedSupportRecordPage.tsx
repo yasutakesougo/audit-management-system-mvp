@@ -15,6 +15,7 @@ import { useProcedureData } from '@/features/daily/hooks/legacy/useProcedureData
 import { useSupportWizard } from '@/features/daily/hooks/legacy/useSupportWizard';
 import type { ProcedureItem } from '@/features/daily/hooks/legacy-stores/procedureStore';
 import { useUsers } from '@/features/users/useUsers';
+import { useIbdPageGuard } from '@/features/daily/hooks/useIbdPageGuard';
 import { useSupportRecordSubmit } from '@/pages/hooks/useSupportRecordSubmit';
 import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
 import Alert from '@mui/material/Alert';
@@ -54,7 +55,15 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   // ── Data hooks (same as before) ──
   const procedureRepo = useProcedureData();
   const { repo: behaviorRepo, data: behaviorRecords, error: behaviorError, clearError } = useBehaviorData();
-  const { data: users } = useUsers();
+  const { data: users, status: usersStatus } = useUsers();
+
+  // ── IBD ページガード: 非対象利用者を /daily/table へリダイレクト ──
+  const ibdGuard = useIbdPageGuard(
+    initialParams.userId,
+    users,
+    usersStatus === 'success',
+  );
+
   const { filter, updateFilter, resetFilter, filteredUsers, hasActiveFilter } = useDailySupportUserFilter(users);
   const interventionStore = useInterventionStore();
   const executionStore = useExecutionData();
@@ -241,9 +250,12 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     }, { replace: true });
   }, [wizard.step, wizard.wizardUserId, wizard.wizardSlotId, targetUserId, setSearchParams]);
 
+  // IBDガード: リダイレクト中はレンダリングしない
+  if (ibdGuard === 'redirecting') return null;
+
   return (
     <FullScreenDailyDialogPage
-      title="支援手順兼記録"
+      title="支援手順の実施（行動観察）"
       backTo="/today"
       testId="daily-support-page"
       headerActions={

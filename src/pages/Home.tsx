@@ -112,7 +112,7 @@ export default function Home() {
   { to: '/dashboard', label: 'オペレーションハブ', caption: '施設全体の運営状況を俯瞰', Icon: DashboardRoundedIcon, accent: 'text-green-600 bg-green-100', border: 'border-green-200 hover:border-green-300 hover:bg-green-50' },
     { to: '/schedules/week', label: 'スケジュール', caption: '今日の予定をチェック', Icon: EventAvailableRoundedIcon, accent: 'text-purple-600 bg-purple-100', border: 'border-purple-200 hover:border-purple-300 hover:bg-purple-50' },
     { to: '/tablet-demo', label: 'モバイル予定ビュー', caption: 'スマホ向けの簡易ビュー', Icon: PhonelinkRoundedIcon, accent: 'text-amber-600 bg-amber-100', border: 'border-amber-200 hover:border-amber-300 hover:bg-amber-50' },
-    { to: '/daily', label: '日次記録', caption: '今日の記録入力を開始', Icon: AssignmentTurnedInRoundedIcon, accent: 'text-sky-600 bg-sky-100', border: 'border-sky-200 hover:border-sky-300 hover:bg-sky-50' },
+    { to: '/daily', label: '日々の記録', caption: '今日の記録を開始', Icon: AssignmentTurnedInRoundedIcon, accent: 'text-sky-600 bg-sky-100', border: 'border-sky-200 hover:border-sky-300 hover:bg-sky-50' },
     { to: '/checklist', label: '自己点検チェックリスト', caption: '監査前チェックを実施', Icon: ChecklistRoundedIcon, accent: 'text-gray-600 bg-gray-100', border: 'border-gray-200 hover:border-gray-300 hover:bg-gray-50' },
   ] as const;
 

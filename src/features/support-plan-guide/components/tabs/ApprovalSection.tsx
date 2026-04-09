@@ -153,12 +153,12 @@ const ApprovalSection: React.FC<ApprovalSectionProps> = ({
               data-testid="approval-button"
               sx={{ minWidth: 200 }}
             >
-              {isAdmin ? 'サビ管承認を実行' : '承認権限がありません'}
+              {isAdmin ? 'サビ管承認を行う' : '承認権限がありません'}
             </Button>
 
             {!isAdmin && (
               <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                承認はサービス管理責任者（管理者）のみ実行できます。
+                承認はサービス管理責任者（管理者）のみ行えます。
               </Typography>
             )}
           </Box>

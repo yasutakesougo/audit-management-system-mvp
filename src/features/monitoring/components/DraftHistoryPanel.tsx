@@ -220,7 +220,7 @@ const DraftHistoryPanel: React.FC<DraftHistoryPanelProps> = ({
       </Stack>
 
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-        過去に保存した ISP 判断ドラフトです。展開して詳細を確認し、再反映できます。
+        過去に保存した個別支援計画の判断ドラフトです。展開して詳細を確認し、再反映できます。
       </Typography>
 
       <Stack spacing={0.5}>
@@ -329,7 +329,7 @@ const DraftHistoryPanel: React.FC<DraftHistoryPanelProps> = ({
               {/* アクションボタン */}
               <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
                 {onReapply && (
-                  <Tooltip title="このドラフトの判断内容を ISP 計画書へ反映します">
+                  <Tooltip title="このドラフトの判断内容を個別支援計画書へ反映します">
                     <Button
                       size="small"
                       variant="contained"
@@ -341,7 +341,7 @@ const DraftHistoryPanel: React.FC<DraftHistoryPanelProps> = ({
                       color={justReapplied === batch.batchId ? 'success' : 'primary'}
                       onClick={() => handleReapply(batch)}
                     >
-                      {justReapplied === batch.batchId ? '反映しました' : 'ISP 計画書へ再反映'}
+                      {justReapplied === batch.batchId ? '反映しました' : '個別支援計画書へ再反映'}
                     </Button>
                   </Tooltip>
                 )}

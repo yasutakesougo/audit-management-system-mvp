@@ -47,7 +47,7 @@ describe("Navigation Configuration", () => {
     expect(todayItems.some((i) => i.label === "送迎配車表")).toBe(true);
 
     const masterItems = map.get("master") || [];
-    expect(masterItems.some((i) => i.label === "利用者")).toBe(false);
+    expect(masterItems.some((i) => i.label === "利用者")).toBe(true);
   });
 
   it("hides admin items when feature flag/permissions omit them", () => {
@@ -69,13 +69,13 @@ describe("Navigation Configuration", () => {
     const items = createNavItems(baseConfig);
     const labels = items.map((item) => item.label);
 
-    expect(labels).not.toContain('ISP更新（前回比較）');
+    expect(labels).not.toContain('個別支援計画更新（前回比較）');
     expect(labels).not.toContain('サービス提供実績記録');
     expect(labels).not.toContain('個人月次業務日誌');
     expect(labels).not.toContain('職員勤怠');
   });
 
-  it('reception audience では record/勤怠導線を表示し、ISP更新は表示しない', () => {
+  it('reception audience では record/勤怠導線を表示し、個別支援計画更新は表示しない', () => {
     const items = createNavItems({
       ...baseConfig,
       navAudience: 'reception',
@@ -85,10 +85,10 @@ describe("Navigation Configuration", () => {
     expect(labels).toContain('サービス提供実績記録');
     expect(labels).toContain('個人月次業務日誌');
     expect(labels).toContain('職員勤怠');
-    expect(labels).not.toContain('ISP更新（前回比較）');
+    expect(labels).not.toContain('個別支援計画更新（前回比較）');
   });
 
-  it('admin audience では ISP更新と reception 導線の両方を表示できる', () => {
+  it('admin audience では個別支援計画更新と reception 導線の両方を表示できる', () => {
     const items = createNavItems({
       ...baseConfig,
       isAdmin: true,
@@ -96,7 +96,7 @@ describe("Navigation Configuration", () => {
     });
     const labels = items.map((item) => item.label);
 
-    expect(labels).toContain('ISP更新（前回比較）');
+    expect(labels).toContain('個別支援計画更新（前回比較）');
     expect(labels).toContain('サービス提供実績記録');
     expect(labels).toContain('個人月次業務日誌');
     expect(labels).toContain('職員勤怠');

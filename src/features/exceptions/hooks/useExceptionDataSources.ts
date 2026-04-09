@@ -7,7 +7,7 @@
  * 1. DailyRecord → 今日の記録状況 (未入力者の特定)
  * 2. Handoff → 重要申し送りの未対応分
  * 3. Users → 注意対象者 + ISP 有無
- * 4. SupportLogs → 支援手順記録の未入力者
+ * 4. SupportLogs → 支援手順の実施の未作成者
  *
  * @see features/daily/schema.ts — DailyRecordDomainSchema (userRows)
  * @see features/handoff/handoffTypes.ts — HandoffRecord (userCode, userDisplayName)
@@ -35,7 +35,7 @@ export type ExceptionDataSources = {
   today: string;
   /** アクティブユーザーの一覧 (detectMissingRecords 用) */
   expectedUsers: Array<{ userId: string; userName: string }>;
-  /** 今日の日次記録 (detectMissingRecords 用) */
+  /** 今日の日々の記録 (detectMissingRecords 用) */
   todayRecords: DailyRecordSummary[];
   /** 重要 × 未完了の申し送り (buildHandoffExceptions / detectCriticalHandoffs 用) */
   criticalHandoffs: HandoffSummaryItem[];
@@ -54,7 +54,7 @@ export type ExceptionDataSources = {
     resolvedTitle: string;
     error?: string;
   }>;
-  /** 日次記録の再取得を要求する（保存後の即時同期用） */
+  /** 日々の記録の再取得を要求する（保存後の即時同期用） */
   refetchDailyRecords: () => void;
 };
 
@@ -104,7 +104,7 @@ export function useExceptionDataSources(): ExceptionDataSources {
         if (!cancelled) { setTodayRecords(records); setDailyError(null); }
       } catch (err) {
         console.warn('[useExceptionDataSources] DailyRecord load failed:', err);
-        if (!cancelled) { setTodayRecords([]); setDailyError(err instanceof Error ? err.message : '日次記録の取得に失敗'); }
+        if (!cancelled) { setTodayRecords([]); setDailyError(err instanceof Error ? err.message : '日々の記録の取得に失敗'); }
       } finally {
         if (!cancelled) setDailyLoading(false);
       }
@@ -152,7 +152,7 @@ export function useExceptionDataSources(): ExceptionDataSources {
         console.warn('[useExceptionDataSources] ISP load failed:', err);
         if (!cancelled) {
           setCurrentPlanUserIds(new Set());
-          setIspError(err instanceof Error ? err.message : 'ISPの取得に失敗');
+          setIspError(err instanceof Error ? err.message : '個別支援計画の取得に失敗');
         }
       } finally {
         if (!cancelled) setIspLoading(false);
@@ -205,6 +205,7 @@ export function useExceptionDataSources(): ExceptionDataSources {
         userName: u.FullName ?? '',
         isHighIntensity: u.IsHighIntensitySupportTarget ?? false,
         isSupportProcedureTarget: u.IsSupportProcedureTarget ?? false,
+        isTransportTarget: !!(u.TransportToDays?.length || u.TransportFromDays?.length),
         hasPlan: ispError
           ? true // ISP取得失敗時は、誤検知で全員が attention-user になるのを防ぐため安全側（true）に倒す
           : currentPlanUserIds.has(u.UserID ?? String(u.Id)),

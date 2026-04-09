@@ -57,12 +57,12 @@ export const ApprovalDialog: React.FC<ApprovalDialogProps> = ({
       data-testid="approval-dialog"
     >
       <DialogTitle sx={{ fontWeight: 'bold' }}>
-        📋 日次記録の承認
+        📋 日々の記録の承認
       </DialogTitle>
 
       <DialogContent>
         <DialogContentText sx={{ mb: 2 }}>
-          <strong>{targetDate}</strong> の日次記録を承認しますか？
+          <strong>{targetDate}</strong> の日々の記録を承認しますか？
         </DialogContentText>
 
         <DialogContentText variant="body2" color="text.secondary">

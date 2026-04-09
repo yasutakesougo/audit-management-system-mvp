@@ -88,7 +88,7 @@ export type DashboardKpis = {
 type ScreenGroup = 'daily' | 'calllog' | 'handoff' | 'today';
 
 const SCREEN_LABELS: Record<ScreenGroup, string> = {
-  daily: '日次記録',
+  daily: '日々の記録',
   calllog: '受電ログ',
   handoff: '申し送り',
   today: '今日の業務',
@@ -109,10 +109,10 @@ const QUEUE_CTA_IDS: Record<ScreenGroup, string[]> = {
 };
 
 const FLOW_DESTINATION_MAP: Record<string, { destination: string; label: string }> = {
-  daily_hero_clicked: { destination: '/daily/activity', label: '日次記録' },
-  daily_queue_item_clicked: { destination: '/daily/activity', label: '日次記録' },
-  daily_hero_all_completed_clicked: { destination: '/daily/activity', label: '日次記録' },
-  daily_queue_completed_toggled: { destination: '/daily/activity', label: '日次記録' },
+  daily_hero_clicked: { destination: '/daily/activity', label: '日々の記録' },
+  daily_queue_item_clicked: { destination: '/daily/activity', label: '日々の記録' },
+  daily_hero_all_completed_clicked: { destination: '/daily/activity', label: '日々の記録' },
+  daily_queue_completed_toggled: { destination: '/daily/activity', label: '日々の記録' },
   calllog_hero_done_clicked: { destination: '/calllog', label: '受電ログ' },
   calllog_priority_item_clicked: { destination: '/calllog', label: '受電ログ' },
   calllog_priority_done_clicked: { destination: '/calllog', label: '受電ログ' },

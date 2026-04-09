@@ -1,13 +1,5 @@
 import type { SaveDailyRecordInput } from '../legacy/DailyRecordRepository';
-
-export interface SharePointDailyRecordPayload {
-  Title: string;
-  RecordDate: string;
-  ReporterName: string;
-  ReporterRole: string;
-  UserRowsJSON: string;
-  UserCount: number;
-}
+import type { SharePointDailyRecordPayload } from '../schema';
 
 /**
  * Table型の保存入力をSharePointリスト用の純粋なPayload（JSON）に変換する

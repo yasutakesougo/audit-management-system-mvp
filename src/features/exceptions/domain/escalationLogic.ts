@@ -83,7 +83,7 @@ export function evaluateEscalation(input: EvaluatorInput): EscalationDecision {
     level,
     targetRoles: Array.from(targetRoles),
     reasons,
-    suggestedAction: item.actionLabel ? `${item.actionLabel}を実行してください。` : '至急現場の実施状況を確認し、是正を行ってください。',
+    suggestedAction: item.actionLabel ? `${item.actionLabel}を行ってください。` : '至急現場の実施状況を確認し、是正を行ってください。',
     isSuppressed,
     needsImmediateAction: level === 'emergency' || level === 'warning'
   };

@@ -8,7 +8,7 @@ export interface ActivitySummaryResult {
 }
 
 /**
- * 支援記録（ケース記録）のサマリーを生成する
+ * 日々の記録のサマリーを生成する
  */
 export function buildActivitySummary(
   records: PersonDaily[],
@@ -39,7 +39,7 @@ export function buildActivitySummary(
       id: 'activity-missing',
       module: 'activity',
       severity,
-      title: `支援記録（ケース記録） 未作成 ${notStarted}件`,
+      title: `日々の記録 未作成 ${notStarted}件`,
       message: `未作成の方${topMissing.length > 0 ? `（一部）: ${topMissing.join('、')}` : 'がいます'}`,
       href: '/daily/activity',
     });
@@ -52,7 +52,7 @@ export function buildActivitySummary(
       module: 'activity',
       severity: 'info',
       title: `作成中 ${inProgress}件`,
-      message: '作成中の支援記録（ケース記録）があります',
+      message: '作成中の日々の記録があります',
       href: '/daily/activity',
     });
   }
@@ -60,7 +60,7 @@ export function buildActivitySummary(
   return {
     module: {
       name: 'activity',
-      label: '支援記録（ケース記録）',
+      label: '日々の記録',
       total,
       done,
       rate,

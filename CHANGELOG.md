@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **シグナルガバナンスとライフサイクル管理 (ADR-016〜019)**
+  - シグナルライフサイクル管理の実装: `open` → `acknowledged` (対応中) → `resolved` (手動解消)
+  - `acknowledgedMap` および `resolvedMap` による「対応中/解消」状態の永続化 (localStorage v2)
+  - システム全体でのロールベースのシグナルフィルタリング (Admin/Staff)
+  - 傍観者効果の解消に向けた客観的なシグナル所有権（Acknowledgement）の導入
+  - `setup-incomplete` カテゴリの追加: 行動分析対象未設定など、準備不足を能動的に検知して通知
+  - 送迎設定漏れの検出ロジックの実装
+- **行動分析ダッシュボードのガバナンス強化 (ADR-020)**
+  - 強度行動障害の利用者が分析対象外の場合にアラートを表示
+  - 分析対象者が0名の場合に専用の空状態 UI と設定へのナビゲーションを表示
+  - 管理者向けの一括「分析対象」フラグ設定機能（開発・検証用）
 - **氷山分析ページ再設計 (Phase 1〜3)**
   - 3タブ構成へ再設計: 傾向 / 氷山構造 / 改善サイクル
   - URL同期 (`?tab=trend|iceberg|pdca`) による共有・再訪対応

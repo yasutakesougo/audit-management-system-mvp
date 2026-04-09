@@ -71,7 +71,7 @@ const SupportRecordPage: React.FC = () => {
     return newRecord;
   }, []);
 
-  // 選択された利用者の日次記録
+  // 選択された利用者の日々の記録
   const currentDailyRecord = useMemo(() => {
     if (!selectedUser) return null;
     return getDailyRecord(selectedUser, dateFilter);
@@ -143,8 +143,8 @@ const SupportRecordPage: React.FC = () => {
       <Box sx={{ py: { xs: 2, sm: 3, md: 4 } }}>
         {/* ヘッダー */}
         <PageHeader
-          title="支援手順記録"
-          subtitle="個別支援計画に基づく19項目の支援手順実施状況を記録・管理します"
+          title="支援手順の実施（行動観察）"
+          subtitle="個別支援計画に基づく19項目の支援手順の実施状況を記録・管理します"
         />
 
         {/* 統計情報（本日分） */}
@@ -242,7 +242,7 @@ const SupportRecordPage: React.FC = () => {
         {selectedUser && currentDailyRecord ? (
           <Card>
             <CardHeader
-              title={`支援記録 (${currentDailyRecord.date})`}
+              title={`支援手順の実施 (${currentDailyRecord.date})`}
               subheader={`実施: ${currentDailyRecord.summary.implementedSteps} / ${currentDailyRecord.summary.totalSteps} 項目`}
             />
             <CardContent>
@@ -318,7 +318,7 @@ const SupportRecordPage: React.FC = () => {
 
               {filteredUsers.length === 0 ? (
                 <Alert severity="info">
-                  支援対象者が見つかりません。検索条件を確認してください。
+                  支援手順の実施対象者が見つかりません。検索条件を確認してください。
                 </Alert>
               ) : (
                 <Stack spacing={2}>

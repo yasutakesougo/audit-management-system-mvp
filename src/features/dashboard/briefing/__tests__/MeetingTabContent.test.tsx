@@ -80,13 +80,13 @@ describe('MeetingTabContent', () => {
       ).toBeInTheDocument();
     });
 
-    it('mode=evening でケース記録案内を表示する', () => {
+    it('mode=evening で日々の記録案内を表示する', () => {
       render(<MeetingTabContent {...buildProps({ mode: 'evening' })} />, {
         wrapper: Wrapper,
       });
       expect(
         screen.getByText(
-          '記録状況の詳細はダッシュボードの「ケース記録」カードから確認できます。',
+          '記録状況の詳細はダッシュボードの「日々の記録」カードから確認できます。',
         ),
       ).toBeInTheDocument();
     });

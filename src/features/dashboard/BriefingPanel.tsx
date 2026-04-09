@@ -53,7 +53,7 @@ export type BriefingPanelProps = {
   now?: Date;
   /** Safety HUD の集約情報 */
   safety: BriefingSafety;
-  /** 日次記録（通所・日誌・支援手順など）の進捗 */
+  /** 日々の記録（通所・日誌・支援手順など）の進捗 */
   dailyStatuses: BriefingDailyStatus[];
   /** 重点フォロー対象者 */
   priorityUsers?: BriefingPriorityUser[];

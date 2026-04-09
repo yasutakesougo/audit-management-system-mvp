@@ -20,16 +20,20 @@ export type QuickAction = {
 };
 
 /**
- * 利用者IDに基づくクイックアクション一覧を生成
+ * 全利用者共通のクイックアクション
+ *
+ * @see docs/navigation-structure.md — 系統A: 全利用者共通
+ * @see docs/wireframes.md — 利用者詳細 共通4枚
  */
-export function buildQuickActions(userId: string): QuickAction[] {
+export function buildCommonQuickActions(userId: string): QuickAction[] {
+  const uid = encodeURIComponent(userId);
   return [
     {
       key: 'today-record',
-      label: '今日の記録',
-      description: '本日の日次記録を入力・編集する',
+      label: '日々の記録',
+      description: '本日の日々の記録を作成・編集する',
       icon: '📝',
-      path: `/daily/activity?userId=${encodeURIComponent(userId)}`,
+      path: `/daily/table?userId=${uid}`,
       color: 'primary',
     },
     {
@@ -37,15 +41,15 @@ export function buildQuickActions(userId: string): QuickAction[] {
       label: '申し送り',
       description: '引き継ぎ情報を確認・追加する',
       icon: '📨',
-      path: `/handoff/timeline?userId=${encodeURIComponent(userId)}`,
+      path: `/handoff/timeline?userId=${uid}`,
       color: 'warning',
     },
     {
       key: 'support-plan',
-      label: '支援計画',
-      description: '個別支援計画書を参照する',
+      label: '個別支援計画',
+      description: '制度文書としての個別支援計画を参照・更新する',
       icon: '📋',
-      path: `/users?tab=list&selected=${encodeURIComponent(userId)}`,
+      path: `/support-plan-guide?userId=${uid}`,
       color: 'secondary',
     },
     {
@@ -53,10 +57,61 @@ export function buildQuickActions(userId: string): QuickAction[] {
       label: '記録一覧',
       description: 'タイムラインで履歴を確認する',
       icon: '📊',
-      path: `/users?tab=list&selected=${encodeURIComponent(userId)}`,
+      path: `/users?tab=list&selected=${uid}`,
       color: 'info',
     },
   ];
+}
+
+/**
+ * IBD対象者専用のクイックアクション
+ *
+ * isSevereDisabilityAddonEligible === true の利用者にのみ表示する。
+ * 非対象者に表示してはならない（navigation-structure.md IBD Mode 参照）。
+ *
+ * @see docs/navigation-structure.md — 系統B: IBD対象者専用
+ * @see docs/wireframes.md — 利用者詳細 IBD専用3枚
+ * @see docs/adr/ADR-005-isp-three-layer-separation.md — IBD Mode
+ */
+export function buildIbdQuickActions(userId: string): QuickAction[] {
+  const uid = encodeURIComponent(userId);
+  return [
+    {
+      key: 'ibd-planning-sheet',
+      label: '支援計画シート',
+      description: '行動特性分析・支援設計・手順スケジュールを管理する',
+      icon: '📐',
+      path: `/planning-sheet-list?userId=${uid}`,
+      color: 'secondary',
+    },
+    {
+      key: 'ibd-support-execution',
+      label: '支援手順の実施',
+      description: '支援計画シートに沿って手順を実行しながら記録する',
+      icon: '▶',
+      path: `/daily/support?wizard=user&userId=${uid}`,
+      color: 'primary',
+    },
+    {
+      key: 'ibd-pdca',
+      label: '見直し・PDCA',
+      description: '実施ログをもとに支援計画を見直す',
+      icon: '🔄',
+      path: `/analysis/iceberg-pdca?userId=${uid}`,
+      color: 'info',
+    },
+  ];
+}
+
+/**
+ * 利用者IDに基づくクイックアクション一覧を生成
+ *
+ * @deprecated 新規呼び出しは buildCommonQuickActions / buildIbdQuickActions を直接使用すること。
+ * 後方互換のため残存。isIbdTarget=true 時は共通 + IBD専用を返す。
+ */
+export function buildQuickActions(userId: string, isIbdTarget = false): QuickAction[] {
+  const common = buildCommonQuickActions(userId);
+  return isIbdTarget ? [...common, ...buildIbdQuickActions(userId)] : common;
 }
 
 // ─── Summary Stats 定義 ──────────────────────────────────────
@@ -167,7 +222,7 @@ export type PlanHighlight = {
 // ─── MVP-010: 純粋関数群 ────────────────────────────────────────
 
 /**
- * 直近の日次記録を Hub 表示用プレビューに変換する
+ * 直近の日々の記録を Hub 表示用プレビューに変換する
  */
 export function buildRecentRecordPreview(
   records: Array<{

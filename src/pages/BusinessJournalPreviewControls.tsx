@@ -58,7 +58,7 @@ export function BusinessJournalPreviewControls({
             業務日誌プレビュー
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            紙の業務日誌と同等のレイアウトで月間の日次記録を一覧表示します
+            紙の業務日誌と同等のレイアウトで月間の日々の記録を一覧表示します
           </Typography>
         </Box>
         <Button
