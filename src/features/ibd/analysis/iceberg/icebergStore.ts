@@ -3,17 +3,17 @@ import type { ABCRecord } from '@/domain/behavior';
 import type { IcebergRepository } from '@/features/ibd/analysis/iceberg/SharePointIcebergRepository';
 import { ConflictError } from '@/features/ibd/analysis/iceberg/errors';
 import type {
-    EnvironmentFactor,
-    HypothesisLink,
-    IcebergNode,
-    IcebergNodeType,
-    IcebergNodeStatus,
-    IcebergSession,
-    IcebergSessionStatus,
-    IcebergSnapshot,
-    IcebergEvent,
-    IcebergEventType,
-    NodePosition,
+  EnvironmentFactor,
+  HypothesisLink,
+  IcebergNode,
+  IcebergNodeStatus,
+  IcebergNodeType,
+  IcebergSession,
+  IcebergSessionStatus,
+  IcebergSnapshot,
+  IcebergEvent,
+  IcebergEventType,
+  NodePosition,
 } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import { icebergSnapshotSchema } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import { sha256Hex } from '@/lib/hashUtil';

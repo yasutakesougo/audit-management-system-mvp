@@ -1,0 +1,17 @@
+
+噫 SharePoint 繧ｾ繝ｳ繝灘・謨大・繝輔ぉ繝ｼ繧ｺ髢句ｧ・(DRY RUN)
+
+--- 繝ｪ繧ｹ繝・[SupportRecord_Daily] 繧偵せ繧ｭ繝｣繝ｳ荳ｭ ---
+--- 繝ｪ繧ｹ繝・[Approval_Logs] 繧偵せ繧ｭ繝｣繝ｳ荳ｭ ---
+笶・繝ｪ繧ｹ繝域ュ蝣ｱ縺ｮ蜿門ｾ励↓螟ｱ謨・ SupportRecord_Daily
+--- 繝ｪ繧ｹ繝・[User_Feature_Flags] 繧偵せ繧ｭ繝｣繝ｳ荳ｭ ---
+笶・繝ｪ繧ｹ繝域ュ蝣ｱ縺ｮ蜿門ｾ励↓螟ｱ謨・ Approval_Logs
+笶・繝ｪ繧ｹ繝域ュ蝣ｱ縺ｮ蜿門ｾ励↓螟ｱ謨・ User_Feature_Flags
+--- 繝ｪ繧ｹ繝・[SupportProcedure_Results] 繧偵せ繧ｭ繝｣繝ｳ荳ｭ ---
+笶・繝ｪ繧ｹ繝域ュ蝣ｱ縺ｮ蜿門ｾ励↓螟ｱ謨・ SupportProcedure_Results
+
+--- 譛邨ょｱ蜻・---
+蜑企勁(蛟呵｣・莉ｶ謨ｰ: 0
+螟ｱ謨嶺ｻｶ謨ｰ: 0
+
+庁 DRY RUN 縺檎ｵゆｺ・＠縺ｾ縺励◆縲ら黄逅・噪縺ｪ蜑企勁繧定｡後≧縺ｫ縺ｯ '--force' 繧剃ｻ倥￠縺ｦ螳溯｡後＠縺ｦ縺上□縺輔＞縲・

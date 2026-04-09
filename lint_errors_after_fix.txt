@@ -1,0 +1,16 @@
+
+C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\scripts\hardening\fix-vi-mocks.ts
+  9:7  error  'oldToNewPaths' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\scripts\system-map\extractStorage.ts
+  3:22  error  'SourceKind' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\features\planning-sheet\components\new-form\NewPlanningSheetForm.tsx
+  238:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  244:66  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\螳画ｭｦ\.vscode\workspace\audit-management-system\src\pages\IcebergAnalysisPage.tsx
+  121:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+笨・5 problems (2 errors, 3 warnings)
+

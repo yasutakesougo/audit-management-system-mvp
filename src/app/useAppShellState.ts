@@ -41,7 +41,8 @@ function parseKioskRouteMode(search: string): KioskRouteMode {
 export function useAppShellState() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { schedules, complianceForm, icebergPdca, staffAttendance, todayOps, todayLiteNavV2 } = useFeatureFlags();
+  const { schedules, complianceForm, icebergPdca, staffAttendance, todayOps, todayLiteNavV2: _todayLiteNavV2 } = useFeatureFlags();
+  const todayLiteNavV2 = Boolean(_todayLiteNavV2);
   const dashboardPath = useDashboardPath();
   const currentRole = useAuthStore((s) => s.currentUserRole);
   const setCurrentUserRole = useAuthStore((s) => s.setCurrentUserRole);
@@ -253,8 +254,8 @@ export function useAppShellState() {
     filteredNavItems,
     groupedNavItems,
     showMoreNavItems,
-    hasMoreNavItems: todayLiteNavV2 && navItemsByTier.more.length > 0,
-    todayLiteNavV2,
+    hasMoreNavItems: Boolean(todayLiteNavV2 && navItemsByTier.more.length > 0),
+    todayLiteNavV2: Boolean(todayLiteNavV2),
     isAdmin,
     // Handlers
     handleNavSearchKeyDown,

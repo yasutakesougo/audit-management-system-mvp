@@ -60,9 +60,14 @@ export interface SpListEntry {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** 環境変数からリスト名を読み取り、なければフォールバックを返す */
-const envOr = (envKey: string, fallback: string): string =>
-  readOptionalEnv(envKey) || fallback;
+/** 環境変数からリスト名を読み取り、なければフォールバックを返す。GUID 指定時は Title 回帰のため無視する。 */
+const envOr = (envKey: string, fallback: string): string => {
+  const envVal = readOptionalEnv(envKey);
+  if (!envVal) return fallback;
+  // GUID 形式 (guid:xxx) の場合は、物理制限・復旧性向上のため Title ベース (fallback) を優先
+  if (envVal.toLowerCase().startsWith('guid:')) return fallback;
+  return envVal;
+};
 
 /** LIST_CONFIG から直接タイトルを読み取る */
 const fromConfig = (key: ListKeys): string => LIST_CONFIG[key].title;
@@ -281,7 +286,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     provisioningFields: [
       { internalName: 'ParentID', type: 'Number', displayName: 'Parent ID', required: true, indexed: true },
       { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true },
-      { internalName: 'Version', type: 'Number', displayName: 'Version', default: 1, indexed: true },
+      { internalName: 'Version', type: 'Number', displayName: 'Version', default: 1 },
       { internalName: 'Status', type: 'Text', displayName: 'Status' },
       { internalName: 'Payload', type: 'Note', displayName: 'Row Data JSON', richText: false },
       { internalName: 'RecordedAt', type: 'DateTime', displayName: 'Recorded At' },
@@ -734,10 +739,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
   {
     key: 'billing_orders',
     displayName: '請求オーダー',
-    resolve: () => {
-      const envVal = readOptionalEnv('VITE_SP_LIST_BILLING_ORDERS');
-      return envVal ? `guid:${envVal}` : 'BillingOrders';
-    },
+    resolve: () => envOr('VITE_SP_LIST_BILLING_ORDERS', 'BillingOrders'),
     operations: ['R'],
     category: 'other',
     lifecycle: 'optional',
@@ -772,7 +774,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
       { internalName: 'CompletionRate', type: 'Number', displayName: 'Completion Rate' },
       { internalName: 'FirstEntryDate', type: 'DateTime', displayName: 'First Entry Date', dateTimeFormat: 'DateOnly' },
       { internalName: 'LastEntryDate', type: 'DateTime', displayName: 'Last Entry Date', dateTimeFormat: 'DateOnly' },
-      { internalName: 'IdempotencyKey', type: 'Text', displayName: 'Idempotency Key', indexed: true },
+      { internalName: 'IdempotencyKey', type: 'Text', displayName: 'Idempotency Key' },
     ],
   },
 

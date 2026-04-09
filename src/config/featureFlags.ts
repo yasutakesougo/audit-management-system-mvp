@@ -196,7 +196,7 @@ export const useFeatureFlags = (): FeatureFlagSnapshot => useContext(FeatureFlag
 
 export const useFeatureFlag = (flag: keyof FeatureFlagSnapshot): boolean => {
   const flags = useFeatureFlags();
-  return flags[flag];
+  return flags[flag] ?? false;
 };
 
 /**

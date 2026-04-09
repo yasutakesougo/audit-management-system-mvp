@@ -61,6 +61,7 @@ import { useIcebergRepository } from '@/features/ibd/analysis/iceberg/SharePoint
 import { icebergToInterventionDrafts } from '@/features/ibd/analysis/iceberg/icebergToIntervention';
 import { buildIcebergImportResult } from '../../icebergToPlanningBridge';
 import { useImportAuditStore } from '../../stores/importAuditStore';
+import type { IcebergSession, IcebergSnapshot } from '@/features/ibd/analysis/iceberg/icebergTypes';
 
 // ── Local (split) ──
 import type { NewPlanningSheetFormProps, UserOption, FormState } from './types';
@@ -235,13 +236,13 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
         return;
       }
 
-      const drafts = icebergToInterventionDrafts({ ...latest, targetUserId: latest.userId });
+      const drafts = icebergToInterventionDrafts({ ...latest, targetUserId: (latest as unknown as IcebergSnapshot).userId } as unknown as IcebergSession);
       const result = buildIcebergImportResult(drafts);
       
       const preview = buildImportPreview(result.formPatches as Record<string, string>, form as unknown as Record<string, unknown>);
       setImportPreview(preview);
       // 特性アンケートのブリッジ結果と構造が同じなので再利用
-      setLastBridgeResult({ formPatches: result.formPatches as Record<string, string> });
+      setLastBridgeResult({ formPatches: result.formPatches } as unknown as ReturnType<typeof tokuseiToPlanningBridge>);
       setImportSource('iceberg');
       setPreviewDialogOpen(true);
     } catch (err) {

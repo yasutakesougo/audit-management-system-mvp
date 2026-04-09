@@ -109,7 +109,7 @@ let replacedFiles = 0;
 
 for (const file of allTsFiles) {
   let content = fs.readFileSync(file, 'utf8');
-  let originalContent = content;
+  const originalContent = content;
 
   const keys = Object.keys(replacements).sort((a, b) => b.length - a.length);
 
