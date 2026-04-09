@@ -372,6 +372,7 @@ const saveSnapshot = async (
     schemaVersion: 1,
     userId,
     sessionId,
+    planningSheetId: state.currentSession.planningSheetId,
     title: title ?? state.currentSession.title ?? `Iceberg Session ${sessionId}`,
     updatedAt: new Date().toISOString(),
     nodes: state.currentSession.nodes,
@@ -432,6 +433,7 @@ const loadLatest = async (repository: IcebergRepository, userId: string) => {
     const loaded: IcebergSession = {
       id: latest.sessionId,
       targetUserId: latest.userId,
+      planningSheetId: latest.planningSheetId,
       title: latest.title,
       createdAt: new Date().toISOString(), // Snapshot doesn't track createdAt
       updatedAt: latest.updatedAt,

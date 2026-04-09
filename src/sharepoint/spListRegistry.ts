@@ -613,6 +613,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     provisioningFields: [
       { internalName: 'Title', type: 'Text', displayName: 'Title', required: true },
       { internalName: 'UserID0', type: 'Text', displayName: 'User ID', required: true, indexed: true },
+      { internalName: 'PlanningSheetId', type: 'Text', displayName: 'Planning Sheet ID' },
       { internalName: 'Summary0', type: 'Note', displayName: 'Summary', richText: false },
       { internalName: 'Phase0', type: 'Text', displayName: 'Phase' },
     ],

@@ -56,6 +56,7 @@ export interface MapperInput {
   form: UsePlanningSheetFormReturn;
   
   // Handoff
+  source: string | null;
   diffSummary: string | null;
 }
 
@@ -89,6 +90,7 @@ export function mapToSupportPlanningSheetViewModel(input: MapperInput): SupportP
     contextUserName,
     contextData,
     form,
+    source,
     diffSummary,
   } = input;
 
@@ -145,6 +147,7 @@ export function mapToSupportPlanningSheetViewModel(input: MapperInput): SupportP
     contextData,
     form,
     monitoringBridge,
+    source,
     diffSummary,
   };
 }

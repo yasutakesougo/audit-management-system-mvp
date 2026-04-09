@@ -1,53 +1,67 @@
-## Summary
-Add SharePoint Index Advisor operational rules, a guarded remediation service, and a one-click remediation UI — closing the loop from detection to repair.
+## PRタイトル
 
-## Changes
+`feat(iceberg): planningSheetId を PDCA 永続化・導線まで貫通し、差分監査ドキュメントを追加`
 
-This PR is split across four layers:
+## PR要約
 
-### 1. SharePoint foundation layer (`86ee6d94`)
-- add `updateField` support via SharePoint REST API for field property updates such as `Indexed`
-- add `emitIndexRemediationRecord` to persist remediation success/failure through the drift event flow
+`planningSheetId` を「任意情報」から、通せる経路では確実に伝播する**リンク契約**へ引き上げました。  
+あわせて `Iceberg_Analysis` / `Iceberg_PDCA` の実フィールド差分および欠落監査を文書化しています。
 
-### 2. Health / advisor layer (`7a8583d7`)
-- add operational rules documentation for index design thresholds and remediation decisions
-- add `spIndexRemediationService.ts` to execute index remediation and record audit results
-- add manual remediation scripts for attendance, schedule, and support domains
-- add optional list coverage and related health/remediation tests
+This change is backward-compatible and does not break existing records without PlanningSheetId.
 
-### 3. Remediation guards (`f6887762`)
-- replace `IndexRemediationResult` with `RemediationResult` (discriminated union: `ok / code`)
-- seal `delete` action at service layer — UI exposure cannot bypass this (`delete_disabled`)
-- add daily execution limit (5/day) via `sessionStorage` (`daily_limit_exceeded`)
-- add same-field duplicate prevention per session (`duplicate_action`)
-- count and executed-set updated only on success, not on failure
-- update operational run scripts and spec to use new result shape (8 guard cases)
+## 変更内容
 
-### 4. Guarded remediation UI (`cf23791b`)
-- add "インデックス追加" button to `additionCandidates` rows only in `SpIndexPressurePanel`
-- `runningKey` disables all row buttons while one action is in flight (no parallel execution)
-- `resultMap` stores per-row `RemediationResult`; shows `code`-based Japanese message
-- success: button becomes "完了" (permanently disabled) + `handleReload()` for immediate re-check
-- failure: guard reason shown inline; button remains re-pressable
-- deletion candidates remain read-only — no button exposed
-- add `SpIndexPressurePanel.spec.tsx` (7 cases): success, duplicate, limit, running-state disable
+### 契約・フィールド
 
-### 5. Nightly Patrol integration — Mode B: guarded add only
-- add `nightly-index-remediation.ts`: Node.js-compatible remediation module
-  - allowlist only (`KNOWN_REQUIRED_INDEXED_FIELDS` — no unknown lists)
-  - `add` only (delete remains sealed)
-  - per-run limit (`NIGHTLY_RUN_LIMIT=3`, overridable via `config.runLimit`)
-  - in-memory executed-set (no sessionStorage — Node.js compatible)
-  - fail-soft: field-level and list-level errors are caught independently
-  - all results carry `source: 'nightly'`
-- integrate into `nightly-runtime-patrol.ts`: runs after SP event fetch, before aggregation
-  - results converted to `RawEvent[]` (type `'remediation'`) and merged into nightly summary
-  - skips gracefully if `VITE_SP_TOKEN` / `VITE_SP_SITE_URL` not set
-- add `nightly-index-remediation.spec.ts` (6 cases, `@vitest-environment node`):
-  - add missing fields, skip already-indexed, runLimit + skipped_limit, fail-soft PATCH,
-    fail-soft list fetch, source: nightly on all results
+- `Iceberg_PDCA` の field map に `planningSheetId` を追加
+- SharePoint 内部名の候補解決（drift 吸収）を実装
 
-## Verification
-- [x] `npm run typecheck` pass
-- [x] `npm run lint` pass
-- [x] 22 tests pass across guard service, panel interaction, and nightly remediation specs
+### 永続化（Repository）
+
+- `SharePointPdcaRepository`
+  - read / write / filter を `planningSheetId` 対応
+  - 列未存在時は fail-open で安全動作
+- `InMemoryPdcaRepository` も同仕様に統一
+
+### クエリ・キャッシュ
+
+- `useIcebergPdcaList`
+- mutation invalidation key
+
+`planningSheetId` 軸での分離に対応
+
+### 画面導線
+
+- `IcebergPdcaPage`
+  - URL (`planningSheetId`) → list/create/update に伝播
+- `support-planning` → `iceberg-pdca`
+  - 遷移 URL に `planningSheetId` を付与
+
+### ストア
+
+- `icebergStore`
+  - snapshot 保存/復元で `planningSheetId` を保持
+
+### プロビジョニング
+
+- `spListRegistry`
+  - `iceberg_pdca` に `PlanningSheetId` 列を追加
+
+### ドキュメント
+
+- `docs/architecture/iceberg-field-diff-and-planning-link-audit.md`
+  - フィールド差分
+  - 欠落監査
+  - 対応方針
+
+## 検証
+
+- `inMemoryPdcaRepository` テスト ✅
+- `SharePointIcebergRepository` テスト ✅
+- `navigationLinks` テスト ✅
+- `typecheck` ✅
+
+## 既知の制約 / 次フェーズ
+
+- `Iceberg -> Intervention` 変換契約に `planningSheetId` が未露出
+- Planning 作成後の Iceberg snapshot への逆リンク patch は未実装

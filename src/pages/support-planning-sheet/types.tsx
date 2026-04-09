@@ -128,6 +128,7 @@ export interface SupportPlanningSheetViewModel {
   form: UsePlanningSheetFormReturn;
   
   // Handoff / Audit
+  source: string | null;
   diffSummary: string | null;
 }
 

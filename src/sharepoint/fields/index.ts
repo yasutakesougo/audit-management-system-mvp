@@ -108,6 +108,7 @@ export {
 // ── Iceberg ──
 export {
     buildIcebergPdcaSelectFields, FIELD_MAP_ICEBERG_ANALYSIS,
+    ICEBERG_PDCA_PLANNING_SHEET_FIELD_CANDIDATES,
     FIELD_MAP_ICEBERG_PDCA,
     ICEBERG_PDCA_SELECT_FIELDS
 } from './icebergFields';
