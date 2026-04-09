@@ -91,8 +91,8 @@ describe('getDailyPhaseHint', () => {
     expect(getDailyPhaseHint(at(7, 0)).suggestedAction).toBeNull();
     // 08:45 → staff_prep → preparation → 通所管理
     expect(getDailyPhaseHint(at(8, 45)).suggestedAction).toBe('通所管理');
-    expect(getDailyPhaseHint(at(10, 30)).suggestedAction).toBe('一覧形式ケース記録');
-    expect(getDailyPhaseHint(at(13, 0)).suggestedAction).toBe('一覧形式ケース記録');
+    expect(getDailyPhaseHint(at(10, 30)).suggestedAction).toBe('一覧形式の日々の記録');
+    expect(getDailyPhaseHint(at(13, 0)).suggestedAction).toBe('一覧形式の日々の記録');
     // 16:00 → record_wrapup → record-review → null
     expect(getDailyPhaseHint(at(16, 0)).suggestedAction).toBeNull();
     expect(getDailyPhaseHint(at(18, 0)).suggestedAction).toBeNull();
