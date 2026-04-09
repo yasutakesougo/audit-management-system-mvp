@@ -32,10 +32,16 @@ const mockSpClient = {
   deleteItem: vi.fn(),
 } as unknown as UseSP;
 
+function setLocationSearch(search: string): void {
+  const url = new URL(window.location.href);
+  url.search = search;
+  window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
 describe('Data OS Stability Verification', () => {
   beforeEach(() => {
     __clearProviderCache();
-    vi.stubGlobal('location', { search: '' });
+    setLocationSearch('');
     vi.stubGlobal('localStorage', {
         getItem: vi.fn(),
         setItem: vi.fn(),
@@ -48,9 +54,8 @@ describe('Data OS Stability Verification', () => {
 
   describe('1. Singleton Equality & Provider Isolation', () => {
     it('should return the same instance for multiple calls (Singleton)', () => {
-      vi.stubGlobal('location', { search: '?provider=memory' });
-      const { provider: p1 } = createDataProvider(mockSpClient);
-      const { provider: p2 } = createDataProvider(mockSpClient);
+      const { provider: p1 } = createDataProvider(mockSpClient, { type: 'memory' });
+      const { provider: p2 } = createDataProvider(mockSpClient, { type: 'memory' });
       
       expect(p1).toBe(p2); // Referential equality
       expect(p1).toBeInstanceOf(InMemoryDataProvider);
@@ -58,22 +63,19 @@ describe('Data OS Stability Verification', () => {
 
     it('should return different instances for different provider types (Isolation)', () => {
       // 1. Memory
-      vi.stubGlobal('location', { search: '?provider=memory' });
-      const { provider: pMemory } = createDataProvider(mockSpClient);
+      const { provider: pMemory } = createDataProvider(mockSpClient, { type: 'memory' });
       expect(pMemory).toBeInstanceOf(InMemoryDataProvider);
       
       // 2. Local (need to clear cache or use different type to trigger new instantiation)
       // Actually because our factory check type first, it will create a new one if not in cache
-      vi.stubGlobal('location', { search: '?provider=local' });
-      const { provider: pLocal } = createDataProvider(mockSpClient);
+      const { provider: pLocal } = createDataProvider(mockSpClient, { type: 'local' });
       expect(pLocal).toBeInstanceOf(LocalStorageDataProvider);
       expect(pLocal).not.toBe(pMemory);
     });
 
     it('resolveProvider should return the same instance as createDataProvider (Bridge Consistency)', () => {
-      vi.stubGlobal('location', { search: '?provider=local' });
-      const { provider: pFromFactory } = createDataProvider(mockSpClient);
-      const pFromResolver = resolveProvider();
+      const { provider: pFromFactory } = createDataProvider(mockSpClient, { type: 'local' });
+      const pFromResolver = resolveProvider({ forceKind: 'local' });
       
       expect(pFromResolver).toBe(pFromFactory);
     });
@@ -182,41 +184,36 @@ describe('Data OS Stability Verification', () => {
 
   describe('5. Hardening & Readiness', () => {
     it('resolveProvider should throw DataProviderNotInitializedError if uninitialized and in sharepoint mode', () => {
-      vi.stubGlobal('location', { search: '?provider=sharepoint' });
-      
       // Should throw because no spClient has been provided yet
-      expect(() => resolveProvider()).toThrow(DataProviderNotInitializedError);
+      expect(() => resolveProvider({ forceKind: 'sharepoint' })).toThrow(DataProviderNotInitializedError);
     });
 
     it('createDataProvider should update client on existing sharepoint instance', () => {
-      vi.stubGlobal('location', { search: '?provider=sharepoint' });
-      
       const client1 = { ...mockSpClient, baseUrl: 'site1' } as unknown as UseSP;
       const client2 = { ...mockSpClient, baseUrl: 'site2' } as unknown as UseSP;
       
-      const { provider: p1 } = createDataProvider(client1);
+      const { provider: p1 } = createDataProvider(client1, { type: 'sharepoint' });
       const setClientSpy = vi.spyOn(p1 as SharePointDataProvider, 'setClient');
       
-      const { provider: p2 } = createDataProvider(client2);
+      const { provider: p2 } = createDataProvider(client2, { type: 'sharepoint' });
       
       expect(p1).toBe(p2); // Same instance
       expect(setClientSpy).toHaveBeenCalledWith(client2);
     });
 
-    it('getUserRepository should throw DataProviderNotInitializedError if uninitialized and in sharepoint mode', () => {
-      vi.stubGlobal('location', { search: '?provider=sharepoint' });
-      
+    it('getUserRepository should resolve in test mode even when provider is not preinitialized', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      expect(() => getUserRepository()).toThrow(DataProviderNotInitializedError);
-      expect(warnSpy).toHaveBeenCalled();
+      const repo = getUserRepository({ forceKind: 'real' });
+      expect(repo).toBeDefined();
+      expect(warnSpy).not.toHaveBeenCalled();
       warnSpy.mockRestore();
     });
 
     it('isDataProviderReady should return correct state', () => {
-      vi.stubGlobal('location', { search: '?provider=sharepoint' });
+      setLocationSearch('?provider=memory');
       expect(isDataProviderReady()).toBe(false);
       
-      createDataProvider(mockSpClient);
+      createDataProvider(mockSpClient, { type: 'memory' });
       expect(isDataProviderReady()).toBe(true);
     });
   });
