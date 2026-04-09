@@ -94,13 +94,15 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
   if (error || !sheet) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="error">{error || '支援計画シートが見つかりません'}</Alert>
+        <Alert severity="error">
+          {error || '支援計画シートが見つかりません。利用者ハブから対象のシートを選び直してください。'}
+        </Alert>
         <Button
           startIcon={<ArrowBackRoundedIcon />}
           onClick={handlers.onBack}
           sx={{ mt: 2 }}
         >
-          ISP 画面に戻る
+          利用者ハブに戻る
         </Button>
       </Box>
     );
@@ -125,6 +127,8 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
             onSave: handlers.onSave,
             onImportAssessment: handlers.onImportAssessment,
             onImportMonitoring: handlers.onImportMonitoring,
+            onNavigateToExecution: handlers.onNavigateToExecution,
+            onNavigateToPdca: handlers.onNavigateToPdca,
           }}
           operationGuideProps={{
             isEditing,

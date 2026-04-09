@@ -478,6 +478,8 @@ export const TESTIDS = {
   'planning-sheet-page': 'planning-sheet-page',
   'planning-sheet-header': 'planning-sheet-header',
   'planning-sheet-tabs': 'planning-sheet-tabs',
+  'planning-sheet-go-to-execution': 'planning-sheet-go-to-execution',
+  'planning-sheet-go-to-pdca': 'planning-sheet-go-to-pdca',
 
   // Safety: Physical Restraint (P0-2)
   'safety-restraint-dialog': 'safety-restraint-dialog',
