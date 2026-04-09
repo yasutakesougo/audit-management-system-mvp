@@ -218,7 +218,7 @@ export const HUB_DEFINITIONS: Record<HubId, HubDefinition> = {
         title: '分析ワークスペース',
         description: '分析と仮説整理を実施',
         to: '/analysis',
-        requiredRole: 'admin',
+        requiredRole: 'viewer',
         kpiWeight: 74,
         usagePriority: 5,
       },

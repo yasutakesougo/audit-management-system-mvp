@@ -231,9 +231,9 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       prefetchKey: PREFETCH_KEYS.analysisDashboard,
       testId: TESTIDS.nav.analysis,
-      audience: NAV_AUDIENCE.admin,   // [Audience] 施設長・管理者のみ（経営情報等）
+      audience: NAV_AUDIENCE.all,     // [Audience] 分析情報を現場でも共有するため全ロールに開放
       group: 'planning' as NavGroupKey,
-      tier: 'admin',                  // [Tier] 管理者エリア
+      tier: 'more',                   // [Tier] 管理者エリアから一般ティアに移動
       featureFlag: 'todayLiteNavV2',
     },
     {
