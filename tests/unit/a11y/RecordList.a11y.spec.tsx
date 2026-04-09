@@ -49,7 +49,7 @@ describe('RecordList Accessibility', () => {
 
   test('has no a11y violations (empty state)', async () => {
     const { container } = renderRecordList();
-    await screen.findByRole('heading', { name: '日次記録' });
+    await screen.findByRole('heading', { name: '日々の記録' });
 
     const results = await axe(container);
     expect(results).toHaveNoViolations();
