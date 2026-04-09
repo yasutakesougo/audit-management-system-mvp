@@ -45,7 +45,7 @@ describe('useTableDailyRecordViewModel', () => {
     const { result } = renderHook(() => useTableDailyRecordViewModel());
 
     expect(result.current.open).toBe(true);
-    expect(result.current.title).toBe('一覧形式ケース記録');
+    expect(result.current.title).toBe('一覧形式の日々の記録');
     expect(result.current.backTo).toBe('/today');
     expect(result.current.testId).toBe('daily-table-record-page');
 

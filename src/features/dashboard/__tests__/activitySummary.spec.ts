@@ -41,7 +41,7 @@ describe('buildActivitySummary', () => {
       const result = buildActivitySummary(records, 4);
 
       expect(result.module.name).toBe('activity');
-      expect(result.module.label).toBe('支援記録（ケース記録）');
+      expect(result.module.label).toBe('日々の記録');
       expect(result.module.total).toBe(4);
       expect(result.module.done).toBe(2); // 完了が2件
       expect(result.module.rate).toBe(50); // 2/4 = 50%
@@ -119,7 +119,7 @@ describe('buildActivitySummary', () => {
       expect(missingAlert).toBeDefined();
       expect(missingAlert!.severity).toBe('warning');
       expect(missingAlert!.module).toBe('activity');
-      expect(missingAlert!.title).toBe('支援記録（ケース記録） 未作成 3件');
+      expect(missingAlert!.title).toBe('日々の記録 未作成 3件');
       expect(missingAlert!.message).toContain('田中太郎（001）、佐藤花子（002）、鈴木次郎（003）');
       expect(missingAlert!.href).toBe('/daily/activity');
     });
@@ -139,7 +139,7 @@ describe('buildActivitySummary', () => {
       const missingAlert = result.alerts.find(a => a.id === 'activity-missing');
       expect(missingAlert).toBeDefined();
       expect(missingAlert!.severity).toBe('error');
-      expect(missingAlert!.title).toBe('支援記録（ケース記録） 未作成 6件');
+      expect(missingAlert!.title).toBe('日々の記録 未作成 6件');
     });
 
     it('作成中の記録がある場合はinfo alertを生成する', () => {
@@ -155,7 +155,7 @@ describe('buildActivitySummary', () => {
       expect(inProgressAlert).toBeDefined();
       expect(inProgressAlert!.severity).toBe('info');
       expect(inProgressAlert!.title).toBe('作成中 2件');
-      expect(inProgressAlert!.message).toBe('作成中の支援記録（ケース記録）があります');
+      expect(inProgressAlert!.message).toBe('作成中の日々の記録があります');
       expect(inProgressAlert!.href).toBe('/daily/activity');
     });
 

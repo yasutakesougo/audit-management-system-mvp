@@ -108,7 +108,7 @@ export function StaffOnlySection({
                         </ListItemAvatar>
                         <ListItemText
                           primary={user.FullName ?? '利用者'}
-                          secondary="支援手順記録の確認をお願いします"
+                          secondary="支援手順の実施の確認をお願いします"
                         />
                       </ListItem>
                     ))}

@@ -174,7 +174,7 @@ const SupportActivityMasterPage: React.FC = () => {
       {/* ── IBDPageHeader ── */}
       <IBDPageHeader
         title="支援活動マスタ"
-        subtitle="支援手順記録で使用する活動マスタの登録・編集・削除を行います。"
+        subtitle="支援手順の実施で使用する活動マスタの登録・編集・削除を行います。"
         icon={<SettingsIcon />}
         actions={
           <Button

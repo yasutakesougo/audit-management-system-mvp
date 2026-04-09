@@ -41,7 +41,7 @@ export const DASHBOARD_SECTIONS: readonly DashboardSectionDef[] = [
   },
   {
     key: 'daily',
-    title: '日次記録状況',
+    title: '日々の記録状況',
     anchorId: 'sec-daily',
     audience: 'both',
   },

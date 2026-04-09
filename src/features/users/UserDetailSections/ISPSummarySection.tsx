@@ -191,7 +191,7 @@ export function ISPSummarySection({ userId }: Props) {
         </Typography>
         <Box sx={{ mt: 2 }}>
           <Button variant="outlined" startIcon={<EditIcon />} href={editorHref}>
-            ISPエディタで確認する
+            個別支援計画エディタで確認する
           </Button>
         </Box>
       </Box>
@@ -208,7 +208,7 @@ export function ISPSummarySection({ userId }: Props) {
           この利用者の個別支援計画書はまだ作成されていません。
         </Typography>
         <Button variant="contained" startIcon={<EditIcon />} href={editorHref}>
-          作成する（ISPエディタへ）
+          作成する（個別支援計画エディタへ）
         </Button>
       </Box>
     );

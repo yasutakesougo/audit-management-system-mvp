@@ -187,7 +187,16 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     // 順序: ISP作成・更新 → 支援計画シート → アセスメント系 → 分析系 → アンケート
     createHubNavItem('planning'),
     {
-      label: 'ISP作成',
+      label: '分析ワークスペース',
+      to: '/analysis/dashboard',
+      isActive: (pathname) => pathname.startsWith('/analysis'),
+      icon: undefined,
+      testId: 'nav-analysis-workspace',
+      audience: NAV_AUDIENCE.all,
+      group: 'planning' as NavGroupKey,
+    },
+    {
+      label: '個別支援計画作成',
       to: '/support-plan-guide',
       isActive: (pathname) => pathname === '/support-plan-guide',
       icon: undefined,
@@ -196,7 +205,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'planning' as NavGroupKey,
     },
     {
-      label: 'ISP更新（前回比較）',
+      label: '個別支援計画更新（前回比較）',
       to: '/isp-editor',
       isActive: (pathname) => pathname.startsWith('/isp-editor'),
       icon: undefined,
@@ -222,19 +231,6 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       testId: TESTIDS.nav.assessment,
       audience: NAV_AUDIENCE.staff,
       group: 'planning' as NavGroupKey,
-    },
-    {
-      // Tier C: Mock依存。管理者のみ表示。
-      label: '分析ワークスペース',
-      to: '/analysis',
-      isActive: (pathname) => pathname.startsWith('/analysis'),
-      icon: undefined,
-      prefetchKey: PREFETCH_KEYS.analysisDashboard,
-      testId: TESTIDS.nav.analysis,
-      audience: NAV_AUDIENCE.all,     // [Audience] 分析情報を現場でも共有するため全ロールに開放
-      group: 'planning' as NavGroupKey,
-      tier: 'more',                   // [Tier] 管理者エリアから一般ティアに移動
-      featureFlag: 'todayLiteNavV2',
     },
     {
       // Tier C: Mock依存。管理者のみ表示。

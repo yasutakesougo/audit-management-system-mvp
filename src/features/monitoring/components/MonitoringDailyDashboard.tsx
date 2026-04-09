@@ -110,10 +110,10 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
       <Box sx={{ mt: 1, mb: 2 }}>
         <Paper variant="outlined" sx={{ p: 2, bgcolor: 'action.hover', borderStyle: 'dashed', textAlign: 'center' }}>
           <Typography variant="body2" color="text.secondary">
-            この利用者の日次記録がまだありません。
+            この利用者の日々の記録がまだありません。
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-            日次記録の一覧入力テーブルにデータを入力すると、ここにモニタリング集計・所見ドラフトが自動生成されます。
+            日々の記録の一覧入力テーブルにデータを入力すると、ここにモニタリング集計・所見ドラフトが自動生成されます。
           </Typography>
         </Paper>
       </Box>
@@ -129,7 +129,7 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
             <Stack direction="row" spacing={1} alignItems="center">
               <AssessmentIcon fontSize="small" color="primary" />
               <Typography variant="subtitle2" component="span" color="primary">
-                日次記録ダッシュボード
+                日々の記録ダッシュボード
               </Typography>
             </Stack>
             <Button
@@ -147,7 +147,7 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
 
           {/* 対象期間 */}
           <Typography variant="caption" color="text.secondary">
-            対象期間: {summary.period.from} 〜 {summary.period.to}（{recordCount}件の日次記録から集計）
+            対象期間: {summary.period.from} 〜 {summary.period.to}（{recordCount}件の日々の記録から集計）
           </Typography>
 
           {/* 判断完了率カード（judgments がある場合のみ） */}
@@ -177,7 +177,7 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
               </Typography>
             </Stack>
             <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-              対象期間中の全日数に対する記録入力済み日数の割合です
+              対象期間中の全日数に対する記録作成済み日数の割合です
             </Typography>
           </Box>
 
@@ -372,7 +372,7 @@ const MonitoringDailyDashboard: React.FC<MonitoringDailyDashboardProps> = ({
               <Box>
                 <SectionTitle>📝 所見ドラフト</SectionTitle>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                  日次記録から自動生成された下書きです。「所見を評価文へ引用」ボタンでモニタリング評価文に転記できます。
+                  日々の記録から自動生成された下書きです。「所見を評価文へ引用」ボタンでモニタリング評価文に転記できます。
                   内容は必要に応じて加筆・修正してください。
                 </Typography>
                 <Box

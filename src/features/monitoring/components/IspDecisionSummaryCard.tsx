@@ -122,7 +122,7 @@ const IspDecisionSummaryCard: React.FC<IspDecisionSummaryCardProps> = ({
         {/* 1行目: タイトル + 件数 */}
         <Stack direction="row" alignItems="center" spacing={0.75} flexWrap="wrap" rowGap={0.25}>
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            ISP判断
+            個別支援計画判断
           </Typography>
           <Typography variant="caption" color="text.secondary">
             {summary.decidedCount}/{summary.totalGoals}件

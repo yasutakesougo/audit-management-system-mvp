@@ -54,7 +54,7 @@ export const SectionDetailContent: React.FC<SectionDetailContentProps> = ({
         label: '支援区分',
         value: user.IsHighIntensitySupportTarget ? '強度行動障害支援対象者' : '通常支援',
       },
-      { label: '支援手順記録', value: user.IsSupportProcedureTarget ? '対象' : '対象外' },
+      { label: '支援手順の実施', value: user.IsSupportProcedureTarget ? '対象' : '対象外' },
       { label: '通所予定日', value: attendanceLabel },
       { label: '受給者証番号', value: user.RecipientCertNumber || '未登録' },
       { label: '受給者証期限', value: formatDateLabel(user.RecipientCertExpiry) },
@@ -125,7 +125,7 @@ export const SectionDetailContent: React.FC<SectionDetailContentProps> = ({
       {renderHighlights(section.highlights)}
       {supportProcedureWarning && (
         <Alert severity="warning">
-          この利用者は支援手順記録の対象に設定されていません。
+          この利用者は支援手順の実施の対象ではありません。日々の記録をご利用ください。
         </Alert>
       )}
       {section.status === 'coming-soon' && (

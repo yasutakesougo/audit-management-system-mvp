@@ -38,7 +38,7 @@ export const MEETING_GUIDES: Record<MeetingMode, MeetingGuide> = {
       '安全指標の確認（注意事項があれば共有）',
       '重要・未対応の申し送りを確認',
       '当日の支援・配置の確認',
-      '未入力のケース記録の優先度を確認',
+      '未作成の日々の記録の優先度を確認',
     ],
   },
   evening: {
@@ -47,7 +47,7 @@ export const MEETING_GUIDES: Record<MeetingMode, MeetingGuide> = {
     steps: [
       '本日の記録・対応状況の確認',
       '重要案件の申し送りを整理',
-      '未入力のケース記録を確認',
+      '未作成の日々の記録を確認',
       '明日の注意点を共有',
     ],
   },
@@ -72,7 +72,7 @@ export const MEETING_CONFIG: Record<MeetingMode, MeetingConfig> = {
     timelineLabel: '申し送りタイムライン（今日）',
     dayScope: 'today',
     alertText:
-      '記録状況の詳細はダッシュボードの「ケース記録」カードから確認できます。',
+      '記録状況の詳細はダッシュボードの「日々の記録」カードから確認できます。',
   },
 };
 

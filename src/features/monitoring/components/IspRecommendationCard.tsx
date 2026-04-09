@@ -442,10 +442,10 @@ const IspRecommendationCard: React.FC<IspRecommendationCardProps> = ({
           sx={{ fontWeight: 600 }}
         >
           <GavelIcon sx={{ fontSize: 16, mr: 0.5, verticalAlign: 'text-bottom' }} />
-          ISP見直し提案
+          個別支援計画見直し提案
         </Typography>
         <Tooltip
-          title="モニタリング期間中の目標進捗分析に基づき、個別支援計画（ISP）の見直し候補を自動提案しています。提案は補助情報であり、見直しの最終判断は担当者が行います。"
+          title="モニタリング期間中の目標進捗分析に基づき、個別支援計画の見直し候補を自動提案しています。提案は補助情報であり、見直しの最終判断は担当者が行います。"
           arrow
           placement="right"
         >

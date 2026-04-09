@@ -121,7 +121,7 @@ const TimelineEmptyState: React.FC<{ userName?: string }> = ({ userName }) => (
     </Typography>
     <Typography variant="body2" color="text.secondary">
       {userName
-        ? `${userName}さんの日次記録・インシデント・個別支援計画・申し送りが表示されます。`
+        ? `${userName}さんの日々の記録・インシデント・個別支援計画・申し送りが表示されます。`
         : 'この利用者の記録がまだありません。'}
     </Typography>
   </Box>

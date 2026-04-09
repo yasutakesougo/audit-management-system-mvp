@@ -23,11 +23,11 @@ describe('HubLanding', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('ISP作成')).toBeInTheDocument();
-    expect(screen.queryByText('ISP更新（前回比較）')).not.toBeInTheDocument();
+    expect(screen.getByText('個別支援計画作成')).toBeInTheDocument();
+    expect(screen.queryByText('個別支援計画更新（前回比較）')).not.toBeInTheDocument();
     expect(screen.getByText('計画作成と見直し')).toBeInTheDocument();
     expect(screen.getByTestId('hub-landing-section-primary-planning')).toBeInTheDocument();
-    expect(screen.queryByTestId('hub-landing-section-secondary-planning')).not.toBeInTheDocument();
+    expect(screen.getByTestId('hub-landing-section-secondary-planning')).toBeInTheDocument();
   });
 
   it('shows reception entries with primary/secondary/coming soon sections', () => {

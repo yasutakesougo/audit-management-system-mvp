@@ -51,7 +51,7 @@ const ScheduleUnavailablePage = () => (
           component={Link}
           to="/records"
           variant="outlined"
-          aria-label="記録一覧（月次・日次記録の画面）を開く"
+          aria-label="記録一覧（月次・日々の記録の画面）を開く"
         >
           記録一覧を開く
         </Button>

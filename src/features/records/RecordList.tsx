@@ -23,7 +23,7 @@ const RecordList: React.FC = () => {
       pushAudit({ actor: 'user', action: 'READ_LIST', entity: 'SupportRecord_Daily', channel: 'UI', after: { count: items.length } });
       setError(null);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : '日次記録の取得に失敗しました';
+      const msg = e instanceof Error ? e.message : '日々の記録の取得に失敗しました';
       setError(msg);
       show('error', msg);
     } finally {
@@ -69,7 +69,7 @@ const RecordList: React.FC = () => {
 
   return (
     <div>
-      <h2>日次記録</h2>
+      <h2>日々の記録</h2>
       <form onSubmit={handleSubmit} style={{ marginBottom: '2rem' }}>
         <input
           type="text"

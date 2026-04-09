@@ -92,7 +92,7 @@ export const IndividualSupportView: React.FC<IndividualSupportViewProps> = ({
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <IBDPageHeader
-        title={`${selectedUser.FullName} の支援手順記録`}
+        title={`${selectedUser.FullName} の支援手順の実施`}
         subtitle={`支援計画の確認と日々の記録をワンページで管理できます。記録済み ${recordedCount}/${slots.length}`}
         icon={<SupportIcon />}
         actions={

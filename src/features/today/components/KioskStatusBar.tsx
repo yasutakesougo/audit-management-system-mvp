@@ -3,7 +3,7 @@
  *
  * Today画面上部に常時表示。本日の進捗セクションと同じ4指標を表示。
  *
- * 表示: 支援記録 0/3  ケース記録 0/32  出席 26/32  連絡 2件
+ * 表示: 支援記録 0/3  日々の記録 0/32  出席 26/32  連絡 2件
  *
  * 設計原則: 各指標が一目で把握でき、本日の進捗と数値が一致する
  */
@@ -16,13 +16,13 @@ import React from 'react';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 
 export type KioskStatusMetrics = {
-  /** 支援手順記録: 完了数 */
+  /** 支援手順の実施: 完了数 */
   recordCompleted: number;
-  /** 支援手順記録: 全件数 */
+  /** 支援手順の実施: 全件数 */
   recordTotal: number;
-  /** ケース記録: 完了数 */
+  /** 日々の記録: 完了数 */
   caseCompleted: number;
-  /** ケース記録: 全件数 */
+  /** 日々の記録: 全件数 */
   caseTotal: number;
   /** 出席者数 */
   attendeeCount: number;
@@ -103,9 +103,9 @@ export const KioskStatusBar: React.FC<{ metrics: KioskStatusMetrics }> = ({ metr
         sx={chipSx}
       />
 
-      {/* ケース記録 */}
+      {/* 日々の記録 */}
       <Chip
-        label={`ケース記録 ${metrics.caseCompleted}/${metrics.caseTotal}`}
+        label={`日々の記録 ${metrics.caseCompleted}/${metrics.caseTotal}`}
         size="small"
         color={metricColor(metrics.caseCompleted, metrics.caseTotal)}
         variant="outlined"

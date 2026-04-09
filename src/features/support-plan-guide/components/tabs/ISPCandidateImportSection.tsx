@@ -115,7 +115,7 @@ const ISPCandidateImportSection: React.FC<ISPCandidateImportSectionProps> = ({
             <Stack direction="row" spacing={1} alignItems="center">
               <LightbulbRoundedIcon fontSize="small" color="primary" />
               <Typography variant="subtitle2" component="span" color="primary">
-                行動パターンからの ISP 候補 ({newCandidates.length}件)
+                行動パターンからの個別支援計画候補 ({newCandidates.length}件)
               </Typography>
             </Stack>
             <Button
@@ -132,7 +132,7 @@ const ISPCandidateImportSection: React.FC<ISPCandidateImportSectionProps> = ({
 
           {/* 補足説明 */}
           <Typography variant="caption" color="text.secondary">
-            ※ 日次記録で採用された提案から自動生成された候補です。改善メモに取り込んだ後、内容を調整してください。
+            ※ 日々の記録で採用された提案から自動生成された候補です。改善メモに取り込んだ後、内容を調整してください。
           </Typography>
 
           {/* 候補プレビューリスト */}

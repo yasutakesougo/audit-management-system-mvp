@@ -50,7 +50,7 @@ export const HUB_DEFINITIONS: Record<HubId, HubDefinition> = {
       },
       {
         id: 'today-record',
-        title: 'ケース記録',
+        title: '日々の記録',
         description: '日中の記録を入力',
         to: '/daily/table',
         kpiWeight: 92,
@@ -104,7 +104,7 @@ export const HUB_DEFINITIONS: Record<HubId, HubDefinition> = {
       {
         id: 'records-list',
         title: '記録一覧',
-        description: '日次記録の一覧を確認',
+        description: '日々の記録の一覧を確認',
         to: '/records',
         status: 'primary',
         kpiWeight: 95,
@@ -178,7 +178,7 @@ export const HUB_DEFINITIONS: Record<HubId, HubDefinition> = {
     primaryEntries: [
       {
         id: 'planning-guide',
-        title: 'ISP作成',
+        title: '個別支援計画作成',
         description: '新規の個別支援計画を作成',
         to: '/support-plan-guide',
         status: 'primary',
@@ -187,7 +187,7 @@ export const HUB_DEFINITIONS: Record<HubId, HubDefinition> = {
       },
       {
         id: 'planning-compare',
-        title: 'ISP更新（前回比較）',
+        title: '個別支援計画更新（前回比較）',
         description: '前回版との差分を確認して更新',
         to: '/isp-editor',
         requiredRole: 'admin',

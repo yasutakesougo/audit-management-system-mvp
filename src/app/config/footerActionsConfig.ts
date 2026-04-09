@@ -63,8 +63,8 @@ export const createFooterActions = (
     },
     {
       key: 'daily-activity',
-      label: 'ケース記録入力',
-      shortLabel: 'ケース記録',
+      label: '日々の記録',
+      shortLabel: '日々の記録',
       color: 'primary',
       variant: 'contained',
       accent: '#C05621',
@@ -74,7 +74,7 @@ export const createFooterActions = (
     },
     {
       key: 'daily-support',
-      label: '支援手順記録入力',
+      label: '支援手順の実施',
       shortLabel: '支援手順',
       color: 'primary',
       variant: 'outlined',

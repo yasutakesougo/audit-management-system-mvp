@@ -164,7 +164,7 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
           >
             <Box>
               <Typography variant="h4" component="h2" gutterBottom>
-                支援記録（ケース記録）ワークスペース
+                日々の記録ワークスペース
               </Typography>
               <Typography variant="body1" color="text.secondary" gutterBottom>
                 利用者全員の日々の活動状況を効率的に管理・記録します
@@ -268,7 +268,7 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
             if (!ALLOWED_TABS.includes(value) || value === tab) return;
             setTab(value);
           }}
-          aria-label="支援記録（ケース記録）ワークスペースタブ"
+          aria-label="日々の記録ワークスペースタブ"
           data-testid="daily-workspace-tabs"
           sx={{ position: 'sticky', top: 0, bgcolor: 'background.paper', zIndex: 1, mb: 2 }}
         >
@@ -321,9 +321,9 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
           id="daily-tabpanel-bulk"
           aria-labelledby="daily-tab-bulk"
         >
-          <Box component="section" aria-label="支援記録（ケース記録）一覧入力">
+          <Box component="section" aria-label="日々の記録一覧入力">
             <Typography component="p" sx={srOnly}>
-              全利用者の支援記録（ケース記録）を一覧形式で効率的に入力できます。
+              全利用者の日々の記録を一覧形式で効率的に入力できます。
             </Typography>
             <BulkDailyRecordList
               selectedDate={currentDate}
@@ -341,7 +341,7 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
         >
           <Box component="section" aria-label="記録一覧表示">
             <Typography component="p" sx={srOnly}>
-              過去の支援記録（ケース記録）記録を検索・確認・編集できます。
+              過去の日々の記録を検索・確認・編集できます。
             </Typography>
             <DailyRecordList
               records={records}
@@ -358,14 +358,14 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
           id="daily-tabpanel-form"
           aria-labelledby="daily-tab-form"
         >
-          <Box component="section" aria-label="個別記録入力">
+          <Box component="section" aria-label="個別記録">
             <Typography component="p" sx={srOnly}>
-              詳細な支援記録（ケース記録）を個別に作成・編集できます。
+              詳細な日々の記録を個別に作成・編集できます。
             </Typography>
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <Paper sx={{ p: { xs: 2, md: 4 }, textAlign: 'center', maxWidth: 420 }}>
                 <Typography variant="h6" gutterBottom>
-                  個別記録入力
+                  個別記録
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                   詳細な活動記録を作成します
@@ -392,7 +392,7 @@ const DailyRecordWorkspace: React.FC<DailyRecordWorkspaceProps> = ({
         />
 
         <Divider flexItem sx={{ mt: 3 }}>
-          支援記録（ケース記録）管理システム
+          日々の記録管理システム
         </Divider>
       </Box>
     </Container>

@@ -1,7 +1,7 @@
 /**
  * Dashboard Daily Section Component
  *
- * 責務：「日次記録状況」セクションの表示
+ * 責務：「日々の記録状況」セクションの表示
  * - Page から集計データとリスト構造を受け取る
  * - JSX 描画のみ
  *
@@ -40,7 +40,7 @@ export const DailySection: React.FC<DailySectionProps> = (props) => {
   return (
     <Paper elevation={3} sx={{ p: { xs: 2, sm: 2.5, md: 3 } }} data-testid="dashboard-section-daily">
       <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
-        日次記録状況
+        日々の記録状況
       </Typography>
       <Stack
         direction={{ xs: 'column', md: 'row' }}
@@ -51,7 +51,7 @@ export const DailySection: React.FC<DailySectionProps> = (props) => {
       >
         <Stack spacing={0.5} sx={{ minWidth: 0 }}>
           <Typography variant="subtitle2" lineHeight={1.2} sx={{ fontWeight: 700 }}>
-            ケース記録の進捗
+            日々の記録の進捗
           </Typography>
           <Typography variant="caption" lineHeight={1.3} color="text.secondary">
             今日の入力完了状況を確認できます。

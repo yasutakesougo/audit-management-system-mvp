@@ -1,7 +1,7 @@
 /**
  * buildDailyRecordExceptions
  *
- * 日次記録未入力を「集約 parent + 個別 child」構造の ExceptionItem[] に変換する。
+ * 日々の記録未作成を「集約 parent + 個別 child」構造の ExceptionItem[] に変換する。
  * ExceptionCenter では parent を折りたたみ単位、child を個別対応単位として扱う。
  */
 
@@ -58,8 +58,8 @@ export function buildDailyRecordExceptions(
     id: parentId,
     category: 'missing-record',
     severity: 'high',
-    title: `${targetDate} の日次記録未入力`,
-    description: `${children.length}名のケース記録が未入力です。対象者ごとに入力してください。${hiddenLabel}`,
+    title: `${targetDate} の日々の記録未作成`,
+    description: `${children.length}名の日々の記録が未作成です。対象者ごとに作成してください。${hiddenLabel}`,
     targetDate,
     updatedAt: targetDate,
     actionLabel: '未入力一覧を確認',
@@ -69,7 +69,7 @@ export function buildDailyRecordExceptions(
   const childItems = children.map((item) => ({
     ...item,
     parentId,
-    actionLabel: `${item.targetUser ?? '対象者'}のケース記録を開く`,
+    actionLabel: `${item.targetUser ?? '対象者'}の日々の記録を開く`,
     actionPath: item.targetUserId
       ? `/daily/activity?userId=${encodeURIComponent(item.targetUserId)}&date=${encodeURIComponent(targetDate)}`
       : item.actionPath,

@@ -148,9 +148,9 @@ export function detectCrossModuleIssues(snapshot: DailyUserSnapshot): CrossModul
       id: 'absence-activity-completed',
       type: 'attendance_activity_mismatch',
       severity: 'error',
-      message: '通所欠席にも関わらず支援記録（ケース記録）が完了になっています',
+      message: '通所欠席にも関わらず日々の記録が完了になっています',
       involvedModules: ['attendance', 'activity'],
-      suggestedAction: '支援記録（ケース記録）の記録状況を確認し、必要に応じて「未作成」に変更してください',
+      suggestedAction: '日々の記録の状況を確認し、必要に応じて「未作成」に変更してください',
     });
   }
 
@@ -160,9 +160,9 @@ export function detectCrossModuleIssues(snapshot: DailyUserSnapshot): CrossModul
       id: 'completed-attendance-missing-activity',
       type: 'attendance_activity_mismatch',
       severity: 'warning',
-      message: '退所済みですが支援記録（ケース記録）が未作成です',
+      message: '退所済みですが日々の記録が未作成です',
       involvedModules: ['attendance', 'activity'],
-      suggestedAction: '支援記録（ケース記録）の記録を完了してください',
+      suggestedAction: '日々の記録の作成を完了してください',
     });
   }
 
@@ -300,7 +300,7 @@ export function generateCrossModuleAlerts(snapshots: DailyUserSnapshot[]) {
       severity: 'error',
       title: `モジュール間データ不整合 ${errorIssues.length}件`,
       message: `データ整合性エラー: ${topUsers.join('、')}（制度上の問題が発生している可能性があります）`,
-      href: '/daily/activity', // 支援記録（ケース記録）から確認開始
+      href: '/daily/activity', // 日々の記録から確認開始
     });
   }
 

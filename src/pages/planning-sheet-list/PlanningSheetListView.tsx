@@ -111,7 +111,7 @@ export const PlanningSheetListView: React.FC<PlanningSheetListViewProps> = ({
                 startIcon={<ArrowBackRoundedIcon />}
                 onClick={handlers.onBackToIsp}
               >
-                ISP 画面に戻る
+                個別支援計画画面に戻る
               </Button>
             </Stack>
           </Stack>

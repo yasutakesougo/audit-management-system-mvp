@@ -209,7 +209,7 @@ const TimeFlowPage: React.FC = () => {
                 variant="fullWidth"
                 aria-label="支援手順兼記録タブ"
               >
-                <Tab value="input" label="記録入力" />
+                <Tab value="input" label="記録" />
                 <Tab value="review" label="記録閲覧" />
               </Tabs>
 

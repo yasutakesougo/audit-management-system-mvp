@@ -63,7 +63,7 @@ export function DailyPageTableView({
   return (
     <div className="overflow-x-auto">
       <table className={`min-w-full border border-gray-300 ${tableTextClass}`}>
-        <caption className="sr-only">日次記録一覧</caption>
+        <caption className="sr-only">日々の記録一覧</caption>
         <thead className="sticky top-0 z-10 bg-gray-50">
           <tr>
             <th className="border px-2 py-1">ID</th>

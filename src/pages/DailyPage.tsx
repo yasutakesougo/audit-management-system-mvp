@@ -237,12 +237,12 @@ export default function DailyPage() {
 
   const isCardMode = displayMode === 'sceneA';
 
-  if (loading && !data) return <div className="p-4">読み込み中…</div>;
-  if (error) return <div className="p-4 text-red-600">読み込みエラー: {error.message}</div>;
+  if (loading && !data) return <div className="p-4">日々の記録を読み込み中…</div>;
+  if (error) return <div className="p-4 text-red-600">日々の記録の読み込みに失敗しました: {error.message}</div>;
   if (!data?.length) {
     return (
       <div className="p-4 space-y-3">
-        <div>日次記録がありません</div>
+        <div>日々の記録がまだありません</div>
         <button type="button" onClick={() => { void reload(); }} className="border px-3 py-1 rounded bg-emerald-600 text-white">
           再読み込み
         </button>
@@ -252,14 +252,14 @@ export default function DailyPage() {
 
   return (
     <div className="p-4 space-y-3">
-      <PageHeader title="日次記録" />
+      <PageHeader title="日々の記録" />
       <FilterToolbar
         query={queryValue}
         onQueryChange={handleQueryChange}
         debounceMs={DEBOUNCE_MS}
         searchPlaceholder="タイトル / メモ / 担当"
         searchHelpId="daily-search-help"
-        toolbarLabel="日次記録の検索条件"
+        toolbarLabel="日々の記録の検索条件"
         statusOptions={statusOptions}
         activeStatus={activeFilter}
         onStatusChange={(value: string) => {

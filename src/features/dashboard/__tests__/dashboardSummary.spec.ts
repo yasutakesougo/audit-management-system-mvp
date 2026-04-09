@@ -101,7 +101,7 @@ describe('buildDashboardSummary', () => {
       expect(new Date(result.generatedAt)).toBeInstanceOf(Date);
     });
 
-    it('単一モジュール（支援記録（ケース記録））のサマリーを生成する', () => {
+    it('単一モジュール（日々の記録）のサマリーを生成する', () => {
       const params: DashboardSummaryParams = {
         activity: {
           records: [

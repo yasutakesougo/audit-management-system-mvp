@@ -58,9 +58,9 @@ export function createMockDailyUserSnapshot(
             id: 'absence-activity-completed',
             type: 'attendance_activity_mismatch',
             severity: 'error',
-            message: '通所欠席にも関わらず支援記録（ケース記録）が完了になっています',
+            message: '通所欠席にも関わらず日々の記録が完了になっています',
             involvedModules: ['attendance', 'activity'],
-            suggestedAction: '支援記録（ケース記録）の記録状況を確認し、必要に応じて「未作成」に変更してください',
+            suggestedAction: '日々の記録の状況を確認し、必要に応じて「未作成」に変更してください',
           },
         ],
       } as DailyUserSnapshot;

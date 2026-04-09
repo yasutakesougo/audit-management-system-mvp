@@ -46,7 +46,7 @@ export default function BulkDailyRecordList({ selectedDate, onSave, onSaveRow, m
   };
 
   return (
-    <Paper variant="outlined" role="region" aria-label="支援記録（ケース記録）一覧入力">
+    <Paper variant="outlined" role="region" aria-label="日々の記録一覧入力">
       <BulkDailyRecordToolbar
         selectedDate={selectedDate}
         isSubmitting={state.isSubmitting}
@@ -74,7 +74,7 @@ export default function BulkDailyRecordList({ selectedDate, onSave, onSaveRow, m
         <Table
           size="small"
           role="grid"
-          aria-label="支援記録（ケース記録） 一覧入力"
+          aria-label="日々の記録 一覧入力"
           data-testid="daily-bulk-table"
           stickyHeader
         >

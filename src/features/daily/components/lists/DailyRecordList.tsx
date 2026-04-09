@@ -142,7 +142,7 @@ export function DailyRecordList({
     return (
       <Box sx={{ textAlign: 'center', py: 4 }} data-testid="daily-record-list-empty">
         <Typography variant="body2" color="text.secondary">
-          まだ日次記録がありません
+          まだ日々の記録がありません
         </Typography>
       </Box>
     );

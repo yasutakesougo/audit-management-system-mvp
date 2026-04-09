@@ -158,7 +158,7 @@ function useHubStatus(
           { label: '個別支援手順 →', to: '/admin/individual-support', drilldown: true },
         ],
         alert: spsAlerts.hasAlerts
-          ? `⚠️ SPS更新期限に注意が必要な利用者が${spsAlerts.alerts.length}名います`
+          ? `⚠️ 支援計画シートの更新期限に注意が必要な利用者が${spsAlerts.alerts.length}名います`
           : undefined,
         alertSeverity: spsAlerts.worstLevel === 'error' ? 'error' as const : 'warning' as const,
       },
@@ -178,12 +178,12 @@ function useHubStatus(
             : []),
         ],
         links: [
-          { label: '日次記録（行動観察）', to: '/daily/support', primary: true },
+          { label: '支援手順の実施（行動観察）', to: '/daily/support', primary: true },
           { label: '健康バイタル', to: '/daily/health' },
           { label: '申し送りタイムライン', to: '/handoff-timeline' },
         ],
         alert: spsAlerts.overdueCount > 0
-          ? `🔴 SPS更新期限が超過している利用者が${spsAlerts.overdueCount}名います`
+          ? `🔴 支援計画シートの更新期限が超過している利用者が${spsAlerts.overdueCount}名います`
           : undefined,
         alertSeverity: 'error' as const,
       },

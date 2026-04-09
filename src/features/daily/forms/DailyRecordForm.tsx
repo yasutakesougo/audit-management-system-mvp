@@ -70,7 +70,7 @@ export function DailyRecordForm({ open, onClose, record, onSave }: DailyRecordFo
       data-testid="daily-record-form-dialog"
     >
       <DialogTitle data-testid="daily-record-form-title">
-        {record ? '日次記録の編集' : '新しい日次記録'}
+        {record ? '日々の記録の編集' : '新しい日々の記録'}
         {s.selectedUserValue && (
           <Typography variant="subtitle2" component="div" color="textSecondary" sx={{ mt: 1 }}>
             {s.selectedUserValue.label} ({s.selectedUserValue.id})

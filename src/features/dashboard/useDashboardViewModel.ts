@@ -84,7 +84,7 @@ export function useDashboardViewModel<TSummary = unknown>(
       { key: 'stats', enabled: true },
       { key: 'adminOnly', title: '管理者ダッシュボード', enabled: canAccessDashboardAudience(role, 'admin') },
       { key: 'staffOnly', title: 'スタッフダッシュボード', enabled: isDashboardAudience(role, 'staff') },
-      { key: 'daily', title: '日次記録状況', enabled: true },
+      { key: 'daily', title: '日々の記録状況', enabled: true },
     ];
 
     if (!sectionKeys || sectionKeys.length === 0) {

@@ -148,7 +148,7 @@ export const BehaviorPatternSuggestionPanel: React.FC<BehaviorPatternSuggestionP
         autoHideDuration={3000}
         onClose={() => setSnackOpen(false)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        message="✅ メモに残しました → ISP候補にも追加されます"
+        message="✅ メモに残しました → 個別支援計画候補にも追加されます"
       />
     </Paper>
   );

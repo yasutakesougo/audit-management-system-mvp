@@ -66,8 +66,8 @@ describe('DailyRecordMenuPage', () => {
       </MemoryRouter>
     );
 
-    // ヘッダーに日次記録タイトルがある
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('日次記録');
+    // ヘッダーに日々の記録タイトルがある
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('日々の記録');
     // CommandBar が表示されていること
     expect(screen.getByTestId('bento-command-bar')).toBeInTheDocument();
   });

@@ -85,7 +85,7 @@ export function BulkDailyRecordForm({
       <DialogTitle>
         <Box display="flex" alignItems="center" gap={1}>
           <GroupIcon />
-          複数利用者支援記録（ケース記録）作成
+          複数利用者日々の記録作成
         </Box>
         <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
           複数の利用者に対して共通の活動記録を効率的に作成できます

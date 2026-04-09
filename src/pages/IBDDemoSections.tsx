@@ -41,7 +41,7 @@ import { PDCA_RECOMMENDATION_LABELS, SUPPORT_CATEGORY_CONFIG } from '@/features/
 import { auditLog } from '@/lib/debugLogger';
 import { toLocalDateISO } from '@/utils/getNow';
 
-// ── Section 1: SPS アラート ──
+// ── Section 1: 支援計画シート アラート ──
 
 interface SPSAlertsSectionProps {
   allSPS: Array<{
@@ -63,10 +63,10 @@ export function SPSAlertsSection({ allSPS, alerts }: SPSAlertsSectionProps) {
     <Card>
       <CardContent>
         <Typography variant="h5" gutterBottom fontWeight={600}>
-          📊 SPS 更新アラート
+          📊 支援計画シート 更新アラート
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          確定済みSPSの3ヶ月（90日）更新期限を監視。confirmedAt を起算点として計算。
+          確定済み支援計画シートの3ヶ月（90日）更新期限を監視。confirmedAt を起算点として計算。
         </Typography>
 
         <Stack spacing={2}>
@@ -88,12 +88,12 @@ export function SPSAlertsSection({ allSPS, alerts }: SPSAlertsSectionProps) {
           {alerts.length > 0 ? (
             alerts.map((alert) => (
               <Alert key={alert.sps.id} severity={alert.level === 'error' ? 'error' : 'warning'}>
-                SPS「{alert.sps.id}」: 残り {alert.daysRemaining}日
+                支援計画シート「{alert.sps.id}」: 残り {alert.daysRemaining}日
                 {alert.daysRemaining < 0 && ` (${Math.abs(alert.daysRemaining)}日超過)`}
               </Alert>
             ))
           ) : (
-            <Alert severity="success">アラートなし — 全SPSが期限内です</Alert>
+            <Alert severity="success">アラートなし — 全支援計画シートが期限内です</Alert>
           )}
         </Stack>
       </CardContent>
@@ -108,10 +108,10 @@ export function ConfirmGuardSection() {
     <Card>
       <CardContent>
         <Typography variant="h5" gutterBottom fontWeight={600}>
-          🔐 SPS確定操作の権限制御
+          🔐 支援計画シート確定操作の権限制御
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          実践研修修了者のみがSPSを確定可能。非修了者は下書き作成のみ。
+          実践研修修了者のみが支援計画シートを確定可能。非修了者は下書き作成のみ。
         </Typography>
 
         <Stack direction="row" spacing={2}>
@@ -125,7 +125,7 @@ export function ConfirmGuardSection() {
             <Typography variant="subtitle1" component="span" fontWeight={600}>基礎研修 / 未修了</Typography>
             <Chip label="確定不可" color="error" size="small" />
             <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
-              {canConfirmSPS(false).reason}
+              {canConfirmSPS(false).reason.replace(/SPS/g, '支援計画シート')}
             </Typography>
           </Paper>
         </Stack>
@@ -342,7 +342,7 @@ export function AuditReportSection({ pdfLoading, setPdfLoading, prepareReportDat
           📄 監査エビデンスレポート
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          SPS確定履歴・観察ログ・遵守状況サマリをA4 PDFで出力。
+          支援計画シート確定履歴・観察ログ・遵守状況サマリをA4 PDFで出力。
           実地指導用のエビデンスとして1クリックでダウンロード。
         </Typography>
 
@@ -382,7 +382,7 @@ export function AuditReportSection({ pdfLoading, setPdfLoading, prepareReportDat
             {pdfLoading ? 'PDF生成中...' : '📄 監査レポートをダウンロード'}
           </Button>
           <Typography variant="caption" color="text.secondary">
-            A4 × 2ページ（SPS履歴 + 観察ログ）
+            A4 × 2ページ（支援計画シート履歴 + 観察ログ）
           </Typography>
         </Stack>
       </CardContent>

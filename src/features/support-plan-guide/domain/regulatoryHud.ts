@@ -64,16 +64,16 @@ function judgeIspStatus(status: IspStatus): RegulatoryHudItem {
   if (status === 'active') {
     return {
       key: 'isp-status',
-      label: 'ISP確定済み',
+      label: '個別支援計画確定済み',
       signal: 'ok',
       navigateTo: 'overview',
     };
   }
   return {
     key: 'isp-status',
-    label: 'ISP未確定',
+    label: '個別支援計画未確定',
     signal: 'danger',
-    detail: 'ISPが確定されていません。計画を完成させてください。',
+    detail: '個別支援計画が確定されていません。計画を完成させてください。',
     navigateTo: 'overview',
   };
 }

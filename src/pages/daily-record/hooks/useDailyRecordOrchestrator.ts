@@ -112,7 +112,7 @@ export function useDailyRecordOrchestrator(): {
     uiActions.setRecords(updatedRecords);
 
     const operation = uiState.editingRecord ? '更新' : '新規作成';
-    toast.success(`日次記録の${operation}が完了しました`);
+    toast.success(`日々の記録の${operation}が完了しました`);
 
     // 自動次レコード
     setTimeout(() => {

@@ -152,7 +152,7 @@ const IspPlanDraftPreview: React.FC<IspPlanDraftPreviewProps> = ({
         <Stack direction="row" spacing={1} alignItems="center">
           <ArticleIcon fontSize="small" sx={{ color: 'info.main' }} />
           <Typography variant="subtitle2" color="info.main" sx={{ fontWeight: 600 }}>
-            ISP 計画書ドラフト
+            個別支援計画書ドラフト
           </Typography>
           <Chip
             label={`${draft.sections.length}セクション`}
@@ -174,7 +174,7 @@ const IspPlanDraftPreview: React.FC<IspPlanDraftPreviewProps> = ({
                 onClick={handleApplyAll}
                 data-testid="isp-draft-apply-all"
               >
-                {justAppliedAll ? '反映しました ✓' : 'ISP 計画書へ一括反映'}
+                {justAppliedAll ? '反映しました ✓' : '個別支援計画書へ一括反映'}
               </Button>
             </Tooltip>
           )}
@@ -195,7 +195,7 @@ const IspPlanDraftPreview: React.FC<IspPlanDraftPreviewProps> = ({
               disabled={isSavingDraft}
               data-testid="isp-draft-save"
             >
-              {isSavingDraft ? '保存中…' : hasSavedDraft ? '保存済み ✓' : 'ISP 下書きを保存'}
+              {isSavingDraft ? '保存中…' : hasSavedDraft ? '保存済み ✓' : '個別支援計画下書きを保存'}
             </Button>
           )}
           {onAppendToEvaluation && (

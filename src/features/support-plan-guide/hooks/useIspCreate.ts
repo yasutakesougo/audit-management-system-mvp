@@ -152,7 +152,7 @@ export function useIspCreate({
     }
 
     if (!ispRepo) {
-      const msg = 'ISPリポジトリが初期化されていません';
+      const msg = '個別支援計画リポジトリが初期化されていません';
       setCreateError(msg);
       onError?.(msg);
       return;
@@ -194,7 +194,7 @@ export function useIspCreate({
       if (err instanceof UserNotResolvedError) {
         msg = '対象利用者が見つかりません。利用者マスタを確認してください。';
       } else {
-        msg = err instanceof Error ? err.message : 'ISPの作成に失敗しました';
+        msg = err instanceof Error ? err.message : '個別支援計画の作成に失敗しました';
       }
       setCreateError(msg);
       onError?.(msg);
