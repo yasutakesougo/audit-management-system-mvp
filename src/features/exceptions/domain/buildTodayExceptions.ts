@@ -1,10 +1,10 @@
-import { ExceptionItem } from './exceptionLogic';
+import { AcknowledgementState, ExceptionItem, ResolvedState } from './exceptionLogic';
 
 export type TodayExceptionAction = {
   id: string;
   sourceExceptionId: string;
   stableId?: string;
-  kind: 'critical-handoff' | 'missing-record' | 'attention-user';
+  kind: 'critical-handoff' | 'missing-record' | 'attention-user' | 'setup-incomplete';
   priority: 'high' | 'critical';
   title: string;
   description: string;
@@ -15,14 +15,22 @@ export type TodayExceptionAction = {
   secondaryActionPath?: string;
   userId?: string;
   date?: string;
+  ownerRole?: 'admin' | 'manager' | 'staff';
+  /** ADR-019: 対応着手の状態。dismiss とは別概念（個人的非表示 vs チームへの意思表示） */
+  acknowledgement?: AcknowledgementState;
 };
 
 export type BuildTodayExceptionsOptions = {
   dismissedStableIds?: Set<string>;
   snoozedStableIds?: Set<string>;
+  /** ADR-019: stableId → acknowledgement 状態のマップ */
+  acknowledgedMap?: Record<string, AcknowledgementState>;
+  /** ADR-019: stableId → resolved 状態のマップ。resolved はアクティブリストから除外される */
+  resolvedMap?: Record<string, ResolvedState>;
 };
 
 const CATEGORY_ORDER: Record<string, number> = {
+  'setup-incomplete': 0, // 最優先
   'critical-handoff': 1,
   'missing-record': 2,
   'attention-user': 3,
@@ -46,15 +54,19 @@ export function buildTodayExceptions(
   const {
     dismissedStableIds = new Set<string>(),
     snoozedStableIds = new Set<string>(),
+    acknowledgedMap = {},
+    resolvedMap = {},
   } = options;
 
   const actions: TodayExceptionAction[] = [];
 
   for (const item of items) {
-    // 1. dismiss / snooze の除外
+    // 1. dismiss / snooze / resolved の除外
+    // resolved は「意図的な完了」としてアクティブリストから除外（dismiss と意味は異なるが動作は同じ）
     const effectiveStableId = item.stableId ?? item.id;
     if (dismissedStableIds.has(effectiveStableId)) continue;
     if (snoozedStableIds.has(effectiveStableId)) continue;
+    if (resolvedMap[effectiveStableId]) continue;
 
     // 2. actionPath がないものは原則除外
     if (!item.actionPath) continue;
@@ -63,16 +75,17 @@ export function buildTodayExceptions(
     const isCriticalHandoff = item.category === 'critical-handoff';
     const isMissingRecord = item.category === 'missing-record';
     const isAttentionUser = item.category === 'attention-user';
+    const isSetupIncomplete = item.category === 'setup-incomplete';
 
-    if (!isCriticalHandoff && !isMissingRecord && !isAttentionUser) {
+    if (!isCriticalHandoff && !isMissingRecord && !isAttentionUser && !isSetupIncomplete) {
       continue;
     }
 
     const priority = item.severity === 'critical' ? 'critical' : item.severity === 'high' ? 'high' : null;
 
-    // critical-handoff は常に対象（とはいえ priority がセットされる前提）。
+    // critical-handoff、setup-incomplete は常に対象（とはいえ priority がセットされる前提）。
     // missing-record と attention-user は priority が high 以上のみ対象。
-    if (!isCriticalHandoff && !priority) {
+    if (!isCriticalHandoff && !isSetupIncomplete && !priority) {
       continue;
     }
 
@@ -93,15 +106,23 @@ export function buildTodayExceptions(
       userId: item.targetUserId,
       date: item.targetDate ?? item.updatedAt,
       stableId: effectiveStableId,
+      ownerRole: item.ownerRole,
+      acknowledgement: acknowledgedMap[effectiveStableId],
     });
   }
 
-  // 4. ソート: priority (critical -> high) -> カテゴリ順 -> 日付(近い順=新しい順)
+  // 4. ソート: priority (critical -> high) -> acknowledged（未着手優先） -> カテゴリ順 -> 日付(近い順=新しい順)
+  // acknowledged は同一 priority 群の末尾へ。完全非表示にはしない（チームへの可視性を維持）。
   actions.sort((a, b) => {
     // Priority order
     const pA = PRIORITY_ORDER[a.priority] ?? 99;
     const pB = PRIORITY_ORDER[b.priority] ?? 99;
     if (pA !== pB) return pA - pB;
+
+    // Acknowledged items sink within the same priority group
+    const ackA = a.acknowledgement ? 1 : 0;
+    const ackB = b.acknowledgement ? 1 : 0;
+    if (ackA !== ackB) return ackA - ackB;
 
     // Category order
     const cA = CATEGORY_ORDER[a.kind] ?? 99;

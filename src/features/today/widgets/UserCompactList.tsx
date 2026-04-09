@@ -163,13 +163,13 @@ const UserCompactRow = React.memo<{
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
         {onOpenISP ? (
-          <Tooltip title="個別支援計画（ISP）">
+          <Tooltip title="個別支援計画">
             <IconButton
               size="small"
               color="primary"
               onClick={(e) => { e.stopPropagation(); onOpenISP(user.userId); }}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); }}
-              aria-label={`${user.name}のISPを確認`}
+              aria-label={`${user.name}の個別支援計画を確認`}
               sx={{ minHeight: 44, minWidth: 44, bgcolor: 'primary.50', '&:hover': { bgcolor: 'primary.100' } }}
             >
               <EditNoteIcon fontSize="small" />

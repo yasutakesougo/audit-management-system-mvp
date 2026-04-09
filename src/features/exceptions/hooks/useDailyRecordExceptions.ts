@@ -1,5 +1,5 @@
 /**
- * useDailyRecordExceptions — ExceptionCenter 用の日次記録例外統合 hook
+ * useDailyRecordExceptions — ExceptionCenter 用の日々の記録例外統合 hook
  *
  * useExceptionDataSources が提供する expectedUsers/todayRecords を
  * parent + child 形式の ExceptionItem に変換する。

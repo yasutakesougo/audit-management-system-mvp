@@ -72,8 +72,8 @@ export const SpPersistentDriftPanel: React.FC = () => {
 ・SharePoint 上でインデックスが作成されます。
 ・副作用はありませんが、もしインデックス上限（20個）に達している場合は失敗します。
       `.trim(),
-      confirmLabel: '修復を実行する',
-      warningText: '実行中にページを閉じないでください。',
+      confirmLabel: '修復を開始する',
+      warningText: '修復中にページを閉じないでください。',
       onConfirm: async () => {
         if (!sp) return;
 
@@ -225,7 +225,7 @@ export const SpPersistentDriftPanel: React.FC = () => {
                           onClick={() => handleRepair(entry)}
                           sx={{ textTransform: 'none' }}
                         >
-                          {isExecuting ? '実行中...' : '修復を実行'}
+                          {isExecuting ? '修復中...' : '修復を開始'}
                         </Button>
                       </span>
                     </Tooltip>
