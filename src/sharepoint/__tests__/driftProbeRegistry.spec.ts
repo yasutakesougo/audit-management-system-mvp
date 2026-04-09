@@ -43,7 +43,19 @@ describe('DriftProbeRegistry / Dynamic Discovery', () => {
     const targets = getDriftProbeTargets();
     const keys = targets.map(t => t.key);
     const uniqueKeys = new Set(keys);
-    
+
     expect(keys.length).toBe(uniqueKeys.size);
+  });
+
+  it('does not mark drift_events_log Severity as essential', () => {
+    // 診断契約と SharePointDriftEventRepository の実装契約を一致させるための回帰防止。
+    // Severity は repository が任意扱い（fail-open）で、本リストは lifecycle: 'optional'。
+    // Severity が essential に戻ると /admin/status が schema FAIL を出してしまう。
+    const entry = SP_LIST_REGISTRY.find(e => e.key === 'drift_events_log');
+
+    expect(entry).toBeDefined();
+    expect(entry?.lifecycle).toBe('optional');
+    expect(entry?.essentialFields).toEqual(['ListName', 'FieldName', 'DetectedAt']);
+    expect(entry?.essentialFields).not.toContain('Severity');
   });
 });
