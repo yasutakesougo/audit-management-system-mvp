@@ -79,15 +79,37 @@ const toNumber = (value: unknown): number => {
   return 0;
 };
 
-const buildDiagnosticsSelectFields = (resolved: DiagnosticsResolvedFields): string[] => {
+const buildDiagnosticsSelectFields = (
+  resolved: DiagnosticsResolvedFields,
+  options: { includeOptional?: boolean } = { includeOptional: true }
+): string[] => {
   const seen = new Set<string>();
   const fields: string[] = [];
-  for (const key of Object.keys(resolved) as DiagnosticsFieldKey[]) {
+  
+  // 必須フィールド (Id, Title, Overall)
+  const essentialKeys: DiagnosticsFieldKey[] = ['id', 'title', 'overall'];
+  
+  // 解決されたフィールドのみ追加
+  for (const key of essentialKeys) {
     const value = resolved[key];
-    if (!value || seen.has(value)) continue;
-    seen.add(value);
-    fields.push(value);
+    if (value && !seen.has(value)) {
+      seen.add(value);
+      fields.push(value);
+    }
   }
+
+  // オプションフィールド
+  if (options.includeOptional) {
+    for (const key of Object.keys(resolved) as DiagnosticsFieldKey[]) {
+      if (essentialKeys.includes(key)) continue;
+      const value = resolved[key];
+      if (value && !seen.has(value)) {
+        seen.add(value);
+        fields.push(value);
+      }
+    }
+  }
+
   return fields;
 };
 
