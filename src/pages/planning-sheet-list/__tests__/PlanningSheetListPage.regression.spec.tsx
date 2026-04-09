@@ -1,17 +1,18 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { vi } from 'vitest';
 import { PlanningSheetListView } from '../PlanningSheetListView';
 import { PlanningSheetListViewModel, PlanningSheetListActionHandlers } from '../types';
 import '@testing-library/jest-dom';
 
 const mockHandlers: PlanningSheetListActionHandlers = {
-  onUserSelect: jest.fn(),
-  onNavigateToSheet: jest.fn(),
-  onNewSheet: jest.fn(),
-  onOpenIceberg: jest.fn(),
-  onCreateFromIceberg: jest.fn(),
-  onReviseFromIceberg: jest.fn(),
-  onBackToIsp: jest.fn(),
+  onUserSelect: vi.fn(),
+  onNavigateToSheet: vi.fn(),
+  onNewSheet: vi.fn(),
+  onOpenIceberg: vi.fn(),
+  onCreateFromIceberg: vi.fn(),
+  onReviseFromIceberg: vi.fn(),
+  onBackToIsp: vi.fn(),
 };
 
 const baseViewModel: PlanningSheetListViewModel = {
