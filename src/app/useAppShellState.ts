@@ -11,8 +11,14 @@ import {
     splitNavItemsByTier,
     type NavAudience,
 } from '@/app/config/navigationConfig';
-import { resolveHubRouteMetadata } from '@/app/hubs/hubDefinitions';
+import { isHubPathActive, resolveHubRouteMetadata } from '@/app/hubs/hubDefinitions';
 import { navIconMap } from '@/app/navIconMap';
+import {
+  PLANNING_NAV_TELEMETRY_EVENTS,
+  markPlanningNavInitialExposure,
+  maybeRecordPlanningNavRetention,
+  recordPlanningNavTelemetry,
+} from '@/app/navigation/planningNavTelemetry';
 import { canAccess } from '@/auth/roles';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { useFeatureFlags } from '@/config/featureFlags';
@@ -22,7 +28,7 @@ import { useSettingsContext } from '@/features/settings/SettingsContext';
 import { shouldSkipLogin } from '@/lib/env';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const SKIP_LOGIN = shouldSkipLogin();
@@ -184,6 +190,90 @@ export function useAppShellState() {
     return filterNavItems(visibleNavItems, navQuery);
   }, [visibleNavItems, navQuery]);
   const groupedNavItems = useMemo(() => groupNavItems(filteredNavItems, isAdmin), [filteredNavItems, isAdmin]);
+  const isPlanningGroupVisible = useMemo(
+    () => visibleNavItems.some((item) => item.group === 'planning'),
+    [visibleNavItems],
+  );
+
+  const previousPlanningVisibilityRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    const prevVisible = previousPlanningVisibilityRef.current;
+    const trigger =
+      prevVisible === null
+        ? 'init'
+        : prevVisible === isPlanningGroupVisible
+          ? null
+          : 'state_change';
+
+    if (trigger) {
+      recordPlanningNavTelemetry({
+        eventName: PLANNING_NAV_TELEMETRY_EVENTS.VISIBILITY_CHANGED,
+        role,
+        navAudience,
+        mode: settings.layoutMode,
+        pathname: location.pathname,
+        search: location.search,
+        visible: isPlanningGroupVisible,
+        source: 'appshell',
+        trigger,
+        hiddenBySetting: settings.hiddenNavGroups.includes('planning'),
+        hiddenByKiosk: settings.layoutMode === 'kiosk',
+      });
+    }
+
+    if (isPlanningGroupVisible) {
+      markPlanningNavInitialExposure({
+        role,
+        navAudience,
+        mode: settings.layoutMode,
+        pathname: location.pathname,
+        search: location.search,
+      });
+      maybeRecordPlanningNavRetention({
+        role,
+        navAudience,
+        mode: settings.layoutMode,
+        pathname: location.pathname,
+        search: location.search,
+      });
+    }
+
+    previousPlanningVisibilityRef.current = isPlanningGroupVisible;
+  }, [
+    isPlanningGroupVisible,
+    role,
+    navAudience,
+    settings.layoutMode,
+    settings.hiddenNavGroups,
+    location.pathname,
+    location.search,
+  ]);
+
+  const wasPlanningPathRef = useRef<boolean | null>(null);
+  const previousPathnameRef = useRef<string | null>(null);
+  useEffect(() => {
+    const isPlanningPath = isHubPathActive('planning', location.pathname);
+    const wasPlanningPath = wasPlanningPathRef.current;
+    const arrivedToPlanning = isPlanningPath && (wasPlanningPath === null || wasPlanningPath === false);
+
+    if (arrivedToPlanning) {
+      recordPlanningNavTelemetry({
+        eventName: PLANNING_NAV_TELEMETRY_EVENTS.PAGE_ARRIVED,
+        role,
+        navAudience,
+        mode: settings.layoutMode,
+        pathname: location.pathname,
+        search: location.search,
+        targetPath: location.pathname,
+        fromPath: previousPathnameRef.current ?? undefined,
+        source: 'appshell',
+        trigger: wasPlanningPath === null ? 'initial_load' : 'route_change',
+      });
+    }
+
+    wasPlanningPathRef.current = isPlanningPath;
+    previousPathnameRef.current = location.pathname;
+  }, [location.pathname, location.search, role, navAudience, settings.layoutMode]);
 
   // ── Callbacks ──────────────────────────────────────────────────────────────
 

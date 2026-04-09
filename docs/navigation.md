@@ -46,3 +46,8 @@
 2. **ナビ構成登録**: `src/app/config/navigationConfig.ts` の `createNavItems()`
 3. **アイコン対応**: `src/app/navIconMap.ts`
 4. **テスト作成**: `tests/unit/app/config/navigationConfig.spec.ts`
+
+## 関連ドキュメント
+
+- `docs/navigation-structure.md` — 三系統導線の責務分離
+- `docs/navigation-planning-visibility-policy-options.md` — Planning表示ポリシー比較（3案）

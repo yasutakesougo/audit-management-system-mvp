@@ -91,7 +91,7 @@ export const analysisRoutes: RouteObject[] = [
   {
     path: 'survey/tokusei',
     element: (
-      <RequireAudience requiredRole="viewer">
+      <RequireAudience requiredRole="admin">
         <SuspendedTokuseiSurveyResultsPage />
       </RequireAudience>
     ),

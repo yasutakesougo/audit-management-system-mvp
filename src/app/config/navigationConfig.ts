@@ -66,12 +66,13 @@ type HubNavItemOverrides = {
   prefetchKey?: NavItem['prefetchKey'];
   prefetchKeys?: NavItem['prefetchKeys'];
   tier?: NavTier;
+  isActive?: NavItem['isActive'];
 };
 
 const createHubNavItem = (hubId: HubId, overrides: HubNavItemOverrides = {}): NavItem => ({
   label: overrides.label ?? getHubNavLabel(hubId),
   to: getHubRootPath(hubId),
-  isActive: (pathname) => isHubPathActive(hubId, pathname),
+  isActive: overrides.isActive ?? ((pathname) => isHubPathActive(hubId, pathname)),
   icon: undefined,
   testId: overrides.testId,
   prefetchKey: overrides.prefetchKey,
@@ -185,7 +186,10 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
 
     // --- 2. 支援計画・アセスメント (assessment) ---
     // 順序: ISP作成・更新 → 支援計画シート → アセスメント系 → 分析系 → アンケート
-    createHubNavItem('planning'),
+    createHubNavItem('planning', {
+      // Hub 自体の active は /planning 配下に限定し、配下業務画面との二重 active を避ける。
+      isActive: (pathname) => pathname === '/planning' || pathname.startsWith('/planning/'),
+    }),
     {
       label: '分析ワークスペース',
       to: '/analysis/dashboard',
