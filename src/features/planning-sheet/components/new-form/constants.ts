@@ -30,12 +30,23 @@ export const TRAINING_LEVELS = [
   { value: 'なし', label: '研修未修了' },
 ] as const;
 
+export const ICEBERG_FACTORS = [
+  { key: 'icebergSurface', label: '問題行動（水面上）', icon: '🏔️', placeholder: '現在見えている、支援が必要な行動' },
+  { key: 'triggers', label: 'きっかけ（トリガー）', icon: '⚡', placeholder: '行動を引き起こす直接的なきっかけ' },
+  { key: 'environmentFactors', label: '環境的要因', icon: '🏠', placeholder: '物理的環境・人的環境・時間帯' },
+  { key: 'emotions', label: '感情・心理的要因', icon: '💭', placeholder: '不安、混乱、怒り、恐怖など' },
+  { key: 'cognition', label: '認知・特性的要因', icon: '🧠', placeholder: '言語理解力、障害特性、情報の捉え方' },
+  { key: 'needs', label: '本人の願い（ニーズ）', icon: '💡', placeholder: '「本当はこうしたい」「こうなりたい」' },
+] as const;
+
 export const INITIAL_FORM: FormState = {
   title: '', supportLevel: '', behaviorScore: '', planPeriod: '',
   trainingLevel: 'なし', relatedOrganizations: '',
   targetBehavior: '', behaviorFrequency: '', behaviorSituation: '',
   behaviorDuration: '', behaviorIntensity: '', behaviorRisk: '', behaviorImpact: '',
-  triggers: '', environmentFactors: '', emotions: '', cognition: '', needs: '',
+  icebergSurface: '',
+  triggers: '', environmentFactors: '', emotions: '',
+ cognition: '', needs: '',
   behaviorFunctions: [], behaviorFunctionDetail: '',
   abcAntecedent: '', abcBehavior: '', abcConsequence: '',
   environmentalAdjustment: '', visualSupport: '', communicationSupport: '',
@@ -67,6 +78,7 @@ export const SAMPLE_FORM: FormState = {
   behaviorRisk: '本人：膝や肘の打撲リスク / 他者：払いのけ動作による接触リスク',
   behaviorImpact: '他利用者への心理的影響、活動スケジュールの遅延、職員の対応負荷増大',
   // §3
+  icebergSurface: '外出活動前に予定が理解できないと大声で拒否し床に座り込む',
   triggers: '予定の急な変更、見通しが持てない状況、言語指示のみでの予定説明',
   environmentFactors: '騒がしい環境、複数の利用者が同時に準備する場面、初めての外出先',
   emotions: '不安、混乱、見通しが立たないことへの恐怖感',

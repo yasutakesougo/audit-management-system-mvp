@@ -32,6 +32,7 @@ export interface FormState {
   behaviorRisk: string;
   behaviorImpact: string;
   // §3 氷山分析
+  icebergSurface: string;
   triggers: string;
   environmentFactors: string;
   emotions: string;

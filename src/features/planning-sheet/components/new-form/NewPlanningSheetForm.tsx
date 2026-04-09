@@ -161,11 +161,11 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
           setIspId(currentIsp.id);
         } else {
           setIspId(`draft-isp-${value.id}-${Date.now()}`);
-          setIspWarning(`利用者「${value.label}」の現行 ISP が見つかりません。仮の紐付けで続行します。`);
+          setIspWarning(`利用者「${value.label}」の現行個別支援計画が見つかりません。仮の紐付けで続行します。`);
         }
       } catch {
         setIspId(`draft-isp-${value.id}-${Date.now()}`);
-        setIspWarning('ISP の取得に失敗しました。仮の紐付けで続行します。');
+        setIspWarning('個別支援計画の取得に失敗しました。仮の紐付けで続行します。');
       } finally {
         setIspLoading(false);
       }
@@ -474,7 +474,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
                 サンプルデータ
               </Button>
               <Button size="small" startIcon={<ArrowBackRoundedIcon />} onClick={() => navigate('/support-plan-guide')}>
-                ISP 画面に戻る
+                個別支援計画画面に戻る
               </Button>
             </Stack>
           </Stack>
@@ -500,7 +500,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
               noOptionsText="該当する利用者が見つかりません"
             />
             {ispWarning && <Alert severity="warning" variant="outlined">{ispWarning}</Alert>}
-            {ispId && !ispWarning && <Alert severity="success" variant="outlined">現行 ISP と紐付けます（ISP ID: {ispId}）</Alert>}
+            {ispId && !ispWarning && <Alert severity="success" variant="outlined">現行個別支援計画と紐付けます（個別支援計画ID: {ispId}）</Alert>}
           </Stack>
         </Paper>
 
@@ -600,12 +600,46 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
         {/* ── Stepper + Form ── */}
         {canProceedToForm && (
           <>
-            <Paper variant="outlined" sx={{ p: { xs: 1, md: 2 }, overflowX: 'auto' }}>
-              <Stepper activeStep={activeStep} alternativeLabel sx={{ minWidth: 800 }}>
+            <Paper 
+              variant="outlined" 
+              sx={{ 
+                p: { xs: 2, md: 3 }, 
+                overflowX: 'auto',
+                bgcolor: '#fcfdfe',
+                border: '1px solid #e2e8f0',
+                borderRadius: 3
+              }}
+            >
+              <Stepper 
+                activeStep={activeStep} 
+                alternativeLabel={false} // 横並びにして視認性を向上 
+                sx={{ 
+                  minWidth: 1000,
+                  '& .MuiStepConnector-line': {
+                    borderColor: '#e2e8f0',
+                    borderTopWidth: 2
+                  }
+                }}
+              >
                 {SECTION_STEPS.map((label, index) => (
                   <Step key={label} completed={index < activeStep}>
                     <StepLabel
-                      sx={{ cursor: 'pointer', '& .MuiStepLabel-label': { fontSize: '0.75rem' } }}
+                      sx={{ 
+                        cursor: 'pointer',
+                        '& .MuiStepLabel-label': { 
+                          fontSize: '0.75rem',
+                          fontWeight: index === activeStep ? 700 : 500,
+                          color: index === activeStep ? 'primary.main' : 'text.secondary',
+                          lineHeight: 1.2,
+                          maxWidth: '80px', // 折り返し制御
+                          textAlign: 'center'
+                        },
+                        '& .MuiStepIcon-root': {
+                          fontSize: '1.5rem',
+                          '&.Mui-active': { color: 'primary.main' },
+                          '&.Mui-completed': { color: 'success.main' }
+                        }
+                      }}
                       onClick={() => setActiveStep(index)}
                     >
                       {label}

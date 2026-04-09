@@ -8,6 +8,7 @@ import React from 'react';
 
 // ── MUI ──
 import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
 import Checkbox from '@mui/material/Checkbox';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
@@ -20,7 +21,7 @@ import Typography from '@mui/material/Typography';
 
 // ── Local ──
 import type { FormState } from './types';
-import { BEHAVIOR_FUNCTIONS, TRAINING_LEVELS } from './constants';
+import { BEHAVIOR_FUNCTIONS, TRAINING_LEVELS, ICEBERG_FACTORS } from './constants';
 
 // ─────────────────────────────────────────────
 // SectionTitle — 共通ヘッダー
@@ -35,6 +36,170 @@ const SectionTitle: React.FC<{ number: number; title: string; desc?: string }> =
     {desc && <Typography variant="body2" color="text.secondary">{desc}</Typography>}
   </Stack>
 );
+
+// ─────────────────────────────────────────────
+// IcebergIllustration — 氷山分析の視覚図
+// ─────────────────────────────────────────────
+
+// ─────────────────────────────────────────────
+// IcebergIllustration — 氷山分析の視覚図
+// ─────────────────────────────────────────────
+
+const IcebergIllustration: React.FC<{ surfaceValue?: string }> = ({ surfaceValue }) => (
+  <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', mb: 6 }}>
+    <Box sx={{
+      width: '100%',
+      maxWidth: 600,
+      bgcolor: '#f8fbff',
+      borderRadius: 4,
+      p: { xs: 2, sm: 4 },
+      pb: { xs: 3, sm: 5 },
+      border: '1px solid #e0f2fe',
+      boxShadow: '0 2px 12px rgba(0,0,0,0.02)',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center'
+    }}>
+      <svg
+        viewBox="0 0 520 400"
+        width="100%"
+        height="auto"
+        role="img"
+        aria-label="氷山分析の構造図"
+        style={{ display: 'block', maxWidth: '520px' }}
+      >
+        {/* タイトル (SVG内でも中央) */}
+        <text x="260" y="30" textAnchor="middle" fontSize="22" fontWeight="800" fill="#0c4a6e">氷山分析</text>
+
+        {/* 水面上：問題行動 (入力値があれば表示) */}
+        <rect x="100" y="50" width="320" height="56" rx="16" fill="#fde68a" stroke="#f59e0b" strokeWidth="1" />
+        <text x="260" y="86" textAnchor="middle" fontSize={surfaceValue && surfaceValue.length > 15 ? 14 : 18} fontWeight="700" fill="#78350f">
+          {surfaceValue 
+            ? (surfaceValue.length > 22 ? surfaceValue.substring(0, 20) + '...' : surfaceValue)
+            : '🏔️ 問題行動（水面上）'
+          }
+        </text>
+
+        {/* 水面ライン */}
+        <line x1="30" y1="130" x2="490" y2="130" stroke="#38bdf8" strokeWidth="4" strokeLinecap="round" />
+        <text x="490" y="122" textAnchor="end" fontSize="12" fontWeight="700" fill="#0369a1">水面</text>
+
+        {/* 氷山本体 (幅を広げて中央感を強調) */}
+        <path d="M120 150 L400 150 L460 380 L60 380 Z" fill="#eff6ff" stroke="#93c5fd" strokeWidth="2" />
+
+        {/* 層区切り */}
+        <line x1="105" y1="195" x2="415" y2="195" stroke="#bfdbfe" strokeWidth="1.5" />
+        <line x1="90" y1="240" x2="430" y2="240" stroke="#bfdbfe" strokeWidth="1.5" />
+        <line x1="75" y1="285" x2="445" y2="285" stroke="#bfdbfe" strokeWidth="1.5" />
+        <line x1="65" y1="330" x2="455" y2="330" stroke="#bfdbfe" strokeWidth="1.5" />
+
+        {/* ラベル — 260を軸に完全中央配置 */}
+        <text x="260" y="180" textAnchor="middle" fontSize="16" fontWeight="600" fill="#1e40af">{ICEBERG_FACTORS[1].icon} {ICEBERG_FACTORS[1].label}</text>
+        <text x="260" y="225" textAnchor="middle" fontSize="16" fontWeight="600" fill="#1e40af">{ICEBERG_FACTORS[2].icon} {ICEBERG_FACTORS[2].label}</text>
+        <text x="260" y="270" textAnchor="middle" fontSize="16" fontWeight="600" fill="#1e40af">{ICEBERG_FACTORS[3].icon} {ICEBERG_FACTORS[3].label}</text>
+        <text x="260" y="315" textAnchor="middle" fontSize="16" fontWeight="600" fill="#1e40af">{ICEBERG_FACTORS[4].icon} {ICEBERG_FACTORS[4].label}</text>
+        <text x="260" y="362" textAnchor="middle" fontSize="16" fontWeight="800" fill="#1d4ed8">{ICEBERG_FACTORS[5].icon} {ICEBERG_FACTORS[5].label}</text>
+      </svg>
+      <Typography variant="body2" sx={{ mt: 3, textAlign: 'center', color: 'text.secondary', fontStyle: 'italic', px: 2 }}>
+        表面に見える行動の下に、背景要因や本人の願いが重なっています。
+      </Typography>
+    </Box>
+  </Box>
+);
+
+// ─────────────────────────────────────────────
+// ABCIllustration — ABC分析の視覚図
+// ─────────────────────────────────────────────
+
+const ABCIllustration: React.FC<{ a?: string; b?: string; c?: string }> = ({ a, b, c }) => (
+  <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', mb: 4 }}>
+    <Box sx={{
+      width: '100%',
+      maxWidth: 700,
+      bgcolor: '#fff',
+      borderRadius: 4,
+      p: { xs: 2, sm: 3 },
+      border: '1px solid #e2e8f0',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+    }}>
+      <Stack direction="row" alignItems="center" spacing={1} justifyContent="center">
+        {/* A: Antecedent */}
+        <Box sx={{ flex: 1, minHeight: 120, p: 2, borderRadius: 3, border: '2px solid #93c5fd', bgcolor: '#f0f9ff', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+          <Typography variant="caption" fontWeight={800} color="primary.main" gutterBottom sx={{ fontSize: '0.65rem', borderBottom: '1px solid currentColor', mb: 1, px: 1 }}>A: 先行事象</Typography>
+          <Typography variant="body2" sx={{ fontSize: '0.75rem', color: '#1e3a8a', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', lineHeight: 1.4 }}>
+            {a || '（行動の直前の状況）'}
+          </Typography>
+        </Box>
+
+        <Box sx={{ color: '#cbd5e1', fontWeight: 900 }}>▶</Box>
+
+        {/* B: Behavior */}
+        <Box sx={{ flex: 1, minHeight: 120, p: 2, borderRadius: 3, border: '2px solid #fecaca', bgcolor: '#fef2f2', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+          <Typography variant="caption" fontWeight={800} color="error.main" gutterBottom sx={{ fontSize: '0.65rem', borderBottom: '1px solid currentColor', mb: 1, px: 1 }}>B: 行動</Typography>
+          <Typography variant="body2" sx={{ fontSize: '0.75rem', color: '#7f1d1d', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', lineHeight: 1.4 }}>
+            {b || '（具体的な行動の内容）'}
+          </Typography>
+        </Box>
+
+        <Box sx={{ color: '#cbd5e1', fontWeight: 900 }}>▶</Box>
+
+        {/* C: Consequence */}
+        <Box sx={{ flex: 1, minHeight: 120, p: 2, borderRadius: 3, border: '2px solid #bbf7d0', bgcolor: '#f0fdf4', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+          <Typography variant="caption" fontWeight={800} color="success.main" gutterBottom sx={{ fontSize: '0.65rem', borderBottom: '1px solid currentColor', mb: 1, px: 1 }}>C: 結果</Typography>
+          <Typography variant="body2" sx={{ fontSize: '0.75rem', color: '#064e3b', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', lineHeight: 1.4 }}>
+            {c || '（行動のあとの変化）'}
+          </Typography>
+        </Box>
+      </Stack>
+      <Typography variant="caption" sx={{ display: 'block', mt: 2, textAlign: 'center', color: 'text.secondary', fontWeight: 500 }}>
+        この連鎖（A→B→C）から、なぜその行動が繰り返されるのか（機能）を推測します。
+      </Typography>
+    </Box>
+  </Box>
+);
+
+// ─────────────────────────────────────────────
+// ResponseProtocolVisualizer — 現場対応プロトコル（Cフェーズ）
+// ─────────────────────────────────────────────
+
+const ResponseProtocolVisualizer: React.FC<{ phase: 'initial' | 'escalated' | 'crisis' }> = ({ phase }) => {
+  const config = {
+    initial: { label: '🟢 初期対応（前兆期）', color: '#10b981', bg: '#ecfdf5', dark: '#064e3b', desc: '落ち着きがなくなる、声が出る等' },
+    escalated: { label: '🟡 中期対応（行動発現期）', color: '#f59e0b', bg: '#fffbeb', dark: '#78350f', desc: '大声、座り込み、物への接触等' },
+    crisis: { label: '🔴 危機対応（極期）', color: '#ef4444', bg: '#fef2f2', dark: '#7f1d1d', desc: '自傷、他害、激しい破壊等' },
+  }[phase];
+
+  return (
+    <Box sx={{ width: '100%', mb: 4 }}>
+      <Paper variant="outlined" sx={{ p: 2, borderLeft: `6px solid ${config.color}`, bgcolor: config.bg, borderRadius: '8px 16px 16px 8px' }}>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Box sx={{ 
+            width: 48, height: 48, borderRadius: '50%', bgcolor: config.color, 
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' 
+          }}>
+            {phase === 'initial' && '🟢'}
+            {phase === 'escalated' && '🟡'}
+            {phase === 'crisis' && '🔴'}
+          </Box>
+          <Box>
+            <Typography variant="subtitle1" fontWeight={800} color={config.dark}>{config.label}</Typography>
+            <Typography variant="caption" color={config.dark} sx={{ opacity: 0.8 }}>{config.desc}</Typography>
+          </Box>
+        </Stack>
+      </Paper>
+      
+      {/* 迷わないための指示構造 */}
+      <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+        <Box sx={{ flex: 1, p: 1, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1', textAlign: 'center' }}>
+          <Typography variant="caption" fontWeight={700} color="text.secondary">判断せずに動く</Typography>
+        </Box>
+        <Box sx={{ flex: 1, p: 1, bgcolor: '#fef2f2', borderRadius: 2, border: '1px dashed #fecaca', textAlign: 'center' }}>
+          <Typography variant="caption" fontWeight={700} color="error.main">NG行動の徹底回避</Typography>
+        </Box>
+      </Stack>
+    </Box>
+  );
+};
 
 // ─────────────────────────────────────────────
 // Props
@@ -107,43 +272,41 @@ const FormSections: React.FC<FormSectionsProps> = ({ step, form, updateField, re
       return (
         <Stack spacing={2}>
           <SectionTitle number={3} title="行動の背景（氷山分析）" desc="行動の水面下にある要因を構造化して分析する" />
-          <Paper variant="outlined" sx={{ p: 2, bgcolor: 'action.hover', textAlign: 'center' }}>
-            <Typography variant="body2" sx={{ fontFamily: 'monospace', whiteSpace: 'pre-line' }}>
-              {'　　　🏔️ 問題行動（水面上）\n━━━━━━━━━━━━━━━━━━\n　  💭 感情・心理\n──────────────────\n　  🧠 認知・理解\n──────────────────\n　  🏠 環境要因\n──────────────────\n　  💡 本人のニーズ（水面下）'}
-            </Typography>
-          </Paper>
-          <Stack spacing={0.5}>
-            {renderProvenanceBadge('triggers')}
-            <TextField label="トリガー（きっかけ）" value={form.triggers} onChange={e => updateField('triggers', e.target.value)} required fullWidth multiline minRows={2}
-              placeholder="行動を引き起こす直接的なきっかけ" />
-          </Stack>
-          <Stack spacing={0.5}>
-            {renderProvenanceBadge('environmentFactors')}
-            <TextField label="環境要因" value={form.environmentFactors} onChange={e => updateField('environmentFactors', e.target.value)} fullWidth multiline minRows={2}
-              placeholder="物理的環境・人的環境・時間帯" />
-          </Stack>
-          <Stack spacing={0.5}>
-            {renderProvenanceBadge('emotions')}
-            <TextField label="本人の感情" value={form.emotions} onChange={e => updateField('emotions', e.target.value)} fullWidth multiline minRows={2}
-              placeholder="不安、混乱、怒り、恐怖など" />
-          </Stack>
-          <Stack spacing={0.5}>
-            {renderProvenanceBadge('cognition')}
-            <TextField label="理解状況（認知）" value={form.cognition} onChange={e => updateField('cognition', e.target.value)} fullWidth multiline minRows={2}
-              placeholder="言語理解力、見通しの持ちやすさ" />
-          </Stack>
-          <Stack spacing={0.5}>
-            {renderProvenanceBadge('needs')}
-            <TextField label="本人ニーズ" value={form.needs} onChange={e => updateField('needs', e.target.value)} required fullWidth multiline minRows={2}
-              placeholder="「本当はこうしたい」「こうなりたい」" />
-          </Stack>
+          <IcebergIllustration surfaceValue={form.icebergSurface} />
+
+          {ICEBERG_FACTORS.map(f => {
+            const fieldKey = f.key as keyof FormState;
+            return (
+              <Stack key={f.key} spacing={0.5}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="subtitle2" fontWeight={600}>{f.icon} {f.label}</Typography>
+                  {renderProvenanceBadge(f.key)}
+                </Box>
+                <TextField
+                  value={String(form[fieldKey] || '')}
+                  onChange={e => updateField(fieldKey, e.target.value)}
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  placeholder={f.placeholder}
+                />
+              </Stack>
+            );
+          })}
         </Stack>
       );
     case 3: // §4 FBA
       return (
         <Stack spacing={2}>
           <SectionTitle number={4} title="行動機能分析（FBA）" desc="行動の「機能（目的）」を特定し、ABC記録で裏付ける" />
-          <Typography variant="subtitle2" fontWeight={600}>行動の機能（複数選択可）</Typography>
+          
+          <ABCIllustration 
+            a={form.abcAntecedent} 
+            b={form.abcBehavior} 
+            c={form.abcConsequence} 
+          />
+
+          <Typography variant="subtitle2" fontWeight={600} sx={{ mt: 2 }}>行動の機能（複数選択可）</Typography>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             {BEHAVIOR_FUNCTIONS.map(bf => (
               <FormControlLabel key={bf.value} control={
@@ -206,41 +369,48 @@ const FormSections: React.FC<FormSectionsProps> = ({ step, form, updateField, re
       );
     case 6: // §7 問題行動時の対応
       return (
-        <Stack spacing={2}>
-          <SectionTitle number={7} title="問題行動時の対応" desc="行動が発生した場合の対応手順を明確にする" />
-          <TextField label="初期対応" value={form.initialResponse} onChange={e => updateField('initialResponse', e.target.value)} required fullWidth multiline minRows={2}
-            placeholder="最初の声かけ・対応方法" />
-          <TextField label="環境調整" value={form.responseEnvironment} onChange={e => updateField('responseEnvironment', e.target.value)} fullWidth multiline minRows={2}
-            placeholder="その場の環境をどう変えるか" />
-          <TextField label="安全確保" value={form.safeguarding} onChange={e => updateField('safeguarding', e.target.value)} fullWidth multiline minRows={2}
-            placeholder="本人・他者の安全をどう守るか" />
-          <TextField label="職員対応" value={form.staffResponse} onChange={e => updateField('staffResponse', e.target.value)} fullWidth multiline minRows={2}
-            placeholder="職員の立ち位置、人数、コミュニケーション" />
-          <TextField label="記録方法" value={form.recordMethod} onChange={e => updateField('recordMethod', e.target.value)} fullWidth multiline minRows={2}
-            placeholder="いつ・何を・どのように記録するか" />
+        <Stack spacing={3}>
+          <SectionTitle number={7} title="問題行動時対応" desc="行動が発生した瞬間に、チームで統一した動きをとるためのプロトコル" />
+          
+          <ResponseProtocolVisualizer phase="initial" />
+          <TextField label="① 初動対応（前兆へのアプローチ）" value={form.initialResponse} onChange={e => updateField('initialResponse', e.target.value)} fullWidth multiline minRows={2}
+            placeholder="例：穏やかに声をかける、特定の視覚提示を行う" />
+          
+          <ResponseProtocolVisualizer phase="escalated" />
+          <TextField label="② 現場環境の調整（中期対応）" value={form.responseEnvironment} onChange={e => updateField('responseEnvironment', e.target.value)} fullWidth multiline minRows={2}
+            placeholder="例：パーテーションを閉める、他利用者を誘導する" />
+          <TextField label="③ 職員の動き・NG行動" value={form.staffResponse} onChange={e => updateField('staffResponse', e.target.value)} fullWidth multiline minRows={3}
+            placeholder="迷わず動くための指示。やってはいけない（NG）行動も明記" />
+
+          <Divider />
+          <Typography variant="subtitle2" fontWeight={600}>安全確保と記録</Typography>
+          <TextField label="安全確保（セーフガーディング）" value={form.safeguarding} onChange={e => updateField('safeguarding', e.target.value)} fullWidth multiline minRows={2}
+            placeholder="距離の取り方、物品の撤去など" />
+          <TextField label="記録・報告の方法" value={form.recordMethod} onChange={e => updateField('recordMethod', e.target.value)} fullWidth multiline minRows={2}
+            placeholder="どのシートに、いつ記入するか" />
         </Stack>
       );
     case 7: // §8 危機対応
       return (
-        <Stack spacing={2}>
-          <SectionTitle number={8} title="危機対応（リスク管理）" desc="危険行動発生時のエスカレーション手順" />
-          <Alert severity="warning" variant="outlined" sx={{ mb: 1 }}>
-            ⚠️ 身体拘束の判断基準と手続きを明確に定めてください（虐待防止法準拠）
+        <Stack spacing={3}>
+          <SectionTitle number={8} title="危機対応（エスカレーション）" desc="自傷・他害等の生命に関わる危機状況への限定的・緊急的対応" />
+
+          <ResponseProtocolVisualizer phase="crisis" />
+          
+          <Alert severity="error" variant="outlined" sx={{ mb: 1, borderStyle: 'dashed' }}>
+              ※危機対応は最終手段です。身体拘束等の権利侵害を未然に防ぐことを優先してください。
           </Alert>
-          <TextField label="危険行動" value={form.dangerousBehavior} onChange={e => updateField('dangerousBehavior', e.target.value)} fullWidth multiline minRows={2}
-            placeholder="最も危険性の高い行動" />
-          <TextField label="緊急対応" value={form.emergencyResponse} onChange={e => updateField('emergencyResponse', e.target.value)} required fullWidth multiline minRows={2}
-            placeholder="段階的なエスカレーション手順" />
-          <TextField label="医療連携" value={form.medicalCoordination} onChange={e => updateField('medicalCoordination', e.target.value)} fullWidth multiline minRows={2}
-            placeholder="主治医連絡先、定期受診、服薬情報" />
-          <TextField label="家族連絡" value={form.familyContact} onChange={e => updateField('familyContact', e.target.value)} fullWidth multiline minRows={2}
-            placeholder="連絡基準、連絡先、報告方法" />
-          <TextField label="安全確保方法" value={form.safetyMethod} onChange={e => updateField('safetyMethod', e.target.value)} fullWidth multiline minRows={2}
-            placeholder="物理的安全対策（クッション材、コーナーガード等）" />
-          <FormControlLabel
-            control={<Checkbox checked={form.hasMedicalCoordination} onChange={e => updateField('hasMedicalCoordination', e.target.checked)} />}
-            label="医療機関との連携あり"
-          />
+
+          <TextField label="危機的行動の定義" value={form.dangerousBehavior} onChange={e => updateField('dangerousBehavior', e.target.value)} fullWidth multiline minRows={2}
+            placeholder="「これが起きたら危機対応を開始する」という具体的な指標" />
+          <TextField label="緊急時の具体的対応（3ステップ）" value={form.emergencyResponse} onChange={e => updateField('emergencyResponse', e.target.value)} fullWidth multiline minRows={3}
+            placeholder="①〜③の順番で、迷わず行うべき緊急動作" />
+          
+          <Divider />
+          <Typography variant="subtitle2" fontWeight={600}>連絡・連携プロトコル</Typography>
+          <TextField label="医療連携（受診・主治医連絡）" value={form.medicalCoordination} onChange={e => updateField('medicalCoordination', e.target.value)} fullWidth multiline minRows={2} />
+          <TextField label="家族への連絡（緊急連絡先・タイミング）" value={form.familyContact} onChange={e => updateField('familyContact', e.target.value)} fullWidth multiline minRows={2} />
+          <TextField label="安全確保の具体的方法（ハード面）" value={form.safetyMethod} onChange={e => updateField('safetyMethod', e.target.value)} fullWidth multiline minRows={2} />
         </Stack>
       );
     case 8: // §9 モニタリング
