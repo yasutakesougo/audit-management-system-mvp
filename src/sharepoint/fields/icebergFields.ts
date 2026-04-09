@@ -21,6 +21,7 @@ export const FIELD_MAP_ICEBERG_ANALYSIS = {
 export const FIELD_MAP_ICEBERG_PDCA = {
   id: 'Id',
   userId: 'UserID0',
+  planningSheetId: 'PlanningSheetId',
   title: 'Title',
   summary: 'Summary0',
   phase: 'Phase0',
@@ -28,9 +29,24 @@ export const FIELD_MAP_ICEBERG_PDCA = {
   updatedAt: 'Modified',
 } as const;
 
+/**
+ * planningSheetId の Schema Drift 吸収候補。
+ * 既存テナント差分（suffix / 表記揺れ）を許容する。
+ */
+export const ICEBERG_PDCA_PLANNING_SHEET_FIELD_CANDIDATES = [
+  FIELD_MAP_ICEBERG_PDCA.planningSheetId,
+  'PlanningSheetID',
+  'PlanningSheetId0',
+  'PlanningSheetID0',
+  'PlanningSheetLookupId',
+  'SupportPlanningSheetId',
+  'SupportPlanningSheetID',
+] as const;
+
 export const ICEBERG_PDCA_SELECT_FIELDS = [
   FIELD_MAP_ICEBERG_PDCA.id,
   FIELD_MAP_ICEBERG_PDCA.userId,
+  FIELD_MAP_ICEBERG_PDCA.planningSheetId,
   FIELD_MAP_ICEBERG_PDCA.title,
   FIELD_MAP_ICEBERG_PDCA.summary,
   FIELD_MAP_ICEBERG_PDCA.phase,

@@ -220,12 +220,15 @@ export function resolveOpsNavTarget(opsStep?: string): OpsNavTarget {
  */
 export function buildIcebergPdcaUrl(
   userId: string,
-  options?: { source?: string },
+  options?: { source?: string; planningSheetId?: string },
 ): string {
   const search = new URLSearchParams();
   search.set('userId', userId);
   if (options?.source) {
     search.set('source', options.source);
+  }
+  if (options?.planningSheetId) {
+    search.set('planningSheetId', options.planningSheetId);
   }
   return `/analysis/iceberg-pdca?${search.toString()}`;
 }
@@ -261,13 +264,16 @@ export function buildAbcRecordUrl(
 export function buildIcebergPdcaUrlWithHighlight(
   userId: string,
   pdcaId: string,
-  options?: { source?: string },
+  options?: { source?: string; planningSheetId?: string },
 ): string {
   const search = new URLSearchParams();
   search.set('userId', userId);
   search.set('pdcaId', pdcaId);
   if (options?.source) {
     search.set('source', options.source);
+  }
+  if (options?.planningSheetId) {
+    search.set('planningSheetId', options.planningSheetId);
   }
   return `/analysis/iceberg-pdca?${search.toString()}`;
 }

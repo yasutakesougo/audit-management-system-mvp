@@ -13,7 +13,11 @@ export class InMemoryPdcaRepository implements PdcaRepository {
 
   async list(query: PdcaListQuery) {
     if (!query.userId) return [];
-    return this.items.filter((item) => item.userId === query.userId);
+    return this.items.filter((item) => {
+      if (item.userId !== query.userId) return false;
+      if (query.planningSheetId === undefined) return true;
+      return item.planningSheetId === query.planningSheetId;
+    });
   }
 
   async create(input: CreatePdcaInput): Promise<IcebergPdcaItem> {
@@ -21,6 +25,7 @@ export class InMemoryPdcaRepository implements PdcaRepository {
     const item: IcebergPdcaItem = {
       id: `mem-${Math.random().toString(36).slice(2)}`,
       userId: input.userId,
+      planningSheetId: input.planningSheetId,
       title: input.title,
       summary: input.summary ?? '',
       phase: input.phase ?? 'PLAN',
@@ -40,6 +45,7 @@ export class InMemoryPdcaRepository implements PdcaRepository {
     const prev = this.items[index];
     const next: IcebergPdcaItem = {
       ...prev,
+      planningSheetId: input.planningSheetId ?? prev.planningSheetId,
       title: input.title ?? prev.title,
       summary: input.summary ?? prev.summary,
       phase: input.phase ?? prev.phase,

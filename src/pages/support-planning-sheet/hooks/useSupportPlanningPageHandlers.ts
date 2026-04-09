@@ -58,9 +58,12 @@ export function useSupportPlanningPageHandlers({
     if (type === 'abc') {
       navigate(buildAbcRecordUrl(sheetUserId, { recordId: referenceId, source: 'support-planning' }));
     } else {
-      navigate(buildIcebergPdcaUrlWithHighlight(sheetUserId, referenceId, { source: 'support-planning' }));
+      navigate(buildIcebergPdcaUrlWithHighlight(sheetUserId, referenceId, {
+        source: 'support-planning',
+        planningSheetId: planningSheetId && planningSheetId !== 'new' ? planningSheetId : undefined,
+      }));
     }
-  }, [navigate, sheetUserId]);
+  }, [navigate, planningSheetId, sheetUserId]);
 
   /**
    * 支援手順の実施 → `/daily/support?wizard=user&planningSheetId=xxx`
@@ -83,8 +86,11 @@ export function useSupportPlanningPageHandlers({
    */
   const handleNavigateToPdca = React.useCallback(() => {
     if (!sheetUserId) return;
-    navigate(buildIcebergPdcaUrl(sheetUserId, { source: 'support-planning' }));
-  }, [navigate, sheetUserId]);
+    navigate(buildIcebergPdcaUrl(sheetUserId, {
+      source: 'support-planning',
+      planningSheetId: planningSheetId && planningSheetId !== 'new' ? planningSheetId : undefined,
+    }));
+  }, [navigate, planningSheetId, sheetUserId]);
 
   return {
     handleSave,

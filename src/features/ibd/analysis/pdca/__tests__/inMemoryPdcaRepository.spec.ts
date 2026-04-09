@@ -37,6 +37,15 @@ describe('InMemoryPdcaRepository', () => {
     expect(item.summary).toBe('');
   });
 
+  it('preserves planningSheetId on create when provided', async () => {
+    const item = await repo.create({
+      userId: 'U001',
+      planningSheetId: 'sheet-1',
+      title: 'シート紐付けPDCA',
+    });
+    expect(item.planningSheetId).toBe('sheet-1');
+  });
+
   // ── List ────────────────────────────────────────────────
 
   it('lists items filtered by userId', async () => {
@@ -57,6 +66,15 @@ describe('InMemoryPdcaRepository', () => {
   it('returns empty array when userId is undefined', async () => {
     const result = await repo.list({});
     expect(result).toEqual([]);
+  });
+
+  it('filters by planningSheetId when provided', async () => {
+    await repo.create({ userId: 'U001', planningSheetId: 'sheet-1', title: 'Item A' });
+    await repo.create({ userId: 'U001', planningSheetId: 'sheet-2', title: 'Item B' });
+
+    const sheet1Items = await repo.list({ userId: 'U001', planningSheetId: 'sheet-1' });
+    expect(sheet1Items).toHaveLength(1);
+    expect(sheet1Items[0]?.planningSheetId).toBe('sheet-1');
   });
 
   // ── Update ──────────────────────────────────────────────
@@ -100,6 +118,21 @@ describe('InMemoryPdcaRepository', () => {
     expect(updated.title).toBe('Keep This');
     expect(updated.summary).toBe('Keep Summary');
     expect(updated.phase).toBe('CHECK');
+  });
+
+  it('updates planningSheetId when provided', async () => {
+    const created = await repo.create({
+      userId: 'U001',
+      planningSheetId: 'sheet-1',
+      title: 'Sheet Link',
+    });
+
+    const updated = await repo.update({
+      id: created.id,
+      planningSheetId: 'sheet-2',
+    });
+
+    expect(updated.planningSheetId).toBe('sheet-2');
   });
 
   it('throws when updating non-existent item', async () => {

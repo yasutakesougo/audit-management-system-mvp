@@ -7,6 +7,7 @@ import { acquireSpAccessToken } from '@/lib/msal';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
 import {
     buildIcebergPdcaSelectFields,
+    ICEBERG_PDCA_PLANNING_SHEET_FIELD_CANDIDATES,
     FIELD_MAP_ICEBERG_PDCA,
     LIST_CONFIG,
     ListKeys,
@@ -29,6 +30,7 @@ export class SharePointPdcaRepository implements PdcaRepository {
   private readonly sp: SpClient;
   private readonly listTitle = LIST_CONFIG[ListKeys.IcebergPdca].title;
   private readonly defaultTop: number;
+  private listInternalNamesCache: Set<string> | null = null;
 
   constructor(options: { defaultTop?: number } = {}) {
     this.defaultTop = options.defaultTop ?? DEFAULT_TOP;
@@ -40,13 +42,22 @@ export class SharePointPdcaRepository implements PdcaRepository {
     const userId = query.userId;
     if (!userId) return [];
 
-    const internalNames = await this.sp.getListFieldInternalNames(this.listTitle);
+    const internalNames = await this.getListInternalNames();
     const selectFields = buildIcebergPdcaSelectFields(Array.from(internalNames));
-    const filter = `${FIELD_MAP_ICEBERG_PDCA.userId} eq '${this.escapeSingleQuotes(userId)}'`;
+    const filterParts = [
+      `${FIELD_MAP_ICEBERG_PDCA.userId} eq '${this.escapeSingleQuotes(userId)}'`,
+    ];
+    if (query.planningSheetId) {
+      const planningSheetField = this.resolvePlanningSheetFieldName(internalNames);
+      if (!planningSheetField) {
+        return [];
+      }
+      filterParts.push(`${planningSheetField} eq '${this.escapeSingleQuotes(query.planningSheetId)}'`);
+    }
 
     const params = new URLSearchParams();
     params.set('$select', selectFields.join(','));
-    params.set('$filter', filter);
+    params.set('$filter', filterParts.join(' and '));
     params.set('$orderby', `${FIELD_MAP_ICEBERG_PDCA.updatedAt} desc`);
     if (this.defaultTop) {
       params.set('$top', String(this.defaultTop));
@@ -59,6 +70,8 @@ export class SharePointPdcaRepository implements PdcaRepository {
   }
 
   async create(input: CreatePdcaInput): Promise<IcebergPdcaItem> {
+    const internalNames = await this.getListInternalNames();
+    const planningSheetField = this.resolvePlanningSheetFieldName(internalNames);
     const body: Record<string, unknown> = {
       [FIELD_MAP_ICEBERG_PDCA.title]: input.title,
       [FIELD_MAP_ICEBERG_PDCA.userId]: input.userId,
@@ -66,6 +79,9 @@ export class SharePointPdcaRepository implements PdcaRepository {
 
     if (input.summary !== undefined) body[FIELD_MAP_ICEBERG_PDCA.summary] = input.summary;
     if (input.phase !== undefined) body[FIELD_MAP_ICEBERG_PDCA.phase] = input.phase;
+    if (input.planningSheetId !== undefined && planningSheetField) {
+      body[planningSheetField] = input.planningSheetId;
+    }
 
     const url = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items`;
     const res = await this.sp.spFetch(url, {
@@ -86,10 +102,15 @@ export class SharePointPdcaRepository implements PdcaRepository {
       throw new Error(`[SharePointPdcaRepository] Invalid id: ${input.id}`);
     }
 
+    const internalNames = await this.getListInternalNames();
+    const planningSheetField = this.resolvePlanningSheetFieldName(internalNames);
     const body: Record<string, unknown> = {};
     if (input.title !== undefined) body[FIELD_MAP_ICEBERG_PDCA.title] = input.title;
     if (input.summary !== undefined) body[FIELD_MAP_ICEBERG_PDCA.summary] = input.summary;
     if (input.phase !== undefined) body[FIELD_MAP_ICEBERG_PDCA.phase] = input.phase;
+    if (input.planningSheetId !== undefined && planningSheetField) {
+      body[planningSheetField] = input.planningSheetId;
+    }
 
     const url = `/lists/getbytitle('${encodeURIComponent(this.listTitle)}')/items(${idNum})`;
     const res = await this.sp.spFetch(url, {
@@ -110,6 +131,7 @@ export class SharePointPdcaRepository implements PdcaRepository {
         return {
           id: String(input.id),
           userId: input.userId ?? '',
+          planningSheetId: input.planningSheetId,
           title: input.title ?? '',
           summary: input.summary ?? '',
           phase: input.phase ?? 'PLAN',
@@ -150,10 +172,12 @@ export class SharePointPdcaRepository implements PdcaRepository {
   private toDomain(raw: Record<string, unknown>): IcebergPdcaItem {
     const get = <T = unknown>(field: string): T | undefined => raw[field] as T | undefined;
     const phase = this.normalizePhase(get(FIELD_MAP_ICEBERG_PDCA.phase));
+    const planningSheetId = this.readPlanningSheetId(raw);
 
     return {
       id: String(get(FIELD_MAP_ICEBERG_PDCA.id) ?? raw.Id ?? ''),
       userId: String(get(FIELD_MAP_ICEBERG_PDCA.userId) ?? ''),
+      planningSheetId,
       title: String(get(FIELD_MAP_ICEBERG_PDCA.title) ?? ''),
       summary: (get<string | null>(FIELD_MAP_ICEBERG_PDCA.summary) ?? '') ?? '',
       phase,
@@ -174,5 +198,77 @@ export class SharePointPdcaRepository implements PdcaRepository {
 
   private escapeSingleQuotes(value: string): string {
     return value.replace(/'/g, "''");
+  }
+
+  private async getListInternalNames(): Promise<Set<string>> {
+    if (this.listInternalNamesCache) return this.listInternalNamesCache;
+    try {
+      const names = await this.sp.getListFieldInternalNames(this.listTitle);
+      this.listInternalNamesCache = new Set(Array.from(names));
+      return this.listInternalNamesCache;
+    } catch {
+      this.listInternalNamesCache = new Set();
+      return this.listInternalNamesCache;
+    }
+  }
+
+  private resolvePlanningSheetFieldName(
+    internalNames: Set<string>,
+  ): string | undefined {
+    return this.resolveFieldNameFromCandidates(
+      internalNames,
+      ICEBERG_PDCA_PLANNING_SHEET_FIELD_CANDIDATES,
+    );
+  }
+
+  private resolveFieldNameFromCandidates(
+    internalNames: Set<string>,
+    candidates: readonly string[],
+  ): string | undefined {
+    if (internalNames.size === 0) return undefined;
+
+    const map = new Map<string, string>();
+    for (const name of internalNames) {
+      map.set(name.toLowerCase(), name);
+    }
+
+    for (const candidate of candidates) {
+      const hit = map.get(candidate.toLowerCase());
+      if (hit) return hit;
+    }
+
+    for (const candidate of candidates) {
+      const lower = candidate.toLowerCase();
+      for (let i = 0; i < 10; i += 1) {
+        const hit = map.get(`${lower}${i}`);
+        if (hit) return hit;
+      }
+    }
+
+    return undefined;
+  }
+
+  private readPlanningSheetId(raw: Record<string, unknown>): string | undefined {
+    const getTrimmed = (value: unknown): string | undefined => {
+      if (typeof value !== 'string') return undefined;
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : undefined;
+    };
+
+    const direct = getTrimmed(raw[FIELD_MAP_ICEBERG_PDCA.planningSheetId]);
+    if (direct) return direct;
+
+    for (const candidate of ICEBERG_PDCA_PLANNING_SHEET_FIELD_CANDIDATES) {
+      const value = getTrimmed(raw[candidate]);
+      if (value) return value;
+    }
+
+    for (const [key, value] of Object.entries(raw)) {
+      if (!/planning.?sheet/i.test(key)) continue;
+      const hit = getTrimmed(value);
+      if (hit) return hit;
+    }
+
+    return undefined;
   }
 }

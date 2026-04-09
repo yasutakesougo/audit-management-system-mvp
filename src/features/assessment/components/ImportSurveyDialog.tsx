@@ -36,9 +36,19 @@ export const ImportSurveyDialog: React.FC<Props> = ({
 
   const filteredResponses = useMemo(() => {
     if (!targetUserName) return responses;
-    const normalize = (value: string) => value.replace(/\s+/g, '').toLowerCase();
-    const normalizedTarget = normalize(targetUserName);
-    const matched = responses.filter((response) => normalize(response.targetUserName).includes(normalizedTarget));
+    const normalize = (value: string) => value
+      .normalize('NFKC')
+      .replace(/[\p{White_Space}\p{Cf}]+/gu, '')
+      .toLowerCase();
+    const normalizeName = (value: string) => normalize(value)
+      .replace(/[（(].*?[)）]/g, '')
+      .replace(/(さん|様|ちゃん|くん)$/u, '');
+    const normalizedTarget = normalizeName(targetUserName);
+    const matched = responses.filter((response) => {
+      const source = normalizeName(response.targetUserName ?? '');
+      if (!source || !normalizedTarget) return false;
+      return source === normalizedTarget || source.includes(normalizedTarget) || normalizedTarget.includes(source);
+    });
     return matched;
   }, [responses, targetUserName]);
 
@@ -70,10 +80,10 @@ export const ImportSurveyDialog: React.FC<Props> = ({
           <Box sx={{ mb: 2 }}>
             <Alert severity="warning" variant="outlined">
               <Typography variant="body2" fontWeight={600}>
-                「{targetUserName}」と一致する結果が見つかりませんでした。
+                「{targetUserName}」の自動一致を確定できませんでした。
               </Typography>
               <Typography variant="caption">
-                名前の表記（空欄や漢字）が異なる可能性があります。全回答を表示していますので、正しいものを選択してください。
+                名前表記の揺れ（空白・旧字体・入力差）を考慮し、全回答を表示しています。該当の回答を選択してください。
               </Typography>
             </Alert>
           </Box>

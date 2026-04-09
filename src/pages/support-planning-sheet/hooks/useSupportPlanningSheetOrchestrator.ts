@@ -70,6 +70,7 @@ export function useSupportPlanningSheetOrchestrator(): {
   const { data: users } = useUsers();
   const searchParams = new URLSearchParams(window.location.search);
   const userIdParam = searchParams.get('userId');
+  const source = searchParams.get('source');
   const diffSummary = searchParams.get('diffSummary');
 
   const { account } = useAuth();
@@ -212,6 +213,7 @@ export function useSupportPlanningSheetOrchestrator(): {
       contextUserName,
       contextData,
       form,
+      source,
       diffSummary,
     });
   }, [
@@ -220,7 +222,7 @@ export function useSupportPlanningSheetOrchestrator(): {
     auditRecords, filteredAuditRecords, latestMonitoringRecord, 
     icebergEvidence, evidenceLinks, abcRecords, pdcaItems, 
     strategyUsage, strategyUsageLoading, trendResult, trendDays, 
-    trendLoading, contextUserName, contextData, form, diffSummary
+    trendLoading, contextUserName, contextData, form, source, diffSummary
   ]);
 
   // 差分引き継ぎの監査ログ記録

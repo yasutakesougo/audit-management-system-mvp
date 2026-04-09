@@ -95,6 +95,7 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
   );
 
   const selectedUserId = searchParams.get('userId') ?? undefined;
+  const urlPlanningSheetId = searchParams.get('planningSheetId') ?? undefined;
   const urlPdcaId = searchParams.get('pdcaId') ?? undefined;
   const urlSource = searchParams.get('source') ?? undefined;
   const today = React.useMemo(() => toLocalDateISO(), []);
@@ -209,7 +210,9 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
   };
 
   const { data: items = [], status } = useIcebergPdcaList(
-    selectedUserId ? { userId: selectedUserId } : undefined,
+    selectedUserId
+      ? { userId: selectedUserId, planningSheetId: urlPlanningSheetId }
+      : undefined,
   );
 
   // Merge phase change traces from ref into items (in-memory only)
@@ -235,9 +238,9 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
     setFormState({ mode: 'create', title: '', summary: '', phase: 'PLAN' });
   }, [selectedUserId]);
 
-  const createMutation = useCreatePdca(selectedUserId);
-  const updateMutation = useUpdatePdca(selectedUserId);
-  const deleteMutation = useDeletePdca(selectedUserId);
+  const createMutation = useCreatePdca(selectedUserId, urlPlanningSheetId);
+  const updateMutation = useUpdatePdca(selectedUserId, urlPlanningSheetId);
+  const deleteMutation = useDeletePdca(selectedUserId, urlPlanningSheetId);
 
   const isAdmin = canAccessDashboardAudience(role, 'admin');
   const writeEnabledRaw = writeEnabledProp ?? getEnv('VITE_WRITE_ENABLED');
@@ -280,6 +283,7 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
 
       await updateMutation.mutateAsync({
         id: formState.id,
+        planningSheetId: urlPlanningSheetId,
         title: formState.title.trim(),
         summary: formState.summary,
         phase: formState.phase,
@@ -287,6 +291,7 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
     } else {
       await createMutation.mutateAsync({
         userId: selectedUserId,
+        planningSheetId: urlPlanningSheetId,
         title: formState.title.trim(),
         summary: formState.summary,
         phase: formState.phase,

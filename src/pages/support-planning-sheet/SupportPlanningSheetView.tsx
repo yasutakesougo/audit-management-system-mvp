@@ -69,6 +69,7 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
     contextData,
     form,
     monitoringBridge,
+    source,
     diffSummary,
   } = viewModel;
 
@@ -86,6 +87,7 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
         planningSheetRepo={planningSheetRepo}
         ispRepo={ispRepo}
         initialUserId={sheet?.userId ?? undefined}
+        initialSource={source ?? undefined}
         diffSummary={diffSummary ?? undefined}
       />
     );

@@ -77,6 +77,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   planningSheetRepo,
   ispRepo,
   initialUserId,
+  initialSource,
   diffSummary,
 }) => {
   const navigate = useNavigate();
@@ -114,6 +115,7 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   const [icebergImported, setIcebergImported] = React.useState(false);
   const [isIcebergLoading, setIsIcebergLoading] = React.useState(false);
   const [importSource, setImportSource] = React.useState<'tokusei' | 'iceberg' | null>(null);
+  const autoIcebergHandledRef = React.useRef(false);
 
   // ── 特性アンケートセクション ref ──
   const tokuseiSectionRef = React.useRef<HTMLDivElement>(null);
@@ -188,15 +190,28 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
   const { matchedResponses, hasExactMatch } = React.useMemo(() => {
     if (!selectedUser || tokuseiResponses.length === 0) return { matchedResponses: [], hasExactMatch: false };
     
-    const normalize = (val: string) => val.replace(/\s+/g, '').toLowerCase();
+    const normalize = (val: string) => val
+      .normalize('NFKC')
+      .replace(/[\p{White_Space}\p{Cf}]+/gu, '')
+      .toLowerCase();
+    const normalizeName = (val: string) => normalize(val)
+      .replace(/[（(].*?[)）]/g, '')
+      .replace(/(さん|様|ちゃん|くん)$/u, '');
     const userName = selectedUser.label.split(' (')[0]; 
-    const normalizedTarget = normalize(userName);
+    const normalizedTarget = normalizeName(userName);
 
-    const matches = tokuseiResponses.filter(r =>
-      normalize(r.targetUserName) === normalizedTarget ||
-      normalize(r.targetUserName).includes(normalizedTarget) ||
-      r.targetUserName === selectedUser.id
-    );
+    const matches = tokuseiResponses.filter(r => {
+      const normalizedSourceName = normalizeName(r.targetUserName || '');
+      const normalizedSourceRaw = normalize(r.targetUserName || '');
+      const idMatch = normalize(r.targetUserName || '') === normalize(selectedUser.id);
+      const nameMatch =
+        normalizedSourceName === normalizedTarget ||
+        normalizedSourceName.includes(normalizedTarget) ||
+        normalizedTarget.includes(normalizedSourceName) ||
+        normalizedSourceRaw === normalizedTarget;
+
+      return idMatch || nameMatch;
+    });
 
     const hasExactMatch = matches.length > 0;
     return {
@@ -405,6 +420,28 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
 
   // ── Navigation ──
   const canProceedToForm = !!(selectedUser && ispId);
+  const isPristineForm = React.useMemo(
+    () => JSON.stringify(form) === JSON.stringify(INITIAL_FORM),
+    [form],
+  );
+
+  React.useEffect(() => {
+    if (initialSource !== 'iceberg' || autoIcebergHandledRef.current) return;
+    if (!canProceedToForm || !selectedUser || isIcebergLoading) return;
+
+    autoIcebergHandledRef.current = true;
+
+    if (!isPristineForm) {
+      setToast({
+        open: true,
+        severity: 'info',
+        message: '下書きがあるため、氷山分析の自動読込はスキップしました。必要な場合は「氷山分析を読み込む」を押してください。',
+      });
+      return;
+    }
+
+    void handleIcebergImport();
+  }, [initialSource, canProceedToForm, selectedUser, isIcebergLoading, isPristineForm, handleIcebergImport]);
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, pb: 4, maxWidth: 960, mx: 'auto' }}>
@@ -541,10 +578,10 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
                   {!hasExactMatch && selectedUser && (
                     <Alert severity="warning" variant="outlined" sx={{ mb: 2 }}>
                       <Typography variant="body2" fontWeight={600}>
-                        「{selectedUser.label.split(' (')[0]}」と一致する結果が見つかりませんでした。
+                        「{selectedUser.label.split(' (')[0]}」の自動一致を確定できませんでした。
                       </Typography>
                       <Typography variant="caption">
-                        名前の表記（空欄や漢字）が異なる可能性があります。全回答を表示していますので、正しいものを選択してください。
+                        名前表記の揺れ（空白・旧字体・入力差）を考慮し、全回答を表示しています。該当の回答を選択してください。
                       </Typography>
                     </Alert>
                   )}
@@ -568,12 +605,13 @@ export const NewPlanningSheetForm: React.FC<NewPlanningSheetFormProps> = ({
                         <Stack direction="row" justifyContent="space-between" alignItems="center">
                           <Stack>
                             <Typography variant="body2" fontWeight={600}>
-                              {r.responderName || '回答者不明'}
-                              {r.relation ? `（${r.relation}）` : ''}
+                              {r.targetUserName || '対象利用者未設定'}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
+                              回答者: {r.responderName || '不明'}
+                              {r.relation ? `（${r.relation}）` : ''}
+                              {' / '}
                               回答日: {r.fillDate ? new Date(r.fillDate).toLocaleDateString('ja-JP') : '不明'}
-                              {r.guardianName ? ` / ${r.guardianName}` : ''}
                             </Typography>
                           </Stack>
                           {selectedTokusei?.id === r.id && (
