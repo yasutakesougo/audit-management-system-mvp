@@ -69,7 +69,7 @@ describe('hubDefinitions', () => {
       'planning-sheet-list',
       'planning-assessment',
     ]);
-    expect(planningViewer.secondary).toHaveLength(0);
+    expect(planningViewer.secondary.map((entry) => entry.id)).toEqual(['planning-analysis']);
     expect(planningViewer.comingSoon).toHaveLength(0);
 
     const billingReception = resolveHubVisibleEntries('billing', 'reception');
