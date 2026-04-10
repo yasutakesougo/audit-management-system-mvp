@@ -18,7 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import AnalyticsIcon from '@mui/icons-material/Analytics';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -27,6 +27,7 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
+import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -58,7 +59,7 @@ import { CssBarChart, CssHeatmap, EventTimeline, KpiStatCard, SvgDonutChart } fr
 const AnalysisDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { data: users, status: usersStatus, error: usersError, update: updateUser } = useUsers();
-  const { analysisData, fetchForAnalysis } = useBehaviorStore();
+  const { analysisData, fetchForAnalysis, error: analysisError } = useBehaviorStore();
   const demoModeEnabled = isDemoModeEnabled();
   const [targetUserId, setTargetUserId] = useState<string>('');
   const [analysisDays, setAnalysisDays] = useState<number>(30);
@@ -174,7 +175,7 @@ const AnalysisDashboardPage: React.FC = () => {
       <Container maxWidth="xl" sx={{ py: 10, textAlign: 'center' }}>
         <Typography variant="h6" color="error" gutterBottom>利用データの取得に失敗しました</Typography>
         <Typography variant="body2" color="text.secondary">
-          {String(usersError)}
+          {usersError instanceof Error ? usersError.message : String(usersError)}
         </Typography>
       </Container>
     );
@@ -268,13 +269,30 @@ const AnalysisDashboardPage: React.FC = () => {
       />
 
       {/* Attendance Summary — 行動分析対象者のみの出欠サマリー */}
-      {vm.attendanceSummary && (
+      {!!vm.attendanceSummary && (
         <Box sx={{ mt: 2 }}>
           <AttendanceSummaryCard
             data={vm.attendanceSummary}
             title="📋 行動分析対象者の出欠・稼働サマリー"
           />
         </Box>
+      )}
+      {/* User Master Error State */}
+      {!!usersError && (
+        <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+          利用者マスタの取得中にエラーが発生しました: {usersError instanceof Error ? usersError.message : String(usersError)}
+          <br />
+          SharePointリストの閾値制限またはネットワークの問題の可能性があります。
+        </Alert>
+      )}
+
+      {/* Analysis Data Fetch Error */}
+      {!!analysisError && (
+        <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
+          行動記録の取得中にエラーが発生しました: {analysisError instanceof Error ? analysisError.message : String(analysisError)}
+          <br />
+          <code>DriftEventsLog</code> リストのデータ量（閾値）を確認してください。
+        </Alert>
       )}
 
       {targetUserId ? (
@@ -357,39 +375,64 @@ const AnalysisDashboardPage: React.FC = () => {
               対象者を選択して分析を開始してください
             </Typography>
           ) : (
-            <Box sx={{ maxWidth: 600, mx: 'auto', p: 5, bgcolor: 'action.hover', borderRadius: 3, border: '1px dashed', borderColor: 'divider' }}>
-              <Typography variant="h6" gutterBottom fontWeight={800} color="primary.main">
-                行動分析の対象者が未設定です
+            <Box sx={{ maxWidth: 700, mx: 'auto', p: 5, bgcolor: 'action.hover', borderRadius: 3, border: '1px dashed', borderColor: 'divider', textAlign: 'left' }}>
+              <Typography variant="h5" gutterBottom fontWeight={900} color="primary.main">
+                📈 行動分析の対象者が未設定です
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
-                分析を開始するには、まず「利用者マスタ」で対象の方の分析フラグを有効にする必要があります。
-              </Typography>
-
-              <Button 
-                variant="contained" 
-                startIcon={<OpenInNewIcon />}
-                onClick={() => navigate('/users')}
-                sx={{ 
-                  px: 4,
-                  py: 1.5,
-                  borderRadius: 2,
-                  boxShadow: 3,
-                  fontWeight: 'bold'
-                }}
-              >
-                利用者マスタを開いて設定する
-              </Button>
-
-              <Typography variant="body2" sx={{ mt: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, color: 'text.secondary', opacity: 0.8 }}>
-                <AnalyticsIcon fontSize="small" />
-                対象者を設定すると、ここに活動傾向や強度の推移が可視化されます。
+              <Typography variant="body1" sx={{ mb: 3 }}>
+                分析を開始するには、まず「利用者マスタ」で分析対象のフラグを有効にする必要があります。
               </Typography>
 
-              <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+              <Box sx={{ mb: 4, p: 2, bgcolor: 'background.paper', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="subtitle2" fontWeight={700} gutterBottom sx={{ color: 'warning.dark' }}>
+                  想定される原因と対策
+                </Typography>
+                <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '0.875rem', lineHeight: 1.8 }}>
+                  <li><strong>対象者フラグがOFF:</strong> 利用者一覧から対象者を選択し、詳細設定で「支援手順記録対象」をONにしてください。</li>
+                  <li><strong>マスタ読み込み失敗:</strong> SharePointとの接続状況や、マスタリストの閾値（5000件制限）を確認してください。</li>
+                  <li><strong>スキーマ未同期:</strong> 新規環境の場合、マスタに「IsSupportProcedureTarget」列がまだ作成されていない可能性があります。</li>
+                </ul>
+              </Box>
+
+              <Stack direction="row" spacing={2}>
+                <Button 
+                  variant="contained" 
+                  startIcon={<OpenInNewIcon />}
+                  onClick={() => navigate('/users')}
+                  sx={{ px: 4, py: 1.5, borderRadius: 2, fontWeight: 'bold' }}
+                >
+                  利用者マスタを開く
+                </Button>
+                
+                {(demoModeEnabled || process.env.NODE_ENV === 'development') && users.length > 0 && (
+                   <Button 
+                    variant="outlined" 
+                    color="warning" 
+                    onClick={async () => {
+                      if (!window.confirm('【開発用】全利用者の「分析対象」フラグを強制的に有効にしますか？\n（スキーマエラー等でマスタから設定できない場合の救済措置です）')) return;
+                      for (const user of users) {
+                        if (user.IsActive) {
+                          try {
+                            await updateUser(user.Id, { IsSupportProcedureTarget: true });
+                          } catch (e) {
+                            console.error('Failed to update user', user.UserID, e);
+                          }
+                        }
+                      }
+                      window.location.reload();
+                    }}
+                    sx={{ px: 3, borderRadius: 2 }}
+                  >
+                    データ強制修復（全員対象）
+                  </Button>
+                )}
+              </Stack>
+
+              <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid', borderColor: 'divider', opacity: 0.8 }}>
                 <Typography variant="caption" component="div" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>
-                  🛠 開発者・管理者向けヒント: <br />
-                  マスターデータの `IsSupportProcedureTarget` 列を true にするか、<br />
-                  URLに <code>?demo=1</code> を追加して強制的にデモデータを生成してください。
+                  🛠 開発者・運用管理者向けヒント: <br />
+                  - <code>DriftEventsLog</code> の閾値エラーが発生している場合は、リストのインデックス作成またはパージが必要です。<br />
+                  - URLに <code>?demo=1</code> を追加すると、強制的にデモデータモードで起動します。
                 </Typography>
               </Box>
             </Box>

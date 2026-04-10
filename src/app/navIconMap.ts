@@ -45,4 +45,6 @@ export const navIconMap: Record<string, React.ElementType> = {
   '支援活動マスタ': SettingsRoundedIcon,
   'スケジュール': EventAvailableRoundedIcon,
   'コンプラ報告': ChecklistRoundedIcon,
+  '個別支援計画': EditNoteIcon,
+  'モニタリング記録': AssessmentRoundedIcon,
 };

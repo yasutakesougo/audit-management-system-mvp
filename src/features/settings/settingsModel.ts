@@ -14,7 +14,7 @@ export type NavGroupVisibilityPreferences = Partial<
   Record<NavGroupKey, NavGroupVisibilityPreference>
 >;
 
-export const NAV_POLICY_VERSION = 1;
+export const NAV_POLICY_VERSION = 2;
 
 /** User display preferences */
 export type UserSettings = {
@@ -113,46 +113,48 @@ function migratePlanningInitialOn(settings: UserSettings): {
   migrated: UserSettings;
   didMutate: boolean;
 } {
-  const hasPlanningPreference = settings.navGroupVisibilityPrefs.planning !== undefined;
-  let nextHiddenGroups = settings.hiddenNavGroups;
-  let nextPrefs = settings.navGroupVisibilityPrefs;
+  const migrated = { ...settings };
   let didMutate = false;
 
-  // B案 migration:
-  // - planning preference unset users only
-  // - preserve existing explicit OFF (hiddenNavGroups includes planning)
-  if (settings.navPolicyVersion < NAV_POLICY_VERSION && !hasPlanningPreference) {
+  // ── Version 1 Migration (Planning ON by default) ──
+  const hasPlanningPreference = settings.navGroupVisibilityPrefs.planning !== undefined;
+  if (settings.navPolicyVersion < 1 && !hasPlanningPreference) {
     const isPlanningHidden = settings.hiddenNavGroups.includes('planning');
-    nextPrefs = {
-      ...settings.navGroupVisibilityPrefs,
+    migrated.navGroupVisibilityPrefs = {
+      ...migrated.navGroupVisibilityPrefs,
       planning: isPlanningHidden ? 'hide' : 'show',
     };
-    nextHiddenGroups = isPlanningHidden
-      ? settings.hiddenNavGroups
-      : settings.hiddenNavGroups.filter((group) => group !== 'planning');
+    if (!isPlanningHidden) {
+      migrated.hiddenNavGroups = migrated.hiddenNavGroups.filter((g) => g !== 'planning');
+    }
     didMutate = true;
   }
 
+  // Ensure internal consistency
   const consistentHiddenGroups = applyPlanningPreferenceConsistency(
-    nextHiddenGroups,
-    nextPrefs,
+    migrated.hiddenNavGroups,
+    migrated.navGroupVisibilityPrefs,
   );
-  if (consistentHiddenGroups !== nextHiddenGroups) {
+  if (consistentHiddenGroups !== migrated.hiddenNavGroups) {
+    migrated.hiddenNavGroups = consistentHiddenGroups;
     didMutate = true;
   }
 
-  const migrated: UserSettings = {
-    ...settings,
-    hiddenNavGroups: consistentHiddenGroups,
-    navGroupVisibilityPrefs: nextPrefs,
-    navPolicyVersion:
-      settings.navPolicyVersion < NAV_POLICY_VERSION
-        ? NAV_POLICY_VERSION
-        : settings.navPolicyVersion,
-    lastModified: didMutate ? Date.now() : settings.lastModified,
-  };
+  // ── Version 2 Migration (Unhide Pillars) ──
+  if (settings.navPolicyVersion < 2) {
+    const PILLARS_TO_UNHIDE = ['/records/monthly'];
+    const nextHiddenItems = migrated.hiddenNavItems.filter(
+      (path) => !PILLARS_TO_UNHIDE.includes(path)
+    );
+    if (nextHiddenItems.length !== migrated.hiddenNavItems.length) {
+      migrated.hiddenNavItems = nextHiddenItems;
+      didMutate = true;
+    }
+  }
 
-  if (settings.navPolicyVersion < NAV_POLICY_VERSION) {
+  // Final version stamp
+  if (migrated.navPolicyVersion < NAV_POLICY_VERSION) {
+    migrated.navPolicyVersion = NAV_POLICY_VERSION;
     didMutate = true;
   }
 
