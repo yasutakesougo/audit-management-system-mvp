@@ -19,6 +19,16 @@ import { getDriftProbeTargets } from '../../src/sharepoint/driftProbeRegistry';
 
 export type SeverityLevel = 'silent' | 'watch' | 'action_required' | 'critical';
 
+export interface GitHubWorkflowRun {
+  name?: string;
+  status?: string | null;
+  conclusion?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  html_url?: string;
+  run_number?: number;
+}
+
 export interface RawEvent {
   id: string;
   timestamp: string; // ISO8601
@@ -30,7 +40,8 @@ export interface RawEvent {
     | 'http_500'
     | 'health_fail'
     | 'index_pressure'
-    | 'remediation';
+    | 'remediation'
+    | 'transient_failure';
   area: string; // e.g. 'UserBenefit', 'StaffAttendance', 'Platform'
   resourceKey: string; // List name or logic module name
   fieldKey?: string; // Target field if applicable
@@ -44,6 +55,7 @@ export interface BundledEvent {
   eventType: string;
   area: string;
   resourceKey: string;
+  reasonCode: string;
   occurrences: number;
   firstSeen: string;
   lastSeen: string;
@@ -57,9 +69,23 @@ export interface NightlySummary {
   bundledCount: number;
   countsBySeverity: Record<SeverityLevel, number>;
   events: BundledEvent[];
+  reasonCodeSummary: Array<{
+    reasonCode: string;
+    count: number;
+    resources: string[];
+  }>;
   /** Phase B+: sp:field_skipped streak results. Top entries by streak, window-filtered. */
   fieldSkipStreaks?: FieldSkipRankEntry[];
 }
+
+const TRANSIENT_FAILURE_WORKFLOW_TARGETS: Record<string, string> = {
+  'integration (users)': 'Users_Master',
+  'integration (staff)': 'Staff_Master',
+  'integration (dailyops)': 'DailyOpsSignals',
+};
+
+const DEFAULT_TRANSIENT_FAILURE_WINDOW_HOURS = 6;
+const REPEATED_TRANSIENT_FAILURE_THRESHOLD = 3;
 
 // --- Engine Logic ---
 
@@ -97,6 +123,7 @@ function classifySeverity(event: RawEvent): SeverityLevel {
   if (event.eventType === 'http_500') return 'action_required';
   // Remediation Failure
   if (event.eventType === 'remediation' && (event.message.includes('fail') || event.message.includes('失敗'))) return 'action_required';
+  if (event.eventType === 'transient_failure' && event.reasonCode === 'repeated_transient_failure') return 'action_required';
 
   // 3. Silent
   if (event.eventType === 'provision_skipped:block') return 'silent';
@@ -106,6 +133,7 @@ function classifySeverity(event: RawEvent): SeverityLevel {
     return 'silent';
 
   // 4. Watch
+  if (event.eventType === 'transient_failure' || event.reasonCode === 'transient_failure') return 'watch';
   // Pending Candidate Index (default warn/info)
   if (event.eventType === 'index_pressure') return 'watch';
   return 'watch';
@@ -115,6 +143,9 @@ function classifySeverity(event: RawEvent): SeverityLevel {
  * NextAction の決定 (読んで終わらせないため)
  */
 function determineNextAction(severity: SeverityLevel, event: RawEvent): string {
+  if (event.eventType === 'transient_failure') {
+    return `[${event.resourceKey}] は Nightly Runtime Patrol 時点で回復しています。再発頻度を監視し、連日発生する場合は action_required へ昇格してください。`;
+  }
   if (event.eventType === 'index_pressure') {
     return event.message.includes('(CRITICAL)') 
       ? `【至急】[${event.resourceKey}] で必須インデックスが不足しています。システム停止を防ぐため、Index Advisor で修復を実行してください。`
@@ -143,6 +174,127 @@ function determineNextAction(severity: SeverityLevel, event: RawEvent): string {
   return `[${event.resourceKey}] で異常が検出されました。管理画面の状態ページを確認してください。`;
 }
 
+function parseEnvInteger(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseRunDate(run: GitHubWorkflowRun): Date | null {
+  const raw = run.updated_at || run.created_at;
+  if (!raw) return null;
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function shiftDateStamp(dateStamp: string, daysDelta: number): string {
+  const base = new Date(`${dateStamp}T00:00:00Z`);
+  base.setUTCDate(base.getUTCDate() + daysDelta);
+  return base.toISOString().slice(0, 10);
+}
+
+export function deriveTransientFailureEvents(
+  workflowRuns: GitHubWorkflowRun[],
+  existingRawEvents: RawEvent[],
+  now = new Date(),
+  windowHours = DEFAULT_TRANSIENT_FAILURE_WINDOW_HOURS,
+): RawEvent[] {
+  const windowStartMs = now.getTime() - windowHours * 60 * 60 * 1000;
+  const unresolvedResources = new Set(
+    existingRawEvents
+      .filter((event) => {
+        const severity = classifySeverity(event);
+        return severity === 'critical' || severity === 'action_required';
+      })
+      .map((event) => event.resourceKey),
+  );
+
+  const latestFailures = new Map<string, { target: string; run: GitHubWorkflowRun; observedAt: Date }>();
+  const failedRunDaysByTarget = new Map<string, Set<string>>();
+
+  for (const run of workflowRuns) {
+    const workflowName = typeof run.name === 'string' ? run.name : '';
+    const target = TRANSIENT_FAILURE_WORKFLOW_TARGETS[workflowName];
+    if (!target || unresolvedResources.has(target)) continue;
+
+    const status = `${run.status ?? ''}`.toLowerCase();
+    const conclusion = `${run.conclusion ?? ''}`.toLowerCase();
+    if (status !== 'completed' || conclusion !== 'failure') continue;
+
+    const observedAt = parseRunDate(run);
+    if (!observedAt) continue;
+
+    const daySet = failedRunDaysByTarget.get(target) ?? new Set<string>();
+    daySet.add(toJstDateString(observedAt));
+    failedRunDaysByTarget.set(target, daySet);
+
+    if (observedAt.getTime() < windowStartMs) continue;
+
+    const existing = latestFailures.get(target);
+    if (!existing || observedAt.getTime() > existing.observedAt.getTime()) {
+      latestFailures.set(target, { target, run, observedAt });
+    }
+  }
+
+  return Array.from(latestFailures.values()).map(({ target, run, observedAt }) => {
+    const todayJst = toJstDateString(now);
+    const consecutiveDays = Array.from({ length: REPEATED_TRANSIENT_FAILURE_THRESHOLD }, (_, index) =>
+      shiftDateStamp(todayJst, -index),
+    );
+    const failedDays = failedRunDaysByTarget.get(target) ?? new Set<string>();
+    const hasRepeatedTransientFailure = consecutiveDays.every((day) => failedDays.has(day));
+    const runNumber = Number.isFinite(run.run_number) ? `#${run.run_number}` : 'unknown';
+    const runLink = run.html_url ? ` (${run.html_url})` : '';
+    const reasonCode = hasRepeatedTransientFailure ? 'repeated_transient_failure' : 'transient_failure';
+    const repeatedText = hasRepeatedTransientFailure
+      ? ` and has repeated for ${REPEATED_TRANSIENT_FAILURE_THRESHOLD} consecutive nights`
+      : '';
+    return {
+      id: `transient-${target}-${observedAt.getTime()}`,
+      timestamp: now.toISOString(),
+      eventType: 'transient_failure',
+      area: 'Runtime',
+      resourceKey: target,
+      reasonCode,
+      message: `${target} recovered by Nightly Runtime Patrol after ${run.name} failed at ${observedAt.toISOString()} (${runNumber})${runLink}${repeatedText}`,
+    };
+  });
+}
+
+async function fetchTransientFailureEvents(existingRawEvents: RawEvent[]): Promise<RawEvent[]> {
+  const repo = process.env.GITHUB_REPOSITORY;
+  const token = process.env.GITHUB_TOKEN;
+  if (!repo || !token) {
+    return [];
+  }
+
+  const apiBase = process.env.GITHUB_API_URL || 'https://api.github.com';
+  const perPage = parseEnvInteger('NIGHTLY_TRANSIENT_FAILURE_GITHUB_RUNS_LIMIT', 100);
+  const windowHours = parseEnvInteger('NIGHTLY_TRANSIENT_FAILURE_WINDOW_HOURS', DEFAULT_TRANSIENT_FAILURE_WINDOW_HOURS);
+
+  try {
+    const response = await globalThis.fetch(`${apiBase}/repos/${repo}/actions/runs?per_page=${perPage}`, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${token}`,
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
+
+    if (!response.ok) {
+      console.warn(`⚠️ Failed to fetch GitHub workflow runs: ${response.status} ${response.statusText}`);
+      return [];
+    }
+
+    const payload = (await response.json()) as { workflow_runs?: GitHubWorkflowRun[] };
+    return deriveTransientFailureEvents(payload.workflow_runs ?? [], existingRawEvents, new Date(), windowHours);
+  } catch (error) {
+    console.warn(`⚠️ Failed to derive transient failures from GitHub workflow runs: ${error instanceof Error ? error.message : error}`);
+    return [];
+  }
+}
+
 /**
  * 生イベントを束ねて評価するコアエンジン
  */
@@ -160,6 +312,7 @@ export function aggregateEvents(rawEvents: RawEvent[]): NightlySummary {
         eventType: event.eventType,
         area: event.area,
         resourceKey: event.resourceKey,
+        reasonCode: event.reasonCode,
         occurrences: 1,
         firstSeen: event.timestamp,
         lastSeen: event.timestamp,
@@ -196,12 +349,33 @@ export function aggregateEvents(rawEvents: RawEvent[]): NightlySummary {
     summaryCounter[b.severity] += 1;
   });
 
+  const reasonCodeSummary = Array.from(
+    bundledArray.reduce((acc, event) => {
+      const current = acc.get(event.reasonCode) ?? {
+        reasonCode: event.reasonCode,
+        count: 0,
+        resources: new Set<string>(),
+      };
+      current.count += 1;
+      current.resources.add(event.resourceKey);
+      acc.set(event.reasonCode, current);
+      return acc;
+    }, new Map<string, { reasonCode: string; count: number; resources: Set<string> }>()),
+  )
+    .map(([, entry]) => ({
+      reasonCode: entry.reasonCode,
+      count: entry.count,
+      resources: Array.from(entry.resources).sort(),
+    }))
+    .sort((a, b) => b.count - a.count || a.reasonCode.localeCompare(b.reasonCode));
+
   return {
     reportDate: new Date().toISOString().split('T')[0],
     totalEvents: rawEvents.length,
     bundledCount: bundledArray.length,
     countsBySeverity: summaryCounter,
     events: bundledArray,
+    reasonCodeSummary,
   };
 }
 
@@ -222,8 +396,20 @@ export function formatMarkdown(summary: NightlySummary): string {
 ---
 `;
 
+  const reasonCodeSummaryMarkdown = summary.reasonCodeSummary.length === 0
+    ? '_No reason codes recorded._'
+    : `| Reason Code | Count | Resources |\n| --- | :---: | --- |\n${summary.reasonCodeSummary
+        .map((entry) => `| \`${entry.reasonCode}\` | ${entry.count} | ${entry.resources.join(', ')} |`)
+        .join('\n')}`;
+
   // Silentはレポート本体を汚さないために分離
-  const displayEvents = summary.events.filter((e) => e.severity !== 'silent');
+  const repeatedTransientEvents = summary.events.filter(
+    (e) => e.eventType === 'transient_failure' && e.reasonCode === 'repeated_transient_failure',
+  );
+  const transientEvents = summary.events.filter(
+    (e) => e.eventType === 'transient_failure' && e.reasonCode !== 'repeated_transient_failure',
+  );
+  const displayEvents = summary.events.filter((e) => e.severity !== 'silent' && e.eventType !== 'transient_failure');
   const silentEvents = summary.events.filter((e) => e.severity === 'silent');
 
   const createTable = (events: BundledEvent[]) => {
@@ -243,6 +429,15 @@ export function formatMarkdown(summary: NightlySummary): string {
   };
 
   const body = `
+## 🧾 Reason Code Summary
+${reasonCodeSummaryMarkdown}
+
+## 🔁 Repeated Transient Failures
+${createTable(repeatedTransientEvents)}
+
+## ♻️ Recovered Transient Failures
+${createTable(transientEvents)}
+
 ## 🚨 Requires Attention (Critical & Action Required & Watch)
 ${createTable(displayEvents)}
 
@@ -264,6 +459,83 @@ ${silentEvents
 `;
 
   return header + body;
+}
+
+export function formatStepSummary(summary: NightlySummary): string {
+  const repeatedTransientEvents = summary.events.filter(
+    (e) => e.eventType === 'transient_failure' && e.reasonCode === 'repeated_transient_failure',
+  );
+  const transientEvents = summary.events.filter(
+    (e) => e.eventType === 'transient_failure' && e.reasonCode !== 'repeated_transient_failure',
+  );
+  const attentionEvents = summary.events.filter(
+    (e) => e.severity === 'critical' || e.severity === 'action_required',
+  );
+  const watchEvents = summary.events.filter((e) => e.severity === 'watch');
+
+  const overall =
+    summary.countsBySeverity.critical > 0
+      ? '🔴 Action Required'
+      : summary.countsBySeverity.action_required > 0
+        ? '🟠 Action Required'
+        : summary.countsBySeverity.watch > 0
+          ? '🟡 Watch'
+          : '✅ Healthy';
+
+  const listOrNone = (lines: string[]): string =>
+    lines.length > 0 ? lines.join('\n') : '- なし';
+
+  const reasonCodeLines = summary.reasonCodeSummary.map(
+    (entry) => `- \`${entry.reasonCode}\`: ${entry.count}${entry.resources.length > 0 ? ` (${entry.resources.join(', ')})` : ''}`,
+  );
+  const attentionLines = attentionEvents.map(
+    (event) => `- **${event.resourceKey}** — \`${event.reasonCode}\``,
+  );
+  const watchLines = watchEvents.map(
+    (event) => `- **${event.resourceKey}** — \`${event.reasonCode}\``,
+  );
+  const transientLines = transientEvents.map(
+    (event) => `- **${event.resourceKey}** — recovered (\`${event.reasonCode}\`)`,
+  );
+  const repeatedTransientLines = repeatedTransientEvents.map(
+    (event) => `- **${event.resourceKey}** — repeated (\`${event.reasonCode}\`)`,
+  );
+
+  return `## Nightly Runtime Patrol
+
+- Overall: **${overall}**
+- Action Required: **${summary.countsBySeverity.action_required}**
+- Watch: **${summary.countsBySeverity.watch}**
+- Recovered Transient Failures: **${transientEvents.length}**
+- Repeated Transient Failures: **${repeatedTransientEvents.length}**
+
+### Requires Attention
+${listOrNone(attentionLines)}
+
+### Watch
+${listOrNone(watchLines)}
+
+### Reason Code Summary
+${listOrNone(reasonCodeLines)}
+
+### Recovered Transient Failures
+${listOrNone(transientLines)}
+
+### Repeated Transient Failures
+${listOrNone(repeatedTransientLines)}
+`;
+}
+
+async function writeStepSummary(summary: NightlySummary): Promise<void> {
+  const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+  if (!summaryPath) return;
+
+  try {
+    await fs.appendFile(summaryPath, `${formatStepSummary(summary)}\n`, 'utf-8');
+    console.log(`  └ GitHub Step Summary written: ${summaryPath}`);
+  } catch (error) {
+    console.warn(`  ⚠️ Failed to write GitHub Step Summary: ${error instanceof Error ? error.message : error}`);
+  }
 }
 
 // --- Data Ingestion ---
@@ -534,6 +806,12 @@ async function run() {
   // 実データの取得（失敗時や設定がない場合はモックへフォールバック）
   const rawEvents = await fetchRealEvents(mockRawEvents);
 
+  const transientFailureEvents = await fetchTransientFailureEvents(rawEvents);
+  if (transientFailureEvents.length > 0) {
+    rawEvents.push(...transientFailureEvents);
+    console.log(`  └ Transient failures recovered by Nightly: ${transientFailureEvents.length}`);
+  }
+
   // ── Nightly Index Remediation (Mode B: guarded add only) ──────────────────
   const token = process.env.VITE_SP_TOKEN;
   const siteUrl = process.env.VITE_SP_SITE_URL;
@@ -612,8 +890,22 @@ async function run() {
         },
         body: JSON.stringify({
           Title: 'runtime-summary',
-          Overall: summary.countsBySeverity.critical > 0 ? 'fail' : (summary.countsBySeverity.action_required > 0 ? 'warn' : 'pass'),
-          TopIssue: summary.countsBySeverity.critical > 0 ? 'Critical failures detected' : (summary.fieldSkipStreaks?.length ? 'Persistent drifts detected' : 'Healthy'),
+          Overall:
+            summary.countsBySeverity.critical > 0
+              ? 'fail'
+              : (summary.countsBySeverity.action_required > 0 ||
+                  summary.countsBySeverity.watch > 0 ||
+                  (summary.fieldSkipStreaks?.length ?? 0) > 0)
+                ? 'warn'
+                : 'pass',
+          TopIssue:
+            summary.countsBySeverity.critical > 0
+              ? 'Critical failures detected'
+              : (summary.fieldSkipStreaks?.length ?? 0) > 0
+                ? 'Persistent drifts detected'
+                : summary.events.some((event) => event.eventType === 'transient_failure')
+                  ? 'Recovered transient failures detected'
+                  : 'Healthy',
           SummaryText: jsonOutput, // PayloadJson として使用
         }),
       });
@@ -629,6 +921,8 @@ async function run() {
 
   console.log(`  - Silent count: ${summary.countsBySeverity.silent}`);
   console.log('Results written to .nightly/runtime-summary.{json,md}');
+
+  await writeStepSummary(summary);
 
   // Teams通知の実行
   await sendTeamsNotification(summary);
@@ -647,11 +941,18 @@ export async function sendTeamsNotification(summary: NightlySummary, webhookUrl?
 
   const hasCritical = summary.countsBySeverity.critical > 0;
   const hasAction = summary.countsBySeverity.action_required > 0;
+  const hasWatch = summary.countsBySeverity.watch > 0;
   const persistentDrifts = (summary.fieldSkipStreaks ?? []).filter((e) => e.status === 'persistent_drift');
   const hasPersistentDrift = persistentDrifts.length > 0;
+  const repeatedTransientFailures = summary.events
+    .filter((event) => event.eventType === 'transient_failure' && event.reasonCode === 'repeated_transient_failure')
+    .slice(0, 5);
+  const transientFailures = summary.events
+    .filter((event) => event.eventType === 'transient_failure' && event.reasonCode !== 'repeated_transient_failure')
+    .slice(0, 5);
 
-  const statusColor = (hasCritical || hasPersistentDrift) ? 'Attention' : (hasAction ? 'Warning' : 'Good');
-  const statusEmoji = hasCritical ? '🔴 CRITICAL' : (hasAction ? '🟠 Action Required' : '✅ Healthy');
+  const statusColor = (hasCritical || hasPersistentDrift) ? 'Attention' : ((hasAction || hasWatch) ? 'Warning' : 'Good');
+  const statusEmoji = hasCritical ? '🔴 CRITICAL' : (hasAction ? '🟠 Action Required' : (hasWatch ? '🟡 Watch' : '✅ Healthy'));
 
   // 重要度の高いイベントのみを抽出（Adaptive Card の制限内に収める）
   const highlightEvents = summary.events
@@ -679,8 +980,29 @@ export async function sendTeamsNotification(summary: NightlySummary, webhookUrl?
         { title: '🟡 Watch', value: `${summary.countsBySeverity.watch}` },
         { title: '🟢 Silent', value: `${summary.countsBySeverity.silent}` }
       ]
-    }
-  ];
+      }
+    ];
+
+  if (summary.reasonCodeSummary.length > 0) {
+    cardItems.push({
+      type: 'TextBlock',
+      text: '🧾 **Reason Code Summary**',
+      separator: true,
+      wrap: true,
+      weight: 'Bolder',
+    });
+
+    summary.reasonCodeSummary.slice(0, 5).forEach((entry) => {
+      const resourceLabel = entry.resources.slice(0, 3).join(', ');
+      cardItems.push({
+        type: 'TextBlock',
+        text: `\`${entry.reasonCode}\`: ${entry.count}${resourceLabel ? ` (${resourceLabel})` : ''}`,
+        wrap: true,
+        size: 'Small',
+        isSubtle: true,
+      });
+    });
+  }
 
   if (highlightEvents.length > 0) {
     cardItems.push({
@@ -716,9 +1038,50 @@ export async function sendTeamsNotification(summary: NightlySummary, webhookUrl?
   } else {
     cardItems.push({
       type: 'TextBlock',
-      text: '✅ **No Critical or Action Required issues detected.**',
+      text: hasWatch
+        ? '🟡 **No Critical or Action Required issues detected, but watch items remain.**'
+        : '✅ **No Critical or Action Required issues detected.**',
       separator: true,
       wrap: true
+    });
+  }
+
+  if (transientFailures.length > 0) {
+    cardItems.push({
+      type: 'TextBlock',
+      text: '♻️ **Recovered transient failures**',
+      separator: true,
+      wrap: true,
+      weight: 'Bolder',
+    });
+    transientFailures.forEach((event) => {
+      cardItems.push({
+        type: 'TextBlock',
+        text: `**${event.resourceKey}** — Nightly が一時障害を吸収しました。再発頻度を監視してください。`,
+        wrap: true,
+        size: 'Small',
+        color: 'Warning',
+      });
+    });
+  }
+
+  if (repeatedTransientFailures.length > 0) {
+    cardItems.push({
+      type: 'TextBlock',
+      text: '🔁 **Repeated transient failures**',
+      separator: true,
+      wrap: true,
+      weight: 'Bolder',
+      color: 'Attention',
+    });
+    repeatedTransientFailures.forEach((event) => {
+      cardItems.push({
+        type: 'TextBlock',
+        text: `**${event.resourceKey}** — 3夜連続で一時障害を吸収しています。認証・スロットリング・SharePoint 到達性を確認してください。`,
+        wrap: true,
+        size: 'Small',
+        color: 'Attention',
+      });
     });
   }
 
