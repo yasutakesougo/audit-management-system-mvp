@@ -87,6 +87,9 @@ jobs:
           VITE_SP_SITE_URL: ${{ secrets.SHAREPOINT_SITE }}
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
           TEAMS_MENTION_UPN: ${{ secrets.TEAMS_MENTION_UPN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_API_URL: ${{ github.api_url }}
         run: npx tsx scripts/ops/nightly-runtime-patrol.ts
 
       - name: Upload Patrol Artifacts
