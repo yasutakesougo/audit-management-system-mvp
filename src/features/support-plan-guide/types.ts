@@ -25,6 +25,16 @@ export type SupportPlanForm = {
   complianceControls: string;
   improvementIdeas: string;
   lastMonitoringDate: string; // 直近のモニタ実施日 (YYYY/MM/DD)
+  /** 医療的配慮事項 */
+  medicalConsiderations: string;
+  /** 緊急時対応計画 */
+  emergencyResponsePlan: string;
+  /** 権利擁護に関する記載 */
+  rightsAdvocacy: string;
+  /** 契約上のサービス開始日 */
+  serviceStartDate: string;
+  /** 実際の初回サービス提供日 */
+  firstServiceDate: string;
   /** 構造化目標データ */
   goals: GoalItem[];
   /**
@@ -155,6 +165,11 @@ export const defaultFormState: SupportPlanForm = {
   complianceControls: '',
   improvementIdeas: '',
   lastMonitoringDate: '',
+  medicalConsiderations: '',
+  emergencyResponsePlan: '',
+  rightsAdvocacy: '',
+  serviceStartDate: '',
+  firstServiceDate: '',
   goals: [],
 };
 
@@ -172,6 +187,11 @@ export const FIELD_LIMITS: Record<SupportPlanStringFieldKey, number> = {
   complianceControls: 700,
   improvementIdeas: 900,
   lastMonitoringDate: 20,
+  medicalConsiderations: 2000,
+  emergencyResponsePlan: 2000,
+  rightsAdvocacy: 2000,
+  serviceStartDate: 20,
+  firstServiceDate: 20,
 };
 
 export const REQUIRED_FIELDS: SupportPlanStringFieldKey[] = [

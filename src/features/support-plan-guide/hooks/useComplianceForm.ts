@@ -17,11 +17,13 @@ import type {
   IspComplianceMetadata,
   IspConsentDetail,
   IspDeliveryDetail,
+  IspMeetingDetail,
+  IspConsultationSupport,
 } from '@/domain/isp/schema';
 import {
   ispComplianceMetadataSchema,
 } from '@/domain/isp/schema';
-import type { SupportPlanDraft } from '../types';
+import type { SupportPlanDraft, SupportPlanForm } from '../types';
 
 // ────────────────────────────────────────────
 // Types
@@ -59,6 +61,10 @@ export type UseComplianceFormReturn = {
   updateConsent: (updates: Partial<IspConsentDetail>) => void;
   /** 交付詳細の部分更新 */
   updateDelivery: (updates: Partial<IspDeliveryDetail>) => void;
+  /** 会議詳細の部分更新 */
+  updateMeeting: (updates: Partial<IspMeetingDetail>) => void;
+  /** 相談支援詳細の部分更新 */
+  updateConsultation: (updates: Partial<IspConsultationSupport>) => void;
   /** 標準的提供時間の更新 */
   updateServiceHours: (hours: number | null) => void;
   /** 未入力警告の件数 */
@@ -96,17 +102,42 @@ function extractCompliance(draft: SupportPlanDraft | undefined): ComplianceFormS
 }
 
 /**
- * 監査上重要な未入力フィールドを検出する
+ * 監査上重要な未入力フィールドや不整合を検出する
  */
-function detectMissingFields(compliance: ComplianceFormState): string[] {
+function detectMissingFields(compliance: ComplianceFormState, formData?: Partial<SupportPlanForm>): string[] {
   const missing: string[] = [];
-  const { consent, delivery } = compliance;
+  const { consent, delivery, meeting, consultationSupport, standardServiceHours } = compliance;
 
+  // 同意・交付（最重要）
   if (!consent.explainedAt) missing.push('説明実施日');
   if (!consent.consentedAt) missing.push('同意取得日');
   if (!consent.consentedBy) missing.push('同意者名');
   if (!delivery.deliveredAt) missing.push('交付日');
   if (!delivery.deliveredToUser) missing.push('本人への交付');
+
+  // 代理同意時の理由（監査指摘対策）
+  if ((consent.proxyName || consent.proxyRelation) && !consent.proxyReason) {
+    missing.push('代理同意の理由');
+  }
+
+  // 会議・連携（制度要件）
+  if (!meeting.meetingDate) missing.push('会議実施日');
+  if (!consultationSupport.agencyName) missing.push('相談支援事業所名');
+  if (!consultationSupport.officerName) missing.push('相談支援専門員名');
+  if (!consultationSupport.serviceUsePlanReceivedAt) {
+    missing.push('相談支援からのサービス等利用計画の受領日');
+  }
+
+  // 提供時間
+  if (standardServiceHours === null) missing.push('標準的な支援提供時間');
+
+  // B-1項目: サービス開始日と初回提供日の不整合チェック
+  if (formData?.serviceStartDate && formData?.firstServiceDate) {
+    // 文字列のまま比較可能（YYYY-MM-DD形式想定）
+    if (formData.serviceStartDate > formData.firstServiceDate) {
+      missing.push('⚠️ 契約開始日より前に初回提供日が設定されています');
+    }
+  }
 
   return missing;
 }
@@ -177,6 +208,28 @@ export function useComplianceForm({
     [updateCompliance],
   );
 
+  // ── Meeting updater ──
+  const updateMeeting = React.useCallback(
+    (updates: Partial<IspMeetingDetail>) => {
+      updateCompliance((prev) => ({
+        ...prev,
+        meeting: { ...prev.meeting, ...updates },
+      }));
+    },
+    [updateCompliance],
+  );
+
+  // ── Consultation updater ──
+  const updateConsultation = React.useCallback(
+    (updates: Partial<IspConsultationSupport>) => {
+      updateCompliance((prev) => ({
+        ...prev,
+        consultationSupport: { ...prev.consultationSupport, ...updates },
+      }));
+    },
+    [updateCompliance],
+  );
+
   // ── Service hours updater ──
   const updateServiceHours = React.useCallback(
     (hours: number | null) => {
@@ -190,8 +243,8 @@ export function useComplianceForm({
 
   // ── Missing fields ──
   const missingFields = React.useMemo(
-    () => detectMissingFields(compliance),
-    [compliance],
+    () => detectMissingFields(compliance, activeDraft?.data),
+    [compliance, activeDraft?.data],
   );
 
   // ── Approval state ──
@@ -226,6 +279,8 @@ export function useComplianceForm({
     compliance,
     updateConsent,
     updateDelivery,
+    updateMeeting,
+    updateConsultation,
     updateServiceHours,
     missingFieldCount: missingFields.length,
     missingFields,

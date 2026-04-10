@@ -9,17 +9,13 @@
 
 import { z } from 'zod';
 import { userSnapshotSchema } from '@/domain/user/userRelation';
-import { ispComplianceMetadataSchema } from './ispComplianceSchema';
+import { ispComplianceMetadataSchema, isoDateString } from './ispComplianceSchema';
+
+export { isoDateString };
 
 // ─────────────────────────────────────────────
 // 共通
 // ─────────────────────────────────────────────
-
-/** ISO 8601 日付文字列（簡易バリデーション） */
-export const isoDateString = z.string().regex(
-  /^\d{4}-\d{2}-\d{2}/,
-  'ISO 8601 日付形式（YYYY-MM-DD...）が必要です',
-);
 
 /** 監査証跡の共通スキーマ */
 export const baseAuditFieldsSchema = z.object({
@@ -126,6 +122,18 @@ export const ispFormSchema = z.object({
   supportSummary: z.string().max(2000).default(''),
   precautions: z.string().max(2000).default(''),
 
+  // ── 生活介護 追加項目（更新パッチ B-1） ──
+  /** 医療的配慮事項 */
+  medicalConsiderations: z.string().max(2000).optional(),
+  /** 緊急時対応計画 */
+  emergencyResponsePlan: z.string().max(2000).optional(),
+  /** 権利擁護に関する記載 */
+  rightsAdvocacy: z.string().max(2000).optional(),
+  /** 契約上のサービス開始日（planStartDate と区別） */
+  serviceStartDate: isoDateString.optional(),
+  /** 実際の初回サービス提供日 */
+  firstServiceDate: isoDateString.optional(),
+
   status: ispStatusSchema.default('assessment'),
 
   // ── 生活介護コンプライアンスメタデータ ──
@@ -155,6 +163,13 @@ export const individualSupportPlanSchema = baseAuditFieldsSchema.extend({
 
   supportSummary: z.string().default(''),
   precautions: z.string().default(''),
+
+  // ── 生活介護 追加項目（更新パッチ B-2） ──
+  medicalConsiderations: z.string().optional(),
+  emergencyResponsePlan: z.string().optional(),
+  rightsAdvocacy: z.string().optional(),
+  serviceStartDate: isoDateString.optional(),
+  firstServiceDate: isoDateString.optional(),
 
   consentAt: z.string().nullable().default(null),
   deliveredAt: z.string().nullable().default(null),

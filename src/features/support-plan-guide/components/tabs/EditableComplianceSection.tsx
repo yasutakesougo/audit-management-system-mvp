@@ -177,30 +177,65 @@ const EditableComplianceSection: React.FC<EditableComplianceSectionProps> = ({
           </Stack>
 
           {/* Row 3: 代理人 */}
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
-              size="small"
-              label="代理人名（家族等）"
-              value={consent.proxyName}
-              onChange={(e) => onConsentChange({ proxyName: e.target.value })}
-              disabled={readOnly}
-              placeholder="例: 鈴木 一郎"
-              sx={{ flex: 1 }}
-              data-testid="compliance-proxy-name"
-            />
-            <TextField
-              size="small"
-              label="代理人続柄"
-              value={consent.proxyRelation}
-              onChange={(e) => onConsentChange({ proxyRelation: e.target.value })}
-              disabled={readOnly}
-              placeholder="例: 父"
-              sx={{ minWidth: 120 }}
-              data-testid="compliance-proxy-relation"
-            />
+          <Stack spacing={2}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField
+                size="small"
+                label="代理人名（家族等）"
+                value={consent.proxyName}
+                onChange={(e) => onConsentChange({ proxyName: e.target.value })}
+                disabled={readOnly}
+                placeholder="例: 鈴木 一郎"
+                sx={{ flex: 1 }}
+                data-testid="compliance-proxy-name"
+              />
+              <TextField
+                size="small"
+                label="代理人続柄"
+                value={consent.proxyRelation}
+                onChange={(e) => onConsentChange({ proxyRelation: e.target.value })}
+                disabled={readOnly}
+                placeholder="例: 父"
+                sx={{ minWidth: 120 }}
+                data-testid="compliance-proxy-relation"
+              />
+            </Stack>
+            {(consent.proxyName || consent.proxyRelation) && (
+              <TextField
+                size="small"
+                label="代理同意の理由（本人同意が困難な理由等）"
+                value={consent.proxyReason ?? ''}
+                onChange={(e) => onConsentChange({ proxyReason: e.target.value })}
+                disabled={readOnly}
+                placeholder="例: 本人による署名が困難なため、父が代筆。"
+                data-testid="compliance-proxy-reason"
+              />
+            )}
           </Stack>
 
-          {/* Row 4: 備考 */}
+          {/* Row 4: 同意方法 */}
+          <TextField
+             select
+             size="small"
+             label="同意取得方法"
+             value={consent.consentMethod ?? ''}
+             onChange={(e) =>
+               onConsentChange({
+                 consentMethod: (e.target.value || undefined) as IspConsentDetail['consentMethod'],
+               })
+             }
+             disabled={readOnly}
+             slotProps={{ select: { native: true } }}
+             data-testid="compliance-consent-method"
+          >
+            <option value="">未選択</option>
+            <option value="signature">署名</option>
+            <option value="seal">記名押印</option>
+            <option value="electronic">電子署名</option>
+            <option value="other">その他</option>
+          </TextField>
+
+          {/* Row 5: 備考 */}
           <TextField
             size="small"
             label="同意に関する備考"

@@ -65,7 +65,10 @@ function buildFormSections(form: SupportPlanForm): MdSection[] {
       lines: [
         form.serviceUserName && `- 利用者名: ${form.serviceUserName}`,
         form.supportLevel && `- 支援区分 / 医療等: ${form.supportLevel}`,
+        form.serviceStartDate && `- 契約開始日: ${form.serviceStartDate}`,
+        form.firstServiceDate && `- 実際の初回提供日: ${form.firstServiceDate}`,
         form.planPeriod && `- 計画期間: ${form.planPeriod}`,
+        form.medicalConsiderations && `\n**医療的配慮事項**\n${form.medicalConsiderations}`,
       ].filter(Boolean) as string[],
     },
     {
@@ -99,9 +102,11 @@ function buildFormSections(form: SupportPlanForm): MdSection[] {
       ].filter(Boolean) as string[],
     },
     {
-      title: '減算リスク対策',
+      title: '減算リスク対策・緊急対応',
       lines: [
         form.riskManagement && `リスク管理: ${form.riskManagement}`,
+        form.emergencyResponsePlan && `緊急時対応計画: ${form.emergencyResponsePlan}`,
+        form.rightsAdvocacy && `権利擁護: ${form.rightsAdvocacy}`,
         form.complianceControls && `コンプラ対策: ${form.complianceControls}`,
       ].filter(Boolean) as string[],
     },
@@ -145,8 +150,13 @@ function buildComplianceSection(compliance: IspComplianceMetadata | null): MdSec
     return { title: '制度適合（コンプライアンス）', lines: [] };
   }
 
-  const { consent, delivery, approval } = compliance;
+  const { consent, delivery, approval, meeting, consultationSupport, standardServiceHours } = compliance;
   const lines: string[] = [];
+
+  // 基本サービス
+  if (standardServiceHours) {
+    lines.push(`- 標準支援提供時間: ${standardServiceHours}時間`);
+  }
 
   // 同意記録
   lines.push('### 同意記録');
@@ -156,6 +166,16 @@ function buildComplianceSection(compliance: IspComplianceMetadata | null): MdSec
   if (consent.consentedBy) lines.push(`- 同意者: ${consent.consentedBy}`);
   if (consent.proxyName) {
     lines.push(`- 代理人: ${consent.proxyName}${consent.proxyRelation ? `（${consent.proxyRelation}）` : ''}`);
+    if (consent.proxyReason) lines.push(`  - 代理同意理由: ${consent.proxyReason}`);
+  }
+  if (consent.consentMethod) {
+    const methods: Record<string, string> = {
+      signature: '署名',
+      seal: '記名押印',
+      electronic: '電子署名',
+      other: 'その他',
+    };
+    lines.push(`- 同意方法: ${methods[consent.consentMethod] || consent.consentMethod}`);
   }
   if (consent.notes) lines.push(`- 備考: ${consent.notes}`);
 
@@ -166,6 +186,19 @@ function buildComplianceSection(compliance: IspComplianceMetadata | null): MdSec
   lines.push(`- 相談支援専門員への交付: ${delivery.deliveredToConsultationSupport ? '✓ 済' : '✗ 未'}`);
   if (delivery.deliveryMethod) lines.push(`- 交付方法: ${delivery.deliveryMethod}`);
   if (delivery.notes) lines.push(`- 備考: ${delivery.notes}`);
+
+  // 会議記録
+  lines.push('### サービス担当者会議記録');
+  lines.push(`- 実施日: ${formatIsoDate(meeting.meetingDate)}`);
+  if (meeting.attendees.length > 0) lines.push(`- 出席者: ${meeting.attendees.join(', ')}`);
+  if (meeting.meetingMinutes) lines.push(`- 議事要旨: ${meeting.meetingMinutes}`);
+
+  // 相談支援連携
+  lines.push('### 相談支援連携');
+  if (consultationSupport.agencyName) lines.push(`- 相談支援事業所: ${consultationSupport.agencyName}`);
+  if (consultationSupport.officerName) lines.push(`- 相談支援専門員: ${consultationSupport.officerName}`);
+  lines.push(`- 利用計画受領日: ${formatIsoDate(consultationSupport.serviceUsePlanReceivedAt)}`);
+  if (consultationSupport.gapNotes) lines.push(`- 利用計画との不整合メモ: ${consultationSupport.gapNotes}`);
 
   // 承認記録
   lines.push('### 承認記録');
