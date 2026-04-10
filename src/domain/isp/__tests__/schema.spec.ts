@@ -66,6 +66,8 @@ import {
   ispDeliveryDetailSchema,
   ispReviewControlSchema,
   ispComplianceMetadataSchema,
+  ispMeetingDetailSchema,
+  ispConsultationSupportSchema,
   isIspReviewOverdue,
   computeIspReviewOverdueDays,
   validateStandardServiceHours,
@@ -1619,6 +1621,202 @@ describe('ISP コンプライアンスメタデータ (A-1)', () => {
 
     it('24.0 → null（ちょうど24は許容）', () => {
       expect(validateStandardServiceHours(24)).toBeNull();
+    });
+  });
+});
+
+// ─────────────────────────────────────────────
+// 更新パッチ: 追加項目（meeting / consultationSupport / 同意拡張 / base 追加5項目）
+// ─────────────────────────────────────────────
+
+describe('ISP 追加項目（更新パッチ）', () => {
+  describe('ispConsentDetailSchema 拡張 (proxyReason / consentMethod)', () => {
+    it('proxyReason / consentMethod なしでパースできる（後方互換）', () => {
+      const result = ispConsentDetailSchema.parse({
+        proxyName: '田中次郎',
+        proxyRelation: '兄',
+      });
+      expect(result.proxyName).toBe('田中次郎');
+      expect(result.proxyReason).toBeUndefined();
+      expect(result.consentMethod).toBeUndefined();
+    });
+
+    it('proxyReason / consentMethod を設定できる', () => {
+      const result = ispConsentDetailSchema.parse({
+        proxyName: '田中次郎',
+        proxyRelation: '兄',
+        proxyReason: '本人の意思表示が困難なため',
+        consentMethod: 'signature',
+      });
+      expect(result.proxyReason).toBe('本人の意思表示が困難なため');
+      expect(result.consentMethod).toBe('signature');
+    });
+
+    it('consentMethod の不正値はエラー', () => {
+      expect(() =>
+        ispConsentDetailSchema.parse({ consentMethod: 'fingerprint' }),
+      ).toThrow();
+    });
+  });
+
+  describe('ispMeetingDetailSchema', () => {
+    it('空オブジェクトからデフォルトが生成される', () => {
+      const result = ispMeetingDetailSchema.parse({});
+      expect(result).toEqual({
+        meetingDate: null,
+        meetingMinutes: '',
+        attendees: [],
+      });
+    });
+
+    it('会議情報を設定できる', () => {
+      const result = ispMeetingDetailSchema.parse({
+        meetingDate: '2026-04-10',
+        meetingMinutes: '長期目標を確認、家族同席',
+        attendees: ['サビ管 山田', '担当 鈴木', '本人', '母'],
+      });
+      expect(result.meetingDate).toBe('2026-04-10');
+      expect(result.attendees).toHaveLength(4);
+    });
+  });
+
+  describe('ispConsultationSupportSchema', () => {
+    it('空オブジェクトからデフォルトが生成される', () => {
+      const result = ispConsultationSupportSchema.parse({});
+      expect(result).toEqual({
+        agencyName: '',
+        officerName: '',
+        serviceUsePlanReceivedAt: null,
+        gapNotes: '',
+      });
+    });
+
+    it('相談支援情報を設定できる', () => {
+      const result = ispConsultationSupportSchema.parse({
+        agencyName: '相談支援センターA',
+        officerName: '相談員 佐藤',
+        serviceUsePlanReceivedAt: '2026-03-25',
+        gapNotes: '通所頻度の記載が ISP と相違',
+      });
+      expect(result.agencyName).toBe('相談支援センターA');
+      expect(result.serviceUsePlanReceivedAt).toBe('2026-03-25');
+    });
+  });
+
+  describe('ispComplianceMetadataSchema 拡張統合', () => {
+    it('meeting / consultationSupport なしでパースできる（既存データ互換）', () => {
+      const result = ispComplianceMetadataSchema.parse({
+        serviceType: 'daily_life_care',
+      });
+      expect(result.serviceType).toBe('daily_life_care');
+      // 修正後: optional() から .default() に変更したため、定義済みとなる
+      expect(result.meeting).toBeDefined();
+      expect(result.meeting?.meetingMinutes).toBe('');
+      expect(result.consultationSupport).toBeDefined();
+      expect(result.consultationSupport?.agencyName).toBe('');
+    });
+
+    it('ispComplianceMetadataSchema.parse({}) で完全なデフォルト値が返る (Requested B)', () => {
+      const result = ispComplianceMetadataSchema.parse({});
+      expect(result.meeting).toBeDefined();
+      expect(result.meeting?.attendees).toEqual([]);
+      expect(result.consultationSupport).toBeDefined();
+      expect(result.consultationSupport?.officerName).toBe('');
+    });
+
+    it('meeting / consultationSupport を含む完全入力を受け付ける', () => {
+      const result = ispComplianceMetadataSchema.parse({
+        serviceType: 'daily_life_care',
+        meeting: {
+          meetingDate: '2026-04-10',
+          meetingMinutes: '会議実施',
+          attendees: ['山田', '鈴木'],
+        },
+        consultationSupport: {
+          agencyName: '相談支援センターA',
+          officerName: '佐藤',
+          serviceUsePlanReceivedAt: '2026-03-25',
+          gapNotes: '',
+        },
+      });
+      expect(result.meeting?.meetingDate).toBe('2026-04-10');
+      expect(result.meeting?.attendees).toEqual(['山田', '鈴木']);
+      expect(result.consultationSupport?.agencyName).toBe('相談支援センターA');
+    });
+
+    it('部分的な meeting 入力でもデフォルトで補完される', () => {
+      const result = ispComplianceMetadataSchema.parse({
+        meeting: { meetingDate: '2026-04-10' },
+      });
+      expect(result.meeting?.meetingDate).toBe('2026-04-10');
+      expect(result.meeting?.meetingMinutes).toBe('');
+      expect(result.meeting?.attendees).toEqual([]);
+    });
+  });
+
+  describe('ispFormSchema 追加項目 (B-1)', () => {
+    it('追加5項目なしでパースできる（既存フォーム互換）', () => {
+      const input = makeIspFormInput();
+      const result = ispFormSchema.parse(input);
+      expect(result.medicalConsiderations).toBeUndefined();
+      expect(result.emergencyResponsePlan).toBeUndefined();
+      expect(result.rightsAdvocacy).toBeUndefined();
+      expect(result.serviceStartDate).toBeUndefined();
+      expect(result.firstServiceDate).toBeUndefined();
+    });
+
+    it('追加5項目を設定できる', () => {
+      const input = makeIspFormInput({
+        medicalConsiderations: 'てんかん発作時の対応',
+        emergencyResponsePlan: '主治医連絡 → 救急要請',
+        rightsAdvocacy: '本人の選好を最優先',
+        serviceStartDate: '2026-04-01',
+        firstServiceDate: '2026-04-03',
+      });
+      const result = ispFormSchema.parse(input);
+      expect(result.medicalConsiderations).toBe('てんかん発作時の対応');
+      expect(result.serviceStartDate).toBe('2026-04-01');
+      expect(result.firstServiceDate).toBe('2026-04-03');
+    });
+
+    it('serviceStartDate の不正フォーマットはエラー', () => {
+      const input = makeIspFormInput({ serviceStartDate: '2026/04/01' });
+      expect(() => ispFormSchema.parse(input)).toThrow();
+    });
+  });
+
+  describe('individualSupportPlanSchema 追加項目 (B-2)', () => {
+    it('追加5項目なしでパースできる（既存ドメイン互換）', () => {
+      const input = {
+        ...baseAudit,
+        userId: 'U001',
+        title: 'テスト計画',
+        planStartDate: '2026-04-01',
+        planEndDate: '2027-03-31',
+        userIntent: '意向',
+        familyIntent: '',
+        overallSupportPolicy: '方針',
+        qolIssues: '',
+        longTermGoals: ['目標'],
+        shortTermGoals: ['短期'],
+        supportSummary: '',
+        precautions: '',
+        consentAt: null,
+        deliveredAt: null,
+        monitoringSummary: '',
+        lastMonitoringAt: null,
+        nextReviewAt: null,
+        status: 'assessment' as const,
+        isCurrent: true,
+      };
+      const result = individualSupportPlanSchema.parse(input);
+      expect(result.medicalConsiderations).toBeUndefined();
+      expect(result.serviceStartDate).toBeUndefined();
+      expect(result.firstServiceDate).toBeUndefined();
+
+      // compliance は定義済みデフォルトが返る
+      expect(result.compliance).toBeDefined();
+      expect(result.compliance?.meeting).toBeDefined();
     });
   });
 });

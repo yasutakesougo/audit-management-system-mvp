@@ -8,12 +8,14 @@
  * EditableComplianceSection + ApprovalSection のラッパ。
  * useComplianceForm フックからデータ・ハンドラを受け取る。
  */
-import Stack from '@mui/material/Stack';
 import React from 'react';
+import Stack from '@mui/material/Stack';
 
 import type { UseComplianceFormReturn } from '../../hooks/useComplianceForm';
 import ApprovalSection from './ApprovalSection';
+import ConsultationSupportSection from './ConsultationSupportSection';
 import EditableComplianceSection from './EditableComplianceSection';
+import MeetingDetailSection from './MeetingDetailSection';
 
 export type ComplianceTabProps = {
   isAdmin: boolean;
@@ -27,6 +29,8 @@ const ComplianceTab: React.FC<ComplianceTabProps> = ({ isAdmin, complianceForm, 
     compliance,
     updateConsent,
     updateDelivery,
+    updateMeeting,
+    updateConsultation,
     updateServiceHours,
     missingFields,
     approvalState,
@@ -50,6 +54,20 @@ const ComplianceTab: React.FC<ComplianceTabProps> = ({ isAdmin, complianceForm, 
         onConsentChange={updateConsent}
         onDeliveryChange={updateDelivery}
         onServiceHoursChange={updateServiceHours}
+      />
+
+      {/* A-2: サービス担当者会議記録 */}
+      <MeetingDetailSection
+        meeting={compliance.meeting}
+        isAdmin={isAdmin}
+        onChange={updateMeeting}
+      />
+
+      {/* A-2: 相談支援専門員との連携 */}
+      <ConsultationSupportSection
+        consultation={compliance.consultationSupport}
+        isAdmin={isAdmin}
+        onChange={updateConsultation}
       />
 
       {/* F-1: サビ管承認セクション */}
