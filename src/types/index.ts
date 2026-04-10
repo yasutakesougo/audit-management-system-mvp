@@ -77,6 +77,12 @@ export type SpStaffItem = {
 
   Modified?: string;
   Created?: string;
+
+  // 強度行動障害支援
+  HasBasicBehaviorSupportTraining?: boolean;
+  HasPracticalBehaviorSupportTraining?: boolean;
+  BehaviorSupportTrainingCompletedAt?: string | null;
+  BehaviorSupportTrainingNote?: string;
 };
 
 export type Staff = {
@@ -105,6 +111,12 @@ export type Staff = {
   baseWorkingDays: string[];
   modified?: string;
   created?: string;
+
+  // 強度行動障害支援
+  hasBasicBehaviorSupportTraining?: boolean;
+  hasPracticalBehaviorSupportTraining?: boolean;
+  behaviorSupportTrainingCompletedAt?: string | null;
+  behaviorSupportTrainingNote?: string;
 };
 
 export type SpScheduleItem = {
