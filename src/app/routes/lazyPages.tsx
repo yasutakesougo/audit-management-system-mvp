@@ -72,6 +72,7 @@ const NavigationDiagnosticsPage = React.lazy(() => import('@/pages/admin/Navigat
 const DataIntegrityPage = React.lazy(() => import('@/pages/admin/DataIntegrityPage'));
 const CsvImportPage = React.lazy(() => import('@/pages/admin/CsvImportPage'));
 const ModeSwitchPage = React.lazy(() => import('@/pages/admin/ModeSwitchPage'));
+const MonitoringMeetingRecordPage = React.lazy(() => import('@/pages/MonitoringMeetingRecordPage'));
 
 const StaffPanel = React.lazy(() => import('@/features/staff').then(m => ({ default: m.StaffPanel })));
 const UsersPanel = React.lazy(() => import('@/features/users').then(m => ({ default: m.UsersPanel })));
@@ -140,6 +141,7 @@ export const SuspendedNavigationDiagnosticsPage = createSuspended(NavigationDiag
 export const SuspendedDataIntegrityPage = createSuspended(DataIntegrityPage, 'データ整合性チェックを読み込んでいます…');
 export const SuspendedCsvImportPage = createSuspended(CsvImportPage, 'CSVインポートを読み込んでいます…');
 export const SuspendedModeSwitchPage = createSuspended(ModeSwitchPage, 'モード切替を読み込んでいます…');
+export const SuspendedMonitoringMeetingRecordPage = createSuspended(MonitoringMeetingRecordPage, 'モニタリング会議記録画面を読み込んでいます…');
 const AdminHubPage = React.lazy(() => import('@/pages/admin/AdminHubPage'));
 export const SuspendedAdminHubPage = createSuspended(AdminHubPage, '管理ツールを読み込んでいます…');
 export const SuspendedMeetingGuidePage = createSuspended(MeetingGuidePage, '会議ガイドを読み込んでいます…');

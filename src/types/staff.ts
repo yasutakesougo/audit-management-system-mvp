@@ -56,6 +56,11 @@ export type StaffUpsert = {
   BaseShiftStartTime?: string | null;
   BaseShiftEndTime?: string | null;
   BaseWorkingDays?: string[];
+  // 強度行動障害支援
+  HasBasicBehaviorSupportTraining?: boolean;
+  HasPracticalBehaviorSupportTraining?: boolean;
+  BehaviorSupportTrainingCompletedAt?: string | null;
+  BehaviorSupportTrainingNote?: string;
 };
 
 export const toStaffItem = (input: StaffUpsert): Record<string, unknown> => {
@@ -117,6 +122,20 @@ export const toStaffItem = (input: StaffUpsert): Record<string, unknown> => {
 
   if (input.BaseWorkingDays !== undefined) {
     payload[map.baseWorkingDays] = normalizeStringArray(input.BaseWorkingDays);
+  }
+
+  // 強度行動障害支援
+  if (input.HasBasicBehaviorSupportTraining !== undefined) {
+    payload[map.hasBasicBehaviorSupportTraining] = Boolean(input.HasBasicBehaviorSupportTraining);
+  }
+  if (input.HasPracticalBehaviorSupportTraining !== undefined) {
+    payload[map.hasPracticalBehaviorSupportTraining] = Boolean(input.HasPracticalBehaviorSupportTraining);
+  }
+  if (input.BehaviorSupportTrainingCompletedAt !== undefined) {
+    payload[map.behaviorSupportTrainingCompletedAt] = input.BehaviorSupportTrainingCompletedAt ?? null;
+  }
+  if (input.BehaviorSupportTrainingNote !== undefined) {
+    payload[map.behaviorSupportTrainingNote] = sanitizeString(input.BehaviorSupportTrainingNote);
   }
 
   const title = fullName ?? staffId;

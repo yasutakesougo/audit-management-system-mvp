@@ -16,8 +16,10 @@ export const MONITORING_MEETING_FIELDS = {
   // ── 主キー・参照 ──
   recordId: 'cr014_recordId',
   userId: 'cr014_userId',
+  userName: 'cr014_userName',
   ispId: 'cr014_ispId',
   planningSheetId: 'cr014_planningSheetId',
+  planningSheetTitle: 'cr014_planningSheetTitle',
 
   // ── 会議情報 ──
   meetingType: 'cr014_meetingType',
@@ -42,6 +44,25 @@ export const MONITORING_MEETING_FIELDS = {
   // ── メタ ──
   recordedBy: 'cr014_recordedBy',
   recordedAt: 'cr014_recordedAt',
+
+  // ── 強度行動障害支援・監査強化 ──
+  implementationSummary: 'cr014_implSummary',
+  behaviorChangeSummary: 'cr014_behaviorChange',
+  effectiveSupportSummary: 'cr014_effSupport',
+  issueSummary: 'cr014_issueSummary',
+  discussionSummary: 'cr014_discussionSummary',
+  requiresPlanSheetUpdate: 'cr014_reqPlanSheetUpd',
+  requiresIspUpdate: 'cr014_reqIspUpd',
+  hasBasicTrainedMember: 'cr014_hasBasicTrained',
+  hasPracticalTrainedMember: 'cr014_hasPractTrained',
+  qualificationCheckStatus: 'cr014_qualCheckStatus',
+  nextActions: 'cr014_nextActions',
+
+  // ── 監査ステータス ──
+  status: 'cr014_status',
+  finalizedAt: 'cr014_finalizedAt',
+  finalizedBy: 'cr014_finalizedBy',
+  previousMeetingId: 'cr014_prevMeetingId',
 } as const;
 
 export type MonitoringMeetingFieldKey = keyof typeof MONITORING_MEETING_FIELDS;
@@ -83,8 +104,10 @@ export type SpMonitoringMeetingRow = {
 
   cr014_recordId?: string;
   cr014_userId?: string;
+  cr014_userName?: string;
   cr014_ispId?: string;
   cr014_planningSheetId?: string;
+  cr014_planningSheetTitle?: string;
 
   cr014_meetingType?: string;
   cr014_meetingDate?: string;
@@ -105,6 +128,23 @@ export type SpMonitoringMeetingRow = {
   cr014_recordedBy?: string;
   cr014_recordedAt?: string;
 
+  cr014_implSummary?: string;
+  cr014_behaviorChange?: string;
+  cr014_effSupport?: string;
+  cr014_issueSummary?: string;
+  cr014_discussionSummary?: string;
+  cr014_reqPlanSheetUpd?: boolean;
+  cr014_reqIspUpd?: boolean;
+  cr014_hasBasicTrained?: boolean;
+  cr014_hasPractTrained?: boolean;
+  cr014_qualCheckStatus?: string;
+  cr014_nextActions?: string;
+
+  cr014_status?: string;
+  cr014_finalizedAt?: string;
+  cr014_finalizedBy?: string;
+  cr014_prevMeetingId?: string;
+
   '@odata.etag'?: string;
 } & Record<string, unknown>;
 
@@ -118,8 +158,10 @@ export type SpMonitoringMeetingRow = {
 export const MONITORING_MEETING_CANDIDATES = {
   recordId: [MONITORING_MEETING_FIELDS.recordId, 'RecordId', 'recordId', 'Record_x0020_Id', 'Title'],
   userId: [MONITORING_MEETING_FIELDS.userId, 'UserId', 'UserID', 'UserCode', 'userId', 'User_x0020_Id', 'cr013_userId'],
+  userName: [MONITORING_MEETING_FIELDS.userName, 'UserName', 'userName'],
   ispId: [MONITORING_MEETING_FIELDS.ispId, 'IspId', 'ISPId', 'ispId'],
   planningSheetId: [MONITORING_MEETING_FIELDS.planningSheetId, 'PlanningSheetId', 'planningSheetId'],
+  planningSheetTitle: [MONITORING_MEETING_FIELDS.planningSheetTitle, 'PlanningSheetTitle', 'planningSheetTitle'],
   meetingType: [MONITORING_MEETING_FIELDS.meetingType, 'MeetingType', 'meetingType'],
   meetingDate: [MONITORING_MEETING_FIELDS.meetingDate, 'MeetingDate', 'Meeting_x0020_Date', 'meetingDate', 'Date', 'RecordDate', 'cr013_date'],
   venue: [MONITORING_MEETING_FIELDS.venue, 'Venue', 'venue'],
@@ -134,6 +176,21 @@ export const MONITORING_MEETING_CANDIDATES = {
   nextMonitoringDate: [MONITORING_MEETING_FIELDS.nextMonitoringDate, 'NextMonitoringDate', 'Next_x0020_Monitoring_x0020_Date', 'nextMonitoringDate'],
   recordedBy: [MONITORING_MEETING_FIELDS.recordedBy, 'RecordedBy', 'recordedBy'],
   recordedAt: [MONITORING_MEETING_FIELDS.recordedAt, 'RecordedAt', 'recordedAt'],
+  implementationSummary: [MONITORING_MEETING_FIELDS.implementationSummary, 'ImplementationSummary', 'implSummary'],
+  behaviorChangeSummary: [MONITORING_MEETING_FIELDS.behaviorChangeSummary, 'BehaviorChangeSummary', 'behaviorChange'],
+  effectiveSupportSummary: [MONITORING_MEETING_FIELDS.effectiveSupportSummary, 'EffectiveSupportSummary', 'effSupport'],
+  issueSummary: [MONITORING_MEETING_FIELDS.issueSummary, 'IssueSummary', 'issueSummary'],
+  discussionSummary: [MONITORING_MEETING_FIELDS.discussionSummary, 'DiscussionSummary', 'discussionSummary'],
+  requiresPlanSheetUpdate: [MONITORING_MEETING_FIELDS.requiresPlanSheetUpdate, 'RequiresPlanSheetUpdate', 'reqPlanSheetUpd'],
+  requiresIspUpdate: [MONITORING_MEETING_FIELDS.requiresIspUpdate, 'RequiresIspUpdate', 'reqIspUpd'],
+  hasBasicTrainedMember: [MONITORING_MEETING_FIELDS.hasBasicTrainedMember, 'HasBasicTrainedMember', 'hasBasicTrained'],
+  hasPracticalTrainedMember: [MONITORING_MEETING_FIELDS.hasPracticalTrainedMember, 'HasPracticalTrainedMember', 'hasPractTrained'],
+  qualificationCheckStatus: [MONITORING_MEETING_FIELDS.qualificationCheckStatus, 'QualificationCheckStatus', 'qualCheckStatus'],
+  nextActions: [MONITORING_MEETING_FIELDS.nextActions, 'NextActions', 'nextActions'],
+  status: [MONITORING_MEETING_FIELDS.status, 'Status', 'status'],
+  finalizedAt: [MONITORING_MEETING_FIELDS.finalizedAt, 'FinalizedAt', 'finalizedAt'],
+  finalizedBy: [MONITORING_MEETING_FIELDS.finalizedBy, 'FinalizedBy', 'finalizedBy'],
+  previousMeetingId: [MONITORING_MEETING_FIELDS.previousMeetingId, 'PreviousMeetingId', 'prevMeetingId'],
 } as const;
 
 export type MonitoringMeetingCandidateKey = keyof typeof MONITORING_MEETING_CANDIDATES;
@@ -168,8 +225,10 @@ export const MONITORING_MEETING_OPTIONALS: MonitoringMeetingCandidateKey[] =
 export const MONITORING_MEETING_ENSURE_FIELDS = [
   { internalName: MONITORING_MEETING_FIELDS.recordId, type: 'Text', required: true },
   { internalName: MONITORING_MEETING_FIELDS.userId, type: 'Text', required: true },
+  { internalName: MONITORING_MEETING_FIELDS.userName, type: 'Text', required: false },
   { internalName: MONITORING_MEETING_FIELDS.ispId, type: 'Text', required: true },
   { internalName: MONITORING_MEETING_FIELDS.planningSheetId, type: 'Text', required: false },
+  { internalName: MONITORING_MEETING_FIELDS.planningSheetTitle, type: 'Text', required: false },
   { internalName: MONITORING_MEETING_FIELDS.meetingType, type: 'Text', required: false },
   { internalName: MONITORING_MEETING_FIELDS.meetingDate, type: 'Text', required: true },
   { internalName: MONITORING_MEETING_FIELDS.venue, type: 'Text', required: false },
@@ -184,6 +243,21 @@ export const MONITORING_MEETING_ENSURE_FIELDS = [
   { internalName: MONITORING_MEETING_FIELDS.nextMonitoringDate, type: 'Text', required: false },
   { internalName: MONITORING_MEETING_FIELDS.recordedBy, type: 'Text', required: false },
   { internalName: MONITORING_MEETING_FIELDS.recordedAt, type: 'Text', required: false },
+  { internalName: MONITORING_MEETING_FIELDS.implementationSummary, type: 'Note', required: false },
+  { internalName: MONITORING_MEETING_FIELDS.behaviorChangeSummary, type: 'Note', required: false },
+  { internalName: MONITORING_MEETING_FIELDS.effectiveSupportSummary, type: 'Note', required: false },
+  { internalName: MONITORING_MEETING_FIELDS.issueSummary, type: 'Note', required: false },
+  { internalName: MONITORING_MEETING_FIELDS.discussionSummary, type: 'Note', required: false },
+  { internalName: MONITORING_MEETING_FIELDS.requiresPlanSheetUpdate, type: 'Boolean', required: false },
+  { internalName: MONITORING_MEETING_FIELDS.requiresIspUpdate, type: 'Boolean', required: false },
+  { internalName: MONITORING_MEETING_FIELDS.hasBasicTrainedMember, type: 'Boolean', required: false },
+  { internalName: MONITORING_MEETING_FIELDS.hasPracticalTrainedMember, type: 'Boolean', required: false },
+  { internalName: MONITORING_MEETING_FIELDS.qualificationCheckStatus, type: 'Text', required: false },
+  { internalName: MONITORING_MEETING_FIELDS.nextActions, type: 'Note', required: false },
+  { internalName: MONITORING_MEETING_FIELDS.status, type: 'Text', required: false },
+  { internalName: MONITORING_MEETING_FIELDS.finalizedAt, type: 'Text', required: false },
+  { internalName: MONITORING_MEETING_FIELDS.finalizedBy, type: 'Text', required: false },
+  { internalName: MONITORING_MEETING_FIELDS.previousMeetingId, type: 'Text', required: false },
 ] as const;
 
 // ---------------------------------------------------------------------------

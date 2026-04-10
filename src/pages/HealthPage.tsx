@@ -373,6 +373,14 @@ const listSpecs: ListSpec[] = SP_LIST_REGISTRY.map((entry) => {
             StaffID: `staff-health-${stamp}`,
             StaffName: "健康診断テスト用",
           }
+        : entry.key === "monitoring_meetings"
+        ? {
+            Title: `healthcheck-monitoring-${stamp}`,
+            cr014_recordId: `rec-health-${stamp}`,
+            cr014_userId: `user-health-${stamp}`,
+            cr014_meetingDate: new Date().toISOString(),
+            cr014_status: "draft",
+          }
         : { Title: `healthcheck-root-${stamp}` },
     updateItem: { Title: `healthcheck-updated-${stamp}` },
     isReadOnly: !entry.operations.includes("W"),

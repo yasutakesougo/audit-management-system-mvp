@@ -17,10 +17,12 @@ import type {
   AuditCheckInput,
   SheetAuditInfo,
   RecordAuditInfo,
+  MonitoringAuditInfo,
 } from './auditChecks';
 import type { IUserMaster } from '@/sharepoint/fields';
 import type { Staff } from '@/types';
 import type { PlanningSheetListItem } from '@/domain/isp/schema';
+import type { MonitoringMeetingRecord } from '@/domain/isp/monitoringMeeting';
 
 // ─────────────────────────────────────────────
 // IUserMaster → UserRegulatoryProfile
@@ -57,10 +59,10 @@ export function toStaffQualificationProfile(staff: Staff): StaffQualificationPro
 
   return {
     staffId: staff.staffId ?? String(staff.id),
-    hasPracticalTraining: certs.some(c => c.includes('実践研修')),
-    hasBasicTraining: certs.some(c => c.includes('基礎研修')),
-    hasBehaviorGuidanceTraining: certs.some(c => c.includes('行動援護')),
-    hasCorePersonTraining: certs.some(c => c.includes('中核的人材')),
+    hasPracticalTraining: certs.some((c: string) => c.includes('実践研修')),
+    hasBasicTraining: certs.some((c: string) => c.includes('基礎研修')),
+    hasBehaviorGuidanceTraining: certs.some((c: string) => c.includes('行動援護')),
+    hasCorePersonTraining: certs.some((c: string) => c.includes('中核的人材')),
     certificationCheckedAt: null,
   };
 }
@@ -113,6 +115,22 @@ export function toRecordAuditInfo(record: RecordMinimal): RecordAuditInfo {
 }
 
 // ─────────────────────────────────────────────
+// MonitoringMeetingRecord → MonitoringAuditInfo
+// ─────────────────────────────────────────────
+
+export function toMonitoringAuditInfo(meeting: MonitoringMeetingRecord): MonitoringAuditInfo {
+  return {
+    id: meeting.id,
+    userId: meeting.userId,
+    meetingDate: meeting.meetingDate,
+    status: meeting.status as 'draft' | 'finalized',
+    qualificationStatus: meeting.qualificationCheckStatus || 'warning',
+    hasBasicTrainedMember: meeting.hasBasicTrainedMember || false,
+    hasPracticalTrainedMember: meeting.hasPracticalTrainedMember || false,
+  };
+}
+
+// ─────────────────────────────────────────────
 // 統合ビルダー（利用者単位）
 // ─────────────────────────────────────────────
 
@@ -121,6 +139,7 @@ export interface RealDataInputs {
   staff: Staff[];
   sheetsByUser: Map<string, PlanningSheetListItem[]>;
   recordsBySheet: Map<string, RecordMinimal[]>;
+  monitoringMeetingsByUser: Map<string, MonitoringMeetingRecord[]>;
 }
 
 /**
@@ -154,11 +173,15 @@ export function buildAllAuditCheckInputs(
       }
     }
 
+    // この利用者のモニタリングを集める
+    const monitoringMeetings = (data.monitoringMeetingsByUser.get(userId) ?? []).map(toMonitoringAuditInfo);
+
     inputs.push({
       userProfile,
       sheets,
       staffProfiles,
       records,
+      monitoringMeetings,
       today,
     });
   }

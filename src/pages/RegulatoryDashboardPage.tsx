@@ -34,6 +34,7 @@ import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIceb
 import { useSevereAddonRealData } from '@/features/regulatory/hooks/useSevereAddonRealData';
 import { useRegulatoryFindingsRealData } from '@/features/regulatory/hooks/useRegulatoryFindingsRealData';
 import { useProcedureRecordRepository } from '@/features/regulatory/hooks/useProcedureRecordRepository';
+import { useMonitoringMeetingRepository } from '@/features/monitoring/data/useMonitoringMeetingRepository';
 import {
   buildHandoffFromRegularFinding,
   buildHandoffFromAddonFinding,
@@ -74,6 +75,7 @@ const RegulatoryDashboardPage: React.FC = () => {
   const { staff: spStaff, isLoading: staffLoading, error: staffError } = useStaff();
   const planningSheetRepo = usePlanningSheetRepositories();
   const procedureRecordRepo = useProcedureRecordRepository();
+  const monitoringMeetingRepo = useMonitoringMeetingRepository();
   const dataLoading = usersStatus === 'loading' || staffLoading;
   const dataError = usersError ? (usersError instanceof Error ? usersError : new Error(String(usersError))) : staffError;
 
@@ -89,6 +91,7 @@ const RegulatoryDashboardPage: React.FC = () => {
     dataError,
     planningSheetRepo,
     procedureRecordRepo,
+    monitoringMeetingRepo,
   );
   const findings = useMemo(
     () => (realFindings.length > 0 ? realFindings : generateDemoFindings()),

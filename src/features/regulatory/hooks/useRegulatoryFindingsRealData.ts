@@ -23,6 +23,8 @@ import type { Staff } from '@/types';
 import type { AuditFinding, AuditCheckInput } from '@/domain/regulatory/auditChecks';
 import type { PlanningSheetListItem, ProcedureRecordListItem } from '@/domain/isp/schema';
 import type { PlanningSheetRepository, ProcedureRecordRepository } from '@/domain/isp/port';
+import type { MonitoringMeetingRepository } from '@/domain/isp/monitoringMeetingRepository';
+import type { MonitoringMeetingRecord } from '@/domain/isp/monitoringMeeting';
 import {
   buildRegulatoryFindings,
   _resetFindingCounter,
@@ -62,6 +64,7 @@ export interface RegulatoryFindingsRealDataResult {
  * @param error - データ取得エラー
  * @param planningSheetRepo - PlanningSheetRepository
  * @param procedureRecordRepo - ProcedureRecordRepository（手順記録取得用）
+ * @param monitoringMeetingRepo - MonitoringMeetingRepository（モニタリング取得用）
  */
 export function useRegulatoryFindingsRealData(
   users: IUserMaster[],
@@ -70,6 +73,7 @@ export function useRegulatoryFindingsRealData(
   error: Error | null,
   planningSheetRepo?: PlanningSheetRepository | null,
   procedureRecordRepo?: ProcedureRecordRepository | null,
+  monitoringMeetingRepo?: MonitoringMeetingRepository | null,
 ): RegulatoryFindingsRealDataResult {
 
   // ── PlanningSheet を非同期に取得 ──
@@ -80,6 +84,10 @@ export function useRegulatoryFindingsRealData(
   // ── ProcedureRecord を非同期に取得 ──
   const [recordsBySheet, setRecordsBySheet] = useState<Map<string, RecordMinimal[]>>(new Map());
   const [recordsLoading, setRecordsLoading] = useState(false);
+
+  // ── MonitoringMeeting を非同期に取得 ──
+  const [meetingsByUser, setMeetingsByUser] = useState<Map<string, MonitoringMeetingRecord[]>>(new Map());
+  const [meetingsLoading, setMeetingsLoading] = useState(false);
 
   // 有効な利用者IDリスト（安定参照）
   const activeUserIds = useMemo(() => {
@@ -182,8 +190,40 @@ export function useRegulatoryFindingsRealData(
     fetchProcedureRecords();
   }, [fetchProcedureRecords]);
 
+  // ── Phase 3: MonitoringMeeting 取得 ──
+  const fetchMonitoringMeetings = useCallback(async () => {
+    if (!monitoringMeetingRepo || activeUserIds.length === 0) {
+      setMeetingsByUser(new Map());
+      return;
+    }
+
+    setMeetingsLoading(true);
+    try {
+      const results = new Map<string, MonitoringMeetingRecord[]>();
+
+      const promises = activeUserIds.map(async (userId) => {
+        try {
+          const meetings = await monitoringMeetingRepo.listByUser(userId);
+          results.set(userId, meetings);
+        } catch (err) {
+          console.warn(`[useRegulatoryFindingsRealData] Failed to fetch meetings for ${userId}:`, err);
+          results.set(userId, []);
+        }
+      });
+
+      await Promise.all(promises);
+      setMeetingsByUser(results);
+    } finally {
+      setMeetingsLoading(false);
+    }
+  }, [monitoringMeetingRepo, activeUserIds]);
+
+  useEffect(() => {
+    fetchMonitoringMeetings();
+  }, [fetchMonitoringMeetings]);
+
   // ── 統合状態 ──
-  const combinedLoading = isLoading || sheetsLoading || recordsLoading;
+  const combinedLoading = isLoading || sheetsLoading || recordsLoading || meetingsLoading;
   const combinedError = error || sheetsError;
 
   // ── findings 構築 ──
@@ -194,7 +234,13 @@ export function useRegulatoryFindingsRealData(
     const today = new Date().toISOString().slice(0, 10);
 
     const inputs = buildAllAuditCheckInputs(
-      { users, staff, sheetsByUser, recordsBySheet },
+      { 
+        users, 
+        staff, 
+        sheetsByUser, 
+        recordsBySheet, 
+        monitoringMeetingsByUser: meetingsByUser 
+      },
       today,
     );
 
@@ -205,7 +251,7 @@ export function useRegulatoryFindingsRealData(
     }
 
     return { findings, inputs };
-  }, [users, staff, sheetsByUser, combinedLoading, combinedError]);
+  }, [users, staff, sheetsByUser, recordsBySheet, meetingsByUser, combinedLoading, combinedError]);
 
   const isRealData = !combinedLoading && !combinedError && users.length > 0;
 

@@ -40,12 +40,20 @@ function isHealthy(resolved: Record<string, string | undefined>) {
 describe('MONITORING_MEETING_CANDIDATES — cr014_ 標準名', () => {
   const available = new Set([
     'Id', 'Title',
-    'cr014_recordId', 'cr014_userId', 'cr014_ispId', 'cr014_planningSheetId',
+    'cr014_recordId', 'cr014_userId', 'cr014_userName', 'cr014_ispId', 
+    'cr014_planningSheetId', 'cr014_planningSheetTitle',
     'cr014_meetingType', 'cr014_meetingDate', 'cr014_venue',
     'cr014_attendeesJson', 'cr014_goalEvaluationsJson', 'cr014_overallAssessment',
     'cr014_userFeedback', 'cr014_familyFeedback',
     'cr014_planChangeDecision', 'cr014_changeReason', 'cr014_decisionsJson',
     'cr014_nextMonitoringDate', 'cr014_recordedBy', 'cr014_recordedAt',
+    // 監査強化
+    'cr014_implSummary', 'cr014_behaviorChange', 'cr014_effSupport',
+    'cr014_issueSummary', 'cr014_discussionSummary',
+    'cr014_reqPlanSheetUpd', 'cr014_reqIspUpd',
+    'cr014_hasBasicTrained', 'cr014_hasPractTrained',
+    'cr014_qualCheckStatus', 'cr014_nextActions',
+    'cr014_status', 'cr014_finalizedAt', 'cr014_finalizedBy', 'cr014_prevMeetingId',
   ]);
 
   it('必須3フィールドがすべて解決される', () => {

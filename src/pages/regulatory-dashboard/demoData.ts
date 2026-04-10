@@ -58,6 +58,7 @@ export function generateDemoFindings(): AuditFinding[] {
     records: [
       { id: 'rec-1', planningSheetId: 'sheet-1', recordDate: '2026-03-10' },
     ],
+    monitoringMeetings: [],
     today: new Date().toISOString().slice(0, 10),
   });
 }

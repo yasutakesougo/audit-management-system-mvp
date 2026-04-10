@@ -35,6 +35,11 @@ export const STAFF_MASTER_FIELD_MAP = {
   hasBehaviorGuidanceTraining: 'HasBehaviorGuidanceTraining',
   hasCorePersonTraining: 'HasCorePersonTraining',
   certificationCheckedAt: 'CertificationCheckedAt',
+  // ── 強度行動障害支援 (資格要件チェック用) ──
+  hasBasicBehaviorSupportTraining: 'HasBasicBehaviorSupportTraining',
+  hasPracticalBehaviorSupportTraining: 'HasPracticalBehaviorSupportTraining',
+  behaviorSupportTrainingCompletedAt: 'BehaviorSupportTrainingCompletedAt',
+  behaviorSupportTrainingNote: 'BehaviorSupportTrainingNote',
 } as const;
 
 export const STAFF_SELECT_FIELDS_CANONICAL = [
@@ -66,6 +71,11 @@ export const STAFF_SELECT_FIELDS_CANONICAL = [
   STAFF_MASTER_FIELD_MAP.hasBehaviorGuidanceTraining,
   STAFF_MASTER_FIELD_MAP.hasCorePersonTraining,
   STAFF_MASTER_FIELD_MAP.certificationCheckedAt,
+  // 強度行動障害支援
+  STAFF_MASTER_FIELD_MAP.hasBasicBehaviorSupportTraining,
+  STAFF_MASTER_FIELD_MAP.hasPracticalBehaviorSupportTraining,
+  STAFF_MASTER_FIELD_MAP.behaviorSupportTrainingCompletedAt,
+  STAFF_MASTER_FIELD_MAP.behaviorSupportTrainingNote,
 ] as const;
 
 /**

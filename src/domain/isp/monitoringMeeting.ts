@@ -57,6 +57,7 @@ export const planChangeDecisionValues = [
   'minor_revision',    // 軽微な修正
   'major_revision',    // 大幅な改訂
   'urgent_revision',   // 緊急改訂
+  'reassessment',      // 再アセスメント実施
 ] as const;
 
 export type PlanChangeDecision = (typeof planChangeDecisionValues)[number];
@@ -66,6 +67,20 @@ export const PLAN_CHANGE_LABELS: Record<PlanChangeDecision, string> = {
   minor_revision: '軽微な修正',
   major_revision: '大幅な改訂',
   urgent_revision: '緊急改訂',
+  reassessment: '再アセスメント実施',
+} as const;
+
+/** 記録ステータス */
+export const meetingStatusValues = [
+  'draft',     // 下書き
+  'finalized', // 確定済み（編集不可）
+] as const;
+
+export type MeetingStatus = (typeof meetingStatusValues)[number];
+
+export const MEETING_STATUS_LABELS: Record<MeetingStatus, string> = {
+  draft: '下書き',
+  finalized: '確定',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -90,6 +105,14 @@ export interface MeetingAttendee {
   role: string;
   /** 出席したか */
   present: boolean;
+  /** スタッフ ID */
+  staffId?: string;
+  /** 研修レベル */
+  trainingLevel?: 'none' | 'basic' | 'practical';
+  /** 基礎研修修了か */
+  hasBasicTraining?: boolean;
+  /** 実践研修修了か */
+  hasPracticalTraining?: boolean;
 }
 
 /** モニタリング会議記録 */
@@ -98,10 +121,14 @@ export interface MonitoringMeetingRecord {
   id: string;
   /** 対象利用者 ID */
   userId: string;
+  /** 対象利用者名 */
+  userName?: string;
   /** 紐づく ISP ID */
   ispId: string;
   /** 紐づく支援計画シート ID（P2版管理との連携） */
   planningSheetId?: string;
+  /** 紐づく支援計画シート タイトル */
+  planningSheetTitle?: string;
 
   // ── 会議情報 ──
 
@@ -139,12 +166,49 @@ export interface MonitoringMeetingRecord {
   /** 次回モニタリング予定日 (ISO 8601 date) */
   nextMonitoringDate: string;
 
+  // ── 強度行動障害支援・監査強化 ──
+
+  /** 計画どおり実施できた支援・実施状況サマリ */
+  implementationSummary?: string;
+  /** 行動面の変化 */
+  behaviorChangeSummary?: string;
+  /** 有効だった支援サマリ */
+  effectiveSupportSummary?: string;
+  /** 課題サマリ */
+  issueSummary?: string;
+  /** 会議での検討内容（監査証跡） */
+  discussionSummary: string;
+  /** 支援計画シートの修正要否 */
+  requiresPlanSheetUpdate?: boolean;
+  /** 個別支援計画の修正要否 */
+  requiresIspUpdate?: boolean;
+  /** 次回のアクション */
+  nextActions?: string[];
+
+  /** 基礎研修修了者の参加有無 */
+  hasBasicTrainedMember?: boolean;
+  /** 実践研修修了者の参加有無 */
+  hasPracticalTrainedMember?: boolean;
+  /** 資格チェックステータス */
+  qualificationCheckStatus?: 'ok' | 'warning' | 'invalid';
+
   // ── メタ ──
 
   /** 記録者氏名 */
   recordedBy: string;
   /** 記録日時 (ISO 8601) */
   recordedAt: string;
+
+  // ── ステータス & 確定証跡 ──
+
+  /** ステータス */
+  status: MeetingStatus;
+  /** 確定日時 (ISO 8601) */
+  finalizedAt?: string;
+  /** 確定者氏名 */
+  finalizedBy?: string;
+  /** 前回会議 ID（PDCAの連続性維持用） */
+  previousMeetingId?: string;
 }
 
 // ---------------------------------------------------------------------------
