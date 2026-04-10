@@ -75,7 +75,7 @@ describe('BulkDailyRecordForm', () => {
     renderForm();
 
     expect(getDialog()).toBeInTheDocument();
-    expect(screen.getByText('複数利用者支援記録（ケース記録）作成')).toBeInTheDocument();
+    expect(screen.getByText('複数利用者日々の記録作成')).toBeInTheDocument();
     expect(screen.getByText('複数の利用者に対して共通の活動記録を効率的に作成できます')).toBeInTheDocument();
   });
 

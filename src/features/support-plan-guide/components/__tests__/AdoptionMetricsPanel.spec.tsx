@@ -93,7 +93,7 @@ describe('AdoptionMetricsPanel', () => {
 
     expect(screen.getByText('採用 6件')).toBeDefined();
     expect(screen.getByText('却下 4件')).toBeDefined();
-    expect(screen.getByText('ISP反映 3件')).toBeDefined();
+    expect(screen.getByText('個別支援計画反映 3件')).toBeDefined();
   });
 
   it('採用率をパーセント表示する', () => {
