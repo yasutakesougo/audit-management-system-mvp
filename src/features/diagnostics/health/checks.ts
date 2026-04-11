@@ -5,7 +5,7 @@ import {
   ListSpec,
   SpFieldSpec,
 } from "./types";
-import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
+import { resolveInternalNamesDetailed, ResolutionResult } from '@/lib/sp/helpers';
 import { SpAdapter } from "./spAdapter";
 import { getRuntimeEnv } from "@/env";
 import { emitDriftRecord, type DriftResolutionType, type DriftType } from '@/features/diagnostics/drift/domain/driftLogic';
@@ -177,7 +177,8 @@ export async function runHealthChecks(
   }
 
   {
-    const e2eMock = Boolean(ctx.env["VITE_E2E_MSAL_MOCK"] ?? false);
+    const e2eMockValue = String(ctx.env["VITE_E2E_MSAL_MOCK"] ?? "");
+    const e2eMock = e2eMockValue === "true" || e2eMockValue === "1";
     if (ctx.isProductionLike && e2eMock) {
       results.push(
         fail({
@@ -275,6 +276,8 @@ async function runListChecks(
   spec: ListSpec,
   ctx: HealthContext
 ) {
+  let fieldStatus: ResolutionResult<string>['fieldStatus'] = {};
+
   // List existence
   const listInfo = await safe(() => sp.getListByTitle(spec.resolvedTitle));
   if (!listInfo.ok) {
@@ -354,7 +357,8 @@ async function runListChecks(
         emitDriftRecord(spec.resolvedTitle, fieldName, resolutionType as DriftResolutionType, driftType as DriftType);
       }
     });
-    const { missing, fieldStatus } = resolution;
+    fieldStatus = resolution.fieldStatus;
+    const { missing } = resolution;
 
     // 2. Classify missing by essentiality
     const missingEssential = spec.requiredFields.filter(
@@ -502,11 +506,24 @@ async function runListChecks(
 
   // 事故防止：healthcheck 用の識別フラグを body に混ぜる
   const stamp = new Date().toISOString();
-  const createBody = { ...spec.createItem };
-  if (typeof createBody["Title"] === "string") {
-    createBody["Title"] = `[healthcheck] ${createBody["Title"]} ${stamp}`;
+  
+  // 物理名へのマッピングを行い、Create テストを実行
+  const mapToPhysical = (obj: Record<string, unknown>) => {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      const resolved = fieldStatus[k]?.resolvedName || k;
+      out[resolved] = v;
+    }
+    return out;
+  };
+
+  const createBody = mapToPhysical(spec.createItem);
+  const physicalTitle = fieldStatus["Title"]?.resolvedName || "Title";
+  
+  if (typeof createBody[physicalTitle] === "string") {
+    createBody[physicalTitle] = `[healthcheck] ${createBody[physicalTitle]} ${stamp}`;
   } else {
-    createBody["Title"] = `[healthcheck] ${stamp}`;
+    createBody[physicalTitle] = `[healthcheck] ${stamp}`;
   }
 
   const created = await safe(() =>
@@ -520,7 +537,7 @@ async function runListChecks(
         category: "permissions",
         summary: "作成（Create）権限がありません。【要管理者対応】",
         detail: created.err,
-        evidence: { listTitle: spec.resolvedTitle },
+        evidence: { listTitle: spec.resolvedTitle, payload: createBody },
         nextActions: [
           {
             kind: "copy",
@@ -546,8 +563,9 @@ async function runListChecks(
   // Allow some time for SharePoint to sync the new item
   await new Promise((r) => setTimeout(r, 500));
 
+  const updateBody = mapToPhysical(spec.updateItem);
   const updated = await safe(() =>
-    sp.updateItem(spec.resolvedTitle, created.v.id, spec.updateItem)
+    sp.updateItem(spec.resolvedTitle, created.v.id, updateBody)
   );
   if (!updated.ok) {
     results.push(

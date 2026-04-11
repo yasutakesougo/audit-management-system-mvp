@@ -28,13 +28,15 @@ export const MEETING_SESSIONS_FIELDS = {
  * 0. MeetingSessions リストのフィールド候補 (Drift Resistance)
  */
 export const MEETING_SESSIONS_CANDIDATES = {
-  sessionKey:        ['SessionKey', 'sessionKey', 'cr013_sessionKey', 'Key'],
-  meetingKind:       ['MeetingKind', 'meetingKind', 'cr013_meetingKind', 'Kind'],
-  date:              ['Date', 'date', 'cr013_date', 'MeetingDate'],
+  sessionKey:        ['Session_x0020_Key', 'SessionKey', 'sessionKey', 'cr013_sessionKey', 'Key'],
+  meetingKind:       ['Meeting_x0020_Kind', 'MeetingKind', 'meetingKind', 'cr013_meetingKind', 'Kind'],
+  date:              ['Meeting_x0020_Date', 'Date', 'date', 'cr013_date', 'MeetingDate'],
+  startTime:         ['Start_x0020_Time', 'StartTime', 'startTime'],
+  endTime:           ['End_x0020_Time', 'EndTime', 'endTime'],
   status:            ['Status', 'status', 'cr013_status'],
-  chairpersonUserId: ['ChairpersonUserId', 'chairpersonUserId', 'cr013_chairpersonUserId', 'ChairpersonID'],
-  chairpersonName:   ['ChairpersonName', 'chairpersonName', 'cr013_chairpersonName', 'ChairPerson'],
-  totalParticipants: ['TotalParticipants', 'totalParticipants', 'cr013_totalParticipants', 'ParticipantsCount'],
+  chairpersonUserId: ['Chairperson_x0020_ID', 'ChairpersonUserId', 'chairpersonUserId', 'cr013_chairpersonUserId', 'ChairpersonID'],
+  chairpersonName:   ['Chairperson_x0020_Name', 'ChairpersonName', 'chairpersonName', 'cr013_chairpersonName', 'ChairPerson'],
+  totalParticipants: ['Total_x0020_Participants', 'TotalParticipants', 'totalParticipants', 'cr013_totalParticipants', 'ParticipantsCount'],
 } as const;
 
 export const MEETING_SESSIONS_ESSENTIALS: (keyof typeof MEETING_SESSIONS_CANDIDATES)[] = [

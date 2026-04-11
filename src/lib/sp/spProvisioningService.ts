@@ -30,12 +30,6 @@ export class SpProvisioningService {
 
   /**
    * リストの存在を保証し、必要に応じて作成・フィールド追加を行う。
-   *
-   * 物理的な列追加が一部失敗した場合、`ensureListExists` は throw せずに
-   * `failedFields` を返す。
-   * 
-   * [Hardening Phase C] REQUIRED 列が失敗した場合は Error を返し、
-   * 上位の Coordinator が回復 Signal を発火できるようにする。
    */
   async ensureList(
     listTitle: string,
