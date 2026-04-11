@@ -24,6 +24,8 @@ import type {
     EnsureListOptions,
     EnsureListResult,
     ExistingFieldShape,
+    FailedFieldInfo,
+    FailedFieldReason,
     FieldsCacheEntry,
     SharePointListMetadata,
     SpFieldDef,
@@ -231,23 +233,63 @@ export async function getListFieldInternalNames(
  * Detects SharePoint 8KB row size limit errors.
  * Includes both English and Japanese error strings seen in production.
  */
+/**
+ * Detects SharePoint indexed-column-count limit errors.
+ * Distinct from row-size limit: caused by exceeding the max number of indexed columns per list (~20).
+ */
+function isIndexedColumnLimitError(errText: string): boolean {
+  return (
+    errText.includes('indexed columns') && errText.includes('maximum') ||
+    errText.includes('インデックス処理されている列の数が最大限') ||
+    errText.includes('この列をインデックス処理できません')
+  );
+}
+
+function classifyFieldError(errText: string): FailedFieldReason {
+  if (isIndexedColumnLimitError(errText)) return 'indexed_column_limit';
+  if (isRowSizeLimitError(errText)) return 'row_size_limit';
+  return 'http_error';
+}
+
+function extractHttpStatus(error: unknown): number | undefined {
+  if (typeof error === 'object' && error && 'status' in error) {
+    const s = (error as { status?: unknown }).status;
+    if (typeof s === 'number') return s;
+  }
+  return undefined;
+}
+
 function isRowSizeLimitError(errText: string): boolean {
   return (
     errText.includes('maximum for this list') ||
     errText.includes('reached the limit') ||
     errText.includes('合計サイズが制限を超えている') ||
-    errText.includes('制限を超えているので、列を追加できません')
+    errText.includes('制限を超えているので、列を追加できません') ||
+    errText.includes('まず、他の列をいくつか削除')
   );
+}
+
+export type AddFieldStatus = 'success' | 'limit_reached' | 'indexed_limit' | 'error';
+
+export interface AddFieldResult {
+  status: AddFieldStatus;
+  reason?: FailedFieldReason;
+  httpStatus?: number;
+  detail?: string;
 }
 
 /**
  * Add a single field to a list using the CreateFieldAsXml endpoint.
+ *
+ * Note: `spFetch` raises on non-OK responses, so classification happens in the catch
+ * block. The `if (!res.ok)` branch below is defensive in case spFetch is ever changed
+ * to return without throwing.
  */
 export async function addFieldToList(
   spFetch: SpFetchFn,
   listTitle: string,
   field: SpFieldDef,
-): Promise<"success" | "limit_reached" | "error"> {
+): Promise<AddFieldResult> {
   const base = resolveListPath(listTitle);
   const schema = buildFieldSchema(field);
   const body = {
@@ -269,27 +311,43 @@ export async function addFieldToList(
     });
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
-      const isLimit = isRowSizeLimitError(errText);
-      const isConflict = errText.includes('already exists') || errText.includes('in use');
-      
-      if (isLimit || res.status === 400 || res.status === 500) {
-        auditLog.warn('sp:fields', 'schema_provision_failed', { 
-          listTitle, 
-          field: field.internalName,
-          status: res.status,
-          isLimit,
-          isConflict,
-          detail: errText.slice(0, 500)
-        });
-        return isLimit ? "limit_reached" : "error";
-      }
-
-      return "error";
+      const reason = classifyFieldError(errText);
+      auditLog.warn('sp:fields', 'schema_provision_failed', {
+        listTitle,
+        field: field.internalName,
+        status: res.status,
+        reason,
+        detail: errText.slice(0, 500),
+      });
+      return {
+        status: reason === 'row_size_limit' ? 'limit_reached'
+              : reason === 'indexed_column_limit' ? 'indexed_limit'
+              : 'error',
+        reason,
+        httpStatus: res.status,
+        detail: errText.slice(0, 500),
+      };
     }
-    return "success";
+    return { status: 'success' };
   } catch (error) {
-    console.error(`[addFieldToList] Unexpected error adding field "${field.internalName}":`, error);
-    return "error";
+    const message = error instanceof Error ? error.message : String(error);
+    const reason = classifyFieldError(message);
+    const httpStatus = extractHttpStatus(error);
+    auditLog.warn('sp:fields', 'schema_provision_failed', {
+      listTitle,
+      field: field.internalName,
+      status: httpStatus,
+      reason,
+      detail: message.slice(0, 500),
+    });
+    return {
+      status: reason === 'row_size_limit' ? 'limit_reached'
+            : reason === 'indexed_column_limit' ? 'indexed_limit'
+            : 'error',
+      reason,
+      httpStatus,
+      detail: message.slice(0, 500),
+    };
   }
 }
 
@@ -397,6 +455,7 @@ export async function ensureListExists(
   }
 
   let isLimitReached = false;
+  const failedFields: FailedFieldInfo[] = [];
 
   if (fields.length && !options.preventPhysicalCreation) {
     const existing = await fetchExistingFields(spFetch, listTitle);
@@ -420,33 +479,51 @@ export async function ensureListExists(
       const fieldResult = resolution.fieldStatus[field.internalName];
       if (fieldResult?.resolvedName) {
         // Drift detected! Use existing suffixed or truncated column instead of proliferating
-        auditLog.warn('sp:fields', 'schema_drift_detected', { 
-          listTitle, 
-          expected: field.internalName, 
+        auditLog.warn('sp:fields', 'schema_drift_detected', {
+          listTitle,
+          expected: field.internalName,
           actual: fieldResult.resolvedName,
           driftType: fieldResult.driftType
         });
         continue;
       }
 
+      const isRequired = Boolean(field.required || field.forceCreate);
+
       // 3. Physical creation (Only if truly unknown after drift check)
-      if ((!field.required && !field.forceCreate) || isLimitReached) {
-        auditLog.warn('sp:fields', 'provisioning_blocked', { 
-          listTitle, 
+      if (!isRequired || isLimitReached) {
+        auditLog.warn('sp:fields', 'provisioning_blocked', {
+          listTitle,
           field: field.internalName,
-          cause: isLimitReached ? "row_limit" : "optional_field"
+          cause: isLimitReached ? 'row_limit' : 'optional_field',
         });
+        if (isLimitReached && isRequired) {
+          failedFields.push({
+            internalName: field.internalName,
+            required: true,
+            reason: 'row_size_limit',
+            detail: 'Skipped because a prior field in the same list hit the row-size limit.',
+          });
+        }
         continue;
       }
 
-      console.error('[DEBUG] ensureListExists: about to add field', field.internalName);
       const result = await addFieldToList(spFetch, listTitle, field);
-      console.error('[DEBUG] ensureListExists: addFieldToList result', result);
-      if (result === "limit_reached") {
+      if (result.status === 'success') continue;
+
+      if (result.status === 'limit_reached') {
         isLimitReached = true;
       }
+      failedFields.push({
+        internalName: field.internalName,
+        required: isRequired,
+        reason: result.reason ?? 'unknown',
+        status: result.httpStatus,
+        detail: result.detail,
+      });
     }
   }
 
-  return ensured ?? { listId: '', title: listTitle };
+  const base = ensured ?? { listId: '', title: listTitle };
+  return failedFields.length ? { ...base, failedFields } : base;
 }
