@@ -187,18 +187,9 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     // --- 2. 支援計画・アセスメント (assessment) ---
     // 順序: ISP作成・更新 → 支援計画シート → アセスメント系 → 分析系 → アンケート
     createHubNavItem('planning', {
-      // Hub 自体の active は /planning 配下に限定し、配下業務画面との二重 active を避ける。
+      // Hub 自体の active は /planning 配下に限定し、配下業務画面との二重 active は避ける。
       isActive: (pathname) => pathname === '/planning' || pathname.startsWith('/planning/'),
     }),
-    {
-      label: 'モニタリング記録',
-      to: '/records/monthly',
-      isActive: (pathname) => pathname.startsWith('/records/monthly'),
-      icon: undefined,
-      testId: 'nav-monitoring-record',
-      audience: NAV_AUDIENCE.staff,
-      group: 'planning' as NavGroupKey,
-    },
     {
       label: '個別支援計画',
       to: '/support-plan-guide',
@@ -209,13 +200,22 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'planning' as NavGroupKey,
     },
     {
+      label: 'モニタリング記録',
+      to: '/records/monthly',
+      isActive: (pathname) => pathname.startsWith('/records/monthly'),
+      icon: undefined,
+      testId: 'nav-monitoring-record',
+      audience: NAV_AUDIENCE.staff,
+      group: 'severe' as NavGroupKey,
+    },
+    {
       label: '支援計画シート',
       to: '/planning-sheet-list',
       isActive: (pathname) => pathname.startsWith('/planning-sheet-list') || pathname.startsWith('/support-planning-sheet'),
       icon: undefined,
       testId: TESTIDS.nav.planningSheet,
       audience: NAV_AUDIENCE.staff,
-      group: 'planning' as NavGroupKey,
+      group: 'severe' as NavGroupKey,
     },
     {
       label: 'アセスメント',
@@ -225,16 +225,16 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.assessmentDashboard,
       testId: TESTIDS.nav.assessment,
       audience: NAV_AUDIENCE.staff,
-      group: 'planning' as NavGroupKey,
+      group: 'severe' as NavGroupKey,
     },
     {
-      label: '分析ワークスペース',
+      label: '行動分析',
       to: '/analysis/dashboard',
       isActive: (pathname) => pathname.startsWith('/analysis'),
       icon: undefined,
       testId: 'nav-analysis-workspace',
       audience: NAV_AUDIENCE.all,
-      group: 'planning' as NavGroupKey,
+      group: 'severe' as NavGroupKey,
       tier: 'more',
       featureFlag: 'todayLiteNavV2',
     },

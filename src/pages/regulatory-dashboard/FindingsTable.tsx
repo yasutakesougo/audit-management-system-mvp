@@ -32,6 +32,7 @@ interface FindingsTableProps {
   rows: UnifiedFindingRow[];
   filterSeverity: AuditFindingSeverity | 'all';
   filterSource: 'all' | 'regular' | 'addon';
+  filterDomain: 'all' | 'isp' | 'sheet';
   onNavigate: (url: string) => void;
   evidenceMap?: Map<string, FindingEvidenceSummary>;
   onSendToHandoff?: (row: UnifiedFindingRow) => void;
@@ -42,16 +43,17 @@ interface FindingsTableProps {
 // Component
 // ─────────────────────────────────────────────
 
-export const FindingsTable: React.FC<FindingsTableProps> = ({ rows, filterSeverity, filterSource, onNavigate, evidenceMap, onSendToHandoff, sentFindingKeys }) => {
+export const FindingsTable: React.FC<FindingsTableProps> = ({ rows, filterSeverity, filterSource, filterDomain, onNavigate, evidenceMap, onSendToHandoff, sentFindingKeys }) => {
   const filtered = useMemo(() => {
     let result = [...rows];
     if (filterSource !== 'all') result = result.filter(r => r.source === filterSource);
     if (filterSeverity !== 'all') result = result.filter(r => r.severity === filterSeverity);
+    if (filterDomain !== 'all') result = result.filter(r => r.domain === filterDomain);
     // severity 順: high → medium → low
     const order: Record<AuditFindingSeverity, number> = { high: 0, medium: 1, low: 2 };
     result.sort((a, b) => order[a.severity] - order[b.severity]);
     return result;
-  }, [rows, filterSeverity, filterSource]);
+  }, [rows, filterSeverity, filterSource, filterDomain]);
 
   if (filtered.length === 0) {
     return (
@@ -73,7 +75,7 @@ export const FindingsTable: React.FC<FindingsTableProps> = ({ rows, filterSeveri
         <TableHead>
           <TableRow sx={{ bgcolor: 'grey.50' }}>
             <TableCell sx={{ fontWeight: 700, width: 60 }}>重要度</TableCell>
-            <TableCell sx={{ fontWeight: 700, width: 80 }}>区分</TableCell>
+            <TableCell sx={{ fontWeight: 700, width: 90 }}>領域</TableCell>
             <TableCell sx={{ fontWeight: 700, width: 160 }}>検出種別</TableCell>
             <TableCell sx={{ fontWeight: 700, width: 100 }}>利用者</TableCell>
             <TableCell sx={{ fontWeight: 700 }}>メッセージ</TableCell>
@@ -99,10 +101,10 @@ export const FindingsTable: React.FC<FindingsTableProps> = ({ rows, filterSeveri
                 </TableCell>
                 <TableCell>
                   <Chip
-                    label={row.source === 'addon' ? '加算' : '制度'}
+                    label={row.domain === 'sheet' ? '支援計画シート' : '個別支援計画'}
                     size="small"
                     variant="outlined"
-                    color={row.source === 'addon' ? 'secondary' : 'default'}
+                    color={row.domain === 'sheet' ? 'secondary' : 'default'}
                     sx={{ fontWeight: 600, fontSize: '0.65rem' }}
                   />
                 </TableCell>

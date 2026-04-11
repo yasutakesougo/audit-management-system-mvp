@@ -29,6 +29,7 @@ import {
   isQuarterlyReassessmentOverdue,
   DEFAULT_REASSESSMENT_CYCLE_DAYS,
 } from '@/domain/isp/planningSheetReassessment';
+import type { AuditFindingDomain } from './auditChecks';
 
 // ─────────────────────────────────────────────
 // 加算系 AuditFinding 型
@@ -65,6 +66,7 @@ export interface SevereAddonFinding {
   id: string;
   type: SevereAddonFindingType;
   severity: SevereAddonFindingSeverity;
+  domain: AuditFindingDomain;
   userId: string;
   userName?: string;
   planningSheetId?: string;
@@ -97,6 +99,8 @@ export interface SevereAddonSummary {
   assignmentWithoutQualificationCount: number;
   /** 全 finding 数 */
   totalFindings: number;
+  /** 領域ごとの集計 */
+  byDomain: Record<AuditFindingDomain, number>;
 }
 
 // ─────────────────────────────────────────────
@@ -177,6 +181,7 @@ export function buildSevereAddonFindings(input: SevereAddonBulkInput): SevereAdd
       id: nextAddonFindingId(),
       type: 'basic_training_ratio_insufficient',
       severity: 'medium',
+      domain: 'sheet',
       userId: '__facility__',
       message: `基礎研修修了比率 ${(ratioResult.ratio * 100).toFixed(1)}%（${basicTrainingCompletedCount}/${totalLifeSupportStaff}人）— 20%以上が必要`,
       detectedAt: today,
@@ -193,6 +198,7 @@ export function buildSevereAddonFindings(input: SevereAddonBulkInput): SevereAdd
         id: nextAddonFindingId(),
         type: 'severe_addon_tier2_candidate',
         severity: 'low',
+        domain: 'sheet',
         userId: user.userId,
         userName: user.userName,
         message: `加算（Ⅱ）候補: 区分${user.supportLevel}・行動${user.behaviorScore}点${eligibility.isUpperTier ? '（上位区分）' : ''}`,
@@ -203,6 +209,7 @@ export function buildSevereAddonFindings(input: SevereAddonBulkInput): SevereAdd
         id: nextAddonFindingId(),
         type: 'severe_addon_tier3_candidate',
         severity: 'low',
+        domain: 'sheet',
         userId: user.userId,
         userName: user.userName,
         message: `加算（Ⅲ）候補: 区分${user.supportLevel}・行動${user.behaviorScore}点${eligibility.isUpperTier ? '（上位区分）' : ''}`,
@@ -219,6 +226,7 @@ export function buildSevereAddonFindings(input: SevereAddonBulkInput): SevereAdd
         id: nextAddonFindingId(),
         type: 'weekly_observation_shortage',
         severity: 'medium',
+        domain: 'sheet',
         userId: user.userId,
         userName: user.userName,
         message: `週次観察が不足しています（原則 週1回以上の観察が必要）`,
@@ -243,6 +251,7 @@ export function buildSevereAddonFindings(input: SevereAddonBulkInput): SevereAdd
         id: nextAddonFindingId(),
         type: 'planning_sheet_reassessment_overdue',
         severity: 'high',
+        domain: 'sheet',
         userId: user.userId,
         userName: user.userName,
         message: `支援計画シートの3か月再評価が超過: ${daysSinceMessage}`,
@@ -259,6 +268,7 @@ export function buildSevereAddonFindings(input: SevereAddonBulkInput): SevereAdd
         id: nextAddonFindingId(),
         type: 'authoring_requirement_unmet',
         severity: 'high',
+        domain: 'sheet',
         userId: user.userId,
         userName: user.userName,
         message: `支援計画シート作成者が実践研修未修了です`,
@@ -273,6 +283,7 @@ export function buildSevereAddonFindings(input: SevereAddonBulkInput): SevereAdd
         id: nextAddonFindingId(),
         type: 'assignment_without_required_qualification',
         severity: 'medium',
+        domain: 'sheet',
         userId: user.userId,
         userName: user.userName,
         message: `加算対象者に必要資格のない職員が配置されています`,
@@ -343,5 +354,9 @@ export function summarizeSevereAddonFindings(
     authoringRequirementUnmetCount,
     assignmentWithoutQualificationCount,
     totalFindings: findings.length,
+    byDomain: {
+      isp: 0,
+      sheet: findings.length,
+    },
   };
 }
