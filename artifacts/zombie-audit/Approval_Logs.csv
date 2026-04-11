@@ -1,0 +1,346 @@
+ListName,InternalName,DisplayName,TypeAsString,Hidden,ReadOnly,FromBaseType,Indexed,Classification,Reason,RecommendedAction
+Approval_Logs,ContentTypeId,コンテンツ タイプの ID,ContentTypeId,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,Title,タイトル,Text,false,false,true,false,keep_system,FromBaseType=true,KEEP
+Approval_Logs,_ModerationComments,承認者のコメント,Note,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,File_x0020_Type,ファイルの種類,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_ColorHex,色,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_ColorTag,色タグ,Text,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_Emoji,絵文字,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,ComplianceAssetId,コンプライアンス資産 ID,Text,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,ParentScheduleId,親スケジュールID,Number,false,false,false,true,keep_ssot,Exact match with SSOT,KEEP
+Approval_Logs,_x627f__x8a8d__x65e5__x6642_,承認日時,DateTime,false,false,false,true,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30e1__x30e2_,承認メモ,Note,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x300,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x65e5__x6642_1,承認日時,DateTime,false,false,false,true,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x300,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x30,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x65e5__x6642_0,承認日時,DateTime,false,false,false,true,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x301,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x65e5__x6642_2,承認日時,DateTime,false,false,false,true,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x301,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x302,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x65e5__x6642_3,承認日時,DateTime,false,false,false,true,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x302,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x303,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x65e5__x6642_4,承認日時,DateTime,false,false,false,true,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x303,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x304,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x65e5__x6642_5,承認日時,DateTime,false,false,false,true,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x304,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x305,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x65e5__x6642_6,承認日時,DateTime,false,false,false,true,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x305,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x306,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x65e5__x6642_7,承認日時,DateTime,false,false,false,true,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x306,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x307,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x65e5__x6642_8,承認日時,DateTime,false,false,false,true,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x307,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x308,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x65e5__x6642_9,承認日時,DateTime,false,false,false,true,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x308,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x309,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x65e5__x6642_10,承認日時,DateTime,false,false,false,true,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x309,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3010,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x65e5__x6642_11,承認日時,DateTime,false,false,false,true,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3010,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3011,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x65e5__x6642_12,承認日時,DateTime,false,false,false,true,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3011,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3012,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x65e5__x6642_13,承認日時,DateTime,false,false,false,true,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3012,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3013,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x65e5__x6642_14,承認日時,DateTime,false,false,false,true,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3013,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3014,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x65e5__x6642_15,承認日時,DateTime,false,false,false,true,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3014,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3015,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x65e5__x6642_16,承認日時,DateTime,false,false,false,true,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3015,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3016,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x65e5__x6642_17,承認日時,DateTime,false,false,false,true,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3016,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3017,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3017,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3018,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3018,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3019,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3019,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3020,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3021,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3020,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3021,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3022,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3022,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3023,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3023,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3024,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3024,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3025,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3025,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3026,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3026,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3027,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3027,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3028,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3028,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3029,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3029,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3030,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3030,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3031,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3031,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3032,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3032,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3033,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3033,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3034,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3034,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3035,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3035,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3036,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3036,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3037,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3037,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3038,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3038,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3039,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3039,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3040,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3040,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3041,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3041,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3042,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3042,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3043,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3043,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3044,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3044,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3045,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3045,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3046,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3046,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3047,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3047,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3048,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3048,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3049,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3049,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3050,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3050,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3051,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3051,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3052,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3052,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3053,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3053,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3054,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3054,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3055,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3055,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3056,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3056,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3057,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3057,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3058,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3058,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3059,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3059,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3060,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3060,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3061,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3061,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3062,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3062,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3063,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3063,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3064,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3064,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3065,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3065,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3066,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3066,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3067,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3067,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3068,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3068,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3069,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3069,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3070,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3070,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3071,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3071,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3072,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3072,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3073,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3073,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3074,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3074,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3075,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3075,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3076,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3076,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3077,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3077,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3078,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3078,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3079,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3079,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3080,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3080,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3081,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3081,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3082,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3082,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3083,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3083,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3084,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3084,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3085,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3085,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3086,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3086,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3087,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3087,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3088,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3088,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3089,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3089,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3090,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3090,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3091,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3091,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3092,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3092,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3093,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3093,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3094,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3094,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3095,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3095,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3096,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3096,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3097,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3097,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3098,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3098,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x3099,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x3099,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30100,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x30100,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30101,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x30101,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30102,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x30102,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30103,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x30103,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30104,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x30104,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30105,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x30105,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30106,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x30106,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30107,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x30107,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30108,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x30108,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30109,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x30109,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30110,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x30110,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30111,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x30111,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30112,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x30112,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30113,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x30113,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30114,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x30114,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30115,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x30115,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30116,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x30116,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30117,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x8005__x30b3__x30117,承認者コード,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,_x627f__x8a8d__x30a2__x30af__x30118,承認アクション,Choice,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+Approval_Logs,ID,ID,Counter,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,ContentType,コンテンツ タイプ,Computed,false,false,true,false,keep_system,FromBaseType=true,KEEP
+Approval_Logs,Modified,更新日時,DateTime,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,Created,登録日時,DateTime,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,Author,登録者,User,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,Editor,更新者,User,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_HasCopyDestinations,コピー先の有無,Boolean,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_CopySource,コピー元,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,owshiddenversion,owshiddenversion,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,WorkflowVersion,ワークフローのバージョン,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_UIVersion,UI バージョン,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_UIVersionString,バージョン,Text,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,Attachments,添付ファイル,Attachments,false,false,true,false,keep_system,FromBaseType=true,KEEP
+Approval_Logs,_ModerationStatus,承認の状況,ModStat,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,Edit,編集,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,LinkTitleNoMenu,タイトル,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,LinkTitle,タイトル,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,LinkTitle2,タイトル,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,SelectTitle,選択,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,InstanceID,インスタンス ID,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,Order,順序,Number,true,false,true,false,keep_system,"Hidden=true, FromBaseType=true",KEEP
+Approval_Logs,GUID,GUID,Guid,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,WorkflowInstanceID,ワークフロー インスタンス ID,Guid,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,FileRef,URL パス,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,FileDirRef,パス,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,Last_x0020_Modified,更新日時,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,Created_x0020_Date,登録日時,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,FSObjType,アイテムの種類,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,SortBehavior,並べ替えの種類,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,PermMask,有効な権限マスク,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,PrincipalCount,プリンシパルの数,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,FileLeafRef,名前,File,true,false,true,false,keep_system,"Hidden=true, FromBaseType=true",KEEP
+Approval_Logs,UniqueId,固有 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,ParentUniqueId,ドキュメントの親 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,SyncClientId,クライアント ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,ProgId,ProgId,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,ScopeId,ScopeId,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,HTML_x0020_File_x0020_Type,HTML ファイルの種類,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_EditMenuTableStart,メニュー テーブルの編集の開始,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_EditMenuTableStart2,メニュー テーブルの編集の開始,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_EditMenuTableEnd,メニュー テーブルの編集の終了,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,LinkFilenameNoMenu,名前,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,LinkFilename,名前,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,LinkFilename2,名前,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,DocIcon,種類,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,ServerUrl,サーバーの相対 URL,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,EncodedAbsUrl,エンコードされた絶対 URL,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,BaseName,ファイル名,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,MetaInfo,プロパティ バッグ,Lookup,true,false,true,false,keep_system,"Hidden=true, FromBaseType=true",KEEP
+Approval_Logs,_Level,レベル,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_IsCurrentVersion,現在のバージョン,Boolean,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,ItemChildCount,子アイテムの数,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,FolderChildCount,子フォルダーの数,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,Restricted,制限付き,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,OriginatorId,発信者 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,NoExecute,NoExecute,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,ContentVersion,コンテンツのバージョン,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_ComplianceFlags,ラベルの設定,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_ComplianceTag,保持ラベル,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_ComplianceTagWrittenTime,保持ラベルを適用済み,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_ComplianceTagUserId,ラベルの適用者,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_IsRecord,レコードとして登録されているアイテム,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,AccessPolicy,アクセス ポリシー,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_VirusStatus,VirusStatus,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_VirusVendorID,VirusVendorID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_VirusInfo,VirusInfo,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_RansomwareAnomalyMetaInfo,RansomwareAnomalyMetaInfo,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_DraftOwnerId,下書き所有者 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,MainLinkSettings,メイン リンクの設定,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,AppAuthor,アプリの作成者,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,AppEditor,アプリの変更者,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,SMTotalSize,合計サイズ,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,SMLastModifiedDate,最終更新日,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,SMTotalFileStreamSize,ファイル ストリームの合計サイズ,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,SMTotalFileCount,合計ファイル数,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Approval_Logs,_CommentFlags,コメントの設定,Lookup,true,true,false,false,keep_system,"Hidden=true, ReadOnly=true",KEEP
+Approval_Logs,_CommentCount,コメント数,Lookup,true,true,false,false,keep_system,"Hidden=true, ReadOnly=true",KEEP
