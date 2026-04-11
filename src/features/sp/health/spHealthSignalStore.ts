@@ -245,10 +245,23 @@ export function reportSpHealthEvent(signal: Omit<SpHealthSignal, 'occurrenceCoun
 
 /**
  * シグナルを明示的に消去する（修復完了時など）
+ * これにより、次に同じ課題が検知された際はカウントが 1 からリセットされます。
  */
 export function clearSpHealthSignal(): void {
   _current = null;
   _notify();
+}
+
+/**
+ * 特定の課題（reasonCode + listName）が解消された場合に消去する
+ * 自動回復（transient_failure）の検知時に使用。
+ */
+export function revokeSpHealthSignal(reasonCode: SpHealthReasonCode, listName?: string): void {
+  if (_current && 
+      _current.reasonCode === reasonCode && 
+      (_current.listName ?? '') === (listName ?? '')) {
+    clearSpHealthSignal();
+  }
 }
 
 /**

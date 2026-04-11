@@ -14,7 +14,7 @@ import type {
   SpHealthSeverity,
   SpHealthSignal,
 } from './spHealthSignalStore';
-import { reportSpHealthEvent } from './spHealthSignalStore';
+import { reportSpHealthEvent, revokeSpHealthSignal } from './spHealthSignalStore';
 
 /** mapping.ts が返す型: Store が occurrenceCount を付与するため除外 */
 type PatrolSignal = Omit<SpHealthSignal, 'occurrenceCount'>;
@@ -100,6 +100,12 @@ export function mapPatrolEventToSignal(event: PatrolEvent): PatrolSignal | null 
     if (severity === null) return null;
 
     const reasonCode = resolveReasonCode(event.code);
+
+    // ── 状態の解消（Success/Recovery）検知 ─────────────────────────────────────
+    if (event.code === 'transient_failure' || event.code === 'success') {
+      revokeSpHealthSignal(reasonCode, event.listName);
+      return null;
+    }
 
     return {
       severity,
