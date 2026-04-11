@@ -8,7 +8,7 @@
  * 4. Reporting stability issues to admins.
  */
 import { trackSpEvent } from '@/lib/telemetry/spTelemetry';
-import { createProvisioningService, SpProvisioningError } from '@/lib/sp/spProvisioningService';
+import { createProvisioningService } from '@/lib/sp/spProvisioningService';
 import { reportSpHealthEvent } from '@/features/sp/health/spHealthSignalStore';
 import { readBool } from '@/lib/env';
 import { auditLog } from '@/lib/debugLogger';
