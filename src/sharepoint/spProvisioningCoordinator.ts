@@ -278,6 +278,11 @@ export class SharePointProvisioningCoordinator {
           };
         }
 
+        // 4. Drift Check
+        const driftDetails = Object.entries(fieldStatus)
+          .filter(([_, s]) => s.isDrifted)
+          .map(([key, s]) => `${key} -> ${s.resolvedName}`);
+
         if (driftDetails.length > 0) {
           auditLog.warn('sp:provisioning', `List "${listName}" has schema drift.`, { drift: driftDetails });
           saveStability(entry.key, 'drifted');
@@ -287,7 +292,7 @@ export class SharePointProvisioningCoordinator {
             severity: 'warning',
             reasonCode: 'sp_schema_drift',
             listName,
-            message: `「${listName}」で列名のドリフト（末益への _0 付与等）を検出しました。`,
+            message: `「${listName}」で列名のドリフト（末尾への _0 付与等）を検出しました: ${driftDetails.join(', ')}`,
             source: 'realtime',
             occurredAt: new Date().toISOString()
           });

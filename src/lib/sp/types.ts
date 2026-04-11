@@ -126,20 +126,6 @@ export interface FailedFieldInfo {
   detail?: string;
 }
 
-export type FailedFieldReason =
-  | 'row_size_limit'
-  | 'indexed_column_limit'
-  | 'http_error'
-  | 'unknown';
-
-export interface FailedFieldInfo {
-  internalName: string;
-  required: boolean;
-  reason: FailedFieldReason;
-  status?: number;
-  detail?: string;
-}
-
 export interface EnsureListResult {
   listId: string;
   title: string;

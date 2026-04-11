@@ -18,7 +18,7 @@ export class SpProvisioningError extends Error {
   constructor(
     message: string,
     public listTitle: string,
-    public failedFields: import('./types').SpFieldDef[]
+    public failedFields: import('./types').FailedFieldInfo[]
   ) {
     super(message);
     this.name = 'SpProvisioningError';
