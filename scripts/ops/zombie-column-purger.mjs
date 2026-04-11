@@ -129,6 +129,14 @@ function loadSsot(ssotPath) {
     ssot[listTitle] = names;
   }
 
+  // SupportRecord_Daily (Hardcoded fallback as it's not in the target file yet)
+  ssot["SupportRecord_Daily"] = [
+    "RecordDate", "ReporterName", "ReporterRole",
+    "UserCount", "LatestVersion", "ApprovalStatus",
+    "Record_x0020_Date", "Reporter_x0020_Name", "Reporter_x0020_Role",
+    "User_x0020_Count", "Latest_x0020_Version", "Approval_x0020_Status"
+  ];
+
   return ssot;
 }
 
