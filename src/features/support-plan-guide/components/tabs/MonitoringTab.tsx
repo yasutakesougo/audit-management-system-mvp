@@ -16,11 +16,16 @@
  *   ├ MonitoringFieldSection      = FieldCard×3
  *   └ useMonitoringTabState       = orchestration hook
  */
+import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
 import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Paper from '@mui/material/Paper';
 import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import type { ToastState } from '../../types';
 import { findSection } from '../../utils/helpers';
@@ -43,6 +48,7 @@ export type MonitoringTabProps = SectionTabProps & {
 
 const MonitoringTab: React.FC<MonitoringTabProps> = ({ userId, userName, setToast, ...sectionProps }) => {
   const section = findSection('monitoring');
+  const navigate = useNavigate();
 
   const {
     userIdStr,
@@ -68,6 +74,45 @@ const MonitoringTab: React.FC<MonitoringTabProps> = ({ userId, userName, setToas
           {section.description}
         </Typography>
       ) : null}
+
+      {/* 支援計画シート側のモニタリング会議記録への導線 */}
+      {userIdStr && (
+        <Paper
+          variant="outlined"
+          sx={{
+            p: 2,
+            borderLeft: 4,
+            borderColor: 'primary.main',
+            bgcolor: 'action.hover',
+          }}
+        >
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+            spacing={2}
+            flexWrap="wrap"
+          >
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700}>
+                支援計画シート：モニタリング会議記録
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                強度行動障害支援における会議の実施記録・確定・監査用PDF出力はこちらから行います。
+              </Typography>
+            </Box>
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<AssignmentRoundedIcon />}
+              onClick={() => navigate(`/monitoring-meeting/${userIdStr}`)}
+              data-testid="navigate-monitoring-meeting-record-btn"
+            >
+              支援計画シートのモニタリング会議を開く
+            </Button>
+          </Stack>
+        </Paper>
+      )}
 
       {/* 日次集計ダッシュボード + ISP 判断記録 */}
       {userIdStr && (

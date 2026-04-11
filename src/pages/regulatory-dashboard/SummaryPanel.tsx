@@ -111,3 +111,42 @@ export const TypeBreakdown: React.FC<TypeBreakdownProps> = ({ summary, addonSumm
     )}
   </Card>
 );
+// ─────────────────────────────────────────────
+// DomainSummary
+// ─────────────────────────────────────────────
+
+interface DomainSummaryProps {
+  ispCount: number;
+  sheetCount: number;
+}
+
+export const DomainSummary: React.FC<DomainSummaryProps> = ({ ispCount, sheetCount }) => (
+  <Card
+    variant="outlined"
+    sx={{
+      p: 2,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 2,
+      background: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+    }}
+  >
+    <Typography variant="subtitle2" fontWeight={800} sx={{ mr: 1 }}>
+      領域別集計:
+    </Typography>
+    <Chip
+      label={`個別支援計画: ${ispCount} 件`}
+      size="small"
+      color="info"
+      variant={ispCount > 0 ? 'filled' : 'outlined'}
+      sx={{ fontWeight: 700 }}
+    />
+    <Chip
+      label={`支援計画シート: ${sheetCount} 件`}
+      size="small"
+      color="secondary"
+      variant={sheetCount > 0 ? 'filled' : 'outlined'}
+      sx={{ fontWeight: 700 }}
+    />
+  </Card>
+);

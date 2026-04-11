@@ -47,10 +47,14 @@ export const AUDIT_FINDING_TYPE_LABELS: Record<AuditFindingType, string> = {
 export const AUDIT_FINDING_SEVERITIES = ['high', 'medium', 'low'] as const;
 export type AuditFindingSeverity = typeof AUDIT_FINDING_SEVERITIES[number];
 
+export const AUDIT_FINDING_DOMAINS = ['isp', 'sheet'] as const;
+export type AuditFindingDomain = typeof AUDIT_FINDING_DOMAINS[number];
+
 export interface AuditFinding {
   id: string;
   type: AuditFindingType;
   severity: AuditFindingSeverity;
+  domain: AuditFindingDomain;
   userId: string;
   userName?: string;
   planningSheetId?: string;
@@ -136,6 +140,7 @@ export function getPlanningSheetMissingRisk(
     id: nextFindingId(),
     type: 'planning_sheet_missing',
     severity: 'high',
+    domain: 'sheet',
     userId: userProfile.userId,
     message: `行動関連項目 ${userProfile.behaviorScore}点・区分${userProfile.disabilitySupportLevel} — 支援計画シートが未作成です`,
     detectedAt: today,
@@ -158,6 +163,7 @@ export function getAuthorQualificationRisk(
       id: nextFindingId(),
       type: 'author_qualification_missing',
       severity: 'high',
+      domain: 'sheet',
       userId: sheet.userId,
       planningSheetId: sheet.id,
       message: `「${sheet.title}」の作成者が未登録です`,
@@ -172,6 +178,7 @@ export function getAuthorQualificationRisk(
     id: nextFindingId(),
     type: 'author_qualification_missing',
     severity: 'medium',
+    domain: 'sheet',
     userId: sheet.userId,
     planningSheetId: sheet.id,
     message: `「${sheet.title}」の作成者は${highest === 'unknown' ? '研修未修了' : highest}のみ — 実践研修修了者が必要です`,
@@ -202,6 +209,7 @@ export function getReviewOverdueRisk(
     id: nextFindingId(),
     type: 'review_overdue',
     severity: diffDays <= -30 ? 'high' : 'medium',
+    domain: 'sheet',
     userId: sheet.userId,
     planningSheetId: sheet.id,
     message: `「${sheet.title}」の見直し期限が${Math.abs(diffDays)}日超過しています`,
@@ -231,6 +239,7 @@ export function getProcedureRecordGapRisk(
       id: nextFindingId(),
       type: 'procedure_record_gap',
       severity: 'high',
+      domain: 'sheet',
       userId: sheet.userId,
       planningSheetId: sheet.id,
       message: `「${sheet.title}」に対応する実施記録がありません`,
@@ -253,6 +262,7 @@ export function getProcedureRecordGapRisk(
     id: nextFindingId(),
     type: 'procedure_record_gap',
     severity: gapDays >= 30 ? 'high' : 'medium',
+    domain: 'sheet',
     userId: sheet.userId,
     planningSheetId: sheet.id,
     message: `「${sheet.title}」の直近記録から${gapDays}日間空白（閾値${gapThresholdDays}日）`,
@@ -276,6 +286,7 @@ export function getDeliveryMissingRisk(
     id: nextFindingId(),
     type: 'delivery_missing',
     severity: 'medium',
+    domain: 'sheet',
     userId: sheet.userId,
     planningSheetId: sheet.id,
     message: `「${sheet.title}」が運用中ですが本人への交付が未完了です`,
@@ -304,6 +315,7 @@ export function getAddOnCandidateFindings(
     id: nextFindingId(),
     type: 'add_on_candidate',
     severity: 'low',
+    domain: 'sheet',
     userId: sheet.userId,
     planningSheetId: sheet.id,
     message: `「${sheet.title}」は ${addOns.join('・')} の算定要件を充足しています`,
@@ -335,6 +347,7 @@ export function getMonitoringFindings(
       id: nextFindingId(),
       type: 'monitoring_meeting_missing',
       severity: 'high',
+      domain: 'sheet',
       userId: userProfile.userId,
       message: 'モニタリング会議の記録が一度も作成されていません',
       detectedAt: today,
@@ -349,6 +362,7 @@ export function getMonitoringFindings(
       id: nextFindingId(),
       type: 'monitoring_meeting_unfinalized',
       severity: 'medium',
+      domain: 'sheet',
       userId: userProfile.userId,
       message: `モニタリング会議（${draft.meetingDate}）が下書きのままです。確定させてください。`,
       detectedAt: today,
@@ -362,6 +376,7 @@ export function getMonitoringFindings(
       id: nextFindingId(),
       type: 'monitoring_qualification_missing',
       severity: 'high',
+      domain: 'sheet',
       userId: userProfile.userId,
       message: `モニタリング会議（${issue.meetingDate}）の参加者が、強度行動障害の研修要件を満たしていません。`,
       detectedAt: today,
@@ -383,6 +398,7 @@ export function getMonitoringFindings(
         id: nextFindingId(),
         type: 'monitoring_overdue',
         severity: diffMonths >= 6 ? 'high' : 'medium',
+        domain: 'sheet',
         userId: userProfile.userId,
         message: `直近のモニタリング（${latest.meetingDate}）から${diffMonths}ヶ月経過しています（推奨：${overdueMonths}ヶ月以内）`,
         detectedAt: today,
@@ -466,6 +482,7 @@ export interface AuditSummary {
   medium: number;
   low: number;
   byType: Record<AuditFindingType, number>;
+  byDomain: Record<AuditFindingDomain, number>;
 }
 
 export function summarizeFindings(findings: AuditFinding[]): AuditSummary {
@@ -473,16 +490,22 @@ export function summarizeFindings(findings: AuditFinding[]): AuditSummary {
     AUDIT_FINDING_TYPES.map(t => [t, 0]),
   ) as Record<AuditFindingType, number>;
 
+  const byDomain = {
+    isp: 0,
+    sheet: 0,
+  } as Record<AuditFindingDomain, number>;
+
   let high = 0;
   let medium = 0;
   let low = 0;
 
   for (const f of findings) {
     byType[f.type] += 1;
+    byDomain[f.domain] += 1;
     if (f.severity === 'high') high += 1;
     else if (f.severity === 'medium') medium += 1;
     else low += 1;
   }
 
-  return { total: findings.length, high, medium, low, byType };
+  return { total: findings.length, high, medium, low, byType, byDomain };
 }

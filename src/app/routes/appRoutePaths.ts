@@ -94,6 +94,7 @@ export const APP_ROUTE_PATHS = [
   'ops',
   'settings/operation-flow',
   'admin/telemetry',
+  'monitoring-meeting/:userId',
 ] as const;
 
 export type AppRoutePath = typeof APP_ROUTE_PATHS[number];
