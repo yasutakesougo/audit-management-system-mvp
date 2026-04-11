@@ -35,10 +35,9 @@ export const SpRemediationCard: React.FC = () => {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      // シンプルな通知（実動作では Toast 等が望ましいが、ここでは alert/console で代用）
-      console.log('Copied to clipboard:', text);
-    } catch (err) {
-      console.error('Failed to copy:', err);
+      // NOTE: Successful copy to clipboard (Feedback UI skipped for minimal diff)
+    } catch {
+      // Failed silently
     }
   };
 
