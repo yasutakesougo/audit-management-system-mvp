@@ -2,10 +2,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { 
+  deriveTransientFailureEvents,
+  formatStepSummary,
   sendTeamsNotification, 
   aggregateEvents, 
   type NightlySummary, 
-  type RawEvent 
+  type RawEvent,
+  type GitHubWorkflowRun,
 } from '../nightly-runtime-patrol';
 
 // ── fetch mock ───────────────────────────────────────────────────────────────
@@ -29,6 +32,7 @@ function makeSummary(overrides: Partial<NightlySummary> = {}): NightlySummary {
     bundledCount: 0,
     countsBySeverity: { critical: 0, action_required: 0, watch: 0, silent: 0 },
     events: [],
+    reasonCodeSummary: [],
     ...overrides,
   };
 }
@@ -167,6 +171,187 @@ describe('aggregateEvents / severity ordering', () => {
   });
 });
 
+describe('aggregateEvents / transient failures', () => {
+  it('treats transient_failure as watch', () => {
+    const summary = aggregateEvents([
+      makeEvent({
+        eventType: 'transient_failure',
+        reasonCode: 'transient_failure',
+        resourceKey: 'Staff_Master',
+        message: 'Recovered by Nightly Runtime Patrol after integration failure',
+      }),
+    ]);
+
+    expect(summary.events).toHaveLength(1);
+    expect(summary.events[0]?.severity).toBe('watch');
+    expect(summary.countsBySeverity.watch).toBe(1);
+  });
+
+  it('builds reasonCode summary with count and resources', () => {
+    const summary = aggregateEvents([
+      makeEvent({
+        id: 'a',
+        eventType: 'transient_failure',
+        reasonCode: 'transient_failure',
+        resourceKey: 'Users_Master',
+      }),
+      makeEvent({
+        id: 'b',
+        eventType: 'transient_failure',
+        reasonCode: 'transient_failure',
+        resourceKey: 'Staff_Master',
+      }),
+      makeEvent({
+        id: 'c',
+        eventType: 'http_429',
+        reasonCode: 'rate_limit',
+        resourceKey: 'SharePoint_API',
+      }),
+    ]);
+
+    expect(summary.reasonCodeSummary[0]).toEqual({
+      reasonCode: 'transient_failure',
+      count: 2,
+      resources: ['Staff_Master', 'Users_Master'],
+    });
+    expect(summary.reasonCodeSummary[1]).toEqual({
+      reasonCode: 'rate_limit',
+      count: 1,
+      resources: ['SharePoint_API'],
+    });
+  });
+});
+
+describe('deriveTransientFailureEvents', () => {
+  it('creates watch events for recent failed integration runs when target is recovered', () => {
+    const runs: GitHubWorkflowRun[] = [
+      {
+        name: 'integration (staff)',
+        status: 'completed',
+        conclusion: 'failure',
+        created_at: '2026-04-07T02:50:00Z',
+        html_url: 'https://github.com/example/repo/actions/runs/123',
+        run_number: 123,
+      },
+    ];
+
+    const events = deriveTransientFailureEvents(runs, [], new Date('2026-04-07T06:22:00Z'), 6);
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.eventType).toBe('transient_failure');
+    expect(events[0]?.resourceKey).toBe('Staff_Master');
+    expect(events[0]?.reasonCode).toBe('transient_failure');
+  });
+
+  it('escalates to repeated_transient_failure when the same target failed for 3 consecutive nights', () => {
+    const runs: GitHubWorkflowRun[] = [
+      {
+        name: 'integration (dailyops)',
+        status: 'completed',
+        conclusion: 'failure',
+        created_at: '2026-04-07T17:31:00Z',
+        run_number: 100,
+      },
+      {
+        name: 'integration (dailyops)',
+        status: 'completed',
+        conclusion: 'failure',
+        created_at: '2026-04-08T17:32:00Z',
+        run_number: 101,
+      },
+      {
+        name: 'integration (dailyops)',
+        status: 'completed',
+        conclusion: 'failure',
+        created_at: '2026-04-09T17:33:00Z',
+        run_number: 102,
+      },
+    ];
+
+    const events = deriveTransientFailureEvents(runs, [], new Date('2026-04-09T21:22:00Z'), 6);
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.resourceKey).toBe('DailyOpsSignals');
+    expect(events[0]?.reasonCode).toBe('repeated_transient_failure');
+
+    const summary = aggregateEvents(events);
+    expect(summary.events[0]?.severity).toBe('action_required');
+    expect(summary.countsBySeverity.action_required).toBe(1);
+  });
+
+  it('does not create transient events when the same target still has blocking failures', () => {
+    const runs: GitHubWorkflowRun[] = [
+      {
+        name: 'integration (users)',
+        status: 'completed',
+        conclusion: 'failure',
+        created_at: '2026-04-07T02:49:00Z',
+        run_number: 45,
+      },
+    ];
+
+    const existingEvents: RawEvent[] = [
+      makeEvent({
+        eventType: 'health_fail',
+        reasonCode: 'essential_resource_unavailable',
+        resourceKey: 'Users_Master',
+        message: 'Users_Master is still unavailable',
+      }),
+    ];
+
+    const events = deriveTransientFailureEvents(runs, existingEvents, new Date('2026-04-07T06:22:00Z'), 6);
+    expect(events).toHaveLength(0);
+  });
+});
+
+describe('formatStepSummary', () => {
+  it('renders overall counts and reason code summary for GitHub step summary', () => {
+    const output = formatStepSummary(
+      makeSummary({
+        countsBySeverity: { critical: 0, action_required: 1, watch: 1, silent: 0 },
+        reasonCodeSummary: [
+          { reasonCode: 'repeated_transient_failure', count: 1, resources: ['Users_Master'] },
+          { reasonCode: 'transient_failure', count: 1, resources: ['DailyOpsSignals'] },
+        ],
+        events: [
+          {
+            fingerprint: 'repeat123',
+            severity: 'action_required',
+            eventType: 'transient_failure',
+            area: 'Runtime',
+            resourceKey: 'Users_Master',
+            reasonCode: 'repeated_transient_failure',
+            occurrences: 1,
+            firstSeen: '2026-04-10T06:22:00Z',
+            lastSeen: '2026-04-10T06:22:00Z',
+            nextAction: 'check auth',
+            sampleMessage: 'Repeated transient failure',
+          },
+          {
+            fingerprint: 'watch123',
+            severity: 'watch',
+            eventType: 'transient_failure',
+            area: 'Runtime',
+            resourceKey: 'DailyOpsSignals',
+            reasonCode: 'transient_failure',
+            occurrences: 1,
+            firstSeen: '2026-04-10T06:22:00Z',
+            lastSeen: '2026-04-10T06:22:00Z',
+            nextAction: 'watch',
+            sampleMessage: 'Recovered transient failure',
+          },
+        ],
+      }),
+    );
+
+    expect(output).toContain('Overall: **🟠 Action Required**');
+    expect(output).toContain('Reason Code Summary');
+    expect(output).toContain('`repeated_transient_failure`: 1 (Users_Master)');
+    expect(output).toContain('Recovered Transient Failures: **1**');
+    expect(output).toContain('Repeated Transient Failures: **1**');
+  });
+});
+
 // ── sendTeamsNotification — persistent_drift section ────────────────────────
 
 describe('sendTeamsNotification — persistent_drift section', () => {
@@ -251,5 +436,68 @@ describe('sendTeamsNotification — persistent_drift section', () => {
 
     expect(result).toBe(false);
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('includes recovered transient failures section when watch items were recovered by nightly', async () => {
+    const summary = makeSummary({
+      countsBySeverity: { critical: 0, action_required: 0, watch: 1, silent: 0 },
+      reasonCodeSummary: [
+        { reasonCode: 'transient_failure', count: 1, resources: ['DailyOpsSignals'] },
+      ],
+      events: [
+        {
+          fingerprint: 'abc12345',
+          severity: 'watch',
+          eventType: 'transient_failure',
+          area: 'Runtime',
+          resourceKey: 'DailyOpsSignals',
+          occurrences: 1,
+          firstSeen: '2026-04-07T06:22:00Z',
+          lastSeen: '2026-04-07T06:22:00Z',
+          nextAction: 'watch',
+          sampleMessage: 'Recovered by Nightly Runtime Patrol',
+        },
+      ],
+    });
+
+    await sendTeamsNotification(summary, WEBHOOK);
+
+    const text = cardText(capturedCard());
+    expect(text).toContain('Recovered transient failures');
+    expect(text).toContain('DailyOpsSignals');
+    expect(text).toContain('"color":"Warning"');
+  });
+
+  it('includes repeated transient failures section when transient failures repeat for 3 nights', async () => {
+    const summary = makeSummary({
+      countsBySeverity: { critical: 0, action_required: 1, watch: 0, silent: 0 },
+      reasonCodeSummary: [
+        { reasonCode: 'repeated_transient_failure', count: 1, resources: ['Users_Master'] },
+      ],
+      events: [
+        {
+          fingerprint: 'repeat123',
+          severity: 'action_required',
+          eventType: 'transient_failure',
+          area: 'Runtime',
+          resourceKey: 'Users_Master',
+          reasonCode: 'repeated_transient_failure',
+          occurrences: 1,
+          firstSeen: '2026-04-10T06:22:00Z',
+          lastSeen: '2026-04-10T06:22:00Z',
+          nextAction: 'watch',
+          sampleMessage: 'Repeated transient failure',
+        },
+      ],
+    });
+
+    await sendTeamsNotification(summary, WEBHOOK);
+
+    const text = cardText(capturedCard());
+    expect(text).toContain('Repeated transient failures');
+    expect(text).toContain('Users_Master');
+    expect(text).toContain('SharePoint');
+    expect(text).toContain('Reason Code Summary');
+    expect(text).toContain('repeated_transient_failure');
   });
 });

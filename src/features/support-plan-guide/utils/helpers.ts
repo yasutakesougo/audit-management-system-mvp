@@ -151,6 +151,11 @@ export const sanitizeForm = (data: Partial<SupportPlanForm> | undefined): Suppor
     sanitized.goals = data.goals;
   }
 
+  // コンプライアンスメタデータの保持
+  if (data.compliance) {
+    sanitized.compliance = data.compliance;
+  }
+
   return sanitized;
 };
 
@@ -197,6 +202,25 @@ export const SECTIONS: SectionConfig[] = [
         placeholder: '例: 2025/04/01 〜 2026/03/31（12か月）',
         helper: '初回は契約後1か月以内の作成、以降6か月以内を目安に更新します。',
         quickPhrases: ['初回作成:  年 月 日 ／ 次回見直し目安:  年 月 日'],
+      },
+      {
+        key: 'serviceStartDate',
+        label: '契約上のサービス開始日',
+        placeholder: 'YYYY-MM-DD',
+        helper: '重要事項説明書等で合意された契約日。',
+      },
+      {
+        key: 'firstServiceDate',
+        label: '実際のサービス初回提供日',
+        placeholder: 'YYYY-MM-DD',
+        helper: '実際にサービス提供を開始した日。',
+      },
+      {
+        key: 'medicalConsiderations',
+        label: '医療的配慮事項',
+        minRows: 3,
+        placeholder: '例: 注入時の排気、嚥下状態に応じた食事提供、吸引頻度…',
+        helper: '主治医等の指示に基づき、安全なサービス提供のために必要な配慮。',
       },
     ],
   },
@@ -314,6 +338,20 @@ export const SECTIONS: SectionConfig[] = [
         placeholder: '例: 初回30日以内未作成 → 契約アラート設定／議事録テンプレ活用…',
         helper: '遅延、本人不参加、同意未取得、モニタ未実施などの対策を列挙。',
         quickPhrases: ['リスク: 作成遅延／対策: タスク自動通知', 'リスク: 同意書未保管／対策: 電子署名ログ保存'],
+      },
+      {
+        key: 'emergencyResponsePlan',
+        label: '緊急時対応計画',
+        minRows: 3,
+        placeholder: '例: 喘息発作時は吸入器を使用、家族・主治医へ即時連絡…',
+        helper: '急変時、パニック時等の具体的な連絡先と対応手順。',
+      },
+      {
+        key: 'rightsAdvocacy',
+        label: '権利擁護・虐待防止',
+        minRows: 2,
+        placeholder: '例: 身体拘束の禁止を徹底、セルフプランの推奨…',
+        helper: '虐待防止、セルフネグレクト対応、意思決定支援の具体的な取り組み。',
       },
       {
         key: 'complianceControls',

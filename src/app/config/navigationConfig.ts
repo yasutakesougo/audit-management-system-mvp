@@ -187,20 +187,11 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     // --- 2. 支援計画・アセスメント (assessment) ---
     // 順序: ISP作成・更新 → 支援計画シート → アセスメント系 → 分析系 → アンケート
     createHubNavItem('planning', {
-      // Hub 自体の active は /planning 配下に限定し、配下業務画面との二重 active を避ける。
+      // Hub 自体の active は /planning 配下に限定し、配下業務画面との二重 active は避ける。
       isActive: (pathname) => pathname === '/planning' || pathname.startsWith('/planning/'),
     }),
     {
-      label: '分析ワークスペース',
-      to: '/analysis/dashboard',
-      isActive: (pathname) => pathname.startsWith('/analysis'),
-      icon: undefined,
-      testId: 'nav-analysis-workspace',
-      audience: NAV_AUDIENCE.all,
-      group: 'planning' as NavGroupKey,
-    },
-    {
-      label: '個別支援計画作成',
+      label: '個別支援計画',
       to: '/support-plan-guide',
       isActive: (pathname) => pathname === '/support-plan-guide',
       icon: undefined,
@@ -209,13 +200,13 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'planning' as NavGroupKey,
     },
     {
-      label: '個別支援計画更新（前回比較）',
-      to: '/isp-editor',
-      isActive: (pathname) => pathname.startsWith('/isp-editor'),
+      label: 'モニタリング記録',
+      to: '/records/monthly',
+      isActive: (pathname) => pathname.startsWith('/records/monthly'),
       icon: undefined,
-      testId: TESTIDS.nav.ispEditor,
-      audience: NAV_AUDIENCE.admin,
-      group: 'planning' as NavGroupKey,
+      testId: 'nav-monitoring-record',
+      audience: NAV_AUDIENCE.staff,
+      group: 'severe' as NavGroupKey,
     },
     {
       label: '支援計画シート',
@@ -224,7 +215,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       testId: TESTIDS.nav.planningSheet,
       audience: NAV_AUDIENCE.staff,
-      group: 'planning' as NavGroupKey,
+      group: 'severe' as NavGroupKey,
     },
     {
       label: 'アセスメント',
@@ -234,17 +225,17 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       prefetchKey: PREFETCH_KEYS.assessmentDashboard,
       testId: TESTIDS.nav.assessment,
       audience: NAV_AUDIENCE.staff,
-      group: 'planning' as NavGroupKey,
+      group: 'severe' as NavGroupKey,
     },
     {
-      // Tier C: Mock依存。管理者のみ表示。
-      label: '特性アンケート',
-      to: '/survey/tokusei',
-      isActive: (pathname) => pathname.startsWith('/survey/tokusei'),
+      label: '行動分析',
+      to: '/analysis/dashboard',
+      isActive: (pathname) => pathname.startsWith('/analysis'),
       icon: undefined,
-      audience: NAV_AUDIENCE.admin,
-      group: 'planning' as NavGroupKey,
-      tier: 'admin',
+      testId: 'nav-analysis-workspace',
+      audience: NAV_AUDIENCE.all,
+      group: 'severe' as NavGroupKey,
+      tier: 'more',
       featureFlag: 'todayLiteNavV2',
     },
 

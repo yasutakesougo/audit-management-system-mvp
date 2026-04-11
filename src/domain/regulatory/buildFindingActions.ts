@@ -114,6 +114,17 @@ export function buildFindingActions(finding: AuditFinding): FindingAction[] {
         kind: 'evidence',
       });
       break;
+
+    case 'monitoring_meeting_missing':
+    case 'monitoring_meeting_unfinalized':
+    case 'monitoring_qualification_missing':
+    case 'monitoring_overdue':
+      actions.push({
+        label: 'モニタリング記録',
+        url: `/monitoring-meeting/${encodeURIComponent(userId)}`,
+        kind: 'review',
+      });
+      break;
   }
 
   return actions;

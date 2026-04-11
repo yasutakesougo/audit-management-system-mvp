@@ -12,6 +12,7 @@ export type SpEventName =
   | 'sp:list_missing_optional'
   | 'sp:list_missing_required'
   | 'sp:provision_success'
+  | 'sp:provision_partial'
   | 'sp:provision_failed'
   | 'sp:guid_resolution'
   | 'sp:schema_mismatch'

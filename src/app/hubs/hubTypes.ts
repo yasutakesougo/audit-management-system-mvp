@@ -7,7 +7,8 @@ export type HubId =
   | 'operations'
   | 'billing'
   | 'master'
-  | 'platform';
+  | 'platform'
+  | 'severe';
 
 export type HubEntryStatus = 'primary' | 'secondary' | 'comingSoon';
 

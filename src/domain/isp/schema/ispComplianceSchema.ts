@@ -13,20 +13,32 @@ import { z } from 'zod';
 // コンプライアンスメタデータ構成要素
 // ─────────────────────────────────────────────
 
+/** ISO 8601 日付文字列（簡易バリデーション） */
+export const isoDateString = z.string().regex(
+  /^\d{4}-\d{2}-\d{2}/,
+  'ISO 8601 日付形式（YYYY-MM-DD...）が必要です',
+);
+
 /** 同意記録の詳細（生活介護制度要件） */
 export const ispConsentDetailSchema = z.object({
   /** 説明実施日（ISO 8601） */
-  explainedAt: z.string().nullable().default(null),
+  explainedAt: isoDateString.nullable().default(null),
   /** 説明実施者名 */
   explainedBy: z.string().default(''),
   /** 同意取得日（ISO 8601） */
-  consentedAt: z.string().nullable().default(null),
+  consentedAt: isoDateString.nullable().default(null),
   /** 同意者名 */
   consentedBy: z.string().default(''),
   /** 代理人名（家族等が同意した場合） */
   proxyName: z.string().default(''),
   /** 代理人続柄 */
   proxyRelation: z.string().default(''),
+  /** 代理同意の理由（proxyRelation がある場合に推奨） */
+  proxyReason: z.string().optional(),
+  /** 同意取得方法 */
+  consentMethod: z
+    .enum(['signature', 'seal', 'electronic', 'other'])
+    .optional(),
   /** 備考 */
   notes: z.string().default(''),
 }).default({
@@ -44,7 +56,7 @@ export type IspConsentDetail = z.infer<typeof ispConsentDetailSchema>;
 /** 交付記録の詳細（生活介護制度要件） */
 export const ispDeliveryDetailSchema = z.object({
   /** 交付日（ISO 8601） */
-  deliveredAt: z.string().nullable().default(null),
+  deliveredAt: isoDateString.nullable().default(null),
   /** 本人へ交付済み */
   deliveredToUser: z.boolean().default(false),
   /** 相談支援専門員へ交付済み */
@@ -65,12 +77,12 @@ export type IspDeliveryDetail = z.infer<typeof ispDeliveryDetailSchema>;
 
 /** 見直し制御（6か月ルール） */
 export const ispReviewControlSchema = z.object({
-  /** 見直し周期（日） — 生活介護は原則 180日（6か月） */
+  /**見直し周期（日） — 生活介護は原則 180日（6か月） */
   reviewCycleDays: z.number().int().min(1).default(180),
   /** 前回見直し実施日（ISO 8601） */
-  lastReviewedAt: z.string().nullable().default(null),
+  lastReviewedAt: isoDateString.nullable().default(null),
   /** 次回見直し期限（ISO 8601） */
-  nextReviewDueAt: z.string().nullable().default(null),
+  nextReviewDueAt: isoDateString.nullable().default(null),
   /** 見直し理由 */
   reviewReason: z.string().default(''),
 }).default({
@@ -87,7 +99,7 @@ export const ispApprovalSchema = z.object({
   /** 承認者 UPN (email) */
   approvedBy: z.string().nullable().default(null),
   /** 承認日時 (ISO 8601) */
-  approvedAt: z.string().nullable().default(null),
+  approvedAt: isoDateString.nullable().default(null),
   /** 承認ステータス */
   approvalStatus: z.enum(['draft', 'approved']).default('draft'),
 }).default({
@@ -97,6 +109,46 @@ export const ispApprovalSchema = z.object({
 });
 
 export type IspApproval = z.infer<typeof ispApprovalSchema>;
+
+/**
+ * 会議記録の詳細（ISP 会議実施の証跡 — status: 'meeting' に対応）
+ */
+export const ispMeetingDetailSchema = z.object({
+  /** 会議実施日（ISO 8601） */
+  meetingDate: isoDateString.nullable().default(null),
+  /** 会議議事要旨 */
+  meetingMinutes: z.string().default(''),
+  /**
+   * 出席者名簿（氏名配列）
+   * 将来 role/所属 付き構造 `{ name: string; role?: string }` への拡張余地あり
+   */
+  attendees: z.array(z.string()).default([]),
+}).default({
+  meetingDate: null,
+  meetingMinutes: '',
+  attendees: [],
+});
+
+export type IspMeetingDetail = z.infer<typeof ispMeetingDetailSchema>;
+
+/** 相談支援事業所との連携情報（サービス等利用計画との整合） */
+export const ispConsultationSupportSchema = z.object({
+  /** 相談支援事業所名 */
+  agencyName: z.string().default(''),
+  /** 相談支援専門員名 */
+  officerName: z.string().default(''),
+  /** サービス等利用計画の受領日（ISO 8601） */
+  serviceUsePlanReceivedAt: isoDateString.nullable().default(null),
+  /** サービス等利用計画と ISP の差分・不整合メモ */
+  gapNotes: z.string().default(''),
+}).default({
+  agencyName: '',
+  officerName: '',
+  serviceUsePlanReceivedAt: null,
+  gapNotes: '',
+});
+
+export type IspConsultationSupport = z.infer<typeof ispConsultationSupportSchema>;
 
 /** ISP コンプライアンスメタデータ（生活介護 ISP の監査対応項目を集約） */
 export const ispComplianceMetadataSchema = z.object({
@@ -120,6 +172,10 @@ export const ispComplianceMetadataSchema = z.object({
   reviewControl: ispReviewControlSchema,
   /** 承認記録（F-1: サビ管承認の電子的証跡） */
   approval: ispApprovalSchema,
+  /** 会議記録（status: 'meeting' の証跡） */
+  meeting: ispMeetingDetailSchema,
+  /** 相談支援事業所との連携情報 */
+  consultationSupport: ispConsultationSupportSchema,
 }).default({
   serviceType: 'other',
   standardServiceHours: null,
@@ -149,6 +205,17 @@ export const ispComplianceMetadataSchema = z.object({
     approvedBy: null,
     approvedAt: null,
     approvalStatus: 'draft',
+  },
+  meeting: {
+    meetingDate: null,
+    meetingMinutes: '',
+    attendees: [],
+  },
+  consultationSupport: {
+    agencyName: '',
+    officerName: '',
+    serviceUsePlanReceivedAt: null,
+    gapNotes: '',
   },
 });
 

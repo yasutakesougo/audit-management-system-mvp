@@ -8,6 +8,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
 import type {
   AuditFinding,
+  AuditFindingDomain,
   AuditFindingSeverity,
   AuditFindingType,
 } from '@/domain/regulatory';
@@ -35,6 +36,7 @@ export const SEVERITY_CONFIG: Record<AuditFindingSeverity, { color: 'error' | 'w
 export interface UnifiedFindingRow {
   id: string;
   severity: AuditFindingSeverity;
+  domain: AuditFindingDomain;
   typeLabel: string;
   userId: string;
   userName?: string;
@@ -62,6 +64,7 @@ export function unifyFindings(
     rows.push({
       id: f.id,
       severity: f.severity,
+      domain: f.domain,
       typeLabel: AUDIT_FINDING_TYPE_LABELS[f.type],
       userId: f.userId,
       userName: f.userName,
@@ -77,6 +80,7 @@ export function unifyFindings(
     rows.push({
       id: f.id,
       severity: f.severity,
+      domain: f.domain,
       typeLabel: SEVERE_ADDON_FINDING_TYPE_LABELS[f.type],
       userId: f.userId === '__facility__' ? '事業所全体' : f.userId,
       userName: f.userId === '__facility__' ? '事業所全体' : f.userName,

@@ -1,22 +1,32 @@
 name: actionlint
+
 on:
   pull_request:
     paths:
-      - .github/workflows/**
+      - '.github/workflows/**'
   push:
     branches:
       - main
       - develop
     paths:
-      - .github/workflows/**
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   lint:
+    name: Workflow Lint
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: reviewdog/action-actionlint@v1
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run actionlint
+        uses: reviewdog/action-actionlint@v1
         with:
-          reporter: github-pr-review
+          reporter: github-check
           filter_mode: nofilter
           actionlint_flags: -shellcheck=

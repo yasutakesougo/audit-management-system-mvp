@@ -79,6 +79,14 @@ const REGULAR_FINDING_TEMPLATES: Record<AuditFindingType, (f: AuditFinding) => s
     `${f.userName ?? f.userId} の支援計画シートが未交付です。交付手続きをお願いします。`,
   add_on_candidate: (f) =>
     `${f.userName ?? f.userId} が加算算定の候補です。要件の確認をお願いします。`,
+  monitoring_meeting_missing: (f) =>
+    `${f.userName ?? f.userId} のモニタリング会議が未実施です。期間内の実施をお願いします。`,
+  monitoring_meeting_unfinalized: (f) =>
+    `${f.userName ?? f.userId} のモニタリング会議記録が未確定です。内容の確定をお願いします。`,
+  monitoring_qualification_missing: (f) =>
+    `${f.userName ?? f.userId} のモニタリング会議に参加した作成者の資格が不足しています。資格状況の確認をお願いします。`,
+  monitoring_overdue: (f) =>
+    `${f.userName ?? f.userId} のモニタリング実施期限が超過しています。至急実施をお願いします。`,
 };
 
 const ADDON_FINDING_TEMPLATES: Record<SevereAddonFindingType, (f: SevereAddonFinding) => string> = {

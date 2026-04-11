@@ -34,6 +34,7 @@ import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIceb
 import { useSevereAddonRealData } from '@/features/regulatory/hooks/useSevereAddonRealData';
 import { useRegulatoryFindingsRealData } from '@/features/regulatory/hooks/useRegulatoryFindingsRealData';
 import { useProcedureRecordRepository } from '@/features/regulatory/hooks/useProcedureRecordRepository';
+import { useMonitoringMeetingRepository } from '@/features/monitoring/data/useMonitoringMeetingRepository';
 import {
   buildHandoffFromRegularFinding,
   buildHandoffFromAddonFinding,
@@ -53,7 +54,7 @@ import {
 import type { AuditFindingSeverity, UnifiedFindingRow } from './regulatory-dashboard/types';
 import { unifyFindings } from './regulatory-dashboard/types';
 import { generateDemoFindings, generateDemoSevereAddonFindings, generateDemoIcebergEvidence } from './regulatory-dashboard/demoData';
-import { SummaryCard, TypeBreakdown } from './regulatory-dashboard/SummaryPanel';
+import { SummaryCard, TypeBreakdown, DomainSummary } from './regulatory-dashboard/SummaryPanel';
 import { SevereAddonSummaryPanel } from './regulatory-dashboard/SevereAddonPanel';
 import { FindingsTable } from './regulatory-dashboard/FindingsTable';
 
@@ -65,6 +66,7 @@ const RegulatoryDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [filterSeverity, setFilterSeverity] = useState<AuditFindingSeverity | 'all'>('all');
   const [filterSource, setFilterSource] = useState<'all' | 'regular' | 'addon'>('all');
+  const [filterDomain, setFilterDomain] = useState<'all' | 'isp' | 'sheet'>('all');
   const [sentFindingKeys, setSentFindingKeys] = useState<Set<string>>(new Set());
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'info' }>({ open: false, message: '', severity: 'success' });
   const createHandoff = useCreateHandoffFromExternalSource();
@@ -74,6 +76,7 @@ const RegulatoryDashboardPage: React.FC = () => {
   const { staff: spStaff, isLoading: staffLoading, error: staffError } = useStaff();
   const planningSheetRepo = usePlanningSheetRepositories();
   const procedureRecordRepo = useProcedureRecordRepository();
+  const monitoringMeetingRepo = useMonitoringMeetingRepository();
   const dataLoading = usersStatus === 'loading' || staffLoading;
   const dataError = usersError ? (usersError instanceof Error ? usersError : new Error(String(usersError))) : staffError;
 
@@ -89,6 +92,7 @@ const RegulatoryDashboardPage: React.FC = () => {
     dataError,
     planningSheetRepo,
     procedureRecordRepo,
+    monitoringMeetingRepo,
   );
   const findings = useMemo(
     () => (realFindings.length > 0 ? realFindings : generateDemoFindings()),
@@ -126,6 +130,10 @@ const RegulatoryDashboardPage: React.FC = () => {
   const totalHigh = summary.high + addonFindings.filter(f => f.severity === 'high').length;
   const totalMedium = summary.medium + addonFindings.filter(f => f.severity === 'medium').length;
   const totalLow = summary.low + addonFindings.filter(f => f.severity === 'low').length;
+
+  // 領域別集計
+  const ispCount = (summary.byDomain?.isp || 0) + (addonSummary.byDomain?.isp || 0);
+  const sheetCount = (summary.byDomain?.sheet || 0) + (addonSummary.byDomain?.sheet || 0);
 
   // P2: Iceberg 実データ接続 — useIcebergEvidence + デモフォールバック
   const demoUserId = findings[0]?.userId ?? null;
@@ -241,6 +249,11 @@ const RegulatoryDashboardPage: React.FC = () => {
         <SummaryCard title="低リスク / 算定候補" count={totalLow} color="#0288d1" icon={<InfoOutlinedIcon fontSize="large" />} />
       </Box>
 
+      {/* 領域別サマリー行 */}
+      <Box sx={{ mb: 3 }}>
+        <DomainSummary ispCount={ispCount} sheetCount={sheetCount} />
+      </Box>
+
       {/* 種別内訳 + 加算サマリー + 安全管理サマリ */}
       <Box
         sx={{
@@ -265,16 +278,30 @@ const RegulatoryDashboardPage: React.FC = () => {
       {/* フィルター */}
       <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
         <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel id="filter-source-label">検出区分</InputLabel>
+          <InputLabel id="filter-domain-label">領域</InputLabel>
+          <Select
+            labelId="filter-domain-label"
+            label="領域"
+            value={filterDomain}
+            onChange={(e) => setFilterDomain(e.target.value as 'all' | 'isp' | 'sheet')}
+          >
+            <MenuItem value="all">すべての領域</MenuItem>
+            <MenuItem value="isp">個別支援計画</MenuItem>
+            <MenuItem value="sheet">支援計画シート</MenuItem>
+          </Select>
+        </FormControl>
+
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel id="filter-source-label">検出ソース</InputLabel>
           <Select
             labelId="filter-source-label"
-            label="検出区分"
+            label="検出ソース"
             value={filterSource}
             onChange={(e) => setFilterSource(e.target.value as 'all' | 'regular' | 'addon')}
           >
-            <MenuItem value="all">すべて</MenuItem>
-            <MenuItem value="regular">制度チェック</MenuItem>
-            <MenuItem value="addon">加算チェック</MenuItem>
+            <MenuItem value="all">すべてのソース</MenuItem>
+            <MenuItem value="regular">制度監査エンジン</MenuItem>
+            <MenuItem value="addon">加算判定エンジン</MenuItem>
           </Select>
         </FormControl>
 
@@ -313,6 +340,7 @@ const RegulatoryDashboardPage: React.FC = () => {
           rows={unifiedRows}
           filterSeverity={filterSeverity}
           filterSource={filterSource}
+          filterDomain={filterDomain}
           onNavigate={(url) => navigate(url)}
           evidenceMap={evidenceMap}
           onSendToHandoff={handleSendToHandoff}

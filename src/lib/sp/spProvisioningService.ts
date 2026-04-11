@@ -19,6 +19,10 @@ export class SpProvisioningService {
 
   /**
    * リストの存在を保証し、必要に応じて作成・フィールド追加を行う。
+   *
+   * 物理的な列追加が一部失敗した場合、`ensureListExists` は throw せずに
+   * `failedFields` を返す。必須列が失敗した場合は `sp:provision_partial` を発火し、
+   * 観測性を保ったまま fail-soft を維持する。
    */
   async ensureList(
     listTitle: string,
@@ -27,21 +31,42 @@ export class SpProvisioningService {
   ): Promise<EnsureListResult> {
     try {
       const result = await _ensureListExists(this.spFetch, listTitle, fields, options);
-      
-      trackSpEvent('sp:provision_success', {
-        listName: listTitle,
-        details: { listId: result.listId, fieldCount: fields.length }
-      });
-      
+
+      const failed = result.failedFields ?? [];
+      const requiredFailures = failed.filter(f => f.required);
+
+      if (requiredFailures.length > 0) {
+        trackSpEvent('sp:provision_partial', {
+          listName: listTitle,
+          details: {
+            listId: result.listId,
+            fieldCount: fields.length,
+            failedCount: failed.length,
+            requiredFailedCount: requiredFailures.length,
+            failedFields: failed,
+          },
+          error: `${requiredFailures.length} required field(s) failed: ${requiredFailures.map(f => f.internalName).join(', ')}`,
+        });
+      } else {
+        trackSpEvent('sp:provision_success', {
+          listName: listTitle,
+          details: {
+            listId: result.listId,
+            fieldCount: fields.length,
+            optionalFailedCount: failed.length,
+          },
+        });
+      }
+
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      
+
       trackSpEvent('sp:provision_failed', {
         listName: listTitle,
         error: message
       });
-      
+
       throw error;
     }
   }

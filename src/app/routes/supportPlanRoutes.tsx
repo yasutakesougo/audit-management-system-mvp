@@ -10,6 +10,7 @@ import {
     SuspendedPlanningSheetListPage,
     SuspendedSupportPlanGuidePage,
     SuspendedSupportPlanningSheetPage,
+    SuspendedMonitoringMeetingRecordPage,
 } from './lazyPages';
 
 export const supportPlanRoutes: RouteObject[] = [
@@ -58,6 +59,14 @@ export const supportPlanRoutes: RouteObject[] = [
     element: (
       <RequireAudience requiredRole="viewer">
         <SuspendedAbcRecordPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'monitoring-meeting/:userId',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <SuspendedMonitoringMeetingRecordPage />
       </RequireAudience>
     ),
   },

@@ -10,6 +10,7 @@ import type {
   PlanChangeDecision,
   GoalEvaluation,
   MeetingAttendee,
+  MeetingStatus,
 } from '@/domain/isp/monitoringMeeting';
 import {
   MONITORING_MEETING_CANDIDATES,
@@ -171,8 +172,10 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
     return {
       id: String(row[this.mf(mapping, 'recordId')] ?? ''),
       userId: String(row[this.mf(mapping, 'userId')] ?? ''),
+      userName: (row[this.mf(mapping, 'userName')] as string | undefined) || undefined,
       ispId: String(row[this.mf(mapping, 'ispId')] ?? ''),
       planningSheetId: (row[this.mf(mapping, 'planningSheetId')] as string | undefined) || undefined,
+      planningSheetTitle: (row[this.mf(mapping, 'planningSheetTitle')] as string | undefined) || undefined,
       meetingType: ((row[this.mf(mapping, 'meetingType')] as string | undefined) || 'regular') as MeetingType,
       meetingDate: (row[this.mf(mapping, 'meetingDate')] as string | undefined) || '',
       venue: (row[this.mf(mapping, 'venue')] as string | undefined) || '',
@@ -187,6 +190,25 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
       nextMonitoringDate: (row[this.mf(mapping, 'nextMonitoringDate')] as string | undefined) || '',
       recordedBy: (row[this.mf(mapping, 'recordedBy')] as string | undefined) || '',
       recordedAt: (row[this.mf(mapping, 'recordedAt')] as string | undefined) || '',
+
+      // 強度行動障害支援
+      implementationSummary: (row[this.mf(mapping, 'implementationSummary')] as string | undefined) || '',
+      behaviorChangeSummary: (row[this.mf(mapping, 'behaviorChangeSummary')] as string | undefined) || '',
+      effectiveSupportSummary: (row[this.mf(mapping, 'effectiveSupportSummary')] as string | undefined) || '',
+      issueSummary: (row[this.mf(mapping, 'issueSummary')] as string | undefined) || '',
+      discussionSummary: (row[this.mf(mapping, 'discussionSummary')] as string | undefined) || '',
+      requiresPlanSheetUpdate: Boolean(row[this.mf(mapping, 'requiresPlanSheetUpdate')]),
+      requiresIspUpdate: Boolean(row[this.mf(mapping, 'requiresIspUpdate')]),
+      nextActions: safeJsonParse<string[]>(row[this.mf(mapping, 'nextActions')], []),
+      hasBasicTrainedMember: Boolean(row[this.mf(mapping, 'hasBasicTrainedMember')]),
+      hasPracticalTrainedMember: Boolean(row[this.mf(mapping, 'hasPracticalTrainedMember')]),
+      qualificationCheckStatus: (row[this.mf(mapping, 'qualificationCheckStatus')] as 'ok' | 'warning' | 'invalid' | undefined) || 'ok',
+
+      // 監査ステータス
+      status: (row[this.mf(mapping, 'status')] as MeetingStatus) || 'draft',
+      finalizedAt: (row[this.mf(mapping, 'finalizedAt')] as string | undefined) || undefined,
+      finalizedBy: (row[this.mf(mapping, 'finalizedBy')] as string | undefined) || undefined,
+      previousMeetingId: (row[this.mf(mapping, 'previousMeetingId')] as string | undefined) || undefined,
     };
   }
 
@@ -198,8 +220,10 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
       Title: `${record.userId}_${meetingDate}`,
       [this.mf(mapping, 'recordId')]: record.id,
       [this.mf(mapping, 'userId')]: record.userId,
+      [this.mf(mapping, 'userName')]: record.userName || '',
       [this.mf(mapping, 'ispId')]: record.ispId,
       [this.mf(mapping, 'planningSheetId')]: record.planningSheetId ?? '',
+      [this.mf(mapping, 'planningSheetTitle')]: record.planningSheetTitle ?? '',
       [this.mf(mapping, 'meetingType')]: record.meetingType,
       [this.mf(mapping, 'meetingDate')]: meetingDate,
       [this.mf(mapping, 'venue')]: record.venue,
@@ -214,6 +238,25 @@ export class DataProviderMonitoringMeetingRepository implements MonitoringMeetin
       [this.mf(mapping, 'nextMonitoringDate')]: nextMonitoringDate,
       [this.mf(mapping, 'recordedBy')]: record.recordedBy,
       [this.mf(mapping, 'recordedAt')]: record.recordedAt,
+
+      // 強度行動障害支援
+      [this.mf(mapping, 'implementationSummary')]: record.implementationSummary || '',
+      [this.mf(mapping, 'behaviorChangeSummary')]: record.behaviorChangeSummary || '',
+      [this.mf(mapping, 'effectiveSupportSummary')]: record.effectiveSupportSummary || '',
+      [this.mf(mapping, 'issueSummary')]: record.issueSummary || '',
+      [this.mf(mapping, 'discussionSummary')]: record.discussionSummary || '',
+      [this.mf(mapping, 'requiresPlanSheetUpdate')]: Boolean(record.requiresPlanSheetUpdate),
+      [this.mf(mapping, 'requiresIspUpdate')]: Boolean(record.requiresIspUpdate),
+      [this.mf(mapping, 'nextActions')]: JSON.stringify(record.nextActions ?? []),
+      [this.mf(mapping, 'hasBasicTrainedMember')]: Boolean(record.hasBasicTrainedMember),
+      [this.mf(mapping, 'hasPracticalTrainedMember')]: Boolean(record.hasPracticalTrainedMember),
+      [this.mf(mapping, 'qualificationCheckStatus')]: record.qualificationCheckStatus || 'ok',
+
+      // 監査ステータス
+      [this.mf(mapping, 'status')]: record.status || 'draft',
+      [this.mf(mapping, 'finalizedAt')]: record.finalizedAt || '',
+      [this.mf(mapping, 'finalizedBy')]: record.finalizedBy || '',
+      [this.mf(mapping, 'previousMeetingId')]: record.previousMeetingId || '',
     };
   }
 }

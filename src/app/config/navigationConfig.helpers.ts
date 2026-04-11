@@ -90,6 +90,11 @@ export function buildVisibleNavItems(
   const KIOSK_ALLOWED_GROUPS = new Set(['today']);
 
   return items.filter((item) => {
+    // 0. Forced Pillars Visibility (B案: 救済措置 - 最優先で見せる導線)
+    // 4本柱の導線は、以前の「非表示設定」や「階層化」に関わらず、常にサイドバーに常駐させる。
+    const FORCED_PILLARS = ['/records/monthly', '/support-plan-guide', '/planning-sheet-list', '/assessment'];
+    if (FORCED_PILLARS.includes(item.to)) return true;
+
     // 1. Feature Tier/Lite Nav filtering
     if (opts.todayLiteNavV2) {
       const tier = item.tier ?? DEFAULT_TIER;
@@ -103,8 +108,10 @@ export function buildVisibleNavItems(
       if (KIOSK_HIDDEN_PATHS.includes(item.to)) return false;
     }
 
-    // 3. User preference filtering
+    // 3. User preference filtering (Group-level)
     if (item.group && opts.hiddenGroups.includes(item.group)) return false;
+
+    // 4. User preference filtering (Item-level)
     if (opts.hiddenItems.includes(item.to)) return false;
 
     return true;

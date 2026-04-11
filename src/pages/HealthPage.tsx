@@ -371,6 +371,11 @@ const listSpecs: ListSpec[] = SP_LIST_REGISTRY.map((entry) => {
     createItem["StaffName"] = "健康診断テスト用";
   } else if (entry.key === "user_transport_settings" || entry.key === "user_benefit_profile" || entry.key === "user_benefit_profile_ext") {
     createItem["UserID"] = `user-${uniqueId}`;
+  } else if (entry.key === "monitoring_meetings") {
+    createItem["cr014_recordId"] = `rec-health-${uniqueId}`;
+    createItem["cr014_userId"] = `user-health-${uniqueId}`;
+    createItem["cr014_meetingDate"] = new Date().toISOString();
+    createItem["cr014_status"] = "draft";
   }
 
   return {

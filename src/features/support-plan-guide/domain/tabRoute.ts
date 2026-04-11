@@ -35,8 +35,8 @@ export type TabGroupDef = {
 
 export const TAB_GROUPS: readonly TabGroupDef[] = [
   { key: 'basic',      label: '基本情報',   subs: ['overview', 'assessment'] },
-  { key: 'plan',       label: '計画策定',   subs: ['smart', 'supports', 'decision'] },
-  { key: 'operations', label: '運用・実行', subs: ['monitoring', 'risk', 'excellence'] },
+  { key: 'plan',       label: '共通・中核計画',   subs: ['smart', 'supports', 'decision'] },
+  { key: 'operations', label: '支援計画シート運用入口', subs: ['monitoring', 'risk', 'excellence'] },
   { key: 'system',     label: '制度適合',   subs: ['compliance'] },
   { key: 'output',     label: '出力',       subs: ['preview'] },
 ] as const;
