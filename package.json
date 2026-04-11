@@ -108,13 +108,14 @@
     "ci:perf-report": "sh -c 'npm run -s perf:check; status=$?; npm run -s perf:summary; if [ $status -ne 0 ]; then NOTIFY_LAST_EXIT_CODE=$status npm run -s notify -- --only-on-fail --title \"Perf Budget / Lighthouse\" --files reports/perf-summary.md; exit $status; fi'",
     "release": ".github/scripts/release.sh",
     "patrol": "node scripts/ops/nightly-patrol.mjs",
+    "patrol:telemetry": "node scripts/ops/materialize-sp-telemetry.mjs",
     "patrol:assert": "node scripts/ops/assert-telemetry-lanes.mjs",
     "patrol:dashboard": "node scripts/ops/os-metrics.mjs",
     "patrol:raw-fetch": "node scripts/ops/fetch-nightly-raw-summaries.mjs",
     "patrol:admin-status": "node scripts/ops/export-admin-status-summary.mjs",
     "patrol:exception-center": "node scripts/ops/export-exception-center-summary.mjs",
     "patrol:decision": "node scripts/ops/nightly-decision.mjs",
-    "patrol:full": "npm run patrol && npm run patrol:assert && npm run patrol:dashboard && npm run patrol:raw-fetch && npm run patrol:admin-status && npm run patrol:exception-center && npm run patrol:decision"
+    "patrol:full": "npm run patrol:telemetry && npm run patrol && npm run patrol:assert && npm run patrol:dashboard && npm run patrol:raw-fetch && npm run patrol:admin-status && npm run patrol:exception-center && npm run patrol:decision"
   },
   "dependencies": {
     "@azure/msal-browser": "^3.30.0",

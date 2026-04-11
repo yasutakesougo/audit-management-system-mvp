@@ -343,6 +343,7 @@ const listSpecs: ListSpec[] = SP_LIST_REGISTRY.map((entry) => {
         internalName: name,
         isEssential: true,
         typeHint: "Core",
+        candidates: name.toLowerCase() === 'id' ? ['ID', 'Id'] : [name],
       });
     } else if (
       effectiveEssentials.some(
@@ -351,30 +352,34 @@ const listSpecs: ListSpec[] = SP_LIST_REGISTRY.map((entry) => {
       name.toLowerCase() === "id"
     ) {
       existing.isEssential = true;
+      if (name.toLowerCase() === 'id' && !existing.candidates) {
+        existing.candidates = ['ID', 'Id'];
+      }
     }
   }
 
-  const stamp = Date.now().toString().slice(-6);
+  const stamp = Date.now().toString().slice(-8); // 8 digits
+  const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  const uniqueId = `hc-${stamp}-${randomSuffix}`;
+
+  const createItem: Record<string, unknown> = { Title: `healthcheck-root-${uniqueId}` };
+  if (entry.key === "users_master") {
+    createItem["UserID"] = `user-${uniqueId}`;
+    createItem["FullName"] = "健康診断テスト用";
+  } else if (entry.key === "staff_master") {
+    createItem["StaffID"] = `staff-${uniqueId}`;
+    createItem["StaffName"] = "健康診断テスト用";
+  } else if (entry.key === "user_transport_settings" || entry.key === "user_benefit_profile" || entry.key === "user_benefit_profile_ext") {
+    createItem["UserID"] = `user-${uniqueId}`;
+  }
+
   return {
     key: entry.key,
     displayName: entry.displayName,
     resolvedTitle: entry.resolve(),
     requiredFields: combined,
-    createItem:
-      entry.key === "users_master"
-        ? {
-            Title: `healthcheck-user-${stamp}`,
-            UserID: `user-health-${stamp}`,
-            FullName: "健康診断テスト用",
-          }
-        : entry.key === "staff_master"
-        ? {
-            Title: `healthcheck-staff-${stamp}`,
-            StaffID: `staff-health-${stamp}`,
-            StaffName: "健康診断テスト用",
-          }
-        : { Title: `healthcheck-root-${stamp}` },
-    updateItem: { Title: `healthcheck-updated-${stamp}` },
+    createItem,
+    updateItem: { Title: `healthcheck-updated-${uniqueId}` },
     isReadOnly: !entry.operations.includes("W"),
   };
 });
