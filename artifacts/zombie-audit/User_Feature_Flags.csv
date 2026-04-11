@@ -1,0 +1,336 @@
+ListName,InternalName,DisplayName,TypeAsString,Hidden,ReadOnly,FromBaseType,Indexed,Classification,Reason,RecommendedAction
+User_Feature_Flags,ContentTypeId,コンテンツ タイプの ID,ContentTypeId,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Title,タイトル,Text,false,false,true,false,keep_system,FromBaseType=true,KEEP
+User_Feature_Flags,_ModerationComments,承認者のコメント,Note,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,File_x0020_Type,ファイルの種類,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_ColorHex,色,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_ColorTag,色タグ,Text,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_Emoji,絵文字,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,ComplianceAssetId,コンプライアンス資産 ID,Text,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,UserCode,ユーザーコード,Text,false,false,false,true,keep_ssot,Exact match with SSOT,KEEP
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x5024_,フラグ値,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x6709__x52b9__x671f__x9650_,有効期限,DateTime,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x300,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x301,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x302,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x303,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x304,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x305,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x306,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x307,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x308,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x309,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3010,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3011,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3012,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3013,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3014,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3015,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3016,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3017,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3018,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3019,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3020,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3021,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3022,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3023,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3024,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3025,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3026,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3027,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3028,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3029,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3030,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3031,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3032,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3033,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3034,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3035,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3036,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3037,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3038,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3039,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3040,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3041,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3042,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3043,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3044,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3045,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3046,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3047,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3048,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3049,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3050,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3051,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3052,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3053,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3054,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3055,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3056,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3057,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3058,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3059,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3060,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3061,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3062,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3063,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3064,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3065,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3066,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3067,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3068,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3069,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3070,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3071,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3072,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3073,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3074,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3075,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3076,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3077,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3078,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3079,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3080,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3081,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3082,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3083,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3084,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3085,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3086,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3087,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3088,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3089,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3090,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3091,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3092,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3093,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3094,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3095,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3096,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3097,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3098,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x3099,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30100,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30101,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30102,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30103,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30104,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30105,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30106,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30107,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30108,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30109,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30110,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30111,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30112,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30113,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30114,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30115,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30116,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30117,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30118,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30119,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30120,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30121,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30122,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30123,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30124,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30125,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30126,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30127,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30128,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30129,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30130,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30131,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30132,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30133,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30134,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30135,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30136,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30137,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30138,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30139,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30140,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30141,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30142,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30143,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30144,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30145,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30146,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30147,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30148,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30149,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30150,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30151,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30152,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30153,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30154,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30155,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30156,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30157,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30158,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30159,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30160,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30161,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30162,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30163,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30164,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30165,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30166,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30167,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30168,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30169,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30170,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30171,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30172,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30173,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30174,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30175,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30176,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30177,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30178,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30179,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30180,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30181,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30182,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30183,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30184,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30185,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30186,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30187,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30188,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30189,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30190,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30191,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30192,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30193,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30194,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30195,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30196,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30197,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30198,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30199,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30200,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30201,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30202,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30203,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30204,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30205,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30206,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30207,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30208,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30209,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30210,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30211,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30212,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30213,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30214,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30215,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30216,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30217,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30218,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30219,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30220,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30221,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30222,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30223,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30224,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30225,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30226,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30227,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30228,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30229,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30230,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30231,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30232,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30233,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30234,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30235,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30236,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30237,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30238,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30239,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30240,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30241,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30242,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30243,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30244,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,_x30d5__x30e9__x30b0__x30ad__x30245,フラグキー,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+User_Feature_Flags,ID,ID,Counter,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,ContentType,コンテンツ タイプ,Computed,false,false,true,false,keep_system,FromBaseType=true,KEEP
+User_Feature_Flags,Modified,更新日時,DateTime,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Created,登録日時,DateTime,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Author,登録者,User,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Editor,更新者,User,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_HasCopyDestinations,コピー先の有無,Boolean,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_CopySource,コピー元,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,owshiddenversion,owshiddenversion,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,WorkflowVersion,ワークフローのバージョン,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_UIVersion,UI バージョン,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_UIVersionString,バージョン,Text,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Attachments,添付ファイル,Attachments,false,false,true,false,keep_system,FromBaseType=true,KEEP
+User_Feature_Flags,_ModerationStatus,承認の状況,ModStat,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Edit,編集,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,LinkTitleNoMenu,タイトル,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,LinkTitle,タイトル,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,LinkTitle2,タイトル,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,SelectTitle,選択,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,InstanceID,インスタンス ID,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Order,順序,Number,true,false,true,false,keep_system,"Hidden=true, FromBaseType=true",KEEP
+User_Feature_Flags,GUID,GUID,Guid,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,WorkflowInstanceID,ワークフロー インスタンス ID,Guid,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,FileRef,URL パス,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,FileDirRef,パス,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Last_x0020_Modified,更新日時,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Created_x0020_Date,登録日時,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,FSObjType,アイテムの種類,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,SortBehavior,並べ替えの種類,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,PermMask,有効な権限マスク,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,PrincipalCount,プリンシパルの数,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,FileLeafRef,名前,File,true,false,true,false,keep_system,"Hidden=true, FromBaseType=true",KEEP
+User_Feature_Flags,UniqueId,固有 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,ParentUniqueId,ドキュメントの親 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,SyncClientId,クライアント ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,ProgId,ProgId,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,ScopeId,ScopeId,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,HTML_x0020_File_x0020_Type,HTML ファイルの種類,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_EditMenuTableStart,メニュー テーブルの編集の開始,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_EditMenuTableStart2,メニュー テーブルの編集の開始,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_EditMenuTableEnd,メニュー テーブルの編集の終了,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,LinkFilenameNoMenu,名前,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,LinkFilename,名前,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,LinkFilename2,名前,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,DocIcon,種類,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,ServerUrl,サーバーの相対 URL,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,EncodedAbsUrl,エンコードされた絶対 URL,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,BaseName,ファイル名,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,MetaInfo,プロパティ バッグ,Lookup,true,false,true,false,keep_system,"Hidden=true, FromBaseType=true",KEEP
+User_Feature_Flags,_Level,レベル,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_IsCurrentVersion,現在のバージョン,Boolean,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,ItemChildCount,子アイテムの数,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,FolderChildCount,子フォルダーの数,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Restricted,制限付き,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,OriginatorId,発信者 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,NoExecute,NoExecute,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,ContentVersion,コンテンツのバージョン,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_ComplianceFlags,ラベルの設定,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_ComplianceTag,保持ラベル,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_ComplianceTagWrittenTime,保持ラベルを適用済み,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_ComplianceTagUserId,ラベルの適用者,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_IsRecord,レコードとして登録されているアイテム,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,AccessPolicy,アクセス ポリシー,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_VirusStatus,VirusStatus,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_VirusVendorID,VirusVendorID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_VirusInfo,VirusInfo,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_RansomwareAnomalyMetaInfo,RansomwareAnomalyMetaInfo,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_DraftOwnerId,下書き所有者 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,MainLinkSettings,メイン リンクの設定,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,AppAuthor,アプリの作成者,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,AppEditor,アプリの変更者,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,SMTotalSize,合計サイズ,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,SMLastModifiedDate,最終更新日,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,SMTotalFileStreamSize,ファイル ストリームの合計サイズ,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,SMTotalFileCount,合計ファイル数,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_CommentFlags,コメントの設定,Lookup,true,true,false,false,keep_system,"Hidden=true, ReadOnly=true",KEEP
+User_Feature_Flags,_CommentCount,コメント数,Lookup,true,true,false,false,keep_system,"Hidden=true, ReadOnly=true",KEEP
