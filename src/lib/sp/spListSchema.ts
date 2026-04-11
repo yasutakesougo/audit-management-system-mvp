@@ -462,7 +462,9 @@ export async function ensureListExists(
     const available = new Set(existing.keys());
 
     // [Hardening Phase D] インデックス圧迫の検知 (20列制限)
-    const indexedCount = Array.from(existing.values()).filter(f => f.Indexed).length;
+    const indexedColumns = Array.from(existing.values()).filter(f => f.Indexed).map(f => f.InternalName);
+    const indexedCount = indexedColumns.length;
+
     if (indexedCount > 15) {
       const { reportSpHealthEvent } = await import('@/features/sp/health/spHealthSignalStore');
       reportSpHealthEvent({
@@ -471,7 +473,15 @@ export async function ensureListExists(
         listName: listTitle,
         message: `「${listTitle}」のインデックス列数が上限に近い状態です (${indexedCount}/20)。`,
         source: 'realtime',
-        occurredAt: new Date().toISOString()
+        occurredAt: new Date().toISOString(),
+        remediation: {
+          summary: '使用頻度の低い列のインデックスを解除してください。',
+          commands: indexedColumns.map(col => 
+            `m365 spo field set --webUrl $SITE_URL --listTitle "${listTitle}" --internalName "${col}" --indexed false`
+          ),
+          caution: '以下の列が現在インデックスされています。フィルタリングや並び替えに使用していない列を解除してください。',
+          isDestructive: false
+        }
       });
     }
 

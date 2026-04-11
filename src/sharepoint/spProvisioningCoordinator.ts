@@ -294,7 +294,16 @@ export class SharePointProvisioningCoordinator {
             listName,
             message: `「${listName}」で列名のドリフト（末尾への _0 付与等）を検出しました: ${driftDetails.join(', ')}`,
             source: 'realtime',
-            occurredAt: new Date().toISOString()
+            occurredAt: new Date().toISOString(),
+            remediation: {
+              summary: '不整合を起こしている重複列（ドリフト列）の削除を推奨します。',
+              commands: driftDetails.map(d => {
+                const driftedName = d.split(' -> ')[1];
+                return `m365 spo field remove --webUrl $SITE_URL --listTitle "${listName}" --internalName "${driftedName}" --confirm`;
+              }),
+              caution: '削除前に対象の列にデータが入っていないか、または重複している本物の列があるかを確認してください。',
+              isDestructive: true
+            }
           });
 
           return { 
