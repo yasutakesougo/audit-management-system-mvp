@@ -45,10 +45,13 @@ import {
 import { useUsers } from '@/features/users/useUsers';
 import { useStaff } from '@/stores/useStaff';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
+import { usePlanPatchRepository } from '@/features/planning-sheet/hooks/usePlanPatchRepository';
+import { useImprovementOutcomeRepository } from '@/features/monitoring/data/useImprovementOutcomeRepository';
 import {
   localWeeklyObservationRepository,
   localQualificationAssignmentRepository,
 } from '@/infra/localStorage/localStaffQualificationRepository';
+import { usePdcaStopRanking } from '@/features/regulatory/hooks/usePdcaStopRanking';
 
 // ── Local (split) ──
 import type { AuditFindingSeverity, UnifiedFindingRow } from './regulatory-dashboard/types';
@@ -57,6 +60,7 @@ import { generateDemoFindings, generateDemoSevereAddonFindings, generateDemoIceb
 import { SummaryCard, TypeBreakdown, DomainSummary } from './regulatory-dashboard/SummaryPanel';
 import { SevereAddonSummaryPanel } from './regulatory-dashboard/SevereAddonPanel';
 import { FindingsTable } from './regulatory-dashboard/FindingsTable';
+import { PdcaStopRankingPanel } from './regulatory-dashboard/PdcaStopRankingPanel';
 
 // ─────────────────────────────────────────────
 // Page Component
@@ -75,6 +79,8 @@ const RegulatoryDashboardPage: React.FC = () => {
   const { data: spUsers, status: usersStatus, error: usersError } = useUsers({ selectMode: 'full' });
   const { staff: spStaff, isLoading: staffLoading, error: staffError } = useStaff();
   const planningSheetRepo = usePlanningSheetRepositories();
+  const planPatchRepository = usePlanPatchRepository();
+  const improvementOutcomeRepository = useImprovementOutcomeRepository();
   const procedureRecordRepo = useProcedureRecordRepository();
   const monitoringMeetingRepo = useMonitoringMeetingRepository();
   const dataLoading = usersStatus === 'loading' || staffLoading;
@@ -118,6 +124,19 @@ const RegulatoryDashboardPage: React.FC = () => {
     return generateDemoSevereAddonFindings();
   }, [realAddonInput]);
   const addonSummary = useMemo(() => summarizeSevereAddonFindings(addonFindings), [addonFindings]);
+
+  const {
+    ranking: pdcaStopRanking,
+    isLoading: pdcaStopRankingLoading,
+  } = usePdcaStopRanking(
+    spUsers,
+    dataLoading,
+    dataError,
+    planningSheetRepo,
+    monitoringMeetingRepo,
+    planPatchRepository,
+    improvementOutcomeRepository,
+  );
 
   // 統合行データ
   const unifiedRows = useMemo(
@@ -273,6 +292,14 @@ const RegulatoryDashboardPage: React.FC = () => {
           }}
         />
         <SafetyOperationsSummaryCard />
+      </Box>
+
+      <Box sx={{ mb: 3 }}>
+        <PdcaStopRankingPanel
+          ranking={pdcaStopRanking}
+          isLoading={pdcaStopRankingLoading}
+          onNavigate={(url) => navigate(url)}
+        />
       </Box>
 
       {/* フィルター */}

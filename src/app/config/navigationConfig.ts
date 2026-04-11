@@ -300,15 +300,15 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       featureFlag: 'todayLiteNavV2',
     },
     {
-      // Tier B: 制度遵守（モニタリング・計画）の監査・監視。管理者のみ表示。
-      label: '制度遵守ダッシュボード',
+      // OSの心臓部。PDCAの停滞を可視化し、全職員の意思決定を支援。
+      label: 'PDCAサイクル監視 (OS)',
       to: '/admin/regulatory-dashboard',
       isActive: (pathname) => pathname === '/admin/regulatory-dashboard',
       icon: undefined,
       testId: 'nav-regulatory-dashboard',
-      audience: NAV_AUDIENCE.admin,
-      group: 'operations' as NavGroupKey,
-      tier: 'admin',
+      audience: NAV_AUDIENCE.staff,
+      group: 'severe' as NavGroupKey,
+      tier: 'more',
       featureFlag: 'todayLiteNavV2',
     },
     createHubNavItem('billing', { testId: TESTIDS.nav.billing }),

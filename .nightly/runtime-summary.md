@@ -1,5 +1,5 @@
 
-# Nightly Runtime Patrol Report — 2026-04-07
+# Nightly Runtime Patrol Report — 2026-04-11
 
 ## 📊 Summary
 * **Total Raw Events**: 9
@@ -8,8 +8,29 @@
   * 🟠 **Action Required**: 1
   * 🟡 **Watch**: 2
   * 🟢 **Silent (Absorbed)**: 3
+* 📘 **Drift Log Read**: fallback=no / scanned=0 / filtered=0 / safety=safe
+
 
 ---
+
+## 🧾 Reason Code Summary
+| Reason Code | Count | Resources |
+| --- | :---: | --- |
+| `manual` | 2 | StaffAttendance, UserBenefit_Profile |
+| `absorbed_strategy_e` | 1 | UserBenefit_Profile |
+| `index_required` | 1 | iceberg_analysis |
+| `list_not_found` | 1 | Users_Master |
+| `max_size_exceeded` | 1 | UserBenefit_Profile |
+| `rate_limit` | 1 | SharePoint_API |
+| `unknown_field_added` | 1 | support_record_daily |
+
+## 🔁 Repeated Transient Failures
+_No events recorded._
+
+
+## ♻️ Recovered Transient Failures
+_No events recorded._
+
 
 ## 🚨 Requires Attention (Critical & Action Required & Watch)
 | Severity | Event Type | Resource | Occurrences | Fingerprint | NextAction |

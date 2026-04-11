@@ -1,5 +1,5 @@
-import React from 'react';
-import {
+import React, { useState } from 'react';
+import { 
   Box,
   Button,
   Card,
@@ -33,6 +33,15 @@ import {
 import { useStaff } from '@/stores/useStaff';
 import { Staff } from '@/types';
 import { MonitoringMeetingPDFAction } from '../reports/MonitoringMeetingPDFAction';
+import type { MetricDefinition } from '@/domain/isp/metricDefinition';
+
+export type ImprovementInput = {
+  patchId: string;
+  metricId: string;
+  beforeValue: number | '';
+  afterValue: number | '';
+  confidence: 'low' | 'medium' | 'high';
+};
 
 interface MonitoringMeetingFormProps {
   draft: MonitoringMeetingDraft;
@@ -42,6 +51,10 @@ interface MonitoringMeetingFormProps {
   onCancel: () => void;
   isSaving?: boolean;
   planningSheets?: { id: string, title: string }[];
+  patchOptions?: { id: string; label: string }[];
+  metricDefinitions?: readonly MetricDefinition[];
+  improvementInput?: ImprovementInput;
+  onImprovementInputChange?: (patch: Partial<ImprovementInput>) => void;
 }
 
 export const MonitoringMeetingForm: React.FC<MonitoringMeetingFormProps> = ({
@@ -51,8 +64,14 @@ export const MonitoringMeetingForm: React.FC<MonitoringMeetingFormProps> = ({
   onFinalize,
   onCancel,
   isSaving,
-  planningSheets = []
+  planningSheets = [],
+  patchOptions = [],
+  metricDefinitions = [],
+  improvementInput,
+  onImprovementInputChange,
 }) => {
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
   const { data: staffMaster = [] } = useStaff();
   const isFinalized = draft.status === 'finalized';
 
@@ -73,7 +92,7 @@ export const MonitoringMeetingForm: React.FC<MonitoringMeetingFormProps> = ({
       hasBasicTraining: staff.hasBasicBehaviorSupportTraining,
       hasPracticalTraining: staff.hasPracticalBehaviorSupportTraining,
       trainingLevel: staff.hasPracticalBehaviorSupportTraining ? 'practical' 
-                    : staff.hasBasicBehaviorSupportTraining? 'basic' : 'none'
+                    : staff.hasBasicBehaviorSupportTraining ? 'basic' : 'none'
     };
 
     onUpdate({ attendees: [...draft.attendees, newAttendee] });
@@ -82,6 +101,64 @@ export const MonitoringMeetingForm: React.FC<MonitoringMeetingFormProps> = ({
   const handleRemoveStaff = (id: string | undefined) => {
     if (isFinalized || !id) return;
     onUpdate({ attendees: draft.attendees.filter(a => a.staffId !== id) });
+  };
+
+  const validateImprovement = (): boolean => {
+    // 改善評価が入力されている場合のみバリデーションを行う
+    if (!improvementInput || (!improvementInput.patchId && !improvementInput.metricId && improvementInput.beforeValue === '' && improvementInput.afterValue === '')) {
+      setValidationErrors([]);
+      setValidationWarnings([]);
+      return true;
+    }
+
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    // 1. 形式バリデーション (Errors - 保存を止める)
+    if (!improvementInput.metricId) {
+      errors.push('対象指標を選択してください');
+    }
+    if (improvementInput.beforeValue === '' || improvementInput.afterValue === '') {
+      errors.push('before / after を入力してください');
+    }
+    if (typeof improvementInput.beforeValue === 'number' && improvementInput.beforeValue < 0) {
+      errors.push('before値は0以上で入力してください');
+    }
+    if (typeof improvementInput.afterValue === 'number' && improvementInput.afterValue < 0) {
+      errors.push('after値は0以上で入力してください');
+    }
+    if (improvementInput.beforeValue === 0 && improvementInput.afterValue === 0) {
+      errors.push('変化が測定できません');
+    }
+
+    // 2. 測定品質バリデーション (Warnings - 保存は止めないが警告)
+    if (errors.length === 0 && typeof improvementInput.beforeValue === 'number' && typeof improvementInput.afterValue === 'number') {
+      const diff = Math.abs(improvementInput.afterValue - improvementInput.beforeValue);
+      
+      if (diff === 0) {
+        warnings.push('変化がありません（測定対象として適切か確認してください）');
+      }
+
+      if (improvementInput.beforeValue > 0 && diff / improvementInput.beforeValue > 5) {
+        warnings.push('変化が大きすぎます（入力ミスの可能性があります）');
+      }
+    }
+
+    setValidationErrors(errors);
+    setValidationWarnings(warnings);
+    return errors.length === 0;
+  };
+
+  const handleSave = () => {
+    if (validateImprovement()) {
+      onSave();
+    }
+  };
+
+  const handleFinalize = () => {
+    if (validateImprovement()) {
+      onFinalize?.();
+    }
   };
 
   return (
@@ -349,6 +426,119 @@ export const MonitoringMeetingForm: React.FC<MonitoringMeetingFormProps> = ({
           </CardContent>
         </Card>
 
+        <Card elevation={0} variant="outlined">
+          <CardContent>
+            <Typography variant="h6" gutterBottom color="primary">
+              6. 改善評価（任意）
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              既に反映済みの更新案に対して、before / after の測定結果がある場合のみ入力してください。
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  fullWidth
+                  select
+                  label="評価対象の更新案"
+                  value={improvementInput?.patchId ?? ''}
+                  onChange={(e) => onImprovementInputChange?.({ patchId: e.target.value })}
+                  disabled={isFinalized || patchOptions.length === 0}
+                  helperText={patchOptions.length === 0 ? '評価対象にできる確定済み更新案がありません' : '効果を確認したい更新案を選択'}
+                >
+                  {patchOptions.map((patch) => (
+                    <MenuItem key={patch.id} value={patch.id}>{patch.label}</MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  fullWidth
+                  select
+                  label="対象指標"
+                  value={improvementInput?.metricId ?? ''}
+                  onChange={(e) => onImprovementInputChange?.({ metricId: e.target.value })}
+                  disabled={isFinalized}
+                >
+                  {metricDefinitions.map((metric) => (
+                    <MenuItem key={metric.id} value={metric.id}>
+                      {metric.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="before"
+                  value={improvementInput?.beforeValue ?? ''}
+                  onChange={(e) => onImprovementInputChange?.({
+                    beforeValue: e.target.value === '' ? '' : Number(e.target.value),
+                  })}
+                  disabled={isFinalized}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="after"
+                  value={improvementInput?.afterValue ?? ''}
+                  onChange={(e) => onImprovementInputChange?.({
+                    afterValue: e.target.value === '' ? '' : Number(e.target.value),
+                  })}
+                  disabled={isFinalized}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  select
+                  label="信頼度"
+                  value={improvementInput?.confidence ?? 'medium'}
+                  onChange={(e) => onImprovementInputChange?.({
+                    confidence: e.target.value as ImprovementInput['confidence'],
+                  })}
+                  disabled={isFinalized}
+                >
+                  <MenuItem value="low">低</MenuItem>
+                  <MenuItem value="medium">中</MenuItem>
+                  <MenuItem value="high">高</MenuItem>
+                </TextField>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+
+        {/* Validation Errors & Warnings */}
+        <Stack spacing={2} sx={{ mb: 2 }}>
+          {validationErrors.length > 0 && (
+            <Alert severity="error">
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                ⚠ 改善評価に問題があります
+              </Typography>
+              <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                {validationErrors.map((error, idx) => (
+                  <li key={idx}>{error}</li>
+                ))}
+              </Box>
+            </Alert>
+          )}
+
+          {validationWarnings.length > 0 && (
+            <Alert severity="warning">
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                💡 測定品質に関する確認事項
+              </Typography>
+              <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                {validationWarnings.map((warning, idx) => (
+                  <li key={idx}>{warning}</li>
+                ))}
+              </Box>
+            </Alert>
+          )}
+        </Stack>
+
         {/* Footer actions */}
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, pb: 4 }}>
           <Button variant="outlined" onClick={onCancel}>一覧へ戻る</Button>
@@ -356,7 +546,7 @@ export const MonitoringMeetingForm: React.FC<MonitoringMeetingFormProps> = ({
             <>
               <Button 
                 variant="outlined" 
-                onClick={onSave}
+                onClick={handleSave}
                 disabled={isSaving}
               >
                 下書き保存
@@ -365,7 +555,7 @@ export const MonitoringMeetingForm: React.FC<MonitoringMeetingFormProps> = ({
                 variant="contained" 
                 size="large" 
                 color="primary"
-                onClick={onFinalize}
+                onClick={handleFinalize}
                 disabled={isSaving || !draft.discussionSummary}
                 startIcon={<LockIcon />}
               >
