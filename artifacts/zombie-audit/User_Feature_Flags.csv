@@ -1,0 +1,90 @@
+ListName,InternalName,DisplayName,TypeAsString,Hidden,ReadOnly,FromBaseType,Indexed,Classification,Reason,RecommendedAction
+User_Feature_Flags,ContentTypeId,コンテンツ タイプの ID,ContentTypeId,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Title,タイトル,Text,false,false,true,false,keep_system,FromBaseType=true,KEEP
+User_Feature_Flags,_ModerationComments,承認者のコメント,Note,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,File_x0020_Type,ファイルの種類,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_ColorHex,色,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_ColorTag,色タグ,Text,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_Emoji,絵文字,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,ComplianceAssetId,コンプライアンス資産 ID,Text,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,UserCode,ユーザーコード,Text,false,false,false,true,keep_ssot,Exact match with SSOT,KEEP
+User_Feature_Flags,FlagKey,FlagKey,Text,false,false,false,false,keep_ssot,Exact match with SSOT,KEEP
+User_Feature_Flags,FlagValue,FlagValue,Text,false,false,false,false,keep_ssot,Exact match with SSOT,KEEP
+User_Feature_Flags,ExpiresAt,ExpiresAt,DateTime,false,false,false,false,keep_ssot,Exact match with SSOT,KEEP
+User_Feature_Flags,ID,ID,Counter,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,ContentType,コンテンツ タイプ,Computed,false,false,true,false,keep_system,FromBaseType=true,KEEP
+User_Feature_Flags,Modified,更新日時,DateTime,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Created,登録日時,DateTime,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Author,登録者,User,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Editor,更新者,User,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_HasCopyDestinations,コピー先の有無,Boolean,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_CopySource,コピー元,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,owshiddenversion,owshiddenversion,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,WorkflowVersion,ワークフローのバージョン,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_UIVersion,UI バージョン,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_UIVersionString,バージョン,Text,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Attachments,添付ファイル,Attachments,false,false,true,false,keep_system,FromBaseType=true,KEEP
+User_Feature_Flags,_ModerationStatus,承認の状況,ModStat,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Edit,編集,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,LinkTitleNoMenu,タイトル,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,LinkTitle,タイトル,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,LinkTitle2,タイトル,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,SelectTitle,選択,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,InstanceID,インスタンス ID,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Order,順序,Number,true,false,true,false,keep_system,"Hidden=true, FromBaseType=true",KEEP
+User_Feature_Flags,GUID,GUID,Guid,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,WorkflowInstanceID,ワークフロー インスタンス ID,Guid,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,FileRef,URL パス,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,FileDirRef,パス,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Last_x0020_Modified,更新日時,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Created_x0020_Date,登録日時,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,FSObjType,アイテムの種類,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,SortBehavior,並べ替えの種類,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,PermMask,有効な権限マスク,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,PrincipalCount,プリンシパルの数,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,FileLeafRef,名前,File,true,false,true,false,keep_system,"Hidden=true, FromBaseType=true",KEEP
+User_Feature_Flags,UniqueId,固有 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,ParentUniqueId,ドキュメントの親 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,SyncClientId,クライアント ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,ProgId,ProgId,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,ScopeId,ScopeId,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,HTML_x0020_File_x0020_Type,HTML ファイルの種類,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_EditMenuTableStart,メニュー テーブルの編集の開始,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_EditMenuTableStart2,メニュー テーブルの編集の開始,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_EditMenuTableEnd,メニュー テーブルの編集の終了,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,LinkFilenameNoMenu,名前,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,LinkFilename,名前,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,LinkFilename2,名前,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,DocIcon,種類,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,ServerUrl,サーバーの相対 URL,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,EncodedAbsUrl,エンコードされた絶対 URL,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,BaseName,ファイル名,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,MetaInfo,プロパティ バッグ,Lookup,true,false,true,false,keep_system,"Hidden=true, FromBaseType=true",KEEP
+User_Feature_Flags,_Level,レベル,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_IsCurrentVersion,現在のバージョン,Boolean,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,ItemChildCount,子アイテムの数,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,FolderChildCount,子フォルダーの数,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,Restricted,制限付き,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,OriginatorId,発信者 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,NoExecute,NoExecute,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,ContentVersion,コンテンツのバージョン,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_ComplianceFlags,ラベルの設定,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_ComplianceTag,保持ラベル,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_ComplianceTagWrittenTime,保持ラベルを適用済み,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_ComplianceTagUserId,ラベルの適用者,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_IsRecord,レコードとして登録されているアイテム,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,AccessPolicy,アクセス ポリシー,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_VirusStatus,VirusStatus,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_VirusVendorID,VirusVendorID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_VirusInfo,VirusInfo,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_RansomwareAnomalyMetaInfo,RansomwareAnomalyMetaInfo,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_DraftOwnerId,下書き所有者 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,MainLinkSettings,メイン リンクの設定,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,AppAuthor,アプリの作成者,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,AppEditor,アプリの変更者,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,SMTotalSize,合計サイズ,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,SMLastModifiedDate,最終更新日,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,SMTotalFileStreamSize,ファイル ストリームの合計サイズ,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,SMTotalFileCount,合計ファイル数,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+User_Feature_Flags,_CommentFlags,コメントの設定,Lookup,true,true,false,false,keep_system,"Hidden=true, ReadOnly=true",KEEP
+User_Feature_Flags,_CommentCount,コメント数,Lookup,true,true,false,false,keep_system,"Hidden=true, ReadOnly=true",KEEP
