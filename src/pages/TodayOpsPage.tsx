@@ -65,6 +65,7 @@ import { UserStatusQuickDialog } from '@/features/schedules/components/dialogs/U
 // Phase 9: Today → Schedule Ops 高負荷タイル連携
 import { useWeeklyHighLoadStatus } from '@/features/today/hooks/useWeeklyHighLoadStatus';
 import { useTodayExceptions } from '@/features/today/hooks/useTodayExceptions';
+import { useTodayPlanPatchActions } from '@/features/today/hooks/useTodayPlanPatchActions';
 
 import { Alert, Snackbar } from '@mui/material';
 import { useQueryClient } from '@tanstack/react-query';
@@ -148,6 +149,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
 
   // ── Data Fetching (Facade) ──
   const summary = useTodaySummary();
+  const todayPlanPatchActions = useTodayPlanPatchActions(summary.users ?? []);
 
   // 支援手順の実施の未入力ユーザーを算出（todayRecordCompletion.pendingUserIds 起点）
   const pendingSupportUsers = useMemo(() => {
@@ -216,7 +218,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
     currentStaffId: 'staff-a', // 仮: ログインユーザーのIDを連携できるとベター
     correctiveActions,
     suggestionStates,
-    exceptionActions: summary.todayExceptionActions,
+    exceptionActions: [...summary.todayExceptionActions, ...todayPlanPatchActions],
   });
   const suggestionByStableId = useMemo(() => {
     return new Map(correctiveActions.map((s) => [s.stableId, s]));

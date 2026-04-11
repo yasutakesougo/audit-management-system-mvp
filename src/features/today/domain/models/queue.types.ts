@@ -6,7 +6,8 @@ export type ActionSourceType =
   | 'handoff'
   | 'incident'
   | 'corrective_action'
-  | 'exception';
+  | 'exception'
+  | 'plan_patch';
 
 export interface RawActionSource {
   id: string;
