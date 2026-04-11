@@ -109,11 +109,28 @@ export interface ExistingFieldShape {
   InternalName: string;
   TypeAsString?: string;
   Required?: boolean;
+  Indexed?: boolean;
+}
+
+export type FailedFieldReason =
+  | 'row_size_limit'
+  | 'indexed_column_limit'
+  | 'http_error'
+  | 'unknown';
+
+export interface FailedFieldInfo {
+  internalName: string;
+  required: boolean;
+  reason: FailedFieldReason;
+  status?: number;
+  detail?: string;
 }
 
 export interface EnsureListResult {
   listId: string;
   title: string;
+  /** Fields that were attempted but not physically created. Present only when at least one attempt failed. */
+  failedFields?: FailedFieldInfo[];
 }
 
 export interface SharePointListMetadata {

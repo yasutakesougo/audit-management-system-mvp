@@ -34,6 +34,11 @@ export type NavItem = {
    * 新画面追加時、どの業務フロー/目的に沿うかを必ず指定します。
    */
   group: NavGroupKey;
+  /**
+   * 通知バッジまたは状態表示。
+   * 例: '3', 'NEW', '🚨'
+   */
+  badge?: string | number;
 };
 
 /**

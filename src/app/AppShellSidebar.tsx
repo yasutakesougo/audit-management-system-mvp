@@ -7,6 +7,7 @@ import NavLinkPrefetch from '@/components/NavLinkPrefetch';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import SearchIcon from '@mui/icons-material/Search';
+import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
@@ -88,11 +89,46 @@ const NavItemRow: React.FC<{
   const content = (
     <>
       {IconComponent && (
-        <ListItemIcon>
-          <IconComponent />
+        <ListItemIcon sx={{ minWidth: 40 }}>
+          <Badge
+            badgeContent={navCollapsed ? item.badge || 0 : 0}
+            color="error"
+            overlap="circular"
+            sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: 16, minWidth: 16 } }}
+          >
+            <IconComponent sx={{ fontSize: 20 }} />
+          </Badge>
         </ListItemIcon>
       )}
-      {showLabel && <ListItemText primary={label} primaryTypographyProps={{ noWrap: true }} />}
+      {showLabel && (
+        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', justifyContent: 'space-between', pr: 1 }}>
+          <ListItemText
+            primary={label}
+            primaryTypographyProps={{
+              noWrap: true,
+              fontSize: '0.85rem',
+              fontWeight: active ? 700 : 500,
+            }}
+          />
+          {item.badge && item.badge > 0 && (
+            <Badge
+              badgeContent={item.badge}
+              color="error"
+              sx={{
+                ml: 1,
+                '& .MuiBadge-badge': {
+                  position: 'static',
+                  transform: 'none',
+                  fontSize: '0.7rem',
+                  height: 18,
+                  minWidth: 18,
+                  fontWeight: 800,
+                },
+              }}
+            />
+          )}
+        </Box>
+      )}
     </>
   );
 

@@ -3,6 +3,7 @@
  * Extracted from AppShell.tsx to reduce component size.
  */
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import GavelIcon from '@mui/icons-material/Gavel';
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
 import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded';
@@ -47,4 +48,5 @@ export const navIconMap: Record<string, React.ElementType> = {
   'コンプラ報告': ChecklistRoundedIcon,
   '個別支援計画': EditNoteIcon,
   'モニタリング記録': AssessmentRoundedIcon,
+  '制度遵守ダッシュボード': GavelIcon,
 };

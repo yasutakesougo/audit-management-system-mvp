@@ -26,6 +26,7 @@ import { useAuthStore } from '@/features/auth/store';
 import { useDashboardPath } from '@/features/dashboard/dashboardRouting';
 import { useSettingsContext } from '@/features/settings/SettingsContext';
 import { shouldSkipLogin } from '@/lib/env';
+import { useComplianceBadge } from '@/features/regulatory/ComplianceBadgeProvider';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -47,6 +48,7 @@ function parseKioskRouteMode(search: string): KioskRouteMode {
 export function useAppShellState() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { totalCount: complianceBadgeCount } = useComplianceBadge();
   const { schedules, complianceForm, icebergPdca, staffAttendance, todayOps, todayLiteNavV2: _todayLiteNavV2 } = useFeatureFlags();
   const todayLiteNavV2 = Boolean(_todayLiteNavV2);
   const dashboardPath = useDashboardPath();
@@ -170,8 +172,9 @@ export function useAppShellState() {
     return items.map((item) => ({
       ...item,
       icon: navIconMap[item.label],
+      badge: item.label === '制度遵守ダッシュボード' ? complianceBadgeCount : undefined,
     }));
-  }, [dashboardPath, currentRole, schedulesEnabled, complianceFormEnabled, icebergPdcaEnabled, staffAttendanceEnabled, todayOps, isAdmin, authzReady, navAudience]);
+  }, [dashboardPath, currentRole, schedulesEnabled, complianceFormEnabled, icebergPdcaEnabled, staffAttendanceEnabled, todayOps, isAdmin, authzReady, navAudience, complianceBadgeCount]);
 
   const visibleNavItems = useMemo(
     () => buildVisibleNavItems(navItems, navAudience, {

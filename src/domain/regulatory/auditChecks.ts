@@ -334,11 +334,19 @@ export function getAddOnCandidateFindings(
  */
 export function getMonitoringFindings(
   userProfile: UserRegulatoryProfile,
-  meetings: MonitoringAuditInfo[] = [],
+  meetings: MonitoringAuditInfo[],
   today: string,
   overdueMonths = 3,
 ): AuditFinding[] {
   const findings: AuditFinding[] = [];
+
+  // 強度行動障害対象者（候補）のみを対象とする
+  const isCandidate = isSevereBehaviorSupportCandidate(
+    userProfile.behaviorScore,
+    userProfile.disabilitySupportLevel,
+  );
+  if (!isCandidate) return [];
+
   const userMeetings = (meetings || []).filter(m => m.userId === userProfile.userId);
 
   // 1. 未実施チェック

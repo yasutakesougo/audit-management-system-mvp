@@ -25,7 +25,8 @@ export type SpHealthReasonCode =
   | 'sp_limit_reached'     // 8KB行サイズ / インデックス上限に到達
   | 'sp_bootstrap_blocked' // プロビジョニングがブロック済み
   | 'sp_auth_failed'       // 認証失敗 / 401
-  | 'sp_list_unreachable'; // リストが見つからない / 到達不能
+  | 'sp_list_unreachable'  // リストが見つからない / 到達不能
+  | 'sp_schema_drift';     // スキーマ・ドリフト（列名の不一致）が検出された
 
 export type SpHealthSignalSource = 'nightly_patrol' | 'realtime';
 
@@ -90,6 +91,11 @@ const REASON_ACTION_MAP: Record<SpHealthReasonCode, ActionSpec> = {
     actionUrl: '/admin/status',
     actionType: 'internal',
     actionGuide: 'SharePoint リストへの到達に失敗しています。リストの存在・権限設定を確認してください。',
+  },
+  sp_schema_drift: {
+    actionUrl: '/admin/status',
+    actionType: 'internal',
+    actionGuide: '列名に微細な不整合（末尾の _0 付与等）が検出されました。放置すると 8KB 制限の原因となるため、クリーンアップが必要です。',
   },
 };
 
