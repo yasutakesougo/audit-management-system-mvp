@@ -2,7 +2,7 @@
 
 **対象ページ**: `/admin/status`（管理者専用）  
 **診断実装**: `src/features/diagnostics/health/checks.ts`  
-**最終更新**: 2026-04-02
+**最終更新**: 2026-04-11
 
 ---
 
@@ -110,6 +110,36 @@ Provision を実行してリストを作成する
 ### WARN (optional missing) — オプション列の欠落
 
 アプリの基本機能には影響しません。必要に応じて Provision を再実行してオプション列を追加できます。
+
+### WARN / 500 (DriftEventsLog threshold) — 監視ログ読み取りの退避動作
+
+```
+DriftEventsLog の期間フィルタ付き読み取りが list view threshold で失敗した
+```
+
+**現在のアプリ動作:**
+1. まず通常クエリで取得を試みます
+   - `DetectedAt desc`
+   - `since / resolved / listName` フィルタ付き
+2. これが SharePoint の `list view threshold` で 500 失敗した場合、アプリは自動的に退避クエリへ切り替えます
+   - `Id desc`
+   - フィルタなしで直近の一部件数を取得
+3. 取得後、アプリ側で `since / resolved / listName` を再適用します
+
+**重要な意味合い:**
+- これは **根本解決ではなく可用性確保のための退避動作** です
+- `/admin/status` や Drift observability は継続利用できる場合があります
+- ただし SharePoint 側の件数増加やインデックス未整備は解消されません
+
+**管理者・運用者が理解しておくこと:**
+- 画面が表示できても、`DriftEventsLog` の健全性が回復したわけではありません
+- 退避クエリは `Id desc` ベースのため、取得件数上限を超える古いイベントは観測対象外になります
+- 観測窓が不足すると、古い drift 事象や低頻度イベントを取りこぼす可能性があります
+
+**推奨対応:**
+1. `DriftEventsLog` の `DetectedAt` または運用で使用する日時列にインデックスが作成されているか確認する
+2. リスト件数が増えすぎている場合は、古いログのアーカイブまたはパージを検討する
+3. threshold 500 が継続する場合は、取得件数上限で必要観測期間を満たせているか開発者と確認する
 
 ---
 
