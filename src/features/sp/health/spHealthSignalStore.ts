@@ -38,6 +38,13 @@ export type SpHealthSignalSource = 'nightly_patrol' | 'realtime';
  */
 export type SpHealthActionType = 'internal' | 'doc' | 'tool';
 
+export interface SpHealthRemediation {
+  summary: string;
+  commands: string[];
+  caution?: string;
+  isDestructive?: boolean;
+}
+
 export interface SpHealthSignal {
   severity: SpHealthSeverity;
   reasonCode: SpHealthReasonCode;
@@ -48,6 +55,8 @@ export interface SpHealthSignal {
   actionUrl?: string;
   /** actionUrl の種別（遷移方法の決定に使用）*/
   actionType?: SpHealthActionType;
+  /** 推奨される修復アクション */
+  remediation?: SpHealthRemediation;
   /**
    * 同一課題の検知累計回数（圧縮）
    * - 1 = 初回検知
@@ -78,22 +87,22 @@ const REASON_ACTION_MAP: Record<SpHealthReasonCode, ActionSpec> = {
     actionGuide: 'インデックス数が上限（20）に近づいています。使用頻度の低いインデックスを削除してください。',
   },
   sp_bootstrap_blocked: {
-    actionUrl: '/admin/status',
+    actionUrl: '/admin/status?highlight=sp_bootstrap_blocked',
     actionType: 'internal',
     actionGuide: '起動時プロビジョニングが停止しています。管理画面の診断結果を確認してください。',
   },
   sp_auth_failed: {
-    actionUrl: '/admin/status',
+    actionUrl: '/admin/status?highlight=sp_auth_failed',
     actionType: 'internal',
     actionGuide: '認証エラーが発生しています。MSAL設定・テナントURL・権限を確認してください。',
   },
   sp_list_unreachable: {
-    actionUrl: '/admin/status',
+    actionUrl: '/admin/status?highlight=sp_list_unreachable',
     actionType: 'internal',
     actionGuide: 'SharePoint リストへの到達に失敗しています。リストの存在・権限設定を確認してください。',
   },
   sp_schema_drift: {
-    actionUrl: '/admin/status',
+    actionUrl: '/admin/status?highlight=sp_schema_drift',
     actionType: 'internal',
     actionGuide: '列名に微細な不整合（末尾の _0 付与等）が検出されました。放置すると 8KB 制限の原因となるため、クリーンアップが必要です。',
   },

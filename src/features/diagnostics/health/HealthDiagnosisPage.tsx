@@ -32,6 +32,7 @@ import type { SpHealthReasonCode } from "@/features/sp/health/spHealthSignalStor
 import { GovernanceAdvisePanel } from "../remediation/components/GovernanceAdvisePanel";
 import { SpIndexPressurePanel } from "@/features/sp/health/indexAdvisor/SpIndexPressurePanel";
 import { GovernanceBadge } from "./components/GovernanceBadge";
+import { SpRemediationCard } from "@/features/sp/health/remediation/SpRemediationCard";
 
 // ─── highlight: reasonCode → category ─────────────────────────────────────────
 const HIGHLIGHT_CATEGORY: Partial<Record<SpHealthReasonCode, string>> = {
@@ -243,8 +244,12 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
         )}
 
         {/* ─────────────────────────────────────────────────────────────
-            Self-Healing 候補パネル（sp_index_pressure 時のみ表示）
+            Self-Healing 候補パネル / 修復推奨カード
             ───────────────────────────────────────────────────────────── */}
+        {currentSignal?.remediation && (
+          <SpRemediationCard />
+        )}
+
         {currentSignal?.reasonCode === 'sp_index_pressure' && currentSignal.listName && (
           <SpIndexPressurePanel 
             listName={currentSignal.listName} 

@@ -15,6 +15,7 @@ import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import Popover from '@mui/material/Popover';
+import TerminalIcon from '@mui/icons-material/Terminal';
 import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
 import React from 'react';
@@ -194,6 +195,26 @@ export const SpHealthPopover: React.FC<SpHealthPopoverProps> = ({
       >
         {signal.message}
       </Typography>
+
+      {/* Remediation hint */}
+      {signal.remediation && (
+        <Box sx={{ mb: 1.5 }}>
+          <Chip
+            size="small"
+            variant="outlined"
+            icon={<TerminalIcon sx={{ fontSize: '12px !important' }} />}
+            label="修復コマンドあり"
+            sx={{
+              height: 20,
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              color: 'primary.main',
+              borderColor: 'primary.light',
+              bgcolor: 'primary.50',
+            }}
+          />
+        </Box>
+      )}
 
       {/* Action guide */}
       {signal.actionGuide && (
