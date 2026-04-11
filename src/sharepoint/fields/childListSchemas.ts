@@ -36,7 +36,7 @@ export const RESULTS_FIELDS: SpFieldDef[] = [
   {
     internalName: 'ParentScheduleId',
     type: 'Number',
-    displayName: '親スケジュールID',
+    displayName: 'ParentScheduleId',
     required: true,
     indexed: true,          // $filter=ParentScheduleId eq X が5000件制限に引っかからないよう必須
     addToDefaultView: true,
@@ -44,28 +44,28 @@ export const RESULTS_FIELDS: SpFieldDef[] = [
   {
     internalName: 'ResultDate',
     type: 'DateTime',
-    displayName: '結果日',
+    displayName: 'ResultDate',
     dateTimeFormat: 'DateOnly',
     required: true,
   },
   {
     internalName: 'ResultStatus',
     type: 'Choice',
-    displayName: '結果ステータス',
+    displayName: 'ResultStatus',
     choices: ['Completed', 'Skipped', 'PartiallyDone'] as const,
     required: false,
   },
   {
     internalName: 'ResultNote',
     type: 'Note',
-    displayName: '実施メモ',
+    displayName: 'ResultNote',
     richText: false,
     required: false,
   },
   {
     internalName: 'StaffCode',
     type: 'Text',
-    displayName: '担当職員コード',
+    displayName: 'StaffCode',
     required: false,
   },
 ];
@@ -76,7 +76,7 @@ export const APPROVAL_LOG_FIELDS: SpFieldDef[] = [
   {
     internalName: 'ParentScheduleId',
     type: 'Number',
-    displayName: '親スケジュールID',
+    displayName: 'ParentScheduleId',
     required: true,
     indexed: true,          // 同上
     addToDefaultView: true,
@@ -84,13 +84,13 @@ export const APPROVAL_LOG_FIELDS: SpFieldDef[] = [
   {
     internalName: 'ApprovedBy',
     type: 'Text',
-    displayName: '承認者コード',
+    displayName: 'ApprovedBy',
     required: true,
   },
   {
     internalName: 'ApprovedAt',
     type: 'DateTime',
-    displayName: '承認日時',
+    displayName: 'ApprovedAt',
     dateTimeFormat: 'DateTime',
     required: true,
     indexed: true,          // ParentScheduleId + ApprovedAt の複合ユニーク判定に使用
@@ -98,14 +98,14 @@ export const APPROVAL_LOG_FIELDS: SpFieldDef[] = [
   {
     internalName: 'ApprovalNote',
     type: 'Note',
-    displayName: '承認メモ',
+    displayName: 'ApprovalNote',
     richText: false,
     required: false,
   },
   {
     internalName: 'ApprovalAction',
     type: 'Choice',
-    displayName: '承認アクション',
+    displayName: 'ApprovalAction',
     choices: ['Approved', 'Rejected', 'Reverted'] as const,
     required: true,
   },
@@ -117,7 +117,7 @@ export const USER_FLAG_FIELDS: SpFieldDef[] = [
   {
     internalName: 'UserCode',
     type: 'Text',
-    displayName: 'ユーザーコード',
+    displayName: 'UserCode',
     required: true,
     indexed: true,
     addToDefaultView: true,
@@ -125,19 +125,19 @@ export const USER_FLAG_FIELDS: SpFieldDef[] = [
   {
     internalName: 'FlagKey',
     type: 'Text',
-    displayName: 'フラグキー',
+    displayName: 'FlagKey',
     required: true,
   },
   {
     internalName: 'FlagValue',
     type: 'Text',
-    displayName: 'フラグ値',
+    displayName: 'FlagValue',
     required: false,
   },
   {
     internalName: 'ExpiresAt',
     type: 'DateTime',
-    displayName: '有効期限',
+    displayName: 'ExpiresAt',
     dateTimeFormat: 'DateTime',
     required: false,
   },

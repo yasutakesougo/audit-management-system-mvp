@@ -120,7 +120,7 @@ export async function fetchExistingFields(
   // SharePoint fields endpoint is paged; without $top large lists can hide existing fields,
   // causing false negatives in ensureListExists() and duplicate-suffixed columns
   // (e.g. ApprovedBy0, ApprovedBy1 regrowth on Approval_Logs).
-  const path = `${base}/fields?$select=InternalName,TypeAsString,Required&$top=5000`;
+  const path = `${base}/fields?$select=InternalName,TypeAsString,Required,Indexed&$top=5000`;
   const res = await spFetch(path);
   const json = (await res.json().catch(() => ({ value: [] }))) as {
     value?: ExistingFieldShape[];
@@ -460,6 +460,20 @@ export async function ensureListExists(
   if (fields.length && !options.preventPhysicalCreation) {
     const existing = await fetchExistingFields(spFetch, listTitle);
     const available = new Set(existing.keys());
+
+    // [Hardening Phase D] インデックス圧迫の検知 (20列制限)
+    const indexedCount = Array.from(existing.values()).filter(f => f.Indexed).length;
+    if (indexedCount > 15) {
+      const { reportSpHealthEvent } = await import('@/features/sp/health/spHealthSignalStore');
+      reportSpHealthEvent({
+        severity: indexedCount >= 20 ? 'critical' : 'warning',
+        reasonCode: 'sp_index_pressure',
+        listName: listTitle,
+        message: `「${listTitle}」のインデックス列数が上限に近い状態です (${indexedCount}/20)。`,
+        source: 'realtime',
+        occurredAt: new Date().toISOString()
+      });
+    }
 
     for (const field of fields) {
       // 1. Exact match check

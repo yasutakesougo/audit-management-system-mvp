@@ -8,7 +8,8 @@
  * 4. Reporting stability issues to admins.
  */
 import { trackSpEvent } from '@/lib/telemetry/spTelemetry';
-import { createProvisioningService } from '@/lib/sp/spProvisioningService';
+import { createProvisioningService, SpProvisioningError } from '@/lib/sp/spProvisioningService';
+import { reportSpHealthEvent } from '@/features/sp/health/spHealthSignalStore';
 import { readBool } from '@/lib/env';
 import { auditLog } from '@/lib/debugLogger';
 import type { useSP } from '@/lib/spClient';
@@ -112,7 +113,7 @@ export class SharePointProvisioningCoordinator {
 
     while (queue.length > 0) {
       const batch = queue.splice(0, CONCURRENCY);
-      const batchPromises = batch.map(entry => this.verifyAndProvision(client, entry, existingIdentifiers, options.force));
+      const batchPromises = batch.map(entry => this.verifyAndProvision(client, entry, existingIdentifiers, options.force, 'bootstrap'));
       const batchResults = await Promise.all(batchPromises);
       summaries.push(...batchResults);
     }
@@ -128,15 +129,20 @@ export class SharePointProvisioningCoordinator {
     // 既存のメインリスト provision の後に実行。fail-open (非ブロッキング) 構成。
     try {
       const provisioner = createProvisioningService(client.spFetch);
-      await provisioner.ensureChildLists();
+      await provisioner.ensureChildLists('bootstrap');
       trackSpEvent('sp:child_lists_provision_success');
     } catch (err) {
-      // 子リストの失敗はメイン機能（L0/L1）を止めないため、警告に留める
-      auditLog.warn('sp:provisioning', 'Child lists provisioning failed (fail-open)', { 
-          error: err instanceof Error ? err.message : String(err) 
-      });
-      trackSpEvent('sp:child_lists_provision_failed', { 
-          error: err instanceof Error ? err.message : String(err) 
+      // 子リストの失敗はメイン機能（L0/L1）を止めないため、警告に留めるが Signal は送る
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      auditLog.warn('sp:provisioning', 'Child lists provisioning failed (fail-open)', { error: errorMsg });
+      trackSpEvent('sp:child_lists_provision_failed', { error: errorMsg });
+
+      reportSpHealthEvent({
+        severity: 'action_required',
+        reasonCode: 'sp_bootstrap_blocked',
+        message: '共通子リスト（承認ログ等）の初期化に失敗しました。ガバナンス機能が制限される可能性があります。',
+        source: 'realtime',
+        occurredAt: new Date().toISOString()
       });
     }
 
@@ -153,7 +159,8 @@ export class SharePointProvisioningCoordinator {
     client: ReturnType<typeof useSP>,
     entry: SpListEntry,
     existingIdentifiers: Set<string>,
-    force = false
+    force = false,
+    phase: 'bootstrap' | 'runtime' = 'runtime'
   ): Promise<StabilitySummary> {
     const listName = entry.resolve();
     const lc = entry.lifecycle;
@@ -200,7 +207,7 @@ export class SharePointProvisioningCoordinator {
           await provisioner.ensureList(
               listName, 
               entry.provisioningFields as import('@/lib/sp/types').SpFieldDef[],
-              { baseTemplate: entry.baseTemplate }
+              { baseTemplate: entry.baseTemplate, phase }
           );
           saveStability(entry.key, 'provisioned');
           return { key: entry.key, displayName: entry.displayName, listName, status: 'provisioned' };
@@ -237,7 +244,7 @@ export class SharePointProvisioningCoordinator {
           // Attempt self-healing if provisioning fields match missing ones
           if (entry.provisioningFields) {
             auditLog.warn('sp:provisioning', `Healing ${listName}...`, { missingFields });
-            await provisioner.ensureList(listName, entry.provisioningFields as import('@/lib/sp/types').SpFieldDef[]);
+            await provisioner.ensureList(listName, entry.provisioningFields as import('@/lib/sp/types').SpFieldDef[], { phase });
             
             // Re-verify after healing
             const reAvailable = await client.getListFieldInternalNames(listName);
@@ -249,6 +256,19 @@ export class SharePointProvisioningCoordinator {
           }
           
           saveStability(entry.key, 'mismatch');
+
+          // [Hardening Phase B] 必須列欠落を Signal として報告
+          if (!isOptional) {
+            reportSpHealthEvent({
+              severity: 'critical',
+              reasonCode: 'sp_bootstrap_blocked',
+              listName,
+              message: `「${listName}」で必須フィールドが欠落しています: ${missingFields.join(', ')}`,
+              source: 'realtime',
+              occurredAt: new Date().toISOString()
+            });
+          }
+
           return { 
             key: entry.key, 
             displayName: entry.displayName, 
@@ -258,14 +278,20 @@ export class SharePointProvisioningCoordinator {
           };
         }
 
-        // Check for Drift (resolved but not exactly as expected)
-        const driftDetails = Object.entries(fieldStatus)
-          .filter(([, status]) => status.isDrifted)
-          .map(([key, status]) => `${key} -> ${status.resolvedName}`);
-
         if (driftDetails.length > 0) {
           auditLog.warn('sp:provisioning', `List "${listName}" has schema drift.`, { drift: driftDetails });
           saveStability(entry.key, 'drifted');
+
+          // [Hardening Phase B] ドリフトを Signal として報告
+          reportSpHealthEvent({
+            severity: 'warning',
+            reasonCode: 'sp_schema_drift',
+            listName,
+            message: `「${listName}」で列名のドリフト（末益への _0 付与等）を検出しました。`,
+            source: 'realtime',
+            occurredAt: new Date().toISOString()
+          });
+
           return { 
             key: entry.key, 
             displayName: entry.displayName, 
@@ -284,10 +310,24 @@ export class SharePointProvisioningCoordinator {
       const isOptional = lc === 'optional' || lc === 'experimental';
       const is404 = (err as { status?: number }).status === 404;
 
+      const errorMsg = err instanceof Error ? err.message : String(err);
+
       if (isOptional && is404) {
         trackSpEvent('sp:list_missing_optional', { key: entry.key, listName });
       } else {
-        trackSpEvent('sp:provision_failed', { key: entry.key, listName, error: err instanceof Error ? err.message : String(err) });
+        trackSpEvent('sp:provision_failed', { key: entry.key, listName, error: errorMsg });
+
+        // [Hardening Phase C] 必須リストのプロビジョニング失敗を Hard Fail Signal 
+        if (!isOptional) {
+          reportSpHealthEvent({
+            severity: 'critical',
+            reasonCode: 'sp_bootstrap_blocked',
+            listName,
+            message: `「${listName}」のプロビジョニング中に致命的なエラーが発生しました: ${errorMsg}`,
+            source: 'realtime',
+            occurredAt: new Date().toISOString()
+          });
+        }
       }
 
       saveStability(entry.key, isOptional ? 'missing' : 'mismatch');
@@ -296,7 +336,7 @@ export class SharePointProvisioningCoordinator {
         displayName: entry.displayName, 
         listName, 
         status: isOptional ? 'missing' : 'mismatch',
-        details: err instanceof Error ? err.message : String(err) 
+        details: errorMsg
       };
     }
   }

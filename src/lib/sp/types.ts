@@ -109,6 +109,21 @@ export interface ExistingFieldShape {
   InternalName: string;
   TypeAsString?: string;
   Required?: boolean;
+  Indexed?: boolean;
+}
+
+export type FailedFieldReason =
+  | 'row_size_limit'
+  | 'indexed_column_limit'
+  | 'http_error'
+  | 'unknown';
+
+export interface FailedFieldInfo {
+  internalName: string;
+  required: boolean;
+  reason: FailedFieldReason;
+  status?: number;
+  detail?: string;
 }
 
 export type FailedFieldReason =
