@@ -188,6 +188,10 @@ function classifyField(field, canonicalNames) {
   };
 }
 
+function isZombieClassification(tier) {
+  return tier === AUDIT_TIERS.DRIFT_SUFFIX || tier === AUDIT_TIERS.DRIFT_ENCODED;
+}
+
 function recommendedAction(tier) {
   switch (tier) {
     case AUDIT_TIERS.KEEP_SSOT:
@@ -445,60 +449,52 @@ async function auditRun() {
   console.log(`\n✨ Audit complete. No modifications were made to SharePoint.\n`);
 }
 
-/**
- * ゾンビ判定ロジック:
- * 1. 正解の InternalName (p) と完全一致する場合は残す。
- * 2. p で始まり、かつ末尾が数字のみ（SharePoint が衝突回避で付与するもの）の場合はゾンビ。
- */
-function isZombie(internalName, patterns) {
-  for (const p of patterns) {
-    if (internalName === p) continue;
-
-    // 前方一致かつ、残りの部分が数字のみならゾンビ
-    if (internalName.startsWith(p)) {
-      const suffix = internalName.substring(p.length);
-      if (suffix === "" || /^\d+$/.test(suffix)) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 async function run() {
-  console.log(`\n🚀 SharePoint ゾンビ列救出フェーズ開始 (${DRY_RUN ? 'DRY RUN' : '実実行 --force'})\n`);
+  console.log(`\n🚀 SharePoint ゾンビ列救出フェーズ開始 (SSOT-backed mode, ${DRY_RUN ? 'DRY RUN' : '実実行 --force'})\n`);
+
+  const ssot = loadSsot(SSOT_PATH);
+  const targetListNames = LIST_FILTER
+    ? [LIST_FILTER]
+    : Object.keys(ssot);
 
   let successCount = 0;
   let failCount = 0;
 
-  for (const target of TARGETS) {
-    console.log(`--- リスト [${target.list}] をスキャン中 ---`);
+  for (const listName of targetListNames) {
+    const canonicalNames = ssot[listName];
+    if (!canonicalNames) {
+      console.error(`⚠️ List "${listName}" not found in SSOT. Skipping.`);
+      continue;
+    }
+
+    console.log(`--- リスト [${listName}] をスキャン中 ---`);
     
     let fields;
     try {
-      const output = execSync(`${M365_PATH} spo field list --webUrl "${WEB_URL}" --listTitle "${target.list}" -o json`, { 
+      const output = execSync(`${M365_PATH} spo field list --webUrl "${WEB_URL}" --listTitle "${listName}" -o json`, { 
         encoding: 'utf-8',
         stdio: ['inherit', 'pipe', 'pipe']
       });
       fields = JSON.parse(output);
     } catch (err) {
       const message = err.stderr || err.message;
-      console.error(`❌ リスト情報の取得に失敗: ${target.list}`);
+      console.error(`❌ リスト情報の取得に失敗: ${listName}`);
       console.error(`   詳細: ${message}`);
       continue;
     }
 
     for (const field of fields) {
-      const internalName = field.InternalName;
+      const classification = classifyField(field, canonicalNames);
       
-      if (isZombie(internalName, target.patterns)) {
+      if (isZombieClassification(classification.tier)) {
+        const internalName = field.InternalName;
         if (DRY_RUN) {
-          console.log(`[DRY-RUN] 削除候補発見: ${internalName.padEnd(35)} (${field.Title})`);
+          console.log(`[DRY-RUN] 削除候補発見: ${internalName.padEnd(45)} (${field.Title}) [${classification.tier}]`);
           successCount++;
         } else {
-          process.stdout.write(`⚠️ 削除中: ${internalName.padEnd(35)} (${field.Title})... `);
+          process.stdout.write(`⚠️ 削除中: ${internalName.padEnd(45)} (${field.Title})... `);
           try {
-            execSync(`${M365_PATH} spo field remove --webUrl "${WEB_URL}" --listTitle "${target.list}" --id "${field.Id}" --force`, { stdio: 'ignore' });
+            execSync(`${M365_PATH} spo field remove --webUrl "${WEB_URL}" --listTitle "${listName}" --id "${field.Id}" --force`, { stdio: 'ignore' });
             console.log('✅ 完了');
             successCount++;
           } catch {
