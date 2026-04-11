@@ -217,19 +217,19 @@ export const USERS_MASTER_CANDIDATES = {
   copayPaymentMethod: CANDIDATE_COPAY_PAYMENT_METHOD,
   // Compliance
   lastAssessmentDate: [
-    'LastAssessmentDate', 'AssessmentDate', 'cr013_lastAssessmentDate'
+    'Last_x0020_Assessment_x0020_Date', 'LastAssessmentDate', 'AssessmentDate', 'cr013_lastAssessmentDate'
   ],
   behaviorScore: [
-    'BehaviorScore', 'ScoreBehavior', 'cr013_behaviorScore'
+    'Behavior_x0020_Score', 'BehaviorScore', 'ScoreBehavior', 'cr013_behaviorScore'
   ],
   childBehaviorScore: [
-    'ChildBehaviorScore', 'ScoreChildBehavior', 'cr013_childBehaviorScore'
+    'Child_x0020_Behavior_x0020_Score', 'ChildBehaviorScore', 'ScoreChildBehavior', 'cr013_childBehaviorScore'
   ],
   serviceTypesJson: [
-    'ServiceTypesJson', 'ServiceTypes', 'cr013_serviceTypesJson'
+    'Service_x0020_Types_x0020_JSON', 'ServiceTypesJson', 'ServiceTypes', 'cr013_serviceTypesJson'
   ],
   eligibilityCheckedAt: [
-    'EligibilityCheckedAt', 'EligibilityChecked', 'cr013_eligibilityCheckedAt'
+    'Eligibility_x0020_Checked_x0020_', 'EligibilityCheckedAt', 'EligibilityChecked', 'cr013_eligibilityCheckedAt'
   ],
 } as const;
 
