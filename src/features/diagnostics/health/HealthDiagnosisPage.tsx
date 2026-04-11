@@ -102,12 +102,18 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
   }, [highlightCategory]);
 
   // ?filter=fail などで level フィルタの初期値を指定できる
+  // ?resource=ListName や ?list=ListName でリソース名フィルタの初期値を指定できる
   React.useEffect(() => {
     const levelParam = searchParams.get('filter');
     if (levelParam === 'fail' || levelParam === 'warn' || levelParam === 'pass') {
       setFilterState((p) => ({ ...p, level: levelParam }));
     }
-  }, []);
+
+    const resourceParam = searchParams.get('resource') || searchParams.get('list');
+    if (resourceParam) {
+      setFilterState((p) => ({ ...p, resource: resourceParam }));
+    }
+  }, [searchParams]);
 
   // ── Signal バナー ──────────────────────────────────────────────────────────
   const currentSignal = useSpHealthSignal();
@@ -217,17 +223,31 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
           <Alert
             severity={currentSignal.severity === 'critical' ? 'error' : 'warning'}
             action={
-              currentSignal.actionUrl ? (
-                <Button
-                  size="small"
-                  component={currentSignal.actionType === 'internal' ? RouterLink : 'a'}
-                  {...(currentSignal.actionType === 'internal'
-                    ? { to: currentSignal.actionUrl }
-                    : { href: currentSignal.actionUrl, target: '_blank', rel: 'noopener noreferrer' })}
-                >
-                  詳細 →
-                </Button>
-              ) : undefined
+              <Stack direction="row" spacing={1}>
+                <Tooltip title="修復作業が完了したことをマークします（問題が解決していない場合、次回のパトロールで再検知されます）">
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    sx={{ color: 'inherit', borderColor: 'rgba(0,0,0,0.2)' }}
+                    onClick={() => {
+                      import('@/features/sp/health/spHealthSignalStore').then(m => m.clearSpHealthSignal());
+                    }}
+                  >
+                    対応済みとしてクリア
+                  </Button>
+                </Tooltip>
+                {currentSignal.actionUrl && (
+                  <Button
+                    size="small"
+                    component={currentSignal.actionType === 'internal' ? RouterLink : 'a'}
+                    {...(currentSignal.actionType === 'internal'
+                      ? { to: currentSignal.actionUrl }
+                      : { href: currentSignal.actionUrl, target: '_blank', rel: 'noopener noreferrer' })}
+                  >
+                    詳細 →
+                  </Button>
+                )}
+              </Stack>
             }
           >
             <strong>

@@ -113,9 +113,17 @@ const REASON_ACTION_MAP: Record<SpHealthReasonCode, ActionSpec> = {
  */
 function enrichWithAction(signal: Omit<SpHealthSignal, 'occurrenceCount'>): SpHealthSignal {
   const spec = REASON_ACTION_MAP[signal.reasonCode];
+  let actionUrl = signal.actionUrl ?? spec?.actionUrl;
+
+  // リスト名が指定されている場合、クエリパラメータに付与して「直接その場所へ」飛ばす導線を強化
+  if (actionUrl && signal.listName && !actionUrl.includes('list=')) {
+    const connector = actionUrl.includes('?') ? '&' : '?';
+    actionUrl += `${connector}list=${encodeURIComponent(signal.listName)}`;
+  }
+
   return {
     ...signal,
-    actionUrl: signal.actionUrl ?? spec?.actionUrl,
+    actionUrl,
     actionType: signal.actionType ?? spec?.actionType,
     actionGuide: signal.actionGuide ?? spec?.actionGuide,
     occurrenceCount: 1,
@@ -169,21 +177,10 @@ function _notify(): void {
   });
 }
 
+const ESCALATION_THRESHOLD = 3;
+
 /**
  * シグナルを報告する。
- *
- * 優先度制御:
- * - 既存シグナルより優先度が低い別課題は無視
- * - Realtime シグナルは同優先度でも Nightly を上書き
- *
- * 重複圧縮:
- * - 同一課題（reasonCode + listName）の再報告は occurrenceCount を加算
- * - 同一課題でより深刻な severity が来た場合は上書き + カウント引き継ぎ
- *
- * エンリッチ:
- * - reasonCode から actionUrl / actionType / actionGuide を自動付与
- *
- * 24時間 TTL 超過のシグナルは無視
  */
 export function reportSpHealthEvent(signal: Omit<SpHealthSignal, 'occurrenceCount'>): void {
   try {
@@ -200,18 +197,28 @@ export function reportSpHealthEvent(signal: Omit<SpHealthSignal, 'occurrenceCoun
     // ── 同一課題の圧縮 ──────────────────────────────────────────────────────
     if (isSameIssue(_current, signal)) {
       const prevCount = _current.occurrenceCount;
+      const nextCount = prevCount + 1;
+      
       const incomingIsHigher = isHigherPriority(signal.severity, _current.severity);
       const isRealtimeOverNightly =
         signal.source === 'realtime' &&
         _current.source === 'nightly_patrol' &&
         SEVERITY_PRIORITY[signal.severity] >= SEVERITY_PRIORITY[_current.severity];
 
-      if (incomingIsHigher || isRealtimeOverNightly) {
-        // 深刻化 or Realtime 昇格 → 内容を更新してカウント引き継ぎ
-        _current = { ...enriched, occurrenceCount: prevCount + 1 };
+      // 回数による自動昇格 (warning -> action_required)
+      let finalSeverity = signal.severity;
+      if (finalSeverity === 'warning' && nextCount >= ESCALATION_THRESHOLD) {
+        finalSeverity = 'action_required';
+      }
+
+      if (incomingIsHigher || isRealtimeOverNightly || finalSeverity !== signal.severity) {
+        _current = { 
+          ...enriched, 
+          severity: finalSeverity as SpHealthSeverity, 
+          occurrenceCount: nextCount 
+        };
       } else {
-        // 同等以下 → カウントのみ加算
-        _current = { ..._current, occurrenceCount: prevCount + 1 };
+        _current = { ..._current, occurrenceCount: nextCount };
       }
       _notify();
       return;
@@ -232,8 +239,16 @@ export function reportSpHealthEvent(signal: Omit<SpHealthSignal, 'occurrenceCoun
     _current = enriched;
     _notify();
   } catch {
-    // fail-open: store は例外を外部に投げない
+    // fail-open
   }
+}
+
+/**
+ * シグナルを明示的に消去する（修復完了時など）
+ */
+export function clearSpHealthSignal(): void {
+  _current = null;
+  _notify();
 }
 
 /**
