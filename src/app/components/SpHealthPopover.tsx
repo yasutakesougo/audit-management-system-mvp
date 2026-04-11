@@ -40,6 +40,7 @@ const REASON_LABEL: Record<SpHealthReasonCode, string> = {
   sp_bootstrap_blocked: 'プロビジョニング停止',
   sp_auth_failed: '認証エラー',
   sp_list_unreachable: 'リスト到達不能',
+  sp_schema_drift: 'スキーマ乖離',
 };
 
 const SOURCE_LABEL: Record<string, string> = {

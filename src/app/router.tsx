@@ -7,6 +7,7 @@
  */
 import { nurseRoutes } from '@/features/nurse/routes/NurseRoutes';
 import { Outlet, createBrowserRouter, type RouteObject } from 'react-router-dom';
+import { ComplianceBadgeProvider } from '@/features/regulatory/ComplianceBadgeProvider';
 import AppShell from './AppShell';
 import { routerFutureFlags } from './routerFuture';
 
@@ -45,9 +46,11 @@ const childRoutes: RouteObject[] = [
 export const routes: RouteObject[] = [
   {
     element: (
-      <AppShell>
-        <Outlet />
-      </AppShell>
+      <ComplianceBadgeProvider>
+        <AppShell>
+          <Outlet />
+        </AppShell>
+      </ComplianceBadgeProvider>
     ),
     children: childRoutes,
   },

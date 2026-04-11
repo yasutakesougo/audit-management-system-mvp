@@ -39,6 +39,9 @@ export function buildFindingActions(finding: AuditFinding): FindingAction[] {
   const actions: FindingAction[] = [];
   const userId = finding.userId;
   const supportPlanUrl = `/support-plan-guide?userId=${encodeURIComponent(userId)}`;
+  const directSheetUrl = finding.planningSheetId
+    ? `/support-planning-sheet/${encodeURIComponent(finding.planningSheetId)}`
+    : supportPlanUrl;
   const icebergUrl = buildIcebergPdcaUrl(userId, { source: 'regulatory-dashboard' });
 
   switch (finding.type) {
@@ -53,8 +56,8 @@ export function buildFindingActions(finding: AuditFinding): FindingAction[] {
     case 'author_qualification_missing':
       if (finding.planningSheetId) {
         actions.push({
-          label: '支援計画を確認',
-          url: supportPlanUrl,
+          label: '修正画面を開く',
+          url: directSheetUrl,
           kind: 'review',
         });
       }
@@ -95,16 +98,16 @@ export function buildFindingActions(finding: AuditFinding): FindingAction[] {
 
     case 'delivery_missing':
       actions.push({
-        label: '支援計画を確認',
-        url: supportPlanUrl,
+        label: '交付画面を開く',
+        url: directSheetUrl,
         kind: 'review',
       });
       break;
 
     case 'add_on_candidate':
       actions.push({
-        label: '支援計画を確認',
-        url: supportPlanUrl,
+        label: '算定状況を確認',
+        url: directSheetUrl,
         kind: 'review',
       });
       // 加算の根拠となる分析を確認

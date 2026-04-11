@@ -109,6 +109,7 @@ export interface ExistingFieldShape {
   InternalName: string;
   TypeAsString?: string;
   Required?: boolean;
+  Indexed?: boolean;
 }
 
 export type FailedFieldReason =

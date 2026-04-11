@@ -200,15 +200,6 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'planning' as NavGroupKey,
     },
     {
-      label: 'モニタリング記録',
-      to: '/records/monthly',
-      isActive: (pathname) => pathname.startsWith('/records/monthly'),
-      icon: undefined,
-      testId: 'nav-monitoring-record',
-      audience: NAV_AUDIENCE.staff,
-      group: 'severe' as NavGroupKey,
-    },
-    {
       label: '支援計画シート',
       to: '/planning-sheet-list',
       isActive: (pathname) => pathname.startsWith('/planning-sheet-list') || pathname.startsWith('/support-planning-sheet'),
@@ -255,6 +246,15 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     },
     createHubNavItem('records'),
     {
+      label: 'モニタリング記録',
+      to: '/records/monthly',
+      isActive: (pathname) => pathname.startsWith('/records/monthly'),
+      icon: undefined,
+      testId: 'nav-monitoring-record',
+      audience: NAV_AUDIENCE.staff,
+      group: 'records' as NavGroupKey,
+    },
+    {
       // 月次記録・業務日誌プレビューは、記録一覧（/records）のサブページとして到達可能なためサイドナビから除外
       label: 'サービス提供実績記録',
       to: '/records/service-provision',
@@ -297,6 +297,18 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       audience: NAV_AUDIENCE.admin,   // [Audience] 施設長のみ（収支・稼働率等）
       group: 'operations' as NavGroupKey,
       tier: 'admin',                  // [Tier] 管理エリア
+      featureFlag: 'todayLiteNavV2',
+    },
+    {
+      // Tier B: 制度遵守（モニタリング・計画）の監査・監視。管理者のみ表示。
+      label: '制度遵守ダッシュボード',
+      to: '/admin/regulatory-dashboard',
+      isActive: (pathname) => pathname === '/admin/regulatory-dashboard',
+      icon: undefined,
+      testId: 'nav-regulatory-dashboard',
+      audience: NAV_AUDIENCE.admin,
+      group: 'operations' as NavGroupKey,
+      tier: 'admin',
       featureFlag: 'todayLiteNavV2',
     },
     createHubNavItem('billing', { testId: TESTIDS.nav.billing }),

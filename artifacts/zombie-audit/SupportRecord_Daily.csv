@@ -1,0 +1,131 @@
+ListName,InternalName,DisplayName,TypeAsString,Hidden,ReadOnly,FromBaseType,Indexed,Classification,Reason,RecommendedAction
+SupportRecord_Daily,ContentTypeId,コンテンツ タイプの ID,ContentTypeId,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,Title,タイトル,Text,false,false,true,false,keep_system,FromBaseType=true,KEEP
+SupportRecord_Daily,_ModerationComments,承認者のコメント,Note,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,File_x0020_Type,ファイルの種類,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_ColorHex,色,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_ColorTag,色タグ,Text,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_Emoji,絵文字,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,ComplianceAssetId,コンプライアンス資産 ID,Text,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,cr013_recorddate,記録日,DateTime,false,false,false,true,legacy_unknown,"Not in SSOT, not system, no drift pattern detected — requires manual review",MANUAL_REVIEW
+SupportRecord_Daily,cr013_specialnote,特記事項,Note,false,false,false,false,legacy_unknown,"Not in SSOT, not system, no drift pattern detected — requires manual review",MANUAL_REVIEW
+SupportRecord_Daily,_x8a18__x9332__x65e5_,記録日,DateTime,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,_x7279__x8a18__x4e8b__x9805_,特記事項,Note,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,cr013_amactivity,AM活動,Text,false,false,false,true,legacy_unknown,"Not in SSOT, not system, no drift pattern detected — requires manual review",MANUAL_REVIEW
+SupportRecord_Daily,cr013_pmactivity,PM活動,Text,false,false,false,false,legacy_unknown,"Not in SSOT, not system, no drift pattern detected — requires manual review",MANUAL_REVIEW
+SupportRecord_Daily,cr013_lunchamount,昼食量,Choice,false,false,false,false,legacy_unknown,"Not in SSOT, not system, no drift pattern detected — requires manual review",MANUAL_REVIEW
+SupportRecord_Daily,cr013_behaviorcheck,問題行動チェック,MultiChoice,false,false,false,false,legacy_unknown,"Not in SSOT, not system, no drift pattern detected — requires manual review",MANUAL_REVIEW
+SupportRecord_Daily,UserId,UserId,Text,false,false,false,true,legacy_unknown,"Not in SSOT, not system, no drift pattern detected — requires manual review",MANUAL_REVIEW
+SupportRecord_Daily,Completed,Completed,Boolean,false,false,false,true,legacy_unknown,"Not in SSOT, not system, no drift pattern detected — requires manual review",MANUAL_REVIEW
+SupportRecord_Daily,Incident,Incident,Boolean,false,false,false,false,legacy_unknown,"Not in SSOT, not system, no drift pattern detected — requires manual review",MANUAL_REVIEW
+SupportRecord_Daily,IsDeleted,IsDeleted,Boolean,false,false,false,false,legacy_unknown,"Not in SSOT, not system, no drift pattern detected — requires manual review",MANUAL_REVIEW
+SupportRecord_Daily,DeletedAt,DeletedAt,Text,false,false,false,false,legacy_unknown,"Not in SSOT, not system, no drift pattern detected — requires manual review",MANUAL_REVIEW
+SupportRecord_Daily,DeletedBy,DeletedBy,Text,false,false,false,false,legacy_unknown,"Not in SSOT, not system, no drift pattern detected — requires manual review",MANUAL_REVIEW
+SupportRecord_Daily,Latest_x0020_Version,Latest Version,Number,false,false,false,false,keep_ssot,Exact match with SSOT,KEEP
+SupportRecord_Daily,RecordDate,RecordDate,DateTime,false,false,false,false,keep_ssot,Exact match with SSOT,KEEP
+SupportRecord_Daily,ReporterName,ReporterName,Text,false,false,false,false,keep_ssot,Exact match with SSOT,KEEP
+SupportRecord_Daily,ReporterRole,ReporterRole,Text,false,false,false,false,keep_ssot,Exact match with SSOT,KEEP
+SupportRecord_Daily,UserCount,UserCount,Number,false,false,false,false,keep_ssot,Exact match with SSOT,KEEP
+SupportRecord_Daily,ApprovalStatus,ApprovalStatus,Text,false,false,false,false,keep_ssot,Exact match with SSOT,KEEP
+SupportRecord_Daily,User_x0020_Rows_x0020_JSON,User Rows JSON,Note,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,Approved_x0020_By,Approved By,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,Approved_x0020_At,Approved At,DateTime,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,User_x0020_Code,User Code,Text,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,Status,Status,Text,false,false,false,false,legacy_unknown,"Not in SSOT, not system, no drift pattern detected — requires manual review",MANUAL_REVIEW
+SupportRecord_Daily,Check_x002d_in_x0020_Time,Check-in Time,DateTime,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,Check_x002d_out_x0020_Time,Check-out Time,DateTime,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,Check_x002d_in_x0020_Time0,Check-in Time,DateTime,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,Check_x002d_out_x0020_Time0,Check-out Time,DateTime,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,Check_x002d_in_x0020_Time1,Check-in Time,DateTime,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,Check_x002d_out_x0020_Time1,Check-out Time,DateTime,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,Check_x002d_in_x0020_Time2,Check-in Time,DateTime,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,Check_x002d_out_x0020_Time2,Check-out Time,DateTime,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,Check_x002d_in_x0020_Time3,Check-in Time,DateTime,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,Check_x002d_out_x0020_Time3,Check-out Time,DateTime,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,Check_x002d_in_x0020_Time4,Check-in Time,DateTime,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,Check_x002d_out_x0020_Time4,Check-out Time,DateTime,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,Check_x002d_in_x0020_Time5,Check-in Time,DateTime,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,Check_x002d_out_x0020_Time5,Check-out Time,DateTime,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,Check_x002d_in_x0020_Time6,Check-in Time,DateTime,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,Check_x002d_out_x0020_Time6,Check-out Time,DateTime,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,User_x0020_Rows_x0020_JSON0,User Rows JSON,Note,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,User_x0020_Rows_x0020_JSON1,User Rows JSON,Note,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,User_x0020_Rows_x0020_JSON2,User Rows JSON,Note,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,User_x0020_Rows_x0020_JSON3,User Rows JSON,Note,false,false,false,false,drift_encoded,UCS-2 encoded name (_xNNNN_) — typically Japanese display-name auto-encoded,DELETE (auto-detected zombie)
+SupportRecord_Daily,ID,ID,Counter,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,ContentType,コンテンツ タイプ,Computed,false,false,true,false,keep_system,FromBaseType=true,KEEP
+SupportRecord_Daily,Modified,更新日時,DateTime,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,Created,登録日時,DateTime,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,Author,登録者,User,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,Editor,更新者,User,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_HasCopyDestinations,コピー先の有無,Boolean,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_CopySource,コピー元,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,owshiddenversion,owshiddenversion,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,WorkflowVersion,ワークフローのバージョン,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_UIVersion,UI バージョン,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_UIVersionString,バージョン,Text,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,Attachments,添付ファイル,Attachments,false,false,true,false,keep_system,FromBaseType=true,KEEP
+SupportRecord_Daily,_ModerationStatus,承認の状況,ModStat,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,Edit,編集,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,LinkTitleNoMenu,タイトル,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,LinkTitle,タイトル,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,LinkTitle2,タイトル,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,SelectTitle,選択,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,InstanceID,インスタンス ID,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,Order,順序,Number,true,false,true,false,keep_system,"Hidden=true, FromBaseType=true",KEEP
+SupportRecord_Daily,GUID,GUID,Guid,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,WorkflowInstanceID,ワークフロー インスタンス ID,Guid,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,FileRef,URL パス,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,FileDirRef,パス,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,Last_x0020_Modified,更新日時,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,Created_x0020_Date,登録日時,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,FSObjType,アイテムの種類,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,SortBehavior,並べ替えの種類,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,PermMask,有効な権限マスク,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,PrincipalCount,プリンシパルの数,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,FileLeafRef,名前,File,true,false,true,false,keep_system,"Hidden=true, FromBaseType=true",KEEP
+SupportRecord_Daily,UniqueId,固有 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,ParentUniqueId,ドキュメントの親 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,SyncClientId,クライアント ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,ProgId,ProgId,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,ScopeId,ScopeId,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,HTML_x0020_File_x0020_Type,HTML ファイルの種類,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_EditMenuTableStart,メニュー テーブルの編集の開始,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_EditMenuTableStart2,メニュー テーブルの編集の開始,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_EditMenuTableEnd,メニュー テーブルの編集の終了,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,LinkFilenameNoMenu,名前,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,LinkFilename,名前,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,LinkFilename2,名前,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,DocIcon,種類,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,ServerUrl,サーバーの相対 URL,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,EncodedAbsUrl,エンコードされた絶対 URL,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,BaseName,ファイル名,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,MetaInfo,プロパティ バッグ,Lookup,true,false,true,false,keep_system,"Hidden=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_Level,レベル,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_IsCurrentVersion,現在のバージョン,Boolean,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,ItemChildCount,子アイテムの数,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,FolderChildCount,子フォルダーの数,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,Restricted,制限付き,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,OriginatorId,発信者 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,NoExecute,NoExecute,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,ContentVersion,コンテンツのバージョン,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_ComplianceFlags,ラベルの設定,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_ComplianceTag,保持ラベル,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_ComplianceTagWrittenTime,保持ラベルを適用済み,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_ComplianceTagUserId,ラベルの適用者,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_IsRecord,レコードとして登録されているアイテム,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,AccessPolicy,アクセス ポリシー,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_VirusStatus,VirusStatus,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_VirusVendorID,VirusVendorID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_VirusInfo,VirusInfo,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_RansomwareAnomalyMetaInfo,RansomwareAnomalyMetaInfo,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_DraftOwnerId,下書き所有者 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,MainLinkSettings,メイン リンクの設定,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,AppAuthor,アプリの作成者,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,AppEditor,アプリの変更者,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,SMTotalSize,合計サイズ,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,SMLastModifiedDate,最終更新日,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,SMTotalFileStreamSize,ファイル ストリームの合計サイズ,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,SMTotalFileCount,合計ファイル数,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+SupportRecord_Daily,_CommentFlags,コメントの設定,Lookup,true,true,false,false,keep_system,"Hidden=true, ReadOnly=true",KEEP
+SupportRecord_Daily,_CommentCount,コメント数,Lookup,true,true,false,false,keep_system,"Hidden=true, ReadOnly=true",KEEP
