@@ -1463,23 +1463,12 @@ gh workflow view .github/workflows/report-links.yml --yaml
 
 ## Project Status
 
-### Phase 2 (Staff Attendance + Dashboard Enhancement)
+基盤機能は段階的に整備が進んでおり、以下が現行運用ベースとして成立しています。
 
-✅ **Completed (2026-01)**
+- **ISP 三層モデル** — L1/L2/L3 の責務分離と 4 本の Bridge（変換パイプライン）
+- **SharePoint drift 耐性** — スキーマ検証・自動修復・Fail-open/Hard-fail 分離
+- **可観測性** — Nightly Patrol・DriftEventsLog・Signal 化・Action Center
+- **品質ゲート** — カバレッジ閾値は `vitest.config.ts` で管理
 
-- PRs: #268 (Phase 2.1-A+B: Store + UI + Persistence), #269 (Phase 2.1-C: Dashboard Integration)
-- Docs: `docs/PHASE2_COMPLETION.md`
-- Route: `/staff/attendance`
-- Tests: 1,612/1,612 PASSED
-
-**Key Features:**
-- Staff attendance input with 3 status toggles (出勤/欠勤/外出中)
-- localStorage persistence (2-second auto-save)
-- Dashboard real-time display (replaces estimated counts)
-- Schedule lanes in morning/evening meeting cards
-
-### Next: Phase 3.1 (SharePoint Integration)
-
-- Replace localStorage with SharePoint List API
-- Real-time sync across devices
-- Design: `docs/PHASE3_1_SHAREPOINT_STAFF_ATTENDANCE.md` (pending)
+詳細なフェーズ履歴は `docs/history/` へ分離予定。
+アーキテクチャ全体像は **[docs/architecture.md](docs/architecture.md)** を参照。

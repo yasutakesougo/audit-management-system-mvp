@@ -68,11 +68,34 @@ Support Operations OS — 支援業務の PDCA をコード化した基盤。
 ## 3. The PDCA Loop
 
 ```mermaid
-graph LR
-  ISP["L1 ISP<br/>(6ヶ月)"] -->|ISPReference<br/>snapshot| SPS["L2 支援計画シート<br/>(3ヶ月)"]
-  SPS -->|planningSheetId| REC["L3 実施ログ<br/>(毎日)"]
-  REC -->|MonitoringCountdown<br/>PDCA signals| SPS
-  SPS -->|人の判断| ISP
+graph TD
+  subgraph "Assessment Sources"
+    ASM["🔍 Assessment<br/>(ICF分類)"]
+    TOK["📋 特性アンケート"]
+  end
+
+  subgraph L1["L1 ISP — WHY (6ヶ月)"]
+    ISP["個別支援計画<br/>全利用者"]
+  end
+
+  subgraph L2["L2 SPS — HOW (3ヶ月)"]
+    SPS["支援計画シート<br/>IBD対象者のみ"]
+  end
+
+  subgraph L3["L3 Record — DO (毎日)"]
+    REC["手順書兼記録<br/>IBD対象者のみ"]
+  end
+
+  ASM -->|"Bridge 1<br/>assessmentBridge<br/>(自動変換)"| SPS
+  TOK -->|"Bridge 2<br/>tokuseiToPlanningBridge<br/>(自動変換)"| SPS
+  ISP -->|"ISPReference<br/>(snapshot)"| SPS
+  SPS -->|"Bridge 3<br/>planningToRecordBridge<br/>(手順展開)"| REC
+  REC -->|"Bridge 4<br/>monitoringToPlanningBridge<br/>(半自動: 低リスク自動+候補提示)"| SPS
+  SPS -.->|"🧑‍⚕️ 人の判断<br/>(法定プロセス)"| ISP
+
+  style L1 fill:#1f6feb,color:#fff,stroke:#1f6feb
+  style L2 fill:#238636,color:#fff,stroke:#238636
+  style L3 fill:#d29922,color:#fff,stroke:#d29922
 ```
 
 **フィードバックループの閉じ方（重要）**
@@ -186,6 +209,16 @@ UI コンポーネント           ← 表示層（SSOT ではない）
 - `/daily/table` を IBD 対象者の主記録にしない（IBD は `/daily/support` が正）
 
 ## 7. Canonical sources（規範的ドキュメント）
+
+### 情報の権威レベル
+
+| レベル | 何が正か | 変更方法 |
+|---|---|---|
+| **規範（Normative）** | ADR — 設計判断の根拠と制約 | 新 ADR の発行または既存 ADR の改訂 |
+| **入口（Entry）** | `docs/architecture.md`（本文書）— 全体像と地図 | 実装・ADR と同期して更新 |
+| **実体（Source）** | 実装コード・ドメイン型・SP スキーマ定義 | コード変更 + テスト |
+
+迷ったときの判断基準：**ADR に書いてあることが設計の正。実装がそれと矛盾していれば実装がバグ。本文書（architecture.md）は ADR と実装を読みやすくまとめた地図であり、ADR と矛盾する場合は ADR が勝つ。**
 
 ### ADR（意思決定記録）
 
