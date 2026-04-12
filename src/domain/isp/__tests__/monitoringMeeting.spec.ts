@@ -179,6 +179,34 @@ describe('computeMonitoringSummary', () => {
     const summary = computeMonitoringSummary(records, '2026-10-01');
     expect(summary.daysUntilNextMonitoring).toBe(75); // Oct 1 → Dec 15
   });
+
+  it('should detect 6-month continuity violations (gap between meetings)', () => {
+    const records = [
+      makeRecord({ meetingDate: '2026-01-01' }),
+      makeRecord({ meetingDate: '2026-07-10' }), // > 183 days (approx 190 days)
+    ];
+    const summary = computeMonitoringSummary(records, '2026-08-01');
+    expect(summary.hasContinuityViolation).toBe(true);
+    expect(summary.maxGapDays).toBeGreaterThan(183);
+  });
+
+  it('should detect 6-month continuity violations (overdue from last meeting)', () => {
+    const records = [
+      makeRecord({ meetingDate: '2026-01-01' }),
+    ];
+    const summary = computeMonitoringSummary(records, '2026-07-15'); // > 183 days since last meeting
+    expect(summary.hasContinuityViolation).toBe(true);
+  });
+
+  it('should pass consistency check when gap is within 6 months', () => {
+    const records = [
+      makeRecord({ meetingDate: '2026-04-01' }),
+      makeRecord({ meetingDate: '2026-09-01' }), // ~ 153 days
+    ];
+    const summary = computeMonitoringSummary(records, '2026-10-01');
+    expect(summary.hasContinuityViolation).toBe(false);
+    expect(summary.maxGapDays).toBeLessThanOrEqual(183);
+  });
 });
 
 // =========================================================================
