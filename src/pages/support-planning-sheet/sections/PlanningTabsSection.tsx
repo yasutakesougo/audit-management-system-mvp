@@ -32,6 +32,8 @@ type PlanningTabsSectionProps = {
   activeTab: SheetTabKey;
   onTabChange: (tab: SheetTabKey) => void;
   currentPhase: WorkflowPhase | null;
+  hasPendingPlanUpdate?: boolean;
+  hasOverduePlanUpdate?: boolean;
   onBannerNavigate: (href: string) => void;
   isEditing: boolean;
   form: UsePlanningSheetFormReturn;
@@ -54,6 +56,8 @@ export function PlanningTabsSection({
   activeTab,
   onTabChange,
   currentPhase,
+  hasPendingPlanUpdate = false,
+  hasOverduePlanUpdate = false,
   onBannerNavigate,
   isEditing,
   form,
@@ -97,6 +101,9 @@ export function PlanningTabsSection({
           <PhaseNextStepBanner
             phase={currentPhase}
             context="overview"
+            planningSheetId={sheet.id}
+            hasPendingPlanUpdate={hasPendingPlanUpdate}
+            hasOverduePlanUpdate={hasOverduePlanUpdate}
             onNavigate={onBannerNavigate}
           />
         )}
@@ -148,6 +155,17 @@ export function PlanningTabsSection({
             onDaysChange={onTrendDaysChange}
             loading={trendLoading}
           />
+          {currentPhase && (
+            <PhaseNextStepBanner
+              phase={currentPhase}
+              context="planning"
+              userId={sheet.userId}
+              planningSheetId={sheet.id}
+              hasPendingPlanUpdate={hasPendingPlanUpdate}
+              hasOverduePlanUpdate={hasOverduePlanUpdate}
+              onNavigate={onBannerNavigate}
+            />
+          )}
           {isEditing ? (
             <EditablePlanningDesignSection
               planning={form.planning}

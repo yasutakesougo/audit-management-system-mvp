@@ -11,6 +11,25 @@
 
 ---
 
+## 🧾 Reason Code Summary
+| Reason Code | Count | Resources |
+| --- | :---: | --- |
+| `manual` | 2 | StaffAttendance, UserBenefit_Profile |
+| `absorbed_strategy_e` | 1 | UserBenefit_Profile |
+| `index_required` | 1 | iceberg_analysis |
+| `list_not_found` | 1 | Users_Master |
+| `max_size_exceeded` | 1 | UserBenefit_Profile |
+| `rate_limit` | 1 | SharePoint_API |
+| `unknown_field_added` | 1 | support_record_daily |
+
+## 🔁 Repeated Transient Failures
+_No events recorded._
+
+
+## ♻️ Recovered Transient Failures
+_No events recorded._
+
+
 ## 🚨 Requires Attention (Critical & Action Required & Watch)
 | Severity | Event Type | Resource | Occurrences | Fingerprint | NextAction |
 | --- | --- | --- | :---: | --- | --- |

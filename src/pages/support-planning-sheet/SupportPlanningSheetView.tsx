@@ -4,12 +4,22 @@ import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
+import Divider from '@mui/material/Divider';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
 
 // import { createSharePointIspRepository } from '@/data/isp/sharepoint/SharePointIspRepository';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
+import { usePlanPatchRepository } from '@/features/planning-sheet/hooks/usePlanPatchRepository';
 import { NewPlanningSheetForm } from '@/features/planning-sheet/components/NewPlanningSheetForm';
 // import { useSP } from '@/lib/spClient';
 import { TESTIDS, tid } from '@/testids';
+import {
+  applyPlanPatch,
+  detectPlanNeedsUpdate,
+  isPlanPatchOverdue,
+  type PlanPatch,
+} from '@/domain/isp/planPatch';
 
 import { type SupportPlanningSheetViewProps } from './types';
 import type { IspRepository } from '@/domain/isp/port';
@@ -22,10 +32,22 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
   handlers,
 }) => {
   const planningSheetRepo = usePlanningSheetRepositories();
+  const planPatchRepository = usePlanPatchRepository();
   // const spClient = useSP();
   const ispRepo = React.useMemo(() => ({
     getCurrentByUser: async () => null,
   } as unknown as IspRepository), []);
+  const [pendingPatchCount, setPendingPatchCount] = React.useState(0);
+  const [pendingPatches, setPendingPatches] = React.useState<PlanPatch[]>([]);
+  const [patchActionMessage, setPatchActionMessage] = React.useState<string | null>(null);
+  const hasPendingPlanUpdate = React.useMemo(
+    () => detectPlanNeedsUpdate(pendingPatches),
+    [pendingPatches],
+  );
+  const hasOverduePlanUpdate = React.useMemo(
+    () => pendingPatches.some((patch) => isPlanPatchOverdue(patch)),
+    [pendingPatches],
+  );
 
   if (!viewModel) {
     return (
@@ -73,6 +95,26 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
     diffSummary,
   } = viewModel;
 
+  React.useEffect(() => {
+    if (!planningSheetId || planningSheetId === 'new') {
+      setPendingPatchCount(0);
+      setPendingPatches([]);
+      return;
+    }
+
+    let active = true;
+
+    void planPatchRepository.findPending(planningSheetId).then((patches) => {
+      if (!active) return;
+      setPendingPatchCount(patches.length);
+      setPendingPatches(patches);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [planPatchRepository, planningSheetId]);
+
   if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300 }}>
@@ -110,9 +152,106 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
     );
   }
 
+  const handlePatchStatusChange = async (
+    patchId: string,
+    status: PlanPatch['status'],
+  ) => {
+    await planPatchRepository.updateStatus(patchId, status);
+    const next = pendingPatches
+      .map((patch) => (patch.id === patchId ? { ...patch, status } : patch))
+      .filter((patch) => patch.status !== 'confirmed');
+    setPendingPatches(next);
+    setPendingPatchCount(next.length);
+  };
+
+  const handleApplyPatch = async (patch: PlanPatch) => {
+    try {
+      const updated = applyPlanPatch(patch, sheet);
+      await planningSheetRepo.update(sheet.id, updated as never);
+      await planPatchRepository.updateStatus(patch.id, 'confirmed');
+      const next = pendingPatches.filter((item) => item.id !== patch.id);
+      setPendingPatches(next);
+      setPendingPatchCount(next.length);
+      setPatchActionMessage('更新案を支援計画シートへ反映しました。画面を再読み込みすると最新状態が表示されます。');
+    } catch (error) {
+      if (error instanceof Error && error.message === 'VERSION_CONFLICT') {
+        setPatchActionMessage('バージョン競合が発生しました。最新の支援計画シートを確認してから再適用してください。');
+        return;
+      }
+      setPatchActionMessage('更新案の反映に失敗しました。');
+    }
+  };
+
   return (
     <Box sx={{ display: 'flex', position: 'relative' }}>
       <Box sx={{ flex: 1, p: { xs: 2, md: 3 }, pb: 4 }} {...tid(TESTIDS['planning-sheet-page'])}>
+        {hasPendingPlanUpdate ? (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            未反映の計画更新案が {pendingPatchCount} 件あります。モニタリング会議の結果を確認し、必要に応じて計画へ反映してください。
+          </Alert>
+        ) : null}
+        {patchActionMessage ? (
+          <Alert severity="info" sx={{ mb: 2 }} onClose={() => setPatchActionMessage(null)}>
+            {patchActionMessage}
+          </Alert>
+        ) : null}
+        {pendingPatches.length > 0 ? (
+          <Paper variant="outlined" sx={{ mb: 3, p: 2 }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              未反映の更新案レビュー
+            </Typography>
+            {pendingPatches.map((patch, index) => (
+              <Box key={patch.id} sx={{ py: 2 }}>
+                {index > 0 ? <Divider sx={{ mb: 2 }} /> : null}
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  {patch.target === 'plan' ? '計画更新案' : '手順更新案'} / status: {patch.status} / baseVersion: {patch.baseVersion}
+                </Typography>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mb: 1 }}>
+                  理由: {patch.reason}
+                </Typography>
+                <Typography variant="caption" display="block" sx={{ mb: 1 }}>
+                  根拠記録: {patch.evidenceIds.join(', ') || 'なし'}
+                </Typography>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+                    gap: 2,
+                    mb: 2,
+                  }}
+                >
+                  <Box>
+                    <Typography variant="caption" display="block" sx={{ mb: 0.5 }}>
+                      Before
+                    </Typography>
+                    <Box component="pre" sx={{ m: 0, p: 1.5, bgcolor: 'grey.100', overflow: 'auto', fontSize: 12 }}>
+                      {JSON.stringify(patch.before, null, 2)}
+                    </Box>
+                  </Box>
+                  <Box>
+                    <Typography variant="caption" display="block" sx={{ mb: 0.5 }}>
+                      After
+                    </Typography>
+                    <Box component="pre" sx={{ m: 0, p: 1.5, bgcolor: 'grey.100', overflow: 'auto', fontSize: 12 }}>
+                      {JSON.stringify(patch.after, null, 2)}
+                    </Box>
+                  </Box>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  <Button variant="contained" size="small" onClick={() => void handleApplyPatch(patch)}>
+                    承認して反映
+                  </Button>
+                  <Button variant="outlined" size="small" onClick={() => void handlePatchStatusChange(patch.id, 'review')}>
+                    保留
+                  </Button>
+                  <Button variant="text" size="small" color="warning" onClick={() => void handlePatchStatusChange(patch.id, 'draft')}>
+                    差し戻し
+                  </Button>
+                </Box>
+              </Box>
+            ))}
+          </Paper>
+        ) : null}
         <PlanningMainStackSection
           headerProps={{
             sheet,
@@ -159,6 +298,8 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
             activeTab,
             onTabChange: handlers.onTabChange,
             currentPhase,
+            hasPendingPlanUpdate,
+            hasOverduePlanUpdate,
             onBannerNavigate: handlers.onBannerNavigate,
             isEditing,
             form,
