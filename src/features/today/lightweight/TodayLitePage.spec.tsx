@@ -58,4 +58,34 @@ describe('TodayLitePage core workflow', () => {
     render(<TodayLitePage summary={createSummary()} role="staff" onNavigate={vi.fn()} />);
     expect(screen.queryByTestId('today-lite-admin-insights')).not.toBeInTheDocument();
   });
+
+  it('shows isp renew suggest card for admin when count is positive', () => {
+    render(
+      <TodayLitePage
+        summary={createSummary()}
+        role="admin"
+        ispRenewSuggestCount={2}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('today-lite-action-isp-renew-suggest')).toBeInTheDocument();
+    expect(screen.getByText('ISP見直し推奨 2件')).toBeInTheDocument();
+  });
+
+  it('navigates to monitoring context from admin insight action', () => {
+    const onNavigate = vi.fn();
+    render(
+      <TodayLitePage
+        summary={createSummary()}
+        role="admin"
+        ispRenewSuggestCount={1}
+        onNavigate={onNavigate}
+      />,
+    );
+
+    const actions = screen.getAllByText('見直し提案を確認');
+    fireEvent.click(actions[0]);
+    expect(onNavigate).toHaveBeenCalledWith('/support-plan-guide?tab=operations.monitoring');
+  });
 });

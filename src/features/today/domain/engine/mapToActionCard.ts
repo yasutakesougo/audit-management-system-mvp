@@ -16,6 +16,7 @@ function resolveActionType(item: ScoredActionItem): ActionType {
     case 'incident':
     case 'corrective_action':
     case 'plan_patch':
+    case 'isp_renew_suggest':
       return 'NAVIGATE';
     case 'schedule':
       return 'OPEN_DRAWER';
@@ -47,6 +48,14 @@ function buildContextMessage(item: ScoredActionItem): string {
         : `更新期限 ${payload.dueAt.slice(0, 10)}`;
     }
     return `状態: ${payload?.status ?? 'needs_update'}`;
+  }
+
+  if (item.sourceType === 'isp_renew_suggest') {
+    const payload = item.payload as { reason?: string; impact?: string; recommendedOnly?: boolean } | undefined;
+    const reason = payload?.reason?.trim() ? payload.reason.trim() : '根拠情報あり';
+    const impactLabel = payload?.impact === 'high' ? '高優先' : '通常';
+    const mode = payload?.recommendedOnly === false ? '要確認' : '要確認（自動適用なし）';
+    return `${impactLabel} / ${mode} / ${reason}`;
   }
 
   const base = item.targetTime

@@ -7,6 +7,7 @@ export type TodaySignalCode =
   | 'handoff_unread'
   | 'monitoring_overdue'
   | 'monitoring_due_soon'
+  | 'isp_renew_suggest'
   | 'risk_health_alert';
 
 export interface TodaySignal {

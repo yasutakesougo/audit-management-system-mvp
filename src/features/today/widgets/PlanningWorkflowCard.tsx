@@ -64,12 +64,22 @@ export interface PlanningWorkflowCardProps {
   onNavigate?: (href: string) => void;
   /** 読み込み中 */
   isLoading?: boolean;
+  /** モニタリング由来の見直し推奨シグナル件数 */
+  ispRenewSuggestCount?: number;
+  /** 見直し推奨シグナルの確認導線 */
+  onOpenIspRenewSuggest?: () => void;
 }
 
 // ─── Sub-Components ──────────────────────────────────────────
 
 /** ヘッダーのサマリーチップ */
-function SummaryChips({ counts }: { counts: WorkflowPhaseCounts }) {
+function SummaryChips({
+  counts,
+  ispRenewSuggestCount = 0,
+}: {
+  counts: WorkflowPhaseCounts;
+  ispRenewSuggestCount?: number;
+}) {
   const chips: Array<{ label: string; count: number; color: string }> = [];
 
   if (counts.monitoringOverdue > 0) {
@@ -86,6 +96,9 @@ function SummaryChips({ counts }: { counts: WorkflowPhaseCounts }) {
   }
   if (counts.needsPlan > 0) {
     chips.push({ label: '設計中', count: counts.needsPlan, color: SEVERITY_COLORS.warning.text });
+  }
+  if (ispRenewSuggestCount > 0) {
+    chips.push({ label: '見直し推奨', count: ispRenewSuggestCount, color: SEVERITY_COLORS.info.text });
   }
 
   if (chips.length === 0) return null;
@@ -225,6 +238,8 @@ export const PlanningWorkflowCard: React.FC<PlanningWorkflowCardProps> = ({
   maxItems = DEFAULT_MAX_ITEMS,
   onNavigate,
   isLoading,
+  ispRenewSuggestCount = 0,
+  onOpenIspRenewSuggest,
 }) => {
   // Loading state
   if (isLoading) {
@@ -244,7 +259,8 @@ export const PlanningWorkflowCard: React.FC<PlanningWorkflowCardProps> = ({
     counts.needsReassessment +
     counts.needsAssessment +
     counts.needsPlan +
-    counts.needsMonitoring;
+    counts.needsMonitoring +
+    ispRenewSuggestCount;
 
   // Empty state
   if (items.length === 0) {
@@ -307,7 +323,20 @@ export const PlanningWorkflowCard: React.FC<PlanningWorkflowCardProps> = ({
         </Typography>
       </Box>
 
-      <SummaryChips counts={counts} />
+      <SummaryChips counts={counts} ispRenewSuggestCount={ispRenewSuggestCount} />
+
+      {ispRenewSuggestCount > 0 && onOpenIspRenewSuggest && (
+        <Box sx={{ mt: 1 }}>
+          <Button
+            size="small"
+            variant="text"
+            onClick={onOpenIspRenewSuggest}
+            sx={{ textTransform: 'none', fontSize: '0.72rem', px: 0 }}
+          >
+            ISP見直し推奨を確認（自動適用なし）
+          </Button>
+        </Box>
+      )}
 
       {/* ── Item list ── */}
       <Stack spacing={0.5} sx={{ mt: 1.5 }}>
