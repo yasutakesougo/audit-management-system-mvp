@@ -242,6 +242,10 @@ export interface MonitoringSummary {
   daysUntilNextMonitoring: number | null;
   /** 計画変更が必要な件数 */
   pendingPlanChanges: number;
+  /** 6ヶ月（183日）以上の空白があるか */
+  hasContinuityViolation: boolean;
+  /** 最大の空白期間（日） */
+  maxGapDays: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -306,6 +310,29 @@ export function computeMonitoringSummary(
   const lastMeeting = sorted[0] ?? null;
   const nextDate = lastMeeting?.nextMonitoringDate ?? null;
 
+  // 6ヶ月継続ルール確認 (183日)
+  let maxGapDays = 0;
+  let hasContinuityViolation = false;
+  const chronological = [...records].sort(
+    (a, b) => new Date(a.meetingDate).getTime() - new Date(b.meetingDate).getTime(),
+  );
+
+  for (let i = 1; i < chronological.length; i++) {
+    const prev = new Date(chronological[i - 1].meetingDate);
+    const curr = new Date(chronological[i].meetingDate);
+    const gap = Math.floor((curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24));
+    if (gap > maxGapDays) maxGapDays = gap;
+    if (gap > 183) hasContinuityViolation = true;
+  }
+
+  // 最新の会議から今日までもチェック（もし半年以上経っていたら警告）
+  if (lastMeeting) {
+    const gapSinceLast = computeDaysUntilNextMonitoring(now, lastMeeting.meetingDate) ?? 0;
+    const absGap = Math.abs(gapSinceLast);
+    if (absGap > maxGapDays) maxGapDays = absGap;
+    if (absGap > 183) hasContinuityViolation = true;
+  }
+
   // 計画変更待ち
   const pendingChanges = records.filter(
     (r) => r.planChangeDecision !== 'no_change',
@@ -323,6 +350,8 @@ export function computeMonitoringSummary(
     nextScheduledDate: nextDate,
     daysUntilNextMonitoring: daysUntil,
     pendingPlanChanges: pendingChanges,
+    hasContinuityViolation,
+    maxGapDays: records.length === 0 ? null : maxGapDays,
   };
 }
 
