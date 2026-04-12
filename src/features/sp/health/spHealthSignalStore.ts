@@ -265,6 +265,16 @@ export function revokeSpHealthSignal(reasonCode: SpHealthReasonCode, listName?: 
 }
 
 /**
+ * 特定のリソース（リスト名等）に関するすべてのシグナルを消去する
+ * 「対象リストの通信が回復した」場合など、具体的な reasonCode が特定できない回復時に使用。
+ */
+export function revokeSpHealthSignalByResource(listName: string): void {
+  if (_current && (_current.listName === listName)) {
+    clearSpHealthSignal();
+  }
+}
+
+/**
  * 現在の最高優先シグナルを取得する（TTL 失効分は null を返す）
  */
 export function getSpHealthSignal(): SpHealthSignal | null {

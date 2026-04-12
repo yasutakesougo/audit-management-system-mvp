@@ -14,7 +14,11 @@ import type {
   SpHealthSeverity,
   SpHealthSignal,
 } from './spHealthSignalStore';
-import { reportSpHealthEvent, revokeSpHealthSignal } from './spHealthSignalStore';
+import { 
+  reportSpHealthEvent, 
+  revokeSpHealthSignal,
+  revokeSpHealthSignalByResource 
+} from './spHealthSignalStore';
 
 /** mapping.ts が返す型: Store が occurrenceCount を付与するため除外 */
 type PatrolSignal = Omit<SpHealthSignal, 'occurrenceCount'>;
@@ -102,8 +106,14 @@ export function mapPatrolEventToSignal(event: PatrolEvent): PatrolSignal | null 
     const reasonCode = resolveReasonCode(event.code);
 
     // ── 状態の解消（Success/Recovery）検知 ─────────────────────────────────────
+    // 具体的な reasonCode が不明な回復（transient_failure 等）はリソース名（リスト名）単位でクリア
     if (event.code === 'transient_failure' || event.code === 'success') {
-      revokeSpHealthSignal(reasonCode, event.listName);
+      if (event.listName) {
+        revokeSpHealthSignalByResource(event.listName);
+      } else {
+        // リスト名がない全体的な回復の場合は reasonCode 一致でクリアを試みる
+        revokeSpHealthSignal(reasonCode);
+      }
       return null;
     }
 
