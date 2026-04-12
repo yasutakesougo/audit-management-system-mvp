@@ -11,26 +11,18 @@
 
 ---
 
-#### ✨ コアアーキテクチャ
+#### ✨ アーキテクチャ
 
-```mermaid
-graph LR
-    A["🔵 Assessment"] -->|Bridge 1| P["📋 Planning Sheet<br/>(L2)"]
-    P -->|Bridge 2| R["📝 Procedure Record<br/>(L3)"]
-    R -->|Daily 実施| M["🟠 Monitoring"]
-    M -->|Bridge 3| P
-    
-    style A fill:#1f6feb,color:#fff,stroke:none
-    style P fill:#238636,color:#fff,stroke:none
-    style R fill:#8b949e,color:#fff,stroke:none
-    style M fill:#d29922,color:#fff,stroke:none
-```
+本システムは **ISP 三層モデル**（L1 ISP / L2 支援計画シート / L3 手順書兼記録）を基盤に、
+層をつなぐ **4 本の Bridge** で構成されています。
 
-| 層 | 役割 | アーキテクチャ |
-|---|---|---|
-| **L1 ISP** | なぜ支援するか (Why) | 三層モデル + Ports & Adapters |
-| **L2 支援計画シート** | どう支援するか (How) | 三ブリッジ + Provenance 追跡 |
-| **L3 手順書兼記録** | 実施と記録 (Do + Record) | モニタリングスケジュール (90日サイクル) |
+Assessment → Planning → Procedure/Record → Monitoring の循環を
+単なる画面遷移ではなく、**責務分離されたデータ変換パイプライン**として扱うのが特徴です。
+
+詳細な全体像、各層の責務、Bridge の意味、SSOT の所在、ループ閉鎖の考え方は
+**[docs/architecture.md](docs/architecture.md)** を参照してください。
+
+規範的な設計原則は **[ADR-005](docs/adr/ADR-005-isp-three-layer-separation.md)** を canonical source とします。
 
 ---
 
@@ -61,41 +53,6 @@ Open **http://localhost:5173** → デモモードで全機能を試せます。
 | **🔒 Safety Management** | 適正化委員会・指針版管理・研修記録・身体拘束記録の統合管理 |
 
 ---
-
-#### 🏗️ Architecture Overview — 支援 PDCA エンジン
-
-日次記録から ISP 計画書更新までを **1 本のパイプライン** として設計:
-
-```mermaid
-graph LR
-    A["📝 日次記録"] --> B["📊 分析エンジン"]
-    B --> C["💡 ISP 見直し提案"]
-    C --> D["🧑‍⚕️ 人の判断"]
-    D --> E["📋 ドラフト生成"]
-    E --> F["💾 SharePoint 保存"]
-    F --> G["✏️ ISP 計画書反映"]
-    G --> H["📂 履歴・再反映"]
-
-    style A fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-    style B fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
-    style C fill:#fff3e0,stroke:#ef6c00,color:#e65100
-    style D fill:#fce4ec,stroke:#c62828,color:#b71c1c
-    style E fill:#f3e5f5,stroke:#6a1b9a,color:#4a148c
-    style F fill:#e0f2f1,stroke:#00695c,color:#004d40
-    style G fill:#fff9c4,stroke:#f57f17,color:#f57f17
-    style H fill:#efebe9,stroke:#4e342e,color:#3e2723
-```
-
-| 設計原則 | 内容 |
-|---|---|
-| **DDD (ドメイン駆動設計)** | Domain 層は純粋関数のみ。副作用ゼロでテスト容易 |
-| **Snapshot 設計** | 判断時点のデータを凍結保存。監査で「あの時どうだったか」に答えられる |
-| **追記型イミュータブル** | 判断・ドラフトは上書きしない。完全な履歴を追跡可能 |
-| **段階的自動化** | AI が提案し、人が判断する。裁量は常に人にある |
-
-> 📖 詳細: **[1ページ概要](docs/architecture/support-pdca-engine-overview.md)** ｜ [完全アーキテクチャ図](docs/architecture/system-architecture-complete.md) ｜ [業務モデル・運用設計](docs/operations/operating-model.md)
->
-> 🛡️ **[SharePoint Resilience Architecture](docs/architecture/sharepoint-resilience.md)** — ドリフト耐性と自己修復の設計思想
 
 ---
 
@@ -136,7 +93,8 @@ Support Operations OS is built on **10 design principles** that ensure human-in-
 
 </details>
 
-> 📌 クイックリンク: [プロビジョニング手順 / WhatIf レビュー](docs/provisioning.md#whatif-ドライラン-と-job-summary) ｜ [SharePoint スキーマ定義](provision/schema.xml) ｜ [プロジェクトボード自動連携](docs/project-auto-integration.md) ｜ **[UI Baseline (Phase 1)](docs/UI_BASELINE.md)** ｜ [UI Architecture](docs/ui-architecture.md) ｜ [Monitoring Hub Runbook](docs/ops/monitoring-hub-v1-runbook.md) ｜ [TodayOps Runbook](docs/runbook/today-ops-rollout.md) ｜ [Feature Catalog](docs/feature-catalog.md) ｜ [Env Reference](docs/env-reference.md) ｜ **[Model (概念文書)](docs/architecture/model.md)** ｜ **[System Architecture](docs/architecture/system-architecture-complete.md)** ｜ **[PDCA Engine Overview](docs/architecture/support-pdca-engine-overview.md)** ｜ [Architecture Guide](docs/architecture/architecture-explained.md) ｜ [Roadmap](docs/architecture/roadmap.md) ｜ [Operating Model](docs/operations/operating-model.md)
+> 📌 ドキュメント案内:
+> **[Architecture](docs/architecture.md)** ｜ [Setup / Env Reference](docs/env-reference.md) ｜ [Testing](docs/architecture/contract-guards.md) ｜ [Operations / Runbook](docs/ops/monitoring-hub-v1-runbook.md) ｜ [SharePoint Provisioning](docs/provisioning.md) ｜ [Feature Catalog](docs/feature-catalog.md) ｜ [ADR Index](docs/adr/README.md)
 
 <!-- Badges -->
 
@@ -1505,23 +1463,12 @@ gh workflow view .github/workflows/report-links.yml --yaml
 
 ## Project Status
 
-### Phase 2 (Staff Attendance + Dashboard Enhancement)
+基盤機能は段階的に整備が進んでおり、以下が現行運用ベースとして成立しています。
 
-✅ **Completed (2026-01)**
+- **ISP 三層モデル** — L1/L2/L3 の責務分離と 4 本の Bridge（変換パイプライン）
+- **SharePoint drift 耐性** — スキーマ検証・自動修復・Fail-open/Hard-fail 分離
+- **可観測性** — Nightly Patrol・DriftEventsLog・Signal 化・Action Center
+- **品質ゲート** — カバレッジ閾値は `vitest.config.ts` で管理
 
-- PRs: #268 (Phase 2.1-A+B: Store + UI + Persistence), #269 (Phase 2.1-C: Dashboard Integration)
-- Docs: `docs/PHASE2_COMPLETION.md`
-- Route: `/staff/attendance`
-- Tests: 1,612/1,612 PASSED
-
-**Key Features:**
-- Staff attendance input with 3 status toggles (出勤/欠勤/外出中)
-- localStorage persistence (2-second auto-save)
-- Dashboard real-time display (replaces estimated counts)
-- Schedule lanes in morning/evening meeting cards
-
-### Next: Phase 3.1 (SharePoint Integration)
-
-- Replace localStorage with SharePoint List API
-- Real-time sync across devices
-- Design: `docs/PHASE3_1_SHAREPOINT_STAFF_ATTENDANCE.md` (pending)
+詳細なフェーズ履歴は `docs/history/` へ分離予定。
+アーキテクチャ全体像は **[docs/architecture.md](docs/architecture.md)** を参照。
