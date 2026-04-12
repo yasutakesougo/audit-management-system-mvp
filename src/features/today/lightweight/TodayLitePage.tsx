@@ -12,10 +12,16 @@ import { TodayNoticePanel } from './TodayNoticePanel';
 export type TodayLitePageProps = {
   summary?: TodaySummary | null;
   role: DashboardAudience;
+  ispRenewSuggestCount?: number;
   onNavigate: (to: string) => void;
 };
 
-export const TodayLitePage: React.FC<TodayLitePageProps> = ({ summary, role, onNavigate }) => {
+export const TodayLitePage: React.FC<TodayLitePageProps> = ({
+  summary,
+  role,
+  ispRenewSuggestCount = 0,
+  onNavigate,
+}) => {
   if (!summary) {
     return null;
   }
@@ -53,15 +59,27 @@ export const TodayLitePage: React.FC<TodayLitePageProps> = ({ summary, role, onN
         'handoff-timeline': '申し送り',
       };
 
-      return getTodayPrimaryFlowSteps(role).map<TodayActionCardItem>((step) => ({
+      const baseCards = getTodayPrimaryFlowSteps(role).map<TodayActionCardItem>((step) => ({
         key: step.key,
         title: titleByFlowKey[step.key] ?? step.label,
         count: countByFlowKey[step.key] ?? 0,
         primaryLabel: step.label,
         onPrimaryClick: () => handleNavigate(step.route),
       }));
+
+      if (isAdmin && ispRenewSuggestCount > 0) {
+        baseCards.push({
+          key: 'isp-renew-suggest',
+          title: '計画見直し推奨',
+          count: ispRenewSuggestCount,
+          primaryLabel: '見直し提案を確認',
+          onPrimaryClick: () => handleNavigate('/support-plan-guide?tab=operations.monitoring'),
+        });
+      }
+
+      return baseCards;
     },
-    [attendancePending, handoffPending, recordPending, handleNavigate, role],
+    [attendancePending, handoffPending, isAdmin, ispRenewSuggestCount, recordPending, handleNavigate, role],
   );
 
   const notices = useMemo(() => {
@@ -84,7 +102,9 @@ export const TodayLitePage: React.FC<TodayLitePageProps> = ({ summary, role, onN
       <TodayAdminInsights
         visible={isAdmin}
         exceptionCount={summary.todayExceptions?.length ?? 0}
+        ispRenewSuggestCount={ispRenewSuggestCount}
         onOpenExceptionCenter={() => handleNavigate('/admin/exception-center')}
+        onOpenIspRecommendations={() => handleNavigate('/support-plan-guide?tab=operations.monitoring')}
       />
     </Stack>
   );

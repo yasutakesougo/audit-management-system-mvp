@@ -123,6 +123,10 @@ describe('scoreActionPriority — 全 sourceType 固定', () => {
   it('handoff → P3', () => {
     expect(scoreActionPriority(source({ sourceType: 'handoff' }))).toBe('P3');
   });
+
+  it('isp_renew_suggest → P2', () => {
+    expect(scoreActionPriority(source({ sourceType: 'isp_renew_suggest' }))).toBe('P2');
+  });
 });
 
 // ─── buildTodayActionQueue — 統合境界補完 ─────────────────────
@@ -172,5 +176,26 @@ describe('buildTodayActionQueue — 統合境界補完', () => {
     ], BASE_NOW);
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('no-time');
+  });
+
+  it('isp_renew_suggest は recommendation-only の文脈で NAVIGATE カードになる', () => {
+    const result = buildTodayActionQueue([
+      source({
+        id: 'isp-1',
+        sourceType: 'isp_renew_suggest',
+        title: '利用者 U001 の ISP見直しを推奨',
+        payload: {
+          reason: '支援方法の見直しが必要',
+          impact: 'high',
+          recommendedOnly: true,
+          path: '/support-plan-guide?userId=U001&tab=operations.monitoring',
+        },
+      }),
+    ], BASE_NOW);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].actionType).toBe('NAVIGATE');
+    expect(result[0].priority).toBe('P2');
+    expect(result[0].contextMessage).toContain('自動適用なし');
   });
 });

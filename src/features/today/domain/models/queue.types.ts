@@ -7,7 +7,8 @@ export type ActionSourceType =
   | 'incident'
   | 'corrective_action'
   | 'exception'
-  | 'plan_patch';
+  | 'plan_patch'
+  | 'isp_renew_suggest';
 
 export interface RawActionSource {
   id: string;
