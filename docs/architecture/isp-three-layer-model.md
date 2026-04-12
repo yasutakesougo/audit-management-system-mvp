@@ -13,8 +13,12 @@
 | # | ブリッジ | 方向 | 状態 |
 |---|---|---|---|
 | 1 | `assessmentBridge` | アセスメント → L2 | ✅ 完成 |
-| 2 | `planningToRecordBridge` | L2 → L3 | ✅ 完成 |
-| 3 | `monitoringToPlanningBridge` | 行動モニタリング → L2 | ✅ Phase 1-4 完了 |
+| 2 | `tokuseiToPlanningBridge` | 特性アンケート → L2 | ✅ 完成 |
+| 3 | `planningToRecordBridge` | L2 → L3 | ✅ 完成 |
+| 4 | `monitoringToPlanningBridge` | 行動モニタリング → L2 | ✅ Phase 1-4 完了 |
+
+全ブリッジは純関数変換器（no I/O, マージ方式, 冪等, Provenance 付き）。
+詳細: [docs/architecture.md §4](../architecture.md#4-the-bridges-transform-not-sync)
 
 ## 2種類のモニタリング
 
