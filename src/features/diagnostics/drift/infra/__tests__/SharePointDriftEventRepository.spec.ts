@@ -116,9 +116,9 @@ describe('SharePointDriftEventRepository', () => {
     const secondPayload = createItem.mock.calls[1][1];
     expect(secondPayload).toEqual({
       Title: 'Daily_Attendance:Status',
-      ListName: 'Daily_Attendance',
-      FieldName: 'Status',
-      DetectedAt: '2026-04-05T00:00:00.000Z',
+      List_x0020_Name: 'Daily_Attendance',
+      Field_x0020_Name: 'Status',
+      Detected_x0020_At: '2026-04-05T00:00:00.000Z',
     });
   });
 
@@ -196,6 +196,80 @@ describe('SharePointDriftEventRepository', () => {
     });
 
     await expect(repo.getEvents()).resolves.toEqual([]);
+  });
+
+  it('falls back to Id-desc scan when filtered query hits list view threshold', async () => {
+    const thresholdError = Object.assign(
+      new Error('The attempted operation is prohibited because it exceeds the list view threshold.'),
+      { status: 500 },
+    );
+    const getListItemsByTitle = vi
+      .fn()
+      .mockRejectedValueOnce(thresholdError)
+      .mockResolvedValueOnce([
+        {
+          ID: 21,
+          NameOfList: 'Daily_Attendance',
+          InternalName: 'Status0',
+          OccurredAt: '2026-04-10T10:00:00.000Z',
+          Resolution: 'fallback',
+          Category: 'suffix_mismatch',
+          IsResolved: false,
+          Level: 'warn',
+        },
+        {
+          ID: 20,
+          NameOfList: 'Other_List',
+          InternalName: 'Unused',
+          OccurredAt: '2026-04-01T10:00:00.000Z',
+          Resolution: 'fallback',
+          Category: 'suffix_mismatch',
+          IsResolved: false,
+          Level: 'warn',
+        },
+      ]);
+
+    const repo = new SharePointDriftEventRepository({
+      createItem: vi.fn(async () => ({})),
+      updateItemByTitle: vi.fn(async () => ({})),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getListItemsByTitle: getListItemsByTitle as any,
+      getSchema: vi.fn(async () => [
+        'NameOfList',
+        'InternalName',
+        'OccurredAt',
+        'Level',
+        'Resolution',
+        'Category',
+        'IsResolved',
+      ]),
+    });
+
+    const since = '2026-04-03T00:00:00.000Z';
+    const events = await repo.getEvents({
+      listName: 'Daily_Attendance',
+      resolved: false,
+      since,
+    });
+
+    expect(getListItemsByTitle).toHaveBeenCalledTimes(2);
+    expect(getListItemsByTitle.mock.calls[0][2]).toContain(`OccurredAt ge datetime'${since}'`);
+    expect(getListItemsByTitle.mock.calls[0][3]).toBe('OccurredAt desc');
+    expect(getListItemsByTitle.mock.calls[1][2]).toBeUndefined();
+    expect(getListItemsByTitle.mock.calls[1][3]).toBe('Id desc');
+    expect(getListItemsByTitle.mock.calls[1][4]).toBe(200);
+    expect(events).toEqual([
+      {
+        id: '21',
+        listName: 'Daily_Attendance',
+        fieldName: 'Status0',
+        detectedAt: '2026-04-10T10:00:00.000Z',
+        severity: 'warn',
+        resolutionType: 'fallback',
+        driftType: 'suffix_mismatch',
+        resolved: false,
+      },
+    ]);
   });
 
   it('uses resolved physical field when marking resolved', async () => {

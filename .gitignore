@@ -85,3 +85,8 @@ nightly-report.md
 
 # Nightly Patrol artifacts
 .nightly/
+docs/nightly-patrol/*.json
+docs/nightly-patrol/*.md
+sp-telemetry*.json
+sp-telemetry*.backup.json
+lane-assertion-result.json

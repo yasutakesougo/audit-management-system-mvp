@@ -68,6 +68,13 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
     return typeof err === 'object' && err !== null && 'status' in err && (err as { status?: number }).status === 400;
   }
 
+  private isListViewThresholdError(err: unknown): boolean {
+    if (typeof err !== 'object' || err === null) return false;
+    const status = 'status' in err ? (err as { status?: number }).status : undefined;
+    const message = 'message' in err ? String((err as { message?: unknown }).message ?? '') : '';
+    return status === 500 && /list view threshold/i.test(message);
+  }
+
   private isRequiredFieldKey(key: keyof typeof DRIFT_LOG_CANDIDATES): boolean {
     return key === 'listName' || key === 'fieldName' || key === 'detectedAt';
   }
@@ -113,6 +120,89 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
     }
 
     return payload;
+  }
+
+  private mapItemToEvent(item: Record<string, unknown>): DriftEvent {
+    return {
+      id: String(item.Id ?? item.ID ?? ''),
+      listName: String(this.readRowValue(item, 'listName') ?? ''),
+      fieldName: String(this.readRowValue(item, 'fieldName') ?? ''),
+      detectedAt: String(this.readRowValue(item, 'detectedAt') ?? ''),
+      severity: (this.readRowValue(item, 'severity') as 'warn' | 'info') || 'info',
+      resolutionType: (this.readRowValue(item, 'resolutionType') as DriftResolutionType) || 'fuzzy_match',
+      driftType: (this.readRowValue(item, 'driftType') as DriftType) || 'unknown',
+      resolved: this.parseResolved(this.readRowValue(item, 'resolved')),
+    };
+  }
+
+  private matchesFilter(
+    event: DriftEvent,
+    filter?: {
+      listName?: string;
+      resolved?: boolean;
+      since?: string;
+    },
+  ): boolean {
+    if (!filter) return true;
+    if (filter.listName && event.listName !== filter.listName) return false;
+    if (filter.resolved !== undefined && event.resolved !== filter.resolved) return false;
+    if (filter.since) {
+      const eventTime = Date.parse(event.detectedAt);
+      const sinceTime = Date.parse(filter.since);
+      if (!Number.isNaN(eventTime) && !Number.isNaN(sinceTime) && eventTime < sinceTime) return false;
+    }
+    return true;
+  }
+
+  private async fetchEventsWithThresholdFallback(
+    listTitle: string,
+    select: string[],
+    filterQuery: string | undefined,
+    detectedAtField: string,
+    filter?: {
+      listName?: string;
+      resolved?: boolean;
+      since?: string;
+    },
+  ): Promise<DriftEvent[]> {
+    try {
+      const items = await this.spClient.getListItemsByTitle<Record<string, unknown>>(
+        listTitle,
+        select,
+        filterQuery,
+        `${detectedAtField} desc`,
+        100,
+      );
+      return items.map((item) => this.mapItemToEvent(item));
+    } catch (err) {
+      if (!this.isListViewThresholdError(err)) {
+        throw err;
+      }
+
+      auditLog.warn(
+        'diagnostics:drift',
+        'DriftEventRepository threshold fallback: retrying with Id-desc scan.',
+        {
+          listTitle,
+          filterQuery,
+          orderBy: `${detectedAtField} desc`,
+        },
+      );
+
+      const fallbackItems = await this.spClient.getListItemsByTitle<Record<string, unknown>>(
+        listTitle,
+        select,
+        undefined,
+        'Id desc',
+        200,
+      );
+
+      return fallbackItems
+        .map((item) => this.mapItemToEvent(item))
+        .filter((event) => this.matchesFilter(event, filter))
+        .sort((a, b) => Date.parse(b.detectedAt) - Date.parse(a.detectedAt))
+        .slice(0, 100);
+    }
   }
 
   private async initializeResolvedFields(listTitle: string): Promise<void> {
@@ -277,24 +367,15 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         ]),
       );
 
-      const items = await this.spClient.getListItemsByTitle<Record<string, unknown>>(
+      const events = await this.fetchEventsWithThresholdFallback(
         listTitle,
         select,
         joinAnd(filters) || undefined,
-        `${detectedAtField} desc`,
-        100,
+        detectedAtField,
+        filter,
       );
 
-      return items.map(item => ({
-        id: String(item.Id ?? item.ID ?? ''),
-        listName: String(this.readRowValue(item, 'listName') ?? ''),
-        fieldName: String(this.readRowValue(item, 'fieldName') ?? ''),
-        detectedAt: String(this.readRowValue(item, 'detectedAt') ?? ''),
-        severity: (this.readRowValue(item, 'severity') as 'warn' | 'info') || 'info',
-        resolutionType: (this.readRowValue(item, 'resolutionType') as DriftResolutionType) || 'fuzzy_match',
-        driftType: (this.readRowValue(item, 'driftType') as DriftType) || 'unknown',
-        resolved: this.parseResolved(this.readRowValue(item, 'resolved')),
-      }));
+      return events;
 
     } catch (err) {
       auditLog.warn('diagnostics:drift', 'DriftEventRepository failed to fetch events (fail-open).', err);

@@ -1,5 +1,5 @@
 {
-  "reportDate": "2026-04-07",
+  "reportDate": "2026-04-11",
   "totalEvents": 9,
   "bundledCount": 8,
   "countsBySeverity": {
@@ -15,9 +15,10 @@
       "eventType": "http_429",
       "area": "Platform",
       "resourceKey": "SharePoint_API",
+      "reasonCode": "rate_limit",
       "occurrences": 1,
-      "firstSeen": "2026-04-07T05:50:12.178Z",
-      "lastSeen": "2026-04-07T05:50:12.178Z",
+      "firstSeen": "2026-04-11T14:28:21.464Z",
+      "lastSeen": "2026-04-11T14:28:21.464Z",
       "nextAction": "【至急】運用管理者にエスカレーションし、システム全体の利用可否を確認してください。",
       "sampleMessage": "SharePoint Throttle occurred."
     },
@@ -27,9 +28,10 @@
       "eventType": "index_pressure",
       "area": "Runtime",
       "resourceKey": "iceberg_analysis",
+      "reasonCode": "index_required",
       "occurrences": 1,
-      "firstSeen": "2026-04-07T05:50:12.178Z",
-      "lastSeen": "2026-04-07T05:50:12.178Z",
+      "firstSeen": "2026-04-11T14:28:21.464Z",
+      "lastSeen": "2026-04-11T14:28:21.464Z",
       "nextAction": "【至急】[iceberg_analysis] で必須インデックスが不足しています。システム停止を防ぐため、Index Advisor で修復を実行してください。",
       "sampleMessage": "(CRITICAL) Severity: critical. Index Count: 18 / 20. Essential indexes missing."
     },
@@ -39,9 +41,10 @@
       "eventType": "remediation",
       "area": "Runtime",
       "resourceKey": "UserBenefit_Profile",
+      "reasonCode": "manual",
       "occurrences": 1,
-      "firstSeen": "2026-04-07T05:50:12.178Z",
-      "lastSeen": "2026-04-07T05:50:12.178Z",
+      "firstSeen": "2026-04-11T14:28:21.464Z",
+      "lastSeen": "2026-04-11T14:28:21.464Z",
       "nextAction": "【要確認】インデックス修復 (RecipientCertNumber) に失敗しました。ネットワーク状態や SharePoint 権限を確認してください。",
       "sampleMessage": "RecipientCertNumber のインデックス作成に失敗しました: Network Error"
     },
@@ -51,9 +54,10 @@
       "eventType": "health_fail",
       "area": "Platform",
       "resourceKey": "Users_Master",
+      "reasonCode": "list_not_found",
       "occurrences": 1,
-      "firstSeen": "2026-04-07T05:50:12.178Z",
-      "lastSeen": "2026-04-07T05:50:12.178Z",
+      "firstSeen": "2026-04-11T14:28:21.464Z",
+      "lastSeen": "2026-04-11T14:28:21.464Z",
       "nextAction": "[Users_Master] の健全性チェックに失敗しました。SharePoint 管理画面でリストの存在・権限設定を確認してください。",
       "sampleMessage": "Users_Master list does not exist."
     },
@@ -63,9 +67,10 @@
       "eventType": "drift",
       "area": "Daily",
       "resourceKey": "support_record_daily",
+      "reasonCode": "unknown_field_added",
       "occurrences": 1,
-      "firstSeen": "2026-04-07T05:50:12.178Z",
-      "lastSeen": "2026-04-07T05:50:12.178Z",
+      "firstSeen": "2026-04-11T14:28:21.464Z",
+      "lastSeen": "2026-04-11T14:28:21.464Z",
       "nextAction": "[support_record_daily] に誰かがフィールドを直接追加・削除した可能性があるため、変更履歴を調査してください。",
       "sampleMessage": "New field encountered."
     },
@@ -75,9 +80,10 @@
       "eventType": "provision_skipped:block",
       "area": "UserBenefit",
       "resourceKey": "UserBenefit_Profile",
+      "reasonCode": "max_size_exceeded",
       "occurrences": 2,
-      "firstSeen": "2026-04-07T05:50:12.178Z",
-      "lastSeen": "2026-04-07T05:50:12.178Z",
+      "firstSeen": "2026-04-11T14:28:21.463Z",
+      "lastSeen": "2026-04-11T14:28:21.464Z",
       "nextAction": "（対応不要・本システムで安全に吸収済み）",
       "sampleMessage": "Prevented creation to avoid 8KB limits."
     },
@@ -87,9 +93,10 @@
       "eventType": "drift",
       "area": "UserBenefit",
       "resourceKey": "UserBenefit_Profile",
+      "reasonCode": "absorbed_strategy_e",
       "occurrences": 1,
-      "firstSeen": "2026-04-07T05:50:12.178Z",
-      "lastSeen": "2026-04-07T05:50:12.178Z",
+      "firstSeen": "2026-04-11T14:28:21.464Z",
+      "lastSeen": "2026-04-11T14:28:21.464Z",
       "nextAction": "[UserBenefit_Profile] に誰かがフィールドを直接追加・削除した可能性があるため、変更履歴を調査してください。",
       "sampleMessage": "Strategy E absorbed it."
     },
@@ -99,11 +106,72 @@
       "eventType": "remediation",
       "area": "Runtime",
       "resourceKey": "StaffAttendance",
+      "reasonCode": "manual",
       "occurrences": 1,
-      "firstSeen": "2026-04-07T05:50:12.178Z",
-      "lastSeen": "2026-04-07T05:50:12.178Z",
+      "firstSeen": "2026-04-11T14:28:21.464Z",
+      "lastSeen": "2026-04-11T14:28:21.464Z",
       "nextAction": "インデックス自動修復 (RecordDate) が正常に完了しました。",
       "sampleMessage": "RecordDate のインデックスを作成しました（成功）。"
     }
-  ]
+  ],
+  "reasonCodeSummary": [
+    {
+      "reasonCode": "manual",
+      "count": 2,
+      "resources": [
+        "StaffAttendance",
+        "UserBenefit_Profile"
+      ]
+    },
+    {
+      "reasonCode": "absorbed_strategy_e",
+      "count": 1,
+      "resources": [
+        "UserBenefit_Profile"
+      ]
+    },
+    {
+      "reasonCode": "index_required",
+      "count": 1,
+      "resources": [
+        "iceberg_analysis"
+      ]
+    },
+    {
+      "reasonCode": "list_not_found",
+      "count": 1,
+      "resources": [
+        "Users_Master"
+      ]
+    },
+    {
+      "reasonCode": "max_size_exceeded",
+      "count": 1,
+      "resources": [
+        "UserBenefit_Profile"
+      ]
+    },
+    {
+      "reasonCode": "rate_limit",
+      "count": 1,
+      "resources": [
+        "SharePoint_API"
+      ]
+    },
+    {
+      "reasonCode": "unknown_field_added",
+      "count": 1,
+      "resources": [
+        "support_record_daily"
+      ]
+    }
+  ],
+  "driftLogReadStats": {
+    "fallbackUsed": false,
+    "scannedCount": 0,
+    "filteredCount": 0,
+    "lookbackHours": 24,
+    "topLimit": 200,
+    "safety": "safe"
+  }
 }

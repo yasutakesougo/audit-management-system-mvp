@@ -15,6 +15,7 @@ function resolveActionType(item: ScoredActionItem): ActionType {
       return 'ACKNOWLEDGE';
     case 'incident':
     case 'corrective_action':
+    case 'plan_patch':
       return 'NAVIGATE';
     case 'schedule':
       return 'OPEN_DRAWER';
@@ -36,6 +37,16 @@ function buildContextMessage(item: ScoredActionItem): string {
       return summarizeEvidence(payload.suggestion.evidence);
     }
     return '改善提案';
+  }
+
+  if (item.sourceType === 'plan_patch') {
+    const payload = item.payload as { dueAt?: string; status?: string } | undefined;
+    if (payload?.dueAt) {
+      return item.isOverdue
+        ? `更新期限 ${payload.dueAt.slice(0, 10)} / 対応遅延`
+        : `更新期限 ${payload.dueAt.slice(0, 10)}`;
+    }
+    return `状態: ${payload?.status ?? 'needs_update'}`;
   }
 
   const base = item.targetTime

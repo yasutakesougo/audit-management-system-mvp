@@ -76,7 +76,22 @@ export interface NightlySummary {
   }>;
   /** Phase B+: sp:field_skipped streak results. Top entries by streak, window-filtered. */
   fieldSkipStreaks?: FieldSkipRankEntry[];
+  driftLogReadStats?: {
+    fallbackUsed: boolean;
+    scannedCount: number;
+    filteredCount: number;
+    lookbackHours: number;
+    topLimit: number;
+    safety: 'safe' | 'watch' | 'near_limit';
+  };
 }
+
+type DriftLogReadStats = NonNullable<NightlySummary['driftLogReadStats']>;
+
+type FetchRealEventsResult = {
+  events: RawEvent[];
+  driftLogReadStats: DriftLogReadStats;
+};
 
 const TRANSIENT_FAILURE_WORKFLOW_TARGETS: Record<string, string> = {
   'integration (users)': 'Users_Master',
@@ -86,6 +101,14 @@ const TRANSIENT_FAILURE_WORKFLOW_TARGETS: Record<string, string> = {
 
 const DEFAULT_TRANSIENT_FAILURE_WINDOW_HOURS = 6;
 const REPEATED_TRANSIENT_FAILURE_THRESHOLD = 3;
+const DRIFT_LOG_FALLBACK_TOP = 200;
+const DRIFT_LOG_LOOKBACK_HOURS = 24;
+
+function classifyDriftLogSafety(scannedCount: number): DriftLogReadStats['safety'] {
+  if (scannedCount >= 180) return 'near_limit';
+  if (scannedCount >= 100) return 'watch';
+  return 'safe';
+}
 
 // --- Engine Logic ---
 
@@ -144,12 +167,19 @@ function classifySeverity(event: RawEvent): SeverityLevel {
  */
 function determineNextAction(severity: SeverityLevel, event: RawEvent): string {
   if (event.eventType === 'transient_failure') {
-    return `[${event.resourceKey}] は Nightly Runtime Patrol 時点で回復しています。再発頻度を監視し、連日発生する場合は action_required へ昇格してください。`;
+    return `[${event.resourceKey}] は Nightly Runtime Patrol 時点で回復しています。再発頻度を監視し、連続発生する場合は action_required へ昇格してください。`;
   }
+  const highlight = event.eventType === 'index_pressure' ? 'sp_index_pressure' :
+                  event.eventType === 'drift' ? 'sp_schema_drift' : '';
+  const listParam = event.resourceKey !== 'Unknown' ? `&list=${encodeURIComponent(event.resourceKey)}` : '';
+  const isAdminStatusLink = highlight 
+    ? `管理画面 (/admin/status?highlight=${highlight}${listParam}) で具体的な解除コマンドを確認してください。`
+    : '管理画面 (/admin/status) で具体的な解除コマンドを確認してください。';
+
   if (event.eventType === 'index_pressure') {
     return event.message.includes('(CRITICAL)') 
-      ? `【至急】[${event.resourceKey}] で必須インデックスが不足しています。システム停止を防ぐため、Index Advisor で修復を実行してください。`
-      : `[${event.resourceKey}] でインデックスの最適化が可能です。計画的なメンテナンス時に Index Advisor を確認してください。`;
+      ? `【至急】[${event.resourceKey}] で必須インデックスが不足しています。${isAdminStatusLink}`
+      : `[${event.resourceKey}] でインデックスの最適化が可能です。${isAdminStatusLink}`;
   }
   if (severity === 'critical') {
     return '【至急】運用管理者にエスカレーションし、システム全体の利用可否を確認してください。';
@@ -158,20 +188,20 @@ function determineNextAction(severity: SeverityLevel, event: RawEvent): string {
     return `[${event.resourceKey}] の保存フローで異常を検知しました。SharePoint リスト設定とデータの整合性を調査してください。`;
   }
   if (event.eventType === 'health_fail') {
-    return `[${event.resourceKey}] の健全性チェックに失敗しました。SharePoint 管理画面でリストの存在・権限設定を確認してください。`;
+    return `[${event.resourceKey}] の健全性チェックに失敗しました。管理画面 (/admin/status) で詳細を確認してください。`;
   }
   if (event.eventType === 'drift') {
-    return `[${event.resourceKey}] に誰かがフィールドを直接追加・削除した可能性があるため、変更履歴を調査してください。`;
+    return `[${event.resourceKey}] でスキーマドリフトを検知しました。${isAdminStatusLink}`;
   }
   if (event.eventType === 'remediation') {
     return event.message.includes('失敗') || event.message.includes('fail')
-      ? `【要確認】インデックス修復 (${event.fieldKey}) に失敗しました。ネットワーク状態や SharePoint 権限を確認してください。`
-      : `インデックス自動修復 (${event.fieldKey}) が正常に完了しました。`;
+      ? `【要確認】インデックス修復 (${event.fieldKey}) に失敗しました。${isAdminStatusLink}`
+      : `インデックス自動修復 (${event.fieldKey}) が正常に完了しました。回復を確認してください。`;
   }
   if (severity === 'silent') {
     return '（対応不要・本システムで安全に吸収済み）';
   }
-  return `[${event.resourceKey}] で異常が検出されました。管理画面の状態ページを確認してください。`;
+  return `[${event.resourceKey}] で異常が検出されました。管理画面 (/admin/status) を確認してください。`;
 }
 
 function parseEnvInteger(name: string, fallback: number): number {
@@ -382,6 +412,9 @@ export function aggregateEvents(rawEvents: RawEvent[]): NightlySummary {
 // --- Output Formatters ---
 
 export function formatMarkdown(summary: NightlySummary): string {
+  const driftLogLine = summary.driftLogReadStats
+    ? `* 📘 **Drift Log Read**: fallback=${summary.driftLogReadStats.fallbackUsed ? 'yes' : 'no'} / scanned=${summary.driftLogReadStats.scannedCount} / filtered=${summary.driftLogReadStats.filteredCount} / safety=${summary.driftLogReadStats.safety}\n`
+    : '';
   const header = `
 # Nightly Runtime Patrol Report — ${summary.reportDate}
 
@@ -392,6 +425,7 @@ export function formatMarkdown(summary: NightlySummary): string {
   * 🟠 **Action Required**: ${summary.countsBySeverity.action_required}
   * 🟡 **Watch**: ${summary.countsBySeverity.watch}
   * 🟢 **Silent (Absorbed)**: ${summary.countsBySeverity.silent}
+${driftLogLine}
 
 ---
 `;
@@ -540,13 +574,21 @@ async function writeStepSummary(summary: NightlySummary): Promise<void> {
 
 // --- Data Ingestion ---
 
-async function fetchRealEvents(fallbackMock: RawEvent[]): Promise<RawEvent[]> {
+async function fetchRealEvents(fallbackMock: RawEvent[]): Promise<FetchRealEventsResult> {
   const token = process.env.VITE_SP_TOKEN;
   const siteUrl = process.env.VITE_SP_SITE_URL;
+  const driftLogReadStats: DriftLogReadStats = {
+    fallbackUsed: false,
+    scannedCount: 0,
+    filteredCount: 0,
+    lookbackHours: DRIFT_LOG_LOOKBACK_HOURS,
+    topLimit: DRIFT_LOG_FALLBACK_TOP,
+    safety: 'safe',
+  };
 
   if (!token || !siteUrl) {
     console.warn('⚠️ VITE_SP_TOKEN or VITE_SP_SITE_URL is not set. Falling back to mock data.');
-    return fallbackMock;
+    return { events: fallbackMock, driftLogReadStats };
   }
 
   const events: RawEvent[] = [];
@@ -561,38 +603,84 @@ async function fetchRealEvents(fallbackMock: RawEvent[]): Promise<RawEvent[]> {
     'Accept': 'application/json;odata=nometadata' 
   };
 
+  const fetchJson = async (url: string) => {
+    const res = await globalThis.fetch(url, { headers });
+    const text = await res.text();
+    let data: any = {};
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = {};
+    }
+    return { res, data, text };
+  };
+
+  const isListViewThresholdResponse = (res: Response, text: string): boolean =>
+    res.status === 500 && /list view threshold/i.test(text);
+
+  const mapDriftItemToEvent = (item: any): RawEvent => {
+    let eType: RawEvent['eventType'] = 'drift';
+
+    const msg = item.Title || '';
+    const field = item.FieldName || item.Field_x0020_Name || 'None';
+    if (field === 'INDEX_PRESSURE') eType = 'index_pressure';
+    else if (field.startsWith('INDEX_')) eType = 'remediation';
+    else if (msg.includes('provision_failed')) eType = 'provision_failed';
+    else if (msg.includes('provision_skipped:block')) eType = 'provision_skipped:block';
+
+    return {
+      id: `drift-${item.Id}`,
+      timestamp: item.DetectedAt || item.Detected_x0020_At || item.Created,
+      eventType: eType,
+      area: 'Runtime',
+      resourceKey: item.ListName || item.List_x0020_Name || 'Unknown',
+      fieldKey: field,
+      reasonCode: item.ResolutionType || 'unknown',
+      message: `${item.Severity === 'critical' ? '(CRITICAL) ' : ''}Severity: ${item.Severity}. ${item.ErrorMessage || msg}`,
+    };
+  };
+
   try {
     // 1. DriftEventsLog fetches
     const driftUrl = `${siteUrl}/_api/web/lists/getbytitle('DriftEventsLog')/items?$filter=Created ge datetime'${filterDate}'`;
-    // Bypass ESLint rule against raw fetch in this CLI script
-    const driftRes = await globalThis.fetch(driftUrl, { headers });
-    
-    if (driftRes.ok) {
-      const data = await driftRes.json();
-      data.value.forEach((item: any) => {
-         let eType: RawEvent['eventType'] = 'drift';
-         
-         const msg = item.Title || '';
-         const field = item.FieldName || '';
-         if (field === 'INDEX_PRESSURE') eType = 'index_pressure';
-         else if (field.startsWith('INDEX_')) eType = 'remediation';
-         else if (msg.includes('provision_failed')) eType = 'provision_failed';
-         else if (msg.includes('provision_skipped:block')) eType = 'provision_skipped:block';
-         
-         events.push({
-            id: `drift-${item.Id}`,
-            timestamp: item.DetectedAt || item.Created,
-            eventType: eType,
-            area: 'Runtime',
-            resourceKey: item.ListName || 'Unknown',
-            fieldKey: item.FieldName || 'None',
-            reasonCode: item.ResolutionType || 'unknown',
-            message: `${item.Severity === 'critical' ? '(CRITICAL) ' : ''}Severity: ${item.Severity}. ${item.ErrorMessage || msg}`
-         });
+    const driftAttempt = await fetchJson(driftUrl);
+
+    if (driftAttempt.res.ok) {
+      driftAttempt.data.value.forEach((item: any) => {
+        events.push(mapDriftItemToEvent(item));
       });
-      console.log(`  └ Fetched ${data.value.length} DriftEventsLog events.`);
+      driftLogReadStats.scannedCount = driftAttempt.data.value.length;
+      driftLogReadStats.filteredCount = driftAttempt.data.value.length;
+      driftLogReadStats.safety = classifyDriftLogSafety(driftLogReadStats.scannedCount);
+      console.log(`  └ Fetched ${driftAttempt.data.value.length} DriftEventsLog events.`);
+    } else if (isListViewThresholdResponse(driftAttempt.res, driftAttempt.text)) {
+      console.warn(`⚠️ DriftEventsLog threshold detected. Falling back to Id desc top ${DRIFT_LOG_FALLBACK_TOP}.`);
+      driftLogReadStats.fallbackUsed = true;
+      const fallbackUrl =
+        `${siteUrl}/_api/web/lists/getbytitle('DriftEventsLog')/items` +
+        `?$select=Id,Title,Created,DetectedAt,Detected_x0020_At,ListName,List_x0020_Name,FieldName,Field_x0020_Name,Severity,ResolutionType,ErrorMessage` +
+        `&$orderby=Id desc&$top=${DRIFT_LOG_FALLBACK_TOP}`;
+      const fallbackAttempt = await fetchJson(fallbackUrl);
+      if (fallbackAttempt.res.ok) {
+        const filtered = (fallbackAttempt.data.value as any[])
+          .filter((item: any) => {
+            const timestamp = item.DetectedAt || item.Detected_x0020_At || item.Created;
+            const time = Date.parse(timestamp);
+            const since = Date.parse(filterDate);
+            return Number.isNaN(time) || Number.isNaN(since) ? true : time >= since;
+          });
+        filtered.forEach((item: any) => {
+          events.push(mapDriftItemToEvent(item));
+        });
+        driftLogReadStats.scannedCount = fallbackAttempt.data.value.length;
+        driftLogReadStats.filteredCount = filtered.length;
+        driftLogReadStats.safety = classifyDriftLogSafety(driftLogReadStats.scannedCount);
+        console.log(`  └ Fetched ${filtered.length} DriftEventsLog events via fallback (${fallbackAttempt.data.value.length} scanned).`);
+      } else {
+        console.warn(`⚠️ Failed to fetch DriftEventsLog fallback: ${fallbackAttempt.res.status} ${fallbackAttempt.res.statusText}`);
+      }
     } else {
-      console.warn(`⚠️ Failed to fetch DriftEventsLog: ${driftRes.status} ${driftRes.statusText}`);
+      console.warn(`⚠️ Failed to fetch DriftEventsLog: ${driftAttempt.res.status} ${driftAttempt.res.statusText}`);
     }
 
     // 2. DiagnosticsReports fetches
@@ -622,10 +710,10 @@ async function fetchRealEvents(fallbackMock: RawEvent[]): Promise<RawEvent[]> {
   } catch (err) {
     console.error('Network Error during SharePoint fetch:', err);
     console.warn('Falling back to mock data due to network error.');
-    return fallbackMock;
+    return { events: fallbackMock, driftLogReadStats };
   }
 
-  return events;
+  return { events, driftLogReadStats };
 }
 
 // --- Remediation Result → RawEvent conversion ---
@@ -804,7 +892,7 @@ async function run() {
   ];
 
   // 実データの取得（失敗時や設定がない場合はモックへフォールバック）
-  const rawEvents = await fetchRealEvents(mockRawEvents);
+  const { events: rawEvents, driftLogReadStats } = await fetchRealEvents(mockRawEvents);
 
   const transientFailureEvents = await fetchTransientFailureEvents(rawEvents);
   if (transientFailureEvents.length > 0) {
@@ -837,6 +925,7 @@ async function run() {
   // ─────────────────────────────────────────────────────────────────────────
 
   const summary = aggregateEvents(rawEvents);
+  summary.driftLogReadStats = driftLogReadStats;
 
   // ── Phase B: sp:field_skipped streak集計 ─────────────────────────────────
   if (token && siteUrl) {

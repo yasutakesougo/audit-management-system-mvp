@@ -8,7 +8,7 @@
  * 4. Reporting stability issues to admins.
  */
 import { trackSpEvent } from '@/lib/telemetry/spTelemetry';
-import { createProvisioningService, SpProvisioningError } from '@/lib/sp/spProvisioningService';
+import { createProvisioningService } from '@/lib/sp/spProvisioningService';
 import { reportSpHealthEvent } from '@/features/sp/health/spHealthSignalStore';
 import { readBool } from '@/lib/env';
 import { auditLog } from '@/lib/debugLogger';
@@ -278,6 +278,11 @@ export class SharePointProvisioningCoordinator {
           };
         }
 
+        // 4. Drift Check
+        const driftDetails = Object.entries(fieldStatus)
+          .filter(([_, s]) => s.isDrifted)
+          .map(([key, s]) => `${key} -> ${s.resolvedName}`);
+
         if (driftDetails.length > 0) {
           auditLog.warn('sp:provisioning', `List "${listName}" has schema drift.`, { drift: driftDetails });
           saveStability(entry.key, 'drifted');
@@ -287,9 +292,18 @@ export class SharePointProvisioningCoordinator {
             severity: 'warning',
             reasonCode: 'sp_schema_drift',
             listName,
-            message: `「${listName}」で列名のドリフト（末益への _0 付与等）を検出しました。`,
+            message: `「${listName}」で列名のドリフト（末尾への _0 付与等）を検出しました: ${driftDetails.join(', ')}`,
             source: 'realtime',
-            occurredAt: new Date().toISOString()
+            occurredAt: new Date().toISOString(),
+            remediation: {
+              summary: '不整合を起こしている重複列（ドリフト列）の削除を推奨します。',
+              commands: driftDetails.map(d => {
+                const driftedName = d.split(' -> ')[1];
+                return `m365 spo field remove --webUrl $SITE_URL --listTitle "${listName}" --internalName "${driftedName}" --confirm`;
+              }),
+              caution: '削除前に対象の列にデータが入っていないか、または重複している本物の列があるかを確認してください。',
+              isDestructive: true
+            }
           });
 
           return { 

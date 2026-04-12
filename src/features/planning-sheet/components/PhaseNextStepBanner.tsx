@@ -54,6 +54,10 @@ export interface PhaseNextStepBannerProps {
   hasMonitoringSignals?: boolean;
   /** 再評価結果が未反映か */
   hasUnappliedReassessment?: boolean;
+  /** 計画更新案が未反映か */
+  hasPendingPlanUpdate?: boolean;
+  /** 期限超過の計画更新案があるか */
+  hasOverduePlanUpdate?: boolean;
   /** PDCA サイクル状態（optional） */
   pdcaCycleState?: PdcaCycleState | null;
   /** 遷移ハンドラ */
@@ -95,6 +99,8 @@ export const PhaseNextStepBanner: React.FC<PhaseNextStepBannerProps> = ({
   planningSheetId,
   hasMonitoringSignals,
   hasUnappliedReassessment,
+  hasPendingPlanUpdate,
+  hasOverduePlanUpdate,
   pdcaCycleState,
   onNavigate,
 }) => {
@@ -105,6 +111,8 @@ export const PhaseNextStepBanner: React.FC<PhaseNextStepBannerProps> = ({
     planningSheetId,
     hasMonitoringSignals,
     hasUnappliedReassessment,
+    hasPendingPlanUpdate,
+    hasOverduePlanUpdate,
     pdcaCycleState,
   };
 

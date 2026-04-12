@@ -18,7 +18,7 @@ export class SpProvisioningError extends Error {
   constructor(
     message: string,
     public listTitle: string,
-    public failedFields: import('./types').SpFieldDef[]
+    public failedFields: import('./types').FailedFieldInfo[]
   ) {
     super(message);
     this.name = 'SpProvisioningError';
@@ -34,9 +34,9 @@ export class SpProvisioningService {
    * 物理的な列追加が一部失敗した場合、`ensureListExists` は throw せずに
    * `failedFields` を返す。
    * 
-   * [Hardening Phase] 必須列が失敗した場合、bootstrap フェーズ（起動関門）では
-   * Error (Hard Fail) をスローし、運用中 (runtime) は Signal 発火を伴いつつ
-   * 業務継続 (Fail-soft) を維持する。
+   * [Hardening Phase C] REQUIRED 列が失敗した場合、bootstrap フェーズ（起動関門）では
+   * Error (Hard Fail) をスローする。運用中 (runtime) は Signal 発火を伴いつつ
+   * 業務継続 (Fail-soft) を維持し、上位 Coordinator で回復導線を扱えるようにする。
    */
   async ensureList(
     listTitle: string,

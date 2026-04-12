@@ -15,6 +15,7 @@ import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import Popover from '@mui/material/Popover';
+import TerminalIcon from '@mui/icons-material/Terminal';
 import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
 import React from 'react';
@@ -40,6 +41,7 @@ const REASON_LABEL: Record<SpHealthReasonCode, string> = {
   sp_bootstrap_blocked: 'プロビジョニング停止',
   sp_auth_failed: '認証エラー',
   sp_list_unreachable: 'リスト到達不能',
+  sp_schema_drift: 'スキーマ乖離',
 };
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -193,6 +195,26 @@ export const SpHealthPopover: React.FC<SpHealthPopoverProps> = ({
       >
         {signal.message}
       </Typography>
+
+      {/* Remediation hint */}
+      {signal.remediation && (
+        <Box sx={{ mb: 1.5 }}>
+          <Chip
+            size="small"
+            variant="outlined"
+            icon={<TerminalIcon sx={{ fontSize: '12px !important' }} />}
+            label="修復コマンドあり"
+            sx={{
+              height: 20,
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              color: 'primary.main',
+              borderColor: 'primary.light',
+              bgcolor: 'primary.50',
+            }}
+          />
+        </Box>
+      )}
 
       {/* Action guide */}
       {signal.actionGuide && (

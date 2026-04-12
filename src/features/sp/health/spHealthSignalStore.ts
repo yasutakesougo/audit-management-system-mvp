@@ -38,6 +38,13 @@ export type SpHealthSignalSource = 'nightly_patrol' | 'realtime';
  */
 export type SpHealthActionType = 'internal' | 'doc' | 'tool';
 
+export interface SpHealthRemediation {
+  summary: string;
+  commands: string[];
+  caution?: string;
+  isDestructive?: boolean;
+}
+
 export interface SpHealthSignal {
   severity: SpHealthSeverity;
   reasonCode: SpHealthReasonCode;
@@ -48,6 +55,8 @@ export interface SpHealthSignal {
   actionUrl?: string;
   /** actionUrl の種別（遷移方法の決定に使用）*/
   actionType?: SpHealthActionType;
+  /** 推奨される修復アクション */
+  remediation?: SpHealthRemediation;
   /**
    * 同一課題の検知累計回数（圧縮）
    * - 1 = 初回検知
@@ -78,22 +87,22 @@ const REASON_ACTION_MAP: Record<SpHealthReasonCode, ActionSpec> = {
     actionGuide: 'インデックス数が上限（20）に近づいています。使用頻度の低いインデックスを削除してください。',
   },
   sp_bootstrap_blocked: {
-    actionUrl: '/admin/status',
+    actionUrl: '/admin/status?highlight=sp_bootstrap_blocked',
     actionType: 'internal',
     actionGuide: '起動時プロビジョニングが停止しています。管理画面の診断結果を確認してください。',
   },
   sp_auth_failed: {
-    actionUrl: '/admin/status',
+    actionUrl: '/admin/status?highlight=sp_auth_failed',
     actionType: 'internal',
     actionGuide: '認証エラーが発生しています。MSAL設定・テナントURL・権限を確認してください。',
   },
   sp_list_unreachable: {
-    actionUrl: '/admin/status',
+    actionUrl: '/admin/status?highlight=sp_list_unreachable',
     actionType: 'internal',
     actionGuide: 'SharePoint リストへの到達に失敗しています。リストの存在・権限設定を確認してください。',
   },
   sp_schema_drift: {
-    actionUrl: '/admin/status',
+    actionUrl: '/admin/status?highlight=sp_schema_drift',
     actionType: 'internal',
     actionGuide: '列名に微細な不整合（末尾の _0 付与等）が検出されました。放置すると 8KB 制限の原因となるため、クリーンアップが必要です。',
   },
@@ -104,9 +113,17 @@ const REASON_ACTION_MAP: Record<SpHealthReasonCode, ActionSpec> = {
  */
 function enrichWithAction(signal: Omit<SpHealthSignal, 'occurrenceCount'>): SpHealthSignal {
   const spec = REASON_ACTION_MAP[signal.reasonCode];
+  let actionUrl = signal.actionUrl ?? spec?.actionUrl;
+
+  // リスト名が指定されている場合、クエリパラメータに付与して「直接その場所へ」飛ばす導線を強化
+  if (actionUrl && signal.listName && !actionUrl.includes('list=')) {
+    const connector = actionUrl.includes('?') ? '&' : '?';
+    actionUrl += `${connector}list=${encodeURIComponent(signal.listName)}`;
+  }
+
   return {
     ...signal,
-    actionUrl: signal.actionUrl ?? spec?.actionUrl,
+    actionUrl,
     actionType: signal.actionType ?? spec?.actionType,
     actionGuide: signal.actionGuide ?? spec?.actionGuide,
     occurrenceCount: 1,
@@ -160,21 +177,10 @@ function _notify(): void {
   });
 }
 
+const ESCALATION_THRESHOLD = 3;
+
 /**
  * シグナルを報告する。
- *
- * 優先度制御:
- * - 既存シグナルより優先度が低い別課題は無視
- * - Realtime シグナルは同優先度でも Nightly を上書き
- *
- * 重複圧縮:
- * - 同一課題（reasonCode + listName）の再報告は occurrenceCount を加算
- * - 同一課題でより深刻な severity が来た場合は上書き + カウント引き継ぎ
- *
- * エンリッチ:
- * - reasonCode から actionUrl / actionType / actionGuide を自動付与
- *
- * 24時間 TTL 超過のシグナルは無視
  */
 export function reportSpHealthEvent(signal: Omit<SpHealthSignal, 'occurrenceCount'>): void {
   try {
@@ -191,18 +197,28 @@ export function reportSpHealthEvent(signal: Omit<SpHealthSignal, 'occurrenceCoun
     // ── 同一課題の圧縮 ──────────────────────────────────────────────────────
     if (isSameIssue(_current, signal)) {
       const prevCount = _current.occurrenceCount;
+      const nextCount = prevCount + 1;
+      
       const incomingIsHigher = isHigherPriority(signal.severity, _current.severity);
       const isRealtimeOverNightly =
         signal.source === 'realtime' &&
         _current.source === 'nightly_patrol' &&
         SEVERITY_PRIORITY[signal.severity] >= SEVERITY_PRIORITY[_current.severity];
 
-      if (incomingIsHigher || isRealtimeOverNightly) {
-        // 深刻化 or Realtime 昇格 → 内容を更新してカウント引き継ぎ
-        _current = { ...enriched, occurrenceCount: prevCount + 1 };
+      // 回数による自動昇格 (warning -> action_required)
+      let finalSeverity = signal.severity;
+      if (finalSeverity === 'warning' && nextCount >= ESCALATION_THRESHOLD) {
+        finalSeverity = 'action_required';
+      }
+
+      if (incomingIsHigher || isRealtimeOverNightly || finalSeverity !== signal.severity) {
+        _current = { 
+          ...enriched, 
+          severity: finalSeverity as SpHealthSeverity, 
+          occurrenceCount: nextCount 
+        };
       } else {
-        // 同等以下 → カウントのみ加算
-        _current = { ..._current, occurrenceCount: prevCount + 1 };
+        _current = { ..._current, occurrenceCount: nextCount };
       }
       _notify();
       return;
@@ -223,7 +239,38 @@ export function reportSpHealthEvent(signal: Omit<SpHealthSignal, 'occurrenceCoun
     _current = enriched;
     _notify();
   } catch {
-    // fail-open: store は例外を外部に投げない
+    // fail-open
+  }
+}
+
+/**
+ * シグナルを明示的に消去する（修復完了時など）
+ * これにより、次に同じ課題が検知された際はカウントが 1 からリセットされます。
+ */
+export function clearSpHealthSignal(): void {
+  _current = null;
+  _notify();
+}
+
+/**
+ * 特定の課題（reasonCode + listName）が解消された場合に消去する
+ * 自動回復（transient_failure）の検知時に使用。
+ */
+export function revokeSpHealthSignal(reasonCode: SpHealthReasonCode, listName?: string): void {
+  if (_current && 
+      _current.reasonCode === reasonCode && 
+      (_current.listName ?? '') === (listName ?? '')) {
+    clearSpHealthSignal();
+  }
+}
+
+/**
+ * 特定のリソース（リスト名等）に関するすべてのシグナルを消去する
+ * 「対象リストの通信が回復した」場合など、具体的な reasonCode が特定できない回復時に使用。
+ */
+export function revokeSpHealthSignalByResource(listName: string): void {
+  if (_current && (_current.listName === listName)) {
+    clearSpHealthSignal();
   }
 }
 

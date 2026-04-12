@@ -4,11 +4,11 @@ import { auditLog } from '@/lib/debugLogger';
 import {
   DIAGNOSTICS_REPORTS_LIST_TITLE,
   DIAGNOSTICS_REPORTS_SELECT_FIELDS,
-  DRIFT_LOG_LIST_TITLE,
 } from '@/sharepoint/fields';
 import { reportDiagnosticsReport, mapPatrolEventToSignal, type PatrolEvent } from '../mapping';
 import { reportSpHealthEvent } from '../spHealthSignalStore';
 import type { DiagnosticsReportItem } from '@/sharepoint/diagnosticsReports';
+import { SharePointDriftEventRepository } from '@/features/diagnostics/drift/infra/SharePointDriftEventRepository';
 
 /**
  * useNightlySignalIngestion — Nightly Patrol 結果を UI に取り込む Hook
@@ -19,6 +19,7 @@ import type { DiagnosticsReportItem } from '@/sharepoint/diagnosticsReports';
 export function useNightlySignalIngestion() {
   const sp = useSP();
   const ranRef = React.useRef(false);
+  const driftRepository = React.useMemo(() => new SharePointDriftEventRepository(sp), [sp]);
 
   React.useEffect(() => {
     if (!sp || ranRef.current) return;
@@ -45,37 +46,15 @@ export function useNightlySignalIngestion() {
 
       // 2. DriftEventsLog の取得
       try {
-        const driftLogs = await sp.getListItemsByTitle(
-          DRIFT_LOG_LIST_TITLE,
-          ['Id', 'ListName', 'FieldName', 'DetectedAt', 'Severity', 'ResolutionType', 'ErrorMessage'],
-          undefined,
-          'Created desc',
-          10
-        );
+        const driftLogs = await driftRepository.getEvents();
 
-        interface DriftLogItem {
-          Severity?: { Value: string } | string;
-          ResolutionType?: string;
-          ListName?: string;
-          FieldName?: string;
-          DetectedAt?: string;
-          ErrorMessage?: string;
-          Created?: string;
-        }
-
-        const driftLogsTyped = driftLogs as unknown as DriftLogItem[];
-        for (const log of driftLogsTyped) {
-          const sev = log.Severity;
-          const severity = (typeof sev === 'object' && sev !== null && 'Value' in sev)
-            ? (sev as { Value: string }).Value
-            : (typeof sev === 'string' ? sev : 'watch');
-
+        for (const log of driftLogs.slice(0, 10)) {
           const event: PatrolEvent = {
-            severity: severity,
-            code: log.ResolutionType || 'unknown',
-            listName: log.ListName,
-            message: log.ErrorMessage || `Drift detected in ${log.FieldName || 'unknown field'}`,
-            occurredAt: log.DetectedAt || log.Created || new Date().toISOString(),
+            severity: log.severity || 'watch',
+            code: log.resolutionType || 'unknown',
+            listName: log.listName,
+            message: `Drift detected in ${log.fieldName || 'unknown field'}`,
+            occurredAt: log.detectedAt || new Date().toISOString(),
           };
           const signal = mapPatrolEventToSignal(event);
           if (signal) {
@@ -91,5 +70,5 @@ export function useNightlySignalIngestion() {
     };
 
     ingest();
-  }, [sp]);
+  }, [driftRepository, sp]);
 }

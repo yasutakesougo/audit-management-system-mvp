@@ -1,0 +1,2 @@
+markitdown
+python-dotenv

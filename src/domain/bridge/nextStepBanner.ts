@@ -63,6 +63,10 @@ export interface ResolveNextStepInput {
   hasMonitoringSignals?: boolean;
   /** 再評価結果が未反映か */
   hasUnappliedReassessment?: boolean;
+  /** 計画更新案が未反映か */
+  hasPendingPlanUpdate?: boolean;
+  /** 期限超過の計画更新案があるか */
+  hasOverduePlanUpdate?: boolean;
   /** PDCA サイクル状態（ある場合のみ補助判定に使用） */
   pdcaCycleState?: PdcaCycleState | null;
 }
@@ -299,6 +303,23 @@ export function buildPdcaAlerts(
   return sortAlertsByPriority(alerts);
 }
 
+function buildPlanUpdateAlerts(input: ResolveNextStepInput): NextStepAlert[] {
+  if (!input.hasPendingPlanUpdate) {
+    return [];
+  }
+
+  const priority: NextStepAlertPriority = input.hasOverduePlanUpdate ? 'p0' : 'p1';
+
+  return [{
+    type: alertTypeFromPriority(priority),
+    message: input.hasOverduePlanUpdate
+      ? '支援計画の更新期限を超過'
+      : '支援計画の更新が未反映',
+    action: '更新案を確認',
+    priority,
+  }];
+}
+
 // ─────────────────────────────────────────────
 // Context-specific resolvers
 // ─────────────────────────────────────────────
@@ -423,7 +444,21 @@ function resolveReassessment(input: ResolveNextStepInput): NextStepBannerModel {
 }
 
 function resolvePlanning(input: ResolveNextStepInput): NextStepBannerModel {
-  const { userId, phase } = input;
+  const { userId, phase, planningSheetId, hasPendingPlanUpdate, hasOverduePlanUpdate } = input;
+
+  if (hasPendingPlanUpdate) {
+    return {
+      tone: hasOverduePlanUpdate ? 'danger' : 'warning',
+      title: hasOverduePlanUpdate
+        ? '未反映の計画更新が期限を超過しています'
+        : '未反映の計画更新があります',
+      description: '会議で生成された更新案をレビューし、必要に応じて計画へ反映してください。',
+      ctaLabel: '更新案を確認',
+      href: planningSheetId ? `/support-planning-sheet/${planningSheetId}?tab=planning` : '',
+      hidden: false,
+      alerts: [],
+    };
+  }
 
   if (phase === 'needs_plan') {
     return {
@@ -478,9 +513,10 @@ export function resolveNextStepBanner(
   })();
 
   const pdcaAlerts = buildPdcaAlerts(input.pdcaCycleState);
+  const planUpdateAlerts = buildPlanUpdateAlerts(input);
 
   return {
     ...existingBanner,
-    alerts: [...existingBanner.alerts, ...pdcaAlerts],
+    alerts: [...existingBanner.alerts, ...planUpdateAlerts, ...pdcaAlerts],
   };
 }

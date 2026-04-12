@@ -110,7 +110,7 @@ const NavItemRow: React.FC<{
               fontWeight: active ? 700 : 500,
             }}
           />
-          {item.badge && item.badge > 0 && (
+          {item.badge !== undefined && (typeof item.badge !== 'number' || item.badge > 0) && (
             <Badge
               badgeContent={item.badge}
               color="error"

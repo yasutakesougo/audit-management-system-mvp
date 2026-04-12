@@ -28,6 +28,8 @@ function makeInput(overrides: Partial<ResolveNextStepInput> = {}): ResolveNextSt
     planningSheetId: 'ps-1',
     hasMonitoringSignals: false,
     hasUnappliedReassessment: false,
+    hasPendingPlanUpdate: false,
+    hasOverduePlanUpdate: false,
     ...overrides,
   };
 }
@@ -217,6 +219,37 @@ describe('resolveNextStepBanner — reassessment', () => {
 // ─────────────────────────────────────────────
 
 describe('resolveNextStepBanner — planning', () => {
+  it('未反映の計画更新があると warning バナーで更新案確認を促す', () => {
+    const result = resolveNextStepBanner(
+      makeInput({
+        phase: 'active_plan',
+        context: 'planning',
+        hasPendingPlanUpdate: true,
+      }),
+    );
+
+    expect(result.hidden).toBe(false);
+    expect(result.tone).toBe('warning');
+    expect(result.title).toContain('未反映');
+    expect(result.ctaLabel).toBe('更新案を確認');
+    expect(result.href).toContain('tab=planning');
+  });
+
+  it('期限超過の計画更新があると danger バナーを返す', () => {
+    const result = resolveNextStepBanner(
+      makeInput({
+        phase: 'active_plan',
+        context: 'planning',
+        hasPendingPlanUpdate: true,
+        hasOverduePlanUpdate: true,
+      }),
+    );
+
+    expect(result.hidden).toBe(false);
+    expect(result.tone).toBe('danger');
+    expect(result.title).toContain('期限');
+  });
+
   it('needs_plan → info「手順を追加」', () => {
     const result = resolveNextStepBanner(
       makeInput({
@@ -301,6 +334,41 @@ describe('resolveNextStepBanner — ルール', () => {
 });
 
 describe('resolveNextStepBanner — PDCA alerts', () => {
+  it('未反映の計画更新があると alert を追加する', () => {
+    const result = resolveNextStepBanner(
+      makeInput({
+        phase: 'needs_monitoring',
+        context: 'overview',
+        hasPendingPlanUpdate: true,
+      }),
+    );
+
+    expect(result.alerts).toContainEqual({
+      type: 'warning',
+      message: '支援計画の更新が未反映',
+      action: '更新案を確認',
+      priority: 'p1',
+    });
+  });
+
+  it('期限超過の計画更新があると p0 alert を追加する', () => {
+    const result = resolveNextStepBanner(
+      makeInput({
+        phase: 'needs_monitoring',
+        context: 'overview',
+        hasPendingPlanUpdate: true,
+        hasOverduePlanUpdate: true,
+      }),
+    );
+
+    expect(result.alerts).toContainEqual({
+      type: 'danger',
+      message: '支援計画の更新期限を超過',
+      action: '更新案を確認',
+      priority: 'p0',
+    });
+  });
+
   it('check phase + 3日 → p2', () => {
     const alerts = buildPdcaAlerts(
       makePdcaState({

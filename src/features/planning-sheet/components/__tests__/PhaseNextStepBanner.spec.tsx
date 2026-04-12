@@ -123,4 +123,19 @@ describe('PhaseNextStepBanner', () => {
     expect(items[1]).not.toHaveAttribute('data-p0-emphasis');
     expect(screen.getByText('モニタリング時期が近づいています')).toBeInTheDocument();
   });
+
+  it('計画更新未反映があると planning バナーでレビュー導線を表示する', () => {
+    render(
+      <PhaseNextStepBanner
+        phase="active_plan"
+        context="planning"
+        userId="u-1"
+        planningSheetId="ps-1"
+        hasPendingPlanUpdate
+      />,
+    );
+
+    expect(screen.getByText('未反映の計画更新があります')).toBeInTheDocument();
+    expect(screen.getByText('更新案を確認')).toBeInTheDocument();
+  });
 });
