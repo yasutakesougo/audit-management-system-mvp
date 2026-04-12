@@ -20,12 +20,20 @@ import { useSupportPlanningSheet } from '@/features/monitoring/hooks/useSupportP
 import { useMeetingEvidenceDraft } from '@/features/monitoring/hooks/useMeetingEvidenceDraft';
 import type { GoalLike } from '@/features/monitoring/domain/goalProgressTypes';
 import type { SaveSupportPlanningSheetInput } from '@/features/monitoring/domain/supportPlanningSheetTypes';
+import type { MonitoringToIspProposal } from '@/features/monitoring/domain/monitoringToIspPolicy';
+import {
+  buildRollbackSnapshotRef,
+  canApplyProposal,
+  toMonitoringToIspProposal,
+  validateApplyRequest,
+} from '@/features/monitoring/domain/monitoringToIspPolicy';
 import type { DraftBatch } from '@/features/monitoring/components/DraftHistoryPanel';
 import type { SupportPlanStringFieldKey, ToastState } from '../types';
 import type { SectionTabProps } from '../components/tabs/tabProps';
 
 // ── 定数 ────────────────────────────────────────────────
 const DEFAULT_LOOKBACK_DAYS = 60;
+const ROLLBACK_SNAPSHOT_CAPACITY = 100;
 
 // ── 内部ヘルパー hook ──────────────────────────────────
 
@@ -111,6 +119,7 @@ export function useMonitoringTabState({
 }: UseMonitoringTabStateInput) {
   const { account } = useAuth();
   const userIdStr = userId ? String(userId) : '';
+  const actorId = account?.username ?? 'unknown';
 
   // ── goals 派生データ ─────────────────────────────────
   const goalLikes = useGoalLikes(form.goals);
@@ -155,6 +164,31 @@ export function useMonitoringTabState({
 
   // ── Snackbar ─────────────────────────────────────────
   const snackbar = useSnackbar();
+  const rollbackSnapshotsRef = React.useRef(new Map<string, {
+    fieldKey: SupportPlanStringFieldKey;
+    previousValue: string;
+    createdAt: string;
+  }>());
+
+  const saveRollbackSnapshot = React.useCallback((
+    proposalId: string,
+    fieldKey: SupportPlanStringFieldKey,
+    previousValue: string,
+  ) => {
+    const snapshotRef = buildRollbackSnapshotRef(proposalId);
+    rollbackSnapshotsRef.current.set(snapshotRef, {
+      fieldKey,
+      previousValue,
+      createdAt: new Date().toISOString(),
+    });
+
+    // one-step rollback 参照を保持しつつ、メモリ使用量を固定化する
+    if (rollbackSnapshotsRef.current.size > ROLLBACK_SNAPSHOT_CAPACITY) {
+      const oldestKey = rollbackSnapshotsRef.current.keys().next().value;
+      if (oldestKey) rollbackSnapshotsRef.current.delete(oldestKey);
+    }
+    return snapshotRef;
+  }, []);
 
   // ── コールバック: ドラフト保存 ───────────────────────
   const handleSaveDraft = React.useCallback(async () => {
@@ -228,7 +262,54 @@ export function useMonitoringTabState({
   const handleApplyToEditor = React.useCallback(
     (fieldKey: SupportPlanStringFieldKey, text: string) => {
       if (!isAdmin) return;
-      const currentVal = form[fieldKey] || '';
+
+      const approvedProposals = decisions
+        .map((decision) => toMonitoringToIspProposal(decision, {
+          targetLayer: 'L2',
+          diff: { [fieldKey]: text },
+        }))
+        .filter((proposal) => proposal.decision === 'approved');
+
+      if (approvedProposals.length === 0) {
+        setToast({
+          open: true,
+          message: '承認済みの Monitoring 提案がないため、計画書へ反映できません。',
+          severity: 'error',
+        });
+        return;
+      }
+
+      const currentValRaw = form[fieldKey];
+      const currentVal = typeof currentValRaw === 'string' ? currentValRaw : String(currentValRaw ?? '');
+
+      for (const proposal of approvedProposals) {
+        const approvalCheck = canApplyProposal(proposal, [actorId]);
+        if (!approvalCheck.ok) {
+          setToast({
+            open: true,
+            message: `反映をブロックしました: ${approvalCheck.reason ?? 'approval gate failed'}`,
+            severity: 'error',
+          });
+          return;
+        }
+
+        const rollbackSnapshotRef = saveRollbackSnapshot(proposal.proposalId, fieldKey, currentVal);
+        const applyCheck = validateApplyRequest(proposal, {
+          proposalId: proposal.proposalId,
+          approvedBy: [actorId],
+          rollbackSnapshotRef,
+        });
+
+        if (!applyCheck.ok) {
+          setToast({
+            open: true,
+            message: `反映をブロックしました: ${applyCheck.reason ?? 'apply request validation failed'}`,
+            severity: 'error',
+          });
+          return;
+        }
+      }
+
       const newVal = currentVal
         ? `${currentVal}\n\n--- ドラフト反映 ---\n${text}`
         : text;
@@ -239,13 +320,39 @@ export function useMonitoringTabState({
         severity: 'success',
       });
     },
-    [form, isAdmin, onFieldChange, setToast],
+    [actorId, decisions, form, isAdmin, onFieldChange, saveRollbackSnapshot, setToast],
   );
 
   // ── コールバック: 過去バッチ再反映 ──────────────────
   const handleReapplyBatch = React.useCallback(
     (batch: DraftBatch) => {
       if (!isAdmin) return;
+
+      const proposal: MonitoringToIspProposal = {
+        proposalId: `reapply:${batch.batchId}`,
+        sourceRecords: batch.records.map((record) => record.id),
+        ruleVersion: 'monitoring-to-isp/v0.1',
+        decision: 'approved',
+        reviewer: actorId,
+        decidedAt: new Date().toISOString(),
+        reason: 'reapply saved draft batch',
+        impact: batch.records.some(
+          (record) => record.recommendationLevel === 'revise-goal' || record.recommendationLevel === 'urgent-review',
+        ) ? 'high' : 'low',
+        targetLayer: 'L2',
+        diff: { conferenceNotes: batch.records.length },
+        requestedBy: 'monitoring-engine',
+      };
+
+      const approvalCheck = canApplyProposal(proposal, [actorId]);
+      if (!approvalCheck.ok) {
+        setToast({
+          open: true,
+          message: `再反映をブロックしました: ${approvalCheck.reason ?? 'approval gate failed'}`,
+          severity: 'error',
+        });
+        return;
+      }
 
       const lines: string[] = [];
       for (const r of batch.records) {
@@ -260,6 +367,22 @@ export function useMonitoringTabState({
       const text = lines.join('\n');
 
       const currentVal = form.conferenceNotes || '';
+      const rollbackSnapshotRef = saveRollbackSnapshot(proposal.proposalId, 'conferenceNotes', currentVal);
+      const applyCheck = validateApplyRequest(proposal, {
+        proposalId: proposal.proposalId,
+        approvedBy: [actorId],
+        rollbackSnapshotRef,
+      });
+
+      if (!applyCheck.ok) {
+        setToast({
+          open: true,
+          message: `再反映をブロックしました: ${applyCheck.reason ?? 'apply request validation failed'}`,
+          severity: 'error',
+        });
+        return;
+      }
+
       const newVal = currentVal
         ? `${currentVal}\n\n--- 過去ドラフト反映 ---\n${text}`
         : text;
@@ -271,7 +394,7 @@ export function useMonitoringTabState({
         severity: 'success',
       });
     },
-    [form.conferenceNotes, isAdmin, onFieldChange, setToast],
+    [actorId, form.conferenceNotes, isAdmin, onFieldChange, saveRollbackSnapshot, setToast],
   );
 
   // ── 戻り値: 3 セクション + feedback に分割 ──────────
