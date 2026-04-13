@@ -12,6 +12,7 @@
 import { useInterventionStore } from '@/features/analysis/stores/interventionStore';
 import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 import type { ABCRecord } from '@/domain/behavior';
+import { recordAbcSyncFailure } from '@/features/daily/domain/abcSyncPolicy';
 import { generateDailyReport } from '@/features/daily/domain/legacy/generateDailyReport';
 import { getScheduleKey } from '@/features/daily/domain/builders/getScheduleKey';
 import { toBipOptions } from '@/features/daily/domain/builders/toBipOptions';
@@ -25,7 +26,12 @@ import {
     persistDailySubmission,
     type PersistDailyPdcaInput,
 } from '@/features/ibd/analysis/pdca/persistDailyPdca';
-import { getABCRecordsForUser, getLatestSPS, getSupervisionCounter } from '@/features/ibd/core/ibdStore';
+import {
+  addABCRecord,
+  getABCRecordsForUser,
+  getLatestSPS,
+  getSupervisionCounter,
+} from '@/features/ibd/core/ibdStore';
 import { useUsers } from '@/features/users/useUsers';
 import { getEnv } from '@/lib/runtimeEnv';
 import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
@@ -211,7 +217,16 @@ export function useTimeBasedSupportPage() {
     async (payload: Omit<ABCRecord, 'id' | 'userId'>) => {
       if (!core.targetUserId) return;
       try {
-        await behaviorRepo.add({ ...payload, userId: core.targetUserId });
+        const savedRecord = await behaviorRepo.add({ ...payload, userId: core.targetUserId });
+        let abcSyncWarning = false;
+        try {
+          // B（BehaviorObservationRepository）を正本導線として同期
+          addABCRecord(savedRecord);
+        } catch (syncError) {
+          abcSyncWarning = true;
+          recordAbcSyncFailure(savedRecord, syncError);
+          console.warn('[daily/support] A→B ABC sync failed; submit kept as success', syncError);
+        }
 
         const slotKey = payload.planSlotKey;
         if (slotKey) {
@@ -263,7 +278,11 @@ export function useTimeBasedSupportPage() {
             window.localStorage.removeItem(retryKeyRef.current);
           }
           setRetryPersist(null);
-          setSnackbarMessage('保存しました。CHECKへ移動します。');
+          setSnackbarMessage(
+            abcSyncWarning
+              ? '保存しました（ABC証跡同期で警告あり）。CHECKへ移動します。'
+              : '保存しました。CHECKへ移動します。',
+          );
           setSnackbarOpen(true);
           const params = new URLSearchParams({ userId: core.targetUserId, date: targetDate });
           window.setTimeout(() => navigate(`/analysis/iceberg-pdca?${params.toString()}`), 300);

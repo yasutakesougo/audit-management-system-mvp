@@ -15,7 +15,7 @@ import {
   compareStrategyUsage,
   type StrategyUsageTrendResult,
 } from '@/domain/isp/aggregateStrategyUsage';
-import { getBehaviorRepository } from '@/features/daily/repositories/sharepoint/behaviorRepositoryFactory';
+import { getABCRecordsForUser } from '@/features/ibd/core/ibdStore';
 
 // ─────────────────────────────────────────────
 // 期間プリセット
@@ -109,8 +109,6 @@ export function useStrategyUsageTrend(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const repo = useMemo(() => getBehaviorRepository(), []);
-
   // days が変わると fetch 範囲が変わるので再取得が必要
   const windows = useMemo(() => computeDateWindows(days), [days]);
 
@@ -119,14 +117,16 @@ export function useStrategyUsageTrend(
     setLoading(true);
     setError(null);
     try {
-      const result = await repo.listByUser(userId, {
-        dateRange: {
-          from: windows.fetchFrom,
-          to: windows.fetchTo,
-        },
-        order: 'desc',
-        limit: 1000, // 2期間分なので既存より多めに
-      });
+      const fromMs = new Date(windows.fetchFrom).getTime();
+      const toMs = new Date(windows.fetchTo).getTime();
+      const result = getABCRecordsForUser(userId)
+        .filter((record) => {
+          const recordedAtMs = new Date(record.recordedAt).getTime();
+          return Number.isFinite(recordedAtMs)
+            && recordedAtMs >= fromMs
+            && recordedAtMs <= toMs;
+        })
+        .slice(0, 1000); // 2期間分なので既存より多めに
       setRecords(result);
     } catch (err) {
       console.error('[useStrategyUsageTrend] fetch failed:', err);
@@ -136,7 +136,7 @@ export function useStrategyUsageTrend(
     } finally {
       setLoading(false);
     }
-  }, [userId, windows.fetchFrom, windows.fetchTo, repo]);
+  }, [userId, windows.fetchFrom, windows.fetchTo]);
 
   useEffect(() => {
     if (userId) {

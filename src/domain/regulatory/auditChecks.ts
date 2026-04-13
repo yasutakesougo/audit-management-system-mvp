@@ -20,6 +20,7 @@ export const AUDIT_FINDING_TYPES = [
   'planning_sheet_missing',
   'author_qualification_missing',
   'review_overdue',
+  'review_approaching',
   'procedure_record_gap',
   'delivery_missing',
   'add_on_candidate',
@@ -35,6 +36,7 @@ export const AUDIT_FINDING_TYPE_LABELS: Record<AuditFindingType, string> = {
   planning_sheet_missing: '支援計画シート未作成',
   author_qualification_missing: '作成者資格不足',
   review_overdue: '見直し期限超過',
+  review_approaching: '見直し期限接近',
   procedure_record_gap: '実施記録不足',
   delivery_missing: '交付未完了',
   add_on_candidate: '加算算定候補',
@@ -213,6 +215,49 @@ export function getReviewOverdueRisk(
     userId: sheet.userId,
     planningSheetId: sheet.id,
     message: `「${sheet.title}」の見直し期限が${Math.abs(diffDays)}日超過しています`,
+    overdueDays: diffDays,
+    dueDate: sheet.nextReviewAt,
+    detectedAt: today,
+  };
+}
+
+/**
+ * 3b. 見直し期限接近リスク（90日見直しの warning 帯）
+ *
+ * 条件: 0 <= (nextReviewAt - today) <= warningThresholdDays
+ *
+ * ibdStore 側の `getSPSAlertLevel` が担っていた warning 判定を
+ * domain 側の監査 finding として吸収する。
+ *
+ * @see ibdTypes.getSPSAlertLevel — Shadow Model 側の旧実装
+ * @see severeDisabilityAddon.checkQuarterlyReview — 加算判定（起算基準が異なる）
+ */
+export function getReviewApproachingRisk(
+  sheet: SheetAuditInfo,
+  today: string,
+  warningThresholdDays = 14,
+): AuditFinding | null {
+  if (!sheet.isCurrent || sheet.status === 'archived') return null;
+  if (!sheet.nextReviewAt) return null;
+
+  const due = new Date(sheet.nextReviewAt);
+  const now = new Date(today);
+  const diffMs = due.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  // 超過済みは getReviewOverdueRisk の責務
+  if (diffDays < 0) return null;
+  // warning 帯外
+  if (diffDays > warningThresholdDays) return null;
+
+  return {
+    id: nextFindingId(),
+    type: 'review_approaching',
+    severity: diffDays <= 7 ? 'medium' : 'low',
+    domain: 'sheet',
+    userId: sheet.userId,
+    planningSheetId: sheet.id,
+    message: `「${sheet.title}」の見直し期限まであと${diffDays}日です`,
     overdueDays: diffDays,
     dueDate: sheet.nextReviewAt,
     detectedAt: today,
@@ -456,9 +501,13 @@ export function buildRegulatoryFindings(input: AuditCheckInput): AuditFinding[] 
     const qualRisk = getAuthorQualificationRisk(sheet, staffProfile, today);
     if (qualRisk) findings.push(qualRisk);
 
-    // 3. 見直し期限
+    // 3. 見直し期限（超過）
     const reviewRisk = getReviewOverdueRisk(sheet, today);
     if (reviewRisk) findings.push(reviewRisk);
+
+    // 3b. 見直し期限（接近 warning）
+    const approachingRisk = getReviewApproachingRisk(sheet, today);
+    if (approachingRisk) findings.push(approachingRisk);
 
     // 4. 記録空白
     const recordRisk = getProcedureRecordGapRisk(sheet, safeRecords, today, recordGapThresholdDays);

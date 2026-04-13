@@ -76,7 +76,7 @@ export interface IndividualSupportActionHandlers {
     revisedBy: number | null,
     revisionReason: string,
     changesSummary: string,
-  ) => boolean;
+  ) => Promise<boolean>;
   
   // その他
   onCloseSnackbar: () => void;

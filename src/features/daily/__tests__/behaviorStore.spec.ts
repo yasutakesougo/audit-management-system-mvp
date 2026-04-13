@@ -8,6 +8,11 @@ const repo = {
   add: vi.fn<(...args: unknown[]) => Promise<ABCRecord>>(),
 };
 
+const mockGetABCRecordsForUser = vi.fn();
+vi.mock('@/features/ibd/core/ibdStore', () => ({
+  getABCRecordsForUser: (userId: string) => mockGetABCRecordsForUser(userId),
+}));
+
 vi.mock('../infra/behaviorRepositoryFactory', () => ({
   getBehaviorRepository: () => repo,
   getInMemoryBehaviorRepository: () => null,
@@ -35,7 +40,7 @@ describe('useBehaviorStore', () => {
       intensity: 1 as const,
     }));
 
-    repo.listByUser.mockResolvedValueOnce([
+    mockGetABCRecordsForUser.mockReturnValue([
       observations[2],
       observations[6],
       observations[1],
@@ -90,5 +95,31 @@ describe('useBehaviorStore', () => {
     });
 
     expect(result.current.data[0]).toEqual(newRecord);
+  });
+
+  it('fetchForAnalysis returns filtered and sorted items for the specified period', async () => {
+    const now = new Date();
+    const d1 = new Date(now); d1.setDate(now.getDate() - 35); // Out of range (30 days default)
+    const d2 = new Date(now); d2.setDate(now.getDate() - 20); // In range
+    const d3 = new Date(now); d3.setDate(now.getDate() - 5);  // In range (newer)
+    
+    const observations: ABCRecord[] = [
+      { id: '1', userId: 'U1', recordedAt: d1.toISOString(), behavior: 'b1', intensity: 1, antecedent: '', consequence: '', antecedentTags: [] },
+      { id: '2', userId: 'U1', recordedAt: d2.toISOString(), behavior: 'b2', intensity: 1, antecedent: '', consequence: '', antecedentTags: [] },
+      { id: '3', userId: 'U1', recordedAt: d3.toISOString(), behavior: 'b3', intensity: 1, antecedent: '', consequence: '', antecedentTags: [] },
+    ];
+
+    mockGetABCRecordsForUser.mockReturnValue(observations);
+
+    const { result } = renderHook(() => useBehaviorStore());
+
+    await act(async () => {
+      await result.current.fetchForAnalysis('U1', 30);
+    });
+
+    const { analysisData } = result.current;
+    expect(analysisData).toHaveLength(2);
+    expect(analysisData[0].id).toBe('2'); // Oldest first (asc)
+    expect(analysisData[1].id).toBe('3');
   });
 });

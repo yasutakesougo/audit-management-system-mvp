@@ -13,6 +13,7 @@ import {
   getPlanningSheetMissingRisk,
   getAuthorQualificationRisk,
   getReviewOverdueRisk,
+  getReviewApproachingRisk,
   getProcedureRecordGapRisk,
   getDeliveryMissingRisk,
   getAddOnCandidateFindings,
@@ -216,6 +217,76 @@ describe('getReviewOverdueRisk', () => {
 });
 
 // ═════════════════════════════════════════════
+// 3b. getReviewApproachingRisk
+// ═════════════════════════════════════════════
+
+describe('getReviewApproachingRisk', () => {
+  it('期限まで14日以内 → review_approaching finding', () => {
+    // TODAY = 2026-03-12, nextReviewAt = 2026-03-22 → 10日後
+    const sheet = makeSheet({ nextReviewAt: '2026-03-22' });
+    const result = getReviewApproachingRisk(sheet, TODAY);
+    expect(result).not.toBeNull();
+    expect(result!.type).toBe('review_approaching');
+    expect(result!.overdueDays).toBe(10);
+  });
+
+  it('7日以内 → medium severity', () => {
+    // TODAY = 2026-03-12, nextReviewAt = 2026-03-17 → 5日後
+    const sheet = makeSheet({ nextReviewAt: '2026-03-17' });
+    const result = getReviewApproachingRisk(sheet, TODAY);
+    expect(result).not.toBeNull();
+    expect(result!.severity).toBe('medium');
+  });
+
+  it('8〜14日 → low severity', () => {
+    // TODAY = 2026-03-12, nextReviewAt = 2026-03-22 → 10日後
+    const sheet = makeSheet({ nextReviewAt: '2026-03-22' });
+    const result = getReviewApproachingRisk(sheet, TODAY);
+    expect(result).not.toBeNull();
+    expect(result!.severity).toBe('low');
+  });
+
+  it('当日（0日後）→ finding（medium）', () => {
+    const sheet = makeSheet({ nextReviewAt: TODAY });
+    const result = getReviewApproachingRisk(sheet, TODAY);
+    expect(result).not.toBeNull();
+    expect(result!.severity).toBe('medium');
+    expect(result!.overdueDays).toBe(0);
+  });
+
+  it('15日以上先 → null', () => {
+    const sheet = makeSheet({ nextReviewAt: '2026-06-01' });
+    const result = getReviewApproachingRisk(sheet, TODAY);
+    expect(result).toBeNull();
+  });
+
+  it('期限超過 → null（getReviewOverdueRisk の責務）', () => {
+    const sheet = makeSheet({ nextReviewAt: '2026-02-01' });
+    const result = getReviewApproachingRisk(sheet, TODAY);
+    expect(result).toBeNull();
+  });
+
+  it('nextReviewAt が null → null', () => {
+    const sheet = makeSheet({ nextReviewAt: null });
+    const result = getReviewApproachingRisk(sheet, TODAY);
+    expect(result).toBeNull();
+  });
+
+  it('archived → null', () => {
+    const sheet = makeSheet({ nextReviewAt: '2026-03-22', status: 'archived' });
+    const result = getReviewApproachingRisk(sheet, TODAY);
+    expect(result).toBeNull();
+  });
+
+  it('カスタム warningThresholdDays を指定可能', () => {
+    // 30日閾値: 2026-03-12 → 2026-04-01 = 20日後 → 30日以内なので finding
+    const sheet = makeSheet({ nextReviewAt: '2026-04-01' });
+    const result = getReviewApproachingRisk(sheet, TODAY, 30);
+    expect(result).not.toBeNull();
+  });
+});
+
+// ═════════════════════════════════════════════
 // 4. getProcedureRecordGapRisk
 // ═════════════════════════════════════════════
 
@@ -325,30 +396,36 @@ describe('getAddOnCandidateFindings', () => {
 // ═════════════════════════════════════════════
 
 describe('buildRegulatoryFindings', () => {
-  it('全条件充足シートは加算候補のみ返す', () => {
+  it('全条件充足シートは加算候補 + モニタリング未実施を返す', () => {
     const input: AuditCheckInput = {
       userProfile: makeUserProfile(),
       sheets: [makeSheet()],
       staffProfiles: new Map([['S001', makeStaffProfile()]]),
       records: [makeRecord()],
+      monitoringMeetings: [],
       today: TODAY,
     };
     const findings = buildRegulatoryFindings(input);
-    expect(findings).toHaveLength(1);
-    expect(findings[0].type).toBe('add_on_candidate');
+    const types = findings.map(f => f.type);
+    expect(types).toContain('add_on_candidate');
+    expect(types).toContain('monitoring_meeting_missing');
+    expect(findings).toHaveLength(2);
   });
 
-  it('シートなし + 対象候補 → 未作成リスク', () => {
+  it('シートなし + 対象候補 → 未作成リスク + モニタリング未実施', () => {
     const input: AuditCheckInput = {
       userProfile: makeUserProfile(),
       sheets: [],
       staffProfiles: new Map(),
       records: [],
+      monitoringMeetings: [],
       today: TODAY,
     };
     const findings = buildRegulatoryFindings(input);
-    expect(findings).toHaveLength(1);
-    expect(findings[0].type).toBe('planning_sheet_missing');
+    const types = findings.map(f => f.type);
+    expect(types).toContain('planning_sheet_missing');
+    expect(types).toContain('monitoring_meeting_missing');
+    expect(findings).toHaveLength(2);
   });
 
   it('複合リスク: 資格不足 + 期限超過 + 記録なし + 交付なし', () => {
@@ -363,6 +440,7 @@ describe('buildRegulatoryFindings', () => {
       sheets: [sheet],
       staffProfiles: new Map([['S002', staff]]),
       records: [],
+      monitoringMeetings: [],
       today: TODAY,
     };
     const findings = buildRegulatoryFindings(input);
@@ -371,6 +449,7 @@ describe('buildRegulatoryFindings', () => {
     expect(types).toContain('review_overdue');
     expect(types).toContain('procedure_record_gap');
     expect(types).toContain('delivery_missing');
+    expect(types).toContain('monitoring_meeting_missing');
     expect(types).not.toContain('add_on_candidate');
   });
 
@@ -380,6 +459,7 @@ describe('buildRegulatoryFindings', () => {
       sheets: [],
       staffProfiles: new Map(),
       records: [],
+      monitoringMeetings: [],
       today: TODAY,
     };
     const findings = buildRegulatoryFindings(input);
@@ -412,6 +492,7 @@ describe('summarizeFindings', () => {
       sheets: [sheet],
       staffProfiles: new Map([['S002', staff]]),
       records: [],
+      monitoringMeetings: [],
       today: TODAY,
     };
     const findings = buildRegulatoryFindings(input);
