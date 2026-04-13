@@ -147,16 +147,6 @@ const TimeBasedSupportRecordPage: React.FC = () => {
 
   const bipOptions = useMemo(() => toBipOptions(userInterventionPlans), [userInterventionPlans]);
 
-  const savedObservationsMap = useMemo(() => {
-    const map = new Map<string, string>();
-    recentObservations.forEach((obs) => {
-      const key = obs.planSlotKey ?? '';
-      if (key && obs.actualObservation) {
-        map.set(key, obs.actualObservation.slice(0, 60) + (obs.actualObservation.length > 60 ? '…' : ''));
-      }
-    });
-    return map;
-  }, [recentObservations]);
 
   // Error display
   const rawError = submitError ?? behaviorError;
@@ -397,15 +387,12 @@ const TimeBasedSupportRecordPage: React.FC = () => {
             <PlanSelectionStep
               userName={selectedUser?.FullName ?? ''}
               schedule={schedule}
-              isAcknowledged={isAcknowledged}
-              onAcknowledged={() => setIsAcknowledged(true)}
               filledStepIds={filledStepIds}
               showUnfilledOnly={showUnfilledOnly}
               onToggleUnfilledOnly={() => setShowUnfilledOnly((prev) => !prev)}
               unfilledCount={unfilledStepsCount}
               totalCount={totalSteps}
               interventionPlans={userInterventionPlans}
-              savedObservations={savedObservationsMap}
               onSelectSlot={handleWizardSelectSlot}
               onBack={handleWizardBackToUser}
               onIcebergAnalysis={
