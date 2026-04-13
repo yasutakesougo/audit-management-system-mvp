@@ -11,8 +11,6 @@ import { canAccess } from '@/auth/roles';
 import { useAuth } from '@/auth/useAuth';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { useCurrentPlanningSheet } from '@/features/planning-sheet/hooks/useCurrentPlanningSheet';
-import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { useIspRepositories } from '@/features/support-plan-guide/hooks/useIspRepositories';
 import { useRegulatorySummary } from '@/features/support-plan-guide/hooks/useRegulatorySummary';
 import { useSupportPlanBundle } from '@/features/support-plan-guide/hooks/useSupportPlanBundle';
@@ -474,12 +472,6 @@ export default function SupportPlanGuidePage() {
       icebergTotal: icebergTotalForHud,
     };
   }, [regulatoryBundle, regulatoryAvailable, deadlines, complianceForm.compliance, icebergTotalForHud]);
-
-
-
-  // ── Planning Sheet 動的遷移 ──
-  const planningSheetRepo = usePlanningSheetRepositories();
-  const { currentSheet: _currentSheet, allCurrentSheets: _allCurrentSheets, isLoading: _isLoadingSheets } = useCurrentPlanningSheet(regulatoryUserId, planningSheetRepo);
 
   return (
     <Box sx={{ p: { xs: 1.5, md: 2 }, pb: 4 }}>
