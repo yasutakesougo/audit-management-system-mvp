@@ -223,6 +223,7 @@ const SheetHeader: React.FC<SheetHeaderProps> = ({
           startDate,
           ((sheet as Record<string, unknown>).monitoringCycleDays as number) ?? 90,
         );
+        if (!schedule) return null;
         return (
           <Paper
             variant="outlined"
