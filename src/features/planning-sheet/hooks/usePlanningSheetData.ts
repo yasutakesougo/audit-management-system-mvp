@@ -55,6 +55,8 @@ export function usePlanningSheetData(
     }
 
     let cancelled = false;
+    // 新しい ID の取得を開始する前に、以前のデータをクリアして stale 表示を防ぐ
+    setData(null);
     setIsLoading(true);
     setError(null);
 

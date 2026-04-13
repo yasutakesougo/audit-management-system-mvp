@@ -43,13 +43,17 @@ export interface CycleBuilderInput {
 
 function addDaysToDate(isoDate: string, days: number): string {
   const d = new Date(isoDate);
+  if (isNaN(d.getTime())) return isoDate;
   d.setDate(d.getDate() + days);
-  return d.toISOString();
+  return isNaN(d.getTime()) ? isoDate : d.toISOString();
 }
 
 function isWithinRange(isoDate: string, rangeStart: string, rangeEnd: string): boolean {
   const t = new Date(isoDate).getTime();
-  return t >= new Date(rangeStart).getTime() && t < new Date(rangeEnd).getTime();
+  const s = new Date(rangeStart).getTime();
+  const e = new Date(rangeEnd).getTime();
+  if (isNaN(t) || isNaN(s) || isNaN(e)) return false;
+  return t >= s && t < e;
 }
 
 // ─── メイン構築関数 ──────────────────────────────────────
@@ -73,17 +77,26 @@ export function buildPdcaCycleRecords(input: CycleBuilderInput): PdcaCycleRecord
     today = new Date().toISOString(),
   } = input;
 
+  const startDate = new Date(supportStartDate);
+  const todayDate = new Date(today);
+
+  if (isNaN(startDate.getTime()) || isNaN(todayDate.getTime())) {
+    return [];
+  }
+
   // 最大ラウンド数を算出
   const elapsedDays = Math.max(0,
-    (new Date(today).getTime() - new Date(supportStartDate).getTime()) / (1000 * 60 * 60 * 24),
+    (todayDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
   );
-  const maxRounds = input.maxRounds ?? Math.max(1, Math.ceil(elapsedDays / cycleDays));
+  
+  const safeCycleDays = cycleDays || DEFAULT_CYCLE_DAYS;
+  const maxRounds = input.maxRounds ?? Math.max(1, Math.ceil(elapsedDays / safeCycleDays));
 
   const records: PdcaCycleRecord[] = [];
 
   for (let round = 1; round <= maxRounds; round++) {
-    const startedAt = addDaysToDate(supportStartDate, (round - 1) * cycleDays);
-    const dueAt = addDaysToDate(supportStartDate, round * cycleDays);
+    const startedAt = addDaysToDate(supportStartDate, (round - 1) * safeCycleDays);
+    const dueAt = addDaysToDate(supportStartDate, round * safeCycleDays);
 
     // proposalAcceptedAt: サイクル期間内の最初の accept
     const proposalAcceptedAt = findFirstAcceptInRange(
