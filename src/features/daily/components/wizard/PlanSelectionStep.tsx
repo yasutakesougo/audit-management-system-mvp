@@ -70,7 +70,12 @@ export type PlanSelectionStepProps = {
   userId?: string;
   /** ユーザーのアセスメント日（モニタリング計算用、optional） */
   lastAssessmentDate?: string | null;
+  /** スロットごとの選択可否状態（競合の有無） */
+  selectableStateByStepId?: Map<string, { conflicted: boolean; blockingOrders: number[] }>;
+  /** 非表示にする手順オーダー */
+  hiddenStepOrders?: Set<number>;
 };
+
 
 // ─────────────────────────────────────────────
 // ABC 件数カウント（今日）
@@ -313,7 +318,10 @@ export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
   onAbcRecord,
   userId,
   lastAssessmentDate,
+  selectableStateByStepId,
+  hiddenStepOrders,
 }) => {
+
   const navigate = useNavigate();
 
   // ── 参照戦略の取得 ──
@@ -410,7 +418,10 @@ export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
           savedObservations={savedObservations}
           abcCountBySlot={abcCountBySlot}
           onAbcBadgeClick={handleAbcBadgeClick}
+          selectableStateByStepId={selectableStateByStepId}
+          hiddenStepOrders={hiddenStepOrders}
         />
+
       </Box>
 
       {/* ── ABC Slot Dialog ── */}

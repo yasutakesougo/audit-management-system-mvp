@@ -98,7 +98,10 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     recordLockState,
     totalSteps,
     unfilledStepsCount,
+    selectableStateByStepId,
+    hiddenStepOrders,
     handleAfterSubmit,
+    verifySaveConflict,
   } = useTimeBasedSupportRecordPage({
     procedureRepo,
     behaviorRepo,
@@ -194,9 +197,13 @@ const TimeBasedSupportRecordPage: React.FC = () => {
 
   const handleRecordSubmitWrapper = useCallback(
     async (data: Parameters<typeof handleRecordSubmit>[0]) => {
+      // ── 保存前ガードレール ──
+      const ok = await verifySaveConflict();
+      if (!ok) return;
+
       await handleRecordSubmit(data);
     },
-    [handleRecordSubmit],
+    [handleRecordSubmit, verifySaveConflict],
   );
 
   const handleProcedureSave = useCallback((items: ProcedureItem[]) => {
@@ -408,6 +415,8 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               }
               userId={wizard.wizardUserId || targetUserId}
               lastAssessmentDate={selectedUser?.LastAssessmentDate}
+              selectableStateByStepId={selectableStateByStepId}
+              hiddenStepOrders={hiddenStepOrders}
               onAbcRecord={
                 (wizard.wizardUserId || targetUserId)
                   ? () => {

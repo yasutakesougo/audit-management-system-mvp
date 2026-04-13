@@ -4,6 +4,13 @@ import type { ABCRecord } from '@/domain/behavior';
 import { getScheduleKey } from '@/features/daily';
 import type { BehaviorRepository, ProcedureRepository } from '@/features/daily';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { 
+  getSelectableState, 
+  getHiddenOrdersBySelection 
+} from '@/features/planning-sheet/logic/procedureLogic';
+
+// スロットを一意に特定するためのキー生成ヘルパー
+const getItemScheduleKey = (item: ScheduleItem) => getScheduleKey(item.time, item.activity);
 
 type UseTimeBasedSupportRecordPageArgs = {
   procedureRepo: ProcedureRepository;
@@ -71,7 +78,105 @@ export function useTimeBasedSupportRecordPage({
   );
   const totalSteps = scheduleKeys.length;
   const unfilledStepsCount = unfilledStepIds.length;
+
+  /**
+   * 現在記録済みの手順の行番号（order）の集合
+   */
+  const filledStepOrders = useMemo(() => {
+    const result = new Set<number>();
+    recentObservations.forEach((observation) => {
+      // observation.planSlotKey から対応する scheduleItem を特定
+      const item = schedule.find((s) => getScheduleKey(s.time, s.activity) === observation.planSlotKey);
+      if (item?.sourceStepOrder) {
+        result.add(item.sourceStepOrder);
+      }
+    });
+    return result;
+  }, [recentObservations, schedule]);
+
+  /**
+   * スロットごとの選択可否状態（競合の有無）
+   */
+  const selectableStateByStepId = useMemo(() => {
+    const result = new Map<string, { conflicted: boolean; blockingOrders: number[] }>();
+    schedule.forEach((item) => {
+      const key = getScheduleKey(item.time, item.activity);
+      if (item.sourceStepOrder) {
+        result.set(key, getSelectableState(item.sourceStepOrder, filledStepOrders));
+      }
+    });
+    return result;
+  }, [schedule, filledStepOrders]);
+
+  // 現在の「実質的な」選択状況（保存済み + 今選んでいるもの）
+  const effectiveSelectedOrders = useMemo(() => {
+    const orders = new Set(filledStepOrders);
+    
+    // 現在選択中のものも「仮の選択」として含めると、画面が即応する
+    if (selectedStepId) {
+      const item = schedule.find(s => getItemScheduleKey(s) === selectedStepId);
+      const order = item?.sourceStepOrder;
+      if (order != null) {
+        orders.add(order);
+      }
+    }
+    
+    return orders;
+  }, [filledStepOrders, selectedStepId, schedule]);
+
+  // 非表示にすべき行番号
+  const hiddenStepOrders = useMemo(() => {
+    return new Set(getHiddenOrdersBySelection(effectiveSelectedOrders));
+  }, [effectiveSelectedOrders]);
+
+
+  /**
+   * 保存前の競合確認（ガードレール）
+   * @returns 保存を続行して良い場合は true, キャンセルされた場合は false
+   */
+  const verifySaveConflict = useCallback(async () => {
+    // 1. 直近の競合（親と子が両方入力されている等）を収集
+    const conflictEntries = Array.from(selectableStateByStepId.entries())
+      .filter(([_, state]) => state.conflicted)
+      .map(([id, state]) => ({ id, blocking: state.blockingOrders }));
+
+    // 2. 「本来不要なはずの行（非表示行）」に記録が残っているものを収集
+    // 行番号(order)で判定
+    const filledHiddenOrders = Array.from(hiddenStepOrders).filter(order => 
+      filledStepOrders.has(order)
+    );
+
+    if (conflictEntries.length === 0 && filledHiddenOrders.length === 0) return true;
+
+    let message = '【保存前の最終確認】\n';
+    message += '========================\n';
+    
+    if (conflictEntries.length > 0) {
+      message += '● 通常活動と外活動オプションが重複しています\n';
+      conflictEntries.forEach(entry => {
+        // 現在の選択アイテムから rowNo を取得
+        const item = schedule.find(s => getItemScheduleKey(s) === entry.id);
+        const myOrder = item?.procedureStep?.sourceStepOrder;
+        message += `   → 行${myOrder} と 行${entry.blocking.join(', ')}\n`;
+      });
+      message += '\n';
+    }
+
+    if (filledHiddenOrders.length > 0) {
+      message += '● 現在のルートでは不要な手順に記録が残っています\n';
+      message += `   → 対象行: ${filledHiddenOrders.sort((a, b) => a - b).join(', ')}\n`;
+      message += '\n';
+    }
+
+    message += '========================\n';
+    message += 'このまま保存してよろしいですか？\n';
+    message += '（修正する場合は「キャンセル」を押して戻ってください）';
+
+    return window.confirm(message);
+  }, [selectableStateByStepId, hiddenStepOrders, filledStepOrders, schedule]);
+
   const recordLockState = useMemo<RecordPanelLockState>(() => {
+
     if (!targetUserId) return 'no-user';
     return 'unlocked';
   }, [targetUserId]);
@@ -182,7 +287,13 @@ export function useTimeBasedSupportRecordPage({
     recordLockState,
     totalSteps,
     unfilledStepsCount,
+    selectableStateByStepId,
+    hiddenStepOrders,
     handleSelectStep,
     handleAfterSubmit,
+    verifySaveConflict,
   } as const;
+
+
+
 }
