@@ -19,7 +19,6 @@ import { useIbdPageGuard } from '@/features/daily/hooks/useIbdPageGuard';
 import { useSupportRecordSubmit } from '@/pages/hooks/useSupportRecordSubmit';
 import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
 import { usePlanningSheetToProcedureBridge } from '@/features/planning-sheet/hooks/usePlanningSheetToProcedureBridge';
-import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 import { CircularProgress } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
