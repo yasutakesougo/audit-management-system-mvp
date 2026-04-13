@@ -88,7 +88,6 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     schedule,
     filledStepIds,
     recentObservations,
-    isAcknowledged,
     setIsAcknowledged,
     selectedStepId: _selectedStepId,
     setSelectedStepId,
