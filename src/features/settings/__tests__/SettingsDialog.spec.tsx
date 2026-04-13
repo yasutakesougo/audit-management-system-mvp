@@ -78,7 +78,7 @@ describe('SettingsDialog planning visibility behavior', () => {
 
   it('updates explicit planning preference to hide when user toggles planning off', () => {
     renderDialog();
-    fireEvent.click(screen.getByRole('switch', { name: 'Planning' }));
+    fireEvent.click(screen.getByRole('switch', { name: '標準支援' }));
 
     expect(mockUpdateSettings).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -105,7 +105,7 @@ describe('SettingsDialog planning visibility behavior', () => {
       navGroupVisibilityPrefs: { planning: 'hide' },
     };
     renderDialog();
-    fireEvent.click(screen.getByRole('switch', { name: 'Planning' }));
+    fireEvent.click(screen.getByRole('switch', { name: '標準支援' }));
 
     expect(mockUpdateSettings).toHaveBeenCalledWith(
       expect.objectContaining({
