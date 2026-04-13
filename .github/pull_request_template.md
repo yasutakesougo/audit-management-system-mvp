@@ -20,6 +20,38 @@
 
 ---
 
+## 🔒 Security Check（プロジェクト固有ルール確認 / 全PR必須）
+
+> 違反は原則マージブロック。静的解析で捕捉できない設計判断をレビュー入口で止めるためのゲート。
+
+### データアクセス層
+- [ ] **Repository経由**: UI / Hook から Repository Factory を直呼びしていない（`useXXXRepository()` 経由）
+- [ ] **通信経路限定**: `spFetch` / `graphFetch` / `resilientFetch` 以外の生 `fetch()` を新規追加していない
+- [ ] **SharePoint直参照なし**: Repository層から `@/lib/sp/*`（helpers除く）を直接 import していない
+
+### スキーマ / SSOT
+- [ ] **`fields/*.ts` 準拠**: 新規参照するフィールドは `src/sharepoint/fields/*.ts` に定義済み
+- [ ] **OData手組みなし**: `eq` / `ne` / `substringof(` 等のフィルタ文字列を手動組立していない（`builders.ts` 使用）
+- [ ] **drift fail-open**: 欠損フィールドで処理停止させず、観測（telemetry / log）に逃がしている
+
+### UI / 状態管理
+- [ ] **`window.confirm` 不使用**: 確認ダイアログは `useConfirmDialog` + `ConfirmDialog` を使用
+- [ ] **Zustand selector 安定性**: selector で新規 object / array リテラルを返していない（個別購読 or memo）
+- [ ] **pure / IO 分離**: ビジネスロジックから副作用（fetch / storage / telemetry）を分離
+
+### 認証 / 認可 / セキュリティ
+- [ ] **認可チェック**: データアクセスに対象リソースの権限確認がある（ID指定のみで他人データ取得不可）
+- [ ] **サーバー側検証**: バリデーションをクライアント側のみに依存していない
+- [ ] **シークレット直書きなし**: APIキー / トークン / 接続文字列を直書きしていない（env / Secrets のみ）
+- [ ] **エラー露出なし**: ユーザー向け文言と内部ログが分離、スタックトレース / 内部ID / SQL を露出していない
+- [ ] **入力検証**: 外部入力を無検証で DOM / query / storage に流していない（XSS / Injection対策）
+
+### 該当なし宣言（該当チェックのスキップ理由）
+<!-- 例: "UI変更なしのため Zustand / confirm 項目は N/A" / "認可は親Page側で実施済み" -->
+- N/A 項目と理由:
+
+---
+
 ## 🧭 AI Skills（[Protocol](docs/ai-skills-protocol.md)）
 
 <!-- 使ったスキル名を 2-3 個まで列挙。未使用なら N/A -->
