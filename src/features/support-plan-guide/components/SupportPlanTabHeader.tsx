@@ -18,7 +18,7 @@ import {
   getGroupDefaultSub,
   findGroupDef,
 } from '@/features/support-plan-guide/domain/tabRoute';
-import { SECTIONS } from '@/features/support-plan-guide/utils/helpers';
+import { SECTION_LABELS } from '@/features/support-plan-guide/domain/sectionMeta';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Box from '@mui/material/Box';
@@ -31,7 +31,7 @@ import Stack from '@mui/material/Stack';
 
 // ── サブタブラベル逆引き ──
 const SUB_LABELS: ReadonlyMap<SectionKey, string> = new Map(
-  SECTIONS.map((s) => [s.key, s.label]),
+  Object.entries(SECTION_LABELS) as Array<[SectionKey, string]>,
 );
 
 // ────────────────────────────────────────────

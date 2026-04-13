@@ -27,15 +27,12 @@ import type {
 import {
     FIELD_KEYS,
 } from '@/features/support-plan-guide/types';
-import {
-    computeRequiredCompletion,
-    findSectionKeyByFieldKey,
-} from '@/features/support-plan-guide/utils/helpers';
+import { computeRequiredCompletion } from '@/features/support-plan-guide/domain/progress';
 import { getAllSubsFlat } from '@/features/support-plan-guide/domain/tabRoute';
+import { findSectionKeyByFieldKey } from '@/features/support-plan-guide/domain/sectionMeta';
 import SupportPlanTabHeader from '@/features/support-plan-guide/components/SupportPlanTabHeader';
 import { useUsersStore } from '@/features/users/store';
 import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
-import { PREFETCH_KEYS, prefetchByKey, warmRoute } from '@/prefetch/routes';
 import { TESTIDS, tid } from '@/testids';
 import { cancelIdle, runOnIdle } from '@/utils/runOnIdle';
 import CloudDoneRoundedIcon from '@mui/icons-material/CloudDoneRounded';
@@ -258,12 +255,18 @@ export default function SupportPlanGuidePage() {
 
   // ── Prefetch (idle) ──
   React.useEffect(() => {
-    const handle = runOnIdle(() => warmRoute(() => import('@/features/audit/AuditPanel'), PREFETCH_KEYS.audit, { source: 'idle' }));
+    const handle = runOnIdle(() => {
+      void import('@/prefetch/routes').then(({ warmRoute, PREFETCH_KEYS }) => (
+        warmRoute(() => import('@/features/audit/AuditPanel'), PREFETCH_KEYS.audit, { source: 'idle' })
+      ));
+    });
     return () => cancelIdle(handle);
   }, []);
   React.useEffect(() => {
     const handle = runOnIdle(() => {
-      prefetchByKey(PREFETCH_KEYS.supportPlanGuideMarkdown, 'idle');
+      void import('@/prefetch/routes').then(({ prefetchByKey, PREFETCH_KEYS }) => {
+        prefetchByKey(PREFETCH_KEYS.supportPlanGuideMarkdown, 'idle');
+      });
     }, 200);
     return () => cancelIdle(handle);
   }, []);
