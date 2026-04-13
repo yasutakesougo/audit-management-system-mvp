@@ -1,2 +1,3 @@
+# Ingest Pipeline Requirements
+# Requires Python 3.10+ for MarkItDown
 markitdown
-python-dotenv
