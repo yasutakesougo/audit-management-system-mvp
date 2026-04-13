@@ -44,9 +44,6 @@ export type PlanSelectionStepProps = {
   userName: string;
   /** スケジュールリスト */
   schedule: ScheduleItem[];
-  /** 確認済みフラグ */
-  isAcknowledged: boolean;
-  onAcknowledged: () => void;
   /** 記録済みスロット一覧 */
   filledStepIds: Set<string>;
   /** 未記入フィルタ */
@@ -56,8 +53,6 @@ export type PlanSelectionStepProps = {
   totalCount: number;
   /** BIP 介入計画 */
   interventionPlans?: BehaviorInterventionPlan[];
-  /** 保存済み観察メモ */
-  savedObservations?: Map<string, string>;
   /** Plan 項目タップ → 自動で Step 3 遷移 */
   onSelectSlot: (stepId: string) => void;
   /** 戻るボタン → Step 1 */
@@ -303,15 +298,12 @@ StatusSummaryBar.displayName = 'StatusSummaryBar';
 export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
   userName,
   schedule,
-  isAcknowledged,
-  onAcknowledged,
   filledStepIds,
   showUnfilledOnly,
   onToggleUnfilledOnly,
   unfilledCount,
   totalCount,
   interventionPlans,
-  savedObservations,
   onSelectSlot,
   onBack,
   onIcebergAnalysis,
@@ -342,18 +334,12 @@ export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
   }, [onSelectSlot]);
 
   // ABC 件数をスロット別に集計
-  const { abcCountBySlot, allRecords: abcAllRecords } = useAbcTodayCount(userId);
+  const { allRecords: abcAllRecords } = useAbcTodayCount(userId);
 
   // ABC スロットダイアログ state
   const [abcDialogOpen, setAbcDialogOpen] = useState(false);
   const [abcDialogSlotId, setAbcDialogSlotId] = useState('');
   const [abcDialogSlotLabel, setAbcDialogSlotLabel] = useState('');
-
-  const handleAbcBadgeClick = useCallback((slotId: string, slotLabel: string) => {
-    setAbcDialogSlotId(slotId);
-    setAbcDialogSlotLabel(slotLabel);
-    setAbcDialogOpen(true);
-  }, []);
 
   const handleAbcDialogClose = useCallback(() => {
     setAbcDialogOpen(false);
