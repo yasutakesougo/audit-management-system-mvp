@@ -9,8 +9,7 @@
  *   ・関連導線（ABC記録・氷山PDCA・支援計画シート）
  *   ・記録進捗プログレスバー
  */
-import type { AbcRecord } from '@/domain/abc/abcRecord';
-import { buildAbcCountBySlot, filterAbcBySlot, type AbcCountBySlot } from '@/domain/abc/buildAbcCountBySlot';
+import { buildAbcCountBySlot, type AbcCountBySlot } from '@/domain/abc/buildAbcCountBySlot';
 import { useLinkedStrategies } from '@/features/daily/hooks/useLinkedStrategies';
 import { AbcSlotDialog } from './AbcSlotDialog';
 import { StrategyReferenceAccordion } from './StrategyReferenceAccordion';
@@ -34,6 +33,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import type { AbcRecord } from '@/domain/abc/abcRecord';
 
 // ─────────────────────────────────────────────
 // Types
@@ -44,9 +44,6 @@ export type PlanSelectionStepProps = {
   userName: string;
   /** スケジュールリスト */
   schedule: ScheduleItem[];
-  /** 確認済みフラグ */
-  isAcknowledged: boolean;
-  onAcknowledged: () => void;
   /** 記録済みスロット一覧 */
   filledStepIds: Set<string>;
   /** 未記入フィルタ */
@@ -56,8 +53,6 @@ export type PlanSelectionStepProps = {
   totalCount: number;
   /** BIP 介入計画 */
   interventionPlans?: BehaviorInterventionPlan[];
-  /** 保存済み観察メモ */
-  savedObservations?: Map<string, string>;
   /** Plan 項目タップ → 自動で Step 3 遷移 */
   onSelectSlot: (stepId: string) => void;
   /** 戻るボタン → Step 1 */
@@ -70,7 +65,12 @@ export type PlanSelectionStepProps = {
   userId?: string;
   /** ユーザーのアセスメント日（モニタリング計算用、optional） */
   lastAssessmentDate?: string | null;
+  /** スロットごとの選択可否状態（競合の有無） */
+  selectableStateByStepId?: Map<string, { conflicted: boolean; blockingOrders: number[] }>;
+  /** 非表示にする手順オーダー */
+  hiddenStepOrders?: Set<number>;
 };
+
 
 // ─────────────────────────────────────────────
 // ABC 件数カウント（今日）
@@ -169,7 +169,7 @@ const StatusSummaryBar: React.FC<{
   onIcebergAnalysis?: () => void;
   onAbcRecord?: () => void;
 }> = memo(({ userId, lastAssessmentDate, totalCount, unfilledCount, onIcebergAnalysis, onAbcRecord }) => {
-  const { todayCount: abcTodayCount, abcCountBySlot: _unusedSlotCount } = useAbcTodayCount(userId);
+  const { todayCount: abcTodayCount } = useAbcTodayCount(userId);
   const planStatus = usePlanStatus(userId);
 
   const monitoringCycle: MonitoringCycleResult | null = useMemo(() => {
@@ -298,22 +298,22 @@ StatusSummaryBar.displayName = 'StatusSummaryBar';
 export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
   userName,
   schedule,
-  isAcknowledged,
-  onAcknowledged,
   filledStepIds,
   showUnfilledOnly,
   onToggleUnfilledOnly,
   unfilledCount,
   totalCount,
   interventionPlans,
-  savedObservations,
   onSelectSlot,
   onBack,
   onIcebergAnalysis,
   onAbcRecord,
   userId,
   lastAssessmentDate,
+  selectableStateByStepId,
+  hiddenStepOrders,
 }) => {
+
   const navigate = useNavigate();
 
   // ── 参照戦略の取得 ──
@@ -334,28 +334,20 @@ export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
   }, [onSelectSlot]);
 
   // ABC 件数をスロット別に集計
-  const { abcCountBySlot, allRecords: abcAllRecords } = useAbcTodayCount(userId);
+  const { allRecords: abcAllRecords } = useAbcTodayCount(userId);
 
   // ABC スロットダイアログ state
   const [abcDialogOpen, setAbcDialogOpen] = useState(false);
-  const [abcDialogSlotId, setAbcDialogSlotId] = useState('');
-  const [abcDialogSlotLabel, setAbcDialogSlotLabel] = useState('');
-
-  const handleAbcBadgeClick = useCallback((slotId: string, slotLabel: string) => {
-    setAbcDialogSlotId(slotId);
-    setAbcDialogSlotLabel(slotLabel);
-    setAbcDialogOpen(true);
-  }, []);
 
   const handleAbcDialogClose = useCallback(() => {
     setAbcDialogOpen(false);
   }, []);
 
   const abcDialogRecords = useMemo(() => {
-    if (!abcDialogOpen || !userId || !abcDialogSlotId) return [];
-    const today = new Date().toISOString().slice(0, 10);
-    return filterAbcBySlot(abcAllRecords, userId, today, abcDialogSlotId);
-  }, [abcDialogOpen, userId, abcDialogSlotId, abcAllRecords]);
+    if (!abcDialogOpen || !userId) return [];
+    // Note: Since we removed slot-specific badge clicks, this diallog shows all for now
+    return abcAllRecords;
+  }, [abcDialogOpen, userId, abcAllRecords]);
 
   return (
     <Box sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -398,8 +390,6 @@ export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
         <ProcedurePanel
           title="時間帯を選択してください"
           schedule={schedule}
-          isAcknowledged={isAcknowledged}
-          onAcknowledged={onAcknowledged}
           onSelectStep={handleStepSelect}
           filledStepIds={filledStepIds}
           showUnfilledOnly={showUnfilledOnly}
@@ -407,17 +397,17 @@ export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
           unfilledCount={unfilledCount}
           totalCount={totalCount}
           interventionPlans={interventionPlans}
-          savedObservations={savedObservations}
-          abcCountBySlot={abcCountBySlot}
-          onAbcBadgeClick={handleAbcBadgeClick}
+          selectableStateByStepId={selectableStateByStepId}
+          hiddenStepOrders={hiddenStepOrders}
         />
+
       </Box>
 
       {/* ── ABC Slot Dialog ── */}
       <AbcSlotDialog
         open={abcDialogOpen}
         onClose={handleAbcDialogClose}
-        slotLabel={abcDialogSlotLabel}
+        slotLabel="今日のABC記録"
         records={abcDialogRecords}
         userId={userId}
       />

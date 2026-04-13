@@ -88,7 +88,6 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     schedule,
     filledStepIds,
     recentObservations,
-    isAcknowledged,
     setIsAcknowledged,
     selectedStepId: _selectedStepId,
     setSelectedStepId,
@@ -98,7 +97,10 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     recordLockState,
     totalSteps,
     unfilledStepsCount,
+    selectableStateByStepId,
+    hiddenStepOrders,
     handleAfterSubmit,
+    verifySaveConflict,
   } = useTimeBasedSupportRecordPage({
     procedureRepo,
     behaviorRepo,
@@ -144,16 +146,6 @@ const TimeBasedSupportRecordPage: React.FC = () => {
 
   const bipOptions = useMemo(() => toBipOptions(userInterventionPlans), [userInterventionPlans]);
 
-  const savedObservationsMap = useMemo(() => {
-    const map = new Map<string, string>();
-    recentObservations.forEach((obs) => {
-      const key = obs.planSlotKey ?? '';
-      if (key && obs.actualObservation) {
-        map.set(key, obs.actualObservation.slice(0, 60) + (obs.actualObservation.length > 60 ? '…' : ''));
-      }
-    });
-    return map;
-  }, [recentObservations]);
 
   // Error display
   const rawError = submitError ?? behaviorError;
@@ -194,9 +186,13 @@ const TimeBasedSupportRecordPage: React.FC = () => {
 
   const handleRecordSubmitWrapper = useCallback(
     async (data: Parameters<typeof handleRecordSubmit>[0]) => {
+      // ── 保存前ガードレール ──
+      const ok = await verifySaveConflict();
+      if (!ok) return;
+
       await handleRecordSubmit(data);
     },
-    [handleRecordSubmit],
+    [handleRecordSubmit, verifySaveConflict],
   );
 
   const handleProcedureSave = useCallback((items: ProcedureItem[]) => {
@@ -390,15 +386,12 @@ const TimeBasedSupportRecordPage: React.FC = () => {
             <PlanSelectionStep
               userName={selectedUser?.FullName ?? ''}
               schedule={schedule}
-              isAcknowledged={isAcknowledged}
-              onAcknowledged={() => setIsAcknowledged(true)}
               filledStepIds={filledStepIds}
               showUnfilledOnly={showUnfilledOnly}
               onToggleUnfilledOnly={() => setShowUnfilledOnly((prev) => !prev)}
               unfilledCount={unfilledStepsCount}
               totalCount={totalSteps}
               interventionPlans={userInterventionPlans}
-              savedObservations={savedObservationsMap}
               onSelectSlot={handleWizardSelectSlot}
               onBack={handleWizardBackToUser}
               onIcebergAnalysis={
@@ -408,6 +401,8 @@ const TimeBasedSupportRecordPage: React.FC = () => {
               }
               userId={wizard.wizardUserId || targetUserId}
               lastAssessmentDate={selectedUser?.LastAssessmentDate}
+              selectableStateByStepId={selectableStateByStepId}
+              hiddenStepOrders={hiddenStepOrders}
               onAbcRecord={
                 (wizard.wizardUserId || targetUserId)
                   ? () => {

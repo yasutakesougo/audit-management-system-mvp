@@ -18,6 +18,10 @@ export type ProcedureStep = {
   time: string;
   activity: string;
   instruction: string;
+  /** 本人の動き / 手順詳解 (Bridge用) */
+  activityDetail?: string;
+  /** 支援者の支援（手順） (Bridge用) */
+  instructionDetail?: string;
   isKey: boolean;
   /** BIP IDs linked to this time-slot. */
   linkedInterventionIds?: string[];
