@@ -66,7 +66,12 @@ describe('buildActionSuggestionsFromSupportPlan', () => {
       targetUserId: userId
     });
     expect(result[0].evidence.currentValue).toContain('102日');
-    expect(result[0].cta.params).toEqual({ tab: 'assessment' });
+    expect(result[0].cta.params).toEqual(
+      expect.objectContaining({
+        tab: 'assessment',
+        anchor: 'serviceUserName',
+      })
+    );
   });
 
   it('generates P0 action for safety gap (versions >= 3, updates = 0)', () => {
@@ -88,7 +93,12 @@ describe('buildActionSuggestionsFromSupportPlan', () => {
       ruleId: 'sp-safety-gap',
       title: expect.stringContaining('安全管理手順')
     });
-    expect(result[0].cta.params).toEqual({ tab: 'safety' });
+    expect(result[0].cta.params).toEqual(
+      expect.objectContaining({
+        tab: 'risk',
+        anchor: 'riskManagement',
+      })
+    );
   });
 
   it('generates P0 action for critical compliance guidance', () => {
