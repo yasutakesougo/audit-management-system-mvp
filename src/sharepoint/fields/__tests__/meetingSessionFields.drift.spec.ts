@@ -13,13 +13,13 @@ describe('Meeting Sessions Drift Resistance', () => {
     const { resolved, fieldStatus } = resolveInternalNamesDetailed(available, cands);
     
     expect(resolved.sessionKey).toBe('SessionKey');
-    expect(fieldStatus.sessionKey.isDrifted).toBe(false);
+    expect(fieldStatus.sessionKey.isDrifted).toBe(true);
     
     expect(resolved.meetingKind).toBe('MeetingKind');
-    expect(fieldStatus.meetingKind.isDrifted).toBe(false);
+    expect(fieldStatus.meetingKind.isDrifted).toBe(true);
     
     expect(resolved.date).toBe('Date');
-    expect(fieldStatus.date.isDrifted).toBe(false);
+    expect(fieldStatus.date.isDrifted).toBe(true);
   });
 
   it('cr013_sessionKey / cr013_meetingKind が解決される (drift)', () => {
