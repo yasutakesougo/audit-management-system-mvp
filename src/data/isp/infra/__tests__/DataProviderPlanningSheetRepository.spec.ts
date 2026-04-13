@@ -4,7 +4,6 @@ import { DataProviderPlanningSheetRepository } from '../DataProviderPlanningShee
 import type {
   DataProviderOptions,
   IDataProvider,
-  UpdateOptions,
 } from '@/lib/data/dataProvider.interface';
 import type { SpFieldDef } from '@/lib/sp/types';
 import { PLANNING_SHEET_LIST_TITLE } from '@/sharepoint/fields/ispThreeLayerFields';
