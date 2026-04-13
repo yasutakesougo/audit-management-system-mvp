@@ -35,6 +35,14 @@ export type SupportPlanForm = {
   serviceStartDate: string;
   /** 実際の初回サービス提供日 */
   firstServiceDate: string;
+  /** 通所日数・時間 (例: 月〜金 9:00-16:00) */
+  attendingDays: string;
+  /** 本人の役割 (計画における本人の具体的な役割/約束) */
+  userRole: string;
+  /** 強度行動障害用: 環境調整 */
+  ibdEnvAdjustment: string;
+  /** 強度行動障害用: 肯定的行動支援 */
+  ibdPbsStrategy: string;
   /** 構造化目標データ */
   goals: GoalItem[];
   /**
@@ -52,6 +60,7 @@ export type SectionKey =
   | 'assessment'
   | 'smart'
   | 'supports'
+  | 'safety'
   | 'decision'
   | 'compliance'
   | 'monitoring'
@@ -67,6 +76,10 @@ export type FieldConfig = {
   minRows?: number;
   quickPhrases?: string[];
   required?: boolean;
+  guidance?: {
+    tip: string;
+    example: string;
+  };
 };
 
 export type SectionConfig = {
@@ -170,6 +183,10 @@ export const defaultFormState: SupportPlanForm = {
   rightsAdvocacy: '',
   serviceStartDate: '',
   firstServiceDate: '',
+  attendingDays: '',
+  userRole: '',
+  ibdEnvAdjustment: '',
+  ibdPbsStrategy: '',
   goals: [],
 };
 
@@ -192,6 +209,10 @@ export const FIELD_LIMITS: Record<SupportPlanStringFieldKey, number> = {
   rightsAdvocacy: 2000,
   serviceStartDate: 20,
   firstServiceDate: 20,
+  attendingDays: 120,
+  userRole: 600,
+  ibdEnvAdjustment: 900,
+  ibdPbsStrategy: 900,
 };
 
 export const REQUIRED_FIELDS: SupportPlanStringFieldKey[] = [

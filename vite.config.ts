@@ -158,10 +158,24 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks(id) {
+            const normalized = id.replace(/\\/g, '/');
+            if (
+              normalized.includes('/src/features/support-plan-guide/hooks/useSupportPlanForm') ||
+              normalized.includes('/src/features/support-plan-guide/hooks/useSuggestionDecisionPersistence') ||
+              normalized.includes('/src/features/support-plan-guide/hooks/usePlanRole') ||
+              normalized.includes('/src/features/support-plan-guide/hooks/useIspRepositories') ||
+              normalized.includes('/src/features/support-plan-guide/hooks/useRegulatorySummary') ||
+              normalized.includes('/src/features/support-plan-guide/hooks/useSupportPlanBundle') ||
+              normalized.includes('/src/features/support-plan-guide/domain/sectionMeta') ||
+              normalized.includes('/src/features/support-plan-guide/domain/progress') ||
+              normalized.includes('/src/features/ibd/analysis/pdca/queries/useIcebergPdcaList') ||
+              normalized.includes('/src/features/ibd/analysis/pdca/queries/useIcebergEvidence')
+            ) {
+              return 'support-plan-guide-core';
+            }
             if (!id.includes('node_modules')) {
               return undefined;
             }
-            const normalized = id.replace(/\\/g, '/');
             if (normalized.includes('/dayjs/')) {
               return 'schedule-core';
             }

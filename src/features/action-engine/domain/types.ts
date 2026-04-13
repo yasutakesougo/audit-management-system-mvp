@@ -77,6 +77,10 @@ export interface ActionSuggestion {
   expiresAt?: string;
   /** 検出ルール名（デバッグ用） */
   ruleId: string;
+  /** 担当者ID (P2: チーム運用用) */
+  assignedToUserId?: string;
+  /** 通知実行日時 (P1: 重複通知防止用) */
+  notifiedAt?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -180,7 +184,7 @@ export const MAX_SUGGESTIONS_PER_USER = 5;
 // ---------------------------------------------------------------------------
 
 /** 提案に対する人の判断ステータス */
-export type SuggestionStatus = 'open' | 'dismissed' | 'snoozed';
+export type SuggestionStatus = 'open' | 'dismissed' | 'snoozed' | 'done';
 
 /**
  * ActionSuggestionState — 提案への人の操作状態。
@@ -220,4 +224,32 @@ export function isSuggestionVisible(
     return new Date(state.snoozedUntil).getTime() <= now.getTime();
   }
   return false;
+}
+
+// ---------------------------------------------------------------------------
+// ActionTask — Persistent Execution Entity
+// ---------------------------------------------------------------------------
+
+/** タスクの実行ステータス */
+export type ActionTaskStatus = 'open' | 'in_progress' | 'done' | 'dismissed';
+
+/** 
+ * ActionTask — 永続的な実行タスク 
+ * Suggestion から昇格（Promote）された、または要修正として固定された実体。
+ */
+export interface ActionTask extends ActionSuggestion {
+  /** 永続 ID (UUID) */
+  taskId: string;
+  /** 実行ステータス */
+  status: ActionTaskStatus;
+  /** 署名・承認者 ID */
+  approvedBy?: string;
+  /** 実施期限 (ISO 8601) */
+  dueDate?: string;
+  /** 実行完了日時 (ISO 8601) */
+  executedAt?: string;
+  /** 完了時のメモ・結果報告 */
+  resultNote?: string;
+  /** 関連するタイムラインのスナップショット ID（オプション） */
+  timelineSnapshotId?: string;
 }

@@ -16,6 +16,8 @@ export type {
   HighIntensityEvent,
   ActionSuggestionState,
   SuggestionStatus,
+  ActionTask,
+  ActionTaskStatus,
 } from './domain/types';
 
 // Domain utilities
@@ -58,9 +60,14 @@ export type {
   UseAllCorrectiveActionsReturn,
 } from './hooks/useAllCorrectiveActions';
 
-// State store
+// State stores
 export { useSuggestionStateStore } from './hooks/useSuggestionStateStore';
 export type { SuggestionStateStore, SuggestionStateMeta } from './hooks/useSuggestionStateStore';
+export { useActionTaskStore, actionTaskSelectors } from './hooks/useActionTaskStore';
+export type { ActionTaskStore } from './hooks/useActionTaskStore';
+
+// Components
+export { ActionTaskList } from './components/ActionTaskList';
 
 // Telemetry
 export {

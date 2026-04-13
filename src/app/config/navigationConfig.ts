@@ -200,6 +200,15 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'planning' as NavGroupKey,
     },
     {
+      label: '個別支援計画更新（前回比較）',
+      to: '/isp-editor',
+      isActive: (pathname) => pathname.startsWith('/isp-editor'),
+      icon: undefined,
+      testId: TESTIDS.nav.ispEditor,
+      audience: NAV_AUDIENCE.admin,
+      group: 'planning' as NavGroupKey,
+    },
+    {
       label: '支援計画シート',
       to: '/planning-sheet-list',
       isActive: (pathname) => pathname.startsWith('/planning-sheet-list') || pathname.startsWith('/support-planning-sheet'),
@@ -217,6 +226,16 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       testId: TESTIDS.nav.assessment,
       audience: NAV_AUDIENCE.staff,
       group: 'severe' as NavGroupKey,
+    },
+    {
+      label: '特性アンケート',
+      to: '/survey/tokusei',
+      isActive: (pathname) => pathname.startsWith('/survey/tokusei'),
+      icon: undefined,
+      audience: NAV_AUDIENCE.admin,
+      group: 'planning' as NavGroupKey,
+      tier: 'more',
+      featureFlag: 'todayLiteNavV2',
     },
     {
       label: '行動分析',

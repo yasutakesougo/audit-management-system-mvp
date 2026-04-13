@@ -41,12 +41,11 @@ export const useIcebergPdcaListQuery = (
 export const useIcebergPdcaList = (params?: Params): Result => {
   const userId = params?.userId ?? null;
   const planningSheetId = params?.planningSheetId ?? null;
+  const query = useIcebergPdcaListQuery(userId, planningSheetId);
 
   if (!userId) {
     return { data: [], isLoading: false, error: null, status: 'idle' };
   }
-
-  const query = useIcebergPdcaListQuery(userId, planningSheetId);
 
   const status: Status =
     query.status === 'pending'

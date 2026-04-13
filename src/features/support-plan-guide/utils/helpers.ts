@@ -6,7 +6,8 @@
  * 振る舞いの変更は一切なし（純粋リファクタリング）。
  */
 import type { IUserMaster } from '@/features/users/types';
-import type { DeadlineInfo, SectionConfig, SectionKey, SupportPlanDraft, SupportPlanForm } from '../types';
+import type { DeadlineInfo, SectionConfig, SectionKey, SupportPlanDraft, SupportPlanForm, SupportPlanStringFieldKey } from '../types';
+import { TabGroupKey } from '../domain/tabRoute';
 import { defaultFormState, FIELD_KEYS, FIELD_LIMITS, NAME_LIMIT, REQUIRED_FIELDS } from '../types';
 import { toLocalDateISO } from '@/utils/getNow';
 import { formatDateYmd } from '@/lib/dateFormat';
@@ -167,6 +168,54 @@ export const computeRequiredCompletion = (form: SupportPlanForm) =>
 export const computeFilledCount = (form: SupportPlanForm) =>
   FIELD_KEYS.reduce((count, key) => (form[key].trim() ? count + 1 : count), 0);
 
+export type ReadinessInfo = {
+  isReady: boolean;
+  completionProgress: number;
+  missingLabels: string[];
+  guidance: Array<{ tip: string; example: string }>;
+};
+
+/**
+ * ワークフロー（フェーズ）の準備完了判定（詳細版）
+ */
+export const getGroupReadinessInfo = (groupKey: TabGroupKey, form: SupportPlanForm): ReadinessInfo => {
+  const checkField = (key: SupportPlanStringFieldKey) => {
+    const isFilled = (form[key]?.trim().length ?? 0) > 0;
+    const config = SECTIONS.flatMap(s => s.fields).find(f => f.key === key);
+    return { isFilled, key, label: config?.label ?? key, guidance: config?.guidance };
+  };
+
+  const requiredFieldsMap: Record<TabGroupKey, SupportPlanStringFieldKey[]> = {
+    assessment: ['assessmentSummary'],
+    isp: ['serviceUserName', 'supportLevel', 'planPeriod', 'decisionSupport'],
+    operations: ['monitoringPlan'],
+    ibd: ['assessmentSummary'],
+    output: [],
+  };
+
+  const fields = requiredFieldsMap[groupKey] || [];
+  if (fields.length === 0) {
+    return { isReady: true, completionProgress: 100, missingLabels: [], guidance: [] };
+  }
+
+  const results = fields.map(checkField);
+  const filledCount = results.filter(r => r.isFilled).length;
+  const isReady = filledCount === fields.length;
+  const completionProgress = Math.round((filledCount / fields.length) * 100);
+  const missing = results.filter(r => !r.isFilled);
+
+  return {
+    isReady,
+    completionProgress,
+    missingLabels: missing.map(m => m.label),
+    guidance: missing.map(m => m.guidance).filter((g): g is NonNullable<typeof g> => !!g),
+  };
+};
+
+/** @deprecated Use getGroupReadinessInfo instead */
+export const checkGroupReadiness = (groupKey: TabGroupKey, form: SupportPlanForm): boolean => 
+  getGroupReadinessInfo(groupKey, form).isReady;
+
 // ────────────────────────────────────────────
 // セクション設定（タブ構成）
 // ────────────────────────────────────────────
@@ -216,6 +265,13 @@ export const SECTIONS: SectionConfig[] = [
         helper: '実際にサービス提供を開始した日。',
       },
       {
+        key: 'attendingDays',
+        label: '通所日数・時間',
+        placeholder: '例: 通所日:月〜金 週5日 ／ 時間:10:00-16:30 (6.5時間)',
+        helper: '計画書上部に出力される、標準的な利用条件です。',
+        quickPhrases: ['通所日: 月〜金 週5日', '支援時間: 6.5時間'],
+      },
+      {
         key: 'medicalConsiderations',
         label: '医療的配慮事項',
         minRows: 3,
@@ -236,6 +292,10 @@ export const SECTIONS: SectionConfig[] = [
         minRows: 4,
         placeholder: '例: 生活リズムは安定しているが、他者交流に不安が強い…',
         helper: '健康、生活歴、本人の希望、家族意向、支援課題を含めましょう。',
+        guidance: {
+          tip: 'まずは「今、本人が一番困っていること」を一つ書いてください。',
+          example: '例：騒音が多い場所でのパニック、特定の時間帯の拒絶など。',
+        },
         quickPhrases: ['生活歴: ', '健康・医療: ', '本人の希望: ', '家族・相談支援の意向: '],
       },
       {
@@ -258,7 +318,52 @@ export const SECTIONS: SectionConfig[] = [
     key: 'supports',
     label: '支援内容',
     description: '日中支援や創作活動など具体的な提供内容を記載します。',
-    fields: [],
+    fields: [
+      {
+        key: 'userRole',
+        label: '本人の役割・約束',
+        minRows: 3,
+        placeholder: '例: 片付けを最後までする、挨拶を自分からする、困った時は職員に声をかける…',
+        helper: '本人が計画の中で取り組む具体的な役割や行動指針。',
+        guidance: {
+          tip: '「〇〇してもらう」支援だけでなく、本人が「何をするか」という主体的な役割を記載します。',
+          example: '例：昼食の配膳を担当する。感情が高ぶったら一人でクールダウンする。',
+        },
+      },
+    ],
+  },
+  {
+    key: 'safety',
+    label: '安全管理・緊急時対応',
+    description: '事故防止、緊急時対応、権利擁護など、すべての利用者に共通する安全確保の取り組みを整理します。',
+    fields: [
+      {
+        key: 'emergencyResponsePlan',
+        label: '緊急時対応手順',
+        required: true,
+        minRows: 3,
+        placeholder: '例: 急変時は主治医へ連絡、パニック時はリラックススペースへ誘導…',
+        helper: '急変時、負傷時、行方不明時等の具体的な連絡先と基本手順。',
+      },
+      {
+        key: 'rightsAdvocacy',
+        label: '権利擁護・身体拘束廃止の取り組み',
+        minRows: 2,
+        placeholder: '例: 身体拘束の禁止を徹底、セルフネグレクトの兆候チェック…',
+        helper: '本人の尊厳を守るための配慮や、不適切なケアの防止策。',
+        quickPhrases: [
+          '身体拘束廃止の徹底: 指導員による自己点検を月次実施',
+          '重要説明: 生命の危惧を伴う緊急時は、やむを得ず抑制等の行為を行う場合がある旨を説明し同意取得済み',
+        ],
+      },
+      {
+        key: 'riskManagement',
+        label: '事故防止・ヒヤリハット対策',
+        minRows: 3,
+        placeholder: '例: 服薬確認を2名で実施、送迎時の昇降補助の徹底…',
+        helper: '具体的なヒヤリハット事例への再発防止策など。',
+      },
+    ],
   },
   {
     key: 'decision',
@@ -272,6 +377,10 @@ export const SECTIONS: SectionConfig[] = [
         minRows: 4,
         placeholder: '例: 写真カードで選択肢提示／体験参加でフィードバック収集…',
         helper: '厚労省ガイドラインに沿って、理解しやすい説明や代弁手順を明記。',
+        guidance: {
+          tip: '意思決定を支えるために、本人が「選べる」工夫を一つ選んでください。',
+          example: '例：写真を提示して好きな方を選んでもらう。体験後に感想を聞く。',
+        },
         quickPhrases: ['理解容易化: 図解／ピクトグラム／Plain Language', '選択肢提示: 体験参加／試行期間／第三者意見'],
       },
       {
@@ -302,6 +411,10 @@ export const SECTIONS: SectionConfig[] = [
         minRows: 4,
         placeholder: '例: 月1回面談＋支援記録レビュー／家族ヒアリング／記録データ分析…',
         helper: '面談頻度、活用する記録、評価指標、担当者を明記してください。',
+        guidance: {
+          tip: '目標が達成されたか、いつ・誰が・どうやって確認するかを決めます。',
+          example: '例：月1回の個別面談。サービス日誌の「できるようになった」チェックを毎週集計。',
+        },
         quickPhrases: [
           '面談頻度: 月 回（初回3か月は隔週）',
           '評価指標: 参加率／本人満足／職員アンケート',
@@ -327,31 +440,32 @@ export const SECTIONS: SectionConfig[] = [
   },
   {
     key: 'risk',
-    label: 'コンプライアンス・減算対策',
-    description: '計画書遅延や同意取得漏れなど、運営指導で指摘されやすいリスクを洗い出し、対応策を整理します。',
+    label: '強度行動障害支援計画 (IBDシート)',
+    description: '強度行動障害支援加算等の算定に必要な「支援計画シート」の内容を構成します。',
     fields: [
       {
-        key: 'riskManagement',
-        label: '主なリスクと対応策',
+        key: 'ibdEnvAdjustment',
+        label: '環境調整・コミュニケーション支援',
         required: true,
         minRows: 4,
-        placeholder: '例: 初回30日以内未作成 → 契約アラート設定／議事録テンプレ活用…',
-        helper: '遅延、本人不参加、同意未取得、モニタ未実施などの対策を列挙。',
-        quickPhrases: ['リスク: 作成遅延／対策: タスク自動通知', 'リスク: 同意書未保管／対策: 電子署名ログ保存'],
+        placeholder: '例: 構造化（ついたて設置）、視覚的スケジュール提示、イヤーマフの使用…',
+        helper: '本人が安心して過ごせるための物理的環境、情報の伝え方の工夫。',
+        guidance: {
+          tip: '本人がパニックにならないために「変えられる外部環境」を一つ書いてください。',
+          example: '例：机の向きを変える。BGMを消す。手順を写真で見せる。',
+        },
+        quickPhrases: ['物理的配慮: ついたて設置／個別スペース確保', '情報提示: スケジュール表／写真カード／タイマー活用'],
       },
       {
-        key: 'emergencyResponsePlan',
-        label: '緊急時対応計画',
+        key: 'ibdPbsStrategy',
+        label: '肯定的行動支援 (PBS) ・対応手順',
         minRows: 3,
-        placeholder: '例: 喘息発作時は吸入器を使用、家族・主治医へ即時連絡…',
-        helper: '急変時、パニック時等の具体的な連絡先と対応手順。',
-      },
-      {
-        key: 'rightsAdvocacy',
-        label: '権利擁護・虐待防止',
-        minRows: 2,
-        placeholder: '例: 身体拘束の禁止を徹底、セルフプランの推奨…',
-        helper: '虐待防止、セルフネグレクト対応、意思決定支援の具体的な取り組み。',
+        placeholder: '例: 落ち着かない時はリラックスルームへの誘導、本人の好きな音楽を流す…',
+        helper: 'パニックの前兆への対応、爆発した際の見守り手順、事後のクールダウン。',
+        guidance: {
+          tip: '問題行動を叱るのではなく、本人が「良い行動」を取れるための支援を考えます。',
+          example: '例：落ち着いている時に積極的に声をかける。リラックスできるアイテムを準備する。',
+        },
       },
       {
         key: 'complianceControls',
@@ -365,8 +479,8 @@ export const SECTIONS: SectionConfig[] = [
   },
   {
     key: 'excellence',
-    label: '改善メモ・連携',
-    description: '次回計画に活かす改善提案や、多職種・外部機関との連携アイデアをメモします。',
+    label: 'PDCA・改善記録',
+    description: 'モニタリング結果に基づく改善提案や、多職種連携を通じた氷山分析（Iceberg）の深化など、支援の質向上に向けた記録を行います。',
     fields: [
       {
         key: 'improvementIdeas',
@@ -392,7 +506,10 @@ export const SECTIONS: SectionConfig[] = [
 
 export const findSection = (key: SectionKey) => SECTIONS.find((section) => section.key === key);
 
-export const TAB_ORDER: SectionKey[] = ['overview', 'assessment', 'smart', 'supports', 'decision', 'compliance', 'monitoring', 'risk', 'excellence', 'preview'];
+export const findSectionKeyByFieldKey = (fieldKey: string): SectionKey | undefined => 
+  SECTIONS.find((s) => s.fields.some((f) => f.key === fieldKey))?.key;
+
+export const TAB_ORDER: SectionKey[] = ['overview', 'assessment', 'smart', 'supports', 'safety', 'decision', 'compliance', 'monitoring', 'risk', 'excellence', 'preview'];
 
 export const TAB_SECTIONS = TAB_ORDER.map((key) => ({
   key,

@@ -157,7 +157,7 @@ describe('useComplianceForm', () => {
   });
 
   describe('missingFields', () => {
-    it('デフォルト状態では5件の未入力項目がある', () => {
+    it('デフォルト状態では10件の未入力項目がある', () => {
       const draft = makeDraft();
       const { setDrafts } = createSetDrafts();
       const { result } = renderHook(() =>
@@ -169,12 +169,17 @@ describe('useComplianceForm', () => {
         }),
       );
 
-      expect(result.current.missingFieldCount).toBe(5);
+      expect(result.current.missingFieldCount).toBe(10);
       expect(result.current.missingFields).toContain('説明実施日');
       expect(result.current.missingFields).toContain('同意取得日');
       expect(result.current.missingFields).toContain('同意者名');
       expect(result.current.missingFields).toContain('交付日');
       expect(result.current.missingFields).toContain('本人への交付');
+      expect(result.current.missingFields).toContain('会議実施日');
+      expect(result.current.missingFields).toContain('相談支援事業所名');
+      expect(result.current.missingFields).toContain('相談支援専門員名');
+      expect(result.current.missingFields).toContain('相談支援からのサービス等利用計画の受領日');
+      expect(result.current.missingFields).toContain('標準的な支援提供時間');
     });
 
     it('全て入力すると未入力が0件になる', () => {
@@ -202,6 +207,17 @@ describe('useComplianceForm', () => {
           lastReviewedAt: null,
           nextReviewDueAt: null,
           reviewReason: '',
+        },
+        meeting: {
+          meetingDate: '2025-03-01',
+          meetingMinutes: '要旨',
+          attendees: ['A', 'B'],
+        },
+        consultationSupport: {
+          agencyName: '事業所',
+          officerName: '専門員',
+          serviceUsePlanReceivedAt: '2025-02-28',
+          gapNotes: '',
         },
       });
       const { setDrafts } = createSetDrafts();
