@@ -173,12 +173,16 @@ export default function SupportPlanGuidePage() {
     // Confirm Dialogs
     resetConfirmDialog,
   } = hook;
+  const regulatoryUserId = activeDraft?.userId != null ? String(activeDraft.userId) : null;
+  const activeDraftNumericUserId =
+    activeDraft?.userId == null ? null : Number.isFinite(Number(activeDraft.userId)) ? Number(activeDraft.userId) : null;
 
   // ── P5-B: Evidence Traceability Jump ──
-  const handleJumpToEvidence = React.useCallback((sourceType: string, value: any) => {
+  const handleJumpToEvidence = React.useCallback((sourceType: string, value: unknown) => {
+    const evidence = value as { pdcaId?: string; fieldKey?: string } | null;
     // 1. Iceberg ページへジャンプ
-    if (sourceType === 'iceberg_finding' && value?.pdcaId) {
-      navigate(`/ibd/analysis/${regulatoryUserId}?pdcaId=${value.pdcaId}`);
+    if (sourceType === 'iceberg_finding' && evidence?.pdcaId) {
+      navigate(`/ibd/analysis/${regulatoryUserId}?pdcaId=${evidence.pdcaId}`);
       return;
     }
 
@@ -186,7 +190,7 @@ export default function SupportPlanGuidePage() {
     let targetField: string | null = null;
     if (sourceType === 'summary_kpi' && value === 'period') targetField = 'planPeriod';
     if (sourceType === 'diff_safety') targetField = 'riskManagement';
-    if (sourceType === 'guidance_item' && value?.fieldKey) targetField = value.fieldKey;
+    if (sourceType === 'guidance_item' && evidence?.fieldKey) targetField = evidence.fieldKey;
 
     if (targetField) {
       const sectionKey = findSectionKeyByFieldKey(targetField);
@@ -209,7 +213,7 @@ export default function SupportPlanGuidePage() {
   }, [navigate, regulatoryUserId, setActiveTab]);
 
   // ── P5-C: Executable DES Action Click ──
-  const handleActionClick = React.useCallback((action: any) => {
+  const handleActionClick = React.useCallback((action: { cta?: { params?: { tab?: string } } }) => {
     const targetTab = action.cta?.params?.tab as SectionKey;
     if (targetTab) {
       setActiveTab(targetTab);
@@ -412,7 +416,7 @@ export default function SupportPlanGuidePage() {
             approvalState={complianceForm.approvalState}
             groupStatus={groupStatus}
             exportValidation={exportValidation}
-            userId={activeDraft?.userId}
+            userId={activeDraftNumericUserId}
             icebergItems={icebergItems}
             onJumpToEvidence={handleJumpToEvidence}
             onActionClick={handleActionClick}
@@ -429,7 +433,6 @@ export default function SupportPlanGuidePage() {
 
   // ── Regulatory Summary (Phase E → Repository 結線) ──
   const ispRepos = useIspRepositories();
-  const regulatoryUserId = activeDraft?.userId != null ? String(activeDraft.userId) : null;
   const { bundle: realBundle } = useSupportPlanBundle(regulatoryUserId, ispRepos);
 
   // ── Phase D: Iceberg 実データ接続 — Dashboard と同じ evidence source を使用 ──

@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import type { ActionTask, ActionTaskStatus, ActionSuggestion } from '../domain/types';
-import { v4 as uuidv4 } from 'uuid';
 
 export type ActionTaskStore = {
   tasks: Record<string, ActionTask>;
@@ -38,7 +37,7 @@ export const useActionTaskStore = create<ActionTaskStore>((set) => ({
   })(),
 
   promote: (suggestion, options) => {
-    const taskId = uuidv4();
+    const taskId = crypto.randomUUID();
     const newTask: ActionTask = {
       ...suggestion,
       taskId,

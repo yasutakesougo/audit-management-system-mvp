@@ -9,6 +9,7 @@ export type SupportPlanGuidanceItem = {
   title: string;
   message: string;
   actionLabel?: string;
+  fieldKey?: string;
 };
 
 export type SupportPlanGuidance = {

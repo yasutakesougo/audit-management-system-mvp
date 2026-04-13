@@ -100,11 +100,10 @@ function buildFormSections(form: SupportPlanForm): MdSection[] {
     {
       title: 'リスク管理・安全対策',
       lines: [
-        form.safetyPrecautions && `安全対策: ${form.safetyPrecautions}`,
-        form.medicalEmergencyResponse && `医療的緊急対応: ${form.medicalEmergencyResponse}`,
-        form.abusePrevention && `虐待防止・権利擁護: ${form.abusePrevention}`,
+        form.medicalConsiderations && `医療的配慮事項: ${form.medicalConsiderations}`,
         form.emergencyResponsePlan && `緊急時対応計画: ${form.emergencyResponsePlan}`,
         form.riskManagement && `リスク管理: ${form.riskManagement}`,
+        form.rightsAdvocacy && `虐待防止・権利擁護: ${form.rightsAdvocacy}`,
       ].filter(Boolean) as string[],
     },
     {

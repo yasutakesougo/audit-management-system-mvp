@@ -144,7 +144,7 @@ export const SupportPlanActionCard: React.FC<SupportPlanActionCardProps> = ({
                       size="small"
                       color="success"
                       startIcon={<CheckCircleRoundedIcon />}
-                      onClick={() => onUpdateStatus(task.taskId, 'done')}
+                      onClick={() => task && onUpdateStatus(task.taskId, 'done')}
                       sx={{ borderRadius: 2, textTransform: 'none', fontSize: '0.75rem', fontWeight: 700 }}
                     >
                       完了にする

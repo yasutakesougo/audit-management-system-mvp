@@ -7,6 +7,8 @@ import {
   Chip, 
   Button, 
   Divider,
+  Menu,
+  MenuItem,
   IconButton,
   Tooltip
 } from '@mui/material';
@@ -22,7 +24,6 @@ import { useActionTaskStore, actionTaskSelectors } from '../hooks/useActionTaskS
 import type { ActionTask, ActionTaskStatus } from '../domain/types';
 import { useUsers } from '@/features/users/useUsers';
 import { useStaff } from '@/stores/useStaff';
-import { Menu, MenuItem, Divider } from '@mui/material';
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded';
 
 interface ActionTaskListProps {
@@ -35,7 +36,7 @@ export const ActionTaskList: React.FC<ActionTaskListProps> = ({
   maxItems = 50 
 }) => {
   const { tasks, updateStatus, assignTask } = useActionTaskStore();
-  const { users } = useUsers();
+  const { data: users } = useUsers();
   const { staff } = useStaff();
   
   const [assignMenuAnchor, setAssignMenuAnchor] = React.useState<{ el: HTMLElement; taskId: string } | null>(null);
@@ -49,8 +50,8 @@ export const ActionTaskList: React.FC<ActionTaskListProps> = ({
   }, [tasks]);
 
   const getUserName = (userId: string) => {
-    const user = users.find(u => String(u.id) === userId);
-    return user ? user.name : `User ${userId}`;
+    const user = users.find((u) => String(u.Id) === userId);
+    return user ? user.FullName : `User ${userId}`;
   };
 
   const getStaffName = (staffId?: string) => {

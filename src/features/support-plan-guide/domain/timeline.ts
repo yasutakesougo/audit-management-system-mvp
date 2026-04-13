@@ -1,6 +1,16 @@
 import type { SupportPlanExportModel } from '../types/export';
-import type { SupportPlanTimeline, SupportPlanTimelineEntry } from './timeline.types';
+import type {
+  SupportPlanTimeline,
+  SupportPlanTimelineEntry,
+  SupportPlanTimelineSummary,
+} from './timeline.types';
 import { buildSupportPlanDiff } from './diffEngine';
+
+export type {
+  SupportPlanTimeline,
+  SupportPlanTimelineEntry,
+  SupportPlanTimelineSummary,
+} from './timeline.types';
 
 /**
  * Summarizes the entire history of a support plan.

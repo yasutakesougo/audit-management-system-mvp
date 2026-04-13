@@ -1,3 +1,8 @@
+import type { IcebergPdcaItem } from '@/features/ibd/analysis/pdca/types';
+import type { SupportPlanDiff } from './diffEngine.types';
+import type { SupportPlanGuidance } from './guidanceEngine';
+import type { SupportPlanTimelineSummary } from './timeline.types';
+
 /**
  * 根拠（エビデンス）のソース
  */
@@ -12,7 +17,7 @@ export type EvidenceSourceType =
 export interface NarrativeEvidence {
   sourceType: EvidenceSourceType;
   label: string;      // 表示用ラベル（例: "停滞日数: 90日"）
-  value?: any;        // 実際の生データ
+  value?: unknown;    // 実際の生データ
 }
 
 export interface NarrativeSection {
@@ -62,16 +67,20 @@ export function buildGuidanceNarrative(
     if (item.severity === 'critical' || item.severity === 'warn') {
       details.push({
         text: item.message,
-        evidence: [{ sourceType: 'guidance_item', label: item.actionLabel, value: item }]
+        evidence: [{
+          sourceType: 'guidance_item',
+          label: item.actionLabel ?? item.title,
+          value: item,
+        }]
       });
     }
   });
 
   // Diff から具体的な変化を抽出
   if (currentDiff) {
-    if (currentDiff.isStructuralChange) {
-      const addedGoals = currentDiff.goals.added.length;
-      const removedGoals = currentDiff.goals.removed.length;
+    if (currentDiff.summary.hasStructuralChange) {
+      const addedGoals = currentDiff.goals.filter((goal) => goal.kind === 'added').length;
+      const removedGoals = currentDiff.goals.filter((goal) => goal.kind === 'removed').length;
       if (addedGoals > 0 || removedGoals > 0) {
         details.push({
           text: `今回のドラフトでは長期・短期目標に構造的な変更（追加:${addedGoals}件 / 削除:${removedGoals}件）が含まれており、支援の方向性が調整されています。`,
@@ -83,7 +92,7 @@ export function buildGuidanceNarrative(
       }
     }
     
-    if (currentDiff.isCriticalSafetyUpdate) {
+    if (currentDiff.summary.hasCriticalSafetyUpdate) {
       details.push({
         text: `リスク管理・留意事項に重要な更新があります。現場での支援手順への反映と周知を優先してください。`,
         evidence: [{ sourceType: 'diff_safety', label: '重要安全項目更新あり' }]

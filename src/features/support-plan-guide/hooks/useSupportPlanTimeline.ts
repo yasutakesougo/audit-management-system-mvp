@@ -1,29 +1,107 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { IspRepository } from '@/domain/isp/port';
+import type { IndividualSupportPlan } from '@/domain/isp/schema';
 import { toExportModel } from '../utils/exportTransformers';
-import { buildSupportPlanTimeline, summarizeSupportPlanTimeline, SupportPlanTimelineSummary, SupportPlanGuidance } from '../domain/timeline';
-import { generateSupportPlanGuidance } from '../domain/guidanceEngine';
+import { validateExportContract } from '../utils/exportValidation';
+import { buildSupportPlanTimeline } from '../domain/timeline';
+import { buildSupportPlanGuidance } from '../domain/guidanceEngine';
 import { buildGuidanceNarrative, SupportPlanNarrative } from '../domain/narrativeEngine';
 import { buildActionSuggestionsFromSupportPlan } from '../domain/actionBridge';
 import { ActionSuggestion, useActionTaskStore } from '@/features/action-engine';
-import type { SupportPlanDraftData } from '../types';
-import type { IcebergPdcaItem } from '../../ibd/analysis/pdca/types';
+import type { SupportPlanDraft, SupportPlanForm } from '../types';
+import type { ExportValidationResult } from '../types/export';
+import type { SupportPlanGuidance } from '../domain/guidanceEngine';
+import type { SupportPlanTimeline, SupportPlanTimelineSummary } from '../domain/timeline.types';
+import type { IcebergPdcaItem } from '@/features/ibd/analysis/pdca/types';
 
 interface UseSupportPlanTimelineOptions {
   userId: string | null;
-  currentDraftData: SupportPlanDraftData;
+  currentDraftData: SupportPlanForm;
   ispRepo: IspRepository;
   icebergItems?: IcebergPdcaItem[];
 }
 
 interface UseSupportPlanTimelineReturn {
-  timeline: any[];
+  timeline: SupportPlanTimeline['entries'];
   summary: SupportPlanTimelineSummary;
   guidance: SupportPlanGuidance;
   narrative: SupportPlanNarrative | null;
   actions: ActionSuggestion[];
   isLoading: boolean;
+}
+
+const EMPTY_VALIDATION: ExportValidationResult = {
+  isExportable: true,
+  issues: [],
+  passCount: 0,
+  warnCount: 0,
+  blockCount: 0,
+  ibdIncluded: false,
+};
+
+function buildDraftFromForm(form: SupportPlanForm, userId: string | null): SupportPlanDraft {
+  return {
+    id: `current-${userId ?? 'unknown'}`,
+    name: form.serviceUserName || 'current-draft',
+    createdAt: new Date(0).toISOString(),
+    updatedAt: new Date().toISOString(),
+    data: form,
+    userId,
+  };
+}
+
+function buildDraftFromHistoricalPlan(plan: IndividualSupportPlan): SupportPlanDraft {
+  const supportLevel = plan.userSnapshot?.disabilitySupportLevel ?? '';
+  const draftData: SupportPlanForm = {
+    serviceUserName: plan.title ?? '',
+    supportLevel,
+    planPeriod: [plan.planStartDate, plan.planEndDate].filter(Boolean).join(' 〜 '),
+    assessmentSummary: [plan.userIntent, plan.familyIntent].filter(Boolean).join('\n'),
+    strengths: '',
+    decisionSupport: plan.overallSupportPolicy ?? '',
+    conferenceNotes: '',
+    monitoringPlan: plan.monitoringSummary ?? '',
+    reviewTiming: plan.nextReviewAt ?? '',
+    riskManagement: plan.precautions ?? '',
+    complianceControls: '',
+    improvementIdeas: '',
+    lastMonitoringDate: plan.lastMonitoringAt ?? '',
+    medicalConsiderations: '',
+    emergencyResponsePlan: '',
+    rightsAdvocacy: '',
+    serviceStartDate: plan.planStartDate ?? '',
+    firstServiceDate: plan.planStartDate ?? '',
+    attendingDays: '',
+    userRole: '',
+    ibdEnvAdjustment: '',
+    ibdPbsStrategy: '',
+    goals: [
+      ...plan.longTermGoals.map((text, index) => ({
+        id: `hist-long-${index}`,
+        text,
+        label: `長期目標${index + 1}`,
+        type: 'long' as const,
+        domains: [],
+      })),
+      ...plan.shortTermGoals.map((text, index) => ({
+        id: `hist-short-${index}`,
+        text,
+        label: `短期目標${index + 1}`,
+        type: 'short' as const,
+        domains: [],
+      })),
+    ],
+  };
+
+  return {
+    id: plan.id,
+    name: plan.title ?? 'historical-plan',
+    createdAt: plan.createdAt,
+    updatedAt: plan.updatedAt,
+    data: draftData,
+    userId: String(plan.userId),
+  };
 }
 
 /**
@@ -49,54 +127,24 @@ export const useSupportPlanTimeline = ({
 
   // 2. 時系列のスナップショット群を構築
   const result = useMemo(() => {
-    // 過去分を ExportModel に変換
     const pastSnapshots = historicalPlans.map((plan) => {
-      // plan (IndividualSupportPlan) を SupportPlanDraftData 相当に変換して toExportModel に渡す
-      // ここでは IndividualSupportPlan -> ExportModel の直接変換があればベターだが、
-      // 既存の toExportModel が SupportPlanDraftData を前提にしているため、最小限の変換を行う
-      
-      // TODO: 必要に応じて IndividualSupportPlan から ExportModel への専用トランスフォーマーを作成する
-      // 現在の実装では toExportModel(rawDraft) が SSOT なので、一旦それに合わせる
-      // (IndividualSupportPlan の構造は SupportPlanDraftData とほぼ重なっている)
-      
-      const draftLikeData: any = {
-        serviceUserName: plan.title, // 一旦 title を使用
-        supportLevel: plan.userSnapshot?.supportLevel ?? '',
-        planPeriod: `${plan.planStartDate} 〜 ${plan.planEndDate}`,
-        assessmentSummary: plan.userIntent + '\n' + plan.familyIntent,
-        strengths: '', // 個別計画には直接ない場合がある
-        decisionSupport: '',
-        monitoringPlan: plan.monitoringSummary,
-        riskManagement: plan.precautions,
-        goals: [
-          ...plan.longTermGoals.map((g, i) => ({ id: `l-${i}`, text: g, label: `長期目標${i+1}`, type: 'long', domains: [] })),
-          ...plan.shortTermGoals.map((g, i) => ({ id: `s-${i}`, text: g, label: `短期目標${i+1}`, type: 'short', domains: [] })),
-        ],
-        meta: {
-          exportedAt: plan.updatedAt, // 最終更新日をエクスポート日と見なす
-        }
-      };
-      
-      return toExportModel(draftLikeData);
+      const draft = buildDraftFromHistoricalPlan(plan);
+      return toExportModel(draft, validateExportContract(draft.data));
     });
 
-    // 現在のドラフトを ExportModel に変換して末尾に追加
-    const currentSnapshot = toExportModel(currentDraftData);
+    const currentDraft = buildDraftFromForm(currentDraftData, userId);
+    const currentSnapshot = toExportModel(currentDraft, validateExportContract(currentDraftData) ?? EMPTY_VALIDATION);
     const allSnapshots = [...pastSnapshots, currentSnapshot];
 
-    // タイムライン構築
     const timeline = buildSupportPlanTimeline(allSnapshots);
-    const summary = summarizeSupportPlanTimeline(timeline);
-    const guidance = generateSupportPlanGuidance(summary);
+    const summary = timeline.summary;
+    const guidance = buildSupportPlanGuidance(summary);
 
-    // 最新の差分を取得（現在のドラフトと一つ前のスナップショット）
-    const latestEntry = timeline[timeline.length - 1];
+    const latestEntry = timeline.entries[timeline.entries.length - 1];
     const currentDiff = latestEntry?.diffFromPrevious ?? null;
 
-    // ナラティブ生成
     const narrative = buildGuidanceNarrative(summary, guidance, currentDiff, icebergItems);
 
-    // 行動提案の生成 (Action Engine 連携)
     const actions = buildActionSuggestionsFromSupportPlan(
       userId || 'unknown-user',
       summary,
@@ -104,13 +152,12 @@ export const useSupportPlanTimeline = ({
       currentSnapshot
     );
 
-    // 完了済みタスクをサマリーに含める
     const completedTasks = Object.values(tasks).filter(
-      (t) => t.status === 'done' && t.victimId === (userId || 'unknown-user')
+      (t) => t.status === 'done' && t.targetUserId === (userId || 'unknown-user')
     );
 
     return {
-      timeline,
+      timeline: timeline.entries,
       summary: {
         ...summary,
         completedTasks,
@@ -125,4 +172,4 @@ export const useSupportPlanTimeline = ({
     ...result,
     isLoading,
   };
-}
+};

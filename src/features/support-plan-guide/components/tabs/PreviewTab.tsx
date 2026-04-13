@@ -16,7 +16,7 @@ import { TimelineSummaryCard } from '../TimelineSummaryCard';
 import { SupportPlanActionCard } from '../SupportPlanActionCard';
 import { useActionTaskStore } from '@/features/action-engine';
 import type { ActionSuggestion } from '@/features/action-engine';
-import type { IcebergPdcaItem } from '../../ibd/analysis/pdca/types';
+import type { IcebergPdcaItem } from '@/features/ibd/analysis/pdca/types';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
@@ -76,7 +76,7 @@ export type PreviewTabProps = {
   /** 背景分析（Iceberg）データ */
   icebergItems?: IcebergPdcaItem[];
   /** 根拠データへのジャンプ */
-  onJumpToEvidence?: (sourceType: string, value: any) => void;
+  onJumpToEvidence?: (sourceType: string, value: unknown) => void;
   /** 推奨アクションへのアクションハンドラ */
   onActionClick?: (action: ActionSuggestion) => void;
 };

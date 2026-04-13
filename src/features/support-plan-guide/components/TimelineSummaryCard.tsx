@@ -23,15 +23,16 @@ import PsychologyRoundedIcon from '@mui/icons-material/PsychologyRounded';
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
 
-import type { SupportPlanTimelineSummary, SupportPlanGuidance } from '../domain/timeline';
+import type { SupportPlanGuidance } from '../domain/guidanceEngine';
 import type { SupportPlanNarrative } from '../domain/narrativeEngine';
+import type { SupportPlanTimelineSummary } from '../domain/timeline.types';
 
 interface TimelineSummaryCardProps {
   summary: SupportPlanTimelineSummary;
   guidance: SupportPlanGuidance;
   narrative: SupportPlanNarrative | null;
   isLoading?: boolean;
-  onJumpToEvidence?: (sourceType: string, value: any) => void;
+  onJumpToEvidence?: (sourceType: string, value: unknown) => void;
 }
 
 export const TimelineSummaryCard: React.FC<TimelineSummaryCardProps> = ({

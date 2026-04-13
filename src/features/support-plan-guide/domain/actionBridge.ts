@@ -1,5 +1,6 @@
 import { ActionSuggestion, buildStableId } from '@/features/action-engine';
-import { SupportPlanTimelineSummary, SupportPlanGuidance } from './timeline';
+import type { SupportPlanTimelineSummary } from './timeline.types';
+import type { SupportPlanGuidance } from './guidanceEngine';
 import { SupportPlanExportModel } from '../types/export';
 
 /**
@@ -102,10 +103,14 @@ export function buildActionSuggestionsFromSupportPlan(
         cta: {
           label: item.actionLabel || '修正を開始する',
           route: '/support-plan-guide',
-          params: { 
-            tab: item.type === 'safety' ? 'risk' : 'compliance',
-            anchor: item.fieldKey 
-          }
+          params: item.fieldKey
+            ? {
+                tab: item.type === 'safety' ? 'risk' : 'compliance',
+                anchor: item.fieldKey,
+              }
+            : {
+                tab: item.type === 'safety' ? 'risk' : 'compliance',
+              }
         },
         createdAt: now.toISOString(),
         ruleId: `sp-guidance-${item.type}`
