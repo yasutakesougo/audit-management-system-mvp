@@ -197,6 +197,8 @@ function createPlanningSheetRepository(
       },
     ]),
     listByIsp: vi.fn(async () => []),
+    listByUser: vi.fn(async () => []),
+    listBySeries: vi.fn(async () => []),
     create: vi.fn(async () => sheet),
     update: vi.fn(async () => sheet),
   };

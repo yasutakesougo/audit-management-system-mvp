@@ -29,6 +29,8 @@ export function scoreActionPriority(source: RawActionSource): ActionPriority {
       const today = new Date().toISOString().slice(0, 10);
       return dueAt && dueAt < today ? 'P0' : 'P1';
     }
+    case 'isp_renew_suggest':
+      return 'P2';
     default: {
       const _exhaustive: never = source.sourceType;
       return _exhaustive;

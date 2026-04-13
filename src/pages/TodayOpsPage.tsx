@@ -66,6 +66,7 @@ import { UserStatusQuickDialog } from '@/features/schedules/components/dialogs/U
 import { useWeeklyHighLoadStatus } from '@/features/today/hooks/useWeeklyHighLoadStatus';
 import { useTodayExceptions } from '@/features/today/hooks/useTodayExceptions';
 import { useTodayPlanPatchActions } from '@/features/today/hooks/useTodayPlanPatchActions';
+import { useTodayIspRenewSuggestActions } from '@/features/today/hooks/useTodayIspRenewSuggestActions';
 
 import { Alert, Snackbar } from '@mui/material';
 import { useQueryClient } from '@tanstack/react-query';
@@ -151,6 +152,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
   // ── Data Fetching (Facade) ──
   const summary = useTodaySummary();
   const todayPlanPatchActions = useTodayPlanPatchActions(summary.users ?? []);
+  const todayIspRenewSuggest = useTodayIspRenewSuggestActions(summary.users ?? []);
 
   // 支援手順の実施の未入力ユーザーを算出（todayRecordCompletion.pendingUserIds 起点）
   const pendingSupportUsers = useMemo(() => {
@@ -219,7 +221,11 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
     currentStaffId: 'staff-a', // 仮: ログインユーザーのIDを連携できるとベター
     correctiveActions,
     suggestionStates,
-    exceptionActions: [...summary.todayExceptionActions, ...todayPlanPatchActions],
+    exceptionActions: [
+      ...summary.todayExceptionActions,
+      ...todayPlanPatchActions,
+      ...todayIspRenewSuggest.actionSources,
+    ],
   });
   const suggestionByStableId = useMemo(() => {
     return new Map(correctiveActions.map((s) => [s.stableId, s]));
@@ -621,6 +627,8 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
           items: workflowPhases.items,
           counts: workflowPhases.counts,
           topPriorityItem: workflowPhases.topPriorityItem,
+          ispRenewSuggestCount: todayIspRenewSuggest.signals.length,
+          onOpenIspRenewSuggest: () => navigate('/support-plan-guide?tab=operations.monitoring'),
           isLoading: workflowPhases.isLoading,
           onNavigate: (href: string) => navigate(href),
         }
@@ -684,7 +692,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
     onSceneAction: handleSceneAction,
     onQuickLinkNavigate: (href: string) => navigate(href),
     };
-  }, [baseLayoutProps, isServiceManager, workflowPhases, navigate, actionQueue, isQueueLoading, handleActionClick, handleDismissSuggestion, handleSnoozeSuggestion, callLogsSummary, handleOpenUserStatus, userStatusActions.todayStatusRecords, highLoadStatus, authzRole, exceptionsQueue, handleSceneAction]);
+  }, [baseLayoutProps, isServiceManager, workflowPhases, todayIspRenewSuggest.signals.length, navigate, actionQueue, isQueueLoading, handleActionClick, handleDismissSuggestion, handleSnoozeSuggestion, callLogsSummary, handleOpenUserStatus, userStatusActions.todayStatusRecords, highLoadStatus, authzRole, exceptionsQueue, handleSceneAction]);
 
   // ── Save Success Handler (Quick Record auto-next) ──
   const [showCompletionToast, setShowCompletionToast] = React.useState(false);
@@ -856,6 +864,7 @@ const TodayLiteOpsPage: React.FC = () => {
   const navigate = useNavigate();
   const { role: authzRole } = useUserAuthz();
   const summary = useTodaySummary();
+  const todayIspRenewSuggest = useTodayIspRenewSuggestActions(summary.users ?? []);
 
   const liteRole = authzRole === 'admin' ? 'admin' : 'staff';
 
@@ -867,6 +876,7 @@ const TodayLiteOpsPage: React.FC = () => {
     <TodayLitePage
       summary={summary}
       role={liteRole}
+      ispRenewSuggestCount={todayIspRenewSuggest.signals.length}
       onNavigate={handleNavigate}
     />
   );

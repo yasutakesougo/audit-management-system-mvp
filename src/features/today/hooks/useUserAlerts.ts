@@ -14,8 +14,8 @@
  * @see buildUserAlerts — 純関数（注意点導出）
  * @see UserCompactList   — UI消費先
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getBehaviorRepository } from '@/features/daily/repositories/sharepoint/behaviorRepositoryFactory';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { getABCRecordsForUser } from '@/features/ibd/core/ibdStore';
 import type { ABCRecord } from '@/domain/behavior/abc';
 import { buildUserAlerts, type UserAlert } from '../domain/buildUserAlerts';
 
@@ -37,13 +37,11 @@ export function useUserAlerts(userIds: string[]): UseUserAlertsReturn {
   const [loading, setLoading] = useState(false);
 
   // userIds の参照安定化（中身が同じなら再取得しない）
-  const prevIdsRef = useRef<string>('');
-  const stableIds = useMemo(() => {
-    const key = userIds.sort().join(',');
-    if (key === prevIdsRef.current) return userIds;
-    prevIdsRef.current = key;
-    return userIds;
-  }, [userIds.sort().join(',')]);
+  const stableIdsKey = [...userIds].sort().join(',');
+  const stableIds = useMemo(
+    () => (stableIdsKey ? stableIdsKey.split(',') : []),
+    [stableIdsKey],
+  );
 
   const fetchAll = useCallback(async () => {
     if (stableIds.length === 0) {
@@ -53,31 +51,27 @@ export function useUserAlerts(userIds: string[]): UseUserAlertsReturn {
 
     setLoading(true);
     try {
-      const repo = getBehaviorRepository();
       const endDate = new Date();
       const startDate = new Date();
       startDate.setDate(endDate.getDate() - ALERT_LOOKBACK_DAYS);
-
-      // 並列で全ユーザーの ABCRecord を取得
-      const results = await Promise.allSettled(
-        stableIds.map((uid) =>
-          repo.listByUser(uid, {
-            dateRange: {
-              from: startDate.toISOString(),
-              to: endDate.toISOString(),
-            },
-            order: 'desc',
-            limit: 10, // 1ユーザー最大10件で十分
-          }),
-        ),
-      );
+      const startMs = startDate.getTime();
+      const endMs = endDate.getTime();
 
       const merged: ABCRecord[] = [];
-      for (const r of results) {
-        if (r.status === 'fulfilled') {
-          merged.push(...r.value);
+      for (const uid of stableIds) {
+        try {
+          const records = getABCRecordsForUser(uid)
+            .filter((record) => {
+              const recordedAtMs = new Date(record.recordedAt).getTime();
+              return Number.isFinite(recordedAtMs)
+                && recordedAtMs >= startMs
+                && recordedAtMs <= endMs;
+            })
+            .slice(0, 10); // 1ユーザー最大10件で十分
+          merged.push(...records);
+        } catch {
+          // 個別ユーザーの取得エラーは無視（全体を止めない）
         }
-        // rejected は無視（個別ユーザーのエラーで全体を止めない）
       }
 
       setAllRecords(merged);

@@ -299,6 +299,37 @@ stateDiagram-v2
 - 再アセスメント根拠として弱い
 - 支援の質改善につながりにくい
 
+## SSOT と Shadow Model の境界定義
+
+三層モデルにおけるデータの正本（SSOT）と UI 補助用モデル（Shadow Model）の境界を定義する。
+
+### 正本（Single Source of Truth）
+
+| 対象 | 正本 | 管理場所 |
+|---|---|---|
+| ISP（第1層） | `src/domain/isp/schema` 配下の型・スキーマ | `domain` / `repository` |
+| 支援計画シート（第2層） | `SupportPlanningSheet`（schema） | `domain` / `repository` |
+| 支援手順書兼記録（第3層） | `ProcedureExecutionRecord` 等（schema） | `domain` / `repository` |
+
+### Shadow Model（UI 思考補助）
+
+| 対象 | Shadow Model | 管理場所 |
+|---|---|---|
+| 支援計画シート UI 状態 | `ibdTypes.SupportPlanSheet` | `src/features/ibd/core/ibdTypes.ts` |
+| IBD ストア | `ibdStore` | `src/features/ibd/` |
+
+### 境界ルール
+
+1. **`domain` → `ibdStore` / `ibdTypes` への依存は禁止**。依存方向は `ibdStore → domain` の片方向のみ
+2. **`ibdStore → schema` の同期 adapter は意図的に設けない**。二重構造は制御された設計判断であり技術負債ではない
+3. **監査・加算・bridge・永続化・制度ロジック**は `domain` / `schema` / `repository` に配置する
+4. **UI 補助・思考補助・可視化・試行的分析**は `ibdStore` / Shadow Model に配置する
+5. 将来の整理は**型統合ではなく責務移植**で行う。1責務 = 1PR の原則に従う
+
+> **設計意図**: `ibdStore` と `schema` の二重構造は「制御された二重構造」である。Shadow Model は UI 上の思考補助に特化し、SSOT には制度・監査上の正本のみを保持する。この分離を壊すと、監査ロジックの汚染やデータ整合性の崩壊を招く。
+
+---
+
 ## Implementation Notes
 
 - 版管理を必須にする（既存: `SupportPlanSheet.version`, `SPSHistoryEntry`）
@@ -322,3 +353,17 @@ stateDiagram-v2
 - 2026-03-12: 既存コードベースとの対応付けを含む形で Accepted
 - 2026-04-09: 適用対象の原則・画面責務表・`/daily/support` ブリッジUI定義・UIラベル統一指針を追記（ユーザー確定定義）
 - 2026-04-09: Anti-Patterns・Data Flow・`/daily/support` State定義・IBD Mode・Testing Strategy を追記（設計固定フェーズ完了）
+- 2026-04-13: SSOT vs Shadow Model 境界定義セクションを追記 — `SupportPlanningSheet(schema)` が SSOT、`ibdTypes`/`ibdStore` は Shadow Model、同期 adapter 不設置は設計判断であることを明文化
+- 2026-04-13: 責務移植第一弾 — 90日見直しアラート（`ibdStore.getExpiringSPSAlerts` / `ibdTypes.getSPSAlertLevel`）の warning 判定を `auditChecks.getReviewApproachingRisk` として domain 側に吸収。型統合ではなく責務移植の実例
+- 2026-04-13: 責務移植第二弾 — SPS確定権限（`ibdStore.canConfirmSPS`）を `staffQualificationProfile.checkSPSConfirmationEligibility` として domain 側に移植。bool 戻り値から reasonCodes + missingQualifications を返す構造化結果へ拡張し、中核的人材養成研修修了者も確定可能と明示
+- 2026-04-13: 責務移植第三弾（port 契約拡張） — SPS CRUD 責務を `ibdStore` から `PlanningSheetRepository` へ移すための最低契約として、`listByUser(userId)`（isCurrent 問わず全版）と `listBySeries(userId, ispId)`（pure 版管理関数の入力として `SupportPlanningSheet[]` を返す）を port に追加。`delete` / `confirm` / `revise` は専用 API 化せず、既存 `create` / `update` と `planningSheetVersion.ts` の pure 関数（`createRevisionDraft` / `activatePlanningSheetVersion` / `archivePlanningSheetVersion`）の組み合わせで責務を表現する。workflow 抽象化層は呼出元の重複が顕在化した段階で採用判断する方針とした
+- 2026-04-13: 責務移植第三弾（UI導線接続） — SPS の永続化・履歴・版管理導線を UI から `PlanningSheetRepository` port へ接続。`useIndividualSupportOrchestrator` と `PlanningSheetVersionPanel` は repository + pure workflow（`planningSheetVersionWorkflow.ts`）を経由し、Shadow Model は思考補助状態のみを維持する
+- 2026-04-13: 責務移植第四弾（観察カウンター） — 週次観察カウンター/観察ログ/アラート判定を `domain/ibd/supervisionTracking` + `SupervisionTrackingRepository` へ移植。`ibdStore` は UI 呼出入口として repository 実装を利用し、SSOT 側の責務を分離した
+- 2026-04-13: 責務移植第五弾（ABC記録） — ABC 記録の永続化責務を `ibdStore` から `domain/behavior` の repository port（`BehaviorObservationRepository`）へ移植。`ibdStore` は UI 補助状態を維持しつつ、記録の保存/取得は `localBehaviorObservationRepository` を経由する構成へ変更した
+- 2026-04-13: ABC 読書き整合（A/B 接続） — `/daily/support` の保存導線（Daily `BehaviorRepository`）から `BehaviorObservationRepository`（B 正本）へ同期書込を追加し、同画面の件数表示および `useMeetingEvidenceDraft` の参照先（B）と整合するよう接続を統一。`domain/abc.AbcRecord` 系は契約差分があるため今回スコープ外とした
+- 2026-04-13: ABC 同期失敗ポリシー（A→B） — A 保存成功後に B 同期が失敗した場合でも submit は成功扱いを維持し、同期失敗は warning として記録する方針を導入（bridge migration の可用性優先）
+- 2026-04-13: ABC read-path 移行第一弾（today alert） — `useUserAlerts` の参照先を Daily `BehaviorRepository`（A）から `getABCRecordsForUser`（B 正本）へ変更し、表示側の正本整合を開始。判定ロジック（`buildUserAlerts`）は変更せず、取得元のみ移行
+- 2026-04-13: ABC read-path 移行第二弾（strategy usage） — `useStrategyUsageCounts` / `useStrategyUsageTrend` の参照先を Daily `BehaviorRepository`（A）から `getABCRecordsForUser`（B 正本）へ変更し、戦略利用集計・トレンド表示の正本整合を進めた。集計/比較ロジック（`aggregateStrategyUsage` / `compareStrategyUsage`）は変更せず、取得元のみ移行
+- 2026-04-13: ABC read-path 移行第三弾（default strategy） — `useDefaultStrategies` の参照先を Daily `BehaviorRepository`（A）から `getABCRecordsForUser`（B 正本）へ変更。判定ロジックは維持しつつ、取得元を B 基準へ統一した
+- 2026-04-13: ABC read-path 移行第四弾（action engine） — `useAllCorrectiveActions` の参照先を Daily `BehaviorRepository`（A）から `getABCRecordsForUser`（B 正本）へ変更。ExceptionCenter のバッチ一括フェッチ導線において、正本（Path-B）からの 30 日間フィルタリングを実装し、取得元を統一した
+- 2026-04-13: ABC read-path 移行最終弾（analysis dashboard / history） — `behaviorStore` での履歴表示および分析用一括取得（`fetchForAnalysis`）の参照先を Path-B（`ibdStore`）へ変更。これにより主要な読取導線の Path-B SSOT 統合を完了した

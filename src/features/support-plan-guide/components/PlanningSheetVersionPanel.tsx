@@ -44,7 +44,13 @@ import {
   type PlanningSheetVersionSummary,
   type ReviewAlertLevel,
 } from '@/domain/isp/planningSheetVersion';
-import { localPlanningSheetVersionRepository } from '@/infra/localStorage/localPlanningSheetVersionRepository';
+import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
+import {
+  activatePlanningSheetVersionInRepository,
+  archivePlanningSheetVersionInRepository,
+  createPlanningSheetRevision,
+  listPlanningSheetSeries,
+} from '@/features/planning-sheet/domain/planningSheetVersionWorkflow';
 
 // ---------------------------------------------------------------------------
 // Status colors
@@ -150,6 +156,7 @@ export const PlanningSheetVersionPanel: React.FC<PlanningSheetVersionPanelProps>
   ispId,
   onChanged,
 }) => {
+  const planningSheetRepository = usePlanningSheetRepositories();
   const [sheets, setSheets] = useState<SupportPlanningSheet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -159,7 +166,8 @@ export const PlanningSheetVersionPanel: React.FC<PlanningSheetVersionPanelProps>
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const versions = await localPlanningSheetVersionRepository.listVersions(
+      const versions = await listPlanningSheetSeries(
+        planningSheetRepository,
         userId,
         ispId,
       );
@@ -170,7 +178,7 @@ export const PlanningSheetVersionPanel: React.FC<PlanningSheetVersionPanelProps>
     } finally {
       setLoading(false);
     }
-  }, [userId, ispId]);
+  }, [ispId, planningSheetRepository, userId]);
 
   useEffect(() => {
     void loadData();
@@ -197,7 +205,7 @@ export const PlanningSheetVersionPanel: React.FC<PlanningSheetVersionPanelProps>
     if (!currentSheet) return;
     try {
       setSubmitting(true);
-      await localPlanningSheetVersionRepository.createRevision(currentSheet.id, {
+      await createPlanningSheetRevision(planningSheetRepository, currentSheet.id, {
         changeReason: reason,
         changedBy: 'current-user',
       });
@@ -214,7 +222,7 @@ export const PlanningSheetVersionPanel: React.FC<PlanningSheetVersionPanelProps>
   const handleActivate = async (sheetId: string) => {
     try {
       setSubmitting(true);
-      await localPlanningSheetVersionRepository.activate(sheetId, {
+      await activatePlanningSheetVersionInRepository(planningSheetRepository, sheetId, {
         activatedBy: 'current-user',
       });
       await loadData();
@@ -229,7 +237,7 @@ export const PlanningSheetVersionPanel: React.FC<PlanningSheetVersionPanelProps>
   const handleArchive = async (sheetId: string) => {
     try {
       setSubmitting(true);
-      await localPlanningSheetVersionRepository.archive(sheetId, {
+      await archivePlanningSheetVersionInRepository(planningSheetRepository, sheetId, {
         archivedBy: 'current-user',
       });
       await loadData();

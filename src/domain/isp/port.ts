@@ -54,6 +54,10 @@ interface PlanningSheetSystemFields {
   assessment?: PlanningAssessment;
   /** プランニング（支援設計）セクション */
   planning?: PlanningDesign;
+  /** 版番号（版管理 UI からの create/update 用） */
+  version?: number;
+  /** 現行版フラグ（版管理 UI からの create/update 用） */
+  isCurrent?: boolean;
 }
 
 /** 支援計画シート新規作成入力 */
@@ -98,8 +102,25 @@ export interface PlanningSheetRepository {
   getById(id: string): Promise<SupportPlanningSheet | null>;
   /** ISP に紐づく支援計画シート一覧 */
   listByIsp(ispId: string): Promise<PlanningSheetListItem[]>;
+  /**
+   * 利用者の全版支援計画シート一覧（isCurrent を問わない）
+   *
+   * 版管理 UI・監査用途・`getLatestVersion` 入力など、
+   * 履歴を含む版を参照したい場合に使用する。
+   * 現行版のみが必要な場合は `listCurrentByUser` を使うこと。
+   */
+  listByUser(userId: string): Promise<PlanningSheetListItem[]>;
   /** 利用者の現行支援計画シート一覧（isCurrent: true） */
   listCurrentByUser(userId: string): Promise<PlanningSheetListItem[]>;
+  /**
+   * 同一系列（userId + ispId）に属する全版を full sheet で取得
+   *
+   * `createRevisionDraft` / `activatePlanningSheetVersion` /
+   * `archivePlanningSheetVersion` / `computeVersionSummary` など、
+   * pure 版管理関数の入力として用いる。`PlanningSheetListItem`
+   * ではなく `SupportPlanningSheet[]` を返す点に注意。
+   */
+  listBySeries(userId: string, ispId: string): Promise<SupportPlanningSheet[]>;
   /** 支援計画シート新規作成 */
   create(input: PlanningSheetCreateInput): Promise<SupportPlanningSheet>;
   /** 支援計画シート更新 */

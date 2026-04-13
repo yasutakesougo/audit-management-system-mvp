@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getFlag } from '@/env';
 import { useUsers } from '@/features/users/useUsers';
-import { getBehaviorRepository } from '@/features/daily/repositories/sharepoint/behaviorRepositoryFactory';
+import { getABCRecordsForUser } from '@/features/ibd/core/ibdStore';
 import type { ABCRecord } from '@/domain/behavior';
 import type {
   ActionSuggestion,
@@ -241,7 +241,7 @@ export function useAllCorrectiveActions(): UseAllCorrectiveActionsReturn {
     setStatus('loading');
     setError(null);
 
-    const repo = getBehaviorRepository();
+    // Migration Status: Reading from Path-B (ibdStore)
     const now = new Date();
     const startDate = new Date();
     startDate.setDate(now.getDate() - ANALYSIS_DAYS);
@@ -249,17 +249,20 @@ export function useAllCorrectiveActions(): UseAllCorrectiveActionsReturn {
     const results: ActionSuggestion[] = [];
 
     try {
-      // 全ユーザーを並列で取得（Promise.allSettled で 1 件失敗しても止めない）
+      // 全ユーザーを並行で処理
       const settled = await Promise.allSettled(
         userIds.map(async (userId) => {
-          const records = await repo.listByUser(userId, {
-            dateRange: {
-              from: startDate.toISOString(),
-              to: now.toISOString(),
-            },
-            order: 'asc',
-            limit: 500,
-          });
+          // B-path (BehaviorObservationRepository) uses ibdStore
+          const rawRecords = getABCRecordsForUser(userId);
+          
+          // Legacy filter logic replicated in memory
+          const records = rawRecords
+            .filter((r) => {
+              const d = new Date(r.recordedAt);
+              return d >= startDate && d <= now;
+            })
+            .sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime());
+
           return { userId, records };
         }),
       );

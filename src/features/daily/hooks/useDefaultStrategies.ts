@@ -13,7 +13,7 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { deriveDefaultStrategies, type DeriveDefaultResult, type StrategyChipKey } from '@/features/daily/domain/deriveDefaultStrategies';
-import { getBehaviorRepository } from '@/features/daily/infra/behaviorRepositoryFactory';
+import { getABCRecordsForUser } from '@/features/ibd/core/ibdStore';
 
 export interface UseDefaultStrategiesResult {
   /** 初期選択すべき戦略キーの Set */
@@ -52,12 +52,10 @@ export function useDefaultStrategies(userId: string | undefined): UseDefaultStra
 
     const fetchDefault = async () => {
       try {
-        const repo = getBehaviorRepository();
-        // 直近1件のみ取得（desc 順）
-        const records = await repo.listByUser(userId, {
-          limit: 1,
-          order: 'desc',
-        });
+        // B（BehaviorObservationRepository）を正本導線として参照
+        // 移行期につき B only とし、Daily BehaviorRepository (A) への fallback は行わない
+        const records = getABCRecordsForUser(userId);
+
         if (cancelled) return;
         const derived = deriveDefaultStrategies(records);
         setResult(derived);

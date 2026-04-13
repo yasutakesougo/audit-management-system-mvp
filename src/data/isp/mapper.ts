@@ -287,7 +287,7 @@ export function mapPlanningSheetRowToListItem(row: SpPlanningSheetRow): Planning
 /** PlanningSheet create input → SP payload */
 export function mapPlanningSheetCreateInputToPayload(input: PlanningSheetCreateInput): SpPlanningSheetPayload {
   return {
-    Title: `${input.userId}_${input.targetScene ?? 'general'}_v1`,
+    Title: input.title,
     UserCode: input.userId,
     ISPId: input.ispId,
     TargetScene: input.targetScene ?? '',
@@ -299,9 +299,11 @@ export function mapPlanningSheetCreateInputToPayload(input: PlanningSheetCreateI
     SupportPolicy: input.supportPolicy,
     EnvironmentalAdjustments: input.environmentalAdjustments ?? '',
     ConcreteApproaches: input.concreteApproaches,
+    AppliedFrom: input.appliedFrom ?? null,
+    NextReviewAt: input.nextReviewAt ?? null,
     Status: input.status ?? 'draft',
-    VersionNo: 1,
-    IsCurrent: true,
+    VersionNo: input.version ?? 1,
+    IsCurrent: input.isCurrent ?? true,
     // 制度項目
     AuthoredByStaffId: input.authoredByStaffId ?? '',
     AuthoredByQualification: input.authoredByQualification ?? 'unknown',
@@ -336,7 +338,11 @@ export function mapPlanningSheetUpdateInputToPayload(input: PlanningSheetUpdateI
   if (input.supportPolicy !== undefined) payload.SupportPolicy = input.supportPolicy;
   if (input.environmentalAdjustments !== undefined) payload.EnvironmentalAdjustments = input.environmentalAdjustments;
   if (input.concreteApproaches !== undefined) payload.ConcreteApproaches = input.concreteApproaches;
+  if (input.appliedFrom !== undefined) payload.AppliedFrom = input.appliedFrom ?? null;
+  if (input.nextReviewAt !== undefined) payload.NextReviewAt = input.nextReviewAt ?? null;
   if (input.status !== undefined) payload.Status = input.status;
+  if (input.version !== undefined) payload.VersionNo = input.version;
+  if (input.isCurrent !== undefined) payload.IsCurrent = input.isCurrent;
   // 制度項目
   if (input.authoredByStaffId !== undefined) payload.AuthoredByStaffId = input.authoredByStaffId;
   if (input.authoredByQualification !== undefined) payload.AuthoredByQualification = input.authoredByQualification;

@@ -167,12 +167,19 @@ function classifySeverity(event: RawEvent): SeverityLevel {
  */
 function determineNextAction(severity: SeverityLevel, event: RawEvent): string {
   if (event.eventType === 'transient_failure') {
-    return `[${event.resourceKey}] は Nightly Runtime Patrol 時点で回復しています。再発頻度を監視し、連日発生する場合は action_required へ昇格してください。`;
+    return `[${event.resourceKey}] は Nightly Runtime Patrol 時点で回復しています。再発頻度を監視し、連続発生する場合は action_required へ昇格してください。`;
   }
+  const highlight = event.eventType === 'index_pressure' ? 'sp_index_pressure' :
+                  event.eventType === 'drift' ? 'sp_schema_drift' : '';
+  const listParam = event.resourceKey !== 'Unknown' ? `&list=${encodeURIComponent(event.resourceKey)}` : '';
+  const isAdminStatusLink = highlight 
+    ? `管理画面 (/admin/status?highlight=${highlight}${listParam}) で具体的な解除コマンドを確認してください。`
+    : '管理画面 (/admin/status) で具体的な解除コマンドを確認してください。';
+
   if (event.eventType === 'index_pressure') {
     return event.message.includes('(CRITICAL)') 
-      ? `【至急】[${event.resourceKey}] で必須インデックスが不足しています。システム停止を防ぐため、Index Advisor で修復を実行してください。`
-      : `[${event.resourceKey}] でインデックスの最適化が可能です。計画的なメンテナンス時に Index Advisor を確認してください。`;
+      ? `【至急】[${event.resourceKey}] で必須インデックスが不足しています。${isAdminStatusLink}`
+      : `[${event.resourceKey}] でインデックスの最適化が可能です。${isAdminStatusLink}`;
   }
   if (severity === 'critical') {
     return '【至急】運用管理者にエスカレーションし、システム全体の利用可否を確認してください。';
@@ -181,20 +188,20 @@ function determineNextAction(severity: SeverityLevel, event: RawEvent): string {
     return `[${event.resourceKey}] の保存フローで異常を検知しました。SharePoint リスト設定とデータの整合性を調査してください。`;
   }
   if (event.eventType === 'health_fail') {
-    return `[${event.resourceKey}] の健全性チェックに失敗しました。SharePoint 管理画面でリストの存在・権限設定を確認してください。`;
+    return `[${event.resourceKey}] の健全性チェックに失敗しました。管理画面 (/admin/status) で詳細を確認してください。`;
   }
   if (event.eventType === 'drift') {
-    return `[${event.resourceKey}] に誰かがフィールドを直接追加・削除した可能性があるため、変更履歴を調査してください。`;
+    return `[${event.resourceKey}] でスキーマドリフトを検知しました。${isAdminStatusLink}`;
   }
   if (event.eventType === 'remediation') {
     return event.message.includes('失敗') || event.message.includes('fail')
-      ? `【要確認】インデックス修復 (${event.fieldKey}) に失敗しました。ネットワーク状態や SharePoint 権限を確認してください。`
-      : `インデックス自動修復 (${event.fieldKey}) が正常に完了しました。`;
+      ? `【要確認】インデックス修復 (${event.fieldKey}) に失敗しました。${isAdminStatusLink}`
+      : `インデックス自動修復 (${event.fieldKey}) が正常に完了しました。回復を確認してください。`;
   }
   if (severity === 'silent') {
     return '（対応不要・本システムで安全に吸収済み）';
   }
-  return `[${event.resourceKey}] で異常が検出されました。管理画面の状態ページを確認してください。`;
+  return `[${event.resourceKey}] で異常が検出されました。管理画面 (/admin/status) を確認してください。`;
 }
 
 function parseEnvInteger(name: string, fallback: number): number {

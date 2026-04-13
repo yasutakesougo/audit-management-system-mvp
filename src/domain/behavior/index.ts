@@ -28,3 +28,4 @@ export {
 } from './abc.schema';
 
 export type { ABCRecordValidated } from './abc.schema';
+export type { BehaviorObservationRepository } from './port';

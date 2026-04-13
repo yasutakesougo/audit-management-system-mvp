@@ -5,12 +5,17 @@ import type { SelectChangeEvent } from '@mui/material/Select';
 import { useUsers } from '@/features/users/useUsers';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { useCurrentPlanningSheet } from '@/features/planning-sheet/hooks/useCurrentPlanningSheet';
+import type { PlanningSheetCreateInput } from '@/domain/isp/port';
 import { usePdcaBehaviorMonitoringRecords, usePdcaPlanningSheetReassessments } from '@/features/ibd/analysis/pdca/queries';
 import { usePdcaCycleState } from '@/features/ibd/analysis/pdca/queries/usePdcaCycleState';
 import { useSupportStepTemplates } from '@/features/ibd/procedures/templates/hooks/useSupportStepTemplates';
-import { useSPSRevision } from '@/features/ibd/core/useSPSHistory';
-import { getLatestSPS, getSPSHistory, addSPS, confirmSPS } from '@/features/ibd/core/ibdStore';
 import { toLocalDateISO } from '@/utils/getNow';
+import {
+  activatePlanningSheetVersionInRepository,
+  createPlanningSheetRevision,
+  getCurrentOrLatestPlanningSheet,
+  listPlanningSheetSeries,
+} from '@/features/planning-sheet/domain/planningSheetVersionWorkflow';
 
 import { 
   type IndividualSupportViewModel, 
@@ -24,6 +29,43 @@ import {
 } from '@/features/ibd/procedures/daily-records/types';
 import { useIndividualSupportUiState } from './useIndividualSupportUiState';
 import { mapToIndividualSupportViewModel } from './individualSupportViewModelMapper';
+import { buildShadowSpsHistory, toShadowSps } from './spsShadowAdapter';
+
+function buildAutoPlanningSheetInput(
+  userId: string,
+  ispId: string,
+  today: string,
+): PlanningSheetCreateInput {
+  return {
+    userId,
+    ispId,
+    title: 'モニタリング運用シート',
+    targetScene: '',
+    targetDomain: '',
+    observationFacts: '行動観察データ収集中',
+    collectedInformation: '背景情報を収集中',
+    interpretationHypothesis: '背景要因の分析中',
+    supportIssues: '支援課題の整理中',
+    supportPolicy: '支援方針の初期設定',
+    environmentalAdjustments: '環境調整の検討中',
+    concreteApproaches: '具体的関わり方を作成中',
+    appliedFrom: today,
+    nextReviewAt: today,
+    supportStartDate: today,
+    monitoringCycleDays: 90,
+    authoredByStaffId: '',
+    authoredByQualification: 'unknown',
+    authoredAt: today,
+    applicableServiceType: 'other',
+    applicableAddOnTypes: ['none'],
+    deliveredToUserAt: undefined,
+    reviewedAt: undefined,
+    hasMedicalCoordination: false,
+    hasEducationCoordination: false,
+    status: 'active',
+    isCurrent: true,
+  };
+}
 
 /**
  * IndividualSupportManagement のオーケストレーター hook。
@@ -120,39 +162,91 @@ export function useIndividualSupportOrchestrator(): {
     uiActions.showSnackbar(`${slot.time}「${slot.activity}」を記録しました。`, 'success');
   }, [uiState.formState, uiActions]);
 
-  const { revise: reviseSPS } = useSPSRevision();
-
-  const handleOpenMonitoring = useCallback(() => {
+  const handleOpenMonitoring = useCallback(async () => {
     if (!selectedUser) return;
-    let sps = getLatestSPS(selectedUser.Id);
 
-    if (!sps) {
-      const now = toLocalDateISO();
-      const spsId = `sps-${selectedUser.UserID}-auto`;
-      addSPS({
-        id: spsId,
-        userId: selectedUser.Id,
-        version: 'v1',
-        createdAt: now,
-        updatedAt: now,
-        status: 'draft',
-        confirmedBy: null,
-        confirmedAt: null,
-        icebergModel: {
-          observableBehaviors: ['行動観察データ収集中'],
-          underlyingFactors: ['背景要因の分析中'],
-          environmentalAdjustments: ['環境調整の検討中'],
-        },
-        positiveConditions: ['穏やかな環境', '馴染みのスタッフ'],
-      });
-      confirmSPS(spsId, 100, now);
-      sps = getLatestSPS(selectedUser.Id);
+    const userId = String(selectedUser.UserID);
+    const today = toLocalDateISO();
+
+    try {
+      let sheet = await getCurrentOrLatestPlanningSheet(
+        planningSheetRepository,
+        userId,
+      );
+
+      if (!sheet) {
+        const autoIspId = `isp-${userId}-auto`;
+        sheet = await planningSheetRepository.create(
+          buildAutoPlanningSheetInput(userId, autoIspId, today),
+        );
+      }
+
+      const series = await listPlanningSheetSeries(
+        planningSheetRepository,
+        sheet.userId,
+        sheet.ispId,
+      );
+
+      uiActions.setActiveSPS(toShadowSps(sheet, selectedUser.Id));
+      uiActions.setActiveSPSHistory(
+        buildShadowSpsHistory(series, sheet.id, selectedUser.Id),
+      );
+      uiActions.setMonitoringDialogOpen(true);
+    } catch (error) {
+      console.error('[useIndividualSupportOrchestrator] open monitoring failed', error);
+      uiActions.showSnackbar('モニタリング情報の取得に失敗しました。', 'error');
     }
+  }, [planningSheetRepository, selectedUser, uiActions]);
 
-    uiActions.setActiveSPS(sps ?? null);
-    uiActions.setActiveSPSHistory(sps ? getSPSHistory(sps.id) : []);
-    uiActions.setMonitoringDialogOpen(true);
-  }, [selectedUser, uiActions]);
+  const handleReviseSPS = useCallback(
+    async (
+      spsId: string,
+      revisedBy: number | null,
+      revisionReason: string,
+      changesSummary: string,
+    ): Promise<boolean> => {
+      if (!selectedUser) return false;
+
+      const operatorId =
+        revisedBy !== null ? String(revisedBy) : 'current-user';
+
+      try {
+        const draft = await createPlanningSheetRevision(
+          planningSheetRepository,
+          spsId,
+          {
+            changedBy: operatorId,
+            changeReason: `${revisionReason}\n${changesSummary}`,
+          },
+        );
+
+        const series = await activatePlanningSheetVersionInRepository(
+          planningSheetRepository,
+          draft.id,
+          {
+            activatedBy: operatorId,
+            appliedFrom: toLocalDateISO(),
+          },
+        );
+
+        const latest =
+          series.find((sheet) => sheet.id === draft.id) ??
+          series[0] ??
+          draft;
+
+        uiActions.setActiveSPS(toShadowSps(latest, selectedUser.Id));
+        uiActions.setActiveSPSHistory(
+          buildShadowSpsHistory(series, latest.id, selectedUser.Id),
+        );
+        return true;
+      } catch (error) {
+        console.error('[useIndividualSupportOrchestrator] revise failed', error);
+        uiActions.showSnackbar('改訂の保存に失敗しました。', 'error');
+        return false;
+      }
+    },
+    [planningSheetRepository, selectedUser, uiActions],
+  );
 
   // 3. Handlers の合成
   const handlers: IndividualSupportActionHandlers = {
@@ -175,9 +269,11 @@ export function useIndividualSupportOrchestrator(): {
     onRecord: handleRecord,
     onToggleUnrecorded: uiActions.setShowOnlyUnrecorded,
     
-    onOpenMonitoring: handleOpenMonitoring,
+    onOpenMonitoring: () => {
+      void handleOpenMonitoring();
+    },
     onCloseMonitoring: () => uiActions.setMonitoringDialogOpen(false),
-    onReviseSPS: reviseSPS,
+    onReviseSPS: handleReviseSPS,
     
     onCloseSnackbar: uiActions.hideSnackbar,
   };
