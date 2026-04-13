@@ -460,7 +460,7 @@ describe('navigationConfig', () => {
 
     it('should maintain group order', () => {
       const { ORDER } = groupNavItems(sampleItems, false);
-      expect(ORDER).toEqual(['today', 'records', 'planning', 'operations', 'billing', 'master', 'platform']);
+      expect(ORDER).toEqual(['today', 'records', 'planning', 'severe', 'operations', 'billing', 'master', 'platform']);
     });
   });
 
@@ -526,9 +526,9 @@ describe('navigationConfig', () => {
     it('should restrict items in kiosk mode', () => {
       const visible = buildVisibleNavItems(items, 'staff', { ...baseOpts, isKiosk: true });
       
-      // Only 'today' group allowed
+      // Kiosk filters to today group, but forced pillars remain visible
       expect(visible.some(i => i.group === 'today')).toBe(true);
-      expect(visible.some(i => i.group === 'planning')).toBe(false);
+      expect(visible.some(i => i.group === 'planning')).toBe(true);
       expect(visible.some(i => i.group === 'master')).toBe(false);
       
       // Specific paths hidden even in 'today' group
