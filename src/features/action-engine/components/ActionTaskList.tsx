@@ -22,8 +22,7 @@ import { useActionTaskStore, actionTaskSelectors } from '../hooks/useActionTaskS
 import type { ActionTask, ActionTaskStatus } from '../domain/types';
 import { useUsers } from '@/features/users/useUsers';
 import { useStaff } from '@/stores/useStaff';
-import { Menu, MenuItem } from '@mui/material';
-import AssignmentIndRoundedIcon from '@mui/icons-material/AssignmentIndRounded';
+import { Menu, MenuItem, Divider } from '@mui/material';
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded';
 
 interface ActionTaskListProps {

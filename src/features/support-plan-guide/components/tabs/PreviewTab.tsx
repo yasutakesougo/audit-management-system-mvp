@@ -15,7 +15,7 @@ import { useSupportPlanTimeline } from '../../hooks/useSupportPlanTimeline';
 import { TimelineSummaryCard } from '../TimelineSummaryCard';
 import { SupportPlanActionCard } from '../SupportPlanActionCard';
 import { useActionTaskStore } from '@/features/action-engine';
-import type { ActionSuggestion, ActionTaskStatus } from '@/features/action-engine';
+import type { ActionSuggestion } from '@/features/action-engine';
 import type { IcebergPdcaItem } from '../../ibd/analysis/pdca/types';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';

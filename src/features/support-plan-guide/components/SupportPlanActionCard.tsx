@@ -1,5 +1,5 @@
 import React from 'react';
-import { Paper, Stack, Typography, Box, Button, Chip, Divider } from '@mui/material';
+import { Paper, Stack, Typography, Box, Button, Chip } from '@mui/material';
 import AddTaskRoundedIcon from '@mui/icons-material/AddTaskRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
