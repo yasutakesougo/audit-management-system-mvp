@@ -406,8 +406,6 @@ export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
         <ProcedurePanel
           title="時間帯を選択してください"
           schedule={schedule}
-          isAcknowledged={isAcknowledged}
-          onAcknowledged={onAcknowledged}
           onSelectStep={handleStepSelect}
           filledStepIds={filledStepIds}
           showUnfilledOnly={showUnfilledOnly}
@@ -415,9 +413,6 @@ export const PlanSelectionStep: React.FC<PlanSelectionStepProps> = memo(({
           unfilledCount={unfilledCount}
           totalCount={totalCount}
           interventionPlans={interventionPlans}
-          savedObservations={savedObservations}
-          abcCountBySlot={abcCountBySlot}
-          onAbcBadgeClick={handleAbcBadgeClick}
           selectableStateByStepId={selectableStateByStepId}
           hiddenStepOrders={hiddenStepOrders}
         />

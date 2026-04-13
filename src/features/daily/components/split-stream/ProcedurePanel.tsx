@@ -1,11 +1,7 @@
-import { motionTokens } from '@/app/theme';
-import type { AbcCountBySlot } from '@/domain/abc/buildAbcCountBySlot';
 import type { BehaviorInterventionPlan } from '@/features/analysis/domain/interventionTypes';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import EditIcon from '@mui/icons-material/Edit';
-import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -17,7 +13,7 @@ import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import React, { memo, useMemo, useRef } from 'react';
+import React, { memo, useMemo } from 'react';
 import type { ProcedureSource } from '@/features/daily/domain/ProcedureRepository';
 import { getParentOrderForChild } from '@/features/planning-sheet/constants/procedureRows';
 
@@ -69,8 +65,8 @@ const getItemScheduleKey = (item: ScheduleItem) => getScheduleKey(item.time, ite
  */
 const cleanActivityName = (name: string, isNested: boolean) => {
   if (!isNested) return name;
-  const match = name.match(/[\(（](.*?)[\)）]/);
-  let cleaned = match && match[1] ? match[1] : name.replace(/^.*日中活動\s*/, '');
+  const match = name.match(/[(（](.*?)[)）]/);
+  const cleaned = match && match[1] ? match[1] : name.replace(/^.*日中活動\s*/, '');
   if (cleaned === '外活動') return '外活動参加';
   return cleaned;
 };

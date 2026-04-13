@@ -156,7 +156,7 @@ export function useTimeBasedSupportRecordPage({
       conflictEntries.forEach(entry => {
         // 現在の選択アイテムから rowNo を取得
         const item = schedule.find(s => getItemScheduleKey(s) === entry.id);
-        const myOrder = item?.procedureStep?.sourceStepOrder;
+        const myOrder = item?.sourceStepOrder;
         message += `   → 行${myOrder} と 行${entry.blocking.join(', ')}\n`;
       });
       message += '\n';
