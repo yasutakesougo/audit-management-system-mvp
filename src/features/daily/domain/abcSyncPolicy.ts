@@ -3,7 +3,7 @@ import type { ABCRecord } from '@/domain/behavior';
 export const ABC_SYNC_FAILURES_KEY = 'daily-support.abc-sync-failures.v1';
 const MAX_FAILURE_LOGS = 100;
 
-export interface AbcSyncFailureLog {
+interface AbcSyncFailureLog {
   id: string;
   userId: string;
   recordedAt: string;

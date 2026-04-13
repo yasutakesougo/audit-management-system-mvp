@@ -32,13 +32,13 @@ describe('buildFindingActions', () => {
     expect(actions[0].kind).toBe('plan');
   });
 
-  it('author_qualification_missing → 支援計画を確認', () => {
+  it('author_qualification_missing → 修正画面を開く', () => {
     const actions = buildFindingActions(makeFinding({
       type: 'author_qualification_missing',
       planningSheetId: 'sheet-1',
     }));
     expect(actions).toHaveLength(1);
-    expect(actions[0].label).toBe('支援計画を確認');
+    expect(actions[0].label).toBe('修正画面を開く');
     expect(actions[0].kind).toBe('review');
   });
 
