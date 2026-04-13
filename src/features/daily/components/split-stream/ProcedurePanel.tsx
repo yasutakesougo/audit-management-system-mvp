@@ -45,6 +45,7 @@ type GuidedProcedurePanelProps = {
   interventionPlans?: BehaviorInterventionPlan[];
   selectableStateByStepId?: Map<string, { conflicted: boolean; blockingOrders: number[] }>;
   hiddenStepOrders?: Set<number>;
+  children?: React.ReactNode;
 };
 
 type CustomProcedurePanelProps = {
@@ -222,7 +223,7 @@ export const ProcedurePanel = (props: ProcedurePanelProps): JSX.Element => {
         <CardContent sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
           <Typography variant="subtitle2" fontWeight="bold">{title ?? '支援手順 (Plan)'}</Typography>
         </CardContent>
-        <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>{(props as any).children}</Box>
+        <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>{props.children}</Box>
       </Card>
     );
   }
