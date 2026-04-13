@@ -1,6 +1,7 @@
 import { type ABCRecord, type BehaviorIntensity, DEFAULT_OBSERVATION_MASTER } from '@/domain/behavior';
 import { useCallback, useState } from 'react';
 import { getBehaviorRepository, getInMemoryBehaviorRepository } from '../../repositories/sharepoint/behaviorRepositoryFactory';
+import { addABCRecord, getABCRecordsForUser } from '@/features/ibd/core/ibdStore';
 
 export function useBehaviorStore() {
   const [data, setData] = useState<ABCRecord[]>([]);
@@ -20,17 +21,19 @@ export function useBehaviorStore() {
     if (!userId) return;
     setLoading(true);
     try {
-      const result = await repo.listByUser(userId, { order: 'desc', limit: RECENT_LIMIT });
-      const normalized = ensureDesc(result).slice(0, RECENT_LIMIT);
+      // Migration Status: Reading from Path-B (ibdStore) as SSOT
+      const rawRecords = getABCRecordsForUser(userId);
+      
+      // Recent sorted records (Descending for history display)
+      const normalized = ensureDesc(rawRecords).slice(0, RECENT_LIMIT);
       setData(normalized);
-      // ⚠️ error はクリアしない（add error を保持、手動で閉じるまで表示し続ける）
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err : new Error('Failed to load behaviors'));
     } finally {
       setLoading(false);
     }
-  }, [RECENT_LIMIT, ensureDesc, repo]);
+  }, [RECENT_LIMIT, ensureDesc]);
 
   const add = useCallback(async (record: Omit<ABCRecord, 'id'>) => {
     setLoading(true);
@@ -62,14 +65,18 @@ export function useBehaviorStore() {
       const endDate = new Date();
       const startDate = new Date();
       startDate.setDate(endDate.getDate() - days);
-      const result = await repo.listByUser(userId, {
-        dateRange: {
-          from: startDate.toISOString(),
-          to: endDate.toISOString(),
-        },
-        order: 'asc',
-        limit: 500,
-      });
+
+      // Migration Status: Reading from Path-B (ibdStore) as SSOT
+      const rawRecords = getABCRecordsForUser(userId);
+
+      // In-memory filter and sort (Ascending for analysis)
+      const result = rawRecords
+        .filter((r) => {
+          const d = new Date(r.recordedAt);
+          return d >= startDate && d <= endDate;
+        })
+        .sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime());
+
       setAnalysisData(result);
     } catch (err) {
       console.error('[behaviorStore] fetchForAnalysis failed:', err);
@@ -77,7 +84,7 @@ export function useBehaviorStore() {
     } finally {
       setLoading(false);
     }
-  }, [repo]);
+  }, []);
 
   return {
     data,
@@ -129,5 +136,11 @@ export const seedDemoBehaviors = (userId: string, days = 7): number => {
   if (!seeded.length) return 0;
 
   repo.seed(seeded);
+  
+  // Migration Status: Sync seeded data to Path-B (ibdStore)
+  for (const record of seeded) {
+    addABCRecord(record);
+  }
+  
   return seeded.length;
 };

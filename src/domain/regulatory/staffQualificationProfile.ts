@@ -99,3 +99,63 @@ export function resolveHighestQualification(
 export function meetsAuthoringRequirement(profile: StaffQualificationProfile): boolean {
   return profile.hasPracticalTraining || profile.hasCorePersonTraining;
 }
+
+// ─────────────────────────────────────────────
+// SPS 確定権限判定
+// ─────────────────────────────────────────────
+
+/**
+ * SPS 確定要件を満たすかどうかを判定
+ *
+ * 現行の制度要件: 実践研修修了者 または 中核的人材
+ *
+ * 作成要件（meetsAuthoringRequirement）と現時点で同一だが、
+ * 「作成」と「確定」は制度上の別責務であるため関数を分離する。
+ *
+ * @see ibdStore.canConfirmSPS — Shadow Model 側の旧実装（実践研修のみで判定していた）
+ */
+export function meetsConfirmationRequirement(profile: StaffQualificationProfile): boolean {
+  return profile.hasPracticalTraining || profile.hasCorePersonTraining;
+}
+
+/** SPS確定権限の判定結果 */
+export interface SPSConfirmationEligibility {
+  eligible: boolean;
+  reasonCodes: SPSConfirmationReasonCode[];
+  missingQualifications: string[];
+}
+
+export type SPSConfirmationReasonCode =
+  | 'no_practical_training'
+  | 'no_core_person_training';
+
+/**
+ * SPS確定操作の権限判定（説明可能な結果を返す）
+ *
+ * ibdStore.canConfirmSPS の domain 側移植。
+ * bool ではなく構造化された結果を返し、
+ * UI 表示・監査 finding 両方に使える。
+ *
+ * @param profile 操作者の資格プロファイル
+ */
+export function checkSPSConfirmationEligibility(
+  profile: StaffQualificationProfile,
+): SPSConfirmationEligibility {
+  if (meetsConfirmationRequirement(profile)) {
+    return { eligible: true, reasonCodes: [], missingQualifications: [] };
+  }
+
+  const reasonCodes: SPSConfirmationReasonCode[] = [];
+  const missingQualifications: string[] = [];
+
+  if (!profile.hasPracticalTraining) {
+    reasonCodes.push('no_practical_training');
+    missingQualifications.push('強度行動障害支援者養成研修（実践研修）');
+  }
+  if (!profile.hasCorePersonTraining) {
+    reasonCodes.push('no_core_person_training');
+    missingQualifications.push('中核的人材養成研修');
+  }
+
+  return { eligible: false, reasonCodes, missingQualifications };
+}

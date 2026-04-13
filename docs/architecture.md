@@ -74,15 +74,15 @@ graph TD
     TOK["📋 特性アンケート"]
   end
 
-  subgraph L1["L1 ISP — WHY (6ヶ月)"]
+  subgraph L1["L1: ISP / Intent & Policy (6ヶ月)"]
     ISP["個別支援計画<br/>全利用者"]
   end
 
-  subgraph L2["L2 SPS — HOW (3ヶ月)"]
+  subgraph L2["L2: Planning Sheet / Plan Design (3ヶ月)"]
     SPS["支援計画シート<br/>IBD対象者のみ"]
   end
 
-  subgraph L3["L3 Record — DO (毎日)"]
+  subgraph L3["L3: Procedure & Record / Execution (毎日)"]
     REC["手順書兼記録<br/>IBD対象者のみ"]
   end
 

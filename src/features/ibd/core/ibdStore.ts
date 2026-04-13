@@ -16,6 +16,14 @@ import {
     daysUntilSPSReview,
     getSPSAlertLevel,
 } from './ibdTypes';
+import {
+  getSupervisionAlertLevel as getDomainSupervisionAlertLevel,
+  getSupervisionAlertMessage as getDomainSupervisionAlertMessage,
+  type SupervisionAlertLevel as DomainSupervisionAlertLevel,
+  type SupervisionCounter as DomainSupervisionCounter,
+} from '@/domain/ibd/supervisionTracking';
+import { localBehaviorObservationRepository } from '@/infra/localStorage/localBehaviorObservationRepository';
+import { localSupervisionTrackingRepository } from '@/infra/localStorage/localSupervisionTrackingRepository';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -26,13 +34,8 @@ export interface SPSAlert {
   daysRemaining: number;
   level: SPSAlertLevel;
 }
-
-/** 観察カウンター: 利用者ごとに未観察の支援回数を管理 */
-export interface SupervisionCounter {
-  userId: number;
-  supportCount: number;      // 未観察の支援回数
-  lastObservedAt: string | null; // 最終観察日
-}
+export type SupervisionCounter = DomainSupervisionCounter;
+export type SupervisionAlertLevel = DomainSupervisionAlertLevel;
 
 /** SPS確定権限の判定結果 */
 export interface CanConfirmResult {
@@ -47,17 +50,11 @@ export interface CanConfirmResult {
 interface IbdState {
   spsSheets: SupportPlanSheet[];
   spsHistory: SPSHistoryEntry[];
-  supervisionLogs: SupervisionLog[];
-  supervisionCounters: SupervisionCounter[];
-  abcRecords: ABCRecord[];
 }
 
 const initialState: IbdState = {
   spsSheets: [],
   spsHistory: [],
-  supervisionLogs: [],
-  supervisionCounters: [],
-  abcRecords: [],
 };
 
 export const useIbdStore = create<IbdState>()(() => ({ ...initialState }));
@@ -239,55 +236,15 @@ export function getExpiringSPSAlerts(
 // ---------------------------------------------------------------------------
 
 export function getSupervisionCounter(userId: number): SupervisionCounter {
-  return (
-    getState().supervisionCounters.find((c) => c.userId === userId) ?? {
-      userId,
-      supportCount: 0,
-      lastObservedAt: null,
-    }
-  );
+  return localSupervisionTrackingRepository.getCounter(userId);
 }
 
 export function incrementSupportCount(userId: number): void {
-  setState((s) => {
-    const existing = s.supervisionCounters.find((c) => c.userId === userId);
-    if (existing) {
-      return {
-        supervisionCounters: s.supervisionCounters.map((c) =>
-          c.userId === userId
-            ? { ...c, supportCount: c.supportCount + 1 }
-            : c
-        ),
-      };
-    }
-    return {
-      supervisionCounters: [
-        ...s.supervisionCounters,
-        { userId, supportCount: 1, lastObservedAt: null },
-      ],
-    };
-  });
+  localSupervisionTrackingRepository.incrementSupportCount(userId);
 }
 
 export function resetSupportCount(userId: number, observedAt: string): void {
-  setState((s) => {
-    const existing = s.supervisionCounters.find((c) => c.userId === userId);
-    if (existing) {
-      return {
-        supervisionCounters: s.supervisionCounters.map((c) =>
-          c.userId === userId
-            ? { ...c, supportCount: 0, lastObservedAt: observedAt }
-            : c
-        ),
-      };
-    }
-    return {
-      supervisionCounters: [
-        ...s.supervisionCounters,
-        { userId, supportCount: 0, lastObservedAt: observedAt },
-      ],
-    };
-  });
+  localSupervisionTrackingRepository.resetSupportCount(userId, observedAt);
 }
 
 // ---------------------------------------------------------------------------
@@ -295,13 +252,11 @@ export function resetSupportCount(userId: number, observedAt: string): void {
 // ---------------------------------------------------------------------------
 
 export function addSupervisionLog(log: SupervisionLog): void {
-  setState((s) => ({ supervisionLogs: [...s.supervisionLogs, log] }));
-  // 観察ログ保存時にカウンターを自動リセット
-  resetSupportCount(log.userId, log.observedAt);
+  localSupervisionTrackingRepository.addSupervisionLog(log);
 }
 
 export function getSupervisionLogsForUser(userId: number): SupervisionLog[] {
-  return getState().supervisionLogs.filter((log) => log.userId === userId);
+  return localSupervisionTrackingRepository.listLogsForUser(userId);
 }
 
 // ---------------------------------------------------------------------------
@@ -309,15 +264,15 @@ export function getSupervisionLogsForUser(userId: number): SupervisionLog[] {
 // ---------------------------------------------------------------------------
 
 export function addABCRecord(record: ABCRecord): void {
-  setState((s) => ({ abcRecords: [...s.abcRecords, record] }));
+  localBehaviorObservationRepository.add(record);
 }
 
 export function getABCRecordsForUser(userId: string): ABCRecord[] {
-  return getState().abcRecords.filter((r) => r.userId === userId);
+  return localBehaviorObservationRepository.listByUser(userId);
 }
 
 export function getAllABCRecords(): ABCRecord[] {
-  return getState().abcRecords;
+  return localBehaviorObservationRepository.listAll();
 }
 
 // ---------------------------------------------------------------------------
@@ -326,6 +281,8 @@ export function getAllABCRecords(): ABCRecord[] {
 
 export function resetIBDStore(): void {
   setState({ ...initialState });
+  localBehaviorObservationRepository.clearAll();
+  localSupervisionTrackingRepository.clearAll();
 }
 
 // ---------------------------------------------------------------------------
@@ -346,27 +303,13 @@ export function canConfirmSPS(hasPracticalTrainingCert: boolean): CanConfirmResu
   return { allowed: true, reason: '' };
 }
 
-/**
- * 観察義務のアラート判定
- * @param supportCount 未観察の支援回数
- */
-export type SupervisionAlertLevel = 'ok' | 'warning' | 'overdue';
-
 export function getSupervisionAlertLevel(supportCount: number): SupervisionAlertLevel {
-  if (supportCount >= 2) return 'overdue';
-  if (supportCount >= 1) return 'warning';
-  return 'ok';
+  return getDomainSupervisionAlertLevel(supportCount);
 }
 
 /**
  * 観察義務アラートメッセージ
  */
 export function getSupervisionAlertMessage(supportCount: number): string {
-  if (supportCount >= 2) {
-    return `観察義務超過: ${supportCount}回の支援が未観察です（基準: 2回に1回以上の観察が必要）`;
-  }
-  if (supportCount >= 1) {
-    return `次回の支援前に実践研修修了者による観察が推奨されます（現在${supportCount}回未観察）`;
-  }
-  return '';
+  return getDomainSupervisionAlertMessage(supportCount);
 }

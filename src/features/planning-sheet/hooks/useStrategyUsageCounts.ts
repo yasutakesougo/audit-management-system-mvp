@@ -15,7 +15,7 @@ import {
   aggregateStrategyUsage,
   type StrategyUsageSummary,
 } from '@/domain/isp/aggregateStrategyUsage';
-import { getBehaviorRepository } from '@/features/daily/repositories/sharepoint/behaviorRepositoryFactory';
+import { getABCRecordsForUser } from '@/features/ibd/core/ibdStore';
 
 // ─────────────────────────────────────────────
 // Types
@@ -68,8 +68,6 @@ export function useStrategyUsageCounts(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const repo = useMemo(() => getBehaviorRepository(), []);
-
   const fetchRecords = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
@@ -78,15 +76,17 @@ export function useStrategyUsageCounts(
       const endDate = new Date();
       const startDate = new Date();
       startDate.setDate(endDate.getDate() - days);
+      const startMs = startDate.getTime();
+      const endMs = endDate.getTime();
 
-      const result = await repo.listByUser(userId, {
-        dateRange: {
-          from: startDate.toISOString(),
-          to: endDate.toISOString(),
-        },
-        order: 'desc',
-        limit: 500,
-      });
+      const result = getABCRecordsForUser(userId)
+        .filter((record) => {
+          const recordedAtMs = new Date(record.recordedAt).getTime();
+          return Number.isFinite(recordedAtMs)
+            && recordedAtMs >= startMs
+            && recordedAtMs <= endMs;
+        })
+        .slice(0, 500);
       setRecords(result);
     } catch (err) {
       console.error('[useStrategyUsageCounts] fetch failed:', err);
@@ -94,7 +94,7 @@ export function useStrategyUsageCounts(
     } finally {
       setLoading(false);
     }
-  }, [userId, days, repo]);
+  }, [userId, days]);
 
   useEffect(() => {
     if (userId) {

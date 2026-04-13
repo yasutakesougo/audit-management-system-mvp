@@ -118,6 +118,22 @@ export class DataProviderPlanningSheetRepository implements PlanningSheetReposit
     return washed.map(mapPlanningSheetRowToListItem);
   }
 
+  async listByUser(userId: string): Promise<PlanningSheetListItem[]> {
+    const { title, fields, candidates } = await this.resolveSource();
+    const userField = fields.userCode || 'UserCode';
+
+    const escapedUserId = userId.replace(/'/g, "''");
+
+    const rows = await this.provider.listItems<SpPlanningSheetRow>(title, {
+      filter: `${userField} eq '${escapedUserId}'`,
+      orderby: 'Created desc',
+      top: SP_QUERY_LIMITS.default,
+    });
+
+    const washed = washRows(rows as unknown as Record<string, unknown>[], candidates, fields) as unknown as SpPlanningSheetRow[];
+    return washed.map(mapPlanningSheetRowToListItem);
+  }
+
   async listCurrentByUser(userId: string): Promise<PlanningSheetListItem[]> {
     const { title, fields, candidates } = await this.resolveSource();
     const userField = fields.userCode || 'UserCode';
@@ -131,6 +147,24 @@ export class DataProviderPlanningSheetRepository implements PlanningSheetReposit
 
     const washed = washRows(rows as unknown as Record<string, unknown>[], candidates, fields) as unknown as SpPlanningSheetRow[];
     return washed.map(mapPlanningSheetRowToListItem);
+  }
+
+  async listBySeries(userId: string, ispId: string): Promise<SupportPlanningSheet[]> {
+    const { title, fields, candidates } = await this.resolveSource();
+    const userField = fields.userCode || 'UserCode';
+    const ispField = fields.ispId || 'ISPId';
+
+    const escapedUserId = userId.replace(/'/g, "''");
+    const escapedIspId = ispId.replace(/'/g, "''");
+
+    const rows = await this.provider.listItems<SpPlanningSheetRow>(title, {
+      filter: `${userField} eq '${escapedUserId}' and ${ispField} eq '${escapedIspId}'`,
+      orderby: 'Created desc',
+      top: SP_QUERY_LIMITS.default,
+    });
+
+    const washed = washRows(rows as unknown as Record<string, unknown>[], candidates, fields) as unknown as SpPlanningSheetRow[];
+    return washed.map(mapPlanningSheetRowToDomain);
   }
 
   async create(input: PlanningSheetCreateInput): Promise<SupportPlanningSheet> {

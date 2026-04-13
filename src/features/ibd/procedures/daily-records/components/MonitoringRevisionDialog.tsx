@@ -33,7 +33,7 @@ interface MonitoringRevisionDialogProps {
     revisedBy: number | null,
     revisionReason: string,
     changesSummary: string,
-  ) => boolean;
+  ) => Promise<boolean>;
   userName: string;
 }
 
@@ -49,8 +49,9 @@ export const MonitoringRevisionDialog: React.FC<MonitoringRevisionDialogProps> =
   const [changes, setChanges] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleRevise = () => {
+  const handleRevise = async () => {
     if (!currentSPS) return;
 
     if (!reason.trim()) {
@@ -62,15 +63,25 @@ export const MonitoringRevisionDialog: React.FC<MonitoringRevisionDialogProps> =
       return;
     }
 
-    const result = onRevise(currentSPS.id, null, reason.trim(), changes.trim());
-    if (result) {
-      setSuccess(true);
-      setError(null);
-      setTimeout(() => {
-        handleClose();
-      }, 2000);
-    } else {
-      setError('改訂に失敗しました。SPS が見つかりません。');
+    try {
+      setSubmitting(true);
+      const result = await onRevise(
+        currentSPS.id,
+        null,
+        reason.trim(),
+        changes.trim(),
+      );
+      if (result) {
+        setSuccess(true);
+        setError(null);
+        setTimeout(() => {
+          handleClose();
+        }, 2000);
+      } else {
+        setError('改訂に失敗しました。SPS が見つかりません。');
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -198,10 +209,12 @@ export const MonitoringRevisionDialog: React.FC<MonitoringRevisionDialogProps> =
           <Button
             variant="contained"
             startIcon={<SaveIcon />}
-            onClick={handleRevise}
-            disabled={!reason.trim() || !changes.trim()}
+            onClick={() => {
+              void handleRevise();
+            }}
+            disabled={submitting || !reason.trim() || !changes.trim()}
           >
-            改訂を保存
+            {submitting ? '保存中…' : '改訂を保存'}
           </Button>
         )}
       </DialogActions>

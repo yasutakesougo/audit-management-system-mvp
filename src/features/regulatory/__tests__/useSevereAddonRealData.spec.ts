@@ -72,9 +72,11 @@ function makeMockRepo(sheetsByUser: Record<string, unknown[]> = {}) {
   return {
     getById: vi.fn().mockResolvedValue(null),
     listByIsp: vi.fn().mockResolvedValue([]),
+    listByUser: vi.fn().mockResolvedValue([]),
     listCurrentByUser: vi.fn().mockImplementation(async (userId: string) => {
       return sheetsByUser[userId] ?? [];
     }),
+    listBySeries: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockRejectedValue(new Error('not implemented')),
     update: vi.fn().mockRejectedValue(new Error('not implemented')),
   };

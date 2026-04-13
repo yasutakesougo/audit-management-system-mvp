@@ -84,6 +84,14 @@ describe('buildHandoffFromRegularFinding', () => {
     expect(result.body).toContain('超過');
   });
 
+  it('review_approaching → body に残日数が含まれる', () => {
+    const result = buildHandoffFromRegularFinding(makeRegularFinding({
+      type: 'review_approaching',
+      overdueDays: 7,
+    }));
+    expect(result.body).toContain('あと7日');
+  });
+
   it('planning_sheet_missing → body にシート未作成が含まれる', () => {
     const result = buildHandoffFromRegularFinding(makeRegularFinding({ type: 'planning_sheet_missing' }));
     expect(result.body).toContain('未作成');
@@ -101,6 +109,11 @@ describe('buildHandoffFromRegularFinding', () => {
 
   it('planning_sheet_missing → category が支援の工夫', () => {
     const result = buildHandoffFromRegularFinding(makeRegularFinding({ type: 'planning_sheet_missing' }));
+    expect(result.category).toBe('支援の工夫');
+  });
+
+  it('review_approaching → category が支援の工夫', () => {
+    const result = buildHandoffFromRegularFinding(makeRegularFinding({ type: 'review_approaching' }));
     expect(result.category).toBe('支援の工夫');
   });
 

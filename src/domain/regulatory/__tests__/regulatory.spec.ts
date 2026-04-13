@@ -17,6 +17,8 @@ import {
   staffQualificationProfileSchema,
   resolveHighestQualification,
   meetsAuthoringRequirement,
+  meetsConfirmationRequirement,
+  checkSPSConfirmationEligibility,
   STAFF_REGULATORY_FIELD_MAP,
 } from '@/domain/regulatory';
 
@@ -251,6 +253,76 @@ describe('meetsAuthoringRequirement', () => {
 
   it('全 false → false', () => {
     expect(meetsAuthoringRequirement(base)).toBe(false);
+  });
+});
+
+// ═════════════════════════════════════════════
+// meetsConfirmationRequirement
+// ═════════════════════════════════════════════
+
+describe('meetsConfirmationRequirement', () => {
+  const base = { staffId: 'S001', hasPracticalTraining: false, hasBasicTraining: false, hasBehaviorGuidanceTraining: false, hasCorePersonTraining: false, certificationCheckedAt: null };
+
+  it('practical のみ → true', () => {
+    expect(meetsConfirmationRequirement({ ...base, hasPracticalTraining: true })).toBe(true);
+  });
+
+  it('core_person のみ → true', () => {
+    expect(meetsConfirmationRequirement({ ...base, hasCorePersonTraining: true })).toBe(true);
+  });
+
+  it('basic のみ → false', () => {
+    expect(meetsConfirmationRequirement({ ...base, hasBasicTraining: true })).toBe(false);
+  });
+
+  it('全 false → false', () => {
+    expect(meetsConfirmationRequirement(base)).toBe(false);
+  });
+});
+
+// ═════════════════════════════════════════════
+// checkSPSConfirmationEligibility
+// ═════════════════════════════════════════════
+
+describe('checkSPSConfirmationEligibility', () => {
+  const base = { staffId: 'S001', hasPracticalTraining: false, hasBasicTraining: false, hasBehaviorGuidanceTraining: false, hasCorePersonTraining: false, certificationCheckedAt: null };
+
+  it('practical 修了 → eligible', () => {
+    const result = checkSPSConfirmationEligibility({ ...base, hasPracticalTraining: true });
+    expect(result.eligible).toBe(true);
+    expect(result.reasonCodes).toHaveLength(0);
+    expect(result.missingQualifications).toHaveLength(0);
+  });
+
+  it('core_person 修了 → eligible', () => {
+    const result = checkSPSConfirmationEligibility({ ...base, hasCorePersonTraining: true });
+    expect(result.eligible).toBe(true);
+  });
+
+  it('両方修了 → eligible', () => {
+    const result = checkSPSConfirmationEligibility({ ...base, hasPracticalTraining: true, hasCorePersonTraining: true });
+    expect(result.eligible).toBe(true);
+  });
+
+  it('basic のみ → not eligible + 不足資格が列挙される', () => {
+    const result = checkSPSConfirmationEligibility({ ...base, hasBasicTraining: true });
+    expect(result.eligible).toBe(false);
+    expect(result.reasonCodes).toContain('no_practical_training');
+    expect(result.reasonCodes).toContain('no_core_person_training');
+    expect(result.missingQualifications).toHaveLength(2);
+  });
+
+  it('全 false → not eligible + 全不足', () => {
+    const result = checkSPSConfirmationEligibility(base);
+    expect(result.eligible).toBe(false);
+    expect(result.reasonCodes).toContain('no_practical_training');
+    expect(result.reasonCodes).toContain('no_core_person_training');
+  });
+
+  it('不足資格に日本語ラベルが含まれる', () => {
+    const result = checkSPSConfirmationEligibility(base);
+    expect(result.missingQualifications).toContain('強度行動障害支援者養成研修（実践研修）');
+    expect(result.missingQualifications).toContain('中核的人材養成研修');
   });
 });
 
