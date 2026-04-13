@@ -49,6 +49,28 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
     [pendingPatches],
   );
 
+  const planningSheetId = viewModel?.planningSheetId;
+
+  React.useEffect(() => {
+    if (!planningSheetId || planningSheetId === 'new') {
+      setPendingPatchCount(0);
+      setPendingPatches([]);
+      return;
+    }
+
+    let active = true;
+
+    void planPatchRepository.findPending(planningSheetId).then((patches) => {
+      if (!active) return;
+      setPendingPatchCount(patches.length);
+      setPendingPatches(patches);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [planPatchRepository, planningSheetId]);
+
   if (!viewModel) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300 }}>
@@ -58,7 +80,7 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
   }
 
   const {
-    planningSheetId,
+    // planningSheetId, // Already extracted above
     sheet,
     isLoading,
     error,
@@ -94,26 +116,6 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
     source,
     diffSummary,
   } = viewModel;
-
-  React.useEffect(() => {
-    if (!planningSheetId || planningSheetId === 'new') {
-      setPendingPatchCount(0);
-      setPendingPatches([]);
-      return;
-    }
-
-    let active = true;
-
-    void planPatchRepository.findPending(planningSheetId).then((patches) => {
-      if (!active) return;
-      setPendingPatchCount(patches.length);
-      setPendingPatches(patches);
-    });
-
-    return () => {
-      active = false;
-    };
-  }, [planPatchRepository, planningSheetId]);
 
   if (isLoading) {
     return (

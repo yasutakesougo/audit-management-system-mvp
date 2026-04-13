@@ -19,6 +19,7 @@
  * @see assessmentBridge.ts — 同一パターンの先行実装
  */
 import type { PlanningIntake, PlanningSheetFormValues, SupportPlanningSheet } from '@/domain/isp/schema';
+import { toDailyProcedureSteps } from '@/domain/isp/bridge/toDailyProcedureSteps';
 import type { ProcedureStep } from '@/features/daily/domain/legacy/ProcedureRepository';
 import type { ProvenanceEntry } from '@/features/planning-sheet/assessmentBridge';
 
@@ -249,4 +250,48 @@ export function bridgeSheetToRecord(
     existingSteps,
     sheet.id,
   );
+}
+
+export type BridgeSource = 'sheet_structured' | 'sheet_fallback_text' | 'empty' | 'repository_default';
+
+export interface BridgeProceduresResult {
+  steps: ProcedureStep[];
+  source: BridgeSource;
+}
+
+/**
+ * 支援計画シートを手順記録（Daily スケジュール）へ変換する。
+ *
+ * 戦略:
+ * 1. 構造化された手順リスト (L2 Planning) があればそれを優先する。
+ * 2. 構造化データがない場合は、テキスト項目（対応方針・具体策）から抽出生成する。
+ *
+ * @param sheet 支援計画シート
+ * @returns 変換後の手順ステップ配列とソース情報
+ */
+export function bridgePlanningSheetToDailyProcedures(
+  sheet: SupportPlanningSheet,
+): BridgeProceduresResult {
+  // 1. 構造化手順リストの変換を試行
+  const structuredSteps = toDailyProcedureSteps(sheet.planning, sheet.id);
+  if (structuredSteps.length > 0) {
+    return {
+      steps: structuredSteps,
+      source: 'sheet_structured',
+    };
+  }
+
+  // 2. 構造化データがない場合はテキスト項目からのブリッジを試行
+  const bridgedResult = bridgeSheetToRecord(sheet, []);
+  if (bridgedResult.steps.length > 0) {
+    return {
+      steps: bridgedResult.steps,
+      source: 'sheet_fallback_text',
+    };
+  }
+
+  return {
+    steps: [],
+    source: 'empty',
+  };
 }

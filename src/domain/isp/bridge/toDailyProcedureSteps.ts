@@ -88,7 +88,7 @@ export function toDailyProcedureSteps(
     const activityLabel = options?.activityLabels?.[ispStep.order];
 
     return {
-      id: `ps-${planningSheetId}-${ispStep.order}`,
+      id: `ps-${planningSheetId}-${ispStep.order}-${index}`,
       time,
       activity: extractActivityLabel(ispStep.instruction, activityLabel),
       instruction: ispStep.instruction,

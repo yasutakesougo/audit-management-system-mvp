@@ -13,6 +13,8 @@ type UseTimeBasedSupportRecordPageArgs = {
   initialStepKey?: string;
   initialUnfilledOnly?: boolean;
   storageKey?: string;
+  /** 手順（TimeBasedSupportRecordPage から渡される優先スケジュール） */
+  overrideSchedule?: ScheduleItem[];
 };
 
 const DEFAULT_UNFILLED_STORAGE_KEY = 'daily-support-unfilled-only';
@@ -25,6 +27,7 @@ export function useTimeBasedSupportRecordPage({
   initialStepKey,
   initialUnfilledOnly,
   storageKey = DEFAULT_UNFILLED_STORAGE_KEY,
+  overrideSchedule,
 }: UseTimeBasedSupportRecordPageArgs) {
   const [targetUserId, setTargetUserId] = useState(initialUserId);
   const [isAcknowledged, setIsAcknowledged] = useState(false);
@@ -39,9 +42,10 @@ export function useTimeBasedSupportRecordPage({
   const skipAutoSelectRef = useRef(false);
 
   const schedule = useMemo(() => {
+    if (overrideSchedule && overrideSchedule.length > 0) return overrideSchedule;
     if (!targetUserId) return [];
     return procedureRepo.getByUser(targetUserId) as ScheduleItem[];
-  }, [procedureRepo, targetUserId]);
+  }, [overrideSchedule, procedureRepo, targetUserId]);
   const recentObservations = useMemo(
     () => behaviorRecords.filter((behavior) => behavior.userId === targetUserId),
     [behaviorRecords, targetUserId],

@@ -18,6 +18,9 @@ import { useUsers } from '@/features/users/useUsers';
 import { useIbdPageGuard } from '@/features/daily/hooks/useIbdPageGuard';
 import { useSupportRecordSubmit } from '@/pages/hooks/useSupportRecordSubmit';
 import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
+import { usePlanningSheetToProcedureBridge } from '@/features/planning-sheet/hooks/usePlanningSheetToProcedureBridge';
+import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
+import { CircularProgress } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -71,6 +74,14 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   // ── Wizard state ──
   const wizard = useSupportWizard(initialParams.userId, initialParams.stepKey);
 
+  // ── Phase E: 支援計画シートからの手順取得 ──
+  const { 
+    schedule: overrideSchedule, 
+    isLoading: isSheetLoading,
+    error: sheetError,
+    bridgeSource
+  } = usePlanningSheetToProcedureBridge(initialParams.planningSheetId);
+
   // ── Core record page hook (uses wizard's userId) ──
   const {
     targetUserId,
@@ -96,6 +107,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     initialUserId: wizard.wizardUserId || initialParams.userId,
     initialStepKey: wizard.wizardSlotId || initialParams.stepKey,
     initialUnfilledOnly: initialParams.unfilledOnly,
+    overrideSchedule,
   });
 
   // ── Submit logic ──
@@ -253,6 +265,45 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   // IBDガード: リダイレクト中はレンダリングしない
   if (ibdGuard === 'redirecting') return null;
 
+  // シート情報読み込み待ち（Phase E 導線時のみ）
+  if (initialParams.planningSheetId && isSheetLoading) {
+    return (
+      <FullScreenDailyDialogPage title="支援手順の読み込み中..." backTo="/today">
+        <Box sx={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <CircularProgress />
+        </Box>
+      </FullScreenDailyDialogPage>
+    );
+  }
+
+  const renderPlanningError = () => {
+    // 1. 取得エラー時
+    if (sheetError) {
+      return (
+        <Box sx={{ px: 2, pt: 2 }}>
+          <Alert severity="warning" sx={{ mb: 0 }}>
+            支援計画シート「{initialParams.planningSheetId}」の取得に失敗しました。
+            既定の手順を表示します。（エラー: {sheetError}）
+          </Alert>
+        </Box>
+      );
+    }
+
+    // 2. 計画書は取得できたが、手順が空の場合（未設計など）
+    if (initialParams.planningSheetId && bridgeSource === 'empty') {
+      return (
+        <Box sx={{ px: 2, pt: 2 }}>
+          <Alert severity="info" sx={{ mb: 0 }}>
+            指定された支援計画シートに実施手順が設定されていません。
+            既定の手順（リポジトリ）を表示します。
+          </Alert>
+        </Box>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <FullScreenDailyDialogPage
       title="支援手順の実施（行動観察）"
@@ -323,6 +374,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
 
         {/* ── Step Content ── */}
         <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          {renderPlanningError()}
           {wizard.step === 'user' && (
             <UserSelectionStep
               filteredUsers={filteredUsers}

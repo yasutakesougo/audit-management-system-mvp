@@ -153,7 +153,7 @@ describe('toDailyProcedureSteps', () => {
 
     expect(result).toHaveLength(1);
     const step = result[0];
-    expect(step.id).toBe('ps-ps-001-1');
+    expect(step.id).toBe('ps-ps-001-1-0');
     expect(step.time).toBe('09:00');
     expect(step.activity).toBe('視線を合わせて挨拶');
     expect(step.instruction).toBe('視線を合わせて挨拶。体調チェック。');
@@ -290,5 +290,33 @@ describe('toDailyProcedureSteps', () => {
       expect(step.sourceStepOrder).toBe(i + 1);
       expect(step.source).toBe('planning_sheet');
     });
+  });
+
+  it('handles mixed valid and invalid timings gracefully', () => {
+    const design = makeDesign([
+      { order: 1, instruction: '手順A。', timing: '09:00' },
+      { order: 2, instruction: '手順B。', timing: 'invalid' },
+      { order: 3, instruction: '手順C。', timing: '10:00' },
+    ]);
+    const result = toDailyProcedureSteps(design, 'ps-009');
+
+    expect(result[0].time).toBe('09:00');
+    expect(result[1].time).toBe('09:30'); // default for order 2
+    expect(result[2].time).toBe('10:00');
+  });
+
+  it('handles duplicate orders by keeping original order but updating sourceStepOrder', () => {
+    // Note: In a real system, schema validation might prevent duplicate orders,
+    // but the bridge should handle it just in case.
+    const design = makeDesign([
+      { order: 1, instruction: '手順A。' },
+      { order: 1, instruction: '手順B。' },
+    ]);
+    const result = toDailyProcedureSteps(design, 'ps-010');
+
+    expect(result).toHaveLength(2);
+    expect(result[0].id).toBe('ps-ps-010-1-0');
+    expect(result[1].id).toBe('ps-ps-010-1-1');
+    expect(result[0].id).not.toBe(result[1].id);
   });
 });
