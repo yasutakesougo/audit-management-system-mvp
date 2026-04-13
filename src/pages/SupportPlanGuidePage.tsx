@@ -19,6 +19,7 @@ import { useSupportPlanBundle } from '@/features/support-plan-guide/hooks/useSup
 import { useSupportPlanForm } from '@/features/support-plan-guide/hooks/useSupportPlanForm';
 import { useSuggestionDecisionPersistence } from '@/features/support-plan-guide/hooks/useSuggestionDecisionPersistence';
 import { usePlanRole } from '@/features/support-plan-guide/hooks/usePlanRole';
+import { useIcebergPdcaList } from '@/features/ibd/analysis/pdca/queries/useIcebergPdcaList';
 
 import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIcebergEvidence';
 import type {
@@ -30,6 +31,7 @@ import {
 } from '@/features/support-plan-guide/types';
 import {
     computeRequiredCompletion,
+    findSectionKeyByFieldKey,
 } from '@/features/support-plan-guide/utils/helpers';
 import { getAllSubsFlat } from '@/features/support-plan-guide/domain/tabRoute';
 import SupportPlanTabHeader from '@/features/support-plan-guide/components/SupportPlanTabHeader';
@@ -140,6 +142,8 @@ export default function SupportPlanGuidePage() {
     auditAlertCount,
     filledCount,
     completionPercent,
+    groupStatus,
+    exportValidation,
 
     // Actions
     setActiveTab,
@@ -169,6 +173,49 @@ export default function SupportPlanGuidePage() {
     // Confirm Dialogs
     resetConfirmDialog,
   } = hook;
+
+  // ── P5-B: Evidence Traceability Jump ──
+  const handleJumpToEvidence = React.useCallback((sourceType: string, value: any) => {
+    // 1. Iceberg ページへジャンプ
+    if (sourceType === 'iceberg_finding' && value?.pdcaId) {
+      navigate(`/ibd/analysis/${regulatoryUserId}?pdcaId=${value.pdcaId}`);
+      return;
+    }
+
+    // 2. 計画内のフィールドへジャンプ
+    let targetField: string | null = null;
+    if (sourceType === 'summary_kpi' && value === 'period') targetField = 'planPeriod';
+    if (sourceType === 'diff_safety') targetField = 'riskManagement';
+    if (sourceType === 'guidance_item' && value?.fieldKey) targetField = value.fieldKey;
+
+    if (targetField) {
+      const sectionKey = findSectionKeyByFieldKey(targetField);
+      if (sectionKey) {
+        setActiveTab(sectionKey);
+        // DOMレンダリング待ちの後にスクロール
+        setTimeout(() => {
+          const el = document.getElementById(`field-card-${targetField}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.style.transition = 'background-color 0.5s';
+            el.style.backgroundColor = 'rgba(25, 118, 210, 0.12)';
+            setTimeout(() => {
+              el.style.backgroundColor = '';
+            }, 2000);
+          }
+        }, 150);
+      }
+    }
+  }, [navigate, regulatoryUserId, setActiveTab]);
+
+  // ── P5-C: Executable DES Action Click ──
+  const handleActionClick = React.useCallback((action: any) => {
+    const targetTab = action.cta?.params?.tab as SectionKey;
+    if (targetTab) {
+      setActiveTab(targetTab);
+    }
+  }, [setActiveTab]);
+  
 
   // ── P3-D/E/F: Suggestion Decision Persistence + Metrics ──
   const {
@@ -218,6 +265,31 @@ export default function SupportPlanGuidePage() {
     }, 200);
     return () => cancelIdle(handle);
   }, []);
+
+  // ── P5-D: URL Anchor Jump ──
+  React.useEffect(() => {
+    if (isFetching || !activeDraftId) return;
+    
+    const params = new URLSearchParams(location.search);
+    const anchor = params.get('anchor');
+    if (!anchor) return;
+
+    // Wait for tab content to render (lazy components)
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`field-card-${anchor}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Visual cue: temporary highlight
+        el.style.transition = 'background-color 0.5s';
+        el.style.backgroundColor = 'rgba(25, 118, 210, 0.12)';
+        setTimeout(() => {
+          el.style.backgroundColor = '';
+        }, 2000);
+      }
+    }, 600); // Slightly longer for safe lazy-load measure
+
+    return () => clearTimeout(timer);
+  }, [activeDraftId, location.search, isFetching]);
 
   // ── Shared section tab props ──
   const sectionTabProps = {
@@ -338,6 +410,12 @@ export default function SupportPlanGuidePage() {
             guardAdmin={guardAdmin}
             markdownSpan={markdownSpanRef.current}
             approvalState={complianceForm.approvalState}
+            groupStatus={groupStatus}
+            exportValidation={exportValidation}
+            userId={activeDraft?.userId}
+            icebergItems={icebergItems}
+            onJumpToEvidence={handleJumpToEvidence}
+            onActionClick={handleActionClick}
           />
         );
       default:
@@ -355,6 +433,9 @@ export default function SupportPlanGuidePage() {
   const { bundle: realBundle } = useSupportPlanBundle(regulatoryUserId, ispRepos);
 
   // ── Phase D: Iceberg 実データ接続 — Dashboard と同じ evidence source を使用 ──
+  // 背景分析（Iceberg）の取得
+  const { data: icebergItems } = useIcebergPdcaList({ userId: regulatoryUserId });
+
   const { data: icebergEvidence } = useIcebergEvidence(regulatoryUserId);
   const mergedBundle = React.useMemo(() => {
     if (!realBundle) return null;
@@ -508,6 +589,7 @@ export default function SupportPlanGuidePage() {
           <SupportPlanTabHeader
             activeTab={activeTab}
             onTabChange={setActiveTab}
+            groupStatus={groupStatus}
           />
           {getAllSubsFlat().map((sub) => (
             <TabPanel key={sub} current={activeTab} value={sub}>

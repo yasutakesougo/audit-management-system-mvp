@@ -6,6 +6,7 @@
 
 import type { GoalItem } from '@/features/shared/goal/goalTypes';
 import type { SupportPlanDraft } from '../types';
+import { createEmptyForm } from '../utils/helpers';
 
 export interface GoalActionsParams {
   activeDraftId: string;
@@ -19,13 +20,14 @@ export function useGoalActions({ activeDraftId, isAdmin, setDrafts }: GoalAction
     setDrafts((prev) => {
       const target = prev[activeDraftId];
       if (!target) return prev;
+      const baseForm = { ...createEmptyForm(), ...target.data };
       return {
         ...prev,
         [activeDraftId]: {
           ...target,
           data: {
-            ...target.data,
-            goals: target.data.goals.map((g) =>
+            ...baseForm,
+            goals: baseForm.goals.map((g) =>
               g.id === goalId ? { ...g, ...updates } : g,
             ),
           },
@@ -40,13 +42,14 @@ export function useGoalActions({ activeDraftId, isAdmin, setDrafts }: GoalAction
     setDrafts((prev) => {
       const target = prev[activeDraftId];
       if (!target) return prev;
+      const baseForm = { ...createEmptyForm(), ...target.data };
       return {
         ...prev,
         [activeDraftId]: {
           ...target,
           data: {
-            ...target.data,
-            goals: target.data.goals.map((g) => {
+            ...baseForm,
+            goals: baseForm.goals.map((g) => {
               if (g.id !== goalId) return g;
               const next = g.domains.includes(domainId)
                 ? g.domains.filter((d) => d !== domainId)
@@ -72,13 +75,14 @@ export function useGoalActions({ activeDraftId, isAdmin, setDrafts }: GoalAction
     setDrafts((prev) => {
       const target = prev[activeDraftId];
       if (!target) return prev;
+      const baseForm = { ...createEmptyForm(), ...target.data };
       return {
         ...prev,
         [activeDraftId]: {
           ...target,
           data: {
-            ...target.data,
-            goals: [...target.data.goals, newGoal],
+            ...baseForm,
+            goals: [...baseForm.goals, newGoal],
           },
           updatedAt: new Date().toISOString(),
         },
@@ -91,13 +95,14 @@ export function useGoalActions({ activeDraftId, isAdmin, setDrafts }: GoalAction
     setDrafts((prev) => {
       const target = prev[activeDraftId];
       if (!target) return prev;
+      const baseForm = { ...createEmptyForm(), ...target.data };
       return {
         ...prev,
         [activeDraftId]: {
           ...target,
           data: {
-            ...target.data,
-            goals: target.data.goals.filter((g) => g.id !== goalId),
+            ...baseForm,
+            goals: baseForm.goals.filter((g) => g.id !== goalId),
           },
           updatedAt: new Date().toISOString(),
         },
@@ -111,13 +116,14 @@ export function useGoalActions({ activeDraftId, isAdmin, setDrafts }: GoalAction
     setDrafts((prev) => {
       const target = prev[activeDraftId];
       if (!target) return prev;
+      const baseForm = { ...createEmptyForm(), ...target.data };
       return {
         ...prev,
         [activeDraftId]: {
           ...target,
           data: {
-            ...target.data,
-            goals: [...target.data.goals, goal],
+            ...baseForm,
+            goals: [...baseForm.goals, goal],
           },
           updatedAt: new Date().toISOString(),
         },

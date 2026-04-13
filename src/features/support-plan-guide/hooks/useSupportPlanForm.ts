@@ -40,9 +40,14 @@ import {
     computeFilledCount,
     createDraft,
     createEmptyForm,
+    getGroupReadinessInfo,
     sanitizeValue,
+    TAB_GROUPS,
+    TabGroupKey,
 } from '../utils/helpers';
 import { buildSupportPlanMarkdown } from '../utils/markdownExport';
+import type { ExportValidationResult } from '../types/export';
+import { validateExportContract } from '../utils/exportValidation';
 
 // Sub-hooks
 import { useDraftAutoSave } from './useDraftAutoSave';
@@ -88,6 +93,8 @@ export type UseSupportPlanFormReturn = {
   completionPercent: number;
   maxDraftsReached: boolean;
   userOptions: UserOption[];
+  groupStatus: Record<TabGroupKey, { isLocked: boolean; reason?: string; progress: number; isVisible: boolean }>;
+  exportValidation: ExportValidationResult;
 
   /** P3-D: Direct draft state setter for suggestion decision persistence */
   setDrafts: React.Dispatch<React.SetStateAction<Record<string, SupportPlanDraft>>>;
@@ -188,7 +195,10 @@ export function useSupportPlanForm({
     [drafts],
   );
   const activeDraft = activeDraftId ? drafts[activeDraftId] : undefined;
-  const form = activeDraft?.data ?? createEmptyForm();
+  const form = React.useMemo(() => {
+    const rawData = activeDraft?.data ?? createEmptyForm();
+    return { ...createEmptyForm(), ...rawData };
+  }, [activeDraft]);
   // markdown は complianceForm 初期化後に計算（P2-A: compliance/deadline 統合）
   const deadlines = React.useMemo(() => computeDeadlineInfo(form), [form]);
 
@@ -206,6 +216,58 @@ export function useSupportPlanForm({
   );
   const completionPercent = Math.round((requiredCompleted / REQUIRED_FIELDS.length) * 100);
   const maxDraftsReached = draftList.length >= MAX_DRAFTS;
+  const exportValidation = React.useMemo<ExportValidationResult>(
+    () => validateExportContract(form),
+    [form]
+  );
+
+  // ── ステージ進捗・ロック制御 (Enhanced Guided DES) ──
+  const groupStatus = React.useMemo(() => {
+    const map: Record<string, { isLocked: boolean; reason?: string; progress: number; isVisible: boolean }> = {};
+
+    const isIbdRecommended = form.supportLevel?.includes('強度');
+    const hasIbdContent = !!(
+      form.ibdEnvAdjustment?.trim() || 
+      form.ibdPbsStrategy?.trim() ||
+      form.riskManagement?.trim() || 
+      form.emergencyResponsePlan?.trim()
+    );
+
+    for (const group of TAB_GROUPS) {
+      const selfInfo = getGroupReadinessInfo(group.key, form);
+      const isLocked = !!group.dependsOn && !getGroupReadinessInfo(group.dependsOn, form).isReady;
+      
+      // IBDタブの動的表示制御 (Point A)
+      let isVisible = true;
+      if (group.key === 'ibd') {
+        isVisible = isIbdRecommended || hasIbdContent;
+      }
+
+      if (isLocked && group.dependsOn) {
+        const depInfo = getGroupReadinessInfo(group.dependsOn, form);
+        const depLabel = TAB_GROUPS.find((g) => g.key === group.dependsOn)?.label ?? group.dependsOn;
+        
+        let reason = `${depLabel} が未完了です。先に以下の項目を埋めてください：\n・${depInfo.missingLabels.join('\n・')}`;
+        if (depInfo.guidance.length > 0) {
+          reason += `\n\n💡 ヒント:\n${depInfo.guidance.map(g => `・${g.tip}`).join('\n')}`;
+        }
+
+        map[group.key] = {
+          isLocked: true,
+          reason,
+          progress: selfInfo.completionProgress,
+          isVisible,
+        };
+      } else {
+        map[group.key] = {
+          isLocked: false,
+          progress: selfInfo.completionProgress,
+          isVisible,
+        };
+      }
+    }
+    return map as Record<TabGroupKey, { isLocked: boolean; reason?: string; progress: number; isVisible: boolean }>;
+  }, [form]);
 
   // ════════════════════════════════════════════
   // EFFECTS (delegated)
@@ -352,6 +414,7 @@ export function useSupportPlanForm({
     completionPercent,
     maxDraftsReached,
     userOptions,
+    exportValidation,
     setActiveTab,
     setActiveDraftId,
     setPreviewMode,
@@ -373,6 +436,7 @@ export function useSupportPlanForm({
     handleDeleteGoal,
     handleAcceptSuggestion,
     setDrafts,
+    groupStatus,
     complianceForm,
     ispCreate,
     resetConfirmDialog,

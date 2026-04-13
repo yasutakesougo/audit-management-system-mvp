@@ -9,7 +9,7 @@ import type { SelectChangeEvent } from '@mui/material/Select';
 import type { SupportPlanDraftRepository } from '../domain/SupportPlanDraftRepository';
 import type { SectionKey, SupportPlanDraft, SupportPlanForm, ToastState, UserOption } from '../types';
 import { NAME_LIMIT } from '../types';
-import { createDraft, createDraftForUser, sanitizeValue } from '../utils/helpers';
+import { createDraft, createDraftForUser, createEmptyForm, sanitizeValue } from '../utils/helpers';
 
 export interface DraftManagementParams {
   activeDraftId: string;
@@ -158,6 +158,7 @@ export function useDraftManagement({
       const target = prev[activeDraftId];
       if (!target) return prev;
       const updatedData: SupportPlanForm = {
+        ...createEmptyForm(),
         ...target.data,
         serviceUserName: nextName,
       };

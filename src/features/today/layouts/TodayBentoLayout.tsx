@@ -109,6 +109,8 @@ export type TodayBentoProps = {
   users: { items: UserRow[]; onOpenQuickRecord: (id: string) => void; onOpenISP?: (id: string) => void; onOpenIceberg?: (id: string) => void; onAlertClick?: (userId: string) => void; onOpenUserStatus?: UserCompactListProps['onOpenUserStatus']; onEmptyAction?: () => void };
   /** 日々の申し送り一覧パネル (optional) */
   handoffPanel?: React.ReactNode;
+  /** アクションタスクリスト (Command Center) */
+  actionTaskList?: React.ReactNode;
   /** 電話・連絡ログ要約カード (undefined 時は非表示) */
   callLogSummary?: CallLogSummaryCardProps;
   /** 高負荷日タイル (undefined または visible:false 時は非表示) */
@@ -178,6 +180,7 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
   transportCard,
   users,
   handoffPanel,
+  actionTaskList,
   callLogSummary,
   highLoadTile,
   exceptionsQueue,
@@ -413,7 +416,18 @@ export const TodayBentoLayout: React.FC<TodayBentoProps> = ({
         </BentoCard>
         )}
 
-        {/* ── C1-b: 申し送りパネル ── */}
+        {/* ── C1-b: アクションタスク（Command Center） ── */}
+        {actionTaskList && (
+          <BentoCard
+            colSpan={{ xs: 1, sm: 2, md: 4 }}
+            variant="default"
+            testId="bento-action-task-list"
+          >
+            {actionTaskList}
+          </BentoCard>
+        )}
+
+        {/* ── C1-c: 申し送りパネル ── */}
         {handoffPanel && (
           <BentoCard
             colSpan={{ xs: 1, sm: 2, md: 4 }}

@@ -44,10 +44,11 @@ export function useDraftExportImport({
     URL.revokeObjectURL(url);
   };
 
-  const handleCopyMarkdown = async () => {
+  const handleCopyMarkdown = async (overrideContent?: string) => {
     if (!activeDraft) return;
     try {
-      await navigator.clipboard.writeText(markdown);
+      const content = typeof overrideContent === 'string' ? overrideContent : markdown;
+      await navigator.clipboard.writeText(content);
       setToast({
         open: true,
         message: `${activeDraft.name || '利用者'}のMarkdownをコピーしました`,
@@ -70,9 +71,11 @@ export function useDraftExportImport({
     setToast({ open: true, message: 'JSONをダウンロードしました', severity: 'info' });
   };
 
-  const handleDownloadMarkdown = () => {
+  const handleDownloadMarkdown = (overrideContent?: string, overrideFilename?: string) => {
     if (!activeDraft) return;
-    triggerDownload(markdown, `${activeDraft.name || 'support-plan'}-draft.md`, 'text/markdown');
+    const content = typeof overrideContent === 'string' ? overrideContent : markdown;
+    const filename = overrideFilename || `${activeDraft.name || 'support-plan'}-draft.md`;
+    triggerDownload(content, filename, 'text/markdown');
     setToast({ open: true, message: `${activeDraft.name || '利用者'}のMarkdownをダウンロードしました`, severity: 'info' });
   };
 

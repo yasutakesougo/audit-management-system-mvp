@@ -25,10 +25,10 @@ describe('TAB_GROUPS', () => {
     expect(TAB_GROUPS).toHaveLength(5);
   });
 
-  it('全 10 個の SectionKey がカバーされている', () => {
+  it('全 11 個の SectionKey がカバーされている', () => {
     const allSubs = TAB_GROUPS.flatMap((g) => [...g.subs]);
-    expect(allSubs).toHaveLength(10);
-    expect(new Set(allSubs).size).toBe(10); // 重複なし
+    expect(allSubs).toHaveLength(11);
+    expect(new Set(allSubs).size).toBe(11); // 重複なし
   });
 
   it('グループ key が一意', () => {
@@ -37,11 +37,11 @@ describe('TAB_GROUPS', () => {
   });
 
   it.each([
-    ['basic', '基本情報', ['overview', 'assessment']],
-    ['plan', '計画策定', ['smart', 'supports', 'decision']],
-    ['operations', '運用・実行', ['monitoring', 'risk', 'excellence']],
-    ['system', '制度適合', ['compliance']],
-    ['output', '出力', ['preview']],
+    ['assessment', '1. アセスメント', ['assessment']],
+    ['isp', '2. 個別支援計画 (ISP)', ['overview', 'smart', 'supports', 'safety', 'decision']],
+    ['monitoring', '3. モニタリング', ['monitoring']],
+    ['ibd', '4. 強度行動障害支援計画シート', ['risk', 'excellence']],
+    ['output', '5. 同意・プレビュー', ['compliance', 'preview']],
   ] as const)('%s グループ: label=%s, subs=%j', (key, label, subs) => {
     const group = TAB_GROUPS.find((g) => g.key === key);
     expect(group).toBeDefined();
@@ -56,15 +56,16 @@ describe('TAB_GROUPS', () => {
 
 describe('resolveTabRoute', () => {
   it.each([
-    ['overview', 'basic'],
-    ['assessment', 'basic'],
-    ['smart', 'plan'],
-    ['supports', 'plan'],
-    ['decision', 'plan'],
-    ['monitoring', 'operations'],
-    ['risk', 'operations'],
-    ['excellence', 'operations'],
-    ['compliance', 'system'],
+    ['overview', 'isp'],
+    ['assessment', 'assessment'],
+    ['smart', 'isp'],
+    ['supports', 'isp'],
+    ['safety', 'isp'],
+    ['decision', 'isp'],
+    ['monitoring', 'monitoring'],
+    ['risk', 'ibd'],
+    ['excellence', 'ibd'],
+    ['compliance', 'output'],
     ['preview', 'output'],
   ] as const)('%s → group=%s', (sub, expectedGroup) => {
     const route = resolveTabRoute(sub);
@@ -83,11 +84,11 @@ describe('resolveTabRoute', () => {
 
 describe('serializeTabRoute', () => {
   it('group.sub 形式で出力', () => {
-    expect(serializeTabRoute({ group: 'operations', sub: 'monitoring' })).toBe('operations.monitoring');
+    expect(serializeTabRoute({ group: 'monitoring', sub: 'monitoring' })).toBe('monitoring.monitoring');
   });
 
   it('全タブのシリアライズが正しい', () => {
-    expect(serializeTabRoute({ group: 'basic', sub: 'overview' })).toBe('basic.overview');
+    expect(serializeTabRoute({ group: 'isp', sub: 'overview' })).toBe('isp.overview');
     expect(serializeTabRoute({ group: 'output', sub: 'preview' })).toBe('output.preview');
   });
 });
@@ -99,15 +100,16 @@ describe('serializeTabRoute', () => {
 describe('parseTabRoute', () => {
   describe('新形式 (group.sub)', () => {
     it.each([
-      ['basic.overview', 'basic', 'overview'],
-      ['basic.assessment', 'basic', 'assessment'],
-      ['plan.smart', 'plan', 'smart'],
-      ['plan.supports', 'plan', 'supports'],
-      ['plan.decision', 'plan', 'decision'],
-      ['operations.monitoring', 'operations', 'monitoring'],
-      ['operations.risk', 'operations', 'risk'],
-      ['operations.excellence', 'operations', 'excellence'],
-      ['system.compliance', 'system', 'compliance'],
+      ['assessment.assessment', 'assessment', 'assessment'],
+      ['isp.overview', 'isp', 'overview'],
+      ['isp.smart', 'isp', 'smart'],
+      ['isp.supports', 'isp', 'supports'],
+      ['isp.safety', 'isp', 'safety'],
+      ['isp.decision', 'isp', 'decision'],
+      ['monitoring.monitoring', 'monitoring', 'monitoring'],
+      ['ibd.risk', 'ibd', 'risk'],
+      ['ibd.excellence', 'ibd', 'excellence'],
+      ['output.compliance', 'output', 'compliance'],
       ['output.preview', 'output', 'preview'],
     ] as const)('%s → {group: %s, sub: %s}', (param, group, sub) => {
       expect(parseTabRoute(param)).toEqual({ group, sub });
@@ -116,9 +118,9 @@ describe('parseTabRoute', () => {
 
   describe('レガシー互換 (sub のみ)', () => {
     it.each([
-      ['monitoring', 'operations', 'monitoring'],
-      ['overview', 'basic', 'overview'],
-      ['compliance', 'system', 'compliance'],
+      ['monitoring', 'monitoring', 'monitoring'],
+      ['overview', 'isp', 'overview'],
+      ['compliance', 'output', 'compliance'],
       ['preview', 'output', 'preview'],
     ] as const)('%s → {group: %s, sub: %s}', (param, group, sub) => {
       expect(parseTabRoute(param)).toEqual({ group, sub });
@@ -148,7 +150,7 @@ describe('parseTabRoute', () => {
 
     it('group と sub の不整合 → undefined', () => {
       // monitoring は operations グループなので basic.monitoring は不正
-      expect(parseTabRoute('basic.monitoring')).toBeUndefined();
+      expect(parseTabRoute('isp.monitoring')).toBeUndefined();
     });
 
     it('ドットのみ → undefined', () => {
@@ -162,7 +164,7 @@ describe('parseTabRoute', () => {
 
   describe('ラウンドトリップ', () => {
     it('serialize → parse が一致する', () => {
-      const original = { group: 'operations' as const, sub: 'monitoring' as const };
+      const original = { group: 'monitoring' as const, sub: 'monitoring' as const };
       const serialized = serializeTabRoute(original);
       const parsed = parseTabRoute(serialized);
       expect(parsed).toEqual(original);
@@ -189,7 +191,7 @@ describe('parseTabRoute', () => {
 describe('resolveLegacyTabParam', () => {
   it('有効な旧パラメータ → Route', () => {
     expect(resolveLegacyTabParam('monitoring')).toEqual({
-      group: 'operations',
+      group: 'monitoring',
       sub: 'monitoring',
     });
   });
@@ -204,7 +206,7 @@ describe('resolveLegacyTabParam', () => {
 
   it('前後の空白は trim される', () => {
     expect(resolveLegacyTabParam('  monitoring  ')).toEqual({
-      group: 'operations',
+      group: 'monitoring',
       sub: 'monitoring',
     });
   });
@@ -216,9 +218,9 @@ describe('resolveLegacyTabParam', () => {
 
 describe('findGroupDef', () => {
   it('存在するグループを返す', () => {
-    const group = findGroupDef('plan');
+    const group = findGroupDef('isp');
     expect(group).toBeDefined();
-    expect(group!.label).toBe('計画策定');
+    expect(group!.label).toBe('2. 個別支援計画 (ISP)');
   });
 
   it('存在しないグループは undefined', () => {
@@ -229,36 +231,36 @@ describe('findGroupDef', () => {
 
 describe('getGroupDefaultSub', () => {
   it.each([
-    ['basic', 'overview'],
-    ['plan', 'smart'],
-    ['operations', 'monitoring'],
-    ['system', 'compliance'],
-    ['output', 'preview'],
+    ['assessment', 'assessment'],
+    ['isp', 'overview'],
+    ['monitoring', 'monitoring'],
+    ['ibd', 'risk'],
+    ['output', 'compliance'],
   ] as const)('%s → %s', (group, expected) => {
     expect(getGroupDefaultSub(group)).toBe(expected);
   });
 });
 
 describe('getAllSubsFlat', () => {
-  it('全 10 個をフラット順で返す', () => {
+  it('全 11 個をフラット順で返す', () => {
     const subs = getAllSubsFlat();
-    expect(subs).toHaveLength(10);
-    expect(subs[0]).toBe('overview');
-    expect(subs[9]).toBe('preview');
+    expect(subs).toHaveLength(11);
+    expect(subs[0]).toBe('assessment');
+    expect(subs[10]).toBe('preview');
   });
 
   it('グループ定義順にフラット展開される（TAB_GROUPS 順）', () => {
     const expectedOrder = [
-      // basic
-      'overview', 'assessment',
-      // plan
-      'smart', 'supports', 'decision',
-      // operations
-      'monitoring', 'risk', 'excellence',
-      // system
-      'compliance',
+      // assessment
+      'assessment',
+      // isp
+      'overview', 'smart', 'supports', 'safety', 'decision',
+      // monitoring
+      'monitoring',
+      // ibd
+      'risk', 'excellence',
       // output
-      'preview',
+      'compliance', 'preview',
     ];
     expect(getAllSubsFlat()).toEqual(expectedOrder);
   });

@@ -16,7 +16,7 @@ import type { SectionKey } from '../types';
 // Group / Route 型定義
 // ────────────────────────────────────────────
 
-export type TabGroupKey = 'basic' | 'plan' | 'operations' | 'system' | 'output';
+export type TabGroupKey = 'assessment' | 'isp' | 'monitoring' | 'ibd' | 'output';
 
 export type SupportPlanTabRoute = {
   group: TabGroupKey;
@@ -31,15 +31,19 @@ export type TabGroupDef = {
   readonly key: TabGroupKey;
   readonly label: string;
   readonly subs: readonly SectionKey[];
+  readonly dependsOn?: TabGroupKey;
 };
 
 export const TAB_GROUPS: readonly TabGroupDef[] = [
-  { key: 'basic',      label: '基本情報',   subs: ['overview', 'assessment'] },
-  { key: 'plan',       label: '共通・中核計画',   subs: ['smart', 'supports', 'decision'] },
-  { key: 'operations', label: '支援計画シート運用入口', subs: ['monitoring', 'risk', 'excellence'] },
-  { key: 'system',     label: '制度適合',   subs: ['compliance'] },
-  { key: 'output',     label: '出力',       subs: ['preview'] },
+  { key: 'assessment', label: '1. アセスメント',   subs: ['assessment'] },
+  { key: 'isp',        label: '2. 個別支援計画 (ISP)',   subs: ['overview', 'smart', 'supports', 'safety', 'decision'], dependsOn: 'assessment' },
+  { key: 'monitoring', label: '3. モニタリング',   subs: ['monitoring'], dependsOn: 'isp' },
+  { key: 'ibd',        label: '4. 強度行動障害支援計画シート',   subs: ['risk', 'excellence'], dependsOn: 'assessment' },
+  { key: 'output',     label: '5. 同意・プレビュー',   subs: ['compliance', 'preview'], dependsOn: 'isp' },
 ] as const;
+
+
+
 
 // ── 逆引きインデックス: SectionKey → TabGroupKey ──
 const SUB_TO_GROUP: ReadonlyMap<SectionKey, TabGroupKey> = (() => {
