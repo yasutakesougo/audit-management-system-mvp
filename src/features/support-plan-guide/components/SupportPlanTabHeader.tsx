@@ -18,15 +18,20 @@ import {
   getGroupDefaultSub,
   findGroupDef,
 } from '@/features/support-plan-guide/domain/tabRoute';
-import { SECTIONS } from '@/features/support-plan-guide/utils/helpers';
+import { SECTION_LABELS } from '@/features/support-plan-guide/domain/sectionMeta';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Box from '@mui/material/Box';
 import React from 'react';
 
+import Tooltip from '@mui/material/Tooltip';
+import LockRoundedIcon from '@mui/icons-material/LockRounded';
+
+import Stack from '@mui/material/Stack';
+
 // ── サブタブラベル逆引き ──
 const SUB_LABELS: ReadonlyMap<SectionKey, string> = new Map(
-  SECTIONS.map((s) => [s.key, s.label]),
+  Object.entries(SECTION_LABELS) as Array<[SectionKey, string]>,
 );
 
 // ────────────────────────────────────────────
@@ -38,6 +43,8 @@ export interface SupportPlanTabHeaderProps {
   activeTab: SectionKey;
   /** タブ変更コールバック（SectionKey を直接渡す） */
   onTabChange: (tab: SectionKey) => void;
+  /** グループごとのロック・ステータス (progress/isVisible付き) */
+  groupStatus: Record<TabGroupKey, { isLocked: boolean; reason?: string; progress: number; isVisible: boolean }>;
 }
 
 // ────────────────────────────────────────────
@@ -47,21 +54,28 @@ export interface SupportPlanTabHeaderProps {
 const SupportPlanTabHeader: React.FC<SupportPlanTabHeaderProps> = ({
   activeTab,
   onTabChange,
+  groupStatus,
 }) => {
   // ── activeTab → 現在のグループを導出 ──
   const currentRoute = resolveTabRoute(activeTab);
-  const activeGroupKey: TabGroupKey = currentRoute?.group ?? 'basic';
+  const activeGroupKey: TabGroupKey = currentRoute?.group ?? 'isp';
   const activeGroupDef = findGroupDef(activeGroupKey);
+
+  // 表示対象のグループのみをフィルタ (Point A)
+  const visibleGroups = TAB_GROUPS.filter(g => groupStatus[g.key]?.isVisible);
 
   // ── グループタブクリック → グループのデフォルト sub に遷移 ──
   const handleGroupChange = React.useCallback(
     (_event: React.SyntheticEvent, newGroupKey: TabGroupKey) => {
+      const status = groupStatus[newGroupKey];
+      if (status?.isLocked) return;
+
       const defaultSub = getGroupDefaultSub(newGroupKey);
       if (defaultSub) {
         onTabChange(defaultSub);
       }
     },
-    [onTabChange],
+    [onTabChange, groupStatus],
   );
 
   // ── サブタブクリック → そのまま sub を渡す ──
@@ -81,27 +95,84 @@ const SupportPlanTabHeader: React.FC<SupportPlanTabHeaderProps> = ({
         variant="fullWidth"
         aria-label="支援計画セクショングループ"
         sx={{
-          minHeight: 42,
+          minHeight: 48,
           '& .MuiTab-root': {
-            minHeight: 42,
+            minHeight: 48,
             fontWeight: 600,
             fontSize: '0.85rem',
+            transition: 'all 0.2s ease',
+            color: 'text.secondary',
+          },
+          '& .Mui-selected': {
+            color: 'primary.main',
+          },
+          '& .Mui-disabled': {
+            opacity: 0.5,
+            color: 'text.disabled',
           },
         }}
       >
-        {TAB_GROUPS.map((group) => (
-          <Tab
-            key={group.key}
-            value={group.key}
-            label={group.label}
-            id={`sp-group-tab-${group.key}`}
-            aria-controls={`sp-group-panel-${group.key}`}
-          />
-        ))}
+        {visibleGroups.map((group) => {
+          const status = groupStatus[group.key];
+          const labelContent = (
+            <Stack direction="row" alignItems="center" spacing={0.5} sx={{ display: 'flex' }}>
+              <span>{group.label}</span>
+              {!status?.isLocked && (status?.progress ?? 0) > 0 && (
+                <Box
+                  sx={{
+                    fontSize: '0.65rem',
+                    bgcolor: status?.progress === 100 ? 'success.light' : 'action.selected',
+                    color: status?.progress === 100 ? 'success.contrastText' : 'text.secondary',
+                    px: 0.5,
+                    borderRadius: 1,
+                    ml: 'auto',
+                  }}
+                >
+                  {status.progress}%
+                </Box>
+              )}
+            </Stack>
+          );
+
+          const label = status?.isLocked && status.reason
+            ? (
+                <Tooltip
+                  title={
+                    <Box sx={{ p: 0.5, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                      {status.reason}
+                    </Box>
+                  }
+                  arrow
+                  placement="top"
+                >
+                  <span>{labelContent}</span>
+                </Tooltip>
+              )
+            : labelContent;
+
+          return (
+            <Tab
+              key={group.key}
+              value={group.key}
+              label={label}
+              disabled={status?.isLocked}
+              icon={status?.isLocked ? <LockRoundedIcon sx={{ fontSize: '1rem !important' }} /> : undefined}
+              iconPosition="start"
+              id={`sp-group-tab-${group.key}`}
+              aria-controls={`sp-group-panel-${group.key}`}
+              sx={{
+                '&.Mui-disabled': {
+                  cursor: 'not-allowed',
+                  pointerEvents: 'auto',
+                },
+              }}
+            />
+          );
+        })}
       </Tabs>
 
-      {/* ── 下段: サブタブ（2+ subs のグループのみ） ── */}
-      {activeGroupDef && activeGroupDef.subs.length > 1 && (
+      {/* ── 下段: サブタブ ── */}
+      {activeGroupDef && activeGroupDef.subs.length > 0 && (
         <Tabs
           value={activeTab}
           onChange={handleSubChange}

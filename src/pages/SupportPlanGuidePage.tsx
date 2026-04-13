@@ -11,14 +11,13 @@ import { canAccess } from '@/auth/roles';
 import { useAuth } from '@/auth/useAuth';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { useCurrentPlanningSheet } from '@/features/planning-sheet/hooks/useCurrentPlanningSheet';
-import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { useIspRepositories } from '@/features/support-plan-guide/hooks/useIspRepositories';
 import { useRegulatorySummary } from '@/features/support-plan-guide/hooks/useRegulatorySummary';
 import { useSupportPlanBundle } from '@/features/support-plan-guide/hooks/useSupportPlanBundle';
 import { useSupportPlanForm } from '@/features/support-plan-guide/hooks/useSupportPlanForm';
 import { useSuggestionDecisionPersistence } from '@/features/support-plan-guide/hooks/useSuggestionDecisionPersistence';
 import { usePlanRole } from '@/features/support-plan-guide/hooks/usePlanRole';
+import { useIcebergPdcaList } from '@/features/ibd/analysis/pdca/queries/useIcebergPdcaList';
 
 import { useIcebergEvidence } from '@/features/ibd/analysis/pdca/queries/useIcebergEvidence';
 import type {
@@ -28,14 +27,12 @@ import type {
 import {
     FIELD_KEYS,
 } from '@/features/support-plan-guide/types';
-import {
-    computeRequiredCompletion,
-} from '@/features/support-plan-guide/utils/helpers';
+import { computeRequiredCompletion } from '@/features/support-plan-guide/domain/progress';
 import { getAllSubsFlat } from '@/features/support-plan-guide/domain/tabRoute';
+import { findSectionKeyByFieldKey } from '@/features/support-plan-guide/domain/sectionMeta';
 import SupportPlanTabHeader from '@/features/support-plan-guide/components/SupportPlanTabHeader';
 import { useUsersStore } from '@/features/users/store';
 import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
-import { PREFETCH_KEYS, prefetchByKey, warmRoute } from '@/prefetch/routes';
 import { TESTIDS, tid } from '@/testids';
 import { cancelIdle, runOnIdle } from '@/utils/runOnIdle';
 import CloudDoneRoundedIcon from '@mui/icons-material/CloudDoneRounded';
@@ -140,6 +137,8 @@ export default function SupportPlanGuidePage() {
     auditAlertCount,
     filledCount,
     completionPercent,
+    groupStatus,
+    exportValidation,
 
     // Actions
     setActiveTab,
@@ -169,6 +168,53 @@ export default function SupportPlanGuidePage() {
     // Confirm Dialogs
     resetConfirmDialog,
   } = hook;
+  const regulatoryUserId = activeDraft?.userId != null ? String(activeDraft.userId) : null;
+  const activeDraftNumericUserId =
+    activeDraft?.userId == null ? null : Number.isFinite(Number(activeDraft.userId)) ? Number(activeDraft.userId) : null;
+
+  // ── P5-B: Evidence Traceability Jump ──
+  const handleJumpToEvidence = React.useCallback((sourceType: string, value: unknown) => {
+    const evidence = value as { pdcaId?: string; fieldKey?: string } | null;
+    // 1. Iceberg ページへジャンプ
+    if (sourceType === 'iceberg_finding' && evidence?.pdcaId) {
+      navigate(`/ibd/analysis/${regulatoryUserId}?pdcaId=${evidence.pdcaId}`);
+      return;
+    }
+
+    // 2. 計画内のフィールドへジャンプ
+    let targetField: string | null = null;
+    if (sourceType === 'summary_kpi' && value === 'period') targetField = 'planPeriod';
+    if (sourceType === 'diff_safety') targetField = 'riskManagement';
+    if (sourceType === 'guidance_item' && evidence?.fieldKey) targetField = evidence.fieldKey;
+
+    if (targetField) {
+      const sectionKey = findSectionKeyByFieldKey(targetField);
+      if (sectionKey) {
+        setActiveTab(sectionKey);
+        // DOMレンダリング待ちの後にスクロール
+        setTimeout(() => {
+          const el = document.getElementById(`field-card-${targetField}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.style.transition = 'background-color 0.5s';
+            el.style.backgroundColor = 'rgba(25, 118, 210, 0.12)';
+            setTimeout(() => {
+              el.style.backgroundColor = '';
+            }, 2000);
+          }
+        }, 150);
+      }
+    }
+  }, [navigate, regulatoryUserId, setActiveTab]);
+
+  // ── P5-C: Executable DES Action Click ──
+  const handleActionClick = React.useCallback((action: { cta?: { params?: { tab?: string } } }) => {
+    const targetTab = action.cta?.params?.tab as SectionKey;
+    if (targetTab) {
+      setActiveTab(targetTab);
+    }
+  }, [setActiveTab]);
+  
 
   // ── P3-D/E/F: Suggestion Decision Persistence + Metrics ──
   const {
@@ -209,15 +255,46 @@ export default function SupportPlanGuidePage() {
 
   // ── Prefetch (idle) ──
   React.useEffect(() => {
-    const handle = runOnIdle(() => warmRoute(() => import('@/features/audit/AuditPanel'), PREFETCH_KEYS.audit, { source: 'idle' }));
+    const handle = runOnIdle(() => {
+      void import('@/prefetch/routes').then(({ warmRoute, PREFETCH_KEYS }) => (
+        warmRoute(() => import('@/features/audit/AuditPanel'), PREFETCH_KEYS.audit, { source: 'idle' })
+      ));
+    });
     return () => cancelIdle(handle);
   }, []);
   React.useEffect(() => {
     const handle = runOnIdle(() => {
-      prefetchByKey(PREFETCH_KEYS.supportPlanGuideMarkdown, 'idle');
+      void import('@/prefetch/routes').then(({ prefetchByKey, PREFETCH_KEYS }) => {
+        prefetchByKey(PREFETCH_KEYS.supportPlanGuideMarkdown, 'idle');
+      });
     }, 200);
     return () => cancelIdle(handle);
   }, []);
+
+  // ── P5-D: URL Anchor Jump ──
+  React.useEffect(() => {
+    if (isFetching || !activeDraftId) return;
+    
+    const params = new URLSearchParams(location.search);
+    const anchor = params.get('anchor');
+    if (!anchor) return;
+
+    // Wait for tab content to render (lazy components)
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`field-card-${anchor}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Visual cue: temporary highlight
+        el.style.transition = 'background-color 0.5s';
+        el.style.backgroundColor = 'rgba(25, 118, 210, 0.12)';
+        setTimeout(() => {
+          el.style.backgroundColor = '';
+        }, 2000);
+      }
+    }, 600); // Slightly longer for safe lazy-load measure
+
+    return () => clearTimeout(timer);
+  }, [activeDraftId, location.search, isFetching]);
 
   // ── Shared section tab props ──
   const sectionTabProps = {
@@ -338,6 +415,12 @@ export default function SupportPlanGuidePage() {
             guardAdmin={guardAdmin}
             markdownSpan={markdownSpanRef.current}
             approvalState={complianceForm.approvalState}
+            groupStatus={groupStatus}
+            exportValidation={exportValidation}
+            userId={activeDraftNumericUserId}
+            icebergItems={icebergItems}
+            onJumpToEvidence={handleJumpToEvidence}
+            onActionClick={handleActionClick}
           />
         );
       default:
@@ -351,10 +434,12 @@ export default function SupportPlanGuidePage() {
 
   // ── Regulatory Summary (Phase E → Repository 結線) ──
   const ispRepos = useIspRepositories();
-  const regulatoryUserId = activeDraft?.userId != null ? String(activeDraft.userId) : null;
   const { bundle: realBundle } = useSupportPlanBundle(regulatoryUserId, ispRepos);
 
   // ── Phase D: Iceberg 実データ接続 — Dashboard と同じ evidence source を使用 ──
+  // 背景分析（Iceberg）の取得
+  const { data: icebergItems } = useIcebergPdcaList({ userId: regulatoryUserId });
+
   const { data: icebergEvidence } = useIcebergEvidence(regulatoryUserId);
   const mergedBundle = React.useMemo(() => {
     if (!realBundle) return null;
@@ -390,12 +475,6 @@ export default function SupportPlanGuidePage() {
       icebergTotal: icebergTotalForHud,
     };
   }, [regulatoryBundle, regulatoryAvailable, deadlines, complianceForm.compliance, icebergTotalForHud]);
-
-
-
-  // ── Planning Sheet 動的遷移 ──
-  const planningSheetRepo = usePlanningSheetRepositories();
-  const { currentSheet: _currentSheet, allCurrentSheets: _allCurrentSheets, isLoading: _isLoadingSheets } = useCurrentPlanningSheet(regulatoryUserId, planningSheetRepo);
 
   return (
     <Box sx={{ p: { xs: 1.5, md: 2 }, pb: 4 }}>
@@ -508,6 +587,7 @@ export default function SupportPlanGuidePage() {
           <SupportPlanTabHeader
             activeTab={activeTab}
             onTabChange={setActiveTab}
+            groupStatus={groupStatus}
           />
           {getAllSubsFlat().map((sub) => (
             <TabPanel key={sub} current={activeTab} value={sub}>

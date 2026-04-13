@@ -44,6 +44,7 @@ export function useDraftFieldHandlers({
       const target = prev[activeDraftId];
       if (!target) return prev;
       const updatedData: SupportPlanForm = {
+        ...createEmptyForm(),
         ...target.data,
         [key]: sanitizeValue(value, FIELD_LIMITS[key]),
       };
@@ -63,7 +64,7 @@ export function useDraftFieldHandlers({
     setDrafts((prev) => {
       const target = prev[activeDraftId];
       if (!target) return prev;
-      const currentValue = target.data[key];
+      const currentValue = target.data[key] ?? '';
       const separator = currentValue ? (currentValue.trimEnd().endsWith('\n') ? '' : '\n') : '';
       const nextValue = `${currentValue ? currentValue.trimEnd() : ''}${separator}${phrase}`.trimStart();
       return {
@@ -71,6 +72,7 @@ export function useDraftFieldHandlers({
         [activeDraftId]: {
           ...target,
           data: {
+            ...createEmptyForm(),
             ...target.data,
             [key]: sanitizeValue(nextValue, FIELD_LIMITS[key]),
           },

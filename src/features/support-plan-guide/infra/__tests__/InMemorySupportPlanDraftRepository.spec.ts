@@ -21,18 +21,19 @@ describe('InMemorySupportPlanDraftRepository', () => {
     repo = createInMemorySupportPlanDraftRepository();
   });
 
-  it('seeds with one default draft', async () => {
+  it('seeds with two default drafts', async () => {
     const drafts = await repo.listDrafts();
-    expect(drafts).toHaveLength(1);
-    expect(drafts[0].name).toBe('利用者 1');
+    expect(drafts).toHaveLength(2);
+    expect(drafts[0].name).toBe('塩田 裕貴');
+    expect(drafts[1].name).toBe('利用者 1');
   });
 
   it('saveDraft creates a new draft', async () => {
     const draft = makeDraft({ id: 'new-1', name: '山田太郎' });
     await repo.saveDraft(draft);
-
+ 
     const drafts = await repo.listDrafts();
-    expect(drafts).toHaveLength(2); // seed + new
+    expect(drafts).toHaveLength(3); // seed + new
     expect(drafts.find((d) => d.id === 'new-1')?.name).toBe('山田太郎');
   });
 
@@ -51,10 +52,10 @@ describe('InMemorySupportPlanDraftRepository', () => {
   it('deleteDraft removes a draft', async () => {
     const draft = makeDraft({ id: 'del-1' });
     await repo.saveDraft(draft);
-    expect(repo.size).toBe(2); // seed + new
+    expect(repo.size).toBe(3); // seed + new
 
     await repo.deleteDraft('del-1');
-    expect(repo.size).toBe(1);
+    expect(repo.size).toBe(2);
 
     const drafts = await repo.listDrafts();
     expect(drafts.find((d) => d.id === 'del-1')).toBeUndefined();
@@ -73,7 +74,7 @@ describe('InMemorySupportPlanDraftRepository', () => {
     await repo.bulkSave(drafts);
 
     const all = await repo.listDrafts();
-    expect(all).toHaveLength(4); // seed + 3
+    expect(all).toHaveLength(5); // seed + 3
   });
 
   it('listDrafts filters by userCode', async () => {

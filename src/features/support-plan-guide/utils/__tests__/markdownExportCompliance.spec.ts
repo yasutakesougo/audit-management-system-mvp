@@ -53,6 +53,17 @@ const makeCompliance = (overrides: Partial<IspComplianceMetadata> = {}): IspComp
     approvedAt: null,
     approvalStatus: 'draft',
   },
+  meeting: {
+    meetingDate: null,
+    meetingMinutes: '',
+    attendees: [],
+  },
+  consultationSupport: {
+    agencyName: '',
+    officerName: '',
+    serviceUsePlanReceivedAt: null,
+    gapNotes: '',
+  },
   ...overrides,
 });
 

@@ -15,6 +15,7 @@ import Toolbar from '@mui/material/Toolbar';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import { Link as RouterLink } from 'react-router-dom';
+import { P0AlertBadge } from '@/features/action-engine/components/P0AlertBadge';
 
 type Props = {
   isDesktop: boolean;
@@ -144,6 +145,7 @@ export const AppShellHeader: React.FC<Props> = ({
         <Box sx={{ flex: 1 }} />
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <P0AlertBadge />
           <ConnectionStatus />
           <Tooltip title="表示設定">
             <IconButton

@@ -294,6 +294,6 @@ export function buildSupportPlanMonitoringUrl(userId: string): string {
   const search = new URLSearchParams();
   search.set('userId', userId);
   const route = resolveTabRoute('monitoring');
-  search.set('tab', route ? serializeTabRoute(route) : 'monitoring');
+  search.set('tab', route ? serializeTabRoute(route) : 'operations.monitoring');
   return `/support-plan-guide?${search.toString()}`;
 }

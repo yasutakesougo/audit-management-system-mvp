@@ -73,6 +73,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDataProvider } from '@/lib/data/useDataProvider';
+import { ActionTaskList } from '@/features/action-engine';
 
 export type TodayOpsPageProps = {
   correctiveActions?: ActionSuggestion[];
@@ -611,6 +612,16 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
         onDismissSuggestion: handleDismissSuggestion,
         onSnoozeSuggestion: handleSnoozeSuggestion,
       },
+      actionTaskList: (
+        <ActionTaskList 
+          onOpenTask={(task) => {
+            const tab = task.cta.params?.tab || 'assessment';
+            const anchor = task.cta.params?.anchor;
+            const url = `/support-plan-guide?userId=${task.targetUserId}&tab=${tab}${anchor ? `&anchor=${anchor}` : ''}`;
+            navigate(url);
+          }} 
+        />
+      ),
       workflowCard: isServiceManager
         ? {
           items: workflowPhases.items,

@@ -120,6 +120,20 @@ export class DataProviderIspRepository implements IspRepository {
     return washed.map(mapIspRowToListItem);
   }
 
+  async listFullByUser(userId: string): Promise<IndividualSupportPlan[]> {
+    const { title, fields, candidates } = await this.resolveSource();
+    const userField = fields.userCode || 'UserCode';
+    
+    const rows = await this.provider.listItems<SpIspMasterRow>(title, {
+      filter: `${userField} eq '${userId}'`,
+      orderby: 'Modified desc',
+      top: SP_QUERY_LIMITS.default,
+    });
+
+    const washed = washRows(rows as unknown as Record<string, unknown>[], candidates, fields) as unknown as SpIspMasterRow[];
+    return washed.map(mapIspRowToDomain);
+  }
+
   async getCurrentByUser(userId: string): Promise<IndividualSupportPlan | null> {
     const { title, fields, candidates } = await this.resolveSource();
     const userField = fields.userCode || 'UserCode';

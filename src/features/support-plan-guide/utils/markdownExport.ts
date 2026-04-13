@@ -68,6 +68,7 @@ function buildFormSections(form: SupportPlanForm): MdSection[] {
         form.serviceStartDate && `- 契約開始日: ${form.serviceStartDate}`,
         form.firstServiceDate && `- 実際の初回提供日: ${form.firstServiceDate}`,
         form.planPeriod && `- 計画期間: ${form.planPeriod}`,
+        form.attendingDays && `- 通所日数・時間: ${form.attendingDays}`,
         form.medicalConsiderations && `\n**医療的配慮事項**\n${form.medicalConsiderations}`,
       ].filter(Boolean) as string[],
     },
@@ -84,13 +85,25 @@ function buildFormSections(form: SupportPlanForm): MdSection[] {
     },
     {
       title: '具体的支援内容',
-      lines: supportGoalLines,
+      lines: [
+        ...supportGoalLines,
+        form.userRole && `\n**本人の役割・教育的目標**\n${form.userRole}`,
+      ].filter(Boolean) as string[],
     },
     {
       title: '意思決定支援・会議記録',
       lines: [
         form.decisionSupport && `意思決定支援: ${form.decisionSupport}`,
         form.conferenceNotes && `サービス担当者会議: ${form.conferenceNotes}`,
+      ].filter(Boolean) as string[],
+    },
+    {
+      title: 'リスク管理・安全対策',
+      lines: [
+        form.medicalConsiderations && `医療的配慮事項: ${form.medicalConsiderations}`,
+        form.emergencyResponsePlan && `緊急時対応計画: ${form.emergencyResponsePlan}`,
+        form.riskManagement && `リスク管理: ${form.riskManagement}`,
+        form.rightsAdvocacy && `虐待防止・権利擁護: ${form.rightsAdvocacy}`,
       ].filter(Boolean) as string[],
     },
     {
@@ -101,19 +114,7 @@ function buildFormSections(form: SupportPlanForm): MdSection[] {
         form.lastMonitoringDate && `直近モニタ実施日: ${form.lastMonitoringDate}`,
       ].filter(Boolean) as string[],
     },
-    {
-      title: '減算リスク対策・緊急対応',
-      lines: [
-        form.riskManagement && `リスク管理: ${form.riskManagement}`,
-        form.emergencyResponsePlan && `緊急時対応計画: ${form.emergencyResponsePlan}`,
-        form.rightsAdvocacy && `権利擁護: ${form.rightsAdvocacy}`,
-        form.complianceControls && `コンプラ対策: ${form.complianceControls}`,
-      ].filter(Boolean) as string[],
-    },
-    {
-      title: '卓越性・改善提案',
-      lines: [form.improvementIdeas && form.improvementIdeas].filter(Boolean) as string[],
-    },
+    // NOTE: 強度行動障害 (IBDシート) 関連は buildIbdSheetMarkdown で出力するため ISPからは除外
   ];
 }
 
@@ -150,7 +151,14 @@ function buildComplianceSection(compliance: IspComplianceMetadata | null): MdSec
     return { title: '制度適合（コンプライアンス）', lines: [] };
   }
 
-  const { consent, delivery, approval, meeting, consultationSupport, standardServiceHours } = compliance;
+  const {
+    consent,
+    delivery,
+    approval,
+    meeting = { meetingDate: null, attendees: [], meetingMinutes: '' },
+    consultationSupport = { agencyName: '', officerName: '', serviceUsePlanReceivedAt: null, gapNotes: '' },
+    standardServiceHours,
+  } = compliance;
   const lines: string[] = [];
 
   // 基本サービス
@@ -252,7 +260,7 @@ function buildDeadlineSection(deadlines: SupportPlanExportModel['deadlines']): M
 export const buildMarkdown = (form: SupportPlanForm): string => {
   const sections = buildFormSections(form);
   const body = renderSections(sections);
-  return body ? `# 個別支援計画書ドラフト\n\n${body}\n` : '# 個別支援計画書ドラフト\n';
+  return body ? `# 個別支援計画書\n\n${body}\n` : '# 個別支援計画書\n';
 };
 
 /**
@@ -272,5 +280,41 @@ export const buildSupportPlanMarkdown = (model: SupportPlanExportModel): string 
   ];
 
   const body = renderSections(allSections);
-  return body ? `# 個別支援計画書ドラフト\n\n${body}\n` : '# 個別支援計画書ドラフト\n';
+  return body ? `# 個別支援計画書\n\n${body}\n` : '# 個別支援計画書\n';
+};
+
+/**
+ * 強度行動障害支援計画シート専用の Markdown を生成する。
+ * (ISP とは別の法的文書としての体裁)
+ */
+export const buildIbdSheetMarkdown = (form: SupportPlanForm): string => {
+  const sections: MdSection[] = [
+    {
+      title: '強度行動障害支援計画シート (案)',
+      lines: [
+        `- 利用者名: ${form.serviceUserName || '未入力'}`,
+        `- 作成日: ${new Date().toLocaleDateString('ja-JP')}`,
+        `- 計画期間: ${form.planPeriod || '未入力'}`,
+      ],
+    },
+    {
+      title: '1. 環境調整・コミュニケーション支援',
+      lines: [form.ibdEnvAdjustment || '未入力'],
+    },
+    {
+      title: '2. 肯定的行動支援 (PBS)・対応手順',
+      lines: [form.ibdPbsStrategy || '未入力'],
+    },
+    {
+      title: '3. 権利擁護の取り組み',
+      lines: [form.rightsAdvocacy || '未入力'],
+    },
+    {
+      title: '4. 特記事項・改善案',
+      lines: [form.improvementIdeas || '未入力'],
+    },
+  ];
+
+  const body = renderSections(sections);
+  return body ? `# 強度行動障害支援計画シート\n\n${body}\n` : '# 強度行動障害支援計画シート\n';
 };

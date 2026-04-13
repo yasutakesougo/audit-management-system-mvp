@@ -34,13 +34,13 @@ const FieldCard: React.FC<FieldCardProps> = ({
   onAppendPhrase,
   guardAdmin,
 }) => {
-  const value = form[field.key];
-  const limit = FIELD_LIMITS[field.key];
+  const value = form[field.key] ?? '';
+  const limit = FIELD_LIMITS[field.key] ?? 1000;
   const remaining = limit - value.length;
   const isOverLimit = remaining < 0;
 
   return (
-    <Paper key={field.key} variant="outlined" sx={{ p: 2 }}>
+    <Paper id={`field-card-${field.key}`} variant="outlined" sx={{ p: 2 }}>
       <Stack spacing={1.5}>
         <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
           <Stack spacing={0.5} flex={1}>
