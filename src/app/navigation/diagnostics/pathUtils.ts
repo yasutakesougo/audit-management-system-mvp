@@ -101,6 +101,7 @@ export const ORPHAN_ALLOWLIST_DETAILS: AllowlistRoute[] = [
   { path: '/schedules/create', category: 'Creation', reason: 'スケジュール作成モーダル/ページ' },
   { path: '/dev/schedule-create-dialog', category: 'Dev', reason: '開発用画面' },
   { path: '/isp-editor/:userId', category: 'Detail', reason: 'ISP前回比較の利用者別詳細画面（TodayOps・UserDetailから遷移）' },
+  { path: '/monitoring-meeting/:userId', category: 'Detail', reason: 'モニタリング会議の利用者別詳細画面（支援計画導線から遷移）' },
   { path: '/admin/csv-import', category: 'Admin', reason: '管理者用CSVインポート画面（直接URLアクセス）' },
   { path: '/analysis/dashboard', category: 'Redirect', reason: '統合ワークスペースのdashboardタブへリダイレクト' },
   { path: '/analysis/iceberg', category: 'Redirect', reason: '統合ワークスペースのicebergタブへリダイレクト' },

@@ -39,7 +39,7 @@ describe('TAB_GROUPS', () => {
   it.each([
     ['assessment', '1. アセスメント', ['assessment']],
     ['isp', '2. 個別支援計画 (ISP)', ['overview', 'smart', 'supports', 'safety', 'decision']],
-    ['monitoring', '3. モニタリング', ['monitoring']],
+    ['operations', '3. 運用・実行', ['monitoring']],
     ['ibd', '4. 強度行動障害支援計画シート', ['risk', 'excellence']],
     ['output', '5. 同意・プレビュー', ['compliance', 'preview']],
   ] as const)('%s グループ: label=%s, subs=%j', (key, label, subs) => {
@@ -62,7 +62,7 @@ describe('resolveTabRoute', () => {
     ['supports', 'isp'],
     ['safety', 'isp'],
     ['decision', 'isp'],
-    ['monitoring', 'monitoring'],
+    ['monitoring', 'operations'],
     ['risk', 'ibd'],
     ['excellence', 'ibd'],
     ['compliance', 'output'],
@@ -84,7 +84,7 @@ describe('resolveTabRoute', () => {
 
 describe('serializeTabRoute', () => {
   it('group.sub 形式で出力', () => {
-    expect(serializeTabRoute({ group: 'monitoring', sub: 'monitoring' })).toBe('monitoring.monitoring');
+    expect(serializeTabRoute({ group: 'operations', sub: 'monitoring' })).toBe('operations.monitoring');
   });
 
   it('全タブのシリアライズが正しい', () => {
@@ -106,7 +106,8 @@ describe('parseTabRoute', () => {
       ['isp.supports', 'isp', 'supports'],
       ['isp.safety', 'isp', 'safety'],
       ['isp.decision', 'isp', 'decision'],
-      ['monitoring.monitoring', 'monitoring', 'monitoring'],
+      ['monitoring.monitoring', 'operations', 'monitoring'],
+      ['operations.monitoring', 'operations', 'monitoring'],
       ['ibd.risk', 'ibd', 'risk'],
       ['ibd.excellence', 'ibd', 'excellence'],
       ['output.compliance', 'output', 'compliance'],
@@ -118,7 +119,7 @@ describe('parseTabRoute', () => {
 
   describe('レガシー互換 (sub のみ)', () => {
     it.each([
-      ['monitoring', 'monitoring', 'monitoring'],
+      ['monitoring', 'operations', 'monitoring'],
       ['overview', 'isp', 'overview'],
       ['compliance', 'output', 'compliance'],
       ['preview', 'output', 'preview'],
@@ -164,7 +165,7 @@ describe('parseTabRoute', () => {
 
   describe('ラウンドトリップ', () => {
     it('serialize → parse が一致する', () => {
-      const original = { group: 'monitoring' as const, sub: 'monitoring' as const };
+      const original = { group: 'operations' as const, sub: 'monitoring' as const };
       const serialized = serializeTabRoute(original);
       const parsed = parseTabRoute(serialized);
       expect(parsed).toEqual(original);
@@ -191,7 +192,7 @@ describe('parseTabRoute', () => {
 describe('resolveLegacyTabParam', () => {
   it('有効な旧パラメータ → Route', () => {
     expect(resolveLegacyTabParam('monitoring')).toEqual({
-      group: 'monitoring',
+      group: 'operations',
       sub: 'monitoring',
     });
   });
@@ -206,7 +207,7 @@ describe('resolveLegacyTabParam', () => {
 
   it('前後の空白は trim される', () => {
     expect(resolveLegacyTabParam('  monitoring  ')).toEqual({
-      group: 'monitoring',
+      group: 'operations',
       sub: 'monitoring',
     });
   });
@@ -233,7 +234,7 @@ describe('getGroupDefaultSub', () => {
   it.each([
     ['assessment', 'assessment'],
     ['isp', 'overview'],
-    ['monitoring', 'monitoring'],
+    ['operations', 'monitoring'],
     ['ibd', 'risk'],
     ['output', 'compliance'],
   ] as const)('%s → %s', (group, expected) => {

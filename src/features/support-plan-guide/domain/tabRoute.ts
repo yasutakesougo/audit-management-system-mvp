@@ -7,7 +7,7 @@
  * 設計原則:
  *  - 純粋関数のみ（React 非依存）
  *  - SectionKey との後方互換を維持
- *  - 旧 ?tab=monitoring → 新 operations.monitoring の段階移行
+ *  - 旧 ?tab=monitoring / monitoring.monitoring → 新 operations.monitoring の段階移行
  */
 
 import type { SectionKey } from '../types';
@@ -16,7 +16,7 @@ import type { SectionKey } from '../types';
 // Group / Route 型定義
 // ────────────────────────────────────────────
 
-export type TabGroupKey = 'assessment' | 'isp' | 'monitoring' | 'ibd' | 'output';
+export type TabGroupKey = 'assessment' | 'isp' | 'operations' | 'ibd' | 'output';
 
 export type SupportPlanTabRoute = {
   group: TabGroupKey;
@@ -37,7 +37,7 @@ export type TabGroupDef = {
 export const TAB_GROUPS: readonly TabGroupDef[] = [
   { key: 'assessment', label: '1. アセスメント',   subs: ['assessment'] },
   { key: 'isp',        label: '2. 個別支援計画 (ISP)',   subs: ['overview', 'smart', 'supports', 'safety', 'decision'], dependsOn: 'assessment' },
-  { key: 'monitoring', label: '3. モニタリング',   subs: ['monitoring'], dependsOn: 'isp' },
+  { key: 'operations', label: '3. 運用・実行',   subs: ['monitoring'], dependsOn: 'isp' },
   { key: 'ibd',        label: '4. 強度行動障害支援計画シート',   subs: ['risk', 'excellence'], dependsOn: 'assessment' },
   { key: 'output',     label: '5. 同意・プレビュー',   subs: ['compliance', 'preview'], dependsOn: 'isp' },
 ] as const;
@@ -61,6 +61,9 @@ const ALL_SUBS: ReadonlySet<SectionKey> = new Set(SUB_TO_GROUP.keys());
 
 // ── 全 TabGroupKey セット ──
 const ALL_GROUPS: ReadonlySet<TabGroupKey> = new Set(TAB_GROUPS.map((g) => g.key));
+const LEGACY_GROUP_ALIASES: Readonly<Record<string, TabGroupKey>> = {
+  monitoring: 'operations',
+};
 
 // ────────────────────────────────────────────
 // ユーティリティ関数
@@ -103,12 +106,13 @@ export function parseTabRoute(param: string | null): SupportPlanTabRoute | undef
   if (dotIndex > 0) {
     const groupPart = trimmed.slice(0, dotIndex);
     const subPart = trimmed.slice(dotIndex + 1);
+    const normalizedGroupPart = LEGACY_GROUP_ALIASES[groupPart] ?? groupPart;
 
-    if (ALL_GROUPS.has(groupPart as TabGroupKey) && ALL_SUBS.has(subPart as SectionKey)) {
+    if (ALL_GROUPS.has(normalizedGroupPart as TabGroupKey) && ALL_SUBS.has(subPart as SectionKey)) {
       const expectedGroup = SUB_TO_GROUP.get(subPart as SectionKey);
       // group と sub の整合性を検証
-      if (expectedGroup === groupPart) {
-        return { group: groupPart as TabGroupKey, sub: subPart as SectionKey };
+      if (expectedGroup === normalizedGroupPart) {
+        return { group: normalizedGroupPart as TabGroupKey, sub: subPart as SectionKey };
       }
     }
     return undefined;

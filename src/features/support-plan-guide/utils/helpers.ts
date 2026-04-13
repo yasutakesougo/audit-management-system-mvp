@@ -188,7 +188,7 @@ export const getGroupReadinessInfo = (groupKey: TabGroupKey, form: SupportPlanFo
   const requiredFieldsMap: Record<TabGroupKey, SupportPlanStringFieldKey[]> = {
     assessment: ['assessmentSummary'],
     isp: ['serviceUserName', 'supportLevel', 'planPeriod', 'decisionSupport'],
-    monitoring: ['monitoringPlan'],
+    operations: ['monitoringPlan'],
     ibd: ['assessmentSummary'],
     output: [],
   };

@@ -114,7 +114,7 @@ const SupportPlanTabHeader: React.FC<SupportPlanTabHeaderProps> = ({
       >
         {visibleGroups.map((group) => {
           const status = groupStatus[group.key];
-          const label = (
+          const labelContent = (
             <Stack direction="row" alignItems="center" spacing={0.5} sx={{ display: 'flex' }}>
               <span>{group.label}</span>
               {!status?.isLocked && (status?.progress ?? 0) > 0 && (
@@ -134,7 +134,23 @@ const SupportPlanTabHeader: React.FC<SupportPlanTabHeaderProps> = ({
             </Stack>
           );
 
-          const tabElement = (
+          const label = status?.isLocked && status.reason
+            ? (
+                <Tooltip
+                  title={
+                    <Box sx={{ p: 0.5, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                      {status.reason}
+                    </Box>
+                  }
+                  arrow
+                  placement="top"
+                >
+                  <span>{labelContent}</span>
+                </Tooltip>
+              )
+            : labelContent;
+
+          return (
             <Tab
               key={group.key}
               value={group.key}
@@ -152,30 +168,11 @@ const SupportPlanTabHeader: React.FC<SupportPlanTabHeaderProps> = ({
               }}
             />
           );
-
-          if (status?.isLocked && status.reason) {
-            return (
-              <Tooltip
-                key={group.key}
-                title={
-                  <Box sx={{ p: 0.5, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
-                    {status.reason}
-                  </Box>
-                }
-                arrow
-                placement="top"
-              >
-                <span>{tabElement}</span>
-              </Tooltip>
-            );
-          }
-
-          return tabElement;
         })}
       </Tabs>
 
-      {/* ── 下段: サブタブ（2+ subs のグループのみ） ── */}
-      {activeGroupDef && activeGroupDef.subs.length > 1 && (
+      {/* ── 下段: サブタブ ── */}
+      {activeGroupDef && activeGroupDef.subs.length > 0 && (
         <Tabs
           value={activeTab}
           onChange={handleSubChange}
