@@ -33,7 +33,7 @@ import Typography from '@mui/material/Typography';
 import React from 'react';
 
 import type { UseMeetingEvidenceDraftResult } from '../hooks/useMeetingEvidenceDraft';
-import type { MeetingEvidenceSection } from '@/domain/bridge/meetingEvidenceDraft';
+import { type MeetingEvidenceSection } from '@/app/services/bridgeProxy';
 
 // ── Types ───────────────────────────────────────────────
 
