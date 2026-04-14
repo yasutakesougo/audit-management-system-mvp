@@ -26,6 +26,7 @@ export type ExceptionCategory =
   | 'risk-deviation'
   | 'focus-missing'
   | 'missing-vital'
+  | 'isp-recommendation'
   | 'setup-incomplete';
 
 export type ExceptionSeverity = 'low' | 'medium' | 'high' | 'critical';
@@ -99,6 +100,7 @@ export const EXCEPTION_CATEGORIES: Record<ExceptionCategory, CategoryMeta> = {
   'risk-deviation': { label: 'リスク逸脱', icon: '🚨', color: '#b71c1c' },
   'focus-missing': { label: '記述不足', icon: '✍️', color: '#ef6c00' },
   'missing-vital': { label: '未計測バイタル', icon: '🌡️', color: '#d32f2f' },
+  'isp-recommendation': { label: '計画見直し推奨', icon: '📋', color: '#1976d2' },
   'setup-incomplete': { label: '設定不足', icon: '⚙️', color: '#00796b' },
 };
 
@@ -482,6 +484,7 @@ export function computeExceptionStats(items: ExceptionItem[]): ExceptionStats {
       'risk-deviation': 0,
       'focus-missing': 0,
       'missing-vital': 0,
+      'isp-recommendation': 0,
       'setup-incomplete': 0
     },
   };
