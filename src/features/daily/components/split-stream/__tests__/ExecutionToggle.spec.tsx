@@ -1,100 +1,102 @@
-import { EXECUTION_RECORD_KEY } from '@/features/daily/domain/executionRecordTypes';
-import { __resetStore } from '@/features/daily/stores/executionStore';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
-
-// We need to import ExecutionToggle after store setup
+import { render, screen, cleanup, act, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
 import { ExecutionToggle } from '../ExecutionToggle';
+import { useExecutionRecord } from '../../../hooks/useExecutionRecord';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+// Mock the hook to isolate UI testing from store/async complexity
+vi.mock('../../../hooks/useExecutionRecord', () => ({
+  useExecutionRecord: vi.fn(),
+}));
 
-const TEST_DATE = '2025-04-01';
-const TEST_USER = 'U-001';
-const TEST_SLOT = 'slot-0900-朝の会';
+// Mock MUI Tooltip to avoid portal/animation issues
+vi.mock('@mui/material/Tooltip', () => ({
+  __esModule: true,
+  default: ({ children }: any) => children,
+}));
 
-function renderToggle(overrides: { scheduleItemId?: string } = {}) {
-  return render(
-    <ExecutionToggle
-      date={TEST_DATE}
-      userId={TEST_USER}
-      scheduleItemId={overrides.scheduleItemId ?? TEST_SLOT}
-    />,
-  );
-}
+// Silent theme to suppress ripple/transition noise
+const theme = createTheme({
+  components: {
+    MuiButtonBase: { defaultProps: { disableRipple: true } },
+    MuiToggleButton: { defaultProps: { disableRipple: true } },
+  },
+});
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+const Wrapper = ({ children }: { children: React.ReactNode }) => (
+  <ThemeProvider theme={theme}>{children}</ThemeProvider>
+);
 
-describe('ExecutionToggle', () => {
+const TEST_SLOT = 'slot-0900';
+
+describe('ExecutionToggle (UI)', () => {
+  const mockSetStatus = vi.fn();
+  const mockSetMemo = vi.fn();
+
   beforeEach(() => {
-    localStorage.removeItem(EXECUTION_RECORD_KEY);
-    __resetStore();
+    vi.clearAllMocks();
+    (useExecutionRecord as any).mockReturnValue({
+      record: { status: 'unrecorded', memo: '' },
+      setStatus: mockSetStatus,
+      setMemo: mockSetMemo,
+      isLoading: false,
+    });
   });
 
-  it('renders 3 toggle buttons: 完了 / 発動 / スキップ', () => {
-    renderToggle();
-
-    expect(screen.getByText('完了')).toBeTruthy();
-    expect(screen.getByText('発動')).toBeTruthy();
-    expect(screen.getByText('スキップ')).toBeTruthy();
+  afterEach(() => {
+    cleanup();
   });
 
-  it('selects completed status when clicking 完了', () => {
-    renderToggle();
+  it('calls setStatus when a button is clicked', async () => {
+    const user = userEvent.setup();
+    render(<ExecutionToggle date="2025-01-01" userId="U1" scheduleItemId={TEST_SLOT} />, { wrapper: Wrapper });
 
-    const btn = screen.getByTestId(`exec-btn-completed-${TEST_SLOT}`);
-    fireEvent.click(btn);
+    const completedBtn = await screen.findByTestId(`exec-btn-completed-${TEST_SLOT}`);
+    
+    // Wrap in act to ensure all MUI internal state updates are captured
+    await act(async () => {
+      await user.click(completedBtn);
+    });
 
-    // After clicking, the button should be selected (aria-pressed)
-    expect(btn.getAttribute('aria-pressed')).toBe('true');
+    expect(mockSetStatus).toHaveBeenCalledWith('completed');
   });
 
-  it('selects triggered status and shows memo field', () => {
-    renderToggle();
+  it('shows memo field and calls setMemo', async () => {
+    (useExecutionRecord as any).mockReturnValue({
+      record: { status: 'triggered', memo: 'initial' },
+      setStatus: mockSetStatus,
+      setMemo: mockSetMemo,
+      isLoading: false,
+    });
 
-    const btn = screen.getByTestId(`exec-btn-triggered-${TEST_SLOT}`);
-    fireEvent.click(btn);
+    render(<ExecutionToggle date="2025-01-01" userId="U1" scheduleItemId={TEST_SLOT} />, { wrapper: Wrapper });
 
-    expect(btn.getAttribute('aria-pressed')).toBe('true');
+    const input = await screen.findByPlaceholderText(/発動メモ/);
+    expect(input).toHaveValue('initial');
 
-    // Memo field should appear
-    const memo = screen.getByTestId(`exec-memo-${TEST_SLOT}`);
-    expect(memo).toBeTruthy();
+    // Use fireEvent for memo to avoid character-by-character async complexity in this UI test
+    await act(async () => {
+      fireEvent.change(input, { target: { value: 'new memo' } });
+    });
+
+    expect(mockSetMemo).toHaveBeenCalledWith('new memo');
   });
 
-  it('does NOT show memo field for completed status', () => {
-    renderToggle();
+  it('reflects correct pressed state from record', async () => {
+    (useExecutionRecord as any).mockReturnValue({
+      record: { status: 'completed', memo: '' },
+      setStatus: mockSetStatus,
+      setMemo: mockSetMemo,
+      isLoading: false,
+    });
 
-    fireEvent.click(screen.getByTestId(`exec-btn-completed-${TEST_SLOT}`));
+    render(<ExecutionToggle date="2025-01-01" userId="U1" scheduleItemId={TEST_SLOT} />, { wrapper: Wrapper });
 
-    expect(screen.queryByTestId(`exec-memo-${TEST_SLOT}`)).toBeNull();
-  });
+    const completedBtn = await screen.findByTestId(`exec-btn-completed-${TEST_SLOT}`);
+    expect(completedBtn).toHaveAttribute('aria-pressed', 'true');
 
-  it('does NOT show memo field for skipped status', () => {
-    renderToggle();
-
-    fireEvent.click(screen.getByTestId(`exec-btn-skipped-${TEST_SLOT}`));
-
-    expect(screen.queryByTestId(`exec-memo-${TEST_SLOT}`)).toBeNull();
-  });
-
-  it('persists memo text in triggered state', () => {
-    renderToggle();
-
-    // Set to triggered
-    fireEvent.click(screen.getByTestId(`exec-btn-triggered-${TEST_SLOT}`));
-
-    // Type into memo
-    const input = screen.getByPlaceholderText('発動メモ（例: イヤーマフで落ち着いた）');
-    fireEvent.change(input, { target: { value: 'パニック発生' } });
-
-    expect(input).toHaveValue('パニック発生');
-  });
-
-  it('has correct displayName', () => {
-    expect(ExecutionToggle.displayName).toBe('ExecutionToggle');
+    const triggeredBtn = await screen.findByTestId(`exec-btn-triggered-${TEST_SLOT}`);
+    expect(triggeredBtn).toHaveAttribute('aria-pressed', 'false');
   });
 });

@@ -21,7 +21,8 @@ export function useExecutionRecord(date: string, userId: string, scheduleItemId:
 
   useEffect(() => {
     void fetchRecord();
-  }, [fetchRecord]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, userId, scheduleItemId]);
 
   const setStatus = useCallback(
     async (status: RecordStatus) => {
