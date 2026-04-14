@@ -1,4 +1,7 @@
-import { getPlanningWorkflowPhase, type MonitoringToPlanningBridge } from '@/app/services/bridgeProxy';
+import {
+  getPlanningWorkflowPhaseForSheet,
+  type MonitoringToPlanningBridge,
+} from '@/app/services/bridgeProxy';
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
 import type { SupportPlanningSheetViewModel } from '../types';
 import type { SupportPlanningSheetUiState } from './useSupportPlanningSheetUiState';
@@ -97,10 +100,10 @@ export function mapToSupportPlanningSheetViewModel(input: MapperInput): SupportP
   const allProvenanceEntries = [...persistedProvenance, ...uiState.sessionProvenance];
 
   // 2. ワークフローフェーズの判定（派生データ）
-  const workflowResult = getPlanningWorkflowPhase({
+  const workflowResult = getPlanningWorkflowPhaseForSheet({
     userId: sheet.userId,
-    userName: sheet.title, 
-    planningSheets: [{
+    userName: sheet.title,
+    sheet: {
       id: sheet.id,
       status: sheet.status,
       appliedFrom: sheet.supportStartDate ?? null,
@@ -108,7 +111,7 @@ export function mapToSupportPlanningSheetViewModel(input: MapperInput): SupportP
       reviewCycleDays: sheet.monitoringCycleDays ?? 90,
       procedureCount: sheet.planning?.procedureSteps?.length ?? 0,
       isCurrent: true,
-    }],
+    },
   });
 
   return {

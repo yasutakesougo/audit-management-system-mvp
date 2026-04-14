@@ -22,13 +22,10 @@ import type { PlanningSheetRepository } from '@/domain/isp/port';
 import type { PlanningSheetListItem } from '@/domain/isp/schema';
 import type { IUserMaster } from '@/sharepoint/fields';
 import {
-  getPlanningWorkflowPhase,
-  sortWorkflowItemsByPriority,
-  getPlanningWorkflowCardItem,
-  type PlanningSheetSnapshot,
-  type WorkflowPhaseResult,
-  type PlanningWorkflowCardItem,
-  type WorkflowPhase,
+  buildPlanningWorkflowUi,
+  type PlanningWorkflowUiSheetSnapshot,
+  type PlanningWorkflowUiCardItem,
+  type PlanningWorkflowUiPhase,
 } from '@/app/services/bridgeProxy';
 
 // ─────────────────────────────────────────────
@@ -46,23 +43,23 @@ export interface WorkflowPhaseCounts {
 
 export interface UseWorkflowPhasesResult {
   /** ソート済み UI 用アイテム一覧 */
-  items: PlanningWorkflowCardItem[];
+  items: PlanningWorkflowUiCardItem[];
   /** フェーズ別件数 */
   counts: WorkflowPhaseCounts;
   /** 最優先アイテム（優先度が最も高い） */
-  topPriorityItem?: PlanningWorkflowCardItem;
+  topPriorityItem?: PlanningWorkflowUiCardItem;
   /** 読み込み中 */
   isLoading: boolean;
-  /** 全件の生データ（テスト用） */
-  _rawResults: WorkflowPhaseResult[];
+  /** 利用者ごとのフェーズ（テスト用 — 未ソート） */
+  _phasesByUser: ReadonlyArray<{ userId: string; phase: PlanningWorkflowUiPhase }>;
 }
 
 // ─────────────────────────────────────────────
-// Adapter: PlanningSheetListItem → PlanningSheetSnapshot
+// Adapter: PlanningSheetListItem → PlanningWorkflowUiSheetSnapshot
 // ─────────────────────────────────────────────
 
 /**
- * PlanningSheetListItem を PlanningSheetSnapshot に変換する。
+ * PlanningSheetListItem を UI 向け最小スナップショットに変換する。
  *
  * repository から取得したリスト型を、workflowPhase 判定用の軽量型に変換。
  * procedureCount は PlanningSheetListItem に含まれないため、
@@ -71,7 +68,7 @@ export interface UseWorkflowPhasesResult {
 export function toPlanningSheetSnapshot(
   item: PlanningSheetListItem,
   procedureCount?: number,
-): PlanningSheetSnapshot {
+): PlanningWorkflowUiSheetSnapshot {
   return {
     id: item.id,
     status: item.status,
@@ -87,7 +84,7 @@ export function toPlanningSheetSnapshot(
 // Pure counting helper (testable)
 // ─────────────────────────────────────────────
 
-const PHASE_COUNT_KEYS: Record<WorkflowPhase, keyof WorkflowPhaseCounts> = {
+const PHASE_COUNT_KEYS: Record<PlanningWorkflowUiPhase, keyof WorkflowPhaseCounts> = {
   needs_assessment: 'needsAssessment',
   needs_plan: 'needsPlan',
   monitoring_overdue: 'monitoringOverdue',
@@ -97,9 +94,11 @@ const PHASE_COUNT_KEYS: Record<WorkflowPhase, keyof WorkflowPhaseCounts> = {
 };
 
 /**
- * WorkflowPhaseResult[] からフェーズ別件数を集計する。
+ * 利用者ごとの phase からフェーズ別件数を集計する。
  */
-export function countByPhase(results: WorkflowPhaseResult[]): WorkflowPhaseCounts {
+export function countByPhase(
+  phases: ReadonlyArray<{ phase: PlanningWorkflowUiPhase }>,
+): WorkflowPhaseCounts {
   const counts: WorkflowPhaseCounts = {
     needsAssessment: 0,
     needsPlan: 0,
@@ -109,7 +108,7 @@ export function countByPhase(results: WorkflowPhaseResult[]): WorkflowPhaseCount
     activePlan: 0,
   };
 
-  for (const r of results) {
+  for (const r of phases) {
     const key = PHASE_COUNT_KEYS[r.phase];
     if (key) counts[key]++;
   }
@@ -124,32 +123,23 @@ export function countByPhase(results: WorkflowPhaseResult[]): WorkflowPhaseCount
 /**
  * 利用者データ + 計画シートデータ → ソート済みカードアイテム一覧
  *
- * React 非依存の純関数パイプライン。テスト可能。
+ * Bridge の buildPlanningWorkflowUi を呼ぶだけの薄いラッパー。
+ * 旧 API 互換のため {phases, items} の組を返す。
  */
 export function buildWorkflowItems(
   users: Array<{ userId: string; userName: string }>,
-  sheetsByUser: Map<string, PlanningSheetSnapshot[]>,
+  sheetsByUser: Map<string, PlanningWorkflowUiSheetSnapshot[]>,
   referenceDate?: string,
-): { results: WorkflowPhaseResult[]; items: PlanningWorkflowCardItem[] } {
-  // 1. 各利用者のフェーズ判定
-  const results: WorkflowPhaseResult[] = users.map((user) => {
-    const input = {
-      userId: user.userId,
-      userName: user.userName,
-      planningSheets: sheetsByUser.get(user.userId) ?? [],
-      reassessments: [], // 将来拡張
-      referenceDate,
-    };
-    return getPlanningWorkflowPhase(input);
+): {
+  phases: ReadonlyArray<{ userId: string; phase: PlanningWorkflowUiPhase }>;
+  items: PlanningWorkflowUiCardItem[];
+} {
+  const { items, phases } = buildPlanningWorkflowUi({
+    users,
+    sheetsByUser,
+    referenceDate,
   });
-
-  // 2. priority 順ソート
-  const sorted = sortWorkflowItemsByPriority(results);
-
-  // 3. UI 用アイテムに変換
-  const items = sorted.map(getPlanningWorkflowCardItem);
-
-  return { results, items };
+  return { phases, items };
 }
 
 // ─────────────────────────────────────────────
@@ -166,7 +156,7 @@ export function useWorkflowPhases(
   users: IUserMaster[],
   repo: PlanningSheetRepository | null,
 ): UseWorkflowPhasesResult {
-  const [sheetsByUser, setSheetsByUser] = useState<Map<string, PlanningSheetSnapshot[]>>(new Map());
+  const [sheetsByUser, setSheetsByUser] = useState<Map<string, PlanningWorkflowUiSheetSnapshot[]>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
 
   // 利用者の userId + userName を安定化
@@ -190,7 +180,7 @@ export function useWorkflowPhases(
     setIsLoading(true);
 
     (async () => {
-      const map = new Map<string, PlanningSheetSnapshot[]>();
+      const map = new Map<string, PlanningWorkflowUiSheetSnapshot[]>();
 
       // 並列で取得（パフォーマンス重視）
       const results = await Promise.allSettled(
@@ -221,16 +211,16 @@ export function useWorkflowPhases(
 
   // パイプライン実行 + メモ化
   return useMemo(() => {
-    const { results, items } = buildWorkflowItems(userEntries, sheetsByUser);
-    const counts = countByPhase(results);
-    const topPriorityItem = items[0]; // sortByWorkflowPriority 済み
+    const { phases, items } = buildWorkflowItems(userEntries, sheetsByUser);
+    const counts = countByPhase(phases);
+    const topPriorityItem = items[0]; // buildPlanningWorkflowUi 内でソート済み
 
     return {
       items,
       counts,
       topPriorityItem,
       isLoading,
-      _rawResults: results,
+      _phasesByUser: phases,
     };
   }, [userEntries, sheetsByUser, isLoading]);
 }

@@ -13,7 +13,10 @@
  * @see src/domain/bridge/workflowPhase.ts
  */
 import { motionTokens } from '@/app/theme';
-import { type PlanningWorkflowCardItem, type WorkflowSeverity } from '@/app/services/bridgeProxy';
+import {
+  type PlanningWorkflowUiCardItem,
+  type PlanningWorkflowUiSeverity,
+} from '@/app/services/bridgeProxy';
 import type { WorkflowPhaseCounts } from '@/features/today/hooks/useWorkflowPhases';
 import AssignmentLateIcon from '@mui/icons-material/AssignmentLate';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -34,7 +37,7 @@ import React from 'react';
 const DEFAULT_MAX_ITEMS = 5;
 
 /** severity → 色マッピング */
-const SEVERITY_COLORS: Record<WorkflowSeverity, { bg: string; text: string; border: string }> = {
+const SEVERITY_COLORS: Record<PlanningWorkflowUiSeverity, { bg: string; text: string; border: string }> = {
   danger: { bg: 'rgba(229, 57, 53, 0.12)', text: '#e53935', border: '#e53935' },
   warning: { bg: 'rgba(245, 124, 0, 0.12)', text: '#f57c00', border: '#f57c00' },
   info: { bg: 'rgba(25, 118, 210, 0.12)', text: '#1976d2', border: '#1976d2' },
@@ -42,7 +45,7 @@ const SEVERITY_COLORS: Record<WorkflowSeverity, { bg: string; text: string; bord
 };
 
 /** severity → emoji */
-const SEVERITY_EMOJI: Record<WorkflowSeverity, string> = {
+const SEVERITY_EMOJI: Record<PlanningWorkflowUiSeverity, string> = {
   danger: '🔴',
   warning: '🟡',
   info: '🔵',
@@ -53,11 +56,11 @@ const SEVERITY_EMOJI: Record<WorkflowSeverity, string> = {
 
 export interface PlanningWorkflowCardProps {
   /** ソート済みアイテム一覧 */
-  items: PlanningWorkflowCardItem[];
+  items: PlanningWorkflowUiCardItem[];
   /** フェーズ別件数 */
   counts: WorkflowPhaseCounts;
   /** 最優先アイテム */
-  topPriorityItem?: PlanningWorkflowCardItem;
+  topPriorityItem?: PlanningWorkflowUiCardItem;
   /** 最大表示件数 */
   maxItems?: number;
   /** CTA クリック時のナビゲーション */
@@ -130,7 +133,7 @@ function WorkflowItemRow({
   item,
   onNavigate,
 }: {
-  item: PlanningWorkflowCardItem;
+  item: PlanningWorkflowUiCardItem;
   onNavigate?: (href: string) => void;
 }) {
   const colors = SEVERITY_COLORS[item.severity];
