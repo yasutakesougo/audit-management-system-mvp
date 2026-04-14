@@ -63,7 +63,7 @@ export const TabPanel: React.FC<{
 // ─────────────────────────────────────────────
 
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
-import type { WorkflowPhase } from '@/domain/bridge/workflowPhase';
+import { type WorkflowPhase } from '@/app/services/bridgeProxy';
 import type { IcebergEvidenceBySheet } from '@/domain/regulatory/findingEvidenceSummary';
 import type { UsePlanningSheetFormReturn } from '@/features/planning-sheet/hooks/usePlanningSheetForm';
 import type { ProvenanceEntry, AssessmentBridgeResult } from '@/features/planning-sheet/assessmentBridge';

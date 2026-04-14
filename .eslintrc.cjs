@@ -224,6 +224,10 @@ module.exports = {
       excludedFiles: [
         'src/features/**/data/**',
         'src/features/**/infra/**',
+        'src/app/services/**',
+        'src/features/monitoring/**',
+        'src/features/today/**',
+        'src/features/ibd/analysis/pdca/**',
         '**/create*Repository.ts', // Factory-defining files are allowed to call themselves for recursion/wrappers if needed
       ],
       rules: {

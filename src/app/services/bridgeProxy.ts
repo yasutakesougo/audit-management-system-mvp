@@ -1,4 +1,11 @@
-import { determineWorkflowPhase } from '@/domain/bridge/workflowPhase';
+import { determineWorkflowPhase, type WorkflowPhase } from '@/domain/bridge/workflowPhase';
+import {
+  resolveNextStepBanner,
+  type BannerContext,
+  type BannerTone,
+  type NextStepAlertPriority,
+  type ResolveNextStepInput,
+} from '@/domain/bridge/nextStepBanner';
 import type { MonitoringToPlanningBridge } from '@/domain/isp/bridge';
 import {
   mapMonitoringToPlanningBridge,
@@ -23,6 +30,21 @@ export function getPlanningWorkflowPhase(
   return determineWorkflowPhase(input);
 }
 
+// --- Next Step Banner ---
+
+export type {
+  BannerContext,
+  BannerTone,
+  NextStepAlertPriority,
+  ResolveNextStepInput,
+};
+
+export function getNextStepBanner(
+  input: ResolveNextStepInput
+): ReturnType<typeof resolveNextStepBanner> {
+  return resolveNextStepBanner(input);
+}
+
 // --- Monitoring Bridge ---
 
 export function getMonitoringToPlanningBridge(
@@ -39,4 +61,4 @@ export function getMonitoringRecordFromMeeting(
 
 // --- Types ---
 
-export type { MonitoringToPlanningBridge };
+export type { MonitoringToPlanningBridge, WorkflowPhase };
