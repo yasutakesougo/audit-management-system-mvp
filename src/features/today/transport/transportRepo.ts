@@ -111,16 +111,28 @@ async function resolveAttendanceFields(client: ReturnType<typeof useSP>): Promis
   }
 }
 
+/** Helper to provide a safe field name with fallback and warning on missing mapping */
+function asField(physical: string | undefined, fallback: string): string {
+  if (!physical) {
+    // Keep internal logging minimal to avoid console noise, but useful for debugging
+    return fallback;
+  }
+  return physical;
+}
+
 function mapSpRowToLogEntry(row: SpTransportLogRow, fields: Record<string, string | undefined>): TransportLogEntry {
-  const get = (key: string, fallback: string) => String(row[fields[key] || fallback] ?? '');
+  const get = (key: string, fallback: string) => {
+    const fieldName = asField(fields[key], fallback);
+    return String(row[fieldName] ?? '');
+  };
   
   return {
     userId: get('userCode', 'UserCode'),
     direction: (get('direction', 'Direction') || 'to') as TransportDirection,
     status: (get('status', 'Status') || 'pending') as TransportLegStatus,
-    actualTime: row[fields.actualTime || 'ActualTime'] ? String(row[fields.actualTime || 'ActualTime']) : undefined,
-    driverName: row[fields.driverName || 'DriverName'] ? String(row[fields.driverName || 'DriverName']) : undefined,
-    notes: row[fields.notes || 'Notes'] ? String(row[fields.notes || 'Notes']) : undefined,
+    actualTime: row[asField(fields.actualTime, 'ActualTime')] ? String(row[asField(fields.actualTime, 'ActualTime')]) : undefined,
+    driverName: row[asField(fields.driverName, 'DriverName')] ? String(row[asField(fields.driverName, 'DriverName')]) : undefined,
+    notes: row[asField(fields.notes, 'Notes')] ? String(row[asField(fields.notes, 'Notes')]) : undefined,
   };
 }
 
@@ -147,7 +159,7 @@ function buildSaveBody(input: SaveTransportLogInput, fields: Record<string, stri
 
   for (const [key, value] of Object.entries(mapping)) {
     if (value !== undefined) {
-      const physical = fields[key] || key.charAt(0).toUpperCase() + key.slice(1);
+      const physical = asField(fields[key], key.charAt(0).toUpperCase() + key.slice(1));
       body[physical] = value;
     }
   }
@@ -174,7 +186,7 @@ export async function loadTransportLogs(
       select: fields 
         ? ['Id', 'Created', ...Object.values(fields).filter((v): v is string => !!v)] 
         : [...TRANSPORT_LOG_SELECT_FIELDS],
-      filter: buildEq(fields?.recordDate || 'RecordDate', recordDate),
+      filter: buildEq(asField(fields?.recordDate, 'RecordDate'), recordDate),
       top: 200, // max expected per day (users × 2 directions)
     });
 
@@ -226,7 +238,7 @@ export async function saveTransportLog(
     // Step 1: Check if item already exists
     const existing = await client.listItems<SpTransportLogRow>(listTitle, {
       select: ['Id'],
-      filter: buildEq(fields?.title || 'Title', titleKey),
+      filter: buildEq(asField(fields?.title, 'Title'), titleKey),
       top: 1,
     });
 
@@ -319,7 +331,7 @@ export async function syncToAttendanceDaily(
     // Look up existing daily record by Key
     const existing = await client.listItems<{ Id: number }>(listTitle, {
       select: ['Id'],
-      filter: buildEq(fields.key || 'Title', dailyKey),
+      filter: buildEq(asField(fields.key, 'Title'), dailyKey),
       top: 1,
     });
 

@@ -14,6 +14,12 @@ import {
 import { BILLING_SUMMARY_CANDIDATES } from '@/sharepoint/fields/billingFields';
 import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 
+/** Guard for dynamic field resolution with fallback */
+function asField(physical: string | undefined, fallback: string): string {
+  // Graceful fallback to provided default if mapping is missing
+  return physical || fallback;
+}
+
 /** DailyRecord リストのフィールド定義 (OData フィルタ SSOT) */
 const DAILY_RECORD_FILTER_FIELDS = {
   recordDate: 'RecordDate',
@@ -106,7 +112,7 @@ export function toSharePointFields(
   summary: MonthlySummary,
   mapping?: Record<string, string | undefined>
 ) {
-  const get = (key: string, fallback: string) => mapping?.[key] || fallback;
+  const get = (key: string, fallback: string) => asField(mapping?.[key], fallback);
 
   return {
     [get('userId', 'UserCode')]: summary.userId,
@@ -154,7 +160,7 @@ export function fromSharePointFields(
   fields: Record<string, unknown>,
   mapping?: Record<string, string | undefined>
 ): MonthlySummary {
-  const get = (key: string, fallback: string) => fields[mapping?.[key] || fallback];
+  const get = (key: string, fallback: string) => fields[asField(mapping?.[key], fallback)];
   const str = (val: unknown) => (val != null ? String(val) : '');
   const num = (val: unknown) => (val != null ? Number(val) : 0);
 
@@ -211,7 +217,7 @@ export function buildMonthlyRecordFilter(
   mapping?: Record<string, string | undefined>
 ): string {
   const filters: (string | undefined)[] = [];
-  const f = (key: string, fallback: string) => mapping?.[key] || fallback;
+  const f = (key: string, fallback: string) => asField(mapping?.[key], fallback);
 
   if (options.yearMonth) {
     filters.push(buildEq(f('yearMonth', 'YearMonth'), options.yearMonth));
@@ -293,8 +299,8 @@ export async function upsertMonthlySummary(
   const mapping = resolved as Record<string, string | undefined>;
 
   const fields = toSharePointFields(summary, mapping);
-  const idempotencyFieldName = mapping.idempotencyKey || 'IdempotencyKey';
-  const lastUpdatedFieldName = mapping.lastUpdated || 'LastUpdated';
+  const idempotencyFieldName = asField(mapping.idempotencyKey, 'IdempotencyKey');
+  const lastUpdatedFieldName = asField(mapping.lastUpdated, 'LastUpdated');
   const key = `${summary.userId}#${summary.yearMonth}`;
 
   try {

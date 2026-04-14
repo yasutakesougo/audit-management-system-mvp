@@ -35,6 +35,12 @@ export function mapExceptionToActionCenterItem(
       hrefParams: 'view=incomplete',
       reasonCode: 'transport_alert',
     },
+    'isp-recommendation': {
+      kind: 'planning',
+      unit: '件',
+      hrefParams: 'v=recommendations',
+      reasonCode: 'isp_renew_suggest',
+    },
   };
 
   const config = configMap[item.category];

@@ -13,6 +13,9 @@ import { mapExceptionToActionCenterItem } from '../domain/actionCenterMapper';
 import { SEVERITY_ORDER, type ExceptionItem, type DailyRecordSummary, detectMissingVitals } from '@/features/exceptions/domain/exceptionLogic';
 import type { ActionCenterKind } from '../domain/actionCenterTypes';
 import { useTransportStatus } from '../transport/useTransportStatus';
+import { useTodayIspRenewSuggestActions } from './useTodayIspRenewSuggestActions';
+import { useUserAuthz } from '@/auth/useUserAuthz';
+import { canAccess } from '@/auth/roles';
 
 /**
  * 業務カテゴリごとの重要度重み付け
@@ -22,6 +25,7 @@ const KIND_ORDER: Record<ActionCenterKind, number> = {
   vital: 1,
   transport: 2,
   handoff: 3,
+  planning: 4,
 };
 
 /**
@@ -65,10 +69,16 @@ export function useTodayActions(targetDateStr: string = toLocalDateISO()) {
 
   // 4. 送迎ステータスの取得（今日のみ対象）
   const transport = useTransportStatus();
+  
+  // 5. 計画見直し提案の取得
+  const { signals: planningSignals, isLoading: planningLoading } = useTodayIspRenewSuggestActions(allUsers);
+  const { role } = useUserAuthz();
+  const isAdmin = canAccess(role, 'admin');
+
   const isToday = targetDateStr === toLocalDateISO();
 
   const actionItems: ActionCenterItem[] = useMemo(() => {
-    if (usersLoading || recordsLoading || vitalsLoading) return [];
+    if (usersLoading || recordsLoading || vitalsLoading || planningLoading) return [];
 
     const expectedUsers = activeUsers.map(u => ({ userId: u.UserID || '', userName: u.FullName || '' }));
     
@@ -154,6 +164,22 @@ export function useTodayActions(targetDateStr: string = toLocalDateISO()) {
       }
     }
 
+    // ─── 計画見直しの検知 ───
+    if (isAdmin && planningSignals.length > 0) {
+      const planningParent: ExceptionItem = {
+        id: `planning-isp-suggest-${targetDateStr}`,
+        category: 'isp-recommendation',
+        title: '計画見直し推奨',
+        description: `${planningSignals.length} 名のモニタリング結果から計画の見直しが推奨されています`,
+        severity: 'medium',
+        updatedAt: new Date().toISOString(),
+        actionPath: '/support-planning-sheet',
+        actionLabel: '全件を確認',
+      };
+      const planningAction = mapExceptionToActionCenterItem(planningParent, planningSignals.length);
+      if (planningAction) results.push(planningAction);
+    }
+
     // ─── 並び順の制御 (優先度 > カテゴリ) ───
     return results.sort((a, b) => {
       // 1. 優先度 (critical > high > medium)
@@ -166,11 +192,11 @@ export function useTodayActions(targetDateStr: string = toLocalDateISO()) {
       const kB = KIND_ORDER[b.kind] ?? 99;
       return kA - kB;
     });
-  }, [activeUsers, records, vitals, transport.status, transport.isReady, isToday, usersLoading, recordsLoading, vitalsLoading, targetDateStr]);
+  }, [activeUsers, records, vitals, planningSignals, isAdmin, transport.status, transport.isReady, isToday, usersLoading, recordsLoading, vitalsLoading, planningLoading, targetDateStr]);
 
   return {
     actions: actionItems,
-    isLoading: usersLoading || recordsLoading || vitalsLoading,
+    isLoading: usersLoading || recordsLoading || vitalsLoading || planningLoading,
     error: null,
   };
 }
