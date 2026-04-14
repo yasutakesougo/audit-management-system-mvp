@@ -41,7 +41,8 @@ import {
  * ドメイン関数の型（入力・出力）を明示的にエクスポートし、境界を固定する。
  */
 
-// --- Workflow ---
+// --- 1. Workflow & Assessment ---
+// 計画策定フロー、アセスメント、進捗状態の判定
 
 export type GetPlanningWorkflowPhaseInput = Parameters<typeof determineWorkflowPhase>[0];
 export type GetPlanningWorkflowPhaseResult = ReturnType<typeof determineWorkflowPhase>;
@@ -64,7 +65,8 @@ export function getPlanningWorkflowCardItem(
   return toPlanningWorkflowCardItem(result);
 }
 
-// --- Next Step Banner ---
+// --- 2. Dashboard & Alerts ---
+// 次のアクション、バナー表示、優先度判定
 
 export type {
   BannerContext,
@@ -79,7 +81,8 @@ export function getNextStepBanner(
   return resolveNextStepBanner(input);
 }
 
-// --- Meeting Evidence Draft ---
+// --- 3. Meeting & Evidence ---
+// モニタリング会議、証跡下書き、実績集計
 
 export function getMeetingEvidenceDraft(
   ...args: Parameters<typeof buildMeetingEvidenceDraft>
@@ -99,13 +102,14 @@ export function getStrategyUsageSummary(
   return summarizeStrategyUsage(...args);
 }
 
-// --- PDCA / Monitoring Analytics ---
-
 export function getProcedureExecutionSummary(
   ...args: Parameters<typeof summarizeProcedureExecution>
 ): ReturnType<typeof summarizeProcedureExecution> {
   return summarizeProcedureExecution(...args);
 }
+
+// --- 4. PDCA & Today Operations ---
+// サイクル管理、本日の支援手順への変換
 
 export function getPdcaCycleState(
   ...args: Parameters<typeof determinePdcaCycleState>
@@ -119,7 +123,8 @@ export function getDailyProcedureSteps(
   return toDailyProcedureSteps(...args);
 }
 
-// --- Monitoring Bridge ---
+// --- 5. Inter-Domain Mappers ---
+// ドメイン間の型変換（モニタリング結果から計画案作成など）
 
 export function getMonitoringToPlanningBridge(
   ...args: Parameters<typeof mapMonitoringToPlanningBridge>
@@ -133,7 +138,8 @@ export function getMonitoringRecordFromMeeting(
   return mapMonitoringMeetingToMonitoringRecord(...args);
 }
 
-// --- Types ---
+// --- Exported Types ---
+// UI層で使用する Bridge 関連の型定義
 
 export type {
   MonitoringToPlanningBridge,
