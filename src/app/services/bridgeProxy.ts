@@ -9,6 +9,15 @@ import {
   type WorkflowSeverity,
 } from '@/domain/bridge/workflowPhase';
 import {
+  buildMeetingEvidenceDraft,
+  summarizeABCPatterns,
+  summarizeStrategyUsage,
+  type MeetingEvidenceDraft,
+  type MeetingEvidenceSection,
+  type ABCPatternSummary,
+  type StrategyUsageSummary,
+} from '@/domain/bridge/meetingEvidenceDraft';
+import {
   resolveNextStepBanner,
   type BannerContext,
   type BannerTone,
@@ -66,6 +75,26 @@ export function getNextStepBanner(
   return resolveNextStepBanner(input);
 }
 
+// --- Meeting Evidence Draft ---
+
+export function getMeetingEvidenceDraft(
+  ...args: Parameters<typeof buildMeetingEvidenceDraft>
+): ReturnType<typeof buildMeetingEvidenceDraft> {
+  return buildMeetingEvidenceDraft(...args);
+}
+
+export function getABCPatternSummary(
+  ...args: Parameters<typeof summarizeABCPatterns>
+): ReturnType<typeof summarizeABCPatterns> {
+  return summarizeABCPatterns(...args);
+}
+
+export function getStrategyUsageSummary(
+  ...args: Parameters<typeof summarizeStrategyUsage>
+): ReturnType<typeof summarizeStrategyUsage> {
+  return summarizeStrategyUsage(...args);
+}
+
 // --- Monitoring Bridge ---
 
 export function getMonitoringToPlanningBridge(
@@ -89,4 +118,8 @@ export type {
   WorkflowPhaseResult,
   PlanningWorkflowCardItem,
   WorkflowSeverity,
+  MeetingEvidenceDraft,
+  MeetingEvidenceSection,
+  ABCPatternSummary,
+  StrategyUsageSummary,
 };
