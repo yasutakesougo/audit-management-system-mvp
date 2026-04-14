@@ -224,9 +224,27 @@ module.exports = {
       excludedFiles: [
         'src/features/**/data/**',
         'src/features/**/infra/**',
+        'src/app/services/**',
+        // Phase 2 targets: Existing direct bridge imports to be migrated later
+        'src/features/monitoring/components/MeetingEvidenceDraftPanel.tsx',
+        'src/features/monitoring/hooks/useMeetingEvidenceDraft.ts',
+        'src/features/today/hooks/useWorkflowPhases.ts',
+        'src/features/today/hooks/__tests__/useWorkflowPhases.spec.ts',
+        'src/features/ibd/analysis/pdca/queries/usePdcaCycleState.ts',
         '**/create*Repository.ts', // Factory-defining files are allowed to call themselves for recursion/wrappers if needed
       ],
       rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            patterns: [
+              {
+                group: ['@/domain/bridge/**', '@/domain/isp/bridge/**', '@/features/bridge/**'],
+                message: 'UI layer must not import Bridge directly. Use @/app/services/bridgeProxy or a workspace hook.'
+              }
+            ]
+          }
+        ],
         'no-restricted-syntax': [
           'error',
           {

@@ -1,5 +1,4 @@
-import { determineWorkflowPhase } from '@/domain/bridge/workflowPhase';
-import type { MonitoringToPlanningBridge } from '@/domain/isp/bridge';
+import { getPlanningWorkflowPhase, type MonitoringToPlanningBridge } from '@/app/services/bridgeProxy';
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
 import type { SupportPlanningSheetViewModel } from '../types';
 import type { SupportPlanningSheetUiState } from './useSupportPlanningSheetUiState';
@@ -98,7 +97,7 @@ export function mapToSupportPlanningSheetViewModel(input: MapperInput): SupportP
   const allProvenanceEntries = [...persistedProvenance, ...uiState.sessionProvenance];
 
   // 2. ワークフローフェーズの判定（派生データ）
-  const workflowResult = determineWorkflowPhase({
+  const workflowResult = getPlanningWorkflowPhase({
     userId: sheet.userId,
     userName: sheet.title, 
     planningSheets: [{
