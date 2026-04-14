@@ -7,6 +7,7 @@ import {
   type WorkflowPhaseResult,
   type PlanningWorkflowCardItem,
   type WorkflowSeverity,
+  type ReassessmentSnapshot,
 } from '@/domain/bridge/workflowPhase';
 import {
   buildMeetingEvidenceDraft,
@@ -17,6 +18,9 @@ import {
   type ABCPatternSummary,
   type StrategyUsageSummary,
 } from '@/domain/bridge/meetingEvidenceDraft';
+import { summarizeProcedureExecution } from '@/domain/bridge/monitoringEvidence';
+import { determinePdcaCycleState } from '@/domain/bridge/pdcaCycleOrchestrator';
+import { toDailyProcedureSteps } from '@/domain/isp/bridge/toDailyProcedureSteps';
 import {
   resolveNextStepBanner,
   type BannerContext,
@@ -95,6 +99,26 @@ export function getStrategyUsageSummary(
   return summarizeStrategyUsage(...args);
 }
 
+// --- PDCA / Monitoring Analytics ---
+
+export function getProcedureExecutionSummary(
+  ...args: Parameters<typeof summarizeProcedureExecution>
+): ReturnType<typeof summarizeProcedureExecution> {
+  return summarizeProcedureExecution(...args);
+}
+
+export function getPdcaCycleState(
+  ...args: Parameters<typeof determinePdcaCycleState>
+): ReturnType<typeof determinePdcaCycleState> {
+  return determinePdcaCycleState(...args);
+}
+
+export function getDailyProcedureSteps(
+  ...args: Parameters<typeof toDailyProcedureSteps>
+): ReturnType<typeof toDailyProcedureSteps> {
+  return toDailyProcedureSteps(...args);
+}
+
 // --- Monitoring Bridge ---
 
 export function getMonitoringToPlanningBridge(
@@ -118,6 +142,7 @@ export type {
   WorkflowPhaseResult,
   PlanningWorkflowCardItem,
   WorkflowSeverity,
+  ReassessmentSnapshot,
   MeetingEvidenceDraft,
   MeetingEvidenceSection,
   ABCPatternSummary,
