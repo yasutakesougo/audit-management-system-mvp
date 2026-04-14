@@ -19,7 +19,7 @@ import { EvidencePatternSummaryCard } from '@/features/planning-sheet/components
 import type { UsePlanningSheetFormReturn } from '@/features/planning-sheet/hooks/usePlanningSheetForm';
 import type { ProvenanceEntry } from '@/features/planning-sheet/assessmentBridge';
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
-import type { WorkflowPhase } from '@/domain/bridge/workflowPhase';
+import { type WorkflowPhase } from '@/app/services/bridgeProxy';
 import type { EvidenceLinkMap, EvidenceLinkType } from '@/domain/isp/evidenceLink';
 import type { AbcRecord } from '@/domain/abc/abcRecord';
 import type { IcebergPdcaItem } from '@/features/ibd/analysis/pdca/types';

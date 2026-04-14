@@ -15,7 +15,7 @@ import { useStrategyUsageCounts } from '@/features/planning-sheet/hooks/useStrat
 import { useStrategyUsageTrend, type TrendDays } from '@/features/planning-sheet/hooks/useStrategyUsageTrend';
 import { useUsers } from '@/features/users/useUsers';
 import { usePdcaCycleState } from '@/features/ibd/analysis/pdca/queries/usePdcaCycleState';
-import { mapMonitoringToPlanningBridge, mapMonitoringMeetingToMonitoringRecord } from '@/domain/isp/bridgeMapper';
+import { getMonitoringToPlanningBridge, getMonitoringRecordFromMeeting } from '@/app/services/bridgeProxy';
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
 import type { MonitoringRecord } from '@/domain/isp/types';
 import type { IUserMaster } from '@/features/users/types';
@@ -130,7 +130,7 @@ export function useSupportPlanningSheetOrchestrator(): {
   React.useEffect(() => {
     if (!effectiveSheet?.userId) return;
     monitoringRepo.listByUser(String(effectiveSheet.userId))
-      .then(records => records.map(mapMonitoringMeetingToMonitoringRecord))
+      .then(records => records.map(getMonitoringRecordFromMeeting))
       .then(setMonitoringMeetings);
   }, [effectiveSheet?.userId, monitoringRepo]);
 
@@ -142,7 +142,7 @@ export function useSupportPlanningSheetOrchestrator(): {
   });
 
   const monitoringBridge = React.useMemo(() => {
-    return mapMonitoringToPlanningBridge(
+    return getMonitoringToPlanningBridge(
       planningSheetId ?? 'new',
       monitoringMeetings,
       latestMonitoringRecord,

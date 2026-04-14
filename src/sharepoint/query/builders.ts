@@ -11,8 +11,16 @@
  */
 
 import { escapeODataString } from '@/lib/odata';
+import type { SpFieldName } from '@/sharepoint/fields/fieldUtils';
 
 type ODataPrimitive = string | number | boolean | null;
+
+/**
+ * Phase 2a: field 引数は SSOT 由来（defineFieldMap 経由）か、
+ * 動的解決された string を受け入れる transitional union。
+ * Phase 2d で `SpFieldName` のみに narrow 予定。
+ */
+type SpField = SpFieldName | string;
 
 // eslint-disable-next-line no-restricted-syntax
 const fmt = (v: ODataPrimitive): string => {
@@ -27,39 +35,39 @@ const fmt = (v: ODataPrimitive): string => {
 // ── Comparison operators ─────────────────────────────────────────────────────
 
 // eslint-disable-next-line no-restricted-syntax
-export const buildEq = (field: string, value: ODataPrimitive): string =>
+export const buildEq = (field: SpField, value: ODataPrimitive): string =>
   `${field} eq ${fmt(value)}`;
 
 // eslint-disable-next-line no-restricted-syntax
-export const buildNe = (field: string, value: ODataPrimitive): string =>
+export const buildNe = (field: SpField, value: ODataPrimitive): string =>
   `${field} ne ${fmt(value)}`;
 
 // eslint-disable-next-line no-restricted-syntax
-export const buildGe = (field: string, value: string | number): string =>
+export const buildGe = (field: SpField, value: string | number): string =>
   `${field} ge ${fmt(value)}`;
 
 // eslint-disable-next-line no-restricted-syntax
-export const buildLe = (field: string, value: string | number): string =>
+export const buildLe = (field: SpField, value: string | number): string =>
   `${field} le ${fmt(value)}`;
 
 // eslint-disable-next-line no-restricted-syntax
-export const buildGt = (field: string, value: string | number): string =>
+export const buildGt = (field: SpField, value: string | number): string =>
   `${field} gt ${fmt(value)}`;
 
 // eslint-disable-next-line no-restricted-syntax
-export const buildLt = (field: string, value: string | number): string =>
+export const buildLt = (field: SpField, value: string | number): string =>
   `${field} lt ${fmt(value)}`;
 
 // ── Search & Functions ───────────────────────────────────────────────────────
 
 /** substringof('value', field) */
 // eslint-disable-next-line no-restricted-syntax
-export const buildSubstringOf = (field: string, value: string): string =>
+export const buildSubstringOf = (field: SpField, value: string): string =>
   `substringof('${escapeODataString(value)}', ${field})`;
 
 /** startswith(field, 'value') */
 // eslint-disable-next-line no-restricted-syntax
-export const buildStartsWith = (field: string, value: string): string =>
+export const buildStartsWith = (field: SpField, value: string): string =>
   `startswith(${field}, '${escapeODataString(value)}')`;
 
 /** OData datetime literal: datetime'YYYY-MM-DDTHH:mm:ssZ' */

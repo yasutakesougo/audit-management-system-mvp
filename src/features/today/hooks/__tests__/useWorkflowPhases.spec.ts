@@ -10,7 +10,7 @@ import {
   countByPhase,
   toPlanningSheetSnapshot,
 } from '../useWorkflowPhases';
-import type { PlanningSheetSnapshot } from '@/domain/bridge/workflowPhase';
+import { type PlanningWorkflowUiSheetSnapshot } from '@/app/services/bridgeProxy';
 import type { PlanningSheetListItem } from '@/domain/isp/schema';
 
 // ─────────────────────────────────────────────
@@ -21,7 +21,7 @@ function makeUser(id: string, name: string) {
   return { userId: id, userName: name };
 }
 
-function makeSheet(overrides: Partial<PlanningSheetSnapshot> = {}): PlanningSheetSnapshot {
+function makeSheet(overrides: Partial<PlanningWorkflowUiSheetSnapshot> = {}): PlanningWorkflowUiSheetSnapshot {
   return {
     id: 'ps-1',
     status: 'active',
@@ -46,7 +46,7 @@ describe('buildWorkflowItems', () => {
       makeUser('u-3', '佐藤'),
     ];
 
-    const sheetsByUser = new Map<string, PlanningSheetSnapshot[]>([
+    const sheetsByUser = new Map<string, PlanningWorkflowUiSheetSnapshot[]>([
       // u-1: 計画シートあり → active_plan
       ['u-1', [makeSheet({ id: 'ps-1' })]],
       // u-2: 手順なし → needs_plan
@@ -54,13 +54,13 @@ describe('buildWorkflowItems', () => {
       // u-3: 計画シートなし → needs_assessment
     ]);
 
-    const { results, items } = buildWorkflowItems(users, sheetsByUser, '2026-02-15');
+    const { phases, items } = buildWorkflowItems(users, sheetsByUser, '2026-02-15');
 
-    expect(results.length).toBe(3);
+    expect(phases.length).toBe(3);
     expect(items.length).toBe(3);
 
     // 各利用者の phase が正しい
-    const phaseByUser = new Map(results.map((r) => [r.userId, r.phase]));
+    const phaseByUser = new Map(phases.map((r) => [r.userId, r.phase]));
     expect(phaseByUser.get('u-1')).toBe('active_plan');
     expect(phaseByUser.get('u-2')).toBe('needs_plan');
     expect(phaseByUser.get('u-3')).toBe('needs_assessment');
@@ -73,7 +73,7 @@ describe('buildWorkflowItems', () => {
       makeUser('u-noplan', '未実施次郎'),
     ];
 
-    const sheetsByUser = new Map<string, PlanningSheetSnapshot[]>([
+    const sheetsByUser = new Map<string, PlanningWorkflowUiSheetSnapshot[]>([
       // u-active: reviewedAt = 2026-03-20 → next due = 2026-03-20 + 90 = 2026-06-18 → safe
       ['u-active', [makeSheet({ id: 'ps-active', reviewedAt: '2026-03-20' })]],
       // u-overdue: appliedFrom = 2026-01-01 → next due = 2026-04-01 → overdue at 2026-04-10
@@ -90,17 +90,17 @@ describe('buildWorkflowItems', () => {
   });
 
   it('利用者がいない場合は空配列', () => {
-    const { results, items } = buildWorkflowItems([], new Map());
-    expect(results).toEqual([]);
+    const { phases, items } = buildWorkflowItems([], new Map());
+    expect(phases).toEqual([]);
     expect(items).toEqual([]);
   });
 
   it('計画シートがない利用者も needs_assessment として扱える', () => {
     const users = [makeUser('u-new', '新規利用者')];
-    const { results } = buildWorkflowItems(users, new Map(), '2026-03-14');
+    const { phases } = buildWorkflowItems(users, new Map(), '2026-03-14');
 
-    expect(results[0].phase).toBe('needs_assessment');
-    expect(results[0].userId).toBe('u-new');
+    expect(phases[0].phase).toBe('needs_assessment');
+    expect(phases[0].userId).toBe('u-new');
   });
 
   it('topPriorityItem が最上位になる', () => {
@@ -109,7 +109,7 @@ describe('buildWorkflowItems', () => {
       makeUser('u-2', '超過'),
     ];
 
-    const sheetsByUser = new Map<string, PlanningSheetSnapshot[]>([
+    const sheetsByUser = new Map<string, PlanningWorkflowUiSheetSnapshot[]>([
       ['u-1', [makeSheet()]],
       ['u-2', [makeSheet({ id: 'ps-2' })]],
     ]);
@@ -134,7 +134,7 @@ describe('countByPhase', () => {
       makeUser('u-5', 'E'),
     ];
 
-    const sheetsByUser = new Map<string, PlanningSheetSnapshot[]>([
+    const sheetsByUser = new Map<string, PlanningWorkflowUiSheetSnapshot[]>([
       ['u-1', [makeSheet()]],                                     // active_plan
       ['u-2', [makeSheet({ id: 'ps-2', procedureCount: 0 })]],    // needs_plan
       // u-3: なし → needs_assessment
@@ -144,8 +144,8 @@ describe('countByPhase', () => {
 
     // 2人の referenceDate を分けたいが buildWorkflowItems は全体に1つ
     // → まず overdue を確認
-    const { results } = buildWorkflowItems(users, sheetsByUser, '2026-04-10');
-    const counts = countByPhase(results);
+    const { phases } = buildWorkflowItems(users, sheetsByUser, '2026-04-10');
+    const counts = countByPhase(phases);
 
     // u-1, u-4, u-5 は全部 overdue (ref: 2026-04-10)
     // u-2 は needs_plan

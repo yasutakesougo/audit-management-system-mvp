@@ -23,13 +23,13 @@
  * @see src/domain/bridge/nextStepBanner.ts
  */
 import {
-  resolveNextStepBanner,
+  getNextStepBanner,
   type BannerContext,
   type BannerTone,
   type NextStepAlertPriority,
   type ResolveNextStepInput,
-} from '@/domain/bridge/nextStepBanner';
-import type { WorkflowPhase } from '@/domain/bridge/workflowPhase';
+  type WorkflowPhase,
+} from '@/app/services/bridgeProxy';
 import type { PdcaCycleState } from '@/domain/isp/types';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -116,7 +116,7 @@ export const PhaseNextStepBanner: React.FC<PhaseNextStepBannerProps> = ({
     pdcaCycleState,
   };
 
-  const model = resolveNextStepBanner(input);
+  const model = getNextStepBanner(input);
 
   // hidden ならレンダリングしない
   if (model.hidden) return null;

@@ -1,4 +1,5 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ScheduleCreateDialog, createInitialScheduleFormState, toCreateScheduleInput, validateScheduleForm, type ScheduleFormState, type ScheduleUserOption } from '@/features/schedules';
@@ -148,7 +149,8 @@ describe('ScheduleCreateDialog component', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId(TESTIDS['schedule-create-save']));
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId(TESTIDS['schedule-create-save']));
 
     const alert = await screen.findByTestId(TESTIDS['schedule-create-error-alert']);
     const alertId = alert.getAttribute('id');
@@ -222,9 +224,10 @@ describe('ScheduleCreateDialog component', () => {
       <ScheduleCreateDialog open onClose={vi.fn()} onSubmit={onSubmit} users={mockUsers} mode="create" />
     );
 
+    const user = userEvent.setup();
     // clear title to trigger validation
-    fireEvent.change(screen.getByTestId(TESTIDS['schedule-create-title']), { target: { value: '' } });
-    fireEvent.click(screen.getByTestId(TESTIDS['schedule-create-save']));
+    await user.clear(screen.getByTestId(TESTIDS['schedule-create-title']));
+    await user.click(screen.getByTestId(TESTIDS['schedule-create-save']));
 
     const alert = await screen.findByTestId(TESTIDS['schedule-create-error-alert']);
     expect(alert).toHaveTextContent('予定タイトルを入力してください');
@@ -245,11 +248,13 @@ describe('ScheduleCreateDialog component', () => {
 
     const startInput = screen.getByTestId(TESTIDS['schedule-create-start']) as HTMLInputElement;
     const endInput = screen.getByTestId(TESTIDS['schedule-create-end']) as HTMLInputElement;
+    const user = userEvent.setup();
+    await user.clear(startInput);
+    await user.type(startInput, '2025-11-12T12:00');
+    await user.clear(endInput);
+    await user.type(endInput, '2025-11-12T11:00');
 
-    fireEvent.change(startInput, { target: { value: '2025-11-12T12:00' } });
-    fireEvent.change(endInput, { target: { value: '2025-11-12T11:00' } });
-
-    fireEvent.click(screen.getByTestId(TESTIDS['schedule-create-save']));
+    await user.click(screen.getByTestId(TESTIDS['schedule-create-save']));
 
     const alert = await screen.findByTestId(TESTIDS['schedule-create-error-alert']);
     expect(alert).toHaveTextContent('終了日時は開始日時より後にしてください');
@@ -271,23 +276,22 @@ describe('ScheduleCreateDialog component', () => {
       />
     );
 
-    fireEvent.change(screen.getByTestId(TESTIDS['schedule-create-title']), {
-      target: { value: '送迎（午前）' },
-    });
+    const user = userEvent.setup();
+
+    await user.clear(screen.getByTestId(TESTIDS['schedule-create-title']));
+    await user.type(screen.getByTestId(TESTIDS['schedule-create-title']), '送迎（午前）');
     const serviceTypeCombo = screen.getByRole('combobox', { name: 'サービス種別' });
-    fireEvent.mouseDown(serviceTypeCombo);
+    await user.click(serviceTypeCombo);
     const listbox = await screen.findByRole('listbox');
-    fireEvent.click(within(listbox).getByText('欠席'));
+    await user.click(within(listbox).getByText('欠席'));
     expect(serviceTypeCombo).toHaveTextContent('欠席');
 
-    fireEvent.change(screen.getByTestId(TESTIDS['schedule-create-location']), {
-      target: { value: '生活介護室' }
-    });
-    fireEvent.change(screen.getByTestId(TESTIDS['schedule-create-notes']), {
-      target: { value: '送迎後に看護対応' }
-    });
+    await user.clear(screen.getByTestId(TESTIDS['schedule-create-location']));
+    await user.type(screen.getByTestId(TESTIDS['schedule-create-location']), '生活介護室');
+    await user.clear(screen.getByTestId(TESTIDS['schedule-create-notes']));
+    await user.type(screen.getByTestId(TESTIDS['schedule-create-notes']), '送迎後に看護対応');
 
-    fireEvent.click(screen.getByTestId(TESTIDS['schedule-create-save']));
+    await user.click(screen.getByTestId(TESTIDS['schedule-create-save']));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     const payload = onSubmit.mock.calls[0][0];

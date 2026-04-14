@@ -1,11 +1,11 @@
-import { summarizeProcedureExecution } from '@/domain/bridge/monitoringEvidence';
-import { determinePdcaCycleState } from '@/domain/bridge/pdcaCycleOrchestrator';
 import {
-  determineWorkflowPhase,
+  getProcedureExecutionSummary,
+  getPdcaCycleState,
+  getPlanningWorkflowPhase,
+  getDailyProcedureSteps,
   type PlanningSheetSnapshot,
   type ReassessmentSnapshot,
-} from '@/domain/bridge/workflowPhase';
-import { toDailyProcedureSteps } from '@/domain/isp/bridge/toDailyProcedureSteps';
+} from '@/app/services/bridgeProxy';
 import type { BehaviorMonitoringRecord } from '@/domain/isp/behaviorMonitoring';
 import type {
   PlanningSheetRepository,
@@ -254,7 +254,7 @@ export function usePdcaCycleState(
       toWorkflowReassessmentSnapshot,
     );
 
-    const workflowResult = determineWorkflowPhase({
+    const workflowResult = getPlanningWorkflowPhase({
       userId,
       userName: userId,
       planningSheets: [toWorkflowSnapshot(planningSheet)],
@@ -284,7 +284,7 @@ export function usePdcaCycleState(
 
     const periodFrom = planAppliedAt ?? planCreatedAt ?? todayDate();
     const periodTo = referenceDate ?? todayDate();
-    const procedures = toDailyProcedureSteps(
+    const procedures = getDailyProcedureSteps(
       planningSheet.planning,
       planningSheet.id,
     );
@@ -292,7 +292,7 @@ export function usePdcaCycleState(
 
     const procedureCompletionRate =
       procedures.length > 0
-        ? summarizeProcedureExecution({
+        ? getProcedureExecutionSummary({
             userId,
             from: periodFrom,
             to: periodTo,
@@ -302,7 +302,7 @@ export function usePdcaCycleState(
           }).overallCompletionRate
         : null;
 
-    return determinePdcaCycleState({
+    return getPdcaCycleState({
       userId,
       planningSheetId: planningSheet.id,
       workflowPhase: workflowResult.phase,
