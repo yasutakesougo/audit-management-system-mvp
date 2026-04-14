@@ -1,4 +1,13 @@
-import { determineWorkflowPhase, type WorkflowPhase } from '@/domain/bridge/workflowPhase';
+import {
+  determineWorkflowPhase,
+  sortByWorkflowPriority,
+  toPlanningWorkflowCardItem,
+  type WorkflowPhase,
+  type PlanningSheetSnapshot,
+  type WorkflowPhaseResult,
+  type PlanningWorkflowCardItem,
+  type WorkflowSeverity,
+} from '@/domain/bridge/workflowPhase';
 import {
   resolveNextStepBanner,
   type BannerContext,
@@ -28,6 +37,18 @@ export function getPlanningWorkflowPhase(
   input: GetPlanningWorkflowPhaseInput
 ): GetPlanningWorkflowPhaseResult {
   return determineWorkflowPhase(input);
+}
+
+export function sortWorkflowItemsByPriority(
+  results: WorkflowPhaseResult[]
+): WorkflowPhaseResult[] {
+  return sortByWorkflowPriority(results);
+}
+
+export function getPlanningWorkflowCardItem(
+  result: WorkflowPhaseResult
+): PlanningWorkflowCardItem {
+  return toPlanningWorkflowCardItem(result);
 }
 
 // --- Next Step Banner ---
@@ -61,4 +82,11 @@ export function getMonitoringRecordFromMeeting(
 
 // --- Types ---
 
-export type { MonitoringToPlanningBridge, WorkflowPhase };
+export type {
+  MonitoringToPlanningBridge,
+  WorkflowPhase,
+  PlanningSheetSnapshot,
+  WorkflowPhaseResult,
+  PlanningWorkflowCardItem,
+  WorkflowSeverity,
+};

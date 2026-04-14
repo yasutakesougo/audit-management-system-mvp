@@ -10,7 +10,7 @@ import {
   countByPhase,
   toPlanningSheetSnapshot,
 } from '../useWorkflowPhases';
-import type { PlanningSheetSnapshot } from '@/domain/bridge/workflowPhase';
+import { type PlanningSheetSnapshot } from '@/app/services/bridgeProxy';
 import type { PlanningSheetListItem } from '@/domain/isp/schema';
 
 // ─────────────────────────────────────────────

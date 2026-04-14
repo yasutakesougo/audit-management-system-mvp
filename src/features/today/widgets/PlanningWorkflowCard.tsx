@@ -13,7 +13,7 @@
  * @see src/domain/bridge/workflowPhase.ts
  */
 import { motionTokens } from '@/app/theme';
-import type { PlanningWorkflowCardItem, WorkflowSeverity } from '@/domain/bridge/workflowPhase';
+import { type PlanningWorkflowCardItem, type WorkflowSeverity } from '@/app/services/bridgeProxy';
 import type { WorkflowPhaseCounts } from '@/features/today/hooks/useWorkflowPhases';
 import AssignmentLateIcon from '@mui/icons-material/AssignmentLate';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
