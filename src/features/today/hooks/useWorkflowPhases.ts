@@ -22,15 +22,14 @@ import type { PlanningSheetRepository } from '@/domain/isp/port';
 import type { PlanningSheetListItem } from '@/domain/isp/schema';
 import type { IUserMaster } from '@/sharepoint/fields';
 import {
-  determineWorkflowPhase,
-  sortByWorkflowPriority,
-  toPlanningWorkflowCardItem,
-  type DeterminePhaseInput,
+  getPlanningWorkflowPhase,
+  sortWorkflowItemsByPriority,
+  getPlanningWorkflowCardItem,
   type PlanningSheetSnapshot,
   type WorkflowPhaseResult,
   type PlanningWorkflowCardItem,
   type WorkflowPhase,
-} from '@/domain/bridge/workflowPhase';
+} from '@/app/services/bridgeProxy';
 
 // ─────────────────────────────────────────────
 // Output type
@@ -134,21 +133,21 @@ export function buildWorkflowItems(
 ): { results: WorkflowPhaseResult[]; items: PlanningWorkflowCardItem[] } {
   // 1. 各利用者のフェーズ判定
   const results: WorkflowPhaseResult[] = users.map((user) => {
-    const input: DeterminePhaseInput = {
+    const input = {
       userId: user.userId,
       userName: user.userName,
       planningSheets: sheetsByUser.get(user.userId) ?? [],
       reassessments: [], // 将来拡張
       referenceDate,
     };
-    return determineWorkflowPhase(input);
+    return getPlanningWorkflowPhase(input);
   });
 
   // 2. priority 順ソート
-  const sorted = sortByWorkflowPriority(results);
+  const sorted = sortWorkflowItemsByPriority(results);
 
   // 3. UI 用アイテムに変換
-  const items = sorted.map(toPlanningWorkflowCardItem);
+  const items = sorted.map(getPlanningWorkflowCardItem);
 
   return { results, items };
 }
