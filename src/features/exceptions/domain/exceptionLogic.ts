@@ -484,6 +484,7 @@ export function computeExceptionStats(items: ExceptionItem[]): ExceptionStats {
       'risk-deviation': 0,
       'focus-missing': 0,
       'missing-vital': 0,
+      'isp-recommendation': 0,
       'setup-incomplete': 0
     },
   };
