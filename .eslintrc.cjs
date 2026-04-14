@@ -226,8 +226,6 @@ module.exports = {
         'src/features/**/infra/**',
         'src/app/services/**',
         // Phase 2 targets: Existing direct bridge imports to be migrated later
-        'src/features/monitoring/components/MeetingEvidenceDraftPanel.tsx',
-        'src/features/monitoring/hooks/useMeetingEvidenceDraft.ts',
         'src/features/ibd/analysis/pdca/queries/usePdcaCycleState.ts',
         '**/create*Repository.ts', // Factory-defining files are allowed to call themselves for recursion/wrappers if needed
       ],
