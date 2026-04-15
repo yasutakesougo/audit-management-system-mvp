@@ -225,7 +225,7 @@ describe('buildAllAuditCheckInputs', () => {
     ]);
 
     const inputs = buildAllAuditCheckInputs(
-      { users, staff, sheetsByUser, recordsBySheet },
+      { users, staff, sheetsByUser, recordsBySheet, monitoringMeetingsByUser: new Map() },
       '2026-03-14',
     );
 
@@ -250,7 +250,7 @@ describe('buildAllAuditCheckInputs', () => {
     ];
 
     const inputs = buildAllAuditCheckInputs(
-      { users, staff: [], sheetsByUser: new Map(), recordsBySheet: new Map() },
+      { users, staff: [], sheetsByUser: new Map(), recordsBySheet: new Map(), monitoringMeetingsByUser: new Map() },
       '2026-03-14',
     );
 
@@ -266,7 +266,7 @@ describe('buildAllAuditCheckInputs', () => {
     ];
 
     const inputs = buildAllAuditCheckInputs(
-      { users, staff, sheetsByUser: new Map(), recordsBySheet: new Map() },
+      { users, staff, sheetsByUser: new Map(), recordsBySheet: new Map(), monitoringMeetingsByUser: new Map() },
       '2026-03-14',
     );
 

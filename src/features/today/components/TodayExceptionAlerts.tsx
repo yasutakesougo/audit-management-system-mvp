@@ -80,7 +80,6 @@ export const TodayExceptionAlerts: React.FC<TodayExceptionAlertsProps> = ({
     (item): item is NonNullable<typeof item> => Boolean(item),
   );
   const criticalCount = actionableItems.filter((item) => item.priority === 'critical').length;
-  const highCount = actionableItems.length - criticalCount;
 
   const frontlineActionPath =
     actionableItems.find((item) => !item.actionPath.startsWith('/admin/') && !item.actionPath.startsWith('/analysis'))?.actionPath
@@ -100,7 +99,7 @@ export const TodayExceptionAlerts: React.FC<TodayExceptionAlertsProps> = ({
         >
           <AlertTitle>要対応 {actionableItems.length}件</AlertTitle>
           <Box sx={{ mt: 1 }}>
-            <List size="small" disablePadding>
+            <List dense disablePadding>
               {displayItems.map((item) => (
                 <ListItem
                   key={item.id}
@@ -114,7 +113,7 @@ export const TodayExceptionAlerts: React.FC<TodayExceptionAlertsProps> = ({
                 >
                   <ListItemIcon sx={{ minWidth: 28 }}>
                     <Box sx={{ fontSize: '1rem' }}>
-                      {EXCEPTION_CATEGORIES[item.category]?.icon ?? '•'}
+                      {EXCEPTION_CATEGORIES[item.kind]?.icon ?? '•'}
                     </Box>
                   </ListItemIcon>
                   <ListItemText

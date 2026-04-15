@@ -3,6 +3,8 @@
  *
  * TimeBasedSupportRecordPage の handleRecordSubmit, handleRetryPersist を抽出 (#766)
  */
+import { useCallback, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { ABCRecord } from '@/domain/behavior';
 import type { BehaviorRepository, ExecutionRecordRepository } from '@/features/daily';
 import {

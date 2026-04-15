@@ -28,7 +28,6 @@ export const TodayLitePage: React.FC<TodayLitePageProps> = ({
   }
 
   const isAdmin = role === 'admin';
-  const isFieldStaff = role === 'viewer';
 
   const completion = summary.todayRecordCompletion;
   const targetCount = summary.users?.length ?? 0;
@@ -61,7 +60,8 @@ export const TodayLitePage: React.FC<TodayLitePageProps> = ({
         'handoff-timeline': '申し送り',
       };
 
-      const baseCards = getTodayPrimaryFlowSteps(role).map<TodayActionCardItem>((step) => ({
+      const audience: DashboardAudience = role === 'admin' ? 'admin' : 'staff';
+      const baseCards = getTodayPrimaryFlowSteps(audience).map<TodayActionCardItem>((step) => ({
         key: step.key,
         title: titleByFlowKey[step.key] ?? step.label,
         count: countByFlowKey[step.key] ?? 0,
@@ -102,7 +102,7 @@ export const TodayLitePage: React.FC<TodayLitePageProps> = ({
       <TodayActionCards cards={cards} />
       <TodayNoticePanel notices={notices} />
       <TodayAdminInsights
-        visible={!isFieldStaff}
+        visible={isAdmin}
         exceptionCount={summary.todayExceptions?.length ?? 0}
         ispRenewSuggestCount={ispRenewSuggestCount}
         onOpenExceptionCenter={() => handleNavigate('/admin/exception-center')}

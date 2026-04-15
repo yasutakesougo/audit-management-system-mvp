@@ -13,7 +13,6 @@ import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
@@ -191,9 +190,10 @@ const GroupedNavList: React.FC<{
 
   return (
     <Box sx={{ pb: 4 }}>
-      {groupedNavItems.ORDER.map((group) => {
+      {groupedNavItems.ORDER.map((group, index) => {
         const items = groupedNavItems.map.get(group);
         if (!items || items.length === 0) return null;
+        const isLastGroup = index === groupedNavItems.ORDER.length - 1;
 
         return (
           <List
@@ -225,14 +225,15 @@ const GroupedNavList: React.FC<{
                 navCollapsed={navCollapsed}
                 currentPathname={currentPathname}
                 currentSearch={currentSearch}
+                isFieldStaffShell={isFieldStaffShell}
                 onNavigate={onNavigate}
               />
             ))}
             {!navCollapsed && !isLastGroup && <Divider sx={{ mt: 1, mb: 0.5 }} />}
-          </Box>
+          </List>
         );
       })}
-    </List>
+    </Box>
   );
 };
 
@@ -250,6 +251,7 @@ export const AppShellSidebar: React.FC<Props> = ({
   hasMoreNavItems,
   todayLiteNavV2,
   onToggleMoreNavItems,
+  isFieldStaffShell,
   onNavigate,
 }) => {
   const handleSearchKeyDown = useCallback(
@@ -311,6 +313,7 @@ export const AppShellSidebar: React.FC<Props> = ({
         filteredNavItems={filteredNavItems}
         groupedNavItems={groupedNavItems}
         navCollapsed={navCollapsed}
+        isFieldStaffShell={isFieldStaffShell}
         onNavigate={onNavigate}
       />
     </Box>
@@ -385,6 +388,7 @@ export const MobileNavContent: React.FC<{
         filteredNavItems={filteredNavItems}
         groupedNavItems={groupedNavItems}
         navCollapsed={navCollapsed}
+        isFieldStaffShell={isFieldStaffShell}
         onNavigate={onNavigate}
       />
     </Box>
