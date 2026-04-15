@@ -44,6 +44,7 @@ type Props = {
   todayLiteNavV2: boolean;
   onToggleMoreNavItems: () => void;
   isAdmin: boolean;
+  isFieldStaffShell?: boolean;
   onNavigate?: () => void;
 };
 
@@ -54,8 +55,9 @@ const NavItemRow: React.FC<{
   navCollapsed: boolean;
   currentPathname: string;
   currentSearch: string;
+  isFieldStaffShell?: boolean;
   onNavigate?: () => void;
-}> = React.memo(({ item, navCollapsed, currentPathname, currentSearch, onNavigate }) => {
+}> = React.memo(({ item, navCollapsed, currentPathname, currentSearch, isFieldStaffShell, onNavigate }) => {
   const { label, to, isActive, testId, icon: IconComponent, prefetchKey, prefetchKeys, tier = 'core' } = item;
   const active = isActive(currentPathname, currentSearch);
   const isRecordSection = label.includes('運営状況') || label.includes('記録一覧');
@@ -91,7 +93,7 @@ const NavItemRow: React.FC<{
       {IconComponent && (
         <ListItemIcon sx={{ minWidth: 40 }}>
           <Badge
-            badgeContent={navCollapsed ? item.badge || 0 : 0}
+            badgeContent={(!isFieldStaffShell && navCollapsed) ? item.badge || 0 : 0}
             color="error"
             overlap="circular"
             sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: 16, minWidth: 16 } }}
@@ -110,7 +112,7 @@ const NavItemRow: React.FC<{
               fontWeight: active ? 700 : 500,
             }}
           />
-          {item.badge !== undefined && (typeof item.badge !== 'number' || item.badge > 0) && (
+          {!isFieldStaffShell && item.badge !== undefined && (typeof item.badge !== 'number' || item.badge > 0) && (
             <Badge
               badgeContent={item.badge}
               color="error"
@@ -169,57 +171,53 @@ const GroupedNavList: React.FC<{
   filteredNavItems: NavItem[];
   groupedNavItems: GroupedNavItems;
   navCollapsed: boolean;
+  isFieldStaffShell?: boolean;
   onNavigate?: () => void;
-}> = ({ filteredNavItems, groupedNavItems, navCollapsed, onNavigate }) => {
+}> = ({ filteredNavItems, groupedNavItems, navCollapsed, isFieldStaffShell, onNavigate }) => {
   const location = useLocation();
   const currentPathname = location.pathname;
   const currentSearch = location.search;
 
   if (filteredNavItems.length === 0) {
     return (
-      <List dense sx={{ px: 1 }}>
-        <ListItem disablePadding>
-          <ListItemText
-            primary="該当なし"
-            primaryTypographyProps={{ variant: 'body2' }}
-            sx={{ px: 2, py: 1, opacity: 0.7 }}
-          />
-        </ListItem>
-      </List>
+      <Box sx={{ p: 2, textAlign: 'center' }}>
+        <ListItemText
+          secondary="メニューが見つかりません"
+          secondaryTypographyProps={{ fontSize: '0.8rem' }}
+        />
+      </Box>
     );
   }
 
-  const activeGroups = groupedNavItems.ORDER.filter(
-    (key) => (groupedNavItems.map.get(key) ?? []).length > 0
-  );
-
   return (
-    <List dense component="div" sx={{ px: 1 }}>
-      {activeGroups.map((groupKey, index) => {
-        const items = groupedNavItems.map.get(groupKey)!;
-        const isLastGroup = index === activeGroups.length - 1;
+    <Box sx={{ pb: 4 }}>
+      {groupedNavItems.ORDER.map((group) => {
+        const items = groupedNavItems.map.get(group);
+        if (!items || items.length === 0) return null;
 
         return (
-          <Box key={groupKey} sx={{ mb: 1.5 }}>
-            {!navCollapsed && (
-              <ListSubheader
-                component="div"
-                sx={{
-                  position: 'static',
-                  bgcolor: 'background.paper',
-                  lineHeight: 1.6,
-                  py: 0.5,
-                  fontWeight: 700,
-                  fontSize: '0.75rem',
-                  color: 'text.secondary',
-                  px: 2,
-                  borderBottom: 1,
-                  borderColor: 'divider',
-                }}
-              >
-                {groupLabel[groupKey]}
-              </ListSubheader>
-            )}
+          <List
+            key={group}
+            subheader={
+              !navCollapsed ? (
+                <ListSubheader
+                  sx={{
+                    lineHeight: '32px',
+                    fontSize: '0.7rem',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: 'text.secondary',
+                    bgcolor: 'transparent',
+                  }}
+                >
+                  {groupLabel[group]}
+                </ListSubheader>
+              ) : (
+                <Divider sx={{ my: 1, opacity: 0.6 }} />
+              )
+            }
+          >
             {items.map((item) => (
               <NavItemRow
                 key={item.label}
@@ -320,7 +318,6 @@ export const AppShellSidebar: React.FC<Props> = ({
 };
 
 // ── Mobile Drawer Content ────────────────────────────────────────────────────
-
 export const MobileNavContent: React.FC<{
   navQuery: string;
   onNavQueryChange: (query: string) => void;
@@ -332,6 +329,7 @@ export const MobileNavContent: React.FC<{
   hasMoreNavItems: boolean;
   todayLiteNavV2: boolean;
   onToggleMoreNavItems: () => void;
+  isFieldStaffShell?: boolean;
   onNavigate: () => void;
 }> = ({
   navQuery,
@@ -344,6 +342,7 @@ export const MobileNavContent: React.FC<{
   hasMoreNavItems,
   todayLiteNavV2,
   onToggleMoreNavItems,
+  isFieldStaffShell,
   onNavigate,
 }) => {
   return (

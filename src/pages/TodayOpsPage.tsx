@@ -866,8 +866,6 @@ const TodayLiteOpsPage: React.FC = () => {
   const summary = useTodaySummary();
   const todayIspRenewSuggest = useTodayIspRenewSuggestActions(summary.users ?? []);
 
-  const liteRole = authzRole === 'admin' ? 'admin' : 'staff';
-
   const handleNavigate = useCallback((to: string) => {
     navigate(to);
   }, [navigate]);
@@ -875,7 +873,7 @@ const TodayLiteOpsPage: React.FC = () => {
   return (
     <TodayLitePage
       summary={summary}
-      role={liteRole}
+      role={authzRole}
       ispRenewSuggestCount={todayIspRenewSuggest.signals.length}
       onNavigate={handleNavigate}
     />

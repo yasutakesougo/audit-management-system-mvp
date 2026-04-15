@@ -1,3 +1,4 @@
+import type { Role } from '@/auth/roles';
 import type { DashboardAudience } from '@/features/auth/store';
 import { getTodayPrimaryFlowSteps } from '@/features/today/config/todayCoreFlow';
 import type { TodaySummary } from '@/features/today/domain/useTodaySummary';
@@ -11,7 +12,7 @@ import { TodayNoticePanel } from './TodayNoticePanel';
 
 export type TodayLitePageProps = {
   summary?: TodaySummary | null;
-  role: DashboardAudience;
+  role: Role;
   ispRenewSuggestCount?: number;
   onNavigate: (to: string) => void;
 };
@@ -27,6 +28,7 @@ export const TodayLitePage: React.FC<TodayLitePageProps> = ({
   }
 
   const isAdmin = role === 'admin';
+  const isFieldStaff = role === 'viewer';
 
   const completion = summary.todayRecordCompletion;
   const targetCount = summary.users?.length ?? 0;
@@ -100,7 +102,7 @@ export const TodayLitePage: React.FC<TodayLitePageProps> = ({
       <TodayActionCards cards={cards} />
       <TodayNoticePanel notices={notices} />
       <TodayAdminInsights
-        visible={isAdmin}
+        visible={!isFieldStaff}
         exceptionCount={summary.todayExceptions?.length ?? 0}
         ispRenewSuggestCount={ispRenewSuggestCount}
         onOpenExceptionCenter={() => handleNavigate('/admin/exception-center')}

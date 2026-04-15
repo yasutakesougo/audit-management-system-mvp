@@ -3,7 +3,9 @@ import type { Role } from '@/auth/roles';
 import type { UseTodayExceptionsResult } from '@/features/today/hooks/useTodayExceptions';
 import { useExceptionPreferences } from '@/features/exceptions/hooks/useExceptionPreferences';
 import { buildExceptionCenterDeepLinkPath } from '@/features/exceptions/domain/exceptionCenterDeepLink';
-import { Alert, AlertTitle, Box, Button, Chip, Typography } from '@mui/material';
+import { Alert, AlertTitle, Box, Button, Chip, Typography, List, ListItem, ListItemIcon, ListItemText, IconButton } from '@mui/material';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { EXCEPTION_CATEGORIES } from '@/features/exceptions/domain/exceptionLogic';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -85,31 +87,68 @@ export const TodayExceptionAlerts: React.FC<TodayExceptionAlertsProps> = ({
     ?? '/daily/table';
 
   if (!isAdminAudience) {
+    const displayItems = actionableItems.slice(0, 3);
+    const hasMore = actionableItems.length > 3;
+
     return (
       <BentoCard colSpan={{ xs: 1, sm: 2, md: 4 }} variant="default" data-testid="today-exception-alerts-compact">
-        <SectionLabel emoji="⚠️" text="確認が必要な項目（要約）" />
-        <Alert severity={criticalCount > 0 ? 'warning' : 'info'} data-testid="today-exception-alert-compact-summary">
-          <AlertTitle>確認が必要な項目があります</AlertTitle>
-          <Typography variant="body2">
-            要対応 {actionableItems.length}件（緊急 {criticalCount}件 / 通常 {Math.max(highCount, 0)}件）
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            詳細診断は管理者画面に集約されています。
-          </Typography>
+        <SectionLabel emoji="⚠️" text="至急の対応が必要です" />
+        <Alert
+          severity={criticalCount > 0 ? 'warning' : 'info'}
+          data-testid="today-exception-alert-compact-summary"
+          sx={{ mb: 1.5 }}
+        >
+          <AlertTitle>要対応 {actionableItems.length}件</AlertTitle>
+          <Box sx={{ mt: 1 }}>
+            <List size="small" disablePadding>
+              {displayItems.map((item) => (
+                <ListItem
+                  key={item.id}
+                  disableGutters
+                  sx={{ py: 0.25 }}
+                  secondaryAction={
+                    <IconButton size="small" onClick={() => navigate(item.actionPath)}>
+                      <OpenInNewIcon fontSize="inherit" />
+                    </IconButton>
+                  }
+                >
+                  <ListItemIcon sx={{ minWidth: 28 }}>
+                    <Box sx={{ fontSize: '1rem' }}>
+                      {EXCEPTION_CATEGORIES[item.category]?.icon ?? '•'}
+                    </Box>
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.title}
+                    primaryTypographyProps={{
+                      variant: 'body2',
+                      sx: { fontWeight: 500, fontSize: '0.8rem' }
+                    }}
+                  />
+                </ListItem>
+              ))}
+              {hasMore && (
+                <Typography variant="caption" sx={{ mt: 1, display: 'block', opacity: 0.7 }}>
+                  他 {actionableItems.length - 3} 件の項目があります
+                </Typography>
+              )}
+            </List>
+          </Box>
         </Alert>
-        <Box sx={{ mt: 1.5 }}>
+        <Box sx={{ mt: 1 }}>
           <Button
             size="small"
-            variant="contained"
+            variant="outlined"
             onClick={() => navigate(frontlineActionPath)}
             data-testid="today-exception-alert-compact-action"
+            fullWidth
           >
-            対応画面を開く
+            全件を確認・対応する
           </Button>
         </Box>
       </BentoCard>
     );
   }
+
 
   const criticalHeroItem =
     exceptionsQueue.heroItem?.priority === 'critical'

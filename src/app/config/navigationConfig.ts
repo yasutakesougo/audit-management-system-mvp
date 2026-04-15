@@ -100,6 +100,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     isAdmin,
     authzReady,
     navAudience,
+    isFieldStaffShell = false,
     skipLogin = false,
   } = config;
 
@@ -178,7 +179,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       to: '/meeting-minutes',
       isActive: (pathname) => pathname.startsWith('/meeting-minutes') || pathname.startsWith('/meeting-guide') || pathname.startsWith('/dashboard/briefing'),
       icon: undefined,
-      audience: NAV_AUDIENCE.all,
+      audience: isFieldStaffShell ? NAV_AUDIENCE.staff : NAV_AUDIENCE.all, // [Simple Mode] 現場職員には議事録は重いため非表示
       group: 'today' as NavGroupKey,
       tier: 'more',                   // [Tier] 頻度が低いため Lite Nav では隠蔽対象
       featureFlag: 'todayLiteNavV2',  // [FF] Lite Nav 有効時のみティア制限を適用
@@ -196,7 +197,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname === '/support-plan-guide',
       icon: undefined,
       testId: TESTIDS.nav.supportPlanGuide,
-      audience: NAV_AUDIENCE.all,
+      audience: isFieldStaffShell ? NAV_AUDIENCE.staff : NAV_AUDIENCE.all, // [Simple Mode] 参照のみ。サイドナビからは隠蔽（Hub経由）。
       group: 'planning' as NavGroupKey,
     },
     {
@@ -243,7 +244,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/analysis'),
       icon: undefined,
       testId: 'nav-analysis-workspace',
-      audience: NAV_AUDIENCE.all,
+      audience: isFieldStaffShell ? NAV_AUDIENCE.staff : NAV_AUDIENCE.all, // [Simple Mode] 分析は現場には重いためリーダー以上
       group: 'severe' as NavGroupKey,
       tier: 'more',
       featureFlag: 'todayLiteNavV2',
@@ -325,7 +326,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname === '/admin/regulatory-dashboard',
       icon: undefined,
       testId: 'nav-regulatory-dashboard',
-      audience: NAV_AUDIENCE.staff,
+      audience: isFieldStaffShell ? NAV_AUDIENCE.admin : NAV_AUDIENCE.staff, // [Simple Mode] 現場の不安を煽らないよう隠蔽。施設長のみ。
       group: 'severe' as NavGroupKey,
       tier: 'more',
       featureFlag: 'todayLiteNavV2',

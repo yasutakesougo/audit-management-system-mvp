@@ -12,8 +12,8 @@ import {
 } from '@/features/ibd/analysis/pdca/persistDailyPdca';
 import { auditLog } from '@/lib/debugLogger';
 import { getEnv } from '@/lib/runtimeEnv';
-import { useCallback, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useUserAuthz } from '@/auth/useUserAuthz';
+import { canAccess } from '@/auth/roles';
 
 const ERROR_STORAGE_KEY = 'daily-support-submit-error';
 
@@ -35,8 +35,11 @@ export function useSupportRecordSubmit({
   unfilledStepsCount,
 }: UseSupportRecordSubmitArgs) {
   const navigate = useNavigate();
+  const { role } = useUserAuthz();
+  const isSimpleMode = role === 'viewer' || (!canAccess(role, 'reception') && !canAccess(role, 'admin'));
+
   const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('行動記録を保存しました');
+  const [snackbarMessage, setSnackbarMessage] = useState('記録が完了しました');
   const [submitError, setSubmitError] = useState<Error | null>(() => {
     if (typeof window === 'undefined') return null;
     const stored = window.sessionStorage.getItem(ERROR_STORAGE_KEY);
@@ -110,11 +113,26 @@ export function useSupportRecordSubmit({
           window.localStorage.removeItem(retryKeyRef.current);
         }
         setRetryPersist(null);
-        setSnackbarMessage('保存しました。CHECKへ移動します。');
+
+        // Feedback Logic
+        if (isSimpleMode) {
+          if (unfilledStepsCount === 0) {
+            setSnackbarMessage('本日の入力はすべて完了しています。お疲れ様でした。');
+          } else {
+            setSnackbarMessage('記録を保存しました。本日の内容は反映されています。');
+          }
+        } else {
+          setSnackbarMessage('保存しました。CHECKへ移動します。');
+        }
+
         setSnackbarOpen(true);
         const params = new URLSearchParams({ userId: targetUserId, date: targetDate });
         window.setTimeout(() => {
-          navigate(`/analysis/iceberg-pdca?${params.toString()}`);
+          if (isSimpleMode) {
+            navigate('/today');
+          } else {
+            navigate(`/analysis/iceberg-pdca?${params.toString()}`);
+          }
         }, 300);
       } catch (persistError) {
         const msg = String((persistError as Error | undefined)?.message ?? persistError);
@@ -123,11 +141,15 @@ export function useSupportRecordSubmit({
           msg.toLowerCase().includes('denied') ||
           msg.toLowerCase().includes('already exists');
         if (idempotentAlreadyDone) {
-          setSnackbarMessage('保存済みを確認しました。CHECKへ移動します。');
+          setSnackbarMessage('保存済みを確認しました。');
           setSnackbarOpen(true);
-          const params = new URLSearchParams({ userId: targetUserId, date: targetDate });
           window.setTimeout(() => {
-            navigate(`/analysis/iceberg-pdca?${params.toString()}`);
+            if (isSimpleMode) {
+              navigate('/today');
+            } else {
+              const params = new URLSearchParams({ userId: targetUserId, date: targetDate });
+              navigate(`/analysis/iceberg-pdca?${params.toString()}`);
+            }
           }, 300);
           return;
         }
@@ -135,7 +157,7 @@ export function useSupportRecordSubmit({
           window.localStorage.setItem(retryKeyRef.current, JSON.stringify(persistInput));
         }
         setRetryPersist(persistInput);
-        setSubmitError(new Error('Firestore保存に失敗しました。再送できます。'));
+        setSubmitError(new Error('サーバーへの保存に失敗しました。再試行できます。'));
       }
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to add behavior');
@@ -160,6 +182,7 @@ export function useSupportRecordSubmit({
     templateId,
     totalSteps,
     unfilledStepsCount,
+    isSimpleMode,
   ]);
 
   const handleRetryPersist = useCallback(async () => {
@@ -171,17 +194,21 @@ export function useSupportRecordSubmit({
       }
       setRetryPersist(null);
       setSubmitError(null);
-      setSnackbarMessage('保存しました。CHECKへ移動します。');
+      setSnackbarMessage('保存しました。');
       setSnackbarOpen(true);
-      const params = new URLSearchParams({ userId: targetUserId, date: targetDate });
       window.setTimeout(() => {
-        navigate(`/analysis/iceberg-pdca?${params.toString()}`);
+        if (isSimpleMode) {
+          navigate('/today');
+        } else {
+          const params = new URLSearchParams({ userId: targetUserId, date: targetDate });
+          navigate(`/analysis/iceberg-pdca?${params.toString()}`);
+        }
       }, 300);
     } catch (persistError) {
       const msg = String((persistError as Error | undefined)?.message ?? persistError);
-      setSubmitError(new Error(msg || 'Firestore保存に失敗しました。再送できます。'));
+      setSubmitError(new Error(msg || 'サーバーへの保存に失敗しました。再試行できます。'));
     }
-  }, [navigate, retryPersist, targetDate, targetUserId]);
+  }, [navigate, retryPersist, isSimpleMode, targetUserId, targetDate]);
 
   const handleSnackbarClose = useCallback(() => {
     setSnackbarOpen(false);

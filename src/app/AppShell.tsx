@@ -172,6 +172,10 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     hasMoreNavItems,
     todayLiteNavV2,
     isAdmin,
+    canSeeAdmin,
+    canSeeDiagnostics,
+    canUseBulkActions,
+    isFieldStaffShell,
     handleNavSearchKeyDown,
     handleMobileNavigate,
     handleToggleNavCollapse,
@@ -196,6 +200,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       onMobileMenuOpen={() => setMobileOpen(true)}
       onDesktopNavToggle={() => setDesktopNavOpen((prev) => !prev)}
       onSettingsOpen={() => setSettingsDialogOpen(true)}
+      isFieldStaffShell={isFieldStaffShell}
     />
   );
 
@@ -213,6 +218,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       todayLiteNavV2={todayLiteNavV2}
       onToggleMoreNavItems={handleToggleMoreNavItems}
       isAdmin={isAdmin}
+      isFieldStaffShell={isFieldStaffShell}
     />
   ) : null;
 
@@ -296,6 +302,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 todayLiteNavV2={todayLiteNavV2}
                 onToggleMoreNavItems={handleToggleMoreNavItems}
                 onNavigate={handleMobileNavigate}
+                isFieldStaffShell={isFieldStaffShell}
               />
             </Drawer>
           )}
