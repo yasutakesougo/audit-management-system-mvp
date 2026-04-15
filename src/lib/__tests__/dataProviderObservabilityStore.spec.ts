@@ -4,7 +4,7 @@ import { useDataProviderObservabilityStore, reportResourceResolution } from '../
 describe('DataProviderObservabilityStore Idempotency', () => {
   beforeEach(() => {
     useDataProviderObservabilityStore.getState().clearResolutions();
-    useDataProviderObservabilityStore.setState({ currentProvider: null });
+    useDataProviderObservabilityStore.setState({ currentProvider: null, currentUser: null });
   });
 
   it('setProvider should not trigger update if values are identical', () => {
@@ -84,5 +84,37 @@ describe('DataProviderObservabilityStore Idempotency', () => {
 
     const storeAfterSecond = useDataProviderObservabilityStore.getState().resolutions['Users_Master'];
     expect(storeAfterSecond?.status).toBe('missing_required');
+  });
+
+  it('reportResourceResolution should persist httpStatus on failures', async () => {
+    reportResourceResolution({
+      resourceName: 'ISP_Master',
+      resolvedTitle: 'ISP_Master',
+      fieldStatus: {},
+      essentials: ['Title'],
+      error: 'Forbidden',
+      httpStatus: 403,
+    });
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    const state = useDataProviderObservabilityStore.getState().resolutions['ISP_Master'];
+    expect(state?.status).toBe('missing_required');
+    expect(state?.httpStatus).toBe(403);
+    expect(state?.error).toBe('Forbidden');
+  });
+
+  it('setCurrentUser should update currentUser and skip redundant updates', () => {
+    const store = useDataProviderObservabilityStore.getState();
+    const subscribeMock = vi.fn();
+    const unsubscribe = useDataProviderObservabilityStore.subscribe(subscribeMock);
+
+    store.setCurrentUser('kiosk@tenant.onmicrosoft.com');
+    expect(useDataProviderObservabilityStore.getState().currentUser).toBe('kiosk@tenant.onmicrosoft.com');
+    expect(subscribeMock).toHaveBeenCalledTimes(1);
+
+    store.setCurrentUser('kiosk@tenant.onmicrosoft.com');
+    expect(subscribeMock).toHaveBeenCalledTimes(1);
+
+    unsubscribe();
   });
 });
