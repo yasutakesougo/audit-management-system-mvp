@@ -19,5 +19,14 @@ export async function ensureOk(res: APIResponse, label: string): Promise<void> {
     bodySnippet = '<unreadable body>';
   }
 
-  throw new Error(`[${label}] HTTP ${status} sprequestguid=${guid}\n${bodySnippet}`);
+  let hint = '';
+  if (status === 401) {
+    hint = '\n[Hint] Authentication Expired. Please regenerate PW_STORAGE_STATE_B64 locally.';
+  } else if (status === 403) {
+    hint = '\n[Hint] Access Denied. Check SharePoint site/list permissions OR verify if PW_STORAGE_STATE_B64 has expired.';
+  } else if (status >= 500) {
+    hint = '\n[Hint] SharePoint Server Error. Check for list view thresholds or service health.';
+  }
+
+  throw new Error(`[${label}] HTTP ${status}${hint} sprequestguid=${guid}\n${bodySnippet}`);
 }

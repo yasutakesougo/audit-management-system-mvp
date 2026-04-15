@@ -22,8 +22,17 @@ export async function ensureOk(res: APIResponse, ctx: EnsureOkContext): Promise<
   const body = await res.text().catch(() => '');
   const snippet = body.slice(0, 400);
 
+  let hint = '';
+  if (status === 401) {
+    hint = '\n[Hint] Authentication Expired. Please regenerate PW_STORAGE_STATE_B64 locally.';
+  } else if (status === 403) {
+    hint = '\n[Hint] Access Denied. Check SharePoint site/list permissions OR verify if PW_STORAGE_STATE_B64 has expired.';
+  } else if (status >= 500) {
+    hint = '\n[Hint] SharePoint Server Error. Check for list view thresholds or service health.';
+  }
+
   throw new Error(
-    `[integration] ${ctx.op} failed: ${status}\n` +
+    `[integration] ${ctx.op} failed: ${status}${hint}\n` +
       `url=${ctx.url}\n` +
       `sprequestguid=${sprequestguid}\n` +
       `body=${snippet}`,
