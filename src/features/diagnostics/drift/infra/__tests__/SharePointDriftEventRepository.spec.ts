@@ -272,6 +272,53 @@ describe('SharePointDriftEventRepository', () => {
     ]);
   });
 
+  it('falls back to Id-desc scan when threshold error is reported in Japanese locale', async () => {
+    const thresholdError = Object.assign(
+      new Error('この操作は、リストビューのしきい値を超えているため実行できません。'),
+      { status: 500 },
+    );
+    const getListItemsByTitle = vi
+      .fn()
+      .mockRejectedValueOnce(thresholdError)
+      .mockResolvedValueOnce([
+        {
+          ID: 31,
+          NameOfList: 'Daily_Attendance',
+          InternalName: 'Status0',
+          OccurredAt: '2026-04-12T10:00:00.000Z',
+          Resolution: 'fallback',
+          Category: 'suffix_mismatch',
+          IsResolved: false,
+          Level: 'warn',
+        },
+      ]);
+
+    const repo = new SharePointDriftEventRepository({
+      createItem: vi.fn(async () => ({})),
+      updateItemByTitle: vi.fn(async () => ({})),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getListItemsByTitle: getListItemsByTitle as any,
+      getSchema: vi.fn(async () => [
+        'NameOfList',
+        'InternalName',
+        'OccurredAt',
+        'Level',
+        'Resolution',
+        'Category',
+        'IsResolved',
+      ]),
+    });
+
+    const events = await repo.getEvents({ listName: 'Daily_Attendance' });
+
+    expect(getListItemsByTitle).toHaveBeenCalledTimes(2);
+    expect(getListItemsByTitle.mock.calls[1][2]).toBeUndefined();
+    expect(getListItemsByTitle.mock.calls[1][3]).toBe('Id desc');
+    expect(getListItemsByTitle.mock.calls[1][4]).toBe(200);
+    expect(events).toHaveLength(1);
+    expect(events[0].id).toBe('31');
+  });
+
   it('uses resolved physical field when marking resolved', async () => {
     const updateItemByTitle = vi.fn(async () => ({}));
 

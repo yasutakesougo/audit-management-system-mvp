@@ -72,7 +72,12 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
     if (typeof err !== 'object' || err === null) return false;
     const status = 'status' in err ? (err as { status?: number }).status : undefined;
     const message = 'message' in err ? String((err as { message?: unknown }).message ?? '') : '';
-    return status === 500 && /list view threshold/i.test(message);
+    if (status !== 500) return false;
+    return (
+      /list view threshold/i.test(message) ||
+      /リストビュー.*しきい値/.test(message) ||
+      /しきい値を超えている/.test(message)
+    );
   }
 
   private isRequiredFieldKey(key: keyof typeof DRIFT_LOG_CANDIDATES): boolean {
