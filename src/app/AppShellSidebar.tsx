@@ -191,9 +191,10 @@ const GroupedNavList: React.FC<{
 
   return (
     <Box sx={{ pb: 4 }}>
-      {groupedNavItems.ORDER.map((group) => {
+      {groupedNavItems.ORDER.map((group, index) => {
         const items = groupedNavItems.map.get(group);
         if (!items || items.length === 0) return null;
+        const isLastGroup = index === groupedNavItems.ORDER.length - 1;
 
         return (
           <List
@@ -226,13 +227,14 @@ const GroupedNavList: React.FC<{
                 currentPathname={currentPathname}
                 currentSearch={currentSearch}
                 onNavigate={onNavigate}
+                isFieldStaffShell={isFieldStaffShell}
               />
             ))}
             {!navCollapsed && !isLastGroup && <Divider sx={{ mt: 1, mb: 0.5 }} />}
-          </Box>
+          </List>
         );
       })}
-    </List>
+    </Box>
   );
 };
 
