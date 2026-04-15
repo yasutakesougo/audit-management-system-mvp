@@ -1,3 +1,4 @@
+import type { Role } from '@/auth/roles';
 import type { DashboardAudience } from '@/features/auth/store';
 import { getTodayPrimaryFlowSteps } from '@/features/today/config/todayCoreFlow';
 import type { TodaySummary } from '@/features/today/domain/useTodaySummary';
@@ -11,7 +12,7 @@ import { TodayNoticePanel } from './TodayNoticePanel';
 
 export type TodayLitePageProps = {
   summary?: TodaySummary | null;
-  role: DashboardAudience;
+  role: Role;
   ispRenewSuggestCount?: number;
   onNavigate: (to: string) => void;
 };
@@ -59,7 +60,8 @@ export const TodayLitePage: React.FC<TodayLitePageProps> = ({
         'handoff-timeline': '申し送り',
       };
 
-      const baseCards = getTodayPrimaryFlowSteps(role).map<TodayActionCardItem>((step) => ({
+      const audience: DashboardAudience = role === 'admin' ? 'admin' : 'staff';
+      const baseCards = getTodayPrimaryFlowSteps(audience).map<TodayActionCardItem>((step) => ({
         key: step.key,
         title: titleByFlowKey[step.key] ?? step.label,
         count: countByFlowKey[step.key] ?? 0,

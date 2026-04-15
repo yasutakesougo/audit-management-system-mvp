@@ -33,13 +33,14 @@ describe('inferTodayStatusSummary', () => {
     expect(result.message).toContain('あと4件'); // 2 records + 2 case = 4 remaining
   });
 
-  it('returns good with "完了" when all records done', () => {
+  it('returns good with completion message when all records done', () => {
     const result = inferTodayStatusSummary(makeInput({
       records: { completed: 12, total: 12 },
       caseRecords: { completed: 10, total: 10 },
     }));
     expect(result.level).toBe('good');
-    expect(result.message).toContain('記録 完了');
+    expect(result.emoji).toBe('✨');
+    expect(result.message).toContain('本日の入力はすべて完了しています');
   });
 
   it('includes attendance in good message', () => {
@@ -174,7 +175,7 @@ describe('inferTodayStatusSummary', () => {
       attendance: { present: 0, scheduled: 0 },
     }));
     expect(result.level).toBe('good');
-    expect(result.message).toContain('記録 完了');
+    expect(result.message).toContain('本日の入力はすべて完了しています');
   });
 
   it('handles negative computed values gracefully', () => {

@@ -23,7 +23,7 @@ describe('HubLanding', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('個別支援計画作成')).toBeInTheDocument();
+    expect(screen.getByText('個別支援計画')).toBeInTheDocument();
     expect(screen.queryByText('個別支援計画更新（前回比較）')).not.toBeInTheDocument();
     expect(screen.getByText('計画作成と見直し')).toBeInTheDocument();
     expect(screen.getByTestId('hub-landing-section-primary-planning')).toBeInTheDocument();

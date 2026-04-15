@@ -25,6 +25,7 @@ type Props = {
   onMobileMenuOpen: () => void;
   onDesktopNavToggle: () => void;
   onSettingsOpen: () => void;
+  isFieldStaffShell?: boolean;
 };
 
 export const AppShellHeader: React.FC<Props> = ({
@@ -35,6 +36,7 @@ export const AppShellHeader: React.FC<Props> = ({
   onMobileMenuOpen,
   onDesktopNavToggle,
   onSettingsOpen,
+  isFieldStaffShell,
 }) => {
 
   return (
@@ -145,7 +147,7 @@ export const AppShellHeader: React.FC<Props> = ({
         <Box sx={{ flex: 1 }} />
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <P0AlertBadge />
+          {!isFieldStaffShell && <P0AlertBadge />}
           <ConnectionStatus />
           <Tooltip title="表示設定">
             <IconButton
@@ -159,17 +161,19 @@ export const AppShellHeader: React.FC<Props> = ({
             </IconButton>
           </Tooltip>
 
-          <IconButton
-            component={RouterLink}
-            to="/audit"
-            color="inherit"
-            aria-label="監査ログ"
-            data-testid={TESTIDS.nav.audit}
-            size="small"
-            sx={{ p: 0.5 }}
-          >
-            <HistoryIcon />
-          </IconButton>
+          {!isFieldStaffShell && (
+            <IconButton
+              component={RouterLink}
+              to="/audit"
+              color="inherit"
+              aria-label="監査ログ"
+              data-testid={TESTIDS.nav.audit}
+              size="small"
+              sx={{ p: 0.5 }}
+            >
+              <HistoryIcon />
+            </IconButton>
+          )}
           <SignInButton />
         </Box>
       </Toolbar>

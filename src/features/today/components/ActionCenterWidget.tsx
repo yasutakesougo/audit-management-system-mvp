@@ -45,8 +45,8 @@ export const ActionCenterWidget: React.FC<ActionCenterWidgetProps> = ({
           <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
         </div>
         <div>
-          <p className="font-semibold text-green-800 dark:text-green-300">本日の未完了タスクはありません</p>
-          <p className="text-sm text-green-600 dark:text-green-400">現場は順調に稼働しています。</p>
+          <p className="font-semibold text-green-800 dark:text-green-300">本日の入力はすべて完了しています</p>
+          <p className="text-sm text-green-600 dark:text-green-400">お疲れ様でした。現場は順調に稼働しています。</p>
         </div>
       </div>
     );
