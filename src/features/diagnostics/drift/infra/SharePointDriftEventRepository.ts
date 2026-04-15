@@ -5,6 +5,7 @@ import { buildDateTime, buildEq, buildGe, joinAnd } from '@/sharepoint/query/bui
 import { DRIFT_LOG_CANDIDATES } from '@/sharepoint/fields/diagnosticsFields';
 import { extractMissingField, resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 import { auditLog } from '@/lib/debugLogger';
+import { summarizeSpError } from '@/lib/errors';
 
 /**
  * 依存関係の境界遵守のためのローカルインターフェース
@@ -69,14 +70,14 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
   }
 
   private isListViewThresholdError(err: unknown): boolean {
-    if (typeof err !== 'object' || err === null) return false;
-    const status = 'status' in err ? (err as { status?: number }).status : undefined;
-    const message = 'message' in err ? String((err as { message?: unknown }).message ?? '') : '';
-    if (status !== 500) return false;
+    const { httpStatus, message } = summarizeSpError(err);
+    if (httpStatus !== 500) return false;
+    
     return (
       /list view threshold/i.test(message) ||
       /リストビュー.*しきい値/.test(message) ||
-      /しきい値を超えている/.test(message)
+      /しきい値を超えている/.test(message) ||
+      message.includes('5000')
     );
   }
 
@@ -184,6 +185,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         throw err;
       }
 
+      const { sprequestguid } = summarizeSpError(err);
       auditLog.warn(
         'diagnostics:drift',
         'DriftEventRepository threshold fallback: retrying with Id-desc scan.',
@@ -191,6 +193,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
           listTitle,
           filterQuery,
           orderBy: `${detectedAtField} desc`,
+          sprequestguid
         },
       );
 
