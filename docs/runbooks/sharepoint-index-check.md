@@ -11,12 +11,13 @@
 | リスト名 | 年間想定件数 | 必須インデックス列 | 優先度 |
 |---|---|---|---|
 | DailyActivityRecords | ~60,000 | `UserCode`, `RecordDate` | 🔴 最優先 |
+| schedule_events (Schedules) | ~30,000 | `EventDate`, `EndDate`, `cr014_dayKey` | 🔴 最優先 |
+| DriftEventsLog_v2 | ~100,000 | `Detected_At`, `listName`, `resolved` | 🔴 最優先 |
 | SupportRecord_Daily | ~7,500 | `cr013_personId`, `cr013_date` | 🟡 |
 | AttendanceDaily | ~7,500 | `UserCode`, `RecordDate`, `Key` | 🟡 |
 | ServiceProvisionRecords | ~7,500 | `EntryKey`, `UserCode`, `RecordDate` | 🟡 |
 | Transport_Log | ~15,000 | `UserCode`, `RecordDate`, `Title` | 🟡 |
 | SupportProcedureRecord_Daily | 可変 | `UserCode`, `RecordDate` | 🟡 |
-| Schedules | 可変 | `Date`, `MonthKey`, `ServiceType` | 🟢 |
 
 ---
 
@@ -37,12 +38,13 @@ Connect-PnPOnline -Url "https://<tenant>.sharepoint.com/sites/<site>" -Interacti
 ```powershell
 $targetLists = @(
   @{ Name = 'DailyActivityRecords'; RequiredIndexes = @('UserCode', 'RecordDate') },
+  @{ Name = 'schedule_events';      RequiredIndexes = @('EventDate', 'EndDate', 'cr014_dayKey') },
+  @{ Name = 'DriftEventsLog_v2';    RequiredIndexes = @('Detected_At', 'listName', 'resolved') },
   @{ Name = 'SupportRecord_Daily';  RequiredIndexes = @('cr013_personId', 'cr013_date') },
   @{ Name = 'AttendanceDaily';      RequiredIndexes = @('UserCode', 'RecordDate', 'Key') },
   @{ Name = 'ServiceProvisionRecords'; RequiredIndexes = @('EntryKey', 'UserCode', 'RecordDate') },
   @{ Name = 'Transport_Log';        RequiredIndexes = @('UserCode', 'RecordDate', 'Title') },
-  @{ Name = 'SupportProcedureRecord_Daily'; RequiredIndexes = @('UserCode', 'RecordDate') },
-  @{ Name = 'Schedules';            RequiredIndexes = @('Date', 'MonthKey', 'ServiceType') }
+  @{ Name = 'SupportProcedureRecord_Daily'; RequiredIndexes = @('UserCode', 'RecordDate') }
 )
 
 foreach ($list in $targetLists) {
@@ -152,6 +154,11 @@ if ($duplicates) {
 
 - [ ] DailyActivityRecords: `UserCode` indexed
 - [ ] DailyActivityRecords: `RecordDate` indexed
+- [ ] schedule_events: `EventDate` indexed
+- [ ] schedule_events: `EndDate` indexed
+- [ ] schedule_events: `cr014_dayKey` indexed
+- [ ] DriftEventsLog_v2: `Detected_At` indexed
+- [ ] DriftEventsLog_v2: `listName` indexed
 - [ ] SupportRecord_Daily: `cr013_personId` indexed
 - [ ] SupportRecord_Daily: `cr013_date` indexed
 - [ ] AttendanceDaily: `UserCode` indexed

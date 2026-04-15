@@ -320,17 +320,24 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
     const { httpStatus, message: spMessage, sprequestguid } = summarizeSpError(err);
     
     // Detect Threshold error (SharePoint view limit 5000 items)
-    const isThreshold = spMessage.includes('しきい値') || spMessage.toLowerCase().includes('threshold');
+    // 500 Internal Server Error with specific message is the standard for threshold failures
+    const isThreshold = httpStatus === 500 && (
+      spMessage.includes('しきい値') || 
+      spMessage.toLowerCase().includes('threshold') ||
+      spMessage.includes('5000')
+    );
     
+    const guid = sprequestguid ? ` [Request ID: ${sprequestguid}]` : '';
     const enrichedMessage = isThreshold 
-      ? `${userMessage} (SharePoint リストのしきい値制限 [5000件] に抵触した可能性があります。EventDate 等の列のインデックス化が必要です)`
-      : `${userMessage} (${error.message})`;
+      ? `${userMessage} (SharePoint リストのしきい値制限 [5000件] に抵触しました。EventDate, EndDate, cr014_dayKey 等の列を SharePoint 設定からインデックス化する必要があります)${guid}`
+      : `${userMessage} (${error.message})${guid}`;
 
     auditLog.error('schedule:repo', enrichedMessage, { 
       error,
       status: httpStatus,
       sprequestguid,
-      originalMessage: spMessage
+      originalMessage: spMessage,
+      listTitle: this.listTitle
     });
 
     const finalError = new Error(enrichedMessage) as Error & { status?: number; sprequestguid?: string };
