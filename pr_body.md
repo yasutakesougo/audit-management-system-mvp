@@ -1,72 +1,34 @@
-## Summary
+# PR Draft: strengthen list failure observability and surface threshold guidance
 
-* add per-run ingest reports in JSON and Markdown under `knowledge/ingested/_reports/`
-* expand Markdown frontmatter with source traceability and review metadata
-* add incremental processing with mtime-based skip and `--force` override
-* tighten source file filtering and remove unused ingest dependency
+## 概要
 
-## What changed
+Schedules 本線におけるアイテム取得失敗が、SharePoint のリストビューしきい値（5000件制限）による HTTP 500 エラーであることを実機ログにて確認しました。
+本 PR は、コード側での直接的なクエリ最適化を行う前に、まず運用側でのインデックス対応を確実にガイドできるよう、`DataProviderScheduleRepository` 周辺のエラーハンドリング観測性を強化するものです。
 
-### Ingest reporting
+## 変更内容
 
-* generate a unique `run_id` for each execution
-* write machine-readable `report.json`
-* write human-readable `report.md`
-* include totals for processed / skipped / succeeded / failed and success rate
-* record per-file status, duration, error, and skipped reason
+1. **共通エラー拡張 (`src/lib/sp/helpers.ts`)**
 
-### Frontmatter expansion
+   * `raiseHttpError` において、SharePoint 相関 ID (`sprequestguid`) をエラーオブジェクトに付与
+   * これにより、必要な呼び出し元で調査用 ID をログに残せるようにします
 
-Added metadata fields to generated Markdown:
+2. **Schedules 観測性強化 (`src/features/schedules/infra/DataProviderScheduleRepository.ts`)**
 
-* `source_path`
-* `source_modified_at`
-* `run_id`
-* `ingest_version`
-* `review_status`
-* `tags`
+   * `list()` および `resolveFields()` の失敗時に `status` と `sprequestguid` を明示的にログ出力
+   * SharePoint のしきい値エラーを検知した場合、管理者向けアクション（`EventDate` などのインデックス化確認が必要であること）をメッセージに付加
+   * locale 差を考慮し、日本語・英語どちらのしきい値メッセージでも判定できるようにする
 
-Existing fields such as `source_file`, `converted_at`, `converter`, `document_type`, `domain`, and `status` are preserved.
+## 運用側のアクション（管理者向け）
 
-### Incremental batch behavior
+本 PR は観測性と運用誘導の強化であり、SharePoint 側の設定が未完了の場合はエラー自体は継続します。
+以下の列について「インデックス付きの列」設定を確認してください。
 
-* skip reconversion when target exists and source mtime is not newer
-* allow forced reconversion via `--force`
-* keep fail-soft behavior so one file failure does not stop the whole run
+* `EventDate`
+* `EndDate`
+* `cr014_dayKey`
 
-### Filtering and dependency cleanup
+## 後続の予定
 
-* explicitly support `.xlsx`, `.docx`, `.pptx`, `.pdf`, `.jpg`, `.jpeg`, `.png`
-* exclude temporary and system files such as `~$*`, hidden files, `.DS_Store`, and `Thumbs.db`
-* remove unused `python-dotenv` from `requirements.txt`
-
-## Validation
-
-Validated locally with real execution, not only dry-run.
-
-### Import / runtime contract
-
-* install: `pip install markitdown`
-* import: `from markitdown import MarkItDown`
-* runtime requirement: Python 3.10+
-
-### Execution checks
-
-* single-file conversion generated Markdown successfully
-* frontmatter output contains the new traceability fields
-* `_reports/<run_id>.json` and `.md` were generated successfully
-* second run skipped unchanged file as expected
-* `--force` triggered reconversion as expected
-
-## Notes
-
-* this remains a local/CLI-based Phase 2 ingest improvement
-* SharePoint-triggered automation, Power Automate integration, and ingest UI are still out of scope
-* original documents remain the source of truth
-* converted Markdown remains an AI-readable secondary asset and may still require light post-editing for complex layout files
-
-## Follow-ups
-
-* add source hash tracking for stricter change detection
-* add conversion quality scoring / review priority hints
-* evaluate SharePoint-connected ingestion in a later phase
+* SharePoint 側でのインデックス対応後の挙動確認
+* 必要に応じたクエリ最適化（例: 取得上限や取得戦略の見直し）の検討
+* `DataProviderScheduleRepository.list()` 失敗時の観測性を他リポジトリにも横展開するかの判断

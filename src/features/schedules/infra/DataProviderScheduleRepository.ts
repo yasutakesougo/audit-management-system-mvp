@@ -115,7 +115,7 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       });
       return null;
     } catch (err) {
-      const { message, httpStatus } = summarizeSpError(err);
+      const { message, httpStatus, sprequestguid } = summarizeSpError(err);
       const currentUser = useDataProviderObservabilityStore.getState().currentUser ?? undefined;
 
       reportResourceResolution({
@@ -131,10 +131,11 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
         listKey: 'schedule_events',
         resourceName: 'Schedule',
         httpStatus,
+        sprequestguid: sprequestguid ?? undefined,
         currentUser,
       });
 
-      auditLog.error('schedule:repo', 'Field resolution failed:', err);
+      auditLog.error('schedule:repo', 'Field resolution failed:', { error: err, sprequestguid });
       return null;
     }
   }
@@ -316,8 +317,27 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
 
   private handleError(err: unknown, userMessage: string): never {
     const error = toSafeError(err);
-    auditLog.error('schedule:repo', userMessage, { error });
-    throw new Error(`${userMessage} (${error.message})`);
+    const { httpStatus, message: spMessage, sprequestguid } = summarizeSpError(err);
+    
+    // Detect Threshold error (SharePoint view limit 5000 items)
+    const isThreshold = spMessage.includes('しきい値') || spMessage.toLowerCase().includes('threshold');
+    
+    const enrichedMessage = isThreshold 
+      ? `${userMessage} (SharePoint リストのしきい値制限 [5000件] に抵触した可能性があります。EventDate 等の列のインデックス化が必要です)`
+      : `${userMessage} (${error.message})`;
+
+    auditLog.error('schedule:repo', enrichedMessage, { 
+      error,
+      status: httpStatus,
+      sprequestguid,
+      originalMessage: spMessage
+    });
+
+    const finalError = new Error(enrichedMessage) as Error & { status?: number; sprequestguid?: string };
+    if (httpStatus) finalError.status = httpStatus;
+    if (sprequestguid) finalError.sprequestguid = sprequestguid;
+    
+    throw finalError;
   }
 }
 
