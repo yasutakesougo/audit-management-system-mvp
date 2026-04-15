@@ -12,7 +12,8 @@ import {
   washRow,
   washRows
 } from '@/lib/sp/helpers';
-import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
+import { reportResourceResolution, useDataProviderObservabilityStore } from '@/lib/data/dataProviderObservabilityStore';
+import { summarizeSpError } from '@/lib/errors';
 import { mapSpRowToSchedule, type SpScheduleRow } from '../data/spRowSchema';
 import { getSchedulesListTitle } from '../data/spSchema';
 import type { 
@@ -114,13 +115,25 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       });
       return null;
     } catch (err) {
+      const { message, httpStatus } = summarizeSpError(err);
+      const currentUser = useDataProviderObservabilityStore.getState().currentUser ?? undefined;
+
       reportResourceResolution({
         resourceName: 'Schedule',
         resolvedTitle: this.listTitle,
         fieldStatus: {},
         essentials: [...SCHEDULE_EVENTS_ESSENTIALS] as string[],
-        error: String(err)
+        error: message,
+        httpStatus,
       });
+
+      auditLog.warn('sp', 'list_read_failed', {
+        listKey: 'schedule_events',
+        resourceName: 'Schedule',
+        httpStatus,
+        currentUser,
+      });
+
       auditLog.error('schedule:repo', 'Field resolution failed:', err);
       return null;
     }
