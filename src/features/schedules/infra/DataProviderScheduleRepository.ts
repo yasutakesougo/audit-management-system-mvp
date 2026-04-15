@@ -115,9 +115,8 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       });
       return null;
     } catch (err) {
-      const { message, httpStatus } = summarizeSpError(err);
+      const { message, httpStatus, sprequestguid } = summarizeSpError(err);
       const currentUser = useDataProviderObservabilityStore.getState().currentUser ?? undefined;
-      const sprequestguid = (err as any)?.sprequestguid;
 
       reportResourceResolution({
         resourceName: 'Schedule',
@@ -132,7 +131,7 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
         listKey: 'schedule_events',
         resourceName: 'Schedule',
         httpStatus,
-        sprequestguid,
+        sprequestguid: sprequestguid ?? undefined,
         currentUser,
       });
 
@@ -318,11 +317,8 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
 
   private handleError(err: unknown, userMessage: string): never {
     const error = toSafeError(err);
-    const { httpStatus, message: spMessage } = summarizeSpError(err);
+    const { httpStatus, message: spMessage, sprequestguid } = summarizeSpError(err);
     
-    // Extract SharePoint correlation ID provided by raiseHttpError
-    const sprequestguid = (err as any)?.sprequestguid;
-
     // Detect Threshold error (SharePoint view limit 5000 items)
     const isThreshold = spMessage.includes('しきい値') || spMessage.toLowerCase().includes('threshold');
     
@@ -337,9 +333,9 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       originalMessage: spMessage
     });
 
-    const finalError = new Error(enrichedMessage);
-    if (httpStatus) (finalError as any).status = httpStatus;
-    if (sprequestguid) (finalError as any).sprequestguid = sprequestguid;
+    const finalError = new Error(enrichedMessage) as Error & { status?: number; sprequestguid?: string };
+    if (httpStatus) finalError.status = httpStatus;
+    if (sprequestguid) finalError.sprequestguid = sprequestguid;
     
     throw finalError;
   }

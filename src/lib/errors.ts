@@ -208,6 +208,7 @@ export function classifyErrorWithHint(error: SafeError | null | undefined): Erro
 export interface SpErrorSummary {
   message: string;
   httpStatus?: number;
+  sprequestguid?: string;
 }
 
 export function summarizeSpError(error: unknown): SpErrorSummary {
@@ -230,5 +231,7 @@ export function summarizeSpError(error: unknown): SpErrorSummary {
   }
 
   const message = typeof obj.message === 'string' ? obj.message : String(error);
-  return { message, httpStatus };
+  const sprequestguid = typeof obj.sprequestguid === 'string' ? obj.sprequestguid : undefined;
+
+  return { message, httpStatus, sprequestguid };
 }
