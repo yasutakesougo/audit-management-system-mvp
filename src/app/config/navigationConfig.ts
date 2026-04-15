@@ -234,7 +234,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname.startsWith('/survey/tokusei'),
       icon: undefined,
       audience: NAV_AUDIENCE.admin,
-      group: 'planning' as NavGroupKey,
+      group: 'severe' as NavGroupKey,
       tier: 'more',
       featureFlag: 'todayLiteNavV2',
     },
