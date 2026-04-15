@@ -34,18 +34,21 @@ export interface ResourceResolutionState {
   lastAccessedAt: string;
   error?: string;
   fallbackFrom?: string;
+  httpStatus?: number;
 }
 
 interface ObservabilityState {
   currentProvider: ProviderType | null;
+  currentUser: string | null;
   resolutions: Record<string, ResourceResolutionState>;
-  
+
   isPanelOpen: boolean;
   activeTab: string;
   focusResourceName?: string;
 
   // Actions
   setProvider: (type: ProviderType) => void;
+  setCurrentUser: (user: string | null) => void;
   reportResolution: (state: ResourceResolutionState) => void;
   clearResolutions: () => void;
   openPanel: (options?: { tab?: string; resourceName?: string }) => void;
@@ -58,6 +61,7 @@ interface ObservabilityState {
  */
 export const useDataProviderObservabilityStore = create<ObservabilityState>((set) => ({
   currentProvider: null,
+  currentUser: null,
   resolutions: {},
   isPanelOpen: false,
   activeTab: 'obs',
@@ -66,6 +70,11 @@ export const useDataProviderObservabilityStore = create<ObservabilityState>((set
   setProvider: (type) => set((state) => {
     if (state.currentProvider === type) return state;
     return { currentProvider: type };
+  }),
+
+  setCurrentUser: (user) => set((state) => {
+    if (state.currentUser === user) return state;
+    return { currentUser: user };
   }),
 
   reportResolution: (state) => set((prev) => {
@@ -120,6 +129,7 @@ export interface ResourceResolutionReport {
   essentials: string[];
   error?: string;
   fallbackFrom?: string;
+  httpStatus?: number;
 }
 
 /**
@@ -137,6 +147,7 @@ export function reportResourceResolution(report: ResourceResolutionReport): void
     essentials,
     error,
     fallbackFrom,
+    httpStatus,
   } = report;
 
   const fields: FieldResolutionInfo[] = Object.entries(fieldStatus).map(([key, info]) => ({
@@ -187,7 +198,8 @@ export function reportResourceResolution(report: ResourceResolutionReport): void
       fields,
       lastAccessedAt: new Date().toISOString(),
       error,
-      fallbackFrom
+      fallbackFrom,
+      httpStatus,
     });
   }, 0);
 }

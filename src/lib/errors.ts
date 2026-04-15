@@ -204,3 +204,31 @@ export function classifyErrorWithHint(error: SafeError | null | undefined): Erro
   const kind = classifyError(error);
   return { kind, hint: ERROR_HINTS[kind] };
 }
+
+export interface SpErrorSummary {
+  message: string;
+  httpStatus?: number;
+}
+
+export function summarizeSpError(error: unknown): SpErrorSummary {
+  if (!error || typeof error !== 'object') {
+    return { message: String(error) };
+  }
+
+  const obj = error as Record<string, unknown>;
+  let httpStatus: number | undefined;
+
+  if (typeof obj.status === 'number') {
+    httpStatus = obj.status;
+  } else if (obj.response && typeof obj.response === 'object') {
+    const resp = obj.response as Record<string, unknown>;
+    if (typeof resp.status === 'number') httpStatus = resp.status;
+    else if (typeof resp.statusCode === 'number') httpStatus = resp.statusCode;
+  } else if (obj.cause && typeof obj.cause === 'object') {
+    const cause = obj.cause as Record<string, unknown>;
+    if (typeof cause.status === 'number') httpStatus = cause.status;
+  }
+
+  const message = typeof obj.message === 'string' ? obj.message : String(error);
+  return { message, httpStatus };
+}
