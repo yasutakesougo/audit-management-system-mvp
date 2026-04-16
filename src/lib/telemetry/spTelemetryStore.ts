@@ -7,9 +7,9 @@ export type SpFetchTelemetryEvent =
 
 export interface SpMetric {
   timestamp: number;
-  event: SpFetchTelemetryEvent;
-  url: string;
-  method: string;
+  event: SpFetchTelemetryEvent | 'config_warning';
+  url?: string;
+  method?: string;
   lane?: string;
   status?: number;
   attempt?: number;
@@ -17,6 +17,10 @@ export interface SpMetric {
   queuedMs?: number;
   retryAfterMs?: number;
   message?: string;
+  // Structured Signal fields
+  scope?: string;
+  code?: string;
+  count?: number;
 }
 
 const MAX_EVENTS = 1000;
@@ -36,29 +40,48 @@ export function subscribeToThrottle(cb: ThrottleCallback): () => void {
 }
 
 export const spTelemetryStore = {
-  record(event: SpFetchTelemetryEvent, payload: Omit<SpMetric, 'timestamp' | 'event'>) {
+  record(
+    eventOrSignal: SpFetchTelemetryEvent | { type: 'config_warning'; scope: string; code: string; count?: number; message?: string },
+    payload?: Omit<SpMetric, 'timestamp' | 'event'>
+  ) {
     if (events.length >= MAX_EVENTS) {
       events.shift(); // Ring buffer behavior: drop oldest
     }
     
+    if (typeof eventOrSignal === 'object') {
+      // Structured Signal Flow
+      events.push({
+        timestamp: Date.now(),
+        event: 'config_warning',
+        scope: eventOrSignal.scope,
+        code: eventOrSignal.code,
+        count: eventOrSignal.count,
+        message: eventOrSignal.message,
+      });
+      return;
+    }
+
+    // Legacy / SpFetch Flow
+    if (!payload) return;
+
     // Normalize url to path only for aggregation, strip query params
     const endpointPath = (() => {
       try {
-        const u = new URL(payload.url);
+        const u = new URL(payload.url || '');
         return u.pathname;
       } catch {
-        return payload.url.split('?')[0]; // fallback
+        return (payload.url || '').split('?')[0]; // fallback
       }
     })();
 
     events.push({
       timestamp: Date.now(),
-      event,
+      event: eventOrSignal,
       ...payload,
       url: endpointPath, // Store normalized endpoint for easier group by
     });
 
-    if (event === 'sp:throttled') {
+    if (eventOrSignal === 'sp:throttled') {
       _throttleCallbacks.forEach((cb) => { try { cb(); } catch { /* fail-open */ } });
     }
   },
