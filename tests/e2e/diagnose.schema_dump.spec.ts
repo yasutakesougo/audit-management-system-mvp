@@ -42,13 +42,8 @@ test.describe('Targeted Schema Check for 400 Errors', () => {
         });
         
         if (target.fields.some(f => !internalNames.includes(f))) {
-            console.log(`\n--- Available similar fields in ${target.title} ---`);
-            results.forEach((f: any) => {
-                // 部分一致するものをヒントとして出す
-                if (target.fields.some(targetF => f.InternalName.includes(targetF.split('_')[0]))) {
-                    console.log(`Suggestion? InternalName: "${f.InternalName}" | Title: "${f.Title}"`);
-                }
-            });
+            console.log(`\n--- ALL available fields in ${target.title} ---`);
+            console.log(internalNames.join(', '));
         }
       } else {
         console.error(`Failed to fetch fields for ${target.title}`);
