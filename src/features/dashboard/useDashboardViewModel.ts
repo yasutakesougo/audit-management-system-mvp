@@ -1,6 +1,7 @@
 import { canAccessDashboardAudience, isDashboardAudience } from '@/features/auth/store';
 import type { BriefingAlert } from '@/features/dashboard/sections/types';
 import { useEffect, useMemo } from 'react';
+import { spTelemetryStore } from '@/lib/telemetry/spTelemetryStore';
 
 // ── 型の正本は sections/types.ts。ここでは re-export のみ ──
 export type {
@@ -145,7 +146,6 @@ export function useDashboardViewModel<TSummary = unknown>(
   }, [summary]);
 
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
     const keys = sections.map((section) => section.key);
     const seen = new Set<DashboardSectionKey>();
     const duplicates = new Set<DashboardSectionKey>();
@@ -156,8 +156,18 @@ export function useDashboardViewModel<TSummary = unknown>(
       seen.add(key);
     }
     if (duplicates.size > 0) {
-      // eslint-disable-next-line no-console
-      console.warn('[dashboard] duplicate section keys detected:', Array.from(duplicates));
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.warn('[dashboard] duplicate section keys detected:', Array.from(duplicates));
+      }
+      // Structured Signal for Operational OS (Nightly Patrol / Advisor)
+      spTelemetryStore.record({
+        type: 'config_warning',
+        scope: 'dashboard',
+        code: 'duplicate_section_keys',
+        count: duplicates.size,
+        message: `Duplicates: ${Array.from(duplicates).join(', ')}`,
+      });
     }
   }, [sections]);
 

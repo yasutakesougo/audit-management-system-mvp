@@ -9,8 +9,6 @@
  * DashboardPage.tsx はこのフックの戻り値のみに依存し、ロジックを一切持たない。
  */
 
-import { useEffect } from 'react';
-
 import { type DashboardAudience } from '@/features/auth/store';
 import { useAttendanceStore } from '@/features/attendance/store';
 import { generateMockActivityRecords } from '@/features/dashboard/mocks/mockData';
@@ -67,14 +65,6 @@ export function useDashboardPage(audience: DashboardAudience = 'staff'): UseDash
 
   // ── Sub-hooks: Navigation (isMorningTime に依存) ──
   const nav = useDashboardNavigation(ui.isMorningTime);
-
-  // ── Dev logging ──
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      // eslint-disable-next-line no-console
-      console.debug('[usageMap]', currentMonth, summary.usageMap);
-    }
-  }, [summary.usageMap, currentMonth]);
 
   // ── ViewModel ──
   const vm = useDashboardViewModel({
