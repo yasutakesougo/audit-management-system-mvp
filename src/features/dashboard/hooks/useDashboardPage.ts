@@ -9,8 +9,6 @@
  * DashboardPage.tsx はこのフックの戻り値のみに依存し、ロジックを一切持たない。
  */
 
-import { useEffect } from 'react';
-
 import { type DashboardAudience } from '@/features/auth/store';
 import { useAttendanceStore } from '@/features/attendance/store';
 import { generateMockActivityRecords } from '@/features/dashboard/mocks/mockData';

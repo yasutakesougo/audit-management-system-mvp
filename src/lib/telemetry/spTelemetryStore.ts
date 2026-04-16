@@ -173,7 +173,8 @@ export const spTelemetryStore = {
     const stats: Record<string, { failures: number; retries: number }> = {};
     
     for (const e of events) {
-      const ep = e.url; // already normalized to endpoint in record()
+      const ep = e.url;
+      if (!ep) continue; // Skip non-fetch events or events without URL
       if (!stats[ep]) stats[ep] = { failures: 0, retries: 0 };
       
       if (e.event === 'sp:request_failed') stats[ep].failures++;
