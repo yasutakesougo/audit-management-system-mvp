@@ -12,11 +12,13 @@ import { isDevMode, isDemoModeEnabled, readBool, readOptionalEnv, shouldSkipShar
 export type ProviderType = 'sharepoint' | 'memory' | 'local';
 
 const providerInstances: Record<string, IDataProvider> = {};
+let lastLoggedType: string | null = null;
 
 
 /** @internal - For testing only */
 export function __clearProviderCache(): void {
   Object.keys(providerInstances).forEach(k => delete providerInstances[k]);
+  lastLoggedType = null;
 }
 
 /**
@@ -76,7 +78,11 @@ export function createDataProvider(
     providerInstances[cacheKey].setClient(spClient);
   }
 
-  console.info(`[DataProvider] Active backend: ${type}`);
+  if (type !== lastLoggedType) {
+    console.info(`[DataProvider] Active backend: ${type}`);
+    lastLoggedType = type;
+  }
+
   return { provider: providerInstances[cacheKey], type };
 }
 
