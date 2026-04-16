@@ -33,7 +33,7 @@ test.describe('Targeted Schema Check for 400 Errors', () => {
       if (res.ok()) {
         const json = await res.json();
         const results = json?.d?.results || [];
-        const internalNames = results.map((f: any) => f.InternalName);
+        const internalNames = results.map((f: { InternalName: string }) => f.InternalName);
         
         console.log(`\n=== CHECKING LIST: ${target.title} ===`);
         target.fields.forEach(f => {

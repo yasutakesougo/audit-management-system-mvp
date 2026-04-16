@@ -1,7 +1,6 @@
 import React from 'react';
 import { useSP } from '@/lib/spClient';
 import { auditLog } from '@/lib/debugLogger';
-import {
 import { reportDiagnosticsReport, mapPatrolEventToSignal, type PatrolEvent } from '../mapping';
 import { reportSpHealthEvent } from '../spHealthSignalStore';
 import { SharePointDriftEventRepository } from '@/features/diagnostics/drift/infra/SharePointDriftEventRepository';
