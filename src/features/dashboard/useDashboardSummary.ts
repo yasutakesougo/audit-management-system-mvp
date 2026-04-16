@@ -54,34 +54,9 @@ export function useDashboardSummary({
   attendanceCounts: AttendanceCounts;
   spSyncStatus?: HubSyncStatus;
 }) {
-  const isDevProfiling = process.env.NODE_ENV === 'development';
-
   // Normalize inputs: prevent Object.values(undefined) crash during initial render
   const safeVisits = visits ?? {};
   const safeAttendanceCounts = attendanceCounts ?? { onDuty: 0, out: 0, absent: 0, total: 0 };
-
-  const perfMark = (label: string) => {
-    if (isDevProfiling && typeof performance !== 'undefined') {
-      performance.mark(label);
-    }
-  };
-
-  const perfMeasure = (label: string) => {
-    if (isDevProfiling && typeof performance !== 'undefined' && performance.getEntriesByName(label).length > 0) {
-      try {
-        performance.measure(`${label}-duration`, label);
-        const duration = performance.getEntriesByName(`${label}-duration`)[0]?.duration || 0;
-        // eslint-disable-next-line no-console
-        console.log(`[Dashboard Perf] ${label}: ${duration.toFixed(2)}ms`);
-        performance.clearMarks(label);
-        performance.clearMeasures(`${label}-duration`);
-      } catch (e) {
-        console.error('[PERF MEASURE ERROR]', label, e);
-      }
-    }
-  };
-
-  perfMark('useDashboardSummary-start');
 
   // 1. Activity & Usage
   const attendanceOrderUserIds = Object.values(safeVisits)
@@ -138,8 +113,6 @@ export function useDashboardSummary({
 
     return calculateStaffAvailability(staff, assignments, currentTime);
   }, [staff, scheduleLanesToday.staffLane]);
-
-  perfMeasure('useDashboardSummary-start');
 
   return useMemo(
     () => ({
