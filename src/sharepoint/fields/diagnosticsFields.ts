@@ -31,7 +31,7 @@ export const DIAGNOSTICS_REPORTS_CANDIDATES = {
   summaryText: [FIELD_MAP_DIAGNOSTICS_REPORTS.summaryText],
   reportLink: [FIELD_MAP_DIAGNOSTICS_REPORTS.reportLink],
   notified: [FIELD_MAP_DIAGNOSTICS_REPORTS.notified],
-  notifiedAt: [FIELD_MAP_DIAGNOSTICS_REPORTS.notifiedAt],
+  notifiedAt: [FIELD_MAP_DIAGNOSTICS_REPORTS.notifiedAt, 'Notified_x0020_At', 'NotifiedAt0'],
   created: [FIELD_MAP_DIAGNOSTICS_REPORTS.created],
   modified: [FIELD_MAP_DIAGNOSTICS_REPORTS.modified],
 } as const;
