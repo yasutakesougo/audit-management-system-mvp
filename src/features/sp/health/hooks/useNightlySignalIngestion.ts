@@ -21,12 +21,17 @@ export function useNightlySignalIngestion() {
     ranRef.current = true;
 
     let cancelled = false;
+    const controller = new AbortController();
+    const isAbortError = (err: unknown) =>
+      (err as Error)?.name === 'AbortError' ||
+      (err as { code?: number | string })?.code === 20 ||
+      (err as { code?: number | string })?.code === 'ABORT_ERR';
 
     const ingest = async () => {
       // 1. Diagnostics_Reports の取得
       try {
         const { getLatestDiagnosticsReport } = await import('@/sharepoint/diagnosticsReports');
-        const report = await getLatestDiagnosticsReport(sp);
+        const report = await getLatestDiagnosticsReport(sp, controller.signal);
         if (cancelled) return;
 
         if (report) {
@@ -34,13 +39,13 @@ export function useNightlySignalIngestion() {
           auditLog.debug('health:ingestion', 'Diagnostics report ingested.');
         }
       } catch (error) {
-        if (cancelled) return;
+        if (cancelled || isAbortError(error)) return;
         auditLog.warn('health:ingestion', 'Failed to fetch diagnostics reports (skipping).', error);
       }
 
       // 2. DriftEventsLog の取得
       try {
-        const driftLogs = await driftRepository.getEvents();
+        const driftLogs = await driftRepository.getEvents(undefined, controller.signal);
         if (cancelled) return;
 
         for (const log of driftLogs.slice(0, 10)) {
@@ -58,7 +63,7 @@ export function useNightlySignalIngestion() {
         }
         auditLog.debug('health:ingestion', 'Drift logs ingested.');
       } catch (error) {
-        if (cancelled) return;
+        if (cancelled || isAbortError(error)) return;
         auditLog.warn('health:ingestion', 'Failed to fetch drift logs (skipping).', error);
       }
 
@@ -70,6 +75,7 @@ export function useNightlySignalIngestion() {
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [driftRepository, sp]);
 }

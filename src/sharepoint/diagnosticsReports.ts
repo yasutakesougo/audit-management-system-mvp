@@ -481,7 +481,10 @@ export async function resetNotificationFlag(sp: UseSP, reportId: number): Promis
 /**
  * 最新の診断レポートを取得する
  */
-export async function getLatestDiagnosticsReport(sp: UseSP): Promise<DiagnosticsReportItem | null> {
+export async function getLatestDiagnosticsReport(
+  sp: UseSP,
+  signal?: AbortSignal,
+): Promise<DiagnosticsReportItem | null> {
   const listTitle = DIAGNOSTICS_REPORTS_LIST_TITLE;
   const resolvedFields = await resolveDiagnosticsFields(sp);
   const selectFields = buildDiagnosticsSelectFields(resolvedFields);
@@ -491,7 +494,8 @@ export async function getLatestDiagnosticsReport(sp: UseSP): Promise<Diagnostics
     selectFields,
     undefined,
     `${resolvedFields.modified ?? FIELD_MAP_DIAGNOSTICS_REPORTS.modified} desc`,
-    1
+    1,
+    signal,
   );
 
   return reports.length > 0 ? normalizeDiagnosticsReportItem(reports[0], resolvedFields) : null;

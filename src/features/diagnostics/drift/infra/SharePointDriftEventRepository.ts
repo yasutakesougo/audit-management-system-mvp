@@ -13,7 +13,7 @@ import { summarizeSpError } from '@/lib/errors';
 export interface ISpOperations {
   createItem: (listTitle: string, payload: Record<string, unknown>) => Promise<unknown>;
   updateItemByTitle: (listTitle: string, id: number, payload: Record<string, unknown>) => Promise<unknown>;
-  getListItemsByTitle: <T>(listTitle: string, select?: string[], filter?: string, orderby?: string, top?: number) => Promise<T[]>;
+  getListItemsByTitle: <T>(listTitle: string, select?: string[], filter?: string, orderby?: string, top?: number, signal?: AbortSignal) => Promise<T[]>;
   getListFieldInternalNames?: (listTitle: string) => Promise<Set<string>>;
 }
 
@@ -179,6 +179,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       resolved?: boolean;
       since?: string;
     },
+    signal?: AbortSignal,
   ): Promise<DriftEvent[]> {
     try {
       const items = await this.spClient.getListItemsByTitle<Record<string, unknown>>(
@@ -187,6 +188,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         filterQuery,
         `${detectedAtField} desc`,
         100,
+        signal,
       );
       return items.map((item) => this.mapItemToEvent(item));
     } catch (err) {
@@ -212,6 +214,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         undefined,
         'Id desc',
         200,
+        signal,
       );
 
       return fallbackItems
@@ -353,7 +356,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
     listName?: string;
     resolved?: boolean;
     since?: string;
-  }): Promise<DriftEvent[]> {
+  }, signal?: AbortSignal): Promise<DriftEvent[]> {
     try {
       const entry = findListEntry('drift_events_log');
       if (!entry) return [];
@@ -398,6 +401,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         joinAnd(filters) || undefined,
         detectedAtField || 'Detected_x0020_At', // OrderBy fallback
         filter,
+        signal,
       );
 
       return events;
