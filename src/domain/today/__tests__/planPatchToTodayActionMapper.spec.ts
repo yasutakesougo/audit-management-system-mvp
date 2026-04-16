@@ -13,7 +13,7 @@ function makePatch(overrides: Partial<PlanPatchForPlan> = {}): PlanPatchForPlan 
     reason: '会議結果の反映が必要',
     evidenceIds: ['meeting-1'],
     status: 'needs_update',
-    dueAt: '2026-04-15',
+    dueAt: '2026-12-31',
     createdAt: '2026-04-12T00:00:00.000Z',
     updatedAt: '2026-04-12T00:00:00.000Z',
     ...overrides,
