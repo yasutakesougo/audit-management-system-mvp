@@ -318,9 +318,16 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
   private handleError(err: unknown, userMessage: string): never {
     const error = toSafeError(err);
     const { httpStatus, message: spMessage, sprequestguid } = summarizeSpError(err);
+
+    // Silently throw AbortError to avoid noise in logs during navigation/unmount
+    const isAbort = error.name === 'AbortError' || 
+                   (err as { code?: number | string })?.code === 20 || 
+                   (err as { code?: number | string })?.code === 'ABORT_ERR';
+    if (isAbort) {
+      throw error;
+    }
     
     // Detect Threshold error (SharePoint view limit 5000 items)
-    // 500 Internal Server Error with specific message is the standard for threshold failures
     const isThreshold = httpStatus === 500 && (
       spMessage.includes('しきい値') || 
       spMessage.toLowerCase().includes('threshold') ||

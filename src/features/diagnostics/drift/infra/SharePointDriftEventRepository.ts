@@ -403,6 +403,12 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       return events;
 
     } catch (err) {
+      // Abortエラー時は静かに終了（ログノイズ抑制）
+      const isAbort = (err as Error)?.name === 'AbortError' || 
+                      (err as { code?: number | string })?.code === 20 ||
+                      (err as { code?: number | string })?.code === 'ABORT_ERR';
+      if (isAbort) return [];
+
       auditLog.warn('diagnostics:drift', 'DriftEventRepository failed to fetch events (fail-open).', err);
       return [];
     }
