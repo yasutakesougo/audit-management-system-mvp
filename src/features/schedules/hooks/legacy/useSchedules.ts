@@ -114,7 +114,16 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
         setItems(data);
       } catch (err) {
         // Handle errors gracefully without throwing
-        if (!alive || abortController.signal.aborted) return;
+        if (!alive) return;
+        
+        // Abortエラー時は静かに終了（ログノイズ抑制）
+        const isAbort = (err as Error)?.name === 'AbortError' || 
+                        (err as { code?: number | string })?.code === 20 ||
+                        (err as { code?: number | string })?.code === 'ABORT_ERR';
+        if (isAbort) {
+          return;
+        }
+
         const error = err instanceof Error ? err.message : 'Failed to fetch schedules';
         // eslint-disable-next-line no-console
         console.error('[useSchedules] Failed to load schedule items', {
