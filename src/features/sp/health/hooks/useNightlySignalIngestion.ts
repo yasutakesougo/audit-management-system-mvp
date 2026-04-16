@@ -20,23 +20,28 @@ export function useNightlySignalIngestion() {
     if (!sp || ranRef.current) return;
     ranRef.current = true;
 
+    let cancelled = false;
+
     const ingest = async () => {
       // 1. Diagnostics_Reports の取得
       try {
         const { getLatestDiagnosticsReport } = await import('@/sharepoint/diagnosticsReports');
         const report = await getLatestDiagnosticsReport(sp);
+        if (cancelled) return;
 
         if (report) {
           reportDiagnosticsReport(report);
           auditLog.debug('health:ingestion', 'Diagnostics report ingested.');
         }
       } catch (error) {
+        if (cancelled) return;
         auditLog.warn('health:ingestion', 'Failed to fetch diagnostics reports (skipping).', error);
       }
 
       // 2. DriftEventsLog の取得
       try {
         const driftLogs = await driftRepository.getEvents();
+        if (cancelled) return;
 
         for (const log of driftLogs.slice(0, 10)) {
           const event: PatrolEvent = {
@@ -53,12 +58,18 @@ export function useNightlySignalIngestion() {
         }
         auditLog.debug('health:ingestion', 'Drift logs ingested.');
       } catch (error) {
+        if (cancelled) return;
         auditLog.warn('health:ingestion', 'Failed to fetch drift logs (skipping).', error);
       }
 
+      if (cancelled) return;
       auditLog.info('health:ingestion', 'Nightly signals ingestion process completed.');
     };
 
     ingest();
+
+    return () => {
+      cancelled = true;
+    };
   }, [driftRepository, sp]);
 }
