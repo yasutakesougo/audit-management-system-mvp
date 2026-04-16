@@ -22,11 +22,11 @@ setup('authenticate with SharePoint', async ({ page, context }) => {
   await page.waitForTimeout(2000);
 
   // Verify authentication by checking currentuser endpoint
-  // Retry up to 20 times (10 seconds) to allow for async auth state
+  // Retry up to 600 times (300 seconds / 5 minutes) to allow for manual login + MFA + 'Stay signed in'
   const userCheckUrl = `${siteUrl}/_api/web/currentuser`;
 
   let lastStatus: number | null = null;
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 600; i++) {
     const res = await page.request.get(userCheckUrl);
     lastStatus = res.status();
 
@@ -40,7 +40,9 @@ setup('authenticate with SharePoint', async ({ page, context }) => {
       return;
     }
 
-    console.log(`[setup] Retry ${i + 1}/20: currentuser status=${lastStatus}`);
+    if ((i + 1) % 20 === 0) {
+      console.log(`[setup] Retry ${i + 1}/600: currentuser status=${lastStatus} (Waiting for manual login / MFA...)`);
+    }
     await page.waitForTimeout(500);
   }
 
