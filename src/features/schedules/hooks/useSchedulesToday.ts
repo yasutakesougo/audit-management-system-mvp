@@ -142,6 +142,12 @@ export function useSchedulesToday(max: number = 5) {
 				if (typeof window !== 'undefined' && !window.navigator.onLine) {
 					throw new Error('Network Error: Offline');
 				}
+
+				// 指数バックオフ待機中の場合はスキップ（Abortループ防止）
+				if (Date.now() < retryAfter) {
+					return;
+				}
+
 				setLoading(true);
 				setError(null);
 				if (shouldSkipSharePoint()) {

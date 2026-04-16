@@ -1,13 +1,8 @@
 import React from 'react';
 import { useSP } from '@/lib/spClient';
 import { auditLog } from '@/lib/debugLogger';
-import {
-  DIAGNOSTICS_REPORTS_LIST_TITLE,
-  DIAGNOSTICS_REPORTS_SELECT_FIELDS,
-} from '@/sharepoint/fields';
 import { reportDiagnosticsReport, mapPatrolEventToSignal, type PatrolEvent } from '../mapping';
 import { reportSpHealthEvent } from '../spHealthSignalStore';
-import type { DiagnosticsReportItem } from '@/sharepoint/diagnosticsReports';
 import { SharePointDriftEventRepository } from '@/features/diagnostics/drift/infra/SharePointDriftEventRepository';
 
 /**
@@ -28,16 +23,11 @@ export function useNightlySignalIngestion() {
     const ingest = async () => {
       // 1. Diagnostics_Reports の取得
       try {
-        const diagReports = await sp.getListItemsByTitle(
-          DIAGNOSTICS_REPORTS_LIST_TITLE,
-          [...DIAGNOSTICS_REPORTS_SELECT_FIELDS],
-          undefined,
-          'Modified desc',
-          1
-        );
+        const { getLatestDiagnosticsReport } = await import('@/sharepoint/diagnosticsReports');
+        const report = await getLatestDiagnosticsReport(sp);
 
-        if (diagReports.length > 0) {
-          reportDiagnosticsReport(diagReports[0] as unknown as DiagnosticsReportItem);
+        if (report) {
+          reportDiagnosticsReport(report);
           auditLog.debug('health:ingestion', 'Diagnostics report ingested.');
         }
       } catch (error) {

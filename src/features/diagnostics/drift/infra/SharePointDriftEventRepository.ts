@@ -361,19 +361,29 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         filters.push(buildGe(detectedAtField, buildDateTime(filter.since)));
       }
 
-      const select = Array.from(
-        new Set([
-          'Id',
-          'ID',
-          this.rf('listName'),
-          this.rf('fieldName'),
-          this.rf('detectedAt'),
-          this.rf('severity'),
-          this.rf('resolutionType'),
-          this.rf('driftType'),
-          this.rf('resolved'),
-        ]),
-      );
+      const selectRaw = [
+        'Id',
+        'ID',
+        this.rf('listName'),
+        this.rf('fieldName'),
+        this.rf('detectedAt'),
+        this.rf('severity'),
+        this.rf('resolutionType'),
+        this.rf('driftType'),
+        this.rf('resolved'),
+      ];
+
+      // リストに実在しないフィールドを $select から除外する (400エラー防止)
+      const select = Array.from(new Set(selectRaw)).filter(f => {
+        if (!f) return false;
+        if (f === 'Id' || f === 'ID') return true;
+        // ResolvedFields に含まれており、かつ Missing でないものだけを通す
+        const logicalKey = Object.entries(this.resolvedFields).find(([_, v]) => v === f)?.[0] as keyof typeof DRIFT_LOG_CANDIDATES | undefined;
+        if (logicalKey && this.missingLogicalFields.has(logicalKey)) {
+          return false;
+        }
+        return true;
+      });
 
       const events = await this.fetchEventsWithThresholdFallback(
         listTitle,

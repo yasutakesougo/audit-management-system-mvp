@@ -479,6 +479,25 @@ export async function resetNotificationFlag(sp: UseSP, reportId: number): Promis
 }
 
 /**
+ * 最新の診断レポートを取得する
+ */
+export async function getLatestDiagnosticsReport(sp: UseSP): Promise<DiagnosticsReportItem | null> {
+  const listTitle = DIAGNOSTICS_REPORTS_LIST_TITLE;
+  const resolvedFields = await resolveDiagnosticsFields(sp);
+  const selectFields = buildDiagnosticsSelectFields(resolvedFields);
+
+  const reports = await sp.getListItemsByTitle<Record<string, unknown>>(
+    listTitle,
+    selectFields,
+    undefined,
+    `${resolvedFields.modified ?? FIELD_MAP_DIAGNOSTICS_REPORTS.modified} desc`,
+    1
+  );
+
+  return reports.length > 0 ? normalizeDiagnosticsReportItem(reports[0], resolvedFields) : null;
+}
+
+/**
  * テスト用: フィールド解決キャッシュをクリア
  */
 export const __resetDiagnosticsReportFieldResolutionForTest = (): void => {
