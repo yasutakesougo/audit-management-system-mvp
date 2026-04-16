@@ -1,5 +1,4 @@
 import {
-    calculateRetryAfterTimestamp,
     getNextCooldownTimestamp
 } from '@/features/dashboard/logic/syncGuardrails';
 import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
@@ -194,7 +193,9 @@ export function useSchedulesToday(max: number = 5) {
 				if (!alive) return;
 				
 				// Abortエラー時は特別な処理をせず Span 終了のみ
-				const isAbort = (err as Error)?.name === 'AbortError' || (err as any)?.code === 20;
+				const isAbort = (err as Error)?.name === 'AbortError' || 
+								(err as { code?: number | string })?.code === 20 ||
+								(err as { code?: number | string })?.code === 'ABORT_ERR';
 				if (isAbort) {
 					setLoading(false);
 					endSpan({ meta: { status: 'cancelled' } });
