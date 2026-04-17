@@ -39,6 +39,9 @@ jobs:
       - name: Install deps
         run: npm ci
 
+      - name: Install Playwright browsers (and OS deps)
+        run: npx playwright install --with-deps chromium
+
       - name: Restore Playwright storageState
         shell: bash
         run: |
