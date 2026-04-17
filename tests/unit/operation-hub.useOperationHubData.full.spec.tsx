@@ -1,5 +1,5 @@
 import { useOperationHubData } from '@/features/operation-hub/useOperationHubData';
-import type { StoreUser } from '@/stores/useUsers';
+import type { IUserMaster as StoreUser } from '@/features/users/types';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -27,9 +27,14 @@ vi.mock('@/features/operation-hub/ensureCoreLists', () => ({
   ensureOperationHubLists: () => ensureSpy(),
 }));
 
-vi.mock('@/lib/spClient', () => ({
-  useSP: () => ({}),
-}));
+vi.mock('@/lib/spClient', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
+  return {
+    ...actual,
+    useSP: () => ({}),
+    ensureConfig: () => ({ baseUrl: 'https://contoso.sharepoint.com/sites/Audit' }),
+  };
+});
 
 // ---- ストア系：シナリオ毎に差し替えられるように工場関数化 ----
 type Sched = Partial<import('@/lib/mappers').Schedule>;
@@ -39,8 +44,10 @@ type User = Partial<StoreUser>;
 type StoreShape<T> = {
   data: T[];
   loading: boolean;
+  isLoading?: boolean;
   error: Error | null;
   reload: () => Promise<void>;
+  load?: () => Promise<void>;
 };
 
 const stores: {
@@ -49,7 +56,7 @@ const stores: {
   staff: StoreShape<Staff>;
 } = {
   schedules: { data: [], loading: false, error: null, reload: vi.fn(async () => {}) },
-  users: { data: [], loading: false, error: null, reload: vi.fn(async () => {}) },
+  users: { data: [], loading: false, isLoading: false, error: null, reload: vi.fn(async () => {}), load: vi.fn(async () => {}) },
   staff: { data: [], loading: false, error: null, reload: vi.fn(async () => {}) },
 };
 
@@ -59,17 +66,21 @@ const mockStores = (p?: {
   staff?: Partial<(typeof stores)['staff']>;
 }) => {
   Object.assign(stores.schedules, { data: [], loading: false, error: null, reload: vi.fn(async () => {}) }, p?.schedules);
-  Object.assign(stores.users, { data: [], loading: false, error: null, reload: vi.fn(async () => {}) }, p?.users);
+  Object.assign(
+    stores.users,
+    { data: [], loading: false, isLoading: false, error: null, reload: vi.fn(async () => {}), load: vi.fn(async () => {}) },
+    p?.users
+  );
   Object.assign(stores.staff, { data: [], loading: false, error: null, reload: vi.fn(async () => {}) }, p?.staff);
 };
 
-vi.mock('@/stores/useSchedules', () => ({
+vi.mock('@/features/schedules/store', () => ({
   useSchedules: () => stores.schedules,
 }));
-vi.mock('@/stores/useUsers', () => ({
+vi.mock('@/features/users/store', () => ({
   useUsers: () => stores.users,
 }));
-vi.mock('@/stores/useStaff', () => ({
+vi.mock('@/features/staff/store', () => ({
   useStaff: () => stores.staff,
 }));
 
@@ -115,8 +126,8 @@ describe('useOperationHubData – full branches', () => {
     });
 
     renderProbe();
-  expect(screen.getByTestId('loading').textContent).toBe('true');
-  expect(screen.getByTestId('ready').textContent).toBe('true');
+    expect(screen.getByTestId('loading').textContent).toBe('true');
+    expect(screen.getByTestId('ready').textContent).toBe('true');
     expect(screen.getByTestId('dateISO').textContent).toBe('2025-03-10');
   });
 
@@ -226,7 +237,7 @@ describe('useOperationHubData – full branches', () => {
     const r3 = vi.fn(async () => {});
     mockStores({
       schedules: { reload: r1 },
-      users: { reload: r2 },
+      users: { reload: r2, load: r2 },
       staff: { reload: r3 },
     });
 
