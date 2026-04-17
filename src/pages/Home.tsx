@@ -18,7 +18,7 @@ import SharePointListDebug from '@/debug/SharePointListDebug';
 import { useSchedulesToday } from '@/features/schedules/hooks/useSchedulesToday';
 import { useUsersStore } from '@/features/users/store';
 import { getAppConfig, isDemoModeEnabled } from '@/lib/env';
-import { useStaff } from '@/stores/useStaff';
+import { useStaff } from '@/features/staff/store';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
 import ChecklistRoundedIcon from '@mui/icons-material/ChecklistRounded';

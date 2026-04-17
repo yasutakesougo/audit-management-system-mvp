@@ -31,16 +31,14 @@
 
 import { useAuth } from '@/auth/useAuth';
 import {
-    getAppConfig,
     isDemoModeEnabled,
     isForceDemoEnabled,
     readBool,
-    readEnv,
     isTestMode,
+    isDevMode,
     shouldSkipLogin,
     shouldSkipSharePoint,
 } from '@/lib/env';
-import { hasSpfxContext } from '@/lib/runtime';
 import { useMemo } from 'react';
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -112,48 +110,20 @@ export interface RepositoryFactory<
  * skip-login, or missing SPFx context.
  */
 export const defaultShouldUseDemo = (): boolean => {
-  // 0. Test mode should be isolated from environment-driven 'force sharepoint'
-  // to prevent .env.local from breaking unit tests in developer environments.
-  if (isTestMode()) {
-    return true;
-  }
+  // 1. Explicit force flags
+  if (readBool('VITE_FORCE_SHAREPOINT', false)) return false;
+  if (isForceDemoEnabled()) return true;
 
-  // 1. Explicit force SharePoint wins in non-test codes.
-  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
-  if (forceSharePoint) {
-    return false;
-  }
+  // 2. Explicit opt-ins
+  if (isDemoModeEnabled()) return true;
+  if (shouldSkipLogin()) return true;
+  if (shouldSkipSharePoint()) return true;
 
-  // 2. Priority overrides for forcing demo
-  if (
-    isForceDemoEnabled() ||
-    isDemoModeEnabled() ||
-    shouldSkipLogin() ||
-    shouldSkipSharePoint()
-  ) {
-    return true;
-  }
+  // 3. Environment defaults
+  if (isTestMode()) return true;
+  if (isDevMode() && readBool('VITE_DEV_DEMO', false)) return true;
 
-  // 2. SharePoint Enablement Logic
-  // We use readEnv directly here to match the strict 'true' check used in env.ts
-  // while also supporting readBool for broader compatibility if needed.
-  const spEnabled = readEnv('VITE_SP_ENABLED', '') === 'true' || readBool('VITE_SP_ENABLED', false);
-  const spfxContextAvailable = hasSpfxContext();
-  const { isDev } = getAppConfig();
-
-  if (spEnabled) {
-    // In production or when explicitly enabled, we prefer 'real'.
-    // However, in local dev, if no SPFx context is available, we only use 'real'
-    // if specifically forced (handled by forceSharePoint above) or if we are
-    // NOT in a dev environment.
-    if (isDev && !spfxContextAvailable) {
-      return true;
-    }
-    return false;
-  }
-
-  // 3. Default: Use demo in dev or when context is missing
-  return isDev || !spfxContextAvailable;
+  return false;
 };
 
 // ────────────────────────────────────────────────────────────────────────────

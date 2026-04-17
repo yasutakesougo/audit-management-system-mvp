@@ -3,10 +3,14 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 import { useUsers } from '@/features/users/useUsers';
-import { useSchedules } from '@/stores/useSchedules';
+import { useSchedules } from '@/features/schedules/store';
 import { useHandoffSummary } from '@/features/handoff/useHandoffSummary';
 import { useHandoffData } from '@/features/handoff/hooks/useHandoffData';
-import { useTodayAttendanceInfo } from '@/features/daily/hooks/legacy/useTodayAttendanceInfo';
+import { 
+  useTodayAttendanceInfo, 
+  type UserData as AttendanceUserData, 
+  type ScheduleData as AttendanceScheduleData 
+} from '@/features/daily/hooks/legacy/useTodayAttendanceInfo';
 import { useDailyRecordContextData } from '@/features/daily/hooks/legacy/useDailyRecordContextData';
 import { recordCtaClick, CTA_EVENTS } from '@/features/today/telemetry/recordCtaClick';
 import { toLocalDateISO } from '@/utils/getNow';
@@ -93,7 +97,11 @@ export function useDailyRecordOrchestrator(): {
   });
 
   const todayAttendanceInfo = useMemo(() => {
-    const raw = useTodayAttendanceInfo(usersData ?? [], schedulesData ?? [], uiState.records);
+    const raw = useTodayAttendanceInfo(
+      (usersData ?? []) as unknown as AttendanceUserData[], 
+      (schedulesData ?? []) as unknown as AttendanceScheduleData[], 
+      uiState.records
+    );
     return {
       expectedCount: raw.expectedCount,
       attendanceRate: raw.attendanceRate,

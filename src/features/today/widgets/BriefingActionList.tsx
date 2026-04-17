@@ -123,7 +123,7 @@ function AlertSection({
                 action={
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                     {/* Tags */}
-                    {alert.tags?.map((tag) => {
+                    {alert.tags?.map((tag: BriefingTag) => {
                       const config = TAG_CHIP[tag];
                       return (
                         <Chip
@@ -168,7 +168,7 @@ function AlertSection({
               {/* Per-user Action Rows */}
               {items.length > 0 && (
                 <Stack spacing={0.5} sx={{ pl: 2 }}>
-                  {items.map((item) => {
+                  {items.map((item: { userId: string; userName: string; morningContacted?: boolean; eveningChecked?: boolean }) => {
                     const key = buildAlertKey(alert.type, item.userId, ymd);
                     const status = getState(key);
                     const chipConfig = STATUS_CHIP[status];
@@ -341,7 +341,7 @@ export const BriefingActionList: React.FC<BriefingActionListProps> = ({ alerts }
   const pendingCount = useMemo(() => {
     return alerts.reduce((acc, alert) => {
       const items = alert.items ?? [];
-      const keys = items.map((item) => buildAlertKey(alert.type, item.userId, ymd));
+      const keys = items.map((item: { userId: string }) => buildAlertKey(alert.type, item.userId, ymd));
       const stats = completionStats(keys);
       return acc + (stats.total - stats.done);
     }, 0);

@@ -18,6 +18,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 
 import type { CommitteeMeetingRecord, CommitteeSummary } from '@/domain/safety/complianceCommittee';
 import { TESTIDS } from '@/testids';
+import { formatDateJapanese, formatDateYmd } from '@/lib/dateFormat';
 
 interface CommitteeTabProps {
   records: CommitteeMeetingRecord[];
@@ -65,7 +66,7 @@ export const CommitteeTab: React.FC<CommitteeTabProps> = ({ records, summary }) 
             次回推奨日
           </Typography>
           <Typography variant="h5" fontWeight={800}>
-            {summary.nextRecommendedDate ?? '—'}
+            {summary.nextRecommendedDate ? formatDateJapanese(summary.nextRecommendedDate) : '—'}
           </Typography>
         </Card>
       </Box>
@@ -94,7 +95,7 @@ export const CommitteeTab: React.FC<CommitteeTabProps> = ({ records, summary }) 
             <TableBody>
               {sorted.map((r) => (
                 <TableRow key={r.id} hover>
-                  <TableCell>{r.meetingDate}</TableCell>
+                  <TableCell>{formatDateYmd(r.meetingDate)}</TableCell>
                   <TableCell>
                     <Chip label={r.committeeType} size="small" variant="outlined" />
                   </TableCell>

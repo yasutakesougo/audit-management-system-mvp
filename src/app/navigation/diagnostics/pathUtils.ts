@@ -111,7 +111,6 @@ export const ORPHAN_ALLOWLIST_DETAILS: AllowlistRoute[] = [
   { path: '/admin/debug/opening-verification', category: 'Dev', reason: '開発用テナント検証ツール' },
   { path: '/admin/debug/smoke-test', category: 'Dev', reason: '開発用スモークテスト画面' },
   { path: '/admin/data-integrity', category: 'Admin', reason: '管理者用データ整合性確認画面' },
-  { path: '/admin/regulatory-dashboard', category: 'Admin', reason: '制度適合ダッシュボード（AdminHubからリンク経由）' },
   { path: '/support-planning-sheet/:planningSheetId', category: 'Detail', reason: '支援計画シート詳細画面（計画書一覧・ISPエディタからリンク経由）' },
   { path: '/planning-sheet-list', category: 'Drilldown', reason: '計画書一覧ページ（ISPエディタ・支援計画ガイドからリンク経由）' },
   { path: '/abc-record', category: 'Drilldown', reason: 'ABC記録ページ（IcebergPDCA・計画シートからリンク経由）' },
@@ -130,8 +129,10 @@ export const ORPHAN_ALLOWLIST_DETAILS: AllowlistRoute[] = [
   { path: '/ibd', category: 'Redirect', reason: 'IBD分析へのリダイレクト' },
   { path: '/settings/operation-flow', category: 'Settings', reason: '運営フロー設定（設定画面からリンク経由）' },
   { path: '/incidents', category: 'Drilldown', reason: 'インシデント管理（日次記録・ダッシュボードからリンク経由）' },
-  { path: '/admin/exception-center', category: 'Admin', reason: '例外センター（管理ツールhubからリンク経由）' },
-  { path: '/admin/telemetry', category: 'Admin', reason: 'テレメトリダッシュボード（管理ツールhubからリンク経由）' },
+  { path: '/admin/integrated-resource-calendar', category: 'Admin', reason: '統合リソースカレンダー（管理ツール・運用ハブからリンク経由）' },
+  { path: '/records/journal/personal', category: 'Detail', reason: '個人別業務日誌詳細（月次記録ハブからリンク経由）' },
+  { path: '/records/service-provision', category: 'Admin', reason: 'サービス提供実績記録（実績記録ハブ、請求ハブからリンク経由）' },
+  { path: '/survey/tokusei', category: 'Admin', reason: '特性計時アンケート結果（計画ハブからリンク経由）' },
   { path: '/schedule-ops', category: 'Drilldown', reason: 'スケジュール運用ページ（スケジュール画面からリンク経由）' },
 ].map(item => ({ ...item, path: normalizeRouterPath(item.path) }));
 

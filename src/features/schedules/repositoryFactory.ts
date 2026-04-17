@@ -1,6 +1,5 @@
 // contract:allow-sp-direct
 import { createRepositoryFactory, type BaseFactoryOptions, defaultShouldUseDemo } from '@/lib/createRepositoryFactory';
-import { isE2E } from '@/env';
 import type { ScheduleRepository } from './domain/ScheduleRepository';
 import { inMemoryScheduleRepository } from './infra/InMemoryScheduleRepository';
 import { DataProviderScheduleRepository } from './infra/DataProviderScheduleRepository';
@@ -33,8 +32,6 @@ const factory = createRepositoryFactory<ScheduleRepository, ScheduleRepositoryFa
     });
   },
   shouldUseDemo: () => {
-    // E2E environment should use real if possible
-    if (isE2E) return false;
     return defaultShouldUseDemo();
   },
 });

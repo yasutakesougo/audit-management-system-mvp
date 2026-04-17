@@ -1,5 +1,3 @@
-import { motionTokens } from '@/app/theme';
-import { formatDateTimeIntl } from '@/lib/dateFormat';
 import { RoomStatusTab } from '@/features/dashboard/tabs/RoomStatusTab';
 import { ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '@mui/icons-material';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
@@ -25,7 +23,6 @@ import {
     Tabs,
     Typography
 } from '@mui/material';
-import { alpha, useTheme } from '@mui/material/styles';
 import React, { useMemo, useState } from 'react';
 
 interface Reservation {
@@ -38,9 +35,9 @@ interface Reservation {
 }
 
 const groupColors: Record<string, { bg: string; text: string }> = {
-  生活支援: { bg: '#E8F0E4', text: '#3D6B3C' },
+  生活支援: { bg: '#dbeafe', text: '#1e40af' },
   さつき会: { bg: '#fef3c7', text: '#92400e' },
-  リバティ: { bg: '#e0f2f1', text: '#00695c' },
+  リバティ: { bg: '#ede9fe', text: '#5b21b6' },
   日中: { bg: '#d1fae5', text: '#065f46' },
   会議: { bg: '#f1f5f9', text: '#475569' },
   来客: { bg: '#ffedd5', text: '#9a3412' },
@@ -48,7 +45,6 @@ const groupColors: Record<string, { bg: string; text: string }> = {
 };
 
 export const RoomManagementTabs: React.FC = () => {
-  const theme = useTheme();
   const [tab, setTab] = useState<number>(0);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [reservations, setReservations] = useState<Reservation[]>([
@@ -93,7 +89,7 @@ export const RoomManagementTabs: React.FC = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   };
 
-  const currentMonthStr = formatDateTimeIntl(currentMonth, { year: 'numeric', month: 'long' });
+  const currentMonthStr = currentMonth.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' });
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -109,7 +105,7 @@ export const RoomManagementTabs: React.FC = () => {
             fontSize: '0.95rem',
             textTransform: 'none',
             '&.Mui-selected': {
-              color: theme.palette.primary.dark,
+              color: '#4f46e5',
             },
           },
         }}
@@ -179,8 +175,8 @@ export const RoomManagementTabs: React.FC = () => {
                     p: 2,
                     fontWeight: 'bold',
                     textAlign: 'center',
-                    bgcolor: idx === 0 ? '#fee2e2' : idx === 6 ? alpha(theme.palette.primary.main, 0.1) : '#f9fafb',
-                    color: idx === 0 ? '#dc2626' : idx === 6 ? theme.palette.primary.dark : '#4b5563',
+                    bgcolor: idx === 0 ? '#fee2e2' : idx === 6 ? '#dbeafe' : '#f9fafb',
+                    color: idx === 0 ? '#dc2626' : idx === 6 ? '#1e40af' : '#4b5563',
                     borderRight: idx < 6 ? '1px solid #e5e7eb' : 'none',
                   }}
                 >
@@ -212,12 +208,12 @@ export const RoomManagementTabs: React.FC = () => {
                       minHeight: '120px',
                       borderRight: idx % 7 !== 6 ? '1px solid #e5e7eb' : 'none',
                       borderBottom: '1px solid #e5e7eb',
-                      bgcolor: day === null ? '#f9fafb' : isToday ? alpha(theme.palette.primary.main, 0.06) : '#fff',
+                      bgcolor: day === null ? '#f9fafb' : isToday ? '#eff6ff' : '#fff',
                       display: 'flex',
                       flexDirection: 'column',
                       gap: 0.5,
                       overflow: 'hidden',
-                      transition: motionTokens.transition.bgColor,
+                      transition: 'background-color 0.2s',
                       '&:hover': day !== null ? { bgcolor: '#f3f4f6' } : {},
                     }}
                   >
@@ -228,8 +224,8 @@ export const RoomManagementTabs: React.FC = () => {
                           fontWeight="bold"
                           sx={{
                             fontSize: '0.9rem',
-                            color: isToday ? theme.palette.primary.dark : '#4b5563',
-                            bgcolor: isToday ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                            color: isToday ? '#4f46e5' : '#4b5563',
+                            bgcolor: isToday ? '#dbeafe' : 'transparent',
                             display: 'inline-block',
                             px: 1,
                             py: 0.25,
@@ -301,7 +297,7 @@ export const RoomManagementTabs: React.FC = () => {
                       reservations.map(res => (
                         <TableRow key={res.id} hover>
                           <TableCell sx={{ fontWeight: 'bold' }}>{res.room}</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 'bold', color: theme.palette.primary.dark }}>{res.slot}</TableCell>
+                          <TableCell align="center" sx={{ fontWeight: 'bold', color: '#4f46e5' }}>{res.slot}</TableCell>
                           <TableCell>
                             <Box
                               sx={{

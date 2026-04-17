@@ -1,17 +1,6 @@
 import { useMemo } from 'react';
-import {
-  getAppConfig,
-  isDemoModeEnabled,
-  isForceDemoEnabled,
-  isTestMode,
-  shouldSkipLogin,
-  shouldSkipSharePoint,
-  readBool,
-} from '@/lib/env';
-import { hasSpfxContext } from '@/lib/runtime';
-// contract:allow-sp-direct — ファクトリ層: DI 組み立てで spClient を注入する正当な用途
+import { defaultShouldUseDemo } from '@/lib/createRepositoryFactory';
 import { createSpClient, ensureConfig } from '@/lib/spClient';
-
 import { useAuth } from '@/auth/useAuth';
 import type { DailyRecordRepository } from '../domain/DailyRecordRepository';
 import { inMemoryDailyRecordRepository } from './sharepoint/InMemoryDailyRecordRepository';
@@ -42,28 +31,7 @@ let overrideKind: DailyRecordRepositoryKind | null = null;
  * - No SPFx context (Workers/Pages runtime)
  */
 const shouldUseDemoRepository = (): boolean => {
-  if (
-    isTestMode() ||
-    isForceDemoEnabled() ||
-    isDemoModeEnabled() ||
-    shouldSkipLogin() ||
-    shouldSkipSharePoint()
-  ) {
-    return true;
-  }
-
-  const forceSharePoint = readBool('VITE_FORCE_SHAREPOINT', false);
-  const spEnabled = readBool('VITE_SP_ENABLED', false);
-  if (forceSharePoint || spEnabled) {
-    return false;
-  }
-
-  const { isDev } = getAppConfig();
-  const spfxContextAvailable = hasSpfxContext();
-  return (
-    isDev ||
-    !spfxContextAvailable
-  );
+  return defaultShouldUseDemo();
 };
 
 /**

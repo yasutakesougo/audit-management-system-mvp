@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { UserSelectMode } from '@/sharepoint/fields';
+import { useAutoRefreshOnRecovery } from '@/features/sp/health/useAutoRefreshOnRecovery';
 import type {
     UserRepositoryListParams,
     UserRepositoryUpdateDto,
@@ -21,6 +22,10 @@ type UsersHookReturn = {
   update: (id: number | string, payload: UserRepositoryUpdateDto) => Promise<IUserMaster>;
   terminate: (id: number | string) => Promise<IUserMaster>;
   remove: (id: number | string) => Promise<void>;
+  byId: Map<number | string, IUserMaster>;
+  isLoading: boolean;
+  users: IUserMaster[]; // Compatibility alias
+  load: () => Promise<void>; // Compatibility alias
 };
 
 type UserHookReturn = {
@@ -48,8 +53,6 @@ export function useUsers(params?: UsersHookParams): UsersHookReturn {
   const [error, setError] = useState<unknown>(null);
   const lastSnapshot = useRef<string>('');
 
-  // params を安定化: インラインオブジェクト ({ selectMode: 'full' }) が毎レンダー
-  // 新しい参照を生成しても、内容が同じなら fetchList の identity を変えない。
   const paramsKey = JSON.stringify(params ?? null);
   const stableParams = useRef(params);
   stableParams.current = params;
@@ -79,15 +82,11 @@ export function useUsers(params?: UsersHookParams): UsersHookReturn {
         ? { ...currentParams, signal, selectMode: currentParams.selectMode ?? 'detail' }
         : { signal, selectMode: 'detail' };
       const rows = await repository.getAll(listParams);
-      if (signal?.aborted) {
-        return;
-      }
+      if (signal?.aborted) return;
       setDataIfChanged(rows);
       setStatus('success');
     } catch (err) {
-      if (signal?.aborted) {
-        return;
-      }
+      if (signal?.aborted) return;
       setError(err);
       setStatus('error');
     }
@@ -102,6 +101,9 @@ export function useUsers(params?: UsersHookParams): UsersHookReturn {
   const refresh = useCallback(async () => {
     await fetchList();
   }, [fetchList]);
+
+  // ── Recovery Linkage (Step 3) ───────────────────────────────────────────
+  useAutoRefreshOnRecovery(fetchList);
 
   const create = useCallback(async (payload: IUserMasterCreateDto) => {
     setStatus('loading');
@@ -121,7 +123,6 @@ export function useUsers(params?: UsersHookParams): UsersHookReturn {
   const update = useCallback(async (id: number | string, payload: UserRepositoryUpdateDto) => {
     setStatus('loading');
     setError(null);
-
     const numericId = coerceNumericId(id);
     if (numericId == null) {
       const err = new Error('Invalid user ID for update.');
@@ -129,7 +130,6 @@ export function useUsers(params?: UsersHookParams): UsersHookReturn {
       setStatus('error');
       throw err;
     }
-
     try {
       const updated = await repository.update(numericId, payload);
       updateData((prev) => prev.map((item) => (item.Id === numericId ? updated : item)));
@@ -145,7 +145,6 @@ export function useUsers(params?: UsersHookParams): UsersHookReturn {
   const remove = useCallback(async (id: number | string) => {
     setStatus('loading');
     setError(null);
-
     const numericId = coerceNumericId(id);
     if (numericId == null) {
       const err = new Error('Invalid user ID for remove.');
@@ -153,7 +152,6 @@ export function useUsers(params?: UsersHookParams): UsersHookReturn {
       setStatus('error');
       throw err;
     }
-
     try {
       await repository.remove(numericId);
       updateData((prev) => prev.filter((item) => item.Id !== numericId));
@@ -168,7 +166,6 @@ export function useUsers(params?: UsersHookParams): UsersHookReturn {
   const terminate = useCallback(async (id: number | string) => {
     setStatus('loading');
     setError(null);
-
     const numericId = coerceNumericId(id);
     if (numericId == null) {
       const err = new Error('Invalid user ID for terminate.');
@@ -176,7 +173,6 @@ export function useUsers(params?: UsersHookParams): UsersHookReturn {
       setStatus('error');
       throw err;
     }
-
     try {
       const terminated = await repository.terminate(numericId);
       updateData((prev) => prev.map((item) => (item.Id === numericId ? terminated : item)));
@@ -189,9 +185,33 @@ export function useUsers(params?: UsersHookParams): UsersHookReturn {
     }
   }, [repository, updateData]);
 
+  const isLoading = status === 'loading' || status === 'idle';
+
+  const byId = useMemo(() => {
+    const map = new Map<number | string, IUserMaster>();
+    data.forEach((user) => {
+      const id = user.Id ?? (user as unknown as { id?: number | string }).id;
+      if (id != null) map.set(id, user);
+    });
+    return map;
+  }, [data]);
+
   return useMemo(
-    () => ({ data, status, error, refresh, create, update, terminate, remove }),
-    [create, data, error, refresh, remove, status, terminate, update],
+    () => ({ 
+      data, 
+      users: data, 
+      status, 
+      isLoading, 
+      error, 
+      refresh, 
+      load: refresh, 
+      create, 
+      update, 
+      terminate, 
+      remove,
+      byId 
+    }),
+    [create, data, error, refresh, remove, status, terminate, update, isLoading, byId],
   );
 }
 
@@ -202,7 +222,7 @@ export function useUser(id?: number | string, options?: { selectMode?: UserSelec
   const [error, setError] = useState<unknown>(null);
   const numericId = coerceNumericId(id);
 
-  const load = useCallback(async (signal?: AbortSignal) => {
+  const fetchOne = useCallback(async (signal?: AbortSignal) => {
     if (numericId == null) {
       setData(null);
       setStatus('idle');
@@ -213,15 +233,11 @@ export function useUser(id?: number | string, options?: { selectMode?: UserSelec
     setError(null);
     try {
       const row = await repository.getById(numericId, { signal, selectMode: options?.selectMode });
-      if (signal?.aborted) {
-        return;
-      }
+      if (signal?.aborted) return;
       setData(row);
       setStatus('success');
     } catch (err) {
-      if (signal?.aborted) {
-        return;
-      }
+      if (signal?.aborted) return;
       setError(err);
       setStatus('error');
     }
@@ -229,13 +245,16 @@ export function useUser(id?: number | string, options?: { selectMode?: UserSelec
 
   useEffect(() => {
     const controller = new AbortController();
-    void load(controller.signal);
+    void fetchOne(controller.signal);
     return () => controller.abort();
-  }, [load]);
+  }, [fetchOne]);
 
   const refresh = useCallback(async () => {
-    await load();
-  }, [load]);
+    await fetchOne();
+  }, [fetchOne]);
+
+  // ── Recovery Linkage (Step 3) ───────────────────────────────────────────
+  useAutoRefreshOnRecovery(fetchOne);
 
   const update = useCallback(async (payload: UserRepositoryUpdateDto) => {
     if (numericId == null) {

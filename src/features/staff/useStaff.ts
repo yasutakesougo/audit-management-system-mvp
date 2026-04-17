@@ -1,12 +1,15 @@
 import type { Staff } from '@/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useStaffRepository } from '@/features/staff/repositoryFactory';
+import { useStaffRepository } from './repositoryFactory';
+import { useAutoRefreshOnRecovery } from '../sp/health/useAutoRefreshOnRecovery';
 
 /**
  * useStaff Hook
  * 
  * Unified store/hook for staff data. 
  * Automatically switches between Demo and Real (SharePoint) repository.
+ * 
+ * Migrated from @/stores/useStaff.
  */
 export function useStaff() {
   const repository = useStaffRepository();
@@ -30,6 +33,8 @@ export function useStaff() {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useAutoRefreshOnRecovery(reload);
 
   const byId = useMemo(
     () => new Map<number, Staff>(data.map((item) => [item.id, item])),

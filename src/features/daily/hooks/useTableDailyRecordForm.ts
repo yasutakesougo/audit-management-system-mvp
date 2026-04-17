@@ -1,5 +1,5 @@
 import { emitDailySubmissionEvents } from '@/features/ibd/analysis/pdca/dailyMetricsAdapter';
-import { useUsers, type StoreUser } from '@/stores/useUsers';
+import { useUsers, type StoreUser } from '@/features/users/store';
 import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';

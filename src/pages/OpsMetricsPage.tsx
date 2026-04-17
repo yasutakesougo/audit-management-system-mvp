@@ -20,8 +20,10 @@ import React, { useMemo } from 'react';
 import OpsMetricsDashboard from '@/features/ops-dashboard/OpsMetricsDashboard';
 import { useOpsMetrics } from '@/features/ops-dashboard/hooks/useOpsMetrics';
 import { resolveUserLifecycleStatus } from '@/features/users/domain/userLifecycle';
-import { useUsers } from '@/stores/useUsers';
+import { useUsers } from '@/features/users/store';
 import { buildUserPdcaInputs } from '@/domain/metrics/adapters/userPdcaInputConnector';
+import { isDemoModeEnabled } from '@/lib/env';
+import { ConnectionDegradedBanner } from '@/features/sp/health/components/ConnectionDegradedBanner';
 
 const OpsMetricsPage: React.FC = () => {
   // 利用者データ取得
@@ -56,9 +58,13 @@ const OpsMetricsPage: React.FC = () => {
   const hasRealPdcaData = pdcaMetrics !== null;
   const hasRealKnowledgeData = knowledgeMetrics !== null;
   const hasAnyRealData = hasRealProposalData || hasRealPdcaData || hasRealKnowledgeData;
+  
+  // デモ表示判定: 実データが無く、かつデモモードが明示的に有効な場合のみ
+  const showDemo = !hasAnyRealData && isDemoModeEnabled();
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 1200, mx: 'auto' }}>
+      <ConnectionDegradedBanner />
       {/* ステータスバー */}
       <Stack
         direction="row"
@@ -75,7 +81,9 @@ const OpsMetricsPage: React.FC = () => {
             ? '読み込み中…'
             : hasAnyRealData
               ? `※ 実データから自動計算中（対象 ${users.filter((u) => resolveUserLifecycleStatus(u) === 'active').length} 名）`
-              : '※ デモデータで表示中 — 運用データが蓄積されると実データに切り替わります'
+              : showDemo
+                ? '※ デモデータで表示中 — 運用データが蓄積されると実データに切り替わります'
+                : '※ 表示可能なデータがありません。運用データが登録されると自動的に集計が開始されます。'
           }
         </Typography>
         {hasRealProposalData && (
@@ -90,7 +98,7 @@ const OpsMetricsPage: React.FC = () => {
       </Stack>
 
       {/* メインダッシュボード */}
-      {!hasAnyRealData ? (
+      {showDemo ? (
         <OpsMetricsDashboard demo />
       ) : (
         <OpsMetricsDashboard

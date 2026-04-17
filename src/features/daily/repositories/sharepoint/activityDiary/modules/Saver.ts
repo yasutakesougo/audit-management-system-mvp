@@ -1,5 +1,5 @@
 import type { SpFetchFn } from '@/lib/sp/spLists';
-import type { ActivityDiaryUpsert, ActivityDiaryMealAmount } from '@/lib/spActivityDiary';
+import type { ActivityDiaryUpsert, ActivityDiaryMealAmount } from '@/features/daily/domain/activityDiaryTypes';
 import { AD_FIELDS, type ADFieldKey, type ADMapping } from '../constants';
 import { spWriteResilient } from '@/lib/spWrite';
 
@@ -85,13 +85,13 @@ export class ActivityDiarySaver {
   private pickBehaviorType(behavior?: ActivityDiaryUpsert['behavior']): string | null {
     if (!behavior?.has) return null;
     const BEHAVIOR_TYPE_CHOICES = new Set(['暴言', '離席', 'その他']);
-    const firstMatch = (behavior.kinds ?? []).find((kind) => BEHAVIOR_TYPE_CHOICES.has(kind));
+    const firstMatch = (behavior.kinds ?? []).find((kind: string) => BEHAVIOR_TYPE_CHOICES.has(kind));
     return firstMatch || 'その他';
   }
 
   private buildBehaviorNote(behavior?: ActivityDiaryUpsert['behavior']): string | null {
     if (!behavior?.has) return null;
-    const kinds = (behavior.kinds ?? []).map((v) => v.trim()).filter(Boolean);
+    const kinds = (behavior.kinds ?? []).map((v: string) => v.trim()).filter(Boolean);
     return kinds.length ? kinds.join(', ') : null;
   }
 

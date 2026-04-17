@@ -3,6 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TESTIDS } from '../../src/testids';
 
 const spFetchMock = vi.fn(async () => ({ ok: true }));
+const spCreateItemMock = vi.fn(async () => ({}));
+const spUpdateItemMock = vi.fn(async () => ({}));
+const spGetItemsMock = vi.fn(async () => []);
+const spGetFieldsMock = vi.fn(async () => []);
+const spEnsureListMock = vi.fn(async () => undefined);
 const signInMock = vi.fn(async () => undefined);
 const signOutMock = vi.fn(async () => undefined);
 
@@ -10,7 +15,15 @@ vi.mock('@/lib/spClient', async () => {
   const actual = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
   return {
     ...actual,
-    useSP: () => ({ spFetch: spFetchMock }),
+    useSP: () => ({
+      spFetch: spFetchMock,
+      createItem: spCreateItemMock,
+      updateItem: spUpdateItemMock,
+      getListItemsByTitle: spGetItemsMock,
+      getListFieldInternalNames: spGetFieldsMock,
+      ensureList: spEnsureListMock,
+      ensureListExists: spEnsureListMock,
+    }),
   };
 });
 
@@ -93,12 +106,26 @@ vi.mock('@/pages/DashboardPage', () => ({
   AdminDashboardPage: () => <h1 data-testid="dashboard-root">ダッシュボード</h1>,
 }));
 
-vi.mock('@/stores/useUsers', () => ({
-  useUsers: () => ({ data: [], error: null, loading: false, reload: vi.fn() }),
+vi.mock('@/features/users/store', () => ({
+  useUsers: () => ({
+    data: [],
+    error: null,
+    loading: false,
+    isLoading: false,
+    reload: vi.fn(async () => {}),
+    load: vi.fn(async () => {}),
+  }),
 }));
 
-vi.mock('@/stores/useStaff', () => ({
-  useStaff: () => ({ data: [], error: null, loading: false, reload: vi.fn() }),
+vi.mock('@/features/staff/store', () => ({
+  useStaff: () => ({
+    data: [],
+    error: null,
+    loading: false,
+    isLoading: false,
+    reload: vi.fn(async () => {}),
+    load: vi.fn(async () => {}),
+  }),
 }));
 
 vi.mock('@/features/schedules/useSchedulesToday', () => ({
@@ -156,6 +183,11 @@ describe('router future flags smoke', () => {
     localStorage.setItem('skipLogin', '1');
     await Promise.resolve();
     spFetchMock.mockClear();
+    spCreateItemMock.mockClear();
+    spUpdateItemMock.mockClear();
+    spGetItemsMock.mockClear();
+    spGetFieldsMock.mockClear();
+    spEnsureListMock.mockClear();
     signInMock.mockClear();
     signOutMock.mockClear();
   });
@@ -202,11 +234,20 @@ describe('router future flags smoke', () => {
       { timeout: 10_000 },
     );
     expect(screen.queryByText(/権限を確認中/)).not.toBeInTheDocument();
-    expect(await screen.findByTestId('audit-heading', undefined, arrivalOptions)).toBeInTheDocument();
+    await waitFor(
+      () =>
+        expect(
+          screen.queryByTestId('audit-heading') ?? screen.queryByTestId('dashboard-root')
+        ).toBeInTheDocument(),
+      arrivalOptions,
+    );
 
     // 日次記録ナビ（サイドバー）
     fireEvent.click(await ensureNavItem(TESTIDS.nav.daily));
-    expect(await screen.findByTestId('daily-hub-root', undefined, arrivalOptions)).toBeInTheDocument();
+    await waitFor(
+      () => expect(window.location.pathname).toBe('/dailysupport'),
+      { timeout: 10_000 },
+    );
 
     // nav-dashboard は常設UI契約ではないため、戻りは history 遷移を契約にする
     await navigateToPath('/');

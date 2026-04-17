@@ -10,7 +10,7 @@
  */
 
 import type { Dispatch, SetStateAction } from 'react';
-import type { StoreUser } from '@/stores/useUsers';
+import type { StoreUser } from '@/features/users/store';
 import type {
   TableDailyRecordData,
   TableDailyRecordValidationErrors,

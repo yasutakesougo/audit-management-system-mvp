@@ -1,1 +1,4 @@
-export { useStaff as useStaffStore } from '@/stores/useStaff';
+import { useStaff } from './useStaff';
+
+export const useStaffStore = useStaff;
+export { useStaff };

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { useUsers } from '@/features/users/useUsers';
-import { useStaff } from '@/stores/useStaff';
+import { useStaff } from '@/features/staff/store';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { useProcedureRecordRepository } from '@/features/regulatory/hooks/useProcedureRecordRepository';
 import { useMonitoringMeetingRepository } from '@/features/monitoring/data/useMonitoringMeetingRepository';
