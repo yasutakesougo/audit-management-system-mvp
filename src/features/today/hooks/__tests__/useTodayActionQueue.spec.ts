@@ -3,6 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useTodayActionQueue } from '../useTodayActionQueue';
 import { useTodayQueueTelemetryStore } from '../../telemetry/todayQueueTelemetryStore';
 import type { ActionSuggestion } from '@/features/action-engine/domain/types';
+import type { RawActionSource } from '../../domain/models/queue.types';
 
 vi.mock('@/features/action-engine/telemetry/useSuggestionVisibilityTelemetry', () => ({
   useSuggestionVisibilityTelemetry: () => {},
@@ -30,6 +31,42 @@ const assessmentStaleSuggestion: ActionSuggestion = {
   ruleId: 'assessment-stale',
 };
 
+/** テスト用の例外アクションソース */
+function buildTestExceptionActions(now: Date): RawActionSource[] {
+  const tMinus1H = new Date(now.getTime() - 60 * 60 * 1000);
+  const tPlus30M = new Date(now.getTime() + 30 * 60 * 1000);
+  return [
+    {
+      id: 'exc-incident-1',
+      sourceType: 'incident',
+      title: '転倒インシデント未確認',
+      targetTime: tMinus1H,
+      slaMinutes: 15,
+      isCompleted: false,
+      payload: { incidentId: 'INC-111' },
+    },
+    {
+      id: 'exc-vital-2',
+      sourceType: 'vital_alert',
+      title: '血圧異常検知',
+      targetTime: new Date(now.getTime() - 5 * 60 * 1000),
+      slaMinutes: 0,
+      isCompleted: false,
+      payload: { vitalId: 'VIT-444' },
+    },
+    {
+      id: 'exc-schedule-3',
+      sourceType: 'schedule',
+      title: '入浴介助',
+      targetTime: tPlus30M,
+      slaMinutes: 30,
+      isCompleted: false,
+      assignedStaffId: 'staff-a',
+      payload: { scheduleId: 'SCH-333' },
+    },
+  ];
+}
+
 describe('useTodayActionQueue', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -40,21 +77,36 @@ describe('useTodayActionQueue', () => {
     vi.useRealTimers();
   });
 
-  it('初期ロード時に actionQueue が生成される', () => {
-    const { result } = renderHook(() => useTodayActionQueue());
-    
-    // 同期モックなので isLoading はすぐに false になる
+  it('exceptionActions 経由で actionQueue が生成される', () => {
+    const now = new Date('2026-03-18T10:00:00Z');
+    const { result } = renderHook(() =>
+      useTodayActionQueue({ exceptionActions: buildTestExceptionActions(now) }),
+    );
+
     expect(result.current.isLoading).toBe(false);
     expect(result.current.actionQueue.length).toBeGreaterThan(0);
-    
+
     // P0の vital_alert が先頭に来ているか確認
     expect(result.current.actionQueue[0]?.actionType).toBe('ACKNOWLEDGE');
     expect(result.current.actionQueue[0]?.priority).toBe('P0');
   });
 
-  it('1分経過すると now が更新され、オブジェクトが再生成される', () => {
+  it('exceptionActions が空なら actionQueue も空', () => {
     const { result } = renderHook(() =>
-      useTodayActionQueue({ pollingIntervalMs: 60000 })
+      useTodayActionQueue({ exceptionActions: [] }),
+    );
+
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.actionQueue).toHaveLength(0);
+  });
+
+  it('1分経過すると now が更新され、オブジェクトが再生成される', () => {
+    const now = new Date('2026-03-18T10:00:00Z');
+    const { result } = renderHook(() =>
+      useTodayActionQueue({
+        pollingIntervalMs: 60000,
+        exceptionActions: buildTestExceptionActions(now),
+      }),
     );
 
     const initialQueue = result.current.actionQueue;
@@ -67,7 +119,6 @@ describe('useTodayActionQueue', () => {
     const newQueue = result.current.actionQueue;
 
     // 再計算が走っているためオブジェクト参照が異なるはず
-    // ※今回はUrgencyScoreや値が変わらなくても常に新しい配列が生成される設計
     expect(newQueue).not.toBe(initialQueue);
   });
 
@@ -101,19 +152,24 @@ describe('useTodayActionQueue', () => {
     });
 
     it('queue 確定時に sample を1件 push する', () => {
-      renderHook(() => useTodayActionQueue());
+      const now = new Date('2026-03-18T10:00:00Z');
+      renderHook(() =>
+        useTodayActionQueue({ exceptionActions: buildTestExceptionActions(now) }),
+      );
 
       const samples = useTodayQueueTelemetryStore.getState().samples;
-      // 最初のデータのフェッチ後に1回記録されるはず
       expect(samples).toHaveLength(1);
-      
+
       const latest = samples[0];
       expect(latest.queueSize).toBeGreaterThan(0);
       expect(latest.timestamp).toBeGreaterThan(0);
     });
 
     it('同一 queue 再レンダーで重複 push しない', () => {
-      const { rerender } = renderHook(() => useTodayActionQueue());
+      const now = new Date('2026-03-18T10:00:00Z');
+      const { rerender } = renderHook(() =>
+        useTodayActionQueue({ exceptionActions: buildTestExceptionActions(now) }),
+      );
 
       const stateBeforeRerender = useTodayQueueTelemetryStore.getState();
       expect(stateBeforeRerender.samples).toHaveLength(1);
@@ -126,15 +182,11 @@ describe('useTodayActionQueue', () => {
       expect(stateAfterRerender.samples).toHaveLength(1);
     });
 
-    it('loading 中は push しない', () => {
-      renderHook(() => useTodayActionQueue());
+    it('exceptionActions が空なら telemetry を push しない', () => {
+      renderHook(() => useTodayActionQueue({ exceptionActions: [] }));
 
-      // 今回、モックは同期的にすぐ完了してしまう。
-      // ただし Hook の初期ステートとして isLoading = true が挟まる。
-      // もし isLoading = true の状態で評価されていれば、samples に空要素等が混ざる可能性がある。
-      // しかしガードが入っているため、正常な 1回だけの記録となっていることを確認する
       const samples = useTodayQueueTelemetryStore.getState().samples;
-      expect(samples).toHaveLength(1);
+      expect(samples).toHaveLength(0);
     });
   });
 });

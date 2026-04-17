@@ -3,7 +3,6 @@ import type { ActionCard, RawActionSource } from '../domain/models/queue.types';
 
 const EMPTY_EXCEPTION_ACTIONS: RawActionSource[] = [];
 import { buildTodayActionQueue } from '../domain/engine/buildTodayActionQueue';
-import { fetchMockActionSources } from '../domain/repositories/mockActionSources';
 import { summarizeTodayQueue } from '../telemetry/summarizeTodayQueue';
 import { useTodayQueueTelemetryStore } from '../telemetry/todayQueueTelemetryStore';
 import { mapSuggestionToActionSource } from '../domain/engine/mapSuggestionToActionSource';
@@ -44,7 +43,6 @@ export function useTodayActionQueue(
   const [now, setNow] = useState(new Date());
   const [sources, setSources] = useState<RawActionSource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
 
   // 2. 時刻のTick（再評価のトリガー）
   useEffect(() => {
@@ -54,20 +52,12 @@ export function useTodayActionQueue(
     return () => clearInterval(timer);
   }, [pollingIntervalMs]);
 
-  // 3. データのフェッチ（擬似APIコール）
+  // 3. データソースの初期化
+  // 実データは exceptionActions / correctiveActions 経由で外部から注入される。
+  // mock 固定データへの fallback は行わない。
   const refresh = useCallback(() => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      // 実際は Promise.all 等で SWR / React Query 経由で取得する
-      // MVPのため一時的に同期モックを利用
-      const data = fetchMockActionSources(new Date());
-      setSources(data);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch sources'));
-    } finally {
-      setIsLoading(false);
-    }
+    setIsLoading(false);
+    setSources([]);
   }, []);
 
   // 初回マウント時にフェッチ
@@ -134,9 +124,9 @@ export function useTodayActionQueue(
     () => ({
       actionQueue,
       isLoading,
-      error,
+      error: null,
       refresh,
     }),
-    [actionQueue, isLoading, error, refresh],
+    [actionQueue, isLoading, refresh],
   );
 }
