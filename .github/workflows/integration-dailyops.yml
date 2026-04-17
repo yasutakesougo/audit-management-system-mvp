@@ -62,6 +62,40 @@ jobs:
           SHAREPOINT_SITE: ${{ secrets.SHAREPOINT_SITE }}
         run: node scripts/verify-sharepoint-auth.mjs
 
+      - name: Discover DailyOpsSignals field internal names
+        env:
+          SHAREPOINT_SITE: ${{ secrets.SHAREPOINT_SITE }}
+        run: |
+          node -e "
+          const { request } = require('@playwright/test');
+          const fs = require('fs');
+          (async () => {
+            const ctx = await request.newContext({
+              storageState: 'tests/.auth/storageState.json',
+            });
+            const site = process.env.SHAREPOINT_SITE;
+            const url = site + \"/_api/web/lists/GetByTitle('DailyOpsSignals')/fields?\" +
+              \"\\\$filter=Hidden eq false and ReadOnlyField eq false\" +
+              \"&\\\$select=InternalName,Title,TypeAsString,Required,DefaultValue\";
+            const res = await ctx.get(url, {
+              headers: { 'Accept': 'application/json;odata=nometadata' },
+            });
+            if (!res.ok()) {
+              console.error('Failed to fetch fields:', res.status(), await res.text());
+              process.exit(1);
+            }
+            const json = await res.json();
+            const fields = json.value || [];
+            console.log('=== DailyOpsSignals Fields ===');
+            console.log('InternalName | Title | Type | Required');
+            console.log('-------------|-------|------|--------');
+            for (const f of fields) {
+              console.log(f.InternalName + ' | ' + f.Title + ' | ' + f.TypeAsString + ' | ' + (f.Required || false));
+            }
+            await ctx.dispose();
+          })();
+          "
+
       - name: Run integration (DailyOpsSignals)
         env:
           SHAREPOINT_SITE: ${{ secrets.SHAREPOINT_SITE }}
