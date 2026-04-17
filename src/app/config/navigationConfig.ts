@@ -1,331 +1,346 @@
 /**
  * Navigation Configuration
  * 
- * This file contains all navigation-related configuration for the AppShell,
- * extracted from AppShell.tsx for better maintainability and testability.
+ * This file serves as the public API for navigation configuration.
+ * It re-exports types and constants from specialized modules and
+ * implements the high-level factory functions for navigation items.
+ * 
+ * Types and constants live in navigationConfig.types.ts; helper functions
+ * (pickGroup, filterNavItems, groupNavItems, isNavVisible) live in
+ * navigationConfig.helpers.ts. Both are re-exported here for public API
+ * compatibility.
  * 
  * @module app/config/navigationConfig
  */
 
-import type { PrefetchKey } from '@/prefetch/routes';
+import {
+  getHubNavLabel,
+  getHubRequiredRole,
+  getHubRootPath,
+  isHubPathActive,
+} from '@/app/hubs/hubDefinitions';
+import type { HubId } from '@/app/hubs/hubTypes';
 import { PREFETCH_KEYS } from '@/prefetch/routes';
 import { TESTIDS } from '@/testids';
-import type React from 'react';
+
+// Import types and constants from extracted modules
+import { isNavVisible, requiredRoleToNavAudience } from './navigationConfig.helpers';
+import {
+    NAV_AUDIENCE,
+    type CreateNavItemsConfig,
+    type NavGroupKey,
+    type NavItem,
+    type NavTier,
+} from './navigationConfig.types';
+
+// Re-export all types and constants for public API parity
+export {
+    groupLabel, NAV_AUDIENCE,
+    NAV_GROUP_I18N_KEYS,
+    NAV_GROUP_ORDER
+} from './navigationConfig.types';
+export type {
+    CreateNavItemsConfig,
+    NavAudience,
+    NavGroupKey,
+    NavItem,
+    NavTier,
+} from './navigationConfig.types';
+
+// Re-export all helper functions for public API parity
+export {
+    buildVisibleNavItems,
+    filterNavItems,
+    groupNavItems,
+    isNavVisible,
+    pickGroup,
+    requiredRoleToNavAudience,
+    roleToNavAudience,
+    splitNavItemsByTier,
+} from './navigationConfig.helpers';
 
 // ============================================================================
-// Type Definitions
+// Nav Item Factory
 // ============================================================================
 
-export type NavAudience = 'all' | 'staff' | 'reception' | 'admin';
-
-export type NavItem = {
-  label: string;
-  to: string;
-  isActive: (pathname: string, search?: string) => boolean;
+type HubNavItemOverrides = {
+  label?: string;
   testId?: string;
-  icon?: React.ElementType;
-  prefetchKey?: PrefetchKey;
-  prefetchKeys?: PrefetchKey[];
-  audience?: NavAudience;
-  tier?: 'core' | 'more' | 'essential' | 'admin';
-  badge?: number;
-  group?: NavGroupKey;
-  featureFlag?: string;
+  prefetchKey?: NavItem['prefetchKey'];
+  prefetchKeys?: NavItem['prefetchKeys'];
+  tier?: NavTier;
+  isActive?: NavItem['isActive'];
 };
 
-export type NavGroupKey = 
-  | 'today' 
-  | 'records' 
-  | 'planning' 
-  | 'severe' 
-  | 'operations' 
-  | 'billing' 
-  | 'master' 
-  | 'platform'
-  | 'daily'   // legacy (fallback)
-  | 'record'  // legacy (fallback)
-  | 'review'  // legacy (fallback)
-  | 'admin'   // legacy (fallback)
-  | 'settings'; // legacy (fallback)
+const createHubNavItem = (hubId: HubId, overrides: HubNavItemOverrides = {}): NavItem => ({
+  label: overrides.label ?? getHubNavLabel(hubId),
+  to: getHubRootPath(hubId),
+  isActive: overrides.isActive ?? ((pathname) => isHubPathActive(hubId, pathname)),
+  icon: undefined,
+  testId: overrides.testId,
+  prefetchKey: overrides.prefetchKey,
+  prefetchKeys: overrides.prefetchKeys,
+  audience: requiredRoleToNavAudience(getHubRequiredRole(hubId)),
+  group: hubId as NavGroupKey,
+  tier: overrides.tier,
+});
 
-// ============================================================================
-// Constants
-// ============================================================================
-
-export const NAV_AUDIENCE = {
-  all: 'all',
-  staff: 'staff',
-  reception: 'reception',
-  admin: 'admin',
-} as const satisfies Record<NavAudience, NavAudience>;
-
-export const groupLabel: Record<NavGroupKey, string> = {
-  today: '📌 今日の業務',
-  records: '📚 記録を参照',
-  planning: '🗓️ 計画・調整',
-  severe: '🔍 分析して改善',
-  operations: '⚙️ 拠点運営',
-  billing: '💰 請求処理',
-  master: '👥 利用者・職員',
-  platform: '🛡️ システム管理',
-  daily: '📌 今日の業務 (L)',
-  record: '📚 記録を参照 (L)',
-  review: '🔍 分析して改善 (L)',
-  admin: '🛡️ システム管理 (L)',
-  settings: '⚙️ 表示設定',
-};
-
-export const NAV_GROUP_ORDER: NavGroupKey[] = [
-  'today', 
-  'records', 
-  'planning', 
-  'severe', 
-  'operations', 
-  'billing', 
-  'master', 
-  'platform'
-];
-
-// ============================================================================
-// Functions
-// ============================================================================
-
-export function roleToNavAudience(role: string | null): NavAudience {
-  if (!role) return 'staff';
-  if (role === 'admin') return 'admin';
-  if (role === 'reception') return 'reception';
-  return 'staff';
-}
-
-export function pickGroup(item: NavItem): NavGroupKey {
-  if (item.group) return item.group;
-  const { to, label, testId } = item;
-
-  if (
-    testId === TESTIDS.nav.daily ||
-    to.startsWith('/dailysupport') ||
-    label.includes('日次') ||
-    label.includes('朝会') ||
-    label.includes('夕会')
-  ) {
-    return 'today';
-  }
-
-  if (to.startsWith('/schedule') || to.startsWith('/schedules')) {
-    return 'planning';
-  }
-
-  return 'records'; // Fallback
-}
-
-export interface CreateNavItemsConfig {
-  dashboardPath: string;
-  currentRole: string | null;
-  schedulesEnabled: boolean;
-  complianceFormEnabled: boolean;
-  icebergPdcaEnabled: boolean;
-  staffAttendanceEnabled: boolean;
-  todayOpsEnabled?: boolean;
-  isAdmin: boolean;
-  authzReady: boolean;
-  navAudience: NavAudience;
-  isFieldStaffShell?: boolean;
-  skipLogin?: boolean;
-}
-
+/**
+ * Creates the navigation items array based on feature flags and permissions
+ *
+ * This function was extracted from AppShell.tsx’s useMemo for better testability.
+ *
+ * @param config - Configuration object containing all dependencies
+ * @returns Array of navigation items
+ */
 export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
   const {
     schedulesEnabled,
+    complianceFormEnabled,
+    staffAttendanceEnabled,
+    todayOpsEnabled,
     isAdmin,
     authzReady,
+    navAudience,
     isFieldStaffShell = false,
     skipLogin = false,
   } = config;
 
   const items: NavItem[] = [
+    // --- 1. 現場の実行 (today) ---
+    ...(todayOpsEnabled
+      ? [createHubNavItem('today', { testId: TESTIDS.nav.todayOps })]
+      : []),
+    {
+      label: '送迎降車表',
+      to: '/transport/assignments',
+      isActive: (pathname) => pathname.startsWith('/transport/assignments'),
+      icon: undefined,
+      testId: TESTIDS.nav.transportAssignments,
+      audience: NAV_AUDIENCE.staff,
+      group: 'today' as NavGroupKey,
+    },
+    ...(schedulesEnabled
+      ? [
+          {
+            label: 'スケジュール',
+            to: '/schedules/week',
+            isActive: (pathname: string) => pathname.startsWith('/schedule') || pathname.startsWith('/schedules'),
+            testId: TESTIDS.nav.schedules,
+            icon: undefined,
+            prefetchKey: PREFETCH_KEYS.schedulesWeek,
+            prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
+            audience: NAV_AUDIENCE.staff,
+            group: 'today' as NavGroupKey,
+          },
+        ]
+      : []),
     {
       label: '日次記録',
       to: '/dailysupport',
       isActive: (pathname) => pathname === '/dailysupport' || pathname.startsWith('/daily/'),
+      icon: undefined,
       prefetchKey: PREFETCH_KEYS.dailyMenu,
       testId: TESTIDS.nav.daily,
       audience: NAV_AUDIENCE.all,
-      tier: 'essential',
-      group: 'today',
+      group: 'today' as NavGroupKey,
     },
     {
       label: '健康記録',
       to: '/daily/health',
       isActive: (pathname) => pathname.startsWith('/daily/health'),
+      icon: undefined,
       audience: NAV_AUDIENCE.all,
-      tier: 'essential',
-      group: 'today',
+      group: 'today' as NavGroupKey,
     },
     {
       label: '申し送りタイムライン',
       to: '/handoff-timeline',
       isActive: (pathname) => pathname.startsWith('/handoff-timeline'),
+      icon: undefined,
       audience: NAV_AUDIENCE.all,
-      group: 'today',
+      group: 'today' as NavGroupKey,
     },
     {
       label: '議事録',
       to: '/meeting-minutes',
       isActive: (pathname) => pathname.startsWith('/meeting-minutes') || pathname.startsWith('/meeting-guide') || pathname.startsWith('/dashboard/briefing'),
+      icon: undefined,
       audience: isFieldStaffShell ? NAV_AUDIENCE.staff : NAV_AUDIENCE.all,
-      group: 'today',
+      group: 'today' as NavGroupKey,
       tier: 'more',
       featureFlag: 'todayLiteNavV2',
     },
+
+    // --- 2. 計画・アセスメント (planning / severe) ---
+    createHubNavItem('planning', {
+      isActive: (pathname) => pathname === '/planning' || pathname.startsWith('/planning/'),
+    }),
     {
       label: '個別支援計画',
       to: '/support-plan-guide',
       isActive: (pathname) => pathname === '/support-plan-guide',
+      icon: undefined,
       testId: TESTIDS.nav.supportPlanGuide,
       audience: isFieldStaffShell ? NAV_AUDIENCE.staff : NAV_AUDIENCE.all,
-      group: 'planning',
+      group: 'planning' as NavGroupKey,
     },
+    {
+      label: '個別支援計画更新・前回比較',
+      to: '/isp-editor',
+      isActive: (pathname) => pathname.startsWith('/isp-editor'),
+      icon: undefined,
+      testId: TESTIDS.nav.ispEditor,
+      audience: NAV_AUDIENCE.admin,
+      group: 'planning' as NavGroupKey,
+    },
+    createHubNavItem('severe', {
+      isActive: (pathname) => pathname === '/severe' || pathname.startsWith('/severe/'),
+    }),
     {
       label: '支援計画シート',
       to: '/planning-sheet-list',
       isActive: (pathname) => pathname.startsWith('/planning-sheet-list') || pathname.startsWith('/support-planning-sheet'),
+      icon: undefined,
       testId: TESTIDS.nav.planningSheet,
       audience: NAV_AUDIENCE.staff,
-      group: 'severe',
+      group: 'severe' as NavGroupKey,
     },
     {
       label: 'アセスメント',
       to: '/assessment',
       isActive: (pathname) => pathname.startsWith('/assessment'),
+      icon: undefined,
       prefetchKey: PREFETCH_KEYS.assessmentDashboard,
       testId: TESTIDS.nav.assessment,
       audience: NAV_AUDIENCE.staff,
-      group: 'severe',
+      group: 'severe' as NavGroupKey,
     },
+
+    // --- 3. 記録・参照 (records) ---
     {
-      label: '運用状況',
+      label: '運営状況',
       to: '/dashboard',
       isActive: (pathname) => pathname === '/dashboard',
+      icon: undefined,
       testId: TESTIDS.nav.dashboard,
       audience: NAV_AUDIENCE.admin,
-      group: 'records',
+      group: 'records' as NavGroupKey,
       tier: 'admin',
       featureFlag: 'todayLiteNavV2',
     },
+    createHubNavItem('records'),
     {
       label: 'モニタリング記録',
       to: '/records/monthly',
       isActive: (pathname) => pathname.startsWith('/records/monthly'),
+      icon: undefined,
       testId: 'nav-monitoring-record',
       audience: NAV_AUDIENCE.staff,
-      group: 'records',
+      group: 'records' as NavGroupKey,
     },
+    {
+      label: '申し送り分析',
+      to: '/handoff-analysis',
+      isActive: (pathname) => pathname.startsWith('/handoff-analysis'),
+      icon: undefined,
+      audience: NAV_AUDIENCE.admin,
+      group: 'records' as NavGroupKey,
+      tier: 'admin',
+      featureFlag: 'todayLiteNavV2',
+    },
+
+    // --- 4. 運営・管理 (operations / platform) ---
+    createHubNavItem('operations', { tier: 'admin' }),
     {
       label: '運用メトリクス',
       to: '/ops',
       isActive: (pathname) => pathname === '/ops' || pathname.startsWith('/ops/'),
+      icon: undefined,
       audience: NAV_AUDIENCE.admin,
-      group: 'operations',
+      group: 'operations' as NavGroupKey,
       tier: 'admin',
       featureFlag: 'todayLiteNavV2',
     },
+    createHubNavItem('billing', { testId: TESTIDS.nav.billing }),
+    createHubNavItem('master'),
+    createHubNavItem('platform'),
     {
       label: '利用者',
       to: '/users',
       isActive: (pathname: string) => pathname.startsWith('/users'),
+      icon: undefined,
       prefetchKey: PREFETCH_KEYS.users,
       audience: NAV_AUDIENCE.staff,
-      group: 'master',
+      group: 'master' as NavGroupKey,
     },
     {
       label: '職員',
       to: '/staff',
       isActive: (pathname: string) => pathname.startsWith('/staff') && !pathname.startsWith('/staff/attendance'),
+      icon: undefined,
       prefetchKey: PREFETCH_KEYS.staff,
       audience: NAV_AUDIENCE.admin,
-      group: 'master',
+      group: 'master' as NavGroupKey,
     },
   ];
 
-  if (schedulesEnabled) {
+  // Conditional additions
+  if (staffAttendanceEnabled) {
     items.push({
-      label: 'スケジュール',
-      to: '/schedules/week',
-      isActive: (pathname) => pathname.startsWith('/schedule') || pathname.startsWith('/schedules'),
-      testId: TESTIDS.nav.schedules,
-      audience: NAV_AUDIENCE.staff,
-      tier: 'essential',
-      group: 'planning',
+      label: '職員勤怠',
+      to: '/staff/attendance',
+      isActive: (pathname: string) => pathname.startsWith('/staff/attendance'),
+      icon: undefined,
+      prefetchKey: PREFETCH_KEYS.staff,
+      testId: TESTIDS.nav.staffAttendance,
+      audience: NAV_AUDIENCE.reception,
+      group: 'operations' as NavGroupKey,
+    });
+  }
+
+  if (complianceFormEnabled) {
+    items.push({
+      label: 'コンプラ報告',
+      to: '/compliance',
+      isActive: (pathname: string) => pathname.startsWith('/compliance'),
+      icon: undefined,
+      audience: 'staff',
+      group: 'operations' as NavGroupKey,
     });
   }
 
   if (isAdmin && (authzReady || skipLogin)) {
     items.push({
-      label: '監査ログ',
-      to: '/audit',
-      isActive: (pathname) => pathname.startsWith('/audit'),
-      testId: TESTIDS.nav.audit,
+      label: '職員勤怠管理',
+      to: '/admin/staff-attendance',
+      isActive: (pathname: string) => pathname.startsWith('/admin/staff-attendance'),
+      icon: undefined,
       audience: NAV_AUDIENCE.admin,
-      tier: 'more',
-      group: 'platform',
+      group: 'operations' as NavGroupKey,
+    });
+
+    items.push({
+      label: '例外センター',
+      to: '/admin/exception-center',
+      isActive: (pathname: string) => pathname.startsWith('/admin/exception-center'),
+      icon: undefined,
+      testId: TESTIDS.nav.exceptionCenter,
+      audience: NAV_AUDIENCE.admin,
+      group: 'operations' as NavGroupKey,
+      tier: 'admin',
+      featureFlag: 'todayLiteNavV2',
+    });
+
+    items.push({
+      label: '管理ツール',
+      to: '/admin',
+      isActive: (pathname: string) => (pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/checklist') || pathname.startsWith('/audit') || pathname.startsWith('/settings/')) && !pathname.startsWith('/admin/exception-center'),
+      icon: undefined,
+      audience: NAV_AUDIENCE.admin,
+      group: 'platform' as NavGroupKey,
     });
   }
 
-  return items;
-}
-
-export function buildVisibleNavItems(
-  items: NavItem[],
-  audience: NavAudience,
-  options: {
-    showMore: boolean;
-    todayLiteNavV2: boolean;
-    isKiosk: boolean;
-    hiddenGroups: string[];
-    hiddenItems: string[];
-  }
-): NavItem[] {
-  const { showMore, todayLiteNavV2, hiddenItems } = options;
-
-  return items.filter((item) => {
-    // Audience check
-    if (item.audience === 'admin' && audience !== 'admin') return false;
-    
-    // Tier check for NavV2
-    if (todayLiteNavV2 && !showMore && item.tier === 'more') return false;
-    
-    // Hidden check
-    if (hiddenItems.includes(item.to)) return false;
-    
-    return true;
-  });
-}
-
-export function splitNavItemsByTier(items: NavItem[]): { essential: NavItem[]; more: NavItem[] } {
-  return {
-    essential: items.filter(i => i.tier === 'essential' || i.tier === 'core'),
-    more: items.filter(i => i.tier === 'more'),
-  };
-}
-
-export function filterNavItems(navItems: NavItem[], query: string): NavItem[] {
-  const q = query.trim().toLowerCase();
-  if (!q) return navItems;
-  return navItems.filter((item) => (item.label ?? '').toLowerCase().includes(q));
-}
-
-export function groupNavItems(
-  navItems: NavItem[]
-): { map: Map<NavGroupKey, NavItem[]>; ORDER: NavGroupKey[] } {
-  const map = new Map<NavGroupKey, NavItem[]>();
-  NAV_GROUP_ORDER.forEach((k) => map.set(k, []));
-
-  for (const item of navItems) {
-    const group = pickGroup(item);
-    if (map.has(group)) {
-      map.get(group)?.push(item);
-    }
-  }
-
-  return { map, ORDER: NAV_GROUP_ORDER };
+  return items.filter((item) => isNavVisible(item, navAudience));
 }
