@@ -168,19 +168,21 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
 
   const exceptionsQueue = useTodayExceptions({ pendingSupportUsers, role: authzRole });
 
-  // ── Schedule Lanes (Real-data with fallback) ──
+  // ── Schedule Lanes (Real-data only — no demo fallback) ──
   const realSchedule = useTodayScheduleLanes();
-  const hasRealLanes =
-    realSchedule.lanes.staffLane.length > 0 ||
-    realSchedule.lanes.userLane.length > 0 ||
-    realSchedule.lanes.organizationLane.length > 0;
+  const EMPTY_LANES = useMemo(() => ({
+    staffLane: [] as { id: string; time: string; title: string }[],
+    userLane: [] as { id: string; time: string; title: string }[],
+    organizationLane: [] as { id: string; time: string; title: string }[],
+  }), []);
   const effectiveLanes = useMemo(
-    () =>
-      !realSchedule.isLoading && hasRealLanes
-        ? realSchedule.lanes
-        : summary.scheduleLanesToday,
-    [realSchedule.isLoading, hasRealLanes, realSchedule.lanes, summary.scheduleLanesToday]
+    () => (!realSchedule.isLoading ? realSchedule.lanes : EMPTY_LANES),
+    [realSchedule.isLoading, realSchedule.lanes, EMPTY_LANES]
   );
+  const isScheduleDegraded = !realSchedule.isLoading &&
+    realSchedule.lanes.staffLane.length === 0 &&
+    realSchedule.lanes.userLane.length === 0 &&
+    realSchedule.lanes.organizationLane.length === 0;
 
   // ── Derived Hooks ──
   const nextAction = useNextAction(effectiveLanes);
@@ -754,15 +756,15 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
       <TodayBentoLayout {...layoutProps} audience={authzRole} />
       
       {providerType === 'memory' && (
-        <div 
-          style={{ 
-            position: 'fixed', 
-            bottom: '20px', 
-            left: '20px', 
-            background: '#ffc107', 
-            color: '#000', 
-            padding: '4px 12px', 
-            borderRadius: '20px', 
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            left: '20px',
+            background: '#ffc107',
+            color: '#000',
+            padding: '4px 12px',
+            borderRadius: '20px',
             fontWeight: 700,
             fontSize: '12px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
@@ -773,7 +775,30 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
           }}
           data-testid="mock-mode-badge"
         >
-          ⚠️ Mock Data Mode Active
+          開発モード（メモリプロバイダー）
+        </div>
+      )}
+      {providerType === 'sharepoint' && isScheduleDegraded && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            left: '20px',
+            background: '#ed6c02',
+            color: '#fff',
+            padding: '4px 12px',
+            borderRadius: '20px',
+            fontWeight: 700,
+            fontSize: '12px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+          data-testid="degraded-mode-badge"
+        >
+          予定データ未取得 — /admin/status で確認してください
         </div>
       )}
 
