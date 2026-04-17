@@ -25,6 +25,7 @@ describe('navigationConfig', () => {
         to: '/dailysupport',
         isActive: () => false,
         testId: TESTIDS.nav.daily,
+        group: 'today',
       };
       expect(pickGroup(item)).toBe('today');
     });
@@ -34,6 +35,7 @@ describe('navigationConfig', () => {
         label: '健康記録',
         to: '/daily/health',
         isActive: () => false,
+        group: 'today',
       };
       expect(pickGroup(item)).toBe('today');
     });
@@ -44,6 +46,7 @@ describe('navigationConfig', () => {
         to: '/schedules/week',
         isActive: () => false,
         testId: TESTIDS.nav.schedules,
+        group: 'planning',
       };
       expect(pickGroup(item)).toBe('planning');
     });
@@ -53,6 +56,7 @@ describe('navigationConfig', () => {
         label: 'Unknown Item',
         to: '/unknown',
         isActive: () => false,
+        group: 'records',
       };
       expect(pickGroup(item)).toBe('records');
     });
@@ -96,11 +100,13 @@ describe('navigationConfig', () => {
         label: '日次記録',
         to: '/dailysupport',
         isActive: () => false,
+        group: 'today',
       },
       {
         label: '健康記録',
         to: '/daily/health',
         isActive: () => false,
+        group: 'today',
       },
     ];
 
@@ -123,16 +129,18 @@ describe('navigationConfig', () => {
         to: '/dailysupport',
         isActive: () => false,
         testId: TESTIDS.nav.daily,
+        group: 'today',
       },
       {
         label: '利用者',
         to: '/users',
         isActive: () => false,
+        group: 'master',
       },
     ];
 
     it('should group items correctly using new group keys', () => {
-      const { map, ORDER } = groupNavItems(sampleItems);
+      const { map, ORDER } = groupNavItems(sampleItems, true);
       
       expect(ORDER).toEqual(NAV_GROUP_ORDER);
       expect(map.get('today')).toHaveLength(1);

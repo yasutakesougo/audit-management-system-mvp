@@ -312,6 +312,24 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
 
   if (isAdmin && (authzReady || skipLogin)) {
     items.push({
+      label: '適正化運用',
+      to: '/admin/compliance-dashboard',
+      isActive: (pathname: string) => pathname === '/admin/compliance-dashboard',
+      audience: NAV_AUDIENCE.admin,
+      group: 'operations' as NavGroupKey,
+      tier: 'admin',
+    });
+
+    items.push({
+      label: '制度遵守',
+      to: '/admin/regulatory-dashboard',
+      isActive: (pathname: string) => pathname === '/admin/regulatory-dashboard',
+      audience: NAV_AUDIENCE.admin,
+      group: 'operations' as NavGroupKey,
+      tier: 'admin',
+    });
+
+    items.push({
       label: '職員勤怠管理',
       to: '/admin/staff-attendance',
       isActive: (pathname: string) => pathname.startsWith('/admin/staff-attendance'),
@@ -335,10 +353,30 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     items.push({
       label: '管理ツール',
       to: '/admin',
-      isActive: (pathname: string) => (pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/checklist') || pathname.startsWith('/audit') || pathname.startsWith('/settings/')) && !pathname.startsWith('/admin/exception-center'),
+      isActive: (pathname: string) => (pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/checklist') || pathname.startsWith('/audit') || pathname.startsWith('/settings/')) && !pathname.startsWith('/admin/exception-center') && !pathname.startsWith('/admin/compliance-dashboard') && !pathname.startsWith('/admin/regulatory-dashboard'),
       icon: undefined,
       audience: NAV_AUDIENCE.admin,
       group: 'platform' as NavGroupKey,
+    });
+
+    items.push({
+      label: 'テレメトリ',
+      to: '/admin/telemetry',
+      isActive: (pathname: string) => pathname === '/admin/telemetry',
+      icon: undefined,
+      audience: NAV_AUDIENCE.admin,
+      group: 'platform' as NavGroupKey,
+      tier: 'admin',
+    });
+
+    items.push({
+      label: '環境診断',
+      to: '/admin/status',
+      isActive: (pathname: string) => pathname === '/admin/status',
+      icon: undefined,
+      audience: NAV_AUDIENCE.admin,
+      group: 'platform' as NavGroupKey,
+      tier: 'admin',
     });
   }
 
