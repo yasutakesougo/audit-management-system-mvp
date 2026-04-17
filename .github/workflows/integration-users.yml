@@ -51,6 +51,11 @@ jobs:
         env:
           PW_STORAGE_STATE_B64: ${{ secrets.PW_STORAGE_STATE_B64 }}
 
+      - name: Verify SharePoint Auth (Pre-check)
+        env:
+          SHAREPOINT_SITE: ${{ secrets.SHAREPOINT_SITE }}
+        run: node scripts/verify-sharepoint-auth.mjs
+
       - name: Run integration (Users_Master)
         env:
           SHAREPOINT_SITE: ${{ secrets.SHAREPOINT_SITE }}
