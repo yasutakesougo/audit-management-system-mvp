@@ -32,7 +32,7 @@ import {
     Typography,
 } from '@mui/material';
 
-import { useStaff } from '@/stores/useStaff';
+import { useStaff } from '@/features/staff/store';
 import { StaffAttendanceBulkInputDrawer } from './components/StaffAttendanceBulkInputDrawer';
 import { StaffAttendanceEditDialog } from './components/StaffAttendanceEditDialog';
 import { useStaffAttendanceBulk } from './hooks/useStaffAttendanceBulk';

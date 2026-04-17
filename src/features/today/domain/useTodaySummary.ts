@@ -65,7 +65,13 @@ export type TodaySummary = {
 // ─── Internal: Dashboard-irrelevant defaults ────────────────────────────
 const generateMockActivityRecords = () => [];
 const mockAttendanceCounts = { onDuty: 0, out: 0, absent: 0, total: 0 };
-const mockSpSyncStatus = { loading: false, error: null, itemCount: 0, source: 'demo' as const };
+const mockSpSyncStatus = { 
+  spLane: 'demo' as string | null,
+  loading: false, 
+  error: null, 
+  itemCount: 0, 
+  source: 'demo' as const 
+};
 
 // buildMockServiceStructure は削除 → buildServiceStructure.ts に移行済み
 

@@ -26,6 +26,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import type { GuidelineVersion, GuidelineSummary, GuidelineRequiredItems } from '@/domain/safety/guidelineVersion';
 import { REQUIRED_ITEM_LABELS } from '@/domain/safety/guidelineVersion';
 import { TESTIDS } from '@/testids';
+import { formatDateJapanese, formatDateYmd } from '@/lib/dateFormat';
 
 interface GuidelineTabProps {
   versions: GuidelineVersion[];
@@ -64,7 +65,7 @@ export const GuidelineTab: React.FC<GuidelineTabProps> = ({ versions, summary })
         ) : (
           <>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              施行日: {summary.currentEffectiveDate}
+              施行日: {summary.currentEffectiveDate ? formatDateJapanese(summary.currentEffectiveDate) : '未設定'}
             </Typography>
 
             {/* Required Items Progress */}
@@ -147,7 +148,7 @@ export const GuidelineTab: React.FC<GuidelineTabProps> = ({ versions, summary })
                       v{v.version}
                     </Typography>
                   </TableCell>
-                  <TableCell>{v.effectiveDate}</TableCell>
+                  <TableCell>{formatDateYmd(v.effectiveDate)}</TableCell>
                   <TableCell>
                     <Chip label={v.changeType} size="small" variant="outlined" />
                   </TableCell>

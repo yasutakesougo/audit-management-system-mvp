@@ -40,7 +40,7 @@ import {
 
 import type { BulkDailyRecordFormProps } from './bulkDailyRecordFormLogic';
 import { REPORTER_ROLE_OPTIONS } from './bulkDailyRecordFormLogic';
-import { useBulkDailyRecordFormState } from './useBulkDailyRecordFormState';
+import { useBulkDailyRecordFormState } from '../../forms/useBulkDailyRecordFormState';
 
 export function BulkDailyRecordForm({
   open,

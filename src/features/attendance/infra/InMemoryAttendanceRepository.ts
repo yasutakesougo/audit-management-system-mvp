@@ -7,6 +7,8 @@ import type {
 import type { AttendanceDailyItem } from './Legacy/attendanceDailyRepository';
 import type { AttendanceUserItem } from './Legacy/attendanceUsersRepository';
 
+import { generateSyntheticDailyItems } from './demoDataGenerator';
+
 type InMemoryAttendanceSeed = {
   users?: AttendanceUserItem[];
   dailyItems?: AttendanceDailyItem[];
@@ -34,9 +36,16 @@ class InMemoryAttendanceRepository implements AttendanceRepository {
 
   public async getDailyByDate(params: AttendanceRepositoryListParams): Promise<AttendanceDailyItem[]> {
     if (params.signal?.aborted) return [];
-    return this.dailyItems
-      .filter((item) => item.RecordDate === params.recordDate)
-      .map((item) => ({ ...item }));
+    
+    const existing = this.dailyItems.filter((item) => item.RecordDate === params.recordDate);
+    
+    // Fallback to synthetic data in demo mode if nothing is in memory for 'today' or specific date
+    if (existing.length === 0) {
+      const synthetic = generateSyntheticDailyItems(this.users, params.recordDate);
+      return synthetic;
+    }
+
+    return existing.map((item) => ({ ...item }));
   }
 
   public async upsertDailyByKey(

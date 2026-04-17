@@ -74,6 +74,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDataProvider } from '@/lib/data/useDataProvider';
 import { ActionTaskList } from '@/features/action-engine';
+import { ConnectionDegradedBanner } from '@/features/sp/health/components/ConnectionDegradedBanner';
 
 export type TodayOpsPageProps = {
   correctiveActions?: ActionSuggestion[];
@@ -753,6 +754,7 @@ const LegacyTodayOpsPage: React.FC<TodayOpsPageProps> = ({
   // ── Render ──
   return (
     <>
+      <ConnectionDegradedBanner />
       <TodayBentoLayout {...layoutProps} audience={authzRole} />
       
       {providerType === 'memory' && (

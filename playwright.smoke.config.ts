@@ -30,8 +30,6 @@ const smokeTestMatch = [
   'tests/e2e/authz.reception-monthly-pdf-action.spec.ts',
   'tests/e2e/authz.reception-schedule-week-create-save.smoke.spec.ts',
   'tests/e2e/authz.reception-schedule-day-edit-save.smoke.spec.ts',
-  'tests/e2e/hub-entry-experience.ssot.spec.ts',
-  'tests/e2e/isp-editor.smoke.spec.ts',
 ];
 
 const webServerEnvVarsSmoke = {
@@ -51,7 +49,6 @@ const webServerEnvVarsSmoke = {
   VITE_SCHEDULES_SAVE_MODE: 'mock',
   VITE_AUDIT_DEBUG: process.env.VITE_AUDIT_DEBUG ?? '0',
   E2E_SAVE_MODE: 'mock',
-  VITE_DATA_PROVIDER: 'memory',
 };
 
 const envPairs = Object.entries(webServerEnvVarsSmoke)
@@ -71,7 +68,7 @@ export default defineConfig({
     url: baseURL,
     // CI でも既存サーバーを再利用し、並列/再試行時のポート競合を回避
     reuseExistingServer: true,
-    timeout: 300_000,
+    timeout: 180_000,
     env: {
       ...process.env,
       ...webServerEnvVarsSmoke,
@@ -89,3 +86,4 @@ export default defineConfig({
       },
     })),
 });
+

@@ -1,9 +1,10 @@
-import type { IUserMaster } from '@/features/users';
-import { useUsers } from '@/features/users';
-import { useMemo } from 'react';
+import { useAttendanceRepository } from './repositoryFactory';
+import { toLocalDateISO } from '@/utils/getNow';
+import { useCallback, useEffect, useState } from 'react';
+import { generateDemoTemperature } from './infra/demoDataGenerator';
 import type { TransportMethod } from './transportMethod';
 
-type AttendanceVisitSnapshot = {
+export type AttendanceVisitSnapshot = {
   userCode: string;
   status: string;
   providedMinutes?: number;
@@ -22,57 +23,62 @@ type AttendanceVisitSnapshot = {
 
 type AttendanceStoreState = {
   visits: Record<string, AttendanceVisitSnapshot>;
+  loading: boolean;
+  error: Error | null;
+  refresh: () => Promise<void>;
 };
 
-/** デモ用の体温値を生成（ほとんど正常、一部発熱） */
-const demoTemperature = (index: number): number => {
-  if (index % 11 === 0) return 38.2; // 発熱
-  if (index % 13 === 0) return 37.8; // 発熱
-  return 36.0 + (index % 10) * 0.1;  // 36.0〜36.9 正常
-};
-
-/** デモ用の送迎手段: 一部のユーザーに SS / 一時ケアを設定 */
-const demoTransport = (index: number): { to?: TransportMethod; from?: TransportMethod } => {
-  if (index % 17 === 0) return { to: 'short_stay', from: 'short_stay' };
-  if (index % 19 === 0) return { to: 'temporary_care' };
-  return {};
-};
-
-const buildDemoVisits = (users: IUserMaster[]): Record<string, AttendanceVisitSnapshot> => {
-  const visits: Record<string, AttendanceVisitSnapshot> = {};
-
-  users.forEach((user, index) => {
-    const userCode = (user.UserID ?? '').trim() || `U${String(user.Id ?? index + 1).padStart(3, '0')}`;
-    const status = index % 6 === 0
-      ? '当日欠席'
-      : index % 3 === 0
-        ? '退所済'
-        : '通所中';
-    const isEarlyLeave = status !== '当日欠席' && index % 7 === 0;
-    const isAbsent = status === '当日欠席';
-    const transport = demoTransport(index);
-
-    visits[userCode] = {
-      userCode,
-      status,
-      isEarlyLeave,
-      temperature: demoTemperature(index),
-      morningContacted: isAbsent ? index % 3 !== 0 : undefined,
-      eveningChecked: isAbsent ? index % 2 === 0 : undefined,
-      transportToMethod: transport.to,
-      transportFromMethod: transport.from,
-    };
-  });
-
-  return visits;
-};
-
+/**
+ * Root Hook: useAttendanceStore
+ * 
+ * Bridges the attendance UI with the AttendanceRepository.
+ * Maps repository domain items to the UI-friendly AttendanceVisitSnapshot.
+ */
 export const useAttendanceStore = (): AttendanceStoreState => {
-  const { data: users } = useUsers();
+  const repository = useAttendanceRepository();
+  const [visits, setVisits] = useState<Record<string, AttendanceVisitSnapshot>>({});
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  const visits = useMemo(() => buildDemoVisits(users), [users]);
+  const fetchAttendance = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const today = toLocalDateISO();
+      const records = await repository.getDailyByDate({ recordDate: today });
+      
+      const nextVisits: Record<string, AttendanceVisitSnapshot> = {};
+      records.forEach((rec, index) => {
+        nextVisits[rec.UserCode] = {
+          userCode: rec.UserCode,
+          status: rec.Status,
+          providedMinutes: rec.ProvidedMinutes ?? undefined,
+          isEarlyLeave: rec.IsEarlyLeave,
+          // Temperature is currently synthetic/inferred as it often comes from a separate list
+          // but we keep the demo generator here for the UI alert demonstration.
+          temperature: generateDemoTemperature(index),
+          morningContacted: rec.AbsentMorningContacted,
+          eveningChecked: rec.EveningChecked,
+          transportToMethod: rec.TransportToMethod,
+          transportFromMethod: rec.TransportFromMethod,
+        };
+      });
+      setVisits(nextVisits);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
+    } finally {
+      setLoading(false);
+    }
+  }, [repository]);
+
+  useEffect(() => {
+    void fetchAttendance();
+  }, [fetchAttendance]);
 
   return {
     visits,
+    loading,
+    error,
+    refresh: fetchAttendance,
   };
 };

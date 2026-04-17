@@ -109,14 +109,14 @@ export const NAV_GROUP_I18N_KEYS = {
  * - Pairs with NAV_GROUP_I18N_KEYS for future i18n integration
  */
 export const groupLabel: Record<NavGroupKey, string> = {
-  today: 'Today',
-  records: 'Records',
-  planning: '標準支援',
-  severe: '強度行動障害支援',
-  operations: 'Operations',
-  billing: 'Billing',
-  master: 'Master',
-  platform: 'Platform',
+  today: '📌 今日の業務',
+  records: '📚 記録を参照',
+  planning: '🗓️ 計画・調整',
+  severe: '🔍 分析して改善',
+  operations: '⚙️ 拠点運営',
+  billing: '💰 請求処理',
+  master: '👥 利用者・職員',
+  platform: '🛡️ システム管理',
 };
 
 /**

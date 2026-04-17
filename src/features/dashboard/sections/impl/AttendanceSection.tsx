@@ -33,6 +33,8 @@ export type AttendanceSummaryData = {
   absenceNames?: string[];
   onDutyStaff: number;
   lateOrShiftAdjust: number;
+  outStaff: number;
+  outStaffNames?: string[];
 };
 
 export type AttendanceSectionProps = {

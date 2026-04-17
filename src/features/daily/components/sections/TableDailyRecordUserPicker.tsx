@@ -1,5 +1,5 @@
 import { TESTIDS } from '@/testids';
-import type { StoreUser } from '@/stores/useUsers';
+import type { StoreUser } from '@/features/users/store';
 import {
     ClearAll as ClearAllIcon,
     ExpandLess as ExpandLessIcon,

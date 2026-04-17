@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { StoreUser } from '@/stores/useUsers';
+import { StoreUser } from '../view-models/tableDailyRecordFormTypes';
 import { filterActiveUsers } from '@/features/users/domain/userLifecycle';
 import { isUserScheduledForDate } from '@/utils/attendanceUtils';
 import { compareUsersByJapaneseOrder, userMatchesQuery } from '@/lib/i18n/japaneseCollator';

@@ -2,7 +2,7 @@
  * useStaffForm — focused unit tests
  *
  * Strategy:
- * - vi.mock('@/stores/useStaff') so the hook runs in pure jsdom with no SharePoint network.
+ * - vi.mock('@/features/staff/store') so the hook runs in pure jsdom with no SharePoint network.
  * - renderHook + act from @testing-library/react for all state updates.
  * - No render of JSX. Pure hook behaviour only.
  */
@@ -15,7 +15,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockCreateStaff = vi.fn();
 const mockUpdateStaff = vi.fn();
 
-vi.mock('@/stores/useStaff', () => ({
+vi.mock('@/features/staff/store', () => ({
   useStaff: () => ({
     createStaff: mockCreateStaff,
     updateStaff: mockUpdateStaff,

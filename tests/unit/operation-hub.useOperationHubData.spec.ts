@@ -1,5 +1,5 @@
 import type { Schedule } from '@/lib/mappers';
-import type { StoreUser } from '@/stores/useUsers';
+import type { IUserMaster as StoreUser } from '@/features/users/types';
 import type { Staff } from '@/types';
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -18,21 +18,26 @@ vi.mock('@/features/operation-hub/ensureCoreLists', () => ({
   useEnsureOperationHubLists: useEnsureOperationHubListsMock,
 }));
 
-vi.mock('@/stores/useSchedules', () => ({
+vi.mock('@/features/schedules/store', () => ({
   useSchedules: useSchedulesMock,
 }));
 
-vi.mock('@/stores/useUsers', () => ({
+vi.mock('@/features/users/store', () => ({
   useUsers: useUsersMock,
 }));
 
-vi.mock('@/stores/useStaff', () => ({
+vi.mock('@/features/staff/store', () => ({
   useStaff: useStaffMock,
 }));
 
-vi.mock('@/lib/spClient', () => ({
-  useSP: () => useSPMock(),
-}));
+vi.mock('@/lib/spClient', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
+  return {
+    ...actual,
+    useSP: () => useSPMock(),
+    ensureConfig: () => ({ baseUrl: 'https://contoso.sharepoint.com/sites/Audit' }),
+  };
+});
 
 vi.mock('@/utils/getNow', () => ({
   getNow: () => new Date('2025-05-01T00:00:00.000Z'),
@@ -157,8 +162,18 @@ const reloadUsers = vi.fn(async () => {});
 const reloadStaff = vi.fn(async () => {});
 
 const loadStoreMocks = () => {
-  useSchedulesMock.mockReturnValue({ data: [assignedSchedule, unassignedSchedule], loading: false, error: null, reload: reloadSchedules });
-  useUsersMock.mockReturnValue({ data: users, loading: false, error: null, reload: reloadUsers });
+  useSchedulesMock.mockReturnValue({
+    data: [assignedSchedule, unassignedSchedule],
+    loading: false,
+    error: null,
+    reload: reloadSchedules,
+  });
+  useUsersMock.mockReturnValue({
+    data: users,
+    isLoading: false,
+    error: null,
+    load: reloadUsers,
+  });
   useStaffMock.mockReturnValue({ data: staffMembers, loading: false, error: null, reload: reloadStaff });
   useSPMock.mockReturnValue(spStub);
 };
@@ -188,7 +203,7 @@ describe('useOperationHubData', () => {
     expect(result.current.kpis[1]).toMatchObject({ id: 'unassigned', value: '1件' });
     expect(result.current.kpis[1].helperAction).toBeTruthy();
     expect(result.current.alerts.length).toBeGreaterThan(1);
-  expect(result.current.contractExpirations).toHaveLength(0);
+    expect(result.current.contractExpirations).toHaveLength(0);
     expect(result.current.timeline).not.toBeNull();
     expect(result.current.timeline?.resources.length).toBeGreaterThanOrEqual(2);
     expect(result.current.mobileTasks).toHaveLength(1);
@@ -218,9 +233,9 @@ describe('useOperationHubData', () => {
     });
     useUsersMock.mockReturnValueOnce({
       data: undefined,
-      loading: false,
+      isLoading: false,
       error: new Error('users down'),
-      reload: reloadUsers,
+      load: reloadUsers,
     });
     useStaffMock.mockReturnValueOnce({
       data: undefined,
@@ -405,7 +420,7 @@ describe('useOperationHubData', () => {
       error: null,
       reload: reloadSchedules,
     });
-    useUsersMock.mockReturnValueOnce({ data: users, loading: false, error: null, reload: reloadUsers });
+    useUsersMock.mockReturnValueOnce({ data: users, isLoading: false, error: null, load: reloadUsers });
     useStaffMock.mockReturnValueOnce({ data: extendedStaff, loading: false, error: null, reload: reloadStaff });
 
     const { useOperationHubData } = await import('@/features/operation-hub/useOperationHubData');
@@ -414,7 +429,7 @@ describe('useOperationHubData', () => {
     const timeline = result.current.timeline;
     expect(timeline).not.toBeNull();
     const staffResource = timeline?.resources.find((res) => res.name === '高橋 三郎');
-  expect(staffResource?.events.filter((event) => event.conflict)).toHaveLength(2);
+    expect(staffResource?.events.filter((event) => event.conflict)).toHaveLength(2);
     const directorResource = timeline?.resources.find((res) => res.employmentType === '施設長');
     expect(directorResource?.groupLabel).toBe('施設長');
     const unmatchedResource = timeline?.resources.find((res) => res.name === '外部支援者');

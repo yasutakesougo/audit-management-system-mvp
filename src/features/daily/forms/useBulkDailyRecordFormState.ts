@@ -6,7 +6,7 @@
  * as useDailyRecordFormState.ts.
  */
 
-import { useUsers } from '@/stores/useUsers';
+import { useUsers } from '@/features/users/store';
 import type { IUserMaster } from '@/features/users/types';
 import { useCallback, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';

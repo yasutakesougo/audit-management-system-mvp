@@ -1,9 +1,9 @@
 import type { Schedule } from '@/lib/mappers';
 import { useSP } from '@/lib/spClient';
 import { formatInTimeZone } from '@/lib/tz';
-import { useSchedules } from '@/stores/useSchedules';
-import { useStaff } from '@/stores/useStaff';
-import { useUsers, type StoreUser } from '@/stores/useUsers';
+import { useSchedules } from '@/features/schedules/store';
+import { useStaff } from '@/features/staff/store';
+import { useUsers, type StoreUser } from '@/features/users/store';
 import type { Staff } from '@/types';
 import { formatRangeLocal } from '@/utils/datetime';
 import { getNow } from '@/utils/getNow';
@@ -239,9 +239,9 @@ export function useOperationHubData(): OperationHubData {
   } = useSchedules();
   const {
     data: userData,
-    loading: usersLoading,
+    isLoading: usersLoading,
     error: usersError,
-    reload: reloadUsers,
+    load: reloadUsers,
   } = useUsers();
   const {
     data: staffData,
@@ -268,7 +268,7 @@ export function useOperationHubData(): OperationHubData {
   const todaysSchedules = useMemo(() => {
     if (!scheduleData) return [] as Schedule[];
     const results: Schedule[] = [];
-    for (const schedule of scheduleData) {
+    for (const schedule of (scheduleData ?? [])) {
       const start = schedule.startDate ?? schedule.startLocal ?? schedule.startUtc ?? '';
       const end = schedule.endDate ?? schedule.endLocal ?? schedule.endUtc ?? start;
       const startDate = start.slice(0, 10);
@@ -393,9 +393,9 @@ export function useOperationHubData(): OperationHubData {
     loading,
     ready,
     errors: {
-      schedules: schedulesError?.message,
-      users: usersError?.message,
-      staff: staffError?.message,
+      schedules: schedulesError instanceof Error ? schedulesError.message : String(schedulesError || ''),
+      users: usersError instanceof Error ? usersError.message : String(usersError || ''),
+      staff: staffError instanceof Error ? staffError.message : String(staffError || ''),
     },
     dateLabel,
   dateISO: todayKey,

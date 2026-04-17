@@ -11,22 +11,22 @@
 
 import { useDensity, useDisplayMode } from '@/app/LayoutContext';
 import { PageHeader } from '@/components/PageHeader';
-import { useUsersStore } from '@/features/users/store';
+
 import { useFiltersSync } from '@/hooks/useFiltersSync';
 import { usePersistedFilters } from '@/hooks/usePersistedFilters';
-import { useDaily } from '@/stores/useDaily';
-import { useStaff } from '@/stores/useStaff';
+import { useDaily } from '@/features/daily';
+
 import FilterToolbar, { type StatusOption } from '@/ui/filters/FilterToolbar';
 import { buildSearchParams as buildSearchParamsUtil, normalizeFilters as normalizeFiltersUtil } from '@/utils/filters';
 import { formatCount } from '@/utils/formatCount';
 import { toLocalDateISO } from '@/utils/getNow';
 import { normalizeRange } from '@/utils/range';
 import Button from '@mui/material/Button';
+
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { japaneseNameCollator } from '@/lib/i18n/japaneseCollator';
 
 import { DailyPageCardView } from './DailyPageCardView';
 import {
@@ -40,12 +40,10 @@ import {
     STORAGE_KEY,
 } from './dailyPageConstants';
 import { DailyPageTableView } from './DailyPageTableView';
+import type { DailyRecordItem } from '@/features/daily/schema';
 
 export default function DailyPage() {
   const { data, error, loading, reload } = useDaily();
-  const { data: staff, loading: staffLoading } = useStaff();
-  const { data: users, status } = useUsersStore();
-  const usersLoading = status === 'loading';
   const density = useDensity();
   const displayMode = useDisplayMode();
   const [compact, setCompact] = useState(() => density === 'compact');
@@ -135,26 +133,9 @@ export default function DailyPage() {
     commitFilters((prev) => ({ ...prev, showAdvanced: !prev.showAdvanced }));
   }, [commitFilters]);
 
-  const staffNameMap = useMemo(() => {
-    const map = new Map<number, string>();
-    (staff ?? []).forEach((member) => {
-      const key = Number(member.id);
-      if (Number.isFinite(key)) map.set(key, member.name || `#${member.id}`);
-    });
-    return map;
-  }, [staff]);
 
-  const userNameMap = useMemo(() => {
-    const map = new Map<number, string>();
-    (users ?? []).forEach((user) => {
-      const key = Number(user.Id);
-      if (Number.isFinite(key)) map.set(key, user.FullName || `#${user.Id}`);
-    });
-    return map;
-  }, [users]);
 
   const normalizedQuery = debouncedFilters.q.trim().toLowerCase();
-  const collator = japaneseNameCollator;
   const statusOptions: StatusOption[] = useMemo(
     () => FILTER_OPTIONS.map((option) => ({
       value: option,
@@ -166,14 +147,17 @@ export default function DailyPage() {
   const advancedPanelId = useId();
 
   const sortedRows = useMemo(() => {
-    const rows = data ?? [];
+    const rows = (data ?? []) as DailyRecordItem[];
     return [...rows].sort((a, b) => {
       const dateA = a.date ?? '';
       const dateB = b.date ?? '';
       if (dateA && dateB && dateA !== dateB) return dateB.localeCompare(dateA);
-      return collator.compare(a.title ?? '', b.title ?? '');
+      // reporter might be null in some records, safe compare
+      const reporterA = a.reporter?.name ?? '';
+      const reporterB = b.reporter?.name ?? '';
+      return reporterA.localeCompare(reporterB);
     });
-  }, [collator, data]);
+  }, [data]);
 
   const filtered = useMemo(() => {
     const rows = sortedRows;
@@ -187,9 +171,9 @@ export default function DailyPage() {
       rangeEnd = fromDate;
     }
     return rows.filter((item) => {
-      if (activeFilter !== 'all' && (item.status ?? '').toLowerCase() !== activeFilter) return false;
+      if (activeFilter !== 'all' && (item.approvalStatus ?? '').toLowerCase() !== activeFilter) return false;
       if (normalizedQuery) {
-        const haystack = [item.title, item.notes, item.location]
+        const haystack = [item.date, item.reporter?.name, item.reporter?.role]
           .map((value) => (value ?? '').toString().toLowerCase())
           .join(' ');
         if (!haystack.includes(normalizedQuery)) return false;
@@ -296,9 +280,9 @@ export default function DailyPage() {
         <span aria-hidden="true">（条件変更を反映しました）</span>
       </div>
       {isCardMode ? (
-        <DailyPageCardView rows={filtered} staffNameMap={staffNameMap} userNameMap={userNameMap} />
+        <DailyPageCardView rows={filtered} />
       ) : (
-        <DailyPageTableView rows={filtered} staffNameMap={staffNameMap} userNameMap={userNameMap} compact={compact} staffLoading={staffLoading} usersLoading={usersLoading} />
+        <DailyPageTableView rows={filtered} />
       )}
     </div>
   );

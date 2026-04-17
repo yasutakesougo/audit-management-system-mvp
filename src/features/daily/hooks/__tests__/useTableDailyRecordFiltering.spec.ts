@@ -7,7 +7,7 @@
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { StoreUser } from '@/stores/useUsers';
+import type { StoreUser } from '@/features/users/store';
 import { useTableDailyRecordFiltering } from '../orchestrators/useTableDailyRecordFiltering';
 
 // ── Mock attendanceUtils ────────────────────────────

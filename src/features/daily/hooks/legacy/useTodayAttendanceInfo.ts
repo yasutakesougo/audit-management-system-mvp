@@ -23,7 +23,7 @@ interface TodayAttendanceInfo {
   absentUserIds?: string[];
 }
 
-interface UserData {
+export interface UserData {
   Id: number;
   UserID: string;
   FullName: string;
@@ -32,7 +32,7 @@ interface UserData {
   ServiceEndDate?: string | null;
 }
 
-interface ScheduleData {
+export interface ScheduleData {
   id: string | number;
   userId?: string | number | null;
   // eslint-disable-next-line no-restricted-syntax -- backward-compat adapter field

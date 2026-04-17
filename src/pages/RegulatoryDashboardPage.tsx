@@ -43,7 +43,7 @@ import {
   useCreateHandoffFromExternalSource,
 } from '@/features/handoff/useCreateHandoffFromExternalSource';
 import { useUsers } from '@/features/users/useUsers';
-import { useStaff } from '@/stores/useStaff';
+import { useStaff } from '@/features/staff/store';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
 import { usePlanPatchRepository } from '@/features/planning-sheet/hooks/usePlanPatchRepository';
 import { useImprovementOutcomeRepository } from '@/features/monitoring/data/useImprovementOutcomeRepository';

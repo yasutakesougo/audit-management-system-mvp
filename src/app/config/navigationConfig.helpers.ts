@@ -165,7 +165,6 @@ export function pickGroup(item: Partial<NavItem>, _isAdmin: boolean): NavGroupKe
   if (
     testId === TESTIDS.nav.todayOps ||
     testId === TESTIDS.nav.daily ||
-    testId === TESTIDS.nav.schedules ||
     testId === TESTIDS.nav.transportAssignments ||
     to.startsWith('/today') ||
     to.startsWith('/transport/assignments') ||
@@ -173,13 +172,11 @@ export function pickGroup(item: Partial<NavItem>, _isAdmin: boolean): NavGroupKe
     to.startsWith('/dailysupport') ||
     to.startsWith('/handoff-timeline') ||
     to.startsWith('/meeting') ||
-    to.startsWith('/schedule') ||
     label.includes('今日') ||
     label.includes('日次') ||
     label.includes('健康') ||
     label.includes('タイムライン') ||
     label.includes('議事録') ||
-    label.includes('スケジュール') ||
     label.includes('Today')
   ) {
     return 'today';
@@ -192,17 +189,20 @@ export function pickGroup(item: Partial<NavItem>, _isAdmin: boolean): NavGroupKe
     testId === TESTIDS.nav.planningSheet ||
     testId === TESTIDS.nav.analysis ||
     testId === TESTIDS.nav.assessment ||
+    testId === TESTIDS.nav.schedules ||
     to.startsWith('/planning') ||
     to.startsWith('/support') ||
     to.startsWith('/isp') ||
     to.startsWith('/assessment') ||
     to.startsWith('/analysis') ||
     to.startsWith('/survey') ||
+    to.startsWith('/schedule') ||
     label.includes('ISP') ||
     label.includes('支援計画') ||
     label.includes('アセスメント') ||
     label.includes('分析ワークスペース') ||
     label.includes('特性') ||
+    label.includes('スケジュール') ||
     label.includes('Planning')
   ) {
     return 'planning';

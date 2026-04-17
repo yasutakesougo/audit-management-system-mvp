@@ -1,12 +1,15 @@
 /**
  * Navigation Configuration
- *
- * This file defines navigation items based on feature flags and permissions.
+ * 
+ * This file serves as the public API for navigation configuration.
+ * It re-exports types and constants from specialized modules and
+ * implements the high-level factory functions for navigation items.
+ * 
  * Types and constants live in navigationConfig.types.ts; helper functions
  * (pickGroup, filterNavItems, groupNavItems, isNavVisible) live in
  * navigationConfig.helpers.ts. Both are re-exported here for public API
  * compatibility.
- *
+ * 
  * @module app/config/navigationConfig
  */
 
@@ -85,7 +88,7 @@ const createHubNavItem = (hubId: HubId, overrides: HubNavItemOverrides = {}): Na
 /**
  * Creates the navigation items array based on feature flags and permissions
  *
- * This function was extracted from AppShell.tsx's useMemo for better testability.
+ * This function was extracted from AppShell.tsx’s useMemo for better testability.
  *
  * @param config - Configuration object containing all dependencies
  * @returns Array of navigation items
@@ -94,7 +97,6 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
   const {
     schedulesEnabled,
     complianceFormEnabled,
-    icebergPdcaEnabled: _icebergPdcaEnabled,
     staffAttendanceEnabled,
     todayOpsEnabled,
     isAdmin,
@@ -104,27 +106,13 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     skipLogin = false,
   } = config;
 
-  // Side-nav intentionally excludes:
-  // - /analysis/iceberg-pdca/edit (edit-only)
-  // - /dev/schedule-create-dialog (dev-only)
-  // - /daily/activity, /daily/support-checklist, /daily/time-based
-  // - /schedules/day, /schedules/month
-  // ============================================================================
-  // Navigation Items
-  //
-  // ルール:
-  // 1. 各項目は必ず group を指定し、どの目的・業務フローに属するかを明示してください。
-  // 2. 各グループ内の並び順は「上から現場での使用順・頻度順」で固定しています。
-  //    新機能を追加する際は、単に末尾につなげるのではなく順序を検討してください。
-  // ============================================================================
   const items: NavItem[] = [
-    // --- 1. 現場の実行 (daily) ---
-    // 順序: 今日の業務 → 送迎配車表 → スケジュール → 日次記録 → 健康記録 → 申し送りタイムライン → 議事録
+    // --- 1. 現場の実行 (today) ---
     ...(todayOpsEnabled
       ? [createHubNavItem('today', { testId: TESTIDS.nav.todayOps })]
       : []),
     {
-      label: '送迎配車表',
+      label: '送迎降車表',
       to: '/transport/assignments',
       isActive: (pathname) => pathname.startsWith('/transport/assignments'),
       icon: undefined,
@@ -142,8 +130,8 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
             icon: undefined,
             prefetchKey: PREFETCH_KEYS.schedulesWeek,
             prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
-            audience: NAV_AUDIENCE.staff, // [Audience] 現場職員以上の権限で表示
-            group: 'today' as NavGroupKey, // [Group] 現場実行グループ
+            audience: NAV_AUDIENCE.staff,
+            group: 'today' as NavGroupKey,
           },
         ]
       : []),
@@ -154,8 +142,8 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       icon: undefined,
       prefetchKey: PREFETCH_KEYS.dailyMenu,
       testId: TESTIDS.nav.daily,
-      audience: NAV_AUDIENCE.all,      // [Audience] パート含め全ロールに露出（最重要アクション）
-      group: 'today' as NavGroupKey,   // [Group] 現場実行グループ
+      audience: NAV_AUDIENCE.all,
+      group: 'today' as NavGroupKey,
     },
     {
       label: '健康記録',
@@ -174,21 +162,18 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'today' as NavGroupKey,
     },
     {
-      // 会議系は「議事録」に統合。司会ガイド・朝会夕会情報・朝会/夕会（作成）は議事録ページ内またはURL直接アクセスで到達可能。
       label: '議事録',
       to: '/meeting-minutes',
       isActive: (pathname) => pathname.startsWith('/meeting-minutes') || pathname.startsWith('/meeting-guide') || pathname.startsWith('/dashboard/briefing'),
       icon: undefined,
-      audience: isFieldStaffShell ? NAV_AUDIENCE.staff : NAV_AUDIENCE.all, // [Simple Mode] 現場職員には議事録は重いため非表示
+      audience: isFieldStaffShell ? NAV_AUDIENCE.staff : NAV_AUDIENCE.all,
       group: 'today' as NavGroupKey,
-      tier: 'more',                   // [Tier] 頻度が低いため Lite Nav では隠蔽対象
-      featureFlag: 'todayLiteNavV2',  // [FF] Lite Nav 有効時のみティア制限を適用
+      tier: 'more',
+      featureFlag: 'todayLiteNavV2',
     },
 
-    // --- 2. 支援計画・アセスメント (assessment) ---
-    // 順序: ISP作成・更新 → 支援計画シート → アセスメント系 → 分析系 → アンケート
+    // --- 2. 計画・アセスメント (planning / severe) ---
     createHubNavItem('planning', {
-      // Hub 自体の active は /planning 配下に限定し、配下業務画面との二重 active は避ける。
       isActive: (pathname) => pathname === '/planning' || pathname.startsWith('/planning/'),
     }),
     {
@@ -197,11 +182,11 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       isActive: (pathname) => pathname === '/support-plan-guide',
       icon: undefined,
       testId: TESTIDS.nav.supportPlanGuide,
-      audience: isFieldStaffShell ? NAV_AUDIENCE.staff : NAV_AUDIENCE.all, // [Simple Mode] 参照のみ。サイドナビからは隠蔽（Hub経由）。
+      audience: isFieldStaffShell ? NAV_AUDIENCE.staff : NAV_AUDIENCE.all,
       group: 'planning' as NavGroupKey,
     },
     {
-      label: '個別支援計画更新（前回比較）',
+      label: '個別支援計画更新・前回比較',
       to: '/isp-editor',
       isActive: (pathname) => pathname.startsWith('/isp-editor'),
       icon: undefined,
@@ -209,6 +194,9 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       audience: NAV_AUDIENCE.admin,
       group: 'planning' as NavGroupKey,
     },
+    createHubNavItem('severe', {
+      isActive: (pathname) => pathname === '/severe' || pathname.startsWith('/severe/'),
+    }),
     {
       label: '支援計画シート',
       to: '/planning-sheet-list',
@@ -228,32 +216,9 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       audience: NAV_AUDIENCE.staff,
       group: 'severe' as NavGroupKey,
     },
-    {
-      label: '特性アンケート',
-      to: '/survey/tokusei',
-      isActive: (pathname) => pathname.startsWith('/survey/tokusei'),
-      icon: undefined,
-      audience: NAV_AUDIENCE.admin,
-      group: 'severe' as NavGroupKey,
-      tier: 'more',
-      featureFlag: 'todayLiteNavV2',
-    },
-    {
-      label: '行動分析',
-      to: '/analysis/dashboard',
-      isActive: (pathname) => pathname.startsWith('/analysis'),
-      icon: undefined,
-      testId: 'nav-analysis-workspace',
-      audience: isFieldStaffShell ? NAV_AUDIENCE.staff : NAV_AUDIENCE.all, // [Simple Mode] 分析は現場には重いためリーダー以上
-      group: 'severe' as NavGroupKey,
-      tier: 'more',
-      featureFlag: 'todayLiteNavV2',
-    },
 
-    // --- 3. 記録・振り返り (record) ---
-    // 順序: 運営状況 → 記録一覧(日々のサマリー) → サービス提供実績記録 → 個人月次業務日誌 → 申し送り分析
+    // --- 3. 記録・参照 (records) ---
     {
-      // Tier B: Mock混在。管理者のみ表示。
       label: '運営状況',
       to: '/dashboard',
       isActive: (pathname) => pathname === '/dashboard',
@@ -275,24 +240,6 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'records' as NavGroupKey,
     },
     {
-      // 月次記録・業務日誌プレビューは、記録一覧（/records）のサブページとして到達可能なためサイドナビから除外
-      label: 'サービス提供実績記録',
-      to: '/records/service-provision',
-      isActive: (pathname) => pathname.startsWith('/records/service-provision'),
-      icon: undefined,
-      audience: NAV_AUDIENCE.reception,
-      group: 'records' as NavGroupKey,
-    },
-    {
-      label: '個人月次業務日誌',
-      to: '/records/journal/personal',
-      isActive: (pathname) => pathname.startsWith('/records/journal/personal'),
-      icon: undefined,
-      audience: NAV_AUDIENCE.reception,
-      group: 'records' as NavGroupKey,
-    },
-    {
-      // Tier B: SP接続済だが本番運用未検証。管理者のみ表示。
       label: '申し送り分析',
       to: '/handoff-analysis',
       isActive: (pathname) => pathname.startsWith('/handoff-analysis'),
@@ -303,38 +250,19 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       featureFlag: 'todayLiteNavV2',
     },
 
-    // --- 4. 拠点運営 (ops) ---
-    // 順序: 運用メトリクス → 請求処理 → (以下条件付で追加) 職員勤怠 → 統合カレンダー等 → コンプライアンス監査
-    // NOTE: 「運営スケジュール」は /schedules/week?tab=ops に統合済み（PR #1121）。
-    //       独立ナビ項目は削除し、「スケジュール」タブから到達する。
+    // --- 4. 運営・管理 (operations / platform) ---
     createHubNavItem('operations', { tier: 'admin' }),
     {
-      // Tier C: Mock依存。管理者のみ表示。
       label: '運用メトリクス',
       to: '/ops',
       isActive: (pathname) => pathname === '/ops' || pathname.startsWith('/ops/'),
       icon: undefined,
-      audience: NAV_AUDIENCE.admin,   // [Audience] 施設長のみ（収支・稼働率等）
+      audience: NAV_AUDIENCE.admin,
       group: 'operations' as NavGroupKey,
-      tier: 'admin',                  // [Tier] 管理エリア
-      featureFlag: 'todayLiteNavV2',
-    },
-    {
-      // OSの心臓部。PDCAの停滞を可視化し、全職員の意思決定を支援。
-      label: 'PDCAサイクル監視 (OS)',
-      to: '/admin/regulatory-dashboard',
-      isActive: (pathname) => pathname === '/admin/regulatory-dashboard',
-      icon: undefined,
-      testId: 'nav-regulatory-dashboard',
-      audience: isFieldStaffShell ? NAV_AUDIENCE.admin : NAV_AUDIENCE.staff, // [Simple Mode] 現場の不安を煽らないよう隠蔽。施設長のみ。
-      group: 'severe' as NavGroupKey,
-      tier: 'more',
+      tier: 'admin',
       featureFlag: 'todayLiteNavV2',
     },
     createHubNavItem('billing', { testId: TESTIDS.nav.billing }),
-
-    // --- 5. マスタ・管理 (admin) ---
-    // 順序: 利用者マスタ → 職員マスタ → (以下条件付で追加) 管理ツール (システム設定ハブ/チェックリスト等)
     createHubNavItem('master'),
     createHubNavItem('platform'),
     {
@@ -357,12 +285,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     },
   ];
 
-  // Conditional items based on feature flags and permissions
-
-  // 支援活動マスタは支援計画シート（ISPグループ）に統合済みのためサイドナビから除外。/admin/templates ルートは引き続き有効。
-  // NOTE: 氷山PDCA は /analysis?tab=pdca に統合済み
-
-  // --- 拠点運営 (ops) ---
+  // Conditional additions
   if (staffAttendanceEnabled) {
     items.push({
       label: '職員勤怠',
@@ -389,6 +312,24 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
 
   if (isAdmin && (authzReady || skipLogin)) {
     items.push({
+      label: '適正化運用',
+      to: '/admin/compliance-dashboard',
+      isActive: (pathname: string) => pathname === '/admin/compliance-dashboard',
+      audience: NAV_AUDIENCE.admin,
+      group: 'operations' as NavGroupKey,
+      tier: 'admin',
+    });
+
+    items.push({
+      label: '制度遵守',
+      to: '/admin/regulatory-dashboard',
+      isActive: (pathname: string) => pathname === '/admin/regulatory-dashboard',
+      audience: NAV_AUDIENCE.admin,
+      group: 'operations' as NavGroupKey,
+      tier: 'admin',
+    });
+
+    items.push({
       label: '職員勤怠管理',
       to: '/admin/staff-attendance',
       isActive: (pathname: string) => pathname.startsWith('/admin/staff-attendance'),
@@ -397,54 +338,47 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       group: 'operations' as NavGroupKey,
     });
 
-    if (schedulesEnabled) {
-      items.push({
-        label: '統合リソースカレンダー',
-        to: '/admin/integrated-resource-calendar',
-        isActive: (pathname: string) => pathname.startsWith('/admin/integrated-resource-calendar'),
-        icon: undefined,
-        testId: TESTIDS.nav.integratedResourceCalendar,
-        audience: NAV_AUDIENCE.admin,
-        group: 'operations' as NavGroupKey,
-      });
-    }
-
-    items.push({
-      label: 'お部屋管理',
-      to: '/room-management',
-      isActive: (pathname: string) => pathname.startsWith('/room-management'),
-      icon: undefined,
-      testId: TESTIDS.nav.roomManagement,
-      audience: NAV_AUDIENCE.admin,
-      group: 'operations' as NavGroupKey,
-    });
-
-    // --- 拠点運営 (ops) --- 例外センター
     items.push({
       label: '例外センター',
       to: '/admin/exception-center',
       isActive: (pathname: string) => pathname.startsWith('/admin/exception-center'),
       icon: undefined,
       testId: TESTIDS.nav.exceptionCenter,
-      audience: NAV_AUDIENCE.admin,   // [Audience] 管理者のみ（エラー・逸脱対応）
+      audience: NAV_AUDIENCE.admin,
       group: 'operations' as NavGroupKey,
-      tier: 'admin',                  // [Tier] 異常検知・リカバリ用
+      tier: 'admin',
       featureFlag: 'todayLiteNavV2',
     });
 
-    // --- マスタ・管理 (admin) ---
-    // 管理ツール（ハブ）1つに集約。
-    // 自己点検・監査ログ・ナビ診断・モード切替・1日の流れ設定は /admin ハブページから到達可能。
     items.push({
       label: '管理ツール',
       to: '/admin',
-      isActive: (pathname: string) => (pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/checklist') || pathname.startsWith('/audit') || pathname.startsWith('/settings/')) && !pathname.startsWith('/admin/exception-center'),
+      isActive: (pathname: string) => (pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/checklist') || pathname.startsWith('/audit') || pathname.startsWith('/settings/')) && !pathname.startsWith('/admin/exception-center') && !pathname.startsWith('/admin/compliance-dashboard') && !pathname.startsWith('/admin/regulatory-dashboard'),
       icon: undefined,
       audience: NAV_AUDIENCE.admin,
       group: 'platform' as NavGroupKey,
     });
+
+    items.push({
+      label: 'テレメトリ',
+      to: '/admin/telemetry',
+      isActive: (pathname: string) => pathname === '/admin/telemetry',
+      icon: undefined,
+      audience: NAV_AUDIENCE.admin,
+      group: 'platform' as NavGroupKey,
+      tier: 'admin',
+    });
+
+    items.push({
+      label: '環境診断',
+      to: '/admin/status',
+      isActive: (pathname: string) => pathname === '/admin/status',
+      icon: undefined,
+      audience: NAV_AUDIENCE.admin,
+      group: 'platform' as NavGroupKey,
+      tier: 'admin',
+    });
   }
 
-  // Filter by audience (using extracted helper)
   return items.filter((item) => isNavVisible(item, navAudience));
 }

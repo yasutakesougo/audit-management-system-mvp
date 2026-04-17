@@ -1,5 +1,5 @@
 import type { Schedule } from '@/lib/mappers';
-import type { StoreUser } from '@/stores/useUsers';
+import type { IUserMaster as StoreUser } from '@/features/users/types';
 import type { Staff } from '@/types';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -23,10 +23,17 @@ const { mockUseSchedules, mockUseUsers, mockUseStaff, mockUseSP, mockEnsureOpera
   };
 });
 
-vi.mock('@/stores/useSchedules', () => ({ useSchedules: mockUseSchedules }));
-vi.mock('@/stores/useUsers', () => ({ useUsers: mockUseUsers }));
-vi.mock('@/stores/useStaff', () => ({ useStaff: mockUseStaff }));
-vi.mock('@/lib/spClient', () => ({ useSP: mockUseSP }));
+vi.mock('@/features/schedules/store', () => ({ useSchedules: mockUseSchedules }));
+vi.mock('@/features/users/store', () => ({ useUsers: mockUseUsers }));
+vi.mock('@/features/staff/store', () => ({ useStaff: mockUseStaff }));
+vi.mock('@/lib/spClient', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
+  return {
+    ...actual,
+    useSP: mockUseSP,
+    ensureConfig: () => ({ baseUrl: 'https://contoso.sharepoint.com/sites/Audit' }),
+  };
+});
 vi.mock('@/features/operation-hub/ensureCoreLists', () => ({
   ensureOperationHubLists: mockEnsureOperationHubLists,
   useEnsureOperationHubLists: mockUseEnsureOperationHubLists,
@@ -124,7 +131,14 @@ describe('useOperationHubData branch coverage', () => {
     const reloadStaff = resolvedReload();
 
     mockUseSchedules.mockReturnValue({ data: undefined, loading: true, error: new Error('schedules boom'), reload: reloadSchedules });
-    mockUseUsers.mockReturnValue({ data: undefined, loading: false, error: new Error('users boom'), reload: reloadUsers });
+    mockUseUsers.mockReturnValue({
+      data: undefined,
+      loading: false,
+      isLoading: false,
+      error: new Error('users boom'),
+      reload: reloadUsers,
+      load: reloadUsers,
+    });
     mockUseStaff.mockReturnValue({ data: undefined, loading: false, error: undefined, reload: reloadStaff });
 
     const useOperationHubData = await loadHook();
@@ -132,7 +146,7 @@ describe('useOperationHubData branch coverage', () => {
 
     expect(result.current.loading).toBe(true);
     expect(result.current.ready).toBe(false);
-    expect(result.current.errors).toEqual({ schedules: 'schedules boom', users: 'users boom', staff: undefined });
+    expect(result.current.errors).toEqual({ schedules: 'schedules boom', users: 'users boom', staff: '' });
     expect(mockUseEnsureOperationHubLists).toHaveBeenCalledWith(expect.any(Object));
 
     await act(async () => {
@@ -174,7 +188,14 @@ describe('useOperationHubData branch coverage', () => {
     const reloadStaff = resolvedReload();
 
     mockUseSchedules.mockReturnValue({ data: schedules, loading: false, error: undefined, reload: reloadSchedules });
-    mockUseUsers.mockReturnValue({ data: users, loading: false, error: undefined, reload: reloadUsers });
+    mockUseUsers.mockReturnValue({
+      data: users,
+      loading: false,
+      isLoading: false,
+      error: undefined,
+      reload: reloadUsers,
+      load: reloadUsers,
+    });
     mockUseStaff.mockReturnValue({ data: staffMembers, loading: false, error: undefined, reload: reloadStaff });
 
     const useOperationHubData = await loadHook();
@@ -183,23 +204,23 @@ describe('useOperationHubData branch coverage', () => {
     expect(result.current.ready).toBe(true);
     expect(result.current.unassignedSchedules.map((item) => item.id)).toContain(13);
     expect(result.current.kpis.find((kpi) => kpi.id === 'unassigned')?.tone).toBe('error');
-  expect(result.current.kpis.find((kpi) => kpi.id === 'coverage')?.tone).toBe('error');
+    expect(result.current.kpis.find((kpi) => kpi.id === 'coverage')?.tone).toBe('error');
 
-  const timeline = result.current.timeline;
+    const timeline = result.current.timeline;
     expect(timeline?.resources.some((resource) => resource.events.some((event) => event.conflict))).toBe(true);
     const unassignedResource = timeline?.resources.find((resource) => resource.id.startsWith('その他:'));
     expect(unassignedResource?.events).toHaveLength(1);
-  const otherGroup = timeline?.resources.find((resource) => resource.id.startsWith('その他:4'));
-  expect(otherGroup?.groupLabel).toBe('その他リソース');
+    const otherGroup = timeline?.resources.find((resource) => resource.id.startsWith('その他:4'));
+    expect(otherGroup?.groupLabel).toBe('その他リソース');
 
     const tasks = result.current.mobileTasks;
-  const statuses = tasks.map((task) => task.status).sort();
-  expect(statuses).toEqual(['alert', 'completed', 'pending', 'pending']);
+    const statuses = tasks.map((task) => task.status).sort();
+    expect(statuses).toEqual(['alert', 'completed', 'pending', 'pending']);
     expect(tasks.find((task) => task.status === 'alert')?.actions?.some((action) => action.label === '緊急連絡')).toBe(true);
 
     expect(result.current.alerts.some((alert) => alert.id.startsWith('cert-'))).toBe(true);
     expect(result.current.alerts.some((alert) => alert.id.startsWith('staff-cert'))).toBe(true);
-  expect(result.current.staff).toHaveLength(4);
+    expect(result.current.staff).toHaveLength(4);
     expect(result.current.users).toHaveLength(1);
   });
 
@@ -211,7 +232,14 @@ describe('useOperationHubData branch coverage', () => {
     const reloadStaff = resolvedReload();
 
     mockUseSchedules.mockReturnValue({ data: [], loading: false, error: undefined, reload: reloadSchedules });
-    mockUseUsers.mockReturnValue({ data: [], loading: false, error: undefined, reload: reloadUsers });
+    mockUseUsers.mockReturnValue({
+      data: [],
+      loading: false,
+      isLoading: false,
+      error: undefined,
+      reload: reloadUsers,
+      load: reloadUsers,
+    });
     mockUseStaff.mockReturnValue({
       data: [
         baseStaff({ id: 100, staffId: '100', name: '斎藤 直子', certifications: [], workDays: [], baseWorkingDays: [], role: '登録済み', active: true }),
@@ -260,7 +288,14 @@ describe('useOperationHubData branch coverage', () => {
       error: undefined,
       reload: reloadSchedules,
     });
-    mockUseUsers.mockReturnValue({ data: [], loading: false, error: undefined, reload: reloadUsers });
+    mockUseUsers.mockReturnValue({
+      data: [],
+      loading: false,
+      isLoading: false,
+      error: undefined,
+      reload: reloadUsers,
+      load: reloadUsers,
+    });
     mockUseStaff.mockReturnValue({
       data: [baseStaff({ id: 200, staffId: '200', name: '解析 対象', role: 'その他', employmentType: 'その他', active: true })],
       loading: false,

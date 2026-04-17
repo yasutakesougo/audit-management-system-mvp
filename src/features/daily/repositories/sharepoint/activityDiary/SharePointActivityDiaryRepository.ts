@@ -1,5 +1,5 @@
 import type { SpFetchFn } from '@/lib/sp/spLists';
-import type { ActivityDiaryUpsert } from '@/lib/spActivityDiary';
+import type { ActivityDiaryUpsert } from '../../../domain/activityDiaryTypes';
 import { AD_FIELDS, getADListTitle } from './constants';
 import { ActivityDiarySchemaResolver } from './modules/SchemaResolver';
 import { ActivityDiaryDataAccess } from './modules/DataAccess';

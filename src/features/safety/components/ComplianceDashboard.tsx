@@ -40,6 +40,7 @@ import { TESTIDS } from '@/testids';
 import { CommitteeMeetingDialog } from './CommitteeMeetingDialog';
 import { GuidelineVersionDialog } from './GuidelineVersionDialog';
 import { TrainingRecordDialog } from './TrainingRecordDialog';
+import { formatDateYmd } from '@/lib/dateFormat';
 
 // ── Local (split) ──
 import type { ComplianceLevel } from './compliance-dashboard/types';
@@ -169,7 +170,7 @@ const ComplianceDashboard: React.FC = () => {
           mainValue={`${committeeSummary.currentFiscalYearMeetings} / 4回`}
           subText={
             committeeSummary.lastMeetingDate
-              ? `最終開催: ${committeeSummary.lastMeetingDate}`
+              ? `最終開催: ${formatDateYmd(committeeSummary.lastMeetingDate)}`
               : '開催記録なし'
           }
           testId={TESTIDS['compliance-overview-committee']}
@@ -193,7 +194,7 @@ const ComplianceDashboard: React.FC = () => {
           mainValue={`${trainingSummary.currentFiscalYearTrainings} / 2回`}
           subText={
             trainingSummary.lastTrainingDate
-              ? `最終研修: ${trainingSummary.lastTrainingDate}`
+              ? `最終研修: ${formatDateYmd(trainingSummary.lastTrainingDate)}`
               : '研修記録なし'
           }
           testId={TESTIDS['compliance-overview-training']}

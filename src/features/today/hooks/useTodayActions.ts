@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useUsers } from '@/stores/useUsers';
+import { useUsers } from '@/features/users/store';
 import { useQuery } from '@tanstack/react-query';
 import { useDailyRecordRepository } from '@/features/daily/repositoryFactory';
 import { buildDailyRecordExceptions } from '@/features/exceptions/domain/buildDailyRecordExceptions';
