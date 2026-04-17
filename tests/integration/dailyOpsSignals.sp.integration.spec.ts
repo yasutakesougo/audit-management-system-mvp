@@ -9,10 +9,10 @@ runListIntegration({
   name: 'DailyOpsSignals',
   siteUrl,
   listTitle: 'DailyOpsSignals',
-  keyField: 'recordDate',
+  keyField: 'date',
   selectFields: [
     'Title',
-    'recordDate',
+    'date',
     'targetType',
     'targetId',
     'kind',
@@ -24,7 +24,7 @@ runListIntegration({
   fixedKeyValue: FIXED_DATE,
   makeUpsertPayload: (key) => ({
     Title: 'E2E Signal',
-    recordDate: key,
+    date: key,
     targetType: 'User',
     targetId: 'E2E_INTEGRATION',
     kind: 'EarlyLeave',
