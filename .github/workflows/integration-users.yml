@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   users:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -39,6 +39,9 @@ jobs:
       - name: Install deps
         run: npm ci
 
+      - name: Install Playwright browsers (and OS deps)
+        run: npx playwright install --with-deps chromium
+
       - name: Restore Playwright storageState
         shell: bash
         run: |
@@ -47,6 +50,11 @@ jobs:
           test -s tests/.auth/storageState.json
         env:
           PW_STORAGE_STATE_B64: ${{ secrets.PW_STORAGE_STATE_B64 }}
+
+      - name: Verify SharePoint Auth (Pre-check)
+        env:
+          SHAREPOINT_SITE: ${{ secrets.SHAREPOINT_SITE }}
+        run: node scripts/verify-sharepoint-auth.mjs
 
       - name: Run integration (Users_Master)
         env:
