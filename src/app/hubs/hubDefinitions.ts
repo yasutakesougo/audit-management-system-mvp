@@ -535,7 +535,7 @@ export const HUB_DEFINITIONS: Record<HubId, HubDefinition> = {
     primaryCtaLabel: '支援画面を開く',
     telemetryName: 'hub_severe_view',
     requiredRole: 'viewer',
-    standaloneRoute: false,
+    standaloneRoute: true,
     pageTitle: 'Severe Support',
     breadcrumbLabel: 'Severe Support',
     analyticsName: 'hub_severe',

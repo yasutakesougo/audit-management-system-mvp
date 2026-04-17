@@ -12,6 +12,7 @@ export const APP_ROUTE_PATHS = [
   'dashboard/briefing',
   'today',
   'planning',
+  'severe',
   'operations',
   'master',
   'platform',
