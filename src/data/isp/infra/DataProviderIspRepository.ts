@@ -5,7 +5,9 @@ import {
   washRow,
   washRows
 } from '@/lib/sp/helpers';
-import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
+import { reportResourceResolution, useDataProviderObservabilityStore } from '@/lib/data/dataProviderObservabilityStore';
+import { summarizeSpError } from '@/lib/errors';
+import { auditLog } from '@/lib/debugLogger';
 import type { 
   IspRepository, 
   IspCreateInput, 
@@ -77,13 +79,25 @@ export class DataProviderIspRepository implements IspRepository {
       };
       return this.resolution;
     } catch (error) {
+      const { message, httpStatus } = summarizeSpError(error);
+      const currentUser = useDataProviderObservabilityStore.getState().currentUser ?? undefined;
+
       reportResourceResolution({
         resourceName: 'ISP_Master',
         resolvedTitle: this.listTitle,
         fieldStatus: {},
         essentials: ISP_MASTER_ESSENTIALS as unknown as string[],
-        error: String(error)
+        error: message,
+        httpStatus,
       });
+
+      auditLog.warn('sp', 'list_read_failed', {
+        listKey: 'isp_master',
+        resourceName: 'ISP_Master',
+        httpStatus,
+        currentUser,
+      });
+
       throw error;
     }
   }

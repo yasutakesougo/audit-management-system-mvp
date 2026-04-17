@@ -121,6 +121,40 @@ export const HeroActionCard: React.FC<HeroActionCardProps> = ({
 }) => {
   const theme = useTheme();
 
+  // ── No work left: Peace-of-Mind Hero state ──
+  if ((!sceneAction || sceneAction.priority === 'low') && !nextAction.item) {
+    return (
+      <Paper
+        data-testid="hero-all-done-card"
+        elevation={0}
+        sx={{
+          p: { xs: 3, sm: 4 },
+          textAlign: 'center',
+          bgcolor: alpha(theme.palette.success.main, 0.04),
+          border: '1px solid',
+          borderColor: alpha(theme.palette.success.main, 0.15),
+          borderRadius: 2,
+        }}
+      >
+        <Typography
+          variant="h5"
+          fontWeight="bold"
+          sx={{ mb: 1.5, color: 'success.dark' }}
+        >
+          ✨ お疲れ様です
+        </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+          本日の記録はすべて完了しています。<br />
+          現在、未入力の項目はありません。
+        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+          <Chip label="記録完了" color="success" size="small" variant="filled" />
+          <Chip label="この内容でOKです" color="success" size="small" variant="outlined" />
+        </Box>
+      </Paper>
+    );
+  }
+
   // ── Fallback: sceneAction が無効なら既存 NextActionCard を表示 ──
   if (!isSceneActionValid(sceneAction)) {
     return (

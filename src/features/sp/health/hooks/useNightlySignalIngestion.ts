@@ -1,13 +1,8 @@
 import React from 'react';
 import { useSP } from '@/lib/spClient';
 import { auditLog } from '@/lib/debugLogger';
-import {
-  DIAGNOSTICS_REPORTS_LIST_TITLE,
-  DIAGNOSTICS_REPORTS_SELECT_FIELDS,
-} from '@/sharepoint/fields';
 import { reportDiagnosticsReport, mapPatrolEventToSignal, type PatrolEvent } from '../mapping';
 import { reportSpHealthEvent } from '../spHealthSignalStore';
-import type { DiagnosticsReportItem } from '@/sharepoint/diagnosticsReports';
 import { SharePointDriftEventRepository } from '@/features/diagnostics/drift/infra/SharePointDriftEventRepository';
 
 /**
@@ -25,28 +20,33 @@ export function useNightlySignalIngestion() {
     if (!sp || ranRef.current) return;
     ranRef.current = true;
 
+    let cancelled = false;
+    const controller = new AbortController();
+    const isAbortError = (err: unknown) =>
+      (err as Error)?.name === 'AbortError' ||
+      (err as { code?: number | string })?.code === 20 ||
+      (err as { code?: number | string })?.code === 'ABORT_ERR';
+
     const ingest = async () => {
       // 1. Diagnostics_Reports の取得
       try {
-        const diagReports = await sp.getListItemsByTitle(
-          DIAGNOSTICS_REPORTS_LIST_TITLE,
-          [...DIAGNOSTICS_REPORTS_SELECT_FIELDS],
-          undefined,
-          'Modified desc',
-          1
-        );
+        const { getLatestDiagnosticsReport } = await import('@/sharepoint/diagnosticsReports');
+        const report = await getLatestDiagnosticsReport(sp, controller.signal);
+        if (cancelled) return;
 
-        if (diagReports.length > 0) {
-          reportDiagnosticsReport(diagReports[0] as unknown as DiagnosticsReportItem);
+        if (report) {
+          reportDiagnosticsReport(report);
           auditLog.debug('health:ingestion', 'Diagnostics report ingested.');
         }
       } catch (error) {
+        if (cancelled || isAbortError(error)) return;
         auditLog.warn('health:ingestion', 'Failed to fetch diagnostics reports (skipping).', error);
       }
 
       // 2. DriftEventsLog の取得
       try {
-        const driftLogs = await driftRepository.getEvents();
+        const driftLogs = await driftRepository.getEvents(undefined, controller.signal);
+        if (cancelled) return;
 
         for (const log of driftLogs.slice(0, 10)) {
           const event: PatrolEvent = {
@@ -63,12 +63,19 @@ export function useNightlySignalIngestion() {
         }
         auditLog.debug('health:ingestion', 'Drift logs ingested.');
       } catch (error) {
+        if (cancelled || isAbortError(error)) return;
         auditLog.warn('health:ingestion', 'Failed to fetch drift logs (skipping).', error);
       }
 
+      if (cancelled) return;
       auditLog.info('health:ingestion', 'Nightly signals ingestion process completed.');
     };
 
     ingest();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, [driftRepository, sp]);
 }

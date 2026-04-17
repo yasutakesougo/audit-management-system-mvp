@@ -56,6 +56,14 @@ export function useAppShellState() {
   const setCurrentUserRole = useAuthStore((s) => s.setCurrentUserRole);
   const { role, ready: authzReady } = useUserAuthz();
   const isAdmin = canAccess(role, 'admin');
+  const isReception = canAccess(role, 'reception');
+
+  // ── Pruning Flags (Simple Mode) ──
+  const canSeeAdmin = isAdmin;
+  const canSeeDiagnostics = isAdmin;
+  const canUseBulkActions = isReception || isAdmin;
+  const isFieldStaffShell = !isReception && !isAdmin; // role === 'viewer'
+
   const navAudience: NavAudience = roleToNavAudience(role);
   const theme = useTheme();
   const { settings, updateSettings } = useSettingsContext();
@@ -350,6 +358,11 @@ export function useAppShellState() {
     hasMoreNavItems: Boolean(todayLiteNavV2 && navItemsByTier.more.length > 0),
     todayLiteNavV2: Boolean(todayLiteNavV2),
     isAdmin,
+    // Pruning Flags
+    canSeeAdmin,
+    canSeeDiagnostics,
+    canUseBulkActions,
+    isFieldStaffShell,
     // Handlers
     handleNavSearchKeyDown,
     handleMobileNavigate,

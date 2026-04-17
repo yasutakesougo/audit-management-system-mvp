@@ -1,5 +1,4 @@
 import {
-    calculateRetryAfterTimestamp,
     getNextCooldownTimestamp
 } from '@/features/dashboard/logic/syncGuardrails';
 import { HYDRATION_FEATURES, estimatePayloadSize, startFeatureSpan } from '@/hydration/features';
@@ -142,10 +141,22 @@ export function useSchedulesToday(max: number = 5) {
 				if (typeof window !== 'undefined' && !window.navigator.onLine) {
 					throw new Error('Network Error: Offline');
 				}
+
+				// 指数バックオフ待機中の場合はスキップ（Abortループ防止）
+				// 注意: failureCount は依存配列から外したため、ここでの return は
+				// 「手動更新(tick)」や「max変更」があった場合のガードとして機能する。
+				if (Date.now() < retryAfter) {
+					return;
+				}
+
+				// 実際のフェッチ開始直前に AbortController をセットアップ
+				const controller = new AbortController();
+				abortRef.current?.abort();
+				abortRef.current = controller;
+
 				setLoading(true);
 				setError(null);
 				if (shouldSkipSharePoint()) {
-					// Extra safety within async loop
 					throw new Error('SharePoint sync is disabled by configuration.');
 				}
 
@@ -154,6 +165,8 @@ export function useSchedulesToday(max: number = 5) {
 					range,
 					signal: controller.signal,
 				});
+
+				if (!alive) return;
 
 				setFailureCount(0);
 				setRetryAfter(0);
@@ -165,9 +178,7 @@ export function useSchedulesToday(max: number = 5) {
 					.slice(0, safeMax)
 					.map(toMiniSchedule);
 
-				if (alive) {
-					setData(items);
-				}
+				setData(items);
 
 				endSpan({
 					meta: {
@@ -180,21 +191,32 @@ export function useSchedulesToday(max: number = 5) {
 				});
 			} catch (err) {
 				if (!alive) return;
-				if (controller.signal.aborted) {
+				
+				// Abortエラー時は特別な処理をせず Span 終了のみ
+				const isAbort = (err as Error)?.name === 'AbortError' || 
+								(err as { code?: number | string })?.code === 20 ||
+								(err as { code?: number | string })?.code === 'ABORT_ERR';
+				if (isAbort) {
 					setLoading(false);
 					endSpan({ meta: { status: 'cancelled' } });
 					return;
 				}
-				if ((err as Error)?.name === 'AbortError') {
-					setLoading(false);
-					endSpan({ meta: { status: 'cancelled' } });
-					return;
-				}
-				// Handle non-abort errors
+
+				// 一般エラーの処理
 				setError(err instanceof Error ? err : new Error(String(err)));
 				const nextFailureCount = failureCount + 1;
 				setFailureCount(nextFailureCount);
-				setRetryAfter(calculateRetryAfterTimestamp(nextFailureCount));
+				
+				const delay = Math.min(1000 * Math.pow(2, nextFailureCount), 30000);
+				const nextRetryAfter = Date.now() + delay;
+				setRetryAfter(nextRetryAfter);
+
+				// 次の自動リトライをスケジュール
+				setTimeout(() => {
+					if (alive) {
+						setTick(t => t + 1);
+					}
+				}, delay + 200);
 
 				endSpan({
 					meta: { status: 'error' },
@@ -212,9 +234,10 @@ export function useSchedulesToday(max: number = 5) {
 				endSpan({ meta: { status: 'cancelled' } });
 			}
 			alive = false;
-			controller.abort();
+			// ここでの abort() は「コンポーネントのアンマウント」または「依存（tick/max）変更」時のみ
+			abortRef.current?.abort();
 		};
-	}, [safeMax, todayISO, tick, failureCount, repository, source]);
+	}, [safeMax, todayISO, tick, repository, source]);
 
 	return {
 		data,

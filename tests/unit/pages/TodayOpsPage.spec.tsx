@@ -54,7 +54,10 @@ vi.mock('../../../src/features/auth/store', () => ({
 }));
 
 vi.mock('../../../src/features/today/domain', () => ({
-  useTodaySummary: vi.fn(() => ({})),
+  useTodaySummary: vi.fn(() => ({
+    todayExceptionActions: [],
+    todayExceptions: [],
+  })),
 }));
 
 vi.mock('../../../src/features/today/hooks/useApprovalFlow', () => ({

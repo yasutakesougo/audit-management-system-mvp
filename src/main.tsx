@@ -230,6 +230,12 @@ const run = async (): Promise<void> => {
           ?? (activeAccount as { homeAccountId?: string })?.homeAccountId
           ?? '(unknown)';
         console.info('[msal] ✅ redirect success:', username);
+        try {
+          const { useDataProviderObservabilityStore } = await import('@/lib/data/dataProviderObservabilityStore');
+          useDataProviderObservabilityStore.getState().setCurrentUser(username);
+        } catch {
+          // observability store is optional at bootstrap; ignore failures
+        }
         const msalKeys = Object.keys(sessionStorage).filter(k => k.toLowerCase().includes('msal'));
         console.info('[msal] sessionStorage MSAL keys:', msalKeys);
 

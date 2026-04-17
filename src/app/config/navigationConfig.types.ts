@@ -69,6 +69,7 @@ export interface CreateNavItemsConfig {
   isAdmin: boolean;
   authzReady: boolean;
   navAudience: NavAudience;
+  isFieldStaffShell?: boolean;
   skipLogin?: boolean;
 }
 

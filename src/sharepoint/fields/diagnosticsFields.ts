@@ -28,10 +28,10 @@ export const DIAGNOSTICS_REPORTS_CANDIDATES = {
   title: [FIELD_MAP_DIAGNOSTICS_REPORTS.title],
   overall: [FIELD_MAP_DIAGNOSTICS_REPORTS.overall],
   topIssue: [FIELD_MAP_DIAGNOSTICS_REPORTS.topIssue, 'TopIssue0', 'Top_x0020_Issue'],
-  summaryText: [FIELD_MAP_DIAGNOSTICS_REPORTS.summaryText],
-  reportLink: [FIELD_MAP_DIAGNOSTICS_REPORTS.reportLink],
+  summaryText: [FIELD_MAP_DIAGNOSTICS_REPORTS.summaryText, 'Summary_x0020_Text'],
+  reportLink: [FIELD_MAP_DIAGNOSTICS_REPORTS.reportLink, 'Report_x0020_Link'],
   notified: [FIELD_MAP_DIAGNOSTICS_REPORTS.notified],
-  notifiedAt: [FIELD_MAP_DIAGNOSTICS_REPORTS.notifiedAt],
+  notifiedAt: [FIELD_MAP_DIAGNOSTICS_REPORTS.notifiedAt, 'Notified_x0020_At', 'NotifiedAt0'],
   created: [FIELD_MAP_DIAGNOSTICS_REPORTS.created],
   modified: [FIELD_MAP_DIAGNOSTICS_REPORTS.modified],
 } as const;

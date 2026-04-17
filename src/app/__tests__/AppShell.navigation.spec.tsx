@@ -69,12 +69,12 @@ function renderShell() {
 }
 
 describe('AppShell navigation exposure', () => {
-  // TODO(issue #1433): pre-existing expectation drift. Re-enable after isolated fix.
-  it.skip('hides analysis/ops/exceptions/handoff-analysis for viewer when todayLiteNavV2 is on', () => {
+  // Verify that certain items are correctly hidden when todayLiteNavV2 is enabled for non-admin users.
+  it('hides analysis/ops/exceptions/handoff-analysis for viewer when todayLiteNavV2 is on', () => {
     mockRole = 'viewer';
     renderShell();
 
-    expect(screen.queryByText('分析ワークスペース')).not.toBeInTheDocument();
+    expect(screen.queryByText('行動分析')).not.toBeInTheDocument();
     expect(screen.queryByText('運用メトリクス')).not.toBeInTheDocument();
     expect(screen.queryByText('例外センター')).not.toBeInTheDocument();
     expect(screen.queryByText('申し送り分析')).not.toBeInTheDocument();

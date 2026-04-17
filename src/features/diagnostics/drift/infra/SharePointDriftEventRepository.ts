@@ -5,6 +5,7 @@ import { buildDateTime, buildEq, buildGe, joinAnd } from '@/sharepoint/query/bui
 import { DRIFT_LOG_CANDIDATES } from '@/sharepoint/fields/diagnosticsFields';
 import { extractMissingField, resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 import { auditLog } from '@/lib/debugLogger';
+import { summarizeSpError } from '@/lib/errors';
 
 /**
  * 依存関係の境界遵守のためのローカルインターフェース
@@ -12,7 +13,7 @@ import { auditLog } from '@/lib/debugLogger';
 export interface ISpOperations {
   createItem: (listTitle: string, payload: Record<string, unknown>) => Promise<unknown>;
   updateItemByTitle: (listTitle: string, id: number, payload: Record<string, unknown>) => Promise<unknown>;
-  getListItemsByTitle: <T>(listTitle: string, select?: string[], filter?: string, orderby?: string, top?: number) => Promise<T[]>;
+  getListItemsByTitle: <T>(listTitle: string, select?: string[], filter?: string, orderby?: string, top?: number, signal?: AbortSignal) => Promise<T[]>;
   getListFieldInternalNames?: (listTitle: string) => Promise<Set<string>>;
 }
 
@@ -36,7 +37,11 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
     getSchema?: (listTitle: string) => Promise<string[]> 
   }) {}
 
-  private rf(key: keyof typeof DRIFT_LOG_CANDIDATES): string {
+  private rf(key: keyof typeof DRIFT_LOG_CANDIDATES): string | undefined {
+    return this.resolvedFields[key];
+  }
+
+  private rfWithFallback(key: keyof typeof DRIFT_LOG_CANDIDATES): string {
     return this.resolvedFields[key] || DRIFT_LOG_CANDIDATES[key][0];
   }
 
@@ -44,7 +49,8 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
     row: Record<string, unknown>,
     key: keyof typeof DRIFT_LOG_CANDIDATES,
   ): T | undefined {
-    const probe = [this.rf(key), ...DRIFT_LOG_CANDIDATES[key]];
+    const rf = this.rf(key);
+    const probe = rf ? [rf, ...DRIFT_LOG_CANDIDATES[key]] : DRIFT_LOG_CANDIDATES[key];
     const candidates = Array.from(new Set(probe));
     for (const candidate of candidates) {
       if (Object.prototype.hasOwnProperty.call(row, candidate)) {
@@ -69,10 +75,15 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
   }
 
   private isListViewThresholdError(err: unknown): boolean {
-    if (typeof err !== 'object' || err === null) return false;
-    const status = 'status' in err ? (err as { status?: number }).status : undefined;
-    const message = 'message' in err ? String((err as { message?: unknown }).message ?? '') : '';
-    return status === 500 && /list view threshold/i.test(message);
+    const { httpStatus, message } = summarizeSpError(err);
+    if (httpStatus !== 500) return false;
+    
+    return (
+      /list view threshold/i.test(message) ||
+      /リストビュー.*しきい値/.test(message) ||
+      /しきい値を超えている/.test(message) ||
+      message.includes('5000')
+    );
   }
 
   private isRequiredFieldKey(key: keyof typeof DRIFT_LOG_CANDIDATES): boolean {
@@ -80,7 +91,11 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
   }
 
   private isRequiredPhysicalField(fieldName: string): boolean {
-    return [this.rf('listName'), this.rf('fieldName'), this.rf('detectedAt')].includes(fieldName);
+    return [
+      this.rfWithFallback('listName'), 
+      this.rfWithFallback('fieldName'), 
+      this.rfWithFallback('detectedAt')
+    ].includes(fieldName);
   }
 
   private buildCreatePayload(event: DriftEvent, includeOptional: boolean): Record<string, unknown> | null {
@@ -92,7 +107,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       key: keyof typeof DRIFT_LOG_CANDIDATES,
       value: unknown,
     ): boolean => {
-      const physicalName = this.rf(key);
+      const physicalName = this.rfWithFallback(key);
       if (!physicalName || this.blockedPhysicalFields.has(physicalName)) {
         return !this.isRequiredFieldKey(key);
       }
@@ -164,6 +179,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       resolved?: boolean;
       since?: string;
     },
+    signal?: AbortSignal,
   ): Promise<DriftEvent[]> {
     try {
       const items = await this.spClient.getListItemsByTitle<Record<string, unknown>>(
@@ -172,6 +188,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         filterQuery,
         `${detectedAtField} desc`,
         100,
+        signal,
       );
       return items.map((item) => this.mapItemToEvent(item));
     } catch (err) {
@@ -179,6 +196,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         throw err;
       }
 
+      const { sprequestguid } = summarizeSpError(err);
       auditLog.warn(
         'diagnostics:drift',
         'DriftEventRepository threshold fallback: retrying with Id-desc scan.',
@@ -186,6 +204,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
           listTitle,
           filterQuery,
           orderBy: `${detectedAtField} desc`,
+          sprequestguid
         },
       );
 
@@ -195,6 +214,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         undefined,
         'Id desc',
         200,
+        signal,
       );
 
       return fallbackItems
@@ -237,6 +257,13 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         this.missingLogicalFields = new Set(
           res.missing as Array<keyof typeof DRIFT_LOG_CANDIDATES>,
         );
+
+        auditLog.debug('diagnostics:drift', 'DriftEventRepository initialized.', {
+          listTitle,
+          resolvedCount: Object.values(res.resolved).filter(Boolean).length,
+          missingCount: res.missing.length,
+          missingFields: res.missing,
+        });
       } catch (err) {
         auditLog.warn('diagnostics:drift', 'DriftEventRepository initialization failed.', err);
       }
@@ -329,7 +356,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
     listName?: string;
     resolved?: boolean;
     since?: string;
-  }): Promise<DriftEvent[]> {
+  }, signal?: AbortSignal): Promise<DriftEvent[]> {
     try {
       const entry = findListEntry('drift_events_log');
       if (!entry) return [];
@@ -337,47 +364,55 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       const listTitle = entry.resolve();
       await this.initializeResolvedFields(listTitle);
       
-      // クエリビルド
+      // クエリビルド (実在するフィールドのみ使用)
       const filters: string[] = [];
       const listNameField = this.rf('listName');
       const resolvedField = this.rf('resolved');
       const detectedAtField = this.rf('detectedAt');
 
-      if (filter?.listName) {
+      if (filter?.listName && listNameField) {
         filters.push(buildEq(listNameField, filter.listName));
       }
-      if (filter?.resolved !== undefined) {
+      if (filter?.resolved !== undefined && resolvedField) {
         filters.push(buildEq(resolvedField, filter.resolved));
       }
-      if (filter?.since) {
+      if (filter?.since && detectedAtField) {
         filters.push(buildGe(detectedAtField, buildDateTime(filter.since)));
       }
 
-      const select = Array.from(
-        new Set([
-          'Id',
-          'ID',
-          this.rf('listName'),
-          this.rf('fieldName'),
-          this.rf('detectedAt'),
-          this.rf('severity'),
-          this.rf('resolutionType'),
-          this.rf('driftType'),
-          this.rf('resolved'),
-        ]),
-      );
+      const selectRaw = [
+        'Id',
+        'ID',
+        this.rf('listName'),
+        this.rf('fieldName'),
+        this.rf('detectedAt'),
+        this.rf('severity'),
+        this.rf('resolutionType'),
+        this.rf('driftType'),
+        this.rf('resolved'),
+      ];
+
+      // リストに実在しないフィールドを $select から完全に除外する (400エラー防止)
+      const select = selectRaw.filter((f): f is string => !!f);
 
       const events = await this.fetchEventsWithThresholdFallback(
         listTitle,
         select,
         joinAnd(filters) || undefined,
-        detectedAtField,
+        detectedAtField || 'Detected_x0020_At', // OrderBy fallback
         filter,
+        signal,
       );
 
       return events;
 
     } catch (err) {
+      // Abortエラー時は静かに終了（ログノイズ抑制）
+      const isAbort = (err as Error)?.name === 'AbortError' || 
+                      (err as { code?: number | string })?.code === 20 ||
+                      (err as { code?: number | string })?.code === 'ABORT_ERR';
+      if (isAbort) return [];
+
       auditLog.warn('diagnostics:drift', 'DriftEventRepository failed to fetch events (fail-open).', err);
       return [];
     }
@@ -390,9 +425,12 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
 
       const listTitle = entry.resolve();
       await this.initializeResolvedFields(listTitle);
-      await this.spClient.updateItemByTitle(listTitle, Number(id), {
-        [this.rf('resolved')]: true
-      });
+      const resolvedField = this.rf('resolved');
+      if (resolvedField) {
+        await this.spClient.updateItemByTitle(listTitle, Number(id), {
+          [resolvedField]: true
+        });
+      }
     } catch (err) {
       auditLog.warn('diagnostics:drift', 'DriftEventRepository failed to mark event as resolved (fail-open).', err);
     }

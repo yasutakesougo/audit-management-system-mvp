@@ -1,45 +1,38 @@
-import { motionTokens } from '@/app/theme';
-import type { AbcCountBySlot } from '@/domain/abc/buildAbcCountBySlot';
 import type { BehaviorInterventionPlan } from '@/features/analysis/domain/interventionTypes';
-import BipSummaryPopover from '@/features/daily/components/procedure/BipSummaryPopover';
 import { getScheduleKey } from '@/features/daily/domain/getScheduleKey';
 import EditIcon from '@mui/icons-material/Edit';
-import EditNoteRoundedIcon from '@mui/icons-material/EditNoteRounded';
-import ShieldIcon from '@mui/icons-material/Shield';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
+import CardActionArea from '@mui/material/CardActionArea';
 import Chip from '@mui/material/Chip';
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import IconButton from '@mui/material/IconButton';
 import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
+import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import type { ReactNode } from 'react';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
-
+import React, { memo, useMemo } from 'react';
 import type { ProcedureSource } from '@/features/daily/domain/ProcedureRepository';
+import { getParentOrderForChild } from '@/features/planning-sheet/constants/procedureRows';
 
 export type ScheduleItem = {
   id?: string;
   time: string;
   activity: string;
   instruction: string;
+  activityDetail?: string;
+  instructionDetail?: string;
   isKey: boolean;
-  /** この時間帯に紐づく行動対応プラン（BIP）のIDリスト */
   linkedInterventionIds?: string[];
-  /** データの由来（'planning_sheet' の場合にバッジ表示） */
   source?: ProcedureSource;
+  sourceStepOrder?: number;
 };
 
 type GuidedProcedurePanelProps = {
   title?: string;
   schedule: ScheduleItem[];
-  isAcknowledged: boolean;
-  onAcknowledged: () => void;
   onEdit?: () => void;
   selectedStepId?: string | null;
   onSelectStep?: (step: ScheduleItem, stepId: string) => void;
@@ -49,23 +42,16 @@ type GuidedProcedurePanelProps = {
   onToggleUnfilledOnly?: () => void;
   unfilledCount?: number;
   totalCount?: number;
-  /** BIPポップオーバー表示用の全プランデータ */
   interventionPlans?: BehaviorInterventionPlan[];
-  /** 保存済みスロットの観察テキスト (slotKey → 観察文) */
-  savedObservations?: Map<string, string>;
-  /** スロット別 ABC 記録件数 (slotId → count) */
-  abcCountBySlot?: AbcCountBySlot;
-  /** ABC バッジクリック時のコールバック (slotId, slotLabel) */
-  onAbcBadgeClick?: (slotId: string, slotLabel: string) => void;
-  children?: undefined;
+  selectableStateByStepId?: Map<string, { conflicted: boolean; blockingOrders: number[] }>;
+  hiddenStepOrders?: Set<number>;
+  children?: React.ReactNode;
 };
 
 type CustomProcedurePanelProps = {
   title?: string;
-  children: ReactNode;
+  children: React.ReactNode;
   schedule?: never;
-  isAcknowledged?: never;
-  onAcknowledged?: never;
 };
 
 export type ProcedurePanelProps = GuidedProcedurePanelProps | CustomProcedurePanelProps;
@@ -75,103 +61,169 @@ const isGuidedProcedurePanel = (props: ProcedurePanelProps): props is GuidedProc
 
 const getItemScheduleKey = (item: ScheduleItem) => getScheduleKey(item.time, item.activity);
 
-export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
+/**
+ * 子行の活動名から冗長な親の名称を削除する
+ */
+const cleanActivityName = (name: string, isNested: boolean) => {
+  if (!isNested) return name;
+  const match = name.match(/[(（](.*?)[)）]/);
+  const cleaned = match && match[1] ? match[1] : name.replace(/^.*日中活動\s*/, '');
+  if (cleaned === '外活動') return '外活動参加';
+  return cleaned;
+};
+
+const ProcedureStepRow = ({
+  item,
+  isSelected,
+  isFilled,
+  onSelect,
+  selectableState,
+  isChild = false,
+}: {
+  item: ScheduleItem;
+  isSelected: boolean;
+  isFilled: boolean;
+  onSelect?: (step: ScheduleItem, id: string) => void;
+  selectableState?: { conflicted: boolean; blockingOrders: number[] };
+  isChild?: boolean;
+}) => {
+  const key = getItemScheduleKey(item);
+  const stageLabel = (item.sourceStepOrder === 16 || item.sourceStepOrder === 18) ? '準備' : '参加';
+  const displayActivity = isChild ? cleanActivityName(item.activity, true) : item.activity;
+
+  return (
+    <Card
+      onClick={() => onSelect?.(item, key)}
+      sx={{
+        cursor: 'pointer',
+        mb: 0.5,
+        border: '1px solid',
+        borderColor: isSelected ? 'primary.main' : isFilled ? 'success.light' : 'divider',
+        bgcolor: isSelected ? 'action.selected' : isFilled ? 'success.50' : 'background.paper',
+        '&:hover': { bgcolor: 'action.hover' },
+        transition: 'all 0.2s ease',
+        boxShadow: isSelected ? 2 : 0,
+      }}
+    >
+      <CardActionArea sx={{ p: 1.5 }}>
+        <Stack direction="row" spacing={2} alignItems="flex-start">
+          {/* Time / Stage Column */}
+          <Box sx={{ minWidth: 80, pt: 0.5 }}>
+            <Chip 
+              size="small" 
+              label={isChild ? stageLabel : item.time} 
+              color={isChild ? "warning" : "primary"}
+              variant={isChild ? "outlined" : "filled"}
+              sx={{ fontWeight: 700, width: '100%', height: 24 }}
+            />
+          </Box>
+
+          {/* Details Column */}
+          <Box sx={{ flex: 1 }}>
+            <Stack spacing={0.5}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Typography variant={isChild ? "body2" : "body1"} fontWeight={700}>
+                  {displayActivity}
+                </Typography>
+                {isFilled && <CheckCircleIcon color="success" sx={{ fontSize: 18 }} />}
+                {selectableState?.conflicted && (
+                  <Tooltip title={`競合: 行${selectableState.blockingOrders.join(', ')}が既に記録されています`}>
+                    <Chip size="small" label="競合あり" color="error" variant="filled" sx={{ height: 20, fontSize: 10 }} />
+                  </Tooltip>
+                )}
+              </Stack>
+
+              {item.activityDetail && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, lineHeight: 1.4 }}>
+                  <Box component="span" sx={{ bgcolor: 'grey.200', px: 0.5, borderRadius: 0.5, fontSize: '0.65rem', fontWeight: 700, flexShrink: 0 }}>本人</Box>
+                  {item.activityDetail}
+                </Typography>
+              )}
+
+              {item.instructionDetail && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, lineHeight: 1.4 }}>
+                  <Box component="span" sx={{ bgcolor: 'secondary.100', px: 0.5, borderRadius: 0.5, fontSize: '0.65rem', fontWeight: 700, flexShrink: 0, color: 'secondary.main' }}>支援</Box>
+                  {item.instructionDetail}
+                </Typography>
+              )}
+            </Stack>
+          </Box>
+        </Stack>
+      </CardActionArea>
+    </Card>
+  );
+};
+
+export const ProcedurePanel = (props: ProcedurePanelProps): JSX.Element => {
   const isGuided = isGuidedProcedurePanel(props);
   const {
     title,
     schedule = [],
-    isAcknowledged = false,
-    onAcknowledged: _onAcknowledged,
     onEdit,
     selectedStepId,
     onSelectStep,
-    filledStepIds,
-    scrollToStepId,
+    filledStepIds = new Set(),
     showUnfilledOnly = false,
     onToggleUnfilledOnly,
     unfilledCount,
     totalCount,
-    interventionPlans,
-    savedObservations,
-    abcCountBySlot,
-    onAbcBadgeClick,
-    children,
-  } = isGuided
-    ? props
-    : {
-        title: props.title,
-        children: props.children,
-      };
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const itemRefs = useRef(new Map<string, HTMLLIElement | null>());
-  const lastScrolledStepRef = useRef<string | null>(null);
+    selectableStateByStepId,
+    hiddenStepOrders,
+  } = isGuided ? props : { title: props.title, schedule: [], onEdit: undefined, selectedStepId: null, onSelectStep: undefined, filledStepIds: new Set(), showUnfilledOnly: false, onToggleUnfilledOnly: undefined, unfilledCount: 0, totalCount: 0, selectableStateByStepId: new Map(), hiddenStepOrders: new Set() };
 
-  // BIP Popover state
-  const [bipAnchorEl, setBipAnchorEl] = useState<HTMLElement | null>(null);
-  const [bipPopoverPlans, setBipPopoverPlans] = useState<BehaviorInterventionPlan[]>([]);
+  const isHidden = (item: ScheduleItem) => {
+    return typeof item.sourceStepOrder === 'number' && hiddenStepOrders?.has(item.sourceStepOrder);
+  };
 
-  const handleBipChipClick = useCallback(
-    (event: React.MouseEvent<HTMLDivElement>, linkedIds: string[]) => {
-      event.stopPropagation();
-      if (!interventionPlans) return;
-      const linked = interventionPlans.filter((p) => linkedIds.includes(p.id));
-      if (linked.length === 0) return;
-      setBipPopoverPlans(linked);
-      setBipAnchorEl(event.currentTarget);
-    },
-    [interventionPlans],
-  );
-
-  const handleBipPopoverClose = useCallback(() => {
-    setBipAnchorEl(null);
-    setBipPopoverPlans([]);
-  }, []);
-
-  const scheduleKeys = useMemo(() => schedule.map((item) => getItemScheduleKey(item)), [schedule]);
   const visibleSchedule = useMemo(() => {
     if (!showUnfilledOnly) return schedule;
-    if (!filledStepIds) return schedule;
     return schedule.filter((item) => !filledStepIds.has(getItemScheduleKey(item)));
   }, [filledStepIds, schedule, showUnfilledOnly]);
 
-  const handleScroll = useCallback(() => {
-    if (!scrollRef.current || isAcknowledged) return;
-    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-    const nearBottom = scrollHeight - scrollTop - clientHeight < 64;
-    if (nearBottom) {
-      scrollRef.current.dataset.reachedBottom = 'true';
-    }
-  }, [isAcknowledged]);
+  const groupedSchedule = useMemo(() => {
+    type GroupedItem = { parent: ScheduleItem; children: ScheduleItem[] };
+    const parents: ScheduleItem[] = [];
+    const childrenByParentOrder = new Map<number, ScheduleItem[]>();
+    const standalones: ScheduleItem[] = [];
 
-  const handleSelectStep = useCallback((step: ScheduleItem, stepId: string) => {
-    onSelectStep?.(step, stepId);
-    if (showUnfilledOnly && onToggleUnfilledOnly) {
-      flushSync(() => {
-        onToggleUnfilledOnly();
-      });
+    for (const item of visibleSchedule) {
+      if (item.source === 'planning_sheet' && item.sourceStepOrder) {
+        const parentOrder = getParentOrderForChild({ source: item.source, sourceStepOrder: item.sourceStepOrder });
+        if (parentOrder != null) {
+          const list = childrenByParentOrder.get(parentOrder) ?? [];
+          list.push(item);
+          childrenByParentOrder.set(parentOrder, list);
+          continue;
+        }
+        parents.push(item);
+      } else {
+        standalones.push(item);
+      }
     }
-  }, [onSelectStep, onToggleUnfilledOnly, showUnfilledOnly]);
 
-  useEffect(() => {
-    if (!scrollToStepId) return;
-    if (lastScrolledStepRef.current === scrollToStepId) return;
-    const targetRef = itemRefs.current.get(scrollToStepId);
-    if (!targetRef) return;
-    lastScrolledStepRef.current = scrollToStepId;
-    targetRef.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [scrollToStepId, scheduleKeys]);
+    const result: GroupedItem[] = [];
+    for (const parent of parents) {
+      const children = childrenByParentOrder.get(parent.sourceStepOrder!) ?? [];
+      result.push({ parent, children: children.sort((a, b) => (a.sourceStepOrder ?? 0) - (b.sourceStepOrder ?? 0)) });
+      childrenByParentOrder.delete(parent.sourceStepOrder!);
+    }
+    const extraItems = [...standalones];
+    childrenByParentOrder.forEach((children) => { extraItems.push(...children); });
+    const finalGrouped = result.concat(extraItems.map(item => ({ parent: item, children: [] })));
+    
+    const itemIndexMap = new Map<string, number>();
+    visibleSchedule.forEach((item, idx) => itemIndexMap.set(getItemScheduleKey(item), idx));
+    
+    return finalGrouped.sort((a, b) => (itemIndexMap.get(getItemScheduleKey(a.parent)) ?? 0) - (itemIndexMap.get(getItemScheduleKey(b.parent)) ?? 0));
+  }, [visibleSchedule]);
 
   if (!isGuided) {
     return (
       <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'grey.50' }}>
         <CardContent sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-          <Typography variant="h6" component="h2" fontWeight="bold">
-            {title ?? '支援手順 (Plan)'}
-          </Typography>
+          <Typography variant="subtitle2" fontWeight="bold">{title ?? '支援手順 (Plan)'}</Typography>
         </CardContent>
-        <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
-          {children}
-        </Box>
+        <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>{props.children}</Box>
       </Card>
     );
   }
@@ -179,209 +231,82 @@ export function ProcedurePanel(props: ProcedurePanelProps): JSX.Element {
   return (
     <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'grey.50' }}>
       <CardContent sx={{ py: 1, px: 2, borderBottom: 1, borderColor: 'divider' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, overflow: 'hidden' }}>
-          <Typography variant="subtitle2" component="h2" fontWeight="bold" noWrap sx={{ flexShrink: 1, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Typography variant="subtitle2" fontWeight="bold">
             {title ?? '支援手順 (Plan)'}
           </Typography>
-          {onEdit && (
-            <IconButton
-              onClick={onEdit}
-              size="small"
-              color="primary"
-              aria-label="手順を編集"
-              data-testid="procedure-edit-button"
-              sx={{ flexShrink: 0 }}
-            >
-              <EditIcon fontSize="small" />
-            </IconButton>
-          )}
-          <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
-            {typeof unfilledCount === 'number' && typeof totalCount === 'number' && (
-              <Chip
-                label={`${unfilledCount}/${totalCount}`}
-                size="small"
-                color={unfilledCount === 0 ? 'success' : 'default'}
-                variant={unfilledCount === 0 ? 'filled' : 'outlined'}
-                sx={{ height: 22, '& .MuiChip-label': { px: 0.8 } }}
-              />
+          {onEdit && <IconButton onClick={onEdit} size="small" color="primary"><EditIcon fontSize="small" /></IconButton>}
+          <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            {typeof unfilledCount === 'number' && (
+              <Chip label={`${unfilledCount}/${totalCount}`} size="small" variant="outlined" sx={{ height: 22 }} />
             )}
             {onToggleUnfilledOnly && (
-              <Switch
-                checked={Boolean(showUnfilledOnly)}
-                onChange={onToggleUnfilledOnly}
-                size="small"
-                color="primary"
-              />
+              <Switch checked={showUnfilledOnly} onChange={onToggleUnfilledOnly} size="small" color="primary" />
             )}
           </Box>
         </Box>
       </CardContent>
 
-      <Box
-        ref={scrollRef}
-        onScroll={handleScroll}
-        sx={{ flex: 1, overflowY: 'auto', p: 0 }}
-        data-testid="procedure-scroll-container"
-      >
+      <Box sx={{ flex: 1, overflowY: 'auto', p: 1.5 }}>
         <List disablePadding>
-          {visibleSchedule.map((item) => {
-            const stepId = getItemScheduleKey(item);
-            const isFilled = filledStepIds?.has(stepId) ?? false;
-            const isSelected = selectedStepId === stepId;
-            return (
-            <ListItem
-              key={stepId}
-              alignItems="flex-start"
-              ref={(node) => {
-                itemRefs.current.set(stepId, node);
-              }}
-              role={onSelectStep ? 'button' : undefined}
-              tabIndex={onSelectStep ? 0 : undefined}
-              onPointerDown={
-                onSelectStep
-                  ? (event) => {
-                      if ('button' in event && event.button !== 0) return;
-                      event.preventDefault();
-                      handleSelectStep(item, stepId);
-                    }
-                  : undefined
-              }
-              onKeyDown={
-                onSelectStep
-                  ? (event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        handleSelectStep(item, stepId);
-                      }
-                    }
-                  : undefined
-              }
-              sx={{
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 1,
-                py: 1,
-                px: 1.5,
-                bgcolor: isSelected ? 'primary.100' : item.isKey ? 'warning.50' : 'background.paper',
-                borderLeft: isFilled ? '3px solid' : '3px solid transparent',
-                borderLeftColor: isSelected ? 'primary.main' : isFilled ? 'success.main' : 'transparent',
-                boxShadow: isSelected ? 1 : 0,
-                transition: `background-color ${motionTokens.duration.fast} ${motionTokens.easing.standard}`,
-                cursor: onSelectStep ? 'pointer' : 'default',
-                minHeight: 0,
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                <Typography variant="caption" color="primary" fontWeight="bold" sx={{ minWidth: 40, flexShrink: 0 }}>
-                  {item.time}
-                </Typography>
-                <Typography variant="body2" fontWeight="bold" noWrap sx={{ flex: 1 }}>
-                  {item.activity}
-                </Typography>
-                {/* BIP シールドチップ */}
-                {(item.linkedInterventionIds?.length ?? 0) > 0 && interventionPlans && (
-                  <Chip
-                    icon={<ShieldIcon sx={{ fontSize: 14 }} />}
-                    label={item.linkedInterventionIds!.length}
-                    size="small"
-                    color="warning"
-                    variant="filled"
-                    onClick={(e) => handleBipChipClick(e, item.linkedInterventionIds!)}
-                    sx={{ cursor: 'pointer', fontWeight: 'bold', height: 22 }}
-                    data-testid={`bip-chip-${stepId}`}
-                  />
-                )}
-                {item.isKey && (
-                  <Typography variant="caption" color="warning.dark" fontWeight="bold">
-                    重要
+          {groupedSchedule.map(({ parent, children }) => {
+            const parentKey = getItemScheduleKey(parent);
+            if (isHidden(parent)) {
+              return (
+                <Box key={parentKey} sx={{ mb: 1.5, p: 1.5, bgcolor: 'grey.100', borderRadius: 1.5, border: '1px dashed', borderColor: 'grey.300', textAlign: 'center' }}>
+                  <Typography variant="caption" color="text.primary" sx={{ fontWeight: 500 }}>
+                    {parent.activity}：外活動ルート選択中のため、この手順は不要です
                   </Typography>
+                </Box>
+              );
+            }
+
+            return (
+              <Box key={parentKey} sx={{ mb: 1.5 }}>
+                <ProcedureStepRow
+                  item={parent}
+                  isSelected={selectedStepId === parentKey}
+                  isFilled={filledStepIds.has(parentKey)}
+                  onSelect={onSelectStep}
+                  selectableState={selectableStateByStepId?.get(parentKey)}
+                />
+
+                {children.length > 0 && (
+                  <Box sx={{ ml: 3, mt: 0.5, borderLeft: '2px solid', borderColor: 'divider', pl: 1 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 700, fontSize: '0.65rem' }}>
+                      【外活動オプション】
+                    </Typography>
+                    {children.map((child) => {
+                      const childKey = getItemScheduleKey(child);
+                      if (isHidden(child)) return null;
+
+                      return (
+                        <ProcedureStepRow
+                          key={childKey}
+                          item={child}
+                          isSelected={selectedStepId === childKey}
+                          isFilled={filledStepIds.has(childKey)}
+                          onSelect={onSelectStep}
+                          selectableState={selectableStateByStepId?.get(childKey)}
+                          isChild
+                        />
+                      );
+                    })}
+                  </Box>
                 )}
-                {item.source === 'planning_sheet' && (
-                  <Tooltip title="支援計画シートから取込された手順" arrow placement="top">
-                    <Chip
-                      icon={<DescriptionOutlinedIcon sx={{ fontSize: 12 }} />}
-                      label="計画"
-                      size="small"
-                      color="info"
-                      variant="outlined"
-                      sx={{ height: 20, fontSize: '0.65rem', '& .MuiChip-label': { px: 0.5 }, '& .MuiChip-icon': { ml: 0.5 } }}
-                    />
-                  </Tooltip>
-                )}
-                {/* ABC 件数バッジ (1件以上のみ表示) */}
-                {abcCountBySlot && (abcCountBySlot[stepId] ?? 0) > 0 && (
-                  <Chip
-                    icon={<EditNoteRoundedIcon sx={{ fontSize: 14 }} />}
-                    label={`ABC ${abcCountBySlot[stepId]}`}
-                    size="small"
-                    color="info"
-                    variant="filled"
-                    onPointerDown={onAbcBadgeClick ? (e: React.PointerEvent) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                    } : undefined}
-                    onMouseDown={onAbcBadgeClick ? (e: React.MouseEvent) => {
-                      e.stopPropagation();
-                    } : undefined}
-                    onClick={onAbcBadgeClick ? (e: React.MouseEvent) => {
-                      e.stopPropagation();
-                      onAbcBadgeClick(stepId, `${item.time} ${item.activity}`);
-                    } : undefined}
-                    sx={{
-                      height: 22,
-                      fontWeight: 'bold',
-                      fontSize: '0.7rem',
-                      '& .MuiChip-label': { px: 0.6 },
-                      '& .MuiChip-icon': { ml: 0.3 },
-                      ...(onAbcBadgeClick ? { cursor: 'pointer', '&:hover': { bgcolor: 'info.dark', color: 'white' } } : {}),
-                    }}
-                    data-testid={`abc-count-${stepId}`}
-                  />
-                )}
-                {filledStepIds && (() => {
-                  const obsText = isFilled ? savedObservations?.get(stepId) : undefined;
-                  const chip = (
-                    <Chip
-                      label={isFilled ? '済' : '未'}
-                      size="small"
-                      color={isFilled ? 'success' : 'default'}
-                      variant={isFilled ? 'filled' : 'outlined'}
-                      sx={{ height: 22, minWidth: 0, '& .MuiChip-label': { px: 0.8 } }}
-                    />
-                  );
-                  return obsText ? (
-                    <Tooltip title={obsText} arrow placement="top">
-                      {chip}
-                    </Tooltip>
-                  ) : chip;
-                })()}
               </Box>
-            </ListItem>
-          );
+            );
           })}
         </List>
 
-        {showUnfilledOnly && visibleSchedule.length === 0 && (
-          <Box sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              未記入の手順はありません。
-            </Typography>
+        {showUnfilledOnly && visibleSchedule.length === 0 && schedule.length > 0 && (
+          <Box sx={{ p: 4, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary">未記入の手順はありません。</Typography>
           </Box>
         )}
-
-        <Box sx={{ p: 2 }} />
       </Box>
-
-      {/* BIP Summary Popover */}
-      <BipSummaryPopover
-        anchorEl={bipAnchorEl}
-        plans={bipPopoverPlans}
-        onClose={handleBipPopoverClose}
-      />
     </Card>
   );
-}
+};
 
 export default memo(ProcedurePanel);

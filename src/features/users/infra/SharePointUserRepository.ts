@@ -70,6 +70,12 @@ const getTodayIsoDate = (): string => new Date().toISOString().slice(0, 10);
 
 type UserFieldMapping = Record<keyof typeof USERS_MASTER_CANDIDATES, string>;
 
+/** Guard for dynamic field resolution with fallback */
+function asField(physical: string | undefined, fallback: string): string {
+  // Graceful fallback to provided default if mapping is missing
+  return physical || fallback;
+}
+
 export class SharePointUserRepository implements UserRepository {
   private readonly sp: SPFI;
   private readonly listTitle = LIST_CONFIG[ListKeys.UsersMaster].title;
@@ -119,7 +125,7 @@ export class SharePointUserRepository implements UserRepository {
       let query = this.list.items.select(...physicalSelects).top(safeTop);
 
       if (filters?.isActive !== undefined) {
-        const fieldName = mapping.isActive || 'IsActive';
+        const fieldName = asField(mapping.isActive, 'IsActive');
         query = query.filter(buildEq(fieldName, filters.isActive ? 1 : 0));
       }
 
@@ -353,7 +359,7 @@ export class SharePointUserRepository implements UserRepository {
       const entry = fieldMapValues.find(([_, val]) => val === s);
       if (entry) {
         const key = entry[0] as keyof UserFieldMapping;
-        result.push(mapping[key] || s);
+        result.push(asField(mapping[key], s));
       } else {
         result.push(s);
       }

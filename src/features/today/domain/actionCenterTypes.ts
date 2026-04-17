@@ -2,7 +2,7 @@
  * Action Center で表示される「決断カード」の共通型定義
  */
 
-export type ActionCenterKind = 'daily' | 'vital' | 'transport' | 'handoff';
+export type ActionCenterKind = 'daily' | 'vital' | 'transport' | 'handoff' | 'planning';
 
 export interface ActionCenterItem {
   id: string;          // 一意なID (例: missing-record-2024-04-08)

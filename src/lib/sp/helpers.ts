@@ -402,11 +402,14 @@ export const raiseHttpError = async (
   }
 
   const base = `APIリクエストに失敗しました (${res.status} ${res.statusText ?? ''})`;
-  const error: Error & { status?: number; statusText?: string } = new Error(detail || base);
+  const error: Error & { status?: number; statusText?: string; sprequestguid?: string | null } = new Error(detail || base);
   error.status = res.status;
   if (res.statusText) {
     error.statusText = res.statusText;
   }
+  // SharePoint specific correlation ID
+  error.sprequestguid = res.headers.get('sprequestguid');
+
   throw error;
 };
 

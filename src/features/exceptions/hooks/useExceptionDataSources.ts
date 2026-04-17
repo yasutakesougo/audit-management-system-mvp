@@ -204,7 +204,7 @@ export function useExceptionDataSources(): ExceptionDataSources {
         userId: u.UserID ?? String(u.Id),
         userName: u.FullName ?? '',
         isHighIntensity: u.IsHighIntensitySupportTarget ?? false,
-        isSupportProcedureTarget: u.IsSupportProcedureTarget ?? false,
+        isSupportProcedureTarget: (u.IsSupportProcedureTarget ?? false) || (u.IsHighIntensitySupportTarget ?? false),
         isTransportTarget: !!(u.TransportToDays?.length || u.TransportFromDays?.length),
         hasPlan: ispError
           ? true // ISP取得失敗時は、誤検知で全員が attention-user になるのを防ぐため安全側（true）に倒す

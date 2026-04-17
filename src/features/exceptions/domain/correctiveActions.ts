@@ -276,6 +276,29 @@ const CORRECTIVE_ACTION_MAP: Record<
       reason: item.description || '初期設定の不足が検出されました。ガイドに沿って設定を完了してください。',
     },
   ],
+  'isp-recommendation': (item) => {
+    const userId = extractUserId(item.actionPath ?? '');
+    return [
+      {
+        key: `${item.id}-isp`,
+        label: '支援計画を改善する',
+        route: userId ? `/isp-editor/${encodeURIComponent(userId)}` : '/planning',
+        variant: 'primary',
+        severity: 'high',
+        icon: '📋',
+        reason: '現在の支援状況に基づき、計画の見直しを推奨します。',
+      },
+      {
+        key: `${item.id}-hub`,
+        label: '利用者の詳細を見る',
+        route: userId ? `/users/${encodeURIComponent(userId)}` : '/users',
+        variant: 'secondary',
+        severity: 'medium',
+        icon: '👤',
+        reason: '利用者の全体状況を確認してから対応を検討してください。',
+      },
+    ];
+  },
 };
 
 // ─── ユーティリティ ───────────────────────────────────────────

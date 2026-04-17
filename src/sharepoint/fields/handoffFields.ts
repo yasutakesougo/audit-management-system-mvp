@@ -1,12 +1,18 @@
 /**
  * SharePoint フィールド定義 — Handoff
+ *
+ * Phase 2a pilot: FIELD_MAP_HANDOFF を defineFieldMap で branded 化。
+ * 動的解決ゼロの安全な pilot として選定（project_sp_query_next_steps 参照）。
  */
-import { buildSelectFieldsFromMap } from './fieldUtils';
+import { buildSelectFieldsFromMap, defineFieldMap } from './fieldUtils';
 
 /**
  * Handoff リスト用の FIELD_MAP（HANDOFF_TIMELINE_COLUMNS から抽出）
+ *
+ * Phase 2a: defineFieldMap により各値が `SpFieldName` 型を帯びる。
+ * 呼出し側は無変更（`FIELD_MAP_HANDOFF.userCode` の利用方法は従来通り）。
  */
-export const FIELD_MAP_HANDOFF = {
+export const FIELD_MAP_HANDOFF = defineFieldMap({
   id: 'Id',
   title: 'Title',
   message: 'Message',
@@ -28,7 +34,7 @@ export const FIELD_MAP_HANDOFF = {
   modifiedAt: 'ModifiedAt',
   created: 'Created',
   modified: 'Modified',
-} as const;
+});
 
 /**
  * 0. Handoff リストのフィールド候補

@@ -224,9 +224,24 @@ module.exports = {
       excludedFiles: [
         'src/features/**/data/**',
         'src/features/**/infra/**',
+        'src/app/services/**',
         '**/create*Repository.ts', // Factory-defining files are allowed to call themselves for recursion/wrappers if needed
       ],
       rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            patterns: [
+              {
+                group: ['@/domain/bridge/**', '@/domain/isp/bridge/**', '@/features/bridge/**'],
+                message: 'UI layer must not import Bridge directly. Use @/app/services/bridgeProxy or a workspace hook. See docs/architecture/bridge-boundary.md for details.'
+              }
+            ]
+          }
+        ],
+        // BRIDGE GUARDRAIL: UI層からの Bridge 直接参照を禁止。詳細: docs/architecture/bridge-boundary.md
+        // リファクタリングの影響範囲を bridgeProxy に閉じ込め、UIへの波及を抑えるための境界。
+        // 一時的な例外を追加する場合は恒久措置とせず、移行タスクの backlog として扱うこと。
         'no-restricted-syntax': [
           'error',
           {

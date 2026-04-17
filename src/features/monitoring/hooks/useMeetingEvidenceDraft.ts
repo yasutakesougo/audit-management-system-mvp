@@ -27,13 +27,13 @@ import {
 import { getABCRecordsForUser } from '@/features/ibd/core/ibdStore';
 import { buildUserAlerts, type UserAlert } from '@/features/today/domain/buildUserAlerts';
 import {
-  buildMeetingEvidenceDraft,
-  summarizeABCPatterns,
-  summarizeStrategyUsage,
+  getMeetingEvidenceDraft,
+  getABCPatternSummary,
+  getStrategyUsageSummary,
   type MeetingEvidenceDraft,
   type ABCPatternSummary,
   type StrategyUsageSummary,
-} from '@/domain/bridge/meetingEvidenceDraft';
+} from '@/app/services/bridgeProxy';
 
 // ─────────────────────────────────────────────────────────
 // Constants
@@ -146,18 +146,18 @@ export function useMeetingEvidenceDraft(
 
     // 3. ABC パターン
     const abcPatterns = safeCall<ABCPatternSummary | null>(
-      () => summarizeABCPatterns(abcRecords),
+      () => getABCPatternSummary(abcRecords),
       null,
     );
 
     // 4. 戦略実績
     const strategyUsage = safeCall<StrategyUsageSummary | null>(
-      () => summarizeStrategyUsage(abcRecords),
+      () => getStrategyUsageSummary(abcRecords),
       null,
     );
 
     // ── 統合 ──
-    const draft = buildMeetingEvidenceDraft({
+    const draft = getMeetingEvidenceDraft({
       userName,
       from: range.from,
       to: range.to,

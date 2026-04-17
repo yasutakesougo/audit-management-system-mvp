@@ -164,10 +164,13 @@ export function inferTodayStatusSummary(input: StatusSummaryInput): TodayStatusS
   // 出欠
   parts.push(`出席${attendance.present}/${attendance.scheduled}`);
 
+  const isAllComplete = totalRemaining === 0;
+
   return {
-    emoji: '✅',
-    message: `順調（${parts.join('・')}）`,
+    emoji: isAllComplete ? '✨' : '✅',
+    message: isAllComplete ? '本日の入力はすべて完了しています' : `順調（${parts.join('・')}）`,
     level: 'good',
+    hint: isAllComplete ? '記録が完了しました' : undefined,
     deltaText,
   };
 }

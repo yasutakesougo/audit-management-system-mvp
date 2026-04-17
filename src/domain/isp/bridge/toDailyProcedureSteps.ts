@@ -92,10 +92,13 @@ export function toDailyProcedureSteps(
       time,
       activity: extractActivityLabel(ispStep.instruction, activityLabel),
       instruction: ispStep.instruction,
+      activityDetail: ispStep.instruction, // ISP側の instruction (全容) を本人側詳細へ
+      instructionDetail: ispStep.staff,    // ISP側の staff (スタッフ) を支援側詳細へ
       isKey: index === 0 || index === sorted.length - 1,
       planningSheetId,
       sourceStepOrder: ispStep.order,
       source: 'planning_sheet' as const,
     };
+
   });
 }

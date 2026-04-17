@@ -12,7 +12,8 @@ import {
   washRow,
   washRows
 } from '@/lib/sp/helpers';
-import { reportResourceResolution } from '@/lib/data/dataProviderObservabilityStore';
+import { reportResourceResolution, useDataProviderObservabilityStore } from '@/lib/data/dataProviderObservabilityStore';
+import { summarizeSpError } from '@/lib/errors';
 import { mapSpRowToSchedule, type SpScheduleRow } from '../data/spRowSchema';
 import { getSchedulesListTitle } from '../data/spSchema';
 import type { 
@@ -114,14 +115,27 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       });
       return null;
     } catch (err) {
+      const { message, httpStatus, sprequestguid } = summarizeSpError(err);
+      const currentUser = useDataProviderObservabilityStore.getState().currentUser ?? undefined;
+
       reportResourceResolution({
         resourceName: 'Schedule',
         resolvedTitle: this.listTitle,
         fieldStatus: {},
         essentials: [...SCHEDULE_EVENTS_ESSENTIALS] as string[],
-        error: String(err)
+        error: message,
+        httpStatus,
       });
-      auditLog.error('schedule:repo', 'Field resolution failed:', err);
+
+      auditLog.warn('sp', 'list_read_failed', {
+        listKey: 'schedule_events',
+        resourceName: 'Schedule',
+        httpStatus,
+        sprequestguid: sprequestguid ?? undefined,
+        currentUser,
+      });
+
+      auditLog.error('schedule:repo', 'Field resolution failed:', { error: err, sprequestguid });
       return null;
     }
   }
@@ -303,8 +317,41 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
 
   private handleError(err: unknown, userMessage: string): never {
     const error = toSafeError(err);
-    auditLog.error('schedule:repo', userMessage, { error });
-    throw new Error(`${userMessage} (${error.message})`);
+    const { httpStatus, message: spMessage, sprequestguid } = summarizeSpError(err);
+
+    // Silently throw AbortError to avoid noise in logs during navigation/unmount
+    const isAbort = error.name === 'AbortError' || 
+                   (err as { code?: number | string })?.code === 20 || 
+                   (err as { code?: number | string })?.code === 'ABORT_ERR';
+    if (isAbort) {
+      throw error;
+    }
+    
+    // Detect Threshold error (SharePoint view limit 5000 items)
+    const isThreshold = httpStatus === 500 && (
+      spMessage.includes('しきい値') || 
+      spMessage.toLowerCase().includes('threshold') ||
+      spMessage.includes('5000')
+    );
+    
+    const guid = sprequestguid ? ` [Request ID: ${sprequestguid}]` : '';
+    const enrichedMessage = isThreshold 
+      ? `${userMessage} (SharePoint リストのしきい値制限 [5000件] に抵触しました。EventDate, EndDate, cr014_dayKey 等の列を SharePoint 設定からインデックス化する必要があります)${guid}`
+      : `${userMessage} (${error.message})${guid}`;
+
+    auditLog.error('schedule:repo', enrichedMessage, { 
+      error,
+      status: httpStatus,
+      sprequestguid,
+      originalMessage: spMessage,
+      listTitle: this.listTitle
+    });
+
+    const finalError = new Error(enrichedMessage) as Error & { status?: number; sprequestguid?: string };
+    if (httpStatus) finalError.status = httpStatus;
+    if (sprequestguid) finalError.sprequestguid = sprequestguid;
+    
+    throw finalError;
   }
 }
 

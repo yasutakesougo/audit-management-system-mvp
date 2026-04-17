@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import DailyRecordMenuPage from '@/pages/DailyRecordMenuPage';
@@ -59,7 +60,7 @@ describe('DailyRecordMenuPage', () => {
     mockSearchParams = new URLSearchParams('');
   });
 
-  it('正常にレンダリングされること', () => {
+  it('正常にレンダリングされること', async () => {
     render(
       <MemoryRouter>
         <DailyRecordMenuPage />
@@ -67,24 +68,25 @@ describe('DailyRecordMenuPage', () => {
     );
 
     // ヘッダーに日々の記録タイトルがある
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('日々の記録');
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('日々の記録');
     // CommandBar が表示されていること
-    expect(screen.getByTestId('bento-command-bar')).toBeInTheDocument();
+    expect(await screen.findByTestId('bento-command-bar')).toBeInTheDocument();
   });
 
-  it('メニューカードの data-testid が存在すること', () => {
+  it('メニューカードの data-testid が存在すること', async () => {
     render(
       <MemoryRouter>
         <DailyRecordMenuPage />
       </MemoryRouter>
     );
 
-    expect(screen.getByTestId('daily-card-table-activity')).toBeInTheDocument();
-    expect(screen.getByTestId('daily-card-attendance')).toBeInTheDocument();
-    expect(screen.getByTestId('daily-card-support')).toBeInTheDocument();
+    expect(await screen.findByTestId('daily-card-table-activity')).toBeInTheDocument();
+    expect(await screen.findByTestId('daily-card-attendance')).toBeInTheDocument();
+    expect(await screen.findByTestId('daily-card-support')).toBeInTheDocument();
   });
 
-  it('from=today のとき戻るボタンが表示され、クリックで遷移すること', () => {
+  it('from=today のとき戻るボタンが表示され、クリックで遷移すること', async () => {
+    const user = userEvent.setup();
     mockSearchParams = new URLSearchParams('from=today&date=2026-04-01');
     render(
       <MemoryRouter>
@@ -92,15 +94,15 @@ describe('DailyRecordMenuPage', () => {
       </MemoryRouter>
     );
 
-    const returnBtn = screen.getByTestId('daily-hub-return-today');
+    const returnBtn = await screen.findByTestId('daily-hub-return-today');
     expect(returnBtn).toBeInTheDocument();
     expect(returnBtn.textContent).toContain('今日の運用へ');
 
-    fireEvent.click(returnBtn);
+    await user.click(returnBtn);
     expect(mockNavigate).toHaveBeenCalledWith('/today?date=2026-04-01');
   });
 
-  it('from が無いとき戻るボタンは表示されない', () => {
+  it('from が無いとき戻るボタンは表示されない', async () => {
     mockSearchParams = new URLSearchParams('');
     render(
       <MemoryRouter>
@@ -108,6 +110,8 @@ describe('DailyRecordMenuPage', () => {
       </MemoryRouter>
     );
 
-    expect(screen.queryByTestId('daily-hub-return-today')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByTestId('daily-hub-return-today')).not.toBeInTheDocument();
+    });
   });
 });

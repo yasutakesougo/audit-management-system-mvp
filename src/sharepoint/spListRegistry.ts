@@ -691,7 +691,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
   {
     key: 'drift_events_log',
     displayName: 'ドリフトイベント記録',
-    resolve: () => envOr('VITE_SP_LIST_DRIFT_LOG', 'DriftEventsLog'),
+    resolve: () => envOr('VITE_SP_LIST_DRIFT_LOG', 'DriftEventsLog_v2'),
     operations: ['R', 'W'],
     category: 'compliance',
     lifecycle: 'optional',
