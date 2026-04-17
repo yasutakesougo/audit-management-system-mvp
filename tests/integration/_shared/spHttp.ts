@@ -46,12 +46,19 @@ export type SpClient = {
   authHeaders?: Record<string, string>;
 };
 
-export async function fetchRequestDigest(request: APIRequestContext, url: string): Promise<string> {
+export async function fetchRequestDigest(
+  request: APIRequestContext,
+  url: string,
+  authHeaders: Record<string, string> = {},
+): Promise<string> {
   const siteUrl = url.split('/_api')[0];
   const contextUrl = `${siteUrl}/_api/contextinfo`;
 
   const res = await request.post(contextUrl, {
-    headers: { 'Accept': 'application/json;odata=verbose' },
+    headers: {
+      'Accept': 'application/json;odata=verbose',
+      ...authHeaders,
+    },
   });
 
   if (!res.ok()) {
@@ -90,7 +97,7 @@ export function makeListApi(client: SpClient) {
       return res;
     },
     async post(url: string, data: unknown, op: string, headers?: Record<string, string>) {
-      const digest = await fetchRequestDigest(client.request, url);
+      const digest = await fetchRequestDigest(client.request, url, client.authHeaders ?? {});
 
       const res = await client.request.post(url, {
         data,
@@ -104,7 +111,7 @@ export function makeListApi(client: SpClient) {
       return res;
     },
     async merge(url: string, data: unknown, op: string) {
-      const digest = await fetchRequestDigest(client.request, url);
+      const digest = await fetchRequestDigest(client.request, url, client.authHeaders ?? {});
 
       const res = await client.request.post(url, {
         data,
