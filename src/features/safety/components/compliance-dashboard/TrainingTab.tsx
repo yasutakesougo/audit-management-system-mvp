@@ -16,6 +16,7 @@ import Typography from '@mui/material/Typography';
 
 import type { TrainingRecord, TrainingSummary } from '@/domain/safety/trainingRecord';
 import { TESTIDS } from '@/testids';
+import { formatDateJapanese, formatDateYmd } from '@/lib/dateFormat';
 
 interface TrainingTabProps {
   records: TrainingRecord[];
@@ -73,7 +74,7 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({ records, summary }) =>
             次回推奨日
           </Typography>
           <Typography variant="h5" fontWeight={800}>
-            {summary.nextRecommendedDate ?? '—'}
+            {summary.nextRecommendedDate ? formatDateJapanese(summary.nextRecommendedDate) : '—'}
           </Typography>
         </Card>
       </Box>
@@ -103,7 +104,7 @@ export const TrainingTab: React.FC<TrainingTabProps> = ({ records, summary }) =>
             <TableBody>
               {sorted.map((r) => (
                 <TableRow key={r.id} hover>
-                  <TableCell>{r.trainingDate}</TableCell>
+                  <TableCell>{formatDateYmd(r.trainingDate)}</TableCell>
                   <TableCell>
                     <Typography variant="body2" noWrap sx={{ maxWidth: 200 }}>
                       {r.title || '—'}
