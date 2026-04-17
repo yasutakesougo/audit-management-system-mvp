@@ -27,6 +27,11 @@ export async function ensureOk(res: APIResponse, ctx: EnsureOkContext): Promise<
     hint = '\n[Hint] Authentication Expired. Please regenerate PW_STORAGE_STATE_B64 locally.';
   } else if (status === 403) {
     hint = '\n[Hint] Access Denied. Check SharePoint site/list permissions OR verify if PW_STORAGE_STATE_B64 has expired.';
+  } else if (status === 400) {
+    const fieldMismatch = /フィールドまたはプロパティ.+存在しません|field or property.+does not exist/i.test(body);
+    hint = fieldMismatch
+      ? '\n[Hint] Bad Request — unknown field. A column name in $select/$filter does not match the SharePoint internal name. Verify the field exists in the list and matches spSchema SSOT.'
+      : '\n[Hint] Bad Request. Common causes: invalid field name in $select/$filter, payload type mismatch, or missing required column.';
   } else if (status >= 500) {
     hint = '\n[Hint] SharePoint Server Error. Check for list view thresholds or service health.';
   }
