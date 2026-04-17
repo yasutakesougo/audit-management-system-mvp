@@ -160,8 +160,6 @@ export const SuspendedSmokeTestPage = createSuspended(SmokeTestPage, 'スモー�
 const OpeningVerificationPage = React.lazy(() => import('@/pages/OpeningVerificationPage').then((module) => ({ default: module.default })));
 export const SuspendedOpeningVerificationPage = createSuspended(OpeningVerificationPage, '開通確認コンソールを読み込んでいます…');
 export const SuspendedDebugZodErrorPage = createSuspended(DebugZodErrorPage, 'デバッグ情報を読み込んでいます…');
-const IBDDemoPage = React.lazy(() => import('@/pages/IBDDemoPage'));
-export const SuspendedIBDDemoPage = createSuspended(IBDDemoPage, 'IBDデモを読み込んでいます…');
 const IBDHubPage = React.lazy(() => import('@/pages/IBDHubPage'));
 export const SuspendedIBDHubPage = createSuspended(IBDHubPage, '強度行動障害支援を読み込んでいます…');
 const RegulatoryDashboardPage = React.lazy(() => import('@/pages/RegulatoryDashboardPage'));

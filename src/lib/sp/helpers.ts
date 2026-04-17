@@ -345,6 +345,8 @@ export const coerceResult = async <T>(res: Response): Promise<T> => {
   return undefined as unknown as T;
 };
 
+import { reportSpHealthEvent } from '@/features/sp/health/spHealthSignalStore';
+
 export const raiseHttpError = async (
   res: Response,
   options: {
@@ -356,6 +358,25 @@ export const raiseHttpError = async (
   const detail = await readErrorPayload(res);
   const AUDIT_DEBUG = getAppConfig().VITE_AUDIT_DEBUG;
   const { quietStatuses, silent } = options.spOptions || {};
+
+  // 1. Report to Global Health Store (Realtime Signal)
+  if (res.status === 401 || res.status === 403) {
+    reportSpHealthEvent({
+      severity: 'critical',
+      reasonCode: 'sp_auth_failed',
+      message: 'SharePoint 認証に失敗しました。MSAL構成またはサイト権限を確認してください。',
+      occurredAt: new Date().toISOString(),
+      source: 'realtime',
+    });
+  } else if (res.status === 404) {
+    reportSpHealthEvent({
+      severity: 'action_required',
+      reasonCode: 'sp_list_unreachable',
+      message: 'リストまたはリソースが見つかりません。セットアップが未完了の可能性があります。',
+      occurredAt: new Date().toISOString(),
+      source: 'realtime',
+    });
+  }
 
   // Skip logging if silent or quiet status match
   const shouldLog = !silent && !(quietStatuses && quietStatuses.includes(res.status));

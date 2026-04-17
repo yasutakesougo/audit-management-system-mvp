@@ -10,7 +10,7 @@
  * この hook は「effect → state 接続」のみを担う。
  */
 
-import type { StoreUser } from '@/stores/useUsers';
+import type { StoreUser } from '@/features/users/store';
 import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { getLastActivitiesForUser } from './useLastActivities';

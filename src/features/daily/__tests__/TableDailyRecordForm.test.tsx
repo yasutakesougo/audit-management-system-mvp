@@ -3,7 +3,7 @@ import { TextField } from '@mui/material';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import toast from 'react-hot-toast';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TableDailyRecordForm } from '../components/forms/TableDailyRecordForm';
+import { TableDailyRecordForm } from '../forms/TableDailyRecordForm';
 import { useTableDailyRecordForm } from '../hooks/view-models/useTableDailyRecordForm';
 
 // Mock react-hot-toast
@@ -58,7 +58,7 @@ const mockUsers = [
   }
 ];
 
-vi.mock('@/stores/useUsers', () => ({
+vi.mock('@/features/users/store', () => ({
   useUsers: () => ({
     data: mockUsers
   })

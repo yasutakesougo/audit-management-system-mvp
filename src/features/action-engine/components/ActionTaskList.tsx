@@ -23,7 +23,7 @@ import ScheduleRoundedIcon from '@mui/icons-material/ScheduleRounded';
 import { useActionTaskStore, actionTaskSelectors } from '../hooks/useActionTaskStore';
 import type { ActionTask, ActionTaskStatus } from '../domain/types';
 import { useUsers } from '@/features/users/useUsers';
-import { useStaff } from '@/stores/useStaff';
+import { useStaff } from '@/features/staff/store';
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded';
 
 interface ActionTaskListProps {

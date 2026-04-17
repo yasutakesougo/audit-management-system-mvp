@@ -18,7 +18,7 @@ import { act, renderHook } from '@testing-library/react';
 import { useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { StoreUser } from '@/stores/useUsers';
+import type { StoreUser } from '@/features/users/store';
 import type { TableDailyRecordData, UserRowData } from '../view-models/useTableDailyRecordForm';
 import type { UseTableDailyRecordRowHandlersParams } from '../orchestrators/useTableDailyRecordRowHandlers';
 import { useTableDailyRecordRowHandlers } from '../orchestrators/useTableDailyRecordRowHandlers';

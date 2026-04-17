@@ -10,11 +10,11 @@
  * この hook は「effect → state 接続」のみを担う。
  */
 
-import type { StoreUser } from '@/stores/useUsers';
 import type { Dispatch, SetStateAction } from 'react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { getLastActivitiesForUser } from '../legacy/useLastActivities';
 import type { TableDailyRecordData, UserRowData } from '../view-models/useTableDailyRecordForm';
+import { StoreUser } from '../view-models/tableDailyRecordFormTypes';
 import {
   applyHandoffNotesToRows,
   hasRowContent,

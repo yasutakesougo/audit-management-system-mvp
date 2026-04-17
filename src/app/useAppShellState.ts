@@ -192,7 +192,7 @@ export function useAppShellState() {
   const filteredNavItems = useMemo(() => {
     return filterNavItems(visibleNavItems, navQuery);
   }, [visibleNavItems, navQuery]);
-  const groupedNavItems = useMemo(() => groupNavItems(filteredNavItems, isAdmin), [filteredNavItems, isAdmin]);
+  const groupedNavItems = useMemo(() => groupNavItems(filteredNavItems), [filteredNavItems]);
   const isPlanningGroupVisible = useMemo(
     () => visibleNavItems.some((item) => item.group === 'planning'),
     [visibleNavItems],

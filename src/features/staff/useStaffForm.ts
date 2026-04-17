@@ -1,6 +1,6 @@
 import type { ConfirmDialogProps } from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
-import { useStaff } from '@/stores/useStaff';
+import { useStaff } from '@/features/staff/store';
 import type { Staff } from '@/types';
 import { createRef, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 

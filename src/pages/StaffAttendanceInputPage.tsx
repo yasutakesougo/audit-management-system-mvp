@@ -2,7 +2,7 @@ import { useFeatureFlag } from '@/config/featureFlags';
 import { StaffAttendanceInput } from '@/features/staff/attendance/StaffAttendanceInput';
 import { buildStaffAttendanceRows, type AttendanceRowStatus } from '@/features/staff/attendance/buildStaffAttendanceRows';
 import { useStaffAttendanceDay } from '@/features/staff/attendance/hooks/useStaffAttendanceDay';
-import { useStaff } from '@/stores/useStaff';
+import { useStaff } from '@/features/staff/store';
 import EmptyState from '@/ui/components/EmptyState';
 import { toLocalDateISO } from '@/utils/getNow';
 import LockIcon from '@mui/icons-material/Lock';

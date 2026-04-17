@@ -240,6 +240,72 @@ module.exports = {
       },
     },
     {
+      // --- Demo data leakage prevention & Store deprecation ---
+      // Prohibit importing demo-only constants/functions into main production paths.
+      // Frozen @/stores directory to prevent new legacy-style state management.
+      files: ['src/**/*.ts', 'src/**/*.tsx'],
+      excludedFiles: [
+        '**/__tests__/**',
+        '**/*.test.ts',
+        '**/*.test.tsx',
+        '**/*.spec.ts',
+        '**/*.spec.tsx',
+        '**/*.simulation.ts',
+        'src/pages/IBDDemoPage.tsx',
+        'src/pages/ibdDemo.data.ts',
+        'src/features/attendance/store.ts', 
+        '**/infra/**',
+        '**/repositories/**',
+        'src/features/demo/**',
+      ],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            paths: [
+              {
+                name: '@/stores/useUsers',
+                message: 'src/stores/useUsers は廃止されました。@/features/users/store を使用してください。'
+              },
+              {
+                name: '@/stores/useStaff',
+                message: 'src/stores/useStaff は廃止されました。@/features/staff/store を使用してください。'
+              },
+              {
+                name: '@/stores/useSchedules',
+                message: 'src/stores/useSchedules は廃止されました。@/features/schedules/store を使用してください。'
+              },
+              {
+                name: '@/stores/useDaily',
+                message: 'src/stores/useDaily は廃止されました。@/features/daily を使用してください。'
+              },
+              {
+                name: '@/stores/useDataSourceStore',
+                message: 'src/stores/useDataSourceStore は廃止されました。spHealthSignalStore 等の Health 系 store を使用してください。'
+              }
+            ],
+            patterns: [
+              {
+                group: ['**/__tests__/**'],
+                message: 'Production code must not import from test directories.'
+              },
+              {
+                group: ['@/stores/*'],
+                message: 'src/stores ディレクトリは廃止されました。各 feature 配下の repository/store を使用してください。'
+              }
+            ],
+          }
+        ],
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: "ImportSpecifier[imported.name=/^(DEMO_|buildDemo)/]",
+            message: 'デモ用の定数や関数を本線コードでインポートしないでください。これらは特定のデータストア内部またはデモページ内でのみ許可されます。'
+          }
+        ]
+      }
+    },
+    {
       // テスト・スクリプトでは fetch モック / CLI用 fetch を許可
       files: [
         'tests/**',

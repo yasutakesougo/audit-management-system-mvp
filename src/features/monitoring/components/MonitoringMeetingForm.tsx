@@ -30,7 +30,7 @@ import {
   MonitoringMeetingRecord,
   MEETING_STATUS_LABELS
 } from '@/domain/isp/monitoringMeeting';
-import { useStaff } from '@/stores/useStaff';
+import { useStaff } from '@/features/staff/store';
 import { Staff } from '@/types';
 import { MonitoringMeetingPDFAction } from '../reports/MonitoringMeetingPDFAction';
 import type { MetricDefinition } from '@/domain/isp/metricDefinition';

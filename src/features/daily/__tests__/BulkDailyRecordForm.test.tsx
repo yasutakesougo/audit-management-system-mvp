@@ -1,6 +1,5 @@
 import { TESTIDS } from '@/testids';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import toast from 'react-hot-toast';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BulkDailyRecordForm } from '../forms/BulkDailyRecordForm';
 
@@ -40,7 +39,7 @@ const mockUsers = [
   },
 ];
 
-vi.mock('@/stores/useUsers', () => ({
+vi.mock('@/features/users/store', () => ({
   useUsers: () => ({
     data: mockUsers
   })

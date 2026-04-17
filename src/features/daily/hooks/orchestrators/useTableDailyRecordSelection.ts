@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import type { StoreUser } from '@/stores/useUsers';
+import { StoreUser } from '../view-models/tableDailyRecordFormTypes';
 import { isUserScheduledForDate } from '@/utils/attendanceUtils';
 
 const userSortCollator = new Intl.Collator('ja-JP');

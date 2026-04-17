@@ -1,4 +1,4 @@
-import { useStaff } from '@/stores/useStaff';
+import { useStaff } from '@/features/staff/store';
 import { TESTIDS } from '@/testids';
 import type { Staff } from '@/types';
 import React, { useState } from 'react';

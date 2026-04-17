@@ -10,7 +10,7 @@
  */
 
 import type { Dispatch, SetStateAction } from 'react';
-import type { StoreUser } from '@/stores/useUsers';
+import type { IUserMaster } from '@/features/users/types';
 import type {
   TableDailyRecordData,
   TableDailyRecordValidationErrors,
@@ -216,3 +216,5 @@ export interface TableDailyRecordViewModel {
     };
   };
 }
+export type StoreUser = IUserMaster;
+export type TableFormState = TableDailyRecordViewModel;

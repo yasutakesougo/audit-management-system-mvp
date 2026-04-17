@@ -1,5 +1,5 @@
-import { useUsers } from '@/stores/useUsers';
-import type { StoreUser } from '@/stores/useUsers';
+import { useUsers } from '@/features/users/store';
+import type { StoreUser } from '@/features/users/store';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useHandoffNotesForTable } from '../../repositories/adapters/useHandoffNotesForTable';
