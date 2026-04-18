@@ -56,6 +56,11 @@ jobs:
           SHAREPOINT_SITE: ${{ secrets.SHAREPOINT_SITE }}
         run: node scripts/verify-sharepoint-auth.mjs
 
+      - name: Discover & validate Users_Master schema
+        env:
+          SHAREPOINT_SITE: ${{ secrets.SHAREPOINT_SITE }}
+        run: node scripts/ci/validate-list-schema.mjs scripts/ci/schemas/users.mjs
+
       - name: Run integration (Users_Master)
         env:
           SHAREPOINT_SITE: ${{ secrets.SHAREPOINT_SITE }}
