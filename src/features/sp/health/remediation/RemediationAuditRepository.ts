@@ -59,7 +59,17 @@ export class InMemoryRemediationAuditRepository implements IRemediationAuditRepo
   }
 
   async logEntry(entry: RemediationAuditEntry): Promise<void> {
-    this.entries.push(entry);
+    // 1. 不変性チェック（同一 correlationId かつ同一 phase の重複記録を防止）
+    const isDuplicate = this.entries.some(
+      e => e.correlationId === entry.correlationId && e.phase === entry.phase
+    );
+    if (isDuplicate) {
+      // eslint-disable-next-line no-console
+      console.warn(`[AuditRepo] Duplicate entry ignored for trust: ${entry.correlationId} (${entry.phase})`);
+      return;
+    }
+
+    this.entries.push({ ...entry });
 
     // 上限超過時は古いエントリを刈り込む
     if (this.entries.length > this.maxEntries) {

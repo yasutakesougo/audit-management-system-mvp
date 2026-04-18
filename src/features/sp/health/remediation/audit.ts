@@ -55,6 +55,9 @@ export interface RemediationAuditEntry {
   /** エラー詳細（phase=executed かつ失敗時のみ） */
   executionError?: RemediationResult['error'];
 
+  /** 自動実行をスキップした理由（phase=skipped のみ） */
+  skippedReason?: string;
+
   /** 記録日時（ISO 8601） */
   timestamp: string;
 }
@@ -137,5 +140,26 @@ export function emitExecutionCompleted(plan: RemediationPlan, result: Remediatio
     executionStatus: result.status,
     executionError: result.error,
     timestamp: result.executedAt,
+  });
+}
+/**
+ * 修復をスキップした際の判断記録を発火する
+ */
+export function emitActionSkipped(plan: RemediationPlan, reason: string): void {
+  remediationAuditBus.emit({
+    correlationId: plan.id,
+    planId: plan.id,
+    phase: 'skipped',
+    targetType: plan.target.type,
+    listKey: plan.target.listKey ?? '',
+    fieldName: plan.target.fieldName ?? '',
+    action: plan.action,
+    risk: plan.risk,
+    autoExecutable: plan.autoExecutable,
+    requiresApproval: plan.requiresApproval,
+    reason: plan.reason,
+    source: plan.source,
+    skippedReason: reason,
+    timestamp: new Date().toISOString(),
   });
 }
