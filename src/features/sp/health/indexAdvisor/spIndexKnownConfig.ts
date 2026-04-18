@@ -65,4 +65,11 @@ export const KNOWN_REQUIRED_INDEXED_FIELDS: Record<string, IndexFieldSpec[]> = {
       reason: '$filter=StaffCode eq X（職員別スケジュール取得）',
     },
   ],
+  UserBenefit_Profile_Ext: [
+    {
+      internalName: 'User_x0020_ID',
+      displayName: 'User ID',
+      reason: '$filter=User_x0020_ID eq X（利用者属性取得のキー）',
+    },
+  ],
 };
