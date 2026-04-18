@@ -217,8 +217,7 @@ module.exports = {
       // Use useXXXRepository() hooks instead to ensure DI (DataProvider) stability.
       files: [
         'src/pages/**',
-        'src/features/**/components/**',
-        'src/features/**/hooks/**',
+        'src/features/**',
         'src/app/**',
       ],
       excludedFiles: [

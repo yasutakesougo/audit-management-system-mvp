@@ -19,7 +19,7 @@
  * @see assessmentBridge.ts — 同一パターンの先行実装
  */
 import type { PlanningIntake, PlanningSheetFormValues, SupportPlanningSheet } from '@/domain/isp/schema';
-import { toDailyProcedureSteps } from '@/domain/isp/bridge/toDailyProcedureSteps';
+import { getDailyProcedureSteps } from '@/app/services/bridgeProxy';
 import type { ProcedureStep } from '@/features/daily/domain/legacy/ProcedureRepository';
 import type { ProvenanceEntry } from '@/features/planning-sheet/assessmentBridge';
 
@@ -273,7 +273,7 @@ export function bridgePlanningSheetToDailyProcedures(
   sheet: SupportPlanningSheet,
 ): BridgeProceduresResult {
   // 1. 構造化手順リストの変換を試行
-  const structuredSteps = toDailyProcedureSteps(sheet.planning, sheet.id);
+  const structuredSteps = getDailyProcedureSteps(sheet.planning, sheet.id);
   if (structuredSteps.length > 0) {
     return {
       steps: structuredSteps,
