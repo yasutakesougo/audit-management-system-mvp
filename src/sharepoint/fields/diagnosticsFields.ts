@@ -65,3 +65,24 @@ export const DRIFT_LOG_CANDIDATES = {
   resolved: ['Resolved', 'IsResolved', 'Fixed', 'Resolved0'],
   driftType: ['DriftType', 'Type', 'Category', 'DriftType0'],
 } as const;
+
+/**
+ * Remediation_AuditLog の drift 耐性候補
+ */
+export const REMEDIATION_AUDIT_CANDIDATES = {
+  correlationId: ['CorrelationId', 'Correlation_x0020_ID', 'CorrelationId0'],
+  planId: ['PlanId', 'Plan_x0020_ID', 'PlanId0'],
+  phase: ['Phase', 'AuditPhase', 'Phase0'],
+  targetType: ['TargetType', 'RemediationTargetType', 'TargetType0'],
+  listKey: ['ListKey', 'TargetList', 'ListKey0'],
+  fieldName: ['FieldName', 'TargetField', 'FieldName0'],
+  action: ['Action', 'RemediationAction', 'Action0'],
+  risk: ['Risk', 'Severity', 'Risk0'],
+  autoExecutable: ['AutoExecutable', 'IsAuto', 'AutoExecutable0'],
+  requiresApproval: ['RequiresApproval', 'NeedApproval', 'RequiresApproval0'],
+  reason: ['Reason', 'Justification', 'Reason0'],
+  source: ['Source', 'PlanSource', 'Source0'],
+  executionStatus: ['ExecutionStatus', 'Status', 'ExecutionStatus0'],
+  executionError: ['ExecutionError', 'ErrorMessage', 'ExecutionError0'],
+  timestamp: ['Timestamp', 'OccurredAt', 'Timestamp0'],
+} as const;

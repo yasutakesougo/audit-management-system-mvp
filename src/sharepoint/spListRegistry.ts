@@ -834,6 +834,31 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
       { internalName: 'cr014_prevMeetingId', type: 'Text', displayName: 'Previous Meeting ID' },
     ],
   },
+  {
+    key: 'remediation_audit_log',
+    displayName: '修復履歴ログ',
+    resolve: () => envOr('VITE_SP_LIST_REMEDIATION_AUDIT', fromConfig(ListKeys.RemediationAuditLog)),
+    operations: ['R', 'W'],
+    category: 'compliance',
+    lifecycle: 'optional',
+    essentialFields: ['CorrelationId', 'PlanId', 'Phase'],
+    provisioningFields: [
+      { internalName: 'CorrelationId', type: 'Text', displayName: 'Correlation ID', required: true, indexed: true },
+      { internalName: 'PlanId', type: 'Text', displayName: 'Plan ID', required: true, indexed: true },
+      { internalName: 'Phase', type: 'Choice', displayName: 'Phase', choices: ['planned', 'executed', 'skipped'], required: true, indexed: true },
+      { internalName: 'ListKey', type: 'Text', displayName: 'List Key', indexed: true },
+      { internalName: 'FieldName', type: 'Text', displayName: 'Field Name', indexed: true },
+      { internalName: 'Action', type: 'Text', displayName: 'Action', indexed: true },
+      { internalName: 'Risk', type: 'Text', displayName: 'Risk' },
+      { internalName: 'AutoExecutable', type: 'Boolean', displayName: 'Auto Executable' },
+      { internalName: 'RequiresApproval', type: 'Boolean', displayName: 'Requires Approval' },
+      { internalName: 'Reason', type: 'Note', displayName: 'Reason', richText: false },
+      { internalName: 'Source', type: 'Text', displayName: 'Source', indexed: true },
+      { internalName: 'ExecutionStatus', type: 'Text', displayName: 'Execution Status' },
+      { internalName: 'ExecutionError', type: 'Note', displayName: 'Execution Error', richText: false },
+      { internalName: 'Timestamp', type: 'DateTime', displayName: 'Timestamp', dateTimeFormat: 'DateTime', indexed: true },
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------
