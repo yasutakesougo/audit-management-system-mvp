@@ -1,30 +1,22 @@
 /**
- * Pure validation logic for DailyOpsSignals schema drift detection.
+ * Generic schema drift validation logic for SharePoint lists.
  * No I/O — testable without SharePoint or Playwright.
- *
- * SSOT reference: src/features/dailyOps/data/spSchema.ts
  */
-
-// Essential fields — CI FAILs if any are missing
-export const ESSENTIAL_FIELDS = [
-  'date',
-  'targetType',
-  'targetId',
-  'kind',
-  'summary',
-  'status',
-];
-
-// Optional fields — warn only
-export const OPTIONAL_FIELDS = ['time', 'source'];
 
 /**
- * Validate actual SharePoint field names against the SSOT.
+ * Validate actual SharePoint field names against expected fields.
  *
  * @param {string[]} actualNames - InternalName values from SharePoint
- * @returns {{ ok: boolean, missing: string[], caseMismatch: { expected: string, actual: string }[], optionalMissing: string[] }}
+ * @param {string[]} essentialFields - Fields that MUST exist (case-insensitive check, case-match preferred)
+ * @param {string[]} optionalFields - Fields that SHOULD exist (warn if missing)
+ * @returns {{
+ *   ok: boolean,
+ *   missing: string[],
+ *   caseMismatch: { expected: string, actual: string }[],
+ *   optionalMissing: string[]
+ * }}
  */
-export function validateSchema(actualNames) {
+export function validateSchema(actualNames, essentialFields = [], optionalFields = []) {
   const nameSet = new Set(actualNames);
   const lowerMap = new Map(
     actualNames.map((n) => [n.toLowerCase(), n]),
@@ -33,7 +25,7 @@ export function validateSchema(actualNames) {
   const missing = [];
   const caseMismatch = [];
 
-  for (const name of ESSENTIAL_FIELDS) {
+  for (const name of essentialFields) {
     if (nameSet.has(name)) continue;
 
     const lower = name.toLowerCase();
@@ -45,7 +37,7 @@ export function validateSchema(actualNames) {
   }
 
   const optionalMissing = [];
-  for (const name of OPTIONAL_FIELDS) {
+  for (const name of optionalFields) {
     if (!nameSet.has(name) && !lowerMap.has(name.toLowerCase())) {
       optionalMissing.push(name);
     }
@@ -58,3 +50,4 @@ export function validateSchema(actualNames) {
     optionalMissing,
   };
 }
+
