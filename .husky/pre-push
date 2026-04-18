@@ -1,5 +1,8 @@
 set -eu
 
+# Ensure common paths (including Homebrew) are available
+export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin"
+
 # Pre-push hook: lightweight guard for development
 # Full checks (lint, typecheck, build) run in CI via npm run preflight
 #

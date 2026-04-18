@@ -1,3 +1,5 @@
+export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin"
+
 
 
 scripts/check-timezone-api.sh || exit 1
