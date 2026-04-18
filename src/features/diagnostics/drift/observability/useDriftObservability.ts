@@ -1,8 +1,7 @@
 import React from 'react';
-import { useSP } from '@/lib/spClient';
 import { auditLog } from '@/lib/debugLogger';
 import type { IDriftEventRepository } from '../domain/DriftEventRepository';
-import { SharePointDriftEventRepository } from '../infra/SharePointDriftEventRepository';
+import { useDriftEventRepository } from '../infra/driftEventRepositoryFactory';
 import {
   aggregateTopDriftFields,
   aggregateTopDriftLists,
@@ -59,17 +58,12 @@ const safeCompute = <T,>(label: string, compute: () => T, fallback: T): T => {
 };
 
 export const useDriftObservability = (options: UseDriftObservabilityOptions = {}) => {
-  const sp = useSP();
+  const driftRepository = useDriftEventRepository();
+  const repository = options.repository ?? driftRepository;
   const nowProvider = options.nowProvider ?? (() => new Date());
   const [period, setPeriod] = React.useState<DriftObservabilityPeriod>('weekly');
   const [loading, setLoading] = React.useState(false);
   const [snapshot, setSnapshot] = React.useState<DriftObservabilitySnapshot>(EMPTY_SNAPSHOT);
-
-  const repository = React.useMemo<IDriftEventRepository | null>(() => {
-    if (options.repository) return options.repository;
-    if (!sp) return null;
-    return new SharePointDriftEventRepository(sp);
-  }, [options.repository, sp]);
 
   React.useEffect(() => {
     let active = true;

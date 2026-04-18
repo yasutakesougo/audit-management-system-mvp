@@ -103,6 +103,7 @@ export {
     FIELD_MAP_DIAGNOSTICS_REPORTS,
     DRIFT_LOG_LIST_TITLE,
     DRIFT_LOG_CANDIDATES,
+    REMEDIATION_AUDIT_CANDIDATES,
 } from './diagnosticsFields';
 
 // ── Iceberg ──
