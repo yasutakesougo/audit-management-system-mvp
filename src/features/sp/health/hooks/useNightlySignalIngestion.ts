@@ -3,18 +3,15 @@ import { useSP } from '@/lib/spClient';
 import { auditLog } from '@/lib/debugLogger';
 import { reportDiagnosticsReport, mapPatrolEventToSignal, type PatrolEvent } from '../mapping';
 import { reportSpHealthEvent } from '../spHealthSignalStore';
-import { SharePointDriftEventRepository } from '@/features/diagnostics/drift/infra/SharePointDriftEventRepository';
+import { useDriftEventRepository } from '@/features/diagnostics/drift/infra/driftEventRepositoryFactory';
 
 /**
  * useNightlySignalIngestion — Nightly Patrol 結果を UI に取り込む Hook
- * 
- * アプリ起動時に1回実行され、SharePoint 上の最新の診断レポートと
- * ドリフトログを取得して健康シグナルストアへ報告します。
  */
 export function useNightlySignalIngestion() {
   const sp = useSP();
+  const driftRepository = useDriftEventRepository();
   const ranRef = React.useRef(false);
-  const driftRepository = React.useMemo(() => new SharePointDriftEventRepository(sp), [sp]);
 
   React.useEffect(() => {
     if (!sp || ranRef.current) return;

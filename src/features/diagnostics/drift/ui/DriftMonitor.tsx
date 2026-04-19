@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { DriftObserver } from '../application/DriftObserver';
-import { SharePointDriftEventRepository } from '../infra/SharePointDriftEventRepository';
-import { useSP } from '@/lib/spClient';
+import { useDriftEventRepository } from '../infra/driftEventRepositoryFactory';
 
 /**
  * DriftMonitor — ドリフト監視の有効化コンポーネント
@@ -10,20 +9,16 @@ import { useSP } from '@/lib/spClient';
  * システム全体のドリフトイベントをバックグラウンドで収集・永続化します。
  */
 export const DriftMonitor: React.FC = () => {
-  const sp = useSP();
+  const repository = useDriftEventRepository();
 
   useEffect(() => {
-    if (!sp) return;
-
-    const repository = new SharePointDriftEventRepository(sp);
     const observer = new DriftObserver(repository);
-
     observer.start();
 
     return () => {
       observer.stop();
     };
-  }, [sp]);
+  }, [repository]);
 
   // UI は持たない（ロジックのみ）
   return null;

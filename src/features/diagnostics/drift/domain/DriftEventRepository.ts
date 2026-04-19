@@ -20,7 +20,7 @@ export interface IDriftEventRepository {
     listName?: string;
     resolved?: boolean;
     since?: string;
-  }): Promise<DriftEvent[]>;
+  }, signal?: AbortSignal): Promise<DriftEvent[]>;
 
   /**
    * 解決済みマークを付ける。
