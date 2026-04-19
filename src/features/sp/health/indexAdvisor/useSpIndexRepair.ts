@@ -58,12 +58,42 @@ export function useSpIndexRepair(): UseSpIndexRepair {
     setIsExecuting(true);
     const newResults: SpIndexRepairResult[] = [];
 
-    // シーケンシャルに1件ずつ実行（安全のため）
+    // シーケンシャルに1件ずつ実行
     for (const action of plan.actions) {
-      const res = await executeRepairAction(sp, action);
-      newResults.push(res);
-      // リアクティブに途中経過を反映
-      setResults([...newResults]);
+      let retryCount = 0;
+      const MAX_RETRIES = 2;
+      let success = false;
+
+      while (retryCount <= MAX_RETRIES && !success) {
+        if (retryCount > 0) {
+          // リトライ時は少し長めに待機 (3s, 6s...)
+          await new Promise(resolve => setTimeout(resolve, 3000 * retryCount));
+        }
+
+        const res = await executeRepairAction(sp, action);
+        
+        if (res.status === 'success') {
+          newResults.push(res);
+          success = true;
+        } else if (res.errorDetail?.includes('429') || res.errorDetail?.includes('throttled')) {
+          retryCount++;
+          if (retryCount > MAX_RETRIES) {
+            newResults.push(res);
+          }
+        } else {
+          // 429 以外のエラーは即座に失敗として記録
+          newResults.push(res);
+          break;
+        }
+        
+        // リアクティブに途中経過を反映
+        setResults([...newResults]);
+      }
+
+      // API 負荷軽減のため、次のアクションの前に 3秒待機（特に大量のインデックス一括削除時）
+      if (plan.actions.indexOf(action) < plan.actions.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
     }
 
     setIsExecuting(false);

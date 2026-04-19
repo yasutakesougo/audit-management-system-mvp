@@ -47,6 +47,7 @@ export enum ListKeys {
   UserBenefitProfileExt = 'UserBenefit_Profile_Ext',
   DailyRecordParent = 'SupportRecord_Daily',
   MonthlyRecordSummary = 'MonthlyRecord_Summary',
+  RemediationAuditLog = 'Remediation_AuditLog',
 }
 
 
@@ -92,5 +93,6 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.UserBenefitProfileExt]: { title: 'UserBenefit_Profile_Ext' },
   [ListKeys.DailyRecordParent]: { title: 'SupportRecord_Daily' },
   [ListKeys.MonthlyRecordSummary]: { title: 'MonthlyRecord_Summary' },
+  [ListKeys.RemediationAuditLog]: { title: 'Remediation_AuditLog' },
 };
 
