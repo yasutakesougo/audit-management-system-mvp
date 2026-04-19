@@ -34,12 +34,12 @@ export const remediationAuditRepositoryFactory = createRepositoryFactory<
     }
 
     const { baseUrl } = ensureConfig();
-    const { spFetch } = createSpClient(acquireToken, baseUrl);
+    const client = createSpClient(acquireToken, baseUrl);
 
     if (hybrid) {
-      return new HybridRemediationAuditRepository(spFetch);
+      return new HybridRemediationAuditRepository(client);
     }
-    return new SharePointRemediationAuditRepository(spFetch);
+    return new SharePointRemediationAuditRepository(client);
   },
 });
 

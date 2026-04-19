@@ -18,7 +18,7 @@ export class InMemoryDriftEventRepository implements IDriftEventRepository {
     listName?: string;
     resolved?: boolean;
     since?: string;
-  }): Promise<DriftEvent[]> {
+  }, _signal?: AbortSignal): Promise<DriftEvent[]> {
     let result = this.events;
 
     if (filter?.listName) {

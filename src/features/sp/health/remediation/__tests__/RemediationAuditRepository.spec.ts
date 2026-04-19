@@ -5,8 +5,10 @@ import type { RemediationAuditEntry } from '../audit';
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeEntry(overrides: Partial<RemediationAuditEntry> = {}): RemediationAuditEntry {
+  const planId = overrides.planId || 'plan-1';
   return {
-    planId: 'plan-1',
+    correlationId: planId, // デフォルトで planId を使用
+    planId: planId,
     phase: 'planned',
     listKey: 'TestList',
     fieldName: 'FieldA',
@@ -133,5 +135,35 @@ describe('InMemoryRemediationAuditRepository', () => {
 
     const entries = await repo.getEntries();
     expect(entries).toEqual([]);
+  });
+
+  // ── Trust & Integrity ───────────────────────────────────────────────────
+
+  it('should ignore duplicate entries for the same correlationId and phase', async () => {
+    const entry = makeEntry({ correlationId: 'unique-1', phase: 'planned' });
+    
+    await repo.logEntry(entry);
+    expect(repo._size()).toBe(1);
+
+    // 同一ID・同一フェーズでの重複書き込み試行
+    await repo.logEntry(entry);
+    expect(repo._size()).toBe(1); // 増えていないこと
+
+    // 別フェーズであれば許可される
+    await repo.logEntry({ ...entry, phase: 'executed' });
+    expect(repo._size()).toBe(2);
+  });
+
+  it('should record and filter skipped decisions correctly', async () => {
+    await repo.logEntry(makeEntry({ 
+      correlationId: 'skip-1', 
+      phase: 'skipped', 
+      skippedReason: 'policy_threshold' 
+    }));
+
+    const entries = await repo.getEntries({ phase: 'skipped' });
+    expect(entries).toHaveLength(1);
+    expect(entries[0].skippedReason).toBe('policy_threshold');
+    expect(entries[0].correlationId).toBe('skip-1');
   });
 });

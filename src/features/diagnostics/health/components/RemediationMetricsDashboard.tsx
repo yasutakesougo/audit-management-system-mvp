@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  Box, 
-  Paper, 
-  Typography, 
-  Stack, 
+import {
+  Box,
+  Paper,
+  Typography,
+  Stack,
   CircularProgress,
   Tooltip,
-  IconButton
+  IconButton,
+  Chip
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useSP } from '@/lib/spClient';
 import { calculateRemediationMetrics, formatDuration } from '@/features/sp/health/remediation/metrics';
 import { HybridRemediationAuditRepository } from '@/features/sp/health/remediation/HybridRemediationAuditRepository';
+import type { ISpAuditOperations } from '@/features/sp/health/remediation/SharePointRemediationAuditRepository';
+import type { SpFetcher } from '@/sharepoint/spListHealthCheck';
 import type { RemediationAuditEntry } from '@/features/sp/health/remediation/audit';
 import { assessSLOCompliance, CURRENT_SLO } from '@/features/sp/health/remediation/policy';
 import { Alert, AlertTitle } from '@mui/material';
@@ -27,7 +30,7 @@ export const RemediationMetricsDashboard: React.FC = () => {
     if (!sp) return;
     setLoading(true);
     try {
-      const repository = new HybridRemediationAuditRepository(sp as any);
+      const repository = new HybridRemediationAuditRepository(sp as ISpAuditOperations & { spFetch: SpFetcher });
       const data = await repository.getEntries();
       setEntries(data);
     } catch (err) {

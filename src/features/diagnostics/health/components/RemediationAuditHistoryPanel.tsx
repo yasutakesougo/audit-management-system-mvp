@@ -22,6 +22,8 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InfoIcon from '@mui/icons-material/Info';
 import { useSP } from '@/lib/spClient';
 import { HybridRemediationAuditRepository } from '@/features/sp/health/remediation/HybridRemediationAuditRepository';
+import type { ISpAuditOperations } from '@/features/sp/health/remediation/SharePointRemediationAuditRepository';
+import type { SpFetcher } from '@/sharepoint/spListHealthCheck';
 import type { RemediationAuditEntry } from '@/features/sp/health/remediation/audit';
 
 export const RemediationAuditHistoryPanel: React.FC = () => {
@@ -33,7 +35,7 @@ export const RemediationAuditHistoryPanel: React.FC = () => {
     if (!sp) return;
     setLoading(true);
     try {
-      const repository = new HybridRemediationAuditRepository(sp as any);
+      const repository = new HybridRemediationAuditRepository(sp as ISpAuditOperations & { spFetch: SpFetcher });
       const data = await repository.getEntries();
       // 最新順にソートしておき、UI 表示用とする
       setEntries(data.sort((a, b) => b.timestamp.localeCompare(a.timestamp)));

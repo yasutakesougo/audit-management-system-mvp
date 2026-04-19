@@ -1,6 +1,7 @@
 import { createRepositoryFactory, type BaseFactoryOptions } from '@/lib/createRepositoryFactory';
+// eslint-disable-next-line no-restricted-imports -- Factory は composition root として spClient を生成する責務を持つ。
 import { createSpClient, ensureConfig } from '@/lib/spClient';
-import type { DriftEventRepository } from '../application/DriftEventRepository';
+import type { IDriftEventRepository } from '../domain/DriftEventRepository';
 import { InMemoryDriftEventRepository } from './InMemoryDriftEventRepository';
 import { SharePointDriftEventRepository } from './SharePointDriftEventRepository';
 
@@ -14,13 +15,13 @@ export interface DriftEventRepositoryOptions extends BaseFactoryOptions {
  * UI層からは useDriftEventRepository() を使用してください。
  */
 export const driftEventRepositoryFactory = createRepositoryFactory<
-  DriftEventRepository,
+  IDriftEventRepository,
   DriftEventRepositoryOptions
 >({
   name: 'DriftEvent',
-  
+
   createDemo: () => new InMemoryDriftEventRepository(),
-  
+
   createReal: (options) => {
     const { acquireToken } = options;
     if (!acquireToken) {
@@ -28,9 +29,9 @@ export const driftEventRepositoryFactory = createRepositoryFactory<
     }
 
     const { baseUrl } = ensureConfig();
-    const { spFetch } = createSpClient(acquireToken, baseUrl);
+    const client = createSpClient(acquireToken, baseUrl);
 
-    return new SharePointDriftEventRepository(spFetch);
+    return new SharePointDriftEventRepository(client);
   },
 });
 
