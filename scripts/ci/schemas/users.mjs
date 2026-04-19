@@ -6,13 +6,11 @@
 export const LIST_TITLE = 'Users_Master';
 
 export const ESSENTIAL_FIELDS = [
-  'User_x0020_ID',
-  'Full_x0020_Name',
+  'UserID',
+  'FullName',
 ];
 
 export const OPTIONAL_FIELDS = [
-  'UserID',
-  'FullName',
   'IsActive',
   'Title',
   'Furigana',

@@ -10,6 +10,26 @@
 
 ---
 
+### 🆕 今期対象 (2026-04-19 追加)
+
+#### `UserBenefit_Profile_Ext` — `User_x0020_ID` 重複解消
+
+- [ ] **削除対象内部名:** `User_x0020_ID`
+- [ ] **canonical（残す列）:** `UserID`
+- [ ] **判定根拠:**
+  1. Registry SSOT: `spListRegistry.definitions.ts` の `user_benefit_profile_ext.provisioningFields.UserID` が primary、`User_x0020_ID` は candidates fallback
+  2. Read path: `DataProviderUserRepository.ts` に `User_x0020_ID` 直参照なし（FieldMap/candidates resolver 経由）
+  3. Migration: `scripts/migrate-user-benefit-userid.ps1` が canonical `UserID` を前提として backfill 済み
+- [ ] **削除前提条件（2026-04-19 時点で解消済み）:**
+  1. CI schema 更新済み: `scripts/ci/schemas/user-benefit-ext.mjs` の `ESSENTIAL_FIELDS` を `['UserID']` に矯正
+  2. 参考: `scripts/ci/schemas/users.mjs` も同時に canonical essential 化済み（`Users_Master` 実テナントは canonical のみ存在を確認）
+- [ ] **推奨事前確認:**
+  - `pwsh ./scripts/migrate-user-benefit-userid.ps1 -DryRun` で `UserID` 列にデータが入っていることを確認
+- [ ] **削除後確認:**
+  - `/admin/status` で `schema.fields.user_benefit_profile_ext` の drift `UserID -> User_x0020_ID` が消えて `pass` もしくは `warn`（他 drift 残）に遷移
+
+---
+
 ### 🛠️ 推奨ツール
 *   [zombie-column-purger.mjs](../../scripts/ops/zombie-column-purger.mjs)
     *   使い方: `node scripts/ops/zombie-column-purger.mjs --force`

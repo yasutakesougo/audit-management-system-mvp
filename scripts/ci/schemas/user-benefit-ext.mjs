@@ -6,7 +6,7 @@
 export const LIST_TITLE = 'UserBenefit_Profile_Ext';
 
 export const ESSENTIAL_FIELDS = [
-  'User_x0020_ID',
+  'UserID',
 ];
 
 export const OPTIONAL_FIELDS = [
