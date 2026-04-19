@@ -30,6 +30,8 @@ const EMPTY_SNAPSHOT: DriftObservabilitySnapshot = {
   lastUpdatedAt: null,
 };
 
+const DEFAULT_NOW_PROVIDER = (): Date => new Date();
+
 export const getPeriodStart = (
   period: DriftObservabilityPeriod,
   now: Date = new Date(),
@@ -60,7 +62,7 @@ const safeCompute = <T,>(label: string, compute: () => T, fallback: T): T => {
 export const useDriftObservability = (options: UseDriftObservabilityOptions = {}) => {
   const driftRepository = useDriftEventRepository();
   const repository = options.repository ?? driftRepository;
-  const nowProvider = options.nowProvider ?? (() => new Date());
+  const nowProvider = options.nowProvider ?? DEFAULT_NOW_PROVIDER;
   const [period, setPeriod] = React.useState<DriftObservabilityPeriod>('weekly');
   const [loading, setLoading] = React.useState(false);
   const [snapshot, setSnapshot] = React.useState<DriftObservabilitySnapshot>(EMPTY_SNAPSHOT);
