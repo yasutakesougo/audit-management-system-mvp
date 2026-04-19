@@ -28,6 +28,53 @@
 - [ ] **削除後確認:**
   - `/admin/status` で `schema.fields.user_benefit_profile_ext` の drift `UserID -> User_x0020_ID` が消えて `pass` もしくは `warn`（他 drift 残）に遷移
 
+#### `UserBenefit_Profile` — 連番ゾンビ列 285本 一括削除（canonical 3列追加の容量確保）
+
+**背景:** LIVE で「列合計サイズ上限」エラー発生。read-only 棚卸し（2026-04-19 実施・生成物 `tmp/user_benefit_profile_field_audit.json` / `tmp/user_benefit_profile_orphan_report.json`）の結果、**378列中 285列（75%）が orphan・全 `nonEmptyCount=0`**。canonical 3列（`RecipientCertExpiry` / `DisabilitySupportLevel` / `GrantedDaysPerMonth`）追加の前段として削除実施。
+
+- [ ] **削除対象 family（yes 群・全て `nonEmptyCount=0` / 30日更新なし / registry 未記載 / read path 未参照）**
+
+| Family | 列数 | 型 |
+|---|---|---|
+| `Disability_x0020_Support_x0020_L[0-25]` | 27 | Text |
+| `Granted_x0020_Days_x0020_Per_x00[0-25]` | 27 | Text |
+| `Meal_x0020_Addition[0-25]` | 27 | Text |
+| `Recipient_x0020_Cert_x0020_Expir[0-25]` | 27 | DateTime |
+| `User_x0020_Copay_x0020_Limit[0-25]` | 27 | Text |
+| `Copay_x0020_Payment_x0020_Method[0-25]` | 26 | Text |
+| `Grant_x0020_Municipality[0-25]` | 26 | Text |
+| `Grant_x0020_Period_x0020_Start[0-25]` | 26 | DateTime |
+| `Grant_x0020_Period_x0020_End[0-25]` | 26 | DateTime |
+| `User_x0020_ID[0-19]` | 20 | Text |
+| **合計（yes 群）** | **259** | — |
+
+> ⚠️ 実測で `yes=285` と報告あり。上記 family 集計との差分は、表示されていない家族（例: `Recipient_x0020_Cert_x0020_Numb[0-25]` 等）または range の上端差の可能性。実行前に `tmp/user_benefit_profile_orphan_report.json` の全リスト突合を推奨。
+
+- [ ] **削除対象 review 群（1本）**
+  - `Recipient_x0020_Cert_x0020_Numbe`（truncation 形式、`_ext` 側との名称衝突のため慎重確認）
+  - 判定手順:
+    1. 実テナントで本列の `nonEmptyCount` を再確認 → 0 なら削除可
+    2. `>0` の場合は `UserBenefit_Profile_Ext.RecipientCertNumber` 側に同一値が存在することを確認してから削除
+
+- [ ] **段階実行計画（family 単位の phase 方式）**
+  1. **Phase 1**: yes 群を family 1本ずつ削除 → ゴミ箱パージ → アプリ再実行 → `/admin/status` 確認 → 次 family
+     - 目安: 1 family / 回、途中で HTTP 500 や容量エラーが出たら即停止
+     - 推奨ツール: `scripts/ops/zombie-column-purger.mjs --force --list=UserBenefit_Profile`
+       - ⚠️ 現状 TARGETS に `UserBenefit_Profile` 未登録のため、実行前にスクリプトへ patterns 追記が必要（別PR で対応）
+  2. **Phase 2**: `Recipient_x0020_Cert_x0020_Numbe` 単体 review → 判定に従い削除
+  3. **Phase 3**: canonical 3列追加
+     - `RecipientCertExpiry`（DateTime, DateOnly）
+     - `DisabilitySupportLevel`（Text）
+     - `GrantedDaysPerMonth`（Text）
+
+- [ ] **削除後の健康診断**
+  - `/admin/status` の `schema.fields.user_benefit_profile` で `missingEssential` が空、drift が Phase 3 追加後に減ること
+  - Provisioning ログで 500/400 エラーが出ないこと
+  - 列合計サイズが canonical 追加後も上限に収まること
+
+- [ ] **ロールバック判断基準**
+  - ある family 削除後に `/admin/status` で FAIL が出たら該当 family の削除を停止し、直前ゴミ箱からの復元を検討
+
 ---
 
 ### 🛠️ 推奨ツール
