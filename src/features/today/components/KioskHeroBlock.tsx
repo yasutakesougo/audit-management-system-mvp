@@ -27,6 +27,7 @@ import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { useNavigate } from 'react-router-dom';
 
+import { MonitoringCountdown, computeMonitoringCycle } from '@/features/daily/components/MonitoringCountdown';
 import { HeroActionCard, type HeroActionCardProps } from './HeroActionCard';
 import { ProgressRings, type ProgressRingItem } from './ProgressRings';
 import { KioskQuickLinks } from './KioskQuickLinks';
@@ -44,6 +45,8 @@ export type KioskHeroBlockProps = {
   progressRings?: ProgressRingItem[];
   /** クイックリンク遷移ハンドラ */
   onQuickLinkNavigate?: (href: string) => void;
+  /** 全利用者リスト（モニタリング警告対象の抽出に使用） */
+  users?: import('@/sharepoint/fields/userFields').IUserMaster[];
 };
 
 // ─── Inline Alert Item ───────────────────────────────────────
@@ -142,6 +145,7 @@ export const KioskHeroBlock: React.FC<KioskHeroBlockProps> = ({
   exceptionsQueue,
   progressRings,
   onQuickLinkNavigate,
+  users = [],
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -156,6 +160,27 @@ export const KioskHeroBlock: React.FC<KioskHeroBlockProps> = ({
 
     return all.slice(0, 4);
   }, [exceptionsQueue]);
+
+  // ── モニタリング警告（残り30日以内） ──
+  const monitoringAlerts = React.useMemo(() => {
+    if (!users) return [];
+    const now = new Date();
+    return users
+      .filter((u) => u.LastAssessmentDate)
+      .map((u) => {
+        const assessmentDate = new Date(`${u.LastAssessmentDate}T00:00:00`);
+        const cycle = computeMonitoringCycle(assessmentDate, now);
+        return {
+          userId: u.UserID,
+          userName: u.FullName,
+          lastAssessmentDate: u.LastAssessmentDate,
+          remaining: cycle.remaining,
+        };
+      })
+      .filter((u) => u.remaining <= 30) // 30日以内のみ表示
+      .sort((a, b) => a.remaining - b.remaining) // 期限が近い順
+      .slice(0, 3); // Kiosk では最大3件に絞る
+  }, [users]);
 
   const handleAlertNavigate = React.useCallback(
     (path: string) => navigate(path),
@@ -199,6 +224,47 @@ export const KioskHeroBlock: React.FC<KioskHeroBlockProps> = ({
               onNavigate={handleAlertNavigate}
             />
           ))}
+        </Box>
+      )}
+
+      {/* ── 中段2: モニタリング予定（カウントダウン） ── */}
+      {monitoringAlerts.length > 0 && (
+        <Box
+          data-testid="kiosk-monitoring-alerts"
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 1.5,
+            mt: 2,
+            pt: 2,
+            borderTop: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              fontWeight: 700,
+              fontSize: '0.68rem',
+              letterSpacing: '0.08em',
+              color: 'text.secondary',
+              mb: 0.5,
+            }}
+          >
+            📅 モニタリング期限
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            {monitoringAlerts.map((alert) => (
+              <Box key={alert.userId} sx={{ bgcolor: 'background.paper', borderRadius: 2, p: 0.5, boxShadow: 1 }}>
+                <Typography variant="caption" sx={{ ml: 1, fontWeight: 600, color: 'text.secondary' }}>
+                  {alert.userName}
+                </Typography>
+                <MonitoringCountdown
+                  userName={alert.userName}
+                  lastAssessmentDate={alert.lastAssessmentDate}
+                />
+              </Box>
+            ))}
+          </Box>
         </Box>
       )}
 
