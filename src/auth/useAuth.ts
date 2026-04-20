@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { getAppConfig, isE2eMsalMockEnabled, shouldSkipLogin } from '../lib/env';
 import { clearRuntimeListReady } from '../lib/listReadyRuntime';
 import { createE2EMsalAccount, persistMsalToken } from '../lib/msal';
+import { reportSpHealthEvent } from '@/features/sp/health/spHealthSignalStore';
 import { InteractionStatus } from './interactionStatus';
 import { GRAPH_RESOURCE, GRAPH_SCOPES, LOGIN_SCOPES, SP_RESOURCE } from './msalConfig';
 import { useMsalContext } from './MsalProvider';
@@ -205,6 +206,30 @@ export const useAuth = () => {
       return inFlightPromise;
     }
 
+    // 🛡️ LATEST context access via stable ref bridge
+    const current = { 
+      ...msalStateRef.current, 
+      loginScopes, 
+      authConfig 
+    };
+
+    // 🛡️ Get fresh account list from instance to avoid stale closure
+    const allAccounts = current.instance.getAllAccounts() as BasicAccountInfo[];
+    const activeAccount = ensureActiveAccount(current.instance) ?? (allAccounts[0] as BasicAccountInfo | undefined) ?? null;
+    if (!activeAccount) {
+      if (debugEnabled) {
+        console.log('[auth-skip] acquireToken skipped: no active account (user likely not logged in)');
+      }
+      reportSpHealthEvent({
+        severity: 'watch',
+        reasonCode: 'sp_auth_failed',
+        message: 'No active account found. SharePoint IO will be skipped until login.',
+        source: 'realtime',
+        occurredAt: new Date().toISOString()
+      });
+      return null;
+    }
+
     // 🛑 3. Synchronous Loop Guard (The Kill Switch)
     const now = Date.now();
     if (now - lastWindowEpoch > RATE_LIMIT_WINDOW_MS) {
@@ -219,27 +244,12 @@ export const useAuth = () => {
         callNumber: totalRequestsInWindow,
         resource: targetResource.slice(-30),
         inProgress: msalStateRef.current.inProgress,
-        hasAccount: !!msalStateRef.current.instance.getActiveAccount(),
+        hasAccount: true,
       });
     }
 
     if (totalRequestsInWindow > MAX_REQUESTS_PER_WINDOW) {
       console.warn('[auth] Rate limit exceeded! Throttling token acquisition to break infinite loop.');
-      return null;
-    }
-
-    // 🛡️ LATEST context access via stable ref bridge
-    const current = { 
-      ...msalStateRef.current, 
-      loginScopes, 
-      authConfig 
-    };
-
-    // 🛡️ Get fresh account list from instance to avoid stale closure
-    const allAccounts = current.instance.getAllAccounts() as BasicAccountInfo[];
-    const activeAccount = ensureActiveAccount(current.instance) ?? (allAccounts[0] as BasicAccountInfo | undefined) ?? null;
-    if (!activeAccount) {
-      console.log('[auth-debug] acquireToken skipped: no account');
       return null;
     }
 
@@ -435,6 +445,7 @@ export const useAuth = () => {
       getListReadyState,
       setListReadyState,
       tokenReady: true,
+      isAuthReady: true,
     };
   }, [isE2eMock, e2eMockAcquireToken, getListReadyState, setListReadyState]);
 
@@ -451,6 +462,7 @@ export const useAuth = () => {
       getListReadyState,
       setListReadyState,
       tokenReady: true,
+      isAuthReady: true,
     };
   }, [skipLogin, getListReadyState, setListReadyState]);
 
@@ -470,6 +482,7 @@ export const useAuth = () => {
     isAuthenticated,
     account: resolvedAccount,
     tokenReady,
+    isAuthReady: tokenReady, // 🚀 Standardized Auth Readiness flag
     getListReadyState,
     setListReadyState,
     ...authFunctions,

@@ -2,6 +2,7 @@ import { TESTIDS } from '@/testids';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BulkDailyRecordForm } from '../forms/BulkDailyRecordForm';
+import toast from 'react-hot-toast';
 
 // Mock react-hot-toast
 vi.mock('react-hot-toast', () => ({

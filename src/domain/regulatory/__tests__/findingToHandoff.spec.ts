@@ -22,6 +22,7 @@ function makeRegularFinding(overrides: Partial<AuditFinding> = {}): AuditFinding
     userId: 'U001',
     userName: '鈴木花子',
     message: '見直し期限超過',
+    domain: 'sheet', // Add this
     overdueDays: -14,
     detectedAt: '2026-03-14',
     ...overrides,
@@ -36,6 +37,7 @@ function makeAddonFinding(overrides: Partial<SevereAddonFinding> = {}): SevereAd
     userId: 'U002',
     userName: '田中太郎',
     message: '週次観察不足',
+    domain: 'sheet', // Add this
     detectedAt: '2026-03-14',
     ...overrides,
   };

@@ -3,6 +3,7 @@
  */
 import type { GoalItem } from '@/features/shared/goal/goalTypes';
 import type { SupportPlanForm } from '@/features/support-plan-guide/types';
+import { defaultFormState } from '@/features/support-plan-guide/types';
 import { describe, expect, it } from 'vitest';
 import type { SpPlanGoalItem } from '../fields';
 import {
@@ -132,19 +133,11 @@ describe('formToGoals', () => {
       { id: 'g4', type: 'support', label: '日常支援', text: '日常支援1', domains: [] },
     ];
     const form: SupportPlanForm = {
+      ...defaultFormState,
       serviceUserName: 'テスト',
       supportLevel: '区分3',
       planPeriod: '2026年4月〜',
-      assessmentSummary: '',
-      strengths: '',
       decisionSupport: '意思決定を支援する',
-      conferenceNotes: '',
-      monitoringPlan: '',
-      reviewTiming: '',
-      riskManagement: '',
-      complianceControls: '',
-      improvementIdeas: '',
-      lastMonitoringDate: '',
       goals: goalItems,
     };
     const goals = formToGoals(form);
@@ -155,19 +148,7 @@ describe('formToGoals', () => {
 
   it('returns empty for form with empty goals', () => {
     const form: SupportPlanForm = {
-      serviceUserName: '',
-      supportLevel: '',
-      planPeriod: '',
-      assessmentSummary: '',
-      strengths: '',
-      decisionSupport: '',
-      conferenceNotes: '',
-      monitoringPlan: '',
-      reviewTiming: '',
-      riskManagement: '',
-      complianceControls: '',
-      improvementIdeas: '',
-      lastMonitoringDate: '',
+      ...defaultFormState,
       goals: [],
     };
     expect(formToGoals(form)).toHaveLength(0);

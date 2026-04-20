@@ -13,8 +13,10 @@ vi.mock('@/sharepoint/spListRegistry', () => ({
 
 function makeEntry(overrides: Partial<RemediationAuditEntry> = {}): RemediationAuditEntry {
   return {
+    correlationId: overrides.planId || 'plan-sp-1',
     planId: 'plan-sp-1',
     phase: 'planned',
+    targetType: 'index',
     listKey: 'TestList',
     fieldName: 'FieldA',
     action: 'delete_index',

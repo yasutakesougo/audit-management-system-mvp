@@ -16,6 +16,7 @@ function makeFinding(overrides: Partial<SevereAddonFinding>): SevereAddonFinding
     severity: 'low',
     userId: 'U001',
     message: 'テスト',
+    domain: 'sheet',
     detectedAt: '2026-03-13',
     ...overrides,
   };

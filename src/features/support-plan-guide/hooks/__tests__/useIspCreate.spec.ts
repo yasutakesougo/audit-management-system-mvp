@@ -8,6 +8,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { draftToIspFormValues, buildUserLookup } from '../useIspCreate';
+import { defaultFormState } from '../../types';
 import type { SupportPlanForm } from '../../types';
 import type { IUserMaster } from '@/features/users/types';
 
@@ -17,6 +18,7 @@ import type { IUserMaster } from '@/features/users/types';
 
 function makeForm(overrides: Partial<SupportPlanForm> = {}): SupportPlanForm {
   return {
+    ...defaultFormState,
     serviceUserName: '田中太郎',
     supportLevel: '区分4',
     planPeriod: '2026-04-01〜2027-03-31',

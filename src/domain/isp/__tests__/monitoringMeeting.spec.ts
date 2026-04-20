@@ -44,6 +44,8 @@ function makeRecord(
     nextMonitoringDate: '2026-12-15',
     recordedBy: '田中太郎',
     recordedAt: '2026-06-15T10:00:00Z',
+    discussionSummary: '検討内容のテスト用テキスト',
+    status: 'finalized',
     ...overrides,
   };
 }

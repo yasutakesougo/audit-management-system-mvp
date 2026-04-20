@@ -30,6 +30,7 @@ import type {
 // ─── Display maps ─────────────────────────────────────────────────────────────
 
 const SEVERITY_LABEL: Record<SpHealthSeverity, string> = {
+  watch: 'Observation',
   warning: 'Watch',
   action_required: 'Action Required',
   critical: 'Critical',
@@ -104,6 +105,7 @@ export const SpHealthPopover: React.FC<SpHealthPopoverProps> = ({
   const open = Boolean(anchorEl);
 
   const severityColor: Record<SpHealthSeverity, string> = {
+    watch: theme.palette.info.main,
     warning: theme.palette.warning.main,
     action_required: theme.palette.warning.dark,
     critical: theme.palette.error.main,

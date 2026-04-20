@@ -26,6 +26,7 @@ import { SpHealthPopover } from './SpHealthPopover';
 // ─── Label / Color helpers ────────────────────────────────────────────────────
 
 const SEVERITY_LABEL: Record<SpHealthSeverity, string> = {
+  watch: 'SP Observe',
   warning: 'SP Watch',
   action_required: 'SP Action',
   critical: 'SP Critical',
@@ -44,9 +45,10 @@ export const SpHealthBadge: React.FC = () => {
     return unsubscribe;
   }, []);
 
-  if (!signal) return null;
+  if (!signal || signal.severity === 'watch') return null;
 
   const severityColor: Record<SpHealthSeverity, string> = {
+    watch: theme.palette.info.main,
     warning: theme.palette.warning.main,
     action_required: theme.palette.warning.dark,
     critical: theme.palette.error.main,

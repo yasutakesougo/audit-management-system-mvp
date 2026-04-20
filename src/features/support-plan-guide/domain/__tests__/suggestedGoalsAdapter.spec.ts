@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import type { SupportPlanBundle, SupportPlanningSheet } from '@/domain/isp/schema';
 import type { SupportPlanForm } from '../../types';
+import { defaultFormState } from '../../types';
 import {
   toAssessmentSummary,
   toIcebergSummary,
@@ -87,20 +88,15 @@ const makeMinimalSheet = (overrides: Partial<SupportPlanningSheet> = {}): Suppor
   }) as SupportPlanningSheet;
 
 const makeMinimalForm = (overrides: Partial<SupportPlanForm> = {}): SupportPlanForm => ({
+  ...defaultFormState,
   serviceUserName: 'テスト太郎',
   supportLevel: '区分3',
   planPeriod: '2025/04/01 - 2025/09/30',
   assessmentSummary: '大声を出す行動に注目獲得の機能が推測される',
   strengths: '音楽が好き',
-  decisionSupport: '',
-  conferenceNotes: '',
   monitoringPlan: '月1回のモニタリング',
   reviewTiming: '6ヶ月後',
-  riskManagement: '',
-  complianceControls: '',
   improvementIdeas: 'タイマーの導入を検討',
-  lastMonitoringDate: '',
-  goals: [],
   ...overrides,
 });
 

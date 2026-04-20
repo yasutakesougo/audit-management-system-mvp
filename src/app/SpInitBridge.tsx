@@ -7,13 +7,14 @@
  * 現在の初期化タスク:
  * - Holiday_Master からの祝日読み込み
  */
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useSP } from '@/lib/spClient';
 import { loadHolidaysFromSharePoint } from '@/sharepoint/holidayLoader';
 import { SharePointProvisioningCoordinator } from '@/sharepoint/spProvisioningCoordinator';
 import { useDataProvider } from '@/lib/data/useDataProvider';
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { useToast } from '@/hooks/useToast';
+import { useAuthReady } from '@/auth/useAuthReady';
 import { useNightlySignalIngestion } from '@/features/sp/health/hooks/useNightlySignalIngestion';
 
 /**
@@ -25,12 +26,13 @@ import { useNightlySignalIngestion } from '@/features/sp/health/hooks/useNightly
  * 2. 祝日の読み込み (Holiday_Master)
  */
 // 🛑 Module-level global guard to survive re-mounts (React 18 StrictMode or parent re-renders)
-let globalSpBootstrapStarted = false;
 let globalAdminWarningShown = false;
 
 export const SpInitBridge: React.FC = () => {
+  const bootstrapStartedRef = useRef(false);
   const sp = useSP();
   const { type: providerType } = useDataProvider(); // 🚀 Data OS Readiness: Trigger initial singleton creation
+  const isAuthReady = useAuthReady();
   const { role } = useUserAuthz();
   const { show } = useToast();
   
@@ -38,8 +40,8 @@ export const SpInitBridge: React.FC = () => {
   useNightlySignalIngestion();
 
   useEffect(() => {
-    if (globalSpBootstrapStarted) return;
-    globalSpBootstrapStarted = true;
+    if (bootstrapStartedRef.current || !isAuthReady) return;
+    bootstrapStartedRef.current = true;
 
     const bootstrap = async () => {
       // 1. SharePoint リストの一括プロビジョニング・検証（SharePoint モードのみ）
@@ -67,7 +69,7 @@ export const SpInitBridge: React.FC = () => {
     };
 
     bootstrap();
-  }, [sp, role, show, providerType]);
+  }, [sp, role, show, providerType, isAuthReady]);
 
   return null;
 };

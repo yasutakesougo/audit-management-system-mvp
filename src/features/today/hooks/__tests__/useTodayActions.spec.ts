@@ -77,7 +77,7 @@ describe('useTodayActions', () => {
 
   it('staff ユーザーの場合、planning signal があっても表示されない', async () => {
     // Staff 権限（admin以外）を設定
-    vi.mocked(useUserAuthz).mockReturnValue({ role: 'staff', ready: true });
+    vi.mocked(useUserAuthz).mockReturnValue({ role: 'viewer', ready: true });
     
     // シグナル自体は存在すると仮定
     vi.mocked(useTodayIspRenewSuggestActions).mockReturnValue({

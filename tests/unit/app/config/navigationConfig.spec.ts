@@ -27,7 +27,7 @@ describe('navigationConfig', () => {
         testId: TESTIDS.nav.daily,
         group: 'today',
       };
-      expect(pickGroup(item)).toBe('today');
+      expect(pickGroup(item, false)).toBe('today');
     });
 
     it('should classify health records as today', () => {
@@ -37,7 +37,7 @@ describe('navigationConfig', () => {
         isActive: () => false,
         group: 'today',
       };
-      expect(pickGroup(item)).toBe('today');
+      expect(pickGroup(item, false)).toBe('today');
     });
 
     it('should classify schedules as planning group', () => {
@@ -48,7 +48,7 @@ describe('navigationConfig', () => {
         testId: TESTIDS.nav.schedules,
         group: 'planning',
       };
-      expect(pickGroup(item)).toBe('planning');
+      expect(pickGroup(item, false)).toBe('planning');
     });
 
     it('should default to records group for unknown items', () => {
@@ -58,7 +58,7 @@ describe('navigationConfig', () => {
         isActive: () => false,
         group: 'records',
       };
-      expect(pickGroup(item)).toBe('records');
+      expect(pickGroup(item, false)).toBe('records');
     });
   });
 
@@ -70,6 +70,7 @@ describe('navigationConfig', () => {
       complianceFormEnabled: false,
       icebergPdcaEnabled: false,
       staffAttendanceEnabled: false,
+      todayOpsEnabled: false,
       isAdmin: false,
       authzReady: true,
       navAudience: NAV_AUDIENCE.staff,

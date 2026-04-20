@@ -82,7 +82,8 @@ describe('ISP Scenario: Shioda Yuki (Ingested)', () => {
       recordedBy: '担当員',
       recordedAt: '2026-09-15T10:00:00Z',
       status: 'finalized',
-      implementationSummary: 'スケジュール提示を徹底。ハサミは制限下で最小限に使用。',
+      implementationSummary: 'スケジュール提示を徹底。ハサミは制限下で最小限に使用任務。',
+      discussionSummary: 'ハサミ制限の継続と代替活動の模索について検討。',
     };
 
     const summary = computeMonitoringSummary([septMonitoring], '2026-10-01');
