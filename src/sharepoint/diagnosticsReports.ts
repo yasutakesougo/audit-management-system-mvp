@@ -507,6 +507,35 @@ export async function getLatestDiagnosticsReport(
 }
 
 /**
+ * 最新の診断レポート（履歴）を複数件取得する
+ */
+export async function getLatestDiagnosticsReports(
+  sp: UseSP,
+  title?: string,
+  limit: number = 10,
+  signal?: AbortSignal,
+): Promise<DiagnosticsReportItem[]> {
+  const listTitle = DIAGNOSTICS_REPORTS_LIST_TITLE;
+  const resolvedFields = await resolveDiagnosticsFields(sp);
+  const selectFields = buildDiagnosticsSelectFields(resolvedFields);
+
+  const filter = title 
+    ? `${resolvedFields.title ?? FIELD_MAP_DIAGNOSTICS_REPORTS.title} eq '${title.replace(/'/g, "''")}'`
+    : undefined;
+
+  const reports = await sp.getListItemsByTitle<Record<string, unknown>>(
+    listTitle,
+    selectFields,
+    filter,
+    `${resolvedFields.modified ?? FIELD_MAP_DIAGNOSTICS_REPORTS.modified} desc`,
+    limit,
+    signal,
+  );
+
+  return reports.map((r) => normalizeDiagnosticsReportItem(r, resolvedFields));
+}
+
+/**
  * テスト用: フィールド解決キャッシュをクリア
  */
 export const __resetDiagnosticsReportFieldResolutionForTest = (): void => {

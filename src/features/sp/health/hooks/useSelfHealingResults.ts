@@ -10,7 +10,7 @@ export interface SelfHealingResult {
   occurredAt: string;
 }
 
-interface NightlyEvent {
+export interface NightlyEvent {
   eventType: string;
   resourceKey: string;
   fieldKey?: string;
@@ -39,39 +39,9 @@ export function useSelfHealingResults() {
 
         if (report) {
           setHasReport(true);
-        }
-
-        if (report?.SummaryText) {
-          try {
-            const summary = JSON.parse(report.SummaryText) as { events?: NightlyEvent[] };
-            // eventType === 'remediation' のイベントを抽出
-            const remediationEvents = (summary.events || [])
-              .filter((e) => e.eventType === 'remediation')
-              .map((e) => {
-                // message から結果を類推
-                let outcome: SelfHealingResult['outcome'] = 'unknown';
-                const msg = (e.sampleMessage || '').toLowerCase();
-                if (msg.includes('成功') || msg.includes('success')) {
-                  outcome = 'added';
-                } else if (msg.includes('失敗') || msg.includes('fail')) {
-                  outcome = 'failed';
-                } else if (msg.includes('上限') || msg.includes('limit')) {
-                  outcome = 'skipped_limit';
-                }
-
-                return {
-                  resourceKey: e.resourceKey,
-                  fieldKey: e.fieldKey,
-                  outcome,
-                  message: e.sampleMessage,
-                  occurredAt: e.lastSeen || report.Modified || report.Created,
-                };
-              });
-
-            setResults(remediationEvents);
-          } catch (e) {
-            console.warn('[useSelfHealingResults] Failed to parse SummaryText', e);
-          }
+          const { normalizeReportToHistoryEntry } = await import('./selfHealingNormalization');
+          const entry = normalizeReportToHistoryEntry(report);
+          setResults(entry.events);
         }
       } catch (err) {
         if (!cancelled) {
