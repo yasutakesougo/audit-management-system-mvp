@@ -10,6 +10,7 @@ import { SpAdapter } from "./spAdapter";
 import { getRuntimeEnv } from "@/env";
 import { emitDriftRecord, type DriftResolutionType, type DriftType } from '@/features/diagnostics/drift/domain/driftLogic';
 import { decideGovernanceAction } from '@/features/diagnostics/governance/governanceEngine';
+import { classifyCreateError } from "./classifyCreateError";
 
 // statusRank is retained for potential future worst-of aggregation.
 const _statusRank: Record<HealthStatus, number> = { pass: 0, warn: 1, fail: 2 };
@@ -64,11 +65,11 @@ function pickEnvKeys(env: Record<string, unknown>, keys: string[]) {
 
 async function safe<T>(
   fn: () => Promise<T>
-): Promise<{ ok: true; v: T } | { ok: false; err: string }> {
+): Promise<{ ok: true; v: T } | { ok: false; err: string; rawErr: unknown }> {
   try {
     return { ok: true, v: await fn() };
   } catch (e) {
-    return { ok: false, err: stringifyErr(e) };
+    return { ok: false, err: stringifyErr(e), rawErr: e };
   }
 }
 
@@ -530,20 +531,55 @@ async function runListChecks(
     sp.createItem(spec.resolvedTitle, createBody)
   );
   if (!created.ok) {
+    const classified = classifyCreateError(created.rawErr);
+    const nextActionByReason = {
+      throttle: {
+        kind: "copy" as const,
+        label: "【カテゴリ: Create】数分待って再実行し、継続時は管理者に API 使用量を確認する",
+        value: `リスト「${spec.resolvedTitle}」の Create テストは一時的な制限（throttle）の可能性があります。数分後に再実行し、継続する場合は SharePoint 管理者に API 使用量の確認を依頼してください。`,
+      },
+      auth: {
+        kind: "copy" as const,
+        label: "【カテゴリ: Create】管理者に作成権限を付与するよう依頼する",
+        value: `リスト「${spec.resolvedTitle}」に対する「投稿」以上の権限を SharePoint 管理者が付与してください。`,
+      },
+      duplicate: {
+        kind: "copy" as const,
+        label: "【カテゴリ: Create】管理者に既存データ重複の有無を確認する",
+        value: `リスト「${spec.resolvedTitle}」で healthcheck 作成データの重複が発生しています。前回実行分の残存データや一意制約設定を管理者に確認してください。`,
+      },
+      drift: {
+        kind: "copy" as const,
+        label: "【カテゴリ: Create】スキーマ定義と内部名を確認する",
+        value: `リスト「${spec.resolvedTitle}」の列 internal name に不整合がある可能性があります。provision 手順と drift 候補定義を確認してください。`,
+      },
+      unknown: {
+        kind: "copy" as const,
+        label: "【カテゴリ: Create】詳細ログを確認して原因を特定する",
+        value: `リスト「${spec.resolvedTitle}」の Create テスト失敗理由を detail から確認し、必要に応じて調査 Issue を起票してください。`,
+      },
+    } as const;
+
     results.push(
       fail({
         key: `permissions.create.${spec.key}`,
         label: `権限：Create（${spec.displayName}）`,
         category: "permissions",
-        summary: "作成（Create）権限がありません。【要管理者対応】",
+        summary: classified.summaryPhrase,
         detail: created.err,
-        evidence: { listTitle: spec.resolvedTitle, payload: createBody },
-        nextActions: [
-          {
-            kind: "copy",
-            label: "【カテゴリ: Create】管理者に作成権限を付与するよう依頼する",
-            value: `リスト「${spec.resolvedTitle}」に対する「投稿」以上の権限を SharePoint 管理者が付与してください。`,
+        evidence: {
+          listTitle: spec.resolvedTitle,
+          payload: createBody,
+          classification: {
+            reason: classified.reason,
+            matchedOn: classified.matchedOn,
+            ...(typeof classified.retryAfterSeconds === "number"
+              ? { retryAfterSeconds: classified.retryAfterSeconds }
+              : {}),
           },
+        },
+        nextActions: [
+          nextActionByReason[classified.reason],
         ],
       })
     );
