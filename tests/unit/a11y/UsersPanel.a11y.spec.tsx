@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 expect.extend(toHaveNoViolations);
 
 const noop = async () => ({} as any);
-type UsersStoreState = ReturnType<typeof usersStore.useUsersStore>;
+
 
 /**
  * UsersPanel Accessibility Tests (#340)
@@ -30,7 +30,11 @@ describe('UsersPanel Accessibility', { retry: 2 }, () => {
       terminate: vi.fn(noop),
       remove: vi.fn(noop),
       refresh: vi.fn(noop),
-    } as UsersStoreState);
+      byId: new Map(),
+      isLoading: false,
+      users: [],
+      load: vi.fn(noop),
+    } as any);
   });
 
   test('has no a11y violations (menu tab)', async () => {
@@ -75,7 +79,11 @@ describe('UsersPanel Accessibility', { retry: 2 }, () => {
       terminate: vi.fn(noop),
       remove: vi.fn(noop),
       refresh: vi.fn(noop),
-    } as UsersStoreState);
+      byId: new Map(),
+      isLoading: false,
+      users: [],
+      load: vi.fn(noop),
+    } as any);
 
     const { container } = render(
       <MemoryRouter>
@@ -99,7 +107,11 @@ describe('UsersPanel Accessibility', { retry: 2 }, () => {
       terminate: vi.fn(noop),
       remove: vi.fn(noop),
       refresh: vi.fn(noop),
-    } as UsersStoreState);
+      byId: new Map(),
+      isLoading: false,
+      users: [],
+      load: vi.fn(noop),
+    } as any);
 
     const { container } = render(
       <MemoryRouter>
@@ -123,7 +135,11 @@ describe('UsersPanel Accessibility', { retry: 2 }, () => {
       terminate: vi.fn(noop),
       remove: vi.fn(noop),
       refresh: vi.fn(noop),
-    } as UsersStoreState);
+      byId: new Map(),
+      isLoading: false,
+      users: [],
+      load: vi.fn(noop),
+    } as any);
 
     const { container } = render(
       <MemoryRouter>

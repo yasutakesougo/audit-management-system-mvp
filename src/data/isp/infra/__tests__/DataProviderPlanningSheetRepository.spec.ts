@@ -56,7 +56,7 @@ class FakeDataProvider implements IDataProvider {
   private rows: Record<string, unknown>[] = [];
   public readonly lastFilters: string[] = [];
 
-  seed(rows: Record<string, unknown>[]): void {
+  async seed(_resourceName: string, rows: Record<string, unknown>[]): Promise<void> {
     this.rows = rows;
   }
 
@@ -103,6 +103,16 @@ class FakeDataProvider implements IDataProvider {
     ]);
   }
 
+  async getMetadata(): Promise<Record<string, unknown>> {
+    return {};
+  }
+
+  async getResourceNames(): Promise<string[]> {
+    return [];
+  }
+
+  async ensureListExists(): Promise<void> {}
+
   async ensureAuth(): Promise<void> {}
   async getFieldDefinitions(): Promise<SpFieldDef[]> {
     return [];
@@ -141,7 +151,7 @@ describe('DataProviderPlanningSheetRepository', () => {
 
   describe('listByUser', () => {
     it('returns all versions for the given user regardless of isCurrent', async () => {
-      provider.seed([
+      provider.seed('any', [
         row({ Id: 1, UserCode: 'U-001', ISPId: 'ISP-A', VersionNo: 1, IsCurrent: false, Status: 'archived' }),
         row({ Id: 2, UserCode: 'U-001', ISPId: 'ISP-A', VersionNo: 2, IsCurrent: true, Status: 'active' }),
         row({ Id: 3, UserCode: 'U-002', ISPId: 'ISP-B', VersionNo: 1, IsCurrent: true, Status: 'active' }),
@@ -155,7 +165,7 @@ describe('DataProviderPlanningSheetRepository', () => {
     });
 
     it('does not filter out archived versions', async () => {
-      provider.seed([
+      provider.seed('any', [
         row({ Id: 1, UserCode: 'U-001', ISPId: 'ISP-A', VersionNo: 1, IsCurrent: false, Status: 'archived' }),
       ]);
 
@@ -165,13 +175,13 @@ describe('DataProviderPlanningSheetRepository', () => {
     });
 
     it('returns empty array when no matching rows exist', async () => {
-      provider.seed([row({ Id: 1, UserCode: 'U-999', ISPId: 'ISP-Z', VersionNo: 1 })]);
+      provider.seed('any', [row({ Id: 1, UserCode: 'U-999', ISPId: 'ISP-Z', VersionNo: 1 })]);
       const items = await repo.listByUser('U-000');
       expect(items).toEqual([]);
     });
 
     it('filter does not include IsCurrent clause (distinguishing from listCurrentByUser)', async () => {
-      provider.seed([row({ Id: 1, UserCode: 'U-001', ISPId: 'ISP-A' })]);
+      provider.seed('any', [row({ Id: 1, UserCode: 'U-001', ISPId: 'ISP-A' })]);
       await repo.listByUser('U-001');
       const issued = provider.lastFilters.at(-1) ?? '';
       expect(issued).toContain("UserCode eq 'U-001'");
@@ -181,7 +191,7 @@ describe('DataProviderPlanningSheetRepository', () => {
 
   describe('listBySeries', () => {
     it('returns full SupportPlanningSheet for the given userId + ispId series', async () => {
-      provider.seed([
+      provider.seed('any', [
         row({ Id: 10, UserCode: 'U-001', ISPId: 'ISP-A', VersionNo: 1, IsCurrent: false, Status: 'archived' }),
         row({ Id: 11, UserCode: 'U-001', ISPId: 'ISP-A', VersionNo: 2, IsCurrent: true, Status: 'active' }),
         row({ Id: 12, UserCode: 'U-001', ISPId: 'ISP-B', VersionNo: 1, IsCurrent: true, Status: 'active' }),
@@ -196,7 +206,7 @@ describe('DataProviderPlanningSheetRepository', () => {
     });
 
     it('returns full domain shape including nested intake/assessment/planning', async () => {
-      provider.seed([row({ Id: 20, UserCode: 'U-001', ISPId: 'ISP-A', VersionNo: 1 })]);
+      provider.seed('any', [row({ Id: 20, UserCode: 'U-001', ISPId: 'ISP-A', VersionNo: 1 })]);
 
       const sheets = await repo.listBySeries('U-001', 'ISP-A');
       expect(sheets).toHaveLength(1);
@@ -209,13 +219,13 @@ describe('DataProviderPlanningSheetRepository', () => {
     });
 
     it('returns empty array when series does not exist', async () => {
-      provider.seed([row({ Id: 1, UserCode: 'U-001', ISPId: 'ISP-A', VersionNo: 1 })]);
+      provider.seed('any', [row({ Id: 1, UserCode: 'U-001', ISPId: 'ISP-A', VersionNo: 1 })]);
       const sheets = await repo.listBySeries('U-001', 'ISP-Z');
       expect(sheets).toEqual([]);
     });
 
     it('escapes single quotes in ispId', async () => {
-      provider.seed([row({ Id: 1, UserCode: 'U-001', ISPId: "ISP-A'B" })]);
+      provider.seed('any', [row({ Id: 1, UserCode: 'U-001', ISPId: "ISP-A'B" })]);
       const sheets = await repo.listBySeries('U-001', "ISP-A'B");
       expect(sheets).toHaveLength(1);
     });

@@ -18,7 +18,7 @@ const createSummary = (): TodaySummary => ({
 
 describe('TodayLitePage core workflow', () => {
   it('shows viewer core actions in fixed order', () => {
-    render(<TodayLitePage summary={createSummary()} role="staff" onNavigate={vi.fn()} />);
+    render(<TodayLitePage summary={createSummary()} role="viewer" onNavigate={vi.fn()} />);
 
     const buttons = [
       screen.getByTestId('today-lite-action-attendance'),
@@ -34,7 +34,7 @@ describe('TodayLitePage core workflow', () => {
 
   it('navigates viewer core actions to attendance -> table -> handoff routes', () => {
     const onNavigate = vi.fn();
-    render(<TodayLitePage summary={createSummary()} role="staff" onNavigate={onNavigate} />);
+    render(<TodayLitePage summary={createSummary()} role="viewer" onNavigate={onNavigate} />);
 
     fireEvent.click(screen.getByTestId('today-lite-action-attendance'));
     fireEvent.click(screen.getByTestId('today-lite-action-daily-table'));
@@ -55,7 +55,7 @@ describe('TodayLitePage core workflow', () => {
   });
 
   it('hides admin insights for viewer/staff', () => {
-    render(<TodayLitePage summary={createSummary()} role="staff" onNavigate={vi.fn()} />);
+    render(<TodayLitePage summary={createSummary()} role="viewer" onNavigate={vi.fn()} />);
     expect(screen.queryByTestId('today-lite-admin-insights')).not.toBeInTheDocument();
   });
 

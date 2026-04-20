@@ -12,7 +12,6 @@ const theme = createTheme({
   components: {
     MuiButtonBase: { defaultProps: { disableRipple: true } },
     MuiTab: { defaultProps: { disableRipple: true } },
-    MuiTransitions: { styleOverrides: { root: { transition: 'none !important' } } },
   },
 });
 

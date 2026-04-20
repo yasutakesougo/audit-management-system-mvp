@@ -11,6 +11,7 @@ import { describe, it, expect } from 'vitest';
 import type { IspComplianceMetadata } from '@/domain/isp/schema';
 import type { SupportPlanDraft, SupportPlanForm } from '@/features/support-plan-guide/types';
 import { useComplianceForm } from '../useComplianceForm';
+import { defaultFormState } from '@/features/support-plan-guide/types';
 
 // ────────────────────────────────────────────
 // Test-only type helper
@@ -35,20 +36,8 @@ const makeDraft = (compliance?: unknown): SupportPlanDraft => ({
   userId: null,
   userCode: null,
   data: {
+    ...defaultFormState,
     serviceUserName: 'テスト',
-    supportLevel: '',
-    planPeriod: '',
-    assessmentSummary: '',
-    strengths: '',
-    decisionSupport: '',
-    conferenceNotes: '',
-    monitoringPlan: '',
-    reviewTiming: '',
-    riskManagement: '',
-    complianceControls: '',
-    improvementIdeas: '',
-    lastMonitoringDate: '',
-    goals: [],
     ...(compliance !== undefined ? { compliance } : {}),
   } as DataWithCompliance,
 });

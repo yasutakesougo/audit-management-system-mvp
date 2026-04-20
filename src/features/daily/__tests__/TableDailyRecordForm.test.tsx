@@ -112,8 +112,7 @@ function TableDailyRecordFormTestWrapper(props: {
         open={props.open}
         variant="content"
         onClose={props.onClose}
-        onSuccess={props.onSuccess}
-        repository={props.repository}
+        onSave={props.repository.save}
         controlledState={formState}
       />
 

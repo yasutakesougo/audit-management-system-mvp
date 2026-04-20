@@ -6,6 +6,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { Outlet, RouterProvider, createMemoryRouter, useLocation, type RouteObject } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { mockAuthenticatedReadyUser } from './_helpers/authMocks';
 
 // Mock the env module to disable E2E mode for testing
 vi.mock('@/env', async (importOriginal) => {
@@ -24,19 +25,7 @@ const mockUseAuth = vi.mocked(useAuth);
 
 const createAuthenticatedState = (
   overrides: Partial<ReturnType<typeof useAuth>> = {}
-): ReturnType<typeof useAuth> => ({
-  isAuthenticated: true,
-  account: null,
-  signIn: vi.fn(() => Promise.resolve({ success: true })),
-  signOut: vi.fn(() => Promise.resolve()),
-  acquireToken: vi.fn(() => Promise.resolve(null)),
-  loading: false,
-  shouldSkipLogin: false,
-  tokenReady: true,
-  getListReadyState: vi.fn(() => true),
-  setListReadyState: vi.fn(),
-  ...overrides,
-});
+): ReturnType<typeof useAuth> => mockAuthenticatedReadyUser(overrides);
 
 const defaultFlags: FeatureFlagSnapshot = {
   schedules: true,

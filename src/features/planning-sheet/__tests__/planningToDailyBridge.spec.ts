@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { SupportPlanningSheet } from '@/domain/isp/schema';
+import type { SupportPlanningSheet } from '@/domain/isp/schema/ispPlanningSheetSchema';
 import { bridgePlanningSheetToDailyProcedures, type BridgeSource } from '../planningToRecordBridge';
 
 // ─── Mock Data Helpers ───
@@ -9,28 +9,40 @@ function makeSheet(overrides: Partial<SupportPlanningSheet> = {}): SupportPlanni
     id: 'sheet-001',
     userId: 'user-001',
     createdAt: '2024-01-01T00:00:00Z',
+    createdBy: 'system',
     updatedAt: '2024-01-01T00:00:00Z',
+    updatedBy: 'system',
     status: 'active',
     version: 1,
     isCurrent: true,
+    ispId: 'isp-001',
     title: 'テスト計画書',
+    targetScene: '',
+    targetDomain: '',
     supportPolicy: '',
     concreteApproaches: '',
     environmentalAdjustments: '',
+    observationFacts: '事実',
+    interpretationHypothesis: '分析',
+    supportIssues: '課題',
     intake: {
-      userId: 'user-001',
+      presentingProblem: '課題',
       medicalFlags: [],
       sensoryTriggers: [],
-      riskBehaviors: [],
-      strengths: '',
-      weaknesses: '',
-      history: '',
-      remarks: '',
+      targetBehaviorsDraft: [],
+      behaviorItemsTotal: null,
+      incidentSummaryLast30d: '',
+      communicationModes: [],
+      consentScope: [],
+      consentDate: null,
     },
     assessment: {
-      behaviorSummary: '',
-      environmentalFactors: '',
-      hypothesis: '',
+      targetBehaviors: [],
+      abcEvents: [],
+      hypotheses: [],
+      riskLevel: 'low',
+      healthFactors: [],
+      teamConsensusNote: '',
     },
     planning: {
       supportPriorities: [],
@@ -43,7 +55,7 @@ function makeSheet(overrides: Partial<SupportPlanningSheet> = {}): SupportPlanni
       reviewCycleDays: 180,
     },
     ...overrides,
-  };
+  } as any;
 }
 
 // ─── Tests ───

@@ -3,18 +3,20 @@ import { useSP } from '@/lib/spClient';
 import { auditLog } from '@/lib/debugLogger';
 import { reportDiagnosticsReport, mapPatrolEventToSignal, type PatrolEvent } from '../mapping';
 import { reportSpHealthEvent } from '../spHealthSignalStore';
+import { useAuthReady } from '@/auth/useAuthReady';
 import { useDriftEventRepository } from '@/features/diagnostics/drift/infra/driftEventRepositoryFactory';
 
 /**
  * useNightlySignalIngestion — Nightly Patrol 結果を UI に取り込む Hook
  */
 export function useNightlySignalIngestion() {
+  const isAuthReady = useAuthReady();
   const sp = useSP();
   const driftRepository = useDriftEventRepository();
   const ranRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (!sp || ranRef.current) return;
+    if (!sp || !isAuthReady || ranRef.current) return;
     ranRef.current = true;
 
     let cancelled = false;

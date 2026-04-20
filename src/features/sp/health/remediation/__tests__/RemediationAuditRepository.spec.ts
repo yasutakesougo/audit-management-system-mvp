@@ -10,6 +10,7 @@ function makeEntry(overrides: Partial<RemediationAuditEntry> = {}): RemediationA
     correlationId: planId, // デフォルトで planId を使用
     planId: planId,
     phase: 'planned',
+    targetType: 'index',
     listKey: 'TestList',
     fieldName: 'FieldA',
     action: 'delete_index',
