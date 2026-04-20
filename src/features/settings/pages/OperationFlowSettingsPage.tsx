@@ -34,7 +34,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { createOperationalPhaseRepository } from '@/features/operationFlow/data/createOperationalPhaseRepository';
+import { useOperationalPhaseRepository } from '@/features/operationFlow/data/createOperationalPhaseRepository';
 import { getCurrentPhaseFromConfig } from '@/features/operationFlow/domain/getCurrentPhaseFromConfig';
 import type {
   OperationFlowPhaseConfig,
@@ -59,7 +59,7 @@ const PRIMARY_SCREEN_OPTIONS: { value: PrimaryScreen; label: string }[] = [
 // ────────────────────────────────────────
 
 const OperationFlowSettingsPage: React.FC = () => {
-  const repo = useMemo(() => createOperationalPhaseRepository(), []);
+  const repo = useOperationalPhaseRepository();
 
   // ── State ──
   const [phases, setPhases] = useState<OperationFlowPhaseConfig[]>([]);

@@ -27,18 +27,28 @@ graph TD
 
 ## 運用ルール
 
-### 1. 禁止事項
+### 1. 参照の分類と対応方針
+Bridge 関連の参照は以下の3類型に分類し、それぞれのルールに従います。
+
+- **A. bridgeProxy への移管 (推奨)**: 
+  ドメインロジックのみを呼び出す箇所。`bridgeProxy.ts` に関数を追加し、そちらを経由します。
+- **B. Feature Adapter (許容)**: 
+  UI近傍での入出力整形（ViewModelへの変換など）を含む箇所。`features/*/planningToRecordBridge.ts` のようなファイルとして残せますが、**domain bridge を直接呼ばず bridgeProxy を経由** しなければなりません。
+- **C. Legacy Shim (一時許容)**: 
+  依存範囲が広く、即時の移管が困難な箇所。`bridgeProxy.ts` 内に `shim` コメント付きで配置し、将来的な廃止対象（バックログ）として扱います。
+
+### 2. 禁止事項
 以下の import を UI (components, hooks, pages) で行うことは禁止です（ESLint `no-restricted-imports` で強制）。
-- `@/domain/bridge/**`
-- `@/domain/isp/bridge/**`
+- `@/domain/bridge/**` (bridgeProxy 以外から)
+- `@/domain/isp/bridge/**` (bridgeProxy 以外から)
 - `@/features/bridge/**` (もし存在する場合)
 
-### 2. 新機能追加時の手順
-1. **Bridge 実装**: `src/domain/bridge/` もしくは `src/domain/isp/bridge/` にロジックを実装。
-2. **Proxy 追加**: `src/app/services/bridgeProxy.ts` に関数を追加し、必要な型をエクスポートする。
-3. **UI から利用**: UI では `import { ... } from '@/app/services/bridgeProxy'` として呼び出す。
+### 3. 新機能追加時の手順
+1. **Bridge 実装**: `src/domain/bridge/` 等にロジックを実装。
+2. **Proxy 追加**: `src/app/services/bridgeProxy.ts` にラップ関数を追加。
+3. **UI / Feature から利用**: `import { ... } from '@/app/services/bridgeProxy'` として呼び出す。
 
-### 3. eslint 例外の扱い
+### 4. eslint 例外の扱い
 `.eslintrc.cjs` にて一部のファイルが例外として許可されている場合があります。これらは「移行中の残置物」であり、新規に追加してはなりません。もし見つけた場合は、将来の負債として Proxy への移行を検討してください。
 
 ---

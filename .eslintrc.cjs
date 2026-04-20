@@ -217,13 +217,22 @@ module.exports = {
       // Use useXXXRepository() hooks instead to ensure DI (DataProvider) stability.
       files: [
         'src/pages/**',
-        'src/features/**/components/**',
-        'src/features/**/hooks/**',
+        'src/features/**',
         'src/app/**',
       ],
       excludedFiles: [
         'src/features/**/data/**',
         'src/features/**/infra/**',
+        'src/features/**/repositories/**',
+        'src/features/**/__tests__/**',
+        'src/features/**/*.spec.ts',
+        'src/features/**/*.spec.tsx',
+        'src/features/**/*.test.ts',
+        'src/features/**/*.test.tsx',
+        'src/features/**/create*Repository.ts',
+        'src/features/**/*RepositoryFactory.ts',
+        'src/features/**/*repositoryFactory.ts',
+        'src/features/**/*Repository.ts',
         'src/app/services/**',
         '**/create*Repository.ts', // Factory-defining files are allowed to call themselves for recursion/wrappers if needed
       ],

@@ -62,6 +62,11 @@ jobs:
           SHAREPOINT_SITE: ${{ secrets.SHAREPOINT_SITE }}
         run: node scripts/verify-sharepoint-auth.mjs
 
+      - name: Discover & validate DailyOpsSignals schema
+        env:
+          SHAREPOINT_SITE: ${{ secrets.SHAREPOINT_SITE }}
+        run: node scripts/ci/validate-list-schema.mjs scripts/ci/schemas/dailyops.mjs
+
       - name: Run integration (DailyOpsSignals)
         env:
           SHAREPOINT_SITE: ${{ secrets.SHAREPOINT_SITE }}

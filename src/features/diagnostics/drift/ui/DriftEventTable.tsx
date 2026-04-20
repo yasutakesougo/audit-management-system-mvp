@@ -6,8 +6,7 @@ import {
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import HistoryIcon from '@mui/icons-material/History';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import { useSP } from '@/lib/spClient';
-import { SharePointDriftEventRepository } from '../infra/SharePointDriftEventRepository';
+import { useDriftEventRepository } from '../infra/driftEventRepositoryFactory';
 import type { DriftEvent, DriftType } from '../domain/driftLogic';
 
 const renderDriftType = (type?: DriftType) => {
@@ -29,27 +28,23 @@ const renderDriftType = (type?: DriftType) => {
  * DriftEventTable — ドリフト履歴を表示・管理するテーブル
  */
 export const DriftEventTable: React.FC = () => {
-  const sp = useSP();
+  const repository = useDriftEventRepository();
   const [events, setEvents] = useState<DriftEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchEvents = async () => {
-    if (!sp) return;
+  const fetchEvents = React.useCallback(async () => {
     setLoading(true);
-    const repo = new SharePointDriftEventRepository(sp);
-    const data = await repo.getEvents();
+    const data = await repository.getEvents();
     setEvents(data);
     setLoading(false);
-  };
+  }, [repository]);
 
   useEffect(() => {
     fetchEvents();
-  }, [sp]);
+  }, [fetchEvents]);
 
   const handleResolve = async (id: string) => {
-    if (!sp) return;
-    const repo = new SharePointDriftEventRepository(sp);
-    await repo.markResolved(id);
+    await repository.markResolved(id);
     fetchEvents(); // 再取得
   };
 

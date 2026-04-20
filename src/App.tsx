@@ -17,6 +17,7 @@ import { readBool } from './lib/env';
 import { registerNotifier } from './lib/notice';
 import { DataLayerGuard } from './components/DataLayerGuard';
 import { DriftMonitor } from '@/features/diagnostics/drift/ui/DriftMonitor';
+import { RemediationAuditMonitor } from '@/features/sp/health/remediation/RemediationAuditMonitor';
 
 const hydrationHudEnabled = readBool('VITE_FEATURE_HYDRATION_HUD', false);
 const queryClient = new QueryClient();
@@ -56,6 +57,7 @@ function App() {
             <WriteDisabledBanner />
             <ToastProvider>
               <DriftMonitor />
+              <RemediationAuditMonitor />
               <SpInitBridge />
               <ToastNotifierBridge />
               <DataLayerGuard>

@@ -76,6 +76,12 @@ export function computeDeletionReason(internalName: string, typeAsString: string
     return 'ID系フィールド（必須セット外） — $filter で参照されているか確認してください';
   }
 
+  // ゾンビ列（連番サフィックス）の検出
+  if (/\d+$/.test(internalName)) {
+    const baseName = internalName.replace(/\d+$/, '');
+    return `ゾンビ列（連番サフィックス）の可能性が高い — 元の列 "${baseName}" と重複している可能性があります`;
+  }
+
   // デフォルト
   return '必須セット外 — $filter/$orderby での利用を確認してから削除を判断してください';
 }
