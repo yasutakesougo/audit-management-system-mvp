@@ -72,7 +72,7 @@ export type HealthContext = {
   env: Record<string, unknown>;
   // 診断対象の SharePoint 情報
   siteUrl: string;
-  listSpecs: ListSpec[];
+  listSpecs: () => ListSpec[];
 
   // UI向け
   isProductionLike: boolean;
