@@ -112,7 +112,6 @@ export async function runNightlyIndexRemediation(
   const executedKeys = new Set<string>(); // run スコープ内の重複防止
 
   for (const [listTitle, requiredFields] of Object.entries(KNOWN_REQUIRED_INDEXED_FIELDS)) {
-    // フェッチ失敗はリスト単位でスキップ (fail-soft)
     let currentIndexed: Set<string>;
     try {
       currentIndexed = await fetchIndexedFieldNames(config, listTitle);
@@ -120,6 +119,10 @@ export async function runNightlyIndexRemediation(
       console.warn(`  ⚠️ [nightly-remediation] Skipping "${listTitle}": ${err instanceof Error ? err.message : err}`);
       continue;
     }
+
+    // SP Limit Guard (Standard SP limit is 20 indexed columns per list)
+    const SP_INDEX_LIMIT = 20;
+    const currentCount = currentIndexed.size;
 
     const additionCandidates = requiredFields.filter(
       (f) => !currentIndexed.has(f.internalName),
@@ -129,30 +132,42 @@ export async function runNightlyIndexRemediation(
 
     for (const field of additionCandidates) {
       const key = `${listTitle}::${field.internalName}`;
-
-      // run スコープ内の重複防止
       if (executedKeys.has(key)) continue;
 
-      // 上限超過 → 以降は全部 skipped_limit として記録
+      // 1. Run Limit Check
       if (addedCount >= limit) {
         results.push({
           listTitle,
           internalName: field.internalName,
           ok: false,
           outcome: 'skipped_limit',
-          message: `実行上限（${limit}件）に達したためスキップしました。`,
+          message: `実行上限（${limit}件/回）のためスキップ（Run Limit）`,
           source: 'nightly',
         });
         continue;
       }
 
-      // 実行 (fail-soft)
+      // 2. SharePoint List Limit Guard
+      if (currentCount + (executedKeys.size % requiredFields.length) >= SP_INDEX_LIMIT) {
+        results.push({
+          listTitle,
+          internalName: field.internalName,
+          ok: false,
+          outcome: 'failed',
+          message: `SharePointの上限（${SP_INDEX_LIMIT}件）を超えるため中止しました。現在: ${currentCount}件`,
+          source: 'nightly',
+        });
+        console.warn(`  ⚠️ [nightly-remediation] ${listTitle} reached SP index limit (${currentCount} >= ${SP_INDEX_LIMIT})`);
+        break; // Stop more for this list
+      }
+
+      // 3. Execution (fail-soft)
       try {
         await setFieldIndexed(config, listTitle, field.internalName);
         executedKeys.add(key);
         addedCount++;
-        const msg = `${field.internalName} のインデックスを自動作成しました。（nightly）`;
-        console.log(`  ✅ [nightly-remediation] ${listTitle}.${field.internalName} — added`);
+        const msg = `${field.internalName} のインデックスを自動作成しました。（現在: ${currentCount + 1}/${SP_INDEX_LIMIT}）`;
+        console.log(`  ✅ [nightly-remediation] ${listTitle}.${field.internalName} — added (${currentCount + 1}/${SP_INDEX_LIMIT})`);
         results.push({ listTitle, internalName: field.internalName, ok: true, outcome: 'added', message: msg, source: 'nightly' });
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
@@ -162,7 +177,7 @@ export async function runNightlyIndexRemediation(
           internalName: field.internalName,
           ok: false,
           outcome: 'failed',
-          message: `${field.internalName} のインデックス追加に失敗しました: ${errMsg}`,
+          message: `${field.internalName} のインデックス追加に失敗: ${errMsg}`,
           source: 'nightly',
         });
       }

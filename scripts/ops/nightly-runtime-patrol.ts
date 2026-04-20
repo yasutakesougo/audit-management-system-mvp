@@ -437,14 +437,21 @@ ${driftLogLine}
         .join('\n')}`;
 
   // Silentはレポート本体を汚さないために分離
+  const selfHealingEvents = summary.events.filter(
+    (e) => e.eventType === 'remediation' && e.severity === 'silent'
+  );
   const repeatedTransientEvents = summary.events.filter(
     (e) => e.eventType === 'transient_failure' && e.reasonCode === 'repeated_transient_failure',
   );
   const transientEvents = summary.events.filter(
     (e) => e.eventType === 'transient_failure' && e.reasonCode !== 'repeated_transient_failure',
   );
-  const displayEvents = summary.events.filter((e) => e.severity !== 'silent' && e.eventType !== 'transient_failure');
-  const silentEvents = summary.events.filter((e) => e.severity === 'silent');
+  const displayEvents = summary.events.filter(
+    (e) => e.severity !== 'silent' && e.eventType !== 'transient_failure'
+  );
+  const silentEvents = summary.events.filter(
+    (e) => e.severity === 'silent' && e.eventType !== 'remediation'
+  );
 
   const createTable = (events: BundledEvent[]) => {
     if (events.length === 0) return '_No events recorded._\n';
@@ -456,7 +463,9 @@ ${driftLogLine}
           ? '🔴'
           : e.severity === 'action_required'
           ? '🟠'
-          : '🟡';
+          : e.severity === 'watch'
+          ? '🟡'
+          : '🟢';
       table += `| ${sevIcon} ${e.severity} | \`${e.eventType}\` | **${e.resourceKey}** | ${e.occurrences} | \`${e.fingerprint}\` | ${e.nextAction} |\n`;
     });
     return table;
@@ -465,6 +474,9 @@ ${driftLogLine}
   const body = `
 ## 🧾 Reason Code Summary
 ${reasonCodeSummaryMarkdown}
+
+## ✨ Self-Healing Results (Auto-Remediated)
+${selfHealingEvents.length > 0 ? createTable(selfHealingEvents) : '_No auto-remediation actions were necessary today._\n'}
 
 ## 🔁 Repeated Transient Failures
 ${createTable(repeatedTransientEvents)}
