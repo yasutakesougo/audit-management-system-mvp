@@ -75,29 +75,6 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($token)) {
             throw "Failed to acquire SharePoint access token."
           }
-
-          # --- 🚀 診断ステップ開始 ---
-          try {
-            # JWTのペイロード部分を抽出してデコード
-            $payloadBase64 = $token.Split(".")[1]
-            $payloadBase64 = $payloadBase64.Replace('-', '+').Replace('_', '/')
-            while ($payloadBase64.Length % 4) { $payloadBase64 += "=" }
-            $payloadJson = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($payloadBase64))
-            $payload = $payloadJson | ConvertFrom-Json
-            
-            Write-Host "--- [Diagnostic Trace] ---"
-            Write-Host "Audience (aud): $($payload.aud)"
-            Write-Host "App ID (appid): $($payload.appid)"
-            if ($payload.roles) {
-              Write-Host "Roles in Token: $($payload.roles -join ', ')"
-            } else {
-              Write-Host "⚠️ Roles: EMPTY (Admin Consent may be missing)"
-            }
-            Write-Host "--------------------------"
-          } catch {
-            Write-Host "⚠️ Diagnostic: Failed to decode token payload."
-          }
-          # --- 診断ステップ終了 ---
           
           # ✅ セキュリティ対策: トークンをログからマスク
           Write-Output "::add-mask::$token"
