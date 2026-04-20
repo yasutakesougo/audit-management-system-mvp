@@ -7,6 +7,7 @@ import * as useUserAuthzModule from '@/auth/useUserAuthz';
 import * as useAuthModule from '@/auth/useAuth';
 import * as guardResolutionModule from '@/lib/auth/guardResolution';
 import { readOptionalEnv } from '@/lib/env';
+import { createMockAuthState, mockAuthenticatedReadyUser } from '../../tests/unit/_helpers/authMocks';
 
 vi.mock('@/auth/useUserAuthz');
 vi.mock('@/auth/useAuth');
@@ -34,18 +35,7 @@ describe('RequireAudience Component', () => {
       ready: true,
     });
 
-    vi.spyOn(useAuthModule, 'useAuth').mockReturnValue({
-      isAuthenticated: false,
-      loading: false,
-      shouldSkipLogin: false,
-      account: null,
-      tokenReady: false,
-      getListReadyState: vi.fn(),
-      setListReadyState: vi.fn(),
-      signIn: vi.fn(),
-      signOut: vi.fn(),
-      acquireToken: vi.fn(),
-    });
+    vi.spyOn(useAuthModule, 'useAuth').mockReturnValue(createMockAuthState());
   });
 
   it('1. 通常未ログイン: webdriver=false, authReady=false -> "ログインを確認中..." となり、(外部のProtectedRouteが誘導するのを待機する)', () => {
@@ -85,18 +75,7 @@ describe('RequireAudience Component', () => {
     vi.spyOn(guardResolutionModule, 'shouldBypassAuthGuard').mockReturnValue(false);
     
     // User is fully authenticated
-    vi.spyOn(useAuthModule, 'useAuth').mockReturnValue({
-      isAuthenticated: true,
-      loading: false,
-      shouldSkipLogin: false,
-      account: null,
-      tokenReady: true,
-      getListReadyState: vi.fn(),
-      setListReadyState: vi.fn(),
-      signIn: vi.fn(),
-      signOut: vi.fn(),
-      acquireToken: vi.fn(),
-    });
+    vi.spyOn(useAuthModule, 'useAuth').mockReturnValue(mockAuthenticatedReadyUser());
 
     render(
       <RequireAudience requiredRole="viewer">

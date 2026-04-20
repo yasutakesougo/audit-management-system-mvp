@@ -14,7 +14,7 @@
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type SpHealthSeverity = 'warning' | 'action_required' | 'critical';
+export type SpHealthSeverity = 'watch' | 'warning' | 'action_required' | 'critical';
 
 /**
  * Nightly Patrol / Realtime で共通利用するreasonCode
@@ -133,6 +133,7 @@ function enrichWithAction(signal: Omit<SpHealthSignal, 'occurrenceCount'>): SpHe
 // ─── Priority ─────────────────────────────────────────────────────────────────
 
 const SEVERITY_PRIORITY: Record<SpHealthSeverity, number> = {
+  watch: 0,
   warning: 1,
   action_required: 2,
   critical: 3,

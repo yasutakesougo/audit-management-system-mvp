@@ -6,6 +6,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { Outlet, RouterProvider, createMemoryRouter, useLocation, type RouteObject } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockAuthenticatedReadyUser } from '../_helpers/authMocks';
 
 // Force non-E2E mode for deterministic behavior
 vi.mock('@/env', async (importOriginal) => {
@@ -62,19 +63,7 @@ beforeEach(() => {
 
 const createAuthState = (
   overrides: Partial<ReturnType<typeof useAuth>> = {}
-): ReturnType<typeof useAuth> => ({
-  isAuthenticated: true,
-  account: null,
-  tokenReady: true,
-  getListReadyState: () => null,
-  setListReadyState: () => {},
-  signIn: vi.fn(() => Promise.resolve({ success: false })),
-  signOut: vi.fn(() => Promise.resolve()),
-  acquireToken: vi.fn(() => Promise.resolve(null)),
-  loading: false,
-  shouldSkipLogin: false,
-  ...overrides,
-});
+): ReturnType<typeof useAuth> => mockAuthenticatedReadyUser(overrides);
 
 const defaultFlags: FeatureFlagSnapshot = {
   schedules: true,

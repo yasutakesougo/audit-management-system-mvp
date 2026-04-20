@@ -19,6 +19,7 @@ function makeFinding(overrides: Partial<AuditFinding> = {}): AuditFinding {
     userId: 'U001',
     planningSheetId: 'sheet-1',
     message: 'テスト',
+    domain: 'sheet',
     detectedAt: '2026-03-13',
     ...overrides,
   };

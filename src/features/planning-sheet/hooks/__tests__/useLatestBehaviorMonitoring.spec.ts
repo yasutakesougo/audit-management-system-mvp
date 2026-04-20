@@ -41,6 +41,8 @@ function makeMeeting(overrides: Partial<MonitoringMeetingRecord> = {}): Monitori
     overallAssessment: '全体として良好に経過している。日中活動への参加が安定。',
     userFeedback: '今の生活に概ね満足している。',
     familyFeedback: '家族からは特段の要望なし。',
+    discussionSummary: '協議内容の要約',
+    status: 'finalized',
     planChangeDecision: 'no_change',
     changeReason: '',
     decisions: ['現行計画を継続', '次回3ヶ月後にモニタリング実施'],

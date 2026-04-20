@@ -2,6 +2,7 @@ import { fetchMyGroupIds } from '@/auth/fetchMyGroupIds';
 import { GRAPH_RESOURCE } from '@/auth/msalConfig';
 import type { Role } from '@/auth/roles';
 import { useAuth } from '@/auth/useAuth';
+import { useAuthReady } from '@/auth/useAuthReady';
 import { getRuntimeEnv as getRuntimeEnvRoot } from '@/env';
 import { isE2eMsalMockEnabled, readOptionalEnv, shouldSkipLogin } from '@/lib/env';
 import { useEffect, useMemo, useState } from 'react';
@@ -50,6 +51,7 @@ const safeWriteMemberOfCache = (upn: string, ids: string[]): void => {
 };
 
 export const useUserAuthz = (): UserAuthz => {
+  const isAuthReady = useAuthReady();
   const { acquireToken, account } = useAuth();
 
   const [groupIds, setGroupIds] = useState<string[] | null>(null);
@@ -102,6 +104,10 @@ export const useUserAuthz = (): UserAuthz => {
     let cancelled = false;
 
     const run = async () => {
+      // 🛑 認証情報が準備できていない場合は何もしない
+      if (!isAuthReady || !account) {
+        return;
+      }
       try {
         // 🟢 E2E / skip-login: bypass Graph entirely to prevent networkGuard failures
         const runtimeEnv = getRuntimeEnvRoot();

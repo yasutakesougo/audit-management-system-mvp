@@ -88,7 +88,7 @@ describe('useAllCorrectiveActions', () => {
     });
 
     // 記録がフィルタリングされるため、提案は出ない（データ不足ルールは出るかもしれないが、今回の実装では records.length > 0 の時のみ処理している）
-    expect(result.current.suggestions.filter(s => s.userId === 'U-001').length).toBe(0);
+    expect(result.current.suggestions.filter(s => s.targetUserId === 'U-001').length).toBe(0);
   });
 
   it('記録が時間順 (asc) にソートされて処理される', async () => {

@@ -7,8 +7,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 type StoreResult<T> = {
   data: T | undefined;
   loading: boolean;
+  isLoading?: boolean;
   error?: Error | null;
   reload: () => Promise<void>;
+  load?: () => Promise<void>;
 };
 
 const { mockUseSchedules, mockUseUsers, mockUseStaff, mockUseSP, mockEnsureOperationHubLists, mockUseEnsureOperationHubLists, mockGetNow } = vi.hoisted(() => {
