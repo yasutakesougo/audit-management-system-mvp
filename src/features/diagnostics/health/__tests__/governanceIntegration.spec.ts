@@ -85,4 +85,35 @@ describe('Governance Integration — runHealthChecks Flow', () => {
     const ui = presentGovernanceDecision(schemaResult?.governance);
     expect(ui.badgeLabel).toBe('管理者確認推奨');
   });
+
+  it('classifies create failure and reflects classification in summary/evidence', async () => {
+    const spec: ListSpec = {
+      key: 'test_list',
+      displayName: 'テストリスト',
+      resolvedTitle: 'TestList',
+      requiredFields: [],
+      createItem: {},
+      updateItem: {},
+    };
+
+    (mockSp.getCurrentUser as any).mockResolvedValue({ id: 1 });
+    (mockSp.getWebTitle as any).mockResolvedValue('Site');
+    (mockSp.getListByTitle as any).mockResolvedValue({ id: '1', title: 'TestList' });
+    (mockSp.getItemsTop1 as any).mockResolvedValue([]);
+    (mockSp.getFields as any).mockResolvedValue([]);
+    (mockSp.createItem as any).mockRejectedValueOnce({
+      status: 412,
+      message: 'duplicate value found',
+    });
+
+    const results = await runHealthChecks({ ...baseCtx, listSpecs: () => [spec] }, mockSp);
+    const createResult = results.find(r => r.key === 'permissions.create.test_list');
+
+    expect(createResult?.status).toBe('fail');
+    expect(createResult?.summary).toBe('作成（Create）テストが一意制約で失敗しました。');
+    expect(createResult?.evidence?.classification).toMatchObject({
+      reason: 'duplicate',
+      matchedOn: ['status'],
+    });
+  });
 });
