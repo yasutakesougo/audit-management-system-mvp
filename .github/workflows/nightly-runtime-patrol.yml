@@ -92,12 +92,25 @@ jobs:
           GITHUB_API_URL: ${{ github.api_url }}
         run: npx tsx scripts/ops/nightly-runtime-patrol.ts
 
+      - name: Diagnose artifact path
+        if: always()
+        run: |
+          echo "## cwd"
+          pwd
+          echo "## top-level"
+          ls -la
+          echo "## .nightly/ contents"
+          ls -la .nightly || echo "(.nightly not present)"
+          echo "## recursive find"
+          find . -maxdepth 3 -name 'runtime-summary*' 2>/dev/null || true
+
       - name: Upload Patrol Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: nightly-runtime-summary-${{ github.run_number }}
           path: .nightly/
+          include-hidden-files: true
           if-no-files-found: warn
 
       - name: Commit report to docs
