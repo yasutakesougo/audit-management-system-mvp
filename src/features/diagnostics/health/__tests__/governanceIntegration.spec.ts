@@ -19,7 +19,7 @@ describe('Governance Integration — runHealthChecks Flow', () => {
   const baseCtx: HealthContext = {
     env: { VITE_SP_RESOURCE: 'https://test', VITE_MSAL_CLIENT_ID: 'cid', VITE_MSAL_TENANT_ID: 'tid' },
     siteUrl: 'https://test',
-    listSpecs: [],
+    listSpecs: () => [],
     isProductionLike: true,
     autonomyLevel: 'G',
   };
@@ -43,7 +43,7 @@ describe('Governance Integration — runHealthChecks Flow', () => {
     // actual fields has "fullname" (case mismatch)
     (mockSp.getFields as any).mockResolvedValue([{ internalName: 'fullname', staticName: 'fullname' }]);
 
-    const results = await runHealthChecks({ ...baseCtx, listSpecs: [spec] }, mockSp);
+    const results = await runHealthChecks({ ...baseCtx, listSpecs: () => [spec] }, mockSp);
 
     const schemaResult = results.find(r => r.key === 'schema.fields.test_list');
     expect(schemaResult).toBeDefined();
@@ -77,7 +77,7 @@ describe('Governance Integration — runHealthChecks Flow', () => {
     // suffix mismatch
     (mockSp.getFields as any).mockResolvedValue([{ internalName: 'Status0', staticName: 'Status0' }]);
 
-    const results = await runHealthChecks({ ...baseCtx, listSpecs: [spec] }, mockSp);
+    const results = await runHealthChecks({ ...baseCtx, listSpecs: () => [spec] }, mockSp);
 
     const schemaResult = results.find(r => r.key === 'schema.fields.test_list');
     expect(schemaResult?.governance?.action).toBe('propose');
