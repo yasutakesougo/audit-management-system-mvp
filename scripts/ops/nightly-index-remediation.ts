@@ -84,7 +84,7 @@ async function setFieldIndexed(
       'X-HTTP-Method': 'MERGE',
       'If-Match': '*',
     },
-    body: JSON.stringify({ __metadata: { type: 'SP.Field' }, Indexed: true }),
+    body: JSON.stringify({ Indexed: true }),
   });
 
   if (!res.ok) {
