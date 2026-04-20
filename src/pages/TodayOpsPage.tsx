@@ -908,9 +908,11 @@ const TodayLiteOpsPage: React.FC = () => {
 };
 
 export const TodayOpsPage: React.FC<TodayOpsPageProps> = ({ correctiveActions = [] }) => {
+  const { settings } = useSettingsContext();
+  const isKioskMode = settings.layoutMode === 'kiosk';
   const todayLiteUiEnabled = useFeatureFlag('todayLiteUi');
 
-  if (todayLiteUiEnabled) {
+  if (todayLiteUiEnabled && !isKioskMode) {
     return <TodayLiteOpsPage />;
   }
 

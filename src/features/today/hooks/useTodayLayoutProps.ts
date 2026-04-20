@@ -300,7 +300,7 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
             highlightUserId: transportHighlightUserId,
           }
         : undefined,
-      users: {
+      userListProps: {
         items: isE2EEnv
           ? [
               { userId: 'I022', name: '中村 裕樹', status: 'present' as const, recordFilled: false },
@@ -357,6 +357,10 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
         });
         navigate(href);
       },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      users: summary.users as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      visits: summary.visits as any,
     };
   }, [summary, nextAction, sceneAction, transport, quickRecord.openUnfilled, quickRecord.openUser, navigate, role, scheduleDetailHref, alertsByUser, onOpenUserStatus, userStatusRecords]);
 }

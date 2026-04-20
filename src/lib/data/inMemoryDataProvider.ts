@@ -21,7 +21,19 @@ export class InMemoryDataProvider implements IDataProvider {
       { Id: 2, StaffID: 'STF002', FullName: 'Staff Two', Role: 'admin', IsActive: true },
     ]);
     this.storage.set('Users_Master', [
-      { Id: 1, UserID: 'USR001', FullName: 'User One', Status: 'active', IsActive: true },
+      { 
+        Id: 1, 
+        UserID: 'USR001', 
+        FullName: 'User One', 
+        Status: 'active', 
+        IsActive: true, 
+        RecipientCertNumber: '1234567890',
+        LastAssessmentDate: '2026-02-15' // 約3ヶ月前
+      },
+    ]);
+    // 支援手順の実施状況
+    this.storage.set('SupportRecord_Daily', [
+      { Id: 1, UserID: 'USR001', SupportProcedureExecution_Target: '{}', RecordDate: new Date().toISOString().split('T')[0] }
     ]);
     // スケジュール解決用のダミー (resolveFields が失敗しないため)
     this.storage.set('Schedules', [
