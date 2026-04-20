@@ -263,7 +263,7 @@ export async function runHealthChecks(
   }
 
   // --- D/E) Lists, Schema, Permissions (CRUD) ---
-  for (const spec of ctx.listSpecs) {
+  for (const spec of ctx.listSpecs()) {
     await runListChecks(results, sp, spec, ctx);
   }
 

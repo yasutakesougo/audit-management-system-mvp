@@ -22,7 +22,7 @@ describe('Health Checks — Optional List Contract', () => {
       VITE_MSAL_TENANT_ID: 'tenant-id',
     },
     siteUrl: 'https://tenant.sharepoint.com/sites/test',
-    listSpecs: [],
+    listSpecs: () => [],
     isProductionLike: true,
     autonomyLevel: 'F',
   };
@@ -40,7 +40,7 @@ describe('Health Checks — Optional List Contract', () => {
 
     (mockSp.getListByTitle as any).mockRejectedValueOnce(new Error('404 Not Found'));
 
-    const ctx = { ...baseCtx, listSpecs: [spec] };
+    const ctx = { ...baseCtx, listSpecs: () => [spec] };
     const results = await runHealthChecks(ctx, mockSp);
 
     const existenceCheck = results.find(r => r.key === 'lists.exists.required_list');
@@ -61,7 +61,7 @@ describe('Health Checks — Optional List Contract', () => {
 
     (mockSp.getListByTitle as any).mockRejectedValueOnce(new Error('404 Not Found'));
 
-    const ctx = { ...baseCtx, listSpecs: [spec] };
+    const ctx = { ...baseCtx, listSpecs: () => [spec] };
     const results = await runHealthChecks(ctx, mockSp);
 
     const existenceCheck = results.find(r => r.key === 'lists.exists.optional_list');
@@ -83,7 +83,7 @@ describe('Health Checks — Optional List Contract', () => {
     (mockSp.getListByTitle as any).mockResolvedValueOnce({ id: 'guid', title: 'OptionalList' });
     (mockSp.getFields as any).mockResolvedValueOnce([]);
 
-    const ctx = { ...baseCtx, listSpecs: [spec] };
+    const ctx = { ...baseCtx, listSpecs: () => [spec] };
     const results = await runHealthChecks(ctx, mockSp);
 
     const existenceCheck = results.find(r => r.key === 'lists.exists.optional_list');
