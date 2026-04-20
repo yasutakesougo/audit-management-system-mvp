@@ -36,16 +36,30 @@ function flagValue(name) {
   return null;
 }
 const SNAPSHOT_PATH = flagValue('snapshot');
+const FULL_SCAN = ARGS.includes('--full-scan') || ARGS.includes('--live');
 const OUT_DIR = flagValue('out-dir') || join(REPO_ROOT, 'docs', 'nightly-patrol');
-const LIVE_MODE = ARGS.includes('--live');
 
-if (LIVE_MODE) {
-  console.error('❌ --live mode is not implemented in this PR. Use --snapshot <path>.');
+if (!SNAPSHOT_PATH && !FULL_SCAN) {
+  console.error('❌ Missing --snapshot <path> or --full-scan.');
+  console.error('   Usage:');
+  console.error('     (Reactive)  node scripts/ops/drift-inventory.mjs --snapshot docs/nightly-patrol/input.json');
+  console.error('     (Proactive) node scripts/ops/drift-inventory.mjs --full-scan');
   process.exit(2);
 }
-if (!SNAPSHOT_PATH) {
-  console.error('❌ Missing --snapshot <path>.');
-  console.error('   Usage: node scripts/ops/drift-inventory.mjs --snapshot docs/nightly-patrol/input.json');
+
+const SITE_URL = process.env.VITE_SP_SITE_URL || process.env.SP_SITE_URL;
+const REPO_ROOT_PATH = process.cwd();
+const TOKEN_FILE = join(REPO_ROOT_PATH, '.token.local');
+let TOKEN = '';
+try {
+  TOKEN = readFileSync(TOKEN_FILE, 'utf-8').trim();
+} catch (e) {
+  TOKEN = (process.env.VITE_SP_TOKEN || process.env.SMOKE_TEST_BEARER_TOKEN || '').trim();
+}
+
+if (FULL_SCAN && (!SITE_URL || !TOKEN)) {
+  console.error('❌ Missing credentials for --full-scan.');
+  console.error('   Please set VITE_SP_SITE_URL or provide .token.local.');
   process.exit(2);
 }
 
@@ -353,8 +367,8 @@ function classifyExpected(expected, candidates, snapshotEntry, requirement, cove
       driftType: 'suffix_mismatch',
       actualField: suf,
       severity: 'warn',
-      actionCandidate: 'rename-migrate',
-      notes: `Digit-suffix drift (likely auto-created duplicate).`,
+      actionCandidate: 'zombie-candidate',
+      notes: `Digit-suffix drift (likely auto-created duplicate). Candidate for deletion.`,
     };
   }
 
@@ -470,8 +484,9 @@ function buildRows(ssot, snapshot) {
         driftType: cls.driftType,
         severity: cls.severity,
         requirement,
-        actionCandidate: cls.actionCandidate,
+        judgement: cls.actionCandidate,
         notes: cls.notes,
+        evidenceSource: snapshot.source,
         _kind: 'expected',
       });
     }
@@ -504,8 +519,9 @@ function buildRows(ssot, snapshot) {
           driftType: 'zombie_candidate',
           severity: 'info',
           requirement: 'unknown',
-          actionCandidate: 'zombie-candidate',
+          judgement: 'zombie-candidate',
           notes: 'Present in snapshot but no SSOT counterpart (coverage=full).',
+          evidenceSource: snapshot.source,
           _kind: 'snapshot-only',
         });
       }
@@ -530,11 +546,64 @@ function buildRows(ssot, snapshot) {
   return rows;
 }
 
+// ── Live Scan Engine ────────────────────────────────────────────────────────
+
+async function fetchActualFields(listTitle) {
+  const url = `${SITE_URL}/_api/web/lists/getbytitle('${encodeURIComponent(listTitle)}')/fields?$select=InternalName`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${TOKEN}`,
+      'Accept': 'application/json;odata=nometadata',
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+  }
+
+  const data = await res.json();
+  return (data.value || []).map(f => f.InternalName);
+}
+
+async function performFullScan(ssot) {
+  const lists = [];
+  const entries = Object.values(ssot).filter(e => e.lifecycle === 'required' || e.lifecycle === 'optional');
+
+  console.log(`📡 Starting live scan for ${entries.length} lists...`);
+
+  for (const entry of entries) {
+    process.stdout.write(`   → ${entry.listTitle}... `);
+    try {
+      const fields = await fetchActualFields(entry.listTitle);
+      lists.push({
+        listTitle: entry.listTitle,
+        listKey: entry.listKey,
+        actualFields: fields,
+        missingReports: [],
+      });
+      process.stdout.write(`✅ (${fields.length} fields)\n`);
+    } catch (err) {
+      process.stdout.write(`❌ skipped (${err.message})\n`);
+    }
+  }
+
+  return {
+    version: 1,
+    generatedAt: new Date().toISOString(),
+    source: 'live-probe',
+    coverage: 'full',
+    notes: 'Generated via --full-scan (proactive live scan). Enables zombie candidate detection.',
+    lists,
+  };
+}
+
 // ── Output writers ──────────────────────────────────────────────────────────
 
 const CSV_COLUMNS = [
   'listKey', 'listTitle', 'expectedField', 'actualField',
-  'driftType', 'severity', 'requirement', 'actionCandidate', 'notes',
+  'driftType', 'severity', 'requirement', 'judgement', 'notes', 'evidenceSource',
 ];
 
 function csvEscape(v) {
@@ -635,12 +704,25 @@ function today() {
   return `${y}-${m}-${day}`;
 }
 
-function main() {
-  console.log(`🔍 Drift Inventory — snapshot: ${SNAPSHOT_PATH}`);
+async function main() {
+  const modeLabel = FULL_SCAN ? 'PROACTIVE (Full Scan)' : 'REACTIVE (Log Snapshot)';
+  console.log(`🔍 Drift Inventory — Mode: ${modeLabel}`);
+
   const ssot = loadSsot();
   const ssotCount = Object.keys(ssot).length;
   console.log(`   SSOT entries loaded: ${ssotCount}`);
-  const snapshot = loadSnapshot(SNAPSHOT_PATH);
+
+  let snapshot;
+  let sourceLabel;
+
+  if (FULL_SCAN) {
+    snapshot = await performFullScan(ssot);
+    sourceLabel = 'live SharePoint API';
+  } else {
+    snapshot = loadSnapshot(SNAPSHOT_PATH);
+    sourceLabel = SNAPSHOT_PATH;
+  }
+
   console.log(`   Snapshot lists: ${snapshot.lists.length}, coverage=${snapshot.coverage}, source=${snapshot.source}`);
 
   const rows = buildRows(ssot, snapshot);
@@ -651,10 +733,13 @@ function main() {
   const csvPath = join(OUT_DIR, `drift-inventory-${stamp}.csv`);
   const mdPath = join(OUT_DIR, `drift-inventory-${stamp}.md`);
   writeFileSync(csvPath, toCsv(rows));
-  writeFileSync(mdPath, toMarkdown(rows, snapshot, stamp, SNAPSHOT_PATH));
+  writeFileSync(mdPath, toMarkdown(rows, snapshot, stamp, sourceLabel));
 
   console.log(`✅ CSV: ${csvPath}`);
   console.log(`✅ MD:  ${mdPath}`);
 }
 
-main();
+main().catch(err => {
+  console.error(`❌ Inventory failed: ${err.message}`);
+  process.exit(1);
+});
