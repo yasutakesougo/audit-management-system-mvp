@@ -12,7 +12,7 @@ export type TodayCoreFlowStep = {
 export const TODAY_CORE_FLOW: readonly TodayCoreFlowStep[] = [
   {
     key: 'today-overview',
-    label: '今日の業務',
+    label: '今日の概要を確認',
     route: '/today',
     order: 0,
     audience: ['staff', 'admin'],
@@ -20,7 +20,7 @@ export const TODAY_CORE_FLOW: readonly TodayCoreFlowStep[] = [
   },
   {
     key: 'attendance',
-    label: '出欠を確認する',
+    label: '出欠を登録する',
     route: '/daily/attendance',
     order: 1,
     audience: ['staff', 'admin'],
@@ -28,7 +28,7 @@ export const TODAY_CORE_FLOW: readonly TodayCoreFlowStep[] = [
   },
   {
     key: 'daily-table',
-    label: '日々の記録を入力する',
+    label: '記録を入力する',
     route: '/daily/table',
     order: 2,
     audience: ['staff', 'admin'],
@@ -36,7 +36,7 @@ export const TODAY_CORE_FLOW: readonly TodayCoreFlowStep[] = [
   },
   {
     key: 'handoff-timeline',
-    label: '申し送りを確認する',
+    label: '申し送りを確認',
     route: '/handoff-timeline',
     order: 3,
     audience: ['staff', 'admin'],

@@ -104,5 +104,23 @@ test.describe('Kiosk UX Regression (Smoke)', () => {
     // 7. キオスクモードが解除され、FABが消失した（設定が戻った）ことを検証して完了
     await expect(fabContainer).toBeHidden();
   });
+
+  test('kiosk mode: display monitoring countdown for impending deadlines', async ({ page }) => {
+    // 1. KioskモードをURLパラメータで強制し、メモリプロバイダーを使用
+    await page.goto('/today?kiosk=1&provider=memory');
+    await page.waitForLoadState('domcontentloaded');
+
+    // 2. モニタリングアラートセクションが表示されているか検証
+    const monitoringHeader = page.getByText('モニタリング期限', { exact: false });
+    await expect(monitoringHeader).toBeVisible();
+
+    // 3. モックデータ（User One）のカウントダウンが表示されているか検証
+    await expect(page.getByText('User One')).toBeVisible();
+    await expect(page.getByText(/次回会議まで/)).toBeVisible();
+    
+    // 進捗リング（プログレス）の存在確認
+    const progressRing = page.locator('svg').filter({ has: page.locator('circle') });
+    await expect(progressRing.first()).toBeVisible();
+  });
 });
 
