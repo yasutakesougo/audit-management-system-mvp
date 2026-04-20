@@ -358,9 +358,11 @@ const listSpecs: ListSpec[] = SP_LIST_REGISTRY.map((entry) => {
     }
   }
 
-  const stamp = Date.now().toString().slice(-8); // 8 digits
-  const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  const uniqueId = `hc-${stamp}-${randomSuffix}`;
+  const stamp = Date.now().toString();
+  const uuidSuffix =
+    globalThis.crypto?.randomUUID?.().slice(0, 8) ??
+    Math.random().toString(36).slice(2, 10);
+  const uniqueId = `hc-${stamp}-${uuidSuffix}`;
 
   const createItem: Record<string, unknown> = { Title: `healthcheck-root-${uniqueId}` };
   if (entry.key === "users_master") {
