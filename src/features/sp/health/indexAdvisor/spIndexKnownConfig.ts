@@ -60,9 +60,9 @@ export const KNOWN_REQUIRED_INDEXED_FIELDS: Record<string, IndexFieldSpec[]> = {
   ],
   Schedules: [
     {
-      internalName: 'StaffCode',
+      internalName: 'AssignedStaffId',
       displayName: '職員コード',
-      reason: '$filter=StaffCode eq X（職員別スケジュール取得）',
+      reason: '$filter=AssignedStaffId eq X（職員別スケジュール取得）',
     },
   ],
   UserBenefit_Profile_Ext: [

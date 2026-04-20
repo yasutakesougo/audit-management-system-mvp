@@ -88,7 +88,8 @@ async function setFieldIndexed(
   });
 
   if (!res.ok) {
-    throw new Error(`SP PATCH failed (${res.status}) for ${listTitle}.${internalName}`);
+    const errorBody = await res.text().catch(() => 'No error body');
+    throw new Error(`SP PATCH failed (${res.status}) for ${listTitle}.${internalName}: ${errorBody}`);
   }
 }
 
