@@ -158,4 +158,53 @@ describe('spClient ensureListExists', () => {
     expect(result.listId).toBeTruthy();
     expect(mockedWarn).toHaveBeenCalledWith('sp:fields', 'required_flag_mismatch', expect.objectContaining({ field: 'NeedsRequired' }));
   });
+
+  it('stops proliferation when a drifted/zombie column already exists', async () => {
+    const mockedWarn = vi.mocked(auditLog.warn);
+
+    fetchSpy
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ Id: '{USER_BENEFIT_EXT}', Title: 'BeneExt' }), { status: 200 })
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            value: [
+              // Simulate a zombie column "Recipient_x0020_Cert_x0020_Numbe99" already exists
+              { InternalName: 'Recipient_x0020_Cert_x0020_Numbe99', TypeAsString: 'Text', Required: false }
+            ]
+          }),
+          { status: 200 }
+        )
+      );
+
+    const client = createSpClient(acquireToken, 'https://contoso.sharepoint.com/sites/wf/_api/web');
+    const result = await client.ensureListExists('BeneExt', [
+      {
+        internalName: 'RecipientCertNumber',
+        type: 'Text',
+        candidates: ['RecipientCertNumber', 'RecipientCertNumber0', 'Recipient_x0020_Cert_x0020_Numbe']
+      }
+    ]);
+
+    expect(result.listId).toBeTruthy();
+
+    // If drift matching works, it should detect Recipient_x0020_Cert_x0020_Numbe99
+    // and skip the creation step.
+    // The sequence should be:
+    // 1. Get List
+    // 2. Get Fields
+    // (Resolution should return Recipient_x0020_Cert_x0020_Numbe99)
+    // (Loop continues, NO further fetch calls for addField)
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2); // Only get list and get fields
+    expect(mockedWarn).toHaveBeenCalledWith('sp:fields', 'schema_drift_detected', expect.objectContaining({
+      actual: 'Recipient_x0020_Cert_x0020_Numbe99',
+      expected: 'RecipientCertNumber'
+    }));
+
+    // Verify it didn't try to add a field (no POST to .../fields/addfield)
+    const postCalls = fetchSpy.mock.calls.filter(([_, init]) => init?.method === 'POST');
+    expect(postCalls.length).toBe(0);
+  });
 });
