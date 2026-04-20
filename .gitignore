@@ -90,3 +90,5 @@ docs/nightly-patrol/*.md
 sp-telemetry*.json
 sp-telemetry*.backup.json
 lane-assertion-result.json
+.token.local
+artifacts/purge-backups/

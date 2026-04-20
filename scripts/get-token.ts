@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { PublicClientApplication } from '@azure/msal-node';
 
 async function extractToken() {
@@ -34,8 +35,16 @@ async function extractToken() {
         });
 
         console.log("\n✅ SUCCESS! Token Acquired.\n");
-        console.log("Add this to your .env.local file:");
-        console.log(`SMOKE_TEST_BEARER_TOKEN=${response?.accessToken}`);
+        const silent = process.argv.includes('--silent');
+        const token = response?.accessToken || '';
+        if (!silent) {
+            console.log("Add this to your .env.local file:");
+            console.log(`SMOKE_TEST_BEARER_TOKEN=${token}`);
+        }
+        
+        // Always write to .token.local for ops scripts
+        fs.writeFileSync('.token.local', token.trim());
+        console.log("Written to .token.local (secure)");
         console.log("\n-------------------------------------------");
     } catch (e) {
         console.error("Failed to acquire token:", e);
