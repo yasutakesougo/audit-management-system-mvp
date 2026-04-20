@@ -130,6 +130,7 @@ export async function runNightlyIndexRemediation(
 
     if (additionCandidates.length === 0) continue;
 
+    let addedToThisList = 0;
     for (const field of additionCandidates) {
       const key = `${listTitle}::${field.internalName}`;
       if (executedKeys.has(key)) continue;
@@ -141,24 +142,24 @@ export async function runNightlyIndexRemediation(
           internalName: field.internalName,
           ok: false,
           outcome: 'skipped_limit',
-          message: `実行上限（${limit}件/回）のためスキップ（Run Limit）`,
+          message: `実行上限（${limit}件/回）のため次回の巡回にまわします。`,
           source: 'nightly',
         });
         continue;
       }
 
-      // 2. SharePoint List Limit Guard
-      if (currentCount + (executedKeys.size % requiredFields.length) >= SP_INDEX_LIMIT) {
+      // 2. SharePoint List Limit Guard (Abort if adding more would exceed 20)
+      if (currentCount + addedToThisList >= SP_INDEX_LIMIT) {
         results.push({
           listTitle,
           internalName: field.internalName,
           ok: false,
           outcome: 'failed',
-          message: `SharePointの上限（${SP_INDEX_LIMIT}件）を超えるため中止しました。現在: ${currentCount}件`,
+          message: `SharePointのインデックス上限（${SP_INDEX_LIMIT}件）に達しているため自動作成を中止しました。（現在: ${currentCount}件）`,
           source: 'nightly',
         });
-        console.warn(`  ⚠️ [nightly-remediation] ${listTitle} reached SP index limit (${currentCount} >= ${SP_INDEX_LIMIT})`);
-        break; // Stop more for this list
+        console.warn(`  ⚠️ [nightly-remediation] ${listTitle} reached SP index limit (${currentCount}/${SP_INDEX_LIMIT})`);
+        break; 
       }
 
       // 3. Execution (fail-soft)
@@ -166,8 +167,11 @@ export async function runNightlyIndexRemediation(
         await setFieldIndexed(config, listTitle, field.internalName);
         executedKeys.add(key);
         addedCount++;
-        const msg = `${field.internalName} のインデックスを自動作成しました。（現在: ${currentCount + 1}/${SP_INDEX_LIMIT}）`;
-        console.log(`  ✅ [nightly-remediation] ${listTitle}.${field.internalName} — added (${currentCount + 1}/${SP_INDEX_LIMIT})`);
+        addedToThisList++;
+        
+        const currentTotal = currentCount + addedToThisList;
+        const msg = `${field.internalName} のインデックスを自動作成しました。成功（${currentTotal}/${SP_INDEX_LIMIT}）`;
+        console.log(`  ✅ [nightly-remediation] ${listTitle}.${field.internalName} — added (${currentTotal}/${SP_INDEX_LIMIT})`);
         results.push({ listTitle, internalName: field.internalName, ok: true, outcome: 'added', message: msg, source: 'nightly' });
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
@@ -177,7 +181,7 @@ export async function runNightlyIndexRemediation(
           internalName: field.internalName,
           ok: false,
           outcome: 'failed',
-          message: `${field.internalName} のインデックス追加に失敗: ${errMsg}`,
+          message: `${field.internalName} の作成に失敗: ${errMsg}`,
           source: 'nightly',
         });
       }
