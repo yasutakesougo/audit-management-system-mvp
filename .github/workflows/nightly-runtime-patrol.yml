@@ -69,8 +69,9 @@ jobs:
             throw "PnP connection was not established."
           }
 
-          # トークン取得
-          $token = Get-PnPAccessToken
+          # トークン取得 (SharePoint Audience を明示)
+          $token = Get-PnPAccessToken -ResourceTypeName SharePoint
+          
           if ([string]::IsNullOrWhiteSpace($token)) {
             throw "Failed to acquire SharePoint access token."
           }
