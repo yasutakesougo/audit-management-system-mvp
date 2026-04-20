@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "drift-inventory-input.schema.json",
+  "title": "Drift Inventory Input",
+  "description": "Canonical input format for scripts/ops/drift-inventory.mjs. Captures observed SharePoint fields per list. Consumed by the inventory script to produce CSV/MD reports comparing expected (SSOT) vs actual.",
+  "type": "object",
+  "required": ["version", "lists"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "generatedAt": {
+      "type": "string",
+      "description": "ISO8601 timestamp when the snapshot was captured."
+    },
+    "source": {
+      "type": "string",
+      "enum": ["log-adapter", "live-probe", "manual"],
+      "description": "Origin of the snapshot. 'log-adapter' = derived from [sp:schema_mismatch] logs (partial coverage). 'live-probe' = direct SharePoint /fields read (full coverage). 'manual' = hand-authored fixture."
+    },
+    "coverage": {
+      "type": "string",
+      "enum": ["full", "partial"],
+      "description": "'full' = actualFields per list is authoritative (enables zombie_candidate detection). 'partial' = only observed drift signals; absence of a field in actualFields does NOT imply it is missing."
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-text caveats about how this snapshot was generated."
+    },
+    "lists": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["listTitle"],
+        "additionalProperties": false,
+        "properties": {
+          "listTitle": {
+            "type": "string",
+            "description": "SharePoint list title as it appears in the tenant (post-envOr resolution)."
+          },
+          "listKey": {
+            "type": "string",
+            "description": "Optional SP_LIST_REGISTRY key. If omitted, the script resolves via listTitle."
+          },
+          "actualFields": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Internal names observed on the SharePoint list. Authoritative only when coverage=full.",
+            "default": []
+          },
+          "missingReports": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Internal names that the application attempted to use but were not found. Signals drift even under partial coverage.",
+            "default": []
+          }
+        }
+      }
+    }
+  }
+}

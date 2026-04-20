@@ -34,6 +34,8 @@ import { GovernanceAdvisePanel } from "../remediation/components/GovernanceAdvis
 import { SpIndexPressurePanel } from "@/features/sp/health/indexAdvisor/SpIndexPressurePanel";
 import { GovernanceBadge } from "./components/GovernanceBadge";
 import { SpRemediationCard } from "@/features/sp/health/remediation/SpRemediationCard";
+import { useNightlySignalIngestion } from "@/features/sp/health/hooks/useNightlySignalIngestion";
+import { SelfHealingResultsPanel } from "@/features/sp/health/remediation/SelfHealingResultsPanel";
 
 // ─── highlight: reasonCode → category ─────────────────────────────────────────
 const HIGHLIGHT_CATEGORY: Partial<Record<SpHealthReasonCode, string>> = {
@@ -90,6 +92,9 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
   const [filterState, setFilterState] = React.useState<HealthFilterState>({ level: 'all', resource: '' });
   const [searchParams] = useSearchParams();
   const sp = useSP();
+
+  // ── Nightly Signal Ingestion ──────────────────────────────────────────
+  useNightlySignalIngestion();
 
   // ── highlight / filter クエリパラメータ ──────────────────────────────────
   const highlightCode = (searchParams.get('highlight') ?? '') as SpHealthReasonCode | '';
@@ -263,6 +268,11 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
             </Typography>
           </Alert>
         )}
+
+        {/* ─────────────────────────────────────────────────────────────
+            Self-Healing 結果パネル (Nightly Patrol の成果を表示)
+            ───────────────────────────────────────────────────────────── */}
+        <SelfHealingResultsPanel />
 
         {/* ─────────────────────────────────────────────────────────────
             Self-Healing 候補パネル / 修復推奨カード

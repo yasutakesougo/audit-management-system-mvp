@@ -30,7 +30,7 @@ export function useNightlySignalIngestion() {
       // 1. Diagnostics_Reports の取得
       try {
         const { getLatestDiagnosticsReport } = await import('@/sharepoint/diagnosticsReports');
-        const report = await getLatestDiagnosticsReport(sp, controller.signal);
+        const report = await getLatestDiagnosticsReport(sp, 'runtime-summary', controller.signal);
         if (cancelled) return;
 
         if (report) {

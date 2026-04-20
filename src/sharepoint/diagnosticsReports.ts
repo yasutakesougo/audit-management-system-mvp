@@ -483,16 +483,21 @@ export async function resetNotificationFlag(sp: UseSP, reportId: number): Promis
  */
 export async function getLatestDiagnosticsReport(
   sp: UseSP,
+  title?: string,
   signal?: AbortSignal,
 ): Promise<DiagnosticsReportItem | null> {
   const listTitle = DIAGNOSTICS_REPORTS_LIST_TITLE;
   const resolvedFields = await resolveDiagnosticsFields(sp);
   const selectFields = buildDiagnosticsSelectFields(resolvedFields);
 
+  const filter = title 
+    ? `${resolvedFields.title ?? FIELD_MAP_DIAGNOSTICS_REPORTS.title} eq '${title.replace(/'/g, "''")}'`
+    : undefined;
+
   const reports = await sp.getListItemsByTitle<Record<string, unknown>>(
     listTitle,
     selectFields,
-    undefined,
+    filter,
     `${resolvedFields.modified ?? FIELD_MAP_DIAGNOSTICS_REPORTS.modified} desc`,
     1,
     signal,

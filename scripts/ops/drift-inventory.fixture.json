@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "generatedAt": "2026-04-20T00:00:00.000Z",
+  "source": "manual",
+  "coverage": "full",
+  "notes": "Minimal fixture for drift-inventory.mjs. Covers match / case_mismatch / fuzzy_match / missing / zombie_candidate in a single pass.",
+  "lists": [
+    {
+      "listTitle": "Users_Master",
+      "listKey": "users_master",
+      "actualFields": [
+        "Id",
+        "Title",
+        "UserID",
+        "fullname",
+        "IsActive",
+        "UsageStatus",
+        "LegacyCopyColumn"
+      ],
+      "missingReports": []
+    },
+    {
+      "listTitle": "UserBenefit_Profile",
+      "listKey": "user_benefit_profile",
+      "actualFields": [
+        "Id",
+        "Title",
+        "UserID",
+        "Grant_x0020_Period_x0020_Start"
+      ],
+      "missingReports": [
+        "RecipientCertExpiry",
+        "GrantPeriodEnd"
+      ]
+    }
+  ]
+}
