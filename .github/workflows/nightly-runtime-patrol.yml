@@ -70,9 +70,7 @@ jobs:
           }
 
           # トークン取得 (SharePoint Audience を明示)
-          $uri = New-Object System.Uri($env:SHAREPOINT_SITE)
-          $resource = "$($uri.Scheme)://$($uri.DnsSafeHost)"
-          $token = Get-PnPAccessToken -ResourceUrl $resource
+          $token = Get-PnPAccessToken -ResourceTypeName SharePoint
           
           if ([string]::IsNullOrWhiteSpace($token)) {
             throw "Failed to acquire SharePoint access token."
