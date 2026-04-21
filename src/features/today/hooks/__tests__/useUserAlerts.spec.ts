@@ -2,7 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ABCRecord } from '@/domain/behavior/abc';
-import { useUserAlerts } from '../useUserAlerts';
+import { useTodayUserAlerts as useUserAlerts } from '../useUserAlerts';
 
 const mockGetABCRecordsForUser = vi.fn<(userId: string) => ABCRecord[]>();
 

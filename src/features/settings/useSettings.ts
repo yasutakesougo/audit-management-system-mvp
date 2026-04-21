@@ -28,7 +28,7 @@ import {
 type SettingsUpdater = (prev: UserSettings) => UserSettings;
 
 export function useSettings() {
-  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<UserSettings>(() => loadSettingsFromStorage());
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Initialize from localStorage on mount

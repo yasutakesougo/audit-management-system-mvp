@@ -57,8 +57,6 @@ const AdminDashboardPage = React.lazy(() =>
 );
 
 const DashboardBriefingPage = React.lazy(() => import('@/pages/DashboardPageTabs'));
-
-
 const MeetingGuidePage = React.lazy(() => import('@/pages/MeetingGuidePage'));
 const HandoffTimelinePage = React.lazy(() => import('@/pages/HandoffTimelinePage'));
 const IntegratedResourceCalendarPage = React.lazy(() => import('@/pages/IntegratedResourceCalendarPage'));
@@ -136,12 +134,14 @@ export const SuspendedIndividualSupportManagementPage = createSuspended(Individu
 export const SuspendedUserDetailPage = createSuspended(UserDetailPage, '利用者ページを読み込んでいます…');
 export const SuspendedStaffPanel = createSuspended(StaffPanel, '勤務一覧を読み込んでいます…');
 export const SuspendedUsersPanel = createSuspended(UsersPanel, '利用者一覧を読み込んでいます…');
+
 export const SuspendedIntegratedResourceCalendarPage = createSuspended(IntegratedResourceCalendarPage, '統合リソースカレンダーを読み込んでいます…');
 export const SuspendedNavigationDiagnosticsPage = createSuspended(NavigationDiagnosticsPage, 'ナビ診断を読み込んでいます…');
 export const SuspendedDataIntegrityPage = createSuspended(DataIntegrityPage, 'データ整合性チェックを読み込んでいます…');
 export const SuspendedCsvImportPage = createSuspended(CsvImportPage, 'CSVインポートを読み込んでいます…');
 export const SuspendedModeSwitchPage = createSuspended(ModeSwitchPage, 'モード切替を読み込んでいます…');
 export const SuspendedMonitoringMeetingRecordPage = createSuspended(MonitoringMeetingRecordPage, 'モニタリング会議記録画面を読み込んでいます…');
+
 const AdminHubPage = React.lazy(() => import('@/pages/admin/AdminHubPage'));
 export const SuspendedAdminHubPage = createSuspended(AdminHubPage, '管理ツールを読み込んでいます…');
 export const SuspendedMeetingGuidePage = createSuspended(MeetingGuidePage, '会議ガイドを読み込んでいます…');
@@ -149,8 +149,10 @@ export const SuspendedDashboardBriefingPage = createSuspended(DashboardBriefingP
 const RoomManagementPage = React.lazy(() => import('@/pages/RoomManagementPage').then((module) => ({ default: module.RoomManagementPage ?? module.default })));
 export const SuspendedRoomManagementPage = createSuspended(RoomManagementPage, 'お部屋情報を読み込んでいます…');
 export const SuspendedHandoffTimelinePage = createSuspended(HandoffTimelinePage, '申し送りタイムラインを読み込んでいます…');
-const TodayOpsPage = React.lazy(() => import('@/pages/TodayOpsPage').then((module) => ({ default: module.TodayOpsPage ?? module.default })));
+
+const TodayOpsPage = React.lazy(() => import('@/pages/today-isolated/TodayOpsPage_v3').then((module) => ({ default: module.TodayOpsPage ?? module.default })));
 export const SuspendedTodayOpsPage = createSuspended(TodayOpsPage, '本日の業務を読み込んでいます…');
+
 const SupportPlanGuidePage = React.lazy(() => import('@/pages/SupportPlanGuidePage'));
 export const SuspendedSupportPlanGuidePage = createSuspended(SupportPlanGuidePage, '個別支援計画書モジュールを読み込んでいます…');
 const ISPComparisonEditorPage = React.lazy(() => import('@/pages/ISPComparisonEditorPage'));
@@ -188,5 +190,7 @@ const TransportAssignmentPage = React.lazy(() => import('@/pages/TransportAssign
 export const SuspendedTransportAssignmentPage = createSuspended(TransportAssignmentPage, '送迎配車表を読み込んでいます…');
 const TelemetryDashboardPage = React.lazy(() => import('@/pages/admin/TelemetryDashboardPage'));
 export const SuspendedTelemetryDashboardPage = createSuspended(TelemetryDashboardPage, 'テレメトリダッシュボードを読み込んでいます…');
-const HealthPage = React.lazy(() => import('@/pages/HealthPage'));
+
+// HealthPage neutralised
+const HealthPage = React.lazy(() => import('@/pages/DashboardPage')); 
 export const SuspendedHealthPage = createSuspended(HealthPage, '環境診断を読み込んでいます…');

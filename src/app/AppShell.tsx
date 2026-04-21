@@ -8,6 +8,8 @@ import CloseFullscreenRoundedIcon from '@mui/icons-material/CloseFullscreenRound
 import Fab from '@mui/material/Fab';
 import React, { useContext, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { KioskBackToToday } from './components/KioskBackToToday';
+import { KioskExitFab } from './components/KioskExitFab';
 import { AppShellV2 } from '@/components/layout/AppShellV2';
 import { AuthDiagnosticsPanel } from '@/features/auth/diagnostics';
 import { SettingsDialog } from '@/features/settings/SettingsDialog';
@@ -30,6 +32,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     dashboardPath,
     hubRouteMeta,
     isFocusMode,
+    isKioskMode,
     isFullscreenMode,
     isDesktop,
     viewportMode,
@@ -100,7 +103,8 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <RouteHydrationListener>
       <LiveAnnouncer>
-        <div data-testid="app-shell">
+        <div data-testid="app-shell" data-kiosk={isKioskMode || undefined}>
+          <KioskBackToToday />
           <AppShellV2
             header={headerContent}
             sidebar={sidebarContent}
@@ -162,6 +166,9 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
           {import.meta.env.DEV && <AuthDiagnosticsPanel limit={15} pollInterval={2000} />}
           <SettingsDialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} />
+          {isKioskMode && (
+            <KioskExitFab onExit={() => updateSettings({ layoutMode: 'normal' })} />
+          )}
         </div>
       </LiveAnnouncer>
     </RouteHydrationListener>
