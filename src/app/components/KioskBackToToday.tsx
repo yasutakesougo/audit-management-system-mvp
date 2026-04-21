@@ -10,23 +10,21 @@ import { Box, ButtonBase, Typography } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useSettingsContext } from '@/features/settings/SettingsContext';
+import { useKioskDetection } from '@/features/settings/hooks/useKioskDetection';
 
 /** Today系パス（完全一致でのみバーを非表示にする） */
-const TODAY_EXACT_PATHS = new Set(['/today', '/dashboard', '/admin/dashboard']);
+const TODAY_EXACT_PATHS = new Set(['/today']);
 
 export const KioskBackToToday: React.FC = () => {
-  const { settings } = useSettingsContext();
   const location = useLocation();
   const navigate = useNavigate();
   const theme = useTheme();
-
-  const isKiosk = settings.layoutMode === 'kiosk';
+  const { isKioskMode } = useKioskDetection();
 
   // Today 画面にいるなら非表示（完全一致のみ）
   const isOnToday = TODAY_EXACT_PATHS.has(location.pathname);
 
-  if (!isKiosk || isOnToday) return null;
+  if (!isKioskMode || isOnToday) return null;
 
   return (
     <Box
