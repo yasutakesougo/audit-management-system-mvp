@@ -24,6 +24,10 @@
             <pnp:Field ID="{C0B9C86A-9AFB-4F2C-A2BB-59D72DE0B628}" Type="Boolean" DisplayName="有効" StaticName="isActive" Name="isActive">
               <Default>1</Default>
             </pnp:Field>
+            <pnp:Field ID="{E2E0AEF6-27FA-4830-85D6-E507F71D122A}" Type="Boolean" DisplayName="支援手順記録対象" StaticName="IsSupportProcedureTarget" Name="IsSupportProcedureTarget">
+              <Default>0</Default>
+            </pnp:Field>
+            <pnp:Field ID="{395B0DEF-30AE-4F30-A37E-BFFD0F39BCFD}" Type="DateTime" DisplayName="受給資格確認日時" StaticName="EligibilityCheckedAt" Name="EligibilityCheckedAt" Format="DateTime" />
           </pnp:Fields>
         </pnp:ListInstance>
         <!-- Staff_Master: 職員マスタ（ハブ） -->
