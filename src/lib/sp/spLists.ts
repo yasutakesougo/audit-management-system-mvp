@@ -89,10 +89,9 @@ export function createListOperations(
   function getItemById<T>(
     listTitle: string,
     id: number,
-    select: string[] = [],
-    signal?: AbortSignal,
+    options: ListItemsOptions = {},
   ): Promise<T> {
-    return _getItemById<T>(spFetch, listTitle, id, select, signal);
+    return _getItemById<T>(spFetch, listTitle, id, options);
   }
 
   function getItemByIdWithEtag<T>(

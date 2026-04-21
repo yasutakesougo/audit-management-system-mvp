@@ -16,6 +16,10 @@ export interface DataProviderOptions {
   /** ページング上限（大量データ取得の安全装置） */
   pageCap?: number;
   signal?: AbortSignal;
+  /** 実行時に特定のフィールドが（不整合などで）除外された際の通知 */
+  onFieldRemoved?: (fieldName: string, status: number, error: string) => void;
+  /** 致命的なスキーマ不整合により最小構成へのフォールバックが発生した際の通知 */
+  onCriticalFallback?: (status: number, error: string) => void;
 }
 
 export interface UpdateOptions {

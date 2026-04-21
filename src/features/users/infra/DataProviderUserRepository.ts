@@ -36,7 +36,7 @@ import type {
 import { userMasterCreateSchema } from '../schema';
 import { USAGE_STATUS_VALUES } from '../typesExtended';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
-import type { IDataProvider } from '@/lib/data/dataProvider.interface';
+import type { IDataProvider, DataProviderOptions } from '@/lib/data/dataProvider.interface';
 import { buildEq, joinAnd } from '@/sharepoint/query/builders';
 import {
   applyBenefitCutoverRead,
@@ -82,7 +82,8 @@ export class DataProviderUserRepository implements UserRepository {
   private readonly provider: IDataProvider;
   private readonly listTitle: string;
   private readonly audit?: (log: AuditLogEntry) => void;
-  private readonly defaultTop: number = 200;
+  private readonly defaultTop: number = 500;
+  private readonly reportedSkips = new Set<string>();
 
   private resolvedFields: Record<string, string | undefined> | null = null;
   private fieldStatus: Record<string, UserFieldStatus> | null = null;
@@ -260,11 +261,7 @@ export class DataProviderUserRepository implements UserRepository {
       throw new Error(`Users schema resolution failed: ${this.listTitle}`);
     }
 
-    // OData $select に含めるフィールドを、実際に存在する列のみに絞り込む
-    const selectFields = [
-      'Id', 'Title', 'Modified', 'Created',
-      ...Object.values(fields).filter((f): f is string => !!f)
-    ].filter((v, i, a) => a.indexOf(v) === i);
+    const selectFields = await this.getSelectFieldsForMainList(fields);
 
     const filterParts: (string | undefined)[] = [];
     if (params?.filters?.isActive !== undefined && fields.isActive) {
@@ -272,12 +269,35 @@ export class DataProviderUserRepository implements UserRepository {
       filterParts.push(buildEq(fields.isActive, params.filters.isActive ? 1 : 0));
     }
 
+    const options: DataProviderOptions = {
+      select: selectFields,
+      filter: joinAnd(filterParts) || undefined,
+      top: top > 0 ? top : undefined,
+      onFieldRemoved: (fieldName: string, status: number, error: string) => {
+        if (!this.reportedSkips.has(fieldName)) {
+          this.reportedSkips.add(fieldName);
+          emitDriftRecord(
+            this.listTitle, 
+            fieldName, 
+            'runtime_skip', 
+            'resolution_failure',
+            `Status: ${status}. Error: ${error}`
+          );
+        }
+      },
+      onCriticalFallback: (status: number, error: string) => {
+        emitDriftRecord(
+          this.listTitle, 
+          'CRITICAL_FALLBACK', 
+          'action_required', 
+          'fallback_to_minimal_fields',
+          `Status: ${status}. Error: ${error}`
+        );
+      }
+    };
+
     try {
-      const items = await this.provider.listItems<UserRow>(this.listTitle, {
-        select: selectFields,
-        filter: joinAnd(filterParts) || undefined,
-        top: top > 0 ? top : undefined,
-      });
+      const items = await this.provider.listItems<UserRow>(this.listTitle, options);
 
       let domainItems = items.map(item => this.toDomain(item, requestedMode));
 
@@ -350,20 +370,41 @@ export class DataProviderUserRepository implements UserRepository {
   public async getById(id: number | string, options?: UserRepositoryGetParams): Promise<IUserMaster | null> {
     const numericId = Number(id);
     const requestedMode = options?.selectMode ?? 'detail';
+    const signal = options?.signal;
 
     const fields = await this.resolveFields();
     if (!fields) return null;
 
-    const selectFields = [
-      'Id', 'Title', 'Modified', 'Created',
-      ...Object.values(fields).filter((f): f is string => !!f)
-    ].filter((v, i, a) => a.indexOf(v) === i);
+    const selectFields = await this.getSelectFieldsForMainList(fields);
+
+    const fetchOptions: DataProviderOptions = {
+      select: selectFields,
+      signal: signal,
+      onFieldRemoved: (fieldName: string, status: number, error: string) => {
+        if (!this.reportedSkips.has(fieldName)) {
+          this.reportedSkips.add(fieldName);
+          emitDriftRecord(
+            this.listTitle, 
+            fieldName, 
+            'runtime_skip', 
+            'resolution_failure',
+            `Status: ${status}. Error: ${error}`
+          );
+        }
+      },
+      onCriticalFallback: (status: number, error: string) => {
+        emitDriftRecord(
+          this.listTitle, 
+          'CRITICAL_FALLBACK', 
+          'action_required', 
+          'fallback_to_minimal_fields',
+          `Status: ${status}. Error: ${error}`
+        );
+      }
+    };
 
     try {
-      const row = await this.provider.getItemById<UserRow>(this.listTitle, numericId, {
-        select: selectFields,
-        signal: options?.signal,
-      });
+      const row = await this.provider.getItemById<UserRow>(this.listTitle, numericId, fetchOptions);
 
       const domain = this.toDomain(row, requestedMode);
 
@@ -970,5 +1011,32 @@ export class DataProviderUserRepository implements UserRepository {
     }
     
     return sanitized;
+  }
+
+  /**
+   * メインリスト (Users_Master) から取得すべき列を特定する。
+   * 分離先リスト (Transport, Benefit) に移動済みの物理列は、メインリストでの 400 エラーを避けるため除外する。
+   */
+  private async getSelectFieldsForMainList(fields: Record<string, string | undefined>): Promise<string[]> {
+    const transportMapping = await this.getAccessoryMapping('transport');
+    const benefitMapping = await this.getAccessoryMapping('benefit');
+    const benefitExtMapping = await this.getAccessoryMapping('benefit_ext');
+    
+    const accessoryPhysicalFields = new Set([
+      ...Object.values(transportMapping).filter((v): v is string => !!v),
+      ...Object.values(benefitMapping).filter((v): v is string => !!v),
+      ...Object.values(benefitExtMapping).filter((v): v is string => !!v)
+    ]);
+
+    return [
+      'Id', 'Title', 'Modified', 'Created',
+      ...Object.values(fields).filter((f): f is string => {
+        if (!f) return false;
+        // 結合キー (UserID) はメインリストにも物理的に存在し、必須なので除外しない
+        if (f === 'UserID') return true;
+        // 分離先リストの列として解決されている物理名はメインリストの select から外す
+        return !accessoryPhysicalFields.has(f);
+      })
+    ].filter((v, i, a) => a.indexOf(v) === i);
   }
 }

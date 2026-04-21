@@ -173,6 +173,10 @@ export type ListItemsOptions = {
   top?: number;
   pageCap?: number;
   signal?: AbortSignal;
+  /** ドリフトやゾンビ列が原因で 400 エラーが発生し、フィールドが除外された際の通知 */
+  onFieldRemoved?: (fieldName: string, status: number, errorMsg: string) => void;
+  /** 識別不能なエラーや連続失敗により、最小構成（Id, Title）への強制フォールバックが発生した際の通知 */
+  onCriticalFallback?: (status: number, errorMsg: string) => void;
 };
 
 // ─── Staff identifier ────────────────────────────────────────────

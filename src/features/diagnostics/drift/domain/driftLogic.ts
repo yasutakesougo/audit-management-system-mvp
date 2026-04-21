@@ -4,7 +4,7 @@
  * 施設運営において「ドリフトは異常ではなくイベント（事実）」として扱い、
  * 自動修復の履歴を可観測性のための資産として蓄積する。
  */
-export type DriftResolutionType = 'fuzzy_match' | 'fallback' | 'manual';
+export type DriftResolutionType = 'fuzzy_match' | 'fallback' | 'manual' | 'runtime_skip' | 'action_required';
 
 /**
  * ドリフトの具体的な種類
@@ -15,6 +15,8 @@ export type DriftType =
   | 'suffix_mismatch' // カラムサフィックスの付与 (例: Status -> Status0)
   | 'fuzzy_match'    // 文字列置換等による曖昧一致 (例: _x0020_ 変換)
   | 'fallback'       // 代替カラムの使用
+  | 'resolution_failure' // 解決失敗（実行時にスキップされた）
+  | 'fallback_to_minimal_fields' // 最小構成へのフォールバック
   | 'unknown';
 
 export type DriftEvent = {
@@ -40,6 +42,8 @@ export type DriftEvent = {
    * - 'nightly' : Nightly Patrol による自動実行
    */
   remediationSource?: 'ui' | 'nightly';
+  /** 追加詳細（400エラーメッセージ等） */
+  description?: string;
 };
 
 import { driftEventBus } from './DriftEventBus';
@@ -51,16 +55,18 @@ export const emitDriftRecord = (
   listName: string, 
   fieldName: string, 
   resolution: DriftResolutionType = 'fuzzy_match',
-  driftType: DriftType = 'unknown'
+  driftType: DriftType = 'unknown',
+  description?: string
 ) => {
   driftEventBus.emit({
     listName,
     fieldName,
     detectedAt: new Date().toISOString(),
-    severity: 'warn',
+    severity: resolution === 'action_required' ? 'warn' : 'info',
     resolutionType: resolution,
     driftType,
-    resolved: false
+    resolved: false,
+    description
   });
 };
 

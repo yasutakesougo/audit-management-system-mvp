@@ -372,7 +372,6 @@ export const USER_BENEFIT_PROFILE_CANDIDATES = {
  */
 export const USER_BENEFIT_PROFILE_ESSENTIALS: (keyof typeof USER_BENEFIT_PROFILE_CANDIDATES)[] = [
   'userId',
-  'recipientCertNumber',
 ];
 
 // ── User Transport Settings (user_transport_settings) — Drift Resistance ──────────
