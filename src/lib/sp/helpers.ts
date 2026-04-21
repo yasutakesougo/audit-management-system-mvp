@@ -489,29 +489,33 @@ export function resolveInternalNamesDetailed<T extends string>(
         for (const base of candidates[key]) {
           const lowerBase = base.toLowerCase();
 
-          // Strategy A: Suffix check (0-9)
-          for (let i = 0; i < 10; i++) {
-            const suffixCandidate = `${lowerBase}${i}`;
-            if (availableMap.has(suffixCandidate)) {
-              foundCandidate = availableMap.get(suffixCandidate);
+          // Strategy A: Suffix check (v2: handles multi-digit suffixes 0-99 and encoded spaces)
+          const encodedBase = lowerBase.replace(/ /g, '_x0020_');
+          const suffixRegex = new RegExp(`^${encodedBase}(\\d+)$`);
+          
+          for (const [availableLow, actual] of availableMap.entries()) {
+            if (suffixRegex.test(availableLow)) {
+              foundCandidate = actual;
               driftType = 'suffix_mismatch';
               break;
             }
           }
           if (foundCandidate) break;
 
-          // Strategy B: Encode space to _x0020_
-          const encoded = lowerBase.replace(/ /g, '_x0020_');
-          if (availableMap.has(encoded)) {
-            foundCandidate = availableMap.get(encoded);
+          // Strategy B: Encode space to _x0020_ (Exact match)
+          if (availableMap.has(encodedBase)) {
+            foundCandidate = availableMap.get(encodedBase);
             driftType = 'fuzzy_match';
             break;
           }
 
-          // Strategy C: Check all available names by stripping _x00XX_ encoded chars and trailing suffixes
+          // Strategy C: Bitwise/Normalized comparison (Extreme drift protection)
+          const sanitizedCandidate = lowerBase.replace(/_x[0-9a-f]{4}_/gi, '').replace(/[^a-z0-9]/g, '');
           for (const [availableLow, actual] of availableMap.entries()) {
-            const stripped = availableLow.replace(/_x[0-9a-f]{4}_/gi, '').replace(/[0-9]+$/, '');
-            if (stripped === lowerBase) {
+            const availSanitized = availableLow.replace(/_x[0-9a-f]{4}_/gi, '').replace(/[^a-z0-9]/g, '');
+            // Check if stripped names match or if one is a truncated version of another
+            if (availSanitized === sanitizedCandidate || 
+               (availSanitized.length >= 28 && sanitizedCandidate.startsWith(availSanitized))) {
               foundCandidate = actual;
               driftType = 'fuzzy_match';
               break;
@@ -519,38 +523,22 @@ export function resolveInternalNamesDetailed<T extends string>(
           }
           if (foundCandidate) break;
 
-          // Strategy C2: Also try stripping from the candidate side for bidirectional matching
-          const candidateStripped = lowerBase.replace(/_x[0-9a-f]{4}_/gi, '').replace(/[0-9]+$/, '');
-          if (candidateStripped !== lowerBase) {
-            for (const [availableLow, actual] of availableMap.entries()) {
-              const availStripped = availableLow.replace(/_x[0-9a-f]{4}_/gi, '').replace(/[0-9]+$/, '');
-              if (availStripped === candidateStripped) {
-                foundCandidate = actual;
-                driftType = 'fuzzy_match';
-                break;
-              }
+          // Strategy D: SharePoint 32-character truncation check
+          if (encodedBase.length >= 32) {
+            const truncated = encodedBase.slice(0, 32);
+            if (availableMap.has(truncated)) {
+              foundCandidate = availableMap.get(truncated);
+              driftType = 'truncation';
+              break;
             }
-            if (foundCandidate) break;
           }
+          if (foundCandidate) break;
 
-          // Strategy E: SharePoint 32-character truncation check
-          // If the internal name is exactly 32 chars and is a prefix of our candidate (after encoding), it's likely a match.
-          if (lowerBase.length > 32 || lowerBase.includes(' ')) {
-            const encodedBase = lowerBase.replace(/ /g, '_x0020_');
-            if (encodedBase.length >= 32) {
-              const truncated = encodedBase.slice(0, 32);
-              if (availableMap.has(truncated)) {
-                foundCandidate = availableMap.get(truncated);
-                driftType = 'truncation';
-                break;
-              }
-            }
-          }
-          // Strategy D: Handle SharePoint specialized suffixes (like 'Id' for Person/Lookup or 'Text' for Note)
+          // Strategy E: SharePoint specialized suffixes (like 'Id' for Person/Lookup)
           const lowerBaseNoId = lowerBase.replace(/id$/, '');
           for (const [availableLow, actual] of availableMap.entries()) {
             const availNoId = availableLow.replace(/id$/, '');
-            if (availNoId === lowerBaseNoId) {
+            if (availNoId === lowerBaseNoId && availNoId.length > 3) {
               foundCandidate = actual;
               driftType = 'fuzzy_match';
               break;

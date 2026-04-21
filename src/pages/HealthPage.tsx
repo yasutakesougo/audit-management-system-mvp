@@ -318,7 +318,8 @@ const DRIFT_ESSENTIALS_BY_KEY: Record<string, readonly string[]> = {
 
 
 
-const listSpecs: ListSpec[] = SP_LIST_REGISTRY.map((entry) => {
+function buildListSpecs(): ListSpec[] {
+  return SP_LIST_REGISTRY.map((entry) => {
   const effectiveEssentials = DRIFT_ESSENTIALS_BY_KEY[entry.key] ?? (entry.essentialFields || []);
 
   // 1. All fields from provisioning (default: optional)
@@ -389,7 +390,8 @@ const listSpecs: ListSpec[] = SP_LIST_REGISTRY.map((entry) => {
     updateItem: { Title: `healthcheck-updated-${uniqueId}` },
     isReadOnly: !entry.operations.includes("W"),
   };
-});
+  });
+}
 
 export default function HealthPage() {
   const env = getRuntimeEnv() as Record<string, unknown>;
@@ -399,7 +401,7 @@ export default function HealthPage() {
     siteUrl:
       String(env.VITE_SP_RESOURCE ?? "") +
       String(env.VITE_SP_SITE_RELATIVE ?? ""),
-    listSpecs,
+    listSpecs: buildListSpecs,
     isProductionLike:
       String(env.MODE ?? "").toLowerCase() === "production" ||
       String(env.VITE_APP_ENV ?? "").toLowerCase() === "production",
