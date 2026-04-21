@@ -1,5 +1,14 @@
 import { Box, Typography, Paper, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
 import type { KioskUxKpis } from '@/features/today/telemetry/computeKioskUxKpis';
+import type { KioskQuickLinkId } from '@/features/today/model/getKioskQuickLinks';
+
+const TARGET_LABELS: Record<KioskQuickLinkId, string> = {
+  schedule: 'スケジュール',
+  handoff: '申し送り',
+  minutes: '議事録記録',
+  room: 'お部屋管理',
+  briefing: '朝夕会進行',
+};
 
 export function KioskUxTelemetrySection({ kpis }: { kpis: KioskUxKpis | null }) {
   if (!kpis) return null;
@@ -21,6 +30,10 @@ export function KioskUxTelemetrySection({ kpis }: { kpis: KioskUxKpis | null }) 
   const topTargetEntry = Object.entries(kpis.navigateFromTodayBreakdown)
     .sort((a, b) => b[1] - a[1])[0];
   const topTarget = topTargetEntry ? topTargetEntry[0] : '特定の機能';
+  const topTargetLabel =
+    topTarget in TARGET_LABELS
+      ? TARGET_LABELS[topTarget as KioskQuickLinkId]
+      : topTarget;
 
   return (
     <Box sx={{ mt: 4 }}>
@@ -52,7 +65,11 @@ export function KioskUxTelemetrySection({ kpis }: { kpis: KioskUxKpis | null }) 
                   .sort((a, b) => b[1] - a[1])
                   .map(([target, count]) => (
                   <TableRow key={target} sx={{ '&:last-child td': { borderBottom: 0 } }}>
-                    <TableCell sx={{ fontWeight: 500 }}>{target}</TableCell>
+                    <TableCell sx={{ fontWeight: 500 }}>
+                      {target in TARGET_LABELS
+                        ? `${TARGET_LABELS[target as KioskQuickLinkId]} (${target})`
+                        : target}
+                    </TableCell>
                     <TableCell align="right" sx={{ fontWeight: 700, color: '#1e293b' }}>{count}</TableCell>
                   </TableRow>
                 ))
@@ -167,7 +184,7 @@ export function KioskUxTelemetrySection({ kpis }: { kpis: KioskUxKpis | null }) 
                 <Typography variant="caption" sx={{ color: '#991b1b', mt: 0.5, display: 'block' }}>
                   最短導線が見つからず迷っている職員が多発しています。
                   <br />
-                  💡 <strong>システムからの提案:</strong> 現在最も利用されている <strong>「{topTarget}」</strong> のボタンをより大きくするか、クイックリンクの先頭へ配置変更することを検討してください。
+                  💡 <strong>システムからの提案:</strong> 現在最も利用されている <strong>「{topTargetLabel}」</strong> のボタンをより大きくするか、クイックリンクの先頭へ配置変更することを検討してください。
                 </Typography>
               </Box>
             ) : (
