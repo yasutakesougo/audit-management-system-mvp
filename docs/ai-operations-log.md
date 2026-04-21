@@ -77,6 +77,32 @@
 
 <!-- ↓ ここから下に追記していく -->
 
+### 2026-04-21 — Auth Readiness Contract / Types Stabilization Green Recovery 🏁
+
+**内容**: 認証準備状態（Auth Readiness）を前提とした契約の安定化を進め、認証モック・プロバイダー・ドメインテストフィクスチャに起因していた型不整合を解消。
+
+| 判断 | 内容 |
+|------|------|
+| ✅ 採用 | `isAuthReady` を前提とする制御と周辺の型契約を揃え、Provider/Fixture 間のズレを吸収 |
+| ✅ 採用 | `WhatIf` における boolean splatting 不具合の汎用的な修正 |
+| ✅ 採用 | `Users_Master` への canonical optional fields の追加（将来のデータ不整合防止） |
+| ✅ 採用 | health check probe failure の理由分類（原因特定スピード向上） |
+
+**成果**:
+- Branch: `fix/auth-readiness-contract`
+- Commit: `b35082bc`
+- `npm run typecheck:full` → **PASS** 🟢
+- `npm run test:attendance:mini` → **PASS** 🟢 (24 tests)
+
+**運用上の注意**:
+- `iceberg_analysis` の必須インデックス不足（Critical）、`support_record_daily` の schema drift（Action Required）は継続監視が必要。
+
+**Assessment**:
+今回のセッションにより、開発継続に必要な baseline green を回復。PR作業や追加の実装を安全に再開できる状態になった。
+
+#foundation #auth #stabilization #skill-matrix-20260421
+
+
 ### 2026-03-14 — TodayOps day-closing UX 強化 🏁
 
 **ワークフロー**: `/ux-review` → `/architect` → `/implement`

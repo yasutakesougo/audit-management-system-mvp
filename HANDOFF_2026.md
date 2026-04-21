@@ -1,37 +1,30 @@
-## Handoff: Schedules Domain Hardening — 2026-03-30
+## Handoff: Auth Readiness & Type Stabilization Green Recovery — 2026-04-21
  
 ### 1. 完了したこと
-- [x] **Resilient Ingestion Pipeline への進化**: `spRowSchema.ts` において、単一列依存から複数候補解決 (`pickFirstValue`) への移行を完了。
-- [x] **Fault Isolation (Per-row parsing)**: `parseSpScheduleRows` を `safeParse` ループに変更し、破損行が1件あっても全件失敗しないように改善。
-- [x] **Localization 対応**: 日本語カテゴリ・ステータス（利用者, 予定どおり, 延期等）の正規化マッピングを追加。
-- [x] **Observability 統合**: `spTelemetry.ts` に `sp:row_skipped` と `sp:fetch_fallback_success` イベントを追加し、ドメイン層から発火。
-- [x] **回帰テスト拡充**: [`spRowSchema.spec.ts`](file:///Users/yasutakesougo/audit-management-system-mvp/src/features/schedules/data/spRowSchema.spec.ts) を新規作成し、日本語値・旧Outlook形式・混在ID・破損行スキップのテストを完了。
+- [x] **型崩れの完全復旧**: ブランチ `fix/auth-readiness-contract` (Commit `b35082bc`) にて、Auth mocks / Provider / Fixtures 間の型不整合を解消。
+- [x] **検証ベースラインの確立**: `npm run typecheck:full` および `npm run test:attendance:mini` の両方の PASS を確認。
+- [x] **Users_Master 強化**: 予期せぬデータドリフトを防ぐため、標準任意列（canonical optional fields）をプロビジョニング段階で追加。
+- [x] **ヘルスチェックの精緻化**: プローブ失敗を理由コード別に分類するロジックを統合し、エラー箇所の特定を高速化。
  
 ### 2. 現在の状態
-- ブランチ: `main` (Working directly in workspace)
-- 最新変更: Schedules ドメインの取り込み層の硬化完了
-- ビルド: ✅ (Verified via runtime)
-- テスト: ✅ (New regression tests pass)
+- ブランチ: `fix/auth-readiness-contract`
+- 最新コミット: `b35082bc`
+- 型・テスト状況: ✅ Green (Verification verified)
  
-### 3. 残課題
+### 3. 残課題 (運用トラックへの移行を推奨)
 | # | 課題 | 優先度 | 見積もり | 備考 |
 |---|------|:------:|---------|------|
-| 1 | `DevPanel` への Telemetry 可視化 | 中 | 20m | `useDataProviderObservabilityStore` に skipped 数を保持 |
-| 2 | `Users_Master` 削減/正規化の着手 | 高 | 60m | 分割移行ツールの本番適用と repo 差し替え |
-| 3 | Ingestion Pipeline への他ドメイン横展 | 中 | 45m | Monitoring や Attendance への共通化適用 |
+| 1 | `iceberg_analysis` インデックス不足 | 高(C) | 10m | 管理画面からの m365 CLI コマンド実行 |
+| 2 | `support_record_daily` schema drift | 高(A) | 10m | 管理画面提示の diff 修正コマンド実行 |
+| 3 | Auth Readiness PR の最終整理 | 中 | 30m | 差分の PR 単位への分割とレビュー依頼 |
  
 ### 4. 次の1手
-`useDataProviderObservabilityStore` にイベントカウンターを追加し、`DevPanel` の Health タブで「何件の破損データが吸収されたか」を可視化する。
+Nightly Patrol で検知されているインデックス不足（Critical）を解消するため、`/admin/status`（またはナイトリーログ）から具体的な修復コマンドを取得して適用する。
  
-### 5. コンテキスト（次のAIが知るべきこと）
-- **設計判断**: Schedules では `strict schema` を捨て、`tolerant ingestion` を採用。`z.unknown()` で広く受け、mapper (`pickFirstValue`) で意味決定を行っている。これは SharePoint のテナント差分（列名の揺れ）をコード側で吸収するための戦略的判断。
-- **注意点**: 書き込み (Write) 側はまだこの "Loose" な仕組みに完全に対応していないため、更新時は `SCHEDULES_FIELDS` のプライマリ列が使われる。
-- **参照ファイル**:
-  - [`spRowSchema.ts`](file:///Users/yasutakesougo/audit-management-system-mvp/src/features/schedules/data/spRowSchema.ts) (Ingestion 核)
-  - [`scheduleSpHelpers.ts`](file:///Users/yasutakesougo/audit-management-system-mvp/src/features/schedules/data/scheduleSpHelpers.ts) (Fetch fallback 制御)
-  - [`spTelemetry.ts`](file:///Users/yasutakesougo/audit-management-system-mvp/src/lib/telemetry/spTelemetry.ts) (イベント定義)
+### 5. コンテキスト
+- **設計判断**: 今回の型修正では、認証準備完了を待つ `isAuthReady` パターンを Provider 層で厳格化し、開発環境/テスト環境の「偽陽性エラー」を抑制することに重きを置いた。これにより、開発時の `npm start` や `vitest` の安定性が向上している。
+- **注意点**: 運用課題（インデックス/ドリフト）はコード変更ではなく、SharePoint テナント側のリソース状態に起因しているため、開発ブランチでの修正ではなく運用オペレーションとして対応する必要がある。
  
-### 6. 関連Issue/PR
-| 種別 | # | 状態 |
-|------|---|:----:|
-| Task | - | 完了 (Schedules Hardening) |
+### 6. 関連記述・ファイル
+- **ログ**: [ai-operations-log.md](./docs/ai-operations-log.md) (2026-04-21 エントリ参照)
+- **サマリ**: [COMMIT_SUMMARY.md](./COMMIT_SUMMARY.md)
