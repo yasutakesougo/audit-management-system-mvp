@@ -5,6 +5,8 @@
  * Migrated from legacy src/lib/spActivityDiary.ts.
  */
 
+// contract:allow-interface
+
 export type ActivityDiaryMealAmount = '完食' | '多め' | '半分' | '少なめ' | 'なし';
 export type ActivityDiaryPeriod = 'AM' | 'PM';
 export type ActivityDiaryCategory = '請負' | '個別' | '外活動' | '余暇';
