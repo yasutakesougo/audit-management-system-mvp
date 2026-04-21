@@ -32,7 +32,7 @@ export type UseUserAlertsReturn = {
 /**
  * @param userIds - 本日通所予定の利用者 ID 配列
  */
-export function useUserAlerts(userIds: string[]): UseUserAlertsReturn {
+export function useTodayUserAlerts(userIds: string[]): UseUserAlertsReturn {
   const [allRecords, setAllRecords] = useState<ABCRecord[]>([]);
   const [loading, setLoading] = useState(false);
 

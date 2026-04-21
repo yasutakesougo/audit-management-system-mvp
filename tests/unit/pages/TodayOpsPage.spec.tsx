@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../../../src/hooks/useToast';
 import { SettingsProvider } from '../../../src/features/settings';
 import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from '../../../src/features/settings/settingsModel';
-import TodayOpsPage from '../../../src/pages/TodayOpsPage';
+import TodayOpsPage from '../../../src/pages/today-isolated/TodayOpsPage_v3';
 import { TodayBentoLayout } from '../../../src/features/today/layouts/TodayBentoLayout';
 import { useTodayActionQueue } from '../../../src/features/today/hooks/useTodayActionQueue';
 import { TodayLitePage } from '../../../src/features/today/lightweight/TodayLitePage';

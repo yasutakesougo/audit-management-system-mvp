@@ -27,23 +27,13 @@ import { useDashboardPath } from '@/features/dashboard/dashboardRouting';
 import { useSettingsContext } from '@/features/settings/SettingsContext';
 import { shouldSkipLogin } from '@/lib/env';
 import { useComplianceBadge } from '@/features/regulatory/ComplianceBadgeProvider';
+import { useKioskDetection } from '@/features/settings/hooks/useKioskDetection';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const SKIP_LOGIN = shouldSkipLogin();
-
-type KioskRouteMode = 'enable' | 'disable' | null;
-
-function parseKioskRouteMode(search: string): KioskRouteMode {
-  const value = new URLSearchParams(search).get('kiosk');
-  if (!value) return null;
-  const normalized = value.trim().toLowerCase();
-  if (normalized === '1' || normalized === 'true') return 'enable';
-  if (normalized === '0' || normalized === 'false') return 'disable';
-  return null;
-}
 
 export function useAppShellState() {
   const location = useLocation();
@@ -67,12 +57,8 @@ export function useAppShellState() {
   const navAudience: NavAudience = roleToNavAudience(role);
   const theme = useTheme();
   const { settings, updateSettings } = useSettingsContext();
-  const kioskRouteMode = useMemo(
-    () => parseKioskRouteMode(location.search),
-    [location.search],
-  );
+  const { isKioskMode } = useKioskDetection();
   const isFocusMode = settings.layoutMode === 'focus';
-  const isKioskMode = settings.layoutMode === 'kiosk';
   const isFullscreenMode = isFocusMode || isKioskMode;
   const hubRouteMeta = useMemo(
     () => resolveHubRouteMetadata(location.pathname),
@@ -109,14 +95,17 @@ export function useAppShellState() {
 
   useEffect(() => {
     if (!location.pathname.startsWith('/today')) return;
-    if (kioskRouteMode === 'enable' && settings.layoutMode !== 'kiosk') {
+    const params = new URLSearchParams(location.search);
+    const kioskParam = params.get('kiosk');
+
+    if ((kioskParam === '1' || kioskParam === 'true') && settings.layoutMode !== 'kiosk') {
       updateSettings({ layoutMode: 'kiosk' });
       return;
     }
-    if (kioskRouteMode === 'disable' && settings.layoutMode === 'kiosk') {
+    if ((kioskParam === '0' || kioskParam === 'false') && settings.layoutMode === 'kiosk') {
       updateSettings({ layoutMode: 'normal' });
     }
-  }, [location.pathname, kioskRouteMode, settings.layoutMode, updateSettings]);
+  }, [location.pathname, location.search, settings.layoutMode, updateSettings]);
 
   useEffect(() => {
     if (!isFocusMode) return;

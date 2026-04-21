@@ -181,15 +181,18 @@ export class DataProviderUserRepository implements UserRepository {
             continue;
           }
 
-          const primaryCandidate = (cands as string[])[0];
-          if (!primaryCandidate) {
-            bestEffort[key] = undefined;
-            continue;
+          // [Robustness] If not resolved by inspection, try candidates in order
+          let foundCandidate: string | undefined;
+
+          if (!hasFieldMetadata) {
+            // No metadata available (e.g. offline with empty cache), pick primary
+            foundCandidate = cands[0];
+          } else {
+            // Pick first candidate that actually exists in the list
+            foundCandidate = cands.find(c => availableLower.has(c.toLowerCase()));
           }
 
-          bestEffort[key] = !hasFieldMetadata
-            ? primaryCandidate
-            : (availableLower.has(primaryCandidate.toLowerCase()) ? primaryCandidate : undefined);
+          bestEffort[key] = foundCandidate;
         }
 
         this.resolvedFields = bestEffort;

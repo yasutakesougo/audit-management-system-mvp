@@ -115,8 +115,9 @@ test.describe('Kiosk UX Regression (Smoke)', () => {
     await expect(monitoringHeader).toBeVisible();
 
     // 3. モックデータ（User One）のカウントダウンが表示されているか検証
-    await expect(page.getByText('User One')).toBeVisible();
-    await expect(page.getByText(/次回会議まで/)).toBeVisible();
+    const monitoringSection = page.getByTestId('kiosk-monitoring-alerts');
+    await expect(monitoringSection.getByText('User One')).toBeVisible();
+    await expect(monitoringSection.getByText(/次回会議まで/)).toBeVisible();
     
     // 進捗リング（プログレス）の存在確認
     const progressRing = page.locator('svg').filter({ has: page.locator('circle') });
