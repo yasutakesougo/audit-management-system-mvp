@@ -15,6 +15,40 @@ import {
     type EnvRecord,
 } from '../lib/env';
 
+// ── Lot1B PR #E — UserBenefit_Profile optional 6-column cutover stage ──
+// Single source of truth. Mapper modules must delegate here.
+export const USER_BENEFIT_PROFILE_CUTOVER_STAGES = [
+  'PRE_MIGRATION',
+  'DUAL_WRITE',
+  'BACKFILL_IN_PROGRESS',
+  'READ_CUTOVER',
+  'WRITE_CUTOVER',
+] as const;
+export type UserBenefitProfileCutoverStage = (typeof USER_BENEFIT_PROFILE_CUTOVER_STAGES)[number];
+export const ENV_KEY_USER_BENEFIT_PROFILE_CUTOVER_STAGE = 'VITE_USER_BENEFIT_PROFILE_CUTOVER_STAGE';
+export const LOCAL_STORAGE_KEY_USER_BENEFIT_PROFILE_CUTOVER_STAGE = 'lot1b.userBenefitProfileCutoverStage';
+
+const isCutoverStage = (raw: unknown): raw is UserBenefitProfileCutoverStage =>
+  typeof raw === 'string' && (USER_BENEFIT_PROFILE_CUTOVER_STAGES as readonly string[]).includes(raw);
+
+export const resolveUserBenefitProfileCutoverStage = (
+  envOverride?: EnvRecord,
+): UserBenefitProfileCutoverStage => {
+  const fromEnv = readOptionalEnv(ENV_KEY_USER_BENEFIT_PROFILE_CUTOVER_STAGE, envOverride);
+  if (isCutoverStage(fromEnv)) return fromEnv;
+
+  if (typeof window !== 'undefined') {
+    try {
+      const ls = window.localStorage?.getItem(LOCAL_STORAGE_KEY_USER_BENEFIT_PROFILE_CUTOVER_STAGE);
+      if (isCutoverStage(ls)) return ls;
+    } catch {
+      // ignore private-mode errors
+    }
+  }
+
+  return 'PRE_MIGRATION';
+};
+
 export type FeatureFlagSnapshot = {
   schedules: boolean;
   complianceForm: boolean;
