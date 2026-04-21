@@ -18,8 +18,6 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { HealthDiagnosisPage } from "../features/diagnostics/health/HealthDiagnosisPage";
 import { HealthContext, ListSpec } from "../features/diagnostics/health/types";
 import { getRuntimeEnv } from "@/env";
-// @ts-expect-error - JSON import is handled by Vite but TSC may fail to resolve it in isolated build
-// eslint-disable-next-line import/no-unresolved
 import latestDecision from "../sharepoint/latest-decision.json";
 
 /**
