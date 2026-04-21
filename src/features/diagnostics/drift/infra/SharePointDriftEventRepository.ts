@@ -92,9 +92,9 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
 
   private isRequiredPhysicalField(fieldName: string): boolean {
     return [
-      this.rfWithFallback('listName'), 
-      this.rfWithFallback('fieldName'), 
-      this.rfWithFallback('detectedAt')
+      this.rfWithFallback('listName'),
+      this.rfWithFallback('fieldName'),
+      this.rfWithFallback('detectedAt'),
     ].includes(fieldName);
   }
 
@@ -338,6 +338,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
 
           // フィールド名が特定できない 400 は、任意列を外した最小ペイロードで 1 回だけ再試行する
           if (attempt === 0) {
+            auditLog.warn('diagnostics:drift', 'DriftEventRepository 400 error caught. Retrying with minimal payload (required fields only).');
             const minimalPayload = this.buildCreatePayload(event, false);
             if (!minimalPayload) {
               this.writeDisabled = true;
