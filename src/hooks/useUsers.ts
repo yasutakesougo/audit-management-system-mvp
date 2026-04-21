@@ -19,11 +19,11 @@ export function useUsers() {
   const updateUser = useCallback(async (id: number, input: UserUpsert): Promise<SpUserItem> => {
     const payload = toUserItem(input);
     await sp.updateItem(USERS_LIST_TITLE, id, payload);
-    return sp.getItemById<SpUserItem>(USERS_LIST_TITLE, id, USER_DETAIL_FIELDS);
+    return sp.getItemById<SpUserItem>(USERS_LIST_TITLE, id, { select: USER_DETAIL_FIELDS });
   }, [sp]);
 
   const getUserById = useCallback(async (id: number): Promise<SpUserItem> => {
-    return sp.getItemById<SpUserItem>(USERS_LIST_TITLE, id, USER_DETAIL_FIELDS);
+    return sp.getItemById<SpUserItem>(USERS_LIST_TITLE, id, { select: USER_DETAIL_FIELDS });
   }, [sp]);
 
   return {

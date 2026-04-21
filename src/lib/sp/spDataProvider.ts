@@ -86,6 +86,8 @@ export class SharePointDataProvider implements IDataProvider {
       expand: options?.expand?.join(','),
       pageCap: options?.pageCap,
       signal: options?.signal,
+      onFieldRemoved: options?.onFieldRemoved,
+      onCriticalFallback: options?.onCriticalFallback,
     });
   }
 
@@ -100,8 +102,12 @@ export class SharePointDataProvider implements IDataProvider {
       return await this.client.getItemById<T>(
         actualName, 
         numericId, 
-        options?.select || [], 
-        options?.signal
+        {
+          select: options?.select || [],
+          signal: options?.signal,
+          onFieldRemoved: options?.onFieldRemoved,
+          onCriticalFallback: options?.onCriticalFallback,
+        }
       );
     } catch (err) {
       if (err instanceof SharePointItemNotFoundError) throw err;

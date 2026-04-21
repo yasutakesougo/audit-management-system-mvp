@@ -10,7 +10,7 @@ import { readEnv } from '@/lib/env';
 
 import { buildItemPath, resolveListPath } from './helpers';
 import type { NormalizePathFn, SpFetchFn } from './spLists';
-import type { JsonRecord, ListItemsOptions } from './types';
+import type { JsonRecord, ListItemsOptions, SpRequestInit } from './types';
 import { evaluateQueryRisk, enforceQueryPolicy } from './queryGuard';
 import { beginSpQueryTelemetry, endSpQueryTelemetry } from './telemetry';
 
@@ -148,33 +148,83 @@ export async function listItems<TRow = JsonRecord>(
         auditLog.debug('sp:read', 'list_items_page', { path: nextPath });
       }
       attemptCount += 1;
-      let res: Response;
-      try {
-        res = await spFetch(nextPath, signal ? { signal } : {});
-      } catch (error) {
-        // 400 (Bad Request) または 500 (Internal Server Error) の場合は列名のドリフトや行サイズ制限を疑う
-        const spError = error as { status?: number; message?: string };
-        const status = spError?.status;
+      let res: Response | undefined = undefined;
+      const maxRetries = 10; // 複数ドリフトへの連鎖許容上限
+      let retries = 0;
+      const removedFields = new Set<string>();
 
-        // すでに最小限のフィールドを取得している場合は再試行しない
-        if ((status === 400 || status === 500) && (sanitized.select && sanitized.select.length > 2)) {
-          auditLog.warn('sp:read', `listItems fallback: retrying with minimal fields due to ${status}`, {
-            listIdentifier,
-            error: spError.message,
-          });
+      while (retries < maxRetries) {
+        try {
+          res = await spFetch(nextPath, signal ? { signal } : {});
+          break; // 成功
+        } catch (error) {
+          const spError = error as { status?: number; message?: string };
+          const status = spError?.status;
 
-          // 最小限のフィールドで再構築
-          const fallbackParams = new URLSearchParams();
-          fallbackParams.append('$select', 'Id,Title');
-          if (sanitized.filter) fallbackParams.append('$filter', sanitized.filter);
-          fallbackParams.append('$top', String(sanitized.top));
-          
-          const fallbackPath = `${basePath}/items?${fallbackParams.toString()}`;
-          res = await spFetch(fallbackPath, signal ? { signal } : {});
-        } else {
-          throw error;
+          // 400 (Bad Request) または 500 (Internal Server Error) の場合にフィールド除去を試行
+          if ((status === 400 || status === 500) && sanitized.select && sanitized.select.length > 2) {
+            const errorMsg = spError.message || '';
+            const match = errorMsg.match(/'([^']+)'/);
+            const missingField = match?.[1];
+
+            if (missingField && sanitized.select.includes(missingField) && !removedFields.has(missingField)) {
+              auditLog.warn('sp:read', `listItems fallback retry ${retries + 1}: removing field "${missingField}" due to ${status}`, {
+                listIdentifier,
+                error: errorMsg,
+              });
+
+              // 呼び出し元へ通知（ドリフト記録など）
+              options.onFieldRemoved?.(missingField, status, errorMsg);
+
+              removedFields.add(missingField);
+              sanitized.select = sanitized.select.filter(f => f !== missingField);
+
+              // 検索対象の再構築
+              const retryParams = new URLSearchParams();
+              if (sanitized.select.length) retryParams.append('$select', sanitized.select.join(','));
+              if (sanitized.filter) retryParams.append('$filter', sanitized.filter);
+              if (sanitized.orderBy) retryParams.append('$orderBy', sanitized.orderBy);
+              if (sanitized.expand?.length) retryParams.append('$expand', sanitized.expand.join(','));
+              retryParams.append('$top', String(sanitized.top));
+
+              nextPath = `${basePath}/items?${retryParams.toString()}`;
+              retries++;
+              continue;
+            } else {
+              // これ以上絞れない、または原因を特定できない場合は最小構成で緊急フォールバック
+              auditLog.warn('sp:read', `listItems critical fallback: retrying with minimal fields (Id,Title) due to ${status} (unextractable or recursive)`, {
+                listIdentifier,
+                error: errorMsg,
+              });
+
+              options.onCriticalFallback?.(status, errorMsg);
+
+              const fallbackParams = new URLSearchParams();
+              fallbackParams.append('$select', 'Id,Title');
+              if (sanitized.filter) fallbackParams.append('$filter', sanitized.filter);
+              fallbackParams.append('$top', String(sanitized.top));
+              
+              const finalPath = `${basePath}/items?${fallbackParams.toString()}`;
+              res = await spFetch(finalPath, signal ? { signal } : {});
+              break;
+            }
+          } else {
+            throw error; // 修復不能なエラー
+          }
         }
       }
+      
+      // もし loop を抜けた時点で成功していない（res 未定義）場合、最後の手段として最小構成で試行
+      if (!res) {
+        auditLog.error('sp:read', `listItems fallback limit reached (${maxRetries}). Forcing final minimal fallback.`, { listIdentifier });
+        options.onCriticalFallback?.(500, 'fallback limit reached'); // status は仮定だが致命的
+        const finalParams = new URLSearchParams();
+        finalParams.append('$select', 'Id,Title');
+        if (sanitized.filter) finalParams.append('$filter', sanitized.filter);
+        finalParams.append('$top', String(sanitized.top));
+        res = await spFetch(`${basePath}/items?${finalParams.toString()}`, signal ? { signal } : {});
+      }
+
       finalResponse = res;
       
       const payload = (await res.json().catch(() => ({}) as Record<string, unknown>)) as {
@@ -220,14 +270,53 @@ export async function listItems<TRow = JsonRecord>(
  * Fetch a single item by numeric ID.
  */
 export async function getItemById<T>(
-  spFetch: SpFetchFn,
+  spFetch: (path: string, init?: SpRequestInit) => Promise<Response>,
   listTitle: string,
   id: number,
-  select: string[] = [],
-  signal?: AbortSignal,
+  options: ListItemsOptions = {},
 ): Promise<T> {
-  const path = buildItemPath(listTitle, id, select);
-  const res = await spFetch(path, signal ? { signal } : undefined);
+  const { select = [], signal } = options;
+  let currentSelect = [...select];
+  const maxRetries = 10;
+  let retries = 0;
+  const removedFields = new Set<string>();
+
+  while (retries < maxRetries) {
+    const path = buildItemPath(listTitle, id, currentSelect);
+    try {
+      const res = await spFetch(path, signal ? { signal } : undefined);
+      return (await res.json()) as T;
+    } catch (error) {
+      const spError = error as { status?: number; message?: string };
+      const status = spError?.status;
+
+      if ((status === 400 || status === 500) && currentSelect.length > 2) {
+        const errorMsg = spError.message || '';
+        const match = errorMsg.match(/'([^']+)'/);
+        const missingField = match?.[1];
+
+        if (missingField && currentSelect.includes(missingField) && !removedFields.has(missingField)) {
+          options.onFieldRemoved?.(missingField, status, errorMsg);
+          removedFields.add(missingField);
+          currentSelect = currentSelect.filter(f => f !== missingField);
+          retries++;
+          continue;
+        } else {
+          // Critical fallback
+          options.onCriticalFallback?.(status, errorMsg);
+          const fallbackPath = buildItemPath(listTitle, id, ['Id', 'Title']);
+          const res = await spFetch(fallbackPath, signal ? { signal } : undefined);
+          return (await res.json()) as T;
+        }
+      }
+      throw error;
+    }
+  }
+  
+  // Final fallback if limit reached
+  options.onCriticalFallback?.(500, 'fallback limit reached');
+  const finalPath = buildItemPath(listTitle, id, ['Id', 'Title']);
+  const res = await spFetch(finalPath, signal ? { signal } : undefined);
   return (await res.json()) as T;
 }
 
