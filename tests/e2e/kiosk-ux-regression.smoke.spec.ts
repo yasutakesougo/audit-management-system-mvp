@@ -24,8 +24,8 @@ test.describe('Kiosk UX Regression (Smoke)', () => {
     });
 
     // 2. 基点となるTodayダッシュボードへアクセス
-    await page.goto('/today');
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto('/today?kiosk=1&provider=memory');
+    await page.waitForLoadState('networkidle');
 
     // URLが想定通りか確認
     await expect(page).toHaveURL(/\/today/);
@@ -35,7 +35,7 @@ test.describe('Kiosk UX Regression (Smoke)', () => {
     const scheduleBtn = page
       .getByRole('button', { name: /スケジュール/, exact: false })
       .or(page.getByRole('link', { name: /スケジュール/, exact: false }))
-      .filter({ hasText: /スケジュール/ })
+      .filter({ hasText: /^スケジュール$/ }) // Exact text match if possible
       .first();
 
     await scheduleBtn.waitFor({ state: 'visible', timeout: 5000 });
@@ -78,8 +78,8 @@ test.describe('Kiosk UX Regression (Smoke)', () => {
     });
 
     // 2. 基点となるTodayダッシュボードへアクセス
-    await page.goto('/today');
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto('/today?provider=memory');
+    await page.waitForLoadState('networkidle');
 
     // 3. FAB（長押しメニュー）の存在検証
     const fabContainer = page.getByTestId('kiosk-exit-fab');
@@ -108,7 +108,7 @@ test.describe('Kiosk UX Regression (Smoke)', () => {
   test('kiosk mode: display monitoring countdown for impending deadlines', async ({ page }) => {
     // 1. KioskモードをURLパラメータで強制し、メモリプロバイダーを使用
     await page.goto('/today?kiosk=1&provider=memory');
-    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState('networkidle');
 
     // 2. モニタリングアラートセクションが表示されているか検証
     const monitoringHeader = page.getByText('モニタリング期限', { exact: false });
