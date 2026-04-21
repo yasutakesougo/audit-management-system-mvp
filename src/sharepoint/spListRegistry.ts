@@ -698,13 +698,14 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
     // Severity は SharePointDriftEventRepository が任意扱い（fail-open）で、
     // かつ本リストは lifecycle: 'optional' な観測用途のため essential から除外する。
     // 診断契約を実装契約に合わせ、宣言だけが厳しい状態を解消する。
-    essentialFields: ['ListName', 'FieldName', 'DetectedAt'],
+    essentialFields: ['ListName', 'FieldName', 'DetectedAt', 'DriftType'],
     provisioningFields: [
       { internalName: 'ListName', type: 'Text', displayName: 'List Name', required: true, indexed: true },
       { internalName: 'FieldName', type: 'Text', displayName: 'Field Name', required: true, indexed: true },
       { internalName: 'DetectedAt', type: 'DateTime', displayName: 'Detected At', required: true },
       { internalName: 'Severity', type: 'Text', displayName: 'Severity' },
       { internalName: 'ResolutionType', type: 'Text', displayName: 'Resolution Type' },
+      { internalName: 'DriftType', type: 'Text', displayName: 'Drift Type' },
       { internalName: 'Resolved', type: 'Boolean', displayName: 'Resolved', default: false },
     ],
   },

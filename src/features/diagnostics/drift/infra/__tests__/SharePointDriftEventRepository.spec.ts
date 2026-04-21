@@ -67,6 +67,15 @@ describe('SharePointDriftEventRepository', () => {
       createItem,
       updateItemByTitle: vi.fn(async () => ({})),
       getListItemsByTitle: vi.fn(async () => []),
+      getSchema: vi.fn(async () => [
+        'ListName',
+        'FieldName',
+        'DetectedAt',
+        'Severity',
+        'ResolutionType',
+        'DriftType',
+        'Resolved',
+      ]),
     });
 
     await repo.logEvent({

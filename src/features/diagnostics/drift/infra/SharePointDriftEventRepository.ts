@@ -107,9 +107,15 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       key: keyof typeof DRIFT_LOG_CANDIDATES,
       value: unknown,
     ): boolean => {
-      const physicalName = this.rfWithFallback(key);
+      const resolvedName = this.rf(key);
+      const isRequired = this.isRequiredFieldKey(key);
+
+      // 1. 必須フィールドは読み込めなければフォールバック（Title等は確実に存在する想定）
+      // 2. 任意フィールドは解決されていない場合は書き込まない（HTTP 400 回避）
+      const physicalName = resolvedName || (isRequired ? DRIFT_LOG_CANDIDATES[key][0] : undefined);
+
       if (!physicalName || this.blockedPhysicalFields.has(physicalName)) {
-        return !this.isRequiredFieldKey(key);
+        return !isRequired;
       }
       if (this.missingLogicalFields.has(key)) {
         return !this.isRequiredFieldKey(key);
@@ -399,7 +405,10 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         listTitle,
         select,
         joinAnd(filters) || undefined,
-        detectedAtField || 'Detected_x0020_At', // OrderBy fallback
+        // 解決済みの DetectedAt があれば優先する。
+        // 未解決（新規リスト等）の場合は時系列の厳密性よりも可用性（400エラー回避）を優先し、
+        // 常に存在する 'ID' でフォールバックする。
+        detectedAtField || 'ID',
         filter,
         signal,
       );
