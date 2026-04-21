@@ -72,13 +72,23 @@ export const useConnectionStatus = (): ConnectionStatus => {
       sp_schema_drift: 'readiness_failed',
     };
 
-    return {
-      status: 'degraded',
-      reason: reasonMap[healthSignal.reasonCode] || 'readiness_failed',
-      message: healthSignal.message,
-      actionUrl: healthSignal.actionUrl || '/admin/status',
-      reset,
-    };
+    // 診断系リスト（DriftEventsLog等）の不具合や非クリティカルなドリフトは
+    // 業務継続に直結しないため、同期遅延バナー（degraded）の対象から外す
+    const isDiagnosticIssue = 
+      healthSignal.listName?.includes('DriftEventsLog') ||
+      healthSignal.listName?.includes('AuditLog');
+    
+    const isNonCriticalDrift = healthSignal.reasonCode === 'sp_schema_drift' && healthSignal.severity === 'warning';
+
+    if (!isDiagnosticIssue && !isNonCriticalDrift) {
+      return {
+        status: 'degraded',
+        reason: reasonMap[healthSignal.reasonCode] || 'readiness_failed',
+        message: healthSignal.message,
+        actionUrl: healthSignal.actionUrl || '/admin/status',
+        reset,
+      };
+    }
   }
 
   // 4. デフォルト：接続済みとみなす
