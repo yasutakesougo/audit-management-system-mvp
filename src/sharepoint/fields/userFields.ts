@@ -159,17 +159,18 @@ const CANDIDATE_USAGE_STATUS = ['UsageStatus', 'Status', 'UsageStatus0', 'cr013_
 const CANDIDATE_ATTENDANCE_DAYS = ['AttendanceDays', 'WorkDays', 'cr013_attendanceDays'];
 
 // Transport candidates
-const CANDIDATE_TRANSPORT_TO_DAYS = ['TransportToDays', 'cr013_transportToDays'];
-const CANDIDATE_TRANSPORT_FROM_DAYS = ['TransportFromDays', 'cr013_transportFromDays'];
-const CANDIDATE_TRANSPORT_COURSE = ['TransportCourse', 'cr013_transportCourse'];
-const CANDIDATE_TRANSPORT_SCHEDULE = ['TransportSchedule', 'cr013_transportSchedule'];
-const CANDIDATE_TRANSPORT_ADDITION_TYPE = ['TransportAdditionType', 'cr013_transportAdditionType'];
+const CANDIDATE_TRANSPORT_TO_DAYS = ['TransportToDays', 'Transport_x0020_To_x0020_Days', 'cr013_transportToDays'];
+const CANDIDATE_TRANSPORT_FROM_DAYS = ['TransportFromDays', 'Transport_x0020_From_x0020_Days', 'cr013_transportFromDays'];
+const CANDIDATE_TRANSPORT_COURSE = ['TransportCourse', 'Transport_x0020_Course', 'cr013_transportCourse'];
+const CANDIDATE_TRANSPORT_SCHEDULE = ['TransportSchedule', 'Transport_x0020_Schedule', 'cr013_transportSchedule'];
+const CANDIDATE_TRANSPORT_ADDITION_TYPE = ['TransportAdditionType', 'Transport_x0020_Addition_x0020_Type', 'cr013_transportAdditionType'];
 
 // Benefit candidates
 const CANDIDATE_RECIPIENT_CERT_NUMBER = [
-  'RecipientCertNumber', 'Recipient Cert Number', 'CertNumber', 'RecipientCert',
+  'RecipientCertNumber', 'Recipient_x0020_Cert_x0020_Numbe', 'Recipient Cert Number', 'CertNumber', 'RecipientCert',
   'RecipientCertNo', 'BenefitCertNumber', 'RecipientCertificateNumber',
   'RecipientCertNumber0', 'cr013_recipientCertNumber',
+  'RecipientCertNum', 'CertNo', 'CertNumb', 'RecipientCertNum0',
 ];
 const CANDIDATE_RECIPIENT_CERT_EXPIRY = ['RecipientCertExpiry', 'CertExpiry', 'RecipientCertExpiry0', 'cr013_recipientCertExpiry'];
 const CANDIDATE_GRANT_MUNICIPALITY = ['GrantMunicipality', 'Municipality', 'GrantMunicipality0', 'cr013_grantMunicipality'];
@@ -372,6 +373,7 @@ export const USER_BENEFIT_PROFILE_CANDIDATES = {
  */
 export const USER_BENEFIT_PROFILE_ESSENTIALS: (keyof typeof USER_BENEFIT_PROFILE_CANDIDATES)[] = [
   'userId',
+  'recipientCertNumber',
 ];
 
 // ── User Transport Settings (user_transport_settings) — Drift Resistance ──────────

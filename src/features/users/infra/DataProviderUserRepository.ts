@@ -13,8 +13,11 @@ import {
   USERS_MASTER_CANDIDATES,
   USERS_MASTER_ESSENTIALS,
   USER_TRANSPORT_SETTINGS_CANDIDATES,
+  USER_TRANSPORT_SETTINGS_ESSENTIALS,
   USER_BENEFIT_PROFILE_CANDIDATES,
+  USER_BENEFIT_PROFILE_ESSENTIALS,
   USER_BENEFIT_PROFILE_EXT_CANDIDATES,
+  USER_BENEFIT_PROFILE_EXT_ESSENTIALS,
   USERS_BENEFIT_EXT_FIELD_MAP,
   type UserRow,
   type UserSelectMode,
@@ -50,6 +53,14 @@ const MAX_WRITE_RETRY = 8;
 const getTodayIsoDate = (): string => new Date().toISOString().slice(0, 10);
 /** UserTransport_Settings / UserBenefit_Profile 双方の join キー列名 */
 const ACCESSORY_LIST_JOIN_FIELD = 'UserID';
+const BENEFIT_PROFILE_REPOSITORY_CANDIDATES = Object.fromEntries(
+  Object.entries(USER_BENEFIT_PROFILE_CANDIDATES as unknown as Record<string, string[]>).filter(
+    ([key]) => key !== 'recipientCertNumber',
+  ),
+) as Record<string, string[]>;
+const BENEFIT_PROFILE_REPOSITORY_ESSENTIALS = (USER_BENEFIT_PROFILE_ESSENTIALS as readonly string[]).filter(
+  (key) => key !== 'recipientCertNumber',
+);
 
 const isAuthRequiredLike = (error: unknown): boolean => {
   if (error instanceof AuthRequiredError) return true;
@@ -218,8 +229,26 @@ export class DataProviderUserRepository implements UserRepository {
         if (isAuthRequiredLike(err)) {
           throw err;
         }
-        auditLog.error('users', 'Field resolution failed:', err);
-        return null;
+        auditLog.warn('users', 'Field resolution failed (likely 403 Forbidden). Falling back to primary candidates (Best Effort).', err);
+        
+        // メタデータ取得失敗時は、候補リストの第1要素を信じて返却する (Best Effort Fallback)
+        const candidatesMap = USERS_MASTER_CANDIDATES as unknown as Record<string, string[]>;
+        const fallback: Record<string, string | undefined> = {};
+        const fieldStatus: Record<string, UserFieldStatus> = {};
+        const essentialKeys = new Set<string>(USERS_MASTER_ESSENTIALS as readonly string[]);
+
+        for (const [key, cands] of Object.entries(candidatesMap)) {
+          fallback[key] = cands[0];
+          const isEssential = essentialKeys.has(key);
+          fieldStatus[key] = {
+            candidates: cands,
+            isSilent: !isEssential,
+            isEssential,
+          };
+        }
+        this.resolvedFields = fallback;
+        this.fieldStatus = fieldStatus;
+        return fallback;
       }
     })();
 
@@ -229,24 +258,38 @@ export class DataProviderUserRepository implements UserRepository {
   /**
    * 分離先リストのフィールド解決（Lazy Resolution）
    */
-  private async resolveAccessoryFields(listTitle: string, candidates: Record<string, string[]>): Promise<Record<string, string | undefined>> {
+  private async resolveAccessoryFields(
+    listTitle: string, 
+    candidates: Record<string, string[]>,
+    essentials: string[] = []
+  ): Promise<{ resolvedFields: Record<string, string | undefined>, resolvedKeys: Set<string> }> {
     try {
       const available = await this.provider.getFieldInternalNames(listTitle);
       const { resolved } = resolveInternalNamesDetailed(available, candidates);
       
-      // 空リスト等の初期環境対策として、候補群の第1要素をフォールバックとして使用する
       const bestEffort: Record<string, string | undefined> = {};
+      const resolvedKeys = new Set<string>();
+
       for (const [key, cands] of Object.entries(candidates)) {
-        bestEffort[key] = (resolved[key] as string | undefined) || cands[0];
+        if (resolved[key]) {
+          bestEffort[key] = resolved[key] as string;
+          resolvedKeys.add(key);
+        } else if (essentials.includes(key)) {
+          // 必須フィールドかつ未解決の場合はフォールバックする（ただし400の可能性あり）
+          bestEffort[key] = cands[0];
+        } else {
+          // 任意フィールドで未解決の場合は undefined にして、後の $select から除外させる
+          bestEffort[key] = undefined;
+        }
       }
-      return bestEffort;
+      return { resolvedFields: bestEffort, resolvedKeys };
     } catch {
-      // 解決不能な場合は候補群の第1要素を信じる (Best Effort)
+      // 解決不能な場合は必須フィールドのみフォールバック使用
       const fallback: Record<string, string | undefined> = {};
       for (const [key, cands] of Object.entries(candidates)) {
-        fallback[key] = cands[0];
+        fallback[key] = essentials.includes(key) ? cands[0] : undefined;
       }
-      return fallback;
+      return { resolvedFields: fallback, resolvedKeys: new Set() };
     }
   }
 
@@ -269,31 +312,36 @@ export class DataProviderUserRepository implements UserRepository {
       filterParts.push(buildEq(fields.isActive, params.filters.isActive ? 1 : 0));
     }
 
+    const onFieldRemoved = (targetList: string) => (fieldName: string, status: number, error: string) => {
+      const cacheKey = `${targetList}:${fieldName}`;
+      if (!this.reportedSkips.has(cacheKey)) {
+        this.reportedSkips.add(cacheKey);
+        emitDriftRecord(
+          targetList, 
+          fieldName, 
+          'runtime_skip', 
+          'resolution_failure',
+          `Status: ${status}. Error: ${error}`
+        );
+      }
+    };
+
+    const onCriticalFallback = (targetList: string) => (status: number, error: string) => {
+      emitDriftRecord(
+        targetList, 
+        'CRITICAL_FALLBACK', 
+        'action_required', 
+        'fallback_to_minimal_fields',
+        `Status: ${status}. Error: ${error}`
+      );
+    };
+
     const options: DataProviderOptions = {
       select: selectFields,
       filter: joinAnd(filterParts) || undefined,
       top: top > 0 ? top : undefined,
-      onFieldRemoved: (fieldName: string, status: number, error: string) => {
-        if (!this.reportedSkips.has(fieldName)) {
-          this.reportedSkips.add(fieldName);
-          emitDriftRecord(
-            this.listTitle, 
-            fieldName, 
-            'runtime_skip', 
-            'resolution_failure',
-            `Status: ${status}. Error: ${error}`
-          );
-        }
-      },
-      onCriticalFallback: (status: number, error: string) => {
-        emitDriftRecord(
-          this.listTitle, 
-          'CRITICAL_FALLBACK', 
-          'action_required', 
-          'fallback_to_minimal_fields',
-          `Status: ${status}. Error: ${error}`
-        );
-      }
+      onFieldRemoved: onFieldRemoved(this.listTitle),
+      onCriticalFallback: onCriticalFallback(this.listTitle)
     };
 
     try {
@@ -305,20 +353,36 @@ export class DataProviderUserRepository implements UserRepository {
       if (requestedMode === 'detail' || requestedMode === 'full') {
         try {
           const transportCandidatesMap = USER_TRANSPORT_SETTINGS_CANDIDATES as unknown as Record<string, string[]>;
-          const benefitCandidatesMap = USER_BENEFIT_PROFILE_CANDIDATES as unknown as Record<string, string[]>;
+          const benefitCandidatesMap = BENEFIT_PROFILE_REPOSITORY_CANDIDATES;
           const benefitExtCandidatesMap = USER_BENEFIT_PROFILE_EXT_CANDIDATES as unknown as Record<string, string[]>;
 
-          const [transportRows, benefitRows, benefitExtRows, transportResolved, benefitResolved, benefitExtResolved] = await Promise.all([
-            this.provider.listItems<Record<string, unknown>>(this.transportListTitle).catch(() => []),
-            this.provider.listItems<Record<string, unknown>>(this.benefitListTitle).catch(() => []),
-            this.provider.listItems<Record<string, unknown>>(this.benefitExtListTitle).catch(() => []),
-            this.resolveAccessoryFields(this.transportListTitle, transportCandidatesMap),
-            this.resolveAccessoryFields(this.benefitListTitle, benefitCandidatesMap),
-            this.resolveAccessoryFields(this.benefitExtListTitle, benefitExtCandidatesMap)
+          const [transportRes, benefitRes, benefitExtRes] = await Promise.all([
+            this.resolveAccessoryFields(this.transportListTitle, transportCandidatesMap, USER_TRANSPORT_SETTINGS_ESSENTIALS),
+            this.resolveAccessoryFields(this.benefitListTitle, benefitCandidatesMap, BENEFIT_PROFILE_REPOSITORY_ESSENTIALS),
+            this.resolveAccessoryFields(this.benefitExtListTitle, benefitExtCandidatesMap, USER_BENEFIT_PROFILE_EXT_ESSENTIALS)
           ]);
 
+          const [transportRows, benefitRows, benefitExtRows] = await Promise.all([
+            this.provider.listItems<Record<string, unknown>>(this.transportListTitle, {
+              select: Object.values(transportRes.resolvedFields).filter((f): f is string => !!f),
+              onFieldRemoved: onFieldRemoved(this.transportListTitle),
+            }).catch(() => []),
+            this.provider.listItems<Record<string, unknown>>(this.benefitListTitle, {
+              select: Object.values(benefitRes.resolvedFields).filter((f): f is string => !!f),
+              onFieldRemoved: onFieldRemoved(this.benefitListTitle),
+            }).catch(() => []),
+            this.provider.listItems<Record<string, unknown>>(this.benefitExtListTitle, {
+              select: Object.values(benefitExtRes.resolvedFields).filter((f): f is string => !!f),
+              onFieldRemoved: onFieldRemoved(this.benefitExtListTitle),
+            }).catch(() => []),
+          ]);
+
+          const transportResolvedFields = transportRes.resolvedFields;
+          const benefitResolvedFields = benefitRes.resolvedFields;
+          const benefitExtResolvedFields = benefitExtRes.resolvedFields;
+
           const transportMap = new Map<string, Record<string, unknown>>(
-            washRows(transportRows, transportCandidatesMap, transportResolved).map((r) => [
+            washRows(transportRows, transportCandidatesMap, transportResolvedFields).map((r) => [
               String(r.userId || r.UserID || r.userID || ''),
               r,
             ]),
@@ -326,13 +390,13 @@ export class DataProviderUserRepository implements UserRepository {
           const benefitCutoverStage = this.getBenefitCutoverStage();
           const benefitMap = new Map<string, Record<string, unknown>>(
             benefitRows.map((rawRow, idx) => {
-              const washed = washRows([rawRow], benefitCandidatesMap, benefitResolved)[0] ?? benefitRows[idx];
+              const washed = washRows([rawRow], benefitCandidatesMap, benefitResolvedFields)[0] ?? benefitRows[idx];
               const overlaid = applyBenefitCutoverRead(washed, rawRow, benefitCutoverStage);
               return [String(overlaid.userId || overlaid.UserID || overlaid.userID || ''), overlaid];
             }),
           );
           const benefitExtMap = new Map<string, Record<string, unknown>>(
-            washRows(benefitExtRows, benefitExtCandidatesMap, benefitExtResolved).map((r) => [
+            washRows(benefitExtRows, benefitExtCandidatesMap, benefitExtResolvedFields).map((r) => [
               String(r.userId || r.UserID || r.userID || ''),
               r,
             ]),
@@ -377,21 +441,24 @@ export class DataProviderUserRepository implements UserRepository {
 
     const selectFields = await this.getSelectFieldsForMainList(fields);
 
+    const onFieldRemoved = (targetList: string) => (fieldName: string, status: number, error: string) => {
+      const cacheKey = `${targetList}:${fieldName}`;
+      if (!this.reportedSkips.has(cacheKey)) {
+        this.reportedSkips.add(cacheKey);
+        emitDriftRecord(
+          targetList, 
+          fieldName, 
+          'runtime_skip', 
+          'resolution_failure',
+          `Status: ${status}. Error: ${error}`
+        );
+      }
+    };
+
     const fetchOptions: DataProviderOptions = {
       select: selectFields,
       signal: signal,
-      onFieldRemoved: (fieldName: string, status: number, error: string) => {
-        if (!this.reportedSkips.has(fieldName)) {
-          this.reportedSkips.add(fieldName);
-          emitDriftRecord(
-            this.listTitle, 
-            fieldName, 
-            'runtime_skip', 
-            'resolution_failure',
-            `Status: ${status}. Error: ${error}`
-          );
-        }
-      },
+      onFieldRemoved: onFieldRemoved(this.listTitle),
       onCriticalFallback: (status: number, error: string) => {
         emitDriftRecord(
           this.listTitle, 
@@ -412,24 +479,47 @@ export class DataProviderUserRepository implements UserRepository {
         try {
           const filter = buildEq(ACCESSORY_LIST_JOIN_FIELD, domain.UserID);
           const transportCandidatesMap = USER_TRANSPORT_SETTINGS_CANDIDATES as unknown as Record<string, string[]>;
-          const benefitCandidatesMap = USER_BENEFIT_PROFILE_CANDIDATES as unknown as Record<string, string[]>;
+          const benefitCandidatesMap = BENEFIT_PROFILE_REPOSITORY_CANDIDATES;
           const benefitExtCandidatesMap = USER_BENEFIT_PROFILE_EXT_CANDIDATES as unknown as Record<string, string[]>;
 
-          const [tRowsRaw, bRowsRaw, beRowsRaw, transportResolved, benefitResolved, benefitExtResolved] = await Promise.all([
-            this.provider.listItems<Record<string, unknown>>(this.transportListTitle, { filter, top: 1 }).catch(() => []),
-            this.provider.listItems<Record<string, unknown>>(this.benefitListTitle, { filter, top: 1 }).catch(() => []),
-            this.provider.listItems<Record<string, unknown>>(this.benefitExtListTitle, { filter, top: 1 }).catch(() => []),
-            this.resolveAccessoryFields(this.transportListTitle, transportCandidatesMap),
-            this.resolveAccessoryFields(this.benefitListTitle, benefitCandidatesMap),
-            this.resolveAccessoryFields(this.benefitExtListTitle, benefitExtCandidatesMap),
+          const [transportRes, benefitRes, benefitExtRes] = await Promise.all([
+            this.resolveAccessoryFields(this.transportListTitle, transportCandidatesMap, USER_TRANSPORT_SETTINGS_ESSENTIALS),
+            this.resolveAccessoryFields(this.benefitListTitle, benefitCandidatesMap, BENEFIT_PROFILE_REPOSITORY_ESSENTIALS),
+            this.resolveAccessoryFields(this.benefitExtListTitle, benefitExtCandidatesMap, USER_BENEFIT_PROFILE_EXT_ESSENTIALS)
           ]);
 
-          const tRow = tRowsRaw[0] ? washRow(tRowsRaw[0], transportCandidatesMap, transportResolved) : undefined;
-          const bRowWashed = bRowsRaw[0] ? washRow(bRowsRaw[0], benefitCandidatesMap, benefitResolved) : undefined;
-          const bRow = bRowWashed && bRowsRaw[0]
-            ? applyBenefitCutoverRead(bRowWashed, bRowsRaw[0], this.getBenefitCutoverStage())
-            : undefined;
-          const beRow = beRowsRaw[0] ? washRow(beRowsRaw[0], benefitExtCandidatesMap, benefitExtResolved) : undefined;
+          const [tRowsRaw, bRowsRaw, beRowsRaw] = await Promise.all([
+            this.provider.listItems<Record<string, unknown>>(this.transportListTitle, { 
+              filter, 
+              select: Object.values(transportRes.resolvedFields).filter((f): f is string => !!f),
+              onFieldRemoved: onFieldRemoved(this.transportListTitle),
+              top: 1,
+            }).catch(() => []),
+            this.provider.listItems<Record<string, unknown>>(this.benefitListTitle, { 
+              filter, 
+              select: Object.values(benefitRes.resolvedFields).filter((f): f is string => !!f),
+              onFieldRemoved: onFieldRemoved(this.benefitListTitle),
+              top: 1,
+            }).catch(() => []),
+            this.provider.listItems<Record<string, unknown>>(this.benefitExtListTitle, { 
+              filter, 
+              select: Object.values(benefitExtRes.resolvedFields).filter((f): f is string => !!f),
+              onFieldRemoved: onFieldRemoved(this.benefitExtListTitle),
+              top: 1,
+            }).catch(() => [])
+          ]);
+
+          const transportResolvedFields = transportRes.resolvedFields;
+          const benefitResolvedFields = benefitRes.resolvedFields;
+          const benefitExtResolvedFields = benefitExtRes.resolvedFields;
+
+          const tRow = tRowsRaw[0] ? washRow(tRowsRaw[0], transportCandidatesMap, transportResolvedFields) : undefined;
+          
+          const benefitCutoverStage = this.getBenefitCutoverStage();
+          const bRowBase = bRowsRaw[0] ? washRow(bRowsRaw[0], benefitCandidatesMap, benefitResolvedFields) : undefined;
+          const bRow = bRowBase && bRowsRaw[0] ? applyBenefitCutoverRead(bRowBase, bRowsRaw[0], benefitCutoverStage) : undefined;
+
+          const beRow = beRowsRaw[0] ? washRow(beRowsRaw[0], benefitExtCandidatesMap, benefitExtResolvedFields) : undefined;
           
           const sanitized = this.sanitizeDomainRecord(domain, !!tRow, !!bRow, !!beRow);
           return this.mergeExtraData(sanitized, tRow, bRow, beRow);
@@ -642,17 +732,29 @@ export class DataProviderUserRepository implements UserRepository {
     if (type === 'transport') {
       if (this.transportResolvedFields) return this.transportResolvedFields;
       const candidates = USER_TRANSPORT_SETTINGS_CANDIDATES as unknown as Record<string, string[]>;
-      this.transportResolvedFields = await this.resolveAccessoryFields(this.transportListTitle, candidates);
+      this.transportResolvedFields = (await this.resolveAccessoryFields(
+        this.transportListTitle,
+        candidates,
+        USER_TRANSPORT_SETTINGS_ESSENTIALS,
+      )).resolvedFields;
       return this.transportResolvedFields;
     } else if (type === 'benefit') {
       if (this.benefitResolvedFields) return this.benefitResolvedFields;
-      const candidates = USER_BENEFIT_PROFILE_CANDIDATES as unknown as Record<string, string[]>;
-      this.benefitResolvedFields = await this.resolveAccessoryFields(this.benefitListTitle, candidates);
+      const candidates = BENEFIT_PROFILE_REPOSITORY_CANDIDATES;
+      this.benefitResolvedFields = (await this.resolveAccessoryFields(
+        this.benefitListTitle,
+        candidates,
+        BENEFIT_PROFILE_REPOSITORY_ESSENTIALS,
+      )).resolvedFields;
       return this.benefitResolvedFields;
     } else {
       if (this.benefitExtResolvedFields) return this.benefitExtResolvedFields;
       const candidates = USER_BENEFIT_PROFILE_EXT_CANDIDATES as unknown as Record<string, string[]>;
-      this.benefitExtResolvedFields = await this.resolveAccessoryFields(this.benefitExtListTitle, candidates);
+      this.benefitExtResolvedFields = (await this.resolveAccessoryFields(
+        this.benefitExtListTitle,
+        candidates,
+        USER_BENEFIT_PROFILE_EXT_ESSENTIALS,
+      )).resolvedFields;
       return this.benefitExtResolvedFields;
     }
   }
@@ -1028,15 +1130,32 @@ export class DataProviderUserRepository implements UserRepository {
       ...Object.values(benefitExtMapping).filter((v): v is string => !!v)
     ]);
 
+    const mainSelectableFields = Object.entries(fields)
+      .filter(([logicalKey, physicalName]) => {
+        if (!physicalName) return false;
+
+        // 必須フィールドは解決成否にかかわらず含める（フォールバックでも400の代償を払って読みに行く）
+        const status = this.fieldStatus?.[logicalKey];
+        const isEssential = status?.isEssential || logicalKey === 'userId' || logicalKey === 'fullName';
+        const isResolved = !!status?.resolvedName;
+
+        if (!isEssential && !isResolved) {
+          // 任意フィールドかつ解決失敗（フォールバック）の場合は、$select から除外して 400 を防ぐ
+          return false;
+        }
+
+        // 結合キー (UserID) はメインリストにも物理的に存在し、必須なので除外しない
+        if (physicalName === 'UserID') return true;
+
+        // 分離先リストの列として解決されている物理名はメインリストの select から外す
+        return !accessoryPhysicalFields.has(physicalName);
+      })
+      .map(([, physicalName]) => physicalName)
+      .filter((physicalName): physicalName is string => typeof physicalName === 'string');
+
     return [
       'Id', 'Title', 'Modified', 'Created',
-      ...Object.values(fields).filter((f): f is string => {
-        if (!f) return false;
-        // 結合キー (UserID) はメインリストにも物理的に存在し、必須なので除外しない
-        if (f === 'UserID') return true;
-        // 分離先リストの列として解決されている物理名はメインリストの select から外す
-        return !accessoryPhysicalFields.has(f);
-      })
+      ...mainSelectableFields,
     ].filter((v, i, a) => a.indexOf(v) === i);
   }
 }
