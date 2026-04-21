@@ -235,13 +235,15 @@ export class DataProviderUserRepository implements UserRepository {
         const candidatesMap = USERS_MASTER_CANDIDATES as unknown as Record<string, string[]>;
         const fallback: Record<string, string | undefined> = {};
         const fieldStatus: Record<string, UserFieldStatus> = {};
+        const essentialKeys = new Set<string>(USERS_MASTER_ESSENTIALS as readonly string[]);
 
         for (const [key, cands] of Object.entries(candidatesMap)) {
           fallback[key] = cands[0];
+          const isEssential = essentialKeys.has(key);
           fieldStatus[key] = {
             candidates: cands,
-            isSilent: !USERS_MASTER_ESSENTIALS.includes(key as any),
-            isEssential: USERS_MASTER_ESSENTIALS.includes(key as any)
+            isSilent: !isEssential,
+            isEssential,
           };
         }
         this.resolvedFields = fallback;
@@ -1128,11 +1130,10 @@ export class DataProviderUserRepository implements UserRepository {
       ...Object.values(benefitExtMapping).filter((v): v is string => !!v)
     ]);
 
-    return [
-      'Id', 'Title', 'Modified', 'Created',
-      ...Object.entries(fields).filter(([logicalKey, physicalName]): physicalName is string => {
+    const mainSelectableFields = Object.entries(fields)
+      .filter(([logicalKey, physicalName]) => {
         if (!physicalName) return false;
-        
+
         // 必須フィールドは解決成否にかかわらず含める（フォールバックでも400の代償を払って読みに行く）
         const status = this.fieldStatus?.[logicalKey];
         const isEssential = status?.isEssential || logicalKey === 'userId' || logicalKey === 'fullName';
@@ -1145,10 +1146,16 @@ export class DataProviderUserRepository implements UserRepository {
 
         // 結合キー (UserID) はメインリストにも物理的に存在し、必須なので除外しない
         if (physicalName === 'UserID') return true;
-        
+
         // 分離先リストの列として解決されている物理名はメインリストの select から外す
         return !accessoryPhysicalFields.has(physicalName);
-      }).map(([_, name]) => name)
+      })
+      .map(([, physicalName]) => physicalName)
+      .filter((physicalName): physicalName is string => typeof physicalName === 'string');
+
+    return [
+      'Id', 'Title', 'Modified', 'Created',
+      ...mainSelectableFields,
     ].filter((v, i, a) => a.indexOf(v) === i);
   }
 }
