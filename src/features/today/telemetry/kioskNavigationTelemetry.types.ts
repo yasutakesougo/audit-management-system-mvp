@@ -1,3 +1,5 @@
+import type { KioskQuickLinkId } from '../model/getKioskQuickLinks';
+
 /**
  * Kiosk UX Regression Tracking Events
  *
@@ -51,7 +53,10 @@ export interface KioskNavigationPayload {
    * ナビゲーションの「遷移先（目的地）」
    * ※`ux_navigate_from_today` などの場合にセット
    */
-  target?: 'schedules' | 'handoff' | 'minutes' | 'rooms' | 'records';
+  target?: KioskQuickLinkId;
+
+  /** 遷移先パス（UI側との突合せ用） */
+  to?: string;
 
   /**
    * ナビゲーションの「起点（トリガー箇所）」
