@@ -24,7 +24,27 @@ jobs:
           key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-playwright-
-      - run: npm ci
+      - name: Install dependencies (npm ci with retries)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm config set fund false
+          npm config set audit false
+          npm config set fetch-retries 5
+          npm config set fetch-retry-factor 2
+          npm config set fetch-retry-mintimeout 20000
+          npm config set fetch-retry-maxtimeout 120000
+          npm config set prefer-offline true
+
+          for i in 1 2 3; do
+            echo "npm ci attempt $i/3"
+            npm ci && break
+            if [ "$i" -eq 3 ]; then
+              echo "npm ci failed after 3 attempts"
+              exit 1
+            fi
+            sleep 15
+          done
       - name: Install Playwright browsers (ensure executables present)
         run: npx playwright install --with-deps chromium
       - name: Verify dependencies (early detection)
@@ -107,7 +127,27 @@ jobs:
           key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-playwright-
-      - run: npm ci
+      - name: Install dependencies (npm ci with retries)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm config set fund false
+          npm config set audit false
+          npm config set fetch-retries 5
+          npm config set fetch-retry-factor 2
+          npm config set fetch-retry-mintimeout 20000
+          npm config set fetch-retry-maxtimeout 120000
+          npm config set prefer-offline true
+
+          for i in 1 2 3; do
+            echo "npm ci attempt $i/3"
+            npm ci && break
+            if [ "$i" -eq 3 ]; then
+              echo "npm ci failed after 3 attempts"
+              exit 1
+            fi
+            sleep 15
+          done
       - name: Install Playwright browsers (ensure executables present)
         run: npx playwright install --with-deps chromium
       - name: Start dev server (background)
