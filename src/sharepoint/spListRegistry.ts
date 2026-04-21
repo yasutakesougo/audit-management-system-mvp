@@ -705,6 +705,7 @@ export const SP_LIST_REGISTRY: readonly SpListEntry[] = [
       { internalName: 'DetectedAt', type: 'DateTime', displayName: 'Detected At', required: true },
       { internalName: 'Severity', type: 'Text', displayName: 'Severity' },
       { internalName: 'ResolutionType', type: 'Text', displayName: 'Resolution Type' },
+      { internalName: 'DriftType', type: 'Text', displayName: 'Drift Type' },
       { internalName: 'Resolved', type: 'Boolean', displayName: 'Resolved', default: false },
     ],
   },

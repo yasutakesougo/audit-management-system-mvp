@@ -1,34 +1,20 @@
-# PR Draft: strengthen list failure observability and surface threshold guidance
+## Summary
+This PR fixes a diagnostics-layer schema mismatch that could trigger HTTP 400 on `DriftEventsLog_v2`, and prevents that failure from surfacing on `/today` as a generic sync-delay banner.
 
-## 概要
+## Root cause
+`SharePointDriftEventRepository` writes `DriftType`, but the `drift_events_log` provisioning definition did not include that column. In unresolved cases, fallback behavior could still attempt to write the first candidate field, producing HTTP 400.
 
-Schedules 本線におけるアイテム取得失敗が、SharePoint のリストビューしきい値（5000件制限）による HTTP 500 エラーであることを実機ログにて確認しました。
-本 PR は、コード側での直接的なクエリ最適化を行う前に、まず運用側でのインデックス対応を確実にガイドできるよう、`DataProviderScheduleRepository` 周辺のエラーハンドリング観測性を強化するものです。
+## Changes
+- add `DriftType` to `drift_events_log` provisioning fields
+- harden drift-event write fallback so unresolved optional fields are omitted instead of blindly written
+- refine connection-status classification so diagnostics-list issues do not appear as broad sync-delay on `/today`
+- add regression tests for repository write behavior and connection-status classification
 
-## 変更内容
+## Validation
+- `SharePointDriftEventRepository.spec.ts` passes
+- `useConnectionStatus.spec.ts` passes
+- Verified on local environment that `/today?kiosk=1` no longer shows "Sync Delay" for purely diagnostic issues.
 
-1. **共通エラー拡張 (`src/lib/sp/helpers.ts`)**
-
-   * `raiseHttpError` において、SharePoint 相関 ID (`sprequestguid`) をエラーオブジェクトに付与
-   * これにより、必要な呼び出し元で調査用 ID をログに残せるようにします
-
-2. **Schedules 観測性強化 (`src/features/schedules/infra/DataProviderScheduleRepository.ts`)**
-
-   * `list()` および `resolveFields()` の失敗時に `status` と `sprequestguid` を明示的にログ出力
-   * SharePoint のしきい値エラーを検知した場合、管理者向けアクション（`EventDate` などのインデックス化確認が必要であること）をメッセージに付加
-   * locale 差を考慮し、日本語・英語どちらのしきい値メッセージでも判定できるようにする
-
-## 運用側のアクション（管理者向け）
-
-本 PR は観測性と運用誘導の強化であり、SharePoint 側の設定が未完了の場合はエラー自体は継続します。
-以下の列について「インデックス付きの列」設定を確認してください。
-
-* `EventDate`
-* `EndDate`
-* `cr014_dayKey`
-
-## 後続の予定
-
-* SharePoint 側でのインデックス対応後の挙動確認
-* 必要に応じたクエリ最適化（例: 取得上限や取得戦略の見直し）の検討
-* `DataProviderScheduleRepository.list()` 失敗時の観測性を他リポジトリにも横展開するかの判断
+## Notes
+- This PR is intentionally minimal. It does not change business-list schemas such as `SupportRecord_Daily` or `Attendance` unless separately verified.
+- **IMPORTANT**: existing SharePoint environments still require provisioning of the `DriftType` column on `DriftEventsLog_v2` to fully eliminate legacy 400s.
