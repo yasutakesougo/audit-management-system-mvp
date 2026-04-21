@@ -10,6 +10,10 @@ vi.mock('@/auth/useAuth', () => ({
   })),
 }));
 
+vi.mock('@/auth/useAuthReady', () => ({
+  useAuthReady: vi.fn(() => true),
+}));
+
 // fetchMyGroupIds returns group IDs from graph
 vi.mock('@/auth/fetchMyGroupIds', () => ({
   fetchMyGroupIds: vi.fn(() => Promise.resolve([])),
@@ -34,6 +38,7 @@ vi.mock('@/auth/msalConfig', () => ({
 
 import { fetchMyGroupIds } from '@/auth/fetchMyGroupIds';
 import { useAuth } from '@/auth/useAuth';
+import { useAuthReady } from '@/auth/useAuthReady';
 import { getRuntimeEnv } from '@/env';
 import { isE2eMsalMockEnabled, readOptionalEnv, shouldSkipLogin } from '@/lib/env';
 import { useUserAuthz } from '../useUserAuthz';
@@ -41,6 +46,7 @@ import { useUserAuthz } from '../useUserAuthz';
 // ── helpers ────────────────────────────────────────────────────────
 const mockUseAuth = vi.mocked(useAuth);
 const mockFetchGroupIds = vi.mocked(fetchMyGroupIds);
+const mockUseAuthReady = vi.mocked(useAuthReady);
 const mockIsE2e = vi.mocked(isE2eMsalMockEnabled);
 const mockSkipLogin = vi.mocked(shouldSkipLogin);
 const mockReadOptionalEnv = vi.mocked(readOptionalEnv);
@@ -72,6 +78,7 @@ const setupAuth = (overrides: Partial<ReturnType<typeof useAuth>> = {}) => {
 // ── lifecycle ──────────────────────────────────────────────────────
 describe('useUserAuthz', () => {
   beforeEach(() => {
+    mockUseAuthReady.mockReturnValue(true);
     // Default: not E2E, not skip login
     mockIsE2e.mockReturnValue(false);
     mockSkipLogin.mockReturnValue(false);
@@ -230,6 +237,35 @@ describe('useUserAuthz', () => {
         expect(result.current.ready).toBe(true);
       });
       // admin > reception in the hierarchy
+      expect(result.current.role).toBe('admin');
+    });
+
+    it('re-fetches group membership when auth readiness transitions false -> true', async () => {
+      const ADMIN_GROUP = 'admin-group-id-transition';
+      setRuntimeEnv({
+        VITE_AAD_ADMIN_GROUP_ID: ADMIN_GROUP,
+      });
+      setupAuth({
+        account: mockAccount('transition@corp.com'),
+      });
+      mockFetchGroupIds.mockResolvedValue([ADMIN_GROUP]);
+
+      let isReady = false;
+      mockUseAuthReady.mockImplementation(() => isReady);
+
+      const { result, rerender } = renderHook(() => useUserAuthz());
+
+      expect(mockFetchGroupIds).not.toHaveBeenCalled();
+      expect(result.current.role).toBe('viewer');
+      expect(result.current.ready).toBe(false);
+
+      isReady = true;
+      rerender();
+
+      await waitFor(() => {
+        expect(mockFetchGroupIds).toHaveBeenCalledTimes(1);
+        expect(result.current.ready).toBe(true);
+      });
       expect(result.current.role).toBe('admin');
     });
   });

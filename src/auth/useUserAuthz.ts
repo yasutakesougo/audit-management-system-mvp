@@ -159,7 +159,7 @@ export const useUserAuthz = (): UserAuthz => {
     return () => {
       cancelled = true;
     };
-  }, [acquireToken, myUpnNormalized, adminGroupId]);
+  }, [isAuthReady, account?.homeAccountId, acquireToken, myUpnNormalized, adminGroupId]);
 
   const value = useMemo(() => {
     const ids = groupIds ?? [];
