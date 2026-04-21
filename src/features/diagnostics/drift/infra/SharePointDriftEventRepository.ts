@@ -405,7 +405,10 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         listTitle,
         select,
         joinAnd(filters) || undefined,
-        detectedAtField || 'Detected_x0020_At', // OrderBy fallback
+        // 解決済みの DetectedAt があれば優先する。
+        // 未解決（新規リスト等）の場合は時系列の厳密性よりも可用性（400エラー回避）を優先し、
+        // 常に存在する 'ID' でフォールバックする。
+        detectedAtField || 'ID',
         filter,
         signal,
       );
