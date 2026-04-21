@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { getSpHealthSignal, subscribeSpHealthSignal, clearSpHealthSignal, type SpHealthReasonCode } from '../spHealthSignalStore';
 import { isDemoModeEnabled } from '@/lib/env';
 import { getAppConfig } from '@/lib/env';
+import { auditLog } from '@/lib/debugLogger';
+import { findListEntry } from '@/sharepoint/spListRegistry';
 
 export type ConnectionStatusKind = 'connected' | 'demo' | 'degraded' | 'checking';
 export type ConnectionReason = 
@@ -72,23 +74,47 @@ export const useConnectionStatus = (): ConnectionStatus => {
       sp_schema_drift: 'readiness_failed',
     };
 
-    // 診断系リスト（DriftEventsLog等）の不具合や非クリティカルなドリフトは
-    // 業務継続に直結しないため、同期遅延バナー（degraded）の対象から外す
-    const isDiagnosticIssue = 
-      healthSignal.listName?.includes('DriftEventsLog') ||
-      healthSignal.listName?.includes('AuditLog');
+    // 1) 診断系・観測系リスト（lifecycle: optional）の不具合
+    // 2) 重要度が低い（warning以下）のシグナル
+    // これらは業務継続に直結しないため、同期遅延バナー（degraded）の対象から外す。
+    // ※ 内部的な観測は継続されるが、現場ユーザーに不要な混乱を与えないための意図的な抑制。
+    // Degraded banner is reserved for end-user impacting states only;
+    // diagnostic/optional resources and non-critical severities remain observable
+    // internally but do not change user-facing sync status.
+    const entry = healthSignal.listName ? findListEntry(healthSignal.listName) : undefined;
+    const isOptionalResource = entry?.lifecycle === 'optional';
     
-    const isNonCriticalDrift = healthSignal.reasonCode === 'sp_schema_drift' && healthSignal.severity === 'warning';
+    const isNonCritical = 
+      healthSignal.severity === 'watch' || 
+      healthSignal.severity === 'warning';
 
-    if (!isDiagnosticIssue && !isNonCriticalDrift) {
+    const isUserImpacting = !isOptionalResource && !isNonCritical;
+
+    if (!isUserImpacting) {
+      // 抑制されたシグナルをデバッグ用に記録
+      auditLog.debug('sp:health', 'Suppressed non-critical signal from UI banner', {
+        listName: healthSignal.listName,
+        severity: healthSignal.severity,
+        reason: healthSignal.reasonCode,
+        lifecycle: entry?.lifecycle
+      });
+
       return {
-        status: 'degraded',
-        reason: reasonMap[healthSignal.reasonCode] || 'readiness_failed',
-        message: healthSignal.message,
-        actionUrl: healthSignal.actionUrl || '/admin/status',
+        status: 'connected',
+        reason: null,
+        message: null,
+        actionUrl: null,
         reset,
       };
     }
+
+    return {
+      status: 'degraded',
+      reason: reasonMap[healthSignal.reasonCode] || 'readiness_failed',
+      message: healthSignal.message,
+      actionUrl: healthSignal.actionUrl || '/admin/status',
+      reset,
+    };
   }
 
   // 4. デフォルト：接続済みとみなす
