@@ -204,7 +204,7 @@ describe('spClient ensureListExists', () => {
     }));
 
     // Verify it didn't try to add a field (no POST to .../fields/addfield)
-    const postCalls = fetchSpy.mock.calls.filter(([_, init]) => init?.method === 'POST');
+    const postCalls = fetchSpy.mock.calls.filter(([_, init]: [RequestInfo | URL, RequestInit | undefined]) => init?.method === 'POST');
     expect(postCalls.length).toBe(0);
   });
 });
