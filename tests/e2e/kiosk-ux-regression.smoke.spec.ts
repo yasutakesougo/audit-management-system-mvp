@@ -123,5 +123,33 @@ test.describe('Kiosk UX Regression (Smoke)', () => {
     const progressRing = page.locator('svg').filter({ has: page.locator('circle') });
     await expect(progressRing.first()).toBeVisible();
   });
-});
 
+  test('kiosk mode: hides schedule quick link when schedules feature is disabled', async ({ page }) => {
+    await page.addInitScript(() => {
+      const w = window as typeof window & { __ENV__?: Record<string, string> };
+      w.__ENV__ = {
+        ...(w.__ENV__ ?? {}),
+        VITE_FEATURE_SCHEDULES: '0',
+      };
+      window.localStorage.setItem(
+        'audit:settings:v1',
+        JSON.stringify({
+          colorMode: 'system',
+          density: 'comfortable',
+          fontSize: 'medium',
+          colorPreset: 'default',
+          layoutMode: 'kiosk',
+          hiddenNavGroups: [],
+          hiddenNavItems: [],
+          lastModified: Date.now(),
+        }),
+      );
+    });
+
+    await page.goto('/today?kiosk=1');
+    await page.waitForLoadState('domcontentloaded');
+
+    await expect(page.getByTestId('kiosk-quick-link-schedule')).toHaveCount(0);
+    await expect(page.getByTestId('kiosk-quick-link-handoff')).toBeVisible();
+  });
+});

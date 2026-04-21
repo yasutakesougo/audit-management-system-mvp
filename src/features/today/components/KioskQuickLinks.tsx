@@ -15,61 +15,36 @@ import { Box, ButtonBase, Typography } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import React from 'react';
 
+import { useUserAuthz } from '@/auth/useUserAuthz';
+import { useFeatureFlags } from '@/config/featureFlags';
+import {
+  getKioskQuickLinks,
+  type KioskQuickLinkId,
+} from '../model/getKioskQuickLinks';
 import { KIOSK_TELEMETRY_EVENTS } from '../telemetry/kioskNavigationTelemetry.types';
 import { recordKioskTelemetry } from '../telemetry/recordKioskTelemetry';
 
 // ─── Types ───────────────────────────────────────────────────
 
-export type KioskQuickLinkItem = {
-  key: string;
-  label: string;
-  icon: React.ReactNode;
-  href: string;
-};
-
 type KioskQuickLinksProps = {
   onNavigate: (href: string) => void;
 };
 
-// ─── Links ───────────────────────────────────────────────────
-
-const LINKS: KioskQuickLinkItem[] = [
-  {
-    key: 'schedule',
-    label: 'スケジュール',
-    icon: <CalendarMonthRoundedIcon fontSize="small" />,
-    href: '/schedules/week',
-  },
-  {
-    key: 'handoff',
-    label: '申し送り',
-    icon: <SwapHorizRoundedIcon fontSize="small" />,
-    href: '/handoff-timeline',
-  },
-  {
-    key: 'minutes',
-    label: '議事録',
-    icon: <SummarizeRoundedIcon fontSize="small" />,
-    href: '/meeting-minutes',
-  },
-  {
-    key: 'room',
-    label: 'お部屋管理',
-    icon: <MeetingRoomRoundedIcon fontSize="small" />,
-    href: '/room-management',
-  },
-  {
-    key: 'briefing',
-    label: '朝会・夕会',
-    icon: <GroupsRoundedIcon fontSize="small" />,
-    href: '/dashboard/briefing',
-  },
-];
+const LINK_ICONS: Record<KioskQuickLinkId, React.ReactNode> = {
+  schedule: <CalendarMonthRoundedIcon fontSize="small" />,
+  handoff: <SwapHorizRoundedIcon fontSize="small" />,
+  minutes: <SummarizeRoundedIcon fontSize="small" />,
+  room: <MeetingRoomRoundedIcon fontSize="small" />,
+  briefing: <GroupsRoundedIcon fontSize="small" />,
+};
 
 // ─── Component ───────────────────────────────────────────────
 
 export const KioskQuickLinks: React.FC<KioskQuickLinksProps> = ({ onNavigate }) => {
   const theme = useTheme();
+  const flags = useFeatureFlags();
+  const { role } = useUserAuthz();
+  const visibleLinks = React.useMemo(() => getKioskQuickLinks({ role, flags }), [flags, role]);
 
   return (
     <Box
@@ -84,18 +59,19 @@ export const KioskQuickLinks: React.FC<KioskQuickLinksProps> = ({ onNavigate }) 
         borderTop: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
       }}
     >
-      {LINKS.map((link) => (
+      {visibleLinks.map((link) => (
         <ButtonBase
-          key={link.key}
+          key={link.id}
           onClick={() => {
             recordKioskTelemetry(KIOSK_TELEMETRY_EVENTS.NAVIGATE_FROM_TODAY, {
               mode: 'kiosk',
-              target: link.key as Parameters<typeof recordKioskTelemetry>[1]['target'],
+              target: link.id,
               source: 'today',
+              to: link.href,
             });
             onNavigate(link.href);
           }}
-          data-testid={`kiosk-quick-link-${link.key}`}
+          data-testid={`kiosk-quick-link-${link.id}`}
           sx={{
             display: 'flex',
             alignItems: 'center',
@@ -114,7 +90,7 @@ export const KioskQuickLinks: React.FC<KioskQuickLinksProps> = ({ onNavigate }) 
           }}
         >
           <Box sx={{ color: 'primary.main', display: 'flex' }}>
-            {link.icon}
+            {LINK_ICONS[link.id]}
           </Box>
           <Typography
             variant="caption"
