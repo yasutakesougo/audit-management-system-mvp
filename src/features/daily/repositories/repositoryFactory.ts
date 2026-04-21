@@ -16,6 +16,8 @@ export type DailyRecordRepositoryFactoryOptions = {
   listTitle?: string;
 };
 
+// contract:allow-sp-direct
+
 let cachedRepository: DailyRecordRepository | null = null;
 let cachedKind: DailyRecordRepositoryKind | null = null;
 let overrideRepository: DailyRecordRepository | null = null;
