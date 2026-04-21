@@ -38,6 +38,12 @@ import { USAGE_STATUS_VALUES } from '../typesExtended';
 import type { IUserMaster, IUserMasterCreateDto } from '../types';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { buildEq, joinAnd } from '@/sharepoint/query/builders';
+import {
+  applyBenefitCutoverRead,
+  applyBenefitCutoverWrite,
+  resolveUserBenefitProfileCutoverStage,
+  type CutoverStageValue,
+} from './migration/userBenefitProfileCutover';
 
 const DEFAULT_USERS_LIST_TITLE = 'Users_Master';
 const MAX_WRITE_RETRY = 8;
@@ -88,6 +94,7 @@ export class DataProviderUserRepository implements UserRepository {
   private readonly transportListTitle: string;
   private readonly benefitListTitle: string;
   private readonly benefitExtListTitle: string;
+  private cachedBenefitCutoverStage: CutoverStageValue | null = null;
 
   constructor(options: {
     provider: IDataProvider;
@@ -296,11 +303,13 @@ export class DataProviderUserRepository implements UserRepository {
               r,
             ]),
           );
+          const benefitCutoverStage = this.getBenefitCutoverStage();
           const benefitMap = new Map<string, Record<string, unknown>>(
-            washRows(benefitRows, benefitCandidatesMap, benefitResolved).map((r) => [
-              String(r.userId || r.UserID || r.userID || ''),
-              r,
-            ]),
+            benefitRows.map((rawRow, idx) => {
+              const washed = washRows([rawRow], benefitCandidatesMap, benefitResolved)[0] ?? benefitRows[idx];
+              const overlaid = applyBenefitCutoverRead(washed, rawRow, benefitCutoverStage);
+              return [String(overlaid.userId || overlaid.UserID || overlaid.userID || ''), overlaid];
+            }),
           );
           const benefitExtMap = new Map<string, Record<string, unknown>>(
             washRows(benefitExtRows, benefitExtCandidatesMap, benefitExtResolved).map((r) => [
@@ -375,7 +384,10 @@ export class DataProviderUserRepository implements UserRepository {
           ]);
 
           const tRow = tRowsRaw[0] ? washRow(tRowsRaw[0], transportCandidatesMap, transportResolved) : undefined;
-          const bRow = bRowsRaw[0] ? washRow(bRowsRaw[0], benefitCandidatesMap, benefitResolved) : undefined;
+          const bRowWashed = bRowsRaw[0] ? washRow(bRowsRaw[0], benefitCandidatesMap, benefitResolved) : undefined;
+          const bRow = bRowWashed && bRowsRaw[0]
+            ? applyBenefitCutoverRead(bRowWashed, bRowsRaw[0], this.getBenefitCutoverStage())
+            : undefined;
           const beRow = beRowsRaw[0] ? washRow(beRowsRaw[0], benefitExtCandidatesMap, benefitExtResolved) : undefined;
           
           const sanitized = this.sanitizeDomainRecord(domain, !!tRow, !!bRow, !!beRow);
@@ -517,11 +529,22 @@ export class DataProviderUserRepository implements UserRepository {
       }
     }
 
+    // Lot1B PR #E — benefit リストのみ cutover overlay を適用（6列 rename-migrate）
+    let finalRequest = filteredRequest;
+    if (type === 'benefit') {
+      const stage = this.getBenefitCutoverStage();
+      finalRequest = applyBenefitCutoverWrite(filteredRequest, payload, stage);
+      // cutover overlay の結果、UserID 以外にキーが増えた場合は hasData を再評価
+      if (Object.keys(finalRequest).some((k) => k !== 'UserID')) {
+        hasData = true;
+      }
+    }
+
     auditLog.debug('users', 'DataProviderUserRepository.sync_accessory_prepare', {
       listTitle,
       userId,
       hasData,
-      filteredRequest,
+      filteredRequest: finalRequest,
     });
     if (!hasData) return; // 更新対象フィールドがない場合はスキップ
 
@@ -550,16 +573,28 @@ export class DataProviderUserRepository implements UserRepository {
             userId,
             joinField,
           });
-          await this.provider.updateItem(listTitle, idValue as unknown as string | number, filteredRequest);
+          await this.provider.updateItem(listTitle, idValue as unknown as string | number, finalRequest);
         } else {
-          await this.provider.updateItem(listTitle, idValue as string | number, filteredRequest);
+          await this.provider.updateItem(listTitle, idValue as string | number, finalRequest);
         }
       } else {
-        await this.provider.createItem(listTitle, filteredRequest);
+        await this.provider.createItem(listTitle, finalRequest);
       }
     } catch (e) {
       auditLog.warn('users', 'DataProviderUserRepository.sync_accessory_failed', { listTitle, userId, error: String(e) });
     }
+  }
+
+  /** Lot1B PR #E — 6列 rename-migrate cutover stage（テスト override 可） */
+  private getBenefitCutoverStage(): CutoverStageValue {
+    if (this.cachedBenefitCutoverStage) return this.cachedBenefitCutoverStage;
+    this.cachedBenefitCutoverStage = resolveUserBenefitProfileCutoverStage();
+    return this.cachedBenefitCutoverStage;
+  }
+
+  /** テスト用: stage を固定する（production では呼ばない） */
+  public __setBenefitCutoverStageForTest(stage: CutoverStageValue | null): void {
+    this.cachedBenefitCutoverStage = stage;
   }
 
   private async getAccessoryMapping(type: 'transport' | 'benefit' | 'benefit_ext'): Promise<Record<string, string | undefined>> {
