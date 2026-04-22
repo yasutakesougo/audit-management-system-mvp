@@ -105,7 +105,7 @@ describe('createSpClient CRUD helpers', () => {
 
     const client = createSpClient(acquireToken, baseUrl);
     const controller = new AbortController();
-    const row = await client.getItemById<{ Id: number }>('Announcements', 10, ['Id', 'Title'], controller.signal);
+    const row = await client.getItemById<{ Id: number }>('Announcements', 10, { select: ['Id', 'Title'], signal: controller.signal });
 
     expect(row.Id).toBe(10);
     const [, init] = fetchMock.mock.calls[0] ?? [];

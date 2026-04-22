@@ -84,7 +84,7 @@ export const masterListEntries: readonly SpListEntry[] = [
       { internalName: 'RecipientCertExpiry', type: 'DateTime', displayName: 'Recipient Cert Expiry', dateTimeFormat: 'DateOnly' },
       { internalName: 'GrantMunicipality', type: 'Text', displayName: 'Grant Municipality', candidates: ['GrantMunicipality', 'Grant_x0020_Municipality'] },
       { internalName: 'GrantPeriodStart', type: 'DateTime', displayName: 'Grant Period Start', dateTimeFormat: 'DateOnly', candidates: ['GrantPeriodStart', 'Grant_x0020_Period_x0020_Start'] },
-      { internalName: 'GrantPeriodEnd', type: 'DateTime', displayName: 'Grant Period End', dateTimeFormat: 'DateOnly', candidates: ['GrantPeriodEnd', 'Grant_x0020_Period_x0020_End'] },
+      { internalName: 'GrantPeriodEnd', type: 'DateTime', displayName: 'Grant Period End', dateTimeFormat: 'DateOnly', indexed: true, candidates: ['GrantPeriodEnd', 'Grant_x0020_Period_x0020_End'] },
       { internalName: 'DisabilitySupportLevel', type: 'Text', displayName: 'Disability Support Level' },
       { internalName: 'GrantedDaysPerMonth', type: 'Text', displayName: 'Granted Days Per Month' },
       { internalName: 'UserCopayLimit', type: 'Text', displayName: 'User Copay Limit', candidates: ['UserCopayLimit', 'User_x0020_Copay_x0020_Limit'] },
@@ -641,7 +641,7 @@ export const handoffListEntries: readonly SpListEntry[] = [
     provisioningFields: [
       { internalName: 'Title', type: 'Text', displayName: 'Title', required: true },
       { internalName: 'EntryHash', type: 'Text', displayName: 'Entry Hash', required: true, indexed: true },
-      { internalName: 'SessionId', type: 'Text', displayName: 'Session ID' },
+      { internalName: 'SessionId', type: 'Text', displayName: 'Session ID', indexed: true },
       { internalName: 'UserId', type: 'Text', displayName: 'User ID', indexed: true },
       { internalName: 'PayloadJson', type: 'Note', displayName: 'Payload JSON', required: true, richText: false },
       { internalName: 'SchemaVersion', type: 'Number', displayName: 'Schema Version' },
