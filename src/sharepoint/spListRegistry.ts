@@ -30,6 +30,9 @@ export type {
   SpListOperation,
 } from './spListRegistry.shared';
 
+/**
+ * SharePoint リスト レジストリ — 全リストの Single Source of Truth
+ */
 export const SP_LIST_REGISTRY = [
   ...masterListEntries,
   ...dailyListEntries,
@@ -41,10 +44,10 @@ export const SP_LIST_REGISTRY = [
   ...otherListEntries,
 ] as const satisfies readonly SpListEntry[];
 
-/** キーからエントリを検索 */
+/** キーでリスト定義を取得 */
 export const findListEntry = (key: string): SpListEntry | undefined =>
-  SP_LIST_REGISTRY.find((entry) => entry.key === key);
+  SP_LIST_REGISTRY.find((e) => e.key === key);
 
 /** カテゴリでフィルタ */
 export const getListsByCategory = (category: SpListCategory): SpListEntry[] =>
-  SP_LIST_REGISTRY.filter((entry) => entry.category === category) as SpListEntry[];
+  SP_LIST_REGISTRY.filter((e) => e.category === category) as SpListEntry[];
