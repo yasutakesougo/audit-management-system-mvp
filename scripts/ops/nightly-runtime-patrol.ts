@@ -84,6 +84,15 @@ export interface NightlySummary {
     topLimit: number;
     safety: 'safe' | 'watch' | 'near_limit';
   };
+  decisionContext?: {
+    date: string;
+    finalLabel: string;
+    sourceFile: string;
+    reasonCodeActions: {
+      fail: NightlyDecisionAction[];
+      warn: NightlyDecisionAction[];
+    };
+  };
 }
 
 type DriftLogReadStats = NonNullable<NightlySummary['driftLogReadStats']>;
@@ -103,11 +112,110 @@ const DEFAULT_TRANSIENT_FAILURE_WINDOW_HOURS = 6;
 const REPEATED_TRANSIENT_FAILURE_THRESHOLD = 3;
 const DRIFT_LOG_FALLBACK_TOP = 200;
 const DRIFT_LOG_LOOKBACK_HOURS = 24;
+const DECISION_FILE_RE = /^decision-(\d{4}-\d{2}-\d{2})\.json$/;
+
+interface NightlyDecisionAction {
+  code: string;
+  normalizedCode: string;
+  owner: string;
+  severity: 'watch' | 'action_required' | 'blocked';
+  firstAction: string;
+  runbookLink: string;
+}
+
+interface NightlyDecisionPayload {
+  date?: unknown;
+  final?: { label?: unknown } | null;
+  runbook?: {
+    reasonCodeActions?: {
+      fail?: unknown;
+      warn?: unknown;
+    } | null;
+  } | null;
+}
 
 function classifyDriftLogSafety(scannedCount: number): DriftLogReadStats['safety'] {
   if (scannedCount >= 180) return 'near_limit';
   if (scannedCount >= 100) return 'watch';
   return 'safe';
+}
+
+function isActionSeverity(value: unknown): value is NightlyDecisionAction['severity'] {
+  return value === 'watch' || value === 'action_required' || value === 'blocked';
+}
+
+function sanitizeDecisionActions(raw: unknown): NightlyDecisionAction[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === 'object')
+    .map((entry) => {
+      const code = typeof entry.code === 'string' ? entry.code : '';
+      const normalizedCode = typeof entry.normalizedCode === 'string' ? entry.normalizedCode : code;
+      const owner = typeof entry.owner === 'string' ? entry.owner : '';
+      const severity = isActionSeverity(entry.severity) ? entry.severity : null;
+      const firstAction = typeof entry.firstAction === 'string' ? entry.firstAction : '';
+      const runbookLink = typeof entry.runbookLink === 'string' ? entry.runbookLink : '';
+      if (!code || !owner || !severity || !firstAction || !runbookLink) {
+        return null;
+      }
+      return { code, normalizedCode, owner, severity, firstAction, runbookLink };
+    })
+    .filter((entry): entry is NightlyDecisionAction => Boolean(entry));
+}
+
+function toRelativePath(absPath: string): string {
+  return path.relative(process.cwd(), absPath).replace(/\\/g, '/');
+}
+
+async function readDecisionContext(filePath: string) {
+  const payload = JSON.parse(await fs.readFile(filePath, 'utf8')) as NightlyDecisionPayload;
+  const fail = sanitizeDecisionActions(payload.runbook?.reasonCodeActions?.fail);
+  const warn = sanitizeDecisionActions(payload.runbook?.reasonCodeActions?.warn);
+  if (fail.length === 0 && warn.length === 0) return null;
+
+  const date = typeof payload.date === 'string' ? payload.date : '';
+  const finalLabel = typeof payload.final?.label === 'string' ? payload.final.label : 'unknown';
+  return {
+    date,
+    finalLabel,
+    sourceFile: toRelativePath(filePath),
+    reasonCodeActions: { fail, warn },
+  };
+}
+
+async function loadLatestDecisionContext(preferredDate: string): Promise<NightlySummary['decisionContext'] | undefined> {
+  const decisionDir = path.join(process.cwd(), 'docs', 'nightly-patrol');
+  const preferredPath = path.join(decisionDir, `decision-${preferredDate}.json`);
+
+  try {
+    await fs.access(preferredPath);
+    const preferred = await readDecisionContext(preferredPath);
+    if (preferred) return preferred;
+  } catch {
+    // fallback to the newest available decision file
+  }
+
+  try {
+    const entries = await fs.readdir(decisionDir, { withFileTypes: true });
+    const candidates = entries
+      .filter((entry) => entry.isFile() && DECISION_FILE_RE.test(entry.name))
+      .map((entry) => entry.name)
+      .sort((a, b) => b.localeCompare(a));
+
+    for (const fileName of candidates) {
+      const candidatePath = path.join(decisionDir, fileName);
+      try {
+        const decision = await readDecisionContext(candidatePath);
+        if (decision) return decision;
+      } catch (error) {
+        console.warn(`⚠️ Failed to parse ${toRelativePath(candidatePath)}: ${error instanceof Error ? error.message : error}`);
+      }
+    }
+  } catch (error) {
+    console.warn(`⚠️ Failed to scan decision reports: ${error instanceof Error ? error.message : error}`);
+  }
+
+  return undefined;
 }
 
 // --- Engine Logic ---
@@ -209,6 +317,15 @@ function parseEnvInteger(name: string, fallback: number): number {
   if (!raw) return fallback;
   const parsed = Number.parseInt(raw, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseEnvBoolean(name: string, fallback = false): boolean {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const normalized = raw.trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  return fallback;
 }
 
 function parseRunDate(run: GitHubWorkflowRun): Date | null {
@@ -435,6 +552,17 @@ ${driftLogLine}
     : `| Reason Code | Count | Resources |\n| --- | :---: | --- |\n${summary.reasonCodeSummary
         .map((entry) => `| \`${entry.reasonCode}\` | ${entry.count} | ${entry.resources.join(', ')} |`)
         .join('\n')}`;
+  const reasonActionRows = summary.decisionContext
+    ? [
+        ...summary.decisionContext.reasonCodeActions.fail.map((entry) => ({ bucket: 'fail' as const, ...entry })),
+        ...summary.decisionContext.reasonCodeActions.warn.map((entry) => ({ bucket: 'warn' as const, ...entry })),
+      ]
+    : [];
+  const reasonActionMarkdown = reasonActionRows.length === 0
+    ? '_No decision-linked actions available._'
+    : `| Bucket | Code | Owner | Severity | First Action | Runbook |\n| --- | --- | --- | --- | --- | --- |\n${reasonActionRows
+        .map((entry) => `| ${entry.bucket} | \`${entry.code}\` | ${entry.owner} | ${entry.severity} | ${entry.firstAction} | ${entry.runbookLink} |`)
+        .join('\n')}`;
 
   // Silentはレポート本体を汚さないために分離
   const selfHealingEvents = summary.events.filter(
@@ -474,6 +602,9 @@ ${driftLogLine}
   const body = `
 ## 🧾 Reason Code Summary
 ${reasonCodeSummaryMarkdown}
+
+## 🧭 Decision Quick Actions (Owner / Severity / First Action)
+${reasonActionMarkdown}
 
 ## ✨ Self-Healing Results (Auto-Remediated)
 ${selfHealingEvents.length > 0 ? createTable(selfHealingEvents) : '_No auto-remediation actions were necessary today._\n'}
@@ -586,7 +717,11 @@ async function writeStepSummary(summary: NightlySummary): Promise<void> {
 
 // --- Data Ingestion ---
 
-async function fetchRealEvents(fallbackMock: RawEvent[]): Promise<FetchRealEventsResult> {
+async function fetchRealEvents(
+  fallbackMock: RawEvent[],
+  options: { requireSharePoint?: boolean } = {},
+): Promise<FetchRealEventsResult> {
+  const requireSharePoint = options.requireSharePoint === true;
   const token = process.env.VITE_SP_TOKEN;
   const siteUrl = process.env.VITE_SP_SITE_URL;
   const driftLogReadStats: DriftLogReadStats = {
@@ -599,7 +734,11 @@ async function fetchRealEvents(fallbackMock: RawEvent[]): Promise<FetchRealEvent
   };
 
   if (!token || !siteUrl) {
-    console.warn('⚠️ VITE_SP_TOKEN or VITE_SP_SITE_URL is not set. Falling back to mock data.');
+    const msg = 'VITE_SP_TOKEN or VITE_SP_SITE_URL is not set.';
+    if (requireSharePoint) {
+      throw new Error(`${msg} NIGHTLY_REQUIRE_SP=1 requires real SharePoint telemetry.`);
+    }
+    console.warn(`⚠️ ${msg} Falling back to mock data.`);
     return { events: fallbackMock, driftLogReadStats };
   }
 
@@ -653,11 +792,15 @@ async function fetchRealEvents(fallbackMock: RawEvent[]): Promise<FetchRealEvent
   };
 
   try {
+    let driftFetchSucceeded = false;
+    let diagnosticsFetchSucceeded = false;
+
     // 1. DriftEventsLog fetches
     const driftUrl = `${siteUrl}/_api/web/lists/getbytitle('DriftEventsLog')/items?$filter=Created ge datetime'${filterDate}'`;
     const driftAttempt = await fetchJson(driftUrl);
 
     if (driftAttempt.res.ok) {
+      driftFetchSucceeded = true;
       driftAttempt.data.value.forEach((item: any) => {
         events.push(mapDriftItemToEvent(item));
       });
@@ -674,6 +817,7 @@ async function fetchRealEvents(fallbackMock: RawEvent[]): Promise<FetchRealEvent
         `&$orderby=Id desc&$top=${DRIFT_LOG_FALLBACK_TOP}`;
       const fallbackAttempt = await fetchJson(fallbackUrl);
       if (fallbackAttempt.res.ok) {
+        driftFetchSucceeded = true;
         const filtered = (fallbackAttempt.data.value as any[])
           .filter((item: any) => {
             const timestamp = item.DetectedAt || item.Detected_x0020_At || item.Created;
@@ -699,6 +843,7 @@ async function fetchRealEvents(fallbackMock: RawEvent[]): Promise<FetchRealEvent
     const diagUrl = `${siteUrl}/_api/web/lists/getbytitle('DiagnosticsReports')/items?$filter=Created ge datetime'${filterDate}'`;
     const diagRes = await globalThis.fetch(diagUrl, { headers });
     if (diagRes.ok) {
+        diagnosticsFetchSucceeded = true;
         const data = await diagRes.json();
         data.value.forEach((item: any) => {
             const isCritical = item.Status === 'FAIL' || item.Title?.includes('FAIL');
@@ -719,7 +864,14 @@ async function fetchRealEvents(fallbackMock: RawEvent[]): Promise<FetchRealEvent
         console.warn(`⚠️ Failed to fetch DiagnosticsReports: ${diagRes.status} ${diagRes.statusText} (List may not exist yet)`);
     }
 
+    if (requireSharePoint && !driftFetchSucceeded && !diagnosticsFetchSucceeded) {
+      throw new Error('Failed to fetch both DriftEventsLog and DiagnosticsReports while NIGHTLY_REQUIRE_SP=1.');
+    }
+
   } catch (err) {
+    if (requireSharePoint) {
+      throw err instanceof Error ? err : new Error(String(err));
+    }
     console.error('Network Error during SharePoint fetch:', err);
     console.warn('Falling back to mock data due to network error.');
     return { events: fallbackMock, driftLogReadStats };
@@ -814,6 +966,11 @@ async function runFieldSkipProbe(token: string, siteUrl: string): Promise<Set<st
 
 // --- execution block for local testing ---
 async function run() {
+  const requireSharePoint = parseEnvBoolean('NIGHTLY_REQUIRE_SP', false);
+  if (requireSharePoint) {
+    console.log('🔒 NIGHTLY_REQUIRE_SP=1: SharePoint telemetry strict mode enabled.');
+  }
+
   // モック生データ: 様々なケースを想定
   const mockRawEvents: RawEvent[] = [
     {
@@ -904,7 +1061,9 @@ async function run() {
   ];
 
   // 実データの取得（失敗時や設定がない場合はモックへフォールバック）
-  const { events: rawEvents, driftLogReadStats } = await fetchRealEvents(mockRawEvents);
+  const { events: rawEvents, driftLogReadStats } = await fetchRealEvents(mockRawEvents, {
+    requireSharePoint,
+  });
 
   const transientFailureEvents = await fetchTransientFailureEvents(rawEvents);
   if (transientFailureEvents.length > 0) {
@@ -965,6 +1124,18 @@ async function run() {
     console.warn('⚠️ Skipping field skip probe: VITE_SP_TOKEN or VITE_SP_SITE_URL not set.');
   }
   // ─────────────────────────────────────────────────────────────────────────
+
+  // Nightly Decision（reasonCodeActions）を runtime-summary に同梱する
+  const decisionContext = await loadLatestDecisionContext(summary.reportDate);
+  if (decisionContext) {
+    summary.decisionContext = decisionContext;
+    const actionCount =
+      decisionContext.reasonCodeActions.fail.length +
+      decisionContext.reasonCodeActions.warn.length;
+    console.log(`  └ Decision context loaded: ${actionCount} actions (${decisionContext.sourceFile})`);
+  } else {
+    console.log('  └ Decision context not found or no actionable reason codes.');
+  }
 
   // JSON出力
   const jsonOutput = JSON.stringify(summary, null, 2);

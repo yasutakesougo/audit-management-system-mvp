@@ -11,6 +11,7 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  Link,
 } from '@mui/material';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -25,7 +26,8 @@ import { useSelfHealingResults } from '../hooks/useSelfHealingResults';
  * 最新の Diagnostics_Reports から情報を取得します。
  */
 export const SelfHealingResultsPanel: React.FC = () => {
-  const { results, loading, error, hasReport } = useSelfHealingResults();
+  const { results, decisionContext, loading, error, hasReport } = useSelfHealingResults();
+  const decisionActions = decisionContext?.actions ?? [];
 
   if (loading) {
     return (
@@ -58,7 +60,7 @@ export const SelfHealingResultsPanel: React.FC = () => {
     );
   }
 
-  if (results.length === 0) {
+  if (results.length === 0 && decisionActions.length === 0) {
     return (
       <Paper variant="outlined" sx={{ p: 2, bgcolor: 'success.50', borderColor: 'success.light' }}>
         <Stack direction="row" spacing={1} alignItems="center">
@@ -127,62 +129,140 @@ export const SelfHealingResultsPanel: React.FC = () => {
 
         <Divider />
 
-        <List disablePadding sx={{ maxHeight: '240px', overflow: 'auto' }}>
-          {results.map((res, idx) => (
-            <ListItem 
-              key={idx} 
-              disablePadding 
-              sx={{ 
-                py: 1, 
-                borderBottom: idx < results.length - 1 ? '1px dashed' : 'none',
-                borderColor: 'divider'
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 36 }}>
-                {res.outcome === 'added' ? (
-                  <CheckCircleOutlineIcon color="success" fontSize="small" />
-                ) : res.outcome === 'skipped_limit' ? (
-                  <ShieldIcon color="info" fontSize="small" />
-                ) : (
-                  <ErrorOutlineIcon color="error" fontSize="small" />
-                )}
-              </ListItemIcon>
-              <ListItemText
-                primary={
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      [{res.resourceKey}] {res.fieldKey ? `(Field: ${res.fieldKey})` : ''}
-                    </Typography>
-                    <Chip 
-                      label={
-                        res.outcome === 'added' ? '修復成功' : 
-                        res.outcome === 'skipped_limit' ? '安全スキップ' : '修復失敗'
-                      }
-                      size="small"
-                      sx={{ 
-                        height: 18, 
-                        fontSize: '0.6rem', 
-                        bgcolor: res.outcome === 'added' ? 'success.50' : res.outcome === 'skipped_limit' ? 'info.50' : 'error.50',
-                        color: res.outcome === 'added' ? 'success.main' : res.outcome === 'skipped_limit' ? 'info.main' : 'error.main',
-                        borderRadius: 1,
-                        fontWeight: 700
-                      }}
-                    />
-                  </Stack>
-                }
-                secondary={
-                  <Typography variant="caption" color="text.secondary">
-                    {res.message} — {new Date(res.occurredAt).toLocaleString()}
-                  </Typography>
-                }
-              />
-            </ListItem>
-          ))}
-        </List>
+        {results.length > 0 ? (
+          <>
+            <List disablePadding sx={{ maxHeight: '240px', overflow: 'auto' }}>
+              {results.map((res, idx) => (
+                <ListItem 
+                  key={idx} 
+                  disablePadding 
+                  sx={{ 
+                    py: 1, 
+                    borderBottom: idx < results.length - 1 ? '1px dashed' : 'none',
+                    borderColor: 'divider'
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    {res.outcome === 'added' ? (
+                      <CheckCircleOutlineIcon color="success" fontSize="small" />
+                    ) : res.outcome === 'skipped_limit' ? (
+                      <ShieldIcon color="info" fontSize="small" />
+                    ) : (
+                      <ErrorOutlineIcon color="error" fontSize="small" />
+                    )}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          [{res.resourceKey}] {res.fieldKey ? `(Field: ${res.fieldKey})` : ''}
+                        </Typography>
+                        <Chip 
+                          label={
+                            res.outcome === 'added' ? '修復成功' : 
+                            res.outcome === 'skipped_limit' ? '安全スキップ' : '修復失敗'
+                          }
+                          size="small"
+                          sx={{ 
+                            height: 18, 
+                            fontSize: '0.6rem', 
+                            bgcolor: res.outcome === 'added' ? 'success.50' : res.outcome === 'skipped_limit' ? 'info.50' : 'error.50',
+                            color: res.outcome === 'added' ? 'success.main' : res.outcome === 'skipped_limit' ? 'info.main' : 'error.main',
+                            borderRadius: 1,
+                            fontWeight: 700
+                          }}
+                        />
+                      </Stack>
+                    }
+                    secondary={
+                      <Typography variant="caption" color="text.secondary">
+                        {res.message} — {new Date(res.occurredAt).toLocaleString()}
+                      </Typography>
+                    }
+                  />
+                </ListItem>
+              ))}
+            </List>
 
-        <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'right', fontStyle: 'italic' }}>
-          ※ インデックス不足などは Nightly Patrol で自動的にガードレール修復されます
-        </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'right', fontStyle: 'italic' }}>
+              ※ インデックス不足などは Nightly Patrol で自動的にガードレール修復されます
+            </Typography>
+          </>
+        ) : (
+          <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'success.50', borderColor: 'success.light' }}>
+            <Typography variant="caption" color="success.main" sx={{ fontWeight: 600 }}>
+              修復イベントはありません（安定状態）
+            </Typography>
+          </Paper>
+        )}
+
+        {decisionActions.length > 0 && (
+          <>
+            <Divider />
+            <Stack spacing={1}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+                  🧭 Reason Code 初動アクション
+                </Typography>
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  label={`${decisionActions.length} 件`}
+                  sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700 }}
+                />
+                {decisionContext?.date && (
+                  <Typography variant="caption" color="text.secondary">
+                    decision:{decisionContext.date}
+                  </Typography>
+                )}
+                {decisionContext?.finalLabel && (
+                  <Chip
+                    size="small"
+                    label={decisionContext.finalLabel}
+                    color={decisionContext.finalLabel === 'action_required' ? 'error' : 'warning'}
+                    sx={{ height: 20, fontSize: '0.6rem' }}
+                  />
+                )}
+              </Stack>
+              <Stack spacing={1}>
+                {decisionActions.map((action) => (
+                  <Paper
+                    key={`${action.bucket}:${action.code}`}
+                    variant="outlined"
+                    sx={{ p: 1.25, bgcolor: action.bucket === 'fail' ? 'error.50' : 'warning.50', borderColor: action.bucket === 'fail' ? 'error.light' : 'warning.light' }}
+                  >
+                    <Stack spacing={0.75}>
+                      <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+                        <Chip size="small" label={action.bucket} color={action.bucket === 'fail' ? 'error' : 'warning'} sx={{ height: 18, fontSize: '0.58rem', fontWeight: 700 }} />
+                        <Chip size="small" variant="outlined" label={action.code} sx={{ height: 18, fontSize: '0.58rem', fontFamily: 'monospace' }} />
+                        <Chip size="small" variant="outlined" label={action.owner} sx={{ height: 18, fontSize: '0.58rem' }} />
+                        <Chip
+                          size="small"
+                          label={action.severity}
+                          color={action.severity === 'blocked' ? 'error' : action.severity === 'action_required' ? 'warning' : 'info'}
+                          sx={{ height: 18, fontSize: '0.58rem' }}
+                        />
+                      </Stack>
+                      <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                        {action.firstAction}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Runbook:{' '}
+                        {action.runbookLink.startsWith('http') ? (
+                          <Link href={action.runbookLink} target="_blank" rel="noopener noreferrer">
+                            {action.runbookLink}
+                          </Link>
+                        ) : (
+                          <code>{action.runbookLink}</code>
+                        )}
+                      </Typography>
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
+            </Stack>
+          </>
+        )}
       </Stack>
     </Paper>
   );
