@@ -26,7 +26,8 @@ export type SpHealthReasonCode =
   | 'sp_bootstrap_blocked' // プロビジョニングがブロック済み
   | 'sp_auth_failed'       // 認証失敗 / 401
   | 'sp_list_unreachable'  // リストが見つからない / 到達不能
-  | 'sp_schema_drift';     // スキーマ・ドリフト（列名の不一致）が検出された
+  | 'sp_schema_drift'      // スキーマ・ドリフト（列名の不一致）が検出された
+  | 'sp_gate_escape_hatch'; // ガードレール（タイムアウト）の強制バイパス
 
 export type SpHealthSignalSource = 'nightly_patrol' | 'realtime';
 
@@ -104,7 +105,12 @@ const REASON_ACTION_MAP: Record<SpHealthReasonCode, ActionSpec> = {
   sp_schema_drift: {
     actionUrl: '/admin/status?highlight=sp_schema_drift',
     actionType: 'internal',
-    actionGuide: '列名に微細な不整合（末尾の _0 付与等）が検出されました。放置すると 8KB 制限の原因となるため、クリーンアップが必要です。',
+    actionGuide: '列名に微細な不整合（末尾 host _0 付与等）が検出されました。放置すると 8KB 制限の原因となるため、クリーンアップが必要です。',
+  },
+  sp_gate_escape_hatch: {
+    actionUrl: '/admin/status?highlight=sp_gate_escape_hatch',
+    actionType: 'internal',
+    actionGuide: 'リストの存在確認がタイムアウトしたため、一時的にチェックをバイパスしました。ネットワーク遅延か、SharePointの応答性能を確認してください。',
   },
 };
 

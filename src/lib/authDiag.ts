@@ -101,3 +101,11 @@ export const buildAuthDiagCopyText = ({ summary, corrId, url, userAgent, timesta
     `Detail: ${detail}`,
   ].join('\n');
 };
+
+/**
+ * 認証・認可に関するドリフトや診断情報を記録する（デバッグ用）
+ */
+export const trackAuthDrift = (context: string, event: string, detail?: unknown): void => {
+  // eslint-disable-next-line no-console
+  console.info(`[auth:diag] ${context} > ${event}`, detail ?? '');
+};
