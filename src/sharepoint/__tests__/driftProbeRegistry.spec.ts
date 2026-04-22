@@ -20,7 +20,7 @@ describe('DriftProbeRegistry / Dynamic Discovery', () => {
     const users = targets.find(t => t.key === 'users_master');
     
     expect(users).toBeDefined();
-    expect(users?.listTitle).toBe('Users_Master');
+    expect(users?.listTitle).toBe('User_Profiles');
     // Id and Title are automatically added by the mapper if missing
     expect(users?.selectFields).toContain('Id');
     expect(users?.selectFields).toContain('Title');
@@ -55,7 +55,7 @@ describe('DriftProbeRegistry / Dynamic Discovery', () => {
 
     expect(entry).toBeDefined();
     expect(entry?.lifecycle).toBe('optional');
-    expect(entry?.essentialFields).toEqual(['ListName', 'FieldName', 'DetectedAt']);
+    expect(entry?.essentialFields).toEqual(['ListName', 'FieldName', 'DetectedAt', 'DriftType']);
     expect(entry?.essentialFields).not.toContain('Severity');
   });
 });

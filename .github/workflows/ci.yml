@@ -54,8 +54,8 @@ jobs:
       - name: "Guard: no legacy schedule references"
         run: |
           test ! -d src/features/schedule
-          rg -n 'features/schedule(?!s)' src tests --pcre2 && exit 1 || true
-          rg -n '@/features/schedule(?!s)' src tests --pcre2 && exit 1 || true
+          grep -rnP 'features/schedule(?!s)' src tests && exit 1 || true
+          grep -rnP '@/features/schedule(?!s)' src tests && exit 1 || true
       
       - name: ESLint (enforce ARCHITECTURE_GUARDS)
         id: lint
@@ -63,6 +63,15 @@ jobs:
           echo "Running ESLint (includes no-restricted-imports for env module)..."
           npm run lint
           echo "✅ ESLint passed - ARCHITECTURE_GUARDS enforced"
+
+      - name: Index Audit (Prevent Schema Drift)
+        id: index_audit
+        env:
+          SP_TOKEN: ${{ secrets.SP_TOKEN }}
+        run: |
+          echo "Running SharePoint Index Governance Audit..."
+          npx tsx scripts/ops/index-audit.ts
+          echo "✅ Index Audit passed - Schema is stable"
 
       - name: ESLint boundaries report (non-blocking)
         id: lint_boundaries
@@ -124,6 +133,7 @@ jobs:
               echo ""
             fi
             echo "- ESLint (ARCHITECTURE_GUARDS): ${{ steps.lint.outcome }}"
+            echo "- Index Audit (Schema Drift): ${{ steps.index_audit.outcome }}"
             echo "- ESLint (boundaries report): ${{ steps.lint_boundaries.outcome }}"
             echo "- TypeScript typecheck: ${{ steps.typecheck.outcome }}"
             echo "- Tests: ${{ steps.tests.outcome }}"

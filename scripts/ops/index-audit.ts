@@ -39,14 +39,25 @@ async function main() {
   
   console.log("--- SharePoint Index Governance Audit (Drift-Aware Mode) ---");
   
-  const targetMap = [
-    { advisorKey: 'UserBenefit_Profile', registryKey: 'user_benefit_profile' },
-    { advisorKey: 'Iceberg_Analysis', registryKey: 'iceberg_analysis' }
-  ];
+  // Dynamic mapping: KNOWN_REQUIRED_INDEXED_FIELDS keys are List Titles (usually)
+  // We need to find the registry entry that resolves to that title.
+  const allAdvisorLists = Object.keys(KNOWN_REQUIRED_INDEXED_FIELDS);
+  
+  for (const advisorTitle of allAdvisorLists) {
+    // Attempt to find registry entry by displayName or by resolving its title
+    const listDef = (SP_LIST_REGISTRY as any[]).find(l => {
+      // 1. Direct match with resolve()
+      if (l.resolve() === advisorTitle) return true;
+      // 2. Match with key (case insensitive-ish)
+      if (l.key.toLowerCase() === advisorTitle.toLowerCase()) return true;
+      // 3. Fallback to some common mappings if needed
+      return false;
+    });
 
-  for (const { advisorKey, registryKey } of targetMap) {
-    const listDef = (SP_LIST_REGISTRY as any[]).find(l => l.key === registryKey);
-    if (!listDef) continue;
+    if (!listDef) {
+      console.log(`\n⚠️ Warning: No registry entry found for advisor list "${advisorTitle}". Skipping.`);
+      continue;
+    }
 
     const resolvedTitle = listDef.resolve();
     const listAccessor = resolvedTitle.startsWith('guid:') 
@@ -75,7 +86,7 @@ async function main() {
     console.log(`  Current Physical Indexes (${currentIndexedNames.size}/20)`);
     
     // REQUIRED Check with Drift-Awareness (checking candidates)
-    const requiredSpecs = KNOWN_REQUIRED_INDEXED_FIELDS[advisorKey] || [];
+    const requiredSpecs = KNOWN_REQUIRED_INDEXED_FIELDS[advisorTitle] || [];
     
     console.log(`  Governance Status:`);
     for (const spec of requiredSpecs) {

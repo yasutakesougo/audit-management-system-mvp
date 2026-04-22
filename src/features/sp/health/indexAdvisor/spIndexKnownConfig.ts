@@ -67,7 +67,7 @@ export const KNOWN_REQUIRED_INDEXED_FIELDS: Record<string, IndexFieldSpec[]> = {
   ],
   UserBenefit_Profile_Ext: [
     {
-      internalName: 'User_x0020_ID',
+      internalName: 'UserID',
       displayName: 'User ID',
       reason: '$filter=User_x0020_ID eq X（利用者属性取得のキー）',
     },
