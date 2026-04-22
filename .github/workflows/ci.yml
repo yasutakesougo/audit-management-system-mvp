@@ -61,7 +61,7 @@ jobs:
         id: lint
         run: |
           echo "Running ESLint (includes no-restricted-imports for env module)..."
-          npm run lint:dev
+          npm run lint
           echo "✅ ESLint passed - ARCHITECTURE_GUARDS enforced"
 
       - name: Index Audit (Prevent Schema Drift)
