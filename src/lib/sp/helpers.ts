@@ -25,6 +25,7 @@ export interface StaffIdentifier {
 }
 
 import { trimGuidBraces } from './spSchema';
+import { trackSpEvent } from '@/lib/telemetry/spTelemetry';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -239,6 +240,11 @@ export async function fetchRawItemsWithFieldFallback(
       if (err instanceof Error && err.message.startsWith('HTTP 400:') && fields.length > 1) {
         const missing = extractMissingField(err.message);
         if (missing && fields.includes(missing)) {
+          trackSpEvent('sp:fail_open_triggered', {
+            listName: listTitle,
+            error: `HTTP 400: Field '${missing}' missing. Falling back.`,
+            details: { missingField: missing, remainingFields: fields.length - 1 }
+          });
           skippedFields.push(missing);
           fields = fields.filter((f) => f !== missing);
           continue;

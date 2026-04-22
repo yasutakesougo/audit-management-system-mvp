@@ -48,6 +48,10 @@ export enum ListKeys {
   DailyRecordParent = 'SupportRecord_Daily',
   MonthlyRecordSummary = 'MonthlyRecord_Summary',
   RemediationAuditLog = 'Remediation_AuditLog',
+  DriftEventsLog_v2 = 'DriftEventsLog_v2',
+  SupportProcedure_Results = 'SupportProcedure_Results',
+  Approval_Logs = 'Approval_Logs',
+  User_Feature_Flags = 'User_Feature_Flags',
 }
 
 
@@ -94,5 +98,9 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.DailyRecordParent]: { title: 'SupportRecord_Daily' },
   [ListKeys.MonthlyRecordSummary]: { title: 'MonthlyRecord_Summary' },
   [ListKeys.RemediationAuditLog]: { title: 'Remediation_AuditLog' },
+  [ListKeys.DriftEventsLog_v2]: { title: 'DriftEventsLog_v2' },
+  [ListKeys.SupportProcedure_Results]: { title: 'SupportProcedure_Results' },
+  [ListKeys.Approval_Logs]: { title: 'Approval_Logs' },
+  [ListKeys.User_Feature_Flags]: { title: 'User_Feature_Flags' },
 };
 

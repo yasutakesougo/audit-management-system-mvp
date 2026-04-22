@@ -1,0 +1,92 @@
+ListName,InternalName,DisplayName,TypeAsString,Hidden,ReadOnly,FromBaseType,Indexed,Classification,Reason,RecommendedAction
+Iceberg_Analysis,ContentTypeId,コンテンツ タイプの ID,ContentTypeId,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,Title,タイトル,Text,false,false,true,false,keep_system,FromBaseType=true,KEEP
+Iceberg_Analysis,_ModerationComments,承認者のコメント,Note,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,File_x0020_Type,ファイルの種類,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_ColorHex,色,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_ColorTag,色タグ,Text,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_Emoji,絵文字,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,ComplianceAssetId,コンプライアンス資産 ID,Text,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,EntryHash,EntryHash,Text,false,false,false,true,keep_ssot,Exact match with SSOT or candidates,KEEP
+Iceberg_Analysis,SessionId,SessionId,Text,false,false,false,true,keep_ssot,Exact match with SSOT or candidates,KEEP
+Iceberg_Analysis,UserId,UserId,Text,false,false,false,true,keep_ssot,Exact match with SSOT or candidates,KEEP
+Iceberg_Analysis,PayloadJson,PayloadJson,Note,false,false,false,false,keep_ssot,Exact match with SSOT or candidates,KEEP
+Iceberg_Analysis,SchemaVersion,SchemaVersion,Number,false,false,false,false,keep_ssot,Exact match with SSOT or candidates,KEEP
+Iceberg_Analysis,UpdatedAt,UpdatedAt,DateTime,false,false,false,false,keep_ssot,Exact match with SSOT or candidates,KEEP
+Iceberg_Analysis,ID,ID,Counter,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,ContentType,コンテンツ タイプ,Computed,false,false,true,false,keep_system,FromBaseType=true,KEEP
+Iceberg_Analysis,Modified,更新日時,DateTime,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,Created,登録日時,DateTime,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,Author,登録者,User,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,Editor,更新者,User,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_HasCopyDestinations,コピー先の有無,Boolean,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_CopySource,コピー元,Text,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,owshiddenversion,owshiddenversion,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,WorkflowVersion,ワークフローのバージョン,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_UIVersion,UI バージョン,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_UIVersionString,バージョン,Text,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,Attachments,添付ファイル,Attachments,false,false,true,false,keep_system,FromBaseType=true,KEEP
+Iceberg_Analysis,_ModerationStatus,承認の状況,ModStat,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,Edit,編集,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,LinkTitleNoMenu,タイトル,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,LinkTitle,タイトル,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,LinkTitle2,タイトル,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,SelectTitle,選択,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,InstanceID,インスタンス ID,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,Order,順序,Number,true,false,true,false,keep_system,"Hidden=true, FromBaseType=true",KEEP
+Iceberg_Analysis,GUID,GUID,Guid,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,WorkflowInstanceID,ワークフロー インスタンス ID,Guid,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,FileRef,URL パス,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,FileDirRef,パス,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,Last_x0020_Modified,更新日時,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,Created_x0020_Date,登録日時,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,FSObjType,アイテムの種類,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,SortBehavior,並べ替えの種類,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,PermMask,有効な権限マスク,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,PrincipalCount,プリンシパルの数,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,FileLeafRef,名前,File,true,false,true,false,keep_system,"Hidden=true, FromBaseType=true",KEEP
+Iceberg_Analysis,UniqueId,固有 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,ParentUniqueId,ドキュメントの親 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,SyncClientId,クライアント ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,ProgId,ProgId,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,ScopeId,ScopeId,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,HTML_x0020_File_x0020_Type,HTML ファイルの種類,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_EditMenuTableStart,メニュー テーブルの編集の開始,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_EditMenuTableStart2,メニュー テーブルの編集の開始,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_EditMenuTableEnd,メニュー テーブルの編集の終了,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,LinkFilenameNoMenu,名前,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,LinkFilename,名前,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,LinkFilename2,名前,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,DocIcon,種類,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,ServerUrl,サーバーの相対 URL,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,EncodedAbsUrl,エンコードされた絶対 URL,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,BaseName,ファイル名,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,MetaInfo,プロパティ バッグ,Lookup,true,false,true,false,keep_system,"Hidden=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_Level,レベル,Integer,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_IsCurrentVersion,現在のバージョン,Boolean,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,ItemChildCount,子アイテムの数,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,FolderChildCount,子フォルダーの数,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,Restricted,制限付き,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,OriginatorId,発信者 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,NoExecute,NoExecute,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,ContentVersion,コンテンツのバージョン,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_ComplianceFlags,ラベルの設定,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_ComplianceTag,保持ラベル,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_ComplianceTagWrittenTime,保持ラベルを適用済み,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_ComplianceTagUserId,ラベルの適用者,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_IsRecord,レコードとして登録されているアイテム,Computed,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,AccessPolicy,アクセス ポリシー,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_VirusStatus,VirusStatus,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_VirusVendorID,VirusVendorID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_VirusInfo,VirusInfo,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_RansomwareAnomalyMetaInfo,RansomwareAnomalyMetaInfo,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_DraftOwnerId,下書き所有者 ID,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,MainLinkSettings,メイン リンクの設定,Computed,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,AppAuthor,アプリの作成者,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,AppEditor,アプリの変更者,Lookup,false,true,true,false,keep_system,"ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,SMTotalSize,合計サイズ,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,SMLastModifiedDate,最終更新日,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,SMTotalFileStreamSize,ファイル ストリームの合計サイズ,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,SMTotalFileCount,合計ファイル数,Lookup,true,true,true,false,keep_system,"Hidden=true, ReadOnly=true, FromBaseType=true",KEEP
+Iceberg_Analysis,_CommentFlags,コメントの設定,Lookup,true,true,false,false,keep_system,"Hidden=true, ReadOnly=true",KEEP
+Iceberg_Analysis,_CommentCount,コメント数,Lookup,true,true,false,false,keep_system,"Hidden=true, ReadOnly=true",KEEP

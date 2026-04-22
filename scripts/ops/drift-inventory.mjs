@@ -18,6 +18,9 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// tsx will handle the .ts import
+import { SP_SYSTEM_FIELDS } from '../../src/sharepoint/spSystemFields.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = resolve(__dirname, '..', '..');
@@ -63,190 +66,24 @@ if (FULL_SCAN && (!SITE_URL || !TOKEN)) {
   process.exit(2);
 }
 
-// ── SSOT textual parser ─────────────────────────────────────────────────────
-
-const SSOT_PATH = resolve(REPO_ROOT, 'src/sharepoint/spListRegistry.ts');
-const LIST_CONFIG_PATH = resolve(REPO_ROOT, 'src/sharepoint/fields/listRegistry.ts');
-
-/** Parse LIST_CONFIG map: ListKeys.Foo → 'Foo_Title'. */
-function parseListConfig(text) {
-  const map = {};
-  const re = /\[ListKeys\.(\w+)\]:\s*\{\s*title:\s*'([^']+)'\s*\}/g;
-  let m;
-  while ((m = re.exec(text)) !== null) {
-    map[m[1]] = m[2];
-  }
-  return map;
-}
-
-/** Extract top-level `{...}` objects inside a named array literal. String-aware, brace-counting. */
-function extractArrayObjects(text, startToken) {
-  const idx = text.indexOf(startToken);
-  if (idx === -1) return [];
-  // Find the literal `= [` that opens the array assignment. TypeScript type
-  // annotations (e.g. `SpListEntry[]`) contain brackets we must skip over.
-  const assignRe = /=\s*\[/g;
-  assignRe.lastIndex = idx;
-  const assignMatch = assignRe.exec(text);
-  if (!assignMatch) return [];
-  const openBracket = assignMatch.index + assignMatch[0].length - 1;
-  const entries = [];
-  let depth = 0;
-  let braceDepth = 0;
-  let entryStart = -1;
-  let inString = null;
-  let prev = '';
-  for (let i = openBracket; i < text.length; i++) {
-    const c = text[i];
-    if (inString) {
-      if (c === inString && prev !== '\\') inString = null;
-      prev = c;
-      continue;
-    }
-    if (c === "'" || c === '"' || c === '`') {
-      inString = c;
-      prev = c;
-      continue;
-    }
-    if (c === '[') depth++;
-    else if (c === ']') {
-      depth--;
-      if (depth === 0) break;
-    } else if (c === '{') {
-      if (depth === 1 && braceDepth === 0) entryStart = i;
-      braceDepth++;
-    } else if (c === '}') {
-      braceDepth--;
-      if (depth === 1 && braceDepth === 0 && entryStart !== -1) {
-        entries.push(text.slice(entryStart, i + 1));
-        entryStart = -1;
-      }
-    }
-    prev = c;
-  }
-  return entries;
-}
-
-/** Extract a balanced `[...]` array body immediately after a key. Returns the inner body string or null. */
-function extractArrayBody(entry, key) {
-  const re = new RegExp(`${key}\\s*:\\s*\\[`);
-  const m = re.exec(entry);
-  if (!m) return null;
-  const start = m.index + m[0].length - 1; // index of '['
-  let depth = 0;
-  let inString = null;
-  let prev = '';
-  for (let i = start; i < entry.length; i++) {
-    const c = entry[i];
-    if (inString) {
-      if (c === inString && prev !== '\\') inString = null;
-      prev = c;
-      continue;
-    }
-    if (c === "'" || c === '"' || c === '`') {
-      inString = c;
-      prev = c;
-      continue;
-    }
-    if (c === '[') depth++;
-    else if (c === ']') {
-      depth--;
-      if (depth === 0) return entry.slice(start + 1, i);
-    }
-    prev = c;
-  }
-  return null;
-}
-
-/** Parse essentialFields array body: ['A', 'B', 'C']. */
-function parseStringArray(body) {
-  if (!body) return [];
-  const out = [];
-  const re = /'([^']+)'/g;
-  let m;
-  while ((m = re.exec(body)) !== null) out.push(m[1]);
-  return out;
-}
-
-/** Parse provisioningFields entries. Returns [{ internalName, candidates: [] }]. */
-function parseProvisioning(body) {
-  if (!body) return [];
-  const out = [];
-  // Each entry is a single-line (or wrapped) object literal starting with `{ internalName: '...'
-  // Scan by brace matching at depth 1.
-  let depth = 0;
-  let entryStart = -1;
-  let inString = null;
-  let prev = '';
-  for (let i = 0; i < body.length; i++) {
-    const c = body[i];
-    if (inString) {
-      if (c === inString && prev !== '\\') inString = null;
-      prev = c;
-      continue;
-    }
-    if (c === "'" || c === '"' || c === '`') {
-      inString = c;
-      prev = c;
-      continue;
-    }
-    if (c === '{') {
-      if (depth === 0) entryStart = i;
-      depth++;
-    } else if (c === '}') {
-      depth--;
-      if (depth === 0 && entryStart !== -1) {
-        const entry = body.slice(entryStart, i + 1);
-        const nm = /internalName:\s*'([^']+)'/.exec(entry);
-        if (nm) {
-          const candBody = extractArrayBody(entry, 'candidates');
-          out.push({
-            internalName: nm[1],
-            candidates: parseStringArray(candBody),
-          });
-        }
-        entryStart = -1;
-      }
-    }
-    prev = c;
-  }
-  return out;
-}
+// ── SSOT Loader ────────────────────────────────────────────────────────────
 
 /** Load SSOT into { listKey → { listTitle, essentialFields[], provisioningFields[], lifecycle, category } }. */
-function loadSsot() {
-  const ssotText = readFileSync(SSOT_PATH, 'utf-8');
-  const configText = readFileSync(LIST_CONFIG_PATH, 'utf-8');
-  const listConfig = parseListConfig(configText);
-
-  const entries = extractArrayObjects(ssotText, 'SP_LIST_REGISTRY');
+async function loadSsot() {
+  const { SP_LIST_REGISTRY } = await import('../../src/sharepoint/spListRegistry.js');
+  
   const out = {};
-  for (const entry of entries) {
-    const keyMatch = /\bkey:\s*'([^']+)'/.exec(entry);
-    if (!keyMatch) continue;
-    const lifecycleMatch = /\blifecycle:\s*'([^']+)'/.exec(entry);
-    const categoryMatch = /\bcategory:\s*'([^']+)'/.exec(entry);
-    const fromConfigMatch = /fromConfig\(ListKeys\.(\w+)\)/.exec(entry);
-    let listTitle = null;
-    if (fromConfigMatch) {
-      listTitle = listConfig[fromConfigMatch[1]] || null;
-    }
-    if (!listTitle) {
-      // Fallback: envOr('VITE_XXX', 'LiteralTitle') or envOr("...", "...")
-      const envOrMatch = /envOr\(\s*['"][^'"]+['"]\s*,\s*['"]([^'"]+)['"]\s*\)/.exec(entry);
-      if (envOrMatch) listTitle = envOrMatch[1];
-    }
-
-    const essentialBody = extractArrayBody(entry, 'essentialFields');
-    const provBody = extractArrayBody(entry, 'provisioningFields');
-
-    out[keyMatch[1]] = {
-      listKey: keyMatch[1],
-      listTitle: listTitle || '(unresolved)',
-      lifecycle: lifecycleMatch ? lifecycleMatch[1] : 'unknown',
-      category: categoryMatch ? categoryMatch[1] : 'other',
-      essentialFields: parseStringArray(essentialBody),
-      provisioningFields: parseProvisioning(provBody),
+  for (const entry of SP_LIST_REGISTRY) {
+    out[entry.key] = {
+      listKey: entry.key,
+      listTitle: entry.resolve(),
+      lifecycle: entry.lifecycle,
+      category: entry.category,
+      essentialFields: entry.essentialFields || [],
+      provisioningFields: (entry.provisioningFields || []).map(pf => ({
+        internalName: pf.internalName,
+        candidates: pf.candidates || []
+      })),
     };
   }
   return out;
@@ -377,7 +214,7 @@ function classifyExpected(expected, candidates, snapshotEntry, requirement, cove
     return {
       driftType: 'fuzzy_match',
       actualField: enc,
-      severity: 'warn',
+      severity: 'info',
       actionCandidate: 'rename-migrate',
       notes: `_xNNNN_ encoding (SharePoint space/special-char transform).`,
     };
@@ -388,7 +225,7 @@ function classifyExpected(expected, candidates, snapshotEntry, requirement, cove
     return {
       driftType: 'fuzzy_match',
       actualField: trunc,
-      severity: 'warn',
+      severity: 'info',
       actionCandidate: 'rename-migrate',
       notes: `Truncated internal name (likely SharePoint length clip).`,
     };
@@ -399,7 +236,7 @@ function classifyExpected(expected, candidates, snapshotEntry, requirement, cove
     return {
       driftType: 'fallback',
       actualField: cand,
-      severity: 'warn',
+      severity: 'info',
       actionCandidate: 'add-canonical',
       notes: `Resolved via SSOT candidates list (canonical '${expected}' not present).`,
     };
@@ -435,7 +272,7 @@ function classifyExpected(expected, candidates, snapshotEntry, requirement, cove
 }
 
 /** System fields that always exist and should not be flagged as zombies. */
-const SYSTEM_FIELDS = new Set(['Id', 'ID', 'Title', 'Created', 'Modified', 'Author', 'Editor', 'GUID', 'FileRef', 'FileDirRef']);
+const SYSTEM_FIELDS = SP_SYSTEM_FIELDS;
 
 // ── Row assembly ────────────────────────────────────────────────────────────
 
@@ -708,7 +545,7 @@ async function main() {
   const modeLabel = FULL_SCAN ? 'PROACTIVE (Full Scan)' : 'REACTIVE (Log Snapshot)';
   console.log(`🔍 Drift Inventory — Mode: ${modeLabel}`);
 
-  const ssot = loadSsot();
+  const ssot = await loadSsot();
   const ssotCount = Object.keys(ssot).length;
   console.log(`   SSOT entries loaded: ${ssotCount}`);
 
@@ -737,6 +574,45 @@ async function main() {
 
   console.log(`✅ CSV: ${csvPath}`);
   console.log(`✅ MD:  ${mdPath}`);
+
+  // [Hardening Phase E] ドリフト回帰の自動検知
+  // 前回の CSV を読み込み、新規に zombie_candidate が増えていないかチェックする
+  try {
+    const { readdirSync } = await import('node:fs');
+    const files = readdirSync(OUT_DIR).filter(f => f.startsWith('drift-inventory-') && f.endsWith('.csv') && f !== `drift-inventory-${stamp}.csv`);
+    const prevFile = files.sort().reverse()[0];
+    if (prevFile) {
+      const prevPath = join(OUT_DIR, prevFile);
+      const prevCsv = readFileSync(prevPath, 'utf-8');
+      const prevZombies = prevCsv.split('\n').filter(l => l.includes('zombie_candidate')).map(l => l.split(',')[1] + ':' + l.split(',')[3]);
+      const currentZombies = rows.filter(r => r.driftType === 'zombie_candidate').map(r => r.listTitle + ':' + r.actualField);
+      
+      const newZombies = currentZombies.filter(z => !prevZombies.includes(z));
+      if (newZombies.length > 0) {
+        console.warn(`⚠️ REGRESSION DETECTED: ${newZombies.length} new zombie columns found!`);
+        console.warn(newZombies.map(z => `   - ${z}`).join('\n'));
+        
+        // Nightly Patrol 連携用のシグナル出力
+        const summaryPath = join(REPO_ROOT_PATH, '.nightly', 'runtime-summary.json');
+        try {
+          const summary = JSON.parse(readFileSync(summaryPath, 'utf-8'));
+          summary.healthSignals = summary.healthSignals || [];
+          summary.healthSignals.push({
+            type: 'drift_regression',
+            severity: 'critical',
+            message: `${newZombies.length}件の新規ゾンビ列が検出されました。プロビジョニング・ガードのバイパスが発生した可能性があります。`,
+            details: { newZombies }
+          });
+          summary.action_required = true;
+          writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
+        } catch (e) {
+          // ignore if summary file doesn't exist
+        }
+      }
+    }
+  } catch (e) {
+    console.warn(`⚠️ Could not perform regression check: ${e.message}`);
+  }
 }
 
 main().catch(err => {
