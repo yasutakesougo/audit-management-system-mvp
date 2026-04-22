@@ -83,7 +83,55 @@ function readDecision(date: string) {
     final: { label: string };
     reasonCodes: { fail: string[]; warn: string[] };
     escalations?: Array<{ type: string; days: number; code: string }>;
+    runbook?: {
+      reasonCodeActions?: {
+        fail?: Array<{
+          code: string;
+          owner: string;
+          severity: 'watch' | 'action_required' | 'blocked';
+          firstAction: string;
+          runbookLink: string | null;
+        }>;
+        warn?: Array<{
+          code: string;
+          owner: string;
+          severity: 'watch' | 'action_required' | 'blocked';
+          firstAction: string;
+          runbookLink: string | null;
+        }>;
+      };
+    };
   };
+}
+
+function assertReasonCodeActions(result: ReturnType<typeof readDecision>) {
+  const verifyBucket = (
+    bucket: 'fail' | 'warn',
+    codes: string[],
+    actions: Array<{
+      code: string;
+      owner: string;
+      severity: 'watch' | 'action_required' | 'blocked';
+      firstAction: string;
+      runbookLink: string | null;
+    }> | undefined,
+  ) => {
+    const safeActions = actions ?? [];
+    expect(safeActions.length).toBe(codes.length);
+
+    for (const code of codes) {
+      const action = safeActions.find((entry) => entry.code === code);
+      expect(action, `${bucket} bucket missing action metadata for ${code}`).toBeDefined();
+      expect(action?.owner?.trim().length).toBeGreaterThan(0);
+      expect(action?.severity).toMatch(/^(watch|action_required|blocked)$/);
+      expect(action?.firstAction?.trim().length).toBeGreaterThan(0);
+      expect(action?.runbookLink).toBeTruthy();
+      expect(action?.runbookLink).toContain('PRODUCTION-GO-LIVE.md#rc-');
+    }
+  };
+
+  verifyBucket('fail', result.reasonCodes.fail, result.runbook?.reasonCodeActions?.fail);
+  verifyBucket('warn', result.reasonCodes.warn, result.runbook?.reasonCodeActions?.warn);
 }
 
 function cleanupDates(dates: string[]) {
@@ -172,11 +220,30 @@ describe('nightly-decision reason codes', () => {
       const result = JSON.parse(readFileSync(path.join(REPORT_DIR, `decision-${date}.json`), 'utf8')) as {
         final: { label: string };
         reasonCodes: { fail: string[]; warn: string[] };
+        runbook?: {
+          reasonCodeActions?: {
+            fail?: Array<{
+              code: string;
+              owner: string;
+              severity: 'watch' | 'action_required' | 'blocked';
+              firstAction: string;
+              runbookLink: string | null;
+            }>;
+            warn?: Array<{
+              code: string;
+              owner: string;
+              severity: 'watch' | 'action_required' | 'blocked';
+              firstAction: string;
+              runbookLink: string | null;
+            }>;
+          };
+        };
       };
 
       expect(result.final.label).toBe('action_required');
       expect(result.reasonCodes.fail).toEqual(expect.arrayContaining(['ADMIN_STATUS_FAIL', 'EXCEPTION_HIGH_SEVERITY']));
       expect(result.reasonCodes.warn).toEqual(expect.arrayContaining(['PATROL_MONITOR', 'EXCEPTION_OVERDUE_PRESENT']));
+      assertReasonCodeActions(result as ReturnType<typeof readDecision>);
     } finally {
       cleanupDateArtifacts(date);
     }
@@ -199,11 +266,30 @@ describe('nightly-decision reason codes', () => {
 
       const result = JSON.parse(readFileSync(path.join(REPORT_DIR, `decision-${date}.json`), 'utf8')) as {
         reasonCodes: { fail: string[]; warn: string[] };
+        runbook?: {
+          reasonCodeActions?: {
+            fail?: Array<{
+              code: string;
+              owner: string;
+              severity: 'watch' | 'action_required' | 'blocked';
+              firstAction: string;
+              runbookLink: string | null;
+            }>;
+            warn?: Array<{
+              code: string;
+              owner: string;
+              severity: 'watch' | 'action_required' | 'blocked';
+              firstAction: string;
+              runbookLink: string | null;
+            }>;
+          };
+        };
       };
 
       expect(result.reasonCodes.warn).toEqual(
         expect.arrayContaining(['ADMIN_STATUS_SUMMARY_MISSING', 'EXCEPTION_CENTER_SUMMARY_MISSING']),
       );
+      assertReasonCodeActions(result as ReturnType<typeof readDecision>);
     } finally {
       cleanupDateArtifacts(date);
     }
@@ -239,6 +325,7 @@ describe('nightly-decision reason codes', () => {
           code: 'EXCEPTION_OVERDUE_PRESENT',
         }),
       ]));
+      assertReasonCodeActions(result);
     } finally {
       cleanupDates([date, prev1, prev2]);
     }
@@ -266,6 +353,7 @@ describe('nightly-decision reason codes', () => {
       expect(result.final.label).toBe('watch');
       expect(result.reasonCodes.fail).not.toEqual(expect.arrayContaining(['WATCH_STREAK_3D::EXCEPTION_OVERDUE_PRESENT']));
       expect(result.escalations ?? []).toHaveLength(0);
+      assertReasonCodeActions(result);
     } finally {
       cleanupDates([date, prev1]);
     }
@@ -293,6 +381,7 @@ describe('nightly-decision reason codes', () => {
       expect(result.final.label).toBe('watch');
       expect(result.reasonCodes.fail).not.toEqual(expect.arrayContaining(['WATCH_STREAK_3D::EXCEPTION_OVERDUE_PRESENT']));
       expect(result.escalations ?? []).toHaveLength(0);
+      assertReasonCodeActions(result);
     } finally {
       cleanupDates([date, prev2]);
     }
@@ -322,6 +411,7 @@ describe('nightly-decision reason codes', () => {
       expect(result.final.label).toBe('watch');
       expect(result.reasonCodes.fail).not.toEqual(expect.arrayContaining(['WATCH_STREAK_3D::EXCEPTION_OVERDUE_PRESENT']));
       expect(result.escalations ?? []).toHaveLength(0);
+      assertReasonCodeActions(result);
     } finally {
       cleanupDates([date, prev1, prev2]);
     }
@@ -354,6 +444,7 @@ describe('nightly-decision reason codes', () => {
       expect(result.reasonCodes.fail).toEqual(expect.arrayContaining(['ADMIN_STATUS_FAIL']));
       expect(result.reasonCodes.fail).not.toEqual(expect.arrayContaining(['WATCH_STREAK_3D::EXCEPTION_OVERDUE_PRESENT']));
       expect(result.escalations ?? []).toHaveLength(0);
+      assertReasonCodeActions(result);
     } finally {
       cleanupDates([date, prev1, prev2]);
     }
