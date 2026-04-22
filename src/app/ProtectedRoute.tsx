@@ -6,6 +6,7 @@ import { isE2E } from '@/env';
 import { authDiagnostics } from '@/features/auth/diagnostics/collector';
 import { getSchedulesListTitle } from '@/features/schedules/data/spSchema';
 import { createAuthCorrId, summarizeAuthBlockReason, type AuthDiagSummary } from '@/lib/authDiag';
+import { reportSpHealthEvent } from '@/features/sp/health/spHealthSignalStore';
 import { getAppConfig, readEnv } from '@/lib/env';
 import { buildSchedulesListReadyKey, clearRuntimeListReady, isRuntimeListReady, setRuntimeListReady } from '@/lib/listReadyRuntime';
 import { getAuthGuardState } from '@/lib/auth/guardResolution';
@@ -32,6 +33,9 @@ type MsalAccountIdentity = {
 /**
  * Development-only debug logging to avoid production noise
  */
+/** Schedules Gate Escape Hatch Timeout (ms) */
+const SCHEDULE_GATE_ESCAPE_HATCH_MS = 7_000;
+
 const debug = (...args: unknown[]) => {
   if (getAppConfig().isDev) {
     // eslint-disable-next-line no-console
@@ -166,7 +170,7 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
 
     if (listContextKeyRef.current === null) {
       listContextKeyRef.current = nextContextKey;
-      return;
+      // Do not return here; we want to proceed to the next checks in the same render cycle
     }
 
     if (listContextKeyRef.current !== nextContextKey) {
@@ -293,13 +297,14 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
         console.error(`[ProtectedRoute] List existence check failed (attempt ${attempt + 1}):`, error);
 
         if ((isTimeout || isRetryableStatus) && attempt < MAX_RETRIES) {
-          // Note: we no longer setListGate('idle') to prevent infinite re-firing.
-          // We rely on the internal retry loop within the service if needed, 
-          // or simply accept 'blocked' status for this mount.
           listCheckRetryRef.current = attempt + 1;
-          // Keep current state ('checking') and don't re-trigger effect.
-          // In a real scenario, we might want to wait and retry, but for stability,
-          // we stop the immediate cycle.
+          console.warn(`[ProtectedRoute] Retrying list existence check in 2 seconds... (Attempt ${attempt + 1}/${MAX_RETRIES})`);
+          setTimeout(() => {
+            if (!isStaleRun()) {
+              setListGate('idle');
+            }
+          }, 2000);
+          return;
         }
 
         listCheckRetryRef.current = 0;
@@ -331,6 +336,40 @@ export default function ProtectedRoute({ flag, children, fallbackPath = '/' }: P
 
     void checkSchedulesListExistence();
   }, [flag, listGate, acquireToken, setListReadyState, accountRuntimeId, tenantRuntimeId]);
+
+  // 🛡️ Fail-Safe: If stuck in 'idle' or 'checking' for too long while auth is ready, 
+  // force optimistic transition to 'ready' to avoid permanent UI hang.
+  useEffect(() => {
+    if (flag !== 'schedules' || listGate === 'ready' || listGate === 'blocked' || !tokenReady) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const diagReason = listGate === 'idle' ? 'init_handshake_hang' : 'metadata_probe_timeout';
+      console.warn(`[ProtectedRoute] List check took too long (> ${SCHEDULE_GATE_ESCAPE_HATCH_MS}ms); forcing optimistic readiness to unblock UI. (Reason: ${diagReason})`);
+      
+      // ✅ Telemetry: Record that we had to use the escape hatch
+      reportSpHealthEvent({
+        severity: 'watch',
+        reasonCode: 'sp_gate_escape_hatch',
+        listName: getSchedulesListTitle(),
+        message: `Schedules gate exceeded ${SCHEDULE_GATE_ESCAPE_HATCH_MS}ms. Forced bypass triggered.`,
+        source: 'realtime',
+        occurredAt: new Date().toISOString(),
+        remediation: {
+          summary: 'List verification stalled. Please check SharePoint connectivity or MSAL token refresh health.',
+          commands: [],
+          caution: 'Application is running in optimistic mode. Data operations may still fail downstream.',
+          isDestructive: false
+        }
+      });
+
+      setListReadyState(true);
+      setListGate('ready');
+    }, SCHEDULE_GATE_ESCAPE_HATCH_MS);
+
+    return () => clearTimeout(timer);
+  }, [flag, listGate, tokenReady, setListReadyState]);
 
   // Collect diagnostics when the blocking reason changes
   // This must be in useEffect to avoid render-phase setState warnings
