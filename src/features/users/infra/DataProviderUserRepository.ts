@@ -240,8 +240,8 @@ export class DataProviderUserRepository implements UserRepository {
           fallback[key] = cands[0];
           fieldStatus[key] = {
             candidates: cands,
-            isSilent: !USERS_MASTER_ESSENTIALS.includes(key as any),
-            isEssential: USERS_MASTER_ESSENTIALS.includes(key as any)
+            isSilent: !(USERS_MASTER_ESSENTIALS as readonly string[]).includes(key),
+            isEssential: (USERS_MASTER_ESSENTIALS as readonly string[]).includes(key)
           };
         }
         this.resolvedFields = fallback;
@@ -1130,7 +1130,8 @@ export class DataProviderUserRepository implements UserRepository {
 
     return [
       'Id', 'Title', 'Modified', 'Created',
-      ...Object.entries(fields).filter(([logicalKey, physicalName]): physicalName is string => {
+      ...(Object.entries(fields).filter((entry): entry is [string, string] => {
+        const [logicalKey, physicalName] = entry;
         if (!physicalName) return false;
         
         // 必須フィールドは解決成否にかかわらず含める（フォールバックでも400の代償を払って読みに行く）
@@ -1148,7 +1149,7 @@ export class DataProviderUserRepository implements UserRepository {
         
         // 分離先リストの列として解決されている物理名はメインリストの select から外す
         return !accessoryPhysicalFields.has(physicalName);
-      }).map(([_, name]) => name)
+      }).map(([_, name]) => name) as string[])
     ].filter((v, i, a) => a.indexOf(v) === i);
   }
 }
