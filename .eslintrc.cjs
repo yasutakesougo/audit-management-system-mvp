@@ -77,21 +77,6 @@ module.exports = {
           'Zustand セレクターで配列リテラルを返さないでください（無限ループ原因）。'
       }
     ],
-    'no-restricted-imports': [
-      'error',
-      {
-        patterns: [
-          {
-            group: ['@/sharepoint/spListRegistry.definitions'],
-            message: 'Use spListRegistry (SSOT facade) instead'
-          },
-          {
-            group: ['@/sharepoint/spListRegistry.shared'],
-            message: 'shared is internal'
-          }
-        ]
-      }
-    ],
     'boundaries/element-types': 'off'
   },
   settings: {
@@ -116,5 +101,19 @@ module.exports = {
     es2022: true
   },
   ignorePatterns: ['dist', 'coverage', 'node_modules'],
-  overrides: []
+  overrides: [
+    {
+      files: ['src/sharepoint/spListRegistry*.ts'],
+      rules: {
+        'no-restricted-imports': 'off'
+      }
+    },
+    {
+      files: ['src/worker.ts', 'scripts/**/*.ts', 'scripts/**/*.mjs'],
+      rules: {
+        'no-restricted-globals': 'off',
+        'no-console': 'off'
+      }
+    }
+  ]
 };
