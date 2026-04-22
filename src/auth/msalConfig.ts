@@ -30,7 +30,9 @@ const appConfig = getAppConfig();
 
 // Validate MSAL environment variables only when core keys are present (Issue #344)
 // CI/E2E with env未設定 → returns null (no validation)
-const msalEnv = readMsalEnv(import.meta.env);
+const msalEnv = typeof import.meta !== 'undefined' && import.meta.env 
+  ? readMsalEnv(import.meta.env) 
+  : null;
 if (msalEnv) {
   console.info('[MSAL ENV] Validated successfully');
 } else {
