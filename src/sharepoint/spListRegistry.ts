@@ -8,14 +8,7 @@
  */
 
 import {
-  attendanceListEntries,
-  complianceListEntries,
-  dailyListEntries,
-  handoffListEntries,
-  masterListEntries,
-  meetingListEntries,
-  otherListEntries,
-  scheduleListEntries,
+  listDefinitions,
 } from './spListRegistry.definitions';
 import type { SpListCategory, SpListEntry } from './spListRegistry.shared';
 
@@ -33,16 +26,10 @@ export type {
 /**
  * SharePoint リスト レジストリ — 全リストの Single Source of Truth
  */
-export const SP_LIST_REGISTRY = [
-  ...masterListEntries,
-  ...dailyListEntries,
-  ...attendanceListEntries,
-  ...scheduleListEntries,
-  ...meetingListEntries,
-  ...handoffListEntries,
-  ...complianceListEntries,
-  ...otherListEntries,
-] as const satisfies readonly SpListEntry[];
+export const SP_LIST_REGISTRY = listDefinitions;
+
+/** 互換性のためのエイリアス */
+export { listDefinitions };
 
 /** キーでリスト定義を取得 */
 export const findListEntry = (key: string): SpListEntry | undefined =>
