@@ -46,7 +46,7 @@ function getFlagValue(name) {
 
 const LIST_FILTER = getFlagValue('list');
 const OUTPUT_DIR = getFlagValue('output-dir') || join(REPO_ROOT, 'artifacts', 'zombie-audit');
-const SSOT_PATH = resolve(REPO_ROOT, 'src/sharepoint/fields/childListSchemas.ts');
+const SSOT_PATH = resolve(REPO_ROOT, 'src/sharepoint/spListRegistry.ts');
 
 // 保守対象リストと、その「正解」となる InternalName のプレフィックス
 const TARGETS = [
@@ -82,60 +82,40 @@ const TARGETS = [
       "ParentScheduleId", "ResultDate", "ResultStatus", "ResultNote", "StaffCode",
       "Status", "Comment", "CompletedAt", "ProcedureId" // 互換性・旧名の後始末用
     ]
+  },
+  {
+    list: "Iceberg_Analysis",
+    patterns: [
+      "Title", "EntryHash", "SessionId", "UserId", "PayloadJson", "SchemaVersion", "UpdatedAt"
+    ]
   }
 ];
 
 // ── SSOT loader ─────────────────────────────────────────────────────────────
 
 /**
- * childListSchemas.ts を読み、リストタイトル → canonical internalName[] を抽出する。
- * 依存なし。textual parsing for zero-dep portability.
+ * SP_LIST_REGISTRY を読み、リストタイトル → canonical internalName[] を抽出する。
  */
-function loadSsot(ssotPath) {
-  const text = readFileSync(ssotPath, 'utf-8');
-
-  // LIST_TITLE 定数の値を抽出: export const XXX_LIST_TITLE = 'YYY';
-  const titleConsts = {};
-  const titleRegex = /export const (\w+_LIST_TITLE)\s*=\s*'([^']+)'/g;
-  let m;
-  while ((m = titleRegex.exec(text)) !== null) {
-    titleConsts[m[1]] = m[2];
-  }
-
-  // FIELDS 配列を抽出: export const XXX_FIELDS: SpFieldDef[] = [ ... ];
-  // プレフィックス (RESULTS / APPROVAL_LOG / USER_FLAG) を LIST_TITLE 定数にマップ
-  const prefixToTitleKey = {
-    RESULTS: 'RESULTS_LIST_TITLE',
-    APPROVAL_LOG: 'APPROVAL_LOGS_LIST_TITLE',
-    USER_FLAG: 'USER_FLAGS_LIST_TITLE',
-  };
+async function loadSsot() {
+  const { SP_LIST_REGISTRY } = await import('../../src/sharepoint/spListRegistry.js');
 
   const ssot = {};
-  const blockRegex = /export const (\w+)_FIELDS:\s*SpFieldDef\[\]\s*=\s*\[([\s\S]*?)\n\];/g;
-  while ((m = blockRegex.exec(text)) !== null) {
-    const prefix = m[1];
-    const body = m[2];
-    const titleKey = prefixToTitleKey[prefix];
-    if (!titleKey) continue;
-    const listTitle = titleConsts[titleKey];
-    if (!listTitle) continue;
+  for (const entry of SP_LIST_REGISTRY) {
+    const listTitle = entry.resolve();
+    const names = (entry.provisioningFields || []).map(f => f.internalName);
+    
+    // Add candidates to patterns for better matching
+    const patterns = [
+      ...names,
+      ...(entry.provisioningFields || []).flatMap(f => f.candidates || [])
+    ];
 
-    const names = [];
-    const nameRegex = /internalName:\s*'([^']+)'/g;
-    let nm;
-    while ((nm = nameRegex.exec(body)) !== null) {
-      names.push(nm[1]);
-    }
-    ssot[listTitle] = names;
+    ssot[listTitle] = {
+      key: entry.key,
+      canonicalNames: names,
+      patterns: Array.from(new Set(patterns)) // De-duplicate
+    };
   }
-
-  // SupportRecord_Daily (Hardcoded fallback as it's not in the target file yet)
-  ssot["SupportRecord_Daily"] = [
-    "RecordDate", "ReporterName", "ReporterRole",
-    "UserCount", "LatestVersion", "ApprovalStatus",
-    "Record_x0020_Date", "Reporter_x0020_Name", "Reporter_x0020_Role",
-    "User_x0020_Count", "Latest_x0020_Version", "Approval_x0020_Status"
-  ];
 
   return ssot;
 }
@@ -156,7 +136,7 @@ const ENCODED_PATTERN = /_x[0-9a-fA-F]{4}_/;
  * 1 フィールドを 5 tier のいずれかに分類する。
  * 優先順: system > ssot > drift_suffix > drift_encoded > legacy_unknown
  */
-function classifyField(field, canonicalNames) {
+function classifyField(field, canonicalNames, patterns = []) {
   const internalName = field.InternalName;
   const reasons = [];
 
@@ -167,11 +147,11 @@ function classifyField(field, canonicalNames) {
     return { tier: AUDIT_TIERS.KEEP_SYSTEM, reason: reasons.join(', ') };
   }
 
-  if (canonicalNames.includes(internalName)) {
-    return { tier: AUDIT_TIERS.KEEP_SSOT, reason: 'Exact match with SSOT' };
+  if (canonicalNames.includes(internalName) || patterns.includes(internalName)) {
+    return { tier: AUDIT_TIERS.KEEP_SSOT, reason: 'Exact match with SSOT or candidates' };
   }
 
-  for (const canonical of canonicalNames) {
+  for (const canonical of [...canonicalNames, ...patterns]) {
     if (internalName.startsWith(canonical) && internalName !== canonical) {
       const suffix = internalName.slice(canonical.length);
       if (/^\d+$/.test(suffix)) {
@@ -369,15 +349,11 @@ function getSsotCommit() {
 async function auditRun() {
   console.log(`\n🔍 SharePoint ゾンビ列棚卸しモード (read-only audit)\n`);
 
-  const ssot = loadSsot(SSOT_PATH);
+  const ssot = await loadSsot();
   const scanTimestamp = new Date().toISOString();
   const ssotCommit = getSsotCommit();
 
-  console.log(`SSOT loaded from ${SSOT_PATH} @ ${ssotCommit}`);
-  for (const [name, cols] of Object.entries(ssot)) {
-    console.log(`  ${name}: ${cols.length} canonical columns`);
-  }
-  console.log('');
+  console.log(`Registry loaded: ${Object.keys(ssot).length} lists mapped.`);
 
   const targetListNames = LIST_FILTER
     ? [LIST_FILTER]
@@ -389,11 +365,12 @@ async function auditRun() {
   const perList = [];
 
   for (const listName of targetListNames) {
-    const canonicalNames = ssot[listName];
-    if (!canonicalNames) {
+    const config = ssot[listName];
+    if (!config) {
       console.error(`⚠️ List "${listName}" not found in SSOT. Skipping.`);
       continue;
     }
+    const { canonicalNames, patterns } = config;
 
     console.log(`--- Auditing [${listName}] ---`);
 
@@ -411,7 +388,7 @@ async function auditRun() {
     }
 
     const rows = fields.map((f) => {
-      const classification = classifyField(f, canonicalNames);
+      const classification = classifyField(f, canonicalNames, patterns);
       return {
         listName,
         internalName: f.InternalName,
@@ -460,7 +437,7 @@ async function auditRun() {
 async function run() {
   console.log(`\n🚀 SharePoint ゾンビ列救出フェーズ開始 (SSOT-backed mode, ${DRY_RUN ? 'DRY RUN' : '実実行 --force'})\n`);
 
-  const ssot = loadSsot(SSOT_PATH);
+  const ssot = await loadSsot();
   const targetListNames = LIST_FILTER
     ? [LIST_FILTER]
     : Object.keys(ssot);
@@ -469,11 +446,12 @@ async function run() {
   let failCount = 0;
 
   for (const listName of targetListNames) {
-    const canonicalNames = ssot[listName];
-    if (!canonicalNames) {
+    const config = ssot[listName];
+    if (!config) {
       console.error(`⚠️ List "${listName}" not found in SSOT. Skipping.`);
       continue;
     }
+    const { canonicalNames, patterns } = config;
 
     console.log(`--- リスト [${listName}] をスキャン中 ---`);
     
@@ -492,7 +470,7 @@ async function run() {
     }
 
     for (const field of fields) {
-      const classification = classifyField(field, canonicalNames);
+      const classification = classifyField(field, canonicalNames, patterns);
       
       if (isZombieClassification(classification.tier)) {
         const internalName = field.InternalName;
