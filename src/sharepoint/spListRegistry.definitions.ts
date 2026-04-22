@@ -727,6 +727,24 @@ export const complianceListEntries: readonly SpListEntry[] = [
       { internalName: 'RemediationSource', type: 'Text', displayName: 'Remediation Source', candidates: ['RemediationSource', 'Source'] },
     ],
   },
+  {
+    key: 'remediation_audit_log',
+    displayName: '修復監査ログ',
+    resolve: () => 'Remediation_AuditLog',
+    operations: ['R', 'W'],
+    category: 'compliance',
+    lifecycle: 'optional',
+    essentialFields: ['PlanId', 'Phase', 'ListKey', 'Action', 'Timestamp'],
+    provisioningFields: [
+      { internalName: 'PlanId', type: 'Text', displayName: 'Plan ID', required: true, indexed: true },
+      { internalName: 'Phase', type: 'Text', displayName: 'Phase', required: true },
+      { internalName: 'ListKey', type: 'Text', displayName: 'List Key', required: true, indexed: true },
+      { internalName: 'Action', type: 'Text', displayName: 'Action', required: true },
+      { internalName: 'Timestamp', type: 'DateTime', displayName: 'Timestamp', required: true },
+      { internalName: 'Status', type: 'Text', displayName: 'Status' },
+      { internalName: 'Payload', type: 'Note', displayName: 'Payload JSON', richText: false },
+    ],
+  },
 ];
 
 export const otherListEntries: readonly SpListEntry[] = [
@@ -811,4 +829,16 @@ export const otherListEntries: readonly SpListEntry[] = [
     category: 'other',
     lifecycle: 'optional',
   },
+];
+
+/** 全リスト定義の統合（参照等価性を維持するため） */
+export const listDefinitions: readonly SpListEntry[] = [
+  ...masterListEntries,
+  ...dailyListEntries,
+  ...attendanceListEntries,
+  ...scheduleListEntries,
+  ...meetingListEntries,
+  ...handoffListEntries,
+  ...complianceListEntries,
+  ...otherListEntries,
 ];
