@@ -79,12 +79,19 @@ export const masterListEntries: readonly SpListEntry[] = [
       'UserID'
     ],
     provisioningFields: [
-      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'User_x0020_ID', 'Title'] },
+      /* 
+       * [Design Decision: Physical Name SSOT]
+       * We intentionally use SharePoint's physical internal names (e.g., 'User_x0020_ID') 
+       * as our design-time internalName to eliminate persistent drift warnings. 
+       * Candidates are still maintained for backward compatibility and cross-env resolution.
+       */
+      { internalName: 'User_x0020_ID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'User_x0020_ID', 'Title'] },
       // RecipientCertNumber moved to _Ext to avoid 8KB limit
       { internalName: 'RecipientCertExpiry', type: 'DateTime', displayName: 'Recipient Cert Expiry', dateTimeFormat: 'DateOnly' },
       { internalName: 'GrantMunicipality', type: 'Text', displayName: 'Grant Municipality', candidates: ['GrantMunicipality', 'Grant_x0020_Municipality'] },
       { internalName: 'GrantPeriodStart', type: 'DateTime', displayName: 'Grant Period Start', dateTimeFormat: 'DateOnly', candidates: ['GrantPeriodStart', 'Grant_x0020_Period_x0020_Start'] },
-      { internalName: 'GrantPeriodEnd', type: 'DateTime', displayName: 'Grant Period End', dateTimeFormat: 'DateOnly', indexed: true, candidates: ['GrantPeriodEnd', 'Grant_x0020_Period_x0020_End'] },
+      /* Aligning with physical name to avoid 'Sync Delay' warnings in Field Control Tower */
+      { internalName: 'Grant_x0020_Period_x0020_End', type: 'DateTime', displayName: 'Grant Period End', dateTimeFormat: 'DateOnly', indexed: true, candidates: ['GrantPeriodEnd', 'Grant_x0020_Period_x0020_End'] },
       { internalName: 'DisabilitySupportLevel', type: 'Text', displayName: 'Disability Support Level' },
       { internalName: 'GrantedDaysPerMonth', type: 'Text', displayName: 'Granted Days Per Month' },
       { internalName: 'UserCopayLimit', type: 'Text', displayName: 'User Copay Limit', candidates: ['UserCopayLimit', 'User_x0020_Copay_x0020_Limit'] },
@@ -811,4 +818,15 @@ export const otherListEntries: readonly SpListEntry[] = [
     category: 'other',
     lifecycle: 'optional',
   },
+];
+
+export const listDefinitions: readonly SpListEntry[] = [
+  ...masterListEntries,
+  ...dailyListEntries,
+  ...attendanceListEntries,
+  ...scheduleListEntries,
+  ...meetingListEntries,
+  ...handoffListEntries,
+  ...complianceListEntries,
+  ...otherListEntries,
 ];
