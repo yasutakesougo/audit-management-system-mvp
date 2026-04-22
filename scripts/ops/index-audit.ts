@@ -9,11 +9,12 @@ function loadEnvLocal() {
     content.split('\n').forEach(line => {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith('#')) return;
-      const [key, ...rest] = trimmed.split('=');
+      const [rawKey, ...rest] = trimmed.split('=');
+      const key = rawKey.trim();
       if (key && rest.length > 0) {
         const val = rest.join('=').trim().replace(/^["']|["']$/g, '');
-        if (!process.env[key.trim()]) {
-          process.env[key.trim()] = val;
+        if (!process.env[key]) {
+          process.env[key] = val;
         }
       }
     });
@@ -21,28 +22,28 @@ function loadEnvLocal() {
 }
 loadEnvLocal();
 
-// --- 2. Dynamic Import to ensure env is ready ---
+// --- 2. Dynamic Import ---
 async function main() {
   const { KNOWN_REQUIRED_INDEXED_FIELDS } = await import('../../src/features/sp/health/indexAdvisor/spIndexKnownConfig');
   const { ensureConfig } = await import('../../src/lib/sp/config');
   const { SP_LIST_REGISTRY } = await import('../../src/sharepoint/spListRegistry');
 
   const token = process.env.SP_TOKEN || process.env.VITE_SP_TOKEN;
-  if (!token || token === 'your_real_token_here') {
-    console.error("❌ SP_TOKEN or VITE_SP_TOKEN is not set correctly.");
+  if (!token) {
+    console.error("❌ SP_TOKEN is not set.");
     process.exit(1);
   }
 
   const config = ensureConfig();
   const apiBaseUrl = config.baseUrl;
   
+  console.log("--- SharePoint Index Governance Audit (Drift-Aware Mode) ---");
+  
   const targetMap = [
     { advisorKey: 'UserBenefit_Profile', registryKey: 'user_benefit_profile' },
     { advisorKey: 'Iceberg_Analysis', registryKey: 'iceberg_analysis' }
   ];
 
-  console.log("--- SharePoint Index Governance Audit ---");
-  
   for (const { advisorKey, registryKey } of targetMap) {
     const listDef = (SP_LIST_REGISTRY as any[]).find(l => l.key === registryKey);
     if (!listDef) continue;
@@ -54,8 +55,8 @@ async function main() {
 
     console.log(`\nList: ${listDef.displayName} (${resolvedTitle})`);
     
+    // Fetch physical indexes
     const url = `${apiBaseUrl}/lists/${listAccessor}/fields?$filter=Indexed eq true&$select=InternalName,Title`;
-    
     const res = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -64,22 +65,34 @@ async function main() {
     });
     
     if (!res.ok) {
-      console.error(`  ❌ Failed: ${res.status}`);
+      console.error(`  ❌ Failed to fetch indexes: ${res.status}`);
       continue;
     }
     
     const data = await res.json() as { value: { InternalName: string; Title: string }[] };
-    const currentIndexed = new Map(data.value.map(f => [f.InternalName, f.Title]));
-    const required = KNOWN_REQUIRED_INDEXED_FIELDS[advisorKey] || [];
+    const currentIndexedNames = new Set(data.value.map(f => f.InternalName));
     
-    console.log(`  Current Physical Indexes (${currentIndexed.size}/20):`);
-    currentIndexed.forEach((title, name) => console.log(`    - ${name} (${title})`));
+    console.log(`  Current Physical Indexes (${currentIndexedNames.size}/20)`);
     
-    console.log(`  Required by Design:`);
-    required.forEach(f => {
-      const status = currentIndexed.has(f.internalName) ? "✅" : "❌ (MISSING)";
-      console.log(`    - ${f.internalName}: ${status} - ${f.reason}`);
-    });
+    // REQUIRED Check with Drift-Awareness (checking candidates)
+    const requiredSpecs = KNOWN_REQUIRED_INDEXED_FIELDS[advisorKey] || [];
+    
+    console.log(`  Governance Status:`);
+    for (const spec of requiredSpecs) {
+      // Find field definition in registry to get candidates
+      const fieldDef = listDef.provisioningFields?.find((f: any) => f.internalName === spec.internalName);
+      const candidates = fieldDef?.candidates || [spec.internalName];
+      
+      // Check if ANY candidate is indexed
+      const foundPhysicalName = candidates.find((c: string) => currentIndexedNames.has(c));
+      
+      if (foundPhysicalName) {
+        const driftWarn = foundPhysicalName !== spec.internalName ? ` (Drift: ${foundPhysicalName})` : "";
+        console.log(`    ✅ ${spec.internalName}: OK${driftWarn}`);
+      } else {
+        console.log(`    ❌ ${spec.internalName}: MISSING (Candidates: ${candidates.join(', ')})`);
+      }
+    }
   }
 }
 

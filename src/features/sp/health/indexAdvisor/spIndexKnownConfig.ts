@@ -74,12 +74,12 @@ export const KNOWN_REQUIRED_INDEXED_FIELDS: Record<string, IndexFieldSpec[]> = {
   ],
   UserBenefit_Profile: [
     {
-      internalName: 'User_x0020_ID',
+      internalName: 'UserID',
       displayName: '利用者ID',
       reason: '結合・取得の主キー',
     },
     {
-      internalName: 'Grant_x0020_Period_x0020_End',
+      internalName: 'GrantPeriodEnd',
       displayName: '支給終了日',
       reason: '更新勧告・有効性判定のフィルタ用',
     },
