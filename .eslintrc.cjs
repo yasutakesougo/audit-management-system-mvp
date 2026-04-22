@@ -114,6 +114,12 @@ module.exports = {
         'no-restricted-globals': 'off',
         'no-console': 'off'
       }
+    },
+    {
+      files: ['**/*.stories.tsx', '**/*.stories.ts'],
+      rules: {
+        'import/no-unresolved': 'off'
+      }
     }
   ]
 };
