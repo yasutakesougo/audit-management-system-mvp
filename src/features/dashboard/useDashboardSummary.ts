@@ -55,6 +55,12 @@ export function useDashboardSummary(args: {
 
   // Normalize inputs: prevent Object.values(undefined) crash during initial render
   const safeVisits = visits ?? {};
+  const safeAttendanceCounts: AttendanceCounts = attendanceCounts ?? {
+    onDuty: 0,
+    out: 0,
+    absent: 0,
+    total: 0,
+  };
   
   // 1. Activity & Usage
   const activityRecords = useMemo(() => {
@@ -137,7 +143,7 @@ export function useDashboardSummary(args: {
     users,
     staff,
     safeVisits,
-    attendanceCounts,
+    safeAttendanceCounts,
   );
 
   // 4. Daily Record Status
