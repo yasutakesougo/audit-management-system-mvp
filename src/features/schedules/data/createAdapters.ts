@@ -5,7 +5,10 @@
  * Stub retained for backward-compat with test files.
  */
 
-import type { CreateScheduleEventInput } from './port';
+import type { CreateScheduleEventInput, SchedulesPort } from './port';
+import { demoSchedulesPort } from './demoAdapter';
+import { makeSharePointSchedulesPort } from './sharePointAdapter';
+
 
 export type SharePointPayloadResult = {
   body: Record<string, unknown>;
@@ -16,6 +19,37 @@ export type SharePointPayloadResult = {
 import { fromZonedTime } from 'date-fns-tz';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
 import { SCHEDULES_FIELDS } from './spSchema';
+
+/**
+ * Backwards compatibility stub for older tests.
+ * Wraps the new demo adapter.
+ */
+export const makeMockScheduleCreator = (): NonNullable<SchedulesPort['create']> => {
+  return async (input) => {
+    if (!demoSchedulesPort.create) {
+      throw new Error('demoSchedulesPort.create is not implemented');
+    }
+    return demoSchedulesPort.create(input);
+  };
+};
+
+/**
+ * Backwards compatibility stub for older tests.
+ * Wraps the new SharePoint adapter.
+ */
+export const makeSharePointScheduleCreator = (options: {
+  acquireToken: () => Promise<string | null>;
+}): NonNullable<SchedulesPort['create']> => {
+  const port = makeSharePointSchedulesPort({
+    acquireToken: options.acquireToken,
+    currentOwnerUserId: '', // Dummy value for compatibility
+  });
+  if (!port.create) {
+    throw new Error('SharePoint schedules port.create is not implemented');
+  }
+  return port.create;
+};
+
 
 /** Normalize a userId string by stripping hyphens. */
 export const normalizeUserId = (id: string): string => id.replace(/-/g, '');

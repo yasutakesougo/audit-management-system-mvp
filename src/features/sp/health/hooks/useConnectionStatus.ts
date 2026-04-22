@@ -72,6 +72,7 @@ export const useConnectionStatus = (): ConnectionStatus => {
       sp_limit_reached: 'readiness_failed',
       sp_index_pressure: 'readiness_failed',
       sp_schema_drift: 'readiness_failed',
+      sp_gate_escape_hatch: 'readiness_failed',
     };
 
     // 1) 診断系・観測系リスト（lifecycle: optional）の不具合
