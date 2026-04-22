@@ -86,6 +86,7 @@ jobs:
       - name: Run Nightly Runtime Patrol
         env:
           VITE_SP_SITE_URL: ${{ secrets.SHAREPOINT_SITE }}
+          NIGHTLY_REQUIRE_SP: "1"
           TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
           TEAMS_MENTION_UPN: ${{ secrets.TEAMS_MENTION_UPN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

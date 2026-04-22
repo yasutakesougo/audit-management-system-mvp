@@ -3,7 +3,7 @@ import { GRAPH_RESOURCE } from '@/auth/msalConfig';
 import type { Role } from '@/auth/roles';
 import { useAuth } from '@/auth/useAuth';
 import { useAuthReady } from '@/auth/useAuthReady';
-import { getRuntimeEnv as getRuntimeEnvRoot } from '@/env';
+import { getFlag, getRuntimeEnv as getRuntimeEnvRoot, isDev, isE2E } from '@/env';
 import { isE2eMsalMockEnabled, readOptionalEnv, shouldSkipLogin } from '@/lib/env';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -163,19 +163,19 @@ export const useUserAuthz = (): UserAuthz => {
 
   const value = useMemo(() => {
     const ids = groupIds ?? [];
-    const isDemoOrDev = import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === '1';
-    const isE2E = import.meta.env.VITE_E2E === '1';
+    const isDemoOrDev = isDev || getFlag('VITE_DEMO_MODE');
+    const isE2EFlag = isE2E;
     const skipLogin = shouldSkipLogin(getRuntimeEnvRoot());
 
     // E2E: always grant admin access for test coverage (all nav items visible)
-    if ((isE2E || skipLogin) && testRole) {
+    if ((isE2EFlag || skipLogin) && testRole) {
       return {
         role: testRole,
         ready: true,
       } satisfies UserAuthz;
     }
 
-    if (isE2E || skipLogin) {
+    if (isE2EFlag || skipLogin) {
       return {
         role: 'admin',
         ready: true,
@@ -213,19 +213,31 @@ export const useUserAuthz = (): UserAuthz => {
 
     // Role resolution order is strict: admin > reception > viewer.
     // If membership cannot be resolved, fall back to viewer (handled by ready/error paths).
-    const isReception = hasGroupConfig ? Boolean(receptionGroupId && ids.includes(receptionGroupId)) : true;
-    const isAdmin = hasGroupConfig ? Boolean(adminGroupId && ids.includes(adminGroupId)) : true;
-    const ready = hasGroupConfig ? groupIds !== null : true;
+    let isReception = hasGroupConfig ? Boolean(receptionGroupId && ids.includes(receptionGroupId)) : true;
+    let isAdmin = hasGroupConfig ? Boolean(adminGroupId && ids.includes(adminGroupId)) : true;
 
+    // LOCAL-ONLY: If on localhost and not in groups, still grant admin access 
+    // unless an explicit group was found in local .env (which would imply intentional restriction)
+    if (isDemoOrDev && !isAdmin) {
+      const adminGroupInDotEnv = readOptionalEnv('VITE_ADMIN_GROUP_ID') || readOptionalEnv('VITE_SCHEDULE_ADMINS_GROUP_ID');
+      if (!adminGroupInDotEnv) {
+        isAdmin = true;
+        isReception = true;
+      }
+    }
+
+    const ready = hasGroupConfig ? groupIds !== null : true;
     const role: Role = isAdmin ? 'admin' : isReception ? 'reception' : 'viewer';
 
     return { role, ready } satisfies UserAuthz;
   }, [groupIds, receptionGroupId, adminGroupId, envReady, testRole]);
 
-  if (error) {
-    // 権限判定が落ちてもアプリを壊さない（read-only にフォールバック）
-    return { role: 'viewer', ready: true };
-  }
+  const isDemoOrDevOuter = isDev || getFlag('VITE_DEMO_MODE');
+  const result = error ? (
+    (!adminGroupId && isDemoOrDevOuter) 
+      ? { role: 'admin' as Role, ready: true, reason: 'demo-default-full-access' }
+      : { role: 'viewer' as Role, ready: true }
+  ) : value;
 
-  return value;
+  return (result as UserAuthz) || { role: 'viewer', ready: false };
 };

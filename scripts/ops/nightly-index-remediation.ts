@@ -14,6 +14,7 @@
  */
 
 import { KNOWN_REQUIRED_INDEXED_FIELDS } from '@/features/sp/health/indexAdvisor/spIndexKnownConfig';
+import { createCliSpFetch } from './lib/spCliClient';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -23,10 +24,16 @@ const NIGHTLY_RUN_LIMIT = 3;
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface NightlyRemediationConfig {
-  token: string;
-  siteUrl: string;
+  /** Optional token override. If omitted, uses process.env.VITE_SP_TOKEN */
+  token?: string;
+  /** Optional siteUrl override. If omitted, uses process.env.VITE_SP_SITE_URL */
+  siteUrl?: string;
   /** 1 run あたりの実行上限（テスト上書き用。省略時は NIGHTLY_RUN_LIMIT）*/
   runLimit?: number;
+  /** Standardized fetch function. If omitted, created via createCliSpFetch */
+  spFetch?: (path: string, init?: RequestInit) => Promise<Response>;
+  /** Optional: Limit remediation to these specific list titles (Internal Names) */
+  targetListTitles?: string[];
 }
 
 export interface NightlyRemediationResult {
@@ -44,19 +51,14 @@ export interface NightlyRemediationResult {
 // ── SP REST helpers ───────────────────────────────────────────────────────────
 
 async function fetchIndexedFieldNames(
-  config: NightlyRemediationConfig,
+  spFetch: (path: string, init?: RequestInit) => Promise<Response>,
   listTitle: string,
 ): Promise<Set<string>> {
   const url =
-    `${config.siteUrl}/_api/web/lists/getbytitle('${encodeURIComponent(listTitle)}')/fields` +
+    `/lists/getbytitle('${encodeURIComponent(listTitle)}')/fields` +
     `?$filter=Indexed eq true&$select=InternalName`;
 
-  const res = await globalThis.fetch(url, {
-    headers: {
-      Authorization: `Bearer ${config.token}`,
-      Accept: 'application/json;odata=nometadata',
-    },
-  });
+  const res = await spFetch(url);
 
   if (!res.ok) {
     throw new Error(`SP fetch failed (${res.status}) for list "${listTitle}"`);
@@ -67,20 +69,17 @@ async function fetchIndexedFieldNames(
 }
 
 async function setFieldIndexed(
-  config: NightlyRemediationConfig,
+  spFetch: (path: string, init?: RequestInit) => Promise<Response>,
   listTitle: string,
   internalName: string,
 ): Promise<void> {
   const url =
-    `${config.siteUrl}/_api/web/lists/getbytitle('${encodeURIComponent(listTitle)}')` +
+    `/lists/getbytitle('${encodeURIComponent(listTitle)}')` +
     `/fields/getbyinternalnameortitle('${encodeURIComponent(internalName)}')`;
 
-  const res = await globalThis.fetch(url, {
+  const res = await spFetch(url, {
     method: 'PATCH',
     headers: {
-      Authorization: `Bearer ${config.token}`,
-      Accept: 'application/json;odata=nometadata',
-      'Content-Type': 'application/json;odata=nometadata',
       'X-HTTP-Method': 'MERGE',
       'If-Match': '*',
     },
@@ -107,14 +106,19 @@ export async function runNightlyIndexRemediation(
   config: NightlyRemediationConfig,
 ): Promise<NightlyRemediationResult[]> {
   const limit = config.runLimit ?? NIGHTLY_RUN_LIMIT;
+  const spFetch = config.spFetch || createCliSpFetch(config.token, config.siteUrl);
+  const targetFilter = config.targetListTitles ? new Set(config.targetListTitles) : null;
+  
   const results: NightlyRemediationResult[] = [];
   let addedCount = 0;
   const executedKeys = new Set<string>(); // run スコープ内の重複防止
 
   for (const [listTitle, requiredFields] of Object.entries(KNOWN_REQUIRED_INDEXED_FIELDS)) {
+    // Targeted filtering
+    if (targetFilter && !targetFilter.has(listTitle)) continue;
     let currentIndexed: Set<string>;
     try {
-      currentIndexed = await fetchIndexedFieldNames(config, listTitle);
+      currentIndexed = await fetchIndexedFieldNames(spFetch, listTitle);
     } catch (err) {
       console.warn(`  ⚠️ [nightly-remediation] Skipping "${listTitle}": ${err instanceof Error ? err.message : err}`);
       continue;
@@ -164,7 +168,7 @@ export async function runNightlyIndexRemediation(
 
       // 3. Execution (fail-soft)
       try {
-        await setFieldIndexed(config, listTitle, field.internalName);
+        await setFieldIndexed(spFetch, listTitle, field.internalName);
         executedKeys.add(key);
         addedCount++;
         addedToThisList++;

@@ -1,44 +1,30 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import { loadEnvLocal } from './lib/envLoader';
 
 // --- 1. Load Env FIRST ---
-function loadEnvLocal() {
-  const envPath = path.resolve(process.cwd(), '.env.local');
-  if (fs.existsSync(envPath)) {
-    const content = fs.readFileSync(envPath, 'utf8');
-    content.split('\n').forEach(line => {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) return;
-      const [key, ...rest] = trimmed.split('=');
-      if (key && rest.length > 0) {
-        const val = rest.join('=').trim().replace(/^["']|["']$/g, '');
-        if (!process.env[key.trim()]) {
-          process.env[key.trim()] = val;
-        }
-      }
-    });
-  }
-}
 loadEnvLocal();
 
-// --- 2. Dynamic Import ---
+// --- 2. Main logic ---
 async function main() {
   const { runNightlyIndexRemediation } = await import('./nightly-index-remediation');
-  const { ensureConfig } = await import('../../src/lib/sp/config');
+  const { createCliSpFetch } = await import('./lib/spCliClient');
 
-  const token = process.env.SP_TOKEN || process.env.VITE_SP_TOKEN;
-  if (!token) {
-    console.error("❌ SP_TOKEN or VITE_SP_TOKEN is not set.");
-    process.exit(1);
-  }
-
-  const config = ensureConfig();
-  const siteUrl = `${config.resource}${config.siteRel}`;
-  
   console.log("--- Targeted Index Remediation ---");
-  console.log(`Site URL: ${siteUrl}`);
   
-  const results = await runNightlyIndexRemediation({ token, siteUrl });
+  // NOTE:
+  // This script intentionally scopes remediation to governance-critical lists
+  // (UserBenefit_Profile, Iceberg_Analysis) to avoid accidental system-wide changes.
+  // For full system remediation, use nightly-index-remediation.ts instead.
+  
+  // spCliClient automatically uses process.env.VITE_SP_TOKEN/URL
+  const spFetch = createCliSpFetch();
+  
+  // We target specific lists relevant to the current governance focus
+  const targetListTitles = ['UserBenefit_Profile', 'Iceberg_Analysis'];
+  
+  const results = await runNightlyIndexRemediation({ 
+    spFetch,
+    targetListTitles 
+  });
   
   console.log("\n--- Results ---");
   results.forEach(r => {

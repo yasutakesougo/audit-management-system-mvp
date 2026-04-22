@@ -103,3 +103,36 @@ jobs:
           path: |
             package.json
             tsconfig.ci.json
+
+  integration-diagnose:
+    name: Integration Diagnose (SharePoint ReadOnly)
+    runs-on: ubuntu-latest
+    needs: [health]
+    env:
+      VITE_SP_SITE_URL: ${{ secrets.SHAREPOINT_SITE }}
+      VITE_SP_TOKEN: ${{ secrets.SHAREPOINT_TOKEN }}
+      NIGHTLY_REQUIRE_SP: "1"
+      VITE_THROW_ON_HIGH_RISK: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+      - name: Install deps
+        run: npm ci
+      - name: Typecheck (guard)
+        run: npm run typecheck
+      - name: Run SP read-only diagnostics
+        run: npx tsx scripts/ops/nightly-runtime-patrol.ts
+      - name: Upload diagnostics artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sp-diagnostics
+          path: |
+            .nightly/runtime-summary.json
+            .nightly/runtime-summary.md
+            docs/nightly-patrol/*.json
+            docs/nightly-patrol/*.md
+          if-no-files-found: warn

@@ -105,10 +105,22 @@ export async function listItems<TRow = JsonRecord>(
     filter: options.filter
   });
 
-  // 2. Enforce Policy (Phase 1.5: log high risk, but don't strictly throw yet)
+  const mode = readEnv('MODE', '').trim().toLowerCase();
+  const nodeEnv = readEnv('NODE_ENV', '').trim().toLowerCase();
+  const isProd = mode === 'production' || nodeEnv === 'production';
+  const throwOnHighRisk = readEnv('VITE_THROW_ON_HIGH_RISK', '0') === '1' || isProd;
+
+  // 2. Enforce Policy (prod/explicit strict mode can hard-block high-risk queries)
   const guardResult = enforceQueryPolicy(evaluation, {
-    throwOnHighRisk: false 
+    throwOnHighRisk,
   });
+
+  if (guardResult.riskLevel === 'high' && !throwOnHighRisk) {
+    auditLog.warn('sp:read', 'high_risk_query_allowed_non_prod', {
+      listIdentifier,
+      warningCodes: guardResult.warningCodes,
+    });
+  }
 
   const sanitized = guardResult.sanitized;
   const telemetryPayload = beginSpQueryTelemetry(sanitized, guardResult.riskLevel, guardResult.warningCodes);
