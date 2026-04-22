@@ -685,8 +685,8 @@ export const handoffListEntries: readonly SpListEntry[] = [
   },
   {
     key: 'planning_sheet_reassessment_master',
-    displayName: '支援計画シート（再評価）',
-    resolve: () => envOr('VITE_SP_LIST_PLANNING_SHEET_REASSESSMENT', fromConfig(ListKeys.PlanningSheetReassessmentMaster)),
+    displayName: 'アセスメント・再アセスメント履歴',
+    resolve: () => envOr('VITE_SP_LIST_PLANNING_REASSESSMENT', fromConfig(ListKeys.PlanningSheetReassessmentMaster)),
     operations: ['R', 'W'],
     category: 'handoff',
     lifecycle: 'optional',
@@ -745,8 +745,8 @@ export const complianceListEntries: readonly SpListEntry[] = [
   },
   {
     key: 'remediation_audit_log',
-    displayName: '修復監査ログ',
-    resolve: () => 'Remediation_AuditLog',
+    displayName: '自動修復・ガバナンス監査ログ',
+    resolve: () => envOr('VITE_SP_LIST_REMEDIATION_LOG', fromConfig(ListKeys.RemediationAuditLog)),
     operations: ['R', 'W'],
     category: 'compliance',
     lifecycle: 'optional',
