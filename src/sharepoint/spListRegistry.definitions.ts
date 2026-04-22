@@ -79,12 +79,12 @@ export const masterListEntries: readonly SpListEntry[] = [
       'UserID'
     ],
     provisioningFields: [
-      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'User_x0020_ID', 'Title'] },
+      { internalName: 'User_x0020_ID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'User_x0020_ID', 'Title'] },
       // RecipientCertNumber moved to _Ext to avoid 8KB limit
       { internalName: 'RecipientCertExpiry', type: 'DateTime', displayName: 'Recipient Cert Expiry', dateTimeFormat: 'DateOnly' },
       { internalName: 'GrantMunicipality', type: 'Text', displayName: 'Grant Municipality', candidates: ['GrantMunicipality', 'Grant_x0020_Municipality'] },
       { internalName: 'GrantPeriodStart', type: 'DateTime', displayName: 'Grant Period Start', dateTimeFormat: 'DateOnly', candidates: ['GrantPeriodStart', 'Grant_x0020_Period_x0020_Start'] },
-      { internalName: 'GrantPeriodEnd', type: 'DateTime', displayName: 'Grant Period End', dateTimeFormat: 'DateOnly', candidates: ['GrantPeriodEnd', 'Grant_x0020_Period_x0020_End'] },
+      { internalName: 'Grant_x0020_Period_x0020_End', type: 'DateTime', displayName: 'Grant Period End', dateTimeFormat: 'DateOnly', indexed: true, candidates: ['GrantPeriodEnd', 'Grant_x0020_Period_x0020_End'] },
       { internalName: 'DisabilitySupportLevel', type: 'Text', displayName: 'Disability Support Level' },
       { internalName: 'GrantedDaysPerMonth', type: 'Text', displayName: 'Granted Days Per Month' },
       { internalName: 'UserCopayLimit', type: 'Text', displayName: 'User Copay Limit', candidates: ['UserCopayLimit', 'User_x0020_Copay_x0020_Limit'] },
@@ -103,7 +103,7 @@ export const masterListEntries: readonly SpListEntry[] = [
       'UserID', 'RecipientCertNumber'
     ],
     provisioningFields: [
-      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'User_x0020_ID', 'Title'] },
+      { internalName: 'User_x0020_ID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'User_x0020_ID', 'Title'] },
       { internalName: 'RecipientCertNumber', type: 'Text', displayName: 'Recipient Cert Number', required: true, candidates: ['RecipientCertNumber', 'RecipientCertNumber0', 'Recipient_x0020_Cert_x0020_Numbe'] },
     ],
   },
@@ -228,7 +228,7 @@ export const dailyListEntries: readonly SpListEntry[] = [
     ],
     provisioningFields: [
       { internalName: 'ParentID', type: 'Number', displayName: 'Parent ID', required: true, indexed: true, candidates: ['ParentID', 'Parent_x0020_ID'] },
-      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'User_x0020_ID', 'Title'] },
+      { internalName: 'User_x0020_ID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'User_x0020_ID', 'Title'] },
       { internalName: 'Version', type: 'Number', displayName: 'Version', default: 1, candidates: ['Version', 'VersionNo'] },
       { internalName: 'Status', type: 'Text', displayName: 'Status' },
       { internalName: 'Payload', type: 'Note', displayName: 'Row Data JSON', richText: false, candidates: ['Payload', 'PayloadJSON'] },
@@ -641,7 +641,7 @@ export const handoffListEntries: readonly SpListEntry[] = [
     provisioningFields: [
       { internalName: 'Title', type: 'Text', displayName: 'Title', required: true },
       { internalName: 'EntryHash', type: 'Text', displayName: 'Entry Hash', required: true, indexed: true },
-      { internalName: 'SessionId', type: 'Text', displayName: 'Session ID' },
+      { internalName: 'SessionId', type: 'Text', displayName: 'Session ID', indexed: true },
       { internalName: 'UserId', type: 'Text', displayName: 'User ID', indexed: true },
       { internalName: 'PayloadJson', type: 'Note', displayName: 'Payload JSON', required: true, richText: false },
       { internalName: 'SchemaVersion', type: 'Number', displayName: 'Schema Version' },

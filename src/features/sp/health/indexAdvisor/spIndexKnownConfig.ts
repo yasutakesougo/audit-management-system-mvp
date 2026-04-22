@@ -72,4 +72,43 @@ export const KNOWN_REQUIRED_INDEXED_FIELDS: Record<string, IndexFieldSpec[]> = {
       reason: '$filter=User_x0020_ID eq X（利用者属性取得のキー）',
     },
   ],
+  UserBenefit_Profile: [
+    {
+      internalName: 'User_x0020_ID',
+      displayName: '利用者ID',
+      reason: '結合・取得の主キー',
+    },
+    {
+      internalName: 'Grant_x0020_Period_x0020_End',
+      displayName: '支給終了日',
+      reason: '更新勧告・有効性判定のフィルタ用',
+    },
+    {
+      internalName: 'Modified',
+      displayName: '更新日時',
+      reason: '最終更新順の取得用',
+    },
+  ],
+  Iceberg_Analysis: [
+    {
+      internalName: 'EntryHash',
+      displayName: '登録ハッシュ',
+      reason: 'Upsert（冪等書き込み）の判定キー',
+    },
+    {
+      internalName: 'UserId',
+      displayName: '利用者ID',
+      reason: 'ユーザー別最新取得のフィルタ用',
+    },
+    {
+      internalName: 'UpdatedAt',
+      displayName: '更新日時',
+      reason: '最新スナップショット特定用（$orderby）',
+    },
+    {
+      internalName: 'SessionId',
+      displayName: 'セッションID',
+      reason: '特定分析セッションの識別用',
+    },
+  ],
 };
