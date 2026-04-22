@@ -4,6 +4,8 @@ export { demoSchedulesPort } from './demoAdapter';
 export { makeGraphSchedulesPort } from './graphAdapter';
 export type { InlineScheduleDraft } from './inlineScheduleDraft';
 export type {
-	CreateScheduleEventInput, DateRange, SchedItem, ScheduleCategory,
-	ScheduleServiceType, SchedulesPort, ScheduleStatus, ScheduleVisibility, UpdateScheduleEventInput
+    CreateScheduleEventInput, DateRange, SchedItem, ScheduleCategory,
+    ScheduleServiceType, SchedulesPort, ScheduleStatus, ScheduleVisibility, UpdateScheduleEventInput
 } from './port';
+export { getListFieldsMeta, makeSharePointSchedulesPort } from './sharePointAdapter';
+export type { ListFieldMeta } from './sharePointAdapter';
