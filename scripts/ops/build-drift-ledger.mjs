@@ -1,0 +1,251 @@
+/* eslint-disable no-console -- CLI ops script */
+/**
+ * Drift Ledger Builder — Generates an administrative evidence ledger for schema cleanup.
+ *
+ * This script enriches the basic drift-inventory with production live-probe data
+ * (hasData, isIndexed) and classifies each field for the "Controlled Reduction" phase.
+ *
+ * OUTPUT:
+ *   docs/nightly-patrol/drift-ledger.csv
+ *   docs/nightly-patrol/drift-ledger.md
+ */
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const REPO_ROOT = resolve(__dirname, '..', '..');
+
+// ── Classification Logic ──────────────────────────────────────────────────
+
+/**
+ * Classifies a field based on its state and usage evidence.
+ */
+function classify(row) {
+  if (row.candidatesMatched) {
+    return { classification: 'keep', evidence: 'matched_by_candidates' };
+  }
+
+  // usageCount is currently a placeholder (0) until Phase 2b
+  const usageCount = row.usageCount || 0;
+
+  if (row.hasData && usageCount === 0) {
+    return { classification: 'observe', evidence: 'data_exists_but_no_usage' };
+  }
+
+  if (!row.hasData && usageCount === 0) {
+    return { classification: 'zombie_candidate', evidence: 'no_data_no_usage' };
+  }
+
+  return { classification: 'observe', evidence: 'fallback_or_partial' };
+}
+
+// ── SharePoint API Helpers ────────────────────────────────────────────────
+
+async function spFetch(url, token, options = {}) {
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      'Accept': 'application/json;odata=nometadata',
+      'Authorization': `Bearer ${token}`,
+      ...options.headers,
+    },
+  });
+  if (res.status === 429) {
+    const retryAfter = res.headers.get('Retry-After') || '5';
+    console.log(`⏳ Rate limited. Retrying after ${retryAfter}s...`);
+    await new Promise(resolve => setTimeout(resolve, parseInt(retryAfter) * 1000));
+    return spFetch(url, token, options);
+  }
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status}: ${body}`);
+  }
+  return res.json();
+}
+
+/** Simple concurrency-limited map. */
+async function pMap(items, fn, limit = 5) {
+  const results = [];
+  const batches = [];
+  for (let i = 0; i < items.length; i += limit) {
+    batches.push(items.slice(i, i + limit));
+  }
+  for (const batch of batches) {
+    results.push(...(await Promise.all(batch.map(fn))));
+  }
+  return results;
+}
+
+async function checkHasData(siteUrl, listTitle, internalName, token) {
+  try {
+    // Lightweight check: find 1 item where field is not null
+    const url = `${siteUrl}/lists/getbytitle('${listTitle}')/items?$select=${internalName}&$top=1&$filter=${internalName} ne null`;
+    const data = await spFetch(url, token);
+    return data.value && data.value.length > 0;
+  } catch (e) {
+    // If filter fails (e.g. not filterable), fallback to select top 1 and check value
+    try {
+       const url = `${siteUrl}/lists/getbytitle('${listTitle}')/items?$select=${internalName}&$top=1`;
+       const data = await spFetch(url, token);
+       return data.value && data.value.length > 0 && data.value[0][internalName] != null;
+    } catch (_e) {
+       return false; // Assume no data if we can't even read it
+    }
+  }
+}
+
+// ── Main Execution ───────────────────────────────────────────────────────
+
+async function main() {
+  console.log('🔍 Building Drift Ledger — Phase 2 Evidence Generation');
+  
+  const OUT_DIR = join(REPO_ROOT, 'docs', 'nightly-patrol');
+  mkdirSync(OUT_DIR, { recursive: true });
+
+  const SITE_URL = process.env.VITE_SP_SITE_URL;
+  const TOKEN_FILE = join(REPO_ROOT, '.token.local');
+  let token = '';
+  try {
+    token = readFileSync(TOKEN_FILE, 'utf-8').trim();
+  } catch (_e) {
+    token = (process.env.VITE_SP_TOKEN || '').trim();
+  }
+
+  if (!SITE_URL || !token) {
+    console.error('❌ Missing credentials (VITE_SP_SITE_URL or .token.local).');
+    process.exit(2);
+  }
+
+  const normalizedSiteUrl = SITE_URL.endsWith('/_api/web') ? SITE_URL : SITE_URL.replace(/\/$/, '') + '/_api/web';
+
+  // 1. Load SSOT
+  const { SP_LIST_REGISTRY } = await import('../../src/sharepoint/spListRegistry.js');
+  const { SP_SYSTEM_FIELDS } = await import('../../src/sharepoint/spSystemFields.js');
+  
+  const ledgerRows = [];
+
+  for (const entry of SP_LIST_REGISTRY) {
+    const listTitle = entry.resolve();
+    console.log(`📡 Probing list: ${listTitle}...`);
+
+    // Inter-list delay to avoid burst limits
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    try {
+      // Fetch actual fields
+      const fieldsUrl = `${normalizedSiteUrl}/lists/getbytitle('${listTitle}')/fields?$select=InternalName,Title,Indexed`;
+      const fieldsData = await spFetch(fieldsUrl, token);
+      const actualFields = fieldsData.value;
+      
+      const consumedActuals = new Set();
+
+      // 1. Prepare Expected Rows
+      const allExpected = [
+        ...(entry.essentialFields || []).map(f => ({ name: f, requirement: 'essential' })),
+        ...(entry.provisioningFields || [])
+          .filter(pf => !entry.essentialFields?.includes(pf.internalName))
+          .map(pf => ({ name: pf.internalName, requirement: 'optional' }))
+      ];
+
+      const expectedResults = await pMap(allExpected, async (exp) => {
+        const prov = entry.provisioningFields?.find(p => p.internalName === exp.name);
+        const candidates = prov?.candidates || [exp.name];
+        
+        const matchedActual = actualFields.find(f => candidates.includes(f.InternalName));
+        let driftType = 'match';
+        let candidatesMatched = false;
+
+        if (matchedActual) {
+          consumedActuals.add(matchedActual.InternalName);
+          if (matchedActual.InternalName !== exp.name) {
+            driftType = 'fuzzy_match';
+            candidatesMatched = true;
+          }
+        } else {
+          driftType = 'optional_missing';
+        }
+
+        const hasData = matchedActual ? await checkHasData(normalizedSiteUrl, listTitle, matchedActual.InternalName, token) : false;
+
+        return {
+          listKey: entry.key,
+          listTitle,
+          internalName: matchedActual?.InternalName || exp.name,
+          displayName: matchedActual?.Title || exp.name,
+          expectedField: exp.name,
+          actualField: matchedActual?.InternalName || null,
+          driftType,
+          candidatesMatched,
+          usageCount: 0,
+          hasData,
+          isIndexed: matchedActual?.Indexed || false,
+          lastSeenAt: new Date().toISOString()
+        };
+      }, 2); // Lower concurrency
+
+      ledgerRows.push(...expectedResults);
+
+      // 2. Prepare Zombie Rows
+      const zombies = actualFields.filter(f => !consumedActuals.has(f.InternalName) && !SP_SYSTEM_FIELDS.has(f.InternalName));
+      const zombieResults = await pMap(zombies, async (z) => {
+        const hasData = await checkHasData(normalizedSiteUrl, listTitle, z.InternalName, token);
+        return {
+          listKey: entry.key,
+          listTitle,
+          internalName: z.InternalName,
+          displayName: z.Title,
+          expectedField: null,
+          actualField: z.InternalName,
+          driftType: 'zombie_candidate',
+          candidatesMatched: false,
+          usageCount: 0,
+          hasData,
+          isIndexed: z.Indexed,
+          lastSeenAt: new Date().toISOString()
+        };
+      }, 2); // Lower concurrency
+
+      ledgerRows.push(...zombieResults);
+    } catch (e) {
+      console.warn(`⚠️  Failed to probe list ${listTitle}: ${e.message}`);
+    }
+  }
+
+  // 3. Classify and Format
+  const finalRows = ledgerRows.map(r => ({ ...r, ...classify(r) }));
+
+  // 4. Output
+  writeCsv(join(OUT_DIR, 'drift-ledger.csv'), finalRows);
+  writeMarkdown(join(OUT_DIR, 'drift-ledger.md'), finalRows);
+
+  console.log(`\n✅ Ledger generated at ${OUT_DIR}`);
+}
+
+function writeCsv(path, rows) {
+  const headers = ['listKey', 'listTitle', 'internalName', 'displayName', 'expectedField', 'actualField', 'driftType', 'candidatesMatched', 'usageCount', 'hasData', 'isIndexed', 'lastSeenAt', 'classification', 'evidence'];
+  const content = [
+    headers.join(','),
+    ...rows.map(r => headers.map(h => {
+      const val = r[h];
+      return typeof val === 'string' ? `"${val.replace(/"/g, '""')}"` : val;
+    }).join(','))
+  ].join('\n');
+  writeFileSync(path, content);
+}
+
+function writeMarkdown(path, rows) {
+  const headers = ['listKey', 'listTitle', 'internalName', 'displayName', 'driftType', 'classification', 'hasData', 'isIndexed', 'evidence'];
+  const tableHeaders = `| ${headers.join(' | ')} |`;
+  const tableDivider = `| ${headers.map(() => '---').join(' | ')} |`;
+  const tableRows = rows.map(r => `| ${headers.map(h => r[h]).join(' | ')} |`).join('\n');
+  
+  const content = `# Drift Ledger — ${new Date().toISOString().split('T')[0]}\n\n${tableHeaders}\n${tableDivider}\n${tableRows}\n`;
+  writeFileSync(path, content);
+}
+
+main().catch(err => {
+  console.error('❌ Fatal error:', err);
+  process.exit(1);
+});
