@@ -121,7 +121,7 @@ export const defaultShouldUseDemo = (): boolean => {
 
   // 3. Environment defaults
   if (isTestMode()) return true;
-  if (isDevMode() && readBool('VITE_DEV_DEMO', false)) return true;
+  if (isDevMode()) return true;
 
   return false;
 };

@@ -7,9 +7,14 @@ vi.mock('../uploadMeetingMinutesExport', () => ({
   uploadMeetingMinutesExport: vi.fn(),
 }));
 
-vi.mock('@/lib/spClient', () => ({
-  useSP: vi.fn(() => ({})),
-}));
+vi.mock('@/lib/spClient', async () => {
+  const actual = await vi.importActual<any>('@/lib/spClient');
+  return {
+    ...actual,
+    useSP: vi.fn(() => ({})),
+    ensureConfig: () => ({ baseUrl: 'https://dummy.sharepoint.com' }),
+  };
+});
 
 describe('useMeetingMinutesSharePointExport', () => {
   it('should upload HTML blob when no blob is provided', async () => {

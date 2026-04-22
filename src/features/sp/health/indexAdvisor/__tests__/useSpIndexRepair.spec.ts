@@ -12,15 +12,21 @@ vi.mock('../spIndexRepairExecutor', () => ({
   executeRepairAction: vi.fn(),
 }));
 
-vi.mock('@/lib/spClient', () => ({
-  useSP: vi.fn(),
-}));
+vi.mock('@/lib/spClient', async () => {
+  const actual = await vi.importActual<any>('@/lib/spClient');
+  return {
+    ...actual,
+    useSP: vi.fn(),
+    ensureConfig: () => ({ baseUrl: 'https://dummy.sharepoint.com' }),
+  };
+});
 
 describe('useSpIndexRepair: Hook Contract', () => {
   const mockSpClient = { updateField: vi.fn() };
   
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
     vi.mocked(useSP).mockReturnValue(mockSpClient as any);
   });
 
@@ -74,6 +80,10 @@ describe('useSpIndexRepair: Hook Contract', () => {
     expect(result.current.isExecuting).toBe(true);
     
     await act(async () => {
+      // Advance timer for the 3s delay between actions (2 actions total)
+      for (let i = 0; i < 4; i++) {
+        await vi.advanceTimersByTimeAsync(1000);
+      }
       await repairPromise;
     });
 
@@ -97,7 +107,11 @@ describe('useSpIndexRepair: Hook Contract', () => {
       .mockResolvedValueOnce({ action: {} as any, status: 'error', errorDetail: 'SP Error', timestamp: 'now' });
 
     await act(async () => {
-      await result.current.executeRepair();
+      const p = result.current.executeRepair();
+      for (let i = 0; i < 4; i++) {
+        await vi.advanceTimersByTimeAsync(1000);
+      }
+      await p;
     });
 
     expect(result.current.results.length).toBe(2);

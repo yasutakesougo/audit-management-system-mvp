@@ -86,9 +86,9 @@ export function useSpIndexRepair(): UseSpIndexRepair {
           break;
         }
         
-        // リアクティブに途中経過を反映
-        setResults([...newResults]);
       }
+      // リアクティブに途中経過を反映
+      setResults([...newResults]);
 
       // API 負荷軽減のため、次のアクションの前に 3秒待機（特に大量のインデックス一括削除時）
       if (plan.actions.indexOf(action) < plan.actions.length - 1) {

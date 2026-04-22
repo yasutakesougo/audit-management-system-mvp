@@ -55,11 +55,29 @@ describe('DataProviderUserRepository Split Logic', () => {
       UserID: 'U-NEW',
       FullName: 'New User',
       TransportCourse: 'B-Course',
-      RecipientCertNumber: 'BEN-456'
+      RecipientCertNumber: 'BEN-456',
+      RecipientCertExpiry: '2025-12-31'
     };
 
     // Schema Resolution を正しく機能させるために、予めフィールドヒントをシードする
-    await provider.seed('Users_Master', [{ Id: 0, UserID: '', FullName: '', IsActive: true }]);
+    await provider.ensureListExists('Users_Master', [
+      { internalName: 'Id', type: 'Integer' },
+      { internalName: 'UserID', type: 'Text' },
+      { internalName: 'FullName', type: 'Text' },
+      { internalName: 'IsActive', type: 'Boolean' },
+    ]);
+    await provider.ensureListExists('UserTransport_Settings', [
+      { internalName: 'UserID', type: 'Text' },
+      { internalName: 'TransportCourse', type: 'Text' },
+    ]);
+    await provider.ensureListExists('UserBenefit_Profile', [
+      { internalName: 'UserID', type: 'Text' },
+      { internalName: 'RecipientCertExpiry', type: 'Text' },
+    ]);
+    await provider.ensureListExists('UserBenefit_Profile_Ext', [
+      { internalName: 'UserID', type: 'Text' },
+      { internalName: 'RecipientCertNumber', type: 'Text' },
+    ]);
 
     const created = await repo.create(payload as unknown as IUserMasterCreateDto);
 
@@ -85,6 +103,11 @@ describe('DataProviderUserRepository Split Logic', () => {
     // 1. 最初は Core のみ
     await provider.seed('Users_Master', [
       { Id: 1, UserID: 'U-001', FullName: 'Existing' }
+    ]);
+    // 解決のためにスキーマを提示
+    await provider.ensureListExists('UserTransport_Settings', [
+      { internalName: 'UserID', type: 'Text' },
+      { internalName: 'TransportCourse', type: 'Text' },
     ]);
 
     // 2. Transport 情報を追加更新

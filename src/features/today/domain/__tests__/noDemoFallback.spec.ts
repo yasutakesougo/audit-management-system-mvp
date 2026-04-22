@@ -64,7 +64,7 @@ describe('/today demo fallback regression guard', () => {
   });
 
   it('TodayOpsPage は summary.scheduleLanesToday をフォールバック先として使わない', () => {
-    const pagePath = path.join(SRC_ROOT, 'pages/TodayOpsPage.tsx');
+    const pagePath = path.join(SRC_ROOT, 'pages/today-isolated/TodayOpsPage_v3.tsx');
     const content = fs.readFileSync(pagePath, 'utf-8');
 
     // effectiveLanes の算出に summary.scheduleLanesToday が含まれていないこと

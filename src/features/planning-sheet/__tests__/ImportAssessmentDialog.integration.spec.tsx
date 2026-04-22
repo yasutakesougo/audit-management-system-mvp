@@ -52,11 +52,16 @@ vi.mock('@/features/assessment/hooks/useTokuseiSurveyResponses', () => ({
 // Mock: useSP（SharePoint client を回避）
 // ---------------------------------------------------------------------------
 
-vi.mock('@/lib/spClient', () => ({
-  useSP: () => ({
-    web: { lists: { getByTitle: vi.fn() } },
-  }),
-}));
+vi.mock('@/lib/spClient', async () => {
+  const actual = await vi.importActual<any>('@/lib/spClient');
+  return {
+    ...actual,
+    useSP: () => ({
+      web: { lists: { getByTitle: vi.fn() } },
+    }),
+    ensureConfig: () => ({ baseUrl: 'https://dummy.sharepoint.com' }),
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Factories

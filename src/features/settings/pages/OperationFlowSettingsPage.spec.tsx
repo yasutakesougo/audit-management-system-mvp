@@ -10,6 +10,7 @@ let mockRepo: InMemoryOperationalPhaseRepository;
 
 vi.mock('@/features/operationFlow/data/createOperationalPhaseRepository', () => ({
   createOperationalPhaseRepository: () => mockRepo,
+  useOperationalPhaseRepository: () => mockRepo,
 }));
 
 vi.mock('@mui/material/Snackbar', () => ({

@@ -26,12 +26,17 @@ vi.mock('@/lib/sharepoint/skipSharePoint', async () => {
 
 // Mock useSP to provide spy-able listItems
 const mockListItems = vi.fn();
-vi.mock('@/lib/spClient', () => ({
-  useSP: () => ({
-    listItems: mockListItems,
-    spFetch: vi.fn(),
-  }),
-}));
+vi.mock('@/lib/spClient', async () => {
+  const actual = await vi.importActual<any>('@/lib/spClient');
+  return {
+    ...actual,
+    useSP: () => ({
+      listItems: mockListItems,
+      spFetch: vi.fn(),
+    }),
+    ensureConfig: () => ({ baseUrl: 'https://dummy.sharepoint.com' }),
+  };
+});
 
 import { useOrgStore } from './store';
 import { shouldSkipSharePoint } from '@/lib/sharepoint/skipSharePoint';

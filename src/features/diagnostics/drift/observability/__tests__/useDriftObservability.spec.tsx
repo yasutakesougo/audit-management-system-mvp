@@ -4,9 +4,14 @@ import { describe, expect, it, vi } from 'vitest';
 import type { IDriftEventRepository } from '../../domain/DriftEventRepository';
 import { useDriftObservability } from '../useDriftObservability';
 
-vi.mock('@/lib/spClient', () => ({
-  useSP: () => null,
-}));
+vi.mock('@/lib/spClient', async () => {
+  const actual = await vi.importActual<any>('@/lib/spClient');
+  return {
+    ...actual,
+    useSP: () => ({}),
+    ensureConfig: () => ({ baseUrl: 'https://dummy.sharepoint.com' }),
+  };
+});
 
 vi.mock('../../infra/driftEventRepositoryFactory', () => ({
   useDriftEventRepository: () => null,

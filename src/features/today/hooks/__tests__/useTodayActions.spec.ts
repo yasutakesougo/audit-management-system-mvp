@@ -19,11 +19,16 @@ vi.mock('@/features/daily/hooks/useDailySupportUserFilter', () => ({
   useDailySupportUserFilter: (users: any) => ({ filteredUsers: users }),
 }));
 
-vi.mock('@/lib/spClient', () => ({
-  useSP: () => ({
-    listItems: vi.fn().mockResolvedValue([]),
-  }),
-}));
+vi.mock('@/lib/spClient', async () => {
+  const actual = await vi.importActual<any>('@/lib/spClient');
+  return {
+    ...actual,
+    useSP: () => ({
+      listItems: vi.fn().mockResolvedValue([]),
+    }),
+    ensureConfig: () => ({ baseUrl: 'https://dummy.sharepoint.com' }),
+  };
+});
 
 vi.mock('../../transport/useTransportStatus', () => ({
   useTransportStatus: () => ({ isReady: true, status: { to: { overdueUserIds: [] }, from: { overdueUserIds: [] } } }),

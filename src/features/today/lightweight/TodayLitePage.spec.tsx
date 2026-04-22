@@ -26,9 +26,9 @@ describe('TodayLitePage core workflow', () => {
       screen.getByTestId('today-lite-action-handoff-timeline'),
     ];
     expect(buttons.map((button) => button.textContent)).toEqual([
-      '出欠を確認する',
-      '日々の記録を入力する',
-      '申し送りを確認する',
+      '出欠を登録する',
+      '記録を入力する',
+      '申し送りを確認',
     ]);
   });
 

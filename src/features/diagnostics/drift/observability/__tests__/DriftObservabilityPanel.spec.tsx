@@ -3,9 +3,14 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DriftObservabilityPanel } from '../DriftObservabilityPanel';
 import { buildSinceIso } from '../useDriftObservability';
 
-vi.mock('@/lib/spClient', () => ({
-  useSP: () => null,
-}));
+vi.mock('@/lib/spClient', async () => {
+  const actual = await vi.importActual<any>('@/lib/spClient');
+  return {
+    ...actual,
+    useSP: () => ({}),
+    ensureConfig: () => ({ baseUrl: 'https://dummy.sharepoint.com' }),
+  };
+});
 
 describe('DriftObservabilityPanel', () => {
   it('renders empty-state labels and unresolved=0 when no events exist', async () => {

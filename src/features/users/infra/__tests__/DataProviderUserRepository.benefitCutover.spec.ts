@@ -23,8 +23,21 @@ describe('DataProviderUserRepository — benefit cutover overlay', () => {
   let provider: InMemoryDataProvider;
   let repo: DataProviderUserRepository;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     provider = new InMemoryDataProvider();
+    
+    // Schema hints for dynamic resolution
+    await provider.ensureListExists('Users_Master', [
+      { internalName: 'Id', type: 'Integer' },
+      { internalName: 'UserID', type: 'Text' },
+    ]);
+    await provider.ensureListExists(BENEFIT_LIST, [
+      { internalName: 'UserID', type: 'Text' },
+      { internalName: 'RecipientCertExpiry', type: 'Text' },
+      { internalName: 'GrantMunicipality', type: 'Text' },
+      { internalName: 'Grant_x0020_Municipality', type: 'Text' },
+    ]);
+
     repo = new DataProviderUserRepository({ provider });
   });
 

@@ -509,7 +509,18 @@ export function resolveInternalNamesDetailed<T extends string>(
             break;
           }
 
-          // Strategy C: Bitwise/Normalized comparison (Extreme drift protection)
+          // Strategy C: SharePoint 32-character truncation check
+          if (encodedBase.length >= 32) {
+            const truncated = encodedBase.slice(0, 32);
+            if (availableMap.has(truncated)) {
+              foundCandidate = availableMap.get(truncated);
+              driftType = 'truncation';
+              break;
+            }
+          }
+          if (foundCandidate) break;
+
+          // Strategy D: Bitwise/Normalized comparison (Extreme drift protection)
           const sanitizedCandidate = lowerBase.replace(/_x[0-9a-f]{4}_/gi, '').replace(/[^a-z0-9]/g, '');
           for (const [availableLow, actual] of availableMap.entries()) {
             const availSanitized = availableLow.replace(/_x[0-9a-f]{4}_/gi, '').replace(/[^a-z0-9]/g, '');
@@ -518,17 +529,6 @@ export function resolveInternalNamesDetailed<T extends string>(
                (availSanitized.length >= 28 && sanitizedCandidate.startsWith(availSanitized))) {
               foundCandidate = actual;
               driftType = 'fuzzy_match';
-              break;
-            }
-          }
-          if (foundCandidate) break;
-
-          // Strategy D: SharePoint 32-character truncation check
-          if (encodedBase.length >= 32) {
-            const truncated = encodedBase.slice(0, 32);
-            if (availableMap.has(truncated)) {
-              foundCandidate = availableMap.get(truncated);
-              driftType = 'truncation';
               break;
             }
           }
