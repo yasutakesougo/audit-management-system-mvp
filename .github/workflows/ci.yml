@@ -11,9 +11,66 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  registry-static-audit:
+    name: Registry Static Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "npm"
+      - run: npm ci
+      - name: Run static registry audit
+        run: npx tsx scripts/ops/registry-audit.ts
+
+  registry-ssot:
+    name: Registry SSOT Contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "npm"
+      - run: npm ci
+      - name: Run SSOT contract test
+        run: npx vitest run src/sharepoint/__tests__/spListRegistry.ssot.spec.ts
+
+  registry-integration:
+    name: Registry Integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "npm"
+      - run: npm ci
+      - name: Run registry integration test
+        run: npx vitest run src/features/sp/health/remediation/__tests__/registryIntegration.spec.ts
+
+  registry-drift-probe:
+    name: Registry Drift Probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "npm"
+      - run: npm ci
+      - name: Run drift probe registry test
+        run: npx vitest run src/sharepoint/__tests__/driftProbeRegistry.spec.ts
+
   typecheck-and-test:
     name: TypeCheck & Test
     runs-on: ubuntu-latest
+    needs: [registry-static-audit, registry-ssot, registry-integration, registry-drift-probe]
     timeout-minutes: 15
     permissions:
       contents: read
@@ -132,6 +189,10 @@ jobs:
               fi
               echo ""
             fi
+            echo "- Registry Static Audit: ${{ needs.registry-static-audit.result }}"
+            echo "- Registry SSOT Contract: ${{ needs.registry-ssot.result }}"
+            echo "- Registry Integration: ${{ needs.registry-integration.result }}"
+            echo "- Registry Drift Probe: ${{ needs.registry-drift-probe.result }}"
             echo "- ESLint (ARCHITECTURE_GUARDS): ${{ steps.lint.outcome }}"
             echo "- Index Audit (Schema Drift): ${{ steps.index_audit.outcome }}"
             echo "- ESLint (boundaries report): ${{ steps.lint_boundaries.outcome }}"
