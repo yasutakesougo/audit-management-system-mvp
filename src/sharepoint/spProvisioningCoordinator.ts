@@ -230,7 +230,13 @@ export class SharePointProvisioningCoordinator {
         const available = await client.getListFieldInternalNames(listName);
         
         // Use fuzzy resolution to handle SharePoint suffixes (e.g., FullName0)
-        const candidates = Object.fromEntries(entry.essentialFields.map(f => [f, [f]]));
+        const candidates = Object.fromEntries(
+          entry.essentialFields.map(f => {
+            const prov = entry.provisioningFields?.find(p => p.internalName === f);
+            return [f, prov?.candidates || [f]];
+          })
+        ) as Record<string, string[]>;
+
         const resolution = resolveInternalNamesDetailed(available, candidates);
         const { missing: missingFields, fieldStatus } = resolution;
 
