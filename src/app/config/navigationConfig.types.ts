@@ -90,6 +90,7 @@ export const NAV_AUDIENCE = {
  */
 export const NAV_GROUP_I18N_KEYS = {
   today: 'NAV_GROUP.TODAY',
+  schedules: 'NAV_GROUP.SCHEDULES',
   records: 'NAV_GROUP.RECORDS',
   planning: 'NAV_GROUP.PLANNING',
   severe: 'NAV_GROUP.SEVERE',
@@ -110,6 +111,7 @@ export const NAV_GROUP_I18N_KEYS = {
  */
 export const groupLabel: Record<NavGroupKey, string> = {
   today: '📌 今日の業務',
+  schedules: '🗓️ スケジュール',
   records: '📚 記録を参照',
   planning: '🗓️ 計画・調整',
   severe: '🔍 分析して改善',
@@ -125,6 +127,7 @@ export const groupLabel: Record<NavGroupKey, string> = {
  */
 export const NAV_GROUP_ORDER: NavGroupKey[] = [
   'today',
+  'schedules',
   'records',
   'planning',
   'severe',

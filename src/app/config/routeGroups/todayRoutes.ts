@@ -16,23 +16,11 @@ export const TODAY_ROUTES = {
   // Hub entry is usually handled by createHubNavItem in navigationConfig.ts
   
   TRANSPORT: (_isFieldStaffShell: boolean) => ({
-    label: '送迎降車表',
+    label: '送迎実施',
     to: '/transport/assignments',
     isActive: (pathname: string) => pathname.startsWith('/transport/assignments'),
     icon: undefined,
     testId: TESTIDS.nav.transportAssignments,
-    audience: NAV_AUDIENCE.staff as NavAudience,
-    group: 'today' as NavGroupKey,
-  }),
-  
-  SCHEDULES: (_isFieldStaffShell: boolean) => ({
-    label: 'スケジュール',
-    to: '/schedules/week',
-    isActive: (pathname: string) => pathname.startsWith('/schedule') || pathname.startsWith('/schedules'),
-    testId: TESTIDS.nav.schedules,
-    icon: undefined,
-    prefetchKey: PREFETCH_KEYS.schedulesWeek,
-    prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
     audience: NAV_AUDIENCE.staff as NavAudience,
     group: 'today' as NavGroupKey,
   }),

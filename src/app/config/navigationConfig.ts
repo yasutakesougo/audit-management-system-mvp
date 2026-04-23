@@ -37,6 +37,7 @@ import { OPS_ROUTES } from './routeGroups/opsRoutes';
 import { PLANNING_ROUTES } from './routeGroups/planningRoutes';
 import { PLATFORM_ROUTES } from './routeGroups/platformRoutes';
 import { RECORD_ROUTES } from './routeGroups/recordRoutes';
+import { SCHEDULES_ROUTES } from './routeGroups/schedulesRoutes';
 import { SEVERE_ROUTES } from './routeGroups/severeRoutes';
 import { TODAY_ROUTES } from './routeGroups/todayRoutes';
 
@@ -120,11 +121,17 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
       ? [createHubNavItem('today', { testId: TESTIDS.nav.todayOps })]
       : []),
     TODAY_ROUTES.TRANSPORT(isFieldStaffShell),
-    ...(schedulesEnabled ? [TODAY_ROUTES.SCHEDULES(isFieldStaffShell)] : []),
     TODAY_ROUTES.DAILY_SUPPORT(isFieldStaffShell),
     TODAY_ROUTES.HEALTH_RECORD(isFieldStaffShell),
     TODAY_ROUTES.HANDOFF_TIMELINE(isFieldStaffShell),
     TODAY_ROUTES.MEETING_MINUTES(isFieldStaffShell),
+    
+    // --- 2. スケジュール・割当 (schedules) ---
+    ...(schedulesEnabled ? [
+      createHubNavItem('schedules'),
+      SCHEDULES_ROUTES.CALENDAR.WEEK(isFieldStaffShell),
+      SCHEDULES_ROUTES.ASSIGNMENT.TRANSPORT(isFieldStaffShell),
+    ] : []),
 
     // --- 2. 計画・アセスメント (planning / severe) ---
     createHubNavItem('planning', {
@@ -170,6 +177,9 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     items.push(OPS_ROUTES.REGULATORY_DASHBOARD(isFieldStaffShell));
     items.push(OPS_ROUTES.ADMIN_STAFF_ATTENDANCE(isFieldStaffShell));
     items.push(OPS_ROUTES.EXCEPTION_CENTER(isFieldStaffShell));
+    if (schedulesEnabled && isAdmin && (authzReady || skipLogin)) {
+      items.push(SCHEDULES_ROUTES.RESOURCE.INTEGRATED_CALENDAR(isFieldStaffShell));
+    }
     items.push(PLATFORM_ROUTES.ADMIN(isFieldStaffShell));
     items.push(PLATFORM_ROUTES.TELEMETRY(isFieldStaffShell));
     items.push(PLATFORM_ROUTES.STATUS(isFieldStaffShell));

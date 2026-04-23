@@ -21,10 +21,28 @@ describe('navigationConfig Factory Contract', () => {
     const items = createNavItems(baseConfig);
     
     const hubLabels = items.map(i => i.label);
+    
+    // 1. Hub Presence
     expect(hubLabels).toContain('今日の業務');
+    expect(hubLabels).toContain('スケジュール');
     expect(hubLabels).toContain('支援計画・調整');
     expect(hubLabels).toContain('記録・参照');
     expect(hubLabels).toContain('運営・管理');
+
+    // 2. Domain Separation (Today vs Schedules)
+    // Today Hub Items (Execution)
+    expect(hubLabels).toContain('送迎実施');
+    
+    // Schedules Hub Items (Coordination/Assignment)
+    expect(hubLabels).toContain('週間予定');
+    expect(hubLabels).toContain('送迎配車調整');
+
+    // 3. Group Consistency
+    const transportExecution = items.find(i => i.label === '送迎実施');
+    const transportAssignment = items.find(i => i.label === '送迎配車調整');
+    
+    expect(transportExecution?.group).toBe('today'); // Today Hub group
+    expect(transportAssignment?.group).toBe('schedules'); // Schedules Hub group
     
     // Check that items are not undefined
     items.forEach(item => {
@@ -65,5 +83,7 @@ describe('navigationConfig Factory Contract', () => {
     // Note: Some items are only added if isAdmin is true or specific roles are present
     // Just verify the list is returned correctly
     expect(adminItems.length).toBeGreaterThan(0);
+    const adminLabels = adminItems.map(i => i.label);
+    expect(adminLabels).toContain('リソースカレンダー');
   });
 });
