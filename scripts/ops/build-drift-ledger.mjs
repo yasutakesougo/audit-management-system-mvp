@@ -12,6 +12,8 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
+import { getAccessToken, refreshM365Token } from './auth-helper.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -20,38 +22,60 @@ const REPO_ROOT = resolve(__dirname, '..', '..');
 // ── Classification Logic ──────────────────────────────────────────────────
 
 /**
- * Classifies a field based on its state and usage evidence.
+ * Classifies a field and assigns a confidence level for potential remediation.
  */
 function classify(row) {
   if (row.candidatesMatched) {
-    return { classification: 'keep', evidence: 'matched_by_candidates' };
+    return { classification: 'keep', evidence: 'matched_by_candidates', confidence: 'high' };
   }
 
-  // usageCount is currently a placeholder (0) until Phase 2b
   const usageCount = row.usageCount || 0;
 
-  if (row.hasData && usageCount === 0) {
-    return { classification: 'observe', evidence: 'data_exists_but_no_usage' };
+  // If used in code, MUST keep
+  if (usageCount > 0) {
+    return { classification: 'keep', evidence: `active_usage_in_code(${usageCount})`, confidence: 'high' };
   }
 
-  if (!row.hasData && usageCount === 0) {
-    return { classification: 'zombie_candidate', evidence: 'no_data_no_usage' };
+  // If has data but no usage, observe
+  if (row.hasData) {
+    return { classification: 'observe', evidence: 'data_exists_but_no_usage', confidence: 'medium' };
   }
 
-  return { classification: 'observe', evidence: 'fallback_or_partial' };
+  // If no data and no usage, it's a zombie
+  if (usageCount === 0 && !row.hasData) {
+    // Numbered suffixes (e.g., Field0) are high-confidence zombies
+    const isNumberedSuffix = /\d+$/.test(row.internalName);
+    return { 
+      classification: 'zombie_candidate', 
+      evidence: 'no_data_no_usage', 
+      confidence: isNumberedSuffix ? 'high' : 'medium' 
+    };
+  }
+
+  return { classification: 'observe', evidence: 'fallback_or_partial', confidence: 'low' };
 }
 
 // ── SharePoint API Helpers ────────────────────────────────────────────────
 
-async function spFetch(url, token, options = {}) {
+async function spFetch(url, auth, options = {}) {
   const res = await fetch(url, {
     ...options,
     headers: {
       'Accept': 'application/json;odata=nometadata',
-      'Authorization': `Bearer ${token}`,
+      'Authorization': `Bearer ${auth.token}`,
       ...options.headers,
     },
   });
+
+  if (res.status === 401) {
+    console.log('🔑 Token expired (401). Attempting auto-refresh...');
+    const newToken = refreshM365Token();
+    if (newToken) {
+      auth.token = newToken;
+      return spFetch(url, auth, options);
+    }
+  }
+
   if (res.status === 429) {
     const retryAfter = res.headers.get('Retry-After') || '5';
     console.log(`⏳ Rate limited. Retrying after ${retryAfter}s...`);
@@ -78,21 +102,46 @@ async function pMap(items, fn, limit = 5) {
   return results;
 }
 
-async function checkHasData(siteUrl, listTitle, internalName, token) {
+async function checkHasData(siteUrl, listTitle, internalName, auth) {
   try {
-    // Lightweight check: find 1 item where field is not null
+    // Attempt with filter (fastest)
     const url = `${siteUrl}/lists/getbytitle('${listTitle}')/items?$select=${internalName}&$top=1&$filter=${internalName} ne null`;
-    const data = await spFetch(url, token);
+    const data = await spFetch(url, auth);
     return data.value && data.value.length > 0;
   } catch (e) {
-    // If filter fails (e.g. not filterable), fallback to select top 1 and check value
-    try {
-       const url = `${siteUrl}/lists/getbytitle('${listTitle}')/items?$select=${internalName}&$top=1`;
-       const data = await spFetch(url, token);
-       return data.value && data.value.length > 0 && data.value[0][internalName] != null;
-    } catch (_e) {
-       return false; // Assume no data if we can't even read it
+    // Fallback for non-filterable fields (e.g., Note/Multiline)
+    if (e.message.includes('Note') || e.message.includes('SPException')) {
+      try {
+        const url = `${siteUrl}/lists/getbytitle('${listTitle}')/items?$select=${internalName}&$top=1`;
+        const data = await spFetch(url, auth);
+        if (data.value && data.value.length > 0) {
+          const val = data.value[0][internalName];
+          return val !== null && val !== undefined && val !== '';
+        }
+      } catch (_e) {
+        // ignore
+      }
     }
+    return false;
+  }
+}
+
+function countUsage(internalName) {
+  try {
+    // -F: fixed strings, -w: whole word, --count: total matches per file
+    // Note: rg returns exit code 1 if no matches, which throws in execSync
+    const output = execSync(`rg -F -w "${internalName}" src/ --glob "!**/node_modules/*" --glob "!**/__tests__/*" --count`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
+    // Sum the counts from all files
+    const lines = output.trim().split('\n');
+    let total = 0;
+    for (const line of lines) {
+      const parts = line.split(':');
+      const count = parseInt(parts[parts.length - 1]);
+      if (!isNaN(count)) total += count;
+    }
+    return total;
+  } catch (_e) {
+    return 0; // Exit code 1 or other errors
   }
 }
 
@@ -101,19 +150,27 @@ async function checkHasData(siteUrl, listTitle, internalName, token) {
 async function main() {
   console.log('🔍 Building Drift Ledger — Phase 2 Evidence Generation');
   
+  // Load .env if exists
+  try {
+    const envFile = join(REPO_ROOT, '.env');
+    const envContent = readFileSync(envFile, 'utf-8');
+    envContent.split('\n').forEach(line => {
+      const [key, ...valParts] = line.split('=');
+      if (key && valParts.length > 0) {
+        process.env[key.trim()] = valParts.join('=').trim();
+      }
+    });
+  } catch (_e) {
+    // Ignore
+  }
+  
   const OUT_DIR = join(REPO_ROOT, 'docs', 'nightly-patrol');
   mkdirSync(OUT_DIR, { recursive: true });
 
   const SITE_URL = process.env.VITE_SP_SITE_URL;
-  const TOKEN_FILE = join(REPO_ROOT, '.token.local');
-  let token = '';
-  try {
-    token = readFileSync(TOKEN_FILE, 'utf-8').trim();
-  } catch (_e) {
-    token = (process.env.VITE_SP_TOKEN || '').trim();
-  }
+  const auth = { token: getAccessToken() };
 
-  if (!SITE_URL || !token) {
+  if (!SITE_URL || !auth.token) {
     console.error('❌ Missing credentials (VITE_SP_SITE_URL or .token.local).');
     process.exit(2);
   }
@@ -121,7 +178,7 @@ async function main() {
   const normalizedSiteUrl = SITE_URL.endsWith('/_api/web') ? SITE_URL : SITE_URL.replace(/\/$/, '') + '/_api/web';
 
   // 1. Load SSOT
-  const { SP_LIST_REGISTRY } = await import('../../src/sharepoint/spListRegistry.js');
+  const { SP_LIST_REGISTRY } = await import('../../src/sharepoint/spListRegistry.ts');
   const { SP_SYSTEM_FIELDS } = await import('../../src/sharepoint/spSystemFields.js');
   
   const ledgerRows = [];
@@ -135,8 +192,8 @@ async function main() {
 
     try {
       // Fetch actual fields
-      const fieldsUrl = `${normalizedSiteUrl}/lists/getbytitle('${listTitle}')/fields?$select=InternalName,Title,Indexed`;
-      const fieldsData = await spFetch(fieldsUrl, token);
+      const fieldsUrl = `${normalizedSiteUrl}/lists/getbytitle('${listTitle}')/fields?$select=Id,InternalName,Title,Indexed`;
+      const fieldsData = await spFetch(fieldsUrl, auth);
       const actualFields = fieldsData.value;
       
       const consumedActuals = new Set();
@@ -167,18 +224,20 @@ async function main() {
           driftType = 'optional_missing';
         }
 
-        const hasData = matchedActual ? await checkHasData(normalizedSiteUrl, listTitle, matchedActual.InternalName, token) : false;
+        const hasData = matchedActual ? await checkHasData(normalizedSiteUrl, listTitle, matchedActual.InternalName, auth) : false;
+        const usageCount = matchedActual ? countUsage(matchedActual.InternalName) : 0;
 
         return {
           listKey: entry.key,
           listTitle,
+          fieldId: matchedActual?.Id || null,
           internalName: matchedActual?.InternalName || exp.name,
           displayName: matchedActual?.Title || exp.name,
           expectedField: exp.name,
           actualField: matchedActual?.InternalName || null,
           driftType,
           candidatesMatched,
-          usageCount: 0,
+          usageCount,
           hasData,
           isIndexed: matchedActual?.Indexed || false,
           lastSeenAt: new Date().toISOString()
@@ -190,17 +249,19 @@ async function main() {
       // 2. Prepare Zombie Rows
       const zombies = actualFields.filter(f => !consumedActuals.has(f.InternalName) && !SP_SYSTEM_FIELDS.has(f.InternalName));
       const zombieResults = await pMap(zombies, async (z) => {
-        const hasData = await checkHasData(normalizedSiteUrl, listTitle, z.InternalName, token);
+        const hasData = await checkHasData(normalizedSiteUrl, listTitle, z.InternalName, auth);
+        const usageCount = countUsage(z.InternalName);
         return {
           listKey: entry.key,
           listTitle,
+          fieldId: z.Id,
           internalName: z.InternalName,
           displayName: z.Title,
           expectedField: null,
           actualField: z.InternalName,
           driftType: 'zombie_candidate',
           candidatesMatched: false,
-          usageCount: 0,
+          usageCount,
           hasData,
           isIndexed: z.Indexed,
           lastSeenAt: new Date().toISOString()
@@ -224,7 +285,7 @@ async function main() {
 }
 
 function writeCsv(path, rows) {
-  const headers = ['listKey', 'listTitle', 'internalName', 'displayName', 'expectedField', 'actualField', 'driftType', 'candidatesMatched', 'usageCount', 'hasData', 'isIndexed', 'lastSeenAt', 'classification', 'evidence'];
+  const headers = ['listKey', 'listTitle', 'fieldId', 'internalName', 'displayName', 'expectedField', 'actualField', 'driftType', 'candidatesMatched', 'usageCount', 'hasData', 'isIndexed', 'lastSeenAt', 'classification', 'confidence', 'evidence'];
   const content = [
     headers.join(','),
     ...rows.map(r => headers.map(h => {
@@ -236,10 +297,10 @@ function writeCsv(path, rows) {
 }
 
 function writeMarkdown(path, rows) {
-  const headers = ['listKey', 'listTitle', 'internalName', 'displayName', 'driftType', 'classification', 'hasData', 'isIndexed', 'evidence'];
+  const headers = ['listKey', 'listTitle', 'internalName', 'displayName', 'driftType', 'classification', 'confidence', 'hasData', 'isIndexed', 'evidence'];
   const tableHeaders = `| ${headers.join(' | ')} |`;
   const tableDivider = `| ${headers.map(() => '---').join(' | ')} |`;
-  const tableRows = rows.map(r => `| ${headers.map(h => r[h]).join(' | ')} |`).join('\n');
+  const tableRows = rows.map(r => `| ${headers.map(h => h === 'confidence' ? `**${r[h]}**` : r[h]).join(' | ')} |`).join('\n');
   
   const content = `# Drift Ledger — ${new Date().toISOString().split('T')[0]}\n\n${tableHeaders}\n${tableDivider}\n${tableRows}\n`;
   writeFileSync(path, content);

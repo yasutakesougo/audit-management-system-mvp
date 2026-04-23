@@ -116,8 +116,10 @@
     "patrol:admin-status": "node scripts/ops/export-admin-status-summary.mjs",
     "patrol:exception-center": "node scripts/ops/export-exception-center-summary.mjs",
     "patrol:decision": "node scripts/ops/nightly-decision.mjs",
-    "patrol:ledger": "node scripts/ops/build-drift-ledger.mjs",
-    "patrol:full": "npm run patrol:telemetry && npm run patrol && npm run patrol:assert && npm run patrol:dashboard && npm run patrol:raw-fetch && npm run patrol:admin-status && npm run patrol:exception-center && npm run patrol:decision && npm run patrol:ledger"
+    "patrol:ledger": "tsx scripts/ops/build-drift-ledger.mjs",
+    "patrol:purge": "tsx scripts/ops/execute-zombie-purge.mjs",
+    "patrol:governance": "tsx scripts/ops/nightly-drift-governance.mjs",
+    "patrol:full": "npm run patrol:telemetry && npm run patrol && npm run patrol:assert && npm run patrol:dashboard && npm run patrol:raw-fetch && npm run patrol:admin-status && npm run patrol:exception-center && npm run patrol:decision && npm run patrol:governance"
   },
   "dependencies": {
     "@azure/msal-browser": "^3.30.0",
