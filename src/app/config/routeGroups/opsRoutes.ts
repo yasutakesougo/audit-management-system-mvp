@@ -1,63 +1,81 @@
 /**
- * Ops Routes — group: 'ops'
+ * Ops Routes — group: 'operations'
  *
- * NavItem constants for the 運営管理 navigation group.
- * Extracted from navigationConfig.ts createNavItems() for single-responsibility.
+ * NavItem constants for the 拠点運営 navigation group.
  */
 import { PREFETCH_KEYS } from '@/prefetch/routes';
 import { TESTIDS } from '@/testids';
-import type { NavGroupKey, NavItem } from '../navigationConfig.types';
+import type { NavAudience, NavGroupKey, NavItem } from '../navigationConfig.types';
 import { NAV_AUDIENCE } from '../navigationConfig.types';
 
-/** Unconditional ops items (always included) */
-export const OPS_ROUTES_BASE: NavItem[] = [
-  {
-    label: '請求処理',
-    to: '/billing',
-    isActive: (pathname) => pathname === '/billing' || pathname.startsWith('/billing/'),
+export const OPS_ROUTES = {
+  METRICS: (_isFieldStaffShell: boolean): NavItem => ({
+    label: '運用メトリクス',
+    to: '/ops',
+    isActive: (pathname: string) => pathname === '/ops' || pathname.startsWith('/ops/'),
     icon: undefined,
-    testId: TESTIDS.nav.billing,
-    audience: [NAV_AUDIENCE.reception, NAV_AUDIENCE.admin],
-    group: 'ops' as NavGroupKey,
-  },
-];
-
-/** Added when staffAttendanceEnabled is true */
-export const OPS_ROUTES_STAFF_ATTENDANCE: NavItem[] = [
-  {
+    audience: NAV_AUDIENCE.admin as NavAudience,
+    group: 'operations' as NavGroupKey,
+    tier: 'admin' as const,
+    featureFlag: 'todayLiteNavV2' as const,
+  }),
+  
+  STAFF_ATTENDANCE: (_isFieldStaffShell: boolean): NavItem => ({
     label: '職員勤怠',
     to: '/staff/attendance',
     isActive: (pathname: string) => pathname.startsWith('/staff/attendance'),
     icon: undefined,
     prefetchKey: PREFETCH_KEYS.staff,
     testId: TESTIDS.nav.staffAttendance,
-    audience: NAV_AUDIENCE.reception,
-    group: 'ops' as NavGroupKey,
-  },
-];
-
-/** Added when isAdmin && (authzReady || skipLogin) && schedulesEnabled */
-export const OPS_ROUTES_ADMIN_IRC: NavItem[] = [
-  {
-    label: '統合リソースカレンダー',
-    to: '/admin/integrated-resource-calendar',
-    isActive: (pathname: string) =>
-      pathname.startsWith('/admin/integrated-resource-calendar'),
-    icon: undefined,
-    testId: TESTIDS.nav.integratedResourceCalendar,
-    audience: NAV_AUDIENCE.admin,
-    group: 'ops' as NavGroupKey,
-  },
-];
-
-/** Added when complianceFormEnabled is true */
-export const OPS_ROUTES_COMPLIANCE: NavItem[] = [
-  {
+    audience: NAV_AUDIENCE.reception as NavAudience,
+    group: 'operations' as NavGroupKey,
+  }),
+  
+  COMPLIANCE_REPORT: (_isFieldStaffShell: boolean): NavItem => ({
     label: 'コンプラ報告',
     to: '/compliance',
     isActive: (pathname: string) => pathname.startsWith('/compliance'),
     icon: undefined,
-    audience: 'staff',
-    group: 'ops' as NavGroupKey,
-  },
-];
+    audience: 'staff' as NavAudience,
+    group: 'operations' as NavGroupKey,
+  }),
+  
+  COMPLIANCE_DASHBOARD: (_isFieldStaffShell: boolean): NavItem => ({
+    label: '適正化運用',
+    to: '/admin/compliance-dashboard',
+    isActive: (pathname: string) => pathname === '/admin/compliance-dashboard',
+    audience: NAV_AUDIENCE.admin as NavAudience,
+    group: 'operations' as NavGroupKey,
+    tier: 'admin' as const,
+  }),
+  
+  REGULATORY_DASHBOARD: (_isFieldStaffShell: boolean): NavItem => ({
+    label: '制度遵守',
+    to: '/admin/regulatory-dashboard',
+    isActive: (pathname: string) => pathname === '/admin/regulatory-dashboard',
+    audience: NAV_AUDIENCE.admin as NavAudience,
+    group: 'operations' as NavGroupKey,
+    tier: 'admin' as const,
+  }),
+  
+  ADMIN_STAFF_ATTENDANCE: (_isFieldStaffShell: boolean): NavItem => ({
+    label: '職員勤怠管理',
+    to: '/admin/staff-attendance',
+    isActive: (pathname: string) => pathname.startsWith('/admin/staff-attendance'),
+    icon: undefined,
+    audience: NAV_AUDIENCE.admin as NavAudience,
+    group: 'operations' as NavGroupKey,
+  }),
+  
+  EXCEPTION_CENTER: (_isFieldStaffShell: boolean): NavItem => ({
+    label: '例外センター',
+    to: '/admin/exception-center',
+    isActive: (pathname: string) => pathname.startsWith('/admin/exception-center'),
+    icon: undefined,
+    testId: TESTIDS.nav.exceptionCenter,
+    audience: NAV_AUDIENCE.admin as NavAudience,
+    group: 'operations' as NavGroupKey,
+    tier: 'admin' as const,
+    featureFlag: 'todayLiteNavV2' as const,
+  }),
+};

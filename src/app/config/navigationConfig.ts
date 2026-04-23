@@ -20,22 +20,30 @@ import {
   isHubPathActive,
 } from '@/app/hubs/hubDefinitions';
 import type { HubId } from '@/app/hubs/hubTypes';
-import { PREFETCH_KEYS } from '@/prefetch/routes';
 import { TESTIDS } from '@/testids';
 
 // Import types and constants from extracted modules
 import { isNavVisible, requiredRoleToNavAudience } from './navigationConfig.helpers';
 import {
-    NAV_AUDIENCE,
     type CreateNavItemsConfig,
     type NavGroupKey,
     type NavItem,
     type NavTier,
 } from './navigationConfig.types';
 
+// Import Route Groups
+import { MASTER_ROUTES } from './routeGroups/masterRoutes';
+import { OPS_ROUTES } from './routeGroups/opsRoutes';
+import { PLANNING_ROUTES } from './routeGroups/planningRoutes';
+import { PLATFORM_ROUTES } from './routeGroups/platformRoutes';
+import { RECORD_ROUTES } from './routeGroups/recordRoutes';
+import { SEVERE_ROUTES } from './routeGroups/severeRoutes';
+import { TODAY_ROUTES } from './routeGroups/todayRoutes';
+
 // Re-export all types and constants for public API parity
 export {
-    groupLabel, NAV_AUDIENCE,
+    groupLabel,
+    NAV_AUDIENCE,
     NAV_GROUP_I18N_KEYS,
     NAV_GROUP_ORDER
 } from './navigationConfig.types';
@@ -111,274 +119,62 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     ...(todayOpsEnabled
       ? [createHubNavItem('today', { testId: TESTIDS.nav.todayOps })]
       : []),
-    {
-      label: '送迎降車表',
-      to: '/transport/assignments',
-      isActive: (pathname) => pathname.startsWith('/transport/assignments'),
-      icon: undefined,
-      testId: TESTIDS.nav.transportAssignments,
-      audience: NAV_AUDIENCE.staff,
-      group: 'today' as NavGroupKey,
-    },
-    ...(schedulesEnabled
-      ? [
-          {
-            label: 'スケジュール',
-            to: '/schedules/week',
-            isActive: (pathname: string) => pathname.startsWith('/schedule') || pathname.startsWith('/schedules'),
-            testId: TESTIDS.nav.schedules,
-            icon: undefined,
-            prefetchKey: PREFETCH_KEYS.schedulesWeek,
-            prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
-            audience: NAV_AUDIENCE.staff,
-            group: 'today' as NavGroupKey,
-          },
-        ]
-      : []),
-    {
-      label: '日次記録',
-      to: '/dailysupport',
-      isActive: (pathname) => pathname === '/dailysupport' || pathname.startsWith('/daily/'),
-      icon: undefined,
-      prefetchKey: PREFETCH_KEYS.dailyMenu,
-      testId: TESTIDS.nav.daily,
-      audience: NAV_AUDIENCE.all,
-      group: 'today' as NavGroupKey,
-    },
-    {
-      label: '健康記録',
-      to: '/daily/health',
-      isActive: (pathname) => pathname.startsWith('/daily/health'),
-      icon: undefined,
-      audience: NAV_AUDIENCE.all,
-      group: 'today' as NavGroupKey,
-    },
-    {
-      label: '申し送りタイムライン',
-      to: '/handoff-timeline',
-      isActive: (pathname) => pathname.startsWith('/handoff-timeline'),
-      icon: undefined,
-      audience: NAV_AUDIENCE.all,
-      group: 'today' as NavGroupKey,
-    },
-    {
-      label: '議事録',
-      to: '/meeting-minutes',
-      isActive: (pathname) => pathname.startsWith('/meeting-minutes') || pathname.startsWith('/meeting-guide') || pathname.startsWith('/dashboard/briefing'),
-      icon: undefined,
-      audience: isFieldStaffShell ? NAV_AUDIENCE.staff : NAV_AUDIENCE.all,
-      group: 'today' as NavGroupKey,
-      tier: 'more',
-      featureFlag: 'todayLiteNavV2',
-    },
+    TODAY_ROUTES.TRANSPORT(isFieldStaffShell),
+    ...(schedulesEnabled ? [TODAY_ROUTES.SCHEDULES(isFieldStaffShell)] : []),
+    TODAY_ROUTES.DAILY_SUPPORT(isFieldStaffShell),
+    TODAY_ROUTES.HEALTH_RECORD(isFieldStaffShell),
+    TODAY_ROUTES.HANDOFF_TIMELINE(isFieldStaffShell),
+    TODAY_ROUTES.MEETING_MINUTES(isFieldStaffShell),
 
     // --- 2. 計画・アセスメント (planning / severe) ---
     createHubNavItem('planning', {
+      label: '支援計画・調整',
       isActive: (pathname) => pathname === '/planning' || pathname.startsWith('/planning/'),
     }),
-    {
-      label: '個別支援計画',
-      to: '/support-plan-guide',
-      isActive: (pathname) => pathname === '/support-plan-guide',
-      icon: undefined,
-      testId: TESTIDS.nav.supportPlanGuide,
-      audience: isFieldStaffShell ? NAV_AUDIENCE.staff : NAV_AUDIENCE.all,
-      group: 'planning' as NavGroupKey,
-    },
-    {
-      label: '個別支援計画更新・前回比較',
-      to: '/isp-editor',
-      isActive: (pathname) => pathname.startsWith('/isp-editor'),
-      icon: undefined,
-      testId: TESTIDS.nav.ispEditor,
-      audience: NAV_AUDIENCE.admin,
-      group: 'planning' as NavGroupKey,
-    },
+    PLANNING_ROUTES.SUPPORT_PLAN_GUIDE(isFieldStaffShell),
+    PLANNING_ROUTES.ISP_EDITOR(isFieldStaffShell),
+    
     createHubNavItem('severe', {
       isActive: (pathname) => pathname === '/severe' || pathname.startsWith('/severe/'),
     }),
-    {
-      label: '支援計画シート',
-      to: '/planning-sheet-list',
-      isActive: (pathname) => pathname.startsWith('/planning-sheet-list') || pathname.startsWith('/support-planning-sheet'),
-      icon: undefined,
-      testId: TESTIDS.nav.planningSheet,
-      audience: NAV_AUDIENCE.staff,
-      group: 'severe' as NavGroupKey,
-    },
-    {
-      label: 'アセスメント',
-      to: '/assessment',
-      isActive: (pathname) => pathname.startsWith('/assessment'),
-      icon: undefined,
-      prefetchKey: PREFETCH_KEYS.assessmentDashboard,
-      testId: TESTIDS.nav.assessment,
-      audience: NAV_AUDIENCE.staff,
-      group: 'severe' as NavGroupKey,
-    },
+    SEVERE_ROUTES.PLANNING_SHEET(isFieldStaffShell),
+    SEVERE_ROUTES.ASSESSMENT(isFieldStaffShell),
 
     // --- 3. 記録・参照 (records) ---
-    {
-      label: '運営状況',
-      to: '/dashboard',
-      isActive: (pathname) => pathname === '/dashboard',
-      icon: undefined,
-      testId: TESTIDS.nav.dashboard,
-      audience: NAV_AUDIENCE.admin,
-      group: 'records' as NavGroupKey,
-      tier: 'admin',
-      featureFlag: 'todayLiteNavV2',
-    },
-    createHubNavItem('records'),
-    {
-      label: 'モニタリング記録',
-      to: '/records/monthly',
-      isActive: (pathname) => pathname.startsWith('/records/monthly'),
-      icon: undefined,
-      testId: 'nav-monitoring-record',
-      audience: NAV_AUDIENCE.staff,
-      group: 'records' as NavGroupKey,
-    },
-    {
-      label: '申し送り分析',
-      to: '/handoff-analysis',
-      isActive: (pathname) => pathname.startsWith('/handoff-analysis'),
-      icon: undefined,
-      audience: NAV_AUDIENCE.admin,
-      group: 'records' as NavGroupKey,
-      tier: 'admin',
-      featureFlag: 'todayLiteNavV2',
-    },
+    RECORD_ROUTES.DASHBOARD(isFieldStaffShell),
+    createHubNavItem('records', { label: '記録・参照' }),
+    RECORD_ROUTES.MONTHLY(isFieldStaffShell),
+    RECORD_ROUTES.HANDOFF_ANALYSIS(isFieldStaffShell),
 
     // --- 4. 運営・管理 (operations / platform) ---
-    createHubNavItem('operations', { tier: 'admin' }),
-    {
-      label: '運用メトリクス',
-      to: '/ops',
-      isActive: (pathname) => pathname === '/ops' || pathname.startsWith('/ops/'),
-      icon: undefined,
-      audience: NAV_AUDIENCE.admin,
-      group: 'operations' as NavGroupKey,
-      tier: 'admin',
-      featureFlag: 'todayLiteNavV2',
-    },
+    createHubNavItem('operations', { label: '運営・管理', tier: 'admin' }),
+    OPS_ROUTES.METRICS(isFieldStaffShell),
     createHubNavItem('billing', { testId: TESTIDS.nav.billing }),
     createHubNavItem('master'),
     createHubNavItem('platform'),
-    {
-      label: '利用者',
-      to: '/users',
-      isActive: (pathname: string) => pathname.startsWith('/users'),
-      icon: undefined,
-      prefetchKey: PREFETCH_KEYS.users,
-      audience: NAV_AUDIENCE.staff,
-      group: 'master' as NavGroupKey,
-    },
-    {
-      label: '職員',
-      to: '/staff',
-      isActive: (pathname: string) => pathname.startsWith('/staff') && !pathname.startsWith('/staff/attendance'),
-      icon: undefined,
-      prefetchKey: PREFETCH_KEYS.staff,
-      audience: NAV_AUDIENCE.admin,
-      group: 'master' as NavGroupKey,
-    },
+    MASTER_ROUTES.USERS(isFieldStaffShell),
+    MASTER_ROUTES.STAFF(isFieldStaffShell),
   ];
 
   // Conditional additions
   if (staffAttendanceEnabled) {
-    items.push({
-      label: '職員勤怠',
-      to: '/staff/attendance',
-      isActive: (pathname: string) => pathname.startsWith('/staff/attendance'),
-      icon: undefined,
-      prefetchKey: PREFETCH_KEYS.staff,
-      testId: TESTIDS.nav.staffAttendance,
-      audience: NAV_AUDIENCE.reception,
-      group: 'operations' as NavGroupKey,
-    });
+    items.push(OPS_ROUTES.STAFF_ATTENDANCE(isFieldStaffShell));
   }
 
   if (complianceFormEnabled) {
-    items.push({
-      label: 'コンプラ報告',
-      to: '/compliance',
-      isActive: (pathname: string) => pathname.startsWith('/compliance'),
-      icon: undefined,
-      audience: 'staff',
-      group: 'operations' as NavGroupKey,
-    });
+    items.push(OPS_ROUTES.COMPLIANCE_REPORT(isFieldStaffShell));
   }
 
   if (isAdmin && (authzReady || skipLogin)) {
-    items.push({
-      label: '適正化運用',
-      to: '/admin/compliance-dashboard',
-      isActive: (pathname: string) => pathname === '/admin/compliance-dashboard',
-      audience: NAV_AUDIENCE.admin,
-      group: 'operations' as NavGroupKey,
-      tier: 'admin',
-    });
-
-    items.push({
-      label: '制度遵守',
-      to: '/admin/regulatory-dashboard',
-      isActive: (pathname: string) => pathname === '/admin/regulatory-dashboard',
-      audience: NAV_AUDIENCE.admin,
-      group: 'operations' as NavGroupKey,
-      tier: 'admin',
-    });
-
-    items.push({
-      label: '職員勤怠管理',
-      to: '/admin/staff-attendance',
-      isActive: (pathname: string) => pathname.startsWith('/admin/staff-attendance'),
-      icon: undefined,
-      audience: NAV_AUDIENCE.admin,
-      group: 'operations' as NavGroupKey,
-    });
-
-    items.push({
-      label: '例外センター',
-      to: '/admin/exception-center',
-      isActive: (pathname: string) => pathname.startsWith('/admin/exception-center'),
-      icon: undefined,
-      testId: TESTIDS.nav.exceptionCenter,
-      audience: NAV_AUDIENCE.admin,
-      group: 'operations' as NavGroupKey,
-      tier: 'admin',
-      featureFlag: 'todayLiteNavV2',
-    });
-
-    items.push({
-      label: '管理ツール',
-      to: '/admin',
-      isActive: (pathname: string) => (pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/checklist') || pathname.startsWith('/audit') || pathname.startsWith('/settings/')) && !pathname.startsWith('/admin/exception-center') && !pathname.startsWith('/admin/compliance-dashboard') && !pathname.startsWith('/admin/regulatory-dashboard'),
-      icon: undefined,
-      audience: NAV_AUDIENCE.admin,
-      group: 'platform' as NavGroupKey,
-    });
-
-    items.push({
-      label: 'テレメトリ',
-      to: '/admin/telemetry',
-      isActive: (pathname: string) => pathname === '/admin/telemetry',
-      icon: undefined,
-      audience: NAV_AUDIENCE.admin,
-      group: 'platform' as NavGroupKey,
-      tier: 'admin',
-    });
-
-    items.push({
-      label: '環境診断',
-      to: '/admin/status',
-      isActive: (pathname: string) => pathname === '/admin/status',
-      icon: undefined,
-      audience: NAV_AUDIENCE.admin,
-      group: 'platform' as NavGroupKey,
-      tier: 'admin',
-    });
+    items.push(OPS_ROUTES.COMPLIANCE_DASHBOARD(isFieldStaffShell));
+    items.push(OPS_ROUTES.REGULATORY_DASHBOARD(isFieldStaffShell));
+    items.push(OPS_ROUTES.ADMIN_STAFF_ATTENDANCE(isFieldStaffShell));
+    items.push(OPS_ROUTES.EXCEPTION_CENTER(isFieldStaffShell));
+    items.push(PLATFORM_ROUTES.ADMIN(isFieldStaffShell));
+    items.push(PLATFORM_ROUTES.TELEMETRY(isFieldStaffShell));
+    items.push(PLATFORM_ROUTES.STATUS(isFieldStaffShell));
   }
 
   return items.filter((item) => isNavVisible(item, navAudience));
 }
+
