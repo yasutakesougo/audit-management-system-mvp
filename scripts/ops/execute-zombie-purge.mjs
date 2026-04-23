@@ -143,8 +143,17 @@ async function main() {
       continue;
     }
 
-    if (!row.fieldId) {
-      console.warn(`⚠️  Skipping: missing fieldId`);
+    // Gate 5: Independent Blocklist (Safety Belt)
+    const SYSTEM_PREFIXES = ['_', 'OData_', 'SMTotal', 'SMLastModified'];
+    const SYSTEM_PATTERNS = [/Virus/i, /Compliance/i, /File/i, /Version/i, /Workflow/i, /MediaService/i, /ParentUniqueId/i, /SortBehavior/i, /Restricted/i, /NoExecute/i, /AccessPolicy/i, /MainLinkSettings/i, /HTML_x0020_File/i];
+    const HARD_BLOCKLIST = ['Title', 'ID', 'Id', 'Created', 'Modified', 'Author', 'Editor', 'Attachments', 'GUID', 'ContentType', 'ContentTypeId', 'owshiddenversion'];
+
+    const isSystemBlocked = HARD_BLOCKLIST.includes(row.internalName) || 
+                          SYSTEM_PREFIXES.some(p => row.internalName.startsWith(p)) ||
+                          SYSTEM_PATTERNS.some(p => p.test(row.internalName));
+
+    if (isSystemBlocked) {
+      console.warn(`❌ GATE 5 VIOLATION: ${row.internalName} is a system/protected field! Purge blocked.`);
       continue;
     }
 
