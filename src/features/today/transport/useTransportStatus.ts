@@ -54,6 +54,7 @@ import {
   buildTransportAssignmentIndex,
   enrichTransportLegsWithAssignments,
 } from './transportAssignments';
+import type { IUserMaster } from '@/features/users/types';
 import type {
     TodayTransportStatus,
     TransportDirection,
@@ -71,7 +72,7 @@ import type {
  * 2. Fallback to checking User Master (UserTransportSettings) fields.
  */
 function adaptUsers(
-  summaryUsers: Array<{ UserID?: string; Id?: number; FullName?: string }>,
+  summaryUsers: IUserMaster[],
   attendanceUsers?: Array<{ UserCode: string; IsTransportTarget?: boolean }>,
 ): TransportUserInfo[] {
   // Build a set of transport-target user codes from AttendanceUsers.
@@ -252,7 +253,7 @@ export function useTransportStatus(): UseTransportStatusReturn {
   const assignmentIndex = useMemo(
     () =>
       buildTransportAssignmentIndex(
-        todaySchedules as unknown as Record<string, unknown>[],
+        (todaySchedules ?? []) as unknown as Record<string, unknown>[],
         (staffId) => staffNameIndex.get(staffId) ?? staffNameIndex.get(normalizeLookupKey(staffId)),
       ),
     [todaySchedules, staffNameIndex],

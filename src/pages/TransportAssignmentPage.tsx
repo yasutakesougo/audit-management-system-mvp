@@ -96,7 +96,7 @@ export default function TransportAssignmentPage() {
 
   const userSources = useMemo<TransportAssignmentUserSource[]>(
     () =>
-      usersData
+      (usersData ?? [])
         .filter((user) => hasTransportInfo(user))
         .map((user) => {
           const fixedCourseId = resolveUserFixedTransportCourse(user);

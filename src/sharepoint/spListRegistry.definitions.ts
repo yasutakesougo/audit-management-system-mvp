@@ -65,7 +65,7 @@ export const masterListEntries: readonly SpListEntry[] = [
       { internalName: 'TransportFromDays', type: 'MultiChoice', displayName: 'Transport From Days', choices: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], candidates: ['TransportFromDays', 'Transport_x0020_From_x0020_Days'] },
       { internalName: 'TransportCourse', type: 'Text', displayName: 'Transport Course', candidates: ['TransportCourse', 'Transport_x0020_Course'] },
       { internalName: 'TransportSchedule', type: 'Note', displayName: 'Transport Schedule', richText: false, candidates: ['TransportSchedule', 'Transport_x0020_Schedule'] },
-      { internalName: 'TransportAdditionType', type: 'Text', displayName: 'Transport Addition Type' },
+      { internalName: 'TransportAdditionType', type: 'Text', displayName: 'Transport Addition Type', candidates: ['TransportAdditionType', 'Transport_x0020_Addition_x0020_T'] },
     ],
   },
   {

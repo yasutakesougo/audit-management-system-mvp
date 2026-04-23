@@ -109,7 +109,7 @@ export type UserMasterDomain = z.infer<typeof UserMasterDomainSchema>;
 /** CORE: 一覧・ピッカーで必須（ID/表示名/状態/検索キー/日付/フラグ） */
 export const UserCoreSchema = z.object({
   Id: z.number(),
-  Title: z.string().nullable(),
+  Title: z.string().nullable().optional(),
   UserID: z.string(),
   FullName: z.string(),
   Furigana: z.string().nullable().optional(),
@@ -131,7 +131,7 @@ export const UserCoreSchema = z.object({
   Modified: z.string().nullable().optional(),
   Created: z.string().nullable().optional(),
   // selectMode marker (set by Repository)
-  __selectMode: z.enum(['core', 'detail', 'full']).optional(),
+  __selectMode: z.enum(['minimal', 'core', 'detail', 'full']).optional(),
 });
 
 /** DETAIL: 詳細画面用（CORE + 支給決定情報） */
