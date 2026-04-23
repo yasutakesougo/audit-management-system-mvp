@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+/* eslint-disable */
 import { chromium } from '@playwright/test';
 import { SharePointProvisioningCoordinator } from '../../src/sharepoint/spProvisioningCoordinator';
 import { createNormalizePath } from '../../src/lib/sp/spFetch';
