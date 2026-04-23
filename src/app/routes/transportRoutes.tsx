@@ -1,6 +1,6 @@
 import RequireAudience from '@/components/RequireAudience';
 import type { RouteObject } from 'react-router-dom';
-import { SuspendedTransportAssignmentPage } from './lazyPages';
+import { SuspendedTransportAssignmentPage, SuspendedTransportExecutionPage } from './lazyPages';
 
 export const transportRoutes: RouteObject[] = [
   {
@@ -8,6 +8,14 @@ export const transportRoutes: RouteObject[] = [
     element: (
       <RequireAudience requiredRole="viewer">
         <SuspendedTransportAssignmentPage />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'transport/execution',
+    element: (
+      <RequireAudience requiredRole="viewer">
+        <SuspendedTransportExecutionPage />
       </RequireAudience>
     ),
   },

@@ -186,6 +186,9 @@ const ExceptionCenterPage = React.lazy(() => import('@/pages/admin/ExceptionCent
 export const SuspendedExceptionCenterPage = createSuspended(ExceptionCenterPage, '例外センターを読み込んでいます…');
 const NotificationAuditLogPage = React.lazy(() => import('@/pages/admin/NotificationAuditLogPage'));
 export const SuspendedNotificationAuditLogPage = createSuspended(NotificationAuditLogPage, '通知監査ログを読み込んでいます…');
+const TransportExecutionPage = React.lazy(() => import('@/pages/TransportExecutionPage'));
+export const SuspendedTransportExecutionPage = createSuspended(TransportExecutionPage, '送迎実施画面を読み込んでいます…');
+
 const TransportAssignmentPage = React.lazy(() => import('@/pages/TransportAssignmentPage'));
 export const SuspendedTransportAssignmentPage = createSuspended(TransportAssignmentPage, '送迎配車表を読み込んでいます…');
 const TelemetryDashboardPage = React.lazy(() => import('@/pages/admin/TelemetryDashboardPage'));

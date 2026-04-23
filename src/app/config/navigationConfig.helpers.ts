@@ -168,6 +168,7 @@ export function pickGroup(item: Partial<NavItem>, _isAdmin: boolean): NavGroupKe
     testId === TESTIDS.nav.transportAssignments ||
     to.startsWith('/today') ||
     to.startsWith('/transport/assignments') ||
+    to.startsWith('/transport/execution') ||
     to.startsWith('/daily') ||
     to.startsWith('/dailysupport') ||
     to.startsWith('/handoff-timeline') ||
