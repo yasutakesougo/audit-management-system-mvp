@@ -22,8 +22,10 @@ describe('navigationConfig Factory Contract', () => {
     
     const hubLabels = items.map(i => i.label);
     expect(hubLabels).toContain('今日の業務');
+    expect(hubLabels).toContain('送迎実施');
     expect(hubLabels).toContain('スケジュール');
     expect(hubLabels).toContain('週間予定');
+    expect(hubLabels).toContain('送迎配車調整');
     expect(hubLabels).toContain('支援計画・調整');
     expect(hubLabels).toContain('記録・参照');
     expect(hubLabels).toContain('運営・管理');
