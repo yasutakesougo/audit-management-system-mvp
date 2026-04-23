@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { test } from '@playwright/test';
 import { resolveSharePointSiteUrl } from './_shared/resolveSiteUrl';
 import * as fs from 'fs';
