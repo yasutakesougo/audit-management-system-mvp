@@ -2,7 +2,7 @@ import type { DashboardAudience } from '@/features/auth/store';
 import { buildDailySupportUrl } from '@/app/links/dailySupportLinks';
 
 export type TodayCoreFlowStep = {
-  key: 'today-overview' | 'attendance' | 'daily-table' | 'handoff-timeline' | 'daily-support-user';
+  key: 'today-overview' | 'attendance' | 'daily-table' | 'handoff-timeline' | 'daily-support';
   label: string;
   route: string;
   order: number;
@@ -44,8 +44,8 @@ export const TODAY_CORE_FLOW: readonly TodayCoreFlowStep[] = [
     primary: true,
   },
   {
-    key: 'daily-support-user',
-    label: '記録(利用者順)',
+    key: 'daily-support',
+    label: '支援手順',
     route: buildDailySupportUrl({ wizard: 'user' }),
     order: 4,
     audience: ['staff', 'admin'],

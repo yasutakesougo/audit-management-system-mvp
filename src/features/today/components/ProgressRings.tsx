@@ -24,7 +24,7 @@ import React from 'react';
 // ─── Types ───────────────────────────────────────────────────
 
 export type ProgressRingItem = {
-  key: 'records' | 'caseRecords' | 'attendance' | 'contacts' | 'recordsUser';
+  key: 'records' | 'caseRecords' | 'attendance' | 'contacts';
   label: string;
   /** 表示テキスト: "5 / 12" や "2件" */
   valueText: string;

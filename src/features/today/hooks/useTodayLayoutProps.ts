@@ -192,16 +192,14 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
         },
         onChipClick: (key: ProgressChipKey) => {
           const chipRoutes: Record<ProgressChipKey, string> = {
-            record: '/daily/support',
+            record: buildDailySupportUrl({ wizard: 'user' }),
             attendance: '/daily/attendance',
             briefing: buildHandoffTimelineUrl(),
-            recordsUser: buildDailySupportUrl({ wizard: 'user' }),
           };
           const chipCtaEvents: Record<ProgressChipKey, typeof CTA_EVENTS[keyof typeof CTA_EVENTS]> = {
             record: CTA_EVENTS.PROGRESS_CHIP_RECORD,
             attendance: CTA_EVENTS.PROGRESS_CHIP_ATTENDANCE,
             briefing: CTA_EVENTS.PROGRESS_CHIP_BRIEFING,
-            recordsUser: CTA_EVENTS.PROGRESS_CHIP_RECORDS_USER,
           };
           const targetUrl = chipRoutes[key];
           recordCtaClick({

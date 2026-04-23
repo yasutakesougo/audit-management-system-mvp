@@ -53,13 +53,13 @@ export const TodayLitePage: React.FC<TodayLitePageProps> = ({
         attendance: attendancePending,
         'daily-table': recordPending,
         'handoff-timeline': handoffPending,
-        'daily-support-user': recordPending,
+        'daily-support': recordPending,
       };
       const titleByFlowKey: Record<string, string> = {
         attendance: '出欠確認',
         'daily-table': '日々の記録',
         'handoff-timeline': '申し送り',
-        'daily-support-user': '記録(利用者順)',
+        'daily-support': '今日の業務',
       };
 
       const audience: DashboardAudience = role === 'admin' ? 'admin' : 'staff';
