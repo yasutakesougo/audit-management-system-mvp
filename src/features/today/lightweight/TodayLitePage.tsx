@@ -53,11 +53,19 @@ export const TodayLitePage: React.FC<TodayLitePageProps> = ({
         attendance: attendancePending,
         'daily-table': recordPending,
         'handoff-timeline': handoffPending,
+        'daily-support': recordPending,
       };
       const titleByFlowKey: Record<string, string> = {
-        attendance: '出欠確認',
+        attendance: '通所管理',
         'daily-table': '日々の記録',
         'handoff-timeline': '申し送り',
+        'daily-support': '今日の業務',
+      };
+      const buttonLabelByFlowKey: Record<string, string> = {
+        attendance: '出欠を入力する',
+        'daily-table': '記録を入力する',
+        'handoff-timeline': '内容を確認する',
+        'daily-support': '支援手順を開く',
       };
 
       const audience: DashboardAudience = role === 'admin' ? 'admin' : 'staff';
@@ -65,7 +73,7 @@ export const TodayLitePage: React.FC<TodayLitePageProps> = ({
         key: step.key,
         title: titleByFlowKey[step.key] ?? step.label,
         count: countByFlowKey[step.key] ?? 0,
-        primaryLabel: step.label,
+        primaryLabel: buttonLabelByFlowKey[step.key] ?? step.label,
         onPrimaryClick: () => handleNavigate(step.route),
       }));
 

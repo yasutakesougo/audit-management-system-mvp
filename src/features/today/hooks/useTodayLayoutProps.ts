@@ -192,7 +192,7 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
         },
         onChipClick: (key: ProgressChipKey) => {
           const chipRoutes: Record<ProgressChipKey, string> = {
-            record: '/daily/support',
+            record: buildDailySupportUrl({ wizard: 'user' }),
             attendance: '/daily/attendance',
             briefing: buildHandoffTimelineUrl(),
           };

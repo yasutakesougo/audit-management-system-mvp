@@ -13,6 +13,7 @@ export interface DailySupportLinkParams {
   date?: string;       // YYYY-MM-DD
   unfilled?: boolean;
   step?: string;
+  wizard?: 'user' | 'item';
 }
 
 /**
@@ -36,6 +37,9 @@ export function buildDailySupportUrl(params?: DailySupportLinkParams): string {
   }
   if (params.step) {
     search.set('step', params.step);
+  }
+  if (params.wizard) {
+    search.set('wizard', params.wizard);
   }
 
   const qs = search.toString();
