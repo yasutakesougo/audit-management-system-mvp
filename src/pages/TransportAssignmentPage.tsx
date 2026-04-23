@@ -18,6 +18,7 @@ import { useTransportAssignmentSave } from '@/features/transport-assignments/hoo
 import { useSchedules } from '@/features/schedules/hooks/legacy/useSchedules';
 import { useStaffStore } from '@/features/staff/store';
 import { getTransportCourseLabel, parseTransportCourse } from '@/features/today/transport/transportCourse';
+import { hasTransportInfo } from '@/features/today/transport/transportStatusLogic';
 import { DEFAULT_TRANSPORT_VEHICLE_IDS } from '@/features/today/transport/transportAssignments';
 import type { TransportDirection } from '@/features/today/transport/transportTypes';
 import {
@@ -96,6 +97,7 @@ export default function TransportAssignmentPage() {
   const userSources = useMemo<TransportAssignmentUserSource[]>(
     () =>
       usersData
+        .filter((user) => hasTransportInfo(user))
         .map((user) => {
           const fixedCourseId = resolveUserFixedTransportCourse(user);
           return {

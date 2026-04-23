@@ -39,6 +39,7 @@ import {
     deriveTransportLegs,
     formatHHmm,
     getDefaultDirection,
+    hasTransportInfo,
     type TransportLogEntry,
     type TransportUserInfo,
     type TransportVisitInfo,
@@ -65,34 +66,36 @@ import type {
 /**
  * Adapt IUserMaster from useTodaySummary to TransportUserInfo.
  *
- * Note: Current demo user store doesn't have isTransportTarget.
- * We fall back to true for all users (conservative — show all).
- * SP-connected users will have the real field from AttendanceUsersRepository.
+ * Enforces strict filtering:
+ * 1. If AttendanceUsers (IsTransportTarget) data exists, use it.
+ * 2. Fallback to checking User Master (UserTransportSettings) fields.
  */
 function adaptUsers(
   summaryUsers: Array<{ UserID?: string; Id?: number; FullName?: string }>,
   attendanceUsers?: Array<{ UserCode: string; IsTransportTarget?: boolean }>,
 ): TransportUserInfo[] {
   // Build a set of transport-target user codes from AttendanceUsers.
-  // If attendanceUsers is not available (list not connected yet),
-  // fall back to showing all users (conservative—show all).
   const transportTargetSet = new Set(
     (attendanceUsers ?? [])
       .filter((u) => u.IsTransportTarget === true)
       .map((u) => u.UserCode),
   );
-  const hasFilter = transportTargetSet.size > 0;
+  const hasAttendanceFilter = transportTargetSet.size > 0;
 
   return summaryUsers
     .filter((u) => {
-      if (!hasFilter) return true; // No filter data → show all
       const userCode = (u.UserID ?? '').trim();
-      return transportTargetSet.has(userCode);
+
+      // If we have explicit flag from AttendanceUsers, prioritize it
+      if (hasAttendanceFilter && transportTargetSet.has(userCode)) return true;
+
+      // Fallback/Secondary check: Check if transport info is actually set in User Master
+      return hasTransportInfo(u);
     })
     .map((u, i) => ({
       userId: (u.UserID ?? '').trim() || `U${String(u.Id ?? i + 1).padStart(3, '0')}`,
       fullName: u.FullName ?? `利用者${i + 1}`,
-      isTransportTarget: !hasFilter || transportTargetSet.has((u.UserID ?? '').trim()),
+      isTransportTarget: true, // Already filtered above
     }));
 }
 
