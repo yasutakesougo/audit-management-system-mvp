@@ -2,6 +2,7 @@ import type { Role } from '@/auth/roles';
 
 export type HubId =
   | 'today'
+  | 'schedules'
   | 'records'
   | 'planning'
   | 'operations'

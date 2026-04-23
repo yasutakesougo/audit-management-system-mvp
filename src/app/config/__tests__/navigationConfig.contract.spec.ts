@@ -22,6 +22,8 @@ describe('navigationConfig Factory Contract', () => {
     
     const hubLabels = items.map(i => i.label);
     expect(hubLabels).toContain('今日の業務');
+    expect(hubLabels).toContain('スケジュール');
+    expect(hubLabels).toContain('週間予定');
     expect(hubLabels).toContain('支援計画・調整');
     expect(hubLabels).toContain('記録・参照');
     expect(hubLabels).toContain('運営・管理');
@@ -65,5 +67,7 @@ describe('navigationConfig Factory Contract', () => {
     // Note: Some items are only added if isAdmin is true or specific roles are present
     // Just verify the list is returned correctly
     expect(adminItems.length).toBeGreaterThan(0);
+    const adminLabels = adminItems.map(i => i.label);
+    expect(adminLabels).toContain('リソースカレンダー');
   });
 });
