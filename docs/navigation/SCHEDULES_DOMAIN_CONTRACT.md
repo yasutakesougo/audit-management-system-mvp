@@ -20,9 +20,10 @@ This document defines the strategic boundaries, visibility rules, and future nav
 To maintain stability, current URLs are preserved, but internal constants and future implementations will follow this taxonomy:
 
 ### 📅 Calendar Domain (閲覧系)
-- **Current**: `/schedules/week`
+- **Primary Objective**: Team-wide situational awareness and schedule visibility.
+- **Current**: `/schedules/week` (`週間予定`)
 - **Future**: `/schedules/calendar/week`
-- **Focus**: Team-wide situational awareness.
+- **Example**: "What is the team's workload for next Tuesday?" (Awareness)
 
 ### 👥 Assignment Domain (采配系)
 - **Primary Objective**: Optimizing resource allocation and resolving conflicts before execution.
@@ -36,6 +37,12 @@ To maintain stability, current URLs are preserved, but internal constants and fu
   - **Schedules**: "Who is assigned to this vehicle for tomorrow's route?" (Coordination)
   - **Today**: "I am starting the transport route now." (Execution)
 - **Migration Note**: `transport` is the lead domain for the assignment-centric structure. Existing logic is being stabilized here before expanding to staff/support assignment.
+
+### 🛡️ Resource Domain (資源系)
+- **Primary Objective**: Managing the master availability and "inventory" of assets.
+- **Current**: `/admin/integrated-resource-calendar` (`リソースカレンダー`)
+- **Future**: `/schedules/resource/integrated-calendar`
+- **Example**: "Is Room A available for a recurring meeting?" (Asset Management)
 
 ---
 
