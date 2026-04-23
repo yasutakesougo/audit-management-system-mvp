@@ -25,14 +25,17 @@ To maintain stability, current URLs are preserved, but internal constants and fu
 - **Focus**: Team-wide situational awareness.
 
 ### 👥 Assignment Domain (采配系)
-- **Current**: `/transport/assignments`
-- **Future**: `/schedules/assignment/transport`
-- **Focus**: Resolving coordination conflicts and allocating personnel/vehicles.
-
-### 🛡️ Resource Domain (資源系)
-- **Current**: `/admin/integrated-resource-calendar`
-- **Future**: `/schedules/resource/integrated-calendar`
-- **Focus**: Managing physical infrastructure and asset availability (Admin only).
+- **Primary Objective**: Optimizing resource allocation and resolving conflicts before execution.
+- **Current (Representative)**: `/transport/assignments` (`送迎配車調整`)
+- **Future Taxonomy**:
+  - `/schedules/assignment/transport`: Vehicle and driver allocation.
+  - `/schedules/assignment/support`: Matching users with support sessions/staff.
+  - `/schedules/assignment/staff`: Daily task distribution and shift coordination.
+  - `/schedules/assignment/resource`: Resolving room/equipment booking conflicts.
+- **Responsibility vs. Today Hub**:
+  - **Schedules**: "Who is assigned to this vehicle for tomorrow's route?" (Coordination)
+  - **Today**: "I am starting the transport route now." (Execution)
+- **Migration Note**: `transport` is the lead domain for the assignment-centric structure. Existing logic is being stabilized here before expanding to staff/support assignment.
 
 ---
 
