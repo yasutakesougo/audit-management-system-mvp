@@ -44,4 +44,9 @@ export interface AssignmentRepository {
    * Delete an assignment.
    */
   delete(id: string): Promise<void>;
+
+  /**
+   * Bulk save multiple assignments, typically for the same domain context.
+   */
+  saveBulk(assignments: Assignment[]): Promise<void>;
 }

@@ -414,11 +414,12 @@ function buildListSpecs(): ListSpec[] {
  * 🎯 Nightly Decision Signal 型定義
  */
 export type HealthDecisionSignal = {
-  type: 'drift' | 'index' | 'zombie'
+  type: 'drift' | 'index' | 'zombie' | 'concurrency'
   severity: 'info' | 'warn' | 'critical'
   listKey?: string
   message: string
   recommendation: string
+  affectedItems?: string[]
 }
 
 const SEVERITY_ORDER = { critical: 0, warn: 1, info: 2 };

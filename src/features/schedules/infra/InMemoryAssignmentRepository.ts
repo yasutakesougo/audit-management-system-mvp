@@ -81,6 +81,12 @@ export class InMemoryAssignmentRepository implements AssignmentRepository {
     }
   }
 
+  async saveBulk(assignments: Assignment[]): Promise<void> {
+    for (const a of assignments) {
+      await this.update(a);
+    }
+  }
+
   /**
    * Helper to seed demo data
    */

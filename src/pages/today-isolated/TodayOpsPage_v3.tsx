@@ -31,6 +31,7 @@ import { ActionTaskList } from '@/features/action-engine/components/ActionTaskLi
 import { HandoffPanel } from '@/features/handoff/components/HandoffPanel';
 import { ConnectionDegradedBanner } from '@/features/sp/health/components/ConnectionDegradedBanner';
 import { TodayLitePage as TodayLiteOpsPage } from '@/features/today/lightweight/TodayLitePage';
+import { TransportConcurrencyInsightBanner } from '../transport-assignment/TransportConcurrencyInsightBanner';
 
 import type { ActionCard } from '@/features/today/domain/models/queue.types';
 import type { ActionSuggestion } from '@/features/action-engine/domain/types';
@@ -207,6 +208,7 @@ const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = 
   return (
     <Box sx={{ width: '100%' }}>
       <ConnectionDegradedBanner />
+      <TransportConcurrencyInsightBanner />
       <TodayBentoLayout {...finalLayoutProps} audience={authzRole} />
     </Box>
   );

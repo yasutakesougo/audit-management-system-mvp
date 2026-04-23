@@ -104,7 +104,19 @@ export const spTelemetryStore = {
       provisioning: { requests: 0, failed: 0, retries: 0, maxQueue: 0, totalQueue: 0, totalDur: 0, durCount: 0 }
     };
 
+    let assignmentConcurrencyConflicts = 0;
+    const assignmentConflictVehicles: string[] = [];
+
     for (const e of events) {
+      if (e.event === 'config_warning' && e.code === 'CONCURRENCY_CONFLICT') {
+        assignmentConcurrencyConflicts++;
+        if (e.message) {
+          const vehicles = e.message.split(',').map(v => v.trim());
+          assignmentConflictVehicles.push(...vehicles);
+        }
+        continue;
+      }
+
       const lane = e.lane && lanes[e.lane] ? e.lane : 'read';
 
       if (e.event === 'sp:request_start') {
@@ -166,6 +178,8 @@ export const spTelemetryStore = {
       avgQueuedMs,
       maxQueuedMs,
       lanes: laneMetrics,
+      assignmentConcurrencyConflicts,
+      assignmentConflictVehicles: [...new Set(assignmentConflictVehicles)], // Unique list
     };
   },
 

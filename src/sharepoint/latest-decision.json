@@ -1,9 +1,302 @@
 {
-  "date": "",
+  "version": 1,
+  "date": "2026-04-23",
   "final": {
-    "line": "No decision available"
+    "label": "action_required",
+    "emoji": "🔴",
+    "line": "🔴 Action Required（明日対応必須）"
   },
+  "thresholds": {
+    "healthScoreWarn": 80,
+    "healthScoreFail": 50,
+    "driftCountWarn": 1,
+    "driftCountFail": 10,
+    "schemaMismatchWarn": 1,
+    "schemaMismatchFail": 1,
+    "fetchFallbackWarn": 1,
+    "fetchFallbackFail": 999999,
+    "autoHealingWarnRate": 0.9,
+    "autoHealingFailRate": 0.75,
+    "actionResolveRateWarn": 0.9,
+    "actionResolveRateFail": 0.75,
+    "mttrWarnMinutes": 60,
+    "mttrFailMinutes": 180,
+    "falsePositiveRateWarn": 0.2,
+    "falsePositiveRateFail": 0.35,
+    "unresolvedHighSeverityFail": 1,
+    "overdueExceptionsWarn": 1,
+    "staleExceptionsWarn": 1,
+    "recurringExceptionsWarn": 1,
+    "actWarningWarn": 1,
+    "transportConcurrencyWarn": 5
+  },
+  "escalationPolicy": {
+    "watchStreakDays": 3,
+    "watchStreakCodes": [
+      "ADMIN_STATUS_SUMMARY_MISSING",
+      "EXCEPTION_CENTER_SUMMARY_MISSING",
+      "EXCEPTION_OVERDUE_PRESENT",
+      "ADMIN_STATUS_WARN",
+      "ADMIN_STATUS_WARN_PRESENT"
+    ]
+  },
+  "inputs": {
+    "patrolJson": "C:\\Users\\安武\\.vscode\\workspace\\audit-management-system\\docs\\nightly-patrol\\2026-04-23.json",
+    "classificationJson": "C:\\Users\\安武\\.vscode\\workspace\\audit-management-system\\docs\\nightly-patrol\\classification-2026-04-23.json",
+    "dashboardMd": "C:\\Users\\安武\\.vscode\\workspace\\audit-management-system\\docs\\nightly-patrol\\dashboard-2026-04-23.md",
+    "laneAssertionJson": "C:\\Users\\安武\\.vscode\\workspace\\audit-management-system\\docs\\nightly-patrol\\lane-assertion-result.json",
+    "actWarningJson": "",
+    "exceptionCenterJson": "",
+    "kpiJson": "",
+    "driftJson": "",
+    "adminStatusJson": "",
+    "logFile": "C:\\Users\\安武\\.vscode\\workspace\\audit-management-system\\logs\\today.auto.log"
+  },
+  "metrics": {
+    "driftCount": 0,
+    "schemaMismatchCount": 0,
+    "fetchFallbackCount": 0,
+    "autoHealingSuccessCount": 0,
+    "autoHealingFailedCount": 0,
+    "autoHealingSuccessRate": null,
+    "healthScore": null,
+    "healthGrade": null,
+    "actionResolveRate": null,
+    "mttrMinutes": null,
+    "falsePositiveRate": null,
+    "unresolvedHighSeverity": 0,
+    "overdueExceptions": 0,
+    "staleExceptions": 0,
+    "recurringExceptions": 0,
+    "actWarnings": 0,
+    "classificationOverall": "needs-review",
+    "laneErrors": 0,
+    "laneWarnings": 0,
+    "adminOverall": "unknown",
+    "gateFailures": []
+  },
+  "checks": [
+    {
+      "id": "admin-status",
+      "label": "/admin/status",
+      "status": "warn",
+      "value": "overall=n/a, fail=0, warn=0",
+      "note": "入力欠損（観測信頼性低下）"
+    },
+    {
+      "id": "patrol-overall",
+      "label": "Nightly Patrol 分類",
+      "status": "fail",
+      "value": "needs-review",
+      "note": "classification-<date>.json"
+    },
+    {
+      "id": "ci-gates",
+      "label": "Nightly CI Gates",
+      "status": "pass",
+      "value": "no gate failure",
+      "note": "patrol JSON gates"
+    },
+    {
+      "id": "lane-assertion",
+      "label": "Telemetry Lane Assertion",
+      "status": "unknown",
+      "value": "n/a",
+      "note": "入力なし"
+    },
+    {
+      "id": "act-warning",
+      "label": "act(...) warning",
+      "status": "unknown",
+      "value": "n/a",
+      "note": "入力なし"
+    },
+    {
+      "id": "drift-count",
+      "label": "Drift Count",
+      "status": "pass",
+      "value": "0",
+      "note": "ログ推定"
+    },
+    {
+      "id": "schema-mismatch",
+      "label": "Schema Mismatch",
+      "status": "pass",
+      "value": "0",
+      "note": "sp:schema_mismatch の検知件数"
+    },
+    {
+      "id": "fetch-fallback",
+      "label": "Fetch Fallback",
+      "status": "pass",
+      "value": "0",
+      "note": "fallback 発生件数"
+    },
+    {
+      "id": "auto-healing",
+      "label": "Auto-Healing Success Rate",
+      "status": "unknown",
+      "value": "n/a",
+      "note": "データなし"
+    },
+    {
+      "id": "health-score",
+      "label": "OS Health Score",
+      "status": "unknown",
+      "value": "n/a",
+      "note": "ダッシュボード未生成"
+    },
+    {
+      "id": "kpi-action-resolve-rate",
+      "label": "KPI: Action Resolve Rate",
+      "status": "unknown",
+      "value": "n/a",
+      "note": "入力なし"
+    },
+    {
+      "id": "kpi-mttr",
+      "label": "KPI: MTTR",
+      "status": "unknown",
+      "value": "n/a",
+      "note": "入力なし"
+    },
+    {
+      "id": "kpi-false-positive-rate",
+      "label": "KPI: False Positive Rate",
+      "status": "unknown",
+      "value": "n/a",
+      "note": "入力なし"
+    },
+    {
+      "id": "exception-center",
+      "label": "Exception Center",
+      "status": "warn",
+      "value": "high=0, overdue=0, stale=0, recurring=0",
+      "note": "入力欠損（観測信頼性低下）"
+    },
+    {
+      "id": "registry-audit",
+      "label": "Registry Static Audit",
+      "status": "pass",
+      "value": "passed",
+      "note": "registry-audit-result.json"
+    }
+  ],
+  "reasons": {
+    "fail": [
+      "Nightly Patrol が needs-review",
+      "送迎競合多発（車両: 車両1）"
+    ],
+    "warn": [
+      "/admin/status summary が欠損（判定信頼性低下）",
+      "ExceptionCenter summary が欠損（判定信頼性低下）"
+    ]
+  },
+  "reasonCodes": {
+    "fail": [
+      "PATROL_NEEDS_REVIEW",
+      "REPEATED_VEHICLE_CONFLICT"
+    ],
+    "warn": [
+      "ADMIN_STATUS_SUMMARY_MISSING",
+      "EXCEPTION_CENTER_SUMMARY_MISSING"
+    ]
+  },
+  "runbook": {
+    "path": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md",
+    "reasonCodeLinks": {
+      "fail": [
+        {
+          "code": "PATROL_NEEDS_REVIEW",
+          "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-patrol"
+        },
+        {
+          "code": "REPEATED_VEHICLE_CONFLICT",
+          "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-transport-concurrency"
+        }
+      ],
+      "warn": [
+        {
+          "code": "ADMIN_STATUS_SUMMARY_MISSING",
+          "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-admin-status"
+        },
+        {
+          "code": "EXCEPTION_CENTER_SUMMARY_MISSING",
+          "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-exception"
+        }
+      ]
+    },
+    "reasonCodeActions": {
+      "fail": [
+        {
+          "code": "PATROL_NEEDS_REVIEW",
+          "normalizedCode": "PATROL_NEEDS_REVIEW",
+          "owner": "Platform Owner",
+          "severity": "action_required",
+          "firstAction": "decision-YYYY-MM-DD.md の Fail Trigger を順に割当し、再実行を行う。",
+          "runbookLink": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-patrol"
+        },
+        {
+          "code": "REPEATED_VEHICLE_CONFLICT",
+          "normalizedCode": "REPEATED_VEHICLE_CONFLICT",
+          "owner": "Ops Manager",
+          "severity": "action_required",
+          "firstAction": "特定の車両で競合が多発しています。担当者間の連携不全や、同時編集の頻度を確認してください。",
+          "runbookLink": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-transport-concurrency"
+        }
+      ],
+      "warn": [
+        {
+          "code": "ADMIN_STATUS_SUMMARY_MISSING",
+          "normalizedCode": "ADMIN_STATUS_SUMMARY_MISSING",
+          "owner": "Ops On-call",
+          "severity": "watch",
+          "firstAction": "integration-diagnose のログを開き、/admin/status 入力欠損の有無を確認する。",
+          "runbookLink": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-admin-status"
+        },
+        {
+          "code": "EXCEPTION_CENTER_SUMMARY_MISSING",
+          "normalizedCode": "EXCEPTION_CENTER_SUMMARY_MISSING",
+          "owner": "Ops On-call",
+          "severity": "watch",
+          "firstAction": "Exception Center 入力欠損の原因を確認し、観測信頼性を回復する。",
+          "runbookLink": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-exception"
+        }
+      ]
+    }
+  },
+  "escalations": [],
   "interpretation": {
-    "signals": []
+    "signals": [
+      {
+        "type": "zombie",
+        "severity": "critical",
+        "message": "PATROL_NEEDS_REVIEW",
+        "recommendation": "decision-YYYY-MM-DD.md の Fail Trigger を順に割当し、再実行を行う。"
+      },
+      {
+        "type": "concurrency",
+        "severity": "critical",
+        "message": "REPEATED_VEHICLE_CONFLICT",
+        "recommendation": "特定の車両で競合が多発しています。担当者間の連携不全や、同時編集の頻度を確認してください。",
+        "affectedItems": [
+          "車両1",
+          "車両2",
+          "車両3"
+        ]
+      },
+      {
+        "type": "zombie",
+        "severity": "warn",
+        "message": "ADMIN_STATUS_SUMMARY_MISSING",
+        "recommendation": "integration-diagnose のログを開き、/admin/status 入力欠損の有無を確認する。"
+      },
+      {
+        "type": "zombie",
+        "severity": "warn",
+        "message": "EXCEPTION_CENTER_SUMMARY_MISSING",
+        "recommendation": "Exception Center 入力欠損の原因を確認し、観測信頼性を回復する。"
+      }
+    ]
   }
 }

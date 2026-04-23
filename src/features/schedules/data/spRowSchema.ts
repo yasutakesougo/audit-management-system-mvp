@@ -261,8 +261,9 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
     const idRaw = row.Id;
     const id = coerceIdString(idRaw) ?? `${start}-${end}`;
 
-    // Phase 2-0: extract etag from __metadata.id or generate fallback
-    const etagValue = row.__metadata?.id ? `"${row.__metadata.id}"` : `"sp-${id}"`;
+    // Phase 2-0: extract etag from modern @odata.etag, standard __metadata.etag, legacy __metadata.id, or generate fallback
+    const rawEtag = (row as any)['@odata.etag'] || (row as any).__metadata?.etag;
+    const etagValue = rawEtag ? String(rawEtag) : (row.__metadata?.id ? `"${row.__metadata.id}"` : `"sp-${id}"`);
 
     const titleCandidate = coerceString(pickFirstValue(row, ['Title', 'Subject']));
     const title = titleCandidate ?? '予定';

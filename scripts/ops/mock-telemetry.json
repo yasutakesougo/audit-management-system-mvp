@@ -1,0 +1,22 @@
+{
+  "summary": {
+    "throttledCount": 0,
+    "retryCount": 0,
+    "failedCount": 0,
+    "avgDurationMs": 120,
+    "p95DurationMs": 450,
+    "avgQueuedMs": 5,
+    "maxQueuedMs": 50,
+    "lanes": {
+      "read": { "requests": 100, "failed": 0, "retries": 0, "maxQueuedMs": 10, "avgQueuedMs": 2, "avgDurationMs": 80 },
+      "write": { "requests": 20, "failed": 0, "retries": 0, "maxQueuedMs": 50, "avgQueuedMs": 15, "avgDurationMs": 250 }
+    },
+    "assignmentConcurrencyConflicts": 6,
+    "assignmentConflictVehicles": ["車両1", "車両2", "車両1", "車両3", "車両1", "車両2"]
+  },
+  "metrics": {
+    "assignmentConcurrencyConflicts": 6,
+    "assignmentConflictVehicles": ["車両1", "車両2", "車両1", "車両3", "車両1", "車両2"]
+  },
+  "generatedAt": "2026-04-23T09:00:00.000Z"
+}

@@ -25,7 +25,7 @@ export const BaseAssignmentSchema = z.object({
 
 /**
  * Transport Assignment
- * Specific to vehicle and driver allocation for user pickup/dropoff.
+ * Specific to vehicle and driver allocation for user to/from.
  */
 export const TransportAssignmentSchema = BaseAssignmentSchema.extend({
   type: z.literal('transport'),
@@ -34,7 +34,7 @@ export const TransportAssignmentSchema = BaseAssignmentSchema.extend({
   assistantStaffIds: z.array(z.string()).default([]),
   userIds: z.array(z.string()).default([]),
   routeId: z.string().optional(),
-  direction: z.enum(['pickup', 'dropoff']),
+  direction: z.enum(['to', 'from']),
   capacityLimit: z.number().optional(),
 });
 

@@ -30,6 +30,7 @@ type TransportAssignmentControlSectionProps = {
   onWeekdayChange: (nextDate: string) => void;
   onApplyWeekdayDefault: () => void;
   onApplyWeekBulkDefault: () => void;
+  onRefresh: () => void;
   onSave: () => void;
 };
 
@@ -50,6 +51,7 @@ export function TransportAssignmentControlSection({
   onWeekdayChange,
   onApplyWeekdayDefault,
   onApplyWeekBulkDefault,
+  onRefresh,
   onSave,
 }: TransportAssignmentControlSectionProps) {
   return (
@@ -140,6 +142,15 @@ export function TransportAssignmentControlSection({
           disabled={saveStatus === 'saving'}
         >
           今週に一括適用
+        </Button>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={onRefresh}
+          data-testid="transport-assignment-refresh-button"
+          disabled={saveStatus === 'saving'}
+        >
+          最新の情報を取得
         </Button>
         <Typography variant="body2" color="text.secondary" sx={{ ml: { md: 'auto' } }}>
           {getSaveStatusText({

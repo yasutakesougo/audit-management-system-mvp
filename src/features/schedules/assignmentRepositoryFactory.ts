@@ -1,21 +1,22 @@
-import { createRepositoryFactory, type BaseFactoryOptions, defaultShouldUseDemo } from '@/lib/createRepositoryFactory';
+import { createRepositoryFactory, defaultShouldUseDemo } from '@/lib/createRepositoryFactory';
 import type { AssignmentRepository } from './domain/assignment';
 import { inMemoryAssignmentRepository } from './infra/InMemoryAssignmentRepository';
+import { SharePointAssignmentRepository } from './infra/SharePointAssignmentRepository';
+import { getScheduleRepository, type ScheduleRepositoryFactoryOptions } from './repositoryFactory';
 
 /**
  * Assignment Repository Factory
  * 
  * Manages the creation and override of AssignmentRepository instances.
- * Currently only supports 'demo' (in-memory) mode. 
- * Real (SharePoint) mode will be implemented as the domain matures.
+ * Supports 'demo' (in-memory) and 'real' (SharePoint) modes.
  */
-const factory = createRepositoryFactory<AssignmentRepository, BaseFactoryOptions>({
+const factory = createRepositoryFactory<AssignmentRepository, ScheduleRepositoryFactoryOptions>({
   name: 'Assignment',
   createDemo: () => inMemoryAssignmentRepository,
-  createReal: () => {
-    // Fallback to demo for now as real implementation is pending
-    console.warn('[AssignmentRepositoryFactory] Real repository requested but not yet implemented. Falling back to Demo.');
-    return inMemoryAssignmentRepository;
+  createReal: (options) => {
+    // Get the real schedule repository to use as the backing store
+    const scheduleRepo = getScheduleRepository(options);
+    return new SharePointAssignmentRepository(scheduleRepo);
   },
   shouldUseDemo: () => {
     return defaultShouldUseDemo();

@@ -21,8 +21,14 @@ export function useDataProvider(): { provider: IDataProvider; type: ProviderType
     
     // 値が実際に変化している場合のみ、ストア更新とテレメトリ発火を行う
     if (store.currentProvider !== type) {
-      store.setProvider(type);
-      trackSpEvent('provider_selected', { providerName: type });
+      // [DIAGNOSTIC] Defer the update to avoid reconciliation race conditions during initial mount
+      Promise.resolve().then(() => {
+        if (useDataProviderObservabilityStore.getState().currentProvider !== type) {
+          store.setProvider(type);
+          trackSpEvent('provider_selected', { providerName: type });
+          console.info(`[DIAGNOSTIC] DataProvider store updated to: ${type}`);
+        }
+      });
     }
   }, [result.type]);
 

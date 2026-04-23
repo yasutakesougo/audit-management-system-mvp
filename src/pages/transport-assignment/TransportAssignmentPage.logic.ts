@@ -1,5 +1,6 @@
 import type { UpdateScheduleEventInput } from '@/features/schedules/data/port';
 import type { TransportAssignmentSaveStatus } from '@/features/transport-assignments/hooks/useTransportAssignmentSave';
+import type { TransportAssignment } from '@/features/schedules/domain/assignment';
 
 const JST_TZ = 'Asia/Tokyo';
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -12,8 +13,10 @@ export type WeekDateOption = {
 };
 
 export type WeekBulkApplyState = {
+  assignments: TransportAssignment[];
   payloads: UpdateScheduleEventInput[];
   summary: Array<{ date: string; count: number }>;
+  signals: any[];
 };
 
 export function toJstDateKey(date: Date): string {

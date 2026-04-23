@@ -128,7 +128,7 @@ const TRANSPORT_COURSE_TAG_PATTERN_GLOBAL = /\[transport_course:[^\]\r\n]+\]/gi;
 const TRANSPORT_TZ = 'Asia/Tokyo';
 const TRANSPORT_NOON_SUFFIX = 'T12:00:00+09:00';
 
-function normalizeText(value: unknown): string | null {
+export function normalizeText(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
@@ -147,19 +147,19 @@ function stripTransportMetaTags(value: string | null | undefined): string | null
   return stripped.length > 0 ? stripped : null;
 }
 
-function extractTransportAttendantStaffId(value: string | null | undefined): string | null {
+export function extractTransportAttendantStaffId(value: string | null | undefined): string | null {
   if (typeof value !== 'string') return null;
   const match = TRANSPORT_ATTENDANT_TAG_PATTERN.exec(value);
   return normalizeText(match?.[1]);
 }
 
-function extractTransportCourseId(value: string | null | undefined): TransportCourse | null {
+export function extractTransportCourseId(value: string | null | undefined): TransportCourse | null {
   if (typeof value !== 'string') return null;
   const match = TRANSPORT_COURSE_TAG_PATTERN.exec(value);
   return parseTransportCourse(match?.[1]);
 }
 
-function buildTransportNotes(
+export function buildTransportNotes(
   baseNotes: string | null | undefined,
   attendantStaffId: string | null,
   courseId: TransportCourse | null,
@@ -188,7 +188,7 @@ function toWeekdayFromDateKey(dateKey: string): number {
   return new Date(`${dateKey}${TRANSPORT_NOON_SUFFIX}`).getUTCDay();
 }
 
-function isSameDraftDate(
+export function isSameDraftDate(
   row: Pick<TransportAssignmentScheduleRow, 'start'>,
   targetDate: string,
 ): boolean {
@@ -279,26 +279,26 @@ function buildUserNameIndexFromDraft(users: readonly TransportAssignmentDraftUse
   return new Map(users.map((user) => [user.userId, user.userName] as const));
 }
 
-function toNullableLookupId(value: string | number | undefined): string | undefined {
+export function toNullableLookupId(value: string | number | undefined): string | undefined {
   if (typeof value === 'number') return String(value);
   return normalizeText(value) ?? undefined;
 }
 
-function toScheduleCategory(value: string | undefined): UpdateScheduleEventInput['category'] {
+export function toScheduleCategory(value: string | undefined): UpdateScheduleEventInput['category'] {
   if (value === 'User' || value === 'Staff' || value === 'Org' || value === 'LivingSupport') {
     return value;
   }
   return 'User';
 }
 
-function toScheduleStatus(value: string | undefined): UpdateScheduleEventInput['status'] | undefined {
+export function toScheduleStatus(value: string | undefined): UpdateScheduleEventInput['status'] | undefined {
   if (value === 'Planned' || value === 'Postponed' || value === 'Cancelled') {
     return value;
   }
   return undefined;
 }
 
-function toScheduleVisibility(value: string | undefined): UpdateScheduleEventInput['visibility'] | undefined {
+export function toScheduleVisibility(value: string | undefined): UpdateScheduleEventInput['visibility'] | undefined {
   if (value === 'org' || value === 'team' || value === 'private') {
     return value;
   }

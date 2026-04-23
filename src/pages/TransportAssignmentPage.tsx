@@ -2,9 +2,7 @@ import { toLocalDateISO } from '@/utils/getNow';
 import {
   applyPreviousWeekdayDefaults,
   assignUserToVehicle,
-  buildSchedulePatchPayloads,
   buildTransportAssignmentDraft,
-  hasVehicleMissingDriver,
   recomputeUnassignedUsers,
   removeUserFromVehicle,
   type TransportAssignmentDraft,
@@ -15,6 +13,7 @@ import {
 import { resolveUserFixedTransportCourse } from '@/features/transport-assignments/domain/userTransportCourse';
 import type { UpdateScheduleEventInput } from '@/features/schedules/data/port';
 import { useTransportAssignmentSave } from '@/features/transport-assignments/hooks/useTransportAssignmentSave';
+import { useAssignmentSave } from '@/features/transport-assignments/hooks/useAssignmentSave';
 import { useSchedules } from '@/features/schedules/hooks/legacy/useSchedules';
 import { useStaffStore } from '@/features/staff/store';
 import { getTransportCourseLabel, parseTransportCourse } from '@/features/today/transport/transportCourse';
@@ -27,18 +26,38 @@ import {
   saveTransportVehicleNameOverrides,
   type TransportVehicleNameOverrides,
 } from '@/features/today/transport/transportVehicleNames';
+import { 
+  buildSchedulePatchPayloadsViaDomain 
+} from '@/features/transport-assignments/adapters/assignmentAdapter';
+import { 
+  getTransportAssignmentInsights,
+  orchestrateWeekBulkApply,
+  compareDraftWithPersistedAssignments,
+  detectConcurrencyConflicts,
+  validateSaveReadiness,
+  type AssignmentDiff,
+  type ConcurrencyConflictInsight
+} from '@/features/transport-assignments/application/transportAssignmentApplication';
 import { useUsers } from '@/features/users/useUsers';
+import { useAssignments } from '@/features/schedules/hooks/useAssignments';
+import { useAssignmentRepository } from '@/features/schedules/assignmentRepositoryFactory';
+import type { TransportAssignment } from '@/features/schedules/domain/assignment';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import DirectionsBusRoundedIcon from '@mui/icons-material/DirectionsBusRounded';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { useEffect, useMemo, useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
+import { emitTelemetry } from '@/lib/telemetry';
+import { STORAGE_KEY as DAILY_STORAGE_KEY, type DailyFilters } from './dailyPageConstants';
 import { TransportAssignmentControlSection } from './transport-assignment/TransportAssignmentControlSection';
 import {
   buildDateRange,
@@ -54,9 +73,65 @@ import {
   type WeekBulkApplyState,
 } from './transport-assignment/TransportAssignmentPage.logic';
 import { TransportAssignmentVehicleSection } from './transport-assignment/TransportAssignmentVehicleSection';
+import { TransportConcurrencyInsightBanner } from './transport-assignment/TransportConcurrencyInsightBanner';
 
 export default function TransportAssignmentPage() {
-  const [targetDate, setTargetDate] = useState<string>(() => normalizeToWeekdayDate(toLocalDateISO()));
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const [targetDate, setTargetDate] = useState<string>(() => {
+    // 1. URL Check
+    const params = new URLSearchParams(location.search);
+    const urlDate = params.get('date');
+    if (urlDate && /^\d{4}-\d{2}-\d{2}$/.test(urlDate)) {
+      return normalizeToWeekdayDate(urlDate);
+    }
+
+    // 2. Session Context Inheritance (from Today hub)
+    try {
+      const dailyRaw = window.sessionStorage.getItem(DAILY_STORAGE_KEY);
+      if (dailyRaw) {
+        const dailyFilters = JSON.parse(dailyRaw) as DailyFilters;
+        if (dailyFilters.from && /^\d{4}-\d{2}-\d{2}$/.test(dailyFilters.from)) {
+          return normalizeToWeekdayDate(dailyFilters.from);
+        }
+      }
+    } catch {
+      // ignore parse errors
+    }
+
+    // 3. Fallback
+    const val = normalizeToWeekdayDate(toLocalDateISO());
+    if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.info(`[DIAGNOSTIC] TransportAssignmentPage: Initialized targetDate to ${val} (URL date: ${urlDate})`);
+    }
+    return val;
+  });
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.info('[DIAGNOSTIC] TransportAssignmentPage: Component mounted');
+    }
+  }, []);
+
+  // Sync date to URL for bookmarkability and context preservation during refresh
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('date') !== targetDate) {
+      // Defer navigation to next tick to avoid "navigate during render" conflicts which cause NotFoundError in React Router
+      const timer = setTimeout(() => {
+        const currentParams = new URLSearchParams(window.location.search);
+        if (currentParams.get('date') !== targetDate) {
+          currentParams.set('date', targetDate);
+          navigate({ search: currentParams.toString() }, { replace: true });
+        }
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [targetDate, location.search, navigate]);
+
   const [direction, setDirection] = useState<TransportDirection>('to');
   const [draft, setDraft] = useState<TransportAssignmentDraft | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -83,15 +158,59 @@ export default function TransportAssignmentPage() {
   const { data: usersData, status: usersStatus } = useUsers();
   const { data: staffRows, loading: staffLoading } = useStaffStore();
   const {
-    save,
-    status: saveStatus,
-    error: saveError,
-    clearError: clearSaveError,
+    status: legacySaveStatus,
+    error: legacySaveError,
+    clearError: clearLegacySaveError,
     lastSavedAt,
   } = useTransportAssignmentSave({
     updateSchedule,
     refetchSchedules,
   });
+
+  const assignmentRepo = useAssignmentRepository();
+  const { 
+    status: repoSaveStatus, 
+    error: repoSaveError, 
+    saveAssignments: repoSave, 
+    saveBulkAssignments: repoBulkSave,
+    clearError: clearRepoSaveError 
+  } = useAssignmentSave(assignmentRepo);
+
+  const clearSaveError = useCallback(() => {
+    clearLegacySaveError();
+    clearRepoSaveError();
+  }, [clearLegacySaveError, clearRepoSaveError]);
+
+  const saveStatus = repoSaveStatus !== 'idle' ? repoSaveStatus : legacySaveStatus;
+  const saveError = repoSaveError || legacySaveError;
+
+  const { assignments: persistedAssignments, loading: assignmentsLoading, refetch: refetchAssignments } = useAssignments({
+    type: 'transport',
+    range: {
+      from: `${targetDate}T00:00:00+09:00`,
+      to: `${targetDate}T23:59:59+09:00`,
+    },
+  });
+
+  const [persistedSnapshot, setPersistedSnapshot] = useState<TransportAssignment[] | null>(null);
+  const [allowConcurrencyBypass, setAllowConcurrencyBypass] = useState(false);
+
+  // Snapshot logic for concurrency detection
+  useEffect(() => {
+    if (!assignmentsLoading && persistedAssignments && !persistedSnapshot) {
+      if (process.env.NODE_ENV !== 'production') {
+        const etags = (persistedAssignments as any[]).map(a => `${a.id}:${a.etag}`);
+        // eslint-disable-next-line no-console
+        console.info(`[DIAGNOSTIC] TransportAssignmentPage: Capturing persisted snapshot. ETags: ${JSON.stringify(etags)}`);
+      }
+      setPersistedSnapshot(persistedAssignments as any);
+    }
+  }, [assignmentsLoading, persistedAssignments, persistedSnapshot]);
+
+  // Reset snapshot when context changes
+  useEffect(() => {
+    setPersistedSnapshot(null);
+  }, [targetDate, direction]);
 
   const userSources = useMemo<TransportAssignmentUserSource[]>(
     () =>
@@ -180,7 +299,47 @@ export default function TransportAssignmentPage() {
   }, [stableBaseDraft]);
 
   const currentDraft = draft ?? stableBaseDraft;
-  const isLoading = schedulesLoading || staffLoading || usersStatus === 'loading' || usersStatus === 'idle';
+  const isLoading = schedulesLoading || staffLoading || usersStatus === 'loading' || usersStatus === 'idle' || assignmentsLoading;
+
+  const assignmentDiffs = useMemo(() => {
+    if (!draft || !persistedAssignments) return [];
+    return compareDraftWithPersistedAssignments(draft, (persistedAssignments as any));
+  }, [draft, persistedAssignments]);
+
+  const concurrencyConflicts = useMemo(() => {
+    const conflicts = detectConcurrencyConflicts(persistedSnapshot, (persistedAssignments as any), vehicleNameOverrides);
+    if (conflicts.length > 0 && process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.debug('[TransportAssignmentPage] Concurrency Conflicts detected:', conflicts);
+    }
+    return conflicts;
+  }, [persistedSnapshot, persistedAssignments, vehicleNameOverrides]);
+
+  // Telemetry for Concurrency Conflicts
+  useEffect(() => {
+    if (concurrencyConflicts.length > 0) {
+      emitTelemetry('assignment:concurrency_conflict', {
+        targetDate,
+        direction,
+        conflictCount: concurrencyConflicts.length,
+        vehicles: concurrencyConflicts.map((c: ConcurrencyConflictInsight) => c.vehicleName),
+      });
+    }
+  }, [concurrencyConflicts, targetDate, direction]);
+
+  const coordinationInsights = useMemo(() => {
+    const vehicleCapacities: Record<string, number> = {
+      '車両1': 6,
+      '車両2': 6,
+      '車両3': 8,
+      '車両4': 4,
+    };
+    return getTransportAssignmentInsights(currentDraft, vehicleNameOverrides, vehicleCapacities);
+  }, [currentDraft, vehicleNameOverrides]);
+
+  const saveReadiness = useMemo(() => {
+    return validateSaveReadiness(coordinationInsights, concurrencyConflicts);
+  }, [coordinationInsights, concurrencyConflicts]);
 
   const userNameById = useMemo(
     () => new Map(currentDraft.users.map((user) => [user.userId, user.userName] as const)),
@@ -189,10 +348,7 @@ export default function TransportAssignmentPage() {
 
   const payloadPreview = useMemo(
     () =>
-      buildSchedulePatchPayloads({
-        draft: currentDraft,
-        schedules: selectedDateRows,
-      }),
+      buildSchedulePatchPayloadsViaDomain(currentDraft, selectedDateRows),
     [currentDraft, selectedDateRows],
   );
   const effectivePayloadPreview = useMemo(() => {
@@ -211,14 +367,12 @@ export default function TransportAssignmentPage() {
     () => buildWeekBulkSummaryLabel(weekBulkApplyState, weekDateOptions),
     [weekBulkApplyState, weekDateOptions],
   );
-  const missingDriverVehicleIds = useMemo(
-    () =>
-      currentDraft.vehicles
-        .filter((vehicle) => hasVehicleMissingDriver(vehicle))
-        .map((vehicle) => resolveTransportVehicleName(vehicle.vehicleId, vehicleNameOverrides)),
-    [currentDraft.vehicles, vehicleNameOverrides],
-  );
-  const canSave = dirty && effectivePayloadPreview.length > 0 && saveStatus !== 'saving';
+
+  const canSave = 
+    dirty && 
+    effectivePayloadPreview.length > 0 && 
+    saveStatus !== 'saving' &&
+    (!saveReadiness.isBlocked || (saveReadiness.blockReason === 'concurrency_conflict' && allowConcurrencyBypass));
 
   const handleTargetDateChange = (nextDateValue: string) => {
     const normalized = normalizeText(nextDateValue);
@@ -354,10 +508,36 @@ export default function TransportAssignmentPage() {
 
   const handleSave = async () => {
     if (!canSave) return;
-    const result = await save(effectivePayloadPreview);
-    if (result.success) {
-      setDirty(false);
-      setWeekBulkApplyState(null);
+    
+    // Final readiness check
+    if (saveReadiness.isBlocked && !(saveReadiness.blockReason === 'concurrency_conflict' && allowConcurrencyBypass)) {
+      if (saveReadiness.blockReason === 'concurrency_conflict') {
+        emitTelemetry('assignment:save_blocked_by_conflict', {
+          targetDate,
+          direction,
+          conflictCount: concurrencyConflicts.length,
+        });
+      }
+      return;
+    }
+
+    if (weekBulkApplyState) {
+      // Modern repository bulk save for the whole week
+      const result = await repoBulkSave(weekBulkApplyState.assignments);
+      if (result.success) {
+        setDirty(false);
+        setWeekBulkApplyState(null);
+        void refetchSchedules();
+        void refetchAssignments();
+      }
+    } else if (draft) {
+      // Modern repository-based save for current day
+      const result = await repoSave(draft);
+      if (result.success) {
+        setDirty(false);
+        void refetchSchedules();
+        void refetchAssignments();
+      }
     }
   };
 
@@ -372,44 +552,25 @@ export default function TransportAssignmentPage() {
   const handleApplyWeekBulkDefault = () => {
     clearSaveError();
 
-    const nextTargetDraft = weekdayDefaultDraft;
-    const payloadMap = new Map<string, UpdateScheduleEventInput>();
-    const summary = weekDateOptions.map((option) => {
-      const dayRows = scheduleRows.filter((row) => isOnTargetDate(row.start, option.date));
-      const baseDraftForDate =
-        option.date === targetDate
-          ? nextTargetDraft
-          : buildTransportAssignmentDraft({
-              date: option.date,
-              direction,
-              schedules: dayRows,
-              users: userSources,
-              staff: staffSources,
-              fixedVehicleIds: DEFAULT_TRANSPORT_VEHICLE_IDS,
-            });
-      const appliedDraftForDate = applyPreviousWeekdayDefaults({
-        draft: baseDraftForDate,
-        schedules: scheduleRows,
-        users: userSources,
-      });
-      const dayPayloads = buildSchedulePatchPayloads({
-        draft: appliedDraftForDate,
-        schedules: dayRows,
-      });
-      for (const payload of dayPayloads) {
-        payloadMap.set(payload.id, payload);
-      }
-      return {
-        date: option.date,
-        count: dayPayloads.length,
-      };
+    const result = orchestrateWeekBulkApply({
+      targetDate,
+      direction,
+      weekdayDefaultDraft,
+      scheduleRows,
+      userSources,
+      staffSources,
+      weekDateOptions,
     });
 
-    setDraft(nextTargetDraft);
+    setDraft(result.nextDraft);
     setPendingAssignByVehicle({});
-    const payloads = [...payloadMap.values()];
-    setWeekBulkApplyState({ payloads, summary });
-    setDirty(payloads.length > 0 || payloadPreview.length > 0);
+    setWeekBulkApplyState({ 
+      signals: [] as any[],
+      assignments: result.assignments, 
+      payloads: result.payloads, 
+      summary: result.summary 
+    });
+    setDirty(result.payloads.length > 0 || payloadPreview.length > 0);
   };
 
   useEffect(() => {
@@ -423,6 +584,7 @@ export default function TransportAssignmentPage() {
   useEffect(() => {
     clearSaveError();
     setWeekBulkApplyState(null);
+    setAllowConcurrencyBypass(false);
   }, [targetDate, direction, clearSaveError]);
 
   return (
@@ -444,6 +606,8 @@ export default function TransportAssignmentPage() {
           今日の業務へ戻る
         </Button>
       </Stack>
+      
+      <TransportConcurrencyInsightBanner />
 
       <TransportAssignmentControlSection
         targetDate={targetDate}
@@ -462,6 +626,10 @@ export default function TransportAssignmentPage() {
         onWeekdayChange={setTargetDate}
         onApplyWeekdayDefault={handleApplyWeekdayDefault}
         onApplyWeekBulkDefault={handleApplyWeekBulkDefault}
+        onRefresh={() => {
+          void refetchSchedules();
+          void refetchAssignments();
+        }}
         onSave={handleSave}
       />
 
@@ -484,11 +652,16 @@ export default function TransportAssignmentPage() {
         </Alert>
       ) : null}
 
-      {missingDriverVehicleIds.length > 0 ? (
-        <Alert severity="warning" sx={{ mb: 2 }} data-testid="transport-assignment-missing-driver-warning">
-          乗車利用者がいる車両で運転者が未設定です: {missingDriverVehicleIds.join('、')}
+      {coordinationInsights.map((insight, idx) => (
+        <Alert 
+          key={idx} 
+          severity={insight.severity} 
+          sx={{ mb: 2 }} 
+          data-testid={`transport-assignment-insight-${insight.type}`}
+        >
+          {insight.message}
         </Alert>
-      ) : null}
+      ))}
 
       {isLoading ? (
         <Paper variant="outlined" sx={{ p: 3, mb: 2 }}>
@@ -506,6 +679,80 @@ export default function TransportAssignmentPage() {
           対象日・方向に該当する送迎予定がありません。
         </Alert>
       ) : null}
+
+      {/* Proof of Wiring: Show count of persisted assignments from the repository path */}
+      {!isLoading && persistedAssignments.length > 0 && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, textAlign: 'right' }}>
+          同期済みドメイン情報: {persistedAssignments.length} 件の割り当てを読込中 (Repository経由)
+        </Typography>
+      )}
+
+      {/* Concurrency Conflict Warning */}
+      {concurrencyConflicts.length > 0 && (
+        <Alert 
+          severity="error" 
+          variant="filled"
+          sx={{ mb: 2 }}
+          data-testid="concurrency-conflict-alert"
+          action={
+            <Button color="inherit" size="small" data-testid="concurrency-reload-button" onClick={() => {
+              emitTelemetry('assignment:refetch_after_conflict', {
+                targetDate,
+                direction,
+                conflictCount: concurrencyConflicts.length,
+              });
+              setPersistedSnapshot(null); // Clear snapshot to reset warning
+              refetchSchedules();
+              refetchAssignments();
+            }}>
+              最新を読み込む
+            </Button>
+          }
+        >
+          <Typography variant="subtitle2">注意: 外部でデータが更新されました</Typography>
+          次の車両の情報が他のユーザーによって変更された可能性があります: 
+          {concurrencyConflicts.map((c: ConcurrencyConflictInsight) => c.vehicleName).join(', ')}
+          <Box sx={{ mt: 1 }}>
+            <FormControlLabel
+              control={
+                <Checkbox 
+                  size="small" 
+                  checked={allowConcurrencyBypass}
+                  onChange={(e) => setAllowConcurrencyBypass(e.target.checked)}
+                  data-testid="concurrency-bypass-checkbox"
+                />
+              }
+              label={<Typography variant="caption">リスクを理解した上で、このまま保存することを許可する</Typography>}
+            />
+          </Box>
+        </Alert>
+      )}
+
+      {/* Changes Summary Section */}
+      {dirty && assignmentDiffs.length > 0 && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Typography variant="subtitle2" gutterBottom>未保存の変更内容:</Typography>
+          <ul style={{ margin: 0, paddingLeft: '20px' }}>
+            {assignmentDiffs.map((diff: AssignmentDiff) => (
+              <li key={diff.vehicleId}>
+                <strong>{resolveTransportVehicleName(diff.vehicleId, vehicleNameOverrides)}</strong>: 
+                {diff.type === 'added' && ' 新規追加'}
+                {diff.type === 'removed' && ' 削除'}
+                {diff.type === 'modified' && (
+                  <>
+                    変更あり 
+                    {diff.userChanges && (
+                      <span style={{ fontSize: '0.85em', marginLeft: '8px' }}>
+                        ({diff.userChanges.added.length}名追加 / {diff.userChanges.removed.length}名解除)
+                      </span>
+                    )}
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </Alert>
+      )}
 
       <TransportAssignmentVehicleSection
         currentDraft={currentDraft}
