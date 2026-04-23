@@ -15,6 +15,10 @@ import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 import { getAccessToken, refreshM365Token } from './auth-helper.mjs';
 
+// 1. Load SSOT (Top-level for helper visibility)
+import { SP_LIST_REGISTRY } from '../../src/sharepoint/spListRegistry.ts';
+import { SP_SYSTEM_FIELDS } from '../../src/sharepoint/spSystemFields.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = resolve(__dirname, '..', '..');
@@ -145,6 +149,45 @@ function countUsage(internalName) {
   }
 }
 
+/**
+ * Determines if a field is a SharePoint system/built-in field that should NEVER be treated as a zombie.
+ */
+function isSystemField(internalName) {
+  // 1. In known system fields set
+  if (SP_SYSTEM_FIELDS.has(internalName)) return true;
+
+  // 2. Starts with underscore (usually internal system fields)
+  if (internalName.startsWith('_')) return true;
+
+  // 3. Known SharePoint patterns
+  const systemPatterns = [
+    /^OData_/,           // OData extensions
+    /^File/,             // File system properties (FileRef, FileLeafRef, etc.)
+    /^MediaService/,     // Media services
+    /Virus/i,            // Antivirus metadata
+    /Compliance/i,       // Compliance/Retention
+    /SharedWith/i,       // Sharing metadata
+    /Workflow/i,         // Legacy workflows
+    /^App[A-Z]/,         // App-related
+    /Version/i,          // Versioning
+    /Originator/i,       // Flow/Workflow related
+    /SyncClient/i,       // OneDrive/Sync related
+    /^SMTotal/,          // Storage Metrics
+    /^SMLastModified/,   // Storage Metrics
+    /ParentUniqueId/i,   // Internal ID
+    /SortBehavior/i,     // Internal behavior
+    /Restricted/i,       // Security
+    /NoExecute/i,        // Security
+    /AccessPolicy/i,     // Security
+    /MainLinkSettings/i, // UI/Link settings
+    /HTML_x0020_File/i,  // File type
+    /owshiddenversion/i  // Versioning
+  ];
+  if (systemPatterns.some(p => p.test(internalName))) return true;
+
+  return false;
+}
+
 // ── Main Execution ───────────────────────────────────────────────────────
 
 async function main() {
@@ -177,10 +220,6 @@ async function main() {
 
   const normalizedSiteUrl = SITE_URL.endsWith('/_api/web') ? SITE_URL : SITE_URL.replace(/\/$/, '') + '/_api/web';
 
-  // 1. Load SSOT
-  const { SP_LIST_REGISTRY } = await import('../../src/sharepoint/spListRegistry.ts');
-  const { SP_SYSTEM_FIELDS } = await import('../../src/sharepoint/spSystemFields.js');
-  
   const ledgerRows = [];
 
   for (const entry of SP_LIST_REGISTRY) {
@@ -247,7 +286,7 @@ async function main() {
       ledgerRows.push(...expectedResults);
 
       // 2. Prepare Zombie Rows
-      const zombies = actualFields.filter(f => !consumedActuals.has(f.InternalName) && !SP_SYSTEM_FIELDS.has(f.InternalName));
+      const zombies = actualFields.filter(f => !consumedActuals.has(f.InternalName) && !isSystemField(f.InternalName));
       const zombieResults = await pMap(zombies, async (z) => {
         const hasData = await checkHasData(normalizedSiteUrl, listTitle, z.InternalName, auth);
         const usageCount = countUsage(z.InternalName);
