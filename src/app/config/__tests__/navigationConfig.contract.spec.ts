@@ -42,7 +42,9 @@ describe('navigationConfig Factory Contract', () => {
     const transportAssignment = items.find(i => i.label === '送迎配車調整');
     
     expect(transportExecution?.group).toBe('today'); // Today Hub group
+    expect(transportExecution?.to).toBe('/transport/execution'); // New dedicated route
     expect(transportAssignment?.group).toBe('schedules'); // Schedules Hub group
+    expect(transportAssignment?.to).toBe('/transport/assignments');
     
     // Check that items are not undefined
     items.forEach(item => {
