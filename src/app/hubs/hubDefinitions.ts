@@ -21,6 +21,7 @@ export const HUB_DEFINITIONS: Record<HubId, HubDefinition> = {
     activePathPrefixes: [
       '/today',
       '/transport/assignments',
+      '/transport/execution',
       '/daily',
       '/dailysupport',
       '/handoff-timeline',
@@ -68,9 +69,9 @@ export const HUB_DEFINITIONS: Record<HubId, HubDefinition> = {
     secondaryEntries: [
       {
         id: 'today-transport',
-        title: '送迎配車表',
-        description: '送迎の割当と時刻を確認',
-        to: '/transport/assignments',
+        title: '送迎実施',
+        description: '当日の送迎状況を確認・記録',
+        to: '/transport/execution',
         kpiWeight: 72,
         usagePriority: 5,
       },
@@ -124,6 +125,14 @@ export const HUB_DEFINITIONS: Record<HubId, HubDefinition> = {
         requiredRole: 'admin',
         kpiWeight: 80,
         usagePriority: 2,
+      },
+      {
+        id: 'schedules-transport',
+        title: '送迎配車調整',
+        description: '送迎の車両・運転者割当を調整',
+        to: '/transport/assignments',
+        kpiWeight: 75,
+        usagePriority: 3,
       },
     ],
   },

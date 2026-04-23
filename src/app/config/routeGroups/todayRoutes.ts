@@ -17,10 +17,10 @@ export const TODAY_ROUTES = {
   
   TRANSPORT: (_isFieldStaffShell: boolean) => ({
     label: '送迎実施',
-    to: '/transport/assignments',
-    isActive: (pathname: string) => pathname.startsWith('/transport/assignments'),
+    to: '/transport/execution',
+    isActive: (pathname: string) => pathname.startsWith('/transport/execution'),
     icon: undefined,
-    testId: TESTIDS.nav.transportAssignments,
+    testId: TESTIDS.nav.transportExecution,
     audience: NAV_AUDIENCE.staff as NavAudience,
     group: 'today' as NavGroupKey,
   }),

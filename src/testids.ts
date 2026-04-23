@@ -21,6 +21,7 @@ const NAV_TESTIDS = {
   navigationDiagnostics: 'nav-navigation-diagnostics',
   todayOps: 'nav-today-ops',
   transportAssignments: 'nav-transport-assignments',
+  transportExecution: 'nav-transport-execution',
   roomManagement: 'nav-room-management',
   operationFlowSettings: 'nav-operation-flow-settings',
   planningSheet: 'nav-planning-sheet',

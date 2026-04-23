@@ -1,0 +1,113 @@
+name: Nightly Zombie Purge
+
+on:
+  schedule:
+    # JST 04:15 = UTC 19:15 (nightly-patrol の1時間後)
+    - cron: '15 19 * * *'
+  workflow_dispatch:
+    inputs:
+      autoConfirm:
+        description: "Force auto-confirm (danger)"
+        required: false
+        default: "false"
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: nightly-zombie-purge
+  cancel-in-progress: false
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare directories
+        run: mkdir -p docs/nightly-patrol
+
+      - name: Login to M365 CLI
+        env:
+          AAD_TENANT_ID: ${{ secrets.AAD_TENANT_ID }}
+          AAD_APP_ID: ${{ secrets.AAD_APP_ID }}
+          SPO_CLIENT_SECRET: ${{ secrets.SPO_CLIENT_SECRET }}
+        run: |
+          npx -y @pnp/cli-microsoft365 login --appId "$AAD_APP_ID" --tenant "$AAD_TENANT_ID" --secret "$SPO_CLIENT_SECRET"
+
+      - name: Build Drift Ledger
+        run: npm run patrol:ledger
+        env:
+          VITE_SP_SITE_URL: ${{ vars.VITE_SP_SITE_URL }}
+
+      - name: Zombie Purge (Dry-run)
+        id: dry_run
+        run: npm run patrol:purge -- --batch-size=50
+        env:
+          VITE_SP_SITE_URL: ${{ vars.VITE_SP_SITE_URL }}
+
+      - name: Evaluate Auto-Confirm
+        id: eval
+        run: node scripts/ops/evaluate-purge-auto-confirm.mjs
+        env:
+          PURGE_AUTO_CONFIRM: ${{ vars.PURGE_AUTO_CONFIRM }}
+          FORCE_AUTO_CONFIRM: ${{ github.event.inputs.autoConfirm }}
+
+      - name: Execute Purge (Confirm)
+        if: steps.eval.outputs.should_execute == 'true'
+        run: npm run patrol:purge -- --confirm --batch-size=50
+        env:
+          VITE_SP_SITE_URL: ${{ vars.VITE_SP_SITE_URL }}
+
+      - name: Rebuild Ledger (Post-Purge)
+        if: steps.eval.outputs.should_execute == 'true'
+        run: npm run patrol:ledger
+        env:
+          VITE_SP_SITE_URL: ${{ vars.VITE_SP_SITE_URL }}
+
+      - name: Generate Summary Report
+        if: always()
+        run: node scripts/ops/generate-purge-report.mjs
+
+      - name: Upload results artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zombie-purge-results-${{ github.run_number }}
+          path: |
+            docs/nightly-patrol/drift-ledger.csv
+            docs/nightly-patrol/latest-purge-summary.json
+            docs/nightly-patrol/deletion-log.json
+          if-no-files-found: ignore
+
+      - name: Commit report if changed
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          # Only add docs/nightly-patrol changes
+          git add docs/nightly-patrol/
+          
+          if [ -z "$(git status --porcelain -- docs/nightly-patrol)" ]; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          
+          git commit -m "chore(ops): nightly zombie purge report [skip ci]"
+          git push || echo "Push failed (concurrent edit?), continuing."
