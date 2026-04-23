@@ -84,6 +84,8 @@ const REASON_CODE_ANCHOR_MAP = {
   EXCEPTION_OVERDUE_PRESENT: 'rc-exception',
   EXCEPTION_STALE_PRESENT: 'rc-exception',
   EXCEPTION_RECURRING_PRESENT: 'rc-exception',
+  REGISTRY_AUDIT_FAIL: 'rc-registry-audit',
+  REGISTRY_AUDIT_WARN: 'rc-registry-audit',
 };
 
 const REASON_CODE_ACTION_MAP = {
@@ -236,6 +238,16 @@ const REASON_CODE_ACTION_MAP = {
     owner: 'Ops Manager',
     severity: 'watch',
     firstAction: '再発例外の共通原因を特定し、再発防止策を適用する。',
+  },
+  REGISTRY_AUDIT_FAIL: {
+    owner: 'Platform Owner',
+    severity: 'action_required',
+    firstAction: 'registry-audit.ts のエラー内容を確認し、ListKeys と Definitions の乖離を是正する。',
+  },
+  REGISTRY_AUDIT_WARN: {
+    owner: 'Ops On-call',
+    severity: 'watch',
+    firstAction: 'registry-audit.ts の警告（非必須リストの欠損など）を確認し、将来の是正を検討する。',
   },
   WATCH_STREAK: {
     owner: 'Release Owner',
@@ -680,6 +692,7 @@ function main() {
     kpiJson: process.env.KPI_SUMMARY_PATH || '',
     driftJson: process.env.DRIFT_SUMMARY_PATH || '',
     adminStatusJson: process.env.ADMIN_STATUS_SUMMARY_PATH || '',
+    registryAuditJson: process.env.REGISTRY_AUDIT_SUMMARY_PATH || path.join(REPORT_DIR, 'registry-audit-result.json'),
     logFile: process.env.LOG_FILE || path.join(ROOT, 'logs', 'today.auto.log'),
   };
 
@@ -691,6 +704,7 @@ function main() {
   const kpiSummary = readJsonIfExists(inputPaths.kpiJson);
   const driftSummary = readJsonIfExists(inputPaths.driftJson);
   const adminStatus = readJsonIfExists(inputPaths.adminStatusJson);
+  const registryAudit = readJsonIfExists(inputPaths.registryAuditJson);
   const dashboard = readTextIfExists(inputPaths.dashboardMd);
   const logFile = readTextIfExists(inputPaths.logFile);
 
@@ -1170,6 +1184,24 @@ function main() {
   }
   if (recurringExceptions >= thresholds.recurringExceptionsWarn) {
     pushReason(warnReasons, `再発例外が ${recurringExceptions} 件`, warnReasonCodes, 'EXCEPTION_RECURRING_PRESENT');
+  }
+
+  // 13) Registry Audit
+  const regAuditPass = registryAudit.data?.success === true;
+  const regAuditErrors = Array.isArray(registryAudit.data?.errors) ? registryAudit.data.errors.length : 0;
+  addCheck({
+    id: 'registry-audit',
+    label: 'Registry Static Audit',
+    status: registryAudit.exists ? (regAuditPass ? 'pass' : 'fail') : 'unknown',
+    value: regAuditPass ? 'passed' : `errors=${regAuditErrors}`,
+    note: registryAudit.exists ? 'registry-audit-result.json' : '未生成',
+  });
+  if (registryAudit.exists && !regAuditPass) {
+    if (regAuditErrors > 0) {
+      pushReason(failReasons, `Registry Audit エラー ${regAuditErrors} 件`, failReasonCodes, 'REGISTRY_AUDIT_FAIL');
+    } else {
+      pushReason(warnReasons, 'Registry Audit 警告あり', warnReasonCodes, 'REGISTRY_AUDIT_WARN');
+    }
   }
 
   let finalLabel = failReasons.length > 0

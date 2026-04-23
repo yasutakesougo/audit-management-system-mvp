@@ -139,6 +139,12 @@ jobs:
           fi
           echo "summary_path=${OUT}" >> "$GITHUB_OUTPUT"
 
+      - name: Run registry static audit
+        if: ${{ always() }}
+        run: |
+          mkdir -p docs/nightly-patrol
+          npx tsx scripts/ops/registry-audit.ts --json-output=docs/nightly-patrol/registry-audit-result.json
+
       - name: Generate nightly decision
         id: decision
         env:
@@ -146,6 +152,7 @@ jobs:
           LANE_ASSERTION_RESULT_PATH: docs/nightly-patrol/lane-assertion-result.json
           ADMIN_STATUS_SUMMARY_PATH: ${{ steps.admin_status.outputs.summary_path }}
           EXCEPTION_CENTER_SUMMARY_PATH: ${{ steps.exception_center.outputs.summary_path }}
+          REGISTRY_AUDIT_SUMMARY_PATH: docs/nightly-patrol/registry-audit-result.json
           LOG_FILE: /tmp/vitest-nightly-act.log
           NIGHTLY_FAIL_ON_ACTION_REQUIRED: "true"
         run: |

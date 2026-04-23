@@ -675,6 +675,22 @@ export const handoffListEntries: readonly SpListEntry[] = [
     category: 'handoff',
     lifecycle: 'optional',
   },
+  {
+    key: 'behavior_monitoring_master',
+    displayName: '行動モニタリング記録',
+    resolve: () => envOr('VITE_SP_LIST_BEHAVIOR_MONITORING', fromConfig(ListKeys.BehaviorMonitoringMaster)),
+    operations: ['R', 'W'],
+    category: 'handoff',
+    lifecycle: 'optional',
+  },
+  {
+    key: 'planning_sheet_reassessment_master',
+    displayName: 'アセスメント・再アセスメント履歴',
+    resolve: () => envOr('VITE_SP_LIST_PLANNING_REASSESSMENT', fromConfig(ListKeys.PlanningSheetReassessmentMaster)),
+    operations: ['R', 'W'],
+    category: 'handoff',
+    lifecycle: 'optional',
+  },
 ];
 
 export const complianceListEntries: readonly SpListEntry[] = [
@@ -729,8 +745,8 @@ export const complianceListEntries: readonly SpListEntry[] = [
   },
   {
     key: 'remediation_audit_log',
-    displayName: '修復監査ログ',
-    resolve: () => 'Remediation_AuditLog',
+    displayName: '自動修復・ガバナンス監査ログ',
+    resolve: () => envOr('VITE_SP_LIST_REMEDIATION_LOG', fromConfig(ListKeys.RemediationAuditLog)),
     operations: ['R', 'W'],
     category: 'compliance',
     lifecycle: 'optional',
@@ -825,6 +841,14 @@ export const otherListEntries: readonly SpListEntry[] = [
     key: 'pdf_output_log',
     displayName: '帳票出力ログ',
     resolve: () => envOr('VITE_SP_LIST_PDF_OUTPUT_LOG', fromConfig(ListKeys.PdfOutputLog)),
+    operations: ['R', 'W'],
+    category: 'other',
+    lifecycle: 'optional',
+  },
+  {
+    key: 'call_logs',
+    displayName: '電話受付ログ',
+    resolve: () => envOr('VITE_SP_LIST_CALL_LOGS', fromConfig(ListKeys.CallLogs)),
     operations: ['R', 'W'],
     category: 'other',
     lifecycle: 'optional',
