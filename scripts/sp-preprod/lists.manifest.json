@@ -498,6 +498,12 @@
 
   "_excluded": {
     "_reason": "コードに ListKeys / FIELD_MAP / Repository 実装が存在しないため、今回の本番前対象から除外",
-    "lists": ["Inquiries", "CoffeeOrderHistory", "MonthlyCoffeeBilling", "SupportRecord_Daily（架空名）"]
+    "lists": [
+      "Inquiries", "CoffeeOrderHistory", "MonthlyCoffeeBilling", "SupportRecord_Daily（架空名）",
+      "Staff_Master", "Org_Master", "BehaviorMonitoringRecord_Master", "PlanningSheetReassessment_Master",
+      "MonitoringMeetings", "UserTransport_Settings", "UserBenefit_Profile", "UserBenefit_Profile_Ext",
+      "SupportRecord_Daily", "MonthlyRecord_Summary", "Remediation_AuditLog", "DriftEventsLog_v2",
+      "SupportProcedure_Results", "Approval_Logs", "User_Feature_Flags"
+    ]
   }
 }

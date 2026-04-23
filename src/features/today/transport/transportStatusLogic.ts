@@ -11,6 +11,7 @@
  * 4. Overdue detection
  */
 
+import { UserCore } from '@/features/users/schema';
 import type { TransportMethod } from '@/features/attendance/transportMethod';
 import { resolveFromMethod, resolveToMethod } from '@/features/attendance/transportMethod';
 import {
@@ -227,4 +228,42 @@ export function parseHHmmToMinutes(hhmm: string): number | null {
   const m = Number(match[2]);
   if (h < 0 || h > 23 || m < 0 || m > 59) return null;
   return h * 60 + m;
+}
+
+/**
+ * Check if a user has any transport configuration set in their master record.
+ * This is used for filtering targets in both execution and assignment views.
+ */
+export function hasTransportInfo(u: UserCore): boolean {
+  if (!u) return false;
+
+  // 1. Check Fixed Course
+  if (u.TransportCourse && u.TransportCourse.trim().length > 0) return true;
+
+  // 2. Check Specific Days (Legacy)
+  const toDays = u.TransportToDays;
+  const fromDays = u.TransportFromDays;
+  if (Array.isArray(toDays) && toDays.length > 0) return true;
+  if (Array.isArray(fromDays) && fromDays.length > 0) return true;
+
+  // 3. Check Weekly Schedule JSON
+  if (u.TransportSchedule) {
+    try {
+      const schedule = typeof u.TransportSchedule === 'string'
+        ? JSON.parse(u.TransportSchedule)
+        : u.TransportSchedule;
+
+      if (!schedule || typeof schedule !== 'object') return false;
+
+      // If any day has a transport method other than 'none', they are a target
+      return Object.values(schedule).some((day: unknown) => {
+        const d = day as { to?: string; from?: string };
+        return (d.to && d.to !== 'none') || (d.from && d.from !== 'none');
+      });
+    } catch (e) {
+      console.warn('[transportStatusLogic] Failed to parse TransportSchedule', e);
+    }
+  }
+
+  return false;
 }

@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { test } from '@playwright/test';
 import { resolveSharePointSiteUrl } from './_shared/resolveSiteUrl';
 import * as fs from 'fs';
@@ -38,7 +39,9 @@ test.describe('SharePoint Diagnostics', () => {
     console.log(`\n[診断1] Checking current user: ${url}`);
 
     try {
-      const res = await request.get(url);
+      const res = await request.get(url, {
+        headers: { 'Accept': 'application/json;odata=verbose' }
+      });
       const status = res.status();
       console.log(`Status: ${status}`);
 
@@ -63,7 +66,9 @@ test.describe('SharePoint Diagnostics', () => {
     console.log(`\n[診断2] Checking Staff_Master list: ${url}`);
 
     try {
-      const res = await request.get(url);
+      const res = await request.get(url, {
+        headers: { 'Accept': 'application/json;odata=verbose' }
+      });
       const status = res.status();
       console.log(`Status: ${status}`);
 
@@ -86,7 +91,9 @@ test.describe('SharePoint Diagnostics', () => {
     console.log(`\n[診断3] Checking items endpoint: ${url}`);
 
     try {
-      const res = await request.get(url);
+      const res = await request.get(url, {
+        headers: { 'Accept': 'application/json;odata=verbose' }
+      });
       const status = res.status();
       console.log(`Status: ${status}`);
 

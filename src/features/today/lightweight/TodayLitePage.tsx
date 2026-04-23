@@ -59,7 +59,7 @@ export const TodayLitePage: React.FC<TodayLitePageProps> = ({
         attendance: '通所管理',
         'daily-table': '日々の記録',
         'handoff-timeline': '申し送り',
-        'daily-support': '今日の業務',
+        'daily-support': '支援手順',
       };
       const buttonLabelByFlowKey: Record<string, string> = {
         attendance: '出欠を入力する',
