@@ -1,65 +1,43 @@
 /**
- * Record Routes — group: 'record'
+ * Record Routes — group: 'records'
  *
- * NavItem constants for the 記録を参照 navigation group.
- * Extracted from navigationConfig.ts createNavItems() for single-responsibility.
+ * NavItem constants for the 記録・参照 navigation group.
  */
-import { PREFETCH_KEYS } from '@/prefetch/routes';
 import { TESTIDS } from '@/testids';
-import type { NavGroupKey, NavItem } from '../navigationConfig.types';
+import type { NavAudience, NavGroupKey, NavItem } from '../navigationConfig.types';
 import { NAV_AUDIENCE } from '../navigationConfig.types';
 
-/** Unconditional record group items */
-export const RECORD_ROUTES_BASE: NavItem[] = [
-  {
+export const RECORD_ROUTES = {
+  DASHBOARD: (_isFieldStaffShell: boolean): NavItem => ({
     label: '運営状況',
     to: '/dashboard',
-    isActive: (pathname) => pathname === '/dashboard',
+    isActive: (pathname: string) => pathname === '/dashboard',
     icon: undefined,
     testId: TESTIDS.nav.dashboard,
-    audience: NAV_AUDIENCE.staff,
-    group: 'record' as NavGroupKey,
-  },
-  {
-    label: '記録一覧',
-    to: '/records',
-    isActive: (pathname) => pathname.startsWith('/records'),
+    audience: NAV_AUDIENCE.admin as NavAudience,
+    group: 'records' as NavGroupKey,
+    tier: 'admin' as const,
+    featureFlag: 'todayLiteNavV2' as const,
+  }),
+  
+  MONTHLY: (_isFieldStaffShell: boolean): NavItem => ({
+    label: 'モニタリング記録',
+    to: '/records/monthly',
+    isActive: (pathname: string) => pathname.startsWith('/records/monthly'),
     icon: undefined,
-    audience: NAV_AUDIENCE.staff,
-    group: 'record' as NavGroupKey,
-  },
-  // 月次記録・業務日誌プレビューは
-  // 記録一覧（/records）のサブページとして到達可能なため除外。
-  {
-    label: 'サービス提供実績記録',
-    to: '/records/service-provision',
-    isActive: (pathname) => pathname.startsWith('/records/service-provision'),
+    testId: 'nav-monitoring-record',
+    audience: NAV_AUDIENCE.staff as NavAudience,
+    group: 'records' as NavGroupKey,
+  }),
+  
+  HANDOFF_ANALYSIS: (_isFieldStaffShell: boolean): NavItem => ({
+    label: '申し送り分析',
+    to: '/handoff-analysis',
+    isActive: (pathname: string) => pathname.startsWith('/handoff-analysis'),
     icon: undefined,
-    audience: NAV_AUDIENCE.reception,
-    group: 'record' as NavGroupKey,
-  },
-  {
-    label: '個人月次業務日誌',
-    to: '/records/journal/personal',
-    isActive: (pathname) => pathname.startsWith('/records/journal/personal'),
-    icon: undefined,
-    audience: NAV_AUDIENCE.reception,
-    group: 'record' as NavGroupKey,
-  },
-];
-
-/** Added when schedulesEnabled is true (and not already present) */
-export const RECORD_ROUTES_SCHEDULES: NavItem[] = [
-  {
-    label: 'スケジュール',
-    to: '/schedules/week',
-    isActive: (pathname: string) =>
-      pathname.startsWith('/schedule') || pathname.startsWith('/schedules'),
-    testId: TESTIDS.nav.schedules,
-    icon: undefined,
-    prefetchKey: PREFETCH_KEYS.schedulesWeek,
-    prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
-    audience: NAV_AUDIENCE.staff,
-    group: 'record' as NavGroupKey,
-  },
-];
+    audience: NAV_AUDIENCE.admin as NavAudience,
+    group: 'records' as NavGroupKey,
+    tier: 'admin' as const,
+    featureFlag: 'todayLiteNavV2' as const,
+  }),
+};
