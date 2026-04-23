@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+vi.unmock('@/lib/spClient');
 
 import type { AppConfig } from '../../src/lib/env';
 
