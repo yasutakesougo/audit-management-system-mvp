@@ -675,6 +675,22 @@ export const handoffListEntries: readonly SpListEntry[] = [
     category: 'handoff',
     lifecycle: 'optional',
   },
+  {
+    key: 'behavior_monitoring_master',
+    displayName: '行動モニタリング記録',
+    resolve: () => envOr('VITE_SP_LIST_BEHAVIOR_MONITORING', fromConfig(ListKeys.BehaviorMonitoringMaster)),
+    operations: ['R', 'W'],
+    category: 'handoff',
+    lifecycle: 'optional',
+  },
+  {
+    key: 'planning_sheet_reassessment_master',
+    displayName: 'アセスメント・再アセスメント履歴',
+    resolve: () => envOr('VITE_SP_LIST_PLANNING_REASSESSMENT', fromConfig(ListKeys.PlanningSheetReassessmentMaster)),
+    operations: ['R', 'W'],
+    category: 'handoff',
+    lifecycle: 'optional',
+  },
 ];
 
 export const complianceListEntries: readonly SpListEntry[] = [
@@ -725,6 +741,24 @@ export const complianceListEntries: readonly SpListEntry[] = [
       { internalName: 'Resolved', type: 'Boolean', displayName: 'Resolved', default: false, candidates: ['Resolved', 'IsResolved'] },
       { internalName: 'Description', type: 'Note', displayName: 'Description', richText: false, candidates: ['Description', 'Details'] },
       { internalName: 'RemediationSource', type: 'Text', displayName: 'Remediation Source', candidates: ['RemediationSource', 'Source'] },
+    ],
+  },
+  {
+    key: 'remediation_audit_log',
+    displayName: '自動修復・ガバナンス監査ログ',
+    resolve: () => envOr('VITE_SP_LIST_REMEDIATION_LOG', fromConfig(ListKeys.RemediationAuditLog)),
+    operations: ['R', 'W'],
+    category: 'compliance',
+    lifecycle: 'optional',
+    essentialFields: ['PlanId', 'Phase', 'ListKey', 'Action', 'Timestamp'],
+    provisioningFields: [
+      { internalName: 'PlanId', type: 'Text', displayName: 'Plan ID', required: true, indexed: true },
+      { internalName: 'Phase', type: 'Text', displayName: 'Phase', required: true },
+      { internalName: 'ListKey', type: 'Text', displayName: 'List Key', required: true, indexed: true },
+      { internalName: 'Action', type: 'Text', displayName: 'Action', required: true },
+      { internalName: 'Timestamp', type: 'DateTime', displayName: 'Timestamp', required: true },
+      { internalName: 'Status', type: 'Text', displayName: 'Status' },
+      { internalName: 'Payload', type: 'Note', displayName: 'Payload JSON', richText: false },
     ],
   },
 ];
@@ -811,4 +845,24 @@ export const otherListEntries: readonly SpListEntry[] = [
     category: 'other',
     lifecycle: 'optional',
   },
+  {
+    key: 'call_logs',
+    displayName: '電話受付ログ',
+    resolve: () => envOr('VITE_SP_LIST_CALL_LOGS', fromConfig(ListKeys.CallLogs)),
+    operations: ['R', 'W'],
+    category: 'other',
+    lifecycle: 'optional',
+  },
+];
+
+/** 全リスト定義の統合（参照等価性を維持するため） */
+export const listDefinitions: readonly SpListEntry[] = [
+  ...masterListEntries,
+  ...dailyListEntries,
+  ...attendanceListEntries,
+  ...scheduleListEntries,
+  ...meetingListEntries,
+  ...handoffListEntries,
+  ...complianceListEntries,
+  ...otherListEntries,
 ];
