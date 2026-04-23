@@ -67,6 +67,8 @@ async function main() {
   const confirm = args.includes('--confirm');
   const targetList = args.find(a => a.startsWith('--list='))?.split('=')[1];
   const targetField = args.find(a => a.startsWith('--field='))?.split('=')[1];
+  const maxDeletes = parseInt(args.find(a => a.startsWith('--max-deletes='))?.split('=')[1] || '999');
+  const batchSize = parseInt(args.find(a => a.startsWith('--batch-size='))?.split('=')[1] || '50');
 
   const LEDGER_FILE = join(REPO_ROOT, 'docs', 'nightly-patrol', 'drift-ledger.csv');
   const SITE_URL = process.env.VITE_SP_SITE_URL;
@@ -128,9 +130,19 @@ async function main() {
   let successCount = 0;
   let failCount = 0;
 
+  let processedInList = 0;
   for (const row of candidates) {
     if (targetList && row.listKey !== targetList) continue;
     if (targetField && row.internalName !== targetField) continue;
+    if (successCount >= maxDeletes) {
+      console.log(`\n🛑 Reached --max-deletes limit (${maxDeletes}). Stopping.`);
+      break;
+    }
+
+    if (processedInList >= batchSize) {
+      console.log(`\n⏸️  Reached --batch-size limit (${batchSize}) for this run. Stopping.`);
+      break;
+    }
 
     console.log(`\n--- Candidate: ${row.listTitle} / ${row.internalName} (${row.displayName}) ---`);
     
@@ -245,6 +257,23 @@ async function main() {
   }
 
   console.log(`\n🏁 Purge process completed. Success: ${successCount}, Failed: ${failCount}`);
+
+  // GENERATE SESSION SUMMARY
+  if (successCount > 0 || failCount > 0) {
+    const summaryFile = join(REPO_ROOT, 'docs', 'nightly-patrol', `purge-summary-${new Date().toISOString().split('T')[0]}.json`);
+    const summary = {
+      timestamp: new Date().toISOString(),
+      mode: confirm ? 'EXECUTE' : 'DRY-RUN',
+      totalFound: candidates.length,
+      successCount,
+      failCount,
+      targetList: targetList || 'ALL',
+      maxDeletes,
+      batchSize
+    };
+    writeFileSync(summaryFile, JSON.stringify(summary, null, 2));
+    console.log(`📝 Session summary saved to ${summaryFile}`);
+  }
 }
 
 main().catch(err => {
