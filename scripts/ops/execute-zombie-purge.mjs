@@ -7,9 +7,14 @@
  * 2. usageCount must be 0 in the ledger.
  * 3. hasData must be false in the ledger.
  * 4. Final live check of hasData before deletion.
+ * 5. Independent Blocklist (Safety Belt).
+ * 6. Confidence filter (High required by default).
+ * 7. "Lookup Base" Protection: Fields without numeric suffixes require --force-base-field.
  * 
- * USAGE:
- *   VITE_SP_SITE_URL=... node scripts/ops/execute-zombie-purge.mjs --confirm
+ * AUDITABILITY:
+ * - Local Deletion Log (JSON)
+ * - SharePoint RemediationAuditLog (via direct API)
+ * - Session Summary
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
@@ -48,6 +53,36 @@ async function spFetch(url, auth, options = {}) {
   return res.json().catch(() => ({}));
 }
 
+async function logToSharePoint(normalizedSiteUrl, auth, entry, batchId) {
+  try {
+    const payload = {
+      Title: `purge:${entry.internalName}`,
+      Correlation_x0020_ID: batchId,
+      Plan_x0020_ID: entry.fieldId,
+      Phase: 'executed',
+      List_x0020_Key: entry.listKey,
+      Field_x0020_Name: entry.internalName,
+      Action: 'delete_zombie',
+      Risk: 'safe',
+      Auto_x0020_Executable: true,
+      Requires_x0020_Approval: false,
+      Reason: `Institutionalized Purge: ${entry.displayName}. Gate: ${entry.evidence.confidence} confidence, usage=${entry.evidence.usageCount}, hasData=${entry.evidence.hasData}. Batch: ${batchId}`,
+      Audit_x0020_Source: 'execute-zombie-purge',
+      Audit_x0020_Timestamp: entry.deletedAt,
+      Execution_x0020_Status: 'success'
+    };
+
+    const url = `${normalizedSiteUrl}/lists/getbytitle('RemediationAuditLog')/items`;
+    await spFetch(url, auth, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    // console.log(`📡 Logged to SharePoint RemediationAuditLog.`);
+  } catch (err) {
+    console.warn(`⚠️  Failed to log to SharePoint audit list: ${err.message}`);
+  }
+}
+
 async function main() {
   // Load .env if exists
   try {
@@ -69,6 +104,7 @@ async function main() {
   const targetField = args.find(a => a.startsWith('--field='))?.split('=')[1];
   const maxDeletes = parseInt(args.find(a => a.startsWith('--max-deletes='))?.split('=')[1] || '999');
   const batchSize = parseInt(args.find(a => a.startsWith('--batch-size='))?.split('=')[1] || '50');
+  const forceBaseField = args.includes('--force-base-field');
 
   const LEDGER_FILE = join(REPO_ROOT, 'docs', 'nightly-patrol', 'drift-ledger.csv');
   const SITE_URL = process.env.VITE_SP_SITE_URL;
@@ -80,8 +116,10 @@ async function main() {
   }
 
   const normalizedSiteUrl = SITE_URL.endsWith('/_api/web') ? SITE_URL : SITE_URL.replace(/\/$/, '') + '/_api/web';
+  const BATCH_ID = `batch-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`;
 
   console.log(`💀 Zombie Purge Executor — Mode: ${confirm ? 'EXECUTE' : 'DRY-RUN'}`);
+  console.log(`📦 Batch ID: ${BATCH_ID}\n`);
 
   let content = '';
   try {
@@ -125,21 +163,49 @@ async function main() {
     return row;
   }).filter(r => r.classification === 'zombie_candidate');
 
-  console.log(`🔍 Found ${candidates.length} zombie candidates in ledger.`);
+  // Filter candidates early based on list/field args
+  const activeCandidates = candidates.filter(r => {
+    if (targetList && r.listKey !== targetList) return false;
+    if (targetField && r.internalName !== targetField) return false;
+    return true;
+  });
+
+  // DRY-RUN SUMMARY TABLE
+  const stats = {};
+  activeCandidates.forEach(c => {
+    stats[c.listTitle] = (stats[c.listTitle] || 0) + 1;
+  });
+
+  if (activeCandidates.length === 0) {
+    console.log('✅ No candidates found matching criteria.');
+    process.exit(0);
+  }
+
+  console.log('📊 CANDIDATE SUMMARY:');
+  console.log('------------------------------------------------------------');
+  console.log(`${'List Title'.padEnd(40)} | ${'Fields'}`);
+  console.log('------------------------------------------------------------');
+  for (const [list, count] of Object.entries(stats)) {
+    console.log(`${list.padEnd(40)} | ${count} fields`);
+  }
+  console.log('------------------------------------------------------------');
+  console.log(`Total active candidates: ${activeCandidates.length}\n`);
+
+  if (!confirm) {
+    console.log('💡 Dry-run complete. Use --confirm to execute purge.');
+    process.exit(0);
+  }
 
   let successCount = 0;
   let failCount = 0;
 
-  let processedInList = 0;
-  for (const row of candidates) {
-    if (targetList && row.listKey !== targetList) continue;
-    if (targetField && row.internalName !== targetField) continue;
+  for (const row of activeCandidates) {
+    // Batch sizing
     if (successCount >= maxDeletes) {
       console.log(`\n🛑 Reached --max-deletes limit (${maxDeletes}). Stopping.`);
       break;
     }
-
-    if (processedInList >= batchSize) {
+    if (successCount + failCount >= batchSize) {
       console.log(`\n⏸️  Reached --batch-size limit (${batchSize}) for this run. Stopping.`);
       break;
     }
@@ -149,6 +215,13 @@ async function main() {
     // Safety Gates
     if (parseInt(row.usageCount) > 0 || row.hasData === 'true') {
       console.warn(`⚠️  Skipping: ledger says usage=${row.usageCount}, hasData=${row.hasData}`);
+      continue;
+    }
+
+    // Protection for "Base Fields" (no numeric suffix)
+    const hasNumericSuffix = /[0-9]+$/.test(row.internalName);
+    if (!hasNumericSuffix && !forceBaseField) {
+      console.warn(`⚠️  Skipping: ${row.internalName} is a base field (no number suffix). Use --force-base-field to override.`);
       continue;
     }
 
@@ -199,11 +272,6 @@ async function main() {
       }
     }
 
-    if (!confirm) {
-      console.log(`[DRY-RUN] Would delete field ${row.internalName} (Id: ${row.fieldId})`);
-      continue;
-    }
-
     // EXECUTE DELETE
     console.log(`🔥 DELETING field ${row.internalName}...`);
     try {
@@ -221,6 +289,8 @@ async function main() {
       });
       console.log(`✅ Deleted successfully.`);
       
+      const deletedAt = new Date().toISOString();
+
       // LOG DELETION WITH SNAPSHOT
       const logFile = join(REPO_ROOT, 'docs', 'nightly-patrol', 'deletion-log.json');
       const logEntry = {
@@ -229,13 +299,14 @@ async function main() {
         internalName: row.internalName,
         displayName: row.displayName,
         fieldId: row.fieldId,
-        deletedAt: new Date().toISOString(),
+        deletedAt: deletedAt,
+        batchId: BATCH_ID,
         evidence: {
           usageCount: row.usageCount,
           hasData: row.hasData,
           confidence: row.confidence
         },
-        snapshot: fullFieldData // Full SharePoint field metadata
+        snapshot: fullFieldData
       };
       
       let existingLogs = [];
@@ -246,6 +317,9 @@ async function main() {
       }
       existingLogs.push(logEntry);
       writeFileSync(logFile, JSON.stringify(existingLogs, null, 2));
+
+      // SHAREPOINT AUDIT LOG
+      await logToSharePoint(normalizedSiteUrl, auth, logEntry, BATCH_ID);
 
       successCount++;
       // Delay to avoid throttle
@@ -260,11 +334,13 @@ async function main() {
 
   // GENERATE SESSION SUMMARY
   if (successCount > 0 || failCount > 0) {
-    const summaryFile = join(REPO_ROOT, 'docs', 'nightly-patrol', `purge-summary-${new Date().toISOString().split('T')[0]}.json`);
+    const dateStamp = new Date().toISOString().split('T')[0];
+    const summaryFile = join(REPO_ROOT, 'docs', 'nightly-patrol', `purge-summary-${dateStamp}.json`);
     const summary = {
+      batchId: BATCH_ID,
       timestamp: new Date().toISOString(),
       mode: confirm ? 'EXECUTE' : 'DRY-RUN',
-      totalFound: candidates.length,
+      totalFound: activeCandidates.length,
       successCount,
       failCount,
       targetList: targetList || 'ALL',
@@ -273,6 +349,9 @@ async function main() {
     };
     writeFileSync(summaryFile, JSON.stringify(summary, null, 2));
     console.log(`📝 Session summary saved to ${summaryFile}`);
+    
+    const latestFile = join(REPO_ROOT, 'docs', 'nightly-patrol', 'latest-purge-summary.json');
+    writeFileSync(latestFile, JSON.stringify(summary, null, 2));
   }
 }
 

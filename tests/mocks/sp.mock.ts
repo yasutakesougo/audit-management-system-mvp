@@ -11,6 +11,12 @@ vi.mock('@/lib/spClient', async () => {
     ...actual,
     useSP: () => ({
       spFetch,
+      getListItemsByTitle: vi.fn().mockResolvedValue([]),
+      addListItemByTitle: vi.fn().mockResolvedValue({ Id: 1 }),
+      updateItemByTitle: vi.fn().mockResolvedValue({ Id: 1 }),
+      getListFieldInternalNames: vi.fn().mockResolvedValue(new Set()),
+      getExistingListTitlesAndIds: vi.fn().mockResolvedValue(new Set()),
+      tryGetListMetadata: vi.fn().mockResolvedValue({ Id: 'test-id', Title: 'Test List' }),
       sp: {
         web: {
           select: () => ({
@@ -18,6 +24,15 @@ vi.mock('@/lib/spClient', async () => {
           }),
         },
       },
+    }),
+    createSpClient: (_acquireToken: any, _baseUrl: string) => ({
+      spFetch,
+      getListItemsByTitle: vi.fn().mockResolvedValue([]),
+      addListItemByTitle: vi.fn().mockResolvedValue({ Id: 1 }),
+      updateItemByTitle: vi.fn().mockResolvedValue({ Id: 1 }),
+      getListFieldInternalNames: vi.fn().mockResolvedValue(new Set()),
+      getExistingListTitlesAndIds: vi.fn().mockResolvedValue(new Set()),
+      tryGetListMetadata: vi.fn().mockResolvedValue({ Id: 'test-id', Title: 'Test List' }),
     }),
   };
 });
