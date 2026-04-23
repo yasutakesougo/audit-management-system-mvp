@@ -66,6 +66,7 @@ async function main() {
   const args = process.argv.slice(2);
   const confirm = args.includes('--confirm');
   const targetList = args.find(a => a.startsWith('--list='))?.split('=')[1];
+  const targetField = args.find(a => a.startsWith('--field='))?.split('=')[1];
 
   const LEDGER_FILE = join(REPO_ROOT, 'docs', 'nightly-patrol', 'drift-ledger.csv');
   const SITE_URL = process.env.VITE_SP_SITE_URL;
@@ -129,6 +130,7 @@ async function main() {
 
   for (const row of candidates) {
     if (targetList && row.listKey !== targetList) continue;
+    if (targetField && row.internalName !== targetField) continue;
 
     console.log(`\n--- Candidate: ${row.listTitle} / ${row.internalName} (${row.displayName}) ---`);
     
@@ -193,6 +195,10 @@ async function main() {
     // EXECUTE DELETE
     console.log(`🔥 DELETING field ${row.internalName}...`);
     try {
+      // PRE-DELETION SNAPSHOT
+      const fieldDetailUrl = `${normalizedSiteUrl}/lists/getbytitle('${row.listTitle}')/fields(guid'${row.fieldId}')`;
+      const fullFieldData = await spFetch(fieldDetailUrl, auth);
+      
       const deleteUrl = `${normalizedSiteUrl}/lists/getbytitle('${row.listTitle}')/fields(guid'${row.fieldId}')`;
       await spFetch(deleteUrl, auth, { 
         method: 'POST', 
@@ -203,7 +209,7 @@ async function main() {
       });
       console.log(`✅ Deleted successfully.`);
       
-      // LOG DELETION
+      // LOG DELETION WITH SNAPSHOT
       const logFile = join(REPO_ROOT, 'docs', 'nightly-patrol', 'deletion-log.json');
       const logEntry = {
         listKey: row.listKey,
@@ -216,7 +222,8 @@ async function main() {
           usageCount: row.usageCount,
           hasData: row.hasData,
           confidence: row.confidence
-        }
+        },
+        snapshot: fullFieldData // Full SharePoint field metadata
       };
       
       let existingLogs = [];
