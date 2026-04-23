@@ -44,6 +44,7 @@ import {
   recordLanding,
 } from '@/features/today/telemetry/recordLanding';
 import { formatDateIso } from '@/lib/dateFormat';
+import { buildDailySupportUrl } from '@/app/links/dailySupportLinks';
 import { computeSnoozeUntil } from '@/features/action-engine/domain/computeSnoozeUntil';
 
 const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = ({ correctiveActions = [] }) => {
@@ -183,6 +184,7 @@ const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = 
         { key: 'records', label: '支援手順', valueText: `${rc}/${rt}`, progress: rt ? Math.round((rc/rt)*100) : 100, status: rc >= rt ? 'complete' : 'attention', onClick: () => onChipClick?.('record') },
         { key: 'caseRecords', label: '日々の記録', valueText: `${cc}/${ct}`, progress: ct ? Math.round((cc/ct)*100) : 100, status: cc >= ct ? 'complete' : 'attention', onClick: () => navigate('/daily/table') },
         { key: 'attendance', label: '出欠', valueText: `${ap}/${as}`, progress: as ? Math.round((ap/as)*100) : 100, status: ap >= as ? 'complete' : 'attention', onClick: () => onChipClick?.('attendance') },
+        { key: 'recordsUser', label: '記録(利用者順)', valueText: `${rc}/${rt}`, progress: rt ? Math.round((rc/rt)*100) : 100, status: rc >= rt ? 'complete' : 'attention', onClick: () => navigate(buildDailySupportUrl({ wizard: 'user' })) },
       ];
     }
 

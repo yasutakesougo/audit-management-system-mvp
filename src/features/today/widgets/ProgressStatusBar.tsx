@@ -34,7 +34,7 @@ export type TodayProgressSummary = {
   pendingBriefingCount: number;
 };
 
-export type ProgressChipKey = 'record' | 'attendance' | 'briefing';
+export type ProgressChipKey = 'record' | 'attendance' | 'briefing' | 'recordsUser';
 
 export type ProgressStatusBarProps = {
   summary: TodayProgressSummary;
@@ -121,6 +121,11 @@ export const ProgressStatusBar: React.FC<ProgressStatusBarProps> = ({
       key: 'briefing',
     });
   }
+  chips.push({
+    icon: <EditNoteIcon sx={{ fontSize: 16 }} />,
+    label: `記録(利用者順)`,
+    key: 'recordsUser',
+  });
 
   return (
     <Box
