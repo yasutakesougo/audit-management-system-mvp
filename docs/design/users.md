@@ -30,6 +30,9 @@
 | フラグ | `IsSupportProcedureTarget` | Yes/No | `isSupportProcedureTarget` | 支援手順記録対象 |
 | フラグ | `severeFlag` | Yes/No | `severeFlag` | 旧フラグ（互換） |
 | ステータス | `IsActive` | Yes/No | `active` | 在籍中かどうか（削除せず残す） |
+
+> [!TIP]
+> 「行動分析対象」および「強度行動障害支援対象」の具体的な業務定義や、システム横断的な挙動については、[行動分析対象の定義と実装](../domain/behavior-analysis.md) を参照してください。
 | 通所 | `TransportToDays` | MultiChoice | `toDays` | 送迎（往路）曜日 |
 | 通所 | `TransportFromDays` | MultiChoice | `fromDays` | 送迎（復路）曜日 |
 | 通所 | `TransportCourse` | Text | `transportCourse` | 送迎固定コース（`isogo` / `kan2` / `kanazawa`） |
