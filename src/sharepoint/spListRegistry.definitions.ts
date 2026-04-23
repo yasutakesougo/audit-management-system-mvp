@@ -57,7 +57,7 @@ export const masterListEntries: readonly SpListEntry[] = [
     category: 'master',
     lifecycle: 'required',
     essentialFields: [
-      'UserID', 'TransportToDays', 'TransportFromDays'
+      'UserID', 'TransportToDays', 'TransportFromDays', 'TransportAdditionType'
     ],
     provisioningFields: [
       { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'User_x0020_ID'] },
@@ -65,7 +65,7 @@ export const masterListEntries: readonly SpListEntry[] = [
       { internalName: 'TransportFromDays', type: 'MultiChoice', displayName: 'Transport From Days', choices: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], candidates: ['TransportFromDays', 'Transport_x0020_From_x0020_Days'] },
       { internalName: 'TransportCourse', type: 'Text', displayName: 'Transport Course', candidates: ['TransportCourse', 'Transport_x0020_Course'] },
       { internalName: 'TransportSchedule', type: 'Note', displayName: 'Transport Schedule', richText: false, candidates: ['TransportSchedule', 'Transport_x0020_Schedule'] },
-      { internalName: 'TransportAdditionType', type: 'Text', displayName: 'Transport Addition Type' },
+      { internalName: 'TransportAdditionType', type: 'Text', displayName: 'Transport Addition Type', candidates: ['TransportAdditionType', 'Transport_x0020_Addition_x0020_T'] },
     ],
   },
   {
@@ -681,7 +681,26 @@ export const handoffListEntries: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_BEHAVIOR_MONITORING', fromConfig(ListKeys.BehaviorMonitoringMaster)),
     operations: ['R', 'W'],
     category: 'handoff',
-    lifecycle: 'optional',
+    lifecycle: 'required',
+    essentialFields: ['UserId', 'PlanningSheetId', 'PeriodEnd'],
+    provisioningFields: [
+      { internalName: 'UserId', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserId', 'UserCode'] },
+      { internalName: 'PlanningSheetId', type: 'Text', displayName: 'Planning Sheet ID', required: true },
+      { internalName: 'PeriodStart', type: 'DateTime', displayName: 'Period Start', dateTimeFormat: 'DateOnly' },
+      { internalName: 'PeriodEnd', type: 'DateTime', displayName: 'Period End', required: true, dateTimeFormat: 'DateOnly' },
+      { internalName: 'SupportEvaluationsJson', type: 'Note', displayName: 'Support Evaluations JSON', richText: false },
+      { internalName: 'EnvironmentFindingsJson', type: 'Note', displayName: 'Environment Findings JSON', richText: false },
+      { internalName: 'EffectiveSupports', type: 'Note', displayName: 'Effective Supports', richText: false },
+      { internalName: 'DifficultiesObserved', type: 'Note', displayName: 'Difficulties Observed', richText: false },
+      { internalName: 'NewTriggersJson', type: 'Note', displayName: 'New Triggers JSON', richText: false },
+      { internalName: 'MedicalSafetyNotes', type: 'Note', displayName: 'Medical Safety Notes', richText: false },
+      { internalName: 'UserFeedback', type: 'Note', displayName: 'User Feedback', richText: false },
+      { internalName: 'FamilyFeedback', type: 'Note', displayName: 'Family Feedback', richText: false },
+      { internalName: 'RecommendedChangesJson', type: 'Note', displayName: 'Recommended Changes JSON', richText: false },
+      { internalName: 'Summary', type: 'Note', displayName: 'Summary', richText: false },
+      { internalName: 'RecordedBy', type: 'Text', displayName: 'Recorded By' },
+      { internalName: 'RecordedAt', type: 'DateTime', displayName: 'Recorded At' },
+    ],
   },
   {
     key: 'planning_sheet_reassessment_master',
@@ -689,7 +708,26 @@ export const handoffListEntries: readonly SpListEntry[] = [
     resolve: () => envOr('VITE_SP_LIST_PLANNING_REASSESSMENT', fromConfig(ListKeys.PlanningSheetReassessmentMaster)),
     operations: ['R', 'W'],
     category: 'handoff',
-    lifecycle: 'optional',
+    lifecycle: 'required',
+    essentialFields: ['PlanningSheetId', 'ReassessmentDate'],
+    provisioningFields: [
+      { internalName: 'PlanningSheetId', type: 'Text', displayName: 'Planning Sheet ID', required: true, indexed: true },
+      { internalName: 'UserId', type: 'Text', displayName: 'User ID', candidates: ['UserId', 'UserCode'] },
+      { internalName: 'ReassessmentTrigger', type: 'Text', displayName: 'Reassessment Trigger' },
+      { internalName: 'ReassessmentDate', type: 'DateTime', displayName: 'Reassessment Date', required: true, dateTimeFormat: 'DateOnly' },
+      { internalName: 'Summary', type: 'Note', displayName: 'Summary', richText: false },
+      { internalName: 'CreatedByText', type: 'Text', displayName: 'Created By (Text)' },
+      { internalName: 'CreatedAtText', type: 'Text', displayName: 'Created At (Text)' },
+      { internalName: 'VersionNo', type: 'Number', displayName: 'Version No' },
+      { internalName: 'PlanChangeDecision', type: 'Text', displayName: 'Plan Change Decision' },
+      { internalName: 'AbcSummary', type: 'Note', displayName: 'ABC Summary', richText: false },
+      { internalName: 'HypothesisReview', type: 'Note', displayName: 'Hypothesis Review', richText: false },
+      { internalName: 'ProcedureEffectiveness', type: 'Note', displayName: 'Procedure Effectiveness', richText: false },
+      { internalName: 'EnvironmentChange', type: 'Note', displayName: 'Environment Change', richText: false },
+      { internalName: 'NextReassessmentAt', type: 'DateTime', displayName: 'Next Reassessment At', dateTimeFormat: 'DateOnly' },
+      { internalName: 'Notes', type: 'Note', displayName: 'Notes', richText: false },
+      { internalName: 'ReassessedBy', type: 'Text', displayName: 'Reassessed By' },
+    ],
   },
 ];
 

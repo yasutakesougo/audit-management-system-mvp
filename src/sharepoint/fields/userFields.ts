@@ -163,7 +163,7 @@ const CANDIDATE_TRANSPORT_TO_DAYS = ['TransportToDays', 'Transport_x0020_To_x002
 const CANDIDATE_TRANSPORT_FROM_DAYS = ['TransportFromDays', 'Transport_x0020_From_x0020_Days', 'cr013_transportFromDays'];
 const CANDIDATE_TRANSPORT_COURSE = ['TransportCourse', 'Transport_x0020_Course', 'cr013_transportCourse'];
 const CANDIDATE_TRANSPORT_SCHEDULE = ['TransportSchedule', 'Transport_x0020_Schedule', 'cr013_transportSchedule'];
-const CANDIDATE_TRANSPORT_ADDITION_TYPE = ['TransportAdditionType', 'Transport_x0020_Addition_x0020_Type', 'cr013_transportAdditionType'];
+const CANDIDATE_TRANSPORT_ADDITION_TYPE = ['TransportAdditionType', 'Transport_x0020_Addition_x0020_Type', 'Transport_x0020_Addition_x0020_T', 'cr013_transportAdditionType'];
 
 // Benefit candidates
 const CANDIDATE_RECIPIENT_CERT_NUMBER = [
@@ -305,6 +305,9 @@ export const USERS_SELECT_FIELDS_CORE = [
   USERS_MASTER_FIELD_MAP.usageStatus,
   USERS_MASTER_FIELD_MAP.attendanceDays,
   USERS_MASTER_FIELD_MAP.transportCourse,
+  USERS_MASTER_FIELD_MAP.transportSchedule,
+  USERS_MASTER_FIELD_MAP.transportToDays,
+  USERS_MASTER_FIELD_MAP.transportFromDays,
   USERS_MASTER_FIELD_MAP.modified,
   USERS_MASTER_FIELD_MAP.created,
   USERS_MASTER_FIELD_MAP.lastAssessmentDate,
