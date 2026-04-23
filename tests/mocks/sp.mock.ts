@@ -22,7 +22,7 @@ export const useSP = () => ({
   },
 });
 
-export const createSpClient = (_acquireToken: any, _baseUrl: string) => ({
+export const createSpClient = (_acquireToken: () => Promise<string | null>, _baseUrl: string) => ({
   spFetch,
   getListItemsByTitle: vi.fn().mockResolvedValue([]),
   addListItemByTitle: vi.fn().mockResolvedValue({ Id: 1 }),
