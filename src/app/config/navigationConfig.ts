@@ -129,7 +129,8 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     // --- 2. スケジュール・割当 (schedules) ---
     ...(schedulesEnabled ? [
       createHubNavItem('schedules'),
-      SCHEDULES_ROUTES.WEEK(isFieldStaffShell),
+      SCHEDULES_ROUTES.CALENDAR.WEEK(isFieldStaffShell),
+      SCHEDULES_ROUTES.ASSIGNMENT.TRANSPORT(isFieldStaffShell),
     ] : []),
 
     // --- 2. 計画・アセスメント (planning / severe) ---
@@ -177,7 +178,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     items.push(OPS_ROUTES.ADMIN_STAFF_ATTENDANCE(isFieldStaffShell));
     items.push(OPS_ROUTES.EXCEPTION_CENTER(isFieldStaffShell));
     if (schedulesEnabled && isAdmin && (authzReady || skipLogin)) {
-      items.push(SCHEDULES_ROUTES.INTEGRATED_CALENDAR(isFieldStaffShell));
+      items.push(SCHEDULES_ROUTES.RESOURCE.INTEGRATED_CALENDAR(isFieldStaffShell));
     }
     items.push(PLATFORM_ROUTES.ADMIN(isFieldStaffShell));
     items.push(PLATFORM_ROUTES.TELEMETRY(isFieldStaffShell));
