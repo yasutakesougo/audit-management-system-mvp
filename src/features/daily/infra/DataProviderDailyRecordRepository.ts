@@ -321,7 +321,7 @@ export class DataProviderDailyRecordRepository extends BaseRepository implements
         Object.entries(fieldStatus).map(([key, status]) => [
           key,
           {
-            ...(status as any),
+            ...(status as { resolvedName?: string; candidates: string[] }),
             isSilent: !essentialsSet.has(key),
           },
         ])
@@ -360,7 +360,7 @@ export class DataProviderDailyRecordRepository extends BaseRepository implements
         Object.entries(fieldStatus).map(([key, status]) => [
           key,
           {
-            ...(status as any),
+            ...(status as { resolvedName?: string; candidates: string[] }),
             isSilent: !essentialsSet.has(key),
           },
         ])

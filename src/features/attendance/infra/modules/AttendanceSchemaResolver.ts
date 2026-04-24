@@ -267,7 +267,7 @@ export class AttendanceSchemaResolver<TKey extends string> {
       Object.entries(fieldStatus).map(([key, status]) => [
         key,
         {
-          ...(status as any),
+          ...(status as { resolvedName?: string; candidates: string[]; isDrifted: boolean }),
           isSilent: !this.essentials.includes(key as TKey),
         },
       ]),
