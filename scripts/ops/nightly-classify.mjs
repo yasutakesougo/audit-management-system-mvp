@@ -203,6 +203,26 @@ export function classify(patrolResult) {
       }
     });
   }
+  
+  // ── API Contract Drift ────────────────────────────────────────────────
+  const contractResults = metrics.contracts || [];
+  const failedContracts = contractResults.filter((r) => r.status === 'fail');
+  
+  if (failedContracts.length > 0) {
+    classifications.push({
+      kind: 'api-contract-drift',
+      severity: 'high',
+      classification: 'needs-review',
+      errorCount: failedContracts.length,
+      affectedFiles: failedContracts.map((r) => r.targetFile),
+      isTestOnly: false,
+      details: failedContracts.map((r) => ({
+        name: r.name,
+        fingerprint: r.fingerprint,
+        summary: r.summary,
+      })),
+    });
+  }
 
   // ── Overall status ─────────────────────────────────────────────────────
 
