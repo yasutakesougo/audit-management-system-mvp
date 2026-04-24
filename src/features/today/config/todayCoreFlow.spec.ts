@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { getTodayPrimaryFlowSteps, TODAY_CORE_FLOW } from './todayCoreFlow';
 
 describe('todayCoreFlow', () => {
-  it('defines today overview + 3-step viewer core workflow', () => {
+  it('defines today overview + 4-step viewer core workflow', () => {
     const keys = TODAY_CORE_FLOW.map((step) => step.key);
     expect(keys).toEqual([
       'today-overview',
       'attendance',
       'daily-table',
       'handoff-timeline',
+      'daily-support',
     ]);
   });
 
@@ -18,6 +19,7 @@ describe('todayCoreFlow', () => {
       '/daily/attendance',
       '/daily/table',
       '/handoff-timeline',
+      '/daily/support?wizard=user',
     ]);
   });
 
@@ -27,6 +29,7 @@ describe('todayCoreFlow', () => {
       '/daily/attendance',
       '/daily/table',
       '/handoff-timeline',
+      '/daily/support?wizard=user',
     ]);
   });
 });

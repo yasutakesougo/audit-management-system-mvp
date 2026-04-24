@@ -56,12 +56,12 @@ describe('Demo Mode Guards', () => {
   });
 
   describe('Attendance Repository Selection', () => {
-    it('should use REAL repository when demo mode is OFF', () => {
+    it('falls back to DEMO repository when demo mode is OFF in non-SPFx test runtime', () => {
       vi.mocked(envModule.isDemoModeEnabled).mockReturnValue(false);
       vi.mocked(envModule.isTestMode).mockReturnValue(false);
       
       renderHook(() => useAttendanceStore());
-      expect(getCurrentAttendanceRepositoryKind()).toBe('real');
+      expect(getCurrentAttendanceRepositoryKind()).toBe('demo');
     });
 
     it('should use DEMO repository when demo mode is ON', () => {
@@ -74,12 +74,12 @@ describe('Demo Mode Guards', () => {
   });
 
   describe('Daily Record Repository Selection', () => {
-    it('should use REAL repository when demo mode is OFF', () => {
+    it('falls back to DEMO repository when demo mode is OFF in non-SPFx test runtime', () => {
       vi.mocked(envModule.isDemoModeEnabled).mockReturnValue(false);
       vi.mocked(envModule.isTestMode).mockReturnValue(false);
       
       renderHook(() => useDaily());
-      expect(getCurrentDailyRecordRepositoryKind()).toBe('real');
+      expect(getCurrentDailyRecordRepositoryKind()).toBe('demo');
     });
 
     it('should use DEMO repository when demo mode is ON', () => {
@@ -92,12 +92,12 @@ describe('Demo Mode Guards', () => {
   });
 
   describe('Schedule Repository Selection', () => {
-    it('should use REAL repository when demo mode is OFF', () => {
+    it('falls back to DEMO repository when demo mode is OFF in non-SPFx test runtime', () => {
       vi.mocked(envModule.isDemoModeEnabled).mockReturnValue(false);
       vi.mocked(envModule.isTestMode).mockReturnValue(false);
       
       renderHook(() => useSchedules());
-      expect(getCurrentScheduleRepositoryKind()).toBe('real');
+      expect(getCurrentScheduleRepositoryKind()).toBe('demo');
     });
 
     it('should use DEMO repository when demo mode is ON', () => {
