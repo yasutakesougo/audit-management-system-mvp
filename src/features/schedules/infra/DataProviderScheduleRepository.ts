@@ -312,7 +312,7 @@ export class DataProviderScheduleRepository extends BaseRepository implements Sc
     // buildMappedPayload は内部で getCaseInsensitiveValue と normalizeClearableValue を使用する
     const payload = this.buildMappedPayload({ 
       input: input as unknown as Record<string, unknown>, 
-      mapping: fields as any 
+      mapping: fields as unknown as Record<string, string | undefined> 
     });
     
     // 2. 特殊ロジックが必要なフィールドの個別処理
