@@ -338,18 +338,20 @@ const DRIFT_ESSENTIALS_BY_KEY: Record<string, readonly string[]> = {
 function buildListSpecs(): ListSpec[] {
   return SP_LIST_REGISTRY.map((entry) => {
   const effectiveEssentials = DRIFT_ESSENTIALS_BY_KEY[entry.key] ?? (entry.essentialFields || []);
+  const essentialSet = new Set(DRIFT_ESSENTIALS_BY_KEY[entry.key] ?? (entry.essentialFields || []));
 
   // 1. All fields from provisioning (default: optional)
   const driftOverride = DRIFT_CANDIDATES_BY_KEY[entry.key];
   const provisionFields: SpFieldSpec[] = (entry.provisioningFields || []).map((f) => ({
     internalName: f.internalName,
-    isEssential: effectiveEssentials.includes(f.internalName),
+    isEssential: essentialSet.has(f.internalName),
     typeHint: f.type,
-    candidates: driftOverride?.[f.internalName],
+    candidates: driftOverride?.[f.internalName] ?? (f.candidates ? [...f.candidates] : undefined),
+    isSilent: f.isSilent,
   }));
 
   // 2. Ensure essentials (ID, etc.) are present
-  const essentials = ["Id", "Title", ...effectiveEssentials];
+  const essentials = ["Id", "Title", ...essentialSet];
   const combined: SpFieldSpec[] = [...provisionFields];
 
   for (const name of essentials) {

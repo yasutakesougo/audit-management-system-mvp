@@ -101,7 +101,7 @@ describe('DAILY_RECORD_CANONICAL_CANDIDATES drift', () => {
 describe('DAILY_RECORD_ROW_AGGREGATE_CANDIDATES drift', () => {
   it('標準名がそのまま解決される（drift なし）', () => {
     const available = new Set([
-      'Title', 'ParentID', 'UserCode', 'RecordDate', 'Status', 'ReporterName', 'Payload', 'Kind', 'Group', 'SpecialNote',
+      'Title', 'ParentID', 'UserCode', 'RecordDate', 'Status', 'ReporterName', 'Payload', 'Kind', 'Group', 'SpecialNote', 'Version',
     ]);
     const { resolved, missing } = resolveInternalNamesDetailed(
       available,

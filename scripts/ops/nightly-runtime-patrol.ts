@@ -260,7 +260,7 @@ function classifySeverity(event: RawEvent): SeverityLevel {
   if (event.eventType === 'provision_skipped:block') return 'silent';
   // Done (Remediation Success)
   if (event.eventType === 'remediation' && (event.message.includes('成功') || event.message.includes('success'))) return 'silent';
-  if (event.eventType === 'drift' && event.reasonCode === 'absorbed_strategy_e')
+  if (event.eventType === 'drift' && (event.reasonCode === 'absorbed_strategy_e' || event.message.includes('Severity: silent')))
     return 'silent';
 
   // 4. Watch

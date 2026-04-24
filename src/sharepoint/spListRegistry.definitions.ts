@@ -203,7 +203,7 @@ export const dailyListEntries: readonly SpListEntry[] = [
     provisioningFields: [
       { internalName: 'UserCode', type: 'Text', displayName: 'User Code', required: true, indexed: true },
       { internalName: 'RecordDate', type: 'DateTime', displayName: 'Record Date', required: true, dateTimeFormat: 'DateOnly', indexed: true },
-      { internalName: 'ISPId', type: 'Text', displayName: 'ISP ID' },
+      { internalName: 'ISPId', type: 'Text', displayName: 'ISP ID', isSilent: true, candidates: ['ISPId', 'ISPLookupId', 'cr013_ispId'] },
       { internalName: 'PlanningSheetId', type: 'Text', displayName: 'Planning Sheet ID', required: true },
       { internalName: 'ProcedureText', type: 'Note', displayName: 'Procedure Text', richText: false, candidates: ['ProcedureText', 'Procedure_x0020_Text'] },
       { internalName: 'ExecutionStatus', type: 'Text', displayName: 'Execution Status', candidates: ['ExecutionStatus', 'Execution_x0020_Status'] },
@@ -213,7 +213,7 @@ export const dailyListEntries: readonly SpListEntry[] = [
       { internalName: 'PerformedAt', type: 'DateTime', displayName: 'Performed At', candidates: ['PerformedAt', 'Performed_x0020_At'] },
       { internalName: 'UserResponse', type: 'Note', displayName: 'User Response', richText: false, candidates: ['UserResponse', 'User_x0020_Response'] },
       { internalName: 'SpecialNotes', type: 'Note', displayName: 'Special Notes', richText: false, candidates: ['SpecialNotes', 'Special_x0020_Notes'] },
-      { internalName: 'HandoffNotes', type: 'Note', displayName: 'Handoff Notes', richText: false },
+      { internalName: 'HandoffNotes', type: 'Note', displayName: 'Handoff Notes', richText: false, isSilent: true, candidates: ['HandoffNotes', 'Handoff_x0020_Notes', 'cr013_handoffNotes'] },
     ],
   },
   {
@@ -229,9 +229,9 @@ export const dailyListEntries: readonly SpListEntry[] = [
     provisioningFields: [
       { internalName: 'ParentID', type: 'Number', displayName: 'Parent ID', required: true, indexed: true, candidates: ['ParentID', 'Parent_x0020_ID'] },
       { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'User_x0020_ID', 'Title'] },
-      { internalName: 'Version', type: 'Number', displayName: 'Version', default: 1, candidates: ['Version', 'VersionNo'] },
+      { internalName: 'Version', type: 'Number', displayName: 'Version', default: 1, isSilent: true, candidates: ['Version', 'VersionNo', 'cr013_version'] },
       { internalName: 'Status', type: 'Text', displayName: 'Status' },
-      { internalName: 'Payload', type: 'Note', displayName: 'Row Data JSON', richText: false, candidates: ['Payload', 'PayloadJSON'] },
+      { internalName: 'Payload', type: 'Note', displayName: 'Row Data JSON', richText: false, isSilent: true, candidates: ['Payload', 'PayloadJSON', 'cr013_payload'] },
       { internalName: 'RecordedAt', type: 'DateTime', displayName: 'Recorded At', candidates: ['RecordedAt', 'Recorded_x0020_At'] },
     ],
   },
@@ -302,7 +302,7 @@ export const dailyListEntries: readonly SpListEntry[] = [
       { internalName: 'LunchAmount', type: 'Choice', displayName: 'Lunch Amount', choices: ['完食', '8割', '半分', '少量', 'なし'] },
       { internalName: 'ProblemBehavior', type: 'Boolean', displayName: 'Problem Behavior' },
       { internalName: 'Seizure', type: 'Boolean', displayName: 'Seizure' },
-      { internalName: 'Goals', type: 'Note', displayName: 'Goals JSON', richText: false },
+      { internalName: 'Goals', type: 'Note', displayName: 'Goals JSON', richText: false, isSilent: true, candidates: ['Goals', 'goals', 'GoalIds', 'cr013_goals'] },
       { internalName: 'Notes', type: 'Note', displayName: 'Notes', richText: false },
     ],
   },
