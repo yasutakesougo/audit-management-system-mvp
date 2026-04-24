@@ -14,19 +14,6 @@
  * - ExceptionItem は「行動指示」（judgment → action）
  * - TransportDetails は「具体的な対象者」（enrichment）
  * - この変換で「検知 → 可視化 → 対応」のループが閉じる
- *
- * ## マッピング表
- * | Alert ID                   | severity | actionPath                       |
- * |---------------------------|----------|----------------------------------|
- * | transport-sync-fail-count | critical | /today → 同期失敗の利用者を確認   |
- * | transport-fallback-active | high     | /today → 対象者リストを確認       |
- * | transport-stale-count     | medium   | /today → 停滞中の利用者を確認     |
- * | transport-low-completion  | medium   | /today → 未到着の利用者を確認     |
- * | transport-missing-driver-assignment | high | /today → 配車漏れを確認  |
- *
- * @see computeTransportAlerts.ts
- * @see extractTransportDetails.ts
- * @see transport_telemetry_design.md
  */
 
 import type { KpiAlert } from '@/features/telemetry/domain/computeCtaKpiDiff';
@@ -49,10 +36,6 @@ export type MissingDriverDetail = {
   vehicleId: string;
 };
 
-/**
- * Alert ID → ExceptionItem 属性のマッピング定義。
- * 各エントリは deep-link 付きの具体的なアクションになる。
- */
 const ALERT_MAPPINGS: Record<string, AlertMapping> = {
   'transport-sync-fail-count': {
     severity: 'critical',
@@ -116,48 +99,27 @@ export type AssignmentConflictEvent = {
 };
 
 export type BuildTransportExceptionsOptions = {
-  /** computeTransportAlerts() の出力 */
   alerts: KpiAlert[];
-  /** 対象日（ISO 8601 date 文字列, e.g. "2026-03-24"） */
   today: string;
-  /** per-user 詳細（optional: enriched exceptions を生成する） */
   details?: TransportDetails;
-  /** 運転者未設定の配車詳細（optional） */
   missingDriverUsers?: MissingDriverDetail[];
-  /** userCode → 表示名 のマッピング（optional） */
   userNames?: UserNameMap;
-  /** 割り当て競合イベント（optional） */
   assignmentConflictEvents?: AssignmentConflictEvent[];
 };
 
-/**
- * Transport Alert を ExceptionItem に変換する。
- *
- * @returns ExceptionItem[] - ExceptionCenter に表示可能な形式
- *
- * details が提供されている場合、stale/sync-failed に対して
- * per-user の子 Exception も生成する（最大5件、それ以上は集約に含む）。
- */
 export function buildTransportExceptions(
   options: BuildTransportExceptionsOptions,
 ): ExceptionItem[];
 
-/**
- * @deprecated Use options object overload instead.
- * Legacy 2-arg overload for backward compatibility.
- */
 export function buildTransportExceptions(
   alerts: KpiAlert[],
   today: string,
 ): ExceptionItem[];
 
-// ── Implementation ──────────────────────────────────────────────────────────
-
 export function buildTransportExceptions(
   alertsOrOptions: KpiAlert[] | BuildTransportExceptionsOptions,
   todayLegacy?: string,
 ): ExceptionItem[] {
-  // Normalize overloads
   const opts: BuildTransportExceptionsOptions =
     Array.isArray(alertsOrOptions)
       ? { alerts: alertsOrOptions, today: todayLegacy! }
@@ -172,11 +134,10 @@ export function buildTransportExceptions(
 
   for (const alert of alerts) {
     const mapping = ALERT_MAPPINGS[alert.id];
-    if (!mapping) continue; // 未知のアラートIDは安全にスキップ
+    if (!mapping) continue;
 
     const aggregateId = `transport-${alert.id}-${today}`;
 
-    // ── 集約 Exception ─────────────────────────────────────────────────────
     items.push({
       id: aggregateId,
       category: 'transport-alert',
@@ -189,7 +150,6 @@ export function buildTransportExceptions(
       actionPath: mapping.actionPath,
     });
 
-    // stale: 各ユーザーを子 Exception として生成
     if (alert.id === 'transport-stale-count' && details) {
       const staleSlice = details.staleUsers.slice(0, MAX_PER_USER);
       for (const stale of staleSlice) {
@@ -211,7 +171,6 @@ export function buildTransportExceptions(
       }
     }
 
-    // sync-failed: 各ユーザーを子 Exception として生成
     if (alert.id === 'transport-sync-fail-count' && details) {
       const syncSlice = details.syncFailedUsers.slice(0, MAX_PER_USER);
       for (const sf of syncSlice) {
@@ -233,7 +192,6 @@ export function buildTransportExceptions(
       }
     }
 
-    // missing-driver: 配車あり・運転者未設定の子 Exception を生成
     if (alert.id === 'transport-missing-driver-assignment') {
       const missingSlice = missingDriverUsers.slice(0, MAX_PER_USER);
       for (const missing of missingSlice) {
@@ -256,8 +214,6 @@ export function buildTransportExceptions(
     }
   }
 
-  // ── 割り当て競合 (CONFLICT_UNRESOLVED) ───────────────────────────────────
-  // 本当に人の介入が必要な retry_exhausted / item_gone のみ表示
   for (const conflict of conflicts) {
     if (conflict.reason !== 'retry_exhausted' && conflict.reason !== 'item_gone') {
       continue;
@@ -280,7 +236,7 @@ export function buildTransportExceptions(
       targetDate: today,
       updatedAt: new Date(conflict.timestamp).toISOString(),
       actionLabel: '配車設定を確認',
-      actionPath: '/today', // ひとまず Today へ。将来的に詳細へ飛ばす
+      actionPath: '/today',
     });
   }
 
