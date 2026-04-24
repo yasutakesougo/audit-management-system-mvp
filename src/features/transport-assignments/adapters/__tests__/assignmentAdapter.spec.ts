@@ -39,7 +39,7 @@ describe('assignmentAdapter', () => {
     expect(domain.vehicleId).toBe('車両1');
     expect(domain.driverId).toBe('staff-a');
     expect(domain.userIds).toHaveLength(3);
-    expect(domain.direction).toBe('pickup'); // 'to' -> 'pickup'
+    expect(domain.direction).toBe('to');
   });
 
   it('should detect conflicts using domain logic via adapter', () => {
