@@ -10,8 +10,8 @@ import { TESTIDS } from '@/testids';
 export const PLANNING_ROUTES = {
   SUPPORT_PLAN_GUIDE: (_isFieldStaffShell: boolean) => ({
     label: '支援計画ガイド',
-    to: '/planning/guide',
-    isActive: (pathname: string) => pathname.startsWith('/planning/guide'),
+    to: '/support-plan-guide',
+    isActive: (pathname: string) => pathname.startsWith('/support-plan-guide'),
     icon: undefined,
     audience: NAV_AUDIENCE.staff as NavAudience,
     group: 'planning' as NavGroupKey,
