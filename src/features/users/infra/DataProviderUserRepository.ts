@@ -271,6 +271,7 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
       
       const bestEffort: Record<string, string | undefined> = {};
       const resolvedKeys = new Set<string>();
+      const hasAnyResolved = Object.values(resolved).some((value) => typeof value === 'string' && value.length > 0);
 
       for (const [key, cands] of Object.entries(candidates)) {
         if (resolved[key]) {
@@ -278,6 +279,10 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
           resolvedKeys.add(key);
         } else if (essentials.includes(key)) {
           // 必須フィールドかつ未解決の場合はフォールバックする（ただし400の可能性あり）
+          bestEffort[key] = cands[0];
+        } else if (!hasAnyResolved) {
+          // スキーマ情報が十分に観測できない初期状態（例: 空リスト）では
+          // optional も primary 候補へ best-effort でフォールバックして write を阻害しない。
           bestEffort[key] = cands[0];
         } else {
           // 任意フィールドで未解決の場合は undefined にして、後の $select から除外させる
