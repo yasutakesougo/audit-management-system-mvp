@@ -20,6 +20,7 @@ import { useAppShellState } from './useAppShellState';
 import { AppShellHeader } from './AppShellHeader';
 import { AppShellSidebar, MobileNavContent } from './AppShellSidebar';
 import { ConnectionDegradedBanner } from '@/features/sp/health/components/ConnectionDegradedBanner';
+import { FooterQuickActions } from './components/FooterQuickActions';
 
 const SKIP_LOGIN = shouldSkipLogin();
 
@@ -108,7 +109,7 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <AppShellV2
             header={headerContent}
             sidebar={sidebarContent}
-            footer={null}
+            footer={<FooterQuickActions />}
             sidebarWidth={showDesktopSidebar ? currentDrawerWidth : 0}
             contentPaddingX={isFocusMode ? 0 : 16}
             contentPaddingY={contentPaddingY}
