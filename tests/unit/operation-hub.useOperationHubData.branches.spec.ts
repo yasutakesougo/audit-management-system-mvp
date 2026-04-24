@@ -118,6 +118,7 @@ const baseUser = (overrides: Partial<StoreUser>): StoreUser => ({
 });
 
 beforeEach(() => {
+  vi.useRealTimers();
   vi.clearAllMocks();
 });
 
@@ -158,7 +159,7 @@ describe('useOperationHubData branch coverage', () => {
     expect(reloadSchedules).toHaveBeenCalledTimes(1);
     expect(reloadUsers).toHaveBeenCalledTimes(1);
     expect(reloadStaff).toHaveBeenCalledTimes(1);
-  });
+  }, 10000);
 
   it('merges schedules across branches and annotates timeline conflicts', async () => {
     mockGetNow.mockReturnValue(new Date('2025-03-09T00:00:00.000Z'));

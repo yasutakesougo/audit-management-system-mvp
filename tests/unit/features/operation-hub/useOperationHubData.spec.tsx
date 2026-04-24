@@ -2,17 +2,17 @@ import { renderHook } from '@testing-library/react';
 import { useOperationHubData, TimelineEvent } from '@/features/operation-hub/useOperationHubData';
 import { toTimelineEvents, markConflicts } from '@/features/operation-hub/logic/timelineLogic';
 import { classifyEmployment } from '@/features/operation-hub/logic/groupingLogic';
-import { useSchedules } from '@/stores/useSchedules';
-import { useUsers } from '@/stores/useUsers';
-import { useStaff } from '@/stores/useStaff';
+import { useSchedules } from '@/features/schedules/store';
+import { useUsers } from '@/features/users/store';
+import { useStaff } from '@/features/staff/store';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Schedule } from '@/lib/mappers';
 import type { Staff } from '@/types';
 
 // モック化
-vi.mock('@/stores/useSchedules');
-vi.mock('@/stores/useUsers');
-vi.mock('@/stores/useStaff');
+vi.mock('@/features/schedules/store');
+vi.mock('@/features/users/store');
+vi.mock('@/features/staff/store');
 vi.mock('@/lib/spClient', () => ({
   useSP: vi.fn(),
 }));

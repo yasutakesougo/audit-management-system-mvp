@@ -7,10 +7,11 @@ describe('getAppConfig', () => {
     __resetAppConfigForTests();
   });
 
-  it('returns memoized instance when called without override', () => {
+  it('returns equivalent values when called without override', () => {
     const first = getAppConfig();
     const second = getAppConfig();
-    expect(second).toBe(first);
+    expect(second).toStrictEqual(first);
+    expect(second).not.toBe(first);
   });
 
   it('maps environment variables with sensible defaults', () => {

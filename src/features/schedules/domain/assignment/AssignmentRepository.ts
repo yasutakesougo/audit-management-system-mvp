@@ -1,5 +1,6 @@
 import { Assignment, AssignmentType, AssignmentStatus } from './types';
 
+// contract:allow-interface
 /**
  * Filter parameters for listing assignments.
  */

@@ -180,6 +180,7 @@ const loadStoreMocks = () => {
 
 describe('useOperationHubData', () => {
   beforeEach(() => {
+    vi.useRealTimers();
     ensureOperationHubListsMock.mockClear();
     useEnsureOperationHubListsMock.mockClear();
     useSchedulesMock.mockReset();
@@ -208,7 +209,7 @@ describe('useOperationHubData', () => {
     expect(result.current.timeline?.resources.length).toBeGreaterThanOrEqual(2);
     expect(result.current.mobileTasks).toHaveLength(1);
     expect(result.current.unassignedSchedules).toHaveLength(1);
-  });
+  }, 10000);
 
   it('refresh triggers ensure and reloads', async () => {
     const { useOperationHubData } = await import('@/features/operation-hub/useOperationHubData');

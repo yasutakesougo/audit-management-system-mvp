@@ -24,8 +24,8 @@ describe('navigationConfig Factory Contract', () => {
     
     // 1. Hub Presence
     expect(hubLabels).toContain('今日の業務');
-    expect(hubLabels).toContain('スケジュール');
     expect(hubLabels).toContain('支援計画・調整');
+    expect(hubLabels).toContain('重度支援');
     expect(hubLabels).toContain('記録・参照');
     expect(hubLabels).toContain('運営・管理');
 

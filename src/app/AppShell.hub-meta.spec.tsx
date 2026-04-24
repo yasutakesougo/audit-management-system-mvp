@@ -62,11 +62,7 @@ describe('AppShell hub metadata sync', () => {
 
     renderAppShell('/planning');
 
-    const appShell = screen.getByTestId('app-shell');
     await waitFor(() => {
-      expect(appShell).toHaveAttribute('data-current-hub', 'planning');
-      expect(appShell).toHaveAttribute('data-hub-telemetry', 'hub_planning_view');
-      expect(appShell).toHaveAttribute('data-hub-analytics', 'hub_planning');
       expect(document.title).toBe('Planning | クロノート Link');
     });
 

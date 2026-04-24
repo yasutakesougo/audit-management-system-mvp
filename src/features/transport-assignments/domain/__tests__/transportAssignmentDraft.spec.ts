@@ -324,9 +324,11 @@ describe('buildSchedulePatchPayloads', () => {
     const payloads = buildSchedulePatchPayloads({ draft: changed, schedules });
 
     expect(payloads).toHaveLength(1);
-    expect(payloads[0]).toMatchObject({ id: 'row-to-attendant' });
-    expect(payloads[0].vehicleId).toBeUndefined();
-    expect(payloads[0].assignedStaffId).toBeUndefined();
+    expect(payloads[0]).toMatchObject({
+      id: 'row-to-attendant',
+      vehicleId: undefined,
+      assignedStaffId: undefined,
+    });
     expect(payloads[0].notes).toBe('玄関前待機 [transport_attendant:STF-002]');
   });
 
@@ -365,9 +367,11 @@ describe('buildSchedulePatchPayloads', () => {
     const payloads = buildSchedulePatchPayloads({ draft: changed, schedules });
 
     expect(payloads).toHaveLength(1);
-    expect(payloads[0]).toMatchObject({ id: 'row-to-course' });
-    expect(payloads[0].vehicleId).toBeUndefined();
-    expect(payloads[0].assignedStaffId).toBeUndefined();
+    expect(payloads[0]).toMatchObject({
+      id: 'row-to-course',
+      vehicleId: undefined,
+      assignedStaffId: undefined,
+    });
     expect(payloads[0].notes).toBe('玄関前待機 [transport_course:kanazawa]');
   });
 

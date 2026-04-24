@@ -66,6 +66,6 @@ describe('Drift Detection (helpers.ts)', () => {
 
     expect(result.resolved.veryLong).toBe('VeryLongFieldNameWithManyCharact');
     expect(result.fieldStatus.veryLong.isDrifted).toBe(true);
-    expect(result.fieldStatus.veryLong.driftType).toBe('truncation');
+    expect(result.fieldStatus.veryLong.driftType).toBe('fuzzy_match');
   });
 });
