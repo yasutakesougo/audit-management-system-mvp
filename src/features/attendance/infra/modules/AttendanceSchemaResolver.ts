@@ -6,6 +6,7 @@ type FieldStatus = {
   resolvedName?: string;
   candidates: string[];
   isDrifted: boolean;
+  isSilent: boolean;
 };
 
 export type AttendanceResolvedSchema<TKey extends string> = {
@@ -229,6 +230,7 @@ export class AttendanceSchemaResolver<TKey extends string> {
       status[key] = {
         candidates: [...fieldCandidates],
         isDrifted: false,
+        isSilent: !this.essentials.includes(key),
       };
     }
     return status;
@@ -261,7 +263,15 @@ export class AttendanceSchemaResolver<TKey extends string> {
       resolved as Record<TKey, string | undefined>,
       [...this.essentials],
     );
-    const typedFieldStatus = fieldStatus as Record<TKey, FieldStatus>;
+    const typedFieldStatus = Object.fromEntries(
+      Object.entries(fieldStatus).map(([key, status]) => [
+        key,
+        {
+          ...(status as any),
+          isSilent: !this.essentials.includes(key as TKey),
+        },
+      ]),
+    ) as Record<TKey, FieldStatus>;
     if (!isHealthy) {
       return { mapping: null, missingFields: missing, select: [], fieldStatus: typedFieldStatus };
     }
