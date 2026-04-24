@@ -118,8 +118,8 @@ export function isUserStatusServiceType(
  */
 export function toUserStatusRecord(schedule: {
   id: string;
-  userId?: string | null;
-  userName?: string | null;
+  userId?: string;
+  userName?: string;
   start: string;
   serviceType?: string | null;
   notes?: string | null;
@@ -206,7 +206,7 @@ export function shouldReplaceExistingStatus(
  */
 export function findExistingUserStatus<
   T extends {
-    userId?: string | null;
+    userId?: string;
     start?: string;
     serviceType?: string | null;
   },

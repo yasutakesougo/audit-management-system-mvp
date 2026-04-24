@@ -259,9 +259,9 @@ export function toCreateScheduleInput(
   return {
     title: trimmedTitle,
     category: form.category,
-    userId: form.userId?.trim() || null,
-    userLookupId: resolvedUserLookupId,
-    userName: resolvedUserName,
+    userId: form.userId?.trim() || undefined,
+    userLookupId: resolvedUserLookupId ?? undefined,
+    userName: resolvedUserName ?? undefined,
     startLocal: form.startLocal,
     endLocal: form.endLocal,
     serviceType: resolvedServiceType,

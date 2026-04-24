@@ -46,7 +46,7 @@ const mapGraphEventToItem = (event: GraphEvent): SchedItem | null => {
   const assignedTo =
     event.organizer?.emailAddress?.address?.trim() ||
     (event as { createdBy?: { user?: { email?: string } } }).createdBy?.user?.email?.trim() ||
-    null;
+    undefined;
 
   const id = fallbackId(event);
   const etagValue = (event as { __metadata?: { id?: string } })?.__metadata?.id || `"graph-${id}"`;
@@ -56,7 +56,7 @@ const mapGraphEventToItem = (event: GraphEvent): SchedItem | null => {
     title: normalizeTitle(event.subject ?? undefined),
     start,
     end,
-    assignedTo: assignedTo ? assignedTo.toLowerCase() : null,
+    assignedTo: assignedTo ? assignedTo.toLowerCase() : undefined,
     etag: etagValue,
   };
 };

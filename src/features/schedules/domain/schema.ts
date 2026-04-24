@@ -51,11 +51,11 @@ export const ScheduleDetailSchema = ScheduleCoreSchema.extend({
   notes: z.string().nullable().optional(),
 
   // User/staff assignment
-  userId: z.string().nullable().optional(),
-  userLookupId: z.union([z.string(), z.number(), z.null()]).optional(),
-  userName: z.string().nullable().optional(),
+  userId: z.string().optional(),
+  userLookupId: z.union([z.string(), z.number()]).optional(),
+  userName: z.string().optional(),
   assignedStaffId: z.string().nullable().optional(),
-  assignedTo: z.string().nullable().optional(),
+  assignedTo: z.string().optional(),
   vehicleId: z.string().nullable().optional(),
 
   // Approval/acceptance
@@ -95,9 +95,9 @@ export const CreateScheduleInputSchema = z.object({
   startLocal: z.string(),
   endLocal: z.string(),
   serviceType: z.string().nullable().optional(),
-  userId: z.string().nullable().optional(),
-  userLookupId: z.string().nullable().optional(),
-  userName: z.string().nullable().optional(),
+  userId: z.string().optional(),
+  userLookupId: z.string().optional(),
+  userName: z.string().optional(),
   assignedStaffId: z.string().nullable().optional(),
   locationName: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),

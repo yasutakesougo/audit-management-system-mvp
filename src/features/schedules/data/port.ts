@@ -10,9 +10,9 @@ export type CreateScheduleEventInput = {
   startLocal: string;
   endLocal: string;
   serviceType?: ScheduleServiceType | string | null;
-  userId?: string | null;
-  userLookupId?: string | null;
-  userName?: string | null;
+  userId?: string;
+  userLookupId?: string;
+  userName?: string;
   assignedStaffId?: string | null;
   locationName?: string | null;
   notes?: string | null;
