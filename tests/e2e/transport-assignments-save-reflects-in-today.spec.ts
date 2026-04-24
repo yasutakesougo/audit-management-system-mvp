@@ -200,5 +200,30 @@ test.describe('Transport assignments save reflects in today', () => {
       .filter({ hasText: '未割当' })
       .first();
     await expect(unassignedRow).toContainText(TARGET_USER_NAME);
+ 
+    // さらに再割当（往復テストの完了）
+    await page.goto('/transport/assignments', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('transport-assignment-page')).toBeVisible();
+ 
+    const vehicle1CardAgain = page.getByTestId('transport-assignment-vehicle-card-1');
+    const selectedUserAgain = await selectMuiOptionByLabel(
+      page,
+      page.getByTestId('transport-assignment-add-user-select-1'),
+      /鈴木\s*美子/,
+    );
+    expect(selectedUserAgain).toBe(true);
+    await vehicle1CardAgain.getByRole('button', { name: '追加' }).click();
+ 
+    await page.getByTestId('transport-assignment-save-button').click();
+    await expect(page.getByTestId('transport-assignment-save-success')).toBeVisible();
+ 
+    await page.goto('/today', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('transport-tab-to')).toBeVisible();
+    await page.getByTestId('transport-tab-to').click();
+    const vehicle1RowFinal = page
+      .locator('[data-testid^="transport-vehicle-row-"]')
+      .filter({ hasText: '車両1' })
+      .first();
+    await expect(vehicle1RowFinal).toContainText(TARGET_USER_NAME);
   });
 });
