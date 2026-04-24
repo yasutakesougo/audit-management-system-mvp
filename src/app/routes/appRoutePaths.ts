@@ -20,6 +20,7 @@ export const APP_ROUTE_PATHS = [
   'master',
   'platform',
   'transport/assignments',
+  'transport/execution',
   'room-management',
   'meeting-guide',
   'compliance',
