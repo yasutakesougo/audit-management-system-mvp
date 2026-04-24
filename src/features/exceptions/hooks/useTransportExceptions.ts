@@ -37,6 +37,7 @@ import { extractTransportDetails } from '@/features/exceptions/domain/extractTra
 import type { ExceptionItem } from '@/features/exceptions/domain/exceptionLogic';
 import type { TransportTelemetryEvent } from '@/features/today/transport/transportTelemetry';
 import { useTransportStatus } from '@/features/today/transport';
+import { spTelemetryStore } from '@/lib/telemetry/spTelemetryStore';
 import {
   buildVehicleBoardGroups,
   DEFAULT_TRANSPORT_VEHICLE_IDS,
@@ -173,9 +174,10 @@ export function useTransportExceptions(): UseTransportExceptionsReturn {
       });
     }
 
-    if (mergedAlerts.length === 0) return [];
+    if (mergedAlerts.length === 0 && spTelemetryStore.getAssignmentConflictEvents().length === 0) return [];
 
     const details = extractTransportDetails(events);
+    const assignmentConflictEvents = spTelemetryStore.getAssignmentConflictEvents();
 
     return buildTransportExceptions({
       alerts: mergedAlerts,
@@ -183,6 +185,7 @@ export function useTransportExceptions(): UseTransportExceptionsReturn {
       details,
       missingDriverUsers,
       userNames,
+      assignmentConflictEvents,
     });
   }, [events, missingDriverUsers, today, userNames]);
 

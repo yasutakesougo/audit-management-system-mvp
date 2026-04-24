@@ -108,6 +108,13 @@ function resolveName(userCode: string, names?: UserNameMap): string {
 
 // ── Core Function ───────────────────────────────────────────────────────────
 
+export type AssignmentConflictEvent = {
+  timestamp: number;
+  reason: string;
+  retryCount: number;
+  itemId: string;
+};
+
 export type BuildTransportExceptionsOptions = {
   /** computeTransportAlerts() の出力 */
   alerts: KpiAlert[];
@@ -119,6 +126,8 @@ export type BuildTransportExceptionsOptions = {
   missingDriverUsers?: MissingDriverDetail[];
   /** userCode → 表示名 のマッピング（optional） */
   userNames?: UserNameMap;
+  /** 割り当て競合イベント（optional） */
+  assignmentConflictEvents?: AssignmentConflictEvent[];
 };
 
 /**
@@ -154,8 +163,9 @@ export function buildTransportExceptions(
       ? { alerts: alertsOrOptions, today: todayLegacy! }
       : alertsOrOptions;
 
-  const { alerts, today, details, userNames } = opts;
+  const { alerts, today, details, userNames, assignmentConflictEvents } = opts;
   const missingDriverUsers = opts.missingDriverUsers ?? [];
+  const conflicts = assignmentConflictEvents ?? [];
 
   const items: ExceptionItem[] = [];
   const MAX_PER_USER = 5;
@@ -244,6 +254,34 @@ export function buildTransportExceptions(
         });
       }
     }
+  }
+
+  // ── 割り当て競合 (CONFLICT_UNRESOLVED) ───────────────────────────────────
+  // 本当に人の介入が必要な retry_exhausted / item_gone のみ表示
+  for (const conflict of conflicts) {
+    if (conflict.reason !== 'retry_exhausted' && conflict.reason !== 'item_gone') {
+      continue;
+    }
+
+    const title = conflict.reason === 'retry_exhausted'
+      ? '配車情報の競合を自動解決できませんでした'
+      : '更新対象の配車情報が見つかりません（削除された可能性があります）';
+
+    const description = conflict.reason === 'retry_exhausted'
+      ? `他者による同時編集が繰り返されたため、自動マージに失敗しました（ID: ${conflict.itemId}）。手動で再設定してください。`
+      : `更新しようとした配車情報（ID: ${conflict.itemId}）が削除されているか、別の場所に移動した可能性があります。`;
+
+    items.push({
+      id: `transport-conflict-${conflict.itemId}-${conflict.timestamp}`,
+      category: 'transport-alert',
+      severity: 'critical',
+      title,
+      description,
+      targetDate: today,
+      updatedAt: new Date(conflict.timestamp).toISOString(),
+      actionLabel: '配車設定を確認',
+      actionPath: '/today', // ひとまず Today へ。将来的に詳細へ飛ばす
+    });
   }
 
   return items;

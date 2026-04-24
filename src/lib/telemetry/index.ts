@@ -66,7 +66,9 @@ export const emitTelemetry = (event: CommonTelemetryEvent | string, payload: Tel
         type: 'config_warning',
         scope: 'TransportAssignment',
         code: 'CONFLICT_RESOLVED',
-        message: String(payload.itemId ?? ''),
+        message: String(payload.reason ?? payload.itemId ?? ''),
+        itemId: String(payload.itemId ?? ''),
+        reason: String(payload.reason ?? ''),
         count: Number(payload.retryCount ?? 1),
       });
     }
@@ -77,6 +79,8 @@ export const emitTelemetry = (event: CommonTelemetryEvent | string, payload: Tel
         scope: 'TransportAssignment',
         code: 'CONFLICT_UNRESOLVED',
         message: String(payload.reason ?? payload.itemId ?? ''),
+        itemId: String(payload.itemId ?? ''),
+        reason: String(payload.reason ?? ''),
         count: Number(payload.retryCount ?? 1),
       });
     }
