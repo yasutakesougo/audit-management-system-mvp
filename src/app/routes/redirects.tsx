@@ -5,7 +5,7 @@
 import { useUserAuthz } from '@/auth/useUserAuthz';
 import { useFeatureFlag } from '@/config/featureFlags';
 import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useParams } from 'react-router-dom';
 
 /**
  * Role-aware landing redirect.
@@ -50,3 +50,20 @@ export const SchedulesMonthRedirect: React.FC = () => {
   const suffix = nextParams.toString();
   return <Navigate to={`/schedules/week${suffix ? `?${suffix}` : ''}`} replace />;
 };
+
+/**
+ * Redirect /users/:userId to /users?tab=list&selected=:userId
+ * This allows direct linking to a user's detail panel in the UsersPanel.
+ */
+export const UserDetailRedirect: React.FC = () => {
+  const { userId } = useParams();
+  const location = useLocation();
+  const nextParams = new URLSearchParams(location.search);
+  nextParams.set('tab', 'list');
+  if (userId) {
+    nextParams.set('selected', userId);
+  }
+  const suffix = nextParams.toString();
+  return <Navigate to={`/users${suffix ? `?${suffix}` : ''}`} replace />;
+};
+
