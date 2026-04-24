@@ -52,6 +52,8 @@ export type SpFieldSpec = {
   typeHint?: string; // "Text" | "DateTime" | "Number" | "Choice" | "Lookup" など（表示用）
   /** drift 吸収用の候補名リスト。未指定時は [internalName] のみで解決 */
   candidates?: string[];
+  /** 欠落していても WARN を出さない（isSilent） */
+  isSilent?: boolean;
 };
 
 export type ListSpec = {
