@@ -1,11 +1,10 @@
 /**
  * C層: ISPデータリポジトリ
  *
- * SharePoint PlanGoals リストから ISP 目標データを取得/更新する。
- * 開発モード（SP バイパス時）はモックデータにフォールバック。
+ * SharePoint PlanGoal リストから ISP 目標データを取得/更新する。
  */
 import { 
-  PLAN_GOALS_CANDIDATES 
+  PLAN_GOAL_CANDIDATES 
 } from '@/sharepoint/fields/planGoalFields';
 import { resolveListTitle } from '@/sharepoint/spListConfig';
 import { buildEq } from '@/sharepoint/query/builders';
@@ -158,7 +157,7 @@ export function computeDiff(oldText: string, newText: string): DiffSegment[] {
 /* ─── SharePoint 連携 ─── */
 
 /**
- * SharePoint PlanGoals リストの生行データ型
+ * SharePoint PlanGoal リストの生行データ型
  */
 export type SpPlanGoalRow = Record<string, unknown>;
 
@@ -180,7 +179,7 @@ export type ISPSpClient = {
   spFetch: (path: string, init?: RequestInit) => Promise<Response>;
 };
 
-type PlanGoalMapping = Record<keyof typeof PLAN_GOALS_CANDIDATES, string>;
+type PlanGoalMapping = Record<keyof typeof PLAN_GOAL_CANDIDATES, string>;
 
 /**
  * SP 行 → GoalItem ドメインモデルへ変換
@@ -245,7 +244,7 @@ export async function fetchISPPlans(
   const available = await client.getListFieldInternalNames(listTitle);
   const { resolved } = resolveInternalNamesDetailed(
     available,
-    PLAN_GOALS_CANDIDATES as unknown as Record<string, string[]>
+    PLAN_GOAL_CANDIDATES as unknown as Record<string, string[]>
   );
   const mapping = resolved as PlanGoalMapping;
 
@@ -266,7 +265,7 @@ export async function fetchISPPlans(
 }
 
 /**
- * 単一の目標を PlanGoals リストへ upsert する
+ * 単一の目標を PlanGoal リストへ upsert する
  */
 export async function upsertGoal(
   client: ISPSpClient,
@@ -280,7 +279,7 @@ export async function upsertGoal(
   const available = await client.getListFieldInternalNames(listTitle);
   const { resolved } = resolveInternalNamesDetailed(
     available,
-    PLAN_GOALS_CANDIDATES as unknown as Record<string, string[]>
+    PLAN_GOAL_CANDIDATES as unknown as Record<string, string[]>
   );
   const mapping = resolved as PlanGoalMapping;
 

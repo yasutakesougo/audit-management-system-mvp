@@ -267,8 +267,8 @@
     },
 
     {
-      "listTitle": "PlanGoals",
-      "listKey": "PlanGoals",
+      "listTitle": "PlanGoal",
+      "listKey": "PlanGoal",
       "description": "支援計画目標（ISP旧モデル）",
       "category": "plan",
       "requiredFields": [

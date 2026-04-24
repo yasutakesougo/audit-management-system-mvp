@@ -1,5 +1,5 @@
 /**
- * ISP Goal ↔ SharePoint PlanGoals マッピング・正規化モジュール
+ * ISP Goal ↔ SharePoint PlanGoal マッピング・正規化モジュール
  *
  * GoalItem（ドメインモデル） ⇄ SpPlanGoalItem/PlanGoalPayload（SP DTO）
  * 間の変換を一元管理する。
@@ -12,7 +12,7 @@
 import type { GoalItem } from '@/features/shared/goal/goalTypes';
 import type { SupportPlanForm } from '@/features/support-plan-guide/types';
 import {
-    PLAN_GOALS_FIELDS,
+    PLAN_GOAL_FIELDS,
     type PlanGoalPayload,
     type SpPlanGoalItem,
 } from './fields';
@@ -22,7 +22,7 @@ import {
  * ──────────────────────────────────────────────────────────────── */
 
 /**
- * SharePoint の PlanGoals 行を GoalItem ドメインモデルに変換する。
+ * SharePoint の PlanGoal 行を GoalItem ドメインモデルに変換する。
  *
  * - `Domains` カラム (CSV) → `string[]`
  * - null / undefined → 空文字列 or 空配列でフォールバック
@@ -41,11 +41,11 @@ export function spRowToGoalItem(row: SpPlanGoalItem): GoalItem {
 }
 
 /**
- * PLAN_GOALS_FIELDS ベースの SpPlanGoalRow（Record 型）から GoalItem に変換。
+ * PLAN_GOAL_FIELDS ベースの SpPlanGoalRow（Record 型）から GoalItem に変換。
  * 既存の ispRepo.mapSpRowToGoalItem と同等だが、フィールドマップ経由でアクセス。
  */
 export function mapFieldRowToGoalItem(row: Record<string, unknown>): GoalItem {
-  const F = PLAN_GOALS_FIELDS;
+  const F = PLAN_GOAL_FIELDS;
   const domainsRaw = (row[F.domains] as string) ?? '';
   return {
     id: `sp-${row[F.id] ?? row.Id ?? 0}`,
@@ -63,7 +63,7 @@ export function mapFieldRowToGoalItem(row: Record<string, unknown>): GoalItem {
  * ──────────────────────────────────────────────────────────────── */
 
 /**
- * GoalItem をSharePoint PlanGoals リストのPATCH/POSTボディに正規化する。
+ * GoalItem をSharePoint PlanGoal リストのPATCH/POSTボディに正規化する。
  *
  * **正規化ルール:**
  * - `text` が undefined/null → 空文字列に補正
@@ -130,7 +130,7 @@ export type ISPGoalSpClient = {
 };
 
 /**
- * GoalItem[] をまとめて PlanGoals リストに upsert する。
+ * GoalItem[] をまとめて PlanGoal リストに upsert する。
  *
  * - sp-{id} 形式 → PATCH (既存アイテム更新)
  * - それ以外   → POST  (新規作成)

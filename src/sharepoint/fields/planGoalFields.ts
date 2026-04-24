@@ -1,11 +1,16 @@
 /**
- * SharePoint フィールド定義 — PlanGoals (ISP)
+ * SharePoint フィールド定義 — PlanGoal (ISP)
+ *
+ * 利用者の個別支援計画における目標（長期・短期・具体的支援）を管理。
  */
 import { buildSelectFieldsFromMap } from './fieldUtils';
 
-export const PLAN_GOALS_LIST_TITLE = 'PlanGoals' as const;
+export const PLAN_GOAL_LIST_TITLE = 'PlanGoal' as const;
 
-export const PLAN_GOALS_FIELDS = {
+/**
+ * PlanGoal リストのフィールド定義
+ */
+export const PLAN_GOAL_FIELDS = {
   id: 'Id',
   title: 'Title',              // composite key or label
   userCode: 'UserCode',         // links to Users_Master.UserID
@@ -21,27 +26,24 @@ export const PLAN_GOALS_FIELDS = {
   modified: 'Modified',
 } as const;
 
-export const PLAN_GOALS_SELECT_FIELDS = [
-  PLAN_GOALS_FIELDS.id,
-  PLAN_GOALS_FIELDS.title,
-  PLAN_GOALS_FIELDS.userCode,
-  PLAN_GOALS_FIELDS.goalType,
-  PLAN_GOALS_FIELDS.goalLabel,
-  PLAN_GOALS_FIELDS.goalText,
-  PLAN_GOALS_FIELDS.domains,
-  PLAN_GOALS_FIELDS.planPeriod,
-  PLAN_GOALS_FIELDS.planStatus,
-  PLAN_GOALS_FIELDS.certExpiry,
-  PLAN_GOALS_FIELDS.sortOrder,
-  PLAN_GOALS_FIELDS.created,
-  PLAN_GOALS_FIELDS.modified,
+export const PLAN_GOAL_SELECT_FIELDS = [
+  PLAN_GOAL_FIELDS.id,
+  PLAN_GOAL_FIELDS.title,
+  PLAN_GOAL_FIELDS.userCode,
+  PLAN_GOAL_FIELDS.goalType,
+  PLAN_GOAL_FIELDS.goalLabel,
+  PLAN_GOAL_FIELDS.goalText,
+  PLAN_GOAL_FIELDS.domains,
+  PLAN_GOAL_FIELDS.planPeriod,
+  PLAN_GOAL_FIELDS.planStatus,
+  PLAN_GOAL_FIELDS.certExpiry,
+  PLAN_GOAL_FIELDS.sortOrder,
+  PLAN_GOAL_FIELDS.created,
+  PLAN_GOAL_FIELDS.modified,
 ] as const;
 
 /**
- * SharePoint PlanGoals リスト行 — 読み取り型
- *
- * listItems<SpPlanGoalItem>() の戻り型として使用。
- * SP REST API のレスポンス JSON と 1:1 対応。
+ * SharePoint PlanGoal リスト行 — 読み取り型
  */
 export interface SpPlanGoalItem {
   Id: number;
@@ -50,26 +52,24 @@ export interface SpPlanGoalItem {
   GoalType: 'long' | 'short' | 'support';
   GoalLabel: string;
   GoalText: string;
-  Domains?: string | null;          // comma-separated (e.g. 'health,social')
+  Domains?: string | null;
   PlanPeriod?: string | null;
   PlanStatus: 'confirmed' | 'draft';
-  CertExpiry?: string | null;       // YYYY-MM-DD
+  CertExpiry?: string | null;
   SortOrder?: number | null;
   Created?: string | null;
   Modified?: string | null;
 }
 
 /**
- * PlanGoals リストへの PATCH/POST リクエストボディ型
- *
- * undefined は送信せず、null は SP 側で空値クリアにマッピング。
+ * PlanGoal リストへの PATCH/POST リクエストボディ型
  */
 export interface PlanGoalPayload {
   UserCode: string;
   GoalType: 'long' | 'short' | 'support';
   GoalLabel: string;
   GoalText: string;
-  Domains: string;                   // comma-joined
+  Domains: string;
   PlanPeriod?: string | null;
   PlanStatus: 'confirmed' | 'draft';
   CertExpiry?: string | null;
@@ -77,20 +77,17 @@ export interface PlanGoalPayload {
 }
 
 /**
- * PlanGoals リスト用の動的 $select ビルダー
- *
- * テナントによるフィールド差分に耐えるため、
- * Fields API で取得した内部名リストと突合して安全なクエリを組み立てる。
+ * PlanGoal リスト用の動的 $select ビルダー
  */
-export function buildPlanGoalsSelectFields(existingInternalNames?: readonly string[]): readonly string[] {
-  return buildSelectFieldsFromMap(PLAN_GOALS_FIELDS, existingInternalNames, {
+export function buildPlanGoalSelectFields(existingInternalNames?: readonly string[]): readonly string[] {
+  return buildSelectFieldsFromMap(PLAN_GOAL_FIELDS, existingInternalNames, {
     alwaysInclude: ['Id', 'Created', 'Modified'],
-    fallback: [...PLAN_GOALS_SELECT_FIELDS],
+    fallback: [...PLAN_GOAL_SELECT_FIELDS],
   });
 }
 
-/** Dynamic schema candidates for PlanGoals. */
-export const PLAN_GOALS_CANDIDATES = {
+/** Dynamic schema candidates for PlanGoal. */
+export const PLAN_GOAL_CANDIDATES = {
   userCode: ['UserCode', 'cr013_usercode', 'UserID'],
   goalType: ['GoalType', 'cr013_goaltype'],
   goalLabel: ['GoalLabel', 'cr013_goallabel', 'Title'],
@@ -102,18 +99,18 @@ export const PLAN_GOALS_CANDIDATES = {
   sortOrder: ['SortOrder', 'cr013_sortorder'],
 } as const;
 
-/** Essential fields for PlanGoals list. */
-export const PLAN_GOALS_ESSENTIALS = ['userCode', 'goalType', 'goalText', 'planStatus'] as const;
+/** Essential fields for PlanGoal list. */
+export const PLAN_GOAL_ESSENTIALS = ['userCode', 'goalType', 'goalText', 'planStatus'] as const;
 
-/** Fields to ensure for modern PlanGoals list. */
-export const PLAN_GOALS_ENSURE_FIELDS = [
-  { internalName: 'UserCode', displayName: 'UserCode', type: 'Text' },
-  { internalName: 'GoalType', displayName: 'GoalType', type: 'Text' },
-  { internalName: 'GoalLabel', displayName: 'GoalLabel', type: 'Text' },
-  { internalName: 'GoalText', displayName: 'GoalText', type: 'Note' },
-  { internalName: 'Domains', displayName: 'Domains', type: 'Text' },
-  { internalName: 'PlanPeriod', displayName: 'PlanPeriod', type: 'Text' },
-  { internalName: 'PlanStatus', displayName: 'PlanStatus', type: 'Text' },
-  { internalName: 'CertExpiry', displayName: 'CertExpiry', type: 'Text' },
-  { internalName: 'SortOrder', displayName: 'SortOrder', type: 'Number' },
+/** Fields to ensure for modern PlanGoal list. */
+export const PLAN_GOAL_ENSURE_FIELDS = [
+  { internalName: 'UserCode', displayName: '利用者コード', type: 'Text' },
+  { internalName: 'GoalType', displayName: '目標種別', type: 'Text' },
+  { internalName: 'GoalLabel', displayName: '目標ラベル', type: 'Text' },
+  { internalName: 'GoalText', displayName: '目標内容', type: 'Note' },
+  { internalName: 'Domains', displayName: '領域', type: 'Text' },
+  { internalName: 'PlanPeriod', displayName: '計画期間', type: 'Text' },
+  { internalName: 'PlanStatus', displayName: '計画状態', type: 'Text' },
+  { internalName: 'CertExpiry', displayName: '受給者証期限', type: 'Text' },
+  { internalName: 'SortOrder', displayName: '表示順', type: 'Number' },
 ] as const;

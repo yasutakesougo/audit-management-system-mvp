@@ -58,7 +58,7 @@ import {
 } from "@/sharepoint/fields/transportFields";
 import { BILLING_SUMMARY_CANDIDATES } from "@/sharepoint/fields/billingFields";
 import { SURVEY_TOKUSEI_CANDIDATES } from "@/sharepoint/fields/surveyTokuseiFields";
-import { PLAN_GOALS_CANDIDATES } from "@/sharepoint/fields/planGoalFields";
+import { PLAN_GOAL_CANDIDATES } from "@/sharepoint/fields/planGoalFields";
 import { SCHEDULE_EVENTS_CANDIDATES } from "@/sharepoint/fields/scheduleFields";
 import { SUPPORT_PLANS_CANDIDATES } from "@/sharepoint/fields/supportPlanFields";
 import { MEETING_MINUTES_CANDIDATES } from "@/sharepoint/fields/meetingMinutesFields";
@@ -216,7 +216,7 @@ const DRIFT_CANDIDATES_BY_KEY: Record<string, Record<string, string[]>> = {
   
   plan_goals: (() => {
     const map: Record<string, string[]> = {};
-    for (const cands of Object.values(PLAN_GOALS_CANDIDATES) as unknown as readonly string[][]) {
+    for (const cands of Object.values(PLAN_GOAL_CANDIDATES) as unknown as readonly string[][]) {
       const primary = cands[0];
       map[primary] = [...cands];
     }
