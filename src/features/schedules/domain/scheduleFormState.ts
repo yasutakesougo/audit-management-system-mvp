@@ -200,16 +200,16 @@ export function toCreateScheduleInput(
     throw new Error('serviceType is required for user schedules');
   }
 
-  const normalizeLookupId = (value?: unknown): string | undefined => {
+  const normalizeLookupId = (value?: unknown): string | null => {
     if (value == null) {
-      return undefined;
+      return null;
     }
     if (typeof value === 'number') {
-      return Number.isFinite(value) ? String(value) : undefined;
+      return Number.isFinite(value) ? String(value) : null;
     }
     if (typeof value === 'string') {
       const trimmed = value.trim();
-      return trimmed ? trimmed : undefined;
+      return trimmed ? trimmed : null;
     }
     if (typeof value === 'object') {
       const lookupSource = value as Record<string, unknown>;
@@ -223,7 +223,7 @@ export function toCreateScheduleInput(
         return normalizeLookupId(lookupSource.value);
       }
     }
-    return undefined;
+    return null;
   };
 
   if (form.category === 'User' && !form.userId.trim()) {
@@ -254,19 +254,19 @@ export function toCreateScheduleInput(
   }
   const statusReason = form.statusReason.trim();
   const resolvedUserLookupId = normalizeLookupId(selectedUser?.lookupId ?? undefined);
-  const resolvedUserName = selectedUser?.name?.trim() || undefined;
+  const resolvedUserName = selectedUser?.name?.trim() || null;
 
   return {
     title: trimmedTitle,
     category: form.category,
-    userId: form.userId?.trim() || undefined,
+    userId: form.userId?.trim() || null,
     userLookupId: resolvedUserLookupId,
     userName: resolvedUserName,
     startLocal: form.startLocal,
     endLocal: form.endLocal,
     serviceType: resolvedServiceType,
-    locationName: form.locationName || undefined,
-    notes: form.notes || undefined,
+    locationName: form.locationName?.trim() || null,
+    notes: form.notes?.trim() || null,
     assignedStaffId: normalizeLookupId(form.assignedStaffId),
     vehicleId: normalizeLookupId(form.vehicleId),
     status: form.status,

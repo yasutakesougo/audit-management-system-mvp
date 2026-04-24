@@ -440,6 +440,53 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
         }
       }
 
+      if (/\/fields\/?$/i.test(remainder)) {
+        if (method === 'GET') {
+          // 現場の動的スキーマ解決（resolveFields）を成功させるためのメタデータ応答
+          const items = getItems();
+          const keys = new Set<string>(['Id', 'Title', 'Modified', 'Created']);
+          
+          // スタブに存在するキーを全て内部名候補として返却
+          if (items.length > 0) {
+            for (const item of items) {
+              Object.keys(item).forEach((k) => keys.add(k));
+            }
+          }
+
+          const listKey = match.key.toLowerCase();
+          const isSchedule = listKey.includes('schedule');
+          const isUser = listKey.includes('user');
+          const isStaff = listKey.includes('staff');
+
+          // 送迎予定リポジトリが期待する主要フィールドを明示的に補完 (SCHEDULE_EVENTS_CANDIDATES の第一候補に合わせる)
+          // 各リポジトリの CANDIDATES の第一候補（Canonical名）に合わせることで、診断バナーの警告を消去する
+          if (isSchedule) {
+            ['Title', 'EventDate', 'EndDate', 'Status', 'ServiceType', 'TargetUserId', 'cr014_personName', 'AssignedStaffId', 'LocationName', 'Note', 'RowKey', 'cr014_dayKey', 'MonthKey', 'cr014_fiscalYear', 'VehicleId', 'Visibility', 'StatusReason', 'AcceptedOn', 'AcceptedBy', 'AcceptedNote'].forEach(k => keys.add(k));
+          }
+          if (isUser) {
+            ['UserID', 'FullName', 'Furigana', 'FullNameKana', 'ContractDate', 'ServiceStartDate', 'ServiceEndDate', 'IsHighIntensitySupportTarget', 'IsSupportProcedureTarget', 'IsActive', 'UsageStatus', 'AttendanceDays', 'TransportToDays', 'TransportFromDays', 'TransportCourse', 'TransportSchedule', 'TransportAdditionType', 'RecipientCertNumber', 'RecipientCertExpiry', 'GrantMunicipality', 'GrantPeriodStart', 'GrantPeriodEnd', 'DisabilitySupportLevel', 'GrantedDaysPerMonth', 'UserCopayLimit', 'MealAddition', 'CopayPaymentMethod'].forEach(k => keys.add(k));
+          }
+          if (isStaff) {
+            ['StaffID', 'FullName', 'Furigana', 'FullNameKana', 'JobTitle', 'Role', 'RBACRole', 'IsActive', 'Department', 'HireDate', 'ResignDate', 'Email', 'Phone', 'WorkDays', 'BaseWorkingDays', 'BaseShiftStartTime', 'BaseShiftEndTime', 'Certifications'].forEach(k => keys.add(k));
+          }
+          if (listKey.toLowerCase().includes('isp')) {
+            ['Title', 'UserCode', 'PlanStartDate', 'PlanEndDate', 'Status', 'VersionNo', 'IsCurrent', 'FormDataJson', 'UserSnapshotJson'].forEach(k => keys.add(k));
+          }
+          if (listKey.toLowerCase().includes('planning')) {
+            ['Title', 'UserCode', 'ISPId', 'TargetScene', 'Status', 'VersionNo', 'IsCurrent', 'FormDataJson', 'IntakeJson', 'AssessmentJson', 'PlanningJson'].forEach(k => keys.add(k));
+          }
+
+          const value = Array.from(keys).map((k) => ({
+            InternalName: k,
+            TypeAsString: 'Text',
+            Required: false,
+          }));
+
+          await fulfill(route, { status: 200, body: { value } });
+          return;
+        }
+      }
+
       if (!remainder || remainder === '/') {
         await fulfill(route, {
           status: 200,
