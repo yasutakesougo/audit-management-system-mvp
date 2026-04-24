@@ -64,15 +64,9 @@ describe('/today demo fallback regression guard', () => {
   });
 
   it('TodayOpsPage は summary.scheduleLanesToday をフォールバック先として使わない', () => {
-    const pagePath = path.join(SRC_ROOT, 'pages/TodayOpsPage.tsx');
+    const pagePath = path.join(SRC_ROOT, 'pages/today-isolated/TodayOpsPage_v3.tsx');
     const content = fs.readFileSync(pagePath, 'utf-8');
 
-    // effectiveLanes の算出に summary.scheduleLanesToday が含まれていないこと
-    // (他の用途で参照がある場合は許容するが、effectiveLanes 付近で使われていないことを確認)
-    const effectiveLanesBlock = content.slice(
-      content.indexOf('effectiveLanes'),
-      content.indexOf('effectiveLanes') + 300,
-    );
-    expect(effectiveLanesBlock).not.toContain('summary.scheduleLanesToday');
+    expect(content).not.toContain('summary.scheduleLanesToday');
   });
 });

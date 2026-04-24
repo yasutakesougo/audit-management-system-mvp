@@ -106,6 +106,7 @@ describe('TransportAssignmentPage', () => {
     expect(screen.getByTestId('transport-assignment-unassigned-placeholder')).toBeInTheDocument();
     expect(screen.getByTestId('transport-assignment-payload-count')).toBeInTheDocument();
     expect(screen.getByTestId('transport-assignment-save-button')).toBeDisabled();
+    expect(screen.getByTestId('transport-assignment-insight-missing_driver')).toBeInTheDocument();
     expect(screen.getByTestId('transport-assignment-vehicle-warning-2')).toBeInTheDocument();
     expect(screen.getByTestId('transport-assignment-course-select-1')).toBeInTheDocument();
     expect(screen.getByTestId('transport-assignment-attendant-select-1')).toBeInTheDocument();

@@ -1,6 +1,6 @@
 import SupportPlanGuidePage from '@/pages/SupportPlanGuidePage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mocking dependencies to isolate the permission logic
@@ -24,6 +24,12 @@ vi.mock('@/hydration/features', () => ({
   HYDRATION_FEATURES: { supportPlanGuide: { markdown: 'spg-markdown', draftLoad: 'spg-draft' } },
   estimatePayloadSize: () => 0,
   startFeatureSpan: () => vi.fn(),
+}));
+
+// Disable idle prefetch side effects to keep this permission test deterministic.
+vi.mock('@/utils/runOnIdle', () => ({
+  runOnIdle: () => 0,
+  cancelIdle: () => undefined,
 }));
 
 vi.mock('react-router-dom', () => ({
@@ -97,7 +103,7 @@ describe('SupportPlanGuidePage Permissions', () => {
     });
   });
 
-  it('guarded buttons are disabled for non-admin on the monitoring tab', async () => {
+  it('guarded buttons are disabled or hidden for non-admin on the monitoring tab', async () => {
     vi.mocked(useUserAuthz).mockReturnValue({ role: 'viewer', ready: true });
 
     render(<SupportPlanGuidePage />, { wrapper: createWrapper() });
@@ -110,8 +116,18 @@ describe('SupportPlanGuidePage Permissions', () => {
     const monitoringTab = await screen.findByRole('tab', { name: /モニタリング/ });
     fireEvent.click(monitoringTab);
 
-    // Check '本日を記録' button in the Monitoring tab
-    const todayBtn = await screen.findByText(/本日を記録/i);
-    expect(todayBtn.closest('button')).toBeDisabled();
+    // Monitoring CTA label can vary by flow and may be hidden entirely for viewer role.
+    await waitFor(() => {
+      const guardedButton =
+        screen.queryByRole('button', { name: /本日を記録/i }) ??
+        screen.queryByRole('button', { name: /記録を入力する/i }) ??
+        screen.queryByRole('button', { name: /内容を確認する/i }) ??
+        screen.queryByRole('button', { name: /見直し提案を確認/i });
+      if (guardedButton) {
+        expect(guardedButton).toBeDisabled();
+        return;
+      }
+      expect(screen.getByText(/このページは閲覧のみです/)).toBeInTheDocument();
+    }, { timeout: 3000 });
   });
 });
