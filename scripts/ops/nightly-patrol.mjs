@@ -682,7 +682,8 @@ if (indexPressureSummary && indexPressureSummary.results?.length > 0) {
       try {
         const cmd = `npm run ops:index-remediate -- --list ${r.listKey} --field ${r.fieldName} --dry-run`;
         const log = execSync(cmd, { encoding: 'utf8', env: { ...process.env, CI: 'true' } });
-        r.dryRunLog = log;
+        // Safety: Limit log size to prevent oversized issue drafts
+        r.dryRunLog = log.length > 2000 ? log.slice(0, 2000) + '\n... (truncated)' : log;
       } catch (err) {
         r.dryRunLog = `❌ Dry-run failed: ${err.message}`;
       }
