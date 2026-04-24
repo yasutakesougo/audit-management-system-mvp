@@ -267,7 +267,7 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
   ): Promise<{ resolvedFields: Record<string, string | undefined>, resolvedKeys: Set<string> }> {
     try {
       const available = await this.provider.getFieldInternalNames(listTitle);
-      const { resolved } = resolveInternalNamesDetailed(available, candidates);
+      const { resolved, fieldStatus } = resolveInternalNamesDetailed(available, candidates);
       
       const bestEffort: Record<string, string | undefined> = {};
       const resolvedKeys = new Set<string>();
@@ -289,6 +289,20 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
           bestEffort[key] = undefined;
         }
       }
+
+      // 可視化ストアへの報告
+      reportResourceResolution({
+        resourceName: listTitle, // リスト名をリソース名として使用
+        resolvedTitle: listTitle,
+        fieldStatus: Object.fromEntries(
+          Object.entries(fieldStatus).map(([key, info]) => [
+            key,
+            { ...info, isSilent: !essentials.includes(key) }
+          ])
+        ),
+        essentials,
+      });
+
       return { resolvedFields: bestEffort, resolvedKeys };
     } catch {
       // 解決不能な場合は必須フィールドのみフォールバック使用

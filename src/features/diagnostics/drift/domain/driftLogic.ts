@@ -28,8 +28,8 @@ export type DriftEvent = {
   fieldName: string;
   /** 検知日時 (ISOString) */
   detectedAt: string;
-  /** 緊急度 (ドリフトは原則 warn / info) */
-  severity: 'warn' | 'info';
+  /** 緊急度 (ドリフトは原則 warn / info / silent) */
+  severity: 'warn' | 'info' | 'silent';
   /** 解決方法 */
   resolutionType: DriftResolutionType;
   /** ドリフトの詳細型 */
@@ -56,13 +56,14 @@ export const emitDriftRecord = (
   fieldName: string, 
   resolution: DriftResolutionType = 'fuzzy_match',
   driftType: DriftType = 'unknown',
-  description?: string
+  description?: string,
+  severity?: 'warn' | 'info' | 'silent'
 ) => {
   driftEventBus.emit({
     listName,
     fieldName,
     detectedAt: new Date().toISOString(),
-    severity: resolution === 'action_required' ? 'warn' : 'info',
+    severity: severity || (resolution === 'action_required' ? 'warn' : 'info'),
     resolutionType: resolution,
     driftType,
     resolved: false,

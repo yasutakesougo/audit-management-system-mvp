@@ -94,6 +94,10 @@ export interface SpFieldDef {
    * 指定されている場合、既存フィールドのチェック時にこれらも含めて検索し、二重作成を防止する。
    */
   candidates?: readonly string[];
+  /**
+   * 健全性診断において、この列が欠落していても警告を発報しない（FAIL:0 / WARN 抑制方針）。
+   */
+  isSilent?: boolean;
 }
 
 export interface EnsureListOptions {

@@ -316,10 +316,21 @@ export class DataProviderDailyRecordRepository extends BaseRepository implements
       const essentials = DAILY_RECORD_CANONICAL_ESSENTIALS as unknown as string[];
       const isHealthy = areEssentialFieldsResolved(resolved as Record<string, string | undefined>, essentials);
 
+      const essentialsSet = new Set(essentials);
+      const fieldStatusWithSilent = Object.fromEntries(
+        Object.entries(fieldStatus).map(([key, status]) => [
+          key,
+          {
+            ...(status as { resolvedName?: string; candidates: string[] }),
+            isSilent: !essentialsSet.has(key),
+          },
+        ])
+      );
+
       reportResourceResolution({
         resourceName: title,
         resolvedTitle: title,
-        fieldStatus: fieldStatus as Record<string, { resolvedName?: string; candidates: string[] }>,
+        fieldStatus: fieldStatusWithSilent,
         essentials,
       });
 
@@ -344,10 +355,21 @@ export class DataProviderDailyRecordRepository extends BaseRepository implements
       const essentials = DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS as unknown as string[];
       const isHealthy = areEssentialFieldsResolved(resolved as Record<string, string | undefined>, essentials);
 
+      const essentialsSet = new Set(essentials);
+      const fieldStatusWithSilent = Object.fromEntries(
+        Object.entries(fieldStatus).map(([key, status]) => [
+          key,
+          {
+            ...(status as { resolvedName?: string; candidates: string[] }),
+            isSilent: !essentialsSet.has(key),
+          },
+        ])
+      );
+
       reportResourceResolution({
         resourceName: title,
         resolvedTitle: title,
-        fieldStatus: fieldStatus as Record<string, { resolvedName?: string; candidates: string[] }>,
+        fieldStatus: fieldStatusWithSilent,
         essentials,
       });
 

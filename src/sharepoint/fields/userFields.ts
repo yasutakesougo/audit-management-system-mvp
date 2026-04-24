@@ -145,7 +145,7 @@ export const USERS_MASTER_COMPLIANCE_FIELD_MAP = {
 } as const;
 
 // ── Common Candidates (SSOT) ──
-const CANDIDATE_USER_ID = ['UserID', 'User ID', 'UserCode', 'userId', 'cr013_userId', 'PersonID', 'Title'];
+const CANDIDATE_USER_ID = ['UserID', 'User ID', 'UserCode', 'userId', 'cr013_userId', 'PersonID'];
 const CANDIDATE_FULL_NAME = ['FullName', 'Name', 'DisplayName', 'FullName0', 'cr013_fullName'];
 const CANDIDATE_FURIGANA = ['Furigana', 'Kana', 'FullNameFurigana', 'cr013_furigana'];
 const CANDIDATE_FULL_NAME_KANA = ['FullNameKana', 'FullName_Kana', 'cr013_fullNameKana'];
