@@ -673,6 +673,25 @@ const jsonPath = path.join(REPORT_DIR, `${stamp}.json`);
 fs.writeFileSync(jsonPath, JSON.stringify(patrolResultsJson, null, 2), 'utf8');
 console.log(`📊 JSON written: docs/nightly-patrol/${stamp}.json`);
 
+// --- Phase B.5: Index Dry-run Capture (Evidence for C-1) ---
+
+if (indexPressureSummary && indexPressureSummary.results?.length > 0) {
+  console.log('🧪 Capturing dry-run evidence for index pressure...');
+  for (const r of indexPressureSummary.results) {
+    if (['action_required', 'critical'].includes(r.severity)) {
+      try {
+        const cmd = `npm run ops:index-remediate -- --list ${r.listKey} --field ${r.fieldName} --dry-run`;
+        const log = execSync(cmd, { encoding: 'utf8', env: { ...process.env, CI: 'true' } });
+        r.dryRunLog = log;
+      } catch (err) {
+        r.dryRunLog = `❌ Dry-run failed: ${err.message}`;
+      }
+    }
+  }
+  // Re-write summary with logs
+  fs.writeFileSync(INDEX_PRESSURE_PATH, JSON.stringify(indexPressureSummary, null, 2), 'utf8');
+}
+
 const drafts = buildIssueDrafts(patrolResults);
 const draftMarkdown = renderIssueDraftMarkdown(drafts, stamp);
 

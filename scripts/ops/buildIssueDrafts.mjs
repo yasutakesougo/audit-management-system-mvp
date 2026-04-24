@@ -479,6 +479,13 @@ function buildIndexPressureDrafts(indexResults) {
       r.dryRunCommand || `npm run ops:index-remediate -- --list ${r.listKey} --field ${r.fieldName} --dry-run`,
       '```',
       '',
+      r.dryRunLog ? [
+        '## Dry-run Evidence',
+        '```text',
+        r.dryRunLog,
+        '```'
+      ].join('\n') : '',
+      '',
       '## Suggested reviewer action',
       '',
       '1. 上記 dry-run を実行して影響を確認',
