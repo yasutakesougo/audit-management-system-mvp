@@ -221,13 +221,56 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/ops/nightly-apply.mjs --apply
 
+      - name: Login to M365 CLI (Remediation Phase)
+        if: ${{ always() }}
+        env:
+          AAD_TENANT_ID: ${{ secrets.AAD_TENANT_ID }}
+          AAD_APP_ID: ${{ secrets.AAD_APP_ID }}
+          SPO_CLIENT_SECRET: ${{ secrets.SPO_CLIENT_SECRET }}
+        run: |
+          npx -y @pnp/cli-microsoft365 login --appId "$AAD_APP_ID" --tenant "$AAD_TENANT_ID" --secret "$SPO_CLIENT_SECRET"
+
+      - name: Refresh Drift Ledger
+        if: ${{ always() }}
+        run: npm run patrol:ledger
+        env:
+          VITE_SP_SITE_URL: ${{ vars.VITE_SP_SITE_URL }}
+
+      - name: Zombie Purge Decision Gate (Dry-run)
+        id: purge_gate
+        if: ${{ always() }}
+        run: |
+          npm run patrol:purge -- --batch-size=50
+          node scripts/ops/evaluate-purge-auto-confirm.mjs
+        env:
+          VITE_SP_SITE_URL: ${{ vars.VITE_SP_SITE_URL }}
+          ENABLE_ZOMBIE_PURGE_AUTO_EXECUTE: ${{ vars.ENABLE_ZOMBIE_PURGE_AUTO_EXECUTE }}
+
+      - name: Execute Zombie Purge (Autonomous Remediation)
+        if: ${{ always() && steps.purge_gate.outputs.should_execute == 'true' }}
+        run: npm run patrol:purge -- --confirm --batch-size=50
+        env:
+          VITE_SP_SITE_URL: ${{ vars.VITE_SP_SITE_URL }}
+
+      - name: Rebuild Ledger (Post-Remediation)
+        if: ${{ always() && steps.purge_gate.outputs.should_execute == 'true' }}
+        run: npm run patrol:ledger
+        env:
+          VITE_SP_SITE_URL: ${{ vars.VITE_SP_SITE_URL }}
+
+      - name: Generate Purge Report
+        if: ${{ always() }}
+        run: node scripts/ops/generate-purge-report.mjs
+
       - name: Notify on action required
-        if: ${{ always() && steps.decision.outputs.verdict == 'action_required' }}
+        if: ${{ always() && (steps.decision.outputs.verdict == 'action_required' || steps.purge_gate.outputs.purge_status == 'manual_required') }}
         env:
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
           NIGHTLY_OWNER_WEBHOOKS_JSON: ${{ secrets.NIGHTLY_OWNER_WEBHOOKS_JSON }}
           NIGHTLY_OWNER_MENTIONS_JSON: ${{ secrets.NIGHTLY_OWNER_MENTIONS_JSON }}
           NIGHTLY_OWNER_NOTIFY_STRICT: "false"
+          PURGE_STATUS: ${{ steps.purge_gate.outputs.purge_status }}
+          PURGE_REASON: ${{ steps.purge_gate.outputs.reason }}
         run: |
           TODAY=$(date -u +%F)
           node scripts/ops/nightly-owner-notify.mjs --decision "docs/nightly-patrol/decision-${TODAY}.json"
@@ -249,6 +292,17 @@ jobs:
         with:
           name: lane-assertion-result-${{ github.run_number }}
           path: docs/nightly-patrol/lane-assertion-result.json
+          if-no-files-found: ignore
+
+      - name: Upload Guardian Purge Artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: guardian-purge-results-${{ github.run_number }}
+          path: |
+            docs/nightly-patrol/latest-purge-summary.json
+            docs/nightly-patrol/deletion-log.json
+            docs/nightly-patrol/drift-ledger.csv
           if-no-files-found: ignore
 
       - name: Nightly act warning summary

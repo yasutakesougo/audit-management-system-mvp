@@ -1,0 +1,113 @@
+
+/Users/yasutakesougo/audit-management-system-mvp/.github/workflows/nightly-patrol.yml
+  0:0  warning  File ignored by default.  Use a negated ignore pattern (like "--ignore-pattern '!<relative/path/to/filename>'") to override
+
+/Users/yasutakesougo/audit-management-system-mvp/docs/nightly-patrol/drift-ledger.csv
+  18:88  error  Parsing error: Expression expected
+
+/Users/yasutakesougo/audit-management-system-mvp/docs/release-ledger.md
+  0:0  warning  File ignored because of a matching ignore pattern. Use "--no-ignore" to override
+
+/Users/yasutakesougo/audit-management-system-mvp/scripts/ops/build-drift-ledger.mjs
+   87:25  error  'token' is not defined          no-undef
+  125:16  error  '_e' is defined but never used  @typescript-eslint/no-unused-vars
+  147:12  error  '_e' is defined but never used  @typescript-eslint/no-unused-vars
+  206:12  error  '_e' is defined but never used  @typescript-eslint/no-unused-vars
+  319:7   error  'existsSync' is not defined     no-undef
+  346:14  error  '_e' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/yasutakesougo/audit-management-system-mvp/scripts/ops/evaluate-purge-auto-confirm.mjs
+  72:11  error  'totalFound' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/yasutakesougo/audit-management-system-mvp/scripts/ops/execute-zombie-purge.mjs
+   97:12  error  '_e' is defined but never used  @typescript-eslint/no-unused-vars
+  127:12  error  '_e' is defined but never used  @typescript-eslint/no-unused-vars
+  287:18  error  '_e' is defined but never used  @typescript-eslint/no-unused-vars
+  338:18  error  '_e' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/yasutakesougo/audit-management-system-mvp/src/features/daily/infra/__tests__/DataProviderDailyRecordRepository.spec.ts
+  35:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  40:91  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  54:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  70:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  86:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  88:91  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yasutakesougo/audit-management-system-mvp/src/features/planning-sheet/hooks/orchestrators/usePlanningSheetOrchestrator.ts
+   7:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   8:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  24:79  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yasutakesougo/audit-management-system-mvp/src/features/schedules/hooks/legacy/useSchedulesCrud.ts
+  0:0  warning  File ignored because of a matching ignore pattern. Use "--no-ignore" to override
+
+/Users/yasutakesougo/audit-management-system-mvp/src/features/schedules/hooks/orchestrators/useScheduleOrchestrator.ts
+  2:15  error  'ScheduleItem' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/yasutakesougo/audit-management-system-mvp/src/features/schedules/infra/__tests__/DataProviderScheduleRepository.spec.ts
+   36:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   40:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   73:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   75:91  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   89:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   92:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  123:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  125:91  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  140:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  142:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yasutakesougo/audit-management-system-mvp/src/features/telemetry/components/ui/OrchestrationAuditSummary.tsx
+  63:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yasutakesougo/audit-management-system-mvp/src/features/users/hooks/orchestrators/__tests__/useUserOrchestrator.spec.ts
+   21:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   22:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   60:62  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  115:71  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yasutakesougo/audit-management-system-mvp/src/features/users/hooks/view-models/useUserEditPageState.ts
+  1:33  error  'useMemo' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/yasutakesougo/audit-management-system-mvp/src/features/users/infra/__tests__/DataProviderUserRepository.contract.spec.ts
+  22:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  24:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  32:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  34:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  41:51  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  43:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  54:51  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  56:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  65:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  67:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  82:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yasutakesougo/audit-management-system-mvp/src/features/users/infra/__tests__/DataProviderUserRepository.cutover.spec.ts
+  29:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  31:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  55:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  57:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yasutakesougo/audit-management-system-mvp/src/features/users/infra/__tests__/DataProviderUserRepository.spec.ts
+  4:15  error  'IUserMasterCreateDto' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/yasutakesougo/audit-management-system-mvp/src/features/users/useUserForm.ts
+  422:0  error  Parsing error: ')' expected
+
+/Users/yasutakesougo/audit-management-system-mvp/src/lib/data/BaseRepository.ts
+  26:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  30:49  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yasutakesougo/audit-management-system-mvp/src/lib/sp/helpers.ts
+  478:7  warning  Unexpected console statement  no-console
+
+/Users/yasutakesougo/audit-management-system-mvp/src/lib/telemetry/auditLogger.ts
+  24:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/yasutakesougo/audit-management-system-mvp/src/pages/abc-record/LogTab.tsx
+  46:10  error  'localAbcRecordRepository' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+/Users/yasutakesougo/audit-management-system-mvp/src/pages/support-planning-sheet/SupportPlanningSheetView.tsx
+  18:3  error  'applyPlanPatch' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+✖ 64 problems (18 errors, 46 warnings)
+
