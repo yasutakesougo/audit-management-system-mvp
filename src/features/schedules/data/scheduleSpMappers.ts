@@ -147,6 +147,13 @@ export const buildSelectSets = (
 // Mappers
 // ============================================================================
 
+/**
+ * Invariant: Identifier Sanitization
+ *
+ * 境界（インフラ層）での null/空値漏れを 100% 防止するためのガード関数。
+ * ドメイン層（ScheduleFull 等）の identifier フィールド（userId, userName）において
+ * null は不変条件に反するため、この境界で undefined へ強制変換する。
+ */
 const sanitizeIdentifier = (val: string | null | undefined): string | undefined => {
   if (!val) return undefined;
   return val;
