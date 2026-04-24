@@ -39,11 +39,10 @@ jobs:
           mkdir -p docs/nightly-patrol
           mkdir -p scripts/ops
 
-      - name: Core API Contract Check
-        run: |
-          npx vitest run \
-            src/lib/spClient.contract.spec.ts \
-            src/app/config/__tests__/navigationConfig.contract.spec.ts
+      - name: Core API Contract Patrol
+        run: node scripts/ops/contract-patrol.mjs
+        env:
+          CI: true
 
       - name: Nightly act warning scan
         id: act_scan
