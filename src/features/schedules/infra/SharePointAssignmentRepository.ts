@@ -1,12 +1,16 @@
 import type { Assignment, AssignmentListFilter, AssignmentRepository, TransportAssignment } from '../domain/assignment';
-import type { ScheduleRepository } from '../domain/ScheduleRepository';
+import type { ScheduleItem, ScheduleRepository, UpdateScheduleInput } from '../domain/ScheduleRepository';
 import { isTransportScheduleRow, inferTransportDirections } from '@/features/today/transport/transportAssignments';
-import { 
-  normalizeText, 
+import {
+  normalizeText,
   extractTransportAttendantStaffId,
   extractTransportCourseId,
   buildTransportNotes
 } from '@/features/transport-assignments/domain/transportAssignmentDraft';
+import { emitTelemetry } from '@/lib/telemetry';
+import { getHttpStatus } from './scheduleSpUtils';
+
+type UserAssignmentTarget = { vehicleId: string; driverId: string; attendantId: string };
 
 /**
  * SharePoint-backed implementation of AssignmentRepository.
@@ -74,17 +78,14 @@ export class SharePointAssignmentRepository implements AssignmentRepository {
     // Assumes bulk save is for a single date/direction context for now
     const first = transportAssignments[0];
     const date = first.id.split('-')[1];
+    const range = {
+      from: `${date}T00:00:00+09:00`,
+      to: `${date}T23:59:59+09:00`,
+    };
 
-    // 1. Fetch all items for this date to determine current state
-    const allItems = await this.scheduleRepo.list({ 
-      range: { 
-        from: `${date}T00:00:00+09:00`, 
-        to: `${date}T23:59:59+09:00` 
-      } 
-    });
+    const allItems = await this.scheduleRepo.list({ range });
 
-    // 2. Build a mapping of user -> target assignment details
-    const userMapping = new Map<string, { vehicleId: string, driverId: string, attendantId: string }>();
+    const userMapping = new Map<string, UserAssignmentTarget>();
     for (const a of transportAssignments) {
       for (const uId of a.userIds) {
         userMapping.set(uId, {
@@ -95,8 +96,6 @@ export class SharePointAssignmentRepository implements AssignmentRepository {
       }
     }
 
-    // 3. Identify items to update
-    const patches: any[] = [];
     for (const item of allItems) {
       const rawRow = item as unknown as Record<string, unknown>;
       if (!isTransportScheduleRow(rawRow)) continue;
@@ -107,44 +106,115 @@ export class SharePointAssignmentRepository implements AssignmentRepository {
       const mapping = userMapping.get(uId);
       if (!mapping) continue;
 
-      // Note: We only update if the item direction matches the assignment direction
-      // However, our current Assignment.id includes direction, but Assignment object doesn't have it explicitly as a top-level field.
-      // We'll rely on the mapping being correct for the bulk context.
+      const patch = this.buildPatch(item as ScheduleItem, mapping);
+      if (!patch) continue;
 
-      // currentAttendant removed (unused)
-      const currentCourse = extractTransportCourseId(item.notes);
-      const nextNotes = buildTransportNotes(item.notes, mapping.attendantId, currentCourse) || '';
-
-      const isChanged = 
-        item.vehicleId !== mapping.vehicleId ||
-        item.assignedStaffId !== mapping.driverId ||
-        (item.notes || '') !== nextNotes;
-
-      if (isChanged) {
-        patches.push({
-          ...item,
-          vehicleId: mapping.vehicleId,
-          assignedStaffId: mapping.driverId,
-          notes: nextNotes,
-          // Map domain-agnostic fields to what ScheduleRepository.update expects
-          startLocal: item.start,
-          endLocal: item.end,
-        });
-      }
+      await this.updateWithRetry(patch, mapping, range);
     }
+  }
 
-    // 4. Perform updates
-    // In production, this should use a batch operation if available.
-    for (const patch of patches) {
+  private buildPatch(item: ScheduleItem, mapping: UserAssignmentTarget): UpdateScheduleInput | null {
+    const currentCourse = extractTransportCourseId(item.notes);
+    const nextNotes = buildTransportNotes(item.notes, mapping.attendantId, currentCourse) || '';
+
+    const isChanged =
+      item.vehicleId !== mapping.vehicleId ||
+      item.assignedStaffId !== mapping.driverId ||
+      (item.notes || '') !== nextNotes;
+
+    if (!isChanged) return null;
+
+    return {
+      ...(item as unknown as UpdateScheduleInput),
+      vehicleId: mapping.vehicleId,
+      assignedStaffId: mapping.driverId,
+      notes: nextNotes,
+      startLocal: item.start,
+      endLocal: item.end,
+    };
+  }
+
+  /**
+   * Update a schedule item with one-shot retry-with-merge on 412 conflicts.
+   * On ETag conflict: refetch the latest row, overlay the caller's intended
+   * assignment fields onto the server's latest snapshot, and retry once.
+   * Telemetry:
+   *  - assignment:conflict_resolved  — retry succeeded after a 412
+   *  - assignment:conflict_unresolved — retry exhausted, row vanished, or non-conflict error
+   */
+  private async updateWithRetry(
+    patch: UpdateScheduleInput,
+    mapping: UserAssignmentTarget,
+    range: { from: string; to: string },
+  ): Promise<void> {
+    try {
       await this.scheduleRepo.update(patch);
+    } catch (err) {
+      const status = getHttpStatus(err);
+      if (status !== 412) {
+        emitTelemetry('assignment:conflict_unresolved', {
+          itemId: patch.id,
+          reason: 'non_conflict_error',
+          status,
+          retryCount: 0,
+        });
+        throw err;
+      }
+
+      // 412: refetch, merge, retry once.
+      const fresh = await this.scheduleRepo.list({ range });
+      const latest = fresh.find(i => i.id === patch.id);
+      if (!latest) {
+        emitTelemetry('assignment:conflict_unresolved', {
+          itemId: patch.id,
+          reason: 'item_gone',
+          retryCount: 1,
+        });
+        throw err;
+      }
+
+      const mergedPatch = this.buildPatch(latest, mapping);
+      if (!mergedPatch) {
+        // Server already reflects our intended state — treat as resolved.
+        emitTelemetry('assignment:conflict_resolved', {
+          itemId: patch.id,
+          reason: 'already_consistent',
+          retryCount: 1,
+        });
+        return;
+      }
+
+      try {
+        await this.scheduleRepo.update(mergedPatch);
+        emitTelemetry('assignment:conflict_resolved', {
+          itemId: patch.id,
+          retryCount: 1,
+        });
+      } catch (retryErr) {
+        emitTelemetry('assignment:conflict_unresolved', {
+          itemId: patch.id,
+          reason: getHttpStatus(retryErr) === 412 ? 'retry_exhausted' : 'retry_failed',
+          status: getHttpStatus(retryErr),
+          retryCount: 1,
+        });
+        throw retryErr;
+      }
     }
   }
 
   /**
    * Internal helper to map schedule items to grouped TransportAssignment models.
    */
-  private mapToTransportAssignments(items: any[], filter: AssignmentListFilter): TransportAssignment[] {
-    const dateGroups = new Map<string, Map<string, Map<string, any>>>(); // Date -> Direction -> VehicleId -> Data
+  private mapToTransportAssignments(items: ScheduleItem[], filter: AssignmentListFilter): TransportAssignment[] {
+    type VehicleAccumulator = {
+      userIds: string[];
+      assistantStaffIds: string[];
+      start: string;
+      end: string;
+      etag?: string;
+      driverId?: string;
+    };
+    const dateGroups = new Map<string, Map<string, Map<string, VehicleAccumulator>>>(); // Date -> Direction -> VehicleId -> Data
 
     for (const item of items) {
       const rawRow = item as unknown as Record<string, unknown>;

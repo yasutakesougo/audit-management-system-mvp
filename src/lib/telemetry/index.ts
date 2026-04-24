@@ -10,7 +10,9 @@ export type CommonTelemetryEvent =
   | 'remediation:triggered'
   | 'remediation:completed'
   | 'remediation:failed'
-  | 'assignment:concurrency_conflict';
+  | 'assignment:concurrency_conflict'
+  | 'assignment:conflict_resolved'
+  | 'assignment:conflict_unresolved';
 
 export type TelemetryPayload = Record<string, unknown>;
 
@@ -34,12 +36,17 @@ export const emitTelemetry = (event: CommonTelemetryEvent | string, payload: Tel
   
   if (typeof window !== 'undefined') {
     // Robust E2E diagnostic hook (Persistent log)
-    const log = (window as any).__TELEMETRY_LOG__ || [];
+    type TelemetryLogEntry = { event: string; payload: TelemetryPayload; timestamp: number };
+    const diag = window as Window & {
+      __TELEMETRY_LOG__?: TelemetryLogEntry[];
+      __LAST_TELEMETRY__?: TelemetryLogEntry;
+    };
+    const log = diag.__TELEMETRY_LOG__ ?? [];
     log.push({ event, payload, timestamp: Date.now() });
-    (window as any).__TELEMETRY_LOG__ = log;
-    (window as any).__LAST_TELEMETRY__ = { event, payload, timestamp: Date.now() };
-    
-    window.dispatchEvent(new CustomEvent('app:telemetry', { 
+    diag.__TELEMETRY_LOG__ = log;
+    diag.__LAST_TELEMETRY__ = { event, payload, timestamp: Date.now() };
+
+    window.dispatchEvent(new CustomEvent('app:telemetry', {
       detail: { event, payload, timestamp: new Date().toISOString() } 
     }));
 
@@ -51,6 +58,26 @@ export const emitTelemetry = (event: CommonTelemetryEvent | string, payload: Tel
         code: 'CONCURRENCY_CONFLICT',
         message: Array.isArray(payload.vehicles) ? payload.vehicles.join(', ') : String(payload.vehicles || ''),
         count: Number(payload.conflictCount || 1),
+      });
+    }
+
+    if (event === 'assignment:conflict_resolved') {
+      spTelemetryStore.record({
+        type: 'config_warning',
+        scope: 'TransportAssignment',
+        code: 'CONFLICT_RESOLVED',
+        message: String(payload.itemId ?? ''),
+        count: Number(payload.retryCount ?? 1),
+      });
+    }
+
+    if (event === 'assignment:conflict_unresolved') {
+      spTelemetryStore.record({
+        type: 'config_warning',
+        scope: 'TransportAssignment',
+        code: 'CONFLICT_UNRESOLVED',
+        message: String(payload.reason ?? payload.itemId ?? ''),
+        count: Number(payload.retryCount ?? 1),
       });
     }
   }

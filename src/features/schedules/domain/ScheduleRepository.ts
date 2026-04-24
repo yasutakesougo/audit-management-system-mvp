@@ -44,6 +44,20 @@ export type CreateScheduleEventInput = CreateScheduleInput;
 export type UpdateScheduleEventInput = UpdateScheduleInput;
 
 /**
+ * Thrown when an update fails because the stored item's ETag no longer matches
+ * (HTTP 412 Precondition Failed). Carries `status = 412` so `getHttpStatus`
+ * utilities can recognize it after the underlying provider error is rewrapped.
+ */
+export class ScheduleConflictError extends Error {
+  readonly status = 412;
+  readonly code = 'SCHEDULE_CONFLICT';
+  constructor(message = '予定が別のユーザーによって更新されました (conflict)。最新の情報に更新してから再度お試しください。') {
+    super(message);
+    this.name = 'ScheduleConflictError';
+  }
+}
+
+/**
  * Parameters for listing schedules
  */
 export type ScheduleRepositoryListParams = {
