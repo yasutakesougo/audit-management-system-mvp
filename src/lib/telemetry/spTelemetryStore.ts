@@ -21,6 +21,8 @@ export interface SpMetric {
   scope?: string;
   code?: string;
   count?: number;
+  itemId?: string;
+  reason?: string;
 }
 
 const MAX_EVENTS = 1000;
@@ -41,7 +43,7 @@ export function subscribeToThrottle(cb: ThrottleCallback): () => void {
 
 export const spTelemetryStore = {
   record(
-    eventOrSignal: SpFetchTelemetryEvent | { type: 'config_warning'; scope: string; code: string; count?: number; message?: string },
+    eventOrSignal: SpFetchTelemetryEvent | { type: 'config_warning'; scope: string; code: string; count?: number; message?: string; itemId?: string; reason?: string },
     payload?: Omit<SpMetric, 'timestamp' | 'event'>
   ) {
     if (events.length >= MAX_EVENTS) {
@@ -57,6 +59,8 @@ export const spTelemetryStore = {
         code: eventOrSignal.code,
         count: eventOrSignal.count,
         message: eventOrSignal.message,
+        itemId: eventOrSignal.itemId,
+        reason: eventOrSignal.reason,
       });
       return;
     }
@@ -120,14 +124,10 @@ export const spTelemetryStore = {
         continue;
       }
 
-      if (e.event === 'config_warning' && e.code === 'CONFLICT_RESOLVED') {
-        assignmentConflictResolved++;
-        assignmentRetryTotal += Number(e.count ?? 1);
-        continue;
-      }
-
-      if (e.event === 'config_warning' && e.code === 'CONFLICT_UNRESOLVED') {
-        assignmentConflictUnresolved++;
+      if (e.event === 'config_warning' && (e.code === 'CONFLICT_RESOLVED' || e.code === 'CONFLICT_UNRESOLVED')) {
+        if (e.code === 'CONFLICT_RESOLVED') assignmentConflictResolved++;
+        else assignmentConflictUnresolved++;
+        
         assignmentRetryTotal += Number(e.count ?? 1);
         continue;
       }
@@ -199,6 +199,27 @@ export const spTelemetryStore = {
       assignmentConflictUnresolved,
       assignmentRetryTotal,
     };
+  },
+
+  /**
+   * Return raw UNRESOLVED assignment-conflict events (as recorded by the
+   * `assignment:conflict_unresolved` bridge). The `reason` field carries
+   * the specific failure mode (retry_exhausted / item_gone).
+   * Consumed by Exception Center to surface genuine human-intervention cases.
+   */
+  getAssignmentConflictEvents(): Array<{ timestamp: number; reason: string; retryCount: number; itemId: string }> {
+    const result: Array<{ timestamp: number; reason: string; retryCount: number; itemId: string }> = [];
+    for (const e of events) {
+      if (e.event !== 'config_warning') continue;
+      if (e.code !== 'CONFLICT_UNRESOLVED') continue;
+      result.push({
+        timestamp: e.timestamp,
+        reason: e.reason ?? e.message ?? '',
+        retryCount: Number(e.count ?? 0),
+        itemId: e.itemId ?? '',
+      });
+    }
+    return result;
   },
 
   getTopEndpoints() {
