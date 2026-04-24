@@ -475,7 +475,6 @@ export function resolveInternalNamesDetailed<T extends string>(
 
   for (const key in candidates) {
     if (Object.prototype.hasOwnProperty.call(candidates, key)) {
-      console.log(`[DIAGNOSTIC:helpers] Resolving ${key}. Candidates:`, candidates[key]);
       let driftType: string | undefined = undefined;
 
       // 1. First Pass: Exact match (case-insensitive)
