@@ -158,7 +158,7 @@ describe('formToGoals', () => {
 /* ─── mapFieldRowToGoalItem ─── */
 
 describe('mapFieldRowToGoalItem', () => {
-  it('maps a Record<string, unknown> using PLAN_GOALS_FIELDS keys', () => {
+  it('maps a Record<string, unknown> using PLAN_GOAL_FIELDS keys', () => {
     const row: Record<string, unknown> = {
       Id: 10,
       GoalType: 'short',
@@ -195,7 +195,7 @@ describe('batchUpsertGoals', () => {
       goals,
       'U001',
       { planPeriod: '2026年', planStatus: 'draft', certExpiry: null },
-      'PlanGoals',
+      'PlanGoal',
     );
 
     expect(fetchCalls).toHaveLength(2);

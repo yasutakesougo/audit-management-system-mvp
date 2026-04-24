@@ -20,8 +20,8 @@ import {
   SUPPORT_PLANS_ENSURE_FIELDS,
 } from '@/sharepoint/fields/supportPlanFields';
 import {
-  PLAN_GOALS_LIST_TITLE,
-  PLAN_GOALS_ENSURE_FIELDS,
+  PLAN_GOAL_LIST_TITLE,
+  PLAN_GOAL_ENSURE_FIELDS,
 } from '@/sharepoint/fields/planGoalFields';
 import type { SpFieldDef } from '@/lib/sp/types';
 
@@ -76,9 +76,9 @@ export const DATA_OS_RESOURCE_REGISTRY: Record<string, ResourceDefinition> = {
     defaultListTitle: SUPPORT_PLANS_LIST_TITLE,
     fields: [...SUPPORT_PLANS_ENSURE_FIELDS] as unknown as SpFieldDef[],
   },
-  PlanGoals: {
-    resourceName: 'PlanGoals',
-    defaultListTitle: PLAN_GOALS_LIST_TITLE,
-    fields: [...PLAN_GOALS_ENSURE_FIELDS] as unknown as SpFieldDef[],
+  PlanGoal: {
+    resourceName: 'PlanGoal',
+    defaultListTitle: PLAN_GOAL_LIST_TITLE,
+    fields: [...PLAN_GOAL_ENSURE_FIELDS] as unknown as SpFieldDef[],
   },
 };
