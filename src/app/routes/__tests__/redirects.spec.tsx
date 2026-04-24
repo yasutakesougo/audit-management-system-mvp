@@ -23,14 +23,18 @@ vi.mock('@/auth/useUserAuthz', () => ({
 
 let mockTodayOpsFlag = true;
 
-vi.mock('@/config/featureFlags', () => ({
-  useFeatureFlag: (flag: string) => {
-    if (flag === 'todayOps') return mockTodayOpsFlag;
-    return false;
-  },
-  useFeatureFlags: () => ({ todayOps: mockTodayOpsFlag, todayLiteUi: false, todayLiteNavV2: false }),
-  FeatureFlagsProvider: ({ children }: { children: React.ReactNode }) => children,
-}));
+vi.mock('@/config/featureFlags', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config/featureFlags')>();
+  return {
+    ...actual,
+    useFeatureFlag: (flag: string) => {
+      if (flag === 'todayOps') return mockTodayOpsFlag;
+      return false;
+    },
+    useFeatureFlags: () => ({ todayOps: mockTodayOpsFlag, todayLiteUi: false, todayLiteNavV2: false }),
+    FeatureFlagsProvider: ({ children }: { children: React.ReactNode }) => children,
+  };
+});
 
 // ── Import after mocks ──────────────────────────────────────────────────
 

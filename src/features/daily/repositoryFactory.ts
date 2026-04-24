@@ -17,7 +17,7 @@ export interface DailyRecordRepositoryFactoryOptions extends BaseFactoryOptions 
 const factory = createRepositoryFactory<DailyRecordRepository, DailyRecordRepositoryFactoryOptions>({
   name: 'DailyRecord',
   createDemo: () => inMemoryDailyRecordRepository,
-  createReal: (options) => {
+  createReal: (options = {}) => {
     const { acquireToken } = options;
     if (!acquireToken) {
       throw new Error('[DailyRecordRepositoryFactory] acquireToken is required for real repository.');

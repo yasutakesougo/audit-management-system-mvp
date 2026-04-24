@@ -52,9 +52,13 @@ vi.mock('@/lib/audit', () => ({
   pushAudit: vi.fn(),
 }));
 
-vi.mock('@/config/featureFlags', () => ({
-  getFeatureFlags: () => ({ icebergPdca: false }),
-}));
+vi.mock('@/config/featureFlags', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config/featureFlags')>();
+  return {
+    ...actual,
+    getFeatureFlags: () => ({ ...actual.getFeatureFlags(), icebergPdca: false }),
+  };
+});
 
 // Mock PnP SP to prevent real connections
 vi.mock('@pnp/sp', () => ({

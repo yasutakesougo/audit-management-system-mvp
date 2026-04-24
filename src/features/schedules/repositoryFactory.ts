@@ -17,7 +17,7 @@ export interface ScheduleRepositoryFactoryOptions extends BaseFactoryOptions {
 const factory = createRepositoryFactory<ScheduleRepository, ScheduleRepositoryFactoryOptions>({
   name: 'Schedule',
   createDemo: () => inMemoryScheduleRepository,
-  createReal: (options) => {
+  createReal: (options = {}) => {
     const { acquireToken } = options;
     if (!acquireToken) {
       throw new Error('[ScheduleRepositoryFactory] acquireToken is required for real repository.');
