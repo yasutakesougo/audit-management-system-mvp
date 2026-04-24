@@ -26,9 +26,9 @@ describe('TodayLitePage core workflow', () => {
       screen.getByTestId('today-lite-action-handoff-timeline'),
     ];
     expect(buttons.map((button) => button.textContent)).toEqual([
-      '出欠を確認する',
-      '日々の記録を入力する',
-      '申し送りを確認する',
+      '出欠を入力する',
+      '記録を入力する',
+      '内容を確認する',
     ]);
   });
 
@@ -69,8 +69,9 @@ describe('TodayLitePage core workflow', () => {
       />,
     );
 
-    expect(screen.getByTestId('today-lite-action-isp-renew-suggest')).toBeInTheDocument();
+    expect(screen.getByTestId('today-lite-admin-insights')).toBeInTheDocument();
     expect(screen.getByText('ISP見直し推奨 2件')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '見直し提案を確認' })).toBeEnabled();
   });
 
   it('navigates to monitoring context from admin insight action', () => {

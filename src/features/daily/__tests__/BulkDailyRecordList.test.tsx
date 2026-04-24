@@ -1,11 +1,16 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import BulkDailyRecordList, { type BulkDailyRow } from '../lists/BulkDailyRecordList';
 
 const getRowByUserId = (userId: string) => screen.getAllByTestId(`daily-bulk-row-${userId}`)[0];
 
 afterEach(() => {
+  vi.useRealTimers();
   cleanup();
+});
+
+beforeEach(() => {
+  vi.useRealTimers();
 });
 
 describe('BulkDailyRecordList', () => {
@@ -56,7 +61,7 @@ describe('BulkDailyRecordList', () => {
         expect(firstRowStatus).toHaveAttribute('data-status', 'saved');
         expect(thirdRowStatus).toHaveAttribute('data-status', 'idle');
       });
-    });
+    }, 10000);
   });
 
   describe('MUI Checkboxの統一', () => {

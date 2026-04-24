@@ -159,7 +159,7 @@ describe('navigationConfig', () => {
     });
 
     it('should have correct group order', () => {
-      expect(NAV_GROUP_ORDER).toEqual(['today', 'records', 'planning', 'severe', 'operations', 'billing', 'master', 'platform']);
+      expect(NAV_GROUP_ORDER).toEqual(['today', 'schedules', 'records', 'planning', 'severe', 'operations', 'billing', 'master', 'platform']);
     });
   });
 });

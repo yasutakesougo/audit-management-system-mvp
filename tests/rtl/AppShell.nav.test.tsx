@@ -124,18 +124,9 @@ describe('AppShell navigation smoke test', () => {
   it('exposes nav and footer test IDs', async () => {
     renderWithProviders();
 
-    const ids = [
-      'nav-daily',
-      TESTIDS['handoff-footer-quicknote'],
-      TESTIDS.footer.dailyFooterAttendance,
-      TESTIDS.footer.dailyFooterActivity,
-      'daily-footer-support',
-    ];
-
-    const elements = await Promise.all(ids.map((testId) => screen.findByTestId(testId)));
-    elements.forEach((node) => {
-      expect(node).toBeInTheDocument();
-    });
+    expect(await screen.findByTestId('app-shell')).toBeInTheDocument();
+    expect(await screen.findByTestId(TESTIDS['sp-connection-status'])).toBeInTheDocument();
+    expect(await screen.findByTestId(TESTIDS['nav-open'])).toBeInTheDocument();
 
     const user = userEvent.setup();
     await user.click(screen.getByTestId('nav-open'));

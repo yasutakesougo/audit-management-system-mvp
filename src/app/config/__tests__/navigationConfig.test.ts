@@ -44,7 +44,7 @@ describe("Navigation Configuration", () => {
     // Check mapping integrity (e.g. today ops is in today)
     const todayItems = map.get("today") || [];
     expect(todayItems.some((i) => i.label === "今日の業務")).toBe(true);
-    expect(todayItems.some((i) => i.label === "送迎降車表")).toBe(true);
+    expect(todayItems.some((i) => i.label === "送迎実施")).toBe(true);
 
     const masterItems = map.get("master") || [];
     expect(masterItems.some((i) => i.label === "利用者")).toBe(true);

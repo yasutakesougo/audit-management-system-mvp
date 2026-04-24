@@ -49,7 +49,7 @@ describe('hubDefinitions', () => {
   });
 
   it('exposes standalone hub ids for route generation', () => {
-    expect(getStandaloneHubIds()).toEqual(['planning', 'operations', 'master', 'platform']);
+    expect(getStandaloneHubIds()).toEqual(['planning', 'severe', 'operations', 'master', 'platform']);
   });
 
   it('keeps fixed one-line purpose text for each hub header', () => {

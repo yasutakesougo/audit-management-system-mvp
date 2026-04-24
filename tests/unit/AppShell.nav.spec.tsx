@@ -145,10 +145,8 @@ describe('AppShell navigation', () => {
     const hasComplianceLink = links.some(link => link.getAttribute('href')?.includes('/compliance'));
     expect(hasComplianceLink).toBe(false);
 
-    // Footer actions should include schedules create when flag is enabled
-    const footer = await screen.findByRole('contentinfo');
-    const footerWithin = within(footer);
-    expect(footerWithin.queryByRole('link', { name: '新規予定' })).toBeNull();
+    // AppShell footer is currently disabled (footer={null}).
+    expect(screen.queryByRole('contentinfo')).toBeNull();
 
   });
 
