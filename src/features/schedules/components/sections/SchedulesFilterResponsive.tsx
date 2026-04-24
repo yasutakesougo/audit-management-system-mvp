@@ -8,7 +8,6 @@ import Stack, { type StackProps } from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import type { Theme } from '@mui/material/styles';
-import { TESTIDS } from '@/testids';
 
 export interface SchedulesFilterResponsiveProps {
   /** フィルタコントロール一式（Select / TextField / チェックボックスなど） */
@@ -52,7 +51,7 @@ export const SchedulesFilterResponsive: React.FC<SchedulesFilterResponsiveProps>
       <Stack
         role="group"
         aria-label="スケジュールの絞り込み"
-        data-testid={TESTIDS.SCHEDULES_FILTER_GROUP}
+        data-testid="schedules-filter-group"
         direction="column"
         spacing={0.5}
         alignItems="flex-end"
@@ -70,7 +69,7 @@ export const SchedulesFilterResponsive: React.FC<SchedulesFilterResponsiveProps>
         size="small"
         onClick={handleOpen}
         aria-haspopup="dialog"
-        data-testid={TESTIDS.SCHEDULES_FILTER_TOGGLE}
+        data-testid="schedules-filter-toggle"
         sx={{
           whiteSpace: 'nowrap',
           writingMode: 'horizontal-tb',
@@ -88,14 +87,14 @@ export const SchedulesFilterResponsive: React.FC<SchedulesFilterResponsiveProps>
         aria-labelledby="schedules-filter-dialog-title"
         fullWidth
         maxWidth="sm"
-        data-testid={TESTIDS.SCHEDULES_FILTER_DIALOG}
+        data-testid="schedules-filter-dialog"
       >
         <DialogTitle id="schedules-filter-dialog-title">{dialogTitle}</DialogTitle>
         <DialogContent dividers>
           <Stack
             role="group"
             aria-label="スケジュールの絞り込み"
-            data-testid={TESTIDS.SCHEDULES_FILTER_GROUP}
+            data-testid="schedules-filter-group"
             spacing={2}
             sx={{ mt: 0.5 }}
           >

@@ -113,16 +113,28 @@ async function loadMsalReact(): Promise<MsalReactModule> {
 export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isMock = isVitest || isE2eMsalMockEnabled();
 
+  const mockAccount = useMemo(
+    () => ({
+      homeAccountId: 'e2e-test-user',
+      localAccountId: 'e2e-test-user',
+      environment: 'login.windows.net',
+      tenantId: 'demo-tenant-id',
+      username: 'e2e-test-user@example.com',
+      name: 'E2E Test User',
+    }),
+    [],
+  );
+
   const mockInstance = useMemo(
     () => ({
-      getAllAccounts: () => [],
-      getActiveAccount: () => null,
+      getAllAccounts: () => [mockAccount],
+      getActiveAccount: () => mockAccount,
       setActiveAccount: () => undefined,
       // Provide no-op popup methods so sign-in flows in mock mode do not throw
-      loginPopup: async () => ({ account: null } as never),
-      acquireTokenPopup: async () => ({ accessToken: '' } as never),
+      loginPopup: async () => ({ account: mockAccount } as never),
+      acquireTokenPopup: async () => ({ accessToken: 'e2e-mock-token' } as never),
     }) as unknown as MsalInstance,
-    [],
+    [mockAccount],
   );
 
   const mockLogger = useMemo(
@@ -132,7 +144,7 @@ export const MsalProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const mockUseMsal: MsalReactModule['useMsal'] = () => ({
     instance: mockInstance,
-    accounts: [],
+    accounts: [mockAccount],
     inProgress: 'none',
     logger: mockLogger,
   });

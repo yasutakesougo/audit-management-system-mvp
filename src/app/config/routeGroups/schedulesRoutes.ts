@@ -9,7 +9,6 @@
  * Organized to facilitate the 7+1 IA where 'Schedules' is a primary hub.
  */
 import { PREFETCH_KEYS } from '@/prefetch/routes';
-import { TESTIDS } from '@/testids';
 import type { NavAudience, NavGroupKey, NavItem } from '../navigationConfig.types';
 import { NAV_AUDIENCE } from '../navigationConfig.types';
 
@@ -50,7 +49,7 @@ export const SCHEDULES_ROUTES = {
       label: '週間予定',
       to: '/schedules/week',
       isActive: (pathname: string) => pathname.startsWith('/schedule') || pathname.startsWith('/schedules'),
-      testId: TESTIDS.nav.schedules,
+      testId: 'nav-schedules',
       icon: undefined,
       prefetchKey: PREFETCH_KEYS.schedulesWeek,
       prefetchKeys: [PREFETCH_KEYS.muiForms, PREFETCH_KEYS.muiOverlay],
@@ -83,7 +82,7 @@ export const SCHEDULES_ROUTES = {
       to: '/transport/assignments',
       isActive: (pathname: string) => pathname.startsWith('/transport/assignments'),
       icon: undefined,
-      testId: TESTIDS.nav.transportAssignments,
+      testId: 'nav-transport-assignments',
       audience: NAV_AUDIENCE.staff as NavAudience,
       group: 'schedules' as NavGroupKey,
     }),

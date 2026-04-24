@@ -1,4 +1,3 @@
-import { TESTIDS } from '@/testids';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
@@ -151,7 +150,7 @@ export const SchedulesHeader: React.FC<Props> = ({
       spacing={0}
       justifyContent={isSmall ? 'flex-start' : 'space-between'}
       sx={{ mb: headerBottom }}
-      data-testid={TESTIDS.SCHEDULES_HEADER_ROOT}
+      data-testid="schedules-header-root"
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, flex: '0 0 auto' }}>
         <Typography
@@ -243,7 +242,7 @@ export const SchedulesHeader: React.FC<Props> = ({
 
       <Typography
         variant={compact ? 'caption' : 'body2'}
-        data-testid={rangeTestId ?? TESTIDS.SCHEDULES_RANGE_LABEL}
+        data-testid={rangeTestId ?? 'schedules-range-label'}
         id={rangeLabelId}
         aria-live={rangeAriaLive}
         sx={{ fontWeight: 600, flex: '0 0 auto', display: isSmall ? 'none' : 'block' }}
@@ -294,13 +293,13 @@ export const SchedulesHeader: React.FC<Props> = ({
         </Button>
       </Stack>
 
-      <Stack direction="row" spacing={0.5} justifyContent="flex-end" sx={{ display: isSmall ? 'none' : 'flex', flex: '0 0 auto' }}>
+      <Stack direction="row" spacing={0.5} justifyContent="flex-end" sx={{ display: 'flex', flex: '0 0 auto' }}>
         {showPrimaryAction && onPrimaryCreate ? (
           <Button
             variant="contained"
             size="small"
             onClick={onPrimaryCreate}
-            data-testid={primaryButtonTestId ?? TESTIDS.SCHEDULES_HEADER_CREATE}
+            data-testid={primaryButtonTestId ?? 'schedules-header-create'}
             startIcon={<span aria-hidden="true">＋</span>}
             ref={primaryButtonRef}
             onBlur={onPrimaryBlur}

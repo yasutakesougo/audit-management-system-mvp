@@ -1,11 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { setupSharePointStubs, resetScheduleStore } from './_helpers/setupSharePointStubs';
 import { bootstrapDashboard } from './utils/bootstrapApp';
-import { toLocalDateISO } from '../../src/utils/getNow';
 
 
 test.describe('Transport assignments integration flow', () => {
-  const today = toLocalDateISO();
   const nextDay = '2026-04-24'; // Ensure this is a weekday for the test or normalize it
 
   test.setTimeout(120000);
@@ -35,8 +33,8 @@ test.describe('Transport assignments integration flow', () => {
             {
               Id: 101,
               Title: 'お迎え',
-              EventDate: `${today}T00:00:00Z`,
-              EndDate: `${today}T01:00:00Z`,
+              EventDate: `${nextDay}T00:00:00Z`,
+              EndDate: `${nextDay}T01:00:00Z`,
               ServiceType: '送迎',
               Category: '実施',
               TargetUserId: 'USER001',
@@ -115,8 +113,8 @@ test.describe('Transport assignments integration flow', () => {
       }));
     });
 
-    // 3. Click "送迎実施" in sidebar
-    const navItem = page.getByRole('link', { name: '送迎実施' });
+    // 3. Click "送迎配車調整" in sidebar
+    const navItem = page.getByRole('link', { name: '送迎配車調整' });
     await navItem.click();
 
     // 4. Verify target date matches
@@ -127,7 +125,7 @@ test.describe('Transport assignments integration flow', () => {
 
   test('initial sync status is visible on page load when data exists', async ({ page }) => {
     await setupBaseStubs(page);
-    await bootstrapDashboard(page, { initialPath: '/transport/assignments' });
+    await bootstrapDashboard(page, { initialPath: `/transport/assignments?date=${nextDay}` });
 
     // Verify "同期済みドメイン情報"
     await expect(page.getByText(/同期済みドメイン情報/)).toBeVisible();
@@ -149,7 +147,7 @@ test.describe('Transport assignments integration flow', () => {
     });
     
     // Setup initial state
-    await bootstrapDashboard(page, { initialPath: '/transport/assignments' });
+    await bootstrapDashboard(page, { initialPath: `/transport/assignments?date=${nextDay}` });
     await expect(page.getByTestId('transport-assignment-page')).toBeVisible();
 
     // Wait for initial data to be loaded so persistedSnapshot is captured
@@ -160,8 +158,8 @@ test.describe('Transport assignments integration flow', () => {
       {
         Id: 101,
         Title: 'お迎え',
-        EventDate: `${today}T00:00:00Z`,
-        EndDate: `${today}T01:00:00Z`,
+        EventDate: `${nextDay}T00:00:00Z`,
+        EndDate: `${nextDay}T01:00:00Z`,
         ServiceType: '送迎',
         Category: '送迎',
         TargetUserId: 'USER001',
@@ -190,7 +188,7 @@ test.describe('Transport assignments integration flow', () => {
 
   test('emits telemetry when refetching after conflict', async ({ page }) => {
     await setupBaseStubs(page);
-    await bootstrapDashboard(page, { initialPath: '/transport/assignments' });
+    await bootstrapDashboard(page, { initialPath: `/transport/assignments?date=${nextDay}` });
     
     // Wait for initial data to be loaded so persistedSnapshot is captured
     await expect(page.getByText(/1 件の割り当て/)).toBeVisible();
@@ -200,8 +198,8 @@ test.describe('Transport assignments integration flow', () => {
       {
         Id: 101,
         Title: 'お迎え',
-        EventDate: `${today}T00:00:00Z`,
-        EndDate: `${today}T01:00:00Z`,
+        EventDate: `${nextDay}T00:00:00Z`,
+        EndDate: `${nextDay}T01:00:00Z`,
         ServiceType: '送迎',
         Category: '送迎',
         TargetUserId: 'USER001',

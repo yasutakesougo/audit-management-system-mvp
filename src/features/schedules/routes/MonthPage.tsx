@@ -1,5 +1,4 @@
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
-import { TESTIDS } from '@/testids';
 import Loading from '@/ui/components/Loading';
 import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
@@ -132,8 +131,8 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
     [],
   );
 
-  const headingId = TESTIDS.SCHEDULES_MONTH_HEADING_ID;
-  const rangeId = TESTIDS.SCHEDULES_MONTH_RANGE_ID;
+  const headingId = 'schedules-month-heading';
+  const rangeId = 'schedules-month-range';
 
   // Measure and calculate cell height for iPad landscape fixed layout
   // NOTE: Observe pageRef (fixed 100dvh) instead of gridWrapRef (flex) to avoid resize feedback loops.
@@ -166,7 +165,7 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
   return (
     <section
       ref={pageRef}
-      data-testid={TESTIDS.SCHEDULES_MONTH_PAGE}
+      data-testid="schedules-month-page"
       aria-label="月間スケジュール"
       aria-labelledby={headingId}
       aria-describedby={rangeId}
@@ -233,7 +232,7 @@ export default function MonthPage({ items, loading = false, activeCategory = 'Al
                   <Button
                     key={day.iso}
                     type="button"
-                    data-testid={`${TESTIDS.SCHEDULES_MONTH_DAY_PREFIX}-${day.iso}`}
+                    data-testid={`schedules-month-day-${day.iso}`}
                     aria-label={ariaLabel}
                     aria-current={isSelected ? 'date' : undefined}
                     onClick={(e) => handleDaySelect(e, day.iso)}

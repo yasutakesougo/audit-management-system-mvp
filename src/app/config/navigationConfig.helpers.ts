@@ -8,7 +8,6 @@
  */
 
 import { isDevMode } from '@/lib/env';
-import { TESTIDS } from '@/testids';
 import type { Role } from '@/auth/roles';
 
 import {
@@ -163,9 +162,9 @@ export function pickGroup(item: Partial<NavItem>, _isAdmin: boolean): NavGroupKe
 
   // 1. Today
   if (
-    testId === TESTIDS.nav.todayOps ||
-    testId === TESTIDS.nav.daily ||
-    testId === TESTIDS.nav.transportAssignments ||
+    testId === 'nav-today-ops' ||
+    testId === 'nav-daily' ||
+    testId === 'nav-transport-assignments' ||
     to.startsWith('/today') ||
     to.startsWith('/transport/assignments') ||
     to.startsWith('/transport/execution') ||
@@ -185,12 +184,12 @@ export function pickGroup(item: Partial<NavItem>, _isAdmin: boolean): NavGroupKe
 
   // 2. Planning
   if (
-    testId === TESTIDS.nav.supportPlanGuide ||
-    testId === TESTIDS.nav.ispEditor ||
-    testId === TESTIDS.nav.planningSheet ||
-    testId === TESTIDS.nav.analysis ||
-    testId === TESTIDS.nav.assessment ||
-    testId === TESTIDS.nav.schedules ||
+    testId === 'nav-support-plan-guide' ||
+    testId === 'nav-isp-editor' ||
+    testId === 'nav-planning-sheet' ||
+    testId === 'nav-analysis' ||
+    testId === 'nav-assessment' ||
+    testId === 'nav-schedules' ||
     to.startsWith('/planning') ||
     to.startsWith('/support') ||
     to.startsWith('/isp') ||
@@ -211,7 +210,7 @@ export function pickGroup(item: Partial<NavItem>, _isAdmin: boolean): NavGroupKe
 
   // 3. Billing
   if (
-    testId === TESTIDS.nav.billing ||
+    testId === 'nav-billing' ||
     to.startsWith('/billing') ||
     label.includes('請求') ||
     label.includes('Billing')
@@ -221,10 +220,10 @@ export function pickGroup(item: Partial<NavItem>, _isAdmin: boolean): NavGroupKe
 
   // 4. Operations
   if (
-    testId === TESTIDS.nav.staffAttendance ||
-    testId === TESTIDS.nav.integratedResourceCalendar ||
-    testId === TESTIDS.nav.roomManagement ||
-    testId === TESTIDS.nav.exceptionCenter ||
+    testId === 'nav-staff-attendance' ||
+    testId === 'nav-integrated-resource-calendar' ||
+    testId === 'nav-room-management' ||
+    testId === 'nav-exception-center' ||
     to.startsWith('/operations') ||
     to.startsWith('/ops') ||
     to.startsWith('/staff/attendance') ||
@@ -257,7 +256,7 @@ export function pickGroup(item: Partial<NavItem>, _isAdmin: boolean): NavGroupKe
 
   // 6. Platform
   if (
-    testId === TESTIDS.nav.admin ||
+    testId === 'nav-admin' ||
     to.startsWith('/platform') ||
     to === '/admin' ||
     to.startsWith('/admin/') ||

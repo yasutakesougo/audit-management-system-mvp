@@ -1,6 +1,5 @@
 import { scheduleFacilityEmptyCopy } from '@/features/schedules/domain/mappers/categoryLabels';
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
-import { TESTIDS } from '@/testids';
 import AddIcon from '@mui/icons-material/Add';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import Box from '@mui/material/Box';
@@ -29,7 +28,7 @@ export function ScheduleEmptyHint(props: ScheduleEmptyHintProps) {
     <Box
       role="status"
       aria-live="polite"
-      data-testid={TESTIDS.SCHEDULES_EMPTY_HINT}
+      data-testid="schedules-empty-hint"
       sx={{
         mb: compact ? 0.5 : 1,
         textAlign: 'center',

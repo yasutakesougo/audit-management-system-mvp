@@ -94,6 +94,8 @@ test.describe('Users TransportCourse update reflects in transport assignments', 
         VITE_FEATURE_USERS_SP: '1',
         VITE_SP_RESOURCE: 'https://contoso.sharepoint.com',
         VITE_SP_SITE_RELATIVE: '/sites/Audit',
+        VITE_MSAL_CLIENT_ID: 'dummy-client-id',
+        VITE_MSAL_TENANT_ID: 'dummy-tenant-id',
       };
       window.localStorage.setItem('skipLogin', '1');
       window.localStorage.setItem('demo', '0');

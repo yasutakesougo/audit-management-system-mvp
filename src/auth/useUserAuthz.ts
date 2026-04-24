@@ -4,7 +4,7 @@ import type { Role } from '@/auth/roles';
 import { useAuth } from '@/auth/useAuth';
 import { useAuthReady } from '@/auth/useAuthReady';
 import { getRuntimeEnv as getRuntimeEnvRoot } from '@/env';
-import { isE2eMsalMockEnabled, readOptionalEnv, shouldSkipLogin } from '@/lib/env';
+import { type EnvRecord, isE2eMsalMockEnabled, readOptionalEnv, shouldSkipLogin } from '@/lib/env';
 import { useEffect, useMemo, useState } from 'react';
 
 type UserAuthz = {
@@ -163,9 +163,10 @@ export const useUserAuthz = (): UserAuthz => {
 
   const value = useMemo(() => {
     const ids = groupIds ?? [];
-    const isDemoOrDev = import.meta.env.DEV || import.meta.env.VITE_DEMO_MODE === '1';
-    const isE2E = import.meta.env.VITE_E2E === '1';
-    const skipLogin = shouldSkipLogin(getRuntimeEnvRoot());
+    const runtime = getRuntimeEnvRoot() as EnvRecord;
+    const isDemoOrDev = import.meta.env.DEV || runtime.VITE_DEMO_MODE === '1' || runtime.VITE_DEMO === '1';
+    const isE2E = runtime.VITE_E2E === '1';
+    const skipLogin = shouldSkipLogin(runtime);
 
     // E2E: always grant admin access for test coverage (all nav items visible)
     if ((isE2E || skipLogin) && testRole) {

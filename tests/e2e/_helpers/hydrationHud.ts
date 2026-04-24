@@ -42,6 +42,8 @@ export async function prepareHydrationApp(page: Page, options: { delaySchedules?
     env.VITE_E2E = '1';
     env.VITE_E2E_MSAL_MOCK = '1';
     env.VITE_SKIP_LOGIN = '1';
+    env.VITE_MSAL_CLIENT_ID = 'e2e-mock-client-id';
+    env.VITE_MSAL_TENANT_ID = 'common';
     env.VITE_DEMO_MODE = '0';
     env.VITE_FEATURE_SCHEDULES = '1';
     env.VITE_FEATURE_SCHEDULES_CREATE = '1';

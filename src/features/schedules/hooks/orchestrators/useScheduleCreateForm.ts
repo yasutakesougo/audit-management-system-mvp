@@ -2,7 +2,6 @@ import type { SelectChangeEvent } from '@mui/material/Select';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAnnounce } from '@/a11y/LiveAnnouncer';
-import { TESTIDS } from '@/testids';
 import type {
     ScheduleCategory
 } from '../../data';
@@ -98,7 +97,7 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
     externalErrors = [],
   } = input;
 
-  const resolvedDialogTestId = dialogTestId ?? TESTIDS['schedule-create-dialog'];
+  const resolvedDialogTestId = dialogTestId ?? 'schedule-create-dialog';
   const headingId = `${resolvedDialogTestId}-heading`;
   const descriptionId = `${resolvedDialogTestId}-description`;
 
