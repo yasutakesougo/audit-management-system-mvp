@@ -36,6 +36,8 @@ import { GovernanceBadge } from "./components/GovernanceBadge";
 import { SpRemediationCard } from "@/features/sp/health/remediation/SpRemediationCard";
 import { useNightlySignalIngestion } from "@/features/sp/health/hooks/useNightlySignalIngestion";
 import { SelfHealingResultsPanel } from "@/features/sp/health/remediation/SelfHealingResultsPanel";
+import { SilentDriftSummaryCard } from "./components/SilentDriftSummaryCard";
+
 
 // ─── highlight: reasonCode → category ─────────────────────────────────────────
 const HIGHLIGHT_CATEGORY: Partial<Record<SpHealthReasonCode, string>> = {
@@ -463,7 +465,9 @@ export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
           )}
         </Paper>
 
+        <SilentDriftSummaryCard />
         <DriftObservabilityPanel />
+
         <GovernanceAdvisePanel />
 
         {/* ─────────────────────────────────────────────────────────────
