@@ -149,7 +149,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       listName: String(this.readRowValue(item, 'listName') ?? ''),
       fieldName: String(this.readRowValue(item, 'fieldName') ?? ''),
       detectedAt: String(this.readRowValue(item, 'detectedAt') ?? ''),
-      severity: (this.readRowValue(item, 'severity') as 'warn' | 'info') || 'info',
+      severity: (this.readRowValue(item, 'severity') as 'warn' | 'info' | 'silent') || 'info',
       resolutionType: (this.readRowValue(item, 'resolutionType') as DriftResolutionType) || 'fuzzy_match',
       driftType: (this.readRowValue(item, 'driftType') as DriftType) || 'unknown',
       resolved: this.parseResolved(this.readRowValue(item, 'resolved')),

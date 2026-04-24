@@ -428,9 +428,9 @@ async function runListChecks(
       (f) => !f.isEssential && !f.isSilent && missing.includes(f.internalName)
     );
 
-    // 3. Detect Drift
+    // 3. Detect Drift (Silent fields are ignored)
     const drifted = spec.requiredFields.filter(
-      (f) => fieldStatus[f.internalName]?.isDrifted
+      (f) => !f.isSilent && fieldStatus[f.internalName]?.isDrifted
     );
 
     // 4. Report Results
