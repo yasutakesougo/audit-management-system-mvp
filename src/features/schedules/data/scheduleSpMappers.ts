@@ -147,6 +147,11 @@ export const buildSelectSets = (
 // Mappers
 // ============================================================================
 
+const sanitizeIdentifier = (val: string | null | undefined): string | undefined => {
+  if (!val) return undefined;
+  return val;
+};
+
 /**
  * Helper: Map RepoSchedule → SchedItem
  * Bridges repo layer (internal names) to port layer (domain types)
@@ -160,8 +165,8 @@ export const mapRepoScheduleToSchedItem = (repo: RepoSchedule): SchedItem | null
       start: repo.eventDate,
       end: repo.endDate,
       category: repo.personType as ScheduleCategory,
-      userId: repo.personId || undefined,
-      userName: repo.personName,
+      userId: sanitizeIdentifier(repo.personId),
+      userName: sanitizeIdentifier(repo.personName),
       assignedStaffId: repo.assignedStaffId,
       vehicleId: repo.vehicleId,
       status: repo.status as ScheduleStatus | undefined,
