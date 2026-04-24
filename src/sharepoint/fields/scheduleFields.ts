@@ -21,13 +21,18 @@ export const SCHEDULE_EVENTS_CANDIDATES = {
   dayKey: ['cr014_dayKey', 'DayKey'],
   monthKey: ['MonthKey', 'cr014_monthKey'],
   fiscalYear: ['cr014_fiscalYear', 'FiscalYear'],
+  vehicleId: ['VehicleId', 'cr014_vehicleId', 'Vehicle', 'CarId'],
+  visibility: ['Visibility', 'cr014_visibility', 'AccessLevel'],
+  statusReason: ['StatusReason', 'Status_x0020_Reason', 'Reason', 'cr014_statusReason'],
+  acceptedOn: ['AcceptedOn', 'Accepted_x0020_On', 'AcceptedDate', 'cr014_acceptedOn'],
+  acceptedBy: ['AcceptedBy', 'Accepted_x0020_By', 'AcceptedStaff', 'cr014_acceptedBy'],
+  acceptedNote: ['AcceptedNote', 'Accepted_x0020_Note', 'AcceptanceNote', 'cr014_acceptedNote'],
 } as const;
 
 /**
  * 予定表の「拡張」フィールド（存在すれば使用するが、無くても警告バッチを出さないもの）
  */
 export const SCHEDULE_EXTENSIONS = {
-  visibility: ['Visibility', 'cr014_visibility'],
   orgAudience: ['cr014_orgAudience', 'OrgAudience'],
 } as const;
 

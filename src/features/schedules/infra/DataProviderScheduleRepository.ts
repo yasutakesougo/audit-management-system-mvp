@@ -236,14 +236,25 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
         [fields.end]: endIso,
       };
 
-      if (fields.status && input.status) payload[fields.status] = input.status;
-      if (fields.serviceType && input.serviceType) payload[fields.serviceType] = input.serviceType;
-      if (fields.visibility && input.visibility) payload[fields.visibility] = input.visibility;
-      if (fields.userId && input.userId) payload[fields.userId] = input.userId;
-      if (fields.userName && input.userName) payload[fields.userName] = input.userName;
-      if (fields.assignedStaffId && input.assignedStaffId) payload[fields.assignedStaffId] = input.assignedStaffId;
-      if (fields.notes && input.notes) payload[fields.notes] = input.notes;
-      if (fields.locationName && input.locationName) payload[fields.locationName] = input.locationName;
+      const apply = (key: keyof typeof fields, val: unknown) => {
+        const field = fields[key];
+        const normalized = this.normalizeClearableValue(val);
+        if (field && normalized !== undefined) payload[field] = normalized;
+      };
+
+      apply('status', input.status);
+      apply('serviceType', input.serviceType);
+      apply('visibility', input.visibility);
+      apply('userId', input.userId);
+      apply('userName', input.userName);
+      apply('assignedStaffId', input.assignedStaffId);
+      apply('vehicleId', input.vehicleId);
+      apply('notes', input.notes);
+      apply('locationName', input.locationName);
+      apply('statusReason', input.statusReason);
+      apply('acceptedOn', input.acceptedOn);
+      apply('acceptedBy', input.acceptedBy);
+      apply('acceptedNote', input.acceptedNote);
 
       // インフラ管理用フィールド
       if (fields.rowKey) payload[fields.rowKey] = generateRowKey();
@@ -272,16 +283,29 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       const startDate = new Date(input.startLocal || new Date());
 
       const payload: Record<string, unknown> = {};
+      const apply = (key: keyof typeof fields, val: unknown) => {
+        const field = fields[key];
+        const normalized = this.normalizeClearableValue(val);
+        if (field && normalized !== undefined) payload[field] = normalized;
+      };
+
       if (fields.title) payload[fields.title] = input.title;
       if (fields.start) payload[fields.start] = input.startLocal;
       if (fields.end) payload[fields.end] = input.endLocal;
-      if (fields.status && input.status) payload[fields.status] = input.status;
-      if (fields.serviceType && input.serviceType) payload[fields.serviceType] = input.serviceType;
-      if (fields.userId && input.userId) payload[fields.userId] = input.userId;
-      if (fields.userName) payload[fields.userName] = input.userName;
-      if (fields.assignedStaffId && input.assignedStaffId) payload[fields.assignedStaffId] = input.assignedStaffId;
-      if (fields.notes && input.notes) payload[fields.notes] = input.notes;
-      if (fields.locationName && input.locationName) payload[fields.locationName] = input.locationName;
+
+      apply('status', input.status);
+      apply('serviceType', input.serviceType);
+      apply('userId', input.userId);
+      apply('userName', input.userName);
+      apply('assignedStaffId', input.assignedStaffId);
+      apply('vehicleId', input.vehicleId);
+      apply('visibility', input.visibility);
+      apply('notes', input.notes);
+      apply('locationName', input.locationName);
+      apply('statusReason', input.statusReason);
+      apply('acceptedOn', input.acceptedOn);
+      apply('acceptedBy', input.acceptedBy);
+      apply('acceptedNote', input.acceptedNote);
 
       if (fields.dayKey) payload[fields.dayKey] = dayKeyInTz(startDate);
       if (fields.monthKey) payload[fields.monthKey] = monthKeyInTz(startDate);
@@ -313,6 +337,26 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
     } catch (err) {
       return this.handleError(err, '予定の削除に失敗しました。');
     }
+  }
+
+  /**
+   * フィールド更新値の正規化契約
+   * - undefined: 変更なし (スキップ)
+   * - "" / null: クリア操作 (null)
+   * - それ以外: 有効値
+   */
+  private normalizeClearableValue<T>(
+    value: T | null | undefined,
+  ): T | null | undefined {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+
+    // string型の場合、空文字は「クリア操作(null)」として扱う
+    if (typeof value === 'string' && value === '') {
+      return null;
+    }
+
+    return value;
   }
 
   private handleError(err: unknown, userMessage: string): never {

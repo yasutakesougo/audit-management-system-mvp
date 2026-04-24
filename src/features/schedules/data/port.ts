@@ -10,13 +10,13 @@ export type CreateScheduleEventInput = {
   startLocal: string;
   endLocal: string;
   serviceType?: ScheduleServiceType | string | null;
-  userId?: string;
-  userLookupId?: string;
-  userName?: string;
-  assignedStaffId?: string;
-  locationName?: string;
-  notes?: string;
-  vehicleId?: string;
+  userId?: string | null;
+  userLookupId?: string | null;
+  userName?: string | null;
+  assignedStaffId?: string | null;
+  locationName?: string | null;
+  notes?: string | null;
+  vehicleId?: string | null;
   status?: ScheduleStatus;
   statusReason?: string | null;
   // Added for approval tracking

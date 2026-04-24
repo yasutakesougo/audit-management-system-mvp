@@ -5,8 +5,9 @@ import {
   buildSchedulePatchPayloads,
   buildTransportAssignmentDraft,
   hasVehicleMissingDriver,
-  recomputeUnassignedUsers,
   removeUserFromVehicle,
+  toAssignmentChange,
+  updateVehicleAssignment,
   type TransportAssignmentDraft,
   type TransportAssignmentScheduleRow,
   type TransportAssignmentStaffSource,
@@ -17,7 +18,7 @@ import type { UpdateScheduleEventInput } from '@/features/schedules/data/port';
 import { useTransportAssignmentSave } from '@/features/transport-assignments/hooks/useTransportAssignmentSave';
 import { useSchedules } from '@/features/schedules/hooks/legacy/useSchedules';
 import { useStaffStore } from '@/features/staff/store';
-import { getTransportCourseLabel, parseTransportCourse } from '@/features/today/transport/transportCourse';
+import { getTransportCourseLabel } from '@/features/today/transport/transportCourse';
 import { hasTransportInfo } from '@/features/today/transport/transportStatusLogic';
 import { DEFAULT_TRANSPORT_VEHICLE_IDS } from '@/features/today/transport/transportAssignments';
 import type { TransportDirection } from '@/features/today/transport/transportTypes';
@@ -255,79 +256,22 @@ export default function TransportAssignmentPage() {
 
   const handleDriverChange = (vehicleId: string, staffId: string) => {
     clearSaveError();
-    setDraft((prev) => {
-      if (!prev) return prev;
-      const normalizedStaffId = normalizeText(staffId);
-      const nextVehicles = prev.vehicles.map((vehicle) =>
-        vehicle.vehicleId === vehicleId
-          ? {
-              ...vehicle,
-              driverStaffId: normalizedStaffId,
-              driverName: normalizedStaffId ? (staffNameById.get(normalizedStaffId) ?? null) : null,
-            }
-          : vehicle,
-      );
-      const nextDraft = {
-        ...prev,
-        vehicles: nextVehicles,
-      };
-      return {
-        ...nextDraft,
-        unassignedUserIds: recomputeUnassignedUsers(nextDraft),
-      };
-    });
+    const change = toAssignmentChange(staffId);
+    setDraft((prev) => (prev ? updateVehicleAssignment(prev, vehicleId, 'driver', change, staffNameById) : prev));
     setDirty(true);
   };
 
   const handleCourseChange = (vehicleId: string, courseValue: string) => {
     clearSaveError();
-    setDraft((prev) => {
-      if (!prev) return prev;
-      const courseId = parseTransportCourse(courseValue);
-      const nextVehicles = prev.vehicles.map((vehicle) =>
-        vehicle.vehicleId === vehicleId
-          ? {
-              ...vehicle,
-              courseId,
-              courseLabel: getTransportCourseLabel(courseId),
-            }
-          : vehicle,
-      );
-      const nextDraft = {
-        ...prev,
-        vehicles: nextVehicles,
-      };
-      return {
-        ...nextDraft,
-        unassignedUserIds: recomputeUnassignedUsers(nextDraft),
-      };
-    });
+    const change = toAssignmentChange(courseValue);
+    setDraft((prev) => (prev ? updateVehicleAssignment(prev, vehicleId, 'course', change) : prev));
     setDirty(true);
   };
 
   const handleAttendantChange = (vehicleId: string, staffId: string) => {
     clearSaveError();
-    setDraft((prev) => {
-      if (!prev) return prev;
-      const normalizedStaffId = normalizeText(staffId);
-      const nextVehicles = prev.vehicles.map((vehicle) =>
-        vehicle.vehicleId === vehicleId
-          ? {
-              ...vehicle,
-              attendantStaffId: normalizedStaffId,
-              attendantName: normalizedStaffId ? (staffNameById.get(normalizedStaffId) ?? null) : null,
-            }
-          : vehicle,
-      );
-      const nextDraft = {
-        ...prev,
-        vehicles: nextVehicles,
-      };
-      return {
-        ...nextDraft,
-        unassignedUserIds: recomputeUnassignedUsers(nextDraft),
-      };
-    });
+    const change = toAssignmentChange(staffId);
+    setDraft((prev) => (prev ? updateVehicleAssignment(prev, vehicleId, 'attendant', change, staffNameById) : prev));
     setDirty(true);
   };
 

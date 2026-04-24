@@ -143,14 +143,33 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
     onClearLastError();
   }, [lastError, onSetFocusScheduleId, onConflictRefetch, onClearLastError]);
 
-  // Convert null to undefined for compatibility with ScheduleFormState
+  // Convert null to "" for compatibility with ScheduleFormState
   const normalizeInitialOverride = useCallback(
     (override?: Partial<CreateScheduleEventInput>): Partial<ScheduleFormState> | null => {
       if (!override) return null;
-      const { statusReason, acceptedOn: _acceptedOn, acceptedBy: _acceptedBy, acceptedNote: _acceptedNote, ...rest } = override;
+      const {
+        userId,
+        assignedStaffId,
+        vehicleId,
+        locationName,
+        notes,
+        serviceType,
+        statusReason,
+        acceptedOn: _acceptedOn,
+        acceptedBy: _acceptedBy,
+        acceptedNote: _acceptedNote,
+        ...rest
+      } = override;
+
       const normalized: Partial<ScheduleFormState> = {
         ...rest,
-        statusReason: statusReason === null ? undefined : statusReason,
+        userId: userId ?? '',
+        assignedStaffId: assignedStaffId ?? '',
+        vehicleId: vehicleId ?? '',
+        locationName: locationName ?? '',
+        notes: notes ?? '',
+        serviceType: serviceType ?? '',
+        statusReason: statusReason ?? '',
       };
       return normalized;
     },
@@ -214,10 +233,13 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
           eventId={dialogInitialValues.id}
           initialOverride={{
             ...dialogInitialValues,
-            serviceType:
-              dialogInitialValues.serviceType === null || dialogInitialValues.serviceType === undefined
-                ? ''
-                : dialogInitialValues.serviceType,
+            userId: dialogInitialValues.userId ?? '',
+            assignedStaffId: dialogInitialValues.assignedStaffId ?? '',
+            vehicleId: dialogInitialValues.vehicleId ?? '',
+            locationName: dialogInitialValues.locationName ?? '',
+            notes: dialogInitialValues.notes ?? '',
+            serviceType: dialogInitialValues.serviceType ?? '',
+            statusReason: dialogInitialValues.statusReason ?? '',
           }}
           onClose={onInlineDialogClose}
           onSubmit={onInlineDialogSubmit}
