@@ -106,6 +106,9 @@ export const spTelemetryStore = {
 
     let assignmentConcurrencyConflicts = 0;
     const assignmentConflictVehicles: string[] = [];
+    let assignmentConflictResolved = 0;
+    let assignmentConflictUnresolved = 0;
+    let assignmentRetryTotal = 0;
 
     for (const e of events) {
       if (e.event === 'config_warning' && e.code === 'CONCURRENCY_CONFLICT') {
@@ -114,6 +117,18 @@ export const spTelemetryStore = {
           const vehicles = e.message.split(',').map(v => v.trim());
           assignmentConflictVehicles.push(...vehicles);
         }
+        continue;
+      }
+
+      if (e.event === 'config_warning' && e.code === 'CONFLICT_RESOLVED') {
+        assignmentConflictResolved++;
+        assignmentRetryTotal += Number(e.count ?? 1);
+        continue;
+      }
+
+      if (e.event === 'config_warning' && e.code === 'CONFLICT_UNRESOLVED') {
+        assignmentConflictUnresolved++;
+        assignmentRetryTotal += Number(e.count ?? 1);
         continue;
       }
 
@@ -180,6 +195,9 @@ export const spTelemetryStore = {
       lanes: laneMetrics,
       assignmentConcurrencyConflicts,
       assignmentConflictVehicles: [...new Set(assignmentConflictVehicles)], // Unique list
+      assignmentConflictResolved,
+      assignmentConflictUnresolved,
+      assignmentRetryTotal,
     };
   },
 

@@ -16,13 +16,14 @@ import { reportResourceResolution, useDataProviderObservabilityStore } from '@/l
 import { summarizeSpError } from '@/lib/errors';
 import { mapSpRowToSchedule, type SpScheduleRow } from '../data/spRowSchema';
 import { getSchedulesListTitle } from '../data/spSchema';
-import type { 
-  CreateScheduleInput, 
-  ScheduleItem, 
-  ScheduleRepository, 
-  ScheduleRepositoryListParams, 
-  ScheduleRepositoryMutationParams, 
-  UpdateScheduleInput 
+import {
+  ScheduleConflictError,
+  type CreateScheduleInput,
+  type ScheduleItem,
+  type ScheduleRepository,
+  type ScheduleRepositoryListParams,
+  type ScheduleRepositoryMutationParams,
+  type UpdateScheduleInput,
 } from '../domain/ScheduleRepository';
 
 import { BaseRepository } from '@/lib/data/BaseRepository';
@@ -284,7 +285,7 @@ export class DataProviderScheduleRepository extends BaseRepository implements Sc
     } catch (err) {
       const status = getHttpStatus(err);
       if (status === 412) {
-        throw new Error('予定が別のユーザーによって更新されました (conflict)。最新の情報に更新してから再度お試しください。');
+        throw new ScheduleConflictError();
       }
       return this.handleError(err, '予定の更新に失敗しました。', fields);
     }
