@@ -23,6 +23,7 @@ import {
   type UserSelectMode,
 } from '@/sharepoint/fields';
 import { auditLog } from '@/lib/debugLogger';
+import { BaseRepository } from '@/lib/data/BaseRepository';
 import { readEnv } from '@/lib/env';
 import type { AuditEvent } from '@/lib/audit';
 import { AuthRequiredError } from '@/lib/errors';
@@ -89,7 +90,7 @@ interface UserFieldStatus {
  * Users_Master の巨大なカラム数（300+）とリスト分割（Split Write / Lazy Join）を管理しつつ、
  * Dynamic Schema Resolution によって 400 Bad Request (Missing Column) を防ぐ。
  */
-export class DataProviderUserRepository implements UserRepository {
+export class DataProviderUserRepository extends BaseRepository implements UserRepository {
   private readonly provider: IDataProvider;
   private readonly listTitle: string;
   private readonly audit?: (log: AuditLogEntry) => void;
@@ -114,6 +115,7 @@ export class DataProviderUserRepository implements UserRepository {
     audit?: (log: AuditLogEntry) => void;
     defaultTop?: number;
   }) {
+    super();
     this.provider = options.provider;
     this.listTitle = options.listTitle || (sanitizeEnvValue(readEnv('VITE_SP_LIST_USERS', '')) || DEFAULT_USERS_LIST_TITLE);
     this.audit = options.audit;
@@ -265,7 +267,7 @@ export class DataProviderUserRepository implements UserRepository {
   ): Promise<{ resolvedFields: Record<string, string | undefined>, resolvedKeys: Set<string> }> {
     try {
       const available = await this.provider.getFieldInternalNames(listTitle);
-      const { resolved } = resolveInternalNamesDetailed(available, candidates);
+      const { resolved, fieldStatus } = resolveInternalNamesDetailed(available, candidates);
       
       const bestEffort: Record<string, string | undefined> = {};
       const resolvedKeys = new Set<string>();
@@ -282,6 +284,20 @@ export class DataProviderUserRepository implements UserRepository {
           bestEffort[key] = undefined;
         }
       }
+
+      // 可視化ストアへの報告
+      reportResourceResolution({
+        resourceName: listTitle, // リスト名をリソース名として使用
+        resolvedTitle: listTitle,
+        fieldStatus: Object.fromEntries(
+          Object.entries(fieldStatus).map(([key, info]) => [
+            key,
+            { ...info, isSilent: !essentials.includes(key) }
+          ])
+        ),
+        essentials,
+      });
+
       return { resolvedFields: bestEffort, resolvedKeys };
     } catch {
       // 解決不能な場合は必須フィールドのみフォールバック使用
@@ -612,15 +628,26 @@ export class DataProviderUserRepository implements UserRepository {
     ]);
 
     const filteredRequest: Record<string, unknown> = {};
+    let hasEffectiveChanges = false;
+
     for (const [key, value] of Object.entries(request)) {
-      // UserID (join key) はメインリストにも必須なので、除外対象から外す
+      // UserID (join key) はメインリストにも必須なので、除外対象から外すが、これ単体では「変更」とはみなさない
       if (!accessoryPhysicalFields.has(key) || key === 'UserID') {
         filteredRequest[key] = value;
+        if (key !== 'UserID') {
+          hasEffectiveChanges = true;
+        }
       }
     }
 
     // 最終的な未サポートフィールドと動的スキーマによるフィルタ
     request = this.filterUnsupportedFields(filteredRequest);
+
+    // No-op Guard: UserID 以外の有効な変更がない場合はスキップ
+    if (op === 'update' && !hasEffectiveChanges) {
+      auditLog.info('users:repo', 'No effective changes for main list, skipping update.', { id });
+      return { Id: id } as UserRow; // 最小限の情報を返す
+    }
 
     for (let attempt = 0; attempt < MAX_WRITE_RETRY; attempt++) {
       try {
@@ -844,70 +871,11 @@ export class DataProviderUserRepository implements UserRepository {
     return null;
   }
 
-  private toRequest(dto: Partial<IUserMasterCreateDto>, mappingOverrides?: Record<string, string | undefined>): Record<string, unknown> {
-    const mapping: Record<string, string | undefined> = (mappingOverrides || this.resolvedFields || FIELD_MAP.Users_Master) as Record<string, string | undefined>;
-    const req: Record<string, unknown> = {};
-
-    const assign = (dtoKey: keyof IUserMasterCreateDto, mappingKey: string) => {
-      const val = dto[dtoKey];
-      if (val !== undefined) {
-        const physical = mapping[mappingKey];
-        if (physical) {
-          req[physical] = val;
-        }
-      }
-    };
-
-    assign('UserID', 'userId');
-    assign('FullName', 'fullName');
-    assign('Furigana', 'furigana');
-    assign('FullNameKana', 'fullNameKana');
-    assign('ContractDate', 'contractDate');
-    assign('ServiceStartDate', 'serviceStartDate');
-    assign('ServiceEndDate', 'serviceEndDate');
-    assign('IsHighIntensitySupportTarget', 'isHighIntensitySupportTarget');
-    assign('IsSupportProcedureTarget', 'isSupportProcedureTarget');
-    assign('severeFlag', 'severeFlag');
-    assign('IsActive', 'isActive');
-    
-    // Arrays need default value normalization if passed as undefined in DTO
-    if (dto.TransportToDays !== undefined) {
-      const p = mapping.transportToDays;
-      if (p) req[p] = dto.TransportToDays ?? [];
-    }
-    if (dto.TransportFromDays !== undefined) {
-      const p = mapping.transportFromDays;
-      if (p) req[p] = dto.TransportFromDays ?? [];
-    }
-    assign('TransportCourse', 'transportCourse');
-    assign('TransportSchedule', 'transportSchedule');
-    if (dto.AttendanceDays !== undefined) {
-      const p = mapping.attendanceDays;
-      if (p) req[p] = dto.AttendanceDays ?? [];
-    }
-    assign('RecipientCertNumber', 'recipientCertNumber');
-    assign('RecipientCertExpiry', 'recipientCertExpiry');
-    
-    // Billing fields
-    assign('UsageStatus', 'usageStatus');
-    assign('GrantMunicipality', 'grantMunicipality');
-    assign('GrantPeriodStart', 'grantPeriodStart');
-    assign('GrantPeriodEnd', 'grantPeriodEnd');
-    assign('DisabilitySupportLevel', 'disabilitySupportLevel');
-    assign('GrantedDaysPerMonth', 'grantedDaysPerMonth');
-    assign('UserCopayLimit', 'userCopayLimit');
-    assign('TransportAdditionType', 'transportAdditionType');
-    assign('MealAddition', 'mealAddition');
-    assign('CopayPaymentMethod', 'copayPaymentMethod');
-
-    // Compliance fields
-    assign('LastAssessmentDate', 'lastAssessmentDate');
-    assign('BehaviorScore', 'behaviorScore');
-    assign('ChildBehaviorScore', 'childBehaviorScore');
-    assign('ServiceTypesJson', 'serviceTypesJson');
-    assign('EligibilityCheckedAt', 'eligibilityCheckedAt');
-
-    return req;
+  private toRequest(payload: Partial<IUserMasterCreateDto>, mapping: Record<string, string | undefined>): Record<string, unknown> {
+    return this.buildMappedPayload({ 
+      input: payload as Record<string, unknown>, 
+      mapping 
+    });
   }
 
   private toDomain(raw: UserRow, effectiveMode: UserSelectMode): IUserMaster {
@@ -1158,4 +1126,11 @@ export class DataProviderUserRepository implements UserRepository {
       ...mainSelectableFields,
     ].filter((v, i, a) => a.indexOf(v) === i);
   }
+
+  /**
+   * フィールド更新値の正規化契約
+   * - undefined: 変更なし (更新対象外としてスキップ)
+   * - null / "": 明示的なクリア操作 (SharePoint 側では null として扱う)
+   * - それ以外: 有効な値としてそのまま返す
+   */
 }

@@ -10,12 +10,13 @@
  * Extracted from useWeekPageOrchestrator to reduce orchestrator to composition-only.
  */
 
-import { isDev } from '@/env';
 import type { CreateScheduleEventInput, InlineScheduleDraft, SchedItem } from '@/features/schedules/domain';
 import type { ScheduleCategory, ScheduleServiceType } from '@/features/schedules/domain/types';
 import { resolveOperationFailureFeedback } from '@/features/today/feedback/operationFeedback';
 import { useCallback, useState } from 'react';
 import { classifySchedulesError } from '../../errors';
+import { useScheduleOrchestrator } from '../orchestrators/useScheduleOrchestrator';
+import { useScheduleRepository } from '../../repositoryFactory';
 import {
     DEFAULT_END_TIME,
     DEFAULT_START_TIME,
@@ -70,6 +71,7 @@ export interface CrudDeps {
 
   /** Phase 7-C: Called after successful create with the startLocal of the new schedule */
   onCreateSuccess?: (startLocal: string) => void;
+  filteredItems: SchedItem[];
 }
 
 export interface CrudReturn {
@@ -104,7 +106,11 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
     setPendingFabFocus,
     setDialogParams, clearDialogParams,
     onCreateSuccess,
+    filteredItems: filteredItemsRaw,
   } = deps;
+  const filteredItems = filteredItemsRaw as any[];
+
+  const repository = useScheduleRepository();
 
   const [viewItem, setViewItem] = useState<SchedItem | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -162,11 +168,6 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
         const isAssignee = Boolean(myUpnNormalized) && assignedNormalized === myUpnNormalized;
         const canEditItem = canEditByRole || isAssignee;
         if (!canEditItem) {
-          if (isDev) {
-            console.warn('[useSchedulesCrud] Edit blocked: not authorized', {
-              myUpn, assignedTo: item.assignedTo,
-            });
-          }
           if (hasAssignee && !isAssignee) {
             showSnack('info', 'この予定は担当者のみ編集できます');
           } else {
@@ -235,12 +236,19 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
 
   const inlineEditingEventId = dialogInitialValues?.id ?? null;
 
+  // ── Orchestrator Integration ─────────────────────────────────────────────
+  const orchestrator = useScheduleOrchestrator({
+    repository: repository as any,
+    showSnack,
+    onSuccess: () => refetch()
+  });
+
   const handleInlineDialogSubmit = useCallback(
     async (input: CreateScheduleEventInput) => {
       if (!inlineEditingEventId || isInlineSaving) return;
       setIsInlineSaving(true);
-      const payload = buildUpdateInput(inlineEditingEventId, input);
       try {
+        const payload = buildUpdateInput(inlineEditingEventId, input);
         await update(payload);
         showSnack('success', '予定を更新しました');
         clearInlineSelection();
@@ -284,6 +292,12 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
     [clearInlineSelection, remove, showSnack, isInlineDeleting, setIsInlineDeleting, conflictFeedback],
   );
 
+  const handleCreateDialogClose = useCallback(() => {
+    setPendingFabFocus(true);
+    primeRouteReset();
+    clearDialogParams();
+  }, [clearDialogParams, primeRouteReset, setPendingFabFocus]);
+
   const handleScheduleDialogSubmit = useCallback(
     async (input: CreateScheduleEventInput) => {
       if (!canEdit || !canWrite) {
@@ -295,23 +309,16 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
           const payload = buildUpdateInput(dialogEventId, input);
           await update(payload);
         } else {
-          const dateIso = extractDatePart(input.startLocal) || toDateIso(new Date());
-          const startTime = extractTimePart(input.startLocal) || DEFAULT_START_TIME;
-          const endTime = extractTimePart(input.endLocal) || DEFAULT_END_TIME;
-          const start = new Date(buildLocalDateTimeInput(input.startLocal, startTime)).toISOString();
-          const end = new Date(buildLocalDateTimeInput(input.endLocal, endTime)).toISOString();
-          const draft: InlineScheduleDraft = {
-            title: input.title.trim() || '予定',
-            dateIso,
-            startTime,
-            endTime,
-            start,
-            end,
-            sourceInput: input,
-          };
-          await create(draft);
-          // Phase 7-C: notify parent of successful create for continuous input
-          onCreateSuccess?.(input.startLocal);
+          // --- ORCHESTRATOR DELEGATION ---
+          const { nextGap } = await (orchestrator as any).handleCreateSchedule(input);
+          
+          if (nextGap) {
+            const startDate = new Date(`${nextGap.date}T${nextGap.startTime}:00`);
+            const endDate = new Date(`${nextGap.date}T${nextGap.endTime}:00`);
+            const createCategory = categoryFilter === 'All' ? 'User' : categoryFilter;
+            setDialogParams(buildCreateDialogIntent(createCategory, startDate, endDate));
+            showSnack('info', `次の未入力枠を開きました（${nextGap.startTime}〜${nextGap.endTime}）`);
+          }
         }
         handleCreateDialogClose();
       } catch (error) {
@@ -324,14 +331,9 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
         throw error;
       }
     },
-    [canEdit, canWrite, create, dialogEventId, dialogMode, showSnack, update, onCreateSuccess, conflictFeedback],
+    [canEdit, canWrite, dialogEventId, dialogMode, showSnack, update, orchestrator, categoryFilter, setDialogParams, handleCreateDialogClose, conflictFeedback],
   );
 
-  const handleCreateDialogClose = useCallback(() => {
-    setPendingFabFocus(true);
-    primeRouteReset();
-    clearDialogParams();
-  }, [clearDialogParams, primeRouteReset, setPendingFabFocus]);
 
   const handleConflictDiscard = useCallback(() => {
     clearLastError();

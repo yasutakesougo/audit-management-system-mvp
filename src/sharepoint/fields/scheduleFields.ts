@@ -27,6 +27,7 @@ export const SCHEDULE_EVENTS_CANDIDATES = {
   acceptedOn: ['AcceptedOn', 'Accepted_x0020_On', 'AcceptedDate', 'cr014_acceptedOn'],
   acceptedBy: ['AcceptedBy', 'Accepted_x0020_By', 'AcceptedStaff', 'cr014_acceptedBy'],
   acceptedNote: ['AcceptedNote', 'Accepted_x0020_Note', 'AcceptanceNote', 'cr014_acceptedNote'],
+  category: ['Category', 'cr014_category', 'PersonType'],
 } as const;
 
 /**

@@ -17,6 +17,8 @@ export type ResourceStatus =
   | 'schema_warning'    // 一部非必須列（optional）の名前解決ができていない
   | 'pending';          // 未解決（初期状態）
 
+export type ResourceSeverity = 'info' | 'warn' | 'critical';
+
 export interface FieldResolutionInfo {
   key: string;
   resolvedName?: string;
@@ -29,6 +31,7 @@ export interface FieldResolutionInfo {
 export interface ResourceResolutionState {
   resourceName: string;
   status: ResourceStatus;
+  severity: ResourceSeverity;
   resolvedTitle: string;
   fields: FieldResolutionInfo[];
   lastAccessedAt: string;
@@ -170,7 +173,17 @@ export function reportResourceResolution(report: ResourceResolutionReport): void
     status = 'schema_warning';
   }
 
-  // 1. 同一性の判定用シグネチャ生成
+  // 1. Severity の判定
+  let severity: ResourceSeverity = 'info';
+  const isJoinKeyMissing = fields.some(f => (f.key === 'userId' || f.key === 'id') && !f.isResolved);
+  
+  if (status === 'missing_required' || isJoinKeyMissing) {
+    severity = 'critical';
+  } else if (status === 'schema_mismatch' || status === 'fallback_triggered' || status === 'schema_warning') {
+    severity = 'warn';
+  }
+
+  // 2. 同一性の判定用シグネチャ生成
   // key, resolvedName, isResolved, isSilent, isEssential すべてを網羅
   const getFieldsSig = (fs: FieldResolutionInfo[]) => 
     fs.map(f => `${f.key}:${f.resolvedName}:${f.isResolved}:${f.isSilent}:${f.isEssential}`).sort().join('|');
@@ -194,6 +207,7 @@ export function reportResourceResolution(report: ResourceResolutionReport): void
     useDataProviderObservabilityStore.getState().reportResolution({
       resourceName,
       status,
+      severity,
       resolvedTitle,
       fields,
       lastAccessedAt: new Date().toISOString(),

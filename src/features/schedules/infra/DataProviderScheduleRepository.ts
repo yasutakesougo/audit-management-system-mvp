@@ -25,6 +25,7 @@ import type {
   UpdateScheduleInput 
 } from '../domain/ScheduleRepository';
 
+import { BaseRepository } from '@/lib/data/BaseRepository';
 import {
     buildRangeFilter,
     dayKeyInTz,
@@ -51,7 +52,7 @@ interface ResolvedScheduleFields extends Record<AllScheduleKeys, string | undefi
  * SharePoint / InMemory / Dataverse などのバックエンド差異を IDataProvider で吸収しつつ、
  * 従来の柔軟なフィールド解決（Self-Healing/Dynamic Schema）を維持する。
  */
-export class DataProviderScheduleRepository implements ScheduleRepository {
+export class DataProviderScheduleRepository extends BaseRepository implements ScheduleRepository {
   private readonly provider: IDataProvider;
   private readonly listTitle: string;
   private readonly currentOwnerUserId?: string;
@@ -64,6 +65,7 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
     listTitle?: string;
     currentOwnerUserId?: string;
   }) {
+    super();
     this.provider = options.provider;
     this.listTitle = options.listTitle ?? getSchedulesListTitle();
     this.currentOwnerUserId = options.currentOwnerUserId;
@@ -88,14 +90,21 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       const isHealthy = areEssentialFieldsResolved(resolved, [...SCHEDULE_EVENTS_ESSENTIALS] as string[]);
       
       // Observability への報告（バナーのトリガー）から拡張分を除去し、バナーをクリアする
+      const essentialsSet = new Set(SCHEDULE_EVENTS_ESSENTIALS as string[]);
       const stableFieldStatus = Object.fromEntries(
-        (Object.keys(SCHEDULE_EVENTS_CANDIDATES) as ScheduleCandidateKeys[]).map(k => [k, fieldStatus[k]])
+        (Object.keys(SCHEDULE_EVENTS_CANDIDATES) as ScheduleCandidateKeys[]).map(k => [
+          k, 
+          { 
+            ...fieldStatus[k], 
+            isSilent: !essentialsSet.has(k) 
+          }
+        ])
       );
 
       reportResourceResolution({
         resourceName: 'Schedule',
         resolvedTitle: this.listTitle,
-        fieldStatus: stableFieldStatus as Record<string, { resolvedName?: string; candidates: string[] }>,
+        fieldStatus: stableFieldStatus as Record<string, { resolvedName?: string; candidates: string[]; isSilent: boolean }>,
         essentials: [...SCHEDULE_EVENTS_ESSENTIALS] as string[],
       });
 
@@ -228,43 +237,11 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       fields = await this.resolveFields();
       if (!fields) throw new Error('Cannot resolve fields for creation');
 
-      const startIso = input.startLocal || new Date().toISOString();
-      const endIso = input.endLocal || new Date(Date.now() + 3600000).toISOString();
-      const startDate = new Date(startIso);
+      // ペイロード構築 (共通ビルダーを使用)
+      const payload = this.buildPayload(input, fields);
 
-      // ペイロード構築
-      const payload: Record<string, unknown> = {
-        [fields.title]: input.title,
-        [fields.start]: startIso,
-        [fields.end]: endIso,
-      };
-
-      const resolvedFields = fields;
-      const apply = (key: keyof ResolvedScheduleFields, val: unknown) => {
-        const field = resolvedFields[key];
-        const normalized = this.normalizeClearableValue(val);
-        if (field && normalized !== undefined) payload[field] = normalized;
-      };
-
-      apply('status', input.status);
-      apply('serviceType', input.serviceType);
-      apply('visibility', input.visibility);
-      apply('userId', input.userId);
-      apply('userName', input.userName);
-      apply('assignedStaffId', input.assignedStaffId);
-      apply('vehicleId', input.vehicleId);
-      apply('notes', input.notes);
-      apply('locationName', input.locationName);
-      apply('statusReason', input.statusReason);
-      apply('acceptedOn', input.acceptedOn);
-      apply('acceptedBy', input.acceptedBy);
-      apply('acceptedNote', input.acceptedNote);
-
-      // インフラ管理用フィールド
+      // インフラ管理用固有フィールド (作成時のみ)
       if (fields.rowKey) payload[fields.rowKey] = generateRowKey();
-      if (fields.dayKey) payload[fields.dayKey] = dayKeyInTz(startDate);
-      if (fields.monthKey) payload[fields.monthKey] = monthKeyInTz(startDate);
-      if (fields.fiscalYear) payload[fields.fiscalYear] = String(startDate.getFullYear());
 
       const created = await this.provider.createItem<SpScheduleRow>(this.listTitle, payload);
       const item = mapSpRowToSchedule(created);
@@ -285,37 +262,16 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       fields = await this.resolveFields();
       if (!fields) throw new Error('Cannot resolve fields for update');
 
-      const startDate = new Date(input.startLocal || new Date());
+      // ペイロード構築 (共通ビルダーを使用)
+      const payload = this.buildPayload(input, fields);
 
-      const payload: Record<string, unknown> = {};
-      const resolvedFields = fields;
-      const apply = (key: keyof ResolvedScheduleFields, val: unknown) => {
-        const field = resolvedFields[key];
-        const normalized = this.normalizeClearableValue(val);
-        if (field && normalized !== undefined) payload[field] = normalized;
-      };
-
-      if (fields.title) payload[fields.title] = input.title;
-      if (fields.start) payload[fields.start] = input.startLocal;
-      if (fields.end) payload[fields.end] = input.endLocal;
-
-      apply('status', input.status);
-      apply('serviceType', input.serviceType);
-      apply('userId', input.userId);
-      apply('userName', input.userName);
-      apply('assignedStaffId', input.assignedStaffId);
-      apply('vehicleId', input.vehicleId);
-      apply('visibility', input.visibility);
-      apply('notes', input.notes);
-      apply('locationName', input.locationName);
-      apply('statusReason', input.statusReason);
-      apply('acceptedOn', input.acceptedOn);
-      apply('acceptedBy', input.acceptedBy);
-      apply('acceptedNote', input.acceptedNote);
-
-      if (fields.dayKey) payload[fields.dayKey] = dayKeyInTz(startDate);
-      if (fields.monthKey) payload[fields.monthKey] = monthKeyInTz(startDate);
-      if (fields.fiscalYear) payload[fields.fiscalYear] = String(startDate.getFullYear());
+      // No-op Guard: 変更がない場合は通信せずに現在の値を返す
+      if (Object.keys(payload).length === 0) {
+        auditLog.info('schedule:repo', 'No changes detected for update, skipping API call.', { id: input.id });
+        const existing = await this.getById(input.id);
+        if (!existing) throw new Error('Item not found for no-op return');
+        return existing;
+      }
 
       const updated = await this.provider.updateItem<SpScheduleRow>(this.listTitle, input.id, payload, {
         etag: input.etag,
@@ -346,23 +302,38 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
   }
 
   /**
-   * フィールド更新値の正規化契約
-   * - undefined: 変更なし (スキップ)
-   * - "" / null: クリア操作 (null)
-   * - それ以外: 有効値
+   * SharePoint 向けの共通ペイロードビルダー
    */
-  private normalizeClearableValue<T>(
-    value: T | null | undefined,
-  ): T | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
+  private buildPayload(
+    input: CreateScheduleInput | UpdateScheduleInput,
+    fields: ResolvedScheduleFields
+  ): Record<string, unknown> {
+    // 1. 基本プロパティのマッピング（契約に基づく一括処理）
+    // buildMappedPayload は内部で getCaseInsensitiveValue と normalizeClearableValue を使用する
+    const payload = this.buildMappedPayload({ 
+      input: input as unknown as Record<string, unknown>, 
+      mapping: fields as unknown as Record<string, string | undefined> 
+    });
+    
+    // 2. 特殊ロジックが必要なフィールドの個別処理
+    // Title, StartLocal, EndLocal は DTO 名がマッピング定義の論理名と異なる可能性がある、
+    // または日付計算が必要なため個別で補完する
+    if (input.title !== undefined && fields.title) payload[fields.title] = input.title;
+    if (input.startLocal !== undefined && fields.start) payload[fields.start] = input.startLocal;
+    if (input.endLocal !== undefined && fields.end) payload[fields.end] = input.endLocal;
 
-    // string型の場合、空文字は「クリア操作(null)」として扱う
-    if (typeof value === 'string' && value === '') {
-      return null;
+    // Auto-calculated Infrastructure Fields (Day/Month keys)
+    // Only update if startLocal is provided
+    if (input.startLocal) {
+      const startDate = new Date(input.startLocal);
+      if (!isNaN(startDate.getTime())) {
+        if (fields.dayKey) payload[fields.dayKey] = dayKeyInTz(startDate);
+        if (fields.monthKey) payload[fields.monthKey] = monthKeyInTz(startDate);
+        if (fields.fiscalYear) payload[fields.fiscalYear] = String(startDate.getFullYear());
+      }
     }
 
-    return value;
+    return payload;
   }
 
   private handleError(err: unknown, userMessage: string, fields?: ResolvedScheduleFields | null): never {

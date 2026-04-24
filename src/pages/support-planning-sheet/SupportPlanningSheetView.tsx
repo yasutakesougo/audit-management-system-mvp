@@ -15,7 +15,6 @@ import { NewPlanningSheetForm } from '@/features/planning-sheet/components/NewPl
 // import { useSP } from '@/lib/spClient';
 import { TESTIDS, tid } from '@/testids';
 import {
-  applyPlanPatch,
   detectPlanNeedsUpdate,
   isPlanPatchOverdue,
   type PlanPatch,
@@ -23,6 +22,7 @@ import {
 
 import { type SupportPlanningSheetViewProps } from './types';
 import type { IspRepository } from '@/domain/isp/port';
+import { usePlanningSheetOrchestrator } from '@/features/planning-sheet/hooks/orchestrators/usePlanningSheetOrchestrator';
 import { ContextPanelSection } from './sections/ContextPanelSection';
 import { ImportDialogsSection } from './sections/ImportDialogsSection';
 import { PlanningMainStackSection } from './sections/PlanningMainStackSection';
@@ -154,34 +154,28 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
     );
   }
 
+  const { handleApplyPatch: orchestratorApplyPatch, handleUpdatePatchStatus } = usePlanningSheetOrchestrator({
+    planningSheetRepo,
+    planPatchRepo: planPatchRepository,
+    showSnack: (severity, msg) => setPatchActionMessage(msg),
+    refresh: async () => {
+      // In a real VM setup, this would trigger a refetch in the VM.
+      // For now, we simulate by re-fetching patches locally.
+      const patches = await planPatchRepository.findPending(planningSheetId!);
+      setPendingPatches(patches);
+      setPendingPatchCount(patches.length);
+    }
+  });
+
   const handlePatchStatusChange = async (
     patchId: string,
     status: PlanPatch['status'],
   ) => {
-    await planPatchRepository.updateStatus(patchId, status);
-    const next = pendingPatches
-      .map((patch) => (patch.id === patchId ? { ...patch, status } : patch))
-      .filter((patch) => patch.status !== 'confirmed');
-    setPendingPatches(next);
-    setPendingPatchCount(next.length);
+    await handleUpdatePatchStatus(patchId, status);
   };
 
   const handleApplyPatch = async (patch: PlanPatch) => {
-    try {
-      const updated = applyPlanPatch(patch, sheet);
-      await planningSheetRepo.update(sheet.id, updated as never);
-      await planPatchRepository.updateStatus(patch.id, 'confirmed');
-      const next = pendingPatches.filter((item) => item.id !== patch.id);
-      setPendingPatches(next);
-      setPendingPatchCount(next.length);
-      setPatchActionMessage('更新案を支援計画シートへ反映しました。画面を再読み込みすると最新状態が表示されます。');
-    } catch (error) {
-      if (error instanceof Error && error.message === 'VERSION_CONFLICT') {
-        setPatchActionMessage('バージョン競合が発生しました。最新の支援計画シートを確認してから再適用してください。');
-        return;
-      }
-      setPatchActionMessage('更新案の反映に失敗しました。');
-    }
+    await orchestratorApplyPatch(patch, sheet);
   };
 
   return (

@@ -68,6 +68,16 @@ if (SP_TELEMETRY_PATH && fs.existsSync(SP_TELEMETRY_PATH)) {
   }
 }
 
+const ORCHESTRATION_AUDIT_PATH = process.env.ORCHESTRATION_AUDIT_PATH || '';
+let orchestrationAuditSummary = null;
+if (ORCHESTRATION_AUDIT_PATH && fs.existsSync(ORCHESTRATION_AUDIT_PATH)) {
+  try {
+    orchestrationAuditSummary = JSON.parse(fs.readFileSync(ORCHESTRATION_AUDIT_PATH, 'utf8'));
+  } catch {
+    orchestrationAuditSummary = null;
+  }
+}
+
 // --- File Walking ---
 
 const IGNORED_DIRS = new Set([
@@ -353,24 +363,40 @@ if (spTelemetrySummary && spTelemetrySummary.metrics) {
         ? spTelemetrySummary.topEndpoints.map((ep, i) => `${i + 1}. \`${ep.endpoint}\` → ${ep.failures} failures (retries: ${ep.retries})`)
         : ['✅ なし'])
   ].join('\n');
-} else if (spTelemetrySummary && spTelemetrySummary.summary) {
-  // Fallback if older payload format was used
-  const m = spTelemetrySummary.summary;
-  spHealthSection = [
-    `- Throttled: **${m.throttledCount}**`,
-    `- Retry: **${m.retryCount}**`,
-    `- Failed: **${m.failedCount}**`,
+}
+
+let orchestrationSection = 'ℹ️ Orchestration 実行状況は未提供です（ORCHESTRATION_AUDIT_PATH 未設定）。';
+let orchestrationHealth = { score: 100, status: 'N/A' };
+
+if (orchestrationAuditSummary) {
+  const s = orchestrationAuditSummary;
+  
+  // ナイトリー側での簡易健康スコア計算
+  const total = (s.totalFailures || 0) + (s.totalSuccess || 100); // 概算
+  const successRate = ((s.totalSuccess || 100) / total) * 100;
+  const score = Math.round(successRate);
+  orchestrationHealth = {
+    score,
+    status: score >= 95 ? 'Excellent' : score >= 80 ? 'Stable' : score >= 60 ? 'Warning' : 'Critical'
+  };
+
+  orchestrationSection = [
+    `### ⚖️ Business Execution Health: **${orchestrationHealth.score}%** (${orchestrationHealth.status})`,
+    `- Total Failures (Recent): **${s.totalFailures || 0}**`,
+    `- 🔴 Open (Action Required): **${s.openCount || 0}**`,
+    `- 🟢 Resolved: **${s.resolvedCount || 0}**`,
     '',
-    `- Avg Duration: **${m.avgDurationMs}ms**`,
-    `- P95 Duration: **${m.p95DurationMs}ms**`,
+    '#### 📊 Top Failure Actions (Priority for Improvement)',
+    ...(s.topFailureActions && s.topFailureActions.length > 0
+      ? s.topFailureActions.map((f, i) => `${i + 1}. **${f.action}** — ${f.count} failures`)
+      : ['✅ なし']),
     '',
-    `- Avg Queue: **${m.avgQueuedMs}ms**`,
-    `- Max Queue: **${m.maxQueuedMs}ms**`,
-    '',
-    '### Top Failing Endpoints',
-    ...(spTelemetrySummary.topEndpoints && spTelemetrySummary.topEndpoints.length > 0
-        ? spTelemetrySummary.topEndpoints.map((ep, i) => `${i + 1}. \`${ep.endpoint}\` → ${ep.failures} failures (retries: ${ep.retries})`)
-        : ['✅ なし'])
+    '#### 📋 Latest Failures & Remediation Hints',
+    ...(s.latestFailures && s.latestFailures.length > 0
+      ? s.latestFailures.map((f, i) => {
+          return `${i + 1}. \`[${f.action}]\` **${f.error?.kind}**: ${f.error?.message}\n   - 👉 **Action**: ${f.suggestedAction || '調査が必要'}`;
+        })
+      : ['✅ なし'])
   ].join('\n');
 }
 
@@ -399,6 +425,7 @@ const report = `# 🔍 Nightly Patrol Report — ${stamp}
 | TODO/FIXME/HACK | ${status(todoHits.length, 20, 50)} | ${todoHits.length} |
 | テスト未整備 feature | ${status(untestedFeatures.length, 2, 5)} | ${untestedFeatures.length} |
 | Handoff | ${lastHandoffInfo.includes('No ') ? '🟡' : '🟢'} | — |
+| Orchestration Health | ${orchestrationHealth.score < 80 ? '🔴' : orchestrationHealth.score < 95 ? '🟡' : '🟢'} | ${orchestrationHealth.score}% |
 | act(...) warning (nightly) | ${actStatusIcon} | ${actStatusCountLabel} |
 
 ---
@@ -463,7 +490,13 @@ ${spHealthSection}
 
 ---
 
-## 7. act(...) warning monitor
+## 7. ⚖️ Orchestration 実行状況
+
+${orchestrationSection}
+
+---
+
+## 8. act(...) warning monitor
 
 ${actWarningSection}
 
@@ -492,6 +525,18 @@ ${[
     : null,
   lastHandoffInfo.includes('No ')
     ? '- 🟡 Handoff ファイルを作成 (`/handoff`)'
+    : null,
+  orchestrationHealth.score < 95
+    ? `- ${orchestrationHealth.score < 80 ? '🔴' : '🟡'} Orchestration Health 低下 (${orchestrationHealth.score}%)。Top Failures の改善を検討。`
+    : null,
+  orchestrationAuditSummary?.topFailureActions?.[0]
+    ? `- 🛠 最優先改善対象: \`${orchestrationAuditSummary.topFailureActions[0].action}\` (${orchestrationAuditSummary.topFailureActions[0].count}件の失敗)`
+    : null,
+  orchestrationAuditSummary?.totalFailures > 0
+    ? `- 🔴 Orchestration Failure 発生 (${orchestrationAuditSummary.totalFailures}件 / 未対応: ${orchestrationAuditSummary.openCount || 0}件)。\`TelemetryDashboard\` で詳細を確認し修正検討。`
+    : null,
+  orchestrationAuditSummary?.openCount > 0
+    ? `- ⚠️ **Action Required**: 未対応の業務エラーが ${orchestrationAuditSummary.openCount} 件あります。現場への確認と解消記録（Resolved Audit）が必要です。`
     : null,
 ].filter(Boolean).join('\n') || '✅ 特に対応不要'}
 
@@ -549,9 +594,12 @@ const patrolResultsJson = {
     anyFiles: [...new Set(anyHits.map((h) => h.file))],
     todoCount: todoHits.length,
     untestedFeatures: untestedFeatures.map((f) => f.feature),
-    assignmentConcurrencyConflicts: spTelemetrySummary?.metrics?.transportConcurrency?.totalConflicts || spTelemetrySummary?.metrics?.assignmentConcurrencyConflicts || 0,
     assignmentConflictVehicles: spTelemetrySummary?.metrics?.transportConcurrency?.vehicleHistogram ? Object.keys(spTelemetrySummary.metrics.transportConcurrency.vehicleHistogram) : (spTelemetrySummary?.metrics?.assignmentConflictVehicles || []),
     transportConcurrency: spTelemetrySummary?.metrics?.transportConcurrency || null,
+    orchestration: orchestrationAuditSummary ? {
+      totalFailures: orchestrationAuditSummary.totalFailures,
+      byKind: orchestrationAuditSummary.byKind
+    } : null,
   },
   gates: {
     unitTest: GATE_UNIT_TEST_TOTAL > 0

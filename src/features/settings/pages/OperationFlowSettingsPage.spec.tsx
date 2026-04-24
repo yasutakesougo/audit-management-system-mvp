@@ -5,11 +5,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { InMemoryOperationalPhaseRepository } from '@/features/operationFlow/data/InMemoryOperationalPhaseRepository';
 import { DEFAULT_PHASE_CONFIG } from '@/features/operationFlow/domain/defaultPhaseConfig';
 
-// ── Mock: createOperationalPhaseRepository ──
+// ── Mock: createOperationalPhaseRepository / useOperationalPhaseRepository ──
 let mockRepo: InMemoryOperationalPhaseRepository;
 
 vi.mock('@/features/operationFlow/data/createOperationalPhaseRepository', () => ({
   createOperationalPhaseRepository: () => mockRepo,
+  useOperationalPhaseRepository: () => mockRepo,
 }));
 
 vi.mock('@mui/material/Snackbar', () => ({

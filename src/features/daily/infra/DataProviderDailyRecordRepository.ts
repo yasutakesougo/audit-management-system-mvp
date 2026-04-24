@@ -1,6 +1,7 @@
 import { fromSpItem } from '@/domain/daily/spMap';
 import { HYDRATION_FEATURES, startFeatureSpan } from '@/hydration/features';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
+import { BaseRepository } from '@/lib/data/BaseRepository';
 import { auditLog } from '@/lib/debugLogger';
 
 import type {
@@ -94,7 +95,7 @@ type SourceResolution = {
  * SharePoint の Canonical (一括JSON型) と RowAggregate (1件1行型) の両方をサポートしつつ、
  * 実行時 backend (Memory/SharePoint) の差異を隠蔽する。
  */
-export class DataProviderDailyRecordRepository implements DailyRecordRepository {
+export class DataProviderDailyRecordRepository extends BaseRepository implements DailyRecordRepository {
   private readonly provider: IDataProvider;
   private readonly primaryTitle: string;
   private readonly candidates: string[];
@@ -106,6 +107,7 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
     listTitle: string;
     candidates?: string[];
   }) {
+    super();
     this.provider = options.provider;
     this.primaryTitle = options.listTitle;
     this.candidates = options.candidates ?? [
@@ -120,24 +122,27 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
     if (params?.signal?.aborted) throw new Error('Aborted');
 
     const finishSpan = startFeatureSpan(HYDRATION_FEATURES.daily.save, { date: input.date });
+    let fields: CanonicalResolvedFields | null = null;
+    
     try {
       const source = await this.resolveSource();
       if (!source.canonical) {
         throw new Error(`Daily records canonical source not found for write. (Lists tried: ${this.candidates.join(', ')})`);
       }
 
-      const { title, fields } = source.canonical;
+      const { title, fields: canonicalFields } = source.canonical;
+      fields = canonicalFields;
       const existing = await this.load(input.date);
 
-      const request: Record<string, unknown> = {
-        [fields.title]: input.date,
-        [fields.recordDate]: new Date(input.date).toISOString(),
-        [fields.userRowsJSON]: JSON.stringify(input.userRows),
-      };
+      // No-op Guard: 既存データと比較し、変更がない場合はスキップ
+      if (existing && this.isIdentical(existing, input)) {
+        auditLog.info('daily:repo', 'No changes detected for daily record, skipping save.', { date: input.date });
+        finishSpan({ meta: { status: 'skipped' } });
+        return;
+      }
 
-      if (fields.reporterName) request[fields.reporterName] = input.reporter.name;
-      if (fields.reporterRole) request[fields.reporterRole] = input.reporter.role;
-      if (fields.userCount) request[fields.userCount] = input.userRows.length;
+      // ペイロード構築
+      const request = this.buildPayload(input, fields);
 
       if (existing && existing.id) {
         await this.provider.updateItem(title, existing.id, request);
@@ -150,6 +155,53 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
       finishSpan({ meta: { status: 'error' }, error: String(e) });
       throw e;
     }
+  }
+
+  /**
+   * 既存データと入力データが同一かどうかを判定する (No-op Guard 用)
+   */
+  private isIdentical(existing: DailyRecordItem, input: SaveDailyRecordInput): boolean {
+    // 必須フィールドの比較
+    if (existing.date !== input.date) return false;
+    if (existing.reporter.name !== input.reporter.name) return false;
+    if (existing.reporter.role !== input.reporter.role) return false;
+
+    // JSON データの比較 (効率のため文字列化して比較)
+    const existingRows = JSON.stringify(existing.userRows);
+    const inputRows = JSON.stringify(input.userRows);
+    if (existingRows !== inputRows) return false;
+
+    return true;
+  }
+
+  /**
+   * SharePoint 向けのペイロードビルダー
+   */
+  private buildPayload(input: SaveDailyRecordInput, fields: CanonicalResolvedFields): Record<string, unknown> {
+    // 1. 基本プロパティのマッピング（契約に基づく一括処理）
+    const payload = this.buildMappedPayload({
+      input: {
+        ...input,
+        reporterName: input.reporter.name,
+        reporterRole: input.reporter.role,
+      },
+      mapping: fields as unknown as Record<string, string | undefined>
+    });
+
+    // 2. 特殊処理が必要なフィールドの上書き/補完
+    // title と recordDate は DTO の構造上トップレベルにない場合があるため明示的にセット
+    if (fields.title) payload[fields.title] = input.date;
+    if (fields.recordDate) payload[fields.recordDate] = new Date(input.date).toISOString();
+    if (fields.userRowsJSON) payload[fields.userRowsJSON] = JSON.stringify(input.userRows);
+    
+    if (fields.userCount) {
+      payload[fields.userCount] = input.userRows.length;
+    }
+
+    // mapping に含まれていた 'select' プロパティなどは物理名が存在しない（undefined）として
+    // buildMappedPayload 内で continue されるため、副作用はない。
+
+    return payload;
   }
 
   public async load(date: string): Promise<DailyRecordItem | null> {
@@ -264,10 +316,21 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
       const essentials = DAILY_RECORD_CANONICAL_ESSENTIALS as unknown as string[];
       const isHealthy = areEssentialFieldsResolved(resolved as Record<string, string | undefined>, essentials);
 
+      const essentialsSet = new Set(essentials);
+      const fieldStatusWithSilent = Object.fromEntries(
+        Object.entries(fieldStatus).map(([key, status]) => [
+          key,
+          {
+            ...(status as { resolvedName?: string; candidates: string[] }),
+            isSilent: !essentialsSet.has(key),
+          },
+        ])
+      );
+
       reportResourceResolution({
         resourceName: title,
         resolvedTitle: title,
-        fieldStatus: fieldStatus as Record<string, { resolvedName?: string; candidates: string[] }>,
+        fieldStatus: fieldStatusWithSilent,
         essentials,
       });
 
@@ -292,10 +355,21 @@ export class DataProviderDailyRecordRepository implements DailyRecordRepository 
       const essentials = DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS as unknown as string[];
       const isHealthy = areEssentialFieldsResolved(resolved as Record<string, string | undefined>, essentials);
 
+      const essentialsSet = new Set(essentials);
+      const fieldStatusWithSilent = Object.fromEntries(
+        Object.entries(fieldStatus).map(([key, status]) => [
+          key,
+          {
+            ...(status as { resolvedName?: string; candidates: string[] }),
+            isSilent: !essentialsSet.has(key),
+          },
+        ])
+      );
+
       reportResourceResolution({
         resourceName: title,
         resolvedTitle: title,
-        fieldStatus: fieldStatus as Record<string, { resolvedName?: string; candidates: string[] }>,
+        fieldStatus: fieldStatusWithSilent,
         essentials,
       });
 
