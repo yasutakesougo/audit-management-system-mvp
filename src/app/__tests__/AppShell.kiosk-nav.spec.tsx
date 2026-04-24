@@ -19,7 +19,12 @@ vi.mock('@/auth/useUserAuthz', () => ({
 }));
 
 vi.mock('@/features/auth/store', async () => ({
-  useAuthStore: (selector: any) =>
+  useAuthStore: (
+    selector: (state: {
+      currentUserRole: string;
+      setCurrentUserRole: ReturnType<typeof vi.fn>;
+    }) => unknown,
+  ) =>
     selector({
       currentUserRole: 'staff',
       setCurrentUserRole: vi.fn(),
@@ -48,7 +53,7 @@ vi.mock('@/config/featureFlags', async (importOriginal) => {
   };
 });
 
-function renderAppShell(settingsOverrides: any = {}) {
+function renderAppShell(settingsOverrides: Partial<typeof DEFAULT_SETTINGS> = {}) {
   localStorage.setItem(
     SETTINGS_STORAGE_KEY,
     JSON.stringify({
