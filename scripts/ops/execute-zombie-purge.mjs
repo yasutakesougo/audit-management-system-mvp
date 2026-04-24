@@ -94,7 +94,7 @@ async function main() {
         process.env[key.trim()] = valParts.join('=').trim();
       }
     });
-  } catch (_e) {
+  } catch (_error) {
     // Ignore
   }
 
@@ -124,7 +124,7 @@ async function main() {
   let content = '';
   try {
     content = readFileSync(LEDGER_FILE, 'utf-8');
-  } catch (_e) {
+  } catch (_error) {
     console.error(`❌ Ledger file not found at ${LEDGER_FILE}. Run patrol:ledger first.`);
     process.exit(1);
   }
@@ -198,6 +198,7 @@ async function main() {
 
   let successCount = 0;
   let failCount = 0;
+  const backedUpLists = new Set();
 
   for (const row of activeCandidates) {
     // Batch sizing
@@ -208,6 +209,27 @@ async function main() {
     if (successCount + failCount >= batchSize) {
       console.log(`\n⏸️  Reached --batch-size limit (${batchSize}) for this run. Stopping.`);
       break;
+    }
+
+    // 🛡️ FULL LIST BACKUP (Once per list per session)
+    if (!backedUpLists.has(row.listTitle)) {
+      console.log(`\n📸 Backing up full schema for list: ${row.listTitle}...`);
+      try {
+        const fieldsUrl = `${normalizedSiteUrl}/lists/getbytitle('${row.listTitle}')/fields`;
+        const allFields = await spFetch(fieldsUrl, auth);
+        const BACKUP_DIR = join(REPO_ROOT, 'docs', 'nightly-patrol', 'backups');
+        
+        const { mkdirSync } = await import('node:fs');
+        mkdirSync(BACKUP_DIR, { recursive: true });
+
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `full-backup-${row.listTitle.replace(/[^a-zA-Z0-9]/g, '_')}-${stamp}.json`;
+        writeFileSync(join(BACKUP_DIR, filename), JSON.stringify(allFields, null, 2));
+        console.log(`✅ Full backup saved: ${filename}`);
+        backedUpLists.add(row.listTitle);
+      } catch (err) {
+        console.warn(`⚠️  Full list backup failed for ${row.listTitle}: ${err.message}. Proceeding with individual snapshots.`);
+      }
     }
 
     console.log(`\n--- Candidate: ${row.listTitle} / ${row.internalName} (${row.displayName}) ---`);
@@ -262,7 +284,7 @@ async function main() {
             console.warn(`❌ ABORT: Live probe (select fallback) found data in ${row.internalName}!`);
             continue;
           }
-        } catch (_e) {
+        } catch (_error) {
           console.warn(`⚠️  Live probe failed even with select fallback for ${row.internalName}, skipping for safety.`);
           continue;
         }
@@ -313,7 +335,7 @@ async function main() {
       if (existsSync(logFile)) {
         try {
           existingLogs = JSON.parse(readFileSync(logFile, 'utf-8'));
-        } catch (_e) { /* ignore */ }
+        } catch (_error) { /* ignore */ }
       }
       existingLogs.push(logEntry);
       writeFileSync(logFile, JSON.stringify(existingLogs, null, 2));

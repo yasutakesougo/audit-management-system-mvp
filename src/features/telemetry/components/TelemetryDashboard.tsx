@@ -8,6 +8,7 @@ import { useTelemetryDashboard } from '../hooks/useTelemetryDashboard';
 import { KpiTabContent } from './sections/KpiTabContent';
 import { RawTabContent } from './sections/RawTabContent';
 import { AnomalyStatusChip, deriveAnomalyUiStatus } from './ui/AnomalyStatusChip';
+import { OrchestrationAuditSummary } from './ui/OrchestrationAuditSummary';
 
 type DashboardTab = 'kpi' | 'raw';
 
@@ -167,18 +168,21 @@ export default function TelemetryDashboard() {
       )}
 
       {activeTab === 'kpi' ? (
-        <KpiTabContent
-          range={range}
-          kpis={kpis}
-          kpiDiffs={kpiDiffs}
-          roleBreakdown={roleBreakdown}
-          classifiedAlerts={classifiedAlerts}
-          persistence={persistence}
-          reviewSummary={reviewSummary}
-          transportKpis={transportKpis}
-          transportAlerts={transportAlerts}
-          kioskUxKpis={kioskUxKpis}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <OrchestrationAuditSummary />
+          <KpiTabContent
+            range={range}
+            kpis={kpis}
+            kpiDiffs={kpiDiffs}
+            roleBreakdown={roleBreakdown}
+            classifiedAlerts={classifiedAlerts}
+            persistence={persistence}
+            reviewSummary={reviewSummary}
+            transportKpis={transportKpis}
+            transportAlerts={transportAlerts}
+            kioskUxKpis={kioskUxKpis}
+          />
+        </div>
       ) : (
         <RawTabContent
           stats={stats}

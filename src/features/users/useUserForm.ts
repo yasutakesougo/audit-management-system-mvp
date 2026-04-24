@@ -13,6 +13,8 @@ import { parseTransportCourse } from '../today/transport/transportCourse';
 import type { IUserMaster } from '../../sharepoint/fields';
 import { canEditUser } from './domain/userLifecycle';
 import { useUsersStore } from './store';
+import { useUserRepository } from './repositoryFactory';
+import { useUserOrchestrator } from './hooks/orchestrators/useUserOrchestrator';
 import { CLEARED_VALUES } from './useUserFormConstants';
 import { parseTransportSchedule, toCreateDto } from './useUserFormHelpers';
 import type {
@@ -60,7 +62,8 @@ export function useUserForm(
   mode: 'create' | 'update',
   options: UseUserFormOptions,
 ): UseUserFormReturn {
-  const { create, update: updateUser } = useUsersStore();
+  const { data: _users, load: refreshStore } = useUsersStore();
+  const repository = useUserRepository();
   const { onSuccess, onDone, onClose } = options;
 
   // --------------------------------
@@ -296,6 +299,39 @@ export function useUserForm(
   // --------------------------------
   // handleSubmit
   // --------------------------------
+  // --------------------------------
+  // Orchestrator Integration
+  // --------------------------------
+  
+  // Create a wrapper for PageState that matches Orchestrator's expectations
+  const orchestratorPageState = useMemo(() => ({
+    formData: values as any,
+    isSaving,
+    isDirty,
+    error: message?.type === 'error' ? message.text : null,
+    setFieldValue: (field: unknown, value: unknown) => setField(field as any, value),
+    setSaving: setIsSaving,
+    setError: (err: string | null) => setMessage(err ? { type: 'error', text: err } : null),
+    reset: (_updatedUser: IUserMaster) => {
+      const next = deriveInitialValues(); // Or use updatedUser if conversion logic is needed
+      setValues(next);
+      initialJson.current = JSON.stringify(next);
+    }
+  }), [values, isSaving, isDirty, message, setField, deriveInitialValues]);
+
+  const orchestrator = useUserOrchestrator({
+    pageState: orchestratorPageState,
+    repository,
+    showSnack: (severity, msg) => setMessage({ type: severity === 'error' ? 'error' : 'success', text: msg }),
+    onSuccess: (_userId) => {
+      // Refresh the store after successful mutation to keep UI consistent
+      refreshStore();
+    }
+  });
+
+  // --------------------------------
+  // handleSubmit
+  // --------------------------------
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -306,49 +342,42 @@ export function useUserForm(
         return;
       }
 
-      setIsSaving(true);
-      setMessage(null);
-      setErrors({});
-
-      const payload = toCreateDto(values);
-
-      try {
-        let result: IUserMaster | null = null;
-        if (mode === 'create') {
-          result = await create(payload);
+      if (mode === 'create') {
+        // Create is still using repository directly here, but we could add it to orchestrator too
+        setIsSaving(true);
+        setMessage(null);
+        try {
+          const payload = toCreateDto(values);
+          const result = await repository.create(payload);
           setValues(CLEARED_VALUES);
           initialJson.current = JSON.stringify(CLEARED_VALUES);
-        } else if (mode === 'update' && user) {
-          if (!canEditUser(user)) {
-            throw new Error('契約終了の利用者は編集できません。');
-          }
-          if (user.Id == null) {
-            throw new Error('更新対象の利用者IDが指定されていません。');
-          }
-          result = await updateUser(user.Id, payload);
-          initialJson.current = JSON.stringify(values);
-        } else {
-          throw new Error('更新対象の利用者IDが指定されていません。');
-        }
-
-        if (result) {
-          setMessage({
-            type: 'success',
-            text: mode === 'create' ? '作成しました' : '更新しました',
-          });
+          setMessage({ type: 'success', text: '作成しました' });
           onSuccess?.(result);
           onDone?.(result);
+          refreshStore();
+        } catch (error) {
+          setMessage({
+            type: 'error',
+            text: error instanceof Error ? error.message : '作成に失敗しました',
+          });
+        } finally {
+          setIsSaving(false);
         }
-      } catch (error) {
-        setMessage({
-          type: 'error',
-          text: error instanceof Error ? error.message : '保存に失敗しました',
-        });
-      } finally {
-        setIsSaving(false);
+      } else if (mode === 'update' && user) {
+        if (!canEditUser(user)) {
+          setMessage({ type: 'error', text: '契約終了の利用者は編集できません。' });
+          return;
+        }
+        if (user.Id == null) {
+          setMessage({ type: 'error', text: '更新対象の利用者IDが指定されていません。' });
+          return;
+        }
+        
+        // --- ORCHESTRATOR DELEGATION ---
+        await orchestrator.handleUpdateProfile(user.Id);
       }
     },
-    [create, focusFirstInvalid, mode, onDone, onSuccess, updateUser, user, validate, values],
+    [focusFirstInvalid, mode, onDone, onSuccess, user, validate, values, repository, orchestrator, refreshStore],
   );
 
   // --------------------------------

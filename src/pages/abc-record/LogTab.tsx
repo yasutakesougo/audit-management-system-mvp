@@ -43,12 +43,12 @@ import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import type { AbcRecord } from '@/domain/abc/abcRecord';
 import { ABC_INTENSITY_VALUES, ABC_INTENSITY_DISPLAY } from '@/domain/abc/abcRecord';
 import type { AbcIntensity } from '@/domain/abc/abcRecord';
-import { localAbcRecordRepository } from '@/infra/localStorage/localAbcRecordRepository';
 import { localEvidenceLinkRepository } from '@/infra/localStorage/localEvidenceLinkRepository';
 import { getStrategyUsagesForAbcRecord } from '@/domain/isp/reverseTrace';
 import type { StrategyUsageSummary } from '@/domain/isp/reverseTrace';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
+import { useAbcRecordOrchestrator } from './hooks/orchestrators/useAbcRecordOrchestrator';
 
 // ── Local ──
 import type { UserOption } from './types';
@@ -136,6 +136,11 @@ const LogTab: React.FC<LogTabProps> = ({ records, users, onRefresh, focusedRecor
 
   const deleteConfirm = useConfirmDialog();
 
+  const { handleUpdateRecord, handleDeleteRecord } = useAbcRecordOrchestrator({
+    onRefresh,
+    setSaving: setEditSaving,
+  });
+
   const handleDelete = useCallback(async (id: string) => {
     deleteConfirm.open({
       title: 'ABC 記録を削除',
@@ -143,12 +148,11 @@ const LogTab: React.FC<LogTabProps> = ({ records, users, onRefresh, focusedRecor
       severity: 'error',
       confirmLabel: '削除',
       onConfirm: async () => {
-        await localAbcRecordRepository.delete(id);
+        await handleDeleteRecord(id);
         setDetailRecord(null);
-        onRefresh();
       },
     });
-  }, [onRefresh, deleteConfirm]);
+  }, [handleDeleteRecord, deleteConfirm]);
 
   const startEdit = useCallback(() => {
     if (!detailRecord) return;
@@ -160,27 +164,23 @@ const LogTab: React.FC<LogTabProps> = ({ records, users, onRefresh, focusedRecor
 
   const saveEdit = useCallback(async () => {
     if (!detailRecord || !editForm) return;
-    setEditSaving(true);
-    try {
-      const updated = await localAbcRecordRepository.update(detailRecord.id, {
-        occurredAt: editForm.occurredAt ?? detailRecord.occurredAt,
-        setting: editForm.setting ?? detailRecord.setting,
-        antecedent: editForm.antecedent ?? detailRecord.antecedent,
-        behavior: editForm.behavior ?? detailRecord.behavior,
-        consequence: editForm.consequence ?? detailRecord.consequence,
-        intensity: editForm.intensity ?? detailRecord.intensity,
-        durationMinutes: editForm.durationMinutes ?? detailRecord.durationMinutes,
-        riskFlag: editForm.riskFlag ?? detailRecord.riskFlag,
-        tags: editForm.tags ?? detailRecord.tags,
-        notes: editForm.notes ?? detailRecord.notes,
-      });
-      if (updated) setDetailRecord(updated);
-      setIsEditing(false);
-      onRefresh();
-    } finally {
-      setEditSaving(false);
-    }
-  }, [detailRecord, editForm, onRefresh]);
+    
+    const updated = await handleUpdateRecord(detailRecord.id, {
+      occurredAt: editForm.occurredAt ?? detailRecord.occurredAt,
+      setting: editForm.setting ?? detailRecord.setting,
+      antecedent: editForm.antecedent ?? detailRecord.antecedent,
+      behavior: editForm.behavior ?? detailRecord.behavior,
+      consequence: editForm.consequence ?? detailRecord.consequence,
+      intensity: editForm.intensity ?? detailRecord.intensity,
+      durationMinutes: editForm.durationMinutes ?? detailRecord.durationMinutes,
+      riskFlag: editForm.riskFlag ?? detailRecord.riskFlag,
+      tags: editForm.tags ?? detailRecord.tags,
+      notes: editForm.notes ?? detailRecord.notes,
+    });
+    
+    if (updated) setDetailRecord(updated);
+    setIsEditing(false);
+  }, [detailRecord, editForm, handleUpdateRecord]);
 
   const activeFilterCount = [filterUser, filterIntensity, filterRiskOnly, datePreset !== 'all', filterTags.length > 0].filter(Boolean).length;
 
