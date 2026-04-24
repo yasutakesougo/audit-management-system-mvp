@@ -13,6 +13,30 @@
  * @see .agents/workflows/nightly.md
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
+
+const ROOT = process.cwd();
+const LEDGER_PATH = path.join(ROOT, 'docs/nightly-patrol/issue-ledger.json');
+
+/**
+ * Ledger: { [fingerprint: string]: { firstSeen: string, lastSeen: string } }
+ */
+function loadLedger() {
+  if (!fs.existsSync(LEDGER_PATH)) return {};
+  try {
+    return JSON.parse(fs.readFileSync(LEDGER_PATH, 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+function saveLedger(ledger) {
+  const dir = path.dirname(LEDGER_PATH);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(LEDGER_PATH, JSON.stringify(ledger, null, 2), 'utf8');
+}
+
 // ─── Thresholds (patrol 本体と同一値) ──────────────────────────────────────
 
 const THRESHOLDS = {
@@ -106,6 +130,7 @@ function buildLargeFileDrafts(largeFiles) {
         '振る舞いが既存と一致すること',
       ],
       labels: ['refactor', 'nightly-patrol', 'tech-debt', 'priority-high'],
+      fingerprint: `large-file:${f.file}`,
     });
   }
 
@@ -136,6 +161,7 @@ function buildLargeFileDrafts(largeFiles) {
         '既存テストがすべて通ること',
       ],
       labels: ['refactor', 'nightly-patrol', 'tech-debt', `priority-${sev}`],
+      fingerprint: 'large-file:summary',
     });
   }
 
@@ -189,6 +215,7 @@ function buildAnyHitDrafts(anyHits) {
         '既存テストがすべて通ること',
       ],
       labels: ['type-safety', 'nightly-patrol', 'tech-debt', `priority-${sev}`],
+      fingerprint: 'type-safety:any-summary',
     },
   ];
 }
@@ -227,6 +254,7 @@ function buildUntestedFeatureDrafts(untestedFeatures) {
         'カバレッジが主要パスをカバーしていること',
       ],
       labels: ['testing', 'nightly-patrol', 'tech-debt', `priority-${sev}`],
+      fingerprint: 'test:untested-features',
     },
   ];
 }
@@ -299,6 +327,7 @@ function buildTodoHitDrafts(todoHits) {
         'FIXME/HACK が ${Math.max(2, Math.floor(urgentCount * 0.5))} 件以下になること',
       ],
       labels: ['tech-debt', 'nightly-patrol', `priority-${sev}`],
+      fingerprint: 'tech-debt:todo-summary',
     },
   ];
 }
@@ -339,6 +368,7 @@ function buildHandoffDraft(lastHandoffInfo) {
           '文書に「作業内容」「未完了」「次回推奨」が含まれていること',
         ],
         labels: ['operations', 'nightly-patrol', 'priority-medium'],
+        fingerprint: 'ops:missing-handoff',
       },
     ];
   }
@@ -374,6 +404,7 @@ function buildHandoffDraft(lastHandoffInfo) {
             '直近の作業コンテキストが記録されていること',
           ],
           labels: ['operations', 'nightly-patrol', `priority-${daysSince >= 14 ? 'high' : 'medium'}`],
+          fingerprint: 'ops:stale-handoff',
         },
       ];
     }
@@ -381,6 +412,38 @@ function buildHandoffDraft(lastHandoffInfo) {
 
   // Handoff は正常 → Draft なし
   return [];
+}
+
+/**
+ * 契約ドリフト → Issue Draft
+ */
+function buildContractDriftDrafts(contractResults) {
+  const failed = contractResults.filter((r) => r.status === 'fail');
+  if (failed.length === 0) return [];
+
+  return failed.map((r) => ({
+    title: `[Contract Drift] ${r.name} の整合性崩壊`,
+    severity: r.severity || 'high',
+    category: 'api-contract',
+    summary: `${r.name} において契約ドリフトが検知されました。\n${r.summary}`,
+    rationale: [
+      'Core API の契約（インターフェース）が変更されている可能性があります。',
+      '契約の不一致は、依存するすべてのモジュールで実行時エラーを引き起こすリスクがあります。',
+      'nightly / contract patrol で検知。',
+    ].join('\n'),
+    targetFiles: [r.targetFile],
+    proposal: [
+      `1. \`${r.command}\` を実行して詳細を確認`,
+      '2. インフラ層 (`src/lib/spClient.ts` 等) の最近の変更を確認',
+      '3. 意図的な変更であれば契約テストを更新、そうでなければ実装を修正',
+    ],
+    acceptanceCriteria: [
+      `契約テスト \`${r.targetFile}\` がパスすること`,
+      'ビルドと型チェックが正常であること',
+    ],
+    labels: ['api-contract', 'nightly-patrol', 'priority-high', 'needs-review'],
+    fingerprint: r.fingerprint,
+  }));
 }
 
 // ─── Main ───────────────────────────────────────────────────────────────────
@@ -396,6 +459,7 @@ const SEVERITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
  * @param {Array<{feature: string, codeFiles: number}>} patrolResults.untestedFeatures
  * @param {Array<{file: string, line: number, text: string}>} patrolResults.todoHits
  * @param {string} patrolResults.lastHandoffInfo
+ * @param {Array<object>} patrolResults.contractResults
  * @returns {Array<object>} Issue Draft 配列（severity 順）
  */
 export function buildIssueDrafts(patrolResults) {
@@ -405,20 +469,60 @@ export function buildIssueDrafts(patrolResults) {
     untestedFeatures = [],
     todoHits = [],
     lastHandoffInfo = '',
+    contractResults = [],
   } = patrolResults;
 
-  const drafts = [
+  const ledger = loadLedger();
+  const today = new Date().toISOString().split('T')[0];
+
+  const allDrafts = [
     ...buildLargeFileDrafts(largeFiles),
     ...buildAnyHitDrafts(anyHits),
     ...buildUntestedFeatureDrafts(untestedFeatures),
     ...buildTodoHitDrafts(todoHits),
     ...buildHandoffDraft(lastHandoffInfo),
+    ...buildContractDriftDrafts(contractResults),
   ];
 
-  // severity 順にソート
-  drafts.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9));
+  // ─── Deduplication ────────────────────────────────────────────────────────
 
-  return drafts;
+  const newDrafts = [];
+  const dedupedCount = { skipped: 0, updated: 0, new: 0 };
+
+  for (const draft of allDrafts) {
+    const fp = draft.fingerprint;
+    if (!fp) {
+      newDrafts.push(draft);
+      continue;
+    }
+
+    if (ledger[fp]) {
+      // 既存
+      ledger[fp].lastSeen = today;
+      dedupedCount.skipped++;
+      // レポートには「既存」として残すか、完全に消すか。
+      // ここでは「新規」のみを Drafts 配列に残し、Spam を防ぐ。
+      continue;
+    }
+
+    // 新規
+    ledger[fp] = {
+      firstSeen: today,
+      lastSeen: today,
+      title: draft.title,
+    };
+    newDrafts.push(draft);
+    dedupedCount.new++;
+  }
+
+  saveLedger(ledger);
+
+  if (dedupedCount.skipped > 0) {
+    console.log(`  ℹ️  Deduplicated: ${dedupedCount.skipped} items already in ledger.`);
+  }
+
+  // severity 順にソート
+  return newDrafts.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9));
 }
 
 export { THRESHOLDS };

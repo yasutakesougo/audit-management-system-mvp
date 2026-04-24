@@ -78,6 +78,16 @@ if (ORCHESTRATION_AUDIT_PATH && fs.existsSync(ORCHESTRATION_AUDIT_PATH)) {
   }
 }
 
+const CONTRACT_DRIFT_PATH = path.join(REPORT_DIR, 'contract-drift.json');
+let contractDriftSummary = null;
+if (fs.existsSync(CONTRACT_DRIFT_PATH)) {
+  try {
+    contractDriftSummary = JSON.parse(fs.readFileSync(CONTRACT_DRIFT_PATH, 'utf8'));
+  } catch {
+    contractDriftSummary = null;
+  }
+}
+
 // --- File Walking ---
 
 const IGNORED_DIRS = new Set([
@@ -572,7 +582,14 @@ console.log('');
 
 console.log('📋 Generating issue drafts (Phase B)...');
 
-const patrolResults = { largeFiles, anyHits, untestedFeatures, todoHits, lastHandoffInfo };
+const patrolResults = { 
+  largeFiles, 
+  anyHits, 
+  untestedFeatures, 
+  todoHits, 
+  lastHandoffInfo,
+  contractResults: contractDriftSummary?.results || []
+};
 
 // --- Phase C-1: Structured PatrolResult for JSON + classify pipeline ---
 
@@ -600,6 +617,7 @@ const patrolResultsJson = {
       totalFailures: orchestrationAuditSummary.totalFailures,
       byKind: orchestrationAuditSummary.byKind
     } : null,
+    contracts: contractDriftSummary ? contractDriftSummary.results : null,
   },
   gates: {
     unitTest: GATE_UNIT_TEST_TOTAL > 0
