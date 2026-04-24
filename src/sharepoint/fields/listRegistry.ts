@@ -21,7 +21,7 @@ export enum ListKeys {
   AttendanceDaily = 'AttendanceDaily',
   MeetingMinutes = 'MeetingMinutes',
   SupportTemplates = 'SupportTemplates',
-  PlanGoals = 'PlanGoals',
+  PlanGoal = 'PlanGoal',
   SupportPlans = 'SupportPlans',
   TransportLog = 'Transport_Log',
   // ── ISP 三層モデル (監査 P0-2 追加) ──
@@ -71,7 +71,7 @@ export const LIST_CONFIG: Record<ListKeys, { title: string }> = {
   [ListKeys.AttendanceDaily]: { title: 'AttendanceDaily' },
   [ListKeys.MeetingMinutes]: { title: 'MeetingMinutes' },
   [ListKeys.SupportTemplates]: { title: 'SupportTemplates' },
-  [ListKeys.PlanGoals]: { title: 'PlanGoals' },
+  [ListKeys.PlanGoal]: { title: 'PlanGoal' },
   [ListKeys.SupportPlans]: { title: 'SupportPlans' },
   [ListKeys.TransportLog]: { title: 'Transport_Log' },
   // ── ISP 三層モデル (監査 P0-2 追加) ──

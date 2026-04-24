@@ -65,7 +65,7 @@ export const masterListEntries: readonly SpListEntry[] = [
       { internalName: 'TransportFromDays', type: 'MultiChoice', displayName: 'Transport From Days', choices: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], candidates: ['TransportFromDays', 'Transport_x0020_From_x0020_Days'] },
       { internalName: 'TransportCourse', type: 'Text', displayName: 'Transport Course', candidates: ['TransportCourse', 'Transport_x0020_Course'] },
       { internalName: 'TransportSchedule', type: 'Note', displayName: 'Transport Schedule', richText: false, candidates: ['TransportSchedule', 'Transport_x0020_Schedule'] },
-      { internalName: 'TransportAdditionType', type: 'Text', displayName: 'Transport Addition Type', candidates: ['TransportAdditionType', 'Transport_x0020_Addition_x0020_T'] },
+      { internalName: 'TransportAdditionType', type: 'Text', displayName: 'Transport Addition Type', required: true, candidates: ['TransportAdditionType', 'Transport_x0020_Addition_x0020_Type', 'Transport_x0020_Addition_x0020_T', 'cr013_transportAdditionType', 'cr013_transportadditiontype'] },
     ],
   },
   {
@@ -592,10 +592,22 @@ export const handoffListEntries: readonly SpListEntry[] = [
   {
     key: 'plan_goals',
     displayName: '支援計画目標',
-    resolve: () => envOr('VITE_SP_LIST_PLAN_GOAL', fromConfig(ListKeys.PlanGoals)),
+    resolve: () => envOr('VITE_SP_LIST_PLAN_GOAL', fromConfig(ListKeys.PlanGoal)),
     operations: ['R', 'W'],
     category: 'handoff',
-    lifecycle: 'optional',
+    lifecycle: 'required',
+    essentialFields: ['UserCode', 'GoalType', 'GoalText', 'PlanStatus'],
+    provisioningFields: [
+      { internalName: 'UserCode', type: 'Text', displayName: '利用者コード', required: true, indexed: true, candidates: ['UserCode', 'cr013_usercode', 'UserID'] },
+      { internalName: 'GoalType', type: 'Text', displayName: '目標種別', required: true, candidates: ['GoalType', 'cr013_goaltype'] },
+      { internalName: 'GoalLabel', type: 'Text', displayName: '目標ラベル', candidates: ['GoalLabel', 'cr013_goallabel', 'Title'] },
+      { internalName: 'GoalText', type: 'Note', displayName: '目標内容', richText: false, candidates: ['GoalText', 'cr013_goaltext'] },
+      { internalName: 'Domains', type: 'Text', displayName: '領域', candidates: ['Domains', 'cr013_domains'] },
+      { internalName: 'PlanPeriod', type: 'Text', displayName: '計画期間', candidates: ['PlanPeriod', 'cr013_planperiod'] },
+      { internalName: 'PlanStatus', type: 'Text', displayName: '計画状態', candidates: ['PlanStatus', 'cr013_planstatus'] },
+      { internalName: 'CertExpiry', type: 'Text', displayName: '受給者証期限', candidates: ['CertExpiry', 'cr013_certexpiry'] },
+      { internalName: 'SortOrder', type: 'Number', displayName: '表示順', candidates: ['SortOrder', 'cr013_sortorder'] },
+    ],
   },
   {
     key: 'support_plans',

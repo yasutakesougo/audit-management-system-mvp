@@ -76,7 +76,7 @@ export const envSchema = z.object({
   VITE_SP_LIST_ACTIVITY_DIARY: z.string().optional().default('ActivityDiary'),
   VITE_SP_LIST_STAFF_ATTENDANCE: z.string().optional().default('Staff_Attendance'),
   VITE_SP_LIST_STAFF_GUID: z.string().optional(),
-  VITE_SP_LIST_PLAN_GOAL: z.string().optional().default('PlanGoals'),
+  VITE_SP_LIST_PLAN_GOAL: z.string().optional().default('PlanGoal'),
   VITE_SP_LIST_NURSE_OBSERVATION: z.string().optional().default('NurseObservations'),
   VITE_SP_LIST_MEETING_SESSIONS: z.string().optional().default('MeetingSessions'),
   VITE_SP_LIST_MEETING_STEPS: z.string().optional().default('MeetingSteps'),

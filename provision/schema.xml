@@ -220,6 +220,15 @@
             </pnp:Field>
           </pnp:Fields>
         </pnp:ListInstance>
+        <!-- PlanGoal: 支援計画目標（ISP） -->
+        <pnp:ListInstance Title="PlanGoal" Description="支援計画目標（ISP）" TemplateType="100" Url="Lists/PlanGoal">
+          <pnp:Fields>
+            <pnp:Field Type="Text" DisplayName="利用者コード" Required="TRUE" Indexed="TRUE" StaticName="UserCode" Name="UserCode" />
+            <pnp:Field Type="Text" DisplayName="目標種別" Required="TRUE" StaticName="GoalType" Name="GoalType" />
+            <pnp:Field Type="Note" DisplayName="目標内容" StaticName="GoalText" Name="GoalText" NumLines="6" RichText="FALSE" />
+            <pnp:Field Type="Text" DisplayName="計画状態" StaticName="PlanStatus" Name="PlanStatus" />
+          </pnp:Fields>
+        </pnp:ListInstance>
         <!-- Behavior_Support_Plans: 行動支援計画（計画版への参照） -->
         <pnp:ListInstance Title="Behavior_Support_Plans" Description="行動支援計画" TemplateType="100" Url="Lists/Behavior_Support_Plans">
           <pnp:Fields>

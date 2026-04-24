@@ -267,15 +267,21 @@
     },
 
     {
-      "listTitle": "PlanGoals",
-      "listKey": "PlanGoals",
+      "listTitle": "PlanGoal",
+      "listKey": "PlanGoal",
       "description": "支援計画目標（ISP旧モデル）",
       "category": "plan",
       "requiredFields": [
-        { "internalName": "Id",    "type": "Number", "required": true },
-        { "internalName": "Title", "type": "Text",   "required": true }
+        { "internalName": "Id",         "type": "Number", "required": true  },
+        { "internalName": "Title",      "type": "Text",   "required": true  },
+        { "internalName": "UserCode",   "type": "Text",   "required": true  },
+        { "internalName": "GoalType",   "type": "Text",   "required": true  },
+        { "internalName": "GoalText",   "type": "Note",   "required": false },
+        { "internalName": "PlanStatus", "type": "Text",   "required": false }
       ],
-      "indexes": []
+      "indexes": [
+        { "field": "UserCode", "unique": false }
+      ]
     },
 
     {

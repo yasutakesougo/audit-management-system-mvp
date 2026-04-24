@@ -27,7 +27,7 @@
     { listTitle: "ISP_Master",                   indexes: [{ field: "UserCode", unique: false }, { field: "IsCurrent", unique: false }] },
     { listTitle: "SupportPlanningSheet_Master",  indexes: [{ field: "UserCode", unique: false }, { field: "ISPId", unique: false }, { field: "IsCurrent", unique: false }] },
     { listTitle: "SupportPlans",                 indexes: [] },
-    { listTitle: "PlanGoals",                    indexes: [] },
+    { listTitle: "PlanGoal",                     indexes: [] },
     { listTitle: "MeetingMinutes",               indexes: [] },
     { listTitle: "Staff_Attendance",             indexes: [] },
     { listTitle: "AttendanceUsers",              indexes: [{ field: "UserCode", unique: false }, { field: "IsActive", unique: false }] },

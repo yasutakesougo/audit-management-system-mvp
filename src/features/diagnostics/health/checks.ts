@@ -46,6 +46,38 @@ function stringifyErr(e: unknown) {
   }
 }
 
+function extractHttpStatus(e: unknown): number | undefined {
+  if (typeof e === "object" && e !== null && "status" in e) {
+    const status = (e as { status?: unknown }).status;
+    if (typeof status === "number") return status;
+  }
+  if (e instanceof Error) {
+    const m = e.message.match(/\b(\d{3})\b/);
+    if (m) return Number(m[1]);
+  }
+  return undefined;
+}
+
+const TRANSIENT_PERMISSION_STATUSES = new Set([429, 500, 502, 503, 504]);
+const TRANSIENT_UPDATE_RETRY_STATUSES = new Set([429, 503]);
+const IS_VITEST = typeof process !== "undefined" && process.env?.VITEST === "true";
+
+function isTransientPermissionStatus(status: number | undefined): boolean {
+  return typeof status === "number" && TRANSIENT_PERMISSION_STATUSES.has(status);
+}
+
+function isRetryableUpdateStatus(status: number | undefined): boolean {
+  return typeof status === "number" && TRANSIENT_UPDATE_RETRY_STATUSES.has(status);
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function summarizeHttpStatus(status: number | undefined): string {
+  return typeof status === "number" ? `HTTP ${status}` : "HTTP status unknown";
+}
+
 function hasPlaceholder(v: unknown) {
   const s = String(v ?? "");
   return (
@@ -62,14 +94,40 @@ function pickEnvKeys(env: Record<string, unknown>, keys: string[]) {
   return out;
 }
 
+type SafeResult<T> = { ok: true; v: T } | { ok: false; err: string; status?: number };
+
 async function safe<T>(
   fn: () => Promise<T>
-): Promise<{ ok: true; v: T } | { ok: false; err: string }> {
+): Promise<SafeResult<T>> {
   try {
     return { ok: true, v: await fn() };
   } catch (e) {
-    return { ok: false, err: stringifyErr(e) };
+    return { ok: false, err: stringifyErr(e), status: extractHttpStatus(e) };
   }
+}
+
+async function safeWithRetry<T>(
+  fn: () => Promise<T>,
+  options: {
+    maxRetries: number;
+    baseDelayMs: number;
+    jitterMs: number;
+  }
+): Promise<(SafeResult<T> & { attempts: number })> {
+  const maxAttempts = options.maxRetries + 1;
+  for (let attempts = 1; attempts <= maxAttempts; attempts += 1) {
+    const result = await safe(fn);
+    if (result.ok) {
+      return { ...result, attempts };
+    }
+    if (!isRetryableUpdateStatus(result.status) || attempts >= maxAttempts) {
+      return { ...result, attempts };
+    }
+    const jitter = options.jitterMs > 0 ? Math.floor(Math.random() * options.jitterMs) : 0;
+    const delayMs = IS_VITEST ? 0 : options.baseDelayMs * attempts + jitter;
+    await wait(delayMs);
+  }
+  return { ok: false, err: "retry loop exited unexpectedly", attempts: maxAttempts };
 }
 
 export async function runHealthChecks(
@@ -462,23 +520,43 @@ async function runListChecks(
   // Permissions: Read
   const read = await safe(() => sp.getItemsTop1(spec.resolvedTitle));
   if (!read.ok) {
-    results.push(
-      fail({
-        key: `permissions.read.${spec.key}`,
-        label: `権限：Read（${spec.displayName}）`,
-        category: "permissions",
-        summary: "閲覧（Read）権限がありません。【要管理者対応】",
-        detail: read.err,
-        evidence: { listTitle: spec.resolvedTitle },
-        nextActions: [
-          {
-            kind: "copy",
-            label: "【カテゴリ: Read】管理者に閲覧権限を付与するよう依頼する",
-            value: `リスト「${spec.resolvedTitle}」に対する「閲覧」以上の権限を SharePoint 管理者が付与してください。`,
-          },
-        ],
-      })
-    );
+    if (isTransientPermissionStatus(read.status)) {
+      results.push(
+        warn({
+          key: `permissions.read.${spec.key}`,
+          label: `権限：Read（${spec.displayName}）`,
+          category: "permissions",
+          summary: `閲覧（Read）確認中に一時的エラー（${summarizeHttpStatus(read.status)}）を検出しました。`,
+          detail: read.err,
+          evidence: { listTitle: spec.resolvedTitle },
+          nextActions: [
+            {
+              kind: "doc",
+              label: "時間をおいて再実行する（429/5xx は一時エラー）",
+              value: "Health 診断を 5〜10 分後に再実行してください。",
+            },
+          ],
+        })
+      );
+    } else {
+      results.push(
+        fail({
+          key: `permissions.read.${spec.key}`,
+          label: `権限：Read（${spec.displayName}）`,
+          category: "permissions",
+          summary: "閲覧（Read）権限がありません。【要管理者対応】",
+          detail: read.err,
+          evidence: { listTitle: spec.resolvedTitle },
+          nextActions: [
+            {
+              kind: "copy",
+              label: "【カテゴリ: Read】管理者に閲覧権限を付与するよう依頼する",
+              value: `リスト「${spec.resolvedTitle}」に対する「閲覧」以上の権限を SharePoint 管理者が付与してください。`,
+            },
+          ],
+        })
+      );
+    }
   } else {
     results.push(
       pass({
@@ -530,23 +608,43 @@ async function runListChecks(
     sp.createItem(spec.resolvedTitle, createBody)
   );
   if (!created.ok) {
-    results.push(
-      fail({
-        key: `permissions.create.${spec.key}`,
-        label: `権限：Create（${spec.displayName}）`,
-        category: "permissions",
-        summary: "作成（Create）権限がありません。【要管理者対応】",
-        detail: created.err,
-        evidence: { listTitle: spec.resolvedTitle, payload: createBody },
-        nextActions: [
-          {
-            kind: "copy",
-            label: "【カテゴリ: Create】管理者に作成権限を付与するよう依頼する",
-            value: `リスト「${spec.resolvedTitle}」に対する「投稿」以上の権限を SharePoint 管理者が付与してください。`,
-          },
-        ],
-      })
-    );
+    if (isTransientPermissionStatus(created.status)) {
+      results.push(
+        warn({
+          key: `permissions.create.${spec.key}`,
+          label: `権限：Create（${spec.displayName}）`,
+          category: "permissions",
+          summary: `作成（Create）確認中に一時的エラー（${summarizeHttpStatus(created.status)}）を検出しました。`,
+          detail: created.err,
+          evidence: { listTitle: spec.resolvedTitle, payload: createBody },
+          nextActions: [
+            {
+              kind: "doc",
+              label: "時間をおいて再実行する（429/5xx は一時エラー）",
+              value: "Health 診断を 5〜10 分後に再実行してください。",
+            },
+          ],
+        })
+      );
+    } else {
+      results.push(
+        fail({
+          key: `permissions.create.${spec.key}`,
+          label: `権限：Create（${spec.displayName}）`,
+          category: "permissions",
+          summary: "作成（Create）権限がありません。【要管理者対応】",
+          detail: created.err,
+          evidence: { listTitle: spec.resolvedTitle, payload: createBody },
+          nextActions: [
+            {
+              kind: "copy",
+              label: "【カテゴリ: Create】管理者に作成権限を付与するよう依頼する",
+              value: `リスト「${spec.resolvedTitle}」に対する「投稿」以上の権限を SharePoint 管理者が付与してください。`,
+            },
+          ],
+        })
+      );
+    }
     return;
   } else {
     results.push(
@@ -564,27 +662,56 @@ async function runListChecks(
   await new Promise((r) => setTimeout(r, 500));
 
   const updateBody = mapToPhysical(spec.updateItem);
-  const updated = await safe(() =>
-    sp.updateItem(spec.resolvedTitle, created.v.id, updateBody)
+  const updated = await safeWithRetry(
+    () => sp.updateItem(spec.resolvedTitle, created.v.id, updateBody),
+    {
+      maxRetries: 2,
+      baseDelayMs: 220,
+      jitterMs: 120,
+    }
   );
   if (!updated.ok) {
-    results.push(
-      fail({
-        key: `permissions.update.${spec.key}`,
-        label: `権限：Update（${spec.displayName}）`,
-        category: "permissions",
-        summary: "更新（Update）権限がありません。【要管理者対応】",
-        detail: updated.err,
-        evidence: { id: created.v.id, listTitle: spec.resolvedTitle },
-        nextActions: [
-          {
-            kind: "copy",
-            label: "【カテゴリ: Update】管理者に更新権限を付与するよう依頼する",
-            value: `リスト「${spec.resolvedTitle}」に対する「投稿」以上の権限を SharePoint 管理者が付与してください。`,
-          },
-        ],
-      })
-    );
+    if (isTransientPermissionStatus(updated.status)) {
+      const retryCount = Math.max(0, updated.attempts - 1);
+      results.push(
+        warn({
+          key: `permissions.update.${spec.key}`,
+          label: `権限：Update（${spec.displayName}）`,
+          category: "permissions",
+          summary: `更新（Update）確認中に一時的エラー（${summarizeHttpStatus(updated.status)}）を検出しました。`,
+          detail:
+            retryCount > 0
+              ? `${updated.err} (自動リトライ ${retryCount} 回後も解消せず)`
+              : updated.err,
+          evidence: { id: created.v.id, listTitle: spec.resolvedTitle },
+          nextActions: [
+            {
+              kind: "doc",
+              label: "時間をおいて再実行する（429/5xx は一時エラー）",
+              value: "Health 診断を 5〜10 分後に再実行してください。",
+            },
+          ],
+        })
+      );
+    } else {
+      results.push(
+        fail({
+          key: `permissions.update.${spec.key}`,
+          label: `権限：Update（${spec.displayName}）`,
+          category: "permissions",
+          summary: "更新（Update）権限がありません。【要管理者対応】",
+          detail: updated.err,
+          evidence: { id: created.v.id, listTitle: spec.resolvedTitle },
+          nextActions: [
+            {
+              kind: "copy",
+              label: "【カテゴリ: Update】管理者に更新権限を付与するよう依頼する",
+              value: `リスト「${spec.resolvedTitle}」に対する「投稿」以上の権限を SharePoint 管理者が付与してください。`,
+            },
+          ],
+        })
+      );
+    }
   } else {
     results.push(
       pass({
