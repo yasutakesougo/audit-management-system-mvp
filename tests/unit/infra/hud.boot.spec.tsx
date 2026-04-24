@@ -1,6 +1,7 @@
-import '../../mocks/sp.mock';
+import { describe, expect, it, vi } from 'vitest';
+vi.mock('@/lib/spClient', () => import('../../mocks/sp.mock'));
+
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
 import App from '@/App';
 import { enableHudForTests } from '../../helpers/renderWithAppProviders';
 

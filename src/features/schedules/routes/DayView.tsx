@@ -1,4 +1,3 @@
-import { TESTIDS } from '@/testids';
 import Loading from '@/ui/components/Loading';
 import { useId, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -104,7 +103,7 @@ const DayViewContent = ({
     <section
       id="panel-day"
       aria-labelledby={headingId}
-      data-testid={TESTIDS['schedules-day-page']}
+      data-testid="schedules-day-page"
       style={{ padding: '0 0 16px' }}
     >
       <header
@@ -227,7 +226,7 @@ const DayViewContent = ({
             aria-busy="true"
             aria-live="polite"
             style={{ display: 'grid', gap: isCompact ? SCHEDULE_TIMELINE_SPACING.itemGridGapCompact : SCHEDULE_TIMELINE_SPACING.itemGridGapNormal, paddingTop: isCompact ? 4 : 8 }}
-            data-testid={TESTIDS['schedules-day-skeleton']}
+            data-testid="schedules-day-skeleton"
           >
             <Loading />
             <TimelineSkeleton />
@@ -248,7 +247,7 @@ const DayViewContent = ({
               display: 'grid',
               gap: isCompact ? SCHEDULE_TIMELINE_SPACING.itemGapCompact : SCHEDULE_TIMELINE_SPACING.itemGapNormal,
             }}
-            data-testid={TESTIDS['schedules-day-list']}
+            data-testid="schedules-day-list"
           >
             {typedItems.map((item) => {
               const timeLabel = formatTimeRange(item.start, item.end);
@@ -279,7 +278,7 @@ const DayViewContent = ({
                   key={item.id}
                   role="listitem"
                   style={{ margin: 0, padding: 0 }}
-                  data-testid={TESTIDS['schedules-event-normal']}
+                  data-testid="schedules-event-normal"
                   data-schedule-event="true"
                   data-category={item.category ?? 'Org'}
                   data-id={item.id}

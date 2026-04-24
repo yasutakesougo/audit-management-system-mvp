@@ -6,7 +6,6 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
-import { TESTIDS } from '@/testids';
 import { scheduleCategoryLabels } from '../../domain/mappers/categoryLabels';
 import type { ScheduleCategory } from '../../domain/types';
 import SchedulesFilterResponsive from './SchedulesFilterResponsive';
@@ -67,7 +66,7 @@ export function ScheduleFilterBar(props: ScheduleFilterBarProps) {
             label="カテゴリ"
             value={categoryFilter}
             onChange={(e) => onCategoryChange(e.target.value as 'All' | ScheduleCategory)}
-            data-testid={TESTIDS['schedules-filter-category']}
+            data-testid="schedules-filter-category"
           >
             <MenuItem value="All">すべて</MenuItem>
             <MenuItem value="User">{scheduleCategoryLabels.User}</MenuItem>
@@ -123,7 +122,7 @@ export function ScheduleFilterBar(props: ScheduleFilterBarProps) {
           placeholder="タイトル/場所/担当/利用者で検索"
           sx={{ flex: '1 1 280px', minWidth: 240 }}
           aria-label="スケジュール検索"
-          data-testid={TESTIDS['schedules-filter-query']}
+          data-testid="schedules-filter-query"
         />
       </Stack>
     </SchedulesFilterResponsive>

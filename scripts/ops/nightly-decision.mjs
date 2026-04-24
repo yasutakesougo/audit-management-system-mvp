@@ -86,6 +86,8 @@ const REASON_CODE_ANCHOR_MAP = {
   EXCEPTION_RECURRING_PRESENT: 'rc-exception',
   REGISTRY_AUDIT_FAIL: 'rc-registry-audit',
   REGISTRY_AUDIT_WARN: 'rc-registry-audit',
+  TRANSPORT_CONCURRENCY_PRESSURE: 'rc-transport-concurrency',
+  REPEATED_VEHICLE_CONFLICT: 'rc-transport-concurrency',
 };
 
 const REASON_CODE_ACTION_MAP = {
@@ -253,6 +255,16 @@ const REASON_CODE_ACTION_MAP = {
     owner: 'Release Owner',
     severity: 'action_required',
     firstAction: '連続 watch の根本原因を除去し、昇格ループを停止する。',
+  },
+  TRANSPORT_CONCURRENCY_PRESSURE: {
+    owner: 'Ops Manager',
+    severity: 'watch',
+    firstAction: '送迎配車表での競合発生数を確認し、入力タイミングの重複がないか運用ルールを見直す。',
+  },
+  REPEATED_VEHICLE_CONFLICT: {
+    owner: 'Ops Manager',
+    severity: 'action_required',
+    firstAction: '特定の車両で競合が多発しています。担当者間の連携不全や、同時編集の頻度を確認してください。',
   },
 };
 
@@ -678,6 +690,7 @@ function main() {
     staleExceptionsWarn: envNumber('STALE_EXCEPTIONS_WARN', 1),
     recurringExceptionsWarn: envNumber('RECURRING_EXCEPTIONS_WARN', 1),
     actWarningWarn: envNumber('ACT_WARNING_WARN', 1),
+    transportConcurrencyWarn: envNumber('TRANSPORT_CONCURRENCY_WARN', 5),
   };
   const watchStreakDays = Math.max(2, Math.trunc(envNumber('WATCH_STREAK_DAYS', 3)));
   const watchStreakCodes = parseCsvList(process.env.WATCH_STREAK_CODES, DEFAULT_WATCH_STREAK_CODES);
@@ -1204,6 +1217,31 @@ function main() {
     }
   }
 
+  // 14) Transport Concurrency (from Classification)
+  if (Array.isArray(classification.data?.classifications)) {
+    const concurrencyClassification = classification.data.classifications.find(c => c.kind === 'assignment-concurrency');
+    if (concurrencyClassification) {
+      const conflicts = concurrencyClassification.errorCount || 0;
+      const vehicles = Array.isArray(concurrencyClassification.affectedFiles) ? concurrencyClassification.affectedFiles : [];
+      const vehicleCounts = vehicles.reduce((acc, v) => {
+        acc[v] = (acc[v] || 0) + 1;
+        return acc;
+      }, {});
+      const repeatedVehicles = Object.entries(vehicleCounts).filter(([, count]) => count >= 3).map(([v]) => v);
+
+      if (repeatedVehicles.length > 0) {
+        pushReason(failReasons, `送迎競合多発（車両: ${repeatedVehicles.join(', ')}）`, failReasonCodes, 'REPEATED_VEHICLE_CONFLICT');
+      } else if (conflicts >= thresholds.transportConcurrencyWarn || conflicts > 0) {
+        const severity = conflicts >= 5 ? 'fail' : 'warn';
+        if (severity === 'fail') {
+          pushReason(failReasons, `送迎競合プレッシャー高 (${conflicts} 件)`, failReasonCodes, 'TRANSPORT_CONCURRENCY_PRESSURE');
+        } else {
+          pushReason(warnReasons, `送迎競合検知 (${conflicts} 件)`, warnReasonCodes, 'TRANSPORT_CONCURRENCY_PRESSURE');
+        }
+      }
+    }
+  }
+
   let finalLabel = failReasons.length > 0
     ? 'action_required'
     : warnReasons.length > 0
@@ -1306,6 +1344,59 @@ function main() {
       },
     },
     escalations,
+    interpretation: {
+      signals: [
+        ...toReasonCodeActions(failReasonCodes, 'fail').map(action => {
+          const anchor = REASON_CODE_ANCHOR_MAP[action.normalizedCode] || '';
+          let type = 'zombie';
+          if (anchor.includes('drift')) type = 'drift';
+          else if (anchor.includes('index')) type = 'index';
+          else if (anchor.includes('concurrency')) type = 'concurrency';
+          
+          // Extract affected items from classification results for this reason
+          const affectedItems = classification?.data?.classifications
+            ?.filter(c => {
+              if (action.normalizedCode === 'REPEATED_VEHICLE_CONFLICT' || action.normalizedCode === 'TRANSPORT_CONCURRENCY_PRESSURE') {
+                return c.kind === 'assignment-concurrency';
+              }
+              return false;
+            })
+            ?.flatMap(c => c.affectedFiles || []) || [];
+
+          return {
+            type,
+            severity: action.severity === 'blocked' || action.severity === 'action_required' ? 'critical' : 'warn',
+            message: action.code,
+            recommendation: action.firstAction,
+            affectedItems: affectedItems.length > 0 ? [...new Set(affectedItems)] : undefined,
+          };
+        }),
+        ...toReasonCodeActions(warnReasonCodes, 'warn').map(action => {
+          const anchor = REASON_CODE_ANCHOR_MAP[action.normalizedCode] || '';
+          let type = 'zombie';
+          if (anchor.includes('drift')) type = 'drift';
+          else if (anchor.includes('index')) type = 'index';
+          else if (anchor.includes('concurrency')) type = 'concurrency';
+
+          const affectedItems = classification?.data?.classifications
+            ?.filter(c => {
+              if (action.normalizedCode === 'REPEATED_VEHICLE_CONFLICT' || action.normalizedCode === 'TRANSPORT_CONCURRENCY_PRESSURE') {
+                return c.kind === 'assignment-concurrency';
+              }
+              return false;
+            })
+            ?.flatMap(c => c.affectedFiles || []) || [];
+
+          return {
+            type,
+            severity: 'warn',
+            message: action.code,
+            recommendation: action.firstAction,
+            affectedItems: affectedItems.length > 0 ? [...new Set(affectedItems)] : undefined,
+          };
+        }),
+      ]
+    }
   };
 
   const markdown = `# 🛰 Nightly Patrol Decision — ${date}

@@ -8,6 +8,9 @@ export {
     getCurrentScheduleRepositoryKind, getScheduleRepository, overrideScheduleRepository,
     resetScheduleRepository, useScheduleRepository, type ScheduleRepositoryFactoryOptions, type ScheduleRepositoryKind
 } from './repositoryFactory';
+export {
+    getAssignmentRepository, useAssignmentRepository, overrideAssignmentRepository, resetAssignmentRepository
+} from './assignmentRepositoryFactory';
 
 // Routes
 export { default as DayView } from './routes/DayView';

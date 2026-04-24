@@ -17,6 +17,11 @@ const DEFAULT_ENV = {
   VITE_FEATURE_SCHEDULES: '1',
   VITE_FEATURE_SCHEDULES_WEEK_V2: '1',
   VITE_SCHEDULES_SAVE_MODE: 'mock',
+  VITE_TEST_ROLE: 'admin',
+  VITE_FORCE_SHAREPOINT: '0',
+  VITE_E2E_FORCE_SCHEDULES_WRITE: '1',
+  VITE_SP_RESOURCE: 'https://example.sharepoint.com',
+  VITE_SP_SITE_RELATIVE: '/sites/demo',
 } satisfies Record<string, string>;
 
 const DEFAULT_STORAGE = {

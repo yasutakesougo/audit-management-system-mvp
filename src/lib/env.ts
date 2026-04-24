@@ -199,12 +199,7 @@ export const readEnv = (key: string, fallback = '', envOverride?: EnvRecord): st
   return normalized === '' ? fallback : normalized;
 };
 
-let appConfigCache: AppConfig | null = null;
-
 export const getAppConfig = (envOverride?: EnvRecord): AppConfig => {
-  if (!envOverride && appConfigCache) {
-    return appConfigCache;
-  }
 
   const cfg: AppConfig = {
     VITE_SP_RESOURCE: readEnv('VITE_SP_RESOURCE', '', envOverride),
@@ -231,19 +226,16 @@ export const getAppConfig = (envOverride?: EnvRecord): AppConfig => {
     facilityName: readEnv('VITE_FACILITY_NAME', '', envOverride),
   };
 
-  if (!envOverride) {
-    appConfigCache = cfg;
-  }
-
+  // No caching to support dynamic overrides
   return cfg;
 };
 
 export const __resetAppConfigForTests = (): void => {
-  appConfigCache = null;
+  // No-op as caching is disabled
 };
 
 export const clearEnvCache = (): void => {
-  __resetAppConfigForTests();
+  // No-op as caching is disabled
 };
 
 export const readOptionalEnv = (key: string, envOverride?: EnvRecord): string | undefined => {

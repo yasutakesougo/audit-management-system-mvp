@@ -335,6 +335,10 @@ if (spTelemetrySummary && spTelemetrySummary.metrics) {
     `- Avg Queue: **${m.avgQueuedMs}ms**`,
     `- Max Queue: **${m.maxQueuedMs}ms**`,
     '',
+    '### 🚗 送迎配車 (Transport Assignment)',
+    `- Concurrency Conflicts: **${m.assignmentConcurrencyConflicts || 0}**`,
+    `- Conflict Vehicles: **${(m.assignmentConflictVehicles && m.assignmentConflictVehicles.length > 0) ? m.assignmentConflictVehicles.join(', ') : '✅ なし'}**`,
+    '',
     '### 🚦 Lane 別の通信状況',
     ...(m.lanes ? [
       '| Lane | 実行数 | Failed | Retry | Max Queue | Avg Duration |',
@@ -545,6 +549,9 @@ const patrolResultsJson = {
     anyFiles: [...new Set(anyHits.map((h) => h.file))],
     todoCount: todoHits.length,
     untestedFeatures: untestedFeatures.map((f) => f.feature),
+    assignmentConcurrencyConflicts: spTelemetrySummary?.metrics?.transportConcurrency?.totalConflicts || spTelemetrySummary?.metrics?.assignmentConcurrencyConflicts || 0,
+    assignmentConflictVehicles: spTelemetrySummary?.metrics?.transportConcurrency?.vehicleHistogram ? Object.keys(spTelemetrySummary.metrics.transportConcurrency.vehicleHistogram) : (spTelemetrySummary?.metrics?.assignmentConflictVehicles || []),
+    transportConcurrency: spTelemetrySummary?.metrics?.transportConcurrency || null,
   },
   gates: {
     unitTest: GATE_UNIT_TEST_TOTAL > 0

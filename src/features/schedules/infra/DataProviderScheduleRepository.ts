@@ -146,8 +146,9 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
   async list(params: ScheduleRepositoryListParams): Promise<ScheduleItem[]> {
     const { range, signal } = params;
 
+    let fields: ResolvedScheduleFields | null = null;
     try {
-      const fields = await this.resolveFields();
+      fields = await this.resolveFields();
       if (!fields) return [];
 
       // 動的 $select 生成
@@ -182,13 +183,14 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       // Domain filtering (Visibility)
       return this.applyVisibilityFilter(allItems);
     } catch (err) {
-      return this.handleError(err, '予定の取得に失敗しました。');
+      return this.handleError(err, '予定の取得に失敗しました。', fields);
     }
   }
 
   async getById(id: string): Promise<ScheduleItem | null> {
+    let fields: ResolvedScheduleFields | null = null;
     try {
-      const fields = await this.resolveFields();
+      fields = await this.resolveFields();
       if (!fields) return null;
 
       const row = await this.provider.getItemById<SpScheduleRow>(this.listTitle, id);
@@ -201,7 +203,7 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       ) as unknown as SpScheduleRow;
       return mapSpRowToSchedule(washed);
     } catch (err) {
-      return this.handleError(err, '予定の取得に失敗しました。');
+      return this.handleError(err, '予定の取得に失敗しました。', fields);
     }
   }
 
@@ -221,8 +223,9 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
    * 予定作成
    */
   async create(input: CreateScheduleInput, _params?: ScheduleRepositoryMutationParams): Promise<ScheduleItem> {
+    let fields: ResolvedScheduleFields | null = null;
     try {
-      const fields = await this.resolveFields();
+      fields = await this.resolveFields();
       if (!fields) throw new Error('Cannot resolve fields for creation');
 
       const startIso = input.startLocal || new Date().toISOString();
@@ -236,8 +239,9 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
         [fields.end]: endIso,
       };
 
-      const apply = (key: keyof typeof fields, val: unknown) => {
-        const field = fields[key];
+      const resolvedFields = fields;
+      const apply = (key: keyof ResolvedScheduleFields, val: unknown) => {
+        const field = resolvedFields[key];
         const normalized = this.normalizeClearableValue(val);
         if (field && normalized !== undefined) payload[field] = normalized;
       };
@@ -268,7 +272,7 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       
       return item;
     } catch (err) {
-      return this.handleError(err, '予定の作成に失敗しました。');
+      return this.handleError(err, '予定の作成に失敗しました。', fields);
     }
   }
 
@@ -276,15 +280,17 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
    * 予定更新
    */
   async update(input: UpdateScheduleInput, _params?: ScheduleRepositoryMutationParams): Promise<ScheduleItem> {
+    let fields: ResolvedScheduleFields | null = null;
     try {
-      const fields = await this.resolveFields();
+      fields = await this.resolveFields();
       if (!fields) throw new Error('Cannot resolve fields for update');
 
       const startDate = new Date(input.startLocal || new Date());
 
       const payload: Record<string, unknown> = {};
-      const apply = (key: keyof typeof fields, val: unknown) => {
-        const field = fields[key];
+      const resolvedFields = fields;
+      const apply = (key: keyof ResolvedScheduleFields, val: unknown) => {
+        const field = resolvedFields[key];
         const normalized = this.normalizeClearableValue(val);
         if (field && normalized !== undefined) payload[field] = normalized;
       };
@@ -322,9 +328,9 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
     } catch (err) {
       const status = getHttpStatus(err);
       if (status === 412) {
-        throw new Error('予定が別のユーザーによって更新されました。再読み込みしてください。');
+        throw new Error('予定が別のユーザーによって更新されました (conflict)。最新の情報に更新してから再度お試しください。');
       }
-      return this.handleError(err, '予定の更新に失敗しました。');
+      return this.handleError(err, '予定の更新に失敗しました。', fields);
     }
   }
 
@@ -359,7 +365,7 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
     return value;
   }
 
-  private handleError(err: unknown, userMessage: string): never {
+  private handleError(err: unknown, userMessage: string, fields?: ResolvedScheduleFields | null): never {
     const error = toSafeError(err);
     const { httpStatus, message: spMessage, sprequestguid } = summarizeSpError(err);
 
@@ -371,17 +377,18 @@ export class DataProviderScheduleRepository implements ScheduleRepository {
       throw error;
     }
     
-    // Detect Threshold error (SharePoint view limit 5000 items)
+    const guid = sprequestguid ? ` [Request ID: ${sprequestguid}]` : '';
     const isThreshold = httpStatus === 500 && (
       spMessage.includes('しきい値') || 
       spMessage.toLowerCase().includes('threshold') ||
       spMessage.includes('5000')
     );
-    
-    const guid = sprequestguid ? ` [Request ID: ${sprequestguid}]` : '';
-    const enrichedMessage = isThreshold 
-      ? `${userMessage} (SharePoint リストのしきい値制限 [5000件] に抵触しました。EventDate, EndDate, cr014_dayKey 等の列を SharePoint 設定からインデックス化する必要があります)${guid}`
-      : `${userMessage} (${error.message})${guid}`;
+
+    let enrichedMessage = `${userMessage} (${error.message})${guid}`;
+    if (isThreshold) {
+      const fieldInfo = fields?.start ? ` (対象列: ${fields.start})` : '';
+      enrichedMessage = `${userMessage} (SharePoint リストのしきい値制限 [5000件] に抵触しました${fieldInfo}。インデックス化を確認してください)${guid}`;
+    }
 
     auditLog.error('schedule:repo', enrichedMessage, { 
       error,

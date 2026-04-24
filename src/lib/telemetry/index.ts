@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+
 /**
  * Common Telemetry Events across the system.
  */
@@ -8,7 +9,8 @@ export type CommonTelemetryEvent =
   | 'drift:detected'
   | 'remediation:triggered'
   | 'remediation:completed'
-  | 'remediation:failed';
+  | 'remediation:failed'
+  | 'assignment:concurrency_conflict';
 
 export type TelemetryPayload = Record<string, unknown>;
 
@@ -22,24 +24,44 @@ const useTelemetryStore = create<TelemetryState>()(() => ({
   transport: null,
 }));
 
+import { spTelemetryStore } from './spTelemetryStore';
+
 /**
  * Global entry point for operational telemetry.
- * 
- * Used for tracking runtime drifts, failures, and important business signals 
- * that are decoupled from specific UI features.
  */
 export const emitTelemetry = (event: CommonTelemetryEvent | string, payload: TelemetryPayload = {}) => {
   const { transport } = useTelemetryStore.getState();
+  
+  if (typeof window !== 'undefined') {
+    // Robust E2E diagnostic hook (Persistent log)
+    const log = (window as any).__TELEMETRY_LOG__ || [];
+    log.push({ event, payload, timestamp: Date.now() });
+    (window as any).__TELEMETRY_LOG__ = log;
+    (window as any).__LAST_TELEMETRY__ = { event, payload, timestamp: Date.now() };
+    
+    window.dispatchEvent(new CustomEvent('app:telemetry', { 
+      detail: { event, payload, timestamp: new Date().toISOString() } 
+    }));
+
+    // [Operational OS Bridge] Bridge significant app events to SP telemetry for Nightly Patrol aggregation
+    if (event === 'assignment:concurrency_conflict') {
+      spTelemetryStore.record({
+        type: 'config_warning',
+        scope: 'TransportAssignment',
+        code: 'CONCURRENCY_CONFLICT',
+        message: Array.isArray(payload.vehicles) ? payload.vehicles.join(', ') : String(payload.vehicles || ''),
+        count: Number(payload.conflictCount || 1),
+      });
+    }
+  }
+
   if (transport) {
-    // We cast to string to allow extensibility, but highly recommend using CommonTelemetryEvent
     transport(event, payload);
     return;
   }
   
-  if (process.env.NODE_ENV !== 'production') {
-    // eslint-disable-next-line no-console
-    console.debug(`[telemetry:ops] ${event}`, payload);
-  }
+  // eslint-disable-next-line no-console
+  console.debug(`[telemetry:ops] ${event}`, payload);
 };
 
 /**

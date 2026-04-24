@@ -111,6 +111,8 @@ const CLEAN_ENV = Object.fromEntries(ENV_KEYS_TO_RESTORE.map((k) => [k, process.
 beforeEach(() => {
 	// Ensure every test starts from a clean environment (covers vi.stubEnv/import.meta.env)
 	vi.unstubAllEnvs?.();
+	vi.stubEnv('VITE_FORCE_SHAREPOINT', 'false');
+	vi.stubEnv('VITE_FORCE_DEMO', 'false');
 	clearEnvCache();
 	resetParsedEnvForTests();
 	__clearProviderCache();
@@ -252,6 +254,9 @@ const mockSpClient = {
 	fetchRows: vi.fn().mockResolvedValue([]),
 	fetchRowById: vi.fn().mockResolvedValue(null),
 	spFetch: vi.fn().mockResolvedValue(new Response(JSON.stringify({}), { status: 200 })),
+	getListFieldInternalNames: vi.fn().mockResolvedValue(new Set()),
+	getExistingListTitlesAndIds: vi.fn().mockResolvedValue(new Set()),
+	tryGetListMetadata: vi.fn().mockResolvedValue({ Id: 'test-id', Title: 'Test List' }),
 	getUnifiedEvents: vi.fn().mockResolvedValue(mockUnifiedEvents),
 	getResources: vi.fn().mockResolvedValue([]),
 };
@@ -261,7 +266,7 @@ vi.mock('@/lib/spClient', async () => {
 	return {
 		...actual,
 		useSP: () => mockSpClient,
-		createSpClient: actual.createSpClient,
+		createSpClient: () => mockSpClient,
 		createIrcSpClient: () => mockSpClient,
 		mockSpClient,
 	};

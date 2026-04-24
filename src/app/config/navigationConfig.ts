@@ -128,7 +128,6 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     
     // --- 2. スケジュール・割当 (schedules) ---
     ...(schedulesEnabled ? [
-      createHubNavItem('schedules'),
       SCHEDULES_ROUTES.CALENDAR.WEEK(isFieldStaffShell),
       SCHEDULES_ROUTES.ASSIGNMENT.TRANSPORT(isFieldStaffShell),
     ] : []),

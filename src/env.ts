@@ -69,9 +69,6 @@ const shouldAllowRuntimeFlagOverrides = (runtimeEnv?: EnvDict): boolean => {
   return false;
 };
 
-// 🚀 パフォーマンス最適化：軽量キャッシュ付き getRuntimeEnv
-let cachedEnv: EnvDict | null = null;
-
 export function getRuntimeEnv(): EnvDict {
   const fromWindow = getWindowEnv();
   if (fromWindow) {
@@ -86,29 +83,10 @@ export function getRuntimeEnv(): EnvDict {
       }
     }
 
-    // DEBUG: Log E2E flag state (dev + explicit flag only)
-    const debugEnvEnabled =
-      import.meta.env.DEV &&
-      (String(fromWindow?.VITE_DEBUG_ENV) === '1' || String(INLINE_ENV.VITE_DEBUG_ENV) === '1');
-    if (debugEnvEnabled) {
-      console.debug('[getRuntimeEnv] DEBUG:', {
-        'fromWindow.VITE_E2E_MSAL_MOCK': fromWindow?.VITE_E2E_MSAL_MOCK,
-        'fromWindow.VITE_E2E': fromWindow?.VITE_E2E,
-        'INLINE_ENV.VITE_E2E_MSAL_MOCK': INLINE_ENV.VITE_E2E_MSAL_MOCK,
-        'allowRuntimeOverrides': allowRuntimeOverrides,
-        'merged.VITE_E2E_MSAL_MOCK': merged.VITE_E2E_MSAL_MOCK,
-      });
-    }
-
-    cachedEnv = merged;
     return merged;
   }
 
-  if (cachedEnv) return cachedEnv;
-
-  const merged = { ...INLINE_ENV } as EnvDict;
-  cachedEnv = merged;
-  return merged;
+  return { ...INLINE_ENV } as EnvDict;
 }
 
 export function get(name: string, fallback = ''): string {
@@ -167,24 +145,44 @@ export function resolveIsDev(): boolean {
 }
 
 export const isDev = resolveIsDev();
-// 🔧 命名統一：環境フラグを定数化
-export const isE2E = getFlag('VITE_E2E', false);
-export const isE2eMsalMock = getFlag('VITE_E2E_MSAL_MOCK', false);
-export const isDemo = getFlag('VITE_DEMO', false);
-/**
- * 書き込み操作の可否フラグ（デフォルト: true）
- * 本番環境で安全に read-only モードにする際に使用
- */
-export const isWriteEnabled = getFlag('VITE_WRITE_ENABLED', true);
+
+// 🔧 Getters for dynamic runtime evaluation in E2E/Demo environments
+export const getIsE2E = () => getFlag('VITE_E2E', false);
+export const getIsE2eMsalMock = () => getFlag('VITE_E2E_MSAL_MOCK', false);
+export const getIsDemo = () => getFlag('VITE_DEMO', false);
+export const getIsWriteEnabled = () => getFlag('VITE_WRITE_ENABLED', true);
+
+// Legacy constants (retained for compatibility but marked as dynamic where possible)
+export const isE2E = getIsE2E();
+export const isE2eMsalMock = getIsE2eMsalMock();
+export const isDemo = getIsDemo();
+export const isWriteEnabled = getIsWriteEnabled();
+
 export const isE2eForceSchedulesWrite =
-  isE2E && isE2eMsalMock && getFlag('VITE_E2E_FORCE_SCHEDULES_WRITE', false);
+  getIsE2E() && getIsE2eMsalMock() && getFlag('VITE_E2E_FORCE_SCHEDULES_WRITE', false);
+
+// Use a getter for more robust runtime evaluation in E2E environments
+export function getIsE2eForceSchedulesWrite(): boolean {
+  // Directly read from the runtime env to avoid any stale constant issues
+  const runtimeEnv = getRuntimeEnv();
+  const forceWriteRaw = runtimeEnv['VITE_E2E_FORCE_SCHEDULES_WRITE'];
+  const forceWrite = forceWriteRaw === '1' || forceWriteRaw === 'true';
+  
+  if (forceWrite && !getIsE2E()) {
+    // 📊 Warn if force write is set but E2E mode is not detected
+    // eslint-disable-next-line no-console
+    console.warn('[env] VITE_E2E_FORCE_SCHEDULES_WRITE is set but VITE_E2E is not detected. Access may be blocked.');
+  }
+
+  return forceWrite;
+}
 /**
  * Clear the cached env after runtime env is loaded.
  * Call this after window.__ENV__ is updated to ensure fresh reads.
  * @internal
  */
 export function clearEnvCache(): void {
-  cachedEnv = null;
+  // No-op as caching is disabled to support dynamic E2E overrides
 }
 
 /**

@@ -1,4 +1,3 @@
-import { TESTIDS } from '@/testids';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import Box from '@mui/material/Box';
@@ -73,7 +72,7 @@ export const DayPopover: React.FC<DayPopoverProps> = ({
       onClose={onClose}
       anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-      data-testid={TESTIDS['schedules-day-popover']}
+      data-testid="schedules-day-popover"
     >
       <Box sx={{ p: 2, minWidth: 280, maxWidth: 400 }}>
         {/* ヘッダー */}
@@ -169,7 +168,7 @@ export const DayPopover: React.FC<DayPopoverProps> = ({
             size="small"
             variant="contained"
             onClick={openDayAndClose}
-            data-testid={TESTIDS['schedules-popover-open-day']}
+            data-testid="schedules-popover-open-day"
             startIcon={<CalendarTodayIcon />}
           >
             Day で開く

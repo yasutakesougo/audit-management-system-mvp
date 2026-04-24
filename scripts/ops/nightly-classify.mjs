@@ -63,6 +63,23 @@ export function isTestOrStubFile(filePath) {
 const SEVERITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
 
 /**
+ * Calculate percentiles from an array of numbers.
+ * @param {number[]} values
+ * @param {number} p - percentile (0-100)
+ * @returns {number}
+ */
+function calculatePercentile(values, p) {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = (p / 100) * (sorted.length - 1);
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  const weight = index - lower;
+  if (upper >= sorted.length) return sorted[lower];
+  return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+}
+
+/**
  * Classify a single gate failure.
  *
  * Guard-first design: check prod safety BEFORE checking auto-fixable.
@@ -152,6 +169,38 @@ export function classify(patrolResult) {
       errorCount: largeFiles.length,
       affectedFiles: largeFiles.map((f) => f.file),
       isTestOnly: false,
+    });
+  }
+
+  // ── Transport Assignment Concurrency ───────────────────────────────────
+  const concurrencyMetrics = metrics.transportConcurrency || {};
+  const assignmentConflicts = concurrencyMetrics.totalConflicts ?? metrics.assignmentConcurrencyConflicts ?? 0;
+  
+  if (assignmentConflicts > 0) {
+    const vehicleHistogram = concurrencyMetrics.vehicleHistogram || {};
+    const conflictCounts = Object.values(vehicleHistogram);
+    
+    // Calculate stats if we have histogram data
+    const stats = concurrencyMetrics.stats || (conflictCounts.length > 0 ? {
+      p50: Math.round(calculatePercentile(conflictCounts, 50)),
+      p90: Math.round(calculatePercentile(conflictCounts, 90)),
+      max: Math.max(...conflictCounts),
+    } : null);
+
+    classifications.push({
+      kind: 'assignment-concurrency',
+      severity: assignmentConflicts >= 10 || (stats?.p90 >= 5) ? 'high' : assignmentConflicts >= 5 ? 'medium' : 'low',
+      classification: 'monitor',
+      errorCount: assignmentConflicts,
+      affectedFiles: metrics.assignmentConflictVehicles || Object.keys(vehicleHistogram),
+      isTestOnly: false,
+      concurrency: {
+        totalConflicts: assignmentConflicts,
+        vehicleHistogram,
+        hourBandHistogram: concurrencyMetrics.hourBandHistogram || {},
+        recoveryRate: concurrencyMetrics.recoveryRate || 0,
+        stats,
+      }
     });
   }
 

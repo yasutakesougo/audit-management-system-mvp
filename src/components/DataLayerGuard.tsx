@@ -16,6 +16,7 @@ export const DataLayerGuard: React.FC<{ children: React.ReactNode }> = ({ childr
   if (!currentProvider) {
     return (
       <Box
+        data-testid="data-layer-guard-loading"
         sx={{
           display: 'flex',
           flexDirection: 'column',
@@ -37,5 +38,15 @@ export const DataLayerGuard: React.FC<{ children: React.ReactNode }> = ({ childr
     );
   }
 
-  return <>{children}</>;
+  // [DIAGNOSTIC] Provide a stable container for the children to avoid reconciliation errors
+  return (
+    <Box 
+      component="main" 
+      id="app-main-container" 
+      data-provider={currentProvider}
+      sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}
+    >
+      {children}
+    </Box>
+  );
 };

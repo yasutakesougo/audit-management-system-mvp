@@ -34,6 +34,7 @@ import {
     isDemoModeEnabled,
     isForceDemoEnabled,
     readBool,
+    readEnv,
     isTestMode,
     isDevMode,
     shouldSkipLogin,
@@ -110,17 +111,24 @@ export interface RepositoryFactory<
  * skip-login, or missing SPFx context.
  */
 export const defaultShouldUseDemo = (): boolean => {
-  // 1. Explicit force flags
+  // 1. Environment defaults - Test mode ALWAYS prefers demo unless forceKind is used in getRepository
+  if (isTestMode()) {
+    // Even in test mode, we allow VITE_FORCE_SHAREPOINT to override if it's explicitly set to 'true'
+    // but we want to be very careful here.
+    if (readEnv('VITE_FORCE_SHAREPOINT', '') === 'true') return false;
+    return true;
+  }
+
+  // 2. Explicit force flags
   if (readBool('VITE_FORCE_SHAREPOINT', false)) return false;
   if (isForceDemoEnabled()) return true;
 
-  // 2. Explicit opt-ins
+  // 3. Explicit opt-ins
   if (isDemoModeEnabled()) return true;
   if (shouldSkipLogin()) return true;
   if (shouldSkipSharePoint()) return true;
 
-  // 3. Environment defaults
-  if (isTestMode()) return true;
+  // 4. Dev environment defaults
   if (isDevMode() && readBool('VITE_DEV_DEMO', false)) return true;
 
   return false;

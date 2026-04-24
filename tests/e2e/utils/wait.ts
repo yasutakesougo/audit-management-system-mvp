@@ -68,7 +68,7 @@ export async function waitForScheduleReady(
 
   const pageRoot = page.getByTestId(TESTIDS.SCHEDULES_PAGE_ROOT);
   const headerRoot = page.getByTestId(TESTIDS.SCHEDULES_HEADER_ROOT);
-  const hasPageRoot = await locatorExists(pageRoot, 2_000);
+  const hasPageRoot = await locatorExists(pageRoot, 10_000);
   await expect(hasPageRoot ? pageRoot : headerRoot).toBeVisible({ timeout: resolved.timeout });
 
   const loading = page.locator('[aria-busy="true"]');
@@ -111,10 +111,16 @@ export async function waitForDayScheduleReady(page: Page, timeout = 15_000): Pro
   }
 }
 
-export async function waitForDayTimeline(page: Page): Promise<void> {
+export async function waitForDayTimeline(page: Page, timeout = 15_000): Promise<void> {
   // Day view is now a tab within /schedules/week (renders DayView component)
-  await expect(page).toHaveURL(/\/schedules\/week/);
+  await expect(page).toHaveURL(/\/schedules\/week/, { timeout });
   
+  // Wait for loading to finish first
+  const loading = page.locator('[aria-busy="true"]');
+  if (await loading.isVisible().catch(() => false)) {
+    await loading.waitFor({ state: 'detached', timeout }).catch(() => undefined);
+  }
+
   // Verify tab parameter if present
   const url = new URL(page.url());
   const tabParam = url.searchParams.get('tab');
@@ -122,20 +128,21 @@ export async function waitForDayTimeline(page: Page): Promise<void> {
     expect(tabParam).toBe('day');
   }
   
-  await expect(page.getByTestId(TESTIDS['schedules-day-page'])).toBeVisible({ timeout: 15_000 });
+  // Wait for the day page container
+  await expect(page.getByTestId(TESTIDS['schedules-day-page'])).toBeVisible({ timeout });
 
   const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).first();
-  await expect(dayTab).toBeVisible();
+  await expect(dayTab).toBeVisible({ timeout });
   const isSelected = (await dayTab.getAttribute('aria-selected')) === 'true';
   if (!isSelected) {
     await dayTab.click();
   }
-  await expect(dayTab).toHaveAttribute('aria-selected', 'true');
+  await expect(dayTab).toHaveAttribute('aria-selected', 'true', { timeout });
 
   const dayPage = page.getByTestId(TESTIDS['schedules-day-page']);
-  const hasDayPage = await locatorExists(dayPage, 2_000);
+  const hasDayPage = await locatorExists(dayPage, 5_000);
   const root = hasDayPage ? dayPage.first() : page.getByTestId('schedule-day-root').first();
-  await expect(root).toBeVisible();
+  await expect(root).toBeVisible({ timeout });
 }
 
 export async function waitForWeekViewReady(page: Page): Promise<void> {

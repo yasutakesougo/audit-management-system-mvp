@@ -28,6 +28,7 @@ type ListStubConfig<TItem extends Record<string, unknown> = Record<string, unkno
   pageSize?: number;
   sort?: (items: TItem[]) => TItem[];
   onCreate?: (payload: unknown, ctx: CreateContext<TItem>) => TItem;
+  fields?: Array<{ InternalName: string; Title?: string; TypeAsString?: string }>;
   onUpdate?: (id: number, payload: unknown, ctx: UpdateContext<TItem>) => TItem;
 };
 
@@ -46,7 +47,6 @@ type ListState<TItem extends Record<string, unknown> = Record<string, unknown>> 
 
 type ScheduleRecord = Record<string, unknown>;
 
-// Single source of truth for schedule items across GET/PATCH/POST/DELETE.
 let scheduleStore: ScheduleRecord[] = [];
 
 export const resetScheduleStore = (next: ScheduleRecord[]): void => {
@@ -58,28 +58,15 @@ const ensureText = (value: unknown): string | undefined => (typeof value === 'st
 const normalizeScheduleRecord = (rec: ScheduleRecord): ScheduleRecord => {
   const title = ensureText(rec['Title']) ?? ensureText(rec['cr014_title']);
   const service = ensureText(rec['ServiceType']) ?? ensureText(rec['cr014_serviceType']);
-
-  if (title) {
-    rec['Title'] = title;
-    rec['cr014_title'] = title;
-  }
-  if (service) {
-    rec['ServiceType'] = service;
-    rec['cr014_serviceType'] = service;
-  }
+  if (title) { rec['Title'] = title; rec['cr014_title'] = title; }
+  if (service) { rec['ServiceType'] = service; rec['cr014_serviceType'] = service; }
   if (!rec['Status']) rec['Status'] = '予定';
   return rec;
 };
 
-// Schedules list aliases we use in tests (ScheduleEvents/Schedules_Master/SupportSchedule etc.)
 const isScheduleList = (config: ListStubConfig): boolean => {
   const names = [config.name, ...(config.aliases ?? [])].map(normalizeName);
-  return names.some((n) =>
-    n === 'schedules' ||
-    n === 'scheduleevents' ||
-    n === 'schedules_master' ||
-    n === 'supportschedule'
-  );
+  return names.some((n) => ['schedules', 'scheduleevents', 'schedules_master', 'supportschedule'].includes(n));
 };
 
 const JSON_HEADERS: Record<string, string> = {
@@ -98,209 +85,77 @@ const computeNextId = (items: Array<Record<string, unknown>>): number => {
   let max = 0;
   for (const item of items) {
     const candidate = item?.['Id'];
-    if (typeof candidate === 'number' && Number.isFinite(candidate)) {
-      max = Math.max(max, candidate);
-    }
+    if (typeof candidate === 'number' && Number.isFinite(candidate)) max = Math.max(max, candidate);
   }
   return max + 1;
 };
 
 const cloneRecord = <T extends Record<string, unknown>>(value: T): T => {
-  if (typeof structuredClone === 'function') {
-    try {
-      return structuredClone(value);
-    } catch {
-      // fall back to JSON cloning below
-    }
-  }
-  try {
-    return JSON.parse(JSON.stringify(value)) as T;
-  } catch {
-    return { ...value } as T;
-  }
+  try { return JSON.parse(JSON.stringify(value)) as T; } catch { return { ...value } as T; }
 };
 
 const toJsonBody = (body: unknown): string => {
   if (body === undefined || body === null) return '';
   if (typeof body === 'string') return body;
-  try {
-    return JSON.stringify(body);
-  } catch {
-    return '';
+  try { return JSON.stringify(body); } catch { return ''; }
+};
+
+const normalizeBody = (body: unknown): Record<string, unknown> => {
+  if (!body || typeof body !== 'object') return {};
+  const rec = body as Record<string, unknown>;
+  if ('d' in rec && rec.d && typeof rec.d === 'object') {
+    return rec.d as Record<string, unknown>;
   }
+  return rec;
 };
 
 const fulfill = async (route: Route, init: HttpResponseInit) => {
   const status = init.status ?? 200;
   const body = toJsonBody(init.body);
   const headers = { ...JSON_HEADERS, ...init.headers };
-  // Let Playwright handle Content-Length automatically
   await route.fulfill({ status, headers, body });
 };
 
 const parseRequestBody = (request: Request): unknown => {
-  try {
-    const raw = request.postData();
-    if (!raw) return {};
-    return JSON.parse(raw);
-  } catch {
-    return {};
-  }
-};
-
-const stripOuterParens = (input: string): string => {
-  let trimmed = input.trim();
-  while (trimmed.startsWith('(') && trimmed.endsWith(')')) {
-    const inner = trimmed.slice(1, -1).trim();
-    if (!inner.length) break;
-    trimmed = inner;
-  }
-  return trimmed;
-};
-
-const parseClauses = (filter: string): string[] => {
-  const clauses: string[] = [];
-  let depth = 0;
-  let start = 0;
-  for (let i = 0; i < filter.length; i += 1) {
-    const char = filter[i];
-    if (char === '(') depth += 1;
-    if (char === ')') depth = Math.max(0, depth - 1);
-    if (depth === 0 && filter.slice(i, i + 4).toLowerCase() === ' and') {
-      clauses.push(filter.slice(start, i));
-      start = i + 4;
-    }
-  }
-  clauses.push(filter.slice(start));
-  return clauses.map(stripOuterParens).filter(Boolean);
-};
-
-const applyFilter = (items: Array<Record<string, unknown>>, filterRaw: string | null): Array<Record<string, unknown>> => {
-  // 現状サポートしている OData filter:
-  // - Field eq 'string'
-  // - Field eq number
-  // - datetime'...' with lt/le/gt/ge
-  // - substringof('needle', Field)
-  // - AND での結合のみ (OR, ne, startswith, endswith などは未対応)
-
-  if (!filterRaw) return items;
-  const clauses = parseClauses(filterRaw);
-  if (clauses.length === 0) return items;
-  let result = items;
-  for (const clause of clauses) {
-    const comparison = clause.match(/^([\w@.]+)\s+(eq|lt|le|gt|ge)\s+(.+)$/i);
-    const substring = clause.match(/substringof\('([^']*)',\s*([\w@.]+)\)/i);
-    if (comparison) {
-      const [, field, opRaw, valueRaw] = comparison;
-      const op = opRaw.toLowerCase();
-      const fieldName = field;
-      const valueText = valueRaw.trim();
-      if (op === 'eq') {
-        const stringMatch = valueText.match(/^'([\s\S]*)'$/);
-        if (stringMatch) {
-          const expected = stringMatch[1]?.replace(/''/g, "'") ?? '';
-          result = result.filter((item) => String(item[fieldName] ?? '').toLowerCase() === expected.toLowerCase());
-          continue;
-        }
-        const numeric = Number(valueText);
-        if (!Number.isNaN(numeric)) {
-          result = result.filter((item) => Number(item[fieldName]) === numeric);
-          continue;
-        }
-      }
-      const dateMatch = valueText.match(/^datetime'([^']+)'$/i);
-      if (dateMatch) {
-        const expected = Date.parse(dateMatch[1]);
-        result = result.filter((item) => {
-          const raw = item[fieldName];
-          const actual = typeof raw === 'string' ? Date.parse(raw) : Number.NaN;
-          if (Number.isNaN(expected) || Number.isNaN(actual)) return false;
-          if (op === 'lt') return actual < expected;
-          if (op === 'le') return actual <= expected;
-          if (op === 'gt') return actual > expected;
-          if (op === 'ge') return actual >= expected;
-          return false;
-        });
-        continue;
-      }
-    }
-    if (substring) {
-      const [, needle, field] = substring;
-      const expected = needle.toLowerCase();
-      result = result.filter((item) => String(item[field] ?? '').toLowerCase().includes(expected));
-      continue;
-    }
-    // unhandled clause -> leave result as-is
-  }
-  return result;
-};
-
-const normalizeBody = (body: unknown): Record<string, unknown> => {
-  if (!body || typeof body !== 'object') return {};
-  return body as Record<string, unknown>;
+  try { const raw = request.postData(); return raw ? JSON.parse(raw) : {}; } catch { return {}; }
 };
 
 const matchListPath = (pathname: string) => {
   const decoded = decodeURIComponent(pathname);
   const byTitle = decoded.match(/\/_api\/web\/lists\/getbytitle\('([^']+)'\)(.*)$/i);
-  if (byTitle) {
-    return { key: byTitle[1], remainder: byTitle[2] ?? '' };
-  }
-  return null;
-};
-
-const prepareItemsResponse = (state: ListState, query: URLSearchParams): Record<string, unknown>[] => {
-  const filtered = applyFilter(state.items as Array<Record<string, unknown>>, query.get('$filter'));
-  const sorted = state.config.sort ? state.config.sort(filtered.slice() as Array<Record<string, unknown>>) : filtered;
-  const topRaw = query.get('$top');
-  const top = topRaw ? Number(topRaw) : Number.NaN;
-  const configuredLimit = Number.isFinite(state.config.pageSize ?? Number.NaN)
-    ? Number(state.config.pageSize)
-    : Number.NaN;
-
-  let limit = Number.NaN;
-  if (Number.isFinite(top) && top > 0) {
-    limit = Number.isFinite(configuredLimit) && configuredLimit > 0 ? Math.min(configuredLimit, top) : top;
-  } else if (Number.isFinite(configuredLimit) && configuredLimit > 0) {
-    limit = configuredLimit;
-  }
-
-  if (Number.isFinite(limit) && limit > 0) {
-    return sorted.slice(0, limit).map((item) => cloneRecord(item));
-  }
-  return sorted.map((item) => cloneRecord(item));
+  return byTitle ? { key: byTitle[1], remainder: byTitle[2] ?? '' } : null;
 };
 
 export async function setupSharePointStubs(page: Page, options: SetupSharePointStubsOptions = {}): Promise<void> {
   const nameMap = new Map<string, ListState>();
-  const debug = options.debug ?? false;
+  const _debug = options.debug ?? false;
 
   for (const config of options.lists ?? []) {
     const baseItems = Array.isArray(config.items) ? config.items.map((item) => cloneRecord(item)) : [];
     const nextId = Number.isFinite(config.nextId ?? Number.NaN) ? Number(config.nextId) : computeNextId(baseItems as Array<Record<string, unknown>>);
-    if (isScheduleList(config)) {
-      resetScheduleStore(baseItems as Array<Record<string, unknown>>);
-    }
+    if (isScheduleList(config)) resetScheduleStore(baseItems as Array<Record<string, unknown>>);
     const state: ListState = { config, items: baseItems as Array<Record<string, unknown>>, nextId };
     nameMap.set(normalizeName(config.name), state);
-    for (const alias of config.aliases ?? []) {
-      nameMap.set(normalizeName(alias), state);
-    }
+    for (const alias of config.aliases ?? []) nameMap.set(normalizeName(alias), state);
   }
 
   const resolveList = (name: string): ListState | undefined => nameMap.get(normalizeName(name));
 
   const resolveFallback = async (request: Request): Promise<HttpResponseInit> => {
-    const candidate = options.fallback;
-    if (!candidate) {
-      return { status: 404, body: { error: 'Not mocked' } };
+    if (options.fallback) {
+      if (typeof options.fallback === 'function') {
+        const result = await options.fallback(request);
+        if (result) return result;
+      } else return options.fallback;
     }
-    if (typeof candidate === 'function') {
-      const result = await candidate(request);
-      return result ?? { status: 404, body: { error: 'Not mocked' } };
-    }
-    return candidate;
+    return { status: 404, body: { error: 'Not mocked' } };
   };
+
+  await page.route('**/_api/contextinfo', async (route) => {
+    if (route.request().method() === 'POST') {
+      await fulfill(route, { status: 200, body: { d: { GetContextWebInformation: { FormDigestValue: 'stub-digest', FormDigestTimeoutSeconds: 1800 } } } });
+    } else await route.continue();
+  });
 
   await page.route('**/_api/web/**', async (route) => {
     const request = route.request();
@@ -309,30 +164,39 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
     const method = request.method().toUpperCase();
     const headers = request.headers();
     const methodOverride = (headers['x-http-method'] ?? headers['x-http-method-override'] ?? '').toUpperCase();
-    const effectiveMethod =
-      method === 'POST' && (methodOverride === 'MERGE' || methodOverride === 'PATCH' || methodOverride === 'DELETE')
-        ? methodOverride
-        : method;
+    const effectiveMethod = (method === 'POST' && ['MERGE', 'PATCH', 'DELETE'].includes(methodOverride)) ? methodOverride : method;
 
-    if (/\/_api\/web\/currentuser$/i.test(pathname)) {
+    if (pathname.toLowerCase().endsWith('/_api/web/currentuser')) {
       await fulfill(route, options.currentUser ?? DEFAULT_CURRENT_USER);
       return;
     }
 
-    if (/\/_api\/contextinfo$/i.test(pathname) && method === 'POST') {
-      await fulfill(route, {
-        status: 200,
-        body: {
-          FormDigestValue: 'stub-digest',
-          FormDigestTimeoutSeconds: 1800,
-        },
-      });
-      return;
+    if (pathname.toLowerCase().endsWith('/_api/web/lists')) {
+      if (method === 'POST') {
+        const payload = parseRequestBody(request) as Record<string, unknown>;
+        const title = String(payload.Title || 'New List');
+        if (!resolveList(title)) nameMap.set(normalizeName(title), { config: { name: title }, items: [], nextId: 1 });
+        await fulfill(route, { status: 201, body: { Title: title, Id: title, EntityTypeName: title } });
+        return;
+      }
+      if (method === 'GET') {
+        const results = Array.from(nameMap.values()).map(s => ({ Title: s.config.name, Id: s.config.name, EntityTypeName: s.config.name }));
+        await fulfill(route, { status: 200, body: { value: results } });
+        return;
+      }
     }
 
     const match = matchListPath(pathname);
     if (match) {
-      const state = resolveList(match.key);
+      let state = resolveList(match.key);
+      const isMetadataQuery = url.searchParams.get('$filter')?.includes('EntityTypeName') || match.remainder.toLowerCase().includes('/fields') || match.remainder === '' || match.remainder.startsWith('?');
+      const isDataQuery = /\/items(\/|\?|$)/i.test(match.remainder);
+
+      if (!state && (isMetadataQuery || isDataQuery)) {
+         state = { config: { name: match.key }, items: [], nextId: 1 };
+         nameMap.set(normalizeName(match.key), state);
+      }
+
       if (!state) {
         await fulfill(route, await resolveFallback(request));
         return;
@@ -340,101 +204,63 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
 
       const isSchedule = isScheduleList(state.config);
       const getItems = (): Array<Record<string, unknown>> => (isSchedule ? scheduleStore : state.items);
-      const setItems = (items: Array<Record<string, unknown>>) => {
-        if (isSchedule) {
-          scheduleStore = items;
-        } else {
-          state.items = items;
-        }
-      };
-
+      const setItems = (items: Array<Record<string, unknown>>) => { if (isSchedule) scheduleStore = items; else state.items = items; };
       const remainder = match.remainder ?? '';
+
+      if (isMetadataQuery) {
+        if (remainder === '' || remainder === '/') {
+          await fulfill(route, { status: 200, body: { Title: state.config.name, Id: state.config.name, BaseType: 0, EntityTypeName: state.config.name } });
+        } else {
+          const fields = state.config.fields ?? [];
+          const results = fields.map((f) => ({ InternalName: f.InternalName, Title: f.Title || f.InternalName, TypeAsString: f.TypeAsString || 'Text' }));
+          await fulfill(route, { status: 200, body: { value: results } });
+        }
+        return;
+      }
 
       if (/\/items\((\d+)\)$/i.test(remainder)) {
         const idMatch = remainder.match(/\((\d+)\)/);
         const id = idMatch ? Number(idMatch[1]) : Number.NaN;
-        if (!Number.isFinite(id)) {
-          await fulfill(route, { status: 400, body: { error: 'Invalid id' } });
-          return;
-        }
         const items = getItems();
         const index = items.findIndex((item) => Number(item['Id']) === id);
-        if (index === -1) {
-          await fulfill(route, { status: 404, body: {} });
-          return;
-        }
+        if (index === -1) { await fulfill(route, { status: 404, body: {} }); return; }
         if (effectiveMethod === 'GET') {
-          const item = cloneRecord(items[index] as Record<string, unknown>);
-          const responseItem = isSchedule ? normalizeScheduleRecord(item) : item;
+          const responseItem = isSchedule ? normalizeScheduleRecord(cloneRecord(items[index] as Record<string, unknown>)) : items[index];
           await fulfill(route, { status: 200, body: responseItem });
           return;
         }
         if (effectiveMethod === 'PATCH' || effectiveMethod === 'MERGE') {
-          const payload = normalizeBody(parseRequestBody(request));
-          const previous = items[index];
-          const patchRecord = cloneRecord(payload as Record<string, unknown>);
-
-          // Normalise schedule fields so tests can read both prefixed and non-prefixed names
-          if (isSchedule) {
-            normalizeScheduleRecord(patchRecord);
-          }
-
-          const nextValue = state.config.onUpdate
-            ? state.config.onUpdate(id, patchRecord, { request, previous, listName: state.config.name })
-            : { ...previous, ...patchRecord };
+          const payload = cloneRecord(normalizeBody(parseRequestBody(request)));
+          if (isSchedule) normalizeScheduleRecord(payload);
+          const nextValue = state.config.onUpdate ? state.config.onUpdate(id, payload, { request, previous: items[index], listName: state.config.name }) : { ...items[index], ...payload };
           const nextRecord = isSchedule ? normalizeScheduleRecord(cloneRecord(nextValue as Record<string, unknown>)) : cloneRecord(nextValue as Record<string, unknown>);
-          const nextItems = getItems().slice();
-          nextItems[index] = nextRecord;
-          setItems(nextItems);
+          const nextItems = getItems().slice(); nextItems[index] = nextRecord; setItems(nextItems);
           await fulfill(route, { status: 200, body: cloneRecord(nextRecord) });
           return;
         }
         if (effectiveMethod === 'DELETE') {
-          const nextItems = getItems().slice();
-          nextItems.splice(index, 1);
-          setItems(nextItems);
-          await fulfill(route, { status: 204, body: '' });
-          return;
+          const nextItems = getItems().slice(); nextItems.splice(index, 1); setItems(nextItems);
+          await fulfill(route, { status: 204, body: '' }); return;
         }
       }
 
-      if (/\/items\/?$/i.test(remainder)) {
+      if (isDataQuery) {
         if (method === 'GET') {
           const itemsSource = isSchedule ? scheduleStore : state.items;
-          const items = prepareItemsResponse({ ...state, items: itemsSource }, url.searchParams).map((item) =>
-            isSchedule ? normalizeScheduleRecord(item as Record<string, unknown>) : item,
-          );
-          if (debug) {
-            // no-op: keep hook point for local debugging without console usage in CI lint
-          }
-          await fulfill(route, { status: 200, body: { value: items } });
+          const results = itemsSource.map((item) => isSchedule ? normalizeScheduleRecord(cloneRecord(item as Record<string, unknown>)) : item);
+          await fulfill(route, { status: 200, body: { value: results } });
           return;
         }
         if (method === 'POST') {
+          const takeNextId = () => { const current = state.nextId; state.nextId += 1; return current; };
           const payload = parseRequestBody(request);
-          const takeNextId = () => {
-            const current = state.nextId;
-            state.nextId += 1;
-            return current;
-          };
-          const created = state.config.onCreate
-            ? state.config.onCreate(payload, { takeNextId, listName: state.config.name, request, items: getItems() })
-            : { Id: takeNextId(), ...(normalizeBody(payload)) };
-          const createdRecord = cloneRecord(normalizeBody(created));
-          if (typeof createdRecord['Id'] !== 'number') {
-            createdRecord['Id'] = takeNextId();
-          }
-          const nextRecord = isSchedule ? normalizeScheduleRecord(createdRecord) : createdRecord;
+          const created = state.config.onCreate ? state.config.onCreate(payload, { takeNextId, listName: state.config.name, request, items: getItems() }) : { Id: takeNextId(), ...(normalizeBody(payload)) };
+          const nextRecord = isSchedule ? normalizeScheduleRecord(cloneRecord(normalizeBody(created))) : cloneRecord(normalizeBody(created));
+          if (typeof nextRecord['Id'] !== 'number') nextRecord['Id'] = takeNextId();
           const nextItems = getItems().slice();
-          if (state.config.insertPosition === 'start') {
-            nextItems.unshift(cloneRecord(nextRecord));
-          } else {
-            nextItems.push(cloneRecord(nextRecord));
-          }
+          if (state.config.insertPosition === 'start') nextItems.unshift(cloneRecord(nextRecord));
+          else nextItems.push(cloneRecord(nextRecord));
           setItems(nextItems);
-          if (debug) {
-            // no-op: keep hook point for local debugging without console usage in CI lint
-          }
           await fulfill(route, { status: 201, body: nextRecord });
           return;
         }
@@ -501,7 +327,6 @@ export async function setupSharePointStubs(page: Page, options: SetupSharePointS
       await fulfill(route, await resolveFallback(request));
       return;
     }
-
     await fulfill(route, await resolveFallback(request));
   });
 }

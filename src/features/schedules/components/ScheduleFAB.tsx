@@ -1,4 +1,3 @@
-import { TESTIDS } from '@/testids';
 import type { RefObject } from 'react';
 
 export interface ScheduleFABProps {
@@ -30,7 +29,7 @@ export function ScheduleFAB({
     <button
       type="button"
       onClick={onClick}
-      data-testid={TESTIDS.SCHEDULES_FAB_CREATE}
+      data-testid="schedules-fab-create"
       ref={fabRef}
       disabled={!canWrite}
       style={{

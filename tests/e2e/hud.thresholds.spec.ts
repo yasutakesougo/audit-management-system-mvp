@@ -33,6 +33,11 @@ test.describe('HUD thresholds display', () => {
         VITE_ATTENDANCE_DISCREPANCY_THRESHOLD: '0.25',
         VITE_ABSENCE_MONTHLY_LIMIT: '3',
         VITE_FACILITY_CLOSE_TIME: '18:30',
+        VITE_PREFETCH_HUD: '1',
+        VITE_SP_RESOURCE: 'https://example.sharepoint.com',
+        VITE_SP_SITE_RELATIVE: '/sites/demo',
+        VITE_MSAL_CLIENT_ID: 'dummy-client-id',
+        VITE_MSAL_TENANT_ID: 'dummy-tenant-id',
       } as const;
       win.__ENV__ = {
         ...(win.__ENV__ ?? {}),
@@ -41,7 +46,9 @@ test.describe('HUD thresholds display', () => {
       win.__TEST_ENV__ = { ...(win.__TEST_ENV__ ?? {}), ...overrides };
     });
     await prepareHydrationApp(page);
-    await page.goto('/', { waitUntil: 'networkidle' });
+    await page.goto('/');
+    // Wait for the app to at least render the toggle
+    await expect(page.getByTestId('prefetch-hud-toggle')).toBeVisible({ timeout: 15000 });
   });
 
   test('renders configured thresholds in HUD', async ({ page }) => {

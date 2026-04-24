@@ -182,7 +182,7 @@ export function mapSpToRepoSchedule(sp: SpScheduleRow, etag?: string): RepoSched
 
   return {
     id,
-    etag: etag ?? sp['@odata.etag'] ?? sp.ETag,
+    etag: etag ?? sp['@odata.etag'] ?? sp.ETag ?? sp.etag ?? sp.__metadata?.etag,
 
     title: String(sp.Title ?? ''),
     rowKey: String(sp.RowKey ?? ''),

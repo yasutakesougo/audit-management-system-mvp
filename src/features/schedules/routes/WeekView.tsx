@@ -5,7 +5,6 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import type { MouseEvent } from 'react';
 import { useMemo, useState } from 'react';
 
-import { TESTIDS } from '@/testids';
 
 import {
     WeekServiceSummaryChips,
@@ -231,18 +230,18 @@ const WeekViewContent = ({ items, loading, onDayClick: _onDayClick, onTimeSlotCl
     .filter((entry) => entry.count > 0)
     .map((entry) => ({
       ...entry,
-      testId: `${TESTIDS.SCHEDULES_WEEK_SERVICE_SUMMARY}-${entry.key}`,
+      testId: `schedules-week-service-summary-${entry.key}`,
     }));
 
 
   return (
-    <div data-testid={TESTIDS.SCHEDULE_WEEK_ROOT}>
-      <div data-testid={TESTIDS.SCHEDULE_WEEK_VIEW} className="space-y-3">
+    <div data-testid="schedule-week-root">
+      <div data-testid="schedule-week-view" className="space-y-3">
         <header className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
           <span>今週の予定</span>
           <span>{rangeLabel}</span>
         </header>
-        <div className="mb-2" data-testid={TESTIDS.SCHEDULES_WEEK_SERVICE_SUMMARY}>
+        <div className="mb-2" data-testid="schedules-week-service-summary">
           {serviceSummaryItems.length === 0 ? (
             <span className="text-xs text-slate-500">区分未設定 0件</span>
           ) : (

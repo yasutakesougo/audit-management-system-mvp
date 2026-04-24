@@ -4,7 +4,6 @@
  * Renders the 7-day × time-slot grid with sticky headers, slot rows, and schedule item cards.
  * Hover state (hoveredCell) is owned internally to keep the parent props surface small.
  */
-import { TESTIDS } from '@/testids';
 import React, { useState } from 'react';
 import type { SchedItem } from '../data';
 import { _generateTimeSlots, getTimeInTz } from './weekViewHelpers';
@@ -35,7 +34,7 @@ export function WeekTimeGrid({
   return (
     <div
       aria-label="週ごとの時間割"
-      data-testid={TESTIDS['schedules-week-grid']}
+      data-testid="schedules-week-grid"
       className="w-full"
       style={{
         display: 'grid',
@@ -189,7 +188,7 @@ export function WeekTimeGrid({
                         <button
                           key={item.id || idx}
                           type="button"
-                          data-testid={TESTIDS.SCHEDULE_ITEM}
+                          data-testid="schedule-item"
                           data-schedule-id={item.id}
                           data-id={item.id}
                           data-category={item.category ?? 'Org'}

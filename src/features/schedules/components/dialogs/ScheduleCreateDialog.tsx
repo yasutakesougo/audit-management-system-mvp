@@ -29,7 +29,6 @@ import Autocomplete from '@mui/material/Autocomplete';
 import Chip from '@mui/material/Chip';
 import React, { useState } from 'react';
 
-import { TESTIDS } from '@/testids';
 import type {
     CreateScheduleEventInput,
     ScheduleServiceType,
@@ -151,10 +150,10 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
         'data-testid': vm.resolvedDialogTestId,
       }}
     >
-      <Box data-testid={TESTIDS['schedule-editor-root']} sx={{ display: 'contents' }}>
+      <Box data-testid="schedule-editor-root" sx={{ display: 'contents' }}>
       <DialogTitle
         id={vm.headingId}
-        data-testid={TESTIDS['schedule-create-heading']}
+        data-testid="schedule-create-heading"
         sx={{ pb: 1 }}
       >
         <Box display="flex" alignItems="center" gap={1}>
@@ -166,7 +165,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
       <DialogContent dividers>
         <Typography
           id={vm.descriptionId}
-          data-testid={TESTIDS['schedule-create-description']}
+          data-testid="schedule-create-description"
           variant="body2"
           color="textSecondary"
           sx={{ mb: 2 }}
@@ -213,7 +212,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
           {vm.errors && vm.errors.length > 0 && (
             <Alert
               severity="error"
-              data-testid={TESTIDS['schedule-create-error-alert']}
+              data-testid="schedule-create-error-alert"
               id={vm.errorSummaryId}
             >
               <ul style={{ paddingLeft: '1.25rem', margin: 0 }}>
@@ -234,7 +233,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
             helperText={vm.titleHelperText}
             inputRef={vm.titleInputRef}
             inputProps={{
-              'data-testid': TESTIDS['schedule-create-title'],
+              'data-testid': 'schedule-create-title',
             }}
           />
 
@@ -245,7 +244,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
               label="カテゴリ"
               value={vm.form.category}
               onChange={vm.handleCategoryChange}
-              data-testid={TESTIDS['schedule-create-category-select']}
+              data-testid="schedule-create-category-select"
             >
               {CATEGORY_OPTIONS.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
@@ -274,7 +273,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                   inputRef={vm.userInputRef}
                   inputProps={{
                     ...params.inputProps,
-                    'data-testid': TESTIDS['schedule-create-user-input']
+                    'data-testid': 'schedule-create-user-input'
                   }}
                 />
               )}
@@ -291,7 +290,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
               onChange={e => vm.handleFieldChange('startLocal', e.target.value)}
               InputLabelProps={{ shrink: true }}
               inputProps={{
-                'data-testid': TESTIDS['schedule-create-start']
+                'data-testid': 'schedule-create-start'
               }}
             />
 
@@ -306,7 +305,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
               error={Boolean(vm.dateOrderErrorMessage)}
               helperText={vm.dateOrderErrorMessage}
               inputProps={{
-                'data-testid': TESTIDS['schedule-create-end']
+                'data-testid': 'schedule-create-end'
               }}
             />
           </Stack>
@@ -322,7 +321,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                   vm.handleFieldChange('serviceType', e.target.value as ScheduleServiceType | '')
                 }
                 inputProps={{ 'aria-label': 'サービス種別' }}
-                data-testid={TESTIDS['schedule-create-service-type']}
+                data-testid="schedule-create-service-type"
               >
                 {(vm.form.category === 'LivingSupport'
                   ? LIVING_SUPPORT_SERVICE_TYPE_OPTIONS
@@ -370,7 +369,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                   placeholder="施設イベントの対象を選択"
                   inputProps={{
                     ...params.inputProps,
-                    'data-testid': TESTIDS['schedule-create-location'],
+                    'data-testid': 'schedule-create-location',
                   }}
                 />
               )}
@@ -383,7 +382,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
               onChange={e => vm.handleFieldChange('locationName', e.target.value)}
               placeholder="例）活動室A／送迎車／会議室 など"
               inputProps={{
-                'data-testid': TESTIDS['schedule-create-location']
+                'data-testid': 'schedule-create-location'
               }}
             />
           )}
@@ -398,7 +397,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
             onChange={e => vm.handleFieldChange('notes', e.target.value)}
             placeholder="支援のポイントや、共有したい補足を記入"
             inputProps={{
-              'data-testid': TESTIDS['schedule-create-notes']
+              'data-testid': 'schedule-create-notes'
             }}
           />
 
@@ -419,7 +418,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                     inputRef={vm.staffInputRef}
                     inputProps={{
                       ...params.inputProps,
-                      'data-testid': TESTIDS['schedule-create-staff-id'],
+                      'data-testid': 'schedule-create-staff-id',
                     }}
                   />
                 )}
@@ -435,7 +434,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                 inputRef={vm.staffInputRef}
                 inputProps={{
                   min: 0,
-                  'data-testid': TESTIDS['schedule-create-staff-id'],
+                  'data-testid': 'schedule-create-staff-id',
                 }}
               />
             )}
@@ -449,7 +448,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
               placeholder="SharePoint の VehicleId"
               inputProps={{
                 min: 0,
-                'data-testid': TESTIDS['schedule-create-vehicle-id'],
+                'data-testid': 'schedule-create-vehicle-id',
               }}
             />
           </Stack>
@@ -517,7 +516,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
           onClick={handleSubmitAsync}
           startIcon={<SaveIcon />}
           disabled={isBusy}
-          data-testid={submitTestId ?? TESTIDS['schedule-create-save']}
+          data-testid={submitTestId ?? 'schedule-create-save'}
         >
             {isSubmitting ? '保存中...' : vm.primaryButtonLabel}
         </Button>

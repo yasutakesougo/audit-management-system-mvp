@@ -20,6 +20,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { normalizeText } from './TransportAssignmentPage.logic';
+import { TransportConcurrencyInsightBanner } from './TransportConcurrencyInsightBanner';
 
 type StaffOption = {
   staffId: string;
@@ -79,6 +80,7 @@ export function TransportAssignmentVehicleSection({
             sx={{ p: 2, minHeight: 220 }}
             data-testid={`transport-assignment-vehicle-card-${index + 1}`}
           >
+            <TransportConcurrencyInsightBanner currentVehicleId={vehicle.vehicleId} />
             <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
               <TextField
                 size="small"

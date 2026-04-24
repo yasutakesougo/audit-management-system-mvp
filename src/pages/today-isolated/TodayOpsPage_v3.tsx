@@ -31,6 +31,7 @@ import { ActionTaskList } from '@/features/action-engine/components/ActionTaskLi
 import { HandoffPanel } from '@/features/handoff/components/HandoffPanel';
 import { ConnectionDegradedBanner } from '@/features/sp/health/components/ConnectionDegradedBanner';
 import { TodayLitePage as TodayLiteOpsPage } from '@/features/today/lightweight/TodayLitePage';
+import { TransportConcurrencyInsightBanner } from '../transport-assignment/TransportConcurrencyInsightBanner';
 
 import type { ActionCard } from '@/features/today/domain/models/queue.types';
 import type { ActionSuggestion } from '@/features/action-engine/domain/types';
@@ -40,9 +41,8 @@ import {
   KIOSK_TELEMETRY_EVENTS,
   createKioskSessionId,
 } from '@/features/today/telemetry/kioskTelemetry';
-import {
-  recordLanding,
-} from '@/features/today/telemetry/recordLanding';
+import { recordLanding } from '@/features/today/telemetry/recordLanding';
+import { recordSuggestionTelemetry } from '@/features/action-engine/telemetry/recordSuggestionTelemetry';
 import { formatDateIso } from '@/lib/dateFormat';
 import { buildDailySupportUrl } from '@/app/links/dailySupportLinks';
 import { computeSnoozeUntil } from '@/features/action-engine/domain/computeSnoozeUntil';
@@ -120,6 +120,18 @@ const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = 
     } else if (action.actionType === 'NAVIGATE') {
       const payload = action.payload as { path?: string; suggestion?: ActionSuggestion } | undefined;
       const targetUrl = payload?.path ?? payload?.suggestion?.cta?.route;
+      
+      if (payload?.suggestion) {
+        recordSuggestionTelemetry({
+          event: 'suggestion_cta_clicked',
+          sourceScreen: 'today',
+          stableId: payload.suggestion.stableId,
+          ruleId: payload.suggestion.ruleId,
+          priority: payload.suggestion.priority,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
       if (targetUrl) navigate(targetUrl);
     }
   }, [quickRecord, navigate]);
@@ -194,11 +206,37 @@ const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = 
         actionQueue, 
         isLoading: isQueueLoading, 
         onActionClick: handleActionClick, 
-        onDismissSuggestion: (id: string) => dismissSuggestion(id, {by:'today'}), 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onSnoozeSuggestion: (id: string, p: any) => snoozeSuggestion(id, computeSnoozeUntil(p, new Date()), {by:'today'}) 
+        onDismissSuggestion: (id: string) => {
+          const suggestion = correctiveActions.find((s) => s.stableId === id);
+          if (suggestion) {
+            recordSuggestionTelemetry({
+              event: 'suggestion_dismissed',
+              sourceScreen: 'today',
+              stableId: id,
+              ruleId: suggestion.ruleId,
+              priority: suggestion.priority,
+              timestamp: new Date().toISOString(),
+            });
+          }
+          dismissSuggestion(id, { by: 'today' });
+        },
+        onSnoozeSuggestion: (id: string, p: any) => {
+          const suggestion = correctiveActions.find((s) => s.stableId === id);
+          if (suggestion) {
+            recordSuggestionTelemetry({
+              event: 'suggestion_snoozed',
+              sourceScreen: 'today',
+              stableId: id,
+              ruleId: suggestion.ruleId,
+              priority: suggestion.priority,
+              snoozePreset: p,
+              timestamp: new Date().toISOString(),
+            });
+          }
+          snoozeSuggestion(id, computeSnoozeUntil(p, new Date()), { by: 'today' });
+        },
+        actionTaskList: <ActionTaskList onOpenTask={() => {}} />,
       },
-      actionTaskList: <ActionTaskList onOpenTask={() => {}} />,
       handoffPanel: handoffPanelElement,
       exceptionsQueue,
       onQuickLinkNavigate: (href: string) => navigate(href),
@@ -208,6 +246,7 @@ const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = 
   return (
     <Box sx={{ width: '100%' }}>
       <ConnectionDegradedBanner />
+      <TransportConcurrencyInsightBanner />
       <TodayBentoLayout {...finalLayoutProps} audience={authzRole} />
     </Box>
   );

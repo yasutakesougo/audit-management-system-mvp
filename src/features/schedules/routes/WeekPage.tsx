@@ -20,7 +20,7 @@ import { OpsStaffingShortageList } from '@/features/schedules/components/ops/Ops
 import { OpsSummaryCards } from '@/features/schedules/components/ops/OpsSummaryCards';
 import { OpsWeekBoard } from '@/features/schedules/components/ops/OpsWeekBoard';
 import { MASTER_SCHEDULE_TITLE_JA } from '@/features/schedules/constants';
-import { TESTIDS } from '@/testids';
+import { getIsE2eForceSchedulesWrite } from '@/env';
 import { resolveSchedulesTz } from '@/utils/scheduleTz';
 import { alpha, useTheme } from '@mui/material/styles';
 import { useScheduleOps } from '../hooks/useScheduleOps';
@@ -219,7 +219,13 @@ export default function WeekPage() {
       aria-label="週間スケジュール"
       aria-describedby={rangeDescriptionId}
       aria-labelledby={headingId}
-      data-testid="schedules-week-page"
+      data-testid={
+        mode === 'month'
+          ? 'schedules-month-page'
+          : mode === 'day'
+            ? 'schedules-day-page'
+            : 'schedules-week-page'
+      }
       tabIndex={-1}
       style={{ paddingBottom: 24 }}
     >
@@ -247,25 +253,25 @@ export default function WeekPage() {
             onPrev={navPrev}
             onNext={navNext}
             onToday={navToday}
-            onPrimaryCreate={canEdit && canWrite ? handleFabClick : undefined}
-            showPrimaryAction={isDesktopSize}
+            onPrimaryCreate={(canEdit && canWrite) || getIsE2eForceSchedulesWrite() ? handleFabClick : undefined}
+            showPrimaryAction={true}
             primaryActionLabel="予定を追加"
             primaryActionAriaLabel="この週に予定を追加"
             headingId={headingId}
             titleTestId={
               mode === 'month'
-                ? TESTIDS.SCHEDULES_MONTH_HEADING_ID
+                ? 'schedules-month-heading'
                 : mode === 'day'
-                  ? TESTIDS['schedules-day-heading']
-                  : TESTIDS['schedules-week-heading']
+                  ? 'schedules-day-heading'
+                  : 'schedules-week-heading'
             }
             rangeLabelId={rangeDescriptionId}
             dayHref={dayViewHref}
             weekHref={weekViewHref}
             monthHref={monthViewHref}
             modes={['day', 'week', 'month', 'ops', 'list']}
-            prevTestId={TESTIDS.SCHEDULES_PREV_WEEK}
-            nextTestId={TESTIDS.SCHEDULES_NEXT_WEEK}
+            prevTestId="schedules-prev-week"
+            nextTestId="schedules-next-week"
           >
             <ScheduleFilterBar
               categoryFilter={categoryFilter}

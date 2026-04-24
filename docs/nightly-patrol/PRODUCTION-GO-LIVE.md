@@ -146,6 +146,9 @@
 <a id="rc-watch-streak"></a>
 - `WATCH_STREAK_*` → watch 連続発生の根本原因を除去する
 
+<a id="rc-transport-concurrency"></a>
+- `TRANSPORT_CONCURRENCY_PRESSURE` / `REPEATED_VEHICLE_CONFLICT` → 送迎配車競合の発生状況を確認し、運用ルールを是正する
+
 ### 1. `integration-diagnose` が失敗した
 
 - [ ] Actionsログで失敗ステップを確認する（`Typecheck` / `Run SP read-only diagnostics`）
@@ -181,6 +184,21 @@
 - [ ] 開発当番へ失敗workflow URL と reason code を共有する
 - [ ] `nightly-owner-notify` の owner ルーティング結果（未解決 owner の有無）を確認する
 - [ ] 連絡テンプレート: `NO-GO / 失敗workflow / 原因仮説 / 次回再実行予定時刻`
+
+---
+
+### 6. 送迎配車競合への対応 (`rc-transport-concurrency`)
+
+`TRANSPORT_CONCURRENCY_PRESSURE` または `REPEATED_VEHICLE_CONFLICT` が発生した場合、Ops Manager は以下の手順で分析と是正を行います。
+
+- [ ] **同一車両への集中確認**
+  - 特定の車両（例: 「車両1」）だけで競合が起きている場合、その車両の担当者間での入力ルールが曖昧な可能性があります。
+- [ ] **特定時間帯の偏り確認**
+  - 朝の出発直前など、特定の時間帯に入力が集中していないか確認してください。
+- [ ] **Refetch による解消状況の確認**
+  - 競合が発生しても Refetch (最新データの再取得) で正しく保存できているか、UI 側の操作ログや現場への聞き取りで確認します。
+- [ ] **運用ルールの変更検討**
+  - 「車両ごとの入力担当を固定する」「入力時間をずらす」等の運用ルールの変更が必要か判断します。
 
 ---
 

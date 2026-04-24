@@ -1,7 +1,6 @@
 import ScheduleCreateDialog from '../components/dialogs/ScheduleCreateDialog';
 import type { CreateScheduleEventInput } from '../data';
 import type { ScheduleUserOption } from '@/features/schedules/domain';
-import { TESTIDS } from '@/testids';
 import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -31,7 +30,7 @@ export default function DevScheduleCreateDialogPage() {
   }, []);
 
   return (
-    <Stack spacing={3} sx={{ p: 3 }} data-testid={TESTIDS['dev-schedule-dialog-page']}>
+    <Stack spacing={3} sx={{ p: 3 }} data-testid="dev-schedule-dialog-page">
       <div>
         <Typography variant="overline" color="text.secondary">
           Dev Harness
@@ -48,7 +47,7 @@ export default function DevScheduleCreateDialogPage() {
         variant="contained"
         size="large"
         onClick={() => setOpen(true)}
-        data-testid={TESTIDS['dev-schedule-dialog-open']}
+        data-testid="dev-schedule-dialog-open"
       >
         予定を追加（DEV）
       </Button>

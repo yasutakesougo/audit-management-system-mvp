@@ -1,5 +1,7 @@
 import { useAuth } from '@/auth/useAuth';
-import { isE2eForceSchedulesWrite, isWriteEnabled } from '@/env';
+import { isWriteEnabled } from '@/env';
+import { getIsE2eForceSchedulesWrite } from '@/env';
+
 import { authDiagnostics } from '@/features/auth/diagnostics';
 import {
   isSchedulesConflictError,
@@ -204,7 +206,7 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
       setItems((prev) => [...prev, created]);
 
       // E2E: Persist to localStorage for test fixtures
-      if (isE2eForceSchedulesWrite && typeof window !== 'undefined') {
+      if (getIsE2eForceSchedulesWrite() && typeof window !== 'undefined') {
         try {
           const storageKey = 'e2e:schedules.v1';
           const raw = window.localStorage.getItem(storageKey);
@@ -306,7 +308,7 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
 
   // Determine read-only reason
   const readOnlyReason = useMemo((): SchedulesErrorInfo | undefined => {
-    if (isE2eForceSchedulesWrite) {
+    if (getIsE2eForceSchedulesWrite()) {
       return undefined;
     }
     // If write is disabled via env flag
@@ -344,9 +346,9 @@ export function useSchedules(range: DateRange): UseSchedulesResult {
     }
 
     return undefined;
-  }, [getListReadyState, isE2eForceSchedulesWrite, lastError]);
+  }, [getListReadyState, lastError]);
 
-  const canWrite = isE2eForceSchedulesWrite ? true : !readOnlyReason;
+  const canWrite = getIsE2eForceSchedulesWrite() ? true : !readOnlyReason;
 
   const returnValue = {
     items,

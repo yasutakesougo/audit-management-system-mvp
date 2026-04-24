@@ -49,11 +49,27 @@ vi.mock('react-router-dom', async (importOriginal) => {
   };
 });
 
+vi.mock('../../../src/auth/useAuth', () => ({
+  useAuth: vi.fn(() => ({
+    getListReadyState: vi.fn(() => true),
+    setListReadyState: vi.fn(),
+    isAuthenticated: true,
+    account: { name: 'Test User' },
+    tokenReady: true,
+    isAuthReady: true,
+    signIn: vi.fn(),
+    signOut: vi.fn(),
+    acquireToken: vi.fn(async () => 'mock-token'),
+    loading: false,
+    shouldSkipLogin: true,
+  })),
+}));
+
 vi.mock('../../../src/features/auth/store', () => ({
   useAuthStore: vi.fn(() => 'staff'),
 }));
 
-vi.mock('../../../src/features/today/domain', () => ({
+vi.mock('../../../src/features/today/domain/useTodaySummary', () => ({
   useTodaySummary: vi.fn(() => ({
     todayExceptionActions: [],
     todayExceptions: [],
@@ -98,13 +114,15 @@ vi.mock('../../../src/features/planning-sheet/hooks/usePlanningSheetRepositories
   usePlanningSheetRepositories: vi.fn(() => ({})),
 }));
 
-vi.mock('../../../src/features/today/transport', () => ({
+vi.mock('../../../src/features/today/transport/useTransportStatus', () => ({
   useTransportStatus: vi.fn(() => ({
     pending: [],
     inProgress: [],
     onArrived: vi.fn(),
     refresh: vi.fn(async () => {}),
   })),
+}));
+vi.mock('../../../src/features/today/transport/useTransportHighlight', () => ({
   useTransportHighlight: vi.fn(() => ({ highlightStyle: {}, clearHighlight: vi.fn() })),
 }));
 
@@ -122,7 +140,51 @@ vi.mock('../../../src/features/today/records/useQuickRecord', () => ({
 }));
 
 vi.mock('../../../src/features/today/hooks/useTodayActionQueue', () => ({
-  useTodayActionQueue: vi.fn(),
+  useTodayActionQueue: vi.fn(() => ({
+    actionQueue: [],
+    isLoading: false,
+    error: null,
+    handleActionClick: vi.fn(),
+  })),
+}));
+
+vi.mock('../../../src/features/today/hooks/useTodayIspRenewSuggestActions', () => ({
+  useTodayIspRenewSuggestActions: vi.fn(() => ({
+    signals: [],
+    actionSources: [],
+    isLoading: false,
+  })),
+}));
+
+vi.mock('../../../src/features/today/hooks/useTodayPlanPatchActions', () => ({
+  useTodayPlanPatchActions: vi.fn(() => []),
+}));
+
+vi.mock('../../../src/features/today/hooks/useTodayExceptions', () => ({
+  useTodayExceptions: vi.fn(() => ({
+    items: [],
+    topPriorityItem: null,
+    heroItem: null,
+    queueItems: [],
+    isLoading: false,
+    error: null,
+    refetchDailyRecords: vi.fn(),
+  })),
+}));
+
+vi.mock('../../../src/features/callLogs/hooks/useCallLogsSummary', () => ({
+  useCallLogsSummary: vi.fn(() => ({})),
+}));
+
+vi.mock('../../../src/features/today/hooks/useKioskAutoRefresh', () => ({
+  useKioskAutoRefresh: vi.fn(),
+}));
+
+vi.mock('../../../src/features/today/hooks/useUserAlerts', () => ({
+  useTodayUserAlerts: vi.fn(() => ({
+    alertsByUser: new Map(),
+    loading: false,
+  })),
 }));
 
 const mockRecordSuggestionTelemetry = vi.fn();
@@ -146,21 +208,6 @@ vi.mock('../../../src/features/action-engine/hooks/useSuggestionStateStore', () 
     states: {},
     dismiss: mockDismissSuggestion,
     snooze: mockSnoozeSuggestion,
-  })),
-}));
-
-vi.mock('../../../src/features/today/hooks/useUserAlerts', () => ({
-  useUserAlerts: vi.fn(() => ({ alertsByUser: {} })),
-}));
-
-vi.mock('../../../src/features/today/hooks/useTodayExceptions', () => ({
-  useTodayExceptions: vi.fn(() => ({
-    items: [],
-    isLoading: false,
-    refetchDailyRecords: vi.fn(),
-    heroItem: null,
-    queueItems: [],
-    error: null,
   })),
 }));
 
@@ -311,7 +358,7 @@ describe('TodayOpsPage (ActionQueueTimeline integration)', () => {
     expect(TodayBentoLayout).not.toHaveBeenCalled();
     const liteCalls = vi.mocked(TodayLitePage).mock.calls;
     const liteProps = liteCalls[liteCalls.length - 1]?.[0] as { role?: string };
-    expect(liteProps.role).toBe('staff');
+    expect(liteProps.role).toBe('reception');
   });
 
   it('passes admin role to lightweight UI when authz role is admin', () => {

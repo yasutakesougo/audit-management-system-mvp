@@ -1,7 +1,8 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import { useMemo } from 'react';
 
-import { isE2eForceSchedulesWrite } from '@/env';
+import { getIsE2eForceSchedulesWrite } from '@/env';
+
 import type { CreateScheduleEventInput, SchedItem, UpdateScheduleEventInput } from '@/features/schedules/domain';
 import type { ScheduleFormState } from '@/features/schedules/domain/scheduleFormState';
 import type { ScheduleCategory } from '@/features/schedules/domain/types';
@@ -214,7 +215,7 @@ export const useSchedulesPageState = ({ myUpn, canEditByRole, ready }: Schedules
   const mode = route.mode;
   const categoryFilter = route.filter.category;
   const query = route.filter.query;
-  const canEdit = (mode === 'day' || mode === 'week' || mode === 'month') && (canEditByRole || isE2eForceSchedulesWrite);
+  const canEdit = (mode === 'day' || mode === 'week' || mode === 'month') && (canEditByRole || getIsE2eForceSchedulesWrite());
 
   const focusDate = route.focusDate;
   const weekRange = useMemo(() => {
