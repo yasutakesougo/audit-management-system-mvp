@@ -90,14 +90,21 @@ export class DataProviderScheduleRepository extends BaseRepository implements Sc
       const isHealthy = areEssentialFieldsResolved(resolved, [...SCHEDULE_EVENTS_ESSENTIALS] as string[]);
       
       // Observability への報告（バナーのトリガー）から拡張分を除去し、バナーをクリアする
+      const essentialsSet = new Set(SCHEDULE_EVENTS_ESSENTIALS as string[]);
       const stableFieldStatus = Object.fromEntries(
-        (Object.keys(SCHEDULE_EVENTS_CANDIDATES) as ScheduleCandidateKeys[]).map(k => [k, fieldStatus[k]])
+        (Object.keys(SCHEDULE_EVENTS_CANDIDATES) as ScheduleCandidateKeys[]).map(k => [
+          k, 
+          { 
+            ...fieldStatus[k], 
+            isSilent: !essentialsSet.has(k) 
+          }
+        ])
       );
 
       reportResourceResolution({
         resourceName: 'Schedule',
         resolvedTitle: this.listTitle,
-        fieldStatus: stableFieldStatus as Record<string, { resolvedName?: string; candidates: string[] }>,
+        fieldStatus: stableFieldStatus as Record<string, { resolvedName?: string; candidates: string[]; isSilent: boolean }>,
         essentials: [...SCHEDULE_EVENTS_ESSENTIALS] as string[],
       });
 
@@ -305,7 +312,7 @@ export class DataProviderScheduleRepository extends BaseRepository implements Sc
     // buildMappedPayload は内部で getCaseInsensitiveValue と normalizeClearableValue を使用する
     const payload = this.buildMappedPayload({ 
       input: input as unknown as Record<string, unknown>, 
-      mapping: fields as any 
+      mapping: fields as unknown as Record<string, string | undefined> 
     });
     
     // 2. 特殊ロジックが必要なフィールドの個別処理

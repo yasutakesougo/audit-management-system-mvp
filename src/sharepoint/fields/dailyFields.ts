@@ -143,6 +143,7 @@ export const DAILY_RECORD_ROW_AGGREGATE_CANDIDATES = {
   kind: ['Kind', 'kind', 'cr013_kind'],
   group: ['Group', 'group', 'cr013_group'],
   specialNote: ['SpecialNote', 'specialNote', 'cr013_specialnote'],
+  version: ['Version', 'VersionNo', 'cr013_version'],
 } as const;
 
 export const DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS: (keyof typeof DAILY_RECORD_ROW_AGGREGATE_CANDIDATES)[] = [

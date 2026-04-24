@@ -441,6 +441,8 @@ export const PROCEDURE_RECORD_CANDIDATES = {
   executionStatus: ['ExecutionStatus', 'Status', 'cr013_executionStatus'],
   performedBy: ['PerformedBy', 'Staff', 'cr013_performedBy'],
   performedAt: ['PerformedAt', 'Time', 'cr013_performedAt'],
+  ispId: ['ISPId', 'ISPLookupId', 'cr013_ispId'],
+  handoffNotes: ['HandoffNotes', 'Handoff_x0020_Notes', 'cr013_handoffNotes'],
 } as const;
 
 export const PROCEDURE_RECORD_ESSENTIALS: (keyof typeof PROCEDURE_RECORD_CANDIDATES)[] = [

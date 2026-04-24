@@ -263,7 +263,7 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
       reportResourceResolution({
         resourceName: `Attendance:${schema.listTitle}`,
         resolvedTitle: schema.listTitle,
-        fieldStatus: schema.fieldStatus as Record<string, { resolvedName?: string; candidates: string[]; isDrifted: boolean }>,
+        fieldStatus: schema.fieldStatus as Record<string, { resolvedName?: string; candidates: string[]; isSilent: boolean }>,
         essentials: [...ATTENDANCE_USERS_ESSENTIALS],
         lifecycle: 'required',
       });
@@ -280,7 +280,7 @@ export class DataProviderAttendanceRepository implements AttendanceRepository {
       reportResourceResolution({
         resourceName: `Attendance:${schema.listTitle}`,
         resolvedTitle: schema.listTitle,
-        fieldStatus: schema.fieldStatus as Record<string, { resolvedName?: string; candidates: string[]; isDrifted: boolean }>,
+        fieldStatus: schema.fieldStatus as Record<string, { resolvedName?: string; candidates: string[]; isSilent: boolean }>,
         essentials: [...ATTENDANCE_DAILY_ESSENTIALS],
         lifecycle: 'required',
       });

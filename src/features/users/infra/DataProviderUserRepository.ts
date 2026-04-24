@@ -267,10 +267,11 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
   ): Promise<{ resolvedFields: Record<string, string | undefined>, resolvedKeys: Set<string> }> {
     try {
       const available = await this.provider.getFieldInternalNames(listTitle);
-      const { resolved } = resolveInternalNamesDetailed(available, candidates);
+      const { resolved, fieldStatus } = resolveInternalNamesDetailed(available, candidates);
       
       const bestEffort: Record<string, string | undefined> = {};
       const resolvedKeys = new Set<string>();
+      const hasAnyResolved = Object.values(resolved).some((value) => typeof value === 'string' && value.length > 0);
 
       for (const [key, cands] of Object.entries(candidates)) {
         if (resolved[key]) {
@@ -279,11 +280,29 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
         } else if (essentials.includes(key)) {
           // 必須フィールドかつ未解決の場合はフォールバックする（ただし400の可能性あり）
           bestEffort[key] = cands[0];
+        } else if (!hasAnyResolved) {
+          // スキーマ情報が十分に観測できない初期状態（例: 空リスト）では
+          // optional も primary 候補へ best-effort でフォールバックして write を阻害しない。
+          bestEffort[key] = cands[0];
         } else {
           // 任意フィールドで未解決の場合は undefined にして、後の $select から除外させる
           bestEffort[key] = undefined;
         }
       }
+
+      // 可視化ストアへの報告
+      reportResourceResolution({
+        resourceName: listTitle, // リスト名をリソース名として使用
+        resolvedTitle: listTitle,
+        fieldStatus: Object.fromEntries(
+          Object.entries(fieldStatus).map(([key, info]) => [
+            key,
+            { ...info, isSilent: !essentials.includes(key) }
+          ])
+        ),
+        essentials,
+      });
+
       return { resolvedFields: bestEffort, resolvedKeys };
     } catch {
       // 解決不能な場合は必須フィールドのみフォールバック使用

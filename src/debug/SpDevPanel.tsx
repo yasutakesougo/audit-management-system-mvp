@@ -17,7 +17,7 @@ import { useConfirmDialog } from '@/components/ui/useConfirmDialog';
 import { useSP } from '../lib/spClient';
 import { useDataProvider } from '@/lib/data/useDataProvider';
 import { migrateUserSplitData } from '../features/users/utils/migrateUserSplitData';
-import { useDataProviderObservabilityStore, type ResourceStatus } from '@/lib/data/dataProviderObservabilityStore';
+import { useDataProviderObservabilityStore } from '@/lib/data/dataProviderObservabilityStore';
 import { DATA_OS_RESOURCE_REGISTRY } from '@/lib/data/dataOSResourceRegistry';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -166,14 +166,10 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-const STATUS_COLORS: Record<ResourceStatus, string> = {
-  resolved: '#4caf50',
-  missing_optional: '#ffc107',
-  missing_required: '#ff6b6b',
-  fallback_triggered: '#00bcd4',
-  schema_mismatch: '#ff9800',
-  schema_warning: '#ff9800',
-  pending: '#888',
+const SEVERITY_COLORS: Record<string, string> = {
+  critical: '#ff1744', // Red A400
+  warn: '#ff9100',     // Orange A400
+  info: '#4caf50',     // Green 500
 };
 
 export default function SpDevPanel() {
@@ -197,8 +193,8 @@ export default function SpDevPanel() {
   if (!isPanelOpen) return null;
 
   const resolutionList = Object.values(resolutions);
-  const errorCount = resolutionList.filter(r => r.status === 'missing_required').length;
-  const warnCount = resolutionList.filter(r => r.status === 'fallback_triggered' || r.status === 'schema_mismatch').length;
+  const errorCount = resolutionList.filter(r => r.severity === 'critical').length;
+  const warnCount = resolutionList.filter(r => r.severity === 'warn').length;
 
   return (
     <div style={PANEL} data-testid="sp-dev-panel">
@@ -371,8 +367,16 @@ function ObservabilityTab({ confirmDialog }: { confirmDialog: ReturnType<typeof 
                 <div style={{ fontWeight: 600 }}>{r.resourceName}</div>
                 {r.fallbackFrom && <div style={{ fontSize: '9px', color: '#00bcd4' }}>from {r.fallbackFrom}</div>}
               </td>
-              <td style={{ ...TD, color: STATUS_COLORS[r.status], fontWeight: 700 }}>
-                {r.status.toUpperCase()}
+              <td style={{ ...TD, color: SEVERITY_COLORS[r.severity], fontWeight: 700 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {r.status.toUpperCase()}
+                  {r.fields.some(f => (f.key === 'userId' || f.key === 'id') && !f.isResolved) && (
+                    <span style={{ 
+                      fontSize: '8px', background: SEVERITY_COLORS.critical, color: '#fff', 
+                      padding: '1px 4px', borderRadius: '2px' 
+                    }}>ID MISSING</span>
+                  )}
+                </div>
               </td>
               <td style={TD}>
                 <div style={{ fontSize: '10px' }}>{r.resolvedTitle}</div>

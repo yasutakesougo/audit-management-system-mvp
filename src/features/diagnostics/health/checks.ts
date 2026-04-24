@@ -412,7 +412,9 @@ async function runListChecks(
     const resolution = resolveInternalNamesDetailed(available, candidates, {
       onDrift: (fieldName, resolutionType, driftType) => {
         // 診断ツール実行時も、ドリフトを正規のイベントとして記録する
-        emitDriftRecord(spec.resolvedTitle, fieldName, resolutionType as DriftResolutionType, driftType as DriftType);
+        const fieldSpec = spec.requiredFields.find(f => f.internalName === fieldName);
+        const severity = fieldSpec?.isSilent ? 'silent' : undefined;
+        emitDriftRecord(spec.resolvedTitle, fieldName, resolutionType as DriftResolutionType, driftType as DriftType, undefined, severity);
       }
     });
     fieldStatus = resolution.fieldStatus;
@@ -423,7 +425,7 @@ async function runListChecks(
       (f) => f.isEssential && missing.includes(f.internalName)
     );
     const missingOptional = spec.requiredFields.filter(
-      (f) => !f.isEssential && missing.includes(f.internalName)
+      (f) => !f.isEssential && !f.isSilent && missing.includes(f.internalName)
     );
 
     // 3. Detect Drift
