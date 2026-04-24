@@ -241,9 +241,13 @@ const mockUnifiedEvents = [
 const mockSpClient = {
 	listItems: vi.fn().mockResolvedValue([]),
 	getItem: vi.fn().mockResolvedValue(null),
+	getItemById: vi.fn().mockResolvedValue(null),
+	getItemByIdWithEtag: vi.fn().mockResolvedValue({ item: null, etag: null }),
 	createItem: vi.fn().mockResolvedValue({}),
 	updateItem: vi.fn().mockResolvedValue({}),
+	updateItemByTitle: vi.fn().mockResolvedValue({}),
 	deleteItem: vi.fn().mockResolvedValue({}),
+	deleteItemByTitle: vi.fn().mockResolvedValue(undefined),
 	getListItemsByTitle: vi.fn().mockResolvedValue([]),
 	getListItemById: vi.fn().mockResolvedValue(null),
 	addListItemByTitle: vi.fn().mockResolvedValue({ id: '1', etag: 'mock-etag' }),
@@ -251,22 +255,29 @@ const mockSpClient = {
 	updateListItem: vi.fn().mockResolvedValue({ etag: 'new-etag' }),
 	deleteListItem: vi.fn().mockResolvedValue(undefined),
 	postBatch: vi.fn().mockResolvedValue([]),
+	batch: vi.fn().mockResolvedValue([]),
+	patchListItem: vi.fn().mockResolvedValue({}),
 	fetchRows: vi.fn().mockResolvedValue([]),
 	fetchRowById: vi.fn().mockResolvedValue(null),
 	spFetch: vi.fn().mockResolvedValue(new Response(JSON.stringify({}), { status: 200 })),
 	getListFieldInternalNames: vi.fn().mockResolvedValue(new Set()),
+	ensureListExists: vi.fn().mockResolvedValue({ list: { id: 'test-id', title: 'Test List' }, created: false, fieldsAdded: [] }),
 	getExistingListTitlesAndIds: vi.fn().mockResolvedValue(new Set()),
 	tryGetListMetadata: vi.fn().mockResolvedValue({ Id: 'test-id', Title: 'Test List' }),
+	fetchExistingFields: vi.fn().mockResolvedValue([]),
+	addFieldToList: vi.fn().mockResolvedValue(undefined),
+	updateField: vi.fn().mockResolvedValue('success'),
 	getUnifiedEvents: vi.fn().mockResolvedValue(mockUnifiedEvents),
 	getResources: vi.fn().mockResolvedValue([]),
 };
 
 vi.mock('@/lib/spClient', async () => {
 	const actual = await vi.importActual<typeof import('@/lib/spClient')>('@/lib/spClient');
+	const createSpClient = (...args: Parameters<typeof actual.createSpClient>) => actual.createSpClient(...args);
 	return {
 		...actual,
 		useSP: () => mockSpClient,
-		createSpClient: () => mockSpClient,
+		createSpClient,
 		createIrcSpClient: () => mockSpClient,
 		mockSpClient,
 	};

@@ -27,19 +27,23 @@ vi.mock('@/features/auth/store', async () => ({
     }),
 }));
 
-vi.mock('@/config/featureFlags', () => ({
-  useFeatureFlags: () => ({
-    schedules: true,
-    complianceForm: false,
-    schedulesWeekV2: false,
-    icebergPdca: false,
-    staffAttendance: true,
-    todayOps: true,
-    todayLiteUi: false,
-    todayLiteNavV2: true,
-  }),
-  useFeatureFlag: () => false,
-}));
+vi.mock('@/config/featureFlags', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config/featureFlags')>();
+  return {
+    ...actual,
+    useFeatureFlags: () => ({
+      schedules: true,
+      complianceForm: false,
+      schedulesWeekV2: false,
+      icebergPdca: false,
+      staffAttendance: true,
+      todayOps: true,
+      todayLiteUi: false,
+      todayLiteNavV2: true,
+    }),
+    useFeatureFlag: () => false,
+  };
+});
 
 vi.mock('@mui/material/useMediaQuery', () => ({
   default: () => true,

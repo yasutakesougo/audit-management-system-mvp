@@ -8,9 +8,13 @@ const mockUseFeatureFlags = vi.fn();
 const mockUseUserAuthz = vi.fn();
 const mockRecordKioskTelemetry = vi.fn();
 
-vi.mock('@/config/featureFlags', () => ({
-  useFeatureFlags: () => mockUseFeatureFlags(),
-}));
+vi.mock('@/config/featureFlags', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config/featureFlags')>();
+  return {
+    ...actual,
+    useFeatureFlags: () => mockUseFeatureFlags(),
+  };
+});
 
 vi.mock('@/auth/useUserAuthz', () => ({
   useUserAuthz: () => mockUseUserAuthz(),

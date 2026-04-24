@@ -3,18 +3,22 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
-vi.mock('@/config/featureFlags', () => ({
-  useFeatureFlags: () => ({
-    schedules: false,
-    complianceForm: false,
-    schedulesWeekV2: false,
-    icebergPdca: true,
-    staffAttendance: false,
-    todayOps: false,
-    todayLiteUi: false,
-  }),
-  useFeatureFlag: () => true,
-}));
+vi.mock('@/config/featureFlags', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config/featureFlags')>();
+  return {
+    ...actual,
+    useFeatureFlags: () => ({
+      schedules: false,
+      complianceForm: false,
+      schedulesWeekV2: false,
+      icebergPdca: true,
+      staffAttendance: false,
+      todayOps: false,
+      todayLiteUi: false,
+    }),
+    useFeatureFlag: () => true,
+  };
+});
 
 const authState = { currentUserRole: 'staff' as const };
 vi.mock('@/features/auth/store', () => ({

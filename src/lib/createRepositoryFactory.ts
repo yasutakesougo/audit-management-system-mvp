@@ -40,6 +40,7 @@ import {
     shouldSkipLogin,
     shouldSkipSharePoint,
 } from '@/lib/env';
+import { hasSpfxContext } from '@/lib/runtime';
 import { useMemo } from 'react';
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -128,8 +129,11 @@ export const defaultShouldUseDemo = (): boolean => {
   if (shouldSkipLogin()) return true;
   if (shouldSkipSharePoint()) return true;
 
-  // 4. Dev environment defaults
-  if (isDevMode() && readBool('VITE_DEV_DEMO', false)) return true;
+  // 4. Safety fallbacks
+  if (!hasSpfxContext()) return true;
+
+  // 5. Dev environment defaults
+  if (isDevMode()) return true;
 
   return false;
 };

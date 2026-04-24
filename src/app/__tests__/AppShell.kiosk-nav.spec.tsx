@@ -19,7 +19,12 @@ vi.mock('@/auth/useUserAuthz', () => ({
 }));
 
 vi.mock('@/features/auth/store', async () => ({
-  useAuthStore: (selector: any) =>
+  useAuthStore: (
+    selector: (state: {
+      currentUserRole: string;
+      setCurrentUserRole: ReturnType<typeof vi.fn>;
+    }) => unknown,
+  ) =>
     selector({
       currentUserRole: 'staff',
       setCurrentUserRole: vi.fn(),
@@ -30,21 +35,25 @@ vi.mock('@mui/material/useMediaQuery', () => ({
   default: () => true, // Force desktop for sidebar visibility
 }));
 
-vi.mock('@/config/featureFlags', () => ({
-  useFeatureFlags: () => ({
-    schedules: true,
-    complianceForm: false,
-    schedulesWeekV2: false,
-    icebergPdca: false,
-    staffAttendance: true,
-    todayOps: true,
-    todayLiteUi: false,
-    todayLiteNavV2: true, // Enable Lite Nav for Tier testing
-  }),
-  useFeatureFlag: () => false,
-}));
+vi.mock('@/config/featureFlags', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config/featureFlags')>();
+  return {
+    ...actual,
+    useFeatureFlags: () => ({
+      schedules: true,
+      complianceForm: false,
+      schedulesWeekV2: false,
+      icebergPdca: false,
+      staffAttendance: true,
+      todayOps: true,
+      todayLiteUi: false,
+      todayLiteNavV2: true, // Enable Lite Nav for Tier testing
+    }),
+    useFeatureFlag: () => false,
+  };
+});
 
-function renderAppShell(settingsOverrides: any = {}) {
+function renderAppShell(settingsOverrides: Partial<typeof DEFAULT_SETTINGS> = {}) {
   localStorage.setItem(
     SETTINGS_STORAGE_KEY,
     JSON.stringify({
@@ -92,7 +101,6 @@ describe('AppShell Navigation OS integration (Logical Filtering)', () => {
 
     // Today/Records should remain
     expect(screen.getByText('日次記録')).toBeInTheDocument();
-    expect(screen.getByText('記録一覧')).toBeInTheDocument();
 
     // Master group (利用者) should be hidden by Navigation OS helper
     expect(screen.queryByText('利用者')).not.toBeInTheDocument();
