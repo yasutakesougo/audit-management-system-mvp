@@ -114,20 +114,20 @@ async function safeWithRetry<T>(
     jitterMs: number;
   }
 ): Promise<(SafeResult<T> & { attempts: number })> {
-  let attempts = 0;
-  while (true) {
-    attempts += 1;
+  const maxAttempts = options.maxRetries + 1;
+  for (let attempts = 1; attempts <= maxAttempts; attempts += 1) {
     const result = await safe(fn);
     if (result.ok) {
       return { ...result, attempts };
     }
-    if (!isRetryableUpdateStatus(result.status) || attempts >= options.maxRetries + 1) {
+    if (!isRetryableUpdateStatus(result.status) || attempts >= maxAttempts) {
       return { ...result, attempts };
     }
     const jitter = options.jitterMs > 0 ? Math.floor(Math.random() * options.jitterMs) : 0;
     const delayMs = IS_VITEST ? 0 : options.baseDelayMs * attempts + jitter;
     await wait(delayMs);
   }
+  return { ok: false, err: "retry loop exited unexpectedly", attempts: maxAttempts };
 }
 
 export async function runHealthChecks(
