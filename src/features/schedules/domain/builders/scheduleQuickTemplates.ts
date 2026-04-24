@@ -31,10 +31,10 @@ export interface ScheduleItemForTemplate {
   serviceType?: ScheduleServiceType | string | null;
   start: string;   // ISO or datetime-local
   end: string;
-  userName?: string;
-  userId?: string;
-  assignedStaffId?: string;
-  locationName?: string;
+  userName?: string | null;
+  userId?: string | null;
+  assignedStaffId?: string | null;
+  locationName?: string | null;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────

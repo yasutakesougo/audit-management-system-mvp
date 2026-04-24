@@ -47,16 +47,16 @@ export const ScheduleDetailSchema = ScheduleCoreSchema.extend({
   // Display
   visibility: ScheduleVisibilitySchema.optional(),
   location: z.string().optional(),
-  locationName: z.string().optional(),
-  notes: z.string().optional(),
+  locationName: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
 
   // User/staff assignment
-  userId: z.string().optional(),
-  userLookupId: z.union([z.string(), z.number()]).optional(),
-  userName: z.string().optional(),
-  assignedStaffId: z.string().optional(),
+  userId: z.string().nullable().optional(),
+  userLookupId: z.union([z.string(), z.number(), z.null()]).optional(),
+  userName: z.string().nullable().optional(),
+  assignedStaffId: z.string().nullable().optional(),
   assignedTo: z.string().nullable().optional(),
-  vehicleId: z.string().optional(),
+  vehicleId: z.string().nullable().optional(),
 
   // Approval/acceptance
   acceptedOn: z.string().nullable().optional(),
@@ -65,7 +65,7 @@ export const ScheduleDetailSchema = ScheduleCoreSchema.extend({
 
   // Status detail
   statusReason: z.string().nullable().optional(),
-  serviceType: ScheduleServiceTypeSchema.optional(),
+  serviceType: ScheduleServiceTypeSchema.nullable().optional(),
   subType: z.string().optional(),
 });
 
@@ -95,13 +95,13 @@ export const CreateScheduleInputSchema = z.object({
   startLocal: z.string(),
   endLocal: z.string(),
   serviceType: z.string().nullable().optional(),
-  userId: z.string().optional(),
-  userLookupId: z.string().optional(),
-  userName: z.string().optional(),
-  assignedStaffId: z.string().optional(),
-  locationName: z.string().optional(),
-  notes: z.string().optional(),
-  vehicleId: z.string().optional(),
+  userId: z.string().nullable().optional(),
+  userLookupId: z.string().nullable().optional(),
+  userName: z.string().nullable().optional(),
+  assignedStaffId: z.string().nullable().optional(),
+  locationName: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  vehicleId: z.string().nullable().optional(),
   status: ScheduleStatusSchema.optional(),
   statusReason: z.string().nullable().optional(),
   acceptedOn: z.string().nullable().optional(),

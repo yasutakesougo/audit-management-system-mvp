@@ -62,7 +62,7 @@ export type UserStatusRecord = {
   /** 入力元 */
   readonly source: UserStatusSource;
   /** 備考（申し送り文面の引き継ぎ等） */
-  readonly note?: string;
+  readonly note?: string | null;
   /** 時刻（遅刻の到着予定時刻等、HH:MM 形式） */
   readonly time?: string;
   /** 紐付きスケジュール ID（既存の状態を更新する場合） */
@@ -118,11 +118,11 @@ export function isUserStatusServiceType(
  */
 export function toUserStatusRecord(schedule: {
   id: string;
-  userId?: string;
-  userName?: string;
+  userId?: string | null;
+  userName?: string | null;
   start: string;
   serviceType?: string | null;
-  notes?: string;
+  notes?: string | null;
 }): UserStatusRecord | null {
   if (!isUserStatusServiceType(schedule.serviceType)) return null;
   if (!schedule.userId) return null;
@@ -206,7 +206,7 @@ export function shouldReplaceExistingStatus(
  */
 export function findExistingUserStatus<
   T extends {
-    userId?: string;
+    userId?: string | null;
     start?: string;
     serviceType?: string | null;
   },

@@ -38,6 +38,43 @@ export type TransportAssignmentScheduleRow = {
   hasPickup?: boolean;
 };
 
+export type AssignmentChange<T = string> =
+  | { kind: 'no-change' }
+  | { kind: 'assign'; value: T }
+  | { kind: 'unassign' };
+
+/**
+ * AssignmentChange をリポジトリ契約（UpdateScheduleEventInput）で期待される
+ * 正規化された値に変換する。
+ * - assign: value
+ * - unassign: '' (Repositoryでnullに正規化される)
+ * - no-change: undefined (PATCH対象外)
+ */
+export function toAssignmentContractValue<T>(
+  change: AssignmentChange<T>,
+): T | '' | undefined {
+  switch (change.kind) {
+    case 'assign':
+      return change.value;
+    case 'unassign':
+      return '';
+    case 'no-change':
+      return undefined;
+  }
+}
+
+/**
+ * 生の入力値（string | null | undefined）を AssignmentChange ADT に変換する。
+ * 空文字や null/undefined は 'unassign' とみなす。
+ */
+export function toAssignmentChange<T = string>(
+  value: T | null | undefined,
+): AssignmentChange<T> {
+  if (value === undefined || value === null) return { kind: 'unassign' };
+  if (typeof value === 'string' && value.trim().length === 0) return { kind: 'unassign' };
+  return { kind: 'assign', value };
+}
+
 export type TransportAssignmentUserSource = {
   userId: string;
   userName: string;
@@ -80,6 +117,62 @@ export type TransportAssignmentDraft = {
   vehicles: TransportAssignmentVehicleDraft[];
   unassignedUserIds: string[];
 };
+
+export type VehicleAssignmentField = 'driver' | 'attendant' | 'course';
+
+/**
+ * 送迎配車ドラフトの特定車両の割り当て（運転手、添乗員、コース）を更新する。
+ * AssignmentChange ADT を使用することで、割り当て・解除・変更なしを構造的に扱う。
+ */
+export function updateVehicleAssignment(
+  draft: TransportAssignmentDraft,
+  vehicleId: string,
+  field: VehicleAssignmentField,
+  change: AssignmentChange,
+  staffNameIndex?: Map<string, string>,
+): TransportAssignmentDraft {
+  const nextVehicles = draft.vehicles.map((v) => {
+    if (v.vehicleId !== vehicleId) return v;
+
+    switch (field) {
+      case 'driver': {
+        if (change.kind === 'no-change') return v;
+        const driverId = change.kind === 'assign' ? change.value : null;
+        return {
+          ...v,
+          driverStaffId: driverId,
+          driverName: driverId ? (staffNameIndex?.get(driverId) ?? null) : null,
+        };
+      }
+      case 'attendant': {
+        if (change.kind === 'no-change') return v;
+        const attendantId = change.kind === 'assign' ? change.value : null;
+        return {
+          ...v,
+          attendantStaffId: attendantId,
+          attendantName: attendantId ? (staffNameIndex?.get(attendantId) ?? null) : null,
+        };
+      }
+      case 'course': {
+        if (change.kind === 'no-change') return v;
+        const courseId = change.kind === 'assign' ? parseTransportCourse(change.value) : null;
+        return {
+          ...v,
+          courseId,
+          courseLabel: getTransportCourseLabel(courseId),
+        };
+      }
+      default:
+        return v;
+    }
+  });
+
+  const nextDraft = { ...draft, vehicles: nextVehicles };
+  return {
+    ...nextDraft,
+    unassignedUserIds: recomputeUnassignedUsers(nextDraft),
+  };
+}
 
 export type BuildTransportAssignmentDraftInput = {
   date: string;
@@ -173,7 +266,7 @@ export function buildTransportNotes(
   if (courseId) {
     tags.push(`[transport_course:${courseId}]`);
   }
-  if (tags.length === 0) return base ?? undefined;
+  if (tags.length === 0) return base ?? '';
   const joinedTags = tags.join(' ');
   return base ? `${base} ${joinedTags}` : joinedTags;
 }
@@ -713,24 +806,44 @@ export function buildSchedulePatchPayloads(input: BuildSchedulePatchPayloadsInpu
     const nextAssignment = assignmentByUserId.get(userId);
     if (!nextAssignment) continue;
 
-    const nextVehicleId = nextAssignment.vehicleId ?? '';
-    const nextCourseId = nextAssignment.courseId ?? '';
-    const nextDriverStaffId = nextAssignment.driverStaffId ?? '';
-    const nextAttendantStaffId = nextAssignment.attendantStaffId ?? '';
+    // 現在の状態を抽出（空文字に正規化して比較を容易にする）
     const currentVehicleId = normalizeText(row.vehicleId) ?? '';
     const currentCourseId = extractTransportCourseId(row.notes) ?? '';
     const currentDriverStaffId = normalizeText(row.assignedStaffId) ?? '';
     const currentAttendantStaffId = extractTransportAttendantStaffId(row.notes) ?? '';
-    const nextNotes = buildTransportNotes(row.notes, nextAssignment.attendantStaffId, nextAssignment.courseId);
 
+    // 変更検知（ADT的アプローチへの架け橋）
+    const detectChange = <T>(curr: T | '', next: T | null): AssignmentChange<T> => {
+      const n = next ?? '';
+      if (curr === n) return { kind: 'no-change' };
+      if (n === '') return { kind: 'unassign' };
+      return { kind: 'assign', value: next as T };
+    };
+
+    const vehicleChange = detectChange(currentVehicleId, nextAssignment.vehicleId);
+    const courseChange = detectChange(currentCourseId, nextAssignment.courseId);
+    const driverChange = detectChange(currentDriverStaffId, nextAssignment.driverStaffId);
+    const attendantChange = detectChange(currentAttendantStaffId, nextAssignment.attendantStaffId);
+
+    // 1つでも変更があれば PATCH 対象
     if (
-      nextVehicleId === currentVehicleId
-      && nextCourseId === currentCourseId
-      && nextDriverStaffId === currentDriverStaffId
-      && nextAttendantStaffId === currentAttendantStaffId
+      vehicleChange.kind === 'no-change' &&
+      courseChange.kind === 'no-change' &&
+      driverChange.kind === 'no-change' &&
+      attendantChange.kind === 'no-change'
     ) {
       continue;
     }
+
+    // 契約値（Repositoryが期待する undefined/''/value）に変換
+    const patchVehicleId = toAssignmentContractValue(vehicleChange);
+    const patchDriverStaffId = toAssignmentContractValue(driverChange);
+    // 注釈（Notes）は、変更がある場合のみ再構築
+    const nextNotes = buildTransportNotes(
+      row.notes, 
+      nextAssignment.attendantStaffId, 
+      nextAssignment.courseId
+    );
 
     const etag = normalizeText(row.etag);
     const start = normalizeText(row.start);
@@ -748,10 +861,10 @@ export function buildSchedulePatchPayloads(input: BuildSchedulePatchPayloadsInpu
       userId,
       userLookupId: toNullableLookupId(row.userLookupId),
       userName: normalizeText(row.userName) ?? undefined,
-      assignedStaffId: nextDriverStaffId,
+      assignedStaffId: patchDriverStaffId as string | undefined,
       locationName: normalizeText(row.locationName) ?? undefined,
       notes: nextNotes,
-      vehicleId: nextVehicleId,
+      vehicleId: patchVehicleId as string | undefined,
       status: toScheduleStatus(row.status),
       statusReason: row.statusReason ?? null,
       acceptedOn: row.acceptedOn ?? null,

@@ -54,7 +54,7 @@ export interface AutofillContext {
   /** Navigation source (e.g. 'ops' | 'today') */
   source?: string;
   /** Selected user ID, if known */
-  userId?: string;
+  userId?: string | null;
   /** All existing schedule items for pattern extraction */
   items: ScheduleItemForTemplate[];
 }

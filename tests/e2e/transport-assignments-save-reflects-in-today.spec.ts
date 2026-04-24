@@ -25,13 +25,45 @@ test.describe('Transport assignments save reflects in today', () => {
               Id: 2_000,
               UserID: 'U001',
               FullName: '田中 太郎',
+              TransportCourse: 'Course1',
+              IsActive: true,
+              Modified: today,
             },
             {
               Id: 2_001,
               UserID: TARGET_USER_ID,
               FullName: TARGET_USER_NAME,
+              TransportCourse: 'Course1',
+              IsActive: true,
+              Modified: today,
             },
           ],
+        },
+        {
+          name: 'Staff_Master',
+          items: [
+            {
+              Id: 501,
+              StaffId: 'S001',
+              FullName: '佐藤 運転',
+              IsActive: true,
+            },
+            {
+              Id: 502,
+              StaffId: 'S002',
+              FullName: '鈴木 添乗',
+              IsActive: true,
+            },
+          ],
+        },
+        {
+          name: 'SupportPlanningSheet_Master',
+          aliases: ['PlanningSheet'],
+          items: [{ Id: 1, Title: 'Dummy Planning Sheet' }],
+        },
+        {
+          name: 'ISP_Master',
+          items: [{ Id: 1, Title: 'Dummy ISP' }],
         },
         {
           name: 'Schedules',
@@ -47,14 +79,9 @@ test.describe('Transport assignments save reflects in today', () => {
               Status: 'Planned',
               ServiceType: 'transport',
               Category: 'User',
-              cr014_category: 'User',
-              UserCode: TARGET_USER_ID,
-              cr014_personType: 'User',
-              cr014_personId: TARGET_USER_ID,
+              TargetUserId: TARGET_USER_ID,
               cr014_personName: TARGET_USER_NAME,
-              AssignedStaff: null,
               AssignedStaffId: null,
-              Vehicle: null,
               VehicleId: null,
               '@odata.etag': '"e2e-transport-assignments-save-1"',
             },
@@ -134,7 +161,28 @@ test.describe('Transport assignments save reflects in today', () => {
     await page.getByTestId(`transport-assignment-unassign-車両1-${TARGET_USER_ID}`).click();
 
     await expect(page.getByTestId('transport-assignment-save-button')).toBeEnabled();
+
+    // 通信レベルでの正規化（"" -> null）を検証するためのインターセプター
+    const patchRequestPromise = page.waitForRequest(
+      (req) => 
+        req.url().includes('_api/web/lists/getbytitle') && 
+        req.method() === 'POST' && 
+        req.headers()['x-http-method'] === 'MERGE',
+    );
+
     await page.getByTestId('transport-assignment-save-button').click();
+
+    const request = await patchRequestPromise;
+    const payload = JSON.parse(request.postData() || '{}');
+
+    // リポジトリの正規化ロジックにより、空文字（解除）が null に変換されていることを確認
+    expect(payload).toMatchObject({
+      VehicleId: null,
+      AssignedStaffId: null,
+      Note: null,
+    });
+    expect(request.headers()['x-http-method']).toBe('MERGE');
+
     await expect(page.getByTestId('transport-assignment-save-success')).toBeVisible();
 
     await page.goto('/today', { waitUntil: 'domcontentloaded' });
