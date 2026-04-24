@@ -9,7 +9,7 @@
  *   docs/nightly-patrol/drift-ledger.csv
  *   docs/nightly-patrol/drift-ledger.md
  */
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
@@ -84,7 +84,7 @@ async function spFetch(url, auth, options = {}) {
     const retryAfter = res.headers.get('Retry-After') || '5';
     console.log(`⏳ Rate limited. Retrying after ${retryAfter}s...`);
     await new Promise(resolve => setTimeout(resolve, parseInt(retryAfter) * 1000));
-    return spFetch(url, token, options);
+    return spFetch(url, auth, options);
   }
   if (!res.ok) {
     const body = await res.text().catch(() => '');
@@ -122,7 +122,7 @@ async function checkHasData(siteUrl, listTitle, internalName, auth) {
           const val = data.value[0][internalName];
           return val !== null && val !== undefined && val !== '';
         }
-      } catch (_e) {
+      } catch (_error) {
         // ignore
       }
     }
@@ -144,7 +144,7 @@ function countUsage(internalName) {
       if (!isNaN(count)) total += count;
     }
     return total;
-  } catch (_e) {
+  } catch (_error) {
     return 0; // Exit code 1 or other errors
   }
 }
@@ -203,7 +203,7 @@ async function main() {
         process.env[key.trim()] = valParts.join('=').trim();
       }
     });
-  } catch (_e) {
+  } catch (_error) {
     // Ignore
   }
   
@@ -313,10 +313,50 @@ async function main() {
     }
   }
 
-  // 3. Classify and Format
-  const finalRows = ledgerRows.map(r => ({ ...r, ...classify(r) }));
+  // 3. Load Existing Ledger for Persistence (firstSeenAt)
+  const existingLedgerPath = join(OUT_DIR, 'drift-ledger.csv');
+  const persistenceMap = new Map();
+  if (existsSync(existingLedgerPath)) {
+    try {
+      const prevContent = readFileSync(existingLedgerPath, 'utf-8');
+      const prevLines = prevContent.split('\n').filter(Boolean);
+      if (prevLines.length > 1) {
+        const prevHeaders = prevLines[0].split(',').map(h => h.replace(/"/g, ''));
+        const fstIdx = prevHeaders.indexOf('firstSeenAt');
+        const listIdx = prevHeaders.indexOf('listKey');
+        const nameIdx = prevHeaders.indexOf('internalName');
+        
+        if (fstIdx !== -1 && listIdx !== -1 && nameIdx !== -1) {
+          prevLines.slice(1).forEach(line => {
+            const parts = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+              const char = line[i];
+              if (char === '"') {
+                if (inQuotes && line[i + 1] === '"') { current += '"'; i++; } else inQuotes = !inQuotes;
+              } else if (char === ',' && !inQuotes) { parts.push(current); current = ''; } else current += char;
+            }
+            parts.push(current);
+            const key = `${parts[listIdx]}|${parts[nameIdx]}`;
+            persistenceMap.set(key, parts[fstIdx]);
+          });
+        }
+      }
+    } catch (_error) { /* ignore */ }
+  }
 
-  // 4. Output
+  const now = new Date().toISOString();
+  const ledgerWithPersistence = ledgerRows.map(r => {
+    const key = `${r.listKey}|${r.internalName}`;
+    const firstSeenAt = persistenceMap.get(key) || now;
+    return { ...r, firstSeenAt, lastSeenAt: now };
+  });
+
+  // 4. Classify and Format
+  const finalRows = ledgerWithPersistence.map(r => ({ ...r, ...classify(r) }));
+
+  // 5. Output
   writeCsv(join(OUT_DIR, 'drift-ledger.csv'), finalRows);
   writeMarkdown(join(OUT_DIR, 'drift-ledger.md'), finalRows);
 
@@ -324,7 +364,7 @@ async function main() {
 }
 
 function writeCsv(path, rows) {
-  const headers = ['listKey', 'listTitle', 'fieldId', 'internalName', 'displayName', 'expectedField', 'actualField', 'driftType', 'candidatesMatched', 'usageCount', 'hasData', 'isIndexed', 'lastSeenAt', 'classification', 'confidence', 'evidence'];
+  const headers = ['listKey', 'listTitle', 'fieldId', 'internalName', 'displayName', 'expectedField', 'actualField', 'driftType', 'candidatesMatched', 'usageCount', 'hasData', 'isIndexed', 'firstSeenAt', 'lastSeenAt', 'classification', 'confidence', 'evidence'];
   const content = [
     headers.join(','),
     ...rows.map(r => headers.map(h => {
@@ -336,7 +376,7 @@ function writeCsv(path, rows) {
 }
 
 function writeMarkdown(path, rows) {
-  const headers = ['listKey', 'listTitle', 'internalName', 'displayName', 'driftType', 'classification', 'confidence', 'hasData', 'isIndexed', 'evidence'];
+  const headers = ['listKey', 'listTitle', 'internalName', 'displayName', 'driftType', 'classification', 'confidence', 'firstSeenAt', 'isIndexed', 'evidence'];
   const tableHeaders = `| ${headers.join(' | ')} |`;
   const tableDivider = `| ${headers.map(() => '---').join(' | ')} |`;
   const tableRows = rows.map(r => `| ${headers.map(h => h === 'confidence' ? `**${r[h]}**` : r[h]).join(' | ')} |`).join('\n');

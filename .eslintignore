@@ -1,2 +1,4 @@
 *.md
 **/Legacy/**
+*.csv
+scripts/

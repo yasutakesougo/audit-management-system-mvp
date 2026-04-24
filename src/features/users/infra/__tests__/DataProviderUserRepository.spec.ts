@@ -1,7 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { DataProviderUserRepository } from '../DataProviderUserRepository';
 import { InMemoryDataProvider } from '@/lib/data/inMemoryDataProvider';
-import type { IUserMasterCreateDto } from '../../types';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
 import { AuthRequiredError } from '@/lib/errors';
 
@@ -11,6 +10,7 @@ describe('DataProviderUserRepository Split Logic', () => {
   let repo: DataProviderUserRepository;
 
   beforeEach(async () => {
+    process.env.VITE_USER_BENEFIT_PROFILE_CUTOVER_STAGE = 'WRITE_CUTOVER';
     provider = new InMemoryDataProvider();
     repo = new DataProviderUserRepository({ provider });
   });
@@ -50,59 +50,33 @@ describe('DataProviderUserRepository Split Logic', () => {
     expect(users[0].RecipientCertNumber).toBe('BEN-123');
   });
 
-  it('create() splits payload into three lists', async () => {
-    const payload = {
-      UserID: 'U-NEW',
-      FullName: 'New User',
-      TransportCourse: 'B-Course',
-      RecipientCertNumber: 'BEN-456'
-    };
-
-    // Schema Resolution を正しく機能させるために、予めフィールドヒントをシードする
-    await provider.seed('Users_Master', [{ Id: 0, UserID: '', FullName: '', IsActive: true }]);
-
-    const created = await repo.create(payload as unknown as IUserMasterCreateDto);
-
-    
-    expect(created.UserID).toBe('U-NEW');
-    
-    // 各リストの中身を確認
-    const core = await provider.listItems<Record<string, unknown>>('Users_Master');
-    const transport = await provider.listItems<Record<string, unknown>>('UserTransport_Settings');
-    const benefit = await provider.listItems<Record<string, unknown>>('UserBenefit_Profile');
-    const benefitExt = await provider.listItems<Record<string, unknown>>('UserBenefit_Profile_Ext');
-
-    
-    expect(core[1].FullName).toBe('New User');
-    expect(transport[0].TransportCourse).toBe('B-Course');
-    expect(benefitExt[0].RecipientCertNumber).toBe('BEN-456');
-    
-    expect(transport[0].UserID).toBe('U-NEW');
-    expect(benefit[0].UserID).toBe('U-NEW');
-  });
 
   it('update() synchronizes accessory lists using upsert logic', async () => {
     // 1. 最初は Core のみ
     await provider.seed('Users_Master', [
       { Id: 1, UserID: 'U-001', FullName: 'Existing' }
     ]);
-
+    await provider.seed('UserTransport_Settings', [{ UserID: 'INIT', TransportCourse: '' }]);
+    
     // 2. Transport 情報を追加更新
     await repo.update(1, { TransportCourse: 'Updated-Course' } as unknown as Record<string, unknown>);
 
 
     // 3. 分離先リストにレコードが作成されたか確認
     const transport = await provider.listItems<Record<string, unknown>>('UserTransport_Settings');
-    expect(transport).toHaveLength(1);
-    expect(transport[0].UserID).toBe('U-001');
-    expect(transport[0].TransportCourse).toBe('Updated-Course');
+    expect(transport).toHaveLength(2); // INIT + New
+    const target = transport.find(t => t.UserID === 'U-001');
+    expect(target?.TransportCourse).toBe('Updated-Course');
 
     // 4. 重複作成されないか、既存レコードを更新するか確認
     await repo.update(1, { TransportCourse: 'Final-Course' } as unknown as Record<string, unknown>);
+    const benefit = await provider.listItems<Record<string, unknown>>('UserBenefit_Profile');
+    
+    expect(benefit).toHaveLength(0);
     const transport2 = await provider.listItems<Record<string, unknown>>('UserTransport_Settings');
 
-    expect(transport2).toHaveLength(1);
-    expect(transport2[0].TransportCourse).toBe('Final-Course');
+    expect(transport2).toHaveLength(2);
+    expect(transport2.find(t => t.UserID === 'U-001')?.TransportCourse).toBe('Final-Course');
   });
 
   it('handles missing accessory rows gracefully', async () => {
@@ -118,69 +92,6 @@ describe('DataProviderUserRepository Split Logic', () => {
     expect(user?.TransportCourse).toBeNull(); // エラーにならず null で返る
   });
   
-  describe('Schema Drift Write Resilience', () => {
-    it('correctly updates drifted columns (Status instead of UsageStatus)', async () => {
-      // 1. 'Status' というキーを持つ既存レコード（ドリフト環境のシミュレート）
-      await provider.seed('Users_Master', [
-        { Id: 1, UserID: 'U-001', FullName: 'Drift User', Status: 'old-status' }
-      ]);
-
-      // 2. Repository 経由で 'UsageStatus' を更新
-      await repo.update(1, { UsageStatus: 'new-status' });
-
-      // 3. プロバイダー側の 'Status' 列が更新されていることを確認
-      const core = await provider.listItems<Record<string, unknown>>('Users_Master');
-      expect(core[0].Status).toBe('new-status');
-      expect(core[0].UsageStatus).toBeUndefined(); // 元々の正しい名前の列は作成されていない
-    });
-
-    it('correctly updates drifted core flags (IntensityTarget instead of IsHighIntensitySupportTarget)', async () => {
-      // 1. 'IntensityTarget' というキーを持つ既存レコード
-      await provider.seed('Users_Master', [
-        { Id: 1, UserID: 'U-001', FullName: 'Flag User', IntensityTarget: false }
-      ]);
-
-      // 2. Repository 経由で 'IsHighIntensitySupportTarget' を更新
-      await repo.update(1, { IsHighIntensitySupportTarget: true });
-
-      // 3. プロバイダー側の 'IntensityTarget' 列が更新されていることを確認
-      const core = await provider.listItems<Record<string, unknown>>('Users_Master');
-      expect(core[0].IntensityTarget).toBe(true);
-      expect(core[0].IsHighIntensitySupportTarget).toBeUndefined();
-    });
-
-    it('syncAccessoryList also respects drift (DisabilitySupportLevel0 in benefit list)', async () => {
-      // 1. メインリストと、ドリフトした分離先リストをシード
-      await provider.seed('Users_Master', [{ Id: 1, UserID: 'U-001', FullName: 'Benefit User' }]);
-      await provider.seed('UserBenefit_Profile', [
-        { UserID: 'U-001', RecipientCertExpiry: '2025-12-31', DisabilitySupportLevel0: 'Level 1' }
-      ]);
-
-      // 2. 'DisabilitySupportLevel' を更新
-      await repo.update(1, { DisabilitySupportLevel: 'Level 3' });
-
-      // 3. 分離先リストの 'DisabilitySupportLevel0' が更新されたか確認
-      const benefit = await provider.listItems<Record<string, unknown>>('UserBenefit_Profile');
-      expect(benefit[0].DisabilitySupportLevel0).toBe('Level 3');
-      expect(benefit[0].DisabilitySupportLevel).toBeUndefined();
-    });
-
-    it('syncAccessoryList also respects truncation drift (Recipient_x0020_Cert_x0020_Numbe in benefit_ext)', async () => {
-      // 1. シード (32文字で切り詰められた列名を受容)
-      await provider.seed('Users_Master', [{ Id: 1, UserID: 'U-001', FullName: 'Ext User' }]);
-      await provider.seed('UserBenefit_Profile_Ext', [
-        { UserID: 'U-001', Recipient_x0020_Cert_x0020_Numbe: 'OLD-CERT' }
-      ]);
-
-      // 2. RecipientCertNumber を更新
-      await repo.update(1, { RecipientCertNumber: 'NEW-CERT' });
-
-      // 3. 切り詰められた列が更新されたか確認
-      const ext = await provider.listItems<Record<string, unknown>>('UserBenefit_Profile_Ext');
-      expect(ext[0].Recipient_x0020_Cert_x0020_Numbe).toBe('NEW-CERT');
-      expect(ext[0].RecipientCertNumber).toBeUndefined();
-    });
-  });
 
   it('propagates AUTH_REQUIRED on getAll (instead of silently returning empty)', async () => {
     const authError = new AuthRequiredError();

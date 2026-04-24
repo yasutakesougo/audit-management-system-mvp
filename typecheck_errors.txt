@@ -1,0 +1,37 @@
+src/features/daily/infra/DataProviderDailyRecordRepository.ts(182,26): error TS2554: Expected 2 arguments, but got 1.
+src/features/schedules/hooks/legacy/useSchedulesCrud.ts(109,5): error TS2339: Property 'filteredItems' does not exist on type 'CrudDeps'.
+src/features/schedules/hooks/legacy/useSchedulesCrud.ts(246,5): error TS2353: Object literal may only specify known properties, and 'filteredItems' does not exist in type 'ScheduleOrchestratorDeps'.
+src/features/schedules/hooks/legacy/useSchedulesCrud.ts(312,50): error TS2339: Property 'createSchedule' does not exist on type '{ handleCreateSchedule: (input: ScheduleItemCreateDto) => Promise<any>; handleMoveSchedule: (id: string | number, newDate: string) => Promise<void>; handleDeleteSchedule: (id: string | number) => Promise<...>; }'.
+src/features/schedules/hooks/legacy/useSchedulesCrud.ts(333,118): error TS2448: Block-scoped variable 'handleCreateDialogClose' used before its declaration.
+src/features/schedules/hooks/legacy/useSchedulesCrud.ts(333,118): error TS2454: Variable 'handleCreateDialogClose' is used before being assigned.
+src/features/schedules/hooks/orchestrators/useScheduleOrchestrator.ts(2,44): error TS2307: Cannot find module '@/domain/schedule/schedule' or its corresponding type declarations.
+src/features/schedules/hooks/orchestrators/useScheduleOrchestrator.ts(3,41): error TS2307: Cannot find module '@/domain/schedule/scheduleRepository' or its corresponding type declarations.
+src/features/schedules/infra/DataProviderScheduleRepository.ts(306,26): error TS2554: Expected 2 arguments, but got 1.
+src/features/users/infra/DataProviderUserRepository.ts(861,17): error TS2554: Expected 2 arguments, but got 1.
+src/features/users/useUserForm.ts(65,17): error TS2451: Cannot redeclare block-scoped variable '_users'.
+src/features/users/useUserForm.ts(65,31): error TS2451: Cannot redeclare block-scoped variable 'refreshStore'.
+src/features/users/useUserForm.ts(66,9): error TS2451: Cannot redeclare block-scoped variable 'repository'.
+src/features/users/useUserForm.ts(67,11): error TS2451: Cannot redeclare block-scoped variable 'onSuccess'.
+src/features/users/useUserForm.ts(67,22): error TS2451: Cannot redeclare block-scoped variable 'onDone'.
+src/features/users/useUserForm.ts(67,30): error TS2451: Cannot redeclare block-scoped variable 'onClose'.
+src/features/users/useUserForm.ts(302,17): error TS2451: Cannot redeclare block-scoped variable '_users'.
+src/features/users/useUserForm.ts(302,31): error TS2451: Cannot redeclare block-scoped variable 'refreshStore'.
+src/features/users/useUserForm.ts(303,9): error TS2451: Cannot redeclare block-scoped variable 'repository'.
+src/features/users/useUserForm.ts(304,11): error TS2451: Cannot redeclare block-scoped variable 'onSuccess'.
+src/features/users/useUserForm.ts(304,22): error TS2451: Cannot redeclare block-scoped variable 'onDone'.
+src/features/users/useUserForm.ts(304,30): error TS2451: Cannot redeclare block-scoped variable 'onClose'.
+src/features/users/useUserForm.ts(327,5): error TS2322: Type '{ formData: FormValues; isSaving: boolean; isDirty: boolean; error: string | null; setFieldValue: (field: unknown, value: unknown) => void; setSaving: React.Dispatch<React.SetStateAction<boolean>>; setError: (err: string | null) => void; reset: (_updatedUser: IUserMaster) => void; }' is not assignable to type 'UserEditPageState'.
+  The types of 'formData.TransportSchedule' are incompatible between these types.
+    Type 'Record<string, { to: string; from: string; }>' is not assignable to type 'string'.
+src/lib/telemetry/auditLogger.ts(35,14): error TS2739: Type '{ [x: number]: string; CONFLICT: string; VALIDATION: string; NETWORK: string; UNKNOWN: string; }' is missing the following properties from type 'Record<OrchestratorFailureKind, string>': AUTHORIZATION, SCHEMA_DRIFT
+src/lib/telemetry/auditLogger.ts(38,28): error TS2339: Property 'FORBIDDEN' does not exist on type 'typeof OrchestratorFailureKind'.
+src/pages/abc-record/hooks/orchestrators/useAbcRecordOrchestrator.ts(26,7): error TS2349: This expression is not callable.
+  Type '{ debug: (ns: string, ...a: unknown[]) => void; info: (ns: string, ...a: unknown[]) => void; warn: (ns: string, ...a: unknown[]) => void; error: (ns: string, ...a: unknown[]) => void; readonly enabled: boolean; }' has no call signatures.
+src/pages/abc-record/hooks/orchestrators/useAbcRecordOrchestrator.ts(30,7): error TS2349: This expression is not callable.
+  Type '{ debug: (ns: string, ...a: unknown[]) => void; info: (ns: string, ...a: unknown[]) => void; warn: (ns: string, ...a: unknown[]) => void; error: (ns: string, ...a: unknown[]) => void; readonly enabled: boolean; }' has no call signatures.
+src/pages/abc-record/hooks/orchestrators/useAbcRecordOrchestrator.ts(47,7): error TS2349: This expression is not callable.
+  Type '{ debug: (ns: string, ...a: unknown[]) => void; info: (ns: string, ...a: unknown[]) => void; warn: (ns: string, ...a: unknown[]) => void; error: (ns: string, ...a: unknown[]) => void; readonly enabled: boolean; }' has no call signatures.
+src/pages/abc-record/hooks/orchestrators/useAbcRecordOrchestrator.ts(51,7): error TS2349: This expression is not callable.
+  Type '{ debug: (ns: string, ...a: unknown[]) => void; info: (ns: string, ...a: unknown[]) => void; warn: (ns: string, ...a: unknown[]) => void; error: (ns: string, ...a: unknown[]) => void; readonly enabled: boolean; }' has no call signatures.
+src/pages/support-planning-sheet/SupportPlanningSheetView.tsx(164,61): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.

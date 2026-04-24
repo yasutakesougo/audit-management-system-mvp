@@ -144,6 +144,7 @@ export function useWeekPageOrchestrator(deps: OrchestratorDependencies): Orchest
     setConflictDetailOpen, conflictBusy, setConflictBusy,
     myUpn, canEditByRole, ready, canEdit, canWrite, schedulesTz,
     categoryFilter,
+    filteredItems,
     setActiveDateIso: nav.setActiveDateIso,
     primeRouteReset: nav.primeRouteReset,
     setPendingFabFocus: (v: boolean) => { pendingFabFocusRef.current = v; },

@@ -177,6 +177,21 @@ export function buildOwnerMessage({ owner, mention, decision, actions, repoOptio
     header.push(`- Mention: ${mention}`);
   }
 
+  // Inject Purge Status if available
+  const purgeStatus = process.env.PURGE_STATUS;
+  const purgeReason = process.env.PURGE_REASON;
+  if (purgeStatus && purgeStatus !== 'no_candidates') {
+    const purgeEmoji = {
+      auto_confirmed: '✅',
+      manual_required: '✋',
+      blocked: '⛔',
+    }[purgeStatus] || '⚪';
+    
+    header.push('');
+    header.push(`### 🛡️ Guardian Purge Status: ${purgeEmoji} ${purgeStatus.toUpperCase()}`);
+    header.push(`- Reason: ${purgeReason || 'No reason provided'}`);
+  }
+
   const displayedActions = actions.slice(0, MAX_LINES_PER_OWNER);
   const body = displayedActions.flatMap((action, index) => {
     const severityEmoji = SEVERITY_EMOJI[action.severity] || '⚪';

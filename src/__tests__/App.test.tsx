@@ -100,6 +100,6 @@ describe('App.tsx Feature Flag Integration', () => {
 });
 
 // 📝 テスト結果レポート
-console.log('✅ App.tsx Feature Flag Control Tests: Core logic validation completed');
-console.log('🎯 Focus: HydrationHud & Graph/Demo switching via environment variables');
-console.log('🛡️ Safety: Default false values ensure production-ready behavior');
+// console.log('✅ App.tsx Feature Flag Control Tests: Core logic validation completed');
+// console.log('🎯 Focus: HydrationHud & Graph/Demo switching via environment variables');
+// console.log('🛡️ Safety: Default false values ensure production-ready behavior');
