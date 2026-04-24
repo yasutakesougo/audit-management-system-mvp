@@ -15,17 +15,27 @@ export enum OrchestratorFailureKind {
  * Audit Log Entry
  * 監査ログの構造。
  */
+export type AuditActionStatus = 'open' | 'resolved' | 'ignored';
+
 export interface AuditLogEntry {
+  id: string;                    // 内部識別子
+  firestoreId?: string;          // Firestore上のID (永続化時のみ)
   action: string;                // 例: 'UPDATE_USER_PROFILE'
   actor?: string;                // 実行ユーザー (Email等)
   targetId: string | number;     // 操作対象のID
   status: 'SUCCESS' | 'FAILURE';
+  governanceStatus?: AuditActionStatus; // 対応状態 (FAILURE 時のみ利用)
   durationMs: number;            // 処理時間
   metadata?: Record<string, unknown>; // 補足情報 (変更フィールド等)
   error?: {
     kind: OrchestratorFailureKind;
     message: string;
     stack?: string;
+  };
+  resolution?: {
+    resolvedAt: string;
+    resolvedBy: string;
+    note: string;
   };
 }
 
@@ -48,18 +58,25 @@ const AUDIT_BUFFER: AuditLogEntry[] = [];
 const MAX_BUFFER_SIZE = 100;
 
 /**
- * テレメトリ記録用ユーティリティ
+ * テレメトリ記録用ユーティリティ (Pure)
  */
-export const recordAudit = (entry: AuditLogEntry) => {
+export const recordAudit = (entry: Omit<AuditLogEntry, 'id' | 'firestoreId'>): AuditLogEntry => {
   const timestamp = new Date().toISOString();
+  const id = `audit-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   
+  const fullEntry: AuditLogEntry = {
+    ...entry,
+    id,
+    governanceStatus: entry.status === 'FAILURE' ? 'open' : undefined
+  };
+
   // バッファに追加
-  AUDIT_BUFFER.unshift({ ...entry });
+  AUDIT_BUFFER.unshift(fullEntry);
   if (AUDIT_BUFFER.length > MAX_BUFFER_SIZE) {
     AUDIT_BUFFER.pop();
   }
 
-  const logPrefix = `[AUDIT][${timestamp}][${entry.status}] ${entry.action}`;
+  const logPrefix = `[AUDIT][${timestamp}][${entry.status}] ${entry.action} [ID:${id}]`;
   
   if (entry.status === 'SUCCESS') {
     console.info(`${logPrefix} on ${entry.targetId} (${entry.durationMs}ms)`, entry.metadata);
@@ -71,6 +88,31 @@ export const recordAudit = (entry: AuditLogEntry) => {
       stack: entry.error?.stack
     });
   }
+
+  return fullEntry;
+};
+
+/**
+ * 失敗アクションを「解消済み」として記録する (Pure)
+ */
+export const recordResolution = (args: {
+  auditId: string;
+  resolvedBy: string;
+  note: string;
+  status?: AuditActionStatus;
+}): AuditLogEntry | undefined => {
+  const entry = AUDIT_BUFFER.find(e => e.id === args.auditId);
+  if (!entry) return undefined;
+
+  entry.governanceStatus = args.status || 'resolved';
+  entry.resolution = {
+    resolvedAt: new Date().toISOString(),
+    resolvedBy: args.resolvedBy,
+    note: args.note
+  };
+
+  console.info(`[AUDIT][RESOLUTION] Action ${entry.action} (ID:${entry.id}) marked as ${entry.governanceStatus} by ${args.resolvedBy}`);
+  return entry;
 };
 
 /**
@@ -126,8 +168,14 @@ export const getAuditFailureSummary = () => {
     .sort((a, b) => b.count - a.count)
     .slice(0, 3);
   
+  // ガバナンス統計
+  const openCount = failures.filter(f => f.governanceStatus === 'open').length;
+  const resolvedCount = failures.filter(f => f.governanceStatus === 'resolved').length;
+  
   return {
     totalFailures: failures.length,
+    openCount,
+    resolvedCount,
     byKind: countsByKind,
     topFailureActions,
     latestFailures: failures.slice(0, 5).map(f => ({

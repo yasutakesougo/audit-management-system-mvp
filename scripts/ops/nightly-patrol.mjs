@@ -383,6 +383,8 @@ if (orchestrationAuditSummary) {
   orchestrationSection = [
     `### ⚖️ Business Execution Health: **${orchestrationHealth.score}%** (${orchestrationHealth.status})`,
     `- Total Failures (Recent): **${s.totalFailures || 0}**`,
+    `- 🔴 Open (Action Required): **${s.openCount || 0}**`,
+    `- 🟢 Resolved: **${s.resolvedCount || 0}**`,
     '',
     '#### 📊 Top Failure Actions (Priority for Improvement)',
     ...(s.topFailureActions && s.topFailureActions.length > 0
@@ -531,7 +533,10 @@ ${[
     ? `- 🛠 最優先改善対象: \`${orchestrationAuditSummary.topFailureActions[0].action}\` (${orchestrationAuditSummary.topFailureActions[0].count}件の失敗)`
     : null,
   orchestrationAuditSummary?.totalFailures > 0
-    ? `- 🔴 Orchestration Failure 発生 (${orchestrationAuditSummary.totalFailures}件)。\`TelemetryDashboard\` で詳細を確認し修正検討。`
+    ? `- 🔴 Orchestration Failure 発生 (${orchestrationAuditSummary.totalFailures}件 / 未対応: ${orchestrationAuditSummary.openCount || 0}件)。\`TelemetryDashboard\` で詳細を確認し修正検討。`
+    : null,
+  orchestrationAuditSummary?.openCount > 0
+    ? `- ⚠️ **Action Required**: 未対応の業務エラーが ${orchestrationAuditSummary.openCount} 件あります。現場への確認と解消記録（Resolved Audit）が必要です。`
     : null,
 ].filter(Boolean).join('\n') || '✅ 特に対応不要'}
 
