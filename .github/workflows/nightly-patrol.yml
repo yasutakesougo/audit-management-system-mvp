@@ -44,6 +44,11 @@ jobs:
         env:
           CI: true
 
+      - name: Index Audit
+        run: npx tsx scripts/ops/index-audit.ts
+        env:
+          CI: true
+
       - name: Nightly act warning scan
         id: act_scan
         continue-on-error: true
@@ -219,6 +224,37 @@ jobs:
             console.log(`- escalations: \`${rows.join(', ')}\``);
           }
           NODE
+
+      - name: Index Pressure summary
+        if: ${{ always() }}
+        run: |
+          FILE="docs/nightly-patrol/index-pressure.json"
+          echo "## Index Pressure (SharePoint)" >> "$GITHUB_STEP_SUMMARY"
+          if [ ! -f "$FILE" ]; then
+            echo "- summary: unavailable" >> "$GITHUB_STEP_SUMMARY"
+          else
+            node - "$FILE" <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+            const fs = require('node:fs');
+            const file = process.argv[2];
+            const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+            const results = data.results || [];
+            const critical = results.filter(r => ['action_required', 'critical'].includes(r.severity));
+            console.log(`- totalFindings: **${results.length}**`);
+            console.log(`- actionRequired: **${critical.length}**`);
+            if (critical.length > 0) {
+              console.log('\n| List | Field | Severity |');
+              console.log('|------|-------|:---:|');
+              critical.forEach(r => {
+                const sev = r.severity === 'critical' ? '🔴' : '🟠';
+                console.log(`| ${r.listKey} | ${r.fieldName} | ${sev} ${r.severity} |`);
+              });
+            } else if (results.length > 0) {
+              console.log('\n✅ No action required (all findings are low severity)');
+            } else {
+              console.log('\n✅ No index pressure detected');
+            }
+            NODE
+          fi
 
       - name: Auto-create nightly issues
         if: ${{ always() && steps.decision.outputs.verdict == 'action_required' && vars.NIGHTLY_AUTO_ISSUE == 'true' }}

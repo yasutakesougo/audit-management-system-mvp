@@ -446,6 +446,61 @@ function buildContractDriftDrafts(contractResults) {
   }));
 }
 
+/**
+ * Index Pressure → Issue Draft
+ */
+function buildIndexPressureDrafts(indexResults) {
+  const targetResults = indexResults.filter((r) =>
+    ['action_required', 'critical'].includes(r.severity)
+  );
+
+  return targetResults.map((r) => ({
+    title: `[${r.severity}] [index-pressure] ${r.listKey}.${r.fieldName} index missing`,
+    severity: r.severity === 'critical' ? 'critical' : 'high',
+    category: 'index-pressure',
+    summary: [
+      '## Index Pressure Detected',
+      '',
+      `- List: ${r.listKey}`,
+      `- Field: ${r.fieldName}`,
+      `- Severity: ${r.severity}`,
+      `- Fingerprint: ${r.fingerprint}`,
+    ].join('\n'),
+    rationale: [
+      'SharePoint リストのクエリ性能が悪化し、スロットリングやタイムアウトのリスクがあります。',
+      '特にフィルタリングやソートに使用されるカラムはインデックス化が必須です。',
+      'nightly patrol / index-audit で検知。',
+    ].join('\n'),
+    targetFiles: [`sharepoint/lists/${r.listKey}`],
+    proposal: [
+      '## Dry-run remediation',
+      '',
+      '```bash',
+      r.dryRunCommand || `npm run ops:index-remediate -- --list ${r.listKey} --field ${r.fieldName} --dry-run`,
+      '```',
+      '',
+      r.dryRunLog ? [
+        '## Dry-run Evidence',
+        '```text',
+        r.dryRunLog,
+        '```'
+      ].join('\n') : '',
+      '',
+      '## Suggested reviewer action',
+      '',
+      '1. 上記 dry-run を実行して影響を確認',
+      '2. インデックスの必要性を確認',
+      '3. 手動適用または次の定期メンテナンスで修復を実行',
+    ],
+    acceptanceCriteria: [
+      `\`${r.listKey}\` の \`${r.fieldName}\` がインデックス化されていること`,
+      '対象リストのインデックス数が 20 個（SharePoint上限）を超えていないこと',
+    ],
+    labels: ['index-pressure', 'nightly-patrol', 'needs-review', 'priority-high'],
+    fingerprint: r.fingerprint,
+  }));
+}
+
 // ─── Main ───────────────────────────────────────────────────────────────────
 
 const SEVERITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -460,6 +515,7 @@ const SEVERITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
  * @param {Array<{file: string, line: number, text: string}>} patrolResults.todoHits
  * @param {string} patrolResults.lastHandoffInfo
  * @param {Array<object>} patrolResults.contractResults
+ * @param {Array<object>} patrolResults.indexResults
  * @returns {Array<object>} Issue Draft 配列（severity 順）
  */
 export function buildIssueDrafts(patrolResults) {
@@ -470,6 +526,7 @@ export function buildIssueDrafts(patrolResults) {
     todoHits = [],
     lastHandoffInfo = '',
     contractResults = [],
+    indexResults = [],
   } = patrolResults;
 
   const ledger = loadLedger();
@@ -482,6 +539,7 @@ export function buildIssueDrafts(patrolResults) {
     ...buildTodoHitDrafts(todoHits),
     ...buildHandoffDraft(lastHandoffInfo),
     ...buildContractDriftDrafts(contractResults),
+    ...buildIndexPressureDrafts(indexResults),
   ];
 
   // ─── Deduplication ────────────────────────────────────────────────────────

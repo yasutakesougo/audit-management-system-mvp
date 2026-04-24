@@ -88,6 +88,16 @@ if (fs.existsSync(CONTRACT_DRIFT_PATH)) {
   }
 }
 
+const INDEX_PRESSURE_PATH = path.join(REPORT_DIR, 'index-pressure.json');
+let indexPressureSummary = null;
+if (fs.existsSync(INDEX_PRESSURE_PATH)) {
+  try {
+    indexPressureSummary = JSON.parse(fs.readFileSync(INDEX_PRESSURE_PATH, 'utf8'));
+  } catch {
+    indexPressureSummary = null;
+  }
+}
+
 // --- File Walking ---
 
 const IGNORED_DIRS = new Set([
@@ -434,6 +444,7 @@ const report = `# 🔍 Nightly Patrol Report — ${stamp}
 | 型安全性 (any) | ${status(anyHits.length, 10, 30)} | ${anyHits.length} |
 | TODO/FIXME/HACK | ${status(todoHits.length, 20, 50)} | ${todoHits.length} |
 | テスト未整備 feature | ${status(untestedFeatures.length, 2, 5)} | ${untestedFeatures.length} |
+| Index Pressure | ${indexPressureSummary?.results?.filter(r => ['action_required', 'critical'].includes(r.severity)).length > 0 ? '🔴' : (indexPressureSummary?.results?.length > 0 ? '🟡' : '🟢')} | ${indexPressureSummary?.results?.length || 0} |
 | Handoff | ${lastHandoffInfo.includes('No ') ? '🟡' : '🟢'} | — |
 | Orchestration Health | ${orchestrationHealth.score < 80 ? '🔴' : orchestrationHealth.score < 95 ? '🟡' : '🟢'} | ${orchestrationHealth.score}% |
 | act(...) warning (nightly) | ${actStatusIcon} | ${actStatusCountLabel} |
@@ -494,19 +505,32 @@ ${lastHandoffInfo}
 
 ---
 
-## 6. 🌐 SharePoint通信状況
+## 6. 🛡️ Index Pressure (SharePoint)
+
+${!indexPressureSummary || indexPressureSummary.results?.length === 0
+  ? '✅ インデックス不足なし'
+  : `| リスト | フィールド | 重要度 | 推奨アクション |
+|-------|-----------|:---:|--------------|
+${indexPressureSummary.results.map((r) => 
+  `| \`${r.listKey}\` | \`${r.fieldName}\` | ${r.severity === 'critical' ? '🔴 critical' : (r.severity === 'action_required' ? '🟠 high' : '🟡 low')} | ${['action_required', 'critical'].includes(r.severity) ? 'Issue生成済み' : '要観察'} |`
+).join('\n')}`
+}
+
+---
+
+## 7. 🌐 SharePoint通信状況
 
 ${spHealthSection}
 
 ---
 
-## 7. ⚖️ Orchestration 実行状況
+## 8. ⚖️ Orchestration 実行状況
 
 ${orchestrationSection}
 
 ---
 
-## 8. act(...) warning monitor
+## 9. act(...) warning monitor
 
 ${actWarningSection}
 
@@ -548,6 +572,9 @@ ${[
   orchestrationAuditSummary?.openCount > 0
     ? `- ⚠️ **Action Required**: 未対応の業務エラーが ${orchestrationAuditSummary.openCount} 件あります。現場への確認と解消記録（Resolved Audit）が必要です。`
     : null,
+  indexPressureSummary?.results?.filter(r => ['action_required', 'critical'].includes(r.severity)).length > 0
+    ? `- 🔴 インデックス不足 (${indexPressureSummary.results.filter(r => ['action_required', 'critical'].includes(r.severity)).length}件) を \`ops:index-remediate\` で解消検討`
+    : null,
 ].filter(Boolean).join('\n') || '✅ 特に対応不要'}
 
 ---
@@ -588,7 +615,8 @@ const patrolResults = {
   untestedFeatures, 
   todoHits, 
   lastHandoffInfo,
-  contractResults: contractDriftSummary?.results || []
+  contractResults: contractDriftSummary?.results || [],
+  indexResults: indexPressureSummary?.results || []
 };
 
 // --- Phase C-1: Structured PatrolResult for JSON + classify pipeline ---
@@ -618,6 +646,7 @@ const patrolResultsJson = {
       byKind: orchestrationAuditSummary.byKind
     } : null,
     contracts: contractDriftSummary ? contractDriftSummary.results : null,
+    indexPressure: indexPressureSummary ? indexPressureSummary.results : null,
   },
   gates: {
     unitTest: GATE_UNIT_TEST_TOTAL > 0
@@ -643,6 +672,25 @@ const patrolResultsJson = {
 const jsonPath = path.join(REPORT_DIR, `${stamp}.json`);
 fs.writeFileSync(jsonPath, JSON.stringify(patrolResultsJson, null, 2), 'utf8');
 console.log(`📊 JSON written: docs/nightly-patrol/${stamp}.json`);
+
+// --- Phase B.5: Index Dry-run Capture (Evidence for C-1) ---
+
+if (indexPressureSummary && indexPressureSummary.results?.length > 0) {
+  console.log('🧪 Capturing dry-run evidence for index pressure...');
+  for (const r of indexPressureSummary.results) {
+    if (['action_required', 'critical'].includes(r.severity)) {
+      try {
+        const cmd = `npm run ops:index-remediate -- --list ${r.listKey} --field ${r.fieldName} --dry-run`;
+        const log = execSync(cmd, { encoding: 'utf8', env: { ...process.env, CI: 'true' } });
+        r.dryRunLog = log;
+      } catch (err) {
+        r.dryRunLog = `❌ Dry-run failed: ${err.message}`;
+      }
+    }
+  }
+  // Re-write summary with logs
+  fs.writeFileSync(INDEX_PRESSURE_PATH, JSON.stringify(indexPressureSummary, null, 2), 'utf8');
+}
 
 const drafts = buildIssueDrafts(patrolResults);
 const draftMarkdown = renderIssueDraftMarkdown(drafts, stamp);
