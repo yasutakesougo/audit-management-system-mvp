@@ -18,7 +18,9 @@ const RAW_VITEST_PATH = path.join(REPORT_DIR, 'contract-patrol.raw.json');
 // 監視対象の契約テスト
 const CONTRACT_TARGETS = [
   'src/lib/spClient.contract.spec.ts',
-  'src/app/config/__tests__/navigationConfig.contract.spec.ts'
+  'src/app/config/__tests__/navigationConfig.contract.spec.ts',
+  'src/features/users/infra/__tests__/DataProviderUserRepository.contract.spec.ts',
+  'tests/contracts/dataProvider.contract.spec.ts'
 ];
 
 async function run() {
