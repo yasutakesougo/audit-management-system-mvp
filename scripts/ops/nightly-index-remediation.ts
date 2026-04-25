@@ -27,15 +27,19 @@ export interface NightlyRemediationConfig {
   siteUrl: string;
   /** 1 run あたりの実行上限（テスト上書き用。省略時は NIGHTLY_RUN_LIMIT）*/
   runLimit?: number;
+  /** true の場合、実際の発行をスキップして結果のみ返す */
+  dryRun?: boolean;
+  /** 特定のリストのみを対象とするフィルタ */
+  targetList?: string;
 }
 
 export interface NightlyRemediationResult {
   listTitle: string;
   internalName: string;
-  /** true = index added, false = failed or skipped */
+  /** true = index added (or would be added in dry-run), false = failed or skipped */
   ok: boolean;
-  /** 'added' | 'failed' | 'skipped_limit' */
-  outcome: 'added' | 'failed' | 'skipped_limit';
+  /** 'added' | 'failed' | 'skipped_limit' | 'dry_run_success' */
+  outcome: 'added' | 'failed' | 'skipped_limit' | 'dry_run_success';
   message: string;
   /** 常に 'nightly' */
   source: 'nightly';
@@ -71,6 +75,10 @@ async function setFieldIndexed(
   listTitle: string,
   internalName: string,
 ): Promise<void> {
+  if (config.dryRun) {
+    return;
+  }
+
   const url =
     `${config.siteUrl}/_api/web/lists/getbytitle('${encodeURIComponent(listTitle)}')` +
     `/fields/getbyinternalnameortitle('${encodeURIComponent(internalName)}')`;
@@ -111,7 +119,13 @@ export async function runNightlyIndexRemediation(
   let addedCount = 0;
   const executedKeys = new Set<string>(); // run スコープ内の重複防止
 
+  if (config.dryRun) {
+    console.log("  ℹ️ [nightly-remediation] Dry-run mode enabled. No changes will be applied.");
+  }
+
   for (const [listTitle, requiredFields] of Object.entries(KNOWN_REQUIRED_INDEXED_FIELDS)) {
+    if (config.targetList && listTitle !== config.targetList) continue;
+    
     let currentIndexed: Set<string>;
     try {
       currentIndexed = await fetchIndexedFieldNames(config, listTitle);
@@ -170,9 +184,13 @@ export async function runNightlyIndexRemediation(
         addedToThisList++;
         
         const currentTotal = currentCount + addedToThisList;
-        const msg = `${field.internalName} のインデックスを自動作成しました。成功（${currentTotal}/${SP_INDEX_LIMIT}）`;
-        console.log(`  ✅ [nightly-remediation] ${listTitle}.${field.internalName} — added (${currentTotal}/${SP_INDEX_LIMIT})`);
-        results.push({ listTitle, internalName: field.internalName, ok: true, outcome: 'added', message: msg, source: 'nightly' });
+        const outcome = config.dryRun ? 'dry_run_success' : 'added';
+        const actionVerb = config.dryRun ? 'would be added' : '自動作成しました';
+        const statusIcon = config.dryRun ? '🔍' : '✅';
+        
+        const msg = `${field.internalName} のインデックスを${actionVerb}。成功（${currentTotal}/${SP_INDEX_LIMIT}）`;
+        console.log(`  ${statusIcon} [nightly-remediation] ${listTitle}.${field.internalName} — ${outcome} (${currentTotal}/${SP_INDEX_LIMIT})`);
+        results.push({ listTitle, internalName: field.internalName, ok: true, outcome, message: msg, source: 'nightly' });
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
         console.warn(`  ❌ [nightly-remediation] ${listTitle}.${field.internalName} — ${errMsg}`);
@@ -189,4 +207,43 @@ export async function runNightlyIndexRemediation(
   }
 
   return results;
+}
+
+// --- CLI entry point ---
+if (typeof process !== 'undefined') {
+  const path = await import('node:path');
+  const isCLI = process.argv[1] && (import.meta.url?.includes(path.basename(process.argv[1])) || (typeof require !== 'undefined' && require.main === module));
+  
+  if (isCLI) {
+    const isDryRun = process.argv.includes('--dry-run');
+    const isJson = process.argv.includes('--json');
+    const token = process.env.VITE_SP_TOKEN || process.env.SP_TOKEN;
+    const siteUrl = process.env.VITE_SP_SITE_URL || process.env.SP_SITE_URL;
+
+    if (!token || !siteUrl) {
+      if (isJson) {
+        console.log(JSON.stringify({ error: 'SP_TOKEN or SP_SITE_URL is not set' }));
+      } else {
+        console.error('❌ VITE_SP_TOKEN or VITE_SP_SITE_URL not set.');
+      }
+      process.exit(1);
+    }
+
+    runNightlyIndexRemediation({ token, siteUrl, dryRun: isDryRun })
+      .then((results) => {
+        if (isJson) {
+          console.log(JSON.stringify(results, null, 2));
+        } else {
+          console.log('✅ Nightly Index Remediation completed.');
+        }
+      })
+      .catch((err) => {
+        if (isJson) {
+          console.log(JSON.stringify({ error: err.message }));
+        } else {
+          console.error('❌ Remediation failed:', err);
+        }
+        process.exit(1);
+      });
+  }
 }

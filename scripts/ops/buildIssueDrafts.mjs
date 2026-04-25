@@ -542,8 +542,6 @@ export function buildIssueDrafts(patrolResults) {
     ...buildIndexPressureDrafts(indexResults),
   ];
 
-  // ─── Deduplication ────────────────────────────────────────────────────────
-
   const newDrafts = [];
   const dedupedCount = { skipped: 0, updated: 0, new: 0 };
 
@@ -555,15 +553,11 @@ export function buildIssueDrafts(patrolResults) {
     }
 
     if (ledger[fp]) {
-      // 既存
       ledger[fp].lastSeen = today;
       dedupedCount.skipped++;
-      // レポートには「既存」として残すか、完全に消すか。
-      // ここでは「新規」のみを Drafts 配列に残し、Spam を防ぐ。
       continue;
     }
 
-    // 新規
     ledger[fp] = {
       firstSeen: today,
       lastSeen: today,
@@ -576,10 +570,9 @@ export function buildIssueDrafts(patrolResults) {
   saveLedger(ledger);
 
   if (dedupedCount.skipped > 0) {
-    console.log(`  ℹ️  Deduplicated: ${dedupedCount.skipped} items already in ledger.`);
+    console.log(`  📊  Deduplicated: ${dedupedCount.skipped} items already in ledger.`);
   }
 
-  // severity 順にソート
   return newDrafts.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9));
 }
 

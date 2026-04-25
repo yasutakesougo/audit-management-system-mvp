@@ -282,6 +282,33 @@ if (fs.existsSync(handoffDir)) {
   }
 }
 
+// 6. Index Pressure (SharePoint Runtime)
+console.log('  Checking index pressure...');
+let indexPressureResults = [];
+if (process.env.VITE_SP_TOKEN || process.env.SP_TOKEN) {
+  try {
+    const auditOutput = execSync('npx tsx scripts/ops/index-audit.ts --json', { encoding: 'utf8' });
+    indexPressureResults = JSON.parse(auditOutput);
+    
+    // FAIL がある場合のみ dry-run を実行して解決策を提示
+    if (indexPressureResults.some(r => r.status === 'FAIL')) {
+      console.log('    └ FAIL detected, running dry-run remediation for hints...');
+      const remediationOutput = execSync('npx tsx scripts/ops/nightly-index-remediation.ts --dry-run --json', { encoding: 'utf8' });
+      const remediationResults = JSON.parse(remediationOutput);
+      
+      for (const fail of indexPressureResults) {
+        if (fail.status === 'FAIL') {
+          fail.remediationResults = remediationResults.filter(r => r.listTitle === fail.list);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('  ⚠️ Failed to check index pressure:', err.message);
+  }
+} else {
+  console.log('  └ Skipped: SP_TOKEN not set.');
+}
+
 // --- Git Info ---
 
 let lastCommit = '(unavailable)';
@@ -446,6 +473,7 @@ const report = `# 🔍 Nightly Patrol Report — ${stamp}
 | テスト未整備 feature | ${status(untestedFeatures.length, 2, 5)} | ${untestedFeatures.length} |
 | Index Pressure | ${indexPressureSummary?.results?.filter(r => ['action_required', 'critical'].includes(r.severity)).length > 0 ? '🔴' : (indexPressureSummary?.results?.length > 0 ? '🟡' : '🟢')} | ${indexPressureSummary?.results?.length || 0} |
 | Handoff | ${lastHandoffInfo.includes('No ') ? '🟡' : '🟢'} | — |
+| インデックス圧迫 | ${indexPressureResults.some(r => r.status === 'FAIL') ? '🔴' : (indexPressureResults.length > 0 ? '🟢' : '⚪')} | ${indexPressureResults.filter(r => r.status === 'FAIL').length} |
 | Orchestration Health | ${orchestrationHealth.score < 80 ? '🔴' : orchestrationHealth.score < 95 ? '🟡' : '🟢'} | ${orchestrationHealth.score}% |
 | act(...) warning (nightly) | ${actStatusIcon} | ${actStatusCountLabel} |
 
@@ -616,7 +644,7 @@ const patrolResults = {
   todoHits, 
   lastHandoffInfo,
   contractResults: contractDriftSummary?.results || [],
-  indexResults: indexPressureSummary?.results || []
+  indexResults: indexPressureSummary?.results || indexPressureResults || []
 };
 
 // --- Phase C-1: Structured PatrolResult for JSON + classify pipeline ---
@@ -646,7 +674,7 @@ const patrolResultsJson = {
       byKind: orchestrationAuditSummary.byKind
     } : null,
     contracts: contractDriftSummary ? contractDriftSummary.results : null,
-    indexPressure: indexPressureSummary ? indexPressureSummary.results : null,
+    indexPressure: indexPressureSummary?.results || indexPressureResults || null,
   },
   gates: {
     unitTest: GATE_UNIT_TEST_TOTAL > 0
