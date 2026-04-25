@@ -1,6 +1,7 @@
 import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'fs';
-import { join, resolve } from 'path';
+import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { getAccessToken } from './auth-helper.mjs';
 
 /**
  * Phased Purge Engine — Data Surgery for SharePoint Zombies
@@ -11,7 +12,8 @@ import { fileURLToPath } from 'url';
  * 4. Micro-batch deletion (Dry-run by default)
  */
 
-const __dirname = fileURLToPath(new URL('.', import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const REPO_ROOT = resolve(__dirname, '../../');
 
 // Load .env manually to avoid shell expansion issues with long tokens
@@ -36,12 +38,13 @@ const loadEnv = (path) => {
   } catch (e) { console.log(`   [DEBUG] Error loading ${path}: ${e.message}`); }
 };
 
-loadEnv(resolve(REPO_ROOT, '.env.local'));
-loadEnv(resolve(REPO_ROOT, 'artifacts/purge-backups/.env.purge'));
+// Standard project env loading
+const envFiles = ['.env', '.env.local', 'artifacts/purge-backups/.env.purge'];
+envFiles.forEach(f => loadEnv(resolve(REPO_ROOT, f)));
 
-console.log('   [ENV] Keys loaded:', Object.keys(process.env).filter(k => k.includes('VITE_SP')));
+console.log('   [ENV] Keys loaded:', Object.keys(process.env).filter(k => k.includes('VITE_SP') || k.includes('SP_SITE')));
 
-// Debug check
+// Mapping for compatibility
 if (!process.env.VITE_SP_SITE_URL && process.env.SP_SITE_URL) process.env.VITE_SP_SITE_URL = process.env.SP_SITE_URL;
 if (!process.env.VITE_SP_TOKEN && process.env.SMOKE_TEST_BEARER_TOKEN) process.env.VITE_SP_TOKEN = process.env.SMOKE_TEST_BEARER_TOKEN;
 
@@ -66,17 +69,11 @@ const BACKUP_DIR = flagValue('backup-out') || join(REPO_ROOT, 'artifacts', 'purg
 const IS_DRY_RUN = ARGS.includes('--dry-run');
 const IS_EXECUTE = ARGS.includes('--execute');
 
-const SITE_URL = process.env.VITE_SP_SITE_URL || process.env.SP_SITE_URL;
-const TOKEN_FILE = join(REPO_ROOT, '.token.local');
-let TOKEN = '';
-try {
-  TOKEN = readFileSync(TOKEN_FILE, 'utf-8').trim();
-} catch (e) {
-  TOKEN = (process.env.VITE_SP_TOKEN || process.env.SMOKE_TEST_BEARER_TOKEN || '').trim();
-}
+const SITE_URL = process.env.VITE_SP_SITE_URL;
+const TOKEN = getAccessToken();
 
 if (!TOKEN) {
-  console.error('❌ No valid token found in .token.local or environment.');
+  console.error('❌ No valid token found. Run "m365 login" or set VITE_SP_TOKEN.');
   process.exit(1);
 }
 

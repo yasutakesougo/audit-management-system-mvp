@@ -45,6 +45,7 @@ export const APP_ROUTE_PATHS = [
   'users',
   'users/new',
   'users/:userId',
+  'users/hub/:userId',
   'staff',
   'staff/new',
   'staff/attendance',

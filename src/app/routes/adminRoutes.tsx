@@ -1,6 +1,7 @@
 /**
  * Admin domain routes: /admin/*, /users/*, /staff/*, /checklist, /audit
  */
+import { UserDetailRedirect } from '@/app/routes/redirects';
 import ProtectedRoute from '@/app/ProtectedRoute';
 import SchedulesGate from '@/app/SchedulesGate';
 import RequireAudience from '@/components/RequireAudience';
@@ -107,6 +108,14 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: 'users/:userId',
+    element: (
+      <RequireAudience requiredRole="reception">
+        <UserDetailRedirect />
+      </RequireAudience>
+    ),
+  },
+  {
+    path: 'users/hub/:userId',
     element: (
       <RequireAudience requiredRole="reception">
         <SuspendedUserDetailPage />
