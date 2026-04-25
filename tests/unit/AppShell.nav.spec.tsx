@@ -145,8 +145,8 @@ describe('AppShell navigation', () => {
     const hasComplianceLink = links.some(link => link.getAttribute('href')?.includes('/compliance'));
     expect(hasComplianceLink).toBe(false);
 
-    // AppShell footer is currently disabled (footer={null}).
-    expect(screen.queryByRole('contentinfo')).toBeNull();
+    // AppShell footer (FooterQuickActions) should be present.
+    expect(screen.getByRole('contentinfo')).toBeInTheDocument();
 
   });
 
