@@ -73,7 +73,7 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
     this.benefitExtListTitle = sanitizeEnvValue(readEnv('VITE_SP_LIST_USER_BENEFIT_EXT', '')) || 'UserBenefit_Profile_Ext';
 
     this.resolver = new UserFieldResolver(this.provider, this.listTitle);
-    this.joiner = new UserJoiner(this.resolver);
+    this.joiner = new UserJoiner();
     this.payloadBuilder = new UserPayloadBuilder(this.provider, this.resolver);
   }
 
@@ -232,8 +232,9 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
       benefit = applyBenefitCutoverRead(benefit, benefitRaw, this.resolver.getBenefitCutoverStage());
     }
 
-    const next = this.joiner.mergeExtraData(user, transport as any, benefit as any, benefitExt as any);
-    return this.joiner.sanitizeDomainRecord(next, !!transport, !!benefit, !!benefitExt);
+    const sanitized = this.joiner.sanitizeDomainRecord(user, !!transport, !!benefit, !!benefitExt);
+    const next = this.joiner.mergeExtraData(sanitized, transport as any, benefit as any, benefitExt as any);
+    return next;
   }
 
   private async enrichUsers(users: IUserMaster[]): Promise<IUserMaster[]> {

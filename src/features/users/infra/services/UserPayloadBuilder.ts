@@ -10,6 +10,7 @@ import {
 } from '@/sharepoint/fields';
 import { sanitizeEnvValue } from '@/lib/sp/helpers';
 import { readEnv } from '@/lib/env';
+import { buildMappedPayload } from '@/lib/data/repositoryUtils';
 
 const MAX_WRITE_RETRY = 8;
 
@@ -31,7 +32,7 @@ export class UserPayloadBuilder {
     if (!mapping) throw new Error('Schema resolution failed');
 
     // 送信データの構築
-    let request = this.toRequest(payload, mapping);
+    let request = buildMappedPayload({ input: payload as Record<string, unknown>, mapping });
 
     // 分離先リストのフィールドをメインリストへの送信から除外する
     const [transportMapping, benefitMapping, benefitExtMapping] = await Promise.all([
@@ -103,7 +104,7 @@ export class UserPayloadBuilder {
     mapping: Record<string, string | undefined>
   ): Promise<void> {
     const physicalUserId = mapping.userId || 'UserID';
-    let request = this.toRequest(payload, mapping);
+    let request = buildMappedPayload({ input: payload as Record<string, unknown>, mapping });
 
     if (type === 'benefit') {
       const stage = this.resolver.getBenefitCutoverStage();
@@ -132,29 +133,6 @@ export class UserPayloadBuilder {
     }
   }
 
-  private toRequest(payload: any, mapping: Record<string, string | undefined>): Record<string, any> {
-    const req: Record<string, any> = {};
-    const physicalToLogical = new Map<string, string>();
-    for (const [logical, physical] of Object.entries(mapping)) {
-      if (physical) physicalToLogical.set(physical, logical);
-    }
-
-    for (const [key, val] of Object.entries(payload)) {
-      // 1. キーが論理名の場合 (e.g. transportCourse)
-      const physicalFromLogical = mapping[key];
-      if (physicalFromLogical) {
-        req[physicalFromLogical] = val;
-        continue;
-      }
-
-      // 2. キーが物理名の場合 (e.g. TransportCourse)
-      if (physicalToLogical.has(key)) {
-        req[key] = val;
-        continue;
-      }
-    }
-    return req;
-  }
 
   private filterUnsupportedFields(request: Record<string, any>): Record<string, any> {
     const filtered = { ...request };

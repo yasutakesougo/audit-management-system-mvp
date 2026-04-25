@@ -47,17 +47,7 @@ export const applyBenefitCutoverRead = (
   stage: CutoverStageValue,
 ): Record<string, unknown> => {
   const overlay = mapMigratingFields(rawRow, stage);
-  const next = { ...washedRow };
-  
-  for (const col of USER_BENEFIT_PROFILE_MIGRATING_COLUMNS) {
-    const val = overlay[col.domainKey];
-    if (val !== undefined) {
-      // canonical 名 (PascalCase) で上書きする
-      next[col.canonical] = val;
-    }
-  }
-
-  return next;
+  return { ...washedRow, ...overlay };
 };
 
 /**

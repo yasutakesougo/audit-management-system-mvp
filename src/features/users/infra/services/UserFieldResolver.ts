@@ -120,12 +120,20 @@ export class UserFieldResolver {
       const bestEffort: Record<string, string | undefined> = {};
       const resolvedKeys = new Set<string>();
 
+      const hasAnyResolved = Object.values(resolved).some(v => typeof v === 'string' && v.length > 0);
+
       for (const [key, cands] of Object.entries(candidates)) {
         if (resolved[key]) {
           bestEffort[key] = resolved[key] as string;
           resolvedKeys.add(key);
+        } else if (essentials.includes(key)) {
+          bestEffort[key] = cands[0];
+        } else if (!hasAnyResolved) {
+          // スキーマ情報が十分に観測できない初期状態（例: 空リスト）では
+          // optional も primary 候補へ best-effort でフォールバックして write を阻害しない。
+          bestEffort[key] = cands[0];
         } else {
-          bestEffort[key] = essentials.includes(key) ? cands[0] : undefined;
+          bestEffort[key] = undefined;
         }
       }
 
