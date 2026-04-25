@@ -8,7 +8,8 @@ import {
   Assignment as ClipboardList, 
   Warning as AlertTriangle,
   Thermostat as ThermostatIcon,
-  LocalShipping as TransportIcon
+  LocalShipping as TransportIcon,
+  Description as PlanningIcon
 } from '@mui/icons-material';
 
 interface ActionCenterWidgetProps {
@@ -77,6 +78,7 @@ export const ActionCenterWidget: React.FC<ActionCenterWidgetProps> = ({
                action.kind === 'handoff' ? <AlertCircle className="w-5 h-5" /> : 
                action.kind === 'vital' ? <ThermostatIcon className="w-5 h-5" /> :
                action.kind === 'transport' ? <TransportIcon className="w-5 h-5" /> :
+               action.kind === 'planning' ? <PlanningIcon className="w-5 h-5" /> :
                <AlertTriangle className="w-5 h-5" />}
             </div>
             
