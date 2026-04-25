@@ -51,6 +51,13 @@ export const KNOWN_REQUIRED_INDEXED_FIELDS: Record<string, IndexFieldSpec[]> = {
     },
   ],
   // 高頻度フィルタを使うリストは随時追加
+  ActivityDiary: [
+    {
+      internalName: 'Date',
+      displayName: '記録日',
+      reason: '日次・期間取得の主キー（$filter 利用）',
+    },
+  ],
   DailyActivityRecords: [
     {
       internalName: 'RecordDate',
@@ -58,11 +65,40 @@ export const KNOWN_REQUIRED_INDEXED_FIELDS: Record<string, IndexFieldSpec[]> = {
       reason: '$filter=RecordDate eq X（日次取得）',
     },
   ],
+  DailyRecordRows: [
+    {
+      internalName: 'ParentID',
+      displayName: '親レコードID',
+      reason: '結合取得のキー',
+    },
+    {
+      internalName: 'UserID',
+      displayName: '利用者ID',
+      reason: '利用者別履歴取得のキー',
+    },
+  ],
+  SupportRecord_Daily: [
+    {
+      internalName: 'UserCode',
+      displayName: '利用者コード',
+      reason: '利用者別履歴取得のキー',
+    },
+    {
+      internalName: 'RecordDate',
+      displayName: '記録日',
+      reason: '日次・期間取得のフィルタ用',
+    },
+  ],
   Schedules: [
     {
       internalName: 'AssignedStaffId',
       displayName: '職員コード',
       reason: '$filter=AssignedStaffId eq X（職員別スケジュール取得）',
+    },
+    {
+      internalName: 'EventDate',
+      displayName: 'イベント日',
+      reason: '期間フィルタ・重複チェック用',
     },
   ],
   UserBenefit_Profile_Ext: [
@@ -109,6 +145,13 @@ export const KNOWN_REQUIRED_INDEXED_FIELDS: Record<string, IndexFieldSpec[]> = {
       internalName: 'SessionId',
       displayName: 'セッションID',
       reason: '特定分析セッションの識別用',
+    },
+  ],
+  Users_Master: [
+    {
+      internalName: 'UserID',
+      displayName: '利用者ID',
+      reason: '利用者情報の主キー（マスタ参照用）',
     },
   ],
 };
