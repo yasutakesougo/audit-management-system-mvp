@@ -14,7 +14,7 @@ export const ACTIVITY_DIARY_CANDIDATES = {
   /** ユーザー識別子。Text 型の UserID と Lookup 型 UserId/UserIdId の両方を吸収 */
   userId:          ['UserID', 'UserId', 'UserIdId', 'user_id', 'cr013_userId'],
   /** 記録日 */
-  date:            ['Date', 'date', 'RecordDate', 'EntryDate', 'cr013_date'],
+  date:            ['Date', 'date', 'ServiceDate', 'RecordDate', 'EntryDate', 'cr013_date'],
   /** 時間帯 (AM / PM / 1日) */
   shift:           ['Shift', 'shift', 'Period', 'TimeSlot', 'cr013_shift'],
   /** 活動カテゴリ */

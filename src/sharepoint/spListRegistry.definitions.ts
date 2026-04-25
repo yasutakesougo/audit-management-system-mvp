@@ -296,7 +296,7 @@ export const dailyListEntries: readonly SpListEntry[] = [
     essentialFields: ['UserID', 'Date', 'Shift', 'Category'],
     provisioningFields: [
       { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true },
-      { internalName: 'Date', type: 'DateTime', displayName: 'Date', required: true, dateTimeFormat: 'DateOnly', indexed: true },
+      { internalName: 'Date', type: 'DateTime', displayName: 'Date', required: true, dateTimeFormat: 'DateOnly', indexed: true, candidates: ['Date', 'ServiceDate', 'RecordDate', 'EntryDate', 'cr013_date'] },
       { internalName: 'Shift', type: 'Choice', displayName: 'Shift', choices: ['AM', 'PM', '1日'], required: true },
       { internalName: 'Category', type: 'Choice', displayName: 'Category', choices: ['請負', '個別', '外活動', '余暇'], required: true },
       { internalName: 'LunchAmount', type: 'Choice', displayName: 'Lunch Amount', choices: ['完食', '8割', '半分', '少量', 'なし'] },
