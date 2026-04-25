@@ -679,14 +679,14 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
     const mapping = await this.getAccessoryMapping(type);
     const request = this.toRequest(payload, mapping);
 
-    // UserID は必須で含める
-    const filteredRequest: Record<string, unknown> = { UserID: userId };
+    const joinField = mapping.userId || ACCESSORY_LIST_JOIN_FIELD;
+    const filteredRequest: Record<string, unknown> = { [joinField]: userId };
     let hasData = false;
     
     // このリストに該当する（解決済みの）物理フィールドのみを抽出
     const physicalFields = new Set(Object.values(mapping).filter((v): v is string => !!v));
     for (const [key, value] of Object.entries(request)) {
-      if (physicalFields.has(key) && key !== 'UserID') {
+      if (physicalFields.has(key) && key !== joinField) {
         filteredRequest[key] = value;
         hasData = true;
       }
@@ -698,7 +698,7 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
       const stage = this.getBenefitCutoverStage();
       finalRequest = applyBenefitCutoverWrite(filteredRequest, payload, stage);
       // cutover overlay の結果、UserID 以外にキーが増えた場合は hasData を再評価
-      if (Object.keys(finalRequest).some((k) => k !== 'UserID')) {
+      if (Object.keys(finalRequest).some((k) => k !== joinField)) {
         hasData = true;
       }
     }
@@ -713,7 +713,6 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
 
     try {
       // UserID で既存レコードを検索 (物理名 'UserID' 決め打ちだが、ACCESSORY_LIST_JOIN_FIELD も一応考慮)
-      const joinField = mapping.userId || ACCESSORY_LIST_JOIN_FIELD;
       const filter = buildEq(joinField, userId);
       const existing = await this.provider.listItems<Record<string, unknown>>(listTitle, {
         filter,

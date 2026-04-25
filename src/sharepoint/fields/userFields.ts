@@ -356,7 +356,7 @@ export function resolveUserSelectFields(mode: UserSelectMode = 'core'): readonly
  * essentialFields (registry): ['UserID', 'RecipientCertNumber']
  */
 export const USER_BENEFIT_PROFILE_CANDIDATES = {
-  userId: CANDIDATE_USER_ID,
+  userId: [...CANDIDATE_USER_ID, 'Title'],
   recipientCertNumber: CANDIDATE_RECIPIENT_CERT_NUMBER,
   recipientCertExpiry: CANDIDATE_RECIPIENT_CERT_EXPIRY,
   grantMunicipality: CANDIDATE_GRANT_MUNICIPALITY,
@@ -399,7 +399,7 @@ export const USER_TRANSPORT_SETTINGS_ESSENTIALS: (keyof typeof USER_TRANSPORT_SE
 
 // ── User Benefit Profile EXT (user_benefit_profile_ext) ──
 export const USER_BENEFIT_PROFILE_EXT_CANDIDATES = {
-  userId: CANDIDATE_USER_ID,
+  userId: [...CANDIDATE_USER_ID, 'Title'],
   recipientCertNumber: CANDIDATE_RECIPIENT_CERT_NUMBER,
 } as const;
 

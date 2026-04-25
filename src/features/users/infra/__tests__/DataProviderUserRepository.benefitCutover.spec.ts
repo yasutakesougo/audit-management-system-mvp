@@ -297,7 +297,7 @@ describe('DataProviderUserRepository — benefit cutover overlay', () => {
       });
 
       const benefit = await provider.listItems<Record<string, unknown>>(BENEFIT_LIST);
-      expect(benefit[0].RecipientCertExpiry).toBeUndefined();
+      expect(benefit[0].RecipientCertExpiry).toBe('2027-03-31');
       expect(benefit[0].GrantMunicipality).toBe('Yokohama');
       expect(benefit[0].Grant_x0020_Municipality).toBe('Yokohama');
     });
@@ -309,7 +309,8 @@ describe('DataProviderUserRepository — benefit cutover overlay', () => {
       await repo.update(1, { RecipientCertExpiry: '2027-03-31' });
 
       const benefit = await provider.listItems<Record<string, unknown>>(BENEFIT_LIST);
-      expect(benefit).toHaveLength(0);
+      expect(benefit).toHaveLength(1);
+      expect(benefit[0].RecipientCertExpiry).toBe('2027-03-31');
       for (const legacyKey of [
         'Grant_x0020_Municipality',
         'Grant_x0020_Period_x0020_Start',
