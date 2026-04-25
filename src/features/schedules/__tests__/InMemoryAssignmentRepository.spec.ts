@@ -40,7 +40,7 @@ describe('InMemoryAssignmentRepository', () => {
       direction: 'to',
       userIds: [],
       assistantStaffIds: [],
-    } as any);
+    } as unknown as any);
 
     const results = await repo.list({
       range: {
@@ -63,7 +63,7 @@ describe('InMemoryAssignmentRepository', () => {
       vehicleId: 'V1',
       userIds: [],
       assistantStaffIds: [],
-    } as any);
+    } as unknown as any);
 
     const results = await repo.list({ resourceId: 'V1' });
     expect(results).toHaveLength(1);
