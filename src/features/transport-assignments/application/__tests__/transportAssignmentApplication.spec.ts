@@ -4,7 +4,9 @@ import {
   compareDraftWithPersistedAssignments,
   detectConcurrencyConflicts,
   validateSaveReadiness,
-  orchestrateAssignmentSave
+  orchestrateAssignmentSave,
+  CoordinationInsight,
+  ConcurrencyConflictInsight
 } from '../transportAssignmentApplication';
 import { TransportAssignmentDraft } from '../../domain/transportAssignmentDraft';
 import { TransportAssignment } from '@/features/schedules/domain/assignment';
@@ -56,7 +58,7 @@ describe('transportAssignmentApplication contract tests', () => {
     it('should return warning when driver is missing', () => {
       const draftWithMissingDriver: TransportAssignmentDraft = {
         ...dummyDraft,
-        vehicles: [{ ...dummyDraft.vehicles[0], driverStaffId: '' }]
+        vehicles: [{ ...dummyDraft.vehicles[0], driverStaffId: '', driverName: '' }]
       };
       const insights = getTransportAssignmentInsights(draftWithMissingDriver, {});
       expect(insights).toContainEqual(expect.objectContaining({
@@ -109,21 +111,21 @@ describe('transportAssignmentApplication contract tests', () => {
 
   describe('validateSaveReadiness', () => {
     it('should block save on coordination errors', () => {
-      const insights = [{ type: 'capacity', severity: 'error', message: 'Over capacity' }] as any;
+      const insights: CoordinationInsight[] = [{ type: 'capacity', severity: 'error', message: 'Over capacity' }];
       const readiness = validateSaveReadiness(insights, []);
       expect(readiness.isBlocked).toBe(true);
       expect(readiness.blockReason).toBe('coordination_error');
     });
 
     it('should block save on concurrency conflicts', () => {
-      const conflicts = [{ vehicleId: '車両1', vehicleName: '車両1', reason: 'modified_externally' }] as any;
+      const conflicts: ConcurrencyConflictInsight[] = [{ vehicleId: '車両1', vehicleName: '車両1', reason: 'modified_externally' }];
       const readiness = validateSaveReadiness([], conflicts);
       expect(readiness.isBlocked).toBe(true);
       expect(readiness.blockReason).toBe('concurrency_conflict');
     });
 
     it('should not block save on warnings only', () => {
-      const insights = [{ type: 'missing_driver', severity: 'warning', message: 'Warning' }] as any;
+      const insights: CoordinationInsight[] = [{ type: 'missing_driver', severity: 'warning', message: 'Warning' }];
       const readiness = validateSaveReadiness(insights, []);
       expect(readiness.isBlocked).toBe(false);
       expect(readiness.warnings).toHaveLength(1);
@@ -139,7 +141,7 @@ describe('transportAssignmentApplication contract tests', () => {
       await orchestrateAssignmentSave(mockRepo, dummyDraft);
       
       expect(mockRepo.saveBulk).toHaveBeenCalled();
-      const calledAssignments = (mockRepo.saveBulk as any).mock.calls[0][0];
+      const calledAssignments = vi.mocked(mockRepo.saveBulk).mock.calls[0][0];
       expect(calledAssignments[0].vehicleId).toBe('車両1');
     });
   });
