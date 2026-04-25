@@ -93,6 +93,7 @@ function writeReport(report: IndexPressureReport) {
 
 // --- 2. Dynamic Import ---
 async function main() {
+  const isJson = process.argv.includes('--json');
   const { KNOWN_REQUIRED_INDEXED_FIELDS } = await import('../../src/features/sp/health/indexAdvisor/spIndexKnownConfig');
   const { ensureConfig } = await import('../../src/lib/sp/config');
   const { SP_LIST_REGISTRY } = await import('../../src/sharepoint/spListRegistry');
@@ -105,15 +106,22 @@ async function main() {
 
   const token = process.env.SP_TOKEN || process.env.VITE_SP_TOKEN;
   if (!token) {
-    console.error("❌ SP_TOKEN is not set.");
+    if (isJson) {
+      console.log(JSON.stringify({ error: "SP_TOKEN is not set" }));
+    } else {
+      console.error("❌ SP_TOKEN is not set.");
+    }
     writeReport(report);
     process.exit(1);
   }
 
   const config = ensureConfig();
   const apiBaseUrl = config.baseUrl;
+  if (!isJson) {
+    console.log("--- SharePoint Index Governance Audit (Drift-Aware Mode) ---");
+  }
 
-  console.log("--- SharePoint Index Governance Audit (Drift-Aware Mode) ---");
+  const results: any[] = [];
   
   // Dynamic mapping: KNOWN_REQUIRED_INDEXED_FIELDS keys are List Titles (usually)
   // We need to find the registry entry that resolves to that title.
@@ -131,7 +139,7 @@ async function main() {
     });
 
     if (!listDef) {
-      console.log(`\n⚠️ Warning: No registry entry found for advisor list "${advisorTitle}". Skipping.`);
+      if (!isJson) console.log(`\n⚠️ Warning: No registry entry found for advisor list "${advisorTitle}". Skipping.`);
       continue;
     }
 
@@ -140,7 +148,7 @@ async function main() {
         ? `getbyid('${resolvedTitle.substring(5)}')` 
         : `getbytitle('${resolvedTitle}')`;
 
-    console.log(`\nList: ${listDef.displayName} (${resolvedTitle})`);
+    if (!isJson) console.log(`\nList: ${listDef.displayName} (${resolvedTitle})`);
     
     // Fetch physical indexes
     const url = `${apiBaseUrl}/lists/${listAccessor}/fields?$filter=Indexed eq true&$select=InternalName,Title`;
@@ -152,31 +160,33 @@ async function main() {
     });
     
     if (!res.ok) {
-      console.error(`  ❌ Failed to fetch indexes: ${res.status}`);
+      if (!isJson) console.error(`  ❌ Failed to fetch indexes: ${res.status}`);
       continue;
     }
     
     const data = await res.json() as { value: { InternalName: string; Title: string }[] };
     const currentIndexedNames = new Set(data.value.map(f => f.InternalName));
     
-    console.log(`  Current Physical Indexes (${currentIndexedNames.size}/20)`);
+    if (!isJson) console.log(`  Current Physical Indexes (${currentIndexedNames.size}/20)`);
     
     // REQUIRED Check with Drift-Awareness (checking candidates)
     const requiredSpecs = KNOWN_REQUIRED_INDEXED_FIELDS[advisorTitle] || [];
-    
-    console.log(`  Governance Status:`);
+    const missingFields: string[] = [];
+    const okFields: { internalName: string; physicalName: string; drifted: boolean }[] = [];
+
+    if (!isJson) console.log(`  Governance Status:`);
     for (const spec of requiredSpecs) {
-      // Find field definition in registry to get candidates
       const fieldDef = listDef.provisioningFields?.find((f: any) => f.internalName === spec.internalName);
       const candidates = fieldDef?.candidates || [spec.internalName];
       
-      // Check if ANY candidate is indexed
       const foundPhysicalName = candidates.find((c: string) => currentIndexedNames.has(c));
       
       if (foundPhysicalName) {
         const isDrift = foundPhysicalName !== spec.internalName;
         const driftWarn = isDrift ? ` (Drift: ${foundPhysicalName})` : "";
-        console.log(`    ✅ ${spec.internalName}: OK${driftWarn}`);
+        if (!isJson) console.log(`    ✅ ${spec.internalName}: OK${driftWarn}`);
+        
+        okFields.push({ internalName: spec.internalName, physicalName: foundPhysicalName, drifted: isDrift });
         report.results.push(
           buildResult(
             advisorTitle,
@@ -186,10 +196,27 @@ async function main() {
           )
         );
       } else {
-        console.log(`    ❌ ${spec.internalName}: MISSING (Candidates: ${candidates.join(', ')})`);
+        if (!isJson) console.log(`    ❌ ${spec.internalName}: MISSING (Candidates: ${candidates.join(', ')})`);
+        missingFields.push(spec.internalName);
         report.results.push(buildResult(advisorTitle, spec.internalName, 'missing_index'));
       }
     }
+
+    if (isJson) {
+      results.push({
+        kind: "index_pressure",
+        list: advisorTitle,
+        displayName: listDef.displayName,
+        status: missingFields.length > 0 ? "FAIL" : "PASS",
+        indexCount: currentIndexedNames.size,
+        missingIndexes: missingFields,
+        okIndexes: okFields
+      });
+    }
+  }
+
+  if (isJson) {
+    console.log(JSON.stringify(results, null, 2));
   }
 
   writeReport(report);
