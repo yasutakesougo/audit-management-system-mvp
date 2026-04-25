@@ -86,6 +86,7 @@ const REASON_CODE_ANCHOR_MAP = {
   EXCEPTION_RECURRING_PRESENT: 'rc-exception',
   REGISTRY_AUDIT_FAIL: 'rc-registry-audit',
   REGISTRY_AUDIT_WARN: 'rc-registry-audit',
+  CONTRACT_VIOLATION: 'rc-contract',
   TRANSPORT_CONCURRENCY_PRESSURE: 'rc-transport-concurrency',
   REPEATED_VEHICLE_CONFLICT: 'rc-transport-concurrency',
 };
@@ -250,6 +251,11 @@ const REASON_CODE_ACTION_MAP = {
     owner: 'Ops On-call',
     severity: 'watch',
     firstAction: 'registry-audit.ts の警告（非必須リストの欠損など）を確認し、将来の是正を検討する。',
+  },
+  CONTRACT_VIOLATION: {
+    owner: 'Platform Owner',
+    severity: 'action_required',
+    firstAction: 'contract-patrol.mjs の結果を確認し、Core API の契約違反を解消する。',
   },
   WATCH_STREAK: {
     owner: 'Release Owner',
@@ -704,8 +710,10 @@ function main() {
     exceptionCenterJson: process.env.EXCEPTION_CENTER_SUMMARY_PATH || '',
     kpiJson: process.env.KPI_SUMMARY_PATH || '',
     driftJson: process.env.DRIFT_SUMMARY_PATH || '',
-    adminStatusJson: process.env.ADMIN_STATUS_SUMMARY_PATH || '',
+    adminStatusJson: process.env.ADMIN_STATUS_SUMMARY_PATH || path.join(REPORT_DIR, 'admin-status-summary-'), // will be suffixed with date
     registryAuditJson: process.env.REGISTRY_AUDIT_SUMMARY_PATH || path.join(REPORT_DIR, 'registry-audit-result.json'),
+    contractDriftJson: path.join(REPORT_DIR, 'contract-drift.json'),
+    driftLedgerJson: path.join(REPORT_DIR, 'drift-ledger.json'),
     logFile: process.env.LOG_FILE || path.join(ROOT, 'logs', 'today.auto.log'),
   };
 
@@ -1240,6 +1248,40 @@ function main() {
         }
       }
     }
+  }
+
+  // 15) Contract Patrol
+  const contractDrift = readJsonIfExists(inputPaths.contractDriftJson);
+  const contractFailures = Array.isArray(contractDrift.data?.results) 
+    ? contractDrift.data.results.filter(r => r.status === 'fail').length 
+    : 0;
+  addCheck({
+    id: 'contract-patrol',
+    label: 'Core API Contract Patrol',
+    status: contractDrift.exists ? (contractFailures > 0 ? 'fail' : 'pass') : 'unknown',
+    value: contractDrift.exists ? `violations=${contractFailures}` : 'n/a',
+    note: contractDrift.exists ? 'contract-drift.json' : '未生成',
+  });
+  if (contractFailures > 0) {
+    pushReason(failReasons, `Contract violation ${contractFailures} 件`, failReasonCodes, 'CONTRACT_VIOLATION');
+  }
+
+  // 16) Drift Ledger Analysis
+  const driftLedger = readJsonIfExists(inputPaths.driftLedgerJson);
+  const highDrifts = Array.isArray(driftLedger.data?.rows)
+    ? driftLedger.data.rows.filter(r => r.confidence === 'high' && r.classification !== 'allow').length
+    : 0;
+  addCheck({
+    id: 'drift-ledger',
+    label: 'Drift Evidence Ledger',
+    status: driftLedger.exists ? (highDrifts > 0 ? 'warn' : 'pass') : 'unknown',
+    value: driftLedger.exists ? `high_confidence=${highDrifts}` : 'n/a',
+    note: driftLedger.exists ? 'drift-ledger.json' : '未生成',
+  });
+  if (highDrifts > 50) { // 大量のドリフトは fail
+    pushReason(failReasons, `大量の高信頼度ドリフトを検知 (${highDrifts} 件)`, failReasonCodes, 'DRIFT_COUNT_HIGH');
+  } else if (highDrifts > 0) {
+    pushReason(warnReasons, `高信頼度ドリフトを検知 (${highDrifts} 件)`, warnReasonCodes, 'DRIFT_COUNT_PRESENT');
   }
 
   let finalLabel = failReasons.length > 0

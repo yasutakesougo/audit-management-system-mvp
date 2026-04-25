@@ -98,6 +98,14 @@ export interface SpFieldDef {
    * 健全性診断において、この列が欠落していても警告を発報しない（FAIL:0 / WARN 抑制方針）。
    */
   isSilent?: boolean;
+  /**
+   * インフラ統治の 4 階層モデル (Phase 2):
+   * - allow: レジストリ定義済み（正常）
+   * - candidate: レジストリ未定義だがコード使用あり（レジストリ追加候補）
+   * - provision: レジストリ未定義、コード使用なし、データあり（温存）
+   * - keep-warn: データなし、コード使用なし、削除保留（ゾンビ候補）
+   */
+  governance?: 'allow' | 'candidate' | 'provision' | 'keep-warn';
 }
 
 export interface EnsureListOptions {
