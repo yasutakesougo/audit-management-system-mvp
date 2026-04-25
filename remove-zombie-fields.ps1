@@ -4,12 +4,13 @@ param(
 )
 
 # 対象リストとゾンビ列のパターン（内部名ベース）
-$TargetLists = @("SupportRecord_Daily", "Approval_Logs")
+$TargetLists = @("SupportRecord_Daily", "Approval_Logs", "UserBenefit_Profile_Ext")
 $ZombiePatterns = @(
     "Record_x0020_Date", "Reporter_x0020_Name", "Reporter_x0020_Role", 
     "User_x0020_Count", "Latest_x0020_Version", "Approval_x0020_Status",
     "_x627f__x8a8d__x65e5__x6642_", "_x627f__x8a8d__x8005__x30b3__x30",
-    "_x627f__x8a8d__x30e1__x30e2_", "_x627f__x8a8d__x30a2__x30af__x30"
+    "_x627f__x8a8d__x30e1__x30e2_", "_x627f__x8a8d__x30a2__x30af__x30",
+    "Recipient_x0020_Cert_x0020_Numbe"
 )
 
 # 認証接続

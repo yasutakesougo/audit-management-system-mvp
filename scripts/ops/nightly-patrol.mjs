@@ -78,6 +78,14 @@ if (ORCHESTRATION_AUDIT_PATH && fs.existsSync(ORCHESTRATION_AUDIT_PATH)) {
   }
 }
 
+// 0. Contract Patrol (Core API Drift)
+console.log('🔍 Running Contract Patrol...');
+try {
+  execSync('node scripts/ops/contract-patrol.mjs', { stdio: 'inherit' });
+} catch (err) {
+  console.warn('  ⚠️ Contract Patrol failed:', err.message);
+}
+
 const CONTRACT_DRIFT_PATH = path.join(REPORT_DIR, 'contract-drift.json');
 let contractDriftSummary = null;
 if (fs.existsSync(CONTRACT_DRIFT_PATH)) {
