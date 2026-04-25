@@ -131,6 +131,12 @@ const REASON_CODE_META = {
     action: '分類対象を人手で確認',
     suggestedLabel: 'kind:quality',
   },
+  INDEX_PRESSURE_FAIL: {
+    domain: 'infrastructure',
+    signal: 'SharePoint インデックス不足/圧迫',
+    action: '提案された修復コマンドを実行',
+    suggestedLabel: 'kind:infrastructure',
+  },
   default: {
     domain: 'operations',
     signal: 'Nightly 判定シグナル',
@@ -288,6 +294,35 @@ function buildIssueContent(entry, date, context = null) {
     lines.push('');
   }
 
+  // Index Pressure details
+  if (entry.kind === 'index-pressure' && entry.details) {
+    lines.push('### Failed SharePoint Indexes');
+    lines.push('');
+    lines.push('| List | Display Name | Count | Action |');
+    lines.push('|------|--------------|:-----:|--------|');
+    for (const d of entry.details) {
+      lines.push(`| \`${d.list}\` | ${d.displayName} | ${d.count}/20 | 修復コマンドを実行 |`);
+    }
+    lines.push('');
+    
+    lines.push('### Remediation Proposals');
+    lines.push('');
+    for (const d of entry.details) {
+      lines.push(`#### List: ${d.displayName} (${d.list})`);
+      lines.push('```bash');
+      lines.push(`npx tsx scripts/ops/index-remediate-targeted.ts --list "${d.list}" --apply`);
+      lines.push('```');
+      if (d.remediation && d.remediation.length > 0) {
+        lines.push('');
+        lines.push('**Dry-run hints:**');
+        for (const r of d.remediation) {
+          lines.push(`- ${r.internalName}: ${r.message}`);
+        }
+      }
+      lines.push('');
+    }
+  }
+
   // Suggested action
   lines.push('### Suggested Action');
   lines.push('');
@@ -358,6 +393,10 @@ function buildIssueContent(entry, date, context = null) {
   }
   if (entry.kind.includes('large-file')) {
     labels.push('tech-debt');
+  }
+  if (entry.kind === 'index-pressure') {
+    labels.push('infrastructure');
+    labels.push('ops');
   }
   if (entry.classification === 'auto-fixable') {
     labels.push('auto-fixable');

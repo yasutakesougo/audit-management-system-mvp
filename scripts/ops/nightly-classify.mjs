@@ -224,6 +224,27 @@ export function classify(patrolResult) {
     });
   }
 
+  // ── Index Pressure (SharePoint Runtime) ───────────────────────────────────
+  const indexPressureResults = metrics.indexPressure || [];
+  const failedIndexes = indexPressureResults.filter((r) => r.status === 'FAIL');
+
+  if (failedIndexes.length > 0) {
+    classifications.push({
+      kind: 'index-pressure',
+      severity: failedIndexes.some((r) => (r.indexCount || 0) >= 18) ? 'critical' : 'high',
+      classification: 'needs-review',
+      errorCount: failedIndexes.length,
+      affectedFiles: [], // Lists are not files, we'll use details for description
+      isTestOnly: false,
+      details: failedIndexes.map((r) => ({
+        list: r.list,
+        displayName: r.displayName,
+        count: r.indexCount,
+        remediation: r.remediationResults,
+      })),
+    });
+  }
+
   // ── Overall status ─────────────────────────────────────────────────────
 
   // Priority: needs-review > auto-fixable > monitor > stable
