@@ -57,7 +57,7 @@ describe('useUserOrchestrator', () => {
 
   describe('handleUpdateProfile', () => {
     it('should coordinate a successful profile update', async () => {
-      const updatedUser = { Id: 1, FullName: 'New Name' } as unknown;
+      const updatedUser = { Id: 1, FullName: 'New Name' } as any;
       vi.mocked(mockRepository.update).mockResolvedValue(updatedUser);
 
       const { result } = renderOrchestrator();
@@ -112,7 +112,7 @@ describe('useUserOrchestrator', () => {
   describe('handleApplyBenefitChange', () => {
     it('should specifically coordinate benefit changes', async () => {
       const benefitData = { GrantMunicipality: 'New City' };
-      const updatedUser = { Id: 1, GrantMunicipality: 'New City' } as unknown;
+      const updatedUser = { Id: 1, GrantMunicipality: 'New City' } as any;
       vi.mocked(mockRepository.update).mockResolvedValue(updatedUser);
 
       const { result } = renderOrchestrator();

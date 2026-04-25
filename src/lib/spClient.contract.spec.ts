@@ -36,4 +36,13 @@ describe('spClient Contract Integrity', () => {
     expect(typeof client.updateField).toBe('function');
     expect(typeof client.getExistingListTitlesAndIds).toBe('function');
   });
+
+  it('fetch works (contract validation)', () => {
+    const mockAcquireToken = async () => 'mock-token';
+    const mockBaseUrl = 'https://contoso.sharepoint.com/sites/Audit/_api/web';
+    const client = createSpClient(mockAcquireToken, mockBaseUrl);
+    
+    expect(client.spFetch).toBeDefined();
+    expect(typeof client.spFetch).toBe('function');
+  });
 });
