@@ -134,15 +134,14 @@ export function WeekTimeGrid({
                 onTimeSlotClick?.(day.iso, timeStr);
               };
 
-              const handlePointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
+              const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
                 event.preventDefault();
                 event.stopPropagation();
                 handleCellClick();
               };
 
               return (
-                <button
-                  type="button"
+                <div
                   key={cellKey}
                   aria-label={`${day.label} ${timeStr}時間帯`}
                   data-testid="schedules-week-slot"
@@ -163,6 +162,8 @@ export function WeekTimeGrid({
                   }}
                   onMouseEnter={() => setHoveredCell(cellKey)}
                   onMouseLeave={() => setHoveredCell(null)}
+                  tabIndex={0}
+                  role="button"
                   style={{
                     all: 'unset',
                     display: 'block',
@@ -256,7 +257,7 @@ export function WeekTimeGrid({
                       ))}
                     </div>
                   )}
-                </button>
+                </div>
               );
             })}
           </React.Fragment>
