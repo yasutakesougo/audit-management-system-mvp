@@ -38,6 +38,7 @@ export const extractMigratingDomainPatch = (
 /**
  * washRow 済みの benefit 行に、stage に応じた read cutover を上書き適用する。
  * - domainKey の値を canonical / legacy から正しく解決し直す
+ * - domainKey (camelCase) を対応する canonical (PascalCase) に変換して上書き
  * - 既存の washRow 出力を破壊しないよう新オブジェクトを返す
  */
 export const applyBenefitCutoverRead = (
@@ -46,7 +47,17 @@ export const applyBenefitCutoverRead = (
   stage: CutoverStageValue,
 ): Record<string, unknown> => {
   const overlay = mapMigratingFields(rawRow, stage);
-  return { ...washedRow, ...overlay };
+  const next = { ...washedRow };
+  
+  for (const col of USER_BENEFIT_PROFILE_MIGRATING_COLUMNS) {
+    const val = overlay[col.domainKey];
+    if (val !== undefined) {
+      // canonical 名 (PascalCase) で上書きする
+      next[col.canonical] = val;
+    }
+  }
+
+  return next;
 };
 
 /**
