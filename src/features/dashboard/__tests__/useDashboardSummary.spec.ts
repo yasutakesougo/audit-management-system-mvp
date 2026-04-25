@@ -29,7 +29,7 @@ export interface UseDashboardSummaryArgs {
   today: string;
   currentMonth: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  generateMockActivityRecords: any;
+  generateMockActivityRecords: (users: IUserMaster[], today: string) => PersonDaily[];
   attendanceCounts: AttendanceCounts;
 }
 
@@ -118,7 +118,7 @@ describe('useDashboardSummary', () => {
         spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args as any));
+      const { result } = renderHook(() => useDashboardSummary(args as unknown as UseDashboardSummaryArgs));
 
       // Verify all expected keys exist
       expect(result.current).toHaveProperty('activityRecords');
@@ -144,7 +144,7 @@ describe('useDashboardSummary', () => {
         spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args as any));
+      const { result } = renderHook(() => useDashboardSummary(args as unknown as UseDashboardSummaryArgs));
 
       // Type checks
       expect(Array.isArray(result.current.activityRecords)).toBe(true);
@@ -172,7 +172,7 @@ describe('useDashboardSummary', () => {
         spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args as any));
+      const { result } = renderHook(() => useDashboardSummary(args as unknown as UseDashboardSummaryArgs));
 
       expect(result.current.activityRecords).toEqual([]);
       expect(result.current.intensiveSupportUsers).toEqual([]);
@@ -192,7 +192,7 @@ describe('useDashboardSummary', () => {
         spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args as any));
+      const { result } = renderHook(() => useDashboardSummary(args as unknown as UseDashboardSummaryArgs));
 
       // Should not throw
       expect(result.current.activityRecords.length).toBe(1);
@@ -213,7 +213,7 @@ describe('useDashboardSummary', () => {
         spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args as any));
+      const { result } = renderHook(() => useDashboardSummary(args as unknown as UseDashboardSummaryArgs));
 
       expect(result.current.stats).toHaveProperty('totalUsers');
       expect(result.current.stats).toHaveProperty('recordedUsers');
@@ -237,7 +237,7 @@ describe('useDashboardSummary', () => {
         spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args as any));
+      const { result } = renderHook(() => useDashboardSummary(args as unknown as UseDashboardSummaryArgs));
 
       expect(result.current.attendanceSummary).toHaveProperty('facilityAttendees');
       expect(result.current.attendanceSummary).toHaveProperty('lateOrEarlyLeave');
@@ -262,7 +262,7 @@ describe('useDashboardSummary', () => {
         spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args as any));
+      const { result } = renderHook(() => useDashboardSummary(args as unknown as UseDashboardSummaryArgs));
 
       expect(result.current.dailyRecordStatus).toHaveProperty('total');
       expect(result.current.dailyRecordStatus).toHaveProperty('pending');
@@ -284,7 +284,7 @@ describe('useDashboardSummary', () => {
         spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args as any));
+      const { result } = renderHook(() => useDashboardSummary(args as unknown as UseDashboardSummaryArgs));
 
       expect(result.current.scheduleLanesToday).toHaveProperty('userLane');
       expect(result.current.scheduleLanesToday).toHaveProperty('staffLane');
@@ -306,7 +306,7 @@ describe('useDashboardSummary', () => {
         spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args as any));
+      const { result } = renderHook(() => useDashboardSummary(args as unknown as UseDashboardSummaryArgs));
 
       expect(result.current.scheduleLanesTomorrow).toHaveProperty('userLane');
       expect(result.current.scheduleLanesTomorrow).toHaveProperty('staffLane');
@@ -334,7 +334,7 @@ describe('useDashboardSummary', () => {
         spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args as any));
+      const { result } = renderHook(() => useDashboardSummary(args as unknown as UseDashboardSummaryArgs));
 
       expect(result.current.intensiveSupportUsers.length).toBe(2);
       expect(result.current.intensiveSupportUsers.every((u: IUserMaster) => u.IsSupportProcedureTarget)).toBe(true);
@@ -357,7 +357,7 @@ describe('useDashboardSummary', () => {
         spSyncStatus: mockSpSyncStatus,
       };
 
-      const { result } = renderHook(() => useDashboardSummary(args as any));
+      const { result } = renderHook(() => useDashboardSummary(args as unknown as UseDashboardSummaryArgs));
 
       expect(result.current.prioritizedUsers.length).toBe(3);
       expect(result.current.intensiveSupportUsers.length).toBe(4);
@@ -381,7 +381,7 @@ describe('useDashboardSummary', () => {
 
       // This previously threw: TypeError: Cannot convert undefined or null to object
       // at Object.values() in useDashboardSummary.ts
-      const { result } = renderHook(() => useDashboardSummary(args as any));
+      const { result } = renderHook(() => useDashboardSummary(args as unknown as UseDashboardSummaryArgs));
 
       // Should return valid defaults without crashing
       expect(result.current).toHaveProperty('activityRecords');

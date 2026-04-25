@@ -76,9 +76,6 @@ describe('ExceptionTable', () => {
     expect(screen.getByText('山田 花子 の例外 (2件)')).toBeInTheDocument();
     expect(screen.getByText('高橋 三郎 の例外 (1件)')).toBeInTheDocument();
 
-    console.log('\n\n\n--- DOM OUTPUT ---');
-    console.log(document.body.innerHTML);
-    console.log('--- END DOM OUTPUT ---\n\n\n');
 
     const toggle = screen.getByTestId('exception-group-toggle-U-001');
     expect(screen.queryByTestId('exception-group-details-U-001')).not.toBeInTheDocument();
