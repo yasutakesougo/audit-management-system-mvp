@@ -134,7 +134,7 @@ export function WeekTimeGrid({
                 onTimeSlotClick?.(day.iso, timeStr);
               };
 
-              const handlePointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
+              const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
                 event.preventDefault();
                 event.stopPropagation();
                 handleCellClick();
