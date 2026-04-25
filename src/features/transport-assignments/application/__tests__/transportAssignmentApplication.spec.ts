@@ -17,11 +17,17 @@ describe('transportAssignmentApplication contract tests', () => {
     vehicles: [
       {
         vehicleId: '車両1',
+        courseId: 'isogo',
+        courseLabel: '磯子',
         driverStaffId: 'staff-1',
+        driverName: 'ドライバー1',
+        attendantStaffId: 'staff-2',
+        attendantName: '添乗員1',
         riderUserIds: ['user-1', 'user-2'],
       }
     ],
     unassignedUserIds: ['user-3'],
+    users: [],
   };
 
   const dummyPersisted: TransportAssignment[] = [
@@ -36,7 +42,7 @@ describe('transportAssignmentApplication contract tests', () => {
       driverId: 'staff-1',
       assistantStaffIds: [],
       userIds: ['user-1', 'user-2'],
-      direction: 'pickup',
+      direction: 'to',
       etag: 'etag-1'
     }
   ];

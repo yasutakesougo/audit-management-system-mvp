@@ -16,7 +16,7 @@ describe('InMemoryAssignmentRepository', () => {
       start: '2026-04-23T08:00:00',
       end: '2026-04-23T09:00:00',
       status: 'planned',
-      direction: 'pickup',
+      direction: 'to',
       userIds: ['u1'],
       assistantStaffIds: [],
     };
@@ -37,10 +37,10 @@ describe('InMemoryAssignmentRepository', () => {
       start: '2026-04-23T08:00:00',
       end: '2026-04-23T09:00:00',
       status: 'planned',
-      direction: 'pickup',
+      direction: 'to',
       userIds: [],
       assistantStaffIds: [],
-    });
+    } as unknown as any);
 
     const results = await repo.list({
       range: {
@@ -59,11 +59,11 @@ describe('InMemoryAssignmentRepository', () => {
       start: '2026-04-23T08:00:00',
       end: '2026-04-23T09:00:00',
       status: 'planned',
-      direction: 'pickup',
+      direction: 'to',
       vehicleId: 'V1',
       userIds: [],
       assistantStaffIds: [],
-    });
+    } as unknown as any);
 
     const results = await repo.list({ resourceId: 'V1' });
     expect(results).toHaveLength(1);

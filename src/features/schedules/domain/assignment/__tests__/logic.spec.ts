@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { hasTimeConflict, detectTransportConflicts, checkCapacity } from '../logic';
-import { TransportAssignment } from '../types';
+import { TransportAssignment, BaseAssignment } from '../types';
 
 describe('Assignment Domain Logic', () => {
   describe('hasTimeConflict', () => {
@@ -25,7 +25,7 @@ describe('Assignment Domain Logic', () => {
       start: '2026-04-23T08:00:00',
       end: '2026-04-23T09:00:00',
       status: 'planned',
-      direction: 'pickup',
+      direction: 'to',
       userIds: ['u1'],
       assistantStaffIds: [],
     };
@@ -65,7 +65,7 @@ describe('Assignment Domain Logic', () => {
       start: '2026-04-23T08:00:00',
       end: '2026-04-23T09:00:00',
       status: 'planned',
-      direction: 'pickup',
+      direction: 'to',
       userIds: ['u1', 'u2', 'u3'],
       assistantStaffIds: [],
     };

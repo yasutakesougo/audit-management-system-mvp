@@ -19,7 +19,7 @@ describe('DataProviderUserRepository Contract Compliance', () => {
       await provider.seed('Users_Master', [{ Id: 1, UserID: 'U001', FullName: 'Original', UsageStatus: 'init' }]);
       
       // FullName is undefined in this patch
-      await repo.update(1, { UsageStatus: 'active' } as unknown);
+      await repo.update(1, { UsageStatus: 'active' } as any);
       
       const items = await provider.listItems<any>('Users_Master');
       expect(items[0].FullName).toBe('Original');
@@ -29,7 +29,7 @@ describe('DataProviderUserRepository Contract Compliance', () => {
     it('treats empty string as null (clear field)', async () => {
       await provider.seed('Users_Master', [{ Id: 1, UserID: 'U001', FullName: 'Original' }]);
       
-      await repo.update(1, { FullName: '' } as unknown);
+      await repo.update(1, { FullName: '' } as any);
       
       const items = await provider.listItems<any>('Users_Master');
       expect(items[0].FullName).toBeNull();
@@ -38,7 +38,7 @@ describe('DataProviderUserRepository Contract Compliance', () => {
     it('treats whitespace string as null (clear field)', async () => {
       await provider.seed('Users_Master', [{ Id: 1, UserID: 'U001', FullName: 'Original' }]);
       
-      await repo.update(1, { FullName: '   ' } as unknown);
+      await repo.update(1, { FullName: '   ' } as any);
       
       const items = await provider.listItems<any>('Users_Master');
       expect(items[0].FullName).toBeNull();
@@ -51,7 +51,7 @@ describe('DataProviderUserRepository Contract Compliance', () => {
       // DTO might provide 'fullName' (camel)
       await provider.seed('Users_Master', [{ Id: 1, UserID: 'U001', FullName: 'Old' }]);
       
-      await repo.update(1, { fullName: 'New' } as unknown);
+      await repo.update(1, { fullName: 'New' } as any);
       
       const items = await provider.listItems<any>('Users_Master');
       expect(items[0].FullName).toBe('New');
@@ -62,7 +62,7 @@ describe('DataProviderUserRepository Contract Compliance', () => {
       // and DTO provides 'UsageStatus' (Pascal)
       await provider.seed('Users_Master', [{ Id: 1, UserID: 'U001', usageStatus: 'old' }]);
       
-      await repo.update(1, { UsageStatus: 'new' } as unknown);
+      await repo.update(1, { UsageStatus: 'new' } as any);
       
       const items = await provider.listItems<any>('Users_Master');
       // buildMappedPayload handles the case-insensitivity against the resolved mapping
@@ -79,7 +79,7 @@ describe('DataProviderUserRepository Contract Compliance', () => {
       const spy = vi.spyOn(provider, 'updateItem');
       
       // Update with only undefined fields
-      await repo.update(1, { FullName: undefined } as unknown);
+      await repo.update(1, { FullName: undefined } as any);
       
       expect(spy).not.toHaveBeenCalled();
     });

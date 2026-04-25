@@ -103,9 +103,9 @@ describe('DataProviderScheduleRepository (Stability Tests)', () => {
     };
 
     // Need to mock LocationName candidate resolution for this test
-    vi.mocked(mockProvider.getFieldInternalNames).mockResolvedValueOnce([
+    vi.mocked(mockProvider.getFieldInternalNames).mockResolvedValueOnce(new Set([
       'Title', 'EventDate', 'EndDate', 'LocationName'
-    ]);
+    ]));
 
     // Force re-resolution for this specific test case if needed, 
     // but the repo instance might have cached fields.

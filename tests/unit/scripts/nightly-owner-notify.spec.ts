@@ -2,13 +2,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  buildOwnerMessage,
-  buildOwnerRoutes,
-  collectOwnerActions,
-  formatRunbookLink,
-  runOwnerNotify,
-} from '../../../scripts/ops/nightly-owner-notify.mjs';
+// @ts-ignore
+import { buildOwnerMessage, buildOwnerRoutes, collectOwnerActions, formatRunbookLink, runOwnerNotify } from '../../../scripts/ops/nightly-owner-notify.mjs';
 
 const tempDirs: string[] = [];
 
@@ -106,8 +101,8 @@ describe('nightly-owner-notify', () => {
 
     expect(deliveries).toHaveLength(3);
     expect(unresolvedOwners).toHaveLength(0);
-    expect(deliveries.find((x) => x.owner === 'Release Owner')?.webhook).toBe('https://hooks.example.com/release');
-    expect(deliveries.find((x) => x.owner === 'Platform Owner')?.webhook).toBe('https://hooks.example.com/default');
+    expect(deliveries.find((x: any) => x.owner === 'Release Owner')?.webhook).toBe('https://hooks.example.com/release');
+    expect(deliveries.find((x: any) => x.owner === 'Platform Owner')?.webhook).toBe('https://hooks.example.com/default');
   });
 
   it('supports dry-run without webhook calls', async () => {

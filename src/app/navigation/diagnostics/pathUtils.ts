@@ -134,6 +134,7 @@ export const ORPHAN_ALLOWLIST_DETAILS: AllowlistRoute[] = [
   { path: '/records/service-provision', category: 'Admin', reason: 'サービス提供実績記録（実績記録ハブ、請求ハブからリンク経由）' },
   { path: '/survey/tokusei', category: 'Admin', reason: '特性計時アンケート結果（計画ハブからリンク経由）' },
   { path: '/schedule-ops', category: 'Drilldown', reason: 'スケジュール運用ページ（スケジュール画面からリンク経由）' },
+  { path: '/users/hub/:userId', category: 'Detail', reason: '利用者の「活動・実績ハブ」画面（利用者詳細からリンク経由）' },
 ].map(item => ({ ...item, path: normalizeRouterPath(item.path) }));
 
 export const ORPHAN_ALLOWLIST = new Set(ORPHAN_ALLOWLIST_DETAILS.map(d => d.path));
