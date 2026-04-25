@@ -28,35 +28,47 @@ const REPO_ROOT = resolve(__dirname, '..', '..');
 /**
  * Classifies a field and assigns a confidence level for potential remediation.
  */
-function classify(row) {
-  if (row.candidatesMatched) {
-    return { classification: 'keep', evidence: 'matched_by_candidates', confidence: 'high' };
+/**
+ * Classifies a field using the 4-tier governance model (Phase 2).
+ */
+function classify(row, prov) {
+  // If explicitly tagged in Registry, respect it
+  if (prov?.governance) {
+    return { 
+      classification: prov.governance, 
+      evidence: 'explicit_registry_governance', 
+      confidence: 'high' 
+    };
   }
 
   const usageCount = row.usageCount || 0;
 
-  // If used in code, MUST keep
+  // 1. Matched Registry Field -> allow
+  if (row.expectedField && row.actualField) {
+    return { classification: 'allow', evidence: 'registry_match', confidence: 'high' };
+  }
+
+  // 2. Not in Registry but used in Code -> candidate
   if (usageCount > 0) {
-    return { classification: 'keep', evidence: `active_usage_in_code(${usageCount})`, confidence: 'high' };
+    return { classification: 'candidate', evidence: `active_usage_in_code(${usageCount})`, confidence: 'high' };
   }
 
-  // If has data but no usage, observe
+  // 3. Not in Registry, No usage, but has Data -> provision
   if (row.hasData) {
-    return { classification: 'observe', evidence: 'data_exists_but_no_usage', confidence: 'medium' };
+    return { classification: 'provision', evidence: 'data_exists_no_usage', confidence: 'medium' };
   }
 
-  // If no data and no usage, it's a zombie
+  // 4. No Data, No Usage -> keep-warn (Zombie Candidate)
   if (usageCount === 0 && !row.hasData) {
-    // Numbered suffixes (e.g., Field0) are high-confidence zombies
     const isNumberedSuffix = /\d+$/.test(row.internalName);
     return { 
-      classification: 'zombie_candidate', 
+      classification: 'keep-warn', 
       evidence: 'no_data_no_usage', 
       confidence: isNumberedSuffix ? 'high' : 'medium' 
     };
   }
 
-  return { classification: 'observe', evidence: 'fallback_or_partial', confidence: 'low' };
+  return { classification: 'provision', evidence: 'fallback_or_partial', confidence: 'low' };
 }
 
 // ── SharePoint API Helpers ────────────────────────────────────────────────
@@ -221,8 +233,9 @@ async function main() {
   const normalizedSiteUrl = SITE_URL.endsWith('/_api/web') ? SITE_URL : SITE_URL.replace(/\/$/, '') + '/_api/web';
 
   const ledgerRows = [];
+  const registry = SP_LIST_REGISTRY;
 
-  for (const entry of SP_LIST_REGISTRY) {
+  for (const entry of registry) {
     const listTitle = entry.resolve();
     console.log(`📡 Probing list: ${listTitle}...`);
 
@@ -279,7 +292,8 @@ async function main() {
           usageCount,
           hasData,
           isIndexed: matchedActual?.Indexed || false,
-          lastSeenAt: new Date().toISOString()
+          lastSeenAt: new Date().toISOString(),
+          prov // Store prov for classification
         };
       }, 2); // Lower concurrency
 
@@ -354,11 +368,16 @@ async function main() {
   });
 
   // 4. Classify and Format
-  const finalRows = ledgerWithPersistence.map(r => ({ ...r, ...classify(r) }));
+  const finalRows = ledgerWithPersistence.map(r => ({ ...r, ...classify(r, r.prov) }));
 
   // 5. Output
   writeCsv(join(OUT_DIR, 'drift-ledger.csv'), finalRows);
   writeMarkdown(join(OUT_DIR, 'drift-ledger.md'), finalRows);
+  writeFileSync(join(OUT_DIR, 'drift-ledger.json'), JSON.stringify({
+    version: 1,
+    timestamp: now,
+    rows: finalRows
+  }, null, 2), 'utf8');
 
   console.log(`\n✅ Ledger generated at ${OUT_DIR}`);
 }

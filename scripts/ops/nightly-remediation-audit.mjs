@@ -18,6 +18,14 @@ function utcTodayStamp() {
   return `${y}-${m}-${d}`;
 }
 
+function resolveM365() {
+  try {
+    const which = execSync('which m365', { encoding: 'utf8', stdio: 'pipe' }).trim();
+    if (which) return which;
+  } catch (_e) { /* ignore */ }
+  return 'npx -y @pnp/cli-microsoft365';
+}
+
 function readJsonFile(p) {
   if (!fs.existsSync(p)) return null;
   try {
@@ -34,37 +42,29 @@ function logToSharePoint(entry) {
   const webUrl = "https://isogokatudouhome.sharepoint.com/sites/welfare";
   const listTitle = "RemediationAuditLog";
 
-  let m365 = 'm365';
-  try {
-    const which = execSync('which m365', { encoding: 'utf8', env: { ...process.env, PATH: `${process.env.PATH}:/opt/homebrew/bin:/usr/local/bin` } }).trim();
-    if (which) m365 = which;
-  } catch {
-    if (fs.existsSync('/opt/homebrew/bin/m365')) m365 = '/opt/homebrew/bin/m365';
-    else if (fs.existsSync('/usr/local/bin/m365')) m365 = '/usr/local/bin/m365';
-    else m365 = 'npx -y @pnp/cli-microsoft365';
-  }
+  const m365 = resolveM365();
 
   // フィールド名マッピング (x0020 は半角スペース)
   const fields = [
     `Title='${entry.phase}:${entry.planId}'`,
     `Correlation_x0020_ID='${entry.correlationId}'`,
     `Plan_x0020_ID='${entry.planId}'`,
-    `Phase='${entry.phase}'`,
-    `ListKey='${entry.listKey}'`,
-    `FieldName='${entry.fieldName}'`,
-    `Action='${entry.action}'`,
-    `Risk='${entry.risk}'`,
-    `AutoExecutable=${entry.autoExecutable}`,
-    `RequiresApproval=${entry.requiresApproval}`,
-    `Reason='${entry.reason.replace(/'/g, "''")}'`,
-    `Source='nightly'`,
-    `AuditTimestamp='${entry.timestamp}'`
+    `Phase1='${entry.phase}'`,
+    `List_x0020_Key1='${entry.listKey}'`,
+    `Field_x0020_Name0='${entry.fieldName}'`,
+    `Action1='${entry.action}'`,
+    `Risk0='${entry.risk}'`,
+    `Auto_x0020_Executable0=${entry.autoExecutable}`,
+    `Requires_x0020_Approval0=${entry.requiresApproval}`,
+    `Reason0='${entry.reason.replace(/'/g, "''")}'`,
+    `Audit_x0020_Source0='nightly'`,
+    `Audit_x0020_Timestamp0='${entry.timestamp.split('T')[0]}'`
   ];
 
   if (entry.executionStatus) {
-    fields.push(`ExecutionStatus='${entry.executionStatus}'`);
+    fields.push(`Execution_x0020_Status0='${entry.executionStatus}'`);
     if (entry.executionError) {
-      fields.push(`ExecutionError='${entry.executionError.replace(/'/g, "''")}'`);
+      fields.push(`Execution_x0020_Error0='${entry.executionError.replace(/'/g, "''")}'`);
     }
   }
 
@@ -147,23 +147,28 @@ async function performAutoRemediation(plans) {
       continue;
     }
 
-    console.log(`🤖 Auto-executing: ${plan.planId} [${plan.action}] on ${plan.listKey}`);
+    console.log(`🤖 Auto-executing: ${plan.planId} [${plan.action}] on ${plan.listKey} / ${plan.fieldName}`);
+    
+    const m365 = resolveM365();
     
     let success = false;
     try {
-      // 実際のアクション実行 (条件付き)
       if (plan.action === 'create_index' && plan.fieldName !== '(pending analysis)') {
-        execSync(`m365 spo field set --webUrl "${webUrl}" --listTitle "${plan.listKey}" --name "${plan.fieldName}" --indexed true`, { stdio: 'inherit', env: { ...process.env, PATH: `${process.env.PATH}:/opt/homebrew/bin:/usr/local/bin` } });
+        execSync(`${m365} spo field set --webUrl "${webUrl}" --listTitle "${plan.listKey}" --name "${plan.fieldName}" --indexed true`, { stdio: 'inherit' });
         success = true;
       } else if (plan.action === 'delete_index' && plan.fieldName !== '(pending analysis)') {
-        execSync(`m365 spo field set --webUrl "${webUrl}" --listTitle "${plan.listKey}" --name "${plan.fieldName}" --indexed false`, { stdio: 'inherit', env: { ...process.env, PATH: `${process.env.PATH}:/opt/homebrew/bin:/usr/local/bin` } });
+        execSync(`${m365} spo field set --webUrl "${webUrl}" --listTitle "${plan.listKey}" --name "${plan.fieldName}" --indexed false`, { stdio: 'inherit' });
+        success = true;
+      } else if (plan.action === 'delete_zombie') {
+        // execute-zombie-purge.mjs を直接呼び出し
+        execSync(`tsx scripts/ops/execute-zombie-purge.mjs --list="${plan.listKey}" --field="${plan.fieldName}" --confirm`, { stdio: 'inherit' });
         success = true;
       } else {
         console.log(`⏩ Action "${plan.action}" skipped: Detailed analysis required.`);
         logToSharePoint({
           ...plan,
           phase: 'skipped',
-          reason: `Skipped: Field target [${plan.fieldName}] requires manual analysis.`,
+          reason: `Skipped: Requires manual analysis for action [${plan.action}].`,
           timestamp: new Date().toISOString()
         });
         continue;
@@ -187,45 +192,6 @@ async function performAutoRemediation(plans) {
         executionError: err.message,
         timestamp: new Date().toISOString()
       });
-    }
-  }
-
-  // 5. 実行ループ
-  for (const plan of autoCandidates) {
-    if (executedCount >= MAX_AUTO_EXEC_PER_DAY) {
-      console.log(`⚠️ Daily limit reached (${MAX_AUTO_EXEC_PER_DAY}). Skipping.`);
-      logToSharePoint({
-        ...plan,
-        phase: 'skipped',
-        reason: `Skipped by Quota: Daily limit (${MAX_AUTO_EXEC_PER_DAY}) reached.`,
-        timestamp: new Date().toISOString()
-      });
-      continue;
-    }
-
-    console.log(`🤖 Auto-executing: ${plan.planId} [${plan.action}] on ${plan.listKey}`);
-    
-    let success = false;
-    try {
-      if (plan.action === 'create_index' && plan.fieldName !== '(pending analysis)') {
-        execSync(`m365 spo field set --webUrl "${webUrl}" --listTitle "${plan.listKey}" --name "${plan.fieldName}" --indexed true`, { stdio: 'inherit', env: { ...process.env, PATH: `${process.env.PATH}:/opt/homebrew/bin:/usr/local/bin` } });
-        success = true;
-      } else if (plan.action === 'delete_index' && plan.fieldName !== '(pending analysis)') {
-        execSync(`m365 spo field set --webUrl "${webUrl}" --listTitle "${plan.listKey}" --name "${plan.fieldName}" --indexed false`, { stdio: 'inherit', env: { ...process.env, PATH: `${process.env.PATH}:/opt/homebrew/bin:/usr/local/bin` } });
-        success = true;
-      } else {
-        console.log(`⏩ Action "${plan.action}" skipped: Detailed analysis required.`);
-        logToSharePoint({ ...plan, phase: 'skipped', reason: `Skipped: Requires manual analysis.`, timestamp: new Date().toISOString() });
-        continue;
-      }
-
-      if (success) {
-        logToSharePoint({ ...plan, phase: 'executed', executionStatus: 'success', timestamp: new Date().toISOString() });
-        executedCount++;
-      }
-    } catch (err) {
-      console.error(`❌ Auto-execution failed: ${err.message}`);
-      logToSharePoint({ ...plan, phase: 'executed', executionStatus: 'failed', executionError: err.message, timestamp: new Date().toISOString() });
     }
   }
 
@@ -264,7 +230,7 @@ function outputAccountabilityReport(plans, executedCount, forcedLevel = null) {
   console.log(`========================================\n`);
 }
 
-function generatePlans(adminSummary) {
+function generatePlans(adminSummary, driftLedger) {
   const date = utcTodayStamp();
   const plans = [];
   const now = new Date().toISOString();
@@ -283,16 +249,38 @@ function generatePlans(adminSummary) {
       planId: `nightly-idx-${date}-${listKey}`,
       listKey: listKey,
       fieldName: '(pending analysis)',
-      action: 'delete_index', // 本来は原因列を特定する必要あり
+      action: 'delete_index',
       risk: 'safe',
-      autoExecutable: false, // 詳細不明なので自動実行は OFF
+      autoExecutable: false,
       requiresApproval: true,
       reason: `Nightly Patrol が [${listKey}] のインデックス逼迫を検知しました。管理画面での詳細分析が必要です。`,
       timestamp: now
     });
   }
 
-  // 2. スキーマドリフトの検知
+  // 2. ゾンビ列の自動クリーンアップ候補 (keep-warn + high confidence)
+  if (driftLedger && Array.isArray(driftLedger.rows)) {
+    const highConfidenceZombies = driftLedger.rows.filter(r => 
+      r.classification === 'keep-warn' && r.confidence === 'high'
+    );
+
+    for (const z of highConfidenceZombies.slice(0, 10)) { // 1回の実行で最大10件に制限
+      plans.push({
+        correlationId: `nightly-purge-${date}-${z.listKey}-${z.internalName}`,
+        planId: z.fieldId || `zombie-${z.listKey}-${z.internalName}`,
+        listKey: z.listKey,
+        fieldName: z.internalName,
+        action: 'delete_zombie',
+        risk: 'safe',
+        autoExecutable: true, // keep-warn 且つ high confidence なら自動実行対象とする
+        requiresApproval: false,
+        reason: `Institutionalized Purge: ${z.displayName || z.internalName} (tier: keep-warn)`,
+        timestamp: now
+      });
+    }
+  }
+
+  // 3. スキーマドリフトの検知 (Manual Review)
   if (adminSummary.overall === 'fail' || adminSummary.overall === 'warn') {
     const listKey = adminSummary.criticalListNames?.[0];
     if (listKey) {
@@ -301,11 +289,11 @@ function generatePlans(adminSummary) {
          planId: `nightly-drift-${date}-${listKey}`,
          listKey: listKey,
          fieldName: '*',
-         action: 'create_index',
-         risk: 'safe',
-         autoExecutable: false, // 複雑なドリフトは自動化しない
+         action: 'manual_remediation',
+         risk: 'complex',
+         autoExecutable: false,
          requiresApproval: true,
-         reason: `Nightly Patrol が [${listKey}] の構造異常を検知しました。`,
+         reason: `Nightly Patrol が [${listKey}] の構造異常を検知しました。詳細分析が必要です。`,
          timestamp: now
        });
     }
@@ -319,12 +307,15 @@ async function main() {
   const adminSummaryPath = path.join(REPORT_DIR, `admin-status-summary-${date}.json`);
   const adminSummary = readJsonFile(adminSummaryPath);
   
+  const driftLedgerPath = path.join(REPORT_DIR, 'drift-ledger.json');
+  const driftLedger = readJsonFile(driftLedgerPath);
+  
   if (!adminSummary) {
     console.log(`⚠️ No admin status summary found for ${date}. Skipping.`);
     return;
   }
 
-  const plans = generatePlans(adminSummary);
+  const plans = generatePlans(adminSummary, driftLedger);
   if (plans.length === 0) {
     console.log(`✅ No remediation needed today.`);
     return;

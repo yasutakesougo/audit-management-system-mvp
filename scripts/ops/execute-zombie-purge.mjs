@@ -1,6 +1,6 @@
 /* eslint-disable no-console -- CLI ops script */
 /**
- * Zombie Purge Executor — Safely removes fields flagged as zombie_candidate.
+ * Zombie Purge Executor — Safely removes fields flagged as keep-warn.
  * 
  * SAFETY GATES:
  * 1. Must use --confirm flag.
@@ -66,7 +66,7 @@ async function logToSharePoint(normalizedSiteUrl, auth, entry, batchId) {
       Risk: 'safe',
       Auto_x0020_Executable: true,
       Requires_x0020_Approval: false,
-      Reason: `Institutionalized Purge: ${entry.displayName}. Gate: ${entry.evidence.confidence} confidence, usage=${entry.evidence.usageCount}, hasData=${entry.evidence.hasData}. Batch: ${batchId}`,
+      Reason: `Institutionalized Purge: ${entry.displayName}. Gate: ${entry.evidence.confidence} confidence, usage=${entry.evidence.usageCount}, hasData=${entry.evidence.hasData}. Tier: keep-warn`,
       Audit_x0020_Source: 'execute-zombie-purge',
       Audit_x0020_Timestamp: entry.deletedAt,
       Execution_x0020_Status: 'success'
@@ -161,7 +161,7 @@ async function main() {
     const row = {};
     headers.forEach((h, i) => row[h] = parts[i]);
     return row;
-  }).filter(r => r.classification === 'zombie_candidate');
+  }).filter(r => r.classification === 'keep-warn');
 
   // Filter candidates early based on list/field args
   const activeCandidates = candidates.filter(r => {
@@ -242,8 +242,10 @@ async function main() {
 
     // Protection for "Base Fields" (no numeric suffix)
     const hasNumericSuffix = /[0-9]+$/.test(row.internalName);
-    if (!hasNumericSuffix && !forceBaseField) {
-      console.warn(`⚠️  Skipping: ${row.internalName} is a base field (no number suffix). Use --force-base-field to override.`);
+    const isExplicitlyGoverned = row.evidence === 'explicit_registry_governance';
+    
+    if (!hasNumericSuffix && !forceBaseField && !isExplicitlyGoverned) {
+      console.warn(`⚠️  Skipping: ${row.internalName} is a base field (no number suffix) and has no explicit governance. Use --force-base-field to override.`);
       continue;
     }
 

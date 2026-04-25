@@ -45,12 +45,12 @@ function logToAudit(entry) {
 
   const fields = [
     `Title='DRIFT_GOVERNANCE:${entry.type}'`,
-    `Phase='audit'`,
-    `Action='observe'`,
-    `Risk='safe'`,
-    `Reason='${entry.reason.replace(/'/g, "''")}'`,
-    `Audit_x0020_Source='nightly_drift_os'`,
-    `Audit_x0020_Timestamp='${new Date().toISOString().split('T')[0]}'`
+    `Phase1='audit'`,
+    `Action1='observe'`,
+    `Risk0='safe'`,
+    `Reason0='${entry.reason.replace(/'/g, "''")}'`,
+    `Audit_x0020_Source0='nightly_drift_os'`,
+    `Audit_x0020_Timestamp0='${new Date().toISOString().split('T')[0]}'`
   ];
 
   const cmd = `${m365} spo listitem add --webUrl "${webUrl}" --listTitle "${listTitle}" --${fields.join(' --')}`;
@@ -85,23 +85,33 @@ async function main() {
 
   const content = fs.readFileSync(ledgerPath, 'utf8');
   const lines = content.split('\n').filter(l => l.trim() !== '');
-  const headers = lines[0].split(',');
+  const headers = lines[0].split(',').map(h => h.replace(/"/g, ''));
   const rows = lines.slice(1).map(line => {
-    const parts = line.split(',');
+    const parts = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') { current += '"'; i++; } else inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) { parts.push(current); current = ''; } else current += char;
+    }
+    parts.push(current);
+
     const obj = {};
     headers.forEach((h, i) => obj[h] = parts[i]);
     return obj;
   });
 
-  const highZombies = rows.filter(r => r.classification === 'zombie_candidate' && r.confidence === 'high');
-  const mediumZombies = rows.filter(r => r.classification === 'zombie_candidate' && r.confidence === 'medium');
+  const highZombies = rows.filter(r => r.classification === 'keep-warn' && r.confidence === 'high');
+  const mediumZombies = rows.filter(r => r.classification === 'keep-warn' && r.confidence === 'medium');
 
   console.log(`\n🔎 Analysis Result:`);
-  console.log(`- Total High Confidence Zombies: ${highZombies.length}`);
-  console.log(`- Total Medium Confidence Zombies: ${mediumZombies.length}`);
+  console.log(`- Total High Confidence Zombies (keep-warn): ${highZombies.length}`);
+  console.log(`- Total Medium Confidence Zombies (keep-warn): ${mediumZombies.length}`);
 
   // 3. Log Summary
-  const summaryReason = `Nightly Drift Patrol completed. Found ${highZombies.length} high-confidence zombie columns and ${mediumZombies.length} medium-confidence columns across the ecosystem. Status: HEALTHY (Reduction Pipeline Active).`;
+  const summaryReason = `Nightly Drift Patrol completed. Found ${highZombies.length} high-confidence keep-warn columns and ${mediumZombies.length} medium-confidence columns across the ecosystem. Status: HEALTHY (Reduction Pipeline Active).`;
   logToAudit({
     type: 'NIGHTLY_SUMMARY',
     reason: summaryReason
