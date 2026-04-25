@@ -447,7 +447,6 @@ function buildContractDriftDrafts(contractResults) {
 }
 
 /**
-<<<<<<< HEAD
  * Index Pressure → Issue Draft
  */
 function buildIndexPressureDrafts(indexResults) {
@@ -500,50 +499,6 @@ function buildIndexPressureDrafts(indexResults) {
     labels: ['index-pressure', 'nightly-patrol', 'needs-review', 'priority-high'],
     fingerprint: r.fingerprint,
   }));
-=======
- * インデックス圧迫 → Issue Draft
- */
-function buildIndexPressureDrafts(indexPressureResults) {
-  if (!indexPressureResults || indexPressureResults.length === 0) return [];
-
-  const drafts = [];
-  const failures = indexPressureResults.filter((r) => r.status === 'FAIL');
-
-  for (const fail of failures) {
-    const sev = fail.indexCount >= 18 ? 'critical' : 'high';
-    const remediationHint = fail.remediationResults?.length > 0
-      ? `\n\n### Dry Run Remediation Results\n${fail.remediationResults.map(r => `- ${r.internalName}: ${r.message}`).join('\n')}`
-      : '';
-
-    drafts.push({
-      title: `[index_pressure] ${fail.displayName} のインデックス不足`,
-      severity: sev,
-      category: 'index-pressure',
-      summary: `[${fail.displayName}] (${fail.list}) において必須インデックスが不足、または圧迫されています。 現在: ${fail.indexCount}/20`,
-      rationale: [
-        'SharePoint のリストビュー閾値（5000件）を超えるクエリを安定させるため、インデックスが必要です。',
-        'インデックス不足は大規模データ環境での 500 エラーの主原因となります。',
-        'nightly patrol で検知。',
-      ].join('\n'),
-      targetFiles: [],
-      proposal: [
-        '以下のコマンドで不足インデックスを追加してください。',
-        '```bash',
-        `npx tsx scripts/ops/index-remediate-targeted.ts --list "${fail.list}" --apply`,
-        '```',
-        remediationHint
-      ].filter(Boolean),
-      acceptanceCriteria: [
-        `[${fail.displayName}] の必須フィールドがすべて物理インデックス化されていること`,
-        '管理画面 (/admin/status) または `scripts/ops/index-audit.ts` で PASS と表示されること',
-      ],
-      labels: ['index-pressure', 'nightly-patrol', 'ops', `priority-${sev}`],
-      fingerprint: `index-pressure:${fail.list}`,
-    });
-  }
-
-  return drafts;
->>>>>>> 7cbd9b55 (feat(ops): operationalize autonomous infrastructure governance (Phase B))
 }
 
 // ─── Main ───────────────────────────────────────────────────────────────────
@@ -587,8 +542,6 @@ export function buildIssueDrafts(patrolResults) {
     ...buildIndexPressureDrafts(indexResults),
   ];
 
-  // ─── Deduplication ────────────────────────────────────────────────────────
-
   const newDrafts = [];
   const dedupedCount = { skipped: 0, updated: 0, new: 0 };
 
@@ -600,15 +553,11 @@ export function buildIssueDrafts(patrolResults) {
     }
 
     if (ledger[fp]) {
-      // 既存
       ledger[fp].lastSeen = today;
       dedupedCount.skipped++;
-      // レポートには「既存」として残すか、完全に消すか。
-      // ここでは「新規」のみを Drafts 配列に残し、Spam を防ぐ。
       continue;
     }
 
-    // 新規
     ledger[fp] = {
       firstSeen: today,
       lastSeen: today,
@@ -621,10 +570,9 @@ export function buildIssueDrafts(patrolResults) {
   saveLedger(ledger);
 
   if (dedupedCount.skipped > 0) {
-    console.log(`  ℹ️  Deduplicated: ${dedupedCount.skipped} items already in ledger.`);
+    console.log(`  📊  Deduplicated: ${dedupedCount.skipped} items already in ledger.`);
   }
 
-  // severity 順にソート
   return newDrafts.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9));
 }
 
