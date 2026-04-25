@@ -79,7 +79,7 @@ export const masterListEntries: readonly SpListEntry[] = [
       'UserID'
     ],
     provisioningFields: [
-      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'User_x0020_ID', 'Title'] },
+      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'Title'] },
       // RecipientCertNumber moved to _Ext to avoid 8KB limit
       { internalName: 'RecipientCertExpiry', type: 'DateTime', displayName: 'Recipient Cert Expiry', dateTimeFormat: 'DateOnly' },
       { internalName: 'GrantMunicipality', type: 'Text', displayName: 'Grant Municipality', candidates: ['GrantMunicipality', 'Grant_x0020_Municipality'] },
@@ -103,7 +103,7 @@ export const masterListEntries: readonly SpListEntry[] = [
       'UserID', 'RecipientCertNumber'
     ],
     provisioningFields: [
-      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'User_x0020_ID', 'Title'] },
+      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'Title'] },
       { internalName: 'RecipientCertNumber', type: 'Text', displayName: 'Recipient Cert Number', required: true, candidates: ['RecipientCertNumber', 'RecipientCertNumber0', 'Recipient_x0020_Cert_x0020_Numbe'] },
     ],
   },
