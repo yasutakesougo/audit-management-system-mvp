@@ -52,9 +52,18 @@ function cleanupDateArtifacts(date: string) {
 }
 
 function runDecision(date: string, env: Record<string, string>) {
+  const tmpDir = mkTmpDir();
+  const emptyJson = path.join(tmpDir, 'empty.json');
+  writeFileSync(emptyJson, JSON.stringify({}), 'utf8');
+
   execFileSync('node', [SCRIPT, '--date', date], {
     cwd: ROOT,
-    env: { ...process.env, ...env },
+    env: {
+      ...process.env,
+      CONTRACT_DRIFT_SUMMARY_PATH: emptyJson,
+      DRIFT_LEDGER_SUMMARY_PATH: emptyJson,
+      ...env,
+    },
     stdio: 'pipe',
   });
 }

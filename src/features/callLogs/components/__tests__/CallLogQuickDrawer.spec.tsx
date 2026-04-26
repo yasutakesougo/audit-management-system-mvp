@@ -63,10 +63,14 @@ describe('CallLogQuickDrawer — 破棄確認', () => {
 
   it('should call onClose immediately when form is not dirty', async () => {
     const wrapper = makeWrapper();
-    render(<CallLogQuickDrawer open={true} onClose={onClose} />, { wrapper });
+    await act(async () => {
+      render(<CallLogQuickDrawer open={true} onClose={onClose} />, { wrapper });
+    });
 
     // フォームに何も入力せずにXボタンを押す（not dirty）
-    fireEvent.click(screen.getByTestId('call-log-drawer-close'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('call-log-drawer-close'));
+    });
 
     // ConfirmDialog は表示されず、即 onClose が呼ばれる
     await waitFor(() => {
@@ -77,7 +81,9 @@ describe('CallLogQuickDrawer — 破棄確認', () => {
 
   it('should show ConfirmDialog when form is dirty and close button is clicked', async () => {
     const wrapper = makeWrapper();
-    render(<CallLogQuickDrawer open={true} onClose={onClose} />, { wrapper });
+    await act(async () => {
+      render(<CallLogQuickDrawer open={true} onClose={onClose} />, { wrapper });
+    });
 
     // フォームを dirty にする（発信者名を入力）
     await act(async () => {
@@ -87,7 +93,9 @@ describe('CallLogQuickDrawer — 破棄確認', () => {
     });
 
     // Xボタンを押す（dirty なので確認ダイアログが表示されるはず）
-    fireEvent.click(screen.getByTestId('call-log-drawer-close'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('call-log-drawer-close'));
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument();
@@ -99,7 +107,9 @@ describe('CallLogQuickDrawer — 破棄確認', () => {
 
   it('should call onClose when "破棄して閉じる" is confirmed', async () => {
     const wrapper = makeWrapper();
-    render(<CallLogQuickDrawer open={true} onClose={onClose} />, { wrapper });
+    await act(async () => {
+      render(<CallLogQuickDrawer open={true} onClose={onClose} />, { wrapper });
+    });
 
     // dirty にする
     await act(async () => {
@@ -109,11 +119,15 @@ describe('CallLogQuickDrawer — 破棄確認', () => {
     });
 
     // 閉じようとする
-    fireEvent.click(screen.getByTestId('call-log-drawer-close'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('call-log-drawer-close'));
+    });
     await waitFor(() => expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument());
 
     // 「破棄して閉じる」を確認
-    fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
+    });
 
     await waitFor(() => {
       expect(mockClose).toHaveBeenCalledTimes(1);
@@ -122,7 +136,9 @@ describe('CallLogQuickDrawer — 破棄確認', () => {
 
   it('should NOT call onClose when "入力に戻る" (cancel) is clicked in ConfirmDialog', async () => {
     const wrapper = makeWrapper();
-    render(<CallLogQuickDrawer open={true} onClose={onClose} />, { wrapper });
+    await act(async () => {
+      render(<CallLogQuickDrawer open={true} onClose={onClose} />, { wrapper });
+    });
 
     // dirty にする
     await act(async () => {
@@ -132,11 +148,15 @@ describe('CallLogQuickDrawer — 破棄確認', () => {
     });
 
     // 閉じようとする
-    fireEvent.click(screen.getByTestId('call-log-drawer-close'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('call-log-drawer-close'));
+    });
     await waitFor(() => expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument());
 
     // 「入力に戻る」を押す
-    fireEvent.click(screen.getByTestId('confirm-dialog-cancel'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('confirm-dialog-cancel'));
+    });
 
     await waitFor(() => {
       // ConfirmDialog が閉じる
