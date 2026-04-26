@@ -31,7 +31,9 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
   private missingLogicalFields = new Set<keyof typeof DRIFT_LOG_CANDIDATES>();
   private blockedPhysicalFields = new Set<string>();
   private writeDisabled = false;
+  private optionalWriteDisabled = false;
   private initializationPromise: Promise<void> | null = null;
+  private logQueue: Promise<void> = Promise.resolve();
 
   constructor(private spClient: ISpOperations & { 
     getSchema?: (listTitle: string) => Promise<string[]> 
@@ -290,7 +292,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
     return this.initializationPromise;
   }
 
-  async logEvent(event: DriftEvent): Promise<void> {
+  private async logEventCore(event: DriftEvent): Promise<void> {
     const dedupeKey = getDriftEventDedupeKey(event);
 
     if (this.writeDisabled) {
@@ -312,7 +314,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       const listTitle = entry.resolve();
       await this.initializeResolvedFields(listTitle);
 
-      const payload = this.buildCreatePayload(event, true);
+      const payload = this.buildCreatePayload(event, !this.optionalWriteDisabled);
       if (!payload) {
         this.writeDisabled = true;
         auditLog.warn('diagnostics:drift', 'DriftEventRepository disabled writing due to missing required drift-log fields.');
@@ -333,16 +335,53 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
 
         if (missingPhysicalField && Object.prototype.hasOwnProperty.call(activePayload, missingPhysicalField)) {
           this.blockedPhysicalFields.add(missingPhysicalField);
-          // 2回目は試さず、次回のイベントから反映されるようにして終了
+          this.optionalWriteDisabled = true;
           auditLog.warn('diagnostics:drift', 'DriftEventRepository caught 400: field blocked for future events.', {
             missingPhysicalField,
           });
+
+          // 任意列由来の 400 は必須列のみで 1 回フォールバックする。
+          const requiredOnlyPayload = this.buildCreatePayload(event, false);
+          if (requiredOnlyPayload) {
+            try {
+              await this.spClient.createItem(listTitle, requiredOnlyPayload);
+              this.sessionCache.add(dedupeKey);
+              return;
+            } catch (fallbackErr) {
+              if (!this.isHttp400(fallbackErr)) throw fallbackErr;
+              // 必須列のみでも 400 の場合は、同一セッションの連続失敗を避けるため書き込み停止。
+              this.writeDisabled = true;
+              auditLog.warn(
+                'diagnostics:drift',
+                'DriftEventRepository disabled writing after 400 on required-only fallback.',
+                { missingPhysicalField },
+              );
+              return;
+            }
+          }
         }
+
+        // 欠落列を特定できない 400 は、再試行しても改善しない可能性が高いため停止。
+        this.optionalWriteDisabled = true;
+        this.writeDisabled = true;
+        auditLog.warn(
+          'diagnostics:drift',
+          'DriftEventRepository disabled writing after unclassified 400.',
+          { detail },
+        );
       }
     } catch (err) {
       // ✅ Fail-Open: 書き込み失敗は、システム全体の業務に影響を与えないよう握りつぶす。
       auditLog.error('diagnostics:drift', 'DriftEventRepository failed to log drift event (fail-open).', err);
     }
+  }
+
+  async logEvent(event: DriftEvent): Promise<void> {
+    // 同一セッションの大量ドリフト発火で POST が同時多発しないように直列化する。
+    this.logQueue = this.logQueue
+      .then(() => this.logEventCore(event))
+      .catch(() => undefined);
+    return this.logQueue;
   }
 
   async getEvents(filter?: {
