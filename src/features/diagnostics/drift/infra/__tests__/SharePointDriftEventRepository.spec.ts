@@ -23,6 +23,7 @@ describe('SharePointDriftEventRepository', () => {
         'ListName',
         'FieldName',
         'DetectedAt',
+        'LoggedAt',
         'Severity',
         'ResolutionType',
         'Resolved',
@@ -46,6 +47,7 @@ describe('SharePointDriftEventRepository', () => {
       ListName: 'Daily_Attendance',
       FieldName: 'Status',
       DetectedAt: '2026-04-05T00:00:00.000Z',
+      LoggedAt: expect.any(String),
       Severity: 'warn',
       ResolutionType: 'fallback',
       Resolved: false,
@@ -53,12 +55,15 @@ describe('SharePointDriftEventRepository', () => {
     expect(payload).not.toHaveProperty('DriftType');
   });
 
-  it('records field as blocked but does not retry immediately on 400 error', async () => {
+  it('records field as blocked and retries once with required-only payload on 400 error', async () => {
     const badRequest = Object.assign(
       new Error("フィールドまたはプロパティ 'DriftType' は存在しません。"),
       { status: 400 },
     );
-    const createItem = vi.fn().mockRejectedValueOnce(badRequest);
+    const createItem = vi
+      .fn()
+      .mockRejectedValueOnce(badRequest)
+      .mockResolvedValueOnce({});
 
     const repo = new SharePointDriftEventRepository({
       createItem,
@@ -68,6 +73,7 @@ describe('SharePointDriftEventRepository', () => {
         'ListName',
         'FieldName',
         'DetectedAt',
+        'LoggedAt',
         'Severity',
         'ResolutionType',
         'DriftType',
@@ -85,10 +91,12 @@ describe('SharePointDriftEventRepository', () => {
       resolved: false,
     });
 
-    // Ensure we only tried once (fail-fast)
-    expect(createItem).toHaveBeenCalledTimes(1);
-    const payload = createItem.mock.calls[0][1];
-    expect(payload).toHaveProperty('DriftType', 'suffix_mismatch');
+    expect(createItem).toHaveBeenCalledTimes(2);
+    const initialPayload = createItem.mock.calls[0][1];
+    const fallbackPayload = createItem.mock.calls[1][1];
+    expect(initialPayload).toHaveProperty('DriftType', 'suffix_mismatch');
+    expect(fallbackPayload).not.toHaveProperty('DriftType');
+    expect(fallbackPayload).toHaveProperty('LoggedAt');
   });
 
   it('fails fast without retry when 400 does not identify a field', async () => {
@@ -115,6 +123,48 @@ describe('SharePointDriftEventRepository', () => {
     });
 
     expect(createItem).toHaveBeenCalledTimes(1);
+  });
+
+  it('writes duplicate required encoded/plain fields when both exist in list schema', async () => {
+    const createItem = vi.fn(async (_listTitle: string, _payload: Record<string, unknown>) => ({}));
+    const repo = new SharePointDriftEventRepository({
+      createItem,
+      updateItemByTitle: vi.fn(async () => ({})),
+      getListItemsByTitle: vi.fn(async () => []),
+      getSchema: vi.fn(async () => [
+        'List_x0020_Name',
+        'ListName',
+        'Field_x0020_Name',
+        'FieldName',
+        'Detected_x0020_At',
+        'DetectedAt',
+        'Logged_x0020_At',
+      ]),
+    });
+
+    await repo.logEvent({
+      listName: 'Daily_Attendance',
+      fieldName: 'Status',
+      detectedAt: '2026-04-05T00:00:00.000Z',
+      severity: 'warn',
+      resolutionType: 'fallback',
+      driftType: 'suffix_mismatch',
+      resolved: false,
+    });
+
+    expect(createItem).toHaveBeenCalledTimes(1);
+    const [, payload] = createItem.mock.calls[0];
+    expect(payload).toMatchObject({
+      Title: 'Daily_Attendance:Status',
+      List_x0020_Name: 'Daily_Attendance',
+      ListName: 'Daily_Attendance',
+      Field_x0020_Name: 'Status',
+      FieldName: 'Status',
+      Detected_x0020_At: '2026-04-05T00:00:00.000Z',
+      DetectedAt: '2026-04-05T00:00:00.000Z',
+      Logged_x0020_At: expect.any(String),
+    });
+    expect(payload).not.toHaveProperty('Severity');
   });
 
   it('applies since/resolved/list filters and maps drifted physical names', async () => {

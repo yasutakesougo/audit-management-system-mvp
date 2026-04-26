@@ -28,6 +28,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
 
   /** 本番リストで使用されている物理内部名のキャッシュ */
   private resolvedFields: Record<string, string | undefined> = {};
+  private availablePhysicalFields = new Set<string>();
   private missingLogicalFields = new Set<keyof typeof DRIFT_LOG_CANDIDATES>();
   private blockedPhysicalFields = new Set<string>();
   private writeDisabled = false;
@@ -41,10 +42,6 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
 
   private rf(key: keyof typeof DRIFT_LOG_CANDIDATES): string | undefined {
     return this.resolvedFields[key];
-  }
-
-  private rfWithFallback(key: keyof typeof DRIFT_LOG_CANDIDATES): string {
-    return this.resolvedFields[key] || DRIFT_LOG_CANDIDATES[key][0];
   }
 
   private readRowValue<T = unknown>(
@@ -89,15 +86,42 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
   }
 
   private isRequiredFieldKey(key: keyof typeof DRIFT_LOG_CANDIDATES): boolean {
-    return key === 'listName' || key === 'fieldName' || key === 'detectedAt';
+    return key === 'listName' || key === 'fieldName' || key === 'detectedAt' || key === 'loggedAt';
   }
 
-  private isRequiredPhysicalField(fieldName: string): boolean {
-    return [
-      this.rfWithFallback('listName'),
-      this.rfWithFallback('fieldName'),
-      this.rfWithFallback('detectedAt'),
-    ].includes(fieldName);
+  private isPhysicalFieldWritable(fieldName: string): boolean {
+    if (this.blockedPhysicalFields.has(fieldName)) return false;
+    if (this.availablePhysicalFields.size > 0 && !this.availablePhysicalFields.has(fieldName)) return false;
+    return true;
+  }
+
+  private getWritablePhysicalNames(
+    key: keyof typeof DRIFT_LOG_CANDIDATES,
+    required: boolean,
+  ): string[] {
+    const names = new Set<string>();
+    const resolvedName = this.rf(key);
+    if (resolvedName && this.isPhysicalFieldWritable(resolvedName)) {
+      names.add(resolvedName);
+    }
+
+    if (required) {
+      for (const candidate of DRIFT_LOG_CANDIDATES[key]) {
+        if (this.isPhysicalFieldWritable(candidate)) {
+          names.add(candidate);
+        }
+      }
+    }
+
+    // スキーマ未取得時は fail-open 優先で最小候補を使う。
+    if (names.size === 0 && this.availablePhysicalFields.size === 0) {
+      const fallback = DRIFT_LOG_CANDIDATES[key][0];
+      if (fallback && !this.blockedPhysicalFields.has(fallback)) {
+        names.add(fallback);
+      }
+    }
+
+    return Array.from(names);
   }
 
   private buildCreatePayload(event: DriftEvent, includeOptional: boolean): Record<string, unknown> | null {
@@ -109,27 +133,29 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       key: keyof typeof DRIFT_LOG_CANDIDATES,
       value: unknown,
     ): boolean => {
-      const resolvedName = this.rf(key);
       const isRequired = this.isRequiredFieldKey(key);
+      const physicalNames = this.getWritablePhysicalNames(key, isRequired);
 
-      // 1. 必須フィールドは読み込めなければフォールバック（Title等は確実に存在する想定）
-      // 2. 任意フィールドは解決されていない場合は書き込まない（HTTP 400 回避）
-      const physicalName = resolvedName || (isRequired ? DRIFT_LOG_CANDIDATES[key][0] : undefined);
-
-      if (!physicalName || this.blockedPhysicalFields.has(physicalName)) {
+      if (physicalNames.length === 0) {
         return !isRequired;
       }
-      if (this.missingLogicalFields.has(key)) {
-        return !this.isRequiredFieldKey(key);
+
+      if (!isRequired && this.missingLogicalFields.has(key)) {
+        return true;
       }
-      payload[physicalName] = value;
+
+      for (const physicalName of physicalNames) {
+        payload[physicalName] = value;
+      }
       return true;
     };
 
+    const now = new Date().toISOString();
     const requiredOk =
       pushField('listName', String(event.listName)) &&
       pushField('fieldName', String(event.fieldName)) &&
-      pushField('detectedAt', String(event.detectedAt));
+      pushField('detectedAt', String(event.detectedAt)) &&
+      pushField('loggedAt', now);
 
     if (!requiredOk) {
       return null;
@@ -263,6 +289,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
             }
 
             if (availableFields.length === 0) return;
+            this.availablePhysicalFields = new Set(availableFields);
 
             const res = resolveInternalNamesDetailed(
               new Set(availableFields),
@@ -286,6 +313,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         auditLog.warn('diagnostics:drift', 'DriftEventRepository initialization error or timeout.', err);
         // Fallback: use default candidates
         this.resolvedFields = {};
+        this.availablePhysicalFields = new Set();
       }
     })();
 
