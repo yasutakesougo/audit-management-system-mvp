@@ -144,42 +144,56 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
         : (summary?.dailyRecordStatus?.pendingUserIds ?? []),
     );
 
+    // Phase 8-A: statusMap の作成を先に行い、ソートでステータスを利用可能にする
+    const statusMap = new Map<string, UserStatusRecord>();
+    for (const record of (userStatusRecords ?? [])) {
+      statusMap.set(record.userId, record);
+    }
+
     const userItems = (summary.users || []).map((u, i) => {
       const userId = (u.UserID ?? '').trim() || `U${String(u.Id ?? i + 1).padStart(3, '0')}`;
       const name = u.FullName ?? `利用者${i + 1}`;
       const visit = summary.visits[userId];
+      const statusRecord = statusMap.get(userId);
+
       let status: 'present' | 'absent' | 'unknown' = 'unknown';
       if (visit) {
         if (visit.status === '通所中' || visit.status === '退所済') status = 'present';
         else if (visit.status === '当日欠席' || visit.status === '事前欠席') status = 'absent';
       }
+
+      // Phase 8-A: statusRecord による上書き
+      const userStatusType = statusRecord?.statusType;
+      if (userStatusType === 'absence' || userStatusType === 'preAbsence') {
+        status = 'absent';
+      }
+
       const recordFilled = !pendingUserIds.has(userId);
       const alerts = alertsByUser?.get(userId);
-      return { userId, name, status, recordFilled, alerts };
+
+      return { userId, name, status, recordFilled, alerts, userStatusType };
     });
+
+    // ガイドに基づくソート順位の定義
+    // 1. 未入力 (recordFilled: false) -> 最優先
+    // 2. 事前欠席 (preAbsence)
+    // 3. 当日欠席 (absence)
+    // 4. 入力完了 (recordFilled: true)
+    const getSortPriority = (item: typeof userItems[0]) => {
+      if (!item.recordFilled) return 0;
+      if (item.userStatusType === 'preAbsence') return 1;
+      if (item.userStatusType === 'absence') return 2;
+      return 3;
+    };
 
     const sortedUserItems = [...userItems].sort((a, b) => {
-      if (a.recordFilled === b.recordFilled) return 0;
-      return a.recordFilled ? 1 : -1;
+      const priA = getSortPriority(a);
+      const priB = getSortPriority(b);
+      if (priA !== priB) return priA - priB;
+      return (a.userId < b.userId) ? -1 : 1;
     });
 
-    // Phase 8-A: Merge user status badges into user items
-    const statusMap = new Map<string, UserStatusRecord>();
-    for (const record of (userStatusRecords ?? [])) {
-      statusMap.set(record.userId, record);
-    }
-    const userItemsWithStatus = sortedUserItems.map((item) => {
-      const statusRecord = statusMap.get(item.userId);
-      if (!statusRecord) return item;
-      return {
-        ...item,
-        userStatusType: statusRecord.statusType,
-        // If status is absence/preAbsence, reflect in existing status field too
-        status: (statusRecord.statusType === 'absence' || statusRecord.statusType === 'preAbsence')
-          ? 'absent' as const
-          : item.status,
-      };
-    });
+    const userItemsWithStatus = sortedUserItems; // すでに userStatusType 等を内包済み
 
     // ── Assemble Props ──
     return {
