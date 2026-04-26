@@ -1,0 +1,11 @@
+{
+  "batchId": "batch-2026-04-26T12-57-03",
+  "timestamp": "2026-04-26T12:57:04.189Z",
+  "mode": "EXECUTE",
+  "totalFound": 1,
+  "successCount": 0,
+  "failCount": 1,
+  "targetList": "attendance_users",
+  "maxDeletes": 999,
+  "batchSize": 50
+}
