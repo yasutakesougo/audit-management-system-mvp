@@ -1,6 +1,6 @@
 import { TESTIDS } from '@/testids';
 import { TextField } from '@mui/material';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import toast from 'react-hot-toast';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TableDailyRecordForm } from '../forms/TableDailyRecordForm';
@@ -141,8 +141,11 @@ describe('TableDailyRecordForm', () => {
     repository: mockRepository,
   };
 
-  const renderForm = (overrideProps: Partial<typeof defaultProps> = {}) =>
-    render(<TableDailyRecordFormTestWrapper {...defaultProps} {...overrideProps} />);
+  const renderForm = async (overrideProps: Partial<typeof defaultProps> = {}) => {
+    await act(async () => {
+      render(<TableDailyRecordFormTestWrapper {...defaultProps} {...overrideProps} />);
+    });
+  };
 
   const getReporterInput = () => screen.getAllByLabelText('記録者名')[0];
   const getDateInput = () => screen.getAllByLabelText('記録日')[0];
@@ -174,7 +177,9 @@ describe('TableDailyRecordForm', () => {
   const expandUserPicker = async () => {
     // Click the summary bar directly via its test ID
     const summaryBar = screen.getByTestId('user-picker-summary');
-    fireEvent.click(summaryBar);
+    await act(async () => {
+      fireEvent.click(summaryBar);
+    });
     // Wait for the search input to appear (inside Collapse)
     await waitFor(() => {
       expect(screen.getByPlaceholderText('名前またはIDで検索')).toBeInTheDocument();
@@ -193,7 +198,7 @@ describe('TableDailyRecordForm', () => {
   });
 
   it('should render table daily record form when open', async () => {
-    renderForm();
+    await renderForm();
 
     await waitFor(() => {
       expect(screen.getByTestId(TESTIDS['daily-table-record-form'])).toBeInTheDocument();
@@ -203,7 +208,7 @@ describe('TableDailyRecordForm', () => {
   });
 
   it('should not render when closed', async () => {
-    renderForm({ open: false });
+    await renderForm({ open: false });
 
     await waitFor(() => {
       expect(screen.queryByTestId(TESTIDS['daily-table-record-form'])).not.toBeInTheDocument();
@@ -211,16 +216,16 @@ describe('TableDailyRecordForm', () => {
   });
 
   it('should display all users in the selection list', async () => {
-    renderForm();
+    await renderForm();
 
     // Expand user picker to see user list
     await expandUserPicker();
 
     // Toggle filter to show all users if needed
     const filterButton = screen.getByText(/^(全利用者|通所日のみ)$/);
-    if (filterButton.textContent?.includes('通所日のみ')) {
+    await act(async () => {
       fireEvent.click(filterButton);
-    }
+    });
 
     const list = withinUserList();
     expect(list.getByText('田中 太郎 (U001)')).toBeInTheDocument();
@@ -229,7 +234,7 @@ describe('TableDailyRecordForm', () => {
   });
 
   it('should filter users based on search query', async () => {
-    renderForm();
+    await renderForm();
 
     // Expand user picker
     await expandUserPicker();
@@ -237,14 +242,18 @@ describe('TableDailyRecordForm', () => {
     // Toggle to show all users first
     const filterButton = screen.getByText(/^(全利用者|通所日のみ)$/);
     if (filterButton.textContent?.includes('通所日のみ')) {
-      fireEvent.click(filterButton);
+      await act(async () => {
+        fireEvent.click(filterButton);
+      });
       await waitFor(() => {
         expect(filterButton).toHaveTextContent('全利用者');
       });
     }
 
     const searchInput = screen.getByPlaceholderText('名前またはIDで検索');
-    fireEvent.change(searchInput, { target: { value: '田中' } });
+    await act(async () => {
+      fireEvent.change(searchInput, { target: { value: '田中' } });
+    });
 
     await waitFor(() => {
       expect(withinUserList().getByText('田中 太郎 (U001)')).toBeInTheDocument();
@@ -256,7 +265,7 @@ describe('TableDailyRecordForm', () => {
   it(
     'should auto-select todays attendees on open',
     async () => {
-      renderForm();
+      await renderForm();
 
       await setRecordDate(FIXED_DATE);
 
@@ -269,7 +278,7 @@ describe('TableDailyRecordForm', () => {
   );
 
   it('should show table immediately with auto-selected attendees', async () => {
-    renderForm();
+    await renderForm();
 
     await waitForTable();
     const table = within(getTableContainer());
@@ -282,7 +291,7 @@ describe('TableDailyRecordForm', () => {
   });
 
   it('should allow input in table fields', async () => {
-    renderForm();
+    await renderForm();
 
     await waitForTable();
 
@@ -290,22 +299,28 @@ describe('TableDailyRecordForm', () => {
     const amActivityInput = table.getAllByPlaceholderText('午前')[0];
     const pmActivityInput = table.getAllByPlaceholderText('午後')[0];
 
-    fireEvent.change(amActivityInput, { target: { value: '朝の体操' } });
-    fireEvent.change(pmActivityInput, { target: { value: '作業活動' } });
+    await act(async () => {
+      fireEvent.change(amActivityInput, { target: { value: '朝の体操' } });
+      fireEvent.change(pmActivityInput, { target: { value: '作業活動' } });
+    });
 
     expect(amActivityInput).toHaveValue('朝の体操');
     expect(pmActivityInput).toHaveValue('作業活動');
   });
 
   it('should handle lunch amount selection', async () => {
-    renderForm();
+    await renderForm();
 
     await waitForTable();
 
     const table = within(getTableContainer());
     const lunchSelect = table.getAllByRole('combobox')[0];
-    fireEvent.mouseDown(lunchSelect);
-    fireEvent.click(await screen.findByRole('option', { name: '完食' }));
+    await act(async () => {
+      fireEvent.mouseDown(lunchSelect);
+    });
+    await act(async () => {
+      fireEvent.click(await screen.findByRole('option', { name: '完食' }));
+    });
 
     await waitFor(() => {
       expect(table.getByText('完食')).toBeInTheDocument();
@@ -313,41 +328,49 @@ describe('TableDailyRecordForm', () => {
   });
 
   it('should handle problem behavior chips', async () => {
-    renderForm();
+    await renderForm();
 
     await waitForTable();
 
     const table = within(getTableContainer());
     const firstRow = table.getAllByRole('row')[1];
     const selfHarmChip = within(firstRow).getByText('自傷');
-    fireEvent.click(selfHarmChip);
+    await act(async () => {
+      fireEvent.click(selfHarmChip);
+    });
 
     expect(selfHarmChip).toBeInTheDocument();
   });
 
   it('should handle special notes input', async () => {
-    renderForm();
+    await renderForm();
 
     await waitForTable();
 
     const table = within(getTableContainer());
     const specialNotesInput = table.getAllByPlaceholderText('特記')[0];
-    fireEvent.change(specialNotesInput, { target: { value: '今日は元気でした' } });
+    await act(async () => {
+      fireEvent.change(specialNotesInput, { target: { value: '今日は元気でした' } });
+    });
 
     expect(specialNotesInput).toHaveValue('今日は元気でした');
   });
 
   it('should clear row data when clear button is clicked', async () => {
-    renderForm();
+    await renderForm();
 
     await waitForTable();
 
     const table = within(getTableContainer());
     const amActivityInput = table.getAllByPlaceholderText('午前')[0];
-    fireEvent.change(amActivityInput, { target: { value: '朝の体操' } });
+    await act(async () => {
+      fireEvent.change(amActivityInput, { target: { value: '朝の体操' } });
+    });
 
     const clearButton = table.getAllByLabelText('この行をクリア')[0];
-    fireEvent.click(clearButton);
+    await act(async () => {
+      fireEvent.click(clearButton);
+    });
 
     await waitFor(() => {
       expect(amActivityInput).toHaveValue('');
@@ -357,26 +380,32 @@ describe('TableDailyRecordForm', () => {
   it('should call repository.save with correct data when saved', async () => {
     mockSave.mockClear();
 
-    renderForm();
+    await renderForm();
 
     await setRecordDate(FIXED_DATE);
     await waitForSelectionInfo(FIXED_DATE_SELECTION_COUNT);
 
     const reporterInput = getReporterInput();
-    fireEvent.change(reporterInput, { target: { value: '支援員A' } });
+    await act(async () => {
+      fireEvent.change(reporterInput, { target: { value: '支援員A' } });
+    });
 
     await waitForTable();
 
     const table = within(getTableContainer());
     const amActivityInput = table.getAllByPlaceholderText('午前')[0];
-    fireEvent.change(amActivityInput, { target: { value: '朝の体操' } });
+    await act(async () => {
+      fireEvent.change(amActivityInput, { target: { value: '朝の体操' } });
+    });
 
     const saveButton = await screen.findByRole(
       'button',
       { name: `${FIXED_DATE_SELECTION_COUNT}人分保存` },
       { timeout: 5000 },
     );
-    fireEvent.click(saveButton);
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
 
     await waitFor(
       () => {
@@ -399,12 +428,14 @@ describe('TableDailyRecordForm', () => {
   it('should prevent saving without selected users', async () => {
     mockSave.mockClear();
 
-    renderForm();
+    await renderForm();
 
     await waitForTable();
 
     const clearAllButton = screen.getByLabelText(/選択をクリア/);
-    fireEvent.click(clearAllButton);
+    await act(async () => {
+      fireEvent.click(clearAllButton);
+    });
 
     const reporterInput = getReporterInput();
     fireEvent.change(reporterInput, { target: { value: '支援員A' } });
@@ -420,14 +451,16 @@ describe('TableDailyRecordForm', () => {
     async () => {
       mockSave.mockClear();
 
-      renderForm();
+      await renderForm();
 
       await setRecordDate(FIXED_DATE);
       await waitForTable();
       await waitForSelectionInfo(FIXED_DATE_SELECTION_COUNT);
 
       const saveButton = await screen.findByRole('button', { name: `${FIXED_DATE_SELECTION_COUNT}人分保存` }, { timeout: 5000 });
-      fireEvent.click(saveButton);
+      await act(async () => {
+        fireEvent.click(saveButton);
+      });
 
       expect(vi.mocked(toast.error)).toHaveBeenCalledWith('記録者名を入力してください', { duration: 4000 });
       expect(mockSave).not.toHaveBeenCalled();
@@ -437,16 +470,20 @@ describe('TableDailyRecordForm', () => {
   it(
     'should handle select all functionality',
     async () => {
-      renderForm();
+      await renderForm();
 
       await setRecordDate(FIXED_DATE);
       await waitForTable();
 
       const clearAllButton = screen.getByLabelText(/選択をクリア/);
+      await act(async () => {
       fireEvent.click(clearAllButton);
+    });
 
       const selectAllButton = screen.getByLabelText(/表示中の利用者を全選択/);
-      fireEvent.click(selectAllButton);
+      await act(async () => {
+        fireEvent.click(selectAllButton);
+      });
 
       await waitForSelectionInfo(FIXED_DATE_SELECTION_COUNT);
     }
@@ -456,13 +493,15 @@ describe('TableDailyRecordForm', () => {
     'should handle clear all functionality',
     { timeout: 15000 },
     async () => {
-      renderForm();
+      await renderForm();
 
       await setRecordDate(FIXED_DATE);
       await waitForSelectionInfo(FIXED_DATE_SELECTION_COUNT);
 
       const clearAllButton = screen.getByLabelText(/選択をクリア/);
+      await act(async () => {
       fireEvent.click(clearAllButton);
+    });
 
       await waitFor(() => {
         const el = screen.getByTestId('selection-count');
@@ -473,7 +512,7 @@ describe('TableDailyRecordForm', () => {
 
   describe('Attendance Day Filter', () => {
     it('should show attendance filter button in expanded panel', async () => {
-      renderForm();
+      await renderForm();
 
       await expandUserPicker();
 
@@ -483,13 +522,15 @@ describe('TableDailyRecordForm', () => {
     });
 
     it('should toggle filter between attendance day and all users', async () => {
-      renderForm();
+      await renderForm();
 
       await expandUserPicker();
 
       const filterButton = screen.getByText(/^(全利用者|通所日のみ)$/);
       const currentText = filterButton.textContent;
+    await act(async () => {
       fireEvent.click(filterButton);
+    });
 
       await waitFor(() => {
         if (currentText?.includes('通所日のみ')) {
@@ -501,7 +542,7 @@ describe('TableDailyRecordForm', () => {
     });
 
     it('should filter users based on attendance days when date is Monday', async () => {
-      renderForm();
+      await renderForm();
 
       await setRecordDate('2024-01-01');
       await expandUserPicker();
@@ -514,7 +555,7 @@ describe('TableDailyRecordForm', () => {
     });
 
     it('should filter users based on attendance days when date is Tuesday', async () => {
-      renderForm();
+      await renderForm();
 
       await setRecordDate('2024-01-02');
       await expandUserPicker();
@@ -527,7 +568,7 @@ describe('TableDailyRecordForm', () => {
     });
 
     it('should auto-update selected users when date changes with attendance filter on', async () => {
-      renderForm();
+      await renderForm();
 
       await setRecordDate('2024-01-01');
 
@@ -546,14 +587,16 @@ describe('TableDailyRecordForm', () => {
     });
 
     it('should show all users when attendance filter is disabled', async () => {
-      renderForm();
+      await renderForm();
 
       await expandUserPicker();
 
       // Disable attendance filter
       const filterButton = screen.getByText(/^(通所日のみ|全利用者)$/);
       if (filterButton.textContent?.includes('通所日のみ')) {
-        fireEvent.click(filterButton);
+        await act(async () => {
+          fireEvent.click(filterButton);
+        });
       }
 
       // Should show all users regardless of attendance days

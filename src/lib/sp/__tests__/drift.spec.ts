@@ -19,17 +19,17 @@ describe('Drift Detection (helpers.ts)', () => {
   });
 
   it('should detect suffixed names as drifted', () => {
-    const available = new Set(['FullName0', 'UserID1']);
+    const available = new Set(['TestField0', 'TestField1']);
     const candidates = {
-      fullName: ['FullName'],
-      userId: ['UserID']
+      fullName: ['TestField'],
+      userId: ['TestField']
     };
 
     const result = resolveInternalNamesDetailed(available, candidates);
 
-    expect(result.resolved.fullName).toBe('FullName0');
+    expect(result.resolved.fullName).toBe('TestField0');
     expect(result.fieldStatus.fullName.isDrifted).toBe(true);
-    expect(result.resolved.userId).toBe('UserID1');
+    expect(result.resolved.userId).toBe('TestField1');
     expect(result.fieldStatus.userId.isDrifted).toBe(true);
   });
 

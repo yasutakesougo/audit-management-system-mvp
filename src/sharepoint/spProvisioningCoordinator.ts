@@ -229,7 +229,7 @@ export class SharePointProvisioningCoordinator {
       if (entry.essentialFields && entry.essentialFields.length > 0) {
         const available = await client.getListFieldInternalNames(listName);
         
-        // Use fuzzy resolution to handle SharePoint suffixes (e.g., FullName0)
+        // Use fuzzy resolution to handle SharePoint suffixes (e.g., FullName_Zombie)
         const candidates = Object.fromEntries(
           entry.essentialFields.map(f => {
             const prov = entry.provisioningFields?.find(p => p.internalName === f);

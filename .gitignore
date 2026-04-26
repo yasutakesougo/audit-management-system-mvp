@@ -87,6 +87,8 @@ nightly-report.md
 .nightly/
 docs/nightly-patrol/*.json
 docs/nightly-patrol/*.md
+docs/nightly-patrol/*.csv
+docs/nightly-patrol/backups/
 sp-telemetry*.json
 sp-telemetry*.backup.json
 lane-assertion-result.json

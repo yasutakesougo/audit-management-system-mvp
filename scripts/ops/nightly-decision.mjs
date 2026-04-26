@@ -712,8 +712,8 @@ function main() {
     driftJson: process.env.DRIFT_SUMMARY_PATH || '',
     adminStatusJson: process.env.ADMIN_STATUS_SUMMARY_PATH || path.join(REPORT_DIR, 'admin-status-summary-'), // will be suffixed with date
     registryAuditJson: process.env.REGISTRY_AUDIT_SUMMARY_PATH || path.join(REPORT_DIR, 'registry-audit-result.json'),
-    contractDriftJson: path.join(REPORT_DIR, 'contract-drift.json'),
-    driftLedgerJson: path.join(REPORT_DIR, 'drift-ledger.json'),
+    contractDriftJson: process.env.CONTRACT_DRIFT_SUMMARY_PATH || path.join(REPORT_DIR, 'contract-drift.json'),
+    driftLedgerJson: process.env.DRIFT_LEDGER_SUMMARY_PATH || path.join(REPORT_DIR, 'drift-ledger.json'),
     logFile: process.env.LOG_FILE || path.join(ROOT, 'logs', 'today.auto.log'),
   };
 

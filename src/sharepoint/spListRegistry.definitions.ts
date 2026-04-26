@@ -16,7 +16,7 @@ export const masterListEntries: readonly SpListEntry[] = [
       'UserID', 'FullName', 'IsActive', 'UsageStatus'
     ],
     provisioningFields: [
-      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'UserCode', 'User_x0020_ID'] },
+      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'UserCode'] },
       { internalName: 'FullName', type: 'Text', displayName: 'Full Name', required: true, candidates: ['FullName', 'Full_x0020_Name', 'Title'] },
       { internalName: 'Furigana', type: 'Text', displayName: 'Furigana' },
       { internalName: 'FullNameKana', type: 'Text', displayName: 'Full Name Kana', candidates: ['FullNameKana', 'Full_x0020_Name_x0020_Kana'] },
@@ -60,11 +60,11 @@ export const masterListEntries: readonly SpListEntry[] = [
       'UserID', 'TransportToDays', 'TransportFromDays', 'TransportAdditionType'
     ],
     provisioningFields: [
-      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID', 'User_x0020_ID'] },
-      { internalName: 'TransportToDays', type: 'MultiChoice', displayName: 'Transport To Days', choices: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], candidates: ['TransportToDays', 'Transport_x0020_To_x0020_Days'] },
-      { internalName: 'TransportFromDays', type: 'MultiChoice', displayName: 'Transport From Days', choices: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], candidates: ['TransportFromDays', 'Transport_x0020_From_x0020_Days'] },
-      { internalName: 'TransportCourse', type: 'Text', displayName: 'Transport Course', candidates: ['TransportCourse', 'Transport_x0020_Course'] },
-      { internalName: 'TransportSchedule', type: 'Note', displayName: 'Transport Schedule', richText: false, candidates: ['TransportSchedule', 'Transport_x0020_Schedule'] },
+      { internalName: 'UserID', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID'] },
+      { internalName: 'TransportToDays', type: 'MultiChoice', displayName: 'Transport To Days', choices: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], candidates: ['TransportToDays'] },
+      { internalName: 'TransportFromDays', type: 'MultiChoice', displayName: 'Transport From Days', choices: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], candidates: ['TransportFromDays'] },
+      { internalName: 'TransportCourse', type: 'Text', displayName: 'Transport Course', candidates: ['TransportCourse'] },
+      { internalName: 'TransportSchedule', type: 'Note', displayName: 'Transport Schedule', richText: false, candidates: ['TransportSchedule'] },
       { internalName: 'TransportAdditionType', type: 'Text', displayName: 'Transport Addition Type', required: true, candidates: ['TransportAdditionType', 'Transport_x0020_Addition_x0020_Type', 'Transport_x0020_Addition_x0020_T', 'cr013_transportAdditionType', 'cr013_transportadditiontype'] },
     ],
   },
