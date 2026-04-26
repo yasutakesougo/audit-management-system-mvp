@@ -46,6 +46,7 @@ import { recordSuggestionTelemetry } from '@/features/action-engine/telemetry/re
 import { formatDateIso } from '@/lib/dateFormat';
 import { buildDailySupportUrl } from '@/app/links/dailySupportLinks';
 import { computeSnoozeUntil } from '@/features/action-engine/domain/computeSnoozeUntil';
+import type { SnoozePreset } from '@/features/action-engine/domain/computeSnoozeUntil';
 
 const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = ({ correctiveActions = [] }) => {
   const navigate = useNavigate();
@@ -222,7 +223,7 @@ const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = 
           }
           dismissSuggestion(id, { by: 'today' });
         },
-        onSnoozeSuggestion: (id: string, p: any) => {
+        onSnoozeSuggestion: (id: string, p: SnoozePreset) => {
           const suggestion = correctiveActions.find((s) => s.stableId === id);
           if (suggestion) {
             recordSuggestionTelemetry({
