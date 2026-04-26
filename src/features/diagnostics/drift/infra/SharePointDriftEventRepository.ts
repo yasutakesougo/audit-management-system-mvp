@@ -7,6 +7,15 @@ import { extractMissingField, resolveInternalNamesDetailed } from '@/lib/sp/help
 import { auditLog } from '@/lib/debugLogger';
 import { summarizeSpError } from '@/lib/errors';
 
+const DRIFT_LOG_REQUIRED_DUPLICATES: Partial<
+  Record<keyof typeof DRIFT_LOG_CANDIDATES, readonly string[]>
+> = {
+  listName: ['List_x0020_Name', 'ListName'],
+  fieldName: ['Field_x0020_Name', 'FieldName'],
+  detectedAt: ['Detected_x0020_At', 'DetectedAt'],
+  loggedAt: ['Logged_x0020_At'],
+} as const;
+
 /**
  * 依存関係の境界遵守のためのローカルインターフェース
  */
@@ -100,14 +109,22 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
     required: boolean,
   ): string[] {
     const names = new Set<string>();
+    const schemaAvailable = this.availablePhysicalFields.size > 0;
     const resolvedName = this.rf(key);
     if (resolvedName && this.isPhysicalFieldWritable(resolvedName)) {
       names.add(resolvedName);
     }
 
     if (required) {
-      for (const candidate of DRIFT_LOG_CANDIDATES[key]) {
-        if (this.isPhysicalFieldWritable(candidate)) {
+      const requiredCandidates = DRIFT_LOG_REQUIRED_DUPLICATES[key] ?? DRIFT_LOG_CANDIDATES[key];
+      for (const candidate of requiredCandidates) {
+        if (schemaAvailable) {
+          if (this.isPhysicalFieldWritable(candidate)) {
+            names.add(candidate);
+          }
+          continue;
+        }
+        if (!this.blockedPhysicalFields.has(candidate)) {
           names.add(candidate);
         }
       }

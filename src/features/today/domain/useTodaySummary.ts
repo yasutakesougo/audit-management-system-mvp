@@ -9,7 +9,9 @@
  * @see docs/adr/ADR-002-today-execution-layer-guardrails.md
  */
 import { useAttendanceStore } from '@/features/attendance';
+import { useQuery } from '@tanstack/react-query';
 import { useDashboardSummary } from '@/features/dashboard';
+import { useDailyRecordRepository } from '@/features/daily/repositoryFactory';
 import { useStaffStore } from '@/features/staff';
 import { filterActiveUsers } from '@/features/users/domain/userLifecycle';
 import { useUsersQuery } from '@/features/users/hooks/useUsersQuery';
@@ -110,6 +112,44 @@ export function useTodaySummary(): TodaySummary {
     spSyncStatus: mockSpSyncStatus,
   });
 
+  // ─── 2b. Daily records (today) from repository ───
+  // /today の「本日の進捗」は SharePoint 日次記録（SupportRecord_Daily）を正として集計する。
+  const dailyRecordRepository = useDailyRecordRepository();
+  const { data: todayDailyRecords = [] } = useQuery({
+    queryKey: ['today-summary', 'daily-records', today],
+    queryFn: () =>
+      dailyRecordRepository.list({
+        range: { startDate: today, endDate: today },
+      }),
+    enabled: !!dailyRecordRepository && !!today,
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  const dailyRecordStatusFromRepository = useMemo<DailyRecordStatusPick>(() => {
+    const expectedUserIds = users
+      .map((u) => String(u.UserID ?? '').trim())
+      .filter(Boolean);
+    const expectedSet = new Set(expectedUserIds);
+
+    const completedSet = new Set(
+      todayDailyRecords.flatMap((record) =>
+        (record.userRows ?? [])
+          .map((row) => String(row.userId ?? '').trim())
+          .filter((id) => id && expectedSet.has(id)),
+      ),
+    );
+
+    const pendingUserIds = expectedUserIds.filter((id) => !completedSet.has(id));
+
+    return {
+      pending: pendingUserIds.length,
+      completed: completedSet.size,
+      total: expectedUserIds.length,
+      pendingUserIds,
+    };
+  }, [todayDailyRecords, users]);
+
   // ─── 3. Service Structure (Today-only: スケジュール staffLane + Staff マスタから導出) ───
   const serviceStructure = useMemo(
     () => buildServiceStructure(full.scheduleLanesToday.staffLane, staff),
@@ -121,16 +161,17 @@ export function useTodaySummary(): TodaySummary {
   // Dashboard の dailyRecordStatus とは別系統。
   // ⚠ /daily/support は強度行動障害支援対象者のみが記録対象。
   //   全利用者ではなく IsHighIntensitySupportTarget === true のみを集計する。
-  const supportTargetUserIds = useMemo(
-    () => users
-      .filter((u) => u.IsHighIntensitySupportTarget === true)
-      .map((u) => {
+  const supportTargetCompletionUserIds = useMemo(
+    () =>
+      users
+        .filter((u) => u.IsHighIntensitySupportTarget === true)
+        .map((u) => {
         const uid = String(u.UserID ?? '').trim();
         return uid || `U${String(u.Id ?? 0).padStart(3, '0')}`;
       }),
     [users],
   );
-  const todayRecordCompletion = useSupportRecordCompletion(today, supportTargetUserIds);
+  const todayRecordCompletion = useSupportRecordCompletion(today, supportTargetCompletionUserIds);
 
   const { todayExceptions, todayExceptionActions } = useMemo(() => {
     // 計画と実績のズレを検知してアクションソースへ変換
@@ -150,7 +191,7 @@ export function useTodaySummary(): TodaySummary {
       // 出欠サマリー
       attendanceSummary: full.attendanceSummary,
       // 日次記録ステータス（未記録件数・pendingUserIds — Dashboard 起点）
-      dailyRecordStatus: full.dailyRecordStatus,
+      dailyRecordStatus: dailyRecordStatusFromRepository,
       // 時間別記録完了ステータス（ExecutionStore 起点 — Today-only）
       todayRecordCompletion,
       // ブリーフィングアラート
@@ -168,7 +209,7 @@ export function useTodaySummary(): TodaySummary {
     }),
     [
       full.attendanceSummary,
-      full.dailyRecordStatus,
+      dailyRecordStatusFromRepository,
       todayRecordCompletion,
       full.briefingAlerts,
       full.scheduleLanesToday,
