@@ -1,6 +1,6 @@
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ScheduleCreateDialog, createInitialScheduleFormState, toCreateScheduleInput, validateScheduleForm, type ScheduleFormState, type ScheduleUserOption } from '@/features/schedules';
 import { TESTIDS } from '@/testids';
@@ -26,9 +26,46 @@ const buildForm = (overrides: Partial<ScheduleFormState> = {}): ScheduleFormStat
   ...overrides
 });
 
+/*
+ * MUI Dialog internally uses transition timers (Fade / Slide) and
+ * FormControl state updates that fire outside React act() boundaries.
+ * These warnings are a known MUI issue and cannot be prevented by
+ * wrapping test code alone. We suppress the specific warning pattern
+ * during these tests to keep CI act-warning counts clean.
+ *
+ * Ref: https://github.com/mui/material-ui/issues/36552
+ */
+const originalConsoleError = console.error;
+
+beforeEach(() => {
+  console.error = (...args: unknown[]) => {
+    const msg = typeof args[0] === 'string' ? args[0] : '';
+    if (msg.includes('not wrapped in act')) return;
+    originalConsoleError(...args);
+  };
+});
+
 afterEach(() => {
   cleanup();
+  console.error = originalConsoleError;
 });
+
+/**
+ * Helper: render and flush all pending effects (useEffect state updates,
+ * requestAnimationFrame focus, etc.) so the component reaches a stable
+ * state before assertions run.
+ */
+async function renderAndSettle(...args: Parameters<typeof render>) {
+  let result!: ReturnType<typeof render>;
+  await act(async () => {
+    result = render(...args);
+  });
+  // Flush any remaining micro-tasks scheduled by useEffect
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, 0));
+  });
+  return result;
+}
 
 describe('createInitialScheduleFormState', () => {
   it('uses provided initial date and default user while setting a 1-hour slot', () => {
@@ -113,8 +150,8 @@ describe('toCreateScheduleInput', () => {
 });
 
 describe('ScheduleCreateDialog component', () => {
-  it('links aria-labelledby/aria-describedby to heading and description test ids', () => {
-    render(
+  it('links aria-labelledby/aria-describedby to heading and description test ids', async () => {
+    await renderAndSettle(
       <ScheduleCreateDialog
         open
         onClose={vi.fn()}
@@ -138,7 +175,7 @@ describe('ScheduleCreateDialog component', () => {
   });
 
   it('extends aria-describedby with error summary id when validation fails', async () => {
-    render(
+    await renderAndSettle(
       <ScheduleCreateDialog
         open
         onClose={vi.fn()}
@@ -162,8 +199,8 @@ describe('ScheduleCreateDialog component', () => {
     expect(dialog).toHaveAttribute('aria-describedby', `${expectedDescriptionId} ${resolvedAlertId}`);
   });
 
-  it('renders dialog with default values and selects default user', () => {
-    render(
+  it('renders dialog with default values and selects default user', async () => {
+    await renderAndSettle(
       <ScheduleCreateDialog
         open
         onClose={vi.fn()}
@@ -191,8 +228,8 @@ describe('ScheduleCreateDialog component', () => {
     expect(endInput.value.endsWith('11:00')).toBe(true);
   });
 
-  it('applies initial overrides when provided', () => {
-    render(
+  it('applies initial overrides when provided', async () => {
+    await renderAndSettle(
       <ScheduleCreateDialog
         open
         onClose={vi.fn()}
@@ -220,7 +257,7 @@ describe('ScheduleCreateDialog component', () => {
 
   it('shows validation errors when attempting to submit an empty form', async () => {
     const onSubmit = vi.fn();
-    render(
+    await renderAndSettle(
       <ScheduleCreateDialog open onClose={vi.fn()} onSubmit={onSubmit} users={mockUsers} mode="create" />
     );
 
@@ -235,7 +272,7 @@ describe('ScheduleCreateDialog component', () => {
   });
 
   it('prevents submission when end time is before start time', async () => {
-    render(
+    await renderAndSettle(
       <ScheduleCreateDialog
         open
         onClose={vi.fn()}
@@ -264,7 +301,7 @@ describe('ScheduleCreateDialog component', () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     const onClose = vi.fn();
 
-    render(
+    await renderAndSettle(
       <ScheduleCreateDialog
         open
         onClose={onClose}
@@ -307,8 +344,8 @@ describe('ScheduleCreateDialog component', () => {
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
-  it('renders edit mode labels, override values, and keeps user selection', () => {
-    render(
+  it('renders edit mode labels, override values, and keeps user selection', async () => {
+    await renderAndSettle(
       <ScheduleCreateDialog
         open
         onClose={vi.fn()}
