@@ -158,7 +158,7 @@ function countUsage(internalName) {
   try {
     // -F: fixed strings, -w: whole word, --count: total matches per file
     // Note: rg returns exit code 1 if no matches, which throws in execSync
-    const output = execSync(`rg -F -w "${internalName}" src/ --glob "!**/node_modules/*" --glob "!**/__tests__/*" --count`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
+    const output = execSync(`rg -F -w "${internalName}" src/ --glob "!**/node_modules/*" --glob "!**/__tests__/*" --glob "!**/spListRegistry.definitions.ts" --glob "!**/userFields.ts" --glob "!**/transportFields.ts" --glob "!**/dailyFields.ts" --glob "!**/constants.ts" --glob "!**/spIndexKnownConfig.ts" --count`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
     // Sum the counts from all files
     const lines = output.trim().split('\n');
     let total = 0;

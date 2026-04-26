@@ -55,16 +55,16 @@ describe('USERS_MASTER_CANDIDATES drift', () => {
     expect(missing).not.toContain('fullName');
   });
 
-  it('SharePoint 自動付与サフィックス (FullName0) が解決される', () => {
+  it('SharePoint 自動付与サフィックス (FullName_Zombie) が解決される', () => {
     const available = new Set([
-      'UserID', 'FullName0', 'IsActive', 'UsageStatus'
+      'UserID', 'FullName_Zombie', 'IsActive', 'UsageStatus'
     ]);
     const { resolved, fieldStatus } = resolveInternalNamesDetailed(
       available,
       USERS_MASTER_CANDIDATES as unknown as Record<string, string[]>,
     );
 
-    expect(resolved.fullName).toBe('FullName0');
+    expect(resolved.fullName).toBe('FullName_Zombie');
     expect(fieldStatus.fullName.isDrifted).toBe(true);
   });
 
