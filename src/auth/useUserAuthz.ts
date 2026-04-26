@@ -50,6 +50,18 @@ const safeWriteMemberOfCache = (upn: string, ids: string[]): void => {
   }
 };
 
+const extractGroupIdsFromAccountClaims = (account: unknown): string[] => {
+  if (!account || typeof account !== 'object') return [];
+  const candidate = account as { idTokenClaims?: unknown };
+  const claims = candidate.idTokenClaims;
+  if (!claims || typeof claims !== 'object') return [];
+  const groupValues = (claims as { groups?: unknown }).groups;
+  if (!Array.isArray(groupValues)) return [];
+  return groupValues
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .map((value) => value.trim());
+};
+
 export const useUserAuthz = (): UserAuthz => {
   const isAuthReady = useAuthReady();
   const { acquireToken, account } = useAuth();
@@ -151,7 +163,20 @@ export const useUserAuthz = (): UserAuthz => {
           }
         }
       } catch (e) {
-        if (!cancelled) setError(e as Error);
+        if (!cancelled) {
+          // Graph group lookup can fail due tenant consent/policy.
+          // Fall back to idToken group claims when available to avoid false viewer downgrade.
+          const claimIds = extractGroupIdsFromAccountClaims(account);
+          if (claimIds.length > 0) {
+            setGroupIds(prev => {
+              const same = prev && prev.length === claimIds.length && prev.every((id, i) => id === claimIds[i]);
+              return same ? prev : claimIds;
+            });
+            setError(prev => prev === null ? prev : null);
+          } else {
+            setError(e as Error);
+          }
+        }
       }
     };
 

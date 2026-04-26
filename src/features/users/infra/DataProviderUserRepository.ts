@@ -30,7 +30,6 @@ import { USAGE_STATUS_VALUES } from '../typesExtended';
 import type { CutoverStageValue } from './migration/userBenefitProfileCutover/stage';
 
 const DEFAULT_USERS_LIST_TITLE = 'Users_Master';
-const ACCESSORY_LIST_JOIN_FIELD = 'UserID';
 const getTodayIsoDate = (): string => new Date().toISOString().slice(0, 10);
 
 type AuditLogEntry = Omit<AuditEvent, 'ts'>;
@@ -203,19 +202,30 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
   private async enrichUser(user: IUserMaster): Promise<IUserMaster> {
     const userId = user.UserID;
     if (!userId) return user;
-
-    const filter = buildEq(ACCESSORY_LIST_JOIN_FIELD, userId);
     
     const [transportRes, benefitRes, benefitExtRes] = await Promise.all([
-      this.resolver.resolveAccessoryFields(this.transportListTitle, USER_TRANSPORT_SETTINGS_CANDIDATES as any, USER_TRANSPORT_SETTINGS_ESSENTIALS as string[]),
+      this.resolver.resolveAccessoryFields(this.transportListTitle, USER_TRANSPORT_SETTINGS_CANDIDATES as unknown as Record<string, string[]>, USER_TRANSPORT_SETTINGS_ESSENTIALS as unknown as string[]),
       this.resolver.resolveAccessoryFields(this.benefitListTitle, this.resolver.getBenefitCandidates(), this.resolver.getBenefitEssentials()),
-      this.resolver.resolveAccessoryFields(this.benefitExtListTitle, USER_BENEFIT_PROFILE_EXT_CANDIDATES as any, USER_BENEFIT_PROFILE_EXT_ESSENTIALS as string[])
+      this.resolver.resolveAccessoryFields(this.benefitExtListTitle, USER_BENEFIT_PROFILE_EXT_CANDIDATES as unknown as Record<string, string[]>, USER_BENEFIT_PROFILE_EXT_ESSENTIALS as unknown as string[])
     ]);
 
+    const transportJoinField = transportRes.resolvedFields.userId || 'UserID';
+    const benefitJoinField = benefitRes.resolvedFields.userId || 'UserID';
+    const benefitExtJoinField = benefitExtRes.resolvedFields.userId || 'UserID';
+
     const [transportRows, benefitRows, benefitExtRows] = await Promise.all([
-      this.provider.listItems<Record<string, unknown>>(this.transportListTitle, { filter, top: 1 }),
-      this.provider.listItems<Record<string, unknown>>(this.benefitListTitle, { filter, top: 1 }),
-      this.provider.listItems<Record<string, unknown>>(this.benefitExtListTitle, { filter, top: 1 })
+      this.provider.listItems<Record<string, unknown>>(this.transportListTitle, {
+        filter: buildEq(transportJoinField, userId),
+        top: 1,
+      }),
+      this.provider.listItems<Record<string, unknown>>(this.benefitListTitle, {
+        filter: buildEq(benefitJoinField, userId),
+        top: 1,
+      }),
+      this.provider.listItems<Record<string, unknown>>(this.benefitExtListTitle, {
+        filter: buildEq(benefitExtJoinField, userId),
+        top: 1,
+      })
     ]);
 
     const transportRaw = transportRows[0];
@@ -223,9 +233,9 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
     const benefitExtRaw = benefitExtRows[0];
 
     // 分離先リストのレコードを正規化（washRow）
-    const transport = transportRaw ? washRow(transportRaw, USER_TRANSPORT_SETTINGS_CANDIDATES as any, transportRes.resolvedFields) : undefined;
-    let benefit = benefitRaw ? washRow(benefitRaw, this.resolver.getBenefitCandidates() as any, benefitRes.resolvedFields) : undefined;
-    const benefitExt = benefitExtRaw ? washRow(benefitExtRaw, USER_BENEFIT_PROFILE_EXT_CANDIDATES as any, benefitExtRes.resolvedFields) : undefined;
+    const transport = transportRaw ? washRow(transportRaw, USER_TRANSPORT_SETTINGS_CANDIDATES as unknown as Record<string, string[]>, transportRes.resolvedFields) : undefined;
+    let benefit = benefitRaw ? washRow(benefitRaw, this.resolver.getBenefitCandidates(), benefitRes.resolvedFields) : undefined;
+    const benefitExt = benefitExtRaw ? washRow(benefitExtRaw, USER_BENEFIT_PROFILE_EXT_CANDIDATES as unknown as Record<string, string[]>, benefitExtRes.resolvedFields) : undefined;
 
     // Benefit Cutover の読み込み時オーバーレイ適用（RAW 行を必要とするため benefitRaw を渡す）
     if (benefit && benefitRaw) {
@@ -233,7 +243,7 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
     }
 
     const sanitized = this.joiner.sanitizeDomainRecord(user, !!transport, !!benefit, !!benefitExt);
-    const next = this.joiner.mergeExtraData(sanitized, transport as any, benefit as any, benefitExt as any);
+    const next = this.joiner.mergeExtraData(sanitized, transport as Record<string, unknown>, benefit as Record<string, unknown>, benefitExt as Record<string, unknown>);
     return next;
   }
 
@@ -243,9 +253,9 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
 
   private async syncAccessories(userId: string, payload: Partial<IUserMasterCreateDto>): Promise<void> {
     const [transportMapping, benefitMapping, benefitExtMapping] = await Promise.all([
-      this.resolver.resolveAccessoryFields(this.transportListTitle, USER_TRANSPORT_SETTINGS_CANDIDATES as any, USER_TRANSPORT_SETTINGS_ESSENTIALS as string[]),
+      this.resolver.resolveAccessoryFields(this.transportListTitle, USER_TRANSPORT_SETTINGS_CANDIDATES as unknown as Record<string, string[]>, USER_TRANSPORT_SETTINGS_ESSENTIALS as unknown as string[]),
       this.resolver.resolveAccessoryFields(this.benefitListTitle, this.resolver.getBenefitCandidates(), this.resolver.getBenefitEssentials()),
-      this.resolver.resolveAccessoryFields(this.benefitExtListTitle, USER_BENEFIT_PROFILE_EXT_CANDIDATES as any, USER_BENEFIT_PROFILE_EXT_ESSENTIALS as string[])
+      this.resolver.resolveAccessoryFields(this.benefitExtListTitle, USER_BENEFIT_PROFILE_EXT_CANDIDATES as unknown as Record<string, string[]>, USER_BENEFIT_PROFILE_EXT_ESSENTIALS as unknown as string[])
     ]);
 
     await Promise.all([
@@ -257,9 +267,9 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
 
   private async getSelectFieldsForMainList(fields: Record<string, string | undefined>): Promise<string[]> {
     const [transportMapping, benefitMapping, benefitExtMapping] = await Promise.all([
-      this.resolver.resolveAccessoryFields(this.transportListTitle, USER_TRANSPORT_SETTINGS_CANDIDATES as any, USER_TRANSPORT_SETTINGS_ESSENTIALS as string[]),
+      this.resolver.resolveAccessoryFields(this.transportListTitle, USER_TRANSPORT_SETTINGS_CANDIDATES as unknown as Record<string, string[]>, USER_TRANSPORT_SETTINGS_ESSENTIALS as unknown as string[]),
       this.resolver.resolveAccessoryFields(this.benefitListTitle, this.resolver.getBenefitCandidates(), this.resolver.getBenefitEssentials()),
-      this.resolver.resolveAccessoryFields(this.benefitExtListTitle, USER_BENEFIT_PROFILE_EXT_CANDIDATES as any, USER_BENEFIT_PROFILE_EXT_ESSENTIALS as string[])
+      this.resolver.resolveAccessoryFields(this.benefitExtListTitle, USER_BENEFIT_PROFILE_EXT_CANDIDATES as unknown as Record<string, string[]>, USER_BENEFIT_PROFILE_EXT_ESSENTIALS as unknown as string[])
     ]);
     
     const accessoryPhysicalFields = new Set([
