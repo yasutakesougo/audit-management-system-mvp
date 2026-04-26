@@ -495,9 +495,9 @@ export function resolveInternalNamesDetailed<T extends string>(
         for (const base of candidates[key]) {
           const lowerBase = base.toLowerCase();
 
-          // Strategy A: Suffix check (v2: handles multi-digit suffixes 0-99 and encoded spaces)
+          // Strategy A: Suffix check (v2: handles multi-digit suffixes 0-99, _Zombie, and encoded spaces)
           const encodedBase = lowerBase.replace(/ /g, '_x0020_');
-          const suffixRegex = new RegExp(`^${encodedBase}(\\d+)$`);
+          const suffixRegex = new RegExp(`^${encodedBase}(\\d+|_zombie)$`);
           
           for (const [availableLow, actual] of availableMap.entries()) {
             if (suffixRegex.test(availableLow)) {
