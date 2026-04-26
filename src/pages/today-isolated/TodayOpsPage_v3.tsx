@@ -184,8 +184,10 @@ const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = 
 
     if (progressData?.summary && attendanceData) {
       const { summary: ps, onChipClick } = progressData;
-      const rt = ps.totalRecordCount ?? 0;
-      const rc = Math.max(0, rt - (ps.pendingRecordCount ?? 0));
+      const completion = summary.todayRecordCompletion;
+      const rt = completion?.total ?? 0;
+      const rc = completion?.completed ?? Math.max(0, rt - (ps.pendingRecordCount ?? 0));
+
       const ds = summary.dailyRecordStatus;
       const ct = ds?.total ?? (summary.users?.length ?? 0);
       const cc = ds?.completed ?? 0;
