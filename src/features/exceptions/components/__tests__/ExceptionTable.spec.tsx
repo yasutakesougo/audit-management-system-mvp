@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { ExceptionItem } from '../../domain/exceptionLogic';
@@ -21,7 +21,7 @@ const makeException = (overrides: Partial<ExceptionItem> = {}): ExceptionItem =>
   ...overrides,
 });
 
-const renderTable = (
+const renderTable = async (
   items: ExceptionItem[],
   suggestionActions?: {
     onDismiss: (stableId: string) => void;
@@ -34,15 +34,17 @@ const renderTable = (
     onPriorityTopShown?: (stableIds: string[]) => void;
   },
 ) => {
-  render(
-    <MemoryRouter>
-      <ExceptionTable items={items} suggestionActions={suggestionActions} />
-    </MemoryRouter>,
-  );
+  await act(async () => {
+    render(
+      <MemoryRouter>
+        <ExceptionTable items={items} suggestionActions={suggestionActions} />
+      </MemoryRouter>,
+    );
+  });
 };
 
 describe('ExceptionTable', () => {
-  it('デフォルトはフラット表示で、グループボタンを押すことですべての例外を利用者単位で集約できる', () => {
+  it('デフォルトはフラット表示で、グループボタンを押すことですべての例外を利用者単位で集約できる', async () => {
     const items: ExceptionItem[] = [
       makeException({ id: 'ae-1', stableId: 'stable-1', title: '提案A', description: 'evidence A', severity: 'high' }),
       makeException({ id: 'ae-2', stableId: 'stable-2', title: '提案B', description: 'evidence B', severity: 'medium' }),
@@ -61,7 +63,7 @@ describe('ExceptionTable', () => {
       }),
     ];
 
-    renderTable(items);
+    await renderTable(items);
 
     // デフォルトはフラット表示なので全アイテムがそのまま出ている
     expect(screen.getByText('提案A')).toBeInTheDocument();
@@ -80,24 +82,30 @@ describe('ExceptionTable', () => {
     const toggle = screen.getByTestId('exception-group-toggle-U-001');
     expect(screen.queryByTestId('exception-group-details-U-001')).not.toBeInTheDocument();
 
-    fireEvent.click(toggle);
+    await act(async () => {
+      fireEvent.click(toggle);
+    });
 
     const details = screen.getByTestId('exception-group-details-U-001');
     expect(within(details).getByText('提案A')).toBeInTheDocument();
     expect(within(details).getByText('提案B')).toBeInTheDocument();
 
-    fireEvent.click(toggle);
+    await act(async () => {
+      fireEvent.click(toggle);
+    });
     expect(screen.queryByTestId('exception-group-details-U-001')).not.toBeInTheDocument();
   });
 
-  it('集約行の代表提案は highest priority を使う', () => {
+  it('集約行の代表提案は highest priority を使う', async () => {
     const items: ExceptionItem[] = [
       makeException({ id: 'ae-medium', stableId: 'stable-medium', severity: 'medium', title: '観察提案', description: 'medium evidence' }),
       makeException({ id: 'ae-critical', stableId: 'stable-critical', severity: 'critical', title: '即対応提案', description: 'critical evidence' }),
     ];
 
-    renderTable(items);
-    fireEvent.click(screen.getByTestId('exception-mode-grouped'));
+    await renderTable(items);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('exception-mode-grouped'));
+    });
 
     // representative が critical なのでデータ行のIDがそれになる
     expect(screen.getByTestId('exception-row-ae-critical')).toBeInTheDocument();
@@ -105,8 +113,8 @@ describe('ExceptionTable', () => {
     expect(screen.getByText(/critical evidence/)).toBeInTheDocument();
   });
 
-  it('default ソートでは Top3 サマリーは表示しない', () => {
-    renderTable([
+  it('default ソートでは Top3 サマリー は表示しない', async () => {
+    await renderTable([
       makeException({ id: 'a-1', title: '提案A' }),
       makeException({ id: 'a-2', title: '提案B' }),
     ]);
@@ -114,18 +122,20 @@ describe('ExceptionTable', () => {
     expect(screen.queryByTestId('exception-priority-top3')).not.toBeInTheDocument();
   });
 
-  it('initialSortMode=priority のときは初期表示で Top3 サマリーを表示する', () => {
-    render(
-      <MemoryRouter>
-        <ExceptionTable
-          items={[
-            makeException({ id: 'a-1', title: '提案A', severity: 'critical' }),
-            makeException({ id: 'a-2', title: '提案B', severity: 'high' }),
-          ]}
-          initialSortMode="priority"
-        />
-      </MemoryRouter>,
-    );
+  it('initialSortMode=priority のときは初期表示で Top3 サマリーを表示する', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <ExceptionTable
+            items={[
+              makeException({ id: 'a-1', title: '提案A', severity: 'critical' }),
+              makeException({ id: 'a-2', title: '提案B', severity: 'high' }),
+            ]}
+            initialSortMode="priority"
+          />
+        </MemoryRouter>,
+      );
+    });
 
     expect(screen.getByTestId('exception-priority-top3')).toBeInTheDocument();
   });
@@ -163,11 +173,15 @@ describe('ExceptionTable', () => {
       }),
     ];
 
-    renderTable(items);
+    await renderTable(items);
 
     const sortMode = screen.getByTestId('exception-sort-mode');
-    fireEvent.mouseDown(within(sortMode).getByRole('combobox'));
-    fireEvent.click(await screen.findByRole('option', { name: '優先度順' }));
+    await act(async () => {
+      fireEvent.mouseDown(within(sortMode).getByRole('combobox'));
+    });
+    await act(async () => {
+      fireEvent.click(await screen.findByRole('option', { name: '優先度順' }));
+    });
 
     expect(screen.getByTestId('exception-priority-top3')).toBeInTheDocument();
     expect(screen.getByTestId('exception-priority-top3-item-1')).toHaveTextContent('送迎の個別同期障害');
@@ -214,7 +228,7 @@ describe('ExceptionTable', () => {
       }),
     ];
 
-    renderTable(items, {
+    await renderTable(items, {
       onDismiss,
       onSnooze,
       onCtaClick,
@@ -222,14 +236,20 @@ describe('ExceptionTable', () => {
     });
 
     const sortMode = screen.getByTestId('exception-sort-mode');
-    fireEvent.mouseDown(within(sortMode).getByRole('combobox'));
-    fireEvent.click(await screen.findByRole('option', { name: '優先度順' }));
+    await act(async () => {
+      fireEvent.mouseDown(within(sortMode).getByRole('combobox'));
+    });
+    await act(async () => {
+      fireEvent.click(await screen.findByRole('option', { name: '優先度順' }));
+    });
 
     expect(onPriorityTopShown).toHaveBeenCalled();
     const shownStableIds = onPriorityTopShown.mock.calls.flatMap((args) => args[0] as string[]);
     expect(shownStableIds).toEqual(expect.arrayContaining(['stable-p1', 'stable-p2', 'stable-p3']));
 
-    fireEvent.click(screen.getByTestId('exception-priority-top3-action-p1'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('exception-priority-top3-action-p1'));
+    });
     expect(onCtaClick).toHaveBeenCalledWith(
       'stable-p1',
       '/assessment?u=1',
@@ -244,10 +264,14 @@ describe('ExceptionTable', () => {
       makeException({ id: 'ae-1', stableId: 'stable-1', severity: 'high', title: '提案A' }),
     ];
 
-    renderTable(items, { onDismiss, onSnooze });
+    await renderTable(items, { onDismiss, onSnooze });
 
-    fireEvent.click(screen.getByTestId('suggestion-menu-button-ae-1'));
-    fireEvent.click(await screen.findByText('対応済みにする'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('suggestion-menu-button-ae-1'));
+    });
+    await act(async () => {
+      fireEvent.click(await screen.findByText('対応済みにする'));
+    });
     expect(onDismiss).toHaveBeenCalledWith('stable-1');
   });
 
@@ -259,16 +283,24 @@ describe('ExceptionTable', () => {
       makeException({ id: 'ae-2', stableId: 'stable-2', severity: 'medium', title: '提案B' }),
     ];
 
-    renderTable(items, { onDismiss, onSnooze });
+    await renderTable(items, { onDismiss, onSnooze });
 
-    fireEvent.click(screen.getByTestId('exception-mode-grouped'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('exception-mode-grouped'));
+    });
 
     // U-001 グループを展開
-    fireEvent.click(screen.getByTestId('exception-group-toggle-U-001'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('exception-group-toggle-U-001'));
+    });
 
     // 展開内（子項目）の ae-2 のメニューを開いてスヌーズ
-    fireEvent.click(screen.getByTestId('suggestion-menu-button-ae-2'));
-    fireEvent.click(await screen.findByText('明日まで'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('suggestion-menu-button-ae-2'));
+    });
+    await act(async () => {
+      fireEvent.click(await screen.findByText('明日まで'));
+    });
     expect(onSnooze).toHaveBeenCalledWith('stable-2', 'tomorrow');
   });
 });
