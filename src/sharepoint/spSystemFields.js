@@ -47,4 +47,21 @@ export const SP_SYSTEM_FIELDS = new Set([
   'Edit',
   'LinkTitleNoMenu',
   'LinkTitle',
+  // ── SP Computed / Derived Fields ────────────────────────────────
+  // These are SharePoint-generated computed columns present in every list.
+  // They should NEVER be treated as zombie candidates.
+  'LinkTitle2',        // Computed: Title with edit menu
+  'SelectTitle',       // Computed: Selection checkbox column
+  'LinkFilename',      // Computed: Filename with link
+  'LinkFilename2',     // Computed: Filename with edit menu
+  'LinkFilenameNoMenu',// Computed: Filename without menu
+  'Last_x0020_Modified', // Computed: Last Modified (encoded)
+  'Created_x0020_Date',  // Computed: Created Date (encoded)
+  'FSObjType',         // Computed: File System Object Type
+  'PermMask',          // Computed: Effective Permissions Mask
+  'PrincipalCount',    // Computed: Principal Count
+  'ProgId',            // Computed: Program ID
+  'ServerUrl',         // Computed: Server Relative URL
+  'EncodedAbsUrl',     // Computed: Encoded Absolute URL
+  'BaseName',          // Computed: File Base Name
 ]);
