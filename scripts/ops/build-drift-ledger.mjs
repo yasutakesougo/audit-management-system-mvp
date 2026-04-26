@@ -16,8 +16,20 @@ import { execSync } from 'node:child_process';
 import { getAccessToken, refreshM365Token } from './auth-helper.mjs';
 
 // 1. Load SSOT (Top-level for helper visibility)
-import { SP_LIST_REGISTRY } from '../../src/sharepoint/spListRegistry.ts';
-import { SP_SYSTEM_FIELDS } from '../../src/sharepoint/spSystemFields.js';
+// NOTE:
+// `tsx` can expose TS modules as CJS-compatible namespace objects in this repo setup.
+// Resolve exports through namespace + default fallback to support both ESM and CJS shapes.
+import * as spListRegistryModule from '../../src/sharepoint/spListRegistry.ts';
+import * as spSystemFieldsModule from '../../src/sharepoint/spSystemFields.js';
+
+const SP_LIST_REGISTRY =
+  spListRegistryModule.SP_LIST_REGISTRY ??
+  spListRegistryModule.default?.SP_LIST_REGISTRY ??
+  [];
+const SP_SYSTEM_FIELDS =
+  spSystemFieldsModule.SP_SYSTEM_FIELDS ??
+  spSystemFieldsModule.default?.SP_SYSTEM_FIELDS ??
+  new Set();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
