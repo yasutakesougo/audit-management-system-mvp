@@ -308,6 +308,29 @@ describe('useUserAuthz', () => {
         expect(result.current.ready).toBe(true);
       });
     });
+
+    it('uses idTokenClaims.groups when Graph fetch fails', async () => {
+      const adminGroupId = 'admin-grp-claim';
+      setRuntimeEnv({
+        VITE_AAD_ADMIN_GROUP_ID: adminGroupId,
+      });
+      mockFetchGroupIds.mockRejectedValue(new Error('Graph API error'));
+      setupAuth({
+        account: {
+          username: 'claim-admin@corp.com',
+          idTokenClaims: {
+            groups: [adminGroupId],
+          },
+        } as unknown as ReturnType<typeof useAuth>['account'],
+      });
+
+      const { result } = renderHook(() => useUserAuthz());
+
+      await waitFor(() => {
+        expect(result.current.ready).toBe(true);
+      });
+      expect(result.current.role).toBe('admin');
+    });
   });
 
   // ── sessionStorage caching ───────────────────────────────────────
