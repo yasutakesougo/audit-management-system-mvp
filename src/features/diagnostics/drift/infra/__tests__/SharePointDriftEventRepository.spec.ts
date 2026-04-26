@@ -99,6 +99,58 @@ describe('SharePointDriftEventRepository', () => {
     expect(fallbackPayload).toHaveProperty('LoggedAt');
   });
 
+  it('uses stable required duplicate keys when schema fetch is unavailable and optional write fails', async () => {
+    const badRequest = Object.assign(
+      new Error("フィールドまたはプロパティ 'Severity' は存在しません。"),
+      { status: 400 },
+    );
+    const createItem = vi
+      .fn()
+      .mockRejectedValueOnce(badRequest)
+      .mockResolvedValueOnce({});
+
+    const repo = new SharePointDriftEventRepository({
+      createItem,
+      updateItemByTitle: vi.fn(async () => ({})),
+      getListItemsByTitle: vi.fn(async () => []),
+      getSchema: vi.fn(async () => []),
+      getListFieldInternalNames: vi.fn(async () => new Set()),
+    });
+
+    await repo.logEvent({
+      listName: 'Daily_Attendance',
+      fieldName: 'Status',
+      detectedAt: '2026-04-05T00:00:00.000Z',
+      severity: 'warn',
+      resolutionType: 'fallback',
+      driftType: 'suffix_mismatch',
+      resolved: false,
+    });
+
+    expect(createItem).toHaveBeenCalledTimes(2);
+    const initialPayload = createItem.mock.calls[0][1];
+    const fallbackPayload = createItem.mock.calls[1][1];
+    expect(initialPayload).toHaveProperty('List_x0020_Name', 'Daily_Attendance');
+    expect(initialPayload).toHaveProperty('ListName', 'Daily_Attendance');
+    expect(initialPayload).toHaveProperty('Field_x0020_Name', 'Status');
+    expect(initialPayload).toHaveProperty('FieldName', 'Status');
+    expect(initialPayload).toHaveProperty('Detected_x0020_At', '2026-04-05T00:00:00.000Z');
+    expect(initialPayload).toHaveProperty('DetectedAt', '2026-04-05T00:00:00.000Z');
+    expect(initialPayload).toHaveProperty('Logged_x0020_At');
+    expect(initialPayload).not.toHaveProperty('NameOfList');
+    expect(initialPayload).toHaveProperty('Severity', 'warn');
+
+    expect(fallbackPayload).not.toHaveProperty('Severity');
+    expect(fallbackPayload).toHaveProperty('List_x0020_Name', 'Daily_Attendance');
+    expect(fallbackPayload).toHaveProperty('ListName', 'Daily_Attendance');
+    expect(fallbackPayload).toHaveProperty('Field_x0020_Name', 'Status');
+    expect(fallbackPayload).toHaveProperty('FieldName', 'Status');
+    expect(fallbackPayload).toHaveProperty('Detected_x0020_At', '2026-04-05T00:00:00.000Z');
+    expect(fallbackPayload).toHaveProperty('DetectedAt', '2026-04-05T00:00:00.000Z');
+    expect(fallbackPayload).toHaveProperty('Logged_x0020_At');
+    expect(fallbackPayload).not.toHaveProperty('NameOfList');
+  });
+
   it('fails fast without retry when 400 does not identify a field', async () => {
     const badRequest = Object.assign(
       new Error("JSON リーダーから読み取り中に予期しない 'StartObject' ノードが見つかりました。"),

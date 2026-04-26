@@ -46,6 +46,7 @@ import { recordSuggestionTelemetry } from '@/features/action-engine/telemetry/re
 import { formatDateIso } from '@/lib/dateFormat';
 import { buildDailySupportUrl } from '@/app/links/dailySupportLinks';
 import { computeSnoozeUntil } from '@/features/action-engine/domain/computeSnoozeUntil';
+import type { SnoozePreset } from '@/features/action-engine/domain/computeSnoozeUntil';
 
 const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = ({ correctiveActions = [] }) => {
   const navigate = useNavigate();
@@ -184,8 +185,10 @@ const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = 
 
     if (progressData?.summary && attendanceData) {
       const { summary: ps, onChipClick } = progressData;
-      const rt = ps.totalRecordCount ?? 0;
-      const rc = Math.max(0, rt - (ps.pendingRecordCount ?? 0));
+      const completion = summary.todayRecordCompletion;
+      const rt = completion?.total ?? 0;
+      const rc = completion?.completed ?? Math.max(0, rt - (ps.pendingRecordCount ?? 0));
+
       const ds = summary.dailyRecordStatus;
       const ct = ds?.total ?? (summary.users?.length ?? 0);
       const cc = ds?.completed ?? 0;
@@ -220,7 +223,7 @@ const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = 
           }
           dismissSuggestion(id, { by: 'today' });
         },
-        onSnoozeSuggestion: (id: string, p: any) => {
+        onSnoozeSuggestion: (id: string, p: SnoozePreset) => {
           const suggestion = correctiveActions.find((s) => s.stableId === id);
           if (suggestion) {
             recordSuggestionTelemetry({
