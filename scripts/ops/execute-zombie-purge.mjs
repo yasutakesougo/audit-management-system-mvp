@@ -256,7 +256,12 @@ async function main() {
 
     // Gate 5: Independent Blocklist (Safety Belt)
     const SYSTEM_PREFIXES = ['_', 'OData_', 'SMTotal', 'SMLastModified'];
-    const SYSTEM_PATTERNS = [/Virus/i, /Compliance/i, /File/i, /Version/i, /Workflow/i, /MediaService/i, /ParentUniqueId/i, /SortBehavior/i, /Restricted/i, /NoExecute/i, /AccessPolicy/i, /MainLinkSettings/i, /HTML_x0020_File/i];
+    const SYSTEM_PATTERNS = [
+      /Virus/i, /Compliance/i, /File/i, /Version/i, /Workflow/i, /MediaService/i, 
+      /ParentUniqueId/i, /SortBehavior/i, /Restricted/i, /NoExecute/i, /AccessPolicy/i, 
+      /MainLinkSettings/i, /HTML_x0020_File/i,
+      /LinkTitle/i, /LinkFilename/i // Batch 5 learning: Protect derived shadow fields
+    ];
     const HARD_BLOCKLIST = ['Title', 'ID', 'Id', 'Created', 'Modified', 'Author', 'Editor', 'Attachments', 'GUID', 'ContentType', 'ContentTypeId', 'owshiddenversion'];
 
     const isSystemBlocked = HARD_BLOCKLIST.includes(row.internalName) || 
@@ -265,6 +270,13 @@ async function main() {
 
     if (isSystemBlocked) {
       console.warn(`❌ GATE 5 VIOLATION: ${row.internalName} is a system/protected field! Purge blocked.`);
+      continue;
+    }
+
+    // Gate 6: Sensitive List Protection (Business Core)
+    const SENSITIVE_LISTS = ['SupportRecord_Daily', 'SupportProcedureRecord_Daily'];
+    if (SENSITIVE_LISTS.includes(row.listTitle) && !args.includes('--force-sensitive-list')) {
+      console.warn(`❌ GATE 6 VIOLATION: ${row.listTitle} is a sensitive business list. Use --force-sensitive-list to purge.`);
       continue;
     }
 
