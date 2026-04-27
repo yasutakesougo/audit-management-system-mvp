@@ -71,17 +71,22 @@ export class UserFieldResolver {
           if (!candidatesMap[key]) candidatesMap[key] = [String(val)];
         });
 
+        const essentialsSet = new Set(USERS_MASTER_ESSENTIALS as string[]);
         const { resolved, fieldStatus: rawFieldStatus } = resolveInternalNamesDetailed(
           available,
           candidatesMap,
           {
             onDrift: (fieldName, resolutionType, driftType) => {
-              emitDriftRecord(this.listTitle, fieldName, resolutionType as DriftResolutionType, driftType as DriftType);
+              const isEssential = essentialsSet.has(fieldName as any);
+              if (isEssential) {
+                emitDriftRecord(this.listTitle, fieldName, resolutionType as DriftResolutionType, driftType as DriftType, undefined, 'warn');
+              } else {
+                // Silent drift: log to internal auditLog only, no persistent event
+                auditLog.info('users:drift', `Silent drift detected in non-essential field "${fieldName}".`, { resolutionType, driftType });
+              }
             }
           }
         );
-
-        const essentialsSet = new Set(USERS_MASTER_ESSENTIALS as string[]);
         this.fieldStatus = Object.fromEntries(
           Object.entries(rawFieldStatus).map(([key, status]) => [
             key,

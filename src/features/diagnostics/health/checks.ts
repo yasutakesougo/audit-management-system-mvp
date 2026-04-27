@@ -500,7 +500,7 @@ async function runListChecks(
           nextActions: [
             {
               kind: "doc",
-              label: "【カテゴリ: スキーマ（任意）】Provision を再実行してオプション列を追加する",
+              label: "実列 InternalName を確認し、候補名に追加。不足確定時のみ Provision 再実行",
               value: "provision/README.md",
             },
           ],

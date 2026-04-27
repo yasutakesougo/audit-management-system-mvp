@@ -286,7 +286,12 @@ export class SharePointProvisioningCoordinator {
 
         // 4. Drift Check
         const driftDetails = Object.entries(fieldStatus)
-          .filter(([_, s]) => s.isDrifted)
+          .filter(([key, s]) => {
+            if (!s.isDrifted) return false;
+            // registry で isSilent: true と設定されている列のドリフトは無視する
+            const provField = entry.provisioningFields?.find(p => p.internalName === key);
+            return !(provField as any)?.isSilent;
+          })
           .map(([key, s]) => `${key} -> ${s.resolvedName}`);
 
         if (driftDetails.length > 0) {
