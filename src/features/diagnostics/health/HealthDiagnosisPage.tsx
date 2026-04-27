@@ -23,8 +23,8 @@ import React from "react";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { StatusChip, statusColor } from "./components/StatusChip";
 import { toAdminSummary } from "./toAdminSummary";
-import { HealthContext } from "./types";
-import { useHealthChecks } from "./useHealthChecks";
+import { HealthContext, HealthReport } from "./types";
+// import { useHealthChecks } from "./useHealthChecks"; // Moved to parent
 import { spTelemetryStore } from "@/lib/telemetry/spTelemetryStore";
 import { DriftObservabilityPanel } from "../drift/observability/DriftObservabilityPanel";
 import { HealthFilterBar, type HealthFilterState } from "./components/HealthFilterBar";
@@ -87,8 +87,14 @@ async function copyToClipboard(text: string): Promise<void> {
 }
 
 
-export function HealthDiagnosisPage(props: { ctx: HealthContext }) {
-  const { report, loading, error, run } = useHealthChecks(props.ctx);
+export function HealthDiagnosisPage(props: { 
+  ctx: HealthContext,
+  report: HealthReport | null,
+  loading: boolean,
+  error: string | null,
+  run: () => Promise<void>
+}) {
+  const { report, loading, error, run } = props;
   const [openKeys, setOpenKeys] = React.useState<Record<string, boolean>>({});
   const [activeTab, setActiveTab] = React.useState<string | "all">("all");
   const [filterState, setFilterState] = React.useState<HealthFilterState>({ level: 'all', resource: '' });

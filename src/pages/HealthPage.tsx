@@ -16,7 +16,8 @@ import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 import { HealthDiagnosisPage } from "../features/diagnostics/health/HealthDiagnosisPage";
-import { HealthContext, ListSpec } from "../features/diagnostics/health/types";
+import { HealthContext, ListSpec, HealthReport } from "../features/diagnostics/health/types";
+import { useHealthChecks } from "../features/diagnostics/health/useHealthChecks";
 import { getRuntimeEnv } from "@/env";
 import latestDecision from "../sharepoint/latest-decision.json";
 
@@ -431,10 +432,23 @@ const SEVERITY_ORDER = { critical: 0, warn: 1, info: 2 };
  * 🚀 OperationalSignalCard
  * 「5秒見れば次の一手が分かる」最小UI
  */
-function OperationalSignalCard() {
+function OperationalSignalCard({ report, _loading }: { report: HealthReport | null, _loading: boolean }) {
   const [showInfo, setShowInfo] = React.useState(false);
-  const signals = (latestDecision.interpretation?.signals as unknown as HealthDecisionSignal[]) || [];
+  const rawSignals = (latestDecision.interpretation?.signals as unknown as HealthDecisionSignal[]) || [];
   
+  const today = new Date().toISOString().split('T')[0];
+  const isStale = latestDecision.date !== today;
+  const isSystemHealthy = report?.overall === 'pass';
+  
+  // ✅ 以下のいずれかの場合、古い ZOMBIE 項目（入力欠損など）はノイズなので隠す
+  // 1. 最新診断が PASS
+  // 2. 判定日が今日ではない（＝古い判定における欠損報告は現在の診断で上書きされるため不要）
+  const shouldHideZombies = isSystemHealthy || isStale;
+
+  const signals = shouldHideZombies
+    ? rawSignals.filter(s => s.type !== 'zombie')
+    : rawSignals;
+
   if (signals.length === 0) return null;
 
   const sortedSignals = [...signals].sort(
@@ -476,28 +490,42 @@ function OperationalSignalCard() {
             <Chip 
               size="small" 
               label={`Analyzed: ${latestDecision.date ?? '---'}`} 
+              color={isStale ? "default" : "primary"}
+              variant={isStale ? "outlined" : "filled"}
               sx={{ 
                 ml: 1, 
                 height: 22, 
                 fontSize: '0.7rem', 
                 fontWeight: 600,
-                bgcolor: 'rgba(0,0,0,0.05)'
+                opacity: isStale ? 0.6 : 1
               }} 
             />
+            {isStale && (
+              <Chip 
+                size="small" 
+                label="STALE" 
+                sx={{ height: 18, fontSize: '0.6rem', fontWeight: 900, ml: 0.5, bgcolor: 'divider' }} 
+              />
+            )}
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-             <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-               Status:
+             <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', opacity: isStale ? 0.5 : 1 }}>
+               Nightly Status:
              </Typography>
              <Chip 
                label={latestDecision.final?.line ?? 'Unknown'} 
                color={hasCritical ? "error" : "warning"}
                size="small"
-               variant="filled"
-               sx={{ fontWeight: 700, fontSize: '0.75rem' }}
+               variant={isStale ? "outlined" : "filled"}
+               sx={{ fontWeight: 700, fontSize: '0.75rem', opacity: isStale ? 0.6 : 1 }}
              />
           </Box>
         </Stack>
+        {isStale && (
+          <Typography variant="caption" color="text.secondary" sx={{ mt: -1, display: 'block', fontStyle: 'italic' }}>
+            ※ この判定は {latestDecision.date} のものです。現在のシステム状態は下の「環境診断」を参照してください。
+          </Typography>
+        )}
 
         {/* 緊急度の高いシグナル (Critical / Warn) */}
         <Stack spacing={1.5}>
@@ -621,12 +649,20 @@ export default function HealthPage() {
     autonomyLevel: 'F', // デフォルトは提案ベース（Level F）
   };
 
+  const { report, loading, error, run } = useHealthChecks(ctx);
+
   return (
     <Box>
       <Box sx={{ p: 2, pb: 0 }}>
-        <OperationalSignalCard />
+        <OperationalSignalCard report={report} _loading={loading} />
       </Box>
-      <HealthDiagnosisPage ctx={ctx} />
+      <HealthDiagnosisPage 
+        ctx={ctx} 
+        report={report}
+        loading={loading}
+        error={error}
+        run={run}
+      />
     </Box>
   );
 }
