@@ -14,6 +14,7 @@ export type TimelineItemProps = {
   hasWarning?: boolean;
   warningLabel?: string;
   compact?: boolean;
+  onClick?: () => void;
 };
 
 export function TimelineItem({
@@ -28,6 +29,7 @@ export function TimelineItem({
   hasWarning,
   warningLabel,
   compact,
+  onClick,
 }: TimelineItemProps) {
   const statusMeta = getScheduleStatusMeta(status);
   const dotColor = statusMeta?.dotColor ?? 'rgba(25,118,210,0.9)';
@@ -65,12 +67,31 @@ export function TimelineItem({
 
   return (
     <div
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (onClick && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       style={{
         display: 'grid',
         gridTemplateColumns: isCompact ? '68px minmax(0, 1fr)' : '80px minmax(0, 1fr)',
         columnGap: isCompact ? SCHEDULE_TIMELINE_SPACING.itemGridGapCompact : SCHEDULE_TIMELINE_SPACING.itemGridGapNormal,
         alignItems: 'flex-start',
         opacity,
+        cursor: onClick ? 'pointer' : 'default',
+        padding: '4px 0',
+        borderRadius: 8,
+        transition: 'background-color 0.2s',
+      }}
+      onMouseEnter={(e) => {
+        if (onClick) e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.03)';
+      }}
+      onMouseLeave={(e) => {
+        if (onClick) e.currentTarget.style.backgroundColor = 'transparent';
       }}
     >
       <div

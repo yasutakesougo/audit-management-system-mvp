@@ -310,15 +310,8 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
           await update(payload);
         } else {
           // --- ORCHESTRATOR DELEGATION ---
-          const { nextGap } = await (orchestrator as any).handleCreateSchedule(input);
-          
-          if (nextGap) {
-            const startDate = new Date(`${nextGap.date}T${nextGap.startTime}:00`);
-            const endDate = new Date(`${nextGap.date}T${nextGap.endTime}:00`);
-            const createCategory = categoryFilter === 'All' ? 'User' : categoryFilter;
-            setDialogParams(buildCreateDialogIntent(createCategory, startDate, endDate));
-            showSnack('info', `次の未入力枠を開きました（${nextGap.startTime}〜${nextGap.endTime}）`);
-          }
+          await (orchestrator as any).handleCreateSchedule(input);
+          onCreateSuccess?.(input.startLocal);
         }
         handleCreateDialogClose();
       } catch (error) {
