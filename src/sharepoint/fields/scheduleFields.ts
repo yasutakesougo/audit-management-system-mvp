@@ -11,6 +11,7 @@ export const SCHEDULE_EVENTS_CANDIDATES = {
   start: ['EventDate', 'Start', 'StartDate', 'StartTime', 'Begin', 'Date', 'date'],
   end: ['EndDate', 'End', 'EndDate', 'EndDateTime', 'EndTime', 'Finish', 'Date', 'date'],
   status: ['Status', 'cr014_status'],
+  category: ['Category', 'cr014_category', 'PersonType'],
   serviceType: ['ServiceType', 'Category', 'cr014_serviceType'],
   userId: ['TargetUserId', 'TargetUser', 'UserCode', 'cr013_usercode', 'cr013_personId', 'UserId', 'UserID'],
   userName: ['cr014_personName', 'UserName', 'PersonName'],
@@ -27,7 +28,6 @@ export const SCHEDULE_EVENTS_CANDIDATES = {
   acceptedOn: ['AcceptedOn', 'Accepted_x0020_On', 'AcceptedDate', 'cr014_acceptedOn'],
   acceptedBy: ['AcceptedBy', 'Accepted_x0020_By', 'AcceptedStaff', 'cr014_acceptedBy'],
   acceptedNote: ['AcceptedNote', 'Accepted_x0020_Note', 'AcceptanceNote', 'cr014_acceptedNote'],
-  category: ['Category', 'cr014_category', 'PersonType'],
 } as const;
 
 /**
@@ -52,7 +52,7 @@ export const SCHEDULE_ENSURE_FIELDS: SpFieldDef[] = [
   { internalName: 'TargetUserId', type: 'Text', displayName: 'User ID' },
   { internalName: 'AssignedStaffId', type: 'Text', displayName: 'Staff ID' },
   { internalName: 'RowKey', type: 'Text', displayName: 'Row Key' },
-  { internalName: 'Note', type: 'Note', displayName: 'Note' },
+  { internalName: 'Note', type: 'Text', displayName: 'Note' },
   { internalName: 'Visibility', type: 'Choice', displayName: 'Visibility', choices: ['org', 'team', 'private'] },
 ];
 
