@@ -117,6 +117,7 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
   const vm = useScheduleCreateForm({
     ...props,
     externalErrors: actionOrchestrator.saveErrors,
+    externalFieldErrors: actionOrchestrator.fieldErrors,
   });
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -230,14 +231,15 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
             value={vm.form.title}
             onChange={(e) => vm.handleFieldChange('title', e.target.value)}
             placeholder={vm.titlePlaceholder}
-            helperText={vm.titleHelperText}
+            error={Boolean(vm.fieldErrors.title)}
+            helperText={vm.fieldErrors.title?.[0] ?? vm.titleHelperText}
             inputRef={vm.titleInputRef}
             inputProps={{
               'data-testid': 'schedule-create-title',
             }}
           />
 
-          <FormControl fullWidth required>
+          <FormControl fullWidth required error={Boolean(vm.fieldErrors.category)}>
             <InputLabel id="schedule-create-category-label">カテゴリ</InputLabel>
             <Select
               labelId="schedule-create-category-label"
@@ -257,6 +259,9 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                 </MenuItem>
               ))}
             </Select>
+            {vm.fieldErrors.category && (
+              <FormHelperText>{vm.fieldErrors.category[0]}</FormHelperText>
+            )}
           </FormControl>
 
           {vm.form.category === 'User' && (
@@ -270,6 +275,8 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                   {...params}
                   label="利用者"
                   required
+                  error={Boolean(vm.fieldErrors.userId)}
+                  helperText={vm.fieldErrors.userId?.[0]}
                   inputRef={vm.userInputRef}
                   inputProps={{
                     ...params.inputProps,
@@ -289,6 +296,8 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
               value={vm.form.startLocal}
               onChange={e => vm.handleFieldChange('startLocal', e.target.value)}
               InputLabelProps={{ shrink: true }}
+              error={Boolean(vm.fieldErrors.startLocal)}
+              helperText={vm.fieldErrors.startLocal?.[0]}
               inputProps={{
                 'data-testid': 'schedule-create-start'
               }}
@@ -415,6 +424,8 @@ export const ScheduleCreateDialog: React.FC<ScheduleCreateDialogProps> = (props)
                     {...params}
                     placeholder="職員を選択"
                     required
+                    error={Boolean(vm.fieldErrors.assignedStaffId)}
+                    helperText={vm.fieldErrors.assignedStaffId?.[0]}
                     inputRef={vm.staffInputRef}
                     inputProps={{
                       ...params.inputProps,
