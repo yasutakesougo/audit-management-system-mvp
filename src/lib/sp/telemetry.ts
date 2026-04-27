@@ -35,8 +35,12 @@ export interface QueryTelemetryPayload {
  */
 export const telemetrySink = {
   recordQuery(metrics: SpTelemetryMetrics) {
-    if (metrics.isError || metrics.riskLevel === 'high' || metrics.durationMs > SP_TELEMETRY_THRESHOLDS.slowQueryMs) {
-      auditLog.warn('sp:telemetry', 'High risk, slow, or failed query recorded', metrics);
+    if (metrics.isError) {
+      auditLog.warn('sp:telemetry', 'Failed query recorded', metrics);
+    } else if (metrics.riskLevel === 'high') {
+      auditLog.warn('sp:telemetry', 'High risk query recorded', metrics);
+    } else if (metrics.durationMs > SP_TELEMETRY_THRESHOLDS.slowQueryMs) {
+      auditLog.warn('sp:telemetry', 'Slow query recorded', metrics);
     } else {
       auditLog.info('sp:telemetry', 'Query recorded', metrics);
     }
