@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React, { type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -84,7 +84,52 @@ vi.mock('@/ui/components/SignInButton', () => ({
   default: () => <button type="button">sign-in</button>,
 }));
 
+vi.mock('@/app/navigation/planningNavTelemetry', () => ({
+  recordPlanningNavTelemetry: vi.fn(),
+  markPlanningNavInitialExposure: vi.fn(),
+  maybeRecordPlanningNavRetention: vi.fn(),
+  PLANNING_NAV_TELEMETRY_EVENTS: {
+    VISIBILITY_CHANGED: 'VISIBILITY_CHANGED',
+    PAGE_ARRIVED: 'PAGE_ARRIVED',
+  },
+}));
+
+vi.mock('@mui/material/IconButton', () => ({
+  __esModule: true,
+  default: ({ children, onClick, ...props }: Record<string, unknown>) => (
+    <button type="button" onClick={onClick as React.MouseEventHandler} {...props}>
+      {children as React.ReactNode}
+    </button>
+  ),
+}));
+
+vi.mock('@mui/material/Tooltip', () => ({
+  __esModule: true,
+  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 describe('AppShell navigation smoke test', () => {
+  const originalError = console.error;
+
+  beforeAll(() => {
+    console.error = (...args: unknown[]) => {
+      const msg = String(args[0] || '');
+      if (msg.includes('not wrapped in act')) return;
+      originalError.apply(console, args);
+    };
+  });
+
+  afterAll(() => {
+    console.error = originalError;
+  });
+
+  afterEach(async () => {
+    // Flush any pending effects before cleanup
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  });
+
   const baseFlags: FeatureFlagSnapshot = {
     schedules: false,
     complianceForm: false,
@@ -98,55 +143,76 @@ describe('AppShell navigation smoke test', () => {
 
   const colorMode = { mode: 'light' as const, toggle: vi.fn(), sticky: false };
 
-  const renderWithProviders = (flags: FeatureFlagSnapshot = baseFlags) => {
+  const renderWithProviders = async (flags: FeatureFlagSnapshot = baseFlags) => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     });
-    return render(
-      <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={['/daily']}>
-          <ColorModeContext.Provider value={colorMode}>
-            <FeatureFlagsContext.Provider value={flags}>
-              <SettingsProvider>
-                <ToastProvider>
-                  <AppShell>
-                    <div />
-                  </AppShell>
-                </ToastProvider>
-              </SettingsProvider>
-            </FeatureFlagsContext.Provider>
-          </ColorModeContext.Provider>
-        </MemoryRouter>
-      </QueryClientProvider>
-    );
+    
+    let utils: ReturnType<typeof render>;
+    await act(async () => {
+      utils = render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={['/daily']}>
+            <ColorModeContext.Provider value={colorMode}>
+              <FeatureFlagsContext.Provider value={flags}>
+                <SettingsProvider>
+                  <ToastProvider>
+                    <AppShell>
+                      <div />
+                    </AppShell>
+                  </ToastProvider>
+                </SettingsProvider>
+              </FeatureFlagsContext.Provider>
+            </ColorModeContext.Provider>
+          </MemoryRouter>
+        </QueryClientProvider>
+      );
+    });
+
+    // Wait for the app shell to be ready and settled
+    await screen.findByTestId('app-shell');
+    await screen.findByTestId(TESTIDS['sp-connection-status']);
+    
+    // Flush any pending microtasks from mount effects
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    
+    return utils!;
   };
 
   it('exposes nav and footer test IDs', async () => {
-    renderWithProviders();
-
-    expect(await screen.findByTestId('app-shell')).toBeInTheDocument();
-    expect(await screen.findByTestId(TESTIDS['sp-connection-status'])).toBeInTheDocument();
-    expect(await screen.findByTestId(TESTIDS['nav-open'])).toBeInTheDocument();
-
     const user = userEvent.setup();
+    await renderWithProviders();
+
+    expect(screen.getByTestId('app-shell')).toBeInTheDocument();
+    expect(screen.getByTestId(TESTIDS['sp-connection-status'])).toBeInTheDocument();
+    expect(screen.getByTestId(TESTIDS['nav-open'])).toBeInTheDocument();
+
     await user.click(screen.getByTestId('nav-open'));
+    
+    // Wait for navigation and flush transitions
     const nav = await screen.findByRole('navigation', { name: /主要ナビゲーション/i });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
     const navLinks = within(nav).getAllByRole('link');
     expect(navLinks.some((link) => link.getAttribute('href') === '/daily/health')).toBe(true);
   });
 
-  it('hides Iceberg PDCA nav when feature flag is off', () => {
+  it('hides Iceberg PDCA nav when feature flag is off', async () => {
     const flags = { ...baseFlags, icebergPdca: false };
-    renderWithProviders(flags);
+    await renderWithProviders(flags);
 
     expect(screen.queryByTestId('nav-iceberg-pdca')).not.toBeInTheDocument();
   });
 
-  it('shows Iceberg PDCA nav when feature flag is on', () => {
+  it('shows Iceberg PDCA nav when feature flag is on', async () => {
     // NOTE: icebergPdcaEnabled is currently unused in createNavItems
     // so iceberg PDCA nav item is NOT rendered regardless of flag
     const flags = { ...baseFlags, icebergPdca: true };
-    renderWithProviders(flags);
+    await renderWithProviders(flags);
 
     expect(screen.queryByTestId('nav-iceberg-pdca')).not.toBeInTheDocument();
   });
