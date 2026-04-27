@@ -13,6 +13,7 @@
  * 重複防止は in-memory Set で run スコープのみ保証する。
  */
 
+import path from 'node:path';
 import { KNOWN_REQUIRED_INDEXED_FIELDS } from '@/features/sp/health/indexAdvisor/spIndexKnownConfig';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -211,7 +212,6 @@ export async function runNightlyIndexRemediation(
 
 // --- CLI entry point ---
 if (typeof process !== 'undefined') {
-  const path = await import('node:path');
   const isCLI = process.argv[1] && (import.meta.url?.includes(path.basename(process.argv[1])) || (typeof require !== 'undefined' && require.main === module));
   
   if (isCLI) {
