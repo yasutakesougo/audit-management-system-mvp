@@ -172,7 +172,6 @@ export async function initFirebaseAuth(): Promise<void> {
   // Skip Firebase auth in E2E tests
   const isE2E = getFlag('VITE_E2E', false);
   if (isE2E) {
-    console.log('[firebase-auth] disabled:', { VITE_E2E: getFlag('VITE_E2E', false) });
     return;
   }
 
