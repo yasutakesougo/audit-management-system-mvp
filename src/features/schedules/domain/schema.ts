@@ -65,6 +65,7 @@ export const ScheduleDetailSchema = ScheduleCoreSchema.extend({
 
   // Status detail
   statusReason: z.string().nullable().optional(),
+  statusLabel: z.string().optional(),
   serviceType: ScheduleServiceTypeSchema.nullable().optional(),
   subType: z.string().optional(),
 });

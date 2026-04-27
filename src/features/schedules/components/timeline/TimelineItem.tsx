@@ -7,6 +7,7 @@ export type TimelineItemProps = {
   timeLabel: string;
   secondary?: string;
   status?: ScheduleStatus;
+  statusLabel?: string;
   statusReason?: string | null;
   acceptedBy?: string | null;
   acceptedOn?: string | null;
@@ -22,6 +23,7 @@ export function TimelineItem({
   timeLabel,
   secondary,
   status,
+  statusLabel,
   statusReason,
   acceptedBy,
   acceptedOn,
@@ -33,7 +35,7 @@ export function TimelineItem({
 }: TimelineItemProps) {
   const statusMeta = getScheduleStatusMeta(status);
   const dotColor = statusMeta?.dotColor ?? 'rgba(25,118,210,0.9)';
-  const badgeLabel = status && status !== 'Planned' ? statusMeta?.label : undefined;
+  const badgeLabel = statusLabel || (status && status !== 'Planned' ? statusMeta?.label : undefined);
   const opacity = statusMeta?.opacity ?? 1;
   const reason = statusReason?.trim();
   const warningActive = Boolean(hasWarning);

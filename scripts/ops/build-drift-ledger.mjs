@@ -232,19 +232,23 @@ function isSystemField(internalName) {
 async function main() {
   console.log('🔍 Building Drift Ledger — Phase 2 Evidence Generation');
   
-  // Load .env if exists
-  try {
-    const envFile = join(REPO_ROOT, '.env');
-    const envContent = readFileSync(envFile, 'utf-8');
-    envContent.split('\n').forEach(line => {
-      const [key, ...valParts] = line.split('=');
-      if (key && valParts.length > 0) {
-        process.env[key.trim()] = valParts.join('=').trim();
+  // Load .env and .env.local if they exist
+  ['.env', '.env.local'].forEach(file => {
+    try {
+      const envPath = join(REPO_ROOT, file);
+      if (existsSync(envPath)) {
+        const envContent = readFileSync(envPath, 'utf-8');
+        envContent.split('\n').forEach(line => {
+          const [key, ...valParts] = line.split('=');
+          if (key && valParts.length > 0) {
+            process.env[key.trim()] = valParts.join('=').trim();
+          }
+        });
       }
-    });
-  } catch (_error) {
-    // Ignore
-  }
+    } catch (_error) {
+      // Ignore
+    }
+  });
   
   const OUT_DIR = join(REPO_ROOT, 'docs', 'nightly-patrol');
   mkdirSync(OUT_DIR, { recursive: true });
