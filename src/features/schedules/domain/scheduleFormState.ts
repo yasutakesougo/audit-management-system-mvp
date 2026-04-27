@@ -170,19 +170,27 @@ export function createInitialScheduleFormState(options?: {
 export interface ScheduleFormValidationResult {
   isValid: boolean;
   errors: string[];
+  fieldErrors: Record<string, string[] | undefined>;
 }
 
 export function validateScheduleForm(form: ScheduleFormState): ScheduleFormValidationResult {
   const result = ScheduleFormSchema.safeParse(form);
   if (result.success) {
-    return { isValid: true, errors: [] };
+    return { isValid: true, errors: [], fieldErrors: {} };
   }
 
-  const errors = result.error.issues.map(err => err.message);
-  // Remove duplicates
+  const { formErrors, fieldErrors } = result.error.flatten();
+  
+  // Collect all unique error messages for the summary
+  const allErrors = [
+    ...formErrors,
+    ...Object.values(fieldErrors).flat()
+  ].filter((msg): msg is string => !!msg);
+
   return { 
     isValid: false, 
-    errors: Array.from(new Set(errors)) 
+    errors: Array.from(new Set(allErrors)),
+    fieldErrors
   };
 }
 
