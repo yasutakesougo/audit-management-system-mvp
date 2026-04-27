@@ -29,6 +29,7 @@ export type UseScheduleCreateFormInput = {
   initialOverride?: Partial<ScheduleFormState> | null;
   dialogTestId?: string;
   externalErrors?: string[];
+  externalFieldErrors?: Record<string, string[] | undefined>;
 };
 
 // ===== ViewModel =====
@@ -37,6 +38,7 @@ export interface ScheduleCreateFormViewModel {
   // State
   form: ScheduleFormState;
   errors: string[];
+  fieldErrors: Record<string, string[] | undefined>;
   showFacilityGuide: boolean;
 
   // Derived
@@ -95,6 +97,7 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
     initialOverride,
     dialogTestId,
     externalErrors = [],
+    externalFieldErrors = {},
   } = input;
 
   const resolvedDialogTestId = dialogTestId ?? 'schedule-create-dialog';
@@ -166,12 +169,12 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
 
   // ── Derived error messages ──────────────────────────────────────────────
   const dateOrderErrorMessage = useMemo(
-    () => externalErrors.find((msg) => msg.includes('終了日時は開始日時より後にしてください')),
-    [externalErrors],
+    () => externalFieldErrors.endLocal?.[0],
+    [externalFieldErrors.endLocal],
   );
   const serviceTypeErrorMessage = useMemo(
-    () => externalErrors.find((msg) => msg.includes('サービス種別を選択してください')),
-    [externalErrors],
+    () => externalFieldErrors.serviceType?.[0],
+    [externalFieldErrors.serviceType],
   );
 
   // ── Derived selections ──────────────────────────────────────────────────
@@ -419,6 +422,7 @@ export function useScheduleCreateForm(input: UseScheduleCreateFormInput): Schedu
   return {
     form,
     errors: externalErrors,
+    fieldErrors: externalFieldErrors,
     showFacilityGuide,
 
     selectedUser,
