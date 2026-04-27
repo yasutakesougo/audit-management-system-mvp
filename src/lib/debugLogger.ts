@@ -4,11 +4,11 @@ import { getRuntimeEnv } from '@/lib/env.schema';
 type Level = 'debug' | 'info' | 'warn' | 'error';
 
 function log(level: Level, ns: string, ...args: unknown[]) {
-  const isDebugEnabled = env.VITE_AUDIT_DEBUG;
+  const isDebugEnabled = String(env.VITE_AUDIT_DEBUG) === 'true';
   const mode = getRuntimeEnv()?.MODE;
-  // Production: only show errors
-  // Development/Test: show all levels (respecting VITE_AUDIT_DEBUG for debug)
-  if (mode !== 'development' && mode !== 'test' && level !== 'error') return;
+  // Allow all levels if VITE_AUDIT_DEBUG is enabled, regardless of mode.
+  // Otherwise, only show errors in production.
+  if (!isDebugEnabled && mode !== 'development' && mode !== 'test' && level !== 'error') return;
   if (!isDebugEnabled && level === 'debug') return;
   (console as unknown as Record<Level, (message?: unknown, ...optionalParams: unknown[]) => void>)[level](`[audit:${ns}]`, ...args);
 }
