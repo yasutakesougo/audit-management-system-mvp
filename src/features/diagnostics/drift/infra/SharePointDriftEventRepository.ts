@@ -85,6 +85,11 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
     return typeof err === 'object' && err !== null && 'status' in err && (err as { status?: number }).status === 400;
   }
 
+  private extractMissingFieldFromError(err: unknown): string | null {
+    const message = err instanceof Error ? err.message : String(err ?? '');
+    return extractMissingField(message);
+  }
+
   private isListViewThresholdError(err: unknown): boolean {
     const { httpStatus, message } = summarizeSpError(err);
     if (httpStatus !== 500) return false;
@@ -497,7 +502,6 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
 
         const selectRaw = [
           'Id',
-          'ID',
           this.rf('listName'),
           this.rf('fieldName'),
           this.rf('detectedAt'),
@@ -510,22 +514,51 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
 
         // リストに実在しないフィールドを $select から完全に除外する (400エラー防止)
         const schemaKnown = this.availablePhysicalFields.size > 0;
-        const select = selectRaw.filter((f): f is string => {
+        let select = selectRaw.filter((f): f is string => {
           if (!f) return false;
-          if (f === 'Id' || f === 'ID' || f === 'Title') return true;
+          if (f === 'Id' || f === 'Title') return true;
           return !schemaKnown || this.availablePhysicalFields.has(f);
         });
 
-        // ── Threshold-Safe Query ──────────────────────────────────────────────
-        const events = await this.fetchEventsWithThresholdFallback(
-          listTitle,
-          select,
-          joinAnd(filters) || undefined,
-          'Id',
-          200, // 増やして取得
-          filter,
-          signal,
-        );
+        // ── Threshold-Safe Query (+ 400 field fallback) ───────────────────────
+        let events: DriftEvent[] = [];
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          try {
+            events = await this.fetchEventsWithThresholdFallback(
+              listTitle,
+              select,
+              joinAnd(filters) || undefined,
+              'Id',
+              200, // 増やして取得
+              filter,
+              signal,
+            );
+            break;
+          } catch (err) {
+            if (!this.isHttp400(err)) {
+              throw err;
+            }
+            const missingField = this.extractMissingFieldFromError(err);
+            if (!missingField) {
+              throw err;
+            }
+
+            const prevLength = select.length;
+            select = select.filter((f) => f !== missingField);
+            if (select.length === prevLength) {
+              throw err;
+            }
+
+            this.blockedPhysicalFields.add(missingField);
+            this.availablePhysicalFields.delete(missingField);
+
+            auditLog.warn(
+              'diagnostics:drift',
+              'DriftEventRepository removed missing field from select and retried.',
+              { listTitle, missingField, attempt: attempt + 1 },
+            );
+          }
+        }
 
         // クライアント側での日付フィルタリング (Threshold 回避のためサーバー側では行わない)
         if (filter?.since) {

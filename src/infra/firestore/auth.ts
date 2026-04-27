@@ -53,6 +53,18 @@ const allowAnonymousFallback = (): boolean => {
   return getFlag('VITE_FIREBASE_AUTH_ALLOW_ANON_FALLBACK', false);
 };
 
+const isPlaceholderFirebaseApiKey = (value: string): boolean => {
+  const normalized = value.trim().toLowerCase();
+  return (
+    normalized === '' ||
+    normalized === 'undefined' ||
+    normalized === 'null' ||
+    normalized === 'dummy-api-key' ||
+    normalized === 'your-firebase-api-key' ||
+    normalized === 'changeme'
+  );
+};
+
 const acquireMsalAccessToken = async (): Promise<string> => {
   const [{ getPcaSingleton }] = await Promise.all([
     import('@/auth/azureMsal'),
@@ -166,9 +178,9 @@ export async function initFirebaseAuth(): Promise<void> {
 
   // Skip Firebase auth when API key is not configured (graceful degradation)
   const apiKey = get('VITE_FIREBASE_API_KEY', '');
-  if (!apiKey || apiKey === 'undefined' || apiKey === 'null') {
+  if (isPlaceholderFirebaseApiKey(apiKey)) {
     if (getFlag('DEV', false)) {
-      console.info('[firebase-auth] ⏭️ skipped: VITE_FIREBASE_API_KEY is not configured');
+      console.info('[firebase-auth] ⏭️ skipped: VITE_FIREBASE_API_KEY is not configured or placeholder');
     }
     return;
   }
