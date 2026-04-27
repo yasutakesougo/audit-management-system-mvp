@@ -1,7 +1,7 @@
 // contract:allow-interface — Form state interfaces are UI-layer contracts, not data shapes (SSOT = schema.ts)
 import { addHours, format } from 'date-fns';
 
-import type { CreateScheduleEventInput, ScheduleCategory, ScheduleServiceType, ScheduleStatus } from '../data';
+import type { CreateScheduleEventInput, ScheduleServiceType } from '../data';
 
 // ===== Helper Functions =====
 
@@ -40,6 +40,13 @@ export function buildAutoTitle(params: {
   return '';
 }
 
+import { z } from 'zod';
+import { 
+  ScheduleCategorySchema, 
+  ScheduleStatusSchema, 
+  CreateScheduleInputSchema 
+} from './schema';
+
 // ===== Types =====
 
 export interface ScheduleUserOption {
@@ -48,20 +55,42 @@ export interface ScheduleUserOption {
   lookupId?: string;
 }
 
-export interface ScheduleFormState {
-  title: string;
-  category: ScheduleCategory;
-  userId: string;
-  startLocal: string;
-  endLocal: string;
-  serviceType?: ScheduleServiceType | string | null;
-  locationName: string;
-  notes: string;
-  assignedStaffId: string;
-  vehicleId: string;
-  status: ScheduleStatus;
-  statusReason: string;
-}
+/**
+ * Zod Schema for Schedule Form state
+ * Matches ScheduleFormState interface
+ */
+export const ScheduleFormSchema = z.object({
+  title: z.string().min(1, '予定タイトルを入力してください'),
+  category: ScheduleCategorySchema,
+  userId: z.string(),
+  startLocal: z.string().min(1, '開始日時を入力してください'),
+  endLocal: z.string().min(1, '終了日時を入力してください'),
+  serviceType: z.string().nullable().optional(),
+  locationName: z.string(),
+  notes: z.string(),
+  assignedStaffId: z.string(),
+  vehicleId: z.string(),
+  status: ScheduleStatusSchema,
+  statusReason: z.string(),
+}).refine(data => {
+  if (!data.startLocal || !data.endLocal) return true;
+  const start = new Date(data.startLocal);
+  const end = new Date(data.endLocal);
+  return end > start;
+}, {
+  message: '終了日時は開始日時より後にしてください',
+  path: ['endLocal'],
+}).refine(data => {
+  if (data.category === 'User' || data.category === 'LivingSupport') {
+    return !!data.serviceType;
+  }
+  return true;
+}, {
+  message: 'サービス種別を選択してください',
+  path: ['serviceType'],
+});
+
+export type ScheduleFormState = z.infer<typeof ScheduleFormSchema>;
 
 export function createInitialScheduleFormState(options?: {
   initialDate?: Date | string;
@@ -132,7 +161,7 @@ export function createInitialScheduleFormState(options?: {
     return {
       ...initial,
       ...override,
-    };
+    } as ScheduleFormState;
   }
 
   return initial;
@@ -144,45 +173,17 @@ export interface ScheduleFormValidationResult {
 }
 
 export function validateScheduleForm(form: ScheduleFormState): ScheduleFormValidationResult {
-  const errors: string[] = [];
-
-  if (!form.title.trim()) {
-    errors.push('予定タイトルを入力してください');
+  const result = ScheduleFormSchema.safeParse(form);
+  if (result.success) {
+    return { isValid: true, errors: [] };
   }
 
-  if (!form.startLocal) {
-    errors.push('開始日時を入力してください');
-  }
-
-  if (!form.endLocal) {
-    errors.push('終了日時を入力してください');
-  }
-
-  if (form.startLocal && form.endLocal) {
-    const start = new Date(form.startLocal);
-    const end = new Date(form.endLocal);
-
-    if (!(start instanceof Date) || isNaN(start.getTime())) {
-      errors.push('開始日時の形式が正しくありません');
-    }
-    if (!(end instanceof Date) || isNaN(end.getTime())) {
-      errors.push('終了日時の形式が正しくありません');
-    }
-    if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end <= start) {
-      errors.push('終了日時は開始日時より後にしてください');
-    }
-  }
-
-  if (form.category === 'User' && !form.serviceType) {
-    errors.push('サービス種別を選択してください');
-  }
-
-  // 生活支援: serviceType 必須
-  if (form.category === 'LivingSupport' && !form.serviceType) {
-    errors.push('サービス種別を選択してください');
-  }
-
-  return { isValid: errors.length === 0, errors };
+  const errors = result.error.issues.map(err => err.message);
+  // Remove duplicates
+  return { 
+    isValid: false, 
+    errors: Array.from(new Set(errors)) 
+  };
 }
 
 export function toCreateScheduleInput(
@@ -256,7 +257,7 @@ export function toCreateScheduleInput(
   const resolvedUserLookupId = normalizeLookupId(selectedUser?.lookupId ?? undefined);
   const resolvedUserName = selectedUser?.name?.trim() || null;
 
-  return {
+  return CreateScheduleInputSchema.parse({
     title: trimmedTitle,
     category: form.category,
     userId: form.userId?.trim() || null,
@@ -271,5 +272,5 @@ export function toCreateScheduleInput(
     vehicleId: normalizeLookupId(form.vehicleId),
     status: form.status,
     statusReason: statusReason ? statusReason : null,
-  };
+  });
 }
