@@ -36,6 +36,7 @@ type CandidateKey = keyof typeof REMEDIATION_AUDIT_CANDIDATES;
 export class SharePointRemediationAuditRepository implements IRemediationAuditRepository {
   private sessionCache = new Set<string>();
   private resolvedFields: Record<string, string | undefined> = {};
+  private availablePhysicalFields = new Set<string>();
   private writeDisabled = false;
   private initPromise: Promise<void> | null = null;
 
@@ -59,6 +60,8 @@ export class SharePointRemediationAuditRepository implements IRemediationAuditRe
       try {
         const fieldSet = await this.spClient.getListFieldInternalNames?.(listTitle);
         if (!fieldSet || fieldSet.size === 0) return;
+
+        this.availablePhysicalFields = fieldSet;
 
         const res = resolveInternalNamesDetailed(
           fieldSet,
@@ -103,7 +106,7 @@ export class SharePointRemediationAuditRepository implements IRemediationAuditRe
 
       await this.initFields(listTitle);
 
-      const payload: Record<string, unknown> = {
+      const rawPayload: Record<string, unknown> = {
         Title: `${entry.phase}:${entry.planId}`,
         [this.rfFallback('correlationId')]: entry.correlationId,
         [this.rfFallback('planId')]: entry.planId,
@@ -122,13 +125,26 @@ export class SharePointRemediationAuditRepository implements IRemediationAuditRe
 
       // Execution fields (only for executed phase)
       if (entry.executionStatus) {
-        payload[this.rfFallback('executionStatus')] = entry.executionStatus;
+        rawPayload[this.rfFallback('executionStatus')] = entry.executionStatus;
       }
       if (entry.executionError) {
-        payload[this.rfFallback('executionError')] = JSON.stringify(entry.executionError);
+        rawPayload[this.rfFallback('executionError')] = JSON.stringify(entry.executionError);
       }
 
-      await this.spClient.createItem(listTitle, payload);
+      // ─── 400 Error Prevention ────────────────────────────────────────────────
+      // リストに実在しないフィールドを POST すると 400 エラーになるため、
+      // 事前に判明している物理フィールド名のみを抽出した最終ペイロードを作成する。
+      // スキーマが不明な場合（サイズ0）は fail-open 優先でフィルタリングをスキップする。
+      const activePayload: Record<string, unknown> = { Title: rawPayload.Title };
+      const schemaKnown = this.availablePhysicalFields.size > 0;
+      for (const [k, v] of Object.entries(rawPayload)) {
+        if (k === 'Title') continue;
+        if (!schemaKnown || this.availablePhysicalFields.has(k)) {
+          activePayload[k] = v;
+        }
+      }
+
+      await this.spClient.createItem(listTitle, activePayload);
       this.sessionCache.add(dedupeKey);
     } catch (err) {
       auditLog.error('sp:remediation:audit', 'Failed to log remediation audit entry (fail-open).', err);

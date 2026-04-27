@@ -53,6 +53,15 @@ function classify(row, prov) {
     };
   }
 
+  // Phase 4: Respect 'isSilent' for confirmed environment drifts
+  if (prov?.isSilent) {
+    return {
+      classification: 'allow',
+      evidence: 'silent_drift_registry_governance',
+      confidence: 'high'
+    };
+  }
+
   const usageCount = row.usageCount || 0;
 
   // 1. Matched Registry Field -> allow

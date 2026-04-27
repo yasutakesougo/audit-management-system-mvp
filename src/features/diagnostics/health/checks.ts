@@ -500,7 +500,7 @@ async function runListChecks(
           nextActions: [
             {
               kind: "doc",
-              label: "【カテゴリ: スキーマ（任意）】Provision を再実行してオプション列を追加する",
+              label: "実列 InternalName を確認し、候補名に追加。不足確定時のみ Provision 再実行",
               value: "provision/README.md",
             },
           ],
@@ -730,26 +730,38 @@ async function runListChecks(
     sp.deleteItem(spec.resolvedTitle, created.v.id)
   );
   if (!deleted.ok) {
-    // ⚠️ Delete は運用上 NGの組織もあり得るため WARN とする（FAIL ではなく）
-    results.push(
-      warn({
-        key: `permissions.delete.${spec.key}`,
-        label: `権限：Delete（${spec.displayName}）`,
-        category: "permissions",
-        summary:
-          "削除（Delete）に失敗しました（運用上これが許容される場合もあります）。",
-        detail: deleted.err,
-        evidence: { id: created.v.id, listTitle: spec.resolvedTitle },
-        nextActions: [
-          {
-            kind: "copy",
-            label: "管理者に確認: 削除権限の可否",
-            value:
-              "Delete 権限が運用方針で不要な場合もあります。管理者に確認ください。",
-          },
-        ],
-      })
-    );
+    if (spec.isDeleteOptional) {
+      results.push(
+        pass({
+          key: `permissions.delete.${spec.key}`,
+          label: `権限：Delete（${spec.displayName}）`,
+          category: "permissions",
+          summary: "削除（Delete）権限は制限されています（安全設計上の期待値です）。",
+          evidence: { id: created.v.id, listTitle: spec.resolvedTitle, status: deleted.status },
+        })
+      );
+    } else {
+      // ⚠️ Delete は運用上 NGの組織もあり得るため WARN とする（FAIL ではなく）
+      results.push(
+        warn({
+          key: `permissions.delete.${spec.key}`,
+          label: `権限：Delete（${spec.displayName}）`,
+          category: "permissions",
+          summary:
+            "削除（Delete）に失敗しました（運用上これが許容される場合もあります）。",
+          detail: deleted.err,
+          evidence: { id: created.v.id, listTitle: spec.resolvedTitle },
+          nextActions: [
+            {
+              kind: "copy",
+              label: "管理者に確認: 削除権限の可否",
+              value:
+                "Delete 権限が運用方針で不要な場合もあります。管理者に確認ください。",
+            },
+          ],
+        })
+      );
+    }
   } else {
     results.push(
       pass({

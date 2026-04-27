@@ -337,10 +337,20 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
     return this.initializationPromise;
   }
 
+  private lastFailureTime = 0;
+  private consecutiveFailures = 0;
+  private readonly COOLDOWN_MS = 60000; // 1 minute
+
   private async logEventCore(event: DriftEvent): Promise<void> {
     const dedupeKey = getDriftEventDedupeKey(event);
 
-    if (this.writeDisabled) {
+    if (this.writeDisabled || event.severity === 'silent') {
+      return;
+    }
+
+    // ─── Throttling & Cooldown ────────────────────────────────────────────────
+    const now = Date.now();
+    if (now - this.lastFailureTime < this.COOLDOWN_MS) {
       return;
     }
 
@@ -359,20 +369,41 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       const listTitle = entry.resolve();
       await this.initializeResolvedFields(listTitle);
 
-      const payload = this.buildCreatePayload(event, !this.optionalWriteDisabled);
-      if (!payload) {
+      const payloadRaw = this.buildCreatePayload(event, !this.optionalWriteDisabled);
+      if (!payloadRaw) {
         this.writeDisabled = true;
         auditLog.warn('diagnostics:drift', 'DriftEventRepository disabled writing due to missing required drift-log fields.');
         return;
       }
-      const activePayload: Record<string, unknown> = payload;
 
-      // 診断ログの書き込みは、メインスレッドやネットワークレーンを圧迫しないよう、リトライなしの 1回限りとする。
+      // ─── 400 Error Prevention ────────────────────────────────────────────────
+      // SharePoint returns 400 if we POST a field that doesn't exist in the list.
+      // Even if buildCreatePayload handles mapping, we must double-check against
+      // the actually discovered availablePhysicalFields to be safe in stale environments.
+      const activePayload: Record<string, unknown> = {};
+      const schemaKnown = this.availablePhysicalFields.size > 0;
+      for (const [k, v] of Object.entries(payloadRaw)) {
+        if (k === 'Title' || !schemaKnown || this.availablePhysicalFields.has(k)) {
+          activePayload[k] = v;
+        }
+      }
+
       try {
         await this.spClient.createItem(listTitle, activePayload);
         this.sessionCache.add(dedupeKey);
+        this.consecutiveFailures = 0;
         return;
       } catch (err) {
+        this.lastFailureTime = Date.now();
+        this.consecutiveFailures++;
+
+        // 429/503 Throttling Detection
+        const status = (err as { status?: number })?.status;
+        if (status === 429 || status === 503) {
+          auditLog.warn('diagnostics:drift', 'SharePoint is throttling. Backing off drift logging.', { status });
+          return; // Don't disable writing permanently, just let cooldown handle it
+        }
+
         if (!this.isHttp400(err)) throw err;
 
         const detail = err instanceof Error ? err.message : String(err);

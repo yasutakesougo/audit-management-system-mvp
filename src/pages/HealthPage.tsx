@@ -408,6 +408,7 @@ function buildListSpecs(): ListSpec[] {
     createItem,
     updateItem: { Title: `healthcheck-updated-${uniqueId}` },
     isReadOnly: !entry.operations.includes("W"),
+    isDeleteOptional: !entry.operations.includes("D"),
   };
   });
 }
