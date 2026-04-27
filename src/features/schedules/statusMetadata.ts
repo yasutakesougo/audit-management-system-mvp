@@ -71,12 +71,25 @@ const FALLBACK_META: { [K in ScheduleStatus]: StatusMeta } = {
   },
 };
 
-export const getScheduleStatusMeta = (status?: ScheduleStatus | null): StatusMeta => {
-  const key: ScheduleStatus = status ?? 'Planned';
-  return FALLBACK_META[key];
+export const getScheduleStatusMeta = (status?: string | null): StatusMeta => {
+  if (!status) return FALLBACK_META.Planned;
+  
+  // Normalize status
+  const normalized = status.toLowerCase();
+  if (normalized === 'planned' || normalized === 'scheduled' || normalized === 'approved' || normalized === 'draft') {
+    return FALLBACK_META.Planned;
+  }
+  if (normalized === 'postponed' || normalized === 'submitted') {
+    return FALLBACK_META.Postponed;
+  }
+  if (normalized === 'cancelled') {
+    return FALLBACK_META.Cancelled;
+  }
+
+  return FALLBACK_META.Planned; // Fallback
 };
 
-export const getScheduleStatusLabel = (status?: ScheduleStatus | null): string | undefined => {
+export const getScheduleStatusLabel = (status?: string | null): string | undefined => {
   const meta = getScheduleStatusMeta(status);
   return meta?.label;
 };

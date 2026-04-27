@@ -7,6 +7,7 @@
  * @module features/schedules/data/scheduleSpMappers
  */
 
+import { getScheduleStatusLabel } from '../statusMetadata';
 import type { ScheduleCategory, ScheduleStatus } from '@/features/schedules/domain/types';
 import type { RepoSchedule } from '@/infra/sharepoint/repos/schedulesRepo';
 
@@ -153,6 +154,7 @@ export const buildSelectSets = (
  */
 export const mapRepoScheduleToSchedItem = (repo: RepoSchedule): SchedItem | null => {
   try {
+    const status = repo.status as ScheduleStatus | undefined;
     return {
       id: String(repo.id),
       etag: repo.etag ?? '',
@@ -164,7 +166,8 @@ export const mapRepoScheduleToSchedItem = (repo: RepoSchedule): SchedItem | null
       userName: repo.personName,
       assignedStaffId: repo.assignedStaffId,
       vehicleId: repo.vehicleId,
-      status: repo.status as ScheduleStatus | undefined,
+      status,
+      statusLabel: getScheduleStatusLabel(status),
       serviceType: repo.serviceType,
       notes: repo.note,
       createdAt: repo.createdAt,
