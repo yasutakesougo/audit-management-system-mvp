@@ -114,7 +114,7 @@ describe('SharePointDriftEventRepository', () => {
       updateItemByTitle: vi.fn(async () => ({})),
       getListItemsByTitle: vi.fn(async () => []),
       getSchema: vi.fn(async () => []),
-      getListFieldInternalNames: vi.fn(async () => new Set()),
+      getListFieldInternalNames: vi.fn(async () => new Set<string>()),
     });
 
     await repo.logEvent({

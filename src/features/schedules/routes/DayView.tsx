@@ -26,6 +26,7 @@ type DayViewProps = {
   categoryFilter?: 'All' | ScheduleCategory;
   emptyCtaLabel?: string;
   compact?: boolean;
+  onItemClick?: (item: SchedItem) => void;
 };
 
 export default function DayView(props: DayViewProps = {}) {
@@ -39,6 +40,7 @@ export default function DayView(props: DayViewProps = {}) {
         range={props.range!}
         categoryFilter={props.categoryFilter}
         compact={props.compact}
+        onItemClick={props.onItemClick}
       />
     );
   }
@@ -62,6 +64,7 @@ const DayViewWithData = (props: DayViewProps) => {
       range={resolvedRange}
       categoryFilter={props.categoryFilter}
       compact={props.compact}
+      onItemClick={props.onItemClick}
     />
   );
 };
@@ -72,12 +75,14 @@ const DayViewContent = ({
   range,
   categoryFilter,
   compact,
+  onItemClick,
 }: {
   items: SchedItem[];
   loading: boolean;
   range: DateRange;
   categoryFilter?: 'All' | ScheduleCategory;
   compact?: boolean;
+  onItemClick?: (item: SchedItem) => void;
 }) => {
   const headingId = useId();
   const listLabelId = useId();
@@ -296,6 +301,7 @@ const DayViewContent = ({
                     hasWarning={hasWarning}
                     warningLabel={warningLabel}
                     compact={isCompact}
+                    onClick={onItemClick ? () => onItemClick(item) : undefined}
                   />
                 </li>
               );
