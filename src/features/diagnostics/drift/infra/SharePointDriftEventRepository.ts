@@ -1,7 +1,7 @@
 import { DriftEvent, DriftResolutionType, DriftType, getDriftEventDedupeKey } from '../domain/driftLogic';
 import { IDriftEventRepository } from '../domain/DriftEventRepository';
 import { findListEntry } from '@/sharepoint/spListRegistry';
-import { buildDateTime, buildEq, buildGe, joinAnd } from '@/sharepoint/query/builders';
+import { buildEq, joinAnd } from '@/sharepoint/query/builders';
 import { DRIFT_LOG_CANDIDATES } from '@/sharepoint/fields/diagnosticsFields';
 import { extractMissingField, resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 import { auditLog } from '@/lib/debugLogger';
@@ -34,6 +34,9 @@ export interface ISpOperations {
 export class SharePointDriftEventRepository implements IDriftEventRepository {
   /** 同一セッション内での重複ログ抑制用のキャッシュ ( dedupeKey -> 1 ) */
   private sessionCache = new Set<string>();
+
+  /** 並列読み取り（getEvents）の重複排除用の Promise キャッシュ */
+  private activeGetEvents = new Map<string, Promise<DriftEvent[]>>();
 
   /** 本番リストで使用されている物理内部名のキャッシュ */
   private resolvedFields: Record<string, string | undefined> = {};
@@ -225,6 +228,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
     select: string[],
     filterQuery: string | undefined,
     detectedAtField: string,
+    top: number,
     filter?: {
       listName?: string;
       resolved?: boolean;
@@ -237,8 +241,8 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         listTitle,
         select,
         filterQuery,
-        `${detectedAtField} desc`,
-        100,
+        'Id desc',
+        top,
         signal,
       );
       return items.map((item) => this.mapItemToEvent(item));
@@ -254,7 +258,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         {
           listTitle,
           filterQuery,
-          orderBy: `${detectedAtField} desc`,
+          orderBy: 'Id desc',
           sprequestguid
         },
       );
@@ -465,68 +469,92 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
     resolved?: boolean;
     since?: string;
   }, signal?: AbortSignal): Promise<DriftEvent[]> {
-    try {
-      const entry = findListEntry('drift_events_log');
-      if (!entry) return [];
+    // ── Read Deduplication ────────────────────────────────────────────────
+    // 同じフィルタ条件での並列リクエストを1つにまとめる（スロットリング対策）
+    const cacheKey = JSON.stringify(filter || {});
+    const pending = this.activeGetEvents.get(cacheKey);
+    if (pending) return pending;
 
-      const listTitle = entry.resolve();
-      await this.initializeResolvedFields(listTitle);
+    const fetchPromise = (async () => {
+      try {
+        const entry = findListEntry('drift_events_log');
+        if (!entry) return [];
+
+        const listTitle = entry.resolve();
+        await this.initializeResolvedFields(listTitle);
       
-      // クエリビルド (実在するフィールドのみ使用)
-      const filters: string[] = [];
-      const listNameField = this.rf('listName');
-      const resolvedField = this.rf('resolved');
-      const detectedAtField = this.rf('detectedAt');
+        // クエリビルド (実在するフィールドのみ使用)
+        const filters: string[] = [];
+        const listNameField = this.rf('listName');
+        const resolvedField = this.rf('resolved');
 
-      if (filter?.listName && listNameField) {
-        filters.push(buildEq(listNameField, filter.listName));
+        if (filter?.listName && listNameField) {
+          filters.push(buildEq(listNameField, filter.listName));
+        }
+        if (filter?.resolved !== undefined && resolvedField) {
+          filters.push(buildEq(resolvedField, filter.resolved));
+        }
+
+        const selectRaw = [
+          'Id',
+          'ID',
+          this.rf('listName'),
+          this.rf('fieldName'),
+          this.rf('detectedAt'),
+          this.rf('severity'),
+          this.rf('resolutionType'),
+          this.rf('driftType'),
+          this.rf('resolved'),
+          'Title', // Always include Title
+        ];
+
+        // リストに実在しないフィールドを $select から完全に除外する (400エラー防止)
+        const schemaKnown = this.availablePhysicalFields.size > 0;
+        const select = selectRaw.filter((f): f is string => {
+          if (!f) return false;
+          if (f === 'Id' || f === 'ID' || f === 'Title') return true;
+          return !schemaKnown || this.availablePhysicalFields.has(f);
+        });
+
+        // ── Threshold-Safe Query ──────────────────────────────────────────────
+        const events = await this.fetchEventsWithThresholdFallback(
+          listTitle,
+          select,
+          joinAnd(filters) || undefined,
+          'Id',
+          200, // 増やして取得
+          filter,
+          signal,
+        );
+
+        // クライアント側での日付フィルタリング (Threshold 回避のためサーバー側では行わない)
+        if (filter?.since) {
+          const sinceTime = Date.parse(filter.since);
+          if (!Number.isNaN(sinceTime)) {
+            return events.filter(e => {
+              const eventTime = Date.parse(e.detectedAt);
+              return Number.isNaN(eventTime) || eventTime >= sinceTime;
+            });
+          }
+        }
+
+        return events;
+      } catch (err) {
+        // Abortエラー時は静かに終了（ログノイズ抑制）
+        const isAbort = (err as Error)?.name === 'AbortError' || 
+                        (err as { code?: number | string })?.code === 20 ||
+                        (err as { code?: number | string })?.code === 'ABORT_ERR';
+        if (isAbort) return [];
+
+        auditLog.warn('diagnostics:drift', 'DriftEventRepository failed to fetch events (fail-open).', err);
+        return [];
+      } finally {
+        this.activeGetEvents.delete(cacheKey);
       }
-      if (filter?.resolved !== undefined && resolvedField) {
-        filters.push(buildEq(resolvedField, filter.resolved));
-      }
-      if (filter?.since && detectedAtField) {
-        filters.push(buildGe(detectedAtField, buildDateTime(filter.since)));
-      }
+    })();
 
-      const selectRaw = [
-        'Id',
-        'ID',
-        this.rf('listName'),
-        this.rf('fieldName'),
-        this.rf('detectedAt'),
-        this.rf('severity'),
-        this.rf('resolutionType'),
-        this.rf('driftType'),
-        this.rf('resolved'),
-      ];
-
-      // リストに実在しないフィールドを $select から完全に除外する (400エラー防止)
-      const select = selectRaw.filter((f): f is string => !!f);
-
-      const events = await this.fetchEventsWithThresholdFallback(
-        listTitle,
-        select,
-        joinAnd(filters) || undefined,
-        // 解決済みの DetectedAt があれば優先する。
-        // 未解決（新規リスト等）の場合は時系列の厳密性よりも可用性（400エラー回避）を優先し、
-        // 常に存在する 'ID' でフォールバックする。
-        detectedAtField || 'ID',
-        filter,
-        signal,
-      );
-
-      return events;
-
-    } catch (err) {
-      // Abortエラー時は静かに終了（ログノイズ抑制）
-      const isAbort = (err as Error)?.name === 'AbortError' || 
-                      (err as { code?: number | string })?.code === 20 ||
-                      (err as { code?: number | string })?.code === 'ABORT_ERR';
-      if (isAbort) return [];
-
-      auditLog.warn('diagnostics:drift', 'DriftEventRepository failed to fetch events (fail-open).', err);
-      return [];
-    }
+    this.activeGetEvents.set(cacheKey, fetchPromise);
+    return fetchPromise;
   }
 
   async markResolved(id: string): Promise<void> {

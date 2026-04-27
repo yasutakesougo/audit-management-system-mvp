@@ -265,8 +265,8 @@ describe('SharePointDriftEventRepository', () => {
     );
     expect(filter).toContain("NameOfList eq 'Daily_Attendance'");
     expect(filter).toContain('IsResolved eq false');
-    expect(filter).toContain(`OccurredAt ge datetime'${since}'`);
-    expect(orderby).toBe('OccurredAt desc');
+    expect(filter).not.toContain(`OccurredAt ge datetime'${since}'`);
+    expect(orderby).toBe('Id desc');
 
     expect(events).toEqual([
       {
@@ -350,8 +350,8 @@ describe('SharePointDriftEventRepository', () => {
     });
 
     expect(getListItemsByTitle).toHaveBeenCalledTimes(2);
-    expect(getListItemsByTitle.mock.calls[0][2]).toContain(`OccurredAt ge datetime'${since}'`);
-    expect(getListItemsByTitle.mock.calls[0][3]).toBe('OccurredAt desc');
+    expect(getListItemsByTitle.mock.calls[0][2]).not.toContain(`OccurredAt ge datetime'${since}'`);
+    expect(getListItemsByTitle.mock.calls[0][3]).toBe('Id desc');
     expect(getListItemsByTitle.mock.calls[1][2]).toBeUndefined();
     expect(getListItemsByTitle.mock.calls[1][3]).toBe('Id desc');
     expect(getListItemsByTitle.mock.calls[1][4]).toBe(200);

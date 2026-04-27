@@ -8,6 +8,7 @@ import { IDriftEventRepository } from '../domain/DriftEventRepository';
  * システム全域で発生したドリフトを永続化層へ送ります。
  */
 export class DriftObserver {
+  private static instanceCount = 0;
   private unsubscribe?: () => void;
 
   constructor(private repository: IDriftEventRepository) {}
@@ -17,6 +18,11 @@ export class DriftObserver {
    */
   start() {
     if (this.unsubscribe) return;
+
+    DriftObserver.instanceCount++;
+    if (DriftObserver.instanceCount > 1) {
+      console.warn(`DriftObserver: Multiple instances detected (${DriftObserver.instanceCount}). Only the first one should be active.`);
+    }
 
     this.unsubscribe = driftEventBus.subscribe((event) => {
       // 非同期で記録（Fail-Open: 呼び出しを待たせずに実行）
@@ -33,6 +39,7 @@ export class DriftObserver {
     if (this.unsubscribe) {
       this.unsubscribe();
       this.unsubscribe = undefined;
+      DriftObserver.instanceCount = Math.max(0, DriftObserver.instanceCount - 1);
       console.info('DriftObserver: Stopped monitoring drift events.');
     }
   }
