@@ -209,6 +209,12 @@ function isSystemField(internalName) {
   ];
   if (systemPatterns.some(p => p.test(internalName))) return true;
 
+  // 4. Well-known infrastructure columns (ADR-021: Soft-Delete Governance)
+  const infrastructureFields = new Set([
+    'DeletedAt', 'DeletedBy', 'IsDeleted',
+  ]);
+  if (infrastructureFields.has(internalName)) return true;
+
   return false;
 }
 

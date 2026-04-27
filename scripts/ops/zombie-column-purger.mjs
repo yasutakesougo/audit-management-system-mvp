@@ -45,7 +45,17 @@ function getFlagValue(name) {
 }
 
 const LIST_FILTER = getFlagValue('list');
+const FIELD_FILTER = getFlagValue('field');
+const FORCE_SENSITIVE = ARGS.includes('--force-sensitive-list');
 const OUTPUT_DIR = getFlagValue('output-dir') || join(REPO_ROOT, 'artifacts', 'zombie-audit');
+
+const SENSITIVE_LISTS = [
+  'Users_Master',
+  'SupportRecord_Daily',
+  'SupportProcedureRecord_Daily',
+  'DailyActivityRecords',
+  'Schedules'
+];
 const SSOT_PATH = resolve(REPO_ROOT, 'src/sharepoint/spListRegistry.ts');
 
 // 保守対象リストと、その「正解」となる InternalName のプレフィックス
@@ -474,6 +484,16 @@ async function run() {
       
       if (isZombieClassification(classification.tier)) {
         const internalName = field.InternalName;
+        
+        // Apply filters
+        if (FIELD_FILTER && internalName !== FIELD_FILTER) continue;
+
+        // Apply sensitive list guard
+        if (SENSITIVE_LISTS.includes(listName) && !FORCE_SENSITIVE && !DRY_RUN) {
+          console.warn(`[SKIP] リスト [${listName}] は保護対象です。削除には --force-sensitive-list が必要です: ${internalName}`);
+          continue;
+        }
+
         if (DRY_RUN) {
           console.log(`[DRY-RUN] 削除候補発見: ${internalName.padEnd(45)} (${field.Title}) [${classification.tier}]`);
           successCount++;
