@@ -1,0 +1,18 @@
+## Description
+DriftEventsLog_v2 の読み取り（GET）において、大規模リスト時に SharePoint の List View Threshold (5000 items) エラー（500）および未定義フィールド選択エラー（400）が発生していた問題を修正します。
+
+## Changes
+1. **Threshold-Safe Read Implementation**:
+   - DetectedAt によるサーバー側での \$filter および \$orderby を排除。
+   - 代わりに Id desc + top 200 で取得し、クライアント側で日付フィルタリングを行う。
+2. **Safe Field Selection**:
+   - 読み取り時の \$select において、リストに実在しない物理内部名を動的に除外。
+3. **Read Deduplication**:
+   - SharePointDriftEventRepository 内で、同一フィルタ条件の並列読み取りを1つの Promise に集約。
+4. **Observer Stabilization**:
+   - DriftObserver の多重起動を抑制する static ガードを追加。
+5. **Schema Candidates Update**:
+   - _Level (severity) を候補に追加。
+
+## Verification
+- npm run test (SharePointDriftEventRepository.spec.ts) パス確認済み。

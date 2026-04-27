@@ -77,7 +77,7 @@ export class UserFieldResolver {
           candidatesMap,
           {
             onDrift: (fieldName, resolutionType, driftType) => {
-              const isEssential = essentialsSet.has(fieldName as any);
+              const isEssential = essentialsSet.has(fieldName as string);
               if (isEssential) {
                 emitDriftRecord(this.listTitle, fieldName, resolutionType as DriftResolutionType, driftType as DriftType, undefined, 'warn');
               } else {
