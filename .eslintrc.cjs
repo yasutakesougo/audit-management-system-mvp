@@ -120,6 +120,27 @@ module.exports = {
       rules: {
         'import/no-unresolved': 'off'
       }
+    },
+    {
+      files: [
+        '**/*.spec.ts',
+        '**/*.spec.tsx',
+        '**/*.test.ts',
+        '**/*.test.tsx',
+        'tests/setupTests.ts',
+        'tests/**/*.ts',
+        'tests/**/*.tsx'
+      ],
+      rules: {
+        'no-restricted-globals': [
+          'error',
+          {
+            name: 'confirm',
+            message: 'window.confirm は禁止です。useConfirmDialog + ConfirmDialog を使用してください。',
+          },
+          // 'fetch' is intentionally omitted: test files legitimately use global.fetch for spy/mock.
+        ]
+      }
     }
   ]
 };
