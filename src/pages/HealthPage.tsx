@@ -432,7 +432,7 @@ const SEVERITY_ORDER = { critical: 0, warn: 1, info: 2 };
  * 🚀 OperationalSignalCard
  * 「5秒見れば次の一手が分かる」最小UI
  */
-function OperationalSignalCard({ report, loading }: { report: any, loading: boolean }) {
+function OperationalSignalCard({ report, _loading }: { report: any, _loading: boolean }) {
   const [showInfo, setShowInfo] = React.useState(false);
   const rawSignals = (latestDecision.interpretation?.signals as unknown as HealthDecisionSignal[]) || [];
   
@@ -654,7 +654,7 @@ export default function HealthPage() {
   return (
     <Box>
       <Box sx={{ p: 2, pb: 0 }}>
-        <OperationalSignalCard report={report} loading={loading} />
+        <OperationalSignalCard report={report} _loading={loading} />
       </Box>
       <HealthDiagnosisPage 
         ctx={ctx} 
