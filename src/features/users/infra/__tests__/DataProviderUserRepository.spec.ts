@@ -188,4 +188,29 @@ describe('DataProviderUserRepository Split Logic', () => {
     expect(callCounts.get('UserBenefit_Profile')).toBe(1);
     expect(callCounts.get('UserBenefit_Profile_Ext')).toBe(1);
   });
+
+  it('preserves essential fields like UserID even if they exist in accessory lists', async () => {
+    let capturedSelect: string[] | undefined;
+    const provider = {
+      getFieldInternalNames: async (_listTitle: string) => {
+        // 全リストに 'UserID' (物理名) が存在すると仮定
+        return new Set(['Id', 'Title', 'UserID', 'FullName', 'IsActive']);
+      },
+      listItems: async (resource: string, options?: { select?: string[] }) => {
+        if (resource === 'Users_Master') {
+          capturedSelect = options?.select;
+        }
+        return [];
+      },
+    } as unknown as IDataProvider;
+
+    const testRepo = new DataProviderUserRepository({ provider });
+    // selectMode: detail を指定して accessory list のフィールド解決を走らせる
+    await testRepo.getAll({ selectMode: 'detail' });
+
+    expect(capturedSelect).toBeDefined();
+    // 修正前はこのテストが失敗（UserID が含まれない）していたはず
+    expect(capturedSelect).toContain('UserID');
+    expect(capturedSelect).toContain('FullName');
+  });
 });

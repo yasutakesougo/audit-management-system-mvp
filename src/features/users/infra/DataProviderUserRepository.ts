@@ -471,7 +471,7 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
           return false;
         }
 
-        if (physicalName === 'UserID') return true;
+        if (isEssential) return true;
 
         return !accessoryPhysicalFields.has(physicalName);
       })
