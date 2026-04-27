@@ -250,7 +250,7 @@ const UserDetailPage: React.FC = () => {
               onClick={() => navigate(`/users?tab=list&selected=${encodeURIComponent(userCode)}`)}
               data-testid="user-detail-open-full"
             >
-              詳細を開く
+              一覧を表示
             </Button>
           </Stack>
           {/* Attendance info */}

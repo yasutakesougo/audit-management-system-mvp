@@ -164,7 +164,7 @@ export const UserDetailHeader: React.FC<UserDetailHeaderProps> = ({
                 to={`/users/${encodeURIComponent(user.UserID || String(user.Id))}`}
                 sx={{ textTransform: 'none', flex: 1 }}
               >
-                詳細を開く
+                詳細を表示
               </Button>
             </Stack>
           </>
