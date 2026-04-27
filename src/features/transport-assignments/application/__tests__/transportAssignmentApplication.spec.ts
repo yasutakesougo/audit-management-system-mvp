@@ -142,7 +142,8 @@ describe('transportAssignmentApplication contract tests', () => {
       
       expect(mockRepo.saveBulk).toHaveBeenCalled();
       const calledAssignments = vi.mocked(mockRepo.saveBulk).mock.calls[0][0];
-      expect(calledAssignments[0].vehicleId).toBe('車両1');
+      expect(calledAssignments[0].type).toBe('transport');
+      expect((calledAssignments[0] as TransportAssignment).vehicleId).toBe('車両1');
     });
   });
 });
