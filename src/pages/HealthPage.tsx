@@ -16,7 +16,7 @@ import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 import { HealthDiagnosisPage } from "../features/diagnostics/health/HealthDiagnosisPage";
-import { HealthContext, ListSpec } from "../features/diagnostics/health/types";
+import { HealthContext, ListSpec, HealthReport } from "../features/diagnostics/health/types";
 import { useHealthChecks } from "../features/diagnostics/health/useHealthChecks";
 import { getRuntimeEnv } from "@/env";
 import latestDecision from "../sharepoint/latest-decision.json";
@@ -432,7 +432,7 @@ const SEVERITY_ORDER = { critical: 0, warn: 1, info: 2 };
  * 🚀 OperationalSignalCard
  * 「5秒見れば次の一手が分かる」最小UI
  */
-function OperationalSignalCard({ report, _loading }: { report: any, _loading: boolean }) {
+function OperationalSignalCard({ report, _loading }: { report: HealthReport | null, _loading: boolean }) {
   const [showInfo, setShowInfo] = React.useState(false);
   const rawSignals = (latestDecision.interpretation?.signals as unknown as HealthDecisionSignal[]) || [];
   
