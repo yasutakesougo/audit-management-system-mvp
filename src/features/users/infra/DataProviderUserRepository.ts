@@ -92,6 +92,30 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
     this.payloadBuilder = new UserPayloadBuilder(this.provider, this.resolver);
   }
 
+  /** Cache for simultaneous bulk fetches of accessory lists to prevent redundant scans. */
+  private readonly bulkFetchCache = new Map<string, Promise<Record<string, unknown>[]>>();
+
+  private async fetchAccessoryListCached(listTitle: string, select: string[]): Promise<Record<string, unknown>[]> {
+    const key = `${listTitle}:${select.sort().join(',')}`;
+    const active = this.bulkFetchCache.get(key);
+    if (active) return active;
+
+    const promise = this.provider.listItems<Record<string, unknown>>(listTitle, {
+      select,
+      top: 4999,
+      orderby: 'ID asc',
+    });
+    this.bulkFetchCache.set(key, promise);
+    
+    try {
+      return await promise;
+    } finally {
+      // Remove from cache after a short window to deduplicate simultaneous calls
+      // but allow fresh data on subsequent navigation/refresh.
+      setTimeout(() => this.bulkFetchCache.delete(key), 500);
+    }
+  }
+
   public async getAll(params: UserRepositoryListParams = {}): Promise<IUserMaster[]> {
     try {
       const fields = await this.resolver.resolveMainFields();
@@ -322,21 +346,11 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
 
     // Top per page is the SP API maximum; pageCap is left undefined so the
     // provider follows @odata.nextLink to fetch every row.
-    const PAGE_TOP = 4999;
 
     const results = await Promise.allSettled([
-      this.provider.listItems<Record<string, unknown>>(this.transportListTitle, {
-        select: buildAccessorySelect(transportRes.resolvedFields),
-        top: PAGE_TOP,
-      }),
-      this.provider.listItems<Record<string, unknown>>(this.benefitListTitle, {
-        select: buildAccessorySelect(benefitRes.resolvedFields),
-        top: PAGE_TOP,
-      }),
-      this.provider.listItems<Record<string, unknown>>(this.benefitExtListTitle, {
-        select: buildAccessorySelect(benefitExtRes.resolvedFields),
-        top: PAGE_TOP,
-      }),
+      this.fetchAccessoryListCached(this.transportListTitle, buildAccessorySelect(transportRes.resolvedFields)),
+      this.fetchAccessoryListCached(this.benefitListTitle, buildAccessorySelect(benefitRes.resolvedFields)),
+      this.fetchAccessoryListCached(this.benefitExtListTitle, buildAccessorySelect(benefitExtRes.resolvedFields)),
     ]);
 
     const listKeys: ReadonlyArray<readonly [number, AccessoryListKey]> = [

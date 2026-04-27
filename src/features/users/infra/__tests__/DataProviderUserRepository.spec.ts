@@ -213,4 +213,34 @@ describe('DataProviderUserRepository Split Logic', () => {
     expect(capturedSelect).toContain('UserID');
     expect(capturedSelect).toContain('FullName');
   });
+
+  it('deduplicates concurrent bulk accessory fetches', async () => {
+    await provider.seed('Users_Master', [{ Id: 1, UserID: 'U-001', FullName: 'Dedupe User' }]);
+    
+    const callCounts = new Map<string, number>();
+    const originalListItems = provider.listItems.bind(provider);
+    provider.listItems = (async (resource: string, options?: { select?: string[]; top?: number; filter?: string; orderby?: string }) => {
+      callCounts.set(resource, (callCounts.get(resource) ?? 0) + 1);
+      // Simulate some network delay to ensure overlap
+      await new Promise(resolve => setTimeout(resolve, 50));
+      return originalListItems(resource, options);
+    }) as typeof provider.listItems;
+
+    // Call getAll twice in parallel
+    const [users1, users2] = await Promise.all([
+      repo.getAll({ selectMode: 'detail' }),
+      repo.getAll({ selectMode: 'detail' })
+    ]);
+
+    expect(users1).toHaveLength(1);
+    expect(users2).toHaveLength(1);
+
+    // Users_Master is called twice because we don't deduplicate it (it's fast/paged)
+    expect(callCounts.get('Users_Master')).toBe(2);
+
+    // Accessory lists should only be called ONCE due to deduplication
+    expect(callCounts.get('UserTransport_Settings')).toBe(1);
+    expect(callCounts.get('UserBenefit_Profile')).toBe(1);
+    expect(callCounts.get('UserBenefit_Profile_Ext')).toBe(1);
+  });
 });
