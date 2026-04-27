@@ -337,7 +337,7 @@ export default function Home() {
                   <CardActions sx={{ pt: 0, pb: 2, px: 2 }}>
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Typography variant="body2" color="primary" fontWeight={600}>
-                        詳細を開く
+                        一覧を表示
                       </Typography>
                       <ArrowForwardRoundedIcon fontSize="small" color="primary" />
                     </Stack>

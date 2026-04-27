@@ -185,7 +185,7 @@ export default function Home() {
                       </Stack>
                       <Stack direction="row" alignItems="center" justifyContent="flex-end" mt="auto">
                         <Typography variant="body2" color="primary.main" fontWeight={500}>
-                          詳細を開く
+                          一覧を表示
                         </Typography>
                         <ArrowForwardRoundedIcon color="primary" fontSize="small" sx={{ ml: 0.5 }} />
                       </Stack>
