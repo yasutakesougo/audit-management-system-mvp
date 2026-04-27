@@ -90,6 +90,7 @@ export function ScheduleViewContainer(props: ScheduleViewContainerProps) {
         categoryFilter={categoryFilter}
         emptyCtaLabel={categoryFilter === 'Org' ? '施設予定を追加' : '予定を追加'}
         compact={compact}
+        onItemClick={onItemSelect}
       />
     );
   }
