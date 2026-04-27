@@ -1,7 +1,7 @@
 import { sanitizeEnvValue, washRow } from '@/lib/sp/helpers';
 import { auditLog } from '@/lib/debugLogger';
 import { BaseRepository } from '@/lib/data/BaseRepository';
-import { readEnv } from '@/lib/env';
+import { getAppConfig, readEnv, isAuditDebugEnabled } from '@/lib/env';
 import type { AuditEvent } from '@/lib/audit';
 import {
   USER_TRANSPORT_SETTINGS_CANDIDATES,
@@ -25,6 +25,13 @@ import { buildEq } from '@/sharepoint/query/builders';
 import { UserFieldResolver } from './services/UserFieldResolver';
 import { UserJoiner } from './services/UserJoiner';
 import { UserPayloadBuilder } from './services/UserPayloadBuilder';
+import {
+  buildAccessorySelect,
+  groupRowsByUserId,
+  joinUsersWithAccessoryMaps,
+  type AccessoryListContext,
+  type AccessoryRowMap,
+} from './services/userBulkJoin';
 import { applyBenefitCutoverRead } from './migration/userBenefitProfileCutover';
 import { USAGE_STATUS_VALUES } from '../typesExtended';
 import type { CutoverStageValue } from './migration/userBenefitProfileCutover/stage';
@@ -33,6 +40,15 @@ const DEFAULT_USERS_LIST_TITLE = 'Users_Master';
 const getTodayIsoDate = (): string => new Date().toISOString().slice(0, 10);
 
 type AuditLogEntry = Omit<AuditEvent, 'ts'>;
+
+type AccessoryListKey = 'transport' | 'benefit' | 'benefitExt';
+
+interface BulkEnrichMetrics {
+  transportRows: number | null;
+  benefitRows: number | null;
+  benefitExtRows: number | null;
+  failedLists: AccessoryListKey[];
+}
 
 /**
  * DataProviderUserRepository
@@ -74,6 +90,30 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
     this.resolver = new UserFieldResolver(this.provider, this.listTitle);
     this.joiner = new UserJoiner();
     this.payloadBuilder = new UserPayloadBuilder(this.provider, this.resolver);
+  }
+
+  /** Cache for simultaneous bulk fetches of accessory lists to prevent redundant scans. */
+  private readonly bulkFetchCache = new Map<string, Promise<Record<string, unknown>[]>>();
+
+  private async fetchAccessoryListCached(listTitle: string, select: string[]): Promise<Record<string, unknown>[]> {
+    const key = `${listTitle}:${select.sort().join(',')}`;
+    const active = this.bulkFetchCache.get(key);
+    if (active) return active;
+
+    const promise = this.provider.listItems<Record<string, unknown>>(listTitle, {
+      select,
+      top: 4999,
+      orderby: 'ID asc',
+    });
+    this.bulkFetchCache.set(key, promise);
+    
+    try {
+      return await promise;
+    } finally {
+      // Remove from cache after a short window to deduplicate simultaneous calls
+      // but allow fresh data on subsequent navigation/refresh.
+      setTimeout(() => this.bulkFetchCache.delete(key), 500);
+    }
   }
 
   public async getAll(params: UserRepositoryListParams = {}): Promise<IUserMaster[]> {
@@ -255,15 +295,152 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
   }
 
   private async enrichUsers(users: IUserMaster[]): Promise<IUserMaster[]> {
+    if (users.length === 0) return users;
+
+    const startedAt = performance.now();
+    const metricsRef: { current: BulkEnrichMetrics | null } = { current: null };
+    let fallbackUsed = false;
+    try {
+      return await this.bulkEnrichUsers(users, metricsRef);
+    } catch (error) {
+      fallbackUsed = true;
+      auditLog.warn('users', 'bulkEnrichUsers_failed_falling_back_chunked', { error: String(error) });
+      return await this.chunkedEnrichUsers(users);
+    } finally {
+      if (getAppConfig().isDev || isAuditDebugEnabled()) {
+        const elapsedMs = Math.round(performance.now() - startedAt);
+        const m = metricsRef.current;
+        auditLog.debug('users', 'enrichUsers_metrics', {
+          users: users.length,
+          transportRows: m?.transportRows ?? null,
+          benefitRows: m?.benefitRows ?? null,
+          benefitExtRows: m?.benefitExtRows ?? null,
+          failedLists: m?.failedLists ?? (fallbackUsed ? (['transport', 'benefit', 'benefitExt'] as AccessoryListKey[]) : []),
+          fallbackUsed,
+          elapsedMs,
+        });
+      }
+    }
+  }
+
+  /**
+   * Bulk fetch & in-memory join path.
+   *
+   * Issues at most 3 list reads (one per accessory list) regardless of N users,
+   * replacing the N×3 filtered fetches of the chunked path. Falls back to the
+   * chunked path on total failure of all 3 list reads.
+   */
+  private async bulkEnrichUsers(
+    users: IUserMaster[],
+    metricsRef?: { current: BulkEnrichMetrics | null },
+  ): Promise<IUserMaster[]> {
+    const [transportRes, benefitRes, benefitExtRes] = await Promise.all([
+      this.resolver.resolveAccessoryFields(this.transportListTitle, USER_TRANSPORT_SETTINGS_CANDIDATES as unknown as Record<string, string[]>, USER_TRANSPORT_SETTINGS_ESSENTIALS as unknown as string[]),
+      this.resolver.resolveAccessoryFields(this.benefitListTitle, this.resolver.getBenefitCandidates(), this.resolver.getBenefitEssentials()),
+      this.resolver.resolveAccessoryFields(this.benefitExtListTitle, USER_BENEFIT_PROFILE_EXT_CANDIDATES as unknown as Record<string, string[]>, USER_BENEFIT_PROFILE_EXT_ESSENTIALS as unknown as string[]),
+    ]);
+
+    const transportJoinField = transportRes.resolvedFields.userId || 'UserID';
+    const benefitJoinField = benefitRes.resolvedFields.userId || 'UserID';
+    const benefitExtJoinField = benefitExtRes.resolvedFields.userId || 'UserID';
+
+    // Top per page is the SP API maximum; pageCap is left undefined so the
+    // provider follows @odata.nextLink to fetch every row.
+
+    const results = await Promise.allSettled([
+      this.fetchAccessoryListCached(this.transportListTitle, buildAccessorySelect(transportRes.resolvedFields)),
+      this.fetchAccessoryListCached(this.benefitListTitle, buildAccessorySelect(benefitRes.resolvedFields)),
+      this.fetchAccessoryListCached(this.benefitExtListTitle, buildAccessorySelect(benefitExtRes.resolvedFields)),
+    ]);
+
+    const listKeys: ReadonlyArray<readonly [number, AccessoryListKey]> = [
+      [0, 'transport'],
+      [1, 'benefit'],
+      [2, 'benefitExt'],
+    ];
+    const failedLists: AccessoryListKey[] = listKeys
+      .filter(([idx]) => results[idx].status === 'rejected')
+      .map(([, key]) => key);
+
+    const allRejected = failedLists.length === results.length;
+    if (allRejected) {
+      if (metricsRef) {
+        metricsRef.current = {
+          transportRows: null,
+          benefitRows: null,
+          benefitExtRows: null,
+          failedLists,
+        };
+      }
+      const reason = (results[0] as PromiseRejectedResult).reason;
+      throw reason instanceof Error ? reason : new Error(String(reason));
+    }
+
+    const emptyMap: AccessoryRowMap = new Map();
+    const transportRowsArr = results[0].status === 'fulfilled' ? results[0].value : null;
+    const benefitRowsArr = results[1].status === 'fulfilled' ? results[1].value : null;
+    const benefitExtRowsArr = results[2].status === 'fulfilled' ? results[2].value : null;
+
+    const transportMap = transportRowsArr ? groupRowsByUserId(transportRowsArr, transportJoinField) : emptyMap;
+    const benefitMap = benefitRowsArr ? groupRowsByUserId(benefitRowsArr, benefitJoinField) : emptyMap;
+    const benefitExtMap = benefitExtRowsArr ? groupRowsByUserId(benefitExtRowsArr, benefitExtJoinField) : emptyMap;
+
+    for (const [idx, name] of listKeys) {
+      if (results[idx].status === 'rejected') {
+        auditLog.warn('users', `bulkEnrichUsers_partial_${name}_failed`, {
+          error: String((results[idx] as PromiseRejectedResult).reason),
+        });
+      }
+    }
+
+    if (metricsRef) {
+      metricsRef.current = {
+        transportRows: transportRowsArr ? transportRowsArr.length : null,
+        benefitRows: benefitRowsArr ? benefitRowsArr.length : null,
+        benefitExtRows: benefitExtRowsArr ? benefitExtRowsArr.length : null,
+        failedLists,
+      };
+    }
+
+    const transport: AccessoryListContext = {
+      map: transportMap,
+      candidates: USER_TRANSPORT_SETTINGS_CANDIDATES as unknown as Record<string, string[]>,
+      resolved: transportRes.resolvedFields,
+    };
+    const benefit: AccessoryListContext = {
+      map: benefitMap,
+      candidates: this.resolver.getBenefitCandidates(),
+      resolved: benefitRes.resolvedFields,
+    };
+    const benefitExt: AccessoryListContext = {
+      map: benefitExtMap,
+      candidates: USER_BENEFIT_PROFILE_EXT_CANDIDATES as unknown as Record<string, string[]>,
+      resolved: benefitExtRes.resolvedFields,
+    };
+
+    return joinUsersWithAccessoryMaps(users, {
+      transport,
+      benefit,
+      benefitExt,
+      joiner: this.joiner,
+      benefitCutoverStage: this.resolver.getBenefitCutoverStage(),
+    });
+  }
+
+  /**
+   * Legacy fallback: per-user filtered fetch with a small concurrency cap.
+   * Kept as a safety net when the bulk path's three list reads all fail.
+   */
+  private async chunkedEnrichUsers(users: IUserMaster[]): Promise<IUserMaster[]> {
     const concurrency = 3;
     const results: IUserMaster[] = [];
-    
+
     for (let i = 0; i < users.length; i += concurrency) {
       const chunk = users.slice(i, i + concurrency);
       const chunkResults = await Promise.all(chunk.map(u => this.enrichUser(u)));
       results.push(...chunkResults);
     }
-    
+
     return results;
   }
 
@@ -308,7 +485,7 @@ export class DataProviderUserRepository extends BaseRepository implements UserRe
           return false;
         }
 
-        if (physicalName === 'UserID') return true;
+        if (isEssential) return true;
 
         return !accessoryPhysicalFields.has(physicalName);
       })

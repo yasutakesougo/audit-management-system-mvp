@@ -116,7 +116,7 @@ export async function listItems<TRow = JsonRecord>(
   const params = new URLSearchParams();
   if (sanitized.select?.length) params.append('$select', sanitized.select.join(','));
   if (sanitized.filter) params.append('$filter', sanitized.filter);
-  if (sanitized.orderBy) params.append('$orderby', sanitized.orderBy);
+  params.append('$orderby', sanitized.orderBy || 'ID asc');
   if (sanitized.expand?.length) params.append('$expand', sanitized.expand.join(','));
   params.append('$top', String(sanitized.top));
 

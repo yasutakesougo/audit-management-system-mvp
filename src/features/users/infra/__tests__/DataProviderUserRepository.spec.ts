@@ -146,4 +146,101 @@ describe('DataProviderUserRepository Split Logic', () => {
     expect(capturedSelect).toBeDefined();
     expect(capturedSelect).not.toContain('IsSupportProcedureTarget');
   });
+
+  it('getAll(detail) issues O(1) accessory reads regardless of N users (bulk path)', async () => {
+    const N = 8;
+    const userRows = Array.from({ length: N }, (_, i) => ({
+      Id: i + 1,
+      UserID: `U-${String(i + 1).padStart(3, '0')}`,
+      FullName: `User ${i + 1}`,
+      IsActive: true,
+    }));
+    await provider.seed('Users_Master', userRows);
+
+    await provider.seed(
+      'UserTransport_Settings',
+      userRows.map((u) => ({ UserID: u.UserID, TransportCourse: `Course-${u.UserID}` })),
+    );
+    await provider.seed(
+      'UserBenefit_Profile',
+      userRows.map((u) => ({ UserID: u.UserID, GrantMunicipality: 'Tokyo' })),
+    );
+    await provider.seed(
+      'UserBenefit_Profile_Ext',
+      userRows.map((u) => ({ UserID: u.UserID, RecipientCertNumber: `BEN-${u.UserID}` })),
+    );
+
+    const callCounts = new Map<string, number>();
+    const originalListItems = provider.listItems.bind(provider);
+    provider.listItems = (async (resource: string, options?: Parameters<typeof originalListItems>[1]) => {
+      callCounts.set(resource, (callCounts.get(resource) ?? 0) + 1);
+      return originalListItems(resource, options);
+    }) as typeof provider.listItems;
+
+    const users = await repo.getAll({ selectMode: 'detail' });
+
+    expect(users).toHaveLength(N);
+    expect(users.every((u) => u.TransportCourse?.startsWith('Course-'))).toBe(true);
+    expect(users.every((u) => u.RecipientCertNumber?.startsWith('BEN-'))).toBe(true);
+
+    // Bulk path: each accessory list is read exactly once, regardless of N users.
+    expect(callCounts.get('UserTransport_Settings')).toBe(1);
+    expect(callCounts.get('UserBenefit_Profile')).toBe(1);
+    expect(callCounts.get('UserBenefit_Profile_Ext')).toBe(1);
+  });
+
+  it('preserves essential fields like UserID even if they exist in accessory lists', async () => {
+    let capturedSelect: string[] | undefined;
+    const provider = {
+      getFieldInternalNames: async (_listTitle: string) => {
+        // 全リストに 'UserID' (物理名) が存在すると仮定
+        return new Set(['Id', 'Title', 'UserID', 'FullName', 'IsActive']);
+      },
+      listItems: async (resource: string, options?: { select?: string[] }) => {
+        if (resource === 'Users_Master') {
+          capturedSelect = options?.select;
+        }
+        return [];
+      },
+    } as unknown as IDataProvider;
+
+    const testRepo = new DataProviderUserRepository({ provider });
+    // selectMode: detail を指定して accessory list のフィールド解決を走らせる
+    await testRepo.getAll({ selectMode: 'detail' });
+
+    expect(capturedSelect).toBeDefined();
+    // 修正前はこのテストが失敗（UserID が含まれない）していたはず
+    expect(capturedSelect).toContain('UserID');
+    expect(capturedSelect).toContain('FullName');
+  });
+
+  it('deduplicates concurrent bulk accessory fetches', async () => {
+    await provider.seed('Users_Master', [{ Id: 1, UserID: 'U-001', FullName: 'Dedupe User' }]);
+    
+    const callCounts = new Map<string, number>();
+    const originalListItems = provider.listItems.bind(provider);
+    provider.listItems = (async (resource: string, options?: { select?: string[]; top?: number; filter?: string; orderby?: string }) => {
+      callCounts.set(resource, (callCounts.get(resource) ?? 0) + 1);
+      // Simulate some network delay to ensure overlap
+      await new Promise(resolve => setTimeout(resolve, 50));
+      return originalListItems(resource, options);
+    }) as typeof provider.listItems;
+
+    // Call getAll twice in parallel
+    const [users1, users2] = await Promise.all([
+      repo.getAll({ selectMode: 'detail' }),
+      repo.getAll({ selectMode: 'detail' })
+    ]);
+
+    expect(users1).toHaveLength(1);
+    expect(users2).toHaveLength(1);
+
+    // Users_Master is called twice because we don't deduplicate it (it's fast/paged)
+    expect(callCounts.get('Users_Master')).toBe(2);
+
+    // Accessory lists should only be called ONCE due to deduplication
+    expect(callCounts.get('UserTransport_Settings')).toBe(1);
+    expect(callCounts.get('UserBenefit_Profile')).toBe(1);
+    expect(callCounts.get('UserBenefit_Profile_Ext')).toBe(1);
+  });
 });

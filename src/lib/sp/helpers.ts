@@ -191,7 +191,7 @@ export async function fetchRawItems(
   const maxPages = options.maxPages || MAX_PAGES;
   
   let path: string | null =
-    `/lists/getbytitle('${encodeURIComponent(listTitle)}')/items?$select=${select}&$top=${top}`;
+    `/lists/getbytitle('${encodeURIComponent(listTitle)}')/items?$select=${select}&$orderby=ID asc&$top=${top}`;
 
   for (let page = 0; page < maxPages && path; page++) {
     if (options.signal?.aborted) break;
@@ -467,18 +467,22 @@ export function resolveInternalNamesDetailed<T extends string>(
   const fieldStatus = {} as Record<T, { resolvedName?: string; candidates: string[]; isDrifted: boolean; driftType?: string }>;
   const missing: T[] = [];
 
-  // Case-insensitive lookup map for available fields
   const availableMap = new Map<string, string>();
   for (const name of available) {
     availableMap.set(name.toLowerCase(), name);
   }
+
+  const used = new Set<string>();
 
   for (const key in candidates) {
     if (Object.prototype.hasOwnProperty.call(candidates, key)) {
       let driftType: string | undefined = undefined;
 
       // 1. First Pass: Exact match (case-insensitive)
-      const exactMatchName = candidates[key].find(f => availableMap.has(f.toLowerCase()));
+      const exactMatchName = candidates[key].find(f => {
+        const actual = availableMap.get(f.toLowerCase());
+        return actual && !used.has(actual);
+      });
       let foundCandidate = exactMatchName ? availableMap.get(exactMatchName.toLowerCase()) : undefined;
       
       if (foundCandidate && foundCandidate !== candidates[key][0]) {
@@ -500,7 +504,7 @@ export function resolveInternalNamesDetailed<T extends string>(
           const suffixRegex = new RegExp(`^${encodedBase}(\\d+|_zombie)$`);
           
           for (const [availableLow, actual] of availableMap.entries()) {
-            if (suffixRegex.test(availableLow)) {
+            if (!used.has(actual) && suffixRegex.test(availableLow)) {
               foundCandidate = actual;
               driftType = 'suffix_mismatch';
               break;
@@ -509,8 +513,9 @@ export function resolveInternalNamesDetailed<T extends string>(
           if (foundCandidate) break;
 
           // Strategy B: Encode space to _x0020_ (Exact match)
-          if (availableMap.has(encodedBase)) {
-            foundCandidate = availableMap.get(encodedBase);
+          const actualB = availableMap.get(encodedBase);
+          if (actualB && !used.has(actualB)) {
+            foundCandidate = actualB;
             driftType = 'fuzzy_match';
             break;
           }
@@ -518,6 +523,7 @@ export function resolveInternalNamesDetailed<T extends string>(
           // Strategy C: Bitwise/Normalized comparison (Extreme drift protection)
           const sanitizedCandidate = lowerBase.replace(/_x[0-9a-f]{4}_/gi, '').replace(/[^a-z0-9]/g, '');
           for (const [availableLow, actual] of availableMap.entries()) {
+            if (used.has(actual)) continue;
             const availSanitized = availableLow.replace(/_x[0-9a-f]{4}_/gi, '').replace(/[^a-z0-9]/g, '');
             // Check if stripped names match or if one is a truncated version of another
             if (availSanitized === sanitizedCandidate || 
@@ -532,8 +538,9 @@ export function resolveInternalNamesDetailed<T extends string>(
           // Strategy D: SharePoint 32-character truncation check
           if (encodedBase.length >= 32) {
             const truncated = encodedBase.slice(0, 32);
-            if (availableMap.has(truncated)) {
-              foundCandidate = availableMap.get(truncated);
+            const actualD = availableMap.get(truncated);
+            if (actualD && !used.has(actualD)) {
+              foundCandidate = actualD;
               driftType = 'truncation';
               break;
             }
@@ -543,6 +550,7 @@ export function resolveInternalNamesDetailed<T extends string>(
           // Strategy E: SharePoint specialized suffixes (like 'Id' for Person/Lookup)
           const lowerBaseNoId = lowerBase.replace(/id$/, '');
           for (const [availableLow, actual] of availableMap.entries()) {
+            if (used.has(actual)) continue;
             const availNoId = availableLow.replace(/id$/, '');
             if (availNoId === lowerBaseNoId && availNoId.length > 3) {
               foundCandidate = actual;
@@ -564,6 +572,9 @@ export function resolveInternalNamesDetailed<T extends string>(
         options.onDrift(key as T, 'fuzzy_match', driftType || 'unknown');
       }
 
+      if (resolvedName) {
+        used.add(resolvedName);
+      }
       resolved[key] = resolvedName;
       fieldStatus[key] = {
         resolvedName: resolvedName,
