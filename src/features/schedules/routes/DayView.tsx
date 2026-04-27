@@ -294,6 +294,7 @@ const DayViewContent = ({
                     timeLabel={timeLabel}
                     secondary={secondary}
                     status={item.status}
+                    statusLabel={item.statusLabel}
                     statusReason={item.statusReason}
                     acceptedBy={item.acceptedBy}
                     acceptedOn={item.acceptedOn}

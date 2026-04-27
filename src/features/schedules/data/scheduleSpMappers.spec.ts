@@ -52,4 +52,25 @@ describe('scheduleSpMappers', () => {
     expect(eventSafe).not.toContain('Vehicle');
     expect(eventSafe).not.toContain('VehicleId');
   });
+
+  it('maps RepoSchedule to SchedItem with statusLabel', async () => {
+    const mod = await loadModule({});
+    const repo = {
+      id: 123,
+      title: 'Test Schedule',
+      eventDate: '2024-04-27T10:00:00Z',
+      endDate: '2024-04-27T11:00:00Z',
+      status: 'Planned',
+      personType: 'User',
+      personName: 'Test User',
+    } as any;
+
+    const result = mod.mapRepoScheduleToSchedItem(repo);
+    expect(result).toMatchObject({
+      id: '123',
+      title: 'Test Schedule',
+      status: 'Planned',
+      statusLabel: '予定どおり',
+    });
+  });
 });
