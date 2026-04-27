@@ -146,4 +146,46 @@ describe('DataProviderUserRepository Split Logic', () => {
     expect(capturedSelect).toBeDefined();
     expect(capturedSelect).not.toContain('IsSupportProcedureTarget');
   });
+
+  it('getAll(detail) issues O(1) accessory reads regardless of N users (bulk path)', async () => {
+    const N = 8;
+    const userRows = Array.from({ length: N }, (_, i) => ({
+      Id: i + 1,
+      UserID: `U-${String(i + 1).padStart(3, '0')}`,
+      FullName: `User ${i + 1}`,
+      IsActive: true,
+    }));
+    await provider.seed('Users_Master', userRows);
+
+    await provider.seed(
+      'UserTransport_Settings',
+      userRows.map((u) => ({ UserID: u.UserID, TransportCourse: `Course-${u.UserID}` })),
+    );
+    await provider.seed(
+      'UserBenefit_Profile',
+      userRows.map((u) => ({ UserID: u.UserID, GrantMunicipality: 'Tokyo' })),
+    );
+    await provider.seed(
+      'UserBenefit_Profile_Ext',
+      userRows.map((u) => ({ UserID: u.UserID, RecipientCertNumber: `BEN-${u.UserID}` })),
+    );
+
+    const callCounts = new Map<string, number>();
+    const originalListItems = provider.listItems.bind(provider);
+    provider.listItems = (async (resource: string, options?: Parameters<typeof originalListItems>[1]) => {
+      callCounts.set(resource, (callCounts.get(resource) ?? 0) + 1);
+      return originalListItems(resource, options);
+    }) as typeof provider.listItems;
+
+    const users = await repo.getAll({ selectMode: 'detail' });
+
+    expect(users).toHaveLength(N);
+    expect(users.every((u) => u.TransportCourse?.startsWith('Course-'))).toBe(true);
+    expect(users.every((u) => u.RecipientCertNumber?.startsWith('BEN-'))).toBe(true);
+
+    // Bulk path: each accessory list is read exactly once, regardless of N users.
+    expect(callCounts.get('UserTransport_Settings')).toBe(1);
+    expect(callCounts.get('UserBenefit_Profile')).toBe(1);
+    expect(callCounts.get('UserBenefit_Profile_Ext')).toBe(1);
+  });
 });
