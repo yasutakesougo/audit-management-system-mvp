@@ -112,7 +112,8 @@ async function safeWithRetry<T>(
     maxRetries: number;
     baseDelayMs: number;
     jitterMs: number;
-  }
+  },
+  shouldRetry: (status: number | undefined) => boolean = isRetryableUpdateStatus,
 ): Promise<(SafeResult<T> & { attempts: number })> {
   const maxAttempts = options.maxRetries + 1;
   for (let attempts = 1; attempts <= maxAttempts; attempts += 1) {
@@ -120,7 +121,7 @@ async function safeWithRetry<T>(
     if (result.ok) {
       return { ...result, attempts };
     }
-    if (!isRetryableUpdateStatus(result.status) || attempts >= maxAttempts) {
+    if (!shouldRetry(result.status) || attempts >= maxAttempts) {
       return { ...result, attempts };
     }
     const jitter = options.jitterMs > 0 ? Math.floor(Math.random() * options.jitterMs) : 0;
@@ -606,18 +607,28 @@ async function runListChecks(
     createBody[physicalTitle] = `[healthcheck] ${stamp}`;
   }
 
-  const created = await safe(() =>
-    sp.createItem(spec.resolvedTitle, createBody)
+  const created = await safeWithRetry(
+    () => sp.createItem(spec.resolvedTitle, createBody),
+    {
+      maxRetries: 2,
+      baseDelayMs: 260,
+      jitterMs: 140,
+    },
+    isTransientPermissionStatus,
   );
   if (!created.ok) {
     if (isTransientPermissionStatus(created.status)) {
+      const retryCount = Math.max(0, created.attempts - 1);
       results.push(
         warn({
           key: `permissions.create.${spec.key}`,
           label: `権限：Create（${spec.displayName}）`,
           category: "permissions",
           summary: `作成（Create）確認中に一時的エラー（${summarizeHttpStatus(created.status)}）を検出しました。`,
-          detail: created.err,
+          detail:
+            retryCount > 0
+              ? `${created.err} (自動リトライ ${retryCount} 回後も解消せず)`
+              : created.err,
           evidence: { listTitle: spec.resolvedTitle, payload: createBody },
           nextActions: [
             {
@@ -726,8 +737,14 @@ async function runListChecks(
     );
   }
 
-  const deleted = await safe(() =>
-    sp.deleteItem(spec.resolvedTitle, created.v.id)
+  const deleted = await safeWithRetry(
+    () => sp.deleteItem(spec.resolvedTitle, created.v.id),
+    {
+      maxRetries: 2,
+      baseDelayMs: 260,
+      jitterMs: 140,
+    },
+    isTransientPermissionStatus,
   );
   if (!deleted.ok) {
     if (spec.isDeleteOptional) {
@@ -749,7 +766,10 @@ async function runListChecks(
           category: "permissions",
           summary:
             "削除（Delete）に失敗しました（運用上これが許容される場合もあります）。",
-          detail: deleted.err,
+          detail:
+            isTransientPermissionStatus(deleted.status) && deleted.attempts > 1
+              ? `${deleted.err} (自動リトライ ${deleted.attempts - 1} 回後も解消せず)`
+              : deleted.err,
           evidence: { id: created.v.id, listTitle: spec.resolvedTitle },
           nextActions: [
             {
