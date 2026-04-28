@@ -231,7 +231,14 @@ export async function fetchRawItemsWithFieldFallback(
   options: { signal?: AbortSignal } = {}
 ): Promise<{ items: unknown[]; isTruncated: boolean; skippedFields: string[] }> {
   const skippedFields: string[] = [];
-  let fields = Array.from(selectFields);
+  // Proactively remove hidden system fields (starting with _ but not _x) that cause 400 errors in $select
+  let fields = selectFields.filter((f) => {
+    if (f.startsWith('_') && !f.startsWith('_x')) {
+      skippedFields.push(f);
+      return false;
+    }
+    return true;
+  });
 
   for (;;) {
     try {

@@ -39,7 +39,7 @@ const SYSTEM_FIELDS = new Set([
  * システム管理フィールドかどうかを判定する
  */
 export function isSystemField(internalName: string): boolean {
-  return SYSTEM_FIELDS.has(internalName) || internalName.startsWith('_');
+  return SYSTEM_FIELDS.has(internalName) || (internalName.startsWith('_') && !internalName.startsWith('_x'));
 }
 
 // ── Deletion reason heuristics ────────────────────────────────────────────────
