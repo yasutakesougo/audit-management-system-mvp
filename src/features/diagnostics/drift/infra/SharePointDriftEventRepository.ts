@@ -517,6 +517,11 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         let select = selectRaw.filter((f): f is string => {
           if (!f) return false;
           if (f === 'Id' || f === 'Title') return true;
+          // SharePoint 組み込みの hidden 列 (例: _Level, _ModerationStatus) は
+          // REST OData 上は OData__Foo 形式でないと参照できず、生の `_Foo` を $select に
+          // 含めると 400 になる。drift の論理列に組み込み列が割り当たることはないので
+          // 防衛的に除外する。
+          if (f.startsWith('_')) return false;
           return !schemaKnown || this.availablePhysicalFields.has(f);
         });
 
