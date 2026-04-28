@@ -14,6 +14,8 @@ Related: #1632
 | canonical | 現在の正規フィールド | 維持 |
 | accepted_alias | drift吸収のため許容している別名 | FIELD_MAP / resolver に明示 |
 | zombie_cleanup_candidate | データなし・利用なしの削除候補 | 別Issueで安全パージ |
+| protected_system | SharePoint base/system により削除不可 | Purge対象から除外 |
+| ignored_system | SharePoint computed/system field | drift判定から除外 |
 | optional_missing_or_provision_candidate | optional列不足・Provision候補 | Provision計画へ分離 |
 | needs_manual_review | 判定保留 | 実列・usage確認後に再分類 |
 
@@ -31,17 +33,17 @@ Related: #1632
 | RecipientCertExpiry | optional_missing | optional_missing_or_provision_candidate | Missing in SharePoint | Provision |
 | DisabilitySupportLevel | optional_missing | optional_missing_or_provision_candidate | Missing in SharePoint | Provision |
 | GrantedDaysPerMonth | optional_missing | optional_missing_or_provision_candidate | Missing in SharePoint | Provision |
-| LinkTitle2 | zombie_candidate (usage: 0) | zombie_cleanup_candidate | SharePoint internal | Purge |
+| LinkTitle2 | zombie_candidate (usage: 0) | protected_system | SharePoint base/system (`readonly_field`,`canBeDeleted_false`,`fromBaseType_true`) | Exclude from purge |
 | SelectTitle | zombie_candidate (usage: 1) | ignored_system | SharePoint computed system field (`SP_SYSTEM_FIELDS`) | Ignore in drift decisions |
 | Last_x0020_Modified | zombie_candidate (usage: 1) | ignored_system | SharePoint computed system field (`SP_SYSTEM_FIELDS`) | Ignore in drift decisions |
 | Created_x0020_Date | zombie_candidate (usage: 1) | ignored_system | SharePoint computed system field (`SP_SYSTEM_FIELDS`) | Ignore in drift decisions |
 | FSObjType | zombie_candidate (usage: 1) | accepted_alias | System field | None |
-| PermMask | zombie_candidate (usage: 0) | zombie_cleanup_candidate | System field | Purge |
-| PrincipalCount | zombie_candidate (usage: 0) | zombie_cleanup_candidate | System field | Purge |
+| PermMask | zombie_candidate (usage: 0) | protected_system | SharePoint base/system (`readonly_field`,`canBeDeleted_false`,`fromBaseType_true`) | Exclude from purge |
+| PrincipalCount | zombie_candidate (usage: 0) | protected_system | SharePoint base/system (`readonly_field`,`canBeDeleted_false`,`fromBaseType_true`) | Exclude from purge |
 | ProgId | zombie_candidate (usage: 1) | accepted_alias | System field | None |
 | LinkFilenameNoMenu | zombie_candidate (usage: 1) | accepted_alias | System field | None |
 | LinkFilename | zombie_candidate (usage: 1) | accepted_alias | System field | None |
-| LinkFilename2 | zombie_candidate (usage: 0) | zombie_cleanup_candidate | System field | Purge |
+| LinkFilename2 | zombie_candidate (usage: 0) | protected_system | SharePoint base/system (`readonly_field`,`canBeDeleted_false`,`fromBaseType_true`) | Exclude from purge |
 | ServerUrl | zombie_candidate (usage: 1) | accepted_alias | System field | None |
 | EncodedAbsUrl | zombie_candidate (usage: 1) | accepted_alias | System field | None |
 | BaseName | zombie_candidate (usage: 1) | accepted_alias | System field | None |
@@ -55,17 +57,17 @@ Related: #1632
 | UserID | zombie_candidate (usage: 399) | accepted_alias | Backward-compatible alias for ext join key (canonical is Title) | Keep as accepted alias |
 | Recipient_x0020_Cert_x0020_Expir | zombie_candidate (usage: 0) | zombie_cleanup_candidate | No data, no usage | Purge |
 | Disability_x0020_Support_x0020_L | zombie_candidate (usage: 0) | zombie_cleanup_candidate | No data, no usage | Purge |
-| LinkTitle2 | zombie_candidate (usage: 0) | zombie_cleanup_candidate | System field | Purge |
+| LinkTitle2 | zombie_candidate (usage: 0) | protected_system | SharePoint base/system (`readonly_field`,`canBeDeleted_false`,`fromBaseType_true`) | Exclude from purge |
 | SelectTitle | zombie_candidate (usage: 1) | ignored_system | SharePoint computed system field (`SP_SYSTEM_FIELDS`) | Ignore in drift decisions |
 | Last_x0020_Modified | zombie_candidate (usage: 1) | ignored_system | SharePoint computed system field (`SP_SYSTEM_FIELDS`) | Ignore in drift decisions |
 | Created_x0020_Date | zombie_candidate (usage: 1) | ignored_system | SharePoint computed system field (`SP_SYSTEM_FIELDS`) | Ignore in drift decisions |
 | FSObjType | zombie_candidate (usage: 1) | accepted_alias | System field | None |
-| PermMask | zombie_candidate (usage: 0) | zombie_cleanup_candidate | System field | Purge |
-| PrincipalCount | zombie_candidate (usage: 0) | zombie_cleanup_candidate | System field | Purge |
+| PermMask | zombie_candidate (usage: 0) | protected_system | SharePoint base/system (`readonly_field`,`canBeDeleted_false`,`fromBaseType_true`) | Exclude from purge |
+| PrincipalCount | zombie_candidate (usage: 0) | protected_system | SharePoint base/system (`readonly_field`,`canBeDeleted_false`,`fromBaseType_true`) | Exclude from purge |
 | ProgId | zombie_candidate (usage: 1) | accepted_alias | System field | None |
 | LinkFilenameNoMenu | zombie_candidate (usage: 1) | accepted_alias | System field | None |
 | LinkFilename | zombie_candidate (usage: 1) | accepted_alias | System field | None |
-| LinkFilename2 | zombie_candidate (usage: 0) | zombie_cleanup_candidate | System field | Purge |
+| LinkFilename2 | zombie_candidate (usage: 0) | protected_system | SharePoint base/system (`readonly_field`,`canBeDeleted_false`,`fromBaseType_true`) | Exclude from purge |
 | ServerUrl | zombie_candidate (usage: 1) | accepted_alias | System field | None |
 | EncodedAbsUrl | zombie_candidate (usage: 1) | accepted_alias | System field | None |
 | BaseName | zombie_candidate (usage: 1) | accepted_alias | System field | None |
