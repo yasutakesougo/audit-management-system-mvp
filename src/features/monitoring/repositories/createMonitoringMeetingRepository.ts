@@ -7,6 +7,8 @@
 
 import type { MonitoringMeetingRepository } from '@/domain/isp/monitoringMeetingRepository';
 import type { UseSP } from '@/lib/spClient';
+import { useMemo } from 'react';
+import { useDataProvider } from '@/lib/data/useDataProvider';
 import { localMonitoringMeetingRepository } from '@/infra/localStorage/localMonitoringMeetingRepository';
 import { SharePointDataProvider } from '@/lib/sp/spDataProvider';
 import { DataProviderMonitoringMeetingRepository } from '../data/DataProviderMonitoringMeetingRepository';
@@ -27,10 +29,6 @@ export function createMonitoringMeetingRepository(
   const provider = new SharePointDataProvider(options.spClient);
   return new DataProviderMonitoringMeetingRepository(provider);
 }
-
-import { useMemo } from 'react';
-import { useDataProvider } from '@/lib/data/useDataProvider';
-import { localMonitoringMeetingRepository } from '@/infra/localStorage/localMonitoringMeetingRepository';
 
 /**
  * React Hook: MonitoringMeetingRepository を取得する
