@@ -446,12 +446,26 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
           }
         }
 
-        // 欠落列を特定できない 400 は、再試行しても改善しない可能性が高いため停止。
+        // 欠落列を特定できない 400 でも、任意列由来の型不一致が多いため
+        // 必須列のみで 1 回だけ再試行して fail-open で吸収する。
+        const requiredOnlyPayload = this.buildCreatePayload(event, false);
+        if (requiredOnlyPayload) {
+          try {
+            await this.spClient.createItem(listTitle, requiredOnlyPayload);
+            this.sessionCache.add(dedupeKey);
+            this.optionalWriteDisabled = true;
+            return;
+          } catch (fallbackErr) {
+            if (!this.isHttp400(fallbackErr)) throw fallbackErr;
+          }
+        }
+
+        // required-only でも失敗する場合は同一セッションで停止
         this.optionalWriteDisabled = true;
         this.writeDisabled = true;
         auditLog.warn(
           'diagnostics:drift',
-          'DriftEventRepository disabled writing after unclassified 400.',
+          'DriftEventRepository disabled writing after unclassified 400 (including required-only fallback).',
           { detail },
         );
       }

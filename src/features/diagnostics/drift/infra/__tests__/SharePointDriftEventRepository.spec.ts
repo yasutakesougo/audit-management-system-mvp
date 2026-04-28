@@ -151,12 +151,15 @@ describe('SharePointDriftEventRepository', () => {
     expect(fallbackPayload).not.toHaveProperty('NameOfList');
   });
 
-  it('fails fast without retry when 400 does not identify a field', async () => {
+  it('retries once with required-only payload when 400 does not identify a field', async () => {
     const badRequest = Object.assign(
       new Error("JSON リーダーから読み取り中に予期しない 'StartObject' ノードが見つかりました。"),
       { status: 400 },
     );
-    const createItem = vi.fn().mockRejectedValueOnce(badRequest);
+    const createItem = vi
+      .fn()
+      .mockRejectedValueOnce(badRequest)
+      .mockResolvedValueOnce({});
 
     const repo = new SharePointDriftEventRepository({
       createItem,
@@ -174,7 +177,11 @@ describe('SharePointDriftEventRepository', () => {
       resolved: false,
     });
 
-    expect(createItem).toHaveBeenCalledTimes(1);
+    expect(createItem).toHaveBeenCalledTimes(2);
+    const initialPayload = createItem.mock.calls[0][1];
+    const fallbackPayload = createItem.mock.calls[1][1];
+    expect(initialPayload).toHaveProperty('Severity', 'warn');
+    expect(fallbackPayload).not.toHaveProperty('Severity');
   });
 
   it('writes duplicate required encoded/plain fields when both exist in list schema', async () => {
