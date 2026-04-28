@@ -1,3 +1,4 @@
+import { act } from '@testing-library/react';
 import { renderWithProviders } from '../_helpers/renderWithProviders';
 import ExceptionCenterPage from '../../../src/pages/admin/ExceptionCenterPage';
 import { ExceptionTable } from '../../../src/features/exceptions/components/ExceptionTable';
@@ -118,7 +119,7 @@ describe('ExceptionCenterPage suggestion telemetry', () => {
     vi.useRealTimers();
   });
 
-  it('ExceptionTable からの CTA/dismiss/snooze callback で telemetry を送る', () => {
+  it('ExceptionTable からの CTA/dismiss/snooze callback で telemetry を送る', async () => {
     const suggestion: ActionSuggestion = {
       id: 's1',
       stableId,
@@ -154,9 +155,11 @@ describe('ExceptionCenterPage suggestion telemetry', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const actions = (props.suggestionActions as any);
 
-    actions.onCtaClick(stableId, '/assessment', 'table');
-    actions.onDismiss(stableId);
-    actions.onSnooze(stableId, 'three-days');
+    await act(async () => {
+      actions.onCtaClick(stableId, '/assessment', 'table');
+      actions.onDismiss(stableId);
+      actions.onSnooze(stableId, 'three-days');
+    });
 
     expect(mockRecordSuggestionTelemetry).toHaveBeenCalledWith(
       expect.objectContaining({
