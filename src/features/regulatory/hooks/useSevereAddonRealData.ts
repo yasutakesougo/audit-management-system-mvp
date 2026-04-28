@@ -37,7 +37,7 @@
  * @see assignmentQualificationChecker.ts — 配置資格判定
  */
 
-import { useMemo, useEffect, useState, useCallback } from 'react';
+import { useMemo, useEffect, useState, useCallback, useRef } from 'react';
 
 import type { IUserMaster } from '@/sharepoint/fields';
 import type { Staff } from '@/types';
@@ -178,12 +178,26 @@ export function useSevereAddonRealData(
       .filter(u => u.IsActive !== false)
       .map(u => u.UserID ?? `user-${u.Id}`);
   }, [users, isLoading, error]);
+  const activeUserIdsKey = useMemo(() => activeUserIds.join('|'), [activeUserIds]);
+  const planningFetchStateRef = useRef<{ inFlightKey: string | null; completedKey: string | null }>({
+    inFlightKey: null,
+    completedKey: null,
+  });
 
   const fetchPlanningSheets = useCallback(async () => {
     if (!planningSheetRepo || activeUserIds.length === 0) {
       setSheetsByUser(new Map());
+      planningFetchStateRef.current = { inFlightKey: null, completedKey: null };
       return;
     }
+    const requestKey = activeUserIdsKey;
+    if (
+      planningFetchStateRef.current.inFlightKey === requestKey ||
+      planningFetchStateRef.current.completedKey === requestKey
+    ) {
+      return;
+    }
+    planningFetchStateRef.current.inFlightKey = requestKey;
 
     setSheetsLoading(true);
     setSheetsError(null);
@@ -206,14 +220,19 @@ export function useSevereAddonRealData(
 
       await Promise.all(promises);
       setSheetsByUser(results);
+      planningFetchStateRef.current.completedKey = requestKey;
     } catch (err) {
       const e = err instanceof Error ? err : new Error(String(err));
       setSheetsError(e);
       console.warn('[useSevereAddonRealData] PlanningSheet fetch failed:', e.message);
+      planningFetchStateRef.current.completedKey = null;
     } finally {
+      if (planningFetchStateRef.current.inFlightKey === requestKey) {
+        planningFetchStateRef.current.inFlightKey = null;
+      }
       setSheetsLoading(false);
     }
-  }, [planningSheetRepo, activeUserIds]);
+  }, [planningSheetRepo, activeUserIds, activeUserIdsKey]);
 
   useEffect(() => {
     fetchPlanningSheets();
