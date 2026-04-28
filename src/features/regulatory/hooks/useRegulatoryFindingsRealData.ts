@@ -16,7 +16,7 @@
  * @see auditChecks.ts — buildRegulatoryFindings
  */
 
-import { useMemo, useEffect, useState, useCallback } from 'react';
+import { useMemo, useEffect, useState, useCallback, useRef } from 'react';
 
 import type { IUserMaster } from '@/sharepoint/fields';
 import type { Staff } from '@/types';
@@ -96,13 +96,31 @@ export function useRegulatoryFindingsRealData(
       .filter(u => u.IsActive !== false)
       .map(u => u.UserID ?? `user-${u.Id}`);
   }, [users, isLoading, error]);
+  const activeUserIdsKey = useMemo(() => activeUserIds.join('|'), [activeUserIds]);
+  const planningFetchStateRef = useRef<{ inFlightKey: string | null; completedKey: string | null }>({
+    inFlightKey: null,
+    completedKey: null,
+  });
+  const meetingFetchStateRef = useRef<{ inFlightKey: string | null; completedKey: string | null }>({
+    inFlightKey: null,
+    completedKey: null,
+  });
 
   // ── Phase 1: PlanningSheet 取得 ──
   const fetchPlanningSheets = useCallback(async () => {
     if (!planningSheetRepo || activeUserIds.length === 0) {
       setSheetsByUser(new Map());
+      planningFetchStateRef.current = { inFlightKey: null, completedKey: null };
       return;
     }
+    const requestKey = activeUserIdsKey;
+    if (
+      planningFetchStateRef.current.inFlightKey === requestKey ||
+      planningFetchStateRef.current.completedKey === requestKey
+    ) {
+      return;
+    }
+    planningFetchStateRef.current.inFlightKey = requestKey;
 
     setSheetsLoading(true);
     setSheetsError(null);
@@ -122,14 +140,19 @@ export function useRegulatoryFindingsRealData(
 
       await Promise.all(promises);
       setSheetsByUser(results);
+      planningFetchStateRef.current.completedKey = requestKey;
     } catch (err) {
       const e = err instanceof Error ? err : new Error(String(err));
       setSheetsError(e);
       console.warn('[useRegulatoryFindingsRealData] PlanningSheet fetch failed:', e.message);
+      planningFetchStateRef.current.completedKey = null;
     } finally {
+      if (planningFetchStateRef.current.inFlightKey === requestKey) {
+        planningFetchStateRef.current.inFlightKey = null;
+      }
       setSheetsLoading(false);
     }
-  }, [planningSheetRepo, activeUserIds]);
+  }, [planningSheetRepo, activeUserIds, activeUserIdsKey]);
 
   useEffect(() => {
     fetchPlanningSheets();
@@ -194,8 +217,17 @@ export function useRegulatoryFindingsRealData(
   const fetchMonitoringMeetings = useCallback(async () => {
     if (!monitoringMeetingRepo || activeUserIds.length === 0) {
       setMeetingsByUser(new Map());
+      meetingFetchStateRef.current = { inFlightKey: null, completedKey: null };
       return;
     }
+    const requestKey = activeUserIdsKey;
+    if (
+      meetingFetchStateRef.current.inFlightKey === requestKey ||
+      meetingFetchStateRef.current.completedKey === requestKey
+    ) {
+      return;
+    }
+    meetingFetchStateRef.current.inFlightKey = requestKey;
 
     setMeetingsLoading(true);
     try {
@@ -213,10 +245,14 @@ export function useRegulatoryFindingsRealData(
 
       await Promise.all(promises);
       setMeetingsByUser(results);
+      meetingFetchStateRef.current.completedKey = requestKey;
     } finally {
+      if (meetingFetchStateRef.current.inFlightKey === requestKey) {
+        meetingFetchStateRef.current.inFlightKey = null;
+      }
       setMeetingsLoading(false);
     }
-  }, [monitoringMeetingRepo, activeUserIds]);
+  }, [monitoringMeetingRepo, activeUserIds, activeUserIdsKey]);
 
   useEffect(() => {
     fetchMonitoringMeetings();
