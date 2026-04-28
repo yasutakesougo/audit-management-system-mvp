@@ -172,7 +172,13 @@ jobs:
         run: |
           set -o pipefail
           echo "Running unit tests..."
-          npm run test:ci 2>&1 | tee /tmp/vitest-ci.log
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "PR lane: running required unit subset (test:ci:required)"
+            npm run test:ci:required 2>&1 | tee /tmp/vitest-ci.log
+          else
+            echo "Push lane: running full unit suite (test:ci)"
+            npm run test:ci 2>&1 | tee /tmp/vitest-ci.log
+          fi
           node scripts/ci/check-act-warnings.mjs /tmp/vitest-ci.log --json --json-output /tmp/act-warnings-ci.json
           echo "✅ Tests completed successfully"
 

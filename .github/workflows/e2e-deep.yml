@@ -102,6 +102,17 @@ jobs:
               --project=chromium \
               --reporter=list,junit,html \
               --retries=2
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "PR lane: running schedule/day-focused deep tests only"
+            npx playwright test \
+              tests/e2e/schedule-*.spec.ts \
+              tests/e2e/schedules*.spec.ts \
+              tests/e2e/dashboard-schedule-flow.spec.ts \
+              --config=playwright.config.ts \
+              --project=chromium \
+              --reporter=list,junit,html \
+              --retries=1 \
+              --workers=1
           else
             echo "Running all deep (non-smoke) tests"
             npx playwright test tests/e2e \

@@ -105,7 +105,13 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=4096'
         run: |
           set -o pipefail
-          TZ=Asia/Tokyo npm run test:ci 2>&1 | tee /tmp/vitest-smoke.log
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "PR lane: running required unit subset (test:ci:required)"
+            TZ=Asia/Tokyo npm run test:ci:required 2>&1 | tee /tmp/vitest-smoke.log
+          else
+            echo "Non-PR lane: running full unit suite (test:ci)"
+            TZ=Asia/Tokyo npm run test:ci 2>&1 | tee /tmp/vitest-smoke.log
+          fi
           node scripts/ci/check-act-warnings.mjs /tmp/vitest-smoke.log --json --json-output /tmp/act-warnings-smoke.json
       - name: Create/Update act warning regression issue
         if: ${{ failure() }}
