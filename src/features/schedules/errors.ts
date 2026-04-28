@@ -146,7 +146,7 @@ export function classifySchedulesError(error: unknown): SchedulesErrorInfo {
         title: conflictFeedback.title,
         message: conflictFeedback.userMessage,
         action: {
-          label: '詳細を見る',
+          label: '競合の詳細を表示',
           onClick: () => {
             /* Handled by UI components like ScheduleDialogManager */
           },
@@ -163,7 +163,7 @@ export function classifySchedulesError(error: unknown): SchedulesErrorInfo {
       title: conflictFeedback.title,
       message: conflictFeedback.userMessage,
       action: {
-        label: '詳細を見る',
+        label: '競合の詳細を表示',
         onClick: () => {},
       },
       details: [message],

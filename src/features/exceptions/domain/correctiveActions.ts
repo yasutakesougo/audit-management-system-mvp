@@ -141,7 +141,7 @@ const CORRECTIVE_ACTION_MAP: Record<
       },
       {
         key: `${item.id}-hub`,
-        label: '利用者の詳細を見る',
+        label: '利用者ハブを開く',
         route: userId ? `/users/${encodeURIComponent(userId)}` : '/users',
         variant: 'secondary',
         severity: 'medium',
@@ -167,7 +167,7 @@ const CORRECTIVE_ACTION_MAP: Record<
         ? [
             {
               key: `${item.id}-hub`,
-              label: '利用者の詳細を見る',
+              label: '利用者ハブを開く',
               route: `/users/${encodeURIComponent(userId)}`,
               variant: 'ghost' as CorrectiveActionVariant,
               severity: 'low' as ExceptionSeverity,
@@ -290,7 +290,7 @@ const CORRECTIVE_ACTION_MAP: Record<
       },
       {
         key: `${item.id}-hub`,
-        label: '利用者の詳細を見る',
+        label: '利用者ハブを開く',
         route: userId ? `/users/${encodeURIComponent(userId)}` : '/users',
         variant: 'secondary',
         severity: 'medium',
