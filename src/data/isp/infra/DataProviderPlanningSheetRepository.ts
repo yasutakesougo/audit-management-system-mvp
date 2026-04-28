@@ -30,6 +30,13 @@ import {
 } from '@/data/isp/mapper';
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 
+const warnedEssentialMissing = new Set<string>();
+
+/** @internal - For testing only */
+export function __resetPlanningSheetWarningCache(): void {
+  warnedEssentialMissing.clear();
+}
+
 /**
  * DataProviderPlanningSheetRepository — 第2層 SupportPlanningSheet_Master
  */
@@ -62,7 +69,8 @@ export class DataProviderPlanningSheetRepository implements PlanningSheetReposit
         essentials: PLANNING_SHEET_ESSENTIALS as unknown as string[],
       });
 
-      if (!isHealthy) {
+      if (!isHealthy && !warnedEssentialMissing.has(this.listTitle)) {
+        warnedEssentialMissing.add(this.listTitle);
         console.warn(`[DataProviderPlanningSheetRepository] Essential fields missing in ${this.listTitle}.`);
       }
 
