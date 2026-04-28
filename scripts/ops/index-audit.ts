@@ -2,25 +2,29 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // --- 1. Load Env FIRST ---
-function loadEnvLocal() {
-  const envPath = path.resolve(process.cwd(), '.env.local');
-  if (fs.existsSync(envPath)) {
-    const content = fs.readFileSync(envPath, 'utf8');
-    content.split('\n').forEach(line => {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) return;
-      const [rawKey, ...rest] = trimmed.split('=');
-      const key = rawKey.trim();
-      if (key && rest.length > 0) {
-        const val = rest.join('=').trim().replace(/^["']|["']$/g, '');
-        if (!process.env[key]) {
+function loadEnv() {
+  const root = process.cwd();
+  const envFiles = ['.env', '.env.local'];
+  
+  for (const file of envFiles) {
+    const envPath = path.resolve(root, file);
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf8');
+      content.split('\n').forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) return;
+        const [rawKey, ...rest] = trimmed.split('=');
+        const key = rawKey.trim();
+        if (key && rest.length > 0) {
+          const val = rest.join('=').trim().replace(/^["']|["']$/g, '');
+          // local overrides base .env
           process.env[key] = val;
         }
-      }
-    });
+      });
+    }
   }
 }
-loadEnvLocal();
+loadEnv();
 
 type IndexPressureStatus = 'missing_index' | 'indexed_with_drift' | 'indexed';
 type IndexPressureSeverity = 'ok' | 'watch' | 'action_required' | 'critical';
@@ -115,7 +119,19 @@ async function main() {
     process.exit(1);
   }
 
-  const config = ensureConfig();
+  let config;
+  try {
+    config = ensureConfig();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (isJson) {
+      console.log(JSON.stringify({ error: `Config failed: ${msg}` }));
+    } else {
+      console.error(`❌ Configuration error: ${msg}`);
+    }
+    process.exit(1);
+  }
+
   const apiBaseUrl = config.baseUrl;
   if (!isJson) {
     console.log("--- SharePoint Index Governance Audit (Drift-Aware Mode) ---");

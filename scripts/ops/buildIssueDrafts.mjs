@@ -259,6 +259,47 @@ function buildUntestedFeatureDrafts(untestedFeatures) {
   ];
 }
 
+/**
+ * Orchestration Health → Issue Draft
+ */
+function buildOrchestrationDrafts(orchestrationResults) {
+  if (!orchestrationResults || orchestrationResults.score >= 95) return [];
+
+  const sev = orchestrationResults.score < 80 ? 'critical' : 'high';
+  
+  return [
+    {
+      title: `[${sev}] [orchestration] Business Execution Health regression (${orchestrationResults.score}%)`,
+      severity: sev,
+      category: 'orchestration-health',
+      summary: [
+        '## Orchestration Health Regression',
+        '',
+        `- Overall Score: **${orchestrationResults.score}%**`,
+        `- Status: **${orchestrationResults.status}**`,
+        `- Open Failures: **${orchestrationResults.openCount || 0}**`,
+      ].join('\n'),
+      rationale: [
+        'ビジネスロジックの実行（Orchestration / Action Engine）で失敗が発生しています。',
+        'これらは現場でのデータ登録失敗や不整合に直結するリスクがあります。',
+        'nightly patrol / orchestration audit で検知。',
+      ].join('\n'),
+      targetFiles: ['src/lib/orchestration/'],
+      proposal: [
+        '1. `TelemetryDashboard` で直近の失敗内容を確認',
+        '2. 特に頻発している Action のエラー原因を特定し修正',
+        '3. 現場で発生した未解決エラーについて、解消記録（Resolved Audit）を実施',
+      ],
+      acceptanceCriteria: [
+        'Orchestration Health Score が 95% 以上に復帰すること',
+        '未解決 (Open) の Failure カウントが 0 になること',
+      ],
+      labels: ['orchestration', 'nightly-patrol', 'business-health', `priority-${sev}`],
+      fingerprint: 'orchestration:health-regression',
+    },
+  ];
+}
+
 // ─── Phase B-2 Draft Builders ───────────────────────────────────────────────
 
 /**
@@ -451,54 +492,67 @@ function buildContractDriftDrafts(contractResults) {
  */
 function buildIndexPressureDrafts(indexResults) {
   const targetResults = indexResults.filter((r) =>
-    ['action_required', 'critical'].includes(r.severity)
+    ['action_required', 'critical'].includes(r.severity) || r.status === 'FAIL'
   );
 
-  return targetResults.map((r) => ({
-    title: `[${r.severity}] [index-pressure] ${r.listKey}.${r.fieldName} index missing`,
-    severity: r.severity === 'critical' ? 'critical' : 'high',
-    category: 'index-pressure',
-    summary: [
-      '## Index Pressure Detected',
-      '',
-      `- List: ${r.listKey}`,
-      `- Field: ${r.fieldName}`,
-      `- Severity: ${r.severity}`,
-      `- Fingerprint: ${r.fingerprint}`,
-    ].join('\n'),
-    rationale: [
-      'SharePoint リストのクエリ性能が悪化し、スロットリングやタイムアウトのリスクがあります。',
-      '特にフィルタリングやソートに使用されるカラムはインデックス化が必須です。',
-      'nightly patrol / index-audit で検知。',
-    ].join('\n'),
-    targetFiles: [`sharepoint/lists/${r.listKey}`],
-    proposal: [
-      '## Dry-run remediation',
-      '',
-      '```bash',
-      r.dryRunCommand || `npm run ops:index-remediate -- --list ${r.listKey} --field ${r.fieldName} --dry-run`,
-      '```',
-      '',
-      r.dryRunLog ? [
-        '## Dry-run Evidence',
-        '```text',
-        r.dryRunLog,
-        '```'
-      ].join('\n') : '',
-      '',
-      '## Suggested reviewer action',
-      '',
-      '1. 上記 dry-run を実行して影響を確認',
-      '2. インデックスの必要性を確認',
-      '3. 手動適用または次の定期メンテナンスで修復を実行',
-    ],
-    acceptanceCriteria: [
-      `\`${r.listKey}\` の \`${r.fieldName}\` がインデックス化されていること`,
-      '対象リストのインデックス数が 20 個（SharePoint上限）を超えていないこと',
-    ],
-    labels: ['index-pressure', 'nightly-patrol', 'needs-review', 'priority-high'],
-    fingerprint: r.fingerprint,
-  }));
+  return targetResults.map((r) => {
+    const severity = r.severity === 'critical' || r.status === 'FAIL' ? 'critical' : 'high';
+    
+    // Consistency check for evidence logs
+    let evidenceLog = r.dryRunLog || '';
+    if (!evidenceLog && r.remediationResults && r.remediationResults.length > 0) {
+      evidenceLog = r.remediationResults.map(res => `[${res.outcome}] ${res.message}`).join('\n');
+    }
+
+    const listId = r.listKey || r.list;
+    const fieldId = r.fieldName || (r.missingIndexes && r.missingIndexes[0]);
+
+    return {
+      title: `[${severity}] [index-pressure] ${listId}.${fieldId} index missing`,
+      severity,
+      category: 'index-pressure',
+      summary: [
+        '## Index Pressure Detected',
+        '',
+        `- List: ${listId}`,
+        `- Field: ${r.fieldName || (r.missingIndexes && r.missingIndexes.join(', '))}`,
+        `- Severity: ${r.severity || 'FAIL'}`,
+        `- Fingerprint: ${r.fingerprint || `index-pressure:${listId}:${fieldId}`}`,
+      ].join('\n'),
+      rationale: [
+        'SharePoint リストのクエリ性能が悪化し、スロットリングやタイムアウトのリスクがあります。',
+        '特にフィルタリングやソートに使用されるカラムはインデックス化が必須です。',
+        'nightly patrol / index-audit で検知。',
+      ].join('\n'),
+      targetFiles: [`sharepoint/lists/${listId}`],
+      proposal: [
+        '## Dry-run remediation',
+        '',
+        '```bash',
+        r.dryRunCommand || `npm run ops:index-remediate -- --list ${listId} --field ${fieldId} --dry-run`,
+        '```',
+        '',
+        evidenceLog ? [
+          '## Dry-run Evidence',
+          '```text',
+          evidenceLog,
+          '```'
+        ].join('\n') : '',
+        '',
+        '## Suggested reviewer action',
+        '',
+        '1. 上記 dry-run を実行して影響を確認',
+        '2. インデックスの必要性を確認',
+        '3. 手動適用または次の定期メンテナンスで修復を実行',
+      ],
+      acceptanceCriteria: [
+        `\`${listId}\` の \`${fieldId}\` がインデックス化されていること`,
+        '対象リストのインデックス数が 20 個（SharePoint上限）を超えていないこと',
+      ],
+      labels: ['index-pressure', 'nightly-patrol', 'needs-review', 'priority-high'],
+      fingerprint: r.fingerprint || `index-pressure:${listId}:${fieldId}`,
+    };
+  });
 }
 
 // ─── Main ───────────────────────────────────────────────────────────────────
@@ -527,6 +581,7 @@ export function buildIssueDrafts(patrolResults) {
     lastHandoffInfo = '',
     contractResults = [],
     indexResults = [],
+    orchestrationResults = null,
   } = patrolResults;
 
   const ledger = loadLedger();
@@ -540,6 +595,7 @@ export function buildIssueDrafts(patrolResults) {
     ...buildHandoffDraft(lastHandoffInfo),
     ...buildContractDriftDrafts(contractResults),
     ...buildIndexPressureDrafts(indexResults),
+    ...buildOrchestrationDrafts(orchestrationResults),
   ];
 
   const newDrafts = [];
