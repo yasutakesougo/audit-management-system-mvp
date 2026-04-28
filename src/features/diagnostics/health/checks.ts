@@ -94,6 +94,11 @@ function pickEnvKeys(env: Record<string, unknown>, keys: string[]) {
   return out;
 }
 
+function isEnabled(v: unknown): boolean {
+  const normalized = String(v ?? "").trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+}
+
 type SafeResult<T> = { ok: true; v: T } | { ok: false; err: string; status?: number };
 
 async function safe<T>(
@@ -269,6 +274,52 @@ export async function runHealthChecks(
           },
         })
       );
+    }
+  }
+
+  // Mock / skip mode guard:
+  // Running SharePoint health checks while login/sharepoint is bypassed causes
+  // synthetic "Mock List" and empty field responses, which produce noisy false failures.
+  {
+    const skipSharePoint = isEnabled(ctx.env["VITE_SKIP_SHAREPOINT"]);
+    const skipLogin = isEnabled(ctx.env["VITE_SKIP_LOGIN"]);
+    const demoMode = isEnabled(ctx.env["VITE_DEMO_MODE"]) || isEnabled(ctx.env["VITE_DEMO"]);
+    const e2eMode = isEnabled(ctx.env["VITE_E2E"]) || isEnabled(ctx.env["VITE_E2E_MSAL_MOCK"]);
+    const dummyClientId = String(ctx.env["VITE_MSAL_CLIENT_ID"] ?? "").trim() === "00000000-0000-0000-0000-000000000000";
+    const dummyTenantId = String(ctx.env["VITE_MSAL_TENANT_ID"] ?? "").trim().toLowerCase() === "dummy";
+
+    const flags = {
+      VITE_SKIP_SHAREPOINT: skipSharePoint,
+      VITE_SKIP_LOGIN: skipLogin,
+      VITE_DEMO_MODE: demoMode,
+      VITE_E2E: e2eMode,
+      VITE_E2E_MSAL_MOCK: isEnabled(ctx.env["VITE_E2E_MSAL_MOCK"]),
+      dummyClientId,
+      dummyTenantId,
+    };
+
+    if (skipSharePoint || skipLogin || demoMode || e2eMode || dummyClientId || dummyTenantId) {
+      results.push(
+        fail({
+          key: "config.mockOrBypassMode",
+          label: "診断モード不一致（Mock/Bypass）",
+          category: "config",
+          summary:
+            "SharePoint 実環境診断を実行できないモードです（Mock/Bypass が有効、またはダミー認証情報）。",
+          detail:
+            "VITE_SKIP_SHAREPOINT=0, VITE_SKIP_LOGIN=0, VITE_DEMO_MODE=0, VITE_E2E_MSAL_MOCK=0 に設定し、実テナントの Client/Tenant ID を設定して再実行してください。",
+          evidence: flags,
+          nextActions: [
+            {
+              kind: "copy",
+              label: "再診断前の必須設定",
+              value:
+                "VITE_SKIP_SHAREPOINT=0 / VITE_SKIP_LOGIN=0 / VITE_DEMO_MODE=0 / VITE_E2E_MSAL_MOCK=0 / VITE_MSAL_CLIENT_ID=<real-guid> / VITE_MSAL_TENANT_ID=<tenant-guid>",
+            },
+          ],
+        })
+      );
+      return results;
     }
   }
 
