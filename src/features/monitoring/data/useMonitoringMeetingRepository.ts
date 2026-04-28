@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useDataProvider } from '@/lib/data/useDataProvider';
 import { DataProviderMonitoringMeetingRepository } from './DataProviderMonitoringMeetingRepository';
+import { localMonitoringMeetingRepository } from '@/infra/localStorage/localMonitoringMeetingRepository';
 
 /**
  * useMonitoringMeetingRepository
@@ -9,9 +10,12 @@ import { DataProviderMonitoringMeetingRepository } from './DataProviderMonitorin
  * 実行時 backend (SharePoint / InMemory) の切り替えに自動対応。
  */
 export function useMonitoringMeetingRepository() {
-  const { provider } = useDataProvider();
+  const { provider, type } = useDataProvider();
 
   return useMemo(() => {
+    if (type !== 'sharepoint') {
+      return localMonitoringMeetingRepository;
+    }
     return new DataProviderMonitoringMeetingRepository(provider);
-  }, [provider]);
+  }, [provider, type]);
 }
