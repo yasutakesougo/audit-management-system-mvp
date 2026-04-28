@@ -44,7 +44,7 @@ describe('USER_BENEFIT_PROFILE_CANDIDATES — 標準名', () => {
 
   it('必須 2 フィールドがすべて解決される', () => {
     const { resolved, missing } = resolve(available);
-    expect(resolved.userId).toBe('Title');
+    expect(resolved.userId).toBe('UserID');
     expect(resolved.recipientCertNumber).toBe('RecipientCertNumber');
     expect(missing).toHaveLength(0);
   });
