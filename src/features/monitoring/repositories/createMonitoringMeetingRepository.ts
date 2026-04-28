@@ -7,6 +7,8 @@
 
 import type { MonitoringMeetingRepository } from '@/domain/isp/monitoringMeetingRepository';
 import type { UseSP } from '@/lib/spClient';
+import { useMemo } from 'react';
+import { useDataProvider } from '@/lib/data/useDataProvider';
 import { localMonitoringMeetingRepository } from '@/infra/localStorage/localMonitoringMeetingRepository';
 import { SharePointDataProvider } from '@/lib/sp/spDataProvider';
 import { DataProviderMonitoringMeetingRepository } from '../data/DataProviderMonitoringMeetingRepository';
@@ -28,19 +30,16 @@ export function createMonitoringMeetingRepository(
   return new DataProviderMonitoringMeetingRepository(provider);
 }
 
-import { useMemo } from 'react';
-import { useSP } from '@/lib/spClient';
-import { SP_ENABLED } from '@/lib/env';
-
 /**
  * React Hook: MonitoringMeetingRepository を取得する
  */
 export function useMonitoringMeetingRepository(): MonitoringMeetingRepository {
-  const spClient = useSP();
+  const { provider, type } = useDataProvider();
   return useMemo(() => {
-    // SharePoint が有効かつクライアントが存在する場合のみ SharePoint モード
-    const mode = (SP_ENABLED && spClient) ? 'sharepoint' : 'local';
-    return createMonitoringMeetingRepository(mode, { spClient });
-  }, [spClient]);
+    if (type !== 'sharepoint') {
+      return localMonitoringMeetingRepository;
+    }
+    return new DataProviderMonitoringMeetingRepository(provider);
+  }, [provider, type]);
 }
 
