@@ -60,7 +60,7 @@ export const DRIFT_LOG_CANDIDATES = {
   fieldName: ['Field_x0020_Name', 'FieldName', 'InternalName', 'ColumnName', 'FieldName0', 'cr013_fieldName'],
   detectedAt: ['Detected_x0020_At', 'DetectedAt', 'OccurredAt', 'Detected_At', 'DetectedAt0', 'cr013_detectedAt'],
   loggedAt: ['Logged_x0020_At', 'LoggedAt', 'RecordedAt', 'LoggedAt0', 'cr013_loggedAt'],
-  severity: ['Severity', 'Level', 'Status', 'Severity0', '_Level', 'cr013_severity'],
+  severity: ['Severity', 'Level', 'Status', 'Severity0', 'cr013_severity'],
   resolutionType: ['ResolutionType', 'Resolution', 'Type', 'ResolutionType0', 'cr013_resolutionType'],
   resolved: ['Resolved', 'IsResolved', 'Fixed', 'Resolved0', 'cr013_resolved'],
   driftType: ['DriftType', 'Type', 'Category', 'DriftType0', 'cr013_driftType'],

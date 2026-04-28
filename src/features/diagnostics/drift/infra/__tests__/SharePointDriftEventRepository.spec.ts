@@ -516,6 +516,36 @@ describe('SharePointDriftEventRepository', () => {
     expect(events[0].id).toBe('31');
   });
 
+  it('excludes underscore-prefixed system fields (e.g. _Level) from $select even when present in schema', async () => {
+    const getListItemsByTitle = vi.fn(async () => [] as Record<string, unknown>[]);
+
+    const repo = new SharePointDriftEventRepository({
+      createItem: vi.fn(async () => ({})),
+      updateItemByTitle: vi.fn(async () => ({})),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getListItemsByTitle: getListItemsByTitle as any,
+      // SP の DriftEventsLog_v2 では Severity 列は存在せず、組み込み hidden 列の
+      // `_Level` (OData__Level) のみが返ってくる。これを $select に乗せると 400 になる。
+      getSchema: vi.fn(async () => [
+        'List_x0020_Name',
+        'Field_x0020_Name',
+        'Detected_x0020_At',
+        'DriftType',
+        '_Level',
+        '_ModerationStatus',
+      ]),
+    });
+
+    await repo.getEvents();
+
+    expect(getListItemsByTitle).toHaveBeenCalledTimes(1);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const select = (getListItemsByTitle as any).mock.calls[0][1] as string[];
+    expect(select).not.toContain('_Level');
+    expect(select).not.toContain('_ModerationStatus');
+    expect(select).toEqual(expect.arrayContaining(['Id', 'Title']));
+  });
+
   it('uses resolved physical field when marking resolved', async () => {
     const updateItemByTitle = vi.fn(async () => ({}));
 
