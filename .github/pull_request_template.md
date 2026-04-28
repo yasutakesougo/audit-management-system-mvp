@@ -7,6 +7,11 @@
 ## Changes
 - [ ]
 
+## Touchpoints
+- [ ] Yes（該当する touchpoints を更新した）
+- [ ] No（画面仕様変更なし / 更新不要）
+- Updated files: <!-- 例: docs/runbooks/today-ops-touchpoints.md -->
+
 ## Verification
 - [ ] Required checks are green
 - [ ] (If relevant) Smoke E2E passed
