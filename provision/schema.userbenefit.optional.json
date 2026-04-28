@@ -1,0 +1,27 @@
+{
+  "lists": [
+    {
+      "title": "UserBenefit_Profile",
+      "fields": [
+        {
+          "displayName": "RecipientCertExpiry",
+          "internalName": "RecipientCertExpiry",
+          "type": "DateTime",
+          "required": false
+        },
+        {
+          "displayName": "DisabilitySupportLevel",
+          "internalName": "DisabilitySupportLevel",
+          "type": "Text",
+          "required": false
+        },
+        {
+          "displayName": "GrantedDaysPerMonth",
+          "internalName": "GrantedDaysPerMonth",
+          "type": "Text",
+          "required": false
+        }
+      ]
+    }
+  ]
+}
