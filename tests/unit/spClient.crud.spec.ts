@@ -179,7 +179,7 @@ describe('createSpClient CRUD helpers', () => {
     await client.listItems("/lists/getbytitle('Announcements')", { top: 3 });
 
     const [url] = fetchMock.mock.calls[0] ?? [];
-  expect(String(url)).toBe("https://contoso.sharepoint.com/sites/demo/_api/web/lists/getbytitle('Announcements')/items?%24top=3");
+  expect(String(url)).toBe("https://contoso.sharepoint.com/sites/demo/_api/web/lists/getbytitle('Announcements')/items?%24orderby=ID+asc&%24top=3");
   });
 
   it('listItems normalizes SharePoint list identifiers lacking a leading slash', async () => {
@@ -192,7 +192,7 @@ describe('createSpClient CRUD helpers', () => {
     await client.listItems("lists/getbytitle('Announcements')", { top: 2 });
 
     const [url] = fetchMock.mock.calls[0] ?? [];
-  expect(String(url)).toBe("https://contoso.sharepoint.com/sites/demo/_api/web/lists/getbytitle('Announcements')/items?%24top=2");
+  expect(String(url)).toBe("https://contoso.sharepoint.com/sites/demo/_api/web/lists/getbytitle('Announcements')/items?%24orderby=ID+asc&%24top=2");
   });
 
   it('listItems resolves GUID style identifiers into lists(guid)', async () => {
@@ -206,7 +206,7 @@ describe('createSpClient CRUD helpers', () => {
     await client.listItems(guid, { top: 1 });
 
     const [url] = fetchMock.mock.calls[0] ?? [];
-  expect(String(url)).toBe("https://contoso.sharepoint.com/sites/demo/_api/web/lists(guid'123e4567-e89b-12d3-a456-426614174000')/items?%24top=1");
+  expect(String(url)).toBe("https://contoso.sharepoint.com/sites/demo/_api/web/lists(guid'123e4567-e89b-12d3-a456-426614174000')/items?%24orderby=ID+asc&%24top=1");
   });
 
   it('listItems rejects blank identifiers with a descriptive error', async () => {
