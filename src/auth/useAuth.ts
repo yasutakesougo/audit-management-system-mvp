@@ -1,6 +1,8 @@
 
 import type { IPublicClientApplication } from '@azure/msal-browser';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { isDebugFlag } from '../lib/debugFlag';
+import { auditLog } from '../lib/debugLogger';
 import { getAppConfig, isE2eMsalMockEnabled, shouldSkipLogin } from '../lib/env';
 import { clearRuntimeListReady } from '../lib/listReadyRuntime';
 import { createE2EMsalAccount, persistMsalToken } from '../lib/msal';
@@ -30,9 +32,9 @@ const NOOP_SIGN_OUT = () => Promise.resolve();
 const NOOP_ACQUIRE_TOKEN = () => Promise.resolve(null as string | null);
 
 const authConfig = getAppConfig();
-const debugEnabled = authConfig.VITE_AUDIT_DEBUG === '1' || authConfig.VITE_AUDIT_DEBUG === 'true';
+const debugEnabled = isDebugFlag(authConfig.VITE_AUDIT_DEBUG);
 function debugLog(...args: unknown[]) {
-  if (debugEnabled) console.debug('[auth]', ...args);
+  auditLog.debug('auth', '[auth]', ...args);
 }
 
 type BasicAccountInfo = {
@@ -52,7 +54,7 @@ const ensureActiveAccount = (instance: IPublicClientApplication) => {
       account = firstAccount;
       if (authConfig.isDev) {
         const accountLabel = firstAccount.username ?? firstAccount.homeAccountId ?? '(unknown account)';
-        console.info('[MSAL] Active account auto-set:', accountLabel);
+        auditLog.debug('auth', '[MSAL] Active account auto-set:', accountLabel);
       }
     }
   }
@@ -217,9 +219,7 @@ export const useAuth = () => {
     const allAccounts = current.instance.getAllAccounts() as BasicAccountInfo[];
     const activeAccount = ensureActiveAccount(current.instance) ?? (allAccounts[0] as BasicAccountInfo | undefined) ?? null;
     if (!activeAccount) {
-      if (debugEnabled) {
-        console.log('[auth-skip] acquireToken skipped: no active account (user likely not logged in)');
-      }
+      auditLog.debug('auth', '[auth-skip] acquireToken skipped: no active account (user likely not logged in)');
       reportSpHealthEvent({
         severity: 'watch',
         reasonCode: 'sp_auth_failed',
@@ -238,15 +238,13 @@ export const useAuth = () => {
     }
     totalRequestsInWindow += 1;
 
-    // 🔍 Debug logging
-    if (totalRequestsInWindow <= 5 || debugEnabled) {
-      console.log('[auth-debug] acquireToken MSAL call', {
-        callNumber: totalRequestsInWindow,
-        resource: targetResource.slice(-30),
-        inProgress: msalStateRef.current.inProgress,
-        hasAccount: true,
-      });
-    }
+    // 🔍 Debug logging — gated by VITE_AUDIT_DEBUG via auditLog.debug
+    auditLog.debug('auth', '[auth-debug] acquireToken MSAL call', {
+      callNumber: totalRequestsInWindow,
+      resource: targetResource.slice(-30),
+      inProgress: msalStateRef.current.inProgress,
+      hasAccount: true,
+    });
 
     if (totalRequestsInWindow > MAX_REQUESTS_PER_WINDOW) {
       console.warn('[auth] Rate limit exceeded! Throttling token acquisition to break infinite loop.');

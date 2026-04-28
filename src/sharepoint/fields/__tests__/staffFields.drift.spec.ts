@@ -49,8 +49,10 @@ describe('STAFF_MASTER_CANDIDATES drift', () => {
   });
 
   it('必須フィールド (staffId, fullName, rbacRole, isActive) が揃えば isHealthy=true', () => {
+    // JobTitle must be present so that `jobTitle` candidates resolve to 'JobTitle'
+    // and don't consume 'Role' (which is needed by the `role` essential).
     const available = new Set([
-      'StaffID', 'FullName', 'Role', 'RBACRole', 'IsActive', 'Department'
+      'StaffID', 'FullName', 'JobTitle', 'Role', 'RBACRole', 'IsActive', 'Department'
     ]);
     const { resolved } = resolveInternalNamesDetailed(
       available,

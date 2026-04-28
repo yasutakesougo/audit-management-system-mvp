@@ -12,6 +12,7 @@
 
 import { useAuth } from '@/auth/useAuth';
 import type { UnifiedResourceEvent } from '@/features/resources/types';
+import { isDebugFlag } from '@/lib/debugFlag';
 import { getAppConfig, readEnv, type EnvRecord } from '@/lib/env';
 import { useMemo } from 'react';
 
@@ -68,7 +69,7 @@ export function createSpClient(
     baseDelay: Number(config.VITE_SP_RETRY_BASE_MS) || 400,
     capDelay: Number(config.VITE_SP_RETRY_MAX_DELAY_MS) || 5000,
   } as const;
-  const debugEnabled = !!config.VITE_AUDIT_DEBUG;
+  const debugEnabled = isDebugFlag(config.VITE_AUDIT_DEBUG);
 
   // ── Path normalizer ──
   const normalizePath = createNormalizePath(envRecord, spSiteLegacy, baseUrl);

@@ -5,6 +5,7 @@
  * All functions accept `SpFetchFn` + `NormalizePathFn` via closure injection.
  */
 
+import { isDebugFlag } from '@/lib/debugFlag';
 import { auditLog } from '@/lib/debugLogger';
 import { readEnv } from '@/lib/env';
 
@@ -124,7 +125,7 @@ export async function listItems<TRow = JsonRecord>(
   const query = params.toString();
   const initialPath = query ? `${basePath}/items?${query}` : `${basePath}/items`;
 
-  const AUDIT_DEBUG = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
+  const AUDIT_DEBUG = isDebugFlag(readEnv('VITE_AUDIT_DEBUG', ''));
   if (AUDIT_DEBUG) {
     auditLog.debug('sp:read', 'list_items_start', { path: initialPath });
   }

@@ -1,4 +1,5 @@
 import { motionTokens } from '@/app/theme';
+import { isDebugFlag } from '@/lib/debugFlag';
 import { env } from '@/lib/env';
 import { translateZodIssue } from '@/lib/zodErrorUtils';
 import CloseIcon from '@mui/icons-material/Close';
@@ -42,7 +43,7 @@ const DataIntegrityAlert: React.FC<DataIntegrityAlertProps> = ({
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
-  const isDebugMode = env.VITE_AUDIT_DEBUG;
+  const isDebugMode = isDebugFlag(env.VITE_AUDIT_DEBUG);
   const issueCount = error.issues.length;
 
   const handleCopy = useCallback(async () => {

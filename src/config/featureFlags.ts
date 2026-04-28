@@ -151,9 +151,11 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
 
   if (isAutomationEnv) {
     // In automation, honor explicit env overrides when provided (needed for flag-off E2E scenarios).
-    // If no explicit override, default to true for schedules, and default PDCA off.
+    // If no explicit override, default to true for schedules/staffAttendance, and default PDCA off.
     const schedules = explicitSchedules ? readBool('VITE_FEATURE_SCHEDULES', true, envOverride) : true;
     const icebergPdca = explicitIcebergPdca ? readBool('VITE_FEATURE_ICEBERG_PDCA', false, envOverride) : false;
+    const explicitStaffAttendance = hasExplicitBoolEnv('VITE_FEATURE_STAFF_ATTENDANCE', envOverride);
+    const staffAttendance = explicitStaffAttendance ? readBool('VITE_FEATURE_STAFF_ATTENDANCE', false, envOverride) : true;
     const explicitTodayOps = hasExplicitBoolEnv('VITE_FEATURE_TODAY_OPS', envOverride);
     const todayOps = explicitTodayOps ? readBool('VITE_FEATURE_TODAY_OPS', false, envOverride) : true;
     const explicitTodayLiteUi = hasExplicitBoolEnv('VITE_FEATURE_TODAY_LITE_UI', envOverride);
@@ -165,6 +167,7 @@ export const resolveFeatureFlags = (envOverride?: EnvRecord): FeatureFlagSnapsho
       ...baseSnapshot,
       schedules,
       icebergPdca,
+      staffAttendance,
       todayOps,
       todayLiteUi,
       todayLiteNavV2,

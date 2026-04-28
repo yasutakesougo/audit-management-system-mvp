@@ -5,6 +5,7 @@
  * All functions accept `SpFetchFn` via explicit parameter injection.
  */
 
+import { isDebugFlag } from '@/lib/debugFlag';
 import { auditLog } from '@/lib/debugLogger';
 import { readEnv } from '@/lib/env';
 
@@ -141,7 +142,7 @@ export async function getListFieldInternalNames(
   baseUrl: string,
   listTitle: string,
 ): Promise<Set<string>> {
-  const debug = String(readEnv('VITE_AUDIT_DEBUG', '')) === '1';
+  const debug = isDebugFlag(readEnv('VITE_AUDIT_DEBUG', ''));
   const siteUrl = baseUrl;
   const cacheKey = makeFieldsCacheKey(siteUrl, listTitle);
 
