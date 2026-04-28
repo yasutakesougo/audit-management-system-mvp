@@ -458,4 +458,100 @@ describe('nightly-decision reason codes', () => {
       cleanupDates([date, prev1, prev2]);
     }
   });
+
+  it('raw URL 未設定（not configured）の場合は MISSING reason code を発火しない', () => {
+    const date = '2100-01-12';
+    const dir = mkTmpDir();
+    const logPath = path.join(dir, 'nightly.log');
+    const adminSummaryPath = path.join(dir, 'admin-not-configured.json');
+    const exceptionSummaryPath = path.join(dir, 'exception-not-configured.json');
+
+    writeRequiredInputs(date, 'stable');
+    writeFileSync(logPath, '', 'utf8');
+
+    // Simulate export output when raw URL is not configured:
+    // missingInput=true + source.exists=false + source.error=null
+    writeFileSync(adminSummaryPath, JSON.stringify({
+      overall: 'unknown',
+      failCount: 0,
+      warnCount: 0,
+      missingInput: true,
+      source: { path: null, exists: false, error: null },
+    }), 'utf8');
+    writeFileSync(exceptionSummaryPath, JSON.stringify({
+      highSeverityCount: 0,
+      overdueCount: 0,
+      staleExceptionCount: 0,
+      recurringExceptionCount: 0,
+      missingInput: true,
+      source: { path: null, exists: false, error: null },
+    }), 'utf8');
+
+    try {
+      runDecision(date, {
+        ADMIN_STATUS_SUMMARY_PATH: adminSummaryPath,
+        EXCEPTION_CENTER_SUMMARY_PATH: exceptionSummaryPath,
+        LOG_FILE: logPath,
+      });
+
+      const result = readDecision(date);
+      // Should NOT contain MISSING codes
+      expect(result.reasonCodes.warn).not.toEqual(
+        expect.arrayContaining(['ADMIN_STATUS_SUMMARY_MISSING']),
+      );
+      expect(result.reasonCodes.warn).not.toEqual(
+        expect.arrayContaining(['EXCEPTION_CENTER_SUMMARY_MISSING']),
+      );
+      // Should be stable (no warn/fail from these sources)
+      expect(result.final.label).toBe('stable');
+    } finally {
+      cleanupDateArtifacts(date);
+    }
+  });
+
+  it('raw URL 設定済みで fetch 失敗した場合は従来通り MISSING を発火する', () => {
+    const date = '2100-01-13';
+    const dir = mkTmpDir();
+    const logPath = path.join(dir, 'nightly.log');
+    const adminSummaryPath = path.join(dir, 'admin-broken.json');
+    const exceptionSummaryPath = path.join(dir, 'exception-broken.json');
+
+    writeRequiredInputs(date, 'stable');
+    writeFileSync(logPath, '', 'utf8');
+
+    // Simulate export output when raw URL is set but fetch failed:
+    // missingInput=true + source.exists=false + source.error="HTTP 500: ..."
+    writeFileSync(adminSummaryPath, JSON.stringify({
+      overall: 'unknown',
+      failCount: 0,
+      warnCount: 0,
+      missingInput: true,
+      source: { path: '/tmp/admin-raw.json', exists: false, error: 'HTTP 500: Internal Server Error' },
+    }), 'utf8');
+    writeFileSync(exceptionSummaryPath, JSON.stringify({
+      highSeverityCount: 0,
+      overdueCount: 0,
+      staleExceptionCount: 0,
+      recurringExceptionCount: 0,
+      missingInput: true,
+      source: { path: '/tmp/exception-raw.json', exists: false, error: 'HTTP 500: Internal Server Error' },
+    }), 'utf8');
+
+    try {
+      runDecision(date, {
+        ADMIN_STATUS_SUMMARY_PATH: adminSummaryPath,
+        EXCEPTION_CENTER_SUMMARY_PATH: exceptionSummaryPath,
+        LOG_FILE: logPath,
+      });
+
+      const result = readDecision(date);
+      // SHOULD contain MISSING codes because fetch actually failed
+      expect(result.reasonCodes.warn).toEqual(
+        expect.arrayContaining(['ADMIN_STATUS_SUMMARY_MISSING', 'EXCEPTION_CENTER_SUMMARY_MISSING']),
+      );
+      assertReasonCodeActions(result);
+    } finally {
+      cleanupDateArtifacts(date);
+    }
+  });
 });
