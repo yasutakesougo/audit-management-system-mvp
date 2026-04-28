@@ -158,7 +158,7 @@ export const PlanningSheetListView: React.FC<PlanningSheetListViewProps> = ({
                 onClick={() => handlers.onOpenIceberg(userId!)}
                 sx={{ fontWeight: 600 }}
               >
-                詳細を見る
+                氷山分析を開く
               </Button>
               {(() => {
                 const currentSheet = sheets.find(s => s.isCurrent);

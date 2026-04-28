@@ -242,10 +242,10 @@ describe('buildCorrectiveActions', () => {
       expect(primary.icon).toBe('📋');
     });
 
-    it('secondary: 利用者の詳細を見る / severity は medium', () => {
+    it('secondary: 利用者ハブを開く / severity は medium', () => {
       const item = makeAttentionUser('U-004');
       const secondary = buildCorrectiveActions(item).find((a) => a.variant === 'secondary')!;
-      expect(secondary.label).toBe('利用者の詳細を見る');
+      expect(secondary.label).toBe('利用者ハブを開く');
       expect(secondary.severity).toBe('medium');
       expect(secondary.route).toContain('U-004');
     });
