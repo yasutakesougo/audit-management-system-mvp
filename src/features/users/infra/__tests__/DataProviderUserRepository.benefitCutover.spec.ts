@@ -25,7 +25,7 @@ describe('DataProviderUserRepository — benefit cutover overlay', () => {
 
   beforeEach(() => {
     provider = new InMemoryDataProvider();
-    repo = new DataProviderUserRepository({ provider });
+    repo = new DataProviderUserRepository({ provider, listTitle: 'Users_Master' });
   });
 
   // ── CUTOVER STEP 1: dual-write ──────────────────────────────────────────

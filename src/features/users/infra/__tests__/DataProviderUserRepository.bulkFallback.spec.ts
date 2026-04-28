@@ -68,7 +68,7 @@ describe('DataProviderUserRepository — bulk vs fallback semantics', () => {
   beforeEach(() => {
     process.env.VITE_USER_BENEFIT_PROFILE_CUTOVER_STAGE = 'WRITE_CUTOVER';
     provider = new InMemoryDataProvider();
-    repo = new DataProviderUserRepository({ provider });
+    repo = new DataProviderUserRepository({ provider, listTitle: 'Users_Master' });
   });
 
   it('falls back to chunked per-user fetch only when ALL 3 accessory lists fail', async () => {
@@ -130,7 +130,7 @@ describe('DataProviderUserRepository — bulk vs fallback semantics', () => {
     // Bulk path: all 3 lists succeed.
     const bulkProvider = new InMemoryDataProvider();
     const users = await seedDataset(bulkProvider, 5);
-    const bulkRepo = new DataProviderUserRepository({ provider: bulkProvider });
+    const bulkRepo = new DataProviderUserRepository({ provider: bulkProvider, listTitle: 'Users_Master' });
     const bulkResult = await bulkRepo.getAll({ selectMode: 'detail' });
 
     // Chunked fallback: replicate the same dataset but force ALL accessory bulk
@@ -138,7 +138,7 @@ describe('DataProviderUserRepository — bulk vs fallback semantics', () => {
     // per-user filtered reads → same semantics as the legacy enrichUser path).
     const chunkProvider = new InMemoryDataProvider();
     await seedDataset(chunkProvider, 5);
-    const chunkRepo = new DataProviderUserRepository({ provider: chunkProvider });
+    const chunkRepo = new DataProviderUserRepository({ provider: chunkProvider, listTitle: 'Users_Master' });
 
     const original = chunkProvider.listItems.bind(chunkProvider);
     chunkProvider.listItems = (async (resource: string, options?: DataProviderOptions) => {
