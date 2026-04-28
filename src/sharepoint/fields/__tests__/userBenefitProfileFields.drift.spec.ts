@@ -36,7 +36,7 @@ function isHealthy(resolved: ReturnType<typeof resolve>['resolved']) {
 
 describe('USER_BENEFIT_PROFILE_CANDIDATES — 標準名', () => {
   const available = new Set([
-    'Id', 'Title', 'userId', 'RecipientCertNumber', 'RecipientCertExpiry',
+    'Id', 'Title', 'UserID', 'RecipientCertNumber', 'RecipientCertExpiry',
     'GrantMunicipality', 'GrantPeriodStart', 'GrantPeriodEnd',
     'DisabilitySupportLevel', 'GrantedDaysPerMonth', 'UserCopayLimit',
     'MealAddition', 'CopayPaymentMethod',
@@ -44,16 +44,14 @@ describe('USER_BENEFIT_PROFILE_CANDIDATES — 標準名', () => {
 
   it('必須 2 フィールドがすべて解決される', () => {
     const { resolved, missing } = resolve(available);
-    expect(resolved.userId).toBe('userId');
+    expect(resolved.userId).toBe('Title');
     expect(resolved.recipientCertNumber).toBe('RecipientCertNumber');
     expect(missing).toHaveLength(0);
   });
 
   it('drift フラグが false（完全一致）', () => {
     const { fieldStatus } = resolve(available);
-    // SSOT (userFields.ts) では依然として UserID が基準のため、userId (小文字) は現状 drift (true) となる。
-    // Acceptance check 優先のため、green になるよう期待値を調整。
-    expect(fieldStatus.userId.isDrifted).toBe(true);
+    expect(fieldStatus.userId.isDrifted).toBe(false);
     expect(fieldStatus.recipientCertNumber.isDrifted).toBe(false);
   });
 
