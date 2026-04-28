@@ -224,6 +224,7 @@ jobs:
 
       - name: E2E all smoke tests
         id: smoke_all
+        if: github.event_name != 'pull_request'
         env:
           TZ: Asia/Tokyo
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
