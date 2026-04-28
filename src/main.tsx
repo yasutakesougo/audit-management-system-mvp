@@ -1,4 +1,5 @@
 import { clearEnvCache, getRuntimeEnv, isDev } from '@/env';
+import { shouldSkipLogin } from '@/lib/env';
 import { isDebugFlag } from '@/lib/debugFlag';
 import { guardProdMisconfig } from '@/lib/envGuards';
 import '@/styles/kiosk.css';
@@ -170,7 +171,8 @@ const run = async (): Promise<void> => {
     });
 
   // ✅ Step 2: Initialize MSAL singleton + handle redirect BEFORE Firebase init
-  if (hasWindow) {
+  // Skip entirely in demo/skip-login modes to avoid unnecessary AAD initialization.
+  if (hasWindow && !shouldSkipLogin()) {
     const hasAuthResponse = (): boolean => {
       const { hash, search } = window.location;
       return hash.includes('code=') || hash.includes('state=') || search.includes('code=') || search.includes('state=');
@@ -272,6 +274,9 @@ const run = async (): Promise<void> => {
       window.location.replace(redirectAfterAuth);
       return;
     }
+  } else if (hasWindow) {
+    window.__MSAL_REDIRECT_DONE__ = true;
+    console.info('[msal] skipped initialization (skip-login/demo mode)');
   }
 
   // ✅ Step 2.5: Initialize Firebase Auth AFTER MSAL redirect completes (so accounts:1)
