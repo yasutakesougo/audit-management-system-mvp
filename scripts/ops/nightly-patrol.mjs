@@ -652,7 +652,8 @@ const patrolResults = {
   todoHits, 
   lastHandoffInfo,
   contractResults: contractDriftSummary?.results || [],
-  indexResults: indexPressureSummary?.results || indexPressureResults || []
+  indexResults: indexPressureSummary?.results || indexPressureResults || [],
+  orchestrationResults: orchestrationAuditSummary
 };
 
 // --- Phase C-1: Structured PatrolResult for JSON + classify pipeline ---
@@ -711,21 +712,33 @@ console.log(`📊 JSON written: docs/nightly-patrol/${stamp}.json`);
 
 // --- Phase B.5: Index Dry-run Capture (Evidence for C-1) ---
 
-if (indexPressureSummary && indexPressureSummary.results?.length > 0) {
-  console.log('🧪 Capturing dry-run evidence for index pressure...');
-  for (const r of indexPressureSummary.results) {
-    if (['action_required', 'critical'].includes(r.severity)) {
+const allIndexResults = indexPressureSummary?.results || indexPressureResults || [];
+if (allIndexResults.length > 0) {
+  const needsEvidence = allIndexResults.filter(r => 
+    ['action_required', 'critical'].includes(r.severity) || r.status === 'FAIL'
+  );
+
+  if (needsEvidence.length > 0) {
+    console.log(`🧪 Capturing dry-run evidence for ${needsEvidence.length} index pressure issues...`);
+    for (const r of needsEvidence) {
+      const listKey = r.listKey || r.list;
+      const fieldName = r.fieldName || (r.missingIndexes && r.missingIndexes[0]);
+      if (!listKey || !fieldName) continue;
+
       try {
-        const cmd = `npm run ops:index-remediate -- --list ${r.listKey} --field ${r.fieldName} --dry-run`;
+        const cmd = `npm run ops:index-remediate -- --list ${listKey} --field ${fieldName} --dry-run`;
         const log = execSync(cmd, { encoding: 'utf8', env: { ...process.env, CI: 'true' } });
         r.dryRunLog = log;
       } catch (err) {
         r.dryRunLog = `❌ Dry-run failed: ${err.message}`;
       }
     }
+    
+    // Re-write summary if we updated indexPressureSummary
+    if (indexPressureSummary) {
+      fs.writeFileSync(INDEX_PRESSURE_PATH, JSON.stringify(indexPressureSummary, null, 2), 'utf8');
+    }
   }
-  // Re-write summary with logs
-  fs.writeFileSync(INDEX_PRESSURE_PATH, JSON.stringify(indexPressureSummary, null, 2), 'utf8');
 }
 
 const drafts = buildIssueDrafts(patrolResults);
