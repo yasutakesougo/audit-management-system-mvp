@@ -8,6 +8,7 @@
 - [TodayOpsPage Touchpoints](./today-ops-touchpoints.md)
 - [DailyRecordPage Touchpoints](./daily-record-touchpoints.md)
 - [CallLogPage Touchpoints](./call-log-touchpoints.md)
+- [HandoffTimelinePage Touchpoints](./handoff-touchpoints.md)
 
 ## Template
 
@@ -52,3 +53,4 @@
 - 新しい touchpoints を追加するときは `page-touchpoints-template.md` を使う。
 - 1画面につき1ファイルで管理する。
 - 関連PRを必ず記載し、変更履歴を追えるようにする。
+- 画面仕様を変更したPRでは、該当 touchpoints を同PRで更新する。
