@@ -227,6 +227,32 @@ function isSystemField(internalName) {
   return false;
 }
 
+// ── Churn Suppression ─────────────────────────────────────────────────────
+
+/**
+ * Fields that represent meaningful structural state of a ledger row.
+ * If none of these change between runs, we keep the previous `lastSeenAt`
+ * to avoid noisy git diffs (688+ line churn from timestamp-only updates).
+ */
+const STRUCTURAL_FIELDS = [
+  'driftType', 'usageCount', 'hasData', 'isIndexed',
+  'classification', 'confidence', 'evidence',
+  'fieldId', 'expectedField', 'actualField', 'candidatesMatched',
+];
+
+/**
+ * Returns true if any structural field differs between the previous CSV row
+ * (string values from parsed CSV) and the current in-memory row.
+ */
+function hasStructuralChange(prev, current) {
+  for (const field of STRUCTURAL_FIELDS) {
+    const prevVal = String(prev[field] ?? '');
+    const curVal  = String(current[field] ?? '');
+    if (prevVal !== curVal) return true;
+  }
+  return false;
+}
+
 // ── Main Execution ───────────────────────────────────────────────────────
 
 async function main() {
@@ -358,7 +384,9 @@ async function main() {
     }
   }
 
-  // 3. Load Existing Ledger for Persistence (firstSeenAt)
+  // 3. Load Existing Ledger for Persistence (firstSeenAt + churn suppression)
+  //    We store full previous rows so we can compare structural fields and
+  //    only bump lastSeenAt when something actually changed.
   const existingLedgerPath = join(OUT_DIR, 'drift-ledger.csv');
   const persistenceMap = new Map();
   if (existsSync(existingLedgerPath)) {
@@ -367,11 +395,10 @@ async function main() {
       const prevLines = prevContent.split('\n').filter(Boolean);
       if (prevLines.length > 1) {
         const prevHeaders = prevLines[0].split(',').map(h => h.replace(/"/g, ''));
-        const fstIdx = prevHeaders.indexOf('firstSeenAt');
         const listIdx = prevHeaders.indexOf('listKey');
         const nameIdx = prevHeaders.indexOf('internalName');
         
-        if (fstIdx !== -1 && listIdx !== -1 && nameIdx !== -1) {
+        if (listIdx !== -1 && nameIdx !== -1) {
           prevLines.slice(1).forEach(line => {
             const parts = [];
             let current = '';
@@ -384,7 +411,10 @@ async function main() {
             }
             parts.push(current);
             const key = `${parts[listIdx]}|${parts[nameIdx]}`;
-            persistenceMap.set(key, parts[fstIdx]);
+            // Store full row as a header→value object
+            const rowObj = {};
+            prevHeaders.forEach((h, idx) => { rowObj[h] = parts[idx]; });
+            persistenceMap.set(key, rowObj);
           });
         }
       }
@@ -394,8 +424,11 @@ async function main() {
   const now = new Date().toISOString();
   const ledgerWithPersistence = ledgerRows.map(r => {
     const key = `${r.listKey}|${r.internalName}`;
-    const firstSeenAt = persistenceMap.get(key) || now;
-    return { ...r, firstSeenAt, lastSeenAt: now };
+    const prev = persistenceMap.get(key);
+    const firstSeenAt = prev?.firstSeenAt || now;
+    // Only bump lastSeenAt when structural fields have actually changed
+    const lastSeenAt = (prev && !hasStructuralChange(prev, r)) ? prev.lastSeenAt : now;
+    return { ...r, firstSeenAt, lastSeenAt };
   });
 
   // 4. Classify and Format
