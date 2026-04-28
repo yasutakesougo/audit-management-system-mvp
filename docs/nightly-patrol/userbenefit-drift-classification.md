@@ -32,9 +32,9 @@ Related: #1632
 | DisabilitySupportLevel | optional_missing | optional_missing_or_provision_candidate | Missing in SharePoint | Provision |
 | GrantedDaysPerMonth | optional_missing | optional_missing_or_provision_candidate | Missing in SharePoint | Provision |
 | LinkTitle2 | zombie_candidate (usage: 0) | zombie_cleanup_candidate | SharePoint internal | Purge |
-| SelectTitle | zombie_candidate (usage: 1) | accepted_alias | System field | Review usage |
-| Last_x0020_Modified | zombie_candidate (usage: 1) | accepted_alias | System field | Review usage |
-| Created_x0020_Date | zombie_candidate (usage: 1) | accepted_alias | System field | Review usage |
+| SelectTitle | zombie_candidate (usage: 1) | ignored_system | SharePoint computed system field (`SP_SYSTEM_FIELDS`) | Ignore in drift decisions |
+| Last_x0020_Modified | zombie_candidate (usage: 1) | ignored_system | SharePoint computed system field (`SP_SYSTEM_FIELDS`) | Ignore in drift decisions |
+| Created_x0020_Date | zombie_candidate (usage: 1) | ignored_system | SharePoint computed system field (`SP_SYSTEM_FIELDS`) | Ignore in drift decisions |
 | FSObjType | zombie_candidate (usage: 1) | accepted_alias | System field | None |
 | PermMask | zombie_candidate (usage: 0) | zombie_cleanup_candidate | System field | Purge |
 | PrincipalCount | zombie_candidate (usage: 0) | zombie_cleanup_candidate | System field | Purge |
@@ -52,13 +52,13 @@ Related: #1632
 |---|---|---|---|---|
 | Title | fuzzy_match (usage: 412) | canonical | Mapped to UserID in registry | None |
 | Recipient_x0020_Cert_x0020_Numbe | fuzzy_match (usage: 0) | accepted_alias | Mapped to RecipientCertNumber | Maintain mapping |
-| UserID | zombie_candidate (usage: 399) | accepted_alias | Redundant UserID column (Title is canonical) | Verify usage in Ext context |
+| UserID | zombie_candidate (usage: 399) | accepted_alias | Backward-compatible alias for ext join key (canonical is Title) | Keep as accepted alias |
 | Recipient_x0020_Cert_x0020_Expir | zombie_candidate (usage: 0) | zombie_cleanup_candidate | No data, no usage | Purge |
 | Disability_x0020_Support_x0020_L | zombie_candidate (usage: 0) | zombie_cleanup_candidate | No data, no usage | Purge |
 | LinkTitle2 | zombie_candidate (usage: 0) | zombie_cleanup_candidate | System field | Purge |
-| SelectTitle | zombie_candidate (usage: 1) | accepted_alias | System field | None |
-| Last_x0020_Modified | zombie_candidate (usage: 1) | accepted_alias | System field | None |
-| Created_x0020_Date | zombie_candidate (usage: 1) | accepted_alias | System field | None |
+| SelectTitle | zombie_candidate (usage: 1) | ignored_system | SharePoint computed system field (`SP_SYSTEM_FIELDS`) | Ignore in drift decisions |
+| Last_x0020_Modified | zombie_candidate (usage: 1) | ignored_system | SharePoint computed system field (`SP_SYSTEM_FIELDS`) | Ignore in drift decisions |
+| Created_x0020_Date | zombie_candidate (usage: 1) | ignored_system | SharePoint computed system field (`SP_SYSTEM_FIELDS`) | Ignore in drift decisions |
 | FSObjType | zombie_candidate (usage: 1) | accepted_alias | System field | None |
 | PermMask | zombie_candidate (usage: 0) | zombie_cleanup_candidate | System field | Purge |
 | PrincipalCount | zombie_candidate (usage: 0) | zombie_cleanup_candidate | System field | Purge |

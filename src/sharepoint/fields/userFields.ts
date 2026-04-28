@@ -181,6 +181,7 @@ const CANDIDATE_GRANTED_DAYS_PER_MONTH = ['GrantedDaysPerMonth', 'DaysPerMonth',
 const CANDIDATE_USER_COPAY_LIMIT = ['UserCopayLimit', 'CopayLimit', 'UserCopayLimit0', 'cr013_userCopayLimit'];
 const CANDIDATE_MEAL_ADDITION = ['MealAddition', 'Meal', 'MealAddition0', 'cr013_mealAddition'];
 const CANDIDATE_COPAY_PAYMENT_METHOD = ['CopayPaymentMethod', 'PaymentMethod', 'CopayPaymentMethod0', 'cr013_copayPaymentMethod'];
+const CANDIDATE_USER_BENEFIT_USER_ID = ['Title', ...CANDIDATE_USER_ID];
 
 /**
  * Users_Master リストのフィールド解除候補マップ (Drift Resistance)
@@ -356,7 +357,7 @@ export function resolveUserSelectFields(mode: UserSelectMode = 'core'): readonly
  * essentialFields (registry): ['UserID', 'RecipientCertNumber']
  */
 export const USER_BENEFIT_PROFILE_CANDIDATES = {
-  userId: [...CANDIDATE_USER_ID, 'Title'],
+  userId: CANDIDATE_USER_BENEFIT_USER_ID,
   recipientCertNumber: CANDIDATE_RECIPIENT_CERT_NUMBER,
   recipientCertExpiry: CANDIDATE_RECIPIENT_CERT_EXPIRY,
   grantMunicipality: CANDIDATE_GRANT_MUNICIPALITY,
@@ -399,7 +400,7 @@ export const USER_TRANSPORT_SETTINGS_ESSENTIALS: (keyof typeof USER_TRANSPORT_SE
 
 // ── User Benefit Profile EXT (user_benefit_profile_ext) ──
 export const USER_BENEFIT_PROFILE_EXT_CANDIDATES = {
-  userId: [...CANDIDATE_USER_ID, 'Title'],
+  userId: CANDIDATE_USER_BENEFIT_USER_ID,
   recipientCertNumber: CANDIDATE_RECIPIENT_CERT_NUMBER,
 } as const;
 
