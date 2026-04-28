@@ -94,3 +94,4 @@ sp-telemetry*.backup.json
 lane-assertion-result.json
 .token.local
 artifacts/purge-backups/
+.cleanup-audit/
