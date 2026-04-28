@@ -144,6 +144,7 @@ export const TESTIDS = {
   'schedules-nav-link': 'schedules-nav-link',
   'home-tile-schedule': 'home-tile-schedule',
   'schedules-day-page': 'schedules-day-page',
+  'schedules-day-shell': 'schedules-day-shell',
   'schedules-day-heading': 'schedules-day-heading',
   'schedules-day-list': 'schedules-day-list',
   'schedules-day-skeleton': 'schedules-day-skeleton',

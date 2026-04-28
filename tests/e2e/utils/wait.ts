@@ -78,9 +78,9 @@ export async function waitForScheduleReady(
 
   const panel =
     resolved.tab === 'day'
-      ? page.getByTestId(TESTIDS['schedules-day-page'])
+      ? page.getByTestId(TESTIDS['schedules-day-page']).first()
       : resolved.tab === 'month'
-        ? page.getByTestId(TESTIDS.SCHEDULES_MONTH_PAGE)
+        ? page.getByTestId(TESTIDS.SCHEDULES_MONTH_PAGE).first()
         : page
             .getByTestId(TESTIDS.SCHEDULES_WEEK_VIEW)
             .or(page.getByTestId(TESTIDS['schedules-week-page']));
@@ -89,7 +89,7 @@ export async function waitForScheduleReady(
 }
 
 export async function waitForDayScheduleReady(page: Page, timeout = 15_000): Promise<void> {
-  const pageRoot = page.getByTestId('schedules-day-page');
+  const pageRoot = page.getByTestId('schedules-day-page').first();
   const skeleton = page.getByTestId('schedules-day-skeleton');
   const list = page.getByTestId('schedules-day-list');
   const emptyState = page.getByTestId(TESTIDS.SCHEDULES_EMPTY_HINT);
@@ -129,7 +129,7 @@ export async function waitForDayTimeline(page: Page, timeout = 15_000): Promise<
   }
   
   // Wait for the day page container
-  await expect(page.getByTestId(TESTIDS['schedules-day-page'])).toBeVisible({ timeout });
+  await expect(page.getByTestId(TESTIDS['schedules-day-page']).first()).toBeVisible({ timeout });
 
   const dayTab = page.getByTestId(TESTIDS.SCHEDULES_WEEK_TAB_DAY).first();
   await expect(dayTab).toBeVisible({ timeout });
@@ -139,9 +139,9 @@ export async function waitForDayTimeline(page: Page, timeout = 15_000): Promise<
   }
   await expect(dayTab).toHaveAttribute('aria-selected', 'true', { timeout });
 
-  const dayPage = page.getByTestId(TESTIDS['schedules-day-page']);
+  const dayPage = page.getByTestId(TESTIDS['schedules-day-page']).first();
   const hasDayPage = await locatorExists(dayPage, 5_000);
-  const root = hasDayPage ? dayPage.first() : page.getByTestId('schedule-day-root').first();
+  const root = hasDayPage ? dayPage : page.getByTestId('schedule-day-root').first();
   await expect(root).toBeVisible({ timeout });
 }
 
