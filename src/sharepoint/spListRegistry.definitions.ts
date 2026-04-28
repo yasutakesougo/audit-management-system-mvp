@@ -793,7 +793,7 @@ export const complianceListEntries: readonly SpListEntry[] = [
       { internalName: 'FieldName', type: 'Text', displayName: 'Field Name', required: true, indexed: true, candidates: ['Field_x0020_Name', 'FieldName', 'cr013_fieldName'] },
       { internalName: 'DetectedAt', type: 'DateTime', displayName: 'Detected At', required: true, candidates: ['Detected_x0020_At', 'DetectedAt', 'cr013_detectedAt'] },
       { internalName: 'LoggedAt', type: 'DateTime', displayName: 'Logged At', candidates: ['Logged_x0020_At', 'LoggedAt', 'cr013_loggedAt'] },
-      { internalName: 'Severity', type: 'Text', displayName: 'Severity', isSilent: true, candidates: ['Severity', 'Level', '_Level', 'cr013_severity'] },
+      { internalName: 'Severity', type: 'Text', displayName: 'Severity', isSilent: true, candidates: ['Severity', 'Level', 'cr013_severity'] },
       { internalName: 'ResolutionType', type: 'Text', displayName: 'Resolution Type', isSilent: true, candidates: ['Resolution_x0020_Type', 'ResolutionType', 'cr013_resolutionType'] },
       { internalName: 'DriftType', type: 'Text', displayName: 'Drift Type', isSilent: true, candidates: ['Drift_x0020_Type', 'DriftType', 'cr013_driftType'] },
       { internalName: 'Resolved', type: 'Boolean', displayName: 'Resolved', default: false, isSilent: true, candidates: ['Resolved', 'IsResolved', 'cr013_resolved'] },
