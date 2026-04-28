@@ -107,12 +107,22 @@ export const KNOWN_REQUIRED_INDEXED_FIELDS: Record<string, IndexFieldSpec[]> = {
       displayName: 'User ID',
       reason: '$filter=User_ID_Zombie eq X（利用者属性取得のキー）',
     },
+    {
+      internalName: 'RecipientCertNumber',
+      displayName: '受給者証番号',
+      reason: '重複チェック・検索用',
+    },
   ],
   UserBenefit_Profile: [
     {
       internalName: 'UserID',
       displayName: '利用者ID',
       reason: '結合・取得の主キー',
+    },
+    {
+      internalName: 'RecipientCertNumber',
+      displayName: '受給者証番号',
+      reason: '支給決定情報の検索用',
     },
     {
       internalName: 'GrantPeriodEnd',
