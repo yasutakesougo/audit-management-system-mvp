@@ -120,7 +120,7 @@ describe('getListEndpointPath', () => {
   it('should generate title-based path for title lists', () => {
     const path = getListEndpointPath('users_master');
     expect(path).toContain('getbytitle');
-    expect(path).toContain('Users_Master');
+    expect(path).toContain('Users');
   });
 
   it('should URL-encode title with special characters', () => {

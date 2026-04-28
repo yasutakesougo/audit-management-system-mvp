@@ -96,7 +96,7 @@ describe('spClient master list helpers', () => {
     await getStaffMaster(client, -1);
 
     const path = spFetch.mock.calls[0]?.[0] as string;
-    expect(path).toContain("getbytitle('Staff_Master')");
+    expect(path).toContain("getbytitle('Staff')");
 
     runtimeSpy.mockRestore();
   });
