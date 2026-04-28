@@ -12,7 +12,7 @@ describe('DataProviderUserRepository Split Logic', () => {
   beforeEach(async () => {
     process.env.VITE_USER_BENEFIT_PROFILE_CUTOVER_STAGE = 'WRITE_CUTOVER';
     provider = new InMemoryDataProvider();
-    repo = new DataProviderUserRepository({ provider });
+    repo = new DataProviderUserRepository({ provider, listTitle: 'Users_Master' });
   });
 
   it('getAll(core) fetches only from Users_Master', async () => {
@@ -102,7 +102,7 @@ describe('DataProviderUserRepository Split Logic', () => {
       listItems: async () => [],
     } as unknown as IDataProvider;
 
-    const authRepo = new DataProviderUserRepository({ provider: throwingProvider });
+    const authRepo = new DataProviderUserRepository({ provider: throwingProvider, listTitle: 'Users_Master' });
 
     await expect(authRepo.getAll({ selectMode: 'core' })).rejects.toBe(authError);
   });
@@ -116,7 +116,7 @@ describe('DataProviderUserRepository Split Logic', () => {
       },
     } as unknown as IDataProvider;
 
-    const errorRepo = new DataProviderUserRepository({ provider: throwingProvider });
+    const errorRepo = new DataProviderUserRepository({ provider: throwingProvider, listTitle: 'Users_Master' });
 
     await expect(errorRepo.getAll({ selectMode: 'core' })).rejects.toBe(listError);
   });
@@ -139,7 +139,7 @@ describe('DataProviderUserRepository Split Logic', () => {
       },
     } as unknown as IDataProvider;
 
-    const testRepo = new DataProviderUserRepository({ provider });
+    const testRepo = new DataProviderUserRepository({ provider, listTitle: 'Users_Master' });
     const users = await testRepo.getAll({ selectMode: 'core' });
 
     expect(users).toHaveLength(1);
@@ -204,7 +204,7 @@ describe('DataProviderUserRepository Split Logic', () => {
       },
     } as unknown as IDataProvider;
 
-    const testRepo = new DataProviderUserRepository({ provider });
+    const testRepo = new DataProviderUserRepository({ provider, listTitle: 'Users_Master' });
     // selectMode: detail を指定して accessory list のフィールド解決を走らせる
     await testRepo.getAll({ selectMode: 'detail' });
 

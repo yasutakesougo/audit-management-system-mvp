@@ -11,7 +11,7 @@ describe('DataProviderUserRepository Contract Compliance', () => {
     // but we use WRITE_CUTOVER as the baseline for canonical behavior.
     process.env.VITE_USER_BENEFIT_PROFILE_CUTOVER_STAGE = 'WRITE_CUTOVER';
     provider = new InMemoryDataProvider();
-    repo = new DataProviderUserRepository({ provider });
+    repo = new DataProviderUserRepository({ provider, listTitle: 'Users_Master' });
   });
 
   describe('Clearable Update Contract', () => {

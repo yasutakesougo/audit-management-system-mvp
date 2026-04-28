@@ -8,7 +8,7 @@ describe('DataProviderUserRepository Cutover Transitions', () => {
 
   beforeEach(async () => {
     provider = new InMemoryDataProvider();
-    repo = new DataProviderUserRepository({ provider });
+    repo = new DataProviderUserRepository({ provider, listTitle: 'Users_Master' });
   });
 
   describe('PRE_MIGRATION stage', () => {
