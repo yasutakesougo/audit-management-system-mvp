@@ -4,6 +4,7 @@
  * Consolidated from former helpers.ts + spHelpers.ts.
  * Pure functions for path building, error handling, cache management, etc.
  */
+import { isDebugFlag } from '@/lib/debugFlag';
 import { auditLog } from '@/lib/debugLogger';
 import { getAppConfig } from '@/lib/env';
 export type ResolutionResult<T extends string> = {
@@ -362,7 +363,7 @@ export const raiseHttpError = async (
   } = {},
 ): Promise<never> => {
   const detail = await readErrorPayload(res);
-  const AUDIT_DEBUG = getAppConfig().VITE_AUDIT_DEBUG;
+  const AUDIT_DEBUG = isDebugFlag(getAppConfig().VITE_AUDIT_DEBUG);
   const { quietStatuses, silent } = options.spOptions || {};
 
   // 1. Report to Global Health Store (Realtime Signal)
