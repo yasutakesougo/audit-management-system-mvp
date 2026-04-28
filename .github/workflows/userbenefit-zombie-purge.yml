@@ -1,0 +1,77 @@
+name: UserBenefit Zombie Purge
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run or execute"
+        required: true
+        default: "dry-run"
+        type: choice
+        options:
+          - dry-run
+          - execute
+      list:
+        description: "Target list (small-batch execution)"
+        required: true
+        default: "UserBenefit_Profile"
+        type: choice
+        options:
+          - UserBenefit_Profile
+          - UserBenefit_Profile_Ext
+
+permissions:
+  contents: read
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Login to M365 CLI
+        env:
+          AAD_TENANT_ID: ${{ secrets.AAD_TENANT_ID }}
+          AAD_APP_ID: ${{ secrets.AAD_APP_ID }}
+          SPO_CLIENT_SECRET: ${{ secrets.SPO_CLIENT_SECRET }}
+        run: |
+          npx -y @pnp/cli-microsoft365 login --appId "$AAD_APP_ID" --tenant "$AAD_TENANT_ID" --secret "$SPO_CLIENT_SECRET"
+
+      - name: UserBenefit zombie purge (dry-run)
+        if: ${{ inputs.mode == 'dry-run' }}
+        env:
+          VITE_SP_SITE_URL: ${{ vars.VITE_SP_SITE_URL }}
+        run: |
+          node scripts/ops/purge-userbenefit-zombie-columns.mjs \
+            --list "${{ inputs.list }}" \
+            --out-dir "docs/nightly-patrol"
+
+      - name: UserBenefit zombie purge (execute)
+        if: ${{ inputs.mode == 'execute' }}
+        env:
+          VITE_SP_SITE_URL: ${{ vars.VITE_SP_SITE_URL }}
+        run: |
+          node scripts/ops/purge-userbenefit-zombie-columns.mjs \
+            --execute \
+            --list "${{ inputs.list }}" \
+            --out-dir "docs/nightly-patrol"
+
+      - name: Upload purge evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: userbenefit-zombie-purge-${{ github.run_number }}-${{ inputs.mode }}-${{ inputs.list }}
+          path: docs/nightly-patrol/userbenefit-*.json
+          if-no-files-found: warn
+
