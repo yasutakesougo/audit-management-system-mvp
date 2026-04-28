@@ -223,7 +223,7 @@ export default function WeekPage() {
         mode === 'month'
           ? 'schedules-month-page'
           : mode === 'day'
-            ? 'schedules-day-page'
+            ? 'schedules-day-shell'
             : 'schedules-week-page'
       }
       tabIndex={-1}
