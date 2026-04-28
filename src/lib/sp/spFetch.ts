@@ -5,6 +5,7 @@
  * This module exports a factory `createSpFetch` that returns an `spFetch` function.
  */
 
+import { isDebugFlag } from '@/lib/debugFlag';
 import { auditLog } from '@/lib/debugLogger';
 import type { EnvRecord } from '@/lib/env';
 import { isE2eMsalMockEnabled, shouldSkipLogin, skipSharePoint } from '@/lib/env';
@@ -259,7 +260,7 @@ export function createSpFetch(deps: SpFetchDeps) {
     const isE2EWithMsalMock = isE2eMsalMockEnabled(config);
     // VITE_SKIP_SHAREPOINT=1 (skipSharePoint) should always trigger mock, even in E2E
     const shouldMock = skipSharePoint(config) || (!isE2EWithMsalMock && (!baseUrl || baseUrl === '' || shouldSkipLogin(config)));
-    const AUDIT_DEBUG = config.VITE_AUDIT_DEBUG;
+    const AUDIT_DEBUG = isDebugFlag(config.VITE_AUDIT_DEBUG);
 
     if (AUDIT_DEBUG || isE2EWithMsalMock) {
       auditLog.debug('sp:fetch', 'request', {

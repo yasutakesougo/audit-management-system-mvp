@@ -16,6 +16,7 @@ import { buildSupportPlanMonitoringUrl } from '@/app/links/navigationLinks';
 import { useFeatureFlag } from '@/config/featureFlags';
 import { canAccessDashboardAudience, isDashboardAudience, useAuthStore } from '@/features/auth/store';
 import { useUsersStore } from '@/features/users/store';
+import { isDebugFlag } from '@/lib/debugFlag';
 import { getMsalInstance } from '@/lib/msal';
 import { getEnv } from '@/lib/runtimeEnv';
 import { TESTIDS } from '@/testids';
@@ -252,7 +253,7 @@ export const IcebergPdcaPage: React.FC<IcebergPdcaPageProps> = ({ writeEnabled: 
   const [deleteTarget, setDeleteTarget] = React.useState<IcebergPdcaItem | null>(null);
   const [snackbar, setSnackbar] = React.useState<string | null>(null);
 
-  const debugEnabled = getEnv('VITE_AUDIT_DEBUG') === '1';
+  const debugEnabled = isDebugFlag(getEnv('VITE_AUDIT_DEBUG'));
   if (import.meta.env.DEV && debugEnabled) {
     // eslint-disable-next-line no-console
     console.log('[iceberg-pdca]', {

@@ -1,4 +1,5 @@
 import { clearEnvCache, getRuntimeEnv, isDev } from '@/env';
+import { isDebugFlag } from '@/lib/debugFlag';
 import { guardProdMisconfig } from '@/lib/envGuards';
 import '@/styles/kiosk.css';
 import '@/styles/print.css';
@@ -288,7 +289,7 @@ const run = async (): Promise<void> => {
     finalizeHydrationSpan(completeFirebaseAuth);
   }
 
-  if (hasWindow && window.__ENV__?.VITE_AUDIT_DEBUG === '1') {
+  if (hasWindow && isDebugFlag(window.__ENV__?.VITE_AUDIT_DEBUG)) {
     void Promise.all([import('./lib/spClient'), import('./lib/msal')])
       .then(([{ createSpClient, ensureConfig }, { acquireSpAccessToken }]) => {
         const helper = async ({ path, method = 'GET' }: { path: string; method?: string }) => {

@@ -1,3 +1,4 @@
+import { isDebugFlag } from '@/lib/debugFlag';
 import { getAppConfig } from '@/lib/env';
 import { createSpClient } from '@/lib/spClient';
 import { FIELD_MAP_ICEBERG_ANALYSIS, LIST_CONFIG, ListKeys } from '@/sharepoint/fields';
@@ -84,7 +85,7 @@ async function raiseHttpError(response: Response, _context: { url: string; metho
 
 export async function createIcebergRepository(acquireToken: () => Promise<string | null>, baseUrl: string) {
   const config = getAppConfig();
-  const debugEnabled = config.VITE_AUDIT_DEBUG === '1' || config.VITE_AUDIT_DEBUG === 'true';
+  const debugEnabled = isDebugFlag(config.VITE_AUDIT_DEBUG);
   const dbg = (...args: unknown[]) => {
     if (debugEnabled) console.debug('[IcebergRepository]', ...args);
   };
