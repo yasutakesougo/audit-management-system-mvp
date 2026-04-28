@@ -131,6 +131,14 @@ async function safeWithRetry<T>(
   return { ok: false, err: "retry loop exited unexpectedly", attempts: maxAttempts };
 }
 
+/**
+ * 実行時に欠落していても致命的エラー（FAIL）とせず、警告（WARN）で済ませる列の判定。
+ * SharePoint の Title 列は既定で存在するが、物理的に解決できない場合でも
+ * repository が動作可能であれば FAIL を抑制する。
+ */
+const isRuntimeToleratedMissingEssential = (internalName: string): boolean =>
+  internalName === 'Title';
+
 export async function runHealthChecks(
   ctx: HealthContext,
   sp: SpAdapter
@@ -425,6 +433,14 @@ async function runListChecks(
     const missingEssential = spec.requiredFields.filter(
       (f) => f.isEssential && missing.includes(f.internalName)
     );
+
+    // ✅ 致命的な欠落（Title 以外）と、許容される欠落（Title のみ）を分離
+    const fatalMissingEssential = missingEssential.filter(
+      (f) => !isRuntimeToleratedMissingEssential(f.internalName)
+    );
+    const titleOnlyEssentialMissing =
+      missingEssential.length > 0 && fatalMissingEssential.length === 0;
+
     const missingOptional = spec.requiredFields.filter(
       (f) => !f.isEssential && !f.isSilent && missing.includes(f.internalName)
     );
@@ -435,25 +451,39 @@ async function runListChecks(
     );
 
     // 4. Report Results
-    if (missingEssential.length > 0) {
+    if (fatalMissingEssential.length > 0) {
       results.push(
         fail({
           key: `schema.fields.${spec.key}`,
           label: `スキーマ構成違反：${spec.displayName}`,
           category: "schema",
           summary: `致命的エラー：アプリ稼働に必須な列が存在しません。システムは正常に稼働できません。`,
-          detail: `以下の必須列が見つかりません: ${missingEssential.map(f => f.internalName).join(", ")}\nインフラ管理者に連絡し、列を追加してください。`,
+          detail: `以下の必須列が見つかりません: ${fatalMissingEssential.map(f => f.internalName).join(", ")}\nインフラ管理者に連絡し、列を追加してください。`,
           evidence: {
             listTitle: spec.resolvedTitle,
-            missing: missingEssential.map(f => f.internalName),
+            missing: fatalMissingEssential.map(f => f.internalName),
           },
           nextActions: [
             {
               kind: "copy",
               label: "インフラ管理者に連絡",
-              value: `リスト「${spec.resolvedTitle}」に必須列が不足しており、システムが異常終了します。不足列: ${missingEssential.map(f => f.internalName).join(", ")}`
+              value: `リスト「${spec.resolvedTitle}」に必須列が不足しており、システムが異常終了します。不足列: ${fatalMissingEssential.map(f => f.internalName).join(", ")}`
             }
           ]
+        })
+      );
+    } else if (titleOnlyEssentialMissing) {
+      results.push(
+        warn({
+          key: `schema.fields.${spec.key}`,
+          label: `スキーマ（Title 欠落）：${spec.displayName}`,
+          category: "schema",
+          summary: `Title 列が物理列一覧で解決できませんでしたが、runtime 必須列ではないため致命的エラーにはしません。`,
+          detail: `SharePoint の Title は既定列として扱われる場合があり、repository が実データを読める構成では FAIL ではなく drift として扱います。`,
+          evidence: {
+            listTitle: spec.resolvedTitle,
+            missing: ["Title"],
+          },
         })
       );
     } else if (drifted.length > 0) {
