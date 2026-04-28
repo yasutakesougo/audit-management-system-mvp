@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { DataProviderUserRepository } from '../DataProviderUserRepository';
 import { InMemoryDataProvider } from '@/lib/data/inMemoryDataProvider';
 
@@ -19,9 +19,9 @@ describe('DataProviderUserRepository Contract Compliance', () => {
       await provider.seed('Users_Master', [{ Id: 1, UserID: 'U001', FullName: 'Original', UsageStatus: 'init' }]);
       
       // FullName is undefined in this patch
-      await repo.update(1, { UsageStatus: 'active' } as any);
+      await repo.update(1, { UsageStatus: 'active' } as unknown as Record<string, unknown>);
       
-      const items = await provider.listItems<any>('Users_Master');
+      const items = await provider.listItems<Record<string, unknown>>('Users_Master');
       expect(items[0].FullName).toBe('Original');
       expect(items[0].UsageStatus).toBe('active');
     });
@@ -29,18 +29,18 @@ describe('DataProviderUserRepository Contract Compliance', () => {
     it('treats empty string as null (clear field)', async () => {
       await provider.seed('Users_Master', [{ Id: 1, UserID: 'U001', FullName: 'Original' }]);
       
-      await repo.update(1, { FullName: '' } as any);
+      await repo.update(1, { FullName: '' } as unknown as Record<string, unknown>);
       
-      const items = await provider.listItems<any>('Users_Master');
+      const items = await provider.listItems<Record<string, unknown>>('Users_Master');
       expect(items[0].FullName).toBeNull();
     });
 
     it('treats whitespace string as null (clear field)', async () => {
       await provider.seed('Users_Master', [{ Id: 1, UserID: 'U001', FullName: 'Original' }]);
       
-      await repo.update(1, { FullName: '   ' } as any);
+      await repo.update(1, { FullName: '   ' } as unknown as Record<string, unknown>);
       
-      const items = await provider.listItems<any>('Users_Master');
+      const items = await provider.listItems<Record<string, unknown>>('Users_Master');
       expect(items[0].FullName).toBeNull();
     });
   });
@@ -51,9 +51,9 @@ describe('DataProviderUserRepository Contract Compliance', () => {
       // DTO might provide 'fullName' (camel)
       await provider.seed('Users_Master', [{ Id: 1, UserID: 'U001', FullName: 'Old' }]);
       
-      await repo.update(1, { fullName: 'New' } as any);
+      await repo.update(1, { fullName: 'New' } as unknown as Record<string, unknown>);
       
-      const items = await provider.listItems<any>('Users_Master');
+      const items = await provider.listItems<Record<string, unknown>>('Users_Master');
       expect(items[0].FullName).toBe('New');
     });
 
@@ -62,9 +62,9 @@ describe('DataProviderUserRepository Contract Compliance', () => {
       // and DTO provides 'UsageStatus' (Pascal)
       await provider.seed('Users_Master', [{ Id: 1, UserID: 'U001', usageStatus: 'old' }]);
       
-      await repo.update(1, { UsageStatus: 'new' } as any);
+      await repo.update(1, { UsageStatus: 'new' } as unknown as Record<string, unknown>);
       
-      const items = await provider.listItems<any>('Users_Master');
+      const items = await provider.listItems<Record<string, unknown>>('Users_Master');
       // buildMappedPayload handles the case-insensitivity against the resolved mapping
       // If 'UsageStatus' was resolved to 'usageStatus', it works.
       const status = items[0].usageStatus || items[0].UsageStatus;
@@ -79,7 +79,7 @@ describe('DataProviderUserRepository Contract Compliance', () => {
       const spy = vi.spyOn(provider, 'updateItem');
       
       // Update with only undefined fields
-      await repo.update(1, { FullName: undefined } as any);
+      await repo.update(1, { FullName: undefined } as unknown as Record<string, unknown>);
       
       expect(spy).not.toHaveBeenCalled();
     });

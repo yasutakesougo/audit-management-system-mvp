@@ -26,9 +26,9 @@ describe('DataProviderUserRepository Cutover Transitions', () => {
       await provider.seed('Users_Master', [{ Id: 0, UserID: '', FullName: '' }]);
       await provider.seed('UserBenefit_Profile', [{ UserID: 'INIT', Grant_x0020_Municipality: '' }]);
 
-      await repo.create(payload as any);
+      await repo.create(payload as unknown as Record<string, unknown>);
 
-      const benefit = await provider.listItems<any>('UserBenefit_Profile');
+      const benefit = await provider.listItems<Record<string, unknown>>('UserBenefit_Profile');
       const created = benefit.find(b => b.UserID === 'U-PRE');
       expect(created).toBeDefined(); 
       // PRE_MIGRATION writes to legacy name
@@ -52,9 +52,9 @@ describe('DataProviderUserRepository Cutover Transitions', () => {
       await provider.seed('Users_Master', [{ Id: 0, UserID: '', FullName: '' }]);
       await provider.seed('UserBenefit_Profile', [{ UserID: 'INIT', GrantMunicipality: '' }]);
 
-      await repo.create(payload as any);
+      await repo.create(payload as unknown as Record<string, unknown>);
 
-      const benefit = await provider.listItems<any>('UserBenefit_Profile');
+      const benefit = await provider.listItems<Record<string, unknown>>('UserBenefit_Profile');
       const created = benefit.find(b => b.UserID === 'U-CUT');
       expect(created).toBeDefined();
       expect(created.GrantMunicipality).toBe('City-Cut');
