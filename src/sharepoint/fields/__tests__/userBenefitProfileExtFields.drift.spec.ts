@@ -13,15 +13,15 @@ function resolve(available: Set<string>) {
 }
 
 describe('USER_BENEFIT_PROFILE_EXT_CANDIDATES userId resolution', () => {
-  it('treats Title as canonical for userId in ext list', () => {
-    const { resolved, fieldStatus } = resolve(new Set(['Title', 'RecipientCertNumber']));
-    expect(resolved.userId).toBe('Title');
+  it('keeps UserID as canonical when present', () => {
+    const { resolved, fieldStatus } = resolve(new Set(['UserID', 'Title', 'RecipientCertNumber']));
+    expect(resolved.userId).toBe('UserID');
     expect(fieldStatus.userId.isDrifted).toBe(false);
   });
 
-  it('keeps UserID as accepted alias (drift)', () => {
-    const { resolved, fieldStatus } = resolve(new Set(['UserID', 'RecipientCertNumber']));
-    expect(resolved.userId).toBe('UserID');
+  it('accepts Title as backward-compatible alias (drift)', () => {
+    const { resolved, fieldStatus } = resolve(new Set(['Title', 'RecipientCertNumber']));
+    expect(resolved.userId).toBe('Title');
     expect(fieldStatus.userId.isDrifted).toBe(true);
   });
 
