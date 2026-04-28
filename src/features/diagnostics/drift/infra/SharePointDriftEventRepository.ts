@@ -521,8 +521,11 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         });
 
         // ── Threshold-Safe Query (+ 400 field fallback) ───────────────────────
+        const originalSelect = [...select];
+        const MAX_FIELD_PRUNE_ATTEMPTS = 5;
         let events: DriftEvent[] = [];
-        for (let attempt = 0; attempt < 5; attempt += 1) {
+        let succeeded = false;
+        for (let attempt = 0; attempt < MAX_FIELD_PRUNE_ATTEMPTS; attempt += 1) {
           try {
             events = await this.fetchEventsWithThresholdFallback(
               listTitle,
@@ -533,22 +536,20 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
               filter,
               signal,
             );
+            succeeded = true;
             break;
           } catch (err) {
             if (!this.isHttp400(err)) {
               throw err;
             }
             const missingField = this.extractMissingFieldFromError(err);
-            if (!missingField) {
-              throw err;
+            if (!missingField || !select.includes(missingField)) {
+              // 列名が抽出できない / select に無い 400 は段階的 prune では救えない。
+              // 最小 select fallback に流す。
+              break;
             }
 
-            const prevLength = select.length;
             select = select.filter((f) => f !== missingField);
-            if (select.length === prevLength) {
-              throw err;
-            }
-
             this.blockedPhysicalFields.add(missingField);
             this.availablePhysicalFields.delete(missingField);
 
@@ -557,7 +558,31 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
               'DriftEventRepository removed missing field from select and retried.',
               { listTitle, missingField, attempt: attempt + 1 },
             );
+
+            if (select.length === 0) {
+              break;
+            }
           }
+        }
+
+        // ── Minimum select fallback ───────────────────────────────────────────
+        // 段階的 prune で救えなかった場合 (抽出不可 400 / 試行上限到達 / select 空) は、
+        // 最も安定な (Id, Title) のみで 1 度だけ取り直す。失敗時は外側 catch の fail-open へ。
+        if (!succeeded) {
+          events = await this.fetchEventsWithThresholdFallback(
+            listTitle,
+            ['Id', 'Title'],
+            joinAnd(filters) || undefined,
+            'Id',
+            200,
+            filter,
+            signal,
+          );
+          auditLog.warn(
+            'diagnostics:drift',
+            'DriftEventRepository fell back to minimum select (Id,Title).',
+            { listTitle, originalSelect },
+          );
         }
 
         // クライアント側での日付フィルタリング (Threshold 回避のためサーバー側では行わない)

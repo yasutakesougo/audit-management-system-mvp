@@ -282,6 +282,106 @@ describe('SharePointDriftEventRepository', () => {
     ]);
   });
 
+  it('falls back to minimum (Id,Title) select when 400 field name cannot be extracted', async () => {
+    const unparseable400 = Object.assign(
+      new Error('Bad Request'),
+      { status: 400 },
+    );
+    const getListItemsByTitle = vi
+      .fn()
+      .mockRejectedValueOnce(unparseable400)
+      .mockResolvedValueOnce([
+        { ID: 51, Title: 'Daily_Attendance:Status' },
+      ]);
+
+    const repo = new SharePointDriftEventRepository({
+      createItem: vi.fn(async () => ({})),
+      updateItemByTitle: vi.fn(async () => ({})),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getListItemsByTitle: getListItemsByTitle as any,
+      getSchema: vi.fn(async () => [
+        'NameOfList',
+        'InternalName',
+        'OccurredAt',
+        'Level',
+        'Resolution',
+        'Category',
+        'IsResolved',
+      ]),
+    });
+
+    const events = await repo.getEvents();
+
+    expect(getListItemsByTitle).toHaveBeenCalledTimes(2);
+    const fallbackSelect = getListItemsByTitle.mock.calls[1][1];
+    expect(fallbackSelect).toEqual(['Id', 'Title']);
+    expect(events).toEqual([
+      {
+        id: '51',
+        listName: '',
+        fieldName: '',
+        detectedAt: '',
+        severity: 'info',
+        resolutionType: 'fuzzy_match',
+        driftType: 'unknown',
+        resolved: false,
+      },
+    ]);
+  });
+
+  it('falls back to minimum (Id,Title) select when 400 names a field absent from the select', async () => {
+    const phantom400 = Object.assign(
+      new Error("フィールドまたはプロパティ '_Level' は存在しません。"),
+      { status: 400 },
+    );
+    const getListItemsByTitle = vi
+      .fn()
+      .mockRejectedValueOnce(phantom400)
+      .mockResolvedValueOnce([{ ID: 61, Title: 'Daily:Status' }]);
+
+    const repo = new SharePointDriftEventRepository({
+      createItem: vi.fn(async () => ({})),
+      updateItemByTitle: vi.fn(async () => ({})),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getListItemsByTitle: getListItemsByTitle as any,
+      // schema does NOT contain `_Level`, so the initial select cannot include it,
+      // yet SharePoint still complains about it (e.g. evaluated through computed columns).
+      getSchema: vi.fn(async () => [
+        'ListName',
+        'FieldName',
+        'DetectedAt',
+        'Severity',
+        'Resolved',
+      ]),
+    });
+
+    const events = await repo.getEvents();
+
+    expect(getListItemsByTitle).toHaveBeenCalledTimes(2);
+    expect(getListItemsByTitle.mock.calls[1][1]).toEqual(['Id', 'Title']);
+    expect(events).toHaveLength(1);
+    expect(events[0].id).toBe('61');
+  });
+
+  it('returns empty array when even the minimum (Id,Title) fallback fails', async () => {
+    const unparseable400 = Object.assign(new Error('Bad Request'), { status: 400 });
+    const getListItemsByTitle = vi
+      .fn()
+      .mockRejectedValueOnce(unparseable400)
+      .mockRejectedValueOnce(new Error('still broken'));
+
+    const repo = new SharePointDriftEventRepository({
+      createItem: vi.fn(async () => ({})),
+      updateItemByTitle: vi.fn(async () => ({})),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getListItemsByTitle: getListItemsByTitle as any,
+      getSchema: vi.fn(async () => ['ListName', 'FieldName', 'DetectedAt']),
+    });
+
+    await expect(repo.getEvents()).resolves.toEqual([]);
+    expect(getListItemsByTitle).toHaveBeenCalledTimes(2);
+  });
+
   it('returns empty array on fetch failure (fail-open)', async () => {
     const repo = new SharePointDriftEventRepository({
       createItem: vi.fn(async () => ({})),
