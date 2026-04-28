@@ -9,19 +9,10 @@ const __dirname = dirname(__filename);
 const REPO_ROOT = resolve(__dirname, '..', '..');
 
 const TARGETS = {
-  UserBenefit_Profile: [
-    'LinkTitle2',
-    'PermMask',
-    'PrincipalCount',
-    'LinkFilename2',
-  ],
+  UserBenefit_Profile: [],
   UserBenefit_Profile_Ext: [
     'Recipient_x0020_Cert_x0020_Expir',
     'Disability_x0020_Support_x0020_L',
-    'LinkTitle2',
-    'PermMask',
-    'PrincipalCount',
-    'LinkFilename2',
   ],
 };
 
