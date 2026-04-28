@@ -46,7 +46,7 @@ jobs:
           AAD_APP_ID: ${{ secrets.AAD_APP_ID }}
           SPO_CERT_BASE64: ${{ secrets.SPO_CERT_BASE64 }}
           SPO_CERT_PASSWORD: ${{ secrets.SPO_CERT_PASSWORD }}
-          VITE_SP_SITE_URL: ${{ vars.VITE_SP_SITE_URL }}
+          VITE_SP_SITE_URL: ${{ vars.VITE_SP_SITE_URL || secrets.SHAREPOINT_SITE || secrets.SP_SITE_URL }}
         run: |
           test -n "$AAD_TENANT_ID" || (echo "Missing secret: AAD_TENANT_ID" && exit 1)
           test -n "$AAD_APP_ID" || (echo "Missing secret: AAD_APP_ID" && exit 1)
@@ -69,7 +69,7 @@ jobs:
       - name: UserBenefit zombie purge (dry-run)
         if: ${{ inputs.mode == 'dry-run' }}
         env:
-          VITE_SP_SITE_URL: ${{ vars.VITE_SP_SITE_URL }}
+          VITE_SP_SITE_URL: ${{ vars.VITE_SP_SITE_URL || secrets.SHAREPOINT_SITE || secrets.SP_SITE_URL }}
         run: |
           node scripts/ops/purge-userbenefit-zombie-columns.mjs \
             --list "${{ inputs.list }}" \
@@ -78,7 +78,7 @@ jobs:
       - name: UserBenefit zombie purge (execute)
         if: ${{ inputs.mode == 'execute' }}
         env:
-          VITE_SP_SITE_URL: ${{ vars.VITE_SP_SITE_URL }}
+          VITE_SP_SITE_URL: ${{ vars.VITE_SP_SITE_URL || secrets.SHAREPOINT_SITE || secrets.SP_SITE_URL }}
         run: |
           node scripts/ops/purge-userbenefit-zombie-columns.mjs \
             --execute \
