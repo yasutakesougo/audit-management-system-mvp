@@ -128,7 +128,7 @@ const DataIntegrityAlert: React.FC<DataIntegrityAlertProps> = ({
               onClick={() => setExpanded(prev => !prev)}
               data-testid="data-integrity-toggle"
             >
-              {expanded ? '詳細を閉じる' : '詳細を表示'}
+              {expanded ? 'エラーの詳細を隠す' : 'エラーの詳細を表示'}
             </Button>
 
             <Button

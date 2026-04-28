@@ -312,7 +312,7 @@ export function ScheduleDialogManager(props: ScheduleDialogManagerProps) {
             lastError?.kind === 'conflict' ? (
               <Stack direction="row" spacing={0.5}>
                 <Button color="inherit" size="small" onClick={onOpenConflictDetail}>
-                  詳細を見る
+                  競合の詳細を表示
                 </Button>
                 <Button color="inherit" size="small" onClick={handleConflictRefetchWithFocus}>
                   最新を表示

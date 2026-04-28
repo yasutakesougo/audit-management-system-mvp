@@ -166,7 +166,7 @@ const ACTION_CONFIG: Record<ScheduleWithStatus['actionType'], {
 	record: { text: 'サービス記録を記入', color: 'success', icon: <EditIcon /> },
 	complete: { text: '完了報告', color: 'warning', icon: <CheckCircleIcon /> },
 	review: { text: '記録を確認', color: 'info', icon: <VisibilityIcon /> },
-	wait: { text: '詳細を見る', color: 'info', icon: <InfoOutlinedIcon /> },
+	wait: { text: '予定の詳細を表示', color: 'info', icon: <InfoOutlinedIcon /> },
 };
 
 function getUrgencyMessage(status: ScheduleStatus, timeUntil?: number): string {
