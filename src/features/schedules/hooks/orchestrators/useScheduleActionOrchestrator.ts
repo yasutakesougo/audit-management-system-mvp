@@ -28,6 +28,7 @@ export function useScheduleActionOrchestrator(input: UseScheduleActionOrchestrat
   const [executing, setExecuting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [saveErrors, setSaveErrors] = useState<string[]>([]);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[] | undefined>>({});
 
   const failureSaveMessage = mode === 'edit'
     ? 'スケジュールの更新に失敗しました。もう一度お試しください。'
@@ -40,6 +41,7 @@ export function useScheduleActionOrchestrator(input: UseScheduleActionOrchestrat
       const validation = validateScheduleForm(formState);
       if (!validation.isValid) {
         setSaveErrors(validation.errors);
+        setFieldErrors(validation.fieldErrors);
         if (validation.errors.length > 0) {
           announce(validation.errors[0], 'assertive');
         }
@@ -65,6 +67,7 @@ export function useScheduleActionOrchestrator(input: UseScheduleActionOrchestrat
         
         setExecuting(false);
         setSaveErrors([]);
+        setFieldErrors({});
         onClose();
         return true;
       } catch (error) {
@@ -109,6 +112,7 @@ export function useScheduleActionOrchestrator(input: UseScheduleActionOrchestrat
 
   const resetErrors = useCallback(() => {
     setSaveErrors([]);
+    setFieldErrors({});
   }, []);
 
   return {
@@ -117,6 +121,7 @@ export function useScheduleActionOrchestrator(input: UseScheduleActionOrchestrat
     executing,
     deleting,
     saveErrors,
+    fieldErrors,
     resetErrors,
   };
 }
