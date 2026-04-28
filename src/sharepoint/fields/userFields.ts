@@ -181,7 +181,7 @@ const CANDIDATE_GRANTED_DAYS_PER_MONTH = ['GrantedDaysPerMonth', 'DaysPerMonth',
 const CANDIDATE_USER_COPAY_LIMIT = ['UserCopayLimit', 'CopayLimit', 'UserCopayLimit0', 'cr013_userCopayLimit'];
 const CANDIDATE_MEAL_ADDITION = ['MealAddition', 'Meal', 'MealAddition0', 'cr013_mealAddition'];
 const CANDIDATE_COPAY_PAYMENT_METHOD = ['CopayPaymentMethod', 'PaymentMethod', 'CopayPaymentMethod0', 'cr013_copayPaymentMethod'];
-const CANDIDATE_USER_BENEFIT_USER_ID = ['Title', ...CANDIDATE_USER_ID];
+const CANDIDATE_USER_BENEFIT_USER_ID = [...CANDIDATE_USER_ID, 'Title'];
 
 /**
  * Users_Master リストのフィールド解除候補マップ (Drift Resistance)

@@ -13,20 +13,20 @@ function resolve(available: Set<string>) {
 }
 
 describe('USER_BENEFIT_PROFILE_EXT_CANDIDATES userId resolution', () => {
-  it('treats Title as canonical for userId in ext list', () => {
-    const { resolved, fieldStatus } = resolve(new Set(['Title', 'RecipientCertNumber']));
-    expect(resolved.userId).toBe('Title');
+  it('treats UserID as canonical for userId in ext list', () => {
+    const { resolved, fieldStatus } = resolve(new Set(['UserID', 'RecipientCertNumber']));
+    expect(resolved.userId).toBe('UserID');
     expect(fieldStatus.userId.isDrifted).toBe(false);
   });
 
-  it('keeps UserID as accepted alias (drift)', () => {
-    const { resolved, fieldStatus } = resolve(new Set(['UserID', 'RecipientCertNumber']));
-    expect(resolved.userId).toBe('UserID');
+  it('keeps Title as accepted alias (drift)', () => {
+    const { resolved, fieldStatus } = resolve(new Set(['Title', 'RecipientCertNumber']));
+    expect(resolved.userId).toBe('Title');
     expect(fieldStatus.userId.isDrifted).toBe(true);
   });
 
   it('is healthy when userId and recipient cert are resolved', () => {
-    const { resolved } = resolve(new Set(['Title', 'RecipientCertNumber']));
+    const { resolved } = resolve(new Set(['UserID', 'RecipientCertNumber']));
     expect(areEssentialFieldsResolved(resolved as Record<string, string | undefined>, essentials)).toBe(true);
   });
 });

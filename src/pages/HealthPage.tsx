@@ -352,7 +352,8 @@ function buildListSpecs(): ListSpec[] {
   }));
 
   // 2. Ensure essentials (ID, etc.) are present
-  const essentials = ["Id", "Title", ...essentialSet];
+  const skipTitleEssential = ["user_benefit_profile", "user_benefit_profile_ext", "plan_goals"].includes(entry.key);
+  const essentials = ["Id", ...(skipTitleEssential ? [] : ["Title"]), ...essentialSet];
   const combined: SpFieldSpec[] = [...provisionFields];
 
   for (const name of essentials) {
