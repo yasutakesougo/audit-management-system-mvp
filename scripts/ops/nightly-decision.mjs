@@ -665,6 +665,20 @@ function pushReason(list, message, codeList = null, code = null) {
   }
 }
 
+/**
+ * Returns true when an export summary signals "not configured" rather than
+ * a genuine data-quality failure.  Pattern:
+ *   missingInput=true + source.exists=false + source.error=null
+ * This happens when the raw URL env var was never set.
+ */
+function isNotConfiguredMissing(summaryData) {
+  if (!summaryData || typeof summaryData !== 'object') return false;
+  if (summaryData.missingInput !== true) return false;
+  const src = summaryData.source;
+  if (!src || typeof src !== 'object') return false;
+  return src.exists === false && !src.error;
+}
+
 function renderStatus(status) {
   const meta = STATUS_META[status] || STATUS_META.unknown;
   return `${meta.emoji} ${meta.label}`;
@@ -766,20 +780,27 @@ function main() {
     'criticalLists',
     'summary.criticalLists',
   ]) ?? 0;
-  const adminInputMissing = !adminStatus.exists
+  const adminNotConfigured = isNotConfiguredMissing(adminStatus.data);
+  const adminInputMissing = !adminNotConfigured && (
+    !adminStatus.exists
     || !!adminStatus.error
-    || adminStatus.data?.missingInput === true;
+    || adminStatus.data?.missingInput === true
+  );
   const adminStatusValue = adminInputMissing
     ? 'warn'
-    : adminOverall;
+    : adminNotConfigured
+      ? 'unknown'
+      : adminOverall;
   addCheck({
     id: 'admin-status',
     label: '/admin/status',
     status: adminStatus.exists ? adminStatusValue : 'warn',
     value: `overall=${adminOverallRaw || 'n/a'}, fail=${adminFailCount}, warn=${adminWarnCount}`,
-    note: adminInputMissing
-      ? '入力欠損（観測信頼性低下）'
-      : `管理画面診断の要約 / criticalLists=${adminCriticalListCount}`,
+    note: adminNotConfigured
+      ? 'raw URL 未設定（観測スキップ）'
+      : adminInputMissing
+        ? '入力欠損（観測信頼性低下）'
+        : `管理画面診断の要約 / criticalLists=${adminCriticalListCount}`,
   });
   if (adminInputMissing) {
     pushReason(warnReasons, '/admin/status summary が欠損（判定信頼性低下）', warnReasonCodes, 'ADMIN_STATUS_SUMMARY_MISSING');
@@ -1089,9 +1110,12 @@ function main() {
       'summary.repeatedExceptionKeys',
     ]) ?? 0
   );
-  const exceptionInputMissing = !exceptionCenter.exists
+  const exceptionNotConfigured = isNotConfiguredMissing(exceptionCenter.data);
+  const exceptionInputMissing = !exceptionNotConfigured && (
+    !exceptionCenter.exists
     || !!exceptionCenter.error
-    || exceptionCenter.data?.missingInput === true;
+    || exceptionCenter.data?.missingInput === true
+  );
 
   const actionResolveStatus = actionResolveRate === null
     ? 'unknown'
@@ -1179,17 +1203,21 @@ function main() {
       || overdueExceptions >= thresholds.overdueExceptionsWarn
       || exceptionInputMissing
       ? 'warn'
-      : exceptionCenter.exists
-        ? 'pass'
-        : 'unknown';
+      : exceptionNotConfigured
+        ? 'unknown'
+        : exceptionCenter.exists
+          ? 'pass'
+          : 'unknown';
   addCheck({
     id: 'exception-center',
     label: 'Exception Center',
     status: exceptionStatus,
     value: `high=${unresolvedHighSeverity}, overdue=${overdueExceptions}, stale=${staleExceptions}, recurring=${recurringExceptions}`,
-    note: exceptionInputMissing
-      ? '入力欠損（観測信頼性低下）'
-      : '未対応高優先・期限超過・放置・再発の件数',
+    note: exceptionNotConfigured
+      ? 'raw URL 未設定（観測スキップ）'
+      : exceptionInputMissing
+        ? '入力欠損（観測信頼性低下）'
+        : '未対応高優先・期限超過・放置・再発の件数',
   });
   if (exceptionInputMissing) {
     pushReason(warnReasons, 'ExceptionCenter summary が欠損（判定信頼性低下）', warnReasonCodes, 'EXCEPTION_CENTER_SUMMARY_MISSING');
