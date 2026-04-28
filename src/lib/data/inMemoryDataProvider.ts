@@ -54,6 +54,24 @@ export class InMemoryDataProvider implements IDataProvider {
         Status: 'attended'
       }
     ]);
+
+    // ISP 三層 schema を最低限登録 (essential field 解決を memory backend でも通すため)
+    this.schemaStorage.set('ISP_Master', new Set([
+      'Id', 'Title', 'UserCode', 'PlanStartDate', 'PlanEndDate',
+      'Status', 'VersionNo', 'IsCurrent', 'FormDataJson',
+      'Created', 'Modified',
+    ]));
+    this.schemaStorage.set('SupportPlanningSheet_Master', new Set([
+      'Id', 'Title', 'UserCode', 'ISPId', 'ISPLookupId',
+      'Status', 'VersionNo', 'IsCurrent', 'FormDataJson',
+      'Created', 'Modified',
+    ]));
+    this.schemaStorage.set('SupportProcedureRecord_Daily', new Set([
+      'Id', 'Title', 'UserCode', 'ISPId', 'ISPLookupId',
+      'PlanningSheetLookupId', 'RecordDate', 'Status',
+      'Created', 'Modified',
+    ]));
+
     this.nextId = 100; // IDの重複防止
   }
 

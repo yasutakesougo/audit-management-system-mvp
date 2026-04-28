@@ -30,6 +30,13 @@ import {
 } from '@/data/isp/mapper';
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 
+const warnedEssentialMissing = new Set<string>();
+
+/** @internal - For testing only */
+export function __resetProcedureRecordWarningCache(): void {
+  warnedEssentialMissing.clear();
+}
+
 /**
  * DataProviderProcedureRecordRepository — 第3層 SupportProcedureRecord_Daily
  */
@@ -62,7 +69,8 @@ export class DataProviderProcedureRecordRepository implements ProcedureRecordRep
         essentials: PROCEDURE_RECORD_ESSENTIALS as unknown as string[],
       });
 
-      if (!isHealthy) {
+      if (!isHealthy && !warnedEssentialMissing.has(this.listTitle)) {
+        warnedEssentialMissing.add(this.listTitle);
         console.warn(`[DataProviderProcedureRecordRepository] Essential fields missing in ${this.listTitle}.`);
       }
 

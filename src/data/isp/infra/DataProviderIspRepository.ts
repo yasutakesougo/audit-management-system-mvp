@@ -32,6 +32,13 @@ import {
 } from '@/data/isp/mapper';
 import { SP_QUERY_LIMITS } from '@/shared/api/spQueryLimits';
 
+const warnedEssentialMissing = new Set<string>();
+
+/** @internal - For testing only */
+export function __resetIspWarningCache(): void {
+  warnedEssentialMissing.clear();
+}
+
 /**
  * DataProviderIspRepository — 第1層 ISP_Master
  * 
@@ -68,7 +75,8 @@ export class DataProviderIspRepository implements IspRepository {
         essentials: ISP_MASTER_ESSENTIALS as unknown as string[],
       });
 
-      if (!isHealthy) {
+      if (!isHealthy && !warnedEssentialMissing.has(this.listTitle)) {
+        warnedEssentialMissing.add(this.listTitle);
         console.warn(`[DataProviderIspRepository] Essential fields missing in ${this.listTitle}.`);
       }
 
