@@ -521,7 +521,8 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
           // REST OData 上は OData__Foo 形式でないと参照できず、生の `_Foo` を $select に
           // 含めると 400 になる。drift の論理列に組み込み列が割り当たることはないので
           // 防衛的に除外する。
-          if (f.startsWith('_')) return false;
+          // ただし、_x0020_ 等のエンコードされた名前は除外しないように _x プレフィックスを許容する。
+          if (f.startsWith('_') && !f.startsWith('_x')) return false;
           return !schemaKnown || this.availablePhysicalFields.has(f);
         });
 

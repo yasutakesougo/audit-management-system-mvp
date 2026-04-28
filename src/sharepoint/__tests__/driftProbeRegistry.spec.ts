@@ -20,7 +20,8 @@ describe('DriftProbeRegistry / Dynamic Discovery', () => {
     const users = targets.find(t => t.key === 'users_master');
     
     expect(users).toBeDefined();
-    expect(users?.listTitle).toBe('Users_Master');
+    const expectedTitle = SP_LIST_REGISTRY.find(e => e.key === 'users_master')?.resolve();
+    expect(users?.listTitle).toBe(expectedTitle);
     // Id and Title are automatically added by the mapper if missing
     expect(users?.selectFields).toContain('Id');
     expect(users?.selectFields).toContain('Title');
