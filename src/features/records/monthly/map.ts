@@ -11,6 +11,7 @@ import {
   joinOr,
 } from '@/sharepoint/query/builders';
 
+import { trackSpEvent } from '@/lib/telemetry/spTelemetry';
 import { BILLING_SUMMARY_CANDIDATES } from '@/sharepoint/fields/billingFields';
 import { resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 
@@ -37,6 +38,13 @@ async function findExistingMonthlySummary(
   for (const fieldName of uniqueCandidates(primaryFieldName, ...getResolvedCandidates('idempotencyKey'))) {
     const existing = await client.findByIdempotencyKey(listName, fieldName, key);
     if (existing) {
+      if (fieldName !== primaryFieldName) {
+        trackSpEvent('sp:idempotency_fallback_used', {
+          listName,
+          key,
+          details: { canonicalField: primaryFieldName, fallbackField: fieldName },
+        });
+      }
       return existing;
     }
   }
