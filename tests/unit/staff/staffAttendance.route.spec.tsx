@@ -1,6 +1,6 @@
 import { FeatureFlagsProvider, type FeatureFlagSnapshot } from '@/config/featureFlags';
 import { StaffAttendanceInputPage } from '@/pages/StaffAttendanceInputPage';
-import { screen } from '@testing-library/react';
+import { screen, act } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithAppProviders } from '../../helpers/renderWithAppProviders';
 
@@ -52,13 +52,15 @@ const renderRoute = (flags: FeatureFlagSnapshot) =>
   });
 
 describe('staff attendance route contract', () => {
-  it('shows read-only view when flag is disabled', () => {
+  it('shows read-only view when flag is disabled', async () => {
     renderRoute(baseFlags);
+    await act(async () => { await Promise.resolve(); });
     expect(screen.getByTestId('staff-attendance-readonly-root')).toBeInTheDocument();
   });
 
-  it('shows input when flag is enabled', () => {
+  it('shows input when flag is enabled', async () => {
     renderRoute({ ...baseFlags, staffAttendance: true });
+    await act(async () => { await Promise.resolve(); });
     expect(screen.getByTestId('staff-attendance-input-root')).toBeInTheDocument();
     expect(screen.queryByTestId('staff-attendance-empty-state')).toBeNull();
   });
