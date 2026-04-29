@@ -105,6 +105,50 @@ async function fetchAllItems(siteApiRoot, listTitle, selectFields, auth) {
   return rows;
 }
 
+async function fetchExistingFieldNames(siteApiRoot, listTitle, auth) {
+  const encodedListTitle = listTitle.replace(/'/g, "''");
+  let nextUrl = `${siteApiRoot}/lists/getbytitle('${encodedListTitle}')/fields?$select=InternalName&$top=5000`;
+  const names = new Set();
+
+  while (nextUrl) {
+    const data = await spFetch(nextUrl, auth);
+    for (const field of data.value || []) {
+      const internalName = field?.InternalName;
+      if (typeof internalName === 'string' && internalName.trim()) {
+        names.add(internalName);
+      }
+    }
+    nextUrl = data['@odata.nextLink'] || '';
+  }
+
+  return names;
+}
+
+function buildExistingSelectFields(groups, existingFields) {
+  const requestedFields = new Set(['Id']);
+  const missingFields = [];
+
+  for (const def of Object.values(groups)) {
+    for (const name of [...def.canonical, ...def.fallback]) {
+      requestedFields.add(name);
+    }
+  }
+
+  const selectedFields = new Set();
+  for (const name of requestedFields) {
+    if (existingFields.has(name)) {
+      selectedFields.add(name);
+    } else {
+      missingFields.push(name);
+    }
+  }
+
+  return {
+    selectedFields,
+    missingCandidateFields: Array.from(new Set(missingFields)).sort(),
+  };
+}
+
 function evaluateGroup(row, groupDef) {
   let canonicalField = null;
   let canonicalValue = undefined;
@@ -254,14 +298,14 @@ async function main() {
     ? siteUrl
     : `${siteUrl.replace(/\/$/, '')}/_api/web`;
 
-  const selectFields = new Set(['Id']);
-  for (const def of Object.values(MONTHLY_SUMMARY_MIGRATION_GROUPS)) {
-    for (const c of def.canonical) selectFields.add(c);
-    for (const f of def.fallback) selectFields.add(f);
-  }
+  const existingFields = await fetchExistingFieldNames(siteApiRoot, listTitle, auth);
+  const { selectedFields, missingCandidateFields } = buildExistingSelectFields(
+    MONTHLY_SUMMARY_MIGRATION_GROUPS,
+    existingFields,
+  );
 
   console.log(`🔎 Running dry-run migration report for list: ${listTitle}`);
-  const rows = await fetchAllItems(siteApiRoot, listTitle, selectFields, auth);
+  const rows = await fetchAllItems(siteApiRoot, listTitle, selectedFields, auth);
   const { summary, byGroup } = aggregate(rows);
 
   const report = {
@@ -269,6 +313,10 @@ async function main() {
     generatedAt: new Date().toISOString(),
     listTitle,
     mode: 'dry-run',
+    metadata: {
+      selectedFields: Array.from(selectedFields).sort(),
+      missingCandidateFields,
+    },
     summary,
     byGroup,
     safety: {
