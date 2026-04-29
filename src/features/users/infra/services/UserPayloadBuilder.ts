@@ -106,6 +106,19 @@ export class UserPayloadBuilder {
     const physicalUserId = mapping.userId || 'UserID';
     let request = buildMappedPayload({ input: payload as Record<string, unknown>, mapping });
 
+    // SharePoint multi-value text columns (Collection(Edm.String)) do not accept null.
+    // For transport accessory writes, normalize null -> [] for day collections.
+    if (type === 'transport') {
+      const toDaysField = mapping.transportToDays;
+      const fromDaysField = mapping.transportFromDays;
+      if (toDaysField && request[toDaysField] == null) {
+        request[toDaysField] = [];
+      }
+      if (fromDaysField && request[fromDaysField] == null) {
+        request[fromDaysField] = [];
+      }
+    }
+
     if (type === 'benefit') {
       const stage = this.resolver.getBenefitCutoverStage();
       request = applyBenefitCutoverWrite(request, payload as any, stage);
