@@ -101,7 +101,7 @@ describe('monthly record SharePoint mapping', () => {
       'Key',
       'I001#2026-04'
     );
-    expect(update).toHaveBeenCalledWith(42, expect.objectContaining({
+    expect(update).toHaveBeenCalledWith('MonthlyRecord_Summary', 42, expect.objectContaining({
       Idempotency_x0020_Key: 'I001#2026-04',
     }));
     expect(create).not.toHaveBeenCalled();
