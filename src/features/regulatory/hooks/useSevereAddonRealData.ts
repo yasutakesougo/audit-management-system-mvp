@@ -38,6 +38,9 @@
  */
 
 import { useMemo, useEffect, useState, useCallback, useRef } from 'react';
+import { useAuth } from '@/auth/useAuth';
+import { isDevMode } from '@/lib/env';
+import { AuthRequiredError } from '@/lib/errors';
 
 import type { IUserMaster } from '@/sharepoint/fields';
 import type { Staff } from '@/types';
@@ -164,7 +167,30 @@ export function useSevereAddonRealData(
   planningSheetRepo?: PlanningSheetRepository | null,
   weeklyObsRepo?: WeeklyObservationRepository | null,
   assignmentRepo?: QualificationAssignmentRepository | null,
+  authReadyOverride?: boolean,
 ): SevereAddonRealDataResult {
+  const { isAuthReady } = useAuth();
+  const authReady = authReadyOverride ?? isAuthReady;
+  const authSkipLoggedRef = useRef(false);
+
+  const isAuthRequiredError = useCallback((err: unknown): boolean => {
+    if (err instanceof AuthRequiredError) return true;
+    if (!(err instanceof Error)) return false;
+    const code = (err as { code?: string }).code;
+    return (
+      err.name === 'AuthRequiredError' ||
+      err.message === 'AUTH_REQUIRED' ||
+      code === 'AUTH_REQUIRED'
+    );
+  }, []);
+
+  const logAuthSkipOnce = useCallback(() => {
+    if (authSkipLoggedRef.current) return;
+    authSkipLoggedRef.current = true;
+    if (isDevMode()) {
+      console.info('[auth] skip real data fetch: account not ready');
+    }
+  }, []);
 
   // ── Phase B: 支援計画シートの再評価日を非同期に取得 ──
   const [sheetsByUser, setSheetsByUser] = useState<Map<string, PlanningSheetListItem[]>>(new Map());
@@ -185,6 +211,12 @@ export function useSevereAddonRealData(
   });
 
   const fetchPlanningSheets = useCallback(async () => {
+    if (!authReady) {
+      logAuthSkipOnce();
+      setSheetsByUser(new Map());
+      planningFetchStateRef.current = { inFlightKey: null, completedKey: null };
+      return;
+    }
     if (!planningSheetRepo || activeUserIds.length === 0) {
       setSheetsByUser(new Map());
       planningFetchStateRef.current = { inFlightKey: null, completedKey: null };
@@ -213,6 +245,11 @@ export function useSevereAddonRealData(
           const sheets = await planningSheetRepo.listCurrentByUser(userId);
           results.set(userId, sheets);
         } catch (err) {
+          if (isAuthRequiredError(err)) {
+            logAuthSkipOnce();
+            results.set(userId, []);
+            return;
+          }
           console.warn(`[useSevereAddonRealData] Failed to fetch sheets for ${userId}:`, err);
           results.set(userId, []);
         }
@@ -223,6 +260,11 @@ export function useSevereAddonRealData(
       planningFetchStateRef.current.completedKey = requestKey;
     } catch (err) {
       const e = err instanceof Error ? err : new Error(String(err));
+      if (isAuthRequiredError(e)) {
+        logAuthSkipOnce();
+        planningFetchStateRef.current.completedKey = null;
+        return;
+      }
       setSheetsError(e);
       console.warn('[useSevereAddonRealData] PlanningSheet fetch failed:', e.message);
       planningFetchStateRef.current.completedKey = null;
@@ -232,7 +274,7 @@ export function useSevereAddonRealData(
       }
       setSheetsLoading(false);
     }
-  }, [planningSheetRepo, activeUserIds, activeUserIdsKey]);
+  }, [planningSheetRepo, activeUserIds, activeUserIdsKey, authReady, isAuthRequiredError, logAuthSkipOnce]);
 
   useEffect(() => {
     fetchPlanningSheets();
@@ -244,6 +286,11 @@ export function useSevereAddonRealData(
   const [obsError, setObsError] = useState<Error | null>(null);
 
   const fetchObservations = useCallback(async () => {
+    if (!authReady) {
+      logAuthSkipOnce();
+      setAllObservations([]);
+      return;
+    }
     if (!weeklyObsRepo || activeUserIds.length === 0) {
       setAllObservations([]);
       return;
@@ -262,6 +309,10 @@ export function useSevereAddonRealData(
             results.push({ userId: r.userId, observationDate: r.observationDate });
           }
         } catch (err) {
+          if (isAuthRequiredError(err)) {
+            logAuthSkipOnce();
+            return;
+          }
           console.warn(`[useSevereAddonRealData] Failed to fetch observations for ${userId}:`, err);
         }
       });
@@ -270,12 +321,16 @@ export function useSevereAddonRealData(
       setAllObservations(results);
     } catch (err) {
       const e = err instanceof Error ? err : new Error(String(err));
+      if (isAuthRequiredError(e)) {
+        logAuthSkipOnce();
+        return;
+      }
       setObsError(e);
       console.warn('[useSevereAddonRealData] Observation fetch failed:', e.message);
     } finally {
       setObsLoading(false);
     }
-  }, [weeklyObsRepo, activeUserIds]);
+  }, [weeklyObsRepo, activeUserIds, authReady, isAuthRequiredError, logAuthSkipOnce]);
 
   useEffect(() => {
     fetchObservations();
@@ -287,6 +342,11 @@ export function useSevereAddonRealData(
   const [assignError, setAssignError] = useState<Error | null>(null);
 
   const fetchAssignments = useCallback(async () => {
+    if (!authReady) {
+      logAuthSkipOnce();
+      setAllAssignments([]);
+      return;
+    }
     if (!assignmentRepo || activeUserIds.length === 0) {
       setAllAssignments([]);
       return;
@@ -308,19 +368,23 @@ export function useSevereAddonRealData(
       );
     } catch (err) {
       const e = err instanceof Error ? err : new Error(String(err));
+      if (isAuthRequiredError(e)) {
+        logAuthSkipOnce();
+        return;
+      }
       setAssignError(e);
       console.warn('[useSevereAddonRealData] Assignment fetch failed:', e.message);
     } finally {
       setAssignLoading(false);
     }
-  }, [assignmentRepo, activeUserIds]);
+  }, [assignmentRepo, activeUserIds, authReady, isAuthRequiredError, logAuthSkipOnce]);
 
   useEffect(() => {
     fetchAssignments();
   }, [fetchAssignments]);
 
   // ── メイン BulkInput 構築 ──
-  const combinedLoading = isLoading || sheetsLoading || obsLoading || assignLoading;
+  const combinedLoading = isLoading || (authReady && (sheetsLoading || obsLoading || assignLoading));
   const combinedError = error || sheetsError || obsError || assignError;
 
   const input = useMemo<SevereAddonBulkInput | null>(() => {
