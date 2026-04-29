@@ -121,7 +121,19 @@ Correlation IDs (if any): [...]
 - Webhook / Teams 連携による障害速報投稿
 
 ---
-## 11. SLO / 運用品質
+## 11. Teams通知が届かない場合の確認手順
+- 運用契約:
+  SharePoint URL は通知先ではない。
+  通知先は Teams Webhook URL のみを使用する。
+- 疎通確認コマンド:
+  `npm run notify -- "nightly maintenance test"`
+- 確認順:
+  1. Webhook値 (Teams Webhook URL が設定されているか)
+  2. Workflow Secrets (`NOTIFY_WEBHOOK_URL` など) の設定
+  3. 実行ログ (`notify` ステップの HTTP ステータス/エラー)
+
+---
+## 12. SLO / 運用品質
 | 指標 | 目標 | 測定方法 |
 |------|------|----------|
 | 成功率 (監査バッチ) | >= 99.5% / 30日 | `success+duplicates / total` (夜間集計) |
