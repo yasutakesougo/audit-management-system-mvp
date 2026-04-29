@@ -282,12 +282,12 @@ import type { SpFieldDef } from '@/lib/sp/types';
  * AttendanceDaily フィールド候補 (環境差異吸収用)
  */
 export const ATTENDANCE_DAILY_CANDIDATES = {
-  key: ['Title', 'Key', 'key', 'AttendanceKey', 'Attendance_x0020_Key', 'Key0', 'cr013_key'],
-  userCode: ['UserCode', 'UserID', 'UserId', 'userId', 'User_x0020_Id', 'UserIdId', 'cr013_userCode', 'cr013_personId'],
-  recordDate: ['RecordDate', 'AttendanceDate', 'Attendance_x0020_Date', 'AttendanceDate0', 'Date', 'EntryDate', 'RecordDate0', 'cr013_recordDate'],
+  key: ['Title', 'Key', 'key', 'AttendanceKey', 'Key0', 'cr013_key'],
+  userCode: ['UserCode', 'UserID', 'UserId', 'userId', 'UserIdId', 'cr013_userCode', 'cr013_personId'],
+  recordDate: ['RecordDate', 'AttendanceDate', 'AttendanceDate0', 'Date', 'EntryDate', 'RecordDate0', 'cr013_recordDate'],
   status: ['Status', 'AttendanceStatus', 'UsageStatus', 'Status0', 'cr013_status'],
-  checkInAt: ['CheckInAt', 'CheckInTime', 'StartTime', 'CheckIn_x0020_Time', 'CheckInAt0', 'CheckIn', 'cr013_checkInAt', 'Check_x002d_in_x0020_Time', 'Check_x002d_in_x0020_Time0', 'Check_x002d_in_x0020_Time1', 'Check_x002d_in_x0020_Time2', 'Check_x002d_in_x0020_Time3', 'Check_x002d_in_x0020_Time4', 'Check_x002d_in_x0020_Time5', 'Check_x002d_in_x0020_Time6'],
-  checkOutAt: ['CheckOutAt', 'CheckOutTime', 'EndTime', 'CheckOut_x0020_Time', 'CheckOutAt0', 'CheckOut', 'cr013_checkOutAt', 'Check_x002d_out_x0020_Time', 'Check_x002d_out_x0020_Time0', 'Check_x002d_out_x0020_Time1', 'Check_x002d_out_x0020_Time2', 'Check_x002d_out_x0020_Time3', 'Check_x002d_out_x0020_Time4', 'Check_x002d_out_x0020_Time5', 'Check_x002d_out_x0020_Time6'],
+  checkInAt: ['CheckInAt', 'CheckInTime', 'StartTime', 'CheckInAt0', 'CheckIn', 'cr013_checkInAt'],
+  checkOutAt: ['CheckOutAt', 'CheckOutTime', 'EndTime', 'CheckOutAt0', 'CheckOut', 'cr013_checkOutAt'],
   cntAttendIn: ['CntAttendIn', 'cr013_cntAttendIn'],
   cntAttendOut: ['CntAttendOut', 'cr013_cntAttendOut'],
   transportTo: ['TransportTo', 'cr013_transportTo'],
