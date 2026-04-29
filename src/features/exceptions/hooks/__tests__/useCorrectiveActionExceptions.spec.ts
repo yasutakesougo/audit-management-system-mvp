@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ActionSuggestion } from '@/features/action-engine/domain/types';
 import { useCorrectiveActionExceptions } from '../useCorrectiveActionExceptions';
@@ -38,7 +38,7 @@ describe('useCorrectiveActionExceptions', () => {
     vi.useRealTimers();
   });
 
-  it('assessment-stale は週初（月曜）では ExceptionCenter に表示しない', () => {
+  it('assessment-stale は週初（月曜）では ExceptionCenter に表示しない', async () => {
     vi.setSystemTime(new Date('2026-03-23T10:00:00Z')); // Monday
 
     const { result } = renderHook(() =>
@@ -48,10 +48,14 @@ describe('useCorrectiveActionExceptions', () => {
       }),
     );
 
+    await act(async () => {
+      await Promise.resolve();
+    });
+
     expect(result.current.items).toHaveLength(0);
   });
 
-  it('assessment-stale は平日中盤（水曜）では ExceptionCenter に表示する', () => {
+  it('assessment-stale は平日中盤（水曜）では ExceptionCenter に表示する', async () => {
     vi.setSystemTime(new Date('2026-03-25T10:00:00Z')); // Wednesday
 
     const { result } = renderHook(() =>
@@ -60,6 +64,10 @@ describe('useCorrectiveActionExceptions', () => {
         states: {},
       }),
     );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
 
     // parent + child
     expect(result.current.items).toHaveLength(2);
