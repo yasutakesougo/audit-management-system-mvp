@@ -71,6 +71,20 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
     };
   }, [planPatchRepository, planningSheetId]);
 
+  const { handleApplyPatch: orchestratorApplyPatch, handleUpdatePatchStatus } = usePlanningSheetOrchestrator({
+    planningSheetRepo,
+    planPatchRepo: planPatchRepository,
+    showSnack: (_severity, msg) => setPatchActionMessage(msg),
+    refresh: async () => {
+      if (!planningSheetId || planningSheetId === 'new') return;
+      // In a real VM setup, this would trigger a refetch in the VM.
+      // For now, we simulate by re-fetching patches locally.
+      const patches = await planPatchRepository.findPending(planningSheetId);
+      setPendingPatches(patches);
+      setPendingPatchCount(patches.length);
+    }
+  });
+
   if (!viewModel) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300 }}>
@@ -153,19 +167,6 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
       </Box>
     );
   }
-
-  const { handleApplyPatch: orchestratorApplyPatch, handleUpdatePatchStatus } = usePlanningSheetOrchestrator({
-    planningSheetRepo,
-    planPatchRepo: planPatchRepository,
-    showSnack: (severity, msg) => setPatchActionMessage(msg),
-    refresh: async () => {
-      // In a real VM setup, this would trigger a refetch in the VM.
-      // For now, we simulate by re-fetching patches locally.
-      const patches = await planPatchRepository.findPending(planningSheetId!);
-      setPendingPatches(patches);
-      setPendingPatchCount(patches.length);
-    }
-  });
 
   const handlePatchStatusChange = async (
     patchId: string,
