@@ -20,6 +20,36 @@ function asField(physical: string | undefined, fallback: string): string {
   return physical || fallback;
 }
 
+function getResolvedCandidates(key: keyof typeof BILLING_SUMMARY_CANDIDATES): readonly string[] {
+  return BILLING_SUMMARY_CANDIDATES[key];
+}
+
+function uniqueCandidates(...candidates: Array<string | undefined>): string[] {
+  return [...new Set(candidates.filter((candidate): candidate is string => Boolean(candidate)))];
+}
+
+async function findExistingMonthlySummary(
+  client: SharePointClient,
+  listName: string,
+  key: string,
+  primaryFieldName: string
+): Promise<Record<string, unknown> | null> {
+  for (const fieldName of uniqueCandidates(primaryFieldName, ...getResolvedCandidates('idempotencyKey'))) {
+    const existing = await client.findByIdempotencyKey(listName, fieldName, key);
+    if (existing) {
+      if (fieldName !== primaryFieldName) {
+        console.warn('[monthly-summary:legacy-idempotency-fallback-used]', {
+          primaryFieldName,
+          fallbackFieldName: fieldName,
+        });
+      }
+      return existing;
+    }
+  }
+
+  return null;
+}
+
 /** DailyRecord リストのフィールド定義 (OData フィルタ SSOT) */
 const DAILY_RECORD_FILTER_FIELDS = {
   recordDate: 'RecordDate',
@@ -304,8 +334,8 @@ export async function upsertMonthlySummary(
   const key = `${summary.userId}#${summary.yearMonth}`;
 
   try {
-    // 既存レコード検索
-    const existing = await client.findByIdempotencyKey(listName, idempotencyFieldName, key);
+    // 既存レコード検索: canonical first, then intentional legacy fallback (`Key`).
+    const existing = await findExistingMonthlySummary(client, listName, key, idempotencyFieldName);
 
     if (existing) {
       // 更新が必要かチェック
