@@ -159,9 +159,9 @@ async function main() {
     parts.push(current);
 
     const row = {};
-    headers.forEach((h, i) => row[h] = parts[i]);
+    headers.forEach((h, i) => row[h] = (parts[i] || '').replace(/^"(.*)"$/, '$1'));
     return row;
-  }).filter(r => r.classification === 'keep-warn');
+  }).filter(r => r.classification === 'keep-warn' || r.classification === 'provision');
 
   // Filter candidates early based on list/field args
   const activeCandidates = candidates.filter(r => {
@@ -235,8 +235,9 @@ async function main() {
     console.log(`\n--- Candidate: ${row.listTitle} / ${row.internalName} (${row.displayName}) ---`);
     
     // Safety Gates
-    if (parseInt(row.usageCount) > 0 || row.hasData === 'true') {
-      console.warn(`⚠️  Skipping: ledger says usage=${row.usageCount}, hasData=${row.hasData}`);
+    const forceDataPurge = args.includes('--force-data-purge');
+    if (parseInt(row.usageCount) > 0 || (row.hasData === 'true' && !forceDataPurge)) {
+      console.warn(`⚠️  Skipping: ledger says usage=${row.usageCount}, hasData=${row.hasData} (Use --force-data-purge to override data check)`);
       continue;
     }
 
@@ -284,7 +285,7 @@ async function main() {
     try {
       const checkUrl = `${normalizedSiteUrl}/lists/getbytitle('${row.listTitle}')/items?$select=${row.internalName}&$top=1&$filter=${row.internalName} ne null`;
       const data = await spFetch(checkUrl, auth);
-      if (data.value && data.value.length > 0) {
+      if (data.value && data.value.length > 0 && !forceDataPurge) {
         console.warn(`❌ ABORT: Live probe found data in ${row.internalName}!`);
         continue;
       }
@@ -294,7 +295,7 @@ async function main() {
         try {
           const checkUrl = `${normalizedSiteUrl}/lists/getbytitle('${row.listTitle}')/items?$select=${row.internalName}&$top=1`;
           const data = await spFetch(checkUrl, auth);
-          if (data.value && data.value.length > 0 && data.value[0][row.internalName] != null) {
+          if (data.value && data.value.length > 0 && data.value[0][row.internalName] != null && !forceDataPurge) {
             console.warn(`❌ ABORT: Live probe (select fallback) found data in ${row.internalName}!`);
             continue;
           }

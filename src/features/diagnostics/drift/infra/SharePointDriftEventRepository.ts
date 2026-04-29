@@ -392,6 +392,9 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       const activePayload: Record<string, unknown> = {};
       const schemaKnown = this.availablePhysicalFields.size > 0;
       for (const [k, v] of Object.entries(payloadRaw)) {
+        if (v === undefined) {
+          continue;
+        }
         if (k === 'Title' || !schemaKnown || this.availablePhysicalFields.has(k)) {
           activePayload[k] = v;
         }
