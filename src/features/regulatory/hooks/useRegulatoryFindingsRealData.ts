@@ -18,6 +18,7 @@
 
 import { useMemo, useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/auth/useAuth';
+import { isDevMode } from '@/lib/env';
 import { AuthRequiredError } from '@/lib/errors';
 
 import type { IUserMaster } from '@/sharepoint/fields';
@@ -96,7 +97,7 @@ export function useRegulatoryFindingsRealData(
   const logAuthSkipOnce = useCallback(() => {
     if (authSkipLoggedRef.current) return;
     authSkipLoggedRef.current = true;
-    if (import.meta.env.DEV) {
+    if (isDevMode()) {
       console.info('[auth] skip real data fetch: account not ready');
     }
   }, []);
