@@ -79,9 +79,9 @@ export const KNOWN_REQUIRED_INDEXED_FIELDS: Record<string, IndexFieldSpec[]> = {
   ],
   SupportRecord_Daily: [
     {
-      internalName: 'UserCode',
-      displayName: '利用者コード',
-      reason: '利用者別履歴取得のキー',
+      internalName: 'UserId',
+      displayName: '利用者ID',
+      reason: '利用者別履歴取得のキー（現行リスト列: UserId）',
     },
     {
       internalName: 'RecordDate',
@@ -114,16 +114,8 @@ export const KNOWN_REQUIRED_INDEXED_FIELDS: Record<string, IndexFieldSpec[]> = {
     },
   ],
   UserBenefit_Profile: [
-    {
-      internalName: 'UserID',
-      displayName: '利用者ID',
-      reason: '結合・取得の主キー',
-    },
-    {
-      internalName: 'RecipientCertNumber',
-      displayName: '受給者証番号',
-      reason: '支給決定情報の検索用',
-    },
+    // UserID / RecipientCertNumber are managed in UserBenefit_Profile_Ext.
+    // Keep required indexes here aligned with fields that physically exist on this list.
     {
       internalName: 'GrantPeriodEnd',
       displayName: '支給終了日',
