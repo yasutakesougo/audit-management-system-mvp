@@ -65,7 +65,9 @@ export const BILLING_SUMMARY_CANDIDATES = {
   completionRate: ['CompletionRate', 'cr013_completionRate'],
   firstEntryDate: ['First_x0020_Entry_x0020_Date', 'FirstEntryDate', 'cr013_firstEntryDate'],
   lastEntryDate: ['Last_x0020_Entry_x0020_Date', 'LastEntryDate', 'cr013_lastEntryDate'],
-  idempotencyKey: ['Idempotency_x0020_Key', 'IdempotencyKey', 'cr013_idempotencyKey'],
+  // `Key` is a legacy, data-bearing idempotency field. Keep it as an intentional
+  // fallback until #1722 migration copies historical values into the canonical field.
+  idempotencyKey: ['Idempotency_x0020_Key', 'IdempotencyKey', 'Key', 'cr013_idempotencyKey'],
 } as const;
 
 export const BILLING_SUMMARY_ESSENTIALS: (keyof typeof BILLING_SUMMARY_CANDIDATES)[] = [
