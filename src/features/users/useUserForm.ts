@@ -305,7 +305,7 @@ export function useUserForm(
   
   // Create a wrapper for PageState that matches Orchestrator's expectations
   const orchestratorPageState = useMemo(() => ({
-    formData: values as any,
+    formData: toCreateDto(values) as any,
     isSaving,
     isDirty,
     error: message?.type === 'error' ? message.text : null,
