@@ -184,38 +184,87 @@ export function fromSharePointFields(
   fields: Record<string, unknown>,
   mapping?: Record<string, string | undefined>
 ): MonthlySummary {
-  const get = (key: string, fallback: string) => fields[asField(mapping?.[key], fallback)];
+  type FallbackConflict = {
+    key: string;
+    canonicalField: string;
+    canonicalValue: string;
+    fallbackField: string;
+    fallbackValue: string;
+  };
+
+  const candidatesByLogicalKey = BILLING_SUMMARY_CANDIDATES as unknown as Record<string, readonly string[]>;
+  const conflicts: FallbackConflict[] = [];
+
+  const isPresent = (v: unknown) => v !== null && v !== undefined && String(v).trim() !== '';
+
+  const getWithFallback = (key: string, fallback: string) => {
+    const canonicalField = asField(mapping?.[key], fallback);
+    const canonicalValue = fields[canonicalField];
+    if (isPresent(canonicalValue)) {
+      const candidates = candidatesByLogicalKey[key] ?? [];
+      for (const name of candidates) {
+        if (name === canonicalField) continue;
+        const v = fields[name];
+        if (!isPresent(v)) continue;
+        if (String(v) !== String(canonicalValue)) {
+          conflicts.push({
+            key,
+            canonicalField,
+            canonicalValue: String(canonicalValue),
+            fallbackField: name,
+            fallbackValue: String(v),
+          });
+        }
+      }
+      return canonicalValue;
+    }
+
+    const candidates = candidatesByLogicalKey[key] ?? [];
+    for (const name of candidates) {
+      const v = fields[name];
+      if (isPresent(v)) return v;
+    }
+    return fields[canonicalField];
+  };
+
   const str = (val: unknown) => (val != null ? String(val) : '');
   const num = (val: unknown) => (val != null ? Number(val) : 0);
 
   // YearMonth 検証
-  const ymValue = str(get('yearMonth', 'YearMonth'));
+  const ymValue = str(getWithFallback('yearMonth', 'YearMonth'));
   const yearMonth = parseYearMonth(ymValue);
   if (!yearMonth) {
     throw new Error(`Invalid YearMonth format: ${ymValue}`);
   }
 
   // IsoDate 検証
-  const fed = str(get('firstEntryDate', 'FirstEntryDate'));
-  const led = str(get('lastEntryDate', 'LastEntryDate'));
+  const fed = str(getWithFallback('firstEntryDate', 'FirstEntryDate'));
+  const led = str(getWithFallback('lastEntryDate', 'LastEntryDate'));
   const firstEntryDate = fed ? parseIsoDate(fed) ?? undefined : undefined;
   const lastEntryDate = led ? parseIsoDate(led) ?? undefined : undefined;
 
+  if (conflicts.length > 0) {
+    console.error('[monthly-summary:fallback-conflict-detected]', {
+      conflictCount: conflicts.length,
+      conflicts,
+    });
+  }
+
   return {
-    userId: str(get('userId', 'UserCode')),
+    userId: str(getWithFallback('userId', 'UserCode')),
     yearMonth,
-    displayName: str(get('displayName', 'DisplayName')),
-    lastUpdatedUtc: str(get('lastUpdated', 'LastUpdated')),
+    displayName: str(getWithFallback('displayName', 'DisplayName')),
+    lastUpdatedUtc: str(getWithFallback('lastUpdated', 'LastUpdated')),
     kpi: {
-      totalDays: num(get('totalDays', 'KPI_TotalDays')),
-      plannedRows: num(get('plannedRows', 'KPI_PlannedRows')),
-      completedRows: num(get('completedRows', 'KPI_CompletedRows')),
-      inProgressRows: num(get('inProgressRows', 'KPI_InProgressRows')),
-      emptyRows: num(get('emptyRows', 'KPI_EmptyRows')),
-      specialNotes: num(get('specialNotes', 'KPI_SpecialNotes')),
-      incidents: num(get('incidents', 'KPI_Incidents')),
+      totalDays: num(getWithFallback('totalDays', 'KPI_TotalDays')),
+      plannedRows: num(getWithFallback('plannedRows', 'KPI_PlannedRows')),
+      completedRows: num(getWithFallback('completedRows', 'KPI_CompletedRows')),
+      inProgressRows: num(getWithFallback('inProgressRows', 'KPI_InProgressRows')),
+      emptyRows: num(getWithFallback('emptyRows', 'KPI_EmptyRows')),
+      specialNotes: num(getWithFallback('specialNotes', 'KPI_SpecialNotes')),
+      incidents: num(getWithFallback('incidents', 'KPI_Incidents')),
     },
-    completionRate: num(get('completionRate', 'CompletionRate')),
+    completionRate: num(getWithFallback('completionRate', 'CompletionRate')),
     firstEntryDate,
     lastEntryDate,
   };
