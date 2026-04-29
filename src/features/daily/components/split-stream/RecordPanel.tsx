@@ -3,6 +3,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LockIcon from '@mui/icons-material/Lock';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
 import SaveIcon from '@mui/icons-material/Save';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -133,6 +134,7 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
   const [memo, setMemo] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(5);
   const [userMood, setUserMood] = useState<BehaviorMood | null>(null);
+  const [submitFeedback, setSubmitFeedback] = useState<string | null>(null);
   const observationRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
   const selectedActivityRef = useRef<HTMLDivElement>(null);
 
@@ -237,11 +239,21 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
         observationLength: observationText.length,
       });
     }
-    if (isLocked) return;
+    if (isLocked) {
+      setSubmitFeedback('入力ロック中です。対象者と手順を確認してください。');
+      return;
+    }
     const observation = actualObservation.trim();
-    if (!observation) return;
-    if (requiresPlanSlot && !selectedSlot) return;
+    if (!observation) {
+      setSubmitFeedback('「本人の様子・実施記録」を入力してください。');
+      return;
+    }
+    if (requiresPlanSlot && !selectedSlot) {
+      setSubmitFeedback('上部の時間帯チップを選択してから保存してください。');
+      return;
+    }
     try {
+      setSubmitFeedback(null);
       await onSubmit({
         recordedAt: new Date().toISOString(),
         planSlotKey: selectedSlot ? getScheduleKey(selectedSlot.time, selectedSlot.activity) : undefined,
@@ -273,8 +285,9 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
       setUserMood(null);
       onAfterSubmit?.(selectedSlot ? getScheduleKey(selectedSlot.time, selectedSlot.activity) : null);
     } catch (err) {
-      // 🚨 error は store.error に入ってるので、ここでは何もしない
-      console.debug('[RecordPanel.handleSubmit] error already in store:', err);
+      const message = err instanceof Error ? err.message : '保存に失敗しました。';
+      setSubmitFeedback(message);
+      console.debug('[RecordPanel.handleSubmit] submit failed:', err);
     }
   };
 
@@ -461,6 +474,11 @@ export function RecordPanel(props: RecordPanelProps): JSX.Element {
       </CardContent>
 
       <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+        {submitFeedback ? (
+          <Alert severity="warning" sx={{ mb: 1 }}>
+            {submitFeedback}
+          </Alert>
+        ) : null}
         <Button
           fullWidth
           variant="contained"

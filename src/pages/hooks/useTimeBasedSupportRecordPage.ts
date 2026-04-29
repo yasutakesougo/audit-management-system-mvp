@@ -58,6 +58,16 @@ export function useTimeBasedSupportRecordPage({
     [behaviorRecords, targetUserId],
   );
   const scheduleKeys = useMemo(() => schedule.map((item) => getScheduleKey(item.time, item.activity)), [schedule]);
+  const resolveStepKeyFromSchedule = useCallback((rawStepKey?: string | null): string | null => {
+    if (!rawStepKey) return null;
+    if (scheduleKeys.includes(rawStepKey)) return rawStepKey;
+
+    // URL 由来の step は活動文言差分で不一致になることがあるため、時刻だけで救済する。
+    const rawTime = rawStepKey.split('|')[0]?.trim();
+    if (!rawTime) return null;
+    const matched = scheduleKeys.find((key) => key.split('|')[0]?.trim() === rawTime);
+    return matched ?? null;
+  }, [scheduleKeys]);
   const filledStepIds = useMemo(() => {
     if (!schedule.length || recentObservations.length === 0) return new Set<string>();
     const filled = new Set<string>();
@@ -197,17 +207,20 @@ export function useTimeBasedSupportRecordPage({
       return;
     }
     if (selectedStepId && !scheduleKeys.includes(selectedStepId)) {
-      setSelectedStepId(null);
+      const resolved = resolveStepKeyFromSchedule(selectedStepId);
+      setSelectedStepId(resolved);
     }
-  }, [schedule, scheduleKeys, selectedStepId]);
+  }, [resolveStepKeyFromSchedule, schedule, scheduleKeys, selectedStepId]);
 
   useEffect(() => {
     if (!initialStepKey) return;
     if (didApplyInitialStepRef.current) return;
     didApplyInitialStepRef.current = true;
-    setSelectedStepId(initialStepKey);
-    setScrollToStepId(initialStepKey);
-  }, [initialStepKey]);
+    const resolved = resolveStepKeyFromSchedule(initialStepKey);
+    if (!resolved) return;
+    setSelectedStepId(resolved);
+    setScrollToStepId(resolved);
+  }, [initialStepKey, resolveStepKeyFromSchedule]);
 
   useEffect(() => {
     if (!showUnfilledOnly) return;

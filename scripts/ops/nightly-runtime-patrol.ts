@@ -767,7 +767,12 @@ async function fetchRealEvents(
   };
 
   const isListViewThresholdResponse = (res: Response, text: string): boolean =>
-    res.status === 500 && /list view threshold/i.test(text);
+    res.status === 500 &&
+    (
+      /list view threshold/i.test(text) ||
+      /SPQueryThrottledException/i.test(text) ||
+      /-2147024860/.test(text)
+    );
 
   const mapDriftItemToEvent = (item: any): RawEvent => {
     let eType: RawEvent['eventType'] = 'drift';
@@ -794,6 +799,15 @@ async function fetchRealEvents(
   try {
     let driftFetchSucceeded = false;
     let diagnosticsFetchSucceeded = false;
+    let diagnosticsOptionalUnavailable = false;
+    const sinceMs = Date.parse(filterDate);
+
+    const filterRecentItems = (items: any[]): any[] =>
+      items.filter((item: any) => {
+        const timestamp = item.DetectedAt || item.Detected_x0020_At || item.Created;
+        const time = Date.parse(timestamp);
+        return Number.isNaN(time) || Number.isNaN(sinceMs) ? true : time >= sinceMs;
+      });
 
     // 1. DriftEventsLog fetches
     const driftUrl = `${siteUrl}/_api/web/lists/getbytitle('DriftEventsLog')/items?$filter=Created ge datetime'${filterDate}'`;
@@ -801,42 +815,40 @@ async function fetchRealEvents(
 
     if (driftAttempt.res.ok) {
       driftFetchSucceeded = true;
-      driftAttempt.data.value.forEach((item: any) => {
+      const items = Array.isArray(driftAttempt.data.value) ? driftAttempt.data.value : [];
+      items.forEach((item: any) => {
         events.push(mapDriftItemToEvent(item));
       });
-      driftLogReadStats.scannedCount = driftAttempt.data.value.length;
-      driftLogReadStats.filteredCount = driftAttempt.data.value.length;
+      driftLogReadStats.scannedCount = items.length;
+      driftLogReadStats.filteredCount = items.length;
       driftLogReadStats.safety = classifyDriftLogSafety(driftLogReadStats.scannedCount);
-      console.log(`  └ Fetched ${driftAttempt.data.value.length} DriftEventsLog events.`);
-    } else if (isListViewThresholdResponse(driftAttempt.res, driftAttempt.text)) {
-      console.warn(`⚠️ DriftEventsLog threshold detected. Falling back to Id desc top ${DRIFT_LOG_FALLBACK_TOP}.`);
+      console.log(`  └ Fetched ${items.length} DriftEventsLog events.`);
+    } else {
+      if (isListViewThresholdResponse(driftAttempt.res, driftAttempt.text)) {
+        console.warn(`⚠️ DriftEventsLog threshold detected. Falling back to top ${DRIFT_LOG_FALLBACK_TOP} + local date filter.`);
+      } else {
+        console.warn(`⚠️ DriftEventsLog filtered query failed (${driftAttempt.res.status} ${driftAttempt.res.statusText}). Falling back to top ${DRIFT_LOG_FALLBACK_TOP} + local date filter.`);
+      }
       driftLogReadStats.fallbackUsed = true;
       const fallbackUrl =
         `${siteUrl}/_api/web/lists/getbytitle('DriftEventsLog')/items` +
         `?$select=Id,Title,Created,DetectedAt,Detected_x0020_At,ListName,List_x0020_Name,FieldName,Field_x0020_Name,Severity,ResolutionType,ErrorMessage` +
-        `&$orderby=Id desc&$top=${DRIFT_LOG_FALLBACK_TOP}`;
+        `&$top=${DRIFT_LOG_FALLBACK_TOP}`;
       const fallbackAttempt = await fetchJson(fallbackUrl);
       if (fallbackAttempt.res.ok) {
         driftFetchSucceeded = true;
-        const filtered = (fallbackAttempt.data.value as any[])
-          .filter((item: any) => {
-            const timestamp = item.DetectedAt || item.Detected_x0020_At || item.Created;
-            const time = Date.parse(timestamp);
-            const since = Date.parse(filterDate);
-            return Number.isNaN(time) || Number.isNaN(since) ? true : time >= since;
-          });
+        const scanned = Array.isArray(fallbackAttempt.data.value) ? fallbackAttempt.data.value : [];
+        const filtered = filterRecentItems(scanned);
         filtered.forEach((item: any) => {
           events.push(mapDriftItemToEvent(item));
         });
-        driftLogReadStats.scannedCount = fallbackAttempt.data.value.length;
+        driftLogReadStats.scannedCount = scanned.length;
         driftLogReadStats.filteredCount = filtered.length;
         driftLogReadStats.safety = classifyDriftLogSafety(driftLogReadStats.scannedCount);
-        console.log(`  └ Fetched ${filtered.length} DriftEventsLog events via fallback (${fallbackAttempt.data.value.length} scanned).`);
+        console.log(`  └ Fetched ${filtered.length} DriftEventsLog events via fallback (${scanned.length} scanned).`);
       } else {
         console.warn(`⚠️ Failed to fetch DriftEventsLog fallback: ${fallbackAttempt.res.status} ${fallbackAttempt.res.statusText}`);
       }
-    } else {
-      console.warn(`⚠️ Failed to fetch DriftEventsLog: ${driftAttempt.res.status} ${driftAttempt.res.statusText}`);
     }
 
     // 2. DiagnosticsReports fetches
@@ -845,7 +857,9 @@ async function fetchRealEvents(
     if (diagRes.ok) {
         diagnosticsFetchSucceeded = true;
         const data = await diagRes.json();
-        data.value.forEach((item: any) => {
+        const scanned = Array.isArray(data.value) ? data.value : [];
+        const filtered = filterRecentItems(scanned);
+        filtered.forEach((item: any) => {
             const isCritical = item.Status === 'FAIL' || item.Title?.includes('FAIL');
             const hasThrottle = item.Payload?.includes('429');
             
@@ -859,12 +873,17 @@ async function fetchRealEvents(
                 message: item.Title || 'Diagnostic error reported.'
             });
         });
-        console.log(`  └ Fetched ${data.value.length} DiagnosticsReports events.`);
+        console.log(`  └ Fetched ${filtered.length} DiagnosticsReports events (${scanned.length} scanned).`);
     } else {
-        console.warn(`⚠️ Failed to fetch DiagnosticsReports: ${diagRes.status} ${diagRes.statusText} (List may not exist yet)`);
+        if (diagRes.status === 404) {
+          diagnosticsOptionalUnavailable = true;
+          console.warn('⚠️ DiagnosticsReports is optional and was not found (404). Continuing.');
+        } else {
+          console.warn(`⚠️ Failed to fetch DiagnosticsReports: ${diagRes.status} ${diagRes.statusText} (List may not exist yet)`);
+        }
     }
 
-    if (requireSharePoint && !driftFetchSucceeded && !diagnosticsFetchSucceeded) {
+    if (requireSharePoint && !driftFetchSucceeded && !diagnosticsFetchSucceeded && !diagnosticsOptionalUnavailable) {
       throw new Error('Failed to fetch both DriftEventsLog and DiagnosticsReports while NIGHTLY_REQUIRE_SP=1.');
     }
 
