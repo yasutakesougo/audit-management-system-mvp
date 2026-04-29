@@ -120,7 +120,9 @@
     "patrol:purge": "tsx scripts/ops/execute-zombie-purge.mjs",
     "patrol:governance": "tsx scripts/ops/nightly-drift-governance.mjs",
     "ops:index-remediate": "tsx scripts/ops/index-remediate.ts",
-    "patrol:full": "npm run patrol:telemetry && npm run patrol && npm run patrol:assert && npm run patrol:dashboard && npm run patrol:raw-fetch && npm run patrol:admin-status && npm run patrol:exception-center && npm run patrol:decision && npm run patrol:governance"
+    "patrol:full": "npm run patrol:telemetry && npm run patrol && npm run patrol:assert && npm run patrol:dashboard && npm run patrol:raw-fetch && npm run patrol:admin-status && npm run patrol:exception-center && npm run patrol:decision && npm run patrol:governance",
+    "nightly:maintenance": "npm run patrol:full",
+    "nightly:maintenance:full": "npm run patrol:full && npm run patrol:purge"
   },
   "dependencies": {
     "@azure/msal-browser": "^3.30.0",
