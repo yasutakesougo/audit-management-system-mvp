@@ -24,6 +24,7 @@ export type SpEventName =
   | 'provider_contract_violation'
   | 'sp:row_skipped'
   | 'sp:fetch_fallback_success'
+  | 'sp:idempotency_fallback_used'
   | 'provisioning_executed'
   | 'sp:approval_log_created'
   | 'sp:approval_log_skipped'
