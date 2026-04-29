@@ -37,12 +37,6 @@ async function findExistingMonthlySummary(
   for (const fieldName of uniqueCandidates(primaryFieldName, ...getResolvedCandidates('idempotencyKey'))) {
     const existing = await client.findByIdempotencyKey(listName, fieldName, key);
     if (existing) {
-      if (fieldName !== primaryFieldName) {
-        console.warn('[monthly-summary:legacy-idempotency-fallback-used]', {
-          primaryFieldName,
-          fallbackFieldName: fieldName,
-        });
-      }
       return existing;
     }
   }
