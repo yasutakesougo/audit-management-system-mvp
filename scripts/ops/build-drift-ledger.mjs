@@ -44,12 +44,17 @@ const REPO_ROOT = resolve(__dirname, '..', '..');
  * Classifies a field using the 4-tier governance model (Phase 2).
  */
 function classify(row, prov) {
+  const usageCount = row.usageCount || 0;
+  const usageKind = classifyUsageKind(row.internalName, usageCount);
+
   // If explicitly tagged in Registry, respect it
   if (prov?.governance) {
     return { 
       classification: prov.governance, 
       evidence: 'explicit_registry_governance', 
-      confidence: 'high' 
+      confidence: 'high',
+      lane: toLane(prov.governance, usageKind),
+      usageKind,
     };
   }
 
@@ -58,25 +63,28 @@ function classify(row, prov) {
     return {
       classification: 'allow',
       evidence: 'silent_drift_registry_governance',
-      confidence: 'high'
+      confidence: 'high',
+      lane: toLane('allow', usageKind),
+      usageKind,
     };
   }
 
-  const usageCount = row.usageCount || 0;
-
   // 1. Matched Registry Field -> allow
   if (row.expectedField && row.actualField) {
-    return { classification: 'allow', evidence: 'registry_match', confidence: 'high' };
+    return { classification: 'allow', evidence: 'registry_match', confidence: 'high', lane: toLane('allow', usageKind), usageKind };
   }
 
-  // 2. Not in Registry but used in Code -> candidate
+  // 2. Not in Registry but used in Code -> candidate / metadata-reference
   if (usageCount > 0) {
-    return { classification: 'candidate', evidence: `active_usage_in_code(${usageCount})`, confidence: 'high' };
+    const evidence = usageKind === 'metadata'
+      ? `active_usage_in_code_metadata(${usageCount})`
+      : `active_usage_in_code_business(${usageCount})`;
+    return { classification: 'candidate', evidence, confidence: 'high', lane: toLane('candidate', usageKind), usageKind };
   }
 
   // 3. Not in Registry, No usage, but has Data -> provision
   if (row.hasData) {
-    return { classification: 'provision', evidence: 'data_exists_no_usage', confidence: 'medium' };
+    return { classification: 'provision', evidence: 'data_exists_no_usage', confidence: 'medium', lane: toLane('provision', usageKind), usageKind };
   }
 
   // 4. No Data, No Usage -> keep-warn (Zombie Candidate)
@@ -85,11 +93,28 @@ function classify(row, prov) {
     return { 
       classification: 'keep-warn', 
       evidence: 'no_data_no_usage', 
-      confidence: isNumberedSuffix ? 'high' : 'medium' 
+      confidence: isNumberedSuffix ? 'high' : 'medium',
+      lane: toLane('keep-warn', usageKind),
+      usageKind,
     };
   }
 
-  return { classification: 'provision', evidence: 'fallback_or_partial', confidence: 'low' };
+  return { classification: 'provision', evidence: 'fallback_or_partial', confidence: 'low', lane: toLane('provision', usageKind), usageKind };
+}
+
+function classifyUsageKind(internalName, usageCount) {
+  if (!usageCount || usageCount <= 0) return 'none';
+  return isSharePointMetadataField(internalName) ? 'metadata' : 'business';
+}
+
+function toLane(classification, usageKind) {
+  if (classification === 'allow') return '';
+  if (classification === 'keep-warn') return 'purge_candidate';
+  if (classification === 'provision') return 'provision_duplicate';
+  if (classification === 'candidate') {
+    return usageKind === 'metadata' ? 'metadata_reference' : 'migration_required';
+  }
+  return 'keep_warn';
 }
 
 // ── SharePoint API Helpers ────────────────────────────────────────────────
@@ -227,6 +252,34 @@ function isSystemField(internalName) {
   return false;
 }
 
+/**
+ * SharePoint metadata fields that may appear as "used in code" through generic probes.
+ * These must not be treated as business-field active usage for migration/purge decisions.
+ */
+function isSharePointMetadataField(internalName) {
+  if (!internalName) return false;
+  if (isSystemField(internalName)) return true;
+
+  const metadataNames = new Set([
+    'Id', 'ID', 'Title', 'Created', 'Modified', 'Author', 'Editor',
+    'Key', 'SelectTitle', 'Last_x0020_Modified', 'Created_x0020_Date',
+    'FSObjType', 'PermMask', 'ProgId', 'LinkFilenameNoMenu', 'LinkFilename',
+    'LinkFilename2', 'ServerUrl', 'EncodedAbsUrl', 'BaseName', 'LinkTitle2',
+  ]);
+  if (metadataNames.has(internalName)) return true;
+
+  const metadataPatterns = [
+    /^LinkTitle/i,
+    /^LinkFilename/i,
+    /^File/i,
+    /^Workflow/i,
+    /^ContentType/i,
+    /^GUID$/i,
+    /^UniqueId$/i,
+  ];
+  return metadataPatterns.some((p) => p.test(internalName));
+}
+
 // ── Churn Suppression ─────────────────────────────────────────────────────
 
 /**
@@ -236,7 +289,7 @@ function isSystemField(internalName) {
  */
 const STRUCTURAL_FIELDS = [
   'driftType', 'usageCount', 'hasData', 'isIndexed',
-  'classification', 'confidence', 'evidence',
+  'classification', 'confidence', 'evidence', 'lane', 'usageKind',
   'fieldId', 'expectedField', 'actualField', 'candidatesMatched',
 ];
 
@@ -447,7 +500,7 @@ async function main() {
 }
 
 function writeCsv(path, rows) {
-  const headers = ['listKey', 'listTitle', 'fieldId', 'internalName', 'displayName', 'expectedField', 'actualField', 'driftType', 'candidatesMatched', 'usageCount', 'hasData', 'isIndexed', 'firstSeenAt', 'lastSeenAt', 'classification', 'confidence', 'evidence'];
+  const headers = ['listKey', 'listTitle', 'fieldId', 'internalName', 'displayName', 'expectedField', 'actualField', 'driftType', 'candidatesMatched', 'usageCount', 'hasData', 'isIndexed', 'firstSeenAt', 'lastSeenAt', 'classification', 'confidence', 'evidence', 'lane', 'usageKind'];
   const content = [
     headers.join(','),
     ...rows.map(r => headers.map(h => {
@@ -459,7 +512,7 @@ function writeCsv(path, rows) {
 }
 
 function writeMarkdown(path, rows) {
-  const headers = ['listKey', 'listTitle', 'internalName', 'displayName', 'driftType', 'classification', 'confidence', 'firstSeenAt', 'isIndexed', 'evidence'];
+  const headers = ['listKey', 'listTitle', 'internalName', 'displayName', 'driftType', 'classification', 'lane', 'usageKind', 'confidence', 'firstSeenAt', 'isIndexed', 'evidence'];
   const tableHeaders = `| ${headers.join(' | ')} |`;
   const tableDivider = `| ${headers.map(() => '---').join(' | ')} |`;
   const tableRows = rows.map(r => `| ${headers.map(h => h === 'confidence' ? `**${r[h]}**` : r[h]).join(' | ')} |`).join('\n');
