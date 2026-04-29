@@ -28,32 +28,36 @@ const OUTPUT_MD = join(OUTPUT_DIR, 'monthlyrecord-summary-migration-dry-run.md')
 
 const MONTHLY_SUMMARY_MIGRATION_GROUPS = {
   idempotency: {
-    canonical: ['IdempotencyKey', 'Idempotency_x0020_Key'],
+    canonical: ['Idempotency_x0020_Key', 'IdempotencyKey', 'cr013_idempotencyKey'],
     fallback: ['Key'],
   },
   totalDays: {
     canonical: ['KPI_TotalDays', 'TotalDays'],
-    fallback: ['Total_x0020_Days'],
+    fallback: ['Total_x0020_Days', 'WorkingDays'],
+  },
+  plannedRows: {
+    canonical: ['Planned_x0020_Rows', 'KPI_PlannedRows', 'PlannedRows'],
+    fallback: ['cr013_plannedRows'],
   },
   completedRows: {
-    canonical: ['KPI_CompletedRows'],
-    fallback: ['Completed_x0020_Rows', 'CompletedCount'],
+    canonical: ['Completed_x0020_Rows', 'KPI_CompletedRows', 'CompletedRows'],
+    fallback: ['CompletedCount', 'cr013_completedRows'],
   },
   inProgressRows: {
-    canonical: ['KPI_InProgressRows'],
-    fallback: ['In_x0020_Progress_x0020_Rows', 'PendingCount'],
+    canonical: ['In_x0020_Progress_x0020_Rows', 'KPI_InProgressRows', 'InProgressRows'],
+    fallback: ['PendingCount', 'cr013_inProgressRows'],
   },
   emptyRows: {
-    canonical: ['KPI_EmptyRows'],
-    fallback: ['Empty_x0020_Rows', 'EmptyCount'],
+    canonical: ['Empty_x0020_Rows', 'KPI_EmptyRows', 'EmptyRows'],
+    fallback: ['EmptyCount', 'cr013_emptyRows'],
   },
   incidents: {
-    canonical: ['KPI_Incidents'],
-    fallback: ['Incidents', 'IncidentCount'],
+    canonical: ['Incidents', 'KPI_Incidents'],
+    fallback: ['IncidentCount', 'cr013_incidents'],
   },
   specialNotes: {
-    canonical: ['KPI_SpecialNotes'],
-    fallback: ['Special_x0020_Notes', 'SpecialNoteCount'],
+    canonical: ['Special_x0020_Notes', 'KPI_SpecialNotes', 'SpecialNotes'],
+    fallback: ['SpecialNoteCount', 'cr013_specialNotes'],
   },
 };
 
