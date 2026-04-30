@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * slashMenuItems.ts — 議事録専用 Slash メニュー定義
  *
@@ -13,7 +14,8 @@
  * - 「補助」: 継続検討, 次回予定, 箇条書き, チェックリスト, 見出し
  * - 標準: BlockNote デフォルト項目（そのまま維持）
  */
-import { BlockNoteEditor } from '@blocknote/core';
+// NOTE: BlockNoteEditor の型はデフォルトスキーマを前提とするため、
+// カスタムスキーマを使用している場合は any を指定して型エラーを回避する
 import { insertOrUpdateBlockForSlashMenu } from '@blocknote/core/extensions';
 import type { DefaultReactSuggestionItem } from '@blocknote/react';
 
@@ -42,19 +44,21 @@ export const MEETING_PREFIX = {
 // ──────────────────────────────────────────────────────────────
 
 function insertSectionHeading(
-  editor: BlockNoteEditor,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  editor: any,
   text: string,
   level: number,
-  followBlock?: Record<string, unknown>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  followBlock?: Record<string, any>
 ): void {
   insertOrUpdateBlockForSlashMenu(editor, {
     type: 'heading',
     props: { level },
     content: [{ type: 'text', text, styles: {} }],
-  } as unknown as Parameters<typeof insertOrUpdateBlockForSlashMenu>[1]);
+  } as any);
   if (followBlock) {
     editor.insertBlocks(
-      [followBlock as unknown as Parameters<BlockNoteEditor['insertBlocks']>[0][number]],
+      [followBlock],
       editor.getTextCursorPosition().block,
       'after'
     );
@@ -66,7 +70,8 @@ function insertSectionHeading(
 // ──────────────────────────────────────────────────────────────
 
 function getPrimaryItems(
-  editor: BlockNoteEditor
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  editor: any
 ): DefaultReactSuggestionItem[] {
   return [
     // ── 議題 ──
@@ -75,7 +80,7 @@ function getPrimaryItems(
       onItemClick: () => {
         insertSectionHeading(editor, MEETING_PREFIX.agenda, 2, {
           type: 'paragraph',
-        } as unknown as Record<string, unknown>);
+        } as any);
       },
       aliases: ['gidai', 'agenda', 'topic', '題目'],
       group: GROUP_PRIMARY,
@@ -89,7 +94,7 @@ function getPrimaryItems(
         insertOrUpdateBlockForSlashMenu(editor, {
           type: 'report',
           content: [],
-        } as unknown as Parameters<typeof insertOrUpdateBlockForSlashMenu>[1]);
+        } as any);
       },
       aliases: ['houkoku', 'report', '状況報告', '共有'],
       group: GROUP_PRIMARY,
@@ -103,7 +108,7 @@ function getPrimaryItems(
         insertOrUpdateBlockForSlashMenu(editor, {
           type: 'decision',
           content: [],
-        } as unknown as Parameters<typeof insertOrUpdateBlockForSlashMenu>[1]);
+        } as any);
       },
       aliases: ['kettei', 'decision', '決定', '確定'],
       group: GROUP_PRIMARY,
@@ -117,7 +122,7 @@ function getPrimaryItems(
         insertOrUpdateBlockForSlashMenu(editor, {
           type: 'action',
           content: [],
-        } as unknown as Parameters<typeof insertOrUpdateBlockForSlashMenu>[1]);
+        } as any);
       },
       aliases: ['action', 'todo', 'タスク', '対応', 'アクション'],
       group: GROUP_PRIMARY,
@@ -131,7 +136,7 @@ function getPrimaryItems(
         insertOrUpdateBlockForSlashMenu(editor, {
           type: 'notification',
           content: [],
-        } as unknown as Parameters<typeof insertOrUpdateBlockForSlashMenu>[1]);
+        } as any);
       },
       aliases: ['renraku', 'notice', 'info', '周知', '連絡'],
       group: GROUP_PRIMARY,
@@ -145,7 +150,8 @@ function getPrimaryItems(
 // ──────────────────────────────────────────────────────────────
 
 function getSecondaryItems(
-  editor: BlockNoteEditor
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  editor: any
 ): DefaultReactSuggestionItem[] {
   return [
     // ── 継続検討 ──
@@ -155,7 +161,7 @@ function getSecondaryItems(
         insertOrUpdateBlockForSlashMenu(editor, {
           type: 'continuingDiscussion',
           content: [],
-        } as unknown as Parameters<typeof insertOrUpdateBlockForSlashMenu>[1]);
+        } as any);
       },
       aliases: ['keizoku', 'pending', '保留', '未確定', '検討中'],
       group: GROUP_SECONDARY,
@@ -169,7 +175,7 @@ function getSecondaryItems(
         insertOrUpdateBlockForSlashMenu(editor, {
           type: 'nextSchedule',
           content: [],
-        } as unknown as Parameters<typeof insertOrUpdateBlockForSlashMenu>[1]);
+        } as any);
       },
       aliases: ['jikai', 'next', 'schedule', '日程', '予定'],
       group: GROUP_SECONDARY,
@@ -183,7 +189,7 @@ function getSecondaryItems(
         insertOrUpdateBlockForSlashMenu(editor, {
           type: 'bulletListItem',
           content: [{ type: 'text', text: '', styles: {} }],
-        } as unknown as Parameters<typeof insertOrUpdateBlockForSlashMenu>[1]);
+        } as any);
       },
       aliases: ['bullet', 'list', 'リスト', '箇条'],
       group: GROUP_SECONDARY,
@@ -198,7 +204,7 @@ function getSecondaryItems(
           type: 'checkListItem',
           props: { checked: false },
           content: [{ type: 'text', text: '', styles: {} }],
-        } as unknown as Parameters<typeof insertOrUpdateBlockForSlashMenu>[1]);
+        } as any);
       },
       aliases: ['check', 'checkbox', 'チェック', 'タスク'],
       group: GROUP_SECONDARY,
@@ -213,7 +219,7 @@ function getSecondaryItems(
           type: 'heading',
           props: { level: 2 },
           content: [{ type: 'text', text: '', styles: {} }],
-        } as unknown as Parameters<typeof insertOrUpdateBlockForSlashMenu>[1]);
+        } as any);
       },
       aliases: ['heading', 'midashi', 'h2', '見出し'],
       group: GROUP_SECONDARY,
@@ -231,7 +237,8 @@ function getSecondaryItems(
  * 優先グループ → 補助グループ の順で配列する。
  */
 export function getMeetingMinutesSlashMenuItems(
-  editor: BlockNoteEditor
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  editor: any
 ): DefaultReactSuggestionItem[] {
   return [
     ...getPrimaryItems(editor),

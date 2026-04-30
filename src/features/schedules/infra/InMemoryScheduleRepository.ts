@@ -514,9 +514,9 @@ export class InMemoryScheduleRepository implements ScheduleRepository {
     }
 
     const existingItem = this.items[index];
-    const start = toIsoString(normalizeLocal(input.startLocal));
-    const end = toIsoString(normalizeLocal(input.endLocal));
-    const title = resolveTitle(input);
+    const start = toIsoString(normalizeLocal(input.startLocal ?? existingItem.start));
+    const end = toIsoString(normalizeLocal(input.endLocal ?? existingItem.end));
+    const title = (input.title ?? existingItem.title ?? '').trim() || '予定';
     const updatedAt = new Date().toISOString();
     const normalizedServiceType = normalizeServiceType(input.serviceType);
     const acceptedOn = normalizeOptionalLocal(input.acceptedOn) ?? existingItem.acceptedOn;
@@ -532,7 +532,7 @@ export class InMemoryScheduleRepository implements ScheduleRepository {
       title,
       start,
       end,
-      category: input.category,
+      category: input.category ?? existingItem.category,
       userId: input.userId ?? existingItem.userId,
       userLookupId: input.userLookupId ? Number(input.userLookupId) : existingItem.userLookupId,
       userName: input.userName ?? existingItem.userName,

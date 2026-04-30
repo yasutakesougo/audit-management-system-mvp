@@ -14,7 +14,7 @@
 import '@blocknote/core/fonts/inter.css';
 import '@blocknote/mantine/style.css';
 
-import { Block, filterSuggestionItems } from '@blocknote/core';
+import { filterSuggestionItems } from '@blocknote/core/extensions';
 import { BlockNoteView } from '@blocknote/mantine';
 import {
   getDefaultReactSlashMenuItems,
@@ -41,7 +41,8 @@ export type MeetingMinutesBlockEditorProps = {
  * 安全に serializable な最小サブセットに射影する。
  */
 function toMinuteBlocks(
-  bnBlocks: readonly Block[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  bnBlocks: readonly any[]
 ): MeetingMinuteBlock[] {
   return bnBlocks.map((b) => ({
     id: String(b.id ?? ''),
@@ -64,7 +65,8 @@ export function MeetingMinutesBlockEditor(
   // 初期コンテンツ: 正規化してから BlockNote へ渡す
   const normalized = normalizeMeetingMinuteBlocks(value);
   const initialContent = normalized.length > 0
-    ? (normalized as Block[])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ? (normalized as any[])
     : undefined;
 
   // カスタムスキーマ付きエディタを生成
