@@ -263,21 +263,29 @@ function buildUntestedFeatureDrafts(untestedFeatures) {
  * Orchestration Health → Issue Draft
  */
 function buildOrchestrationDrafts(orchestrationResults) {
-  if (!orchestrationResults || orchestrationResults.score >= 95) return [];
+  if (!orchestrationResults) return [];
 
-  const sev = orchestrationResults.score < 80 ? 'critical' : 'high';
+  const s = orchestrationResults;
+  const total = (s.totalFailures || 0) + (s.totalSuccess || 100);
+  const successRate = ((s.totalSuccess || 100) / total) * 100;
+  const score = Math.round(successRate);
+  
+  if (score >= 95) return [];
+
+  const status = score >= 95 ? 'Excellent' : score >= 80 ? 'Stable' : score >= 60 ? 'Warning' : 'Critical';
+  const sev = score < 80 ? 'critical' : 'high';
   
   return [
     {
-      title: `[${sev}] [orchestration] Business Execution Health regression (${orchestrationResults.score}%)`,
+      title: `[${sev}] [orchestration] Business Execution Health regression (${score}%)`,
       severity: sev,
       category: 'orchestration-health',
       summary: [
         '## Orchestration Health Regression',
         '',
-        `- Overall Score: **${orchestrationResults.score}%**`,
-        `- Status: **${orchestrationResults.status}**`,
-        `- Open Failures: **${orchestrationResults.openCount || 0}**`,
+        `- Overall Score: **${score}%**`,
+        `- Status: **${status}**`,
+        `- Open Failures: **${s.openCount || 0}**`,
       ].join('\n'),
       rationale: [
         'ビジネスロジックの実行（Orchestration / Action Engine）で失敗が発生しています。',
