@@ -99,6 +99,15 @@ export interface SpFieldDef {
    */
   isSilent?: boolean;
   /**
+   * 退役予定のレガシーな物理列名リスト。
+   * 検出時に「乖離（Drift）」警告を出さず、「レガシー許容（Tolerated）」として扱う。
+   */
+  legacyCandidates?: readonly string[];
+  /**
+   * フィールド自体がレガシーであることを示すフラグ。
+   */
+  isLegacy?: boolean;
+  /**
    * インフラ統治の 4 階層モデル (Phase 2):
    * - allow: レジストリ定義済み（正常）
    * - candidate: レジストリ未定義だがコード使用あり（レジストリ追加候補）

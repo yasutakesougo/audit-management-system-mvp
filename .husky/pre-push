@@ -24,7 +24,7 @@ BASE_REF="${BASE_REF:-origin/main}"
 
 # Determine changed JS/TS files compared to base.
 # Exclude files matching .eslintignore patterns (e.g. Legacy/) to avoid ESLint 8 "file ignored" warnings.
-FILES="$(git diff --name-only --diff-filter=ACMR "$BASE_REF...HEAD" -- '*.ts' '*.tsx' '*.js' '*.jsx' | grep -v -E '(^|/)tests/|/Legacy/' || true)"
+FILES="$(git diff --name-only --diff-filter=ACMR "$BASE_REF...HEAD" -- '*.ts' '*.tsx' '*.js' '*.jsx' | grep -v -E '(^|/)tests/|/Legacy/|^scripts/' || true)"
 
 # If nothing to lint, skip.
 if [ -z "$FILES" ]; then

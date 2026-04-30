@@ -39,6 +39,14 @@ describe('BILLING_SUMMARY_CANDIDATES drift', () => {
     expect(resolved.yearMonth).toBe('Year_x0020_Month');
     expect(fieldStatus.userId.isDrifted).toBe(true);
   });
+  
+  it('KPI_TotalDays が TotalDays より優先される', () => {
+    const available = new Set([
+      'KPI_TotalDays', 'TotalDays', 'Total_x0020_Days'
+    ]);
+    const { resolved } = resolve(available);
+    expect(resolved.totalDays).toBe('KPI_TotalDays');
+  });
 
   it('必須フィールドが揃えば isHealthy=true', () => {
     const available = new Set(['UserId', 'YearMonth', 'TotalDays', 'WorkingDays']);

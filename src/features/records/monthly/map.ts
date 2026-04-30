@@ -161,6 +161,7 @@ export function toSharePointFields(
     [get('completionRate', 'CompletionRate')]: summary.completionRate,
     [get('firstEntryDate', 'FirstEntryDate')]: summary.firstEntryDate || undefined,
     [get('lastEntryDate', 'LastEntryDate')]: summary.lastEntryDate || undefined,
+    [get('isLocked', 'IsLocked')]: summary.isLocked ?? false,
     [get('idempotencyKey', 'IdempotencyKey')]: `${summary.userId}#${summary.yearMonth}`,
   };
 }
@@ -182,6 +183,7 @@ export interface SharePointMonthlyItem {
   CompletionRate?: number;
   FirstEntryDate?: string;
   LastEntryDate?: string;
+  IsLocked?: boolean;
   IdempotencyKey: string;
 }
 
@@ -275,6 +277,7 @@ export function fromSharePointFields(
     completionRate: num(getWithFallback('completionRate', 'CompletionRate')),
     firstEntryDate,
     lastEntryDate,
+    isLocked: Boolean(getWithFallback('isLocked', 'IsLocked')),
   };
 }
 

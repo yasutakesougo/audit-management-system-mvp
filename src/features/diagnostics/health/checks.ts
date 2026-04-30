@@ -538,38 +538,67 @@ async function runListChecks(
         })
       );
     } else if (drifted.length > 0) {
-      // Execute governance decision logic
-      const primaryDrift = drifted[0];
-      const driftType = fieldStatus[primaryDrift.internalName].driftType as DriftType;
-      const isEssential = Boolean(primaryDrift.isEssential);
-      
-      const decision = decideGovernanceAction(driftType, ctx.autonomyLevel, isEssential);
+      // 乖離（Drift）をレガシー許容と通常の警告に分類
+      const legacyDrifted = drifted.filter(f => {
+        const resName = fieldStatus[f.internalName].resolvedName;
+        return f.isLegacy || (resName && f.legacyCandidates?.includes(resName));
+      });
+      const regularDrifted = drifted.filter(f => !legacyDrifted.includes(f));
 
-      results.push(
-        warn({
-          key: `schema.fields.${spec.key}`,
-          label: `スキーマ（内部名乖離）：${spec.displayName}`,
-          category: "schema",
-          summary: `${drifted.length}個の列で内部名の乖離（Drift）を検出しました。`,
-          detail: `SharePoint上の内部名にサフィックスが付与されていますが、アプリ側で自動吸収しています。\n乖離項目: ${drifted.map(f => `${f.internalName} → ${fieldStatus[f.internalName].resolvedName}`).join(", ")}`,
-          evidence: {
-            listTitle: spec.resolvedTitle,
-            drifted: drifted.map(f => ({
-              expected: f.internalName,
-              actual: fieldStatus[f.internalName].resolvedName,
-              driftType: fieldStatus[f.internalName].driftType
-            }))
-          },
-          governance: decision,
-          nextActions: [
-            {
-              kind: "copy",
-              label: "乖離列の確認依頼",
-              value: `リスト「${spec.resolvedTitle}」の「${drifted[0].internalName}」が「${fieldStatus[drifted[0].internalName].resolvedName}」として解決されています。`,
+      // 1. レガシー許容された乖離の報告
+      if (legacyDrifted.length > 0) {
+        results.push(
+          pass({
+            key: `schema.fields.${spec.key}.legacy`,
+            label: `スキーマ（レガシー列）: ${spec.displayName}`,
+            category: "schema",
+            summary: `退役予定のレガシー列（${legacyDrifted.map(f => f.internalName).join(", ")}）が検出されました。`,
+            detail: `この列は将来的に削除される予定ですが、現在は後方互換性のために保持されています。\n解決名: ${legacyDrifted.map(f => `${f.internalName} → ${fieldStatus[f.internalName].resolvedName}`).join(", ")}`,
+            evidence: {
+              listTitle: spec.resolvedTitle,
+              drifted: legacyDrifted.map(f => ({
+                expected: f.internalName,
+                actual: fieldStatus[f.internalName].resolvedName,
+                driftType: "legacy_tolerated"
+              }))
             },
-          ],
-        })
-      );
+          })
+        );
+      }
+
+      // 2. 通常の乖離の報告
+      if (regularDrifted.length > 0) {
+        const primaryDrift = regularDrifted[0];
+        const driftType = fieldStatus[primaryDrift.internalName].driftType as DriftType;
+        const isEssential = Boolean(primaryDrift.isEssential);
+        const decision = decideGovernanceAction(driftType, ctx.autonomyLevel, isEssential);
+
+        results.push(
+          warn({
+            key: `schema.fields.${spec.key}`,
+            label: `スキーマ（内部名乖離）：${spec.displayName}`,
+            category: "schema",
+            summary: `${regularDrifted.length}個の列で内部名の乖離（Drift）を検出しました。`,
+            detail: `SharePoint上の内部名にサフィックスが付与されていますが、アプリ側で自動吸収しています。\n乖離項目: ${regularDrifted.map(f => `${f.internalName} → ${fieldStatus[f.internalName].resolvedName}`).join(", ")}`,
+            evidence: {
+              listTitle: spec.resolvedTitle,
+              drifted: regularDrifted.map(f => ({
+                expected: f.internalName,
+                actual: fieldStatus[f.internalName].resolvedName,
+                driftType: fieldStatus[f.internalName].driftType
+              }))
+            },
+            governance: decision,
+            nextActions: [
+              {
+                kind: "copy",
+                label: "乖離列の確認依頼",
+                value: `リスト「${spec.resolvedTitle}」の「${regularDrifted[0].internalName}」が「${fieldStatus[regularDrifted[0].internalName].resolvedName}」として解決されています。`,
+              },
+            ],
+          })
+        );
+      }
     } else if (missingOptional.length > 0) {
       results.push(
         warn({
