@@ -596,6 +596,15 @@ export const handoffListEntries: readonly SpListEntry[] = [
     operations: ['R'],
     category: 'handoff',
     lifecycle: 'required',
+    essentialFields: ['UserCode0', 'RowNo0', 'TimeSlot0', 'Activity0'],
+    provisioningFields: [
+      { internalName: 'UserCode0', type: 'Text', displayName: '利用者コード', indexed: true, candidates: ['UserCode0', 'UserCode'] },
+      { internalName: 'RowNo0', type: 'Number', displayName: '行番号', candidates: ['RowNo0', 'RowNo'] },
+      { internalName: 'TimeSlot0', type: 'Text', displayName: '時間帯', candidates: ['TimeSlot0', 'TimeSlot'] },
+      { internalName: 'Activity0', type: 'Text', displayName: '活動内容', candidates: ['Activity0', 'Activity'] },
+      { internalName: 'PersonManual0', type: 'Note', displayName: '本人手順', candidates: ['PersonManual0', 'PersonManual'] },
+      { internalName: 'SupporterManual0', type: 'Note', displayName: '支援者手順', candidates: ['SupporterManual0', 'SupporterManual'] },
+    ],
   },
   {
     key: 'plan_goals',
