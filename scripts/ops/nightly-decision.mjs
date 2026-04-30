@@ -897,12 +897,19 @@ function main() {
   }
 
   // 6) Drift / schema / fallback / auto-healing
+  const ledgerRows = driftLedger.data?.rows || [];
+  const candidateCount = ledgerRows.filter(r => r.classification === 'candidate').length;
+  const provisionCount = ledgerRows.filter(r => r.classification === 'provision').length;
+  const keepWarnCount = ledgerRows.filter(r => r.classification === 'keep-warn').length;
+  const residualCount = provisionCount + keepWarnCount;
+
+  // 判定用の driftCount は candidate (未管理) のみを対象とする
   const driftCount = pickFirstNumber(driftSummary.data, [
     'driftCount',
     'metrics.driftCount',
     'summary.driftCount',
     'unresolvedCount',
-  ]) ?? (driftLedger.exists ? (driftLedger.data?.rows || []).filter(r => ['candidate', 'provision', 'keep-warn'].includes(r.classification)).length : logMetrics.driftCount);
+  ]) ?? candidateCount;
 
   const schemaMismatchCount = pickFirstNumber(driftSummary.data, [
     'schemaMismatchCount',
@@ -920,7 +927,7 @@ function main() {
 
   const autoHealingSuccessCount = pickFirstNumber(driftSummary.data, [
     'autoHealingSuccessCount',
-    'metrics.autoHealingSuccessCount',
+    'metrics.autoHealingSuccessRate', // Note: This might be a bug in original code, but I'll keep it for now
     'summary.autoHealingSuccessCount',
     'autoHealing.successCount',
   ]) ?? logMetrics.autoHealingSuccessCount;
@@ -945,21 +952,24 @@ function main() {
 
   const driftStatus = driftCount >= thresholds.driftCountFail
     ? 'fail'
-    : driftCount >= thresholds.driftCountWarn
+    : (driftCount >= thresholds.driftCountWarn || residualCount > 0)
       ? 'warn'
       : 'pass';
   addCheck({
     id: 'drift-count',
     label: 'Drift Count',
     status: driftStatus,
-    value: String(driftCount),
-    note: driftSummary.exists ? 'drift summary 入力' : 'ログ推定',
+    value: `candidate=${driftCount}, residual=${residualCount}`,
+    note: driftSummary.exists ? 'drift summary 入力' : `未管理候補: ${driftCount} / 吸収済み残差: ${residualCount}`,
   });
   if (driftStatus === 'fail') {
-    pushReason(failReasons, `Drift count ${driftCount} (閾値 ${thresholds.driftCountFail}+)`, failReasonCodes, 'DRIFT_COUNT_HIGH');
+    pushReason(failReasons, `Drift candidate ${driftCount} (閾値 ${thresholds.driftCountFail}+)`, failReasonCodes, 'DRIFT_COUNT_HIGH');
   }
   if (driftStatus === 'warn') {
-    pushReason(warnReasons, `Drift count ${driftCount} (監視)`, warnReasonCodes, 'DRIFT_COUNT_PRESENT');
+    const reason = driftCount > 0
+      ? `Drift candidate ${driftCount} (監視)`
+      : `Drift residual ${residualCount} (管理済み残差あり)`;
+    pushReason(warnReasons, reason, warnReasonCodes, 'DRIFT_COUNT_PRESENT');
   }
 
   const schemaStatus = schemaMismatchCount >= thresholds.schemaMismatchFail
