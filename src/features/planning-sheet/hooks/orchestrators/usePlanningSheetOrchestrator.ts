@@ -2,13 +2,32 @@ import { useCallback } from 'react';
 import type { PlanPatch } from '@/domain/isp/planPatch';
 import { applyPlanPatch } from '@/domain/isp/planPatch';
 import { recordAudit, OrchestratorFailureKind } from '@/lib/telemetry/auditLogger';
+import type { PlanPatchRepository } from '@/domain/isp/planPatchRepository';
+import type { PlanningSheetRepository } from '@/domain/isp/port';
+import type { PlanningSheetUpdateInput } from '@/domain/isp/port';
+import type { SupportPlanningSheet } from '@/domain/isp/schema';
 
 export interface PlanningSheetOrchestratorDeps {
-  planningSheetRepo: any;
-  planPatchRepo: any;
+  planningSheetRepo: PlanningSheetRepository;
+  planPatchRepo: PlanPatchRepository;
   showSnack: (severity: 'success' | 'error' | 'info', message: string) => void;
   refresh: () => Promise<void>;
 }
+
+const toPlanningSheetUpdateInput = (
+  sheet: SupportPlanningSheet,
+): PlanningSheetUpdateInput => {
+  const normalizeNullableIso = (value: string | null | undefined): string | undefined =>
+    typeof value === 'string' && value.trim() ? value : undefined;
+
+  return {
+    ...sheet,
+    appliedFrom: normalizeNullableIso(sheet.appliedFrom),
+    nextReviewAt: normalizeNullableIso(sheet.nextReviewAt),
+    supportStartDate: normalizeNullableIso(sheet.supportStartDate),
+    authoredAt: normalizeNullableIso(sheet.authoredAt),
+  };
+};
 
 /**
  * usePlanningSheetOrchestrator
@@ -21,14 +40,15 @@ export function usePlanningSheetOrchestrator(deps: PlanningSheetOrchestratorDeps
   /**
    * 更新案（Patch）を支援計画書に適用する
    */
-  const handleApplyPatch = useCallback(async (patch: PlanPatch, currentSheet: any) => {
+  const handleApplyPatch = useCallback(async (patch: PlanPatch, currentSheet: SupportPlanningSheet) => {
     const startTime = performance.now();
     try {
       // 1. ドメインロジックによるパッチ適用（純粋関数）
       const updated = applyPlanPatch(patch, currentSheet);
+      const updateInput = toPlanningSheetUpdateInput(updated);
       
       // 2. 支援計画書の更新
-      await planningSheetRepo.update(currentSheet.id, updated);
+      await planningSheetRepo.update(currentSheet.id, updateInput);
       
       // 3. 更新案のステータスを「確定」に変更
       await planPatchRepo.updateStatus(patch.id, 'confirmed');

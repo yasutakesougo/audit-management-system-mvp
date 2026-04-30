@@ -38,7 +38,7 @@ export class UserPayloadBuilder {
     const [transportMapping, benefitMapping, benefitExtMapping] = await Promise.all([
       this.resolver.resolveAccessoryFields(
         sanitizeEnvValue(readEnv('VITE_SP_LIST_USER_TRANSPORT', '')) || 'UserTransport_Settings',
-        USER_TRANSPORT_SETTINGS_CANDIDATES as any
+        USER_TRANSPORT_SETTINGS_CANDIDATES as unknown as Record<string, string[]>
       ),
       this.resolver.resolveAccessoryFields(
         sanitizeEnvValue(readEnv('VITE_SP_LIST_USER_BENEFIT', '')) || 'UserBenefit_Profile',
@@ -46,7 +46,7 @@ export class UserPayloadBuilder {
       ),
       this.resolver.resolveAccessoryFields(
         sanitizeEnvValue(readEnv('VITE_SP_LIST_USER_BENEFIT_EXT', '')) || 'UserBenefit_Profile_Ext',
-        USER_BENEFIT_PROFILE_EXT_CANDIDATES as any
+        USER_BENEFIT_PROFILE_EXT_CANDIDATES as unknown as Record<string, string[]>
       )
     ]);
 
@@ -121,7 +121,7 @@ export class UserPayloadBuilder {
 
     if (type === 'benefit') {
       const stage = this.resolver.getBenefitCutoverStage();
-      request = applyBenefitCutoverWrite(request, payload as any, stage);
+      request = applyBenefitCutoverWrite(request, payload as IUserMasterCreateDto, stage);
     }
 
     // UserID を除いた実データがあるか確認
@@ -139,7 +139,7 @@ export class UserPayloadBuilder {
     if (existing.length > 0) {
       const id = existing[0].Id || existing[0].id || existing[0].ID;
       if (id !== undefined && id !== null) {
-        await this.provider.updateItem(listTitle, id as any, request);
+        await this.provider.updateItem(listTitle, Number(id), request);
       }
     } else {
       await this.provider.createItem(listTitle, request);
@@ -147,7 +147,7 @@ export class UserPayloadBuilder {
   }
 
 
-  private filterUnsupportedFields(request: Record<string, any>): Record<string, any> {
+  private filterUnsupportedFields(request: Record<string, unknown>): Record<string, unknown> {
     const filtered = { ...request };
     for (const field of this.unsupportedWriteFields) {
       delete filtered[field];
@@ -155,8 +155,8 @@ export class UserPayloadBuilder {
     return filtered;
   }
 
-  private resolveRetryField(error: any, request: Record<string, any>): string | null {
-    const msg = String(error?.message || '');
+  private resolveRetryField(error: unknown, request: Record<string, unknown>): string | null {
+    const msg = error instanceof Error ? error.message : String(error || '');
     if (msg.includes('does not exist') || msg.includes('Invalid column')) {
       for (const physicalName of Object.keys(request)) {
         if (msg.includes(`'${physicalName}'`) || msg.includes(`"${physicalName}"`)) {

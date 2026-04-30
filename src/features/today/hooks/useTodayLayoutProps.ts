@@ -39,6 +39,8 @@ import type { SceneNextActionViewModel } from './useSceneNextAction';
 import type { UseTransportStatusReturn } from '../transport';
 import type { UserAlert } from '../domain/buildUserAlerts';
 import type { UserStatusRecord } from '@/features/schedules/domain/mappers/userStatus';
+import type { IUserMaster } from '@/sharepoint/fields/userFields';
+import type { AttendanceVisit } from '@/features/attendance/attendance.logic';
 
 // ── Input Types ──
 
@@ -371,10 +373,8 @@ export function useTodayLayoutProps(input: TodayLayoutPropsInput): TodayLayoutPr
         });
         navigate(href);
       },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      users: summary.users as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      visits: summary.visits as any,
+      users: summary.users as unknown as IUserMaster[],
+      visits: summary.visits as unknown as Record<string, AttendanceVisit>,
     };
   }, [summary, nextAction, sceneAction, transport, quickRecord.openUnfilled, quickRecord.openUser, navigate, role, scheduleDetailHref, alertsByUser, onOpenUserStatus, userStatusRecords]);
 }

@@ -88,10 +88,12 @@ export const SpScheduleRowSchema = z
     EditorDate: z.unknown().optional().nullable(),
 
     EntryHash: z.string().optional().nullable(),
+    '@odata.etag': z.string().optional().nullable(),
 
     __metadata: z
       .object({
         id: z.string().optional(),
+        etag: z.string().optional(),
       })
       .optional()
       .nullable(),
@@ -262,7 +264,7 @@ export function mapSpRowToSchedule(row: SpScheduleRow): SchedItem | null {
     const id = coerceIdString(idRaw) ?? `${start}-${end}`;
 
     // Phase 2-0: extract etag from modern @odata.etag, standard __metadata.etag, legacy __metadata.id, or generate fallback
-    const rawEtag = (row as any)['@odata.etag'] || (row as any).__metadata?.etag;
+    const rawEtag = row['@odata.etag'] || row.__metadata?.etag;
     const etagValue = rawEtag ? String(rawEtag) : (row.__metadata?.id ? `"${row.__metadata.id}"` : `"sp-${id}"`);
 
     const titleCandidate = coerceString(pickFirstValue(row, ['Title', 'Subject']));

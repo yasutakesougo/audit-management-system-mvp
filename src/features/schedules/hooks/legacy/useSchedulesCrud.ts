@@ -106,9 +106,8 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
     setPendingFabFocus,
     setDialogParams, clearDialogParams,
     onCreateSuccess,
-    filteredItems: filteredItemsRaw,
+    filteredItems,
   } = deps;
-  const filteredItems = filteredItemsRaw as any[];
 
   const repository = useScheduleRepository();
 
@@ -238,7 +237,7 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
 
   // ── Orchestrator Integration ─────────────────────────────────────────────
   const orchestrator = useScheduleOrchestrator({
-    repository: repository as any,
+    repository: repository,
     showSnack,
     onSuccess: () => refetch()
   });
@@ -310,7 +309,7 @@ export function useSchedulesCrud(deps: CrudDeps): CrudReturn {
           await update(payload);
         } else {
           // --- ORCHESTRATOR DELEGATION ---
-          await (orchestrator as any).handleCreateSchedule(input);
+          await orchestrator.handleCreateSchedule(input);
           onCreateSuccess?.(input.startLocal);
         }
         handleCreateDialogClose();

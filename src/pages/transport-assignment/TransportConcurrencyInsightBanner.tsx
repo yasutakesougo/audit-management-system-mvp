@@ -14,7 +14,7 @@ export function TransportConcurrencyInsightBanner({ currentVehicleId }: Props) {
 
   // If currentVehicleId is provided, check if it's affected
   const relevantSignals = currentVehicleId
-    ? signals.filter(s => s.affectedItems?.includes(currentVehicleId))
+    ? signals.filter(s => (s.affectedItems as string[] | undefined)?.includes(currentVehicleId))
     : signals;
 
   if (relevantSignals.length === 0) return null;
@@ -43,7 +43,7 @@ export function TransportConcurrencyInsightBanner({ currentVehicleId }: Props) {
             </>
           )}
           <div style={{ marginTop: '4px', opacity: 0.9, fontSize: '0.85rem' }}>
-            推奨アクション: {signal.recommendation}
+            推奨アクション: {signal.recommendation as string}
           </div>
         </Alert>
       ))}

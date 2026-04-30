@@ -69,7 +69,7 @@
     "staleExceptions": 0,
     "recurringExceptions": 0,
     "actWarnings": 0,
-    "classificationOverall": "needs-review",
+    "classificationOverall": "monitor",
     "laneErrors": 0,
     "laneWarnings": 0,
     "adminOverall": "unknown",
@@ -86,8 +86,8 @@
     {
       "id": "patrol-overall",
       "label": "Nightly Patrol 分類",
-      "status": "fail",
-      "value": "needs-review",
+      "status": "warn",
+      "value": "monitor",
       "note": "classification-<date>.json"
     },
     {
@@ -198,22 +198,22 @@
   ],
   "reasons": {
     "fail": [
-      "Nightly Patrol が needs-review",
       "Drift count 234 (閾値 10+)",
       "大量の高信頼度ドリフトを検知 (201 件)"
     ],
     "warn": [
       "/admin/status summary が欠損（判定信頼性低下）",
+      "Nightly Patrol が monitor",
       "ExceptionCenter summary が欠損（判定信頼性低下）"
     ]
   },
   "reasonCodes": {
     "fail": [
-      "PATROL_NEEDS_REVIEW",
       "DRIFT_COUNT_HIGH"
     ],
     "warn": [
       "ADMIN_STATUS_SUMMARY_MISSING",
+      "PATROL_MONITOR",
       "EXCEPTION_CENTER_SUMMARY_MISSING"
     ]
   },
@@ -221,10 +221,6 @@
     "path": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md",
     "reasonCodeLinks": {
       "fail": [
-        {
-          "code": "PATROL_NEEDS_REVIEW",
-          "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-patrol"
-        },
         {
           "code": "DRIFT_COUNT_HIGH",
           "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-drift"
@@ -236,6 +232,10 @@
           "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-admin-status"
         },
         {
+          "code": "PATROL_MONITOR",
+          "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-patrol"
+        },
+        {
           "code": "EXCEPTION_CENTER_SUMMARY_MISSING",
           "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-exception"
         }
@@ -243,14 +243,6 @@
     },
     "reasonCodeActions": {
       "fail": [
-        {
-          "code": "PATROL_NEEDS_REVIEW",
-          "normalizedCode": "PATROL_NEEDS_REVIEW",
-          "owner": "Platform Owner",
-          "severity": "action_required",
-          "firstAction": "decision-YYYY-MM-DD.md の Fail Trigger を順に割当し、再実行を行う。",
-          "runbookLink": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-patrol"
-        },
         {
           "code": "DRIFT_COUNT_HIGH",
           "normalizedCode": "DRIFT_COUNT_HIGH",
@@ -270,6 +262,14 @@
           "runbookLink": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-admin-status"
         },
         {
+          "code": "PATROL_MONITOR",
+          "normalizedCode": "PATROL_MONITOR",
+          "owner": "Ops On-call",
+          "severity": "watch",
+          "firstAction": "monitor/auto-fixable の対象を確認し、継続発生時は escalation する。",
+          "runbookLink": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-patrol"
+        },
+        {
           "code": "EXCEPTION_CENTER_SUMMARY_MISSING",
           "normalizedCode": "EXCEPTION_CENTER_SUMMARY_MISSING",
           "owner": "Ops On-call",
@@ -284,12 +284,6 @@
   "interpretation": {
     "signals": [
       {
-        "type": "zombie",
-        "severity": "critical",
-        "message": "PATROL_NEEDS_REVIEW",
-        "recommendation": "decision-YYYY-MM-DD.md の Fail Trigger を順に割当し、再実行を行う。"
-      },
-      {
         "type": "drift",
         "severity": "critical",
         "message": "DRIFT_COUNT_HIGH",
@@ -300,6 +294,12 @@
         "severity": "warn",
         "message": "ADMIN_STATUS_SUMMARY_MISSING",
         "recommendation": "integration-diagnose のログを開き、/admin/status 入力欠損の有無を確認する。"
+      },
+      {
+        "type": "zombie",
+        "severity": "warn",
+        "message": "PATROL_MONITOR",
+        "recommendation": "monitor/auto-fixable の対象を確認し、継続発生時は escalation する。"
       },
       {
         "type": "zombie",

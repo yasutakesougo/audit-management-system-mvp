@@ -10,7 +10,7 @@
  */
 import { ChangeEvent, createRef, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseTransportCourse } from '../today/transport/transportCourse';
-import type { IUserMaster } from '../../sharepoint/fields';
+import type { IUserMaster, IUserMasterCreateDto } from '../../sharepoint/fields';
 import { canEditUser } from './domain/userLifecycle';
 import { useUsersStore } from './store';
 import { useUserRepository } from './repositoryFactory';
@@ -24,6 +24,7 @@ import type {
     UseUserFormOptions,
     UseUserFormReturn,
 } from './useUserFormTypes';
+import type { UserEditPageState } from './hooks/view-models/useUserEditPageState';
 
 // ---------------------------------------------------------------------------
 // Re-exports — preserve import compatibility for existing callers
@@ -304,16 +305,16 @@ export function useUserForm(
   // --------------------------------
   
   // Create a wrapper for PageState that matches Orchestrator's expectations
-  const orchestratorPageState = useMemo(() => ({
-    formData: toCreateDto(values) as any,
+  const orchestratorPageState = useMemo((): UserEditPageState => ({
+    formData: toCreateDto(values),
     isSaving,
     isDirty,
     error: message?.type === 'error' ? message.text : null,
-    setFieldValue: (field: unknown, value: unknown) => setField(field as any, value),
+    setFieldValue: <K extends keyof IUserMasterCreateDto>(field: K, value: IUserMasterCreateDto[K]) => setField(field as any, value as any),
     setSaving: setIsSaving,
     setError: (err: string | null) => setMessage(err ? { type: 'error', text: err } : null),
     reset: (_updatedUser: IUserMaster) => {
-      const next = deriveInitialValues(); // Or use updatedUser if conversion logic is needed
+      const next = deriveInitialValues();
       setValues(next);
       initialJson.current = JSON.stringify(next);
     }

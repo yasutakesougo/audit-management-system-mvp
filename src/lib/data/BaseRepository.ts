@@ -23,12 +23,12 @@ export abstract class BaseRepository {
    * マッピング定義に基づくペイロード構築。
    * 入力として NormalizedPayload<T> を期待し、内部で規約を適用する。
    */
-  protected buildMappedPayload<T extends Record<string, any>>(args: {
+  protected buildMappedPayload<T extends Record<string, unknown>>(args: {
     input: NormalizedPayload<T>;
     mapping: Record<string, string | undefined>;
   }): PhysicalWritePayload {
     return buildMappedPayload({
-      input: args.input as any,
+      input: args.input as Record<string, unknown>,
       mapping: args.mapping as Record<string, string>
     });
   }

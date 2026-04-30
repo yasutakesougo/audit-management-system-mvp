@@ -1,8 +1,15 @@
 import { useEffect, useState } from 'react';
+export type NightlySignal = {
+  type: string;
+  severity: string;
+  message: string;
+  [key: string]: unknown;
+};
+
 export type NightlyDecision = {
   date: string;
   interpretation: {
-    signals: any[];
+    signals: NightlySignal[];
   };
 };
 
