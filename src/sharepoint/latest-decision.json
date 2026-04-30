@@ -53,7 +53,7 @@
     "logFile": "/Users/yasutakesougo/audit-management-system-mvp/logs/today.auto.log"
   },
   "metrics": {
-    "driftCount": 192,
+    "driftCount": 150,
     "schemaMismatchCount": 0,
     "fetchFallbackCount": 0,
     "autoHealingSuccessCount": 0,
@@ -115,7 +115,7 @@
       "id": "drift-count",
       "label": "Drift Count",
       "status": "fail",
-      "value": "192",
+      "value": "150",
       "note": "ログ推定"
     },
     {
@@ -192,14 +192,14 @@
       "id": "drift-ledger",
       "label": "Drift Evidence Ledger",
       "status": "warn",
-      "value": "high_confidence=160",
+      "value": "high_confidence=118",
       "note": "drift-ledger.json"
     }
   ],
   "reasons": {
     "fail": [
-      "Drift count 192 (閾値 10+)",
-      "大量の高信頼度ドリフトを検知 (160 件)"
+      "Drift count 150 (閾値 10+)",
+      "大量の高信頼度ドリフトを検知 (118 件)"
     ],
     "warn": [
       "/admin/status summary が欠損（判定信頼性低下）",
