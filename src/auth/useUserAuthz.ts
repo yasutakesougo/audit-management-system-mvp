@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 type UserAuthz = {
   role: Role;
   ready: boolean;
-  reason?: 'missing-admin-group-id' | 'demo-default-full-access';
+  reason?: 'missing-admin-group-id' | 'demo-default-full-access' | 'not-in-admin-group' | 'auth-error';
 };
 
 const MEMBER_OF_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -245,12 +245,21 @@ export const useUserAuthz = (): UserAuthz => {
 
     const role: Role = isAdmin ? 'admin' : isReception ? 'reception' : 'viewer';
 
-    return { role, ready } satisfies UserAuthz;
+    let reason: UserAuthz['reason'] = undefined;
+    if (adminGroupId && !isAdmin) {
+      reason = 'not-in-admin-group';
+    } else if (!adminGroupId && !isDemoOrDev) {
+      reason = 'missing-admin-group-id';
+    } else if (isDemoOrDev && !adminGroupId) {
+      reason = 'demo-default-full-access';
+    }
+
+    return { role, ready, reason } satisfies UserAuthz;
   }, [groupIds, receptionGroupId, adminGroupId, envReady, testRole]);
 
   if (error) {
     // 権限判定が落ちてもアプリを壊さない（read-only にフォールバック）
-    return { role: 'viewer', ready: true };
+    return { role: 'viewer', ready: true, reason: 'auth-error' };
   }
 
   return value;
