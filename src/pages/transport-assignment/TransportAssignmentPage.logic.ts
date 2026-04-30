@@ -16,7 +16,7 @@ export type WeekBulkApplyState = {
   assignments: TransportAssignment[];
   payloads: UpdateScheduleEventInput[];
   summary: Array<{ date: string; count: number }>;
-  signals: any[];
+  signals: unknown[];
 };
 
 export function toJstDateKey(date: Date): string {

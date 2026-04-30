@@ -201,11 +201,11 @@ export default function TransportAssignmentPage() {
   useEffect(() => {
     if (!assignmentsLoading && persistedAssignments && !persistedSnapshot) {
       if (process.env.NODE_ENV !== 'production') {
-        const etags = (persistedAssignments as any[]).map(a => `${a.id}:${a.etag}`);
+        const etags = persistedAssignments.map(a => `${a.id}:${a.etag}`);
         // eslint-disable-next-line no-console
         console.info(`[DIAGNOSTIC] TransportAssignmentPage: Capturing persisted snapshot. ETags: ${JSON.stringify(etags)}`);
       }
-      setPersistedSnapshot(persistedAssignments as any);
+      setPersistedSnapshot(persistedAssignments as TransportAssignment[]);
     }
   }, [assignmentsLoading, persistedAssignments, persistedSnapshot]);
 
@@ -306,11 +306,11 @@ export default function TransportAssignmentPage() {
 
   const assignmentDiffs = useMemo(() => {
     if (!draft || !persistedAssignments) return [];
-    return compareDraftWithPersistedAssignments(draft, (persistedAssignments as any));
+    return compareDraftWithPersistedAssignments(draft, persistedAssignments as TransportAssignment[]);
   }, [draft, persistedAssignments]);
 
   const concurrencyConflicts = useMemo(() => {
-    const conflicts = detectConcurrencyConflicts(persistedSnapshot, (persistedAssignments as any), vehicleNameOverrides);
+    const conflicts = detectConcurrencyConflicts(persistedSnapshot, persistedAssignments as TransportAssignment[], vehicleNameOverrides);
     if (conflicts.length > 0 && process.env.NODE_ENV !== 'production') {
       // eslint-disable-next-line no-console
       console.debug('[TransportAssignmentPage] Concurrency Conflicts detected:', conflicts);
@@ -511,7 +511,7 @@ export default function TransportAssignmentPage() {
     setDraft(result.nextDraft);
     setPendingAssignByVehicle({});
     setWeekBulkApplyState({ 
-      signals: [] as any[],
+      signals: [] as unknown[],
       assignments: result.assignments, 
       payloads: result.payloads, 
       summary: result.summary 
