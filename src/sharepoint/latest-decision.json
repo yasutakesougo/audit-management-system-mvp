@@ -2,9 +2,9 @@
   "version": 1,
   "date": "2026-04-30",
   "final": {
-    "label": "action_required",
-    "emoji": "🔴",
-    "line": "🔴 Action Required（明日対応必須）"
+    "label": "watch",
+    "emoji": "🟡",
+    "line": "🟡 Watch（軽微な懸念あり）"
   },
   "thresholds": {
     "healthScoreWarn": 80,
@@ -53,7 +53,7 @@
     "logFile": "/Users/yasutakesougo/audit-management-system-mvp/logs/today.auto.log"
   },
   "metrics": {
-    "driftCount": 32,
+    "driftCount": 0,
     "schemaMismatchCount": 0,
     "fetchFallbackCount": 0,
     "autoHealingSuccessCount": 0,
@@ -114,9 +114,9 @@
     {
       "id": "drift-count",
       "label": "Drift Count",
-      "status": "fail",
-      "value": "32",
-      "note": "ログ推定"
+      "status": "warn",
+      "value": "candidate=0, residual=32",
+      "note": "未管理候補: 0 / 吸収済み残差: 32"
     },
     {
       "id": "schema-mismatch",
@@ -197,36 +197,33 @@
     }
   ],
   "reasons": {
-    "fail": [
-      "Drift count 32 (閾値 10+)"
-    ],
+    "fail": [],
     "warn": [
       "/admin/status summary が欠損（判定信頼性低下）",
+      "Drift residual 32 (管理済み残差あり)",
       "ExceptionCenter summary が欠損（判定信頼性低下）"
     ]
   },
   "reasonCodes": {
-    "fail": [
-      "DRIFT_COUNT_HIGH"
-    ],
+    "fail": [],
     "warn": [
       "ADMIN_STATUS_SUMMARY_MISSING",
+      "DRIFT_COUNT_PRESENT",
       "EXCEPTION_CENTER_SUMMARY_MISSING"
     ]
   },
   "runbook": {
     "path": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md",
     "reasonCodeLinks": {
-      "fail": [
-        {
-          "code": "DRIFT_COUNT_HIGH",
-          "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-drift"
-        }
-      ],
+      "fail": [],
       "warn": [
         {
           "code": "ADMIN_STATUS_SUMMARY_MISSING",
           "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-admin-status"
+        },
+        {
+          "code": "DRIFT_COUNT_PRESENT",
+          "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-drift"
         },
         {
           "code": "EXCEPTION_CENTER_SUMMARY_MISSING",
@@ -235,16 +232,7 @@
       ]
     },
     "reasonCodeActions": {
-      "fail": [
-        {
-          "code": "DRIFT_COUNT_HIGH",
-          "normalizedCode": "DRIFT_COUNT_HIGH",
-          "owner": "Data Platform Owner",
-          "severity": "action_required",
-          "firstAction": "drift 発生源を特定し、同一 reason code の再発を止める。",
-          "runbookLink": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-drift"
-        }
-      ],
+      "fail": [],
       "warn": [
         {
           "code": "ADMIN_STATUS_SUMMARY_MISSING",
@@ -253,6 +241,14 @@
           "severity": "watch",
           "firstAction": "integration-diagnose のログを開き、/admin/status 入力欠損の有無を確認する。",
           "runbookLink": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-admin-status"
+        },
+        {
+          "code": "DRIFT_COUNT_PRESENT",
+          "normalizedCode": "DRIFT_COUNT_PRESENT",
+          "owner": "Data Platform Owner",
+          "severity": "watch",
+          "firstAction": "drift 件数の推移を監視し、増加時は根本原因分析を開始する。",
+          "runbookLink": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-drift"
         },
         {
           "code": "EXCEPTION_CENTER_SUMMARY_MISSING",
@@ -269,16 +265,16 @@
   "interpretation": {
     "signals": [
       {
-        "type": "drift",
-        "severity": "critical",
-        "message": "DRIFT_COUNT_HIGH",
-        "recommendation": "drift 発生源を特定し、同一 reason code の再発を止める。"
-      },
-      {
         "type": "zombie",
         "severity": "warn",
         "message": "ADMIN_STATUS_SUMMARY_MISSING",
         "recommendation": "integration-diagnose のログを開き、/admin/status 入力欠損の有無を確認する。"
+      },
+      {
+        "type": "drift",
+        "severity": "warn",
+        "message": "DRIFT_COUNT_PRESENT",
+        "recommendation": "drift 件数の推移を監視し、増加時は根本原因分析を開始する。"
       },
       {
         "type": "zombie",
