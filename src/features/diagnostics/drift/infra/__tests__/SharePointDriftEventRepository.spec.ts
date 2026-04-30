@@ -46,8 +46,8 @@ describe('SharePointDriftEventRepository', () => {
       Title: 'Daily_Attendance:Status',
       ListName: 'Daily_Attendance',
       FieldName: 'Status',
-      DetectedAt: '2026-04-05T00:00:00.000Z',
-      LoggedAt: expect.any(String),
+      DetectedAt: '2026-04-05',
+      LoggedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
       Severity: 'warn',
       ResolutionType: 'fallback',
       Resolved: false,
@@ -134,9 +134,9 @@ describe('SharePointDriftEventRepository', () => {
     expect(initialPayload).toHaveProperty('ListName', 'Daily_Attendance');
     expect(initialPayload).toHaveProperty('Field_x0020_Name', 'Status');
     expect(initialPayload).toHaveProperty('FieldName', 'Status');
-    expect(initialPayload).toHaveProperty('Detected_x0020_At', '2026-04-05T00:00:00.000Z');
-    expect(initialPayload).toHaveProperty('DetectedAt', '2026-04-05T00:00:00.000Z');
-    expect(initialPayload).toHaveProperty('Logged_x0020_At');
+    expect(initialPayload).toHaveProperty('Detected_x0020_At', '2026-04-05');
+    expect(initialPayload).toHaveProperty('DetectedAt', '2026-04-05');
+    expect(initialPayload).toHaveProperty('Logged_x0020_At', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
     expect(initialPayload).not.toHaveProperty('NameOfList');
     expect(initialPayload).toHaveProperty('Severity', 'warn');
 
@@ -145,9 +145,9 @@ describe('SharePointDriftEventRepository', () => {
     expect(fallbackPayload).toHaveProperty('ListName', 'Daily_Attendance');
     expect(fallbackPayload).toHaveProperty('Field_x0020_Name', 'Status');
     expect(fallbackPayload).toHaveProperty('FieldName', 'Status');
-    expect(fallbackPayload).toHaveProperty('Detected_x0020_At', '2026-04-05T00:00:00.000Z');
-    expect(fallbackPayload).toHaveProperty('DetectedAt', '2026-04-05T00:00:00.000Z');
-    expect(fallbackPayload).toHaveProperty('Logged_x0020_At');
+    expect(fallbackPayload).toHaveProperty('Detected_x0020_At', '2026-04-05');
+    expect(fallbackPayload).toHaveProperty('DetectedAt', '2026-04-05');
+    expect(fallbackPayload).toHaveProperty('Logged_x0020_At', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
     expect(fallbackPayload).not.toHaveProperty('NameOfList');
   });
 
@@ -219,11 +219,80 @@ describe('SharePointDriftEventRepository', () => {
       ListName: 'Daily_Attendance',
       Field_x0020_Name: 'Status',
       FieldName: 'Status',
-      Detected_x0020_At: '2026-04-05T00:00:00.000Z',
-      DetectedAt: '2026-04-05T00:00:00.000Z',
-      Logged_x0020_At: expect.any(String),
+      Detected_x0020_At: '2026-04-05',
+      DetectedAt: '2026-04-05',
+      Logged_x0020_At: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
     });
     expect(payload).not.toHaveProperty('Severity');
+  });
+
+  it('suppresses subsequent writes after required-only fallback also returns 400', async () => {
+    const badRequest = Object.assign(
+      new Error('無効な日付です。'),
+      { status: 400 },
+    );
+    const createItem = vi
+      .fn()
+      .mockRejectedValueOnce(badRequest)
+      .mockRejectedValueOnce(badRequest);
+
+    const repo = new SharePointDriftEventRepository({
+      createItem,
+      updateItemByTitle: vi.fn(async () => ({})),
+      getListItemsByTitle: vi.fn(async () => []),
+      getSchema: vi.fn(async () => [
+        'List_x0020_Name',
+        'Field_x0020_Name',
+        'Detected_x0020_At',
+        'Logged_x0020_At',
+      ]),
+    });
+
+    await repo.logEvent({
+      listName: 'Daily_Attendance',
+      fieldName: 'Status',
+      detectedAt: '2026-04-05T00:00:00.000Z',
+      severity: 'warn',
+      resolutionType: 'fallback',
+      driftType: 'suffix_mismatch',
+      resolved: false,
+    });
+
+    await repo.logEvent({
+      listName: 'Daily_Attendance',
+      fieldName: 'Status2',
+      detectedAt: '2026-04-05T00:00:00.000Z',
+      severity: 'warn',
+      resolutionType: 'fallback',
+      driftType: 'suffix_mismatch',
+      resolved: false,
+    });
+
+    // first event: optional payload + required-only fallback (2 calls)
+    // second event: writeDisabled=true で送信抑制
+    expect(createItem).toHaveBeenCalledTimes(2);
+  });
+
+  it('skips POST when required drift-log columns cannot be resolved from schema', async () => {
+    const createItem = vi.fn(async () => ({}));
+    const repo = new SharePointDriftEventRepository({
+      createItem,
+      updateItemByTitle: vi.fn(async () => ({})),
+      getListItemsByTitle: vi.fn(async () => []),
+      getSchema: vi.fn(async () => ['Title', 'Severity', 'DriftType']),
+    });
+
+    await repo.logEvent({
+      listName: 'Daily_Attendance',
+      fieldName: 'Status',
+      detectedAt: '2026-04-05T00:00:00.000Z',
+      severity: 'warn',
+      resolutionType: 'fallback',
+      driftType: 'suffix_mismatch',
+      resolved: false,
+    });
+
+    expect(createItem).not.toHaveBeenCalled();
   });
 
   it('applies since/resolved/list filters and maps drifted physical names', async () => {
