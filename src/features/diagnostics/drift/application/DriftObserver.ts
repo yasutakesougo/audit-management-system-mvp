@@ -26,7 +26,9 @@ export class DriftObserver {
 
     this.unsubscribe = driftEventBus.subscribe((event) => {
       // 非同期で記録（Fail-Open: 呼び出しを待たせずに実行）
-      this.repository.logEvent(event);
+      void this.repository.logEvent(event).catch((err) => {
+        console.warn('DriftObserver: drift logging skipped due to repository failure.', err);
+      });
     });
     
     console.info('DriftObserver: Started monitoring drift events.');
