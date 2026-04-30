@@ -52,8 +52,7 @@ const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = 
   const navigate = useNavigate();
   const location = useLocation();
   const { role } = useUserAuthz();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const authzRole = role as any;
+  const authzRole = role;
   const telemetryRole = useMemo(() => (role === 'admin' ? 'admin' : 'staff'), [role]);
   const suggestionStates = useSuggestionStateStore((s) => s.states);
   const dismissSuggestion = useSuggestionStateStore((s) => s.dismiss);
@@ -138,8 +137,7 @@ const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = 
   }, [quickRecord, navigate]);
 
   const { account } = useAuth();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const myName = (account as any)?.name ?? '';
+  const myName = account?.name ?? '';
   const callLogsSummary = useCallLogsSummary({ myName });
   const queryClient = useQueryClient();
 
@@ -158,8 +156,7 @@ const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = 
   });
 
   const { alertsByUser } = useTodayUserAlerts(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (summary.users ?? []) as any,
+    useMemo(() => (summary.users ?? []).map(u => u.UserID), [summary.users]),
   );
   const handoffPanelElement = useMemo(() => <HandoffPanel targetDate={formatDateIso(new Date())} />, []);
 
@@ -262,8 +259,7 @@ export const TodayOpsPage: React.FC<{ correctiveActions?: ActionSuggestion[] }> 
   const { role } = useUserAuthz();
 
   if (todayLiteUiEnabled && !isKioskMode) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return <TodayLiteOpsPage role={role as any} onNavigate={(to) => navigate(to)} />;
+    return <TodayLiteOpsPage role={role} onNavigate={(to) => navigate(to)} />;
   }
 
   return <TodayOpsPageInner correctiveActions={correctiveActions} />;
