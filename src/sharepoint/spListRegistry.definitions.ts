@@ -169,6 +169,12 @@ export const masterListEntries: readonly SpListEntry[] = [
     operations: ['R'],
     category: 'master',
     lifecycle: 'required',
+    essentialFields: ['Date', 'Type'],
+    provisioningFields: [
+      { internalName: 'Date', type: 'DateTime', displayName: 'Date', required: true, dateTimeFormat: 'DateOnly', indexed: true, candidates: ['Date', 'HolidayDate', 'TargetDate', 'RecordDate'] },
+      { internalName: 'Type', type: 'Text', displayName: 'Type', candidates: ['Type', 'Category', 'HolidayType'] },
+      { internalName: 'IsActive', type: 'Boolean', displayName: 'Is Active', default: true, candidates: ['IsActive', 'Active', 'Enabled'] },
+    ],
   },
 ];
 
@@ -653,10 +659,10 @@ export const handoffListEntries: readonly SpListEntry[] = [
     essentialFields: ['Title', 'UserID0', 'Phase0'],
     provisioningFields: [
       { internalName: 'Title', type: 'Text', displayName: 'Title', required: true },
-      { internalName: 'UserID0', type: 'Text', displayName: 'User ID', required: true, indexed: true },
+      { internalName: 'UserID0', type: 'Text', displayName: 'User ID', required: true, indexed: true, candidates: ['UserID0', 'userId', 'UserID', 'UserCode'] },
       { internalName: 'PlanningSheetId', type: 'Text', displayName: 'Planning Sheet ID' },
-      { internalName: 'Summary0', type: 'Note', displayName: 'Summary', richText: false },
-      { internalName: 'Phase0', type: 'Text', displayName: 'Phase' },
+      { internalName: 'Summary0', type: 'Note', displayName: 'Summary', richText: false, candidates: ['Summary0', 'summary'] },
+      { internalName: 'Phase0', type: 'Text', displayName: 'Phase', candidates: ['Phase0', 'phase'] },
     ],
   },
   {
