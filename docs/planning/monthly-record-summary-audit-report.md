@@ -45,9 +45,18 @@ We will proceed with a **Guarded Schema Alignment** (Non-Destructive).
 - [x] **Index Governance**: Ensured `UserId` and `YearMonth` are indexed to prevent performance degradation.
 - [x] **Idempotency Transition**: Verified existing records. (Healthcheck records were skipped as they lack UserId/YM).
 
-### Phase 3: Decommissioning (Post-Validation)
-- **Isolation**: Update all read/write paths to use ONLY the canonical fields (Ongoing).
-- **Purge**: Physically delete `TotalDays`, `Total_x0020_Days`, and `Key` once they are confirmed as zero-dependency zombies via `nightly-patrol`.
+### Phase 3: Legacy Field Isolation (Completed 2026-04-30)
+- [x] **Code Isolation**: Updated `toSharePointFields` to prefer `KPI_TotalDays` and `Idempotency_x0020_Key`.
+- [x] **IsLocked Integration**: Integrated `IsLocked` into the `MonthlySummary` type and mapping logic.
+- [x] **Registry Documentation**: Marked legacy fields in `BILLING_SUMMARY_CANDIDATES` with "LEGACY: Decommission pending" comments.
+- [x] **Priority Validation**: Added unit tests to ensure canonical fields are prioritized over legacy fallbacks.
+- [x] **Health Check Governance**: Implemented `legacyCandidates` system in the Health Diagnosis suite to distinguish between "Drift" (Warning) and "Legacy Tolerated" (Pass).
+
+### Phase 4: Physical Decommissioning (Target: After Stability Period)
+- **Monitoring**: Observe `nightly-patrol` reports for at least 7 days to ensure zero data drift between `KPI_TotalDays` and legacy `TotalDays`.
+- **Validation**: Verify that no external systems (Power Automate, Excel connectors) are reading from legacy fields.
+- **Execution**: Physically delete `TotalDays`, `Total_x0020_Days`, and `Key` from the SharePoint list.
+- **Cleanup**: Remove legacy field candidates from `billingFields.ts`.
 
 ---
 

@@ -34,6 +34,7 @@ export interface MonthlySummary extends MonthlyRecordKey {
   firstEntryDate?: IsoDate;   // 月初の初回記録日（YYYY-MM-DD）
   lastEntryDate?: IsoDate;    // 月内の最終記録日（YYYY-MM-DD）
   carryOverNotes?: number;    // 翌月持ち越しメモ数（拡張）
+  isLocked?: boolean;         // 請求確定後のロック状態
 }
 
 // 日次記録からの集計用インターフェース

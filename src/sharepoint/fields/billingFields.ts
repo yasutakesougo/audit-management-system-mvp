@@ -55,7 +55,12 @@ export const BILLING_SUMMARY_CANDIDATES = {
   yearMonth: ['YearMonth', 'Year_x0020_Month', 'cr013_yearMonth'],
   displayName: ['Display_x0020_Name', 'DisplayName', 'cr013_displayName'],
   lastUpdated: ['LastAggregatedAt', 'LastUpdated', 'Last_x0020_Aggregated_x0020_At', 'cr013_lastUpdated'],
-  totalDays: ['KPI_TotalDays', 'TotalDays', 'Total_x0020_Days', 'cr013_totalDays'],
+  totalDays: [
+    'KPI_TotalDays', 
+    'TotalDays', // LEGACY: Decommission pending (#1713)
+    'Total_x0020_Days', // LEGACY: Decommission pending (#1713)
+    'cr013_totalDays'
+  ],
   plannedRows: ['Planned_x0020_Rows', 'KPI_PlannedRows', 'PlannedRows', 'cr013_plannedRows'],
   completedRows: ['Completed_x0020_Rows', 'KPI_CompletedRows', 'CompletedRows', 'cr013_completedRows'],
   inProgressRows: ['In_x0020_Progress_x0020_Rows', 'KPI_InProgressRows', 'InProgressRows', 'cr013_inProgressRows'],
@@ -69,7 +74,12 @@ export const BILLING_SUMMARY_CANDIDATES = {
   isLocked: ['IsLocked', 'Locked'],
   // `Key` is a legacy, data-bearing idempotency field. Keep it as an intentional
   // fallback until #1722 migration copies historical values into the canonical field.
-  idempotencyKey: ['Idempotency_x0020_Key', 'IdempotencyKey', 'Key', 'cr013_idempotencyKey'],
+  idempotencyKey: [
+    'Idempotency_x0020_Key', 
+    'IdempotencyKey', 
+    'Key', // LEGACY: Decommission pending (#1713)
+    'cr013_idempotencyKey'
+  ],
 } as const;
 
 export const BILLING_SUMMARY_ESSENTIALS: (keyof typeof BILLING_SUMMARY_CANDIDATES)[] = [

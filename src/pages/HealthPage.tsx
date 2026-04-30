@@ -348,6 +348,8 @@ function buildListSpecs(): ListSpec[] {
     isEssential: essentialSet.has(f.internalName),
     typeHint: f.type,
     candidates: driftOverride?.[f.internalName] ?? (f.candidates ? [...f.candidates] : undefined),
+    legacyCandidates: f.legacyCandidates ? [...f.legacyCandidates] : undefined,
+    isLegacy: f.isLegacy,
     isSilent: f.isSilent,
   }));
 

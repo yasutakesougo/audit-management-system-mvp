@@ -900,7 +900,7 @@ export const otherListEntries: readonly SpListEntry[] = [
       { internalName: 'YearMonth', type: 'Text', displayName: 'Year Month', required: true, indexed: true, candidates: ['YearMonth', 'Year_x0020_Month'] },
       { internalName: 'DisplayName', type: 'Text', displayName: 'Display Name', isSilent: true, candidates: ['Display_x0020_Name', 'DisplayName', 'cr013_displayName'] },
       { internalName: 'LastUpdated', type: 'DateTime', displayName: 'Last Updated', isSilent: true, candidates: ['LastAggregatedAt', 'LastUpdated', 'Last_x0020_Updated'] },
-      { internalName: 'KPI_TotalDays', type: 'Number', displayName: 'Total Days', candidates: ['KPI_TotalDays', 'TotalDays', 'WorkingDays', 'Total_x0020_Days'] },
+      { internalName: 'KPI_TotalDays', type: 'Number', displayName: 'Total Days', candidates: ['KPI_TotalDays', 'TotalDays', 'WorkingDays', 'Total_x0020_Days'], legacyCandidates: ['TotalDays', 'Total_x0020_Days'] },
       { internalName: 'KPI_PlannedRows', type: 'Number', displayName: 'Planned Rows', isSilent: true, candidates: ['Planned_x0020_Rows', 'KPI_PlannedRows', 'PlannedRows', 'cr013_plannedRows'] },
       { internalName: 'KPI_CompletedRows', type: 'Number', displayName: 'Completed Rows', isSilent: true, candidates: ['Completed_x0020_Rows', 'KPI_CompletedRows', 'CompletedRows', 'CompletedCount', 'cr013_completedRows'] },
       { internalName: 'KPI_InProgressRows', type: 'Number', displayName: 'In Progress Rows', isSilent: true, candidates: ['In_x0020_Progress_x0020_Rows', 'KPI_InProgressRows', 'InProgressRows', 'PendingCount', 'cr013_inProgressRows'] },
@@ -910,7 +910,7 @@ export const otherListEntries: readonly SpListEntry[] = [
       { internalName: 'CompletionRate', type: 'Number', displayName: 'Completion Rate' },
       { internalName: 'FirstEntryDate', type: 'DateTime', displayName: 'First Entry Date', dateTimeFormat: 'DateOnly', isSilent: true, candidates: ['First_x0020_Entry_x0020_Date', 'FirstEntryDate', 'cr013_firstEntryDate'] },
       { internalName: 'LastEntryDate', type: 'DateTime', displayName: 'Last Entry Date', dateTimeFormat: 'DateOnly', isSilent: true, candidates: ['Last_x0020_Entry_x0020_Date', 'LastEntryDate', 'cr013_lastEntryDate'] },
-      { internalName: 'IdempotencyKey', type: 'Text', displayName: 'Idempotency Key', isSilent: true, candidates: ['Idempotency_x0020_Key', 'IdempotencyKey', 'Key', 'cr013_idempotencyKey'] },
+      { internalName: 'IdempotencyKey', type: 'Text', displayName: 'Idempotency Key', isSilent: true, candidates: ['Idempotency_x0020_Key', 'IdempotencyKey', 'Key', 'cr013_idempotencyKey'], legacyCandidates: ['Key'] },
     ],
   },
 
