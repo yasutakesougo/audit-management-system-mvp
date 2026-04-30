@@ -16,6 +16,8 @@ const DRIFT_LOG_REQUIRED_DUPLICATES: Partial<
   loggedAt: ['Logged_x0020_At'],
 } as const;
 
+const SP_TEXT_FIELD_MAX = 255;
+
 /**
  * 依存関係の境界遵守のためのローカルインターフェース
  */
@@ -149,15 +151,65 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
     return Array.from(names);
   }
 
+  private buildTitle(listName: string, fieldName: string): string {
+    const raw = `${listName}:${fieldName}`;
+    if (raw.length <= SP_TEXT_FIELD_MAX) return raw;
+    return `${raw.slice(0, SP_TEXT_FIELD_MAX - 3)}...`;
+  }
+
+  private toDateOnlyLiteral(value: unknown, fallback: Date): string {
+    if (typeof value === 'string') {
+      const match = value.trim().match(/^(\d{4}-\d{2}-\d{2})/);
+      if (match) return match[1];
+    }
+
+    let parsed: Date | null = null;
+    if (value instanceof Date) {
+      parsed = value;
+    } else if (typeof value === 'number') {
+      parsed = new Date(value);
+    } else if (typeof value === 'string') {
+      const dt = new Date(value);
+      if (!Number.isNaN(dt.getTime())) parsed = dt;
+    }
+
+    if (!parsed || Number.isNaN(parsed.getTime())) {
+      parsed = fallback;
+    }
+
+    return parsed.toISOString().slice(0, 10);
+  }
+
+  private sanitizeValueForField(
+    key: keyof typeof DRIFT_LOG_CANDIDATES,
+    rawValue: unknown,
+    fallbackDate: Date,
+  ): unknown {
+    if (key === 'detectedAt' || key === 'loggedAt') {
+      // DriftEventsLog_v2 is frequently provisioned with DateOnly columns.
+      // DateOnly literals prevent 400 errors from locale/date parser mismatch.
+      return this.toDateOnlyLiteral(rawValue, fallbackDate);
+    }
+
+    if (key === 'resolved') {
+      return Boolean(rawValue);
+    }
+
+    return String(rawValue ?? '');
+  }
+
   private buildCreatePayload(event: DriftEvent, includeOptional: boolean): Record<string, unknown> | null {
     const payload: Record<string, unknown> = {
-      Title: `${event.listName}:${event.fieldName}`,
+      Title: this.buildTitle(String(event.listName), String(event.fieldName)),
     };
+
+    const payloadDateContext = new Date();
 
     const pushField = (
       key: keyof typeof DRIFT_LOG_CANDIDATES,
-      value: unknown,
+      rawValue: unknown,
     ): boolean => {
+      const value = this.sanitizeValueForField(key, rawValue, payloadDateContext);
       const isRequired = this.isRequiredFieldKey(key);
       const physicalNames = this.getWritablePhysicalNames(key, isRequired);
 
@@ -175,11 +227,11 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       return true;
     };
 
-    const now = new Date().toISOString();
+    const now = payloadDateContext.toISOString();
     const requiredOk =
-      pushField('listName', String(event.listName)) &&
-      pushField('fieldName', String(event.fieldName)) &&
-      pushField('detectedAt', String(event.detectedAt)) &&
+      pushField('listName', event.listName) &&
+      pushField('fieldName', event.fieldName) &&
+      pushField('detectedAt', event.detectedAt) &&
       pushField('loggedAt', now);
 
     if (!requiredOk) {
