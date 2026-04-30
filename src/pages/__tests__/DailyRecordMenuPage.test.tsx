@@ -1,7 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import type { ReactNode } from 'react';
 import DailyRecordMenuPage from '@/pages/DailyRecordMenuPage';
 
 // ---------------------------------------------------------------------------
@@ -38,7 +38,9 @@ vi.mock('@/features/attendance/store', () => ({
 
 // Mock Components
 vi.mock('@/features/dashboard/components/CommandBar', () => ({
-  CommandBar: ({ children }: any) => <div data-testid="bento-command-bar">{children}</div>,
+  CommandBar: ({ children }: { children?: ReactNode }) => (
+    <div data-testid="bento-command-bar">{children}</div>
+  ),
 }));
 
 // Mock Navigate & SearchParams
@@ -46,7 +48,7 @@ const mockNavigate = vi.fn();
 let mockSearchParams = new URLSearchParams('');
 
 vi.mock('react-router-dom', async () => {
-  const actual = (await vi.importActual('react-router-dom')) as any;
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
   return {
     ...actual,
     useNavigate: () => mockNavigate,
@@ -86,7 +88,6 @@ describe('DailyRecordMenuPage', () => {
   });
 
   it('from=today のとき戻るボタンが表示され、クリックで遷移すること', async () => {
-    const user = userEvent.setup();
     mockSearchParams = new URLSearchParams('from=today&date=2026-04-01');
     render(
       <MemoryRouter>
@@ -98,8 +99,10 @@ describe('DailyRecordMenuPage', () => {
     expect(returnBtn).toBeInTheDocument();
     expect(returnBtn.textContent).toContain('今日の運用へ');
 
-    await user.click(returnBtn);
-    expect(mockNavigate).toHaveBeenCalledWith('/today?date=2026-04-01');
+    fireEvent.click(returnBtn);
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/today?date=2026-04-01');
+    });
   });
 
   it('from が無いとき戻るボタンは表示されない', async () => {
