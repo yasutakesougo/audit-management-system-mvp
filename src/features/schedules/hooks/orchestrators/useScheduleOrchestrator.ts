@@ -64,8 +64,7 @@ export function useScheduleOrchestrator(deps: ScheduleOrchestratorDeps) {
   const handleMoveSchedule = useCallback(async (id: string, newDate: string) => {
     const startTime = performance.now();
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (repository as any).update({ id, startLocal: newDate });
+      await repository.update({ id, startLocal: newDate });
       
       const auditEntry = recordAudit({
         action: 'MOVE_SCHEDULE',
@@ -104,8 +103,7 @@ export function useScheduleOrchestrator(deps: ScheduleOrchestratorDeps) {
   const handleDeleteSchedule = useCallback(async (id: string | number) => {
     const startTime = performance.now();
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (repository as any).remove(id);
+      await repository.remove(String(id));
       
       const auditEntry = recordAudit({
         action: 'DELETE_SCHEDULE',

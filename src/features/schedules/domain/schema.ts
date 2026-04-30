@@ -117,7 +117,7 @@ export const CreateScheduleInputSchema = z.object({
   rowKey: z.string().optional(),
 });
 
-export const UpdateScheduleInputSchema = CreateScheduleInputSchema.extend({
+export const UpdateScheduleInputSchema = CreateScheduleInputSchema.partial().extend({
   id: z.string(),
   etag: z.string().optional(),
 });
