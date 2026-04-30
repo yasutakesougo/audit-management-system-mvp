@@ -48,12 +48,21 @@ export default function RequireAudience(props: RequireAudienceProps) {
 
   if (!canAccess(role, requiredRole)) {
     const isMissingConfig = reason === 'missing-admin-group-id' && requiredRole === 'admin';
+    const isNotInGroup = reason === 'not-in-admin-group' && requiredRole === 'admin';
+    const isAuthError = reason === 'auth-error';
+
     const denialMessage =
       requiredRole === 'admin'
         ? 'このページは管理者のみアクセス可能です'
         : requiredRole === 'reception'
           ? 'このページは受付以上の権限でアクセス可能です'
           : 'このページにアクセスする権限がありません';
+
+    const title = isMissingConfig 
+      ? '設定エラー' 
+      : (isNotInGroup || isAuthError)
+        ? '権限不足'
+        : 'アクセス権がありません';
 
     return (
       <Stack
@@ -68,20 +77,26 @@ export default function RequireAudience(props: RequireAudienceProps) {
         <Paper sx={{ p: 4, maxWidth: 500 }}>
           <Stack spacing={2}>
             <Typography variant="h4" component="h1">
-              {isMissingConfig ? '設定エラー' : 'アクセス権がありません'}
+              {title}
             </Typography>
             <Typography variant="body1" color="textSecondary">
               {isMissingConfig
                 ? '管理者グループIDが未設定です（運用担当へ）'
-                : denialMessage}
+                : isNotInGroup
+                  ? 'あなたのユーザーは管理者グループに含まれていません'
+                  : isAuthError
+                    ? 'グループ情報の取得中にエラーが発生しました'
+                    : denialMessage}
             </Typography>
-            {isMissingConfig && (
+            
+            {(isMissingConfig || isNotInGroup) && (
               <Typography variant="caption" sx={{ fontFamily: 'monospace', p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-                環境変数: <code>VITE_SCHEDULE_ADMINS_GROUP_ID</code>
+                期待されるグループID: <code>VITE_SCHEDULE_ADMINS_GROUP_ID</code>
               </Typography>
             )}
+
             <Typography variant="caption" color="textSecondary">
-              {isMissingConfig ? '[Configuration Error]' : '[403 Forbidden]'}
+              {isMissingConfig ? '[Configuration Error]' : isNotInGroup ? '[Permission Denied]' : '[403 Forbidden]'}
             </Typography>
           </Stack>
         </Paper>
