@@ -600,3 +600,6 @@ Verified via UI `SP Connected`, console `Active backend: sharepoint`, MSAL login
 - **品質ガード作動:** `any-regression` (Critical) に対して、`GUARD FAILED: Critical/High issue lacks score/status or rationale in body` のガードが発動し、スコア・根拠の伴わない低品質な自動起票が完全にブロック（Skipping issue creation）されることを確認。
 - **Telemetry Watch:** `DriftEventsLog_v2` リストに対する 400 エラーは、主要画面（`/today`, 通所管理, Health）の機能レンダリングや操作に波及せず、画面UIへの影響ゼロ（完全分離）であることを確認。
 - **成果物:** `docs/nightly-patrol/*` の生成と結果の隔離保存を検証済み。実環境の GitHub Repository への意図しない起票は発生せず安全。
+
+### 2026-04-30 — MonthlyRecord_Summary Phase 3 Legacy Isolation complete
+PR #1730 was configured for auto-merge. MonthlyRecord_Summary is now in a 7-day stability monitoring window before any physical legacy field deletion. Legacy fields `TotalDays`, `Total_x0020_Days`, and `Key` remain visible/tolerated until Phase 4 criteria are met.
