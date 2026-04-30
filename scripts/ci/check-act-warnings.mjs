@@ -1,6 +1,13 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import { pathToFileURL } from "node:url";
+
+const ANSI_ESCAPE_PATTERN = /\u001b\[[0-9;]*m/g;
+
+function stripAnsi(text) {
+  return text.replace(ANSI_ESCAPE_PATTERN, "");
+}
 
 function printUsage() {
   console.error(
@@ -41,15 +48,16 @@ function parseArgs(argv) {
   };
 }
 
-function buildResult(logText) {
+export function buildResult(logText) {
   const warningPattern = /not wrapped in act/i;
-  const stderrHeaderPattern = /^stderr \|\s+(.+?)\s+>/;
+  const stderrHeaderPattern = /stderr\s+\|\s+(.+?)\s+>/i;
 
   let currentFile = "";
   let totalWarnings = 0;
   const counts = new Map();
 
-  for (const line of logText.split(/\r?\n/)) {
+  for (const rawLine of logText.split(/\r?\n/)) {
+    const line = stripAnsi(rawLine);
     const headerMatch = line.match(stderrHeaderPattern);
     if (headerMatch) {
       currentFile = headerMatch[1];
@@ -128,4 +136,10 @@ function main() {
   process.exit(result.totalWarnings > 0 ? 1 : 0);
 }
 
-main();
+const isDirectRun =
+  typeof process.argv[1] === "string" &&
+  import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isDirectRun) {
+  main();
+}
