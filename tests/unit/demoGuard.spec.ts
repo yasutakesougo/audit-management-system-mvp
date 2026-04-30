@@ -1,18 +1,18 @@
 import { renderHook } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import * as envModule from '@/lib/env';
-import { useSchedules } from '@/features/schedules/hooks/useSchedules';
-import { useDaily } from '@/features/daily/hooks/useDaily';
-import { useAttendanceStore } from '@/features/attendance/store';
 import { 
+  useAttendanceRepository,
   resetAttendanceRepository, 
   getCurrentAttendanceRepositoryKind 
 } from '@/features/attendance/repositoryFactory';
 import { 
+  useDailyRecordRepository,
   resetDailyRecordRepository, 
   getCurrentDailyRecordRepositoryKind 
 } from '@/features/daily/repositoryFactory';
 import { 
+  useScheduleRepository,
   resetScheduleRepository, 
   getCurrentScheduleRepositoryKind 
 } from '@/features/schedules/repositoryFactory';
@@ -60,7 +60,7 @@ describe('Demo Mode Guards', () => {
       vi.mocked(envModule.isDemoModeEnabled).mockReturnValue(false);
       vi.mocked(envModule.isTestMode).mockReturnValue(false);
       
-      renderHook(() => useAttendanceStore());
+      renderHook(() => useAttendanceRepository());
       expect(getCurrentAttendanceRepositoryKind()).toBe('demo');
     });
 
@@ -68,7 +68,7 @@ describe('Demo Mode Guards', () => {
       vi.mocked(envModule.isDemoModeEnabled).mockReturnValue(true);
       vi.mocked(envModule.isTestMode).mockReturnValue(false);
       
-      renderHook(() => useAttendanceStore());
+      renderHook(() => useAttendanceRepository());
       expect(getCurrentAttendanceRepositoryKind()).toBe('demo');
     });
   });
@@ -78,7 +78,7 @@ describe('Demo Mode Guards', () => {
       vi.mocked(envModule.isDemoModeEnabled).mockReturnValue(false);
       vi.mocked(envModule.isTestMode).mockReturnValue(false);
       
-      renderHook(() => useDaily());
+      renderHook(() => useDailyRecordRepository());
       expect(getCurrentDailyRecordRepositoryKind()).toBe('demo');
     });
 
@@ -86,7 +86,7 @@ describe('Demo Mode Guards', () => {
       vi.mocked(envModule.isDemoModeEnabled).mockReturnValue(true);
       vi.mocked(envModule.isTestMode).mockReturnValue(false);
       
-      renderHook(() => useDaily());
+      renderHook(() => useDailyRecordRepository());
       expect(getCurrentDailyRecordRepositoryKind()).toBe('demo');
     });
   });
@@ -96,7 +96,7 @@ describe('Demo Mode Guards', () => {
       vi.mocked(envModule.isDemoModeEnabled).mockReturnValue(false);
       vi.mocked(envModule.isTestMode).mockReturnValue(false);
       
-      renderHook(() => useSchedules());
+      renderHook(() => useScheduleRepository());
       expect(getCurrentScheduleRepositoryKind()).toBe('demo');
     });
 
@@ -104,7 +104,7 @@ describe('Demo Mode Guards', () => {
       vi.mocked(envModule.isDemoModeEnabled).mockReturnValue(true);
       vi.mocked(envModule.isTestMode).mockReturnValue(false);
       
-      renderHook(() => useSchedules());
+      renderHook(() => useScheduleRepository());
       expect(getCurrentScheduleRepositoryKind()).toBe('demo');
     });
   });
