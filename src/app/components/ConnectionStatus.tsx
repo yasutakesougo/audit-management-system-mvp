@@ -23,14 +23,14 @@ const resolveBadgeTextColor = (background: string, light: string, dark: string):
 
 const ConnectionStatusMock: React.FC = () => {
   const theme = useTheme();
-  const background = theme.palette.success.dark;
+  const background = theme.palette.grey[600];
   const textColor = resolveBadgeTextColor(background, theme.palette.common.white, theme.palette.common.black);
   return (
     <Box
       role="status"
       aria-live="polite"
       data-testid="sp-connection-status"
-      data-connection-state="ok"
+      data-connection-state="mock"
       sx={{
         background,
         color: textColor,
@@ -43,7 +43,7 @@ const ConnectionStatusMock: React.FC = () => {
         textAlign: 'center',
       }}
     >
-      SP Connected
+      Stub Mode
     </Box>
   );
 };
