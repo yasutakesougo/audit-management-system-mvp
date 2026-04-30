@@ -38,6 +38,10 @@ export const masterListEntries: readonly SpListEntry[] = [
       { internalName: 'UserCopayLimit', type: 'Text', displayName: 'User Copay Limit', isSilent: true, candidates: ['UserCopayLimit', 'UserCopayLimit0', 'User_x0020_Copay_x0020_Limit'] },
       { internalName: 'MealAddition', type: 'Text', displayName: 'Meal Addition', isSilent: true, candidates: ['MealAddition', 'MealAddition0', 'Meal_x0020_Addition'] },
       { internalName: 'CopayPaymentMethod', type: 'Text', displayName: 'Copay Payment Method', isSilent: true, candidates: ['CopayPaymentMethod', 'CopayPaymentMethod0', 'Copay_x0020_Payment_x0020_Method'] },
+      { internalName: 'AttendanceDays', type: 'Number', displayName: 'Attendance Days (Legacy)', governance: 'allow', isSilent: true },
+      { internalName: 'RecipientCertNumber', type: 'Text', displayName: 'Recipient Cert Number (Legacy)', governance: 'allow', isSilent: true },
+      { internalName: 'RecipientCertExpiry', type: 'DateTime', displayName: 'Recipient Cert Expiry (Legacy)', governance: 'allow', isSilent: true },
+      { internalName: 'email', type: 'Text', displayName: 'Email (Legacy)', governance: 'allow', isSilent: true },
     ],
   },
   {
@@ -447,6 +451,7 @@ export const scheduleListEntries: readonly SpListEntry[] = [
       { internalName: 'RowKey', type: 'Text', displayName: 'Row Key' },
       { internalName: 'Note', type: 'Note', displayName: 'Note' },
       { internalName: 'Visibility', type: 'Choice', displayName: 'Visibility', choices: ['org', 'team', 'private'] },
+      { internalName: 'Category', type: 'Choice', displayName: 'Category (Legacy)', governance: 'allow', isSilent: true },
     ],
     lifecycle: 'required',
   },
@@ -610,6 +615,10 @@ export const handoffListEntries: readonly SpListEntry[] = [
       { internalName: 'Activity0', type: 'Text', displayName: '活動内容', candidates: ['Activity0', 'Activity'] },
       { internalName: 'PersonManual0', type: 'Note', displayName: '本人手順', candidates: ['PersonManual0', 'PersonManual'] },
       { internalName: 'SupporterManual0', type: 'Note', displayName: '支援者手順', candidates: ['SupporterManual0', 'SupporterManual'] },
+      { internalName: 'UserID', type: 'Text', displayName: 'User ID (Legacy)', governance: 'allow', isSilent: true },
+      { internalName: 'IsActive', type: 'Boolean', displayName: 'Is Active (Legacy)', governance: 'allow', isSilent: true },
+      { internalName: 'Note', type: 'Note', displayName: 'Note (Legacy)', governance: 'allow', isSilent: true },
+      { internalName: 'Notes', type: 'Note', displayName: 'Notes (Legacy)', governance: 'allow', isSilent: true },
     ],
   },
   {
@@ -663,6 +672,9 @@ export const handoffListEntries: readonly SpListEntry[] = [
       { internalName: 'PlanningSheetId', type: 'Text', displayName: 'Planning Sheet ID' },
       { internalName: 'Summary0', type: 'Note', displayName: 'Summary', richText: false, candidates: ['Summary0', 'summary'] },
       { internalName: 'Phase0', type: 'Text', displayName: 'Phase', candidates: ['Phase0', 'phase'] },
+      { internalName: 'userId', type: 'Text', displayName: 'User ID (Legacy)', governance: 'allow', isSilent: true },
+      { internalName: 'summary', type: 'Note', displayName: 'Summary (Legacy)', governance: 'allow', richText: false, isSilent: true },
+      { internalName: 'phase', type: 'Text', displayName: 'Phase (Legacy)', governance: 'allow', isSilent: true },
     ],
   },
   {
@@ -801,6 +813,11 @@ export const complianceListEntries: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'compliance',
     lifecycle: 'optional',
+    provisioningFields: [
+      { internalName: 'Status', type: 'Text', displayName: 'Status (Legacy)', governance: 'allow', isSilent: true },
+      { internalName: 'Notified', type: 'Boolean', displayName: 'Notified (Legacy)', governance: 'allow', isSilent: true },
+      { internalName: 'Overall', type: 'Text', displayName: 'Overall (Legacy)', governance: 'allow', isSilent: true },
+    ],
   },
   {
     key: 'drift_events_log',
@@ -940,7 +957,7 @@ export const otherListEntries: readonly SpListEntry[] = [
       { internalName: 'CompletionRate', type: 'Number', displayName: 'Completion Rate' },
       { internalName: 'FirstEntryDate', type: 'DateTime', displayName: 'First Entry Date', dateTimeFormat: 'DateOnly', isSilent: true, candidates: ['First_x0020_Entry_x0020_Date', 'FirstEntryDate', 'cr013_firstEntryDate'] },
       { internalName: 'LastEntryDate', type: 'DateTime', displayName: 'Last Entry Date', dateTimeFormat: 'DateOnly', isSilent: true, candidates: ['Last_x0020_Entry_x0020_Date', 'LastEntryDate', 'cr013_lastEntryDate'] },
-      { internalName: 'IdempotencyKey', type: 'Text', displayName: 'Idempotency Key', isSilent: true, candidates: ['Idempotency_x0020_Key', 'IdempotencyKey', 'Key', 'cr013_idempotencyKey'], legacyCandidates: ['Key'] },
+      { internalName: 'IdempotencyKey', type: 'Text', displayName: 'Idempotency Key', isSilent: true, candidates: ['Idempotency_x0020_Key', 'IdempotencyKey', 'Key', 'cr013_idempotencyKey'] },
     ],
   },
 
@@ -951,6 +968,10 @@ export const otherListEntries: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'other',
     lifecycle: 'optional',
+    provisioningFields: [
+      { internalName: 'Status', type: 'Text', displayName: 'Status (Legacy)', governance: 'allow', isSilent: true },
+      { internalName: 'UserCode', type: 'Text', displayName: 'User Code (Legacy)', governance: 'allow', isSilent: true },
+    ],
   },
   {
     key: 'call_logs',
@@ -959,6 +980,9 @@ export const otherListEntries: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'other',
     lifecycle: 'optional',
+    provisioningFields: [
+      { internalName: 'Status', type: 'Text', displayName: 'Status (Legacy)', governance: 'allow', isSilent: true },
+    ],
   },
 ];
 

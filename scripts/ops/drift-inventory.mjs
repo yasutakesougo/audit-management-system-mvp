@@ -19,7 +19,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // tsx will handle the .ts import
-import { SP_SYSTEM_FIELDS } from '../../src/sharepoint/spSystemFields.js';
+import { SP_SYSTEM_FIELDS } from '../../src/sharepoint/spSystemFields.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

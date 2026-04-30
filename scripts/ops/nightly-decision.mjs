@@ -742,6 +742,7 @@ function main() {
   const registryAudit = readJsonIfExists(inputPaths.registryAuditJson);
   const dashboard = readTextIfExists(inputPaths.dashboardMd);
   const logFile = readTextIfExists(inputPaths.logFile);
+  const driftLedger = readJsonIfExists(inputPaths.driftLedgerJson);
 
   const logMetrics = analyzeLog(logFile.text || '');
   const dashboardScore = parseHealthScore(dashboard.text || '');
@@ -901,7 +902,7 @@ function main() {
     'metrics.driftCount',
     'summary.driftCount',
     'unresolvedCount',
-  ]) ?? logMetrics.driftCount;
+  ]) ?? (driftLedger.exists ? (driftLedger.data?.rows || []).filter(r => ['candidate', 'provision', 'keep-warn'].includes(r.classification)).length : logMetrics.driftCount);
 
   const schemaMismatchCount = pickFirstNumber(driftSummary.data, [
     'schemaMismatchCount',
@@ -1295,7 +1296,6 @@ function main() {
   }
 
   // 16) Drift Ledger Analysis
-  const driftLedger = readJsonIfExists(inputPaths.driftLedgerJson);
   const highDrifts = Array.isArray(driftLedger.data?.rows)
     ? driftLedger.data.rows.filter(r => r.confidence === 'high' && r.classification !== 'allow').length
     : 0;
