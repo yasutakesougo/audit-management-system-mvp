@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import type { ReactNode } from 'react';
 import DailyRecordMenuPage from '@/pages/DailyRecordMenuPage';
 
 // ---------------------------------------------------------------------------
@@ -37,7 +38,9 @@ vi.mock('@/features/attendance/store', () => ({
 
 // Mock Components
 vi.mock('@/features/dashboard/components/CommandBar', () => ({
-  CommandBar: ({ children }: any) => <div data-testid="bento-command-bar">{children}</div>,
+  CommandBar: ({ children }: { children?: ReactNode }) => (
+    <div data-testid="bento-command-bar">{children}</div>
+  ),
 }));
 
 // Mock Navigate & SearchParams
@@ -45,7 +48,7 @@ const mockNavigate = vi.fn();
 let mockSearchParams = new URLSearchParams('');
 
 vi.mock('react-router-dom', async () => {
-  const actual = (await vi.importActual('react-router-dom')) as any;
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
   return {
     ...actual,
     useNavigate: () => mockNavigate,
