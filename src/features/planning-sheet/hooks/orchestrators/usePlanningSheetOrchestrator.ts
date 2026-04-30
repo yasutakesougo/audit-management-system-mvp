@@ -2,10 +2,13 @@ import { useCallback } from 'react';
 import type { PlanPatch } from '@/domain/isp/planPatch';
 import { applyPlanPatch } from '@/domain/isp/planPatch';
 import { recordAudit, OrchestratorFailureKind } from '@/lib/telemetry/auditLogger';
+import type { PlanPatchRepository } from '@/domain/isp/planPatchRepository';
+import type { PlanningSheetRepository } from '@/domain/isp/port';
+import type { SupportPlanningSheet } from '@/domain/isp/schema';
 
 export interface PlanningSheetOrchestratorDeps {
-  planningSheetRepo: any;
-  planPatchRepo: any;
+  planningSheetRepo: PlanningSheetRepository;
+  planPatchRepo: PlanPatchRepository;
   showSnack: (severity: 'success' | 'error' | 'info', message: string) => void;
   refresh: () => Promise<void>;
 }
@@ -21,7 +24,7 @@ export function usePlanningSheetOrchestrator(deps: PlanningSheetOrchestratorDeps
   /**
    * 更新案（Patch）を支援計画書に適用する
    */
-  const handleApplyPatch = useCallback(async (patch: PlanPatch, currentSheet: any) => {
+  const handleApplyPatch = useCallback(async (patch: PlanPatch, currentSheet: SupportPlanningSheet) => {
     const startTime = performance.now();
     try {
       // 1. ドメインロジックによるパッチ適用（純粋関数）
