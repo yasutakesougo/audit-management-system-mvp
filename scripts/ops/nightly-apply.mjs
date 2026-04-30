@@ -461,6 +461,28 @@ for (const entry of actionableEntries) {
   console.log(`      Labels: ${issue.labels.join(', ')}`);
   console.log(`      Action: ${entry.classification}`);
 
+  // ╔══════════════════════════════════════════════════════════════════════╗
+  // ║ GUARD: Require score/status/rationale for Critical/High issues       ║
+  // ╚══════════════════════════════════════════════════════════════════════╝
+  if (entry.severity === 'critical' || entry.severity === 'high') {
+    const b = issue.body.toLowerCase();
+    const hasScoreStatus = b.includes('score') || b.includes('status');
+    const hasRationale = b.includes('reason') || issue.body.includes('根拠') || issue.body.includes('原因') || issue.body.includes('rationale');
+    
+    if (!hasScoreStatus && !hasRationale) {
+      console.log('      🚫 GUARD FAILED: Critical/High issue lacks score/status or rationale in body.');
+      console.log('      ⏭️  Skipping issue creation to ensure high-quality actionable tickets.');
+      console.log('');
+      results.push({
+        kind: entry.kind,
+        status: 'skipped-by-guard',
+        title: issue.title,
+        reason: 'Missing score/status/rationale for Critical/High severity'
+      });
+      continue;
+    }
+  }
+
   if (isDryRun) {
     console.log('      Mode:   🔒 DRY-RUN (not creating issue)');
     console.log('');
