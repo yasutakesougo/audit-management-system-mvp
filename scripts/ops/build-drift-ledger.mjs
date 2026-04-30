@@ -14,7 +14,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 import { getAccessToken, refreshM365Token } from './auth-helper.mjs';
-import { SP_SYSTEM_FIELDS } from '../../src/sharepoint/spSystemFields.js';
+import { SP_SYSTEM_FIELDS } from '../../src/sharepoint/spSystemFields.mjs';
 
 // 1. Load SSOT (Top-level for helper visibility)
 // NOTE:
@@ -424,13 +424,11 @@ async function main() {
         };
       }, 2); // Lower concurrency
 
+      const zombies = actualFields.filter(f => !consumedActuals.has(f.InternalName) && !isSystemField(f.InternalName));
       const matchedCount = expectedResults.filter(r => r.actualField).length;
       console.log(`   ✅ Matched ${matchedCount}/${allExpected.length} expected fields. Found ${zombies.length} zombies.`);
 
       ledgerRows.push(...expectedResults);
-
-      // 2. Prepare Zombie Rows
-      const zombies = actualFields.filter(f => !consumedActuals.has(f.InternalName) && !isSystemField(f.InternalName));
       const zombieResults = await pMap(zombies, async (z) => {
         const hasData = await checkHasData(normalizedSiteUrl, listTitle, z.InternalName, auth);
         const usageCount = countUsage(z.InternalName);
