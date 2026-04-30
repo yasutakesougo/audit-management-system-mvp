@@ -1531,6 +1531,13 @@ ${escalations.length > 0
   console.log('🛰 Nightly Patrol Decision generated');
   console.log(`   JSON: ${path.relative(ROOT, jsonPath)}`);
   console.log(`   MD:   ${path.relative(ROOT, mdPath)}`);
+
+  // --- UI Sync ---
+  const uiJsonPath = path.join(ROOT, 'src', 'sharepoint', 'latest-decision.json');
+  if (fs.existsSync(path.dirname(uiJsonPath))) {
+    fs.writeFileSync(uiJsonPath, JSON.stringify(result, null, 2), 'utf8');
+    console.log(`   UI:   ${path.relative(ROOT, uiJsonPath)} (Updated)`);
+  }
   console.log('');
   console.log(final.line);
 

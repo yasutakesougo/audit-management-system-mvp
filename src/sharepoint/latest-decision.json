@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "date": "2026-04-23",
+  "date": "2026-04-30",
   "final": {
     "label": "action_required",
     "emoji": "🔴",
@@ -41,15 +41,15 @@
     ]
   },
   "inputs": {
-    "patrolJson": "C:\\Users\\安武\\.vscode\\workspace\\audit-management-system\\docs\\nightly-patrol\\2026-04-23.json",
-    "classificationJson": "C:\\Users\\安武\\.vscode\\workspace\\audit-management-system\\docs\\nightly-patrol\\classification-2026-04-23.json",
-    "dashboardMd": "C:\\Users\\安武\\.vscode\\workspace\\audit-management-system\\docs\\nightly-patrol\\dashboard-2026-04-23.md",
+    "patrolJson": "C:\\Users\\安武\\.vscode\\workspace\\audit-management-system\\docs\\nightly-patrol\\2026-04-30.json",
+    "classificationJson": "C:\\Users\\安武\\.vscode\\workspace\\audit-management-system\\docs\\nightly-patrol\\classification-2026-04-30.json",
+    "dashboardMd": "C:\\Users\\安武\\.vscode\\workspace\\audit-management-system\\docs\\nightly-patrol\\dashboard-2026-04-30.md",
     "laneAssertionJson": "C:\\Users\\安武\\.vscode\\workspace\\audit-management-system\\docs\\nightly-patrol\\lane-assertion-result.json",
     "actWarningJson": "",
     "exceptionCenterJson": "",
     "kpiJson": "",
     "driftJson": "",
-    "adminStatusJson": "",
+    "adminStatusJson": "C:\\Users\\安武\\.vscode\\workspace\\audit-management-system\\docs\\nightly-patrol\\admin-status-summary-",
     "logFile": "C:\\Users\\安武\\.vscode\\workspace\\audit-management-system\\logs\\today.auto.log"
   },
   "metrics": {
@@ -180,12 +180,26 @@
       "status": "pass",
       "value": "passed",
       "note": "registry-audit-result.json"
+    },
+    {
+      "id": "contract-patrol",
+      "label": "Core API Contract Patrol",
+      "status": "pass",
+      "value": "violations=0",
+      "note": "contract-drift.json"
+    },
+    {
+      "id": "drift-ledger",
+      "label": "Drift Evidence Ledger",
+      "status": "warn",
+      "value": "high_confidence=771",
+      "note": "drift-ledger.json"
     }
   ],
   "reasons": {
     "fail": [
       "Nightly Patrol が needs-review",
-      "送迎競合多発（車両: 車両1）"
+      "大量の高信頼度ドリフトを検知 (771 件)"
     ],
     "warn": [
       "/admin/status summary が欠損（判定信頼性低下）",
@@ -195,7 +209,7 @@
   "reasonCodes": {
     "fail": [
       "PATROL_NEEDS_REVIEW",
-      "REPEATED_VEHICLE_CONFLICT"
+      "DRIFT_COUNT_HIGH"
     ],
     "warn": [
       "ADMIN_STATUS_SUMMARY_MISSING",
@@ -211,8 +225,8 @@
           "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-patrol"
         },
         {
-          "code": "REPEATED_VEHICLE_CONFLICT",
-          "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-transport-concurrency"
+          "code": "DRIFT_COUNT_HIGH",
+          "link": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-drift"
         }
       ],
       "warn": [
@@ -237,12 +251,12 @@
           "runbookLink": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-patrol"
         },
         {
-          "code": "REPEATED_VEHICLE_CONFLICT",
-          "normalizedCode": "REPEATED_VEHICLE_CONFLICT",
-          "owner": "Ops Manager",
+          "code": "DRIFT_COUNT_HIGH",
+          "normalizedCode": "DRIFT_COUNT_HIGH",
+          "owner": "Data Platform Owner",
           "severity": "action_required",
-          "firstAction": "特定の車両で競合が多発しています。担当者間の連携不全や、同時編集の頻度を確認してください。",
-          "runbookLink": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-transport-concurrency"
+          "firstAction": "drift 発生源を特定し、同一 reason code の再発を止める。",
+          "runbookLink": "docs/nightly-patrol/PRODUCTION-GO-LIVE.md#rc-drift"
         }
       ],
       "warn": [
@@ -275,15 +289,10 @@
         "recommendation": "decision-YYYY-MM-DD.md の Fail Trigger を順に割当し、再実行を行う。"
       },
       {
-        "type": "concurrency",
+        "type": "drift",
         "severity": "critical",
-        "message": "REPEATED_VEHICLE_CONFLICT",
-        "recommendation": "特定の車両で競合が多発しています。担当者間の連携不全や、同時編集の頻度を確認してください。",
-        "affectedItems": [
-          "車両1",
-          "車両2",
-          "車両3"
-        ]
+        "message": "DRIFT_COUNT_HIGH",
+        "recommendation": "drift 発生源を特定し、同一 reason code の再発を止める。"
       },
       {
         "type": "zombie",

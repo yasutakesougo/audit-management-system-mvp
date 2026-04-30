@@ -14,22 +14,17 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 import { getAccessToken, refreshM365Token } from './auth-helper.mjs';
+import { SP_SYSTEM_FIELDS } from '../../src/sharepoint/spSystemFields.js';
 
 // 1. Load SSOT (Top-level for helper visibility)
 // NOTE:
 // `tsx` can expose TS modules as CJS-compatible namespace objects in this repo setup.
-// Resolve exports through namespace + default fallback to support both ESM and CJS shapes.
 import * as spListRegistryModule from '../../src/sharepoint/spListRegistry.ts';
-import * as spSystemFieldsModule from '../../src/sharepoint/spSystemFields.js';
 
 const SP_LIST_REGISTRY =
   spListRegistryModule.SP_LIST_REGISTRY ??
   spListRegistryModule.default?.SP_LIST_REGISTRY ??
   [];
-const SP_SYSTEM_FIELDS =
-  spSystemFieldsModule.SP_SYSTEM_FIELDS ??
-  spSystemFieldsModule.default?.SP_SYSTEM_FIELDS ??
-  new Set();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -211,13 +206,31 @@ function countUsage(internalName) {
  * Determines if a field is a SharePoint system/built-in field that should NEVER be treated as a zombie.
  */
 function isSystemField(internalName) {
+  if (!internalName) return true;
+  
   // 1. In known system fields set
   if (SP_SYSTEM_FIELDS.has(internalName)) return true;
 
   // 2. Starts with underscore (usually internal system fields)
   if (internalName.startsWith('_')) return true;
 
-  // 3. Known SharePoint patterns
+  // 3. SharePoint specific ID/Metadata patterns
+  if (internalName === 'ContentTypeId' || internalName === 'ComplianceAssetId') return true;
+  if (internalName.includes('_x0020_')) {
+    const decoded = internalName.replace(/_x0020_/g, ' ');
+    const normalized = decoded.replace(/\s/g, '');
+    if (SP_SYSTEM_FIELDS.has(normalized)) return true;
+  }
+
+  // 4. Common SharePoint noise fields
+  const noise = [
+    'AppAuthor', 'AppEditor', 'FolderChildCount', 'ItemChildCount',
+    'FSObjType', 'PermMask', 'PrincipalCount', 'ProgId', 'ServerUrl',
+    'EncodedAbsUrl', 'BaseName', 'MetaInfo', 'ScopeId', 'UniqueId'
+  ];
+  if (noise.includes(internalName)) return true;
+
+  // 5. Known SharePoint patterns
   const systemPatterns = [
     /^OData_/,           // OData extensions
     /^File/,             // File system properties (FileRef, FileLeafRef, etc.)
@@ -347,7 +360,9 @@ async function main() {
 
   for (const entry of registry) {
     const listTitle = entry.resolve();
-    console.log(`📡 Probing list: ${listTitle}...`);
+    console.log(`📡 Probing list: ${listTitle} [Key: ${entry.key}]...`);
+    console.log(`   - Essential Fields: ${(entry.essentialFields || []).join(', ') || '(none)'}`);
+    console.log(`   - Provisioning Fields: ${(entry.provisioningFields || []).length}`);
 
     // Inter-list delay to avoid burst limits
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -372,7 +387,9 @@ async function main() {
         const prov = entry.provisioningFields?.find(p => p.internalName === exp.name);
         const candidates = prov?.candidates || [exp.name];
         
-        const matchedActual = actualFields.find(f => candidates.includes(f.InternalName));
+        const matchedActual = candidates
+          .map(c => actualFields.find(f => f.InternalName === c))
+          .find(Boolean);
         let driftType = 'match';
         let candidatesMatched = false;
 
@@ -406,6 +423,9 @@ async function main() {
           prov // Store prov for classification
         };
       }, 2); // Lower concurrency
+
+      const matchedCount = expectedResults.filter(r => r.actualField).length;
+      console.log(`   ✅ Matched ${matchedCount}/${allExpected.length} expected fields. Found ${zombies.length} zombies.`);
 
       ledgerRows.push(...expectedResults);
 

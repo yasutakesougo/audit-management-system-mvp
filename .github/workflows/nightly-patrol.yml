@@ -157,6 +157,7 @@ jobs:
 
       - name: Generate nightly decision
         id: decision
+        continue-on-error: true
         env:
           ACT_WARNING_SUMMARY_PATH: /tmp/act-warnings-nightly.json
           LANE_ASSERTION_RESULT_PATH: docs/nightly-patrol/lane-assertion-result.json
@@ -169,6 +170,7 @@ jobs:
           set +e
           node scripts/ops/nightly-decision.mjs
           decision_exit=$?
+          echo "exit_code=${decision_exit}" >> "$GITHUB_OUTPUT"
           set -e
           TODAY=$(date -u +%F)
           decision_json="docs/nightly-patrol/decision-${TODAY}.json"
@@ -179,9 +181,6 @@ jobs:
           fi
           echo "verdict=${verdict}" >> "$GITHUB_OUTPUT"
           echo "decision_md=docs/nightly-patrol/decision-${TODAY}.md" >> "$GITHUB_OUTPUT"
-          if [ "$decision_exit" -ne 0 ]; then
-            exit "$decision_exit"
-          fi
 
       - name: Nightly decision summary
         if: ${{ always() }}
@@ -382,15 +381,22 @@ jobs:
           fi
 
       - name: Commit report if changed
+        if: ${{ always() }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          if [ -z "$(git status --porcelain -- docs/nightly-patrol)" ]; then
+          if [ -z "$(git status --porcelain -- docs/nightly-patrol src/sharepoint/latest-decision.json)" ]; then
             echo "No report changes"
             exit 0
           fi
 
-          git add -A docs/nightly-patrol
+          git add -A docs/nightly-patrol src/sharepoint/latest-decision.json
           git commit -m "chore(ops): nightly patrol report"
           git push
+
+      - name: Final Fail Gate
+        if: ${{ always() && steps.decision.outputs.exit_code != '0' }}
+        run: |
+          echo "🔴 Nightly Patrol failed with exit code ${{ steps.decision.outputs.exit_code }}"
+          exit ${{ steps.decision.outputs.exit_code }}
