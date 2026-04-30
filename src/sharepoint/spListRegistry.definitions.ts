@@ -703,6 +703,16 @@ export const handoffListEntries: readonly SpListEntry[] = [
     operations: ['R', 'W'],
     category: 'handoff',
     lifecycle: 'optional',
+    essentialFields: ['Status', 'UserCode', 'UserId'],
+    provisioningFields: [
+      { internalName: 'Status', type: 'Text', displayName: 'Status', required: true },
+      { internalName: 'UserCode', type: 'Text', displayName: 'User Code', required: true, indexed: true },
+      { internalName: 'UserId', type: 'Text', displayName: 'User ID', required: true, indexed: true },
+      { internalName: 'DecisionStatus', type: 'Text', displayName: 'Decision Status' },
+      { internalName: 'IsCurrent', type: 'Boolean', displayName: 'Is Current', default: true },
+      { internalName: 'ISPId', type: 'Number', displayName: 'ISP ID' },
+      { internalName: 'FormDataJson', type: 'Note', displayName: 'Form Data (JSON)', richText: false },
+    ],
   },
   {
     key: 'behavior_monitoring_master',
@@ -839,6 +849,11 @@ export const otherListEntries: readonly SpListEntry[] = [
     operations: ['R'],
     category: 'other',
     lifecycle: 'optional',
+    provisioningFields: [
+      { internalName: 'Notes', type: 'Note', displayName: 'Notes', richText: false },
+      { internalName: 'StartTime', type: 'DateTime', displayName: 'Start Time' },
+      { internalName: 'EndTime', type: 'DateTime', displayName: 'End Time' },
+    ],
   },
   {
     key: 'nurse_observations',
