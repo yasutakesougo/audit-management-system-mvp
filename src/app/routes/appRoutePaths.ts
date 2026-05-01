@@ -100,6 +100,7 @@ export const APP_ROUTE_PATHS = [
   'settings/operation-flow',
   'admin/telemetry',
   'monitoring-meeting/:userId',
+  'call-logs',
 ] as const;
 
 export type AppRoutePath = typeof APP_ROUTE_PATHS[number];

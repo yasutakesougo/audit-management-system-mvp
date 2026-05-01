@@ -102,8 +102,15 @@ describe('SharePointDriftEventRepository', () => {
     expect(fallbackPayload).toHaveProperty('LoggedAt');
   });
 
-  it('sends only Title when schema fetch is unavailable (strict pre-flight to avoid 400)', async () => {
-    const createItem = vi.fn().mockResolvedValueOnce({});
+  it('uses stable required duplicate keys when schema fetch is unavailable and optional write fails', async () => {
+    const badRequest = Object.assign(
+      new Error("フィールドまたはプロパティ 'Severity' は存在しません。"),
+      { status: 400 },
+    );
+    const createItem = vi
+      .fn()
+      .mockRejectedValueOnce(badRequest)
+      .mockResolvedValueOnce({});
 
     const repo = new SharePointDriftEventRepository({
       createItem,
@@ -123,9 +130,30 @@ describe('SharePointDriftEventRepository', () => {
       resolved: false,
     });
 
-    expect(createItem).toHaveBeenCalledTimes(1);
-    const [, payload] = createItem.mock.calls[0];
-    expect(payload).toEqual({ Title: 'Daily_Attendance:Status' });
+    expect(createItem).toHaveBeenCalledTimes(2);
+    expect(createItem.mock.calls[0][2]).toMatchObject({ spOptions: { quietStatuses: [400], silent: true } });
+    expect(createItem.mock.calls[1][2]).toMatchObject({ spOptions: { quietStatuses: [400], silent: true } });
+    const initialPayload = createItem.mock.calls[0][1];
+    const fallbackPayload = createItem.mock.calls[1][1];
+    expect(initialPayload).toHaveProperty('List_x0020_Name', 'Daily_Attendance');
+    expect(initialPayload).toHaveProperty('ListName', 'Daily_Attendance');
+    expect(initialPayload).toHaveProperty('Field_x0020_Name', 'Status');
+    expect(initialPayload).toHaveProperty('FieldName', 'Status');
+    expect(initialPayload).toHaveProperty('Detected_x0020_At', '2026-04-05');
+    expect(initialPayload).toHaveProperty('DetectedAt', '2026-04-05');
+    expect(initialPayload).toHaveProperty('Logged_x0020_At', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
+    expect(initialPayload).not.toHaveProperty('NameOfList');
+    expect(initialPayload).toHaveProperty('Severity', 'warn');
+
+    expect(fallbackPayload).not.toHaveProperty('Severity');
+    expect(fallbackPayload).toHaveProperty('List_x0020_Name', 'Daily_Attendance');
+    expect(fallbackPayload).toHaveProperty('ListName', 'Daily_Attendance');
+    expect(fallbackPayload).toHaveProperty('Field_x0020_Name', 'Status');
+    expect(fallbackPayload).toHaveProperty('FieldName', 'Status');
+    expect(fallbackPayload).toHaveProperty('Detected_x0020_At', '2026-04-05');
+    expect(fallbackPayload).toHaveProperty('DetectedAt', '2026-04-05');
+    expect(fallbackPayload).toHaveProperty('Logged_x0020_At', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
+    expect(fallbackPayload).not.toHaveProperty('NameOfList');
   });
 
   it('retries once with required-only payload when 400 does not identify a field', async () => {
@@ -142,7 +170,6 @@ describe('SharePointDriftEventRepository', () => {
       createItem,
       updateItemByTitle: vi.fn(async () => ({})),
       getListItemsByTitle: vi.fn(async () => []),
-      getSchema: vi.fn(async () => ['Severity', 'ListName', 'FieldName', 'DetectedAt', 'LoggedAt']),
     });
 
     await repo.logEvent({

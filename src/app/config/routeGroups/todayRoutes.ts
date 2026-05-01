@@ -64,4 +64,13 @@ export const TODAY_ROUTES = {
     tier: 'more' as const,
     featureFlag: 'todayLiteNavV2' as const,
   }),
+  
+  CALL_LOGS: (_isFieldStaffShell: boolean) => ({
+    label: '受電ログ',
+    to: '/call-logs',
+    isActive: (pathname: string) => pathname.startsWith('/call-logs'),
+    icon: undefined,
+    audience: NAV_AUDIENCE.staff as NavAudience,
+    group: 'today' as NavGroupKey,
+  }),
 } as const;

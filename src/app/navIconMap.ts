@@ -50,4 +50,5 @@ export const navIconMap: Record<string, React.ElementType> = {
   '個別支援計画': EditNoteIcon,
   'モニタリング記録': AssessmentRoundedIcon,
   '制度遵守ダッシュボード': GavelIcon,
+  '受電ログ': EditNoteIcon,
 };
