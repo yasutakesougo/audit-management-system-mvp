@@ -198,6 +198,8 @@ export type ListItemsOptions = {
   onFieldRemoved?: (fieldName: string, status: number, errorMsg: string) => void;
   /** 識別不能なエラーや連続失敗により、最小構成（Id, Title）への強制フォールバックが発生した際の通知 */
   onCriticalFallback?: (status: number, errorMsg: string) => void;
+  /** SharePoint リクエスト制御オプション */
+  spOptions?: SpRequestOptions;
 };
 
 // ─── Staff identifier ────────────────────────────────────────────

@@ -29,7 +29,9 @@ export async function getListItemsByTitle<T>(
   orderby?: string,
   top: number = 500,
   signal?: AbortSignal,
+  options: ListItemsOptions = {},
 ): Promise<T[]> {
+  const { spOptions } = options;
   const buildPath = (sel?: string[]) => {
     const params = new URLSearchParams();
     if (sel?.length) params.append('$select', sel.join(','));
@@ -40,7 +42,7 @@ export async function getListItemsByTitle<T>(
   };
 
   try {
-    const res = await spFetch(buildPath(select), signal ? { signal } : undefined);
+    const res = await spFetch(buildPath(select), { signal, spOptions });
     const data = await res.json();
     return data.value || [];
   } catch (error) {
@@ -56,7 +58,7 @@ export async function getListItemsByTitle<T>(
 
       try {
         // まずは $select なしで試行 (SharePoint 側の自動解決に期待)
-        const retryRes = await spFetch(buildPath(undefined), signal ? { signal } : undefined);
+        const retryRes = await spFetch(buildPath(undefined), { signal, spOptions });
         const retryData = await retryRes.json();
         return retryData.value || [];
       } catch (retryError) {
@@ -71,7 +73,7 @@ export async function getListItemsByTitle<T>(
           });
           const minimalRes = await spFetch(
             buildPath(['Id', 'Title']),
-            signal ? { signal } : undefined,
+            { signal, spOptions },
           );
           const minimalData = await minimalRes.json();
           return minimalData.value || [];
@@ -156,7 +158,7 @@ export async function listItems<TRow = JsonRecord>(
 
       while (retries < maxRetries) {
         try {
-          res = await spFetch(nextPath, signal ? { signal } : {});
+          res = await spFetch(nextPath, { signal, spOptions: options.spOptions });
           break; // 成功
         } catch (error) {
           const spError = error as { status?: number; message?: string };
@@ -206,7 +208,7 @@ export async function listItems<TRow = JsonRecord>(
               fallbackParams.append('$top', String(sanitized.top));
               
               const finalPath = `${basePath}/items?${fallbackParams.toString()}`;
-              res = await spFetch(finalPath, signal ? { signal } : {});
+              res = await spFetch(finalPath, { signal, spOptions: options.spOptions });
               break;
             }
           } else {
@@ -223,7 +225,7 @@ export async function listItems<TRow = JsonRecord>(
         finalParams.append('$select', 'Id,Title');
         if (sanitized.filter) finalParams.append('$filter', sanitized.filter);
         finalParams.append('$top', String(sanitized.top));
-        res = await spFetch(`${basePath}/items?${finalParams.toString()}`, signal ? { signal } : {});
+        res = await spFetch(`${basePath}/items?${finalParams.toString()}`, { signal, spOptions: options.spOptions });
       }
 
       finalResponse = res;
@@ -285,7 +287,7 @@ export async function getItemById<T>(
   while (retries < maxRetries) {
     const path = buildItemPath(listTitle, id, currentSelect);
     try {
-      const res = await spFetch(path, signal ? { signal } : undefined);
+      const res = await spFetch(path, { signal, spOptions: options.spOptions });
       return (await res.json()) as T;
     } catch (error) {
       const spError = error as { status?: number; message?: string };
@@ -306,7 +308,7 @@ export async function getItemById<T>(
           // Critical fallback
           options.onCriticalFallback?.(status, errorMsg);
           const fallbackPath = buildItemPath(listTitle, id, ['Id', 'Title']);
-          const res = await spFetch(fallbackPath, signal ? { signal } : undefined);
+          const res = await spFetch(fallbackPath, { signal, spOptions: options.spOptions });
           return (await res.json()) as T;
         }
       }
@@ -317,7 +319,7 @@ export async function getItemById<T>(
   // Final fallback if limit reached
   options.onCriticalFallback?.(500, 'fallback limit reached');
   const finalPath = buildItemPath(listTitle, id, ['Id', 'Title']);
-  const res = await spFetch(finalPath, signal ? { signal } : undefined);
+  const res = await spFetch(finalPath, { signal, spOptions: options.spOptions });
   return (await res.json()) as T;
 }
 

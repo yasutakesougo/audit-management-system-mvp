@@ -75,8 +75,9 @@ export function createListOperations(
     orderby?: string,
     top: number = 500,
     signal?: AbortSignal,
+    options: ListItemsOptions = {},
   ): Promise<T[]> {
-    return _getListItemsByTitle<T>(spFetch, listTitle, select, filter, orderby, top, signal);
+    return _getListItemsByTitle<T>(spFetch, listTitle, select, filter, orderby, top, signal, options);
   }
 
   function listItems<TRow = JsonRecord>(
