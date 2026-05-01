@@ -136,8 +136,11 @@ export const ORPHAN_ALLOWLIST_DETAILS: AllowlistRoute[] = [
   { path: '/schedule-ops', category: 'Drilldown', reason: 'スケジュール運用ページ（スケジュール画面からリンク経由）' },
   { path: '/users/hub/:userId', category: 'Detail', reason: '利用者の「活動・実績ハブ」画面（利用者詳細からリンク経由）' },
   { path: '/kiosk', category: 'Kiosk', reason: 'キオスクモード専用 — キオスク入口画面（通常Navに露出しない）' },
-  { path: '/kiosk-users', category: 'Kiosk', reason: 'キオスクモード専用 — 利用者選択画面（通常Navに露出しない）' },
-  { path: '/kiosk-procedures', category: 'Kiosk', reason: 'キオスクモード専用 — 支援手順一覧画面（通常Navに露出しない）' },
+  { path: '/kiosk-users', category: 'Kiosk', reason: 'キオスクモード専用（互換）— 利用者選択の旧ルート（通常Navに露出しない）' },
+  { path: '/kiosk-procedures', category: 'Kiosk', reason: 'キオスクモード専用（互換）— 支援手順一覧の旧ルート（通常Navに露出しない）' },
+  { path: '/kiosk/users', category: 'Kiosk', reason: 'キオスクモード専用 — 利用者選択画面（通常Navに露出しない）' },
+  { path: '/kiosk/users/:userId/procedures', category: 'Kiosk', reason: 'キオスクモード専用 — 支援手順一覧画面（通常Navに露出しない）' },
+  { path: '/kiosk/users/:userId/procedures/:slotKey', category: 'Kiosk', reason: 'キオスクモード専用 — 支援手順詳細画面（通常Navに露出しない）' },
 ].map(item => ({ ...item, path: normalizeRouterPath(item.path) }));
 
 export const ORPHAN_ALLOWLIST = new Set(ORPHAN_ALLOWLIST_DETAILS.map(d => d.path));
