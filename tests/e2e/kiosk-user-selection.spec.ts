@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { bootKiosk } from './_helpers/bootKiosk';
 
 test.describe('Kiosk User Selection', () => {
   test.beforeEach(async ({ page }) => {
-    // キオスクホームへ移動
-    await page.goto('/kiosk');
+    await bootKiosk(page, { route: '/kiosk' });
     await expect(page.getByTestId('kiosk-action-execute-steps')).toBeVisible();
   });
 
@@ -33,7 +33,7 @@ test.describe('Kiosk User Selection', () => {
     await page.getByTestId('kiosk-user-select-back').click();
 
     // キオスクホームに戻ることを確認
-    await expect(page).toHaveURL(/\/kiosk$/);
+    await expect(page).toHaveURL(/\/kiosk(\?.*)?$/);
     await expect(page.getByTestId('kiosk-action-execute-steps')).toBeVisible();
   });
 });

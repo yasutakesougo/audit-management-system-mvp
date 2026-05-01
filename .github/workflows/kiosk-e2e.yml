@@ -1,0 +1,64 @@
+name: kiosk-e2e
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: kiosk-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kiosk-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    env:
+      CI: true
+      VITE_E2E: '1'
+      VITE_E2E_MSAL_MOCK: '1'
+      VITE_SKIP_LOGIN: '1'
+      VITE_SKIP_SHAREPOINT: '1'
+      VITE_FORCE_DEMO: '1'
+      VITE_DEMO_MODE: '1'
+      VITE_MSAL_CLIENT_ID: 'e2e-mock-client-id-12345678'
+      VITE_MSAL_TENANT_ID: 'common'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers (chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Kiosk E2E tests
+        run: |
+          npm run -s test:e2e -- \
+            tests/e2e/kiosk-home-smoke.spec.ts \
+            tests/e2e/kiosk-user-selection.spec.ts \
+            tests/e2e/kiosk-procedure-list.spec.ts \
+            tests/e2e/kiosk-procedure-detail.spec.ts \
+            --project=chromium \
+            --workers=1
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kiosk-e2e-artifacts-${{ github.run_number }}
+          path: |
+            test-results
+            playwright-report
+          if-no-files-found: warn

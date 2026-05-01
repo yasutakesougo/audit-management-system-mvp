@@ -1,15 +1,16 @@
 import { test, expect } from '@playwright/test';
+import { bootKiosk } from './_helpers/bootKiosk';
 
 test.describe('Kiosk Home Smoke', () => {
   test.use({
     baseURL: process.env.E2E_BASE_URL ?? 'http://127.0.0.1:5173',
   });
 
-  test('should display kiosk home page with action buttons and no sidebar', async ({ page }) => {
-    // /kiosk ルートに直接アクセス
-    await page.goto('/kiosk?provider=memory');
-    await page.waitForLoadState('networkidle');
+  test.beforeEach(async ({ page }) => {
+    await bootKiosk(page, { route: '/kiosk' });
+  });
 
+  test('should display kiosk home page with action buttons and no sidebar', async ({ page }) => {
     // 1. タイトルと説明の確認
     await expect(page.getByRole('heading', { name: 'キオスクモード' })).toBeVisible();
     await expect(page.getByText('今日の操作を選んでください')).toBeVisible();
