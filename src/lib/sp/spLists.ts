@@ -13,7 +13,7 @@
  *                      addFieldToList, ensureListExists
  */
 
-import type { EnsureListOptions, JsonRecord, ListItemsOptions, SpFieldDef, SpRequestInit, SpRequestOptions } from './types';
+import type { EnsureListOptions, JsonRecord, ListItemsOptions, SpFieldDef, SpRequestInit, SpRequestOptions, UpdateItemOptions, WriteItemOptions } from './types';
 
 // Sub-module imports
 import {
@@ -109,7 +109,7 @@ export function createListOperations(
   function addListItemByTitle<TBody extends object, TResult = unknown>(
     listTitle: string,
     body: TBody,
-    options?: { signal?: AbortSignal },
+    options?: WriteItemOptions,
   ): Promise<TResult> {
     return _addListItemByTitle<TBody, TResult>(spFetch, listTitle, body, options);
   }
@@ -117,7 +117,7 @@ export function createListOperations(
   function createItem<TBody extends object, TResult = unknown>(
     listTitle: string,
     body: TBody,
-    options?: { signal?: AbortSignal },
+    options?: WriteItemOptions,
   ): Promise<TResult> {
     return _createItem<TBody, TResult>(spFetch, listTitle, body, options);
   }
@@ -137,7 +137,7 @@ export function createListOperations(
     listTitle: string,
     id: number,
     body: TBody,
-    options?: { ifMatch?: string; signal?: AbortSignal },
+    options?: UpdateItemOptions,
   ): Promise<TResult> {
     return _updateItemByTitle<TBody, TResult>(spFetch, listTitle, id, body, options);
   }
@@ -146,7 +146,7 @@ export function createListOperations(
     listIdentifier: string,
     id: number,
     body: TBody,
-    options?: { ifMatch?: string; signal?: AbortSignal },
+    options?: UpdateItemOptions,
   ): Promise<TResult> {
     return _updateItem<TBody, TResult>(spFetch, listIdentifier, id, body, options);
   }
@@ -156,7 +156,7 @@ export function createListOperations(
   function deleteItemByTitle(
     listTitle: string, 
     id: number, 
-    options?: { signal?: AbortSignal }
+    options?: WriteItemOptions
   ): Promise<void> {
     return _deleteItemByTitle(spFetch, listTitle, id, options);
   }
@@ -164,7 +164,7 @@ export function createListOperations(
   function deleteItem(
     listIdentifier: string, 
     id: number, 
-    options?: { signal?: AbortSignal }
+    options?: WriteItemOptions
   ): Promise<void> {
     return _deleteItem(spFetch, listIdentifier, id, options);
   }

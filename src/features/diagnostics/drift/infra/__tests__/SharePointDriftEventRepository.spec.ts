@@ -41,7 +41,8 @@ describe('SharePointDriftEventRepository', () => {
     });
 
     expect(createItem).toHaveBeenCalledTimes(1);
-    const [, payload] = createItem.mock.calls[0];
+    const [, payload, options] = createItem.mock.calls[0];
+    expect(options).toMatchObject({ spOptions: { quietStatuses: [400], silent: true } });
     expect(payload).toMatchObject({
       Title: 'Daily_Attendance:Status',
       ListName: 'Daily_Attendance',
@@ -92,6 +93,8 @@ describe('SharePointDriftEventRepository', () => {
     });
 
     expect(createItem).toHaveBeenCalledTimes(2);
+    expect(createItem.mock.calls[0][2]).toMatchObject({ spOptions: { quietStatuses: [400], silent: true } });
+    expect(createItem.mock.calls[1][2]).toMatchObject({ spOptions: { quietStatuses: [400], silent: true } });
     const initialPayload = createItem.mock.calls[0][1];
     const fallbackPayload = createItem.mock.calls[1][1];
     expect(initialPayload).toHaveProperty('DriftType', 'suffix_mismatch');
@@ -128,6 +131,8 @@ describe('SharePointDriftEventRepository', () => {
     });
 
     expect(createItem).toHaveBeenCalledTimes(2);
+    expect(createItem.mock.calls[0][2]).toMatchObject({ spOptions: { quietStatuses: [400], silent: true } });
+    expect(createItem.mock.calls[1][2]).toMatchObject({ spOptions: { quietStatuses: [400], silent: true } });
     const initialPayload = createItem.mock.calls[0][1];
     const fallbackPayload = createItem.mock.calls[1][1];
     expect(initialPayload).toHaveProperty('List_x0020_Name', 'Daily_Attendance');
@@ -178,6 +183,8 @@ describe('SharePointDriftEventRepository', () => {
     });
 
     expect(createItem).toHaveBeenCalledTimes(2);
+    expect(createItem.mock.calls[0][2]).toMatchObject({ spOptions: { quietStatuses: [400], silent: true } });
+    expect(createItem.mock.calls[1][2]).toMatchObject({ spOptions: { quietStatuses: [400], silent: true } });
     const initialPayload = createItem.mock.calls[0][1];
     const fallbackPayload = createItem.mock.calls[1][1];
     expect(initialPayload).toHaveProperty('Severity', 'warn');
@@ -212,7 +219,8 @@ describe('SharePointDriftEventRepository', () => {
     });
 
     expect(createItem).toHaveBeenCalledTimes(1);
-    const [, payload] = createItem.mock.calls[0];
+    const [, payload, options] = createItem.mock.calls[0];
+    expect(options).toMatchObject({ spOptions: { quietStatuses: [400], silent: true } });
     expect(payload).toMatchObject({
       Title: 'Daily_Attendance:Status',
       List_x0020_Name: 'Daily_Attendance',
@@ -636,6 +644,6 @@ describe('SharePointDriftEventRepository', () => {
 
     expect(updateItemByTitle).toHaveBeenCalledWith('DriftEventsLog', 42, {
       IsResolved: true,
-    });
+    }, { spOptions: { quietStatuses: [400], silent: true } });
   });
 });

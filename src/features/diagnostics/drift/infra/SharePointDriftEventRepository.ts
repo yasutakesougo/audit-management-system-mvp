@@ -23,8 +23,8 @@ const SP_TEXT_FIELD_MAX = 255;
  * 依存関係の境界遵守のためのローカルインターフェース
  */
 export interface ISpOperations {
-  createItem: (listTitle: string, payload: Record<string, unknown>) => Promise<unknown>;
-  updateItemByTitle: (listTitle: string, id: number, payload: Record<string, unknown>) => Promise<unknown>;
+  createItem: (listTitle: string, payload: Record<string, unknown>, options?: import('@/lib/sp/types').WriteItemOptions) => Promise<unknown>;
+  updateItemByTitle: (listTitle: string, id: number, payload: Record<string, unknown>, options?: import('@/lib/sp/types').UpdateItemOptions) => Promise<unknown>;
   getListItemsByTitle: <T>(listTitle: string, select?: string[], filter?: string, orderby?: string, top?: number, signal?: AbortSignal, options?: ListItemsOptions) => Promise<T[]>;
   getListFieldInternalNames?: (listTitle: string) => Promise<Set<string>>;
 }
@@ -456,7 +456,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       }
 
       try {
-        await this.spClient.createItem(listTitle, activePayload);
+        await this.spClient.createItem(listTitle, activePayload, { spOptions: { quietStatuses: [400], silent: true } });
         this.sessionCache.add(dedupeKey);
         this.consecutiveFailures = 0;
         return;
@@ -487,7 +487,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
           const requiredOnlyPayload = this.buildCreatePayload(event, false);
           if (requiredOnlyPayload) {
             try {
-              await this.spClient.createItem(listTitle, requiredOnlyPayload);
+              await this.spClient.createItem(listTitle, requiredOnlyPayload, { spOptions: { quietStatuses: [400], silent: true } });
               this.sessionCache.add(dedupeKey);
               return;
             } catch (fallbackErr) {
@@ -509,7 +509,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         const requiredOnlyPayload = this.buildCreatePayload(event, false);
         if (requiredOnlyPayload) {
           try {
-            await this.spClient.createItem(listTitle, requiredOnlyPayload);
+            await this.spClient.createItem(listTitle, requiredOnlyPayload, { spOptions: { quietStatuses: [400], silent: true } });
             this.sessionCache.add(dedupeKey);
             this.optionalWriteDisabled = true;
             return;
@@ -704,7 +704,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       if (resolvedField) {
         await this.spClient.updateItemByTitle(listTitle, Number(id), {
           [resolvedField]: true
-        });
+        }, { spOptions: { quietStatuses: [400], silent: true } });
       }
     } catch (err) {
       auditLog.warn('diagnostics:drift', 'DriftEventRepository failed to mark event as resolved (fail-open).', err);
