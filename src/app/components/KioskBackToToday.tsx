@@ -13,7 +13,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useKioskDetection } from '@/features/settings/hooks/useKioskDetection';
 
 /** Today系パス（完全一致でのみバーを非表示にする） */
-const TODAY_EXACT_PATHS = new Set(['/today']);
+const TODAY_EXACT_PATHS = new Set(['/today', '/kiosk']);
 
 export const KioskBackToToday: React.FC = () => {
   const location = useLocation();

@@ -17,16 +17,19 @@ export function useKioskDetection() {
   const location = useLocation();
 
   const isKioskMode = useMemo(() => {
+    // 1. パスによる判定 (/kiosk ルートは常にキオスクモード)
+    if (location.pathname.startsWith('/kiosk')) return true;
+
     const params = new URLSearchParams(location.search);
     const kioskParam = params.get('kiosk');
     
-    // URLパラメータがあればそれを優先
+    // 2. URLパラメータがあればそれを優先
     if (kioskParam === '1' || kioskParam === 'true') return true;
     if (kioskParam === '0' || kioskParam === 'false') return false;
     
-    // パラメータがなければ設定に従う
+    // 3. パラメータがなければ設定に従う
     return settings.layoutMode === 'kiosk';
-  }, [location.search, settings.layoutMode]);
+  }, [location.pathname, location.search, settings.layoutMode]);
 
   return { isKioskMode };
 }
