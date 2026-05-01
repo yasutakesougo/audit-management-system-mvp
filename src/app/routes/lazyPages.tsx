@@ -202,3 +202,5 @@ const KioskUserSelectPage = React.lazy(() => import('@/pages/kiosk/KioskUserSele
 export const SuspendedKioskUserSelectPage = createSuspended(KioskUserSelectPage, '利用者選択を読み込んでいます…');
 const KioskProcedureListPage = React.lazy(() => import('@/pages/kiosk/KioskProcedureListPage'));
 export const SuspendedKioskProcedureListPage = createSuspended(KioskProcedureListPage, '支援手順一覧を読み込んでいます…');
+const KioskProcedureDetailPage = React.lazy(() => import('@/pages/kiosk/KioskProcedureDetailPage'));
+export const SuspendedKioskProcedureDetailPage = createSuspended(KioskProcedureDetailPage, '手順詳細を読み込んでいます…');

@@ -6,6 +6,7 @@ import {
   SuspendedKioskHomePage, 
   SuspendedKioskUserSelectPage,
   SuspendedKioskProcedureListPage,
+  SuspendedKioskProcedureDetailPage,
 } from './lazyPages';
 
 export const kioskRoutes: RouteObject[] = [
@@ -32,7 +33,7 @@ export const kioskRoutes: RouteObject[] = [
               },
               {
                 path: ':slotKey',
-                element: <div>手順詳細（開発中）</div>,
+                element: <SuspendedKioskProcedureDetailPage />,
               },
             ],
           },
