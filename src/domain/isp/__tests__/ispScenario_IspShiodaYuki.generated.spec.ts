@@ -132,7 +132,7 @@ describe('ISP Scenario (Generated): 塩田 幸基（Shioda Yuki）', () => {
         goalEvaluations: [],
         planChangeDecision: 'major_revision',
       }
-    ] as any;
+    ] as unknown as MonitoringMeetingRecord[];
 
     const summary = computeMonitoringSummary(records, '2027-03-31');
     // If gaps are too wide, this would be true. Given the template dates (09-15 and 03-15), it should be false (within 183 days).

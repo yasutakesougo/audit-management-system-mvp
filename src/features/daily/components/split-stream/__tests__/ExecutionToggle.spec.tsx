@@ -13,7 +13,7 @@ vi.mock('../../../hooks/useExecutionRecord', () => ({
 // Mock MUI Tooltip to avoid portal/animation issues
 vi.mock('@mui/material/Tooltip', () => ({
   __esModule: true,
-  default: ({ children }: any) => children,
+  default: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 // Silent theme to suppress ripple/transition noise
@@ -36,12 +36,12 @@ describe('ExecutionToggle (UI)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useExecutionRecord as any).mockReturnValue({
+    vi.mocked(useExecutionRecord).mockReturnValue({
       record: { status: 'unrecorded', memo: '' },
       setStatus: mockSetStatus,
       setMemo: mockSetMemo,
       isLoading: false,
-    });
+    } as unknown as ReturnType<typeof useExecutionRecord>);
   });
 
   afterEach(() => {
@@ -63,12 +63,12 @@ describe('ExecutionToggle (UI)', () => {
   });
 
   it('shows memo field and calls setMemo', async () => {
-    (useExecutionRecord as any).mockReturnValue({
+    vi.mocked(useExecutionRecord).mockReturnValue({
       record: { status: 'triggered', memo: 'initial' },
       setStatus: mockSetStatus,
       setMemo: mockSetMemo,
       isLoading: false,
-    });
+    } as unknown as ReturnType<typeof useExecutionRecord>);
 
     render(<ExecutionToggle date="2025-01-01" userId="U1" scheduleItemId={TEST_SLOT} />, { wrapper: Wrapper });
 
@@ -84,12 +84,12 @@ describe('ExecutionToggle (UI)', () => {
   });
 
   it('reflects correct pressed state from record', async () => {
-    (useExecutionRecord as any).mockReturnValue({
+    vi.mocked(useExecutionRecord).mockReturnValue({
       record: { status: 'completed', memo: '' },
       setStatus: mockSetStatus,
       setMemo: mockSetMemo,
       isLoading: false,
-    });
+    } as unknown as ReturnType<typeof useExecutionRecord>);
 
     render(<ExecutionToggle date="2025-01-01" userId="U1" scheduleItemId={TEST_SLOT} />, { wrapper: Wrapper });
 

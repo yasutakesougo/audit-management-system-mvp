@@ -265,7 +265,7 @@ describe("AuditEngine", () => {
 
   describe("Adaptive Loop (History & Learning)", () => {
     it("should mark results as isRecurring and add urgency prefix if streak > 0", () => {
-      const history: any[] = [
+      const history: Record<string, unknown>[] = [
         { code: "ICEBERG_MISSING", streak: 2, lastSeen: "2024-04-10", riskTrend: "stable" }
       ];
 
@@ -294,7 +294,7 @@ describe("AuditEngine", () => {
     });
 
     it("should flag predictive risk for long streaks of process warnings", () => {
-      const history: any[] = [
+      const history: Record<string, unknown>[] = [
         { code: "ICEBERG_MISSING", streak: 4, lastSeen: "2024-04-10", riskTrend: "rising" }
       ];
 
