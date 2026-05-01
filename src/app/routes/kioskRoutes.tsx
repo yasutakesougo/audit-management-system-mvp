@@ -2,7 +2,11 @@
  * Kiosk mode routes: /kiosk/*
  */
 import { type RouteObject } from 'react-router-dom';
-import { SuspendedKioskHomePage, SuspendedKioskUserSelectPage } from './lazyPages';
+import { 
+  SuspendedKioskHomePage, 
+  SuspendedKioskUserSelectPage,
+  SuspendedKioskProcedureListPage,
+} from './lazyPages';
 
 export const kioskRoutes: RouteObject[] = [
   {
@@ -21,7 +25,16 @@ export const kioskRoutes: RouteObject[] = [
           },
           {
             path: ':userId/procedures',
-            element: <div>支援手順一覧（開発中）</div>,
+            children: [
+              {
+                index: true,
+                element: <SuspendedKioskProcedureListPage />,
+              },
+              {
+                path: ':slotKey',
+                element: <div>手順詳細（開発中）</div>,
+              },
+            ],
           },
         ],
       },

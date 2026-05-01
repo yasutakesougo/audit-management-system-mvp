@@ -8,8 +8,9 @@ export const KioskUserSelectScreen: React.FC = () => {
   const navigate = useNavigate();
   const { data: users, isLoading } = useUsers({ selectMode: 'core' });
 
-  // キオスクモードでは「有効かつ支援手順対象」の利用者のみを表示
-  const activeUsers = users.filter(u => u.IsActive && u.IsSupportProcedureTarget);
+  // キオスクモードでは「支援手順対象」の利用者を表示。
+  // IsActive が明示的に false の場合は除外する。
+  const activeUsers = users.filter(u => u.IsSupportProcedureTarget && u.IsActive !== false);
 
   return (
     <Box sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
