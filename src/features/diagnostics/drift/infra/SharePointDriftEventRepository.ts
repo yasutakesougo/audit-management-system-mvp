@@ -445,12 +445,13 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
       // Even if buildCreatePayload handles mapping, we must double-check against
       // the actually discovered availablePhysicalFields to be safe in stale environments.
       const activePayload: Record<string, unknown> = {};
-      const schemaKnown = this.availablePhysicalFields.size > 0;
       for (const [k, v] of Object.entries(payloadRaw)) {
         if (v === undefined) {
           continue;
         }
-        if (k === 'Title' || !schemaKnown || this.availablePhysicalFields.has(k)) {
+        // Strict pre-flight: Only include fields that are confirmed to exist in the schema.
+        // If schema is unknown, we fall back to Title-only to avoid triggering 400 errors in DevTools.
+        if (k === 'Title' || this.availablePhysicalFields.has(k)) {
           activePayload[k] = v;
         }
       }
