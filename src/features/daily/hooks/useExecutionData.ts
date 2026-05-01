@@ -21,11 +21,11 @@ import { useSP } from '@/lib/spClient'; // contract:allow-sp-direct
 
 export function useExecutionData(): ExecutionRecordRepository {
   const storeHooks = useExecutionStore();
-  const { spFetch } = useSP();
+  const { spFetch, getListFieldInternalNames } = useSP();
 
   return useMemo(
-    () => getExecutionRepository(storeHooks, spFetch),
-    [storeHooks, spFetch],
+    () => getExecutionRepository(storeHooks, spFetch, getListFieldInternalNames),
+    [storeHooks, spFetch, getListFieldInternalNames],
   );
 }
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Typography, Grid, Card, CardActionArea, IconButton, Chip, LinearProgress } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -7,7 +7,9 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useUser } from '@/features/users/useUsers';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
-import { formatDateJapanese } from '@/lib/dateFormat';
+import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
+import { formatDateJapanese, formatDateIso } from '@/lib/dateFormat';
+import type { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
 
 export const KioskProcedureListScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -15,19 +17,37 @@ export const KioskProcedureListScreen: React.FC = () => {
   const { data: user, status } = useUser(userId || '');
   const isUserLoading = status === 'loading' || status === 'idle';
   const procedureRepo = useProcedureData();
+  const executionRepo = useExecutionData();
   
+  const [records, setRecords] = useState<ExecutionRecord[]>([]);
+
+  const todayIso = React.useMemo(() => formatDateIso(new Date()), []);
+  const todayStr = formatDateJapanese(new Date());
+
   const procedures = React.useMemo(() => {
     if (!userId) return [];
     return procedureRepo.getByUser(userId);
   }, [userId, procedureRepo]);
 
-  const todayStr = formatDateJapanese(new Date());
+  // 実施記録の取得
+  useEffect(() => {
+    const fetchRecords = async () => {
+      if (!userId) return;
+      try {
+        const data = await executionRepo.getRecords(todayIso, userId);
+        setRecords(data);
+      } catch (error) {
+        console.error('Failed to fetch execution records:', error);
+      }
+    };
+    void fetchRecords();
+  }, [userId, executionRepo, todayIso]);
 
-  // 進捗サマリーの計算（現在は枠だけ用意、すべて「未実施」とする）
+  // 進捗サマリーの計算
   const totalCount = procedures.length;
-  const doneCount = 0;
-  const attentionCount = 0;
-  const progress = totalCount > 0 ? (doneCount / totalCount) * 100 : 0;
+  const doneCount = records.filter(r => r.status === 'completed').length;
+  const attentionCount = records.filter(r => r.status === 'triggered').length;
+  const progress = totalCount > 0 ? ((doneCount + attentionCount) / totalCount) * 100 : 0;
 
   if (isUserLoading) {
     return <Box sx={{ p: 4 }}>読み込み中...</Box>;
@@ -69,66 +89,101 @@ export const KioskProcedureListScreen: React.FC = () => {
         {/* 進捗サマリー */}
         <Box sx={{ minWidth: 200, textAlign: 'right' }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            実施状況: {doneCount} / {totalCount}
+            実施状況: {doneCount + attentionCount} / {totalCount}
           </Typography>
           <LinearProgress 
             variant="determinate" 
             value={progress} 
-            sx={{ height: 10, borderRadius: 5, mb: 1 }} 
+            sx={{ height: 12, borderRadius: 6, mb: 1, bgcolor: 'action.hover' }} 
           />
           <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
             {attentionCount > 0 && (
-              <Chip icon={<WarningIcon />} label={`${attentionCount} 注意`} color="error" size="small" />
+              <Chip icon={<WarningIcon />} label={`${attentionCount} 注意`} color="warning" size="small" sx={{ fontWeight: 'bold' }} />
             )}
-            <Chip icon={<CheckCircleIcon />} label={`${doneCount} 完了`} color="success" size="small" variant="outlined" />
+            <Chip icon={<CheckCircleIcon />} label={`${doneCount} 完了`} color="success" size="small" variant={doneCount > 0 ? "filled" : "outlined"} sx={{ fontWeight: 'bold' }} />
           </Box>
         </Box>
       </Box>
 
       {/* 手順一覧 */}
       <Grid container spacing={2}>
-        {procedures.map((step, index) => (
-          <Grid key={index} size={12}>
-            <Card 
-              sx={{ 
-                borderRadius: 3,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                borderLeft: '6px solid',
-                borderLeftColor: step.isKey ? 'primary.main' : 'divider',
-              }}
-              data-testid={`kiosk-procedure-card-${index}`}
-            >
-              <CardActionArea 
-                onClick={() => navigate(`/kiosk/users/${userId}/procedures/${index}`)}
-                sx={{ p: 2 }}
+        {procedures.map((step, index) => {
+          const scheduleItemId = step.id || index.toString();
+          const record = records.find(r => r.scheduleItemId === scheduleItemId);
+          const isCompleted = record?.status === 'completed';
+          const isTriggered = record?.status === 'triggered';
+          
+          return (
+            <Grid key={index} size={12}>
+              <Card 
+                sx={{ 
+                  borderRadius: 3,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                  borderLeft: '6px solid',
+                  borderLeftColor: step.isKey ? 'primary.main' : 'divider',
+                  bgcolor: isCompleted ? 'success.lighter' : isTriggered ? 'warning.lighter' : 'background.paper',
+                  opacity: isCompleted ? 0.8 : 1,
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  }
+                }}
+                data-testid={`kiosk-procedure-card-${index}`}
               >
-                <Grid container alignItems="center" spacing={2}>
-                  <Grid size={2} sx={{ textAlign: 'center' }}>
-                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
-                      {step.time}
-                    </Typography>
+                <CardActionArea 
+                  onClick={() => navigate(`/kiosk/users/${userId}/procedures/${index}`)}
+                  sx={{ p: 2.5 }}
+                >
+                  <Grid container alignItems="center" spacing={2}>
+                    <Grid size={2} sx={{ textAlign: 'center' }}>
+                      <Typography variant="h5" sx={{ fontWeight: 'bold', color: isCompleted ? 'success.main' : 'text.secondary' }}>
+                        {step.time}
+                      </Typography>
+                    </Grid>
+                    <Grid size={7}>
+                      <Typography variant="h6" sx={{ 
+                        fontWeight: 'bold', 
+                        mb: 0.5,
+                        color: isCompleted ? 'success.dark' : 'text.primary',
+                        textDecoration: isCompleted ? 'line-through' : 'none'
+                      }}>
+                        {step.activity}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" noWrap>
+                        {step.instruction}
+                      </Typography>
+                    </Grid>
+                    <Grid size={3} sx={{ textAlign: 'right' }}>
+                      {isCompleted ? (
+                        <Chip 
+                          icon={<CheckCircleIcon />} 
+                          label="実施済み" 
+                          color="success"
+                          sx={{ borderRadius: 2, fontWeight: 'bold' }}
+                        />
+                      ) : isTriggered ? (
+                        <Chip 
+                          icon={<WarningIcon />} 
+                          label="注意あり" 
+                          color="warning"
+                          sx={{ borderRadius: 2, fontWeight: 'bold' }}
+                        />
+                      ) : (
+                        <Chip 
+                          icon={<AccessTimeIcon />} 
+                          label="未実施" 
+                          variant="outlined" 
+                          sx={{ borderRadius: 2, color: 'text.disabled', borderColor: 'divider' }}
+                        />
+                      )}
+                    </Grid>
                   </Grid>
-                  <Grid size={8}>
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                      {step.activity}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" noWrap>
-                      {step.instruction}
-                    </Typography>
-                  </Grid>
-                  <Grid size={2} sx={{ textAlign: 'right' }}>
-                    <Chip 
-                      icon={<AccessTimeIcon />} 
-                      label="未実施" 
-                      variant="outlined" 
-                      sx={{ borderRadius: 2 }}
-                    />
-                  </Grid>
-                </Grid>
-              </CardActionArea>
-            </Card>
-          </Grid>
-        ))}
+                </CardActionArea>
+              </Card>
+            </Grid>
+          );
+        })}
         {procedures.length === 0 && (
           <Grid size={12}>
             <Box sx={{ p: 8, textAlign: 'center', bgcolor: 'action.hover', borderRadius: 4 }}>
@@ -142,3 +197,4 @@ export const KioskProcedureListScreen: React.FC = () => {
     </Box>
   );
 };
+
