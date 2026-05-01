@@ -116,7 +116,8 @@ export const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true
             height: '100%',
             borderRadius: 0,
             px: { xs: 1, sm: 2 },
-            py: 0,
+            pt: 1,
+            pb: 1,
             ...(fixed
               ? {
                   pb: 'calc(1px * (var(--mobile-safe-area, 0)) + 0.5rem)',
