@@ -127,7 +127,7 @@ export const USERS_MASTER_CORE_FIELD_MAP = {
   serviceEndDate: 'ServiceEndDate',
   isHighIntensitySupportTarget: 'IsHighIntensitySupportTarget',
   isSupportProcedureTarget: 'IsSupportProcedureTarget',
-  severeFlag: 'SevereFlag', // Deprecated/Legacy fallback
+  severeFlag: 'severeFlag',
   isActive: 'IsActive',
   usageStatus: 'UsageStatus',
   attendanceDays: 'AttendanceDays',
@@ -154,7 +154,7 @@ const CANDIDATE_SERVICE_START_DATE = ['ServiceStartDate', 'StartDate', 'cr013_se
 const CANDIDATE_SERVICE_END_DATE = ['ServiceEndDate', 'EndDate', 'cr013_serviceEndDate'];
 const CANDIDATE_IS_HIGH_INTENSITY = ['IsHighIntensitySupportTarget', 'IntensityTarget', 'IsHighIntensitySupportTarget0', 'cr013_isHighIntensity'];
 const CANDIDATE_IS_SUPPORT_PROCEDURE = ['IsSupportProcedureTarget', 'ProcedureTarget', 'cr013_isSupportProcedure'];
-const CANDIDATE_SEVERE_FLAG = ['SevereFlag', 'severeFlag', 'HighSeverityFlag', 'cr013_severeFlag'];
+const CANDIDATE_SEVERE_FLAG = ['severeFlag', 'SevereFlag', 'HighSeverityFlag', 'cr013_severeFlag'];
 const CANDIDATE_IS_ACTIVE = ['IsActive', 'Active', 'IsEnabled', 'cr013_isActive'];
 const CANDIDATE_USAGE_STATUS = ['UsageStatus', 'Status', 'UsageStatus0', 'cr013_usageStatus'];
 const CANDIDATE_ATTENDANCE_DAYS = ['AttendanceDays', 'WorkDays', 'cr013_attendanceDays'];
