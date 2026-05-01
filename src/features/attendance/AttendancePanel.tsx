@@ -37,6 +37,15 @@ const AttendancePanel = (): JSX.Element => {
   const { status, rows, filters, inputMode, savingUsers, savedTempsByUser, notification, dismissNotification, actions } = useAttendance();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const mode = searchParams.get('mode');
+
+  useEffect(() => {
+    if (mode === 'checkin') {
+      actions.setInputMode('checkInRun');
+    } else if (mode === 'checkout') {
+      actions.setInputMode('normal');
+    }
+  }, [mode, actions]);
 
   // ── Temperature draft state ──
   const [tempDraftByUser, setTempDraftByUser] = useState<Record<string, number>>({});
