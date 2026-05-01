@@ -84,5 +84,14 @@ describe('AppShell kiosk query routing', () => {
     const stored = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) ?? '{}');
     expect(stored.layoutMode).toBe('normal');
   });
+
+  it('enables kiosk mode when /kiosk route is accessed', async () => {
+    renderAppShell('/kiosk');
+
+    const appShell = screen.getByTestId('app-shell');
+    await waitFor(() => {
+      expect(appShell).toHaveAttribute('data-kiosk', 'true');
+    });
+  });
 });
 
