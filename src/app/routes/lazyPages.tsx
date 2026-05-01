@@ -198,3 +198,5 @@ const KioskHomePage = React.lazy(() => import('@/pages/kiosk/KioskHomePage'));
 const HealthPage = React.lazy(() => import('@/pages/HealthPage'));
 export const SuspendedHealthPage = createSuspended(HealthPage, '環境診断を読み込んでいます…');
 export const SuspendedKioskHomePage = createSuspended(KioskHomePage, 'キオスク画面を読み込んでいます…');
+const KioskUserSelectPage = React.lazy(() => import('@/pages/kiosk/KioskUserSelectPage'));
+export const SuspendedKioskUserSelectPage = createSuspended(KioskUserSelectPage, '利用者選択を読み込んでいます…');
