@@ -12,6 +12,7 @@ import type { JsonRecord } from '@/lib/sp/types';
 
 type SharePointExecutionRecordRepositoryOptions = {
   spFetch: SpFetchFn;
+  getListFieldInternalNames?: (listTitle: string) => Promise<Set<string>>;
 };
 
 /**
@@ -19,13 +20,56 @@ type SharePointExecutionRecordRepositoryOptions = {
  */
 export class SharePointExecutionRecordRepository implements ExecutionRecordRepository {
   private readonly spFetch: SpFetchFn;
+  private readonly getListFieldInternalNames?: (listTitle: string) => Promise<Set<string>>;
   private readonly parentListTitle: string;
   private readonly childListTitle: string;
+  
+  private availableFields = new Map<string, Set<string>>();
+  private initPromises = new Map<string, Promise<void>>();
 
   constructor(options: SharePointExecutionRecordRepositoryOptions) {
     this.spFetch = options.spFetch;
+    this.getListFieldInternalNames = options.getListFieldInternalNames;
     this.parentListTitle = getListTitle();
     this.childListTitle = getRowsListTitle();
+  }
+
+  private async initFields(listTitle: string): Promise<void> {
+    if (!this.getListFieldInternalNames) return;
+    if (this.availableFields.has(listTitle)) return;
+    
+    let promise = this.initPromises.get(listTitle);
+    if (!promise) {
+      promise = (async () => {
+        try {
+          const fieldSet = await this.getListFieldInternalNames!(listTitle);
+          if (fieldSet) {
+            this.availableFields.set(listTitle, fieldSet);
+          }
+        } catch (err) {
+          console.warn(`[ExecutionRepo] Field resolution failed for ${listTitle}:`, err);
+        }
+      })();
+      this.initPromises.set(listTitle, promise);
+    }
+    return promise;
+  }
+
+  private filterPayload(listTitle: string, payload: Record<string, unknown>): Record<string, unknown> {
+    const fieldSet = this.availableFields.get(listTitle);
+    if (!fieldSet || fieldSet.size === 0) return payload; // fail-open
+
+    const activePayload: Record<string, unknown> = {};
+    // Title is almost always required/present
+    if (payload.Title !== undefined) activePayload.Title = payload.Title;
+
+    for (const [k, v] of Object.entries(payload)) {
+      if (k === 'Title') continue;
+      if (fieldSet.has(k)) {
+        activePayload[k] = v;
+      }
+    }
+    return activePayload;
   }
 
   private async ensureParentRecord(dailyKey: string, date: string, userId: string): Promise<number> {
@@ -41,15 +85,18 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     }
 
     const createUrl = `_api/web/lists/getbytitle('${this.parentListTitle}')/items`;
-    const createBody = {
+    
+    await this.initFields(this.parentListTitle);
+    const rawBody = {
       [DAILY_RECORD_FIELDS.title]: dailyKey,
       [DAILY_RECORD_FIELDS.recordDate]: date,
       UserId: userId, 
     };
+    const body = this.filterPayload(this.parentListTitle, rawBody);
 
     const createResponse = await this.spFetch(createUrl, {
       method: 'POST',
-      body: JSON.stringify(createBody),
+      body: JSON.stringify(body),
       headers: { 'Content-Type': 'application/json;odata=verbose', 'Accept': 'application/json;odata=verbose' }
     });
 
@@ -103,7 +150,8 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const parentId = await this.ensureParentRecord(dailyKey, record.date, record.userId);
     const existing = await this.getRecord(record.date, record.userId, record.scheduleItemId);
 
-    const body = {
+    await this.initFields(this.childListTitle);
+    const rawBody = {
       [EXECUTION_RECORD_FIELDS.title]: record.id,
       [EXECUTION_RECORD_FIELDS.rowKey]: rowKey,
       [EXECUTION_RECORD_FIELDS.parentId]: parentId,
@@ -115,6 +163,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       [EXECUTION_RECORD_FIELDS.recordedAt]: record.recordedAt,
       [EXECUTION_RECORD_FIELDS.bipsJSON]: JSON.stringify(record.triggeredBipIds),
     };
+    const body = this.filterPayload(this.childListTitle, rawBody);
 
     if (existing) {
       const filter = `${EXECUTION_RECORD_FIELDS.rowKey} eq '${rowKey}'`;

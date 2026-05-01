@@ -1,11 +1,13 @@
-import React from 'react';
-import { Box, Typography, IconButton, Paper, Grid, Button, Chip, Stack } from '@mui/material';
+import React, { useState } from 'react';
+import { Box, Typography, IconButton, Paper, Grid, Button, Chip, Stack, Alert, Snackbar } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useUser } from '@/features/users/useUsers';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
+import { useExecutionRecord } from '@/features/daily/hooks/useExecutionRecord';
+import { formatDateIso } from '@/lib/dateFormat';
 
 export const KioskProcedureDetailScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -14,12 +16,37 @@ export const KioskProcedureDetailScreen: React.FC = () => {
   const isUserLoading = status === 'loading' || status === 'idle';
   const procedureRepo = useProcedureData();
   
+  const today = React.useMemo(() => formatDateIso(new Date()), []);
+  
   const procedure = React.useMemo(() => {
     if (!userId || slotKey === undefined) return null;
     const procedures = procedureRepo.getByUser(userId);
     const index = parseInt(slotKey, 10);
     return procedures[index] || null;
   }, [userId, slotKey, procedureRepo]);
+
+  // scheduleItemId として ID もしくは インデックスを使用する
+  const scheduleItemId = procedure?.id || slotKey || '';
+  const { record, setStatus } = useExecutionRecord(today, userId || '', scheduleItemId);
+  
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  const handleSave = async (newStatus: 'completed' | 'triggered') => {
+    if (!userId) return;
+    setIsSaving(true);
+    try {
+      await setStatus(newStatus);
+      setShowSuccess(true);
+      // 成功フィードバックの後、少し待ってから一覧に戻る
+      setTimeout(() => {
+        navigate(`/kiosk/users/${userId}/procedures`);
+      }, 1500);
+    } catch (error) {
+      console.error('Failed to save execution record:', error);
+      setIsSaving(false);
+    }
+  };
 
   if (isUserLoading) {
     return <Box sx={{ p: 4 }}>読み込み中...</Box>;
@@ -41,11 +68,14 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     );
   }
 
-  // 暫定的に instruction を「本人」と「支援者」に分けるロジック
-  // 本来はスキーマ拡張が必要だが、Phase 4 ではモック的な表示を優先する
+  // instruction を「本人」と「支援者」に分割して表示（。で区切られた最初の文を本人のタスクとする）
+  // 将来的なスキーマ拡張で明示的なフィールドに移行予定
   const parts = procedure.instruction.split('。').filter(Boolean);
   const personTask = parts[0] || '手順に従って進めましょう';
   const staffTask = parts.slice(1).join('。') || '適宜見守り、必要に応じて声掛けを行います';
+
+  const isCompleted = record?.status === 'completed';
+  const isTriggered = record?.status === 'triggered';
 
   return (
     <Box sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -68,9 +98,17 @@ export const KioskProcedureDetailScreen: React.FC = () => {
             </Typography>
           </Box>
         </Box>
-        {procedure.isKey && (
-          <Chip label="最優先" color="primary" sx={{ fontWeight: 'bold', px: 1 }} />
-        )}
+        <Stack direction="row" spacing={1} alignItems="center">
+          {procedure.isKey && (
+            <Chip label="最優先" color="primary" sx={{ fontWeight: 'bold', px: 1 }} />
+          )}
+          {isCompleted && (
+            <Chip label="実施済み" color="success" icon={<CheckCircleOutlineIcon />} sx={{ fontWeight: 'bold' }} />
+          )}
+          {isTriggered && (
+            <Chip label="注意あり" color="warning" icon={<ErrorOutlineIcon />} sx={{ fontWeight: 'bold' }} />
+          )}
+        </Stack>
       </Box>
 
       {/* メインコンテンツ */}
@@ -129,26 +167,33 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       <Box sx={{ mt: 6, pt: 4, borderTop: '1px solid', borderColor: 'divider' }}>
         <Stack direction="row" spacing={3} justifyContent="center">
           <Button 
-            variant="outlined" 
+            variant={isTriggered ? "contained" : "outlined"}
+            color="warning"
             size="large" 
             startIcon={<ErrorOutlineIcon />}
+            onClick={() => handleSave('triggered')}
             sx={{ 
               py: 2, 
               px: 4, 
               borderRadius: 4, 
               fontSize: '1.2rem',
-              color: 'text.secondary',
-              borderColor: 'divider',
-              '&:hover': { bgcolor: 'action.hover' }
+              fontWeight: isTriggered ? 'bold' : 'normal',
+              ...(isTriggered ? {} : {
+                color: 'text.secondary',
+                borderColor: 'divider',
+              }),
+              '&:hover': { bgcolor: isTriggered ? 'warning.dark' : 'action.hover' }
             }}
-            disabled
+            disabled={isSaving || isCompleted}
           >
-            注意ありで記録 (開発中)
+            {isTriggered ? '記録済み' : '注意ありで記録'}
           </Button>
           <Button 
             variant="contained" 
+            color={isCompleted ? "success" : "primary"}
             size="large" 
             startIcon={<CheckCircleOutlineIcon />}
+            onClick={() => handleSave('completed')}
             sx={{ 
               py: 2, 
               px: 8, 
@@ -157,12 +202,25 @@ export const KioskProcedureDetailScreen: React.FC = () => {
               fontWeight: 'bold',
               boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
             }}
-            disabled
+            disabled={isSaving || isCompleted}
           >
-            実施済みにする (開発中)
+            {isCompleted ? '実施済みです' : '実施済みにする'}
           </Button>
         </Stack>
       </Box>
+
+      {/* 成功メッセージ */}
+      <Snackbar 
+        open={showSuccess} 
+        autoHideDuration={3000} 
+        onClose={() => setShowSuccess(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="success" sx={{ width: '100%', fontSize: '1.2rem', fontWeight: 'bold' }}>
+          記録を保存しました
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
+
