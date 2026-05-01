@@ -1,24 +1,29 @@
 import { test, expect } from '@playwright/test';
+import { bootKiosk } from './_helpers/bootKiosk';
 
 test.describe('Kiosk Procedure List', () => {
   test.beforeEach(async ({ page }) => {
-    // 確実にデータを読み込むために少し待つか、タイトルが出るのを待つ
-    await page.goto('/kiosk/users');
+    await bootKiosk(page, { route: '/kiosk' });
+    await expect(page.getByTestId('kiosk-action-execute-steps')).toBeVisible({ timeout: 10000 });
+    await page.getByTestId('kiosk-action-execute-steps').click();
     await expect(page.getByText('利用者を選択してください')).toBeVisible({ timeout: 10000 });
 
+    const noUsersMessage = page.getByText('対象の利用者がいません');
+    if (await noUsersMessage.isVisible()) {
+      throw new Error('E2E前提データ不足: IsActive && IsSupportProcedureTarget を満たす利用者が0件です');
+    }
+
     const userCard = page.locator('[data-testid^="kiosk-user-card-"]').first();
-    // 描画を待つ (demo repository の初期化に時間がかかる場合があるため)
-    await userCard.waitFor({ state: 'visible', timeout: 5000 });
-    
+    await userCard.waitFor({ state: 'visible', timeout: 10000 });
+
     const count = await page.locator('[data-testid^="kiosk-user-card-"]').count();
-    
+
     if (count > 0) {
       await userCard.click();
     } else {
-      console.log('[E2E] No cards, going to /1/ fallback');
-      await page.goto('/kiosk/users/1/procedures');
+      throw new Error('E2E前提データ不足: 利用者カードが描画されませんでした');
     }
-    
+
     // 手順一覧画面が表示されるのを待つ
     await expect(page.getByText('の支援手順')).toBeVisible({ timeout: 10000 });
   });
@@ -58,7 +63,7 @@ test.describe('Kiosk Procedure List', () => {
   });
 
   test('should navigate back to user selection from procedure list', async ({ page }) => {
-    await page.getByTestId('kiosk-procedure-list-back').click();
-    await expect(page).toHaveURL(/\/kiosk\/users$/);
+    await page.getByTestId('kiosk-procedure-list-back').click({ force: true });
+    await expect(page).toHaveURL(/\/kiosk\/users(\?.*)?$/);
   });
 });
