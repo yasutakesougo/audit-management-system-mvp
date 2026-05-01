@@ -12,8 +12,10 @@ export async function patchListItem<TBody extends object>(
   id: number,
   body: TBody,
   ifMatch?: string,
-  signal?: AbortSignal,
+  options?: { signal?: AbortSignal; spOptions?: import('./types').SpRequestOptions },
 ): Promise<Response> {
+  const signal = options?.signal;
+  const spOptions = options?.spOptions;
   const itemPath = buildItemPath(listIdentifier, id);
   const payload = JSON.stringify(body);
 
@@ -30,7 +32,7 @@ export async function patchListItem<TBody extends object>(
       },
       body: payload,
       signal,
-      spOptions: { skipRetry: true },
+      spOptions: { ...spOptions, skipRetry: true },
     });
   } catch (err) {
     // If NOT a 412 conflict, rethrow immediately
@@ -65,6 +67,7 @@ export async function patchListItem<TBody extends object>(
         },
         body: payload,
         signal,
+        spOptions,
       });
     } catch (secondErr) {
       // If it STILL fails with 412, don't infinite retry — throw specialized error
@@ -84,9 +87,9 @@ export async function updateItemByTitle<TBody extends object, TResult = unknown>
   listTitle: string,
   id: number,
   body: TBody,
-  options?: { ifMatch?: string; signal?: AbortSignal },
+  options?: import('./types').UpdateItemOptions,
 ): Promise<TResult> {
-  const res = await patchListItem<TBody>(spFetch, listTitle, id, body, options?.ifMatch, options?.signal);
+  const res = await patchListItem<TBody>(spFetch, listTitle, id, body, options?.ifMatch, options);
   return coerceResult<TResult>(res);
 }
 
@@ -98,9 +101,9 @@ export async function updateItem<TBody extends object, TResult = unknown>(
   listIdentifier: string,
   id: number,
   body: TBody,
-  options?: { ifMatch?: string; signal?: AbortSignal },
+  options?: import('./types').UpdateItemOptions,
 ): Promise<TResult> {
-  const res = await patchListItem<TBody>(spFetch, listIdentifier, id, body, options?.ifMatch, options?.signal);
+  const res = await patchListItem<TBody>(spFetch, listIdentifier, id, body, options?.ifMatch, options);
   return coerceResult<TResult>(res);
 }
 
@@ -112,7 +115,7 @@ export async function updateField(
   listTitle: string,
   fieldInternalName: string,
   properties: Record<string, unknown>,
-  options?: { signal?: AbortSignal }
+  options?: import('./types').WriteItemOptions
 ): Promise<void> {
   const path = `${resolveListPath(listTitle)}/fields/getbyinternalnameortitle('${fieldInternalName}')`;
   await spFetch(path, {
@@ -123,6 +126,7 @@ export async function updateField(
     },
     body: JSON.stringify(properties),
     signal: options?.signal,
+    spOptions: options?.spOptions,
   });
 }
 
@@ -132,13 +136,14 @@ export async function deleteItemByTitle(
   spFetch: SpFetchFn,
   listTitle: string,
   id: number,
-  options?: { signal?: AbortSignal },
+  options?: import('./types').WriteItemOptions,
 ): Promise<void> {
   const path = buildItemPath(listTitle, id);
   await spFetch(path, {
     method: 'DELETE',
     headers: { 'If-Match': '*' },
     signal: options?.signal,
+    spOptions: options?.spOptions,
   });
 }
 
@@ -146,13 +151,14 @@ export async function deleteItem(
   spFetch: SpFetchFn,
   listIdentifier: string,
   id: number,
-  options?: { signal?: AbortSignal },
+  options?: import('./types').WriteItemOptions,
 ): Promise<void> {
   const path = buildItemPath(listIdentifier, id);
   await spFetch(path, {
     method: 'DELETE',
     headers: { 'If-Match': '*' },
     signal: options?.signal,
+    spOptions: options?.spOptions,
   });
 }
 
@@ -162,7 +168,7 @@ export async function addListItemByTitle<TBody extends object, TResult = unknown
   spFetch: SpFetchFn,
   listTitle: string,
   body: TBody,
-  options?: { signal?: AbortSignal },
+  options?: import('./types').WriteItemOptions,
 ): Promise<TResult> {
   const path = `/lists/getbytitle('${listTitle}')/items`;
   const res = await spFetch(path, {
@@ -172,6 +178,7 @@ export async function addListItemByTitle<TBody extends object, TResult = unknown
     },
     body: JSON.stringify(body),
     signal: options?.signal,
+    spOptions: options?.spOptions,
   });
   return coerceResult<TResult>(res);
 }
@@ -180,7 +187,7 @@ export async function createItem<TBody extends object, TResult = unknown>(
   spFetch: SpFetchFn,
   listIdentifier: string,
   body: TBody,
-  options?: { signal?: AbortSignal },
+  options?: import('./types').WriteItemOptions,
 ): Promise<TResult> {
   const path = `${resolveListPath(listIdentifier)}/items`;
   const res = await spFetch(path, {
@@ -190,6 +197,7 @@ export async function createItem<TBody extends object, TResult = unknown>(
     },
     body: JSON.stringify(body),
     signal: options?.signal,
+    spOptions: options?.spOptions,
   });
   return coerceResult<TResult>(res);
 }

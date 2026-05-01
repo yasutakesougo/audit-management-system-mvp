@@ -202,6 +202,15 @@ export type ListItemsOptions = {
   spOptions?: SpRequestOptions;
 };
 
+export type WriteItemOptions = {
+  signal?: AbortSignal;
+  spOptions?: SpRequestOptions;
+};
+
+export type UpdateItemOptions = WriteItemOptions & {
+  ifMatch?: string;
+};
+
 // ─── Staff identifier ────────────────────────────────────────────
 
 export type StaffIdentifier = { type: 'guid' | 'title'; value: string };
