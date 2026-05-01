@@ -1,5 +1,5 @@
 // contract:allow-sp-direct
-import { createRepositoryFactory, type BaseFactoryOptions } from '@/lib/createRepositoryFactory';
+import { createRepositoryFactory, defaultShouldUseDemo, type BaseFactoryOptions } from '@/lib/createRepositoryFactory';
 import type { UserRepository } from './domain/UserRepository';
 import { inMemoryUserRepository } from './infra/InMemoryUserRepository';
 import { DataProviderUserRepository } from './infra/DataProviderUserRepository';
@@ -21,6 +21,12 @@ export interface UserRepositoryFactoryOptions extends BaseFactoryOptions {
 const factory = createRepositoryFactory<UserRepository, UserRepositoryFactoryOptions>({
   name: 'User',
   createDemo: () => inMemoryUserRepository,
+  shouldUseDemo: () => {
+    // E2E環境やデバッグ時に確実にデモモードを選択するための明示的なチェック
+    const forceDemo = (import.meta as ImportMeta).env.VITE_FORCE_DEMO === '1' || (import.meta as ImportMeta).env.VITE_FORCE_DEMO === 'true';
+    if (forceDemo) return true;
+    return defaultShouldUseDemo();
+  },
   createReal: (options) => {
     // 1. DataProvider 版を使用 (Split Write / Lazy Join 対応の本番用実装)
     const { acquireToken } = options || {};
