@@ -1,11 +1,13 @@
 import React from 'react';
 import { Box, Typography, Grid, Card, CardActionArea, CardContent, IconButton, CircularProgress } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useUsers } from '@/features/users/useUsers';
 
 export const KioskUserSelectScreen: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const search = location.search ?? '';
   const { data: users, isLoading } = useUsers({ selectMode: 'core' });
 
   // キオスクモードでは「支援手順対象」の利用者を表示。
@@ -16,7 +18,7 @@ export const KioskUserSelectScreen: React.FC = () => {
     <Box sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ mb: 4, display: 'flex', alignItems: 'center' }}>
         <IconButton 
-          onClick={() => navigate('/kiosk')} 
+          onClick={() => navigate(`/kiosk${search}`)} 
           sx={{ mr: 2, bgcolor: 'action.hover' }}
           data-testid="kiosk-user-select-back"
         >
@@ -46,7 +48,7 @@ export const KioskUserSelectScreen: React.FC = () => {
                 data-testid={`kiosk-user-card-${user.Id}`}
               >
                 <CardActionArea 
-                  onClick={() => navigate(`/kiosk/users/${user.Id}/procedures`)}
+                  onClick={() => navigate(`/kiosk/users/${user.Id}/procedures${search}`)}
                   sx={{ height: '100%', p: 3 }}
                 >
                   <CardContent sx={{ textAlign: 'center' }}>

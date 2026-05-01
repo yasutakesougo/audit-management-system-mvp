@@ -3,20 +3,22 @@ import { Box, Typography, IconButton, Paper, Grid, Button, Chip, Stack, Alert, S
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useUser } from '@/features/users/useUsers';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
 import { useExecutionRecord } from '@/features/daily/hooks/useExecutionRecord';
-import { formatDateIso } from '@/lib/dateFormat';
+import { toLocalDateISO } from '@/utils/getNow';
 
 export const KioskProcedureDetailScreen: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const search = location.search ?? '';
   const { userId, slotKey } = useParams<{ userId: string; slotKey: string }>();
   const { data: user, status } = useUser(userId || '');
   const isUserLoading = status === 'loading' || status === 'idle';
   const procedureRepo = useProcedureData();
   
-  const today = React.useMemo(() => formatDateIso(new Date()), []);
+  const today = React.useMemo(() => toLocalDateISO(new Date()), []);
   
   const procedure = React.useMemo(() => {
     if (!userId || slotKey === undefined) return null;
@@ -40,7 +42,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       setShowSuccess(true);
       // 成功フィードバックの後、少し待ってから一覧に戻る
       setTimeout(() => {
-        navigate(`/kiosk/users/${userId}/procedures`);
+        navigate(`/kiosk/users/${userId}/procedures${search}`);
       }, 1500);
     } catch (error) {
       console.error('Failed to save execution record:', error);
@@ -58,7 +60,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
         <Typography variant="h5">情報が見つかりません</Typography>
         <Button 
           variant="contained" 
-          onClick={() => navigate(`/kiosk/users/${userId}/procedures`)} 
+          onClick={() => navigate(`/kiosk/users/${userId}/procedures${search}`)} 
           sx={{ mt: 2 }}
           startIcon={<ArrowBackIcon />}
         >
@@ -83,7 +85,7 @@ export const KioskProcedureDetailScreen: React.FC = () => {
       <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <IconButton 
-            onClick={() => navigate(`/kiosk/users/${userId}/procedures`)} 
+            onClick={() => navigate(`/kiosk/users/${userId}/procedures${search}`)} 
             sx={{ mr: 2, bgcolor: 'action.hover' }}
             data-testid="kiosk-procedure-detail-back"
           >
@@ -223,4 +225,3 @@ export const KioskProcedureDetailScreen: React.FC = () => {
     </Box>
   );
 };
-

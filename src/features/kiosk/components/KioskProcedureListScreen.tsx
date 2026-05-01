@@ -4,15 +4,18 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useUser } from '@/features/users/useUsers';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
 import { useExecutionData } from '@/features/daily/hooks/useExecutionData';
-import { formatDateJapanese, formatDateIso } from '@/lib/dateFormat';
+import { formatDateJapanese } from '@/lib/dateFormat';
+import { toLocalDateISO } from '@/utils/getNow';
 import type { ExecutionRecord } from '@/features/daily/domain/executionRecordTypes';
 
 export const KioskProcedureListScreen: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const search = location.search ?? '';
   const { userId } = useParams<{ userId: string }>();
   const { data: user, status } = useUser(userId || '');
   const isUserLoading = status === 'loading' || status === 'idle';
@@ -21,7 +24,7 @@ export const KioskProcedureListScreen: React.FC = () => {
   
   const [records, setRecords] = useState<ExecutionRecord[]>([]);
 
-  const todayIso = React.useMemo(() => formatDateIso(new Date()), []);
+  const todayIso = React.useMemo(() => toLocalDateISO(new Date()), []);
   const todayStr = formatDateJapanese(new Date());
 
   const procedures = React.useMemo(() => {
@@ -57,7 +60,7 @@ export const KioskProcedureListScreen: React.FC = () => {
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
         <Typography variant="h5">利用者が存在しません</Typography>
-        <IconButton onClick={() => navigate('/kiosk/users')} sx={{ mt: 2 }}>
+        <IconButton onClick={() => navigate(`/kiosk/users${search}`)} sx={{ mt: 2 }}>
           <ArrowBackIcon /> 戻る
         </IconButton>
       </Box>
@@ -70,7 +73,7 @@ export const KioskProcedureListScreen: React.FC = () => {
       <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <IconButton 
-            onClick={() => navigate('/kiosk/users')} 
+            onClick={() => navigate(`/kiosk/users${search}`)} 
             sx={{ mr: 2, bgcolor: 'action.hover' }}
             data-testid="kiosk-procedure-list-back"
           >
@@ -132,7 +135,7 @@ export const KioskProcedureListScreen: React.FC = () => {
                 data-testid={`kiosk-procedure-card-${index}`}
               >
                 <CardActionArea 
-                  onClick={() => navigate(`/kiosk/users/${userId}/procedures/${index}`)}
+                  onClick={() => navigate(`/kiosk/users/${userId}/procedures/${index}${search}`)}
                   sx={{ p: 2.5 }}
                 >
                   <Grid container alignItems="center" spacing={2}>
@@ -197,4 +200,3 @@ export const KioskProcedureListScreen: React.FC = () => {
     </Box>
   );
 };
-

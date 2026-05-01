@@ -25,8 +25,10 @@ export class InMemoryDataProvider implements IDataProvider {
         Id: 1, 
         UserID: 'USR001', 
         FullName: 'User One', 
+        Furigana: 'ユーザー ワン',
         Status: 'active', 
-        IsActive: true, 
+        IsActive: true,
+        IsSupportProcedureTarget: true,
         RecipientCertNumber: '1234567890',
         LastAssessmentDate: '2026-02-15' // 約3ヶ月前
       },
