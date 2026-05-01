@@ -12,8 +12,8 @@ import Box from '@mui/material/Box';
 import { getContrastRatio, useTheme } from '@mui/material/styles';
 import React, { useEffect, useMemo, useState } from 'react';
 
-const SKIP_LOGIN = shouldSkipLogin();
-const E2E_MSAL_MOCK_ENABLED = isE2eMsalMockEnabled();
+const SKIP_LOGIN_RAW = () => shouldSkipLogin();
+const E2E_MSAL_MOCK_ENABLED_RAW = () => isE2eMsalMockEnabled();
 
 const resolveBadgeTextColor = (background: string, light: string, dark: string): string => {
   const lightContrast = getContrastRatio(background, light);
@@ -56,7 +56,9 @@ const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ share
   const { accounts } = useMsalContext();
   const accountsCount = accounts.length;
   const [state, setState] = useState<'checking' | 'ok' | 'error' | 'signedOut'>('checking');
-  const bypassAccountGate = SKIP_LOGIN || E2E_MSAL_MOCK_ENABLED;
+  const skipLogin = SKIP_LOGIN_RAW();
+  const e2eMsalMockEnabled = E2E_MSAL_MOCK_ENABLED_RAW();
+  const bypassAccountGate = skipLogin || e2eMsalMockEnabled;
   const isDemoMode = isDemoModeEnabled();
 
   useEffect(() => {
@@ -154,9 +156,10 @@ const ConnectionStatusReal: React.FC<{ sharePointDisabled: boolean }> = ({ share
 
 export const ConnectionStatus: React.FC = () => {
   const isVitest = typeof process !== 'undefined' && Boolean(process.env?.VITEST);
+  const e2eMsalMockEnabled = E2E_MSAL_MOCK_ENABLED_RAW();
   const e2eMode = readBool('VITE_E2E', false) && !isVitest;
   const sharePointDisabled = readBool('VITE_SKIP_SHAREPOINT', false);
-  const shouldMockConnection = e2eMode || sharePointDisabled || E2E_MSAL_MOCK_ENABLED;
+  const shouldMockConnection = e2eMode || sharePointDisabled || e2eMsalMockEnabled;
 
   return shouldMockConnection ? <ConnectionStatusMock /> : <ConnectionStatusReal sharePointDisabled={sharePointDisabled} />;
 };
