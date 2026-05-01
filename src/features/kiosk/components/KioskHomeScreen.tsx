@@ -7,6 +7,7 @@ import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import LoginIcon from '@mui/icons-material/Login';
 import LogoutIcon from '@mui/icons-material/Logout';
 import EventNoteIcon from '@mui/icons-material/EventNote';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * KioskHomeScreen - キオスクモードの入口画面
@@ -15,6 +16,7 @@ import EventNoteIcon from '@mui/icons-material/EventNote';
  * 「支援手順を実施する」を最優先の導線として強調。
  */
 export const KioskHomeScreen: React.FC = () => {
+  const navigate = useNavigate();
   // ボタンクリック時の挙動は今回はプレースホルダー（アラート等は出さない）
   const handlePlaceholder = () => {
     // 今後のPRで実装予定
@@ -76,7 +78,7 @@ export const KioskHomeScreen: React.FC = () => {
               },
               transition: 'transform 0.1s ease-in-out',
             }}
-            onClick={handlePlaceholder}
+            onClick={() => navigate('/kiosk/users')}
           >
             支援手順を実施する
           </Button>

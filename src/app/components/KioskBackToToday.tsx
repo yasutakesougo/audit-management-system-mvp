@@ -21,10 +21,10 @@ export const KioskBackToToday: React.FC = () => {
   const theme = useTheme();
   const { isKioskMode } = useKioskDetection();
 
-  // Today 画面にいるなら非表示（完全一致のみ）
-  const isOnToday = TODAY_EXACT_PATHS.has(location.pathname);
-
-  if (!isKioskMode || isOnToday) return null;
+  // Today 画面 または キオスク関連画面 にいるなら非表示
+  const isExcluded = TODAY_EXACT_PATHS.has(location.pathname) || location.pathname.startsWith('/kiosk');
+  
+  if (!isKioskMode || isExcluded) return null;
 
   return (
     <Box
