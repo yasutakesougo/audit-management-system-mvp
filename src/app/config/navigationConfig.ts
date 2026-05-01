@@ -123,6 +123,7 @@ export function createNavItems(config: CreateNavItemsConfig): NavItem[] {
     TODAY_ROUTES.TRANSPORT(isFieldStaffShell),
     TODAY_ROUTES.DAILY_SUPPORT(isFieldStaffShell),
     TODAY_ROUTES.HEALTH_RECORD(isFieldStaffShell),
+    TODAY_ROUTES.CALL_LOGS(isFieldStaffShell),
     TODAY_ROUTES.HANDOFF_TIMELINE(isFieldStaffShell),
     TODAY_ROUTES.MEETING_MINUTES(isFieldStaffShell),
     

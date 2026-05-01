@@ -25,6 +25,8 @@ import { useUserAuthz } from '@/auth/useUserAuthz';
 import { useKioskDetection } from '@/features/settings/hooks/useKioskDetection';
 import { useFeatureFlag } from '@/config/featureFlags';
 import { useQueryClient } from '@tanstack/react-query';
+import type { CallLogFilterPreset } from '@/features/callLogs/domain/callLogFilterPresets';
+
 
 import { TodayBentoLayout } from '@/features/today/layouts/TodayBentoLayout';
 import { ActionTaskList } from '@/features/action-engine/components/ActionTaskList';
@@ -238,6 +240,12 @@ const TodayOpsPageInner: React.FC<{ correctiveActions?: ActionSuggestion[] }> = 
         actionTaskList: <ActionTaskList onOpenTask={() => {}} />,
       },
       handoffPanel: handoffPanelElement,
+      callLogSummary: {
+        ...callLogsSummary,
+        onNavigate: () => navigate('/call-logs'),
+        onNavigateWithFilter: (preset: CallLogFilterPreset) => navigate(`/call-logs?filter=${preset}`),
+        onOpenDrawer: () => window.dispatchEvent(new CustomEvent('call-log-open-drawer')),
+      },
       exceptionsQueue,
       onQuickLinkNavigate: (href: string) => navigate(href),
     };
