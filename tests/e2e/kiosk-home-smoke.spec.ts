@@ -36,4 +36,28 @@ test.describe('Kiosk Home Smoke', () => {
     const appShell = page.getByTestId('app-shell');
     await expect(appShell).toHaveAttribute('data-kiosk', 'true');
   });
+  
+  test('should navigate to user selection and maintain search params', async ({ page }) => {
+    await page.getByTestId('kiosk-action-execute-steps').click();
+    await expect(page).toHaveURL(/\/kiosk\/users(\?.*provider=memory.*)?/);
+  });
+
+  test('should navigate to attendance (check-in) and maintain search params', async ({ page }) => {
+    await page.getByTestId('kiosk-action-attendance').click();
+    await expect(page).toHaveURL(/\/daily\/attendance(\?.*provider=memory.*)?/);
+    await expect(page).toHaveURL(/.*mode=checkin.*/);
+  });
+
+  test('should navigate to attendance (check-out) and maintain search params', async ({ page }) => {
+    await page.getByTestId('kiosk-action-leave').click();
+    await expect(page).toHaveURL(/\/daily\/attendance(\?.*provider=memory.*)?/);
+    await expect(page).toHaveURL(/.*mode=checkout.*/);
+  });
+
+  test('should navigate to today schedule and maintain search params', async ({ page }) => {
+    await page.getByTestId('kiosk-action-schedule').click();
+    // Redirects to /schedules/week?tab=day
+    await expect(page).toHaveURL(/\/schedules\/week(\?.*provider=memory.*)?/);
+    await expect(page).toHaveURL(/.*tab=day.*/);
+  });
 });
