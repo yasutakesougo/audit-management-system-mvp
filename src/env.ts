@@ -70,10 +70,20 @@ const shouldAllowRuntimeFlagOverrides = (runtimeEnv?: EnvDict): boolean => {
 };
 
 export function getRuntimeEnv(): EnvDict {
+  const isVitest = typeof process !== 'undefined' && process.env?.VITEST;
+
+  // In Vitest, we must re-evaluate process.env to respect vi.stubEnv overrides
+  // that happen after the module is first loaded.
+  const fromProcess: EnvDict = isVitest
+    ? Object.fromEntries(
+        Object.entries(process.env).map(([key, value]) => [key, value === undefined ? value : String(value)]),
+      )
+    : {};
+
   const fromWindow = getWindowEnv();
   if (fromWindow) {
     const allowRuntimeOverrides = shouldAllowRuntimeFlagOverrides(fromWindow);
-    const merged = { ...INLINE_ENV, ...fromWindow } as EnvDict;
+    const merged = { ...INLINE_ENV, ...fromProcess, ...fromWindow } as EnvDict;
 
     if (!allowRuntimeOverrides) {
       for (const key of E2E_OVERRIDE_KEYS) {
@@ -86,7 +96,7 @@ export function getRuntimeEnv(): EnvDict {
     return merged;
   }
 
-  return { ...INLINE_ENV } as EnvDict;
+  return { ...INLINE_ENV, ...fromProcess } as EnvDict;
 }
 
 export function get(name: string, fallback = ''): string {

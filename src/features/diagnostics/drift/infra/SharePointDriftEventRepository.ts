@@ -6,6 +6,7 @@ import { DRIFT_LOG_CANDIDATES } from '@/sharepoint/fields/diagnosticsFields';
 import { extractMissingField, resolveInternalNamesDetailed } from '@/lib/sp/helpers';
 import { auditLog } from '@/lib/debugLogger';
 import { summarizeSpError } from '@/lib/errors';
+import type { ListItemsOptions } from '@/lib/sp/types';
 
 const DRIFT_LOG_REQUIRED_DUPLICATES: Partial<
   Record<keyof typeof DRIFT_LOG_CANDIDATES, readonly string[]>
@@ -24,7 +25,7 @@ const SP_TEXT_FIELD_MAX = 255;
 export interface ISpOperations {
   createItem: (listTitle: string, payload: Record<string, unknown>) => Promise<unknown>;
   updateItemByTitle: (listTitle: string, id: number, payload: Record<string, unknown>) => Promise<unknown>;
-  getListItemsByTitle: <T>(listTitle: string, select?: string[], filter?: string, orderby?: string, top?: number, signal?: AbortSignal) => Promise<T[]>;
+  getListItemsByTitle: <T>(listTitle: string, select?: string[], filter?: string, orderby?: string, top?: number, signal?: AbortSignal, options?: ListItemsOptions) => Promise<T[]>;
   getListFieldInternalNames?: (listTitle: string) => Promise<Set<string>>;
 }
 
@@ -301,6 +302,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         'Id desc',
         top,
         signal,
+        { spOptions: { quietStatuses: [400], silent: true } }
       );
       return items.map((item) => this.mapItemToEvent(item));
     } catch (err) {
@@ -327,6 +329,7 @@ export class SharePointDriftEventRepository implements IDriftEventRepository {
         'Id desc',
         200,
         signal,
+        { spOptions: { quietStatuses: [400], silent: true } }
       );
 
       return fallbackItems

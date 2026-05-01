@@ -7,6 +7,8 @@ import { enableHudForTests } from '../../helpers/renderWithAppProviders';
 
 describe('HUD bootstrap', () => {
   it('shows HUD status banner in test mode', async () => {
+    vi.stubEnv('VITE_SKIP_SHAREPOINT', '0');
+    vi.stubEnv('VITE_E2E_MSAL_MOCK', '0');
     enableHudForTests();
     render(<App />);
 
