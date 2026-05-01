@@ -72,5 +72,7 @@ export const TODAY_ROUTES = {
     icon: undefined,
     audience: NAV_AUDIENCE.staff as NavAudience,
     group: 'today' as NavGroupKey,
+    tier: 'more' as const,
+    featureFlag: 'todayLiteNavV2' as const,
   }),
 } as const;
