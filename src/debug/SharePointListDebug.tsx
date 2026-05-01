@@ -41,12 +41,14 @@ export default function SharePointListDebug() {
       const response = await spFetch("/_api/web/lists/getbytitle('Compliance_CheckRules')/items?$top=5");
       const data = await (response as Response).json();
       if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
         console.log('Compliance_CheckRules items:', data.value);
       }
       setMessage(
         `コンプライアンスリスト OK: ${Array.isArray(data.value) ? data.value.length : 0} 件取得`
       );
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error('Compliance list error:', e);
       setError(`コンプライアンスリストエラー: ${String(e)}`);
     } finally {

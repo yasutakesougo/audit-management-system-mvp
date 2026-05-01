@@ -12,7 +12,7 @@ describe('useAuthReady pure contract', () => {
   it('SHOULD return false when NOT authenticated', () => {
     vi.mocked(useAuth).mockReturnValue({
       isAuthReady: false,
-    } as any);
+    } as unknown as ReturnType<typeof useAuth>);
 
     const { result } = renderHook(() => useAuthReady());
     expect(result.current).toBe(false);
@@ -21,7 +21,7 @@ describe('useAuthReady pure contract', () => {
   it('SHOULD return true when authenticated and ready', () => {
     vi.mocked(useAuth).mockReturnValue({
       isAuthReady: true,
-    } as any);
+    } as unknown as ReturnType<typeof useAuth>);
 
     const { result } = renderHook(() => useAuthReady());
     expect(result.current).toBe(true);
