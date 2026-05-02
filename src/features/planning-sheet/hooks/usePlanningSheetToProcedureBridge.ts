@@ -35,6 +35,7 @@ export function usePlanningSheetToProcedureBridge(planningSheetId?: string) {
   return {
     schedule: bridgeResult.schedule,
     bridgeSource: bridgeResult.source,
+    sheetData,
     isLoading,
     error,
   };
