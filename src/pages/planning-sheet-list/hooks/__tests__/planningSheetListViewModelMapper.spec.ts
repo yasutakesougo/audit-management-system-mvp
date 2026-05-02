@@ -5,13 +5,13 @@ import type { SupportPlanningSheet } from '@/domain/isp/schema';
 import type { IUserMaster } from '@/features/users/types';
 
 describe('planningSheetListViewModelMapper', () => {
-  const mockUser: IUserMaster = {
+  const mockUser = {
     UserID: 'U001',
     UserName: 'テスト太郎',
     IsHighIntensitySupportTarget: true,
-  } as any;
+  } as unknown as IUserMaster;
 
-  const mockIceberg: IcebergSnapshot = {
+  const mockIceberg = {
     sessionId: 'session-1',
     updatedAt: '2026-05-01T10:00:00Z',
     nodes: [
@@ -21,14 +21,14 @@ describe('planningSheetListViewModelMapper', () => {
     links: [
       { sourceNodeId: 'n2', targetNodeId: 'n1', confidence: 'high' }
     ],
-  } as any;
+  } as unknown as IcebergSnapshot;
 
-  const mockCurrentSheet: SupportPlanningSheet = {
+  const mockCurrentSheet = {
     assessment: {
       targetBehaviors: [{ name: '自傷行為' }],
       hypotheses: [{ function: '注意獲得' }],
     }
-  } as any;
+  } as unknown as SupportPlanningSheet;
 
   const baseInput: MapperInput = {
     userId: 'U001',
@@ -56,12 +56,12 @@ describe('planningSheetListViewModelMapper', () => {
 
   it('背景要因が仮説に未反映の場合、中レベル insight を出すこと', () => {
     // 行動は一致させて、要因だけ不一致にする
-    const currentSheetWithMatchingBehavior: SupportPlanningSheet = {
+    const currentSheetWithMatchingBehavior = {
       assessment: {
         targetBehaviors: [{ name: '他害(叩く)' }],
         hypotheses: [{ function: '空腹' }],
       }
-    } as any;
+    } as unknown as SupportPlanningSheet;
 
     const input: MapperInput = {
       ...baseInput,
@@ -103,8 +103,8 @@ describe('planningSheetListViewModelMapper', () => {
     const input: MapperInput = {
       ...baseInput,
       sheets: [
-        { id: '1', status: 'active' } as any,
-        { id: '2', status: 'revision_pending' } as any,
+        { id: '1', status: 'active' } as unknown as (PlanningSheetListViewModel['sheets'][0]),
+        { id: '2', status: 'revision_pending' } as unknown as (PlanningSheetListViewModel['sheets'][0]),
       ],
     };
     const vm = mapToPlanningSheetListViewModel(input);
