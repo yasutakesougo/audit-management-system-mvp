@@ -1,12 +1,11 @@
 import React from 'react';
 import { Box, Typography, Grid, Card, CardActionArea, CardContent, IconButton, CircularProgress } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation, Link as RouterLink } from 'react-router-dom';
 import { appendKioskSearchParams } from '../utils/navigation';
 import { useUsers } from '@/features/users/useUsers';
 
 export const KioskUserSelectScreen: React.FC = () => {
-  const navigate = useNavigate();
   const location = useLocation();
   const { data: users, isLoading } = useUsers({ selectMode: 'core' });
 
@@ -18,7 +17,8 @@ export const KioskUserSelectScreen: React.FC = () => {
     <Box sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ mb: 4, display: 'flex', alignItems: 'center' }}>
         <IconButton 
-          onClick={() => navigate(appendKioskSearchParams('/kiosk', location.search))} 
+          component={RouterLink}
+          to={appendKioskSearchParams('/kiosk', location.search)} 
           sx={{ mr: 2, bgcolor: 'action.hover' }}
           data-testid="kiosk-user-select-back"
         >
@@ -48,7 +48,8 @@ export const KioskUserSelectScreen: React.FC = () => {
                 data-testid={`kiosk-user-card-${user.Id}`}
               >
                 <CardActionArea 
-                  onClick={() => navigate(appendKioskSearchParams(`/kiosk/users/${user.Id}/procedures`, location.search))}
+                  component={RouterLink}
+                  to={appendKioskSearchParams(`/kiosk/users/${user.Id}/procedures`, location.search)}
                   sx={{ height: '100%', p: 3 }}
                 >
                   <CardContent sx={{ textAlign: 'center' }}>

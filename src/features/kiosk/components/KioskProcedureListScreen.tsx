@@ -4,7 +4,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams, useLocation, Link as RouterLink } from 'react-router-dom';
 import { appendKioskSearchParams } from '../utils/navigation';
 import { useUser } from '@/features/users/useUsers';
 import { useProcedureData } from '@/features/daily/hooks/useProcedureData';
@@ -72,7 +72,8 @@ export const KioskProcedureListScreen: React.FC = () => {
       <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <IconButton 
-            onClick={() => navigate(appendKioskSearchParams('/kiosk/users', location.search))} 
+            component={RouterLink}
+            to={appendKioskSearchParams('/kiosk/users', location.search)}
             sx={{ mr: 2, bgcolor: 'action.hover' }}
             data-testid="kiosk-procedure-list-back"
           >
