@@ -19,7 +19,6 @@
  * @see assessmentBridge.ts — 同一パターンの先行実装
  */
 import type { PlanningIntake, PlanningSheetFormValues, SupportPlanningSheet } from '@/domain/isp/schema/ispPlanningSheetSchema';
-import { getDailyProcedureSteps } from '@/app/services/bridgeProxy';
 import type { ProcedureStep } from '@/features/daily/domain/legacy/ProcedureRepository';
 import type { ProvenanceEntry } from '@/features/planning-sheet/assessmentBridge';
 
@@ -259,39 +258,42 @@ export interface BridgeProceduresResult {
   source: BridgeSource;
 }
 
+import { bridgePlanningSheetToDailyProcedures as bridgeToOfficial } from './logic/dailyProcedureMapper';
+
 /**
  * 支援計画シートを手順記録（Daily スケジュール）へ変換する。
  *
- * 戦略:
- * 1. 構造化された手順リスト (L2 Planning) があればそれを優先する。
- * 2. 構造化データがない場合は、テキスト項目（対応方針・具体策）から抽出生成する。
+ * 【新設計】原紙一致マッピング (17行形式) を採用。
+ * これにより、画面表示・記録DB・PDF帳票でデータ構造が統一される。
  *
  * @param sheet 支援計画シート
- * @returns 変換後の手順ステップ配列とソース情報
+ * @returns 変換後の手順ステップ配列（ProcedureStep[] 互換）とソース情報
  */
 export function bridgePlanningSheetToDailyProcedures(
   sheet: SupportPlanningSheet,
 ): BridgeProceduresResult {
-  // 1. 構造化手順リストの変換を試行
-  const structuredSteps = getDailyProcedureSteps(sheet.planning, sheet.id);
-  if (structuredSteps.length > 0) {
-    return {
-      steps: structuredSteps,
-      source: 'sheet_structured',
-    };
-  }
-
-  // 2. 構造化データがない場合はテキスト項目からのブリッジを試行
-  const bridgedResult = bridgeSheetToRecord(sheet, []);
-  if (bridgedResult.steps.length > 0) {
-    return {
-      steps: bridgedResult.steps,
-      source: 'sheet_fallback_text',
-    };
-  }
+  const doc = bridgeToOfficial(sheet);
+  
+  // Daily ドメインの ProcedureStep[] 形式に変換して返す
+  const steps: ProcedureStep[] = doc.rows
+    .filter(row => row.personAction || row.supporterAction || row.condition) // 内容がある行のみ
+    .map(row => ({
+      id: `official-${sheet.id}-${row.rowNo}`,
+      rowNo: row.rowNo,
+      block: row.block,
+      time: row.timeLabel,
+      activity: row.activity,
+      instruction: row.personAction || row.activity, // Fallback
+      activityDetail: row.personAction,
+      instructionDetail: row.supporterAction,
+      condition: row.condition,
+      isKey: row.rowNo === 1 || row.rowNo === 15 || row.block === 'outing',
+      planningSheetId: sheet.id,
+      source: 'planning_sheet',
+    }));
 
   return {
-    steps: [],
-    source: 'empty',
+    steps,
+    source: doc.rows[0]?.bridgeSource || 'empty',
   };
 }
