@@ -74,9 +74,10 @@ export function getOrdersToInvalidateOnRecord(stepOrder: number): number[] {
 export function getHiddenOrdersBySelection(selectedOrders: Set<number>): number[] {
   const hidden = new Set<number>();
 
-  // PM外活動準備(18) または PM外活動参加(19) が記録されたら、
-  // 事ム所内での PM通常ルートの後半（お茶11, PM日中12）を隠す
-  if (selectedOrders.has(18) || selectedOrders.has(19)) {
+  // 外活動準備(16) または 外活動参加(17) が記録されたら、
+  // 事務局内での PM通常ルートの後半（お茶11, PM日中12）を隠す
+  // ※ 17行構成への移行に伴い、旧18, 19を16, 17に置換
+  if (selectedOrders.has(16) || selectedOrders.has(17)) {
     hidden.add(11);
     hidden.add(12);
   }
