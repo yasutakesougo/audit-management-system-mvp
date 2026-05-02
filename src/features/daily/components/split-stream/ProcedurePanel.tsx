@@ -19,11 +19,14 @@ import { getParentOrderForChild } from '@/features/planning-sheet/constants/proc
 
 export type ScheduleItem = {
   id?: string;
+  rowNo?: number;
+  block?: 'morning' | 'afternoon' | 'outing';
   time: string;
   activity: string;
   instruction: string;
   activityDetail?: string;
   instructionDetail?: string;
+  condition?: string;
   isKey: boolean;
   linkedInterventionIds?: string[];
   source?: ProcedureSource;
@@ -146,6 +149,13 @@ const ProcedureStepRow = ({
                   {item.instructionDetail}
                 </Typography>
               )}
+
+              {item.condition && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, lineHeight: 1.4 }}>
+                  <Box component="span" sx={{ bgcolor: 'success.100', px: 0.5, borderRadius: 0.5, fontSize: '0.65rem', fontWeight: 700, flexShrink: 0, color: 'success.dark' }}>様子</Box>
+                  {item.condition}
+                </Typography>
+              )}
             </Stack>
           </Box>
         </Stack>
@@ -182,39 +192,56 @@ export const ProcedurePanel = (props: ProcedurePanelProps): JSX.Element => {
 
   const groupedSchedule = useMemo(() => {
     type GroupedItem = { parent: ScheduleItem; children: ScheduleItem[] };
-    const parents: ScheduleItem[] = [];
-    const childrenByParentOrder = new Map<number, ScheduleItem[]>();
-    const standalones: ScheduleItem[] = [];
+    const morningItems: ScheduleItem[] = [];
+    const afternoonItems: ScheduleItem[] = [];
+    const outingItems: ScheduleItem[] = [];
+    const otherItems: ScheduleItem[] = [];
 
     for (const item of visibleSchedule) {
-      if (item.source === 'planning_sheet' && item.sourceStepOrder) {
-        const parentOrder = getParentOrderForChild({ source: item.source, sourceStepOrder: item.sourceStepOrder });
-        if (parentOrder != null) {
-          const list = childrenByParentOrder.get(parentOrder) ?? [];
-          list.push(item);
-          childrenByParentOrder.set(parentOrder, list);
-          continue;
-        }
-        parents.push(item);
+      if (item.block === 'morning') {
+        morningItems.push(item);
+      } else if (item.block === 'afternoon') {
+        afternoonItems.push(item);
+      } else if (item.block === 'outing') {
+        outingItems.push(item);
       } else {
-        standalones.push(item);
+        // block 情報がない場合（旧データなど）
+        if (item.sourceStepOrder && item.source === 'planning_sheet') {
+          const parentOrder = getParentOrderForChild({ source: item.source, sourceStepOrder: item.sourceStepOrder });
+          if (parentOrder != null) {
+             // 外活動系として扱う（旧ロジック互換）
+             outingItems.push(item);
+             continue;
+          }
+        }
+        otherItems.push(item);
       }
     }
 
+    // 基本は rowNo 順に並べる
     const result: GroupedItem[] = [];
-    for (const parent of parents) {
-      const children = childrenByParentOrder.get(parent.sourceStepOrder!) ?? [];
-      result.push({ parent, children: children.sort((a, b) => (a.sourceStepOrder ?? 0) - (b.sourceStepOrder ?? 0)) });
-      childrenByParentOrder.delete(parent.sourceStepOrder!);
+    
+    // morning -> afternoon -> outing の順で組み立て
+    [...morningItems, ...afternoonItems].sort((a, b) => (a.rowNo ?? 0) - (b.rowNo ?? 0)).forEach(item => {
+      result.push({ parent: item, children: [] });
+    });
+
+    // outing は AM/PM 日中活動の「子」として扱われていた旧 UI 表現を尊重しつつ、
+    // 新設計では 16, 17 行目として独立して並べる
+    if (outingItems.length > 0) {
+      // 日中活動（rowNo 5 or 10）の後ろに挿入するか、最後にまとめるか
+      // ここでは 17行フォームの順序に従い、午後の最後（rowNo 15）の後に配置
+      outingItems.sort((a, b) => (a.rowNo ?? 0) - (b.rowNo ?? 0)).forEach(item => {
+        result.push({ parent: item, children: [] });
+      });
     }
-    const extraItems = [...standalones];
-    childrenByParentOrder.forEach((children) => { extraItems.push(...children); });
-    const finalGrouped = result.concat(extraItems.map(item => ({ parent: item, children: [] })));
-    
-    const itemIndexMap = new Map<string, number>();
-    visibleSchedule.forEach((item, idx) => itemIndexMap.set(getItemScheduleKey(item), idx));
-    
-    return finalGrouped.sort((a, b) => (itemIndexMap.get(getItemScheduleKey(a.parent)) ?? 0) - (itemIndexMap.get(getItemScheduleKey(b.parent)) ?? 0));
+
+    // その他（あれば）
+    otherItems.forEach(item => {
+      result.push({ parent: item, children: [] });
+    });
+
+    return result;
   }, [visibleSchedule]);
 
   if (!isGuided) {

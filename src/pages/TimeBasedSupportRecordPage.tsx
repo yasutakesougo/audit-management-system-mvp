@@ -19,6 +19,8 @@ import { useIbdPageGuard } from '@/features/daily/hooks/useIbdPageGuard';
 import { useSupportRecordSubmit } from '@/pages/hooks/useSupportRecordSubmit';
 import { useTimeBasedSupportRecordPage } from '@/pages/hooks/useTimeBasedSupportRecordPage';
 import { usePlanningSheetToProcedureBridge } from '@/features/planning-sheet/hooks/usePlanningSheetToProcedureBridge';
+import { generateSupportProcedureExcel } from '@/features/official-forms/generateSupportProcedureExcel';
+import { bridgePlanningSheetToDailyProcedures as bridgeToOfficial } from '@/features/planning-sheet/logic/dailyProcedureMapper';
 import { CircularProgress } from '@mui/material';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -76,6 +78,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   // ── Phase E: 支援計画シートからの手順取得 ──
   const { 
     schedule: overrideSchedule, 
+    sheetData,
     isLoading: isSheetLoading,
     error: sheetError,
     bridgeSource
@@ -233,6 +236,35 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       // Fallback handled by snackbar
     }
   }, [executionStore, schedule, selectedUser, targetDate, wizard.wizardUserId, targetUserId, recentObservations]);
+  
+  const handleExportExcel = useCallback(async () => {
+    if (!sheetData) return;
+    
+    try {
+      // eslint-disable-next-line no-restricted-globals
+      const templateResponse = await fetch('/templates/seikatsu_kaigo_template.xlsx');
+      if (!templateResponse.ok) throw new Error('テンプレートが見つかりません');
+      const templateBuffer = await templateResponse.arrayBuffer();
+      
+      const doc = bridgeToOfficial(sheetData, {
+        userName: selectedUser?.FullName,
+        recordDate: targetDate,
+      });
+      
+      const output = await generateSupportProcedureExcel(templateBuffer, doc);
+      
+      const blob = new Blob([output.bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = output.fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Excel Export Error:', err);
+      setSubmitError(err instanceof Error ? err : new Error('Excelの書き出しに失敗しました'));
+    }
+  }, [sheetData, selectedUser, targetDate, setSubmitError]);
 
   // URL sync
   React.useEffect(() => {
@@ -311,14 +343,25 @@ const TimeBasedSupportRecordPage: React.FC = () => {
             lastAssessmentDate={selectedUser?.LastAssessmentDate}
           />
           {initialParams.planningSheetId && (
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => navigate(`/support-planning-sheet/${initialParams.planningSheetId}`)}
-              sx={{ ml: 1, whiteSpace: 'nowrap' }}
-            >
-              元シートへ
-            </Button>
+            <React.Fragment>
+              <Button
+                size="small"
+                variant="contained"
+                color="primary"
+                onClick={handleExportExcel}
+                sx={{ ml: 1, whiteSpace: 'nowrap' }}
+              >
+                原紙出力 (Excel)
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => navigate(`/support-planning-sheet/${initialParams.planningSheetId}`)}
+                sx={{ ml: 1, whiteSpace: 'nowrap' }}
+              >
+                元シートへ
+              </Button>
+            </React.Fragment>
           )}
         </React.Fragment>
       }

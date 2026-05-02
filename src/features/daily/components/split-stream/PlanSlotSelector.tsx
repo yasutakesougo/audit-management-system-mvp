@@ -126,7 +126,7 @@ function PlanSlotSelector({
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ width: '100%' }}>
               <Box flex={1}>
                 <Typography variant="caption" color="text.secondary" fontWeight="bold">
-                  本人のやること (Activity)
+                  本人の動き (Activity)
                 </Typography>
                 <Typography variant="body1" fontWeight="bold">
                   {selectedSlot.activity}
@@ -134,6 +134,17 @@ function PlanSlotSelector({
                 <Typography variant="body2" color="text.secondary">
                   {selectedSlot.time}
                 </Typography>
+                
+                {selectedSlot.activityDetail && (
+                  <Box sx={{ mt: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25, fontWeight: 700 }}>
+                      【本人の動き・手順詳解】
+                    </Typography>
+                    <Typography variant="body2">
+                      {selectedSlot.activityDetail}
+                    </Typography>
+                  </Box>
+                )}
               </Box>
               <Box
                 flex={1.5}
@@ -144,14 +155,30 @@ function PlanSlotSelector({
                   bgcolor: 'primary.50',
                   borderRadius: 1,
                   py: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1
                 }}
               >
-                <Typography variant="caption" color="primary.dark" fontWeight="bold">
-                  📋 支援者のやること (Instruction)
-                </Typography>
-                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', fontWeight: 500 }}>
-                  {selectedSlot.instruction}
-                </Typography>
+                <Box>
+                  <Typography variant="caption" color="primary.dark" fontWeight="bold">
+                    📋 支援者の動き (Instruction)
+                  </Typography>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontWeight: 500 }}>
+                    {selectedSlot.instructionDetail || selectedSlot.instruction}
+                  </Typography>
+                </Box>
+
+                {selectedSlot.condition && (
+                  <Box sx={{ mt: 'auto', pt: 1, borderTop: '1px dashed', borderColor: 'primary.200' }}>
+                    <Typography variant="caption" color="success.main" fontWeight="bold">
+                      💡 本人の様子・留意点 (Condition)
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {selectedSlot.condition}
+                    </Typography>
+                  </Box>
+                )}
               </Box>
             </Stack>
           </Box>
