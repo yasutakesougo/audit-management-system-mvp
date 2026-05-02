@@ -10,28 +10,31 @@ export type ProcedureRow = {
   parentRowNo?: number;
 };
 
-
+/**
+ * 原紙（支援手順書兼実施記録）の既定行。
+ *
+ * daily/support のデフォルト表示は、この時間・活動内容を正本として扱う。
+ * 17行構成は src/features/planning-sheet/domain/dailySupportProcedure.ts の
+ * OFFICIAL_PROCEDURE_TEMPLATE と同じ行番号・時間・活動内容に揃える。
+ */
 export const PROCEDURE_ROWS: ProcedureRow[] = [
-  { rowNo: 1, timeLabel: '９：４０頃', activity: '通所、朝の準備', activityDetail: '手洗い、消毒、荷物をロッカーへ', instructionDetail: '提出物を職員に', category: 'normal' },
-  { rowNo: 2, timeLabel: '１０：００頃', activity: '朝の本人のルーティン、体操', activityDetail: '第二、事務所のゴミ確認、第二で読書、ラジオ体操', instructionDetail: '必要に応じてゴミ確認の声かけ', category: 'normal' },
-  { rowNo: 3, timeLabel: '１０：１０頃', activity: 'スケジュール確認', activityDetail: 'ホワイトボードを指さして確認する', instructionDetail: '同行し、本人と共に指さし確認', category: 'normal' },
-  { rowNo: 4, timeLabel: '１０：１５頃', activity: 'お茶休憩', activityDetail: '手洗い後、お茶を飲む', instructionDetail: 'お茶の準備、片付け', category: 'normal' },
-  { rowNo: 5, timeLabel: '１０：２０～１２：００', activity: 'AM日中活動', activityDetail: '日中活動準備、タオル作業、紙切り', instructionDetail: '必要に応じて声かけ、見守り、同行支援', category: 'normal' },
-  { rowNo: 6, timeLabel: '１２：００', activity: '昼食準備', activityDetail: '手洗い、消毒、検温、配膳', instructionDetail: '検温入力、配膳、食薬準備', category: 'normal' },
-  { rowNo: 7, timeLabel: '１２：１０～１２：４０', activity: '昼食', activityDetail: '咀嚼や、食べるスピードに気を付けて食べる', instructionDetail: '必要に応じて声かけ。食後の服薬介助、片付け', category: 'normal' },
-  { rowNo: 8, timeLabel: '１２：４０～１３：４５', activity: '昼休み、歯磨き', activityDetail: '歯磨き。自由時間（読書や、多目的室でのんびり過ごす等）', instructionDetail: '歯磨き見守り、声かけ。', category: 'normal' },
-  { rowNo: 9, timeLabel: '１３：４５～１３：５０', activity: 'スケジュール確認', activityDetail: 'ホワイトボードを指さして確認する', instructionDetail: '同行し、本人と共に指さし確認', category: 'normal' },
-  { rowNo: 10, timeLabel: '１３：５０～１４：３０', activity: 'PM日中活動', activityDetail: '日中活動準備、紙切り、その他', instructionDetail: '必要に応じて声かけ、見守り、同行支援', category: 'normal' },
-  { rowNo: 11, timeLabel: '１４：３０～１４：４５', activity: 'お茶休憩', activityDetail: '手洗い後、お茶を飲む', instructionDetail: 'お茶の準備、片付け', category: 'normal' },
-  { rowNo: 12, timeLabel: '１４：４５～１５：２０', activity: 'PM日中活動', activityDetail: '日中活動、片付け、掃除、振り返り', instructionDetail: '必要に応じて声かけ、明日のスケジュール確認。帰宅準備の声かけ', category: 'normal' },
-  { rowNo: 13, timeLabel: '１５：２０', activity: 'トイレ', activityDetail: 'トイレ、身支度', instructionDetail: '見守り、声かけ', category: 'normal' },
-  { rowNo: 14, timeLabel: '１５：３０', activity: '降所準備', activityDetail: '持ち物確認', instructionDetail: '送迎車へ誘導', category: 'normal' },
-  { rowNo: 15, timeLabel: '１６：００', activity: '退所', activityDetail: '送迎車にて帰宅', instructionDetail: '見送り', category: 'normal' },
-  // 外活動オプション（条件によって表示・非表示を切り替える）
-  { rowNo: 16, timeLabel: '１６：３０', activity: 'AM日中活動（外活動準備）', activityDetail: 'トイレに行く、必要に応じて帽子などを準備', instructionDetail: '見守り、準備の声かけ', category: 'external', parentRowNo: 5 },
-  { rowNo: 17, timeLabel: '１７：００', activity: 'AM日中活動（外活動）', activityDetail: '外活動に参加する', instructionDetail: '同行支援', category: 'external', parentRowNo: 5 },
-  { rowNo: 18, timeLabel: '１７：３０', activity: 'PM日中活動（外活動準備）', activityDetail: 'トイレに行く、必要に応じて帽子などを準備', instructionDetail: '見守り、準備の声かけ', category: 'external', parentRowNo: 10 },
-  { rowNo: 19, timeLabel: '１８：００', activity: 'PM日中活動（外活動）', activityDetail: '外活動に参加する', instructionDetail: '同行支援', category: 'external', parentRowNo: 10 },
+  { rowNo: 1, timeLabel: '9:30頃', activity: '通所・朝の準備', activityDetail: '手洗い、消毒、荷物をロッカーへ入れる', instructionDetail: '通所時の様子を確認し、必要に応じて声かけ・見守りを行う', category: 'normal' },
+  { rowNo: 2, timeLabel: '10:00頃', activity: '体操', activityDetail: '体操に参加する', instructionDetail: '本人の様子を見ながら参加を促す', category: 'normal' },
+  { rowNo: 3, timeLabel: '10:10頃', activity: 'スケジュール確認', activityDetail: '一日の予定を確認する', instructionDetail: '本人と一緒に予定を確認し、見通しが持てるよう支援する', category: 'normal' },
+  { rowNo: 4, timeLabel: '10:15頃', activity: 'お茶休憩', activityDetail: '手洗い後、お茶を飲む', instructionDetail: 'お茶の準備、片付け、必要に応じた声かけを行う', category: 'normal' },
+  { rowNo: 5, timeLabel: '10:20〜12:00', activity: 'AM日中活動', activityDetail: '午前の日中活動に参加する', instructionDetail: '必要に応じて声かけ、見守り、同行支援を行う', category: 'normal' },
+  { rowNo: 6, timeLabel: '12:00', activity: '昼食準備', activityDetail: '手洗い、消毒、昼食準備を行う', instructionDetail: '手洗い・消毒・配膳等を見守り、必要に応じて支援する', category: 'normal' },
+  { rowNo: 7, timeLabel: '12:10〜12:40', activity: '昼食', activityDetail: '昼食を食べる', instructionDetail: '食事の様子を見守り、必要に応じて声かけ・介助を行う', category: 'normal' },
+  { rowNo: 8, timeLabel: '12:40〜13:45', activity: '昼休み', activityDetail: '休憩時間を過ごす', instructionDetail: '休憩中の様子を見守り、必要に応じて声かけを行う', category: 'normal' },
+  { rowNo: 9, timeLabel: '13:45', activity: 'スケジュール確認', activityDetail: '午後の予定を確認する', instructionDetail: '本人と一緒に午後の予定を確認する', category: 'normal' },
+  { rowNo: 10, timeLabel: '13:45〜14:30', activity: 'PM日中活動', activityDetail: '午後の日中活動に参加する', instructionDetail: '必要に応じて声かけ、見守り、同行支援を行う', category: 'normal' },
+  { rowNo: 11, timeLabel: '14:30〜14:45', activity: 'お茶休憩', activityDetail: '手洗い後、お茶を飲む', instructionDetail: 'お茶の準備、片付け、必要に応じた声かけを行う', category: 'normal' },
+  { rowNo: 12, timeLabel: '14:45〜15:20', activity: 'PM日中活動', activityDetail: '午後の日中活動に参加する', instructionDetail: '必要に応じて声かけ、見守り、同行支援を行う', category: 'normal' },
+  { rowNo: 13, timeLabel: '15:20〜15:40', activity: 'のんびりタイム', activityDetail: '落ち着いて過ごす', instructionDetail: '本人のペースを尊重しながら見守る', category: 'normal' },
+  { rowNo: 14, timeLabel: '15:40〜16:00', activity: '帰りの準備', activityDetail: '持ち物確認、帰宅準備を行う', instructionDetail: '持ち物確認や身支度を見守り、必要に応じて支援する', category: 'normal' },
+  { rowNo: 15, timeLabel: '16:00', activity: '退所', activityDetail: '退所する', instructionDetail: '退所時の様子を確認し、見送りを行う', category: 'normal' },
+  { rowNo: 16, timeLabel: '10:20/13:45〜10:25/13:50', activity: 'AM/PM日中活動（外活動準備）', activityDetail: '外活動に向けた準備を行う', instructionDetail: 'トイレ、帽子、持ち物など外活動に必要な準備を支援する', category: 'external', parentRowNo: 5 },
+  { rowNo: 17, timeLabel: '10:25/13:50〜12:00/15:40', activity: 'AM/PM日中活動（外活動）', activityDetail: '外活動に参加する', instructionDetail: '外活動中の安全確認、同行支援、見守りを行う', category: 'external', parentRowNo: 5 },
 ];
 
 export const NORMAL_PROCEDURE_ROWS = PROCEDURE_ROWS.filter(
@@ -68,8 +71,6 @@ export type ProcedureStepLike = {
 export const OPTIONAL_CHILD_PARENT_ORDERS = new Map<number, number>([
   [16, 5],
   [17, 5],
-  [18, 10],
-  [19, 10],
 ]);
 
 /**
@@ -87,4 +88,3 @@ export function getParentOrderForChild(item: ProcedureStepLike): number | null {
   if (item.source !== 'planning_sheet' || !item.sourceStepOrder) return null;
   return OPTIONAL_CHILD_PARENT_ORDERS.get(item.sourceStepOrder) ?? null;
 }
-
