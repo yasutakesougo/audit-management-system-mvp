@@ -122,10 +122,17 @@ export async function bootKiosk(page: Page, options: BootKioskOptions = {}): Pro
   );
 
   if (autoNavigate) {
-    const separator = route.includes('?') ? '&' : '?';
-    const target = route.includes('provider=') ? route : `${route}${separator}provider=${provider}`;
-    await page.goto(target, { waitUntil: 'load' });
-    await page.waitForLoadState('networkidle');
+    let target = route;
+    // route が /kiosk/users/:userId/procedures のような形式で userId が指定されている場合、置換を試みる
+    if (target.includes(':userId') && userId) {
+      target = target.replace(':userId', userId);
+    }
+
+    const separator = target.includes('?') ? '&' : '?';
+    const finalTarget = target.includes('provider=') ? target : `${target}${separator}provider=${provider}`;
+    
+    await page.goto(finalTarget, { waitUntil: 'load' });
+    // networkidle は Vite の HMR 等で不安定になることがあるため、load までで止める
   }
 }
 

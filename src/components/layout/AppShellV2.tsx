@@ -21,6 +21,7 @@ type Props = {
   contentMaxWidth?: number; // default 1200
   contentPaddingX?: number; // default 16
   contentPaddingY?: number; // default 16
+  contentPaddingBottom?: number;
   viewportMode?: ShellViewportMode;
 };
 
@@ -35,6 +36,7 @@ export function AppShellV2({
   contentMaxWidth = 1200,
   contentPaddingX = 16,
   contentPaddingY = 16,
+  contentPaddingBottom,
   viewportMode = 'fixed',
   mainId = 'app-main-content',
 }: Props) {
@@ -151,9 +153,11 @@ export function AppShellV2({
             mx: 'auto',
             px: `${contentPaddingX}px`,
             py: `${contentPaddingY}px`,
-            pb: showFooter
-              ? `calc(${contentPaddingY}px + ${footerH}px)`
-              : `${contentPaddingY}px`,
+            pb: contentPaddingBottom !== undefined
+              ? `${contentPaddingBottom}px`
+              : showFooter
+                ? `calc(${contentPaddingY}px + ${footerH}px)`
+                : `${contentPaddingY}px`,
           }}
         >
           {children}

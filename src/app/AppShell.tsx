@@ -10,6 +10,7 @@ import React, { useContext, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { KioskBackToToday } from './components/KioskBackToToday';
 import { KioskExitFab } from './components/KioskExitFab';
+import { KioskNavigation } from './components/KioskNavigation';
 import { AppShellV2 } from '@/components/layout/AppShellV2';
 import { AuthDiagnosticsPanel } from '@/features/auth/diagnostics';
 import { SettingsDialog } from '@/features/settings/SettingsDialog';
@@ -109,10 +110,11 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <AppShellV2
             header={headerContent}
             sidebar={sidebarContent}
-            footer={<FooterQuickActions />}
+            footer={<FooterQuickActions onlyDialogs={isKioskMode} />}
             sidebarWidth={showDesktopSidebar ? currentDrawerWidth : 0}
             contentPaddingX={isFocusMode ? 0 : 16}
-            contentPaddingY={contentPaddingY}
+            contentPaddingY={isKioskMode ? 0 : contentPaddingY}
+            contentPaddingBottom={isKioskMode ? 160 : undefined}
             viewportMode={viewportMode}
           >
             {/* Global Connection Readiness Linkage */}
@@ -168,7 +170,10 @@ const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {import.meta.env.DEV && <AuthDiagnosticsPanel limit={15} pollInterval={2000} />}
           <SettingsDialog open={settingsDialogOpen} onClose={() => setSettingsDialogOpen(false)} />
           {isKioskMode && (
-            <KioskExitFab onExit={() => updateSettings({ layoutMode: 'normal' })} />
+            <>
+              <KioskNavigation />
+              <KioskExitFab onExit={() => updateSettings({ layoutMode: 'normal' })} />
+            </>
           )}
         </div>
       </LiveAnnouncer>

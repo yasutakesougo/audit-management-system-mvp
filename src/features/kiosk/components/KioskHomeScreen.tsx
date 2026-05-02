@@ -29,7 +29,8 @@ export const KioskHomeScreen: React.FC = () => {
         mt: { xs: 2, md: 6 },
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center'
+        alignItems: 'center',
+        pb: 12 // ナビゲーションバーとの重なりを防止
       }}
     >
       <Typography 

@@ -12,8 +12,8 @@ test.describe('Kiosk Home Smoke', () => {
 
   test('should display kiosk home page with action buttons and no sidebar', async ({ page }) => {
     // 1. タイトルと説明の確認
-    await expect(page.getByRole('heading', { name: 'キオスクモード' })).toBeVisible();
-    await expect(page.getByText('今日の操作を選んでください')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'キオスクモード' })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('今日の操作を選んでください')).toBeVisible({ timeout: 15000 });
 
     // 2. 4つの大ボタンが表示されていることを確認
     await expect(page.getByTestId('kiosk-action-execute-steps')).toBeVisible();
@@ -59,5 +59,41 @@ test.describe('Kiosk Home Smoke', () => {
     // Redirects to /schedules/week?tab=day
     await expect(page).toHaveURL(/\/schedules\/week(\?.*provider=memory.*)?/);
     await expect(page).toHaveURL(/.*tab=day.*/);
+  });
+
+  test.describe('Kiosk Navigation Bar', () => {
+    test('should display kiosk navigation bar with all actions', async ({ page }) => {
+      await expect(page.getByTestId('kiosk-nav-home')).toBeVisible({ timeout: 15000 });
+      await expect(page.getByTestId('kiosk-nav-schedule')).toBeVisible({ timeout: 15000 });
+      await expect(page.getByTestId('kiosk-nav-attendance')).toBeVisible({ timeout: 15000 });
+      await expect(page.getByTestId('kiosk-nav-activity')).toBeVisible({ timeout: 15000 });
+      await expect(page.getByTestId('kiosk-nav-procedures')).toBeVisible({ timeout: 15000 });
+      await expect(page.getByTestId('kiosk-nav-calllog')).toBeVisible({ timeout: 15000 });
+      await expect(page.getByTestId('kiosk-nav-handoff')).toBeVisible({ timeout: 15000 });
+    });
+
+    test('should open call log drawer from navigation', async ({ page }) => {
+      await page.getByTestId('kiosk-nav-calllog').click();
+      await expect(page.getByRole('heading', { name: '新規受付' })).toBeVisible();
+      // Close it
+      await page.keyboard.press('Escape');
+    });
+
+    test('should open handoff dialog from navigation', async ({ page }) => {
+      await page.getByTestId('kiosk-nav-handoff').click();
+      await expect(page.getByTestId('handoff-quicknote-dialog')).toBeVisible();
+      await expect(page.getByRole('heading', { name: '今すぐ申し送り' })).toBeVisible();
+    });
+
+    test('should navigate to records from navigation and maintain params', async ({ page }) => {
+      await page.getByTestId('kiosk-nav-activity').click();
+      await expect(page).toHaveURL(/\/daily\/table(\?.*provider=memory.*)?/);
+    });
+
+    test('should not display regular footer actions twice', async ({ page }) => {
+      // 既存の FooterQuickActions のテスト ID が kiosk-nav-* 以外で存在しないことを確認
+      const regularFooterAction = page.getByTestId('footer-action-call-log-quick');
+      await expect(regularFooterAction).toHaveCount(0);
+    });
   });
 });

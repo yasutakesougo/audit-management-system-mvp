@@ -39,7 +39,10 @@ const releaseActiveFocus = () => {
   }
 };
 
-export const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => {
+export const FooterQuickActions: React.FC<{ fixed?: boolean; onlyDialogs?: boolean }> = ({ 
+  fixed = true, 
+  onlyDialogs = false 
+}) => {
   const location = useLocation();
   const theme = useTheme();
   const [quickNoteOpen, setQuickNoteOpen] = useState(false);
@@ -102,56 +105,58 @@ export const FooterQuickActions: React.FC<{ fixed?: boolean }> = ({ fixed = true
             }
       }
     >
-      <Container
-        maxWidth={fixed ? 'lg' : false}
-        disableGutters={!fixed}
-        sx={{
-          height: '100%',
-          ...(fixed ? { pointerEvents: 'auto' } : {}),
-        }}
-      >
-        <Paper
-          elevation={fixed ? 6 : 0}
+      {!onlyDialogs && (
+        <Container
+          maxWidth={fixed ? 'lg' : false}
+          disableGutters={!fixed}
           sx={{
             height: '100%',
-            borderRadius: 0,
-            px: { xs: 1, sm: 2 },
-            pt: 1,
-            pb: 1,
-            ...(fixed
-              ? {
-                  pb: 'calc(1px * (var(--mobile-safe-area, 0)) + 0.5rem)',
-                }
-              : {}),
-            backdropFilter: fixed ? 'blur(6px)' : undefined,
-            backgroundColor: (theme) =>
-              theme.palette.mode === 'dark'
-                ? 'rgba(33, 33, 33, 0.95)'
-                : 'rgba(255, 255, 255, 0.98)',
-            boxSizing: 'border-box',
-            display: 'flex',
-            alignItems: 'center',
+            ...(fixed ? { pointerEvents: 'auto' } : {}),
           }}
         >
-          <Stack
-            direction="row"
-            spacing={0.5}
-            alignItems="center"
+          <Paper
+            elevation={fixed ? 6 : 0}
             sx={{
-              width: '100%',
               height: '100%',
-              overflowX: 'auto',
-              overflowY: 'hidden',
-              flexWrap: 'nowrap',
-              WebkitOverflowScrolling: 'touch',
-              scrollbarWidth: 'thin',
-              '&::-webkit-scrollbar': { height: 4 },
+              borderRadius: 0,
+              px: { xs: 1, sm: 2 },
+              pt: 1,
+              pb: 1,
+              ...(fixed
+                ? {
+                    pb: 'calc(1px * (var(--mobile-safe-area, 0)) + 0.5rem)',
+                  }
+                : {}),
+              backdropFilter: fixed ? 'blur(6px)' : undefined,
+              backgroundColor: (theme) =>
+                theme.palette.mode === 'dark'
+                  ? 'rgba(33, 33, 33, 0.95)'
+                  : 'rgba(255, 255, 255, 0.98)',
+              boxSizing: 'border-box',
+              display: 'flex',
+              alignItems: 'center',
             }}
           >
-            {actions.map((action) => renderAction(action, location.pathname, theme, dialogHandlers))}
-          </Stack>
-        </Paper>
-      </Container>
+            <Stack
+              direction="row"
+              spacing={0.5}
+              alignItems="center"
+              sx={{
+                width: '100%',
+                height: '100%',
+                overflowX: 'auto',
+                overflowY: 'hidden',
+                flexWrap: 'nowrap',
+                WebkitOverflowScrolling: 'touch',
+                scrollbarWidth: 'thin',
+                '&::-webkit-scrollbar': { height: 4 },
+              }}
+            >
+              {actions.map((action) => renderAction(action, location.pathname, theme, dialogHandlers))}
+            </Stack>
+          </Paper>
+        </Container>
+      )}
       <Dialog
         open={quickNoteOpen}
         onClose={handleCloseQuickNote}
