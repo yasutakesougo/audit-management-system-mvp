@@ -296,6 +296,19 @@ export function useSupportPlanningSheetOrchestrator(): {
 
       const updatedSheet = applyReflectPatch(differenceInsight, icebergSummary, sheet);
       
+      // 監査ログを記録
+      saveAuditRecord({
+        planningSheetId: sheet.id,
+        importedAt: new Date().toISOString(),
+        importedBy: account?.name ?? 'unknown',
+        assessmentId: null,
+        tokuseiResponseId: null,
+        mode: 'difference-insight',
+        affectedFields: differenceInsight.changes.map(c => `assessment.${c.label}`),
+        provenance: [], // 必要に応じて詳細を追加可能だが、現時点では最小構成
+        summaryText: `氷山分析の差分を反映: ${differenceInsight.changes.map(c => c.label).join(', ')}`,
+      });
+
       // フォームの値を更新（アセスメント情報を上書き）
       form.setAssessment(updatedSheet.assessment);
 
