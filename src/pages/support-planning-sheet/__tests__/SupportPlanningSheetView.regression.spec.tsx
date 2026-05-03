@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { vi, describe, it, expect } from 'vitest';
 import { SupportPlanningSheetView } from '../SupportPlanningSheetView';
-import { SupportPlanningSheetActionHandlers } from '../types';
+import { SupportPlanningSheetViewModel, SupportPlanningSheetActionHandlers } from '../types';
 import { TESTIDS } from '@/testids';
 import '@testing-library/jest-dom';
 
@@ -100,7 +100,7 @@ const baseViewModel = {
   monitoringBridge: null,
   source: null,
   diffSummary: null,
-} as any;
+} as unknown as SupportPlanningSheetViewModel;
 
 describe('SupportPlanningSheetView Regression Tests', () => {
   it('差分（Difference Insight）がある場合、警告バーが表示されること', () => {
