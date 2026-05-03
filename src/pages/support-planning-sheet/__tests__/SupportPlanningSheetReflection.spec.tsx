@@ -73,7 +73,7 @@ const mockViewModel: SupportPlanningSheetViewModel = {
     reviewedAt: '2024-01-01',
     createdAt: '2024-01-01',
     updatedAt: '2024-01-01',
-  } as any,
+  } as unknown as SupportPlanningSheet,
   isLoading: false,
   error: null,
   isEditing: false,
@@ -111,15 +111,15 @@ const mockViewModel: SupportPlanningSheetViewModel = {
     supportPlan: { status: 'none', goals: [] },
     handoffs: [],
     recentRecords: [],
-  } as any,
+  } as unknown as ContextPanelData,
   form: { 
     values: {}, 
     setValues: vi.fn(),
     isDirty: false,
     isSaving: false,
     isValid: true,
-    validationErrors: [],
-  } as any,
+    validationErrors: {},
+  } as unknown as UsePlanningSheetFormReturn,
   monitoringBridge: null,
   source: null,
   diffSummary: null,
@@ -137,7 +137,7 @@ describe('SupportPlanningSheetReflection UI Interaction', () => {
     
     render(
       <MemoryRouter>
-        <SupportPlanningSheetView viewModel={vmWithDiff as any} handlers={mockHandlers} />
+        <SupportPlanningSheetView viewModel={vmWithDiff as unknown as SupportPlanningSheetViewModel} handlers={mockHandlers} />
       </MemoryRouter>
     );
     
@@ -160,7 +160,7 @@ describe('SupportPlanningSheetReflection UI Interaction', () => {
     
     render(
       <MemoryRouter>
-        <SupportPlanningSheetView viewModel={vmWithPreview as any} handlers={mockHandlers} />
+        <SupportPlanningSheetView viewModel={vmWithPreview as unknown as SupportPlanningSheetViewModel} handlers={mockHandlers} />
       </MemoryRouter>
     );
     
@@ -180,7 +180,7 @@ describe('SupportPlanningSheetReflection UI Interaction', () => {
     
     render(
       <MemoryRouter>
-        <SupportPlanningSheetView viewModel={vmWithPreview as any} handlers={mockHandlers} />
+        <SupportPlanningSheetView viewModel={vmWithPreview as unknown as SupportPlanningSheetViewModel} handlers={mockHandlers} />
       </MemoryRouter>
     );
     
