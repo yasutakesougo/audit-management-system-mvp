@@ -61,3 +61,37 @@ export interface ProcedureRecordEntryState {
   isDirty: boolean;
   validationErrors: string[];
 }
+
+// ─────────────────────────────────────────────
+// インサイト・差分分析用型
+// ─────────────────────────────────────────────
+
+/** 差分インサイトの個別の変更点 */
+export interface DifferenceChange {
+  /** 項目名 (例: "行動", "要因") */
+  label: string;
+  /** 内容 (例: "追加: 暴言") */
+  value: string;
+  /** 優先度/重要度 */
+  level: 'high' | 'medium' | 'low';
+}
+
+/** 氷山分析と支援計画の差分インサイト */
+export interface DifferenceInsight {
+  /** 検知された変更点リスト */
+  changes: DifferenceChange[];
+  /** 比較対象とした Iceberg セッション ID */
+  sourceSessionId: string;
+}
+
+/** Iceberg 分析の要約（計画反映チェック用） */
+export interface IcebergSummary {
+  /** セッション ID */
+  sessionId: string;
+  /** 更新日時 */
+  updatedAt: string;
+  /** 主要対象行動（最も新しい behavior ノード） */
+  primaryBehavior: string;
+  /** 主要な要因（信頼度の高いリンクの sourceNode） */
+  primaryFactor: string;
+}

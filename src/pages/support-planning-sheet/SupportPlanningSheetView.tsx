@@ -1,12 +1,16 @@
 import React from 'react';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
+import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
 import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { alpha } from '@mui/material/styles';
 
 // import { createSharePointIspRepository } from '@/data/isp/sharepoint/SharePointIspRepository';
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
@@ -129,6 +133,8 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
     monitoringBridge,
     source,
     diffSummary,
+    icebergSummary,
+    differenceInsight,
   } = viewModel;
 
   if (isLoading) {
@@ -182,6 +188,80 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
   return (
     <Box sx={{ display: 'flex', position: 'relative' }}>
       <Box sx={{ flex: 1, p: { xs: 2, md: 3 }, pb: 4 }} {...tid(TESTIDS['planning-sheet-page'])}>
+        {/* Iceberg Summary & Difference Insight */}
+        <Stack spacing={1.5} sx={{ mb: 2 }}>
+          {icebergSummary && (
+            <Paper 
+              variant="outlined" 
+              sx={{ 
+                p: 1.5, 
+                bgcolor: alpha('#ed6c02', 0.04), 
+                borderColor: alpha('#ed6c02', 0.2),
+                borderRadius: 2
+              }}
+            >
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Typography variant="subtitle2" fontWeight={700} color="warning.dark" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <InsightsRoundedIcon fontSize="small" />
+                  最新の氷山分析
+                </Typography>
+                <Divider orientation="vertical" flexItem />
+                <Box>
+                  <Typography variant="caption" color="text.secondary" display="block">行動</Typography>
+                  <Typography variant="body2" fontWeight={600}>{icebergSummary.primaryBehavior}</Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" display="block">要因</Typography>
+                  <Typography variant="body2" fontWeight={600}>{icebergSummary.primaryFactor}</Typography>
+                </Box>
+                <Box sx={{ flex: 1 }} />
+                <Typography variant="caption" color="text.disabled">
+                  {new Date(icebergSummary.updatedAt).toLocaleDateString()} 更新
+                </Typography>
+              </Stack>
+            </Paper>
+          )}
+
+          {differenceInsight && differenceInsight.changes.length > 0 && (
+            <Paper 
+              variant="outlined" 
+              data-testid="difference-insight-bar"
+              sx={{ 
+                p: 1.5, 
+                borderLeft: '4px solid #d32f2f',
+                bgcolor: alpha('#d32f2f', 0.02),
+                borderRadius: '0 8px 8px 0'
+              }}
+            >
+              <Stack spacing={1}>
+                <Typography variant="caption" fontWeight={700} color="error.main" sx={{ letterSpacing: 1 }}>
+                  計画未反映の変更検知 (DIFFERENCE INSIGHT)
+                </Typography>
+                <Stack direction="row" spacing={3} sx={{ flexWrap: 'wrap', gap: 2 }}>
+                  {differenceInsight.changes.map((change, idx) => (
+                    <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Chip 
+                        label={change.label} 
+                        size="small" 
+                        color={change.level === 'high' ? 'error' : change.level === 'medium' ? 'warning' : 'default'}
+                        variant="outlined" 
+                        sx={{ height: 20, fontSize: '0.65rem' }} 
+                      />
+                      <Typography 
+                        variant="body2" 
+                        fontWeight={600} 
+                        color={change.level === 'high' ? 'error.main' : change.level === 'medium' ? 'warning.main' : 'text.primary'}
+                      >
+                        {change.value}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              </Stack>
+            </Paper>
+          )}
+        </Stack>
+
         {hasPendingPlanUpdate ? (
           <Alert severity="warning" sx={{ mb: 2 }}>
             未反映の計画更新案が {pendingPatchCount} 件あります。モニタリング会議の結果を確認し、必要に応じて計画へ反映してください。
