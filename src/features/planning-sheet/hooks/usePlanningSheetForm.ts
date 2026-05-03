@@ -212,7 +212,18 @@ export function usePlanningSheetForm(
   }, [initialValues, sheet]);
 
   // ── Computed State ──
-  const isDirty = useMemo(() => isFormDirty(values, initialValues), [values, initialValues]);
+  const isDirty = useMemo(() => {
+    const valuesDirty = isFormDirty(values, initialValues);
+    const initialAssessment = sheet?.assessment ?? defaultAssessment;
+    const initialIntake = sheet?.intake ?? defaultIntake;
+    const initialPlanning = sheet?.planning ?? defaultPlanning;
+
+    const assessmentDirty = JSON.stringify(assessmentState) !== JSON.stringify(initialAssessment);
+    const intakeDirty = JSON.stringify(intakeState) !== JSON.stringify(initialIntake);
+    const planningDirty = JSON.stringify(planningState) !== JSON.stringify(initialPlanning);
+
+    return valuesDirty || assessmentDirty || intakeDirty || planningDirty;
+  }, [values, initialValues, assessmentState, intakeState, planningState, sheet]);
   const validationErrors = useMemo(() => validateForm(values), [values]);
   const isValid = useMemo(() => Object.keys(validationErrors).length === 0, [validationErrors]);
 
