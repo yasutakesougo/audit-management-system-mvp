@@ -109,6 +109,7 @@ describe('SupportPlanningSheetView Regression Tests', () => {
       differenceInsight: {
         changes: [
           { label: '行動', value: '追加: 自傷行為', level: 'high' as const },
+          { label: '要因', value: '要検討: 騒音', level: 'medium' as const },
         ],
         sourceSessionId: 'session-456'
       }
@@ -122,6 +123,7 @@ describe('SupportPlanningSheetView Regression Tests', () => {
     expect(screen.getByTestId(TESTIDS.DIFFERENCE_INSIGHT_BAR)).toBeInTheDocument();
     expect(screen.getByText('計画未反映の変更検知 (DIFFERENCE INSIGHT)')).toBeInTheDocument();
     expect(screen.getByText('追加: 自傷行為')).toBeInTheDocument();
+    expect(screen.getByText('要検討: 騒音')).toBeInTheDocument();
   });
 
   it('差分がない場合、警告バーが表示されないこと', () => {

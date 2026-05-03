@@ -199,7 +199,7 @@ export const PlanningSheetListView: React.FC<PlanningSheetListViewProps> = ({
               <Stack spacing={1}>
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Typography variant="caption" fontWeight={700} color="error.main" sx={{ letterSpacing: 1 }}>
-                    前回計画からの重要な変化 (DIFFERENCE INSIGHT)
+                    計画未反映の変更検知 (DIFFERENCE INSIGHT)
                   </Typography>
                 </Stack>
                 <Stack direction="row" spacing={3} sx={{ flexWrap: 'wrap', gap: 2 }}>
