@@ -121,6 +121,7 @@ export const PlanningSheetListView: React.FC<PlanningSheetListViewProps> = ({
         {isIcebergEnabled && icebergSummary && (
           <Paper 
             variant="outlined" 
+            data-testid="iceberg-summary-bar"
             sx={{ 
               p: 2, 
               bgcolor: alpha('#ed6c02', 0.04), 
@@ -186,6 +187,7 @@ export const PlanningSheetListView: React.FC<PlanningSheetListViewProps> = ({
           <Box sx={{ px: 1 }}>
             <Paper 
               variant="outlined" 
+              data-testid="difference-insight-bar"
               sx={{ 
                 p: 1.5, 
                 borderLeft: '4px solid #d32f2f',
@@ -246,15 +248,16 @@ export const PlanningSheetListView: React.FC<PlanningSheetListViewProps> = ({
               </Typography>
               <Stack direction="row" spacing={2}>
                 {isIcebergEnabled && isIcebergTarget && (
-                  <Button
-                    variant="contained"
-                    color="warning"
-                    startIcon={<AutoAwesomeRoundedIcon />}
-                    onClick={() => handlers.onCreateFromIceberg(userId)}
-                    sx={{ boxShadow: 3 }}
-                  >
-                    氷山分析から新規作成
-                  </Button>
+                    <Button
+                      variant="contained"
+                      color="warning"
+                      data-testid="create-from-iceberg-btn"
+                      startIcon={<AutoAwesomeRoundedIcon />}
+                      onClick={() => handlers.onCreateFromIceberg(userId)}
+                      sx={{ boxShadow: 3 }}
+                    >
+                      氷山分析から新規作成
+                    </Button>
                 )}
                 <Button
                   variant={isIcebergTarget ? "outlined" : "contained"}

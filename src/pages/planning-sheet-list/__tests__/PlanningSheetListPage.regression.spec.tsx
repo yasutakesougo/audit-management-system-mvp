@@ -102,7 +102,7 @@ describe('PlanningSheetListPage Regression Tests', () => {
           applicableAddOnTypes: ['none'],
           authoredByQualification: 'unknown',
           reviewedAt: null,
-        } as any
+        } as unknown as (PlanningSheetListViewModel['sheets'][0])
       ]
     };
     render(
