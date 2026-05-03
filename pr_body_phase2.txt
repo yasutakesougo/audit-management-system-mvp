@@ -1,0 +1,16 @@
+## Description
+Implement the 2nd stage of the Difference Insight reflection workflow: Preview and Confirm UI.
+
+## Changes
+- Extracted `DifferenceInsightBar` into a separate component.
+- Added `ReflectPreviewDialog` to show before/after changes.
+- Integrated reflection logic into `SupportPlanningSheetOrchestrator` to update form values in-memory upon confirmation.
+- Added interaction tests for the reflection workflow.
+
+## Verification
+- Run `npx vitest src/pages/support-planning-sheet/__tests__/SupportPlanningSheetReflection.spec.tsx`
+- Verified manual interaction in the UI.
+
+## ADR-006 Compliance
+- Maintains pure domain logic for patch generation.
+- Orchestrator handles UI state and form updates without direct repository persistence (Stage 2).

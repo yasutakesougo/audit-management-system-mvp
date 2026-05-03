@@ -33,6 +33,7 @@ import { useSupportPlanningContextPanel } from './useSupportPlanningContextPanel
 import { useSupportPlanningPageHandlers } from './useSupportPlanningPageHandlers';
 import { useSupportPlanningSheetUiState } from './useSupportPlanningSheetUiState';
 import { mapToSupportPlanningSheetViewModel } from './supportPlanningSheetViewModelMapper';
+import { applyReflectPatch } from '@/domain/isp/differenceInsight';
 
 export function useSupportPlanningSheetOrchestrator(): {
   viewModel: SupportPlanningSheetViewModel | null;
@@ -206,6 +207,7 @@ export function useSupportPlanningSheetOrchestrator(): {
       isLoading,
       error,
       uiState,
+      reflectPreviewOpen: uiState.reflectPreviewDialogOpen,
       targetUser,
       currentAssessment: currentAssessment ?? null,
       persistedProvenance,
@@ -285,6 +287,26 @@ export function useSupportPlanningSheetOrchestrator(): {
     },
     onNavigateToExecution: handleNavigateToExecution,
     onNavigateToPdca: handleNavigateToPdca,
+    onOpenReflectPreview: () => uiActions.setReflectPreviewDialogOpen(true),
+    onCloseReflectPreview: () => uiActions.setReflectPreviewDialogOpen(false),
+    onConfirmReflect: () => {
+      const icebergSummary = viewModel?.icebergSummary;
+      const differenceInsight = viewModel?.differenceInsight;
+      if (!icebergSummary || !differenceInsight || !sheet) return;
+
+      const updatedSheet = applyReflectPatch(differenceInsight, icebergSummary, sheet);
+      
+      // フォームの値を更新（アセスメント情報を上書き）
+      form.setAssessment(updatedSheet.assessment);
+
+      uiActions.setReflectPreviewDialogOpen(false);
+      uiActions.setIsEditing(true); // 編集モードに自動移行
+      uiActions.setToast({
+        open: true,
+        message: '氷山分析の結果を反映しました。保存ボタンを押すまで確定されません。',
+        severity: 'info'
+      });
+    }
   };
 
   return { viewModel, handlers };
