@@ -139,6 +139,7 @@ const SheetHeader: React.FC<SheetHeaderProps> = ({
                 startIcon={<AssessmentRoundedIcon />}
                 onClick={onImportAssessment}
                 disabled={!hasAssessment || isSaving}
+                {...tid(TESTIDS['planning-sheet-btn-import-assessment'])}
               >
                 アセスメントから取込
               </Button>
@@ -149,6 +150,7 @@ const SheetHeader: React.FC<SheetHeaderProps> = ({
                 startIcon={<AssessmentRoundedIcon />}
                 onClick={onImportMonitoring}
                 disabled={!hasMonitoringRecord || isSaving}
+                {...tid(TESTIDS['planning-sheet-btn-import-monitoring'])}
               >
                 行動モニタリングから反映
               </Button>
@@ -158,6 +160,7 @@ const SheetHeader: React.FC<SheetHeaderProps> = ({
                 startIcon={<UndoRoundedIcon />}
                 onClick={onReset}
                 disabled={isSaving}
+                {...tid(TESTIDS['planning-sheet-btn-reset'])}
               >
                 リセット
               </Button>
@@ -167,6 +170,7 @@ const SheetHeader: React.FC<SheetHeaderProps> = ({
                 startIcon={isSaving ? <CircularProgress size={16} /> : <SaveRoundedIcon />}
                 onClick={onSave}
                 disabled={!isDirty || !isValid || isSaving}
+                {...tid(TESTIDS['planning-sheet-btn-save'])}
               >
                 {isSaving ? '保存中…' : '保存'}
               </Button>
@@ -177,6 +181,7 @@ const SheetHeader: React.FC<SheetHeaderProps> = ({
               variant="outlined"
               startIcon={<EditRoundedIcon />}
               onClick={onEdit}
+              {...tid(TESTIDS['planning-sheet-btn-edit'])}
             >
               編集
             </Button>
