@@ -19,7 +19,7 @@ import type { TrendDays } from '@/features/planning-sheet/hooks/useStrategyUsage
 import type { IUserMaster } from '@/features/users/types';
 import type { UserAssessment } from '@/features/assessment/domain/types';
 import type { IcebergSnapshot } from '@/features/ibd/analysis/iceberg/icebergTypes';
-import { summarizeIcebergSnapshot, calculateDifferenceInsight } from '@/domain/isp/differenceInsight';
+import { summarizeIcebergSnapshot, calculateDifferenceInsight, buildReflectPreview } from '@/domain/isp/differenceInsight';
 
 export interface MapperInput {
   planningSheetId: string;
@@ -123,6 +123,9 @@ export function mapToSupportPlanningSheetViewModel(input: MapperInput): SupportP
   // 3. Iceberg 要約と差分インサイトの算出 (ドメインロジックへ委譲)
   const icebergSummary = summarizeIcebergSnapshot(latestIcebergSnapshot) || undefined;
   const differenceInsight = calculateDifferenceInsight(icebergSummary || null, sheet) || undefined;
+  const reflectPreview = (differenceInsight && icebergSummary) 
+    ? buildReflectPreview(differenceInsight, icebergSummary, sheet) 
+    : undefined;
 
   return {
     planningSheetId,
@@ -163,5 +166,6 @@ export function mapToSupportPlanningSheetViewModel(input: MapperInput): SupportP
     diffSummary,
     icebergSummary,
     differenceInsight,
+    reflectPreview,
   };
 }

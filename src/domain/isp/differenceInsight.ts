@@ -1,5 +1,5 @@
 import type { IcebergSnapshot } from '@/features/ibd/analysis/iceberg/icebergTypes';
-import type { SupportPlanningSheet, IcebergSummary, DifferenceInsight, DifferenceChange } from './schema';
+import type { SupportPlanningSheet, IcebergSummary, DifferenceInsight, DifferenceChange, ReflectPreview, ReflectPreviewChange } from './schema';
 
 /**
  * Iceberg スナップショットから主要な行動と要因を要約する。
@@ -76,4 +76,83 @@ export function calculateDifferenceInsight(
     changes,
     sourceSessionId: summary.sessionId,
   };
+}
+
+/**
+ * 差分インサイトから反映プレビューを生成する (Pure Builder)。
+ */
+export function buildReflectPreview(
+  insight: DifferenceInsight,
+  summary: IcebergSummary,
+  _sheet: SupportPlanningSheet
+): ReflectPreview {
+  const changes: ReflectPreviewChange[] = [];
+
+  insight.changes.forEach(change => {
+    if (change.level === 'high' && change.label === '行動') {
+      changes.push({
+        type: 'behavior',
+        label: '対象行動の追加',
+        before: '(未登録)',
+        after: summary.primaryBehavior,
+      });
+    }
+    if (change.level === 'medium' && change.label === '要因') {
+      changes.push({
+        type: 'factor',
+        label: '背景要因の追加',
+        before: '(未登録)',
+        after: summary.primaryFactor,
+      });
+    }
+  });
+
+  return {
+    changes,
+    sourceSessionId: insight.sourceSessionId,
+  };
+}
+
+/**
+ * 差分インサイトを支援計画シートに反映した新しいオブジェクトを生成する (Pure Builder)。
+ */
+export function applyReflectPatch(
+  insight: DifferenceInsight,
+  summary: IcebergSummary,
+  sheet: SupportPlanningSheet
+): SupportPlanningSheet {
+  const updatedSheet = { ...sheet };
+  const updatedAssessment = { 
+    ...sheet.assessment,
+    targetBehaviors: [...(sheet.assessment?.targetBehaviors || [])],
+    hypotheses: [...(sheet.assessment?.hypotheses || [])],
+  };
+
+  insight.changes.forEach(change => {
+    if (change.level === 'high' && change.label === '行動') {
+      const exists = updatedAssessment.targetBehaviors.some(b => b.name === summary.primaryBehavior);
+      if (!exists && summary.primaryBehavior !== '—') {
+        updatedAssessment.targetBehaviors.push({
+          name: summary.primaryBehavior,
+          operationalDefinition: '(氷山分析より反映)',
+          frequency: '',
+          intensity: '',
+          duration: ''
+        });
+      }
+    }
+    if (change.level === 'medium' && change.label === '要因') {
+      const exists = updatedAssessment.hypotheses.some(h => h.function === summary.primaryFactor);
+      if (!exists && summary.primaryFactor !== '—') {
+        updatedAssessment.hypotheses.push({
+          function: summary.primaryFactor,
+          evidence: '(氷山分析より反映)',
+          confidence: 'medium'
+        });
+      }
+    }
+  });
+
+  updatedSheet.assessment = updatedAssessment;
+  return updatedSheet;
 }

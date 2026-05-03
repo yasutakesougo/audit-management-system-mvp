@@ -62,7 +62,7 @@ export const TabPanel: React.FC<{
 // ViewModel & ActionHandlers
 // ─────────────────────────────────────────────
 
-import type { SupportPlanningSheet, IcebergSummary, DifferenceInsight } from '@/domain/isp/schema';
+import type { SupportPlanningSheet, IcebergSummary, DifferenceInsight, ReflectPreview } from '@/domain/isp/schema';
 import { type WorkflowPhase } from '@/app/services/bridgeProxy';
 import type { IcebergEvidenceBySheet } from '@/domain/regulatory/findingEvidenceSummary';
 import type { UsePlanningSheetFormReturn } from '@/features/planning-sheet/hooks/usePlanningSheetForm';
@@ -134,6 +134,8 @@ export interface SupportPlanningSheetViewModel {
   // New: Iceberg synchronization insights
   icebergSummary?: IcebergSummary;
   differenceInsight?: DifferenceInsight;
+  /** 反映プレビューデータ（差分がある場合のみ算出） */
+  reflectPreview?: ReflectPreview;
 }
 
 export interface SupportPlanningSheetActionHandlers {

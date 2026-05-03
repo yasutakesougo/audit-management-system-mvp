@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { summarizeIcebergSnapshot, calculateDifferenceInsight } from '../differenceInsight';
+import { summarizeIcebergSnapshot, calculateDifferenceInsight, buildReflectPreview, applyReflectPatch } from '../differenceInsight';
 import type { IcebergSnapshot } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import type { SupportPlanningSheet, IcebergSummary } from '../schema';
 
@@ -109,6 +109,67 @@ describe('differenceInsight domain logic', () => {
 
       const insight = calculateDifferenceInsight(emptySummary, mockSheet);
       expect(insight).toBeNull();
+    });
+  });
+
+  describe('reflect actions (Pure Builders)', () => {
+    const mockSummary: IcebergSummary = {
+      sessionId: 'sess-1',
+      updatedAt: '2026-04-02',
+      primaryBehavior: 'パニック',
+      primaryFactor: '音過敏',
+    };
+
+    const mockSheet = {
+      id: 'sheet-1',
+      assessment: {
+        targetBehaviors: [{ name: '自傷' }],
+        hypotheses: [{ function: '要求' }],
+      }
+    } as unknown as SupportPlanningSheet;
+
+    it('buildReflectPreview: 差分がある場合にプレビュー用の変更点リストを生成すること', () => {
+      const insight = calculateDifferenceInsight(mockSummary, mockSheet)!;
+      const preview = buildReflectPreview(insight, mockSummary, mockSheet);
+
+      expect(preview.changes).toHaveLength(2);
+      expect(preview.changes[0]).toEqual({
+        type: 'behavior',
+        label: '対象行動の追加',
+        before: '(未登録)',
+        after: 'パニック',
+      });
+      expect(preview.changes[1]).toEqual({
+        type: 'factor',
+        label: '背景要因の追加',
+        before: '(未登録)',
+        after: '音過敏',
+      });
+    });
+
+    it('applyReflectPatch: 差分が正しくマージされた新しいシートを生成すること', () => {
+      const insight = calculateDifferenceInsight(mockSummary, mockSheet)!;
+      const updatedSheet = applyReflectPatch(insight, mockSummary, mockSheet);
+
+      // 元のオブジェクトが変更されていないこと
+      expect(mockSheet.assessment?.targetBehaviors).toHaveLength(1);
+
+      // 反映後の状態
+      expect(updatedSheet.assessment?.targetBehaviors).toHaveLength(2);
+      expect(updatedSheet.assessment?.targetBehaviors[1].name).toBe('パニック');
+      expect(updatedSheet.assessment?.targetBehaviors[1].operationalDefinition).toContain('氷山分析');
+
+      expect(updatedSheet.assessment?.hypotheses).toHaveLength(2);
+      expect(updatedSheet.assessment?.hypotheses[1].function).toBe('音過敏');
+    });
+
+    it('applyReflectPatch: すでに反映済みの場合は重複して追加しないこと', () => {
+      const insight = calculateDifferenceInsight(mockSummary, mockSheet)!;
+      const firstUpdate = applyReflectPatch(insight, mockSummary, mockSheet);
+      const secondUpdate = applyReflectPatch(insight, mockSummary, firstUpdate);
+
+      expect(secondUpdate.assessment?.targetBehaviors).toHaveLength(2);
+      expect(secondUpdate.assessment?.hypotheses).toHaveLength(2);
     });
   });
 });
