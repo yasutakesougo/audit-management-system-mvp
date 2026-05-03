@@ -482,6 +482,11 @@ export const TESTIDS = {
   'planning-sheet-tabs': 'planning-sheet-tabs',
   'planning-sheet-go-to-execution': 'planning-sheet-go-to-execution',
   'planning-sheet-go-to-pdca': 'planning-sheet-go-to-pdca',
+  'planning-sheet-btn-edit': 'planning-sheet-btn-edit',
+  'planning-sheet-btn-save': 'planning-sheet-btn-save',
+  'planning-sheet-btn-reset': 'planning-sheet-btn-reset',
+  'planning-sheet-btn-import-assessment': 'planning-sheet-btn-import-assessment',
+  'planning-sheet-btn-import-monitoring': 'planning-sheet-btn-import-monitoring',
 
   // Safety: Physical Restraint (P0-2)
   'safety-restraint-dialog': 'safety-restraint-dialog',
