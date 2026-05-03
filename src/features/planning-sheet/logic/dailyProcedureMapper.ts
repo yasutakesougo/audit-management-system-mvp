@@ -65,8 +65,9 @@ export function bridgePlanningSheetToDailyProcedures(
       });
 
       if (targetRow) {
-        targetRow.personAction = step.instruction;
-        targetRow.supporterAction = step.staff || '';
+        targetRow.personAction = step.activityDetail || step.instruction;
+        targetRow.supporterAction = step.instructionDetail || step.staff || '';
+        targetRow.condition = step.condition || '';
       } else {
         const fallbackActivity = step.timing?.startsWith('1') && !step.timing.startsWith('10') && !step.timing.startsWith('11')
           ? 'PM日中活動' 
@@ -74,8 +75,11 @@ export function bridgePlanningSheetToDailyProcedures(
         
         const mainRow = rows.find(r => r.activity === fallbackActivity);
         if (mainRow) {
-          mainRow.personAction += (mainRow.personAction ? '\n' : '') + step.instruction;
-          mainRow.supporterAction += (mainRow.supporterAction ? '\n' : '') + (step.staff || '');
+          mainRow.personAction += (mainRow.personAction ? '\n' : '') + (step.activityDetail || step.instruction);
+          mainRow.supporterAction += (mainRow.supporterAction ? '\n' : '') + (step.instructionDetail || step.staff || '');
+          if (step.condition) {
+            mainRow.condition += (mainRow.condition ? '\n' : '') + step.condition;
+          }
         }
       }
     });

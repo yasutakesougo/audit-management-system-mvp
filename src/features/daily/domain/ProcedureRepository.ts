@@ -15,9 +15,19 @@ export type ProcedureSource =
 
 export type ProcedureStep = {
   id?: string;
+  /** 原紙上の通し番号 (1-17) */
+  rowNo?: number;
+  /** ブロック区分 (morning | afternoon | outing) */
+  block?: 'morning' | 'afternoon' | 'outing';
   time: string;
   activity: string;
   instruction: string;
+  /** 本人の動き / 手順詳解 (Bridge用) */
+  activityDetail?: string;
+  /** 支援者の支援（手順） (Bridge用) */
+  instructionDetail?: string;
+  /** 本人の様子 / 留意事項 */
+  condition?: string;
   isKey: boolean;
   /** BIP IDs linked to this time-slot. */
   linkedInterventionIds?: string[];
