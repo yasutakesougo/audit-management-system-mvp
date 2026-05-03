@@ -15,6 +15,7 @@ export interface SupportPlanningSheetUiState {
   sessionProvenance: ProvenanceEntry[];
   contextOpen: boolean;
   historyFilter: AuditHistoryFilter;
+  reflectPreviewDialogOpen: boolean;
 }
 
 export type SupportPlanningSheetUiActions = {
@@ -26,6 +27,7 @@ export type SupportPlanningSheetUiActions = {
   setSessionProvenance: React.Dispatch<React.SetStateAction<ProvenanceEntry[]>>;
   setContextOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setHistoryFilter: React.Dispatch<React.SetStateAction<AuditHistoryFilter>>;
+  setReflectPreviewDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 export function useSupportPlanningSheetUiState(): {
@@ -48,6 +50,7 @@ export function useSupportPlanningSheetUiState(): {
   const [sessionProvenance, setSessionProvenance] = React.useState<ProvenanceEntry[]>([]);
   const [contextOpen, setContextOpen] = React.useState(false);
   const [historyFilter, setHistoryFilter] = React.useState<AuditHistoryFilter>('all');
+  const [reflectPreviewDialogOpen, setReflectPreviewDialogOpen] = React.useState(false);
 
   const state = React.useMemo(
     () => ({
@@ -59,8 +62,9 @@ export function useSupportPlanningSheetUiState(): {
       sessionProvenance,
       contextOpen,
       historyFilter,
+      reflectPreviewDialogOpen,
     }),
-    [activeTab, isEditing, toast, importDialogOpen, monitoringDialogOpen, sessionProvenance, contextOpen, historyFilter],
+    [activeTab, isEditing, toast, importDialogOpen, monitoringDialogOpen, sessionProvenance, contextOpen, historyFilter, reflectPreviewDialogOpen],
   );
 
   const actions = React.useMemo(
@@ -73,6 +77,7 @@ export function useSupportPlanningSheetUiState(): {
       setSessionProvenance,
       setContextOpen,
       setHistoryFilter,
+      setReflectPreviewDialogOpen,
     }),
     [],
   );

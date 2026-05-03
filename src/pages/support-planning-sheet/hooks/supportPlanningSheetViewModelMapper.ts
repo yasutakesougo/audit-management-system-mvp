@@ -65,6 +65,7 @@ export interface MapperInput {
 
   // Iceberg
   latestIcebergSnapshot: IcebergSnapshot | null;
+  reflectPreviewOpen: boolean;
 }
 
 /**
@@ -167,5 +168,6 @@ export function mapToSupportPlanningSheetViewModel(input: MapperInput): SupportP
     icebergSummary,
     differenceInsight,
     reflectPreview,
+    reflectPreviewOpen: uiState.reflectPreviewDialogOpen,
   };
 }

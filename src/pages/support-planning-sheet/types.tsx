@@ -136,6 +136,8 @@ export interface SupportPlanningSheetViewModel {
   differenceInsight?: DifferenceInsight;
   /** 反映プレビューデータ（差分がある場合のみ算出） */
   reflectPreview?: ReflectPreview;
+  /** 反映プレビューダイアログの開閉状態 */
+  reflectPreviewOpen: boolean;
 }
 
 export interface SupportPlanningSheetActionHandlers {
@@ -165,6 +167,12 @@ export interface SupportPlanningSheetActionHandlers {
   onNavigateToExecution: () => void;
   /** 見直し・PDCAボタン: /analysis/iceberg-pdca へ遷移 */
   onNavigateToPdca: () => void;
+  /** 反映プレビューダイアログを開く */
+  onOpenReflectPreview: () => void;
+  /** 反映プレビューダイアログを閉じる */
+  onCloseReflectPreview: () => void;
+  /** 反映を実行する（UI上でのマージ） */
+  onConfirmReflect: () => void;
 }
 
 export interface SupportPlanningSheetViewProps {
