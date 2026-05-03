@@ -62,7 +62,7 @@ export const TabPanel: React.FC<{
 // ViewModel & ActionHandlers
 // ─────────────────────────────────────────────
 
-import type { SupportPlanningSheet } from '@/domain/isp/schema';
+import type { SupportPlanningSheet, IcebergSummary, DifferenceInsight } from '@/domain/isp/schema';
 import { type WorkflowPhase } from '@/app/services/bridgeProxy';
 import type { IcebergEvidenceBySheet } from '@/domain/regulatory/findingEvidenceSummary';
 import type { UsePlanningSheetFormReturn } from '@/features/planning-sheet/hooks/usePlanningSheetForm';
@@ -130,6 +130,10 @@ export interface SupportPlanningSheetViewModel {
   // Handoff / Audit
   source: string | null;
   diffSummary: string | null;
+
+  // New: Iceberg synchronization insights
+  icebergSummary?: IcebergSummary;
+  differenceInsight?: DifferenceInsight;
 }
 
 export interface SupportPlanningSheetActionHandlers {

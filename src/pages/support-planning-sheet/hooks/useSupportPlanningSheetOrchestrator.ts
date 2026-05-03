@@ -15,6 +15,8 @@ import { useStrategyUsageCounts } from '@/features/planning-sheet/hooks/useStrat
 import { useStrategyUsageTrend, type TrendDays } from '@/features/planning-sheet/hooks/useStrategyUsageTrend';
 import { useUsers } from '@/features/users/useUsers';
 import { usePdcaCycleState } from '@/features/ibd/analysis/pdca/queries/usePdcaCycleState';
+import { useIcebergRepository } from '@/features/ibd/analysis/iceberg/SharePointIcebergRepository';
+import type { IcebergSnapshot } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import { getMonitoringToPlanningBridge, getMonitoringRecordFromMeeting } from '@/app/services/bridgeProxy';
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
 import type { MonitoringRecord } from '@/domain/isp/types';
@@ -41,11 +43,25 @@ export function useSupportPlanningSheetOrchestrator(): {
   const { state: uiState, actions: uiActions } = useSupportPlanningSheetUiState();
 
   const planningSheetRepo = usePlanningSheetRepositories();
-  // spClient は repository hooks 内に隠蔽されました
+  const icebergRepo = useIcebergRepository();
 
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const userIdParam = searchParams.get('userId');
+  const source = searchParams.get('source');
+  const diffSummary = searchParams.get('diffSummary');
 
   // 1. データフェッチ
   const { data: sheet, isLoading, error, refetch } = usePlanningSheetData(planningSheetId, planningSheetRepo);
+  const [latestIcebergSnapshot, setLatestIcebergSnapshot] = React.useState<IcebergSnapshot | null>(null);
+
+  React.useEffect(() => {
+    const userId = sheet?.userId || userIdParam;
+    if (userId && icebergRepo) {
+      icebergRepo.getLatestByUser(userId).then(setLatestIcebergSnapshot).catch(console.error);
+    }
+  }, [sheet?.userId, userIdParam, icebergRepo]);
+
   const form = usePlanningSheetForm(sheet, planningSheetRepo, (updated) => {
     uiActions.setToast({ open: true, message: `「${updated.title}」を保存しました`, severity: 'success' });
     uiActions.setIsEditing(false);
@@ -68,10 +84,6 @@ export function useSupportPlanningSheetOrchestrator(): {
 
   const { getByUserId: getAssessment } = useAssessmentStore();
   const { data: users } = useUsers();
-  const searchParams = new URLSearchParams(window.location.search);
-  const userIdParam = searchParams.get('userId');
-  const source = searchParams.get('source');
-  const diffSummary = searchParams.get('diffSummary');
 
   const { account } = useAuth();
   const { saveAuditRecord, getAllProvenance, getBySheetId } = useImportAuditStore();
@@ -215,6 +227,7 @@ export function useSupportPlanningSheetOrchestrator(): {
       form,
       source,
       diffSummary,
+      latestIcebergSnapshot,
     });
   }, [
     planningSheetId, sheet, isLoading, error, uiState, 
@@ -222,7 +235,8 @@ export function useSupportPlanningSheetOrchestrator(): {
     auditRecords, filteredAuditRecords, latestMonitoringRecord, 
     icebergEvidence, evidenceLinks, abcRecords, pdcaItems, 
     strategyUsage, strategyUsageLoading, trendResult, trendDays, 
-    trendLoading, contextUserName, contextData, form, source, diffSummary
+    trendLoading, contextUserName, contextData, form, source, diffSummary,
+    latestIcebergSnapshot
   ]);
 
   // 差分引き継ぎの監査ログ記録

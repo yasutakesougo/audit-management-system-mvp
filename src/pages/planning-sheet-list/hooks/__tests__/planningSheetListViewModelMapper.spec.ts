@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { mapToPlanningSheetListViewModel, MapperInput } from '../planningSheetListViewModelMapper';
+import type { PlanningSheetListViewModel } from '../../types';
 import type { IcebergSnapshot } from '@/features/ibd/analysis/iceberg/icebergTypes';
 import type { SupportPlanningSheet } from '@/domain/isp/schema';
 import type { IUserMaster } from '@/features/users/types';

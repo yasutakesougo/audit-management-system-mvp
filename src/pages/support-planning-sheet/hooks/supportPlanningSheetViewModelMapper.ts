@@ -18,6 +18,8 @@ import type { IcebergEvidenceBySheet } from '@/domain/regulatory/findingEvidence
 import type { TrendDays } from '@/features/planning-sheet/hooks/useStrategyUsageTrend';
 import type { IUserMaster } from '@/features/users/types';
 import type { UserAssessment } from '@/features/assessment/domain/types';
+import type { IcebergSnapshot } from '@/features/ibd/analysis/iceberg/icebergTypes';
+import { summarizeIcebergSnapshot, calculateDifferenceInsight } from '@/domain/isp/differenceInsight';
 
 export interface MapperInput {
   planningSheetId: string;
@@ -60,6 +62,9 @@ export interface MapperInput {
   // Handoff
   source: string | null;
   diffSummary: string | null;
+
+  // Iceberg
+  latestIcebergSnapshot: IcebergSnapshot | null;
 }
 
 /**
@@ -94,6 +99,7 @@ export function mapToSupportPlanningSheetViewModel(input: MapperInput): SupportP
     form,
     source,
     diffSummary,
+    latestIcebergSnapshot,
   } = input;
 
   // 1. セッションと永続化された Provenance の統合
@@ -113,6 +119,10 @@ export function mapToSupportPlanningSheetViewModel(input: MapperInput): SupportP
       isCurrent: true,
     },
   });
+
+  // 3. Iceberg 要約と差分インサイトの算出 (ドメインロジックへ委譲)
+  const icebergSummary = summarizeIcebergSnapshot(latestIcebergSnapshot) || undefined;
+  const differenceInsight = calculateDifferenceInsight(icebergSummary || null, sheet) || undefined;
 
   return {
     planningSheetId,
@@ -151,5 +161,7 @@ export function mapToSupportPlanningSheetViewModel(input: MapperInput): SupportP
     monitoringBridge,
     source,
     diffSummary,
+    icebergSummary,
+    differenceInsight,
   };
 }

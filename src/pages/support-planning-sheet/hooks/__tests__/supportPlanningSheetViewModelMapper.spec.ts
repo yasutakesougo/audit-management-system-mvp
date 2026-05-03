@@ -7,6 +7,7 @@ import type { UserAssessment } from '@/features/assessment/domain/types';
 import type { ContextPanelData } from '@/features/context/domain/contextPanelLogic';
 import type { UsePlanningSheetFormReturn } from '@/features/planning-sheet/hooks/usePlanningSheetForm';
 import type { BehaviorMonitoringRecord } from '@/domain/isp/behaviorMonitoring';
+import type { IcebergSnapshot } from '@/features/ibd/analysis/iceberg/icebergTypes';
 
 // Mock dependencies
 vi.mock('@/app/services/bridgeProxy', () => ({
@@ -33,7 +34,7 @@ describe('supportPlanningSheetViewModelMapper', () => {
     monitoringDialogOpen: false,
     contextOpen: false,
     historyFilter: { type: 'all' },
-    sessionProvenance: [{ id: 'prov-session', type: 'iceberg', label: 'Session Prov' }],
+    sessionProvenance: [{ field: 'goal', source: 'assessment_sensory', sourceLabel: 'Session Prov', reason: 'reason', value: 'value', importedAt: '2026-04-01' }],
   } as unknown as SupportPlanningSheetUiState;
 
   const baseInput: MapperInput = {
@@ -45,12 +46,16 @@ describe('supportPlanningSheetViewModelMapper', () => {
     monitoringBridge: null,
     targetUser: { FullName: '利用者 太郎' } as unknown as IUserMaster,
     currentAssessment: { id: 'as-1' } as unknown as UserAssessment,
-    persistedProvenance: [{ id: 'prov-1', type: 'iceberg', label: 'Persisted Prov' }],
+    persistedProvenance: [{ field: 'goal', source: 'assessment_sensory', sourceLabel: 'Persisted Prov', reason: 'reason', value: 'value', importedAt: '2026-04-01' }],
     auditRecords: [],
     filteredAuditRecords: [],
     icebergEvidence: null,
     latestMonitoringRecord: null,
-    evidenceLinks: {},
+    evidenceLinks: {
+      antecedentStrategies: [],
+      teachingStrategies: [],
+      consequenceStrategies: [],
+    },
     abcRecords: [],
     pdcaItems: [],
     strategyUsage: null,
@@ -63,6 +68,7 @@ describe('supportPlanningSheetViewModelMapper', () => {
     form: {} as unknown as UsePlanningSheetFormReturn,
     source: null,
     diffSummary: null,
+    latestIcebergSnapshot: null,
   };
 
   it('ViewModel が正しくマッピングされること', () => {
@@ -79,8 +85,8 @@ describe('supportPlanningSheetViewModelMapper', () => {
     const vm = mapToSupportPlanningSheetViewModel(baseInput);
 
     expect(vm.allProvenanceEntries.length).toBe(2);
-    expect(vm.allProvenanceEntries[0].id).toBe('prov-1');
-    expect(vm.allProvenanceEntries[1].id).toBe('prov-session');
+    expect(vm.allProvenanceEntries[0].sourceLabel).toBe('Persisted Prov');
+    expect(vm.allProvenanceEntries[1].sourceLabel).toBe('Session Prov');
   });
 
   it('アセスメントの有無が正しく判定されること', () => {
@@ -103,5 +109,28 @@ describe('supportPlanningSheetViewModelMapper', () => {
 
     const vmWithoutMonitoring = mapToSupportPlanningSheetViewModel(baseInput);
     expect(vmWithoutMonitoring.hasMonitoringRecord).toBe(false);
+  });
+
+  it('氷山分析との差分がある場合、differenceInsight が算出されること', () => {
+    const inputWithDiff: MapperInput = {
+      ...baseInput,
+      latestIcebergSnapshot: {
+        sessionId: 'sess-new',
+        nodes: [{ type: 'behavior', label: 'パニック', updatedAt: '2026-05-01T10:00:00Z' }],
+        links: [],
+        updatedAt: '2026-05-01T10:00:00Z',
+      } as unknown as IcebergSnapshot,
+      sheet: {
+        ...mockSheet,
+        assessment: {
+          targetBehaviors: [{ name: '自傷' }], // 'パニック' が含まれていない
+          hypotheses: [],
+        },
+      } as unknown as SupportPlanningSheet,
+    };
+
+    const vm = mapToSupportPlanningSheetViewModel(inputWithDiff);
+    expect(vm.differenceInsight).toBeDefined();
+    expect(vm.differenceInsight?.changes[0].value).toContain('パニック');
   });
 });
