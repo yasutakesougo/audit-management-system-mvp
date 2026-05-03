@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { DataProviderDailyRecordRepository } from '../DataProviderDailyRecordRepository';
 import type { IDataProvider } from '@/lib/data/dataProvider.interface';
+import type { SaveDailyRecordInput } from '../domain/DailyRecordRepository';
 
 describe('DataProviderDailyRecordRepository (Contract Tests)', () => {
   const mockProvider = {
@@ -32,12 +33,12 @@ describe('DataProviderDailyRecordRepository (Contract Tests)', () => {
     // Mock load to return null (no existing record)
     vi.mocked(mockProvider.listItems).mockResolvedValueOnce([]);
 
-    await repo.save(sampleInput as any);
+    await repo.save(sampleInput as SaveDailyRecordInput);
 
     expect(mockProvider.createItem).toHaveBeenCalled();
     expect(mockProvider.updateItem).not.toHaveBeenCalled();
     
-    const payload = vi.mocked(mockProvider.createItem).mock.calls[0][1] as Record<string, any>;
+    const payload = vi.mocked(mockProvider.createItem).mock.calls[0][1] as Record<string, unknown>;
     expect(payload.Title).toBe('2026-04-24');
     expect(payload.ReporterName).toBe('Staff A');
   });
@@ -51,7 +52,7 @@ describe('DataProviderDailyRecordRepository (Contract Tests)', () => {
       UserRowsJSON: JSON.stringify([]),
     }]);
 
-    await repo.save(sampleInput as any);
+    await repo.save(sampleInput as SaveDailyRecordInput);
 
     expect(mockProvider.updateItem).toHaveBeenCalledWith(expect.any(String), '101', expect.any(Object));
   });
@@ -67,7 +68,7 @@ describe('DataProviderDailyRecordRepository (Contract Tests)', () => {
       UserCount: sampleInput.userCount,
     }]);
 
-    await repo.save(sampleInput as any);
+    await repo.save(sampleInput as SaveDailyRecordInput);
 
     // Should NOT call updateItem or createItem
     expect(mockProvider.updateItem).not.toHaveBeenCalled();
@@ -83,9 +84,9 @@ describe('DataProviderDailyRecordRepository (Contract Tests)', () => {
       reporter: { name: '  ', role: 'Leader' }, // Whitespace
     };
 
-    await repo.save(inputWithClear as any);
+    await repo.save(inputWithClear as SaveDailyRecordInput);
 
-    const payload = vi.mocked(mockProvider.createItem).mock.calls[0][1] as Record<string, any>;
+    const payload = vi.mocked(mockProvider.createItem).mock.calls[0][1] as Record<string, unknown>;
     expect(payload.ReporterName).toBe(null);
   });
 });
