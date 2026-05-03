@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
 import { PlanningSheetListView } from '../PlanningSheetListView';
 import { PlanningSheetListViewModel, PlanningSheetListActionHandlers } from '../types';
+import { TESTIDS } from '@/testids';
 import '@testing-library/jest-dom';
 
 const mockHandlers: PlanningSheetListActionHandlers = {
@@ -131,8 +132,20 @@ describe('PlanningSheetListPage Regression Tests', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('前回計画からの重要な変化 (DIFFERENCE INSIGHT)')).toBeInTheDocument();
+    expect(screen.getByTestId(TESTIDS.DIFFERENCE_INSIGHT_BAR)).toBeInTheDocument();
+    expect(screen.getByText('計画未反映の変更検知 (DIFFERENCE INSIGHT)')).toBeInTheDocument();
     expect(screen.getByText('追加: 自傷行為')).toBeInTheDocument();
     expect(screen.getByText('検討: 騒音')).toBeInTheDocument();
+  });
+
+  test('差分がない場合、警告バーが表示されないこと', () => {
+    const vm = { ...baseViewModel, differenceInsight: undefined };
+    render(
+      <MemoryRouter>
+        <PlanningSheetListView viewModel={vm} handlers={mockHandlers} />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByTestId(TESTIDS.DIFFERENCE_INSIGHT_BAR)).not.toBeInTheDocument();
   });
 });
