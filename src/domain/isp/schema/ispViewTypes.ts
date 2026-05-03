@@ -95,3 +95,26 @@ export interface IcebergSummary {
   /** 主要な要因（信頼度の高いリンクの sourceNode） */
   primaryFactor: string;
 }
+// ─────────────────────────────────────────────
+// 反映・アクション用型
+// ─────────────────────────────────────────────
+
+/** 反映プレビュー用の個別の変更点 */
+export interface ReflectPreviewChange {
+  /** 変更の種類 (例: "behavior", "factor") */
+  type: 'behavior' | 'factor';
+  /** 表示用ラベル (例: "対象行動の追加", "背景要因の追加") */
+  label: string;
+  /** 反映前の状態（表示用） */
+  before: string;
+  /** 反映後の内容（表示用） */
+  after: string;
+}
+
+/** 反映プレビュー全体 */
+export interface ReflectPreview {
+  /** 変更点リスト */
+  changes: ReflectPreviewChange[];
+  /** 元となった Iceberg セッション ID */
+  sourceSessionId: string;
+}
