@@ -15,7 +15,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import React, { memo, useMemo } from 'react';
 import type { ProcedureSource } from '@/features/daily/domain/ProcedureRepository';
-import { getParentOrderForChild } from '@/features/planning-sheet/constants/procedureRows';
+import { getParentOrderForChild, isOptionalChildItem } from '@/features/planning-sheet/constants/procedureRows';
 
 export type ScheduleItem = {
   id?: string;
@@ -192,53 +192,33 @@ export const ProcedurePanel = (props: ProcedurePanelProps): JSX.Element => {
 
   const groupedSchedule = useMemo(() => {
     type GroupedItem = { parent: ScheduleItem; children: ScheduleItem[] };
-    const morningItems: ScheduleItem[] = [];
-    const afternoonItems: ScheduleItem[] = [];
-    const outingItems: ScheduleItem[] = [];
-    const otherItems: ScheduleItem[] = [];
-
-    for (const item of visibleSchedule) {
-      if (item.block === 'morning') {
-        morningItems.push(item);
-      } else if (item.block === 'afternoon') {
-        afternoonItems.push(item);
-      } else if (item.block === 'outing') {
-        outingItems.push(item);
-      } else {
-        // block 情報がない場合（旧データなど）
-        if (item.sourceStepOrder && item.source === 'planning_sheet') {
-          const parentOrder = getParentOrderForChild({ source: item.source, sourceStepOrder: item.sourceStepOrder });
-          if (parentOrder != null) {
-             // 外活動系として扱う（旧ロジック互換）
-             outingItems.push(item);
-             continue;
-          }
-        }
-        otherItems.push(item);
-      }
-    }
-
-    // 基本は rowNo 順に並べる
-    const result: GroupedItem[] = [];
     
-    // morning -> afternoon -> outing の順で組み立て
-    [...morningItems, ...afternoonItems].sort((a, b) => (a.rowNo ?? 0) - (b.rowNo ?? 0)).forEach(item => {
-      result.push({ parent: item, children: [] });
+    // rowNo 順にソート（rowNo がないものは末尾）
+    const sorted = [...visibleSchedule].sort((a, b) => {
+      const aNo = a.rowNo ?? 999;
+      const bNo = b.rowNo ?? 999;
+      return aNo - bNo;
     });
 
-    // outing は AM/PM 日中活動の「子」として扱われていた旧 UI 表現を尊重しつつ、
-    // 新設計では 16, 17 行目として独立して並べる
-    if (outingItems.length > 0) {
-      // 日中活動（rowNo 5 or 10）の後ろに挿入するか、最後にまとめるか
-      // ここでは 17行フォームの順序に従い、午後の最後（rowNo 15）の後に配置
-      outingItems.sort((a, b) => (a.rowNo ?? 0) - (b.rowNo ?? 0)).forEach(item => {
-        result.push({ parent: item, children: [] });
-      });
-    }
+    const result: GroupedItem[] = [];
+    const parentMap = new Map<number, GroupedItem>();
 
-    // その他（あれば）
-    otherItems.forEach(item => {
-      result.push({ parent: item, children: [] });
+    // 1. 親行を登録
+    sorted.filter(item => !isOptionalChildItem(item)).forEach(item => {
+      const grouped = { parent: item, children: [] };
+      result.push(grouped);
+      if (item.rowNo) parentMap.set(item.rowNo, grouped);
+    });
+
+    // 2. 子行を親にぶら下げる
+    sorted.filter(item => isOptionalChildItem(item)).forEach(item => {
+      const parentOrder = getParentOrderForChild(item);
+      if (parentOrder != null && parentMap.has(parentOrder)) {
+        parentMap.get(parentOrder)!.children.push(item);
+      } else {
+        // 親が見つからない場合は独立行として扱う
+        result.push({ parent: item, children: [] });
+      }
     });
 
     return result;

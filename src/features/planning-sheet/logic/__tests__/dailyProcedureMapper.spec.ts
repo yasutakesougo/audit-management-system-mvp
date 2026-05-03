@@ -64,6 +64,33 @@ describe('dailyProcedureMapper', () => {
     expect(doc.specialNotes).toContain('【感覚トリガー】Trigger 1');
   });
 
+  it('should map detailed fields (activityDetail, instructionDetail, condition) if provided', () => {
+    const detailedSheet = {
+      ...mockSheet,
+      planning: {
+        ...mockSheet.planning,
+        procedureSteps: [
+          { 
+            order: 1, 
+            timing: '09:30', 
+            instruction: 'Name only', 
+            staff: 'Staff only',
+            activityDetail: 'Detailed Person Action',
+            instructionDetail: 'Detailed Staff Action',
+            condition: 'Specific Condition'
+          },
+        ],
+      },
+    } as SupportPlanningSheet;
+
+    const doc = bridgePlanningSheetToDailyProcedures(detailedSheet);
+    const row1 = doc.rows.find(r => r.rowNo === 1);
+    
+    expect(row1?.personAction).toBe('Detailed Person Action');
+    expect(row1?.supporterAction).toBe('Detailed Staff Action');
+    expect(row1?.condition).toBe('Specific Condition');
+  });
+
   it('should fallback to text items if no structured steps', () => {
     const textOnlySheet = {
       ...mockSheet,

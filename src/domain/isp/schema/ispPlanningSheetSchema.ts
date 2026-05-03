@@ -169,6 +169,9 @@ export const procedureStepSchema = z.object({
   instruction: z.string().min(1),
   staff: z.string().default(''),
   timing: z.string().default(''),
+  activityDetail: z.string().optional(),
+  instructionDetail: z.string().optional(),
+  condition: z.string().optional(),
 });
 
 export type ProcedureStep = z.infer<typeof procedureStepSchema>;

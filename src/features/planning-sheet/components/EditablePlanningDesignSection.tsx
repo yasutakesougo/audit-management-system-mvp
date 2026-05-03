@@ -280,6 +280,29 @@ export const EditablePlanningDesignSection: React.FC<Props> = ({
                       fullWidth size="small"
                     />
                   </Stack>
+                  <Stack spacing={1}>
+                    <TextField
+                      label="本人の動き（活動詳解）"
+                      value={step.activityDetail || ''}
+                      onChange={(e) => updateStep(i, { activityDetail: e.target.value })}
+                      fullWidth size="small" multiline rows={1}
+                      placeholder="例: 手洗い、消毒、荷物をロッカーへ入れる"
+                    />
+                    <TextField
+                      label="支援者の支援（手順詳解）"
+                      value={step.instructionDetail || ''}
+                      onChange={(e) => updateStep(i, { instructionDetail: e.target.value })}
+                      fullWidth size="small" multiline rows={1}
+                      placeholder="例: 必要に応じて声かけ・見守りを行う"
+                    />
+                    <TextField
+                      label="留意事項（様子・条件）"
+                      value={step.condition || ''}
+                      onChange={(e) => updateStep(i, { condition: e.target.value })}
+                      fullWidth size="small"
+                      placeholder="例: 拒否がある場合は無理強いしない"
+                    />
+                  </Stack>
                 </Stack>
                 <Tooltip title="削除">
                   <IconButton size="small" onClick={() => removeStep(i)} color="error" sx={{ mt: 0.5 }}>
