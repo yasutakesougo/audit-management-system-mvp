@@ -509,6 +509,7 @@ export const TESTIDS = {
 
   // Safety: Operations Summary Card (Step 4)
   'safety-operations-summary-card': 'safety-operations-summary-card',
+  DIFFERENCE_INSIGHT_BAR: 'difference-insight-bar',
 } as const;
 
 type LeafValues<T> = T extends string
