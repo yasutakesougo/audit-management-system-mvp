@@ -32,7 +32,7 @@ export interface ImportAuditRecord {
   /** 使用した特性アンケート回答 ID（null = アセスメントのみモード） */
   tokuseiResponseId: string | null;
   /** 取込モード */
-  mode: 'assessment-only' | 'with-tokusei' | 'behavior-monitoring';
+  mode: 'assessment-only' | 'with-tokusei' | 'behavior-monitoring' | 'difference-insight';
   /** 変更されたフィールド一覧 */
   affectedFields: string[];
   /** 変換根拠（ProvenanceEntry 全体を保存） */
