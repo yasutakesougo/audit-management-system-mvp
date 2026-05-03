@@ -225,7 +225,7 @@ export const SupportPlanningSheetView: React.FC<SupportPlanningSheetViewProps> =
           {differenceInsight && differenceInsight.changes.length > 0 && (
             <Paper 
               variant="outlined" 
-              data-testid="difference-insight-bar"
+              data-testid={TESTIDS.DIFFERENCE_INSIGHT_BAR}
               sx={{ 
                 p: 1.5, 
                 borderLeft: '4px solid #d32f2f',

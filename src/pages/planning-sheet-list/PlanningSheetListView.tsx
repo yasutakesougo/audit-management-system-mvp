@@ -21,6 +21,7 @@ import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import { alpha } from '@mui/material/styles';
 import { UserSelectionGrid } from '@/features/users/components/UserSelectionGrid';
+import { TESTIDS } from '@/testids';
 import { PLANNING_SHEET_STATUS_DISPLAY } from '@/domain/isp/schema';
 
 import { type PlanningSheetListViewProps } from './types';
@@ -187,7 +188,7 @@ export const PlanningSheetListView: React.FC<PlanningSheetListViewProps> = ({
           <Box sx={{ px: 1 }}>
             <Paper 
               variant="outlined" 
-              data-testid="difference-insight-bar"
+              data-testid={TESTIDS.DIFFERENCE_INSIGHT_BAR}
               sx={{ 
                 p: 1.5, 
                 borderLeft: '4px solid #d32f2f',
