@@ -55,7 +55,7 @@ function makeSheet(overrides: Partial<SupportPlanningSheet> = {}): SupportPlanni
       reviewCycleDays: 180,
     },
     ...overrides,
-  } as any;
+  } as unknown as SupportPlanningSheet;
 }
 
 // ─── Tests ───
@@ -66,10 +66,10 @@ describe('bridgePlanningSheetToDailyProcedures', () => {
       supportPolicy: 'テキストの方針',
       planning: {
         procedureSteps: [
-          { order: 1, instruction: '構造化手順1', timing: '09:00', staff: '' },
-          { order: 2, instruction: '構造化手順2', timing: '10:00', staff: '' },
+          { order: 1, instruction: '構造化手順1', timing: '09:30', staff: '' },
+          { order: 5, instruction: '構造化手順2', timing: '10:20', staff: '' },
         ],
-      } as any,
+      } as unknown,
     });
 
     const { steps, source } = bridgePlanningSheetToDailyProcedures(sheet);
@@ -90,14 +90,14 @@ describe('bridgePlanningSheetToDailyProcedures', () => {
       concreteApproaches: '笑顔で接する',
       planning: {
         procedureSteps: [],
-      } as any,
+      } as unknown,
     });
 
     const { steps, source } = bridgePlanningSheetToDailyProcedures(sheet);
 
     expect(source).toBe('sheet_fallback_text' as BridgeSource);
-    // 17行モデルでは、テキストフォールバックは AM日中活動などの既存行に集約される
-    expect(steps.length).toBeLessThanOrEqual(2);
+    // 17行モデルでは、テキストフォールバックは AM日中活動などの既存行に集約されるが、全体は17行
+    expect(steps.length).toBe(17);
     const amRow = steps.find(s => s.activity === 'AM日中活動');
     expect(amRow).toBeDefined();
     expect(amRow?.instruction).toContain('朝の挨拶をする');
@@ -110,12 +110,12 @@ describe('bridgePlanningSheetToDailyProcedures', () => {
       concreteApproaches: '',
       planning: {
         procedureSteps: [],
-      } as any,
+      } as unknown,
     });
 
     const { steps, source } = bridgePlanningSheetToDailyProcedures(sheet);
     expect(source).toBe('empty');
-    expect(steps).toEqual([]);
+    expect(steps.length).toBe(0);
   });
 
   it('handles environmentalAdjustments in fallback mode', () => {
@@ -124,7 +124,7 @@ describe('bridgePlanningSheetToDailyProcedures', () => {
       environmentalAdjustments: '静かな環境を整える',
       planning: {
         procedureSteps: [],
-      } as any,
+      } as unknown,
     });
 
     const { steps, source } = bridgePlanningSheetToDailyProcedures(sheet);
@@ -142,7 +142,7 @@ describe('bridgePlanningSheetToDailyProcedures', () => {
       id: 'structured-id',
       planning: {
         procedureSteps: [{ order: 1, instruction: 'A', timing: '', staff: '' }],
-      } as any,
+      } as unknown,
     });
     const result1 = bridgePlanningSheetToDailyProcedures(structuredSheet);
     expect(result1.steps[0].planningSheetId).toBe('structured-id');
@@ -152,7 +152,7 @@ describe('bridgePlanningSheetToDailyProcedures', () => {
     const fallbackSheet = makeSheet({
       id: 'fallback-id',
       supportPolicy: 'B',
-      planning: { procedureSteps: [] } as any,
+      planning: { procedureSteps: [] } as unknown,
     });
     const result2 = bridgePlanningSheetToDailyProcedures(fallbackSheet);
     expect(result2.steps[0].planningSheetId).toBe('fallback-id');

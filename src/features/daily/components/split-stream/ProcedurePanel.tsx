@@ -97,6 +97,7 @@ const ProcedureStepRow = ({
   return (
     <Card
       onClick={() => onSelect?.(item, key)}
+      data-row-no={item.rowNo}
       sx={{
         cursor: 'pointer',
         mb: 0.5,
@@ -236,7 +237,7 @@ export const ProcedurePanel = (props: ProcedurePanelProps): JSX.Element => {
   }
 
   return (
-    <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'grey.50' }}>
+    <Card data-testid="procedure-panel" variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'grey.50' }}>
       <CardContent sx={{ py: 1, px: 2, borderBottom: 1, borderColor: 'divider' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <Typography variant="subtitle2" fontWeight="bold">
