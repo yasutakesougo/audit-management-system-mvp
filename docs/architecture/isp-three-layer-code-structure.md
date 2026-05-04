@@ -442,4 +442,6 @@ gantt
 - [ADR-005: ISP 三層分離](../adr/ADR-005-isp-three-layer-separation.md)
 - [ADR-006: 画面責務境界](../adr/ADR-006-screen-responsibility-boundaries.md)
 - [AI ISP 三層プロトコル](../ai-isp-three-layer-protocol.md)
+- [17行標準支援手順 技術仕様](../domain/17-row-procedure-bridge.md)
 - [3 画面責務分担マップ](./screen-responsibility-map.md) — Dashboard/Today/Handoff の責務定義
+- [17行標準支援手順 運用マニュアル](../guides/17-row-procedure-user-guide.md)

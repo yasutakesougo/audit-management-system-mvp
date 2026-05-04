@@ -188,6 +188,8 @@ Iceberg は **ISP ではなく PlanningSheet** に紐づく。
 - [ADR-005: ISP三層分離](./adr/ADR-005-isp-three-layer-separation.md)
 - [ADR-006: 画面責務・Iceberg 位置の厳密定義](./adr/ADR-006-screen-responsibility-boundaries.md)
 - [GitHub Issue](./generated-issues/feat-isp-three-layer-model.md)
+- [17行標準支援手順 技術仕様](./domain/17-row-procedure-bridge.md)
+- [17行標準支援手順 運用マニュアル](./guides/17-row-procedure-user-guide.md)
 - [ibdTypes.ts](../src/features/ibd/core/ibdTypes.ts) — 既存の第2層・第3層型定義
 - [supportPlanFields.ts](../src/sharepoint/fields/supportPlanFields.ts) — SharePoint ISP フィールド
 - [ispGoalMapper.ts](../src/sharepoint/ispGoalMapper.ts) — ISP 目標管理ロジック
