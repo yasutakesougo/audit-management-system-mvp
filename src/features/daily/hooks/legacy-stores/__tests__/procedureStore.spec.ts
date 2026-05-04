@@ -45,7 +45,7 @@ describe('procedureStore', () => {
     const items = result.current.getByUser('unknown-user');
 
     expect(items.length).toBeGreaterThan(0);
-    expect(items[0].id).toBe('base-0900');
+    expect(items[0].id).toBe('base-1');
   });
 
   it('save → getByUser ラウンドトリップ', () => {
@@ -156,7 +156,7 @@ describe('procedureStore', () => {
     const { result } = renderHook(() => useProcedureStore());
     // フォールバックの BASE_STEPS が返る
     const items = result.current.getByUser('anyone');
-    expect(items[0].id).toBe('base-0900');
+    expect(items[0].id).toBe('base-1');
     // 壊れたデータは削除されている
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
   });
