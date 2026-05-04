@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { usePlanningSheetRepositories } from '@/features/planning-sheet/hooks/usePlanningSheetRepositories';
@@ -31,49 +31,65 @@ export function usePlanningSheetListOrchestrator(): {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSheets = useCallback(async () => {
-    if (!userId || !repo) {
-      setSheets([]);
-      return;
-    }
-    setIsLoading(true);
-    setError(null);
-    try {
-      const items = await repo.listCurrentByUser(userId);
-      setSheets(items);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userId, repo]);
-
-  const fetchIcebergSummary = useCallback(async () => {
-    if (!userId || !icebergRepo) {
-      setLatestIcebergSnapshot(null);
-      return;
-    }
-    try {
-      const latest = await icebergRepo.getLatestByUser(userId);
-      setLatestIcebergSnapshot(latest ?? null);
-    } catch (err) {
-      console.error('Failed to fetch iceberg summary:', err);
-    }
-  }, [userId, icebergRepo]);
-
   useEffect(() => {
-    fetchSheets();
-    fetchIcebergSummary();
-  }, [fetchSheets, fetchIcebergSummary]);
+    let isCancelled = false;
+
+    const loadData = async () => {
+      if (!userId || !repo) {
+        setSheets([]);
+        setLatestIcebergSnapshot(null);
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        // Parallel fetch
+        const [items, iceberg] = await Promise.all([
+          repo.listCurrentByUser(userId),
+          icebergRepo ? icebergRepo.getLatestByUser(userId) : Promise.resolve(null),
+        ]);
+
+        if (isCancelled) return;
+
+        setSheets(items);
+        setLatestIcebergSnapshot(iceberg ?? null);
+      } catch (err) {
+        if (isCancelled) return;
+        setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadData();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [userId, repo, icebergRepo]);
 
   // 現行シートの詳細をフェッチ
   useEffect(() => {
+    let isCancelled = false;
     const current = sheets.find(s => s.isCurrent);
     if (current && repo) {
-      repo.getById(current.id).then(setCurrentSheetDetails).catch(console.error);
+      repo.getById(current.id)
+        .then(details => {
+          if (!isCancelled) setCurrentSheetDetails(details);
+        })
+        .catch(err => {
+          if (!isCancelled) console.error(err);
+        });
     } else {
       setCurrentSheetDetails(null);
     }
+    return () => {
+      isCancelled = true;
+    };
   }, [sheets, repo]);
 
   // 2. ViewModel の構築
