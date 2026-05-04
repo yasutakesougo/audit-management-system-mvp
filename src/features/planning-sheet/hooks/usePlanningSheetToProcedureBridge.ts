@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { usePlanningSheetRepositories } from './usePlanningSheetRepositories';
 import { usePlanningSheetData } from './usePlanningSheetData';
+import { useCurrentPlanningSheet } from './useCurrentPlanningSheet';
 import { bridgePlanningSheetToDailyProcedures, type BridgeSource } from '../planningToRecordBridge';
 import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 
@@ -16,12 +17,14 @@ import type { ScheduleItem } from '@/features/daily/components/split-stream/Proc
  * @param planningSheetId 取得対象の支援計画シートID
  * @returns { schedule, isLoading, error, bridgeSource } 変換後の手順と状態
  */
-export function usePlanningSheetToProcedureBridge(planningSheetId?: string) {
+export function usePlanningSheetToProcedureBridge(planningSheetId?: string, userId?: string | null) {
   const planningRepo = usePlanningSheetRepositories();
-  const { data: sheetData, isLoading, error } = usePlanningSheetData(planningSheetId, planningRepo);
+  const { currentSheet } = useCurrentPlanningSheet(planningSheetId ? null : (userId ?? null), planningRepo);
+  const effectiveId = planningSheetId || currentSheet?.id;
+  const { data: sheetData, isLoading, error } = usePlanningSheetData(effectiveId, planningRepo);
 
   const bridgeResult = useMemo(() => {
-    if (!sheetData || !planningSheetId) {
+    if (!sheetData || !effectiveId) {
       return { schedule: undefined, source: 'repository_default' as BridgeSource };
     }
     
@@ -30,7 +33,7 @@ export function usePlanningSheetToProcedureBridge(planningSheetId?: string) {
       schedule: result.steps as ScheduleItem[],
       source: result.source,
     };
-  }, [sheetData, planningSheetId]);
+  }, [sheetData, effectiveId]);
 
   return {
     schedule: bridgeResult.schedule,

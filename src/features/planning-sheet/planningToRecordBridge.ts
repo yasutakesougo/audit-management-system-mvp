@@ -21,10 +21,18 @@
 import type { PlanningIntake, PlanningSheetFormValues, SupportPlanningSheet } from '@/domain/isp/schema/ispPlanningSheetSchema';
 import type { ProcedureStep } from '@/features/daily/domain/ProcedureRepository';
 import type { ProvenanceEntry } from '@/features/planning-sheet/assessmentBridge';
+import { bridgePlanningSheetToDailyProcedures as bridgeToOfficial } from './logic/dailyProcedureMapper';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+
+export type BridgeSource = 'sheet_structured' | 'sheet_fallback_text' | 'empty' | 'repository_default';
+
+export interface BridgeProceduresResult {
+  steps: ProcedureStep[];
+  source: BridgeSource;
+}
 
 export interface PlanningToRecordBridgeResult {
   /** 生成された手順ステップ群 */
@@ -70,11 +78,48 @@ function isDuplicate(existing: ProcedureStep[], instruction: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Main Bridge Function
+// Main Bridge Functions
 // ---------------------------------------------------------------------------
 
 /**
- * 支援計画シートのデータを手順ステップに変換する。
+ * 支援計画シートを手順記録（Daily スケジュール）へ変換する。
+ *
+ * 【新設計】原紙一致マッピング (17行形式) を採用。
+ * これにより、画面表示・記録DB・PDF帳票でデータ構造が統一される。
+ *
+ * @param sheet 支援計画シート
+ * @returns 変換後の手順ステップ配列（ProcedureStep[] 互換）とソース情報
+ */
+export function bridgePlanningSheetToDailyProcedures(
+  sheet: SupportPlanningSheet,
+): BridgeProceduresResult {
+  const doc = bridgeToOfficial(sheet);
+  
+  // Daily ドメインの ProcedureStep[] 形式に変換して返す
+  const steps: ProcedureStep[] = doc.rows
+    .map(row => ({
+      id: `official-${sheet.id}-${row.rowNo}`,
+      rowNo: row.rowNo,
+      block: row.block,
+      time: row.timeLabel,
+      activity: row.activity,
+      instruction: row.personAction || row.activity, // Fallback
+      activityDetail: row.personAction,
+      instructionDetail: row.supporterAction,
+      condition: row.condition,
+      isKey: row.rowNo === 1 || row.rowNo === 15 || row.block === 'outing',
+      planningSheetId: sheet.id,
+      source: 'planning_sheet',
+    }));
+
+  return {
+    steps,
+    source: doc.rows[0]?.bridgeSource || 'empty',
+  };
+}
+
+/**
+ * 支援計画シートのデータを手順ステップに変換する（旧来の分割マッピング）。
  *
  * @param sheet - 支援計画シート（ドメインモデルまたはフォーム値 + intake）
  * @param existingSteps - 現在の手順ステップ群（マージ対象）
@@ -249,51 +294,4 @@ export function bridgeSheetToRecord(
     existingSteps,
     sheet.id,
   );
-}
-
-export type BridgeSource = 'sheet_structured' | 'sheet_fallback_text' | 'empty' | 'repository_default';
-
-export interface BridgeProceduresResult {
-  steps: ProcedureStep[];
-  source: BridgeSource;
-}
-
-import { bridgePlanningSheetToDailyProcedures as bridgeToOfficial } from './logic/dailyProcedureMapper';
-
-/**
- * 支援計画シートを手順記録（Daily スケジュール）へ変換する。
- *
- * 【新設計】原紙一致マッピング (17行形式) を採用。
- * これにより、画面表示・記録DB・PDF帳票でデータ構造が統一される。
- *
- * @param sheet 支援計画シート
- * @returns 変換後の手順ステップ配列（ProcedureStep[] 互換）とソース情報
- */
-export function bridgePlanningSheetToDailyProcedures(
-  sheet: SupportPlanningSheet,
-): BridgeProceduresResult {
-  const doc = bridgeToOfficial(sheet);
-  
-  // Daily ドメインの ProcedureStep[] 形式に変換して返す
-  const steps: ProcedureStep[] = doc.rows
-    .filter(row => row.personAction || row.supporterAction || row.condition) // 内容がある行のみ
-    .map(row => ({
-      id: `official-${sheet.id}-${row.rowNo}`,
-      rowNo: row.rowNo,
-      block: row.block,
-      time: row.timeLabel,
-      activity: row.activity,
-      instruction: row.personAction || row.activity, // Fallback
-      activityDetail: row.personAction,
-      instructionDetail: row.supporterAction,
-      condition: row.condition,
-      isKey: row.rowNo === 1 || row.rowNo === 15 || row.block === 'outing',
-      planningSheetId: sheet.id,
-      source: 'planning_sheet',
-    }));
-
-  return {
-    steps,
-    source: doc.rows[0]?.bridgeSource || 'empty',
-  };
 }

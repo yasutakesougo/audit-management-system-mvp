@@ -23,7 +23,7 @@ describe('dailyProcedureMapper', () => {
     planning: {
       procedureSteps: [
         { order: 1, timing: '09:30', instruction: 'Morning Prep', staff: 'Staff A' },
-        { order: 2, timing: '10:20', instruction: 'AM Activity Content', staff: 'Staff B' },
+        { order: 5, timing: '10:20', instruction: 'AM Activity Content', staff: 'Staff B' },
       ],
       supportPriorities: [],
       antecedentStrategies: [],
