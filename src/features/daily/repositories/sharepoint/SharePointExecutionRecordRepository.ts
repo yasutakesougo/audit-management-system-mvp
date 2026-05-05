@@ -4,7 +4,6 @@ import type { ExecutionRecordRepository } from '../../domain/legacy/ExecutionRec
 import { 
   getListTitle, 
   getRowsListTitle, 
-  EXECUTION_RECORD_FIELDS, 
   DAILY_RECORD_FIELDS,
   SharePointResponse,
   type ResolvedRowsFields 
