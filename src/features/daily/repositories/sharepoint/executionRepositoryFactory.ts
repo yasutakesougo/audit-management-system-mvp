@@ -113,6 +113,7 @@ function createLocalStorageExecutionAdapter(
 export const getExecutionRepository = (
   storeHooks?: ExecutionStoreHooks,
   spFetch?: SpFetchFn,
+  getListFieldInternalNames?: (listTitle: string) => Promise<Set<string>>,
 ): ExecutionRecordRepository => {
 
   const kind = resolveKind();
@@ -134,6 +135,7 @@ export const getExecutionRepository = (
       }
       return new SharePointExecutionRecordRepository({
         spFetch,
+        getListFieldInternalNames,
       });
     }
 

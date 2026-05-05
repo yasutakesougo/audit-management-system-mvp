@@ -61,11 +61,12 @@ const createRepository = (
   }
 
   const { baseUrl } = ensureConfig();
-  const { spFetch } = createSpClient(acquireToken, baseUrl);
+  const { spFetch, getListFieldInternalNames } = createSpClient(acquireToken, baseUrl);
 
   return new SharePointDailyRecordRepository({
     spFetch,
     listTitle: options?.listTitle,
+    getListFieldInternalNames,
   });
 };
 
