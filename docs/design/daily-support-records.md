@@ -49,7 +49,7 @@
 | キー | `Title` | text | レコードタイトル（例: `I022-2025-07-02-05`）。`usercode + recorddate + rowno` を含むと衝突しにくい |
 | キー | `cr013_usercode` | text | 利用者コード（Users_Master.UserCode と一致） |
 | キー | `cr013_recorddate` | date | 記録日（Attendance / ScheduleEvents と同じ日付軸） |
-| テンプレ | `cr013_rowno` | number | 1〜19 のテンプレ行番号（時間帯順） |
+| テンプレ | `cr013_rowno` | number | 1〜17 のテンプレ行番号（時間帯順） |
 | テンプレ | `cr013_timeslot` | text | 時間帯ラベル（例: `9:30-10:00`）。ScheduleEvents と対応させる場合に使用 |
 | テンプレ | `cr013_activity` | text | 活動内容テンプレ（TimeFlow 手順と整合） |
 | テンプレ | `cr013_person_manual` | multiline | 本人のやること（参照専用） |
@@ -84,13 +84,13 @@
 
 1) 行テンプレート（RowNo）の一意性
 
-- `cr013_rowno` は 1〜19 の連番で、`usercode + recorddate + rowno` を 1 レコードに限定する。
+- `cr013_rowno` は 1〜17 の連番で、`usercode + recorddate + rowno` を 1 レコードに限定する。
 - `cr013_timeslot` / `cr013_activity` は RowNo によって一意に決まる前提で管理し、重複を避ける。
 
 1) Attendance 連動
 
 - `status = absent_*` の日は Daily を新規作成しないか、展開済みなら `cr013_completed = false` のまま残してレポートで欠席扱いにする。
-- `status = attended` の日は原則 19 行テンプレを揃え、自動展開フローがある場合は既存レコードの有無を確認してから Patch する。
+- `status = attended` の日は原則 17 行テンプレを揃え、自動展開フローがある場合は既存レコードの有無を確認してから Patch する。
 
 1) Schedules 連動（将来拡張）
 

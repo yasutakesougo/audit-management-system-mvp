@@ -17,6 +17,7 @@ import {
     isForceDemoEnabled,
     isTestMode,
     shouldSkipLogin,
+    readBool,
 } from '@/lib/env';
 import type { ExecutionRecordRepository } from '../../domain/legacy/ExecutionRecordRepository';
 import type { ExecutionRecord } from '../../domain/legacy/executionRecordTypes';
@@ -38,6 +39,9 @@ export type ExecutionRepositoryKind = 'local' | 'sharepoint';
 // ────────────────────────────────────────────────────────────
 
 const shouldUseLocalRepository = (): boolean => {
+  if (readBool('VITE_FORCE_SHAREPOINT', false)) {
+    return false;
+  }
   const { isDev } = getAppConfig();
   return (
     isDev ||

@@ -180,6 +180,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       [rf.rowNo]: record.scheduleItemId,
       [rf.status]: record.status,
       [rf.memo]: record.memo,
+      [rf.payload]: record.memo, // Drift protection: map to both candidates
       [rf.staffName]: record.recordedBy,
       [rf.recordedAt]: record.recordedAt,
       [rf.bipsJSON]: JSON.stringify(record.triggeredBipIds),

@@ -29,7 +29,7 @@ export const DAILY_RECORD_ROWS_FIELDS = {
 } as const;
 
 /**
- * SharePoint field names for granular execution records (19 rows)
+ * SharePoint field names for granular execution records (17 rows)
  */
 export const EXECUTION_RECORD_FIELDS = {
   title: 'Title',                 // Composite Key: date-userId-slotId

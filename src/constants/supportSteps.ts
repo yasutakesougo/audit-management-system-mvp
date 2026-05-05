@@ -1,30 +1,28 @@
 /**
  * Default support step templates
  *
- * Standard 19-item support procedure templates used across the support module.
+ * Standard 17-item support procedure templates used across the support module.
  * Extracted from SupportRecordPage.tsx for reuse.
  */
 
 import type { SupportStep } from '@/types/support';
 
 export const defaultSupportSteps: Omit<SupportStep, 'id'>[] = [
-  { stepNumber: 1, category: '朝の準備', title: '朝の挨拶', description: '明るく挨拶をして一日を始める', targetBehavior: '自発的に挨拶する', supportMethod: '職員から先に挨拶し、応答を促す', duration: 5, importance: '必須' },
-  { stepNumber: 2, category: '朝の準備', title: '持ち物確認', description: '必要な持ち物を確認する', targetBehavior: '自分で持ち物をチェックする', supportMethod: 'チェックリストを使って一緒に確認', duration: 10, importance: '必須' },
-  { stepNumber: 3, category: '健康確認', title: '体調確認', description: '体調や気分を確認する', targetBehavior: '体調について答える', supportMethod: '具体的に質問し、様子を観察', duration: 5, importance: '必須' },
-  { stepNumber: 4, category: '活動準備', title: '活動説明', description: '今日の活動予定を説明', targetBehavior: '活動内容を理解する', supportMethod: 'スケジュール表を見せながら説明', duration: 10, importance: '推奨' },
-  { stepNumber: 5, category: 'AM活動', title: '作業開始', description: '午前の作業活動を開始', targetBehavior: '指示に従って作業を始める', supportMethod: '手順を示し、必要に応じて補助', duration: 90, importance: '必須' },
-  { stepNumber: 6, category: 'AM活動', title: '休憩', description: '適切なタイミングで休憩', targetBehavior: '疲労を感じたら休憩を要求', supportMethod: '様子を見て休憩を促す', duration: 15, importance: '推奨' },
-  { stepNumber: 7, category: '昼食準備', title: '手洗い', description: '食事前の手洗い', targetBehavior: '自発的に手洗いをする', supportMethod: '手洗い場に案内し、手順を示す', duration: 5, importance: '必須' },
-  { stepNumber: 8, category: '昼食', title: '食事', description: '昼食を摂る', targetBehavior: 'マナーを守って食事する', supportMethod: '必要に応じて食事介助', duration: 45, importance: '必須' },
-  { stepNumber: 9, category: '昼食', title: '片付け', description: '食後の片付け', targetBehavior: '自分の食器を片付ける', supportMethod: '片付ける場所を示し、一緒に行う', duration: 10, importance: '推奨' },
-  { stepNumber: 10, category: '休憩', title: '昼休み', description: '昼食後の休憩時間', targetBehavior: '適切な休憩を取る', supportMethod: 'リラックスできる環境を提供', duration: 30, importance: '任意' },
-  { stepNumber: 11, category: 'PM活動', title: '午後作業', description: '午後の活動開始', targetBehavior: '午後の作業に取り組む', supportMethod: '集中できるよう環境を整える', duration: 90, importance: '必須' },
-  { stepNumber: 12, category: 'PM活動', title: 'レクリエーション', description: '楽しい活動時間', targetBehavior: '他者と協力して活動する', supportMethod: '参加しやすい雰囲気作り', duration: 30, importance: '推奨' },
-  { stepNumber: 13, category: '終了準備', title: '作業終了', description: '作業を終了し片付け', targetBehavior: '使った道具を片付ける', supportMethod: '片付け方を指導', duration: 15, importance: '必須' },
-  { stepNumber: 14, category: '終了準備', title: '清掃活動', description: '使用した場所の清掃', targetBehavior: '自分の作業場所を清掃', supportMethod: '清掃方法を示し、一緒に実施', duration: 15, importance: '推奨' },
-  { stepNumber: 15, category: '振り返り', title: '一日の振り返り', description: '今日の活動を振り返る', targetBehavior: '感想や気づきを話す', supportMethod: '質問しながら振り返りを促す', duration: 10, importance: '推奨' },
-  { stepNumber: 16, category: '振り返り', title: '明日の確認', description: '明日の予定確認', targetBehavior: '明日の活動を理解', supportMethod: 'スケジュール表で明日の予定説明', duration: 5, importance: '任意' },
-  { stepNumber: 17, category: '終了準備', title: '帰りの準備', description: '帰宅準備を行う', targetBehavior: '忘れ物なく準備する', supportMethod: 'チェックリストで確認', duration: 10, importance: '必須' },
-  { stepNumber: 18, category: 'その他', title: '連絡帳記入', description: '保護者への連絡事項記入', targetBehavior: '今日の様子を伝える', supportMethod: '本人と一緒に記入', duration: 10, importance: '推奨' },
-  { stepNumber: 19, category: 'その他', title: '帰りの挨拶', description: 'お疲れ様の挨拶', targetBehavior: '感謝の気持ちを表現', supportMethod: '職員から挨拶し、応答を促す', duration: 5, importance: '必須' },
+  { stepNumber: 1, category: '朝の準備', title: '通所・朝の準備', description: '手洗い、消毒、荷物をロッカーへ入れる', targetBehavior: '自発的に手洗いをする', supportMethod: '通所時の様子を確認し、必要に応じて声かけ・見守りを行う', duration: 30, importance: '必須' },
+  { stepNumber: 2, category: '朝の準備', title: '体操', description: '体操に参加する', targetBehavior: '体操に参加する', supportMethod: '本人の様子を見ながら参加を促す', duration: 10, importance: '必須' },
+  { stepNumber: 3, category: '朝の準備', title: 'スケジュール確認', description: '一日の予定を確認する', targetBehavior: '一日の予定を確認する', supportMethod: '本人と一緒に予定を確認し、見通しが持てるよう支援する', duration: 5, importance: '必須' },
+  { stepNumber: 4, category: '休憩', title: 'お茶休憩', description: '手洗い後、お茶を飲む', targetBehavior: '休憩を取る', supportMethod: 'お茶の準備、片付け、必要に応じた声かけを行う', duration: 5, importance: '必須' },
+  { stepNumber: 5, category: 'AM活動', title: 'AM日中活動', description: '午前の日中活動に参加する', targetBehavior: '午前の日中活動に参加する', supportMethod: '必要に応じて声かけ、見守り、同行支援を行う', duration: 100, importance: '必須' },
+  { stepNumber: 6, category: '昼食準備', title: '昼食準備', description: '手洗い、消毒、昼食準備を行う', targetBehavior: '食事の準備をする', supportMethod: '手洗い・消毒・配膳等を見守り、必要に応じて支援する', duration: 10, importance: '必須' },
+  { stepNumber: 7, category: '昼食', title: '昼食', description: '昼食を食べる', targetBehavior: '昼食を食べる', supportMethod: '食事の様子を見守り、必要に応じて声かけ・介助を行う', duration: 30, importance: '必須' },
+  { stepNumber: 8, category: '休憩', title: '昼休み', description: '休憩時間を過ごす', targetBehavior: '休憩時間を過ごす', supportMethod: '休憩中の様子を見守り、必要に応じて声かけを行う', duration: 65, importance: '必須' },
+  { stepNumber: 9, category: 'PM活動', title: 'スケジュール確認', description: '午後の予定を確認する', targetBehavior: '午後の予定を確認する', supportMethod: '本人と一緒に午後の予定を確認する', duration: 0, importance: '必須' },
+  { stepNumber: 10, category: 'PM活動', title: 'PM日中活動', description: '午後の日中活動に参加する', targetBehavior: '午後の日中活動に参加する', supportMethod: '必要に応じて声かけ、見守り、同行支援を行う', duration: 45, importance: '必須' },
+  { stepNumber: 11, category: '休憩', title: 'お茶休憩', description: '手洗い後、お茶を飲む', targetBehavior: '休憩を取る', supportMethod: 'お茶の準備、片付け、必要に応じた声かけを行う', duration: 15, importance: '必須' },
+  { stepNumber: 12, category: 'PM活動', title: 'PM日中活動', description: '午後の日中活動に参加する', targetBehavior: '午後の日中活動に参加する', supportMethod: '必要に応じて声かけ、見守り、同行支援を行う', duration: 35, importance: '必須' },
+  { stepNumber: 13, category: '休憩', title: 'のんびりタイム', description: '落ち着いて過ごす', targetBehavior: 'のんびり過ごす', supportMethod: '本人のペースを尊重しながら見守る', duration: 20, importance: '必須' },
+  { stepNumber: 14, category: '終了準備', title: '帰りの準備', description: '持ち物確認、帰宅準備を行う', targetBehavior: '帰る準備をする', supportMethod: '持ち物確認や身支度を見守り、必要に応じて支援する', duration: 20, importance: '必須' },
+  { stepNumber: 15, category: '終了準備', title: '退所', description: '退所する', targetBehavior: '挨拶をして帰る', supportMethod: '退所時の様子を確認し、見送りを行う', duration: 0, importance: '必須' },
+  { stepNumber: 16, category: 'AM活動', title: '外活動準備', description: '外活動に向けた準備を行う', targetBehavior: '外活動の準備をする', supportMethod: 'トイレ、帽子、持ち物など外活動に必要な準備を支援する', duration: 5, importance: '任意' },
+  { stepNumber: 17, category: 'AM活動', title: '外活動', description: '外活動に参加する', targetBehavior: '外活動に参加する', supportMethod: '外活動中の安全確認、同行支援、見守りを行う', duration: 95, importance: '任意' },
 ];

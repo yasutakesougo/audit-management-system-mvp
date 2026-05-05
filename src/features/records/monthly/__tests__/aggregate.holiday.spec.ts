@@ -125,7 +125,7 @@ describe('月跨ぎ・境界ケーステスト', () => {
 
     expect(result.completedRows).toBe(2);
     expect(result.totalDays).toBe(23); // 2024年7月の営業日数（予定基準）
-    expect(result.plannedRows).toBe(23 * 19); // 月全体の予定行数
+    expect(result.plannedRows).toBe(23 * 17); // 月全体の予定行数
   });
 
   it('月末のみ記録 → 月の最後だけ活動', () => {
