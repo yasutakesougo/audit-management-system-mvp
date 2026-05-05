@@ -271,7 +271,7 @@ export const dailyListEntries: readonly SpListEntry[] = [
       { internalName: 'Status0', type: 'Text', displayName: 'Status (Legacy)', governance: 'allow', isSilent: true, candidates: ['Status0'] },
       { internalName: 'Observation', type: 'Note', displayName: 'Observation (Legacy)', richText: false, governance: 'allow', isSilent: true, candidates: ['Observation'] },
       { internalName: 'User_x0020_ID', type: 'Text', displayName: 'User ID (Legacy SP-encoded)', governance: 'allow', isSilent: true, candidates: ['User_x0020_ID'] },
-      { internalName: 'Payload', type: 'Note', displayName: 'Row Data JSON', richText: false, governance: 'allow', isSilent: true, candidates: ['Payload', 'PayloadJSON', 'cr013_payload'] },
+      { internalName: 'Payload', type: 'Note', displayName: 'Row Data JSON', richText: false, governance: 'allow', isSilent: true, candidates: ['Payload', 'payload', 'cr013_payload', 'cr013_draftJson', 'PayloadJSON', 'SupportRecordPayload', 'Payload_x0020_JSON', 'Observation'] },
       { internalName: 'RecordedAt', type: 'DateTime', displayName: 'Recorded At', candidates: ['RecordedAt', 'Recorded_x0020_At'] },
     ],
   },
@@ -1009,7 +1009,7 @@ export const complianceListEntries: readonly SpListEntry[] = [
       { internalName: 'CorrelationId', type: 'Text', displayName: 'Correlation ID (Legacy)', governance: 'allow', isSilent: true, candidates: ['CorrelationId'] },
       { internalName: 'Correlation_x0020_ID', type: 'Text', displayName: 'Correlation ID (Legacy SP-encoded)', governance: 'allow', isSilent: true, candidates: ['Correlation_x0020_ID'] },
       { internalName: 'Status', type: 'Text', displayName: 'Status', isSilent: true, candidates: ['Status', 'ExecutionStatus', 'cr013_status'] },
-      { internalName: 'Payload', type: 'Note', displayName: 'Payload JSON', richText: false, governance: 'allow', isSilent: true, candidates: ['Payload', 'PayloadJSON', 'cr013_payload'] },
+      { internalName: 'Payload', type: 'Note', displayName: 'Payload JSON', richText: false, governance: 'allow', isSilent: true, candidates: ['Payload', 'payload', 'cr013_payload', 'cr013_draftJson', 'PayloadJSON', 'SupportRecordPayload', 'Payload_x0020_JSON', 'Observation'] },
     ],
   },
 ];

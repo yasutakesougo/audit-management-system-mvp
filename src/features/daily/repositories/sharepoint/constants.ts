@@ -60,6 +60,15 @@ export type RowAggregateSource = {
   selectFields: string[];
 };
 
+export type ResolvedRowsFields = {
+    parentId: string;
+    userId: string;
+    version: string;
+    status: string;
+    payload: string;
+    recordedAt: string;
+};
+
 /**
  * Raw item as it comes directly from SharePoint response.
  * Uses physical internal names.
