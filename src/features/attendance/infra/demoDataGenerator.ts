@@ -16,7 +16,7 @@ export const generateDemoTemperature = (index: number): number => {
  */
 export const generateDemoTransport = (index: number): { to?: TransportMethod; from?: TransportMethod } => {
   if (index % 17 === 0) return { to: 'short_stay', from: 'short_stay' };
-  if (index % 19 === 0) return { to: 'temporary_care' };
+  if (index % 13 === 0) return { to: 'temporary_care' };
   return {};
 };
 

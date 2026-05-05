@@ -105,7 +105,7 @@ export const generateMockDailyRecord = (
     date,
     records,
     summary: {
-      totalSteps: 19,
+      totalSteps: 17,
       implementedSteps: implementedIndices.length,
       effectiveSteps: implementedIndices.length - Math.min(2, implementedIndices.length),
       improvementNeeded: Math.min(2, implementedIndices.length),

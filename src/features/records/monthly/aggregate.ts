@@ -60,7 +60,7 @@ export function aggregateMonthlyKpi(
     rowsPerDay?: number;
   } = {}
 ): MonthlyKpi {
-  const { useWorkingDays = true, rowsPerDay = 19 } = options;
+  const { useWorkingDays = true, rowsPerDay = 17 } = options;
 
   // 月内の基準日数
   const totalDays = useWorkingDays

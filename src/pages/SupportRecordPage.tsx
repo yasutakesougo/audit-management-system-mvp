@@ -1,4 +1,4 @@
-﻿import { PageHeader } from '@/components/PageHeader';
+import { PageHeader } from '@/components/PageHeader';
 import type { DailySupportRecord, SupportRecord } from '@/types/support';
 import { toLocalDateISO } from '@/utils/getNow';
 import { generateMockDailyRecord, generateSupportSteps, type MockSupportUser } from '@/utils/supportRecord';
@@ -144,7 +144,7 @@ const SupportRecordPage: React.FC = () => {
         {/* ヘッダー */}
         <PageHeader
           title="支援手順の実施（行動観察）"
-          subtitle="個別支援計画に基づく19項目の支援手順の実施状況を記録・管理します"
+          subtitle="個別支援計画に基づく17項目の支援手順の実施状況を記録・管理します"
         />
 
         {/* 統計情報（本日分） */}
@@ -331,7 +331,7 @@ const SupportRecordPage: React.FC = () => {
                     const status = progress >= 80 ? 'completed' : progress >= 40 ? 'inProgress' : 'notStarted';
 
                     // 決定論的な実装項目数計算
-                    const implementedCount = Math.floor((progress / 100) * 19);
+                    const implementedCount = Math.floor((progress / 100) * 17);
 
                     return (
                       <Box
@@ -358,7 +358,7 @@ const SupportRecordPage: React.FC = () => {
 
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Typography variant="body2">
-                              {implementedCount}/19 項目
+                              {implementedCount}/17 項目
                             </Typography>
                             <Chip
                               label={

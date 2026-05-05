@@ -38,10 +38,10 @@ describe('aggregateMonthlyKpi - 基本集計テスト', () => {
     const result = aggregateMonthlyKpi(records, '2024-01' as YearMonth);
 
     expect(result.totalDays).toBe(23); // 2024年1月の営業日数（土日除く）
-    expect(result.plannedRows).toBe(23 * 19); // 営業日数 × 19行/日
+    expect(result.plannedRows).toBe(23 * 17); // 営業日数 × 17行/日
     expect(result.completedRows).toBe(31); // 完了記録の件数
     expect(result.inProgressRows).toBe(0);
-    expect(result.emptyRows).toBe(437 - 31); // plannedRows - completedRows - inProgressRows
+    expect(result.emptyRows).toBe((23 * 17) - 31); // plannedRows - completedRows - inProgressRows
     expect(result.specialNotes).toBe(0);
     expect(result.incidents).toBe(0);
   });
@@ -68,10 +68,10 @@ describe('aggregateMonthlyKpi - 基本集計テスト', () => {
     const result = aggregateMonthlyKpi(records, '2024-02' as YearMonth);
 
     expect(result.totalDays).toBe(21); // 2024年2月の営業日数
-    expect(result.plannedRows).toBe(21 * 19); // 営業日数 × 19行/日
+    expect(result.plannedRows).toBe(21 * 17); // 営業日数 × 17行/日
     expect(result.completedRows).toBe(5);
     expect(result.inProgressRows).toBe(3);
-    expect(result.emptyRows).toBe(399 - 5 - 3); // plannedRows - completedRows - inProgressRows
+    expect(result.emptyRows).toBe((21 * 17) - 5 - 3); // plannedRows - completedRows - inProgressRows
     expect(result.specialNotes).toBe(0);
     expect(result.incidents).toBe(0);
   });
@@ -89,7 +89,7 @@ describe('aggregateMonthlyKpi - 基本集計テスト', () => {
 
     expect(result.completedRows).toBe(3);
     expect(result.inProgressRows).toBe(1);
-    expect(result.emptyRows).toBe(399 - 3 - 1); // plannedRows - completedRows - inProgressRows (2024年3月は21営業日 = 399行)
+    expect(result.emptyRows).toBe((21 * 17) - 3 - 1); // plannedRows - completedRows - inProgressRows (2024年3月は21営業日)
     expect(result.specialNotes).toBe(2); // 3/1, 3/3
     expect(result.incidents).toBe(2); // 3/2, 3/3
   });
@@ -100,10 +100,10 @@ describe('aggregateMonthlyKpi - 基本集計テスト', () => {
     const result = aggregateMonthlyKpi(records, '2024-05' as YearMonth);
 
     expect(result.totalDays).toBe(23); // 2024年5月の営業日数
-    expect(result.plannedRows).toBe(23 * 19); // 営業日数 × 19行/日
+    expect(result.plannedRows).toBe(23 * 17); // 営業日数 × 17行/日
     expect(result.completedRows).toBe(0);
     expect(result.inProgressRows).toBe(0);
-    expect(result.emptyRows).toBe(437); // plannedRows - completedRows - inProgressRows
+    expect(result.emptyRows).toBe(23 * 17); // plannedRows - completedRows - inProgressRows
     expect(result.specialNotes).toBe(0);
     expect(result.incidents).toBe(0);
   });
@@ -179,7 +179,7 @@ describe('aggregateMonthlySummary - 月次サマリー生成テスト', () => {
     expect(summary.yearMonth).toBe('2024-06');
     expect(summary.kpi.completedRows).toBe(2);
     expect(summary.kpi.inProgressRows).toBe(1);
-    expect(summary.kpi.emptyRows).toBe(380 - 2 - 1); // plannedRows - completedRows - inProgressRows (2024年6月は20営業日 = 380行)
+    expect(summary.kpi.emptyRows).toBe((20 * 17) - 2 - 1); // plannedRows - completedRows - inProgressRows (2024年6月は20営業日 = 340行)
     expect(summary.kpi.specialNotes).toBe(1);
     expect(summary.kpi.incidents).toBe(1);
     expect(summary.completionRate).toBeGreaterThan(0); // 完了率が計算されている
@@ -278,7 +278,7 @@ describe('aggregateMultipleUsers - 複数ユーザー集計テスト', () => {
     const user002Result = results.find(r => r.summary.userId === 'USER002');
     expect(user002Result).toBeDefined();
     expect(user002Result!.summary.kpi.completedRows).toBe(1);
-    expect(user002Result!.summary.kpi.emptyRows).toBe(380 - 1 - 0); // plannedRows - completedRows - inProgressRows (2024年6月は20営業日 = 380行)
+    expect(user002Result!.summary.kpi.emptyRows).toBe((20 * 17) - 1 - 0); // plannedRows - completedRows - inProgressRows (2024年6月は20営業日 = 340行)
     expect(user002Result!.processedRecords).toBe(2);
   });
 

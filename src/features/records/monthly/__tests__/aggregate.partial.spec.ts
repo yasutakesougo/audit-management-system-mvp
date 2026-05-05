@@ -40,7 +40,7 @@ describe('部分入力・未完了ケーステスト', () => {
 
     expect(summary.kpi.completedRows).toBe(0);
     expect(summary.kpi.inProgressRows).toBe(0);
-    expect(summary.kpi.emptyRows).toBe(399); // plannedRows - completedRows - inProgressRows (2024年9月は21営業日 = 399行)
+    expect(summary.kpi.emptyRows).toBe(357); // plannedRows - completedRows - inProgressRows (2024年9月は21営業日 = 357行)
     expect(summary.completionRate).toBe(0); // 0%
     expect(summary.firstEntryDate).toBeUndefined(); // 空記録は除外
     expect(summary.lastEntryDate).toBeUndefined();
@@ -91,7 +91,7 @@ describe('部分入力・未完了ケーステスト', () => {
 
     expect(summary.kpi.completedRows).toBe(2);
     expect(summary.kpi.inProgressRows).toBe(1);
-    expect(summary.kpi.emptyRows).toBe(399 - 2 - 1); // plannedRows - completedRows - inProgressRows (2024年11月は21営業日 = 399行)
+    expect(summary.kpi.emptyRows).toBe(357 - 2 - 1); // plannedRows - completedRows - inProgressRows (2024年11月は21営業日 = 357行)
     expect(summary.kpi.incidents).toBe(1);
     expect(summary.firstEntryDate).toBe('2024-11-01'); // 空記録除く
     expect(summary.lastEntryDate).toBe('2024-11-11'); // 空記録除く
@@ -193,7 +193,7 @@ describe('shouldUpdateSummary - 差分更新判定テスト', () => {
     lastUpdatedUtc: '2024-11-06T01:00:00Z',
     kpi: {
       totalDays: 21,
-      plannedRows: 399,
+      plannedRows: 357,
       completedRows: 250,
       inProgressRows: 100,
       emptyRows: 49,

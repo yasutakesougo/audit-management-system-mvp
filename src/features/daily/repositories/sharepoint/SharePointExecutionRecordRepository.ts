@@ -18,7 +18,7 @@ type SharePointExecutionRecordRepositoryOptions = {
 };
 
 /**
- * SharePointExecutionRecordRepository — 19行記録の SharePoint 永続化アダプター
+ * SharePointExecutionRecordRepository — 17行記録の SharePoint 永続化アダプター
  * スキーマドリフト（Payload vs Memo等）を動的に解決する。
  */
 export class SharePointExecutionRecordRepository implements ExecutionRecordRepository {
@@ -180,6 +180,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       [rf.rowNo]: record.scheduleItemId,
       [rf.status]: record.status,
       [rf.memo]: record.memo,
+      [rf.payload]: record.memo, // Drift protection: map to both candidates
       [rf.staffName]: record.recordedBy,
       [rf.recordedAt]: record.recordedAt,
       [rf.bipsJSON]: JSON.stringify(record.triggeredBipIds),
