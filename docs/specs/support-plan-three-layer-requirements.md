@@ -122,7 +122,7 @@ ISPについては追加で以下を保持する。
 | `SupportActivityMasterPage` | 第2層 支援計画シート | 活動テンプレートマスタ |
 | `TimeFlowSupportRecordPage` | 第3層 支援手順書兼記録 | 時系列の実施記録 |
 | `TimeBasedSupportRecordPage` | 第3層 支援手順書兼記録 | 時間帯別の実施ログ |
-| `SupportRecordPage` | 第3層 支援手順書兼記録 | 19項目の支援手順実施状況 |
+| `SupportRecordPage` | 第3層 支援手順書兼記録 | 17項目の支援手順実施状況 |
 
 既存の Daily / Support Record 系画面は、原則として第3層（支援手順書兼記録）として再整理する。
 SupportPlanGuidePage 等の計画系画面は、第1層または第2層の責務へ分離再配置する。

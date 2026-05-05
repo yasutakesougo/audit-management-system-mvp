@@ -83,7 +83,7 @@ ISP / 支援計画シート / 支援手順記録の3リストに対する Reposi
 | `ISPComparisonEditorPage` | 第1層（ISP比較） | ✅ そのまま |
 | `TimeFlowSupportRecordPage` | 第3層（時系列記録） | 要: PlanningSheet参照リンク追加 |
 | `TimeBasedSupportRecordPage` | 第3層（時間帯別記録） | 要: PlanningSheet参照リンク追加 |
-| `SupportRecordPage` | 第3層（19項目記録） | 要: PlanningSheet参照リンク追加 |
+| `SupportRecordPage` | 第3層（17項目記録） | 要: PlanningSheet参照リンク追加 |
 | `SupportStepMasterPage` | 第2層（テンプレート） | ✅ そのまま |
 | `SupportActivityMasterPage` | 第2層（テンプレート） | ✅ そのまま |
 
