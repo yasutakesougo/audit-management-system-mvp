@@ -170,6 +170,11 @@ export class DailyRecordSchemaResolver {
                 status: DAILY_RECORD_ROWS_FIELDS.status,
                 payload: DAILY_RECORD_ROWS_FIELDS.payload,
                 recordedAt: DAILY_RECORD_ROWS_FIELDS.recordedAt,
+                rowKey: EXECUTION_RECORD_FIELDS.rowKey,
+                rowNo: EXECUTION_RECORD_FIELDS.rowNo,
+                memo: EXECUTION_RECORD_FIELDS.memo,
+                staffName: EXECUTION_RECORD_FIELDS.staffName,
+                bipsJSON: EXECUTION_RECORD_FIELDS.bipsJSON,
             };
             return this.resolvedRowsFields;
         }
@@ -183,6 +188,11 @@ export class DailyRecordSchemaResolver {
                 status: DAILY_RECORD_ROWS_FIELDS.status,
                 payload: DAILY_RECORD_ROWS_FIELDS.payload,
                 recordedAt: DAILY_RECORD_ROWS_FIELDS.recordedAt,
+                rowKey: EXECUTION_RECORD_FIELDS.rowKey,
+                rowNo: EXECUTION_RECORD_FIELDS.rowNo,
+                memo: EXECUTION_RECORD_FIELDS.memo,
+                staffName: EXECUTION_RECORD_FIELDS.staffName,
+                bipsJSON: EXECUTION_RECORD_FIELDS.bipsJSON,
             };
         }
 
