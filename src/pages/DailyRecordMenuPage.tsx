@@ -406,7 +406,7 @@ const DailyRecordMenuPage: React.FC = () => {
                   • 個別支援計画テンプレート
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  • 1日19行の支援手順展開
+                  • 1日17行の支援手順展開
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   • 本人の様子・反応記録
