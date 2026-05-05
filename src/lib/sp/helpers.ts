@@ -12,7 +12,7 @@ export type ResolutionResult<T extends string> = {
   missing: T[];
   fieldStatus: Record<T, {
     resolvedName?: string;
-    candidates: readonly string[];
+    candidates: string[];
     isDrifted: boolean;
     driftType?: string;
   }>;
@@ -472,7 +472,7 @@ export function resolveInternalNamesDetailed<T extends string>(
   }
 ): ResolutionResult<T> {
   const resolved = {} as Record<T, string | undefined>;
-  const fieldStatus = {} as Record<T, { resolvedName?: string; candidates: readonly string[]; isDrifted: boolean; driftType?: string }>;
+  const fieldStatus = {} as Record<T, { resolvedName?: string; candidates: string[]; isDrifted: boolean; driftType?: string }>;
   const missing: T[] = [];
 
   const availableMap = new Map<string, string>();
@@ -586,7 +586,7 @@ export function resolveInternalNamesDetailed<T extends string>(
       resolved[key] = resolvedName;
       fieldStatus[key] = {
         resolvedName: resolvedName,
-        candidates: candidates[key],
+        candidates: [...candidates[key]],
         isDrifted,
         driftType
       };
