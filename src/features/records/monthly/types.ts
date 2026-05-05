@@ -18,7 +18,7 @@ export interface MonthlyRecordKey {
 
 export interface MonthlyKpi {
   totalDays: number;        // 月内の暦日（営業日でも可: オプション切替）
-  plannedRows: number;      // テンプレ行 × 稼働日数 （19行/日 × 稼働日）
+  plannedRows: number;      // テンプレ行 × 稼働日数 （17行/日 × 稼働日）
   completedRows: number;    // 完了チェック true の件数
   inProgressRows: number;   // 入力済みだが未完了
   emptyRows: number;        // 未入力（生成時に invariant 保証: emptyRows = max(0, plannedRows - completedRows - inProgressRows)）

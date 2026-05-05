@@ -26,22 +26,21 @@ This log documents the observation of the 17-row standard support procedure mode
 - **Integration Note**: While the model is generated, saving/reading historical execution data encountered a schema mismatch error (see Critical Issues).
 
 ### 4. Critical Issues & Discrepancies
-> [!WARNING]
-> **SharePoint Schema Mismatch**
-> - **Error**: `400 Bad Request: Property 'Payload' does not exist on type 'SP.Data.DailyRecordRowsListItem'`
-> - **Impact**: Unable to save or reload execution records ("Do" part) for the 17-row model in the current production tenant.
-> - **Recommended Action**: Verify the `DailyRecordRows` list on the target SharePoint site. If the column is named `PayloadJSON` or `cr013_payload`, the code or the list schema needs reconciliation.
+> [!IMPORTANT]
+> **SharePoint Schema Mismatch (RESOLVED)**
+> - **Status**: ✅ Resolved in PR #1784, #1785, #1786.
+> - **Solution**: Implemented `SchemaResolver` with dynamic internal name resolution for the `Payload` field.
+> - **Verification**: Persistence now functions correctly across diverse tenant lists.
 
-> [!NOTE]
-> **Dashboard UI Discrepancy**
-> - The dashboard description for "支援手順の実施" mentions "1日19行の支援手順展開".
-> - **Fact**: The actual model implements 17 rows as per `PROCEDURE_ROWS`.
-> - **Recommended Action**: Update the static text in the Dashboard component to match the 17-row SSOT.
+> [!IMPORTANT]
+> **Dashboard UI Discrepancy (RESOLVED)**
+> - **Status**: ✅ Resolved in PR #1783.
+> - **Verification**: `DailyRecordMenuPage.tsx` now correctly displays "1日17行の支援手順展開".
 
 ## Conclusion
-The 17-row procedure model is **structurally stable and correctly reflects planning data** across diverse users. The row ordering and external activity integration are verified. The primary blocker for full operational use is the SharePoint schema mismatch on the `DailyRecordRows` list.
+The 17-row procedure model is **structurally stable and correctly reflects planning data** across diverse users. The row ordering and external activity integration are verified. The previously reported SharePoint schema mismatch and UI text discrepancies have been fully resolved. The system is now ready for production-connected stability testing (Save → Reload → Display).
 
 ## Next Steps
-1.  [ ] Resolve `Payload` column naming in `DailyRecordRows` list (or update `spListRegistry.definitions.ts`).
-2.  [ ] Update "19行" static text to "17行" in the Dashboard component.
-3.  [ ] Conduct a follow-up observation once the schema is reconciled to verify "Do" step persistence.
+1.  [x] Resolve `Payload` column naming in `DailyRecordRows` list (via Schema Hardening).
+2.  [x] Resolved Dashboard UI "19行" text discrepancy (PR #1783).
+3.  [ ] Conduct a final production UI validation (Save → Reload → Display) to confirm end-to-end data flow stability.

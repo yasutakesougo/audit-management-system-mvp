@@ -18,7 +18,7 @@ type SharePointExecutionRecordRepositoryOptions = {
 };
 
 /**
- * SharePointExecutionRecordRepository — 19行記録の SharePoint 永続化アダプター
+ * SharePointExecutionRecordRepository — 17行記録の SharePoint 永続化アダプター
  * スキーマドリフト（Payload vs Memo等）を動的に解決する。
  */
 export class SharePointExecutionRecordRepository implements ExecutionRecordRepository {
