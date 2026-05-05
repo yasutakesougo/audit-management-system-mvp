@@ -58,3 +58,7 @@ npm test src/features/planning-sheet/logic/dailyProcedureMapper.spec.ts
 # E2E tests
 npx playwright test tests/e2e/procedure-17row-bridge.spec.ts
 ```
+
+## Operational Observation
+For real-world data validation and continuous monitoring, refer to the operational checklist:
+*   [17-row Procedure Observation Checklist](../ops/17-row-procedure-observation-checklist.md)
