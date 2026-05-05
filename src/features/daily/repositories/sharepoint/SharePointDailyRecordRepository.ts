@@ -22,6 +22,7 @@ import { DailyIntegrityException } from '../../domain/integrity/dailyIntegrityCh
 type SharePointDailyRecordRepositoryOptions = {
   listTitle?: string;
   spFetch?: SpFetchFn;
+  getListFieldInternalNames?: (listTitle: string) => Promise<Set<string>>;
 };
 
 /**
@@ -47,7 +48,11 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
     this.spFetch = options.spFetch;
     this.listTitle = options.listTitle ?? getListTitle();
 
-    this.schema = new DailyRecordSchemaResolver(this.spFetch, this.listTitle);
+    this.schema = new DailyRecordSchemaResolver(
+      this.spFetch, 
+      this.listTitle,
+      options.getListFieldInternalNames
+    );
     this.data = new DailyRecordDataAccess(this.spFetch);
     this.saver = new DailyRecordSaver(this.spFetch);
     this.integrity = new DailyRecordIntegrityScanner(this.spFetch);

@@ -2,6 +2,7 @@ import type { SpFetchFn } from '@/lib/sp/spLists';
 import { 
     DAILY_RECORD_FIELDS, 
     DAILY_RECORD_ROWS_FIELDS,
+    EXECUTION_RECORD_FIELDS,
     readNonEmptyEnv,
     type RowAggregateSource, 
     type ResolvedRowsFields,
@@ -32,7 +33,8 @@ export class DailyRecordSchemaResolver {
 
     constructor(
         private readonly spFetch: SpFetchFn,
-        private readonly listTitle: string
+        private readonly listTitle: string,
+        private readonly getListFieldInternalNames?: (listTitle: string) => Promise<Set<string>>
     ) {}
 
     public async resolveListPath(): Promise<string | null> {
@@ -190,12 +192,18 @@ export class DailyRecordSchemaResolver {
         );
 
         this.resolvedRowsFields = {
-            parentId: resolved.ParentID ?? DAILY_RECORD_ROWS_FIELDS.parentId,
-            userId: resolved.UserID ?? DAILY_RECORD_ROWS_FIELDS.userId,
+            parentId: resolved.parentId ?? DAILY_RECORD_ROWS_FIELDS.parentId,
+            userId: resolved.userId ?? DAILY_RECORD_ROWS_FIELDS.userId,
             version: resolved.version ?? DAILY_RECORD_ROWS_FIELDS.version,
             status: resolved.status ?? DAILY_RECORD_ROWS_FIELDS.status,
             payload: resolved.payload ?? DAILY_RECORD_ROWS_FIELDS.payload,
             recordedAt: resolved.recordedAt ?? DAILY_RECORD_ROWS_FIELDS.recordedAt,
+            // Execution record specific
+            rowKey: resolved.rowKey ?? EXECUTION_RECORD_FIELDS.rowKey,
+            rowNo: resolved.rowNo ?? EXECUTION_RECORD_FIELDS.rowNo,
+            memo: resolved.memo ?? EXECUTION_RECORD_FIELDS.memo,
+            staffName: resolved.staffName ?? EXECUTION_RECORD_FIELDS.staffName,
+            bipsJSON: resolved.bipsJSON ?? EXECUTION_RECORD_FIELDS.bipsJSON,
         };
 
         return this.resolvedRowsFields;
@@ -236,7 +244,7 @@ export class DailyRecordSchemaResolver {
                 DAILY_RECORD_ROW_AGGREGATE_CANDIDATES
             );
             const dateField = resolved.recordDate;
-            const userIdField = resolved.UserID;
+            const userIdField = resolved.userId;
             if (!dateField || !userIdField) continue;
 
             this.resolvedRowAggregateSource = {
@@ -271,6 +279,16 @@ export class DailyRecordSchemaResolver {
     }
 
     private async getListFieldNames(listPath: string): Promise<Set<string> | null> {
+        if (this.getListFieldInternalNames) {
+            try {
+                const match = listPath.match(/getbytitle\('([^']+)'\)/i);
+                const title = match ? match[1] : this.listTitle;
+                return await this.getListFieldInternalNames(title);
+            } catch (err) {
+                console.warn(`[SchemaResolver] getListFieldInternalNames failed for ${listPath}:`, err);
+            }
+        }
+
         try {
             const response = await this.spFetch(`${listPath}/fields?$select=InternalName&$top=500`);
             const payload = (await response.json()) as SharePointResponse<SharePointFieldItem>;
