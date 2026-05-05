@@ -139,11 +139,12 @@ export const DAILY_RECORD_ROW_AGGREGATE_CANDIDATES = {
   recordDate: ['RecordDate', 'cr013_date', 'cr013_recorddate', 'Date', 'recordDate'],
   status: ['Status', 'status', 'cr013_status'],
   reporterName: ['ReporterName', 'reporterName', 'cr013_reporterName'],
-  payload: ['Payload', 'payload', 'cr013_payload', 'cr013_draftJson'],
+  payload: ['Payload', 'payload', 'cr013_payload', 'cr013_draftJson', 'PayloadJSON', 'SupportRecordPayload', 'Payload_x0020_JSON', 'Observation'],
   kind: ['Kind', 'kind', 'cr013_kind'],
   group: ['Group', 'group', 'cr013_group'],
   specialNote: ['SpecialNote', 'specialNote', 'cr013_specialnote'],
   version: ['Version', 'VersionNo', 'cr013_version'],
+  recordedAt: ['RecordedAt', 'Recorded_x0020_At', 'cr013_recordedAt'],
 } as const;
 
 export const DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS: (keyof typeof DAILY_RECORD_ROW_AGGREGATE_CANDIDATES)[] = [

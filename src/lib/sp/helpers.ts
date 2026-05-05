@@ -466,7 +466,7 @@ export function clearAllFieldsCache(): void {
  */
 export function resolveInternalNamesDetailed<T extends string>(
   available: Set<string>,
-  candidates: Record<T, string[]>,
+  candidates: Record<T, readonly string[]>,
   options?: { 
     onDrift?: (fieldName: T, resolutionType: string, driftType: string) => void 
   }
@@ -586,7 +586,7 @@ export function resolveInternalNamesDetailed<T extends string>(
       resolved[key] = resolvedName;
       fieldStatus[key] = {
         resolvedName: resolvedName,
-        candidates: candidates[key],
+        candidates: [...candidates[key]],
         isDrifted,
         driftType
       };
@@ -604,7 +604,7 @@ export function resolveInternalNamesDetailed<T extends string>(
  */
 export function resolveInternalNames<T extends string>(
   available: Set<string>,
-  candidates: Record<T, string[]>
+  candidates: Record<T, readonly string[]>
 ): Record<T, string | undefined> {
   return resolveInternalNamesDetailed(available, candidates).resolved;
 }
