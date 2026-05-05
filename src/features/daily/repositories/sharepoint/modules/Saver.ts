@@ -1,8 +1,8 @@
 import type { SpFetchFn } from '@/lib/sp/spLists';
 import { 
-    DAILY_RECORD_FIELDS,
-    DAILY_RECORD_ROWS_FIELDS, 
-    type SharePointItem 
+    DAILY_RECORD_FIELDS, 
+    type SharePointItem,
+    type ResolvedRowsFields
 } from '../constants';
 import { 
     SaveDailyRecordInput, 
@@ -24,6 +24,7 @@ export class DailyRecordSaver {
         listPath: string, 
         rowsListPath: string,
         existingItem: SharePointItem | null,
+        resolvedRowsFields: ResolvedRowsFields,
         _params?: DailyRecordRepositoryMutationParams
     ): Promise<void> {
         const finishSpan = startFeatureSpan(HYDRATION_FEATURES.daily.save, {
@@ -77,8 +78,8 @@ export class DailyRecordSaver {
             // Cleanup existing children if update
             if (existingItem) {
                 try {
-                    const filter = `${DAILY_RECORD_ROWS_FIELDS.parentId} eq ${parentId}`;
-                    const res = await this.spFetch(`${rowsListPath}/items?$filter=${filter}&$select=Id`);
+                    const filter = `${resolvedRowsFields.parentId} eq ${parentId}`;
+                    const res = await this.spFetch(`${rowsListPath}/items?$filter=${encodeURIComponent(filter)}&$select=Id`);
                     const json = await res.json();
                     const itemsToDelete = json.value || [];
                     
@@ -98,11 +99,11 @@ export class DailyRecordSaver {
             // Save new children
             for (const row of input.userRows) {
                 const rowPayload = {
-                    [DAILY_RECORD_ROWS_FIELDS.parentId]: parentId,
-                    [DAILY_RECORD_ROWS_FIELDS.userId]: row.userId,
-                    [DAILY_RECORD_ROWS_FIELDS.status]: 'done',
-                    [DAILY_RECORD_ROWS_FIELDS.payload]: JSON.stringify(row),
-                    [DAILY_RECORD_ROWS_FIELDS.recordedAt]: new Date().toISOString(),
+                    [resolvedRowsFields.parentId]: parentId,
+                    [resolvedRowsFields.userId]: row.userId,
+                    [resolvedRowsFields.status]: 'done',
+                    [resolvedRowsFields.payload]: JSON.stringify(row),
+                    [resolvedRowsFields.recordedAt]: new Date().toISOString(),
                 };
                 await this.spFetch(`${rowsListPath}/items`, {
                     method: 'POST',

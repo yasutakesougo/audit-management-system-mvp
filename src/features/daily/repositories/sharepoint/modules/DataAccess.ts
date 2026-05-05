@@ -1,9 +1,9 @@
 import type { SpFetchFn } from '@/lib/sp/spLists';
 import { 
     DAILY_RECORD_FIELDS, 
-    DAILY_RECORD_ROWS_FIELDS, 
     type RawSharePointItem,
-    type SharePointResponse 
+    type SharePointResponse,
+    type ResolvedRowsFields 
 } from '../constants';
 import { 
     buildListPath, 
@@ -17,7 +17,12 @@ import { auditLog } from '@/lib/debugLogger';
 export class DailyRecordDataAccess {
     constructor(private readonly spFetch: SpFetchFn) {}
 
-    public async load(date: string, listPath: string, rowsListTitle: string): Promise<DailyRecordItem | null> {
+    public async load(
+        date: string, 
+        listPath: string, 
+        rowsListTitle: string,
+        resolvedRowsFields: ResolvedRowsFields
+    ): Promise<DailyRecordItem | null> {
         const item = await this.findItemByDate(date, listPath);
         if (!item) return null;
 
@@ -28,15 +33,18 @@ export class DailyRecordDataAccess {
             const latestVersion = (item as unknown as Record<string, number>)[DAILY_RECORD_FIELDS.latestVersion] || 0;
             const rowsListPath = buildListPath(rowsListTitle);
             const filter = latestVersion > 0
-                ? `${DAILY_RECORD_ROWS_FIELDS.parentId} eq ${item.Id} and ${DAILY_RECORD_ROWS_FIELDS.version} eq ${latestVersion}`
-                : `${DAILY_RECORD_ROWS_FIELDS.parentId} eq ${item.Id}`;
+                ? `${resolvedRowsFields.parentId} eq ${item.Id} and ${resolvedRowsFields.version} eq ${latestVersion}`
+                : `${resolvedRowsFields.parentId} eq ${item.Id}`;
 
-            const res = await this.spFetch(`${rowsListPath}/items?$filter=${filter}&$select=Payload`);
+            const res = await this.spFetch(`${rowsListPath}/items?$filter=${encodeURIComponent(filter)}&$select=${resolvedRowsFields.payload}`);
             const json = await res.json();
             const rows = json.value || [];
 
             if (rows.length > 0) {
-                record.userRows = rows.map((r: { Payload: string }) => JSON.parse(r.Payload));
+                record.userRows = rows.map((r: Record<string, unknown>) => {
+                    const payloadJson = r[resolvedRowsFields.payload] as string;
+                    return payloadJson ? JSON.parse(payloadJson) : null;
+                }).filter(Boolean);
                 auditLog.debug('daily', `Loaded via version v${latestVersion}`, { count: rows.length });
             } else {
                 auditLog.debug('daily', 'Loaded from legacy JSON fallback', { count: record.userRows.length });

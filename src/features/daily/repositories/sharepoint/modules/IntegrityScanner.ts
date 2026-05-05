@@ -1,9 +1,9 @@
 import type { SpFetchFn } from '@/lib/sp/spLists';
 import { 
     DAILY_RECORD_FIELDS, 
-    DAILY_RECORD_ROWS_FIELDS, 
     readNonEmptyEnv,
-    type SharePointItem
+    type SharePointItem,
+    type ResolvedRowsFields
 } from '../constants';
 import { buildListPath } from '../utils/Helpers';
 import { 
@@ -20,7 +20,8 @@ export class DailyRecordIntegrityScanner {
     public async scan(
         dates: string[], 
         listPath: string, 
-        rowsListTitle: string, 
+        rowsListTitle: string,
+        resolvedRowsFields: ResolvedRowsFields,
         signal?: AbortSignal
     ): Promise<DailyIntegrityException[]> {
         if (dates.length === 0) return [];
@@ -43,19 +44,19 @@ export class DailyRecordIntegrityScanner {
             if (parents.length === 0) return [];
 
             const parentIds = parents.map(p => p.id);
-            const idFilters = parentIds.map(id => `${DAILY_RECORD_ROWS_FIELDS.parentId} eq ${id}`).join(' or ');
-            const childUrl = `${rowsListPath}/items?$filter=${idFilters}&$select=ParentID,UserID,Version,Status,Payload,RecordedAt`;
+            const idFilters = parentIds.map(id => `${resolvedRowsFields.parentId} eq ${id}`).join(' or ');
+            const childUrl = `${rowsListPath}/items?$filter=${encodeURIComponent(idFilters)}&$select=${resolvedRowsFields.parentId},${resolvedRowsFields.userId},${resolvedRowsFields.version},${resolvedRowsFields.status},${resolvedRowsFields.payload},${resolvedRowsFields.recordedAt}`;
 
             const cRes = await this.spFetch(childUrl, { signal });
             const cData = await cRes.json();
             const rawChildren = cData.value || [];
 
             const children: ScanSourceChild[] = rawChildren.map((c: Record<string, unknown>) => ({
-                parentId: String(c.ParentID),
-                userId: c.UserID as string,
-                version: (c.Version as number) || 0,
-                status: c.Status as string,
-                recordedAt: c.RecordedAt as string,
+                parentId: String(c[resolvedRowsFields.parentId]),
+                userId: c[resolvedRowsFields.userId] as string,
+                version: (c[resolvedRowsFields.version] as number) || 0,
+                status: c[resolvedRowsFields.status] as string,
+                recordedAt: c[resolvedRowsFields.recordedAt] as string,
             }));
 
             const userIds = [...new Set(children.map(c => c.userId))];
@@ -67,13 +68,13 @@ export class DailyRecordIntegrityScanner {
                     const transportListPath = buildListPath(transportListTitle);
                     for (let i = 0; i < userIds.length; i += 20) {
                         const chunk = userIds.slice(i, i + 20);
-                        const userFilters = chunk.map(uid => `${DAILY_RECORD_ROWS_FIELDS.userId} eq '${uid}'`).join(' or ');
-                        const transportUrl = `${transportListPath}/items?$filter=${userFilters}&$select=UserID`;
+                        const userFilters = chunk.map(uid => `${resolvedRowsFields.userId} eq '${uid}'`).join(' or ');
+                        const transportUrl = `${transportListPath}/items?$filter=${encodeURIComponent(userFilters)}&$select=${resolvedRowsFields.userId}`;
                         const tRes = await this.spFetch(transportUrl, { signal });
                         const tData = await tRes.json();
                         accessories.push(...(tData.value || []).map((t: Record<string, unknown>) => ({
                             type: 'transport' as const,
-                            userId: t.UserID as string,
+                            userId: t[resolvedRowsFields.userId] as string,
                         })));
                     }
                 } catch (accError) {

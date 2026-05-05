@@ -67,15 +67,18 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
         throw new Error(`Daily records list not found: ${this.listTitle}`);
     }
     const rowsListPath = buildListPath(this.getRowsListTitle());
+    const resolvedRowsFields = await this.schema.resolveRowsFields(rowsListPath);
     const existingItem = await this.data.findItemByDate(input.date, listPath, params?.signal);
 
-    return this.saver.save(input, listPath, rowsListPath, existingItem, params);
+    return this.saver.save(input, listPath, rowsListPath, existingItem, resolvedRowsFields, params);
   }
 
   async load(date: string): Promise<DailyRecordItem | null> {
     const listPath = await this.schema.resolveListPath();
     if (!listPath) return null;
-    return this.data.load(date, listPath, this.getRowsListTitle());
+    const rowsListPath = buildListPath(this.getRowsListTitle());
+    const resolvedRowsFields = await this.schema.resolveRowsFields(rowsListPath);
+    return this.data.load(date, listPath, this.getRowsListTitle(), resolvedRowsFields);
   }
 
   async list(params: DailyRecordRepositoryListParams & { limit?: number }): Promise<DailyRecordItem[]> {
@@ -106,7 +109,9 @@ export class SharePointDailyRecordRepository implements DailyRecordRepository {
   async scanIntegrity(dates: string[], signal?: AbortSignal): Promise<DailyIntegrityException[]> {
     const listPath = await this.schema.resolveListPath();
     if (!listPath) return [];
-    return this.integrity.scan(dates, listPath, this.getRowsListTitle(), signal);
+    const rowsListPath = buildListPath(this.getRowsListTitle());
+    const resolvedRowsFields = await this.schema.resolveRowsFields(rowsListPath);
+    return this.integrity.scan(dates, listPath, this.getRowsListTitle(), resolvedRowsFields, signal);
   }
 
   async checkListExists(): Promise<boolean> {
