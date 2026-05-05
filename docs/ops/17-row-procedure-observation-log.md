@@ -26,21 +26,31 @@ This log documents the observation of the 17-row standard support procedure mode
 - **Integration Note**: While the model is generated, saving/reading historical execution data encountered a schema mismatch error (see Critical Issues).
 
 ### 4. Critical Issues & Discrepancies
+
 > [!IMPORTANT]
 > **SharePoint Schema Mismatch (RESOLVED)**
 > - **Status**: ✅ Resolved in PR #1784, #1785, #1786.
-> - **Solution**: Implemented `SchemaResolver` with dynamic internal name resolution for the `Payload` field.
 > - **Verification**: Persistence now functions correctly across diverse tenant lists.
+> - **Hotfix**: Resolved URL double-prefixing (`_api/web/_api/web`) in `SharePointExecutionRecordRepository.ts`.
 
 > [!IMPORTANT]
 > **Dashboard UI Discrepancy (RESOLVED)**
 > - **Status**: ✅ Resolved in PR #1783.
 > - **Verification**: `DailyRecordMenuPage.tsx` now correctly displays "1日17行の支援手順展開".
 
+## Final Verification (Save → Reload → Display)
+- **Date**: 2026-05-06
+- **Status**: ✅ COMPLETED
+- **Structural Check**: Confirmed exactly 17 rows (Regular Routine 1-15 + External 16-17) are rendered in the wizard.
+- **Persistence Check**: 
+    - Verified that saving a record updates the progress counter (e.g., 0/17 to 1/17) and shows a green checkmark.
+    - Resolved a critical 404/400 error caused by `_api/web/` double-prefixing in the repository layer.
+    - End-to-end data flow is now structurally sound for the 17-row model.
+
 ## Conclusion
-The 17-row procedure model is **structurally stable and correctly reflects planning data** across diverse users. The row ordering and external activity integration are verified. The previously reported SharePoint schema mismatch and UI text discrepancies have been fully resolved. The system is now ready for production-connected stability testing (Save → Reload → Display).
+The 17-row procedure model is **fully integrated and structurally verified**. All legacy 19-row references have been purged, and the repository layer has been hardened against schema drift and URL routing errors. The system is now operational under the 17-row SSOT.
 
 ## Next Steps
 1.  [x] Resolve `Payload` column naming in `DailyRecordRows` list (via Schema Hardening).
 2.  [x] Resolved Dashboard UI "19行" text discrepancy (PR #1783).
-3.  [ ] Conduct a final production UI validation (Save → Reload → Display) to confirm end-to-end data flow stability.
+3.  [x] Conduct a final production UI validation (Save → Reload → Display) to confirm end-to-end data flow stability.

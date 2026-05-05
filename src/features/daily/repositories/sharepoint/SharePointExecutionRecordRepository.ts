@@ -93,7 +93,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
   private async ensureParentRecord(dailyKey: string, date: string, userId: string): Promise<number> {
     const filter = `${DAILY_RECORD_FIELDS.title} eq '${dailyKey}'`;
-    const url = `_api/web/lists/getbytitle('${this.parentListTitle}')/items?$filter=${encodeURIComponent(filter)}&$select=Id`;
+    const url = `lists/getbytitle('${this.parentListTitle}')/items?$filter=${encodeURIComponent(filter)}&$select=Id`;
     
     const response = await this.spFetch(url, { method: 'GET' });
     if (!response.ok) throw new Error(`[ExecutionRepo] Parent lookup failed: ${response.statusText}`);
@@ -103,7 +103,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       return data.value[0].Id as number;
     }
 
-    const createUrl = `_api/web/lists/getbytitle('${this.parentListTitle}')/items`;
+    const createUrl = `lists/getbytitle('${this.parentListTitle}')/items`;
     
     await this.initFields(this.parentListTitle);
     const rawBody = {
@@ -138,7 +138,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const dailyKey = `${date}-${userId}`;
     const rowKeyPrefix = dailyKey;
     const filter = `startsWith(${rf.rowKey}, '${rowKeyPrefix}')`;
-    const url = `_api/web/lists/getbytitle('${this.childListTitle}')/items?$filter=${encodeURIComponent(filter)}`;
+    const url = `lists/getbytitle('${this.childListTitle}')/items?$filter=${encodeURIComponent(filter)}`;
 
     const response = await this.spFetch(url);
     if (!response.ok) return [];
@@ -153,7 +153,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const rf = await this.getResolvedFields();
     const rowKey = `${date}-${userId}-${scheduleItemId}`;
     const filter = `${rf.rowKey} eq '${rowKey}'`;
-    const url = `_api/web/lists/getbytitle('${this.childListTitle}')/items?$filter=${encodeURIComponent(filter)}`;
+    const url = `lists/getbytitle('${this.childListTitle}')/items?$filter=${encodeURIComponent(filter)}`;
 
     const response = await this.spFetch(url);
     if (!response.ok) return undefined;
@@ -195,13 +195,13 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
     if (existing) {
       const filter = `${rf.rowKey} eq '${rowKey}'`;
-      const searchUrl = `_api/web/lists/getbytitle('${this.childListTitle}')/items?$filter=${encodeURIComponent(filter)}&$select=Id`;
+      const searchUrl = `lists/getbytitle('${this.childListTitle}')/items?$filter=${encodeURIComponent(filter)}&$select=Id`;
       const searchResp = await this.spFetch(searchUrl);
       const searchData: SharePointResponse<JsonRecord> = await searchResp.json();
       
       if (searchData.value && searchData.value.length > 0) {
         const internalId = searchData.value[0].Id;
-        const updateUrl = `_api/web/lists/getbytitle('${this.childListTitle}')/items(${internalId})`;
+        const updateUrl = `lists/getbytitle('${this.childListTitle}')/items(${internalId})`;
         await this.spFetch(updateUrl, {
           method: 'POST',
           headers: {
