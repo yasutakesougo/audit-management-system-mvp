@@ -3,6 +3,7 @@ import { bridgePlanningSheetToDailyProcedures } from '../dailyProcedureMapper';
 import type { SupportPlanningSheet } from '@/domain/isp/schema/ispPlanningSheetSchema';
 import { SHIODA_SEVERE_SUPPORT_SHEET } from '../__fixtures__/shiotaSevereSupportProcedure';
 import { KATSURAGAWA_SEVERE_SUPPORT_SHEET } from '../__fixtures__/katsuragawaSevereSupportProcedure';
+import { NAKAMURA_SEVERE_SUPPORT_SHEET } from '../__fixtures__/nakamuraSevereSupportProcedure';
 
 describe('dailyProcedureMapper', () => {
   const mockSheet: Partial<SupportPlanningSheet> = {
@@ -178,6 +179,52 @@ describe('dailyProcedureMapper', () => {
       expect(row17?.activity).toContain('AM/PM日中活動（外活動）');
       // Row 17 for Katsuragawa-san in Excel was empty except for header
       expect(row17?.personAction).toBe('AM PM日中活動 (外活動)');
+    });
+  });
+
+  describe('Nakamura-san Severe Support Case (17-Row Validation)', () => {
+    it('should map all 17 rows correctly including external activities', () => {
+      const doc = bridgePlanningSheetToDailyProcedures(NAKAMURA_SEVERE_SUPPORT_SHEET);
+
+      // Verify row count
+      expect(doc.rows.length).toBe(17);
+
+      // Verify Row 1 (Morning Prep - 9:20頃)
+      const row1 = doc.rows.find(r => r.rowNo === 1);
+      expect(row1?.personAction).toContain('家族の送迎で来所');
+
+      // Verify Row 5 (AM Activity - タオル作業)
+      const row5 = doc.rows.find(r => r.rowNo === 5);
+      expect(row5?.activity).toBe('AM日中活動');
+      expect(row5?.personAction).toContain('タオル作業');
+
+      // Verify Row 8 (Lunch break - 財布管理)
+      const row8 = doc.rows.find(r => r.rowNo === 8);
+      expect(row8?.activity).toBe('昼休み');
+      expect(row8?.supporterAction).toContain('財布の声掛け');
+
+      // Verify Row 13 (のんびりタイム - 動画鑑賞)
+      const row13 = doc.rows.find(r => r.rowNo === 13);
+      expect(row13?.activity).toContain('のんびりタイム');
+      expect(row13?.personAction).toContain('動画鑑賞');
+
+      // Verify Row 16 & 17 (External Activities)
+      const row16 = doc.rows.find(r => r.rowNo === 16);
+      const row17 = doc.rows.find(r => r.rowNo === 17);
+
+      expect(row16?.activity).toContain('AM/PM日中活動（外活動準備）');
+      expect(row16?.supporterAction).toContain('トイレの声掛け');
+
+      expect(row17?.activity).toContain('AM/PM日中活動（外活動）');
+      expect(row17?.supporterAction).toContain('写真を撮る');
+    });
+
+    it('should capture sensory triggers unique to Nakamura-san', () => {
+      const doc = bridgePlanningSheetToDailyProcedures(NAKAMURA_SEVERE_SUPPORT_SHEET);
+
+      // specialNotes should include sensory triggers
+      expect(doc.specialNotes).toContain('かさぶた');
+      expect(doc.specialNotes).toContain('ささくれ');
     });
   });
 });
