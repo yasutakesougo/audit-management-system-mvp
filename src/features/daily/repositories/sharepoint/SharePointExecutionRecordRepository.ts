@@ -109,7 +109,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     return activePayload;
   }
 
-  private async ensureParentRecord(dailyKey: string, date: string, userId: string): Promise<number> {
+  private async ensureParentRecord(dailyKey: string, date: string, _userId: string): Promise<number> {
     await this.getResolvedFields(); // Ensure paths resolved
     const filter = `${DAILY_RECORD_FIELDS.title} eq '${dailyKey}'`;
     const url = `${this.resolvedParentPath}/items?$filter=${encodeURIComponent(filter)}&$select=Id`;
@@ -128,7 +128,9 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const rawBody = {
       [DAILY_RECORD_FIELDS.title]: dailyKey,
       [DAILY_RECORD_FIELDS.recordDate]: date,
-      UserId: userId, 
+      [DAILY_RECORD_FIELDS.userCount]: 1,
+      [DAILY_RECORD_FIELDS.latestVersion]: 1,
+      [DAILY_RECORD_FIELDS.userRowsJSON]: '[]',
     };
     const body = this.filterPayload(this.parentListTitle, rawBody);
 
