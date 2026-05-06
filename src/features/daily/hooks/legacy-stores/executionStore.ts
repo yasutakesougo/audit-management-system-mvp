@@ -20,7 +20,7 @@ import {
 // ---------------------------------------------------------------------------
 
 const STORAGE_KEY = EXECUTION_RECORD_KEY;
-const DEBOUNCE_MS = 600;
+const DEBOUNCE_MS = 100;
 
 function loadFromStorage(): Record<string, DailyUserRecords> {
   try {
