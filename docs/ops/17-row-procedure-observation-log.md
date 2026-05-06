@@ -92,3 +92,9 @@ The system has reached its final stabilization peak. The reduction of the persis
 - **Guardrail**:
   - `SourceFileName0` is mandatory and blocks readiness when absent.
   - guarded apply is split to the next PR.
+- **Dry-run Raw Output (summary)**:
+  - planned additions: 13
+  - conflicts: 0
+  - drift risks: 0
+  - `SourceFileName0`: present / required
+  - guarded apply readiness: ready
