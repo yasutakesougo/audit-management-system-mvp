@@ -4,6 +4,7 @@ import type { SupportPlanningSheet } from '@/domain/isp/schema/ispPlanningSheetS
 import { SHIODA_SEVERE_SUPPORT_SHEET } from '../__fixtures__/shiotaSevereSupportProcedure';
 import { KATSURAGAWA_SEVERE_SUPPORT_SHEET } from '../__fixtures__/katsuragawaSevereSupportProcedure';
 import { NAKAMURA_SEVERE_SUPPORT_SHEET } from '../__fixtures__/nakamuraSevereSupportProcedure';
+import { ISHIWATA_SEVERE_SUPPORT_SHEET } from '../__fixtures__/ishiwataSevereSupportProcedure';
 
 describe('dailyProcedureMapper', () => {
   const mockSheet: Partial<SupportPlanningSheet> = {
@@ -225,6 +226,47 @@ describe('dailyProcedureMapper', () => {
       // specialNotes should include sensory triggers
       expect(doc.specialNotes).toContain('かさぶた');
       expect(doc.specialNotes).toContain('ささくれ');
+    });
+  });
+
+  describe('Ishiwata-san Severe Support Case (17-Row Validation)', () => {
+    it('should map all 17 rows correctly including external activities', () => {
+      const doc = bridgePlanningSheetToDailyProcedures(ISHIWATA_SEVERE_SUPPORT_SHEET);
+
+      // Verify row count
+      expect(doc.rows.length).toBe(17);
+
+      // Verify Row 1 (Morning Prep)
+      const row1 = doc.rows.find(r => r.rowNo === 1);
+      expect(row1?.personAction).toContain('送迎車で来所');
+      expect(row1?.supporterAction).toContain('送迎担当と引継ぎ');
+
+      // Verify Row 5 (AM Activity)
+      const row5 = doc.rows.find(r => r.rowNo === 5);
+      expect(row5?.personAction).toContain('第二作業室で本や小道具');
+      expect(row5?.supporterAction).toContain('活動準備 トイレ誘導');
+
+      // Verify Row 8 (Lunch break)
+      const row8 = doc.rows.find(r => r.rowNo === 8);
+      expect(row8?.personAction).toContain('動画鑑賞 コーヒー注文');
+      expect(row8?.supporterAction).toContain('タブレットの順番管理');
+
+      // Verify Row 14 (帰りの準備)
+      const row14 = doc.rows.find(r => r.rowNo === 14);
+      expect(row14?.personAction).toContain('帰りの準備 室内にいる');
+      expect(row14?.supporterAction).toContain('トイレ誘導・介助 帰りの準備');
+
+      // Verify Row 16 & 17 (External Activities)
+      const row16 = doc.rows.find(r => r.rowNo === 16);
+      const row17 = doc.rows.find(r => r.rowNo === 17);
+
+      expect(row16?.activity).toContain('AM/PM日中活動（外活動準備）');
+      expect(row16?.personAction).toContain('出発前のトイレ');
+      expect(row16?.supporterAction).toContain('自動ドアの前で写真を撮る');
+
+      expect(row17?.activity).toContain('AM/PM日中活動（外活動）');
+      expect(row17?.personAction).toContain('出発前のトイレ');
+      expect(row17?.supporterAction).toContain('自動ドアの前で写真を撮る');
     });
   });
 });
