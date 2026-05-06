@@ -21,19 +21,26 @@ export function useBehaviorStore() {
     if (!userId) return;
     setLoading(true);
     try {
-      // Migration Status: Reading from Path-B (ibdStore) as SSOT
-      const rawRecords = getABCRecordsForUser(userId);
+      // 1. SharePoint / API 等のリポジトリから直接取得
+      const records = await repo.getByUser(userId);
+      setData(ensureDesc(records).slice(0, RECENT_LIMIT));
       
-      // Recent sorted records (Descending for history display)
-      const normalized = ensureDesc(rawRecords).slice(0, RECENT_LIMIT);
-      setData(normalized);
+      // 2. IBD Store (Path-B) への同期（レガシー互換性のため）
+      records.forEach((r) => {
+        addABCRecord(r);
+      });
+      
+      setError(null);
     } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err : new Error('Failed to load behaviors'));
+      console.warn('[useBehaviorStore] fetchByUser failed, falling back to local:', err);
+      // Fallback: 取得失敗時は従来通りローカル(ibdStore)から読み込む
+      const rawRecords = getABCRecordsForUser(userId);
+      setData(ensureDesc(rawRecords).slice(0, RECENT_LIMIT));
+      setError(err instanceof Error ? err : new Error('取得に失敗しました'));
     } finally {
       setLoading(false);
     }
-  }, [RECENT_LIMIT, ensureDesc]);
+  }, [RECENT_LIMIT, ensureDesc, repo]);
 
   const add = useCallback(async (record: Omit<ABCRecord, 'id'>) => {
     setLoading(true);

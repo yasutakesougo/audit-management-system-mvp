@@ -40,17 +40,25 @@ This log documents the observation of the 17-row standard support procedure mode
 
 ## Final Verification (Save → Reload → Display)
 - **Date**: 2026-05-06
-- **Status**: ✅ COMPLETED
+- **Status**: ✅ COMPLETED / FULLY STABILIZED
 - **Structural Check**: Confirmed exactly 17 rows (Regular Routine 1-15 + External 16-17) are rendered in the wizard.
 - **Persistence Check**: 
-    - Verified that saving a record updates the progress counter (e.g., 0/17 to 1/17) and shows a green checkmark.
-    - Resolved a critical 404/400 error caused by `_api/web/` double-prefixing in the repository layer.
-    - End-to-end data flow is now structurally sound for the 17-row model.
+    - Resolved a critical 404/400 error caused by redundant `_api/web/` prefixing in `SharePointExecutionRecordRepository.ts`.
+    - Implemented Cloud-to-Local synchronization: Fetched SharePoint records are now correctly hydrated into the Zustand store on page reload.
+    - Verified that progress counters (e.g., "1/17 完了") correctly reflect saved data after a full page refresh by integrating reactive execution records into the UI hydration cycle.
+    - Fixed list title resolution for child rows: Transitioned from `SupportRecord_DailyRows` (deprecated) to `DailyRecordRows` (standard registry name) to resolve "List not found" errors in the production site.
+    - **Harden Schema Resolution**: Resolved "Column 'RowKey' does not exist" error by prioritizing `Title` over `RowKey` for record identification, ensuring compatibility with lists that lack the custom `RowKey` column.
+    - **Relaxed Domain Validation**: Fixed `ABCRecord` persistence failures by allowing empty strings for ABC fields (`antecedent`, `behavior`, `consequence`) in `abc.schema.ts`, supporting records that only contain procedure execution data.
 
 ## Conclusion
-The 17-row procedure model is **fully integrated and structurally verified**. All legacy 19-row references have been purged, and the repository layer has been hardened against schema drift and URL routing errors. The system is now operational under the 17-row SSOT.
+The 17-row procedure model is **fully operational and production-hardened**. All technical barriers related to SharePoint persistence, schema drift, validation constraints, and UI hydration have been eliminated. The system consistently maintains the 17-row SSOT across all layers (Domain → Repository → UI).
 
-## Next Steps
-1.  [x] Resolve `Payload` column naming in `DailyRecordRows` list (via Schema Hardening).
-2.  [x] Resolved Dashboard UI "19行" text discrepancy (PR #1783).
-3.  [x] Conduct a final production UI validation (Save → Reload → Display) to confirm end-to-end data flow stability.
+## Closed Tasks
+- [x] Resolve `Payload` column naming in `DailyRecordRows` list (via Schema Hardening).
+- [x] Resolve Dashboard UI "19行" text discrepancy (PR #1783).
+- [x] Correct redundant `_api/web/` URL prefixing (Final Hotfix).
+- [x] Implement mount-time hydration for behavior and execution records (Final Hotfix).
+- [x] Resolve `DailyRecordRows` list title mismatch (Registry Alignment).
+- [x] Harden `RowKey` resolution by prioritizing `Title` (Resilience Fix).
+- [x] Relax `ABCRecord` validation to support procedure-only records (Domain Fix).
+- [x] Conduct a final production UI validation (Save → Reload → Display) to confirm end-to-end data flow stability.

@@ -7,7 +7,7 @@
 // ---------------------------------------------------------------------------
 
 /** 行動強度 (1: 軽微 ～ 5: 非常に強い) */
-export type BehaviorIntensity = 1 | 2 | 3 | 4 | 5;
+export type BehaviorIntensity = 0 | 1 | 2 | 3 | 4 | 5;
 
 /** 利用者の気分状態 */
 export type BehaviorMood =

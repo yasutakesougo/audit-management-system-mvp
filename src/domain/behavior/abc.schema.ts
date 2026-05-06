@@ -35,11 +35,11 @@ export const abcRecordSchema = z.object({
   recordedBy: z.string().optional(),
 
   // ABC
-  antecedent: z.string().min(1, '先行事象は必須です'),
+  antecedent: z.string().min(0, '先行事象は必須です'),
   antecedentTags: z.array(z.string()).default([]),
-  behavior: z.string().min(1, '行動は必須です'),
-  consequence: z.string().min(1, '結果事象は必須です'),
-  intensity: behaviorIntensitySchema,
+  behavior: z.string().min(0, '行動は必須です'),
+  consequence: z.string().min(0, '結果事象は必須です'),
+  intensity: z.union([z.literal(0), behaviorIntensitySchema]),
 
   // 臨床分析
   behaviorOutcome: behaviorOutcomeSchema.optional(),

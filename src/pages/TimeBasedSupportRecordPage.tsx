@@ -11,6 +11,7 @@ import { UserSelectionStep } from '@/features/daily/components/wizard/UserSelect
 import { useBehaviorData } from '@/features/daily/hooks/legacy/useBehaviorData';
 import { useDailySupportUserFilter } from '@/features/daily/hooks/legacy/useDailySupportUserFilter';
 import { useExecutionData } from '@/features/daily/hooks/legacy/useExecutionData';
+import { useExecutionStore } from '@/features/daily/hooks/legacy-stores/executionStore';
 import { useProcedureData } from '@/features/daily/hooks/legacy/useProcedureData';
 import { useSupportWizard } from '@/features/daily/hooks/legacy/useSupportWizard';
 import type { ProcedureItem } from '@/features/daily/hooks/legacy-stores/procedureStore';
@@ -30,7 +31,7 @@ import Snackbar from '@mui/material/Snackbar';
 import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import Stepper from '@mui/material/Stepper';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 const TimeBasedSupportRecordPage: React.FC = () => {
@@ -71,9 +72,16 @@ const TimeBasedSupportRecordPage: React.FC = () => {
   const { filter, updateFilter, resetFilter, filteredUsers, hasActiveFilter } = useDailySupportUserFilter(users);
   const interventionStore = useInterventionStore();
   const executionStore = useExecutionData();
+  const { getRecords: getLocalRecords } = useExecutionStore();
 
   // ── Wizard state ──
   const wizard = useSupportWizard(initialParams.userId, initialParams.stepKey);
+
+  const currentUserId = wizard.wizardUserId || initialParams.userId;
+  const executionRecords = useMemo(
+    () => getLocalRecords(targetDate, currentUserId || ''),
+    [getLocalRecords, targetDate, currentUserId]
+  );
 
   // ── Phase E: 支援計画シートからの手順取得 ──
   const { 
@@ -108,10 +116,11 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     procedureRepo,
     behaviorRepo,
     behaviorRecords,
-    initialUserId: wizard.wizardUserId || initialParams.userId,
+    initialUserId: currentUserId,
     initialStepKey: wizard.wizardSlotId || initialParams.stepKey,
     initialUnfilledOnly: initialParams.unfilledOnly,
     overrideSchedule,
+    executionRecords,
   });
 
   // ── Submit logic ──
@@ -236,6 +245,15 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       // Fallback handled by snackbar
     }
   }, [executionStore, schedule, selectedUser, targetDate, wizard.wizardUserId, targetUserId, recentObservations]);
+
+  // ── Execution Record Sync (Hydration) ──
+  useEffect(() => {
+    const uid = wizard.wizardUserId || targetUserId;
+    if (!uid || !targetDate) return;
+    
+    // Fetch from SharePoint and sync to local store
+    void executionStore.getRecords(targetDate, uid);
+  }, [executionStore, wizard.wizardUserId, targetUserId, targetDate]);
   
   const handleExportExcel = useCallback(async () => {
     if (!sheetData) return;

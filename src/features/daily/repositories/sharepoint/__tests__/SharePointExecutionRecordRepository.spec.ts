@@ -30,6 +30,11 @@ describe('SharePointExecutionRecordRepository', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default mocks for list resolution probes
+    mockSpFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ value: [] }), // Default empty response
+    });
   });
 
   it('filters out non-existent fields from the payload', async () => {
@@ -45,19 +50,25 @@ describe('SharePointExecutionRecordRepository', () => {
       triggeredBipIds: [],
     };
 
-    // First call to ensureParentRecord
+    // 1. resolveParentPath probe
+    mockSpFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ value: [] }) });
+    // 2. resolveRowsPath probe
+    mockSpFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ value: [] }) });
+    // 3. resolveRowsFields -> getListFieldNames (if getListFieldInternalNames is provided, it might skip this or use it)
+    
+    // 4. ensureParentRecord lookup
     mockSpFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ value: [{ Id: 123 }] }),
     });
     
-    // Call to getRecord (checks if exists)
+    // 5. getRecord (checks if exists)
     mockSpFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ value: [] }),
     });
 
-    // Final call to createItem (the one we want to check)
+    // 6. Final call to createItem (the one we want to check)
     mockSpFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ d: { Id: 456 } }),
@@ -67,7 +78,7 @@ describe('SharePointExecutionRecordRepository', () => {
 
     // Verify fields in the POST request to child list
     const createCall = mockSpFetch.mock.calls.find(call => 
-      call[0].includes('SupportRecord_DailyRows') && call[1]?.method === 'POST'
+      call[0].includes('DailyRecordRows') && call[1]?.method === 'POST'
     );
     
     expect(createCall).toBeDefined();
@@ -96,6 +107,13 @@ describe('SharePointExecutionRecordRepository', () => {
       triggeredBipIds: [],
     };
 
+    // resolveParentPath probe
+    mockSpFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ value: [] }) });
+    // resolveRowsPath probe
+    mockSpFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ value: [] }) });
+    // getListFieldNames call (since no getListFieldInternalNames provided)
+    mockSpFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ value: [{ InternalName: 'Title' }] }) });
+
     mockSpFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ value: [{ Id: 123 }] }),
@@ -104,11 +122,12 @@ describe('SharePointExecutionRecordRepository', () => {
     await repoNoFields.upsertRecord(record);
 
     const createCall = mockSpFetch.mock.calls.find(call => 
-      call[0].includes('SupportRecord_DailyRows') && call[1]?.method === 'POST'
+      call[0].includes('DailyRecordRows') && call[1]?.method === 'POST'
     );
     
+    expect(createCall).toBeDefined();
     const body = JSON.parse(createCall![1]!.body as string);
-    // Should include StaffName as filtering was skipped
+    // Should include StaffName as filtering was skipped (fallback to full payload)
     expect(body[EXECUTION_RECORD_FIELDS.staffName]).toBe('Staff A');
   });
 });

@@ -10,11 +10,14 @@ import {
 } from './constants';
 import type { JsonRecord } from '@/lib/sp/types';
 import { DailyRecordSchemaResolver } from './modules/SchemaResolver';
-import { buildListPath } from './utils/Helpers';
 
 type SharePointExecutionRecordRepositoryOptions = {
   spFetch: SpFetchFn;
   getListFieldInternalNames?: (listTitle: string) => Promise<Set<string>>;
+  store?: {
+    getRecords: (date: string, userId: string) => ExecutionRecord[];
+    upsertRecord: (record: ExecutionRecord) => void;
+  };
 };
 
 /**
@@ -23,18 +26,22 @@ type SharePointExecutionRecordRepositoryOptions = {
  */
 export class SharePointExecutionRecordRepository implements ExecutionRecordRepository {
   private readonly spFetch: SpFetchFn;
+  private readonly store?: SharePointExecutionRecordRepositoryOptions['store'];
   private readonly getListFieldInternalNames?: (listTitle: string) => Promise<Set<string>>;
   private readonly parentListTitle: string;
   private readonly childListTitle: string;
   private readonly resolver: DailyRecordSchemaResolver;
   
   private resolvedFields: ResolvedRowsFields | null = null;
+  private resolvedParentPath: string | null = null;
+  private resolvedChildPath: string | null = null;
   private availableFields = new Map<string, Set<string>>();
   private initPromises = new Map<string, Promise<void>>();
 
   constructor(options: SharePointExecutionRecordRepositoryOptions) {
     this.spFetch = options.spFetch;
     this.getListFieldInternalNames = options.getListFieldInternalNames;
+    this.store = options.store;
     this.parentListTitle = getListTitle();
     this.childListTitle = getRowsListTitle();
     this.resolver = new DailyRecordSchemaResolver(
@@ -47,9 +54,20 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
   private async getResolvedFields(): Promise<ResolvedRowsFields> {
     if (this.resolvedFields) return this.resolvedFields;
     
-    const rowsListPath = buildListPath(this.childListTitle);
-    this.resolvedFields = await this.resolver.resolveRowsFields(rowsListPath);
-    return this.resolvedFields;
+    // Resolve paths first
+    this.resolvedParentPath = await this.resolver.resolveListPath();
+    if (!this.resolvedParentPath) {
+      this.resolvedParentPath = `lists/getbytitle('${this.parentListTitle}')`;
+    }
+    this.resolvedChildPath = await this.resolver.resolveRowsPath(this.childListTitle);
+
+    if (!this.resolvedChildPath) {
+       // Fallback to direct path if resolution fails
+       this.resolvedChildPath = `lists/getbytitle('${this.childListTitle}')`;
+    }
+
+    this.resolvedFields = await this.resolver.resolveRowsFields(this.resolvedChildPath);
+    return this.resolvedFields!;
   }
 
   private async initFields(listTitle: string): Promise<void> {
@@ -92,8 +110,9 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
   }
 
   private async ensureParentRecord(dailyKey: string, date: string, userId: string): Promise<number> {
+    await this.getResolvedFields(); // Ensure paths resolved
     const filter = `${DAILY_RECORD_FIELDS.title} eq '${dailyKey}'`;
-    const url = `lists/getbytitle('${this.parentListTitle}')/items?$filter=${encodeURIComponent(filter)}&$select=Id`;
+    const url = `${this.resolvedParentPath}/items?$filter=${encodeURIComponent(filter)}&$select=Id`;
     
     const response = await this.spFetch(url, { method: 'GET' });
     if (!response.ok) throw new Error(`[ExecutionRepo] Parent lookup failed: ${response.statusText}`);
@@ -103,7 +122,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
       return data.value[0].Id as number;
     }
 
-    const createUrl = `lists/getbytitle('${this.parentListTitle}')/items`;
+    const createUrl = `${this.resolvedParentPath}/items`;
     
     await this.initFields(this.parentListTitle);
     const rawBody = {
@@ -137,23 +156,34 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const rf = await this.getResolvedFields();
     const dailyKey = `${date}-${userId}`;
     const rowKeyPrefix = dailyKey;
-    const filter = `startsWith(${rf.rowKey}, '${rowKeyPrefix}')`;
-    const url = `lists/getbytitle('${this.childListTitle}')/items?$filter=${encodeURIComponent(filter)}`;
+    
+    // Safety check: if rf.rowKey is RowKey but was resolved without actual presence, OData will fail.
+    // However, resolveInternalNames is supposed to be accurate. 
+    // We lowercase startswith for maximum compatibility.
+    const filter = `startswith(${rf.rowKey}, '${rowKeyPrefix}')`;
+    const url = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}`;
 
     const response = await this.spFetch(url);
     if (!response.ok) return [];
 
     const data: SharePointResponse<JsonRecord> = await response.json();
     if (!data.value) return [];
+    
+    const records = data.value.map((item: JsonRecord) => this.mapToDomain(item, rf));
+    
+    // Sync to local store for reactive UI updates
+    if (this.store) {
+      records.forEach(r => this.store!.upsertRecord(r));
+    }
 
-    return data.value.map((item: JsonRecord) => this.mapToDomain(item, rf));
+    return records;
   }
 
   async getRecord(date: string, userId: string, scheduleItemId: string): Promise<ExecutionRecord | undefined> {
     const rf = await this.getResolvedFields();
     const rowKey = `${date}-${userId}-${scheduleItemId}`;
     const filter = `${rf.rowKey} eq '${rowKey}'`;
-    const url = `lists/getbytitle('${this.childListTitle}')/items?$filter=${encodeURIComponent(filter)}`;
+    const url = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}`;
 
     const response = await this.spFetch(url);
     if (!response.ok) return undefined;
@@ -195,13 +225,13 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
     if (existing) {
       const filter = `${rf.rowKey} eq '${rowKey}'`;
-      const searchUrl = `lists/getbytitle('${this.childListTitle}')/items?$filter=${encodeURIComponent(filter)}&$select=Id`;
+      const searchUrl = `${this.resolvedChildPath}/items?$filter=${encodeURIComponent(filter)}&$select=Id`;
       const searchResp = await this.spFetch(searchUrl);
       const searchData: SharePointResponse<JsonRecord> = await searchResp.json();
       
       if (searchData.value && searchData.value.length > 0) {
         const internalId = searchData.value[0].Id;
-        const updateUrl = `lists/getbytitle('${this.childListTitle}')/items(${internalId})`;
+        const updateUrl = `${this.resolvedChildPath}/items(${internalId})`;
         await this.spFetch(updateUrl, {
           method: 'POST',
           headers: {
@@ -213,12 +243,17 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
         });
       }
     } else {
-      const createUrl = `_api/web/lists/getbytitle('${this.childListTitle}')/items`;
+      const createUrl = `${this.resolvedChildPath}/items`;
       await this.spFetch(createUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json;odata=verbose' },
         body: JSON.stringify(body),
       });
+    }
+
+    // Sync to local store
+    if (this.store) {
+      this.store.upsertRecord(record);
     }
   }
 
@@ -236,13 +271,22 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
   private mapToDomain(item: JsonRecord, rf: ResolvedRowsFields): ExecutionRecord {
     const title = (item.Title || item.title || '') as string;
+    let triggeredBipIds: string[] = [];
+    try {
+      if (item[rf.bipsJSON]) {
+        triggeredBipIds = JSON.parse(item[rf.bipsJSON] as string);
+      }
+    } catch (e) {
+      console.warn('[ExecutionRepo] Failed to parse triggeredBipIds:', e);
+    }
+
     return {
       id: title,
       date: title.slice(0, 10), 
       userId: (item[rf.userId] || '') as string,
       scheduleItemId: (item[rf.rowNo] || '') as string,
       status: item[rf.status] as RecordStatus,
-      triggeredBipIds: item[rf.bipsJSON] ? JSON.parse(item[rf.bipsJSON] as string) : [],
+      triggeredBipIds,
       memo: (item[rf.memo] || item[rf.payload] || '') as string,
       recordedBy: (item[rf.staffName] || '') as string,
       recordedAt: (item[rf.recordedAt] || '') as string,
