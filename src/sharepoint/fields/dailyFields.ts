@@ -145,11 +145,11 @@ export const DAILY_RECORD_ROW_AGGREGATE_CANDIDATES = {
   specialNote: ['SpecialNote', 'specialNote', 'cr013_specialnote'],
   version: ['Version', 'VersionNo', 'cr013_version'],
   recordedAt: ['Recorded_x0020_At', 'RecordedAt', 'cr013_recordedAt'],
-  rowKey: ['RowKey', 'Title'],
-  rowNo: ['RowNo'],
+  rowKey: ['Title', 'RowKey'],
+  rowNo: ['RowNo', 'cr013_rowNo'],
   memo: ['Memo', 'Observation', 'Payload', 'payload'],
-  staffName: ['StaffName'],
-  bipsJSON: ['BipsJSON'],
+  staffName: ['StaffName', 'RecordedBy'],
+  bipsJSON: ['BipsJSON', 'cr013_bipsJSON'],
 } as const;
 
 export const DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS: (keyof typeof DAILY_RECORD_ROW_AGGREGATE_CANDIDATES)[] = [
@@ -157,6 +157,20 @@ export const DAILY_RECORD_ROW_AGGREGATE_ESSENTIALS: (keyof typeof DAILY_RECORD_R
 ];
 
 // ActivityDiary フィールド定義は activityDiaryFields.ts に移動しました。
+
+/**
+ * Daily Record Rows (17行実施記録) リストのプロビジョニング定義
+ */
+export const DAILY_RECORD_ROWS_ENSURE_FIELDS: SpFieldDef[] = [
+  { internalName: 'Parent_x0020_ID', type: 'Number', displayName: 'Parent ID', required: true },
+  { internalName: 'User_x0020_ID', type: 'Text', displayName: 'User ID', required: true },
+  { internalName: 'RowNo', type: 'Text', displayName: 'Row No', required: true },
+  { internalName: 'Status', type: 'Text', displayName: 'Status' },
+  { internalName: 'Memo', type: 'Note', displayName: 'Memo' },
+  { internalName: 'StaffName', type: 'Text', displayName: 'Staff Name' },
+  { internalName: 'Recorded_x0020_At', type: 'DateTime', displayName: 'Recorded At', dateTimeFormat: 'DateTime' },
+  { internalName: 'BipsJSON', type: 'Note', displayName: 'BIPs JSON' },
+];
 
 /**
  * Canonical Daily Record リストのプロビジョニング定義
