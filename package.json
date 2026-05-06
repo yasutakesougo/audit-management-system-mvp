@@ -117,6 +117,7 @@
     "patrol:exception-center": "node scripts/ops/export-exception-center-summary.mjs",
     "patrol:decision": "node scripts/ops/nightly-decision.mjs",
     "patrol:ledger": "tsx scripts/ops/build-drift-ledger.mjs",
+    "sp:dry-run:17row-columns": "tsx scripts/ops/dry-run-17row-dailyrecordrows-columns.ts",
     "patrol:purge": "tsx scripts/ops/execute-zombie-purge.mjs",
     "patrol:governance": "tsx scripts/ops/nightly-drift-governance.mjs",
     "ops:index-remediate": "tsx scripts/ops/index-remediate.ts",

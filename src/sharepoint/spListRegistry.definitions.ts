@@ -349,6 +349,29 @@ export const dailyListEntries: readonly SpListEntry[] = [
   },
 ];
 
+/**
+ * DailyRecordRows 17行モデル向け 追加予定列（dry-run 専用）
+ *
+ * 注意:
+ * - 本定義は guarded apply 前の候補整理用途。
+ * - 現時点では support_record_rows の provisioningFields へは反映しない。
+ */
+export const DAILY_RECORD_ROWS_17ROW_PROPOSED_FIELDS = [
+  { internalName: 'UserCode0', type: 'Text', displayName: '利用者コード', candidates: ['UserCode0', 'UserCode', 'User_x0020_Code'] },
+  { internalName: 'RecordDate0', type: 'DateTime', displayName: '記録日', dateTimeFormat: 'DateOnly', candidates: ['RecordDate0', 'RecordDate', 'Record_x0020_Date'] },
+  { internalName: 'RowNo0', type: 'Number', displayName: '行番号', candidates: ['RowNo0', 'RowNo'] },
+  { internalName: 'TimeSlot0', type: 'Text', displayName: '時間帯', candidates: ['TimeSlot0', 'TimeSlot', 'Time_x0020_Slot'] },
+  { internalName: 'Activity0', type: 'Text', displayName: '活動内容', candidates: ['Activity0', 'Activity'] },
+  { internalName: 'PersonManual0', type: 'Note', displayName: '本人の動き', richText: false, candidates: ['PersonManual0', 'PersonManual'] },
+  { internalName: 'SupporterManual0', type: 'Note', displayName: '支援者の動き', richText: false, candidates: ['SupporterManual0', 'SupporterManual'] },
+  { internalName: 'Situation0', type: 'Note', displayName: '当日の様子・記録', richText: false, candidates: ['Situation0', 'Situation'] },
+  { internalName: 'Completed0', type: 'Text', displayName: '実行ステータス', candidates: ['Completed0', 'Completed'] },
+  { internalName: 'ProcedureType0', type: 'Text', displayName: 'ブロックカテゴリ', candidates: ['ProcedureType0', 'ProcedureType'] },
+  { internalName: 'ParentRowNo0', type: 'Number', displayName: '親行番号', candidates: ['ParentRowNo0', 'ParentRowNo'] },
+  { internalName: 'CreatedByName0', type: 'Text', displayName: '記録者氏名', candidates: ['CreatedByName0', 'CreatedByName'] },
+  { internalName: 'SourceFileName0', type: 'Text', displayName: '取込元ファイル名', required: true, candidates: ['SourceFileName0', 'SourceFileName'] },
+] as const;
+
 export const attendanceListEntries: readonly SpListEntry[] = [
 // ── 3. 出席管理系 ──────────────────────────────────────
   {

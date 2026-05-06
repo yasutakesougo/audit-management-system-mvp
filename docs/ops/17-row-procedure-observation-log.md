@@ -79,3 +79,16 @@ The system has reached its final stabilization peak. The reduction of the persis
 - [x] Reduce `localStorage` debounce to 100ms for improved navigation stability.
 - [x] Unify `useExecutionData` repository factories to prevent hydration drift.
 - [x] Conduct multi-date/multi-user regression testing (Verification: 2026-05-06).
+
+## SharePoint Provisioning Dry-Run (17-row columns)
+- **Date**: 2026-05-07
+- **Scope**: `DailyRecordRows` planned 17-row snapshot/audit fields (suffix `0` naming).
+- **Method**: Static dry-run only (`npm run sp:dry-run:17row-columns`), no SharePoint API apply.
+- **Outputs**:
+  - planned additions,
+  - exact internal-name conflicts against current `support_record_rows` provisioning fields,
+  - internal-name drift risks inferred from alias overlap,
+  - guarded apply readiness decision.
+- **Guardrail**:
+  - `SourceFileName0` is mandatory and blocks readiness when absent.
+  - guarded apply is split to the next PR.
