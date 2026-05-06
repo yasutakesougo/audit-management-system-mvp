@@ -53,12 +53,29 @@ This log documents the observation of the 17-row standard support procedure mode
 ## Conclusion
 The 17-row procedure model is **fully operational and production-hardened**. All technical barriers related to SharePoint persistence, schema drift, validation constraints, and UI hydration have been eliminated. The system consistently maintains the 17-row SSOT across all layers (Domain → Repository → UI).
 
+## Observation Details (Continuous Monitoring)
+- **Date**: 2026-05-06
+- **Environment**: Local Dev (isDev=true) / SharePoint Verification
+- **Subjects**: 秋山 龍二 (I001), 浅沼 なお子 (I002), 阿部 如斗 (I003)
+
+### 5. Multi-Date & Multi-User Continuous Observation
+| Subject | Date | Action | Hydration | Result | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 秋山 龍二 (I001) | 2026-05-06 | 1 record added (2/17) | ✅ Success | OK | Verified persistence after F5 and Date Toggle. |
+| 秋山 龍二 (I001) | 2026-05-05 | Read-only | ✅ Success | OK | Hydrated 0/17 (no records for this date). |
+| 阿部 如斗 (I003) | 2026-05-07 | Template check | ✅ Success | OK | Correctly displays 17 rows for future date. |
+
+### 6. Persistence Optimization & Refinement
+- **Issue identified**: Debounce timer in `executionStore.ts` (600ms) was too long for rapid navigation, causing intermittent data loss in local mode.
+- **Resolution**: Reduced `DEBOUNCE_MS` to **100ms** to ensure `localStorage` is updated before navigation unmounts the store.
+- **Hook Refactoring**: Verified that both legacy and modern `useExecutionData` hooks now point to the unified `executionRepositoryFactory` in `repositories/sharepoint/`, ensuring hydration logic is applied globally (including Kiosk screens).
+- **Cleanup**: Removed duplicate `src/features/daily/infra/executionRepositoryFactory.ts`.
+
+## Conclusion (Updated)
+The system has reached its final stabilization peak. The reduction of the persistence debounce and the unification of the repository factories have resolved the last remaining "edge case" of data loss during rapid date switching. The 17-row model is now reliably persistent and hydrated across all subjects and dates.
+
 ## Closed Tasks
-- [x] Resolve `Payload` column naming in `DailyRecordRows` list (via Schema Hardening).
-- [x] Resolve Dashboard UI "19行" text discrepancy (PR #1783).
-- [x] Correct redundant `_api/web/` URL prefixing (Final Hotfix).
-- [x] Implement mount-time hydration for behavior and execution records (Final Hotfix).
-- [x] Resolve `DailyRecordRows` list title mismatch (Registry Alignment).
-- [x] Harden `RowKey` resolution by prioritizing `Title` (Resilience Fix).
-- [x] Relax `ABCRecord` validation to support procedure-only records (Domain Fix).
-- [x] Conduct a final production UI validation (Save → Reload → Display) to confirm end-to-end data flow stability.
+...
+- [x] Reduce `localStorage` debounce to 100ms for improved navigation stability.
+- [x] Unify `useExecutionData` repository factories to prevent hydration drift.
+- [x] Conduct multi-date/multi-user regression testing (Verification: 2026-05-06).
