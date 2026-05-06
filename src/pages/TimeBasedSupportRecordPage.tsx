@@ -100,7 +100,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     filledStepIds,
     recentObservations,
     setIsAcknowledged,
-    selectedStepId: _selectedStepId,
+    selectedStepId: resolvedSelectedStepId,
     setSelectedStepId,
     scrollToStepId: _scrollToStepId,
     showUnfilledOnly,
@@ -122,6 +122,9 @@ const TimeBasedSupportRecordPage: React.FC = () => {
     overrideSchedule,
     executionRecords,
   });
+
+  // URL `step` は生値のため、schedule 実在キーへ解決済みの値を優先して利用する。
+  const effectiveSlotId = resolvedSelectedStepId ?? wizard.wizardSlotId;
 
   // ── Submit logic ──
   const {
@@ -296,8 +299,8 @@ const TimeBasedSupportRecordPage: React.FC = () => {
         nextParams.delete('user');
         nextParams.delete('userId');
       }
-      if (wizard.wizardSlotId) {
-        nextParams.set('step', wizard.wizardSlotId);
+      if (effectiveSlotId) {
+        nextParams.set('step', effectiveSlotId);
       } else {
         nextParams.delete('step');
       }
@@ -305,7 +308,7 @@ const TimeBasedSupportRecordPage: React.FC = () => {
       if (nextParams.toString() === prev.toString()) return prev;
       return nextParams;
     }, { replace: true });
-  }, [wizard.step, wizard.wizardUserId, wizard.wizardSlotId, targetUserId, setSearchParams]);
+  }, [effectiveSlotId, wizard.step, wizard.wizardUserId, targetUserId, setSearchParams]);
 
   // IBDガード: リダイレクト中はレンダリングしない
   if (ibdGuard === 'redirecting') return null;
@@ -473,8 +476,8 @@ const TimeBasedSupportRecordPage: React.FC = () => {
                         source: 'daily-support',
                         date: recordDate.toISOString().slice(0, 10),
                       });
-                      if (wizard.wizardSlotId) {
-                        params.set('slotId', wizard.wizardSlotId);
+                      if (effectiveSlotId) {
+                        params.set('slotId', effectiveSlotId);
                       }
                       // returnUrl: ABC記録後に支援手順の同じ位置へ戻れるようにする
                       const returnUrl = `/daily/support?wizard=plan&user=${encodeURIComponent(uid)}&userId=${encodeURIComponent(uid)}`;
@@ -489,20 +492,20 @@ const TimeBasedSupportRecordPage: React.FC = () => {
           {wizard.step === 'record' && (
             <RecordInputStep
               userName={selectedUser?.FullName ?? ''}
-              selectedSlotKey={wizard.wizardSlotId}
+              selectedSlotKey={effectiveSlotId}
               lockState={recordLockState}
               onSubmit={handleRecordSubmitWrapper}
               schedule={schedule}
               recordDate={recordDate}
               onSlotChange={handleWizardSelectSlot}
-              onAfterSubmit={() => handleWizardAfterSubmit(wizard.wizardSlotId || null)}
+              onAfterSubmit={() => handleWizardAfterSubmit(effectiveSlotId || null)}
               onBack={handleWizardBackToPlan}
               userId={wizard.wizardUserId || targetUserId}
               onAbcRecord={
                 (wizard.wizardUserId || targetUserId)
                   ? () => {
                       const uid = wizard.wizardUserId || targetUserId;
-                      const currentSlotId = wizard.wizardSlotId || '';
+                      const currentSlotId = effectiveSlotId || '';
                       const params = new URLSearchParams({
                         userId: uid,
                         source: 'daily-support',
