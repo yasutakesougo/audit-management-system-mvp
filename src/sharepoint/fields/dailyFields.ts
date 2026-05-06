@@ -145,7 +145,7 @@ export const DAILY_RECORD_ROW_AGGREGATE_CANDIDATES = {
   specialNote: ['SpecialNote', 'specialNote', 'cr013_specialnote'],
   version: ['Version', 'VersionNo', 'cr013_version'],
   recordedAt: ['Recorded_x0020_At', 'RecordedAt', 'cr013_recordedAt'],
-  rowKey: ['RowKey'],
+  rowKey: ['RowKey', 'Title'],
   rowNo: ['RowNo'],
   memo: ['Memo', 'Observation', 'Payload', 'payload'],
   staffName: ['StaffName'],

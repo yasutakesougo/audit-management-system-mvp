@@ -33,7 +33,7 @@ export const DAILY_RECORD_ROWS_FIELDS = {
  */
 export const EXECUTION_RECORD_FIELDS = {
   title: 'Title',                 // Composite Key: date-userId-slotId
-  rowKey: 'RowKey',               // Indexed Search Key: DailyKey-RowNo
+  rowKey: 'Title',               // Indexed Search Key: DailyKey-RowNo
   parentId: 'Parent_x0020_ID',    // Lookup to SupportRecord_Daily
   userId: 'User_x0020_ID',
   rowNo: 'RowNo',                 // Slot ID / Sequence
