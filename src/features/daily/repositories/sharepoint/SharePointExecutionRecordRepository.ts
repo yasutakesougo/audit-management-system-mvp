@@ -143,7 +143,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
     const rf = await this.getResolvedFields();
     const dailyKey = `${date}-${userId}`;
     const rowKeyPrefix = dailyKey;
-    const filter = `startsWith(${rf.rowKey}, '${rowKeyPrefix}')`;
+    const filter = `startswith(${rf.rowKey}, '${rowKeyPrefix}')`;
     const url = `lists/getbytitle('${this.childListTitle}')/items?$filter=${encodeURIComponent(filter)}`;
 
     const response = await this.spFetch(url);
