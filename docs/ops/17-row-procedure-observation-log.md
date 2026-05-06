@@ -98,3 +98,17 @@ The system has reached its final stabilization peak. The reduction of the persis
   - drift risks: 0
   - `SourceFileName0`: present / required
   - guarded apply readiness: ready
+- **Final 13-column list (proposed, no apply)**:
+  - `UserCode0`
+  - `RecordDate0`
+  - `RowNo0`
+  - `TimeSlot0`
+  - `Activity0`
+  - `PersonManual0`
+  - `SupporterManual0`
+  - `Situation0`
+  - `Completed0`
+  - `ProcedureType0`
+  - `ParentRowNo0`
+  - `CreatedByName0`
+  - `SourceFileName0`
