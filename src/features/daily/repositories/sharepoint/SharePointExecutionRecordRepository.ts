@@ -15,6 +15,10 @@ import { buildListPath } from './utils/Helpers';
 type SharePointExecutionRecordRepositoryOptions = {
   spFetch: SpFetchFn;
   getListFieldInternalNames?: (listTitle: string) => Promise<Set<string>>;
+  store?: {
+    getRecords: (date: string, userId: string) => ExecutionRecord[];
+    upsertRecord: (record: ExecutionRecord) => void;
+  };
 };
 
 /**
@@ -23,6 +27,7 @@ type SharePointExecutionRecordRepositoryOptions = {
  */
 export class SharePointExecutionRecordRepository implements ExecutionRecordRepository {
   private readonly spFetch: SpFetchFn;
+  private readonly store?: SharePointExecutionRecordRepositoryOptions['store'];
   private readonly getListFieldInternalNames?: (listTitle: string) => Promise<Set<string>>;
   private readonly parentListTitle: string;
   private readonly childListTitle: string;
@@ -35,6 +40,7 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
   constructor(options: SharePointExecutionRecordRepositoryOptions) {
     this.spFetch = options.spFetch;
     this.getListFieldInternalNames = options.getListFieldInternalNames;
+    this.store = options.store;
     this.parentListTitle = getListTitle();
     this.childListTitle = getRowsListTitle();
     this.resolver = new DailyRecordSchemaResolver(
@@ -145,8 +151,15 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
 
     const data: SharePointResponse<JsonRecord> = await response.json();
     if (!data.value) return [];
+    
+    const records = data.value.map((item: JsonRecord) => this.mapToDomain(item, rf));
+    
+    // Sync to local store for reactive UI updates
+    if (this.store) {
+      records.forEach(r => this.store!.upsertRecord(r));
+    }
 
-    return data.value.map((item: JsonRecord) => this.mapToDomain(item, rf));
+    return records;
   }
 
   async getRecord(date: string, userId: string, scheduleItemId: string): Promise<ExecutionRecord | undefined> {
@@ -213,12 +226,17 @@ export class SharePointExecutionRecordRepository implements ExecutionRecordRepos
         });
       }
     } else {
-      const createUrl = `_api/web/lists/getbytitle('${this.childListTitle}')/items`;
+      const createUrl = `lists/getbytitle('${this.childListTitle}')/items`;
       await this.spFetch(createUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json;odata=verbose' },
         body: JSON.stringify(body),
       });
+    }
+
+    // Sync to local store
+    if (this.store) {
+      this.store.upsertRecord(record);
     }
   }
 

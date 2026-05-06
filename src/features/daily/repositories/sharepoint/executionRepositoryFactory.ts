@@ -140,6 +140,7 @@ export const getExecutionRepository = (
       return new SharePointExecutionRecordRepository({
         spFetch,
         getListFieldInternalNames,
+        store: storeHooks,
       });
     }
 

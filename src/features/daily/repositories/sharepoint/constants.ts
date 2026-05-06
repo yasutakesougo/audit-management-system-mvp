@@ -133,7 +133,7 @@ export const getListTitle = (): string => {
 export const getRowsListTitle = (): string => {
   return (
     readNonEmptyEnv('VITE_SP_LIST_DAILY_ROWS') ??
-    'SupportRecord_DailyRows'
+    'DailyRecordRows'
   );
 };
 

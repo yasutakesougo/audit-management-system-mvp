@@ -22,6 +22,8 @@ type UseTimeBasedSupportRecordPageArgs = {
   storageKey?: string;
   /** 手順（TimeBasedSupportRecordPage から渡される優先スケジュール） */
   overrideSchedule?: ScheduleItem[];
+  /** 実施記録 (SharePoint 永続化モデル) */
+  executionRecords?: { scheduleItemId: string }[];
 };
 
 const DEFAULT_UNFILLED_STORAGE_KEY = 'daily-support-unfilled-only';
@@ -35,6 +37,7 @@ export function useTimeBasedSupportRecordPage({
   initialUnfilledOnly,
   storageKey = DEFAULT_UNFILLED_STORAGE_KEY,
   overrideSchedule,
+  executionRecords = [],
 }: UseTimeBasedSupportRecordPageArgs) {
   const [targetUserId, setTargetUserId] = useState(initialUserId);
   const [isAcknowledged, setIsAcknowledged] = useState(false);
@@ -69,8 +72,9 @@ export function useTimeBasedSupportRecordPage({
     return matched ?? null;
   }, [scheduleKeys]);
   const filledStepIds = useMemo(() => {
-    if (!schedule.length || recentObservations.length === 0) return new Set<string>();
     const filled = new Set<string>();
+    
+    // 1. ABC記録 (行動記録) による埋まり判定
     recentObservations.forEach((observation) => {
       if (observation.planSlotKey) {
         filled.add(observation.planSlotKey);
@@ -80,8 +84,16 @@ export function useTimeBasedSupportRecordPage({
         filled.add(getScheduleKey(observation.timeSlot, observation.plannedActivity ?? ''));
       }
     });
+
+    // 2. 実施記録 (17行記録モデル) による埋まり判定
+    executionRecords.forEach((record) => {
+      if (record.scheduleItemId) {
+        filled.add(record.scheduleItemId);
+      }
+    });
+
     return filled;
-  }, [schedule, recentObservations]);
+  }, [recentObservations, executionRecords]);
   const unfilledStepIds = useMemo(
     () => scheduleKeys.filter((key) => !filledStepIds.has(key)),
     [filledStepIds, scheduleKeys],
