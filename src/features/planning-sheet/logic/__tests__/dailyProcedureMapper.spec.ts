@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { bridgePlanningSheetToDailyProcedures } from '../dailyProcedureMapper';
 import type { SupportPlanningSheet } from '@/domain/isp/schema/ispPlanningSheetSchema';
+import { SHIODA_SEVERE_SUPPORT_SHEET } from '../__fixtures__/shiotaSevereSupportProcedure';
 
 describe('dailyProcedureMapper', () => {
   const mockSheet: Partial<SupportPlanningSheet> = {
@@ -102,5 +103,45 @@ describe('dailyProcedureMapper', () => {
     
     expect(amRow?.personAction).toContain('【対応方針】\nPolicy text');
     expect(amRow?.supporterAction).toContain('【具体策】\nApproach text');
+  });
+
+  describe('Shiota-san Severe Support Case (17-Row Validation)', () => {
+    // Note: fixture is imported at top
+    it('should map all 17 rows correctly including external activities', () => {
+      const doc = bridgePlanningSheetToDailyProcedures(SHIODA_SEVERE_SUPPORT_SHEET);
+
+      // Verify row count
+      expect(doc.rows.length).toBe(17);
+
+      // Verify Row 1 (Timing override: 9:40頃)
+      const row1 = doc.rows.find(r => r.rowNo === 1);
+      expect(row1?.personAction).toContain('手洗い、消毒');
+      expect(row1?.condition).toBe('笑顔で入室');
+
+      // Verify Row 13 (Activity override: ダンスタイム)
+      const row13 = doc.rows.find(r => r.rowNo === 13);
+      expect(row13?.activity).toContain('のんびりタイム・ダンスタイム');
+      expect(row13?.personAction).toContain('ダンスを踊る');
+      expect(row13?.supporterAction).toContain('好きな曲をかけ');
+
+      // Verify Row 16 & 17 (External Activities)
+      const row16 = doc.rows.find(r => r.rowNo === 16);
+      const row17 = doc.rows.find(r => r.rowNo === 17);
+      
+      expect(row16?.activity).toBe('AM/PM日中活動（外活動準備）');
+      expect(row16?.supporterAction).toContain('トイレ、帽子');
+      
+      expect(row17?.activity).toBe('AM/PM日中活動（外活動）');
+      expect(row17?.supporterAction).toContain('安全確認');
+    });
+
+    it('should maintain RowNo priority even if timing matches template weakly', () => {
+      const doc = bridgePlanningSheetToDailyProcedures(SHIODA_SEVERE_SUPPORT_SHEET);
+      
+      // Row 1 timing is '09:40頃', but RowNo is 1. Template Row 1 timing is '9:30頃'.
+      // The mapper should prefer order/RowNo over timing string matching.
+      const row1 = doc.rows.find(r => r.rowNo === 1);
+      expect(row1?.personAction).toBe('手洗い、消毒。荷物を入れる。');
+    });
   });
 });
