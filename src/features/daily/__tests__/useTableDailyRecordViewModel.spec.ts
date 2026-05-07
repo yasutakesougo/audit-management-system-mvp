@@ -11,8 +11,13 @@ vi.mock('react-router-dom', async () => {
   return {
     ...actual,
     useNavigate: () => navigateMock,
+    useLocation: () => ({ search: '', pathname: '/today' }),
   };
 });
+
+vi.mock('@/lib/nav/useCancelToDashboard', () => ({
+  useCancelToToday: () => () => navigateMock('/today', { replace: true }),
+}));
 
 // Mock repository
 const mockSave = vi.fn().mockResolvedValue(undefined);
