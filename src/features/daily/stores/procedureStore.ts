@@ -6,7 +6,7 @@
 // ---------------------------------------------------------------------------
 import type { ScheduleItem } from '@/features/daily/components/split-stream/ProcedurePanel';
 import { PROCEDURE_ROWS } from '@/features/planning-sheet/constants/procedureRows';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { create } from 'zustand';
 
 export type ProcedureItem = ScheduleItem;
@@ -151,10 +151,10 @@ export function useProcedureStore() {
     return Object.keys(snapshot);
   }, [snapshot]);
 
-  return {
+  return useMemo(() => ({
     getByUser,
     save,
     hasUserData,
     registeredUserIds,
-  } as const;
+  }), [getByUser, save, hasUserData, registeredUserIds]);
 }
