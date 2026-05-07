@@ -56,6 +56,26 @@ export function useExecutionRecord(date: string, userId: string, scheduleItemId:
     [record, upsertRecord],
   );
 
-  return { record, setStatus, setMemo, isLoading, refresh: fetchRecord } as const;
+  const saveRecord = useCallback(
+    async (status: RecordStatus, memo?: string, triggeredBipIds?: string[]) => {
+      const next: ExecutionRecord = {
+        id: makeRecordId(date, userId, scheduleItemId),
+        date,
+        userId,
+        scheduleItemId,
+        status,
+        memo: memo !== undefined ? memo : (record?.memo ?? ''),
+        triggeredBipIds: triggeredBipIds !== undefined ? triggeredBipIds : (record?.triggeredBipIds ?? []),
+        recordedBy: record?.recordedBy ?? '',
+        recordedAt: new Date().toISOString(),
+      };
+      setRecord(next);
+      await upsertRecord(next);
+    },
+    [date, userId, scheduleItemId, record, upsertRecord],
+  );
+
+  return { record, setStatus, setMemo, saveRecord, isLoading, refresh: fetchRecord } as const;
 }
+
 
