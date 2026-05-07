@@ -181,6 +181,13 @@ describe('dailyProcedureMapper', () => {
       // Row 17 for Katsuragawa-san in Excel was empty except for header
       expect(row17?.personAction).toBe('AM PM日中活動 (外活動)');
     });
+
+    it('should map overall sheet notes (dailyCarePoints, otherNotes) unique to Katsuragawa-san', () => {
+      const doc = bridgePlanningSheetToDailyProcedures(KATSURAGAWA_SEVERE_SUPPORT_SHEET);
+
+      expect(doc.dailyCarePoints).toBe('本人のペースを尊重し、見通しを持てるように視覚的支援を行う。');
+      expect(doc.otherNotes).toBe('視覚的スケジュールの提示、イヤーマフの活用。\n短い言葉で具体的に伝える。');
+    });
   });
 
   describe('Nakamura-san Severe Support Case (17-Row Validation)', () => {
@@ -274,6 +281,16 @@ describe('dailyProcedureMapper', () => {
 
       expect(doc.dailyCarePoints).toBe('自発的な排泄要望がないため、こまめな支援者間の情報共有が必要。');
       expect(doc.otherNotes).toBe('個別のタイミングを考慮した声掛けと、手洗い・消毒用の設備配置。');
+    });
+
+    it('should resolve Ishiwata aliases when userId is numeric route id', () => {
+      const doc = bridgePlanningSheetToDailyProcedures({
+        ...ISHIWATA_SEVERE_SUPPORT_SHEET,
+        userId: '6',
+      });
+
+      expect(doc.dailyCarePoints).toBe('自発的な排泄要望がないため、こまめな支援者間の情報共有が必要。');
+      expect(doc.rows.find((row) => row.rowNo === 1)?.personAction).toContain('送迎車で来所');
     });
   });
 });

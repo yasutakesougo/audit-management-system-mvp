@@ -5,6 +5,108 @@ import type { UserProcedureDetail, UserProcedureSheetNotes } from '../domain/use
 // 原紙「石渡さん_重度加算（外出入り）.xls」から、本人の動き・支援者の動きを行単位で転記。
 export const USER_PROCEDURE_DETAILS: UserProcedureDetail[] = [
   {
+    userId: 3,
+    rowNo: 1,
+    personAction: '朝の準備\n手洗い\n荷物をロッカーへ\n提出物を職員へ\nハンカチ確認',
+    supporterAction: '通所時のヘルパーと申し送りをする。\n手洗いの声掛け。\n本人と朝の準備のお手伝い。\nハンカチ確認。',
+  },
+  {
+    userId: 3,
+    rowNo: 2,
+    personAction: 'ラジオ体操をする',
+    supporterAction: '体操の声掛けをする。',
+  },
+  {
+    userId: 3,
+    rowNo: 3,
+    personAction: 'ホワイトボードを見ながら確認する',
+    supporterAction: 'ホワイトボードを使って声掛けし説明する。',
+  },
+  {
+    userId: 3,
+    rowNo: 4,
+    personAction: '手洗いしお茶を飲む',
+    supporterAction: '手洗い・消毒の補助。\nお茶を飲む・片付けるお手伝いをする。',
+  },
+  {
+    userId: 3,
+    rowNo: 5,
+    personAction: '日中活動準備\nビン入れ\nビーズの種類分け',
+    supporterAction: '座る場所の促しや準備のお手伝い。\n活動の見守り・声掛けをする。',
+  },
+  {
+    userId: 3,
+    rowNo: 6,
+    personAction: '手洗い・消毒・昼食の準備',
+    supporterAction: '手洗い等の声掛けや準備のお手伝いをする。',
+  },
+  {
+    userId: 3,
+    rowNo: 7,
+    personAction: '食事の受け取り・食事\n一部介助・片づけ・歯磨き',
+    supporterAction: '食事の受取や片付け、食事一部介助、食後の歯磨き介助などのお手伝いをする。',
+  },
+  {
+    userId: 3,
+    rowNo: 8,
+    personAction: '休み時間ののんびりタイム\n血圧測定',
+    supporterAction: '静かな部屋への促しをする。\nトイレの声掛け・介助。\n血圧測定。',
+  },
+  {
+    userId: 3,
+    rowNo: 9,
+    personAction: 'ホワイトボードを見ながら確認する',
+    supporterAction: 'ホワイトボードを使って声掛けし説明する。',
+  },
+  {
+    userId: 3,
+    rowNo: 10,
+    personAction: '日中活動準備\nビン入れ\nビーズの種類分け',
+    supporterAction: '座る場所の促しや準備のお手伝い。\n活動の見守り・声掛けをする。',
+  },
+  {
+    userId: 3,
+    rowNo: 11,
+    personAction: '手洗いしお茶を飲む',
+    supporterAction: '手洗い・消毒の補助。\nお茶を飲む・片付けるお手伝いをする。',
+  },
+  {
+    userId: 3,
+    rowNo: 12,
+    personAction: '日中活動準備\nビン入れ\nビーズの種類分け',
+    supporterAction: '座る場所の促しや準備のお手伝い。\n活動の見守り・声掛けをする。',
+  },
+  {
+    userId: 3,
+    rowNo: 13,
+    personAction: 'のんびり過ごす',
+    supporterAction: 'のんびりできているかの確認。\n座る場所の促しをする。\nトイレの声掛け・介助。',
+  },
+  {
+    userId: 3,
+    rowNo: 14,
+    personAction: '帰りの準備\n荷物をロッカーから出す・着替え・トイレ\nハンカチ確認',
+    supporterAction: '荷物をロッカーから出す・着替え・ハンカチ確認・ノート返却などのお手伝いをする。',
+  },
+  {
+    userId: 3,
+    rowNo: 15,
+    personAction: 'ヘルパーと一緒に帰る\n(木曜日は母)',
+    supporterAction: 'ヘルパーに引き継ぎ\n(木曜日は母)\nご本人の様子を伝える。',
+  },
+  {
+    userId: 3,
+    rowNo: 16,
+    personAction: '着替えを持つ\nトイレに行く',
+    supporterAction: 'トイレの声掛け介助。\n荷物の確認をする。\n自動ドア前で写真を撮る。',
+  },
+  {
+    userId: 3,
+    rowNo: 17,
+    personAction: 'AM PM日中活動 (外活動)',
+    supporterAction: '',
+  },
+  {
     userId: 4,
     rowNo: 1,
     personAction: '送迎車で来所\n手洗い\n荷物の片づけ',
@@ -110,14 +212,21 @@ export const USER_PROCEDURE_DETAILS: UserProcedureDetail[] = [
 
 function isIshiwataUserId(userId: string | number): boolean {
   const s = String(userId);
-  return s === '4' || s === 'U-002' || s === 'U-003';
+  return s === '4' || s === '6' || s === 'U-002' || s === 'U-003';
+}
+
+function isKatsuragawaUserId(userId: string | number): boolean {
+  const s = String(userId);
+  return s === '3' || s === 'U-001';
 }
 
 export function findUserProcedureDetail(userId: string | number, rowNo: number): UserProcedureDetail | undefined {
   return USER_PROCEDURE_DETAILS.find((detail) => {
     const isUserMatch = isIshiwataUserId(detail.userId)
       ? isIshiwataUserId(userId)
-      : String(detail.userId) === String(userId);
+      : isKatsuragawaUserId(detail.userId)
+        ? isKatsuragawaUserId(userId)
+        : String(detail.userId) === String(userId);
     return isUserMatch && detail.rowNo === rowNo;
   });
 }
@@ -138,6 +247,11 @@ export function buildUserProcedureRows(userId: string | number): ProcedureRow[] 
 // 原紙「石渡さん_重度加算（外出入り）.xls」から、一日を通して気を付ける事・その他を転記。
 export const USER_PROCEDURE_SHEET_NOTES: UserProcedureSheetNotes[] = [
   {
+    userId: 3,
+    dailyCarePoints: '本人のペースを尊重し、見通しを持てるように視覚的支援を行う。',
+    otherNotes: '視覚的スケジュールの提示、イヤーマフの活用。\n短い言葉で具体的に伝える。',
+  },
+  {
     userId: 4,
     dailyCarePoints: '自発的な排泄要望がないため、こまめな支援者間の情報共有が必要。',
     otherNotes: '個別のタイミングを考慮した声掛けと、手洗い・消毒用の設備配置。',
@@ -148,7 +262,8 @@ export function findUserProcedureSheetNotes(userId: string | number): UserProced
   return USER_PROCEDURE_SHEET_NOTES.find((notes) => {
     return isIshiwataUserId(notes.userId)
       ? isIshiwataUserId(userId)
-      : String(notes.userId) === String(userId);
+      : isKatsuragawaUserId(notes.userId)
+        ? isKatsuragawaUserId(userId)
+        : String(notes.userId) === String(userId);
   });
 }
-
