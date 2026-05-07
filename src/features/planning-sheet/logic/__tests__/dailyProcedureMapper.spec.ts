@@ -282,5 +282,15 @@ describe('dailyProcedureMapper', () => {
       expect(doc.dailyCarePoints).toBe('自発的な排泄要望がないため、こまめな支援者間の情報共有が必要。');
       expect(doc.otherNotes).toBe('個別のタイミングを考慮した声掛けと、手洗い・消毒用の設備配置。');
     });
+
+    it('should resolve Ishiwata aliases when userId is numeric route id', () => {
+      const doc = bridgePlanningSheetToDailyProcedures({
+        ...ISHIWATA_SEVERE_SUPPORT_SHEET,
+        userId: '6',
+      });
+
+      expect(doc.dailyCarePoints).toBe('自発的な排泄要望がないため、こまめな支援者間の情報共有が必要。');
+      expect(doc.rows.find((row) => row.rowNo === 1)?.personAction).toContain('送迎車で来所');
+    });
   });
 });

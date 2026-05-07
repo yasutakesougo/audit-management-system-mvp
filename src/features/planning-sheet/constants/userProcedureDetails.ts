@@ -212,7 +212,7 @@ export const USER_PROCEDURE_DETAILS: UserProcedureDetail[] = [
 
 function isIshiwataUserId(userId: string | number): boolean {
   const s = String(userId);
-  return s === '4' || s === 'U-002' || s === 'U-003';
+  return s === '4' || s === '6' || s === 'U-002' || s === 'U-003';
 }
 
 function isKatsuragawaUserId(userId: string | number): boolean {
