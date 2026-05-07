@@ -36,6 +36,10 @@ vi.mock('@/config/featureFlags', async (importOriginal) => {
   };
 });
 
+vi.mock('@/features/settings/hooks/useKioskDetection', () => ({
+  useKioskDetection: () => ({ isKioskMode: false }),
+}));
+
 // ── Import after mocks ──────────────────────────────────────────────────
 
 import { DashboardRedirect } from '../redirects';
