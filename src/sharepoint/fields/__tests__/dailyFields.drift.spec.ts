@@ -102,18 +102,19 @@ describe('DAILY_RECORD_ROW_AGGREGATE_CANDIDATES drift', () => {
   it('標準名がそのまま解決される（drift なし）', () => {
     const available = new Set([
       'Title', 'ParentID', 'UserCode', 'RecordDate', 'Status', 'ReporterName', 'Payload', 'Kind', 'Group', 'SpecialNote', 'Version',
+      'RecordedAt', 'RowNo', 'Memo', 'StaffName', 'BipsJSON', 'RowKey',
     ]);
     const { resolved, missing } = resolveInternalNamesDetailed(
       available,
       DAILY_RECORD_ROW_AGGREGATE_CANDIDATES as unknown as Record<string, string[]>,
     );
 
-    expect(resolved.UserID).toBe('UserCode');
+    expect(resolved.userId).toBe('UserCode');
     expect(resolved.recordDate).toBe('RecordDate');
     expect(missing).toHaveLength(0);
   });
 
-  it('cr013_personId が UserID として解決される', () => {
+  it('cr013_personId が userId として解決される', () => {
     const available = new Set([
       'Title', 'cr013_personId', 'cr013_date',
     ]);
@@ -122,9 +123,9 @@ describe('DAILY_RECORD_ROW_AGGREGATE_CANDIDATES drift', () => {
       DAILY_RECORD_ROW_AGGREGATE_CANDIDATES as unknown as Record<string, string[]>,
     );
 
-    expect(resolved.UserID).toBe('cr013_personId');
+    expect(resolved.userId).toBe('cr013_personId');
     expect(resolved.recordDate).toBe('cr013_date');
-    expect(fieldStatus.UserID.isDrifted).toBe(true);
+    expect(fieldStatus.userId.isDrifted).toBe(true);
     expect(fieldStatus.recordDate.isDrifted).toBe(true);
   });
 
