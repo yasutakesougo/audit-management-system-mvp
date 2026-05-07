@@ -24,10 +24,6 @@ import type { ExecutionRecord } from '../../domain/legacy/executionRecordTypes';
 import { SharePointExecutionRecordRepository } from './SharePointExecutionRecordRepository';
 import type { SpFetchFn } from '@/lib/sp/spLists';
 
-
-
-
-
 // ────────────────────────────────────────────────────────────
 // Types
 // ────────────────────────────────────────────────────────────
@@ -53,7 +49,6 @@ const shouldUseLocalRepository = (): boolean => {
   );
 };
 
-
 const resolveKind = (forced?: ExecutionRepositoryKind): ExecutionRepositoryKind =>
   forced ?? (shouldUseLocalRepository() ? 'local' : 'sharepoint');
 
@@ -73,10 +68,10 @@ export type ExecutionStoreHooks = {
 };
 
 // ────────────────────────────────────────────────────────────
-// LocalStorage Adapter (wraps ExecutionStore)
+// Adapters
 //
-// Uses a plain object (not a class) so that methods work correctly
-// when destructured: `const { getRecord } = useExecutionData()`.
+// Uses plain objects so methods work correctly when destructured:
+// `const { getRecord } = useExecutionData()`.
 // Class methods lose `this` binding in that scenario.
 // ────────────────────────────────────────────────────────────
 
@@ -95,6 +90,20 @@ function createLocalStorageExecutionAdapter(
   };
 }
 
+function createSharePointExecutionAdapter(
+  repository: SharePointExecutionRecordRepository,
+): ExecutionRecordRepository {
+  return {
+    getRecords: async (date: string, userId: string) =>
+      repository.getRecords(date, userId),
+    getRecord: async (date: string, userId: string, scheduleItemId: string) =>
+      repository.getRecord(date, userId, scheduleItemId),
+    upsertRecord: async (record: ExecutionRecord) =>
+      repository.upsertRecord(record),
+    getCompletionRate: async (date: string, userId: string, totalSlots: number) =>
+      repository.getCompletionRate(date, userId, totalSlots),
+  };
+}
 
 // ────────────────────────────────────────────────────────────
 // Public API
@@ -137,13 +146,13 @@ export const getExecutionRepository = (
           '[ExecutionRepositoryFactory] spFetch is required for sharepoint repository.',
         );
       }
-      return new SharePointExecutionRecordRepository({
+      const repository = new SharePointExecutionRecordRepository({
         spFetch,
         getListFieldInternalNames,
         store: storeHooks,
       });
+      return createSharePointExecutionAdapter(repository);
     }
-
 
     default: {
       const _exhaustive: never = kind;
